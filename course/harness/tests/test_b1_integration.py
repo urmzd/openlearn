@@ -83,7 +83,14 @@ def test_reference_entry_roles_match_cli_roles():
     assert entry["engine"][-2:] == ["--config", "{config}"]
     template = raw["services"]["engine"]["config"]
     assert (COURSE / "ref" / "entry" / template).is_file()
-    assert "http://127.0.0.1:{engine.port}" in entry["gateway"]
+    # The gateway reaches the engine at its allocated port: in the tracer
+    # flags form (--upstream) or the --config form's template.
+    gw = entry["gateway"]
+    if gw[-2:] == ["--config", "{config}"]:
+        gw_template = COURSE / "ref" / "entry" / raw["services"]["gateway"]["config"]
+        assert "http://127.0.0.1:{engine.port}" in gw_template.read_text()
+    else:
+        assert "http://127.0.0.1:{engine.port}" in gw
     assert raw["services"]["gateway"]["after"] == ["engine"]
     trained = [s for s in raw["build"]["steps"] if "train" in s]
     assert trained and "{fixture:MS-P1/corpus.txt}" in trained[0]
