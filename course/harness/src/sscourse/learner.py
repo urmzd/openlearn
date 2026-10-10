@@ -12,7 +12,12 @@ from .registry import Registry
 GITIGNORE = """\
 # written by `ss course init`
 .ss/
-artifacts/
+artifacts/*
+# C2's run manifest is provenance you commit (its check reads it from a
+# clone); the weights beside it stay ignored.
+!artifacts/c2/
+artifacts/c2/*
+!artifacts/c2/run.json
 .venv/
 __pycache__/
 target/

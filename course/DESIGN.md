@@ -879,7 +879,7 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
   docs/{c4/*.d2, adr/, runbooks/, postmortems/}  THREAT_MODEL.md SBOM.md MODEL_CARD.md DATASHEET.md USAGE_POLICY.md
   solve/<S-ID>.toml  solve/<S-ID>/qN.md
   .github/workflows/             # (learner) CI gates
-  artifacts/                     # gitignored, mounted into kind
+  artifacts/                     # gitignored (but artifacts/c2/run.json, which C2 checks), mounted into kind
   .ss/                           # gitignored: verdicts.jsonl, overlay/, build/, cache/, drills/, milestones/, supersource/ (CI checkout)
 ```
 
