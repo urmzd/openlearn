@@ -599,9 +599,17 @@ def m_trace(e, out, mc) -> Verdict:
         raise HarnessError(
             "the Tempo query API arrives with obs (Pass 7); Pass 1 traces are Jaeger at :30686"
         )
-    t, why = find_trace(
-        base, e, mc.started_at - float(e.get("lookback_s", 60)), time.time() + 5
-    )
+    # Services export spans asynchronously (batches, queues), so the trace
+    # of a request made a moment ago may not be queryable yet: poll for
+    # `wait_s` seconds (default 30) before failing.
+    deadline = time.time() + float(e.get("wait_s", 30))
+    while True:
+        t, why = find_trace(
+            base, e, mc.started_at - float(e.get("lookback_s", 60)), time.time() + 5
+        )
+        if t or time.time() >= deadline:
+            break
+        time.sleep(2)
     return Verdict("pass", f"trace {t.get('traceID')}") if t else Verdict("fail", why)
 
 

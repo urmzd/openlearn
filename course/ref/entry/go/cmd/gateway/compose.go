@@ -52,6 +52,7 @@ import (
 	"tinyllm/gateway/cache"
 	"tinyllm/gateway/ledger"
 	"tinyllm/gateway/limit"
+	"tinyllm/gateway/proxy"
 	"tinyllm/gateway/route"
 	"tinyllm/gateway/server"
 )
@@ -148,7 +149,7 @@ func runConfig(path, keyEnv string) int {
 		CacheOptions: cache.Options{TTL: time.Duration(g.CacheTTLS) * time.Second},
 		Registry:     reg,
 		Router:       rt,
-		Proxy:        route.Proxy(rt, route.Options{}),
+		Proxy:        route.Proxy(rt, route.Options{OnSpan: routeSpanExporter()}),
 	}
 	if g.CacheEntries > 0 {
 		st.Cache = cache.New(g.CacheEntries, nil)
@@ -309,5 +310,21 @@ func heartbeatUpstream(ctx context.Context, reg *route.Registry, base string) {
 		case <-tick.C:
 			beat()
 		}
+	}
+}
+
+// routeSpanExporter adapts newSpanExporter (otlp.go, obs.00) to the route
+// stage's span hook, so the --config form exports the same gateway.proxy
+// span as the tracer form. nil when no OTLP endpoint is configured.
+func routeSpanExporter() func(route.SpanRecord) {
+	export := newSpanExporter()
+	if export == nil {
+		return nil
+	}
+	return func(r route.SpanRecord) {
+		export(proxy.Span{
+			Name: proxy.SpanName, TraceID: r.TraceID, SpanID: r.SpanID, ParentSpanID: r.ParentSpanID,
+			RequestID: r.RequestID, StatusCode: r.Status, Start: r.Start, End: r.End,
+		})
 	}
 }

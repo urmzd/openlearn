@@ -258,7 +258,12 @@ def test_caller_trace_is_continued(c: Ctx) -> None:
     # CHAPTER: obs.00 section 5, Pitfall 3
     loc = _trace(c)["local"]
     sink = _trace(c)["sink"]
-    status, _ = loc.request(traceparent=f"00-{CALLER_TRACE}-{CALLER_SPAN}-01")
+    # A request that differs from the earlier tests' (max_tokens 9): from
+    # gw.06 on, a repeated temperature-0 request may be answered from the
+    # response cache without reaching the engine, and this test needs the hop.
+    status, _ = loc.request(
+        traceparent=f"00-{CALLER_TRACE}-{CALLER_SPAN}-01", max_tokens=9
+    )
     if status != 200:
         raise Fail(f"a request carrying traceparent answered {status}")
     # Wait for both spans: each service exports on its own schedule.
