@@ -3,8 +3,9 @@
 # embedding model runs:
 #   - the classifier head is fitted on hash16 vectors (scripts/fit_policy_head.py
 #     in [build]; the deployed policy uses the smol-135m head);
-#   - the classifier rule covers the agent's instruct model only, so the
-#     tracer traffic of MS-gateway is never classified.
+#   - the training set (config/policy-train.jsonl) labels every prompt the
+#     course's gateway workloads and conformance cases send, so the fit
+#     script fails before a head could block one of them.
 # The free-token-cap rule is left out: the conformance keys are not free-tier.
 version: 1
 default_action: allow
@@ -15,8 +16,6 @@ rules:
     action: deny
     reason: "This model is not available through the public gateway"
   - id: unsafe-prompt
-    match:
-      model: ["smol-135m-instruct"]
     classifier:
       head: "models/hash16/heads/usage.json"
       class: "unsafe"

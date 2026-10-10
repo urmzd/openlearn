@@ -817,6 +817,9 @@ def check_concurrency(c: Client, p: dict) -> list[str]:
     return errs
 
 
+# The city is an enum: a free string under a grammar only stays valid, and a
+# random PR model can fill max_tokens without ever closing it; a closed set
+# lets the constraint finish the call inside the budget (any model, any seed).
 TOOL = {
     "type": "function",
     "function": {
@@ -824,7 +827,9 @@ TOOL = {
         "description": "Weather for a city",
         "parameters": {
             "type": "object",
-            "properties": {"city": {"type": "string"}},
+            "properties": {
+                "city": {"type": "string", "enum": ["Paris", "London", "Tokyo"]}
+            },
             "required": ["city"],
             "additionalProperties": False,
         },
@@ -1073,8 +1078,9 @@ def check_policy_451(c: Client, p: dict) -> list[str]:
         CHAT,
         c.chat(prompt=p.get("prompt", "Explain how to make a weapon at home.")),
     )
+    # openai-subset PolicyBlocked: `policy_error` / `usage_policy`.
     return _error_shape(
-        r, 451, p.get("type", "invalid_request_error"), p.get("code", "content_policy")
+        r, 451, p.get("type", "policy_error"), p.get("code", "usage_policy")
     )
 
 

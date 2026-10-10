@@ -14,9 +14,9 @@ usage_db  = "{data}/usage.db"
 # the key in $TL_API_KEY ([endpoints].api_key_env) always works, with the
 # scopes infer and admin.
 keys_file = "{data}/keys.jsonl"
-# The usage policy (gw.08): its classifier rule covers the instruct model
-# the agent asks, so the tracer traffic of MS-gateway is never classified.
-# Heads are read under [paths].artifacts ([build] fits the hash16 head).
+# The usage policy (gw.08). Its hash16 head is fitted in [build] on a set
+# that labels every prompt the course's workloads send; heads are read under
+# [paths].artifacts.
 policy_file = "config/policy.local.yaml"
 
 # The public model id of the course requests, served by the engine.
