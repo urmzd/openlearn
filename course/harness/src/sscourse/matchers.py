@@ -183,8 +183,18 @@ def m_json_last_line(e, out, mc) -> Verdict:
             bad.append(f"{name}: missing or not a number")
             continue
         m = re.fullmatch(r"\s*(<=|>=)\s*calibrated\s*", str(spec))
+        k = re.fullmatch(r"\s*(>=|<=|==|>|<)\s*([A-Za-z_]\w*)\s*", str(spec))
         if m:
             ok, why = _calibrated(float(obj[name]), name, m.group(1), e, mc)
+        elif k and k.group(2) != "calibrated":
+            # `<op> <key>`: compare with another number on the same line
+            # (MS-agent: ci_low = "<= ci_high").
+            other = obj.get(k.group(2))
+            if not isinstance(other, (int, float)) or isinstance(other, bool):
+                bad.append(f"{name}: {k.group(2)} missing or not a number")
+                continue
+            ok, why = _cmp(float(obj[name]), f"{k.group(1)} {float(other)!r}")
+            why += f" ({k.group(2)})"
         else:
             ok, why = _cmp(float(obj[name]), spec)
         (good if ok else bad).append(f"{name}: {why}")
