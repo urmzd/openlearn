@@ -10,12 +10,13 @@
 | json-last-line  | metrics = { name = ">= 0.95" } (ops >= <= > < ==)                    |
 | tokens-equal    | file (JSON ids list or {"ids": [...]}), near_tie = {logits, margin, argv} |
 | numeric         | values, rtol, atol                                                   |
+| logits-close    | file (reference npz), output (the step's npz), atol (1e-3), top_k (5) |
 | json-schema     | schema (path or inline table)                                        |
 | file-produced   | glob, min_count, schema, contains, rows (parquet total, e.g. ">= 1000") |
 | sse             | min_chunks; the stream is framed byte for byte (2.6)                 |
 | suite           | suite (openapi:...), service (local) or base                         |
 | promql          | query, base (default [deploy].prometheus), bound, hold_s, interval_s |
-| trace           | service, spans, services, parents, base (default [deploy].traces)    |
+| trace           | service, spans, services, parents, base (default [deploy].traces), api (jaeger or tempo) |
 | git-log         | n (default 1): the last n subjects are Conventional Commits          |
 | ci-status       | GitHub: gh run list on the default branch; else [ci].local commands  |
 
@@ -24,14 +25,18 @@ Every step that runs a command must also exit `code` (default 0).
 
 from __future__ import annotations
 
-import fnmatch
+import ast
+import base64
 import glob as globmod
 import json
 import math
 import os
 import re
 import shutil
+import struct
 import time
+import urllib.parse
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -331,6 +336,135 @@ def m_numeric(e, out, mc) -> Verdict:
     return Verdict("pass")
 
 
+NPY_CODES = {
+    ("f", 2): "e",
+    ("f", 4): "f",
+    ("f", 8): "d",
+    ("i", 1): "b",
+    ("i", 2): "h",
+    ("i", 4): "i",
+    ("i", 8): "q",
+    ("u", 1): "B",
+    ("u", 2): "H",
+    ("u", 4): "I",
+    ("u", 8): "Q",
+}
+
+
+def _npy(raw: bytes, what: str) -> list:
+    """One .npy array (numeric dtype, C order), flattened to a list. The
+    harness core is stdlib only, so it reads the format itself."""
+    if raw[:6] != b"\x93NUMPY" or len(raw) < 10:
+        raise ValueError(f"{what}: not a .npy array")
+    if raw[6] == 1:
+        (hlen,), start = struct.unpack("<H", raw[8:10]), 10
+    else:
+        (hlen,), start = struct.unpack("<I", raw[8:12]), 12
+    head = ast.literal_eval(raw[start : start + hlen].decode("latin-1"))
+    descr, shape = str(head.get("descr", "")), tuple(head.get("shape", ()))
+    m = re.fullmatch(r"([<>|=])([fiu])(\d+)", descr)
+    code = NPY_CODES.get((m.group(2), int(m.group(3)))) if m else None
+    if code is None:
+        raise ValueError(f"{what}: unsupported dtype {descr!r}")
+    if head.get("fortran_order") and len(shape) > 1:
+        raise ValueError(f"{what}: Fortran-order arrays are not supported")
+    n = math.prod(shape)
+    endian = ">" if m.group(1) == ">" else "<"
+    body = raw[start + hlen : start + hlen + n * int(m.group(3))]
+    return list(struct.unpack(f"{endian}{n}{code}", body))
+
+
+def read_npz(path: Path) -> dict[str, list]:
+    """Every array of an .npz (np.savez or np.savez_compressed), flattened."""
+    out: dict[str, list] = {}
+    with zipfile.ZipFile(path) as z:
+        for name in z.namelist():
+            if name.endswith(".npy"):
+                out[name[:-4]] = _npy(z.read(name), f"{path}:{name}")
+    return out
+
+
+def _top_ids(pairs: list[tuple[int, float]], k: int) -> list[int]:
+    """The k largest values' ids, ties to the lowest id."""
+    return [i for i, _ in sorted(pairs, key=lambda p: (-p[1], p[0]))[:k]]
+
+
+def m_logits_close(e, out, mc) -> Verdict:
+    """The step's npz (`output`: logits0, logits1, ..., one [vocab] row per
+    prompt) against a reference npz (`file`). A reference row is either dense
+    (logits<i>) or the oracle's largest logits (top<i>.ids, top<i>.values).
+    Every reference value within `atol` (default 1e-3) and the `top_k`
+    (default 5) ids identical, in order."""
+    ref_p = mc.run.course_file(placeholders.expand(e.get("file", ""), mc.lookup))
+    got_s = placeholders.expand(str(e.get("output", "")), mc.lookup)
+    if not e.get("file") or not got_s:
+        raise HarnessError(
+            f"step {mc.step_name}: logits-close needs `file` and `output`"
+        )
+    got_p = Path(got_s)
+    if not got_p.is_absolute():
+        got_p = (mc.run.learner or Path.cwd()) / got_p
+    try:
+        ref = read_npz(ref_p)
+    except (OSError, ValueError, zipfile.BadZipFile, SyntaxError) as err:
+        raise HarnessError(
+            f"step {mc.step_name}: reference npz {ref_p}: {err}"
+        ) from None
+    if not got_p.is_file():
+        return Verdict("fail", f"{got_p} was not written")
+    try:
+        got = read_npz(got_p)
+    except (OSError, ValueError, zipfile.BadZipFile, SyntaxError, struct.error) as err:
+        return Verdict("fail", f"{got_p}: {err}")
+    rows = sorted(
+        {
+            int(m.group(1))
+            for k in ref
+            if (m := re.fullmatch(r"(?:logits|top)(\d+)(?:\.ids)?", k))
+        }
+    )
+    if not rows:
+        raise HarnessError(f"{ref_p}: holds no logits<i> or top<i>.ids arrays")
+    n_got = sum(1 for k in got if re.fullmatch(r"logits\d+", k))
+    if n_got != len(rows):
+        return Verdict("fail", f"{got_p} holds {n_got} logits rows, want {len(rows)}")
+    atol, k = float(e.get("atol", 1e-3)), int(e.get("top_k", 5))
+    worst = 0.0
+    for i in rows:
+        row = got.get(f"logits{i}")
+        if row is None:
+            return Verdict("fail", f"{got_p} has no logits{i}")
+        if f"logits{i}" in ref:
+            want = list(enumerate(ref[f"logits{i}"]))
+            if len(row) != len(want):
+                return Verdict(
+                    "fail", f"logits{i}: {len(row)} values, want {len(want)}"
+                )
+        else:
+            want = list(zip(map(int, ref[f"top{i}.ids"]), ref[f"top{i}.values"]))
+            if want and max(j for j, _ in want) >= len(row):
+                return Verdict(
+                    "fail",
+                    f"logits{i}: {len(row)} values, too few for the reference ids",
+                )
+        for j, v in want:
+            d = abs(float(row[j]) - float(v))
+            if not d <= atol:
+                return Verdict(
+                    "fail",
+                    f"logits{i}[{j}]: {row[j]!r} vs {v!r}, |diff| {d:.3g} > {atol:g}",
+                )
+            worst = max(worst, d)
+        want_top = _top_ids(want, k)
+        got_top = _top_ids(list(enumerate(map(float, row))), k)
+        if got_top != want_top:
+            return Verdict("fail", f"logits{i}: top-{k} ids {got_top}, want {want_top}")
+    return Verdict(
+        "pass",
+        f"{len(rows)} rows, max |diff| {worst:.3g} <= {atol:g}, top-{k} ids equal",
+    )
+
+
 def _load_schema(spec, mc) -> dict:
     if isinstance(spec, dict):
         return spec
@@ -537,9 +671,31 @@ def m_promql(e, out, mc) -> Verdict:
         time.sleep(min(interval, max(0.0, deadline - time.monotonic())) or 0.01)
 
 
+def is_tempo(base: str, e: dict) -> bool:
+    """`api = "tempo"` or `"jaeger"` on the step decides; else Tempo's ports
+    (3200, the course's NodePort 30320) or a host naming tempo mean Tempo."""
+    api = str(e.get("api", "")).lower()
+    if api in ("tempo", "jaeger"):
+        return api == "tempo"
+    if api:
+        raise HarnessError(f"trace api {api!r}: want jaeger or tempo")
+    u = urllib.parse.urlsplit(base)
+    return u.port in (3200, 30320) or "tempo" in (u.hostname or "")
+
+
 def find_trace(base: str, e: dict, start: float, end: float) -> tuple[dict | None, str]:
-    """Jaeger query API: a trace holding every span name in `spans`, every
-    service in `services`, and every [child, parent] pair in `parents`."""
+    """A trace holding every span name in `spans`, every service in
+    `services`, and every [child, parent] pair in `parents`, from the Jaeger
+    or the Tempo query API (`is_tempo`)."""
+    if is_tempo(base, e):
+        return find_trace_tempo(base, e, start, end)
+    return find_trace_jaeger(base, e, start, end)
+
+
+def find_trace_jaeger(
+    base: str, e: dict, start: float, end: float
+) -> tuple[dict | None, str]:
+    """Jaeger query API: GET /api/traces?service=&start=&end= (microseconds)."""
     service = e.get("service") or (e.get("services") or [None])[0]
     if not service:
         raise HarnessError("a trace check needs `service` (the service to query by)")
@@ -592,13 +748,117 @@ def find_trace(base: str, e: dict, start: float, end: float) -> tuple[dict | Non
     )
 
 
+def _otlp_id(v) -> str:
+    """OTLP JSON ids are hex (the OTLP spec) or base64 (protobuf JSON, as
+    Tempo writes them); both become lower-case hex."""
+    s = str(v or "")
+    if re.fullmatch(r"(?:[0-9a-fA-F]{16}|[0-9a-fA-F]{32})", s):
+        return s.lower()
+    try:
+        return base64.b64decode(s, validate=True).hex() if s else ""
+    except ValueError:
+        return s
+
+
+def _otlp_spans(doc: dict) -> list[dict]:
+    """Flatten an OTLP JSON trace (/api/traces/<id>: `batches` or
+    `resourceSpans`, optionally under `trace`) into {name, id, parent, service}."""
+    if isinstance(doc.get("trace"), dict):
+        doc = doc["trace"]
+    out = []
+    for rs in doc.get("resourceSpans") or doc.get("batches") or []:
+        attrs = (rs.get("resource") or {}).get("attributes") or []
+        svc = next(
+            (
+                (a.get("value") or {}).get("stringValue")
+                for a in attrs
+                if a.get("key") == "service.name"
+            ),
+            None,
+        )
+        for ss in rs.get("scopeSpans") or rs.get("instrumentationLibrarySpans") or []:
+            for sp in ss.get("spans") or []:
+                out.append(
+                    {
+                        "name": sp.get("name"),
+                        "id": _otlp_id(sp.get("spanId")),
+                        "parent": _otlp_id(sp.get("parentSpanId")),
+                        "service": svc,
+                    }
+                )
+    return out
+
+
+def _span_tree_ok(spans: list[dict], e: dict) -> bool:
+    names = {s["name"] for s in spans}
+    svcs = {s["service"] for s in spans}
+    if not (set(e.get("spans", [])) <= names and set(e.get("services", [])) <= svcs):
+        return False
+    by_id = {s["id"]: s for s in spans if s["id"]}
+    return all(
+        any(
+            s["name"] == child
+            and s["parent"]
+            and by_id.get(s["parent"], {}).get("name") == parent
+            for s in spans
+        )
+        for child, parent in e.get("parents", [])
+    )
+
+
+def find_trace_tempo(
+    base: str, e: dict, start: float, end: float
+) -> tuple[dict | None, str]:
+    """Tempo query API: GET /api/search?tags=service.name=<svc>&start=&end=
+    (seconds), then GET /api/traces/<id> for each hit (OTLP JSON)."""
+    service = e.get("service") or (e.get("services") or [None])[0]
+    if not service:
+        raise HarnessError("a trace check needs `service` (the service to query by)")
+    tag = json.dumps(service) if re.search(r'[\s="]', service) else service
+    r = web.get(
+        f"{base}/api/search",
+        {
+            "tags": f"service.name={tag}",
+            "start": int(start),
+            "end": int(math.ceil(end)),
+            "limit": int(e.get("limit", 50)),
+        },
+        headers={"Accept": "application/json"},
+        timeout=15,
+    )
+    if r.status != 200:
+        return None, r.error or f"HTTP {r.status} from {base}/api/search"
+    try:
+        hits = r.json().get("traces") or []
+    except (ValueError, AttributeError):
+        return None, "the Tempo search reply is not a JSON object"
+    want_spans, want_svcs = sorted(e.get("spans", [])), sorted(e.get("services", []))
+    for h in hits:
+        tid = str((h or {}).get("traceID") or "")
+        if not tid:
+            continue
+        tr = web.get(
+            f"{base}/api/traces/{urllib.parse.quote(tid)}",
+            headers={"Accept": "application/json"},
+            timeout=15,
+        )
+        if tr.status != 200:
+            continue
+        try:
+            spans = _otlp_spans(tr.json())
+        except (ValueError, AttributeError):
+            continue
+        if _span_tree_ok(spans, e):
+            return {"traceID": tid, "spans": spans}, ""
+    return (
+        None,
+        f"no trace among {len(hits)} for service {service!r} has spans {want_spans} and services {want_svcs}",
+    )
+
+
 def m_trace(e, out, mc) -> Verdict:
     e = placeholders.expand_obj(dict(e), mc.lookup, f"step {mc.step_name}")
     base = _deploy(mc, "traces", e)
-    if fnmatch.fnmatch(base, "*:3200*") or "tempo" in base:
-        raise HarnessError(
-            "the Tempo query API arrives with obs (Pass 7); Pass 1 traces are Jaeger at :30686"
-        )
     # Services export spans asynchronously (batches, queues), so the trace
     # of a request made a moment ago may not be queryable yet: poll for
     # `wait_s` seconds (default 30) before failing.
@@ -732,6 +992,7 @@ MATCHERS = {
     "json-last-line": m_json_last_line,
     "tokens-equal": m_tokens_equal,
     "numeric": m_numeric,
+    "logits-close": m_logits_close,
     "json-schema": m_json_schema,
     "file-produced": m_file_produced,
     "sse": m_sse,

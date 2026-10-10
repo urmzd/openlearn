@@ -2733,11 +2733,12 @@ expect  = { match = "tokens-equal", file = "course/fixtures/L7.9/smollm2_greedy_
 | `json-last-line` | the last stdout line parses as a JSON object of named metrics, compared with thresholds (`>=`, `<=`, `ref*1.05`, `calibrated`: mean + 3 sd over 5 reference seeds from `ref-thresholds`) |
 | `tokens-equal` | compares the `ids` array of the final JSON line (`spec/cli-roles.md`) with the expected ids; no tokenizer is involved. **Near-tie rule**: oracle files hold only prompts whose top-2 logit margin is at least 1e-3 at every step; when `near_tie` is set (for learner-trained models with no margin-filtered oracle), the harness reruns the learner's `{tinyllm} logits` under teacher forcing on the expected sequence, and a first divergence at a step whose margin is below `margin` is reported as `near-tie` instead of failing |
 | `numeric` | floats from stdout with `rtol`/`atol` |
+| `logits-close` | the step's `.npz` (`output`, one `logits<i>` row per prompt) against a reference `.npz` (`file`, dense `logits<i>` or the oracle's `top<i>.ids` and `top<i>.values`): the same row count, every reference value within `atol` (default 1e-3), and the `top_k` (default 5) ids identical in order, ties to the lowest id |
 | `json-schema` | stdout validates against a schema |
 | `file-produced` | a path glob exists and passes a sub-matcher (for example parquet row counts via pyarrow) |
 | `suite` | a conformance suite against a started `service`; `params = { "<case id>" = {...} }` overrides a case's `[params]` for this step |
 | `promql` | an instant query against `[deploy].prometheus` meets a bound; `hold_s = N` re-evaluates it every 15 s and requires it to hold for N seconds |
-| `trace` | a trace with the named span tree exists in `[deploy].traces` (Tempo or Jaeger query API) for the window |
+| `trace` | a trace with the named span tree exists in `[deploy].traces` for the window, polled for `wait_s` (default 30). Jaeger: `GET /api/traces?service=`; Tempo (ports 3200 or 30320, a host naming tempo, or `api = "tempo"`): `GET /api/search?tags=service.name=<svc>`, then `GET /api/traces/<id>` (OTLP JSON, hex or base64 ids) |
 | `git-log` | last N commits match Conventional Commits |
 | `ci-status` | the latest learner CI run on the default branch concluded `success` (`gh run list --branch <default> --limit 1 --json conclusion`); without a GitHub remote, the `[ci].local` commands from `system.toml` exit 0 |
 | `perf` | throughput or latency relative to `ss bench --calibrate`; `ci = "local"` only |
