@@ -196,7 +196,7 @@ def plan(course: Path, msid: str, smoke: bool) -> Plan:
     sources: list[str] = []
     seen: set[tuple[str, str]] = set()
 
-    def add(ms: Milestone, only_smoke: bool) -> None:
+    def add(ms: Milestone, only_smoke: bool, spiral: bool) -> None:
         if ms.id not in sources:
             sources.append(ms.id)
         for r in ms.requires:
@@ -205,24 +205,31 @@ def plan(course: Path, msid: str, smoke: bool) -> Plan:
         for s in ms.steps:
             if only_smoke and not s.smoke:
                 continue
+            # An earlier gate's nightly-tier smoke steps (MS-C1's training
+            # run under MS-P9) are the nightly job's; a PR-tier gate that
+            # reruns that gate's smoke steps leaves them to it.
+            if spiral and target.ci == "pr" and s.ci == "nightly":
+                continue
             if (s.origin, s.name) not in seen:
                 seen.add((s.origin, s.name))
                 steps.append(s)
 
-    def visit(ms: Milestone, only_smoke: bool, stack: tuple[str, ...]) -> None:
+    def visit(
+        ms: Milestone, only_smoke: bool, stack: tuple[str, ...], spiral: bool = False
+    ) -> None:
         if ms.id in stack:
             raise HarnessError(
                 "milestone include cycle: " + " -> ".join(stack + (ms.id,))
             )
-        add(ms, only_smoke)
+        add(ms, only_smoke, spiral)
         for inc in ms.includes:
-            visit(load(course, inc), only_smoke, stack + (ms.id,))
+            visit(load(course, inc), only_smoke, stack + (ms.id,), spiral)
         g = GATE.match(ms.id)
         if g:  # the spiral: rerun the smoke steps of every earlier pass gate
             for k in range(int(g.group(1))):
                 gid = f"MS-P{k}"
                 if path_of(course, gid).is_file() and gid not in stack:
-                    visit(load(course, gid), True, stack + (ms.id,))
+                    visit(load(course, gid), True, stack + (ms.id,), True)
 
     visit(target, False, ())
     if smoke:
