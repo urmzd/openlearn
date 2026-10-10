@@ -17,9 +17,13 @@
 // ./artifacts.
 //
 // --test-activities registers the course test activity tl.test.Append (POSTs
-// its idempotency key to $TL_TEST_EFFECTS_URL, the testkit effects sink) and
-// the test workflows Echo (one tl.test.Append of its input, returns the
-// input) and SleepDemo (input: milliseconds; result: the fired time).
+// its idempotency key to $TL_TEST_EFFECTS_URL, the testkit effects sink, and
+// records nothing when that is unset) and the test workflows Echo (one
+// tl.test.Append of its input, returns the input) and SleepDemo (input:
+// milliseconds; result: the fired time in Unix milliseconds).
+//
+// ReadArtifact (artifact.go) is always registered: it returns a file under
+// the artifacts root, which is how ctl reads what an activity wrote.
 //
 // The health port serves /healthz and /readyz (503 while draining). SIGTERM
 // stops polling, lets in-flight activities finish for up to 60 s (the chart's
@@ -118,6 +122,7 @@ func main() {
 	reg.Register("CorpusBuild", workflows.Workflow(workflows.CorpusBuild))
 	reg.Register("TrainRun", workflows.Workflow(workflows.TrainRun))
 	reg.Register("EvalSuite", workflows.Workflow(workflows.EvalSuite))
+	reg.Register("ReadArtifact", readArtifact)
 	if *testActs {
 		reg.Register("Echo", echo)
 		reg.Register("SleepDemo", sleepDemo)
@@ -138,6 +143,7 @@ func main() {
 			return subprocess(cp, func([]byte) []string { return []string{"run", "--stage", st.Stage} })(ctx, st.Config)
 		},
 		workflows.ActCorpusCleanup: subprocess(cp, func([]byte) []string { return []string{"cleanup"} }),
+		actReadArtifact:            artifactReader(artifacts),
 	}
 	if *testActs {
 		acts["tl.test.Append"] = appendEffect
@@ -230,10 +236,12 @@ func subprocess(r activities.Subprocess, args func(in []byte) []string) worker.A
 
 // appendEffect is tl.test.Append: one POST of {key, value} to the effects
 // sink, which dedupes by key, so a retried attempt is visible but harmless.
+// Without a sink (a run that checks no effects, such as the MS-durable
+// smoke) it records nothing and returns its input.
 func appendEffect(ctx context.Context, in []byte) ([]byte, error) {
 	url := os.Getenv("TL_TEST_EFFECTS_URL")
 	if url == "" {
-		return nil, activity.NewNonRetryable("NoEffectsSink", "TL_TEST_EFFECTS_URL is not set")
+		return in, nil
 	}
 	body, _ := json.Marshal(map[string]string{"key": activity.IdempotencyKey(ctx), "value": string(in)})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
@@ -260,7 +268,7 @@ func echo(ctx workflow.Context, in []byte) ([]byte, error) {
 }
 
 // sleepDemo sleeps on a durable timer for its input (JSON milliseconds) and
-// returns the workflow time it woke at (RFC 3339, as JSON).
+// returns the workflow time it woke at, in Unix milliseconds (a JSON integer).
 func sleepDemo(ctx workflow.Context, in []byte) ([]byte, error) {
 	var ms int64
 	if err := json.Unmarshal(in, &ms); err != nil {
@@ -269,5 +277,5 @@ func sleepDemo(ctx workflow.Context, in []byte) ([]byte, error) {
 	if err := workflow.Sleep(ctx, time.Duration(ms)*time.Millisecond); err != nil {
 		return nil, err
 	}
-	return json.Marshal(workflow.Now(ctx).UTC().Format(time.RFC3339Nano))
+	return json.Marshal(workflow.Now(ctx).UnixMilli())
 }

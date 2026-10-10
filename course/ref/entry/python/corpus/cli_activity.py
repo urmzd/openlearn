@@ -27,6 +27,8 @@ Entry-point territory (D16): this file is yours.
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import shutil
 from pathlib import Path
 
@@ -70,6 +72,7 @@ def stage_main(act, stage: str) -> list[str]:
         try:
             if stage == "tokenize" and (cdir / "_MANIFEST.json").is_file():
                 out = cli.tokenize_only(cfg, art, art)
+                record_run(art, cfg, out)
             else:
                 out = cli.cmd_run(argparse.Namespace(config=cfg, base=art, until=stage, workers=1))
         except cli.Fail as e:
@@ -88,6 +91,18 @@ def stage_main(act, stage: str) -> list[str]:
     if stage == "shard":
         return [(cdir / "_MANIFEST.json").relative_to(art).as_posix()]
     return [tokdir.relative_to(art).as_posix()]
+
+
+def record_run(art: Path, cfg: dict, out: dict) -> None:
+    """Fold the tokenize stage's counts into corpus/RUN-<dataset>-<version>.json,
+    which the shard stage wrote, so the file holds what `corpus run` prints
+    (`ctl data build --wait` reads it through the worker)."""
+    path = art / "corpus" / f"RUN-{cfg['dataset']}-{cfg['version']}.json"
+    run = json.loads(path.read_text()) if path.is_file() else {}
+    run.update(out)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(run) + "\n")
+    os.replace(tmp, path)
 
 
 def cleanup_main(act) -> list[str]:
