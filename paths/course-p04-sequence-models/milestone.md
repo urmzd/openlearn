@@ -103,13 +103,15 @@ overall and on the long bucket; the model without attention stays at or
 below 0.87 on the long bucket, so the gap is at least 0.1 (the lesson); and
 on that model beam 5 beats greedy (em_gain > 0; with attention both decode
 every date, so there is nothing to gain). The model without attention gets
-twice the steps (600) and still trails: the bottleneck, not the budget. The
-reference over seeds 0 to 4: attention EM 0.995 to 1.0 after 300 steps; no
+600 steps and still trails: the bottleneck, not the budget. The attention
+models get 400: on Linux CI runners seed 0 of Luong's model reached only
+0.968 after 300 (different float rounding in training). The reference over
+seeds 0 to 4 (macOS): attention EM 0.995 to 1.0 after 300 steps; no
 attention after 600 steps 0.26 to 0.82 on the long bucket, em_gain 0.003
 to 0.027 (after 300 steps beam lost to greedy on one seed of five, which
 is why the weaker model trains longer).
 
-The design's full configuration fits the PR budget (three trainings of 300
+The design's full configuration fits the PR budget (three trainings of 400
 to 600 steps, 10 to 40 s each), so --smoke runs every step (DEVIATIONS B63-08).
 Data: course/fixtures/small-corpora/dates.tsv (8000 pairs) and
 dates-test.txt (600 held-out pairs, 184 with a source of 20 characters or
