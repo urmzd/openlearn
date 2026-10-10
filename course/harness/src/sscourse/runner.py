@@ -159,6 +159,7 @@ class Run:
             api_key=self.api_key(),
             health_base=health_base,
             count_tokens=self._token_counter(),
+            api_version="2" if suite.version == "v2" else None,
         )
 
     def _token_counter(self):

@@ -18,6 +18,10 @@ Every response body is validated against the schema the contract
 (`contracts/openapi/openai-subset.<version>.yaml`) declares for that path,
 method, status, and content type. SSE chunks validate against the schema in
 the 200 `text/event-stream` content's `x-tl-chunk` extension.
+
+From v2 on, a client chooses its version per request: the v2 suite sends
+`X-TL-API-Version: 2` on every request, the way a migrated client does, and
+the server must answer as v2 whatever its default version is.
 """
 
 from __future__ import annotations
@@ -156,12 +160,16 @@ class Client:
     # waited out (Retry-After, a few times) instead of failing an unrelated
     # case. The ratelimit case turns this off to see its own 429s.
     retry_429: bool = True
+    # The X-TL-API-Version a migrated client sends (openai-subset.v2.yaml);
+    # None sends no header and gets the server's default version.
+    api_version: str | None = None
 
     def headers(self, auth: bool = True, key: str | None = None) -> dict:
         k = key if key is not None else self.api_key
+        h = {"X-TL-API-Version": self.api_version} if self.api_version else {}
         if auth and self.tier == "gateway" and k:
-            return {"Authorization": f"Bearer {k}"}
-        return {}
+            h["Authorization"] = f"Bearer {k}"
+        return h
 
     def call(
         self,

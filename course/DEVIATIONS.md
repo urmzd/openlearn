@@ -1022,3 +1022,10 @@ definition. The existing block-hash fixture tests verify the byte contract.
 - `L10.5` routes configured requests through `RunnerTarget` on the engine thread. Speculative mode currently serializes requests and buffers tokens until that request completes; the ordinary batched scheduler remains the default when speculation is disabled.
 - Guarded `ss verify course L10.8` passed: 27 mutants killed, reference and stub checks passed, deterministic tests passed, and the L10.5 call site was recognized.
 - The L10.5 integration verifier found that Bigram emits one row per sequence; RunnerTarget now handles that model with sequential one-token forwards. The L10.5 verifier was later guard-killed at 120 seconds, so this final change has not been reverified.
+
+## craft.14: the engine side of the v2 migration
+
+| Id | Deviation | Reason |
+|---|---|---|
+| C14-01 | craft.14 upgrades `tl-serve/src/server.rs` (L10.9's version is snapshotted in `course/ref/history/L10.9/`), not `openai.rs`: the version is chosen per request in the dispatch, from `X-TL-API-Version` (default and deprecation window from runtime.toml `[ext.api]`). v2 reports `prompt_tokens_details.cached_tokens` as 0, since the serve loop does not see per-request prefix-cache hits. The gateway's `VersionedAPI` is not yet in the chain, so `openapi:v2 --target gateway` is not graded. | Version selection is a dispatch concern and `server.rs` is where dispatch lives; real cached counts need tl-engine units other modules own. |
+

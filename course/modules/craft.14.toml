@@ -5,11 +5,15 @@ lang      = ["rust", "go"]
 pass      = 11
 chapter   = "software-craftsmanship/10-maintenance/02-api-v1-to-v2.md"
 contract  = []
-deps      = ["craft.12"]
+# L10.9: the serve loop (server.rs) this module takes over to serve v1 and
+# v2 side by side; L10.9 took it over from L10.7, which took it from L10.5.
+deps      = ["craft.12", "L10.9"]
 reading   = ["craft.02", "course/contracts/openapi/openai-subset.v2.yaml", "gw.07", "L10.5"]
 used_by   = ["ops.05"]
 units     = ["rust/crates/tl-serve/src/api_version.rs", "go/gateway/server/apiversion.go"]
-upgrades  = []
+# The engine selects the version per request, echoes it, and answers in
+# the v2 shape (usage, error codes, Deprecation and Sunset) in server.rs.
+upgrades  = ["rust/crates/tl-serve/src/server.rs"]
 milestone = "MS-P11"
 ci        = "pr"
 
