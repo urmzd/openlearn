@@ -460,7 +460,7 @@ def m_suite(e, out, mc) -> Verdict:
                 f"step {mc.step_name}: service {svc!r} is not started (add it to the step's `services`)"
             )
         base, health = inst.base, f"http://127.0.0.1:{inst.ports['health_port']}"
-    results = run_suite(mc.run, suite, base, health, e.get("model"))
+    results = run_suite(mc.run, suite, base, health, e.get("model"), e.get("params"))
     bad = [r for r in results if r.status == "fail"]
     pend = [r.case for r in results if r.status == "pending"]
     if not results:
@@ -675,9 +675,18 @@ def m_ci_status(e, out, mc) -> Verdict:
             argv, cwd=learner, env=env, timeout=float(e.get("timeout_s", 1800))
         )
         if rc != 0:
+            # `ss check --all` puts its verdict table last; name the modules
+            # that did not pass, which a tail of the table would cut off.
+            bad = [
+                x.strip()
+                for x in txt.splitlines()
+                if re.match(r"^\s+\S+\s+(fail|blocked|error|drift)\b", x)
+            ]
             return Verdict(
                 "fail",
-                f"[ci].local `{' '.join(argv)}` exited {rc}:\n{ctx.indent(ctx.tail(txt, 20))}",
+                f"[ci].local `{' '.join(argv)}` exited {rc}"
+                + (f" (not passing: {', '.join(bad)})" if bad else "")
+                + f":\n{ctx.indent(ctx.tail(txt, 20))}",
             )
     return Verdict("pass", f"{len(steps)} [ci].local command(s) green")
 

@@ -101,4 +101,4 @@ expect = { match = "contains", text = "\"finish_reason\":\"tool_calls\"" }
 name     = "tool-call-smollm2-instruct"
 ci       = "nightly"
 services = ["engine-instruct"]
-expect   = { match = "suite", suite = "openapi:v1:engine", service = "engine-instruct" }
+expect   = { match = "suite", suite = "openapi:v1:engine", service = "engine-instruct", params = { "tools.call" = { tool_choice = "auto" }, "tools.stream" = { tool_choice = "auto" } } }

@@ -867,6 +867,7 @@ def check_tools_call(c: Client, p: dict) -> list[str]:
         c.chat(
             prompt=p.get("prompt", "What is the weather in Paris?"),
             tools=[TOOL],
+            tool_choice=p.get("tool_choice", "required"),
             max_tokens=p.get("max_tokens", 64),
         ),
     )
@@ -887,6 +888,7 @@ def check_tools_stream(c: Client, p: dict) -> list[str]:
         c.chat(
             prompt=p.get("prompt", "What is the weather in Paris?"),
             tools=[TOOL],
+            tool_choice=p.get("tool_choice", "required"),
             stream=True,
             max_tokens=p.get("max_tokens", 64),
         ),
@@ -1369,8 +1371,14 @@ class Result:
 
 
 def run(
-    client: Client, cases: list[Case], suite: Suite, passed=lambda mid: True
+    client: Client,
+    cases: list[Case],
+    suite: Suite,
+    passed=lambda mid: True,
+    overrides: dict | None = None,
 ) -> list[Result]:
+    """overrides: {case id: params} merged over a case's [params] (a milestone
+    step's `params`, e.g. the nightly instruct model choosing its own tool)."""
     out: list[Result] = []
     for c in cases:
         if (
@@ -1406,7 +1414,8 @@ def run(
             out.append(Result(c.id, "pending", f"requires {', '.join(waiting)}"))
             continue
         try:
-            errs = CHECKS[c.check](client, c.params)
+            params = {**c.params, **((overrides or {}).get(c.id) or {})}
+            errs = CHECKS[c.check](client, params)
         except Pending as e:
             out.append(Result(c.id, "pending", str(e)))
             continue

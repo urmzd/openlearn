@@ -2735,7 +2735,7 @@ expect  = { match = "tokens-equal", file = "course/fixtures/L7.9/smollm2_greedy_
 | `numeric` | floats from stdout with `rtol`/`atol` |
 | `json-schema` | stdout validates against a schema |
 | `file-produced` | a path glob exists and passes a sub-matcher (for example parquet row counts via pyarrow) |
-| `suite` | a conformance suite against a started `service` |
+| `suite` | a conformance suite against a started `service`; `params = { "<case id>" = {...} }` overrides a case's `[params]` for this step |
 | `promql` | an instant query against `[deploy].prometheus` meets a bound; `hold_s = N` re-evaluates it every 15 s and requires it to hold for N seconds |
 | `trace` | a trace with the named span tree exists in `[deploy].traces` (Tempo or Jaeger query API) for the window |
 | `git-log` | last N commits match Conventional Commits |
