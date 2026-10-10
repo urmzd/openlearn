@@ -152,6 +152,10 @@ class Client:
     count_tokens: object | None = (
         None  # messages -> the learner tokenizer's prompt count
     )
+    # The gateway cases share one key: a 429 left by the ratelimit case is
+    # waited out (Retry-After, a few times) instead of failing an unrelated
+    # case. The ratelimit case turns this off to see its own 429s.
+    retry_429: bool = True
 
     def headers(self, auth: bool = True, key: str | None = None) -> dict:
         k = key if key is not None else self.api_key
@@ -169,13 +173,22 @@ class Client:
         headers: dict | None = None,
         key: str | None = None,
     ) -> web.Response:
-        return web.request(
-            method,
-            (base or self.base).rstrip("/") + path,
-            json_body=body,
-            headers={**self.headers(auth, key), **(headers or {})},
-            timeout=self.timeout,
-        )
+        for _ in range(5):
+            r = web.request(
+                method,
+                (base or self.base).rstrip("/") + path,
+                json_body=body,
+                headers={**self.headers(auth, key), **(headers or {})},
+                timeout=self.timeout,
+            )
+            if r.status != 429 or not self.retry_429:
+                return r
+            try:
+                wait = float(r.headers.get("retry-after", "1"))
+            except ValueError:
+                wait = 1.0
+            time.sleep(min(max(wait, 0.1), 5.0))
+        return r
 
     def chat(self, **kw) -> dict:
         body = {
@@ -974,10 +987,14 @@ def check_ratelimit_429(c: Client, p: dict) -> list[str]:
     from concurrent.futures import ThreadPoolExecutor
 
     n = int(p.get("burst", 64))
-    with ThreadPoolExecutor(max_workers=min(n, 32)) as ex:
-        rs = list(
-            ex.map(lambda _: c.call("POST", CHAT, c.chat(max_tokens=1)), range(n))
-        )
+    c.retry_429 = False
+    try:
+        with ThreadPoolExecutor(max_workers=min(n, 32)) as ex:
+            rs = list(
+                ex.map(lambda _: c.call("POST", CHAT, c.chat(max_tokens=1)), range(n))
+            )
+    finally:
+        c.retry_429 = True
     limited = [r for r in rs if r.status == 429]
     if not limited:
         return [

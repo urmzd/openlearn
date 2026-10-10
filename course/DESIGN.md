@@ -2757,6 +2757,7 @@ The runner first executes `[build].steps`, then starts services in dependency or
 | `{model_dir}` | the step's `model_dir` field, or the artifact the previous step produced |
 | `{<service>.api_base}` | `http://127.0.0.1:{<service>.port}/v1` |
 | `{deploy.*}` | values from `[deploy]` |
+| `{endpoints.*}` | values from `[endpoints]`; `{endpoints.model}` defaults to `tracer`, the model id the conformance client sends |
 | `{ctl}`, `{tinyllm}`, ... | the learner's `[entry]` roles |
 
 **Smoke and kind steps.** A step marked `smoke = true` is rerun by every later pass gate. A step that needs a cluster is tagged `ci = "kind"`; in PR CI, pass gates run with `--smoke`, which reruns only the non-kind smoke steps as local processes (services started by the runner on allocated ports), and kind steps run in the kind jobs (5.14).
