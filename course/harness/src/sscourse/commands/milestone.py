@@ -420,63 +420,79 @@ def run_milestone(
                 f"build failed: {why.splitlines()[0]}",
             )
 
-    needed: list[str] = []
-    for s in local:
-        for n in s.services:
-            if n not in needed:
-                needed.append(n)
+    # Each contributing milestone's steps run against services of their own,
+    # started fresh (a pass gate composes its component milestones and the
+    # earlier gates' smoke steps): a component's state, such as MS-gateway's
+    # usage ledger or a key's rate-limit budget, is the one it fixes, never
+    # what an earlier milestone's steps left behind.
+    groups: list[list] = []
+    for s in steps:
+        if groups and groups[-1][0].origin == s.origin:
+            groups[-1].append(s)
+        else:
+            groups.append([s])
     try:
-        with services.Stack(r.system, logdir, r.lookup, run.env, run.who()) as stack:
-            run.stack = stack
-            if needed:
-                stack.start(needed)
-            for s in steps:
-                if s.kind and not kind_ok:
-                    results.append(
-                        {
-                            "step": s.qualified(msid),
-                            "status": "skipped",
-                            "detail": kind_why,
-                        }
-                    )
-                    say(
-                        f"  {ctx.YEL}skip{ctx.RST} {s.qualified(msid)}  {ctx.DIM}kind step: {kind_why}{ctx.RST}"
-                    )
+        for group in groups:
+            needed: list[str] = []
+            for s in group:
+                if s.kind:
                     continue
-                for variant in s.variants():
-                    label = s.qualified(msid) + (
-                        "[" + ",".join(f"{k}={v}" for k, v in variant.items()) + "]"
-                        if variant
-                        else ""
-                    )
-                    t0 = time.time()
-                    try:
-                        v = run.run_step(s, variant, label)
-                    except services.ServiceError:
-                        raise
-                    except HarnessError as e:
-                        if e.code != EXIT_HARNESS:
-                            raise
-                        v = matchers.Verdict("error", str(e))
-                    results.append(
-                        {
-                            "step": label,
-                            "status": v.status,
-                            "detail": v.detail[:2000],
-                            "seconds": round(time.time() - t0, 2),
-                        }
-                    )
-                    color = ctx.GRN if v.ok else ctx.RED
-                    say(
-                        f"  {color}{v.status:<8}{ctx.RST} {label}"
-                        + (
-                            f"  {ctx.DIM}{v.detail.splitlines()[0][:120]}{ctx.RST}"
-                            if v.ok and v.detail
+                for n in s.services:
+                    if n not in needed:
+                        needed.append(n)
+            gdir = logdir if group[0].origin == msid else logdir / group[0].origin
+            gdir.mkdir(parents=True, exist_ok=True)
+            with services.Stack(r.system, gdir, r.lookup, run.env, run.who()) as stack:
+                run.stack = stack
+                if needed:
+                    stack.start(needed)
+                for s in group:
+                    if s.kind and not kind_ok:
+                        results.append(
+                            {
+                                "step": s.qualified(msid),
+                                "status": "skipped",
+                                "detail": kind_why,
+                            }
+                        )
+                        say(
+                            f"  {ctx.YEL}skip{ctx.RST} {s.qualified(msid)}  {ctx.DIM}kind step: {kind_why}{ctx.RST}"
+                        )
+                        continue
+                    for variant in s.variants():
+                        label = s.qualified(msid) + (
+                            "[" + ",".join(f"{k}={v}" for k, v in variant.items()) + "]"
+                            if variant
                             else ""
                         )
-                    )
-                    if not v.ok:
-                        say(ctx.indent(ctx.tail(v.detail, 30), 11))
+                        t0 = time.time()
+                        try:
+                            v = run.run_step(s, variant, label)
+                        except services.ServiceError:
+                            raise
+                        except HarnessError as e:
+                            if e.code != EXIT_HARNESS:
+                                raise
+                            v = matchers.Verdict("error", str(e))
+                        results.append(
+                            {
+                                "step": label,
+                                "status": v.status,
+                                "detail": v.detail[:2000],
+                                "seconds": round(time.time() - t0, 2),
+                            }
+                        )
+                        color = ctx.GRN if v.ok else ctx.RED
+                        say(
+                            f"  {color}{v.status:<8}{ctx.RST} {label}"
+                            + (
+                                f"  {ctx.DIM}{v.detail.splitlines()[0][:120]}{ctx.RST}"
+                                if v.ok and v.detail
+                                else ""
+                            )
+                        )
+                        if not v.ok:
+                            say(ctx.indent(ctx.tail(v.detail, 30), 11))
     except services.ServiceError as e:
         say(f"  {ctx.RED}FAIL{ctx.RST} {e}")
         return _finish(
