@@ -81,11 +81,11 @@ answer = "0"                          # unconstrained minimum is infeasible
 
 [q12]
 type   = "expr"
-expect = "l - l^2/4"
-vars   = { l = "real" }
-domain = { l = [0.0, 10.0] }
+expect = "lam - lam^2/4"
+vars   = { lam = "real" }
+domain = { lam = [0.0, 10.0] }
 [[q12.reject]]
-answer = "l"
+answer = "lam"
 
 [q13]
 type   = "number"

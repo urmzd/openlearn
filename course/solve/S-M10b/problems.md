@@ -1,6 +1,6 @@
 # S-M10b: constrained optimization, duality, and DPO
 
-Enter exact expressions where possible. For KKT questions, use the convention `g(x) <= 0` and multipliers `lambda >= 0`. Mark rubric proofs as attested only after writing the requested steps.
+Enter exact expressions where possible: write a vector or a pair as `[a, b]`, $e$ as `E`, and a multiplier $\lambda$ inside an answer as `lam`. For KKT questions, use the convention `g(x) <= 0` and multipliers `lambda >= 0`. Mark rubric proofs as attested only after writing the requested steps.
 
 ## Lagrange multipliers and KKT (10)
 
