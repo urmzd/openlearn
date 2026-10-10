@@ -141,7 +141,13 @@ class Ctx:
             raise Fail(self.cache["docker_ok"])
 
     def need_cluster(self, context: str) -> None:
-        """Fail (or skip under SS_SMOKE=1) unless `context` names a reachable cluster."""
+        """Skip under SS_SMOKE=1 (`ss check --ci`: the cluster tier belongs to
+        the milestones' kind steps, and a cluster that happens to exist may
+        hold another pass's deployment); otherwise fail unless `context`
+        names a reachable cluster."""
+        if smoke_mode():
+            self.skipped_cluster = True
+            raise Skip(f"cluster tier skipped under SS_SMOKE=1 (context {context})")
         key = f"cluster:{context}"
         if key not in self.cache:
             why = ""

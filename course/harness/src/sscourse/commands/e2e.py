@@ -267,6 +267,21 @@ def assemble(
     )
 
 
+def _failed_sections(out: str, per: int = 60) -> str:
+    """Each non-passing module's own `check <ID>` block from a check --all
+    run (a tail of the whole output shows only the last module and the
+    table), at most `per` lines each."""
+    lines = out.splitlines()
+    starts = [i for i, x in enumerate(lines) if re.match(r"^check \S+ ", x)]
+    blocks = []
+    for k, i in enumerate(starts):
+        end = starts[k + 1] if k + 1 < len(starts) else len(lines)
+        block = lines[i:end]
+        if any(re.match(r"^(FAIL|BLOCKED|DRIFT) ", x) for x in block):
+            blocks.append("\n".join(block[:per]))
+    return "\n".join(blocks)
+
+
 def run(
     reg,
     course: Path,
@@ -331,7 +346,8 @@ def run(
         rep.fail(
             "e2e",
             "ss check --all --ci: " + (", ".join(bad) or "see the output"),
-            out,
+            _failed_sections(out) or out,
+            lines=600,
         )
     else:
         rep.ok("e2e", "ss check --all --ci")

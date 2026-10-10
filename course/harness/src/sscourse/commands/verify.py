@@ -97,11 +97,11 @@ class Report:
     def skip(self, n, msg: str) -> None:
         ctx.say(f"  {ctx.DIM}skip  {n:>2} {msg}{ctx.RST}")
 
-    def fail(self, n, msg: str, detail: str = "") -> None:
+    def fail(self, n, msg: str, detail: str = "", lines: int = 40) -> None:
         self.failures += 1
         ctx.say(f"  {ctx.RED}FAIL{ctx.RST}  {n:>2} {msg}")
         if detail:
-            ctx.say(ctx.indent(ctx.tail(detail, 40), 9))
+            ctx.say(ctx.indent(ctx.tail(detail, lines), 9))
 
 
 def _ov(
