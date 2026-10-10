@@ -171,7 +171,9 @@ def check_one(
                 **({"mode": "smoke"} if smoke else {}),
                 "tainted": s.tree.tainted,
                 "course_sha": s.tree.sha[:12],
-                "repo": repo,
+                # After the run: a check may write its own artifacts.
+                "repo": ledger.repo_hash(s.learner, s.reg),
+                "closure": ledger.closure_hash(s.learner, s.reg, mid),
                 "ci": ci,
                 **extra,
             },
@@ -341,6 +343,7 @@ def _passed_here(s: Session, mid: str, repo: str, ci: bool) -> dict | None:
     ok = ledger.reusable(
         v,
         repo,
+        ledger.closure_hash(s.learner, s.reg, mid),
         s.tree.sha[:12],
         s.tree.tainted,
         ci,

@@ -320,7 +320,7 @@ def run(
     # Every module's full mutation grade is verify check 6; here the
     # reference learner's tests run against the required mutants plus a
     # seeded sample, so the whole repo checks in CI time.
-    rc, out = _ss(env, "check", "--all", "--ci", timeout=3600)
+    rc, out = _ss(env, "check", "--all", "--ci", timeout=5400)
     if rc != 0:
         # The status table's non-passing rows, which a tail would cut off.
         bad = [

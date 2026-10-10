@@ -295,7 +295,7 @@ jobs:
   reference-learner-e2e:
     name: Reference learner end to end (smoke)
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
 
@@ -341,7 +341,7 @@ jobs:
   milestone-p1-kind:
     name: MS-P1 on kind (reference system)
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       TL_API_KEY: tl_ci_kind_reference_key
     steps:
