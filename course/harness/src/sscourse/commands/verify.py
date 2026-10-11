@@ -458,9 +458,9 @@ def fixture_errors(course: Path, mods) -> list[str]:
                 errs.append(
                     f"{rel}: sha256 differs from MANIFEST.tsv (regenerate with the oracle, update the row)"
                 )
-    if total > 50 * MiB:
+    if total > 56 * MiB:  # D52: 50 MiB plus B14's multimodal fixtures
         errs.append(
-            f"committed fixtures total {total / MiB:.1f} MiB, over the 50 MiB budget"
+            f"committed fixtures total {total / MiB:.1f} MiB, over the 56 MiB budget"
         )
     for m in mods:
         for f in m.fixtures.get("files", []):
