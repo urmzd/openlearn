@@ -8,11 +8,21 @@ import { GetStatus } from "../wailsjs/go/main/App";
 import { Session } from "./Session";
 import { Review } from "./Review";
 import { Workbench } from "./Workbench";
-import { emptyState, reduce, subscribe, type AguiEvent, type SessionState } from "./agui";
+import {
+  emptyState,
+  reduce,
+  subscribe,
+  type AguiEvent,
+  type SessionState,
+} from "./agui";
+import "./index.css";
 import "./theme.css";
 
 export default function App() {
-  const [state, dispatch] = useReducer((s: SessionState, e: AguiEvent) => reduce(s, e), emptyState);
+  const [state, dispatch] = useReducer(
+    (s: SessionState, e: AguiEvent) => reduce(s, e),
+    emptyState,
+  );
   // Counts finished sessions, so the workbench reloads progress when one ends.
   const [epoch, setEpoch] = useState(0);
 
@@ -22,19 +32,28 @@ export default function App() {
     // frontend reload in dev) is picked up without waiting for the next event.
     GetStatus()
       .then((status) =>
-        dispatch({ type: "STATE_SNAPSHOT", at: new Date().toISOString(), data: status }),
+        dispatch({
+          type: "STATE_SNAPSHOT",
+          at: new Date().toISOString(),
+          data: status,
+        }),
       )
       .catch(() => {});
     return off;
   }, []);
 
   const reset = () => {
-    dispatch({ type: "STATE_SNAPSHOT", at: new Date().toISOString(), data: null });
+    dispatch({
+      type: "STATE_SNAPSHOT",
+      at: new Date().toISOString(),
+      data: null,
+    });
     setEpoch((n) => n + 1);
   };
 
   const phase = state.status?.phase ?? "idle";
-  const inSession = phase === "active" || phase === "paused" || phase === "reviewing";
+  const inSession =
+    phase === "active" || phase === "paused" || phase === "reviewing";
   const inReview = phase === "done" && !!state.status?.review;
 
   // A session takes the whole window: a clock is running and nothing else
@@ -46,15 +65,21 @@ export default function App() {
         <Workbench epoch={epoch} />
       </div>
       {inReview && state.status?.review && (
-        <Review
-          problem={state.status.problem ?? null}
-          review={state.status.review}
-          elapsedSec={state.status.elapsedSec}
-          onDone={reset}
-          onViewProgress={reset}
-        />
+        <div className="legacy">
+          <Review
+            problem={state.status.problem ?? null}
+            review={state.status.review}
+            elapsedSec={state.status.elapsedSec}
+            onDone={reset}
+            onViewProgress={reset}
+          />
+        </div>
       )}
-      {inSession && <Session state={state} onFinished={() => {}} onAbandoned={reset} />}
+      {inSession && (
+        <div className="legacy">
+          <Session state={state} onFinished={() => {}} onAbandoned={reset} />
+        </div>
+      )}
     </>
   );
 }

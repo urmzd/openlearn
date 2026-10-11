@@ -6,7 +6,7 @@
   margin: 0 auto;
   font-size: 15px;
   line-height: 1.7;
-  color: var(--text);
+  color: var(--foreground);
   overflow-wrap: break-word;
 }
 
@@ -37,7 +37,7 @@
 
 .md h4 {
   font-size: 15px;
-  color: var(--text-dim);
+  color: var(--muted-foreground);
 }
 
 .md p,
@@ -52,43 +52,55 @@
   padding-left: 1.5em;
 }
 
+/* Tailwind's reset removes list markers; documents need them back. */
+.md ul {
+  list-style: disc;
+}
+
+.md ol {
+  list-style: decimal;
+}
+
 .md li + li {
   margin-top: 0.25em;
 }
 
 .md a {
-  color: var(--accent);
-  text-decoration: none;
+  color: var(--foreground);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
 .md a:hover {
-  text-decoration: underline;
+  text-decoration-color: var(--foreground);
 }
 
 .md a.md-external::after {
   content: " ↗";
   font-size: 0.8em;
-  color: var(--text-faint);
+  color: var(--muted-foreground);
 }
 
 .md blockquote {
-  border-left: 3px solid var(--border-strong);
+  border-left: 3px solid var(--border);
   padding: 0.2em 0 0.2em 1em;
-  color: var(--text-dim);
+  color: var(--muted-foreground);
 }
 
 .md code {
-  font-family: var(--mono);
+  font-family: var(--font-mono, ui-monospace, "SF Mono", Menlo, monospace);
   font-size: 0.88em;
-  background: var(--bg-input);
+  background: var(--muted);
   border-radius: 4px;
   padding: 0.12em 0.35em;
 }
 
 .md-pre {
-  background: var(--bg-raised);
+  background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   padding: 13px 15px;
   overflow-x: auto;
   margin: 0 0 1.1em;
@@ -127,7 +139,7 @@
 }
 
 .md th {
-  background: var(--bg-raised);
+  background: var(--card);
   font-weight: 600;
 }
 
@@ -147,9 +159,9 @@
   justify-content: center;
   margin: 0 0 1.2em;
   padding: 12px;
-  background: var(--bg-raised);
+  background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   overflow-x: auto;
 }
 
@@ -162,4 +174,14 @@
 .md input[type="checkbox"] {
   width: auto;
   margin-right: 0.4em;
+}
+
+/* An answer in the professor panel is a document at conversation size. */
+.professor-answer .md {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.professor-answer .md > :last-child {
+  margin-bottom: 0;
 }

@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 /**
  * main.go embeds frontend/dist, and //go:embed fails outright on a missing
@@ -23,5 +24,8 @@ function keepDistTracked(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), keepDistTracked()],
+  plugins: [react(), tailwindcss(), keepDistTracked()],
+  resolve: {
+    alias: { "@": resolve(__dirname, "src") },
+  },
 });

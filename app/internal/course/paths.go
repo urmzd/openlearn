@@ -52,6 +52,9 @@ type PathSummary struct {
 	Done     int    `json:"done"`
 	Parts    int    `json:"parts"`
 	Featured bool   `json:"featured"`
+	// Part reports that another path includes this one whole. A part is still
+	// a path in its own right; a list that wants only the top level skips it.
+	Part bool `json:"part"`
 	// Broken explains why the path could not be expanded.
 	Broken string `json:"broken"`
 }
@@ -102,6 +105,7 @@ func (c *Course) Path(name string, prog Progress) (Path, error) {
 func (c *Course) Paths(prog Progress) []PathSummary {
 	names := c.PathNames()
 	out := make([]PathSummary, 0, len(names))
+	included := map[string]bool{}
 	for _, name := range names {
 		sum := PathSummary{Name: name, Featured: name == c.m.Featured}
 		p, err := c.Path(name, prog)
@@ -120,10 +124,14 @@ func (c *Course) Paths(prog Progress) []PathSummary {
 			}
 			if s.Owner != name {
 				parts[s.Owner] = true
+				included[s.Owner] = true
 			}
 		}
 		sum.Parts = len(parts)
 		out = append(out, sum)
+	}
+	for i := range out {
+		out[i].Part = included[out[i].Name]
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Featured && !out[j].Featured })
 	return out

@@ -128,10 +128,13 @@ func TestPathsLeadsWithFeaturedAndReportsBrokenOnes(t *testing.T) {
 	if len(sums) != 3 || sums[0].Name != "whole" || !sums[0].Featured {
 		t.Fatalf("paths = %+v, want the featured path first", sums)
 	}
-	if sums[0].Total != 3 || sums[0].Done != 1 || sums[0].Parts != 1 {
+	if sums[0].Total != 3 || sums[0].Done != 1 || sums[0].Parts != 1 || sums[0].Part {
 		t.Errorf("whole = %+v", sums[0])
 	}
 	for _, s := range sums {
+		if s.Name == "part" && !s.Part {
+			t.Error("a path another path includes must be marked as a part")
+		}
 		if s.Name == "loop" && s.Broken == "" {
 			t.Error("an include cycle must be reported, not followed")
 		}

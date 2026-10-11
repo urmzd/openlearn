@@ -249,6 +249,7 @@ export namespace course {
 	    done: number;
 	    parts: number;
 	    featured: boolean;
+	    part: boolean;
 	    broken: string;
 	
 	    static createFrom(source: any = {}) {
@@ -263,6 +264,7 @@ export namespace course {
 	        this.done = source["done"];
 	        this.parts = source["parts"];
 	        this.featured = source["featured"];
+	        this.part = source["part"];
 	        this.broken = source["broken"];
 	    }
 	}

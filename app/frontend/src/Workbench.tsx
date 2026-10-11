@@ -1,41 +1,28 @@
 // The workbench: everything outside a live session.
 //
-// It is laid out like an editor because learning from a course is the same
-// motion as working in a codebase: a tree to find things in, a pane to read and
-// write in, a panel for what running it said, and someone to ask alongside.
-// An activity bar picks what the sidebar shows; the main pane shows one thing
-// at a time; the professor docks on the right and follows the open document.
+// Three columns, each with one job. The sidebar is navigation. The main pane
+// shows exactly one view, picked by a route. The professor docks on the right
+// and follows whichever document is open. A session is not a view here: it
+// takes the whole window (see App.tsx), because a running clock should not be
+// one click away from something else.
 
 import { useCallback, useEffect, useState } from "react";
 import { GetCourse, GetDoc, GetOutline, ListPaths } from "../wailsjs/go/main/App";
 import type { course } from "../wailsjs/go/models";
-import { Explorer } from "./Explorer";
-import { SearchPanel } from "./SearchPanel";
-import { PathView } from "./PathView";
-import { PracticeList, PracticeRunner, type ExerciseRef } from "./Practice";
-import { Professor } from "./Professor";
-import { Progress } from "./Progress";
-import { Settings } from "./Settings";
-import { Setup, type Source } from "./Setup";
-import { Markdown } from "./Markdown";
-import "./workbench.css";
-
-type Activity = "explorer" | "search" | "practice";
-
-type Main =
-  | { kind: "home" }
-  | { kind: "doc"; path: string }
-  | { kind: "path"; name: string }
-  | { kind: "exercise"; ref: ExerciseRef }
-  | { kind: "session"; source: Source | null }
-  | { kind: "progress" }
-  | { kind: "settings" };
-
-const ACTIVITIES: { id: Activity; icon: string; title: string }[] = [
-  { id: "explorer", icon: "☰", title: "Explorer: paths and tracks" },
-  { id: "search", icon: "⌕", title: "Search the course" },
-  { id: "practice", icon: "▷", title: "Exercises" },
-];
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppSidebar } from "@/components/app-sidebar";
+import { Professor } from "@/components/professor";
+import type { Route } from "@/routes";
+import { DocView } from "@/views/DocView";
+import { Exercises } from "@/views/Exercises";
+import { Home } from "@/views/Home";
+import { PathView } from "@/views/PathView";
+import { Progress } from "@/views/Progress";
+import { Runner } from "@/views/Runner";
+import { SessionSetup } from "@/views/SessionSetup";
+import { Settings } from "@/views/Settings";
+import { TrackView } from "@/views/TrackView";
 
 interface Props {
   /** Bumped when a session ends, so progress and history reload. */
@@ -46,11 +33,9 @@ export function Workbench({ epoch }: Props) {
   const [info, setInfo] = useState<course.Info | null>(null);
   const [outline, setOutline] = useState<course.Outline | null>(null);
   const [paths, setPaths] = useState<course.PathSummary[]>([]);
-  const [activity, setActivity] = useState<Activity>("explorer");
-  const [sidebar, setSidebar] = useState(true);
-  const [main, setMain] = useState<Main>({ kind: "home" });
+  const [route, setRoute] = useState<Route>({ kind: "home" });
   const [doc, setDoc] = useState<course.Doc | null>(null);
-  const [docError, setDocError] = useState("");
+  const [notice, setNotice] = useState("");
   const [professor, setProfessor] = useState(false);
   const [practiceEpoch, setPracticeEpoch] = useState(0);
 
@@ -66,7 +51,7 @@ export function Workbench({ epoch }: Props) {
     setOutline(o);
     loadPaths();
     setDoc(null);
-    setMain({ kind: "home" });
+    setRoute({ kind: "home" });
   }, [loadPaths]);
 
   useEffect(() => {
@@ -76,221 +61,112 @@ export function Workbench({ epoch }: Props) {
   useEffect(loadPaths, [epoch, loadPaths]);
 
   const openDoc = useCallback((path: string) => {
-    setDocError("");
+    setNotice("");
     GetDoc(path)
       .then((d) => {
         setDoc(d);
-        setMain({ kind: "doc", path: d.path });
+        setRoute({ kind: "doc", path: d.path });
       })
-      .catch(() => setDocError(`${path} is not part of this course pack.`));
+      .catch(() => setNotice(`${path} is not part of this course pack.`));
   }, []);
 
-  const pick = (a: Activity) => {
-    if (a === activity && sidebar) return setSidebar(false);
-    setActivity(a);
-    setSidebar(true);
-  };
+  const bumpPractice = useCallback(() => setPracticeEpoch((n) => n + 1), []);
 
-  const activeDoc = main.kind === "doc" ? main.path : "";
-  const featured = paths.find((p) => p.featured && !p.broken);
+  const track =
+    route.kind === "track"
+      ? [...(outline?.tracks ?? []), ...(outline?.reference ?? [])].find((t) => t.dir === route.dir)
+      : undefined;
+  const titles = Object.fromEntries(paths.map((p) => [p.name, p.title]));
 
   return (
-    <div className="workbench">
-      <nav className="activity">
-        <div className="activity-group">
-          {ACTIVITIES.filter((a) => a.id !== "practice" || info?.practice).map((a) => (
-            <button
-              key={a.id}
-              className={`activity-btn ${activity === a.id && sidebar ? "active" : ""}`}
-              onClick={() => pick(a.id)}
-              title={a.title}
-            >
-              {a.icon}
-            </button>
-          ))}
-          <span className="activity-rule" />
-          <button
-            className={`activity-btn ${main.kind === "session" ? "active" : ""}`}
-            onClick={() => setMain({ kind: "session", source: null })}
-            title="Timed session with a coach"
-          >
-            ◷
-          </button>
-          <button
-            className={`activity-btn ${main.kind === "progress" ? "active" : ""}`}
-            onClick={() => setMain({ kind: "progress" })}
-            title="Progress"
-          >
-            ◔
-          </button>
-        </div>
-        <div className="activity-group">
-          <button
-            className={`activity-btn ${professor ? "active" : ""}`}
-            onClick={() => setProfessor(!professor)}
-            title="Ask the professor"
-          >
-            ✦
-          </button>
-          <button
-            className={`activity-btn ${main.kind === "settings" ? "active" : ""}`}
-            onClick={() => setMain({ kind: "settings" })}
-            title="Settings: course packs and model"
-          >
-            ⚙
-          </button>
-        </div>
-      </nav>
-
-      {sidebar && (
-        <aside className="sidebar">
-          <header className="sidebar-header">
-            <span className="sidebar-title">{info?.title ?? ""}</span>
-            <button className="link-btn" onClick={() => setMain({ kind: "settings" })} title="Switch course pack">
-              switch
-            </button>
-          </header>
-          {activity === "explorer" && (
-            <Explorer
+    <TooltipProvider>
+      <SidebarProvider className="h-full min-h-0">
+        <AppSidebar
+          info={info}
+          outline={outline}
+          paths={paths}
+          route={route}
+          professorOpen={professor}
+          onNavigate={setRoute}
+          onOpenDoc={openDoc}
+          onToggleProfessor={() => setProfessor((p) => !p)}
+        />
+        <SidebarInset className="h-full min-h-0 min-w-0 overflow-hidden">
+          {route.kind === "home" && (
+            <Home
+              info={info}
               outline={outline}
               paths={paths}
-              activeDoc={activeDoc}
-              activePath={main.kind === "path" ? main.name : ""}
+              onNavigate={setRoute}
               onOpenDoc={openDoc}
-              onOpenPath={(name) => setMain({ kind: "path", name })}
+              onAsk={() => setProfessor(true)}
             />
           )}
-          {activity === "search" && <SearchPanel activeDoc={activeDoc} onOpenDoc={openDoc} />}
-          {activity === "practice" && (
-            <PracticeList
-              active={main.kind === "exercise" ? main.ref : null}
-              refresh={practiceEpoch}
-              onOpen={(ref) => setMain({ kind: "exercise", ref })}
+          {route.kind === "doc" && doc && (
+            <DocView
+              doc={doc}
+              outline={outline}
+              repo={info?.repo}
+              onNavigate={setRoute}
+              onOpenDoc={openDoc}
+              onAsk={() => setProfessor(true)}
             />
           )}
-        </aside>
-      )}
+          {route.kind === "track" && track && <TrackView track={track} onOpenDoc={openDoc} />}
+          {route.kind === "path" && (
+            <PathView name={route.name} titles={titles} onOpenDoc={openDoc} onProgress={loadPaths} />
+          )}
+          {route.kind === "exercises" && (
+            <Exercises refresh={practiceEpoch} onOpen={(ref) => setRoute({ kind: "exercise", ref })} />
+          )}
+          {route.kind === "exercise" && (
+            <Runner
+              key={`${route.ref.kind}/${route.ref.lang}/${route.ref.name}`}
+              exercise={route.ref}
+              onBack={() => setRoute({ kind: "exercises" })}
+              onChanged={bumpPractice}
+            />
+          )}
+          {route.kind === "session" && (
+            <SessionSetup
+              modes={info?.modes ?? []}
+              source={route.source}
+              onClearSource={() => setRoute({ kind: "session", source: null })}
+              onOpenSettings={() => setRoute({ kind: "settings" })}
+            />
+          )}
+          {route.kind === "progress" && (
+            <Progress
+              key={epoch}
+              modes={info?.modes ?? []}
+              paths={paths.filter((p) => !p.part)}
+              onOpenPath={(name) => setRoute({ kind: "path", name })}
+            />
+          )}
+          {route.kind === "settings" && (
+            <Settings course={info} onPackChanged={() => loadPack().catch(() => {})} />
+          )}
 
-      <main className="mainpane">
-        {docError && (
-          <div className="toast-error" onClick={() => setDocError("")}>
-            {docError}
-          </div>
-        )}
-
-        {main.kind === "home" && (
-          <div className="pane-scroll">
-            <div className="home">
-              <h1>{info?.title}</h1>
-              <p className="muted home-tagline">{info?.tagline}</p>
-              <div className="home-actions">
-                {featured && (
-                  <button className="primary big" onClick={() => setMain({ kind: "path", name: featured.name })}>
-                    {featured.done > 0 ? "Continue" : "Start"}: {featured.title}
-                    <span className="home-count">
-                      {featured.done}/{featured.total}
-                    </span>
-                  </button>
-                )}
-                {outline?.start?.[0] && (
-                  <button className="big" onClick={() => openDoc(outline.start[0].path)}>
-                    {outline.start[0].title}
-                  </button>
-                )}
-              </div>
-              <div className="home-grid">
-                <div>
-                  <span className="label">Read</span>
-                  <p className="faint">
-                    {outline?.tracks?.length ?? 0} tracks and {paths.length} paths in the explorer.
-                    Search covers every document.
-                  </p>
-                </div>
-                <div>
-                  <span className="label">Practice</span>
-                  <p className="faint">
-                    {info?.practice
-                      ? "Exercises run through the pack's own CLI: the exit code is the verdict."
-                      : "Start a timed session from any chapter; the exercise is written from it."}
-                  </p>
-                </div>
-                <div>
-                  <span className="label">Ask</span>
-                  <p className="faint">The professor answers questions about the page you have open.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {main.kind === "doc" && doc && (
-          <>
-            <header className="doc-bar">
-              <span className="doc-path mono faint" title={doc.path}>
-                {doc.path}
-              </span>
-              <span className="row">
-                <button onClick={() => setProfessor(true)} title="Ask about this page">
-                  ✦ Ask
-                </button>
-                <button
-                  className="primary"
-                  onClick={() => setMain({ kind: "session", source: { path: doc.path, title: doc.title } })}
-                  title="A timed exercise written from this chapter, graded against a hidden rubric"
-                >
-                  Practice this
-                </button>
-              </span>
-            </header>
-            <div className="pane-scroll" key={doc.path}>
-              <div className="doc-body">
-                <Markdown path={doc.path} markdown={doc.markdown} repo={info?.repo} onOpenDoc={openDoc} />
-              </div>
-            </div>
-          </>
-        )}
-
-        {main.kind === "path" && <PathView name={main.name} onOpenDoc={openDoc} onProgress={loadPaths} />}
-
-        {main.kind === "exercise" && (
-          <PracticeRunner
-            key={`${main.ref.kind}/${main.ref.lang}/${main.ref.name}`}
-            exercise={main.ref}
-            onChanged={() => setPracticeEpoch((n) => n + 1)}
+          {notice && (
+            <button
+              onClick={() => setNotice("")}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg border border-destructive/30 bg-background px-3 py-2 text-sm text-destructive shadow-lg"
+            >
+              {notice}
+            </button>
+          )}
+        </SidebarInset>
+        {professor && (
+          <Professor
+            docPath={route.kind === "doc" ? route.path : ""}
+            docTitle={route.kind === "doc" ? (doc?.title ?? "") : ""}
+            repo={info?.repo}
+            onOpenDoc={openDoc}
+            onOpenSettings={() => setRoute({ kind: "settings" })}
+            onClose={() => setProfessor(false)}
           />
         )}
-
-        {main.kind === "session" && (
-          <Setup
-            modes={info?.modes ?? []}
-            source={main.source}
-            onClearSource={() => setMain({ kind: "session", source: null })}
-            onOpenSettings={() => setMain({ kind: "settings" })}
-          />
-        )}
-
-        {main.kind === "progress" && (
-          <Progress
-            key={epoch}
-            modes={info?.modes ?? []}
-            paths={paths}
-            onOpenPath={(name) => setMain({ kind: "path", name })}
-          />
-        )}
-
-        {main.kind === "settings" && <Settings course={info} onPackChanged={() => loadPack().catch(() => {})} />}
-      </main>
-
-      {professor && (
-        <Professor
-          docPath={activeDoc}
-          docTitle={main.kind === "doc" ? (doc?.title ?? "") : ""}
-          repo={info?.repo}
-          onOpenDoc={openDoc}
-          onOpenSettings={() => setMain({ kind: "settings" })}
-          onClose={() => setProfessor(false)}
-        />
-      )}
-    </div>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }
