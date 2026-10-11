@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.12.0 (2026-10-11)
+
+### Features
+
+- **course**: reuse verdicts in check --all and cache mutation results across runs ([41550de](https://github.com/urmzd/openlearn/commit/41550de9bf5e09bcd8f7de12a1e0c9f99949c3ed))
+- **course**: make L8.3 and load.02 optional side modules ([2c04ad9](https://github.com/urmzd/openlearn/commit/2c04ad93631cdf084845969ccd30fa642aa150fa))
+- **course**: reference durable and worker entry points (dep.06) ([448bdc3](https://github.com/urmzd/openlearn/commit/448bdc31fe214c720993df4ccd73d969e3983252))
+- **course**: give build modules real call sites ([113651f](https://github.com/urmzd/openlearn/commit/113651f7636e8fbae0cb21efbd44156b7e80fce0))
+- **course**: apply shared contract and harness items from open-items ([71d4385](https://github.com/urmzd/openlearn/commit/71d43856a18de08aa6cb06695ca015b92f0dc543))
+- **course**: finish the no-FFI restructure and align DESIGN.md ([d49911f](https://github.com/urmzd/openlearn/commit/d49911ff0c0dea48ce62149799660505ce7c9328))
+- **course**: checkpoint Codex step B progress (work in progress) ([012a495](https://github.com/urmzd/openlearn/commit/012a495eb84456c3a932d60afc66e2ec454f1ed6))
+- **course**: complete Step B process boundaries and optional C ([a897e20](https://github.com/urmzd/openlearn/commit/a897e2066fc72a0cf65568efe9cb55f161a2b8a8))
+- **course**: complete Step A module artifacts ([cec5587](https://github.com/urmzd/openlearn/commit/cec5587ed81c1688d8779986c0bd1a25acbfa131))
+- **course**: checkpoint Codex step A progress (work in progress) ([60d4f8a](https://github.com/urmzd/openlearn/commit/60d4f8a0910b781e5525cdbcbe9e00968de85d58))
+- **course**: checkpoint B7-4 through B10-3, B14 design, and handoff ([ba209bf](https://github.com/urmzd/openlearn/commit/ba209bf74bc6b70e49a5180ce34b0c06dd0cb869))
+- **course**: checkpoint module groups B2 through B7-3 (work in progress) ([7cfc027](https://github.com/urmzd/openlearn/commit/7cfc027b4e3c24b3d62ac0c7d4a0877bd4be6117))
+- **course**: checkpoint foundation and first module groups (work in progress) ([d54ddea](https://github.com/urmzd/openlearn/commit/d54ddea6dc34df7795707a90ec5ac2f40516078b))
+- **course**: verify and harden B1 tracer batch ([1340572](https://github.com/urmzd/openlearn/commit/1340572d5556aa81aa3cb1c26e08c0b03ef21170))
+- **course**: B1 harness, contracts, and tracer modules (work in progress) ([f52bdac](https://github.com/urmzd/openlearn/commit/f52bdac2e57c0fab125f0635884bb1b66709a70a))
+
+### Bug Fixes
+
+- **course**: serve a 1024-position copy of tiny-llama-2l so tool prompts fit ([ef066dd](https://github.com/urmzd/openlearn/commit/ef066dd92b3b6c9ac30435f60abd39eff173d56d))
+- **course**: under --ci a sampled mutation estimate below the bar falls back to the full grade ([fe5a958](https://github.com/urmzd/openlearn/commit/fe5a958816d7da06af5b93d83c9225524cd765ab))
+- **course**: green per-module verify for Go, ops, and gateway modules ([38ac89b](https://github.com/urmzd/openlearn/commit/38ac89bde117a949fc0b23b2a5e45d5cabd2d62c))
+- **course**: batch-invariant candle runner, platform-stable mutants, e2e commit guard ([2e946e1](https://github.com/urmzd/openlearn/commit/2e946e1b34d63d013e316cc65d345d2ef05fd65f))
+- **course**: MS-L5 smoke trains 2000 updates so the EM bar holds on Linux ([c71f3bd](https://github.com/urmzd/openlearn/commit/c71f3bda122f469f7f1dee6059e26b10459931b5))
+- **course**: regenerate mutant patches against marker-free reference text ([d1d1b3a](https://github.com/urmzd/openlearn/commit/d1d1b3ab5773cb07c7a28608ce2ef79c3f71835d))
+- **course**: sample mutation grades for the whole e2e run ([44719a7](https://github.com/urmzd/openlearn/commit/44719a7c7a873acec72f3a63fb6a3854f004a3f5))
+- **course**: regenerate L8.3 mutants, sample e2e mutation grades ([920d3f0](https://github.com/urmzd/openlearn/commit/920d3f0710b036407155f3284d72aaa61ca3c95f))
+- **course**: move the C lowp mutants from M09.4 to the optional M09.7 ([52bc794](https://github.com/urmzd/openlearn/commit/52bc79445a0892ba19a4cc0ad883fa7f95875262))
+- **course**: engine spans, SIGTERM, and crate roots for the v1 reference engine ([3d7a782](https://github.com/urmzd/openlearn/commit/3d7a782b2cdcb1dfa6ef2a272c72dd937f03bef8))
+- **course**: v1 engine in the reference system, parity drivers, sharded PR verify ([ca7740e](https://github.com/urmzd/openlearn/commit/ca7740e61d14466c5d6ad3b381af42b0724961d6))
+- **course**: close e2e and global verify gaps ([a1548a6](https://github.com/urmzd/openlearn/commit/a1548a6a0f36ca11b517376a645f31312581ab0f))
+- **course**: realign harness self-tests and C contracts with the no-FFI design ([8abecd7](https://github.com/urmzd/openlearn/commit/8abecd79ec8c75dd86a436a32c78672cf42b41f9))
+
+### Misc
+
+- **course**: update the handoff with the state after steps B, D, and E ([22638d5](https://github.com/urmzd/openlearn/commit/22638d5451d52e19ee24513a7a79219e9d11eaaf))
+- **course**: 120-minute e2e and kind jobs; e2e names every non-passing module ([bd252d5](https://github.com/urmzd/openlearn/commit/bd252d5f574535711ef2e8c1505865a26e209e96))
+- **release**: read the sr-releaser key from the release environment (#21) ([8f8dc73](https://github.com/urmzd/openlearn/commit/8f8dc7390f4993776aa2903da28ff02db426ca5b))
+- **course**: update the handoff with current status and CI findings ([8a5c9c6](https://github.com/urmzd/openlearn/commit/8a5c9c625a8d24a40551006d45630410cd4a81fa))
+- **course**: give the kind milestone job 60 minutes ([06e90eb](https://github.com/urmzd/openlearn/commit/06e90eb43ff1d230c7102034bfdd896ea0861df9))
+- **course**: fix remaining lint and Linux-only harness test failures ([1e3fcbb](https://github.com/urmzd/openlearn/commit/1e3fcbb417125145ec8a50ace212bf0b879c1df2))
+- **course**: fix course verify, kind deploy, and e2e failures on Linux ([ddb0cd3](https://github.com/urmzd/openlearn/commit/ddb0cd376ff2aea1cb006a9bc95738a10ca328ea))
+- **course**: fix lint on the course tree ([842a438](https://github.com/urmzd/openlearn/commit/842a438f8316a5a22b6338ad454aa66fc9e42aed))
+- upgrade urmzd/sr action to v9 (#20) ([7b54c8d](https://github.com/urmzd/openlearn/commit/7b54c8d5b5ce9bbcf86b100d73ca613203055153))
+- **course**: add end-to-end course design (draft v2) ([fbe0cae](https://github.com/urmzd/openlearn/commit/fbe0cae8025847f45abf5e6ee7ad073cd7d9e3cb))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.11.0...v0.12.0)
+
+
 ## 0.11.0 (2026-10-09)
 
 ### Features
