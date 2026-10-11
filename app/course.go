@@ -5,79 +5,33 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/urmzd/openlearn/app/internal/course"
-	"github.com/urmzd/openlearn/app/internal/domain"
-	"github.com/urmzd/openlearn/app/internal/harness"
-	"github.com/urmzd/openlearn/app/internal/llm"
 	"github.com/urmzd/openlearn/app/internal/packs"
 	"github.com/urmzd/openlearn/app/internal/practice"
 	"github.com/urmzd/openlearn/app/internal/store"
+	"github.com/urmzd/openlearn/app/internal/workspace"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// defaultPack is the pack a first launch opens.
-const defaultPack = "supersource"
-
-// openPack is the loaded course pack and everything derived from it.
-type openPack struct {
-	ref      string
-	course   *course.Course
-	progress course.DoneFiles
-	// runner is nil when the pack has no practice CLI or is not on disk.
-	runner *practice.Runner
-}
-
-// openPack loads the pack ref names, falling back to the default when ref is
-// empty or no longer resolves (a linked directory that was moved, say).
+// openPack loads the pack ref names; see workspace.Open for the fallbacks.
 func (a *App) openPack(ref string) {
 	a.mu.RLock()
 	linked := a.settings.LinkedPacks
 	a.mu.RUnlock()
 
-	c, err := a.packs.Open(ref)
-	if ref == "" || err != nil {
-		if ref != "" {
-			a.log.Warn("saved pack is gone, opening the default", "ref", ref, "err", err)
-		}
-		ref = ""
-		if def, ok := a.packs.Default(linked); ok {
-			ref = def.Ref
-			c, err = a.packs.Open(ref)
-		}
-	}
-	if ref == "" || err != nil {
-		a.log.Warn("no course pack available", "err", err)
-		c, ref = course.Empty(), ""
-	}
-
-	p := &openPack{ref: ref, course: c}
-	info := c.Info()
-	if info.Practice {
-		runner, err := practice.New(c.Dir(), c.Manifest().Practice)
-		if err != nil {
-			a.log.Warn("practice CLI unavailable", "err", err)
-		}
-		p.runner = runner
-	}
-	// A pack with a working practice CLI keeps progress where the CLI does, so
-	// the two agree. Any other pack has nowhere of its own to write.
-	if p.runner != nil {
-		p.progress = course.CheckoutProgress(c.Dir())
-	} else {
-		p.progress = course.StoreProgress(filepath.Join(a.store.Root(), "learn", info.ID))
-	}
+	w := workspace.Open(a.packs, ref, linked, a.store.Root(), a.log)
 
 	a.mu.Lock()
-	a.pack = p
+	a.pack = w
 	a.mu.Unlock()
 }
 
-func (a *App) current() *openPack {
+func (a *App) current() *workspace.Workspace {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.pack
@@ -161,59 +115,47 @@ func (a *App) savePackChoice(edit func(*store.Settings)) error {
 // ---------- reading ----------
 
 // GetCourse describes the open pack.
-func (a *App) GetCourse() course.Info {
-	p := a.current()
-	info := p.course.Info()
-	info.Practice = p.runner != nil
-	if len(info.Modes) == 0 {
-		info.Modes = []string{string(domain.ModeSystemDesign), string(domain.ModeCoding), string(domain.ModeWritten)}
-	}
-	return info
-}
+func (a *App) GetCourse() course.Info { return a.current().Info() }
 
 // GetOutline returns the open pack's browsable tree.
-func (a *App) GetOutline() course.Outline { return a.current().course.Outline() }
+func (a *App) GetOutline() course.Outline { return a.current().Course.Outline() }
 
 // GetDoc reads one document of the open pack.
-func (a *App) GetDoc(p string) (course.Doc, error) { return a.current().course.Doc(p) }
+func (a *App) GetDoc(p string) (course.Doc, error) { return a.current().Course.Doc(p) }
 
 // Search finds documents in the open pack.
-func (a *App) Search(query string) []course.Hit { return a.current().course.Search(query, 40) }
+func (a *App) Search(query string) []course.Hit { return a.current().Course.Search(query, 40) }
 
 // ListPaths summarizes the open pack's role paths with progress.
-func (a *App) ListPaths() []course.PathSummary {
-	p := a.current()
-	return p.course.Paths(p.progress)
-}
+func (a *App) ListPaths() []course.PathSummary { return a.current().Paths() }
 
 // GetPath expands one role path with progress.
-func (a *App) GetPath(name string) (course.Path, error) {
-	p := a.current()
-	return p.course.Path(name, p.progress)
-}
+func (a *App) GetPath(name string) (course.Path, error) { return a.current().Path(name) }
 
 // MarkStage marks a path stage finished or not, and returns what to tell the
-// learner. A stage tied to a check is only marked by the practice CLI, which
-// is what knows whether the check passed.
+// learner.
 func (a *App) MarkStage(top, key string, done bool) (practice.Result, error) {
-	p := a.current()
-	stage, err := p.course.Stage(top, key)
+	return a.current().MarkStage(a.ctxOrBackground(), top, key, done)
+}
+
+// GetAgentCommand returns the command an MCP client runs to connect an agent
+// to this app's course packs: this executable, in its MCP mode.
+func (a *App) GetAgentCommand() []string {
+	exe, err := os.Executable()
 	if err != nil {
-		return practice.Result{}, err
+		exe = "openlearn"
 	}
-	if p.runner != nil {
-		return p.runner.Learn(a.ctxOrBackground(), top, key, done)
+	return []string{exe, "mcp"}
+}
+
+// SetFocus records which document the learner has open, so an agent connected
+// over MCP can be asked about "this page" and know which one that is. An empty
+// path means no document is open.
+func (a *App) SetFocus(doc string) {
+	w := a.current()
+	if err := a.store.SaveFocus(store.Focus{Pack: w.Ref, PackTitle: w.Course.Info().Title, Doc: doc}); err != nil {
+		a.log.Warn("save focus", "err", err)
 	}
-	if done && stage.Check != "" {
-		return practice.Result{
-			Verdict: "fail",
-			Output:  fmt.Sprintf("This stage is finished by passing %s, which needs the pack's practice CLI. Open the pack from a checkout to run it.", stage.Check),
-		}, nil
-	}
-	if err := p.progress.Mark(stage.Owner, stage.Number, done); err != nil {
-		return practice.Result{}, err
-	}
-	return practice.Result{Verdict: "pass"}, nil
 }
 
 // ---------- practice ----------
@@ -221,7 +163,7 @@ func (a *App) MarkStage(top, key string, done bool) (practice.Result, error) {
 var errNoPractice = errors.New("this pack has no practice CLI that can run here")
 
 func (a *App) runner() (*practice.Runner, error) {
-	if r := a.current().runner; r != nil {
+	if r := a.current().Runner; r != nil {
 		return r, nil
 	}
 	return nil, errNoPractice
@@ -281,63 +223,6 @@ func (a *App) ResetExercise(kind, lang, name string) (practice.Result, error) {
 	return r.Reset(a.ctxOrBackground(), kind, lang, name)
 }
 
-// ---------- professor ----------
-
-// ProfessorChannel carries the professor's streamed answer to the frontend.
-const ProfessorChannel = "professor"
-
-// ProfessorDelta is one streamed piece of an answer.
-type ProfessorDelta struct {
-	ID    string `json:"id"`
-	Delta string `json:"delta"`
-}
-
-// AskProfessor answers a question about the page the learner has open. The
-// answer streams on ProfessorChannel under the returned id, and the full text
-// is the return value, so a caller that missed the stream still has it.
-func (a *App) AskProfessor(question, docPath string, history []harness.Turn) (string, error) {
-	if strings.TrimSpace(question) == "" {
-		return "", errors.New("ask a question first")
-	}
-	a.mu.RLock()
-	cfg := a.settings.LLM
-	a.mu.RUnlock()
-	client, err := llm.New(a.ctxOrBackground(), cfg, a.log)
-	if err != nil {
-		return "", fmt.Errorf("no model configured: %w", err)
-	}
-
-	p := a.current()
-	in := harness.ProfessorInput{
-		Course:   p.course.Info().Title,
-		Progress: a.progressLine(p),
-		History:  history,
-		Question: question,
-	}
-	if docPath != "" {
-		if doc, err := p.course.Doc(docPath); err == nil {
-			in.DocTitle, in.Material = doc.Title, doc.Markdown
-		}
-	}
-
-	id := uuid.NewString()
-	wruntime.EventsEmit(a.ctx, ProfessorChannel, ProfessorDelta{ID: id})
-	return harness.Ask(a.ctxOrBackground(), client, in, func(delta string) {
-		wruntime.EventsEmit(a.ctx, ProfessorChannel, ProfessorDelta{ID: id, Delta: delta})
-	})
-}
-
-// progressLine says where the learner is on the pack's featured path, in a
-// sentence the professor can read.
-func (a *App) progressLine(p *openPack) string {
-	for _, s := range p.course.Paths(p.progress) {
-		if s.Featured && s.Broken == "" {
-			return fmt.Sprintf("%d of %d stages finished on the %q path.", s.Done, s.Total, s.Title)
-		}
-	}
-	return ""
-}
-
 // ---------- assets ----------
 
 // assetPrefix is where the frontend requests a pack's images from.
@@ -365,7 +250,7 @@ func (h packAssets) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	data, err := fs.ReadFile(a.current().course.FS(), rel)
+	data, err := fs.ReadFile(a.current().Course.FS(), rel)
 	if err != nil {
 		http.NotFound(w, r)
 		return

@@ -1,4 +1,4 @@
-.PHONY: all init dev build package content test live lint vet fmt typecheck bindings check clean
+.PHONY: all init dev build mcp package content test live lint vet fmt typecheck bindings check clean
 
 # The Go binary embeds frontend/dist, so nothing that compiles Go works until
 # the frontend has been built at least once. Targets that touch the Go build
@@ -43,6 +43,11 @@ content:
 
 build: $(DIST) content
 	$(WAILS) build
+
+# The MCP server on its own, without the desktop app's webview dependencies.
+# The desktop binary serves the same thing as `openlearn mcp`.
+mcp: content
+	go build -o build/bin/openlearn-mcp ./cmd/openlearn-mcp
 
 # Signed/notarized macOS bundle and platform installers.
 package: $(DIST) content

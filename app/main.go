@@ -4,7 +4,14 @@
 package main
 
 import (
+	"context"
 	"embed"
+	"flag"
+	"fmt"
+	"os"
+	"os/signal"
+
+	"github.com/urmzd/openlearn/app/internal/mcpserver"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -16,6 +23,22 @@ import (
 var assets embed.FS
 
 func main() {
+	// `openlearn mcp [-pack DIR]` serves the course pack to an agent instead of
+	// opening a window, so the one binary a learner installs is also the one
+	// their agent connects to.
+	if len(os.Args) > 1 && os.Args[1] == "mcp" {
+		flags := flag.NewFlagSet("mcp", flag.ExitOnError)
+		pack := flags.String("pack", "", "serve this pack directory instead of the one the app has open")
+		_ = flags.Parse(os.Args[2:])
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+		defer stop()
+		if err := mcpserver.Serve(ctx, *pack, "app"); err != nil {
+			fmt.Fprintln(os.Stderr, "openlearn mcp:", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	app := NewApp()
 
 	err := wails.Run(&options.App{

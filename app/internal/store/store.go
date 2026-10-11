@@ -92,6 +92,44 @@ func adopt(legacy, dir string) error {
 	return nil
 }
 
+// Focus is the document the learner has open in the app right now. It is
+// written by the app and read by the MCP server, which is how an agent in
+// another process knows what "this page" means.
+type Focus struct {
+	// Pack is the ref of the open pack.
+	Pack      string `json:"pack"`
+	PackTitle string `json:"packTitle"`
+	// Doc is the pack-relative path of the open document; empty when the
+	// learner is not reading one.
+	Doc string    `json:"doc"`
+	At  time.Time `json:"at"`
+}
+
+func (s *Store) focusPath() string { return filepath.Join(s.root, "focus.json") }
+
+// SaveFocus records what the learner has open.
+func (s *Store) SaveFocus(f Focus) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f.At = time.Now().UTC()
+	return writeJSON(s.focusPath(), f)
+}
+
+// LoadFocus returns what the learner last had open. ok is false when the app
+// has never recorded one.
+func (s *Store) LoadFocus() (f Focus, ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, err := os.ReadFile(s.focusPath())
+	if err != nil {
+		return Focus{}, false
+	}
+	if err := json.Unmarshal(data, &f); err != nil {
+		return Focus{}, false
+	}
+	return f, true
+}
+
 // Root is the directory the store writes to.
 func (s *Store) Root() string { return s.root }
 

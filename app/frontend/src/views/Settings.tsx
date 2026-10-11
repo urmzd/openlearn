@@ -5,6 +5,7 @@
 // it into the app's own directory.
 
 import { useEffect, useState } from "react";
+import { AgentConnection } from "@/components/agent-connection";
 import { Check, FolderOpen, PackagePlus } from "lucide-react";
 import {
   CheckModel,
@@ -21,7 +22,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, Picker } from "@/components/choice";
-import { ErrorNote, PageBody, PageHeader, PageTitle, SectionLabel } from "@/components/page";
+import {
+  ErrorNote,
+  PageBody,
+  PageHeader,
+  PageTitle,
+  SectionLabel,
+} from "@/components/page";
 import { isOpenPack } from "@/components/app-sidebar";
 import { ListGroup, ListRow } from "@/components/list-row";
 
@@ -39,7 +46,7 @@ const PROVIDERS = [
   { value: "google", label: "Google" },
 ];
 
-/** Which provider and model the coach, the reviewer, and the professor use. A
+/** Which provider and model the coach and the reviewer use. A
  *  misconfigured model is the one failure that makes the whole app do nothing,
  *  so the check lives next to the choice. */
 function ModelSettings() {
@@ -62,7 +69,10 @@ function ModelSettings() {
 
   const update = async (patch: Partial<llm.Config>) => {
     if (!settings) return;
-    const next = { ...settings, llm: { ...settings.llm, ...patch } } as store.Settings;
+    const next = {
+      ...settings,
+      llm: { ...settings.llm, ...patch },
+    } as store.Settings;
     setSettings(next);
     setProbe("");
     await SaveSettings(next).catch((e) => setError(String(e)));
@@ -89,7 +99,11 @@ function ModelSettings() {
     <div className="flex flex-col gap-4 rounded-xl border p-4">
       <div className="grid grid-cols-2 gap-4">
         <Field label="Provider">
-          <Picker value={kind} options={PROVIDERS} onChange={(v) => update({ kind: v })} />
+          <Picker
+            value={kind}
+            options={PROVIDERS}
+            onChange={(v) => update({ kind: v })}
+          />
         </Field>
         <Field label="Model">
           {isOllama && models.length > 0 ? (
@@ -98,14 +112,18 @@ function ModelSettings() {
               placeholder="Choose a model"
               options={models.map((m) => ({
                 value: m.name,
-                label: m.sizeBytes ? `${m.name} (${(m.sizeBytes / 1e9).toFixed(1)} GB)` : m.name,
+                label: m.sizeBytes
+                  ? `${m.name} (${(m.sizeBytes / 1e9).toFixed(1)} GB)`
+                  : m.name,
               }))}
               onChange={(model) => update({ model })}
             />
           ) : (
             <Input
               value={settings?.llm.model ?? ""}
-              placeholder={isOllama ? "No models found. Is Ollama running?" : "Model id"}
+              placeholder={
+                isOllama ? "No models found. Is Ollama running?" : "Model id"
+              }
               onChange={(e) => update({ model: e.target.value })}
             />
           )}
@@ -130,7 +148,12 @@ function ModelSettings() {
         </Field>
       )}
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" onClick={check} disabled={probing || !settings?.llm.model}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={check}
+          disabled={probing || !settings?.llm.model}
+        >
           {probing ? "Checking…" : "Test connection"}
         </Button>
         {probe && (
@@ -193,16 +216,29 @@ export function Settings({ course, onPackChanged }: Props) {
     <>
       <PageHeader crumbs={[{ label: "Settings" }]} />
       <PageBody>
-        <PageTitle title="Settings" description="Your course packs, and the model that coaches, grades, and answers." />
+        <PageTitle
+          title="Settings"
+          description="Your course packs, the model behind timed sessions, and how to connect an agent."
+        />
 
         <div className="mb-2 flex items-end justify-between">
           <SectionLabel className="mb-0">Course packs</SectionLabel>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => add(false)} disabled={busy}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => add(false)}
+              disabled={busy}
+            >
               <FolderOpen data-icon="inline-start" />
               Open folder
             </Button>
-            <Button variant="outline" size="sm" onClick={() => add(true)} disabled={busy}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => add(true)}
+              disabled={busy}
+            >
               <PackagePlus data-icon="inline-start" />
               Import zip
             </Button>
@@ -224,12 +260,17 @@ export function Settings({ course, onPackChanged }: Props) {
               onClick={() => open(p.ref)}
             />
           ))}
-          {list.length === 0 && <p className="p-3 text-sm text-muted-foreground">No course packs found.</p>}
+          {list.length === 0 && (
+            <p className="p-3 text-sm text-muted-foreground">
+              No course packs found.
+            </p>
+          )}
         </ListGroup>
         <p className="mt-2 text-xs text-muted-foreground">
-          A pack is any folder with an <span className="font-mono">openlearn.json</span> manifest. A pack with
-          exercises runs its own practice CLI on your machine when you check an attempt, so only open packs you
-          trust.
+          A pack is any folder with an{" "}
+          <span className="font-mono">openlearn.json</span> manifest. A pack
+          with exercises runs its own practice CLI on your machine when you
+          check an attempt, so only open packs you trust.
         </p>
         {error && (
           <div className="mt-3">
@@ -237,12 +278,19 @@ export function Settings({ course, onPackChanged }: Props) {
           </div>
         )}
 
-        <SectionLabel className="mt-8">Model</SectionLabel>
+        <SectionLabel className="mt-8">Timed sessions</SectionLabel>
+        <p className="mb-2 text-xs text-muted-foreground">
+          The model that writes timed exercises, coaches during them, and scores them.
+        </p>
         <ModelSettings />
+
+        <SectionLabel className="mt-8">Connect an agent</SectionLabel>
+        <AgentConnection />
 
         {root && (
           <p className="mt-6 text-xs text-muted-foreground">
-            Sessions, settings, and imported packs live in <span className="font-mono">{root}</span>.
+            Sessions, settings, and imported packs live in{" "}
+            <span className="font-mono">{root}</span>.
           </p>
         )}
       </PageBody>

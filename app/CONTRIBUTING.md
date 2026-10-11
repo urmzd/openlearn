@@ -50,8 +50,7 @@ All are shot at 1440x920 so the README gallery lines up.
 
 | Image | Screen | Captured by |
 |-------|--------|-------------|
-| `reader.png` | A chapter in the reader, with search and the professor panel | CDP |
-| `workbench.png` | The home view | CDP |
+| `reader.png` | A chapter in the reader, with search results in the sidebar | CDP |
 | `demo.png` | A session in progress: brief, board, coach | CDP, live session |
 | `demo-review.png` | The debrief | CDP, live session |
 

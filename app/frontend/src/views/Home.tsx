@@ -1,6 +1,12 @@
 // The first screen: what this pack is and the one thing to do next.
 
-import { ArrowRight, BookOpen, Sparkles, SquareTerminal, Timer } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  Plug,
+  SquareTerminal,
+  Timer,
+} from "lucide-react";
 import type { course } from "../../wailsjs/go/models";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -14,28 +20,45 @@ interface Props {
   paths: course.PathSummary[];
   onNavigate: (route: Route) => void;
   onOpenDoc: (path: string) => void;
-  onAsk: () => void;
 }
 
-export function Home({ info, outline, paths, onNavigate, onOpenDoc, onAsk }: Props) {
-  const featured = paths.find((p) => p.featured && !p.broken) ?? paths.find((p) => !p.part && !p.broken);
+export function Home({
+  info,
+  outline,
+  paths,
+  onNavigate,
+  onOpenDoc,
+}: Props) {
+  const featured =
+    paths.find((p) => p.featured && !p.broken) ??
+    paths.find((p) => !p.part && !p.broken);
 
   return (
     <>
       <PageHeader crumbs={[{ label: "Home" }]} />
       <PageBody>
         <h1 className="text-3xl font-semibold tracking-tight">{info?.title}</h1>
-        <p className="mt-2 max-w-xl text-base text-muted-foreground">{info?.tagline}</p>
+        <p className="mt-2 max-w-xl text-base text-muted-foreground">
+          {info?.tagline}
+        </p>
 
         {featured && (
           <div className="mt-8 rounded-xl border p-5">
-            <SectionLabel>{featured.done > 0 ? "Pick up where you left off" : "Start here"}</SectionLabel>
+            <SectionLabel>
+              {featured.done > 0 ? "Pick up where you left off" : "Start here"}
+            </SectionLabel>
             <div className="flex items-center justify-between gap-6">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-lg font-medium">{featured.title}</div>
+                <div className="truncate text-lg font-medium">
+                  {featured.title}
+                </div>
                 <div className="mt-3 flex items-center gap-3">
                   <Progress
-                    value={featured.total ? (featured.done / featured.total) * 100 : 0}
+                    value={
+                      featured.total
+                        ? (featured.done / featured.total) * 100
+                        : 0
+                    }
                     className="flex-1"
                   />
                   <span className="font-mono text-xs text-muted-foreground">
@@ -43,7 +66,12 @@ export function Home({ info, outline, paths, onNavigate, onOpenDoc, onAsk }: Pro
                   </span>
                 </div>
               </div>
-              <Button size="lg" onClick={() => onNavigate({ kind: "path", name: featured.name })}>
+              <Button
+                size="lg"
+                onClick={() =>
+                  onNavigate({ kind: "path", name: featured.name })
+                }
+              >
                 {featured.done > 0 ? "Continue" : "Start"}
                 <ArrowRight data-icon="inline-end" />
               </Button>
@@ -85,10 +113,10 @@ export function Home({ info, outline, paths, onNavigate, onOpenDoc, onAsk }: Pro
               onClick={() => onNavigate({ kind: "session", source: null })}
             />
             <ListRow
-              leading={<Sparkles className="size-4" />}
-              title="Ask the professor"
-              description="Questions about the page you have open, answered from that page."
-              onClick={onAsk}
+              leading={<Plug className="size-4" />}
+              title="Bring your own agent"
+              description="Connect any MCP client and it can read the course, see your progress, and check your exercises."
+              onClick={() => onNavigate({ kind: "settings" })}
             />
           </ListGroup>
         </div>
