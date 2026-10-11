@@ -7,13 +7,15 @@
 //! generation tests run against a fake target model written below: its
 //! logits are a fixed function of the context, so plain greedy decoding is
 //! computed here independently and compared token for token. The KV tests
-//! use a real Rust KV pool. JSON is read with `mod j`, never
-//! with yours.
+//! use a real Rust KV pool, and one test runs RunnerTarget over L7.9's tiny
+//! llama (course/fixtures/L7.9/tiny-llama-2l). JSON is read with `mod j`,
+//! never with yours.
 
 use std::path::PathBuf;
 
 use tl_engine::sample::{child_seed, stream, Pcg32, SamplingParams, PURPOSE_SAMPLE};
-use tl_engine::spec::{self, Draft, Finish, SpecConfig, SpecError, Target};
+use tl_engine::runner::{EngineConfig, KvConfig, ModelRunner};
+use tl_engine::spec::{self, Draft, Finish, RunnerTarget, SpecConfig, SpecError, Target};
 use tl_engine::kv::{KvCfg, KvPool, TL_F16};
 
 fn fixtures() -> PathBuf {
@@ -523,6 +525,75 @@ fn blocks_conserved_across_rollbacks() {
         assert_eq!(kv.pool.stats().used, 0);
     }
     assert!(rejected > 100, "the scenario must reject drafts ({rejected} rejected)");
+}
+
+#[test]
+fn generate_stream_hands_over_each_token_and_stops_when_told() {
+    // WHY: the serve loop streams a speculative answer and frees it when the
+    //      client leaves, so every emitted token reaches the listener as its
+    //      round is verified (the same tokens and logprobs, in order), and a
+    //      listener that answers false ends generation at once, with no
+    //      further target pass.
+    // KIND: conformance
+    // CATCHES: m15
+    // CHAPTER: L10.8 section 5
+    let cfg = SpecConfig { draft: Draft::PromptLookup, k: 4, max_ngram: 3, min_ngram: 1 };
+    let prompt = [3, 9, 4, 1, 3];
+    let mut seen: Vec<(u32, f64)> = Vec::new();
+    let mut t = Fake { ids: Vec::new(), calls: 0 };
+    let g = spec::generate_stream(&mut t, &cfg, &prompt, &SamplingParams::greedy(), 0, 30, &[], &mut |tok, lp| {
+        seen.push((tok, lp));
+        true
+    })
+    .unwrap();
+    assert_eq!(seen, g.tokens.iter().copied().zip(g.logprobs.iter().copied()).collect::<Vec<_>>());
+    assert_eq!(g.tokens, greedy_reference(&prompt, 30));
+    for stop_after in [1, 3, 7] {
+        let mut n = 0;
+        let mut t = Fake { ids: Vec::new(), calls: 0 };
+        let g = spec::generate_stream(&mut t, &cfg, &prompt, &SamplingParams::greedy(), 0, 30, &[], &mut |_, _| {
+            n += 1;
+            n < stop_after
+        })
+        .unwrap();
+        assert_eq!((n, g.tokens.len()), (stop_after, stop_after), "the listener said stop after {stop_after} tokens");
+        assert_eq!(g.stats.target_calls, t.calls);
+    }
+}
+
+fn tiny_llama() -> PathBuf {
+    fixtures().join("L7.9/tiny-llama-2l")
+}
+
+#[test]
+fn runner_target_scores_every_fed_position() {
+    // WHY: verification needs the target's logits after EVERY fed id, but the
+    //      runner's forward returns one row per sequence. On the tiny llama,
+    //      RunnerTarget::extend over 9 ids gives 9 rows, each the logits a
+    //      fresh run of that prefix gives (within 1e-4), and prompt-lookup
+    //      speculation over the runner (several ids per pass) emits the same
+    //      greedy tokens as no draft (one id per pass).
+    // KIND: differential
+    // CHAPTER: L10.8 section 2
+    let ecfg = EngineConfig { kv: KvConfig { blocks: 32, block_size: 4 }, ..EngineConfig::default() };
+    let ids: [u32; 9] = [72, 101, 108, 108, 111, 32, 72, 101, 108];
+    let mut r = ModelRunner::load(&tiny_llama(), &ecfg).unwrap();
+    let rows = RunnerTarget::new(&mut r).extend(&ids).unwrap();
+    assert_eq!(rows.len(), ids.len(), "one row per fed id");
+    for (j, row) in rows.iter().enumerate() {
+        let (_, want) = r.run_once(&ids[..=j]).unwrap();
+        assert_eq!(row.len(), want.len());
+        let worst = row.iter().zip(&want).map(|(a, b)| (a - b).abs()).fold(0.0f32, f32::max);
+        assert!(worst <= 1e-4, "row {j}: max |diff| {worst} against a fresh run of the prefix");
+    }
+    assert_eq!(tl_engine::runner::lock(&r.pool()).unwrap().stats().used, 0, "the target's blocks go back on drop");
+    let prompt: Vec<u32> = "abcabcabcab".bytes().map(u32::from).collect();
+    let plain = SpecConfig { draft: Draft::None, k: 4, max_ngram: 3, min_ngram: 1 };
+    let lookup = SpecConfig { draft: Draft::PromptLookup, ..plain.clone() };
+    let want = spec::generate_with_runner(&mut r, &plain, &prompt, &SamplingParams::greedy(), 0, 24, &[]).unwrap();
+    let got = spec::generate_with_runner(&mut r, &lookup, &prompt, &SamplingParams::greedy(), 0, 24, &[]).unwrap();
+    assert_eq!(got.tokens, want.tokens);
+    assert!(got.stats.drafted > 0, "prompt lookup proposed nothing on a periodic prompt");
 }
 
 /// A tiny JSON reader for the fixtures, independent of the code under test.

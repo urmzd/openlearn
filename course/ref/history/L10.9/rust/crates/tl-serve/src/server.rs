@@ -58,6 +58,10 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 use tl_engine::constrain::{constrained_sample, regex_to_dfa, Constraint, Json, TokenIndex, DEAD};
 use tl_engine::engine::{Engine, EngineStats, GenRequest};
+use tl_engine::forward::{ForwardBatch, ForwardSeq};
+use tl_engine::kv_transfer::tl_proto::tl::engine::v1 as pb;
+use tl_engine::kv_transfer::tonic::{self, Status};
+use tl_engine::kv_transfer::{self as kvt, GrpcServer, GrpcTransport, KvReceiver, SharedKv};
 use tl_engine::model::TokenizerKind;
 use tl_engine::runner::{EngineConfig, KvConfig, ModelRunner, PrefixCache, Quant, SchedPolicy};
 use tl_engine::sample::{mix64, sample, stream, PURPOSE_SAMPLE};
@@ -65,6 +69,7 @@ use tl_engine::spec::{self, RunnerTarget, SpecConfig, Target};
 use tl_engine::sched::{AdmitError, FinishReason, RequestId};
 use tl_tok::{ByteBpe, ByteTokenizer, Tokenizer};
 
+use crate::control::{self, ControlService, PrefillBackend, PrefillJob, PrefillOutcome};
 use crate::metrics::{EngineGauges, EngineMetrics, RequestRecord};
 use crate::openai::{self, ApiError, GenSpec, Prompt};
 use crate::sse::{self, TextStream};
@@ -87,11 +92,43 @@ pub struct ServeConfig {
     pub queue_deadline_ms: u64,
     /// Optional request-local speculative decoder (L10.8).
     pub speculative: Option<SpecConfig>,
+    /// `[engine].role` (L10.6).
+    pub role: Role,
+    /// EngineControl's address (`[engine].grpc_listen`): served by the
+    /// prefill and decode roles.
+    pub grpc_listen: Option<String>,
+    /// tl.kv.v1's address (`[engine].kv_listen`): served by the decode role.
+    pub kv_listen: Option<String>,
     /// Exit 0 on SIGTERM after draining (the binary sets it; tests do not).
     pub handle_signals: bool,
     /// Sleep after every engine step (tests use it to hold requests in
     /// flight; never set from runtime.toml).
     pub step_delay: Duration,
+}
+
+/// `[engine].role` (L10.6, DESIGN 2.7). A unified engine serves whole
+/// requests. A prefill engine also serves `EngineControl.Prefill`: it runs a
+/// prompt, samples the first token, and pushes the prompt's KV to the decode
+/// engine the request names. A decode engine receives KV over tl.kv.v1 and
+/// resumes a request that carries `X-TL-KV-Handle` from it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Role {
+    Unified,
+    Prefill,
+    Decode,
+}
+
+impl Role {
+    /// The runtime.toml spelling, also the `tl.engine.role` label.
+    pub fn as_str(self) -> &'static str {
+        // SOLUTION-BEGIN L10.9
+        match self {
+            Role::Unified => "unified",
+            Role::Prefill => "prefill",
+            Role::Decode => "decode",
+        }
+        // SOLUTION-END
+    }
 }
 
 /// `":8000"` (every interface) or `"host:port"` as a socket address.
@@ -139,6 +176,9 @@ impl ServeConfig {
             queue_capacity: 256,
             queue_deadline_ms: 30000,
             speculative: None,
+            role: Role::Unified,
+            grpc_listen: None,
+            kv_listen: None,
             handle_signals: false,
             step_delay: Duration::ZERO,
         }
@@ -147,7 +187,8 @@ impl ServeConfig {
 
     /// Parses runtime.toml's `[engine]`, then applies `TL_ENGINE__<KEY>`
     /// overrides from `env`. Unknown keys and values this engine cannot
-    /// serve (roles other than unified, KV format 2, int8) are errors.
+    /// serve (KV format 2, int8, a prefill role without `grpc_listen`, a
+    /// decode role without `kv_listen`) are errors.
     pub fn from_toml(text: &str, env: &[(String, String)]) -> Result<ServeConfig, String> {
         // SOLUTION-BEGIN L10.9
         let doc: toml::Table = text.parse().map_err(|e| format!("runtime.toml: {e}"))?;
@@ -184,10 +225,22 @@ impl ServeConfig {
         if let Some(id) = s("model_id") {
             c.model_id = id;
         }
-        if let Some(r) = s("role") {
-            if r != "unified" {
-                return Err(format!("runtime.toml: engine.role {r:?} needs disaggregation (L10.6)"));
-            }
+        c.role = match s("role").as_deref() {
+            None | Some("unified") => Role::Unified,
+            Some("prefill") => Role::Prefill,
+            Some("decode") => Role::Decode,
+            Some(o) => return Err(format!("runtime.toml: engine.role {o:?} is not unified, prefill, or decode")),
+        };
+        c.grpc_listen = s("grpc_listen");
+        c.kv_listen = s("kv_listen");
+        for a in c.grpc_listen.iter().chain(&c.kv_listen) {
+            listen_addr(a)?;
+        }
+        if c.role == Role::Prefill && c.grpc_listen.is_none() {
+            return Err("runtime.toml: engine.role \"prefill\" needs engine.grpc_listen (EngineControl.Prefill, L10.6)".to_string());
+        }
+        if c.role == Role::Decode && c.kv_listen.is_none() {
+            return Err("runtime.toml: engine.role \"decode\" needs engine.kv_listen (tl.kv.v1, L10.6)".to_string());
         }
         if n("kv_format", 1, 1)? != 1 {
             return Err("runtime.toml: engine.kv_format 2 arrives with the craft.13 migration".to_string());
@@ -284,7 +337,11 @@ pub fn pool_embedding(hidden: &[f32], d: usize) -> Vec<f32> {
 
 /// A command to the engine thread.
 enum Cmd {
-    Generate { req: GenRequest, events: mpsc::UnboundedSender<Ev>, constraint: Option<Constrained> },
+    /// `resume`: the KV blocks of a disaggregated request's prompt, claimed
+    /// from the decode engine's receiver (one reference each).
+    Generate { req: GenRequest, events: mpsc::UnboundedSender<Ev>, constraint: Option<Constrained>, resume: Option<Vec<u32>> },
+    /// EngineControl.Prefill on a prefill engine (L10.6).
+    Prefill { job: PrefillJob, reply: oneshot::Sender<Result<PrefillOutcome, Status>> },
     Embed { inputs: Vec<Vec<u32>>, reply: oneshot::Sender<Result<Vec<Vec<f32>>, String>> },
 }
 
@@ -343,6 +400,14 @@ struct Shared {
     vocab: usize,
     /// One TokenIndex per grammar pattern (masks are cached inside it).
     grammars: Mutex<HashMap<String, Arc<TokenIndex>>>,
+    /// `[engine].role` (L10.6).
+    role: Role,
+    /// The decode role's receiver of pushed KV (None in the other roles).
+    receiver: Option<Arc<KvReceiver>>,
+    /// The engine's KV pool.
+    pool: SharedKv,
+    /// Token positions per KV block.
+    block_size: usize,
 }
 
 /// Unix time in nanoseconds.
@@ -433,6 +498,153 @@ fn constrained_generate(runner: &mut ModelRunner, c: &Constrained, req: &GenRequ
     // SOLUTION-END
 }
 
+/// EngineControl.Prefill on the engine thread (L10.6): the prompt's KV in
+/// fresh blocks (one forward, start 0), the first token sampled from the
+/// last prompt position with the request's generator `stream(seed,
+/// sample)`, and the full blocks' chained hashes. The outcome holds one
+/// reference on each block; ControlService drops them after the push.
+fn prefill_once(runner: &mut ModelRunner, job: &PrefillJob, max_model_len: usize) -> Result<PrefillOutcome, Status> {
+    // SOLUTION-BEGIN L10.9
+    let n = job.prompt.len();
+    if n == 0 || n >= max_model_len {
+        return Err(Status::invalid_argument(format!("the prompt has {n} tokens; the context is {max_model_len}")));
+    }
+    let bt = runner.block_tokens();
+    let pool = runner.pool();
+    let blocks = kvt::lock(&pool).alloc(n.div_ceil(bt)).map_err(|e| Status::resource_exhausted(format!("KV blocks for the prompt: {e}")))?;
+    let batch = ForwardBatch { seqs: vec![ForwardSeq { tokens: &job.prompt, start: 0, blocks: &blocks }] };
+    let logits = match runner.forward(&batch) {
+        Ok(l) => l,
+        Err(e) => {
+            release_blocks(&pool, &blocks);
+            return Err(Status::invalid_argument(format!("prefill: {e:#}")));
+        }
+    };
+    let mut rng = stream(job.seed, PURPOSE_SAMPLE);
+    let (first_token, lp) = sample(logits.row(0), &job.params, &job.prompt, &[], &mut rng);
+    Ok(PrefillOutcome {
+        first_token,
+        first_logprob: lp as f32,
+        block_ids: blocks,
+        block_hashes: kvt::prompt_hashes(&job.prompt, bt),
+        cached_prompt_tokens: 0,
+        rng_draws: u32::from(job.params.temperature > 0.0),
+    })
+    // SOLUTION-END
+}
+
+/// Drops one reference on each block.
+fn release_blocks(pool: &SharedKv, blocks: &[u32]) {
+    // SOLUTION-BEGIN L10.9
+    let mut p = kvt::lock(pool);
+    for &b in blocks {
+        let _ = p.release(b);
+    }
+    // SOLUTION-END
+}
+
+/// Decodes a disaggregated request on the decode engine (L10.6), outside
+/// the batch as the speculative path is. `blocks` hold the prompt's KV as
+/// the prefill engine computed it. The resume request does not carry the
+/// prefill's first token, so this engine recomputes the last prompt
+/// position (rewriting the same KV) and samples it with `stream(seed,
+/// sample)`: the same token the prefill engine sampled, after which the
+/// generator stands where `kv_transfer::resume_rng(seed,
+/// rng_draws_consumed)` puts it. Then it decodes one token at a time, so a
+/// greedy or seeded stream equals the unified engine's. `emit` as in
+/// [`constrained_generate`].
+fn resume_generate(runner: &mut ModelRunner, blocks: Vec<u32>, req: &GenRequest, emit: &mut dyn FnMut(u32, f64, Option<FinishReason>) -> bool) -> Result<(), String> {
+    // SOLUTION-BEGIN L10.9
+    let n = req.prompt.len();
+    let mut target = RunnerTarget::resume(runner, blocks, n.saturating_sub(1));
+    let mut rng = stream(req.seed, PURPOSE_SAMPLE);
+    let mut out: Vec<u32> = Vec::new();
+    let mut row = target.extend(&req.prompt[n.saturating_sub(1)..]).map_err(|e| e.to_string())?.pop().ok_or("the prompt gave no logits")?;
+    loop {
+        let (t, lp) = sample(&row, &req.params, &req.prompt, &out, &mut rng);
+        if req.stop_ids.contains(&t) {
+            emit(t, lp, Some(FinishReason::Stop));
+            return Ok(());
+        }
+        out.push(t);
+        let finish = (out.len() >= req.max_tokens).then_some(FinishReason::Length);
+        if !emit(t, lp, finish) || finish.is_some() {
+            return Ok(());
+        }
+        row = target.extend(&[t]).map_err(|e| e.to_string())?.pop().ok_or("a step gave no logits")?;
+    }
+    // SOLUTION-END
+}
+
+/// EngineControl's view of the serve loop (L10.6): Prefill runs on the
+/// engine thread through the admission queue.
+struct EngineBackend {
+    shared: Arc<Shared>,
+}
+
+#[tonic::async_trait]
+impl PrefillBackend for EngineBackend {
+    async fn prefill(&self, job: PrefillJob) -> Result<PrefillOutcome, Status> {
+        // SOLUTION-BEGIN L10.9
+        if !job.model.is_empty() && job.model != self.shared.model_id {
+            return Err(Status::not_found(format!("model {:?} is not served here ({:?})", job.model, self.shared.model_id)));
+        }
+        if self.shared.draining.load(Ordering::SeqCst) {
+            return Err(Status::unavailable("the engine is draining"));
+        }
+        let (tx, rx) = oneshot::channel();
+        match self.shared.cmds.try_send(Cmd::Prefill { job, reply: tx }) {
+            Ok(()) => {}
+            Err(TrySendError::Full(_)) => return Err(Status::resource_exhausted("the admission queue is full")),
+            Err(TrySendError::Disconnected(_)) => return Err(Status::unavailable("the engine stopped")),
+        }
+        rx.await.map_err(|_| Status::internal("the engine dropped the prefill"))?
+        // SOLUTION-END
+    }
+
+    fn pool(&self) -> SharedKv {
+        // SOLUTION-BEGIN L10.9
+        Arc::clone(&self.shared.pool)
+        // SOLUTION-END
+    }
+
+    fn info(&self) -> pb::InfoResponse {
+        // SOLUTION-BEGIN L10.9
+        pb::InfoResponse {
+            model: self.shared.model_id.clone(),
+            max_context: self.shared.max_model_len as i32,
+            block_size: self.shared.block_size as i32,
+            ..pb::InfoResponse::default()
+        }
+        // SOLUTION-END
+    }
+
+    async fn cancel(&self, _request_id: &str) -> bool {
+        // SOLUTION-BEGIN L10.9
+        // a prefill runs to completion on the engine thread
+        false
+        // SOLUTION-END
+    }
+
+    async fn drain(&self, _deadline_ms: i64) -> i32 {
+        // SOLUTION-BEGIN L10.9
+        // draining is SIGTERM's (spec/cli-roles.md); nothing is aborted here
+        0
+        // SOLUTION-END
+    }
+}
+
+/// A request decoded outside the batch (grammar, speculation, resume)
+/// counts as one running sequence on /metrics until the loop refreshes its
+/// stats after it.
+fn serial_started(shared: &Shared) {
+    // SOLUTION-BEGIN L10.9
+    if let Ok(mut s) = shared.stats.lock() {
+        s.running += 1;
+    }
+    // SOLUTION-END
+}
+
 /// The engine thread: take commands, drop requests whose client is gone
 /// or whose queue deadline passed, run one step, deliver its tokens.
 fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop: Arc<AtomicBool>, deadline: Duration, step_delay: Duration, speculative: Option<SpecConfig>) {
@@ -462,8 +674,20 @@ fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop:
                 }
             };
             match cmd {
-                Cmd::Generate { req, events, constraint: Some(c) } => {
+                Cmd::Prefill { job, reply } => {
+                    let _ = reply.send(prefill_once(engine.runner_mut(), &job, shared.max_model_len));
+                }
+                Cmd::Generate { req, events, resume: Some(blocks), .. } => {
                     let _ = events.send(Ev::Admitted { at_ns: now_ns() });
+                    serial_started(&shared);
+                    let mut emit = |token, logprob, finish| events.send(Ev::Token { token, logprob, finish, at_ns: now_ns() }).is_ok();
+                    if let Err(e) = resume_generate(engine.runner_mut(), blocks, &req, &mut emit) {
+                        let _ = events.send(Ev::Failed(e));
+                    }
+                }
+                Cmd::Generate { req, events, constraint: Some(c), .. } => {
+                    let _ = events.send(Ev::Admitted { at_ns: now_ns() });
+                    serial_started(&shared);
                     let tok = Arc::clone(&shared.tok);
                     let mut emit = |token, logprob, finish| events.send(Ev::Token { token, logprob, finish, at_ns: now_ns() }).is_ok();
                     if let Err(e) = constrained_generate(engine.runner_mut(), &c, &req, &*tok, &mut emit) {
@@ -473,18 +697,25 @@ fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop:
                 Cmd::Generate { req, events, .. } if speculative.is_some() => {
                     let cfg = speculative.as_ref().expect("checked above");
                     let _ = events.send(Ev::Admitted { at_ns: now_ns() });
-                    let result = spec::generate_with_runner(engine.runner_mut(), cfg, &req.prompt, &req.params, req.seed, req.max_tokens, &req.stop_ids);
+                    serial_started(&shared);
+                    // Tokens stream as their round is verified, one behind,
+                    // so the last carries the finish; a client that left
+                    // stops the generation within a round.
+                    let mut held: Option<(u32, f64)> = None;
+                    let mut on_token = |token: u32, logprob: f64| match held.replace((token, logprob)) {
+                        Some((t, lp)) => events.send(Ev::Token { token: t, logprob: lp, finish: None, at_ns: now_ns() }).is_ok(),
+                        None => !events.is_closed(),
+                    };
+                    let result = spec::generate_stream(&mut RunnerTarget::new(engine.runner_mut()), cfg, &req.prompt, &req.params, req.seed, req.max_tokens, &req.stop_ids, &mut on_token);
                     match result {
                         Ok(g) => {
                             if let Ok(mut s) = shared.spec.lock() {
                                 s.0 += g.stats.drafted as u64;
                                 s.1 += g.stats.accepted as u64;
                             }
-                            let finish = Some(match g.finish { spec::Finish::Stop => FinishReason::Stop, spec::Finish::Length => FinishReason::Length });
-                            let at_ns = now_ns();
-                            for (i, (&token, &logprob)) in g.tokens.iter().zip(&g.logprobs).enumerate() {
-                                let end = (i + 1 == g.tokens.len()).then_some(finish).flatten();
-                                if events.send(Ev::Token { token, logprob, finish: end, at_ns }).is_err() { break; }
+                            let finish = match g.finish { spec::Finish::Stop => FinishReason::Stop, spec::Finish::Length => FinishReason::Length };
+                            if let Some((token, logprob)) = held {
+                                let _ = events.send(Ev::Token { token, logprob, finish: Some(finish), at_ns: now_ns() });
                             }
                         }
                         Err(e) => { let _ = events.send(Ev::Failed(e.to_string())); }
@@ -776,7 +1007,7 @@ fn finish_request(shared: &Shared, obs: &Obs, operation: &str, model: &str, out:
     let rec = RequestRecord {
         operation: operation.to_string(),
         model: model.to_string(),
-        role: "unified".to_string(),
+        role: shared.role.as_str().to_string(),
         ttft_s: first.map(secs),
         e2e_s: obs.received.elapsed().as_secs_f64(),
         output_tokens: out.token_times_ns.len(),
@@ -944,11 +1175,15 @@ async fn generate(shared: Arc<Shared>, headers: &hyper::HeaderMap, spec: GenSpec
     if shared.draining.load(Ordering::SeqCst) {
         return fail(ApiError::no_capacity("the engine is draining"), Outcome::default());
     }
-    if headers.contains_key("x-tl-kv-handle") {
-        let mut e = ApiError::invalid(None, "unknown KV handle: this engine serves no disaggregated hand-offs (L10.6)");
+    let not_found = |m: String| {
+        let mut e = ApiError::invalid(None, m);
         e.status = 404;
         e.code = Some("kv_handle_not_found");
-        return fail(e, Outcome::default());
+        e
+    };
+    let handle = headers.get("x-tl-kv-handle").map(|h| h.to_str().unwrap_or("").to_string());
+    if handle.is_some() && shared.receiver.is_none() {
+        return fail(not_found(format!("unknown KV handle: a {} engine resumes no disaggregated requests (L10.6)", shared.role.as_str())), Outcome::default());
     }
     let priority = match headers.get("x-tl-priority").map(|v| v.to_str().ok().and_then(|s| s.trim().parse::<i32>().ok())) {
         None => 0,
@@ -999,15 +1234,43 @@ async fn generate(shared: Arc<Shared>, headers: &hyper::HeaderMap, spec: GenSpec
     };
     let seed = spec.seed.unwrap_or_else(|| mix64(u64::from_str_radix(&new_id(&shared), 16).unwrap_or(0)) >> 1);
     let req = GenRequest { prompt: tokens.clone(), params: spec.params.clone(), seed, max_tokens, stop_ids: shared.eos_ids.clone(), priority };
+    // a disaggregated resume takes the blocks pushed under its handle
+    let resume = match (&handle, &shared.receiver) {
+        (Some(h), Some(r)) => match r.claim(h) {
+            None => return fail(not_found(format!("unknown KV handle {h:?}")), base),
+            Some(blocks) if blocks.len() != tokens.len().div_ceil(shared.block_size) || constraint.is_some() => {
+                release_blocks(&shared.pool, &blocks);
+                let e = if constraint.is_some() {
+                    ApiError::unsupported("tools", "a disaggregated resume does not decode under a grammar")
+                } else {
+                    ApiError::invalid(None, format!("KV handle {h:?} holds {} blocks; the prompt's {} tokens need {}", blocks.len(), tokens.len(), tokens.len().div_ceil(shared.block_size)))
+                };
+                return fail(e, base);
+            }
+            Some(blocks) => Some(blocks),
+        },
+        _ => None,
+    };
     // in flight from here until the response (or its stream) ends: a drain
     // waits for it
     shared.inflight.fetch_add(1, Ordering::SeqCst);
     let guard = Inflight(Arc::clone(&shared));
     let (tx, mut rx) = mpsc::unbounded_channel();
-    match shared.cmds.try_send(Cmd::Generate { req, events: tx, constraint }) {
+    match shared.cmds.try_send(Cmd::Generate { req, events: tx, constraint, resume }) {
         Ok(()) => {}
-        Err(TrySendError::Full(_)) => return fail(ApiError::queue_full(), base),
-        Err(TrySendError::Disconnected(_)) => return fail(ApiError::no_capacity("the engine stopped"), base),
+        Err(e) => {
+            let (TrySendError::Full(c) | TrySendError::Disconnected(c)) = &e;
+            if let Cmd::Generate { resume: Some(blocks), .. } = c {
+                release_blocks(&shared.pool, blocks);
+            }
+            return fail(
+                match e {
+                    TrySendError::Full(_) => ApiError::queue_full(),
+                    TrySendError::Disconnected(_) => ApiError::no_capacity("the engine stopped"),
+                },
+                base,
+            );
+        }
     }
     let mut admitted_ns = None;
     let first = loop {
@@ -1228,7 +1491,7 @@ async fn embeddings(shared: Arc<Shared>, body: &[u8], obs: &Obs) -> Response<Res
     let result = embed(&shared, &model, inputs).await;
     if let Ok(mut m) = shared.metrics.lock() {
         let error_type = result.as_ref().err().map(|e| Outcome::failed(e).error_type.unwrap_or_default());
-        let rec = RequestRecord { operation: "embeddings".into(), model: model.clone(), role: "unified".into(), ttft_s: None, e2e_s: obs.received.elapsed().as_secs_f64(), output_tokens: 0, error_type };
+        let rec = RequestRecord { operation: "embeddings".into(), model: model.clone(), role: shared.role.as_str().into(), ttft_s: None, e2e_s: obs.received.elapsed().as_secs_f64(), output_tokens: 0, error_type };
         let _ = m.record_request(&rec);
     }
     match result {
@@ -1447,6 +1710,7 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
     // SOLUTION-BEGIN L10.9
     let runner = ModelRunner::load(&cfg.model_dir, &cfg.engine).map_err(|e| format!("{e:#}"))?;
     let mcfg = runner.config().clone();
+    let pool = runner.pool();
     let tok: Arc<dyn Tokenizer> = match mcfg.tokenizer {
         TokenizerKind::Bytes => Arc::new(ByteTokenizer),
         TokenizerKind::File => Arc::new(ByteBpe::from_hf_json(&cfg.model_dir.join("tokenizer.json")).map_err(|e| e.to_string())?),
@@ -1476,10 +1740,33 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
         prefill_chunk: cfg.engine.prefill_chunk,
         vocab: mcfg.vocab_size,
         grammars: Mutex::new(HashMap::new()),
+        role: cfg.role,
+        receiver: (cfg.role == Role::Decode).then(|| Arc::new(KvReceiver::new(Arc::clone(&pool)))),
+        pool,
+        block_size: cfg.engine.kv.block_size,
     });
     let std_http = std::net::TcpListener::bind(listen_addr(&cfg.http_listen)?).map_err(|e| format!("{}: {e}", cfg.http_listen))?;
     let std_health = std::net::TcpListener::bind(listen_addr(&cfg.health_listen)?).map_err(|e| format!("{}: {e}", cfg.health_listen))?;
     let (http_addr, health_addr) = (std_http.local_addr().map_err(|e| e.to_string())?, std_health.local_addr().map_err(|e| e.to_string())?);
+    // L10.6: EngineControl on the prefill and decode roles (Prefill needs
+    // prefill; Info answers both), tl.kv.v1 on the decode role. They stop
+    // when the server thread ends.
+    let mut grpc: Vec<GrpcServer> = Vec::new();
+    if cfg.role != Role::Unified {
+        if let Some(a) = &cfg.grpc_listen {
+            let l = std::net::TcpListener::bind(listen_addr(a)?).map_err(|e| format!("{a}: {e}"))?;
+            let svc = ControlService {
+                backend: Arc::new(EngineBackend { shared: Arc::clone(&shared) }),
+                transport: Arc::new(GrpcTransport { timeout: Duration::from_secs(10) }),
+                roles: vec![cfg.role.as_str().to_string()],
+            };
+            grpc.push(control::serve_control(l, svc).map_err(|e| format!("{a}: {e}"))?);
+        }
+        if let (Some(a), Some(r)) = (&cfg.kv_listen, &shared.receiver) {
+            let l = std::net::TcpListener::bind(listen_addr(a)?).map_err(|e| format!("{a}: {e}"))?;
+            grpc.push(kvt::serve_kv(l, Arc::clone(r)).map_err(|e| format!("{a}: {e}"))?);
+        }
+    }
     std_http.set_nonblocking(true).map_err(|e| e.to_string())?;
     std_health.set_nonblocking(true).map_err(|e| e.to_string())?;
     let (drain_tx, drain_rx) = watch::channel(false);
@@ -1498,6 +1785,7 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
     let thread = std::thread::Builder::new()
         .name("tl-serve".to_string())
         .spawn(move || -> Result<(), String> {
+            let _grpc = grpc;
             let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build().map_err(|e| e.to_string())?;
             rt.block_on(async move {
                 let http = tokio::net::TcpListener::from_std(std_http).map_err(|e| e.to_string())?;

@@ -26,3 +26,4 @@ m11	rust/crates/tl-engine/src/spec.rs	auto	expression	352	n	the last block's fil
 m12	rust/crates/tl-engine/src/spec.rs	auto	boundary	346	n	rollback keeps a block	one block too many kept
 m13	rust/crates/tl-engine/src/spec.rs	auto	statement-dup	348	n	a release is repeated	two references dropped
 m14	rust/crates/tl-engine/src/spec.rs	auto	expression	330	n	block count changed	one block too many at exact multiples
+m15	rust/crates/tl-engine/src/spec.rs	auto	statement-deletion	582	n	the streaming listener is ignored	generation never stops when the client leaves

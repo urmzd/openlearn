@@ -30,4 +30,8 @@ timeout_s = 60
 determinism_runs = 2
 
 [fixtures]
-files = ["course/fixtures/L10.8/spec_golden.json"]
+files = [
+  "course/fixtures/L10.8/spec_golden.json",
+  "course/fixtures/L7.9/tiny-llama-2l/config.json",
+  "course/fixtures/L7.9/tiny-llama-2l/model.safetensors",
+]

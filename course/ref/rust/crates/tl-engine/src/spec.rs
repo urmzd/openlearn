@@ -25,7 +25,6 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::model::Arch;
 use crate::kv::KvPool;
 use crate::forward::{ForwardBatch, ForwardSeq};
 use crate::runner::{lock, ModelRunner};
@@ -408,6 +407,13 @@ impl<'a> RunnerTarget<'a> {
     pub fn new(runner: &'a mut ModelRunner) -> RunnerTarget<'a> {
         RunnerTarget { runner, blocks: Vec::new(), cached: 0 }
     }
+
+    /// A target over blocks the request already holds (one reference each,
+    /// returned on drop) whose first `cached` positions are filled: a
+    /// disaggregated request resuming from KV another engine pushed (L10.6).
+    pub fn resume(runner: &'a mut ModelRunner, blocks: Vec<u32>, cached: usize) -> RunnerTarget<'a> {
+        RunnerTarget { runner, blocks, cached }
+    }
 }
 
 impl Target for RunnerTarget<'_> {
@@ -423,22 +429,25 @@ impl Target for RunnerTarget<'_> {
             let more = pool.alloc(need - self.blocks.len()).map_err(|e| SpecError::Kv(e.to_string()))?;
             self.blocks.extend(more);
         }
-        let mut rows = Vec::with_capacity(ids.len());
-        if self.runner.config().arch == Arch::Bigram {
-            // The byte-bigram runner's batch dimension is sequences, and it
-            // emits one row after each sequence's final token. Score each
-            // speculative position as a one-token sequence.
-            for (offset, token) in ids.iter().enumerate() {
-                let one = std::slice::from_ref(token);
-                let batch = ForwardBatch { seqs: vec![ForwardSeq { tokens: one, start: self.cached + offset, blocks: &self.blocks }] };
-                let logits = self.runner.forward(&batch).map_err(|e| SpecError::Target(e.to_string()))?;
-                rows.push(logits.row(0).to_vec());
-            }
-        } else {
-            let batch = ForwardBatch { seqs: vec![ForwardSeq { tokens: ids, start: self.cached, blocks: &self.blocks }] };
-            let logits = self.runner.forward(&batch).map_err(|e| SpecError::Target(e.to_string()))?;
-            rows.extend(logits.data.chunks_exact(logits.vocab).map(<[f32]>::to_vec));
+        // The forward contract returns one row per sequence: the logits
+        // after that sequence's last token. Verification needs a row after
+        // every fed id, so each id is its own one-token sequence over the
+        // request's blocks, at its own position, all in ONE forward. Within a
+        // layer a sequence writes its K and V before it attends, so the
+        // sequence at position p sees the ones before it; every row then
+        // runs the same per-row math as a decode step of that position
+        // (batch invariance, DESIGN 2.4), which keeps greedy output equal to
+        // the plain loop's.
+        let seqs = ids
+            .iter()
+            .enumerate()
+            .map(|(offset, token)| ForwardSeq { tokens: std::slice::from_ref(token), start: self.cached + offset, blocks: &self.blocks })
+            .collect();
+        let logits = self.runner.forward(&ForwardBatch { seqs }).map_err(|e| SpecError::Target(e.to_string()))?;
+        if logits.rows() != ids.len() {
+            return Err(SpecError::Target(format!("forward returned {} rows for {} one-token sequences", logits.rows(), ids.len())));
         }
+        let rows: Vec<Vec<f32>> = (0..ids.len()).map(|i| logits.row(i).to_vec()).collect();
         self.cached += ids.len();
         Ok(rows)
     }
@@ -526,6 +535,18 @@ pub fn generate(
     max_new: usize,
     eos: &[u32],
 ) -> Result<Generated, SpecError> {
+    generate_stream(target, cfg, prompt, p, seed, max_new, eos, &mut |_, _| true)
+}
+
+/// [`generate`] for a server that streams: every emitted token (and its
+/// logprob) goes to `on_token` as soon as its round is verified, before the
+/// next round runs. When `on_token` returns false (the client went away),
+/// generation stops at once and returns what it has (finish Length).
+#[allow(clippy::too_many_arguments)]
+pub fn generate_stream(
+    target: &mut dyn Target, cfg: &SpecConfig, prompt: &[u32], p: &SamplingParams,
+    seed: u64, max_new: usize, eos: &[u32], on_token: &mut dyn FnMut(u32, f64) -> bool,
+) -> Result<Generated, SpecError> {
     // SOLUTION-BEGIN L10.8
     if prompt.is_empty() {
         return Err(SpecError::Shape("empty prompt".to_string()));
@@ -558,6 +579,9 @@ pub fn generate(
             }
             g.tokens.push(t);
             g.logprobs.push(lp);
+            if !on_token(t, lp) {
+                return Ok(g);
+            }
             if g.tokens.len() == max_new {
                 return Ok(g);
             }

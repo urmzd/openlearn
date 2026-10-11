@@ -45,9 +45,7 @@
 # seeded output equal to the unified engine, an unknown and a released handle
 # answering 404 kv_handle_not_found, and a transfer reset mid-push (a harness
 # proxy in front of the kv port) failing Prefill without leaking a KV block
-# on either side, after which that decode engine serves again. The disagg
-# step is written below but stays commented until the reference serve loop
-# serves both roles (DEVIATIONS B92-08, X34).
+# on either side, after which that decode engine serves again.
 #
 # Covered elsewhere, so not repeated here: Rust and Python samplers agree on
 # fixture logits (L10.1's course tests, parity/sampler); the engine's greedy
@@ -85,15 +83,12 @@ name     = "speculative-greedy-unchanged"
 services = ["engine", "engine-spec"]
 expect   = { match = "greedy-equal", engines = ["engine", "engine-spec"], max_tokens = 32 }
 
-# -- PENDING: disaggregated serving (DESIGN 4.3 step 5) --------------------------------
-# Uncomment once the serve loop serves the prefill and decode roles (DEVIATIONS
-# B92-08): the reference tl-serve still refuses engine.role other than
-# "unified" and any X-TL-KV-Handle, so engine-prefill does not start.
-#
-# [[step]]
-# name     = "disaggregated-equals-unified"
-# services = ["engine", "engine-prefill", "engine-decode-a", "engine-decode-b"]
-# expect   = { match = "disagg", unified = "engine", prefill = "engine-prefill", decode = ["engine-decode-a", "engine-decode-b"] }
+# -- disaggregated serving (DESIGN 4.3 step 5) ----------------------------------------
+
+[[step]]
+name     = "disaggregated-equals-unified"
+services = ["engine", "engine-prefill", "engine-decode-a", "engine-decode-b"]
+expect   = { match = "disagg", unified = "engine", prefill = "engine-prefill", decode = ["engine-decode-a", "engine-decode-b"] }
 
 # -- load: 64 at once from your load generator -------------------------------------
 

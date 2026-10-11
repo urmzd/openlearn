@@ -61,9 +61,7 @@ roles, greedy (plain and streamed, alternating the two decode engines) and
 seeded output equal to the unified engine, an unknown and a released handle
 answering 404 kv_handle_not_found, and a transfer reset mid-push (a harness
 proxy in front of the kv port) failing Prefill without leaking a KV block
-on either side, after which that decode engine serves again. The disagg
-step is written below but stays commented until the reference serve loop
-serves both roles (DEVIATIONS B92-08, X34).
+on either side, after which that decode engine serves again.
 
 Covered elsewhere, so not repeated here: Rust and Python samplers agree on
 fixture logits (L10.1's course tests, parity/sampler); the engine's greedy
