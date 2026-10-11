@@ -80,7 +80,7 @@ func TestListPrefersThePackOnDiskOverItsBuiltInCopy(t *testing.T) {
 		}
 	}
 	if !got[0].Practice || got[3].Practice {
-		t.Error("a practice CLI runs from a directory, never from a built-in pack")
+		t.Error("exercises run from a directory, never from a built-in pack")
 	}
 	for _, p := range got {
 		if _, err := r.Open(p.Ref); err != nil {

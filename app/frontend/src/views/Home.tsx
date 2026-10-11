@@ -102,7 +102,7 @@ export function Home({
               <ListRow
                 leading={<SquareTerminal className="size-4" />}
                 title="Exercises"
-                description="Edit an attempt and check it with the pack's own CLI. The exit code is the verdict."
+                description="Edit an attempt and run it against its own tests. The exit code is the verdict."
                 onClick={() => onNavigate({ kind: "exercises" })}
               />
             )}
@@ -116,7 +116,7 @@ export function Home({
               leading={<Plug className="size-4" />}
               title="Bring your own agent"
               description="Connect any MCP client and it can read the course, see your progress, and check your exercises."
-              onClick={() => onNavigate({ kind: "settings" })}
+              onClick={() => onNavigate({ kind: "connect" })}
             />
           </ListGroup>
         </div>

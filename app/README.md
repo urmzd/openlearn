@@ -18,7 +18,7 @@
 > format are all still moving. Scores are directional, not authoritative.
 
 openlearn renders a **course pack**: a directory of markdown with an `openlearn.json`
-manifest that names its tracks, its role paths, and its practice CLI. The app knows
+manifest that names its tracks, its role paths, and its exercises. The app knows
 nothing about any one course. The [supersource curriculum](../README.md) is the pack built
 into the binary, and [languide](../packs/languide/) ships beside it; any other directory
 with a manifest loads the same way.
@@ -31,14 +31,14 @@ against a hosted model.
 
 ## Features
 
-- **Course packs.** Tracks, role paths, eval modes, and the practice CLI come from the
+- **Course packs.** Tracks, role paths, eval modes, and exercises come from the
   pack's manifest. Open a folder or import a zip and the app teaches that course instead.
 - **A reader built for courses.** Math, diagrams, tables, and links between documents,
   with full-text search across the pack.
 - **Paths with shared progress.** Stages, what "done" means for each, and which you have
   finished, read from the same `.done` files `ol learn` writes.
 - **Exercises that run for real.** Edit an attempt in the app and check it with the pack's
-  own CLI. The exit code is the verdict, the same one a terminal would give you.
+  own tests. The exit code is the verdict, the same one a terminal would give you.
 - **Sessions grounded in a chapter.** Start from any document and the exercise and its
   hidden rubric are generated from that material: a board for system design, an editor for
   coding, a written answer for everything else.
@@ -79,7 +79,8 @@ ollama pull qwen3.5:9b
 make build && open build/bin/openlearn.app
 ```
 
-1. Pick a provider and model in **Settings**, then hit **Test connection**.
+1. Open **Timed session**, pick a provider and model under **Model**, and hit **Test
+   connection**.
 2. Open a chapter and hit **Practice this**, or start a **Timed session** cold. Choose a
    mode, a level, and a timebox. Start. Generation takes a moment on a local
    model: it writes the brief, then the hidden rubric.
@@ -116,7 +117,7 @@ relative to that directory.
   "repo": "https://github.com/me/my-course",
   "paths": "paths",
   "featured": "main",
-  "practice": "bin/check",
+  "practice": "exercises.json",
   "modes": ["written"],
   "start": [{ "file": "README.md", "title": "Overview" }],
   "tracks": [{ "dir": "unit-1", "title": "Unit 1" }]
@@ -132,17 +133,51 @@ relative to that directory.
 | `paths` | Directory holding one `<name>/path.tsv` per role path. See [paths/README.md](../paths/README.md) for the format. |
 | `featured` | The path the home screen leads with. |
 | `modes` | Which timed-session modes fit the material: `system_design`, `coding`, `written`. Omit for all three. |
-| `practice` | An executable implementing the practice CLI contract documented in [`internal/practice`](internal/practice/practice.go). It only runs when the pack is opened from a folder. |
+| `practice` | The exercise spec: which exercises exist and the commands that run them. See below. It only runs when the pack is opened from a folder. |
+| `stageCheck` | Optional command that decides whether a path stage tied to a check may be marked done. `{path}` and `{stage}` are filled in; exit status 0 means yes. |
 | `repo` | Where links to files the app does not render (code, configs) open. |
 
-Open it with **Settings > Open folder**, or zip the directory and use **Import zip**. The two
+### Exercises
+
+The exercise spec lists sets of exercises that are found and run the same way:
+
+```json
+{
+  "sets": [
+    {
+      "kind": "build", "lang": "c", "mode": "attempt",
+      "glob": "exercises/c/[0-9][0-9]-*",
+      "run": { "steps": [["cc", "-o", "{out}/bin", "*.c"], ["{out}/bin"]] }
+    },
+    {
+      "kind": "predict", "lang": "python", "mode": "predict",
+      "glob": "snippets/[0-9][0-9]-*.py",
+      "run": { "dir": "snippets", "steps": [["python3", "{name}.py"]] }
+    }
+  ]
+}
+```
+
+| Mode | The learner writes | Verdict |
+|------|--------------------|---------|
+| `attempt` | The code. Their copy has every region between `SOLUTION-BEGIN` and `SOLUTION-END` marker lines replaced by a TODO. | The exit status of the steps, run in their copy |
+| `predict` | The exact output of a snippet they can read but not edit | Whether it matches what the snippet prints |
+
+Each `glob` match is one exercise, a file or a directory, named by its base name. `items`
+lists exercises one by one instead. Steps are argument lists run without a shell: `{name}`
+is the exercise, `{out}` a build directory outside the attempt, `{file}` the attempt's
+single file, and a bare pattern such as `*.c` expands to the attempt's files. An attempt
+with an executable `run.sh` is run through that instead.
+
+Open it with **Courses > Open folder**, or zip the directory and use **Import zip**. The two
 packs in this repository are working examples: [the curriculum](../openlearn.json), which
 has everything, and [languide](../packs/languide/openlearn.json), which is documents and
 paths only.
 
 ## Configuration
 
-Settings live in `~/.openlearn/settings.json` and are editable from the Settings view.
+Settings live in `~/.openlearn/settings.json`. The model is set from the timed-session
+screen, where it is used.
 
 | Provider | Model discovery | Notes |
 |----------|-----------------|-------|

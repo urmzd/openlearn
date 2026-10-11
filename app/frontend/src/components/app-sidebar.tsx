@@ -17,9 +17,10 @@ import {
   ChevronsUpDown,
   Gauge,
   Home,
+  Library,
   PanelLeft,
+  Plug,
   Search as SearchIcon,
-  Settings as SettingsIcon,
   SquareTerminal,
   Timer,
 } from "lucide-react";
@@ -196,7 +197,7 @@ export function AppSidebar({
               ))}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onNavigate({ kind: "settings" })}>
+            <DropdownMenuItem onClick={() => onNavigate({ kind: "courses" })}>
               Add or manage courses
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -334,16 +335,29 @@ export function AppSidebar({
       <SidebarSeparator className="mx-0" />
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={route.kind === "settings"}
-              onClick={() => onNavigate({ kind: "settings" })}
-              tooltip="Settings"
-            >
-              <SettingsIcon />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {[
+            {
+              label: "Courses",
+              icon: Library,
+              route: { kind: "courses" } as Route,
+            },
+            {
+              label: "Connect an agent",
+              icon: Plug,
+              route: { kind: "connect" } as Route,
+            },
+          ].map((n) => (
+            <SidebarMenuItem key={n.label}>
+              <SidebarMenuButton
+                isActive={route.kind === n.route.kind}
+                onClick={() => onNavigate(n.route)}
+                tooltip={n.label}
+              >
+                <n.icon />
+                <span>{n.label}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

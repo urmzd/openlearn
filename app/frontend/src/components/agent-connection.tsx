@@ -1,5 +1,4 @@
-// How to point an agent at this app. There is no assistant built in: the app
-// serves the open pack over MCP, and the learner brings the agent they use.
+// The command that connects an agent to this install, ready to copy.
 
 import { useEffect, useState } from "react";
 import { Check, Copy } from "lucide-react";
@@ -45,12 +44,7 @@ export function AgentConnection() {
   };
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border p-4">
-      <p className="text-sm text-muted-foreground">
-        The app has no assistant of its own. It serves the open pack over MCP, so the agent you
-        already use can read the course, see the page you have open and your progress, and check
-        your exercises with the pack's own checker.
-      </p>
+    <div className="flex flex-col gap-4">
       {snippets.map((s) => (
         <div key={s.label}>
           <div className="mb-1.5 flex items-center justify-between">

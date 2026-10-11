@@ -1,6 +1,6 @@
 // Package course is the platform's content mechanism. A course is a directory
 // tree of markdown with a manifest at its root: tracks to read, role paths that
-// order them, and a practice CLI. The app renders whatever course it is handed
+// order them, and exercises. The app renders whatever course it is handed
 // and knows nothing about any one of them; X// the course that ships inside the binary.
 package course
 
@@ -32,8 +32,13 @@ type Manifest struct {
 	Paths string `json:"paths"`
 	// Featured names the path the app leads with.
 	Featured string `json:"featured"`
-	// Practice is the practice CLI. It only runs from a checkout on disk.
+	// Practice is the pack's exercise spec (see internal/practice). Exercises
+	// only run from a pack on disk.
 	Practice string `json:"practice"`
+	// StageCheck is an optional command that decides whether a path stage tied
+	// to a check may be marked finished. {path} and {stage} are filled in, and
+	// exit status 0 means it may. Without it, such stages cannot be marked here.
+	StageCheck []string `json:"stageCheck"`
 	// Modes are the session kinds that make sense for this material, in the
 	// order the app offers them. Empty means all of them.
 	Modes []string `json:"modes"`
@@ -64,11 +69,11 @@ type Info struct {
 	Tagline string `json:"tagline"`
 	Repo    string `json:"repo"`
 	// Root is the checkout the course was read from. Empty for the built-in
-	// course, which has no directory to run the practice CLI in.
+	// course, which has no directory to run exercises in.
 	Root     string `json:"root"`
 	BuiltIn  bool   `json:"builtIn"`
 	Featured string `json:"featured"`
-	// Practice reports whether the pack has a practice CLI that can run here.
+	// Practice reports whether the pack has exercises that can run here.
 	Practice bool     `json:"practice"`
 	Modes    []string `json:"modes"`
 }

@@ -35,7 +35,7 @@ Start with course_overview. Call current_focus when the learner says "this page"
 How to tutor here:
 - Answer the question asked, first, in plain words. Ground it in the course document when one covers it, and say so when you are going beyond it.
 - When the learner is working toward an answer, ask the one question that moves them forward instead of handing it over. When they ask you to just explain, explain.
-- Exercises are graded by the pack, not by you. check_exercise runs the learner's attempt and returns the verdict; never tell them an attempt passes without it. Do not write their solution into an attempt unless they ask you to.
+- Exercises are graded by running them, not by you. check_exercise runs the learner's attempt against its own tests and returns the verdict; never tell them an attempt passes without it. Do not write their solution into an attempt unless they ask you to.
 - A path stage is finished when its "done when" is true. Only call mark_stage when the learner says they have met it, or asks you to. Stages with a check can only be marked once that check has passed; the tool will tell you.
 - If you are unsure, say what you are unsure about.`
 
@@ -159,7 +159,7 @@ func (s *Server) register(srv *mcp.Server) {
 	}, s.profile)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_exercises",
-		Description: "The pack's exercises grouped by kind and language, with which ones the learner has started. Empty when the pack has no practice CLI that can run here.",
+		Description: "The pack's exercises grouped by kind and language, with which ones the learner has started. Empty when the pack has no exercises that can run here.",
 		Annotations: readOnly,
 	}, s.listExercises)
 	mcp.AddTool(srv, &mcp.Tool{
@@ -172,7 +172,7 @@ func (s *Server) register(srv *mcp.Server) {
 	}, s.writeExerciseFile)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "check_exercise",
-		Description: "Run the learner's attempt through the pack's own checker. Returns the verdict (pass, fail, or none if not started) and the checker's output. This is the only source of truth for whether an attempt is right.",
+		Description: "Run the learner's attempt against the exercise's own tests. Returns the verdict (pass, fail, or none if not started) and the checker's output. This is the only source of truth for whether an attempt is right.",
 	}, s.checkExercise)
 }
 
@@ -365,7 +365,7 @@ type exerciseArgs struct {
 	Name string `json:"name" jsonschema:"the exercise name from list_exercises, such as 01-dynamic-array"`
 }
 
-const noExercises = "this pack has no exercises that can run here: it needs to be opened from a folder on disk, with its practice CLI"
+const noExercises = "this pack has no exercises that can run here: it needs to be opened from a folder on disk"
 
 func (s *Server) listExercises(ctx context.Context, _ *mcp.CallToolRequest, _ noArgs) (*mcp.CallToolResult, any, error) {
 	w := s.workspace()

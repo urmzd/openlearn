@@ -1,5 +1,5 @@
 // Package workspace is one open course pack with everything that hangs off it:
-// its documents, the learner's progress, and its practice CLI. The desktop app
+// its documents, the learner's progress, and its exercises. The desktop app
 // and the MCP server both open a workspace, which is what keeps a stage marked
 // by an agent and one marked in the app the same mark.
 package workspace
@@ -9,7 +9,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/urmzd/openlearn/app/internal/builtin"
 	"github.com/urmzd/openlearn/app/internal/course"
@@ -26,7 +29,7 @@ type Workspace struct {
 	Ref      string
 	Course   *course.Course
 	Progress course.DoneFiles
-	// Runner is nil when the pack has no practice CLI or is not on disk.
+	// Runner is nil when the pack has no exercises or is not on disk.
 	Runner *practice.Runner
 }
 
@@ -67,13 +70,14 @@ func Open(reg packs.Registry, ref string, linked []string, storeRoot string, log
 	if info.Practice {
 		runner, err := practice.New(c.Dir(), c.Manifest().Practice)
 		if err != nil {
-			log.Warn("practice CLI unavailable", "err", err)
+			log.Warn("exercises unavailable", "err", err)
 		}
 		w.Runner = runner
 	}
-	// A pack with a working practice CLI keeps progress where the CLI does, so
-	// the two agree. Any other pack has nowhere of its own to write.
-	if w.Runner != nil {
+	// A pack on disk keeps progress inside itself, in the layout its own
+	// tooling reads, so the two agree. A built-in pack has nowhere of its own
+	// to write.
+	if c.Dir() != "" {
 		w.Progress = course.CheckoutProgress(c.Dir())
 	} else {
 		w.Progress = course.StoreProgress(filepath.Join(storeRoot, "learn", info.ID))
@@ -98,24 +102,62 @@ func (w *Workspace) Paths() []course.PathSummary { return w.Course.Paths(w.Progr
 func (w *Workspace) Path(name string) (course.Path, error) { return w.Course.Path(name, w.Progress) }
 
 // MarkStage marks a path stage finished or not, and returns what to tell the
-// learner. A stage tied to a check is only marked by the practice CLI, which
-// is what knows whether the check passed.
+// learner. A stage tied to a check is only marked when the pack's own stage
+// check says it passed: nothing here can decide that on the pack's behalf.
 func (w *Workspace) MarkStage(ctx context.Context, top, key string, done bool) (practice.Result, error) {
 	stage, err := w.Course.Stage(top, key)
 	if err != nil {
 		return practice.Result{}, err
 	}
-	if w.Runner != nil {
-		return w.Runner.Learn(ctx, top, key, done)
-	}
 	if done && stage.Check != "" {
-		return practice.Result{
-			Verdict: "fail",
-			Output:  fmt.Sprintf("This stage is finished by passing %s, which needs the pack's practice CLI. Open the pack from a checkout to run it.", stage.Check),
-		}, nil
+		return w.checkedStage(ctx, top, key, stage)
 	}
 	if err := w.Progress.Mark(stage.Owner, stage.Number, done); err != nil {
 		return practice.Result{}, err
 	}
-	return practice.Result{Verdict: "pass"}, nil
+	return practice.Result{Verdict: practice.VerdictPass}, nil
+}
+
+// stageCheckTimeout bounds the pack's stage check, which may run tests.
+const stageCheckTimeout = 5 * time.Minute
+
+// checkedStage hands a check-gated stage to the pack's stage check command.
+// The command is the pack's own, named in its manifest and run directly; it is
+// looked up at the moment it is needed, so a pack whose tooling moved reports
+// that instead of failing on a path remembered from earlier.
+func (w *Workspace) checkedStage(ctx context.Context, top, key string, stage course.Stage) (practice.Result, error) {
+	refuse := func(format string, args ...any) (practice.Result, error) {
+		return practice.Result{Verdict: practice.VerdictFail, Output: fmt.Sprintf(format, args...)}, nil
+	}
+	argv := w.Course.Manifest().StageCheck
+	if w.Course.Dir() == "" || len(argv) == 0 {
+		return refuse("This stage is finished by passing %s, which this pack can only verify from a folder on disk with its own tooling.", stage.Check)
+	}
+	fill := strings.NewReplacer("{path}", top, "{stage}", key)
+	args := make([]string, len(argv))
+	for i, a := range argv {
+		args[i] = fill.Replace(a)
+	}
+	exe := args[0]
+	if strings.ContainsRune(exe, '/') && !filepath.IsAbs(exe) {
+		exe = filepath.Join(w.Course.Dir(), filepath.FromSlash(exe))
+	}
+	if _, err := exec.LookPath(exe); err != nil {
+		return refuse("This stage is finished by passing %s, but the pack's stage check (%s) is not there to run.", stage.Check, argv[0])
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, stageCheckTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, exe, args[1:]...) //nolint:gosec // G204: the pack's declared stage check, arguments are a path name and a stage key from the pack
+	cmd.Dir = w.Course.Dir()
+	cmd.Env = append(os.Environ(), "NO_COLOR=1")
+	out, err := cmd.CombinedOutput()
+	text := strings.TrimSpace(string(out))
+	if err != nil {
+		if text == "" {
+			text = fmt.Sprintf("%s has not passed yet.", stage.Check)
+		}
+		return practice.Result{Verdict: practice.VerdictFail, Output: text}, nil
+	}
+	return practice.Result{Verdict: practice.VerdictPass, Output: text}, nil
 }
