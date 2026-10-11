@@ -2,6 +2,7 @@ package practice_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -258,5 +259,86 @@ func TestThisPacksSpecRunsARealExercise(t *testing.T) {
 	}
 	if res, _ := r.Check(ctx, "build", "c", name); res.Verdict != "pass" {
 		t.Fatalf("the reference should pass, got %s:\n%s", res.Verdict, res.Output)
+	}
+}
+
+// The spec is a second description of a tree that practice/bin/ol also walks.
+// This fails when the two drift: a language directory or a reattempt row with
+// no set in the spec, or a set pointing at something that is not there.
+func TestThisPacksSpecCoversTheExerciseTree(t *testing.T) {
+	root := "../../.."
+	data, err := os.ReadFile(filepath.Join(root, "practice/exercises.json"))
+	if err != nil {
+		t.Skip("no exercise spec beside the app:", err)
+	}
+	var spec practice.Spec
+	if err := json.Unmarshal(data, &spec); err != nil {
+		t.Fatal(err)
+	}
+
+	type key struct{ kind, lang string }
+	sets := map[key]practice.Set{}
+	items := map[string]string{} // "track<TAB>name" -> source
+	for _, s := range spec.Sets {
+		sets[key{s.Kind, s.Lang}] = s
+		if s.Glob != "" {
+			// The directory a glob looks in must exist, even when it is empty.
+			if _, err := os.Stat(filepath.Join(root, filepath.Dir(filepath.FromSlash(s.Glob)))); err != nil {
+				t.Errorf("set %s/%s globs a directory that does not exist: %s", s.Kind, s.Lang, s.Glob)
+			}
+		}
+		for _, it := range s.Items {
+			items[s.Lang+"\t"+it.Name] = it.Source
+			if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(it.Source))); err != nil {
+				t.Errorf("set %s/%s lists %s, which does not exist", s.Kind, s.Lang, it.Source)
+			}
+		}
+	}
+
+	// Every language directory on disk has a set: practice/predict/<lang> and
+	// practice/build/<tier>/<lang>.
+	langDirs := map[string][]string{"predict": {"practice/predict/*"}, "build": {"practice/build/*/*"}}
+	for kind, patterns := range langDirs {
+		for _, pattern := range patterns {
+			dirs, _ := filepath.Glob(filepath.Join(root, filepath.FromSlash(pattern)))
+			for _, d := range dirs {
+				if info, err := os.Stat(d); err != nil || !info.IsDir() {
+					continue
+				}
+				if _, ok := sets[key{kind, filepath.Base(d)}]; !ok {
+					t.Errorf("%s has no %s set in practice/exercises.json", d, kind)
+				}
+			}
+		}
+	}
+
+	// Every reattempt manifest row is an item, and every item is a row.
+	manifest, err := os.ReadFile(filepath.Join(root, "practice/reattempt/manifest.tsv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := map[string]string{}
+	for _, line := range strings.Split(string(manifest), "\n") {
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		cols := strings.Split(line, "\t")
+		if len(cols) < 3 {
+			t.Errorf("malformed manifest row: %q", line)
+			continue
+		}
+		rows[cols[0]+"\t"+cols[1]] = cols[2]
+	}
+	for k, src := range rows {
+		if items[k] != src {
+			t.Errorf("reattempt row %q -> %s is missing from the spec (spec has %q)", k, src, items[k])
+		}
+	}
+	for k := range items {
+		if _, ok := rows[k]; !ok && strings.Contains(k, "\t") {
+			if _, isReattempt := sets[key{"reattempt", strings.SplitN(k, "\t", 2)[0]}]; isReattempt {
+				t.Errorf("spec item %q is not a row of practice/reattempt/manifest.tsv", k)
+			}
+		}
 	}
 }

@@ -53,6 +53,21 @@
       "run": { "steps": [["node", "main.ts"]] }
     },
     {
+      "kind": "build", "lang": "zig", "mode": "attempt",
+      "glob": "practice/build/systems/zig/[0-9][0-9]-*",
+      "run": { "steps": [["zig", "run", "main.zig", "--cache-dir", "{out}"]] }
+    },
+    {
+      "kind": "build", "lang": "scala", "mode": "attempt",
+      "glob": "practice/build/cloud/scala/[0-9][0-9]-*",
+      "run": { "steps": [["scala-cli", "run", "."]] }
+    },
+    {
+      "kind": "build", "lang": "java", "mode": "attempt",
+      "glob": "practice/build/cloud/java/[0-9][0-9]-*",
+      "run": { "steps": [["javac", "-d", "{out}", "*.java"], ["java", "-cp", "{out}", "Main"]] }
+    },
+    {
       "kind": "reattempt", "lang": "case-studies", "mode": "attempt",
       "items": [
         { "name": "01-order-book-matching", "source": "case-studies/01-order-book-matching/matching_engine.py" },
