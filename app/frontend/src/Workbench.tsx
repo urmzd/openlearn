@@ -11,13 +11,16 @@ import {
   GetCourse,
   GetDoc,
   GetOutline,
+  ListPacks,
   ListPaths,
+  OpenPack,
 } from "../wailsjs/go/main/App";
-import type { course } from "../wailsjs/go/models";
+import type { course, packs } from "../wailsjs/go/models";
+import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
-import { ProfessorPanel } from "@/components/page";
 import { Professor } from "@/components/professor";
 import type { Route } from "@/routes";
 import { DocView } from "@/views/DocView";
@@ -39,6 +42,7 @@ export function Workbench({ epoch }: Props) {
   const [info, setInfo] = useState<course.Info | null>(null);
   const [outline, setOutline] = useState<course.Outline | null>(null);
   const [paths, setPaths] = useState<course.PathSummary[]>([]);
+  const [packList, setPackList] = useState<packs.Pack[]>([]);
   const [route, setRoute] = useState<Route>({ kind: "home" });
   const [doc, setDoc] = useState<course.Doc | null>(null);
   const [notice, setNotice] = useState("");
@@ -54,9 +58,14 @@ export function Workbench({ epoch }: Props) {
   }, []);
 
   const loadPack = useCallback(async () => {
-    const [i, o] = await Promise.all([GetCourse(), GetOutline()]);
+    const [i, o, all] = await Promise.all([
+      GetCourse(),
+      GetOutline(),
+      ListPacks(),
+    ]);
     setInfo(i);
     setOutline(o);
+    setPackList(all ?? []);
     loadPaths();
     setDoc(null);
     setRoute({ kind: "home" });
@@ -78,6 +87,28 @@ export function Workbench({ epoch }: Props) {
       .catch(() => setNotice(`${path} is not part of this course pack.`));
   }, []);
 
+  const switchPack = useCallback(
+    (ref: string) => {
+      OpenPack(ref)
+        .then(loadPack)
+        .catch((e) => setNotice(String(e)));
+    },
+    [loadPack],
+  );
+
+  // Cmd/Ctrl+J shows or hides the professor from anywhere, which is why it
+  // needs no place in the navigation.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        setProfessor((p) => !p);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const bumpPractice = useCallback(() => setPracticeEpoch((n) => n + 1), []);
 
   const track =
@@ -90,112 +121,117 @@ export function Workbench({ epoch }: Props) {
 
   return (
     <TooltipProvider>
-      <ProfessorPanel.Provider
-        value={{ open: professor, show: () => setProfessor(true) }}
-      >
-        <SidebarProvider className="h-full min-h-0">
-          <AppSidebar
-            info={info}
-            outline={outline}
-            paths={paths}
-            route={route}
-            professorOpen={professor}
-            onNavigate={setRoute}
-            onOpenDoc={openDoc}
-            onToggleProfessor={() => setProfessor((p) => !p)}
-          />
-          <SidebarInset className="h-full min-h-0 min-w-0 overflow-hidden">
-            {route.kind === "home" && (
-              <Home
-                info={info}
-                outline={outline}
-                paths={paths}
-                onNavigate={setRoute}
-                onOpenDoc={openDoc}
-                onAsk={() => setProfessor(true)}
-              />
-            )}
-            {route.kind === "doc" && doc && (
-              <DocView
-                doc={doc}
-                outline={outline}
-                repo={info?.repo}
-                onNavigate={setRoute}
-                onOpenDoc={openDoc}
-                onAsk={() => setProfessor(true)}
-              />
-            )}
-            {route.kind === "track" && track && (
-              <TrackView track={track} onOpenDoc={openDoc} />
-            )}
-            {route.kind === "path" && (
-              <PathView
-                name={route.name}
-                titles={titles}
-                onOpenDoc={openDoc}
-                onProgress={loadPaths}
-              />
-            )}
-            {route.kind === "exercises" && (
-              <Exercises
-                refresh={practiceEpoch}
-                onOpen={(ref) => setRoute({ kind: "exercise", ref })}
-              />
-            )}
-            {route.kind === "exercise" && (
-              <Runner
-                key={`${route.ref.kind}/${route.ref.lang}/${route.ref.name}`}
-                exercise={route.ref}
-                onBack={() => setRoute({ kind: "exercises" })}
-                onChanged={bumpPractice}
-              />
-            )}
-            {route.kind === "session" && (
-              <SessionSetup
-                modes={info?.modes ?? []}
-                source={route.source}
-                onClearSource={() =>
-                  setRoute({ kind: "session", source: null })
-                }
-                onOpenSettings={() => setRoute({ kind: "settings" })}
-              />
-            )}
-            {route.kind === "progress" && (
-              <Progress
-                key={epoch}
-                modes={info?.modes ?? []}
-                paths={paths.filter((p) => !p.part)}
-                onOpenPath={(name) => setRoute({ kind: "path", name })}
-              />
-            )}
-            {route.kind === "settings" && (
-              <Settings
-                course={info}
-                onPackChanged={() => loadPack().catch(() => {})}
-              />
-            )}
-
-            {notice && (
-              <button
-                onClick={() => setNotice("")}
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg border border-destructive/30 bg-background px-3 py-2 text-sm text-destructive shadow-lg"
-              >
-                {notice}
-              </button>
-            )}
-          </SidebarInset>
-          {professor && (
-            <Professor
-              docPath={route.kind === "doc" ? route.path : ""}
-              docTitle={route.kind === "doc" ? (doc?.title ?? "") : ""}
-              repo={info?.repo}
+      <SidebarProvider className="relative h-full min-h-0">
+        <AppSidebar
+          info={info}
+          outline={outline}
+          paths={paths}
+          route={route}
+          packList={packList}
+          onNavigate={setRoute}
+          onOpenDoc={openDoc}
+          onSwitchPack={switchPack}
+        />
+        <SidebarInset className="h-full min-h-0 min-w-0 overflow-hidden">
+          {route.kind === "home" && (
+            <Home
+              info={info}
+              outline={outline}
+              paths={paths}
+              onNavigate={setRoute}
               onOpenDoc={openDoc}
-              onOpenSettings={() => setRoute({ kind: "settings" })}
-              onClose={() => setProfessor(false)}
+              onAsk={() => setProfessor(true)}
             />
           )}
-        </SidebarProvider>
-      </ProfessorPanel.Provider>
+          {route.kind === "doc" && doc && (
+            <DocView
+              doc={doc}
+              outline={outline}
+              repo={info?.repo}
+              onNavigate={setRoute}
+              onOpenDoc={openDoc}
+              onAsk={() => setProfessor(true)}
+            />
+          )}
+          {route.kind === "track" && track && (
+            <TrackView track={track} onOpenDoc={openDoc} />
+          )}
+          {route.kind === "path" && (
+            <PathView
+              name={route.name}
+              titles={titles}
+              onOpenDoc={openDoc}
+              onProgress={loadPaths}
+            />
+          )}
+          {route.kind === "exercises" && (
+            <Exercises
+              refresh={practiceEpoch}
+              onOpen={(ref) => setRoute({ kind: "exercise", ref })}
+            />
+          )}
+          {route.kind === "exercise" && (
+            <Runner
+              key={`${route.ref.kind}/${route.ref.lang}/${route.ref.name}`}
+              exercise={route.ref}
+              onBack={() => setRoute({ kind: "exercises" })}
+              onChanged={bumpPractice}
+            />
+          )}
+          {route.kind === "session" && (
+            <SessionSetup
+              modes={info?.modes ?? []}
+              source={route.source}
+              onClearSource={() => setRoute({ kind: "session", source: null })}
+              onOpenSettings={() => setRoute({ kind: "settings" })}
+            />
+          )}
+          {route.kind === "progress" && (
+            <Progress
+              key={epoch}
+              modes={info?.modes ?? []}
+              paths={paths.filter((p) => !p.part)}
+              onOpenPath={(name) => setRoute({ kind: "path", name })}
+            />
+          )}
+          {route.kind === "settings" && (
+            <Settings
+              course={info}
+              onPackChanged={() => loadPack().catch(() => {})}
+            />
+          )}
+
+          {notice && (
+            <button
+              onClick={() => setNotice("")}
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg border border-destructive/30 bg-background px-3 py-2 text-sm text-destructive shadow-lg"
+            >
+              {notice}
+            </button>
+          )}
+        </SidebarInset>
+        {!professor && (
+          <Button
+            variant="outline"
+            size="icon-lg"
+            className="absolute right-4 bottom-4 z-20 rounded-full shadow-lg"
+            onClick={() => setProfessor(true)}
+            title="Ask the professor (⌘J)"
+          >
+            <Sparkles />
+          </Button>
+        )}
+        {professor && (
+          <Professor
+            docPath={route.kind === "doc" ? route.path : ""}
+            docTitle={route.kind === "doc" ? (doc?.title ?? "") : ""}
+            repo={info?.repo}
+            onOpenDoc={openDoc}
+            onOpenSettings={() => setRoute({ kind: "settings" })}
+            onClose={() => setProfessor(false)}
+          />
+        )}
+      </SidebarProvider>
     </TooltipProvider>
   );
 }

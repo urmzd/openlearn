@@ -74,7 +74,7 @@ export function Professor({ docPath, docTitle, repo, onOpenDoc, onOpenSettings, 
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium">Professor</div>
         </div>
-        <Button variant="ghost" size="icon-sm" onClick={onClose} title="Hide the professor">
+        <Button variant="ghost" size="icon-sm" onClick={onClose} title="Hide the professor (⌘J)">
           <PanelRightClose />
         </Button>
       </header>

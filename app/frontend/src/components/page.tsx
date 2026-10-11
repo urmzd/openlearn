@@ -2,22 +2,10 @@
 // the left and what you can do on the right, then one scrolling body. Views do
 // not build their own headers, which is what keeps them lined up.
 
-import { createContext, useContext, type ReactNode } from "react";
-import { ChevronRight, PanelRightOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
+import type { ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
+import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-
-/** Lets every header offer the way back to the professor panel once it is
- *  hidden, without each view having to be told about the panel. */
-export const ProfessorPanel = createContext<{
-  open: boolean;
-  show: () => void;
-}>({
-  open: true,
-  show: () => {},
-});
 
 export interface Crumb {
   label: string;
@@ -31,31 +19,17 @@ export function PageHeader({
   crumbs: Crumb[];
   actions?: ReactNode;
 }) {
-  // The sidebar's own header holds its collapse control. Once it is collapsed
-  // that control is gone with it, so the way back appears here. The extra left
-  // padding then clears the macOS window controls the sidebar was covering.
+  // The sidebar holds its own collapse control, so the header has none. With
+  // the sidebar down to its rail, the macOS window controls reach past it, and
+  // the extra left padding keeps the breadcrumbs clear of them.
   const { state } = useSidebar();
-  const collapsed = state === "collapsed";
-  const professor = useContext(ProfessorPanel);
   return (
     <header
       className={cn(
         "drag flex h-12 shrink-0 items-center gap-2 border-b px-4",
-        collapsed && "pl-20",
+        state === "collapsed" && "pl-10",
       )}
     >
-      {collapsed && (
-        <>
-          <SidebarTrigger
-            className="text-muted-foreground"
-            title="Open sidebar"
-          />
-          <Separator
-            orientation="vertical"
-            className="mr-1 data-[orientation=vertical]:h-4"
-          />
-        </>
-      )}
       <nav className="flex min-w-0 flex-1 items-center gap-1 text-sm">
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1;
@@ -93,17 +67,6 @@ export function PageHeader({
       </nav>
       {actions && (
         <div className="flex shrink-0 items-center gap-2">{actions}</div>
-      )}
-      {!professor.open && (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="text-muted-foreground"
-          onClick={professor.show}
-          title="Show the professor"
-        >
-          <PanelRightOpen />
-        </Button>
       )}
     </header>
   );

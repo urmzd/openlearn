@@ -5,22 +5,34 @@
 //
 // Search lives at the top and replaces the lists with results while there is a
 // query, so finding something never means leaving for another screen.
+//
+// Collapsing leaves a rail of icons rather than hiding the sidebar, so the one
+// control that collapses it is also the one that brings it back. The pack
+// switcher sits at the bottom, where a workspace switcher goes.
 
 import { useEffect, useState } from "react";
 import {
   BookOpen,
+  Check,
   ChevronsUpDown,
   Gauge,
-  GraduationCap,
   Home,
   Search as SearchIcon,
   Settings as SettingsIcon,
-  Sparkles,
   SquareTerminal,
   Timer,
 } from "lucide-react";
 import { Search } from "../../wailsjs/go/main/App";
-import type { course } from "../../wailsjs/go/models";
+import type { course, packs } from "../../wailsjs/go/models";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -43,10 +55,20 @@ interface Props {
   outline: course.Outline | null;
   paths: course.PathSummary[];
   route: Route;
-  professorOpen: boolean;
+  packList: packs.Pack[];
   onNavigate: (route: Route) => void;
   onOpenDoc: (path: string) => void;
-  onToggleProfessor: () => void;
+  onSwitchPack: (ref: string) => void;
+}
+
+/** The open pack is matched by where it was read from: a directory for packs
+ *  on disk, the id for built-in ones. */
+export function isOpenPack(p: packs.Pack, info: course.Info | null): boolean {
+  return (
+    !!info &&
+    p.id === info.id &&
+    (info.builtIn ? p.source === "builtin" : p.ref === info.root)
+  );
 }
 
 export function AppSidebar({
@@ -54,10 +76,10 @@ export function AppSidebar({
   outline,
   paths,
   route,
-  professorOpen,
+  packList,
   onNavigate,
   onOpenDoc,
-  onToggleProfessor,
+  onSwitchPack,
 }: Props) {
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<course.Hit[] | null>(null);
@@ -88,46 +110,45 @@ export function AppSidebar({
 
   const nav = [
     { label: "Home", icon: Home, route: { kind: "home" } as Route, show: true },
-    { label: "Exercises", icon: SquareTerminal, route: { kind: "exercises" } as Route, show: !!info?.practice },
-    { label: "Timed session", icon: Timer, route: { kind: "session", source: null } as Route, show: true },
-    { label: "Progress", icon: Gauge, route: { kind: "progress" } as Route, show: true },
+    {
+      label: "Exercises",
+      icon: SquareTerminal,
+      route: { kind: "exercises" } as Route,
+      show: !!info?.practice,
+    },
+    {
+      label: "Timed session",
+      icon: Timer,
+      route: { kind: "session", source: null } as Route,
+      show: true,
+    },
+    {
+      label: "Progress",
+      icon: Gauge,
+      route: { kind: "progress" } as Route,
+      show: true,
+    },
   ];
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       {/* The top padding clears the macOS window controls, which sit over the
           sidebar because the title bar is hidden. */}
       <SidebarHeader className="drag gap-2 pt-9">
-        <div className="flex items-center justify-between pr-1 pl-2">
-          <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-            <GraduationCap className="size-4" />
-            OpenLearn
+        <div className="flex h-8 items-center justify-between gap-2 pl-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:pl-0">
+          <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+            {info?.title ?? "OpenLearn"}
           </span>
-          <SidebarTrigger className="text-muted-foreground" title="Collapse sidebar" />
+          <SidebarTrigger
+            className="shrink-0 text-muted-foreground"
+            title="Collapse or expand the sidebar"
+          />
         </div>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              onClick={() => onNavigate({ kind: "settings" })}
-              tooltip="Switch course pack"
-            >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
-                <BookOpen className="size-4" />
-              </span>
-              <span className="grid min-w-0 flex-1 leading-tight">
-                <span className="truncate font-medium">{info?.title ?? "OpenLearn"}</span>
-                <span className="truncate text-xs text-muted-foreground">Course pack</span>
-              </span>
-              <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <div className="relative">
+        <div className="relative group-data-[collapsible=icon]:hidden">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <SidebarInput
             value={query}
-            placeholder="Search the course"
+            placeholder="Search"
             className="pl-7"
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && setQuery("")}
@@ -137,9 +158,11 @@ export function AppSidebar({
 
       <SidebarContent>
         {hits ? (
-          <SidebarGroup>
+          <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel>
-              {hits.length === 0 ? "No documents match" : `${hits.length} documents`}
+              {hits.length === 0
+                ? "No documents match"
+                : `${hits.length} documents`}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -173,6 +196,7 @@ export function AppSidebar({
                         <SidebarMenuButton
                           isActive={route.kind === n.route.kind}
                           onClick={() => onNavigate(n.route)}
+                          tooltip={n.label}
                         >
                           <n.icon />
                           <span>{n.label}</span>
@@ -184,15 +208,19 @@ export function AppSidebar({
             </SidebarGroup>
 
             {topPaths.length > 0 && (
-              <SidebarGroup>
+              <SidebarGroup className="group-data-[collapsible=icon]:hidden">
                 <SidebarGroupLabel>Paths</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {topPaths.map((p) => (
                       <SidebarMenuItem key={p.name}>
                         <SidebarMenuButton
-                          isActive={route.kind === "path" && route.name === p.name}
-                          onClick={() => onNavigate({ kind: "path", name: p.name })}
+                          isActive={
+                            route.kind === "path" && route.name === p.name
+                          }
+                          onClick={() =>
+                            onNavigate({ kind: "path", name: p.name })
+                          }
                           title={p.broken || p.title}
                           className="pr-14"
                         >
@@ -214,7 +242,10 @@ export function AppSidebar({
             ]
               .filter((g) => g.tracks.length > 0)
               .map((g) => (
-                <SidebarGroup key={g.label}>
+                <SidebarGroup
+                  key={g.label}
+                  className="group-data-[collapsible=icon]:hidden"
+                >
                   <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
@@ -225,7 +256,9 @@ export function AppSidebar({
                               (route.kind === "track" && route.dir === t.dir) ||
                               activeDoc.startsWith(`${t.dir}/`)
                             }
-                            onClick={() => onNavigate({ kind: "track", dir: t.dir })}
+                            onClick={() =>
+                              onNavigate({ kind: "track", dir: t.dir })
+                            }
                           >
                             <span className="truncate">{t.title}</span>
                           </SidebarMenuButton>
@@ -242,19 +275,47 @@ export function AppSidebar({
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton isActive={professorOpen} onClick={onToggleProfessor}>
-              <Sparkles />
-              <span>Professor</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
             <SidebarMenuButton
               isActive={route.kind === "settings"}
               onClick={() => onNavigate({ kind: "settings" })}
+              tooltip="Settings"
             >
               <SettingsIcon />
               <span>Settings</span>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<SidebarMenuButton tooltip="Switch course pack" />}
+              >
+                <BookOpen />
+                <span className="truncate">
+                  {info?.title ?? "No course pack"}
+                </span>
+                <ChevronsUpDown className="ml-auto text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="start" className="w-64">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Course packs</DropdownMenuLabel>
+                  {packList.map((p) => (
+                    <DropdownMenuItem
+                      key={p.ref}
+                      onClick={() => onSwitchPack(p.ref)}
+                    >
+                      <span className="truncate">{p.title}</span>
+                      {isOpenPack(p, info) && <Check className="ml-auto" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => onNavigate({ kind: "settings" })}
+                >
+                  Add or manage packs
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

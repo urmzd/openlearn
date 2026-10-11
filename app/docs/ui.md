@@ -23,13 +23,13 @@ Add a component with `npx shadcn@latest add <name>` from `frontend/`. Files unde
 
 ## Layout
 
-The window is three columns: the sidebar, one main view, and the professor panel when it is open.
+The window is three columns: the sidebar, one main view, and the professor panel.
 
 Every main view is built from `components/page.tsx`:
 
 | Part | Use |
 |------|-----|
-| `PageHeader` | 48px bar. Breadcrumbs on the left say where you are; actions on the right say what you can do. It is also the window's drag handle. |
+| `PageHeader` | 48px bar. Breadcrumbs on the left say where you are; actions on the right say what you can do. It is also the window's drag handle. It holds no layout controls. |
 | `PageBody` | The single scroll container. `width="form"` (672px) for lists and forms, `"prose"` (768px) for reading, `"wide"` for views that need room. |
 | `PageTitle` | One `h1`, one line of description, one optional action. |
 | `SectionLabel` | The small label over a block. |
@@ -39,11 +39,17 @@ A view does not draw its own header or manage its own scrolling.
 
 ## The sidebar
 
-Flat lists, one line per item, like a list of recent conversations. The sidebar never nests: a track opens in the main pane and its topics are listed there. Groups appear in a fixed order: navigation, paths, tracks, reference.
+Flat lists, one line per item, like a list of recent conversations. The sidebar never nests: a track opens in the main pane and its topics are listed there. From the top: the open pack's title with the collapse control beside it, search, navigation, paths, tracks, reference. At the bottom: settings, then the pack switcher, where a workspace switcher goes.
 
 Paths show only the top level. A path included by another path is reachable from the path that includes it.
 
-Search sits at the top and replaces the lists with results while there is a query.
+Search replaces the lists with results while there is a query.
+
+Collapsing leaves a rail of icons. It never hides the sidebar, so the control that collapses it is also the one that expands it and no view needs a second one. Anything without an icon is hidden in the rail.
+
+## The professor
+
+The professor is a docked panel on the right, open by default. It has no place in the navigation: Cmd/Ctrl+J toggles it from anywhere, its header has a hide control, and while it is hidden a single floating button in the bottom right brings it back.
 
 ## Lists
 

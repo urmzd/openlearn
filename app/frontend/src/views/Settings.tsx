@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, Picker } from "@/components/choice";
 import { ErrorNote, PageBody, PageHeader, PageTitle, SectionLabel } from "@/components/page";
+import { isOpenPack } from "@/components/app-sidebar";
 import { ListGroup, ListRow } from "@/components/list-row";
 
 const SOURCE: Record<string, string> = {
@@ -186,10 +187,7 @@ export function Settings({ course, onPackChanged }: Props) {
     }
   };
 
-  // The open pack is matched by where it was read from: a directory for packs
-  // on disk, the id for built-in ones.
-  const isOpen = (p: packs.Pack) =>
-    !!course && p.id === course.id && (course.builtIn ? p.source === "builtin" : p.ref === course.root);
+  const isOpen = (p: packs.Pack) => isOpenPack(p, course);
 
   return (
     <>
