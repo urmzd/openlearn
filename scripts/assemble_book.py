@@ -338,9 +338,7 @@ def main() -> int:
     parser.add_argument(
         "--root", default=Path(__file__).resolve().parent.parent, type=Path
     )
-    parser.add_argument(
-        "--path", help="assemble one path from paths/<NAME>/path.tsv"
-    )
+    parser.add_argument("--path", help="assemble one path from paths/<NAME>/path.tsv")
     args = parser.parse_args()
 
     root = args.root.resolve()
