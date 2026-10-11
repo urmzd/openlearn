@@ -1,0 +1,30 @@
+[output]
+dir = "./showcase"
+
+[[output.formats]]
+output_type = "png"
+
+[font]
+family = "Iosevka Nerd Font Mono"
+
+# ── Japanese pattern phrases ──
+[[scenes]]
+type = "file"
+path = "./outputs/japanese-guide.pdf"
+name = "japanese-phrases"
+viewport = { width = 900, height = 700 }
+page = 13
+
+[[scenes.interactions]]
+type = "snapshot"
+
+# ── Spanish pattern templates ──
+[[scenes]]
+type = "file"
+path = "./outputs/spanish-guide.pdf"
+name = "spanish-phrases"
+viewport = { width = 900, height = 700 }
+page = 8
+
+[[scenes.interactions]]
+type = "snapshot"

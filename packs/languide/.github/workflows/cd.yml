@@ -1,0 +1,58 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Release
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: Iv23liUsXGDICnIdo3Ev
+          private-key: ${{ secrets.SR_RELEASER_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pandoc \
+            texlive-xetex \
+            texlive-fonts-recommended \
+            texlive-fonts-extra \
+            texlive-lang-cjk \
+            texlive-lang-greek \
+            texlive-lang-spanish \
+            fonts-noto-cjk \
+            fonts-ipafont-gothic \
+            fonts-ipafont-mincho
+
+      - name: Build all guides
+        run: ./scripts/build-guide.sh --skip-font-check --continue-on-error
+
+      - uses: urmzd/sr@v9
+        id: sr
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
