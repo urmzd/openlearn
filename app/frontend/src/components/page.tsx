@@ -75,8 +75,9 @@ export function PageHeader({
 const WIDTHS = {
   /** Long-form reading. */
   prose: "max-w-3xl",
-  /** Forms and lists. */
-  form: "max-w-2xl",
+  /** Forms and lists. The same measure as prose, so the left edge of the
+   *  content does not move as you go from a list to the document it links. */
+  form: "max-w-3xl",
   /** Views that want the room. */
   wide: "max-w-5xl",
 };

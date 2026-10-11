@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/urmzd/openlearn/app/internal/agui"
-	"github.com/urmzd/openlearn/app/internal/builtin"
 	"github.com/urmzd/openlearn/app/internal/domain"
 	"github.com/urmzd/openlearn/app/internal/llm"
 	"github.com/urmzd/openlearn/app/internal/packs"
 	"github.com/urmzd/openlearn/app/internal/session"
 	"github.com/urmzd/openlearn/app/internal/store"
+	"github.com/urmzd/openlearn/app/internal/workspace"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -29,7 +28,7 @@ type App struct {
 
 	// packs finds course packs; pack is the one that is open.
 	packs packs.Registry
-	pack  *openPack
+	pack  *workspace.Workspace
 
 	mu       sync.RWMutex
 	settings store.Settings
@@ -56,13 +55,7 @@ func NewApp() *App {
 	a := &App{log: log, store: st, settings: st.LoadSettings()}
 	a.runtime = session.New(log, agui.EmitterFunc(a.emit), a.persist)
 
-	cwd, _ := os.Getwd()
-	a.packs = packs.Registry{
-		Builtin:    builtin.FS(),
-		InstallDir: filepath.Join(st.Root(), "packs"),
-		Checkout:   cwd,
-		Preferred:  defaultPack,
-	}
+	a.packs = workspace.Registry(st.Root())
 	a.openPack(a.settings.Pack)
 	return a
 }
@@ -195,7 +188,7 @@ func (a *App) CheckModel() (string, error) {
 // exercise is written from it.
 func (a *App) StartSession(spec domain.SessionSpec) (domain.Problem, error) {
 	if spec.Source != "" {
-		doc, err := a.current().course.Doc(spec.Source)
+		doc, err := a.current().Course.Doc(spec.Source)
 		if err != nil {
 			return domain.Problem{}, err
 		}

@@ -23,7 +23,7 @@ Add a component with `npx shadcn@latest add <name>` from `frontend/`. Files unde
 
 ## Layout
 
-The window is three columns: the sidebar, one main view, and the professor panel.
+The window is two columns: the sidebar and one main view. There is no assistant panel: an agent connects from outside, over MCP (see `mcp.md`).
 
 Every main view is built from `components/page.tsx`:
 
@@ -46,10 +46,6 @@ Paths show only the top level. A path included by another path is reachable from
 Search replaces the lists with results while there is a query.
 
 Collapsing leaves a rail of icons. It never hides the sidebar, so the control that collapses it is also the one that expands it and no view needs a second one. Anything without an icon is hidden in the rail.
-
-## The professor
-
-The professor is a docked panel on the right, open by default. It has no place in the navigation: Cmd/Ctrl+J toggles it from anywhere, its header has a hide control, and while it is hidden a single floating button in the bottom right brings it back.
 
 ## Lists
 

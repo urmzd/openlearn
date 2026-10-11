@@ -771,25 +771,6 @@ export namespace domain {
 
 }
 
-export namespace harness {
-	
-	export class Turn {
-	    role: string;
-	    text: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new Turn(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.role = source["role"];
-	        this.text = source["text"];
-	    }
-	}
-
-}
-
 export namespace llm {
 	
 	export class Config {

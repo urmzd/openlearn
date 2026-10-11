@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">openlearn</h1>
   <p align="center">
-    A desktop learning platform: read a course, practice it, and have it graded, with an AI professor alongside.
+    A desktop learning platform: read a course, practice it, have it graded, and bring your own agent.
     <br /><br />
     <a href="https://github.com/urmzd/openlearn/releases">Download</a>
     &middot;
@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="showcase/reader.png" alt="A chapter open in the reader, with search results and the professor panel" width="80%">
+  <img src="showcase/reader.png" alt="A chapter open in the reader, with search results in the sidebar" width="80%">
 </p>
 
 > [!WARNING]
@@ -42,8 +42,10 @@ against a hosted model.
 - **Sessions grounded in a chapter.** Start from any document and the exercise and its
   hidden rubric are generated from that material: a board for system design, an editor for
   coding, a written answer for everything else.
-- **A coach that mostly stays quiet**, and a **professor** that answers when asked, about
-  the page you have open.
+- **A coach that mostly stays quiet** during a session: silence is the default.
+- **Bring your own agent.** The app serves the open pack over [MCP](docs/mcp.md), so the
+  agent you already use can read the course, see the page you have open and your progress,
+  and check your exercises with the pack's own checker.
 - **A profile that accumulates.** Rubric criteria map onto a fixed taxonomy, so scores
   compare across sessions.
 
