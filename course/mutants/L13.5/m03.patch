@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/contrastive.py
++++ b/python/tinyllm/vision/contrastive.py
+@@ -130,7 +130,7 @@
+         a = np.asarray(ids)
+         keep = (a != 0).astype(np.float32)
+         counts = keep.sum(axis=1, keepdims=True)
+-        if np.any(counts == 0):
++        if False:
+             raise ValueError("encode_text: a row holds only padding")
+         h = self.text(a)
+         pooled = F.sum(h * keep[:, :, None], axis=1) * (1.0 / counts)

@@ -1,0 +1,21 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/io/wav.py	semantic	pitfall-1	84	y	(hidden until pass)	24-bit samples not sign-extended
+s02	python/tinyllm/io/wav.py	semantic	pitfall-2	68	y	(hidden until pass)	odd chunk pad byte ignored
+s03	python/tinyllm/io/wav.py	semantic	pitfall-3	101	n	(hidden until pass)	extensible subformat read from the wrong offset
+s04	python/tinyllm/io/wav.py	semantic	pitfall-4	89	y	(hidden until pass)	interleaved frames reshaped as planar
+s05	python/tinyllm/io/wav.py	semantic	pitfall-5	80	n	(hidden until pass)	s16 scaled by 32767
+s06	python/tinyllm/speech/frontend.py	semantic	pitfall-6	92	y	(hidden until pass)	last STFT frame kept
+s07	python/tinyllm/speech/frontend.py	semantic	pitfall-7	92	n	(hidden until pass)	first STFT frame dropped instead of the last
+s08	python/tinyllm/speech/frontend.py	semantic	pitfall-8	90	y	(hidden until pass)	symmetric Hann window
+s09	python/tinyllm/speech/frontend.py	semantic	pitfall-9	95	n	(hidden until pass)	clip maximum taken before the last frame is dropped
+s10	python/tinyllm/speech/frontend.py	semantic	pitfall-10	65	y	(hidden until pass)	left channel instead of the channel mean
+s11	python/tinyllm/speech/frontend.py	semantic	pitfall-11	79	n	(hidden until pass)	zeros padded at the front
+s12	python/tinyllm/io/wav.py	semantic	pitfall-12	56	y	(hidden until pass)	chunk size not checked against the file
+s13	python/tinyllm/io/wav.py	semantic	pitfall-13	133	n	(hidden until pass)	write_wav scales by 32767
+m01	python/tinyllm/io/wav.py	auto	cmp_flip	115	n	sample rate check changed	<= to <
+m02	python/tinyllm/io/wav.py	auto	constant	113	n	channel check changed	(1, 2) to (1, 2, 3)
+m03	python/tinyllm/io/wav.py	auto	cmp_flip	45	n	RIFF size check changed	> to >=
+m04	python/tinyllm/io/wav.py	auto	constant	133	n	write_wav clip changed	32767 to 32768
+m05	python/tinyllm/speech/frontend.py	auto	cmp_flip	75	n	n_samples check changed	< 1 to < 0
+m06	python/tinyllm/speech/frontend.py	auto	cmp_flip	47	n	feature extractor type check changed	!= to ==
+m07	python/tinyllm/speech/frontend.py	auto	dtype	95	n	result dtype changed	float32 cast dropped

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/vit.py
++++ b/python/tinyllm/vision/vit.py
+@@ -258,7 +258,7 @@
+             raise ValueError(f"ViT: need pixel_values [N, {cfg.n_channels}, H, W], got {x.shape}")
+         n, _, hh, ww = x.shape
+         p = cfg.patch_size
+-        if hh % p or ww % p:
++        if False:
+             raise ValueError(f"ViT: image {hh}x{ww} is not a multiple of the patch size {p}")
+         gh, gw = hh // p, ww // p
+         if patch_mask is not None and np.asarray(patch_mask).shape != (n, gh, gw):

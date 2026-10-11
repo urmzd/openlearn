@@ -1,0 +1,34 @@
+id        = "L14.1"
+title     = "Audio frontend: WAV parsing and Whisper's log-mel"
+kind      = "build"
+lang      = ["python"]
+pass      = 12
+chapter   = "ml/08-tinyllm/p14-speech/01-audio-frontend.md"
+contract  = ["contracts/py/tinyllm/io/wav.pyi", "contracts/py/tinyllm/speech/frontend.pyi"]
+# resample_audio for other rates, hann/stft/power for the spectrogram, and
+# mel_filterbank/log_mel_whisper for the features. lang.12 (RIFF chunks from
+# the bytes up) is a catalog prereq that is not registered yet
+# (DEVIATIONS B14L-06).
+deps      = ["M12.3", "M12.5", "M12.6"]
+reading   = []
+# Call sites (DESIGN 4.1): L14.2 consumes these features; data.11 and the
+# Rust port L15.1 are not registered yet.
+used_by   = []
+planned_by = ["data.11"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
+units     = ["python/tinyllm/io/wav.py", "python/tinyllm/speech/frontend.py"]
+upgrades  = []
+milestone = "MS-L14"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/L14.1"
+smoke     = ["test_hand_example_wav_header", "test_silence_gives_the_floor_everywhere"]
+timeout_s = 120
+determinism_runs = 2
+
+[fixtures]
+files = [
+  "course/fixtures/L14.1/wav_scipy.npz",
+  "course/fixtures/L14.1/hf_features.npz",
+  "course/fixtures/L14.1/clips/clips.json",
+]

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/io/wav.py
++++ b/python/tinyllm/io/wav.py
+@@ -130,7 +130,7 @@
+         raise ValueError("write_wav: samples must be finite")
+     if not 1 <= int(sr) <= _MAX_SR:
+         raise ValueError(f"write_wav: sample rate {sr} outside [1, {_MAX_SR}]")
+-    q = np.clip(np.round(x * 32768.0), -32768, 32767).astype("<i2")
++    q = np.clip(np.round(x * 32767.0), -32768, 32767).astype("<i2")
+     pcm = q.tobytes()
+     header = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVE"
+     fmt = b"fmt " + struct.pack("<IHHIIHH", 16, _PCM, 1, int(sr), int(sr) * 2, 2, 16)

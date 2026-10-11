@@ -1,0 +1,11 @@
+--- a/python/tinyllm/io/wav.py
++++ b/python/tinyllm/io/wav.py
+@@ -110,7 +110,7 @@
+             f"read_wav: unsupported encoding (format {tag}, {bits} bits); "
+             "need PCM 16 or 24 bits or IEEE float 32 bits"
+         )
+-    if channels not in (1, 2):
++    if channels not in (1, 2, 3):
+         raise ValueError(f"read_wav: {channels} channels; mono or stereo only")
+     if not 1 <= sr <= _MAX_SR:
+         raise ValueError(f"read_wav: sample rate {sr} outside [1, {_MAX_SR}]")

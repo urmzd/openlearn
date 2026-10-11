@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -97,7 +97,7 @@
+ def cer(refs: Sequence[str], hyps: Sequence[str]) -> float:
+     _pairs(refs, hyps)
+     st = np.array(
+-        [edit_ops(list(r.strip()), list(h.strip())) for r, h in zip(refs, hyps)],
++        [edit_ops(list(r), list(h)) for r, h in zip(refs, hyps)],
+         dtype=np.int64,
+     )
+     return _rate(st)

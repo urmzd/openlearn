@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -121,7 +121,7 @@
+     for p, ans in zip(preds, answers):
+         key = basic_normalize(p).strip()
+         m = sum(basic_normalize(a).strip() == key for a in ans)
+-        total += min(1.0, m / 3.0)
++        total += m / 3.0
+     return total / len(preds)
+ 
+ 

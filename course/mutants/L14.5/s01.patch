@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -57,7 +57,7 @@
+     S = D = I = 0
+     i, j = n, m
+     while i > 0 or j > 0:
+-        if i > 0 and j > 0 and d[i, j] == d[i - 1, j - 1] + (r[i - 1] != h[j - 1]):
++        if i > 0 and j > 0 and d[i, j] == d[i - 1, j - 1] + (r[i - 1] != h[j - 1]) and not (d[i, j] == d[i, j - 1] + 1):
+             S += int(r[i - 1] != h[j - 1])
+             i, j = i - 1, j - 1
+         elif i > 0 and d[i, j] == d[i - 1, j] + 1:

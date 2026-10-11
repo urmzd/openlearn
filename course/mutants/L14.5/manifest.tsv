@@ -1,0 +1,20 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/eval/mm.py	semantic	pitfall-1	60	y	(hidden until pass)	backtrace prefers an insertion over the diagonal
+s02	python/tinyllm/eval/mm.py	semantic	pitfall-2	90	y	(hidden until pass)	corpus WER as the mean of per-item rates
+s03	python/tinyllm/eval/mm.py	semantic	pitfall-3	69	n	(hidden until pass)	deletions and insertions swapped
+s04	python/tinyllm/eval/mm.py	semantic	pitfall-4	39	n	(hidden until pass)	no NFKC before the category test
+s05	python/tinyllm/eval/mm.py	semantic	pitfall-5	34	y	(hidden until pass)	bracketed tags kept
+s06	python/tinyllm/eval/mm.py	semantic	pitfall-6	100	n	(hidden until pass)	CER without strip
+s07	python/tinyllm/eval/mm.py	semantic	pitfall-7	124	y	(hidden until pass)	VQA credit not capped at 1
+s08	python/tinyllm/eval/mm.py	semantic	pitfall-8	123	n	(hidden until pass)	VQA answers compared raw
+s09	python/tinyllm/eval/mm.py	semantic	pitfall-9	161	n	(hidden until pass)	score ties ranked by the higher class index
+s10	python/tinyllm/eval/mm.py	semantic	pitfall-10	174	y	(hidden until pass)	resampled indices ignored
+s11	python/tinyllm/eval/mm.py	semantic	pitfall-11	100	n	(hidden until pass)	CER computed over words
+s12	python/tinyllm/eval/mm.py	semantic	pitfall-12	69	y	(hidden until pass)	rate divided by the hypothesis length
+s13	python/tinyllm/eval/mm.py	semantic	pitfall-13	53	n	(hidden until pass)	a substitution costs 2
+s14	python/tinyllm/eval/mm.py	semantic	pitfall-14	139	n	(hidden until pass)	consensus attributes as the union of reference words
+s15	python/tinyllm/eval/mm.py	semantic	pitfall-15	137	n	(hidden until pass)	vocabulary attributes restricted to words in every reference
+m01	python/tinyllm/eval/mm.py	auto	cmp_flip	88	n	empty-reference check changed	== to <
+m02	python/tinyllm/eval/mm.py	auto	constant	156	n	k range check changed	1 to 0
+m03	python/tinyllm/eval/mm.py	auto	cmp_flip	158	n	label range check changed	>= to >
+m04	python/tinyllm/eval/mm.py	auto	cmp_flip	114	n	empty answer list check changed	== 0 to < 0

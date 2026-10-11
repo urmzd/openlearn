@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/autograd/tensor.pyi`](../../../course/contracts/py/tinyllm/autograd/tensor.pyi) · [`course/contracts/py/tinyllm/autograd/mode.pyi`](../../../course/contracts/py/tinyllm/autograd/mode.pyi) |
 | **Tests** | `course/tests/L0.1/` (what they check: section 4) |
 | **Needs** | `M06.1` iterative topological sort (`toposort`) · `M08.3` `unbroadcast` and the matmul VJP · `M08.2` the scalar `Value` (the tests' oracle) · reading: `lang.01` broadcasting (or `--ref-deps`) |
-| **Used by** | `L0.2` op library · `L0.3` fused losses · `L0.4` modules · `L0.5` training loop · `L0.6` checkpoint tests · later: `L11.1`, `L2.2`, `L3.1`, `L3.2`, `L3.3`, `L3.4`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.1`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L6.7`, `L7.1`, `L7.2`, `L7.3`, `L7.5`, `L7.6`, `L7.7`, `L7.8`, `L7.9`, `L8.2`, `L8.5` |
+| **Used by** | `L0.2` op library · `L0.3` fused losses · `L0.4` modules · `L0.5` training loop · `L0.6` checkpoint tests · later: `L11.1`, `L2.2`, `L3.1`, `L3.2`, `L3.3`, `L3.4`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.1`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L6.7`, `L7.1`, `L7.2`, `L7.3`, `L7.5`, `L7.6`, `L7.7`, `L7.8`, `L7.9`, `L8.2`, `L8.5`, `L13.1`, `L13.2`, `L13.3`, `L13.5`, `L14.2` |
 | **Milestone** | `MS-L0` (your autograd retrains the tracer and survives a kill) |
 | **Optional depth** | Baydin, Pearlmutter, Radul, Siskind, "Automatic Differentiation in Machine Learning: a Survey" (JMLR 2018, free); Karpathy's `micrograd` (the scalar version of this module) |
 
@@ -212,6 +212,11 @@ The contracts carry the exact rules: the constructor copies its data and rejects
 | Forward | `L0.4` | parameters are Tensors with `requires_grad=True` |
 | Forward | `L0.5` | `train_step` calls `backward`, `evaluate` runs under `no_grad` |
 | Forward | `L0.6` | the checkpoint tests train a model with this autograd before saving it |
+| Forward | `L13.1` | `Conv2d` and the pools are `from_op` nodes with an im2col backward |
+| Forward | `L13.2` | position tables are constant `Tensor`s outside the graph |
+| Forward | `L13.3` | patch tokens, the CLS token, and position tables are `Tensor`s |
+| Forward | `L13.5` | both losses are `from_op` nodes over the similarity matrix |
+| Forward | `L14.2` | the Whisper stem and blocks run on `Tensor` |
 
 If you skip this module, `ol check L0.2` stops with `L0.2 needs L0.1`: build it, or rerun with `--ref-deps`.
 

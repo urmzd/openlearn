@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/frontend.py
++++ b/python/tinyllm/speech/frontend.py
+@@ -44,7 +44,7 @@
+             p = p / "preprocessor_config.json"
+         raw = json.loads(p.read_text())
+         kind = raw.get("feature_extractor_type")
+-        if kind is not None and kind != "WhisperFeatureExtractor":
++        if kind is not None and kind == "WhisperFeatureExtractor":
+             raise ValueError(
+                 f"FeatureConfig.from_hf: feature_extractor_type {kind!r}, need WhisperFeatureExtractor"
+             )

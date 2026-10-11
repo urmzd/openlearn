@@ -1,0 +1,8 @@
+--- a/python/tinyllm/speech/encoder.py
++++ b/python/tinyllm/speech/encoder.py
+@@ -173,4 +173,4 @@
+         x = F.transpose(x, 1, 2) + self.positions  # [N, A, d]
+         for layer in self.layers:
+             x = layer(x)
+-        return self.layer_norm(x)
++        return x

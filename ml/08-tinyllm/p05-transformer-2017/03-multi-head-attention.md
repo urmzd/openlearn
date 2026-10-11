@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/xfmr/mha.pyi`](../../../course/contracts/py/tinyllm/xfmr/mha.pyi) |
 | **Tests** | `course/tests/L5.3/test_mha.py` (what they check: section 4); the oracle is torch's `nn.MultiheadAttention` with copied weights; your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
 | **Needs** | `L5.1` scaled dot-product attention · `L0.4` `Linear`, `Module` · `L0.2` `reshape`, `transpose` · `L0.1` `Tensor` · `M06.3` `PCG32` (or `--ref-deps`) |
-| **Used by** | `L5.5` encoder and decoder layers · `L6.1` GPT blocks · `L6.2` BERT layers |
+| **Used by** | `L5.5` encoder and decoder layers · `L6.1` GPT blocks · `L6.2` BERT layers · later: `L13.3`, `L14.2` |
 | **Milestone** | `MS-L5` (`{tinyllm} train transformer`, then `translate --beam 4`) |
 | **Optional depth** | Vaswani et al., "Attention Is All You Need" (2017), section 3.2.2; Michel, Levy, and Neubig, "Are Sixteen Heads Really Better than One?" (NeurIPS 2019) |
 
@@ -161,6 +161,8 @@ Rung R5 asks for **oracles**. Write multi-head attention again in float64 numpy 
 | Forward | `L6.1` | GPT-2's causal self-attention (c_attn split into q, k, v) |
 | Forward | `L6.2` | BERT's bidirectional self-attention |
 | Forward | `L7.5` | grouped-query attention shares $K, V$ heads between query heads |
+| Forward | `L13.3` | every vision block is `MultiHeadAttention` with no mask |
+| Forward | `L14.2` | every Whisper encoder block is `MultiHeadAttention` with no mask |
 
 If you skip this module, `ol check L5.5` stops with `needs L5.3`: build it, or pass `--ref-deps`.
 

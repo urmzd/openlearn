@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/encoder.py
++++ b/python/tinyllm/speech/encoder.py
+@@ -124,7 +124,7 @@
+         r = rng if rng is not None else PCG32(0).substream("init")
+         super().__init__(d, n_heads, bias=True, rng=r)
+         # Re-assigning keeps k_proj's place in the registration order.
+-        self.k_proj = Linear(d, d, bias=False, rng=r)
++        self.k_proj = Linear(d, d, bias=True, rng=r)
+ 
+ 
+ class WhisperEncoderLayer(Module):

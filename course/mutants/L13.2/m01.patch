@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/rope2d.py
++++ b/python/tinyllm/vision/rope2d.py
+@@ -40,7 +40,7 @@
+ def rope2d_cos_sin(
+     grid_hw: tuple[int, int], d_rot: int, base: float = 10000.0, merge: int = 1
+ ) -> tuple[NDArray, NDArray]:
+-    if d_rot < 4 or d_rot % 4:
++    if d_rot < 4 or d_rot % 2:
+         raise ValueError(f"rope2d_cos_sin: d_rot must be a multiple of 4 and >= 4, got {d_rot}")
+     xy = patch_coords(grid_hw, merge)
+     half = d_rot // 2  # pairs; each axis owns half of them

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/frontend.py
++++ b/python/tinyllm/speech/frontend.py
+@@ -76,7 +76,7 @@
+         raise ValueError(f"pad_or_trim: n_samples must be >= 1, got {n_samples}")
+     if a.size >= n_samples:
+         return a[:n_samples].copy()
+-    return np.concatenate([a, np.zeros(n_samples - a.size)])
++    return np.concatenate([np.zeros(n_samples - a.size), a])
+ 
+ 
+ def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray:

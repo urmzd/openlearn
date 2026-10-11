@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/tiling.py
++++ b/python/tinyllm/vision/tiling.py
+@@ -78,7 +78,7 @@
+     img: NDArray, pinpoints: Sequence[tuple[int, int]], tile: int
+ ) -> tuple[list[NDArray], NDArray, tuple[int, int]]:
+     a = _rgb(img, "anyres_tiles")
+-    if any(ph % tile or pw % tile for ph, pw in pinpoints):
++    if False:
+         raise ValueError(f"anyres_tiles: every pinpoint must be a multiple of tile {tile}: {pinpoints}")
+     h, w, c = a.shape
+     th, tw = select_best_resolution((h, w), pinpoints)

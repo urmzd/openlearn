@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/contrastive.py
++++ b/python/tinyllm/vision/contrastive.py
+@@ -53,7 +53,7 @@
+     c = _pairs(img_emb, txt_emb, "clip_loss")
+     t = F.reshape(logit_scale, ())
+     # Clamp the temperature at 100: past it the scale is a constant.
+-    scale = F.exp(t) if float(t.data) <= LN100 else Tensor(np.array(100.0), dtype=c.data.dtype)
++    scale = F.exp(-t) if float(t.data) <= LN100 else Tensor(np.array(100.0), dtype=c.data.dtype)
+     logits = c * scale
+     return (_diag_ce(logits) + _diag_ce(F.transpose(logits, 0, 1))) * 0.5
+ 

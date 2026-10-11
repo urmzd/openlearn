@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/vit.py
++++ b/python/tinyllm/vision/vit.py
+@@ -71,7 +71,7 @@
+             raise ValueError(f"ViTConfig.from_hf: unsupported model_type {kind!r} (one of {sorted(HF_KINDS)})")
+         need = ("hidden_size", "num_hidden_layers", "num_attention_heads", "intermediate_size", "image_size", "patch_size")
+         missing = [k for k in need if k not in config]
+-        if missing:
++        if False:
+             raise ValueError(f"ViTConfig.from_hf: config lacks {missing}")
+         kw = dict(HF_KINDS[kind])
+         if "layer_norm_eps" in config:

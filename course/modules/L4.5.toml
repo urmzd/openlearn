@@ -11,7 +11,7 @@ deps      = ["M07.4"]
 reading   = []
 # Call site: L6.7's run_task metrics (the zoo's EM and chrF columns). ag.10
 # re-implements the metrics in Go, which is not a call site (4.0).
-used_by   = ["L6.7"]
+used_by   = ["L6.7", "L14.5"]
 units     = ["python/tinyllm/eval/seqmetrics.py"]
 upgrades  = []
 milestone = "MS-L4"

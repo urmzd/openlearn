@@ -16,7 +16,7 @@ reading   = ["M00.3"]
 # takes a RopeSpec; L7.6 (MLA's decoupled rope key) and L7.7 (windowed
 # attention) call them too, and L7.9 builds the spec of every Llama layer.
 # L8.2 decodes at absolute positions with it; L9.6 joins with its row.
-used_by   = ["L7.5", "L7.6", "L7.7", "L7.9", "L8.2"]
+used_by   = ["L7.5", "L7.6", "L7.7", "L7.9", "L8.2", "L13.2", "L13.3"]
 units     = ["python/tinyllm/modern/rope.py"]
 upgrades  = []
 milestone = "MS-L7"

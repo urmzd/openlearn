@@ -1,0 +1,12 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -87,7 +87,8 @@
+     total = int(st[:, 3].sum())
+     if total == 0:
+         raise ValueError("every reference is empty: the error rate is undefined")
+-    return float(st[:, :3].sum()) / total
++    keep = st[:, 3] > 0
++    return float(np.mean(st[keep, :3].sum(axis=1) / st[keep, 3]))
+ 
+ 
+ def wer(refs: Sequence[str], hyps: Sequence[str]) -> float:

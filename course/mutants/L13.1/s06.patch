@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/conv.py
++++ b/python/tinyllm/vision/conv.py
+@@ -241,7 +241,7 @@
+     def forward(self, x: Tensor) -> Tensor:
+         h = max_pool2d(F.relu(self.conv1(x)), 2)
+         h = max_pool2d(F.relu(self.conv2(h)), 2)
+-        h = F.reshape(h, (h.shape[0], -1))  # (c, h, w) order, as torch.flatten
++        h = F.reshape(F.permute(h, (0, 2, 3, 1)), (h.shape[0], -1))  # (c, h, w) order, as torch.flatten
+         h = F.relu(self.fc1(h))
+         h = F.relu(self.fc2(h))
+         return self.fc3(h)

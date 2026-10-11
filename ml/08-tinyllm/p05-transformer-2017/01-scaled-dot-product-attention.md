@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/xfmr/sdpa.pyi`](../../../course/contracts/py/tinyllm/xfmr/sdpa.pyi) |
 | **Tests** | `course/tests/L5.1/test_sdpa.py` (what they check: section 4), golden values from torch 2.14.1 in `course/fixtures/L5.1/sdpa_torch.npz` (`course/oracle/L5.1/sdpa_torch.py`); your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
 | **Needs** | [`L0.1` `Tensor` and `from_op`](../p00-foundations/01-tensor-and-broadcasting-backward.md) · [`M09.2` stable softmax](../../../math/09-numerical-methods-and-floating-point/02-stable-numerics.md) · reading: [`L4.3` Luong's dot score](../p04-attention-origins/03-luong-attention-input-feeding.md), [`M08.3`](../../../math/08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md) and `S-M08` (the softmax VJP), `L0.2` (the dropout draw rule) (or `--ref-deps`) |
-| **Used by** | `L5.3` multi-head attention calls it once per layer · later `L7.5` and `L7.6` (grouped-query and latent attention), `L8.2` (attention over a KV cache), `L9.3` (the C kernel is proven against `sdpa_forward`) |
+| **Used by** | `L5.3` multi-head attention calls it once per layer · later `L7.5` and `L7.6` (grouped-query and latent attention), `L8.2` (attention over a KV cache), `L9.3` (the C kernel is proven against `sdpa_forward`) · later: `L13.3` |
 | **Milestone** | `MS-L5` |
 | **Optional depth** | Vaswani et al., "Attention Is All You Need" (2017), section 3.2.1; Dao et al., "FlashAttention" (2022), section 3.1 and appendix B.2 (the backward with $D = \operatorname{rowsum}(dO \circ O)$) |
 
@@ -172,6 +172,7 @@ The oracle is the formula written out in numpy (scores, masked softmax, weighted
 | Forward | `L7.6` | latent attention reconstructs keys and values from a small cache |
 | Forward | `L8.2` | queries of one step against the cached keys, with `q_offset` masks |
 | Forward | `L9.3` | the C kernel (online softmax, tiled) is tested against `sdpa_forward` |
+| Forward | `L13.3` | rope2d blocks call `scaled_dot_product_attention` on rotated heads |
 
 ## Going further
 

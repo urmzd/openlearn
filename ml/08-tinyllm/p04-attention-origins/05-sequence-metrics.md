@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/eval/seqmetrics.pyi`](../../../course/contracts/py/tinyllm/eval/seqmetrics.pyi) |
 | **Tests** | `course/tests/L4.5/` (what they check: section 4), golden values from sacreBLEU 2.5.1 in `course/fixtures/L4.5/sacrebleu_golden.json`; your tests are graded by mutation, threshold 0.80 with every semantic fault required |
 | **Needs** | `M07.4` `bootstrap_ci` (the interval every score carries) (or `--ref-deps`) |
-| **Used by** | later: `L6.7` scores the model zoo's `seq2seq` and `transformer` rows with these functions; `ag.10` re-implements them in Go; the `translate` verb of your CLI reports them in `MS-L4` |
+| **Used by** | later: `L6.7` scores the model zoo's `seq2seq` and `transformer` rows with these functions; `ag.10` re-implements them in Go; the `translate` verb of your CLI reports them in `MS-L4` · `L14.5` caption BLEU-4 and chrF |
 | **Milestone** | `MS-L4` |
 | **Optional depth** | Papineni et al., "BLEU: a Method for Automatic Evaluation of Machine Translation" (ACL 2002); Popovic, "chrF: character n-gram F-score for automatic MT evaluation" (WMT 2015); Post, "A Call for Clarity in Reporting BLEU Scores" (WMT 2018); Koehn, "Statistical Significance Tests for Machine Translation Evaluation" (EMNLP 2004) |
 
@@ -181,6 +181,7 @@ At rung R5 you write oracle tests: numbers you computed by hand from the definit
 | Forward | `L6.7` | the model zoo's EM and chrF columns, each with its interval (`run_task`) |
 | Forward | `ag.10` | re-implements exact match in Go for the agent eval scorers |
 | Forward | `craft.07` | your L4.5 suite meets its survivors: equivalent mutants and the ones it missed |
+| Forward | `L14.5` | caption BLEU-4 and chrF through `corpus_bleu` and `chrf` |
 
 If you skip this module, the `translate` verb of `MS-L4` has nothing to report, and `ol check L6.7` needs `--ref-deps`.
 

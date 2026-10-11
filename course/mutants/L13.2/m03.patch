@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/rope2d.py
++++ b/python/tinyllm/vision/rope2d.py
+@@ -70,7 +70,7 @@
+         if img >= len(grids):
+             raise ValueError(f"mrope_position_ids: image tokens at {i} but only {len(grids)} grid(s)")
+         t, gh, gw = (int(v) for v in grids[img])
+-        if gh % m or gw % m:
++        if False:
+             raise ValueError(f"mrope_position_ids: merge {m} does not divide grid {grids[img].tolist()}")
+         lh, lw = gh // m, gw // m
+         n = t * lh * lw

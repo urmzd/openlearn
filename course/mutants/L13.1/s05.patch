@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/conv.py
++++ b/python/tinyllm/vision/conv.py
+@@ -170,7 +170,7 @@
+         k_out, cg, k = self.weight.shape
+         w4 = F.reshape(self.weight, (k_out, cg, 1, k))
+         y = _conv2d_op(
+-            x4, w4, self.bias, (1, self.stride), (0, self.pad), (1, self.dilation), self.groups
++            x4, w4, self.bias, (1, self.stride), (self.pad, self.pad), (1, self.dilation), self.groups
+         )
+         return F.reshape(y, (n, k_out, y.shape[3]))
+ 

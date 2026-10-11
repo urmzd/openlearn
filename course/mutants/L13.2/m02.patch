@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/rope2d.py
++++ b/python/tinyllm/vision/rope2d.py
+@@ -97,7 +97,7 @@
+     if p.ndim != 2 or p.shape[0] != 3:
+         raise ValueError(f"mrope_cos_sin: need pos3 [3, T], got shape {p.shape}")
+     sec = [int(s) for s in mrope_section]
+-    if sum(sec) != len(f) or min(sec, default=0) < 0:
++    if sum(sec) > len(f) or min(sec, default=0) < 0:
+         raise ValueError(f"mrope_cos_sin: sections {sec} must sum to {len(f)} pairs")
+     cos, sin = rope_cos_sin(p, f)  # [3, T, r/2]: every axis at every frequency
+     axis = np.repeat(np.arange(len(sec)) % 3, sec)  # which axis drives pair i

@@ -1,0 +1,14 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/speech/encoder.py	semantic	pitfall-1	119	y	(hidden until pass)	sin and cos interleaved as in L5.4
+s02	python/tinyllm/speech/encoder.py	semantic	pitfall-2	119	n	(hidden until pass)	cosines first
+s03	python/tinyllm/speech/encoder.py	semantic	pitfall-3	154	y	(hidden until pass)	second conv without stride 2
+s04	python/tinyllm/speech/encoder.py	semantic	pitfall-4	171	n	(hidden until pass)	tanh GELU in the stem
+s05	python/tinyllm/speech/encoder.py	semantic	pitfall-5	127	y	(hidden until pass)	k_proj keeps its bias
+s06	python/tinyllm/speech/encoder.py	semantic	pitfall-6	141	y	(hidden until pass)	post-LN attention block
+s07	python/tinyllm/speech/encoder.py	semantic	pitfall-7	176	y	(hidden until pass)	final layer_norm skipped
+s08	python/tinyllm/speech/encoder.py	semantic	pitfall-8	142	y	(hidden until pass)	causal mask in the encoder
+s09	python/tinyllm/speech/encoder.py	semantic	pitfall-9	173	n	(hidden until pass)	positions not added
+s10	python/tinyllm/speech/encoder.py	semantic	pitfall-10	116	n	(hidden until pass)	frequency step divided by C/2 instead of C/2 - 1
+m01	python/tinyllm/speech/encoder.py	auto	constant	97	n	size check changed	< 1 to < 0
+m02	python/tinyllm/speech/encoder.py	auto	cmp_flip	166	n	frame count check changed	!= to >
+m03	python/tinyllm/speech/encoder.py	auto	constant	101	n	parity check changed	% 2 to % 1

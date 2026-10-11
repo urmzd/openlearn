@@ -1,0 +1,10 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/vision/rope2d.py	semantic	pitfall-1	84	y	(hidden until pass)	text after an image resumes after its token count
+s02	python/tinyllm/vision/rope2d.py	semantic	pitfall-2	103	y	(hidden until pass)	sections take their axes in reverse order
+s03	python/tinyllm/vision/rope2d.py	semantic	pitfall-3	48	y	(hidden until pass)	2D ladder spread over the whole rotary width
+s04	python/tinyllm/vision/rope2d.py	semantic	pitfall-4	35	n	(hidden until pass)	row coordinates left row-major under merge
+s05	python/tinyllm/vision/rope2d.py	semantic	pitfall-5	80	n	(hidden until pass)	image time ids not offset by the start position
+s06	python/tinyllm/vision/rope2d.py	semantic	pitfall-6	51	n	(hidden until pass)	columns before rows in the 2D tables
+m01	python/tinyllm/vision/rope2d.py	auto	constant	43	n	rotary width check changed	multiple of 4 to multiple of 2
+m02	python/tinyllm/vision/rope2d.py	auto	cmp_flip	100	n	section sum check changed	!= to >
+m03	python/tinyllm/vision/rope2d.py	auto	cond_drop	73	n	merge divisibility check dropped	if removed

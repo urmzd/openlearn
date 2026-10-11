@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -111,7 +111,7 @@
+     for r in refs:
+         if isinstance(r, str):
+             raise TypeError(f"each item's {what} is a list of strings, not one string")
+-        if len(r) == 0:
++        if len(r) < 0:
+             raise ValueError(f"an item has no {what}")
+ 
+ 

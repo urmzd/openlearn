@@ -1,0 +1,11 @@
+--- a/python/tinyllm/io/wav.py
++++ b/python/tinyllm/io/wav.py
+@@ -65,7 +65,7 @@
+             pcm = b[body : body + size]
+             break
+         # Chunks are word-aligned: an odd size is followed by one pad byte.
+-        pos = body + size + (size & 1)
++        pos = body + size
+     if fmt is None:
+         raise ValueError("read_wav: no fmt chunk")
+     if pcm is None:

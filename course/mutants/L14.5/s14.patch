@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -136,7 +136,7 @@
+         if vocab:
+             want = set().union(*words) & vocab
+         else:
+-            want = set.intersection(*words)
++            want = set().union(*words)
+         if want:
+             have = set(basic_normalize(p).split())
+             recalls.append(len(want & have) / len(want))

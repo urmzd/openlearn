@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/tiling.py
++++ b/python/tinyllm/vision/tiling.py
+@@ -86,7 +86,7 @@
+     fitted = resize(a, (nh, nw), "bicubic")
+     py, ry = divmod(th - nh, 2)
+     px, rx = divmod(tw - nw, 2)
+-    canvas = np.pad(fitted, ((py, py + ry), (px, px + rx), (0, 0)))
++    canvas = np.pad(fitted, ((py + ry, py), (px + rx, px), (0, 0)))
+     rows, cols = th // tile, tw // tile
+     tiles = [canvas[i * tile : (i + 1) * tile, j * tile : (j + 1) * tile].copy() for i in range(rows) for j in range(cols)]
+     base = resize(a, (tile, tile), "bicubic")

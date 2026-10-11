@@ -12,7 +12,7 @@ deps      = ["M07.0"]                # tinyllm.prob.rv.normal draws every normal
 reading   = ["M01.3", "M06.3", "S-M02", "S-M04"]
 # L0.4's layers initialize with it. L3.2, L7.9, and C1 join with their
 # batches: the mirror rule only accepts call sites in the registry.
-used_by   = ["L0.4", "L3.2", "L3.3", "L3.6", "L5.4", "L5.5", "L6.1", "L6.2", "L6.3"]
+used_by   = ["L0.4", "L3.2", "L3.3", "L3.6", "L5.4", "L5.5", "L6.1", "L6.2", "L6.3", "L13.1", "L13.3"]
 units     = ["python/tinyllm/nn/init.py"]
 upgrades  = []
 milestone = "MS-P2"

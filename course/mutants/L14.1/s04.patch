@@ -1,0 +1,11 @@
+--- a/python/tinyllm/io/wav.py
++++ b/python/tinyllm/io/wav.py
+@@ -86,7 +86,7 @@
+     else:
+         x = np.frombuffer(pcm, dtype="<f4").astype(np.float32)
+     # Interleaved L R L R ... -> [channels, frames].
+-    samples = np.ascontiguousarray(x.reshape(frames, channels).T)
++    samples = np.ascontiguousarray(x.reshape(channels, frames))
+     return Wav(samples=samples, sr=sr, channels=channels, fmt=kind)
+ 
+ 

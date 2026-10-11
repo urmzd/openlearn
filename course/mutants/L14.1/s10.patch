@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/frontend.py
++++ b/python/tinyllm/speech/frontend.py
+@@ -62,7 +62,7 @@
+ 
+ def to_mono_16k(w: Wav, cfg: FeatureConfig) -> NDArray:
+     x = np.asarray(w.samples, dtype=np.float64)
+-    mono = x.mean(axis=0) if x.ndim == 2 else x.copy()
++    mono = x[0].copy() if x.ndim == 2 else x.copy()
+     if w.sr == cfg.sampling_rate:
+         return mono
+     return resample_audio(mono, w.sr, cfg.sampling_rate)

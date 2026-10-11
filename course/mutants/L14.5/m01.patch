@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -85,7 +85,7 @@
+ 
+ def _rate(st: NDArray) -> float:
+     total = int(st[:, 3].sum())
+-    if total == 0:
++    if total < 0:
+         raise ValueError("every reference is empty: the error rate is undefined")
+     return float(st[:, :3].sum()) / total
+ 

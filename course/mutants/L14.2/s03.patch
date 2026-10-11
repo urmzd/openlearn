@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/encoder.py
++++ b/python/tinyllm/speech/encoder.py
+@@ -151,7 +151,7 @@
+         r = rng if rng is not None else PCG32(0).substream("init")
+         self.cfg = cfg
+         self.conv1 = Conv1d(cfg.n_mels, cfg.d, 3, pad=1, rng=r)
+-        self.conv2 = Conv1d(cfg.d, cfg.d, 3, stride=2, pad=1, rng=r)
++        self.conv2 = Conv1d(cfg.d, cfg.d, 3, stride=1, pad=1, rng=r)
+         self.layers = ModuleList([WhisperEncoderLayer(cfg, r) for _ in range(cfg.enc_layers)])
+         self.layer_norm = LayerNorm(cfg.d)
+         self.positions = whisper_sinusoids(cfg.n_audio_ctx, cfg.d)

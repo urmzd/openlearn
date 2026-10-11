@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/contrastive.py
++++ b/python/tinyllm/vision/contrastive.py
+@@ -158,7 +158,7 @@
+     for name in class_names:
+         e = model.encode_text(_encode_prompts(tok, [t.format(name) for t in templates])).data
+         m = e.mean(axis=0)
+-        out.append(m / np.linalg.norm(m))
++        out.append(m)
+     return np.stack(out)
+ 
+ 

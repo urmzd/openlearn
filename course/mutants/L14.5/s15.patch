@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -134,7 +134,7 @@
+     for p, rs in zip(preds, refs):
+         words = [set(basic_normalize(r).split()) for r in rs]
+         if vocab:
+-            want = set().union(*words) & vocab
++            want = set.intersection(*words) & vocab
+         else:
+             want = set.intersection(*words)
+         if want:

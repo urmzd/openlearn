@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/vit.py
++++ b/python/tinyllm/vision/vit.py
+@@ -306,7 +306,7 @@
+             if keep.shape[1] != t:
+                 raise ValueError(f"ViT: patch_mask covers {keep.shape[1]} tokens, h has {t}")
+             # Keys only: a padded patch is invisible to every query.
+-            mask = keep[:, None, None, :]
++            mask = keep[:, None, :, None]
+         rope = None
+         if cfg.pos == "rope2d":
+             cos, sin = rope2d_cos_sin(grid_hw, cfg.d // cfg.n_heads, cfg.rope_base, cfg.rope_merge)

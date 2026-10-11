@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/nn/init.pyi`](../../course/contracts/py/tinyllm/nn/init.pyi) · draw order: [`spec/pcg32.md`](../../course/contracts/spec/pcg32.md) |
 | **Tests** | `course/tests/M07.3/test_init.py` (what they check: section 4); torch's gain table and fan rule in `course/fixtures/M07.3/init_torch.json` |
 | **Needs** | `M07.0` its `normal(rng, n)` draws every normal weight (or `--ref-deps`). Reading: `M01.3` (activations), `M06.3` (PCG32), `S-M02` and `S-M04` (the Gaussian integrals) |
-| **Used by** | `L0.4` initializes every `Linear` and `Embedding` with it · later `L3.2` (LSTM), `L7.9` (the modern decoder), `C1` · later: `L3.3`, `L3.6`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3` |
+| **Used by** | `L0.4` initializes every `Linear` and `Embedding` with it · later `L3.2` (LSTM), `L7.9` (the modern decoder), `C1` · later: `L3.3`, `L3.6`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L13.1`, `L13.3` |
 | **Milestone** | `MS-P2` (Pass 2 closes with every math module it teaches passing) |
 | **Optional depth** | Glorot and Bengio, "Understanding the difficulty of training deep feedforward neural networks" (2010), section 4.2; He et al., "Delving Deep into Rectifiers" (2015), section 2.2; Radford et al., "Language Models are Unsupervised Multitask Learners" (GPT-2, 2019), section 2.3 |
 
@@ -169,6 +169,8 @@ def scaled_residual_std(base_std: float, n_layers: int) -> float        # base /
 | Forward | `L0.4` | `Linear` and `Embedding` initialize their parameters with these functions |
 | Forward | `L3.2` | LSTM gate weights |
 | Forward | `L7.9` and `C1` | `normal_init(0.02)` plus `scaled_residual_std` for the output projections of a Llama-style decoder |
+| Forward | `L13.1` | `normal_init` scales conv weights by fan-in |
+| Forward | `L13.3` | `normal_init` for patch and position embeddings |
 
 If you skip this module, `ol check L0.4` stops with `BLOCKED ... needs M07.3`: build it, or pass `--ref-deps`.
 
