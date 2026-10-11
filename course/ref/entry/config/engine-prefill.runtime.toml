@@ -1,0 +1,8 @@
+# runtime.toml template for the engine-prefill service (MS-L10, the disagg
+# suite): the engine template in the prefill role (L10.6). It serves
+# EngineControl.Prefill on [engine].grpc_listen and pushes each prompt's KV to
+# the decode engine a request names. The harness fills the listen keys.
+[engine]
+model_dir = "artifacts/models/tiny"
+model_id  = "tracer"
+role      = "prefill"

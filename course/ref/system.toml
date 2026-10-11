@@ -71,7 +71,34 @@ ready_timeout_s = 30
 
 # MS-L10: the same engine with prompt-lookup speculation on.
 [services.engine-spec]
+entry   = "engine"
+section = "engine"
 config = "config/engine-spec.runtime.toml"
+health = "http://127.0.0.1:{health_port}/healthz"
+ready_timeout_s = 30
+
+# MS-L10, the disagg suite: one prefill engine and two decode engines of the
+# same model. The harness fills [engine].grpc_listen (EngineControl) and
+# kv_listen (tl.kv.v1) with allocated ports, and passes P a decode engine's
+# {kv_port} as Prefill's decode_target.
+[services.engine-prefill]
+entry   = "engine"
+section = "engine"
+config = "config/engine-prefill.runtime.toml"
+health = "http://127.0.0.1:{health_port}/healthz"
+ready_timeout_s = 30
+
+[services.engine-decode-a]
+entry   = "engine"
+section = "engine"
+config = "config/engine-decode.runtime.toml"
+health = "http://127.0.0.1:{health_port}/healthz"
+ready_timeout_s = 30
+
+[services.engine-decode-b]
+entry   = "engine"
+section = "engine"
+config = "config/engine-decode.runtime.toml"
 health = "http://127.0.0.1:{health_port}/healthz"
 ready_timeout_s = 30
 

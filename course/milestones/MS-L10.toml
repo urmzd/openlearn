@@ -25,6 +25,10 @@
 #   [services.engine-spec]  the same template with
 #                         [engine].speculative = { draft = "prompt_lookup", k = 4 }
 #   [services.engine-instruct]  (nightly) model_dir = {asset:smollm2-135m-instruct}
+#   [services.engine-prefill], [services.engine-decode-a], [services.engine-decode-b]
+#                         the same model with [engine].role = "prefill" and
+#                         "decode" (L10.6); the harness fills grpc_listen and
+#                         kv_listen with allocated ports ({grpc_port}, {kv_port})
 #   [entry].loadgen       {loadgen} --target <base url without /v1> --model <m>
 #                         --prompt <text> --max-tokens <n> --mode burst
 #                         --burst <n> --duration <d> --out <report.json>:
@@ -32,15 +36,23 @@
 #                         to --out and prints it as the final stdout line
 #                         (`{loadgen} compare` belongs to the optional load.02)
 #
+# Two matchers compare your engines with each other (course/harness disagg.py):
+# `greedy-equal` (the plain and the speculative engine give one greedy text)
+# and `disagg`, the disaggregated run without the gateway: tokenize on P,
+# EngineControl.Prefill on P with decode_target = a decode engine's kv port,
+# then the same request on that engine with X-TL-KV-Handle. Its cases: Info
+# roles, greedy (plain and streamed, alternating the two decode engines) and
+# seeded output equal to the unified engine, an unknown and a released handle
+# answering 404 kv_handle_not_found, and a transfer reset mid-push (a harness
+# proxy in front of the kv port) failing Prefill without leaking a KV block
+# on either side, after which that decode engine serves again. The disagg
+# step is written below but stays commented until the reference serve loop
+# serves both roles (DEVIATIONS B92-08, X34).
+#
 # Covered elsewhere, so not repeated here: Rust and Python samplers agree on
 # fixture logits (L10.1's course tests, parity/sampler); the engine's greedy
 # stream equals your Python on the tiny model (L10.1's runner tests and
-# conformance chat.nonstream.greedy). Not yet expressible with the harness's
-# matchers (DEVIATIONS B92-05): the disaggregated run (one prefill and two
-# decode engines driven through Prefill and X-TL-KV-Handle resume, with a
-# transfer reset) and the greedy-equality check across the plain and the
-# speculative engine; L10.6's and L10.8's course tests prove both on a fake
-# model until a `disagg` suite lands.
+# conformance chat.nonstream.greedy).
 #
 # `ss milestone MS-L10 --smoke` runs the conformance step only.
 id       = "MS-L10"
@@ -64,6 +76,24 @@ expect = { match = "suite", suite = "openapi:v1:engine" }
 name     = "speculative-engine-conforms"
 services = ["engine-spec"]
 expect   = { match = "suite", suite = "openapi:v1:engine", service = "engine-spec" }
+
+# Greedy output is unchanged with prompt-lookup speculation on (L10.8): each
+# prompt (one repeats a phrase, so drafts are proposed) gives one text and
+# one token count on both engines.
+[[step]]
+name     = "speculative-greedy-unchanged"
+services = ["engine", "engine-spec"]
+expect   = { match = "greedy-equal", engines = ["engine", "engine-spec"], max_tokens = 32 }
+
+# -- PENDING: disaggregated serving (DESIGN 4.3 step 5) --------------------------------
+# Uncomment once the serve loop serves the prefill and decode roles (DEVIATIONS
+# B92-08): the reference tl-serve still refuses engine.role other than
+# "unified" and any X-TL-KV-Handle, so engine-prefill does not start.
+#
+# [[step]]
+# name     = "disaggregated-equals-unified"
+# services = ["engine", "engine-prefill", "engine-decode-a", "engine-decode-b"]
+# expect   = { match = "disagg", unified = "engine", prefill = "engine-prefill", decode = ["engine-decode-a", "engine-decode-b"] }
 
 # -- load: 64 at once from your load generator -------------------------------------
 

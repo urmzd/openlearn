@@ -15,6 +15,8 @@
 | file-produced   | glob, min_count, schema, contains, rows (parquet total, e.g. ">= 1000") |
 | sse             | min_chunks; the stream is framed byte for byte (2.6)                 |
 | suite           | suite (openapi:...), service (local) or base                         |
+| disagg          | prefill, decode (two), unified, model, max_tokens, prompts, reset_after_bytes (disagg.py) |
+| greedy-equal    | engines (two or more services), model, max_tokens, prompts           |
 | promql          | query, base (default [deploy].prometheus), bound, hold_s, interval_s |
 | trace           | service, spans, services, parents, base (default [deploy].traces), api (jaeger or tempo) |
 | git-log         | n (default 1): the last n subjects are Conventional Commits          |
@@ -42,7 +44,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from . import HarnessError, conform, ctx, placeholders, schema, web
+from . import HarnessError, conform, ctx, disagg, placeholders, schema, web
 
 CONVENTIONAL = re.compile(
     r"^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^()\s]+\))?!?: \S.*$"
@@ -622,6 +624,79 @@ def m_suite(e, out, mc) -> Verdict:
     )
 
 
+def _engines(mc, names, what: str) -> list:
+    """Started services as disagg.Engine (local runs only)."""
+    if mc.kind_mode:
+        raise HarnessError(
+            f"step {mc.step_name}: {what} drives local services; it has no kind form"
+        )
+    out = []
+    for n in names:
+        inst = mc.stack.instances.get(n) if mc.stack else None
+        if inst is None:
+            raise HarnessError(
+                f"step {mc.step_name}: service {n!r} is not started (add it to the step's `services`)"
+            )
+        p = inst.ports
+        out.append(
+            disagg.Engine(
+                n,
+                inst.base,
+                f"http://127.0.0.1:{p['health_port']}",
+                f"127.0.0.1:{p['grpc_port']}",
+                f"127.0.0.1:{p['kv_port']}",
+            )
+        )
+    return out
+
+
+def _model(e: dict, mc) -> str:
+    sysm = mc.run.system.endpoints.get("model") if mc.run and mc.run.system else None
+    return str(e.get("model") or sysm or "tracer")
+
+
+def m_disagg(e, out, mc) -> Verdict:
+    decode = e.get("decode", ["engine-decode-a", "engine-decode-b"])
+    if not isinstance(decode, list) or len(decode) < 1:
+        raise HarnessError(f"step {mc.step_name}: disagg `decode` must list services")
+    names = [e.get("unified", "engine"), e.get("prefill", "engine-prefill"), *decode]
+    eng = _engines(mc, names, "the disagg suite")
+    kw = {}
+    if "prompts" in e:
+        kw["prompts"] = [str(p) for p in e["prompts"]]
+    suite = disagg.Suite(
+        unified=eng[0],
+        prefill=eng[1],
+        decode=eng[2:],
+        model=_model(e, mc),
+        max_tokens=int(e.get("max_tokens", 16)),
+        reset_after_bytes=int(e.get("reset_after_bytes", 1024)),
+        **kw,
+    )
+    ok, detail = disagg.summary(suite.run())
+    return Verdict("pass" if ok else "fail", detail)
+
+
+def m_greedy_equal(e, out, mc) -> Verdict:
+    names = e.get("engines")
+    if not isinstance(names, list) or len(names) < 2:
+        raise HarnessError(
+            f"step {mc.step_name}: greedy-equal needs `engines`, two or more services"
+        )
+    prompts = [str(p) for p in e.get("prompts", disagg.PROMPTS)]
+    errs = disagg.greedy_equal(
+        _engines(mc, names, "greedy-equal"),
+        _model(e, mc),
+        prompts,
+        int(e.get("max_tokens", 32)),
+    )
+    if errs:
+        return Verdict("fail", "\n".join(errs))
+    return Verdict(
+        "pass", f"{len(prompts)} prompts: one greedy text on {', '.join(names)}"
+    )
+
+
 def _deploy(mc, key: str, e: dict) -> str:
     if "base" in e:
         return placeholders.expand(e["base"], mc.lookup).rstrip("/")
@@ -1049,6 +1124,8 @@ MATCHERS = {
     "file-produced": m_file_produced,
     "sse": m_sse,
     "suite": m_suite,
+    "disagg": m_disagg,
+    "greedy-equal": m_greedy_equal,
     "promql": m_promql,
     "trace": m_trace,
     "git-log": m_git_log,
@@ -1058,6 +1135,8 @@ MATCHERS = {
 }
 NO_COMMAND = {
     "suite",
+    "disagg",
+    "greedy-equal",
     "promql",
     "trace",
     "git-log",
