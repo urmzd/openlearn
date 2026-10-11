@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.17.0 (2026-10-11)
+
+### Features
+
+- **app**: run exercises with a native engine instead of the practice CLI ([06d8601](https://github.com/urmzd/openlearn/commit/06d86010bdc3218b00af6304e49a43e1749fe5f5))
+
+### Misc
+
+- **app**: keep the fixture's stubbed function valid in dash ([fd6f0e0](https://github.com/urmzd/openlearn/commit/fd6f0e047b88628c2324ceda3ce6061b4c6010c1))
+- **app**: fail when the exercise spec and the exercise tree drift apart ([4c96c04](https://github.com/urmzd/openlearn/commit/4c96c0491aa2704ff7a2b772e91d82921a2dc2c5))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.16.0...v0.17.0)
+
+
 ## 0.16.0 (2026-10-11)
 
 ### Features
