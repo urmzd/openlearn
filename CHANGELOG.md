@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.13.0 (2026-10-11)
+
+### Features
+
+- **course**: B14 group M12, signals and images, and the S-M12 solve set ([4f79c86](https://github.com/urmzd/openlearn/commit/4f79c86e35764cd715bf07babec36ad6aaf0a7f8))
+- **course**: disagg and greedy-equal matchers for MS-L10 ([dd01b12](https://github.com/urmzd/openlearn/commit/dd01b12d0092a7af1861b44af58116ecf3594cf7))
+- **course**: MS-durable runs its kill loop and TrainRun under kills ([36b4217](https://github.com/urmzd/openlearn/commit/36b4217d75f6d82ae74280c352646302a6c0fcd7))
+
+### Bug Fixes
+
+- **site**: render LaTeX with remark-math and KaTeX; prices stay literal dollars ([c5a008f](https://github.com/urmzd/openlearn/commit/c5a008fb4b1f683471abf1eb5a9fb8419d390057))
+- **course**: the committed-fixture budget is 56 MiB (D52) ([c960c88](https://github.com/urmzd/openlearn/commit/c960c88098b51cd2d14c29c0ca7d1f6c0285f9c0))
+- **course**: speculative engine scores every fed position, engines serve prefill and decode roles ([bf74d0d](https://github.com/urmzd/openlearn/commit/bf74d0d7496d1893626ec4abeac51fe06c8d6ea6))
+
+### Misc
+
+- **course**: disagg test server shuts its listener down so a closed server is unreachable on Linux ([b1744fa](https://github.com/urmzd/openlearn/commit/b1744fad38123ce843f73c85ff2dfa0bb45a9af0))
+- **course**: handoff after the wrap-up: what is done, B14 deferred past M12, open items ([7dead31](https://github.com/urmzd/openlearn/commit/7dead31291802de7f351585529e71aca25957cbf))
+- **course**: merge B14 multimodal into DESIGN.md without FFI ([1fba39e](https://github.com/urmzd/openlearn/commit/1fba39e8efcbb434bae27de894e1d217776bcc36))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.12.0...v0.13.0)
+
+
 ## 0.11.0 (2026-10-09)
 
 ### Features
