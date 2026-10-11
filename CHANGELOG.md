@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.0 (2026-10-11)
+
+### Breaking
+
+- openlearn tooling: the ss CLI is ol ([7bd5759](https://github.com/urmzd/openlearn/commit/7bd575983d0bcffd5bb90e27b6b0f43f37e73469))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.14.0...v0.15.0)
+
+
 ## 0.14.0 (2026-10-11)
 
 ### Features
