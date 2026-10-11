@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.16.0 (2026-10-11)
+
+### Features
+
+- **app**: lead the sidebar with the OpenLearn logo and put the course switcher under it ([e36f16a](https://github.com/urmzd/openlearn/commit/e36f16a64049088614dad42829fe473a4ff1bffb))
+- **app**: divide the sidebar footer from the lists and give section breaks a hairline label ([5ad2263](https://github.com/urmzd/openlearn/commit/5ad2263468555a8a7ea9c420067c71c8955d5ecc))
+- **app**: replace the professor with an MCP server over the course pack ([23db984](https://github.com/urmzd/openlearn/commit/23db98491c8d868fb38ecd5171a6c3deccdc7431))
+
+### Misc
+
+- **app**: use the OL_ environment names in the MCP server tests ([bdaca48](https://github.com/urmzd/openlearn/commit/bdaca48beb4d9f40e3741debe155a78bf62e82af))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.15.0...v0.16.0)
+
+
 ## 0.15.0 (2026-10-11)
 
 ### Breaking
