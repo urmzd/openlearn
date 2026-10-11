@@ -1,7 +1,7 @@
 # openlearn
 
 A Wails desktop app that renders course packs: it reads a pack's documents and role paths,
-runs its exercises through the pack's own CLI, generates timed exercises from a chapter
+runs its exercises with its own engine, generates timed exercises from a chapter
 with a hidden rubric, coaches while the user works, and scores the result. Beta: prompts
 and scoring calibration are still moving.
 
@@ -12,8 +12,8 @@ and scoring calibration are still moving.
 | `internal/course` | A course pack: manifest, outline, role paths, progress files, search. Reads `path.tsv` and `.done` in the format `ol learn` owns. |
 | `internal/packs` | Finds packs (checkout, linked folder, imported zip, built in) and opens one |
 | `internal/builtin` | The packs embedded in the binary, filled by `cmd/bundle` (`make content`) |
-| `internal/practice` | Runs a pack's practice CLI and reads the attempt it left in the scratchpad |
-| `internal/workspace` | One open pack with its progress and practice CLI. The app and the MCP server both open one. |
+| `internal/practice` | The exercise engine: lists a pack's exercises from its spec, clones one with the solution stripped, and checks an attempt by running it |
+| `internal/workspace` | One open pack with its progress and exercises. The app and the MCP server both open one. |
 | `internal/mcpserver` | The pack over MCP, for whatever agent the learner uses. `openlearn mcp` and `cmd/openlearn-mcp` run it. See `docs/mcp.md`. |
 | `internal/domain` | Data model, JSON-tagged because everything crosses into TypeScript. Owns the fixed skill taxonomy. |
 | `internal/harness` | The three LLM engines: `problem.go` (generation), `coach.go` (live coaching), `review.go` (scoring) |
@@ -26,10 +26,17 @@ and scoring calibration are still moving.
 
 ## Non-obvious invariants
 
-**The pack owns its formats; the app is a second reader.** `path.tsv`, the `.done` progress
-files, and the practice CLI's verbs and exit codes are defined by `practice/bin/ol`.
-`internal/course` and `internal/practice` read them and never extend them. A stage tied to
-a check is only ever marked by the CLI, because the CLI is what knows whether it passed.
+**Exercises run in-process, from a spec.** `internal/practice` is the only implementation
+of list, start, check, diff, and reset. A pack describes its exercises in a JSON spec
+(`practice/exercises.json` here) and the engine does the rest. Do not shell out to a pack
+CLI for any of it: that was the old design, and it failed whenever the CLI moved. The one
+process the engine starts is the compiler or interpreter an attempt needs, from an argument
+list in the spec, with no shell.
+
+**`path.tsv` and `.done` are shared with `ol learn`.** `internal/course` reads and writes
+them in the format `practice/bin/ol` uses, so the terminal and the app agree. A stage tied
+to a check is only marked through the pack's `stageCheck` command, looked up when it is
+needed, because only the pack's own tooling knows whether the check passed.
 
 **Every exported method on `App` is a frontend binding.** Anything else that needs to be
 exported (the asset handler, say) goes on its own type.
@@ -45,7 +52,7 @@ the same path the app's buttons use.
 
 **Pack content is untrusted.** A pack can be imported from a zip. Markdown is sanitized
 before rendering, zip entries are checked against path escape and a size budget, and names
-passed to the practice CLI are validated as plain names. Keep those checks when touching
+used as exercise names are validated as plain names. Keep those checks when touching
 `Markdown.tsx`, `internal/packs`, or `internal/practice`.
 
 **`wails dev` needs the toolchain `go.mod` declares.** Wails 2.11 cannot type-check packages

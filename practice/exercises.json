@@ -1,0 +1,66 @@
+{
+  "scratch": ".scratchpad",
+  "sets": [
+    {
+      "kind": "predict", "lang": "go", "mode": "predict",
+      "glob": "practice/predict/go/predict/[0-9][0-9]-*", "show": "main.go",
+      "run": { "dir": "practice/predict/go", "steps": [["go", "run", "./predict/{name}"]] }
+    },
+    {
+      "kind": "predict", "lang": "rust", "mode": "predict",
+      "glob": "practice/predict/rust/predict/src/bin/[0-9][0-9]-*.rs",
+      "run": { "dir": "practice/predict/rust/predict", "steps": [["cargo", "run", "--quiet", "--bin", "{name}"]] }
+    },
+    {
+      "kind": "predict", "lang": "python", "mode": "predict",
+      "glob": "practice/predict/python/predict/[0-9][0-9]-*.py",
+      "run": { "dir": "practice/predict/python", "steps": [["uv", "run", "--no-project", "--quiet", "python", "predict/{name}.py"]] }
+    },
+    {
+      "kind": "predict", "lang": "ts", "mode": "predict",
+      "glob": "practice/predict/ts/predict/[0-9][0-9]-*.ts",
+      "run": { "dir": "practice/predict/ts", "steps": [["node", "predict/{name}.ts"]] }
+    },
+    {
+      "kind": "build", "lang": "c", "mode": "attempt",
+      "glob": "practice/build/systems/c/[0-9][0-9]-*",
+      "run": { "steps": [["cc", "-std=c11", "-Wall", "-Wextra", "-Wno-unused-parameter", "-o", "{out}/bin", "*.c"], ["{out}/bin"]] }
+    },
+    {
+      "kind": "build", "lang": "cpp", "mode": "attempt",
+      "glob": "practice/build/systems/cpp/[0-9][0-9]-*",
+      "run": { "steps": [["c++", "-std=c++20", "-Wall", "-Wextra", "-o", "{out}/bin", "*.cpp"], ["{out}/bin"]] }
+    },
+    {
+      "kind": "build", "lang": "rust", "mode": "attempt",
+      "glob": "practice/build/systems/rust/[0-9][0-9]-*",
+      "run": { "steps": [["rustc", "--edition", "2021", "-A", "dead_code", "-o", "{out}/bin", "main.rs"], ["{out}/bin"]] }
+    },
+    {
+      "kind": "build", "lang": "go", "mode": "attempt",
+      "glob": "practice/build/cloud/go/[0-9][0-9]-*",
+      "seed": { "go.mod": "module practice/{name}\n\ngo 1.22\n" },
+      "run": { "steps": [["go", "run", "."]] }
+    },
+    {
+      "kind": "build", "lang": "python", "mode": "attempt",
+      "glob": "practice/build/general/python/[0-9][0-9]-*",
+      "run": { "steps": [["uv", "run", "--no-project", "--quiet", "python", "main.py"]] }
+    },
+    {
+      "kind": "build", "lang": "typescript", "mode": "attempt",
+      "glob": "practice/build/general/typescript/[0-9][0-9]-*",
+      "run": { "steps": [["node", "main.ts"]] }
+    },
+    {
+      "kind": "reattempt", "lang": "case-studies", "mode": "attempt",
+      "items": [
+        { "name": "01-order-book-matching", "source": "case-studies/01-order-book-matching/matching_engine.py" },
+        { "name": "02-grounded-sql-agent", "source": "case-studies/02-grounded-sql-agent/safety_gate.py" },
+        { "name": "03-exactly-once-event-api", "source": "case-studies/03-exactly-once-event-api/event_api.py" },
+        { "name": "04-kmeans-optimization", "source": "case-studies/04-kmeans-optimization/kmeans_ladder.py" }
+      ],
+      "run": { "steps": [["uv", "run", "--no-project", "--quiet", "python", "{file}"]] }
+    }
+  ]
+}

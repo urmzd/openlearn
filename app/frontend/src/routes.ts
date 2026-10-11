@@ -22,4 +22,5 @@ export type Route =
   | { kind: "exercise"; ref: ExerciseRef }
   | { kind: "session"; source: Source | null }
   | { kind: "progress" }
-  | { kind: "settings" };
+  | { kind: "courses" }
+  | { kind: "connect" };

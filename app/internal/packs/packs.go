@@ -33,7 +33,7 @@ type Pack struct {
 	Tagline string `json:"tagline"`
 	// Source is "builtin", "checkout", "linked", or "installed".
 	Source string `json:"source"`
-	// Practice reports whether the pack's practice CLI can run from here.
+	// Practice reports whether the pack's exercises can run from here.
 	Practice bool `json:"practice"`
 }
 
@@ -52,7 +52,7 @@ type Registry struct {
 
 // List returns every pack the app can open. A pack reachable on disk hides the
 // compiled-in copy with the same id, because the copy on disk is newer and is
-// the only one its practice CLI can run from.
+// the only one its exercises can run from.
 func (r Registry) List(linked []string) []Pack {
 	var out []Pack
 	seenDir := map[string]bool{}

@@ -13,20 +13,18 @@ import (
 	"github.com/urmzd/openlearn/app/internal/store"
 )
 
-// checker is a practice CLI small enough to read. It honors the contract
-// internal/practice documents and nothing else.
-const checker = `#!/bin/sh
-scratch="$PWD/.scratchpad"
-case "$1" in
-  list) printf 'build/sh\n  01-echo   --\n' ;;
-  start) mkdir -p "$scratch/$2/$3/$4" && [ -f "$scratch/$2/$3/$4/main.sh" ] || printf 'echo TODO\n' > "$scratch/$2/$3/$4/main.sh" ;;
-  check)
-    f="$scratch/$2/$3/$4/main.sh"
-    [ -f "$f" ] || { echo "skip $4"; exit 2; }
-    [ "$(sh "$f")" = hello ] && { echo "PASS $4"; exit 0; }
-    echo "FAIL $4"; exit 1 ;;
-  learn) mkdir -p "$scratch/learn"; [ "$3" = --done ] && echo "$4" >> "$scratch/learn/$2.done"; echo marked ;;
-esac
+// exercises is a spec whose only toolchain is sh.
+const exercises = `{"sets": [{"kind": "build", "lang": "sh", "mode": "attempt", "glob": "ex/[0-9][0-9]-*",
+  "run": {"steps": [["sh", "main.sh"]]}}]}`
+
+// solved is a correct attempt at the exercise.
+const solved = "greet() { echo hello; }\n[ \"$(greet)\" = hello ]\n"
+
+// gate is the pack's stage check: it lets a checked stage through only once
+// the learner's exercise attempt passes.
+const gate = `#!/bin/sh
+sh .scratchpad/build/sh/01-echo/main.sh 2>/dev/null || { echo "module:M1 has not passed"; exit 1; }
+mkdir -p .scratchpad/learn && echo "$2" >> ".scratchpad/learn/$1.done"
 `
 
 func write(t *testing.T, path, body string, mode os.FileMode) {
@@ -44,11 +42,13 @@ func write(t *testing.T, path, body string, mode os.FileMode) {
 func connect(t *testing.T) (*mcp.ClientSession, *store.Store) {
 	t.Helper()
 	pack := t.TempDir()
-	write(t, filepath.Join(pack, "openlearn.json"), `{"id":"demo","title":"Demo","paths":"paths","featured":"main","practice":"bin/check","modes":["written"],"tracks":[{"dir":"unit","title":"Unit One"}]}`, 0o600)
+	write(t, filepath.Join(pack, "openlearn.json"), `{"id":"demo","title":"Demo","paths":"paths","featured":"main","practice":"ex.json","stageCheck":["bin/gate","{path}","{stage}"],"modes":["written"],"tracks":[{"dir":"unit","title":"Unit One"}]}`, 0o600)
+	write(t, filepath.Join(pack, "ex.json"), exercises, 0o600)
+	write(t, filepath.Join(pack, "ex/01-echo/main.sh"), "greet() {\n  # SOLUTION-BEGIN\n  echo hello\n  # SOLUTION-END\n  :\n}\n[ \"$(greet)\" = hello ]\n", 0o600)
 	write(t, filepath.Join(pack, "unit/01-limits/README.md"), "# Limits\n"+strings.Repeat("A limit is a promise about nearby values. ", 400), 0o600)
 	write(t, filepath.Join(pack, "paths/main/README.md"), "# Main path\n", 0o600)
-	write(t, filepath.Join(pack, "paths/main/path.tsv"), "1\tLimits\tunit/01-limits/README.md\tYou can prove one.\t-\n", 0o600)
-	write(t, filepath.Join(pack, "bin/check"), checker, 0o700)
+	write(t, filepath.Join(pack, "paths/main/path.tsv"), "1\tLimits\tunit/01-limits/README.md\tYou can prove one.\t-\n2\tEcho\tunit/01-limits/README.md\tYour echo passes.\tmodule:M1\n", 0o600)
+	write(t, filepath.Join(pack, "bin/gate"), gate, 0o700)
 	t.Setenv("OL_SCRATCH", "")
 	t.Setenv("OL_COURSE_HOME", "")
 
@@ -136,22 +136,35 @@ func TestAnAgentCanFindReadAndPageADocument(t *testing.T) {
 	}
 }
 
-func TestStageMarksGoThroughThePacksOwnCLI(t *testing.T) {
+func TestStageMarksAreSharedAndCheckedStagesCannotBeForced(t *testing.T) {
 	cs, _ := connect(t)
 
-	before, _ := call(t, cs, "get_path", map[string]any{"name": "main"})
-	if !strings.Contains(before, `"done": false`) {
-		t.Fatalf("stage should start unfinished: %s", before)
-	}
 	if out, isErr := call(t, cs, "mark_stage", map[string]any{"path": "main", "stage": "1", "done": true}); isErr {
 		t.Fatalf("mark_stage: %s", out)
 	}
 	after, _ := call(t, cs, "get_path", map[string]any{"name": "main"})
-	if !strings.Contains(after, `"done": true`) {
+	if strings.Count(after, `"done": true`) != 1 {
 		t.Errorf("the mark did not show up where the app reads progress: %s", after)
 	}
 	if out, isErr := call(t, cs, "mark_stage", map[string]any{"path": "main", "stage": "9", "done": true}); !isErr {
 		t.Errorf("marking a stage that does not exist succeeded: %s", out)
+	}
+
+	// Stage 2 is tied to a check. An agent asking nicely is not a pass.
+	out, isErr := call(t, cs, "mark_stage", map[string]any{"path": "main", "stage": "2", "done": true})
+	if !isErr || !strings.Contains(out, "module:M1 has not passed") {
+		t.Fatalf("a checked stage was marked without its check passing: %s", out)
+	}
+	// Once the learner's attempt really passes, the same call goes through.
+	ex := map[string]any{"kind": "build", "lang": "sh", "name": "01-echo"}
+	call(t, cs, "open_exercise", ex)
+	call(t, cs, "write_exercise_file", map[string]any{"kind": "build", "lang": "sh", "name": "01-echo", "file": "main.sh", "content": solved})
+	if out, isErr := call(t, cs, "mark_stage", map[string]any{"path": "main", "stage": "2", "done": true}); isErr {
+		t.Fatalf("the check passed but the stage was refused: %s", out)
+	}
+	done, _ := call(t, cs, "get_path", map[string]any{"name": "main"})
+	if strings.Count(done, `"done": true`) != 2 {
+		t.Errorf("both stages should be finished now: %s", done)
 	}
 }
 
@@ -163,14 +176,14 @@ func TestOnlyTheCheckerDecidesAnExercise(t *testing.T) {
 		t.Errorf("an unstarted exercise has no verdict: %s", out)
 	}
 	opened, _ := call(t, cs, "open_exercise", ex)
-	if !strings.Contains(opened, "echo TODO") {
+	if !strings.Contains(opened, "TODO: your implementation goes here.") || strings.Contains(opened, "echo hello") {
 		t.Fatalf("attempt = %s", opened)
 	}
 	if out, _ := call(t, cs, "check_exercise", ex); !strings.Contains(out, `"verdict": "fail"`) {
 		t.Errorf("the stub must fail: %s", out)
 	}
 
-	write := map[string]any{"kind": "build", "lang": "sh", "name": "01-echo", "file": "main.sh", "content": "echo hello\n"}
+	write := map[string]any{"kind": "build", "lang": "sh", "name": "01-echo", "file": "main.sh", "content": solved}
 	if out, isErr := call(t, cs, "write_exercise_file", write); isErr {
 		t.Fatalf("write: %s", out)
 	}

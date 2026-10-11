@@ -1,8 +1,9 @@
 // One exercise: an editor on your attempt and the verdict from the pack's CLI.
 //
-// Nothing here decides whether an attempt is right. The CLI clones the exercise
-// into the scratchpad, this edits the files it put there, and "Check" runs the
-// same command you would type in a terminal. The exit code is the verdict.
+// Nothing here decides whether an attempt is right. The backend clones the
+// exercise into the scratchpad, this edits the files it put there, and "Check"
+// runs the attempt against the exercise's own tests. The exit code is the
+// verdict.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";

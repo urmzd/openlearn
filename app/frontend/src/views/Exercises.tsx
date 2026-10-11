@@ -46,14 +46,14 @@ export function Exercises({ refresh, onOpen }: Props) {
       <PageBody>
         <PageTitle
           title="Exercises"
-          description="Each one is cloned into your scratchpad, edited here, and checked by the pack's own CLI."
+          description="Each one is cloned into your scratchpad with the solution removed, edited here, and checked by running it."
         />
         {error && <ErrorNote>{error}</ErrorNote>}
         {!groups && !error && <Skeleton className="h-40 w-full" />}
         {groups && groups.length === 0 && (
           <p className="text-sm text-muted-foreground">
             This pack has no exercises that can run here. Exercises need the pack opened from a
-            folder on disk, with its practice CLI.
+            folder on disk.
           </p>
         )}
         {kinds.length > 0 && (

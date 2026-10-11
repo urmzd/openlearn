@@ -30,7 +30,8 @@ import { PathView } from "@/views/PathView";
 import { Progress } from "@/views/Progress";
 import { Runner } from "@/views/Runner";
 import { SessionSetup } from "@/views/SessionSetup";
-import { Settings } from "@/views/Settings";
+import { Connect } from "@/views/Connect";
+import { Courses } from "@/views/Courses";
 import { TrackView } from "@/views/TrackView";
 
 interface Props {
@@ -171,7 +172,6 @@ export function Workbench({ epoch }: Props) {
               modes={info?.modes ?? []}
               source={route.source}
               onClearSource={() => setRoute({ kind: "session", source: null })}
-              onOpenSettings={() => setRoute({ kind: "settings" })}
             />
           )}
           {route.kind === "progress" && (
@@ -182,12 +182,10 @@ export function Workbench({ epoch }: Props) {
               onOpenPath={(name) => setRoute({ kind: "path", name })}
             />
           )}
-          {route.kind === "settings" && (
-            <Settings
-              course={info}
-              onPackChanged={() => loadPack().catch(() => {})}
-            />
+          {route.kind === "courses" && (
+            <Courses course={info} onSwitch={switchPack} />
           )}
+          {route.kind === "connect" && <Connect />}
 
           {notice && (
             <button

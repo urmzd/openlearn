@@ -160,7 +160,7 @@ func (a *App) SetFocus(doc string) {
 
 // ---------- practice ----------
 
-var errNoPractice = errors.New("this pack has no practice CLI that can run here")
+var errNoPractice = errors.New("this pack has no exercises that can run here")
 
 func (a *App) runner() (*practice.Runner, error) {
 	if r := a.current().Runner; r != nil {
@@ -173,7 +173,7 @@ func (a *App) runner() (*practice.Runner, error) {
 func (a *App) ListExercises() ([]practice.Group, error) {
 	r, err := a.runner()
 	if err != nil {
-		return []practice.Group{}, nil //nolint:nilerr // no practice CLI is an empty list, not a failure
+		return []practice.Group{}, nil //nolint:nilerr // no exercises is an empty list, not a failure
 	}
 	return r.List(a.ctxOrBackground())
 }

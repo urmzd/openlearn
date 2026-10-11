@@ -4,7 +4,7 @@ The app has no assistant of its own. It serves the open course pack over the [Mo
 
 ## Connect
 
-The desktop binary is also the server. Run it with `mcp` and it speaks MCP on stdin and stdout instead of opening a window. **Settings > Connect an agent** shows the exact command for your install.
+The desktop binary is also the server. Run it with `mcp` and it speaks MCP on stdin and stdout instead of opening a window. **Connect an agent** in the sidebar shows the exact command for your install.
 
 ```sh
 claude mcp add openlearn -- /Applications/openlearn.app/Contents/MacOS/openlearn mcp
@@ -47,7 +47,7 @@ The server shares the app's store (`~/.openlearn`), so progress and sessions are
 | `list_exercises` | Exercises by kind and language, with which are started. |
 | `open_exercise` | The learner's attempt, cloned into the scratchpad if new. |
 | `write_exercise_file` | Overwrite one file of the attempt. |
-| `check_exercise` | Run the attempt through the pack's checker and return the verdict. |
+| `check_exercise` | Run the attempt and return the verdict. |
 
 The first eight read. `mark_stage` and the exercise tools change the learner's progress or their attempt.
 
@@ -57,9 +57,9 @@ The server sends instructions at initialization (`internal/mcpserver/server.go`)
 
 Two things are enforced rather than asked for, because an instruction is not a guarantee:
 
-- **Verdicts come from the pack.** There is no tool that sets a verdict. `check_exercise` runs the pack's own CLI and returns its exit code.
-- **Checked stages cannot be forced.** `mark_stage` goes through the same path the app's checkbox does. A stage tied to a check is refused until the check passes.
+- **Verdicts come from running the attempt.** There is no tool that sets a verdict. `check_exercise` runs the attempt against the exercise's own tests and reports the exit status.
+- **Checked stages cannot be forced.** `mark_stage` goes through the same path the app's checkbox does. A stage tied to a check is refused until the pack's stage check says it passed.
 
 ## Trust
 
-The server gives an agent read access to the pack and write access to two things: path progress, and files inside an attempt the practice CLI already created. File writes are confined to those files by `internal/practice`. `check_exercise` runs the pack's practice CLI on your machine, the same as the app's Check button, so the caution about opening packs you trust applies to agents as well.
+The server gives an agent read access to the pack and write access to two things: path progress, and files inside an attempt the practice CLI already created. File writes are confined to files the exercise engine already created, by `internal/practice`. `check_exercise` runs the attempt's compiler and tests on your machine, the same as the app's Check button, so the caution about opening packs you trust applies to agents as well.
