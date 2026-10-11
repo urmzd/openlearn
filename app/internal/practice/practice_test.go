@@ -47,7 +47,7 @@ func runner(t *testing.T) *practice.Runner {
 	write(t, filepath.Join(root, "builds/01-sum/main.sh"),
 		"# test harness, never edited\n. ./lib.sh\n[ \"$(cat \"$1\")\" = ab ] || exit 3\n[ \"$(add 2 3)\" = 5 ] || { echo \"add 2 3 gave $(add 2 3)\"; exit 1; }\n")
 	write(t, filepath.Join(root, "builds/01-sum/lib.sh"),
-		"add() {\n  # SOLUTION-BEGIN\n  echo $(( $1 + $2 ))\n  # SOLUTION-END\n}\n")
+		"add() {\n  # SOLUTION-BEGIN\n  echo $(( $1 + $2 ))\n  # SOLUTION-END\n  :\n}\n")
 	write(t, filepath.Join(root, "builds/01-sum/a.part"), "a")
 	write(t, filepath.Join(root, "builds/01-sum/b.part"), "b")
 	write(t, filepath.Join(root, "elsewhere/solo.sh"), "# SOLUTION-BEGIN\nexit 0\n# SOLUTION-END\nexit 7\n")
