@@ -1,0 +1,21 @@
+id        = "S-M12"
+title     = "Signals and images problem set: convolution, sampling, Fourier, mel, contrastive losses, and WER"
+kind      = "solve"
+lang      = ["none"]
+pass      = 12
+chapter   = "math/12-signals-and-images/90-problem-set.md"
+contract  = []
+deps      = []
+# Pen and paper after M12.1 to M12.6 in Pass 12 (DESIGN 4.2). It also holds
+# the solve-only math of L13 and L14: contrastive losses (InfoNCE, the log N
+# bound, SigLIP's sigmoid loss) and edit distance and WER.
+reading   = ["M12.1", "M12.2", "M12.3", "M12.4", "M12.5", "M12.6", "math/12-signals-and-images/README.md"]
+used_by   = []
+units     = []
+upgrades  = []
+milestone = "MS-P12"
+ci        = "pr"
+
+[tests]
+dir       = "course/solve/S-M12"     # problems.md and key.toml (DESIGN 5.5)
+timeout_s = 60

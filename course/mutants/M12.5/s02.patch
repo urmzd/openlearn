@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/stft.py
++++ b/python/tinyllm/sig/stft.py
+@@ -79,7 +79,7 @@
+                     f"stft: reflect padding by {half} needs more than {half} samples"
+                 )
+             # Mirror without repeating the edge sample: [3, 2, | 1, 2, 3].
+-            a = np.pad(a, half, mode="reflect")
++            a = np.pad(a, half)
+         elif pad_mode == "constant":
+             a = np.pad(a, half)
+         else:

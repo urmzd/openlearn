@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/resample.py
++++ b/python/tinyllm/sig/resample.py
+@@ -39,7 +39,7 @@
+         ax = np.abs(x)
+         return np.where(ax < 1.0, 1.0 - ax, 0.0)
+     if kernel == "bicubic":
+-        a = cubic_a
++        a = -0.75
+         ax = np.abs(x)
+         near = ((a + 2.0) * ax - (a + 3.0)) * ax * ax + 1.0
+         far = (((ax - 5.0) * ax + 8.0) * ax - 4.0) * a

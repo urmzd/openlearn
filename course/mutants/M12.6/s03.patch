@@ -1,0 +1,13 @@
+--- a/python/tinyllm/sig/mel.py
++++ b/python/tinyllm/sig/mel.py
+@@ -77,9 +77,7 @@
+     fft_hz = np.arange(n_fft // 2 + 1) * (1.0 / (n_fft * (1.0 / sr)))
+     # n_mels + 2 edges equally spaced in mel: band i rises from edge i to its
+     # peak at edge i + 1 and falls to zero at edge i + 2.
+-    edges = mel_to_hz(
+-        np.linspace(hz_to_mel(fmin, scale), hz_to_mel(fmax, scale), n_mels + 2), scale
+-    )
++    edges = np.linspace(fmin, fmax, n_mels + 2)
+     fdiff = np.diff(edges)
+     ramps = edges[:, None] - fft_hz[None, :]
+     w = np.empty((n_mels, fft_hz.size))

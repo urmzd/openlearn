@@ -207,3 +207,11 @@ course/fixtures/post-training/distill.jsonl	59e5e6b8eb0cb77ada999b72eef05bdfa221
 course/fixtures/post-training/heldout.jsonl	2b9f1af1c90ac3942fab6abad7a88f70ec284c370ca082a90657bf03aa03661d	701	hand-written (MS-C2 post-training prompts)	-	-	Apache-2.0
 course/fixtures/parity/quant_fp8.json	24d0a61ce5b23f1d060a4d3b41cfdc8b8ddc20f0d04ef99cb615a37909e97444	22943	course/oracle/parity/quant_fp8_golden.py	-	-	Apache-2.0
 course/fixtures/agent/prompt-injection.jsonl	5d379bf017a80abe579990c1738288498bd784c9157293f9ac7c2beb3089c2d7	2941	hand-written (MS-agent prompt-injection red team; every case allows only search_docs)	-	-	Apache-2.0
+course/fixtures/M12.1/conv_torch.npz	7de70d7a8fa5917fb4474eb2b1513926181fe2bdc73da5946a7a81f295313214	79243	course/oracle/M12.1/conv_torch.py	torch==2.14.1,numpy==2.5.3	-	Apache-2.0
+course/fixtures/M12.2/grayscale_pil.npz	877a20e81062d2b7aab85880940f744d78300b906618a533044550daed81c603	5324	course/oracle/M12.2/grayscale_pil.py	pillow==12.3.0,numpy==2.5.3	-	Apache-2.0
+course/fixtures/M12.3/resize_pil.npz	4c3fba0d70457f9100e4587d6402e36d92c24dee545c367170e5c9bc429a784d	189287	course/oracle/M12.3/resize_pil.py	pillow==12.3.0,numpy==2.5.3	-	Apache-2.0
+course/fixtures/M12.3/resize_torch.npz	50c682821d20d46cde3eb31939286c2c340448d3adde57d08009b0eb1bd8dc1f	310287	course/oracle/M12.3/resize_pil.py	torch==2.14.1,torchvision==0.29.1,numpy==2.5.3	-	Apache-2.0
+course/fixtures/M12.3/resample_torchaudio.npz	fffa1bdd7cc04fe7f893c21ce319840b9a1fce9e7a85eba1b29de772a06ae72b	90096	course/oracle/M12.3/resample_torchaudio.py	torch==2.11.0,torchaudio==2.11.0,numpy==2.5.3	-	Apache-2.0
+course/fixtures/M12.4/fft_numpy.npz	ffac82456434e27b52e063052ddf233446d39daf089dac8d52f1cb4d158bb8cb	174264	course/oracle/M12.4/fft_numpy.py	scipy==1.17.1,numpy==2.5.3	-	Apache-2.0
+course/fixtures/M12.5/stft_torch.npz	831c024d3a12c3e01b0304f87f701fcab2badca71df44ea7b3ab7b895a082ebf	78759	course/oracle/M12.5/stft_torch.py	torch==2.14.1,numpy==2.5.3	-	Apache-2.0
+course/fixtures/M12.6/mel_librosa.npz	9441bf89e8b217d3a9d5b8cae6f8a97ebfb36696ae6f5ffabc8f54df34b20f77	19054	course/oracle/M12.6/mel_librosa.py	librosa==1.0.0,numpy==2.5.3	-	Apache-2.0

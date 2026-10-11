@@ -1,0 +1,9 @@
+--- a/python/tinyllm/sig/mel.py
++++ b/python/tinyllm/sig/mel.py
+@@ -123,5 +123,5 @@
+     mel = fb @ spec
+     log_spec = log_base(np.maximum(mel, 1e-10), 10.0)
+     # Keep 8 units (80 dB) below the loudest value, then map to about [-1, 1].
+-    log_spec = np.maximum(log_spec, log_spec.max() - 8.0)
++    log_spec = np.maximum(log_spec, log_spec.max() - 80.0)
+     return (log_spec + 4.0) / 4.0

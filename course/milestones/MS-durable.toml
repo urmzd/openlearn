@@ -13,16 +13,16 @@
 # The design's kill loop (500 tl.test.Append activities with SIGKILLs of
 # {durable}, {worker}, and the Python children, exactly-once effects in the
 # testkit `effects` sink, then CorpusBuild and TrainRun under kills with
-# outputs equal to uninterrupted runs) needs three runner features that do
-# not exist yet: an effects sink the runner starts, a step that SIGKILLs and
-# restarts a named service on a seeded schedule while a command runs, and a
-# matcher over the sink. Those steps are written out, commented, at the end
-# of this file and are listed as a harness change (DEVIATIONS B103-05). Until
-# they land, the same invariants are checked one level down by the course
-# tests in `requires`: dur.01 (KillLoop over the log), dur.03 (poison task,
-# stale lease), dur.04 and dur.05 (KillLoop over a worker with the effects
-# sink), dur.06 (kill the server mid-workflow and replay), dur.09 (SIGKILL a
-# worker mid-activity, resume from the checkpoint).
+# outputs equal to uninterrupted runs) uses the runner's `chaos` and `sink`
+# step keys and the `effects` matcher (DESIGN 5.7). Section 4 runs all
+# three: CorpusBuild under kills of both services, 500 appends of your
+# worker's tl.test.Batch under kills of both, exactly once in the sink, and
+# TrainRun under kills of the worker, with the steps and final loss of the
+# uninterrupted run. The same invariants are checked one level down by the
+# course tests in `requires`: dur.01 (KillLoop over the log), dur.03 (poison
+# task, stale lease), dur.04 and dur.05 (KillLoop over a worker with the
+# effects sink), dur.06 (kill the server mid-workflow and replay), dur.09
+# (SIGKILL a worker mid-activity, resume from the checkpoint).
 #
 # This file fixes the Pass 8 verbs of your `ctl` role (spec/cli-roles.md,
 # "Verbs of later passes"). Every verb keeps the rules of that page: exit 2
@@ -40,6 +40,12 @@
 #       is the run's result parsed as JSON (null until COMPLETED).
 #       SleepDemo is registered with the durable timers: input JSON is an
 #       integer duration in milliseconds and its result is the fired time.
+#       tl.test.Batch (input N) runs N tl.test.Append activities with the
+#       SDK's activity ids 1 to N, so the effects sink receives the keys
+#       "<workflow id>/1" to "<workflow id>/N"; each append holds 100 ms
+#       after its effect (a kill then lands between effect and completion);
+#       its result is N. --wait polls through a server that answers
+#       Unavailable while it restarts, for up to 2 minutes in a row.
 #   {ctl} wf describe <workflow id> --json
 #       DescribeWorkflow. Final line: {"workflow_id", "run_id", "status",
 #       "history_length", "pending_activities", "dead_lettered"} (the last two
@@ -62,8 +68,11 @@
 #       "workflow_id" and "status".
 #   {ctl} train --spec <file> --id <workflow id> [--wait] [--json]
 #       Starts TrainRun (dur.11) on a train spec (formats/train-spec.schema.json).
-#       With --wait, the final line is {"workflow_id", "status", "steps",
-#       "final_loss", "ckpt"}.
+#       A spec without "out" gets out = "runs/<workflow id>", so a run
+#       resumes only its own checkpoints. With --wait, the final line is
+#       {"workflow_id", "status", "steps", "final_loss", "ckpt"}; the loss is
+#       the run directory's final.json, the same after a retry that resumed
+#       from the final checkpoint.
 #
 # Your system.toml must declare:
 #   [entry].durable, [entry].worker, [entry].ctl
@@ -206,30 +215,52 @@ spans      = ["workflow CorpusBuild", "activity shard", "corpus.stage shard"]
 parents    = [["activity shard", "workflow CorpusBuild"], ["corpus.stage shard", "activity shard"]]
 lookback_s = 1800
 
-# -- PENDING: the kill loop (needs the runner features named in the header) -------------
-# Proposed spec, kept here so the harness change has its target:
-#
-# [[step]]
-# name      = "kill-loop-500-appends-exactly-once"
-# smoke     = true
-# sink      = "effects"                    # runner starts testkit/effects; {effects.url}
-# run       = "ctl"
-# argv      = ["wf", "start", "tl.test.Batch", "--id", "ms-durable-kill", "--input-json", "500",
-#              "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
-# chaos     = { kill = ["durable", "worker"], every_s = "1..4", count = 20, seed = 1 }
-# expect    = { match = "effects", keys = "0..499", exactly_once = true }
-# timeout_s = 900
-#
-# [[step]]
-# name      = "corpus-build-survives-kills"
-# run       = "ctl"
-# argv      = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "ms-durable-corpus-kill", ...]
-# chaos     = { kill = ["durable", "worker"], every_s = "5..15", count = 6, seed = 2 }
-# expect    = { match = "json-last-line", metrics = { train_tokens = "== 75164", val_tokens = "== 6868" } }
-#
-# [[step]]
-# name      = "train-run-survives-kills"
-# run       = "ctl"
-# argv      = ["train", "--spec", "specs/tiny.json", "--id", "ms-durable-train-kill", ...]
-# chaos     = { kill = ["worker"], every_s = "5..15", count = 3, seed = 3 }
-# expect    = { match = "json-last-line", metrics = { final_loss = "== {out:train-run-through-durable}.final_loss" } }
+# -- 4. under kills (sink and chaos step keys, DESIGN 5.7) ------------------------------
+# The runner SIGKILLs the named services (their whole process groups: the
+# worker's Python activities die with it) on a seeded schedule while the
+# command runs, restarts each with the same ports, runtime.toml, and WAL
+# directory, and waits for its health check. The build finishes with exactly
+# the corpus of the uninterrupted run above. Not smoke: an activity killed
+# mid-run is redelivered after its heartbeat timeout (2 min for the corpus
+# stages), so the step takes about two minutes on the reference.
+
+[[step]]
+name      = "corpus-build-survives-kills"
+run       = "ctl"
+argv      = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "ms-durable-corpus-kill", "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
+chaos     = { kill = ["durable", "worker"], every_s = "0.2..1", count = 6, seed = 2 }
+expect    = { match = "json-last-line", metrics = { n_docs = "== 169", n_shards = "== 3", train_tokens = "== 75164", val_tokens = "== 6868" } }
+timeout_s = 900
+
+# -- 500 appends under kills, exactly once ----------------------------------------------
+# The worker's tl.test.Batch schedules 500 tl.test.Append activities, ids 1
+# to 500 (the SDK numbers activity ids from 1), so the sink's keys are
+# "ms-durable-kill/1" to "ms-durable-kill/500". Each append holds 100 ms
+# after its effect, so a kill of the worker lands between an effect and its
+# completion: every key is applied once, nothing else appears under the
+# workflow's prefix, and at least one key was delivered again. Not smoke:
+# the step takes about 45 s on the reference (17 kills, 505 deliveries).
+
+[[step]]
+name      = "kill-loop-500-appends-exactly-once"
+sink      = "effects"
+run       = "ctl"
+argv      = ["wf", "start", "tl.test.Batch", "--id", "ms-durable-kill", "--input-json", "500", "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
+chaos     = { kill = ["durable", "worker"], every_s = "1..4", count = 20, seed = 1 }
+expect    = { match = "effects", keys = "1..500", prefix = "ms-durable-kill/", exactly_once = true, min_redelivered = 1 }
+timeout_s = 900
+
+# -- TrainRun under kills ----------------------------------------------------------------
+# The same spec under another workflow id trains in its own run directory
+# (ctl puts it at runs/<workflow id>), with the worker killed while it trains;
+# it ends with the steps and exactly the final loss of the uninterrupted run
+# above ({json:<step>.<key>} reads that run's final line). Not smoke: a train
+# activity killed mid-run is redelivered after its 1 min heartbeat timeout.
+
+[[step]]
+name      = "train-run-survives-kills"
+run       = "ctl"
+argv      = ["train", "--spec", "specs/tiny.json", "--id", "ms-durable-train-kill", "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
+chaos     = { kill = ["worker"], every_s = "0.1..0.4", count = 3, seed = 3 }
+expect    = { match = "json-last-line", metrics = { steps = "== {json:train-run-through-durable.steps}", final_loss = "== {json:train-run-through-durable.final_loss}" } }
+timeout_s = 900

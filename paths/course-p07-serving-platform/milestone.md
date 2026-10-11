@@ -34,12 +34,17 @@ Your system.toml must declare (spec/cli-roles.md, DESIGN 2.16):
   [entry].engine        `--config {config}` (L10.5): your tl-serve main reads
                         runtime.toml; its [engine].model_dir is the model
   [services.engine]     config = a runtime.toml template serving
-                        course/fixtures/L7.9/tiny-llama-2l-1k as model "tiny"
+                        course/fixtures/L7.9/tiny-llama-2l-1k as the model
+                        [endpoints].model names (default "tracer")
                         ({fixture:L7.9/tiny-llama-2l-1k} fills the path);
                         health = "http://127.0.0.1:{health_port}/healthz"
   [services.engine-spec]  the same template with
                         [engine].speculative = { draft = "prompt_lookup", k = 4 }
   [services.engine-instruct]  (nightly) model_dir = {asset:smollm2-135m-instruct}
+  [services.engine-prefill], [services.engine-decode-a], [services.engine-decode-b]
+                        the same model with [engine].role = "prefill" and
+                        "decode" (L10.6); the harness fills grpc_listen and
+                        kv_listen with allocated ports ({grpc_port}, {kv_port})
   [entry].loadgen       {loadgen} --target <base url without /v1> --model <m>
                         --prompt <text> --max-tokens <n> --mode burst
                         --burst <n> --duration <d> --out <report.json>:
@@ -47,15 +52,21 @@ Your system.toml must declare (spec/cli-roles.md, DESIGN 2.16):
                         to --out and prints it as the final stdout line
                         (`{loadgen} compare` belongs to the optional load.02)
 
+Two matchers compare your engines with each other (course/harness disagg.py):
+`greedy-equal` (the plain and the speculative engine give one greedy text)
+and `disagg`, the disaggregated run without the gateway: tokenize on P,
+EngineControl.Prefill on P with decode_target = a decode engine's kv port,
+then the same request on that engine with X-TL-KV-Handle. Its cases: Info
+roles, greedy (plain and streamed, alternating the two decode engines) and
+seeded output equal to the unified engine, an unknown and a released handle
+answering 404 kv_handle_not_found, and a transfer reset mid-push (a harness
+proxy in front of the kv port) failing Prefill without leaking a KV block
+on either side, after which that decode engine serves again.
+
 Covered elsewhere, so not repeated here: Rust and Python samplers agree on
 fixture logits (L10.1's course tests, parity/sampler); the engine's greedy
 stream equals your Python on the tiny model (L10.1's runner tests and
-conformance chat.nonstream.greedy). Not yet expressible with the harness's
-matchers (DEVIATIONS B92-05): the disaggregated run (one prefill and two
-decode engines driven through Prefill and X-TL-KV-Handle resume, with a
-transfer reset) and the greedy-equality check across the plain and the
-speculative engine; L10.6's and L10.8's course tests prove both on a fake
-model until a `disagg` suite lands.
+conformance chat.nonstream.greedy).
 
 `ss milestone MS-L10 --smoke` runs the conformance step only.
 

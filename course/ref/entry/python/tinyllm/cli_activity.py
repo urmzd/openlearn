@@ -12,10 +12,13 @@ train (formats/train-spec.schema.json). This reference trains the families
 the course has a streaming trainer for by Pass 8: tl_arch "bigram" with the
 byte tokenizer, on .bin token streams (data.07), with AdamW, through L0.6's
 TokenStream and atomic checkpoints. The run directory is spec.out (default
-runs/<name>) under TL_ARTIFACTS; it resumes from --resume (the checkpoint
-the runner heartbeated) or else from <run>/ckpt/LATEST, so a later segment of
-a TrainRun continues where the previous one stopped. Two runs of one spec
-end with the same loss, bit for bit, however often they were interrupted.
+runs/<name>; ctl's train sets runs/<workflow id>) under TL_ARTIFACTS; it
+resumes from --resume (the checkpoint the runner heartbeated) or else from
+<run>/ckpt/LATEST, so a later segment of a TrainRun continues where the
+previous one stopped. <run>/final.json, the loss of the newest step, is
+written before each checkpoint, so an attempt that resumes from the final
+checkpoint reports the same loss. Two runs of one spec end with the same
+loss, bit for bit, however often they were interrupted.
 C1 adds tl_arch llama.
 
 eval (formats/eval-spec.schema.json). Built-in suite "ppl": each subject is a
@@ -81,8 +84,8 @@ def check_train_spec(spec: dict) -> list[str]:
     if not spec["data"].get("train"):
         errs.append("data.train needs at least one .bin file")
     b = spec["batch"]
-    if not (isinstance(b.get("size"), int) and b["size"] >= 1 and isinstance(b.get("seq_len"), int) and b["seq_len"] >= 1):
-        errs.append("batch needs size >= 1 and seq_len >= 1")
+    if not all(isinstance(b.get(k, 1), int) and b.get(k, 1) >= 1 for k in ("micro_batch", "accum", "seq_len")) or "micro_batch" not in b or "seq_len" not in b:
+        errs.append("batch needs micro_batch >= 1, seq_len >= 1, and accum >= 1 when given")
     if spec["optimizer"].get("name") != "adamw" or not spec["optimizer"].get("lr", 0) > 0:
         errs.append("optimizer: this trainer runs adamw with lr > 0")
     return errs
@@ -139,7 +142,10 @@ def train_main(act) -> list[str]:
     model = BigramLogits(VOCAB)
     opt = AdamW(list(model.parameters()), lr=lr, weight_decay=float(spec["optimizer"].get("weight_decay", 0.0)))
     rng = PCG32(int(spec["seed"]))
-    stream = TokenStream(shards, int(spec["batch"]["seq_len"]), int(spec["batch"]["size"]), rng, vocab_size=VOCAB)
+    # One optimizer step sees micro_batch * accum windows; this trainer takes
+    # them as one batch (the bigram needs no accumulation to fit in memory).
+    rows = int(spec["batch"]["micro_batch"]) * int(spec["batch"].get("accum", 1))
+    stream = TokenStream(shards, int(spec["batch"]["seq_len"]), rows, rng, vocab_size=VOCAB)
     step, tokens_seen = 0, 0
     resume = None
     if act.resume:
@@ -160,7 +166,18 @@ def train_main(act) -> list[str]:
     tracer = Tracer.from_env()
     loss_v = float("nan")
 
+    def record_loss() -> None:
+        # final.json holds the loss of the newest step trained. It is
+        # published (tmp, rename) before that step's checkpoint, so a retry
+        # that resumes from the final checkpoint and trains no step still
+        # reports the loss the uninterrupted run reported.
+        final = {"step": step, "tokens_seen": tokens_seen, "loss": loss_v, "loss_hex": float(loss_v).hex()}
+        tmp = run_dir / "final.json.tmp"
+        tmp.write_text(json.dumps(final) + "\n")
+        os.replace(tmp, run_dir / "final.json")
+
     def checkpoint() -> str:
+        record_loss()
         c = stream.cursor()
         path = save_checkpoint(
             str(ckpt), model, opt, step, rng_tuple(c["rng"]),
@@ -199,8 +216,21 @@ def train_main(act) -> list[str]:
                 tracer.shutdown()
                 raise Cancelled(f"cancelled at step {step}")
     tracer.shutdown()
-    final = {"step": step, "tokens_seen": tokens_seen, "loss": loss_v, "loss_hex": float(loss_v).hex()}
-    (run_dir / "final.json").write_text(json.dumps(final) + "\n")
+    if math.isfinite(loss_v):
+        record_loss()
+    else:
+        # Resumed at or past `steps`: no step ran in this attempt, so the
+        # loss is the one recorded with that checkpoint.
+        try:
+            prev = json.loads((run_dir / "final.json").read_text())
+        except (OSError, ValueError):
+            prev = {}
+        loss = prev.get("loss")
+        if prev.get("step") != step or not isinstance(loss, (int, float)) or not math.isfinite(loss):
+            raise SpecError(
+                f"resumed at step {step} of {steps} with no step to train, and {run_rel}/final.json "
+                f"records no loss for step {step} (another run's checkpoints? give the spec its own out)"
+            )
     return [f"{run_rel}/ckpt/{step_name(step)}"]
 
 

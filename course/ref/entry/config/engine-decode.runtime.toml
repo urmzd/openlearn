@@ -1,0 +1,9 @@
+# runtime.toml template for the engine-decode-a and engine-decode-b services
+# (MS-L10, the disagg suite): the engine template in the decode role (L10.6).
+# It receives KV blocks over tl.kv.v1 on [engine].kv_listen and resumes a
+# request from them when it carries X-TL-KV-Handle. The harness fills the
+# listen keys.
+[engine]
+model_dir = "artifacts/models/tiny"
+model_id  = "tracer"
+role      = "decode"

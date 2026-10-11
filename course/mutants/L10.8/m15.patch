@@ -1,0 +1,13 @@
+--- a/rust/crates/tl-engine/src/spec.rs
++++ b/rust/crates/tl-engine/src/spec.rs
+@@ -579,9 +579,7 @@
+             }
+             g.tokens.push(t);
+             g.logprobs.push(lp);
+-            if !on_token(t, lp) {
+-                return Ok(g);
+-            }
++            on_token(t, lp);
+             if g.tokens.len() == max_new {
+                 return Ok(g);
+             }

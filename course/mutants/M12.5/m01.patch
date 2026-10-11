@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/stft.py
++++ b/python/tinyllm/sig/stft.py
+@@ -74,7 +74,7 @@
+     if center:
+         half = n_fft // 2
+         if pad_mode == "reflect":
+-            if a.size <= half:
++            if a.size < half:
+                 raise ValueError(
+                     f"stft: reflect padding by {half} needs more than {half} samples"
+                 )

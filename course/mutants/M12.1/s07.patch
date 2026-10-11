@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/conv.py
++++ b/python/tinyllm/sig/conv.py
+@@ -230,7 +230,7 @@
+             row = op * q + oq
+             for i in range(r):
+                 for j in range(s):
+-                    a, bcol = op * sh + i - ph, oq * sw + j - pw
++                    a, bcol = op * sh + i, oq * sw + j
+                     # Taps that land in the zero padding have no column.
+                     if 0 <= a < h and 0 <= bcol < wd:
+                         t[row, a * wd + bcol] = w[i, j]

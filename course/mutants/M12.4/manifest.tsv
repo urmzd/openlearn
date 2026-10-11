@@ -1,0 +1,11 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/sig/fft.py	semantic	pitfall-1	58	y	(hidden until pass)	twiddle factors with the inverse sign
+s02	python/tinyllm/sig/fft.py	semantic	pitfall-2	103	y	(hidden until pass)	Nyquist bin untangled with W^h = +1
+s03	python/tinyllm/sig/fft.py	semantic	pitfall-3	84	y	(hidden until pass)	inverse FFT without the 1/n
+s04	python/tinyllm/sig/fft.py	semantic	pitfall-4	154	y	(hidden until pass)	no zero padding: circular instead of linear convolution
+s05	python/tinyllm/sig/fft.py	semantic	pitfall-5	175	n	(hidden until pass)	DC bin scaled like the others
+s06	python/tinyllm/sig/fft.py	semantic	pitfall-6	117	n	(hidden until pass)	imaginary DC part kept by irfft
+s07	python/tinyllm/sig/fft.py	semantic	pitfall-7	55	y	(hidden until pass)	split into contiguous blocks, not interleaved subsequences
+m01	python/tinyllm/sig/fft.py	auto	constant	29	n	size check changed	< 1 to < 0
+m02	python/tinyllm/sig/fft.py	auto	cmp_flip	112	n	bin count check changed	!= to <
+m03	python/tinyllm/sig/fft.py	auto	cond_flip	89	n	real check changed	complex check dropped

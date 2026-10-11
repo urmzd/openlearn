@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/resample.py
++++ b/python/tinyllm/sig/resample.py
+@@ -96,7 +96,7 @@
+         total = k.sum()
+         # Taps past the border are dropped and the rest renormalized, so a
+         # flat image stays flat right up to the edge.
+-        weights[xx, : hi - lo] = k / total if total != 0.0 else k
++        weights[xx, : hi - lo] = k / fscale
+         start[xx] = lo
+     return start, weights
+ 

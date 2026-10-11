@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/mel.py
++++ b/python/tinyllm/sig/mel.py
+@@ -102,7 +102,7 @@
+         raise ValueError("power_to_db: take power(S) of a complex spectrum first")
+     if amin <= 0:
+         raise ValueError(f"power_to_db: amin must be positive, got {amin}")
+-    if top_db is not None and top_db < 0:
++    if top_db is not None and top_db < -1:
+         raise ValueError(f"power_to_db: top_db must be non-negative, got {top_db}")
+     s = s.astype(np.float64)
+     # Floor at amin before the log: 10 log10(0) would be -inf.

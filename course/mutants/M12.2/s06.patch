@@ -1,0 +1,11 @@
+--- a/python/tinyllm/image/layout.py
++++ b/python/tinyllm/image/layout.py
+@@ -75,7 +75,7 @@
+         )
+     if not (s > 0).all():
+         raise ValueError("rescale_normalize: every std must be positive")
+-    y = (img.astype(np.float64) * scale - m) / s  # float64, then one rounding
++    y = (img.astype(np.float64) - m) / s * scale  # float64, then one rounding
+     return np.ascontiguousarray(y.transpose(2, 0, 1)).astype(np.float32)
+ 
+ 

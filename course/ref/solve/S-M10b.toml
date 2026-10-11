@@ -1,6 +1,7 @@
-# Reference answers for S-M10b (DESIGN D34, honor system).
+# Reference answers for S-M10b (honor system, DESIGN D34; never exported).
+
 [q1]
-answer = "(1, 1)"
+answer = "[1, 1]"
 [q2]
 answer = "-2"
 [q3]
@@ -22,16 +23,16 @@ answer = "false"
 [q11]
 answer = "1"
 [q12]
-answer = "lambda - lambda^2/4"
+answer = "lam - lam^2/4"
 [q13]
 answer = "1"
 [q14]
 answer = "true"
 [q15]
-answer = "(e/(1+e), 1/(1+e))"
+answer = "[E/(1 + E), 1/(1 + E)]"
 [q16]
 answer = "1"
 [q17]
 answer = "log(2)"
 [q18]
-proof = "S-M10b/q18.md"
+proof  = "S-M10b/q18.md"

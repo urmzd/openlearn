@@ -1,0 +1,24 @@
+# The usage policy of the local services (gw.08, ethics.05). Same rule ids
+# and order as deploy/policy.v1.yaml; two differences for PR CI, where no
+# embedding model runs:
+#   - the classifier head is fitted on hash16 vectors (scripts/fit_policy_head.py
+#     in [build]; the deployed policy uses the smol-135m head);
+#   - the training set (config/policy-train.jsonl) labels every prompt the
+#     course's gateway workloads and conformance cases send, so the fit
+#     script fails before a head could block one of them.
+# The free-token-cap rule is left out: the conformance keys are not free-tier.
+version: 1
+default_action: allow
+rules:
+  - id: restricted-model
+    match:
+      model: ["experimental-unsafe"]
+    action: deny
+    reason: "This model is not available through the public gateway"
+  - id: unsafe-prompt
+    classifier:
+      head: "models/hash16/heads/usage.json"
+      class: "unsafe"
+      threshold: 0.9
+    action: deny
+    reason: "The request was blocked by the usage policy"

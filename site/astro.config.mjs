@@ -1,6 +1,8 @@
 // @ts-check
 import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
+import rehypeKatex from 'rehype-katex';
+import remarkMath from 'remark-math';
 import starlightLlmsTxt from 'starlight-llms-txt';
 import sidebar from './src/generated/sidebar.json' with { type: 'json' };
 
@@ -8,12 +10,17 @@ import sidebar from './src/generated/sidebar.json' with { type: 'json' };
 export default defineConfig({
 	site: 'https://supersource.urmzd.com',
 	trailingSlash: 'always',
+	// The READMEs write LaTeX as $...$ and $$...$$, the way GitHub renders it.
+	markdown: {
+		remarkPlugins: [remarkMath],
+		rehypePlugins: [rehypeKatex],
+	},
 	integrations: [
 		starlight({
 			title: 'Supersource',
 			description: 'A free, runnable curriculum from foundations to Staff-level depth: math, algorithms, ML systems, and infrastructure.',
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/urmzd/supersource' }],
-			customCss: ['./src/styles/custom.css'],
+			customCss: ['katex/dist/katex.min.css', './src/styles/custom.css'],
 			head: [
 				{
 					tag: 'script',

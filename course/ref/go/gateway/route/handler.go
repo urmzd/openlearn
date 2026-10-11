@@ -90,7 +90,41 @@ type Options struct {
 	// KvTransferService on a decode worker); nil = insecure grpc.NewClient,
 	// one connection per address, reused.
 	Dial func(addr string) (grpc.ClientConnInterface, error)
+	// OnSpan, when set, receives the gateway.proxy span of each request once
+	// its response is finished (the entry point exports it, obs.00): the
+	// span whose id the upstream traceparent names as parent.
+	OnSpan func(SpanRecord)
 }
+
+// SpanRecord is the gateway.proxy span of one routed request. Ids are
+// lowercase hex as in a W3C traceparent.
+type SpanRecord struct {
+	TraceID, SpanID, ParentSpanID, RequestID string
+	Status                                   int // the status the client received
+	Start, End                               time.Time
+}
+
+// spanStatus remembers the status written, for the span.
+type spanStatus struct {
+	http.ResponseWriter
+	code int
+}
+
+func (s *spanStatus) WriteHeader(code int) {
+	if s.code == 0 {
+		s.code = code
+	}
+	s.ResponseWriter.WriteHeader(code)
+}
+
+func (s *spanStatus) Write(b []byte) (int, error) {
+	if s.code == 0 {
+		s.code = http.StatusOK
+	}
+	return s.ResponseWriter.Write(b)
+}
+
+func (s *spanStatus) Unwrap() http.ResponseWriter { return s.ResponseWriter }
 
 type routedKey struct{}
 
@@ -303,7 +337,16 @@ func (p *proxyStage) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	ex := server.ExchangeFrom(r.Context())
 	r.Header.Set("X-Request-Id", ex.RequestID)
-	o, _ := proxy.NewOutbound(r, rd.req.Body)
+	o, sp := proxy.NewOutbound(r, rd.req.Body)
+	if p.o.OnSpan != nil {
+		sw := &spanStatus{ResponseWriter: w}
+		w = sw
+		rec := SpanRecord{TraceID: sp.TraceID, SpanID: sp.SpanID, ParentSpanID: sp.ParentSpanID, RequestID: ex.RequestID, Start: time.Now()}
+		defer func() {
+			rec.End, rec.Status = time.Now(), sw.code
+			p.o.OnSpan(rec)
+		}()
+	}
 	rd.out = outbound{method: o.Method, path: o.Path, rawQuery: o.RawQuery, header: o.Header}
 	start := 0
 	if n := len(rd.route.Cascade); n > 0 {

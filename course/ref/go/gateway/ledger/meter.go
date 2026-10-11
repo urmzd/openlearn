@@ -294,6 +294,9 @@ func Meter(l Ledger, o MeterOptions) server.Middleware {
 			mw := &meterWriter{ResponseWriter: w, ex: ex}
 			if req.Stream && r.URL.Path != "/v1/embeddings" {
 				if body, changed, err := WithIncludeUsage(req.Body); err == nil && changed {
+					// The routing proxy (gw.05) forwards the Exchange's parsed
+					// body, and later stages re-read r.Body from it: change both.
+					req.Body = body
 					r.Body = io.NopCloser(bytes.NewReader(body))
 					r.ContentLength = int64(len(body))
 					r.Header.Set("Content-Length", strconv.Itoa(len(body)))

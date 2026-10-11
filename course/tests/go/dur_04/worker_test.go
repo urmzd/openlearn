@@ -217,8 +217,12 @@ func TestWorkerBoundedConcurrency(t *testing.T) {
 	e.startWF("pool", "Echo", "6")
 	eventually(t, "two activities running", func() bool { return running.Load() == 2 })
 	eventually(t, "the third poll to be waiting", func() bool { v, l, _ := e.q.Depth("act:default"); return v == 4 && l == 2 })
-	if v, l, _ := e.q.Depth("act:default"); v != 4 || l != 2 {
-		t.Fatalf("with 2 slots busy: visible %d leased %d; want 4 and 2", v, l)
+	// Hold the state for a while: a pool one slot too big reaches 2 running
+	// on its way to 3, so a single observation of 2 proves nothing.
+	for deadline := time.Now().Add(300 * time.Millisecond); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+		if v, l, _ := e.q.Depth("act:default"); v != 4 || l != 2 || running.Load() != 2 {
+			t.Fatalf("with 2 slots busy: visible %d leased %d running %d; want 4, 2, 2", v, l, running.Load())
+		}
 	}
 	close(release)
 	eventually(t, "the run to complete", func() bool { return e.status("pool") == durablev1.WorkflowStatus_WORKFLOW_STATUS_COMPLETED })

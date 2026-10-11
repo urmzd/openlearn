@@ -1,0 +1,62 @@
+# Reference answers for S-M06b (honor system, DESIGN D34; never exported).
+
+[q1]
+answer = "12 - 1"
+[q2]
+answer = "10"
+[q3]
+answer = "10 - 1"
+[q4]
+answer = "5^(5 - 2)"
+[q5]
+answer = "6"
+[q6]
+proof  = "S-M06b/q6.md"
+[q7]
+answer = "3*10 - 3*3 + 1"
+[q8]
+answer = "50 + 33 + 20 - 16 - 10 - 6 + 3"
+[q9]
+answer = "9"
+[q10]
+answer = "(10*9*8)/10^3"
+[q11]
+answer = "binomial(k, 2)/m"
+[q12]
+answer = "sqrt(2*2^32*log(2))"
+[q13]
+answer = "3/6"
+[q14]
+proof  = "S-M06b/q14.md"
+[q15]
+answer = "(1/2)*(1/2)/128"
+[q16]
+answer = "1 - (1 - s^8)^16"
+[q17]
+answer = "(1/16)^(1/8)"
+[q18]
+answer = "1 - (1 - (1/2)^8)^16"
+[q19]
+answer = "(1 - exp(-k*n/m))^k"
+[q20]
+answer = "10*log(2)"
+[q21]
+answer = "(1/2)^(10*log(2))"
+[q22]
+answer = "-log(1/100)/log(2)^2"
+[q23]
+answer = "n*log(n)/log(2)"
+[q24]
+answer = "n*(n + 1)/2"
+[q25]
+answer = "2^n - 1"
+[q26]
+answer = "1/(1 - x)^2"
+[q27]
+answer = "144"
+[q28.a]
+answer = "log(8)/log(2)"
+[q28.b]
+answer = "log(7)/log(2)"
+[q29]
+proof  = "S-M06b/q29.md"

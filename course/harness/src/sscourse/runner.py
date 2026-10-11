@@ -92,6 +92,13 @@ class Run:
                 return placeholders.from_dict(self.system.deploy, "")(
                     name[len("deploy.") :]
                 )
+            if name == "endpoints.model":
+                # The model id clients send ([endpoints].model; conformance's default).
+                return str(self.system.endpoints.get("model") or "tracer")
+            if name.startswith("endpoints."):
+                return placeholders.from_dict(self.system.endpoints, "")(
+                    name[len("endpoints.") :]
+                )
             entries = self.system.raw.get("entry", {})
             if name in entries:
                 return list(entries[name])
@@ -152,6 +159,7 @@ class Run:
             api_key=self.api_key(),
             health_base=health_base,
             count_tokens=self._token_counter(),
+            api_version="2" if suite.version == "v2" else None,
         )
 
     def _token_counter(self):

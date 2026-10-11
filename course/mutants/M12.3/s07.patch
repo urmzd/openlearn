@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/resample.py
++++ b/python/tinyllm/sig/resample.py
+@@ -287,7 +287,7 @@
+     kern, width = _sinc_kernel(orig, new, lowpass_filter_width, rolloff)
+     wav = a.reshape(-1, a.shape[-1])
+     length = wav.shape[-1]
+-    padded = np.pad(wav, ((0, 0), (width, width + orig)))
++    padded = np.pad(wav, ((0, 0), (0, 2 * width + orig)))
+     # One strided conv1d: phase j of the output block is kernel row j.
+     # The result is [B, new, blocks]; interleave the phases back into time.
+     y = conv1d_direct(padded[:, None, :], kern[:, None, :], None, stride=orig)

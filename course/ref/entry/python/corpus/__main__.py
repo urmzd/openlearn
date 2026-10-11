@@ -52,7 +52,7 @@ import subprocess
 import threading
 import tomllib
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 STAGES = ("fetch", "filter", "dedup_exact", "dedup_near", "pii", "shard", "tokenize")
 EX_DATAERR, EX_TEMPFAIL = 65, 75
@@ -109,6 +109,21 @@ class _Quiet(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+def served_paths(base: Path, srcs) -> tuple[Path, dict[str, str]]:
+    """The directory the loopback server serves and each local source's URL
+    path under it. That is the config's base directory, unless a source is an
+    absolute path outside it (`ctl data build` sends absolute paths, as the
+    worker's base is its artifacts root); then it is the sources' common
+    parent directory."""
+    paths = {
+        s.id: Path(os.path.normpath(base / s.url)) for s in srcs if local(s.url)
+    }
+    root = base
+    if not all(p.is_relative_to(base) for p in paths.values()):
+        root = Path(os.path.commonpath([str(p.parent) for p in paths.values()]))
+    return root, {sid: quote(p.relative_to(root).as_posix()) for sid, p in paths.items()}
+
+
 def counted(name: str, stage, counts: dict):
     """Wrap a Stage so counts[name] ends as documents in minus documents out."""
 
@@ -163,9 +178,11 @@ def cmd_run(a) -> dict:
     except ValueError as e:
         raise Fail(EX_DATAERR, f"config: {e}") from None
     original = {s.id: s.url for s in srcs}
-    with LoopbackFiles(base) as files:
+    root, rel = served_paths(base, srcs)
+    with LoopbackFiles(root) as files:
+        prefix = {sid: files.base + r for sid, r in rel.items()}
         served = [
-            dataclasses.replace(s, url=files.base + s.url) if local(s.url) else s
+            dataclasses.replace(s, url=prefix[s.id]) if s.id in prefix else s
             for s in srcs
         ]
         try:
@@ -197,13 +214,11 @@ def cmd_run(a) -> dict:
         for d in docs:
             url = d.meta.get("url", "")
             src_url = original[d.source_id]
-            if local(src_url) and url.startswith(files.base):
+            pre = prefix.get(d.source_id)
+            if pre and url.startswith(pre):
                 d = dataclasses.replace(
                     d,
-                    meta={
-                        **d.meta,
-                        "url": src_url + url[len(files.base) + len(src_url) :],
-                    },
+                    meta={**d.meta, "url": src_url + url[len(pre) :]},
                 )
             yield d
 

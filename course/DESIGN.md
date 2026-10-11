@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Draft v2: v1 (merged from five design sections: architecture, math and ML catalog, systems catalog, harness and testing, pedagogy) revised against three critic reviews (ordering, ownership, harness realism) |
+| **Status** | Draft v2: v1 (merged from five design sections: architecture, math and ML catalog, systems catalog, harness and testing, pedagogy) revised against three critic reviews (ordering, ownership, harness realism); B14 multimodal (Pass 12) merged 2026-10-10 from `course/design/B14-multimodal.md` under the no-FFI decisions (D8, D41, D46) |
 | **Date** | 2026-10-08 |
 | **Branch** | `feat/course` |
 | **Scope** | The whole course: the system the learner builds, its contracts, the module catalog, the harness, the chapter template, the learning path, the consolidation of existing content, and the authoring plan |
@@ -29,6 +29,8 @@ Contents:
 The learner builds **one cohesive engineering system from scratch** and owns all of it at the end: a small LLM platform. It trains a language model on a corpus it cleaned itself, serves it from a native Rust inference engine built on `candle-core` and `candle-nn`, fronts it with a Go gateway, runs long jobs on a durable execution engine it wrote, drives it with an agent SDK it wrote, deploys it on a local Kubernetes cluster, observes it end to end, and keeps it alive through incident drills and interface migrations.
 
 The course principle is **deliver something meaningful**. Every module is a piece of that system with a real call site. Fundamentals with no call site become checked problem sets (`solve`) or optional side quests.
+
+After the `v1.0.0` gate of Pass 11, **Pass 12** (batch B14) makes the same platform see and hear without breaking the text path: signal and image math, a vision transformer and a SmolVLM-256M-class vision-language model, a Whisper-style speech recognizer, multimodal corpora with consent and biometric rules, an engine with an encoder cache and encode/prefill/decode disaggregation, `/v1/audio/transcriptions`, and the gateway, deploy, observability, drill, and ethics work around them. Its gate tags `v1.1.0`, an additive minor release.
 
 ### 1.2 Principles
 
@@ -79,7 +81,7 @@ The learner names the system once: `ss course init --name <system>`. The name is
 
 ### 1.5 Decisions (merge resolutions)
 
-The five source sections disagreed on ids, paths, and some architecture. Each line records the choice and the reason. These are binding for the rest of this document.
+The five source sections disagreed on ids, paths, and some architecture. Each line records the choice and the reason. These are binding for the rest of this document. D41 to D52 come from the B14 multimodal design (its E1 to E11 plus the pass placement), rewritten to keep D8: no FFI.
 
 | # | Decision | Rejected alternative(s) | Reason |
 |---|---|---|---|
@@ -107,9 +109,9 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 | D22 | **Course layout** is the harness section's `course/` tree with one `course/modules/<ID>.toml` per module and a generated `modules.tsv`; `course/ref/` mirrors the learner layout path for path | `modules.tsv` as hand-edited source (E); bundled `course/modules/<layer>/<nn>/CHAPTER.md` (C) | TOML carries smoke tests, learner-test grading, and `upgrades`; chapters belong in tracks |
 | D23 | **Chapter homes** in tracks: spine `ml/08-tinyllm/pNN-<slug>/NN-<slug>.md`; new math topics `00-precalculus`, `08-matrix-calculus-and-autodiff`, `09-numerical-methods-and-floating-point`, `10-optimization`, `11-information-theory`; ethics as new top-level track `responsible-ai/`; durable chapters in `ai-platform-engineering/05-durable-orchestration-and-workers/` | `ml/tinyllm/pNN/mNN/README.md` (A); ethics under craftsmanship (A); durable under `infrastructure/` (A) | Matches existing numbering; decision 9 calls ethics a track; decision 12 merges infra/03 into ai-platform/05 |
 | D24 | The guide (front door, system map, pass intros, milestone pages) lives in `paths/course*/` | guide in `course/` | Existing rule: a path holds its manifest, README, and material about the path |
-| D25 | **Milestones** use one namespace `MS-*`: part milestones (`MS-L0`...), component milestones (`MS-corpus`, `MS-gateway`, `MS-durable-ha`, ...), and pass gates `MS-P0` to `MS-P11` composed of them. Milestones are not module kinds | `MS-L0` only (B), `M-engine` (C), `M0`...`M11` (E), `L8.M` (D) | Keeps every check and gives passes a single gate |
+| D25 | **Milestones** use one namespace `MS-*`: part milestones (`MS-L0`...), component milestones (`MS-corpus`, `MS-gateway`, `MS-durable-ha`, ...), and pass gates `MS-P0` to `MS-P12` composed of them. Milestones are not module kinds | `MS-L0` only (B), `M-engine` (C), `M0`...`M11` (E), `L8.M` (D) | Keeps every check and gives passes a single gate |
 | D26 | Test `KIND` vocabulary: `unit boundary property statistical differential golden gradcheck learning conformance fault regression bench eval` | B's letter codes, C's tiers | One tag set for lint and `ss tests` |
-| D27 | Fixtures: at most 50 MiB committed, at most 8 MiB per file, a committed-fixture budget per authoring batch (section 9); the TinyStories slices, token streams, and tiny HF models are pinned assets fetched by `ss fetch`; maintainer generators in `course/oracle/` | 20 MB (A), 60 MB (B), 2 MiB per file (D) | Committing the corpora and tiny models alone would use the whole budget and grow history on every regeneration |
+| D27 | Fixtures: at most 56 MiB committed (50 MiB through B13, 6 MiB for B14, D52), at most 8 MiB per file, a committed-fixture budget per authoring batch (section 9); the TinyStories slices, token streams, and tiny HF models are pinned assets fetched by `ss fetch`; maintainer generators in `course/oracle/` | 20 MB (A), 60 MB (B), 2 MiB per file (D) | Committing the corpora and tiny models alone would use the whole budget and grow history on every regeneration |
 | D28 | `ss course init` creates the learner repo (default `.scratchpad/course/`, override `SS_COURSE_HOME`); `ss export` produces the standalone repo with vendored tests | `ss export --name` as the creation step (A, E) | The learner works in a git repo from day one; export adds vendoring |
 | D29 | Practice exercises stay as standalone warm-up drills with a pointer to their course module. Hash maps consolidate: `c/02` becomes the `ds.02` baseline, the `rust/03` README row points to `ds.05` (authored fresh), `cpp/03` is archived, zig and java hash-map rows are dropped, `swiss-table/` is removed | retiring the C drills (E) | Only the C and C++ drills have references and pass CI. The Rust, Go, Python, Zig, Java, Scala, and TypeScript build directories hold a README exercise list only, so their mappings are README pointers, not code |
 | D30 | Load generator is Go (`load.01`); `ml/04-llm-systems/serving-and-load/code/loadgen.py` becomes reading | Python loadgen | Control plane is Go (decision 3) |
@@ -120,9 +122,21 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 | D35 | **Course tests assert through frozen helpers** (`course/tests/_lib`, `ss_test.h`, `tl-contracts::testing`, `contracts/go/testing`) and construct RNGs from the frozen PCG32 there. The learner's own `gradcheck`, tolerance helpers, and PCG32 decide only their own modules' verdicts | course tests calling the learner's `gradcheck` and `tolerance` through the overlay | A gradcheck that always returns ok would otherwise pass every later test |
 | D36 | **Model zoo**: every `tl_arch` family loads through the checkpoint contract and is evaluated by `L6.7`'s zoo suite, which the `EvalSuite` workflow (`dur.11`) runs. This is the call site of `L2.*`, `L3.*`, `L4.*`, `L5.5`, and `L6.1` to `L6.3` | "referenced by a milestone step" as a call site | Decision 1: a real call site in the final system, not a milestone |
 | D37 | **Engine scope**: speculative decoding (`L10.8`) and tool calls with constrained JSON decoding (`L10.9`) are core engine modules; multi-LoRA serving is `sq.multi-lora` | spec decoding only in Python; multi-LoRA as optional `L10.8` | `L8.6` and `L8.7` need a production call site; MS-agent needs `tool_calls` from the learner's engine |
-| D38 | **Language and tool primers** `lang.01` to `lang.11` precede the first module that uses each language or tool; chapters in `software-craftsmanship/12-language-and-tool-primers/` | assume prior fluency | A learner starting from high-school algebra meets C, Rust, Go, Docker, and Kubernetes in Pass 1 |
+| D38 | **Language and tool primers** `lang.01` to `lang.13` precede the first module that uses each language or tool; chapters in `software-craftsmanship/12-language-and-tool-primers/` | assume prior fluency | A learner starting from high-school algebra meets C, Rust, Go, Docker, and Kubernetes in Pass 1 |
 | D39 | **Optional C modules stand alone**: `L9.1` to `L9.6`, `ds.01` to `ds.04`, `rt.02` to `rt.04`, and `M09.5` to `M09.7` are optional, skippable, and each has a C test binary. The Python reference generates parity fixtures | A runtime switch that links C kernels into Python or Rust | Optional C depth has no FFI and no pass-gate dependency |
 | D40 | **Retired FFI modules**: retire `rt.01`, `L9.7`, `tl-py`, and `tl-sys`. Rust owns serving with `candle-core` and `candle-nn`; Rust's `tl-tok` tokenizer serves the engine, while Python keeps its own BPE | PyO3 tokenizer bridge, ctypes backend, C kernel backend switch | Production engine remains Rust and all cross-language seams use process or file contracts |
+| D41 | **Kernels are optional in Pass 12.** Convolution, resize, patch embedding, FFT, STFT, and mel are numpy reference code in `M12`, `L13`, and `L14` (core). C versions are optional standalone exercises `L13.8` (conv2d via im2col, conv1d stem, patch embed), `L13.9` (resize, rescale and normalize), and `L14.6` (FFT, STFT power, mel, Whisper log), each with its own C test binary and parity against fixture files generated by the Python reference. There is no engine backend switch and no `tl-sys`; the B14 draft's `L15.8` (C backend for the engine) is retired | mandatory C kernels; an engine switch `[engine.mm] kernels = "c"` through `tl-sys` (B14 draft) | Kernels teach the memory layout and FLOP story behind conv and STFT, and D39 already makes that depth optional and standalone; a switch would be FFI (D8) |
+| D42 | **The engine runs vision towers, projectors, and Whisper on candle** (`candle-core`, `candle-nn`), device `cpu` in tests and CI and `metal` locally on macOS, like the text model (D7). `candle-transformers` and `candle-examples` stay forbidden. Image and audio preprocessing are plain Rust in `tl-engine/src/mm/{image,audio}.rs` over `fast_image_resize`, `rustfft`, and `rubato`, behind the `Preprocessor` trait | `candle-transformers` models; ONNX Runtime; a kernel seam with a C implementation | candle gives tensors and devices, not models: the learner still writes every layer |
+| D43 | **Encoder determinism by construction**: the engine never batches tiles or frames of different media items in one encoder call; an item's embeddings depend only on its bytes, the model, and `preprocess_rev`. Whisper decoder steps are not batched across requests in v1 | cross-request encoder batching | candle CPU matmul is not batch-invariant. One item per call keeps engine output equal to Python and makes the encoder cache sound; cross-request batching is "Going further" |
+| D44 | **One media hash everywhere**: `media_hash = fnv1a64(kind_u8 ‖ raw_bytes)` (kind 1 image, 2 audio) over the decoded `data:` URL payload or uploaded file bytes, computed the same way by Python, the gateway (Go), and the engine (Rust) | perceptual or pixel hashes as cache keys | Cheap, hand-implementable (FNV-1a from M06.3), identical across languages; re-encoded duplicates are a data-pipeline concern (pHash), not a serving one |
+| D45 | **Prefix-cache keys via hash ids**: image placeholder tokens are hashed as virtual ids derived from `media_hash` (`formats/kv-block.md`, multimodal hash ids); text-only sequences hash exactly as before | a new block-hash function per modality | The Rust radix tree (ds.07) and block hash work unchanged, and text prefix hits stay bitwise identical (spiral invariant) |
+| D46 | **Media decode is a dependency, not a module, and never crosses a language boundary.** Python decodes PNG and JPEG with Pillow; the engine decodes with the Rust `image` crate (features `png`, `jpeg` only) inside the new crate `tl-media`. Course fixtures ship pre-decoded `.npy` pixels (u8 HWC), so preprocessing tests never depend on a decoder; one test per language checks its decoder against those pixels (PNG exact, JPEG within 2 u8 LSB). Everything after decode (EXIF orientation, resize, tiling, normalize) is learner-built | Python decoding through a PyO3 `tinyllm_rs.decode_image` (B14 draft); a learner-written JPEG decoder (core) | D8; parity of preprocessing then depends only on the learner's code, and a JPEG decoder stays `sq.jpeg-decoder` |
+| D47 | **Audio input is WAV only** in v1 (RIFF PCM s16le, s24le, f32le, `WAVE_FORMAT_EXTENSIBLE`, mono or stereo). The learner writes the parser in Python and in Rust; other containers get 400 `unsupported_media_type` | mp3, flac, ogg through crates or ffmpeg | WAV parsing is small and teachable; codecs add nothing to the system |
+| D48 | **Preprocessing parity is split from model parity.** Model parity is tested on oracle `pixel_values` and `input_features`; preprocessing parity separately (pixels within 1 u8 LSB of PIL, log-mel within 1e-4 of HF) | one end-to-end tolerance | PIL rounds between separable passes; isolating it keeps logit tolerances tight |
+| D49 | **API is additive v2.1** (`openai-subset.v2.yaml`, `info.version: 2.1.0`): `image_url` content parts with `data:` URLs, `POST /v1/audio/transcriptions`, `usage.prompt_tokens_details.image_tokens`. Engines accept only `data:` URLs and the internal `tl-media:` scheme; remote `https:` URLs are fetched only by the gateway, behind an allowlist and the SSRF guard | engine-side URL fetch; a v3 major | No migration needed; SSRF stays at one trust boundary |
+| D50 | **Pass 12 modules reach Pass 7 to 11 code through `upgrades`** (3.4 call-site inheritance): `forward.rs`, `openai.rs`, `template.rs`, `sched.rs`, `http.rs`, `control.rs`, `go/gateway/{server,route,ledger,limit,policy}/`, `go/loadgen`, `go/workflows/{eval_suite,model_release}.go` | new side units with no caller | The registry forbids a Pass 12 unit being "used by" an earlier-pass module; upgrades are how the spiral reaches old code |
+| D51 | **Agents and audio-in LLMs stay side quests** (`sq.vision-agent`, `sq.audio-llm`, `sq.streaming-asr`) | `ag.13` core | No Pass 12 module would call them, and an earlier-pass caller violates the pass-order invariant |
+| D52 | **Pass 12 is core and comes after `v1.0.0`**; its gate tags `v1.1.0`. The committed-fixture cap rises from 50 to 56 MiB for B14 (D27, 5.11). Common Voice is not fetched or committed (its terms forbid re-hosting); ethics.07 uses a LibriSpeech-derived synthetic group set instead (5.11) | an optional track after P11; moving `ops-torch` goldens to a fetched asset | Multimodal serving is part of the platform the learner owns; 6 MiB is cheaper than splitting existing goldens |
 
 ---
 
@@ -150,6 +164,21 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 
 Languages meet only at HTTP, gRPC, subprocess, and file boundaries. Python and Rust exchange weights through safetensors files; the Rust tokenizer is used by the engine, while Python retains its own BPE implementation. Tokenizer parity and optional C exercise parity use shared fixture files. No language loads another language's library into its process.
 
+**Pass 12 additions (B14).** Component numbers are the rows above; `tl-media` is new.
+
+| # | Component | Lang | Learner path | Pass 12 responsibilities | Built in |
+|---|---|---|---|---|---|
+| 1 | `tinyllm` | Python | `python/tinyllm/` | `sig/` and `image/` (M12), `vision/` (L13), `speech/` (L14), `io/{wav,hf_vlm,hf_whisper}.py`, `eval/{mm,mm_bias}.py`; image decode with Pillow (D46) | M12, L13, L14, ethics.07 |
+| 2 | `corpus` | Python | `python/corpus/` | `image_pairs.py`, `audio_pairs.py`, `faces.py`, `png.py` | data.10 to data.12 |
+| 3 | standalone C exercises | C | `c/src/kernels/{conv,image,audio}.c` | optional conv, resize, and FFT/STFT/mel exercises behind `tinyllm/{conv,image,audio}.h`, each with its own C test binary and fixture parity; no engine or Python caller (D41) | optional L13.8, L13.9, L14.6 |
+| 4 | `tl-ds` | Rust | `tl-ds/src/lru_bytes.rs` | byte-budgeted LRU with pins | ds.10 |
+| 6 | `tl-engine` | Rust | `tl-engine/src/mm/*.rs`, `tl-engine/src/asr/*.rs` | candle device, media preprocessing, vision towers and connectors, merge, encoder cache, hash ids, encoder budget, EPD, Whisper runner and decoding | L15.1 to L15.6 |
+| 7 | `tl-serve` | Rust | `tl-serve/src/{audio,encoder_service}.rs` | content parts, transcription endpoint (multipart, srt, vtt), `tl.encoder.v1` services | L15.3, L15.5, L15.7 |
+| 8 | gateway | Go | `go/gateway/media/` | media parsing, limits, remote fetch with the SSRF guard, metering, VLM/ASR/encode pools, EPD orchestration | gw.09 to gw.11 |
+| 10 | durable SDK and worker | Go | `go/workflows/mm_corpus_build.go` | `MmCorpusBuild`; multimodal `EvalSuite` and `ModelRelease` gates | data.13, dur.13 |
+| 12 | loadgen | Go | `go/loadgen/` | multimodal workload mix, multipart sender, RTF report | load.03 |
+| 16 | `tl-media` (new crate) | Rust | `rust/crates/tl-media/` | PNG and JPEG decode through the `image` crate (D46), learner-written EXIF orientation and WAV parsing; used only by `tl-engine` | L15.1 |
+
 ### 2.2 Architecture diagram
 
 ```mermaid
@@ -168,6 +197,7 @@ flowchart LR
       ED1["engine role=decode (Rust)"]
       ED2["engine role=decode (Rust)"]
       EU["engine role=unified (Rust)"]
+      EE["engine role=encode (Rust, P12)"]
     end
     subgraph control[Control plane]
       DS["durable server (Go)\nWAL, task queues, timers, DLQ"]
@@ -198,6 +228,9 @@ flowchart LR
   GW -- "HTTP SSE + X-TL-KV-Handle" --> ED2
   EP -- "gRPC tl.kv.v1 HasBlocks/PushKv" --> ED1
   EP -- "gRPC tl.kv.v1 HasBlocks/PushKv" --> ED2
+  GW -- "gRPC tl.encoder.v1 Encode (P12)" --> EE
+  EE -- "gRPC EmbeddingTransfer (P12)" --> EU
+  EE -- "Heartbeat" --> GW
   EU -- "Heartbeat tl.control.v1" --> GW
   ED1 -- "Heartbeat" --> GW
   EP -- "Heartbeat" --> GW
@@ -246,6 +279,18 @@ All contract paths are relative to `course/contracts/` (vendored to the learner'
 | all services | collector | OTLP gRPC `:4317`; OTLP/HTTP JSON `:4318` for the std-only tracer engine | `otel/semconv.md`, `otel/metrics.yaml` | `otel/` (span tree from a recorded trace) |
 | all services | config | TOML + env | `config/runtime.schema.json` | `config/` |
 | harness | learner | TOML | `config/system.schema.json` | `ss` validates `system.toml` on every milestone |
+
+Pass 12 adds these boundaries (no row is a binding, D8, D46):
+
+| From | To | Mechanism | Contract | Conformance suite |
+|---|---|---|---|---|
+| Python image decoder (Pillow) | Rust image decoder (`image` crate in `tl-media`) | shared pre-decoded `.npy` pixel fixtures | `formats/image-preprocess.md` | `parity/image.decode` (PNG exact, JPEG within 2 u8 LSB) |
+| Python preprocessing | Rust preprocessing | spec + fixture files | `formats/image-preprocess.md`, `formats/mel-spec.md` | `parity/image.preprocess`, `parity/audio.logmel`, `parity/image.tokens` (Python, Rust, Go) |
+| Python ASR decoding | Rust ASR decoding | spec + recorded logits files | `spec/asr-decoding.md` | `parity/asr.decode` |
+| gateway | encode engine | gRPC | `proto/tl/encoder/v1/encoder.proto` | `encoder-grpc/` |
+| encode engine | target engine | gRPC | `EmbeddingTransfer` + `formats/encoder-entry.md` | `encoder-grpc/`, `parity/embed.wire.v1` |
+| gateway, engine, Python | media hash | spec | D44 in `formats/encoder-entry.md` | `parity/media.hash` (Python, Rust, Go) |
+| Python reference | optional multimodal C exercise | fixture files consumed by the C test binary | `tinyllm/{conv,image,audio}.h` | per-module C tests (L13.8, L13.9, L14.6) |
 
 ### 2.4 C-only module headers: `tinyllm.h`
 
@@ -415,11 +460,63 @@ void    tl_add_f32(const float *a, const float *b, float *y, int64_t n);
 int32_t tl_argmax_f32(const float *x, int64_t n);                       /* ties: lowest index */
 ```
 
+**Pass 12 optional headers (B14, D41).** `tinyllm.h` gains `tinyllm/conv.h` (L13.8), `tinyllm/image.h` (L13.9), and `tinyllm/audio.h` (L14.6). They follow the rules above, and `TL_ABI_VERSION` stays 1. Each is exercised only by its module's standalone C test binary against fixture files generated by the Python reference; nothing in Python, Rust, or Go loads them, and no core module or milestone depends on them. The filterbank and the window are inputs the test binary reads from the fixture, so the kernel owns only the compute. C uses libm `log10f` and no other libm call.
+
+```c
+/* tinyllm/conv.h  (L13.8, optional): conv as im2col + tl_matmul_f32 (optional L9.1), so it inherits batch invariance per image */
+typedef struct { int64_t N, C, H, W;            /* input, NCHW */
+                 int64_t K, R, S;               /* output channels, kernel height, width (weights KCRS, C/groups per group) */
+                 int64_t stride_h, stride_w, pad_h, pad_w, dil_h, dil_w, groups; } tl_conv2d_shape;
+int64_t   tl_conv_out_size(int64_t in, int64_t k, int64_t stride, int64_t pad, int64_t dil);   /* floor((in + 2p - d(k-1) - 1)/s) + 1; <= 0 invalid */
+size_t    tl_im2col_bytes(const tl_conv2d_shape *s);                                          /* (C/groups * R * S) * (P * Q) * sizeof(float) */
+tl_status tl_im2col_f32(const float *x, const tl_conv2d_shape *s, int64_t n, int64_t group,
+                        float *cols);                   /* rows ordered (c, r, s), columns (p, q); zero padding */
+tl_status tl_conv2d_f32(const float *x, const float *w, const float *bias /* nullable [K] */, float *y,
+                        const tl_conv2d_shape *s, tl_arena *scratch, tl_pool *tp);            /* y NKPQ */
+tl_status tl_conv1d_f32(const float *x, const float *w, const float *bias /* nullable */, float *y,
+                        int64_t N, int64_t C, int64_t L, int64_t K, int64_t R,
+                        int64_t stride, int64_t pad, int64_t dil,
+                        tl_arena *scratch, tl_pool *tp);                                      /* x NCL, w KCR, y NKL'; Whisper stem: R 3, pad 1, stride 1 then 2 */
+tl_status tl_patch_embed_f32(const float *img, const float *w, const float *bias, float *out,
+                             int64_t N, int64_t C, int64_t H, int64_t W, int64_t P, int64_t D,
+                             int layout /* 0 NCHW, 1 NHWC */, tl_pool *tp);                   /* out [N, (H/P)*(W/P), D]; H or W not divisible by P: TL_ESHAPE */
+
+/* tinyllm/image.h  (L13.9, optional) */
+enum { TL_RESAMPLE_NEAREST = 0, TL_RESAMPLE_BILINEAR = 1, TL_RESAMPLE_BICUBIC = 2, TL_RESAMPLE_LANCZOS3 = 3 };
+typedef struct { int32_t kernel;      /* TL_RESAMPLE_* (int32_t, never a C enum type) */
+                 int32_t antialias;   /* 1: support scaled by max(1, in/out) */
+                 int32_t pil_round;   /* 1: round half up and clip to u8 between the horizontal and vertical passes */
+                 float   cubic_a;     /* -0.5 (PIL) */ } tl_resize_cfg;
+tl_status tl_resize_u8(const uint8_t *src, int64_t h, int64_t w, int64_t c, uint8_t *dst, int64_t oh, int64_t ow,
+                       const tl_resize_cfg *cfg, tl_arena *scratch, tl_pool *tp);            /* HWC interleaved, formats/image-preprocess.md */
+tl_status tl_resize_f32(const float *src, int64_t c, int64_t h, int64_t w, float *dst, int64_t oh, int64_t ow,
+                        const tl_resize_cfg *cfg, tl_arena *scratch, tl_pool *tp);           /* CHW planar */
+tl_status tl_rescale_normalize_u8(const uint8_t *src_hwc, int64_t h, int64_t w, int64_t c, float scale,
+                                  const float *mean, const float *std, float *dst_chw);
+
+/* tinyllm/audio.h  (L14.6, optional) */
+typedef struct tl_fft_plan tl_fft_plan;
+tl_status tl_fft_plan_create(int64_t n, tl_fft_plan **out);     /* n factors over {2, 3, 4, 5}; else TL_EUNSUPPORTED; allocates via the hook */
+void      tl_fft_plan_destroy(tl_fft_plan *p);
+tl_status tl_rfft_f32(const tl_fft_plan *p, const float *x, float *re, float *im);   /* n real in, n/2 + 1 complex out */
+typedef struct { int64_t n_fft, hop; int32_t center; int32_t pad_mode; /* 0 reflect, 1 constant */
+                 int32_t drop_last; } tl_stft_cfg;
+int64_t   tl_stft_frames(int64_t n_samples, const tl_stft_cfg *c);
+tl_status tl_stft_power_f32(const float *x, int64_t n_samples, const float *window /* [n_fft] */,
+                            const tl_stft_cfg *c, const tl_fft_plan *p,
+                            float *power /* [n_fft/2 + 1, frames] */, tl_arena *scratch, tl_pool *tp);
+tl_status tl_mel_f32(const float *filters /* [n_mels, n_freq] */, const float *power, float *mel,
+                     int64_t n_mels, int64_t n_freq, int64_t frames, tl_pool *tp);    /* tl_matmul_f32 underneath */
+tl_status tl_log_mel_whisper_f32(float *mel, int64_t n);                             /* in place: log10(max(x, 1e-10)); max(x, max - 8); (x + 4) / 4 */
+```
+
 
 
 ### 2.5 Python and Rust file exchange
 
 Python and Rust exchange model weights through the safetensors file contract. The Python tokenizer and Rust `tl-tok` each implement BPE independently; a shared fixture records source text, expected token ids, and decoded bytes for parity checks. Tokenizer assets use `tokenizer.json`; the tracer's byte tokenizer uses the same file contract. Rust serves tokenization as part of the engine process. There is no `tinyllm_rs` module, Python extension, or cross-language library binding.
+
+Pass 12 keeps the rule for media (D46): Python decodes images with Pillow, the engine with the Rust `image` crate, and both are checked against the same pre-decoded `.npy` pixel fixtures. Preprocessing, log-mel features, image token counts, and ASR decoding compare through fixture files and recorded logits (2.3).
 
 ### 2.6 HTTP surface (OpenAPI)
 
@@ -430,6 +527,7 @@ Files: `openapi/openai-subset.v0.yaml` (tracer), `openai-subset.v1.yaml`, `opena
 | v0 | `L10.0` (tracer) | `POST /v1/completions` `{model, prompt, max_tokens, temperature, seed, stream}`, SSE `data: {...}\n\n` ending `data: [DONE]\n\n`, `GET /healthz` |
 | v1 | `L10.5`, `gw.04` | full table below |
 | v2 | `ops.05` drill, `craft.14` | `usage.prompt_tokens_details.cached_tokens`; `/v1/completions` deprecated with `Deprecation` and `Sunset` headers; new error `code` values. v1 and v2 served side by side during the window |
+| v2.1 | Pass 12: `L15.3`, `L15.7`, `gw.09` (D49) | additive minor of `openai-subset.v2.yaml` (`info.version: 2.1.0`): `image_url` and `input_audio` content parts, `POST /v1/audio/transcriptions`, `usage.prompt_tokens_details.image_tokens`; v1 (sunset in P11) gains nothing |
 
 **Public endpoints (v1)**:
 
@@ -471,6 +569,118 @@ Files: `openapi/openai-subset.v0.yaml` (tracer), `openai-subset.v1.yaml`, `opena
 | `GET /admin/v1/usage` | `?tenant&key_id&since&until&group_by=model` | token accounting from the usage ledger |
 | `GET /admin/v1/policy`, `PUT /admin/v1/policy` | `policy.v1` document | usage policy (`gw.08`, `ethics.05`) |
 | `POST /admin/v1/cache:purge` | `{model?}` | response cache purge |
+
+`GET /admin/v1/usage` gains `group_by=modality` in Pass 12 (gw.10).
+
+**API v2.1 (Pass 12, D49).** Engine and gateway tiers. Schema additions to `openapi/openai-subset.v2.yaml`:
+
+```yaml
+components:
+  schemas:
+    ChatMessage:
+      properties:
+        content:
+          oneOf:
+            - type: string
+            - type: array
+              minItems: 1
+              items: { $ref: '#/components/schemas/ContentPart' }
+    ContentPart:
+      oneOf:
+        - $ref: '#/components/schemas/TextPart'
+        - $ref: '#/components/schemas/ImageUrlPart'
+        - $ref: '#/components/schemas/InputAudioPart'      # 422 unsupported_parameter unless sq.audio-llm serves the model
+      discriminator: { propertyName: type }
+    TextPart:
+      type: object
+      required: [type, text]
+      properties: { type: { const: text }, text: { type: string } }
+    ImageUrlPart:
+      type: object
+      required: [type, image_url]
+      properties:
+        type: { const: image_url }
+        image_url:
+          type: object
+          required: [url]
+          properties:
+            url:
+              type: string
+              description: >
+                data:image/png;base64,... or data:image/jpeg;base64,... (engine and gateway);
+                https://... only at the gateway with [gateway.media.remote_fetch] enabled and the host allowlisted;
+                tl-media:<16 hex> is internal (EPD) and is rejected from clients with 400.
+            detail: { type: string, enum: [auto, low, high], default: auto }   # low: global image only, no tiles
+    InputAudioPart:
+      type: object
+      required: [type, input_audio]
+      properties:
+        type: { const: input_audio }
+        input_audio:
+          type: object
+          required: [data, format]
+          properties: { data: { type: string, contentEncoding: base64 }, format: { type: string, enum: [wav] } }
+    PromptTokensDetails:
+      properties:
+        cached_tokens: { type: integer }
+        image_tokens: { type: integer, description: placeholder tokens counted in prompt_tokens }
+    TranscriptionRequest:                                   # multipart/form-data
+      type: object
+      required: [file, model]
+      properties:
+        file: { type: string, format: binary, description: RIFF WAV (D47) }
+        model: { type: string }
+        language: { type: string, description: ISO-639-1; omitted means detect }
+        prompt: { type: string, description: previous-text conditioning, at most 223 tokens kept }
+        response_format: { type: string, enum: [json, text, srt, verbose_json, vtt], default: json }
+        temperature: { type: number, minimum: 0, maximum: 1, default: 0, description: 0 enables the fallback ladder }
+        timestamp_granularities[]: { type: array, items: { enum: [segment] } }   # word: 422 unsupported_parameter
+        stream: { type: boolean, default: false }
+    Transcription:                                          # json
+      type: object
+      required: [text, usage]
+      properties:
+        text: { type: string }
+        usage: { type: object, required: [type, seconds], properties: { type: { const: duration }, seconds: { type: number } } }
+    TranscriptionVerbose:
+      type: object
+      required: [task, language, duration, text, segments, usage]
+      properties:
+        task: { const: transcribe }
+        language: { type: string }
+        duration: { type: number }
+        text: { type: string }
+        segments:
+          type: array
+          items:
+            type: object
+            required: [id, seek, start, end, text, tokens, temperature, avg_logprob, compression_ratio, no_speech_prob]
+paths:
+  /v1/audio/transcriptions:
+    post:
+      requestBody: { required: true, content: { multipart/form-data: { schema: { $ref: '#/components/schemas/TranscriptionRequest' } } } }
+      responses:
+        '200':
+          content:
+            application/json: { schema: { oneOf: [ { $ref: '#/components/schemas/Transcription' }, { $ref: '#/components/schemas/TranscriptionVerbose' } ] } }
+            text/plain: {}                                   # text, srt, vtt
+            text/event-stream: {}                            # stream=true: events transcript.text.delta {delta}, transcript.text.done {text, usage}
+        '400': { $ref: '#/components/responses/Error' }
+        '413': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+```
+
+New error rows (shape unchanged):
+
+| Status | `type` / `code` | When |
+|---|---|---|
+| 400 | `invalid_request_error` / `invalid_media` | undecodable image or WAV, bad base64, `tl-media:` from a client |
+| 400 | `invalid_request_error` / `unsupported_media_type` | not PNG or JPEG, not RIFF WAV |
+| 413 | `invalid_request_error` / `media_too_large` | request bytes, image bytes, pixels (checked from the header before decode), image count, or audio seconds over limits |
+| 422 | `invalid_request_error` / `unsupported_parameter` | `image_url` to a text-only model, `timestamp_granularities[]=word`, a remote URL with fetch disabled (`param: messages[i].content[j].image_url.url`) |
+| 451 | `policy_error` / `usage_policy` | a `media_policy` rule |
+
+Internal header `X-TL-MM-Handle` (EPD resume, 2.7) is stripped by the gateway from client requests, like `X-TL-KV-Handle`. The v2.1 conformance cases are in 5.8.
 
 ### 2.7 gRPC services (`proto/tl/*/v1/*.proto`)
 
@@ -543,6 +753,47 @@ message WorkerStatus { string worker_id = 1; string http_address = 2; string grp
   int32 kv_free_blocks = 10; int32 kv_total_blocks = 11; bool draining = 12; }
 message HeartbeatAck { bool drain = 1; uint64 route_epoch = 2; }
 ```
+
+**`tl/encoder/v1/encoder.proto`** (Pass 12, L15.5; the D6 pattern: dedup by hash, push what is missing, release on abort). `EncoderService` is served by `role = encode` engines on `:50051` next to `EngineControl`; `EmbeddingTransfer` by unified and prefill engines on `:50053` (`{emb_port}` locally).
+
+```proto
+syntax = "proto3";
+package tl.encoder.v1;
+service EncoderService {
+  rpc Encode(EncodeRequest) returns (EncodeResponse);      // preprocess + encode each item, push to target, return refs
+}
+service EmbeddingTransfer {
+  rpc HasEmbeddings(HasEmbeddingsRequest) returns (HasEmbeddingsResponse);
+  rpc PushEmbeddings(stream EmbeddingChunk) returns (EmbeddingAck);
+  rpc Release(ReleaseEmbeddingsRequest) returns (ReleaseEmbeddingsResponse);
+}
+message MediaInput { uint32 kind = 1; bytes data = 2; uint64 media_hash = 3; string detail = 4; }  // data <= 4 MiB per item, larger items stream via chunks
+message EncodeRequest { string request_id = 1; string model = 2; repeated MediaInput media = 3;
+  string target = 4;                                        // host:port of the target's EmbeddingTransfer
+  int64 deadline_unix_ms = 5; }
+message MediaRef { uint64 media_hash = 1; uint32 kind = 2; uint32 preprocess_rev = 3; uint32 n_tokens = 4; string detail = 5; }
+message EncodeResponse { string handle_id = 1; repeated MediaRef refs = 2; uint32 encoded = 3; uint32 deduped = 4; double encode_ms = 5; }
+message HasEmbeddingsRequest { string model = 1; repeated MediaRef refs = 2; }
+message HasEmbeddingsResponse { repeated bool present = 1; }
+message EmbeddingChunk { string handle_id = 1; MediaRef ref = 2; uint32 chunk_index = 3; uint32 n_chunks = 4;
+  bytes payload = 5;                                        // formats/encoder-entry.md envelope, split at 4 MiB
+  uint32 crc32c = 6; }
+message EmbeddingAck { string handle_id = 1; uint32 received = 2; uint32 deduped = 3; }
+message ReleaseEmbeddingsRequest { string handle_id = 1; }  message ReleaseEmbeddingsResponse {}
+```
+
+Minor additions to existing protos in Pass 12:
+
+```proto
+// tl/engine/v1/engine.proto
+message PrefillRequest { /* 1..7 unchanged */ repeated tl.encoder.v1.MediaRef media = 8; string mm_handle = 9; }
+message InfoResponse   { /* 1..6 unchanged */ repeated string modalities = 7; uint32 preprocess_rev = 8; }
+// tl/control/v1/control.proto
+message WorkerStatus   { /* 1..12 unchanged; role adds "encode" */ repeated string modalities = 13;
+  int32 encoder_queue_depth = 14; int64 encoder_cache_free_bytes = 15; string emb_address = 16; }
+```
+
+**EPD flow** (encode/prefill/decode). The gateway parses media (gw.09), picks encoder E (affinity on the first `media_hash`, bounded by `encoder_queue_depth`) and target T (unified, or prefill P then decode D as above). It rewrites each image part to `tl-media:<hex16>` and calls `E.Encode(target = T.emb_address)`. E asks T `HasEmbeddings`, encodes only missing items (its own encoder cache first), pushes envelopes, and returns refs. The gateway then sends the rewritten chat request to T with `X-TL-MM-Handle: <handle_id>`. T resolves `tl-media:` refs from its encoder cache, pinned for the request. A miss at T returns internal 409 `mm_missing` and the gateway retries once through the unified path, which encodes locally. On abort the gateway calls `Release`. Encoder loss before the first byte: retry another E, then encode locally (`[gateway.media].epd_fallback = "local"`), counted in `tl.gateway.epd.fallbacks`.
 
 **`tl/durable/v1/durable.proto`**: served by the durable server on `:7233` (`{grpc_port}` locally; NodePort 30733 on kind for a host-side training worker, 2.13). Both the CLI and workers use it.
 
@@ -658,6 +909,23 @@ The Go side is `go/activities/subprocess.go` and the Python side is `python/tiny
 | Usage ledger | `gateway/usage.db` (schema `formats/usage.v1.sql`) | one row per request: tenant, key id, model, prompt/completion/cached tokens, ttft, status, api version, trace id |
 | Loadgen report | `bench/<run_id>/report.json` | `{rate_rps, duration_s, ttft_ms:{p50,p90,p99}, tpot_ms:{...}, itl_ms:{...}, e2e_ms:{...}, error_rate, goodput, tokens_per_s, histogram}` |
 
+Pass 12 formats (new files, or minor versions of the files above):
+
+| Artifact | Path or contract | Format |
+|---|---|---|
+| Image preprocessing spec (new) | `formats/image-preprocess.md` | The spec every implementation follows: decode per D46 (Pillow in Python, the `image` crate in Rust, both checked against `.npy` pixels), EXIF orientation 1 to 8 applied before anything else, RGBA composited on white, grayscale and palette expanded to RGB; resize kernels `nearest`, `bilinear`, `bicubic` (a = -0.5, the PIL value; torch uses -0.75), `lanczos3`; pixel-center convention `src = (dst + 0.5) * scale - 0.5`; antialias support `support * max(1, in/out)`; weights normalized per output pixel; PIL mode: horizontal pass, round half up and clip to u8, vertical pass, round and clip; then `x * rescale_factor`, then `(x - mean) / std` in f32, CHW. Tiling: LLaVA-NeXT AnyRes and Idefics3 splitting (4.3, L13.4). **Token count**: `image_token_count` per processor is normative and fixture-tested in Python, Rust, and Go. `preprocess_rev` (u32) increments on any change and is part of every encoder-cache key |
+| Preprocessor config (new) | `models/<id>/<ver>/preprocessor_config.json`, schema `formats/preprocessor-config.schema.json` | subset of HF `preprocessor_config.json` / `processor_config.json` that loads unchanged for SmolVLM-256M-Instruct, LLaVA, CLIP, SigLIP, and Whisper; unknown keys ignored, unsupported values (for example `resample` 4, box) rejected |
+| Mel spec (new) | `formats/mel-spec.md` | Whisper features: 16 kHz mono f32, pad or trim to 480000 samples (30 s) per window, periodic Hann(400), `n_fft = 400` (factors 2^4 · 5^2, so FFTs are mixed radix), hop 160, `center = True` with reflect padding, 201 bins, drop the last frame (3000 frames), power spectrum, Slaney mel filterbank with Slaney normalization (fmin 0, fmax 8000) for 80 or 128 mels, `log10(max(m, 1e-10))`, `max(x, max(x) - 8)`, `(x + 4) / 4`. Long-form: features over the whole file, windows of 3000 frames at `seek`. Mono downmix is the channel mean; resampling per `resample_audio` (torchaudio `sinc_interp_hann`, width 6, rolloff 0.99) |
+| Encoder entry (new) | `formats/encoder-entry.md` | In memory: `EncoderEntry` (4.3, L15.2). **Export envelope** used by `PushEmbeddings`: header `{magic "TLEM", u16 version = 1, u16 dtype (TL_F32 or TL_F16 codes), u64 media_hash, u32 preprocess_rev, u32 n_tokens, u32 d, u8 kind, u8 detail, u16 model_id_len, model_id utf-8}`, payload `[n_tokens][d]` row-major little-endian, then `u32 crc32c` over everything before it. Bad magic, CRC, version, or model id: rejected (`FAILED_PRECONDITION`). Also holds the D44 media hash |
+| KV block (minor) | `formats/kv-block.md` | new section **Multimodal hash ids** (D45): the hashed token stream replaces the placeholder at offset `j` of an image span with `0x8000_0000 \| ((h >> (31 * (j & 1))) & 0x7FFF_FFFF)` where `h = media_hash`; all other ids are unchanged, so text-only blocks hash exactly as in v1. Model ids are always below `2^31`. KV payload formats v1 and v2 are unchanged |
+| Model config (minor) | `config.json` | `tl_arch` adds `vit, clip, siglip, idefics3, llava, llava_next, qwen2vl, whisper`; `tl_modalities` in `{text, image, audio}`; the engine serves `bigram`, `llama`, `idefics3`, `whisper` (`llava` optional through the zoo) |
+| Multimodal shards (minor of `corpus-shard.md`) | `corpus/<dataset>/<version>/{images,audio}-NNNNN.parquet` | image-text: `id string, image_png binary, width int32, height int32, caption string, source_id string, url string, license_spdx string, phash fixed_size_binary(8), dhash fixed_size_binary(8), faces_redacted int32, clip_score float32, near_dup_cluster int64, split string`. Audio: `id string, audio_wav binary (16 kHz mono s16le), duration_s float32, transcript string, lang string, speaker_key fixed_size_binary(16) (HMAC of the source speaker id; never the id), consent string, source_id string, license_spdx string, pii_redactions int32, near_dup_cluster int64, split string`. No document, image, or speaker crosses splits |
+| Data ledger (minor) | `corpus/LEDGER.jsonl` | adds `modality: text\|image\|audio`, `biometric: bool`, `consent: none\|public-domain\|cc-licensed\|explicit-donation`, `attribution: string`, `prohibited_uses: [string]` (for example `speaker-identification`). `ModelRelease` refuses `biometric: true` sources whose `consent` is `none` |
+| Usage ledger (minor of craft.14's per-version ledger) | `gateway/usage.db`, `formats/usage.v2.sql` | adds `images int, image_tokens int, audio_seconds real, modality text` |
+| Usage policy (minor) | `formats/policy.v1.schema.json` | `match.modalities: [image, audio]`, `limits{max_images, max_image_pixels, max_audio_seconds}`, action `deny` with reason `media_policy` |
+| Eval suite input (minor) | `formats/eval-case.schema.json` | `input` may carry `media: [{kind, path, sha256}]`; suites `asr`, `vqa`, `caption`, `zeroshot`, `mm_bias` |
+| Model card (minor) | `templates/MODEL_CARD.md` | sections "Modalities and input limits", "Per-group performance" (WER per group with CIs), "Prohibited uses" (speaker identification, face recognition), "Third-party components" (SmolVLM-256M-Instruct, whisper-tiny, with their licenses from 5.11) |
+
 ### 2.10 Determinism specs (`spec/`)
 
 | Spec | Content |
@@ -666,6 +934,8 @@ The Go side is `go/activities/subprocess.go` and the Python side is `python/tiny
 | `sampling.md` | Logits f32 to f64; repetition, presence, frequency penalties; divide by temperature; top-k; top-p over a stable sort by (logit desc, id asc), keeping the token that crosses `p`; min-p; softmax; exactly one `uniform_f64` per sampled token; inverse CDF. `temperature == 0` is greedy with ties to the lowest id. Given **the same logits and seed**, Python `tinyllm.infer.sample` and Rust `tl-engine` emit identical ids (`parity/sampler`, on fixture logits). End-to-end streams from different float paths are compared greedily under the near-tie rule (5.7), never seeded |
 | `subprocess-activity.md` | 2.8 |
 | `cli-roles.md` | the entry roles a learner declares in `system.toml` (2.16) and the verbs each milestone calls. Fixed rules: `{tinyllm} generate` prints the generated ids as a final JSON line `{"ids": [...], "text": ..., ...}` so matchers need no tokenizer; the tracer `engine` role takes `--model-dir --port` (`--config` from `L10.5`); `{worker} --test-activities` registers the course test activity `tl.test.Append` (appends its idempotency key to the `effects` sink) and the course test workflows used by replay and kill-loop tests; `{durable} --test-clock` enables `/debug/clock` |
+| `asr-decoding.md` (Pass 12) | SOT sequence, special tokens, language detection, timestamp rules, suppress lists, `best_of` sampling with PCG32 per `sampling.md` (one `uniform_f64` per token, seed per window = SplitMix64(seed, window index)), beam search (log-prob sum, length-normalized by token count, ties to the lowest token id, `patience`), temperature fallback (compression ratio `len(utf8) / len(zlib.compress(utf8, 9))`, average log-prob, no-speech probability at the SOT position), long-form seek and prompt conditioning (`<\|startofprev\|>` plus up to 223 previous tokens; dropped when the last temperature exceeded 0.5), segment output, and the `basic` text normalizer for WER |
+| `cli-roles.md` (Pass 12 minor) | verbs `{tinyllm} features`, `transcribe`, `vlm generate`, `logits --mm-prompts`, `train {lenet,clip,vlm}`, `eval {zeroshot,vqa,caption,asr}`, `preprocess image`; `{corpus} mm build`, `mm audit`; `{ctl} chat --image`, `{ctl} transcribe`. Every generating verb ends with the JSON line `{"ids": [...], "text": ...}` |
 
 ### 2.11 Observability conventions (`otel/`)
 
@@ -708,6 +978,34 @@ Prometheus names come from the collector's OTel translation (for example `gen_ai
 | Availability | 99.5% (5xx ratio < 0.5% over 30 days) | same |
 
 Latency defaults are scaled by `ss bench --calibrate` (5.11); SLOs checked on kind use the in-cluster calibration Job, not the host. The learner may declare stricter targets, never looser ones. `otel/slo.schema.json` fixes the required alert names (`TTFTBudgetBurnFast`, `TTFTBudgetBurnSlow`, `TPOTBudgetBurnFast`, `TPOTBudgetBurnSlow`, `AvailabilityBudgetBurnFast`, `AvailabilityBudgetBurnSlow`) and two window profiles: `prod` (1h/5m and 6h/30m) and `drill` (the same ratios compressed 12x: 5m/25s and 30m/2.5m), so a drill can fire a burn alert within minutes.
+
+**Pass 12 additions (B14).**
+
+| Span name | Kind | Emitted by | Required attributes |
+|---|---|---|---|
+| `gateway.media` | INTERNAL | gateway | `tl.media.items, tl.media.bytes, tl.media.decision` (`allow`, `reject:<code>`) |
+| `tl.encoder.v1.EncoderService/Encode` | CLIENT/SERVER | gateway, encode engine | `rpc.system=grpc` |
+| `engine.preprocess`, `engine.encode` | INTERNAL | engine | `tl.mm.modality, tl.mm.items, tl.mm.tokens, tl.mm.cache_hit, tl.mm.device` |
+| `encoder.transfer` | CLIENT/SERVER | encode, target | `tl.mm.bytes, tl.mm.deduped` |
+| `asr.window` | INTERNAL | engine | `tl.asr.seek, tl.asr.temperature, tl.asr.fallbacks, tl.asr.no_speech` |
+
+| Metric | Type, unit | Use |
+|---|---|---|
+| `tl.engine.encode.duration{modality}` | histogram, s | **encode time** SLO |
+| `tl.engine.encoder_cache.{hits,misses,evictions}`, `tl.engine.encoder_cache.bytes` | counter, gauge | cache efficiency |
+| `tl.engine.encoder.queue.depth` | gauge | encode pool autoscaling |
+| `tl.asr.rtf` | histogram, 1 | **real-time factor** SLO: processing seconds / audio seconds |
+| `tl.asr.audio_seconds.queued` | gauge | ASR pool autoscaling |
+| `tl.gateway.media.rejections{reason}`, `tl.gateway.media.bytes{tenant}` | counter | ops.14 |
+| `tl.gateway.epd.fallbacks` | counter | ops.13 |
+| `tl.usage.image_tokens{tenant}`, `tl.usage.audio_seconds{tenant}` | counter | metering cross-check |
+
+| SLO (course default, scaled by `ss bench --calibrate --in-cluster`) | Default | Required alerts (`otel/slo.schema.json` minor) |
+|---|---|---|
+| Encode p95 per image (SmolVLM, one global tile, cpu) | < 400 ms | `EncodeLatencyBurnFast`, `EncodeLatencyBurnSlow` |
+| Image-request TTFT p95 | < 1.5 s at 1 rps | `ImageTTFTBurnFast`, `ImageTTFTBurnSlow` |
+| ASR RTF p95 (whisper-tiny, greedy, cpu) | < 0.3 | `AsrRtfBurnFast`, `AsrRtfBurnSlow` |
+| Text TTFT p95 under mixed load | unchanged from the table above | existing |
 
 ### 2.12 Runtime configuration (`config/runtime.schema.json`)
 
@@ -772,6 +1070,56 @@ task_queues = ["train", "data", "eval", "agent", "release"]
 python = "uv run --project /app/python python"
 ```
 
+**Pass 12 keys (B14, `runtime.schema.json` minor).** `[engine].role` adds `encode`. There is no kernel backend key (D41).
+
+```toml
+[engine]
+role = "unified"                                  # unified | prefill | decode | encode
+emb_listen = ":50053"                             # EmbeddingTransfer (unified, prefill)
+
+[engine.mm]
+device = "cpu"                                    # cpu | metal (local only; CI and tests are cpu)
+dtype = "f32"                                     # f32 | f16 (f16 only on metal)
+max_images_per_request = 8
+max_image_bytes = 20971520
+max_image_pixels = 33554432                       # checked from the header before decode
+encoder_cache_bytes = 536870912
+max_encoder_tokens_per_step = 2048                # encoder budget per scheduler step (L15.4)
+preprocess_threads = 2
+embedding_transfer_dtype = "f16"                  # envelope dtype
+
+[engine.asr]
+max_audio_seconds = 1800
+beam_size = 5
+best_of = 5
+patience = 1.0
+temperatures = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+compression_ratio_threshold = 2.4
+logprob_threshold = -1.0
+no_speech_threshold = 0.6
+condition_on_previous_text = true
+max_initial_timestamp = 1.0
+
+[gateway.media]
+max_request_bytes = 26214400
+max_images = 8
+max_image_pixels = 33554432
+max_audio_bytes = 26214400
+max_audio_seconds = 1800
+epd_fallback = "local"                            # local | fail
+remote_fetch = { enabled = false, allow_hosts = [], timeout_ms = 3000, max_bytes = 20971520 }
+
+[[gateway.routes]]
+model = "smolvlm-256m"
+targets = ["vlm"]
+epd = { encode_pool = "encode" }
+[[gateway.routes]]
+model = "whisper-tiny"
+targets = ["asr"]
+```
+
+Scalars in nested tables are overridden with `__` per level (`TL_ENGINE__MM__DEVICE=metal`); `conformance/config/` gains one nested case.
+
 ### 2.13 Ports and Kubernetes objects
 
 | Component | Helm chart | Kind | Replicas on kind | Ports |
@@ -784,6 +1132,16 @@ python = "uv run --project /app/python python"
 | observability | upstream charts pinned in `deploy/observability/Chart.lock` | Pass 1: Jaeger all-in-one (OTLP in, query NodePort 30686). From Pass 7: otel-collector, kube-prometheus-stack, Tempo; KEDA from Pass 8 | 1 | 4317, 4318, 9090 (NodePort 30090), 3000 (NodePort 30300), Tempo query 3200 (NodePort 30320) |
 
 All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts` of `./artifacts`. That is a single-node simplification; the chapter's "Going further" covers object stores and RWX volumes. kind reaches NodePorts from the host only through `extraPortMappings`, so the cluster config maps 30080 and 30686 from Pass 1 (dep.00) and adds 30090, 30300, 30320, and 30733 in Pass 7 (dep.02 recreates the cluster). Chart policy (checked by `dep.03`, `dep.06`, `dep.07`): probes, resource limits, non-root, no `:latest`, PDB present, secrets only through `Secret` references (the values schema rejects literal secret values), `values.schema.json` from `contracts/helm/`. `contracts/helm/observability.md` pins the upstream chart versions and the `PrometheusRule` label selector that kube-prometheus-stack must match.
+
+**Pass 12 engine pools (dep.08).** Three more releases of the engine chart:
+
+| Component | Helm release (chart) | Kind | Replicas on kind | Ports |
+|---|---|---|---|---|
+| engine, VLM pool | `<system>-engine-vlm` (`<system>-engine`, `role: unified`, SmolVLM model dir) | Deployment + KEDA `ScaledObject` on `tl_engine_queue_depth{model="smolvlm-256m"}` | 1 (max 2) | 8000, 50051, 50052, **50053** emb, 9464 |
+| engine, encode pool | `<system>-engine-encode` (`role: encode`) | Deployment + KEDA `ScaledObject` on `tl_engine_encoder_queue_depth`; PDB `minAvailable: 1` | 2 (min 1, max 4) | 50051 (EncoderService, EngineControl), 9464 |
+| engine, ASR pool | `<system>-engine-asr` (`role: unified`, whisper-tiny) | Deployment + KEDA `ScaledObject` on `tl_asr_audio_seconds_queued` | 1 (max 3) | 8000, 50051, 9464 |
+
+`contracts/helm/engine.values.schema.json` (minor): `role` enum adds `encode`; `mm.device` (`cpu` only on kind, since the kind node is Linux), `mm.encoderCacheBytes`, `asr.*`, `autoscaling.keda{metric, threshold, min, max}`. The dep.03 policy tests apply unchanged.
 
 **Training on a Mac.** Training inside the kind VM gets Linux OpenBLAS and competes with the cluster for Docker's memory. The learner may run `{worker} --queue train` on the host, connected to the durable NodePort 30733; the trace and the workflow are unchanged. `ss doctor` reports Docker's CPU and memory allocation and fails below 6 CPUs and 12 GiB for Pass 7 onward.
 
@@ -808,6 +1166,7 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
 | Inverted index + varint postings | inside `ag.07`, Go | BM25 retrieval |
 | Trie | `M06.2`, Python | WordPiece, Unigram lattice |
 | Arena, thread pool | optional `rt.02`, `rt.03`, C | standalone C exercise calls only |
+| Byte-budgeted LRU with pins (Pass 12) | `ds.10`, Rust, `tl-ds/src/lru_bytes.rs` | `L15.2` encoder cache |
 
 ### 2.15 The learner's repo
 
@@ -830,7 +1189,7 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
       optim/      gd, sgd, adamw, schedule, curvature, muon
       autograd/   graph, dual, scalar, vjp, hvp, tensor, mode, functional, losses
       nn/         module, layers, init
-      io/         safetensors, checkpoint, tokens, hf, activity, telemetry
+      io/         safetensors, checkpoint, tokens, hf, activity, telemetry, wav, hf_vlm, hf_whisper
       train/      loop, precision, recompute
       accounting.py
       tok/        base, char, bytes_unicode, trie, pretok, bpe, wordpiece, unigram, metrics
@@ -841,10 +1200,14 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
       obj/        gpt, bert, electra, t5, heads, lora
       modern/     norm, mlp, rope, ctxext, gqa, mla, window, moe, llama
       infer/      sample, kvcache, generate, paged, quant, spec, constrain, beam
-      eval/       seqmetrics, lm, zoo, safety, bias
+      eval/       seqmetrics, lm, zoo, safety, bias, mm, mm_bias
       dist/       comm, zero (tp, pp only in side quests)
       post/       sft, dpo, grpo, distill
-    corpus/                      # stage, fetch, filter, dedup, minhash, pii, shard, tokenize, ledger; __main__ (learner)
+      sig/        conv, resample, fft, stft, mel                       # Pass 12: M12.1, M12.3 to M12.6
+      image/      layout                                               # M12.2
+      vision/     conv, rope2d, vit, tiling, contrastive, preprocess, vlm   # L13.1 to L13.7
+      speech/     frontend, encoder, decoder, decode                   # L14.1 to L14.4
+    corpus/                      # stage, fetch, filter, dedup, minhash, pii, shard, tokenize, ledger, image_pairs, audio_pairs, faces, png; __main__ (learner)
     tests/<module-slug>/         # learner's graded tests
   primers/<lang-id>/             # lang.* primer exercises (not part of the system)
   c/
@@ -852,35 +1215,57 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
     include/tinyllm.h, include/tinyllm/*.h   # identical copies of contracts (checked)
     src/runtime/  arena.c pool.c kv_pool.c
     src/numerics/ rng.c lowp.c rsqrt.c expf.c
-    src/kernels/  matmul.c softmax.c flash_attn.c paged_attn.c qmatmul.c elementwise.c
+    src/kernels/  matmul.c softmax.c flash_attn.c paged_attn.c qmatmul.c elementwise.c conv.c image.c audio.c
     src/ds/       vec.c swiss.c list.c lru.c topk.c
     cuda/                        # optional, never in CI
     tests/
   rust/
     Cargo.toml                   # workspace
-    crates/tl-ds/     src/{robin,heap,radix,bloom}.rs
+    crates/tl-ds/     src/{robin,heap,radix,bloom,lru_bytes}.rs
+    crates/tl-media/  src/{lib,decode,exif,wav}.rs          # Pass 12: L15.1
     crates/tl-tok/    src/{bpe,pretok,stream,hfjson}.rs
     crates/tl-engine/ src/{lib,model,forward,runner,sample,quant,prefix,block_manager,sched,chunk,kv_transfer,heartbeat,spec,constrain}.rs
                                  # lora.rs only in sq.multi-lora
-    crates/tl-serve/  src/{lib,http,sse,openai,template,tools,control,metrics,telemetry}.rs, src/main.rs (learner)
+                      src/mm/{media,image,audio,encoder_cache,hash_ids,vision,merge,epd}.rs, src/asr/{whisper,decode}.rs   # Pass 12
+    crates/tl-serve/  src/{lib,http,sse,openai,template,tools,control,metrics,telemetry,audio,encoder_service}.rs, src/main.rs (learner)
   go/
     go.mod                       # module tinyllm; require supersource.urmzd.com/tl/contracts, replace => ../contracts/go
     ds/ring/  ds/rng/
     durable/{log,queue,server,worker,workflow,activity,timer,raft}/
-    gateway/{server,auth,limit,proxy,route,cache,ledger,policy}/
+    gateway/{server,auth,limit,proxy,route,cache,ledger,policy,media}/
     agent/{types,provider,tool,loop,gate,durableagent,rag,eval}/
     loadgen/  loadgen/compare/
     activities/  workflows/  otelx/  config/   # otelx: obs.01; config: gw.01; ds/rng (Go PCG32): load.01
     cmd/{<system>,gateway,durable,worker,loadgen,agent-docsqa}/   # (learner)
   deploy/                        # (learner)
     docker/  helm/<system>-{gateway,engine,durable,worker,agent}/  kind/cluster.yaml  Tiltfile
+    helm/<system>-engine/values-{vlm,encode,asr}.yaml               # Pass 12: dep.08
     observability/{collector.yaml, dashboards/*.json, slo.yaml, rules/*.yaml, Chart.lock}
   evals/{suites/*.jsonl, rubrics/*.md}
-  docs/{c4/*.d2, adr/, runbooks/, postmortems/}  THREAT_MODEL.md SBOM.md MODEL_CARD.md DATASHEET.md USAGE_POLICY.md
+  docs/{c4/*.d2, adr/, runbooks/, postmortems/}  THREAT_MODEL.md SBOM.md MODEL_CARD.md DATASHEET.md USAGE_POLICY.md CONSENT_POLICY.md
   solve/<S-ID>.toml  solve/<S-ID>/qN.md
   .github/workflows/             # (learner) CI gates
-  artifacts/                     # gitignored, mounted into kind
+  artifacts/                     # gitignored (but artifacts/c2/run.json, which C2 checks), mounted into kind
   .ss/                           # gitignored: verdicts.jsonl, overlay/, build/, cache/, drills/, milestones/, supersource/ (CI checkout)
+```
+
+**Pass 12 dependency additions** (`allowed-deps.toml`; versions are requirements at authoring time, exact pins come from the learner's lock files):
+
+```toml
+[python.tinyllm]
+pillow = ">=11"                                        # image decode only (D46): vision/preprocess.py
+[python.corpus]
+pillow = ">=11"                                        # data.10 decode; the PNG writer is learner code
+[rust.tl-media]
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }   # decode only (D46)
+[rust.tl-engine]
+rustfft = "6"                                          # FFT for the engine log-mel; framing, window, mel, log are learner code
+fast_image_resize = "5"                                # engine resize; PIL parity is checked (open question Q16)
+rubato = "0.16"                                        # non-16 kHz audio only
+flate2 = { version = "1", default-features = false, features = ["zlib"] }   # compression ratio, zlib backend to match Python zlib
+# forbidden for every component: candle-transformers, candle-examples, ort, tch, pyo3
+[go.gateway]
+# stdlib image/png, image/jpeg for DecodeConfig; no new modules
 ```
 
 **Glue files** (crate roots like `tl-engine/src/lib.rs`, Python `__main__`) belong to the first module that creates them. A crate root declares every submodule the contract lists; `ss start` writes stubs for submodules not yet started, so the crate always compiles. A stub keeps every contract signature and replaces only function bodies (5.2), and `ss start` never overwrites an existing learner file.
@@ -935,7 +1320,7 @@ traces       = "http://127.0.0.1:30320"    # Tempo query API; Jaeger at :30686 i
 services     = { gateway = "deploy/forge-gateway", decode = "deploy/forge-engine-decode", prefill = "deploy/forge-engine-prefill", durable = "statefulset/forge-durable" }
 ```
 
-Milestone commands in this document are written with role placeholders: `{tinyllm} generate ...` means "the learner's `tinyllm` entry, then `generate ...`", and `{ctl} train ...` is the umbrella CLI. Missing entries fail with `milestone MS-L8 needs [entry].tinyllm in system.toml`. **Ports are never fixed locally**: the runner allocates `{port}`, `{health_port}`, `{grpc_port}`, `{kv_port}`, and `{registry_port}` per service instance, writes them into that instance's generated `runtime.toml` (`{config}`) and into `TL_*__*` overrides, and exposes them to other entries as `{<service>.<port>}`. A milestone that starts a gateway plus a prefill and two decode engines on one host therefore gets distinct ports. Fixed ports (2.13) apply only inside k8s.
+Milestone commands in this document are written with role placeholders: `{tinyllm} generate ...` means "the learner's `tinyllm` entry, then `generate ...`", and `{ctl} train ...` is the umbrella CLI. Missing entries fail with `milestone MS-L8 needs [entry].tinyllm in system.toml`. **Ports are never fixed locally**: the runner allocates `{port}`, `{health_port}`, `{grpc_port}`, `{kv_port}`, and `{registry_port}` per service instance, writes them into that instance's generated `runtime.toml` (`{config}`) and into `TL_*__*` overrides, and exposes them to other entries as `{<service>.<port>}`. A milestone that starts a gateway plus a prefill and two decode engines on one host therefore gets distinct ports. Fixed ports (2.13) apply only inside k8s. Pass 12 adds `{emb_port}` (`EmbeddingTransfer`, 2.7) per engine instance.
 
 ### 2.17 End-to-end data flow
 
@@ -949,6 +1334,7 @@ Everything runs on one kind cluster. Every hop carries `traceparent`, and every 
 6. **Agent.** `cmd/agent-docsqa` uses the learner's agent SDK. Its `Provider` points at their gateway, which serves SmolLM2-135M-Instruct on their engine with tool calls (L10.9), or at a frontier API. Its RAG index covers their own `docs/` and the course chapters, using gateway `/v1/embeddings` and BM25 fused with RRF. Run as `AgentRun` workflows, each LLM call and tool call is an activity, so a crashed agent replays to the step it reached.
 7. **Evaluate.** `<system> eval --suite docsqa --ab base=smol-135m,exp=tinystories-sft` runs deterministic scorers first (exact match, citation coverage, retrieval recall@k), then the LLM judge and the pairwise judge, and writes `results.jsonl` and `summary.json` with bootstrap CIs. The release gate in step 4 reads these numbers.
 8. **Observe.** Every component exports OTLP to the collector, which feeds Tempo and Prometheus. Grafana shows one trace from `<system> train` through workflow and activity spans to `train.step`, and another from an HTTP request through `gateway.route`, `kv.transfer`, and `engine.decode`. SLO dashboards drive the burn-rate alerts that `ss drill` scenarios are graded against.
+9. **See and hear (Pass 12).** A chat request with an `image_url` part passes the gateway's media check (header-only pixel limit, D49), is routed to the VLM pool, and, with EPD, the gateway asks an encode engine to preprocess and encode the image and push its embeddings to the target engine, which merges them at the placeholder tokens and decodes. A repeated image hits the encoder cache and the prefix cache (D45). `POST /v1/audio/transcriptions` with a WAV file goes to the ASR pool; Whisper decodes 30-second windows with temperature fallback. Image tokens and audio seconds land in the usage ledger. `MmCorpusBuild` builds image-text and audio-transcript shards with pHash dedup, EXIF stripping, face redaction, and consent in the ledger; `ModelRelease` gates SmolVLM and whisper-tiny on WER, group gaps, and consent.
 
 ---
 
@@ -977,10 +1363,10 @@ course/
     rust/tl-contracts/           # traits, shared types, frozen assert_close helpers (D35)
     rust/tl-proto/               # prost + tonic output, committed (2.7)
     go/                          # module supersource.urmzd.com/tl/contracts: interfaces, testing helpers, gen/ (protoc output)
-    proto/tl/{engine,kv,control,durable,raft}/v1/*.proto
+    proto/tl/{engine,kv,control,durable,raft,encoder}/v1/*.proto   # encoder from Pass 12
     openapi/{openai-subset.v0,openai-subset.v1,openai-subset.v2,admin.v1}.yaml
     formats/*.md  formats/*.schema.json  formats/usage.v1.sql   # incl. train-spec, eval-spec, eval-case, corpus-config, policy.v1, linear-head
-    spec/{pcg32,sampling,subprocess-activity,cli-roles}.md
+    spec/{pcg32,sampling,subprocess-activity,cli-roles,asr-decoding}.md
     otel/{semconv.md,metrics.yaml,slo.schema.json}
     config/{runtime,system}.schema.json
     helm/{gateway,engine,durable,worker,agent}.values.schema.json  helm/observability.md
@@ -997,7 +1383,7 @@ course/
   tests/go/<id_>/                # Go course tests, module supersource.urmzd.com/tl/coursetests (id with "." as "_": dur_06)
   tests/rust/<id_>.rs            # Rust course tests, compiled as `ss-tests --test <id_>` (l10_2)
   tests/_lib/                    # frozen helpers: close.py (assert_close, assert_close_bounded), pcg32.py, gradcheck.py, fixture loaders (D35)
-  conformance/{abi,formats,openapi/cases,admin,parity,engine-grpc,kv,durable,raft,activity,otel,config}/
+  conformance/{abi,formats,openapi/cases,admin,parity,engine-grpc,kv,durable,raft,activity,otel,config,encoder-grpc}/
   testkit/                       # fault and determinism kit (5.9)
   solve/<S-ID>/{problems.md,key.toml}
   mutants/<ID>/{manifest.tsv,<mid>.patch}
@@ -1006,7 +1392,7 @@ course/
   rubrics/{proof.md,design-review.md,postmortem.md}
   fixtures/<ID>/  fixtures/MANIFEST.tsv  fixtures/ASSETS.tsv
   harness/                       # uv project `sscourse`: sympy, numpy, pytest, pytest-randomly, hypothesis, mypy (stubtest), openapi-core, openai, httpx, jsonschema, pyarrow
-  oracle/                        # maintainer-only uv project: torch, transformers, safetensors, tiktoken, tokenizers, tree-sitter
+  oracle/                        # maintainer-only uv project: torch, transformers, safetensors, tiktoken, tokenizers, tree-sitter; Pass 12 adds torchaudio, torchvision, pillow, librosa, openai-whisper, jiwer, imagehash, opencv-python-headless, soundfile
 ```
 
 ### 3.3 Chapter homes
@@ -1039,7 +1425,15 @@ course/
 | `review.*` | `systems/01-system-design/` |
 | `field.*` | `field-engineering/08-mock-engagement/` (new); field.06 and field.07 apply `field-engineering/06` and `07` |
 | `iv.01` | `interviews/defend-your-system/` (new) |
-| Guide | `paths/course/` (README, `SYSTEM.md`, `path.tsv`), `paths/course-p00-setup/` to `paths/course-p11-operate/` (pass README, `path.tsv`, `milestone.md`) |
+| `M12` (Pass 12) | `math/12-signals-and-images/NN-<slug>.md` (new topic: no existing topic owns sampling, the DFT, or interpolation) |
+| `L13`, `L14`, `L15` (Pass 12) | `ml/08-tinyllm/p13-vision/`, `p14-speech/`, `p15-multimodal-serving/` |
+| optional `L13.8`, `L13.9`, `L14.6` | their part directories (`p13-vision/`, `p14-speech/`) |
+| `ds.10`, `data.10` to `data.13`, `dur.13`, `gw.09` to `gw.11`, `load.03` | the homes of their areas above (`gw.09` to `gw.11` in `ai-platform-engineering/12-gateway/`) |
+| `dep.08`, `obs.06`, `ops.13`, `ops.14` | `infrastructure/01-containers-kubernetes/`, `systems/04-observability/`, `systems/05-incident-response-and-chaos/` |
+| `ethics.07`, `ethics.08` | `responsible-ai/04-bias-and-safety-evals/`, `responsible-ai/02-privacy-and-pii/` |
+| `craft.24`, `review.04` | `software-craftsmanship/11-security/`, `systems/01-system-design/` |
+| `lang.12`, `lang.13` | `software-craftsmanship/12-language-and-tool-primers/{12-media-formats,13-candle-tensors}.md` |
+| Guide | `paths/course/` (README, `SYSTEM.md`, `path.tsv`), `paths/course-p00-setup/` to `paths/course-p12-multimodal/` (pass README, `path.tsv`, `milestone.md`) |
 
 ### 3.4 Registry: `course/modules/<ID>.toml`
 
@@ -1450,6 +1844,72 @@ def pmi_matrix(cooc: NDArray, cds_alpha: float = 0.75) -> NDArray
 def ppmi(cooc: NDArray, cds_alpha: float = 0.75) -> NDArray
 ```
 
+#### M12 Signals and images (new: `math/12-signals-and-images/`, Pass 12)
+
+These are the numpy reference semantics for everything in L13 to L15. Images are `uint8[H, W, C]` (HWC, RGB) until normalized; `pixel_values` are `float32[N, C, H, W]`.
+
+| ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
+|---|---|---|---|---|---|---|---|
+| M12.1 | Convolution as a linear map: cross-correlation vs convolution, output size with padding, stride, dilation, groups; doubly block Toeplitz matrix; im2col and its adjoint col2im; the gradient of a conv is a conv | core | Py | `tinyllm/sig/conv.py` | M03.2, M03.3, M08.2, reading: `ml/06-neural-architectures/code/conv2d.c` | L13.1 (im2col, col2im), L14.2 (`conv_out_size` for the stem) | O (torch `conv1d`/`conv2d` and `F.unfold`/`F.fold` incl. groups and dilation), E (direct == im2col @ W == `conv_matrix` @ vec), I (adjoint: `<im2col x, y> == <x, col2im y>`; flipping the kernel turns correlation into convolution) |
+| M12.2 | Image tensors and layouts: NCHW, NHWC, channels-last strides, contiguity, u8 to f32 rescale and normalize, PIL grayscale, patchify as a reshape | core | Py | `tinyllm/image/layout.py` | M03.1, lang.01 | L13.3 (patchify), L13.6 (rescale_normalize), data.10 (grayscale for hashes) | U (strides table, hand example 2x3x4), O (PIL `convert("L")` on fixture pixels, exact), I (layout roundtrip; `unpatchify(patchify(x)) == x`) |
+| M12.3 | Resampling and interpolation: sampling theorem in 2D, nearest, bilinear, bicubic (a = -0.5 vs -0.75), Lanczos3, antialias as a low-pass, separable passes and PIL rounding; 1D band-limited audio resampling | core | Py | `tinyllm/sig/resample.py` | M12.2, M02.1, reading: M12.5 (aliasing, as concept) | L13.6 (resize), L13.3 (`interpolate_pos_embed`), L14.1 (`resample_audio`), data.10 (hash thumbnails) | O (PIL `resize` per kernel: at most 1 LSB on 100% of pixels and exact on >= 99%; torchvision antialias float mode atol 1e-4; torchaudio `resample` atol 1e-5), I (weights sum to 1; upsample then downsample of a band-limited signal within bound; identity at equal size) |
+| M12.4 | DFT and FFT: the DFT matrix, unitarity, convolution theorem, radix-2 Cooley-Tukey, mixed radix for `n = 400`, real FFT packing, DCT-II via FFT | core | Py | `tinyllm/sig/fft.py` | M00.2 (Euler), M03.3, M09.3 | M12.5 (stft), data.10 (`dct2_ortho` in pHash) | O (numpy `fft` and scipy `dct(norm='ortho')` within the frozen f64 bound), E (FFT == `dft_matrix @ x`; `fft_convolve` == `np.convolve`), I (Parseval; `ifft(fft(x)) == x`; an unsupported prime factor raises) |
+| M12.5 | Sampling, Nyquist, windows, STFT: aliasing, periodic vs symmetric Hann, COLA, center reflect padding, frame counts, power spectrum, ISTFT | core | Py | `tinyllm/sig/stft.py` | M12.4 | L14.1 (Whisper frontend) | O (`torch.stft(center=True, pad_mode='reflect', window=hann_window(400, periodic=True))` complex output atol 1e-5), I (COLA reconstruction error < 1e-6 at hop n/4; a tone above Nyquist folds to the predicted bin), U (frame count table incl. Whisper's 3001 then drop last) |
+| M12.6 | Mel scale and filterbanks: HTK vs Slaney mel, Slaney area normalization, decibels and `power_to_db`, Whisper's log10 clamp and 8-unit dynamic range | core | Py | `tinyllm/sig/mel.py` | M00.1 (logs), M12.5 | L14.1, data.11 (mel dHash for audio near-dup) | O (`librosa.filters.mel(sr=16000, n_fft=400, n_mels=80/128)` atol 1e-7; `librosa.power_to_db`), I (each filter is a triangle with the declared edges; Slaney rows have unit area in Hz), U (dB of 1, 10, 1e-12 with `amin`) |
+
+```python
+# tinyllm/sig/conv.pyi  (M12.1)
+def conv_out_size(n: int, k: int, stride: int = 1, pad: int = 0, dilation: int = 1) -> int   # floor((n + 2p - d(k-1) - 1)/s) + 1
+def conv1d_direct(x: NDArray, w: NDArray, b: NDArray | None, stride=1, pad=0, dilation=1, groups=1) -> NDArray  # x [N,C,L], w [K,C/g,R]
+def conv2d_direct(x: NDArray, w: NDArray, b: NDArray | None, stride=(1,1), pad=(0,0), dilation=(1,1), groups=1) -> NDArray  # NCHW, KCRS
+def correlate_vs_convolve(x: NDArray, w: NDArray) -> tuple[NDArray, NDArray]   # cross-correlation and true convolution (flipped kernel)
+def im2col(x: NDArray, kh: int, kw: int, stride=(1,1), pad=(0,0), dilation=(1,1)) -> NDArray    # [N, C*kh*kw, P*Q], rows ordered (c, r, s)
+def col2im(cols: NDArray, x_shape: tuple[int,int,int,int], kh: int, kw: int, stride=(1,1), pad=(0,0), dilation=(1,1)) -> NDArray  # adjoint of im2col (sums overlaps)
+def conv_matrix(in_shape: tuple[int,int], w: NDArray, stride=(1,1), pad=(0,0)) -> NDArray        # doubly block Toeplitz T with vec(y) = T vec(x)
+
+# tinyllm/image/layout.pyi  (M12.2)
+Layout = Literal['NCHW', 'NHWC']
+def to_layout(x: NDArray, src: Layout, dst: Layout) -> NDArray            # returns a contiguous copy
+def strides_of(shape: tuple[int, ...], layout: Layout, itemsize: int) -> tuple[int, ...]
+def rescale_normalize(img_u8_hwc: NDArray, scale: float, mean: Sequence[float], std: Sequence[float]) -> NDArray  # -> f32 CHW
+def to_grayscale_pil(img_u8_hwc: NDArray) -> NDArray                      # L = (R*299 + G*587 + B*114 + 500) // 1000, PIL "L" rule
+def patchify(x_chw: NDArray, p: int) -> NDArray                           # [C,H,W] -> [(H/p)*(W/p), C*p*p], row-major patches, (c, i, j) inner order
+def unpatchify(patches: NDArray, c: int, h: int, w: int, p: int) -> NDArray
+
+# tinyllm/sig/resample.pyi  (M12.3)
+Kernel = Literal['nearest', 'bilinear', 'bicubic', 'lanczos3']
+def kernel_weights(in_size: int, out_size: int, kernel: Kernel, antialias: bool = True, cubic_a: float = -0.5) -> tuple[NDArray, NDArray]  # start idx [out], weights [out, taps], rows sum to 1
+def resize(img: NDArray, size: tuple[int, int], kernel: Kernel, antialias: bool = True,
+           mode: Literal['pil', 'float'] = 'pil', cubic_a: float = -0.5) -> NDArray   # 'pil': u8 HWC, horizontal pass then vertical, round+clip between passes
+def resize_planar_f32(x_chw: NDArray, size: tuple[int, int], kernel: Kernel, align_corners: bool = False, antialias: bool = False) -> NDArray
+def resample_audio(x: NDArray, sr_in: int, sr_out: int, lowpass_filter_width: int = 6, rolloff: float = 0.99) -> NDArray  # torchaudio sinc_interp_hann semantics
+
+# tinyllm/sig/fft.pyi  (M12.4)
+def dft_matrix(n: int, unitary: bool = False) -> NDArray                  # complex128 [n, n]
+def fft(x: NDArray) -> NDArray                                            # mixed radix over factors {2, 3, 4, 5}; ValueError otherwise
+def ifft(X: NDArray) -> NDArray
+def rfft(x: NDArray) -> NDArray                                           # n real -> n//2 + 1 complex, via one complex FFT of size n/2 (n even)
+def irfft(X: NDArray, n: int) -> NDArray
+def fft_convolve(a: NDArray, b: NDArray) -> NDArray                       # linear convolution via zero-padded FFT
+def dct2_ortho(x: NDArray, axis: int = -1) -> NDArray                     # DCT-II, norm='ortho' (scipy semantics), via FFT; used by pHash
+
+# tinyllm/sig/stft.pyi  (M12.5)
+def hann(n: int, periodic: bool = True) -> NDArray
+def frame_count(n_samples: int, n_fft: int, hop: int, center: bool = True) -> int     # center: 1 + n // hop
+def stft(x: NDArray, n_fft: int, hop: int, window: NDArray, center: bool = True,
+         pad_mode: Literal['reflect', 'constant'] = 'reflect') -> NDArray # complex [n_fft//2 + 1, frames]
+def istft(S: NDArray, n_fft: int, hop: int, window: NDArray, length: int) -> NDArray   # WOLA; exact under COLA
+def power(S: NDArray) -> NDArray                                          # |S|^2
+
+# tinyllm/sig/mel.pyi  (M12.6)
+def hz_to_mel(f: NDArray, scale: Literal['slaney', 'htk'] = 'slaney') -> NDArray
+def mel_to_hz(m: NDArray, scale: Literal['slaney', 'htk'] = 'slaney') -> NDArray
+def mel_filterbank(sr: int, n_fft: int, n_mels: int, fmin: float = 0.0, fmax: float | None = None,
+                   scale: Literal['slaney', 'htk'] = 'slaney', norm: Literal['slaney', None] = 'slaney') -> NDArray   # [n_mels, n_fft//2 + 1]
+def power_to_db(p: NDArray, ref: float = 1.0, amin: float = 1e-10, top_db: float | None = 80.0) -> NDArray
+def log_mel_whisper(power_spec: NDArray, filters: NDArray) -> NDArray     # log10(max(mel, 1e-10)); max(x, x.max() - 8); (x + 4) / 4
+```
+
 ### 4.2 Solve problem sets
 
 Answer kinds: `expr`, `equation`, `number`, `interval`, `set`, `matrix`, `vector`, `basis`, `bool`, `choice`, and `proof` (self-graded rubric in v1; Lean later). Checker rules are in 5.5. A set part passes at 80% or more of auto-checked items plus every rubric item attested.
@@ -1478,7 +1938,8 @@ Answer kinds: `expr`, `equation`, `number`, `interval`, `set`, `matrix`, `vector
 | S-M10b | P10 (optional, with L12) | Lagrange/KKT (10), duality (4), KL-regularized objective to DPO (4) | 18 | 4 |
 | S-M11a | P2 | entropy and chain rules (10), KL/CE properties (8) | 18 | 2 |
 | S-M11b | P3 | coding theorems and Huffman (8), mutual information (6), maxent derivations (4), rate-distortion (4) | 22 | 3 |
-| **Total** | | 12 sets in 20 parts | **659** | **64** |
+| S-M12 | P12 | convolution output sizes, padding, stride, dilation, receptive fields (8), correlation vs convolution, Toeplitz form, adjoint and gradient of a conv (8), conv and ViT FLOP and parameter counts (6), layouts and strides (4), sampling, Nyquist, aliasing in 1D and 2D (8), interpolation kernels, antialias support, bicubic `a` (6), DFT properties, convolution theorem, Parseval (8), FFT operation counts and the mixed-radix factorization of 400 (4), windows, COLA, STFT frame counts and bin frequencies (6), mel, log, decibels, Whisper scaling (6), contrastive losses: InfoNCE as cross-entropy, the `log N` MI bound, SigLIP gradients (6, 2 proofs), edit distance and WER: alignment by DP, WER > 1, WER is not a metric (2, 1 proof) | 72 | 4 |
+| **Total** | | 13 sets in 21 parts | **731** | **68** |
 
 ### 4.3 LLM spine catalog (`tinyllm`)
 
@@ -2008,7 +2469,7 @@ impl Engine {                                               // composes runner +
 }
 ```
 
-**MS-L10.** The engine starts from the learner's `[entry].engine`. `ss milestone MS-L10` checks: (1) `ss conform openapi:v1 --target engine` 100%; (2) seeded determinism across two runs of the engine, `ss parity sampler` (Rust and Python sampler equal on fixture logits), and the engine's **greedy** stream equals `{tinyllm} generate --greedy` under the near-tie rule; (3) 64 concurrent requests from the learner's loadgen complete with `p50_ttft_ms` and `p50_tpot_ms` reported and KV at baseline afterwards; `throughput_vs_sequential >= 3` is a separate `perf` step (`ci = "local"`); (4) disconnect mid-stream aborts and frees blocks; (5) disaggregated mode (`role=prefill` + two `role=decode`, ports allocated by the runner) passes the conformance subset and survives a transfer reset; (6) with `speculative.draft = "prompt_lookup"`, greedy output is unchanged; (7) a `tools` request to `{asset:smollm2-135m-instruct}` returns schema-valid `tool_calls` (nightly; PR CI uses `tiny-llama-2l-1k`, the weights of `tiny-llama-2l` with a 1024-position context so the tool schema prompt fits, with a fixture chat template, where the constraint alone guarantees validity).
+**MS-L10.** The engine starts from the learner's `[entry].engine`. `ss milestone MS-L10` checks: (1) `ss conform openapi:v1 --target engine` 100%; (2) seeded determinism across two runs of the engine, `ss parity sampler` (Rust and Python sampler equal on fixture logits), and the engine's **greedy** stream equals `{tinyllm} generate --greedy` under the near-tie rule; (3) 64 concurrent requests from the learner's loadgen complete with `p50_ttft_ms` and `p50_tpot_ms` reported and KV at baseline afterwards; `throughput_vs_sequential >= 3` is a separate `perf` step (`ci = "local"`); (4) disconnect mid-stream aborts and frees blocks; (5) disaggregated mode (`role=prefill` + two `role=decode`, ports allocated by the runner) passes the conformance subset and survives a transfer reset (the `disagg` matcher, 5.7); (6) with `speculative.draft = "prompt_lookup"`, greedy output is unchanged (the `greedy-equal` matcher across `engine` and `engine-spec`); (7) a `tools` request to `{asset:smollm2-135m-instruct}` returns schema-valid `tool_calls` (nightly; PR CI uses `tiny-llama-2l-1k`, the weights of `tiny-llama-2l` with a 1024-position context so the tool schema prompt fits, with a fixture chat template, where the constraint alone guarantees validity).
 
 #### L11 Training at scale (`ml/08-tinyllm/p11-training-at-scale/`)
 
@@ -2081,6 +2542,297 @@ def contains_required_words(story: str, words: Sequence[str]) -> float
 
 **MS-C2** (optional). `{tinyllm} post sft --base {ckpt} --data {fixture:post/ts-instruct.jsonl}`, `{tinyllm} post grpo --reward required_words --rollout-url {engine.api_base}`, then serve the result as `tinystories-instruct` through the same gateway. Pass: held-out reward >= base + 0.2, confirmed by a paired permutation test p < 0.05 run through the learner's Go A/B experiment runner (ag.12).
 
+#### L13 Vision (`ml/08-tinyllm/p13-vision/`, Python, Pass 12)
+
+| ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
+|---|---|---|---|---|---|---|---|
+| L13.1 | Conv layers and pooling on autograd: `Conv2d`, `Conv1d` through im2col with col2im backward, max/avg pool, LeNet-5 | core | Py | `tinyllm/vision/conv.py` | M12.1, L0.2, L0.4, M06.3 | L13.3 (`PatchEmbed` is a stride-p conv), L14.2 (conv stem) | G (frozen gradcheck on x, W, b for stride/pad/dilation/groups), O (torch fwd/bwd fixture), I (pool backward routes to argmax, ties to the lowest index), L (LeNet-5 on `digits` 8x8: test accuracy >= calibrated threshold in 400 steps, about 0.97) |
+| L13.2 | 2D RoPE and M-RoPE: axial 2D rotary for vision patches, Qwen2-VL M-RoPE with `mrope_section`, multimodal position ids (text resumes after the image's max position) | core | Py | `tinyllm/vision/rope2d.py` | L7.3, M00.2 | L13.3 (`pos='rope2d'`), L13.7 (`qwen2vl` arch) | O (HF Qwen2-VL `get_rope_index` and `apply_multimodal_rotary_pos_emb` on a tiny config), I (per axis, scores depend only on the coordinate difference; M-RoPE equals 1D RoPE when t = h = w), G |
+| L13.3 | Vision transformer encoder: patch embedding, CLS token, learned / 2D sincos / 2D RoPE positions, pre-LN blocks with LayerNorm and GELU, position-table interpolation, padded patches with bucketed positions (Idefics3), hidden-state taps for `vision_feature_layer` | core | Py | `tinyllm/vision/vit.py` | L13.1, L13.2, L5.1, L5.3, M12.2, M12.3 | L13.5 (image tower), L13.7 (vision tower) | O (tiny HF `ViTModel`, `CLIPVisionModel`, `SiglipVisionModel`, `Idefics3VisionTransformer` hidden states atol 1e-5), E (PatchEmbed as conv == patchify + Linear), I (without positions, outputs permute with patches; padded patches never change unpadded outputs) |
+| L13.4 | Dynamic resolution and tiling: LLaVA-NeXT AnyRes (`select_best_resolution`, base image, unpad, `image_newline`), Idefics3/SmolVLM splitting (longest edge, 512 tiles, global image, row and column marker tokens), pixel shuffle, image token counts | core | Py | `tinyllm/vision/tiling.py` | M12.2, M12.3, M05.1 | L13.6 (splitting), L13.7 (placeholder expansion); re-implemented by L15.1 (Rust) and gw.10 (Go `ImageTokens`), each proven on the parity fixture | O (HF `select_best_resolution`, Idefics3 tile grids and prompt strings for 40 fixture sizes), I (pixel shuffle invertible; `image_token_count` == placeholders emitted by `render_mm_chat`; tokens monotone in area within a processor) |
+| L13.5 | Contrastive image-text: CLIP symmetric InfoNCE with learned temperature (clamp at 100), SigLIP sigmoid loss with learned t and b (init log 10 and -10), dual encoder with a tiny text tower, zero-shot classifiers from prompt templates | core | Py | `tinyllm/vision/contrastive.py` | L13.3, L5.3, M11.1, L0.3 | data.10 (CLIP-score filter), ethics.07 (zero-shot disparity probe) | G, O (HF `clip_loss` and `SiglipModel` loss on fixture embeddings), I (CLIP loss symmetric in modalities; SigLIP defined at batch 1; temperature gradient sign), L (tiny dual encoder on `mm-shapes`, 600 steps: zero-shot accuracy over 24 color-shape classes >= calibrated threshold) |
+| L13.6 | Image preprocessing to the spec: decode with Pillow (D46), EXIF orientation 1 to 8 applied by the learner from the parsed tag, RGB conversion, resize, splitting, rescale, normalize, `preprocessor_config.json` loading, media hash | core | Py | `tinyllm/vision/preprocess.py` | M12.2, M12.3, L13.4, M06.3 (FNV-1a), lang.12 | L13.7, data.10 (decode, orientation); re-implemented by L15.1 (Rust) | O (HF `CLIPImageProcessor`, `SiglipImageProcessor`, `Idefics3ImageProcessor` from pre-decoded `.npy` pixels: u8 resized pixels within 1 LSB, `pixel_values` atol `1/(255*std)`), U (Pillow decode vs the committed `.npy` pixels: PNG exact, JPEG within 2 LSB; EXIF orientations 1 to 8; CMYK and 16-bit PNG rejected), F (truncated files; a header pixel bomb rejected from the header size before `load()`), I (media hash stable; preprocessing idempotent on already-sized inputs) |
+| L13.7 | Vision-language model: vision tower + projector (`linear` after pixel shuffle, `mlp2x_gelu`) + Llama LM, placeholder expansion in the chat template, embedding merge, freezing schedule (projector-only then full or LoRA), HF weight loading for SmolVLM-256M-Instruct, LLaVA, Qwen2-VL tiny | core | Py | `tinyllm/vision/vlm.py`, `tinyllm/io/hf_vlm.py` | L13.3, L13.4, L13.6, L13.2, L7.9, L6.6, L1.2, M10.3 | dur.13 (`vqa` and `caption` suites run `{tinyllm}`); L15.3's engine logits are proven against it through fixtures | O (tiny random `Idefics3ForConditionalGeneration`, `LlavaForConditionalGeneration`, `LlavaNextForConditionalGeneration`, `Qwen2VLForConditionalGeneration` logits atol 1e-5 on oracle `pixel_values`), E (merge == HF `inputs_embeds`), I (stage 1: frozen params bitwise unchanged and no optimizer state; placeholders == feature rows), L (tiny VLM on `mm-shapes`: align 200 steps then SFT 300 steps, VQA accuracy >= calibrated) |
+| L13.8 | Conv kernels in C: im2col + `tl_matmul_f32` conv2d (groups, stride, padding, dilation), conv1d for the Whisper stem, fused patch embedding (NCHW and NHWC) | **optional** (standalone, D41) | C | `c/src/kernels/conv.c` | M12.1, L13.1, L9.1 (optional), rt.02, rt.03, reading: `ml/06-neural-architectures/code/conv2d.c` | none (standalone C test binary) | E (the C test binary vs fixture files generated by the Python reference `conv2d_direct`, `Conv1d`, `PatchEmbed` and by the torch oracle, within the frozen dot-product bound), I (per image, output bitwise equal at N = 1 and N = 7; im2col row order matches M12.1), F (alloc fail-after-n), B (>= 5x the naive `conv2d.c` loop at 3x224x224, k 16, s 16) |
+| L13.9 | Resize kernels in C: separable nearest, bilinear, bicubic (a = -0.5), Lanczos3 with antialias and PIL rounding; planar f32 resize; fused rescale + normalize to CHW | **optional** (standalone, D41) | C | `c/src/kernels/image.c` | M12.2, M12.3, L13.6, rt.02, rt.03 | none (standalone C test binary) | E (u8 output bit-exact with the Python reference `resize(mode='pil')` outputs in the fixture and within 1 LSB of PIL; f32 path within 1e-5), I (weights sum to 1; identity at equal size), F (huge dims overflow-checked, `TL_EINVAL`) |
+
+```python
+# tinyllm/vision/conv.pyi  (L13.1)
+class Conv2d(Module):
+    def __init__(self, c_in: int, c_out: int, k: int | tuple[int,int], stride=1, pad=0, dilation=1, groups=1, bias=True, rng: PCG32 | None = None)
+    def forward(self, x: Tensor) -> Tensor                                # NCHW; im2col + matmul; backward via col2im
+class Conv1d(Module):
+    def __init__(self, c_in: int, c_out: int, k: int, stride=1, pad=0, dilation=1, groups=1, bias=True, rng: PCG32 | None = None)
+def max_pool2d(x: Tensor, k: int, stride: int | None = None) -> Tensor   # argmax routing in backward, ties to the lowest flat index
+def avg_pool2d(x: Tensor, k: int, stride: int | None = None) -> Tensor
+class LeNet5(Module): def __init__(self, n_classes: int = 10, in_hw: int = 8, rng: PCG32 | None = None)
+
+# tinyllm/vision/rope2d.pyi  (L13.2)
+def rope2d_cos_sin(grid_hw: tuple[int, int], d_rot: int, base: float = 10000.0) -> tuple[NDArray, NDArray]   # half the rotary dims for rows, half for cols
+def mrope_position_ids(input_ids: NDArray, image_grid_thw: NDArray, image_token_id: int,
+                       spatial_merge: int = 2) -> NDArray                  # [3, T]: (t, h, w); text continues at max(prev) + 1
+def apply_mrope(x: Tensor, pos3: NDArray, inv_freq: NDArray, mrope_section: Sequence[int]) -> Tensor
+
+# tinyllm/vision/vit.pyi  (L13.3)
+@dataclass
+class ViTConfig: image_size: int; patch_size: int; n_channels: int; d: int; n_layers: int; n_heads: int; d_ff: int
+                 pos: Literal['learned', 'sincos2d', 'rope2d']; cls_token: bool; pre_norm: bool; norm: Literal['layernorm']
+                 act: Literal['gelu', 'gelu_tanh', 'quick_gelu']; ln_eps: float; post_layernorm: bool
+class PatchEmbed(Module): def __init__(self, cfg: ViTConfig)               # Conv2d(k=p, stride=p) == patchify + Linear
+class ViT(Module):
+    def __init__(self, cfg: ViTConfig)
+    def forward(self, pixel_values: Tensor, patch_mask: NDArray | None = None,
+                output_hidden_states: bool = False) -> tuple[Tensor, list[Tensor]]    # last hidden [N, T, d], all layers
+def interpolate_pos_embed(table: NDArray, old_grid: tuple[int,int], new_grid: tuple[int,int]) -> NDArray   # bicubic via M12.3, CLS row kept
+def bucketed_position_ids(patch_mask: NDArray, n_side: int) -> NDArray      # NaViT-style fractional-coordinate buckets (Idefics3)
+
+# tinyllm/vision/tiling.pyi  (L13.4)
+def select_best_resolution(hw: tuple[int,int], pinpoints: Sequence[tuple[int,int]]) -> tuple[int,int]   # LLaVA-NeXT: max effective res, then min waste
+def anyres_tiles(img: NDArray, pinpoints, tile: int) -> tuple[list[NDArray], NDArray, tuple[int,int]]    # tiles, base image, grid
+def idefics3_split(img: NDArray, longest_edge: int, tile: int) -> tuple[list[NDArray], NDArray, tuple[int,int]]   # tiles, global image, (rows, cols)
+def pixel_shuffle(x: NDArray, r: int) -> NDArray                         # [N, S*S, D] -> [N, (S/r)^2, D*r*r]
+def pixel_unshuffle(y: NDArray, r: int) -> NDArray
+def image_token_count(h: int, w: int, proc: "ProcessorConfig", detail: Literal['low','high','auto'] = 'auto') -> int  # placeholders, incl. wrappers
+
+# tinyllm/vision/contrastive.pyi  (L13.5)
+def clip_loss(img_emb: Tensor, txt_emb: Tensor, logit_scale: Tensor) -> Tensor        # symmetric InfoNCE; scale = exp(t) clamped at 100
+def siglip_loss(img_emb: Tensor, txt_emb: Tensor, t: Tensor, b: Tensor) -> Tensor     # -mean over all pairs of log sigmoid(z_ij * (t*cos_ij + b)); z = +1 diag, -1 off
+class DualEncoder(Module):
+    def __init__(self, vision: ViT, text: Module, d_embed: int, loss: Literal['clip', 'siglip'], t_init: float, b_init: float = -10.0)
+    def encode_image(self, pixel_values: Tensor) -> Tensor; def encode_text(self, ids: NDArray) -> Tensor   # L2-normalized
+def zero_shot_classifier(model: DualEncoder, tok, class_names: Sequence[str], templates: Sequence[str]) -> NDArray
+def zero_shot_predict(model: DualEncoder, pixel_values: Tensor, W: NDArray) -> NDArray
+
+# tinyllm/vision/preprocess.pyi  (L13.6); formats/image-preprocess.md
+@dataclass
+class ProcessorConfig: do_resize: bool; size: dict; resample: Kernel; do_rescale: bool; rescale_factor: float
+                       do_normalize: bool; image_mean: tuple[float,...]; image_std: tuple[float,...]
+                       do_image_splitting: bool; max_image_size: dict; tile_size: int; scale_factor: int; image_seq_len: int
+    @classmethod
+    def from_hf(cls, preprocessor_config_json: str) -> "ProcessorConfig"
+@dataclass
+class ImageInputs: pixel_values: NDArray; pixel_mask: NDArray; grid: tuple[int,int]; n_tokens: int; media_hash: int
+def image_header(data: bytes) -> tuple[str, int, int]                    # format, width, height from Pillow without loading pixels
+def decode_image(data: bytes, max_pixels: int) -> NDArray                 # Pillow decode to u8 HWC RGB, then the learner's EXIF orientation (D46)
+def exif_orientation(data: bytes) -> int | None                          # 1..8 from the parsed EXIF tag 0x0112
+def preprocess(images: Sequence[bytes], cfg: ProcessorConfig, detail: Literal['low','high','auto'] = 'auto') -> list[ImageInputs]
+def preprocess_pixels(pixels: Sequence[NDArray], cfg: ProcessorConfig, detail: Literal['low','high','auto'] = 'auto') -> list[ImageInputs]  # from decoded u8 HWC (the .npy fixtures)
+def media_hash(kind: Literal['image', 'audio'], data: bytes) -> int        # fnv1a64(kind_u8 || data), kind 1 image, 2 audio (D44)
+
+# tinyllm/vision/vlm.pyi  (L13.7)
+@dataclass
+class VLMConfig: arch: Literal['idefics3', 'llava', 'llava_next', 'qwen2vl']; vision: ViTConfig; text: LlamaConfig
+                 projector: Literal['linear', 'mlp2x_gelu']; scale_factor: int; image_token_id: int
+                 vision_feature_layer: int; select: Literal['default', 'full']
+class VisionLanguageModel(Module):
+    def __init__(self, cfg: VLMConfig)
+    def encode_images(self, inputs: Sequence[ImageInputs]) -> list[Tensor]          # projected features, one [n_tokens_i, d_text] per image
+    def merge(self, ids: NDArray, feats: Sequence[Tensor]) -> Tensor                  # scatter rows at image_token_id positions in order
+    def forward(self, ids: NDArray, images: Sequence[ImageInputs], positions: NDArray | None = None, cache=None) -> Tensor
+    @classmethod
+    def from_pretrained(cls, dir: str) -> "VisionLanguageModel"                     # HF key map in io/hf_vlm.py; accepts the Idefics3 and SmolVLM key layouts
+def render_mm_chat(messages: Sequence[dict], template: str, proc: ProcessorConfig, images: Sequence[ImageInputs]) -> tuple[list[int], NDArray]  # ids, assistant mask
+@dataclass
+class FreezeStage: name: str; trainable: Sequence[str]; steps: int; lr: float     # glob patterns over parameter names
+def apply_stage(model: Module, stage: FreezeStage) -> list[str]                    # returns trainable names; others requires_grad=False, no optimizer state
+```
+
+**MS-L13** (vision; `requires` L13.1 to L13.7, M12.1 to M12.3; PR CI on `tiny-mm-models`, nightly on SmolVLM-256M-Instruct):
+
+| # | Step | Learner command | Assertion | CI |
+|---|---|---|---|---|
+| 1 | LeNet learns | `{tinyllm} train lenet --data {fixture:digits/digits.npz} --steps 400 --seed 0` | `json-last-line`: `test_acc >= calibrated` | pr, smoke |
+| 2 | Contrastive learns | `{tinyllm} train clip --data {asset:mm-shapes} --cfg {fixture:configs/clip-tiny.json} --loss siglip --steps 600 --seed 0 --out {out}/clip` then `{tinyllm} eval zeroshot --model {out}/clip --data {asset:mm-shapes/test.jsonl}` | `zeroshot_acc >= calibrated`; a rerun with `--loss clip` reports both | pr, smoke |
+| 3 | Preprocessing to spec | `{tinyllm} preprocess image --processor {asset:tiny-mm-models/tiny-idefics3} --images {fixture:L13.6/images} --out {out}/pv.npz` | `npz-close` vs `course/fixtures/L13.6/idefics3_pixel_values.npz`: `max_lsb = 1` before normalize, `atol = 0.0079` after; token counts exact | pr, smoke |
+| 4 | Tiny VLM parity | `{tinyllm} logits --model {asset:tiny-mm-models/tiny-idefics3} --mm-prompts {fixture:L13.7/tiny_prompts.jsonl} --pixel-values {fixture:L13.7/tiny_pixel_values.npz} --out {out}/logits.npz` (also `tiny-llava-next`, `tiny-qwen2vl`) | `npz-close` atol 1e-5 | pr, smoke |
+| 5 | Pull SmolVLM | `{tinyllm} pull HuggingFaceTB/SmolVLM-256M-Instruct --revision {asset-rev:smolvlm-256m-instruct}` | `file-produced`: safetensors sha256 equals `ASSETS.tsv` | nightly |
+| 6 | SmolVLM logits | `{tinyllm} logits --model {models}/SmolVLM-256M-Instruct --mm-prompts {fixture:smolvlm-parity/prompts.jsonl} --pixel-values {fixture:smolvlm-parity/pixel_values.npz} --out {out}/logits.npz` | `npz-close`: max abs <= 1e-3, `top_k_equal = 5` | nightly |
+| 7 | SmolVLM end to end | `{tinyllm} vlm generate --model {models}/SmolVLM-256M-Instruct --image {fixture:smolvlm-parity/img-{i}.png} --prompt-file {fixture:smolvlm-parity/prompt-{i}.txt} --greedy --max-tokens 32`, matrix `i = 0..3` | `tokens-equal` vs `course/fixtures/smolvlm-parity/greedy_{i}.json` (margin-filtered pairs; own Pillow decode and preprocessing) | nightly |
+| 8 | Freezing schedule | `{tinyllm} train vlm --cfg {fixture:configs/vlm-tiny.json} --data {asset:mm-shapes} --stage align --steps 200 --out {out}/vlm`, then `--stage sft --steps 300 --resume {out}/vlm`, then `{tinyllm} eval vqa --model {out}/vlm --data {asset:mm-shapes/vqa-test.jsonl}` | stage 1 last line `frozen_params_changed == 0`; `vqa_acc >= calibrated` | pr (`--smoke`: 60 + 90 steps, looser threshold), nightly full |
+| 9 | Param count | `{tinyllm} info --model {models}/SmolVLM-256M-Instruct` | `params` == HF `num_parameters()` from the fixture | nightly |
+
+#### L14 Speech (`ml/08-tinyllm/p14-speech/`, Python, Pass 12)
+
+| ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
+|---|---|---|---|---|---|---|---|
+| L14.1 | Audio frontend: WAV parsing (RIFF chunks, s16/s24/f32, extensible), mono downmix, resample to 16 kHz, pad or trim to 30 s, exact Whisper log-mel (80 or 128 mels) | core | Py | `tinyllm/io/wav.py`, `tinyllm/speech/frontend.py` | M12.3, M12.5, M12.6, lang.12 | L14.2, data.11; re-implemented by L15.1 (Rust) | O (HF `WhisperFeatureExtractor` atol 1e-4 on fixture clips, 80 and 128 mels), U (fixture WAVs: s24, f32, stereo, `LIST` chunks, odd chunk padding), F (truncated data chunk, absurd sizes), I (silence gives the floor value everywhere) |
+| L14.2 | Whisper encoder: conv stem (k3 p1, then k3 s2 p1, GELU), fixed sinusoids (sin then cos halves), pre-LN blocks, `ln_post` | core | Py | `tinyllm/speech/encoder.py` | L13.1, M12.1, L5.1, L5.3, L5.4 | L14.3 (Whisper composes it); L15.6's encoder is proven against it through fixtures | O (tiny random `WhisperModel` encoder outputs atol 1e-5; `whisper_sinusoids` vs HF), I (3000 frames give 1500 positions; output length formula from M12.1) |
+| L14.3 | Whisper decoder and weights: learned positions, causal self-attention with KV cache, cross-attention with cross-KV computed once per window, tied output; HF loader for `openai/whisper-tiny` | core | Py | `tinyllm/speech/decoder.py`, `tinyllm/io/hf_whisper.py` | L14.2, L8.2, L7.9 (downloader, safetensors), L0.6 | L14.4 | O (tiny random `WhisperForConditionalGeneration` logits atol 1e-5; whisper-tiny encoder hidden atol 1e-3 nightly), E (cached decode == full recompute; cross-KV reuse == recompute), I (`param_count` == HF) |
+| L14.4 | Whisper decoding: tokenizer specials, SOT sequence, language detection, task tokens, timestamp tokens and rules, suppress lists, greedy, beam with patience, temperature fallback (compression ratio, avg log-prob, no-speech), long-form seek with prompt conditioning, segments | core | Py | `tinyllm/speech/decode.py` | L14.3, L8.1, L4.4 (beam), M06.3, L1.2 | dur.13 (`asr` suite runs `{tinyllm} transcribe`); re-implemented by L15.6 (Rust, proven on recorded logits) | O (HF `generate` and `openai-whisper` `transcribe` token ids on margin-filtered clips, incl. timestamps), E (beam 1 == greedy; scripted `LogitsSource` traces give fixture tokens), I (timestamps paired and monotone; no text before the first timestamp; segment ends within audio), U (fallback triggers on the repetitive fixture at the first temperature, not on the clean one) |
+| L14.5 | Multimodal eval metrics: Levenshtein alignment (S, D, I), WER and CER, the `basic` normalizer, bootstrap CIs, VQA accuracy, caption BLEU-4/chrF and attribute recall, zero-shot top-k | core | Py | `tinyllm/eval/mm.py` | L4.5, M07.4, M05.2 | ethics.07 (per-group WER gaps), data.11 (normalizer), dur.13 (multimodal `EvalSuite` rows) | O (`jiwer` WER/CER and alignments; sacrebleu for captions), I (WER(x, x) = 0; WER of an empty hypothesis is 1; CI contains the point estimate), U (alignment ties: S before D before I) |
+| L14.6 | Audio kernels in C: mixed-radix real FFT plans (2, 3, 4, 5), STFT power with center reflect padding and drop-last, mel projection via `tl_matmul_f32`, Whisper log scaling | **optional** (standalone, D41) | C | `c/src/kernels/audio.c` | M12.4, M12.5, M12.6, L14.1, L9.1 (optional), rt.02, rt.03 | none (standalone C test binary) | E (log-mel vs the Python reference `whisper_log_mel` outputs in the fixture within 1e-5 and vs HF within 1e-4; `tl_rfft_f32` vs the fixture's `sig.fft.rfft` within the f32 FFT bound `c * log2(n) * eps32 * norm(x)`), I (Parseval; frame count formula), F (plan create under alloc failure), B (30 s log-mel under 20 ms at calibration) |
+
+```python
+# tinyllm/io/wav.pyi  (L14.1)
+@dataclass
+class Wav: samples: NDArray; sr: int; channels: int; fmt: Literal['s16', 's24', 'f32']
+def read_wav(data: bytes) -> Wav                                          # RIFF/WAVE, fmt and data chunks, WAVE_FORMAT_EXTENSIBLE; ValueError otherwise
+def write_wav(samples: NDArray, sr: int) -> bytes                         # s16le mono
+
+# tinyllm/speech/frontend.pyi  (L14.1); formats/mel-spec.md
+@dataclass
+class FeatureConfig: sampling_rate: int = 16000; n_fft: int = 400; hop_length: int = 160; feature_size: int = 80
+                     chunk_length: int = 30; padding_value: float = 0.0
+    @classmethod
+    def from_hf(cls, preprocessor_config_json: str) -> "FeatureConfig"
+def to_mono_16k(w: Wav, cfg: FeatureConfig) -> NDArray                     # mean over channels, then resample_audio
+def pad_or_trim(x: NDArray, n_samples: int = 480000) -> NDArray
+def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray             # f32 [n_mels, 3000]: hann(400, periodic), center reflect, drop last frame
+
+# tinyllm/speech/encoder.pyi  (L14.2)
+@dataclass
+class WhisperConfig: n_mels: int; n_audio_ctx: int; d: int; n_heads: int; enc_layers: int; dec_layers: int
+                     n_text_ctx: int; vocab: int
+class WhisperEncoder(Module):
+    def __init__(self, cfg: WhisperConfig)                                 # conv(k3,p1) GELU, conv(k3,s2,p1) GELU, + sinusoids, pre-LN blocks, ln_post
+    def forward(self, mel: Tensor) -> Tensor                               # [N, 80, 3000] -> [N, 1500, d]
+def whisper_sinusoids(length: int, channels: int, max_timescale: float = 10000.0) -> NDArray   # concat(sin, cos), not interleaved
+
+# tinyllm/speech/decoder.pyi  (L14.3)
+class CrossKV: k: list[NDArray]; v: list[NDArray]                          # per layer, computed once per audio window
+class WhisperDecoder(Module):
+    def __init__(self, cfg: WhisperConfig)
+    def cross_kv(self, audio: Tensor) -> CrossKV
+    def forward(self, ids: NDArray, xkv: CrossKV, cache: "KVCache | None" = None) -> Tensor   # logits via tied embedding
+class Whisper(Module):
+    @classmethod
+    def from_pretrained(cls, dir: str) -> "Whisper"                        # HF key map in io/hf_whisper.py
+
+# tinyllm/speech/decode.pyi  (L14.4); spec/asr-decoding.md
+@dataclass
+class DecodeOptions: task: Literal['transcribe', 'translate'] = 'transcribe'; language: str | None = None
+                     timestamps: bool = True; beam_size: int = 0; best_of: int = 5; patience: float = 1.0
+                     temperatures: tuple[float, ...] = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
+                     compression_ratio_threshold: float = 2.4; logprob_threshold: float = -1.0; no_speech_threshold: float = 0.6
+                     condition_on_previous_text: bool = True; max_initial_timestamp: float = 1.0; seed: int = 0
+class LogitsSource(Protocol):                                             # the model, or recorded logits in parity tests
+    def step(self, prefix: Sequence[int]) -> NDArray
+@dataclass
+class Segment: id: int; seek: int; start: float; end: float; text: str; tokens: list[int]
+               temperature: float; avg_logprob: float; compression_ratio: float; no_speech_prob: float
+def sot_sequence(tok, language: str | None, task: str, timestamps: bool) -> list[int]
+def detect_language(model, mel_window: NDArray, tok) -> tuple[str, dict[str, float]]
+def apply_timestamp_rules(logits: NDArray, prefix: Sequence[int], sample_begin: int, tok, max_initial_index: int) -> NDArray
+def decode_window(src: LogitsSource, tok, prompt: Sequence[int], opts: DecodeOptions, temperature: float, rng: PCG32) -> Segment
+def transcribe(model: Whisper, tok, audio_16k: NDArray, opts: DecodeOptions) -> list[Segment]   # long-form seek loop with fallback
+
+# tinyllm/eval/mm.pyi  (L14.5)
+def basic_normalize(text: str) -> str                                    # spec/asr-decoding.md normalizer
+def edit_ops(ref: Sequence[str], hyp: Sequence[str]) -> tuple[int, int, int, int]   # S, D, I, N with lowest-cost alignment, ties S < D < I
+def wer(refs: Sequence[str], hyps: Sequence[str]) -> float                # corpus-level sum(S+D+I)/sum(N)
+def cer(refs: Sequence[str], hyps: Sequence[str]) -> float
+def vqa_accuracy(preds: Sequence[str], answers: Sequence[Sequence[str]]) -> float   # min(1, matches/3) over normalized answers
+def caption_scores(preds: Sequence[str], refs: Sequence[Sequence[str]]) -> dict[str, float]   # BLEU-4, chrF (L4.5), attribute recall
+def zero_shot_accuracy(pred: NDArray, gold: NDArray, k: int = 1) -> float
+def bootstrap_ci(per_item: NDArray, stat: Callable, n: int = 1000, seed: int = 0) -> tuple[float, float, float]
+```
+
+**MS-L14** (speech; `requires` L14.1 to L14.5, M12.4 to M12.6):
+
+| # | Step | Learner command | Assertion | CI |
+|---|---|---|---|---|
+| 1 | Log-mel exact | `{tinyllm} features --audio {fixture:L14.1/clips} --kind whisper-log-mel --n-mels {n} --out {out}/mel.npz`, matrix `n = [80, 128]` | `npz-close` atol 1e-4 vs HF `WhisperFeatureExtractor` | pr, smoke |
+| 2 | Tiny Whisper parity | `{tinyllm} logits --model {asset:tiny-mm-models/tiny-whisper} --audio-features {fixture:L14.3/tiny_features.npz} --decoder-prompts {fixture:L14.3/tiny_prompts.jsonl} --out {out}/logits.npz` | `npz-close` atol 1e-5 | pr, smoke |
+| 3 | Decoding on recorded logits | `{tinyllm} transcribe --logits-trace {fixture:L14.4/traces.npz} --opts {fixture:L14.4/opts.json}` | `tokens-equal` per trace (greedy, beam 5, fallback, long-form seek) vs `course/fixtures/L14.4/expected.json` | pr, smoke |
+| 4 | Pull whisper-tiny | `{tinyllm} pull openai/whisper-tiny --revision {asset-rev:whisper-tiny}` | sha256 equals `ASSETS.tsv` | nightly |
+| 5 | Greedy with timestamps | `{tinyllm} transcribe --model {models}/whisper-tiny --audio {fixture:whisper-parity/clip-{i}.wav} --greedy --timestamps --language en`, matrix `i = 0..5` | `tokens-equal` (timestamp tokens included) vs HF `generate(return_timestamps=True)` ids, margin-filtered clips | nightly |
+| 6 | Language detection | `{tinyllm} transcribe --model {models}/whisper-tiny --audio {fixture:whisper-parity/lang-{l}.wav} --detect-language`, `l` in `de`, `es`, `fr` (MLS excerpts, 5.11) | `json-last-line`: `language == "{l}"` | nightly |
+| 7 | Long-form with fallback | `{tinyllm} transcribe --model {models}/whisper-tiny --audio {asset:asr-mini/longform-90s.wav} --beam 5 --out {out}/segments.json` then `{tinyllm} eval asr --pred {out}/segments.json --ref {asset:asr-mini/longform-90s.txt}` | `json-schema` on segments; `wer <= ref + 0.01` (ref from the oracle run of `openai-whisper`, same normalizer) | nightly |
+| 8 | Corpus WER | `{tinyllm} eval asr --model {models}/whisper-tiny --data {asset:asr-mini/manifest.jsonl}` | `wer <= ref + 0.01`; `wer_ci` present | nightly |
+
+#### L15 Multimodal serving (`ml/08-tinyllm/p15-multimodal-serving/`, Rust on candle, Pass 12)
+
+| ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
+|---|---|---|---|---|---|---|---|
+| L15.1 | Media preprocessing in the engine: the new crate `tl-media` (PNG and JPEG decode through the `image` crate, D46; learner-written EXIF orientation and WAV parsing), media items and hash (D44), image path (orientation, `fast_image_resize`, tiling port, normalize), audio path (`rubato` for non-16 kHz, STFT framing over `rustfft`, mel, log), token counts | core | Rust | `tl-engine/src/mm/{media,image,audio}.rs`, `tl-media/src/{lib,decode,exif,wav}.rs` | lang.12, lang.13, reading: L13.4, L13.6, L14.1 (ported to Rust) | L15.2 (hash), L15.3, L15.6 | E (`image` decode vs the committed `.npy` pixels: PNG exact, JPEG within 2 LSB; `pixel_values` vs the oracle fixture within `1/(255*std)`; log-mel within 1e-4; token counts exact; media hash equal to the Python and Go fixture values), F (header pixel bomb, truncated JPEG, zero-length WAV, 31-minute WAV: errors map to the 2.6 codes without panics), B (preprocess p95 vs calibration) |
+| L15.2 | Encoder cache and image-aware prefix keys: byte-budgeted LRU with pins (over ds.10), keys `(model, preprocess_rev, media_hash, detail)`, hash ids for placeholder spans (D45) | core | Rust | `tl-engine/src/mm/{encoder_cache,hash_ids}.rs` | ds.10, L15.1, L10.4, reading: L8.4 | L15.3, L15.4, L15.5 | I (a pinned entry is never evicted; bytes never exceed the budget; text-only `hash_ids` == model ids), E (block hashes for text-only prompts bitwise equal to L10.4's; two different images with equal text never share a block past the first image token), C (`formats/kv-block.md` multimodal hash vectors) |
+| L15.3 | VLM serving: candle vision tower, pixel shuffle, connector; merge into the candle Llama forward (L10.1); chat content parts and image placeholders in the template; `image_tokens` usage; `tl_arch = idefics3` | core | Rust | new `tl-engine/src/mm/{vision,merge}.rs`; upgrades `tl-engine/src/forward.rs` (L10.1), `tl-serve/src/openai.rs` (craft.14), `tl-serve/src/template.rs` (L10.5) | L15.1, L15.2, L10.1, L10.5, L10.9, craft.14, lang.13, reading: L13.7 | inherits the call sites of the upgraded units (serve loop, L10.6 to L10.9, gw.04, ag.01); L15.4, L15.5 | E (engine logits on `tiny-idefics3` vs the learner's Python logits fixture within 1e-4 on cpu and within the HF fixture tolerance; SmolVLM nightly max abs 1e-3, top-5 equal), C (`mm.*` engine cases), I (an image item's embeddings are identical alone or with other requests in flight, D43) |
+| L15.4 | Encoder-aware scheduling: encoder work items with a per-step token budget, admission accounting for image tokens, encoder cache pins across preemption (no re-encode), audio windows as schedulable work | core | Rust | upgrades `tl-engine/src/sched.rs` (L10.2) | L15.2, L15.3, L10.2, L10.3 | inherited (L10.3 to L10.6, serve loop); L15.6 | I (fake-model simulation: encoder budget never exceeded; every request finishes; no block or pin leak; a preempted request never re-encodes), E (outputs identical with budgets 64 and 4096), F (KV exhaustion with image requests forces preemption, outputs unchanged) |
+| L15.5 | Encode/prefill/decode disaggregation: `role = encode`, `tl.encoder.v1` services, embedding envelope, `HasEmbeddings` dedup, `tl-media:` refs, `X-TL-MM-Handle`, release on abort, heartbeat fields | core | Rust | new `tl-engine/src/mm/epd.rs`, `tl-serve/src/encoder_service.rs`; upgrades `tl-serve/src/control.rs` (L10.6) | L15.2, L15.3, L10.6, lang.10 | gw.11 (calls `Encode` over gRPC); inherited from `control.rs` | E (EPD output == unified output, greedy and seeded), I (bytes moved = missing items x `n_tokens * d * 2` plus headers), F (chaos-proxy reset mid-push: target releases, gateway retries; CRC flip rejected; wrong `preprocess_rev` refused with `FAILED_PRECONDITION`) |
+| L15.6 | Whisper serving: candle encoder and decoder, per-request cross-KV and self-KV, Rust port of the L14.4 decoding (greedy, beam, fallback, timestamps, long-form) behind the `LogitsSource` seam | core | Rust | `tl-engine/src/asr/{whisper,decode}.rs` | L15.1, L15.4, L10.1 (Rust PCG32), lang.13, reading: L14.3, L14.4 | L15.7 | E (`parity/asr.decode`: the same recorded logits give the same ids, segments, and fallback temperatures as the Python fixture; tiny-whisper logits vs the learner's Python fixture within 1e-4; whisper-tiny greedy transcripts equal under the near-tie rule, nightly), I (compression ratios on fixture texts equal Python's to 1e-9 with the zlib backend), B (RTF vs calibration) |
+| L15.7 | Transcription endpoint: multipart parsing, `response_format` json, text, verbose_json, srt, vtt; `stream` SSE events; usage in seconds; routing of `/v1/audio/transcriptions` | core | Rust | new `tl-serve/src/audio.rs`; upgrades `tl-serve/src/http.rs` (L10.5) | L15.6, L10.5, lang.05 | inherited from `http.rs` (gw.04, load.01 over HTTP); gw.09, gw.10, load.03 reach it over HTTP | C (`audio.*` cases plus the official `openai` client `audio.transcriptions.create`), F (disconnect mid-stream frees the request within one window; an oversize part gives 413 before buffering it all), U (SRT and VTT formatting of 0, 59.999, 3600.5 s) |
+
+**L15.8 is retired.** The B14 draft's L15.8 was the C backend for the engine: `tl-sys` bindings for `conv.h`, `image.h`, and `audio.h`, a C implementation of an `MmKernels` seam, and `[engine.mm] kernels = "c"`. All of it is FFI (D8, D41). A standalone version would be a Rust re-implementation of the same kernels with no caller, which teaches nothing that L13.8, L13.9, and L14.6 do not already teach in C, and the "C vs candle" speed comparison moves to each optional module's own bench against its naive baseline. So L15.8 is retired, not kept as an exercise, and the engine's preprocessing stays plain Rust (D42).
+
+```rust
+// tl-media (L15.1)
+pub enum ImageFormat { Png, Jpeg }
+pub struct DecodedImage { pub h: u32, pub w: u32, pub c: u8, pub data: Vec<u8> }        // HWC RGB u8
+pub fn image_header(bytes: &[u8]) -> Result<(ImageFormat, u32, u32), MediaError>;       // no pixel decode
+pub fn decode_image(bytes: &[u8], max_pixels: u64) -> Result<DecodedImage, MediaError>; // `image` crate; checks the header before decode
+pub fn exif_orientation(bytes: &[u8]) -> Result<Option<u8>, MediaError>;                // 1..=8, learner-written APP1 walk
+pub struct Wav { pub samples: Vec<f32>, pub sr: u32, pub channels: u16 }
+pub fn read_wav(bytes: &[u8], max_seconds: f32) -> Result<Wav, MediaError>;
+
+// tl-engine/src/mm/media.rs (L15.1)
+pub struct MediaItem { pub kind: MediaKind /* Image | Audio */, pub bytes: Arc<[u8]>, pub hash: u64, pub detail: Detail }
+pub fn media_hash(kind: MediaKind, bytes: &[u8]) -> u64;                                 // D44
+pub struct ImagePrep { pub pixel_values: Vec<f32>, pub shape: [usize; 4], pub pixel_mask: Vec<u8>, pub grid: (u32, u32), pub n_tokens: u32 }
+pub trait Preprocessor: Send + Sync {
+    fn rev(&self) -> u32;                                                                // preprocess_rev, part of every cache key
+    fn image(&self, item: &MediaItem) -> Result<ImagePrep, MediaError>;
+    fn audio(&self, item: &MediaItem) -> Result<Vec<Vec<f32>>, MediaError>;            // one [n_mels * 3000] log-mel per 30 s window
+    fn image_token_count(&self, h: u32, w: u32, detail: Detail) -> u32;                 // must equal the Python and Go counts
+}
+
+// tl-engine/src/mm/encoder_cache.rs, hash_ids.rs (L15.2), over tl-ds::LruBytes (ds.10)
+#[derive(Hash, Eq, PartialEq, Clone)]
+pub struct EncoderKey { pub model: Arc<str>, pub preprocess_rev: u32, pub media_hash: u64, pub detail: Detail }
+pub struct EncoderEntry { pub n_tokens: u32, pub d: u32, pub data: Arc<[f32]> }       // projected features, row-major
+impl EncoderCache {
+    pub fn new(max_bytes: usize) -> Self;
+    pub fn get_pinned(&mut self, k: &EncoderKey) -> Option<(Arc<EncoderEntry>, PinGuard)>;  // pinned while a request references it
+    pub fn insert(&mut self, k: EncoderKey, e: EncoderEntry) -> Result<(), CacheFull>;      // evicts unpinned LRU; never a pinned entry
+    pub fn stats(&self) -> EncoderCacheStats;                                             // bytes, entries, hits, misses, evictions
+}
+pub fn hash_ids(model_ids: &[u32], spans: &[MmSpan]) -> Vec<u32>;                        // formats/kv-block.md "Multimodal hash ids"
+
+// tl-engine/src/mm/vision.rs, merge.rs (L15.3), on candle (D42)
+pub struct CandleCtx { pub device: candle_core::Device, pub dtype: candle_core::DType }  // cpu | metal; f32 in tests
+pub trait VisionEncoder: Send {
+    fn load(dir: &Path, ctx: &CandleCtx) -> anyhow::Result<Self> where Self: Sized;      // VarBuilder::from_mmaped_safetensors
+    fn encode(&mut self, prep: &ImagePrep) -> anyhow::Result<EncoderEntry>;              // tower + pixel shuffle + connector, one item per call (D43)
+}
+pub struct MmSpan { pub start: u32, pub len: u32, pub media_hash: u64 }                  // placeholder run in the prompt
+pub struct ForwardBatch { /* existing fields */ pub mm: Vec<(SeqIdx, MmSpan, Arc<EncoderEntry>)> }   // upgrade of forward.rs: rows replace embeddings after lookup
+
+// tl-engine/src/sched.rs (L15.4, upgrades L10.2)
+pub struct SchedulerConfig { /* existing */ pub max_encoder_tokens_per_step: u32, pub encoder_cache_bytes: usize }
+pub struct ScheduleOutput { /* existing */ pub encode: Vec<(RequestId, EncoderKey)> }   // encoder work admitted this step, within budget
+
+// tl-engine/src/mm/epd.rs (L15.5)
+#[async_trait] pub trait EmbeddingTransport: Send + Sync {
+    async fn has(&self, target: &str, keys: &[EncoderKey]) -> Result<Vec<bool>, TransferError>;
+    async fn push(&self, target: &str, key: &EncoderKey, e: &EncoderEntry) -> Result<EmbedAck, TransferError>;
+}
+
+// tl-engine/src/asr/{whisper,decode}.rs (L15.6), on candle
+pub struct WhisperRunner { /* candle encoder + decoder, contiguous self-KV and cross-KV per request */ }
+impl WhisperRunner {
+    pub fn load(dir: &Path, ctx: &CandleCtx) -> anyhow::Result<Self>;
+    pub fn encode(&mut self, mel: &[f32]) -> anyhow::Result<AudioCtx>;                  // [1500, d] plus cross-KV
+    pub fn step(&mut self, a: &AudioCtx, prefix: &[u32], kv: &mut SelfKv) -> anyhow::Result<Vec<f32>>;  // logits
+}
+pub trait LogitsSource { fn step(&mut self, prefix: &[u32]) -> Vec<f32>; }               // same seam as Python, for parity on recorded logits
+pub fn transcribe(src: &mut dyn LogitsSource, tok: &dyn Tokenizer, windows: &[Vec<f32>], opts: &DecodeOptions, rng: &mut Pcg32) -> Vec<Segment>;
+```
+
+**MS-L15** (multimodal serving, local processes). Services from `system.toml`: engine instances `vlm` (tiny-idefics3 in PR, SmolVLM nightly), `encode` (`role = encode`), `asr` (tiny-whisper in PR, whisper-tiny nightly), `text` (the Pass 7 engine), and `gateway`; the runner allocates `{port}`, `{grpc_port}`, `{emb_port}`.
+
+| # | Step | Command | Assertion | CI |
+|---|---|---|---|---|
+| 1 | Engine conformance | `ss conform openapi:v2 --target engine --cases 'mm.*,audio.*'` against `vlm` and `asr` | 100% | pr, smoke |
+| 2 | Engine equals Python | `{ctl} chat --base {vlm.api_base} --image {fixture:L13.7/img-0.png} --prompt-file ... --greedy --max-tokens 32 --json` | `tokens-equal` vs `{tinyllm} vlm generate` ids for the same inputs (near-tie rule) | pr, smoke |
+| 3 | Cache correctness | `{ctl} chat ... --image A` twice, then `--image B` with the same text | second A: `cached_tokens >= image_tokens`; B: no hit past the image span start; `tl_engine_encoder_cache_hits_total` increments by 1 | pr, smoke |
+| 4 | Encoder budget | `{loadgen} --target {vlm.api_base} --workload {fixture:load/images-burst.toml} --duration 30s` with `TL_ENGINE__MM__MAX_ENCODER_TOKENS_PER_STEP=128` | error rate 0; KV and pins at baseline afterwards; text `tpot_p95` within 1.2x of the text-only run is a separate `perf` step (`ci = "local"`) | pr (functional), local (perf) |
+| 5 | EPD | `{gateway}` with `epd = { encode_pool = "encode" }`; `{ctl} chat --base {gateway.api_base} ... --greedy --json` | ids equal to step 2; one trace has `gateway.media`, `Encode`, `encoder.transfer`, `engine.prefill` | pr, smoke |
+| 6 | EPD fault | kill `encode` mid-run (`chaos`, 5.7) | in-flight image requests complete through local fallback or fail before the first byte with 503; `tl_gateway_epd_fallbacks_total > 0`; no spliced streams | pr |
+| 7 | Transcription | `{ctl} transcribe --base {gateway.api_base} --file {fixture:L14.1/clips/en-0.wav} --format verbose_json` | text equals `{tinyllm} transcribe --greedy` text; `json-schema` verbose; `--format srt` parses | pr, smoke |
+| 8 | Mixed load | `{loadgen} --target {gateway.api_base} --workload {fixture:load/mm-mix.toml} --rate 4 --duration 60s` | `error_rate == 0`; the report has `encode_ms`, `rtf`, `image_tokens`; ledger image tokens and audio seconds equal engine usage | pr (30 s), nightly (60 s) |
+| 9 | Real weights | steps 2, 5, 7 on SmolVLM-256M-Instruct and whisper-tiny | as above | nightly |
+
+**MS-mm-kernels** (optional, `optional = true`, never part of a pass gate; `requires` L13.8, L13.9, L14.6). (1) `ss parity conv2d conv1d patch_embed resize stft.mel` runs each standalone C test binary against the Python-generated fixtures within the bounds above. (2) `ss bench course L13.8 L13.9 L14.6` reports each kernel's speedup over its naive baseline (a `perf` step, `ci = "local"`, no bound). There is no engine step (D41).
+
 ### 4.4 Systems layers
 
 The spine owns model math and inference algorithms. Optional C modules provide standalone kernel/runtime exercises. This section owns the remaining systems modules: data structures, the corpus pipeline, the durable engine, the gateway, the agent SDK, and load generation. Where a systems chapter implements a spine algorithm (for example the engine scheduler), the spine owns the prose and the module id.
@@ -2114,6 +2866,7 @@ The spine owns model math and inference algorithms. Optional C modules provide s
 | ds.07 | Radix tree over token ids with index-linked LRU leaf list | Rust | `rust/crates/tl-ds/src/radix.rs` | ds.05, reading: M06.2 | `RadixTree<V>`: `match_prefix(&[u32]) -> (usize, Vec<NodeId>)`, `insert`, `lock/unlock`, `evict(n, FnMut(V))` | L8.4 prefix cache | U (edge split/merge), I (model-based vs naive trie; locked never evicted; LRU over unlocked leaves) | engine `--prefix-cache=radix`, shared-prefix load hit ratio >= 0.6 |
 | ds.08 | Bloom filter | Rust | `rust/crates/tl-ds/src/bloom.rs` | reading: S-M06b (FP rate, optimal k) | `Bloom::with_rate(n, p)`, `insert`, `contains`, `union`, `to_bytes/from_bytes` | data.03 exact dedup | U (m and k formulas), I (no false negatives), S (FP rate within 3σ of the binomial prediction) | `{corpus} run --until dedup_exact` |
 | ds.09 | Consistent hash ring with bounded loads | Go | `go/ds/ring/ring.go` | lang.06, reading: S-M07d (balls into bins) | `ring.New(vnodes int, h func([]byte) uint64)`, `Add/Remove`, `Get(key)`, `GetBounded(key, load func(string) int, c float64)` | gw.05 affinity routing | U, S (key movement on Add about K/N, chi-square), I (bounded variant never exceeds `ceil(c*avg)`) | gateway `route_policy=affinity`, per-replica hit rate in the load report |
+| ds.10 | Byte-budgeted LRU with pinned entries (`LruBytes<K, V: Weighted>`), O(1) touch, evict-until-fits skipping pins (Pass 12) | Rust | `rust/crates/tl-ds/src/lru_bytes.rs` | ds.05, ds.07 | `insert(k, v) -> Result<Vec<(K,V)>, Full>`, `get`, `pin`, `unpin`, `bytes()` | L15.2 encoder cache | U, I (model-based vs a naive LRU: bytes <= budget; pinned never evicted; eviction order), Miri | `tl.engine.encoder_cache.evictions` under the ops.14 flood |
 
 The engine flag Rust uses its own radix prefix cache; optional C modules have no production call sites.
 
@@ -2149,8 +2902,14 @@ Learner Python units may import `pyarrow` and `zstandard` (listed for `corpus` i
 | data.07 | Tokenize and pack to llm.c `.bin` | `corpus/tokenize.py` | L1.5, L1.6, data.06 | `tokenize_shards(manifest, tokenizer_json, out) -> TokensManifest` | C1 training data (read by L0.6 `TokenStream`) | C (`formats/tokens-bin.md` header), I (token count conservation; deterministic) | `{corpus} run --until tokenize` |
 | data.08 | Licensing ledger verification and datasheet | `corpus/ledger.py` | data.01 to data.07, ethics.01 | `ledger verify` against `formats/ledger.schema.json`; `datasheet > DATASHEET.md` | dur.12 license gate, ops.08, ethics.03 | C (every shard row traces to a source id), U (unknown or non-allowlisted license fails with exit 65, non-retryable under 2.8) | `{corpus} ledger verify && {corpus} datasheet` |
 | data.09 | Pipeline as a durable workflow `CorpusBuild` | `go/workflows/corpus_build.go` | dur.06, dur.09 | Go workflow calling Python stages as subprocess activities; idempotency key = workflow id + stage + shard + config hash | C1, dur.11 (`TrainRun` waits on its manifest) | F (`KillLoop` on worker and durable server mid-run: final manifest hash equals an uninterrupted run; `effects` shows each shard written once; cancel runs compensation that deletes partial shards) | `{ctl} data build` (MS-durable) |
+| data.10 | Image-text pair pipeline (Pass 12): fetch with license capture, decode with Pillow (D46) and orient, size and aspect filters, EXIF stripping by re-encoding to PNG with the learner's writer, pHash (32x32 DCT, 8x8 low band, median) and dHash (9x8 gradients), near-dup by Hamming LSH + union-find, caption cleanup, CLIP-score filter, face redaction stage | `corpus/image_pairs.py`, `corpus/png.py` | data.01, data.04, data.05, data.08, data.12, L13.5, L13.6, M12.3, M12.4 | `image_pairs(cfg) -> Stage`; `png_encode(u8_hwc) -> bytes` (stdlib zlib, no ancillary chunks) | data.13 | O (`imagehash` pHash/dHash on fixture pixels, exact bits), C (shard schema), I (output PNGs carry no `eXIf`, `tEXt`, `iTXt`, `zTXt`; planted near-dups (rescale, JPEG q60, 5% crop) clustered, planted flips not; deterministic hash across worker counts), F (a corrupt image is quarantined, not retried forever) | `{corpus} mm build --only images` |
+| data.11 | Audio-transcript pipeline (Pass 12): WAV parse, mono 16 kHz, duration and clipping filters, energy VAD on log-mel, transcript normalization and PII scrub (data.05), exact dedup on PCM hash, near-dup by mel dHash windows + MinHash (data.04), speaker-disjoint splits via a keyed speaker hash, consent column | `corpus/audio_pairs.py` | data.04, data.05, data.08, L14.1, L14.5 (normalizer), M12.6 | `audio_pairs(cfg) -> Stage` | data.13 | C (shard schema), I (no speaker key in two splits; no raw speaker id in any output; durations within bounds; deterministic), S (near-dup recall >= 0.95 on planted re-encodes and gain changes), U (transcript PII placeholders) | `{corpus} mm build --only audio` |
+| data.12 | Face and biometric handling for images (Pass 12): Viola-Jones evaluation of OpenCV's pretrained frontal cascade (integral images, Haar features, stage thresholds, scale pyramid, neighbor grouping), redaction by triple box blur or drop per source policy | `corpus/faces.py` | M12.2, ethics.02, data.05 | `detect_faces(gray, cascade, scale=1.1, min_neighbors=3, min_size=24) -> list[Box]`; `redact(img, boxes, mode)` | data.10 | O (OpenCV `detectMultiScale` boxes on fixtures: recall >= 0.9 at IoU 0.5, precision >= 0.8), I (redacted regions differ from the original by at least the blur bound; nothing outside boxes changes), U (integral image hand example) | `faces_redacted` counts in the manifest |
+| data.13 | `MmCorpusBuild` durable workflow over the data.10 to data.12 stages, idempotent per shard, compensation on cancel (Pass 12) | `go/workflows/mm_corpus_build.go` | data.09, dur.06, dur.09 | Go workflow; activities `{corpus} run --stage {images,faces,audio,...}` | dur.13 (multimodal `ModelRelease` waits on its manifest and ledger) | F (`KillLoop` on worker and server: manifest hash equals a clean run; `effects` shows each shard written once) | `{ctl} data build-mm` |
 
 **MS-corpus.** `{corpus} run --config {fixture:small-corpora/corpus/small.toml}` produces shards, manifest, ledger, and `.bin` files that pass `conformance/formats/`, with a deterministic output hash across two runs and worker counts 1 and 4.
+
+**MS-mm-corpus** (Pass 12). (1) `{corpus} mm build --config {fixture:mm-corpus/small-mm.toml} --workers {w}`, matrix `w = [1, 4]`: image and audio shards and `_MANIFEST.json` pass `conformance/formats/`, with an output hash equal across worker counts (pr, smoke). (2) `{corpus} mm audit --manifest {out:build}/_MANIFEST.json`: `near_dup_recall >= 0.95`, `false_drops == 0`, `exif_chunks == 0`, `faces_redacted >= {fixture count}`, `speakers_crossing_splits == 0`, `raw_speaker_ids == 0` (pr, smoke). (3) `{corpus} ledger verify` exits 0 and every multimodal row has `modality`, `consent`, and `biometric` (pr, smoke). (4) `{ctl} data build-mm --dataset mm-small --version v1` under kills: the manifest hash equals step 1 (nightly).
 
 #### dur: durable execution engine (`ai-platform-engineering/05-durable-orchestration-and-workers/`, Go)
 
@@ -2189,6 +2948,7 @@ type Lease struct { Task Task; Token uint64; Attempt int; Deadline time.Time }
 | dur.10 | Raft HA for the log (optional) | `go/durable/raft` | dur.01, reading: practice `go/08` README, `infrastructure/02` `raft_election.go` | `{durable} --replicas 3` (side call site: optional module) | U (election, log matching), F (in-process transport with partitions, drops, reorders; linearizability checker (Porcupine-style) over the history; kill the leader and acked appends survive) | `ss milestone MS-durable-ha` |
 | dur.11 | Platform workflows `TrainRun` and `EvalSuite` | `go/workflows/{train_run,eval_suite}.go` | dur.06 to dur.09, data.09, reading: L6.7 | C1 (the capstone runs as `TrainRun`), dur.12 (`ModelRelease` runs `EvalSuite` as a child step), ag.12 (paired experiments extend `EvalSuite`) | C (replay of recorded `TrainRun` and `EvalSuite` histories from the reference), F (kill the worker and the server mid-`TrainRun`: resumes from `LATEST` with attempt 2 and a bitwise-equal final loss on the smoke config; cancel checkpoints and exits 130; a durable timer schedules periodic `eval` activities exactly once each) | `{ctl} train --spec specs/tiny.json`, `{ctl} eval --suite zoo` |
 | dur.12 | `ModelRelease`: export, `EvalSuite`, license and model-card gates, `approve` signal, canary through `PUT /admin/v1/routes`, durable wait, SLO burn check by PromQL, promote or roll back | `go/workflows/model_release.go`, `go/activities/{promql,routes}.go` | dur.07, dur.08, dur.11, data.08, ethics.04 (safety rows), reading: ethics.03, gw.05, gw.07 (routes admin API), obs.03 (burn-rate rules) | C1 release (ops.08 reuses it for the retrain decision) | F (kill the worker mid-canary: the canary weight is not re-applied twice and the wait resumes; a fixture Prometheus series with a fast burn rolls back and restores the previous route ETag; an unlicensed source or a missing model card fails before export, non-retryable), U (PromQL activity parses vector and scalar results; route updates use `If-Match`) | `{ctl} release --model tinystories-10m --version v1` |
+| dur.13 | Multimodal `EvalSuite` and `ModelRelease` (Pass 12): suites `asr`, `vqa`, `caption`, `zeroshot`, `mm_bias`; gates on a WER ceiling, a group-gap ceiling (ethics.07), consent for biometric sources, and the model card's multimodal sections | upgrades `go/workflows/eval_suite.go` (ag.12), `go/workflows/model_release.go` (dur.12) | dur.12, ag.12, data.13, L14.5, ethics.07, ethics.08; gate config in `formats/eval-spec.schema.json` (minor) | inherited (dur.12, ops.08, the MS-C2 path) | C (replay of recorded multimodal `EvalSuite` and `ModelRelease` histories), F (a biometric source with `consent: none` fails before export, non-retryable; a group gap over the ceiling blocks promotion) | `{ctl} release --model whisper-tiny --version v1` |
 
 **MS-durable.** Kill loop over `{durable}`, `{worker} --test-activities`, and the Python subprocesses across 500 `tl.test.Append` activities: exactly-once effects in the `effects` sink, replay determinism over the course test workflows' recorded histories, `CorpusBuild` and a short `TrainRun` complete with output hashes equal to uninterrupted runs.
 
@@ -2210,7 +2970,7 @@ Where Temporal (and saige) go further:
 
 #### gw: gateway control plane (Go)
 
-Middleware order is a contract tested by `gw.01`: `requestid -> otel -> recover -> authn -> policy -> ratelimit -> cache -> route -> proxy -> meter`.
+Middleware order is a contract tested by `gw.01`: `requestid -> otel -> recover -> authn -> policy -> ratelimit -> cache -> route -> proxy -> meter`. From Pass 12, gw.09 inserts `media` after `authn`.
 
 | ID | Title | Path | Prereqs | Interface | Call sites | Tests | Lights up at |
 |---|---|---|---|---|---|---|---|
@@ -2223,6 +2983,24 @@ Middleware order is a contract tested by `gw.01`: `requestid -> otel -> recover 
 | gw.06 | Response cache: LRU + TTL, singleflight, tenant-scoped keys, stream replay (practice `go/02`, `python/05`) | `go/gateway/cache/` | gw.01, reading: ai-platform-engineering/04 | `Cache{Get(ctx, Key) (Entry, bool); Put(ctx, Key, Entry, ttl)}`; `KeyOf(p Principal, cfgRev string, r CanonicalRequest) Key`; only `temperature == 0` or a fixed `seed` | gw.01 chain | U (canonicalization: field order, defaults), F (100 concurrent identical requests make 1 upstream call; tenant A never reads tenant B; TTL expiry under a fake clock) | `X-TL-Cache: hit` ratio in the load report |
 | gw.07 | Usage ledger, metering, admin API | `go/gateway/ledger/` | gw.01, lang.11 | `Ledger{Record(ctx, UsageRecord) error; Query(ctx, UsageFilter) ([]UsageRow, error)}`; `formats/usage.v1.sql`; `/admin/v1/*` | gw.01 chain and admin API, ag.04 `query_usage` tool (reads `formats/usage.v1.sql` tables) | I (ledger sum == engine-reported usage over 1k requests), F (SIGKILL the gateway: rows complete or absent, WAL mode) | `<system> usage --tenant acme --since 1h` |
 | gw.08 | Usage policy enforcement (with ethics.05) | `go/gateway/policy/` | gw.01, reading: ethics.05 (head file, D33), data.05 (detector list, re-implemented in Go) | `Policy{Check(ctx, p Principal, r *InferenceRequest) (Decision, error)}`; `Decision{Allow bool; RuleID, Reason string}`; rules in `policy.v1.yaml` (model-card restrictions, `max_tokens` caps, classifier rule = engine `/v1/embeddings` + the exported linear head, D33) | gw.01 chain, audit log | C (policy fixture matrix; red-team fixture set blocked; `policy.v1.yaml` validates against `formats/policy.v1.schema.json`), E (the Go linear head scores fixture embeddings equal to the Python L6.5 scores within 1e-6), U (every deny audit-logged with the rule id; request logging redacts PII with the Go port of the data.05 detectors; an engine `/v1/embeddings` failure fails closed with 503) | 451 on a blocked prompt |
+| gw.09 | Media validation and limits (Pass 12): content-part parsing, `data:` URL decode, header-only pixel checks, multipart under `MaxBytesReader`, WAV duration from the header, remote fetch behind allowlist + SSRF guard, modality policy rules, `tl-media:` and `X-TL-MM-Handle` stripping | new `go/gateway/media/`; upgrades `go/gateway/server/` (craft.14) and `go/gateway/policy/` (gw.08) | gw.08, craft.14, lang.12, reading: ag.06 (SSRF rules, re-implemented) | `media` package (below); chain `requestid -> otel -> recover -> authn -> media -> policy -> ratelimit -> cache -> route -> proxy -> meter` | inherited (gw.01 chain); gw.10, gw.11 | C (`mm.errors.*`, `mm.remote_url`, `mm.internal_scheme`), E (`media.Hash` == the Python and Rust fixture values), F (`go test -fuzz` 60 s on the data URL, multipart, and WAV header parsers; gateway RSS stays under its limit during a bomb flood) | 413 on an oversized image |
+| gw.10 | Multimodal metering and limits (Pass 12): Go `ImageTokens`, image tokens in TPM reservations, an audio-seconds-per-minute bucket, ledger columns (`usage.v2.sql`), usage API `group_by=modality` | upgrades `go/gateway/limit/` (gw.03), `go/gateway/ledger/` (craft.14) | gw.09, gw.07, gw.03, reading: L13.4 (formula, re-implemented) | `Cost{Requests, Tokens int; AudioMs int64}`; ledger rows | inherited (gw.01 chain, ag.04 `query_usage`) | E (`ImageTokens` == the Python fixture table for 40 sizes and 3 details), I (ledger sums == engine-reported image tokens and audio seconds over 1k mixed requests), U (audio bucket under a fake clock) | `{ctl} usage --tenant acme --group-by modality` |
+| gw.11 | Pool routing and EPD orchestration (Pass 12): capability pools (`text`, `vlm`, `asr`, `encode`), media-hash affinity bounded by encoder queue depth, Encode then prefill/decode, fallback to local encode before the first byte, `Release` on abort | upgrades `go/gateway/route/` (gw.05) | gw.09, L15.5, ds.09 | `Router.Route` with `EpdPlan` | inherited (gw.01 chain, dur.12 canary) | E (EPD == unified output, greedy), F (an encode pod killed before the first byte: retried or local fallback, never a spliced stream; a target miss gives one retry), C (a VLM model is never routed to the text pool; ASR only to `asr`) | `route_policy=affinity` with two encoders |
+
+```go
+// go/gateway/media (gw.09)
+type Kind uint8 // KindImage = 1, KindAudio = 2
+type Part struct { Kind Kind; Bytes []byte; Hash uint64; Format string; W, H int; Seconds float64; Detail string }
+type Limits struct { MaxRequestBytes, MaxImages, MaxImagePixels, MaxAudioBytes int64; MaxAudioSeconds float64 }
+func Hash(k Kind, b []byte) uint64                               // D44, parity with Rust and Python
+func ParseChat(body []byte, l Limits, f Fetcher) (*ChatMedia, error)   // decodes data: URLs, header-only dimension check via image.DecodeConfig
+func ParseTranscription(r *http.Request, l Limits) (*AudioUpload, error) // multipart under http.MaxBytesReader; WAV header duration check
+type Fetcher interface { Fetch(ctx context.Context, url string) ([]byte, error) }       // allowlist + SSRF guard; disabled by default
+func ImageTokens(w, h int, p ProcessorConfig, detail string) int  // Go port of L13.4 image_token_count (re-implemented, parity fixture)
+// go/gateway/route (gw.11 upgrades gw.05)
+type Pool string // "text" | "vlm" | "asr" | "encode"
+type EpdPlan struct { Encoders []Target; Prefill, Decode Target; Media []media.Part }
+```
 
 **MS-gateway.** `{gateway}` in front of `{engine}` (ports allocated by the runner): `ss conform openapi:v1 --target gateway` passes (auth, limits, cache, headers, `priority.internal`), failover before first byte works, and the usage ledger reconciles with engine usage. Cases that declare `requires = ["gw.08"]` (such as `policy.451`) report `pending` until gw.08 passes; the usage policy lands in Pass 10 and is checked by MS-agent.
 
@@ -2311,6 +3089,7 @@ Where saige goes further:
 |---|---|---|---|---|---|---|---|
 | load.01 | Open-loop generator + log-linear histogram; the Go PCG32 port (`go/ds/rng`, parity vectors from `spec/pcg32.md`) | `go/loadgen`, `go/ds/rng` | lang.06, reading: M07.1 (Poisson by inverse CDF, re-implemented), M06.3 (PCG32 spec), infrastructure/02 backpressure demos | `Schedule{Next() time.Duration}` (poisson, constant, burst); `Histogram{Record(ns int64); Quantile(q float64) int64; Merge(*Histogram)}` (1% relative error); report = `formats` loadgen report | ag.07, ag.09, ag.12 (the `{loadgen}` main drives MS-L10, MS-gateway, MS-prod, and the drills; optional load.02 compares its reports) | U (quantiles within bucket error vs exact sort), C (course fake server with injected latency distributions; `parity:rng` Go vectors), F (a server stall does not reduce send rate: no coordinated omission); reports TTFT, TPOT, ITL, E2E, goodput under SLO | `{loadgen} --target http://localhost:30080 --rate 20 --duration 60s` |
 | load.02 | Run comparison and regression gate (optional, D14: only the `{loadgen} compare` entry point calls it) | `go/loadgen/compare` | load.01, reading: M07.5 (two-sample permutation test, re-implemented in Go) | `{loadgen} compare base.json head.json --metric ttft_p95 --max-regress 5%` (exit 1 on regression) | no module; the learner's entry point in dep.05's optional perf-gate job and ops.07 `git bisect run` | S (identical runs pass 95% of the time; an injected +10% shift is caught >= 90%) | inside ops.07 |
+| load.03 | Multimodal workload mix (Pass 12): `workload.toml` mixes of text, image (size classes, repeat ratio for cache hits), and audio (durations); multipart sender; RTF and encode-time reporting | upgrades `go/loadgen` (load.01) | load.01, gw.09 | `Mix{Next() Request}`; the report adds `encode_ms`, `rtf`, `image_tokens` | inherited (load.02, drills, MS-prod) | U (mix proportions chi-square at a fixed seed), C (report schema minor), F (no coordinated omission with slow ASR responses) | `{loadgen} --workload mm-mix.toml` |
 
 Further: vLLM `benchmark_serving`, LLMPerf, k6 open-model executors, HdrHistogram.
 
@@ -2330,6 +3109,7 @@ These are `practice` modules: the learner writes deploy and observability files 
 | dep.05 | CI for the learner repo (release workflow added by craft.11) | `.github/workflows/{ci,release}.yml` | craft.01, reading: load.02 | jobs: lint, unit, `ss check --all --ci` through the supersource checkout at `contracts/VERSION` (5.13), image build, kind e2e (`tilt ci` + `ss milestone MS-prod --smoke`), optional load.02 perf gate on main; YAML parse check for required jobs | MS-prod |
 | dep.06 | Durable and worker images and charts: WAL PVC, StatefulSet, KEDA autoscaling of workers | `deploy/docker/{durable,worker}.Dockerfile`, `deploy/helm/<system>-{durable,worker}` | dep.03, dur.04, dur.09 | the dep.01 and dep.03 policies; the worker image carries the Go worker and the Python env; durable StatefulSet with a PVC and `wal_max_bytes` set; KEDA `ScaledObject` on `tl.durable.task_queue.depth` (KEDA pinned in `Chart.lock`); a queue burst scales workers up and back down on kind | `{ctl} data build` on kind |
 | dep.07 | Agent image and chart | `deploy/docker/agent.Dockerfile`, `deploy/helm/<system>-agent` | dep.06, ag.05 | the dep.01 and dep.03 policies; the agent worker on queue `agent`; the frontier key, if any, only from a `Secret` | `{agent}` on kind |
+| dep.08 | Encoder and ASR pools as their own Deployments (Pass 12): values files for `vlm`, `encode`, `asr`; KEDA `ScaledObject`s on encoder queue depth and queued audio seconds; PDBs; resource requests sized from calibration | `deploy/helm/<system>-engine/values-{vlm,encode,asr}.yaml` | dep.06, dep.03, L15.5 | dep.03 policy over `helm template`; `values.schema.json` minor; a burst of 50 image requests scales `encode` up and back down on kind; ASR scaling is independent of encode | `kubectl get hpa` during a burst |
 
 #### obs: observability (`systems/04-observability/`)
 
@@ -2341,6 +3121,7 @@ These are `practice` modules: the learner writes deploy and observability files 
 | obs.03 | SLOs and multi-window burn-rate alerts. Beat 2 defines error budgets and burn rate | `deploy/observability/{slo.yaml,rules/*.yaml}` | obs.02 | TTFT p95, TPOT p95, availability (2.11); the alert names fixed in `otel/slo.schema.json`; rules rendered for the `prod` profile (14.4x at 1h/5m, 6x at 6h/30m) and the `drill` profile (same ratios, windows compressed 12x); `promtool test rules` with course synthetic series: fires on fast burn, quiet on noise; SLO latency targets from the in-cluster calibration Job | MS-prod |
 | obs.04 | Dashboards as code for the serving path | `deploy/observability/dashboards/*.json` | obs.02 | required panels: SLO status, TTFT/TPOT heatmaps, KV usage, per-tenant usage; every panel query references a contract metric | Grafana during a load run |
 | obs.05 | Observability for the control plane: workflow and activity spans end to end, including the Python OTLP export of subprocess activities (dur.09, the D9 exception), queue and DLQ panels | `deploy/observability/dashboards/control-plane.json`, collector config for the worker pods | obs.01, dur.09, data.09, dep.06 | span tree for one `CorpusBuild` activity and for `{ctl} train` down to `train.step` (sampled 1/50); `TRACEPARENT` honored; panels for `tl.durable.task_queue.depth`, `tl.durable.dlq.size`, redeliveries | one trace from `{ctl} train` to `train.step` |
+| obs.06 | Multimodal SLOs and dashboards (Pass 12): encode time, image TTFT, ASR RTF burn-rate rules (`prod` and `drill` profiles), `multimodal.json` panels (encode heatmap by modality, encoder cache hit ratio, queue depths per pool, RTF heatmap, media rejections by reason, EPD fallbacks, image tokens per tenant) | `deploy/observability/{rules/multimodal.yaml,dashboards/multimodal.json}` | obs.03, obs.04, L15.3, L15.6 | `promtool test rules` with synthetic series; every panel query names a contract metric; one trace spans `gateway.media` to `engine.decode` through `encoder.transfer` | Grafana during a mixed load run |
 
 `obs.01` owns a library unit, so it is a `build` module with practice-style artifact checks on top; `go/otelx` is called by dur.04 (activity spans from `ActivityTask.trace_context`) and ag.03 (agent spans).
 
@@ -2365,8 +3146,12 @@ Every drill requires `docs/postmortems/<date>-<drill>.md` (Summary, Impact, Time
 | ops.10 | `runaway-agent` | an agent task that loops tool calls | budget metric | budget stops it before dispatch; the durable run resumes after a budget grant | ag.03, ag.05 | P11 |
 | ops.11 | `eventlog-disk-full` | `wal-quota`: lower `TL_DURABLE__WAL_MAX_BYTES` to just above current usage, then run a workflow burst until appends hit the quota (kind's local-path volumes do not enforce PVC capacity, so the quota is the contract) | `RESOURCE_EXHAUSTED` append errors, DLQ and queue-depth panels | no acked event lost; server refuses writes cleanly; raising the quota resumes every workflow | dur.01 | P11 |
 | ops.12 | `raft-partition` (optional) | netem partition of the leader | leader change | acked appends survive; linearizability check passes | dur.10 | P11 |
+| ops.13 | `encoder-pool-loss` | `scale-zero` on the encode Deployment under mixed load | `EncodeLatencyBurnFast` or `ImageTTFTBurnFast` within 300 s | text TTFT p95 within SLO throughout; image requests served by local fallback or 503 `no_capacity` with `Retry-After` (never hanging past the deadline); encode pool restored; postmortem | EPD fallback, gw.11, dep.08 | P12 |
+| ops.14 | `image-flood` | one tenant floods oversized images, pixel bombs, and 20 MB data URLs (`tenant-flood` injector with the `media-flood` loadgen profile) | the `tl.gateway.media.rejections` panel and image TTFT burn | bombs rejected at the gateway before decode; gateway memory below its limit; other tenants' TTFT within SLO after per-tenant image limits are tuned; postmortem | gw.09, gw.10, obs.06 | P12 |
 
 **MS-ops.** Every core drill (`ops.01` to `ops.11`) passes `ss drill end` with a postmortem.
+
+**MS-multimodal-prod** (Pass 12, kind, nightly; the production component of MS-P12). (1) `helm upgrade --install` of the gateway, `engine-text`, `engine-vlm`, `engine-encode` (2 replicas), and `engine-asr` from the learner's values files; rollouts healthy; the dep.03 policy passes on every release. (2) `ss conform openapi:v2 --target gateway --base {deploy.gateway_url} --cases 'mm.*,audio.*'` and the full v2 smoke set. (3) `trace`: `gateway.media` > `gateway.route` > `Encode` > `encoder.transfer` > `engine.encode`/`engine.prefill` > `engine.decode` for one image request, and `asr.window` spans for one transcription. (4) `promscrape`: every Pass 12 metric (2.11) present with contract names; `multimodal.yaml` rules loaded with the required alert names. (5) `{loadgen} --workload mm-mix.toml --rate {calibrated}` for 10 min with `promql` `hold_s = 300`: encode p95, image TTFT p95, ASR RTF p95, and text TTFT p95 within their SLOs. (6) Separate autoscaling: an image burst raises `encode` to >= 2 replicas and back to min within 5 min, with `asr` unchanged; an audio burst scales `asr` only. (7) Drills `encoder-pool-loss` and `image-flood` with the scripted responder. (8) `{ctl} release --model smolvlm-256m --version v1` and `--model whisper-tiny` through `ModelRelease`: multimodal suites, group-gap ceiling, consent gate, model-card sections. (9) `git-log` and a `v1.1.0` tag; the changelog lists API 2.1.0 and the proto minors.
 
 ### 4.6 Practices: craftsmanship, testing, security, ethics, reviews, field, interviews
 
@@ -2387,7 +3172,7 @@ Practices apply to the learner's own system. Kinds: `practice` (artifact plus a 
 | craft.11 | Commits, semver, releases (`v1.0.0`) | practice | `software-craftsmanship/09-releases-and-deprecation/` | tagged release, changelog, release workflow | P11 |
 | craft.12 | Deprecation policy | practice | same | `Deprecation`/`Sunset` headers, policy doc | P11 |
 | craft.13 | Interface migration: KV format v1 to v2 | **build** | `software-craftsmanship/10-maintenance/` | `upgrades` `c/src/runtime/kv_pool.c`, `c/src/kernels/paged_attn.c` (fp8 reads), `rust/crates/tl-engine/src/kv_transfer.rs`; contracts delivered by `ss contracts sync --to kv/v2`; tests: v2 envelope roundtrip, `parity/kv.wire.v2`, mixed-version negotiation; ADR + drill ops.04 | P11 |
-| craft.14 | Interface migration: API v1 to v2 | **build** | same | `upgrades` `rust/crates/tl-serve/src/openai.rs`, `go/gateway/server/` (version routing), `go/gateway/ledger/` (per-version usage); contracts by `ss contracts sync --to api/v2`; `openapi:v1` and `openapi:v2` both pass; drill ops.05 | P11 |
+| craft.14 | Interface migration: API v1 to v2 | **build** | same | owns `rust/crates/tl-serve/src/api_version.rs` and `go/gateway/server/apiversion.go`, `upgrades` `rust/crates/tl-serve/src/server.rs` (the engine selects v1 or v2 per request by `X-TL-API-Version`), `go/gateway/server/` (version routing), `go/gateway/ledger/` (per-version usage); contracts by `ss contracts sync --to api/v2`; `openapi:v1` and `openapi:v2` both pass; drill ops.05 | P11 |
 | craft.15 | Dependency upgrades | practice | same | drill ops.06 | P11 |
 | craft.16 | Perf regression bisect | practice | same | drill ops.07 | P11 |
 | craft.17 | Threat model (STRIDE on your DFD) | practice | `software-craftsmanship/11-security/` | `docs/THREAT_MODEL.md` with every trust boundary from 2.3, including the RAG-to-tools path | P11 |
@@ -2397,15 +3182,19 @@ Practices apply to the learner's own system. Kinds: `practice` (artifact plus a 
 | craft.21 | Resilience tests (R10) | practice | same | kill a worker mid-workflow and assert exactly once; the resilience mutants (idempotency key ignored, lease not renewed, fsync skipped) each fail the suite | P8 |
 | craft.22 | Model evals as tests (R8) | practice | same | held-out loss and seeded quality score with a regression threshold; model mutants flagged at p < 0.05 over 5 seeds | P9 |
 | craft.23 | Agent evals as tests (R9) | practice | same | suite with scorers, judge, and A/B; agent mutants detected with non-overlapping 95% CIs | P10 |
+| craft.24 | Untrusted media: threat model update (new boundary: media bytes from clients and remote hosts), fuzz targets for the Rust WAV and image-header paths (`cargo fuzz`, nightly only) and the Go parsers, decompression-bomb tests | practice | `software-craftsmanship/11-security/` | `docs/THREAT_MODEL.md` STRIDE rows for media paths; `rust/crates/tl-media/fuzz/`, `go/gateway/media/*_test.go` fuzzers run 60 s each without findings; a seeded crash mutant (`s01`, unchecked chunk length) is found by the learner's fuzzer within budget | P12 |
 | ethics.01 | Data licensing and the ledger | practice | `responsible-ai/01-data-licensing/` | ledger schema and allowlist; pairs with data.08 | P3 |
 | ethics.02 | Privacy and PII policy | practice | `responsible-ai/02-privacy-and-pii/` | PII policy doc; pairs with data.05 | P3 |
 | ethics.03 | Datasheet and model card | practice | `responsible-ai/03-model-and-data-cards/` | `DATASHEET.md`, `MODEL_CARD.md` from templates (third-party models such as SmolLM2-135M-Instruct labelled as such); `ModelRelease` gate checks presence | P9 |
 | ethics.04 | Bias and safety evals | build (Python) | `responsible-ai/04-bias-and-safety-evals/` | `tinyllm/eval/{safety,bias}.py`: templated bias probes with CIs, refusal and toxicity rates on fixture sets, ROC-AUC (M01.4, M07.7); call site: dur.12's release gate reads the safety rows that `EvalSuite` produces with `{tinyllm} eval --suite safety` | P9 |
 | ethics.05 | Usage policy at the gateway | practice | `responsible-ai/05-usage-policy/` | `USAGE_POLICY.md`, `policy.v1.yaml`, a linear policy head trained with L6.5 over the engine's embeddings and exported per D33, wired into the gw.08 classifier rule; red-team fixture set blocked | P10 |
 | ethics.06 | Professional responsibility and disclosure | proof (rubric) | `responsible-ai/06-professional-responsibility/` | written reflection graded by rubric | P11 |
+| ethics.07 | Multimodal bias evals: per-group WER with two-sample bootstrap CIs on gaps vs overall (`asr-groups-mini`, the LibriSpeech-derived stand-in for accent groups, 5.11), zero-shot accuracy disparity across image source domains, counterfactual caption probes (occupation x gendered term) on fixed images; real accent groups from Common Voice only as an optional learner-local step | build (Python) | `responsible-ai/04-bias-and-safety-evals/` | `tinyllm/eval/mm_bias.py`: `group_wer_gaps(...) -> list[GroupGap]`, `zeroshot_disparity(...)`, `caption_counterfactuals(...)`; call site: dur.13 (`mm_bias` suite rows gate release); tests O (gap values on fixture predictions), S (a planted 5-point gap detected; a null gap's CI covers 0 at the nominal rate over 200 seeds) | P12 |
+| ethics.08 | Consent and biometric data: `CONSENT_POLICY.md` (voice and face are biometric; no speaker identification, no face recognition; the dataset terms of every audio source, including Common Voice's for learners who take the optional step), ledger `consent`/`biometric`/`prohibited_uses` filled for every multimodal source, model-card multimodal sections with real numbers | practice | `responsible-ai/02-privacy-and-pii/` | sections lint; the ledger validates; the model card's per-group WER equals `evals/<suite>/summary.json` within rounding | P12 |
 | review.01 | Design review: tracer and serving platform | proof (rubric) | `systems/01-system-design/` | review doc against `rubrics/design-review.md` | P7 |
 | review.02 | Design review: control plane | proof (rubric) | same | same | P11 |
 | review.03 | Design review: the whole system | proof (rubric) | same | same | P11 |
+| review.04 | Design review: the multimodal platform (EPD trade-offs, encoder cache sizing, candle vs the optional standalone kernels, the determinism rule D43) | proof (rubric) | same | `docs/reviews/multimodal.md` against `rubrics/design-review.md` | P12 |
 | field.01 to field.05 | Mock engagement against your platform: discovery, qualification and sizing, performance engagement, POC and evaluation, migration plan | practice | `field-engineering/08-mock-engagement/` | deliverables per stage, graded by rubric; sizing uses M05.1 and the learner's load reports | P11 |
 | field.06 | Commercials and security review: answer a customer security questionnaire from your threat model and SBOM | practice | same (applies `field-engineering/06`) | completed questionnaire citing `THREAT_MODEL.md`, SBOMs, and the usage policy | P11 |
 | field.07 | Escalation and handoff: hand the platform to a mock customer team using your runbooks | practice | same (applies `field-engineering/07`) | handoff doc and an escalation drill walked through the learner's runbooks | P11 |
@@ -2428,6 +3217,8 @@ Competitive programming and `practice/` (predict, build, reattempt) are unchange
 | lang.09 | Async Rust and tokio: futures, tasks, channels, cancellation, hyper | an async SSE server with a bounded channel and disconnect handling | L10.5 | P7 |
 | lang.10 | Protocol Buffers and gRPC: schema evolution, unary and streaming RPCs, generated stubs (Go and Rust) | a streaming gRPC service against the vendored stubs | L10.6, dur.01, dur.04 | P7 |
 | lang.11 | SQL and SQLite: schema, transactions, WAL mode, indexes, aggregates | the usage-ledger queries over a fixture database | gw.07 | P7 |
+| lang.12 | Media formats from the bytes up: RIFF/WAV chunks, PNG chunks and CRC, JPEG markers and APP1/EXIF, base64 and `data:` URLs, `multipart/form-data` (Python, Rust, Go) | a WAV chunk walker, a PNG chunk lister, a multipart encoder checked against fixtures; `{tinyllm} features` on a fixture WAV | L13.6, L14.1, L15.1, gw.09 | P12 |
+| lang.13 | candle: tensors, devices (cpu, metal), dtypes, `VarBuilder` over safetensors, `matmul`, `softmax_last_dim`, broadcasting, contiguity | a two-layer MLP in candle matching a numpy fixture (`cargo test` in the primer) | L15.1, L15.3, L15.6 | P12 |
 
 ### 4.7 Side quests
 
@@ -2435,7 +3226,7 @@ Side quests have no call site in the system. They are optional, checked when the
 
 | ID or source | Content |
 |---|---|
-| `sq.cnns` | `ml/06` perceptron, `backprop_xor.c`, `conv2d.c/.cu`, `lenet.rs`, `alexnet.py` |
+| `sq.cnns` | `ml/06` perceptron, `backprop_xor.c`, `conv2d.c/.cu`, `lenet.rs`, `alexnet.py`; cites L13.1 as the course version of conv layers (Pass 12) |
 | `sq.rl-classics` | `ml/03` classic RL (policy gradient and PPO remain reading for L12.3) |
 | `sq.frameworks-port` | port your GPT to PyTorch and JAX (`ai-platform-engineering/01`, `ml/07` train-step files) |
 | `sq.engines-tour` | `ml/04-llm-systems/frameworks` code |
@@ -2449,6 +3240,11 @@ Side quests have no call site in the system. They are optional, checked when the
 | `sq.tensor-parallel`, `sq.pipeline-parallel` | Megatron column/row parallel layers over L11.2 collectives; the 1F1B schedule and its bubble `(p-1)/(m+p-1)`; figure `ml/04-llm-systems/diagrams/parallelism.d2` |
 | `sq.multi-lora` | batched multi-adapter serving in the engine (`tl-engine/src/lora.rs`) over L6.6 adapters; serves C2 next to the base model |
 | `sq.lm-compressor` | compress TinyStories with your model and M11.3 arithmetic coding |
+| `sq.audio-llm` (P12) | audio encoder (the learner's Whisper encoder) + frame stacking (k = 4) + MLP projector into SmolLM2-135M, trained projector-only on a synthetic spoken-digits task; served through `input_audio` parts (Ultravox / Qwen2-Audio pattern) |
+| `sq.streaming-asr` (P12) | chunked streaming over the transcription endpoint with the local-agreement policy (whisper-streaming), latency vs WER table |
+| `sq.vision-agent` (P12) | a `describe_image` tool in the agent SDK that calls the gateway with an `image_url` part; MS-agent style eval on fixture screenshots |
+| `sq.jpeg-decoder` (P12) | baseline JPEG decoder (Huffman, dequantization, IDCT via M12.4's DCT, chroma upsampling) proven against the committed `.npy` pixels of the JPEG fixtures |
+| `sq.video-frames` (P12) | frame sampling and M-RoPE temporal positions for short clips |
 | `sq.elmo-probes`, `sq.t5`, `sq.ctx-extension` | L3.5, L6.4, L7.4 extensions |
 | pointer row, not in the registry: practice drills without call sites | C `05` merge sort, `06` graph, `10` HTTP parser (C drills have references); README-only exercise lists: Rust `01` Vec (recommended before L10.1), `06` CLI parser, `08` ECS, `09` proc macro, `10` lock-free stack; Go `09` DI container; Python `01`, `06` (import hooks explain the overlay), `07`, `09`, `10` |
 | pointer row, not in the registry: case studies `01`, `04` | order book (reattempt; its "two orderings" lesson is cited in L10.2); k-means is the ag.07 worked example |
@@ -2458,15 +3254,25 @@ Side quests have no call site in the system. They are optional, checked when the
 | Layer | Core | Optional | Python | C | Rust | Go | Other |
 |---|---|---|---|---|---|---|---|
 | Primers `lang.01` to `lang.11` | 11 | | | | | | practice |
+| Primers `lang.12`, `lang.13` (P12) | 2 | | | | | | practice |
 | Math code modules M00 to M11 | 46 | 7 | 50 | 3 (M09.5, M09.6, M09.7 optional C only) | 0 | 0 | |
-| Solve sets | 12 sets in 20 parts, 659 items (64 rubric) | | | | | | SymPy |
+| Math code modules M12 (P12) | 6 | | 6 | | | | |
+| Solve sets | 13 sets in 21 parts, 731 items (68 rubric) | | | | | | SymPy |
 | Spine L0 to L10 incl. tracer | 63 | 8 (L3.5, L6.4, L9.1 to L9.6) | 53 | 6 | 12 | 0 | |
 | L11, L12, C1, C2 | 2 | 7 | 7 | | | | capstones |
+| Spine L13, L14 (P12) | 12 | 3 (L13.8, L13.9, L14.6) | 12 | 3 (optional) | | | |
+| Spine L15 (P12; L15.8 retired) | 7 | | | | 7 | | |
 | ds, rt | 5 | 7 (ds.01 to ds.04, rt.02 to rt.04) | | 7 | 4 | 1 | |
+| ds.10 (P12) | 1 | | | | 1 | | |
 | data, dur, gw, ag, load | 43 | 1 (dur.10) | 8 (+ dur.09 shared) | | | 36 | |
+| data.10 to data.13, dur.13, gw.09 to gw.11, load.03 (P12) | 9 | | 3 | | | 6 | |
 | dep, obs, ops | 26 | 1 (ops.12) | | | | 1 (obs.01 `go/otelx`) | YAML, Docker |
+| dep.08, obs.06, ops.13, ops.14 (P12) | 4 | | | | | | YAML, drills |
 | Practices (craft, ethics, review, field, iv) | 40 | | 1 (ethics.04) | 1 (craft.13) | 2 (craft.13, craft.14) | 1 (craft.14) | docs |
-| Side quests (`sq.*`) | | 21 ids | | | | | |
+| Practices craft.24, ethics.07, ethics.08, review.04 (P12) | 4 | | 1 (ethics.07) | | | | docs, fuzzers |
+| Side quests (`sq.*`) | | 26 ids (5 from P12) | | | | | |
+
+Pass 12 (B14) adds 45 core modules plus S-M12 and 3 optional C modules: 22 Python, 8 Rust, 6 Go, 3 optional C, and practices. `tl-media` is built by L15.1, so L13.6 is Python only, and the draft's L15.8 is retired (D41).
 
 `ss status --counts` regenerates this table from the registry; the numbers above are the design target.
 
@@ -2733,30 +3539,56 @@ expect  = { match = "tokens-equal", file = "course/fixtures/L7.9/smollm2_greedy_
 | `json-last-line` | the last stdout line parses as a JSON object of named metrics, compared with thresholds (`>=`, `<=`, `ref*1.05`, `calibrated`: mean + 3 sd over 5 reference seeds from `ref-thresholds`) |
 | `tokens-equal` | compares the `ids` array of the final JSON line (`spec/cli-roles.md`) with the expected ids; no tokenizer is involved. **Near-tie rule**: oracle files hold only prompts whose top-2 logit margin is at least 1e-3 at every step; when `near_tie` is set (for learner-trained models with no margin-filtered oracle), the harness reruns the learner's `{tinyllm} logits` under teacher forcing on the expected sequence, and a first divergence at a step whose margin is below `margin` is reported as `near-tie` instead of failing |
 | `numeric` | floats from stdout with `rtol`/`atol` |
+| `logits-close` | the step's `.npz` (`output`, one `logits<i>` row per prompt) against a reference `.npz` (`file`, dense `logits<i>` or the oracle's `top<i>.ids` and `top<i>.values`): the same row count, every reference value within `atol` (default 1e-3), and the `top_k` (default 5) ids identical in order, ties to the lowest id |
+| `npz-close` | (Pass 12) named arrays in the step's `.npz` against a fixture `.npz` under `{atol, rtol, max_lsb, top_k_equal}`; integer arrays (token counts, grids) compare exactly |
 | `json-schema` | stdout validates against a schema |
 | `file-produced` | a path glob exists and passes a sub-matcher (for example parquet row counts via pyarrow) |
-| `suite` | a conformance suite against a started `service` |
+| `suite` | a conformance suite against a started `service`; `params = { "<case id>" = {...} }` overrides a case's `[params]` for this step |
+| `disagg` | the disaggregated run without the gateway, against started services `prefill` (default `engine-prefill`), `decode` (default `engine-decode-a`, `engine-decode-b`), and `unified` (default `engine`): tokenize on P, `EngineControl.Prefill` with `decode_target` = a decode engine's `{kv_port}`, then the same request on that engine with `X-TL-KV-Handle`. Cases: `Info` roles, greedy (plain and streamed, alternating decode engines) and seeded text equal to the unified engine, an unknown and a released handle answering 404 `kv_handle_not_found`, and a transfer reset (a harness TCP proxy in front of the kv port resets the push after `reset_after_bytes`, default 1024) failing `Prefill` with `tl_engine_kv_blocks{state="used"}` back to baseline on P and D within 5 s, after which that decode engine serves again. gRPC goes through the harness's stdlib HTTP/2 client |
+| `greedy-equal` | each prompt (`prompts`, default the `disagg` fixture prompts), greedy, on every service in `engines`: one text and one `completion_tokens` (the plain and the speculative engine) |
 | `promql` | an instant query against `[deploy].prometheus` meets a bound; `hold_s = N` re-evaluates it every 15 s and requires it to hold for N seconds |
-| `trace` | a trace with the named span tree exists in `[deploy].traces` (Tempo or Jaeger query API) for the window |
+| `trace` | a trace with the named span tree exists in `[deploy].traces` for the window, polled for `wait_s` (default 30). Jaeger: `GET /api/traces?service=`; Tempo (ports 3200 or 30320, a host naming tempo, or `api = "tempo"`): `GET /api/search?tags=service.name=<svc>`, then `GET /api/traces/<id>` (OTLP JSON, hex or base64 ids) |
 | `git-log` | last N commits match Conventional Commits |
 | `ci-status` | the latest learner CI run on the default branch concluded `success` (`gh run list --branch <default> --limit 1 --json conclusion`); without a GitHub remote, the `[ci].local` commands from `system.toml` exit 0 |
 | `perf` | throughput or latency relative to `ss bench --calibrate`; `ci = "local"` only |
+| `effects` | the effects sink of a `sink = "effects"` step holds `prefix` + k for every k of `keys` (`"0..499"`, inclusive, or a list) and no other key under `prefix`; `exactly_once` (default) allows redelivery, as the sink dedupes by idempotency key; `delivered_once` forbids it; `min_redelivered = N` asks that the kills caused at least N redeliveries |
 
-The runner first executes `[build].steps`, then starts services in dependency order (`after`), waits for `health`, runs steps, tears down, and logs to `.ss/milestones/<MS-ID>/<ts>/`. Placeholders:
+The runner first executes `[build].steps`, then starts services in dependency order (`after`), waits for `health`, runs steps, tears down, and logs to `.ss/milestones/<MS-ID>/<ts>/`.
+
+**Faults during a step.** Two step keys put a running stack under test:
+
+```toml
+[[step]]
+name   = "corpus-build-survives-kills"
+run    = "ctl"
+argv   = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "kill", "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
+sink   = "effects"                                  # optional: the effects sink, before the services start
+chaos  = { kill = ["durable", "worker"], every_s = "0.2..1", count = 6, seed = 2 }
+expect = { match = "json-last-line", metrics = { train_tokens = "== 75164" } }
+```
+
+`sink = "effects"` starts the effects sink (the protocol of testkit `effects`, served by the harness) before the services of the step's milestone start; its URL is `{effects.url}` and `TL_TEST_EFFECTS_URL` in every service's environment and in the step's, so `tl.test.Append` records there. `chaos` needs a `run` command: while it runs, the harness sleeps a draw from `every_s`, SIGKILLs the process group of one service named in `kill` (its children die with it), restarts it with the same argv, ports, runtime.toml, and `{data}`, and waits for its health check, `count` times or until the command exits. Draws come from `seed` and `--seed`; the kills are logged to the step's `chaos.jsonl`. A service that does not come back healthy fails the step. `partition` (link cuts through testkit `chaosproxy`), `leader:<glob>` targets, `history = "linearizability"`, and the matcher's `linearizable` are reserved for MS-durable-ha and rejected until built (DEVIATIONS X28).
+
+Placeholders:
 
 | Placeholder | Value |
 |---|---|
 | `{fixture:<path>}`, `{asset:<id>/<path>}` | a committed fixture in the `contracts/VERSION` worktree; a fetched asset under `$TINYLLM_CACHE` (5.11) |
 | `{out}` | a fresh per-run output directory; `{out:<step-name>}` is an earlier step's |
+| `{json:<step-name>.<key>}` | `<key>` of the last stdout JSON line of an earlier step (`json-last-line` thresholds may use it: `"== {json:train.final_loss}"`) |
+| `{effects.url}` | the effects sink of a `sink = "effects"` step |
 | `{ckpt}` | `{out}/ckpt/LATEST` resolved to the step directory it names |
 | `{models}` | `$TINYLLM_CACHE/models` |
 | `{port}`, `{health_port}`, `{grpc_port}`, `{kv_port}`, `{registry_port}` | free ports allocated per service instance (2.16); `{<service>.<port>}` from another entry |
+| `{emb_port}` | (Pass 12) the `EmbeddingTransfer` port of an engine instance (2.7) |
+| `{asset-rev:<id>}` | the pinned revision of an `ASSETS.tsv` asset |
 | `{config}` | the generated `runtime.toml` for that instance |
 | `{data}` | `{out}/<service>/data`, a per-instance state directory |
 | `{queue}` | the step's `queue` field (default `default`) |
 | `{model_dir}` | the step's `model_dir` field, or the artifact the previous step produced |
 | `{<service>.api_base}` | `http://127.0.0.1:{<service>.port}/v1` |
 | `{deploy.*}` | values from `[deploy]` |
+| `{endpoints.*}` | values from `[endpoints]`; `{endpoints.model}` defaults to `tracer`, the model id the conformance client sends |
 | `{ctl}`, `{tinyllm}`, ... | the learner's `[entry]` roles |
 
 **Smoke and kind steps.** A step marked `smoke = true` is rerun by every later pass gate. A step that needs a cluster is tagged `ci = "kind"`; in PR CI, pass gates run with `--smoke`, which reruns only the non-kind smoke steps as local processes (services started by the runner on allocated ports), and kind steps run in the kind jobs (5.14).
@@ -2785,6 +3617,12 @@ The runner first executes `[build].steps`, then starts services in dependency or
 | MS-C2 | P10 (optional) | post-trained reward gain with p < 0.05 | local |
 | MS-ops | P11 | all core drills resolved with postmortems | nightly (rotation, scripted responder) |
 | MS-P11 | P11 | `v1.0.0` tagged release; MS-ops; API and KV v2 rolled out under load with zero failed requests; SBOM, C4, runbooks, threat model; review.03 and field deliverables attested; iv.01 done | local |
+| MS-L13, MS-L14 | P12 | conv and contrastive learning; preprocessing within 1 LSB; tiny VLM and tiny Whisper logits; SmolVLM logits 1e-3 and greedy exact; log-mel 1e-4; whisper-tiny greedy with timestamps exact; WER within 1 point of the oracle | pr (tiny, `--smoke`), nightly (real weights) |
+| MS-mm-corpus | P12 | shards, dedup, EXIF, faces, speaker-disjoint splits, consent ledger; durable under kills | pr, nightly |
+| MS-L15 | P12 | engine conformance, engine == Python, cache correctness, encoder budget, EPD and its fault, transcription, mixed load and metering | pr (tiny), nightly (real), local (perf) |
+| MS-multimodal-prod | P12 | kind deploy with separate pools and autoscaling, traces, SLOs, drills ops.13 and ops.14, release gates, `v1.1.0` | nightly (kind) |
+| MS-mm-kernels | P12 (optional, `optional = true`) | standalone C conv, resize, and STFT + mel parity on fixtures; local speed report; no engine step | pr (when started), local (perf) |
+| MS-P12 | P12 | MS-L13 + MS-L14 + MS-mm-corpus + MS-L15 + MS-multimodal-prod, plus the smoke steps of MS-P0 to MS-P11 (text paths, tracer bigram, durable kill loop, agent with `faketool`) | pr (`--smoke`), nightly (kind) |
 
 ### 5.8 Conformance and parity
 
@@ -2813,6 +3651,22 @@ The runner first executes `[build].steps`, then starts services in dependency or
 | `client.openai_sdk` | both | the official `openai` Python client completes a chat and a stream |
 | `v0.*`, `v2.*` | both | tracer cases; API v2 cases for `ops.05` (v1 and v2 side by side) |
 
+API v2.1 cases (Pass 12; `ss conform --cases` filters by glob, and the runner validates `multipart/form-data`):
+
+| Case | Tier | Asserts |
+|---|---|---|
+| `mm.image.data_url` | engine | `requires = ["L15.3"]`: PNG and JPEG data URLs, greedy output stable across 2 calls |
+| `mm.image.detail_low` | engine | `detail: low` gives `image_tokens` equal to one global tile's count |
+| `mm.usage.image_tokens` | both | `usage.prompt_tokens_details.image_tokens` equals `image_token_count` from the fixture table; `prompt_tokens` includes them |
+| `mm.cache.same_image` | engine | `requires = ["L15.2"]`: a repeated request reports `cached_tokens >= image_tokens`; a different image with the same text reports `cached_tokens < first image span start + 64` (no false hit) |
+| `mm.errors.*` | both | the 400, 413, and 422 rows of 2.6; a pixel bomb (a 30000 x 30000 PNG header in under 1 KiB) is rejected without allocating the pixels (RSS probe on `/metrics`) |
+| `mm.stream.equals_nonstream` | engine | the text-path invariant with an image |
+| `audio.json`, `audio.verbose_json`, `audio.srt`, `audio.vtt`, `audio.text` | both | `requires = ["L15.7"]`: schemas; SRT `HH:MM:SS,mmm` and VTT `HH:MM:SS.mmm` timestamps; segments monotone |
+| `audio.stream` | engine | `transcript.text.delta` concatenation equals `transcript.text.done.text` |
+| `audio.errors.*` | both | mp3 bytes give `unsupported_media_type`; a 31-minute WAV gives 413 |
+| `mm.remote_url` | gateway | `requires = ["gw.09"]`: non-allowlisted, private, link-local, and redirect-to-private URLs refused; an allowlisted fixture host is inlined |
+| `mm.internal_scheme` | gateway | client-sent `tl-media:` refused; `X-TL-MM-Handle` stripped |
+
 **Parity.** The Python implementation is the specification. Parity holds through golden fixtures (every implementation vs the same oracle, so parity is transitive) and live differential fuzz where a binding exists.
 
 | Suite (`course/conformance/parity/*.toml`) | Implementations | Mode | Equality |
@@ -2826,6 +3680,13 @@ The runner first executes `[build].steps`, then starts services in dependency or
 | `kv.wire.v1`, `kv.wire.v2` (v2 from craft.13) | Rust writer vs Rust reader | golden blobs in the 2.9 envelope | byte-exact roundtrip |
 | `ring.hash` | Go ds.09 vs a Python reference map | golden key-to-node map | exact |
 | `bloom` | Rust `tl-ds` (ds.08) vs the Python data.03 screen | golden bit arrays | exact |
+| `image.decode` (P12) | Pillow (L13.6) and the Rust `image` crate (L15.1), each decoding fixture PNG and JPEG files | golden: the committed `.npy` pixels (D46) | PNG exact; JPEG within 2 u8 LSB |
+| `image.preprocess`, `image.tokens` (P12) | Python L13.6 and L13.4, Rust L15.1, Go gw.10 (`ImageTokens`) | golden pixel values and the 40-size token table | pixels within 1 LSB, `pixel_values` within `1/(255*std)`; token counts exact |
+| `audio.logmel` (P12) | Python L14.1 vs Rust L15.1 | golden HF features | atol 1e-4 |
+| `asr.decode` (P12) | Python L14.4 vs Rust L15.6 | the same recorded logits traces fed to both | identical ids, segments, and fallback temperatures |
+| `media.hash` (P12) | Python L13.6, Rust L15.1, Go gw.09 | golden hashes | exact |
+| `embed.wire.v1` (P12) | Rust writer vs Rust reader | golden `TLEM` envelopes | byte-exact roundtrip |
+| `conv2d`, `conv1d`, `patch_embed`, `resize`, `stft.mel` (P12, optional) | optional C L13.8, L13.9, L14.6 test binaries vs Python-generated fixtures | golden | the bounds in their catalog rows |
 
 ### 5.9 Test frameworks
 
@@ -2873,6 +3734,18 @@ at     = "loadgen+30s"               # start the learner's loadgen at 20 rps, in
 alert    = "TTFTBudgetBurnFast"      # required name from otel/slo.schema.json; drills without [detect] are graded manually (ops.00)
 within_s = 300
 
+# Optional (ops.02, ops.03): a workload the faults land in, and command checks.
+# [workload]
+# role         = "ctl"               # an [entry] role, run from the learner repo in the background
+# argv         = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "drill-x", "--json"]
+# after_inject = true                # default false: start before the first injection
+# wait_rollout = "{deploy.services.worker}"   # kubectl rollout status first
+# [[resolve.run]]
+# role   = "ctl"
+# argv   = ["wf", "describe", "drill-x", "--json"]
+# env    = {}
+# expect = { match = "json-schema", schema = { ... } }   # any milestone matcher (5.7)
+
 [[resolve.check]]
 promql = "histogram_quantile(0.95, sum(rate(gen_ai_server_time_to_first_token_seconds_bucket[5m])) by (le)) < 0.5"
 hold_s = 300
@@ -2902,7 +3775,7 @@ sections = ["Summary", "Impact", "Timeline", "Root cause", "Detection", "Resolut
 | `git-branch` | creates `drill/<name>` with a scripted commit series. Commits never patch learner-written code: ops.06 bumps with `cargo add`/`go get`; ops.07 and craft.08 build a **scratch copy** of the learner repo whose target unit is the reference plus an existing perf or seeded mutant; ops.08 changes only data and ledger rows | ops.06, ops.07, ops.08, craft.08 |
 | `contract-bump` | `ss contracts sync --to kv/v2` or `api/v2` on a branch | ops.04, ops.05 |
 
-`ss drill start <name> --seed N` injects and prints only a pager-style symptom. `ss drill status` shows elapsed time only. `ss drill end` reports: detected (when `[detect]` exists: the required alert fired within `within_s`, from the `ALERTS` series), TTD and TTM, resolved (all checks green, each held for its `hold_s`), trace evidence (a trace spanning gateway and engine exists for the window), and postmortem structure.
+`ss drill start <name> --seed N` starts the `[workload]` (before the injections, or after them with `after_inject`, once `wait_rollout` reports a complete rollout; its undo kills it), injects, and prints only a pager-style symptom. `ss drill status` shows elapsed time only. `ss drill end` reports: detected (when `[detect]` exists: the required alert fired within `within_s`, from the `ALERTS` series), TTD and TTM, resolved (all checks green, each held for its `hold_s`, and every `[[resolve.run]]` command passing its matcher), trace evidence (a trace spanning gateway and engine exists for the window), and postmortem structure.
 
 **Drills in CI.** The nightly `kind-e2e` job runs one drill by rotation against the reference system with a **scripted responder** (`course/drills/<name>/respond.sh`, the reference fix) and checks detection and resolution, not the time limit, so a drill fits the job budget. The `PrometheusRule` label selector the reference charts use is the one pinned in `contracts/helm/observability.md`, which the learner's rules must match too.
 
@@ -2927,7 +3800,7 @@ sections = ["Summary", "Impact", "Timeline", "Root cause", "Detection", "Resolut
 | bit-exact where we define the algorithm (tokenizer, RNG, quant pack, sampling given RNG output, KV wire format); tolerance where floating point reorders | per-test `KIND` |
 | tolerances: f64 rtol 1e-10/atol 1e-12; f32 1e-5/1e-6; bf16 1.6e-2/1e-3; reductions over K scale by `sqrt(K)`; tiny HF models atol 1e-5; SmolLM2 fp32 logits max abs 1e-3 with identical top-5 | `assert_close` in `tests/_lib/close.py`, `ss_test.h`, `tl-contracts::testing`, `contracts/go/testing` |
 
-**Fixtures.** `course/oracle/` is a separate uv project with pinned `torch`, `transformers`, `safetensors`, `tiktoken`, `tokenizers`, `ml_dtypes`, `scipy`, `sklearn`, `sacrebleu`, `trl`; it is never imported by tests. Fixtures are `.npz` (`allow_pickle=False`, dtypes f32/f64/i32/i64/u8, `__meta__` JSON with seed, shapes, generator, upstream revision) or `.jsonl`. Budget: **at most 50 MiB committed, at most 8 MiB per file**, and a committed budget per authoring batch (section 9), all enforced. `course/fixtures/MANIFEST.tsv` records `path, sha256, bytes, generator, oracle_versions, upstream@revision, license`; every fixture id used in a milestone or test resolves to exactly one row. A PR that changes fixtures without a matching oracle or manifest change fails. A weekly `oracle-drift` job regenerates everything in a pinned container and compares **within tolerance** (the 5.11 tolerances for floats; exact equality only for integer outputs such as token ids and packed bytes), because torch CPU output varies with the runner's instruction set.
+**Fixtures.** `course/oracle/` is a separate uv project with pinned `torch`, `transformers`, `safetensors`, `tiktoken`, `tokenizers`, `ml_dtypes`, `scipy`, `sklearn`, `sacrebleu`, `trl`; it is never imported by tests. Fixtures are `.npz` (`allow_pickle=False`, dtypes f32/f64/i32/i64/u8, `__meta__` JSON with seed, shapes, generator, upstream revision) or `.jsonl`; decoded image pixels are `.npy` (u8 HWC, D46). Budget: **at most 56 MiB committed (50 MiB through B13, 6 MiB for B14, D52), at most 8 MiB per file**, and a committed budget per authoring batch (section 9), all enforced. `course/fixtures/MANIFEST.tsv` records `path, sha256, bytes, generator, oracle_versions, upstream@revision, license`; every fixture id used in a milestone or test resolves to exactly one row. A PR that changes fixtures without a matching oracle or manifest change fails. A weekly `oracle-drift` job regenerates everything in a pinned container and compares **within tolerance** (the 5.11 tolerances for floats; exact equality only for integer outputs such as token ids and packed bytes), because torch CPU output varies with the runner's instruction set.
 
 | Fixture (committed) | Generator | Contents | Size |
 |---|---|---|---|
@@ -2945,6 +3818,30 @@ sections = ["Summary", "Impact", "Timeline", "Root cause", "Detection", "Resolut
 About 21 MB committed at design time, which leaves room for per-module fixtures (KV golden blobs, optional C exercise goldens, recorded SSE streams).
 
 **Large assets** (`course/fixtures/ASSETS.tsv`: url, revision, sha256, license) are never committed and are fetched by `ss fetch <asset>` into `$TINYLLM_CACHE`: `smollm2-135m` and `smollm2-135m-instruct` (`HuggingFaceTB/SmolLM2-135M` and `-Instruct` at pinned revisions), `tinystories` (full corpus for C1), `course-corpora` (the TinyStories 5 MB slice and its `ts-train.bin`, `ts-val.bin`, `ts-2m.bin` token streams, `wiki-mini`; about 20 MB), and `tiny-hf-models` (random tiny GPT2, BERT, ELECTRA, Llama variants including `tiny-llama-2l`, `tiny-llama-yarn`, `tiny-llama-3`, Mistral-SWA, DeepseekV3-MLA, Mixtral-MoE: safetensors + logits; about 8 MB). The last two are generated by `course/oracle/` and published as release assets of supersource. CI caches them by sha. Learners can also pull weights with their own `{tinyllm} pull`.
+
+**Pass 12 committed fixtures (B14, about 6.3 MiB).**
+
+| Fixture | Generator | Contents | Size |
+|---|---|---|---|
+| `M12/*` | `gen_signal_fixtures.py` | conv fwd/bwd and unfold cases, PIL resize outputs on 6 small images per kernel (inputs as `.npy`), torchaudio resample, numpy FFT/DCT, torch STFT, librosa mel filters | about 1.5 MiB |
+| `L13.6/images/`, `L13.6/*.npy`, `L13.6/*_pixel_values.npz` | `gen_image_fixtures.py` | 12 small PNG and JPEG files (EXIF orientations 1 to 8, CMYK, 16-bit, truncated, pixel-bomb header) with their Pillow-decoded `.npy` pixels (D46), CLIP/SigLIP/Idefics3 processor outputs, the 40-size token-count table | about 1.5 MiB |
+| `L13.2`, `L13.4`, `L13.5`, `L13.7` | `gen_mrope_fixtures.py`, `gen_tiling_fixtures.py`, `gen_contrastive_fixtures.py` | M-RoPE position ids, tile grids and prompt strings, loss values, tiny prompts and pixel values | about 0.5 MiB |
+| `L14.1/clips/`, `L14.4/traces.npz`, `whisper-parity/` | `gen_whisper_parity.py` | 6 clips of at most 4 s at 16 kHz s16 cut from LibriSpeech test-clean (CC BY 4.0, attribution per clip), 3 language-detection clips from Multilingual LibriSpeech (CC BY 4.0), log-mel for 2 clips, recorded decoder logits for 8 traces as top-64 sparse rows, expected ids | about 1.5 MiB |
+| `smolvlm-parity/` | `gen_smolvlm_parity.py` | 4 CC0 or public-domain images from PD12M (256 px, with `.npy` pixels), prompts, `pixel_values` for the global tile (f16 stored, compared after upcast), last-position logits top-256 sparse, greedy ids | about 1 MiB |
+| `mm-corpus/small-mm.toml`, `load/*.toml`, `configs/{clip-tiny,vlm-tiny}.json` | hand-written | configs | < 0.1 MiB |
+| `L13.8`, `L13.9`, `L14.6` (optional) | `gen_signal_fixtures.py` | inputs and expected outputs for the standalone C binaries: conv shapes incl. SmolVLM patch embed slices, batch-invariance and groups cases, Whisper stem on 1 s, resize and log-mel cases | about 0.3 MiB |
+
+**Pass 12 assets and licenses (B14).** Verified on 2026-10-10 from the official sources. Weights are never committed. A committed excerpt is allowed only where the license permits redistribution, and its `MANIFEST.tsv` row carries the license and the attribution. Course-generated assets (`tiny-mm-models`, random weights, Apache-2.0; `mm-shapes`, procedural, CC0) are `build:` rows made locally by maintainer generators, never published.
+
+| Asset | Official source (pinned) | License, as stated by the source | `ss fetch` row | May be committed |
+|---|---|---|---|---|
+| `smolvlm-256m-instruct` | https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct at `7e3e67edbbed1bf9888184d9df282b700a323964` | Apache-2.0 (card metadata; card text: "We release the SmolVLM checkpoints under the Apache 2.0 license"). Components: SigLIP `google/siglip-base-patch16-512`, Apache-2.0 (card metadata); SmolLM2-135M-Instruct, Apache-2.0 (already in `ASSETS.tsv`) | yes, 9 files | weights no; derived fixtures (pixel values, sparse logits, greedy ids) yes, with attribution |
+| `whisper-tiny` | https://huggingface.co/openai/whisper-tiny at `169d4a4341b33bc18d8881c4b69c2e104e1cc0af` | Apache-2.0 (HF card metadata). The upstream repository https://github.com/openai/whisper states "Whisper's code and model weights are released under the MIT License". Both are permissive; `ASSETS.tsv` records the HF distribution's Apache-2.0 and the model card cites both | yes, 8 files | weights no; derived fixtures yes |
+| `librispeech-test-clean` | https://www.openslr.org/12 (`test-clean.tar.gz`, sha256 pinned; md5 matches openslr's `md5sum.txt`) | CC BY 4.0 | yes (maintainer source for `asr-mini` and `asr-groups-mini`) | yes: short clip excerpts with attribution (speaker, chapter, utterance id) |
+| Multilingual LibriSpeech | https://www.openslr.org/94 | CC BY 4.0 | no (a maintainer extracts 3 clips once) | yes: 3 language-detection excerpts with attribution |
+| PD12M (source of `mm-pairs-mini` and `smolvlm-parity` images) | https://huggingface.co/datasets/Spawning/PD12M at `867988b01138799b89d3ffdd5b4f7e1455951f32` | dataset: CDLA-Permissive-2.0; images: "entirely public domain and CC0 licensed", with a per-row `license` URL | no (`build:` by `gen_mm_pairs.py` from rows whose `license` is CC0 1.0 or the Public Domain Mark) | yes: those images, each with its row's license URL; metadata excerpts keep the CDLA-Permissive-2.0 notice |
+| Common Voice | Mozilla Data Collective (https://mozilladatacollective.com; the HF card for `mozilla-foundation/common_voice_17_0` says the datasets are available only there since October 2025) | CC0-1.0 plus dataset terms on its listings: "It is forbidden to attempt to determine the identity of speakers", and on current listings re-hosting or re-sharing the dataset is forbidden; download needs an account | **no** | **no**. Stand-in: `asr-groups-mini`, built locally from `librispeech-test-clean`: speaker groups from LibriSpeech's `SPEAKERS.TXT` (reader sex) plus seeded channel-degradation groups (telephone band 300 to 3400 Hz; white noise at 10 dB SNR, PCG32 per clip). It replaces the draft's `cv-accent-mini`; real accent groups are an optional learner-local step under the learner's own Common Voice account (DEVIATIONS B14-02) |
+| `haarcascade-frontalface` (data.12) | OpenCV `data/haarcascades/haarcascade_frontalface_default.xml` | not yet verified (Intel License Agreement in the file header, BSD-3-style); open question Q20 | not yet | no |
 
 **Calibration.** `ss bench --calibrate` times the reference tiled matmul and decode loop on the current machine and stores the ratios; every local perf matcher is expressed relative to it (for example `learner_tokens_per_s >= 0.5 x ref`). For SLOs checked on kind, `ss bench --calibrate --in-cluster` runs the same benchmark as a Job in the learner's namespace (Linux, the kind VM's CPU and memory), and the SLO defaults scale from that number, not from the host.
 
@@ -3026,17 +3923,18 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 |---|---|---|---|---|
 | `lint` | PR | ubuntu | 3 min | ruff, `gofmt -l`, `cargo fmt --check`, `clang-format --dry-run` on `course/`; `ss lint` |
 | `harness-unit` | PR | ubuntu | 3 min | `pytest course/harness` (solve checker, overlay builder, stubber, mutation runner, matchers); existing `practice/bin/test_measure.py` |
-| `course-verify-changed` | PR | ubuntu | 12 min | `ss verify course --changed origin/main` (changed modules in full, dependents' smoke tests) |
+| `course-verify-changed` | PR | ubuntu | 12 min | `ss verify course --changed origin/main` (changed modules, 4 sampled mutants each with a persisted kill cache; dependents' smoke tests). The full mutant set runs nightly |
 | `course-verify-macos` | PR, when C or Rust course files change | macos-14 | 10 min | same for C and Rust modules (Apple clang, Accelerate, standalone C test binaries) |
 | `parity-golden` | PR | ubuntu | 4 min | `ss parity` golden mode |
-| `reference-learner-e2e` | PR | ubuntu | 10 min | `ss verify course --e2e`: assemble a learner repo from `course/ref` + `course/ref/entry`, run every `ci = "pr"` milestone step **in `--smoke` mode** (reduced configs; full training milestones such as MS-L3, MS-L4, and MS-L6 run nightly) and `ss conform` on both tiers, then `ss export` into a temp dir and run the vendored tests natively through the generated glue |
-| `milestone-p1-kind` | PR touching tracer modules | ubuntu (kind via `helm/kind-action`) | 15 min | `ss milestone MS-P1` against the reference system, kind steps included |
+| `reference-learner-e2e` | nightly | ubuntu | 100 min | `ss verify course --e2e`: assemble a learner repo from `course/ref` + `course/ref/entry`, run every `ci = "pr"` milestone step **in `--smoke` mode** (reduced configs; full training milestones such as MS-L3, MS-L4, and MS-L6 run nightly) and `ss conform` on both tiers, then `ss export` into a temp dir and run the vendored tests natively through the generated glue |
+| `milestone-p1-kind` | nightly (the kind job runs every kind milestone, MS-P1 included) | ubuntu (kind via `helm/kind-action`) | 15 min | `ss milestone MS-P1` against the reference system, kind steps included |
 | `practice`, `paths` | PR | ubuntu | existing | existing jobs; `ss learn --verify` |
 | `full-verify` | nightly | ubuntu + macos-14, **sharded by layer** (math, spine, systems, operations) | 90 min per shard | all modules, 3 determinism runs, `CATCHES` proven per test, mutant recheck through the cache, full reverse-dependent verification, live parity fuzz, `go test -race`, `go test -fuzz` 60 s per target, Miri and Rust TSan on a pinned nightly |
 | `milestones-full` | nightly | ubuntu | 60 min | every `ci = "nightly"` milestone step and full configs of MS-L3, MS-L4, MS-L6 |
 | `hf-real` | nightly | ubuntu | 20 min | `ss fetch smollm2-135m smollm2-135m-instruct` (cached), real-weights parity, tool calls, `ci = "nightly"` steps |
+| `hf-real-mm` | nightly | ubuntu | 20 min | (Pass 12) `ss fetch smolvlm-256m-instruct whisper-tiny librispeech-test-clean` (cached by sha), the real-weight steps of MS-L13, MS-L14, and MS-L15 |
 | `train-smoke` | nightly | ubuntu | 25 min | capstone pipeline on a 2 MB TinyStories slice through `CorpusBuild`, 300 reference training steps, threshold, serve, conformance (`MS-C1 --smoke`) |
-| `kind-e2e` | nightly | ubuntu (kind) | 40 min | reference charts (including KEDA), OTel/Prometheus/Tempo, `ss conform` through the NodePort, one drill per night by rotation (`--seed $(date +%j)`) with the scripted responder and the `drill` SLO profile, optional Raft linearizability over 5 min |
+| `kind-e2e` | nightly | ubuntu (kind) | 40 min | reference charts (including KEDA), OTel/Prometheus/Tempo, `ss conform` through the NodePort, one drill per night by rotation (`--seed $(date +%j)`, including ops.13 and ops.14 from Pass 12) with the scripted responder and the `drill` SLO profile, the MS-multimodal-prod steps, optional Raft linearizability over 5 min |
 | `oracle-drift` | weekly + manual | ubuntu | 30 min | regenerate fixtures and compare within tolerance (5.11) |
 | local only | never in CI | dev machine | | `ss bench` perf gates and `perf` milestone steps, full C1 training, drills against the learner's own cluster |
 
@@ -3247,6 +4145,7 @@ paths/course-p00-setup/       README.md (pass intro), path.tsv, milestone.md
 paths/course-p01-tracer/      ...
 ...
 paths/course-p11-operate/
+paths/course-p12-multimodal/
 ```
 
 ```text
@@ -3265,6 +4164,7 @@ paths/course-p11-operate/
 @course-p09-capstone-training
 @course-p10-agents
 @course-p11-operate
+@course-p12-multimodal
 ```
 
 ### 7.2 The spiral invariant
@@ -3285,8 +4185,9 @@ paths/course-p11-operate/
 | P9 | course-p09-capstone-training | 5 | about 10M model trained on TinyStories (mixed precision, accumulation, resume) with core ablations and the zoo table, safety evals, released through `ModelRelease`, and served | MS-P9 = MS-L11 + MS-C1 |
 | P10 | course-p10-agents | 5 | Go agent SDK on their engine's tool calls, RAG over their docs, eval runner with judge and A/B, usage policy at the gateway, agent chart; optional post-training | MS-P10 = MS-agent (+ optional MS-C2) |
 | P11 | course-p11-operate | 5.5 | `v1.0.0`: migrations (KV v2, API v2 as build modules), upgrades, bisect, chaos, security, docs, reviews, mock engagement, defense | MS-P11 (includes MS-ops) |
+| P12 | course-p12-multimodal | 15 | `v1.1.0`: signal and image math in numpy; ViT, CLIP/SigLIP, SmolVLM-256M and whisper-tiny loaded and matching HF in Python; engine on candle for encoders with an encoder cache, image-aware prefix caching, encoder budgets, EPD, and `/v1/audio/transcriptions`; gateway media limits, metering, and pool routing; multimodal corpora with pHash dedup, EXIF stripping, face redaction, consent; encode and ASR pools with their own autoscaling, SLOs, and drills; per-group WER gaps in the model card. Optional standalone C kernels add about 2 weeks | MS-P12 = MS-L13 + MS-L14 + MS-mm-corpus + MS-L15 + MS-multimodal-prod |
 
-About 67 weeks part-time. These are planning estimates: advance on gates, not elapsed weeks.
+About 82 weeks part-time (67 through P11, 15 for P12). These are planning estimates: advance on gates, not elapsed weeks.
 
 ### 7.3 Stable contracts and their upgrade sequence
 
@@ -3302,6 +4203,9 @@ About 67 weeks part-time. These are planning estimates: advance on gates, not el
 | Helm | engine and gateway charts plus Jaeger (P1), gateway and engine charts per role + observability (P7, dep.03), durable + workers + KEDA (P8, dep.06), agent (P10, dep.07) |
 | `train` and `data build` | local process (P1 to P7), durable workflow (P8) |
 | tracer engine (`tl-serve` v0) | std-only HTTP and hand-written OTLP (P1), tokio/hyper + candle engine (P7) |
+| `Preprocessor` behind `preprocess_rev` | Python preprocessing (L13.6, L14.1, P12), Rust preprocessing in the engine (L15.1, P12); any change bumps `preprocess_rev`, which keys the encoder cache |
+| HTTP `openai-subset` v2.1 | additive content parts, transcriptions, and `image_tokens` on v2 (P12, D49); v1 unchanged |
+| engine roles | `unified` (P1, P7), `prefill`/`decode` (P7), `encode` (P12) |
 
 ### 7.4 Pass stage lists
 
@@ -3348,6 +4252,7 @@ Later passes as ordered stages (each row's check is the module or milestone id; 
 | P9 | M08.4 · L11.1 · ethics.03 · ethics.04 · dur.12 · craft.22 · C1 · MS-L11 · MS-C1 · MS-P9 (optional: L11.2 · L11.3 · M10.5 · M10.6) |
 | P10 | ag.01 to ag.12 · ethics.05 · gw.08 · dep.07 · craft.23 · MS-agent · MS-P10 (optional: S-M10b · L12.1 to L12.4 · C2 · MS-C2) |
 | P11 | craft.09 to craft.12 · craft.13 + drill ops.04 · craft.14 + drill ops.05 · craft.15 + drill ops.06 · craft.16 + drill ops.07 · drills ops.08 to ops.11 · craft.17 to craft.19 · review.02 · review.03 · ethics.06 · field.01 to field.07 · iv.01 · MS-ops · MS-P11 (optional: ops.12) |
+| P12 | lang.12 · M12.1 · M12.2 · M12.3 · M12.4 · M12.5 · M12.6 · S-M12 · L13.1 · L13.2 · L13.3 · L13.4 · L13.5 · L13.6 · L13.7 · MS-L13 · L14.1 · L14.2 · L14.3 · L14.4 · L14.5 · MS-L14 · ethics.08 · data.12 · data.10 · data.11 · data.13 · MS-mm-corpus · lang.13 · ds.10 · L15.1 · L15.2 · L15.3 · L15.4 · L15.5 · L15.6 · L15.7 · MS-L15 · gw.09 · gw.10 · gw.11 · load.03 · ethics.07 · dur.13 · dep.08 · obs.06 · drill ops.13 · drill ops.14 · craft.24 · review.04 · MS-multimodal-prod · MS-P12 (optional standalone C: L13.8 · L13.9 after L13.7 · L14.6 after L14.5 · MS-mm-kernels; side quests sq.audio-llm · sq.streaming-asr · sq.vision-agent · sq.jpeg-decoder · sq.video-frames) |
 
 Solve-only modules (`M02.4`, `M11.3`) remain reachable from their topic READMEs; optional C module M09.7 is reachable from the M09 chapter and standalone C milestone. `ss learn --verify` enforces that every core `build` module appears exactly once across the pass lists and that no stage precedes one of its deps.
 
@@ -3370,6 +4275,8 @@ Math is not front-loaded. Each chapter gates the first spine part that calls it:
 | L11 | M08.4 |
 | C1 | M03.5 (`lstsq`); optional M10.5, M10.6 |
 | L12 | S-M10b (M10.7), M11.1 `kl_k3` |
+| L13 | M12.1, M12.2, M12.3; S-M12 items on convolution, layouts, interpolation, contrastive losses |
+| L14 | M12.4, M12.5, M12.6; S-M12 items on sampling, DFT, STFT, mel, edit distance |
 
 ### 7.6 Role paths re-expressed as views over the course
 
@@ -3476,6 +4383,12 @@ Churn is minimized: tracks stay top level, moves use `git mv`, and new directori
 | `competitive-programming/`, `interviews/` companies and shared concepts | unchanged; new `interviews/defend-your-system/` (iv.01) |
 | `paths/` | re-expressed (7.6) plus the course paths |
 | `archive/` (new) | historical coursework only |
+| `math/` new `12-signals-and-images` (P12) | M12.* |
+| `ml/08-tinyllm` new `p13-vision`, `p14-speech`, `p15-multimodal-serving` (P12) | L13, L14, L15 |
+| `ml/05-foundation-models/README.md` section 4 (modalities) | stays as the topic overview; cited by the `p13` and `p14` part READMEs as "why now"; its fusion-pattern bullets point to L13.5 (dual encoder) and L13.7 (projector into the LLM) |
+| `ml/06-neural-architectures/code/conv2d.c` | worked example for M12.1 beat 3 (valid cross-correlation, output size formula) and the naive baseline the optional L13.8 kernel is benchmarked against |
+| `ml/06-neural-architectures/code/conv2d.cu` | stays in `sq.cnns`; `sq.cuda-kernels` may add an im2col variant, never in CI |
+| `ml/06-neural-architectures/code/lenet.rs`, `alexnet.py` | `sq.cnns` reading; L13.1 beat 6 "Going further" cites them; LeNet is the L13.1 learning-test architecture in numpy |
 
 ### 8.3 Practice exercises
 
@@ -3541,8 +4454,11 @@ Every batch ends green on its verification command and leaves the **reference-as
 | **B11 Training at scale + capstone** | milestone `--smoke` mode for C1 (200 steps, about 1M params); the full reference run and the `short` ablations are author-local and calibrate `ref-thresholds` | M08.4; L11.1 (L11.2, L11.3 optional); ethics.03, ethics.04; dur.12; craft.22; C1; MS-L11, MS-C1, MS-P9 | `course-p09-capstone-training`; new topic READMEs `ml/08-tinyllm/{p11-training-at-scale,capstones}/`, `responsible-ai/{03-model-and-data-cards,04-bias-and-safety-evals}/`; fixtures 2 MiB | `ss verify course && ss milestone MS-P9 --smoke` (nightly: `train-smoke`) |
 | **B12 Agents (+ optional post-training)** | `faketool` provider (no network); prompt-injection fixture suite; `smollm2-135m-instruct` asset; frontier provider opt-in via env | ag.01 to ag.12; ethics.05; gw.08; dep.07; craft.23; MS-agent, MS-P10; optional S-M10b, L12.1 to L12.4, C2, MS-C2, `sq.multi-lora` | `course-p10-agents`; new topic READMEs `ai-platform-engineering/13-agent-sdk/`, `responsible-ai/05-usage-policy/`, `ml/08-tinyllm/p12-post-training/`; fixtures 4 MiB | `ss verify course && ss milestone MS-P10 --smoke` (nightly: real model) |
 | **B13 Operate + finish** | drills `kv-v2-migration`, `api-v2-migration`, `dep-upgrade`, `perf-regression`, `data-incident`, `noisy-neighbor`, `runaway-agent`, `eventlog-disk-full`, `raft-partition`; `openai-subset.v2.yaml`, KV v2 contracts and `history/` snapshots for craft.13 and craft.14; role paths (7.6); STUDY-PLAN, CS-CURRICULUM, README final; `sr.yaml` artifacts | craft.09 to craft.19 (craft.13 and craft.14 are build modules); ops.04 to ops.12; review.02, review.03; ethics.06; field.01 to field.07; iv.01; MS-ops, MS-P11 | `course-p11-operate`; new topic READMEs `software-craftsmanship/{05-diagramming-c4,07-type-systems,09-releases-and-deprecation,10-maintenance,11-security}/`, `field-engineering/08-mock-engagement/`, `interviews/defend-your-system/`, `responsible-ai/06-professional-responsibility/`; fixtures 1 MiB | `ss lint --links && ss learn --verify && ss verify course --nightly && for m in MS-P0 MS-P1 MS-P2 MS-P3 MS-P4 MS-P5 MS-P6 MS-P7 MS-P8 MS-P9 MS-P10; do ss milestone $m --smoke \|\| exit 1; done && ./scripts/build-book.sh && pnpm -C site build` |
+| **B14 Multimodal: vision and speech** (Pass 12, after B13) | registry: pass 12 and the `L13` to `L15` parts (`L[0-9]{1,2}` already matches); Rust farm builds with `candle-core`/`candle-nn` (cpu in CI) and the new crate `tl-media` in the contract pre-check; `allowed-deps.toml` additions (Pillow, `image`, `rustfft`, `fast_image_resize`, `rubato`, `flate2`) and the forbidden list; matcher `npz-close`; placeholders `{emb_port}`, `{asset-rev:<id>}`; `chaos` kills for EPD faults; `ss conform --cases` and `multipart/form-data` in the OpenAPI runner (official `openai` client `audio.transcriptions`); conformance suite `encoder-grpc/`; parity suites `image.decode`, `image.preprocess`, `image.tokens`, `audio.logmel`, `asr.decode`, `media.hash`, `embed.wire.v1`; generated code for `tl/encoder/v1` in `tl-proto` and `contracts/go/gen`; standalone C test binaries with fixture parity for the optional `conv.h`, `image.h`, `audio.h` (sanitizers and the counting allocator, as in B8; no stub library for other languages, no `tl-sys`); registry support for `optional = true` milestones; drills `encoder-pool-loss` (`scale-zero`) and `image-flood` (`tenant-flood` with a `media-flood` profile) with scripted responders; `hf-real-mm`; `kind-e2e` rotation adds ops.13 and ops.14 and the MS-multimodal-prod steps; `ASSETS.tsv` rows and `build:` generators per 5.11 | lang.12, lang.13; M12.1 to M12.6, S-M12; L13.1 to L13.7; L14.1 to L14.5; L15.1 to L15.7; ds.10; data.10 to data.13; dur.13; gw.09 to gw.11; load.03; dep.08; obs.06; ops.13, ops.14; ethics.07, ethics.08; craft.24; review.04; MS-L13, MS-L14, MS-mm-corpus, MS-L15, MS-multimodal-prod, MS-P12; optional L13.8, L13.9, L14.6 and MS-mm-kernels (authored last; core verification never depends on them); side quests sq.audio-llm, sq.streaming-asr, sq.vision-agent, sq.jpeg-decoder, sq.video-frames | `paths/course-p12-multimodal/` (README, `path.tsv`, `milestone.md`); `paths/course/path.tsv` gains `@course-p12-multimodal`; new topic README `math/12-signals-and-images/`; new part READMEs `ml/08-tinyllm/{p13-vision,p14-speech,p15-multimodal-serving}/`; chapter indexes in `data-engineering/05-corpus-pipeline/`, `ai-platform-engineering/12-gateway/`, `responsible-ai/{02-privacy-and-pii,04-bias-and-safety-evals}/`; `ml/05-foundation-models/README.md` section 4 gains pointers to L13.5, L13.7, L14; fixtures 6 MiB | `ss lint && ss learn --verify && ss verify course --changed origin/main && ss parity && ss conform openapi:v2 --target engine --cases 'mm.*,audio.*' && ss milestone MS-P12 --smoke` (nightly: `hf-real-mm` for the real-weight steps, `kind-e2e` for MS-multimodal-prod) |
 
-Committed-fixture budgets sum to 50 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 + 2 + 4 + 1).
+Committed-fixture budgets sum to 56 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 + 2 + 4 + 1 + 6).
+
+**Authoring order inside B14**: M12 and S-M12, then L13.1 to L13.7 and MS-L13 (Python only, unblocks fixtures), L14 and MS-L14, data and ethics with MS-mm-corpus, then lang.13, ds.10, L15 with MS-L15, then gw, load, dep, obs, ops, craft, and review with MS-multimodal-prod, and last the optional kernels with MS-mm-kernels. B14 adds about 15 weeks for the learner (primers 0.5, M12 and S-M12 2, L13 4, L14 3, data and ethics 1.5, L15 3, gateway through review 1).
 
 `kind`, `helm`, and `tilt` must be installed locally for B1 (`brew install kind helm tilt`); CI gets kind from `helm/kind-action`.
 
@@ -3560,10 +4476,15 @@ Committed-fixture budgets sum to 50 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 +
 | Q7 | Glue-file ownership: crate roots (`tl-tok/src/lib.rs`) and the Python `__main__` dispatch are shared by several modules. The rule "first creator owns it; it declares all submodules; `ss start` stubs the rest; nobody overwrites it" needs a prototype in B1/B4. | as stated in 2.15 and 5.2 |
 | Q8 | Mutation testing cost for Rust and C even with a shared warm target dir, the hash-keyed cache, and `ss check` sampling. Is a cap of 40 mutants per module enough to keep `full-verify` shards inside 90 minutes? | cap at 40; measure in B6 |
 | Q11 | `course-corpora` (about 20 MB) and `tiny-hf-models` (about 8 MB) become release assets of the supersource GitHub repo, fetched by `ss fetch`. Is that hosting acceptable, or should they live elsewhere (a Hugging Face dataset repo)? | supersource release assets |
-| Q12 | Pass durations (about 67 weeks part-time after adding the primers) are estimates; recalibrate after the first cohort or self-run. | estimates only |
+| Q12 | Pass durations (about 82 weeks part-time: 67 through P11 after adding the primers, 15 for P12) are estimates; recalibrate after the first cohort or self-run. | estimates only |
 | Q13 | The contracts module path `supersource.urmzd.com/tl/contracts` (D4) uses the site's domain. It resolves only through the `replace`; should the site also serve a `go-import` meta tag so the path is fetchable? | `replace` only |
 | Q14 | D34 keeps references readable on disk (honor system), because `--ref-deps` and local mutation grading need them. Is that acceptable, or should graded verdicts (`pass` vs `assisted`) be re-run in the learner's CI against a fresh checkout to make spoiling visible? | honor system plus CI re-run of `ss check --all --ci` |
 | Q15 | Scope added by the fixes: core ELECTRA (L6.3) and Unigram (L1.4) through the model zoo and tokenizer ablation, engine speculative decoding (L10.8) and tool calls (L10.9), MLA and MoE as core C1 ablations, and eleven `lang.*` primers. Keep all of them core? | core |
+| Q16 | `fast_image_resize` is not documented as PIL bit-compatible. If the engine path misses the 1 LSB bound against PIL, port the learner's Python resize to plain Rust in L15.1, or relax the engine bound to 2 LSB? | test early in B14; fall back to a plain Rust port of M12.3 |
+| Q17 | Metal results differ from CPU beyond the f32 tolerances. Should any milestone step run on Metal, or is Metal only a local `perf` concern? | Metal only in `ci = "local"` perf steps |
+| Q18 | SmolVLM's exact `Idefics3ImageProcessor` behavior for the global image and the newer `SmolVLMForConditionalGeneration` class names depend on the pinned transformers version. Pin which version? | pin at authoring; the loader accepts both key layouts |
+| Q19 | Should `sq.audio-llm` and `sq.streaming-asr` become core in a later pass once a call site exists (for example a voice agent)? Vision bias evals have no person images: are domain-disparity and counterfactual caption probes enough for ethics.07? | side quests; probes only, no face datasets |
+| Q20 | The OpenCV Haar cascade (data.12) carries the Intel License Agreement in its header; it was not verified with the other B14 assets. Verify before its `ASSETS.tsv` row, or train a tiny cascade from CC0 data? | verify before data.12 is authored |
 
 ### Resolved since v1
 
@@ -3574,6 +4495,14 @@ Committed-fixture budgets sum to 50 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 +
 | Q10 | A frontier key is never required: MS-agent runs on SmolLM2-135M-Instruct served by the learner's engine with tool calls (L10.9), and CI uses the `faketool` provider. |
 | Q11 (v1) | SmolLM2-135M-Instruct is an acceptable agent model, fetched as an asset and labelled as third-party in the model card (D20). |
 | Q13, Q14 (v1) | Removed: they reopened decision 3 (optional C++/Zig drills stay) and decision 9 (`responsible-ai/` is a new track). |
+| B14 Q1 | The committed-fixture cap rises to 56 MiB (D52). |
+| B14 Q2 | Licenses verified and recorded (5.11); Common Voice replaced by a LibriSpeech-derived stand-in. |
+| B14 Q4 | No cross-request batching in the encoder or the Whisper decoder in v1 (D43). |
+| B14 Q8 | WAV-only audio input for v1; other formats get 400 `unsupported_media_type` (D47). |
+| B14 Q10 | Pass 12 is core and comes after `v1.0.0` (D52). |
+| B14 Q11 | `hf-real` is split: `hf-real` (text) and `hf-real-mm` (5.14). |
+| B14 Q12, Q13 | Python never decodes images through Rust: Pillow in Python, the `image` crate in Rust, `.npy` pixel fixtures (D46). With no `kernels = "c"` switch (D41), the Metal and C combination question is gone. |
+| B14 Q14 | `optional = true` on `MS-mm-kernels`, excluded from every pass gate. |
 
 ### Resolved conflicts not listed in 1.5
 

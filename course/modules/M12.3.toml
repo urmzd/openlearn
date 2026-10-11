@@ -1,0 +1,32 @@
+id        = "M12.3"
+title     = "Resampling and interpolation"
+kind      = "build"
+lang      = ["python"]
+pass      = 12
+chapter   = "math/12-signals-and-images/03-resampling-and-interpolation.md"
+contract  = ["contracts/py/tinyllm/sig/resample.pyi"]
+deps      = ["M12.1"]   # resample_audio is one strided conv1d_direct
+# M12.2 (HWC pixels), M02.1 (the sinc and its series), M12.5 (aliasing) are
+# concepts the chapter uses, not calls (B41-03 rule).
+reading   = ["M12.2", "M02.1", "M12.5"]
+# Call sites (DESIGN 4.1): L13.6 (resize), L13.3 (interpolate_pos_embed),
+# L14.1 (resample_audio), data.10 (thumbnails). None is registered yet
+# (DEVIATIONS B14M12-01).
+used_by   = []
+units     = ["python/tinyllm/sig/resample.py"]
+upgrades  = []
+milestone = "MS-P12"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M12.3"
+smoke     = ["test_hand_example_bilinear_antialias"]
+timeout_s = 60
+determinism_runs = 2
+
+[fixtures]
+files = [
+  "course/fixtures/M12.3/resize_pil.npz",
+  "course/fixtures/M12.3/resize_torch.npz",
+  "course/fixtures/M12.3/resample_torchaudio.npz",
+]

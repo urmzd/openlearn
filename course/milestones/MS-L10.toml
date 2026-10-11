@@ -18,12 +18,17 @@
 #   [entry].engine        `--config {config}` (L10.5): your tl-serve main reads
 #                         runtime.toml; its [engine].model_dir is the model
 #   [services.engine]     config = a runtime.toml template serving
-#                         course/fixtures/L7.9/tiny-llama-2l-1k as model "tiny"
+#                         course/fixtures/L7.9/tiny-llama-2l-1k as the model
+#                         [endpoints].model names (default "tracer")
 #                         ({fixture:L7.9/tiny-llama-2l-1k} fills the path);
 #                         health = "http://127.0.0.1:{health_port}/healthz"
 #   [services.engine-spec]  the same template with
 #                         [engine].speculative = { draft = "prompt_lookup", k = 4 }
 #   [services.engine-instruct]  (nightly) model_dir = {asset:smollm2-135m-instruct}
+#   [services.engine-prefill], [services.engine-decode-a], [services.engine-decode-b]
+#                         the same model with [engine].role = "prefill" and
+#                         "decode" (L10.6); the harness fills grpc_listen and
+#                         kv_listen with allocated ports ({grpc_port}, {kv_port})
 #   [entry].loadgen       {loadgen} --target <base url without /v1> --model <m>
 #                         --prompt <text> --max-tokens <n> --mode burst
 #                         --burst <n> --duration <d> --out <report.json>:
@@ -31,15 +36,21 @@
 #                         to --out and prints it as the final stdout line
 #                         (`{loadgen} compare` belongs to the optional load.02)
 #
+# Two matchers compare your engines with each other (course/harness disagg.py):
+# `greedy-equal` (the plain and the speculative engine give one greedy text)
+# and `disagg`, the disaggregated run without the gateway: tokenize on P,
+# EngineControl.Prefill on P with decode_target = a decode engine's kv port,
+# then the same request on that engine with X-TL-KV-Handle. Its cases: Info
+# roles, greedy (plain and streamed, alternating the two decode engines) and
+# seeded output equal to the unified engine, an unknown and a released handle
+# answering 404 kv_handle_not_found, and a transfer reset mid-push (a harness
+# proxy in front of the kv port) failing Prefill without leaking a KV block
+# on either side, after which that decode engine serves again.
+#
 # Covered elsewhere, so not repeated here: Rust and Python samplers agree on
 # fixture logits (L10.1's course tests, parity/sampler); the engine's greedy
 # stream equals your Python on the tiny model (L10.1's runner tests and
-# conformance chat.nonstream.greedy). Not yet expressible with the harness's
-# matchers (DEVIATIONS B92-05): the disaggregated run (one prefill and two
-# decode engines driven through Prefill and X-TL-KV-Handle resume, with a
-# transfer reset) and the greedy-equality check across the plain and the
-# speculative engine; L10.6's and L10.8's course tests prove both on a fake
-# model until a `disagg` suite lands.
+# conformance chat.nonstream.greedy).
 #
 # `ss milestone MS-L10 --smoke` runs the conformance step only.
 id       = "MS-L10"
@@ -64,12 +75,27 @@ name     = "speculative-engine-conforms"
 services = ["engine-spec"]
 expect   = { match = "suite", suite = "openapi:v1:engine", service = "engine-spec" }
 
+# Greedy output is unchanged with prompt-lookup speculation on (L10.8): each
+# prompt (one repeats a phrase, so drafts are proposed) gives one text and
+# one token count on both engines.
+[[step]]
+name     = "speculative-greedy-unchanged"
+services = ["engine", "engine-spec"]
+expect   = { match = "greedy-equal", engines = ["engine", "engine-spec"], max_tokens = 32 }
+
+# -- disaggregated serving (DESIGN 4.3 step 5) ----------------------------------------
+
+[[step]]
+name     = "disaggregated-equals-unified"
+services = ["engine", "engine-prefill", "engine-decode-a", "engine-decode-b"]
+expect   = { match = "disagg", unified = "engine", prefill = "engine-prefill", decode = ["engine-decode-a", "engine-decode-b"] }
+
 # -- load: 64 at once from your load generator -------------------------------------
 
 [[step]]
 name      = "burst-of-64"
 run       = "loadgen"
-argv      = ["--target", "http://127.0.0.1:{engine.port}", "--model", "tiny", "--prompt", "Once upon a time",
+argv      = ["--target", "http://127.0.0.1:{engine.port}", "--model", "{endpoints.model}", "--prompt", "Once upon a time",
              "--max-tokens", "16", "--mode", "burst", "--burst", "64", "--duration", "1s", "--out", "{out}/report.json"]
 timeout_s = 180
 expect    = { match = "json-schema", schema = { type = "object", required = ["requests", "errors", "ttft_ms", "tpot_ms"], properties = { requests = { minimum = 64 }, errors = { maximum = 0 }, ttft_ms = { type = "object", required = ["p50"] }, tpot_ms = { type = "object", required = ["p50"] } } } }
@@ -93,11 +119,11 @@ expect = { match = "contains", text = "gen_ai_server_time_to_first_token_seconds
 
 [[step]]
 name   = "forced-tool-call-tiny"
-http   = { method = "POST", url = "{engine.api_base}/chat/completions", json = { model = "tiny", max_tokens = 64, messages = [{ role = "user", content = "Weather in Paris?" }], tools = [{ type = "function", function = { name = "get_weather", parameters = { type = "object", properties = { city = { type = "string" } }, required = ["city"], additionalProperties = false } } }], tool_choice = { type = "function", function = { name = "get_weather" } } } }
+http   = { method = "POST", url = "{engine.api_base}/chat/completions", json = { model = "{endpoints.model}", max_tokens = 64, messages = [{ role = "user", content = "Weather in Paris?" }], tools = [{ type = "function", function = { name = "get_weather", parameters = { type = "object", properties = { city = { type = "string" } }, required = ["city"], additionalProperties = false } } }], tool_choice = { type = "function", function = { name = "get_weather" } } } }
 expect = { match = "contains", text = "\"finish_reason\":\"tool_calls\"" }
 
 [[step]]
 name     = "tool-call-smollm2-instruct"
 ci       = "nightly"
 services = ["engine-instruct"]
-expect   = { match = "suite", suite = "openapi:v1:engine", service = "engine-instruct" }
+expect   = { match = "suite", suite = "openapi:v1:engine", service = "engine-instruct", params = { "tools.call" = { tool_choice = "auto" }, "tools.stream" = { tool_choice = "auto" } } }

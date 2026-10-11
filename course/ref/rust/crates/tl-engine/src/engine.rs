@@ -16,7 +16,7 @@ use anyhow::{anyhow, Result};
 use crate::block_manager::BlockManager;
 use crate::chunk::{plan, Chunked};
 use crate::model::ModelConfig;
-use crate::runner::{lock, EngineConfig, ModelRunner};
+use crate::runner::{lock, EngineConfig, ModelRunner, PrefixCache};
 use crate::sample::{sample, stream, Pcg32, SamplingParams, PURPOSE_SAMPLE};
 use crate::sched::{AdmitError, BlockSpace, FinishReason, Request, RequestEvent, RequestId, Scheduler, SchedulerConfig, StepOutput};
 
@@ -193,6 +193,9 @@ impl Engine {
         let s = self.sched.stats();
         let kv = lock(&self.runner.pool()).map(|p| p.stats()).unwrap_or_default();
         let bm = self.sched.blocks();
+        // The radix cache holds a pool reference on each block it keeps, so
+        // the pool counts them used; with no request on them they are cached.
+        let held = if bm.mode() == PrefixCache::Radix { (bm.cached_blocks() as u32).min(kv.used) } else { 0 };
         EngineStats {
             steps: s.step,
             waiting: s.waiting,
@@ -201,8 +204,8 @@ impl Engine {
             batch_tokens: self.batch_tokens,
             kv_total: bm.total_blocks() as u32,
             kv_free: kv.free,
-            kv_used: kv.used,
-            kv_cached: kv.cached,
+            kv_used: kv.used - held,
+            kv_cached: kv.cached + held,
             kv_evictions: bm.stats().evictions,
             prefix_hit_rate: bm.hit_rate(),
         }

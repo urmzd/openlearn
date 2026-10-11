@@ -112,8 +112,13 @@ pub fn rollback(pool: &mut KvPool, table: &mut Vec<u32>, keep: usize) -> Result<
 pub trait Target { fn cached(&self) -> usize; fn extend(&mut self, ids: &[u32]) -> Result<Vec<Vec<f32>>, SpecError>; fn truncate(&mut self, len: usize) -> Result<(), SpecError>; }
 pub struct SpecStats { pub drafted: usize, pub accepted: usize, pub target_calls: usize }   // accept_rate()
 pub fn generate(target: &mut dyn Target, cfg: &SpecConfig, prompt: &[u32], p: &SamplingParams,
-                seed: u64, max_new: usize, eos: &[u32]) -> Result<Generated, SpecError>;
+                seed: u64, max_new: usize, eos: &[u32]) -> Result<Generated, SpecError>;   // given: generate_stream, never stopped
+pub fn generate_stream(target: &mut dyn Target, cfg: &SpecConfig, prompt: &[u32], p: &SamplingParams,
+                       seed: u64, max_new: usize, eos: &[u32],
+                       on_token: &mut dyn FnMut(u32, f64) -> bool) -> Result<Generated, SpecError>;
 ```
+
+You write `generate_stream`: `generate`'s loop, handing each emitted token and its logprob to `on_token` as soon as its round is verified, and returning at once with what it has when `on_token` answers false. The serve loop streams through it and stops a request whose client left. `RunnerTarget` (given) is the production `Target`: the runner returns one logits row per sequence, so it feeds every id as its own one-token sequence over the request's blocks, at its own position, in one forward.
 
 ### What the tests check
 
@@ -135,6 +140,8 @@ pub fn generate(target: &mut dyn Target, cfg: &SpecConfig, prompt: &[u32], p: &S
 | `rollback_hand_example` | unit | section 3's rollback, a full block, keep 0, `blocks_for` | the worked example |
 | `rollback_drops_one_reference_only` | fault | a block shared with another sequence survives | the prefix cache is never corrupted |
 | `blocks_conserved_across_rollbacks` | property | 200 seeded requests with many rejections on a real pool: blocks match positions, nothing leaks | weeks of speculation do not shrink the pool |
+| `generate_stream_hands_over_each_token_and_stops_when_told` | conformance | every emitted token reaches the listener in order; a listener that says stop ends generation there | the engine streams a speculative answer and frees it when the client leaves |
+| `runner_target_scores_every_fed_position` | differential | on L7.9's tiny llama: one row per fed id, each equal to a fresh run of its prefix; prompt lookup emits plain greedy's tokens | speculation works on a real model, not only the fake |
 
 ## 5. Pitfalls
 

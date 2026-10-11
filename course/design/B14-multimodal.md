@@ -1,5 +1,7 @@
 # Supersource Course: B14 Multimodal (vision and speech)
 
+> **Merged** into [`course/DESIGN.md`](../DESIGN.md) on 2026-10-10 (D41 to D52, Pass 12 rows in every section; no FFI: no `tinyllm_rs`, `tl-py`, `tl-sys`, or `kernels = "c"`, and L15.8 is retired). DESIGN.md is the spec; this draft is kept for history only.
+
 | | |
 |---|---|
 | **Status** | Draft v1, proposed section for `course/DESIGN.md`; not merged (a build workflow is reading DESIGN.md) |

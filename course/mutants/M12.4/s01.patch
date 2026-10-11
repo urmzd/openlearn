@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/fft.py
++++ b/python/tinyllm/sig/fft.py
+@@ -55,7 +55,7 @@
+     sub = _fft(np.swapaxes(x.reshape(*lead, m, p), -1, -2))
+     r = np.arange(p)[:, None]
+     k = np.arange(m)[None, :]
+-    tw = np.exp(-2j * np.pi * ((r * k) % n) / n)  # W_n^{r k}, [p, m]
++    tw = np.exp(2j * np.pi * ((r * k) % n) / n)  # W_n^{r k}, [p, m]
+     # X[q m + k] = sum_r W_p^{r q} (W_n^{r k} Y_r[k]): a size-p DFT per k.
+     out = np.einsum("qr,...rk->...qk", dft_matrix(p), sub * tw)
+     return out.reshape(*lead, n)

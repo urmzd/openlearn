@@ -1,9 +1,10 @@
-// Command gateway is the reference entry point for the `gateway` role in its
-// tracer form (course/contracts/spec/cli-roles.md), used only by course CI.
-// Entry points are learner territory (DESIGN D16): the learner writes their
-// own go/cmd/gateway; this one shows what the milestone runner expects.
+// Command gateway is the reference entry point for the `gateway` role
+// (course/contracts/spec/cli-roles.md), used only by course CI. Entry points
+// are learner territory (DESIGN D16): the learner writes their own
+// go/cmd/gateway; this one shows what the milestone runner expects.
 //
-//	gateway --port <n> --health-port <n> --upstream <engine base URL>
+//	gateway --port <n> --health-port <n> --upstream <engine base URL>   (tracer form, gw.00)
+//	gateway --config <runtime.toml>                                     (gw.01 on; compose.go)
 //
 // The key is read from the environment variable named by --api-key-env
 // (default TL_API_KEY, the `[endpoints].api_key_env` default). Spans go to
@@ -33,9 +34,13 @@ func main() {
 	healthPort := flag.Int("health-port", 9464, "health port: /healthz and /readyz")
 	upstream := flag.String("upstream", "", "engine base URL without /v1, e.g. http://127.0.0.1:8081")
 	keyEnv := flag.String("api-key-env", "TL_API_KEY", "environment variable holding the API key")
+	configPath := flag.String("config", "", "runtime.toml: the --config form (compose.go)")
 	flag.Parse()
-	if *upstream == "" || flag.NArg() != 0 {
-		fmt.Fprintln(os.Stderr, "usage: gateway --port N --health-port N --upstream URL")
+	if *configPath != "" && *upstream == "" && flag.NArg() == 0 {
+		os.Exit(runConfig(*configPath, *keyEnv))
+	}
+	if *upstream == "" || *configPath != "" || flag.NArg() != 0 {
+		fmt.Fprintln(os.Stderr, "usage: gateway --port N --health-port N --upstream URL | gateway --config FILE")
 		os.Exit(2)
 	}
 	key := os.Getenv(*keyEnv)

@@ -1,0 +1,11 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/sig/conv.py	semantic	pitfall-1	120	y	(hidden until pass)	kernel flipped: true convolution instead of cross-correlation
+s02	python/tinyllm/sig/conv.py	semantic	pitfall-2	40	y	(hidden until pass)	dilation left out of the kernel span
+s03	python/tinyllm/sig/conv.py	semantic	pitfall-3	212	y	(hidden until pass)	col2im assigns overlapping windows instead of summing them
+s04	python/tinyllm/sig/conv.py	semantic	pitfall-4	176	n	(hidden until pass)	im2col rows ordered (r, s, c)
+s05	python/tinyllm/sig/conv.py	semantic	pitfall-5	119	n	(hidden until pass)	every group reads the first group's channels
+s06	python/tinyllm/sig/conv.py	semantic	pitfall-6	115	n	(hidden until pass)	all padding on the top and left
+s07	python/tinyllm/sig/conv.py	semantic	pitfall-7	233	n	(hidden until pass)	Toeplitz matrix ignores the padding offset
+m01	python/tinyllm/sig/conv.py	auto	constant	45	n	output size changed	+ 1 dropped
+m02	python/tinyllm/sig/conv.py	auto	cmp_flip	41	n	fit check changed	< to <=
+m03	python/tinyllm/sig/conv.py	auto	cond_drop	49	n	group check changed	output-channel divisibility dropped

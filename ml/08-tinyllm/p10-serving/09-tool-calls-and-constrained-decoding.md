@@ -10,7 +10,7 @@
 | **Contract** | the Python specification you port: [`py/tinyllm/infer/constrain.pyi`](../../../course/contracts/py/tinyllm/infer/constrain.pyi) (L8.7) · HTTP: [`openapi/openai-subset.v1.yaml`](../../../course/contracts/openapi/openai-subset.v1.yaml) (`tools`, `tool_choice`, `response_format`, `tool_calls` deltas, `finish_reason: tool_calls`) · conformance `tools.call`, `tools.stream`, `tools.choice` |
 | **Tests** | `course/tests/rust/l10_9.rs`, 20 tests (what they check: section 4); the `L10.5` and `L10.7` tests run as the regression of the server you take over |
 | **Needs** | `L8.7` your Python constrained decoding, the specification ([chapter](../p08-inference/07-constrained-decoding.md)) · `L10.1` the sampler ([chapter](01-model-runner-and-sampler.md)) · `L10.5` the chat template and the API error shape ([chapter](05-openai-server-on-tokio.md)) · `L1.5` the `Tokenizer` trait ([chapter](../p01-tokenizers/05-rust-fast-bpe.md)) · `L10.7` the serve loop you take over, which records metrics and spans ([chapter](07-serving-metrics-and-tracing.md)) · reading: `M06.1` graphs and reachability ([chapter](../../../math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md)) · or `--ref-deps` |
-| **Used by** | the serve loop you take over, and so its call site `obs.02`, which runs your engine; `ag.01` and `MS-agent` read `tool_calls` from it over HTTP |
+| **Used by** | the serve loop you take over, and so its call site `obs.02`, which runs your engine; `ag.01` and `MS-agent` read `tool_calls` from it over HTTP; `craft.14` takes the serve loop over next to serve API v1 and v2 side by side |
 | **Milestone** | `MS-L10` (and `MS-agent`, where SmolLM2-135M-Instruct calls your agent's tools through it) |
 | **Optional depth** | Hopcroft, Motwani, Ullman, *Introduction to Automata Theory*, ch. 2 to 4; [Willard and Louf, Efficient Guided Generation](https://arxiv.org/abs/2307.09702) (free); [XGrammar](https://arxiv.org/abs/2411.15100) (free); [OpenAI function calling guide](https://platform.openai.com/docs/guides/function-calling) (free) |
 
@@ -201,6 +201,7 @@ pub fn delta_json(e: &ToolEvent) -> String;
 | Back | `L1.5` | `Tokenizer::token_bytes` for the vocabulary's bytes |
 | Back | `L10.7` | the serve loop you take over: tool requests are recorded and traced through its calls |
 | Forward | `obs.02` | runs your engine, whose serve loop is now this module's `server.rs` (the call site an upgrade inherits, DESIGN 3.4) |
+| Forward | `craft.14` | takes your `server.rs` over to select API v1 or v2 per request (Pass 11) |
 
 `ag.01` parses your `tool_calls` deltas; `MS-agent` runs SmolLM2-135M-Instruct through your engine with tool calls; the conformance cases `tools.call`, `tools.stream`, `tools.choice` turn from pending to checked once this module passes.
 

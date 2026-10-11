@@ -1,0 +1,11 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/sig/mel.py	semantic	pitfall-1	43	y	(hidden until pass)	Slaney scale linear everywhere
+s02	python/tinyllm/sig/mel.py	semantic	pitfall-2	93	y	(hidden until pass)	Slaney area normalization skipped
+s03	python/tinyllm/sig/mel.py	semantic	pitfall-3	80	y	(hidden until pass)	edges equally spaced in Hz, not mel
+s04	python/tinyllm/sig/mel.py	semantic	pitfall-4	109	y	(hidden until pass)	power treated as amplitude: 20 log10
+s05	python/tinyllm/sig/mel.py	semantic	pitfall-5	112	n	(hidden until pass)	top_db clipped against 0 dB, not the maximum
+s06	python/tinyllm/sig/mel.py	semantic	pitfall-6	124	y	(hidden until pass)	natural log in Whisper's features
+s07	python/tinyllm/sig/mel.py	semantic	pitfall-7	126	n	(hidden until pass)	Whisper's range written in dB
+m01	python/tinyllm/sig/mel.py	auto	cmp_flip	103	n	amin check changed	<= to <
+m02	python/tinyllm/sig/mel.py	auto	cmp_flip	72	n	band check changed	< to <=
+m03	python/tinyllm/sig/mel.py	auto	constant	105	n	top_db check changed	0 to -1
