@@ -1,2 +1,0 @@
-Cig packs / day (X):	0	0.5	1	1.5	2	2.5
-Relative risk (Y):	1	5	13	17	23	26

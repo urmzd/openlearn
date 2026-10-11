@@ -2,7 +2,7 @@
 
 Building the systems that move, store, and shape data so analysts, ML models, and applications can use it reliably. From storage formats and warehouses through batch/stream processing to orchestration and data quality.
 
-> **Prerequisites**: [Algorithms](../algorithms/) (especially [Concurrency & Systems](../archive/algorithms/12-concurrency-systems/)), [System Design](../systems/01-system-design/) basics, SQL
+> **Prerequisites**: [Algorithms](../algorithms/), [System Design](../systems/01-system-design/) basics, SQL
 
 ## Prerequisite Graph
 

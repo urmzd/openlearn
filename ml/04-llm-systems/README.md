@@ -9,7 +9,7 @@
 - **Deep dive**: [Model Loading](model-loading/) -- Hub repo anatomy, safetensors byte layout, what `from_pretrained` does, how engines shard weights, cold-start math
 - **Deep dive**: [Serving & Load](serving-and-load/) -- prefill vs decode, memory budgets, SLOs, parallelism, vLLM/SGLang knobs, load testing, cost per token
 - **Practical guide**: [LLM Serving Platforms](serving-platforms.md) -- how Anyscale, Ray, vLLM, SGLang, RouteLLM, and OpenRouter work; use cases, trade-offs, and reproducibility
-- **Prerequisites**: [Deep Learning](../02-deep-learning/) (transformers, attention), [Cloud Native](../../systems/03-cloud-native/) (containers, K8s), [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/)
+- **Prerequisites**: [Deep Learning](../02-deep-learning/) (transformers, attention), [Cloud Native](../../systems/03-cloud-native/) (containers, K8s)
 - **Estimated time**: 4-6 weeks at 10-12 hrs/week
 
 ## Key Takeaways
@@ -187,7 +187,6 @@ How the block table works: each sequence sees contiguous *logical* blocks; the t
 | K8s, autoscaling, containers, GPU scheduling | [Cloud Native](../../systems/03-cloud-native/) | Deployment substrate |
 | Caching, load balancing, queueing, SLOs | [System Design](../../systems/01-system-design/) | Request routing and capacity planning |
 | Tail latency, RED/USE metrics, profiling | [Observability](../../systems/04-observability/) | Measuring TTFT/TPOT, finding bottlenecks |
-| Memory hierarchy, bandwidth, parallelism | [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/) | Why inference is memory-bound |
 | Quantization as lossy compression | [Information Theory](../../math/11-information-theory/) | Bits-per-weight vs quality tradeoff |
 | Streaming pipelines, feature serving | [Data Engineering](../../data-engineering/) | Getting data to and from the model |
 

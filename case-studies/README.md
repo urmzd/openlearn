@@ -73,7 +73,7 @@ improvement is a trade-off; some are just the right answer written down.
 | Order Book Matching | [Algorithms](../algorithms/) (heaps, ordering, amortised analysis) |
 | Grounded SQL Agent | [LLM Evaluation](../ai-platform-engineering/09-llm-evaluation/), [Retrieval & RAG](../ai-platform-engineering/07-retrieval-and-rag/), [Authorization](../ai-platform-engineering/08-authorization-and-access-control/) |
 | Exactly-Once Event API | [Distributed Workers](../ai-platform-engineering/05-durable-orchestration-and-workers/), [Durable Orchestration](../ai-platform-engineering/05-durable-orchestration-and-workers/) |
-| K-Means Optimization | [ML & Statistics](../archive/algorithms/14-ml-statistics/), [Statistical Learning](../ml/01-statistical-learning/) |
+| K-Means Optimization | [Statistical Learning](../ml/01-statistical-learning/) |
 
 For the failure modes these builds were consciously avoiding, see
 [Lessons from Practice](../software-craftsmanship/04-lessons-from-practice/).

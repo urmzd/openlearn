@@ -322,7 +322,6 @@ A runnable example (autodiff/NdArray backend, quantize → dequantize → measur
 | Rate-distortion, entropy, quantile coding | [Information Theory](../../../math/11-information-theory/) | Why NF4/Lloyd–Max are optimal |
 | Hessian, Cholesky, orthogonal/Hadamard matrices | [Linear Algebra](../../../math/03-linear-algebra/) | GPTQ, QuIP#, TurboQuant rotations |
 | Beta/Gaussian marginals, concentration | [Probability & Statistics](../../../math/07-probability-statistics/) | TurboQuant coordinate distribution |
-| Memory bandwidth, CUDA kernels, dp4a/mma | [Concurrency & Systems](../../../archive/algorithms/12-concurrency-systems/) | Dequant-fused GEMM |
 | KV cache, serving throughput | [LLM Systems & Inference](../) | What quantization buys you |
 
 ## Company Relevance

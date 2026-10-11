@@ -217,7 +217,6 @@ rather than the current behaviour.
 
 | Concept | Connected Track | How |
 |---------|-----------------|-----|
-| K-means as a pattern | [ML & Statistics](../../archive/algorithms/14-ml-statistics/) | The pattern; this study is the optimisation ladder |
 | Unsupervised learning, EM | [Statistical Learning](../../ml/01-statistical-learning/) | Lloyd's is EM's hard-assignment cousin |
 | Nearest-neighbour search, ANN | [Retrieval & RAG](../../ai-platform-engineering/07-retrieval-and-rag/) | The same distance-pruning ideas at index scale |
 | Amortised analysis | [Algorithms](../../algorithms/) | Why incremental updates beat rebuilds |

@@ -1,4 +1,0 @@
-# stage	title	files (comma-separated, repo-relative, read in order)	done when	check
-1	History of language models	ml/06-neural-architectures/README.md	You can explain, in order, why n-grams gave way to RNNs and LSTMs, why seq2seq needed attention, and why the Transformer, scaling laws, RLHF, MoE, and reasoning models each followed.	-
-2	Deep learning and transformer math	ml/02-deep-learning/README.md	You can derive backprop through softmax attention and compute, by hand, the FLOPs per token and the weight plus KV-cache memory of a 70B model.	-
-3	Architecture variants	ml/05-foundation-models/README.md	Given any config.json you can name the variant: dense or MoE, MHA, GQA, or MLA, RoPE scaling, context length, and say what each choice costs at inference.	-

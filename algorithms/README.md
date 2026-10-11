@@ -35,7 +35,7 @@ CLRS chapter references are noted in each topic README where applicable. For com
 | 15 | [Probabilistic Structures](15-probabilistic-structures/) | [Bloom Filter](15-probabilistic-structures/bloom.py) | Python | [Patterns](15-probabilistic-structures/README.md) |
 | 16 | [Systems Data Structures](16-systems-data-structures/) | Course modules `ds.01` to `ds.09`: Swiss and Robin Hood hash maps, heaps and top-k, LRU, radix tree, Bloom filter, bounded-load consistent hashing | C/Rust/Go | [Patterns](16-systems-data-structures/README.md) |
 
-Topics 12 to 14 were historical coursework (a C miner, Scheme exercises, ML and NLP labs) and moved to [`archive/algorithms/`](../archive/algorithms/); the numbers stay reserved so links and the study plan keep their order. Topics 01 to 11 and 15 are the interview-pattern chapters (off the course spine, used by the interview drills); topic 16 hosts course modules.
+Topics 12 to 14 were retired; the numbers stay reserved so links keep their order. Topics 01 to 11 and 15 are the interview-pattern chapters (off the course spine, used by the interview drills); topic 16 hosts course modules.
 
 ## Interviews
 
@@ -47,4 +47,4 @@ See [`interviews/README.md`](../interviews/README.md) for the full breakdown.
 
 Standalone implementations for hands-on practice.
 
-See [`practice/`](../practice/) for exercises. The K-Means clustering and TF-IDF vector search scripts are archived in [`archive/algorithms/14-ml-statistics/`](../archive/algorithms/14-ml-statistics/), where the course cites them as worked examples for `ag.07`.
+See [`practice/`](../practice/) for exercises.

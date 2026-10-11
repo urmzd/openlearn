@@ -2,7 +2,7 @@
 
 Production systems knowledge for Staff+ engineers. How to design, build, deploy, and operate software at scale.
 
-> **Prerequisites**: [Algorithms](../algorithms/) (especially [Concurrency & Systems](../archive/algorithms/12-concurrency-systems/))
+> **Prerequisites**: [Algorithms](../algorithms/)
 
 ## Topics
 

@@ -5,11 +5,11 @@ template: splash
 hero:
   tagline: A free, self-paced curriculum from undergraduate foundations to Staff-level depth. Math first, then the code that implements it, in C, CUDA, Rust, Go, and Python.
   actions:
-    - text: Pick a role path
-      link: /paths/
+    - text: Start the course
+      link: /paths/course/
       icon: right-arrow
-    - text: Browse the overview
-      link: /overview/
+    - text: Pass 0, setup
+      link: /paths/course-p00-setup/
       variant: minimal
     - text: View on GitHub
       link: https://github.com/urmzd/openlearn
@@ -19,21 +19,18 @@ hero:
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-## Follow a path
+## Build your own LLM system
 
-A path is a reading order for one job, cut across the tracks, with a checkable "done when" for every stage.
+One system, end to end: a byte-level model trained in Python, a Rust inference engine, a Go gateway, and the deployment that keeps it running. Each pass ends at a milestone that runs your whole system as it stands.
 
 <CardGrid>
-	<LinkCard title="Superstar FDE" href="/paths/superstar-fde/" description="Forward deployed engineer at an inference cloud, end to end: all six parts plus a capstone." />
-	<LinkCard title="LLM Foundations" href="/paths/llm-foundations/" description="From n-grams to reasoning models: history, transformer math, architecture variants." />
-	<LinkCard title="Inference Performance" href="/paths/inference-performance/" description="Engine internals, quantization, the framework map, serving and load testing." />
-	<LinkCard title="Training" href="/paths/training/" description="RL foundations, pretraining, SFT, preference and RL post-training, LoRA." />
-	<LinkCard title="Frameworks and Models" href="/paths/frameworks-and-models/" description="PyTorch, JAX, and Keras 3 side by side, then loading checkpoints from the Hub." />
-	<LinkCard title="AI Full Stack" href="/paths/ai-full-stack/" description="Token streaming, retrieval, evaluation, and routing across models." />
-	<LinkCard title="Field Engineering" href="/paths/field-engineering/" description="Discovery, sizing, performance testing, POCs, migrations, escalations." />
+	<LinkCard title="The course" href="/paths/course/" description="What you build, how grading works, and every pass." />
+	<LinkCard title="Pass 0: setup" href="/paths/course-p00-setup/" description="Your repo, its CI, and the tools the course checks." />
+	<LinkCard title="Pass 1: the tracer" href="/paths/course-p01-tracer/" description="A thin system through every layer before any layer is deep." />
+	<LinkCard title="The system" href="/paths/course/system/" description="Components, languages, contracts, and how it grows pass by pass." />
 </CardGrid>
 
-## Or go deep on a track
+## Reference tracks
 
 <CardGrid>
 	<LinkCard title="Mathematics" href="/math/" />
@@ -51,7 +48,9 @@ A path is a reading order for one job, cut across the tracks, with a checkable "
 		```bash
 		git clone https://github.com/urmzd/openlearn
 		cd openlearn
-		practice/bin/ol learn
+		practice/bin/ol doctor
+		practice/bin/ol course init --name forge
+		practice/bin/ol learn course next
 		```
 	</Card>
 	<Card title="Practice" icon="pencil">

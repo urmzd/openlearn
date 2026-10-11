@@ -1,5 +1,0 @@
-	Toues	Panama Hats	Fedoras
-Winter	114	117	119
-Spring	123	135	115
-Fall	136	134	116
-Summer	56	195	104

@@ -63,6 +63,5 @@ The engagement is the same for any platform; what changes is how much you can pr
 | Track | Connection |
 |---|---|
 | [Field Engineering](../) | the track this topic applies |
-| [Superstar FDE path](../../paths/superstar-fde/) | the role path whose capstone lives here |
 | [Security](../../software-craftsmanship/11-security/) | the threat model and SBOMs behind the questionnaire |
 | [Incident Response and Chaos](../../systems/05-incident-response-and-chaos/) | the runbooks the handoff uses |

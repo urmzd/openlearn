@@ -56,7 +56,7 @@ const START = [
 ];
 // Of course/, only the contracts are published (course/DESIGN.md 5.16): the
 // reference system, course tests, and design notes never reach the site.
-const SKIP = /^(site\/|app\/|packs\/|\.github\/|skills\/|archive\/|course\/(?!contracts\/)|CHANGELOG\.md|CODE_OF_CONDUCT\.md|SECURITY\.md)/;
+const SKIP = /^(site\/|app\/|packs\/|\.github\/|skills\/|archive\/|course\/(?!contracts\/)|CHANGELOG\.md|CODE_OF_CONDUCT\.md|SECURITY\.md)|\/tests\/fixtures\//;
 const IMAGE = /\.(svg|png|jpe?g|gif|webp)$/i;
 
 const tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
@@ -322,16 +322,6 @@ const courseItems = [
 const sidebar = [
 	{ label: 'Start here', items: START.filter(([f]) => sources.includes(f)).map(([f, label]) => ({ label, link: navOf(f) })) },
 	...(courseItems.length ? [{ label: 'Course', items: courseItems }] : []),
-	{
-		label: 'Role paths',
-		items: [
-			{ label: 'All paths', link: navOf('paths/README.md') },
-			...pathNames
-				.filter((d) => !isCourse(d))
-				.sort((a, b) => (a.endsWith('superstar-fde') ? -1 : b.endsWith('superstar-fde') ? 1 : a.localeCompare(b)))
-				.map(pathItem),
-		],
-	},
 	{ label: 'Library', items: TRACKS.filter(([d]) => dirs.has(d)).map(([d, label]) => tree(d, label)) },
 	...EXTRA_TREES.filter(([d]) => dirs.has(d)).map(([d, label]) => ({ ...tree(d, label), collapsed: true })),
 ];

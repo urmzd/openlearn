@@ -16,7 +16,7 @@ that a naive ``cat`` of every README cannot:
 Mermaid fenced code blocks are left untouched -- pandoc's ``mermaid-filter``
 renders them downstream (or they fall back to code blocks).
 
-With ``--path NAME`` it assembles one role path instead: the stages listed in
+With ``--path NAME`` it assembles one path instead: the stages listed in
 ``paths/NAME/path.tsv``, each a Part holding that stage's files in order, with
 the stage's "done when" criterion as the Part's opening line.
 
@@ -338,9 +338,7 @@ def main() -> int:
     parser.add_argument(
         "--root", default=Path(__file__).resolve().parent.parent, type=Path
     )
-    parser.add_argument(
-        "--path", help="assemble one role path from paths/<NAME>/path.tsv"
-    )
+    parser.add_argument("--path", help="assemble one path from paths/<NAME>/path.tsv")
     args = parser.parse_args()
 
     root = args.root.resolve()

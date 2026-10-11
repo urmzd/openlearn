@@ -4,7 +4,7 @@
 
 - **Primary reference**: *Cloud Native DevOps with Kubernetes* 2nd ed. (recommended)
 - **Supplementary**: [Kubernetes docs](https://kubernetes.io/docs/) (free), [The Twelve-Factor App](https://12factor.net/) (free)
-- **Prerequisites**: Linux basics, containers concept, [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/)
+- **Prerequisites**: Linux basics, containers concept
 - **Estimated time**: 3-4 weeks at 8-10 hrs/week
 
 ## Key Takeaways

@@ -11,7 +11,7 @@
   - [The Raft paper: *In Search of an Understandable Consensus Algorithm*](https://raft.github.io/raft.pdf) (free) -- the consensus behind KRaft and Redpanda
   - [ZooKeeper: Wait-free coordination for Internet-scale systems](https://www.usenix.org/legacy/event/atc10/tech/full_papers/Hunt.pdf) (free) -- ZAB and the coordinator Kafka shed
   - [KIP-500](https://cwiki.apache.org/confluence/display/KAFKA/KIP-500%3A+Replace+ZooKeeper+with+a+Self-Managed+Metadata+Quorum) (KRaft), [KIP-405](https://cwiki.apache.org/confluence/display/KAFKA/KIP-405%3A+Kafka+Tiered+Storage) (tiered storage), [KIP-932](https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka) (share groups) (all free)
-- **Prerequisites**: [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/), [System Design](../../systems/01-system-design/)
+- **Prerequisites**: [System Design](../../systems/01-system-design/)
 - **Estimated time**: 1-2 weeks at 8-10 hrs/week
 
 ## Key Takeaways
@@ -217,7 +217,6 @@ A cluster of brokers needs a single, agreed-upon answer to "who is the controlle
 | Consuming, rebalancing, DLQs, sizing | [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/) | The operational worker side of these dynamics |
 | Lag-based autoscaling | [Containers, Kubernetes & Workloads](../01-containers-kubernetes/) | KEDA scales a consumer group on lag |
 | Raft, ZAB, quorums, linearizability | [System Design](../../systems/01-system-design/) | Consensus and replicated-state-machine fundamentals |
-| Backpressure, producer/consumer | [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/) | The same flow-control problem in-process |
 | Delivery semantics as invariants | [The Testing Mentality](../../software-craftsmanship/03-testing-mentality/) | "Exactly-once is idempotency" is a property to test |
 
 ## Company Relevance

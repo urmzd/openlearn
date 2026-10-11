@@ -1,3 +1,0 @@
-# stage	title	files (comma-separated, repo-relative, read in order)	done when	check
-1	Frameworks: PyTorch, JAX, Keras 3	ai-platform-engineering/01-training-and-frameworks/README.md	The same tiny GPT trains in PyTorch and in JAX, and you can explain eager vs traced execution and where torch.compile and jit differ.	-
-2	Loading models from the Hub	ml/04-llm-systems/model-loading/README.md	You inspect a checkpoint without downloading it (safetensors header, config, tokenizer, chat template) and can diagnose the five most common load failures.	-
