@@ -45,6 +45,8 @@ Paths show only the top level. A path included by another path is reachable from
 
 Search replaces the lists with results while there is a query.
 
+Sections are separated by their label alone: small caps with a hairline running to the edge. A full-width rule is used once, above the footer, to set settings apart from the content lists.
+
 Collapsing leaves a rail of icons. It never hides the sidebar, so the control that collapses it is also the one that expands it and no view needs a second one. Anything without an icon is hidden in the rail.
 
 ## Lists

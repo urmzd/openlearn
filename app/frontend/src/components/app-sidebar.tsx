@@ -45,6 +45,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import type { Route } from "@/routes";
@@ -59,6 +60,12 @@ interface Props {
   onOpenDoc: (path: string) => void;
   onSwitchPack: (ref: string) => void;
 }
+
+/** The look of a section break in the sidebar: a small-caps label with a
+ *  hairline running to the edge. Every group uses it, so the breaks between
+ *  lists are quiet and identical. */
+const BREAK =
+  "h-7 gap-2 text-[11px] font-medium tracking-wider text-sidebar-foreground/50 uppercase after:h-px after:flex-1 after:bg-sidebar-border after:content-['']";
 
 /** The open pack is matched by where it was read from: a directory for packs
  *  on disk, the id for built-in ones. */
@@ -179,7 +186,7 @@ export function AppSidebar({
       <SidebarContent>
         {hits ? (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel>
+            <SidebarGroupLabel className={BREAK}>
               {hits.length === 0
                 ? "No documents match"
                 : `${hits.length} documents`}
@@ -229,7 +236,7 @@ export function AppSidebar({
 
             {topPaths.length > 0 && (
               <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-                <SidebarGroupLabel>Paths</SidebarGroupLabel>
+                <SidebarGroupLabel className={BREAK}>Paths</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {topPaths.map((p) => (
@@ -266,7 +273,7 @@ export function AppSidebar({
                   key={g.label}
                   className="group-data-[collapsible=icon]:hidden"
                 >
-                  <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+                  <SidebarGroupLabel className={BREAK}>{g.label}</SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {g.tracks.map((t) => (
@@ -292,6 +299,7 @@ export function AppSidebar({
         )}
       </SidebarContent>
 
+      <SidebarSeparator className="mx-0" />
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
