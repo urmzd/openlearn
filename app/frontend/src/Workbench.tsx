@@ -7,11 +7,17 @@
 // one click away from something else.
 
 import { useCallback, useEffect, useState } from "react";
-import { GetCourse, GetDoc, GetOutline, ListPaths } from "../wailsjs/go/main/App";
+import {
+  GetCourse,
+  GetDoc,
+  GetOutline,
+  ListPaths,
+} from "../wailsjs/go/main/App";
 import type { course } from "../wailsjs/go/models";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ProfessorPanel } from "@/components/page";
 import { Professor } from "@/components/professor";
 import type { Route } from "@/routes";
 import { DocView } from "@/views/DocView";
@@ -36,7 +42,9 @@ export function Workbench({ epoch }: Props) {
   const [route, setRoute] = useState<Route>({ kind: "home" });
   const [doc, setDoc] = useState<course.Doc | null>(null);
   const [notice, setNotice] = useState("");
-  const [professor, setProfessor] = useState(false);
+  // The professor is part of the layout, not a popup: it starts open and stays
+  // beside whatever is being read until it is hidden.
+  const [professor, setProfessor] = useState(true);
   const [practiceEpoch, setPracticeEpoch] = useState(0);
 
   const loadPaths = useCallback(() => {
@@ -74,99 +82,120 @@ export function Workbench({ epoch }: Props) {
 
   const track =
     route.kind === "track"
-      ? [...(outline?.tracks ?? []), ...(outline?.reference ?? [])].find((t) => t.dir === route.dir)
+      ? [...(outline?.tracks ?? []), ...(outline?.reference ?? [])].find(
+          (t) => t.dir === route.dir,
+        )
       : undefined;
   const titles = Object.fromEntries(paths.map((p) => [p.name, p.title]));
 
   return (
     <TooltipProvider>
-      <SidebarProvider className="h-full min-h-0">
-        <AppSidebar
-          info={info}
-          outline={outline}
-          paths={paths}
-          route={route}
-          professorOpen={professor}
-          onNavigate={setRoute}
-          onOpenDoc={openDoc}
-          onToggleProfessor={() => setProfessor((p) => !p)}
-        />
-        <SidebarInset className="h-full min-h-0 min-w-0 overflow-hidden">
-          {route.kind === "home" && (
-            <Home
-              info={info}
-              outline={outline}
-              paths={paths}
-              onNavigate={setRoute}
-              onOpenDoc={openDoc}
-              onAsk={() => setProfessor(true)}
-            />
-          )}
-          {route.kind === "doc" && doc && (
-            <DocView
-              doc={doc}
-              outline={outline}
-              repo={info?.repo}
-              onNavigate={setRoute}
-              onOpenDoc={openDoc}
-              onAsk={() => setProfessor(true)}
-            />
-          )}
-          {route.kind === "track" && track && <TrackView track={track} onOpenDoc={openDoc} />}
-          {route.kind === "path" && (
-            <PathView name={route.name} titles={titles} onOpenDoc={openDoc} onProgress={loadPaths} />
-          )}
-          {route.kind === "exercises" && (
-            <Exercises refresh={practiceEpoch} onOpen={(ref) => setRoute({ kind: "exercise", ref })} />
-          )}
-          {route.kind === "exercise" && (
-            <Runner
-              key={`${route.ref.kind}/${route.ref.lang}/${route.ref.name}`}
-              exercise={route.ref}
-              onBack={() => setRoute({ kind: "exercises" })}
-              onChanged={bumpPractice}
-            />
-          )}
-          {route.kind === "session" && (
-            <SessionSetup
-              modes={info?.modes ?? []}
-              source={route.source}
-              onClearSource={() => setRoute({ kind: "session", source: null })}
-              onOpenSettings={() => setRoute({ kind: "settings" })}
-            />
-          )}
-          {route.kind === "progress" && (
-            <Progress
-              key={epoch}
-              modes={info?.modes ?? []}
-              paths={paths.filter((p) => !p.part)}
-              onOpenPath={(name) => setRoute({ kind: "path", name })}
-            />
-          )}
-          {route.kind === "settings" && (
-            <Settings course={info} onPackChanged={() => loadPack().catch(() => {})} />
-          )}
-
-          {notice && (
-            <button
-              onClick={() => setNotice("")}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg border border-destructive/30 bg-background px-3 py-2 text-sm text-destructive shadow-lg"
-            >
-              {notice}
-            </button>
-          )}
-        </SidebarInset>
-        {professor && (
-          <Professor
-            docPath={route.kind === "doc" ? route.path : ""}
-            docTitle={route.kind === "doc" ? (doc?.title ?? "") : ""}
-            repo={info?.repo}
+      <ProfessorPanel.Provider
+        value={{ open: professor, show: () => setProfessor(true) }}
+      >
+        <SidebarProvider className="h-full min-h-0">
+          <AppSidebar
+            info={info}
+            outline={outline}
+            paths={paths}
+            route={route}
+            professorOpen={professor}
+            onNavigate={setRoute}
             onOpenDoc={openDoc}
-            onOpenSettings={() => setRoute({ kind: "settings" })}
-            onClose={() => setProfessor(false)}
+            onToggleProfessor={() => setProfessor((p) => !p)}
           />
-        )}
-      </SidebarProvider>
+          <SidebarInset className="h-full min-h-0 min-w-0 overflow-hidden">
+            {route.kind === "home" && (
+              <Home
+                info={info}
+                outline={outline}
+                paths={paths}
+                onNavigate={setRoute}
+                onOpenDoc={openDoc}
+                onAsk={() => setProfessor(true)}
+              />
+            )}
+            {route.kind === "doc" && doc && (
+              <DocView
+                doc={doc}
+                outline={outline}
+                repo={info?.repo}
+                onNavigate={setRoute}
+                onOpenDoc={openDoc}
+                onAsk={() => setProfessor(true)}
+              />
+            )}
+            {route.kind === "track" && track && (
+              <TrackView track={track} onOpenDoc={openDoc} />
+            )}
+            {route.kind === "path" && (
+              <PathView
+                name={route.name}
+                titles={titles}
+                onOpenDoc={openDoc}
+                onProgress={loadPaths}
+              />
+            )}
+            {route.kind === "exercises" && (
+              <Exercises
+                refresh={practiceEpoch}
+                onOpen={(ref) => setRoute({ kind: "exercise", ref })}
+              />
+            )}
+            {route.kind === "exercise" && (
+              <Runner
+                key={`${route.ref.kind}/${route.ref.lang}/${route.ref.name}`}
+                exercise={route.ref}
+                onBack={() => setRoute({ kind: "exercises" })}
+                onChanged={bumpPractice}
+              />
+            )}
+            {route.kind === "session" && (
+              <SessionSetup
+                modes={info?.modes ?? []}
+                source={route.source}
+                onClearSource={() =>
+                  setRoute({ kind: "session", source: null })
+                }
+                onOpenSettings={() => setRoute({ kind: "settings" })}
+              />
+            )}
+            {route.kind === "progress" && (
+              <Progress
+                key={epoch}
+                modes={info?.modes ?? []}
+                paths={paths.filter((p) => !p.part)}
+                onOpenPath={(name) => setRoute({ kind: "path", name })}
+              />
+            )}
+            {route.kind === "settings" && (
+              <Settings
+                course={info}
+                onPackChanged={() => loadPack().catch(() => {})}
+              />
+            )}
+
+            {notice && (
+              <button
+                onClick={() => setNotice("")}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg border border-destructive/30 bg-background px-3 py-2 text-sm text-destructive shadow-lg"
+              >
+                {notice}
+              </button>
+            )}
+          </SidebarInset>
+          {professor && (
+            <Professor
+              docPath={route.kind === "doc" ? route.path : ""}
+              docTitle={route.kind === "doc" ? (doc?.title ?? "") : ""}
+              repo={info?.repo}
+              onOpenDoc={openDoc}
+              onOpenSettings={() => setRoute({ kind: "settings" })}
+              onClose={() => setProfessor(false)}
+            />
+          )}
+        </SidebarProvider>
+      </ProfessorPanel.Provider>
     </TooltipProvider>
   );
 }

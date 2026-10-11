@@ -5,7 +5,7 @@
 // which document the question is about.
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Sparkles, X } from "lucide-react";
+import { ArrowUp, PanelRightClose, Sparkles } from "lucide-react";
 import { AskProfessor } from "../../wailsjs/go/main/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import type { harness } from "../../wailsjs/go/models";
@@ -74,8 +74,8 @@ export function Professor({ docPath, docTitle, repo, onOpenDoc, onOpenSettings, 
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium">Professor</div>
         </div>
-        <Button variant="ghost" size="icon-sm" onClick={onClose} title="Close">
-          <X />
+        <Button variant="ghost" size="icon-sm" onClick={onClose} title="Hide the professor">
+          <PanelRightClose />
         </Button>
       </header>
 

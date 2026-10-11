@@ -11,6 +11,7 @@ import {
   BookOpen,
   ChevronsUpDown,
   Gauge,
+  GraduationCap,
   Home,
   Search as SearchIcon,
   Settings as SettingsIcon,
@@ -33,6 +34,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import type { Route } from "@/routes";
 
@@ -96,6 +98,13 @@ export function AppSidebar({
       {/* The top padding clears the macOS window controls, which sit over the
           sidebar because the title bar is hidden. */}
       <SidebarHeader className="drag gap-2 pt-9">
+        <div className="flex items-center justify-between pr-1 pl-2">
+          <span className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+            <GraduationCap className="size-4" />
+            OpenLearn
+          </span>
+          <SidebarTrigger className="text-muted-foreground" title="Collapse sidebar" />
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -103,7 +112,7 @@ export function AppSidebar({
               onClick={() => onNavigate({ kind: "settings" })}
               tooltip="Switch course pack"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-background">
                 <BookOpen className="size-4" />
               </span>
               <span className="grid min-w-0 flex-1 leading-tight">

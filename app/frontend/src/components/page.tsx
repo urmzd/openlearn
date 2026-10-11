@@ -2,28 +2,74 @@
 // the left and what you can do on the right, then one scrolling body. Views do
 // not build their own headers, which is what keeps them lined up.
 
-import type { ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { createContext, useContext, type ReactNode } from "react";
+import { ChevronRight, PanelRightOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+
+/** Lets every header offer the way back to the professor panel once it is
+ *  hidden, without each view having to be told about the panel. */
+export const ProfessorPanel = createContext<{
+  open: boolean;
+  show: () => void;
+}>({
+  open: true,
+  show: () => {},
+});
 
 export interface Crumb {
   label: string;
   onClick?: () => void;
 }
 
-export function PageHeader({ crumbs, actions }: { crumbs: Crumb[]; actions?: ReactNode }) {
+export function PageHeader({
+  crumbs,
+  actions,
+}: {
+  crumbs: Crumb[];
+  actions?: ReactNode;
+}) {
+  // The sidebar's own header holds its collapse control. Once it is collapsed
+  // that control is gone with it, so the way back appears here. The extra left
+  // padding then clears the macOS window controls the sidebar was covering.
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
+  const professor = useContext(ProfessorPanel);
   return (
-    <header className="drag flex h-12 shrink-0 items-center gap-2 border-b px-3">
-      <SidebarTrigger className="text-muted-foreground" />
-      <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
+    <header
+      className={cn(
+        "drag flex h-12 shrink-0 items-center gap-2 border-b px-4",
+        collapsed && "pl-20",
+      )}
+    >
+      {collapsed && (
+        <>
+          <SidebarTrigger
+            className="text-muted-foreground"
+            title="Open sidebar"
+          />
+          <Separator
+            orientation="vertical"
+            className="mr-1 data-[orientation=vertical]:h-4"
+          />
+        </>
+      )}
       <nav className="flex min-w-0 flex-1 items-center gap-1 text-sm">
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1;
           return (
-            <span key={i} className={cn("flex items-center gap-1", last ? "min-w-0" : "shrink-0")}>
-              {i > 0 && <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />}
+            <span
+              key={i}
+              className={cn(
+                "flex items-center gap-1",
+                last ? "min-w-0" : "shrink-0",
+              )}
+            >
+              {i > 0 && (
+                <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
+              )}
               {c.onClick && !last ? (
                 <button
                   onClick={c.onClick}
@@ -32,7 +78,12 @@ export function PageHeader({ crumbs, actions }: { crumbs: Crumb[]; actions?: Rea
                   {c.label}
                 </button>
               ) : (
-                <span className={cn("truncate px-1", last ? "font-medium" : "text-muted-foreground")}>
+                <span
+                  className={cn(
+                    "truncate px-1",
+                    last ? "font-medium" : "text-muted-foreground",
+                  )}
+                >
                   {c.label}
                 </span>
               )}
@@ -40,7 +91,20 @@ export function PageHeader({ crumbs, actions }: { crumbs: Crumb[]; actions?: Rea
           );
         })}
       </nav>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      )}
+      {!professor.open && (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground"
+          onClick={professor.show}
+          title="Show the professor"
+        >
+          <PanelRightOpen />
+        </Button>
+      )}
     </header>
   );
 }
@@ -65,7 +129,15 @@ export function PageBody({
 }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className={cn("mx-auto w-full px-8 pt-8 pb-24", WIDTHS[width], className)}>{children}</div>
+      <div
+        className={cn(
+          "mx-auto w-full px-8 pt-8 pb-24",
+          WIDTHS[width],
+          className,
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -84,7 +156,9 @@ export function PageTitle({
     <div className="mb-6 flex items-start justify-between gap-6">
       <div className="min-w-0">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        {description && (
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -92,9 +166,22 @@ export function PageTitle({
 }
 
 /** A small uppercase label over a block of content. */
-export function SectionLabel({ children, className }: { children: ReactNode; className?: string }) {
+export function SectionLabel({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={cn("mb-2 text-xs font-medium text-muted-foreground", className)}>{children}</div>
+    <div
+      className={cn(
+        "mb-2 text-xs font-medium text-muted-foreground",
+        className,
+      )}
+    >
+      {children}
+    </div>
   );
 }
 

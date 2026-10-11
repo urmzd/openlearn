@@ -180,3 +180,8 @@ body,
   padding: 10px 20px;
   font-size: 14.5px;
 }
+
+/* Tailwind's reset removes list markers; the brief and the review need them. */
+.legacy ul {
+  list-style: disc;
+}
