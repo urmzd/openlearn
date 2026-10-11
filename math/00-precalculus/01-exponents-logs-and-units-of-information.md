@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/num/units.pyi`](../../course/contracts/py/tinyllm/num/units.pyi) |
 | **Tests** | `course/tests/M00.1/test_units.py` (what they check: section 4) |
 | **Needs** | nothing to call. Reading: `lang.01` (numpy arrays), `L0.0` (the bigram's negative log-likelihood, used as the worked example) |
-| **Used by** | `M11.2` perplexity and the bits-per-byte accumulator calls `bits_per_byte` · later `L1.6` tokenizer metrics · `L6.7` the model-zoo table · `C1` the capstone report |
+| **Used by** | `M11.2` perplexity and the bits-per-byte accumulator calls `bits_per_byte` · `M12.6` decibels and Whisper's log-mel call `log_base(x, 10)` · later `L1.6` tokenizer metrics · `L6.7` the model-zoo table · `C1` the capstone report |
 | **Milestone** | `MS-P2` (the Pass 2 gate: every math module of the pass passes `ss check`) |
 | **Optional depth** | OpenStax, *Precalculus 2e* (free), ch. 6 (exponential and logarithmic functions); MacKay, *Information Theory, Inference, and Learning Algorithms* (free), ch. 2.4 (the information content of an outcome) |
 
@@ -182,6 +182,7 @@ def bits_per_byte(nll_nats_sum: float, n_bytes: int) -> float: ...
 | Back | `L0.0` | its `nll` (nats per predicted byte) is section 3's worked example (reading) |
 | Back | `lang.01` | numpy arrays and dtypes (reading) |
 | Forward | `M11.2` | the perplexity and NLL accumulator reports `bpb` through `bits_per_byte` |
+| Forward | `M12.6` | `power_to_db` and `log_mel_whisper` take base-10 logs with `log_base` |
 | Forward | `L1.6` | tokenizer metrics: bytes per token and the bits-per-byte of each tokenizer's model |
 | Forward | `L6.7` | the model-zoo table ranks every architecture by bits per byte |
 | Forward | `C1` | the capstone report's headline number |

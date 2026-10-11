@@ -1,0 +1,25 @@
+id        = "M12.5"
+title     = "Sampling, Nyquist, windows, and the STFT"
+kind      = "build"
+lang      = ["python"]
+pass      = 12
+chapter   = "math/12-signals-and-images/05-sampling-windows-and-stft.md"
+contract  = ["contracts/py/tinyllm/sig/stft.pyi"]
+deps      = ["M12.4"]   # stft runs rfft on every frame; istft runs irfft
+reading   = []
+# Call site (DESIGN 4.1): L14.1's Whisper frontend, not registered yet
+# (DEVIATIONS B14M12-01).
+used_by   = []
+units     = ["python/tinyllm/sig/stft.py"]
+upgrades  = []
+milestone = "MS-P12"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/M12.5"
+smoke     = ["test_hand_example_stft", "test_frame_count_table"]
+timeout_s = 60
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/M12.5/stft_torch.npz"]

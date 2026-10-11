@@ -1,4 +1,11 @@
-# Pass 12: multimodal. Stage check column: DESIGN 5.15; module checks land with B14 Step C.
+# Pass 12: multimodal. Stage check column: DESIGN 5.15. The M12 stages are checkable; later B14 groups add theirs.
 # B14 design: course/design/B14-multimodal.md, section 1.4.
 # stage	title	files	done when	check
 1	Multimodal pass plan	course/design/B14-multimodal.md	You can explain the image, speech, engine, gateway, and operations work planned for Pass 12.	-
+2	Convolution as a linear map	math/12-signals-and-images/01-convolution-as-a-linear-map.md	Your implementation of M12.1 passes its course checks.	module:M12.1
+3	Image tensors and layouts	math/12-signals-and-images/02-image-tensors-and-layouts.md	Your implementation of M12.2 passes its course checks.	module:M12.2
+4	Resampling and interpolation	math/12-signals-and-images/03-resampling-and-interpolation.md	Your implementation of M12.3 passes its course checks.	module:M12.3
+5	DFT and FFT	math/12-signals-and-images/04-dft-and-fft.md	Your implementation of M12.4 passes its course checks.	module:M12.4
+6	Sampling, Nyquist, windows, and the STFT	math/12-signals-and-images/05-sampling-windows-and-stft.md	Your implementation of M12.5 passes its course checks.	module:M12.5
+7	Mel scale and filterbanks	math/12-signals-and-images/06-mel-scale-and-filterbanks.md	Your implementation of M12.6 passes its course checks.	module:M12.6
+8	Signals and images problem set	math/12-signals-and-images/90-problem-set.md	You complete the S-M12 solve set and its check passes.	solve:S-M12

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/conv.py
++++ b/python/tinyllm/sig/conv.py
+@@ -209,7 +209,7 @@
+                 :,
+                 i * dh : i * dh + sh * (p - 1) + 1 : sh,
+                 j * dw : j * dw + sw * (q - 1) + 1 : sw,
+-            ] += blocks[:, :, i, j]
++            ] = blocks[:, :, i, j]
+     return xp[:, :, ph : ph + h, pw : pw + w].copy()
+ 
+ 

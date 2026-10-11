@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/mel.py
++++ b/python/tinyllm/sig/mel.py
+@@ -40,7 +40,7 @@
+     lin = f / _F_SP
+     with np.errstate(divide="ignore", invalid="ignore"):
+         log = _MIN_LOG_MEL + np.log(f / _MIN_LOG_HZ) / _LOGSTEP
+-    return np.where(f >= _MIN_LOG_HZ, log, lin)
++    return lin
+ 
+ 
+ def mel_to_hz(m: NDArray, scale: Literal["slaney", "htk"] = "slaney") -> NDArray:

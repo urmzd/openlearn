@@ -1,0 +1,11 @@
+--- a/python/tinyllm/image/layout.py
++++ b/python/tinyllm/image/layout.py
+@@ -81,7 +81,7 @@
+ 
+ def to_grayscale_pil(img_u8_hwc: NDArray) -> NDArray:
+     img = np.asarray(img_u8_hwc)
+-    if img.ndim != 3 or img.shape[2] != 3 or img.dtype != np.uint8:
++    if img.ndim != 3 or img.shape[2] != 3:
+         raise ValueError(
+             f"to_grayscale_pil: need uint8 HWC RGB, got {img.dtype} {img.shape}"
+         )

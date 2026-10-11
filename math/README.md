@@ -29,6 +29,9 @@ graph LR
     LA --> OPT
     PS --> IT[11 Information Theory]
     LA --> IT
+    LA --> SI[12 Signals & Images]
+    PC --> SI
+    NM --> SI
 ```
 
 ## Topics
@@ -47,9 +50,10 @@ graph LR
 | 09 | [Numerical Methods & Floating Point](09-numerical-methods-and-floating-point/) | Goldberg (free), Higham | 3-4 weeks |
 | 10 | [Optimization](10-optimization/) | Boyd & Vandenberghe (free) | 3 weeks |
 | 11 | [Information Theory](11-information-theory/) | *Student's Guide to Coding & Info Theory* + MacKay (free) | 3-4 weeks |
+| 12 | [Signals & Images](12-signals-and-images/) | Oppenheim & Schafer; Smith (free) | 2 weeks |
 
 **Total**: ~27-28 weeks for 01 to 07 as an intensive introductory pass, at 10-12 hours per week;
-00 and 08 to 11 add about 15 weeks, or arrive just in time through the course passes.
+00 and 08 to 12 add about 17 weeks, or arrive just in time through the course passes.
 Full textbook coverage and degree-level mastery require additional problem sets and assessment.
 
 ## Quick Start

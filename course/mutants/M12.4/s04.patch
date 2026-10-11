@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/fft.py
++++ b/python/tinyllm/sig/fft.py
+@@ -151,7 +151,7 @@
+     full = a.size + b.size - 1
+     # Zero-pad past the full length so the circular convolution the DFT
+     # computes never wraps around: then it equals the linear one.
+-    m = _fast_size(full)
++    m = _fast_size(max(a.size, b.size))
+     fa = fft(np.pad(a.astype(np.complex128), (0, m - a.size)))
+     fb = fft(np.pad(b.astype(np.complex128), (0, m - b.size)))
+     y = ifft(fa * fb)[:full]

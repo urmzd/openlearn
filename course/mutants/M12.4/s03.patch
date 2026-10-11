@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/fft.py
++++ b/python/tinyllm/sig/fft.py
+@@ -81,7 +81,7 @@
+ def ifft(X: NDArray) -> NDArray:
+     a = np.asarray(X, dtype=np.complex128)
+     # The inverse is the conjugate transform, divided by n.
+-    return np.conj(fft(np.conj(a))) / a.shape[-1]
++    return np.conj(fft(np.conj(a)))
+ 
+ 
+ def rfft(x: NDArray) -> NDArray:

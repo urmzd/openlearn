@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/fft.py
++++ b/python/tinyllm/sig/fft.py
+@@ -52,7 +52,7 @@
+     m = n // p
+     lead = x.shape[:-1]
+     # Subsequence r holds x[r], x[r + p], x[r + 2p], ...: shape [..., p, m].
+-    sub = _fft(np.swapaxes(x.reshape(*lead, m, p), -1, -2))
++    sub = _fft(x.reshape(*lead, p, m))
+     r = np.arange(p)[:, None]
+     k = np.arange(m)[None, :]
+     tw = np.exp(-2j * np.pi * ((r * k) % n) / n)  # W_n^{r k}, [p, m]

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/image/layout.py
++++ b/python/tinyllm/image/layout.py
+@@ -87,7 +87,7 @@
+         )
+     r, g, b = (img[..., i].astype(np.int64) for i in range(3))
+     # ITU-R 601-2 luma in 16-bit fixed point, rounded: Pillow's L24 macro.
+-    return ((r * 19595 + g * 38470 + b * 7471 + 0x8000) >> 16).astype(np.uint8)
++    return ((r * 299 + g * 587 + b * 114 + 500) // 1000).astype(np.uint8)
+ 
+ 
+ def patchify(x_chw: NDArray, p: int) -> NDArray:

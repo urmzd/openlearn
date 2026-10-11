@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/stft.py
++++ b/python/tinyllm/sig/stft.py
+@@ -46,7 +46,7 @@
+         # Padded length n + 2 (n_fft // 2); frames start every hop samples.
+         # For even n_fft this is 1 + n // hop: the pad exactly pays for one frame.
+         return 1 + (n_samples + 2 * (n_fft // 2) - n_fft) // hop
+-    if n_samples < n_fft:
++    if n_samples < n_fft - 1:
+         raise ValueError(
+             f"frame_count: {n_samples} samples cannot fill one frame of {n_fft}"
+         )

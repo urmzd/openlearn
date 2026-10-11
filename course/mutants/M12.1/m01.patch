@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/conv.py
++++ b/python/tinyllm/sig/conv.py
+@@ -42,7 +42,7 @@
+         raise ValueError(
+             f"conv_out_size: the kernel spans {span} samples but the padded input has {n + 2 * pad}"
+         )
+-    return (n + 2 * pad - span) // stride + 1
++    return (n + 2 * pad - span) // stride
+ 
+ 
+ def _check_groups(c: int, kout: int, cg: int, groups: int, who: str) -> None:

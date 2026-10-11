@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/mel.py
++++ b/python/tinyllm/sig/mel.py
+@@ -106,7 +106,7 @@
+         raise ValueError(f"power_to_db: top_db must be non-negative, got {top_db}")
+     s = s.astype(np.float64)
+     # Floor at amin before the log: 10 log10(0) would be -inf.
+-    db = 10.0 * log_base(np.maximum(amin, s), 10.0)
++    db = 20.0 * log_base(np.maximum(amin, s), 10.0)
+     db = db - 10.0 * log_base(np.maximum(amin, abs(ref)), 10.0)
+     if top_db is not None and db.size:
+         db = np.maximum(db, db.max() - top_db)

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/image/layout.py
++++ b/python/tinyllm/image/layout.py
+@@ -37,7 +37,7 @@
+         return np.ascontiguousarray(x).copy()
+     # transpose only relabels the axes (a view with permuted strides); the
+     # contiguous copy is what actually moves the bytes into the new order.
+-    return np.ascontiguousarray(x.transpose(_PERM[(src, dst)]))
++    return x.transpose(_PERM[(src, dst)])
+ 
+ 
+ def strides_of(

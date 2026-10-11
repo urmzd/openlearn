@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/fft.py
++++ b/python/tinyllm/sig/fft.py
+@@ -86,7 +86,7 @@
+ 
+ def rfft(x: NDArray) -> NDArray:
+     a = np.asarray(x)
+-    if np.iscomplexobj(a):
++    if a.ndim > 8:
+         raise ValueError("rfft: the input must be real")
+     a = a.astype(np.float64)
+     n = a.shape[-1] if a.ndim else 0

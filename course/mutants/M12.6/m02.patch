@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/mel.py
++++ b/python/tinyllm/sig/mel.py
+@@ -69,7 +69,7 @@
+             f"mel_filterbank: need positive sr, n_fft, n_mels, got {sr}, {n_fft}, {n_mels}"
+         )
+     fmax = sr / 2.0 if fmax is None else float(fmax)
+-    if not 0.0 <= fmin < fmax:
++    if not 0.0 <= fmin <= fmax:
+         raise ValueError(f"mel_filterbank: need 0 <= fmin < fmax, got {fmin}, {fmax}")
+     if norm not in ("slaney", None):
+         raise ValueError(f"mel_filterbank: norm is 'slaney' or None, got {norm!r}")

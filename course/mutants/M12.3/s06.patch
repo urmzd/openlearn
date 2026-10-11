@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/resample.py
++++ b/python/tinyllm/sig/resample.py
+@@ -122,7 +122,7 @@
+     if kernel == "nearest":
+         return np.take(img, start, axis=axis)
+     # Coefficients to fixed point, rounding half away from zero.
+-    kk = np.trunc(w * (1 << PRECISION_BITS) + np.where(w < 0, -0.5, 0.5)).astype(
++    kk = np.trunc(w * (1 << PRECISION_BITS)).astype(
+         np.int64
+     )
+     acc = _apply_axis(img.astype(np.int64), start, kk, axis) + (

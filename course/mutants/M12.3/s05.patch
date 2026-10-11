@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/resample.py
++++ b/python/tinyllm/sig/resample.py
+@@ -87,7 +87,7 @@
+     start = np.empty(out_size, dtype=np.int64)
+     weights = np.zeros((out_size, taps))
+     for xx in range(out_size):
+-        center = (xx + 0.5) * scale
++        center = xx * scale
+         lo = max(int(center - support + 0.5), 0)
+         hi = min(int(center + support + 0.5), in_size)
+         k = _filter(

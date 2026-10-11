@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/resample.py
++++ b/python/tinyllm/sig/resample.py
+@@ -81,7 +81,7 @@
+     scale = in_size / out_size
+     # Antialias: when shrinking, stretch the kernel by the scale so it also
+     # low-passes everything finer than the output grid can hold.
+-    fscale = max(scale, 1.0) if antialias else 1.0
++    fscale = 1.0
+     support = _SUPPORT[kernel] * fscale
+     taps = int(math.ceil(support)) * 2 + 1
+     start = np.empty(out_size, dtype=np.int64)

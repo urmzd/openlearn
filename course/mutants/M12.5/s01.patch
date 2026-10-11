@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/stft.py
++++ b/python/tinyllm/sig/stft.py
+@@ -32,7 +32,7 @@
+         return np.ones(n)
+     # Periodic: one period of a length-n cosine (the window an FFT frame
+     # repeats); symmetric: the length-n window whose last sample is 0 again.
+-    period = n if periodic else n - 1
++    period = n - 1
+     k = np.arange(n)
+     return 0.5 - 0.5 * np.cos(2.0 * np.pi * k / period)
+ 

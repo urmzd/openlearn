@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/conv.py
++++ b/python/tinyllm/sig/conv.py
+@@ -116,7 +116,7 @@
+     kg = kout // groups
+     y = np.zeros((n, kout, p, q))
+     for g in range(groups):
+-        xg = xp[:, g * cg : (g + 1) * cg]
++        xg = xp[:, :cg]
+         wg = w[g * kg : (g + 1) * kg]
+         for i in range(r):
+             for j in range(s):

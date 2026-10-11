@@ -7,10 +7,11 @@ chapter   = "math/00-precalculus/01-exponents-logs-and-units-of-information.md"
 contract  = ["contracts/py/tinyllm/num/units.pyi"]
 deps      = []
 reading   = ["lang.01", "L0.0"]   # numpy fluency; L0.0's bigram NLL is the worked example (no code is called)
-# Call sites (DESIGN 4.1): M11.2 calls bits_per_byte (registered, pass 3).
+# Call sites (DESIGN 4.1): M11.2 calls bits_per_byte (registered, pass 3);
+# M12.6 calls log_base(x, 10) for decibels and Whisper's log-mel (pass 12).
 # L1.6, L6.7, and C1 join used_by with their batches when they list M00.1
 # in deps (the 3.4 mirror rule only accepts registered modules).
-used_by   = ["M11.2"]
+used_by   = ["M11.2", "M12.6"]
 units     = ["python/tinyllm/num/units.py"]
 upgrades  = []
 milestone = "MS-P2"

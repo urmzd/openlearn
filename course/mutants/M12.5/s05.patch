@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/stft.py
++++ b/python/tinyllm/sig/stft.py
+@@ -110,7 +110,7 @@
+     wsum = np.zeros(total)
+     for i in range(t):
+         y[i * hop : i * hop + n_fft] += frames[i]
+-        wsum[i * hop : i * hop + n_fft] += w * w
++        wsum[i * hop : i * hop + n_fft] += w
+     # Weighted overlap-add: divide by the summed squared window, which is
+     # constant in the interior when (window^2, hop) is COLA.
+     half = n_fft // 2

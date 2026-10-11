@@ -1,0 +1,11 @@
+--- a/python/tinyllm/sig/mel.py
++++ b/python/tinyllm/sig/mel.py
+@@ -100,7 +100,7 @@
+     s = np.asarray(p)
+     if np.iscomplexobj(s):
+         raise ValueError("power_to_db: take power(S) of a complex spectrum first")
+-    if amin <= 0:
++    if amin < 0:
+         raise ValueError(f"power_to_db: amin must be positive, got {amin}")
+     if top_db is not None and top_db < 0:
+         raise ValueError(f"power_to_db: top_db must be non-negative, got {top_db}")

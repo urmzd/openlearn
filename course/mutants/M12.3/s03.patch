@@ -1,0 +1,15 @@
+--- a/python/tinyllm/sig/resample.py
++++ b/python/tinyllm/sig/resample.py
+@@ -153,10 +153,10 @@
+         y = a
+         # Horizontal first, then vertical, rounding to uint8 in between; a pass
+         # whose size does not change is skipped, as Pillow does.
++        if out_h != a.shape[0]:
++            y = _pil_pass(y, out_h, 0, kernel, antialias, cubic_a)
+         if out_w != a.shape[1]:
+             y = _pil_pass(y, out_w, 1, kernel, antialias, cubic_a)
+-        if out_h != a.shape[0]:
+-            y = _pil_pass(y, out_h, 0, kernel, antialias, cubic_a)
+         return y.copy() if y is a else y
+     if mode != "float":
+         raise ValueError(f"resize: mode is 'pil' or 'float', got {mode!r}")
