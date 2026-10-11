@@ -49,8 +49,8 @@ func connect(t *testing.T) (*mcp.ClientSession, *store.Store) {
 	write(t, filepath.Join(pack, "paths/main/README.md"), "# Main path\n", 0o600)
 	write(t, filepath.Join(pack, "paths/main/path.tsv"), "1\tLimits\tunit/01-limits/README.md\tYou can prove one.\t-\n", 0o600)
 	write(t, filepath.Join(pack, "bin/check"), checker, 0o700)
-	t.Setenv("SS_SCRATCH", "")
-	t.Setenv("SS_COURSE_HOME", "")
+	t.Setenv("OL_SCRATCH", "")
+	t.Setenv("OL_COURSE_HOME", "")
 
 	st, err := store.New(t.TempDir())
 	if err != nil {
