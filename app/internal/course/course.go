@@ -1,7 +1,8 @@
 // Package course is the platform's content mechanism. A course is a directory
 // tree of markdown with a manifest at its root: tracks to read, role paths that
 // order them, and exercises. The app renders whatever course it is handed
-// and knows nothing about any one of them; X// the course that ships inside the binary.
+// and knows nothing about any one of them, including the one that ships inside
+// the binary.
 package course
 
 import (
