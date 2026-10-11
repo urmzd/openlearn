@@ -267,8 +267,10 @@ jobs:
 
           # sr.yaml lists the release PDFs explicitly. Fail here if a listed
           # course path or role path was omitted from the generated artifact.
+          # Only the PDFs are built here: the desktop bundles sr.yaml also
+          # lists come from the release workflow's app job.
           while IFS= read -r artifact; do
-            [[ -z "$artifact" ]] && continue
+            [[ "$artifact" == *.pdf ]] || continue
             test -s "$artifact"
           done < <(sed -n '/^    artifacts:/,/^[^ ]/s/^      - //p' sr.yaml)
 
