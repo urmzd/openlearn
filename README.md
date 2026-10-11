@@ -87,7 +87,7 @@ Start with the [end-to-end CS curriculum](CS-CURRICULUM.md) for an eight-term co
 | 15 | [Probabilistic Structures](algorithms/15-probabilistic-structures/) | Python | [Patterns](algorithms/15-probabilistic-structures/README.md) |
 | 16 | [Systems Data Structures](algorithms/16-systems-data-structures/) | C/Rust/Go | [Patterns](algorithms/16-systems-data-structures/README.md) |
 
-Topics 12 to 14 (historical coursework: concurrency, functional programming, ML labs) moved to [archive/](archive/). Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cses.fi/book/book.pdf) (free). See [algorithms/README.md](algorithms/README.md) for full details.
+Core references: CLRS (4th ed.), [Competitive Programmer's Handbook](https://cses.fi/book/book.pdf) (free). See [algorithms/README.md](algorithms/README.md) for full details.
 
 ### Machine Learning & AI
 
@@ -212,7 +212,7 @@ graph TD
 See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 
 - **Math Foundations** 16 weeks, all 7 math topics
-- **Algorithm Mastery** 21 days, all 15 algorithm topics
+- **Algorithm Mastery** 17 days, all 15 algorithm topics
 - **ML & AI** 18-37 weeks, statistical learning through RL, LLM serving, foundation models, neural-architecture foundations, and training and post-training
 - **Systems & Architecture** 11-15 weeks, system design through observability
 - **Data Engineering** 10-14 weeks, foundations through orchestration and data quality
@@ -220,7 +220,6 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 - **Type Systems** (Software Craftsmanship 07) 2-3 weeks, type systems and polymorphism from the lambda-calculus ladder through Hindley-Milner inference, variance, and generics across five languages
 - **Diagramming & Documentation** (Software Craftsmanship 05 and 06) 2 weeks, C4 diagramming-as-code and docs-as-code
 - **Infrastructure** 5-7 weeks, containers and Kubernetes through messaging, search, and the Apache stack (partitioned workers now live in AI Platform 05)
-- **Superstar FDE** 14 weeks, the composed role path: LLM foundations through inference performance, field engineering, and a one-customer capstone
 - **Combined Path** 40+ weeks, zero to Staff+ interview-ready
 - **PhD Research Track** deep learning research + information theory + RL
 
@@ -250,29 +249,9 @@ Start at [paths/course](paths/course/) and its [system map](paths/course/SYSTEM.
 practice/bin/ol doctor && practice/bin/ol course init --name <system> && practice/bin/ol learn course next
 ```
 
-## Role Paths
-
-A [path](paths/) orders existing chapters for one job and says what "done" means at each stage; the tracks keep owning the content. Paths compose: six parts each stand alone for a narrower role, and **Superstar FDE** includes all six plus a capstone.
-
-| Path | For |
-|------|-----|
-| [Superstar FDE](paths/superstar-fde/) | Forward deployed engineer at an inference and fine-tuning cloud, end to end: every part below plus a one-customer capstone |
-| [LLM Foundations](paths/llm-foundations/) | History from n-grams to reasoning models, transformer math, architecture variants |
-| [Frameworks and Models](paths/frameworks-and-models/) | PyTorch, JAX, Keras 3, and loading checkpoints from the Hugging Face Hub |
-| [Training](paths/training/) | RL foundations, pretraining, post-training (SFT, DPO, GRPO), LoRA |
-| [Inference Performance](paths/inference-performance/) | Engine internals, quantization, vLLM/SGLang serving and load testing |
-| [AI Full Stack](paths/ai-full-stack/) | Streaming, retrieval, evaluation, routing |
-| [Field Engineering](paths/field-engineering/) | Discovery, sizing, performance testing engagements, POCs, migration, commercials, escalation |
-
-```bash
-practice/bin/ol learn                        # every path and your progress
-practice/bin/ol learn superstar-fde next     # read the next unfinished stage
-```
-
-
 ## OpenLearn: the Desktop App
 
-[`app/`](app/) is a desktop learning platform that renders a **course pack**: a directory of markdown with an [`openlearn.json`](openlearn.json) manifest naming its tracks, role paths, and practice CLI. This repository is the pack built into it, and [`packs/languide/`](packs/languide/) (communication-first language guides) ships beside it. The app reads the same `.done` files `ol learn` writes, generates timed exercises from the chapter you are reading, and grades them against a hidden rubric with a local or hosted model.
+[`app/`](app/) is a desktop learning platform that renders a **course pack**: a directory of markdown with an [`openlearn.json`](openlearn.json) manifest naming its tracks, paths, and practice CLI. This repository is the pack built into it, and [`packs/languide/`](packs/languide/) (communication-first language guides) ships beside it. The app reads the same `.done` files `ol learn` writes, generates timed exercises from the chapter you are reading, and grades them against a hidden rubric with a local or hosted model.
 
 ```bash
 cd app && make init && make dev
@@ -284,12 +263,12 @@ The whole curriculum builds into one PDF -- every track and topic in learning
 order, with the C4 architecture diagrams and Mermaid diagrams rendered inline.
 
 - **From CI**: every run produces a `supersource-curriculum-pdf` build artifact.
-- **From a release**: `supersource-curriculum.pdf` and the generated `supersource-<path>.pdf` files are attached to each GitHub Release for every course pass and role path in `paths/`.
+- **From a release**: `supersource-curriculum.pdf` and the generated `supersource-<path>.pdf` files are attached to each GitHub Release for every course pass in `paths/`.
 - **Locally**:
 
   ```bash
   ./scripts/build-book.sh           # -> outputs/supersource-curriculum.pdf
-  ./scripts/build-book.sh --path superstar-fde  # -> outputs/supersource-superstar-fde.pdf
+  ./scripts/build-book.sh --path course-p01-tracer  # -> outputs/supersource-course-p01-tracer.pdf
   ./scripts/build-book.sh --help    # options (--skip-mermaid, --no-toc, ...)
   ```
 
@@ -332,11 +311,6 @@ Three kinds of exercise, distinguished only by what you produce:
 |---|-----------|-------|
 | **Core** | [Go](practice/build/cloud/go/), [Rust](practice/build/systems/rust/), [Python](practice/build/general/python/), [TypeScript](practice/build/general/typescript/), [C](practice/build/systems/c/), [C++](practice/build/systems/cpp/) | What the curriculum targets, and what CI verifies |
 | **Optional** | [Zig](practice/build/systems/zig/), [Scala](practice/build/cloud/scala/), [Java](practice/build/cloud/java/) | Worth doing, but not in use here; excluded from the default run |
-
-### From-Scratch Implementations
-
-- [K-Means Clustering](archive/algorithms/14-ml-statistics/k-means.py) unsupervised learning
-- [TF-IDF Vector Search](archive/algorithms/14-ml-statistics/tf-idf-vector-search.py) text similarity search
 
 ## Case Studies
 

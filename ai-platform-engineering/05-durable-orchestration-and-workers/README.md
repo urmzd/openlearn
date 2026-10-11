@@ -248,7 +248,6 @@ In the course you build the durable engine this topic describes, in Go, and run 
 | Sharded state store under the engine | [Distributed Data & Caching](../04-distributed-data-and-caching/) | Temporal needs Cassandra/Postgres |
 | Checkpointed training pipelines | [Training & Frameworks](../01-training-and-frameworks/) | Same checkpoint pattern, different payload |
 | Traces, metrics, logs, RED/USE, SLOs | [Observability](../../systems/04-observability/) | Operating long-running workflows |
-| Producer-consumer, thread pools | [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/) | The worker pool, at the language level |
 | Partitioned logs, consumer groups, lag | [Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/) | The queue and log dynamics the partitioned consumers operate |
 | KEDA lag scaling, SIGTERM drains | [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/) | Scaling and stopping the worker pool |
 | Decorators wrapping workflows/retries | [Coding & Design Patterns](../06-coding-and-design-patterns/) | How the engine's API is built |

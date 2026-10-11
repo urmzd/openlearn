@@ -4,7 +4,7 @@
 
 - **Primary reference**: [*Streaming Systems*](https://www.oreilly.com/library/view/streaming-systems/9781491983867/) by Akidau, Chernyak, Lax (the Dataflow model) -- foundational concepts also in [*The Dataflow Model*](https://research.google/pubs/pub43864/) paper (free)
 - **Supplementary**: [Apache Spark docs](https://spark.apache.org/docs/latest/) (free), [Apache Kafka docs](https://kafka.apache.org/documentation/) (free), [Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-stable/) (free), [DDIA](https://dataintensive.net/) Ch 10-11
-- **Prerequisites**: [Foundations](../01-foundations/), [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/)
+- **Prerequisites**: [Foundations](../01-foundations/)
 - **Estimated time**: 3-4 weeks at 8-10 hrs/week
 
 ## Key Takeaways
@@ -123,7 +123,6 @@ This framework subsumes batch and streaming: batch is just streaming with a sing
 | Concept | Connected Track | Application |
 |---------|-----------------|-------------|
 | Messaging, queues, event systems | [System Design](../../systems/01-system-design/) | Kafka, async architecture |
-| Concurrency, parallelism, partitioning | [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/) | Distributed execution |
 | Consensus, replication, snapshots | [System Design](../../systems/01-system-design/) | Exactly-once, checkpointing |
 | Streaming feature pipelines | [LLM Systems](../../ml/04-llm-systems/) | Real-time features for models |
 | MapReduce, DAG scheduling | [Graphs](../../algorithms/06-graphs/) | Stage/dependency graphs |

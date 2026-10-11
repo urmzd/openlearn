@@ -77,7 +77,7 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 
 ---
 
-## Algorithm Mastery (21 days)
+## Algorithm Mastery (17 days)
 
 ~2-3 hours per day. Each day targets specific patterns and problems.
 
@@ -109,13 +109,9 @@ Revisit the hardest topics from each subject. Work through challenge problems.
 
 | Day | Focus | Problems | Patterns |
 |-----|-------|----------|----------|
-| **15** | Concurrency & Systems | [C Miner project](archive/algorithms/12-concurrency-systems/miner/) | [Thread pools, producer-consumer, lock-free structures](archive/algorithms/12-concurrency-systems/README.md) |
-| **16** | Functional Programming | [BST](archive/algorithms/13-functional-programming/bst.scm), [Visitors](archive/algorithms/13-functional-programming/list-visitor.scm), [Iterators](archive/algorithms/13-functional-programming/new-sqrt-iterator.scm), [Primes](archive/algorithms/13-functional-programming/IsPrime.scm) | [Immutable data, higher-order functions, recursion schemes](archive/algorithms/13-functional-programming/README.md) |
-| **17** | ML & Statistics (models) | [Linear Regression](archive/algorithms/14-ml-statistics/linear-regression.py), [Logistic Reg & NNs](archive/algorithms/14-ml-statistics/ml-logistic-regression-and-neural-nets.py), [PyTorch](archive/algorithms/14-ml-statistics/learn-pytorch.py) | [Gradient descent, loss functions, backprop](archive/algorithms/14-ml-statistics/README.md) |
-| **18** | ML (unsupervised) + Probabilistic | [Clustering](archive/algorithms/14-ml-statistics/clustering.py), [Naive Bayes & GMM](archive/algorithms/14-ml-statistics/ml-naive-bayes-and-gmm.py), [CNN & RNN](archive/algorithms/14-ml-statistics/ml-clustering-cnn-rnn.py), [Bloom Filter](algorithms/15-probabilistic-structures/bloom.py) | [Clustering, probabilistic models](archive/algorithms/14-ml-statistics/README.md), [Bloom filters, HyperLogLog, skip lists](algorithms/15-probabilistic-structures/README.md) |
-| **19** | Practice: implement from scratch | [K-Means](archive/algorithms/14-ml-statistics/k-means.py), [TF-IDF Vector Search](archive/algorithms/14-ml-statistics/tf-idf-vector-search.py) | Re-read weakest topic READMEs |
-| **20** | Company-targeted review | Pick 2-3 companies from [interviews/](interviews/README.md) and study their guides | [Shared concepts across companies](interviews/shared-concepts/README.md) |
-| **21** | Mock interview day | Revisit 1 problem from each of topics 01-11 under timed conditions (45 min each) | Review all pattern READMEs as quick reference |
+| **15** | Probabilistic structures | [Bloom Filter](algorithms/15-probabilistic-structures/bloom.py) | [Bloom filters, HyperLogLog, skip lists](algorithms/15-probabilistic-structures/README.md) |
+| **16** | Company-targeted review | Pick 2-3 companies from [interviews/](interviews/README.md) and study their guides | [Shared concepts across companies](interviews/shared-concepts/README.md) |
+| **17** | Mock interview day | Revisit 1 problem from each of topics 01-11 under timed conditions (45 min each) | Review all pattern READMEs as quick reference |
 
 ### Daily Routine (Algorithms)
 
@@ -207,21 +203,6 @@ How a model is made before it is served. Pairs with RL (weeks 14-19) for the RLH
 | 37 | PEFT and scoping: LoRA/QLoRA/DoRA math, run a LoRA fine-tune, eval base vs tuned | LoRA, QLoRA papers + `code/lora_from_scratch.py` |
 
 ---
-
-## Role Path: Superstar FDE (14 weeks)
-
-~10-12 hours per week. Assumes Python and basic linear algebra. The order and the done-when criteria live in [`paths/`](paths/): the [Superstar FDE](paths/superstar-fde/) path includes six parts, each also a path on its own. Run `practice/bin/ol learn superstar-fde` to follow it. If you already work in inference, do the Field Engineering weeks first.
-
-| Week | Part | Focus |
-|------|------|-------|
-| 1 | Role brief, LLM Foundations 1 | What an inference cloud sells; history from n-grams through RNN/LSTM, attention, Transformer, scaling, RLHF, MoE, reasoning |
-| 2 | LLM Foundations 2-3 | Transformer math: attention, backprop, FLOPs per token, memory; architecture variants from `config.json` |
-| 3 | Frameworks and Models | PyTorch and JAX side by side, Keras 3 as a front end; loading from the Hub, safetensors, chat templates |
-| 4-5 | Training | RL foundations; pretraining, post-training, LoRA; run a LoRA fine-tune and evaluate it |
-| 6-8 | Inference Performance | Engine internals, quantization, the framework map; benchmark vLLM vs SGLang, latency curves, cost per 1M tokens |
-| 9 | AI Full Stack | Streaming, retrieval, evals against your own endpoint, routing |
-| 10-12 | Field Engineering | Discovery, sizing, performance testing engagements, POC, migration, commercials and security, escalation |
-| 13-14 | Capstone | One mock customer through every part: eleven artifacts, then a 20-minute readout |
 
 ## Systems & Architecture (11-15 weeks)
 
@@ -528,7 +509,7 @@ The full journey from foundations through PhD-level depth and Staff+ engineering
 | 9-12 | Calculus 3 + Discrete Math 2 | Parallel math study |
 | 13 | Math review & catch-up | Revisit hardest topics |
 | 14-16 | Probability & Statistics | Completes math track |
-| 17-19 | Algorithm Mastery | 21-day plan (one week per study-plan week) |
+| 17-19 | Algorithm Mastery | 17-day plan (one week per study-plan week) |
 | 20-21 | Competitive Programming | Advanced techniques, contest practice |
 | 22-26 | Statistical Learning + Deep Learning | ISLR then Goodfellow |
 | 27-30 | Deep Learning (continued) + Info Theory | Research-level depth |

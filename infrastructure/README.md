@@ -2,7 +2,7 @@
 
 How distributed systems *actually run*: the containers and orchestration that schedule them, the messaging and coordination layers that move and order their data, the workers that process it, and the search and storage engines underneath -- the operational substrate beneath every application.
 
-> **Prerequisites**: Some professional experience shipping software, plus [Concurrency & Systems](../archive/algorithms/12-concurrency-systems/). Pairs with [Cloud Native](../systems/03-cloud-native/) (orchestration depth), [Batch & Streaming](../data-engineering/03-batch-streaming/) (the data-engineering view of the same Kafka), and [Diagramming & Documentation](../software-craftsmanship/) (you cannot draw a deployment or a consumer topology honestly until you understand its operational caveats).
+> **Prerequisites**: Some professional experience shipping software. Pairs with [Cloud Native](../systems/03-cloud-native/) (orchestration depth), [Batch & Streaming](../data-engineering/03-batch-streaming/) (the data-engineering view of the same Kafka), and [Diagramming & Documentation](../software-craftsmanship/) (you cannot draw a deployment or a consumer topology honestly until you understand its operational caveats).
 
 ## Why this track exists
 

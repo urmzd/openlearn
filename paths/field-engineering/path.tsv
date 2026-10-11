@@ -1,8 +1,0 @@
-# stage	title	files (comma-separated, repo-relative, read in order)	done when	check
-1	Discovery	field-engineering/01-discovery/README.md	From a mock discovery call you produce notes in which every answer is mapped to the deployment decision it changes.	-
-2	Qualification and sizing	field-engineering/02-qualification-and-sizing/README.md	You turn discovery notes into a deployment hypothesis: model, GPUs, serverless or dedicated, quantization, and a cost range, with the math shown.	-
-3	Performance testing engagements	field-engineering/03-performance-testing-engagements/README.md	You write a benchmark plan from a customer traffic sample and a results report with curves and goodput under their SLO, promising nothing the data does not show.	-
-4	POC and evaluation	field-engineering/04-poc-and-evaluation/README.md	You write a POC plan with success criteria tied to SLOs and eval parity, owners, timeline, and exit criteria.	-
-5	Migration and cutover	field-engineering/05-migration-and-cutover/README.md	You write a migration plan with chat-template and sampling parity checks, shadow traffic, canary, cutover, and rollback.	-
-6	Commercials and security	field-engineering/06-commercials-and-security/README.md	You build a TCO comparison of serverless, dedicated, and self-hosting with a breakeven point, and can walk a security questionnaire.	-
-7	Escalation and handoff	field-engineering/07-escalation-and-handoff/README.md	You write an escalation report the performance team can act on without a follow-up question.	-

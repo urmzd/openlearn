@@ -4,7 +4,7 @@
 
 - **Primary references**: [Refactoring Guru — Design Patterns](https://refactoring.guru/design-patterns) (free), [*Mostly Adequate Guide to Functional Programming*](https://mostly-adequate.gitbook.io/mostly-adequate-guide/) (free)
 - **Supplementary**: *Design Patterns* (Gang of Four), [SourceMaking](https://sourcemaking.com/design_patterns), [*SICP*](https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/6515/sicp.zip/index.html) (closures & higher-order procedures, free), [Python decorators (PEP 318)](https://peps.python.org/pep-0318/)
-- **Prerequisites**: [Functional Programming](../../archive/algorithms/13-functional-programming/) (closures, HOFs, recursion), comfort in at least one language with first-class functions
+- **Prerequisites**: comfort in at least one language with first-class functions
 - **Estimated time**: 2-3 weeks at 8-10 hrs/week
 
 ## Key Takeaways
@@ -87,7 +87,7 @@ def fetch(url): ...
 
 ## 4. Functional Programming Patterns
 
-**Compose functions instead of mutating state** (foundations in [FP](../../archive/algorithms/13-functional-programming/))
+**Compose functions instead of mutating state**
 
 ### Closures
 
@@ -144,7 +144,6 @@ Both halves of this topic push the same lesson: **build big behavior from small,
 
 | Concept | Connected Track | Application |
 |---------|-----------------|-------------|
-| Closures, HOFs, recursion, immutability | [Functional Programming](../../archive/algorithms/13-functional-programming/) | The foundations, in Scheme |
 | Pure functions enabling transforms | [Training & Frameworks](../01-training-and-frameworks/) | Why JAX is functional |
 | Decorators wrapping durable steps | [Orchestration & Workers](../05-durable-orchestration-and-workers/) | `@workflow`/`@activity` APIs |
 | Interceptors, stubs, the proxy | [RPC & Protocols](../02-rpc-and-protocols/) | gRPC middleware and client stubs |

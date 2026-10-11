@@ -59,4 +59,4 @@ harness works.
 | 09 | Graph with concepts | C++20 concepts, ranges, BFS/DFS | ⭐⭐⭐ |
 | 10 | Memory pool allocator | Custom allocator, placement new, alignment | ⭐⭐⭐⭐ |
 
-Exercise 03 (hash map) is consolidated into the course: six hash maps across the drills became two course modules, `ds.02` (Swiss table, C) and `ds.05` (Robin Hood, Rust), whose chapters live in [Systems Data Structures](../../../../algorithms/16-systems-data-structures/). The C++ version is archived in [`archive/practice/cpp-03-hash-map/`](../../../../archive/practice/cpp-03-hash-map/).
+Exercise 03 (hash map) is consolidated into the course: six hash maps across the drills became two course modules, `ds.02` (Swiss table, C) and `ds.05` (Robin Hood, Rust), whose chapters live in [Systems Data Structures](../../../../algorithms/16-systems-data-structures/).
