@@ -1,0 +1,187 @@
+/* The pre-Tailwind stylesheet. The session, review, and progress screens still
+   use it, each wrapped in .legacy so these element rules stop at their edges.
+   New screens use Tailwind and the shadcn tokens in index.css; see docs/ui.md.
+
+   Its tokens are declared on .legacy rather than :root because several share a
+   name with a shadcn token (--border, --accent, --radius) and mean something
+   else.
+
+   Design tokens. One dark surface, one accent, severity colors that read at a
+   glance without being loud enough to break concentration mid-session. */
+
+.legacy {
+  --bg: #0b0d12;
+  --bg-raised: #12151c;
+  --bg-panel: #161a23;
+  --bg-input: #1b202b;
+  --bg-hover: #202634;
+
+  --border: #232936;
+  --border-strong: #313a4d;
+
+  --text: #e6e9ef;
+  --text-dim: #98a1b3;
+  --text-faint: #667085;
+
+  --accent: #6ea8fe;
+  --accent-dim: #2c4a7c;
+
+  --info: #6ea8fe;
+  --warn: #f5b556;
+  --critical: #f26d6d;
+  --good: #5fd39a;
+  --praise: #5fd39a;
+
+  --radius: 8px;
+  --radius-sm: 5px;
+
+  --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  --mono: "SF Mono", "JetBrains Mono", "Menlo", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.legacy {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.legacy button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-input);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.legacy button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--accent-dim);
+}
+
+.legacy button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.legacy button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b0d12;
+  font-weight: 600;
+}
+
+.legacy button.primary:hover:not(:disabled) {
+  background: #8bbaff;
+  border-color: #8bbaff;
+}
+
+.legacy button.danger:hover:not(:disabled) {
+  border-color: var(--critical);
+  color: var(--critical);
+}
+
+.legacy input,
+.legacy select,
+.legacy textarea {
+  font-family: inherit;
+  font-size: inherit;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 7px 10px;
+  width: 100%;
+}
+
+.legacy input:focus,
+.legacy select:focus,
+.legacy textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.legacy textarea {
+  resize: none;
+  line-height: 1.6;
+}
+
+.legacy ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.legacy ::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 5px;
+}
+
+.legacy ::-webkit-scrollbar-thumb:hover {
+  background: #435066;
+}
+
+.legacy ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.legacy .label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.legacy .muted {
+  color: var(--text-dim);
+}
+
+.legacy .faint {
+  color: var(--text-faint);
+}
+
+.legacy .mono {
+  font-family: var(--mono);
+}
+
+.legacy .row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.legacy .spread {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.legacy button.big {
+  padding: 10px 20px;
+  font-size: 14.5px;
+}
+
+/* Tailwind's reset removes list markers; the brief and the review need them. */
+.legacy ul {
+  list-style: disc;
+}

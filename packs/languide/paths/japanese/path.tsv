@@ -1,0 +1,11 @@
+# stage	title	files (comma-separated, pack-relative, read in order)	done when	check
+1	Core phrases	languages/japanese/chapters/00-cover.md,languages/japanese/chapters/01-core-phrases.md	Without looking, you can greet, thank, apologize, and ask someone to repeat or slow down, at the polite tier.	-
+2	Language foundations	languages/japanese/chapters/02-language-foundations.md	You can build a new sentence from a pattern template by swapping the bracketed slot, and say which politeness tier you used.	-
+3	Pronunciation	languages/japanese/chapters/03-pronunciation.md	You can read a phrase you have not seen aloud from its transliteration and name the sounds English speakers get wrong.	-
+4	Writing system	languages/japanese/chapters/04-writing-systems.md	You can recognize the characters and marks the chapter covers on a sign or a menu and say what they change.	-
+5	Directions and navigation	languages/japanese/chapters/05-directions-navigation.md	You can ask where something is, follow the answer, and confirm you understood it, in writing, from memory.	-
+6	Transportation	languages/japanese/chapters/06-transportation.md	You can buy a ticket, ask which platform or stop, and tell a driver where to go and where to stop.	-
+7	Restaurants	languages/japanese/chapters/07-restaurants.md	You can get a table, order with a substitution or an allergy, and ask for the bill, start to finish.	-
+8	Shopping	languages/japanese/chapters/08-shopping.md	You can ask for a size or a color, ask the price, and decline politely.	-
+9	Hotels	languages/japanese/chapters/09-hotels.md	You can check in, report a problem with the room, and check out.	-
+10	Cultural guide	languages/japanese/chapters/10-cultural-guide.md	For three situations in the chapter you can say what to do, what not to do, and the phrase that goes with it.	-

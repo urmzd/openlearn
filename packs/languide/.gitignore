@@ -1,0 +1,32 @@
+# Build outputs (attached to GitHub releases, not tracked in git)
+outputs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# LaTeX artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+missfont.log.claude/
+.vscode/
+.env
+.env.*
+.DS_Store
+.idea/

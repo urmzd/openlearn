@@ -1,0 +1,454 @@
+% Tourism Guide LaTeX Template for Pandoc
+% Professional styling with CJK support for language guides
+
+\documentclass[$if(fontsize)$$fontsize$,$endif$$if(lang)$$babel-lang$,$endif$$if(papersize)$$papersize$paper,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{$documentclass$}
+
+% ============================================================================
+% FONTS AND ENCODING
+% ============================================================================
+\usepackage{fontspec}
+\usepackage{xunicode}
+\usepackage{xltxtra}
+
+% CJK Support - Only loaded for Japanese/Chinese/Korean
+$if(usecjk)$
+\usepackage{xeCJK}
+
+% Configure xeCJK to auto-fallback to CJK font for CJK characters
+\xeCJKsetup{
+  AutoFallBack=true,
+  CJKecglue={}
+}
+
+% CJK Font Configuration - MUST be set before main fonts
+$if(CJKmainfont)$
+\setCJKmainfont{$CJKmainfont$}[
+  AutoFakeBold=2,
+  AutoFakeSlant=0.2
+]
+\setCJKsansfont{$if(CJKsansfont)$$CJKsansfont$$else$$CJKmainfont$$endif$}[AutoFakeBold=2]
+\setCJKmonofont{$if(CJKmonofont)$$CJKmonofont$$else$$CJKmainfont$$endif$}
+$else$
+% Default: Noto Sans CJK JP (most widely available cross-platform CJK font)
+\setCJKmainfont{Noto Sans CJK JP}[AutoFakeBold=2,AutoFakeSlant=0.2]
+\setCJKsansfont{Noto Sans CJK JP}[AutoFakeBold=2]
+\setCJKmonofont{Noto Sans CJK JP}
+$endif$
+$endif$
+
+% Set main fonts for Latin text (only override if explicitly provided)
+$if(mainfont)$
+\setmainfont{$mainfont$}
+$endif$
+
+$if(sansfont)$
+\setsansfont{$sansfont$}
+$endif$
+
+$if(monofont)$
+\setmonofont{$monofont$}
+$endif$
+
+% ============================================================================
+% GEOMETRY AND LAYOUT
+% ============================================================================
+\usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
+
+% ============================================================================
+% COLORS - Japan-Inspired Theme
+% ============================================================================
+\usepackage[dvipsnames,svgnames,x11names]{xcolor}
+
+% Primary colors
+\definecolor{JapanRed}{HTML}{8B0000}       % Deep red (torii gate inspired)
+\definecolor{JapanNavy}{HTML}{1A365D}      % Navy blue (traditional indigo)
+\definecolor{JapanGold}{HTML}{C5A572}      % Gold accent (traditional gold)
+\definecolor{SakuraPink}{HTML}{FFB7C5}     % Soft pink (cherry blossom)
+\definecolor{BambooGreen}{HTML}{5C8A4D}    % Green (bamboo forest)
+\definecolor{InkBlack}{HTML}{1A1A2E}       % Deep ink black
+\definecolor{PaperCream}{HTML}{FAF8F5}     % Off-white (washi paper)
+
+% Functional colors for boxes
+\definecolor{TipBoxBg}{HTML}{EFF6FF}       % Light blue background
+\definecolor{TipBoxBorder}{HTML}{3B82F6}   % Blue border
+\definecolor{WarningBoxBg}{HTML}{FEF3C7}   % Light amber background  
+\definecolor{WarningBoxBorder}{HTML}{F59E0B} % Amber border
+\definecolor{CultureBoxBg}{HTML}{FDF2F8}   % Light pink background
+\definecolor{CultureBoxBorder}{HTML}{EC4899} % Pink border
+\definecolor{PhraseBoxBg}{HTML}{F0FDF4}    % Light green background
+\definecolor{PhraseBoxBorder}{HTML}{22C55E} % Green border
+\definecolor{EmergencyBoxBg}{HTML}{FEF2F2} % Light red background
+\definecolor{EmergencyBoxBorder}{HTML}{EF4444} % Red border
+
+% Table colors
+\definecolor{TableHeaderBg}{HTML}{1A365D}  % Navy header
+\definecolor{TableRowAlt}{HTML}{F8FAFC}    % Alternating row color
+
+% ============================================================================
+% PACKAGES
+% ============================================================================
+\usepackage{amsmath,amssymb}
+\usepackage{longtable,booktabs,array}
+\usepackage{colortbl}
+\usepackage{multirow}
+\usepackage{calc}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tcolorbox}
+\tcbuselibrary{most,skins,breakable}
+\usepackage{enumitem}
+\usepackage{soul}
+\usepackage{setspace}
+\usepackage{parskip}
+\usepackage{lastpage}
+\usepackage{microtype}
+
+% hyperref should be loaded last to avoid conflicts
+\usepackage{hyperref}
+
+% Fix for pandoc longtable caption suppression (requires a 'none' counter)
+\makeatletter
+\@ifundefined{c@none}{\newcounter{none}}{}
+\makeatother
+
+% Fix for older templates
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newenvironment{CSLReferences}[2]{}{}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{#1}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+
+% ============================================================================
+% HYPERREF CONFIGURATION
+% ============================================================================
+\hypersetup{
+  colorlinks=true,
+  linkcolor=JapanNavy,
+  filecolor=JapanNavy,
+  citecolor=JapanNavy,
+  urlcolor=JapanRed,
+  pdfborder={0 0 0},
+  breaklinks=true
+}
+\urlstyle{same}
+
+% ============================================================================
+% HEADER AND FOOTER STYLING
+% ============================================================================
+\pagestyle{fancy}
+\fancyhf{}
+
+% Header
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{JapanNavy}\leaders\hrule height \headrulewidth\hfill}}
+\fancyhead[L]{\small\color{JapanNavy}\sffamily $if(title)$$title$$endif$}
+\fancyhead[R]{\small\color{JapanNavy}\sffamily\leftmark}
+
+% Footer
+\renewcommand{\footrulewidth}{0.5pt}
+\renewcommand{\footrule}{\hbox to\headwidth{\color{JapanNavy}\leaders\hrule height \footrulewidth\hfill}}
+\fancyfoot[C]{\small\color{JapanNavy}\sffamily Page \thepage\ of \pageref{LastPage}}
+
+% Plain style for chapter pages
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \renewcommand{\headrulewidth}{0pt}
+  \fancyfoot[C]{\small\color{JapanNavy}\sffamily Page \thepage\ of \pageref{LastPage}}
+}
+
+% ============================================================================
+% SECTION STYLING
+% ============================================================================
+% Chapter/Section styling with color accents
+\titleformat{\section}
+  {\normalfont\Large\bfseries\sffamily\color{JapanRed}}
+  {\thesection}{1em}{}
+  [\vspace{-0.5em}{\color{JapanRed}\titlerule[1pt]}]
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\sffamily\color{JapanNavy}}
+  {\thesubsection}{1em}{}
+
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\sffamily\color{InkBlack}}
+  {\thesubsubsection}{1em}{}
+
+\titlespacing*{\section}{0pt}{2.5ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+\titlespacing*{\subsection}{0pt}{2ex plus 1ex minus .2ex}{1ex plus .2ex}
+\titlespacing*{\subsubsection}{0pt}{1.5ex plus 1ex minus .2ex}{0.5ex plus .2ex}
+
+% ============================================================================
+% TABLE OF CONTENTS STYLING
+% ============================================================================
+\usepackage{tocloft}
+\renewcommand{\cftsecfont}{\sffamily\color{JapanNavy}}
+\renewcommand{\cftsecpagefont}{\sffamily\color{JapanNavy}}
+\renewcommand{\cftsubsecfont}{\sffamily}
+\renewcommand{\cftsubsubsecfont}{\sffamily}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}}
+\setlength{\cftbeforesecskip}{0.5em}
+
+% ============================================================================
+% TABLE STYLING
+% ============================================================================
+% Better tables with booktabs
+\renewcommand{\toprule}{\arrayrulecolor{JapanNavy}\specialrule{1.5pt}{0pt}{0pt}}
+\renewcommand{\midrule}{\arrayrulecolor{JapanNavy!50}\specialrule{0.5pt}{0pt}{0pt}}
+\renewcommand{\bottomrule}{\arrayrulecolor{JapanNavy}\specialrule{1.5pt}{0pt}{0pt}}
+
+% Table column types with proper word wrapping
+\usepackage{tabularx}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+
+% Ensure longtables don't overflow
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+
+% ============================================================================
+% STYLED BOXES (tcolorbox)
+% ============================================================================
+
+% Tip box
+\newtcolorbox{tipbox}[1][Tip]{
+  enhanced,
+  breakable,
+  colback=TipBoxBg,
+  colframe=TipBoxBorder,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={\textbullet~#1},
+  arc=3pt,
+  boxrule=1pt,
+  left=10pt,
+  right=10pt,
+  top=8pt,
+  bottom=8pt,
+  drop shadow
+}
+
+% Warning box
+\newtcolorbox{warningbox}[1][Warning]{
+  enhanced,
+  breakable,
+  colback=WarningBoxBg,
+  colframe=WarningBoxBorder,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={\ensuremath{\triangle}~#1},
+  arc=3pt,
+  boxrule=1pt,
+  left=10pt,
+  right=10pt,
+  top=8pt,
+  bottom=8pt,
+  drop shadow
+}
+
+% Cultural note box
+\newtcolorbox{culturebox}[1][Cultural Note]{
+  enhanced,
+  breakable,
+  colback=CultureBoxBg,
+  colframe=CultureBoxBorder,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={\ensuremath{\heartsuit}~#1},
+  arc=3pt,
+  boxrule=1pt,
+  left=10pt,
+  right=10pt,
+  top=8pt,
+  bottom=8pt,
+  drop shadow
+}
+
+% Phrase box (for key phrases)
+\newtcolorbox{phrasebox}[1][Key Phrase]{
+  enhanced,
+  breakable,
+  colback=PhraseBoxBg,
+  colframe=PhraseBoxBorder,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={\ensuremath{\bullet}~#1},
+  arc=3pt,
+  boxrule=1pt,
+  left=10pt,
+  right=10pt,
+  top=8pt,
+  bottom=8pt,
+  drop shadow
+}
+
+% Emergency box
+\newtcolorbox{emergencybox}[1][Emergency]{
+  enhanced,
+  breakable,
+  colback=EmergencyBoxBg,
+  colframe=EmergencyBoxBorder,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={\ensuremath{\bigstar}~#1},
+  arc=3pt,
+  boxrule=1.5pt,
+  left=10pt,
+  right=10pt,
+  top=8pt,
+  bottom=8pt,
+  drop shadow
+}
+
+% Simple accent box
+\newtcolorbox{accentbox}{
+  enhanced,
+  breakable,
+  colback=PaperCream,
+  colframe=JapanRed,
+  arc=2pt,
+  boxrule=1pt,
+  left=10pt,
+  right=10pt,
+  top=8pt,
+  bottom=8pt,
+  borderline west={3pt}{0pt}{JapanRed}
+}
+
+% ============================================================================
+% HORIZONTAL RULE STYLING
+% ============================================================================
+\renewcommand{\hrulefill}{
+  \leavevmode\leaders\hrule height 1pt \hfill\kern\z@
+}
+
+% Style horizontal rules in markdown (---)
+\let\oldrule\rule
+\renewcommand{\rule}[2]{%
+  {\color{JapanNavy!50}\oldrule{#1}{#2}}%
+}
+
+% ============================================================================
+% LIST STYLING
+% ============================================================================
+\setlist[itemize]{
+  leftmargin=*,
+  itemsep=0.25em,
+  parsep=0pt,
+  topsep=0.5em
+}
+\setlist[enumerate]{
+  leftmargin=*,
+  itemsep=0.25em,
+  parsep=0pt,
+  topsep=0.5em
+}
+
+% Custom bullet colors
+\setlist[itemize,1]{label={\color{JapanRed}\textbullet}}
+\setlist[itemize,2]{label={\color{JapanNavy}\ensuremath{\circ}}}
+\setlist[itemize,3]{label={\color{BambooGreen}\ensuremath{\diamond}}}
+
+% ============================================================================
+% CODE BLOCK STYLING
+% ============================================================================
+$if(highlighting-macros)$
+$highlighting-macros$
+$endif$
+
+% ============================================================================
+% PARAGRAPH AND SPACING
+% ============================================================================
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em plus 0.2em minus 0.1em}
+\setstretch{1.15}
+
+% ============================================================================
+% TIGHT LIST HANDLING (Pandoc requirement)
+% ============================================================================
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% ============================================================================
+% IMAGE HANDLING
+% ============================================================================
+$if(graphics)$
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+$endif$
+
+% ============================================================================
+% TITLE PAGE
+% ============================================================================
+$if(title)$
+\title{
+  \vspace{-2cm}
+  {\color{JapanRed}\rule{\linewidth}{2pt}}\\[0.5cm]
+  {\Huge\bfseries\sffamily\color{JapanNavy}$title$}\\[0.3cm]
+  {\color{JapanRed}\rule{\linewidth}{2pt}}
+  $if(subtitle)$\\[0.5cm]{\Large\sffamily\color{InkBlack}$subtitle$}$endif$
+}
+$endif$
+
+$if(author)$
+\author{$for(author)$$author$$sep$ \and $endfor$}
+$endif$
+
+$if(date)$
+\date{\color{JapanNavy}\sffamily $date$}
+$else$
+\date{}
+$endif$
+
+% ============================================================================
+% DOCUMENT BEGIN
+% ============================================================================
+\begin{document}
+
+$if(title)$
+\maketitle
+\thispagestyle{empty}
+$if(abstract)$
+\begin{abstract}
+$abstract$
+\end{abstract}
+$endif$
+$endif$
+
+$for(include-before)$
+$include-before$
+$endfor$
+
+$if(toc)$
+{
+\setcounter{tocdepth}{$if(toc-depth)$$toc-depth$$else$3$endif$}
+\hypersetup{linkcolor=JapanNavy}
+\tableofcontents
+\newpage
+}
+$endif$
+
+$if(lot)$
+\listoftables
+$endif$
+
+$if(lof)$
+\listoffigures
+$endif$
+
+$body$
+
+$for(include-after)$
+$include-after$
+$endfor$
+
+\end{document}

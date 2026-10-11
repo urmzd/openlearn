@@ -117,6 +117,61 @@ jobs:
       - name: Assert cost budgets
         run: practice/bin/ss bench --assert
 
+  # The desktop platform (app/). Its Go tests also open the repository
+  # and packs/languide as course packs, so a path.tsv the app cannot read fails
+  # here as well as in `ss learn --verify`.
+  openlearn:
+    name: OpenLearn (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: app/go.mod
+          cache-dependency-path: app/go.sum
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.11.4
+          working-directory: app
+
+      # Live tests are skipped unless OPENLEARN_LIVE is set, so CI never needs
+      # a model. See app/internal/harness/live_test.go.
+      - run: go test ./...
+
+  openlearn-frontend:
+    name: OpenLearn (frontend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck and build
+        run: npm run build
+
   build-exercises:
     name: Build Exercises
     runs-on: ubuntu-latest
