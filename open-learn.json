@@ -1,0 +1,35 @@
+{
+  "id": "supersource",
+  "title": "Supersource",
+  "tagline": "Undergraduate foundations through PhD-level depth and Staff/Principal engineering, free and self-paced.",
+  "repo": "https://github.com/urmzd/supersource",
+  "paths": "paths",
+  "featured": "course",
+  "practice": "practice/bin/ss",
+  "start": [
+    { "file": "paths/course/README.md", "title": "The course" },
+    { "file": "README.md", "title": "Overview" },
+    { "file": "STUDY-PLAN.md", "title": "Study Plans" },
+    { "file": "CS-CURRICULUM.md", "title": "CS Curriculum" },
+    { "file": "SOURCES.md", "title": "Sources" }
+  ],
+  "tracks": [
+    { "dir": "math", "title": "Mathematics" },
+    { "dir": "algorithms", "title": "Algorithms" },
+    { "dir": "ml", "title": "Machine Learning & AI" },
+    { "dir": "systems", "title": "Systems & Architecture" },
+    { "dir": "data-engineering", "title": "Data Engineering" },
+    { "dir": "ai-platform-engineering", "title": "AI Platform Engineering" },
+    { "dir": "software-craftsmanship", "title": "Software Craftsmanship" },
+    { "dir": "infrastructure", "title": "Infrastructure" },
+    { "dir": "responsible-ai", "title": "Responsible AI" },
+    { "dir": "competitive-programming", "title": "Competitive Programming" },
+    { "dir": "field-engineering", "title": "Field Engineering" },
+    { "dir": "case-studies", "title": "Case Studies" }
+  ],
+  "reference": [
+    { "dir": "practice", "title": "Practice" },
+    { "dir": "interviews", "title": "Interview Prep" },
+    { "dir": "course/contracts", "title": "Course Contracts" }
+  ]
+}
