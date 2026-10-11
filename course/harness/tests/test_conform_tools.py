@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from sscourse import conform, web
+from olcourse import conform, web
 
 FIX = Path(__file__).resolve().parents[3] / "practice" / "bin" / "tests" / "fixtures"
 

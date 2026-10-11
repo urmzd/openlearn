@@ -1,8 +1,8 @@
 // Parity driver for `bloom`, implementation `rust` (ds.08): an example of the
-// harness crate ss-tests. Reads one case per stdin line
+// harness crate ol-tests. Reads one case per stdin line
 // {"n", "p", "insert": [hex], "probe": [hex]} and prints
 // {"m", "k", "bytes", "contains"} for the filter tl_ds::bloom::Bloom builds.
-include!("../parity/ss_parity.rs");
+include!("../parity/ol_parity.rs");
 
 use tl_ds::bloom::Bloom;
 

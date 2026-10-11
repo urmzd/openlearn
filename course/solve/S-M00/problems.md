@@ -1,6 +1,6 @@
 # S-M00 problems: functions, exponents and logarithms, trigonometry and Euler, series, polynomials, inequalities
 
-Answer every question in `solve/S-M00.toml` (written by `ss start S-M00`).
+Answer every question in `solve/S-M00.toml` (written by `ol start S-M00`).
 The tag after each question is its answer type. `[number]` is a value:
 give it **exactly** (`5/3`, `sqrt(3)/2`, `log(2)`, `5*pi/6`, `-7/5 + 24*I/5`)
 unless the question says "decimal ok", where 7 significant digits are

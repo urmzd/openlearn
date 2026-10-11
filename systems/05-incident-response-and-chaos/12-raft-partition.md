@@ -1,4 +1,4 @@
-<!-- ss:module ops.12 -->
+<!-- ol:module ops.12 -->
 # Drill: Raft partition (optional)
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ops.12
-ss tests ops.12
-ss check ops.12
+ol start ops.12
+ol tests ops.12
+ol check ops.12
 ```
 
 ---

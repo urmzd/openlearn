@@ -1,4 +1,4 @@
-<!-- ss:module M09.3 -->
+<!-- ol:module M09.3 -->
 # Error analysis, condition numbers, tolerance budgets
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M09.3              # stubs tolerance.py into your repo
-ss tests M09.3              # read the test catalog first: rung R0, you write no tests here
-ss check M09.3              # exit code is the verdict
-ss check M09.3 --ref-deps   # only if you skipped M03.5 or M01.1
-ss diff  M09.3              # after passing: your code against the reference
+ol start M09.3              # stubs tolerance.py into your repo
+ol tests M09.3              # read the test catalog first: rung R0, you write no tests here
+ol check M09.3              # exit code is the verdict
+ol check M09.3 --ref-deps   # only if you skipped M03.5 or M01.1
+ol diff  M09.3              # after passing: your code against the reference
 ```
 
 ---

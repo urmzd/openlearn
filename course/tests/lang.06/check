@@ -3,21 +3,21 @@
 #
 # Runs in your learner repo. Copies your primers/lang.06/*.go (not your own
 # _test.go files) into a scratch module named lang06, adds the course tests
-# from $SS_COURSE_TREE/tests/go/lang_06/, and runs `go vet` and
+# from $OL_COURSE_TREE/tests/go/lang_06/, and runs `go vet` and
 # `go test -race` with the `primer` tag. The exit code is the verdict.
 set -euo pipefail
 
 src=primers/lang.06
-tests="${SS_COURSE_TREE:?SS_COURSE_TREE is set by ss check}/tests/go/lang_06"
+tests="${OL_COURSE_TREE:?OL_COURSE_TREE is set by ol check}/tests/go/lang_06"
 
-command -v go >/dev/null || { echo "go is not installed (ss doctor)"; exit 5; }
+command -v go >/dev/null || { echo "go is not installed (ol doctor)"; exit 5; }
 shopt -s nullglob
 files=()
 for f in "$src"/*.go; do
   case "$f" in *_test.go) ;; *) files+=("$f") ;; esac
 done
 if [ ${#files[@]} -eq 0 ]; then
-  echo "$src/ has no .go files: run \`ss start lang.06\` and write $src/proxy.go"
+  echo "$src/ has no .go files: run \`ol start lang.06\` and write $src/proxy.go"
   exit 1
 fi
 
@@ -29,7 +29,7 @@ printf 'module lang06\n\ngo 1.22\n' > "$work/go.mod"
 
 export GOTOOLCHAIN=local GOFLAGS=-count=1 GOWORK=off
 race=(-race)
-[ "${SS_GO_RACE:-1}" = 0 ] && race=()
+[ "${OL_GO_RACE:-1}" = 0 ] && race=()
 
 cd "$work"
 echo "go vet -tags primer"

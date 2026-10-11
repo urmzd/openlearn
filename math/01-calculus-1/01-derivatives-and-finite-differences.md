@@ -1,4 +1,4 @@
-<!-- ss:module M01.1 -->
+<!-- ol:module M01.1 -->
 # Derivative as a limit, finite differences, step-size choice
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M01.1              # stubs python/tinyllm/num/diff.py into your repo
-ss tests M01.1              # read the test catalog first: rung R0, you write no tests here
-ss check M01.1              # exit code is the verdict
-ss diff  M01.1              # after passing: your code against the reference
+ol start M01.1              # stubs python/tinyllm/num/diff.py into your repo
+ol tests M01.1              # read the test catalog first: rung R0, you write no tests here
+ol check M01.1              # exit code is the verdict
+ol diff  M01.1              # after passing: your code against the reference
 ```
 
 ---
@@ -178,7 +178,7 @@ def richardson(f: Callable[[float], float], x: float, h: float, levels: int = 2)
 | Forward | `M09.3` | condition numbers and tolerance budgets generalize the rounding analysis of section 2.4 |
 | Forward | `L0.2` | `F.gradcheck_all()` checks every op of your autograd library through `M04.1`, and so through this file |
 
-If you skip this module, `ss check M04.1` stops with `BLOCKED ... needs M01.1`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check M04.1` stops with `BLOCKED ... needs M01.1`: build it, or pass `--ref-deps`.
 
 ## Going further
 

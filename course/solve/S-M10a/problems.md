@@ -1,6 +1,6 @@
 # S-M10a problems: convexity and conditioning, gradient descent rates, momentum, Adam
 
-Answer every question in `solve/S-M10a.toml` (written by `ss start S-M10a`).
+Answer every question in `solve/S-M10a.toml` (written by `ol start S-M10a`).
 The tag after each question is its answer type: `[number]` is an exact value
 (`9/11`, `81/121`), `[expr]` a formula in the named variables (write
 $\beta$ as `beta`, $\beta_1$ as `beta1`, $\eta$ as `eta`), `[interval]` an

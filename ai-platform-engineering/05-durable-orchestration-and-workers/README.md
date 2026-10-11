@@ -222,7 +222,7 @@ In the course you build the durable engine this topic describes, in Go, and run 
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `dur.01` | [Append-only segmented event log](01-event-log.md) | build | 8 |
@@ -237,7 +237,7 @@ In the course you build the durable engine this topic describes, in Go, and run 
 | 10 | `dur.10` | [Raft HA for the durable log (optional)](10-raft-ha.md) | side | 8 |
 | 11 | `dur.11` | [Platform workflows TrainRun and EvalSuite](11-trainrun-and-evalsuite.md) | build | 8 |
 | 12 | `dur.12` | [ModelRelease: gates, canary, PromQL burn check, rollback](12-model-release.md) | build | 9 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

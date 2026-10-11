@@ -20,7 +20,7 @@ gw.03 reference, so a change to that reference is one rerun away:
 
 and the reference review course/ref/docs/reviews/craft-08-pr-review.toml (one
 finding per defect at its current line, the current head's blob), which
-`ss verify course craft.08` grades in the reference learner.
+`ol verify course craft.08` grades in the reference learner.
 
 Every edit below is an exact, unique string replacement on the reference, so
 a drift in gw.03's reference fails loudly here instead of producing a
@@ -48,7 +48,7 @@ UNIT = "go/gateway/limit/limit.go"
 TEST = "go/gateway/limit/idle_evict_test.go"
 
 sys.path.insert(0, str(COURSE / "harness" / "src"))
-from sscourse import markers  # noqa: E402
+from olcourse import markers  # noqa: E402
 
 
 def edit(text: str, old: str, new: str, what: str) -> str:
@@ -272,7 +272,7 @@ ROWS = [
 ]
 
 # The reference review (course/ref/docs/reviews/, copied into the reference
-# learner by `ss verify course`): one finding per defect at the defect's first
+# learner by `ol verify course`): one finding per defect at the defect's first
 # line, plus one on the PR's test file. Rewritten with the current lines and
 # blob every run, so it always grades against the current head.
 REF_FINDINGS = {
@@ -365,7 +365,7 @@ def changed_lines(a: str, b: str) -> list[int]:
 
 
 def apply(patches: list[Path], files: dict[str, str]) -> dict[str, str]:
-    with tempfile.TemporaryDirectory(prefix="ss-craft08-gen-") as d:
+    with tempfile.TemporaryDirectory(prefix="ol-craft08-gen-") as d:
         for rel, text in files.items():
             p = Path(d) / rel
             p.parent.mkdir(parents=True, exist_ok=True)

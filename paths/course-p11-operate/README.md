@@ -6,4 +6,4 @@ v1.0.0: migrations (KV v2, API v2 as build modules), upgrades, bisect, chaos, se
 
 **Gate**: [MS-P11 (includes MS-ops)](milestone.md).
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ss learn course-p11-p11-operate` to see progress.
+Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p11-p11-operate` to see progress.

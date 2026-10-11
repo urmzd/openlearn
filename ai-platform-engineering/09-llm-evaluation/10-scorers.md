@@ -1,4 +1,4 @@
-<!-- ss:module ag.10 -->
+<!-- ol:module ag.10 -->
 # Agent evaluation scorers
 
 ## Overview
@@ -40,9 +40,9 @@ Implement the constructors in `go/agent/eval/scorers`: `Exact`, `Regex`, `Schema
 | `TestStateChangeCriteria` | required and forbidden state changes |
 
 ```bash
-ss start ag.10
-ss tests ag.10
-ss check ag.10
+ol start ag.10
+ol tests ag.10
+ol check ag.10
 ```
 
 ## 5. Pitfalls

@@ -1,4 +1,4 @@
-<!-- ss:module L4.4 -->
+<!-- ol:module L4.4 -->
 # Beam search, generic over a step function
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L4.4              # stubs beam.py; prints your test path and rung (R5)
-ss tests L4.4              # the course tests
+ol start L4.4              # stubs beam.py; prints your test path and rung (R5)
+ol tests L4.4              # the course tests
 # write your oracle tests in python/tests/l4-4-beam/ (section 4 lists what to cover), then:
-ss check L4.4              # course tests and the mutation grade of your tests
-ss mutate L4.4             # the full grade, cached by your test files' hash
-ss diff  L4.4              # after passing: your code against the reference
+ol check L4.4              # course tests and the mutation grade of your tests
+ol mutate L4.4             # the full grade, cached by your test files' hash
+ol diff  L4.4              # after passing: your code against the reference
 ```
 
 ---
@@ -145,7 +145,7 @@ def greedy_decode(step_fn, init_state, bos: int, eos: int, max_len: int) -> Hypo
 
 ### Your graded tests (rung R5)
 
-Rung R5 asks for **oracles**: tests whose expected values come from an independent computation, not from your implementation. For beam search the oracle is brute force: write a tiny model (a table, or logits from a hash of the prefix), enumerate every output for $V = 3$ and $L = 4$, score each with your own log-softmax, and compare with an exhaustive beam. Add greedy equivalence, the section 3 numbers, a model that never says `eos`, a mask, ties, and `select_state` on a NamedTuple inside a dict. Keep the state an **array** (an object array of prefixes works): a Python list is searched for arrays, not gathered. Import only `tinyllm.infer.beam`. `ss check L4.4` requires a mutation score of at least 0.80 with every pitfall fault killed.
+Rung R5 asks for **oracles**: tests whose expected values come from an independent computation, not from your implementation. For beam search the oracle is brute force: write a tiny model (a table, or logits from a hash of the prefix), enumerate every output for $V = 3$ and $L = 4$, score each with your own log-softmax, and compare with an exhaustive beam. Add greedy equivalence, the section 3 numbers, a model that never says `eos`, a mask, ties, and `select_state` on a NamedTuple inside a dict. Keep the state an **array** (an object array of prefixes works): a Python list is searched for arrays, not gathered. Import only `tinyllm.infer.beam`. `ol check L4.4` requires a mutation score of at least 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

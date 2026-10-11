@@ -1,4 +1,4 @@
-<!-- ss:module L11.3 -->
+<!-- ol:module L11.3 -->
 # Data parallelism and ZeRO stages 1 to 3
 
 ## Overview
@@ -24,12 +24,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L11.3              # stubs zero.py into your repo
-ss tests L11.3              # read the test catalog first
-ss check L11.3              # course tests, then your tests graded by mutation
-ss mutate L11.3             # the full mutation grade of your tests
-ss check L11.3 --ref-deps   # only if your L11.2 is not passing yet
-ss diff  L11.3              # after passing: your code against the reference
+ol start L11.3              # stubs zero.py into your repo
+ol tests L11.3              # read the test catalog first
+ol check L11.3              # course tests, then your tests graded by mutation
+ol mutate L11.3             # the full mutation grade of your tests
+ol check L11.3 --ref-deps   # only if your L11.2 is not passing yet
+ol diff  L11.3              # after passing: your code against the reference
 ```
 
 ---

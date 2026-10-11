@@ -1,4 +1,4 @@
-<!-- ss:module ds.91 -->
+<!-- ol:module ds.91 -->
 # Mean over the compensated sum
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.91
-ss tests ds.91
-ss check ds.91
+ol start ds.91
+ol tests ds.91
+ol check ds.91
 ```
 
 ---

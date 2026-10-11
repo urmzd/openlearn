@@ -1,5 +1,5 @@
 // Parity driver for `rng`, implementation `rust` (L10.1): an example of the
-// harness crate ss-tests. Reads one case per stdin line
+// harness crate ol-tests. Reads one case per stdin line
 // {"seed", "seq", "n_u32", "n_uniform", "n_normal"} and prints
 // {"u32": [...], "uniform": [...], "normal": [...]}, each list drawn from a
 // fresh tl_engine::sample::Pcg32::new(seed, seq).
@@ -7,7 +7,7 @@
 // Normals follow spec/pcg32.md: Box-Muller over two consecutive uniforms,
 // r = sqrt(-2 ln(1 - u1)), cosine first, the sine kept as the spare. L10.1
 // owns the generator; the transform is written here, as in drivers/rng.py.
-include!("../parity/ss_parity.rs");
+include!("../parity/ol_parity.rs");
 
 use tl_engine::sample::Pcg32;
 

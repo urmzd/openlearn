@@ -1,4 +1,4 @@
-<!-- ss:module S-M05 -->
+<!-- ol:module S-M05 -->
 # Discrete math 1 problem set: sets, counting, proofs, induction, relations, bijections
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M05/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M05/problems.md` and in section 4 |
 | **Needs** | high-school algebra. Reading: the [Discrete Math 1 topic](README.md), sections 1 to 6 |
 | **Used by** | no call site (a solve set). Do it before `M06.1` (toposort correctness is an induction), `M06.3` (PCG32 is counting and modular arithmetic), `M05.1` (parameter, FLOP, and KV-byte counts), `M05.2` (the GPT-2 byte bijection), `L5.2` (mask algebra), and `L9.2` (the online softmax invariant) |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Hammack, *Book of Proof* (free), ch. 1 to 10 and 12; Velleman, *How to Prove It*, ch. 3 and 6 |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M05              # writes solve/S-M05.toml and one file per proof
-ss check S-M05              # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M05 --regrade    # ask the rubrics again after you change a proof
+ol start S-M05              # writes solve/S-M05.toml and one file per proof
+ol check S-M05              # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M05 --regrade    # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -111,7 +111,7 @@ A function $f: X \to Y$ is **injective** (one-to-one) if $f(x) = f(x') \Rightarr
 
 ### 2.8 How your answers are checked
 
-`ss check` parses each answer as ASCII math and compares it with the key in SymPy: an `[expr]` must equal the key as a formula (symbolically, or at 32 random points of its domain), a `[number]` marked exact must be an exact value (`3/4`, not `0.75`), a `[set]` matches element for element in any order, and a `[matrix]` entry by entry. Feedback names what differs, never the expected answer. A proof is graded by you: `ss check` prints each line of its rubric and you answer y or n, and every line must be a yes.
+`ol check` parses each answer as ASCII math and compares it with the key in SymPy: an `[expr]` must equal the key as a formula (symbolically, or at 32 random points of its domain), a `[number]` marked exact must be an exact value (`3/4`, not `0.75`), a `[set]` matches element for element in any order, and a `[matrix]` entry by entry. Feedback names what differs, never the expected answer. A proof is graded by you: `ol check` prints each line of its rubric and you answer y or n, and every line must be a yes.
 
 ## 3. Worked example by hand
 
@@ -142,7 +142,7 @@ proof = "S-M05/q6.md"
 
 ASCII math: `x^2`, `2^32`, `binomial(10, 3)`, `factorial(5)`, `exp(-1)`, sets `{1, 2}`, matrices as lists of rows. The tag after each problem is its answer type.
 
-<!-- ss:problems S-M05 -->
+<!-- ol:problems S-M05 -->
 
 ### Sets and logic
 
@@ -256,7 +256,7 @@ return r
 
 **q41.** GPT-2's byte-to-character map (`M05.2`) keeps the 188 printable bytes $P = \{33, \dots, 126\} \cup \{161, \dots, 172\} \cup \{174, \dots, 255\}$ as themselves ($f(b) = b$) and sends the other 68 bytes, in increasing order, to $256, 257, \dots, 323$. Prove that $f: \{0, \dots, 255\} \to \mathbb{N}$ is injective, so it is a bijection onto its image. `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

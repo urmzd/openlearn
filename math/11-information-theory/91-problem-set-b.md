@@ -1,4 +1,4 @@
-<!-- ss:module S-M11b -->
+<!-- ol:module S-M11b -->
 # Information theory problem set, part b: coding and Huffman, mutual information, maximum entropy, rate-distortion
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M11b/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M11b/problems.md` and in section 4 |
 | **Needs** | no module. Reading: `S-M11a` (entropy, KL, Gibbs' inequality), `M11.2` (perplexity and bits per byte), `M11.4` (mutual information and PMI), and the [Information Theory topic](README.md) |
 | **Used by** | no call site (a solve set). It checks the definitions behind `M11.4` (which `L2.3` calls), the temperature semantics of `L8.1`'s sampler (the solve-only `M11.5`), the bits-per-sample view of quantization in `L8.5` (the solve-only `M11.6`), and the coding theorems behind the optional `M11.3` |
-| **Milestone** | `MS-P3` (the Pass 3 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P3` (the Pass 3 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Cover and Thomas, *Elements of Information Theory*, ch. 2.4 to 2.6, 5.1 to 5.8, 10.1 to 10.3, 12.1; MacKay, *Information Theory, Inference, and Learning Algorithms* (free), ch. 5 and 8; Jaynes, "Information theory and statistical mechanics" (1957) |
 
 ## Key Takeaways
@@ -24,9 +24,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M11b             # writes solve/S-M11b.toml and one file per proof
-ss check S-M11b             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M11b --regrade   # ask the rubrics again after you change a proof
+ol start S-M11b             # writes solve/S-M11b.toml and one file per proof
+ol check S-M11b             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M11b --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -97,7 +97,7 @@ proof = "S-M11b/q4.md"
 
 Bits use `log(x, 2)`; give exact values, not decimals.
 
-<!-- ss:problems S-M11b -->
+<!-- ol:problems S-M11b -->
 
 ### Coding theorems and Huffman
 
@@ -129,7 +129,7 @@ Bits use `log(x, 2)`; give exact values, not decimals.
 
 **q11.** A Gaussian source with variance $\sigma^2$ and squared-error distortion has $R(D) = \frac12 \log_2 (\sigma^2 / D)$ bits per sample for $0 < D \le \sigma^2$. (a) How many bits per sample are needed to reach $D = \sigma^2 / 16$? (b) Each extra bit per sample divides the smallest achievable distortion by what factor? `[number]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

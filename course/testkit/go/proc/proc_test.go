@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/proc"
+	"openlearn.urmzd.com/tl/testkit/proc"
 )
 
 // A worker that appends 1..N to a journal, one line at a time, resuming from

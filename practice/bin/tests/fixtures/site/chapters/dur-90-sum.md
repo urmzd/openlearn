@@ -1,4 +1,4 @@
-<!-- ss:module dur.90 -->
+<!-- ol:module dur.90 -->
 # Sum that skips NaN
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.90
-ss tests dur.90
-ss check dur.90
+ol start dur.90
+ol tests dur.90
+ol check dur.90
 ```
 
 ---

@@ -1,4 +1,4 @@
-<!-- ss:module M07.4 -->
+<!-- ol:module M07.4 -->
 # LLN, CLT, confidence intervals, bootstrap
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/tests/M07.4/` (what they check: section 4), golden values from scipy 1.17.1 in `course/fixtures/M07.4/scipy_golden.json` |
 | **Needs** | no code from earlier modules · reading: [`M07.1`](01-categorical-sampling.md) one uniform per draw, [`M07.0`](00-random-variables-and-the-normal.md) expectation, variance, the normal, [`S-M07b`](91-problem-set-b.md) the variance of a sum |
 | **Used by** | later: `L4.5` sequence metrics with bootstrap CIs · `L6.7` every evaluation metric carries a CI · `L8.5` quantization verdicts · `L10.7` · `ag.12` re-implements the bootstrap in Go · `M07.5` hypothesis tests build on it · later: `L12.3`, `ethics.04` |
-| **Milestone** | `MS-P4` (sequence models; the pass gate runs `ss check` on every math module of the pass) |
+| **Milestone** | `MS-P4` (sequence models; the pass gate runs `ol check` on every math module of the pass) |
 | **Optional depth** | Wasserman, *All of Statistics*, ch. 5 to 8 (convergence, the bootstrap); Efron and Tibshirani, *An Introduction to the Bootstrap* (1993), ch. 13; Brown, Cai, DasGupta, "Interval Estimation for a Binomial Proportion" (2001) |
 
 ## Key Takeaways
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M07.4              # stubs stats.py into your repo
-ss tests M07.4              # read the test catalog first
-ss check M07.4              # exit code is the verdict
-ss diff  M07.4              # after passing: your code against the reference
+ol start M07.4              # stubs stats.py into your repo
+ol tests M07.4              # read the test catalog first
+ol check M07.4              # exit code is the verdict
+ol diff  M07.4              # after passing: your code against the reference
 ```
 
 ---
@@ -160,7 +160,7 @@ def bootstrap_ci(x, stat, n_boot: int, alpha: float, rng) -> tuple[float, float,
 | Forward | `M07.5` | permutation tests and McNemar build on the same resampling |
 | Forward | `ag.12` | the Go eval harness re-implements `bootstrap_ci` from the same seed |
 
-If you skip this module, `ss check L6.7` stops with `L6.7 needs M07.4`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L6.7` stops with `L6.7 needs M07.4`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

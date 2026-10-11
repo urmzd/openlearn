@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Artifact check for C1 (DESIGN 4.3 C1, 6.4; `ss check C1` runs this from
+# Artifact check for C1 (DESIGN 4.3 C1, 6.4; `ol check C1` runs this from
 # the root of your repo and its exit code is the verdict).
 #
 # It runs the annotated tests next to this file against your capstone
@@ -7,18 +7,18 @@
 # docs/capstone/c1/ (report.json, the zoo table, the samples, the model card
 # and ledger your release names), and your ADRs in docs/adr/. One test runs
 # your Go ModelRelease (dur.12) preflight on your release spec. Read them
-# with `ss tests C1`. The training run itself is MS-C1's job.
+# with `ol tests C1`. The training run itself is MS-C1's job.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
-course="${SS_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
+course="${OL_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
 
 fail() { echo "C1: $*" >&2; exit 1; }
-command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
+command -v uv >/dev/null || fail "uv is not on PATH (ol doctor)"
 for f in docs/capstone/c1/report.json specs/c1/release.json; do
   [ -f "$PWD/$f" ] || fail "$f is missing: the capstone's artifacts (chapter section 4)"
 done
 
-export SS_REPO="$PWD" SS_COURSE_TREE="$course" PYTHONDONTWRITEBYTECODE=1
+export OL_REPO="$PWD" OL_COURSE_TREE="$course" PYTHONDONTWRITEBYTECODE=1
 exec uv run --no-project --python ">=3.11" --quiet --with pytest --with numpy --with jsonschema \
   python -m pytest -q --tb=short -p no:cacheprovider -p no:randomly --rootdir="$tests" --confcutdir="$tests" "$here"

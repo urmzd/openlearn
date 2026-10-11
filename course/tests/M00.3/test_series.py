@@ -28,7 +28,7 @@ GOLDEN = Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M00.3" / "ladders.json"
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def exact_sum(a: float, r: float, n: int) -> float:

@@ -1,4 +1,4 @@
-<!-- ss:module craft.12 -->
+<!-- ol:module craft.12 -->
 # Deprecation policy
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.12
-ss tests craft.12
-ss check craft.12
+ol start craft.12
+ol tests craft.12
+ol check craft.12
 ```
 
 ---

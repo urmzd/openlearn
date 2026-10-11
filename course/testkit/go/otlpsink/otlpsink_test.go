@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/otlpsink"
+	"openlearn.urmzd.com/tl/testkit/otlpsink"
 )
 
 const jsonBody = `{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"forge-gateway"}}]},

@@ -1,4 +1,4 @@
-"""ss drill: the safety gate, seeded injections into a fake kind cluster, the
+"""ol drill: the safety gate, seeded injections into a fake kind cluster, the
 undo journal replayed in reverse, and grading at `end` (TTD from ALERTS,
 resolution held over the window, trace evidence, postmortem sections)."""
 
@@ -166,7 +166,7 @@ def test_start_status_end_reset(ss, fake_http):
     v = [
         e
         for e in map(
-            json.loads, (ss.learner / ".ss/verdicts.jsonl").read_text().splitlines()
+            json.loads, (ss.learner / ".ol/verdicts.jsonl").read_text().splitlines()
         )
         if e.get("id") == "ops.90"
     ]
@@ -239,7 +239,7 @@ def test_loadgen_netem_and_aborted_start(ss, fake_http):
     ss.commit_learner("feat: loadgen entry")
     assert "flood" in ss("drill", "list", rc=0).out
     ss("drill", "start", "flood", rc=0)
-    runs = sorted(p for p in (ss.learner / ".ss/drills").iterdir() if p.is_dir())
+    runs = sorted(p for p in (ss.learner / ".ol/drills").iterdir() if p.is_dir())
     journal = [
         json.loads(x) for x in (runs[-1] / "journal.jsonl").read_text().splitlines()
     ]

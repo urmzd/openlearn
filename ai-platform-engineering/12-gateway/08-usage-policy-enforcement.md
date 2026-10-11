@@ -1,4 +1,4 @@
-<!-- ss:module gw.08 -->
+<!-- ol:module gw.08 -->
 # Usage policy enforcement
 
 ## Overview
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start gw.08
-ss tests gw.08
-ss check gw.08
+ol start gw.08
+ol tests gw.08
+ol check gw.08
 ```
 
 ## 1. Why now

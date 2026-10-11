@@ -1,4 +1,4 @@
-<!-- ss:module L0.4 -->
+<!-- ol:module L0.4 -->
 # Module system and basic layers
 
 ## Overview
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start L0.4              # stubs module.py and layers.py; prints your test path and rung (R3)
-ss tests L0.4              # the course tests
+ol start L0.4              # stubs module.py and layers.py; prints your test path and rung (R3)
+ol tests L0.4              # the course tests
 # write ONE test in python/tests/l0-4-module/, then:
-ss tdd red L0.4            # must FAIL against your current code: records the red
+ol tdd red L0.4            # must FAIL against your current code: records the red
 # make it pass, then:
-ss tdd green L0.4          # must PASS with the same test files: records the green
+ol tdd green L0.4          # must PASS with the same test files: records the green
 # repeat for each test; then:
-ss check L0.4              # course tests, the red-then-green journal, the mutation grade
-ss mutate L0.4             # the full grade, cached by your test files' hash
+ol check L0.4              # course tests, the red-then-green journal, the mutation grade
+ol mutate L0.4             # the full grade, cached by your test files' hash
 ```
 
 ---
@@ -148,7 +148,7 @@ def test_hand_example_linear():
     assert np.allclose(x.grad, [[9.0, 12.0]])
 ```
 
-Then, one at a time, red then green: state_dict names in registration order with no key for a missing bias; loading by name (a reordered dict gives the same parameters); loading in place; strict mode rejecting missing and unexpected keys without changing anything; a tied parameter listed once; `eval()` turning dropout off in nested modules; LayerNorm against its formula. Import only contract names (`tinyllm.nn.module`, `tinyllm.nn.layers`, `tinyllm.autograd.tensor`). `ss check L0.4` requires, for every test file, a `ss tdd red` record before its last `ss tdd green`, a mutation score of at least 0.70, and the required fault killed (it is the one section 5's last pitfall describes).
+Then, one at a time, red then green: state_dict names in registration order with no key for a missing bias; loading by name (a reordered dict gives the same parameters); loading in place; strict mode rejecting missing and unexpected keys without changing anything; a tied parameter listed once; `eval()` turning dropout off in nested modules; LayerNorm against its formula. Import only contract names (`tinyllm.nn.module`, `tinyllm.nn.layers`, `tinyllm.autograd.tensor`). `ol check L0.4` requires, for every test file, a `ol tdd red` record before its last `ol tdd green`, a mutation score of at least 0.70, and the required fault killed (it is the one section 5's last pitfall describes).
 
 ## 5. Pitfalls
 
@@ -195,7 +195,7 @@ Then, one at a time, red then green: state_dict names in registration order with
 | Forward | `L0.5` | `BigramLogits` subclasses `Module`; the loop trains `Sequential` MLPs |
 | Forward | `L0.6` | `save_checkpoint` writes `state_dict()` and resume calls `load_state_dict` |
 
-If you skip this module, `ss check L0.5` stops with `L0.5 needs L0.4`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L0.5` stops with `L0.5 needs L0.4`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

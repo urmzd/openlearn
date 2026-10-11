@@ -1,4 +1,4 @@
-<!-- ss:module L6.2 -->
+<!-- ol:module L6.2 -->
 # BERT encoder and MLM masking
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start L6.2              # stubs bert.py; prints your test path and rung (R5)
-ss tests L6.2              # the course tests
-ss check L6.2              # course tests and the mutation grade of your tests
-ss diff  L6.2              # after passing: your code against the reference
+ol start L6.2              # stubs bert.py; prints your test path and rung (R5)
+ol tests L6.2              # the course tests
+ol check L6.2              # course tests and the mutation grade of your tests
+ol diff  L6.2              # after passing: your code against the reference
 ```
 
 ---
@@ -129,7 +129,7 @@ def load_hf_bert(model, sd) -> None;  def save_bert(model, dir); def load_bert(d
 
 ### Your graded tests (rung R5)
 
-Two oracles. For masking, replay the op order yourself with your own `PCG32` (two generators from one seed: one for `mlm_mask`, one for your loop) and compare exactly; add the section 3 example with a scripted generator that fails on extra draws. For the model, write one layer and the MLM head in float64 numpy (exact GELU with `math.erf`) and compare; build a Hugging Face-named state dict yourself to test `load_hf_bert`. `ss check L6.2` requires 0.80 with the pitfall faults killed.
+Two oracles. For masking, replay the op order yourself with your own `PCG32` (two generators from one seed: one for `mlm_mask`, one for your loop) and compare exactly; add the section 3 example with a scripted generator that fails on extra draws. For the model, write one layer and the MLM head in float64 numpy (exact GELU with `math.erf`) and compare; build a Hugging Face-named state dict yourself to test `load_hf_bert`. `ol check L6.2` requires 0.80 with the pitfall faults killed.
 
 ## 5. Pitfalls
 

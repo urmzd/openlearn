@@ -1,4 +1,4 @@
-<!-- ss:module dep.01 -->
+<!-- ol:module dep.01 -->
 # Dockerfiles for the gateway and the engine
 
 ## Overview
@@ -27,8 +27,8 @@
 Every command runs from your repo root. `forge` stands for your `<system>` name.
 
 ```bash
-ss start dep.01                               # records the start; there are no stubs
-ss tests dep.01                               # read the test catalog first
+ol start dep.01                               # records the start; there are no stubs
+ol tests dep.01                               # read the test catalog first
 docker buildx imagetools inspect golang:1.25-alpine --format '{{json .Manifest.Digest}}'   # the digest to pin
 docker build -f deploy/docker/gateway.Dockerfile -t forge-gateway:0.2.0 \
   --build-arg VERSION=0.2.0 --build-arg REVISION="$(git rev-parse HEAD)" .
@@ -36,7 +36,7 @@ docker build -f deploy/docker/engine.Dockerfile  -t forge-engine:0.2.0 \
   --build-arg VERSION=0.2.0 --build-arg REVISION="$(git rev-parse HEAD)" .
 docker image inspect forge-gateway:0.2.0 --format '{{json .Config.Labels}} {{json .Config.Healthcheck}}'
 docker history --no-trunc forge-gateway:0.2.0  # what anyone who pulls it can read
-ss check dep.01                               # exit code is the verdict
+ol check dep.01                               # exit code is the verdict
 ```
 
 ---

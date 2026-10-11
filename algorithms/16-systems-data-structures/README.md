@@ -69,7 +69,7 @@ The engine flag `--prefix-cache=hash|radix` gives both `ds.02` (hash index in C)
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ds.01` | [Growable array tl_vec (type-erased, optional C)](01-growable-array.md) | side | 6 |
@@ -81,7 +81,7 @@ The engine flag `--prefix-cache=hash|radix` gives both `ds.02` (hash index in C)
 | 7 | `ds.07` | [Radix tree over token ids with index-linked LRU leaf list](07-radix-tree.md) | build | 6 |
 | 8 | `ds.08` | [Bloom filter](08-bloom-filter.md) | side | 3 |
 | 9 | `ds.09` | [Consistent hash ring with bounded loads](09-consistent-hash-ring.md) | build | 7 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

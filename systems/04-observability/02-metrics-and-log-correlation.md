@@ -1,4 +1,4 @@
-<!-- ss:module obs.02 -->
+<!-- ol:module obs.02 -->
 # Metrics and log correlation
 
 ## Overview
@@ -25,16 +25,16 @@
 ## How to work this chapter
 
 ```bash
-ss start obs.02                # records the start; there are no stubs
-ss tests obs.02                # read the test catalog first
+ol start obs.02                # records the start; there are no stubs
+ol tests obs.02                # read the test catalog first
 # add /metrics and JSON logs to the gateway, monitors.yaml and collector.yaml, then:
-SS_SMOKE=1 ss check obs.02     # static and local tiers: your services as local processes
+OL_SMOKE=1 ol check obs.02     # static and local tiers: your services as local processes
 curl -s 127.0.0.1:<health_port>/metrics | grep '^gen_ai_server_time_to_first_token_seconds_bucket'
 # on kind: apply the monitors, install the collector, then the full check
 kubectl apply -f deploy/observability/monitors.yaml
 helm upgrade --install observability deploy/observability -n observability \
   -f deploy/observability/values.yaml -f deploy/observability/collector.yaml   # dep.03's umbrella chart
-ss check obs.02
+ol check obs.02
 ```
 
 ---
@@ -129,7 +129,7 @@ The reference uses PodMonitors that select pods by `app.kubernetes.io/component`
 
 ### What the tests check
 
-The **local tier** runs your `[build]` steps and starts `[services.engine]` and `[services.gateway]` from `system.toml` as `ss milestone` does, sends six chat completions, one traced request whose prompt holds a canary string, and 80 requests with random model names to each service, then scrapes both health ports and reads both logs.
+The **local tier** runs your `[build]` steps and starts `[services.engine]` and `[services.gateway]` from `system.toml` as `ol milestone` does, sends six chat completions, one traced request whose prompt holds a canary string, and 80 requests with random model names to each service, then scrapes both health ports and reads both logs.
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
@@ -144,7 +144,7 @@ The **local tier** runs your `[build]` steps and starts `[services.engine]` and 
 | `test_targets_up_in_prometheus` | conformance | on kind: `up` is 1 for every target of both jobs | the deployed proof of the static tier |
 | `test_kubectl_logs_find_the_trace` | conformance | on kind: a request through the gateway NodePort, then `kubectl logs` finds its trace id | correlation in the cluster, during `ops.01` |
 
-The last two are the **cluster tier**; `SS_SMOKE=1` skips them with the reason.
+The last two are the **cluster tier**; `OL_SMOKE=1` skips them with the reason.
 
 ## 5. Pitfalls
 

@@ -5,7 +5,7 @@
 
 The course tests of M06.3 and M07.0 need the reference vectors of
 spec/pcg32.md, but a test cannot reach the contracts directory once it is
-vendored by `ss export` (only fixtures travel with it). This script rebuilds
+vendored by `ol export` (only fixtures travel with it). This script rebuilds
 the vectors from spec/pcg32.md with the independent stdlib generator in
 course/oracle/contracts/pcg32_vectors.py, checks that they equal the published
 contract file byte for byte, and writes the same text as a fixture.

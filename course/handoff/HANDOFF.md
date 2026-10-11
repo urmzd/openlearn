@@ -5,22 +5,22 @@
 Items 1 to 4 of the wrap-up brief are done: PR #22 (squash-merged as d561db0) was green on every CI job; the engine and milestone follow-ups were pushed directly to main (36b4217 to c960c88). B14 multimodal is **deferred** past its first slice: the design is merged into DESIGN.md and group M12 with S-M12 is on main; the vision and speech builds are not. Pick up from here:
 
 - **Side modules:** L8.3 (Python paged KV cache) and load.02 (run comparison gate) are `kind = "side"`: no module calls them. MS-L8, MS-L10, and MS-prod no longer require them; dep.05's perf-gate job is checked only when present (course/deviations/L8.3.md, load.02.md).
-- **Harness speed:** `ss check --all` reuses a pass recorded on the same code (`repo_hash`), the same trees of the module and its deps (`closure_hash`), course commit, and harness; deps that passed in the same run skip their cumulative smoke rerun; `--fresh` checks everything. Mutation results are content-keyed (closure reference code included) and `SS_MUTATION_CACHE` shares them; CI keeps the file between runs. On CI the first check --all of the e2e job now takes about 23 to 27 minutes, MS-P0's rerun about 20 s.
-- **Milestones:** a pass gate runs each contributing milestone's steps on a freshly started service stack; a PR gate skips earlier gates' nightly steps (MS-C1). `{endpoints.*}` placeholders; suite steps take per-case `params`; new matchers `logits-close`, `disagg`, `greedy-equal`, `effects`; `trace` polls and reads Jaeger or Tempo; step keys `chaos` and `sink = "effects"`; drills run `[workload]` and grade `[[resolve.run]]`. Practice checks always skip their cluster tier under SS_SMOKE.
+- **Harness speed:** `ol check --all` reuses a pass recorded on the same code (`repo_hash`), the same trees of the module and its deps (`closure_hash`), course commit, and harness; deps that passed in the same run skip their cumulative smoke rerun; `--fresh` checks everything. Mutation results are content-keyed (closure reference code included) and `OL_MUTATION_CACHE` shares them; CI keeps the file between runs. On CI the first check --all of the e2e job now takes about 23 to 27 minutes, MS-P0's rerun about 20 s.
+- **Milestones:** a pass gate runs each contributing milestone's steps on a freshly started service stack; a PR gate skips earlier gates' nightly steps (MS-C1). `{endpoints.*}` placeholders; suite steps take per-case `params`; new matchers `logits-close`, `disagg`, `greedy-equal`, `effects`; `trace` polls and reads Jaeger or Tempo; step keys `chaos` and `sink = "effects"`; drills run `[workload]` and grade `[[resolve.run]]`. Practice checks always skip their cluster tier under OL_SMOKE.
 - **Reference system:** new entry points ctl (wf, data build, train, usage, agent ask, eval, rag), loadgen (run, compare), agent worker, and the config-form gateway (keys, limits, cache, routes, ledger, admin API, gw.08 policy, engine heartbeat); services durable, worker, agent, engine-spec, engine-prefill, engine-decode-a/b; the engine serves tiny-llama-2l-1k (same weights, 1024 positions) so tool prompts fit; reference answers for every solve set. Engine fixes: radix-held blocks count as cached; speculative decoding scores every fed position and streams; prefill and decode roles serve disaggregation; OpenAPI v2 side by side with v1 (craft.14 upgrades server.rs).
-- **CI:** at e0abe0a the PR e2e (180 min, check --all 90 min) and "MS-P1 on kind" (`ss verify course --kind MS-P1`) were green; since then e2e and kind run nightly and PR shards sample 4 mutants with a kept kill cache.
+- **CI:** at e0abe0a the PR e2e (180 min, check --all 90 min) and "MS-P1 on kind" (`ol verify course --kind MS-P1`) were green; since then e2e and kind run nightly and PR shards sample 4 mutants with a kept kill cache.
 - **MS-durable and MS-L10 (feat/course-2):** the 500-append kill loop and TrainRun under kills pass (not smoke); `disagg` and `greedy-equal` matchers; the engine serves prefill and decode roles and speculative decoding scores every fed position, so MS-L10's disaggregated and speculative steps pass.
 - **Still open:** MS-durable-ha's kill loop (leader kills, partitions, linearizability, ports allocated before start); gateway v2 routing (`VersionedAPI` not in the chain); EngineControl Cancel/Drain stubs, no heartbeat client on the engine, resumed requests decoded outside the continuous batch; MS-C1 needs the C1 trainer (the reference trainer runs bigram only); `[services.engine-instruct]` for MS-L10's nightly step; ops.05 drill against v2; open-items.txt lines on the B9-2 serve loop are stale.
 - **B14 (deferred):** on main: the DESIGN.md merge (licenses: SmolVLM-256M-Instruct and SigLIP Apache-2.0, whisper-tiny MIT/Apache-2.0, PD12M CC0, LibriSpeech CC BY 4.0, Common Voice unclear so a LibriSpeech stand-in), group M12 with S-M12, and the 56 MiB fixture budget. M12.2, M12.3, M12.5 and M12.6 fail verify check 9 (no call site) until their L13/L14/data callers exist; make them side modules or build the callers. Partial L13.1 to L13.5 and L14.1, L14.2, L14.5 builds are on the local branch `b14-wip` in the course worktree.
 - **Runner notes:** give every agent its own scratch dir (`.scratchpad/w/<name>`); `uv run` at the worktree root may bump uv.lock's project version (revert it); an e2e or kind job is cancelled by any push to the branch.
 
-You are taking over the build of the supersource course from a Claude Code session. Finish everything below, in order. This file is the brief; `course/DESIGN.md` is the spec.
+You are taking over the build of the openlearn course from a Claude Code session. Finish everything below, in order. This file is the brief; `course/DESIGN.md` is the spec.
 
 Repo: this git worktree (`.worktrees/course`, branch `feat/course-2`; earlier PRs #19 and #22 are merged). Work only inside it.
 
 ## 1. What the course is (read first)
 
-One course where the learner builds one system end to end, module by module, and owns all of it. Read `course/DESIGN.md` sections 1, 2, 3, 5, 6, 9. Built modules are the exemplars: study `course/modules/L0.0.toml`, `L10.5.toml`, `gw.04.toml`, their references in `course/ref/`, tests in `course/tests/`, mutants in `course/mutants/`, and their chapters (path in each registry file's `chapter` field). The harness is `practice/bin/ss` plus the Python package in `course/harness` (`practice/README.md` documents the commands). Deviations already taken are in `course/DEVIATIONS.md`; append new ones.
+One course where the learner builds one system end to end, module by module, and owns all of it. Read `course/DESIGN.md` sections 1, 2, 3, 5, 6, 9. Built modules are the exemplars: study `course/modules/L0.0.toml`, `L10.5.toml`, `gw.04.toml`, their references in `course/ref/`, tests in `course/tests/`, mutants in `course/mutants/`, and their chapters (path in each registry file's `chapter` field). The harness is `practice/bin/ol` plus the Python package in `course/harness` (`practice/README.md` documents the commands). Deviations already taken are in `course/DEVIATIONS.md`; append new ones.
 
 ## 2. Status
 
@@ -46,7 +46,7 @@ One course where the learner builds one system end to end, module by module, and
 ## 4. Work to do, in order
 
 ### Step A: finish the 13 remaining module groups
-Per `remaining-groups.md`. For each module: registry toml, reference with markers, course tests in exemplar style (each test says why it exists), mutants, fixtures, solve sets for `S-*`, milestone definitions for `MS-*`, and a six-beat chapter at its chapter home. Apply the decisions in section 3 (for example the Go durable and agent code must not depend on any FFI). Prove each: `ss start <ID>` gives a stub that compiles and fails, the reference passes, `ss verify course <ids>` passes, `ss lint` is clean.
+Per `remaining-groups.md`. For each module: registry toml, reference with markers, course tests in exemplar style (each test says why it exists), mutants, fixtures, solve sets for `S-*`, milestone definitions for `MS-*`, and a six-beat chapter at its chapter home. Apply the decisions in section 3 (for example the Go durable and agent code must not depend on any FFI). Prove each: `ol start <ID>` gives a stub that compiles and fails, the reference passes, `ol verify course <ids>` passes, `ol lint` is clean.
 
 ### Step B: restructure batch (applies section 3 to already built modules)
 Modules that touch FFI today: `ds.04 L0.0 L10.1 L1.5 L10.6 L10.0 L10.4 L10.8 L9.1 L9.5 M03.1 L9.2 L9.6 L9.3 L8.3 lang.03 L9.7 M09.6 L9.4 M09.5 rt.03 rt.01` (find them with `grep -rlE "ctypes|pyo3|PyO3|extern \"C\"|tl-sys|cdll" course/modules`).
@@ -70,13 +70,13 @@ Per layer (math; early ML; late ML; Rust; Go; ops and practices; multimodal): ac
 
 ### Step F: final gate (all must pass, report real output)
 ```bash
-practice/bin/ss lint && practice/bin/ss lint --links && practice/bin/ss learn --verify
-practice/bin/ss verify course
-practice/bin/ss verify course --e2e
+practice/bin/ol lint && practice/bin/ol lint --links && practice/bin/ol learn --verify
+practice/bin/ol verify course
+practice/bin/ol verify course --e2e
 (cd course/harness && uv run pytest -q)
-PATH=~/.local/share/fnm/aliases/default/bin:$PATH practice/bin/ss verify predict
+PATH=~/.local/share/fnm/aliases/default/bin:$PATH practice/bin/ol verify predict
 (cd site && pnpm build)   # if site/ exists on this branch
-practice/bin/ss milestone <each pass gate MS-P0 .. MS-P12> --smoke
+practice/bin/ol milestone <each pass gate MS-P0 .. MS-P12> --smoke
 ```
 kind is NOT installed and must not be installed: kind-only tiers run through `--smoke` and are reported as blocked.
 
@@ -85,9 +85,9 @@ kind is NOT installed and must not be installed: kind-only tiers run through `--
 - Run mutants one at a time, never in parallel.
 - Start every subprocess you launch from scripts (builds, test runs, mutant runs, servers) with `start_new_session=True`.
 - Kill the whole process group (`os.killpg`) if its total RSS goes above 4 GB or it runs longer than 120 s; report it as a failure, do not retry in a loop.
-- Before each batch of runs: delete `.course-verify` under your `SS_SCRATCH`, and delete stale `$TMPDIR/tmp*` entries (not modified in 30 minutes).
+- Before each batch of runs: delete `.course-verify` under your `OL_SCRATCH`, and delete stale `$TMPDIR/tmp*` entries (not modified in 30 minutes).
 - Before each batch of runs: check free disk with `df -g .`; while it is under 30 GB, wait instead of running. Delete `.scratchpad/w/<name>` dirs once their work is finished.
-- If you run work in parallel, give each worker its own `SS_SCRATCH`, `SS_COURSE_HOME`, `SS_CACHE` under `.scratchpad/w/<name>` and run at most 6 at once.
+- If you run work in parallel, give each worker its own `OL_SCRATCH`, `OL_COURSE_HOME`, `OL_CACHE` under `.scratchpad/w/<name>` and run at most 6 at once.
 
 ## 6. Rules for commits and content
 
@@ -99,4 +99,4 @@ kind is NOT installed and must not be installed: kind-only tiers run through `--
 
 ## 7. Done means
 
-Every core module in DESIGN.md (including B14) is registered, has a reference, tests, mutants, and a chapter, and passes `ss verify course`; optional modules pass their standalone checks; no FFI remains on any path; the final gate passes except kind-only tiers; everything is pushed to PR #19 with a summary comment listing what passed and what is blocked.
+Every core module in DESIGN.md (including B14) is registered, has a reference, tests, mutants, and a chapter, and passes `ol verify course`; optional modules pass their standalone checks; no FFI remains on any path; the final gate passes except kind-only tiers; everything is pushed to PR #19 with a summary comment listing what passed and what is blocked.

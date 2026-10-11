@@ -1,4 +1,4 @@
-<!-- ss:module dur.05 -->
+<!-- ol:module dur.05 -->
 # Activities: retries, backoff + jitter, timeouts, heartbeats, idempotency keys
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.05
-ss tests dur.05
-ss check dur.05          # needs dur.04 (or --ref-deps)
-ss diff  dur.05
+ol start dur.05
+ol tests dur.05
+ol check dur.05          # needs dur.04 (or --ref-deps)
+ol diff  dur.05
 ```
 
 `Backoff` and `Jitter` are pure functions: write and test them first, then the server's `FailActivityTask`, then heartbeats.

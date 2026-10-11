@@ -24,9 +24,9 @@ from pathlib import Path
 
 import numpy as np
 
-PRIMER = Path(os.environ.get("SS_PRIMER_DIR", "primers/craft.05")).resolve()
-COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[2]))
-LEARNER = Path(os.environ.get("SS_LEARNER_ROOT", ".")).resolve()
+PRIMER = Path(os.environ.get("OL_PRIMER_DIR", "primers/craft.05")).resolve()
+COURSE = Path(os.environ.get("OL_COURSE_TREE", Path(__file__).resolve().parents[2]))
+LEARNER = Path(os.environ.get("OL_LEARNER_ROOT", ".")).resolve()
 FIXTURES = Path(os.environ.get("TINYLLM_FIXTURES", COURSE / "fixtures"))
 TESTS = PRIMER / "test_oracles.py"
 FAULTS = COURSE / "mutants" / "craft.05"
@@ -46,7 +46,7 @@ ALLOWED = {
 }
 
 sys.path.insert(0, str(COURSE / "harness" / "src"))
-from sscourse import markers  # noqa: E402
+from olcourse import markers  # noqa: E402
 
 
 def reference() -> str:
@@ -58,7 +58,7 @@ def reference() -> str:
 def run_oracles(kata: str, timeout: float = 120) -> tuple[int, str]:
     """Your test_oracles.py against `kata` (the text of a kernels.py), in its
     own process group; a run past `timeout` counts as a failure."""
-    with tempfile.TemporaryDirectory(prefix="ss-craft05-") as d:
+    with tempfile.TemporaryDirectory(prefix="ol-craft05-") as d:
         Path(d, "kernels.py").write_text(kata)
         Path(d, "test_oracles.py").write_text(TESTS.read_text())
         env = dict(

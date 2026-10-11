@@ -63,7 +63,7 @@ Retrieval (`ag.06` to `ag.08`) lives in [Retrieval & RAG](../07-retrieval-and-ra
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ag.01` | [Types, OpenAI-compatible provider, retry wrapper](01-types-and-provider.md) | build | 10 |
@@ -71,7 +71,7 @@ Retrieval (`ag.06` to `ag.08`) lives in [Retrieval & RAG](../07-retrieval-and-ra
 | 3 | `ag.03` | [Agent loop](03-agent-loop.md) | build | 10 |
 | 4 | `ag.04` | [Tool gate, SQL safety gate, prompt-injection suite](04-tool-gate-and-injection.md) | build | 10 |
 | 5 | `ag.05` | [Durable agent runs (AgentRun)](05-durable-agent-runs.md) | build | 10 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

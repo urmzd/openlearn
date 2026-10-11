@@ -1,4 +1,4 @@
-<!-- ss:module data.01 -->
+<!-- ol:module data.01 -->
 # Async fetch with resume, checksums, license capture
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start data.01              # stubs python/corpus/fetch.py; contract alongside
-ss tests data.01              # read the test catalog first
-ss check data.01              # exit code is the verdict
-ss diff  data.01              # after passing: your code against the reference
+ol start data.01              # stubs python/corpus/fetch.py; contract alongside
+ol tests data.01              # read the test catalog first
+ol check data.01              # exit code is the verdict
+ol diff  data.01              # after passing: your code against the reference
 ```
 
-Your `python/pyproject.toml` must list `zstandard` (it is in `contracts/allowed-deps.toml` for `corpus`): the raw parts are zstd files. `ss start` writes a `pyproject.toml` that does when you have none.
+Your `python/pyproject.toml` must list `zstandard` (it is in `contracts/allowed-deps.toml` for `corpus`): the raw parts are zstd files. `ol start` writes a `pyproject.toml` that does when you have none.
 
 ---
 
@@ -210,7 +210,7 @@ The full contract, word by word, is `course/contracts/py/corpus/fetch.pyi`. Use 
 | Forward | `data.09` | the `CorpusBuild` workflow runs `{corpus} run --stage fetch` as a subprocess activity; exit 75 retries it, exit 65 fails it |
 | Back | `lang.08` | the semaphore, task group, per-attempt timeout, and backoff, unchanged |
 
-This module calls no other module's code, so nothing blocks `ss check data.01`.
+This module calls no other module's code, so nothing blocks `ol check data.01`.
 
 ## Going further
 

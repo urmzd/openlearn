@@ -1,4 +1,4 @@
-<!-- ss:module ag.04 -->
+<!-- ol:module ag.04 -->
 # Tool gate, SQL safety gate, prompt-injection suite
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start ag.04
-ss tests ag.04
-ss check ag.04          # ag.01 to ag.03 smoke tests run first
-ss diff  ag.04
+ol start ag.04
+ol tests ag.04
+ol check ag.04          # ag.01 to ag.03 smoke tests run first
+ol diff  ag.04
 ```
 
 ---

@@ -1,3 +1,3 @@
-module supersource.urmzd.com/tl/testkit
+module openlearn.urmzd.com/tl/testkit
 
 go 1.22

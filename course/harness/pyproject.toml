@@ -1,11 +1,11 @@
 [project]
-name = "sscourse"
+name = "olcourse"
 version = "0.1.0"
-description = "Course harness behind practice/bin/ss: registry, overlay, stubber, verdicts, lint, verify"
+description = "Course harness behind practice/bin/ol: registry, overlay, stubber, verdicts, lint, verify"
 requires-python = ">=3.11"
 # The core harness is stdlib only (tomllib, ast, subprocess) plus PyYAML,
-# which `ss conform` needs to read the OpenAPI contracts, and SymPy, which only
-# the solve checker's subprocess imports (sscourse.solve_worker). Learner-facing
+# which `ol conform` needs to read the OpenAPI contracts, and SymPy, which only
+# the solve checker's subprocess imports (olcourse.solve_worker). Learner-facing
 # test dependencies (pytest, hypothesis, numpy) are resolved in the learner's
 # own uv environment with `uv run --with`, never here.
 dependencies = [

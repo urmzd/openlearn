@@ -53,7 +53,7 @@ REF = "the cat is on the mat"
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def golden() -> dict:

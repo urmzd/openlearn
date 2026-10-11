@@ -21,8 +21,8 @@ import (
 	dlog "tinyllm/durable/log"
 	"tinyllm/durable/queue"
 
-	"supersource.urmzd.com/tl/testkit/clock"
-	"supersource.urmzd.com/tl/testkit/effects"
+	"openlearn.urmzd.com/tl/testkit/clock"
+	"openlearn.urmzd.com/tl/testkit/effects"
 )
 
 var ctx = context.Background()
@@ -605,7 +605,7 @@ func TestExactlyOnceEffectsUnderChaos(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer sink.Close()
-	seed, _ := strconv.ParseUint(os.Getenv("SS_SEED"), 10, 64)
+	seed, _ := strconv.ParseUint(os.Getenv("OL_SEED"), 10, 64)
 	rng := newPCG32(seed, 3)
 	q, clk := newQueue(t, queue.Options{Visibility: 10 * time.Second, MaxAttempts: 1000})
 	var keys []string

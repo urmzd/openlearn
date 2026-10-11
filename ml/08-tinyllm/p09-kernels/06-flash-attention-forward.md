@@ -1,4 +1,4 @@
-<!-- ss:module L9.3 -->
+<!-- ol:module L9.3 -->
 # FlashAttention forward in C
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L9.3              # stubs c/src/kernels/flash_attn.c into your repo
-ss tests L9.3              # read the test catalog first
-ss check L9.3              # exit code is the verdict
-ss check L9.3 --ref-deps   # only if a runtime piece, L9.2, L7.7, or L5.1 is not passing yet
-ss parity flash.fwd        # against the float64 golden
-ss diff  L9.3              # after passing: your code against the reference
+ol start L9.3              # stubs c/src/kernels/flash_attn.c into your repo
+ol tests L9.3              # read the test catalog first
+ol check L9.3              # exit code is the verdict
+ol check L9.3 --ref-deps   # only if a runtime piece, L9.2, L7.7, or L5.1 is not passing yet
+ol parity flash.fwd        # against the float64 golden
+ol diff  L9.3              # after passing: your code against the reference
 ```
 
 ---

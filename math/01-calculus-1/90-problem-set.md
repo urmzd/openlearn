@@ -1,4 +1,4 @@
-<!-- ss:module S-M01 -->
+<!-- ol:module S-M01 -->
 # Calculus 1 problem set: limits, derivatives, rates, optimization, integrals, L'Hôpital
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M01/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M01/problems.md` and in section 4 |
 | **Needs** | no module. Reading: `S-M00` (functions, exponentials, logarithms) and the [Calculus 1 topic](README.md), sections 1 to 5 |
 | **Used by** | no call site (a solve set). Take it after `M01.1` (finite differences), `M01.2` (Newton's method), and `M01.3` (activation derivatives) in Pass 2; `M01.4` and `S-M02` build on the integrals |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | OpenStax, *Calculus Volume 1* (free), ch. 2 to 5; 3Blue1Brown, *Essence of Calculus*, episodes 1 to 9 |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M01             # writes solve/S-M01.toml and the three proof files
-ss check S-M01             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M01 --regrade   # ask the rubrics again after you change a proof
+ol start S-M01             # writes solve/S-M01.toml and the three proof files
+ol check S-M01             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M01 --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -98,7 +98,7 @@ proof = "S-M01/q10.md"
 
 Numbers are exact: `exp(2)`, `2/pi`, `sqrt(7)/2`; `0.5` fails where `1/2` is expected. An `[expr]` answer may take any equivalent form. Write $e$ as `E` or `exp(1)` and $\pi$ as `pi`.
 
-<!-- ss:problems S-M01 -->
+<!-- ol:problems S-M01 -->
 
 ### Limits
 
@@ -226,7 +226,7 @@ Numbers are exact: `exp(2)`, `2/pi`, `sqrt(7)/2`; `0.5` fails where `1/2` is exp
 
 **q57.** Show that $\displaystyle\lim_{x \to \infty} \frac{x + \sin x}{x} = 1$, and explain why L'Hôpital's rule cannot be used to get it. `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

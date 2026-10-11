@@ -1,4 +1,4 @@
-<!-- ss:module M05.2 -->
+<!-- ol:module M05.2 -->
 # Injective, surjective, bijective; the GPT-2 byte map
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M05.2              # stubs bytes_unicode.py into your repo
-ss tests M05.2              # read the test catalog first
-ss check M05.2              # exit code is the verdict
-ss diff  M05.2              # after passing: your code against the reference
+ol start M05.2              # stubs bytes_unicode.py into your repo
+ol tests M05.2              # read the test catalog first
+ol check M05.2              # exit code is the verdict
+ol diff  M05.2              # after passing: your code against the reference
 ```
 
 ---
@@ -163,7 +163,7 @@ Write `bytes_to_unicode` from the rule in section 2, not by pasting a table: the
 | Forward | `L1.2` | byte-level BPE: pre-tokenized text is encoded to UTF-8, mapped with `encode_bytes`, merged, and looked up in `vocab.json`; the HF loader reads `Ġ`-keys with `unicode_to_bytes` |
 | Forward | `L1.5` | your Rust `tl-tok` rebuilds the same table from the same rule (a re-implementation, not a call) and is tested id for id against `L1.2` |
 
-If you skip this module, `ss check L1.2` stops with `L1.2 needs M05.2`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L1.2` stops with `L1.2 needs M05.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

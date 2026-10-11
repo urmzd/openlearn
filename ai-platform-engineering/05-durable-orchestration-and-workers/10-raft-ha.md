@@ -1,4 +1,4 @@
-<!-- ss:module dur.10 -->
+<!-- ol:module dur.10 -->
 # Raft HA for the durable log (optional)
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.10         # stubs go/durable/raft/raft.go
-ss tests dur.10         # the test catalog: scenarios first, then the simulation
-ss check dur.10         # go test over the course tests; the exit code is the verdict
-ss diff  dur.10         # after passing: your code against the reference
+ol start dur.10         # stubs go/durable/raft/raft.go
+ol tests dur.10         # the test catalog: scenarios first, then the simulation
+ol check dur.10         # go test over the course tests; the exit code is the verdict
+ol diff  dur.10         # after passing: your code against the reference
 ```
 
-Then, if you want the milestone, run three of them in your durable server (section 4, "Wiring it into the server") and `ss milestone MS-durable-ha`.
+Then, if you want the milestone, run three of them in your durable server (section 4, "Wiring it into the server") and `ol milestone MS-durable-ha`.
 
 ---
 
@@ -170,7 +170,7 @@ func (n *Node) Status() Status
 
 The node never blocks, sleeps, or spawns: `Tick`, `Step`, and `Propose` change state and queue messages; the caller drains them. A proposal is acknowledged when an entry with **its index and its term** comes out of `ReadCommitted`; a different entry at that index means it was lost in a leader change and may be retried.
 
-**Wiring it into the server** (your entry point, D16; not graded by `ss check`). With `--replicas 3` your durable server runs one `Node`, ticks it from a `time.Ticker` (for example 10 ms ticks, $E = 15$, $H = 5$), serves `tl.raft.v1.Raft` on `[durable].raft` (`:7234` in Kubernetes) by turning each RPC into a `Step` and each queued `Message` into an outgoing RPC, implements `Storage` on its data directory (`HardState` in a small file replaced by rename, entries in their own segment files), and applies committed entries in order into its `dur.01` log, skipping a record whose WAL seq it already holds. Every client RPC of `tl.durable.v1` that appends first goes through `Propose` and waits for its index and term to commit; on a follower it fails with `UNAVAILABLE` and the trailer `tl-raft-leader: <host:port>` from `NotLeaderError.Leader`.
+**Wiring it into the server** (your entry point, D16; not graded by `ol check`). With `--replicas 3` your durable server runs one `Node`, ticks it from a `time.Ticker` (for example 10 ms ticks, $E = 15$, $H = 5$), serves `tl.raft.v1.Raft` on `[durable].raft` (`:7234` in Kubernetes) by turning each RPC into a `Step` and each queued `Message` into an outgoing RPC, implements `Storage` on its data directory (`HardState` in a small file replaced by rename, entries in their own segment files), and applies committed entries in order into its `dur.01` log, skipping a record whose WAL seq it already holds. Every client RPC of `tl.durable.v1` that appends first goes through `Propose` and waits for its index and term to commit; on a follower it fails with `UNAVAILABLE` and the trailer `tl-raft-leader: <host:port>` from `NotLeaderError.Leader`.
 
 ### What the tests check
 

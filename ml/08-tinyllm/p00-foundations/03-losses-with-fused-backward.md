@@ -1,4 +1,4 @@
-<!-- ss:module L0.3 -->
+<!-- ol:module L0.3 -->
 # Losses with a fused backward
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L0.3              # stubs losses.py into your repo; prints your test path and rung
-ss tests L0.3              # the course tests: the exemplars your own tests imitate
-ss check L0.3              # course tests first, then the mutation grade of your tests
-ss mutate L0.3             # the full grade, cached by your test files' hash
-ss check L0.3 --ref-deps   # only if L0.1 or a math dependency is not passing yet
-ss diff  L0.3              # after passing: your code against the reference
+ol start L0.3              # stubs losses.py into your repo; prints your test path and rung
+ol tests L0.3              # the course tests: the exemplars your own tests imitate
+ol check L0.3              # course tests first, then the mutation grade of your tests
+ol mutate L0.3             # the full grade, cached by your test files' hash
+ol check L0.3 --ref-deps   # only if L0.1 or a math dependency is not passing yet
+ol diff  L0.3              # after passing: your code against the reference
 ```
 
 Read [`craft.03`](../../../software-craftsmanship/03-testing-mentality/01-tdd-unit-tests-and-mutation-grading.md) first if you have not: it explains what a mutant is, how the score is computed, and why your tests may import only the contract.
@@ -133,7 +133,7 @@ Write them in `python/tests/l0-3-losses/` (any `test_*.py` file there). The name
 - `test_out_of_range_target_raises`: targets outside $[0, V)$, other than `ignore_index`, are a `ValueError`.
 - `test_mse_and_bce_gradients_by_finite_differences`: both gradients match central differences you write; bce with `pos_weight` 2 at $x = 0$, $y = 1$ is $2\ln 2$.
 
-`ss check L0.3` passes when the course tests pass and your tests kill at least 60% of the planted faults (`ss mutate L0.3` prints the score and the survivors).
+`ol check L0.3` passes when the course tests pass and your tests kill at least 60% of the planted faults (`ol mutate L0.3` prints the score and the survivors).
 
 ## 5. Pitfalls
 
@@ -165,7 +165,7 @@ Write them in `python/tests/l0-3-losses/` (any `test_*.py` file there). The name
 | Back | `M11.1` | $H(q, p)$, the definition of a smoothed row's loss |
 | Forward | `L0.5` | the bigram and the MLPs of the training-loop tests minimize `cross_entropy`, `mse`, and `bce_with_logits` |
 
-If you skip this module, `ss check L0.5` stops with `L0.5 needs L0.3`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L0.5` stops with `L0.5 needs L0.3`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

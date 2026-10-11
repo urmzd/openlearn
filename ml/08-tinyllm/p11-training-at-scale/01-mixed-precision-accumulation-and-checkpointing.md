@@ -1,4 +1,4 @@
-<!-- ss:module L11.1 -->
+<!-- ol:module L11.1 -->
 # Mixed precision, loss scaling, gradient accumulation, and activation checkpointing
 
 ## Overview
@@ -24,12 +24,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L11.1              # stubs precision.py and recompute.py into your repo
-ss tests L11.1              # read the test catalog first
-ss check L11.1              # course tests, then your tests graded by mutation
-ss mutate L11.1             # the full mutation grade of your tests
-ss check L11.1 --ref-deps   # only if your M08.4, M09.1, M10.4, or L0.x is not passing
-ss diff  L11.1              # after passing: your code against the reference
+ol start L11.1              # stubs precision.py and recompute.py into your repo
+ol tests L11.1              # read the test catalog first
+ol check L11.1              # course tests, then your tests graded by mutation
+ol mutate L11.1             # the full mutation grade of your tests
+ol check L11.1 --ref-deps   # only if your M08.4, M09.1, M10.4, or L0.x is not passing
+ol diff  L11.1              # after passing: your code against the reference
 ```
 
 ---

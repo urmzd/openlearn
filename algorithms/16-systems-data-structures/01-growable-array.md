@@ -1,4 +1,4 @@
-<!-- ss:module ds.01 -->
+<!-- ol:module ds.01 -->
 # Growable array tl_vec (type-erased, optional C)
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `ds.01` · side · C · Pass 6 · 2 to 3 h |
 | **You build** | `c/src/ds/vec.c`: `tl_vec_init`, `tl_vec_reserve`, `tl_vec_push`, `tl_vec_at`, `tl_vec_free` |
 | **Contract** | [`tinyllm/ds.h`](../../course/contracts/c/include/tinyllm/ds.h) (the ds.01 section) · the rules every unit follows: [`c/ABI.md`](../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/ds.01/test_vec.c`, built with ASan, UBSan, and the counting allocator (what they check: section 4) · your own tests in `c/tests/ds01_vec_test.c`, rung R4 (properties with `ss_prop.h`), graded by mutation (threshold 0.80, every pitfall mutant required) |
+| **Tests** | `course/tests/ds.01/test_vec.c`, built with ASan, UBSan, and the counting allocator (what they check: section 4) · your own tests in `c/tests/ds01_vec_test.c`, rung R4 (properties with `ol_prop.h`), graded by mutation (threshold 0.80, every pitfall mutant required) |
 | **Needs** | `rt.02` (C allocation and error support) · reading: `lang.03` the C primer (pointers, `sizeof`, `memcpy`) |
 | **Used by** | `rt.04` keeps one `tl_vec` of block ids per sequence (its block table) · `ds.02` and `ds.04` build on this chapter's growth and failure rules |
 | **Milestone** | `MS-L9`, the optional standalone C module group |
@@ -24,12 +24,12 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.01              # stubs vec.c into your repo; ds.h is in contracts/
-ss tests ds.01              # read the test catalog first
-ss check ds.01              # sanitized C tests, then your tests graded by mutation
-ss mutate ds.01             # the full mutation grade of your tests
-ss check ds.01 --ref-deps   # only if you skipped rt.01
-ss diff  ds.01              # after passing: your code against the reference
+ol start ds.01              # stubs vec.c into your repo; ds.h is in contracts/
+ol tests ds.01              # read the test catalog first
+ol check ds.01              # sanitized C tests, then your tests graded by mutation
+ol mutate ds.01             # the full mutation grade of your tests
+ol check ds.01 --ref-deps   # only if you skipped rt.01
+ol diff  ds.01              # after passing: your code against the reference
 ```
 
 ---
@@ -139,7 +139,7 @@ The caller may read `data[0 .. len * elem)` directly. Not thread-safe: the calle
 | Forward | `ds.02` | the Swiss table grows by the same allocate, copy, free order and the same failure rule |
 | Forward | `ds.04` | heap top-k keeps its working set in the same kind of block |
 
-If you skip this module, `ss check rt.04` stops with `rt.04 needs ds.01`; `--ref-deps` substitutes the reference.
+If you skip this module, `ol check rt.04` stops with `rt.04 needs ds.01`; `--ref-deps` substitutes the reference.
 
 ## Going further
 

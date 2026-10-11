@@ -1,4 +1,4 @@
-<!-- ss:module data.07 -->
+<!-- ol:module data.07 -->
 # Tokenize and pack to llm.c .bin
 
 ## Overview
@@ -24,13 +24,13 @@
 ## How to work this chapter
 
 ```bash
-ss start data.07              # stubs tokenize.py into python/corpus/
-ss tests data.07              # the course test catalog
-ss tdd red data.07            # rung R4: your property tests first
-ss check data.07              # exit code is the verdict
-ss check data.07 --ref-deps   # only if L1.5, L1.6, or data.06 is not passing yet
-ss mutate data.07             # how many planted bugs your tests catch
-ss diff  data.07              # after passing: your code against the reference
+ol start data.07              # stubs tokenize.py into python/corpus/
+ol tests data.07              # the course test catalog
+ol tdd red data.07            # rung R4: your property tests first
+ol check data.07              # exit code is the verdict
+ol check data.07 --ref-deps   # only if L1.5, L1.6, or data.06 is not passing yet
+ol mutate data.07             # how many planted bugs your tests catch
+ol diff  data.07              # after passing: your code against the reference
 ```
 
 ---
@@ -130,7 +130,7 @@ Stream each file: write a header with $n = 0$, append ids as documents arrive, t
 | `test_output_is_deterministic` | property | repeated tokenization produces identical bytes | MS-corpus compares output hashes |
 | `test_atomic_replace` | fault | a stale `.tmp` is cleared; a failing run leaves the old output | retried activities are safe |
 
-**Your tests (rung R4, properties).** Under `python/tests/data-07-tokenize/`, failing first against the stubs: the hand example; for any list of texts (Hypothesis), the byte streams of each split concatenate to exactly the split's documents, file by file and in order, with header counts that match; rollover keeps documents whole; `uint32` above 65536; header padding and the reader's checks; manifest fields; GPT-2 with a separator and with `generation_config.json`; a rerun that replaces the output. `ss mutate data.07` grades them: 0.80 of the mutants, and every Pitfall below.
+**Your tests (rung R4, properties).** Under `python/tests/data-07-tokenize/`, failing first against the stubs: the hand example; for any list of texts (Hypothesis), the byte streams of each split concatenate to exactly the split's documents, file by file and in order, with header counts that match; rollover keeps documents whole; `uint32` above 65536; header padding and the reader's checks; manifest fields; GPT-2 with a separator and with `generation_config.json`; a rerun that replaces the output. `ol mutate data.07` grades them: 0.80 of the mutants, and every Pitfall below.
 
 ## 5. Pitfalls
 
@@ -157,7 +157,7 @@ Stream each file: write a header with $n = 0$, append ids as documents arrive, t
 | Forward | `data.08` | the datasheet's Preprocessing section reports the tokenizer and the token count of each split |
 | Forward | `C1` | the capstone trains on `train-*.bin` and evaluates on `val-*.bin`, in bits per byte |
 
-If you skip this module, `ss check data.08` stops with `data.08 needs data.07`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check data.08` stops with `data.08 needs data.07`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

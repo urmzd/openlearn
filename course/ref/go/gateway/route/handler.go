@@ -22,8 +22,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	enginev1 "supersource.urmzd.com/tl/contracts/gen/tl/engine/v1"
-	kvv1 "supersource.urmzd.com/tl/contracts/gen/tl/kv/v1"
+	enginev1 "openlearn.urmzd.com/tl/contracts/gen/tl/engine/v1"
+	kvv1 "openlearn.urmzd.com/tl/contracts/gen/tl/kv/v1"
 	"tinyllm/config"
 	"tinyllm/gateway/auth"
 	"tinyllm/gateway/proxy"

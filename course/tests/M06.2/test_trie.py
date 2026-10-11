@@ -23,7 +23,7 @@ HAND = {"un": 1, "unbe": 2, "unbeliev": 3, "able": 4, "a": 5}
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def build(keys: dict[str, int]) -> Trie:

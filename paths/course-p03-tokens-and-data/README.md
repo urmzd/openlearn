@@ -6,4 +6,4 @@ corpus pipeline v1 with ledger and decontamination, BPE, WordPiece, and Unigram 
 
 **Gate**: [MS-P3 = MS-L1 + MS-corpus + MS-L2](milestone.md).
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ss learn course-p03-p03-tokens-and-data` to see progress.
+Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p03-p03-tokens-and-data` to see progress.

@@ -4,7 +4,7 @@ Annotated exemplars (DESIGN 5.12). A test is graded by what it catches
 (DESIGN 5.6): your primers/craft.04/test_props.py runs against your kata,
 against the course's reference kata, and against each planted fault in
 course/mutants/craft.04, in a scratch directory with the Hypothesis profile
-`ss` (derandomized, no example database), so a fault is caught or survives
+`ol` (derandomized, no example database), so a fault is caught or survives
 the same way on every run. Nothing here edits your files.
 """
 
@@ -18,15 +18,15 @@ import sys
 import tempfile
 from pathlib import Path
 
-PRIMER = Path(os.environ.get("SS_PRIMER_DIR", "primers/craft.04")).resolve()
-COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[2]))
+PRIMER = Path(os.environ.get("OL_PRIMER_DIR", "primers/craft.04")).resolve()
+COURSE = Path(os.environ.get("OL_COURSE_TREE", Path(__file__).resolve().parents[2]))
 TESTS = PRIMER / "test_props.py"
 FAULTS = COURSE / "mutants" / "craft.04"
 UNIT = "primers/craft.04/textops.py"
 THRESHOLD = 0.80
 
 sys.path.insert(0, str(COURSE / "harness" / "src"))
-from sscourse import markers  # noqa: E402
+from olcourse import markers  # noqa: E402
 
 
 def reference() -> str:
@@ -37,7 +37,7 @@ def reference() -> str:
 
 def run_props(kata: str, timeout: float = 120) -> subprocess.CompletedProcess:
     """Your test_props.py against `kata` (the text of a textops.py)."""
-    with tempfile.TemporaryDirectory(prefix="ss-craft04-") as d:
+    with tempfile.TemporaryDirectory(prefix="ol-craft04-") as d:
         Path(d, "textops.py").write_text(kata)
         shutil.copy2(TESTS, Path(d, "test_props.py"))
         env = dict(os.environ, PYTHONPATH=os.pathsep.join([d, str(COURSE / "tests")]))
@@ -53,7 +53,7 @@ def run_props(kata: str, timeout: float = 120) -> subprocess.CompletedProcess:
                 "-p",
                 "no:randomly",
                 "-p",
-                "_lib.ss_hypothesis",
+                "_lib.ol_hypothesis",
                 f"--rootdir={d}",
                 "test_props.py",
             ],
@@ -96,7 +96,7 @@ def faulty(mid: str) -> str:
 def test_your_tests_are_properties():
     # WHY: rung R4 grades properties, not examples: test_props.py exists and
     #      holds at least five tests, at least four of them Hypothesis
-    #      properties (@given), and draws no randomness of its own (the `ss`
+    #      properties (@given), and draws no randomness of its own (the `ol`
     #      profile makes Hypothesis reproducible; `random` would not be).
     # KIND: unit
     # CHAPTER: craft.04 section 4

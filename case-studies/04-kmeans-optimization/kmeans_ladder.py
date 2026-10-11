@@ -53,7 +53,7 @@ Result = tuple[list[list[float]], list[int], float]
 
 # Reattempt boundary: everything to SOLUTION-END is
 # all three k-means implementations and their helpers.
-# `ss start reattempt case-studies <id>` strips it and leaves the tests.
+# `ol start reattempt case-studies <id>` strips it and leaves the tests.
 # SOLUTION-BEGIN
 def _dist2(a: Point, b: Point) -> float:
     """Squared Euclidean distance.

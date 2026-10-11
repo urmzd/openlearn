@@ -6,4 +6,4 @@ Go agent SDK on their engine's tool calls, RAG over their docs, eval runner with
 
 **Gate**: [MS-P10 = MS-agent (+ optional MS-C2)](milestone.md).
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ss learn course-p10-p10-agents` to see progress.
+Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p10-p10-agents` to see progress.

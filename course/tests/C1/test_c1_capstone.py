@@ -1,6 +1,6 @@
 """C1 course tests: the capstone's artifacts (DESIGN 4.3 C1, 6.4 practice).
 
-Annotated exemplars (DESIGN 5.12). `ss check C1` runs these in your repo.
+Annotated exemplars (DESIGN 5.12). `ol check C1` runs these in your repo.
 They cannot rerun hours of training in CI; the milestone MS-C1 runs your
 entry points on your checkpoint for that. These tests check what a reviewer
 of the capstone checks: that your specs are real train specs of the
@@ -30,10 +30,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-REPO = Path(os.environ.get("SS_REPO", ".")).resolve()
-COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[2]))
+REPO = Path(os.environ.get("OL_REPO", ".")).resolve()
+COURSE = Path(os.environ.get("OL_COURSE_TREE", Path(__file__).resolve().parents[2]))
 HERE = Path(__file__).resolve().parent
-SMOKE = os.environ.get("SS_SMOKE", "") not in ("", "0")
+SMOKE = os.environ.get("OL_SMOKE", "") not in ("", "0")
 REPORT = "docs/capstone/c1/report.json"
 
 
@@ -171,13 +171,13 @@ def test_report_is_complete():
     #      report schema (course/tests/C1/capstone-report.schema.json), name a
     #      train spec that exists, and be a full or short run. A smoke-tier
     #      report (the milestone's --smoke config) is accepted only with
-    #      SS_SMOKE=1, as CI runs it.
+    #      OL_SMOKE=1, as CI runs it.
     # KIND: unit
     # CHAPTER: C1 section 4, The artifacts and their check
     r = load_json(REPORT)
     validate(r, HERE / "capstone-report.schema.json", REPORT)
     assert r["tier"] in ("full", "short") or (SMOKE and r["tier"] == "smoke"), (
-        f"tier {r['tier']!r}: run the full or short capstone (smoke reports pass only under SS_SMOKE=1)"
+        f"tier {r['tier']!r}: run the full or short capstone (smoke reports pass only under OL_SMOKE=1)"
     )
     validate(
         load_json(r["spec"]), contract("formats/train-spec.schema.json"), r["spec"]
@@ -460,7 +460,7 @@ def test_release_passes_your_preflight(tmp_path):
     go = shutil.which("go")
     if go is None:
         pytest.fail(
-            "go is not on PATH (ss doctor): the release is checked with your Go workflow"
+            "go is not on PATH (ol doctor): the release is checked with your Go workflow"
         )
     assert (REPO / "go" / "go.mod").is_file(), (
         "go/go.mod is missing: start dur.12 first"

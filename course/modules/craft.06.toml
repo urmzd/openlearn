@@ -7,13 +7,13 @@ chapter   = "software-craftsmanship/03-testing-mentality/04-benchmarks-and-perf-
 contract  = []
 deps      = []
 # craft.03 (how a test is graded) and craft.05 (oracles: a fast kernel must
-# first be a right one); ss_bench.h is the timer, and the kata is the shape
+# first be a right one); ol_bench.h is the timer, and the kata is the shape
 # of L9.1's tiled matmul and L9.6's RMSNorm. Rung R7 applies only to registered core modules.
 reading   = ["craft.03", "craft.05", "L9.1", "L9.6"]
 used_by   = []                     # practice: the benchmark and the gate are yours; R7 grades them
 # No `units`: the kata is C outside c/, whose exported kata_* names no contract
 # header declares, so the check writes kernels.h and a stubbed kernels.c on its
-# first run instead of `ss start` (as craft.07 does; DEVIATIONS B85-06).
+# first run instead of `ol start` (as craft.07 does; DEVIATIONS B85-06).
 units     = []
 artifacts = ["primers/craft.06"]   # kata, bench.c, budget.toml, gate.py: hashed into the verdict, present = started
 upgrades  = []

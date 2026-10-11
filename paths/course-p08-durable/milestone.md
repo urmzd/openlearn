@@ -108,7 +108,7 @@ Your system.toml must declare:
                       "deploy/<system>-worker" (dep.06); the durable NodePort
                       is 30733 (dep.02)
 
-`ss milestone MS-durable --smoke` runs the local steps with the
+`ol milestone MS-durable --smoke` runs the local steps with the
 services started by the runner. The full run (nightly kind job, or your own
 cluster) adds the `ci = "kind"` steps; without a cluster they are skipped
 and the verdict is `incomplete`.
@@ -152,4 +152,4 @@ trailer `tl-raft-leader` (proto/tl/raft/v1/raft.proto); your `ctl` retries
 against the leader it names, so `--durable 127.0.0.1:30733` reaches
 whichever pod the NodePort picks.
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

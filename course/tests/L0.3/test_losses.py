@@ -44,7 +44,7 @@ HAND = [[0.0, LN2, LN3], [5.0, -1.0, 2.0]]
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def _golden():

@@ -110,16 +110,16 @@ jobs:
       # same thing three runs in a row. Nondeterministic output cannot be
       # predicted, so it fails the build.
       - name: Verify snippets are runnable and deterministic
-        run: practice/bin/ss verify predict
+        run: practice/bin/ol verify predict
 
       # Wall time and peak RSS against the ceilings in budgets.tsv. This
       # catches a snippet that regressed into doing real work, not slow CI.
       - name: Assert cost budgets
-        run: practice/bin/ss bench --assert
+        run: practice/bin/ol bench --assert
 
   # The desktop platform (app/). Its Go tests also open the repository
   # and packs/languide as course packs, so a path.tsv the app cannot read fails
-  # here as well as in `ss learn --verify`.
+  # here as well as in `ol learn --verify`.
   openlearn:
     name: OpenLearn (Go)
     runs-on: ubuntu-latest
@@ -193,7 +193,7 @@ jobs:
         run: uv python install
 
       # Every build exercise's reference implementation must pass its own
-      # assertions, and must carry solution markers so `ss start` can stub it.
+      # assertions, and must carry solution markers so `ol start` can stub it.
       # A reference that does not hold up is not a reference.
       #
       # Bare `verify build` covers the core languages only. zig, scala and java
@@ -202,13 +202,13 @@ jobs:
       # in CI would mean installing toolchains for languages this curriculum
       # does not target.
       - name: Verify reference implementations
-        run: practice/bin/ss verify build
+        run: practice/bin/ol verify build
 
       - name: Verify role paths
         # Every stage a paths/*/path.tsv names must exist and every @include
-        # must resolve without a cycle, so ss learn and the per-path PDFs never
+        # must resolve without a cycle, so ol learn and the per-path PDFs never
         # point at a moved or renamed chapter.
-        run: practice/bin/ss learn --verify
+        run: practice/bin/ol learn --verify
 
   book:
     name: Book PDF
@@ -284,7 +284,7 @@ jobs:
 
   # ---- course (course/DESIGN.md 5.14) ----------------------------------------
   # The course harness and its reference system. Every job runs the harness
-  # through practice/bin/ss exactly as a maintainer does locally.
+  # through practice/bin/ol exactly as a maintainer does locally.
 
   harness-unit:
     name: Course harness self-tests and lint
@@ -307,10 +307,10 @@ jobs:
         run: uv run --project course/harness --quiet pytest -q -p no:cacheprovider course/harness/tests practice/bin/tests
 
       - name: Chapter, registry, and link lint
-        run: practice/bin/ss lint && practice/bin/ss lint --links
+        run: practice/bin/ol lint && practice/bin/ol lint --links
 
       - name: Paths
-        run: practice/bin/ss learn --verify
+        run: practice/bin/ol learn --verify
 
   # The changed modules (checks 1 to 14) and their dependents' smoke tests,
   # split into shards so a PR that touches many modules still fits; the
@@ -326,8 +326,8 @@ jobs:
     # A PR checks 4 mutants per module (rotated per commit); the nightly run
     # checks every mutant and the learner-test thresholds.
     env:
-      SS_VERIFY_MUTANT_SAMPLE: "4"
-      SS_MUTATION_CACHE: ${{ github.workspace }}/../ss-mutation/mutation.json
+      OL_VERIFY_MUTANT_SAMPLE: "4"
+      OL_MUTATION_CACHE: ${{ github.workspace }}/../ol-mutation/mutation.json
     steps:
       - uses: actions/checkout@v6
         with:
@@ -347,26 +347,26 @@ jobs:
       - uses: azure/setup-helm@v4
 
       - name: Toolchain
-        run: practice/bin/ss doctor && cargo --version && helm version --short
+        run: practice/bin/ol doctor && cargo --version && helm version --short
 
       # Kill results are keyed by content, so any earlier run's file is safe.
       - name: Restore the mutation cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/../ss-mutation
-          key: ss-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}
+          path: ${{ github.workspace }}/../ol-mutation
+          key: ol-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}
           restore-keys: |
-            ss-mutation-verify-${{ matrix.shard }}-
-            ss-mutation-
+            ol-mutation-verify-${{ matrix.shard }}-
+            ol-mutation-
 
       - name: Verify changed modules
         run: |
-          mkdir -p "$(dirname "$SS_MUTATION_CACHE")"
-          practice/bin/ss verify course --changed origin/main --shard ${{ matrix.shard }}/16
+          mkdir -p "$(dirname "$OL_MUTATION_CACHE")"
+          practice/bin/ol verify course --changed origin/main --shard ${{ matrix.shard }}/16
 
       - name: Save the mutation cache
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: ${{ github.workspace }}/../ss-mutation
-          key: ss-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}
+          path: ${{ github.workspace }}/../ol-mutation
+          key: ol-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}

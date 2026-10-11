@@ -1,6 +1,6 @@
 # Postmortem rubric
 
-`ss drill end` checks that a postmortem has the sections a drill asks for. This
+`ol drill end` checks that a postmortem has the sections a drill asks for. This
 rubric is the self-review that follows: answer each line y or n before you
 share the document. It is blameless by construction: name systems and
 decisions, never people.

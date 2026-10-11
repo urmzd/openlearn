@@ -508,7 +508,7 @@ func TestGoldenKeyToNodeMap(t *testing.T) {
 	// CHAPTER: ds.09 section 4
 	dir := os.Getenv("TINYLLM_FIXTURES")
 	if dir == "" {
-		t.Fatal("TINYLLM_FIXTURES is not set (ss check sets it)")
+		t.Fatal("TINYLLM_FIXTURES is not set (ol check sets it)")
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "parity", "ring_hash.json"))
 	if err != nil {

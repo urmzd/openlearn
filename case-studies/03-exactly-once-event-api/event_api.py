@@ -98,7 +98,7 @@ class NotFound(Exception):
 
 # Reattempt boundary: everything to SOLUTION-END is
 # the idempotent, lock-protected event queue.
-# `ss start reattempt case-studies <id>` strips it and leaves the tests.
+# `ol start reattempt case-studies <id>` strips it and leaves the tests.
 # SOLUTION-BEGIN
 class EventQueue:
     """A durable, deduplicating work queue on one SQLite table.

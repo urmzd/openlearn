@@ -1,4 +1,4 @@
-<!-- ss:module L3.4 -->
+<!-- ol:module L3.4 -->
 # Bidirectional RNN with length-aware reversal
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L3.4              # stubs bi.py; prints your test path and rung (R4)
-ss tests L3.4              # the course tests
+ol start L3.4              # stubs bi.py; prints your test path and rung (R4)
+ol tests L3.4              # the course tests
 # write the properties of section 4 as tests in python/tests/l3-4-bi/, then:
-ss check L3.4              # course tests and the mutation grade of your tests
-ss mutate L3.4             # the full grade, cached by your test files' hash
+ol check L3.4              # course tests and the mutation grade of your tests
+ol mutate L3.4             # the full grade, cached by your test files' hash
 ```
 
 ---
@@ -129,7 +129,7 @@ Import only `tinyllm.rnn.bi`, `tinyllm.rnn.gru` (or `lstm`), and `tinyllm.autogr
 | Forward | `L4.1` | the seq2seq encoder: a bidirectional GRU over the source sentence, whose final states initialize the decoder |
 | Forward | `L4.2` | Bahdanau attention reads the encoder's per-position outputs, both halves |
 
-If you skip this module, `ss check L4.1` stops with `L4.1 needs L3.4`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L4.1` stops with `L4.1 needs L3.4`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

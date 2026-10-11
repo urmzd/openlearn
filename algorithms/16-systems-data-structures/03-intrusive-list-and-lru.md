@@ -1,4 +1,4 @@
-<!-- ss:module ds.03 -->
+<!-- ol:module ds.03 -->
 # Intrusive list + LRU (optional C)
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.03              # stubs c/src/ds/list.c and c/src/ds/lru.c
-ss tests ds.03              # read the test catalog first
-ss check ds.03              # exit code is the verdict; then grades your tests by mutation
-ss diff  ds.03              # after passing: your code against the reference
+ol start ds.03              # stubs c/src/ds/list.c and c/src/ds/lru.c
+ol tests ds.03              # read the test catalog first
+ol check ds.03              # exit code is the verdict; then grades your tests by mutation
+ol diff  ds.03              # after passing: your code against the reference
 ```
 
 Draw the four nodes of section 3 on paper with their `prev` and `next` arrows before writing a line; every bug in this module is an arrow drawn in the wrong order.

@@ -1,4 +1,4 @@
-<!-- ss:module M01.2 -->
+<!-- ol:module M01.2 -->
 # Newton's method
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M01.2              # stubs python/tinyllm/num/newton.py into your repo
-ss tests M01.2              # read the test catalog first: rung R0, you write no tests here
-ss check M01.2              # exit code is the verdict
-ss check M01.2 --ref-deps   # only if your M01.1 is not passing yet
-ss diff  M01.2              # after passing: your code against the reference
+ol start M01.2              # stubs python/tinyllm/num/newton.py into your repo
+ol tests M01.2              # read the test catalog first: rung R0, you write no tests here
+ol check M01.2              # exit code is the verdict
+ol check M01.2 --ref-deps   # only if your M01.1 is not passing yet
+ol diff  M01.2              # after passing: your code against the reference
 ```
 
 ---

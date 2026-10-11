@@ -1,4 +1,4 @@
-<!-- ss:module M10.1 -->
+<!-- ol:module M10.1 -->
 # Convexity, smoothness, gradient descent, and Armijo line search
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M10.1              # stubs gd.py into your repo, contract alongside
-ss tests M10.1              # read the test catalog first: rung R0, you write no tests here
-ss check M10.1              # exit code is the verdict
-ss diff  M10.1              # after passing: your code against the reference
+ol start M10.1              # stubs gd.py into your repo, contract alongside
+ol tests M10.1              # read the test catalog first: rung R0, you write no tests here
+ol check M10.1              # exit code is the verdict
+ol diff  M10.1              # after passing: your code against the reference
 ```
 
 ---
@@ -168,7 +168,7 @@ def armijo_step(f, grad, x, d, alpha0: float = 1.0, c: float = 1e-4, rho: float 
 | Forward | `M10.5` | the top Hessian eigenvalue during training, against the $2/\eta$ edge of stability |
 | Forward | `M09.3` | the condition number of a matrix and of a problem |
 
-If you skip this module, `ss check M10.2` stops with `M10.2 needs M10.1`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check M10.2` stops with `M10.2 needs M10.1`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

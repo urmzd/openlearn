@@ -21,7 +21,7 @@ import (
 	"tinyllm/durable/workflow"
 	"tinyllm/workflows"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 func dial(t *testing.T, addr string) *grpc.ClientConn {

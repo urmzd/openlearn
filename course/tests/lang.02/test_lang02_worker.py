@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(os.environ["SS_PRIMER_DIR"]) / "worker.sh"
+SCRIPT = Path(os.environ["OL_PRIMER_DIR"]) / "worker.sh"
 
 
 def _default_signals():

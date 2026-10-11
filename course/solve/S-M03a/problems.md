@@ -1,6 +1,6 @@
 # S-M03a problems: elimination and LU, span and basis, linear maps, determinants, eigenvalues, QR
 
-Answer every question in `solve/S-M03a.toml` (written by `ss start S-M03a`).
+Answer every question in `solve/S-M03a.toml` (written by `ol start S-M03a`).
 The tag after each question is its answer type. `[number]` is an exact
 value (`9/10`, `-3`). `[vector]` is a column written as a flat list
 `[1, 2, 3]`. `[matrix]` is a list of rows `[[1, 0], [2, 1]]`. `[basis]` is a

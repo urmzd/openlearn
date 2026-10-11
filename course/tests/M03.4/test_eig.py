@@ -25,7 +25,7 @@ HAND = np.array([[2.0, 1.0], [1.0, 2.0]])
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def with_spectrum(blocks: list, seq: int) -> np.ndarray:

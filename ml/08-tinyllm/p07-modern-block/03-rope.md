@@ -1,4 +1,4 @@
-<!-- ss:module L7.3 -->
+<!-- ol:module L7.3 -->
 # RoPE (half and interleaved layouts, partial rotary)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L7.3              # stubs rope.py; prints your test path and rung (R5)
-ss tests L7.3              # the course tests
+ol start L7.3              # stubs rope.py; prints your test path and rung (R5)
+ol tests L7.3              # the course tests
 # write your oracle tests in python/tests/l7-3-rope/, then:
-ss check L7.3              # course tests and the mutation grade of your tests
-ss diff  L7.3              # after passing: your code against the reference
+ol check L7.3              # course tests and the mutation grade of your tests
+ol diff  L7.3              # after passing: your code against the reference
 ```
 
 ---
@@ -119,7 +119,7 @@ class RopeSpec: inv_freq: NDArray; attention_scaling: float; layout: str; rotary
 
 ### Your graded tests (rung R5)
 
-Your oracle is complex multiplication in numpy float64: form $a + ib$ from each pair (by the layout's rule), multiply by $e^{i p \theta}$, and split back. Compare `apply_rope` for both layouts and partial rotary, check the hand example, that `attention_scaling` multiplies both tables, that large positions stay precise, that the gradient is the inverse rotation, and that bad input raises. Import only `tinyllm.modern.rope`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ss check L7.3` requires 0.80 with every pitfall fault killed.
+Your oracle is complex multiplication in numpy float64: form $a + ib$ from each pair (by the layout's rule), multiply by $e^{i p \theta}$, and split back. Compare `apply_rope` for both layouts and partial rotary, check the hand example, that `attention_scaling` multiplies both tables, that large positions stay precise, that the gradient is the inverse rotation, and that bad input raises. Import only `tinyllm.modern.rope`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ol check L7.3` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

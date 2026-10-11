@@ -1,4 +1,4 @@
-<!-- ss:module field.01 -->
+<!-- ol:module field.01 -->
 # Mock engagement: discovery
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start field.01
-ss tests field.01
-ss check field.01
+ol start field.01
+ol tests field.01
+ol check field.01
 ```
 
 ---

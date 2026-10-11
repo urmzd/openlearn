@@ -12,8 +12,8 @@
 #include <string.h>
 
 #include "tinyllm.h"
-#include "ss_prop.h"
-#include "ss_test.h"
+#include "ol_prop.h"
+#include "ol_test.h"
 
 static float from_bits(uint32_t u) {
     float x;
@@ -43,7 +43,7 @@ static double ulps(float x, float y) {
     return fabs((double)y - r) / ulp_f32(r);
 }
 
-SS_TEST(hand_example) {
+OL_TEST(hand_example) {
     /* WHY: the chapter's worked example. x = 4: the guess 0x3EF759DF is
      *      0.48310754 (3.4% low), two float32 Newton steps give 0.49915358
      *      and 0.49999782, and the float64 step lands on 0.5 exactly. x = 2
@@ -51,14 +51,14 @@ SS_TEST(hand_example) {
      * KIND: unit, smoke
      * CATCHES: s01, s02, s04, m001, m002
      * CHAPTER: M09.5 section 3 */
-    SS_EQ(tl_rsqrtf(4.0f), 0.5f);
-    SS_EQ(tl_rsqrtf(0.25f), 2.0f);
-    SS_EQ(tl_rsqrtf(1.0f), 1.0f);
-    SS_EQ(to_bits(tl_rsqrtf(2.0f)), to_bits(0.70710677f));
-    SS_EQ(to_bits(tl_rsqrtf(0.15625f)), to_bits(2.529822f));
+    OL_EQ(tl_rsqrtf(4.0f), 0.5f);
+    OL_EQ(tl_rsqrtf(0.25f), 2.0f);
+    OL_EQ(tl_rsqrtf(1.0f), 1.0f);
+    OL_EQ(to_bits(tl_rsqrtf(2.0f)), to_bits(0.70710677f));
+    OL_EQ(to_bits(tl_rsqrtf(0.15625f)), to_bits(2.529822f));
 }
 
-SS_TEST(every_input_of_two_binades) {
+OL_TEST(every_input_of_two_binades) {
     /* WHY: rsqrt(4x) = rsqrt(x) / 2 and the algorithm commutes with that
      *      scaling, so the 2^24 floats of [1, 4) decide every normal input.
      *      The contract's 2 ulp is checked on all of them; the reference's
@@ -80,19 +80,19 @@ SS_TEST(every_input_of_two_binades) {
     if (worst > 2.0) {
         char msg[128];
         snprintf(msg, sizeof msg, "worst error %.3f ulp at x = %.9g (bound 2)", worst, (double)at);
-        SS_FAIL(msg);
+        OL_FAIL(msg);
     }
 }
 
-static int scaling_by_four(ss_gen *g, int size) {
+static int scaling_by_four(ol_gen *g, int size) {
     (void)size;
     /* A normal x with 4x and x / 4 normal too. */
-    float x = ldexpf(ss_gen_f32(g, 1.0f, 2.0f), (int)ss_gen_int(g, -120, 120));
+    float x = ldexpf(ol_gen_f32(g, 1.0f, 2.0f), (int)ol_gen_int(g, -120, 120));
     float y = tl_rsqrtf(x);
     return to_bits(tl_rsqrtf(4.0f * x)) == to_bits(0.5f * y) && to_bits(tl_rsqrtf(0.25f * x)) == to_bits(2.0f * y);
 }
 
-SS_TEST(scaling_by_four_halves_the_result) {
+OL_TEST(scaling_by_four_halves_the_result) {
     /* WHY: the property that makes the two-binade check complete: for normal
      *      x, rsqrt(4x) is exactly rsqrt(x) / 2, bit for bit, because the
      *      guess subtracts exactly 2^23 from the bit pattern and every Newton
@@ -100,10 +100,10 @@ SS_TEST(scaling_by_four_halves_the_result) {
      * KIND: property
      * CATCHES: m001
      * CHAPTER: M09.5 section 2.4 */
-    SS_CHECK_PROP(scaling_by_four, 2000, 1);
+    OL_CHECK_PROP(scaling_by_four, 2000, 1);
 }
 
-SS_TEST(subnormal_inputs) {
+OL_TEST(subnormal_inputs) {
     /* WHY: a subnormal has exponent field 0, so the bit-pattern guess is
      *      wildly wrong and three Newton steps do not recover it. Scaling by
      *      2^24 first (exact) and the result by 2^12 after fixes it. Every
@@ -124,11 +124,11 @@ SS_TEST(subnormal_inputs) {
     if (worst > 2.0) {
         char msg[128];
         snprintf(msg, sizeof msg, "worst error %.3f ulp at subnormal x = %.9g (bound 2)", worst, (double)at);
-        SS_FAIL(msg);
+        OL_FAIL(msg);
     }
 }
 
-SS_TEST(special_values) {
+OL_TEST(special_values) {
     /* WHY: the contract's edges. 1/sqrt(+0) = +inf and 1/sqrt(-0) = -inf
      *      (the IEEE rule for 1/x at signed zero); +inf gives +0; negative
      *      numbers and NaN give NaN. RMSNorm never feeds these on purpose,
@@ -137,19 +137,19 @@ SS_TEST(special_values) {
      * CATCHES: s05, s06, s07
      * CHAPTER: M09.5 section 4 */
     float pz = tl_rsqrtf(0.0f), nz = tl_rsqrtf(-0.0f);
-    SS_TRUE(isinf(pz) && pz > 0);
-    SS_TRUE(isinf(nz) && nz < 0);
+    OL_TRUE(isinf(pz) && pz > 0);
+    OL_TRUE(isinf(nz) && nz < 0);
     float pi = tl_rsqrtf(INFINITY);
-    SS_TRUE(pi == 0.0f && !signbit(pi));
-    SS_TRUE(isnan(tl_rsqrtf(-1.0f)));
-    SS_TRUE(isnan(tl_rsqrtf(-FLT_MIN)));
-    SS_TRUE(isnan(tl_rsqrtf(-INFINITY)));
-    SS_TRUE(isnan(tl_rsqrtf(NAN)));
-    SS_TRUE(ulps(FLT_MAX, tl_rsqrtf(FLT_MAX)) <= 2.0);
-    SS_TRUE(ulps(FLT_TRUE_MIN, tl_rsqrtf(FLT_TRUE_MIN)) <= 2.0);
+    OL_TRUE(pi == 0.0f && !signbit(pi));
+    OL_TRUE(isnan(tl_rsqrtf(-1.0f)));
+    OL_TRUE(isnan(tl_rsqrtf(-FLT_MIN)));
+    OL_TRUE(isnan(tl_rsqrtf(-INFINITY)));
+    OL_TRUE(isnan(tl_rsqrtf(NAN)));
+    OL_TRUE(ulps(FLT_MAX, tl_rsqrtf(FLT_MAX)) <= 2.0);
+    OL_TRUE(ulps(FLT_TRUE_MIN, tl_rsqrtf(FLT_TRUE_MIN)) <= 2.0);
 }
 
-SS_TEST(array_matches_scalar_and_aliases) {
+OL_TEST(array_matches_scalar_and_aliases) {
     /* WHY: the kernels call the array form on a whole row; it must give the
      *      scalar's bits at every index, write exactly n outputs, and work in
      *      place (y == x), which L9.6 uses for its scratch row.
@@ -158,19 +158,19 @@ SS_TEST(array_matches_scalar_and_aliases) {
      * CHAPTER: M09.5 section 4 */
     enum { N = 1000 };
     float x[N + 1], y[N + 1], z[N + 1];
-    ss_gen g = {ss_prop_base_seed() + 11};
-    for (int i = 0; i < N; i++) x[i] = ldexpf(ss_gen_f32(&g, 1.0f, 2.0f), (int)ss_gen_int(&g, -60, 60));
+    ol_gen g = {ol_prop_base_seed() + 11};
+    for (int i = 0; i < N; i++) x[i] = ldexpf(ol_gen_f32(&g, 1.0f, 2.0f), (int)ol_gen_int(&g, -60, 60));
     x[N] = 4.0f;
     for (int i = 0; i <= N; i++) y[i] = 123.0f; /* index N is past the end */
     tl_rsqrt_f32(x, y, N);
-    SS_EQ(y[N], 123.0f);
-    for (int i = 0; i < N; i++) SS_EQ(to_bits(y[i]), to_bits(tl_rsqrtf(x[i])));
+    OL_EQ(y[N], 123.0f);
+    for (int i = 0; i < N; i++) OL_EQ(to_bits(y[i]), to_bits(tl_rsqrtf(x[i])));
     memcpy(z, x, sizeof z);
     tl_rsqrt_f32(z, z, N);
-    for (int i = 0; i < N; i++) SS_EQ(to_bits(z[i]), to_bits(y[i]));
+    for (int i = 0; i < N; i++) OL_EQ(to_bits(z[i]), to_bits(y[i]));
     y[0] = -1.0f;
     tl_rsqrt_f32(x, y, 0); /* n = 0 touches nothing */
-    SS_EQ(y[0], -1.0f);
+    OL_EQ(y[0], -1.0f);
 }
 
-int main(void) { return SS_RUN_ALL(); }
+int main(void) { return OL_RUN_ALL(); }

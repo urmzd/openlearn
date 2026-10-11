@@ -1,4 +1,4 @@
-<!-- ss:module field.02 -->
+<!-- ol:module field.02 -->
 # Mock engagement: qualification and sizing
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start field.02
-ss tests field.02
-ss check field.02
+ol start field.02
+ol tests field.02
+ol check field.02
 ```
 
 ---

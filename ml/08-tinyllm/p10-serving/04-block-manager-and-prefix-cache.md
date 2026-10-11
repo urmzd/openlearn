@@ -1,4 +1,4 @@
-<!-- ss:module L10.4 -->
+<!-- ol:module L10.4 -->
 # Block manager with prefix cache (none, hash, radix)
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `L10.4` · build · Rust · Pass 7 · 8 to 12 h |
 | **You build** | `rust/crates/tl-engine/src/block_manager.rs`: `BlockManager`, the scheduler's `BlockSpace` over the C KV pool, with three prefix-cache modes: `none`, `hash` (the pool's own index of chained block hashes), and `radix` (your `L8.4` radix cache) |
 | **Contract** | the pool API in [`tinyllm/kv_pool.h`](../../../course/contracts/c/include/tinyllm/kv_pool.h) and the block hash in [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md); `prefix_cache` of `[engine]` in [`config/runtime.schema.json`](../../../course/contracts/config/runtime.schema.json) |
-| **Tests** | `course/tests/rust/l10_4.rs`, 10 tests plus one B test (what they check: section 4); `ss bench L10.4 --assert` runs `bench_shared_prefix_ttft` against the budget TTFT none / TTFT hash >= 2 |
+| **Tests** | `course/tests/rust/l10_4.rs`, 10 tests plus one B test (what they check: section 4); `ol bench L10.4 --assert` runs `bench_shared_prefix_ttft` against the budget TTFT none / TTFT hash >= 2 |
 | **Needs** | `L10.2` the `BlockSpace` seam ([chapter](02-continuous-batching.md)) · `L10.1` `KvPool` and `kv_block_hash` ([chapter](01-model-runner-and-sampler.md)) · `L8.4` the radix prefix cache ([chapter](../p08-inference/04-radix-prefix-cache.md)) · `L10.1` the pool's refcounts, prefix index, and LRU · reading: `ds.02` the pool's hash table, `ds.07` the radix tree, `L8.3` paged KV · or `--ref-deps` |
 | **Used by** | `L10.5` (the engine creates one `BlockManager` over the runner's pool, in the mode runtime.toml names) |
 | **Milestone** | `MS-L10` |
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.4               # stubs tl-engine/src/block_manager.rs
-ss tests L10.4
-ss check L10.4
-ss bench L10.4 --assert      # the TTFT budget (local; never part of ss check)
+ol start L10.4               # stubs tl-engine/src/block_manager.rs
+ol tests L10.4
+ol check L10.4
+ol bench L10.4 --assert      # the TTFT budget (local; never part of ol check)
 ```
 
 ---

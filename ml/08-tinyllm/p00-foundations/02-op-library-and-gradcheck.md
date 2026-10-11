@@ -1,4 +1,4 @@
-<!-- ss:module L0.2 -->
+<!-- ol:module L0.2 -->
 # The op library and gradcheck_all
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L0.2              # stubs functional.py into your repo
-ss tests L0.2              # read the test catalog first: rung R0
-ss check L0.2              # exit code is the verdict
-ss check L0.2 --ref-deps   # only if a math dependency is not passing yet
-ss diff  L0.2              # after passing: your code against the reference
+ol start L0.2              # stubs functional.py into your repo
+ol tests L0.2              # read the test catalog first: rung R0
+ol check L0.2              # exit code is the verdict
+ol check L0.2 --ref-deps   # only if a math dependency is not passing yet
+ol diff  L0.2              # after passing: your code against the reference
 ```
 
 Your CLI gains its first Pass 2 verb, `{tinyllm} gradcheck --suite all` ([`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md), fixed by `MS-L0`): call `F.gradcheck_all(rtol=1e-5)`, print one line per op, and end with `{"suite": "all", "checks": N, "failed": K, "max_rel_err": E, "worst": "<op>"}`; exit 0 only when `failed` is 0.
@@ -183,7 +183,7 @@ def gradcheck_all(rtol: float = 1e-5) -> dict[str, GradcheckReport]
 | Forward | `L0.5` | `BigramLogits.forward` is `F.embedding`; the trainer reshapes with `F.reshape` |
 | Forward | `L0.6` | the checkpoint tests' training loss is `F.mean` of a squared error |
 
-If you skip this module, `ss check L0.4` stops with `L0.4 needs L0.2`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L0.4` stops with `L0.4 needs L0.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

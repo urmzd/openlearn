@@ -35,7 +35,7 @@ GOLDEN = Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M12.6" / "mel_librosa.n
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def test_hand_example_mel_scale():

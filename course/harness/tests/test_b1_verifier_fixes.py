@@ -6,7 +6,7 @@ include placement."""
 from pathlib import Path
 
 import pytest
-from sscourse import HarnessError, learner, ledger, markers, registry
+from olcourse import HarnessError, learner, ledger, markers, registry
 
 PRACTICE = (
     'kind = "practice"\nlang = ["c"]\npass = 0\nartifacts = ["primers/lang.90"]\n'

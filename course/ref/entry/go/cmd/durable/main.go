@@ -44,7 +44,7 @@ import (
 	"tinyllm/durable/server"
 	"tinyllm/durable/timer"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 type wall struct{}

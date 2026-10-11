@@ -1,6 +1,6 @@
-"""ss verify course --e2e on the Python part of the fixture course (M90.1 and
+"""ol verify course --e2e on the Python part of the fixture course (M90.1 and
 its upgrade M90.3): the reference learner passes check --all --ci, the pr
-milestones in --smoke mode, ss conform on both tiers, and ss export with its
+milestones in --smoke mode, ol conform on both tiers, and ol export with its
 vendored tests run natively. (Export glue for C, Rust, and Go is
 covered by test_course_export.py; trimming keeps each test under 10 s.)"""
 
@@ -21,14 +21,14 @@ def test_e2e_reference_learner(ss):
     out = ss("verify", "course", "--e2e", rc=0).out
     for line in (
         "2 module(s) started, entry points, primers, docs, system.toml",
-        "ok    e2e ss check --all --ci",
-        "ss milestone MS-M90 --smoke",
-        "ss milestone MS-P0 --smoke",
-        "ss milestone MS-P1 --smoke",
-        "ss conform openapi:v0 --target engine",
-        "ss conform openapi:v0 --target gateway",
+        "ok    e2e ol check --all --ci",
+        "ol milestone MS-M90 --smoke",
+        "ol milestone MS-P0 --smoke",
+        "ol milestone MS-P1 --smoke",
+        "ol conform openapi:v0 --target engine",
+        "ol conform openapi:v0 --target gateway",
         "vendored python tests run natively",
-        "ss verify course --e2e: ok",
+        "ol verify course --e2e: ok",
     ):
         assert line in out, line
 
@@ -40,8 +40,8 @@ def test_e2e_catches_a_broken_entry_point(ss):
     ss.commit_site("break the reference engine")
     out = ss("verify", "course", "--e2e", rc=1).out
     assert (
-        "FAIL     e2e ss conform openapi:v0 --target engine" in out
-        or "FAIL  e2e ss conform openapi:v0 --target engine" in out
+        "FAIL     e2e ol conform openapi:v0 --target engine" in out
+        or "FAIL  e2e ol conform openapi:v0 --target engine" in out
     )
 
 

@@ -1,6 +1,6 @@
 # S-M06a problems: graphs and DAGs, modular arithmetic and hashing, proofs
 
-Answer every question in `solve/S-M06a.toml` (written by `ss start S-M06a`).
+Answer every question in `solve/S-M06a.toml` (written by `ol start S-M06a`).
 The tag after each question is its answer type: `[number]` is an exact value,
 `[expr]` a formula in the named variables, `[vector]` a list `[0, 0, 2]`,
 `[matrix]` a list of rows, `[bool]` is `true` or `false`, `[choice]` one

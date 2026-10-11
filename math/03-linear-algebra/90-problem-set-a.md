@@ -1,4 +1,4 @@
-<!-- ss:module S-M03a -->
+<!-- ol:module S-M03a -->
 # Linear algebra problem set, part a: elimination, LU, bases, rank, determinants, eigenvalues, QR
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M03a/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M03a/problems.md` and in section 4 |
 | **Needs** | no module. Reading: `M03.1` (vectors, matrices, and the matrix product) and the [Linear Algebra topic](README.md) |
 | **Used by** | no call site (a solve set). Take it after `M03.2` (LU), `M03.3` (Householder QR), and `M03.4` (power iteration) in Pass 2; `S-M03b` (SVD, projections, the roofline) follows `M03.5` and `M03.6` in Pass 3 |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Strang, *Introduction to Linear Algebra*, ch. 2 to 6 (and MIT 18.06 lectures 1 to 21); Hefferon, *Linear Algebra* (free), ch. 1 to 5 |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M03a             # writes solve/S-M03a.toml and the four proof files
-ss check S-M03a             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M03a --regrade   # ask the rubrics again after you change a proof
+ol start S-M03a             # writes solve/S-M03a.toml and the four proof files
+ol check S-M03a             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M03a --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -103,7 +103,7 @@ proof = "S-M03a/q10.md"
 
 A vector is a flat list (one column); a matrix is a list of rows; a basis is a list of vectors, and any basis of the right space passes. Entries are exact: `1/sqrt(2)`, not `0.7071`.
 
-<!-- ss:problems S-M03a -->
+<!-- ol:problems S-M03a -->
 
 ### Gaussian elimination and LU
 
@@ -213,7 +213,7 @@ A vector is a flat list (one column); a matrix is a list of rows; a basis is a l
 
 **q48.** Fit $y = c\,x$ to the points $(1, 1)$, $(2, 2)$, $(3, 2)$ by least squares. Give $c$. `[number]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

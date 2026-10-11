@@ -80,7 +80,7 @@ tonic = "0.14"
 tonic-prost = "0.14"
 
 [go.tinyllm]
-# module tinyllm (learner) and supersource.urmzd.com/tl/contracts
+# module tinyllm (learner) and openlearn.urmzd.com/tl/contracts
 "google.golang.org/grpc" = "v1"
 "google.golang.org/protobuf" = "v1"
 "github.com/BurntSushi/toml" = "v1"

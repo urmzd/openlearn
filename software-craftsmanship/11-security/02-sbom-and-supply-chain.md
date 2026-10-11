@@ -1,4 +1,4 @@
-<!-- ss:module craft.18 -->
+<!-- ol:module craft.18 -->
 # SBOM and supply chain
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.18
-ss tests craft.18
-ss check craft.18
+ol start craft.18
+ol tests craft.18
+ol check craft.18
 ```
 
 ---

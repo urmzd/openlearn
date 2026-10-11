@@ -1,4 +1,4 @@
-<!-- ss:module L12.3 -->
+<!-- ol:module L12.3 -->
 # Group relative policy optimization with verifiable rewards
 
 ## Overview
@@ -24,9 +24,9 @@
 ## How to work this chapter
 
 ```bash
-ss start L12.3
-ss tests L12.3
-ss check L12.3
+ol start L12.3
+ol tests L12.3
+ol check L12.3
 ```
 
 ## 1. Why now

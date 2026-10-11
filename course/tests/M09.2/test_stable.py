@@ -39,7 +39,7 @@ U32 = 2.0**-24  # unit roundoff of float32
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def exact_sum(x: np.ndarray) -> float:

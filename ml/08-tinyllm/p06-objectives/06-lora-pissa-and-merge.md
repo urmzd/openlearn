@@ -1,4 +1,4 @@
-<!-- ss:module L6.6 -->
+<!-- ol:module L6.6 -->
 # LoRA with PiSSA init and merge
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L6.6              # stubs lora.py; prints your test path and rung (R5)
-ss tests L6.6              # the course tests
+ol start L6.6              # stubs lora.py; prints your test path and rung (R5)
+ol tests L6.6              # the course tests
 # write your oracle tests in python/tests/l6-6-lora/ (section 4 lists what to cover), then:
-ss check L6.6              # course tests and the mutation grade of your tests
-ss mutate L6.6             # the full grade, cached by your test files' hash
-ss diff  L6.6              # after passing: your code against the reference
+ol check L6.6              # course tests and the mutation grade of your tests
+ol mutate L6.6             # the full grade, cached by your test files' hash
+ol diff  L6.6              # after passing: your code against the reference
 ```
 
 ---
@@ -146,7 +146,7 @@ def trainable_fraction(model) -> float: ...
 
 ### Your graded tests (rung R5)
 
-Rung R5 asks for **oracles**: expected values from an independent computation. For LoRA the oracles are numpy itself: recompute $x W^\top + b + s\,x A^\top B^\top$, take LAPACK's `np.linalg.svd` for PiSSA, and check gradients with your own finite differences in float64. Cover the formula with $r > 1$, the bitwise start, which parameters train and get gradients, PiSSA against LAPACK, merging (outputs, removed adapters, unchanged keys), PEFT names, dropout on the adapter path only, and the rank bound. Import only the contract (`tinyllm.obj.lora` and the `L0.4` layers). `ss check L6.6` requires a mutation score of at least 0.80 with every required pitfall fault killed.
+Rung R5 asks for **oracles**: expected values from an independent computation. For LoRA the oracles are numpy itself: recompute $x W^\top + b + s\,x A^\top B^\top$, take LAPACK's `np.linalg.svd` for PiSSA, and check gradients with your own finite differences in float64. Cover the formula with $r > 1$, the bitwise start, which parameters train and get gradients, PiSSA against LAPACK, merging (outputs, removed adapters, unchanged keys), PEFT names, dropout on the adapter path only, and the rank bound. Import only the contract (`tinyllm.obj.lora` and the `L0.4` layers). `ol check L6.6` requires a mutation score of at least 0.80 with every required pitfall fault killed.
 
 ## 5. Pitfalls
 
@@ -171,7 +171,7 @@ Rung R5 asks for **oracles**: expected values from an independent computation. F
 | Forward | `L12.1` | supervised fine-tuning of the chat model trains LoRA adapters (optional, Pass 10) |
 | Forward | `sq.multi-lora` | the engine serves many adapters over one base, unmerged |
 
-If you skip this module, `ss check L6.5` stops with `needs L6.6`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L6.5` stops with `needs L6.6`: build it, or pass `--ref-deps`.
 
 ## Going further
 

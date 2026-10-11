@@ -1,4 +1,4 @@
-<!-- ss:module M03.3 -->
+<!-- ol:module M03.3 -->
 # Orthogonality, Householder QR, and orthogonal initialization
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M03.3              # stubs python/tinyllm/linalg/qr.py into your repo
-ss tests M03.3              # read the test catalog first: rung R0, you write no tests here
-ss check M03.3              # exit code is the verdict
-ss check M03.3 --ref-deps   # only if your M07.0 is not passing yet
-ss diff  M03.3              # after passing: your code against the reference
+ol start M03.3              # stubs python/tinyllm/linalg/qr.py into your repo
+ol tests M03.3              # read the test catalog first: rung R0, you write no tests here
+ol check M03.3              # exit code is the verdict
+ol check M03.3 --ref-deps   # only if your M07.0 is not passing yet
+ol diff  M03.3              # after passing: your code against the reference
 ```
 
 ---
@@ -166,7 +166,7 @@ def orthogonal_init(shape: tuple[int, int], gain: float, rng) -> NDArray:
 | Forward | `L3.1`, `L3.2` | recurrent weights start orthogonal, so the hidden state neither explodes nor vanishes at step 0 |
 | Forward | `M03.5` | least squares $\min \lVert Ax - b \rVert$ by solving $Rx = Q^\top b$ |
 
-If you skip this module, `ss check M03.4` stops with `BLOCKED ... needs M03.3`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check M03.4` stops with `BLOCKED ... needs M03.3`: build it, or pass `--ref-deps`.
 
 ## Going further
 

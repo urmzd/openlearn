@@ -44,7 +44,7 @@ from tinyllm.infer.quant import (
 from tinyllm.nn.layers import Linear
 from tinyllm.nn.module import Module
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 FIX = Path(
     os.environ.get("TINYLLM_FIXTURES", Path(__file__).resolve().parents[2] / "fixtures")
 )
@@ -105,7 +105,7 @@ def test_packed_bytes_match_the_golden():
     #      case of the parity golden file (shapes from 1 x 2 at group 2 to
     #      5 x 48 at group 16 and 2 x 64 at group 64) must give exactly its
     #      packed bytes and float16 scale bits. The same file drives
-    #      `ss parity quant.int4`, where L9.5's kernel must decode them.
+    #      `ol parity quant.int4`, where L9.5's kernel must decode them.
     # KIND: golden
     # CATCHES: s01, s02, s04, s08
     # CHAPTER: L8.5 section 4

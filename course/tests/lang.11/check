@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 # Artifact check for the lang.11 SQL primer (DESIGN 4.6, 6.4; H15): runs in
 # the learner repo with Python's built-in sqlite3. The tests and why each
-# exists are in artifacts.py (`ss tests lang.11`).
+# exists are in artifacts.py (`ol tests lang.11`).
 exec python3 "$(dirname "$0")/artifacts.py" "$@"

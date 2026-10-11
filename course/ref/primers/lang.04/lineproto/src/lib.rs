@@ -110,7 +110,7 @@ pub fn reply(line: &[u8]) -> (String, bool) {
 }
 
 // Your own tests live next to the code they test. `cargo test` in the
-// workspace runs them; `ss check lang.04` runs them too.
+// workspace runs them; `ol check lang.04` runs them too.
 #[cfg(test)]
 mod tests {
     use super::*;

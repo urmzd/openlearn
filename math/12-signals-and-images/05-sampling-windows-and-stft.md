@@ -1,4 +1,4 @@
-<!-- ss:module M12.5 -->
+<!-- ol:module M12.5 -->
 # Sampling, Nyquist, windows, and the STFT
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M12.5              # stubs python/tinyllm/sig/stft.py into your repo
-ss tests M12.5              # read the test catalog first: rung R0, you write no tests here
-ss check M12.5              # exit code is the verdict
-ss check M12.5 --ref-deps   # only if your M12.4 is not passing yet
-ss diff  M12.5              # after passing: your code against the reference
+ol start M12.5              # stubs python/tinyllm/sig/stft.py into your repo
+ol tests M12.5              # read the test catalog first: rung R0, you write no tests here
+ol check M12.5              # exit code is the verdict
+ol check M12.5 --ref-deps   # only if your M12.4 is not passing yet
+ol diff  M12.5              # after passing: your code against the reference
 ```
 
 ---

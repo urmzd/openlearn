@@ -1,4 +1,4 @@
-<!-- ss:module field.05 -->
+<!-- ol:module field.05 -->
 # Mock engagement: migration plan
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start field.05
-ss tests field.05
-ss check field.05
+ol start field.05
+ol tests field.05
+ol check field.05
 ```
 
 ---

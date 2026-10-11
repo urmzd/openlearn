@@ -44,7 +44,7 @@ F32 = dict(rtol=2e-5, atol=2e-6)
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 class Rng:

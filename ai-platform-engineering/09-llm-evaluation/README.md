@@ -177,11 +177,11 @@ Evaluating a generative model is hard because there's no single right answer to 
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ag.09` | [Eval runner](09-eval-runner.md) | build | 10 |
 | 2 | `ag.10` | [Agent evaluation scorers](10-scorers.md) | build | 10 |
 | 3 | `ag.11` | [LLM judge with position control](11-llm-judge.md) | build | 10 |
 | 4 | `ag.12` | [Paired A/B experiments](12-ab-experiments.md) | build | 10 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

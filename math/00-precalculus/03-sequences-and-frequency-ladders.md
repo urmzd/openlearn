@@ -1,4 +1,4 @@
-<!-- ss:module M00.3 -->
+<!-- ol:module M00.3 -->
 # Sequences, geometric series, frequency ladders
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M00.3              # stubs python/tinyllm/num/series.py into your repo
-ss tests M00.3              # read the test catalog first: rung R0, you write no tests here
-ss check M00.3              # exit code is the verdict
-ss diff  M00.3              # after passing: your code against the reference
+ol start M00.3              # stubs python/tinyllm/num/series.py into your repo
+ol tests M00.3              # read the test catalog first: rung R0, you write no tests here
+ol check M00.3              # exit code is the verdict
+ol diff  M00.3              # after passing: your code against the reference
 ```
 
 ---

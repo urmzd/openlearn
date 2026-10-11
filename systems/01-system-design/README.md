@@ -125,10 +125,10 @@ Every system design problem reduces to: (1) what are the access patterns? (2) wh
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `review.01` | [Design review: tracer and serving platform](01-design-review-tracer-and-serving-platform.md) | proof | 7 |
 | 2 | `review.02` | [Design review: control plane](02-design-review-control-plane.md) | proof | 11 |
 | 3 | `review.03` | [Design review: the whole system](03-design-review-whole-system.md) | proof | 11 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

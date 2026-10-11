@@ -1,4 +1,4 @@
-<!-- ss:module ethics.06 -->
+<!-- ol:module ethics.06 -->
 # Professional responsibility and disclosure
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ethics.06
-ss tests ethics.06
-ss check ethics.06
+ol start ethics.06
+ol tests ethics.06
+ol check ethics.06
 ```
 
 ---

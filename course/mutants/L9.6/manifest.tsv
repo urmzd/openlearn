@@ -13,7 +13,7 @@ s11	c/src/kernels/elementwise.c	semantic	pitfall-gather	69	n	the embedding row i
 s12	c/src/kernels/elementwise.c	semantic	pitfall-tie	82	n	argmax ties go to the last index	> to >=
 s13	c/src/kernels/elementwise.c	semantic	pitfall-nan	79	n	argmax does not skip NaN	NaN check deleted
 s14	c/src/kernels/elementwise.c	semantic	pitfall-empty	77	n	an empty or all-NaN row gives 0	best starts at 0
-s15	c/src/kernels/elementwise.c	semantic	pitfall-row-acc	20	n	the sum of squares carries over between rows	ss declared once per call
+s15	c/src/kernels/elementwise.c	semantic	pitfall-row-acc	20	n	the sum of squares carries over between rows	ol declared once per call
 m01	c/src/kernels/elementwise.c	auto	boundary	27	n	the sum of squares skips the last entry	i < d - 1
 m02	c/src/kernels/elementwise.c	auto	index	46	n	every head rotates with the first head's offset	(t * H + h) to (t * H)
 m03	c/src/kernels/elementwise.c	auto	arith_swap	73	n	add subtracts	+ to -

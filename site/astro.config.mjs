@@ -19,7 +19,7 @@ export default defineConfig({
 		starlight({
 			title: 'Supersource',
 			description: 'A free, runnable curriculum from foundations to Staff-level depth: math, algorithms, ML systems, and infrastructure.',
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/urmzd/supersource' }],
+			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/urmzd/openlearn' }],
 			customCss: ['katex/dist/katex.min.css', './src/styles/custom.css'],
 			head: [
 				{

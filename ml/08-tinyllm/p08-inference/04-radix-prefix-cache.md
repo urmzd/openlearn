@@ -1,4 +1,4 @@
-<!-- ss:module L8.4 -->
+<!-- ol:module L8.4 -->
 # Radix prefix cache (block-granular, LRU leaf eviction, locks)
 
 ## Overview
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start L8.4               # stubs prefix.rs and the tl-engine crate root; writes Cargo.toml if absent
-ss tests L8.4               # read the test catalog first
-ss check L8.4               # exit code is the verdict; then grades your tests by mutation
-ss check L8.4 --ref-deps    # only if ds.07 is not passing yet
-ss diff  L8.4               # after passing: your code against the reference
+ol start L8.4               # stubs prefix.rs and the tl-engine crate root; writes Cargo.toml if absent
+ol tests L8.4               # read the test catalog first
+ol check L8.4               # exit code is the verdict; then grades your tests by mutation
+ol check L8.4 --ref-deps    # only if ds.07 is not passing yet
+ol diff  L8.4               # after passing: your code against the reference
 ```
 
-Add `crates/tl-engine` to your workspace `rust/Cargo.toml` if `ss start` did not. The whole module is about 120 lines over `ds.07`: the arithmetic of section 2, the duplicates, and the counters.
+Add `crates/tl-engine` to your workspace `rust/Cargo.toml` if `ol start` did not. The whole module is about 120 lines over `ds.07`: the arithmetic of section 2, the duplicates, and the counters.
 
 ---
 

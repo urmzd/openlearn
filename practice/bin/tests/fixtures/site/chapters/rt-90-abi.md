@@ -1,4 +1,4 @@
-<!-- ss:module rt.90 -->
+<!-- ol:module rt.90 -->
 # Demo ABI: status codes, error slot, allocator hook
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start rt.90
-ss tests rt.90
-ss check rt.90
+ol start rt.90
+ol tests rt.90
+ol check rt.90
 ```
 
 ---

@@ -1,4 +1,4 @@
-<!-- ss:module ethics.02 -->
+<!-- ol:module ethics.02 -->
 # Privacy and PII policy
 
 ## Overview
@@ -27,9 +27,9 @@ Like `ethics.01`, this is engineering, not legal advice: the course checks that 
 ## How to work this chapter
 
 ```bash
-ss start ethics.02            # records the start; you write docs/data/ from section 4
-ss tests ethics.02            # read the test catalog first
-ss check ethics.02            # exit code is the verdict
+ol start ethics.02            # records the start; you write docs/data/ from section 4
+ol tests ethics.02            # read the test catalog first
+ol check ethics.02            # exit code is the verdict
 ```
 
 ---
@@ -184,7 +184,7 @@ c01 = "email"
 # ... c02 to c12
 ```
 
-`ss check ethics.02` runs `course/tests/ethics.02/check` from your repo root; it refuses early if a file is missing.
+`ol check ethics.02` runs `course/tests/ethics.02/check` from your repo root; it refuses early if a file is missing.
 
 ### What the tests check
 

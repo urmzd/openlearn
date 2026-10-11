@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	controlv1 "supersource.urmzd.com/tl/contracts/gen/tl/control/v1"
-	"supersource.urmzd.com/tl/testkit/clock"
+	controlv1 "openlearn.urmzd.com/tl/contracts/gen/tl/control/v1"
+	"openlearn.urmzd.com/tl/testkit/clock"
 	"tinyllm/config"
 	assemble "tinyllm/gateway"
 	"tinyllm/gateway/auth"

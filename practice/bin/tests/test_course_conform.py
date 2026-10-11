@@ -1,4 +1,4 @@
-"""ss conform openapi:v0: starts the tier's service, validates every response
+"""ol conform openapi:v0: starts the tier's service, validates every response
 against the vendored contract, tiers, the gateway key, pending cases, --base."""
 
 import json
@@ -8,7 +8,7 @@ def _ledger(ss, key):
     return [
         e
         for e in map(
-            json.loads, (ss.learner / ".ss/verdicts.jsonl").read_text().splitlines()
+            json.loads, (ss.learner / ".ol/verdicts.jsonl").read_text().splitlines()
         )
         if e.get("id") == key
     ]

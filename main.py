@@ -1,5 +1,5 @@
 def main():
-    print("Hello from supersource!")
+    print("Hello from openlearn!")
 
 
 if __name__ == "__main__":

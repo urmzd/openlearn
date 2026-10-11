@@ -1,4 +1,4 @@
-<!-- ss:module L10.7 -->
+<!-- ol:module L10.7 -->
 # Serving metrics, SLO histograms, OTel spans and propagation
 
 ## Overview
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.7               # stubs metrics.rs and telemetry.rs
-ss tests L10.7
-ss check L10.7               # exit code is the verdict
-ss check L10.7 --ref-deps    # only if L10.5 is not passing yet
-ss diff  L10.7
+ol start L10.7               # stubs metrics.rs and telemetry.rs
+ol tests L10.7
+ol check L10.7               # exit code is the verdict
+ol check L10.7 --ref-deps    # only if L10.5 is not passing yet
+ol diff  L10.7
 ```
 
-Declare `pub mod metrics; pub mod telemetry;` in `tl-serve/src/lib.rs`. This module takes over `server.rs` from `L10.5` (`upgrades`), so `ss check L10.7` also runs every `L10.5` test as a regression. Your server keeps one `EngineMetrics` behind a mutex: `record_http` for every request, `record_request` when a generation ends (early errors too, with their `code` as `error_type`), `set_engine(&EngineGauges::from_stats(&engine.stats(), spec_rate))` before rendering `/metrics`. The engine thread stamps when it takes a request and when it samples each token; at the end of each request the server builds `request_spans` from those times, writes one `log_line` inside the SERVER span to stderr, and posts `otlp_json` to `$OTEL_EXPORTER_OTLP_ENDPOINT/v1/traces` on a thread of its own.
+Declare `pub mod metrics; pub mod telemetry;` in `tl-serve/src/lib.rs`. This module takes over `server.rs` from `L10.5` (`upgrades`), so `ol check L10.7` also runs every `L10.5` test as a regression. Your server keeps one `EngineMetrics` behind a mutex: `record_http` for every request, `record_request` when a generation ends (early errors too, with their `code` as `error_type`), `set_engine(&EngineGauges::from_stats(&engine.stats(), spec_rate))` before rendering `/metrics`. The engine thread stamps when it takes a request and when it samples each token; at the end of each request the server builds `request_spans` from those times, writes one `log_line` inside the SERVER span to stderr, and posts `otlp_json` to `$OTEL_EXPORTER_OTLP_ENDPOINT/v1/traces` on a thread of its own.
 
 ---
 

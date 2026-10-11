@@ -1,4 +1,4 @@
-<!-- ss:module ops.01 -->
+<!-- ol:module ops.01 -->
 # A decode worker dies mid-stream
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `ops.01` · drill · ops, docs · Pass 7 · 2 to 3 h |
 | **You build** | `docs/runbooks/TTFTBudgetBurnFast.md` (Symptoms, Diagnosis, Mitigation: the runbook your alert links to) and `docs/postmortems/<date>-kill-decode.md`, and you keep the service within its SLO while a decode pod dies under load |
 | **Contract** | the drill spec `course/drills/kill-decode/drill.toml` (what is injected, detected, and checked: section 4); [`otel/slo.schema.json`](../../course/contracts/otel/slo.schema.json) (the `drill` profile) |
-| **Tests** | graded by `ss drill end`; no course tests to read (section 4 lists every check) |
+| **Tests** | graded by `ol drill end`; no course tests to read (section 4 lists every check) |
 | **Needs** | [`obs.03`](../04-observability/03-slos-and-burn-rate-alerts.md) (the alert that detects it); you triage what `dep.00` and the Pass 7 charts deployed, the gateway's failover (`gw.05`), with the dashboard of [`obs.04`](../04-observability/04-dashboards-as-code.md) |
 | **Used by** | no call site: a drill. MS-prod requires it within budget; MS-ops reruns it |
 | **Milestone** | MS-prod (drill `ops.01` within the error budget) |
@@ -26,11 +26,11 @@
 
 ```bash
 kubectl apply -f deploy/observability/rules/slo-drill.yaml   # the drill profile's alerts (obs.03)
-ss drill list                         # kill-decode is ops.01
-ss drill start kill-decode            # starts your loadgen, kills a decode pod 30 s in, prints only the page
+ol drill list                         # kill-decode is ops.01
+ol drill start kill-decode            # starts your loadgen, kills a decode pod 30 s in, prints only the page
 # ... dashboard, kubectl, gateway logs, the runbook ... restore and hold the SLO ...
-ss drill end                          # grades: detected in time, resolved, evidence, runbook, postmortem
-ss drill reset                        # stops the loadgen; always run it after `end`
+ol drill end                          # grades: detected in time, resolved, evidence, runbook, postmortem
+ol drill reset                        # stops the loadgen; always run it after `end`
 ```
 
 ---
@@ -66,7 +66,7 @@ Splicing (continuing the stream from another replica) would send tokens generate
 
 ### 2.3 Detection under the drill profile
 
-From `obs.03`: the fast alert fires when the error ratio exceeds $14.4 \beta$ over both the long and the short window. With $\beta = 0.01$ (TTFT, $o = 0.99$) that is 14.4% slow requests. The prod windows (1 h and 5 min) would need 14.4% of a whole **hour** to be slow; a 3-minute event cannot do that. The drill profile's 5-minute long window can, which is why `ss drill` runs every drill with `slo_profile = "drill"`.
+From `obs.03`: the fast alert fires when the error ratio exceeds $14.4 \beta$ over both the long and the short window. With $\beta = 0.01$ (TTFT, $o = 0.99$) that is 14.4% slow requests. The prod windows (1 h and 5 min) would need 14.4% of a whole **hour** to be slow; a 3-minute event cannot do that. The drill profile's 5-minute long window can, which is why `ol drill` runs every drill with `slo_profile = "drill"`.
 
 ### 2.4 Mitigate, then verify with the SLO
 
@@ -78,14 +78,14 @@ A model timeline (the reference postmortem has the same shape). $\lambda = 20$, 
 
 | Time | Event | Numbers |
 |---|---|---|
-| 10:00:00 | `ss drill start kill-decode --seed 7`; loadgen at 20 rps | baseline TTFT p95 about 180 ms |
+| 10:00:00 | `ol drill start kill-decode --seed 7`; loadgen at 20 rps | baseline TTFT p95 about 180 ms |
 | 10:00:30 | decode pod `x2kq` deleted, grace period 0 | 11 streams on it end with an SSE `error` event; new requests fail over |
 | 10:00:30 to 10:03:10 | the survivor serves alone: $\rho = 20 / 12 = 1.67$ | the queue grows by about 8 requests a second at first |
 | 10:01:00 | 30 s after the kill, about a third of requests wait more than 500 ms | $e(25s) \approx 0.33 > 0.144$: the short window is over |
 | 10:02:31 | $e(5m)$ crosses 0.144 (the long window catches up), plus `for: 10s` | **`TTFTBudgetBurnFast` fires**: 121 s after the kill, inside the 300 s budget |
 | 10:03:10 | the replacement is Ready ($t_r = 160$ s) | the queue drains in about 20 s |
 | 10:04:05 | the short window has been healthy for 25 s | the alert resolves |
-| 10:09:30 | `ss drill end` | p95 under 0.5 s held 300 s; 5xx 0.1% held 120 s; smoke cases pass |
+| 10:09:30 | `ol drill end` | p95 under 0.5 s held 300 s; 5xx 0.1% held 120 s; smoke cases pass |
 
 Check the detection time by hand: from 10:00:30, a third of each second's requests are slow. The 5-minute window holds 30 s of baseline and $t$ seconds of incident, so $e(5m) \approx 0.33\, t / 300$, which exceeds 0.144 when $t > 131$ s, about 10:02:41 for a steady third. The model timeline's 10:02:31 has the slow share rising above a third as the queue grows; either way it is well inside 300 s. Under prod windows, $e(1h) \approx 0.33 \cdot 160 / 3600 = 0.015$: no page, which is the point of the drill profile.
 
@@ -93,16 +93,16 @@ The availability SLO does not move: failover keeps 5xx near zero, and the 11 bro
 
 ## 4. Inject, detect, mitigate, verify
 
-| Step | What `ss drill` does | What you do |
+| Step | What `ol drill` does | What you do |
 |---|---|---|
 | inject | starts `{loadgen} --target {deploy.gateway_url} --rate 20 --duration 900s --seed 1`; 30 s later deletes a random Ready pod of `{deploy.services.decode}` with `--grace-period=0` (seeded; revealed at `end`) | nothing: the page is your first signal |
 | detect | at `end`, reads the `ALERTS` series: `TTFTBudgetBurnFast` must have fired within 300 s of the kill | acknowledge, open the dashboard (`obs.04`) and your runbook |
 | mitigate | | diagnose with the runbook; confirm the replacement; scale up if the survivor cannot hold the SLO; never restart the gateway "to be sure" |
 | verify | at `end`: the decode rollout is complete; TTFT p95 under 0.5 s held 300 s; 5xx ratio under 0.005 held 120 s; `openapi:v1:gateway:smoke` passes; a trace in the window spans `<system>-gateway` and `<system>-engine` | write the runbook and the postmortem |
 
-`ss drill start` refuses to run unless your rules under `deploy/observability/` define `TTFTBudgetBurnFast` with the drill profile's windows (`obs.03`). Your `system.toml` needs `[deploy].services.decode` (for example `deploy/<system>-engine-decode`), `[deploy].prometheus`, and `[deploy].traces`, and `[entry].loadgen`.
+`ol drill start` refuses to run unless your rules under `deploy/observability/` define `TTFTBudgetBurnFast` with the drill profile's windows (`obs.03`). Your `system.toml` needs `[deploy].services.decode` (for example `deploy/<system>-engine-decode`), `[deploy].prometheus`, and `[deploy].traces`, and `[entry].loadgen`.
 
-### What `ss drill end` checks
+### What `ol drill end` checks
 
 | Check | Passes when |
 |---|---|
@@ -131,11 +131,11 @@ Confirm the replacement (`kubectl rollout status`), scale the decode Deployment 
 
 | Pitfall | Symptom | Caught by |
 |---|---|---|
-| 1. Only the prod rules installed | the page never comes; `ss drill start` refuses (no drill windows) | ss drill start (its rule gate); ss drill end, check detected |
+| 1. Only the prod rules installed | the page never comes; `ol drill start` refuses (no drill windows) | ol drill start (its rule gate); ol drill end, check detected |
 | 2. The gateway retries after the first byte | streams with text from two engines that read plausibly and are wrong | gw.05's fault tests (after the first byte a request fails, never spliced); your postmortem's Impact |
 | 3. Restarting the gateway to "clear" it | every in-flight stream on every engine dies; the 5xx check fails its hold | resolve check 3 (5xx ratio) |
 | 4. Declaring victory when the pod is Running, not Ready | TTFT still high; the hold timer restarts | resolve checks 1 and 2 |
-| 5. A postmortem that blames the kill | no action item about capacity during replacement; the next node drain repeats the incident | ss drill end, check postmortem; the self review against course/rubrics/postmortem.md |
+| 5. A postmortem that blames the kill | no action item about capacity during replacement; the next node drain repeats the incident | ol drill end, check postmortem; the self review against course/rubrics/postmortem.md |
 
 ## 6. Where it's used next
 
@@ -150,7 +150,7 @@ Confirm the replacement (`kubectl rollout status`), scale the decode Deployment 
 
 | Your piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
-| `ss drill` with one injector | Chaos Mesh, LitmusChaos, Gremlin | scheduled experiments, blast-radius limits, many fault types | [Chaos Mesh](https://chaos-mesh.org/) |
+| `ol drill` with one injector | Chaos Mesh, LitmusChaos, Gremlin | scheduled experiments, blast-radius limits, many fault types | [Chaos Mesh](https://chaos-mesh.org/) |
 | a fixed replica count | HPA or KEDA on queue depth, PodDisruptionBudgets | capacity that follows load; evictions that never take two pods | [PDB](https://kubernetes.io/docs/tasks/run-application/configure-pdb/) |
 | fail before first byte, error after | request hedging, KV cache migration between replicas | resume a sequence elsewhere without splicing | vLLM and SGLang disaggregation designs |
 | a game day you run alone | team game days with an incident commander | roles, communication, the human side | *SRE Workbook*, ch. 9 Incident Response |

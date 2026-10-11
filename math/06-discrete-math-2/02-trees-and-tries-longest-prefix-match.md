@@ -1,4 +1,4 @@
-<!-- ss:module M06.2 -->
+<!-- ol:module M06.2 -->
 # Trees and tries, longest-prefix match
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M06.2              # stubs trie.py into your repo
-ss tests M06.2              # read the test catalog first
-ss check M06.2              # exit code is the verdict
-ss diff  M06.2              # after passing: your code against the reference
+ol start M06.2              # stubs trie.py into your repo
+ol tests M06.2              # read the test catalog first
+ol check M06.2              # exit code is the verdict
+ol diff  M06.2              # after passing: your code against the reference
 ```
 
 ---
@@ -169,7 +169,7 @@ Store the tree any way you like; the reference keeps two parallel lists, a child
 | Forward | `L1.4` | the Unigram lattice adds one edge per `prefixes` match at every position, then runs Viterbi |
 | Forward | `ds.07`, `L8.4` | the same idea over token ids instead of characters, compressed into a radix tree, finds the longest cached prompt prefix in your Rust engine (they read this chapter; they do not call this code) |
 
-If you skip this module, `ss check L1.3` stops with `L1.3 needs M06.2`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L1.3` stops with `L1.3 needs M06.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

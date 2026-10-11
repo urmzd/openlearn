@@ -1,5 +1,5 @@
 """The batch- and chunk-invariance helpers (DESIGN 2.4): Python
-(_lib/invariance.py) and C (ss_invariance.h) accept invariant kernels and
+(_lib/invariance.py) and C (ol_invariance.h) accept invariant kernels and
 name the first differing bit pattern of a kernel whose reduction order
 depends on the batch or the chunk."""
 
@@ -95,8 +95,8 @@ def test_bits_equal_sees_signed_zero_and_nan_payloads():
 
 
 C_TEST = r"""
-#include "ss_test.h"
-#include "ss_invariance.h"
+#include "ol_test.h"
+#include "ol_invariance.h"
 
 #define K 64
 #define N 3
@@ -126,14 +126,14 @@ static void rows_split(void *ctx, const float *x, int64_t m, float *out) {
 
 static float xs[5 * K];
 
-SS_TEST(fixed_order_is_invariant) { SS_BATCH_INVARIANT(rows_fixed, NULL, xs, 5, K, N); }
-SS_TEST(split_k_is_not) { SS_BATCH_INVARIANT(rows_split, NULL, xs, 5, K, N); }
+OL_TEST(fixed_order_is_invariant) { OL_BATCH_INVARIANT(rows_fixed, NULL, xs, 5, K, N); }
+OL_TEST(split_k_is_not) { OL_BATCH_INVARIANT(rows_split, NULL, xs, 5, K, N); }
 
 int main(void) {
     unsigned s = 12345u;
     for (int i = 0; i < K * N; i++) { s = s * 1103515245u + 12345u; w[i] = (float)(s >> 8) / 16777216.0f - 0.5f; }
     for (int i = 0; i < 5 * K; i++) { s = s * 1103515245u + 12345u; xs[i] = (float)(s >> 8) / 16777216.0f * 3.0f; }
-    return SS_RUN_ALL();
+    return OL_RUN_ALL();
 }
 """
 

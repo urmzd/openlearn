@@ -1,4 +1,4 @@
-<!-- ss:module L3.6 -->
+<!-- ol:module L3.6 -->
 # RNN language model with stateful TBPTT
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L3.6              # stubs rnnlm.py; prints your test path and rung (R4)
-ss tests L3.6              # the course tests
+ol start L3.6              # stubs rnnlm.py; prints your test path and rung (R4)
+ol tests L3.6              # the course tests
 # write the properties of section 4 as tests in python/tests/l3-6-rnnlm/, then:
-ss check L3.6              # course tests and the mutation grade of your tests
-ss diff  L3.6              # after passing: your code against the reference
+ol check L3.6              # course tests and the mutation grade of your tests
+ol diff  L3.6              # after passing: your code against the reference
 ```
 
 ---

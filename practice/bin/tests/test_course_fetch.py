@@ -1,4 +1,4 @@
-"""ss fetch (DESIGN 5.11): pinned assets from a local HTTP server, file://,
+"""ol fetch (DESIGN 5.11): pinned assets from a local HTTP server, file://,
 and a local build; size and sha256 checks; nothing half-written lands in the
 cache; a second fetch is a no-op; verify check 12 lints ASSETS.tsv."""
 
@@ -101,7 +101,7 @@ def test_fetch_verifies_and_is_idempotent(ss, server, tmp_path):
     assert (
         "tiny-model/weights/model.bin" in out and "sha256 ok" in out and "built" in out
     )
-    cache = Path(ss.env["SS_CACHE"]) / "assets"
+    cache = Path(ss.env["OL_CACHE"]) / "assets"
     assert (cache / "tiny-model/weights/model.bin").read_bytes() == BLOB
     assert (cache / "tiny-built/made.txt").read_text() == "built here\n"
     n = len(hits)
@@ -128,7 +128,7 @@ def test_fetch_rejects_a_wrong_hash_and_leaves_nothing(ss, server):
     )
     out = ss("fetch", "tiny-model", rc=5).out
     assert "sha256" in out and "ASSETS.tsv pins 0000" in out
-    d = Path(ss.env["SS_CACHE"]) / "assets/tiny-model"
+    d = Path(ss.env["OL_CACHE"]) / "assets/tiny-model"
     assert not (d / "model.bin").exists() and not list(d.glob(".part-*"))
     _assets(
         ss,

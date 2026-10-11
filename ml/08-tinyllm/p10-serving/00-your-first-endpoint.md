@@ -1,4 +1,4 @@
-<!-- ss:module L10.0 -->
+<!-- ol:module L10.0 -->
 # Your first endpoint: a std-only Rust HTTP/1.1 + SSE server
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `L10.0` · build · Rust · Pass 1 · 8 to 12 h |
 | **You build** | `rust/crates/tl-serve/src/http.rs` (v0): the tracer engine (HTTP/1.1 parser, JSON, the byte bigram row lookup, sampling, incremental UTF-8, SSE, OTLP span export) and its crate root `lib.rs` · your entry point `rust/crates/tl-serve/src/main.rs` |
 | **Contract** | HTTP: [`openapi/openai-subset.v0.yaml`](../../../course/contracts/openapi/openai-subset.v0.yaml) · the `engine` role: [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) · the model directory: [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../../course/contracts/formats/config.schema.json), [`formats/tokenizer.md`](../../../course/contracts/formats/tokenizer.md) |
-| **Tests** | `course/tests/rust/l10_0.rs`, 29 tests (what they check: section 4); conformance `ss conform openapi:v0:engine` from `MS-P1` |
+| **Tests** | `course/tests/rust/l10_0.rs`, 29 tests (what they check: section 4); conformance `ol conform openapi:v0:engine` from `MS-P1` |
 | **Needs** | `L0.0` the checkpoint you serve ([chapter](../p00-foundations/00-byte-bigram.md)) · reading: `lang.04` Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/04-rust.md)), `lang.05` HTTP, JSON, SSE ([primer](../../../software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md)) · or `--ref-deps` |
 | **Used by** | `dep.00` builds it into the engine image · `obs.00` reads its spans; `gw.00` proxies to it over HTTP; `L10.1` adds Candle model math and `L10.5` takes `http.rs` over |
 | **Milestone** | `MS-P1` (the tracer: every layer is yours and runs end to end) |
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.0               # stubs http.rs and lib.rs; writes rust/Cargo.toml and the crate manifest
-ss tests L10.0               # read the test catalog first: rung R0, you write no tests here
-ss check L10.0               # exit code is the verdict
-ss check L10.0 --ref-deps    # only if M03.1, rt.01, or L0.0 is not passing yet
-ss diff  L10.0               # after passing: your code against the reference
+ol start L10.0               # stubs http.rs and lib.rs; writes rust/Cargo.toml and the crate manifest
+ol tests L10.0               # read the test catalog first: rung R0, you write no tests here
+ol check L10.0               # exit code is the verdict
+ol check L10.0 --ref-deps    # only if M03.1, rt.01, or L0.0 is not passing yet
+ol diff  L10.0               # after passing: your code against the reference
 ```
 
-`ss start` writes the `tl-serve` workspace member and manifest only if they are absent, and never rewrites them. The binary `src/main.rs` is yours (D16): the course ships no server. To run your engine yourself:
+`ol start` writes the `tl-serve` workspace member and manifest only if they are absent, and never rewrites them. The binary `src/main.rs` is yours (D16): the course ships no server. To run your engine yourself:
 
 ```bash
 cargo build --release --manifest-path rust/Cargo.toml
@@ -283,7 +283,7 @@ Your `main.rs` parses `--model-dir`, `--port`, `--health-port` (exit 2 on a usag
 | Forward | `L10.5` | takes `http.rs` over: tokio and hyper, `runtime.toml`, chat completions, admission control, the v1 API |
 | Forward | `L10.7` | replaces the hand-written OTLP JSON with the OpenTelemetry SDK and adds metrics |
 
-If you skip this module, `MS-P1` has no engine to start and `ss conform openapi:v0 --target engine` has nothing to test.
+If you skip this module, `MS-P1` has no engine to start and `ol conform openapi:v0 --target engine` has nothing to test.
 
 ## Going further
 

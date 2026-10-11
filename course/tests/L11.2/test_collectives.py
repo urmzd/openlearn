@@ -34,7 +34,7 @@ T = 20.0  # seconds: a correct run takes well under one
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def data(rank: int, shape, s: int) -> np.ndarray:

@@ -1,7 +1,7 @@
 # Pass 0 gate (DESIGN 5.7 milestone catalog, 7.4). Page: paths/course-p00-setup/milestone.md
 #
 # Pass condition: the learner's own CI (commit lint, native tests, and
-# `ss check --all --ci`) is green on their first conventional commit, and the
+# `ol check --all --ci`) is green on their first conventional commit, and the
 # lang.01 and lang.02 primer exercises pass. `requires` makes the primers and
 # craft.01 gate the run (exit 3 until each has a fresh pass of your own).
 # Both steps are smoke steps, so every later pass gate (MS-P1 onwards) reruns

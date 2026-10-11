@@ -1,7 +1,7 @@
 """ethics.01 artifact checks: your data licensing policy and allowlist.
 
-Run by `ss check ethics.01` (through ./check) from the root of your repo,
-which `check` passes as SS_REPO. Annotated exemplars (DESIGN 5.12): every
+Run by `ol check ethics.01` (through ./check) from the root of your repo,
+which `check` passes as OL_REPO. Annotated exemplars (DESIGN 5.12): every
 test says why it exists and fails with a message that says what to change.
 
 The formats are the chapter's (responsible-ai/01-data-licensing/
@@ -23,7 +23,7 @@ import re
 import tomllib
 from pathlib import Path
 
-REPO = Path(os.environ.get("SS_REPO", "."))
+REPO = Path(os.environ.get("OL_REPO", "."))
 POLICY = REPO / "docs" / "data" / "LICENSE_POLICY.md"
 ALLOWLIST = REPO / "docs" / "data" / "license-allowlist.toml"
 

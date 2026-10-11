@@ -1,4 +1,4 @@
-<!-- ss:module S-M04 -->
+<!-- ol:module S-M04 -->
 # Calculus 3 problem set: vectors, gradients, the chain rule, Hessians, multiple integrals, Lagrange
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M04/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M04/problems.md` and in section 4 |
 | **Needs** | no module. Reading: `S-M01` (one-variable derivatives and integrals) and the [Calculus 3 topic](README.md) |
 | **Used by** | no call site (a solve set). Take it after `M04.1` (gradcheck) and `M04.2` (Jacobians, VJP, JVP) in Pass 2. It is also the whole of the solve-only `M04.3` (Hessian), `M04.4` (multiple integrals), and `M04.5` (Lagrange), which `M10.1`, `M07.3`, and `M11.5` read |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | OpenStax, *Calculus Volume 3* (free), ch. 2, 4, and 5; Boyd and Vandenberghe, *Convex Optimization*, section 5.1, for Lagrange duality |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M04             # writes solve/S-M04.toml and the two proof files
-ss check S-M04             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M04 --regrade   # ask the rubrics again after you change a proof
+ol start S-M04             # writes solve/S-M04.toml and the two proof files
+ol check S-M04             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M04 --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -106,7 +106,7 @@ proof = "S-M04/q34.md"
 
 Vectors are flat lists, matrices lists of rows, and entries are exact (`-1/sqrt(5)`). For q33 either sign of the direction passes.
 
-<!-- ss:problems S-M04 -->
+<!-- ol:problems S-M04 -->
 
 ### Vectors and geometry
 
@@ -238,7 +238,7 @@ Vectors are flat lists, matrices lists of rows, and entries are exact (`-1/sqrt(
 
 **q58.** With Lagrange multipliers, show that the distribution $p$ over states $1, \dots, n$ with energies $E_i$ that maximizes the entropy $-\sum_i p_i \ln p_i$ subject to $\sum_i p_i = 1$ and $\sum_i p_i E_i = U$ has the form $p_i = e^{-\beta E_i} / \sum_j e^{-\beta E_j}$ (a softmax of $-\beta E$). `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

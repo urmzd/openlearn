@@ -9,6 +9,6 @@ How weights and requests become tokens, fast and cheaply: engine internals, quan
 The stages, their chapters, and what "done" means for each are in [`path.tsv`](path.tsv).
 
 ```bash
-practice/bin/ss learn inference-performance          # stages and progress
-practice/bin/ss learn inference-performance next     # read the next unfinished stage
+practice/bin/ol learn inference-performance          # stages and progress
+practice/bin/ol learn inference-performance next     # read the next unfinished stage
 ```

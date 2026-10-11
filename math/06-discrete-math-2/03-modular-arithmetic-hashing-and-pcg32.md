@@ -1,4 +1,4 @@
-<!-- ss:module M06.3 -->
+<!-- ol:module M06.3 -->
 # Modular arithmetic, hashing, and PCG32 in Python
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M06.3              # stubs python/tinyllm/num/rng.py
-ss tests M06.3              # read the test catalog first: rung R0, you write no tests here
-ss check M06.3              # Python tests against published golden vectors
-ss diff  M06.3              # after passing: your code against the reference
+ol start M06.3              # stubs python/tinyllm/num/rng.py
+ol tests M06.3              # read the test catalog first: rung R0, you write no tests here
+ol check M06.3              # Python tests against published golden vectors
+ol diff  M06.3              # after passing: your code against the reference
 ```
 
 ---

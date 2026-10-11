@@ -1,4 +1,4 @@
-<!-- ss:module L11.2 -->
+<!-- ol:module L11.2 -->
 # Collectives over processes: ring all-reduce
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L11.2              # stubs comm.py into your repo
-ss tests L11.2              # read the test catalog first
-ss check L11.2              # course tests, then your tests graded by mutation
-ss mutate L11.2             # the full mutation grade of your tests
-ss diff  L11.2              # after passing: your code against the reference
+ol start L11.2              # stubs comm.py into your repo
+ol tests L11.2              # read the test catalog first
+ol check L11.2              # course tests, then your tests graded by mutation
+ol mutate L11.2             # the full mutation grade of your tests
+ol diff  L11.2              # after passing: your code against the reference
 ```
 
 ---

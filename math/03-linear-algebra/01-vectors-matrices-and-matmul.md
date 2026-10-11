@@ -1,4 +1,4 @@
-<!-- ss:module M03.1 -->
+<!-- ol:module M03.1 -->
 # Vectors, matrices, row-major layout, and matmul in Python
 
 ## Overview
@@ -55,7 +55,7 @@ Thus the result is `[[58, 64], [139, 154]]`. The same values result when `B.T` i
 | `test_beta_zero_does_not_read_nan_c` | Prevents stale NaNs in a caller's output buffer from contaminating fresh results. |
 | `test_invalid_output_shape_is_rejected` | Makes shape mistakes fail at the boundary with a useful error. |
 
-Run `ss start M03.1`, inspect the test catalog with `ss tests M03.1`, then use `ss check M03.1` for the verdict. `ss diff M03.1` shows your implementation against the reference.
+Run `ol start M03.1`, inspect the test catalog with `ol tests M03.1`, then use `ol check M03.1` for the verdict. `ol diff M03.1` shows your implementation against the reference.
 
 ## 5. Pitfalls
 

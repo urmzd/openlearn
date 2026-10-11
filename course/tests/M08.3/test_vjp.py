@@ -39,7 +39,7 @@ GOLDEN = Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M08.3" / "torch_vjp.npz
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 # The test's own forward passes (float64), independent of your code.

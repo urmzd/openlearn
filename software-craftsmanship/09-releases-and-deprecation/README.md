@@ -47,12 +47,12 @@ Shipping is a contract with everyone downstream. Versions, changelogs, and depre
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `craft.11` | [Commits, semver, releases (v1.0.0)](01-commits-semver-and-releases.md) | practice | 11 |
 | 2 | `craft.12` | [Deprecation policy](02-deprecation-policy.md) | practice | 11 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

@@ -1,4 +1,4 @@
-<!-- ss:module S-M08 -->
+<!-- ol:module S-M08 -->
 # Matrix calculus problem set: differentials, trace trick, VJPs, SDPA Jacobian
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M08/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M08/problems.md` and in section 4 |
 | **Needs** | `S-M05` (proof habits). Reading: the [Matrix Calculus and Autodiff topic](README.md), and the gradients and chain rule of `S-M04` |
 | **Used by** | no call site (a solve set). It checks the derivations behind `M08.3` (`matmul_vjp`, `softmax_vjp`, `log_softmax_vjp`, `layernorm_vjp`, `rmsnorm_vjp`, `cross_entropy_vjp`), which `L0.2`, `L0.3`, and `L7.1` register as ops; q33 and q34 are the attention backward of `L4.*` and `L9.4` |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Parr and Howard, "The Matrix Calculus You Need for Deep Learning" (2018); Minka, "Old and New Matrix Algebra Useful for Statistics" (2000); Baydin et al., "Automatic Differentiation in Machine Learning: a Survey" (2018), sections 2 and 3; Dao et al., "FlashAttention" (2022), appendix B |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M08              # writes solve/S-M08.toml and one file per derivation
-ss check S-M08              # SymPy checks the answers, then asks each rubric (y/n)
-ss check S-M08 --regrade    # ask the rubrics again after you change a derivation
+ol start S-M08              # writes solve/S-M08.toml and one file per derivation
+ol check S-M08              # SymPy checks the answers, then asks each rubric (y/n)
+ol check S-M08 --regrade    # ask the rubrics again after you change a derivation
 ```
 
 ---
@@ -118,7 +118,7 @@ proof = "S-M08/q20.md"
 
 Vectors are flat lists; matrices are lists of rows; write $e$ as `E` and $\sqrt{\cdot}$ as `sqrt(...)`. A gradient answer must have the variable's shape.
 
-<!-- ss:problems S-M08 -->
+<!-- ol:problems S-M08 -->
 
 ### Layouts and shapes
 
@@ -204,7 +204,7 @@ Scaled dot-product attention: $S = Q K^\top / \sqrt{d}$, $P = \mathrm{softmax}(S
 
 **q34.** Prove the SDPA backward rules: with $dO = \partial L / \partial O$, $dV = P^\top dO$, $dP = dO\, V^\top$, $dS_{ij} = P_{ij} (dP_{ij} - \sum_k dP_{ik} P_{ik})$, $dQ = dS\, K / \sqrt{d}$, and $dK = dS^\top Q / \sqrt{d}$. `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

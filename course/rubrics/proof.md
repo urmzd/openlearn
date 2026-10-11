@@ -1,7 +1,7 @@
 # Proof rubric
 
 Every `type = "proof"` question in a solve key is self-graded against its own
-`rubric` lines; a question that names no lines uses this list. `ss check`
+`rubric` lines; a question that names no lines uses this list. `ol check`
 prints each line and you answer y or n. Every line must be a yes for the
 proof to count, and the verdict is tagged `self` (DESIGN 5.5).
 

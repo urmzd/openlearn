@@ -1,5 +1,5 @@
-"""My tests for L2.3 (rung R3: tests first, `ss tdd red L2.3`, then the code,
-`ss tdd green L2.3`; the chapter's section 3 numbers are the first test).
+"""My tests for L2.3 (rung R3: tests first, `ol tdd red L2.3`, then the code,
+`ol tdd green L2.3`; the chapter's section 3 numbers are the first test).
 They import only contract names."""
 
 import math

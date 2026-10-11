@@ -44,11 +44,11 @@ Responsibility is the part of engineering that does not compile. The codes, the 
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ethics.06` | [Professional responsibility and disclosure](01-professional-responsibility.md) | proof | 11 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

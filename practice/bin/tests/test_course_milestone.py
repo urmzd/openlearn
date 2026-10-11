@@ -1,4 +1,4 @@
-"""ss milestone: [build], services on allocated ports with generated
+"""ol milestone: [build], services on allocated ports with generated
 runtime.toml files, matchers (tokens-equal with the near-tie rule, contains,
 sse, suite, git-log, ci-status, trace), smoke and kind tags, pass-gate
 composition, blocked and assisted verdicts."""
@@ -27,7 +27,7 @@ def test_blocked_then_assisted_then_pass(ss):
     v = [
         e
         for e in map(
-            json.loads, (ss.learner / ".ss/verdicts.jsonl").read_text().splitlines()
+            json.loads, (ss.learner / ".ol/verdicts.jsonl").read_text().splitlines()
         )
         if e.get("id") == "MS-M90"
     ]
@@ -35,7 +35,7 @@ def test_blocked_then_assisted_then_pass(ss):
     _pass_m901(ss)
     out = ss("milestone", "MS-M90", rc=0).out
     assert "PASS" in out and "(assisted)" not in out
-    logs = sorted((ss.learner / ".ss/milestones/MS-M90").iterdir())
+    logs = sorted((ss.learner / ".ol/milestones/MS-M90").iterdir())
     summary = json.loads((logs[-1] / "summary.json").read_text())
     assert summary["result"] == "pass" and len(summary["steps"]) == 3
     assert "build ok" in (logs[-1] / "build.log").read_text()
@@ -115,7 +115,7 @@ def test_p1_smoke_runs_services_suites_and_earlier_gates(ss):
     assert (
         "kind NodePort" not in out and "one trace" not in out
     )  # kind steps never run in --smoke
-    logdir = sorted((ss.learner / ".ss/milestones/MS-P1").iterdir())[-1]
+    logdir = sorted((ss.learner / ".ol/milestones/MS-P1").iterdir())[-1]
     eng = tomllib.loads((logdir / "services/engine.runtime.toml").read_text())
     gw = tomllib.loads((logdir / "services/gateway.runtime.toml").read_text())
     ports = {

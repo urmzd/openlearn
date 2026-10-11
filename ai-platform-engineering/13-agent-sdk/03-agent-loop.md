@@ -1,4 +1,4 @@
-<!-- ss:module ag.03 -->
+<!-- ol:module ag.03 -->
 # Agent loop
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start ag.03
-ss tests ag.03
-ss check ag.03          # ag.01 and ag.02 smoke tests run first
-ss diff  ag.03
+ol start ag.03
+ol tests ag.03
+ol check ag.03          # ag.01 and ag.02 smoke tests run first
+ol diff  ag.03
 ```
 
 ---

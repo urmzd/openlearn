@@ -47,11 +47,11 @@ You cannot honor terms you did not record. Licensing for training data is a prov
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ethics.01` | [Data licensing and the ledger](01-data-licensing-and-the-ledger.md) | practice | 3 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

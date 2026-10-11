@@ -1,4 +1,4 @@
-<!-- ss:module ds.05 -->
+<!-- ol:module ds.05 -->
 # Robin Hood hash map with backward-shift deletion
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.05              # stubs robin.rs and the tl-ds crate root; writes the crate manifest if absent
-ss tests ds.05              # read the test catalog first
-ss check ds.05              # exit code is the verdict; then grades your tests by mutation
-ss diff  ds.05              # after passing: your code against the reference
+ol start ds.05              # stubs robin.rs and the tl-ds crate root; writes the crate manifest if absent
+ol tests ds.05              # read the test catalog first
+ol check ds.05              # exit code is the verdict; then grades your tests by mutation
+ol diff  ds.05              # after passing: your code against the reference
 ```
 
-`ss start` writes `rust/crates/tl-ds/Cargo.toml` (std only; `proptest` as a dev-dependency for your own tests) and adds `crates/tl-ds` to your workspace manifest if you have none. The crate root declares all three modules of the crate (`robin`, `heap`, `bloom`); the ones you have not started yet are stubs that compile. Start with `slots_for`, `home`, and `insert` on the worked example with the `Id` hasher of the tests, then `find`, then `remove`.
+`ol start` writes `rust/crates/tl-ds/Cargo.toml` (std only; `proptest` as a dev-dependency for your own tests) and adds `crates/tl-ds` to your workspace manifest if you have none. The crate root declares all three modules of the crate (`robin`, `heap`, `bloom`); the ones you have not started yet are stubs that compile. Start with `slots_for`, `home`, and `insert` on the worked example with the `Id` hasher of the tests, then `find`, then `remove`.
 
 ---
 
@@ -166,7 +166,7 @@ pub enum Entry<'a, K, V, S> { Occupied(OccupiedEntry<'a, K, V, S>), Vacant(Vacan
 | `robin_hood_invariant_holds_after_churn` | property | every 100 operations: displacement matches the home, grows by at most 1 per slot, is 0 after an empty slot | the invariant the early exit relies on |
 | `fx_build_is_the_default` | regression | `new()` uses Fx: two maps from the same keys iterate alike | a tokenizer built twice is identical |
 
-**Your tests (rung R2).** Write `rust/crates/tl-ds/tests/ds05_robin.rs` as an integration test (`use tl_ds::robin::...` only) with these tests, bodies yours: `insert_steals_from_the_rich`, `remove_shifts_back`, `every_key_is_found`, `grows_past_seven_eighths`, `hasher_reads_every_byte`, `entry_counts`, `matches_std_hashmap`. `ss check ds.05` runs them against the reference with one planted bug at a time; at least 60% of the planted bugs must make one of them fail.
+**Your tests (rung R2).** Write `rust/crates/tl-ds/tests/ds05_robin.rs` as an integration test (`use tl_ds::robin::...` only) with these tests, bodies yours: `insert_steals_from_the_rich`, `remove_shifts_back`, `every_key_is_found`, `grows_past_seven_eighths`, `hasher_reads_every_byte`, `entry_counts`, `matches_std_hashmap`. `ol check ds.05` runs them against the reference with one planted bug at a time; at least 60% of the planted bugs must make one of them fail.
 
 ## 5. Pitfalls
 
@@ -192,7 +192,7 @@ pub enum Entry<'a, K, V, S> { Occupied(OccupiedEntry<'a, K, V, S>), Vacant(Vacan
 | Forward | `ds.02` | the Swiss table in C keeps open addressing and the 7/8 bound, and matches 8 slots at a time with control bytes |
 | Forward | `ds.07` | the radix tree over token ids keys its children by id |
 
-If you skip this module, `ss check L1.5` stops with `needs ds.05: build it, or pass --ref-deps`.
+If you skip this module, `ol check L1.5` stops with `needs ds.05: build it, or pass --ref-deps`.
 
 ## Going further
 

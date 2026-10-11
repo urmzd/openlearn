@@ -46,11 +46,11 @@ Documentation is how a model's limits travel with it. Without a card, every down
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ethics.03` | [Datasheet and model card](01-datasheet-and-model-card.md) | practice | 9 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

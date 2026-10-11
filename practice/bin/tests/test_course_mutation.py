@@ -1,6 +1,6 @@
 """Mutation grading of the learner's tests (DESIGN 5.6) and red-then-green
-(5.12): ss mutate, the cache, sampling in ss check, survivors and their
-reveal rule, the black-box lint, ss tdd, and verify check 6 proving the
+(5.12): ol mutate, the cache, sampling in ol check, survivors and their
+reveal rule, the black-box lint, ol tdd, and verify check 6 proving the
 reference learner tests reach each threshold in all four languages."""
 
 import json
@@ -18,7 +18,7 @@ def test_does_not_modify_input():
     assert xs == [1.0, 2.0]
 
 
-def test_runs_under_the_ss_hypothesis_profile():
+def test_runs_under_the_ol_hypothesis_profile():
     from hypothesis import settings
 
     assert settings.default.derandomize and settings.default.database is None
@@ -50,7 +50,7 @@ def test_python_tdd_then_mutate_then_check(ss):
     assert "mutation grade: 1.00 (4/4 killed, threshold 0.75, required ok)" in out
     out2 = ss("mutate", "M90.1", rc=0).out
     assert "mutation grade: 1.00" in out2  # the full grade is cached by test hash
-    cache = json.loads((ss.learner / ".ss/cache/mutation.json").read_text())
+    cache = json.loads((ss.learner / ".ol/cache/mutation.json").read_text())
     assert len(cache["mutants"]) == 4 and len(cache["grades"]) == 1
 
     out = ss("check", "M90.1", rc=0).out
@@ -71,9 +71,9 @@ def test_weak_tests_survivors_sampling_and_reveal(ss):
     assert "0.75 (3/4 killed, threshold 0.75, required MISSED)" in out
     assert "survived s01 (required): a planted bug from Pitfall 1 survived" in out
     assert "in place" not in out
-    # ss check: the R3 journal is missing, and the cached full grade fails.
+    # ol check: the R3 journal is missing, and the cached full grade fails.
     out = ss("check", "M90.1", rc=1).out
-    assert "TDD" in out and "no `ss tdd green M90.1`" in out
+    assert "TDD" in out and "no `ol tdd green M90.1`" in out
     assert "mutation grade (full, cached): 0.75" in out
     out = ss("mutate", "M90.1", "--reveal-survivors", rc=1).out
     assert (
@@ -82,7 +82,7 @@ def test_weak_tests_survivors_sampling_and_reveal(ss):
     )
     events = [
         json.loads(x)
-        for x in (ss.learner / ".ss/verdicts.jsonl").read_text().splitlines()
+        for x in (ss.learner / ".ol/verdicts.jsonl").read_text().splitlines()
     ]
     assert {
         "id": "M90.1",
@@ -90,7 +90,7 @@ def test_weak_tests_survivors_sampling_and_reveal(ss):
         "via": "reveal-survivors",
     }.items() <= next(e for e in events if e.get("event") == "spoiled").items()
 
-    # A changed test file has no cached grade: ss check samples (all 4 here,
+    # A changed test file has no cached grade: ol check samples (all 4 here,
     # the manifest is smaller than the sample) and reports an estimate.
     _tests(ss, WEAK + "\n\ndef test_len():\n    assert len(scale([1.0], 2.0)) == 1\n")
     out = ss("check", "M90.1", rc=1).out
@@ -131,7 +131,7 @@ def test_verify_check_6_reaches_thresholds_in_four_languages(ss):
     t = ss.course / "ref/learner-tests/rt.91/c/tests/rt-91/test_mine.c"
     t.write_text(
         t.read_text()
-        .replace("ss_alloc_fail_after(1);", "ss_alloc_fail_after(-1);")
+        .replace("ol_alloc_fail_after(1);", "ol_alloc_fail_after(-1);")
         .replace("TL_ENOMEM", "TL_OK);\n    tl_demo_buf_destroy(b")
     )
     out = ss("verify", "course", "rt.91", timeout=600).out

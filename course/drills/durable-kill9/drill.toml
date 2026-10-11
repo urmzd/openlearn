@@ -1,7 +1,7 @@
 # ops.02 durable-kill9 (DESIGN 4.5, 5.10). Chapter:
 # systems/05-incident-response-and-chaos/02-durable-kill9.md
 #
-# While your CorpusBuild `drill-kill9` runs on kind (`ss drill start` starts
+# While your CorpusBuild `drill-kill9` runs on kind (`ol drill start` starts
 # it, the [workload] below, before the first kill), the durable server's
 # pod is SIGKILLed five times, 30 s apart (`kubectl delete pod
 # --grace-period=0 --force`: the container gets SIGKILL, never SIGTERM). Each
@@ -25,9 +25,9 @@ seeded         = true                  # which replica dies (one, today) is seed
 time_limit_min = 45
 symptom        = "PAGE: DurableRedeliveriesSpike: activity tasks are being delivered again and again; the corpus build drill-kill9 has not finished"
 
-# The build the kills land in: `ss drill start` runs this command through
+# The build the kills land in: `ol drill start` runs this command through
 # your [entry].ctl in the background before the first injection (its output
-# in .ss/drills/<run>/workload.log); `ss drill reset` kills it if it still runs.
+# in .ol/drills/<run>/workload.log); `ol drill reset` kills it if it still runs.
 [workload]
 role = "ctl"
 argv = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "drill-kill9", "--durable", "127.0.0.1:30733", "--json"]
@@ -81,7 +81,7 @@ promql = "(sum(tl_durable_task_queue_depth{namespace=\"{deploy.namespace}\"}) or
 hold_s = 60
 
 # The pass condition of DESIGN 4.5 (the corpus equals a clean run's; every
-# effect happened once) is two command checks `ss drill end` runs as resolve
+# effect happened once) is two command checks `ol drill end` runs as resolve
 # checks, graded with the milestone matchers:
 #   1. The same start again returns the finished run (started = false) and
 #      its result holds the clean-run numbers MS-corpus fixes.

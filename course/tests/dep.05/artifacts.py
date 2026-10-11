@@ -1,6 +1,6 @@
 """dep.05 artifact check: CI for your repo (.github/workflows/platform.yml).
 
-Run by `ss check dep.05` in your repo. Static only: GitHub Actions cannot run
+Run by `ol check dep.05` in your repo. Static only: GitHub Actions cannot run
 here, so the check reads the workflow the way a reviewer would and checks
 that each job is present and wired to catch what it exists for. Whether the
 pipeline is green on your default branch is MS-prod's and MS-P0's
@@ -12,7 +12,7 @@ Jobs (ids fixed, so branch protection can require each by name):
   unit       pytest, go test -race, cargo test, and the C build
   images     docker build of every deploy/docker/*.Dockerfile
   kind-e2e   helm/kind-action with deploy/kind/cluster.yaml, `tilt ci`, and
-             `ss milestone MS-prod --smoke` through the supersource checkout
+             `ol milestone MS-prod --smoke` through the openlearn checkout
              at contracts/VERSION
   perf-gate  optional, with the optional load.02: on main only,
              `{loadgen} compare <base> <head> --metric ... --max-regress ...`,
@@ -219,7 +219,7 @@ def test_kind_e2e_job(c: Ctx) -> None:
     # WHY: the deployed system, end to end, on every pull request: a kind
     #      cluster made from YOUR deploy/kind/cluster.yaml (the NodePort
     #      mappings MS-prod uses), `tilt ci` (dep.04) to build and roll out,
-    #      then the MS-prod smoke steps from the supersource commit your
+    #      then the MS-prod smoke steps from the openlearn commit your
     #      contracts/VERSION names.
     # KIND: conformance
     # CHAPTER: dep.05 section 5, Pitfall 4
@@ -242,12 +242,12 @@ def test_kind_e2e_job(c: Ctx) -> None:
     if not re.search(r"\btilt\s+ci\b", text):
         errs.append("kind-e2e does not run `tilt ci`")
     if not re.search(r"\bmilestone\s+MS-prod\b[^\n]*--smoke", text):
-        errs.append("kind-e2e does not run `ss milestone MS-prod --smoke`")
+        errs.append("kind-e2e does not run `ol milestone MS-prod --smoke`")
     if "contracts/VERSION" not in text or not re.search(
         r"\bcheckout\b[^\n]*\$\{?SHA\b", text
     ):
         errs.append(
-            'kind-e2e must run ss from the supersource commit contracts/VERSION names (git checkout "$SHA")'
+            'kind-e2e must run ol from the openlearn commit contracts/VERSION names (git checkout "$SHA")'
         )
     needs = _job(c, "kind-e2e").get("needs") or []
     needs = [needs] if isinstance(needs, str) else needs

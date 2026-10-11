@@ -1,4 +1,4 @@
-<!-- ss:module ops.06 -->
+<!-- ol:module ops.06 -->
 # Drill: breaking dependency upgrade
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ops.06
-ss tests ops.06
-ss check ops.06
+ol start ops.06
+ol tests ops.06
+ol check ops.06
 ```
 
 ---

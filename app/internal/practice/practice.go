@@ -3,7 +3,7 @@
 // only runs it and reads what it left on disk, so an exercise checked in the
 // app and one checked in a terminal are the same exercise.
 //
-// The contract is the one practice/bin/ss implements: `list`, `start`, `check`,
+// The contract is the one practice/bin/ol implements: `list`, `start`, `check`,
 // `diff`, `show`, `reset`, each taking <kind> <lang> <name>, with `check`
 // exiting 0 for a pass, 1 for a fail, and 2 when nothing has been attempted.
 package practice
@@ -348,7 +348,7 @@ func (r *Runner) Learn(ctx context.Context, top, key string, done bool) (Result,
 }
 
 func (r *Runner) scratch() string {
-	if v := os.Getenv("SS_SCRATCH"); v != "" {
+	if v := os.Getenv("OL_SCRATCH"); v != "" {
 		return v
 	}
 	return filepath.Join(r.Root, ".scratchpad")

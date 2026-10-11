@@ -1,4 +1,4 @@
-<!-- ss:module L5.3 -->
+<!-- ol:module L5.3 -->
 # Multi-head attention
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L5.3              # stubs mha.py; prints your test path and rung (R5)
-ss tests L5.3              # the course tests
+ol start L5.3              # stubs mha.py; prints your test path and rung (R5)
+ol tests L5.3              # the course tests
 # write your oracle tests in python/tests/l5-3-mha/ (section 4 says what to cover), then:
-ss check L5.3              # course tests and the mutation grade of your tests
-ss mutate L5.3             # the full grade, cached by your test files' hash
-ss diff  L5.3              # after passing: your code against the reference
+ol check L5.3              # course tests and the mutation grade of your tests
+ol mutate L5.3             # the full grade, cached by your test files' hash
+ol diff  L5.3              # after passing: your code against the reference
 ```
 
 ---
@@ -134,7 +134,7 @@ Parameters, in `state_dict` order: `q_proj.weight`, `q_proj.bias`, `k_proj.*`, `
 
 ### Your graded tests (rung R5)
 
-Rung R5 asks for **oracles**. Write multi-head attention again in float64 numpy from the module's own `state_dict` (project, reshape, transpose, softmax with the mask, merge, project) and compare `attend`'s output and weights with it, for self- and cross-attention, with a per-sequence `[B, Tq, Tk]` mask where $B = H$. Add the section 3 numbers, a split/merge check, eval-mode dropout, the packed load order, and a gradient check with your own `tinyllm.num.gradcheck` (`M04.1`) in float64. Import only names in `contracts/py`. `ss check L5.3` requires a mutation score of at least 0.80 with every pitfall fault (`s01` to `s07`) killed.
+Rung R5 asks for **oracles**. Write multi-head attention again in float64 numpy from the module's own `state_dict` (project, reshape, transpose, softmax with the mask, merge, project) and compare `attend`'s output and weights with it, for self- and cross-attention, with a per-sequence `[B, Tq, Tk]` mask where $B = H$. Add the section 3 numbers, a split/merge check, eval-mode dropout, the packed load order, and a gradient check with your own `tinyllm.num.gradcheck` (`M04.1`) in float64. Import only names in `contracts/py`. `ol check L5.3` requires a mutation score of at least 0.80 with every pitfall fault (`s01` to `s07`) killed.
 
 ## 5. Pitfalls
 
@@ -162,7 +162,7 @@ Rung R5 asks for **oracles**. Write multi-head attention again in float64 numpy 
 | Forward | `L6.2` | BERT's bidirectional self-attention |
 | Forward | `L7.5` | grouped-query attention shares $K, V$ heads between query heads |
 
-If you skip this module, `ss check L5.5` stops with `needs L5.3`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L5.5` stops with `needs L5.3`: build it, or pass `--ref-deps`.
 
 ## Going further
 

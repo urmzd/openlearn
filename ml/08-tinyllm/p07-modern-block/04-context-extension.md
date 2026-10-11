@@ -1,4 +1,4 @@
-<!-- ss:module L7.4 -->
+<!-- ol:module L7.4 -->
 # Context extension: PI, NTK, YaRN, Llama-3 scaling; ALiBi (optional part)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L7.4              # stubs ctxext.py; prints your test path and rung (R5)
-ss tests L7.4              # the course tests (test_alibi.py is optional)
+ol start L7.4              # stubs ctxext.py; prints your test path and rung (R5)
+ol tests L7.4              # the course tests (test_alibi.py is optional)
 # write your oracle tests in python/tests/l7-4-ctxext/, then:
-ss check L7.4              # course tests and the mutation grade of your tests
-ss diff  L7.4              # after passing: your code against the reference
+ol check L7.4              # course tests and the mutation grade of your tests
+ol diff  L7.4              # after passing: your code against the reference
 ```
 
 ---
@@ -125,7 +125,7 @@ def alibi_bias(n_heads: int, Tq: int, Tk: int) -> NDArray: ...  # float32 [n_hea
 
 ### Your graded tests (rung R5)
 
-Your oracles are the rules of section 2 written out pair by pair in plain Python floats: compare `rope_inv_freq_scaled` for linear, NTK, YaRN at several sizes, and Llama 3, check YaRN's temperature, and that bad configs raise. Import only `tinyllm.modern.ctxext`. `ss check L7.4` requires 0.80 with every pitfall fault killed.
+Your oracles are the rules of section 2 written out pair by pair in plain Python floats: compare `rope_inv_freq_scaled` for linear, NTK, YaRN at several sizes, and Llama 3, check YaRN's temperature, and that bad configs raise. Import only `tinyllm.modern.ctxext`. `ol check L7.4` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

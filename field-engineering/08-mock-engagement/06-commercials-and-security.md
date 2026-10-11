@@ -1,4 +1,4 @@
-<!-- ss:module field.06 -->
+<!-- ol:module field.06 -->
 # Commercials and security review
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start field.06
-ss tests field.06
-ss check field.06
+ol start field.06
+ol tests field.06
+ol check field.06
 ```
 
 ---

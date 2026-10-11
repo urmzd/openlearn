@@ -1,4 +1,4 @@
-<!-- ss:module L6.7 -->
+<!-- ol:module L6.7 -->
 # LM evaluation harness and the model zoo
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L6.7              # stubs lm.py and zoo.py; prints your test path and rung (R5)
-ss tests L6.7              # the course tests
+ol start L6.7              # stubs lm.py and zoo.py; prints your test path and rung (R5)
+ol tests L6.7              # the course tests
 # write your oracle tests in python/tests/l6-7-eval/, then:
-ss check L6.7              # course tests and the mutation grade of your tests
-ss mutate L6.7             # the full grade, cached by your test files' hash
-ss diff  L6.7              # after passing: your code against the reference
+ol check L6.7              # course tests and the mutation grade of your tests
+ol mutate L6.7             # the full grade, cached by your test files' hash
+ol diff  L6.7              # after passing: your code against the reference
 ```
 
 ---
@@ -158,7 +158,7 @@ A model is anything callable as `model(ids[None])` that returns logits `[1, T, V
 
 ### Your graded tests (rung R5)
 
-Your oracles: a toy model whose NLL encodes its context length, hand-computed log-likelihoods from a table, M07.4 and M07.5 called directly, and checkpoints whose score you know exactly (a uniform bigram is 8 bpb; a seq2seq model with a huge eos bias answers the empty string). Cover the windows and the refused stride, the interval's transform, both choice scores, the pairing, the bpb unit, and eos stripping. Import only the contract. `ss check L6.7` requires a mutation score of at least 0.80 with every required pitfall fault killed.
+Your oracles: a toy model whose NLL encodes its context length, hand-computed log-likelihoods from a table, M07.4 and M07.5 called directly, and checkpoints whose score you know exactly (a uniform bigram is 8 bpb; a seq2seq model with a huge eos bias answers the empty string). Cover the windows and the refused stride, the interval's transform, both choice scores, the pairing, the bpb unit, and eos stripping. Import only the contract. `ol check L6.7` requires a mutation score of at least 0.80 with every required pitfall fault killed.
 
 ## 5. Pitfalls
 

@@ -1,4 +1,4 @@
-<!-- ss:module M07.1 -->
+<!-- ol:module M07.1 -->
 # Categorical sampling: inverse CDF, Gumbel-max, alias method
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M07.1              # stubs sampling.py into your repo
-ss tests M07.1              # read the test catalog first
-ss check M07.1              # exit code is the verdict
-ss diff  M07.1              # after passing: your code against the reference
+ol start M07.1              # stubs sampling.py into your repo
+ol tests M07.1              # read the test catalog first
+ol check M07.1              # exit code is the verdict
+ol diff  M07.1              # after passing: your code against the reference
 ```
 
 ---

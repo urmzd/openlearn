@@ -1,4 +1,4 @@
-<!-- ss:module L1.4 -->
+<!-- ol:module L1.4 -->
 # Unigram LM tokenizer (EM, Viterbi, subword sampling)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L1.4              # stubs unigram.py into your repo
-ss tests L1.4              # read the test catalog first
-ss check L1.4              # exit code is the verdict; then grades your tests by mutation
-ss check L1.4 --ref-deps   # only if your L1.1, M06.2, or M07.2 is not passing yet
-ss diff  L1.4              # after passing: your code against the reference
+ol start L1.4              # stubs unigram.py into your repo
+ol tests L1.4              # read the test catalog first
+ol check L1.4              # exit code is the verdict; then grades your tests by mutation
+ol check L1.4 --ref-deps   # only if your L1.1, M06.2, or M07.2 is not passing yet
+ol diff  L1.4              # after passing: your code against the reference
 ```
 
 Do `S-M07b` q8 and q9 first: they are one EM step and the count MLE on paper, the two halves of `em_step`.
@@ -218,7 +218,7 @@ def test_train_keeps_characters_and_size():
 | Back | `S-M07b` | q8 is one EM step by hand; q9 proves count over total is the MLE (reading) |
 | Forward | `L1.6` | measures a Unigram tokenizer against Hugging Face's numbers, `<unk>` counted as a fallback |
 
-`C1` trains a 4096-piece Unigram on the same 16 MB sample as its BPE and compares the two with `L1.6` and a short training run. If you skip this module, `ss check L1.6` stops with `needs L1.4`: build it, or rerun with `--ref-deps`.
+`C1` trains a 4096-piece Unigram on the same 16 MB sample as its BPE and compares the two with `L1.6` and a short training run. If you skip this module, `ol check L1.6` stops with `needs L1.4`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

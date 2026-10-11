@@ -1,4 +1,4 @@
-<!-- ss:module L10.9 -->
+<!-- ol:module L10.9 -->
 # Tool calls and constrained JSON decoding in the engine
 
 ## Overview
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.9               # stubs constrain.rs and tools.rs
-ss tests L10.9
-ss check L10.9               # exit code is the verdict
-ss check L10.9 --ref-deps    # only if L8.7, L10.1, L10.5, or L1.5 is not passing yet
-ss diff  L10.9
-ss conform openapi:v1 --target engine   # tools.* turn from pending to checked once L10.9 passes
+ol start L10.9               # stubs constrain.rs and tools.rs
+ol tests L10.9
+ol check L10.9               # exit code is the verdict
+ol check L10.9 --ref-deps    # only if L8.7, L10.1, L10.5, or L1.5 is not passing yet
+ol diff  L10.9
+ol conform openapi:v1 --target engine   # tools.* turn from pending to checked once L10.9 passes
 ```
 
-Declare `pub mod constrain;` in `tl-engine/src/lib.rs` and `pub mod tools;` in `tl-serve/src/lib.rs`. This module takes over `server.rs` from `L10.7` (`upgrades`), so `ss check L10.9` also runs the `L10.5` and `L10.7` tests as regressions; one of `L10.5`'s error cases is `response_format` `json_schema`, which stays 422 here. Your chat handler calls `parse_tool_request` on the raw body (before the generic parser, so property order survives), renders with `render_prompt`, builds one `TokenIndex` per (grammar, model) and caches it, runs each sequence through a `Constraint` (from the first token, or from the trigger in `auto` mode), and turns the text through `ToolParser` into `delta_json` chunks or `message_json`. A request with a grammar runs on the engine thread outside the batch, as the speculative path does: its own KV blocks through `spec::RunnerTarget`, `constrained_sample` per token, and the request's own generator; a grammar that is complete with no token left to allow (a vocabulary without EOS) ends the answer with `stop`.
+Declare `pub mod constrain;` in `tl-engine/src/lib.rs` and `pub mod tools;` in `tl-serve/src/lib.rs`. This module takes over `server.rs` from `L10.7` (`upgrades`), so `ol check L10.9` also runs the `L10.5` and `L10.7` tests as regressions; one of `L10.5`'s error cases is `response_format` `json_schema`, which stays 422 here. Your chat handler calls `parse_tool_request` on the raw body (before the generic parser, so property order survives), renders with `render_prompt`, builds one `TokenIndex` per (grammar, model) and caches it, runs each sequence through a `Constraint` (from the first token, or from the trigger in `auto` mode), and turns the text through `ToolParser` into `delta_json` chunks or `message_json`. A request with a grammar runs on the engine thread outside the batch, as the speculative path does: its own KV blocks through `spec::RunnerTarget`, `constrained_sample` per token, and the request's own generator; a grammar that is complete with no token left to allow (a vocabulary without EOS) ends the answer with `stop`.
 
 ---
 

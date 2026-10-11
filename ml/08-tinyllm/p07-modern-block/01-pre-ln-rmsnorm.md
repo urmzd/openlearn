@@ -1,4 +1,4 @@
-<!-- ss:module L7.1 -->
+<!-- ol:module L7.1 -->
 # Pre-LN, RMSNorm
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L7.1              # stubs norm.py; prints your test path and rung (R5)
-ss tests L7.1              # the course tests
+ol start L7.1              # stubs norm.py; prints your test path and rung (R5)
+ol tests L7.1              # the course tests
 # write your oracle tests in python/tests/l7-1-norm/, then:
-ss check L7.1              # course tests and the mutation grade of your tests
-ss diff  L7.1              # after passing: your code against the reference
+ol check L7.1              # course tests and the mutation grade of your tests
+ol diff  L7.1              # after passing: your code against the reference
 ```
 
 ---
@@ -109,7 +109,7 @@ def pre_norm_residual(x: Tensor, norm: Module, sublayer) -> Tensor: ...         
 
 ### Your graded tests (rung R5)
 
-Your oracle is the formula in numpy float64: `x / sqrt(mean(x**2, -1) + eps) * (offset + w)`. Compare `forward` with it for both offsets and for inputs scaled by 1e-3, check the gradients of $x$ and the gain with your own central differences, the initial gain, and the Pre-LN step against `x + W @ oracle(x)` for a `Linear` sublayer. Import only `tinyllm.modern.norm`, `tinyllm.nn.layers`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ss check L7.1` requires 0.80 with every pitfall fault killed.
+Your oracle is the formula in numpy float64: `x / sqrt(mean(x**2, -1) + eps) * (offset + w)`. Compare `forward` with it for both offsets and for inputs scaled by 1e-3, check the gradients of $x$ and the gain with your own central differences, the initial gain, and the Pre-LN step against `x + W @ oracle(x)` for a `Linear` sublayer. Import only `tinyllm.modern.norm`, `tinyllm.nn.layers`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ol check L7.1` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

@@ -1,4 +1,4 @@
-<!-- ss:module M10.3 -->
+<!-- ol:module M10.3 -->
 # Adam and AdamW: bias correction and decoupled weight decay
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M10.3              # stubs python/tinyllm/optim/adamw.py, contract alongside
-ss tests M10.3              # read the test catalog first: rung R0, you write no tests here
-ss check M10.3              # exit code is the verdict
-ss diff  M10.3              # after passing: your code against the reference
+ol start M10.3              # stubs python/tinyllm/optim/adamw.py, contract alongside
+ol tests M10.3              # read the test catalog first: rung R0, you write no tests here
+ol check M10.3              # exit code is the verdict
+ol diff  M10.3              # after passing: your code against the reference
 ```
 
 ---
@@ -185,7 +185,7 @@ A parameter is any object with `data` (a float ndarray) and `grad` (an ndarray o
 | Forward | `L7.9` and `C1` | the modern decoder and the TinyStories capstone, betas $(0.9, 0.95)$, $\lambda = 0.1$, checkpoints with `exp_avg` and `exp_avg_sq` |
 | Forward | `L12.1` | supervised fine-tuning |
 
-If you skip this module, `ss check L0.5` stops with `BLOCKED ... needs M10.3`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L0.5` stops with `BLOCKED ... needs M10.3`: build it, or pass `--ref-deps`.
 
 ## Going further
 

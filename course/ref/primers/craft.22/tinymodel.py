@@ -10,7 +10,7 @@ A two-layer Llama-style decoder trained on synthetic stories
       x     = h + mlp_l(rmsnorm(h; g_mlp))    SwiGLU: down(silu(gate h) * up h)
     logits  = rmsnorm(x; g_final) @ embed^T   tied embeddings
 
-`ss check craft.22` grades YOUR eval suite by running it against this file
+`ol check craft.22` grades YOUR eval suite by running it against this file
 and against copies with one planted defect each (a wrong RoPE base, a layer
 whose output is dropped, a tokenizer one merge short, ...), and against
 harmless variants that must NOT be flagged (float64 arithmetic, another
@@ -31,7 +31,7 @@ DTYPE = np.float32
 
 
 def fixture(name: str) -> Path:
-    """A craft.22 fixture under TINYLLM_FIXTURES (ss check sets it)."""
+    """A craft.22 fixture under TINYLLM_FIXTURES (ol check sets it)."""
     return Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures")) / "craft.22" / name
 
 

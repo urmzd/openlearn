@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	controlv1 "supersource.urmzd.com/tl/contracts/gen/tl/control/v1"
+	controlv1 "openlearn.urmzd.com/tl/contracts/gen/tl/control/v1"
 	"tinyllm/gateway/server"
 )
 

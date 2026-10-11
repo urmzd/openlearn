@@ -1,6 +1,6 @@
 # Archive
 
-Historical coursework, kept for reference and history, not for study. Nothing here is part of the [course](../paths/course/) or the tracks: the site and the book exclude `archive/`, `ss verify` does not run it, and its links are checked only so they do not rot.
+Historical coursework, kept for reference and history, not for study. Nothing here is part of the [course](../paths/course/) or the tracks: the site and the book exclude `archive/`, `ol verify` does not run it, and its links are checked only so they do not rot.
 
 ## What is here
 

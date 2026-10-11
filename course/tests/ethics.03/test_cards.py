@@ -1,8 +1,8 @@
 """ethics.03 artifact checks: your model card, datasheet, and third-party
 model card.
 
-Run by `ss check ethics.03` (through ./check) from the root of your repo,
-which `check` passes as SS_REPO. Annotated exemplars (DESIGN 5.12): every
+Run by `ol check ethics.03` (through ./check) from the root of your repo,
+which `check` passes as OL_REPO. Annotated exemplars (DESIGN 5.12): every
 test says why it exists and fails with a message that says what to change.
 
 The files and their sections are the chapter's (responsible-ai/
@@ -23,8 +23,8 @@ import re
 import tomllib
 from pathlib import Path
 
-REPO = Path(os.environ.get("SS_REPO", "."))
-COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[2]))
+REPO = Path(os.environ.get("OL_REPO", "."))
+COURSE = Path(os.environ.get("OL_COURSE_TREE", Path(__file__).resolve().parents[2]))
 CARD = REPO / "docs" / "MODEL_CARD.md"
 SHEET = REPO / "docs" / "DATASHEET.md"
 THIRD = REPO / "docs" / "models" / "smollm2-135m-instruct.md"
@@ -337,7 +337,7 @@ def pinned_revision() -> str:
 
 def test_third_party_model_labelled():
     # WHY: a model you serve but did not train must say so, name its exact
-    #      upstream (repository and the revision ss fetch pinned), keep its own
+    #      upstream (repository and the revision ol fetch pinned), keep its own
     #      license (Apache-2.0), and report only what you measured yourself.
     # KIND: unit
     sec = need_sections(THIRD, THIRD_SECTIONS)

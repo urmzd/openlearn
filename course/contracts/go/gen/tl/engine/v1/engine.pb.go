@@ -814,7 +814,7 @@ const file_tl_engine_v1_engine_proto_rawDesc = "" +
 	"\aPrefill\x12\x1c.tl.engine.v1.PrefillRequest\x1a\x1d.tl.engine.v1.PrefillResponse\x12=\n" +
 	"\x04Info\x12\x19.tl.engine.v1.InfoRequest\x1a\x1a.tl.engine.v1.InfoResponse\x12C\n" +
 	"\x06Cancel\x12\x1b.tl.engine.v1.CancelRequest\x1a\x1c.tl.engine.v1.CancelResponse\x12@\n" +
-	"\x05Drain\x12\x1a.tl.engine.v1.DrainRequest\x1a\x1b.tl.engine.v1.DrainResponseB>Z<supersource.urmzd.com/tl/contracts/gen/tl/engine/v1;enginev1b\x06proto3"
+	"\x05Drain\x12\x1a.tl.engine.v1.DrainRequest\x1a\x1b.tl.engine.v1.DrainResponseB<Z:openlearn.urmzd.com/tl/contracts/gen/tl/engine/v1;enginev1b\x06proto3"
 
 var (
 	file_tl_engine_v1_engine_proto_rawDescOnce sync.Once

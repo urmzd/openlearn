@@ -6,4 +6,4 @@ Python inference stack (sampler, KV, paged KV, quant, spec decoding, constrained
 
 **Gate**: [MS-P6 = MS-L8; optional C exercises are not pass-gate dependencies](milestone.md).
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ss learn course-p06-p06-inference-and-kernels` to see progress.
+Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p06-p06-inference-and-kernels` to see progress.

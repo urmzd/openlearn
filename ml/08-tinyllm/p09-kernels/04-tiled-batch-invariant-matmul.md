@@ -1,4 +1,4 @@
-<!-- ss:module L9.1 -->
+<!-- ol:module L9.1 -->
 # Cache-blocked, packed, batch-invariant matmul in C (optional)
 
 ## Overview
@@ -16,7 +16,7 @@
 
 ## Key Takeaways
 
-- **The triple loop is slow because of memory, not arithmetic.** Blocking reuses each loaded value many times from cache and registers; your packed version is 10 to 20 times faster at $512^3$ with the same $2MNK$ operations (`ss bench L9.1`).
+- **The triple loop is slow because of memory, not arithmetic.** Blocking reuses each loaded value many times from cache and registers; your packed version is 10 to 20 times faster at $512^3$ with the same $2MNK$ operations (`ol bench L9.1`).
 - **Packing copies a block into the exact order the micro-kernel reads it,** padded with zeros to whole micro-tiles, so the inner loop is unit-stride and every output element goes through the same code path (`shapes_across_tile_edges`).
 - **Batch invariance is a property of the reduction order.** Each $C_{ij}$ is a sum over k-blocks of fixed size $K_C$, each a sum from 0 in increasing $k$: nothing depends on $M$, on the row's position, or on the threads, so a row has the same bits alone or in a batch of 37 (`batch_invariant_rows`, `batch_invariant_at_1_7_37`).
 - **$\beta$ applies once, in the first k-block,** and later blocks add; $\beta = 0$ still never reads $C$ (`beta_applies_once_across_k_blocks`).
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start L9.1              # prints the contract diff: you edit your own c/src/kernels/matmul.c
-ss tests L9.1              # read the test catalog first
-ss check L9.1              # exit code is the verdict (M03.1's tests run as the regression)
-ss check L9.1 --ref-deps   # only if your rt.03 is not passing yet
-ss bench L9.1 --assert     # the speed budget: at least 10x M03.1's loop at 512^3 (local only)
-ss parity matmul           # both of your versions against the float64 golden
-ss diff  L9.1              # after passing: your code against the reference
+ol start L9.1              # prints the contract diff: you edit your own c/src/kernels/matmul.c
+ol tests L9.1              # read the test catalog first
+ol check L9.1              # exit code is the verdict (M03.1's tests run as the regression)
+ol check L9.1 --ref-deps   # only if your rt.03 is not passing yet
+ol bench L9.1 --assert     # the speed budget: at least 10x M03.1's loop at 512^3 (local only)
+ol parity matmul           # both of your versions against the float64 golden
+ol diff  L9.1              # after passing: your code against the reference
 ```
 
 ---
@@ -131,7 +131,7 @@ tl_status tl_matmul_f32(const float *A, const float *B, float *C, int64_t M, int
    tp may be NULL (serial); with a pool, column strips run in parallel. */
 ```
 
-`ss start L9.1` does not overwrite your file: it prints the contract diff, and you rewrite the body of your own `c/src/kernels/matmul.c` in place.
+`ol start L9.1` does not overwrite your file: it prints the contract diff, and you rewrite the body of your own `c/src/kernels/matmul.c` in place.
 
 ### What the tests check
 
@@ -149,7 +149,7 @@ tl_status tl_matmul_f32(const float *A, const float *B, float *C, int64_t M, int
 | `alpha_and_beta_scale_and_accumulate`, `beta_zero_ignores_garbage_in_c` | unit | alpha/beta behavior, including no read of C when beta is zero | preserves the original arithmetic contract |
 | `empty_dimensions`, `bad_arguments_are_einval`, `leading_dimensions_skip_padding` | boundary | empty shapes, invalid arguments, and padded leading dimensions | preserves the original shape and view rules |
 
-The bench (`ss bench L9.1`, a B test, never part of `ss check`) times your kernel against `M03.1`'s loop at $512^3$ and reports `speedup_vs_naive` (budget $\ge 10$) and GFLOP/s. The reference reaches about 19x and 50 GFLOP/s on one Apple M-series core; Apple's Accelerate (`cblas_sgemm`, AMX units) is several times faster again, which is the ceiling to compare against if you are curious, not a budget.
+The bench (`ol bench L9.1`, a B test, never part of `ol check`) times your kernel against `M03.1`'s loop at $512^3$ and reports `speedup_vs_naive` (budget $\ge 10$) and GFLOP/s. The reference reaches about 19x and 50 GFLOP/s on one Apple M-series core; Apple's Accelerate (`cblas_sgemm`, AMX units) is several times faster again, which is the ceiling to compare against if you are curious, not a budget.
 
 ## 5. Pitfalls
 
@@ -176,7 +176,7 @@ The bench (`ss bench L9.1`, a B test, never part of `ss check`) times your kerne
 | Back | `rt.03` | `tl_parallel_for` runs the column strips |
 | Forward | `L9.5` | its benchmark and its float32 baseline are this kernel on the dequantized weight |
 
-If you skip this module, `ss check L9.5` stops with `BLOCKED ... needs L9.1`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L9.5` stops with `BLOCKED ... needs L9.1`: build it, or pass `--ref-deps`.
 
 ## Going further
 

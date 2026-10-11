@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# ss-export: course-tree (grades against the course's reference katas, never exported)
-# Artifact check for craft.07 (DESIGN 4.6; H15: `ss check craft.07` runs this
+# ol-export: course-tree (grades against the course's reference katas, never exported)
+# Artifact check for craft.07 (DESIGN 4.6; H15: `ol check craft.07` runs this
 # in your repo and its exit code is the verdict).
 #
 # It grades three artifacts in primers/craft.07/ against the course's L4.5
-# reference, tinyllm/eval/seqmetrics.py (read the tests with `ss tests
+# reference, tinyllm/eval/seqmetrics.py (read the tests with `ol tests
 # craft.07`):
 #   test_seqmetrics.py  your deepened L4.5 suite: it must accept the
 #                       reference and your own L4.5, and kill EVERY L4.5
@@ -25,13 +25,13 @@
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
-course="${SS_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
+course="${OL_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
 dir="$PWD/primers/craft.07"
 
 fail() { echo "craft.07: $*" >&2; exit 1; }
-command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
+command -v uv >/dev/null || fail "uv is not on PATH (ol doctor)"
 [ -f "$course/ref/python/tinyllm/eval/seqmetrics.py" ] ||
-  fail "the course tree at $course has no L4.5 reference: this check runs inside a supersource checkout (SS_COURSE_TREE)"
+  fail "the course tree at $course has no L4.5 reference: this check runs inside a openlearn checkout (OL_COURSE_TREE)"
 
 mkdir -p "$dir"
 uv run --no-project --quiet python - "$course" "$dir" <<'PY' || fail "could not write the survivors"
@@ -69,6 +69,6 @@ if not triage.exists():
     print("  wrote     primers/craft.07/triage.toml  (empty verdicts: yours to fill)")
 PY
 
-export SS_PRIMER_DIR="$dir" SS_COURSE_TREE="$course" SS_LEARNER_ROOT="$PWD" PYTHONDONTWRITEBYTECODE=1
+export OL_PRIMER_DIR="$dir" OL_COURSE_TREE="$course" OL_LEARNER_ROOT="$PWD" PYTHONDONTWRITEBYTECODE=1
 exec uv run --no-project --quiet --with pytest --with numpy \
   python -m pytest -q --tb=short -p no:cacheprovider -p no:randomly --rootdir="$tests" --confcutdir="$tests" "$here"

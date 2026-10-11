@@ -1,4 +1,4 @@
-<!-- ss:module rt.91 -->
+<!-- ol:module rt.91 -->
 # Demo float sum and owned buffer
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start rt.91
-ss tests rt.91
-ss check rt.91
+ol start rt.91
+ol tests rt.91
+ol check rt.91
 ```
 
 ---

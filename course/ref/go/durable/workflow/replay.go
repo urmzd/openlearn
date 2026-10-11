@@ -29,7 +29,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 // Thresholds of ContinueAsNewSuggested (the server's, durable.proto).

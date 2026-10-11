@@ -3,7 +3,7 @@
 //! block during a mixed-version deployment.
 use tl_kv_format::{decode, encode, upgrade_v1, Block, Envelope, Error, Shape, V1, V2};
 use std::{fs, path::PathBuf, process::Command};
-fn fixture(name:&str)->Vec<u8>{ let root=PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("ss sets fixture root")); fs::read(root.join("craft.13").join(name)).unwrap() }
+fn fixture(name:&str)->Vec<u8>{ let root=PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("ol sets fixture root")); fs::read(root.join("craft.13").join(name)).unwrap() }
 
 fn shape() -> Shape { Shape { block_tokens: 2, layers: 1, kv_heads: 1, head_dim: 2 } }
 fn sample() -> Envelope {

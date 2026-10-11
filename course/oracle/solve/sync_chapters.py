@@ -3,9 +3,9 @@
 DESIGN 5.5: the problems live in `problems.md` and are also included in the
 chapter. A chapter holds them between
 
-    <!-- ss:problems S-M05 -->
+    <!-- ol:problems S-M05 -->
     ...
-    <!-- /ss:problems -->
+    <!-- /ol:problems -->
 
 and this script rewrites that block from `problems.md` (everything after its
 first `### ` heading, so the chapter keeps its own introduction and answer
@@ -51,7 +51,7 @@ def main(argv: list[str]) -> int:
             continue
         path = ROOT / chap
         text = path.read_text() if path.is_file() else ""
-        start, end = f"<!-- ss:problems {sid} -->", "<!-- /ss:problems -->"
+        start, end = f"<!-- ol:problems {sid} -->", "<!-- /ol:problems -->"
         if start not in text or end not in text:
             continue  # a chapter that does not include its problems this way
         new = re.sub(

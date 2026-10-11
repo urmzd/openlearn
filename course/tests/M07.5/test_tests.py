@@ -15,7 +15,7 @@ and the adjusted p-values are (0.03, 0.04, 0.04, 0.02).
 
 Golden values come from scipy 1.17.1 (course/fixtures/M07.5/scipy_golden.json,
 written by course/oracle/M07.5/scipy_golden.py). Statistical tests draw from
-the frozen PCG32 at SS_SEED.
+the frozen PCG32 at OL_SEED.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ FIX = (
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def golden() -> dict:

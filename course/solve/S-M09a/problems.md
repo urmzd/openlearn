@@ -1,6 +1,6 @@
 # S-M09a problems: floating-point representation, rounding, cancellation, stable rewrites
 
-Answer every question in `solve/S-M09a.toml` (written by `ss start S-M09a`).
+Answer every question in `solve/S-M09a.toml` (written by `ol start S-M09a`).
 The tag after each question is its answer type: `[number]` is an exact value
 (`2^-23`, `1 + 2^-6`, `1000 + log(2)`) unless the question asks for a
 tolerance, `[vector]` a list `[0, 127, 0]`, `[bool]` `true` or `false`,

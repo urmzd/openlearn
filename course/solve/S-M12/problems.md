@@ -1,6 +1,6 @@
 # S-M12 problems: convolution, layouts, sampling, interpolation, Fourier, STFT, mel, contrastive losses, WER
 
-Answer every question in `solve/S-M12.toml` (written by `ss start S-M12`).
+Answer every question in `solve/S-M12.toml` (written by `ol start S-M12`).
 The tag after each question is its answer type: `[number]` is an exact value
 (`3/4`, `log(1024) - 2`, `2 + I`), `[expr]` a formula in the named variables,
 `[vector]` a flat list `[1, 2, 3]`, `[matrix]` a list of rows

@@ -1,4 +1,4 @@
-<!-- ss:module M07.3 -->
+<!-- ol:module M07.3 -->
 # Variance propagation and initialization
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M07.3              # stubs python/tinyllm/nn/init.py, contract alongside
-ss tests M07.3              # read the test catalog first: rung R0, you write no tests here
-ss check M07.3              # exit code is the verdict
-ss check M07.3 --ref-deps   # only if your M07.0 is not passing yet
-ss diff  M07.3              # after passing: your code against the reference
+ol start M07.3              # stubs python/tinyllm/nn/init.py, contract alongside
+ol tests M07.3              # read the test catalog first: rung R0, you write no tests here
+ol check M07.3              # exit code is the verdict
+ol check M07.3 --ref-deps   # only if your M07.0 is not passing yet
+ol diff  M07.3              # after passing: your code against the reference
 ```
 
 ---
@@ -170,7 +170,7 @@ def scaled_residual_std(base_std: float, n_layers: int) -> float        # base /
 | Forward | `L3.2` | LSTM gate weights |
 | Forward | `L7.9` and `C1` | `normal_init(0.02)` plus `scaled_residual_std` for the output projections of a Llama-style decoder |
 
-If you skip this module, `ss check L0.4` stops with `BLOCKED ... needs M07.3`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L0.4` stops with `BLOCKED ... needs M07.3`: build it, or pass `--ref-deps`.
 
 ## Going further
 

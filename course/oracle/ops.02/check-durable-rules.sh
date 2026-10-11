@@ -9,7 +9,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 course="$(cd "$here/../.." && pwd)"
-work="${1:-$(mktemp -d "${SS_SCRATCH:-$course/../.scratchpad}/promtest.XXXXXX")}"
+work="${1:-$(mktemp -d "${OL_SCRATCH:-$course/../.scratchpad}/promtest.XXXXXX")}"
 mkdir -p "$work"
 uv run --project "$course/harness" --with pyyaml python - "$course/ref/entry/deploy/observability/rules/durable.yaml" "$work/rules.yaml" <<'PY'
 import sys, yaml

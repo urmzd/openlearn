@@ -1,4 +1,4 @@
-<!-- ss:module M01.3 -->
+<!-- ol:module M01.3 -->
 # Activation functions and their derivatives
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M01.3              # stubs python/tinyllm/num/activations.py into your repo
-ss tests M01.3              # read the test catalog first: rung R0, you write no tests here
-ss check M01.3              # exit code is the verdict
-ss check M01.3 --ref-deps   # only if your M02.1 is not passing yet
-ss diff  M01.3              # after passing: your code against the reference
+ol start M01.3              # stubs python/tinyllm/num/activations.py into your repo
+ol tests M01.3              # read the test catalog first: rung R0, you write no tests here
+ol check M01.3              # exit code is the verdict
+ol check M01.3 --ref-deps   # only if your M02.1 is not passing yet
+ol diff  M01.3              # after passing: your code against the reference
 ```
 
 ---

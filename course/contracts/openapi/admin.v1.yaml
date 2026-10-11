@@ -8,7 +8,7 @@
 # Served by the gateway on its API port under /admin/v1. Every call needs a
 # key with the `admin` scope (`Authorization: Bearer tl_<id>_<secret>`);
 # errors use the OpenAI error shape of openai-subset.v1.yaml. Conformance:
-# `ss conform admin:v1`.
+# `ol conform admin:v1`.
 openapi: 3.1.0
 info:
   title: tinyllm gateway admin API, v1

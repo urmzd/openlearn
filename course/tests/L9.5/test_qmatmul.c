@@ -10,9 +10,9 @@
 #include <string.h>
 
 #include "tinyllm.h"
-#include "ss_invariance.h"
-#include "ss_prop.h"
-#include "ss_test.h"
+#include "ol_invariance.h"
+#include "ol_prop.h"
+#include "ol_test.h"
 
 /* The chapter's worked example (section 3): W is 2 x 4, group 2.
  *   row 0: q = [1, -2 | 3, -8], scales [0.5 | 2]
@@ -23,7 +23,7 @@ static const uint8_t HQ[4] = {0xE1, 0x83, 0x07, 0x4F};
 static const uint16_t HS[4] = {0x3800, 0x4000, 0x3C00, 0x3400};
 static const float HX[4] = {1, 2, 3, 4};
 
-SS_TEST(hand_example) {
+OL_TEST(hand_example) {
     /* WHY: the worked example: y0 = 0.5 (1 - 4) + 2 (9 - 32) = -47.5 and
      *      y1 = 1 (7 + 0) + 0.25 (-3 + 16) = 10.25. Every value is exact in
      *      float32, so the test is exact: you and the tests agree on the
@@ -32,12 +32,12 @@ SS_TEST(hand_example) {
      * CATCHES: s01, s02, s03, s04
      * CHAPTER: L9.5 section 3 */
     float y[2] = {0};
-    SS_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 4, 2, NULL), TL_OK);
-    SS_EQ(y[0], -47.5f);
-    SS_EQ(y[1], 10.25f);
+    OL_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 4, 2, NULL), TL_OK);
+    OL_EQ(y[0], -47.5f);
+    OL_EQ(y[1], 10.25f);
 }
 
-SS_TEST(q8_hand_example) {
+OL_TEST(q8_hand_example) {
     /* WHY: the same weights as int8 with one scale per output row:
      *      0.5 (1 - 4 + 9 - 32) = -13 and 0.25 (7 + 0 - 3 + 16) = 5.
      * KIND: unit
@@ -46,12 +46,12 @@ SS_TEST(q8_hand_example) {
     const int8_t q[8] = {1, -2, 3, -8, 7, 0, -1, 4};
     const float s[2] = {0.5f, 0.25f};
     float y[2] = {0};
-    SS_EQ(tl_matmul_q8_f32(HX, q, s, y, 1, 2, 4, NULL), TL_OK);
-    SS_EQ(y[0], -13.0f);
-    SS_EQ(y[1], 5.0f);
+    OL_EQ(tl_matmul_q8_f32(HX, q, s, y, 1, 2, 4, NULL), TL_OK);
+    OL_EQ(y[0], -13.0f);
+    OL_EQ(y[1], 5.0f);
 }
 
-SS_TEST(every_nibble_code) {
+OL_TEST(every_nibble_code) {
     /* WHY: all 16 codes decode to their two's complement values: 0x0..0x7
      *      are 0..7 and 0x8..0xF are -8..-1, in the low and in the high
      *      nibble. A one-hot x reads one weight at a time. An unsigned
@@ -66,12 +66,12 @@ SS_TEST(every_nibble_code) {
     for (int k = 0; k < 16; k++) {
         float x[16] = {0}, y = 99;
         x[k] = 1.0f;
-        SS_EQ(tl_matmul_q4_f32(x, q, &one, &y, 1, 1, 16, 16, NULL), TL_OK);
-        SS_EQ(y, (float)(k < 8 ? k : k - 16));
+        OL_EQ(tl_matmul_q4_f32(x, q, &one, &y, 1, 1, 16, 16, NULL), TL_OK);
+        OL_EQ(y, (float)(k < 8 ? k : k - 16));
     }
 }
 
-SS_TEST(f16_scales_decode_exactly) {
+OL_TEST(f16_scales_decode_exactly) {
     /* WHY: the scales are IEEE half precision, not bfloat16: the bits
      *      0x0001 are the smallest f16 subnormal, 2^-24, and 0x3555 is
      *      0.33325195. Reading them as the top half of a float32 gives
@@ -83,10 +83,10 @@ SS_TEST(f16_scales_decode_exactly) {
     const uint16_t s[2] = {0x0001, 0x3555};
     const float x[2] = {1, 0};
     float y = 0;
-    SS_EQ(tl_matmul_q4_f32(x, q, s, &y, 1, 1, 2, 2, NULL), TL_OK);
-    SS_EQ(y, 7.0f * 0x1p-24f);
-    SS_EQ(tl_matmul_q4_f32(x, q, s + 1, &y, 1, 1, 2, 2, NULL), TL_OK);
-    SS_CLOSE(y, 7.0 * 0.333251953125, 1e-7, 0);
+    OL_EQ(tl_matmul_q4_f32(x, q, s, &y, 1, 1, 2, 2, NULL), TL_OK);
+    OL_EQ(y, 7.0f * 0x1p-24f);
+    OL_EQ(tl_matmul_q4_f32(x, q, s + 1, &y, 1, 1, 2, 2, NULL), TL_OK);
+    OL_CLOSE(y, 7.0 * 0.333251953125, 1e-7, 0);
 }
 
 /* Dequantize an int4 weight [N, K] to float32 the slow, obvious way. */
@@ -98,12 +98,12 @@ static void dequant_q4(const uint8_t *q, const uint16_t *s, int64_t N, int64_t K
         }
 }
 
-static void random_q4(ss_gen *g, uint8_t *q, uint16_t *s, int64_t N, int64_t K, int64_t G) {
-    for (int64_t i = 0; i < N * K / 2; i++) q[i] = (uint8_t)ss_gen_int(g, 0, 255);
-    for (int64_t i = 0; i < N * (K / G); i++) s[i] = tl_f32_to_f16(ss_gen_f32(g, 0.001f, 0.1f));
+static void random_q4(ol_gen *g, uint8_t *q, uint16_t *s, int64_t N, int64_t K, int64_t G) {
+    for (int64_t i = 0; i < N * K / 2; i++) q[i] = (uint8_t)ol_gen_int(g, 0, 255);
+    for (int64_t i = 0; i < N * (K / G); i++) s[i] = tl_f32_to_f16(ol_gen_f32(g, 0.001f, 0.1f));
 }
 
-SS_TEST(matches_dequantize_then_matmul) {
+OL_TEST(matches_dequantize_then_matmul) {
     /* WHY: the fused kernel must equal "dequantize, then the ordinary
      *      matmul" (your L9.1 tl_matmul_f32 with trans_b) within the frozen
      *      sqrt(K) bound, for groups of 32 and 64 (the common ones), 2
@@ -117,18 +117,18 @@ SS_TEST(matches_dequantize_then_matmul) {
     static uint16_t s[N * K / 2];
     static float x[M * K], w[N * K], want[M * N], got[M * N];
     static const int64_t groups[4] = {32, 64, 2, K};
-    ss_gen g = {21};
-    for (int i = 0; i < M * K; i++) x[i] = ss_gen_f32(&g, -1, 1);
+    ol_gen g = {21};
+    for (int i = 0; i < M * K; i++) x[i] = ol_gen_f32(&g, -1, 1);
     for (int t = 0; t < 4; t++) {
         random_q4(&g, q, s, N, K, groups[t]);
         dequant_q4(q, s, N, K, groups[t], w);
-        SS_EQ(tl_matmul_f32(x, w, want, M, N, K, K, K, N, 1.0f, 0.0f, 1, NULL), TL_OK);
-        SS_EQ(tl_matmul_q4_f32(x, q, s, got, M, N, K, groups[t], NULL), TL_OK);
-        for (int i = 0; i < M * N; i++) SS_CLOSE(got[i], want[i], 1e-5 * sqrt(K), 1e-6 * sqrt(K));
+        OL_EQ(tl_matmul_f32(x, w, want, M, N, K, K, K, N, 1.0f, 0.0f, 1, NULL), TL_OK);
+        OL_EQ(tl_matmul_q4_f32(x, q, s, got, M, N, K, groups[t], NULL), TL_OK);
+        for (int i = 0; i < M * N; i++) OL_CLOSE(got[i], want[i], 1e-5 * sqrt(K), 1e-6 * sqrt(K));
     }
 }
 
-SS_TEST(q8_matches_dequantize_then_matmul) {
+OL_TEST(q8_matches_dequantize_then_matmul) {
     /* WHY: the int8 kernel against the same recipe, K = 200 (not a multiple
      *      of the 64-wide unpack chunk or the 8 lanes).
      * KIND: differential
@@ -137,15 +137,15 @@ SS_TEST(q8_matches_dequantize_then_matmul) {
     enum { M = 2, N = 19, K = 200 };
     static int8_t q[N * K];
     static float s[N], x[M * K], w[N * K], want[M * N], got[M * N];
-    ss_gen g = {22};
-    for (int i = 0; i < N * K; i++) q[i] = (int8_t)ss_gen_int(&g, -127, 127);
-    for (int i = 0; i < N; i++) s[i] = ss_gen_f32(&g, 0.001f, 0.02f);
-    for (int i = 0; i < M * K; i++) x[i] = ss_gen_f32(&g, -1, 1);
+    ol_gen g = {22};
+    for (int i = 0; i < N * K; i++) q[i] = (int8_t)ol_gen_int(&g, -127, 127);
+    for (int i = 0; i < N; i++) s[i] = ol_gen_f32(&g, 0.001f, 0.02f);
+    for (int i = 0; i < M * K; i++) x[i] = ol_gen_f32(&g, -1, 1);
     for (int n = 0; n < N; n++)
         for (int k = 0; k < K; k++) w[n * K + k] = (float)q[n * K + k] * s[n];
-    SS_EQ(tl_matmul_f32(x, w, want, M, N, K, K, K, N, 1.0f, 0.0f, 1, NULL), TL_OK);
-    SS_EQ(tl_matmul_q8_f32(x, q, s, got, M, N, K, NULL), TL_OK);
-    for (int i = 0; i < M * N; i++) SS_CLOSE(got[i], want[i], 1e-5 * sqrt(K), 1e-6 * sqrt(K));
+    OL_EQ(tl_matmul_f32(x, w, want, M, N, K, K, K, N, 1.0f, 0.0f, 1, NULL), TL_OK);
+    OL_EQ(tl_matmul_q8_f32(x, q, s, got, M, N, K, NULL), TL_OK);
+    for (int i = 0; i < M * N; i++) OL_CLOSE(got[i], want[i], 1e-5 * sqrt(K), 1e-6 * sqrt(K));
 }
 
 enum { BN = 24, BK = 256, BG = 32 };
@@ -156,7 +156,7 @@ static void q4_rows_fn(void *ctx, const float *x, int64_t m, float *out) {
     tl_matmul_q4_f32(x, g_q, g_s, out, m, BN, BK, BG, NULL);
 }
 
-SS_TEST(batch_invariant_rows) {
+OL_TEST(batch_invariant_rows) {
     /* WHY: decode (M = 1) and a batch of requests (L10.2) must give each
      *      row the same bits (c/ABI.md rule 10): the lanes and the group
      *      order depend only on the row, never on M.
@@ -164,15 +164,15 @@ SS_TEST(batch_invariant_rows) {
      * CATCHES: s09
      * CHAPTER: L9.5 section 2 */
     static float x[12 * BK];
-    ss_gen g = {23};
+    ol_gen g = {23};
     random_q4(&g, g_q, g_s, BN, BK, BG);
-    for (int i = 0; i < 12 * BK; i++) x[i] = ss_gen_f32(&g, -1, 1);
+    for (int i = 0; i < 12 * BK; i++) x[i] = ol_gen_f32(&g, -1, 1);
     float probe[BN];
-    SS_EQ(tl_matmul_q4_f32(x, g_q, g_s, probe, 1, BN, BK, BG, NULL), TL_OK);
-    SS_BATCH_INVARIANT(q4_rows_fn, NULL, x, 12, BK, BN);
+    OL_EQ(tl_matmul_q4_f32(x, g_q, g_s, probe, 1, BN, BK, BG, NULL), TL_OK);
+    OL_BATCH_INVARIANT(q4_rows_fn, NULL, x, 12, BK, BN);
 }
 
-SS_TEST(shape_and_argument_errors) {
+OL_TEST(shape_and_argument_errors) {
     /* WHY: K odd cannot be packed two per byte, an odd or zero group
      *      cannot hold whole bytes, and K must split into whole groups:
      *      TL_ESHAPE. Negative dims and NULL pointers are TL_EINVAL. y is
@@ -182,22 +182,22 @@ SS_TEST(shape_and_argument_errors) {
      * CATCHES: s10, s11
      * CHAPTER: L9.5 section 4 */
     float y[2] = {7, 7};
-    SS_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 3, 2, NULL), TL_ESHAPE);
-    SS_TRUE(strstr(tl_last_error(), "tl_matmul_q4_f32") != NULL);
-    SS_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 4, 3, NULL), TL_ESHAPE);
-    SS_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 4, 0, NULL), TL_ESHAPE);
-    SS_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 6, 4, NULL), TL_ESHAPE);
-    SS_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, -1, 2, 4, 2, NULL), TL_EINVAL);
-    SS_EQ(tl_matmul_q4_f32(HX, NULL, HS, y, 1, 2, 4, 2, NULL), TL_EINVAL);
-    SS_EQ(tl_matmul_q8_f32(HX, NULL, (const float *)HS, y, 1, 2, 4, NULL), TL_EINVAL);
-    SS_EQ(y[0], 7.0f);
-    SS_EQ(y[1], 7.0f);
-    SS_EQ(tl_matmul_q4_f32(NULL, NULL, NULL, NULL, 0, 2, 4, 2, NULL), TL_OK);
-    SS_EQ(tl_matmul_q4_f32(NULL, NULL, NULL, y, 1, 2, 0, 2, NULL), TL_OK);
-    SS_EQ(y[0], 0.0f);
+    OL_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 3, 2, NULL), TL_ESHAPE);
+    OL_TRUE(strstr(tl_last_error(), "tl_matmul_q4_f32") != NULL);
+    OL_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 4, 3, NULL), TL_ESHAPE);
+    OL_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 4, 0, NULL), TL_ESHAPE);
+    OL_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, 1, 2, 6, 4, NULL), TL_ESHAPE);
+    OL_EQ(tl_matmul_q4_f32(HX, HQ, HS, y, -1, 2, 4, 2, NULL), TL_EINVAL);
+    OL_EQ(tl_matmul_q4_f32(HX, NULL, HS, y, 1, 2, 4, 2, NULL), TL_EINVAL);
+    OL_EQ(tl_matmul_q8_f32(HX, NULL, (const float *)HS, y, 1, 2, 4, NULL), TL_EINVAL);
+    OL_EQ(y[0], 7.0f);
+    OL_EQ(y[1], 7.0f);
+    OL_EQ(tl_matmul_q4_f32(NULL, NULL, NULL, NULL, 0, 2, 4, 2, NULL), TL_OK);
+    OL_EQ(tl_matmul_q4_f32(NULL, NULL, NULL, y, 1, 2, 0, 2, NULL), TL_OK);
+    OL_EQ(y[0], 0.0f);
 }
 
-SS_TEST(pool_result_equals_serial_bitwise) {
+OL_TEST(pool_result_equals_serial_bitwise) {
     /* WHY: with an rt.03 pool the output rows split across threads; each
      *      element's arithmetic is the same on any worker, so the bits match
      *      the serial call. N = 37 is not a multiple of the grain of 8.
@@ -208,16 +208,16 @@ SS_TEST(pool_result_equals_serial_bitwise) {
     static uint8_t q[N * K / 2];
     static uint16_t s[N * K / G];
     static float x[M * K], y1[M * N], y4[M * N];
-    ss_gen g = {24};
+    ol_gen g = {24};
     random_q4(&g, q, s, N, K, G);
-    for (int i = 0; i < M * K; i++) x[i] = ss_gen_f32(&g, -1, 1);
+    for (int i = 0; i < M * K; i++) x[i] = ol_gen_f32(&g, -1, 1);
     tl_pool *p = NULL;
-    SS_EQ(tl_pool_create(4, &p), TL_OK);
+    OL_EQ(tl_pool_create(4, &p), TL_OK);
     tl_status st = tl_matmul_q4_f32(x, q, s, y4, M, N, K, G, p);
     tl_pool_destroy(p);
-    SS_EQ(st, TL_OK);
-    SS_EQ(tl_matmul_q4_f32(x, q, s, y1, M, N, K, G, NULL), TL_OK);
-    SS_BITS_EQ_F32(y4, y1, M * N);
+    OL_EQ(st, TL_OK);
+    OL_EQ(tl_matmul_q4_f32(x, q, s, y1, M, N, K, G, NULL), TL_OK);
+    OL_BITS_EQ_F32(y4, y1, M * N);
 }
 
-int main(void) { return SS_RUN_ALL(); }
+int main(void) { return OL_RUN_ALL(); }

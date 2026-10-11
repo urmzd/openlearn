@@ -1,4 +1,4 @@
-<!-- ss:module ag.09 -->
+<!-- ol:module ag.09 -->
 # Eval runner
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start ag.09          # stubs go/agent/eval/*.go into your repo
-ss tests ag.09          # read the test catalog first
-ss check ag.09          # exit code is the verdict
-ss check ag.09 --ref-deps   # only if you skipped ag.01 to ag.05 or load.01
-ss diff  ag.09          # after passing: your code against the reference
+ol start ag.09          # stubs go/agent/eval/*.go into your repo
+ol tests ag.09          # read the test catalog first
+ol check ag.09          # exit code is the verdict
+ol check ag.09 --ref-deps   # only if you skipped ag.01 to ag.05 or load.01
+ol diff  ag.09          # after passing: your code against the reference
 ```
 
 Then add `{ctl} eval run --suite <file> --base-url <url> --model <name>` to your umbrella CLI (learner territory): load the suite, build a `ProviderSubject` (or an `AgentSubject` around your agent), run it with the scorers of `ag.10`, and write `evals/<suite>/<run_id>/`. MS-agent runs it over `{fixture:ag.09/suite.jsonl}` against your gateway.
@@ -241,7 +241,7 @@ Without `WithSubject`, `Run` scores the observations as given (their outputs alr
 | Forward | `ag.12` | `RunExperiment` runs two subjects through this runner and fills `Summary.AB` |
 | Forward | `craft.23` | eval results become regression-test evidence |
 
-If you skip this module, `ss check ag.10` reports `needs ag.09: build it, or pass --ref-deps`.
+If you skip this module, `ol check ag.10` reports `needs ag.09: build it, or pass --ref-deps`.
 
 ## Going further
 

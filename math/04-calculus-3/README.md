@@ -186,10 +186,10 @@ multiple integrals compute joint probabilities.
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M04.1` | [Partial derivatives, gradients, gradcheck](01-gradients-and-gradcheck.md) | build | 2 |
 | 2 | `M04.2` | [Jacobians, multivariable chain rule, numeric JVP/VJP](02-jacobians-and-the-chain-rule.md) | build | 2 |
 | 3 | `S-M04` | [Calculus 3 problem set: vectors, gradients, the chain rule, Hessians, multiple integrals, Lagrange](90-problem-set.md) | solve | 2 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

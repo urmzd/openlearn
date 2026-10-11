@@ -1,4 +1,4 @@
-<!-- ss:module M07.5 -->
+<!-- ol:module M07.5 -->
 # Hypothesis tests: paired and two-sample permutation, McNemar, Holm
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M07.5              # stubs tests.py into your repo
-ss tests M07.5              # read the test catalog first: rung R0, you write no tests here
-ss check M07.5              # exit code is the verdict
-ss diff  M07.5              # after passing: your code against the reference
+ol start M07.5              # stubs tests.py into your repo
+ol tests M07.5              # read the test catalog first: rung R0, you write no tests here
+ol check M07.5              # exit code is the verdict
+ol diff  M07.5              # after passing: your code against the reference
 ```
 
 ---

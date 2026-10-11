@@ -1,4 +1,4 @@
-<!-- ss:module data.03 -->
+<!-- ol:module data.03 -->
 # Exact dedup: paragraph hashes, Bloom screen, sort-merge confirm
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start data.03              # stubs python/corpus/dedup.py
-ss tests data.03              # read the test catalog first
-ss check data.03              # needs data.02 and M06.3 passing (or --ref-deps)
-ss diff  data.03              # after passing: your code against the reference
+ol start data.03              # stubs python/corpus/dedup.py
+ol tests data.03              # read the test catalog first
+ol check data.03              # needs data.02 and M06.3 passing (or --ref-deps)
+ol diff  data.03              # after passing: your code against the reference
 ```
 
 The Python Bloom screen uses the hash functions from `M06.3` and follows the shared bit-sizing rules. The standalone Rust Bloom module has its own tests and does not cross into this stage.

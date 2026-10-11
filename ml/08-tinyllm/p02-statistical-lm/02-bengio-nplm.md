@@ -1,4 +1,4 @@
-<!-- ss:module L2.2 -->
+<!-- ol:module L2.2 -->
 # Bengio's neural probabilistic language model
 
 ## Overview
@@ -25,16 +25,16 @@
 ## How to work this chapter
 
 ```bash
-ss start L2.2              # stubs nplm.py; prints your test path and rung (R3)
-ss tests L2.2              # the course tests
+ol start L2.2              # stubs nplm.py; prints your test path and rung (R3)
+ol tests L2.2              # the course tests
 # write ONE test in python/tests/l2-2-nplm/ (start with section 4's), then:
-ss tdd red L2.2            # must FAIL against your current code: records the red
+ol tdd red L2.2            # must FAIL against your current code: records the red
 # make it pass, then:
-ss tdd green L2.2          # must PASS with the same test files: records the green
+ol tdd green L2.2          # must PASS with the same test files: records the green
 # repeat for each test; then:
-ss check L2.2              # course tests, the red-then-green journal, the mutation grade
-ss mutate L2.2             # the full grade, cached by your test files' hash
-ss check L2.2 --ref-deps   # only if an L0 module is not passing yet
+ol check L2.2              # course tests, the red-then-green journal, the mutation grade
+ol mutate L2.2             # the full grade, cached by your test files' hash
+ol check L2.2 --ref-deps   # only if an L0 module is not passing yet
 ```
 
 Your CLI gains `lm train nplm` and `eval` (and `generate` learns to read an `nplm` directory); `course/milestones/MS-L2.toml` fixes their flags and final lines.
@@ -175,7 +175,7 @@ def test_hand_example_logits():
     np.testing.assert_allclose(m(np.array([[0, 2]])).data, [[1 + t, 0.5, -1 - t]], rtol=1e-6)
 ```
 
-Then, one at a time, red then green: the windows of a short sequence; every parameter receiving a gradient after one backward, the table included; a finite-difference check of a few entries of the embedding gradient; the state-dict names and the one-generator rule; `nll` against `cross_entropy` on the same windows; greedy generation from an all-zero model (ties) and a long prompt against its last window; `train_nplm` against the loop rebuilt from `DataLoader`, `train_step`, and `SGD` across an epoch boundary; a loss that drops on a repeating pattern; a save and load roundtrip with and without the direct path. Import only contract names. `ss check L2.2` requires, for every test file, a `ss tdd red` record before its last `ss tdd green`, a mutation score of at least 0.70, and the required fault killed: it is pitfall 1.
+Then, one at a time, red then green: the windows of a short sequence; every parameter receiving a gradient after one backward, the table included; a finite-difference check of a few entries of the embedding gradient; the state-dict names and the one-generator rule; `nll` against `cross_entropy` on the same windows; greedy generation from an all-zero model (ties) and a long prompt against its last window; `train_nplm` against the loop rebuilt from `DataLoader`, `train_step`, and `SGD` across an epoch boundary; a loss that drops on a repeating pattern; a save and load roundtrip with and without the direct path. Import only contract names. `ol check L2.2` requires, for every test file, a `ol tdd red` record before its last `ol tdd green`, a mutation score of at least 0.70, and the required fault killed: it is pitfall 1.
 
 ## 5. Pitfalls
 

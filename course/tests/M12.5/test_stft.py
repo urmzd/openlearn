@@ -28,7 +28,7 @@ GOLDEN = Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M12.5" / "stft_torch.np
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def assert_complex_close(a, b, atol: float, msg: str = "") -> None:

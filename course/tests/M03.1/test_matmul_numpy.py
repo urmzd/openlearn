@@ -46,7 +46,7 @@ def test_shapes_and_strided_views(trans_b: bool) -> None:
     # KIND: differential
     # CATCHES: s02, s05, s06
     # CHAPTER: M03.1 section 4
-    rng = PCG32(int(os.environ.get("SS_SEED", "0")), seq=31)
+    rng = PCG32(int(os.environ.get("OL_SEED", "0")), seq=31)
     for m, n, k in ((1, 1, 1), (2, 7, 3), (5, 1, 2), (7, 3, 33)):
         abuf = rng.uniform_array((m, k + 2), -1, 1).astype(np.float32)
         a = abuf[:, 1 : k + 1]

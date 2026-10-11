@@ -1,4 +1,4 @@
-<!-- ss:module C2 -->
+<!-- ol:module C2 -->
 # Capstone 2: post-trained TinyStories model
 
 ## Overview
@@ -23,8 +23,8 @@
 ## How to work this chapter
 
 ```bash
-ss start C2
-ss milestone MS-C2 --smoke
+ol start C2
+ol milestone MS-C2 --smoke
 ```
 
 ## 1. Why now

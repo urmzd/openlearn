@@ -1,6 +1,6 @@
 # The System You Will Build
 
-One system, named by you (`ss course init --name <system>`), grown in passes. This page is the map: what the components are, which language each is in, and the contracts they meet at. Every contract is a file in [`course/contracts/`](../../course/contracts/), vendored into your repo's `contracts/` and pinned by `contracts/VERSION`.
+One system, named by you (`ol course init --name <system>`), grown in passes. This page is the map: what the components are, which language each is in, and the contracts they meet at. Every contract is a file in [`course/contracts/`](../../course/contracts/), vendored into your repo's `contracts/` and pinned by `contracts/VERSION`.
 
 ## Components after Pass 1 (the tracer)
 
@@ -12,7 +12,7 @@ One system, named by you (`ss course init --name <system>`), grown in passes. Th
 | gateway | Go | `go/gateway/proxy/`, `go/cmd/gateway` | API-key check, SSE pass-through without buffering, `traceparent` and `X-Request-Id` | gw.00, obs.00 |
 | deploy | Docker, Helm, kind | `deploy/` | engine and gateway images, two charts, a kind cluster with NodePorts 30080 and 30686, Jaeger | dep.00 |
 | docs | Markdown | `docs/` | ADR-0001, the engine-crashloop runbook, postmortems | craft.02, ops.00 |
-| CI | GitHub Actions | `.github/workflows/ci.yml`, `.githooks/` | commit lint, native tests, `ss check --all --ci` | craft.01 |
+| CI | GitHub Actions | `.github/workflows/ci.yml`, `.githooks/` | commit lint, native tests, `ol check --all --ci` | craft.01 |
 | manifest | TOML | `system.toml` | how the harness builds and runs your entry points | every milestone |
 
 ```mermaid
@@ -32,9 +32,9 @@ Python and Rust exchange data through files: safetensors checkpoints, `tokenizer
 | Contract | File | Used from |
 |---|---|---|
 | C exercise contracts | [`c/include/tinyllm.h`](../../course/contracts/c/include/tinyllm.h), [`tinyllm/abi.h`](../../course/contracts/c/include/tinyllm/abi.h), [`tinyllm/matmul.h`](../../course/contracts/c/include/tinyllm/matmul.h), rules in [`c/ABI.md`](../../course/contracts/c/ABI.md) | optional standalone C modules, each checked by its own C test binary |
-| C test kit | [`c/include/ss_test.h`](../../course/contracts/c/include/ss_test.h) | the C course tests |
+| C test kit | [`c/include/ol_test.h`](../../course/contracts/c/include/ol_test.h) | the C course tests |
 | Python interfaces | [`py/tinyllm/`](../../course/contracts/py/tinyllm/) (`lm/bigram.pyi`, `io/safetensors.pyi`) | L0.0 |
-| HTTP API v0 | [`openapi/openai-subset.v0.yaml`](../../course/contracts/openapi/openai-subset.v0.yaml) | L10.0 (engine tier), gw.00 (gateway tier), `ss conform openapi:v0` |
+| HTTP API v0 | [`openapi/openai-subset.v0.yaml`](../../course/contracts/openapi/openai-subset.v0.yaml) | L10.0 (engine tier), gw.00 (gateway tier), `ol conform openapi:v0` |
 | Checkpoint | [`formats/safetensors.md`](../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../course/contracts/formats/config.schema.json) | L0.0 writes, L10.0 reads |
 | Tokenizer | [`formats/tokenizer.md`](../../course/contracts/formats/tokenizer.md) (the `bytes` tokenizer) | L0.0, L10.0 |
 | Entry points | [`spec/cli-roles.md`](../../course/contracts/spec/cli-roles.md) | every milestone step |
@@ -43,7 +43,7 @@ Python and Rust exchange data through files: safetensors checkpoints, `tokenizer
 
 ## The spiral
 
-After every pass your own system runs end to end and `ss milestone MS-P<n>` passes against your code. Later modules either upgrade a component behind an unchanged contract (the bigram retrained by your autograd in Pass 2 still serves through the same checkpoint and the same engine) or change a contract through an explicit migration chapter. Each pass gate reruns the smoke steps of every earlier gate, so a regression anywhere fails the next gate.
+After every pass your own system runs end to end and `ol milestone MS-P<n>` passes against your code. Later modules either upgrade a component behind an unchanged contract (the bigram retrained by your autograd in Pass 2 still serves through the same checkpoint and the same engine) or change a contract through an explicit migration chapter. Each pass gate reruns the smoke steps of every earlier gate, so a regression anywhere fails the next gate.
 
 | Contract | How it grows |
 |---|---|

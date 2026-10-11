@@ -1,4 +1,4 @@
-<!-- ss:module M07.7 -->
+<!-- ol:module M07.7 -->
 # Logistic regression (IRLS), ROC-AUC, calibration (ECE)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M07.7              # stubs metrics.py into your repo
-ss tests M07.7              # read the test catalog first: rung R0, you write no tests here
-ss check M07.7              # exit code is the verdict
-ss check M07.7 --ref-deps   # only if you skipped M03.2 or M01.4
-ss diff  M07.7              # after passing: your code against the reference
+ol start M07.7              # stubs metrics.py into your repo
+ol tests M07.7              # read the test catalog first: rung R0, you write no tests here
+ol check M07.7              # exit code is the verdict
+ol check M07.7 --ref-deps   # only if you skipped M03.2 or M01.4
+ol diff  M07.7              # after passing: your code against the reference
 ```
 
 ---

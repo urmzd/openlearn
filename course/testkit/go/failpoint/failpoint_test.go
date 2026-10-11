@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"supersource.urmzd.com/tl/testkit/failpoint"
+	"openlearn.urmzd.com/tl/testkit/failpoint"
 )
 
 func TestActions(t *testing.T) {

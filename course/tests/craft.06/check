@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# ss-export: course-tree (grades against the course's reference katas, never exported)
-# Artifact check for craft.06 (DESIGN 4.6, rung R7; `ss check craft.06` runs
+# ol-export: course-tree (grades against the course's reference katas, never exported)
+# Artifact check for craft.06 (DESIGN 4.6, rung R7; `ol check craft.06` runs
 # this in your repo and its exit code is the verdict).
 #
 # It grades YOUR benchmark and performance gate in primers/craft.06/
 # (bench.c, budget.toml, gate.py; read the test catalog with
-# `ss tests craft.06`): the gate passes when base and head are both the
+# `ol tests craft.06`): the gate passes when base and head are both the
 # course's kata (no false alarm, twice), it passes your kata against the
 # course's (yours keeps pace), and it fails against each of the ten planted
 # slowdowns in course/mutants/craft.06 (loop order, tiles too small,
@@ -22,14 +22,14 @@
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
-course="${SS_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
+course="${OL_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
 dir="$PWD/primers/craft.06"
 
 fail() { echo "craft.06: $*" >&2; exit 1; }
-command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
-command -v cc >/dev/null || fail "cc is not on PATH (ss doctor)"
+command -v uv >/dev/null || fail "uv is not on PATH (ol doctor)"
+command -v cc >/dev/null || fail "cc is not on PATH (ol doctor)"
 [ -f "$course/ref/primers/craft.06/kernels.c" ] ||
-  fail "the course tree at $course has no craft.06 kata: this check runs inside a supersource checkout (SS_COURSE_TREE)"
+  fail "the course tree at $course has no craft.06 kata: this check runs inside a openlearn checkout (OL_COURSE_TREE)"
 
 mkdir -p "$dir"
 if [ ! -f "$dir/kernels.h" ]; then
@@ -42,13 +42,13 @@ import sys
 from pathlib import Path
 course, dest = Path(sys.argv[1]), Path(sys.argv[2])
 sys.path.insert(0, str(course / "harness" / "src"))
-from sscourse import markers
+from olcourse import markers
 text = (course / "ref" / "primers" / "craft.06" / "kernels.c").read_text()
 (dest / "kernels.c").write_text(markers.stub(text, "primers/craft.06/kernels.c", want="craft.06"))
 print("  wrote     primers/craft.06/kernels.c  (stub: yours to write)")
 PY
 fi
 
-export SS_PRIMER_DIR="$dir" SS_COURSE_TREE="$course" SS_LEARNER_ROOT="$PWD" PYTHONDONTWRITEBYTECODE=1
+export OL_PRIMER_DIR="$dir" OL_COURSE_TREE="$course" OL_LEARNER_ROOT="$PWD" PYTHONDONTWRITEBYTECODE=1
 exec uv run --no-project --quiet --with pytest \
   python -m pytest -q --tb=short -p no:cacheprovider -p no:randomly --rootdir="$tests" --confcutdir="$tests" "$here"

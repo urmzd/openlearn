@@ -1,6 +1,6 @@
 # S-M08 problems: shapes, matrix differentials, the trace trick, VJPs, SDPA
 
-Answer every question in `solve/S-M08.toml` (written by `ss start S-M08`).
+Answer every question in `solve/S-M08.toml` (written by `ol start S-M08`).
 The tag after each question is its answer type: `[vector]` is a list
 `[1/4, -1/8, -1/8]` (also used for shapes, `[2, 3, 5]`), `[matrix]` a list of
 rows `[[1, 3], [2, 4]]`, `[expr]` a formula in the named variables, `[number]`

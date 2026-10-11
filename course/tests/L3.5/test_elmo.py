@@ -42,7 +42,7 @@ FIX = os.path.join(os.environ.get("TINYLLM_FIXTURES", ""), "L3.5", "elmo_torch.n
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 class Rng:

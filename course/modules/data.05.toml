@@ -23,7 +23,7 @@ determinism_runs = 2
 [fixtures]
 files = ["course/fixtures/data.05/labelled.jsonl"]
 
-[learner_tests]                        # rung R3: tests first (ss tdd red, then green)
+[learner_tests]                        # rung R3: tests first (ol tdd red, then green)
 rung      = 3
 path      = "python/tests/data-05-pii"
 threshold = 0.70

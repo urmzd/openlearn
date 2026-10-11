@@ -1,4 +1,4 @@
-# S-M00 answer key (hidden; honor system, DESIGN D34). `ss verify course S-M00`
+# S-M00 answer key (hidden; honor system, DESIGN D34). `ol verify course S-M00`
 # check 7 proves every `expect` passes and every `reject` canary fails;
 # course/oracle/solve/S-M00.py recomputes every value independently.
 # 60 items, no proofs (DESIGN 4.2): functions and inverses (q1-q10), exp/log

@@ -1,4 +1,4 @@
-<!-- ss:module ops.08 -->
+<!-- ol:module ops.08 -->
 # Drill: data incident
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ops.08
-ss tests ops.08
-ss check ops.08
+ol start ops.08
+ol tests ops.08
+ol check ops.08
 ```
 
 ---

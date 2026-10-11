@@ -23,10 +23,10 @@ dir       = "course/tests/rt.03"
 smoke     = ["hand_example"]
 timeout_s = 60
 determinism_runs = 2
-# A ThreadSanitizer build after the ASan one (DEVIATIONS X16; SS_TSAN=0 skips).
+# A ThreadSanitizer build after the ASan one (DEVIATIONS X16; OL_TSAN=0 skips).
 sanitize  = ["thread"]
 
-[learner_tests]                     # rung R4: properties with ss_prop.h (as ds.01)
+[learner_tests]                     # rung R4: properties with ol_prop.h (as ds.01)
 rung      = 4
 path      = "c/tests/rt03_pool_test.c"
 threshold = 0.80

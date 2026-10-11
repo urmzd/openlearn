@@ -1,4 +1,4 @@
-<!-- ss:module S-M11a -->
+<!-- ol:module S-M11a -->
 # Information theory problem set, part a: entropy, chain rules, KL and cross-entropy
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M11a/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M11a/problems.md` and in section 4 |
 | **Needs** | `S-M07a` (distributions, expectation, Bayes). Reading: the [Information Theory topic](README.md), entropy and KL sections |
 | **Used by** | no call site (a solve set). It checks the definitions behind `M11.1` (`entropy`, `cross_entropy`, `kl`, `kl_from_logprobs`, `js`, `kl_k3`), which `M08.3`, `L0.3`, `L8.1`, and `L12.3` call; part b, `S-M11b` in Pass 3, covers coding, mutual information, and maximum entropy |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Cover and Thomas, *Elements of Information Theory*, ch. 2; MacKay, *Information Theory, Inference, and Learning Algorithms* (free), ch. 2 and 4; Schulman, "Approximating KL Divergence" (2020 blog note) for k3 |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M11a             # writes solve/S-M11a.toml and one file per proof
-ss check S-M11a             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M11a --regrade   # ask the rubrics again after you change a proof
+ol start S-M11a             # writes solve/S-M11a.toml and one file per proof
+ol check S-M11a             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M11a --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -98,7 +98,7 @@ proof = "S-M11a/q9.md"
 
 Bits use `log(x, 2)`; nats use `log(x)`. Give exact values, not decimals.
 
-<!-- ss:problems S-M11a -->
+<!-- ol:problems S-M11a -->
 
 ### Entropy and chain rules
 
@@ -122,7 +122,7 @@ Bits use `log(x, 2)`; nats use `log(x)`. Give exact values, not decimals.
 
 **q9.** Prove Gibbs' inequality: $D_{KL}(p \,\Vert\, q) \ge 0$ for distributions $p, q$ on a finite set with $q_i > 0$ wherever $p_i > 0$, with equality exactly when $p = q$. `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

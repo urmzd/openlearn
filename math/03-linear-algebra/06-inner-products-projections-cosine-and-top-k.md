@@ -1,4 +1,4 @@
-<!-- ss:module M03.6 -->
+<!-- ol:module M03.6 -->
 # Inner products, projections, cosine similarity, and top-k
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M03.6              # stubs python/tinyllm/linalg/inner.py into your repo
-ss tests M03.6              # read the test catalog first: rung R0, you write no tests here
-ss check M03.6              # exit code is the verdict
-ss diff  M03.6              # after passing: your code against the reference
+ol start M03.6              # stubs python/tinyllm/linalg/inner.py into your repo
+ol tests M03.6              # read the test catalog first: rung R0, you write no tests here
+ol check M03.6              # exit code is the verdict
+ol diff  M03.6              # after passing: your code against the reference
 ```
 
 ---

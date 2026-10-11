@@ -1,4 +1,4 @@
-<!-- ss:module M02.1 -->
+<!-- ol:module M02.1 -->
 # Taylor series, remainder bounds, range reduction
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M02.1              # stubs python/tinyllm/num/taylor.py into your repo
-ss tests M02.1              # read the test catalog first: rung R0, you write no tests here
-ss check M02.1              # exit code is the verdict
-ss check M02.1 --ref-deps   # only if your M00.4 is not passing yet
-ss diff  M02.1              # after passing: your code against the reference
+ol start M02.1              # stubs python/tinyllm/num/taylor.py into your repo
+ol tests M02.1              # read the test catalog first: rung R0, you write no tests here
+ol check M02.1              # exit code is the verdict
+ol check M02.1 --ref-deps   # only if your M00.4 is not passing yet
+ol diff  M02.1              # after passing: your code against the reference
 ```
 
 ---

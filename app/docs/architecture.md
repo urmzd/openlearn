@@ -30,7 +30,7 @@ object and patches it.
 
 | Package | Role |
 |---------|------|
-| `internal/course` | A course pack: manifest, outline, role paths, progress files, search. Reads `path.tsv` and `.done` in the format `ss learn` owns. |
+| `internal/course` | A course pack: manifest, outline, role paths, progress files, search. Reads `path.tsv` and `.done` in the format `ol learn` owns. |
 | `internal/packs` | Finds packs (checkout, linked folder, imported zip, built in) and opens one |
 | `internal/builtin` | The packs embedded in the binary, filled by `cmd/bundle` (`make content`) |
 | `internal/practice` | Runs a pack's practice CLI and reads the attempt it left in the scratchpad |

@@ -1,4 +1,4 @@
-# The learner's python/pyproject.toml (DESIGN 2.15). `ss start` copies it into
+# The learner's python/pyproject.toml (DESIGN 2.15). `ol start` copies it into
 # your repo when python/pyproject.toml is absent and never rewrites it: add your
 # own dependencies to your copy. The course tests run in this project's
 # environment (DESIGN 5.4), so a package your units import must be listed here.

@@ -1,4 +1,4 @@
-<!-- ss:module craft.11 -->
+<!-- ol:module craft.11 -->
 # Commits, semver, releases (v1.0.0)
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.11
-ss tests craft.11
-ss check craft.11
+ol start craft.11
+ol tests craft.11
+ol check craft.11
 ```
 
 ---
@@ -44,7 +44,7 @@ Prepare v1.0.0 from a clean tree. Group changes by user effect, validate CI at t
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_artifact_paths_are_declared` | artifact | Confirms the registry declares the changelog, release workflow, and release evidence paths. | Ensures `ss diff craft.11` compares the actual release record and automation. |
+| `test_artifact_paths_are_declared` | artifact | Confirms the registry declares the changelog, release workflow, and release evidence paths. | Ensures `ol diff craft.11` compares the actual release record and automation. |
 
 ## 5. Pitfalls
 

@@ -3,7 +3,7 @@
 A Tiltfile is Starlark, whose syntax is a subset of Python's, so the course
 runs it with Python's evaluator and a fake of each Tilt builtin that records
 its call instead of building or deploying. That makes the static tier of
-`ss check dep.04` deterministic and fast, and needs no cluster. `tilt ci`
+`ol check dep.04` deterministic and fast, and needs no cluster. `tilt ci`
 itself runs in the cluster tier.
 
 Supported: docker_build, custom_build, docker_build_with_restart (from

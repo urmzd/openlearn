@@ -1,4 +1,4 @@
-<!-- ss:module craft.15 -->
+<!-- ol:module craft.15 -->
 # Dependency upgrades
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.15
-ss tests craft.15
-ss check craft.15
+ol start craft.15
+ol tests craft.15
+ol check craft.15
 ```
 
 ---

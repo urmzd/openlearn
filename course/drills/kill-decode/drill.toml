@@ -21,7 +21,7 @@ time_limit_min = 45                    # enforced locally; CI uses respond.sh in
 slo_profile    = "drill"
 symptom        = "PAGE: TTFTBudgetBurnFast (drill profile): time to first token is burning the error budget; some users report streams that stop mid-sentence"
 
-# Your loadgen (load.01), started by `ss drill start` before the injection.
+# Your loadgen (load.01), started by `ol drill start` before the injection.
 [loadgen]
 argv = ["--target", "{deploy.gateway_url}", "--rate", "20", "--duration", "900s", "--seed", "1"]
 

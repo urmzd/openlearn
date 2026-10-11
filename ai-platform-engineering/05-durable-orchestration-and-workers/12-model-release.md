@@ -1,4 +1,4 @@
-<!-- ss:module dur.12 -->
+<!-- ol:module dur.12 -->
 # ModelRelease: gates, canary, PromQL burn check, rollback
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.12         # stubs go/workflows/model_release.go, go/activities/{routes,promql}.go
-ss tests dur.12         # read the test catalog first
-ss check dur.12         # the workflow (replayed), the route client, the PromQL query
-ss diff  dur.12         # after passing: your code against the reference
+ol start dur.12         # stubs go/workflows/model_release.go, go/activities/{routes,promql}.go
+ol tests dur.12         # read the test catalog first
+ol check dur.12         # the workflow (replayed), the route client, the PromQL query
+ol diff  dur.12         # after passing: your code against the reference
 ```
 
 Then wire it in your worker's composition root (`go/cmd/worker`, learner territory): register the workflow as `ModelRelease` through the same `workflow.Context`-to-`Runtime` adapter as `TrainRun` (`dur.08`), and register the activities under the `Act*` names: `Preflight`, `ReadResults`, the subprocess runner of `dur.09` for `export` and `eval`, and the methods of one `activities.Routes` and one `activities.Prom`. Your umbrella CLI gets `{ctl} release --spec <file>` (start) and `<system> wf signal <id> approve`.

@@ -1,4 +1,4 @@
-<!-- ss:module S-M10b -->
+<!-- ol:module S-M10b -->
 # Optimization problem set, part b: constrained optimization, duality, and DPO
 
 ## Overview
@@ -24,8 +24,8 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M10b
-ss check S-M10b
+ol start S-M10b
+ol check S-M10b
 ```
 
 ## 1. Why now

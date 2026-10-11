@@ -6,4 +6,4 @@ about 10M model trained on TinyStories (mixed precision, accumulation, resume) w
 
 **Gate**: [MS-P9 = MS-L11 + MS-C1](milestone.md).
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ss learn course-p09-p09-capstone-training` to see progress.
+Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p09-p09-capstone-training` to see progress.

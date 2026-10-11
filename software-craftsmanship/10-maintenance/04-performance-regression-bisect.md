@@ -1,4 +1,4 @@
-<!-- ss:module craft.16 -->
+<!-- ol:module craft.16 -->
 # Perf regression bisect
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.16
-ss tests craft.16
-ss check craft.16
+ol start craft.16
+ol tests craft.16
+ol check craft.16
 ```
 
 ---

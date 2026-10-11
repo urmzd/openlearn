@@ -4,6 +4,6 @@
     failpoint   TL_FAILPOINTS named failpoints (the same spec as the Go, Rust, and C kits)
     clock       a fake clock for contracts that take a Clock
 
-`ss check` puts course/testkit/python on PYTHONPATH, so course tests and the
+`ol check` puts course/testkit/python on PYTHONPATH, so course tests and the
 learner's graded tests import `sstestkit.flakyhttp` and friends.
 """

@@ -1,4 +1,4 @@
-<!-- ss:module obs.05 -->
+<!-- ol:module obs.05 -->
 # Observability for the control plane: workflow and activity spans, queue and DLQ panels
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start obs.05                       # records the start; there are no stubs
-ss tests obs.05                       # read the test catalog first
+ol start obs.05                       # records the start; there are no stubs
+ol tests obs.05                       # read the test catalog first
 # write the dashboard, the monitors, and the worker chart's TL_PYTHON_OTLP_ENDPOINT (section 4)
-SS_SMOKE=1 ss check obs.05            # static and python tiers
+OL_SMOKE=1 ol check obs.05            # static and python tiers
 kubectl apply -f deploy/observability/control-plane-monitors.yaml
 <system> train --spec specs/tiny.json # on kind: makes the trace the cluster tier looks for
-ss check obs.05
+ol check obs.05
 ```
 
 ---

@@ -1,13 +1,13 @@
 """lang.07 artifact check: primers/lang.07 builds an image, renders a chart, and serves on kind.
 
-Run by `ss check lang.07` in your repo. Three tiers, in order:
+Run by `ol check lang.07` in your repo. Three tiers, in order:
 
   static   files, Dockerfile rules, kind config, `helm lint`, the rendered chart
   docker   the image builds, runs as a numeric non-root user, serves, stops on SIGTERM
   cluster  on kube context kind-lang07: the NodePort Service has ready endpoints
            and http://127.0.0.1:31007/ answers from one of its pods
 
-The cluster tier fails when kind-lang07 is missing or down. With SS_SMOKE=1 it
+The cluster tier fails when kind-lang07 is missing or down. With OL_SMOKE=1 it
 is skipped with the reason instead (everything else still runs).
 """
 
@@ -35,8 +35,8 @@ DIR = "primers/lang.07"
 CHART = f"{DIR}/chart"
 CONTEXT = "kind-lang07"
 NODEPORT = 31007
-IMAGE = "ss-check/lang07:local"
-PROBE = "ss-probe-lang07"
+IMAGE = "ol-check/lang07:local"
+PROBE = "ol-probe-lang07"
 
 
 def _rendered(c: Ctx, sets: dict | None = None) -> list:
@@ -232,7 +232,7 @@ def test_image_user_is_numeric_non_root(c: Ctx) -> None:
 def _container(c: Ctx) -> tuple[str, int]:
     if "ctr" not in c.cache:
         img = _image(c)
-        name = f"ss-check-lang07-{int(time.time() * 1000) % 10**9}"
+        name = f"ol-check-lang07-{int(time.time() * 1000) % 10**9}"
         c.cache["ctr"] = None
         c.sh(
             [

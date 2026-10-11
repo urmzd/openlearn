@@ -26,8 +26,8 @@ import tempfile
 import tomllib
 from pathlib import Path
 
-PRIMER = Path(os.environ.get("SS_PRIMER_DIR", "primers/craft.06")).resolve()
-COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[2]))
+PRIMER = Path(os.environ.get("OL_PRIMER_DIR", "primers/craft.06")).resolve()
+COURSE = Path(os.environ.get("OL_COURSE_TREE", Path(__file__).resolve().parents[2]))
 REF = COURSE / "ref" / "primers" / "craft.06"
 FAULTS = COURSE / "mutants" / "craft.06"
 INCLUDE = COURSE / "contracts" / "c" / "include"
@@ -36,7 +36,7 @@ THRESHOLD = 0.90
 KERNELS = ("kata_matmul", "kata_sum", "kata_rmsnorm", "kata_count_below")
 
 sys.path.insert(0, str(COURSE / "harness" / "src"))
-from sscourse import markers  # noqa: E402
+from olcourse import markers  # noqa: E402
 
 
 def run(cmd: list[str], cwd: Path, timeout: float = 120) -> tuple[int, str]:
@@ -93,7 +93,7 @@ def faults() -> list[tuple[str, bool, str]]:
 
 def gate(base: str, head: str) -> tuple[int, str]:
     """Your gate.py on two kernels.c texts (base and head)."""
-    with tempfile.TemporaryDirectory(prefix="ss-craft06-") as d:
+    with tempfile.TemporaryDirectory(prefix="ol-craft06-") as d:
         b, h = Path(d, "base.c"), Path(d, "head.c")
         b.write_text(base)
         h.write_text(head)
@@ -137,7 +137,7 @@ def test_hand_example_regression_arithmetic():
 
 def test_your_artifacts_are_a_benchmark_and_a_budget():
     # WHY: rung R7 grades a benchmark and a gate, so both must be real: a
-    #      bench.c that times every kata kernel with ss_bench.h and prints its
+    #      bench.c that times every kata kernel with ol_bench.h and prints its
     #      metrics as one JSON line, and a budget.toml with at least two runs
     #      and one budget per kernel, each a fraction in (0, 1): a budget of
     #      1 or more cannot catch a 2x slowdown.
@@ -147,10 +147,10 @@ def test_your_artifacts_are_a_benchmark_and_a_budget():
     assert bench.is_file(), f"write your benchmark in {bench} (chapter section 4)"
     text = bench.read_text()
     for need in (
-        '#include "ss_bench.h"',
+        '#include "ol_bench.h"',
         '#include "kernels.h"',
-        "ss_bench_best",
-        "ss_bench_done",
+        "ol_bench_best",
+        "ol_bench_done",
     ):
         assert need in text, f"bench.c needs {need}"
     for k in KERNELS:

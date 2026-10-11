@@ -1,4 +1,4 @@
-<!-- ss:module L8.1 -->
+<!-- ol:module L8.1 -->
 # Sampling and logit processors
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L8.1               # stubs sample.py into your repo
-ss tests L8.1               # read the test catalog first
-ss check L8.1               # course tests, then your tests graded by mutation
-ss mutate L8.1              # the full mutation grade of your tests
-ss check L8.1 --ref-deps    # only if you skipped M07.1, M06.3, or M11.1
-ss diff  L8.1               # after passing: your code against the reference
+ol start L8.1               # stubs sample.py into your repo
+ol tests L8.1               # read the test catalog first
+ol check L8.1               # course tests, then your tests graded by mutation
+ol mutate L8.1              # the full mutation grade of your tests
+ol check L8.1 --ref-deps    # only if you skipped M07.1, M06.3, or M11.1
+ol diff  L8.1               # after passing: your code against the reference
 ```
 
 ---
@@ -155,7 +155,7 @@ def sampled_entropy(logits, p, history=(), prompt=()) -> float         # H(q) in
 
 ### Your tests (rung R5)
 
-Write `python/tests/l8-1-sample/` against the contract only. The strongest oracle is the spec itself: transcribe steps 1 to 11 in plain Python (lists, `math.exp`, explicit loops), feed it and your sampler the same uniforms through a scripted source, and compare ids and logprobs on random logits with ties, masks, and every processor. Add the cases a random search rarely hits: sums exactly at $p$, ties at the top-k cut, greedy with no draw. `ss mutate L8.1` grades the suite by the planted bugs it kills.
+Write `python/tests/l8-1-sample/` against the contract only. The strongest oracle is the spec itself: transcribe steps 1 to 11 in plain Python (lists, `math.exp`, explicit loops), feed it and your sampler the same uniforms through a scripted source, and compare ids and logprobs on random logits with ties, masks, and every processor. Add the cases a random search rarely hits: sums exactly at $p$, ties at the top-k cut, greedy with no draw. `ol mutate L8.1` grades the suite by the planted bugs it kills.
 
 ## 5. Pitfalls
 
@@ -187,7 +187,7 @@ Write `python/tests/l8-1-sample/` against the contract only. The strongest oracl
 | Forward | `L8.6` | `sampling_distribution` is the target $p$ of `M07.6`'s acceptance test |
 | Forward | `L8.7` | constrained decoding writes $-\infty$ into the logits before `sample` |
 
-If you skip this module, `ss check L8.2` stops with `L8.2 needs L8.1`; `--ref-deps` substitutes the reference.
+If you skip this module, `ol check L8.2` stops with `L8.2 needs L8.1`; `--ref-deps` substitutes the reference.
 
 ## Going further
 

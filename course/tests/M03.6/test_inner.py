@@ -28,7 +28,7 @@ ROWS = np.array([[4.0, 3.0], [6.0, 8.0], [-3.0, -4.0], [10.0, 0.0], [0.0, 2.0]])
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def test_hand_example_cosine_and_projection():

@@ -61,7 +61,7 @@ that page: exit 2 on a usage error, the last stdout line is one JSON object.
       MS-L4's. Final line: {"model", "arch": "transformer", "beam", "n",
        "em_transformer", "em", "em_lo", "em_hi", "em_greedy"}.
 
-`ss milestone MS-L5 --smoke` runs every smoke step (no services, about a
+`ol milestone MS-L5 --smoke` runs every smoke step (no services, about a
 minute on a laptop). The full run trains 3500 updates (about 30 s to 2 min).
 
 ## MS-L6: GPT, BERT, ELECTRA, and LoRA through your CLI, scored by your model zoo
@@ -139,7 +139,7 @@ masks and samples.
       to the manifest) and prints one line per row. Final line: {"suite",
       "report", "rows", "ok", "errors", "skipped"}.
 
-`ss milestone MS-L6 --smoke` runs every step with 10% of the updates (about
+`ol milestone MS-L6 --smoke` runs every step with 10% of the updates (about
 a minute on a laptop). The full run takes about 4 minutes.
 
 ## MS-L7: Your modern decoder loads Hugging Face checkpoints and matches them
@@ -199,7 +199,7 @@ files carry that margin per step. The nightly model is
 SmolLM2-135M-Instruct at the revision pinned in course/fixtures/ASSETS.tsv,
 not the base SmolLM2-135M of DESIGN 4.3 (DEVIATIONS B75-07).
 
-`ss milestone MS-L7 --smoke` runs the four tiny-model steps (seconds).
+`ol milestone MS-L7 --smoke` runs the four tiny-model steps (seconds).
 
 ## MS-P5: Transformers: the 2017 model, its objectives, and a modern decoder that matches SmolLM2
 
@@ -213,4 +213,4 @@ still streams the Pass 1 bigram and your earlier models still train.
 required); each needs a fresh pass of your own. craft.05 grades your oracle
 tests (rung R5) with its own artifact check.
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

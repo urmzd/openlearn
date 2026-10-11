@@ -1,6 +1,6 @@
 # S-M03b problems: inner products and projections, SVD and low rank, matmul accounting and the roofline
 
-Answer every question in `solve/S-M03b.toml` (written by `ss start S-M03b`).
+Answer every question in `solve/S-M03b.toml` (written by `ol start S-M03b`).
 The tag after each question is its answer type. `[number]` is an exact
 value (`4/3`, `sqrt(10)`, `(1 + sqrt(5))/2`). `[vector]` is a column written
 as a flat list `[1, 2, 3]`. `[expr in M, N, K]` is a formula in those

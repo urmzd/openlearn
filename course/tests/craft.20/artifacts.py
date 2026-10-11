@@ -1,6 +1,6 @@
 """craft.20 artifact check: your consumer-driven contract for gateway to engine (rung R6).
 
-Run by `ss check craft.20` in your repo. Your artifacts live in primers/craft.20/:
+Run by `ol check craft.20` in your repo. Your artifacts live in primers/craft.20/:
 
   engineclient.go             the kata: the gateway's client of the engine API
   pacts/gateway-engine.json   your pact: every interaction the gateway relies on
@@ -45,7 +45,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def course_tree() -> Path:
-    return Path(os.environ.get("SS_COURSE_TREE") or HERE.parents[1])
+    return Path(os.environ.get("OL_COURSE_TREE") or HERE.parents[1])
 
 
 # -- processes ------------------------------------------------------------------
@@ -81,7 +81,7 @@ def tail(text: str, n: int = 25) -> str:
 
 def reference_kata() -> str:
     sys.path.insert(0, str(course_tree() / "harness" / "src"))
-    from sscourse import markers
+    from olcourse import markers
 
     return markers.drop_markers((course_tree() / "ref" / UNIT).read_text())
 
@@ -125,7 +125,7 @@ def faults() -> list[tuple[str, bool, str]]:
 def module(c: Ctx, kata: str, tests: str) -> Path:
     """A scratch module craft20: kata, the course's pact kit, and either your
     tests and pact ("learner") or the course's contract suite ("course")."""
-    d = Path(tempfile.mkdtemp(prefix="ss-craft20-"))
+    d = Path(tempfile.mkdtemp(prefix="ol-craft20-"))
     c.cleanups.append(lambda: shutil.rmtree(d, ignore_errors=True))
     (d / "go.mod").write_text("module craft20\n\ngo 1.22\n")
     (d / "engineclient.go").write_text(kata)
@@ -241,7 +241,7 @@ def openapi(c: Ctx) -> dict:
                 break
         else:
             raise Fail(
-                "contracts/openapi/openai-subset.v1.yaml is missing: run `ss contracts sync`"
+                "contracts/openapi/openai-subset.v1.yaml is missing: run `ol contracts sync`"
             )
     return c.cache["openapi"]
 
@@ -413,7 +413,7 @@ def test_files_present(c: Ctx) -> None:
     ]
     if missing:
         raise Fail(
-            f"missing: {', '.join(missing)} (run `ss start craft.20` for the kata; section 4 for the rest)"
+            f"missing: {', '.join(missing)} (run `ol start craft.20` for the kata; section 4 for the rest)"
         )
 
 

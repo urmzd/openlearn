@@ -1,4 +1,4 @@
-<!-- ss:module craft.03 -->
+<!-- ol:module craft.03 -->
 # TDD, unit tests, and how your tests are graded
 
 ## Overview
@@ -7,7 +7,7 @@
 |---|---|
 | **Module** | `craft.03` · practice · Python · Pass 2 · 2 to 3 h |
 | **You build** | `primers/craft.03/failpoints.py` (a kata: the failpoint spec your CLI evaluates in `MS-L0`) and `primers/craft.03/test_failpoints.py`, your tests for it, written first |
-| **Contract** | the spec in the kata's docstring (`ss start craft.03` writes it with the stubs) |
+| **Contract** | the spec in the kata's docstring (`ol start craft.03` writes it with the stubs) |
 | **Tests** | `course/tests/craft.03/`: the course's tests of your kata, and the grade of your tests by mutation (section 4) |
 | **Needs** | reading: [`craft.01`](../08-code-review-and-ci/01-your-repo-and-ci-gate.md) your repo and CI gate · [`lang.01`](../12-language-and-tool-primers/01-python-and-numpy.md) Python and uv |
 | **Used by** | no call site (a practice): the rungs it teaches grade your tests from [`L0.3`](../../ml/08-tinyllm/p00-foundations/03-losses-with-fused-backward.md) (R2) and [`L0.4`](../../ml/08-tinyllm/p00-foundations/04-module-system-and-layers.md) (R3) on |
@@ -19,18 +19,18 @@
 - A test is graded by what it catches: it runs against a correct implementation with one planted fault, and it must fail (`test_your_tests_kill_the_planted_faults`).
 - A test that rejects a correct implementation is worse than none: every fault would then "die" for the wrong reason, so that baseline comes first (`test_your_tests_accept_the_course_kata`).
 - Graded tests are black-box: they use only the names the spec defines, which is what lets them run against anyone's correct implementation (`test_your_tests_import_only_the_spec`).
-- Red then green: a test written before the code fails first; seeing it fail is the only proof it can fail. `ss tdd` records that for rung R3 (`L0.4`).
+- Red then green: a test written before the code fails first; seeing it fail is the only proof it can fail. `ol tdd` records that for rung R3 (`L0.4`).
 - The score is killed over total, with a threshold per rung (0.60 at R2, 0.70 at R3) and required faults that must die whatever the score.
 
 ## How to work this chapter
 
 ```bash
-ss start craft.03          # writes primers/craft.03/failpoints.py (stubs and the spec)
+ol start craft.03          # writes primers/craft.03/failpoints.py (stubs and the spec)
 # write ONE test in primers/craft.03/test_failpoints.py; see it fail:
 uv run --no-project --with pytest python -m pytest -q primers/craft.03
 # write the least code that makes it pass; repeat, test first, until the spec is covered
-ss tests craft.03          # the course's tests of the kata, and how your tests are graded
-ss check craft.03          # your code against the course tests, then your tests against planted faults
+ol tests craft.03          # the course's tests of the kata, and how your tests are graded
+ol check craft.03          # your code against the course tests, then your tests against planted faults
 ```
 
 ---
@@ -58,9 +58,9 @@ Until now every test in your repo came from the course (rung R0: you read them).
 
 **Black-box.** Graded tests run against the reference with a fault planted, never against your code, so they may use only what the contract (here, the spec) promises: its names and their documented behavior. A test that reads a private attribute (`fp.counts`) or imports a helper of yours breaks on any other correct implementation.
 
-**Red then green.** Write one test for the next behavior, run it, and watch it fail **for the reason you expect** (red). Write the least code that makes it pass (green). Then the next test. A test you never saw fail may pass for the wrong reason, a wrong import or an assertion that is always true, and would kill no mutant. `ss tdd red <ID>` records a failing run of your current test files and `ss tdd green <ID>` a passing one with the same files; from R3 `ss check` requires a red record for each test file before its green.
+**Red then green.** Write one test for the next behavior, run it, and watch it fail **for the reason you expect** (red). Write the least code that makes it pass (green). Then the next test. A test you never saw fail may pass for the wrong reason, a wrong import or an assertion that is always true, and would kill no mutant. `ol tdd red <ID>` records a failing run of your current test files and `ol tdd green <ID>` a passing one with the same files; from R3 `ol check` requires a red record for each test file before its green.
 
-**Cost.** `ss check` runs the required mutants plus a seeded sample of 8 and reports an estimate; `ss mutate` computes the full grade once and caches it by the hash of your test files, the reference unit, and the patch, so the full cost is paid only when your tests change.
+**Cost.** `ol check` runs the required mutants plus a seeded sample of 8 and reports an estimate; `ol mutate` computes the full grade once and caches it by the hash of your test files, the reference unit, and the patch, so the full cost is paid only when your tests change.
 
 **The kata's spec.** `TL_FAILPOINTS="train/after-step=60*crash; data/fetch=error(timeout)"` names places where a test wants a fault. An entry is `name=[N*]action`; actions are `crash`, `panic`, `off`, `error[(msg)]`, and `sleep(duration)` with a duration such as `50ms` or `2s`. `N*` fires on the Nth evaluation of that name only; without it a rule fires every time; `off` never fires and is never counted. Whitespace around names and actions is ignored and empty entries (a trailing `;`) are skipped; everything malformed is a `ValueError`. Your kata parses the spec and decides, evaluation by evaluation, whether a failpoint fires; what to do then (exit 137, raise, sleep) is the caller's job.
 
@@ -90,10 +90,10 @@ The course's own version of this example is `test_hand_example_evaluations` in `
 
 Two files in your repo, both yours:
 
-- `primers/craft.03/failpoints.py`: `ACTIONS`, `Rule(action, arg, nth)`, `sleep_seconds(duration)`, `parse(spec)`, and `Failpoints(spec)` with `evaluate(name)` and `count(name)`. `ss start craft.03` writes the stubs and the spec; the standard library is enough.
+- `primers/craft.03/failpoints.py`: `ACTIONS`, `Rule(action, arg, nth)`, `sleep_seconds(duration)`, `parse(spec)`, and `Failpoints(spec)` with `evaluate(name)` and `count(name)`. `ol start craft.03` writes the stubs and the spec; the standard library is enough.
 - `primers/craft.03/test_failpoints.py`: your tests, at least one per rule of the spec, importing only those five names from `failpoints` (plus pytest).
 
-`ss check craft.03` runs `course/tests/craft.03/check` in your repo, which runs two annotated files:
+`ol check craft.03` runs `course/tests/craft.03/check` in your repo, which runs two annotated files:
 
 1. `test_craft03_kata.py`: the course's tests of **your** code (rung R0 for the kata: read them as exemplars).
 2. `test_craft03_grading.py`: the grade of **your tests**: (a) they import only the spec's names; (b) they pass on your kata; (c) they pass on the course's kata (baseline A); (d) for each planted fault in `course/mutants/craft.03/`, one at a time, they fail. Pass at a score of 0.70 with the required fault killed.
@@ -111,7 +111,7 @@ Two files in your repo, both yours:
 | `test_your_tests_accept_the_course_kata` | unit | baseline A: green on a correct implementation |
 | `test_your_tests_kill_the_planted_faults` | unit | score at least 0.70, the required fault killed; survivors listed |
 
-The same machinery grades your tests from here on: `ss mutate L0.3` (rung R2: the names come from the chapter), then `ss tdd red L0.4` / `ss tdd green L0.4` and `ss check L0.4` (rung R3: the journal is enforced).
+The same machinery grades your tests from here on: `ol mutate L0.3` (rung R2: the names come from the chapter), then `ol tdd red L0.4` / `ol tdd green L0.4` and `ol check L0.4` (rung R3: the journal is enforced).
 
 ## 5. Pitfalls
 
@@ -140,10 +140,10 @@ And the testing mistakes the grade punishes:
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `craft.01` | your repo and its CI gate run `ss check --all --ci`, which includes this check |
+| Back | `craft.01` | your repo and its CI gate run `ol check --all --ci`, which includes this check |
 | Back | `lang.01` | `uv run` and pytest |
 | Forward | `L0.3` | rung R2: your tests of the losses, graded by mutation at 0.60 |
-| Forward | `L0.4` | rung R3: red-then-green journal (`ss tdd`), 0.70, one required fault |
+| Forward | `L0.4` | rung R3: red-then-green journal (`ol tdd`), 0.70, one required fault |
 | Forward | `MS-L0` | your CLI evaluates `train/after-step` with this spec, so the milestone can kill and resume a run |
 
 Later rungs build on it: properties (R4, `craft.04`), mutation testing in depth (`craft.07`), oracles and gradchecks (R5, `craft.05`).

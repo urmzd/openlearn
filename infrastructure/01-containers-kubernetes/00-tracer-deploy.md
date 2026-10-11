@@ -1,4 +1,4 @@
-<!-- ss:module dep.00 -->
+<!-- ol:module dep.00 -->
 # Tracer deploy: engine and gateway images, kind cluster, two Helm charts, Jaeger all-in-one
 
 ## Overview
@@ -16,7 +16,7 @@
 
 ## Key Takeaways
 
-- Each image builds from the **repo root** as its context, so a `.dockerignore` keeps `target/`, `.ss/`, and `artifacts/` out, and the Dockerfile copies only the directories its stage needs.
+- Each image builds from the **repo root** as its context, so a `.dockerignore` keeps `target/`, `.ol/`, and `artifacts/` out, and the Dockerfile copies only the directories its stage needs.
 - The engine reads its model through a chain of three mounts: `./artifacts` on your machine, `/artifacts` on the kind node (`extraMounts`), `/artifacts` in the pod (a `hostPath` volume). Break any link and the engine crashloops, which is the drill of `ops.00`.
 - The gateway finds the engine by **Service DNS name** (`http://<system>-engine:8000`), is **ready** only when the engine is (`/readyz`), and is **live** whenever it is itself up (`/healthz`).
 - The API key lives in exactly one place: a Secret you create by hand, read through `secretKeyRef`. It is never in a chart, a values file, or an image.
@@ -27,8 +27,8 @@
 Every command runs from your repo root. `forge` stands for your `<system>` name.
 
 ```bash
-ss start dep.00                         # records the start; there are no stubs
-ss tests dep.00                         # read the test catalog first
+ol start dep.00                         # records the start; there are no stubs
+ol tests dep.00                         # read the test catalog first
 # write the files of section 4, then:
 {tinyllm} train bigram --data <any text file> --out artifacts/models/bigram
 docker build -f deploy/docker/engine.Dockerfile  -t forge-engine:0.1.0 .
@@ -42,15 +42,15 @@ helm upgrade --install forge-engine  deploy/helm/forge-engine  -n forge
 helm upgrade --install forge-gateway deploy/helm/forge-gateway -n forge
 curl -sN http://127.0.0.1:30080/v1/completions -H "Authorization: Bearer $TL_API_KEY" \
   -H 'Content-Type: application/json' -d '{"model":"tracer","prompt":"Once","max_tokens":32,"stream":true}'
-ss check dep.00                         # exit code is the verdict
-SS_SMOKE=1 ss check dep.00              # without a cluster: static and docker tiers only
+ol check dep.00                         # exit code is the verdict
+OL_SMOKE=1 ol check dep.00              # without a cluster: static and docker tiers only
 ```
 
 ---
 
 ## 1. Why now
 
-After `L10.0` and `gw.00` your engine and gateway stream tokens on your laptop, started by hand or by `ss milestone MS-P1 --smoke`. Nothing restarts them when they crash, nothing but your shell knows where the model file is, and the only way to reach them is a port your laptop happened to free. The rest of the course assumes a deployment: `obs.00` reads one trace out of Jaeger running next to them, `ops.00` breaks the engine on purpose and grades how you bring it back, and Pass 7 grows this same cluster into the serving platform. This module turns your two programs into two images, two Helm releases, and one kind cluster with Jaeger, with nothing in them that the course wrote.
+After `L10.0` and `gw.00` your engine and gateway stream tokens on your laptop, started by hand or by `ol milestone MS-P1 --smoke`. Nothing restarts them when they crash, nothing but your shell knows where the model file is, and the only way to reach them is a port your laptop happened to free. The rest of the course assumes a deployment: `obs.00` reads one trace out of Jaeger running next to them, `ops.00` breaks the engine on purpose and grades how you bring it back, and Pass 7 grows this same cluster into the serving platform. This module turns your two programs into two images, two Helm releases, and one kind cluster with Jaeger, with nothing in them that the course wrote.
 
 ## 2. Principles
 
@@ -58,7 +58,7 @@ After `L10.0` and `gw.00` your engine and gateway stream tokens on your laptop, 
 
 ### 2.1 Build contexts at the repo root
 
-The engine needs `rust/`; the gateway needs `go/` and `contracts/` (its `go.mod` replaces the contracts module with `../contracts/go`, a directory that arrives with the generated code of Pass 9; `COPY contracts/ contracts/` copies whatever is there today, and copying a path that does not exist fails the build). Both images therefore build with the **repo root** as their context: `docker build -f deploy/docker/engine.Dockerfile .`. The builder sends the whole context to the Docker daemon before the first instruction runs. Your `rust/target/` alone can be several gigabytes, so a **`.dockerignore`** at the root (same syntax as `.gitignore`) must exclude build outputs (`**/target`), local state (`.ss`, `.venv`), data (`artifacts`), and anything secret.
+The engine needs `rust/`; the gateway needs `go/` and `contracts/` (its `go.mod` replaces the contracts module with `../contracts/go`, a directory that arrives with the generated code of Pass 9; `COPY contracts/ contracts/` copies whatever is there today, and copying a path that does not exist fails the build). Both images therefore build with the **repo root** as their context: `docker build -f deploy/docker/engine.Dockerfile .`. The builder sends the whole context to the Docker daemon before the first instruction runs. Your `rust/target/` alone can be several gigabytes, so a **`.dockerignore`** at the root (same syntax as `.gitignore`) must exclude build outputs (`**/target`), local state (`.ol`, `.venv`), data (`artifacts`), and anything secret.
 
 **The engine image.** Stage 1 starts from `rust:<version>-slim-bookworm` and runs `cargo build --release -p tl-serve`. Stage 2 uses `debian:bookworm-slim`. Copy order follows change frequency: `contracts/`, then `rust/` and `cargo build`.
 
@@ -79,7 +79,7 @@ Both final stages: a numeric non-root `USER`, `EXPOSE` of the ports in 2.2, and 
 | `jaeger-query` | Service, NodePort | 16686, nodePort **30686** | same file |
 | `<system>-api-key` | Secret | key `api-key` | you, by hand, once |
 
-Ports inside the cluster are fixed (DESIGN 2.13); only `ss milestone` on your laptop allocates free ones. The release name is the object name (`{{ .Release.Name }}`), so `helm install forge-engine` makes `deploy/forge-engine`, which is what `ops.00` patches and what `[deploy].services.engine` names.
+Ports inside the cluster are fixed (DESIGN 2.13); only `ol milestone` on your laptop allocates free ones. The release name is the object name (`{{ .Release.Name }}`), so `helm install forge-engine` makes `deploy/forge-engine`, which is what `ops.00` patches and what `[deploy].services.engine` names.
 
 **Service DNS.** Every Service gets a DNS name, `<service>.<namespace>.svc.cluster.local`, and inside the same namespace the short name `<service>` resolves too. The gateway's `--upstream` is therefore `http://<system>-engine:8000`: no IP address ever appears in a chart, and a restarted engine Pod with a new IP is reached at the same name.
 
@@ -123,7 +123,7 @@ traces       = "http://127.0.0.1:30686"     # the Jaeger query NodePort
 services     = { engine = "deploy/forge-engine", gateway = "deploy/forge-gateway" }
 ```
 
-`ss drill` refuses to touch any context but `kube_context` and any namespace but `namespace`; it patches the workloads `services` names.
+`ol drill` refuses to touch any context but `kube_context` and any namespace but `namespace`; it patches the workloads `services` names.
 
 ## 3. Worked example by hand
 
@@ -168,7 +168,7 @@ The checked layout, in your repo (`<system>` is `[system].name`):
 
 | Path | Requirement |
 |---|---|
-| `.dockerignore` | excludes `target` (any depth), `.ss`, and `artifacts` |
+| `.dockerignore` | excludes `target` (any depth), `.ol`, and `artifacts` |
 | `deploy/docker/engine.Dockerfile` | context: repo root; two or more stages, every `FROM` pinned; final stage `USER` numeric non-root, `EXPOSE 8000` and `9464`, exec-form `ENTRYPOINT` of your `tl-serve`; the image takes the tracer flags of `spec/cli-roles.md` as arguments |
 | `deploy/docker/gateway.Dockerfile` | the same rules; `EXPOSE 8080` and `9464`; your `go/cmd/gateway` |
 | `deploy/kind/cluster.yaml` | `name: <system>`; mappings 30080 to 30080 and 30686 to 30686; an `extraMounts` entry with `containerPath: /artifacts` |
@@ -180,12 +180,12 @@ The checked layout, in your repo (`<system>` is `[system].name`):
 
 ### What the tests check
 
-`ss check dep.00` runs `course/tests/dep.00/check` in your repo, in three tiers. The docker tier trains a throwaway model with your `[entry].tinyllm` into `.ss/check/dep.00/`, copies it into the engine container at `/artifacts/models/bigram` (copied, not bind-mounted, because Docker Desktop shares only some host directories), and runs both images on a private Docker network, the engine under the alias `engine`.
+`ol check dep.00` runs `course/tests/dep.00/check` in your repo, in three tiers. The docker tier trains a throwaway model with your `[entry].tinyllm` into `.ol/check/dep.00/`, copies it into the engine container at `/artifacts/models/bigram` (copied, not bind-mounted, because Docker Desktop shares only some host directories), and runs both images on a private Docker network, the engine under the alias `engine`.
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `test_layout_present` | unit | the files of the table above | `ops.00` and MS-P1 find them by these names |
-| `test_dockerignore_keeps_build_outputs_out` | unit | `target`, `.ss`, `artifacts` excluded | small contexts, no laptop state in images |
+| `test_dockerignore_keeps_build_outputs_out` | unit | `target`, `.ol`, `artifacts` excluded | small contexts, no laptop state in images |
 | `test_dockerfiles_follow_the_image_rules` | unit | stages, pins, user, ports, exec form | the `lang.07` rules on real programs |
 | `test_kind_cluster_maps_gateway_jaeger_and_artifacts` | unit | name, the two mappings, the `/artifacts` mount | MS-P1 reaches 30080 and 30686 from your machine |
 | `test_charts_lint` | conformance | `helm lint` on both charts | template errors before install |
@@ -193,7 +193,7 @@ The checked layout, in your repo (`<system>` is `[system].name`):
 | `test_gateway_chart_renders` | unit | args, probes, OTel env, NodePort 30080 | the gateway reaches the engine and is reachable |
 | `test_api_key_only_from_a_secret` | unit | `secretKeyRef`, no literal key in the charts | `craft.19` audits this; `dep.03` enforces it |
 | `test_jaeger_manifest` | unit | pinned image, 4318, NodePort 30686 | `obs.00` exports there and reads from there |
-| `test_system_toml_deploy_section` | unit | the `[deploy]` keys | MS-P1 kind steps, `obs.00`, `ss drill` |
+| `test_system_toml_deploy_section` | unit | the `[deploy]` keys | MS-P1 kind steps, `obs.00`, `ol drill` |
 | `test_images_build` | unit | both images build from the repo root | CI builds them the same way (`dep.05`) |
 | `test_images_run_as_numeric_non_root` | boundary | the images' `User` | the kubelet's `runAsNonRoot` check |
 | `test_containers_stream_a_completion` | conformance | 24 chunks then `[DONE]` through the gateway container | the images work before any cluster |
@@ -203,7 +203,7 @@ The checked layout, in your repo (`<system>` is `[system].name`):
 | `test_stream_through_the_gateway_nodeport` | conformance | 32 or more chunks at `gateway_url` with your key | MS-P1's kind step |
 | `test_jaeger_query_reachable` | conformance | `GET <traces>/api/services` is JSON | MS-P1's trace step |
 
-The last three are the **cluster tier**: without your `kube_context` they fail and say so, and `SS_SMOKE=1 ss check dep.00` skips them with the reason. The cluster tier reads your key from the variable `[endpoints].api_key_env` names (default `TL_API_KEY`).
+The last three are the **cluster tier**: without your `kube_context` they fail and say so, and `OL_SMOKE=1 ol check dep.00` skips them with the reason. The cluster tier reads your key from the variable `[endpoints].api_key_env` names (default `TL_API_KEY`).
 
 ## 5. Pitfalls
 

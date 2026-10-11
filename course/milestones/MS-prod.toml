@@ -35,11 +35,11 @@
 #
 # SLO bounds are the course defaults of DESIGN 2.11 (TTFT p95 0.5 s, TPOT p95
 # 60 ms at 4 rps, 5xx ratio under 0.5%); scaling them by the in-cluster
-# calibration (ss bench --calibrate --in-cluster) is a harness change that
+# calibration (ol bench --calibrate --in-cluster) is a harness change that
 # has not landed (DEVIATIONS B96-05): until it does, a slower machine than the
 # reference Mac can miss these bounds with a correct system.
 #
-# `ss milestone MS-prod --smoke` (PR CI, through MS-P7 --smoke) runs the four
+# `ol milestone MS-prod --smoke` (PR CI, through MS-P7 --smoke) runs the four
 # local steps: your SLO and rule files, and a short load through your gateway
 # started as local processes. The full run (nightly kind job, or your own
 # cluster) adds every `ci = "kind"` step; without a reachable cluster they are
@@ -191,7 +191,7 @@ parents    = [["gateway.proxy", "gateway.route"], ["tl.engine.v1.EngineControl/P
 lookback_s = 900
 
 # -- the error budget after drill ops.01 ------------------------------------------
-# `requires` holds ops.01's verdict (ss drill end: detected, resolved, a
+# `requires` holds ops.01's verdict (ol drill end: detected, resolved, a
 # postmortem). This step checks that the day that includes the drill and this
 # run spent less than the availability budget allows.
 [[step]]

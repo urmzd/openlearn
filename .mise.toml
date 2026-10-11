@@ -7,7 +7,7 @@
 # Committed on purpose, so that if you do pick up the optional Java track you
 # get the version its exercises were written against instead of whatever
 # happens to be on PATH. Nothing here is required to work through the core
-# exercises, and `ss` no-ops when mise is absent.
+# exercises, and `ol` no-ops when mise is absent.
 #
 #   mise install     # fetch the versions below
 #   mise current     # show what is active here

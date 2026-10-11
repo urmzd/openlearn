@@ -37,7 +37,7 @@ KERNELS = ["nearest", "bilinear", "bicubic", "lanczos3"]
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def test_hand_example_bilinear_antialias():

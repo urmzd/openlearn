@@ -1,6 +1,6 @@
 # S-M06b problems: trees, birthday bounds, MinHash and LSH, Bloom filters, recurrences
 
-Answer every question in `solve/S-M06b.toml` (written by `ss start S-M06b`).
+Answer every question in `solve/S-M06b.toml` (written by `ol start S-M06b`).
 The tag after each question is its answer type: `[number]` is a value (exact
 where the question says so; otherwise an expression such as `10*log(2)` or a
 decimal to the stated precision is fine), `[expr]` a formula in the named

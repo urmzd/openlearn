@@ -1,4 +1,4 @@
-<!-- ss:module L4.2 -->
+<!-- ol:module L4.2 -->
 # Bahdanau additive attention
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L4.2              # stubs additive.py; prints your test path and rung (R5)
-ss tests L4.2              # the course tests
+ol start L4.2              # stubs additive.py; prints your test path and rung (R5)
+ol tests L4.2              # the course tests
 # write your oracle tests in python/tests/l4-2-additive/, then:
-ss check L4.2              # course tests and the mutation grade of your tests
-ss diff  L4.2              # after passing: your code against the reference
+ol check L4.2              # course tests and the mutation grade of your tests
+ol diff  L4.2              # after passing: your code against the reference
 ```
 
 ---
@@ -114,7 +114,7 @@ class AdditiveAttention(Module):
 
 ### Your graded tests (rung R5)
 
-The oracle for your tests is the formula itself, written out in numpy with the module's own weights read from `state_dict()`: compute $e$, mask, softmax, and the context in float64, and compare with `forward`. Add the section 3 numbers, a finite-difference check of the gradients of the query and the keys (your own, in float64), the masking properties, and the parameter names. Import only `tinyllm.seq2seq.additive`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional` (as `import tinyllm.autograd.functional as F`). `ss check L4.2` requires 0.80 with every pitfall fault killed.
+The oracle for your tests is the formula itself, written out in numpy with the module's own weights read from `state_dict()`: compute $e$, mask, softmax, and the context in float64, and compare with `forward`. Add the section 3 numbers, a finite-difference check of the gradients of the query and the keys (your own, in float64), the masking properties, and the parameter names. Import only `tinyllm.seq2seq.additive`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional` (as `import tinyllm.autograd.functional as F`). `ol check L4.2` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

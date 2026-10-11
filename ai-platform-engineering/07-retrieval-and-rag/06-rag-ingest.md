@@ -1,4 +1,4 @@
-<!-- ss:module ag.06 -->
+<!-- ol:module ag.06 -->
 # RAG ingest: crawler with SSRF allowlist, chunker, embedder, store
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start ag.06
-ss tests ag.06
-ss check ag.06          # ag.01 smoke tests run first
-ss diff  ag.06
+ol start ag.06
+ol tests ag.06
+ol check ag.06          # ag.01 smoke tests run first
+ol diff  ag.06
 ```
 
 ---

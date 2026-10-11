@@ -6,7 +6,7 @@
 #   lint       formatters and linters, every language
 #   unit       every native test suite
 #   images     every deploy/docker/*.Dockerfile builds, as non-root
-#   kind-e2e   a kind cluster, `tilt ci`, and `ss milestone MS-prod --smoke`
+#   kind-e2e   a kind cluster, `tilt ci`, and `ol milestone MS-prod --smoke`
 #   perf-gate  on main only: load.02 compares this run's load report with the
 #              last green main run's and fails on a regression
 #
@@ -125,13 +125,13 @@ jobs:
           echo "TL_API_KEY=$key" >> "$GITHUB_ENV"
       - name: tilt ci
         run: tilt ci -f deploy/Tiltfile --context "kind-$SYSTEM" --timeout 15m -- --topology=disaggregated
-      - name: ss milestone MS-prod --smoke at the supersource commit contracts/VERSION names
+      - name: ol milestone MS-prod --smoke at the openlearn commit contracts/VERSION names
         run: |
           set -euo pipefail
           SHA="$(sed -n 's/^sha = "\(.*\)"$/\1/p' contracts/VERSION)"
-          git clone --quiet https://github.com/urmzd/supersource.git .ss/supersource
-          git -C .ss/supersource checkout --quiet --detach "$SHA"
-          SS_COURSE_HOME="$PWD" .ss/supersource/practice/bin/ss milestone MS-prod --smoke
+          git clone --quiet https://github.com/urmzd/openlearn.git .ol/openlearn
+          git -C .ol/openlearn checkout --quiet --detach "$SHA"
+          OL_COURSE_HOME="$PWD" .ol/openlearn/practice/bin/ol milestone MS-prod --smoke
       # SOLUTION-END
 
   perf-gate:

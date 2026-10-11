@@ -49,7 +49,7 @@ from tinyllm.train.recompute import checkpoint, checkpoint_sequential
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 class Stream:

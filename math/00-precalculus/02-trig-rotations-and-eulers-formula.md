@@ -1,4 +1,4 @@
-<!-- ss:module M00.2 -->
+<!-- ol:module M00.2 -->
 # Trig, unit circle, 2D rotations, complex numbers, Euler's formula
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M00.2              # stubs python/tinyllm/num/rotation.py into your repo
-ss tests M00.2              # read the test catalog first: rung R0, you write no tests here
-ss check M00.2              # exit code is the verdict
-ss diff  M00.2              # after passing: your code against the reference
+ol start M00.2              # stubs python/tinyllm/num/rotation.py into your repo
+ol tests M00.2              # read the test catalog first: rung R0, you write no tests here
+ol check M00.2              # exit code is the verdict
+ol diff  M00.2              # after passing: your code against the reference
 ```
 
 ---
@@ -187,7 +187,7 @@ def as_real(z: ArrayLike) -> NDArray: ...                   # complex [..., k] -
 | Forward | `M07.0` | Box-Muller: $\sqrt{-2\ln(1 - u_1)}\,\cos(2\pi u_2)$ turns two uniforms into a normal |
 | Forward | `M00.3` | builds the frequency ladder $\omega_i$ that RoPE feeds into the angles |
 
-None of the forward modules is authored yet, so `ss verify course M00.2` reports no call site (check 9) until `M07.0` or `L7.3` lands; see `course/DEVIATIONS.md` row M00-01.
+None of the forward modules is authored yet, so `ol verify course M00.2` reports no call site (check 9) until `M07.0` or `L7.3` lands; see `course/DEVIATIONS.md` row M00-01.
 
 ## Going further
 

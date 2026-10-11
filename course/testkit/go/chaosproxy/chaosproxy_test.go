@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/chaosproxy"
+	"openlearn.urmzd.com/tl/testkit/chaosproxy"
 )
 
 func upstream(t *testing.T) *httptest.Server {

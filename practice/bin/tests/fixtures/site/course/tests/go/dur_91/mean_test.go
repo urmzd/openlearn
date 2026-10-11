@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	sst "supersource.urmzd.com/tl/contracts/testing"
+	sst "openlearn.urmzd.com/tl/contracts/testing"
 	"tinyllm/ds/demo"
 )
 

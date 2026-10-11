@@ -27,8 +27,8 @@ import (
 	"tinyllm/durable/queue"
 	"tinyllm/durable/server"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
-	"supersource.urmzd.com/tl/testkit/clock"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	"openlearn.urmzd.com/tl/testkit/clock"
 )
 
 var bg = context.Background()

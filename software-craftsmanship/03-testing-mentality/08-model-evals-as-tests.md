@@ -1,4 +1,4 @@
-<!-- ss:module craft.22 -->
+<!-- ol:module craft.22 -->
 # Model evals as tests (R8)
 
 ## Overview
@@ -7,7 +7,7 @@
 |---|---|
 | **Module** | `craft.22` · practice · Python · Pass 9 · 3 to 4 h |
 | **You build** | `primers/craft.22/evals.py` (a kata: held-out bits per byte, a seeded sample-quality score, the paired sign-flip test, and the regression rule), `primers/craft.22/test_model_evals.py` (your eval suite), and `primers/craft.22/baseline.json` (the good model, measured) |
-| **Contract** | the rules in the kata's docstring (`ss start craft.22` writes the stub; `ss check craft.22` writes the course's model `tinymodel.py` beside it) |
+| **Contract** | the rules in the kata's docstring (`ol start craft.22` writes the stub; `ol check craft.22` writes the course's model `tinymodel.py` beside it) |
 | **Tests** | `course/tests/craft.22/`: the grade of your suite by two harmless variants and seven model mutants (section 4), on the model in `course/fixtures/craft.22/` (`course/oracle/craft.22/train_tinylm.py`) |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how tests are graded · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · `M07.5` permutation tests · `M11.2` bits per byte · `L6.7` the eval harness and zoo · `L7.3` RoPE |
 | **Used by** | no call site (a practice): rung R8 grades the model evals of `C1` (and of `L12` and `C2`), whose release gates are these numbers |
@@ -24,16 +24,16 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.22           # writes primers/craft.22/evals.py (stubs)
-ss check craft.22           # first run: also writes tinymodel.py, then fails
+ol start craft.22           # writes primers/craft.22/evals.py (stubs)
+ol check craft.22           # first run: also writes tinymodel.py, then fails
 # write evals.py, record the baseline, write test_model_evals.py, run it yourself:
-export TINYLLM_FIXTURES=$PWD/.ss/supersource/course/fixtures
+export TINYLLM_FIXTURES=$PWD/.ol/openlearn/course/fixtures
 uv run --no-project --with numpy python primers/craft.22/evals.py --record
 (cd primers/craft.22 && uv run --no-project --with pytest --with numpy python -m pytest -q test_model_evals.py)
-ss check craft.22           # grades your suite: harmless variants and model mutants
+ol check craft.22           # grades your suite: harmless variants and model mutants
 ```
 
-(`ss check` sets `TINYLLM_FIXTURES` itself; point it at the `fixtures/` directory of your supersource checkout when you run by hand.) A survivor prints only its one-line description, never the planted code.
+(`ol check` sets `TINYLLM_FIXTURES` itself; point it at the `fixtures/` directory of your openlearn checkout when you run by hand.) A survivor prints only its one-line description, never the planted code.
 
 ---
 
@@ -105,7 +105,7 @@ def regressed(base, cand, margin, alpha=0.05, higher_is_better=False) -> bool
 
 **Your suite**, `primers/craft.22/test_model_evals.py`: at least two tests, importing only `evals`, `tinymodel`, numpy, pytest, and the stdlib, reading the fixtures through `TINYLLM_FIXTURES`, and failing when held-out bpb or sample quality regressed against `baseline.json` (margins 0.02 each work well).
 
-**The check** (`ss check craft.22`, `course/tests/craft.22/check`) runs eight tests:
+**The check** (`ol check craft.22`, `course/tests/craft.22/check`) runs eight tests:
 
 | Test | KIND | Checks |
 |---|---|---|

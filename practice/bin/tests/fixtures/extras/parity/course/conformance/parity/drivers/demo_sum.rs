@@ -1,5 +1,5 @@
 // Parity driver: kahan_sum (ds.90).
-include!("../parity/ss_parity.rs");
+include!("../parity/ol_parity.rs");
 
 fn main() {
     for line in ssp_lines() {

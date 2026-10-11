@@ -11,7 +11,7 @@
 # PR CI runs on L7.9's committed tiny-llama-2l, in its 1024-position copy
 # tiny-llama-2l-1k (the same weights: a tool request's schema prompt is about
 # 470 byte tokens, past the original 256); the nightly step serves
-# SmolLM2-135M-Instruct (`ss fetch smollm2-135m-instruct`) and lets it choose
+# SmolLM2-135M-Instruct (`ol fetch smollm2-135m-instruct`) and lets it choose
 # to call a tool.
 #
 # Your system.toml must declare (spec/cli-roles.md, DESIGN 2.16):
@@ -52,7 +52,7 @@
 # stream equals your Python on the tiny model (L10.1's runner tests and
 # conformance chat.nonstream.greedy).
 #
-# `ss milestone MS-L10 --smoke` runs the conformance step only.
+# `ol milestone MS-L10 --smoke` runs the conformance step only.
 id       = "MS-L10"
 title    = "Your inference engine: conformant, concurrent, observable, speculative, tool-calling"
 requires = ["L10.1", "L10.2", "L10.3", "L10.4", "L10.5", "L10.6", "L10.7", "L10.8", "L10.9",

@@ -1,4 +1,4 @@
-<!-- ss:module L3.5 -->
+<!-- ol:module L3.5 -->
 # ELMo: biLM, ScalarMix, linear probes
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start L3.5              # stubs elmo.py
-ss tests L3.5              # the course tests
-ss check L3.5              # exit code is the verdict
-ss diff  L3.5              # after passing: your code against the reference
+ol start L3.5              # stubs elmo.py
+ol tests L3.5              # the course tests
+ol check L3.5              # exit code is the verdict
+ol diff  L3.5              # after passing: your code against the reference
 ```
 
 ---

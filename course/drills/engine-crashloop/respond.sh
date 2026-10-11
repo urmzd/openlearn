@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Scripted responder for drill ops.00 engine-crashloop (DESIGN 5.10, "Drills in
 # CI"): the reference fix, run by the nightly kind job against the reference
-# system after `ss drill start engine-crashloop`, before `ss drill end`.
+# system after `ol drill start engine-crashloop`, before `ol drill end`.
 #
-#   respond.sh [LEARNER_DIR]     (default: $SS_COURSE_HOME, else the current dir)
+#   respond.sh [LEARNER_DIR]     (default: $OL_COURSE_HOME, else the current dir)
 #
 # It reads [system].name and [deploy] from LEARNER_DIR/system.toml, refuses
 # any context that is not kind- or k3d- (the drill safety gate's rule), rolls
@@ -13,7 +13,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 course="$(cd "$here/../.." && pwd)"
-learner="$(cd "${1:-${SS_COURSE_HOME:-$PWD}}" && pwd)"
+learner="$(cd "${1:-${OL_COURSE_HOME:-$PWD}}" && pwd)"
 
 read -r name ctx ns target < <(python3 - "$learner/system.toml" <<'PY'
 import sys, tomllib

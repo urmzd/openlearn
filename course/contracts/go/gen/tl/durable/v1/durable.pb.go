@@ -5208,7 +5208,7 @@ const file_tl_durable_v1_durable_proto_rawDesc = "" +
 	"\x10PollActivityTask\x12\x1a.tl.durable.v1.PollRequest\x1a\x1b.tl.durable.v1.ActivityTask\x12T\n" +
 	"\x0fRecordHeartbeat\x12\x1f.tl.durable.v1.HeartbeatRequest\x1a .tl.durable.v1.HeartbeatResponse\x12T\n" +
 	"\x14CompleteActivityTask\x12&.tl.durable.v1.CompleteActivityRequest\x1a\x14.tl.durable.v1.Empty\x12L\n" +
-	"\x10FailActivityTask\x12\".tl.durable.v1.FailActivityRequest\x1a\x14.tl.durable.v1.EmptyB@Z>supersource.urmzd.com/tl/contracts/gen/tl/durable/v1;durablev1b\x06proto3"
+	"\x10FailActivityTask\x12\".tl.durable.v1.FailActivityRequest\x1a\x14.tl.durable.v1.EmptyB>Z<openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1;durablev1b\x06proto3"
 
 var (
 	file_tl_durable_v1_durable_proto_rawDescOnce sync.Once

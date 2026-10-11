@@ -45,7 +45,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	controlv1 "supersource.urmzd.com/tl/contracts/gen/tl/control/v1"
+	controlv1 "openlearn.urmzd.com/tl/contracts/gen/tl/control/v1"
 	"tinyllm/config"
 	"tinyllm/gateway"
 	"tinyllm/gateway/auth"

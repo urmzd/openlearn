@@ -1,4 +1,4 @@
-<!-- ss:module L6.5 -->
+<!-- ol:module L6.5 -->
 # Fine-tuning heads and the linear-head export
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L6.5              # stubs heads.py; prints your test path and rung (R5)
-ss tests L6.5              # the course tests
+ol start L6.5              # stubs heads.py; prints your test path and rung (R5)
+ol tests L6.5              # the course tests
 # write your oracle tests in python/tests/l6-5-heads/, then:
-ss check L6.5              # course tests, the learning test, and the mutation grade of your tests
-ss mutate L6.5             # the full grade, cached by your test files' hash
-ss diff  L6.5              # after passing: your code against the reference
+ol check L6.5              # course tests, the learning test, and the mutation grade of your tests
+ol mutate L6.5             # the full grade, cached by your test files' hash
+ol diff  L6.5              # after passing: your code against the reference
 ```
 
 ---
@@ -146,7 +146,7 @@ The learning test's data, `course/fixtures/small-corpora/sst2-2k.tsv`, is a synt
 
 ### Your graded tests (rung R5)
 
-Your oracles: numpy pools and cross-entropy written out on a constant backbone (a Module that returns fixed hidden states), a padded and unpadded run of the same encoder, M07.7's own `logistic_regression_fit` and `logistic_predict_proba` on the unit rows, and the reward loss from `math.log1p`. Cover the three pools, the encoder mask, the token loss over real positions, the reward sign, the head on unit vectors, and which parameters `lora_classifier` leaves trainable. Import only the contract. `ss check L6.5` requires a mutation score of at least 0.80 with every required pitfall fault killed.
+Your oracles: numpy pools and cross-entropy written out on a constant backbone (a Module that returns fixed hidden states), a padded and unpadded run of the same encoder, M07.7's own `logistic_regression_fit` and `logistic_predict_proba` on the unit rows, and the reward loss from `math.log1p`. Cover the three pools, the encoder mask, the token loss over real positions, the reward sign, the head on unit vectors, and which parameters `lora_classifier` leaves trainable. Import only the contract. `ol check L6.5` requires a mutation score of at least 0.80 with every required pitfall fault killed.
 
 ## 5. Pitfalls
 
@@ -180,7 +180,7 @@ Your oracles: numpy pools and cross-entropy written out on a constant backbone (
 | Forward | `ethics.05` | fits and exports the usage-policy head over the engine's embeddings (Pass 10) |
 | Forward | `gw.08` | evaluates the exported head in Go: unit vector, dot products, softmax, threshold |
 
-If you skip this module, `ss check L6.7` stops with `needs L6.5`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L6.7` stops with `needs L6.5`: build it, or pass `--ref-deps`.
 
 ## Going further
 

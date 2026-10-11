@@ -1,6 +1,6 @@
 # review.01 problems: design review of the tracer and the serving platform
 
-Answer every question in `solve/review.01.toml` (written by `ss start review.01`).
+Answer every question in `solve/review.01.toml` (written by `ol start review.01`).
 The tag after each question is its answer type: `[number]` is a value, exact
 where the question says so (`23040`, `1/50`), and `[proof]` a document in
 `solve/review.01/` graded against its rubric. q1 to q6 are the numbers a

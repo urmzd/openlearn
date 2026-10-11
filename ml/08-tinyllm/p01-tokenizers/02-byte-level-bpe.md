@@ -1,4 +1,4 @@
-<!-- ss:module L1.2 -->
+<!-- ol:module L1.2 -->
 # Byte-level BPE (GPT-2 compatible): pre-tokenizer, trainer, HF loader
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L1.2              # stubs pretok.py and bpe.py into your repo
-ss tests L1.2              # read the test catalog first
-ss check L1.2              # exit code is the verdict; then grades your tests by mutation
-ss check L1.2 --ref-deps   # only if your L1.1, M05.2, or M06.2 is not passing yet
-ss diff  L1.2              # after passing: your code against the reference
+ol start L1.2              # stubs pretok.py and bpe.py into your repo
+ol tests L1.2              # read the test catalog first
+ol check L1.2              # exit code is the verdict; then grades your tests by mutation
+ol check L1.2 --ref-deps   # only if your L1.1, M05.2, or M06.2 is not passing yet
+ol diff  L1.2              # after passing: your code against the reference
 ```
 
 Write `pretok.py` first and get `test_hand_example_pretokenize` and `test_pretokenize_white_space_rules` green: every id test downstream depends on it. Then training on the hand example, then `encode` with merges by rank, then the two loaders.
@@ -227,7 +227,7 @@ def test_round_trip_any_text():
 | Forward | `L1.6` | measures GPT-2 and SmolLM2, loaded by `from_hf_json`, against Hugging Face's numbers |
 | Forward | `data.07` | tokenizes corpus files through the Rust tokenizer process and shared file fixtures |
 
-Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2` detokenizes streams, and `C1` trains its 4096-token vocabulary with your trainer. If you skip this module, `ss check L1.6` stops with `needs L1.2`: build it, or rerun with `--ref-deps`.
+Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2` detokenizes streams, and `C1` trains its 4096-token vocabulary with your trainer. If you skip this module, `ol check L1.6` stops with `needs L1.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

@@ -31,7 +31,7 @@ HAND_OUT = [-1.4, 4.8, 0.0, 1.0]
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def rand(rng: PCG32, shape, lo=-2.0, hi=2.0) -> np.ndarray:

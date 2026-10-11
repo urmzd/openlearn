@@ -1,4 +1,4 @@
-<!-- ss:module L1.5 -->
+<!-- ol:module L1.5 -->
 # Rust fast BPE (tl-tok), byte tokenizer, streaming decoder
 
 ## Overview
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start L1.5               # stubs the tl-tok crate and writes its manifest if absent
-ss tests L1.5               # read the test catalog first
-ss check L1.5               # Rust and Python fixture tests; then grades your Rust tests
-ss check L1.5 --ref-deps    # only if your L1.2, ds.05, or ds.06 is not passing yet
-ss parity tokenizer.bpe     # your Rust against your Python and the oracle, with --fuzz for live text
-ss milestone MS-L1          # your entry points: tok train, tok encode, tl-tok encode
+ol start L1.5               # stubs the tl-tok crate and writes its manifest if absent
+ol tests L1.5               # read the test catalog first
+ol check L1.5               # Rust and Python fixture tests; then grades your Rust tests
+ol check L1.5 --ref-deps    # only if your L1.2, ds.05, or ds.06 is not passing yet
+ol parity tokenizer.bpe     # your Rust against your Python and the oracle, with --fuzz for live text
+ol milestone MS-L1          # your entry points: tok train, tok encode, tl-tok encode
 ```
 
-`ss start` writes `rust/crates/tl-tok/Cargo.toml` (`tl-ds`, `serde_json`; `proptest` for your tests) only if absent. Python/Rust parity crosses the boundary through tokenizer files and frozen JSON vectors; there is no extension build step.
+`ol start` writes `rust/crates/tl-tok/Cargo.toml` (`tl-ds`, `serde_json`; `proptest` for your tests) only if absent. Python/Rust parity crosses the boundary through tokenizer files and frozen JSON vectors; there is no extension build step.
 
 
 
@@ -202,7 +202,7 @@ The binary is yours (D16): `tl-tok encode --tokenizer <file> --in <texts>` and `
 | `gpt2_classic_files_load_identically` | differential | `vocab.json` + `merges.txt` written from `tokenizer.json` encode 1,000 strings identically | GPT-2's other distribution |
 | `vocab_and_merge_tables` | unit | GPT-2's first merge `(Ġ, t)` is rank 0, id 256; sizes 50,257 and 50,000 | the Robin Hood tables hold what the file says |
 
-**Your tests (rung R4).** Write `rust/crates/tl-tok/tests/l1_5_props.rs` with proptest (`craft.04` teaches it), reading the two tokenizer files from `$TINYLLM_FIXTURES` (`ss check` sets it). Properties: `decode(encode(s)) == s` for any `String`, both files; the heap equals a naive rescan you write in the test; pre-token pieces concatenate to the input; streamed chunks equal `decode`; `encode_batch` equals serial `encode` for any thread count; the byte tokenizer round-trips any bytes. Add a few pinned examples (known GPT-2 and SmolLM2 ids, `IT'S`, a normalizer that must be refused, `SpecialSet::none`). Use `Config { rng_seed: RngSeed::Fixed(..), failure_persistence: None, .. }`. At least 80% of the planted bugs, and every planted bug, must make one fail.
+**Your tests (rung R4).** Write `rust/crates/tl-tok/tests/l1_5_props.rs` with proptest (`craft.04` teaches it), reading the two tokenizer files from `$TINYLLM_FIXTURES` (`ol check` sets it). Properties: `decode(encode(s)) == s` for any `String`, both files; the heap equals a naive rescan you write in the test; pre-token pieces concatenate to the input; streamed chunks equal `decode`; `encode_batch` equals serial `encode` for any thread count; the byte tokenizer round-trips any bytes. Add a few pinned examples (known GPT-2 and SmolLM2 ids, `IT'S`, a normalizer that must be refused, `SpecialSet::none`). Use `Config { rng_seed: RngSeed::Fixed(..), failure_persistence: None, .. }`. At least 80% of the planted bugs, and every planted bug, must make one fail.
 
 ## 5. Pitfalls
 

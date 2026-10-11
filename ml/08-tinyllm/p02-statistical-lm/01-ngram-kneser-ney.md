@@ -1,4 +1,4 @@
-<!-- ss:module L2.1 -->
+<!-- ol:module L2.1 -->
 # n-gram language model with interpolated modified Kneser-Ney
 
 ## Overview
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start L2.1              # stubs ngram.py; prints your test path and rung (R3)
-ss tests L2.1              # the course tests
+ol start L2.1              # stubs ngram.py; prints your test path and rung (R3)
+ol tests L2.1              # the course tests
 # write ONE test in python/tests/l2-1-ngram/ (start with section 4's), then:
-ss tdd red L2.1            # must FAIL against your current code: records the red
+ol tdd red L2.1            # must FAIL against your current code: records the red
 # make it pass, then:
-ss tdd green L2.1          # must PASS with the same test files: records the green
+ol tdd green L2.1          # must PASS with the same test files: records the green
 # repeat for each test; then:
-ss check L2.1              # course tests, the red-then-green journal, the mutation grade
-ss mutate L2.1             # the full grade, cached by your test files' hash
+ol check L2.1              # course tests, the red-then-green journal, the mutation grade
+ol mutate L2.1             # the full grade, cached by your test files' hash
 ```
 
 ---
@@ -189,7 +189,7 @@ def test_hand_example_bigram():
     np.testing.assert_allclose([lm.prob([1], w) for w in range(3)], [1 / 3, 1 / 18, 11 / 18], atol=1e-15)
 ```
 
-Then, one at a time, red then green: the start-of-sequence probabilities; modified discounts of a unigram model from counts of counts you choose (counts 1, 1, 1, 1, 2, 2, 2, 3, 3, 4 give $Y = 0.4$ and $D = (0.4, 1.2, 2.2)$); the fallback; probabilities summing to 1 for several orders and contexts; a start context differing from the same tokens mid-sequence; an unseen history; `logprobs` against `prob`; `nll` of a two-token sequence; a save and load roundtrip; a second `fit` replacing the first. Import only contract names (`tinyllm.lm.ngram`). `ss check L2.1` requires, for every test file, a `ss tdd red` record before its last `ss tdd green`, a mutation score of at least 0.70, and the required fault killed: it is pitfall 1.
+Then, one at a time, red then green: the start-of-sequence probabilities; modified discounts of a unigram model from counts of counts you choose (counts 1, 1, 1, 1, 2, 2, 2, 3, 3, 4 give $Y = 0.4$ and $D = (0.4, 1.2, 2.2)$); the fallback; probabilities summing to 1 for several orders and contexts; a start context differing from the same tokens mid-sequence; an unseen history; `logprobs` against `prob`; `nll` of a two-token sequence; a save and load roundtrip; a second `fit` replacing the first. Import only contract names (`tinyllm.lm.ngram`). `ol check L2.1` requires, for every test file, a `ol tdd red` record before its last `ol tdd green`, a mutation score of at least 0.70, and the required fault killed: it is pitfall 1.
 
 ## 5. Pitfalls
 

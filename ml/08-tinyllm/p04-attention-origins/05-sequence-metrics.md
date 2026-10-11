@@ -1,4 +1,4 @@
-<!-- ss:module L4.5 -->
+<!-- ol:module L4.5 -->
 # Sequence metrics: exact match, BLEU, chrF
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L4.5              # stubs seqmetrics.py; prints your test path and rung (R5)
-ss tests L4.5              # the course tests
+ol start L4.5              # stubs seqmetrics.py; prints your test path and rung (R5)
+ol tests L4.5              # the course tests
 # compute the section 3 numbers by hand, write them as tests in python/tests/l4-5-seqmetrics/, then:
-ss check L4.5              # course tests and the mutation grade of your tests
-ss mutate L4.5             # the full grade, cached by your test files' hash
+ol check L4.5              # course tests and the mutation grade of your tests
+ol mutate L4.5             # the full grade, cached by your test files' hash
 ```
 
 ---
@@ -182,7 +182,7 @@ At rung R5 you write oracle tests: numbers you computed by hand from the definit
 | Forward | `ag.10` | re-implements exact match in Go for the agent eval scorers |
 | Forward | `craft.07` | your L4.5 suite meets its survivors: equivalent mutants and the ones it missed |
 
-If you skip this module, the `translate` verb of `MS-L4` has nothing to report, and `ss check L6.7` needs `--ref-deps`.
+If you skip this module, the `translate` verb of `MS-L4` has nothing to report, and `ol check L6.7` needs `--ref-deps`.
 
 ## Going further
 

@@ -97,7 +97,7 @@ Restore service first, then fix the cause.
 
 - `kubectl get pods -n <system>`: every pod `Running` and `READY 1/1`.
 - `curl -s -o /dev/null -w '%{http_code}' <gateway health>/readyz` prints `200`.
-- `ss drill end` reports the resolve check green.
+- `ol drill end` reports the resolve check green.
 
 ## Escalation
 
@@ -105,4 +105,4 @@ If the previous log shows a different error (a malformed `config.json`, a
 safetensors header the engine rejects, an ABI version mismatch), the model
 artifact itself is bad. Roll back as above, then rebuild the model directory
 with `{tinyllm} train bigram` and redeploy. If rollback does not help, the
-image is at fault: redeploy the last image tag that passed `ss milestone MS-P1`.
+image is at fault: redeploy the last image tag that passed `ol milestone MS-P1`.

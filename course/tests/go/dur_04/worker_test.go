@@ -22,8 +22,8 @@ import (
 
 	"tinyllm/durable/worker"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
-	"supersource.urmzd.com/tl/testkit/clock"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	"openlearn.urmzd.com/tl/testkit/clock"
 )
 
 // scripted is a WorkflowHandler: input "N" schedules activities "0".."N-1"

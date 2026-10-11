@@ -1,4 +1,4 @@
-<!-- ss:module S-M10a -->
+<!-- ol:module S-M10a -->
 # Optimization problem set, part a: convexity, GD rates, momentum, Adam
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M10a/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M10a/problems.md` and in section 4 |
 | **Needs** | `S-M05` (proof habits). Reading: the [Optimization topic](README.md), and gradients and Hessians from `S-M04` |
 | **Used by** | no call site (a solve set). It checks the analysis behind `M10.1` (gradient descent, Armijo, the condition number), `M10.2` (SGD with momentum), and `M10.3` (Adam and AdamW with bias correction); part b, `S-M10b`, is optional with `L12` |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Boyd and Vandenberghe, *Convex Optimization* (free), ch. 3 and 9; Goh, "Why Momentum Really Works" (Distill, 2017); Kingma and Ba, "Adam" (2015), sections 2 and 3; Loshchilov and Hutter, "Decoupled Weight Decay Regularization" (2019) |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M10a             # writes solve/S-M10a.toml and one file per proof
-ss check S-M10a             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M10a --regrade   # ask the rubrics again after you change a proof
+ol start S-M10a             # writes solve/S-M10a.toml and one file per proof
+ol check S-M10a             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M10a --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -98,7 +98,7 @@ proof = "S-M10a/q17.md"
 
 Rates and steps are exact fractions; write $\beta$ as `beta`, $\beta_1$ as `beta1`, $\eta$ as `eta`, and intervals as `(a, b)`, `[a, b)`, or `[a, oo)`.
 
-<!-- ss:problems S-M10a -->
+<!-- ol:problems S-M10a -->
 
 ### Convexity and the condition number
 
@@ -153,7 +153,7 @@ Adam keeps $m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t$ and $v_t = \beta_2 v_{t-1
 
 **q17.** Prove that if every $g_i$ has the same expectation $E[g]$, then $E[m_t] = (1 - \beta_1^t)\, E[g]$, so $\hat m_t$ is an unbiased estimate of $E[g]$. `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

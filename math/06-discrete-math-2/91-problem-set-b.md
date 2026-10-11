@@ -1,4 +1,4 @@
-<!-- ss:module S-M06b -->
+<!-- ol:module S-M06b -->
 # Solve set: trees, birthday bounds, Jaccard/MinHash/LSH S-curve, Bloom FP rate, recurrences
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M06b/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M06b/problems.md` and in section 4 |
 | **Needs** | reading: `S-M06a` (graphs, hashing, expected collisions), `M06.2` (tries), and the [Discrete Math 2 topic](README.md) |
 | **Used by** | no call site (a solve set). Read before `ds.08` (sizing a Bloom filter: q19 to q22), `data.04` (MinHash and LSH bands: q13 to q18), and `L9.1` (the cost of tiled matmul: q28) |
-| **Milestone** | `MS-P3` (the Pass 3 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P3` (the Pass 3 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Leskovec, Rajaraman, and Ullman, *Mining of Massive Datasets*, ch. 3 (MinHash, LSH); Broder and Mitzenmacher, "Network Applications of Bloom Filters: A Survey" (2004); Graham, Knuth, and Patashnik, *Concrete Mathematics*, ch. 7 (generating functions) |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M06b             # writes solve/S-M06b.toml and one file per proof
-ss check S-M06b             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M06b --regrade   # ask the rubrics again after you change a proof
+ol start S-M06b             # writes solve/S-M06b.toml and one file per proof
+ol check S-M06b             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M06b --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -111,7 +111,7 @@ answer = "k*(k-1)/(2*m)"
 answer = "3"
 ```
 
-<!-- ss:problems S-M06b -->
+<!-- ol:problems S-M06b -->
 
 ### Trees
 
@@ -183,7 +183,7 @@ A Bloom filter has $m$ bits, holds $n$ keys, and sets $k$ bits per key with inde
 
 **q29.** Prove by induction that $T(n) = 2\,T(n/2) + n$ with $T(1) = 0$ gives $T(n) = n \log_2 n$ for every $n$ that is a power of 2. `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

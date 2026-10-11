@@ -7,7 +7,7 @@
  * one control byte, a home group that overflows); the assertions are plain
  * map semantics, so they hold for any hash.
  *
- * Allocation is observed through the hook: ss_alloc_fail_after(0) makes
+ * Allocation is observed through the hook: ol_alloc_fail_after(0) makes
  * every allocation fail, so "this put succeeds" proves it did not grow the
  * table, and a sizing hook records the largest block ever requested.
  */
@@ -16,8 +16,8 @@
 #include <string.h>
 
 #include "tinyllm.h"
-#include "ss_prop.h"
-#include "ss_test.h"
+#include "ol_prop.h"
+#include "ol_test.h"
 #include "_baseline_lp.h"
 
 static uint64_t mix64(uint64_t x) { return lp_mix64(x); }
@@ -33,8 +33,8 @@ static int h2_is(uint64_t k, uint64_t want) { return h2_of(k) == want; }
 static int home2_is(uint64_t k, uint64_t want) { return home_of(k, 2) == want; }
 
 static void restore_harness_hook(void) {
-#if SS__COUNTING
-    tl_allocator a = {ss__alloc, ss__free, NULL};
+#if OL__COUNTING
+    tl_allocator a = {ol__alloc, ol__free, NULL};
     tl_set_allocator(&a);
 #else
     tl_set_allocator(NULL);
@@ -44,8 +44,8 @@ static void restore_harness_hook(void) {
 static size_t biggest_request;
 static void *sizing_alloc(void *user, size_t n, size_t align) {
     if (n > biggest_request) biggest_request = n;
-#if SS__COUNTING
-    return ss__alloc(user, n, align);
+#if OL__COUNTING
+    return ol__alloc(user, n, align);
 #else
     (void)user;
     size_t size = (n + align - 1) / align * align;
@@ -53,15 +53,15 @@ static void *sizing_alloc(void *user, size_t n, size_t align) {
 #endif
 }
 static void sizing_free(void *user, void *p) {
-#if SS__COUNTING
-    ss__free(user, p);
+#if OL__COUNTING
+    ol__free(user, p);
 #else
     (void)user;
     free(p);
 #endif
 }
 
-SS_TEST(hand_example_fourteen_fit_the_fifteenth_grows) {
+OL_TEST(hand_example_fourteen_fit_the_fifteenth_grows) {
     /* WHY: the chapter's worked load example. One group is 16 slots and the
      *      maximum load is 7/8, so create(14) gives 16 slots and 14 keys go
      *      in with every allocation failing; the 15th key needs a bigger
@@ -70,27 +70,27 @@ SS_TEST(hand_example_fourteen_fit_the_fifteenth_grows) {
      * CATCHES: s04, s05, m01
      * CHAPTER: ds.02 section 3 */
     tl_map *m = NULL;
-    SS_EQ(tl_map_create(14, &m), TL_OK);
-    ss_alloc_fail_after(0);
-    for (uint64_t k = 1; k <= 14; k++) SS_EQ(tl_map_put(m, k, 100 + k), TL_OK);
-    SS_EQ(tl_map_put(m, 15, 115), TL_ENOMEM);
-    ss_alloc_fail_after(-1);
-    SS_EQ(tl_map_len(m), 14);
+    OL_EQ(tl_map_create(14, &m), TL_OK);
+    ol_alloc_fail_after(0);
+    for (uint64_t k = 1; k <= 14; k++) OL_EQ(tl_map_put(m, k, 100 + k), TL_OK);
+    OL_EQ(tl_map_put(m, 15, 115), TL_ENOMEM);
+    ol_alloc_fail_after(-1);
+    OL_EQ(tl_map_len(m), 14);
     uint64_t v = 0;
-    SS_EQ(tl_map_get(m, 15, &v), 0);
-    SS_EQ(tl_map_put(m, 15, 115), TL_OK);
-    SS_EQ(tl_map_len(m), 15);
+    OL_EQ(tl_map_get(m, 15, &v), 0);
+    OL_EQ(tl_map_put(m, 15, 115), TL_OK);
+    OL_EQ(tl_map_len(m), 15);
     tl_map_destroy(m);
 
-    SS_EQ(tl_map_create(15, &m), TL_OK);
-    ss_alloc_fail_after(0);
-    for (uint64_t k = 1; k <= 28; k++) SS_EQ(tl_map_put(m, k, k), TL_OK);
-    SS_EQ(tl_map_put(m, 29, 29), TL_ENOMEM);
-    ss_alloc_fail_after(-1);
+    OL_EQ(tl_map_create(15, &m), TL_OK);
+    ol_alloc_fail_after(0);
+    for (uint64_t k = 1; k <= 28; k++) OL_EQ(tl_map_put(m, k, k), TL_OK);
+    OL_EQ(tl_map_put(m, 29, 29), TL_ENOMEM);
+    ol_alloc_fail_after(-1);
     tl_map_destroy(m);
 }
 
-SS_TEST(put_get_overwrite_delete) {
+OL_TEST(put_get_overwrite_delete) {
     /* WHY: the map semantics before any probing detail: put inserts or
      *      overwrites (len counts keys, not puts), get reports presence and
      *      may skip the value, del reports whether the key was there.
@@ -98,25 +98,25 @@ SS_TEST(put_get_overwrite_delete) {
      * CATCHES: s09, m02, m03
      * CHAPTER: ds.02 section 4 */
     tl_map *m = NULL;
-    SS_EQ(tl_map_create(0, &m), TL_OK);
-    SS_EQ(tl_map_len(m), 0);
+    OL_EQ(tl_map_create(0, &m), TL_OK);
+    OL_EQ(tl_map_len(m), 0);
     uint64_t v = 7;
-    SS_EQ(tl_map_get(m, 42, &v), 0);
-    SS_EQ(v, 7); /* untouched on a miss */
-    SS_EQ(tl_map_put(m, 42, 1), TL_OK);
-    SS_EQ(tl_map_put(m, 42, 2), TL_OK);
-    SS_EQ(tl_map_len(m), 1);
-    SS_EQ(tl_map_get(m, 42, &v), 1);
-    SS_EQ(v, 2);
-    SS_EQ(tl_map_get(m, 42, NULL), 1);
-    SS_EQ(tl_map_del(m, 42), 1);
-    SS_EQ(tl_map_del(m, 42), 0);
-    SS_EQ(tl_map_len(m), 0);
-    SS_EQ(tl_map_get(m, 42, &v), 0);
+    OL_EQ(tl_map_get(m, 42, &v), 0);
+    OL_EQ(v, 7); /* untouched on a miss */
+    OL_EQ(tl_map_put(m, 42, 1), TL_OK);
+    OL_EQ(tl_map_put(m, 42, 2), TL_OK);
+    OL_EQ(tl_map_len(m), 1);
+    OL_EQ(tl_map_get(m, 42, &v), 1);
+    OL_EQ(v, 2);
+    OL_EQ(tl_map_get(m, 42, NULL), 1);
+    OL_EQ(tl_map_del(m, 42), 1);
+    OL_EQ(tl_map_del(m, 42), 0);
+    OL_EQ(tl_map_len(m), 0);
+    OL_EQ(tl_map_get(m, 42, &v), 0);
     tl_map_destroy(m);
 }
 
-SS_TEST(every_u64_is_a_key) {
+OL_TEST(every_u64_is_a_key) {
     /* WHY: rt.04 keys the index by block hash, any u64 but 0; KV transfer
      *      dedup and other callers may use 0 and UINT64_MAX. A table that
      *      reserves a key value as "empty" (as practice c/02's NULL string
@@ -124,19 +124,19 @@ SS_TEST(every_u64_is_a_key) {
      * KIND: boundary, regression
      * CHAPTER: ds.02 section 2 */
     tl_map *m = NULL;
-    SS_EQ(tl_map_create(4, &m), TL_OK);
+    OL_EQ(tl_map_create(4, &m), TL_OK);
     const uint64_t ks[4] = {0, UINT64_MAX, 0x80, 0xFE};
-    for (int i = 0; i < 4; i++) SS_EQ(tl_map_put(m, ks[i], (uint64_t)i + 1), TL_OK);
+    for (int i = 0; i < 4; i++) OL_EQ(tl_map_put(m, ks[i], (uint64_t)i + 1), TL_OK);
     for (int i = 0; i < 4; i++) {
         uint64_t v = 0;
-        SS_EQ(tl_map_get(m, ks[i], &v), 1);
-        SS_EQ(v, (uint64_t)i + 1);
+        OL_EQ(tl_map_get(m, ks[i], &v), 1);
+        OL_EQ(v, (uint64_t)i + 1);
     }
-    SS_EQ(tl_map_len(m), 4);
+    OL_EQ(tl_map_len(m), 4);
     tl_map_destroy(m);
 }
 
-SS_TEST(keys_sharing_a_control_byte_are_told_apart) {
+OL_TEST(keys_sharing_a_control_byte_are_told_apart) {
     /* WHY: the SWAR match only says "this control byte equals H2". With 14
      *      keys that all have the same H2 in one 16-slot group, every match
      *      word reports 14 candidates; only comparing the stored key finds
@@ -145,20 +145,20 @@ SS_TEST(keys_sharing_a_control_byte_are_told_apart) {
      * CATCHES: s02, s10
      * CHAPTER: ds.02 section 2 */
     tl_map *m = NULL;
-    SS_EQ(tl_map_create(14, &m), TL_OK);
+    OL_EQ(tl_map_create(14, &m), TL_OK);
     uint64_t from = 1000, keys[15];
     for (int i = 0; i < 15; i++) keys[i] = next_key(&from, h2_is, 0x2A);
-    for (int i = 0; i < 14; i++) SS_EQ(tl_map_put(m, keys[i], keys[i] * 3), TL_OK);
+    for (int i = 0; i < 14; i++) OL_EQ(tl_map_put(m, keys[i], keys[i] * 3), TL_OK);
     for (int i = 0; i < 14; i++) {
         uint64_t v = 0;
-        SS_EQ(tl_map_get(m, keys[i], &v), 1);
-        SS_EQ(v, keys[i] * 3);
+        OL_EQ(tl_map_get(m, keys[i], &v), 1);
+        OL_EQ(v, keys[i] * 3);
     }
-    SS_EQ(tl_map_get(m, keys[14], NULL), 0);
-    SS_EQ(tl_map_del(m, keys[14]), 0);
-    SS_EQ(tl_map_del(m, keys[5]), 1);
-    SS_EQ(tl_map_get(m, keys[5], NULL), 0);
-    SS_EQ(tl_map_get(m, keys[6], NULL), 1);
+    OL_EQ(tl_map_get(m, keys[14], NULL), 0);
+    OL_EQ(tl_map_del(m, keys[14]), 0);
+    OL_EQ(tl_map_del(m, keys[5]), 1);
+    OL_EQ(tl_map_get(m, keys[5], NULL), 0);
+    OL_EQ(tl_map_get(m, keys[6], NULL), 1);
     tl_map_destroy(m);
 }
 
@@ -171,7 +171,7 @@ static void spill_keys(uint64_t *home0, uint64_t *home1) {
     for (int i = 0; i < 4; i++) home1[i] = next_key(&from, home2_is, 1);
 }
 
-SS_TEST(probe_continues_past_a_full_group) {
+OL_TEST(probe_continues_past_a_full_group) {
     /* WHY: a key whose home group is full lives further along its probe.
      *      Deleting from the full group must leave a tombstone: an EMPTY
      *      there would end the probe before the spilled keys, and a lookup
@@ -182,21 +182,21 @@ SS_TEST(probe_continues_past_a_full_group) {
     uint64_t a[20], b[4];
     spill_keys(a, b);
     tl_map *m = NULL;
-    SS_EQ(tl_map_create(28, &m), TL_OK);
-    for (int i = 0; i < 20; i++) SS_EQ(tl_map_put(m, a[i], (uint64_t)i), TL_OK);
-    for (int i = 0; i < 4; i++) SS_EQ(tl_map_put(m, b[i], 100 + (uint64_t)i), TL_OK);
-    for (int i = 0; i < 16; i += 3) SS_EQ(tl_map_del(m, a[i]), 1); /* the first 16 filled group 0 */
+    OL_EQ(tl_map_create(28, &m), TL_OK);
+    for (int i = 0; i < 20; i++) OL_EQ(tl_map_put(m, a[i], (uint64_t)i), TL_OK);
+    for (int i = 0; i < 4; i++) OL_EQ(tl_map_put(m, b[i], 100 + (uint64_t)i), TL_OK);
+    for (int i = 0; i < 16; i += 3) OL_EQ(tl_map_del(m, a[i]), 1); /* the first 16 filled group 0 */
     for (int i = 0; i < 20; i++) {
         uint64_t v = 0;
-        SS_EQ(tl_map_get(m, a[i], &v), i % 3 == 0 && i < 16 ? 0 : 1);
-        if (!(i % 3 == 0 && i < 16)) SS_EQ(v, (uint64_t)i);
+        OL_EQ(tl_map_get(m, a[i], &v), i % 3 == 0 && i < 16 ? 0 : 1);
+        if (!(i % 3 == 0 && i < 16)) OL_EQ(v, (uint64_t)i);
     }
-    for (int i = 0; i < 4; i++) SS_EQ(tl_map_get(m, b[i], NULL), 1);
-    SS_EQ(tl_map_len(m), 24 - 6);
+    for (int i = 0; i < 4; i++) OL_EQ(tl_map_get(m, b[i], NULL), 1);
+    OL_EQ(tl_map_len(m), 24 - 6);
     tl_map_destroy(m);
 }
 
-SS_TEST(reput_after_a_tombstone_overwrites) {
+OL_TEST(reput_after_a_tombstone_overwrites) {
     /* WHY: an insert may reuse the first tombstone on its probe only after
      *      checking the whole probe for the key. A spilled key put again
      *      after a delete in its full home group must overwrite its old
@@ -208,21 +208,21 @@ SS_TEST(reput_after_a_tombstone_overwrites) {
     uint64_t a[20], b[4];
     spill_keys(a, b);
     tl_map *m = NULL;
-    SS_EQ(tl_map_create(28, &m), TL_OK);
-    for (int i = 0; i < 20; i++) SS_EQ(tl_map_put(m, a[i], 1), TL_OK);
-    SS_EQ(tl_map_del(m, a[0]), 1);         /* tombstone in group 0 */
-    SS_EQ(tl_map_put(m, a[19], 2), TL_OK); /* a[19] lives in group 1 */
-    SS_EQ(tl_map_len(m), 19);
+    OL_EQ(tl_map_create(28, &m), TL_OK);
+    for (int i = 0; i < 20; i++) OL_EQ(tl_map_put(m, a[i], 1), TL_OK);
+    OL_EQ(tl_map_del(m, a[0]), 1);         /* tombstone in group 0 */
+    OL_EQ(tl_map_put(m, a[19], 2), TL_OK); /* a[19] lives in group 1 */
+    OL_EQ(tl_map_len(m), 19);
     uint64_t v = 0;
-    SS_EQ(tl_map_get(m, a[19], &v), 1);
-    SS_EQ(v, 2);
-    SS_EQ(tl_map_del(m, a[19]), 1);
-    SS_EQ(tl_map_get(m, a[19], NULL), 0);
-    SS_EQ(tl_map_len(m), 18);
+    OL_EQ(tl_map_get(m, a[19], &v), 1);
+    OL_EQ(v, 2);
+    OL_EQ(tl_map_del(m, a[19]), 1);
+    OL_EQ(tl_map_get(m, a[19], NULL), 0);
+    OL_EQ(tl_map_len(m), 18);
     tl_map_destroy(m);
 }
 
-SS_TEST(churn_in_a_group_with_room_never_allocates) {
+OL_TEST(churn_in_a_group_with_room_never_allocates) {
     /* WHY: rt.04 registers and evicts block hashes for the life of the
      *      engine. In a group that still has an EMPTY slot no probe ever
      *      passed, so a delete there can write EMPTY instead of a
@@ -232,22 +232,22 @@ SS_TEST(churn_in_a_group_with_room_never_allocates) {
      * CATCHES: m01
      * CHAPTER: ds.02 section 2 */
     tl_map *m = NULL;
-    SS_EQ(tl_map_create(14, &m), TL_OK);
-    for (uint64_t k = 0; k < 13; k++) SS_EQ(tl_map_put(m, k, k), TL_OK);
-    ss_alloc_fail_after(0);
+    OL_EQ(tl_map_create(14, &m), TL_OK);
+    for (uint64_t k = 0; k < 13; k++) OL_EQ(tl_map_put(m, k, k), TL_OK);
+    ol_alloc_fail_after(0);
     int ok = 1;
     for (uint64_t r = 0; r < 10000 && ok; r++) {
         ok &= tl_map_del(m, r) == 1;
         ok &= tl_map_put(m, r + 13, r + 13) == TL_OK;
     }
-    ss_alloc_fail_after(-1);
-    SS_TRUE(ok);
-    SS_EQ(tl_map_len(m), 13);
-    for (uint64_t k = 10000; k < 10013; k++) SS_EQ(tl_map_get(m, k, NULL), 1);
+    ol_alloc_fail_after(-1);
+    OL_TRUE(ok);
+    OL_EQ(tl_map_len(m), 13);
+    for (uint64_t k = 10000; k < 10013; k++) OL_EQ(tl_map_get(m, k, NULL), 1);
     tl_map_destroy(m);
 }
 
-SS_TEST(tombstone_churn_rehashes_without_growing) {
+OL_TEST(tombstone_churn_rehashes_without_growing) {
     /* WHY: deletes in full groups leave tombstones, and tombstones count
      *      toward the 7/8 load. When they fill the table it must be rebuilt
      *      at the SAME size (dropping them), not doubled: with 28 live keys
@@ -259,11 +259,11 @@ SS_TEST(tombstone_churn_rehashes_without_growing) {
      * CHAPTER: ds.02 section 2 */
     tl_allocator sizing = {sizing_alloc, sizing_free, NULL};
     biggest_request = 0;
-    SS_EQ(tl_set_allocator(&sizing), TL_OK);
+    OL_EQ(tl_set_allocator(&sizing), TL_OK);
     tl_map *m = NULL;
     int ok = tl_map_create(28, &m) == TL_OK;
     size_t first = biggest_request;
-    ss_gen g = {7};
+    ol_gen g = {7};
     uint64_t live[28];
     for (int i = 0; i < 28; i++) {
         live[i] = (uint64_t)i;
@@ -271,7 +271,7 @@ SS_TEST(tombstone_churn_rehashes_without_growing) {
     }
     uint64_t next = 1000;
     for (int r = 0; r < 20000 && ok; r++) {
-        int i = (int)ss_gen_int(&g, 0, 27);
+        int i = (int)ol_gen_int(&g, 0, 27);
         ok &= tl_map_del(m, live[i]) == 1;
         live[i] = next++;
         ok &= tl_map_put(m, live[i], 1) == TL_OK;
@@ -280,13 +280,13 @@ SS_TEST(tombstone_churn_rehashes_without_growing) {
     size_t len = tl_map_len(m), biggest = biggest_request;
     tl_map_destroy(m);
     restore_harness_hook();
-    SS_TRUE(ok);
-    SS_EQ(len, 28);
-    SS_TRUE(first > 0);
-    SS_EQ(biggest, first);
+    OL_TRUE(ok);
+    OL_EQ(len, 28);
+    OL_TRUE(first > 0);
+    OL_EQ(biggest, first);
 }
 
-SS_TEST(failed_growth_keeps_the_old_table) {
+OL_TEST(failed_growth_keeps_the_old_table) {
     /* WHY: the contract says a growth that fails leaves the old table valid
      *      and unchanged. Failing the rebuild's first allocation, then its
      *      second, and so on until one succeeds, must each time give
@@ -297,31 +297,31 @@ SS_TEST(failed_growth_keeps_the_old_table) {
      * CATCHES: s07
      * CHAPTER: ds.02 section 5, Pitfalls */
     tl_map *m = NULL;
-    SS_EQ(tl_map_create(14, &m), TL_OK);
-    for (uint64_t k = 0; k < 14; k++) SS_EQ(tl_map_put(m, k * 7919, k), TL_OK);
+    OL_EQ(tl_map_create(14, &m), TL_OK);
+    for (uint64_t k = 0; k < 14; k++) OL_EQ(tl_map_put(m, k * 7919, k), TL_OK);
     int failures = 0;
     for (long fail = 0; fail < 8; fail++) {
-        ss_alloc_fail_after(fail);
+        ol_alloc_fail_after(fail);
         tl_status st = tl_map_put(m, 999999, 1);
-        ss_alloc_fail_after(-1);
+        ol_alloc_fail_after(-1);
         if (st == TL_OK) break;
-        SS_EQ(st, TL_ENOMEM);
+        OL_EQ(st, TL_ENOMEM);
         failures++;
-        SS_EQ(tl_map_len(m), 14);
-        SS_EQ(tl_map_get(m, 999999, NULL), 0);
+        OL_EQ(tl_map_len(m), 14);
+        OL_EQ(tl_map_get(m, 999999, NULL), 0);
         for (uint64_t k = 0; k < 14; k++) {
             uint64_t v = 99;
-            SS_EQ(tl_map_get(m, k * 7919, &v), 1);
-            SS_EQ(v, k);
+            OL_EQ(tl_map_get(m, k * 7919, &v), 1);
+            OL_EQ(v, k);
         }
     }
-    SS_TRUE(failures >= 1);
-    SS_EQ(tl_map_len(m), 15);
-    SS_EQ(tl_map_get(m, 999999, NULL), 1);
+    OL_TRUE(failures >= 1);
+    OL_EQ(tl_map_len(m), 15);
+    OL_EQ(tl_map_get(m, 999999, NULL), 1);
     tl_map_destroy(m);
 }
 
-SS_TEST(create_and_null_arguments) {
+OL_TEST(create_and_null_arguments) {
     /* WHY: the ABI rules: a NULL out pointer is TL_EINVAL, a failing hook
      *      is TL_ENOMEM with nothing leaked, and the read-only calls treat a
      *      NULL map as empty (destroy(NULL) does nothing), so cleanup paths
@@ -329,28 +329,28 @@ SS_TEST(create_and_null_arguments) {
      * KIND: boundary, fault
      * CATCHES: s14
      * CHAPTER: ds.02 section 4 */
-    SS_EQ(tl_map_create(0, NULL), TL_EINVAL);
+    OL_EQ(tl_map_create(0, NULL), TL_EINVAL);
     tl_map *m = NULL;
     for (long fail = 0; fail < 4; fail++) {
-        ss_alloc_fail_after(fail);
+        ol_alloc_fail_after(fail);
         tl_status st = tl_map_create(100, &m);
-        ss_alloc_fail_after(-1);
+        ol_alloc_fail_after(-1);
         if (st == TL_OK) {
-            SS_EQ(tl_map_put(m, 1, 1), TL_OK);
+            OL_EQ(tl_map_put(m, 1, 1), TL_OK);
             tl_map_destroy(m);
         } else {
-            SS_EQ(st, TL_ENOMEM);
+            OL_EQ(st, TL_ENOMEM);
         }
     }
-    SS_EQ(tl_map_put(NULL, 1, 1), TL_EINVAL);
-    SS_EQ(tl_map_get(NULL, 1, NULL), 0);
-    SS_EQ(tl_map_del(NULL, 1), 0);
-    SS_EQ(tl_map_len(NULL), 0);
+    OL_EQ(tl_map_put(NULL, 1, 1), TL_EINVAL);
+    OL_EQ(tl_map_get(NULL, 1, NULL), 0);
+    OL_EQ(tl_map_del(NULL, 1), 0);
+    OL_EQ(tl_map_len(NULL), 0);
     tl_map_destroy(NULL);
 }
 
 /* 10^6 random operations against the baseline linear-probing map. */
-static int matches_baseline(ss_gen *g, int size) {
+static int matches_baseline(ol_gen *g, int size) {
     tl_map *m = NULL;
     if (tl_map_create(0, &m) != TL_OK) return 0;
     lp_map b;
@@ -359,10 +359,10 @@ static int matches_baseline(ss_gen *g, int size) {
     long ops = 200000L * (size > 0 ? size : 1);
     uint64_t span = 64 + (uint64_t)size * 4000; /* a small key range keeps hits frequent */
     for (long i = 0; i < ops && ok; i++) {
-        uint64_t k = (uint64_t)ss_gen_int(g, 0, (int64_t)span) * 0x9E3779B97F4A7C15ull;
-        int op = (int)ss_gen_int(g, 0, 9);
+        uint64_t k = (uint64_t)ol_gen_int(g, 0, (int64_t)span) * 0x9E3779B97F4A7C15ull;
+        int op = (int)ol_gen_int(g, 0, 9);
         if (op < 4) {
-            uint64_t v = ss_gen_u64(g);
+            uint64_t v = ol_gen_u64(g);
             ok &= tl_map_put(m, k, v) == TL_OK;
             ok &= lp_put(&b, k, v) == 0;
         } else if (op < 7) {
@@ -379,7 +379,7 @@ static int matches_baseline(ss_gen *g, int size) {
     return ok;
 }
 
-SS_TEST(differential_against_linear_probing) {
+OL_TEST(differential_against_linear_probing) {
     /* WHY: the Swiss table must be a map: 10^6 seeded puts, gets, and
      *      deletes (five sizes of key range, so the table grows, churns
      *      tombstones, and rehashes) agree with the practice c/02
@@ -387,7 +387,7 @@ SS_TEST(differential_against_linear_probing) {
      * KIND: differential
      * CATCHES: s01, s03, s06, s08, s10
      * CHAPTER: ds.02 section 4 */
-    SS_CHECK_PROP(matches_baseline, 5, 1);
+    OL_CHECK_PROP(matches_baseline, 5, 1);
 }
 
-int main(void) { return SS_RUN_ALL(); }
+int main(void) { return OL_RUN_ALL(); }

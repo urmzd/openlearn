@@ -157,7 +157,7 @@ func equalRows(a, b []ledger.UsageRow) bool {
 }
 
 // contractSchema finds contracts/formats/usage.v1.sql above the test's
-// directory (course/contracts in supersource, contracts/ in an export).
+// directory (course/contracts in openlearn, contracts/ in an export).
 func contractSchema(t *testing.T) string {
 	t.Helper()
 	dir, _ := os.Getwd()

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-REPO = Path(os.environ["SS_LEARNER"])
+REPO = Path(os.environ["OL_LEARNER"])
 WORKFLOW = REPO / ".github" / "workflows" / "ci.yml"
 GATES = ("commit-lint", "native-tests", "course-check")
 
@@ -100,22 +100,22 @@ def test_native_tests_job_runs_commands(wf):
     assert runs(wf, "native-tests").strip(), "native-tests has no `run:` step"
 
 
-def test_course_check_job_pins_supersource_to_contracts_version(wf):
-    # WHY: your repo does not contain supersource, so CI clones it, and it
+def test_course_check_job_pins_openlearn_to_contracts_version(wf):
+    # WHY: your repo does not contain openlearn, so CI clones it, and it
     #      must check out the commit your contracts/VERSION names: the course
     #      tests that grade you are the ones your contracts came with. The
-    #      gate is `ss check --all --ci` (no --ref-deps, no prompts), aimed
-    #      at your repo through SS_COURSE_HOME.
+    #      gate is `ol check --all --ci` (no --ref-deps, no prompts), aimed
+    #      at your repo through OL_COURSE_HOME.
     # KIND: conformance
     # CHAPTER: craft.01 section 5, pitfall 5
     text = runs(wf, "course-check")
-    for needle in ("contracts/VERSION", "ss check --all --ci", "SS_COURSE_HOME"):
+    for needle in ("contracts/VERSION", "ol check --all --ci", "OL_COURSE_HOME"):
         assert needle in text, (
-            f"course-check must mention `{needle}` (ss course ci prints the recipe)"
+            f"course-check must mention `{needle}` (ol course ci prints the recipe)"
         )
     assert re.search(r"\bcheckout\b[^\n]*\$\{?SHA\b", text), (
         "course-check must `git checkout` the sha read from contracts/VERSION "
-        '(for example `git -C .ss/supersource checkout --detach "$SHA"`)'
+        '(for example `git -C .ol/openlearn checkout --detach "$SHA"`)'
     )
     assert "--ref-deps" not in text, (
         "CI never grades with reference code (--ci forbids --ref-deps)"

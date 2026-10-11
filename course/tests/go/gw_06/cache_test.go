@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/clock"
+	"openlearn.urmzd.com/tl/testkit/clock"
 	"tinyllm/gateway/auth"
 	"tinyllm/gateway/cache"
 	"tinyllm/gateway/server"

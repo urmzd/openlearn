@@ -1,4 +1,4 @@
-<!-- ss:module L8.6 -->
+<!-- ol:module L8.6 -->
 # Speculative decoding: n-gram, prompt-lookup, and model drafts
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L8.6              # stubs spec.py into your repo, contract alongside
-ss tests L8.6              # read the test catalog first
-ss check L8.6              # exit code is the verdict
-ss check L8.6 --ref-deps   # only if you skipped M07.6, L8.2, L2.1, or L8.1
-ss diff  L8.6              # after passing: your code against the reference
+ol start L8.6              # stubs spec.py into your repo, contract alongside
+ol tests L8.6              # read the test catalog first
+ol check L8.6              # exit code is the verdict
+ol check L8.6 --ref-deps   # only if you skipped M07.6, L8.2, L2.1, or L8.1
+ol diff  L8.6              # after passing: your code against the reference
 ```
 
 You also write graded tests (rung R5) in `python/tests/l8-6-spec/`: they run against the reference with one planted bug at a time, and the share they catch is your grade.
@@ -167,7 +167,7 @@ def speculative_generate(target, draft, tok, prompt, p, k=4, kv_dtype=np.float32
 | Back | `M11.1` | total variation and why $\alpha = 1 - \mathrm{TV}(p, q)$ (reading) |
 | Forward | `L10.8` | the Rust engine's prompt-lookup and n-gram speculation, held to `verify_draft` on shared logits and to greedy equality |
 
-If you skip this module, `ss check L10.8` stops with `BLOCKED ... needs L8.6`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L10.8` stops with `BLOCKED ... needs L8.6`: build it, or pass `--ref-deps`.
 
 ## Going further
 

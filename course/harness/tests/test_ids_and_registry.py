@@ -3,15 +3,15 @@ from pathlib import Path
 
 import pytest
 
-from sscourse import HarnessError, ids, registry, tomlw
+from olcourse import HarnessError, ids, registry, tomlw
 
 ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_course_id_regex_matches_bash():
-    ss = (ROOT / "practice" / "bin" / "ss").read_text()
+    ss = (ROOT / "practice" / "bin" / "ol").read_text()
     m = re.search(r"^COURSE_ID_RE='([^']+)'", ss, re.M)
-    assert m, "COURSE_ID_RE missing from practice/bin/ss"
+    assert m, "COURSE_ID_RE missing from practice/bin/ol"
     assert m.group(1) == ids.COURSE_ID_RE
 
 
@@ -188,6 +188,6 @@ def test_toml_writer_roundtrip():
     doc = {
         "package": {"name": "x", "publish": False},
         "dependencies": {"a": {"path": "../a"}, "b": "1.0"},
-        "workspace": {"members": ["a", "ss-tests"], "resolver": "2"},
+        "workspace": {"members": ["a", "ol-tests"], "resolver": "2"},
     }
     assert tomllib.loads(tomlw.dumps(doc)) == doc

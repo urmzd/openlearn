@@ -1,4 +1,4 @@
-<!-- ss:module review.01 -->
+<!-- ol:module review.01 -->
 # Design review: tracer and serving platform
 
 ## Overview
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start review.01               # writes solve/review.01.toml and the two documents to fill
-ss check review.01               # SymPy checks q1 to q6, then asks each rubric line of q7 and q8 (y/n)
-ss check review.01 --regrade     # ask the rubrics again after you change a document
+ol start review.01               # writes solve/review.01.toml and the two documents to fill
+ol check review.01               # SymPy checks q1 to q6, then asks each rubric line of q7 and q8 (y/n)
+ol check review.01 --regrade     # ask the rubrics again after you change a document
 ```
 
 Write q7 first, put it away for a day (or hand it to a peer), then write q8 as its reviewer and apply what q8 asks for. The self-grade is honest only if you answer no where q8 found a gap and fix it before you answer yes.
@@ -115,7 +115,7 @@ proof = "review.01/q7.md"
 proof = "review.01/q8.md"
 ```
 
-Exact questions take integers or fractions (`1/50`); `0.02` fails a question marked exact. q3 accepts a decimal. q7 is graded against the eight lines of the design-review rubric. q8 is graded against these five lines, which `ss check` asks one by one:
+Exact questions take integers or fractions (`1/50`); `0.02` fails a question marked exact. q3 accepts a decimal. q7 is graded against the eight lines of the design-review rubric. q8 is graded against these five lines, which `ol check` asks one by one:
 
 - Every design-review rubric line is answered, and each no is a written comment naming the section it concerns.
 - At least one comment recomputes a number of the design (a capacity, latency, or budget figure) and says whether it holds.
@@ -123,7 +123,7 @@ Exact questions take integers or fractions (`1/50`); `0.02` fails a question mar
 - At least one comment challenges a failure mode: a way the system fails that the design does not list, or a detection that would not fire.
 - The record ends with a decision (approve, approve with changes, or rework) and what closes each open comment.
 
-<!-- ss:problems review.01 -->
+<!-- ol:problems review.01 -->
 
 ### Capacity and budgets
 
@@ -149,7 +149,7 @@ one value vector per layer, key/value head, and token.
 
 **q8.** Review q7 as a reviewer who did not write it (a peer, or you a day later): answer each line of the design-review rubric, record every "no" and every number you recomputed as a comment, and end with a decision. Graded against its own rubric (chapter section 4). `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

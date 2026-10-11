@@ -1,5 +1,5 @@
 """My tests for L3.1 (rung R3: each test written first and seen failing with
-`ss tdd red`, then made to pass with `ss tdd green`). They import only the
+`ol tdd red`, then made to pass with `ol tdd green`). They import only the
 contract (tinyllm.rnn.manual)."""
 
 import numpy as np

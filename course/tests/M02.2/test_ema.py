@@ -20,7 +20,7 @@ from _lib.close import assert_close
 from _lib.pcg32 import PCG32
 from tinyllm.num.ema import EMA, ema_weights
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 EPS = np.finfo(np.float64).eps
 
 

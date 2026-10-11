@@ -1,4 +1,4 @@
-<!-- ss:module craft.13 -->
+<!-- ol:module craft.13 -->
 # Interface migration: KV format v1 to v2
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.13
-ss tests craft.13
-ss check craft.13
+ol start craft.13
+ol tests craft.13
+ol check craft.13
 ```
 
 ---
@@ -60,7 +60,7 @@ The course tests exercise these cases:
 | `v2_upgrader_refuses_a_v2_input_instead_of_double_converting` | boundary | Refuses a second conversion. | Prevents silent repeated quantization. |
 | `process_converter_reads_and_atomically_writes_file_payloads` | integration | Exercises the subprocess converter and atomic output path. | Keeps Python and Rust separated by the documented file boundary. |
 
-Run `ss tests craft.13` before changing the implementation, then `ss check craft.13` after the work.
+Run `ol tests craft.13` before changing the implementation, then `ol check craft.13` after the work.
 
 ## 5. Pitfalls
 

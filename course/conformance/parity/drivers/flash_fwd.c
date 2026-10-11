@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 #include "tinyllm.h"
-#include "ss_parity.h"
+#include "ol_parity.h"
 
 static void print_list(const char *key, const float *x, int64_t n, const char *end) {
     printf("\"%s\": [", key);

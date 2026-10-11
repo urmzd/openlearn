@@ -92,7 +92,7 @@
 #                       "deploy/<system>-worker" (dep.06); the durable NodePort
 #                       is 30733 (dep.02)
 #
-# `ss milestone MS-durable --smoke` runs the local steps with the
+# `ol milestone MS-durable --smoke` runs the local steps with the
 # services started by the runner. The full run (nightly kind job, or your own
 # cluster) adds the `ci = "kind"` steps; without a cluster they are skipped
 # and the verdict is `incomplete`.

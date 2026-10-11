@@ -41,4 +41,4 @@ jobs:
           uv run --project course/harness python course/oracle/parity/kv_wire_v1_golden.py --check
           uv run --project course/harness python course/oracle/solve/sync_chapters.py --check
       - name: Compare parity goldens within declared tolerances
-        run: practice/bin/ss parity --ref
+        run: practice/bin/ol parity --ref

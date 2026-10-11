@@ -1,4 +1,4 @@
-<!-- ss:module M00.1 -->
+<!-- ol:module M00.1 -->
 # Exponents, logs, change of base, units of information
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/tests/M00.1/test_units.py` (what they check: section 4) |
 | **Needs** | nothing to call. Reading: `lang.01` (numpy arrays), `L0.0` (the bigram's negative log-likelihood, used as the worked example) |
 | **Used by** | `M11.2` perplexity and the bits-per-byte accumulator calls `bits_per_byte` · `M12.6` decibels and Whisper's log-mel call `log_base(x, 10)` · later `L1.6` tokenizer metrics · `L6.7` the model-zoo table · `C1` the capstone report |
-| **Milestone** | `MS-P2` (the Pass 2 gate: every math module of the pass passes `ss check`) |
+| **Milestone** | `MS-P2` (the Pass 2 gate: every math module of the pass passes `ol check`) |
 | **Optional depth** | OpenStax, *Precalculus 2e* (free), ch. 6 (exponential and logarithmic functions); MacKay, *Information Theory, Inference, and Learning Algorithms* (free), ch. 2.4 (the information content of an outcome) |
 
 ## Key Takeaways
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M00.1              # stubs python/tinyllm/num/units.py into your repo
-ss tests M00.1              # read the test catalog first: rung R0, you write no tests here
-ss check M00.1              # exit code is the verdict
-ss diff  M00.1              # after passing: your code against the reference
+ol start M00.1              # stubs python/tinyllm/num/units.py into your repo
+ol tests M00.1              # read the test catalog first: rung R0, you write no tests here
+ol check M00.1              # exit code is the verdict
+ol diff  M00.1              # after passing: your code against the reference
 ```
 
 ---

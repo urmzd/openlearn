@@ -19,7 +19,7 @@ from _lib.close import assert_close
 from _lib.pcg32 import PCG32
 from tinyllm.num.diff import central_diff, forward_diff, richardson
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 
 
 def cube(x: float) -> float:

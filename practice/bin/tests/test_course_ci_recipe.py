@@ -1,7 +1,7 @@
 """The learner CI recipe (DESIGN 5.13, craft.01), executed literally: the
-learner repo clones supersource at the sha its contracts/VERSION names into
-.ss/supersource and runs `ss check --all --ci` from there, with none of the
-SS_* overrides a maintainer uses."""
+learner repo clones openlearn at the sha its contracts/VERSION names into
+.ol/openlearn and runs `ol check --all --ci` from there, with none of the
+OL_* overrides a maintainer uses."""
 
 import os
 import shutil
@@ -12,7 +12,7 @@ from conftest import REPO, SS
 
 def _site_with_harness(ss: SS) -> None:
     (ss.site / "practice" / "bin").mkdir(parents=True)
-    shutil.copy2(REPO / "practice" / "bin" / "ss", ss.site / "practice" / "bin" / "ss")
+    shutil.copy2(REPO / "practice" / "bin" / "ol", ss.site / "practice" / "bin" / "ol")
     h = ss.site / "course" / "harness"
     h.mkdir()
     for f in ("pyproject.toml", "uv.lock"):
@@ -30,7 +30,7 @@ def _ci(ss: SS, recipe: str) -> subprocess.CompletedProcess:
         "PATH": os.environ["PATH"],
         "HOME": os.environ["HOME"],
         "UV_OFFLINE": "1",
-        "SS_CACHE": str(ss.tmp / "ci-cache"),
+        "OL_CACHE": str(ss.tmp / "ci-cache"),
         "GOFLAGS": "-count=1",
     }
     # Offline uv must see the same cache and interpreters the job warmed;
@@ -57,7 +57,7 @@ def test_recipe_runs_check_all_ci_from_a_clone(ss):
     assert p.returncode == 0, p.stdout + p.stderr
     assert "nothing started yet: trivially green" in p.stdout
     head = subprocess.run(
-        ["git", "-C", str(ss.learner / ".ss/supersource"), "rev-parse", "HEAD"],
+        ["git", "-C", str(ss.learner / ".ol/openlearn"), "rev-parse", "HEAD"],
         capture_output=True,
         text=True,
     ).stdout.strip()

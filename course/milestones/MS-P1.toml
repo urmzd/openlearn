@@ -19,7 +19,7 @@
 #   [deploy]             kube_context, namespace, gateway_url (NodePort 30080),
 #                        traces (Jaeger query, NodePort 30686), services.engine
 #
-# `ss milestone MS-P1 --smoke` runs the smoke steps as local processes (PR CI).
+# `ol milestone MS-P1 --smoke` runs the smoke steps as local processes (PR CI).
 # Without --smoke the kind steps run too, against the cluster in [deploy].
 # Every later pass gate reruns the smoke steps (the spiral invariant).
 id       = "MS-P1"

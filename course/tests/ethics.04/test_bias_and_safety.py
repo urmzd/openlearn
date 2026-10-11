@@ -56,7 +56,7 @@ Z = 1.959963984540054  # the 0.975 quantile of the standard normal
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def lex():

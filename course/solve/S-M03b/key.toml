@@ -1,4 +1,4 @@
-# S-M03b answer key (hidden; honor system, DESIGN D34). `ss verify course S-M03b`
+# S-M03b answer key (hidden; honor system, DESIGN D34). `ol verify course S-M03b`
 # check 7 proves every `expect` passes and every `reject` canary fails;
 # course/oracle/solve/S-M03b.py recomputes every value independently (SymPy
 # products and eigenvalues, numpy SVD in float64, direct FLOP and byte sums).

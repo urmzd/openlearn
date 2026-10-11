@@ -1,4 +1,4 @@
-<!-- ss:module L12.2 -->
+<!-- ol:module L12.2 -->
 # Direct preference optimization and IPO
 
 ## Overview
@@ -23,9 +23,9 @@
 ## How to work this chapter
 
 ```bash
-ss start L12.2
-ss tests L12.2
-ss check L12.2
+ol start L12.2
+ol tests L12.2
+ol check L12.2
 ```
 
 ## 1. Why now

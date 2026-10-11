@@ -1,4 +1,4 @@
-<!-- ss:module M01.4 -->
+<!-- ol:module M01.4 -->
 # Definite integrals, trapezoid, Simpson
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M01.4              # stubs python/tinyllm/num/integrate.py into your repo
-ss tests M01.4              # read the test catalog first: rung R0, you write no tests here
-ss check M01.4              # exit code is the verdict
-ss diff  M01.4              # after passing: your code against the reference
+ol start M01.4              # stubs python/tinyllm/num/integrate.py into your repo
+ol tests M01.4              # read the test catalog first: rung R0, you write no tests here
+ol check M01.4              # exit code is the verdict
+ol diff  M01.4              # after passing: your code against the reference
 ```
 
 ---
@@ -167,7 +167,7 @@ def simpson(f: Callable[[NDArray], NDArray], a: float, b: float, n: int) -> floa
 | Forward | `ethics.04` | the safety report's ROC area and reliability curve |
 | Forward | `S-M07d` | q8 computes an AUC by hand, the same area as pairs ranked correctly |
 
-If you skip this module, `ss check M07.7` stops with `BLOCKED ... needs M01.4`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check M07.7` stops with `BLOCKED ... needs M01.4`: build it, or pass `--ref-deps`.
 
 ## Going further
 

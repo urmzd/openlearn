@@ -1,4 +1,4 @@
-<!-- ss:module dur.03 -->
+<!-- ol:module dur.03 -->
 # Task queue: visibility timeout, fenced leases, retries to DLQ, long poll
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.03
-ss tests dur.03
-ss check dur.03          # needs dur.01 (or --ref-deps)
-ss diff  dur.03
+ol start dur.03
+ol tests dur.03
+ol check dur.03          # needs dur.01 (or --ref-deps)
+ol diff  dur.03
 ```
 
 Build it in memory first (`Options.Log` nil) and pass the timeline of section 3, then persist each transition.
@@ -169,7 +169,7 @@ The testkit's `*clock.Fake` satisfies `Clock`. A lease is identified by `Queue`,
 | `TestConcurrentPollersOneLeaseEach` | property | 8 pollers, 200 tasks, 200 distinct leases and tokens | many workers |
 | `TestExactlyOnceEffectsUnderChaos` | fault, property | a seeded schedule of deaths and late answers; each task acked once, each effect key applied once | at-least-once plus idempotence |
 
-Your own tests (rung R4) go in `go/durable/queue/queue_learner_test.go` as `package queue_test`, on the testkit's fake clock (`supersource.urmzd.com/tl/testkit/clock`), written as properties: under any schedule of polls, failures, expiries, and late completions, a task is acknowledged at most once and only by its newest lease; tokens strictly increase, across a reopen too; nothing is delivered before it is visible; a task with $M$ failures ends in the DLQ with $M$ attempts. `ss check dur.03` grades them against the reference with one planted bug at a time: 80% must be caught, and every required one.
+Your own tests (rung R4) go in `go/durable/queue/queue_learner_test.go` as `package queue_test`, on the testkit's fake clock (`openlearn.urmzd.com/tl/testkit/clock`), written as properties: under any schedule of polls, failures, expiries, and late completions, a task is acknowledged at most once and only by its newest lease; tokens strictly increase, across a reopen too; nothing is delivered before it is visible; a task with $M$ failures ends in the DLQ with $M$ attempts. `ol check dur.03` grades them against the reference with one planted bug at a time: 80% must be caught, and every required one.
 
 ## 5. Pitfalls
 

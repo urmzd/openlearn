@@ -1,4 +1,4 @@
-<!-- ss:module L10.2 -->
+<!-- ol:module L10.2 -->
 # Continuous batching scheduler with priority and preemption
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.2               # stubs tl-engine/src/sched.rs
-ss tests L10.2               # rung R0: read the catalog; the fake model is at the top of the test file
-ss check L10.2
-ss check L10.2 --ref-deps    # if L10.1 or ds.06 is not passing yet
+ol start L10.2               # stubs tl-engine/src/sched.rs
+ol tests L10.2               # rung R0: read the catalog; the fake model is at the top of the test file
+ol check L10.2
+ol check L10.2 --ref-deps    # if L10.1 or ds.06 is not passing yet
 ```
 
 Add `tl-ds` (a path dependency) to your `tl-engine/Cargo.toml` if your `L8.4` did not already: the waiting queue is your `LazyHeap`.

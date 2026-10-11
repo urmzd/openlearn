@@ -1,4 +1,4 @@
-<!-- ss:module gw.02 -->
+<!-- ol:module gw.02 -->
 # AuthN (API keys) and AuthZ (scopes, model allowlist, tenants)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start gw.02          # writes go/gateway/auth/{auth,admin}.go with stub bodies
-ss tests gw.02          # read the test catalog first
-ss check gw.02          # exit code is the verdict
-ss check gw.02 --ref-deps   # only if your gw.01 is not passing yet
-ss diff  gw.02          # after passing: your code against the reference
+ol start gw.02          # writes go/gateway/auth/{auth,admin}.go with stub bodies
+ol tests gw.02          # read the test catalog first
+ol check gw.02          # exit code is the verdict
+ol check gw.02 --ref-deps   # only if your gw.01 is not passing yet
+ol diff  gw.02          # after passing: your code against the reference
 ```
 
 Then add a `keys` command to your umbrella CLI (`<system> keys create --tenant acme --scopes infer`) that opens the same keys file with `auth.NewStore` and prints the plaintext key once, and plug `auth.Middleware(store, logger)` into the `Keys` slot of your composition root.

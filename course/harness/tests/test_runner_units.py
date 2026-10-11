@@ -1,4 +1,4 @@
-"""Unit tests for the pieces behind ss milestone, conform, and drill that need
+"""Unit tests for the pieces behind ol milestone, conform, and drill that need
 no learner repo: the JSON Schema subset, placeholders, runtime.toml
 generation, SSE framing, matchers, milestone composition, drill grading."""
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from sscourse import (
+from olcourse import (
     HarnessError,
     drills,
     matchers,

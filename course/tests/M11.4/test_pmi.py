@@ -33,7 +33,7 @@ GOLDEN = Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M11.4" / "pmi_golden.js
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def golden() -> dict:

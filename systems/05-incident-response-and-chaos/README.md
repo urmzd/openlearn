@@ -12,7 +12,7 @@
 - Incidents are learned by causing them on purpose: a drill injects a known fault into your own running system and grades how you detect, mitigate, and record it.
 - Mitigate first (roll back, fail over, shed load), find the root cause second, write it down third.
 - A runbook is written before the incident, for the person who did not build the system; a postmortem is written after, without blame.
-- Detection moves from a person noticing (Pass 1) to burn-rate alerts (Pass 7), and `ss drill end` measures time to detect and time to mitigate from Prometheus.
+- Detection moves from a person noticing (Pass 1) to burn-rate alerts (Pass 7), and `ol drill end` measures time to detect and time to mitigate from Prometheus.
 
 ## How to Study
 
@@ -49,7 +49,7 @@ Every system fails; what differs is how long it stays failed. Time to mitigate i
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ops.00` | [First drill: the engine crashloops](00-first-drill.md) | drill | 1 |
@@ -65,7 +65,7 @@ Every system fails; what differs is how long it stays failed. Time to mitigate i
 | 11 | `ops.10` | [Drill: runaway agent](10-runaway-agent.md) | drill | 11 |
 | 12 | `ops.11` | [Drill: event log disk full](11-eventlog-disk-full.md) | drill | 11 |
 | 13 | `ops.12` | [Drill: Raft partition (optional)](12-raft-partition.md) | drill | 11 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

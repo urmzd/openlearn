@@ -30,7 +30,7 @@ U = 2.0**-53  # float64 unit roundoff
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def gamma(k: int) -> float:

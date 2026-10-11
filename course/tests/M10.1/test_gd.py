@@ -25,7 +25,7 @@ from tinyllm.optim.gd import armijo_step, gradient_descent
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def quadratic(H: np.ndarray):

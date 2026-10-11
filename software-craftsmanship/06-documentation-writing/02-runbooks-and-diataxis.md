@@ -1,4 +1,4 @@
-<!-- ss:module craft.10 -->
+<!-- ol:module craft.10 -->
 # Runbooks and Diataxis docs
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.10
-ss tests craft.10
-ss check craft.10
+ol start craft.10
+ol tests craft.10
+ol check craft.10
 ```
 
 ---

@@ -1,5 +1,5 @@
-"""My tests for L3.2 (rung R3: tests first with `ss tdd red`, then the code
-with `ss tdd green`). They import only the contract."""
+"""My tests for L3.2 (rung R3: tests first with `ol tdd red`, then the code
+with `ol tdd green`). They import only the contract."""
 
 import math
 

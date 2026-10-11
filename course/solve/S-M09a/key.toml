@@ -1,4 +1,4 @@
-# S-M09a answer key (hidden; honor system, DESIGN D34). `ss verify course S-M09a`
+# S-M09a answer key (hidden; honor system, DESIGN D34). `ol verify course S-M09a`
 # check 7 proves every `expect` passes and every `reject` canary fails;
 # course/oracle/solve/S-M09a.py recomputes every value independently (numpy
 # float32 bit views, exact rational rounding, and stepwise float32 evaluation).

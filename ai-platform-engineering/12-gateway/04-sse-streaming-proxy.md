@@ -1,4 +1,4 @@
-<!-- ss:module gw.04 -->
+<!-- ol:module gw.04 -->
 # SSE streaming proxy (upgrades gw.00)
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `gw.04` · build · Go · Pass 7 · 4 h |
 | **You build** | `go/gateway/proxy/proxy.go`, which you wrote in `gw.00` and now extend: `StreamProxy`, `StreamObserver`, `ExchangeObserver`, `Observers`, `Forward`, `Outbound`, `NewOutbound`, `UpstreamError`, and `Handler` (the chain's proxy stage), keeping `NewProxy` and everything `gw.00` proved |
 | **Contract** | Streaming, Disconnect, and Errors rules of [`course/contracts/openapi/openai-subset.v1.yaml`](../../course/contracts/openapi/openai-subset.v1.yaml) (gateway tier); `NewProxy` still serves [`course/contracts/openapi/openai-subset.v0.yaml`](../../course/contracts/openapi/openai-subset.v0.yaml) |
-| **Tests** | `course/tests/go/gw_04/` (what they check: section 4), with the `gw.00` suite as smoke regression · the bench `BenchmarkFirstByteOverhead` (`ss bench gw.04 --assert`) |
+| **Tests** | `course/tests/go/gw_04/` (what they check: section 4), with the `gw.00` suite as smoke regression · the bench `BenchmarkFirstByteOverhead` (`ol bench gw.04 --assert`) |
 | **Needs** | [`gw.01` server skeleton](01-server-skeleton.md) (`server.Usage`, the `Exchange`) · reading: [`gw.00` tracer gateway](00-streaming-proxy.md), `L10.5` the engine's v1 streams, [SSE in `ai-platform-engineering/03`](../03-streaming-sse/) |
 | **Used by** | `gw.05` forwards every routing attempt through `Forward` and relies on its commitment boundary · inherited from `gw.00`: `dep.00` builds it into the gateway image, `obs.00` traces it |
 | **Milestone** | MS-gateway |
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start gw.04          # proxy.go exists (gw.00): prints the contract diff instead of overwriting
-ss tests gw.04          # read the test catalog first
-ss check gw.04          # gw.00's smoke tests, then gw.04's tests
-ss bench gw.04 --assert # local only: first-byte overhead within 5 ms
-ss diff  gw.04          # after passing: your code against the reference
+ol start gw.04          # proxy.go exists (gw.00): prints the contract diff instead of overwriting
+ol tests gw.04          # read the test catalog first
+ol check gw.04          # gw.00's smoke tests, then gw.04's tests
+ol bench gw.04 --assert # local only: first-byte overhead within 5 ms
+ol diff  gw.04          # after passing: your code against the reference
 ```
 
 `gw.04` takes over a file you own (`upgrades`): edit your own `proxy.go` in place. Your `gw.00` verdict is frozen as passed, and its tests now run as `gw.04`'s smoke regression, so the tracer behavior must survive the upgrade. In your composition root, the `Proxy` slot becomes `proxy.Handler(proxy.Config{Upstream: ...})`.
@@ -70,7 +70,7 @@ The **splitter** appends each piece to a buffer and cuts complete events at `\n\
 | $t_c$ | when the client receives it through the gateway |
 | $\Delta = t_c - t_e$ | the gateway's added time to first byte |
 
-With a flush per read, $\Delta$ is one socket read, one write, and one flush: well under a millisecond on one host. Without the flush (section 5 of `gw.00`), $\Delta$ is the time for 4 KiB of events to accumulate, about a second at 20 tokens per second. The contract budget is $\Delta \le 5$ ms; `BenchmarkFirstByteOverhead` measures it as the difference between direct and proxied time to first byte, and `ss bench gw.04 --assert` checks it. A latency bound is a bench, never part of `ss check`, because shared CI machines make timing noisy (DESIGN 4.0).
+With a flush per read, $\Delta$ is one socket read, one write, and one flush: well under a millisecond on one host. Without the flush (section 5 of `gw.00`), $\Delta$ is the time for 4 KiB of events to accumulate, about a second at 20 tokens per second. The contract budget is $\Delta \le 5$ ms; `BenchmarkFirstByteOverhead` measures it as the difference between direct and proxied time to first byte, and `ol bench gw.04 --assert` checks it. A latency bound is a bench, never part of `ol check`, because shared CI machines make timing noisy (DESIGN 4.0).
 
 ### 2.4 The commitment boundary
 

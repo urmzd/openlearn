@@ -1,4 +1,4 @@
-/* ds.02 bench (`ss bench ds.02`): tl_map against the practice c/02
+/* ds.02 bench (`ol bench ds.02`): tl_map against the practice c/02
  * linear-probing baseline (_baseline_lp.h) at the same load, 3/4, the
  * highest the baseline allows: 3,071 keys, which both tables hold in 4,096
  * slots (the size of an engine's prefix index).
@@ -12,7 +12,7 @@
  * stops at the first group with an EMPTY control byte after one 16-byte
  * scan. Hits cost about the same in both (one compare each).
  */
-#include "ss_bench.h" /* first: it sets the POSIX feature macros clock_gettime needs */
+#include "ol_bench.h" /* first: it sets the POSIX feature macros clock_gettime needs */
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -74,20 +74,20 @@ int main(void) {
         if (tl_map_put(swiss, keys[i], i) != TL_OK) return 1;
         if (lp_put(&base, keys[i], i) != 0) return 1;
     }
-    double sh = ss_bench_best(swiss_hits, NULL, 5, 0.3) / N_PROBES;
-    double bh = ss_bench_best(base_hits, NULL, 5, 0.3) / N_PROBES;
-    double sm = ss_bench_best(swiss_misses, NULL, 5, 0.3) / N_PROBES;
-    double bm = ss_bench_best(base_misses, NULL, 5, 0.3) / N_PROBES;
-    ss_bench_metric("swiss_hit_ns", sh * 1e9);
-    ss_bench_metric("baseline_hit_ns", bh * 1e9);
-    ss_bench_metric("swiss_miss_ns", sm * 1e9);
-    ss_bench_metric("baseline_miss_ns", bm * 1e9);
-    ss_bench_metric("hit_speedup", bh / sh);
-    ss_bench_metric("miss_speedup", bm / sm);
+    double sh = ol_bench_best(swiss_hits, NULL, 5, 0.3) / N_PROBES;
+    double bh = ol_bench_best(base_hits, NULL, 5, 0.3) / N_PROBES;
+    double sm = ol_bench_best(swiss_misses, NULL, 5, 0.3) / N_PROBES;
+    double bm = ol_bench_best(base_misses, NULL, 5, 0.3) / N_PROBES;
+    ol_bench_metric("swiss_hit_ns", sh * 1e9);
+    ol_bench_metric("baseline_hit_ns", bh * 1e9);
+    ol_bench_metric("swiss_miss_ns", sm * 1e9);
+    ol_bench_metric("baseline_miss_ns", bm * 1e9);
+    ol_bench_metric("hit_speedup", bh / sh);
+    ol_bench_metric("miss_speedup", bm / sm);
     tl_map_destroy(swiss);
     lp_free(&base);
     free(keys);
     free(order);
     free(absent);
-    return ss_bench_done();
+    return ol_bench_done();
 }

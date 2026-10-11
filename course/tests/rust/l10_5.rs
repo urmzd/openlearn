@@ -25,7 +25,7 @@ use tl_serve::template::{Template, DEFAULT_TEMPLATE};
 static SEQ: AtomicUsize = AtomicUsize::new(0);
 
 fn tmpdir(tag: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("ss-l10_5-{}-{}-{tag}", std::process::id(), SEQ.fetch_add(1, Ordering::SeqCst)));
+    let d = std::env::temp_dir().join(format!("ol-l10_5-{}-{}-{tag}", std::process::id(), SEQ.fetch_add(1, Ordering::SeqCst)));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
@@ -60,7 +60,7 @@ fn succ_model() -> PathBuf {
 }
 
 fn tiny_llama() -> PathBuf {
-    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss")).join("L7.9/tiny-llama-2l")
+    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol")).join("L7.9/tiny-llama-2l")
 }
 
 /// Stops (drains) the server when the test ends, pass or fail.

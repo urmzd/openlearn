@@ -1,6 +1,6 @@
 // One role path: its stages, what "done" means for each, and which you have
 // finished. Progress is the pack's, not the app's: a stage marked here shows as
-// done in `ss learn`, and one marked there shows here.
+// done in `ol learn`, and one marked there shows here.
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, Check, ShieldCheck } from "lucide-react";

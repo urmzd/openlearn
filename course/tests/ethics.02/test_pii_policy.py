@@ -1,7 +1,7 @@
 """ethics.02 artifact checks: your privacy and PII policy.
 
-Run by `ss check ethics.02` (through ./check) from the root of your repo,
-which `check` passes as SS_REPO. Annotated exemplars (DESIGN 5.12).
+Run by `ol check ethics.02` (through ./check) from the root of your repo,
+which `check` passes as OL_REPO. Annotated exemplars (DESIGN 5.12).
 
 The formats are the chapter's (responsible-ai/02-privacy-and-pii/
 01-privacy-and-pii-policy.md, section 4):
@@ -24,7 +24,7 @@ import re
 import tomllib
 from pathlib import Path
 
-REPO = Path(os.environ.get("SS_REPO", "."))
+REPO = Path(os.environ.get("OL_REPO", "."))
 POLICY = REPO / "docs" / "data" / "PII_POLICY.md"
 TOML = REPO / "docs" / "data" / "pii-policy.toml"
 REVIEW = REPO / "docs" / "data" / "pii-review.toml"

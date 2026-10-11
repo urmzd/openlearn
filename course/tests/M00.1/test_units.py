@@ -29,7 +29,7 @@ HAND_BPB = 1.2048031150826468  # HAND_NLL_SUM / (6 ln 2), worked out in section 
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def golden() -> dict:

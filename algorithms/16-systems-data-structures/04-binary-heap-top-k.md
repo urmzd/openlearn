@@ -1,4 +1,4 @@
-<!-- ss:module ds.04 -->
+<!-- ol:module ds.04 -->
 # Binary heap top-k in C (optional)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.04              # stubs c/src/ds/topk.c into your repo
-ss tests ds.04              # read the test catalog first
-ss check ds.04              # exit code is the verdict
-ss check ds.04 --ref-deps   # only if rt.02 is not passing yet
-ss diff  ds.04              # after passing: your code against the reference
+ol start ds.04              # stubs c/src/ds/topk.c into your repo
+ol tests ds.04              # read the test catalog first
+ol check ds.04              # exit code is the verdict
+ol check ds.04 --ref-deps   # only if rt.02 is not passing yet
+ol diff  ds.04              # after passing: your code against the reference
 ```
 
 ---
