@@ -7,12 +7,11 @@
 // query, so finding something never means leaving for another screen.
 //
 // Collapsing leaves a rail of icons rather than hiding the sidebar, so the one
-// control that collapses it is also the one that brings it back. The pack
-// switcher sits at the bottom, where a workspace switcher goes.
+// control that collapses it is also the one that brings it back. The pack's
+// title at the top is also the pack switcher, the way a workspace name is.
 
 import { useEffect, useState } from "react";
 import {
-  BookOpen,
   Check,
   ChevronsUpDown,
   Gauge,
@@ -135,10 +134,31 @@ export function AppSidebar({
       {/* The top padding clears the macOS window controls, which sit over the
           sidebar because the title bar is hidden. */}
       <SidebarHeader className="drag gap-2 pt-9">
-        <div className="flex h-8 items-center justify-between gap-2 pl-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:pl-0">
-          <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-            {info?.title ?? "OpenLearn"}
-          </span>
+        <div className="flex h-8 items-center gap-1 group-data-[collapsible=icon]:justify-center">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              title="Switch course pack"
+              className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-left text-sm font-semibold tracking-tight outline-none group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            >
+              <span className="truncate">{info?.title ?? "No course pack"}</span>
+              <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="bottom" align="start" className="w-64">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Course packs</DropdownMenuLabel>
+                {packList.map((p) => (
+                  <DropdownMenuItem key={p.ref} onClick={() => onSwitchPack(p.ref)}>
+                    <span className="truncate">{p.title}</span>
+                    {isOpenPack(p, info) && <Check className="ml-auto" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onNavigate({ kind: "settings" })}>
+                Add or manage packs
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <SidebarTrigger
             className="shrink-0 text-muted-foreground"
             title="Collapse or expand the sidebar"
@@ -283,39 +303,6 @@ export function AppSidebar({
               <SettingsIcon />
               <span>Settings</span>
             </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={<SidebarMenuButton tooltip="Switch course pack" />}
-              >
-                <BookOpen />
-                <span className="truncate">
-                  {info?.title ?? "No course pack"}
-                </span>
-                <ChevronsUpDown className="ml-auto text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="w-64">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Course packs</DropdownMenuLabel>
-                  {packList.map((p) => (
-                    <DropdownMenuItem
-                      key={p.ref}
-                      onClick={() => onSwitchPack(p.ref)}
-                    >
-                      <span className="truncate">{p.title}</span>
-                      {isOpenPack(p, info) && <Check className="ml-auto" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onNavigate({ kind: "settings" })}
-                >
-                  Add or manage packs
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

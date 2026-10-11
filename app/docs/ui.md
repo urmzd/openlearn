@@ -39,7 +39,7 @@ A view does not draw its own header or manage its own scrolling.
 
 ## The sidebar
 
-Flat lists, one line per item, like a list of recent conversations. The sidebar never nests: a track opens in the main pane and its topics are listed there. From the top: the open pack's title with the collapse control beside it, search, navigation, paths, tracks, reference. At the bottom: settings, then the pack switcher, where a workspace switcher goes.
+Flat lists, one line per item, like a list of recent conversations. The sidebar never nests: a track opens in the main pane and its topics are listed there. From the top: the open pack's title, which is also the pack switcher, with the collapse control beside it; then search, navigation, paths, tracks, reference. Settings sits at the bottom.
 
 Paths show only the top level. A path included by another path is reachable from the path that includes it.
 
