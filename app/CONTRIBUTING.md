@@ -46,23 +46,18 @@ show up as a small model silently dropping a field rather than as an error.
 The README images live in `showcase/` and are shot from the real app running under
 `wails dev`, never from a mock.
 
-All four are shot at 1440x920 so the README gallery lines up.
+All are shot at 1440x920 so the README gallery lines up.
 
 | Image | Screen | Captured by |
 |-------|--------|-------------|
+| `reader.png` | A chapter in the reader, with search and the professor panel | CDP |
+| `workbench.png` | The home view | CDP |
 | `demo.png` | A session in progress: brief, board, coach | CDP, live session |
 | `demo-review.png` | The debrief | CDP, live session |
-| `demo-setup.png` | The setup screen | CDP |
-| `demo-progress.png` | The cross-session profile | CDP, or `make record` |
 
-`make record` runs [teasr](https://github.com/urmzd/teasr) against the dev server and
-re-captures the progress screen. It is the only screen teasr can script: its web backend
-cannot type into React-controlled inputs, and a populated board and a debrief both need a
-real model and real work.
-
-teasr 0.19.2 also renders at 800x600 regardless of the viewport block in `teasr.toml`, so
-`make record` breaks the gallery's matching aspect ratios. Re-shoot the progress screen
-over CDP at 1440x920 afterwards if that matters.
+A populated board and a debrief both need a real model and real work, so they are captured
+from a live session rather than scripted. `demo.png` and `demo-review.png` predate the
+rename and still show the old window title.
 
 Re-shoot whichever images a UI change invalidates. Do not hand-edit them, and do not stage
 a board the app could not actually produce.

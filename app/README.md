@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="showcase/demo.png" alt="Demo" width="80%">
+  <img src="showcase/reader.png" alt="A chapter open in the reader, with search results and the professor panel" width="80%">
 </p>
 
 > [!WARNING]
@@ -31,15 +31,17 @@ against a hosted model.
 
 ## Features
 
-- **Course packs.** Tracks, role paths, and documents come from the pack's manifest, so a
-  course is swapped by pointing at a different directory.
-- **Shared progress.** Path progress is read from the same `.done` files `ss learn`
-  writes, so the terminal and the app never disagree about what is finished.
-- **Search.** Full-text search across every document in the pack.
-- **Sessions grounded in a chapter.** Start a session from a document and the exercise and
-  its hidden rubric are generated from that material.
-- **Three eval modes.** A board of components for system design, an editor for coding, and
-  a written answer for everything else, each with its own fixed skill taxonomy.
+- **Course packs.** Tracks, role paths, eval modes, and the practice CLI come from the
+  pack's manifest. Open a folder or import a zip and the app teaches that course instead.
+- **A reader built for courses.** Math, diagrams, tables, and links between documents,
+  with full-text search across the pack.
+- **Paths with shared progress.** Stages, what "done" means for each, and which you have
+  finished, read from the same `.done` files `ss learn` writes.
+- **Exercises that run for real.** Edit an attempt in the app and check it with the pack's
+  own CLI. The exit code is the verdict, the same one a terminal would give you.
+- **Sessions grounded in a chapter.** Start from any document and the exercise and its
+  hidden rubric are generated from that material: a board for system design, an editor for
+  coding, a written answer for everything else.
 - **A coach that mostly stays quiet**, and a **professor** that answers when asked, about
   the page you have open.
 - **A profile that accumulates.** Rubric criteria map onto a fixed taxonomy, so scores
@@ -75,8 +77,9 @@ ollama pull qwen3.5:9b
 make build && open build/bin/openlearn.app
 ```
 
-1. Pick a provider and model on the setup screen, then hit **Test connection**.
-2. Choose a mode, a level, and a timebox. Start. Generation takes a moment on a local
+1. Pick a provider and model in **Settings**, then hit **Test connection**.
+2. Open a chapter and hit **Practice this**, or start a **Timed session** cold. Choose a
+   mode, a level, and a timebox. Start. Generation takes a moment on a local
    model: it writes the brief, then the hidden rubric.
 3. Work. The coach reads your board or code on an interval and speaks only when it has
    something worth saying.
@@ -88,9 +91,9 @@ rubrics. Sessions are written to `~/.openlearn/sessions` as plain JSON, and noth
 leaves your machine unless you point it at a hosted provider.
 
 <p align="center">
-  <img src="showcase/demo-setup.png" width="30%"> &nbsp; <img src="showcase/demo-review.png" width="30%"> &nbsp; <img src="showcase/demo-progress.png" width="30%">
+  <img src="showcase/demo.png" width="45%"> &nbsp; <img src="showcase/demo-review.png" width="45%">
 </p>
-<p align="center"><em>Setup &middot; Debrief &middot; Progress</em></p>
+<p align="center"><em>A session in progress &middot; The debrief</em></p>
 
 Every criterion is scored 0-4 with the evidence that earned it, quoted from your board and
 your notes. The overall number is computed from those scores and their weights, so it
@@ -98,9 +101,46 @@ cannot drift from the reasoning behind it. Ranking an area as a strength or a we
 withheld until it has at least two samples, and trend needs three, because calling
 something a weakness off one data point is noise dressed as insight.
 
+## Writing a course pack
+
+A pack is a directory of markdown with an `openlearn.json` at its root. Paths in it are
+relative to that directory.
+
+```json
+{
+  "id": "my-course",
+  "title": "My Course",
+  "tagline": "One line about it.",
+  "repo": "https://github.com/me/my-course",
+  "paths": "paths",
+  "featured": "main",
+  "practice": "bin/check",
+  "modes": ["written"],
+  "start": [{ "file": "README.md", "title": "Overview" }],
+  "tracks": [{ "dir": "unit-1", "title": "Unit 1" }]
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `id`, `title` | Required. The id names the pack on disk, so keep it a plain directory name. |
+| `tracks` | Directories of documents, in reading order. Each subdirectory is a topic, titled by its `README.md`. |
+| `reference` | Same shape as `tracks`, for material that is browsable but not in the learning order. |
+| `start` | Documents a new reader opens first. |
+| `paths` | Directory holding one `<name>/path.tsv` per role path. See [paths/README.md](../paths/README.md) for the format. |
+| `featured` | The path the home screen leads with. |
+| `modes` | Which timed-session modes fit the material: `system_design`, `coding`, `written`. Omit for all three. |
+| `practice` | An executable implementing the practice CLI contract documented in [`internal/practice`](internal/practice/practice.go). It only runs when the pack is opened from a folder. |
+| `repo` | Where links to files the app does not render (code, configs) open. |
+
+Open it with **Settings > Open folder**, or zip the directory and use **Import zip**. The two
+packs in this repository are working examples: [the curriculum](../openlearn.json), which
+has everything, and [languide](../packs/languide/openlearn.json), which is documents and
+paths only.
+
 ## Configuration
 
-Settings live in `~/.openlearn/settings.json` and are editable from the setup screen.
+Settings live in `~/.openlearn/settings.json` and are editable from the Settings view.
 
 | Provider | Model discovery | Notes |
 |----------|-----------------|-------|
@@ -128,7 +168,6 @@ generation and each coaching tick are two LLM calls rather than one.
 make check   # fmt, vet, lint, test, typecheck
 make test    # Go tests only
 make live    # exercise the harness against a real model (needs ollama)
-make record  # recapture the reproducible showcase screens
 ```
 
 `make live` is how prompt changes get validated. It asserts the things that actually

@@ -1,4 +1,4 @@
-.PHONY: all init dev build package content test live lint vet fmt typecheck bindings check record clean
+.PHONY: all init dev build package content test live lint vet fmt typecheck bindings check clean
 
 # The Go binary embeds frontend/dist, so nothing that compiles Go works until
 # the frontend has been built at least once. Targets that touch the Go build
@@ -75,12 +75,6 @@ bindings:
 	$(WAILS) generate module
 
 check: fmt vet lint test typecheck
-
-# Recaptures the reproducible showcase screens. teasr starts `wails dev` itself,
-# so nothing may be listening on :34115. See the comment in teasr.toml for which
-# screens it covers and which need a driven session.
-record: $(DIST)
-	teasr run
 
 # Leaves frontend/dist itself in place: the directory is tracked so //go:embed
 # resolves on a fresh clone.

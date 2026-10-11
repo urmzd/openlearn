@@ -30,14 +30,18 @@ object and patches it.
 
 | Package | Role |
 |---------|------|
+| `internal/course` | A course pack: manifest, outline, role paths, progress files, search. Reads `path.tsv` and `.done` in the format `ss learn` owns. |
+| `internal/packs` | Finds packs (checkout, linked folder, imported zip, built in) and opens one |
+| `internal/builtin` | The packs embedded in the binary, filled by `cmd/bundle` (`make content`) |
+| `internal/practice` | Runs a pack's practice CLI and reads the attempt it left in the scratchpad |
 | `internal/domain` | Data model, JSON-tagged because everything crosses into TypeScript. Owns the fixed skill taxonomy. |
-| `internal/harness` | The three LLM engines: problem generation, the live coach, the reviewer |
+| `internal/harness` | The LLM engines: problem generation, the live coach, the reviewer, the professor |
 | `internal/agui` | Event vocabulary, the typed `Bus`, and the `Emitter` seam |
 | `internal/session` | `Runtime`: clock, curveball timeline, coach loop, review transition |
 | `internal/store` | Settings and session JSON under `~/.openlearn`, plus profile aggregation |
 | `internal/llm` | Provider construction over saige, and `Structured[T]` generation |
-| `app.go` | The Wails binding surface. Every exported method becomes callable from TypeScript. |
-| `frontend/src` | React. `agui.ts` reduces the event stream; the rest is presentation. |
+| `app.go`, `course.go` | The Wails binding surface. Every exported method on `App` becomes callable from TypeScript. |
+| `frontend/src` | React, Tailwind, shadcn/ui. `Workbench.tsx` hosts the views; `agui.ts` reduces the session event stream. See `docs/ui.md`. |
 
 ## Why generation is two LLM calls
 

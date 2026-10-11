@@ -1,23 +1,44 @@
 # openlearn
 
-A Wails desktop app for timeboxed system design and coding practice. The backend
-generates an exercise plus a hidden rubric, coaches while the user works, and scores the
-result. Beta: prompts and scoring calibration are still moving.
+A Wails desktop app that renders course packs: it reads a pack's documents and role paths,
+runs its exercises through the pack's own CLI, generates timed exercises from a chapter
+with a hidden rubric, coaches while the user works, and scores the result. Beta: prompts
+and scoring calibration are still moving.
 
 ## Architecture
 
 | Package | Role |
 |---------|------|
+| `internal/course` | A course pack: manifest, outline, role paths, progress files, search. Reads `path.tsv` and `.done` in the format `ss learn` owns. |
+| `internal/packs` | Finds packs (checkout, linked folder, imported zip, built in) and opens one |
+| `internal/builtin` | The packs embedded in the binary, filled by `cmd/bundle` (`make content`) |
+| `internal/practice` | Runs a pack's practice CLI and reads the attempt it left in the scratchpad |
 | `internal/domain` | Data model, JSON-tagged because everything crosses into TypeScript. Owns the fixed skill taxonomy. |
-| `internal/harness` | The three LLM engines: `problem.go` (generation), `coach.go` (live coaching), `review.go` (scoring) |
+| `internal/harness` | The LLM engines: `problem.go` (generation), `coach.go` (live coaching), `review.go` (scoring), `professor.go` (questions about a page) |
 | `internal/agui` | AG-UI event vocabulary, the typed `Bus`, and the `Emitter` seam |
 | `internal/session` | `Runtime`: clock, curveball timeline, coach loop, review transition |
 | `internal/store` | Settings and session JSON under `~/.openlearn`, plus profile aggregation |
 | `internal/llm` | Provider construction over saige, and `Structured[T]` generation |
-| `app.go` | The Wails binding surface. Every exported method becomes callable from TS. |
-| `frontend/src` | React. `agui.ts` reduces the event stream; the rest is presentation. |
+| `app.go`, `course.go` | The Wails binding surface. Every exported method on `App` becomes callable from TS. |
+| `frontend/src` | React, Tailwind, shadcn/ui. `Workbench.tsx` hosts the views; `agui.ts` reduces the session event stream. See `docs/ui.md`. |
 
 ## Non-obvious invariants
+
+**The pack owns its formats; the app is a second reader.** `path.tsv`, the `.done` progress
+files, and the practice CLI's verbs and exit codes are defined by `practice/bin/ss`.
+`internal/course` and `internal/practice` read them and never extend them. A stage tied to
+a check is only ever marked by the CLI, because the CLI is what knows whether it passed.
+
+**Every exported method on `App` is a frontend binding.** Anything else that needs to be
+exported (the asset handler, say) goes on its own type.
+
+**Pack content is untrusted.** A pack can be imported from a zip. Markdown is sanitized
+before rendering, zip entries are checked against path escape and a size budget, and names
+passed to the practice CLI are validated as plain names. Keep those checks when touching
+`Markdown.tsx`, `internal/packs`, or `internal/practice`.
+
+**`wails dev` needs the toolchain `go.mod` declares.** Wails 2.11 cannot type-check packages
+built by Go 1.27. The Makefile pins `GOTOOLCHAIN`; run wails through `make`.
 
 **Rubric criteria must map onto `domain.Area`.** The taxonomy in `taxonomy.go` is fixed
 and per-mode. Criteria whose area is outside it are dropped at assembly time. This is what
