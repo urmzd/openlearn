@@ -1,4 +1,4 @@
-"""My tests for L0.4 (rung R3: tests first, `ss tdd red`, then the code, `ss tdd green`;
+"""My tests for L0.4 (rung R3: tests first, `ol tdd red`, then the code, `ol tdd green`;
 the chapter section 4 gives the interface and the first test). They import only the contract."""
 
 import numpy as np

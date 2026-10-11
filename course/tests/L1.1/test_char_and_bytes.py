@@ -48,7 +48,7 @@ ALPHABET = list("abcXYZ019 .,!?'\t\n") + [
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def random_text(rng: PCG32, n: int) -> str:

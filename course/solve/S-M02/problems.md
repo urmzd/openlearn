@@ -1,6 +1,6 @@
 # S-M02 problems: integration techniques, improper integrals, series, Taylor, parametric and polar, ODEs
 
-Answer every question in `solve/S-M02.toml` (written by `ss start S-M02`).
+Answer every question in `solve/S-M02.toml` (written by `ol start S-M02`).
 The tag after each question is its answer type. `[number]` is an exact
 value (`pi/2 - 1`, `log(3/2)/2`, `sqrt(pi)`, `exp(1/2)/384`); a decimal
 fails. `[expr in x]` is a formula in the named variables. `[bool]` is

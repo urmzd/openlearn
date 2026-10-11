@@ -1,4 +1,4 @@
-<!-- ss:module data.09 -->
+<!-- ol:module data.09 -->
 # Pipeline as a durable workflow CorpusBuild
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start data.09         # stubs go/workflows/corpus_build.go
-ss tests data.09         # read the test catalog first
-ss check data.09
-ss diff  data.09
+ol start data.09         # stubs go/workflows/corpus_build.go
+ol tests data.09         # read the test catalog first
+ol check data.09
+ol diff  data.09
 ```
 
 Then, in your worker's composition root, register the workflow (adapting `workflow.Context` to `Runtime`) and two subprocess activities over `{corpus}`: `corpus.stage` runs `run --stage <in.Stage>` with `in.Config` as the spec, `corpus.cleanup` runs `cleanup` with its input as the spec. Add `{ctl} data build --config <toml>`: parse the TOML, start `CorpusBuild` with workflow id `CorpusWorkflowID(config)`.

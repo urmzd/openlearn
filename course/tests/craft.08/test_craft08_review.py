@@ -25,14 +25,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _pr  # noqa: E402
 
-LEARNER = Path(os.environ.get("SS_LEARNER_ROOT", ".")).resolve()
+LEARNER = Path(os.environ.get("OL_LEARNER_ROOT", ".")).resolve()
 
 
 def review() -> dict:
     pr = _pr.build()
     p = LEARNER / pr.spec["review"]
     assert p.is_file(), (
-        f"{pr.spec['review']} is missing: run `ss check craft.08` once to get the PR branch and the "
+        f"{pr.spec['review']} is missing: run `ol check craft.08` once to get the PR branch and the "
         "template, then review the PR (chapter section 4)"
     )
     try:
@@ -110,10 +110,10 @@ def test_branch_is_the_course_pr():
     br = _pr.branch(pr)
     have = _pr.branch_blob(LEARNER, pr)
     assert have is not None, (
-        f"branch {br} is missing from your repo: rerun `ss check craft.08`"
+        f"branch {br} is missing from your repo: rerun `ol check craft.08`"
     )
     assert have == _pr.blob_id(pr.head[pr.unit]), (
-        f"{br} is not the current PR: rerun `ss check craft.08`"
+        f"{br} is not the current PR: rerun `ol check craft.08`"
     )
     rc, log = _pr.git(["log", "--format=%s", "-3", br], LEARNER)
     assert rc == 0, log
@@ -137,7 +137,7 @@ def test_review_is_well_formed():
     )
     assert rv.get("blob") == _pr.blob_id(pr.head[pr.unit]), (
         "blob does not match the PR head: the course changed the PR since you started; "
-        "rerun `ss check craft.08`, review the new head, and copy its blob from a fresh template"
+        "rerun `ol check craft.08`, review the new head, and copy its blob from a fresh template"
     )
     assert rv.get("verdict") in _pr.VERDICTS, (
         f"verdict {rv.get('verdict')!r} is not one of {', '.join(_pr.VERDICTS)}"

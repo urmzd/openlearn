@@ -1,17 +1,17 @@
 /* primers/craft.06/bench.c: my benchmark of the kata (rung R7).
  *
  * One program, built against whichever kernels.c the gate hands it. It
- * times each kernel with ss_bench_best (best of 5 repetitions, each at least
+ * times each kernel with ol_bench_best (best of 5 repetitions, each at least
  * 20 ms of calls, after one warm-up call) and prints nanoseconds per call as
  * the last stdout line: {"matmul_ns": ..., "sum_ns": ..., "rmsnorm_ns": ...,
  * "count_below_ns": ...}. Inputs are fixed formulas (no RNG), sized so the
  * fast kernels run in microseconds to a millisecond and a slow one still
  * finishes in well under a second. Every result goes to a volatile sink so
  * the compiler cannot delete the work. */
-/* ss_bench.h comes first: it defines _POSIX_C_SOURCE for clock_gettime, and
+/* ol_bench.h comes first: it defines _POSIX_C_SOURCE for clock_gettime, and
  * glibc ignores that once any other system header is in (under -std=c11 a
  * later define leaves CLOCK_MONOTONIC undeclared on Linux). */
-#include "ss_bench.h"
+#include "ol_bench.h"
 
 #include <stdlib.h>
 
@@ -54,9 +54,9 @@ int main(void) {
     for (int i = 0; i < NS; i++) X[i] = (float)(i % 13) * 0.25f - 1.5f;
     for (int i = 0; i < RD; i++) W[i] = 1.0f + (float)(i % 3) * 0.5f;
     for (int i = 0; i < NC; i++) SORTED[i] = (float)i;
-    ss_bench_metric("matmul_ns", 1e9 * ss_bench_best(run_matmul, NULL, 5, 0.02));
-    ss_bench_metric("sum_ns", 1e9 * ss_bench_best(run_sum, NULL, 5, 0.02));
-    ss_bench_metric("rmsnorm_ns", 1e9 * ss_bench_best(run_rmsnorm, NULL, 5, 0.02));
-    ss_bench_metric("count_below_ns", 1e9 * ss_bench_best(run_count, NULL, 5, 0.02));
-    return ss_bench_done();
+    ol_bench_metric("matmul_ns", 1e9 * ol_bench_best(run_matmul, NULL, 5, 0.02));
+    ol_bench_metric("sum_ns", 1e9 * ol_bench_best(run_sum, NULL, 5, 0.02));
+    ol_bench_metric("rmsnorm_ns", 1e9 * ol_bench_best(run_rmsnorm, NULL, 5, 0.02));
+    ol_bench_metric("count_below_ns", 1e9 * ol_bench_best(run_count, NULL, 5, 0.02));
+    return ol_bench_done();
 }

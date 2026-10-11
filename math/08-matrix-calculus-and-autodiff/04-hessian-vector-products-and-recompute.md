@@ -1,4 +1,4 @@
-<!-- ss:module M08.4 -->
+<!-- ol:module M08.4 -->
 # Hessian-vector products and the recompute-versus-memory schedule
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M08.4              # stubs hvp.py into your repo, contract alongside
-ss tests M08.4              # read the test catalog first: rung R0, you write no tests here
-ss check M08.4              # exit code is the verdict
-ss diff  M08.4              # after passing: your code against the reference
+ol start M08.4              # stubs hvp.py into your repo, contract alongside
+ol tests M08.4              # read the test catalog first: rung R0, you write no tests here
+ol check M08.4              # exit code is the verdict
+ol diff  M08.4              # after passing: your code against the reference
 ```
 
 ---
@@ -172,7 +172,7 @@ def checkpoint_schedule(n_layers: int, mem_budget_layers: int) -> list[int]   # 
 | Forward | `L11.1` | `checkpoint_sequential` runs your segments with `checkpoint_schedule` and recomputes them in backward |
 | Forward | `M10.5` | (optional) power iteration on `hvp_fd` estimates $\lambda_{\max}$ to compare the learning rate with $2/\lambda_{\max}$ |
 
-If you skip this module, `ss check L11.1` stops with `L11.1 needs M08.4`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L11.1` stops with `L11.1 needs M08.4`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

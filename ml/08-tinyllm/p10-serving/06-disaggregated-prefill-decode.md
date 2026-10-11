@@ -1,4 +1,4 @@
-<!-- ss:module L10.6 -->
+<!-- ol:module L10.6 -->
 # Disaggregated prefill/decode, KV transfer, heartbeat client
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.6               # stubs kv_transfer.rs, heartbeat.rs, control.rs
-ss tests L10.6               # the test catalog
-ss check L10.6               # exit code is the verdict
-ss check L10.6 --ref-deps    # only if L10.1 or L10.1 is not passing yet
-ss diff  L10.6               # after passing: your code against the reference
-ss parity kv.wire.v1         # your Rust writer against the golden blobs
+ol start L10.6               # stubs kv_transfer.rs, heartbeat.rs, control.rs
+ol tests L10.6               # the test catalog
+ol check L10.6               # exit code is the verdict
+ol check L10.6 --ref-deps    # only if L10.1 or L10.1 is not passing yet
+ol diff  L10.6               # after passing: your code against the reference
+ol parity kv.wire.v1         # your Rust writer against the golden blobs
 ```
 
 Add to your `tl-engine` manifest the dependencies this module needs: `tl-proto = { path = "../../../../contracts/rust/tl-proto" }`, `tokio` (full), `tonic = "0.14"`, and `prost = "0.14"` (all in `contracts/allowed-deps.toml`), and declare `pub mod kv_transfer; pub mod heartbeat;` in `tl-engine/src/lib.rs` and `pub mod control;` in `tl-serve/src/lib.rs`. Your `main.rs` starts the servers: `kv_transfer::serve_kv` on `[engine].kv_listen` for a decode engine, `control::serve_control` on `[engine].grpc_listen` for every engine, and `Heartbeat::spawn` toward `[engine].gateway_registry`.

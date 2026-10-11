@@ -1,4 +1,4 @@
-<!-- ss:module craft.20 -->
+<!-- ol:module craft.20 -->
 # Contract tests (R6): consumer-driven tests for gateway to engine
 
 ## Overview
@@ -6,7 +6,7 @@
 | | |
 |---|---|
 | **Module** | `craft.20` · practice · Go · Pass 7 · 4 to 6 h |
-| **You build** | `primers/craft.20/engineclient.go` (a kata: the gateway's client of the engine API, written by `ss start`), `primers/craft.20/pacts/gateway-engine.json` (your **pact**: what the gateway relies on), and `primers/craft.20/consumer_test.go` (your consumer tests, driven by mocks generated from the pact) |
+| **You build** | `primers/craft.20/engineclient.go` (a kata: the gateway's client of the engine API, written by `ol start`), `primers/craft.20/pacts/gateway-engine.json` (your **pact**: what the gateway relies on), and `primers/craft.20/consumer_test.go` (your consumer tests, driven by mocks generated from the pact) |
 | **Contract** | the provider side your pact is verified against: the engine tier of [`course/contracts/openapi/openai-subset.v1.yaml`](../../course/contracts/openapi/openai-subset.v1.yaml) |
 | **Tests** | `course/tests/craft.20/check`: provider verification of your pact, the course's contract suite (`course/tests/go/craft_20/`) on your kata, then the grade of your tests by 20 planted faults (section 4) |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how tests are graded · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · [`lang.05`](../12-language-and-tool-primers/05-http-and-sse.md) SSE on the wire · [`lang.06`](../12-language-and-tool-primers/06-go.md) Go and `httptest` · `gw.00` the proxy whose upstream half the kata isolates |
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.20                         # writes primers/craft.20/engineclient.go with stub bodies
-ss tests craft.20                         # read the test catalog first
-ss check craft.20                         # first run: writes go.mod and pact/pact.go, then fails (no pact yet)
+ol start craft.20                         # writes primers/craft.20/engineclient.go with stub bodies
+ol tests craft.20                         # read the test catalog first
+ol check craft.20                         # first run: writes go.mod and pact/pact.go, then fails (no pact yet)
 # write pacts/gateway-engine.json and consumer_test.go (section 4); run them yourself:
 (cd primers/craft.20 && go test ./...)
-ss check craft.20                         # verifies the pact, then grades your tests by planted faults
+ol check craft.20                         # verifies the pact, then grades your tests by planted faults
 ```
 
-Write the pact and the tests before the kata: against the stub every test must fail. `ss check` never shows a planted fault's code; a survivor prints only its one-line description, or "a planted pitfall".
+Write the pact and the tests before the kata: against the stub every test must fail. `ol check` never shows a planted fault's code; a survivor prints only its one-line description, or "a planted pitfall".
 
 ---
 
@@ -90,7 +90,7 @@ A stream (`ReadStream`) ends in exactly one of three ways, and the gateway must 
 
 ### 2.4 Provider verification against the published contract
 
-Classic Pact verifies the provider by replaying the pact against a running provider. Here the provider publishes its contract as OpenAPI, so the check verifies the pact **statically**: each request path and method exists on the engine tier, request bodies fit the request schema (partially: a pact lists only what it relies on), each response status is declared for the path, each JSON body validates against its schema, each stream event against the `x-tl-chunk` schema (or the `Error` schema for an error event), and a 429 carries `Retry-After` in seconds. MS-gateway closes the loop dynamically: `ss conform openapi:v1 --target engine` runs the same contract against your real engine.
+Classic Pact verifies the provider by replaying the pact against a running provider. Here the provider publishes its contract as OpenAPI, so the check verifies the pact **statically**: each request path and method exists on the engine tier, request bodies fit the request schema (partially: a pact lists only what it relies on), each response status is declared for the path, each JSON body validates against its schema, each stream event against the `x-tl-chunk` schema (or the `Error` schema for an error event), and a 429 carries `Retry-After` in seconds. MS-gateway closes the loop dynamically: `ol conform openapi:v1 --target engine` runs the same contract against your real engine.
 
 ### 2.5 How R6 grades you
 
@@ -122,7 +122,7 @@ Provider verification of event 5: `choices` is an array with 0 items (the schema
 | `primers/craft.20/engineclient.go` | the kata, `package craft20`: `Client{Base, HTTP}`, `Forward`, `NewRequest`, `ReadCompletion`, `ReadStream`, `Tokenize`, `APIError`, `ErrTruncated`, `Usage`, `Chunk`, `Summary` (the doc comments are the spec) |
 | `primers/craft.20/pacts/gateway-engine.json` | your pact: `consumer: gateway`, `provider: engine`, at least six interactions with unique descriptions, covering a completion with usage, a stream with its usage chunk and `[DONE]` (requested with `include_usage`), a stream that fails with an error event, a 429 with `Retry-After`, a `/v1/tokenize` call, and a request side that pins `X-TL-Priority` and an absent `Authorization` |
 | `primers/craft.20/consumer_test.go` | `package craft20_test`: each test loads the pact (`pact.Load(t, "pacts/gateway-engine.json")`), starts a mock for one interaction (`pact.Serve`), sends a realistic client request through `NewRequest` (hostile headers included), reads the answer, and asserts what the gateway needs |
-| `primers/craft.20/go.mod`, `pact/pact.go` | written by the first `ss check`: `module craft20` and the course's kit (the check always uses its own copy of the kit) |
+| `primers/craft.20/go.mod`, `pact/pact.go` | written by the first `ol check`: `module craft20` and the course's kit (the check always uses its own copy of the kit) |
 
 A test reads like this:
 
@@ -179,7 +179,7 @@ Each row is a fault the check plants in the course's client; your tests must cat
 | Back | `craft.03`, `craft.07` | mutation grading and reading survivors |
 | Back | `gw.00` | the proxy whose upstream request the kata isolates |
 | Forward | `gw.07`, `gw.05` | the meter's `include_usage` and the router's failover on 429 are the request and response sides you pinned |
-| Forward | MS-gateway | `ss conform openapi:v1 --target engine` verifies the provider side live |
+| Forward | MS-gateway | `ol conform openapi:v1 --target engine` verifies the provider side live |
 | Forward | `craft.14` | the API v2 migration: a new pact version, verified against `openai-subset.v2.yaml` while v1 is still served |
 
 ## Going further

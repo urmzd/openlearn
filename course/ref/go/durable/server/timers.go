@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 func init() {

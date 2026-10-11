@@ -30,12 +30,14 @@ object and patches it.
 
 | Package | Role |
 |---------|------|
-| `internal/course` | A course pack: manifest, outline, role paths, progress files, search. Reads `path.tsv` and `.done` in the format `ss learn` owns. |
+| `internal/course` | A course pack: manifest, outline, role paths, progress files, search. Reads `path.tsv` and `.done` in the format `ol learn` owns. |
 | `internal/packs` | Finds packs (checkout, linked folder, imported zip, built in) and opens one |
 | `internal/builtin` | The packs embedded in the binary, filled by `cmd/bundle` (`make content`) |
-| `internal/practice` | Runs a pack's practice CLI and reads the attempt it left in the scratchpad |
+| `internal/practice` | The exercise engine: lists a pack's exercises from its spec, clones one with the solution stripped, and checks an attempt by running it |
+| `internal/workspace` | One open pack with its progress and exercises. The app and the MCP server both open one. |
+| `internal/mcpserver` | The pack over MCP, for whatever agent the learner uses. `openlearn mcp` and `cmd/openlearn-mcp` run it. See `docs/mcp.md`. |
 | `internal/domain` | Data model, JSON-tagged because everything crosses into TypeScript. Owns the fixed skill taxonomy. |
-| `internal/harness` | The LLM engines: problem generation, the live coach, the reviewer, the professor |
+| `internal/harness` | The three LLM engines: problem generation, the live coach, the reviewer |
 | `internal/agui` | Event vocabulary, the typed `Bus`, and the `Emitter` seam |
 | `internal/session` | `Runtime`: clock, curveball timeline, coach loop, review transition |
 | `internal/store` | Settings and session JSON under `~/.openlearn`, plus profile aggregation |

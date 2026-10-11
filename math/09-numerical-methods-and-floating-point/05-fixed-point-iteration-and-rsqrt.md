@@ -1,4 +1,4 @@
-<!-- ss:module M09.5 -->
+<!-- ol:module M09.5 -->
 # Fast inverse square root in standalone C (optional)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M09.5              # stubs rsqrt.c into your repo
-ss tests M09.5              # read the test catalog first: rung R0, you write no tests here
-ss check M09.5              # exit code is the verdict
-ss check M09.5 --ref-deps   # only if you skipped M01.2
-ss diff  M09.5              # after passing: your code against the reference
+ol start M09.5              # stubs rsqrt.c into your repo
+ol tests M09.5              # read the test catalog first: rung R0, you write no tests here
+ol check M09.5              # exit code is the verdict
+ol check M09.5 --ref-deps   # only if you skipped M01.2
+ol diff  M09.5              # after passing: your code against the reference
 ```
 
 The check compiles `rsqrt.c` into a standalone ASan and UBSan test binary. Python and C do not call into each other.
@@ -160,7 +160,7 @@ A fused multiply-add in the float32 steps is worth trying once: it changes $y_2$
 | Forward | Optional `L9.6` | its standalone C normalization kernel uses `tl_rsqrtf(mean(x^2) + eps)` |
 | Forward | `M09.6` | the same pattern, a reduction then a cheap approximation, for $e^x$ |
 
-If you skip this module, `ss check L9.6` stops with `BLOCKED ... needs M09.5`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L9.6` stops with `BLOCKED ... needs M09.5`: build it, or pass `--ref-deps`.
 
 ## Going further
 

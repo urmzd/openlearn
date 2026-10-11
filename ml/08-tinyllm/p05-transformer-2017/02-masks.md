@@ -1,4 +1,4 @@
-<!-- ss:module L5.2 -->
+<!-- ol:module L5.2 -->
 # Masks: causal, padding, sliding window, additive
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L5.2              # stubs masks.py; prints your test path and rung (R5)
-ss tests L5.2              # the course tests
+ol start L5.2              # stubs masks.py; prints your test path and rung (R5)
+ol tests L5.2              # the course tests
 # write your oracle tests in python/tests/l5-2-masks/, then:
-ss check L5.2              # course tests and the mutation grade of your tests
-ss diff  L5.2              # after passing: your code against the reference
+ol check L5.2              # course tests and the mutation grade of your tests
+ol diff  L5.2              # after passing: your code against the reference
 ```
 
 ---

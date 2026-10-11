@@ -1,4 +1,4 @@
-<!-- ss:module iv.01 -->
+<!-- ol:module iv.01 -->
 # Defend your system
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start iv.01
-ss tests iv.01
-ss check iv.01
+ol start iv.01
+ol tests iv.01
+ol check iv.01
 ```
 
 ---

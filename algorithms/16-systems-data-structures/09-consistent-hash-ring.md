@@ -1,4 +1,4 @@
-<!-- ss:module ds.09 -->
+<!-- ol:module ds.09 -->
 # Consistent hash ring with bounded loads
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.09          # writes go/ds/ring/ring.go with stub bodies (and go/go.mod if absent)
-ss tests ds.09          # read the test catalog first
-ss check ds.09          # course tests, then your tests graded by mutation
-ss parity ring.hash     # your ring against the golden key-to-node map
-ss diff  ds.09          # after passing: your code against the reference
+ol start ds.09          # writes go/ds/ring/ring.go with stub bodies (and go/go.mod if absent)
+ol tests ds.09          # read the test catalog first
+ol check ds.09          # course tests, then your tests graded by mutation
+ol parity ring.hash     # your ring against the golden key-to-node map
+ol diff  ds.09          # after passing: your code against the reference
 ```
 
 Write the hashes first and check them on the vectors of section 4, then `Add`/`Get` on the worked example, then `GetBounded`.
@@ -137,7 +137,7 @@ Hash vectors: `FNV1a64("") = 0xcbf29ce484222325`, `FNV1a64("a") = 0xaf63dc4c8601
 | `TestBoundedNeverExceedsCapacity` | property | distinct keys, one hot key, three hot keys, $c \in \{1, 1.25, 2\}$: no node above $\lceil cK/n \rceil$ | the guarantee `gw.05` relies on |
 | `TestBoundedEqualsGetWhenUnloaded` | property | with zero loads bounded and plain lookup agree | affinity is kept until it costs something |
 | `TestBoundedClampsCBelowOne` | boundary | $c = 0.5$ places exactly like $c = 1$ | a misconfigured factor cannot make placement impossible |
-| `TestGoldenKeyToNodeMap` | golden, conformance | every case of `parity/ring_hash.json` (plain, removals, bounded with load feedback) | `ss parity ring.hash` |
+| `TestGoldenKeyToNodeMap` | golden, conformance | every case of `parity/ring_hash.json` (plain, removals, bounded with load feedback) | `ol parity ring.hash` |
 
 Your own tests (rung R2) go in `go/ds/ring/ring_learner_test.go` as `package ring_test`. Name them after what they prove: the owner is the first point clockwise and wraps; an empty ring says nobody; Remove moves only its keys; the capacity formula; bounded placement respects capacity with a hot key; $c < 1$ acts as 1; ties go to the smaller name; the hash is FNV-1a then SplitMix. They are graded against the reference with one planted bug each; 60% must be caught.
 
@@ -161,7 +161,7 @@ Your own tests (rung R2) go in `go/ds/ring/ring_learner_test.go` as `package rin
 | Back | `S-M07d` | balls into bins: why $\lceil c \cdot \text{avg} \rceil$ is achievable and what $c$ buys |
 | Forward | `gw.05` | `route_policy = "affinity"` keys `GetBounded` by the first prompt block, with load = in flight + queue depth |
 
-If you skip this module, `ss check gw.05` reports `needs ds.09: build it, or pass --ref-deps`.
+If you skip this module, `ol check gw.05` reports `needs ds.09: build it, or pass --ref-deps`.
 
 ## Going further
 

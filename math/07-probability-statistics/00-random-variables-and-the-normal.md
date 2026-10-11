@@ -1,4 +1,4 @@
-<!-- ss:module M07.0 -->
+<!-- ol:module M07.0 -->
 # Random variables, expectation, variance, and normal draws by Box-Muller
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M07.0              # stubs python/tinyllm/prob/rv.py into your repo
-ss tests M07.0              # read the test catalog first: rung R0, you write no tests here
-ss check M07.0              # exit code is the verdict
-ss check M07.0 --ref-deps   # only if your M06.3 is not passing yet
-ss diff  M07.0              # after passing: your code against the reference
+ol start M07.0              # stubs python/tinyllm/prob/rv.py into your repo
+ol tests M07.0              # read the test catalog first: rung R0, you write no tests here
+ol check M07.0              # exit code is the verdict
+ol check M07.0 --ref-deps   # only if your M06.3 is not passing yet
+ol diff  M07.0              # after passing: your code against the reference
 ```
 
 ---
@@ -164,7 +164,7 @@ def normal(rng, n: int) -> NDArray: ...          # float64 [n]; u1, u2 per pair;
 | Forward | `M07.3` | `normal_init`, Xavier and Kaiming normals, and the variance propagation rule $n\operatorname{Var}[w]\operatorname{Var}[x]$ |
 | Forward | `M07.1` | categorical sampling builds on the same uniforms (reading) |
 
-If you skip this module, `ss check M03.3` stops with `BLOCKED ... needs M07.0`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check M03.3` stops with `BLOCKED ... needs M07.0`: build it, or pass `--ref-deps`.
 
 ## Going further
 

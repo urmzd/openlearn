@@ -395,7 +395,7 @@ const file_tl_kv_v1_kv_proto_rawDesc = "" +
 	"\x11KvTransferService\x12D\n" +
 	"\tHasBlocks\x12\x1a.tl.kv.v1.HasBlocksRequest\x1a\x1b.tl.kv.v1.HasBlocksResponse\x12.\n" +
 	"\x06PushKv\x12\x11.tl.kv.v1.KvChunk\x1a\x0f.tl.kv.v1.KvAck(\x01\x12>\n" +
-	"\aRelease\x12\x18.tl.kv.v1.ReleaseRequest\x1a\x19.tl.kv.v1.ReleaseResponseB6Z4supersource.urmzd.com/tl/contracts/gen/tl/kv/v1;kvv1b\x06proto3"
+	"\aRelease\x12\x18.tl.kv.v1.ReleaseRequest\x1a\x19.tl.kv.v1.ReleaseResponseB4Z2openlearn.urmzd.com/tl/contracts/gen/tl/kv/v1;kvv1b\x06proto3"
 
 var (
 	file_tl_kv_v1_kv_proto_rawDescOnce sync.Once

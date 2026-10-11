@@ -1,6 +1,6 @@
 """The testkit reaches course tests in three languages through the overlay:
 Python (sstestkit on PYTHONPATH), Go (the testkit module in go.work), and Rust
-(tl-testkit a dependency of ss-tests)."""
+(tl-testkit a dependency of ol-tests)."""
 
 
 def test_course_tests_import_the_testkit(ss):

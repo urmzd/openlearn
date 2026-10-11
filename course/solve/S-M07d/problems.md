@@ -1,6 +1,6 @@
 # S-M07d problems: hypothesis tests, regression, queueing and Little's law, balls into bins
 
-Answer every question in `solve/S-M07d.toml` (written by `ss start S-M07d`).
+Answer every question in `solve/S-M07d.toml` (written by `ol start S-M07d`).
 The tag after each question is its answer type: `[number]` a value (exact
 where the question says so: fractions such as `79/2048`, `E` for $e$,
 `exp(-1)`), `[expr]` a formula in the named variables (write $\lambda$ as

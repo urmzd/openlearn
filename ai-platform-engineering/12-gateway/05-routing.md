@@ -1,4 +1,4 @@
-<!-- ss:module gw.05 -->
+<!-- ol:module gw.05 -->
 # Worker registry, routing, cascades, failover, disaggregated orchestration
 
 ## Overview
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start gw.05          # writes go/gateway/route/{registry,route,handler,admin}.go with stub bodies
-ss tests gw.05          # read the test catalog first
-ss check gw.05          # exit code is the verdict
-ss check gw.05 --ref-deps   # only if ds.09, gw.01, gw.02, or gw.04 is not passing yet
-ss diff  gw.05          # after passing: your code against the reference
+ol start gw.05          # writes go/gateway/route/{registry,route,handler,admin}.go with stub bodies
+ol tests gw.05          # read the test catalog first
+ol check gw.05          # exit code is the verdict
+ol check gw.05 --ref-deps   # only if ds.09, gw.01, gw.02, or gw.04 is not passing yet
+ol diff  gw.05          # after passing: your code against the reference
 ```
 
-The package uses the generated gRPC code in `contracts/go/gen` (module `supersource.urmzd.com/tl/contracts`) and `google.golang.org/grpc`. Build in workspace mode, the way the course overlay does: run `go work init ./go ./contracts/go` once at your repo root (your `go.mod` keeps its `replace` for the contracts and needs no `require` for them), and `go -C go get google.golang.org/grpc@v1.83.1` if your `go.mod` predates this module. In your composition root: serve `controlv1.RegisterWorkerRegistryServer(grpcServer, registry)` on `registry_listen`, put `route.Middleware(router)` in the `Router` slot and `route.Proxy(router, route.Options{})` in the `Proxy` slot, and `router.Ready` in `Deps.Ready`.
+The package uses the generated gRPC code in `contracts/go/gen` (module `openlearn.urmzd.com/tl/contracts`) and `google.golang.org/grpc`. Build in workspace mode, the way the course overlay does: run `go work init ./go ./contracts/go` once at your repo root (your `go.mod` keeps its `replace` for the contracts and needs no `require` for them), and `go -C go get google.golang.org/grpc@v1.83.1` if your `go.mod` predates this module. In your composition root: serve `controlv1.RegisterWorkerRegistryServer(grpcServer, registry)` on `registry_listen`, put `route.Middleware(router)` in the `Router` slot and `route.Proxy(router, route.Options{})` in the `Proxy` slot, and `router.Ready` in `Deps.Ready`.
 
 ---
 

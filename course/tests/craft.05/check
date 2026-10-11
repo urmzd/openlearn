@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# ss-export: course-tree (grades against the course's reference katas, never exported)
-# Artifact check for craft.05 (DESIGN 4.6; H15: `ss check craft.05` runs
+# ol-export: course-tree (grades against the course's reference katas, never exported)
+# Artifact check for craft.05 (DESIGN 4.6; H15: `ol check craft.05` runs
 # this in your repo and its exit code is the verdict).
 #
 # It grades YOUR oracle tests in primers/craft.05/test_oracles.py (read them
-# with `ss tests craft.05`): they pass against your kata
+# with `ol tests craft.05`): they pass against your kata
 # primers/craft.05/kernels.py, they pass against the course's kata, and they
 # fail against the ten planted faults in course/mutants/craft.05 (the
 # chapter's pitfalls: transposed gradients, a softmax backward without its
@@ -20,13 +20,13 @@
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
-course="${SS_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
+course="${OL_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
 dir="$PWD/primers/craft.05"
 
 fail() { echo "craft.05: $*" >&2; exit 1; }
-command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
+command -v uv >/dev/null || fail "uv is not on PATH (ol doctor)"
 [ -f "$course/ref/primers/craft.05/kernels.py" ] ||
-  fail "the course tree at $course has no craft.05 kata: this check runs inside a supersource checkout (SS_COURSE_TREE)"
+  fail "the course tree at $course has no craft.05 kata: this check runs inside a openlearn checkout (OL_COURSE_TREE)"
 
 if [ ! -f "$dir/kernels.py" ]; then
   mkdir -p "$dir"
@@ -35,14 +35,14 @@ import sys
 from pathlib import Path
 course, dest = Path(sys.argv[1]), Path(sys.argv[2])
 sys.path.insert(0, str(course / "harness" / "src"))
-from sscourse import markers
+from olcourse import markers
 text = (course / "ref" / "primers" / "craft.05" / "kernels.py").read_text()
 (dest / "kernels.py").write_text(markers.stub(text, "primers/craft.05/kernels.py", want="craft.05"))
 print("  wrote     primers/craft.05/kernels.py  (stub: yours to write)")
 PY
 fi
 
-export SS_PRIMER_DIR="$dir" SS_COURSE_TREE="$course" SS_LEARNER_ROOT="$PWD" PYTHONDONTWRITEBYTECODE=1
+export OL_PRIMER_DIR="$dir" OL_COURSE_TREE="$course" OL_LEARNER_ROOT="$PWD" PYTHONDONTWRITEBYTECODE=1
 export TINYLLM_FIXTURES="${TINYLLM_FIXTURES:-$course/fixtures}"
 exec uv run --no-project --quiet --with pytest --with numpy \
   python -m pytest -q --tb=short -p no:cacheprovider -p no:randomly --rootdir="$tests" --confcutdir="$tests" "$here"

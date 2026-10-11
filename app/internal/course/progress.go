@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// DoneFiles keeps progress the way `ss learn` does: one <owner>.done file per
+// DoneFiles keeps progress the way `ol learn` does: one <owner>.done file per
 // owning path, one finished stage number per line. Sharing the format means the
 // terminal and the app always agree about what is finished.
 type DoneFiles struct {
@@ -17,11 +17,11 @@ type DoneFiles struct {
 }
 
 // CheckoutProgress reads progress from a course checkout, where the practice
-// CLI writes it. The layout mirrors learn_dir in practice/bin/ss: paths named
+// CLI writes it. The layout mirrors learn_dir in practice/bin/ol: paths named
 // course* belong to the learner's course repo once one exists.
 func CheckoutProgress(root string) DoneFiles {
-	scratch := envOr("SS_SCRATCH", filepath.Join(root, ".scratchpad"))
-	home := envOr("SS_COURSE_HOME", filepath.Join(root, ".scratchpad", "course"))
+	scratch := envOr("OL_SCRATCH", filepath.Join(root, ".scratchpad"))
+	home := envOr("OL_COURSE_HOME", filepath.Join(root, ".scratchpad", "course"))
 	return DoneFiles{DirFor: func(owner string) string {
 		if strings.HasPrefix(owner, "course") {
 			if _, err := os.Stat(filepath.Join(home, "system.toml")); err == nil {

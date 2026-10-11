@@ -1,4 +1,4 @@
-<!-- ss:module gw.06 -->
+<!-- ol:module gw.06 -->
 # Response cache: LRU + TTL, singleflight, tenant-scoped keys
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start gw.06          # writes go/gateway/cache/cache.go with stub bodies
-ss tests gw.06          # read the test catalog first
-ss check gw.06          # runs the course tests with -race
-ss check gw.06 --ref-deps   # only if your gw.01 or gw.02 is not passing yet
-ss diff  gw.06          # after passing: your code against the reference
+ol start gw.06          # writes go/gateway/cache/cache.go with stub bodies
+ol tests gw.06          # read the test catalog first
+ol check gw.06          # runs the course tests with -race
+ol check gw.06 --ref-deps   # only if your gw.01 or gw.02 is not passing yet
+ol diff  gw.06          # after passing: your code against the reference
 ```
 
 Then plug `cache.Middleware(cache.New(cfg.Gateway.CacheEntries, clock), cache.Options{TTL: ..., Rev: routeEpoch})` into the `Cache` slot of your composition root.

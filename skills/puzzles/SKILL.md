@@ -1,5 +1,5 @@
 ---
-name: supersource
+name: openlearn
 description: "Free curriculum spanning math foundations, algorithms (15 topics), ML/AI, systems & architecture, competitive programming, information theory, software craftsmanship, and polyglot practice (9 languages across systems/cloud/general tiers). Includes interview guides for 19 companies, structured study plans, and interactive learning skills."
 ---
 

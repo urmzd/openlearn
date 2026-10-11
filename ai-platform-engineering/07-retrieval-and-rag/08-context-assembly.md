@@ -1,4 +1,4 @@
-<!-- ss:module ag.08 -->
+<!-- ol:module ag.08 -->
 # Context assembly, citations, search_docs tool
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start ag.08          # stubs go/agent/rag/assemble/*.go into your repo
-ss tests ag.08          # read the test catalog first
-ss check ag.08          # exit code is the verdict
-ss check ag.08 --ref-deps   # only if you skipped ag.07 or ag.02
-ss diff  ag.08          # after passing: your code against the reference
+ol start ag.08          # stubs go/agent/rag/assemble/*.go into your repo
+ol tests ag.08          # read the test catalog first
+ol check ag.08          # exit code is the verdict
+ol check ag.08 --ref-deps   # only if you skipped ag.07 or ag.02
+ol diff  ag.08          # after passing: your code against the reference
 ```
 
 Then register the tool in your agent's composition root (learner territory): open the index, build a `retrieve.Hybrid` with your `ag.06` embedder, create a `Ledger` per agent run, and register `SearchDocs(hybrid, tokenizer, SearchOptions{MaxTokens: 1024, Ledger: ledger})` in the run's `tool.Registry`. Tell the model in the system prompt to cite excerpts as `[n]`. MS-agent asks your agent questions about the course docs and checks that its answers cite chunks that exist.
@@ -183,7 +183,7 @@ func SearchDocs(r retrieve.Retriever, c Counter, opts SearchOptions) tool.Tool
 | Back | `ag.02` | `tool.New` builds `search_docs`; the registry validates its arguments against `SearchDocsSchema` |
 | Forward | `ag.10` | the citation scorer runs `ParseCitations` and `Resolve` over each answer and scores precision and recall against the ground-truth chunks |
 
-Your agent's composition root registers `search_docs` next to `ag.04`'s `query_usage`; MS-agent checks the cited answers end to end. If you skip this module, `ss check ag.10` reports `needs ag.08: build it, or pass --ref-deps`.
+Your agent's composition root registers `search_docs` next to `ag.04`'s `query_usage`; MS-agent checks the cited answers end to end. If you skip this module, `ol check ag.10` reports `needs ag.08: build it, or pass --ref-deps`.
 
 ## Going further
 

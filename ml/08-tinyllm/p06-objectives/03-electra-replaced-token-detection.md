@@ -1,4 +1,4 @@
-<!-- ss:module L6.3 -->
+<!-- ol:module L6.3 -->
 # ELECTRA replaced-token detection
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L6.3              # stubs electra.py; prints your test path and rung (R5)
-ss tests L6.3              # the course tests
+ol start L6.3              # stubs electra.py; prints your test path and rung (R5)
+ol tests L6.3              # the course tests
 # write your oracle tests in python/tests/l6-3-electra/, then:
-ss check L6.3              # course tests and the mutation grade of your tests
-ss mutate L6.3             # the full grade, cached by your test files' hash
-ss diff  L6.3              # after passing: your code against the reference
+ol check L6.3              # course tests and the mutation grade of your tests
+ol mutate L6.3             # the full grade, cached by your test files' hash
+ol diff  L6.3              # after passing: your code against the reference
 ```
 
 ---
@@ -129,7 +129,7 @@ def load_electra(dir) -> tuple[ELECTRA, dict]: ...
 
 ### Your graded tests (rung R5)
 
-Your oracles: hand-made generator logits whose samples you know (a certain token, a uniform row and chosen uniforms), the BCE written out with `math.log1p`, and the step recomputed from its pieces with a deep copy of the generator. Cover the lucky sample, one draw per picked position, the head's formula (dense, exact GELU, dense) recomputed in numpy, the real-token mean, padding never picked, the discriminator reading the corrupted ids, and the generator's gradients coming from $L_G$ only. Import only the contract (`tinyllm.obj.electra`, `tinyllm.obj.bert`). `ss check L6.3` requires a mutation score of at least 0.80 with every required pitfall fault killed.
+Your oracles: hand-made generator logits whose samples you know (a certain token, a uniform row and chosen uniforms), the BCE written out with `math.log1p`, and the step recomputed from its pieces with a deep copy of the generator. Cover the lucky sample, one draw per picked position, the head's formula (dense, exact GELU, dense) recomputed in numpy, the real-token mean, padding never picked, the discriminator reading the corrupted ids, and the generator's gradients coming from $L_G$ only. Import only the contract (`tinyllm.obj.electra`, `tinyllm.obj.bert`). `ol check L6.3` requires a mutation score of at least 0.80 with every required pitfall fault killed.
 
 ## 5. Pitfalls
 
@@ -158,7 +158,7 @@ Your oracles: hand-made generator logits whose samples you know (a certain token
 | Back | `M07.3` | `normal_init` for the head's weights |
 | Forward | `L6.7` | the zoo loads ELECTRA directories and reports replaced-token detection accuracy next to BERT's masked-token accuracy |
 
-If you skip this module, `ss check L6.7` stops with `needs L6.3`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L6.7` stops with `needs L6.3`: build it, or pass `--ref-deps`.
 
 ## Going further
 

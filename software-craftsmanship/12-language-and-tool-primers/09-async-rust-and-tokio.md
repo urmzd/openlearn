@@ -1,4 +1,4 @@
-<!-- ss:module lang.09 -->
+<!-- ol:module lang.09 -->
 # Async Rust and tokio: futures, tasks, channels, cancellation, hyper
 
 ## Overview
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start lang.09          # records that you started; the exercise lives in primers/lang.09/
-ss tests lang.09          # read the test catalog first
-ss check lang.09          # first run writes the starter package (stubs), then checks it
+ol start lang.09          # records that you started; the exercise lives in primers/lang.09/
+ol tests lang.09          # read the test catalog first
+ol check lang.09          # first run writes the starter package (stubs), then checks it
 cd primers/lang.09 && cargo test && cargo run -- --port 8080
 curl -N 'http://127.0.0.1:8080/ticks?n=5&interval_ms=500'      # one event every half second
 for i in 1 2 3; do curl -s -X POST localhost:8080/jobs -d '{"ms":2000}' & done; wait   # two 200s, one 429
 ```
 
-The first `ss check lang.09` writes the starter files that are missing into `primers/lang.09/`: `Cargo.toml` as given, and `src/lib.rs` and `src/main.rs` with every function body replaced by `todo!("lang.09")`. It never overwrites a file. Builds are offline: tokio, hyper, hyper-util, http-body-util, and bytes come from your local Cargo cache.
+The first `ol check lang.09` writes the starter files that are missing into `primers/lang.09/`: `Cargo.toml` as given, and `src/lib.rs` and `src/main.rs` with every function body replaced by `todo!("lang.09")`. It never overwrites a file. Builds are offline: tokio, hyper, hyper-util, http-body-util, and bytes come from your local Cargo cache.
 
 ---
 

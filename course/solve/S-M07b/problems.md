@@ -1,6 +1,6 @@
 # S-M07b problems: joint distributions, covariance, maximum likelihood
 
-Answer every question in `solve/S-M07b.toml` (written by `ss start S-M07b`).
+Answer every question in `solve/S-M07b.toml` (written by `ol start S-M07b`).
 The tag after each question is its answer type: `[number]` is an exact value
 (`3/8`, `-1/16`, `0`), `[expr]` a formula in the named variables
 (`k/n`; write $\sigma_X^2$ as `vx`), `[bool]` is `true` or `false`, and

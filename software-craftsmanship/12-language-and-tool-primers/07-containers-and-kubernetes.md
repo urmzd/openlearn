@@ -1,4 +1,4 @@
-<!-- ss:module lang.07 -->
+<!-- ol:module lang.07 -->
 # Containers and Kubernetes: images, layers, Pods, Deployments, Services, Helm, kind
 
 ## Overview
@@ -25,16 +25,16 @@
 ## How to work this chapter
 
 ```bash
-ss start lang.07                 # records the start; there are no stubs: you write every file
-ss tests lang.07                 # read the test catalog first
+ol start lang.07                 # records the start; there are no stubs: you write every file
+ol tests lang.07                 # read the test catalog first
 # write primers/lang.07/{main.go,go.mod,Dockerfile,kind.yaml,chart/}  (section 4)
 docker build -t hello:0.1.0 primers/lang.07
 kind create cluster --config primers/lang.07/kind.yaml
 kind load docker-image hello:0.1.0 --name lang07
 helm install hello primers/lang.07/chart --kube-context kind-lang07
 curl -s http://127.0.0.1:31007/
-ss check lang.07                 # exit code is the verdict
-SS_SMOKE=1 ss check lang.07      # without a cluster: everything except the cluster tier
+ol check lang.07                 # exit code is the verdict
+OL_SMOKE=1 ol check lang.07      # without a cluster: everything except the cluster tier
 kind delete cluster --name lang07   # when you are done; dep.00 makes its own cluster
 ```
 
@@ -238,7 +238,7 @@ The exercise lives in your repo at `primers/lang.07/` and is not part of your sy
 
 ### What the tests check
 
-`ss check lang.07` runs `course/tests/lang.07/check` in your repo. Tests run in order, in three tiers.
+`ol check lang.07` runs `course/tests/lang.07/check` in your repo. Tests run in order, in three tiers.
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
@@ -248,7 +248,7 @@ The exercise lives in your repo at `primers/lang.07/` and is not part of your sy
 | `test_chart_lints` | conformance | `helm lint` exits 0 | template errors surface before a cluster sees them |
 | `test_chart_renders_deployment_and_nodeport_service` | unit | one Deployment, one NodePort Service, selector and `targetPort` consistent | a mismatch serves nothing |
 | `test_pod_spec_is_production_shaped` | unit | probe, limits, `runAsNonRoot`, pinned tag, pull policy | the chart policy `dep.03` enforces |
-| `test_values_reach_the_pod` | unit | `--set greeting=ss-probe-lang07` reaches `GREETING` | charts are functions of values |
+| `test_values_reach_the_pod` | unit | `--set greeting=ol-probe-lang07` reaches `GREETING` | charts are functions of values |
 | `test_image_builds` | unit | `docker build` of `primers/lang.07` | a clean-context build is what CI does |
 | `test_image_user_is_numeric_non_root` | boundary | the image config's `User` | what the kubelet verifies |
 | `test_container_serves_health_and_greeting` | unit | `/healthz`, then `/` returns the env greeting and the container hostname | configuration through the environment |
@@ -256,7 +256,7 @@ The exercise lives in your repo at `primers/lang.07/` and is not part of your sy
 | `test_service_has_ready_endpoints_on_kind` | conformance | ready endpoints behind the 31007 Service on `kind-lang07` | the image was loaded and the probe passes |
 | `test_nodeport_answers_from_a_pod` | conformance | `GET http://127.0.0.1:31007/` names a running Pod | the full path of section 3 |
 
-The last two form the **cluster tier**. Without the context `kind-lang07` they fail and say so; `SS_SMOKE=1 ss check lang.07` skips them with the reason and checks everything else (the summary line ends `(smoke: cluster tier skipped)`).
+The last two form the **cluster tier**. Without the context `kind-lang07` they fail and say so; `OL_SMOKE=1 ol check lang.07` skips them with the reason and checks everything else (the summary line ends `(smoke: cluster tier skipped)`).
 
 ## 5. Pitfalls
 

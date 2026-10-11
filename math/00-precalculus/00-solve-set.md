@@ -1,4 +1,4 @@
-<!-- ss:module S-M00 -->
+<!-- ol:module S-M00 -->
 # Solve set: functions, exp/log, trig and Euler, series, polynomials, inequalities
 
 ## Overview
@@ -6,9 +6,9 @@
 | | |
 |---|---|
 | **Module** | `S-M00` · solve · pen and paper, checked by SymPy · Pass 2 · 4 to 6 h |
-| **You write** | `solve/S-M00.toml` in your repo: 60 answers in ASCII math (`ss start S-M00` writes the template) |
+| **You write** | `solve/S-M00.toml` in your repo: 60 answers in ASCII math (`ol start S-M00` writes the template) |
 | **Problems** | `course/solve/S-M00/problems.md`, reproduced in section 4 |
-| **Checked by** | `ss check S-M00`: each answer is compared with a hidden key by SymPy (symbolically, then numerically at seeded points); a part passes at 80% |
+| **Checked by** | `ol check S-M00`: each answer is compared with a hidden key by SymPy (symbolically, then numerically at seeded points); a part passes at 80% |
 | **Needs** | nothing. Each part points to the chapter section that teaches it |
 | **Used by** | the four build modules of this topic (`M00.1` to `M00.4`) as their pen-and-paper check; parts 1 and 6 are `M00.5` (functions, inverses, monotonicity, inequalities), which `M01.1` and `M05.2` assume |
 | **Milestone** | `MS-P2` (the Pass 2 gate: every math module and solve part of the pass) |
@@ -24,9 +24,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M00              # writes solve/S-M00.toml with an empty answer per question
+ol start S-M00              # writes solve/S-M00.toml with an empty answer per question
 $EDITOR solve/S-M00.toml    # answer = "(x + 7)/3", one line per question
-ss check S-M00              # per-question pass/fail; feedback never shows the expected answer
+ol check S-M00              # per-question pass/fail; feedback never shows the expected answer
 ```
 
 Answers are ASCII math: `x^2`, `sqrt(x)`, `log(x)` (natural log), `E`, `pi`, `I`, `oo`; intervals like `(-oo, 2) U [3, 5)`; sets `{1, 2}`; vectors `[1, 2]`. A wrong answer reports where it differs (`q4 FAIL: differs at x=1.30`), not what it should be.
@@ -94,7 +94,7 @@ For a polynomial or a quotient of polynomials, find where it is zero or undefine
 
 Write each answer in `solve/S-M00.toml` as `answer = "..."` under its `[qN]` header. The tag after each question is the answer type.
 
-<!-- ss:problems S-M00 -->
+<!-- ol:problems S-M00 -->
 
 ### Functions and inverses
 
@@ -228,7 +228,7 @@ Write each answer in `solve/S-M00.toml` as `answer = "..."` under its `[qN]` hea
 
 **q60.** Solve $\ln x < x - 1$ over $x > 0$. `[interval]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

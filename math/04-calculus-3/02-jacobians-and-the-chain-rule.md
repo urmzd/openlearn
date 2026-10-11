@@ -1,4 +1,4 @@
-<!-- ss:module M04.2 -->
+<!-- ol:module M04.2 -->
 # Jacobians, multivariable chain rule, numeric JVP/VJP
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M04.2              # stubs python/tinyllm/num/jacobian.py into your repo
-ss tests M04.2              # read the test catalog first: rung R0, you write no tests here
-ss check M04.2              # exit code is the verdict
-ss check M04.2 --ref-deps   # only if your M04.1 is not passing yet
-ss diff  M04.2              # after passing: your code against the reference
+ol start M04.2              # stubs python/tinyllm/num/jacobian.py into your repo
+ol tests M04.2              # read the test catalog first: rung R0, you write no tests here
+ol check M04.2              # exit code is the verdict
+ol check M04.2 --ref-deps   # only if your M04.1 is not passing yet
+ol diff  M04.2              # after passing: your code against the reference
 ```
 
 ---

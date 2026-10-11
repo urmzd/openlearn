@@ -30,7 +30,7 @@ KEYS = {"nll_sum", "n_tokens", "n_bytes", "nll_mean", "ppl", "bits_per_token", "
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def batches(seed_: int, sizes, scale: float, masked: float):

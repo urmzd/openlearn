@@ -1,4 +1,4 @@
-<!-- ss:module M10.2 -->
+<!-- ol:module M10.2 -->
 # The Optimizer protocol: SGD, momentum, Nesterov, weight decay
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M10.2              # stubs sgd.py into your repo, contract alongside
-ss tests M10.2              # read the test catalog first: rung R0, you write no tests here
-ss check M10.2              # exit code is the verdict
-ss check M10.2 --ref-deps   # only if your M10.1 is not passing yet
-ss diff  M10.2              # after passing: your code against the reference
+ol start M10.2              # stubs sgd.py into your repo, contract alongside
+ol tests M10.2              # read the test catalog first: rung R0, you write no tests here
+ol check M10.2              # exit code is the verdict
+ol check M10.2 --ref-deps   # only if your M10.1 is not passing yet
+ol diff  M10.2              # after passing: your code against the reference
 ```
 
 ---
@@ -174,7 +174,7 @@ class SGD:
 | Forward | `M10.3` | AdamW implements the same four methods, with decoupled decay |
 | Forward | `M10.4` | schedules set `lr` between steps; clipping rescales `grad` before `step` |
 
-If you skip this module, `ss check L0.5` stops with `L0.5 needs M10.2`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L0.5` stops with `L0.5 needs M10.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

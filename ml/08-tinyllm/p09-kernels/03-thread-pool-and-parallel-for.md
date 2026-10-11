@@ -1,4 +1,4 @@
-<!-- ss:module rt.03 -->
+<!-- ol:module rt.03 -->
 # Thread pool and tl_parallel_for (optional C)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start rt.03              # stubs pool.c into your repo (the struct is given)
-ss tests rt.03              # read the test catalog first
-ss check rt.03              # exit code is the verdict (ASan build, then TSan build)
-SS_TSAN=0 ss check rt.03    # skip the ThreadSanitizer build while iterating
-ss diff  rt.03              # after passing: your code against the reference
+ol start rt.03              # stubs pool.c into your repo (the struct is given)
+ol tests rt.03              # read the test catalog first
+ol check rt.03              # exit code is the verdict (ASan build, then TSan build)
+OL_TSAN=0 ol check rt.03    # skip the ThreadSanitizer build while iterating
+ol diff  rt.03              # after passing: your code against the reference
 ```
 
 Every test starts a 10-second watchdog: a deadlock reports `FAIL (no progress in 10 s: a deadlock?)` and the test's name instead of hanging until the harness timeout.
@@ -159,7 +159,7 @@ void      tl_pool_destroy(tl_pool *p);                     /* waits for a runnin
 | Forward | `L9.5` | the int4 and int8 matmuls split output rows into ranges |
 | Forward | `L9.1`, `L9.3`, `L9.4`, `L9.5` | Optional standalone C kernels use the pool to schedule independent output regions |
 
-If you skip this module, `ss check L9.1` stops with `BLOCKED ... needs rt.03`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L9.1` stops with `BLOCKED ... needs rt.03`: build it, or pass `--ref-deps`.
 
 ## Going further
 

@@ -175,13 +175,3 @@
   width: auto;
   margin-right: 0.4em;
 }
-
-/* An answer in the professor panel is a document at conversation size. */
-.professor-answer .md {
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.professor-answer .md > :last-child {
-  margin-bottom: 0;
-}

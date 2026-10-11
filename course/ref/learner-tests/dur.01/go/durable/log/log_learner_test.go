@@ -28,8 +28,8 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/failpoint"
-	"supersource.urmzd.com/tl/testkit/proc"
+	"openlearn.urmzd.com/tl/testkit/failpoint"
+	"openlearn.urmzd.com/tl/testkit/proc"
 	dlog "tinyllm/durable/log"
 )
 
@@ -650,7 +650,7 @@ func checkDense(dir string) (int64, error) {
 }
 
 func seed() uint64 {
-	s, _ := strconv.ParseUint(os.Getenv("SS_SEED"), 10, 64)
+	s, _ := strconv.ParseUint(os.Getenv("OL_SEED"), 10, 64)
 	return s
 }
 

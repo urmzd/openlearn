@@ -1,10 +1,12 @@
 // The workbench: everything outside a live session.
 //
-// Three columns, each with one job. The sidebar is navigation. The main pane
-// shows exactly one view, picked by a route. The professor docks on the right
-// and follows whichever document is open. A session is not a view here: it
+// Two columns, each with one job. The sidebar is navigation. The main pane
+// shows exactly one view, picked by a route. A session is not a view here: it
 // takes the whole window (see App.tsx), because a running clock should not be
 // one click away from something else.
+//
+// There is no assistant in the window. An agent connects from outside, over
+// MCP, and sees what is open here through the focus the workbench records.
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -14,14 +16,12 @@ import {
   ListPacks,
   ListPaths,
   OpenPack,
+  SetFocus,
 } from "../wailsjs/go/main/App";
 import type { course, packs } from "../wailsjs/go/models";
-import { Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Professor } from "@/components/professor";
 import type { Route } from "@/routes";
 import { DocView } from "@/views/DocView";
 import { Exercises } from "@/views/Exercises";
@@ -30,7 +30,8 @@ import { PathView } from "@/views/PathView";
 import { Progress } from "@/views/Progress";
 import { Runner } from "@/views/Runner";
 import { SessionSetup } from "@/views/SessionSetup";
-import { Settings } from "@/views/Settings";
+import { Connect } from "@/views/Connect";
+import { Courses } from "@/views/Courses";
 import { TrackView } from "@/views/TrackView";
 
 interface Props {
@@ -46,9 +47,6 @@ export function Workbench({ epoch }: Props) {
   const [route, setRoute] = useState<Route>({ kind: "home" });
   const [doc, setDoc] = useState<course.Doc | null>(null);
   const [notice, setNotice] = useState("");
-  // The professor is part of the layout, not a popup: it starts open and stays
-  // beside whatever is being read until it is hidden.
-  const [professor, setProfessor] = useState(true);
   const [practiceEpoch, setPracticeEpoch] = useState(0);
 
   const loadPaths = useCallback(() => {
@@ -96,18 +94,11 @@ export function Workbench({ epoch }: Props) {
     [loadPack],
   );
 
-  // Cmd/Ctrl+J shows or hides the professor from anywhere, which is why it
-  // needs no place in the navigation.
+  // Tell the backend which document is open, so an agent connected over MCP
+  // can resolve "this page".
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
-        e.preventDefault();
-        setProfessor((p) => !p);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    SetFocus(route.kind === "doc" ? route.path : "").catch(() => {});
+  }, [route]);
 
   const bumpPractice = useCallback(() => setPracticeEpoch((n) => n + 1), []);
 
@@ -140,7 +131,6 @@ export function Workbench({ epoch }: Props) {
               paths={paths}
               onNavigate={setRoute}
               onOpenDoc={openDoc}
-              onAsk={() => setProfessor(true)}
             />
           )}
           {route.kind === "doc" && doc && (
@@ -150,7 +140,6 @@ export function Workbench({ epoch }: Props) {
               repo={info?.repo}
               onNavigate={setRoute}
               onOpenDoc={openDoc}
-              onAsk={() => setProfessor(true)}
             />
           )}
           {route.kind === "track" && track && (
@@ -183,7 +172,6 @@ export function Workbench({ epoch }: Props) {
               modes={info?.modes ?? []}
               source={route.source}
               onClearSource={() => setRoute({ kind: "session", source: null })}
-              onOpenSettings={() => setRoute({ kind: "settings" })}
             />
           )}
           {route.kind === "progress" && (
@@ -194,12 +182,10 @@ export function Workbench({ epoch }: Props) {
               onOpenPath={(name) => setRoute({ kind: "path", name })}
             />
           )}
-          {route.kind === "settings" && (
-            <Settings
-              course={info}
-              onPackChanged={() => loadPack().catch(() => {})}
-            />
+          {route.kind === "courses" && (
+            <Courses course={info} onSwitch={switchPack} />
           )}
+          {route.kind === "connect" && <Connect />}
 
           {notice && (
             <button
@@ -210,27 +196,6 @@ export function Workbench({ epoch }: Props) {
             </button>
           )}
         </SidebarInset>
-        {!professor && (
-          <Button
-            variant="outline"
-            size="icon-lg"
-            className="absolute right-4 bottom-4 z-20 rounded-full shadow-lg"
-            onClick={() => setProfessor(true)}
-            title="Ask the professor (⌘J)"
-          >
-            <Sparkles />
-          </Button>
-        )}
-        {professor && (
-          <Professor
-            docPath={route.kind === "doc" ? route.path : ""}
-            docTitle={route.kind === "doc" ? (doc?.title ?? "") : ""}
-            repo={info?.repo}
-            onOpenDoc={openDoc}
-            onOpenSettings={() => setRoute({ kind: "settings" })}
-            onClose={() => setProfessor(false)}
-          />
-        )}
       </SidebarProvider>
     </TooltipProvider>
   );

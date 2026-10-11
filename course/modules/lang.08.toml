@@ -8,7 +8,7 @@ contract  = []
 deps      = []
 reading   = ["lang.01", "lang.05"]   # a uv-run Python; the HTTP/1.1 exchange the downloader speaks by hand
 used_by   = []                       # a primer has no code call site; data.01 lists it in `reading`
-units     = ["primers/lang.08/downloader.py"]   # stdlib only; `ss start` writes compiling stubs
+units     = ["primers/lang.08/downloader.py"]   # stdlib only; `ol start` writes compiling stubs
 artifacts = ["primers/lang.08"]   # learner files the check grades: hashed into the verdict, present = started (I28)
 milestone = "MS-P3"
 ci        = "pr"

@@ -1,4 +1,4 @@
-<!-- ss:module M08.3 -->
+<!-- ol:module M08.3 -->
 # Matrix differentials, the trace trick, and closed-form VJPs
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M08.3              # stubs vjp.py into your repo, contract alongside
-ss tests M08.3              # read the test catalog first: rung R0, you write no tests here
-ss check M08.3              # exit code is the verdict
-ss check M08.3 --ref-deps   # only if your M09.2, M11.1, or M04.2 is not passing yet
-ss diff  M08.3              # after passing: your code against the reference
+ol start M08.3              # stubs vjp.py into your repo, contract alongside
+ol tests M08.3              # read the test catalog first: rung R0, you write no tests here
+ol check M08.3              # exit code is the verdict
+ol check M08.3 --ref-deps   # only if your M09.2, M11.1, or M04.2 is not passing yet
+ol diff  M08.3              # after passing: your code against the reference
 ```
 
 ---
@@ -214,7 +214,7 @@ LayerNorm and RMSNorm normalize the last axis; `rstd` may be passed with shape `
 | Forward | `L3.1` | backpropagation through time by hand chains `matmul_vjp` over steps |
 | Forward | `L7.1` | `rmsnorm_vjp` is RMSNorm's backward |
 
-If you skip this module, `ss check L0.2` stops with `L0.2 needs M08.3`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L0.2` stops with `L0.2 needs M08.3`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

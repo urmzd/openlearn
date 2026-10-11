@@ -10,7 +10,7 @@
 # and the cache, and adds the response headers below. Paths marked
 # `x-tl-tier: engine` exist on the engine tier only.
 #
-# Conformance (`ss conform openapi:v1 --target engine|gateway`) validates
+# Conformance (`ol conform openapi:v1 --target engine|gateway`) validates
 # every response body against the schema declared here for its path, status,
 # and content type. SSE chunks validate against the `x-tl-chunk` schema of
 # the 200 `text/event-stream` content.

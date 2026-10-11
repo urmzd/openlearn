@@ -38,7 +38,7 @@ HAND = [[A, B, C], [A, B, A, B], [C, A, B, C]]
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def golden() -> dict:

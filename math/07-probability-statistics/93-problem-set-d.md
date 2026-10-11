@@ -1,4 +1,4 @@
-<!-- ss:module S-M07d -->
+<!-- ol:module S-M07d -->
 # Solve set: hypothesis tests, regression, queueing and Little's law, balls into bins
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M07d/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M07d/problems.md` and in section 4 |
 | **Needs** | `S-M07c` (sampling distributions). Reading: [`M07.5` hypothesis tests](05-hypothesis-tests.md), [`M07.7` logistic regression, ROC-AUC, calibration](07-logistic-regression-roc-auc-calibration.md), and the [Probability and Statistics topic](README.md), hypothesis testing and regression sections |
 | **Used by** | no call site (a solve set). Do it alongside `M07.5` and `M07.7`: q1 to q4 are their tests by hand, q5 to q9 the regression behind the policy head; q10 to q17 are the queueing and load-balancing arithmetic `load.01` and the gateway's router (`gw.05`) rely on |
-| **Milestone** | `MS-P5` (the Pass 5 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P5` (the Pass 5 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Wasserman, *All of Statistics*, ch. 10 and 13; Harchol-Balter, *Performance Modeling and Design of Computer Systems*, ch. 6 (Little's law) and 14 (M/M/1); Mitzenmacher and Upfal, *Probability and Computing*, ch. 5 (balls and bins) and 17 (the power of two choices) |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M07d             # writes solve/S-M07d.toml and the proof file
-ss check S-M07d             # SymPy checks the answers, then asks the proof rubric (y/n)
-ss check S-M07d --regrade   # ask the rubric again after you change the proof
+ol start S-M07d             # writes solve/S-M07d.toml and the proof file
+ol check S-M07d             # SymPy checks the answers, then asks the proof rubric (y/n)
+ol check S-M07d --regrade   # ask the rubric again after you change the proof
 ```
 
 ---
@@ -97,7 +97,7 @@ proof = "S-M07d/q9.md"
 
 Write $\lambda$ as `lam` and $\mu$ as `mu`; exact fractions such as `79/2048` are welcome, $e$ is `E` or `exp(1)`.
 
-<!-- ss:problems S-M07d -->
+<!-- ol:problems S-M07d -->
 
 ### Hypothesis tests
 
@@ -145,7 +145,7 @@ Write $\lambda$ as `lam` and $\mu$ as `mu`; exact fractions such as `79/2048` ar
 (c) $\sqrt{n}$ with one choice, $\ln n$ with two.
 (d) a constant with two choices.
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

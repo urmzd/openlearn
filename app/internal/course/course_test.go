@@ -182,7 +182,7 @@ func TestDoneFilesRoundTripInTheFormatSSReads(t *testing.T) {
 }
 
 // The repository this app lives in is itself a pack, read by both this package
-// and `ss learn`. Every path must expand here the way it does there, and every
+// and `ol learn`. Every path must expand here the way it does there, and every
 // stage must name documents that exist.
 func TestTheBuiltInPacksAreWellFormed(t *testing.T) {
 	for _, root := range []string{"../../..", "../../../packs/languide"} {

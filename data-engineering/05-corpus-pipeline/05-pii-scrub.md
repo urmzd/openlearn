@@ -1,4 +1,4 @@
-<!-- ss:module data.05 -->
+<!-- ol:module data.05 -->
 # PII scrub with typed placeholders and audit spans
 
 ## Overview
@@ -24,13 +24,13 @@
 ## How to work this chapter
 
 ```bash
-ss start data.05              # stubs pii.py into python/corpus/
-ss tests data.05              # the course test catalog
-ss tdd red data.05            # rung R3: your tests first, failing against the stubs
-ss check data.05              # exit code is the verdict
-ss check data.05 --ref-deps   # only if data.02 or data.04 is not passing yet
-ss mutate data.05             # how many planted bugs your tests catch
-ss diff  data.05              # after passing: your code against the reference
+ol start data.05              # stubs pii.py into python/corpus/
+ol tests data.05              # the course test catalog
+ol tdd red data.05            # rung R3: your tests first, failing against the stubs
+ol check data.05              # exit code is the verdict
+ol check data.05 --ref-deps   # only if data.02 or data.04 is not passing yet
+ol mutate data.05             # how many planted bugs your tests catch
+ol diff  data.05              # after passing: your code against the reference
 ```
 
 ---
@@ -136,7 +136,7 @@ def manifest_counts(counts: Mapping[str, int] | None) -> dict[str, int]  # meta[
 | `test_audit_holds_spans_not_text` | unit | the audit line has kinds and offsets, not the address or the card | the log is not a second copy of the PII |
 | `test_stage_streams` | property | pulls one document at a time from an endless stream | the stage runs on any corpus size |
 
-**Your tests (rung R3, red then green).** Write them under `python/tests/data-05-pii/` against the stubs first (`ss tdd red data.05` must fail), then make them pass: the hand example, the Luhn textbook numbers, offsets into the original, lookalikes that must stay, each kind found once, overlapping candidates giving one span, counts and meta that survive a second scrub, `redact`'s checks, and the three policies with the audit hook. `ss mutate data.05` grades them: 0.70 of the mutants, including the one behind Pitfall 4.
+**Your tests (rung R3, red then green).** Write them under `python/tests/data-05-pii/` against the stubs first (`ol tdd red data.05` must fail), then make them pass: the hand example, the Luhn textbook numbers, offsets into the original, lookalikes that must stay, each kind found once, overlapping candidates giving one span, counts and meta that survive a second scrub, `redact`'s checks, and the three policies with the audit hook. `ol mutate data.05` grades them: 0.70 of the mutants, including the one behind Pitfall 4.
 
 ## 5. Pitfalls
 
@@ -162,7 +162,7 @@ def manifest_counts(counts: Mapping[str, int] | None) -> dict[str, int]  # meta[
 | Forward | `data.08` | the datasheet's Composition section reports the counts by kind |
 | Forward | `gw.08` | the gateway redacts request logs with a Go port of these detectors (a port, not a call) |
 
-If you skip this module, `ss check data.06` stops with `data.06 needs data.05`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check data.06` stops with `data.06 needs data.05`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

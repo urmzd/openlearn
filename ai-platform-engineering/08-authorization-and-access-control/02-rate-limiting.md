@@ -1,4 +1,4 @@
-<!-- ss:module gw.03 -->
+<!-- ol:module gw.03 -->
 # Rate limiting: RPM token bucket + TPM reserve/settle
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start gw.03          # writes go/gateway/limit/limit.go with stub bodies
-ss tests gw.03          # read the test catalog first
-ss check gw.03          # runs the course tests with -race
-ss check gw.03 --ref-deps   # only if your gw.01 or gw.02 is not passing yet
-ss diff  gw.03          # after passing: your code against the reference
+ol start gw.03          # writes go/gateway/limit/limit.go with stub bodies
+ol tests gw.03          # read the test catalog first
+ol check gw.03          # runs the course tests with -race
+ol check gw.03 --ref-deps   # only if your gw.01 or gw.02 is not passing yet
+ol diff  gw.03          # after passing: your code against the reference
 ```
 
 Then build `limit.New(clock)` and `limit.TokenizeCounter{BaseURL: engineURL}` in your composition root; until `gw.07`'s `gateway.Deps` assembles the chain, plug `limit.Middleware(limiter, counter)` into the `Limiter` slot yourself.

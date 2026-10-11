@@ -1,14 +1,14 @@
 # Reattempt sources.
 #
 # These rows point at solutions that already live elsewhere in the repository.
-# Nothing is copied into practice/: `ss start reattempt` reads the file in
+# Nothing is copied into practice/: `ol start reattempt` reads the file in
 # place, strips the region between its solution markers, and writes the result
 # into .scratchpad/. So there is exactly one copy of every solution, and it is
 # the one the learning path already links to.
 #
 # A source only belongs here if it asserts something. A file that defines a
 # function and never calls it exits zero whether it is correct or blank, which
-# would make `ss check` pass an empty stub and be worse than having no exercise.
+# would make `ol check` pass an empty stub and be worse than having no exercise.
 #
 # Columns: track <TAB> name <TAB> path relative to the repo root
 #

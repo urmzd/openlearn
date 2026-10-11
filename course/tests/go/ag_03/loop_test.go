@@ -21,7 +21,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
-	"supersource.urmzd.com/tl/testkit/faketool"
+	"openlearn.urmzd.com/tl/testkit/faketool"
 	"tinyllm/agent/loop"
 	"tinyllm/agent/provider"
 	"tinyllm/agent/tool"

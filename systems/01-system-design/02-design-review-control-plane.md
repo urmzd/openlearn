@@ -1,4 +1,4 @@
-<!-- ss:module review.02 -->
+<!-- ol:module review.02 -->
 # Design review: control plane
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start review.02
-ss tests review.02
-ss check review.02
+ol start review.02
+ol tests review.02
+ol check review.02
 ```
 
 ---

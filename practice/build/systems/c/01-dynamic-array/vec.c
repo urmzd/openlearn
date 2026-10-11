@@ -1,7 +1,7 @@
 /* vec.c - the part you write.
  *
  * Everything between SOLUTION-BEGIN and SOLUTION-END is stripped out when
- * `ss start build c 01` clones this into your scratchpad.
+ * `ol start build c 01` clones this into your scratchpad.
  */
 #include "vec.h"
 

@@ -19,7 +19,7 @@ use tl_engine::spec::{self, Draft, Finish, RunnerTarget, SpecConfig, SpecError, 
 use tl_engine::kv::{KvCfg, KvPool, TL_F16};
 
 fn fixtures() -> PathBuf {
-    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss"))
+    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol"))
 }
 
 fn golden() -> j::V {

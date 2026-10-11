@@ -66,7 +66,7 @@ CONTRACTS = Path(__file__).resolve().parents[2] / "contracts" / "formats"
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 class Rng:

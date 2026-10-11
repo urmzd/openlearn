@@ -10,5 +10,5 @@ for path in ('deploy/docker/agent.Dockerfile', f'deploy/helm/{name}-agent/values
     if not Path(path).is_file():
         raise SystemExit(f'dep.07: {path} is missing')
 PY
-export SS_REPO="$PWD" SS_COURSE_TREE="${SS_COURSE_TREE:-$(cd "$tests/.." && pwd)}" PYTHONPATH="$tests" PYTHONDONTWRITEBYTECODE=1
+export OL_REPO="$PWD" OL_COURSE_TREE="${OL_COURSE_TREE:-$(cd "$tests/.." && pwd)}" PYTHONPATH="$tests" PYTHONDONTWRITEBYTECODE=1
 exec uv run --no-project --python ">=3.11" --quiet --with pytest python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

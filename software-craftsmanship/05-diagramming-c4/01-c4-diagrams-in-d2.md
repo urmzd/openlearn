@@ -1,4 +1,4 @@
-<!-- ss:module craft.09 -->
+<!-- ol:module craft.09 -->
 # C4 diagrams in D2
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.09
-ss tests craft.09
-ss check craft.09
+ol start craft.09
+ol tests craft.09
+ol check craft.09
 ```
 
 ---

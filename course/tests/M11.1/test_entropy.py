@@ -36,7 +36,7 @@ Q = np.array([0.25, 0.25, 0.5])
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def random_dist(rng: PCG32, shape, zeros: float = 0.0) -> np.ndarray:

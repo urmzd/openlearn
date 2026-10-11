@@ -11,17 +11,17 @@ arguments:
 
 ## First: you probably want the CLI, not this skill
 
-Scaffolding a workspace to *practise in* is what `ss start` does, and it needs no
+Scaffolding a workspace to *practise in* is what `ol start` does, and it needs no
 agent:
 
 ```bash
-practice/bin/ss start build rust 03    # clone stubbed into .scratchpad/, open it
-practice/bin/ss check build rust 03    # run it; exit code is the verdict
-practice/bin/ss diff  build rust 03    # your attempt against the reference
+practice/bin/ol start build rust 03    # clone stubbed into .scratchpad/, open it
+practice/bin/ol check build rust 03    # run it; exit code is the verdict
+practice/bin/ol diff  build rust 03    # your attempt against the reference
 ```
 
 If the exercise already exists under `practice/build/`, stop here and use that.
-`practice/bin/ss list build <lang>` shows what exists.
+`practice/bin/ol list build <lang>` shows what exists.
 
 ## Use this skill to author an exercise that does not exist yet
 
@@ -37,7 +37,7 @@ README may list an exercise that has no directory. Creating one is the job here.
    Extract its title, concepts, and difficulty stars.
 4. Create `<lang-dir>/<NN>-<kebab-name>/` containing the three required pieces
    below.
-5. Verify it: `practice/bin/ss verify build <lang>` must report `OK` for the new
+5. Verify it: `practice/bin/ol verify build <lang>` must report `OK` for the new
    exercise. An exercise that has not been run is not finished.
 
 ## The three required pieces
@@ -64,7 +64,7 @@ void vec_init(Vec *v) {
 }
 ```
 
-`ss start` replaces each marked region with a single `TODO` line, so the marker
+`ol start` replaces each marked region with a single `TODO` line, so the marker
 line must contain nothing but comment punctuation and the marker itself. Prose
 that merely mentions the marker by name is ignored, which is why this file can
 show the markers without breaking.
@@ -76,15 +76,15 @@ does not compile because a type went missing teaches nothing.
 
 No test framework, in any language. One entry point that runs assertions and
 exits nonzero on the first failure, because that exit code is the entire
-contract `ss check` relies on. The naming that `ss` knows how to run:
+contract `ol check` relies on. The naming that `ol` knows how to run:
 
-| Language | Entry point | How ss runs it |
+| Language | Entry point | How ol runs it |
 |----------|-------------|----------------|
 | C | `main.c` plus `<thing>.c` | `cc -std=c11 -Wall -Wextra *.c` then run |
 | C++ | `main.cpp` | `c++ -std=c++20 -Wall -Wextra *.cpp` then run |
 | Rust | `main.rs` | `rustc --edition 2021` then run |
 | Zig | `main.zig` | `zig run main.zig` |
-| Go | `main.go` | `go run .` (ss writes a `go.mod` into the workspace) |
+| Go | `main.go` | `go run .` (ol writes a `go.mod` into the workspace) |
 | Scala | `main.scala` | `scala-cli run .` |
 | Java | `Main.java` | `javac` then `java Main` |
 | Python | `main.py` | `uv run --no-project python main.py` |

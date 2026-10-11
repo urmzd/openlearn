@@ -6,4 +6,4 @@ data pipeline and training run as workflows (CorpusBuild, TrainRun, EvalSuite) o
 
 **Gate**: [MS-P8 = MS-durable](milestone.md).
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ss learn course-p08-p08-durable` to see progress.
+Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p08-p08-durable` to see progress.

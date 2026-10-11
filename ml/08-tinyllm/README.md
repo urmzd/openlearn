@@ -2,7 +2,7 @@
 
 ## Overview
 
-- **Primary reference**: the [course](../../paths/course/) itself: every chapter here is one module you build and `ss check` grades. Read [the system map](../../paths/course/SYSTEM.md) first.
+- **Primary reference**: the [course](../../paths/course/) itself: every chapter here is one module you build and `ol check` grades. Read [the system map](../../paths/course/SYSTEM.md) first.
 - **Supplementary**: Karpathy, [*Neural Networks: Zero to Hero*](https://karpathy.ai/zero-to-hero.html) (free); Jurafsky and Martin, [*Speech and Language Processing*](https://web.stanford.edu/~jurafsky/slp3/) (free), chapters 3 (n-gram LMs) and 9 (transformers); Raschka, *Build a Large Language Model (From Scratch)*
 - **Prerequisites**: the Pass 0 primers ([Python and numpy](../../software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md), [C](../../software-craftsmanship/12-language-and-tool-primers/03-c.md)) and, just in time, the math each part names (course DESIGN 7.5)
 - **Estimated time**: the spine of course passes 1 to 11, about 60 weeks part-time; Pass 1 (the tracer) is about 5 weeks
@@ -15,7 +15,7 @@
 
 ## How to Study
 
-Follow the course path (`practice/bin/ss learn course`), not this directory's order: parts interleave with math, systems, and operations modules. For each chapter run `ss start <ID>`, read beats 1 to 3 before writing code, implement against the interface in beat 4, and `ss check <ID>` until green. `ss tests <ID>` explains what each test checks and why.
+Follow the course path (`practice/bin/ol learn course`), not this directory's order: parts interleave with math, systems, and operations modules. For each chapter run `ol start <ID>`, read beats 1 to 3 before writing code, implement against the interface in beat 4, and `ol check <ID>` until green. `ol tests <ID>` explains what each test checks and why.
 
 ---
 

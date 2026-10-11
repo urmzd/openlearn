@@ -1,4 +1,4 @@
-<!-- ss:module M90.1 -->
+<!-- ol:module M90.1 -->
 # Scale a vector
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start M90.1
-ss tests M90.1
-ss check M90.1
+ol start M90.1
+ol tests M90.1
+ol check M90.1
 ```
 
 ---

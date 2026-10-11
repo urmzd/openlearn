@@ -1,4 +1,4 @@
-<!-- ss:module L7.6 -->
+<!-- ol:module L7.6 -->
 # Multi-head latent attention (DeepSeek-V2/V3), weight absorption
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L7.6              # stubs mla.py; prints your test path and rung (R5)
-ss tests L7.6              # the course tests
+ol start L7.6              # stubs mla.py; prints your test path and rung (R5)
+ol tests L7.6              # the course tests
 # write your oracle tests in python/tests/l7-6-mla/, then:
-ss check L7.6              # course tests and the mutation grade of your tests
-ss diff  L7.6              # after passing: your code against the reference
+ol check L7.6              # course tests and the mutation grade of your tests
+ol diff  L7.6              # after passing: your code against the reference
 ```
 
 ---
@@ -127,7 +127,7 @@ class AbsorbedMLA:                                          # w_uk [H, dn, r], w
 
 ### Your graded tests (rung R5)
 
-Your oracle is MLA written out in numpy float64 from the equations of section 2 (RoPE as complex multiplication), compared with `MLAttention` on random weights for both query forms and both layouts; the absorbed form against the naive one while decoding; a padding mask in the absorbed form; a central-difference gradient through `kv_a_proj_with_mqa`; the cache's copy; the rope-width check; the state-dict names. Import only `tinyllm.modern.mla`, `tinyllm.modern.rope`, and `tinyllm.autograd`. `ss check L7.6` requires 0.80 with every pitfall fault killed.
+Your oracle is MLA written out in numpy float64 from the equations of section 2 (RoPE as complex multiplication), compared with `MLAttention` on random weights for both query forms and both layouts; the absorbed form against the naive one while decoding; a padding mask in the absorbed form; a central-difference gradient through `kv_a_proj_with_mqa`; the cache's copy; the rope-width check; the state-dict names. Import only `tinyllm.modern.mla`, `tinyllm.modern.rope`, and `tinyllm.autograd`. `ol check L7.6` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

@@ -49,7 +49,7 @@ that page: exit 2 on a usage error, the last stdout line is one JSON object.
        |loss - base loss| / base loss, "peak_mem_ratio" = peak_mem / base
        peak_mem}; --out writes the same object to a file.
 
-`ss milestone MS-L11 --smoke` runs 60 steps per run (about 40 s); the full
+`ol milestone MS-L11 --smoke` runs 60 steps per run (about 40 s); the full
 run trains 300.
 
 ## MS-C1: Your capstone model, trained, evaluated, released through ModelRelease, and served
@@ -89,11 +89,11 @@ This file fixes these verbs (spec/cli-roles.md, "Verbs of later passes"):
   {ctl} train --spec ... --id ... --wait --json   as fixed by MS-durable.
 
 Tiers: the full run uses `vars` (specs/c1/tinystories-short.json, or
-change it to tinystories-10m.json); `ss milestone MS-C1 --smoke` (the
+change it to tinystories-10m.json); `ol milestone MS-C1 --smoke` (the
 nightly train-smoke job) uses `smoke_vars`, the about-1M-parameter smoke
 spec. The `<= calibrated` bars come from the reference's 5-seed runs per
 tier in course/fixtures/ref-thresholds.tsv (key MS-C1/<step>), recorded by
-`ss milestone MS-C1 --record-thresholds` on the author's machine
+`ol milestone MS-C1 --record-thresholds` on the author's machine
 (DESIGN 9, B11; DEVIATIONS B112-10).
 
 Your system.toml must declare [entry].tinyllm and [entry].ctl, the
@@ -119,4 +119,4 @@ the nightly train-smoke job, the full tier on your machine), so a PR run
 of this gate would train it too. MS-L11 alone stays a PR milestone
 (DEVIATIONS B112-11).
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

@@ -1,4 +1,4 @@
-<!-- ss:module review.03 -->
+<!-- ol:module review.03 -->
 # Design review: the whole system
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start review.03
-ss tests review.03
-ss check review.03
+ol start review.03
+ol tests review.03
+ol check review.03
 ```
 
 ---

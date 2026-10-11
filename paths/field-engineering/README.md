@@ -9,6 +9,6 @@ The customer-facing half of the job: discovery, qualification and sizing, perfor
 The stages, their chapters, and what "done" means for each are in [`path.tsv`](path.tsv).
 
 ```bash
-practice/bin/ss learn field-engineering          # stages and progress
-practice/bin/ss learn field-engineering next     # read the next unfinished stage
+practice/bin/ol learn field-engineering          # stages and progress
+practice/bin/ol learn field-engineering next     # read the next unfinished stage
 ```

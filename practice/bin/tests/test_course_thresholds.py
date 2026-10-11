@@ -2,7 +2,7 @@
 held to the reference mean + 3 sd over 5 seeds; --record-thresholds writes the
 rows (and their MANIFEST row); --smoke milestones (C1's 200-step config) use
 `smoke_vars` and their own smoke thresholds; learning tests use
-_lib.thresholds through `ss verify course --record-thresholds`."""
+_lib.thresholds through `ol verify course --record-thresholds`."""
 
 TRAINER = """import argparse, json
 ap = argparse.ArgumentParser()
@@ -64,7 +64,7 @@ def test_learning_tests_record_and_check(ss):
         "def test_learns_a_scale():\n"
         "    # WHY: a toy 'learning' metric that scatters with the seed.\n"
         "    # KIND: learning\n"
-        "    seed = int(os.environ.get('SS_SEED', '0'))\n"
+        "    seed = int(os.environ.get('OL_SEED', '0'))\n"
         "    loss = sum(scale([0.1, 0.2], 1.0 + 0.01 * seed))\n"
         "    check('M90.1/test_learns_a_scale', 'loss', loss, direction='max')\n"
     )

@@ -1,4 +1,4 @@
-<!-- ss:module ag.11 -->
+<!-- ol:module ag.11 -->
 # LLM judge with position control
 
 ## Overview
@@ -39,9 +39,9 @@ Build `NewJudgeScorer`, pairwise scoring, kappa reporting, and `Sampled`. The ge
 | `TestKappaAgainstLabels` | agreement against frozen labels |
 
 ```bash
-ss start ag.11
-ss tests ag.11
-ss check ag.11
+ol start ag.11
+ol tests ag.11
+ol check ag.11
 ```
 
 ## 5. Pitfalls

@@ -41,7 +41,7 @@
 # runner step that stops one engine instance mid-milestone is a harness
 # addition (DEVIATIONS B94-17).
 #
-# `ss milestone MS-gateway --smoke` runs every step except the CLI step.
+# `ol milestone MS-gateway --smoke` runs every step except the CLI step.
 id       = "MS-gateway"
 title    = "Your gateway passes conformance and its usage ledger reconciles with the engine"
 requires = ["lang.11", "ds.09", "gw.01", "gw.02", "gw.03", "gw.04", "gw.05", "gw.06", "gw.07", "craft.20"]

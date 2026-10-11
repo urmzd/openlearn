@@ -27,9 +27,9 @@ import (
 	"tinyllm/durable/activity"
 	"tinyllm/durable/worker"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
-	"supersource.urmzd.com/tl/testkit/effects"
-	"supersource.urmzd.com/tl/testkit/proc"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	"openlearn.urmzd.com/tl/testkit/effects"
+	"openlearn.urmzd.com/tl/testkit/proc"
 )
 
 func TestMain(m *testing.M) {
@@ -190,7 +190,7 @@ func TestFlakyActivityKillLoopExactlyOnce(t *testing.T) {
 	e.start()
 	e.startWF("flaky", "Batch", "20")
 	var mu sync.Mutex
-	seed, _ := strconv.ParseUint(os.Getenv("SS_SEED"), 10, 64)
+	seed, _ := strconv.ParseUint(os.Getenv("OL_SEED"), 10, 64)
 	res, err := proc.KillLoop(func() *exec.Cmd {
 		cmd := exec.Command(os.Args[0], "-test.run=^$")
 		cmd.Env = append(os.Environ(), "DUR05_ADDR="+e.addr, "DUR05_SINK="+sink.URL(), "DUR05_WF=flaky")

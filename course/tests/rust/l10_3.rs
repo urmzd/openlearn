@@ -46,8 +46,8 @@ mod frozen {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
 }
 
 fn fake_next(tokens: &[u32]) -> u32 {
@@ -112,7 +112,7 @@ fn run_fake<B: BlockSpace>(s: &mut Scheduler<B>, quiet: usize, limit: usize, mut
 }
 
 fn tiny_llama() -> PathBuf {
-    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss")).join("L7.9/tiny-llama-2l")
+    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol")).join("L7.9/tiny-llama-2l")
 }
 
 fn real(blocks: usize, block_tokens: usize) -> (ModelRunner, FreeListBlocks) {
@@ -246,7 +246,7 @@ fn token_budget_never_exceeded() {
     // KIND: property
     // CATCHES: s01
     // CHAPTER: L10.3 section 2
-    let mut g = frozen::Pcg32::new(ss_seed() + 303);
+    let mut g = frozen::Pcg32::new(ol_seed() + 303);
     let mut s = chunked(cfg(6, 16), free_list(4, 64), 8);
     let mut want: HashMap<RequestId, Vec<u32>> = HashMap::new();
     let run = run_fake(&mut s, 80, 5000, |step, s| {

@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	"lang10/kvstore"
-	kvv1 "supersource.urmzd.com/tl/contracts/gen/tl/kv/v1"
+	kvv1 "openlearn.urmzd.com/tl/contracts/gen/tl/kv/v1"
 )
 
 func main() {

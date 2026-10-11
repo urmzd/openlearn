@@ -1,4 +1,4 @@
-<!-- ss:module gw.07 -->
+<!-- ol:module gw.07 -->
 # Usage ledger, metering, admin API
 
 ## Overview
@@ -27,11 +27,11 @@
 ## How to work this chapter
 
 ```bash
-ss start gw.07          # writes go/gateway/ledger/{ledger,meter,admin}.go and go/gateway/gateway.go with stub bodies
-ss tests gw.07          # read the test catalog first
+ol start gw.07          # writes go/gateway/ledger/{ledger,meter,admin}.go and go/gateway/gateway.go with stub bodies
+ol tests gw.07          # read the test catalog first
 cd go && go get modernc.org/sqlite@v1.39.1   # the one third-party package (contracts/allowed-deps.toml)
-ss check gw.07          # exit code is the verdict
-ss diff  gw.07          # after passing: your code against the reference
+ol check gw.07          # exit code is the verdict
+ol diff  gw.07          # after passing: your code against the reference
 ```
 
 Then call `gateway.Deps` and `gateway.Admin` from your `go/cmd/gateway` composition root and add `usage` to your `<system>` CLI (section 4, "Your entry points"). MS-gateway reconciles your ledger with your engine's usage.
@@ -146,7 +146,7 @@ These numbers are `TestHandWorkedExample`, `TestStreamUsageIsRequestedAndHidden`
 ```go
 package ledger // import "tinyllm/gateway/ledger"
 
-const Schema = `...`        // contracts/formats/usage.v1.sql, byte for byte (written by ss start)
+const Schema = `...`        // contracts/formats/usage.v1.sql, byte for byte (written by ol start)
 const SchemaVersion = 1
 
 type UsageRecord struct {
@@ -187,7 +187,7 @@ func Admin(s Stages) ledger.AdminDeps    // KeysHandler, WorkersHandler, RoutesH
 
 `gateway.go` is the part of the composition root a test can call. `Deps` calls each module's middleware constructor (`auth.Middleware`, `limit.Middleware`, `cache.Middleware`, `route.Middleware`, `ledger.Meter`) and leaves a nil stage out; gw.01's `Handler` puts them in contract order. One wiring decision is made here and nowhere else: with a `Router` and no `CacheOptions.Rev`, the cache revision is the route table's `ETag`, so a `PUT /admin/v1/routes` makes every answer cached under the old table unreachable. `Admin` builds each admin path's handler from the module that owns it.
 
-`ss start gw.07` writes the four files with every function body stubbed (`panic("todo: gw.07")`); types, constants, and `Schema` stay. The unexported helpers (`meterWriter`, `inspect`, `errorCode`, `traceID`, ...) are a suggested decomposition.
+`ol start gw.07` writes the four files with every function body stubbed (`panic("todo: gw.07")`); types, constants, and `Schema` stay. The unexported helpers (`meterWriter`, `inspect`, `errorCode`, `traceID`, ...) are a suggested decomposition.
 
 **Your entry points.** In `go/cmd/gateway`, open the ledger at `[gateway].usage_db`, build the stages into a `gateway.Stages`, and serve the admin API through a second, short chain that has only authn in front of it, so admin calls never reach the router:
 
@@ -264,7 +264,7 @@ and add `usage` to your `<system>` CLI: `<system> usage --tenant acme --since 1h
 | Forward | MS-gateway | reconciles your ledger against your engine's usage through the admin API |
 | Forward | `ag.04` (B12), `craft.14`, `ops.09` | the agent's `query_usage` tool reads these tables; API v2 fills `api_version` and `cached_tokens`; the noisy-neighbor drill reads per-tenant usage |
 
-If you skip this module, MS-gateway's reconciliation step fails and `ss check dep.01` reports `needs gw.07`.
+If you skip this module, MS-gateway's reconciliation step fails and `ol check dep.01` reports `needs gw.07`.
 
 ## Going further
 

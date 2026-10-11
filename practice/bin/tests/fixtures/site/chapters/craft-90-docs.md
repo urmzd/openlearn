@@ -1,4 +1,4 @@
-<!-- ss:module craft.90 -->
+<!-- ol:module craft.90 -->
 # Document the demo system
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.90
-ss tests craft.90
-ss check craft.90
+ol start craft.90
+ol tests craft.90
+ol check craft.90
 ```
 
 ---

@@ -34,7 +34,7 @@ UNIFORM5 = {w: 0.2 for w in VOCAB}
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def close_dict(got: dict, want: dict) -> None:

@@ -1,4 +1,4 @@
-<!-- ss:module gw.00 -->
+<!-- ol:module gw.00 -->
 # Tracer gateway: static API-key check, SSE pass-through without buffering, traceparent and X-Request-Id propagation
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start gw.00          # writes go/gateway/proxy/proxy.go with stub bodies (and go/go.mod if absent)
-ss tests gw.00          # read the test catalog first
-ss check gw.00          # exit code is the verdict
-ss diff  gw.00          # after passing: your code against the reference
+ol start gw.00          # writes go/gateway/proxy/proxy.go with stub bodies (and go/go.mod if absent)
+ol tests gw.00          # read the test catalog first
+ol check gw.00          # exit code is the verdict
+ol diff  gw.00          # after passing: your code against the reference
 ```
 
-Then write your entry point `go/cmd/gateway/main.go` (section 4, "Your entry point") and declare it in `system.toml` as `[entry].gateway`. MS-P1 starts it, runs `ss conform openapi:v0:gateway` against it, and streams 48 tokens through it.
+Then write your entry point `go/cmd/gateway/main.go` (section 4, "Your entry point") and declare it in `system.toml` as `[entry].gateway`. MS-P1 starts it, runs `ol conform openapi:v0:gateway` against it, and streams 48 tokens through it.
 
 ---
 
@@ -221,9 +221,9 @@ func NewProxy(cfg Config) http.Handler
 func ParseTraceparent(h string) (traceID, parentID, flags string, ok bool)
 ```
 
-`ss start gw.00` writes this file with every body stubbed (`panic("todo: gw.00")`); the unexported helpers in it (`authorized`, `copyFlush`, `copyHeaders`, `requestID`, `writeError`, ...) are a suggested decomposition, and only the exported names above are the interface. Use only the standard library.
+`ol start gw.00` writes this file with every body stubbed (`panic("todo: gw.00")`); the unexported helpers in it (`authorized`, `copyFlush`, `copyHeaders`, `requestID`, `writeError`, ...) are a suggested decomposition, and only the exported names above are the interface. Use only the standard library.
 
-**Your entry point** (`go/cmd/gateway/main.go`, not checked by `ss check`, run by MS-P1) takes the tracer flags of `spec/cli-roles.md`: `--port` for the API, `--health-port` for `GET /healthz` (200 while up) and `GET /readyz` (200 once `<upstream>/healthz` answers, else 503), and `--upstream`. It reads the key from `TL_API_KEY`, serves `NewProxy` on the API port, and exits 0 on SIGTERM. Declare it (`-C go` runs `go` inside `go/`, where `go.mod` is; from the repo root `go run ./go/cmd/gateway` finds no module):
+**Your entry point** (`go/cmd/gateway/main.go`, not checked by `ol check`, run by MS-P1) takes the tracer flags of `spec/cli-roles.md`: `--port` for the API, `--health-port` for `GET /healthz` (200 while up) and `GET /readyz` (200 once `<upstream>/healthz` answers, else 503), and `--upstream`. It reads the key from `TL_API_KEY`, serves `NewProxy` on the API port, and exits 0 on SIGTERM. Declare it (`-C go` runs `go` inside `go/`, where `go.mod` is; from the repo root `go run ./go/cmd/gateway` finds no module):
 
 ```toml
 [entry]
@@ -277,7 +277,7 @@ gateway = ["go", "run", "-C", "go", "./cmd/gateway", "--port", "{port}", "--heal
 | Forward | `gw.01` | the server skeleton wraps `NewProxy` in the middleware chain (`requestid -> otel -> recover -> authn -> ... -> proxy`) |
 | Forward | `gw.04` | takes `go/gateway/proxy/` over (`upgrades`) and adds `StreamProxy` with a `StreamObserver` for time to first token and usage |
 
-If you skip this module, MS-P1 cannot start a gateway, and `ss check gw.00` stays `todo`.
+If you skip this module, MS-P1 cannot start a gateway, and `ol check gw.00` stays `todo`.
 
 ## Going further
 

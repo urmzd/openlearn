@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/clock"
+	"openlearn.urmzd.com/tl/testkit/clock"
 	"tinyllm/ds/rng"
 	"tinyllm/loadgen"
 )
@@ -86,7 +86,7 @@ func golden(t *testing.T) []rngCase {
 	t.Helper()
 	dir := os.Getenv("TINYLLM_FIXTURES")
 	if dir == "" {
-		t.Fatal("TINYLLM_FIXTURES is not set (ss check sets it)")
+		t.Fatal("TINYLLM_FIXTURES is not set (ol check sets it)")
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "parity", "rng.json"))
 	if err != nil {

@@ -27,7 +27,7 @@ files = [
   "course/fixtures/L7.9/tiny-llama-2l/model.safetensors",
 ]
 
-[bench]                             # a B test: `ss bench L10.4 --assert`, never `ss check`
+[bench]                             # a B test: `ol bench L10.4 --assert`, never `ol check`
 lang   = "rust"
 name   = "bench_shared_prefix_ttft"  # the #[ignore] test in course/tests/rust/l10_4.rs
 metric = "speedup_hash"             # TTFT none / TTFT hash with a 224-byte shared system prompt

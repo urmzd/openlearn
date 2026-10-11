@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/faketool"
+	"openlearn.urmzd.com/tl/testkit/faketool"
 	"tinyllm/agent/provider"
 	"tinyllm/agent/types"
 )
@@ -42,7 +42,7 @@ func fixtures(t *testing.T) map[string]fixture {
 	t.Helper()
 	dir := os.Getenv("TINYLLM_FIXTURES")
 	if dir == "" {
-		t.Fatal("TINYLLM_FIXTURES is not set (ss check sets it)")
+		t.Fatal("TINYLLM_FIXTURES is not set (ol check sets it)")
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "ag.01", "streams.json"))
 	if err != nil {

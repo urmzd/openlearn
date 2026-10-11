@@ -6,8 +6,8 @@ from pathlib import Path
 
 import yaml
 
-ROOT = Path(os.environ.get("SS_REPO", "."))
-COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[2]))
+ROOT = Path(os.environ.get("OL_REPO", "."))
+COURSE = Path(os.environ.get("OL_COURSE_TREE", Path(__file__).resolve().parents[2]))
 
 
 # WHY: policy evaluation is ordered, so a broad allow or classifier rule ahead

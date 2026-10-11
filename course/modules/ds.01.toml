@@ -27,7 +27,7 @@ smoke     = ["hand_example", "alloc_failure_leaves_vec_unchanged"]
 timeout_s = 60
 determinism_runs = 2
 
-[learner_tests]                     # rung R4: properties with ss_prop.h
+[learner_tests]                     # rung R4: properties with ol_prop.h
 rung      = 4
 path      = "c/tests/ds01_vec_test.c"
 threshold = 0.80

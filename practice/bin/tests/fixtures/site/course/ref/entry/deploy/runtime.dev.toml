@@ -1,4 +1,4 @@
-# Local runtime config template (DESIGN 2.12); ss fills the ports per instance.
+# Local runtime config template (DESIGN 2.12); ol fills the ports per instance.
 [otel]
 service_namespace = "forge"
 

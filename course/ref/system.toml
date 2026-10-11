@@ -1,4 +1,4 @@
-# The reference system's harness manifest (DESIGN 2.16, 3.2). `ss verify
+# The reference system's harness manifest (DESIGN 2.16, 3.2). `ol verify
 # course --e2e` copies it into a learner repo assembled from course/ref and
 # course/ref/entry; milestone roles point at the reference entry points.
 [system]

@@ -1,4 +1,4 @@
-<!-- ss:module lang.08 -->
+<!-- ol:module lang.08 -->
 # Python asyncio: event loop, tasks, cancellation, bounded concurrency
 
 ## Overview
@@ -7,7 +7,7 @@
 |---|---|
 | **Module** | `lang.08` · practice · Python · Pass 3 · 3 to 4 h |
 | **You build** | `primers/lang.08/downloader.py`: `http_get` (one HTTP/1.1 GET over asyncio streams), `is_retryable`, `fetch` (retries, exponential backoff, a timeout per attempt), `download_all` (many fetches at once, at most `limit` in flight, cancelling the rest on a failure). Standard library only |
-| **Contract** | none: a primer exercise, not part of the system. The signatures are in the stubs `ss start lang.08` writes and in section 4 |
+| **Contract** | none: a primer exercise, not part of the system. The signatures are in the stubs `ol start lang.08` writes and in section 4 |
 | **Tests** | `course/tests/lang.08/check` runs `test_lang08_downloader.py` against your file, with the course's `flakyhttp` fixture server standing in for the network (what each test checks: section 4) |
 | **Needs** | reading: `lang.01` (a uv-run Python), `lang.05` (the HTTP/1.1 request and response you write by hand here) |
 | **Used by** | no code call site (a primer): `data.01` applies it next, where the corpus fetcher downloads every source concurrently with these exact pieces plus resume and checksums |
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start lang.08              # writes primers/lang.08/downloader.py: signatures, docstrings, stub bodies
-ss tests lang.08              # read the test catalog first
-ss check lang.08              # exit code is the verdict
+ol start lang.08              # writes primers/lang.08/downloader.py: signatures, docstrings, stub bodies
+ol tests lang.08              # read the test catalog first
+ol check lang.08              # exit code is the verdict
 ```
 
 The exercise is standard library only, so `primers/lang.08/` needs no uv project: the check runs `uv run --no-project --python ">=3.11" --with pytest` and puts your directory on `PYTHONPATH`. Python 3.11 is the floor because `asyncio.TaskGroup` and `asyncio.timeout` arrived in it.
@@ -173,7 +173,7 @@ The run takes about 4 rounds of 0.05 s, 0.2 s, against 0.6 s one at a time; the 
 
 ## 4. The artifact and its check
 
-`ss start lang.08` writes `primers/lang.08/downloader.py` with every body replaced by `raise NotImplementedError("lang.08")`. You replace the bodies, never the signatures:
+`ol start lang.08` writes `primers/lang.08/downloader.py` with every body replaced by `raise NotImplementedError("lang.08")`. You replace the bodies, never the signatures:
 
 ```python
 class HTTPError(Exception):            # given: .url, .status
@@ -198,7 +198,7 @@ async def download_all(urls, *, limit: int = 4, attempts: int = 3, timeout: floa
 
 Rules: standard library only (no `aiohttp`, no `httpx`, no `requests`: they hide the event loop this primer is about), and HTTP only (`http://`; `data.01` adds `https://`).
 
-`ss check lang.08` runs `course/tests/lang.08/check` in your repo. It refuses early if the file is missing, then runs the annotated tests with `primers/lang.08` and the course testkit on `PYTHONPATH`. The tests start their own servers on `127.0.0.1`: the course fixture `flakyhttp` (it fails, cuts, and delays on request) and a small asyncio server that counts requests in flight.
+`ol check lang.08` runs `course/tests/lang.08/check` in your repo. It refuses early if the file is missing, then runs the annotated tests with `primers/lang.08` and the course testkit on `PYTHONPATH`. The tests start their own servers on `127.0.0.1`: the course fixture `flakyhttp` (it fails, cuts, and delays on request) and a small asyncio server that counts requests in flight.
 
 ### What the tests check
 
@@ -246,7 +246,7 @@ A blocking call inside a coroutine (`time.sleep`, `requests.get`, a plain `socke
 | Forward | `data.01` | `corpus.fetch.fetch` downloads every source of the corpus config with a semaphore of `concurrency`, a task group, a timeout per read, and backoff through an injected `sleep`; it adds resume with `Range`, checksums, quarantine, and ledger rows |
 | Forward | `lang.09` | the same ideas in Rust: futures, tokio tasks, cancellation, bounded channels |
 
-A primer has no code call site, so no module's `ss check` blocks on it. MS-P3 requires a fresh pass of `lang.08`.
+A primer has no code call site, so no module's `ol check` blocks on it. MS-P3 requires a fresh pass of `lang.08`.
 
 ## Going further
 

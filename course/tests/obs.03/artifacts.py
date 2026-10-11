@@ -1,6 +1,6 @@
 """obs.03 artifact check: SLOs and multi-window burn-rate alerts.
 
-Run by `ss check obs.03` in your repo. Three tiers:
+Run by `ol check obs.03` in your repo. Three tiers:
 
   static   deploy/observability/slo.yaml against contracts/otel/slo.schema.json;
            rules/slo-prod.yaml and rules/slo-drill.yaml are PrometheusRule
@@ -17,7 +17,7 @@ Run by `ss check obs.03` in your repo. Three tiers:
 
 promtool is taken from your PATH, else from the pinned prom/prometheus image
 (Docker). The cluster tier fails when [deploy].prometheus is unset or down;
-with SS_SMOKE=1 it is skipped with the reason instead.
+with OL_SMOKE=1 it is skipped with the reason instead.
 
 The synthetic series carry these labels, so your selectors may use any of
 them: job="<system>-gateway" (and a copy of every series as
@@ -156,15 +156,15 @@ def _seconds(d: str) -> float:
 
 def test_slo_file_matches_the_schema(c: Ctx) -> None:
     # WHY: contracts/otel/slo.schema.json fixes the three SLOs, the six alert
-    #      names, and each profile's windows. ss drill, MS-prod, and the
+    #      names, and each profile's windows. ol drill, MS-prod, and the
     #      dashboards (obs.04) read the file by those names.
     # KIND: conformance
     # CHAPTER: obs.03 section 4, The interface
     try:
-        from sscourse import schema
+        from olcourse import schema
     except ImportError:
         raise Fail(
-            "the course harness is not importable: run this check through `ss check obs.03`"
+            "the course harness is not importable: run this check through `ol check obs.03`"
         ) from None
     sch = json.loads(c.require_file("contracts/otel/slo.schema.json").read_text())
     errs = schema.validate(_slo(c), sch, root=sch)
@@ -242,7 +242,7 @@ def test_rule_files_are_selected_prometheus_rules(c: Ctx) -> None:
 
 
 def test_rules_define_the_six_alerts(c: Ctx) -> None:
-    # WHY: ss drill [detect] and MS-prod look alerts up by the six names of
+    # WHY: ol drill [detect] and MS-prod look alerts up by the six names of
     #      the schema, and the page/ticket split is slo.yaml's severity. Each
     #      name exactly once per profile: a duplicate fires twice per incident.
     # KIND: unit
@@ -274,8 +274,8 @@ def test_rules_define_the_six_alerts(c: Ctx) -> None:
 
 def test_rules_use_the_profile_windows(c: Ctx) -> None:
     # WHY: each alert compares its long AND its short window. The drill
-    #      profile compresses both 12x so `ss drill` can see a page within
-    #      minutes; ss drill refuses to start when they are missing. A window
+    #      profile compresses both 12x so `ol drill` can see a page within
+    #      minutes; ol drill refuses to start when they are missing. A window
     #      may be spelled either way (2m30s or 150s).
     # KIND: unit
     # CHAPTER: obs.03 section 5, Pitfall 4
@@ -323,7 +323,7 @@ def test_promtool_accepts_the_rules(c: Ctx) -> None:
     for profile in RULES:
         r = _promtool.run(
             c,
-            c.path(f".ss/check/obs.03/check-{profile}"),
+            c.path(f".ol/check/obs.03/check-{profile}"),
             ["check", "rules", "rules.yaml"],
             {"rules.yaml": _rules_file(c, profile)},
             timeout=300,
@@ -556,7 +556,7 @@ def _behavior(c: Ctx, kind: str) -> None:
         }
         r = _promtool.run(
             c,
-            c.path(f".ss/check/obs.03/{kind}-{profile}"),
+            c.path(f".ol/check/obs.03/{kind}-{profile}"),
             ["test", "rules", "test.yaml"],
             {
                 "rules.yaml": _rules_file(c, profile),
@@ -567,7 +567,7 @@ def _behavior(c: Ctx, kind: str) -> None:
         if r.returncode != 0:
             out = (r.stdout + r.stderr).strip()
             errs.append(
-                f"{RULES[profile]}, {kind} scenario (inputs kept in .ss/check/obs.03/{kind}-{profile}/):\n{out[-2500:]}"
+                f"{RULES[profile]}, {kind} scenario (inputs kept in .ol/check/obs.03/{kind}-{profile}/):\n{out[-2500:]}"
             )
     if errs:
         raise Fail("\n".join(errs))
@@ -615,7 +615,7 @@ def test_rules_loaded_in_prometheus(c: Ctx) -> None:
         if smoke_mode():
             c.skipped_cluster = True
             raise Skip(
-                "cluster tier skipped under SS_SMOKE=1: system.toml has no [deploy].prometheus"
+                "cluster tier skipped under OL_SMOKE=1: system.toml has no [deploy].prometheus"
             )
         raise Fail("system.toml has no [deploy].prometheus (http://127.0.0.1:30090)")
     if d.get("kube_context"):

@@ -50,7 +50,7 @@ KEYS = ("x", "h0", "Wxh", "Whh", "bh")
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def problem(s: int, T: int = 4, B: int = 2, D: int = 3, H: int = 3, scale: float = 0.6):

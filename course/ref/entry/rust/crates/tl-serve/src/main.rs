@@ -5,7 +5,7 @@
 //!                                                               (spec/cli-roles.md)
 //!
 //! Entry points are learner territory (DESIGN D16): this file is never
-//! overlaid into a learner's checks. `ss verify course --e2e` copies it into
+//! overlaid into a learner's checks. `ol verify course --e2e` copies it into
 //! the assembled reference learner so the milestones have an engine to start.
 
 use std::net::TcpListener;

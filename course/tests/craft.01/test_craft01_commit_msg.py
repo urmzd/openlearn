@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(os.environ["SS_LEARNER"])
+REPO = Path(os.environ["OL_LEARNER"])
 HOOK = REPO / ".githooks" / "commit-msg"
 
 # The header pattern of course/harness matchers.CONVENTIONAL (MS-P0 git-log),

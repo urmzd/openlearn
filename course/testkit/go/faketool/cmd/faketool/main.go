@@ -1,7 +1,7 @@
 // Command faketool serves a rules file as a fake OpenAI-compatible provider
 // (the `faketool` provider of MS-agent's PR runs, DESIGN B12):
 //
-//	go run supersource.urmzd.com/tl/testkit/faketool/cmd/faketool --rules rules.json --port 0
+//	go run openlearn.urmzd.com/tl/testkit/faketool/cmd/faketool --rules rules.json --port 0
 //
 // The first stdout line is `listening on 127.0.0.1:<port>`.
 package main
@@ -13,7 +13,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"supersource.urmzd.com/tl/testkit/faketool"
+	"openlearn.urmzd.com/tl/testkit/faketool"
 )
 
 func main() {

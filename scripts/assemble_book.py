@@ -136,7 +136,7 @@ def rewrite_images(text: str, base_dir: Path) -> str:
     return IMAGE_RE.sub(repl, text)
 
 
-REPO_URL = "https://github.com/urmzd/supersource"
+REPO_URL = "https://github.com/urmzd/openlearn"
 # Markdown inline link that is not an image:  [text](target)
 LINK_RE = re.compile(r"(?<!!)(\[[^\]]*\]\()([^)\s]+)([^)]*\))")
 
@@ -270,7 +270,7 @@ def read_path(
         if line.startswith("@"):
             rows.extend(read_path(root, line[1:].split("\t")[0], (*stack, name)))
             continue
-        # A fifth column (the `check` of DESIGN 5.15) is for `ss learn` only.
+        # A fifth column (the `check` of DESIGN 5.15) is for `ol learn` only.
         stage, title, files, when = line.split("\t")[:4]
         rows.append((name, stage, title, [f for f in files.split(",") if f], when))
     return rows

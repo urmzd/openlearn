@@ -34,10 +34,10 @@ Master ownership, borrowing, lifetimes, and zero-cost abstractions.
 ## Practising these
 
 ```bash
-practice/bin/ss list  build rust          # which of these have references yet
-practice/bin/ss start build rust 01       # clone it stubbed into .scratchpad/
-practice/bin/ss check build rust 01       # run it; exit code is the verdict
-practice/bin/ss diff  build rust 01       # your attempt against the reference
+practice/bin/ol list  build rust          # which of these have references yet
+practice/bin/ol start build rust 01       # clone it stubbed into .scratchpad/
+practice/bin/ol check build rust 01       # run it; exit code is the verdict
+practice/bin/ol diff  build rust 01       # your attempt against the reference
 ```
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather

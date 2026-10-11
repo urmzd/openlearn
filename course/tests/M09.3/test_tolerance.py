@@ -8,7 +8,7 @@ mutants in course/mutants/M09.3), and the chapter section it comes from.
 "Exact" values are computed with float64 products of float32 inputs (exact:
 24 + 24 significand bits fit in 53) summed by math.fsum (correctly rounded),
 so the observed error of a float32 computation is measured to about 1e-16
-relative. Random inputs come from the frozen PCG32 at SS_SEED.
+relative. Random inputs come from the frozen PCG32 at OL_SEED.
 
 These are the only course tests that import your tolerance helpers (D35:
 they decide this module's verdict and nothing else). They import the module
@@ -45,7 +45,7 @@ U64 = 2.0**-53
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def f32_dot(x: np.ndarray, y: np.ndarray) -> float:

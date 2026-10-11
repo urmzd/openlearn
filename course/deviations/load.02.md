@@ -17,7 +17,7 @@ milestone.
   rules as before (main only, `compare` with metric and budget, report
   uploaded).
 - `ops.07` (drill) and `craft.16` (practice, docs) run the same command under
-  `git bisect run`; ops.07 also accepts `ss bench course --assert`.
+  `git bisect run`; ops.07 also accepts `ol bench course --assert`.
 - No library module needs an unpaired two-sample gate over load reports.
   `ag.12`'s A/B experiments are paired and use a sign-permutation test over
   eval scores. `dur.12`'s canary gate reads PromQL burn rates, not load

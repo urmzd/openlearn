@@ -22,7 +22,7 @@ from _lib.close import assert_close
 from _lib.pcg32 import PCG32
 from tinyllm.num.jacobian import jacobian, jvp_numeric, vjp_numeric
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 TOL = {"rtol": 1e-7, "atol": 1e-8}  # central differences at eps 1e-6, float64
 
 

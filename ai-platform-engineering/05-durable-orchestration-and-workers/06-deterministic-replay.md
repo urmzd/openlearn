@@ -1,4 +1,4 @@
-<!-- ss:module dur.06 -->
+<!-- ol:module dur.06 -->
 # Deterministic replay workflows, ContinueAsNew, history paging, payload limits
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.06
-ss tests dur.06
-ss check dur.06          # needs dur.05 (or --ref-deps)
-ss diff  dur.06
+ol start dur.06
+ol tests dur.06
+ol check dur.06          # needs dur.05 (or --ref-deps)
+ol diff  dur.06
 ```
 
 Build the coroutine first (start, block, step) with a workflow that only calls `ExecuteActivity`; pass `TestReplayHandExample`; then the matcher and `ErrNondeterminism`; then markers; then ContinueAsNew.

@@ -34,10 +34,10 @@ Master RAII, move semantics, templates, and the STL.
 ## Practising these
 
 ```bash
-practice/bin/ss list  build cpp          # which of these have references yet
-practice/bin/ss start build cpp 01       # clone it stubbed into .scratchpad/
-practice/bin/ss check build cpp 01       # run it; exit code is the verdict
-practice/bin/ss diff  build cpp 01       # your attempt against the reference
+practice/bin/ol list  build cpp          # which of these have references yet
+practice/bin/ol start build cpp 01       # clone it stubbed into .scratchpad/
+practice/bin/ol check build cpp 01       # run it; exit code is the verdict
+practice/bin/ol diff  build cpp 01       # your attempt against the reference
 ```
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather

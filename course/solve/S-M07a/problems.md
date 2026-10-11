@@ -1,6 +1,6 @@
 # S-M07a problems: probability axioms, Bayes, discrete and continuous random variables
 
-Answer every question in `solve/S-M07a.toml` (written by `ss start S-M07a`).
+Answer every question in `solve/S-M07a.toml` (written by `ol start S-M07a`).
 The tag after each question is its answer type: `[number]` is an exact value
 (`7/10`, `sqrt(3)`, `exp(-2)`), `[expr]` a formula in the named variables
 (`p*(1 - p)`; write $\lambda$ as `lam`), `[bool]` is `true` or `false`, and

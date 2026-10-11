@@ -1,4 +1,4 @@
-<!-- ss:module L9.4 -->
+<!-- ol:module L9.4 -->
 # Paged attention for decode in C
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L9.4              # stubs c/src/kernels/paged_attn.c into your repo
-ss tests L9.4              # read the test catalog first
-ss check L9.4              # exit code is the verdict
-ss check L9.4 --ref-deps   # only if rt.04, L8.3, L9.3, or another dependency is not passing yet
-ss diff  L9.4              # after passing: your code against the reference
+ol start L9.4              # stubs c/src/kernels/paged_attn.c into your repo
+ol tests L9.4              # read the test catalog first
+ol check L9.4              # exit code is the verdict
+ol check L9.4 --ref-deps   # only if rt.04, L8.3, L9.3, or another dependency is not passing yet
+ol diff  L9.4              # after passing: your code against the reference
 ```
 
 ---

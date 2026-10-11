@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Artifact check for ethics.03 (DESIGN 4.6, 6.4; H15: `ss check ethics.03`
+# Artifact check for ethics.03 (DESIGN 4.6, 6.4; H15: `ol check ethics.03`
 # runs this from the root of your repo and its exit code is the verdict).
 #
 # It runs the annotated tests next to this file against your model card,
@@ -10,13 +10,13 @@
 # docs/data/license-allowlist.toml, and the third-party card against the
 # pinned revision in the course's fixtures/ASSETS.tsv. The tests run in your
 # python/ project's environment (it has the corpus package's dependencies),
-# with pytest added. Read them with `ss tests ethics.03`.
+# with pytest added. Read them with `ol tests ethics.03`.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
 
 fail() { echo "ethics.03: $*" >&2; exit 1; }
-command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
+command -v uv >/dev/null || fail "uv is not on PATH (ol doctor)"
 for f in docs/MODEL_CARD.md docs/DATASHEET.md docs/models/smollm2-135m-instruct.md; do
   [ -f "$PWD/$f" ] || fail "$f is missing: write it from the chapter's templates (section 4)"
 done
@@ -24,7 +24,7 @@ done
 [ -f "$PWD/python/pyproject.toml" ] && [ -f "$PWD/python/corpus/ledger.py" ] ||
   fail "python/corpus/ledger.py is missing: the datasheet's licenses are checked with your data.08"
 
-export SS_REPO="$PWD" PYTHONPATH="$tests:$PWD/python" PYTHONDONTWRITEBYTECODE=1
-export SS_COURSE_TREE="${SS_COURSE_TREE:-$(cd "$tests/.." && pwd)}"
+export OL_REPO="$PWD" PYTHONPATH="$tests:$PWD/python" PYTHONDONTWRITEBYTECODE=1
+export OL_COURSE_TREE="${OL_COURSE_TREE:-$(cd "$tests/.." && pwd)}"
 exec uv run --project "$PWD/python" --quiet --with pytest \
   python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

@@ -32,10 +32,10 @@ The technical parts build depth; Field Engineering turns it into customer outcom
 ## How to use this path
 
 ```bash
-practice/bin/ss learn superstar-fde                          # every stage, grouped by part, with progress
-practice/bin/ss learn superstar-fde next                     # read the next unfinished stage
-practice/bin/ss learn superstar-fde inference-performance:4  # read one stage of a part
-practice/bin/ss learn superstar-fde --done inference-performance:4
+practice/bin/ol learn superstar-fde                          # every stage, grouped by part, with progress
+practice/bin/ol learn superstar-fde next                     # read the next unfinished stage
+practice/bin/ol learn superstar-fde inference-performance:4  # read one stage of a part
+practice/bin/ol learn superstar-fde --done inference-performance:4
 ```
 
 A PDF of the whole path, one Part per section, is attached to every GitHub Release (`supersource-superstar-fde.pdf`).

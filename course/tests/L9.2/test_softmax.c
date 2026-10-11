@@ -8,8 +8,8 @@
 #include <string.h>
 
 #include "tinyllm.h"
-#include "ss_prop.h"
-#include "ss_test.h"
+#include "ol_prop.h"
+#include "ol_test.h"
 
 typedef tl_status (*softmax_fn)(const float *, float *, int64_t, int64_t);
 static const softmax_fn KERNELS[2] = {tl_softmax_f32, tl_softmax_online_f32};
@@ -17,7 +17,7 @@ static const softmax_fn KERNELS[2] = {tl_softmax_f32, tl_softmax_online_f32};
 /* Float32 unit roundoff 2^-24: a sum of n terms rounds n times. */
 #define U32 5.9604645e-8
 
-SS_TEST(hand_example) {
+OL_TEST(hand_example) {
     /* WHY: the chapter's worked example: x = [1, 2, 3] gives m = 3,
      *      s = e^-2 + e^-1 + 1 = 1.5032147, y = [0.0900306, 0.2447285,
      *      0.6652410]. Both versions, so you and the tests agree on the
@@ -29,12 +29,12 @@ SS_TEST(hand_example) {
     const double want[3] = {0.09003057317038046, 0.24472847105479764, 0.6652409557748219};
     for (int f = 0; f < 2; f++) {
         float y[3] = {0};
-        SS_EQ(KERNELS[f](x, y, 1, 3), TL_OK);
-        for (int j = 0; j < 3; j++) SS_CLOSE(y[j], want[j], 1e-6, 1e-7);
+        OL_EQ(KERNELS[f](x, y, 1, 3), TL_OK);
+        for (int j = 0; j < 3; j++) OL_CLOSE(y[j], want[j], 1e-6, 1e-7);
     }
 }
 
-SS_TEST(online_rescales_when_the_max_grows) {
+OL_TEST(online_rescales_when_the_max_grows) {
     /* WHY: the online pass sees an increasing row: every new element raises
      *      the maximum, so the running sum must be rescaled by e^(m_old -
      *      m_new) each time. Forgetting the rescale leaves s = 1 + 1 + ... and
@@ -46,13 +46,13 @@ SS_TEST(online_rescales_when_the_max_grows) {
     const float up[4] = {-1, 0, 1, 2}, down[4] = {2, 1, 0, -1};
     const double e[4] = {0.03205860328008499, 0.08714431874203257, 0.23688281808991013, 0.6439142598879722};
     float y[4];
-    SS_EQ(tl_softmax_online_f32(up, y, 1, 4), TL_OK);
-    for (int j = 0; j < 4; j++) SS_CLOSE(y[j], e[j], 1e-6, 1e-7);
-    SS_EQ(tl_softmax_online_f32(down, y, 1, 4), TL_OK);
-    for (int j = 0; j < 4; j++) SS_CLOSE(y[j], e[3 - j], 1e-6, 1e-7);
+    OL_EQ(tl_softmax_online_f32(up, y, 1, 4), TL_OK);
+    for (int j = 0; j < 4; j++) OL_CLOSE(y[j], e[j], 1e-6, 1e-7);
+    OL_EQ(tl_softmax_online_f32(down, y, 1, 4), TL_OK);
+    for (int j = 0; j < 4; j++) OL_CLOSE(y[j], e[3 - j], 1e-6, 1e-7);
 }
 
-SS_TEST(large_logits_stay_finite) {
+OL_TEST(large_logits_stay_finite) {
     /* WHY: e^10000 overflows float32 (the largest finite e^x is at x =
      *      88.7). Subtracting the maximum first makes every exponent <= 0,
      *      so rows of +-1e4 are exact: [1e4, 1e4] is [0.5, 0.5] and
@@ -63,15 +63,15 @@ SS_TEST(large_logits_stay_finite) {
     const float x[2][2] = {{1e4f, 1e4f}, {-1e4f, 0.0f}};
     for (int f = 0; f < 2; f++) {
         float y[2][2];
-        SS_EQ(KERNELS[f](&x[0][0], &y[0][0], 2, 2), TL_OK);
-        SS_EQ(y[0][0], 0.5f);
-        SS_EQ(y[0][1], 0.5f);
-        SS_EQ(y[1][0], 0.0f);
-        SS_EQ(y[1][1], 1.0f);
+        OL_EQ(KERNELS[f](&x[0][0], &y[0][0], 2, 2), TL_OK);
+        OL_EQ(y[0][0], 0.5f);
+        OL_EQ(y[0][1], 0.5f);
+        OL_EQ(y[1][0], 0.0f);
+        OL_EQ(y[1][1], 1.0f);
     }
 }
 
-SS_TEST(masked_entries_and_fully_masked_rows) {
+OL_TEST(masked_entries_and_fully_masked_rows) {
     /* WHY: attention masks a key by giving it a score of -inf. A masked
      *      entry must get weight exactly 0, and a row whose every key is
      *      masked (a padded query) must give zeros, not 0/0 = NaN that then
@@ -84,18 +84,18 @@ SS_TEST(masked_entries_and_fully_masked_rows) {
     for (int f = 0; f < 2; f++) {
         float y[3][3];
         memset(y, 0x7f, sizeof y); /* garbage that is not zero */
-        SS_EQ(KERNELS[f](&x[0][0], &y[0][0], 3, 3), TL_OK);
-        SS_EQ(y[0][0], 0.0f);
-        SS_EQ(y[0][1], 0.5f);
-        SS_EQ(y[0][2], 0.5f);
-        for (int j = 0; j < 3; j++) SS_EQ(y[1][j], 0.0f);
-        SS_EQ(y[2][0], 0.5f);
-        SS_EQ(y[2][1], 0.0f);
-        SS_EQ(y[2][2], 0.5f);
+        OL_EQ(KERNELS[f](&x[0][0], &y[0][0], 3, 3), TL_OK);
+        OL_EQ(y[0][0], 0.0f);
+        OL_EQ(y[0][1], 0.5f);
+        OL_EQ(y[0][2], 0.5f);
+        for (int j = 0; j < 3; j++) OL_EQ(y[1][j], 0.0f);
+        OL_EQ(y[2][0], 0.5f);
+        OL_EQ(y[2][1], 0.0f);
+        OL_EQ(y[2][2], 0.5f);
     }
 }
 
-SS_TEST(nan_propagates_to_its_row_only) {
+OL_TEST(nan_propagates_to_its_row_only) {
     /* WHY: a NaN score is a bug upstream, and the contract makes it
      *      visible: its row becomes NaN. Rows are independent, so the next
      *      row is exact. Skipping NaN silently would hide the bug.
@@ -105,15 +105,15 @@ SS_TEST(nan_propagates_to_its_row_only) {
     const float x[3][2] = {{0.0f, NAN}, {NAN, NAN}, {0.0f, 0.0f}};
     for (int f = 0; f < 2; f++) {
         float y[3][2];
-        SS_EQ(KERNELS[f](&x[0][0], &y[0][0], 3, 2), TL_OK);
-        SS_TRUE(isnan(y[0][0]) && isnan(y[0][1]));
-        SS_TRUE(isnan(y[1][0]) && isnan(y[1][1]));
-        SS_EQ(y[2][0], 0.5f);
-        SS_EQ(y[2][1], 0.5f);
+        OL_EQ(KERNELS[f](&x[0][0], &y[0][0], 3, 2), TL_OK);
+        OL_TRUE(isnan(y[0][0]) && isnan(y[0][1]));
+        OL_TRUE(isnan(y[1][0]) && isnan(y[1][1]));
+        OL_EQ(y[2][0], 0.5f);
+        OL_EQ(y[2][1], 0.5f);
     }
 }
 
-SS_TEST(in_place) {
+OL_TEST(in_place) {
     /* WHY: the attention kernels and the Python backend normalize a score
      *      buffer in place (y == x). The contract allows it, so every pass
      *      must read x[j] before it writes y[j].
@@ -122,13 +122,13 @@ SS_TEST(in_place) {
      * CHAPTER: L9.2 section 4 */
     for (int f = 0; f < 2; f++) {
         float x[3] = {1, 2, 3};
-        SS_EQ(KERNELS[f](x, x, 1, 3), TL_OK);
-        SS_CLOSE(x[0], 0.09003057317038046, 1e-6, 1e-7);
-        SS_CLOSE(x[2], 0.6652409557748219, 1e-6, 1e-7);
+        OL_EQ(KERNELS[f](x, x, 1, 3), TL_OK);
+        OL_CLOSE(x[0], 0.09003057317038046, 1e-6, 1e-7);
+        OL_CLOSE(x[2], 0.6652409557748219, 1e-6, 1e-7);
     }
 }
 
-SS_TEST(bad_arguments_are_einval) {
+OL_TEST(bad_arguments_are_einval) {
     /* WHY: a negative dimension or a NULL buffer with work to do is a caller
      *      bug: TL_EINVAL with the slot naming the function. rows == 0 or
      *      cols == 0 is no work at all, and NULL is then fine.
@@ -137,26 +137,26 @@ SS_TEST(bad_arguments_are_einval) {
      * CHAPTER: L9.2 section 4 */
     float x[2] = {0, 0}, y[2];
     for (int f = 0; f < 2; f++) {
-        SS_EQ(KERNELS[f](x, y, -1, 2), TL_EINVAL);
-        SS_TRUE(strstr(tl_last_error(), "softmax") != NULL);
-        SS_EQ(KERNELS[f](x, y, 1, -2), TL_EINVAL);
-        SS_EQ(KERNELS[f](NULL, y, 1, 2), TL_EINVAL);
-        SS_EQ(KERNELS[f](x, NULL, 1, 2), TL_EINVAL);
-        SS_EQ(KERNELS[f](NULL, NULL, 0, 2), TL_OK);
-        SS_EQ(KERNELS[f](NULL, NULL, 3, 0), TL_OK);
+        OL_EQ(KERNELS[f](x, y, -1, 2), TL_EINVAL);
+        OL_TRUE(strstr(tl_last_error(), "softmax") != NULL);
+        OL_EQ(KERNELS[f](x, y, 1, -2), TL_EINVAL);
+        OL_EQ(KERNELS[f](NULL, y, 1, 2), TL_EINVAL);
+        OL_EQ(KERNELS[f](x, NULL, 1, 2), TL_EINVAL);
+        OL_EQ(KERNELS[f](NULL, NULL, 0, 2), TL_OK);
+        OL_EQ(KERNELS[f](NULL, NULL, 3, 0), TL_OK);
     }
 }
 
 /* Property: random rows with mixed magnitudes and some masked entries. */
-static int rows_sum_to_one(ss_gen *g, int size) {
+static int rows_sum_to_one(ol_gen *g, int size) {
     int64_t cols = 1 + size;
     float x[512], y3[512], yo[512];
-    double scale = ss_gen_f64(g, 0.1, 30.0);
+    double scale = ol_gen_f64(g, 0.1, 30.0);
     for (int64_t j = 0; j < cols; j++) {
-        x[j] = (float)(scale * ss_gen_f64(g, -1, 1));
-        if (ss_gen_int(g, 0, 9) == 0) x[j] = -INFINITY;
+        x[j] = (float)(scale * ol_gen_f64(g, -1, 1));
+        if (ol_gen_int(g, 0, 9) == 0) x[j] = -INFINITY;
     }
-    x[ss_gen_int(g, 0, cols - 1)] = (float)ss_gen_f64(g, -2, 2); /* at least one finite entry */
+    x[ol_gen_int(g, 0, cols - 1)] = (float)ol_gen_f64(g, -2, 2); /* at least one finite entry */
     if (tl_softmax_f32(x, y3, 1, cols) != TL_OK || tl_softmax_online_f32(x, yo, 1, cols) != TL_OK) return 0;
     double s3 = 0, so = 0, bound = 2.0 * (double)cols * U32 + 1e-7;
     for (int64_t j = 0; j < cols; j++) {
@@ -168,7 +168,7 @@ static int rows_sum_to_one(ss_gen *g, int size) {
     return fabs(s3 - 1.0) <= bound && fabs(so - 1.0) <= bound;
 }
 
-SS_TEST(rows_sum_to_one_and_versions_agree) {
+OL_TEST(rows_sum_to_one_and_versions_agree) {
     /* WHY: the defining property: every row is a probability distribution,
      *      non-negative and summing to 1 within the rounding of a cols-term
      *      sum (about cols * 2^-24), with exact zeros on masked entries; and
@@ -177,7 +177,7 @@ SS_TEST(rows_sum_to_one_and_versions_agree) {
      * KIND: property, differential
      * CATCHES: s01, s02, s03, s04, m01, m02
      * CHAPTER: L9.2 section 2 */
-    SS_CHECK_PROP(rows_sum_to_one, 200, 500);
+    OL_CHECK_PROP(rows_sum_to_one, 200, 500);
 }
 
-int main(void) { return SS_RUN_ALL(); }
+int main(void) { return OL_RUN_ALL(); }

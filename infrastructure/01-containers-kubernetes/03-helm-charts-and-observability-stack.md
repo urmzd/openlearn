@@ -1,4 +1,4 @@
-<!-- ss:module dep.03 -->
+<!-- ol:module dep.03 -->
 # Helm charts for the gateway and the engine, plus the observability stack
 
 ## Overview
@@ -27,8 +27,8 @@
 Every command runs from your repo root. `forge` stands for your `<system>` name.
 
 ```bash
-ss start dep.03
-ss tests dep.03
+ol start dep.03
+ol tests dep.03
 cp contracts/helm/gateway.values.schema.json deploy/helm/forge-gateway/values.schema.json
 cp contracts/helm/engine.values.schema.json  deploy/helm/forge-engine/values.schema.json
 helm lint deploy/helm/forge-gateway deploy/helm/forge-engine
@@ -40,7 +40,7 @@ helm dependency update deploy/observability                         # writes Cha
 kubectl create namespace observability
 kubectl -n observability create secret generic grafana-admin --from-literal=admin-user=admin --from-literal=admin-password="$(openssl rand -hex 16)"
 helm upgrade --install observability deploy/observability -n observability
-ss check dep.03                         # exit code is the verdict
+ol check dep.03                         # exit code is the verdict
 ```
 
 Keep `deploy/observability/charts/` out of git (`.gitignore`): `Chart.lock` pins the versions and `helm dependency build` restores the archives.

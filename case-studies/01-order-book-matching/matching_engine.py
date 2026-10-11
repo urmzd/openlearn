@@ -87,7 +87,7 @@ class Book(Protocol):
 
 # Reattempt boundary: everything to SOLUTION-END is
 # the four book layers, the matching engine, and replay.
-# `ss start reattempt case-studies <id>` strips it and leaves the tests.
+# `ol start reattempt case-studies <id>` strips it and leaves the tests.
 # SOLUTION-BEGIN
 def _better(side: str, a: int, b: int) -> bool:
     """Is price `a` more aggressive than `b` for this side?

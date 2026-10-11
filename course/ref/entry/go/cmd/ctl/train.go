@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 // The train verb: a training run as the TrainRun workflow (dur.11).

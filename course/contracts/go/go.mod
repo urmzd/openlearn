@@ -1,4 +1,4 @@
-module supersource.urmzd.com/tl/contracts
+module openlearn.urmzd.com/tl/contracts
 
 go 1.25.0
 

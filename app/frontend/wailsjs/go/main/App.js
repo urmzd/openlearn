@@ -6,10 +6,6 @@ export function AbandonSession() {
   return window['go']['main']['App']['AbandonSession']();
 }
 
-export function AskProfessor(arg1, arg2, arg3) {
-  return window['go']['main']['App']['AskProfessor'](arg1, arg2, arg3);
-}
-
 export function CheckExercise(arg1, arg2, arg3) {
   return window['go']['main']['App']['CheckExercise'](arg1, arg2, arg3);
 }
@@ -28,6 +24,10 @@ export function DiffExercise(arg1, arg2, arg3) {
 
 export function FinishSession(arg1) {
   return window['go']['main']['App']['FinishSession'](arg1);
+}
+
+export function GetAgentCommand() {
+  return window['go']['main']['App']['GetAgentCommand']();
 }
 
 export function GetAreas(arg1) {
@@ -120,6 +120,10 @@ export function SaveSettings(arg1) {
 
 export function Search(arg1) {
   return window['go']['main']['App']['Search'](arg1);
+}
+
+export function SetFocus(arg1) {
+  return window['go']['main']['App']['SetFocus'](arg1);
 }
 
 export function StartExercise(arg1, arg2, arg3) {

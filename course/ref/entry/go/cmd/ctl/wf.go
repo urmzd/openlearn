@@ -6,7 +6,7 @@ import (
 	"errors"
 	"io"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 // The wf verbs: workflows and dead letters on tl.durable.v1 (MS-durable).

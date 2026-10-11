@@ -17,7 +17,7 @@ syntax = "proto3";
 
 package tl.raft.v1;
 
-option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/raft/v1;raftv1";
+option go_package = "openlearn.urmzd.com/tl/contracts/gen/tl/raft/v1;raftv1";
 
 service Raft {
   rpc RequestVote(RequestVoteRequest) returns (RequestVoteResponse);

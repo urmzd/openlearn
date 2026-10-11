@@ -1,4 +1,4 @@
-<!-- ss:module L7.5 -->
+<!-- ol:module L7.5 -->
 # MQA/GQA attention with cache hook, window, learned sinks
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L7.5              # stubs gqa.py; prints your test path and rung (R5)
-ss tests L7.5              # the course tests
+ol start L7.5              # stubs gqa.py; prints your test path and rung (R5)
+ol tests L7.5              # the course tests
 # write your oracle tests in python/tests/l7-5-gqa/, then:
-ss check L7.5              # course tests and the mutation grade of your tests
-ss diff  L7.5              # after passing: your code against the reference
+ol check L7.5              # course tests and the mutation grade of your tests
+ol diff  L7.5              # after passing: your code against the reference
 ```
 
 ---
@@ -133,7 +133,7 @@ class GQAttention(Module):
 
 ### Your graded tests (rung R5)
 
-Your oracle is the whole layer written out in numpy float64 with the module's own `state_dict()`: the projections, RoPE as complex multiplication, per head the scores of kv head $\lfloor h / n_\text{rep} \rfloor$, the causal and window mask, the optional sink column, the softmax, the values, and `o_proj`. Compare `forward` with and without window and sinks, decode through `ConcatKVCache` against the full forward, and check the head order of `repeat_kv`, the mask, per-row positions, the parameter names, the attention scaling, the cache's copies, and the validation. Import only `tinyllm.modern.gqa`, `tinyllm.modern.rope`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ss check L7.5` requires 0.80 with every pitfall fault killed.
+Your oracle is the whole layer written out in numpy float64 with the module's own `state_dict()`: the projections, RoPE as complex multiplication, per head the scores of kv head $\lfloor h / n_\text{rep} \rfloor$, the causal and window mask, the optional sink column, the softmax, the values, and `o_proj`. Compare `forward` with and without window and sinks, decode through `ConcatKVCache` against the full forward, and check the head order of `repeat_kv`, the mask, per-row positions, the parameter names, the attention scaling, the cache's copies, and the validation. Import only `tinyllm.modern.gqa`, `tinyllm.modern.rope`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ol check L7.5` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

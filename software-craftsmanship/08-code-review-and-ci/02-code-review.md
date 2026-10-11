@@ -1,4 +1,4 @@
-<!-- ss:module craft.08 -->
+<!-- ol:module craft.08 -->
 # Code review: review a seeded PR against your system
 
 ## Overview
@@ -25,17 +25,17 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.08                 # records the start; nothing to stub
-ss tests craft.08                 # read the test catalog first
-ss check craft.08                 # first run: builds branch drill/craft-08 and the review template, and fails
+ol start craft.08                 # records the start; nothing to stub
+ol tests craft.08                 # read the test catalog first
+ol check craft.08                 # first run: builds branch drill/craft-08 and the review template, and fails
 git log --stat drill/craft-08~2..drill/craft-08    # the two commits under review, with their messages
 git diff drill/craft-08~2 drill/craft-08           # the change
-cd .ss/craft.08/pr/go && go test -race ./gateway/limit/...   # your own tests, against the PR head
+cd .ol/craft.08/pr/go && go test -race ./gateway/limit/...   # your own tests, against the PR head
 # write docs/reviews/craft-08-pr-review.toml (section 4), then:
-ss check craft.08                 # grades your findings against the seeded defect list
+ol check craft.08                 # grades your findings against the seeded defect list
 ```
 
-The branch is built in a scratch clone of your repo (`.ss/craft.08/pr`, gitignored) and fetched into your repo; your working tree and your own `limit.go` are never touched. Its first commit replaces `limit.go` with the course reference of gw.03, so the diff you review is only the teammate's change, not the differences between your code and ours.
+The branch is built in a scratch clone of your repo (`.ol/craft.08/pr`, gitignored) and fetched into your repo; your working tree and your own `limit.go` are never touched. Its first commit replaces `limit.go` with the course reference of gw.03, so the diff you review is only the teammate's change, not the differences between your code and ours.
 
 ---
 
@@ -143,7 +143,7 @@ There is no finding on line 5: it looks like "use after unlock", but it reads a 
 
 ### The pull request
 
-`ss check craft.08` builds branch `drill/craft-08` in your repo from your current `HEAD`:
+`ol check craft.08` builds branch `drill/craft-08` in your repo from your current `HEAD`:
 
 | Commit | Subject | What it is |
 |---|---|---|

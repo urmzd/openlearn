@@ -1,4 +1,4 @@
-<!-- ss:module M07.6 -->
+<!-- ol:module M07.6 -->
 # Rejection sampling and residual distributions
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M07.6              # stubs rejection.py into your repo
-ss tests M07.6              # read the test catalog first: rung R0, you write no tests here
-ss check M07.6              # exit code is the verdict
-ss check M07.6 --ref-deps   # only if you skipped M07.1
-ss diff  M07.6              # after passing: your code against the reference
+ol start M07.6              # stubs rejection.py into your repo
+ol tests M07.6              # read the test catalog first: rung R0, you write no tests here
+ol check M07.6              # exit code is the verdict
+ol check M07.6 --ref-deps   # only if you skipped M07.1
+ol diff  M07.6              # after passing: your code against the reference
 ```
 
 ---
@@ -163,7 +163,7 @@ def rejection_sample(p, q, m: float, rng: UniformSource, max_tries: int = 10000)
 | Forward | `L8.6` | speculative decoding: one `speculative_step` per draft position, `acceptance_probability` as the reported acceptance rate |
 | Forward | `L10.8` | the Rust engine's speculative decoding, held to the same accept and reject decisions |
 
-If you skip this module, `L8.6` cannot check: `ss check L8.6` stops with `L8.6 needs M07.6`, and `--ref-deps` substitutes the reference.
+If you skip this module, `L8.6` cannot check: `ol check L8.6` stops with `L8.6 needs M07.6`, and `--ref-deps` substitutes the reference.
 
 ## Going further
 

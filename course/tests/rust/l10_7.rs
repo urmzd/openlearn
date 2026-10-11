@@ -19,7 +19,7 @@ use tl_serve::metrics::{self, EngineGauges, EngineMetrics, Histogram, Kind, Labe
 use tl_serve::telemetry::{self, AttrValue, IdGen, RequestTiming, Span, SpanKind, TraceContext};
 
 fn fixtures() -> PathBuf {
-    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss"))
+    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol"))
 }
 
 fn req(op: &str, model: &str, ttft: Option<f64>, e2e: f64, tokens: usize, err: Option<&str>) -> RequestRecord {
@@ -669,7 +669,7 @@ mod serve {
 
     fn succ_model() -> PathBuf {
         let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-        let d = std::env::temp_dir().join(format!("ss-l10_7-{}-{nanos}", std::process::id())).join("succ");
+        let d = std::env::temp_dir().join(format!("ol-l10_7-{}-{nanos}", std::process::id())).join("succ");
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         let mut w = vec![0.0f32; 256 * 256];

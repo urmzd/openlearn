@@ -69,7 +69,7 @@ func loadJSON(t *testing.T, name string, v any) {
 	t.Helper()
 	dir := os.Getenv("TINYLLM_FIXTURES")
 	if dir == "" {
-		t.Fatal("TINYLLM_FIXTURES is not set (ss check sets it)")
+		t.Fatal("TINYLLM_FIXTURES is not set (ol check sets it)")
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "ag.04", name))
 	if err != nil {

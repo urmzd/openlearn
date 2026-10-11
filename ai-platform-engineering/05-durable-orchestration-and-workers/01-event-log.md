@@ -1,4 +1,4 @@
-<!-- ss:module dur.01 -->
+<!-- ol:module dur.01 -->
 # Append-only segmented event log
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.01          # writes go/durable/log/{record,log}.go with stub bodies
-ss tests dur.01          # read the test catalog first
-ss check dur.01          # exit code is the verdict
-ss diff  dur.01          # after passing: your code against the reference
+ol start dur.01          # writes go/durable/log/{record,log}.go with stub bodies
+ol tests dur.01          # read the test catalog first
+ol check dur.01          # exit code is the verdict
+ol diff  dur.01          # after passing: your code against the reference
 ```
 
 Write `record.go` first and check it on the worked example of section 3, then `Open` and `Append` without segments, then segment rolling, then recovery.
@@ -221,7 +221,7 @@ The log keeps every event in memory as well as on disk (fine for the course's hi
 
 `FuzzParseRecord` and `FuzzDecodeBatch` run the never-panics property under `go test -fuzz` in the nightly job.
 
-Your own tests (rung R4) go in `go/durable/log/log_learner_test.go` as `package log_test`, and are written as properties rather than single cases: any truncation of the last record recovers to the records before it; every flipped bit is detected; for any sequence of appends, a reopen reads back exactly what was acknowledged; concurrent appenders never share a version; an append over the quota changes nothing. `ss check dur.01` runs them against the reference with one planted bug at a time (the mutants of section 5); they must catch 80% of them and every one marked required.
+Your own tests (rung R4) go in `go/durable/log/log_learner_test.go` as `package log_test`, and are written as properties rather than single cases: any truncation of the last record recovers to the records before it; every flipped bit is detected; for any sequence of appends, a reopen reads back exactly what was acknowledged; concurrent appenders never share a version; an append over the quota changes nothing. `ol check dur.01` runs them against the reference with one planted bug at a time (the mutants of section 5); they must catch 80% of them and every one marked required.
 
 ## 5. Pitfalls
 

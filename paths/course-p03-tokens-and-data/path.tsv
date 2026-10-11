@@ -15,7 +15,7 @@
 13	Robin Hood hash map with backward-shift deletion	algorithms/16-systems-data-structures/05-robin-hood-hash-map.md	Your implementation of ds.05 passes its course checks.	module:ds.05
 14	Binary heap with lazy deletion	algorithms/16-systems-data-structures/06-binary-heap-lazy-deletion.md	Your implementation of ds.06 passes its course checks.	module:ds.06
 15	Rust fast BPE (tl-tok), byte tokenizer, streaming decoder	ml/08-tinyllm/p01-tokenizers/05-rust-fast-bpe.md	Your implementation of L1.5 passes its course checks.	module:L1.5
-16	Property-based tests (R4) with Hypothesis, proptest, rapid, and ss_prop.h	software-craftsmanship/03-testing-mentality/02-property-based-tests.md	Your implementation of craft.04 passes its course checks.	module:craft.04
+16	Property-based tests (R4) with Hypothesis, proptest, rapid, and ol_prop.h	software-craftsmanship/03-testing-mentality/02-property-based-tests.md	Your implementation of craft.04 passes its course checks.	module:craft.04
 17	Milestone L1	paths/course-p03-tokens-and-data/milestone.md	The MS-L1 gate passes for your system.	milestone:MS-L1
 18	Data licensing and the ledger	responsible-ai/01-data-licensing/01-data-licensing-and-the-ledger.md	Your implementation of ethics.01 passes its course checks.	module:ethics.01
 19	Privacy and PII policy	responsible-ai/02-privacy-and-pii/01-privacy-and-pii-policy.md	Your implementation of ethics.02 passes its course checks.	module:ethics.02

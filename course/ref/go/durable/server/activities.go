@@ -17,7 +17,7 @@ import (
 	dact "tinyllm/durable/activity"
 	"tinyllm/durable/queue"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 // RecordHeartbeat extends a live attempt's lease by its heartbeat timeout and

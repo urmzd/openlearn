@@ -30,7 +30,7 @@ def hand_a() -> np.ndarray:
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def check_factors(A: np.ndarray, P: np.ndarray, L: np.ndarray, U: np.ndarray) -> None:

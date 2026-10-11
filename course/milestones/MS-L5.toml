@@ -46,7 +46,7 @@
 #       MS-L4's. Final line: {"model", "arch": "transformer", "beam", "n",
 #        "em_transformer", "em", "em_lo", "em_hi", "em_greedy"}.
 #
-# `ss milestone MS-L5 --smoke` runs every smoke step (no services, about a
+# `ol milestone MS-L5 --smoke` runs every smoke step (no services, about a
 # minute on a laptop). The full run trains 3500 updates (about 30 s to 2 min).
 id       = "MS-L5"
 title    = "Your transformer learns addition, and pre-LN trains where post-LN does not"

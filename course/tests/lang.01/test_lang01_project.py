@@ -16,7 +16,7 @@ def test_project_declares_numpy():
     #      must list numpy in [project].dependencies.
     # KIND: unit
     # CHAPTER: lang.01 section 4, step 1
-    path = Path(os.environ["SS_PRIMER_DIR"]) / "pyproject.toml"
+    path = Path(os.environ["OL_PRIMER_DIR"]) / "pyproject.toml"
     doc = tomllib.loads(path.read_text())
     deps = doc.get("project", {}).get("dependencies", [])
     names = [d.split(";")[0].strip().lower() for d in deps]

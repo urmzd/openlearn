@@ -67,7 +67,7 @@ Training is minimization of an average loss with noisy gradients. Everything in 
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M10.1` | [Convexity, smoothness, gradient descent, and Armijo line search](01-gradient-descent-and-line-search.md) | build | 2 |
@@ -76,7 +76,7 @@ Training is minimization of an average loss with noisy gradients. Everything in 
 | 4 | `M10.4` | [Learning-rate schedules (cosine, WSD, Noam) and gradient clipping](04-schedules-and-gradient-clipping.md) | build | 2 |
 | 5 | `S-M10a` | [Optimization problem set, part a: convexity, GD rates, momentum, Adam](90-problem-set-a.md) | solve | 2 |
 | 6 | `S-M10b` | [Optimization problem set, part b: constrained optimization, duality, and DPO](91-problem-set-b.md) | solve | 10 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

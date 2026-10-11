@@ -1,4 +1,4 @@
-<!-- ss:module ops.09 -->
+<!-- ol:module ops.09 -->
 # Drill: noisy neighbor
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ops.09
-ss tests ops.09
-ss check ops.09
+ol start ops.09
+ol tests ops.09
+ol check ops.09
 ```
 
 ---

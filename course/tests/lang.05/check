@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Artifact check for lang.05 (DESIGN 4.6 primers; H15: `ss check lang.05`
+# Artifact check for lang.05 (DESIGN 4.6 primers; H15: `ol check lang.05`
 # runs this in your repo and its exit code is the verdict).
 #
 # It builds the `wire` crate in primers/lang.05/ of YOUR repo, runs your
 # own `cargo test`, then starts your `wire` server on a free port and speaks
-# raw HTTP/1.1 to it over TCP (and curl -N). Read them with `ss tests lang.05`.
+# raw HTTP/1.1 to it over TCP (and curl -N). Read them with `ol tests lang.05`.
 #
 # The first run writes the starter files that are missing into
 # primers/lang.05/: the Cargo manifests as given, and every .rs file with each
@@ -13,12 +13,12 @@
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
-course="${SS_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
+course="${OL_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
 dir="$PWD/primers/lang.05"
 
 fail() { echo "lang.05: $*" >&2; exit 1; }
 for tool in cargo uv; do
-  command -v "$tool" >/dev/null || fail "$tool is not on PATH (ss doctor)"
+  command -v "$tool" >/dev/null || fail "$tool is not on PATH (ol doctor)"
 done
 
 # -- starter files ---------------------------------------------------------
@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 course, dest, names = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3:]
 sys.path.insert(0, str(course / "harness" / "src"))
-from sscourse import markers
+from olcourse import markers
 for name in names:
     text = (course / "ref" / "primers" / "lang.05" / name).read_text()
     out = markers.stub(text, name, want="lang.05") if markers.has_markers(text) else text
@@ -42,8 +42,8 @@ for name in names:
 PY
 fi
 
-# Build products stay out of your tree: .ss/ is gitignored by `ss course init`.
-export SS_PRIMER_DIR="$dir" PYTHONDONTWRITEBYTECODE=1
-export CARGO_TARGET_DIR="${SS_PRIMER_TARGET:-$PWD/.ss/build/lang.05/target}"
+# Build products stay out of your tree: .ol/ is gitignored by `ol course init`.
+export OL_PRIMER_DIR="$dir" PYTHONDONTWRITEBYTECODE=1
+export CARGO_TARGET_DIR="${OL_PRIMER_TARGET:-$PWD/.ol/build/lang.05/target}"
 exec uv run --no-project --quiet --with pytest \
   python -m pytest -q --tb=short -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

@@ -1,4 +1,4 @@
-# Large assets (course/DESIGN.md 5.11): never committed; `ss fetch <asset>` downloads
+# Large assets (course/DESIGN.md 5.11): never committed; `ol fetch <asset>` downloads
 # each file into $TINYLLM_CACHE/assets/<asset>/<path> and checks its sha256.
 # url is https://, http://, file://, or build:<script> (built locally by a
 # maintainer generator under course/oracle/; nothing is published from here).

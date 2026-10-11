@@ -15,7 +15,7 @@ import (
 //	stage  title  files  done-when  [check]
 //
 // A row whose first column is @<other> includes every stage of that path. The
-// format is owned by the practice CLI (`ss learn`), which reads the same files;
+// format is shared with `ol learn`, which reads the same files;
 // this is a second reader of it, not a second definition.
 
 // Stage is one step of a path, with includes already resolved.

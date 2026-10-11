@@ -1,6 +1,6 @@
 # S-M11b problems: coding theorems and Huffman, mutual information, maximum entropy, rate-distortion
 
-Answer every question in `solve/S-M11b.toml` (written by `ss start S-M11b`).
+Answer every question in `solve/S-M11b.toml` (written by `ol start S-M11b`).
 The tag after each question is its answer type: `[number]` is an exact value
 (`7/4`, `log(3, 2)/2`), `[vector]` a flat list `[1, 2, 3]`, `[bool]` `true`
 or `false`, `[choice]` the letter of one option, and `[proof]` a file

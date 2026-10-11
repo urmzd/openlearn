@@ -1,5 +1,5 @@
 # rust/Cargo.toml: the Cargo workspace of the Rust side of the system
-# (DESIGN 2.15). `ss start` copies it into your repo only when you have none,
+# (DESIGN 2.15). `ol start` copies it into your repo only when you have none,
 # and never rewrites it: add members and dependencies here yourself as later
 # modules create crates (tl-ds, tl-tok, tl-engine).
 [workspace]

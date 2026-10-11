@@ -1,4 +1,4 @@
-<!-- ss:module M03.5 -->
+<!-- ol:module M03.5 -->
 # SVD, Eckart-Young low rank, and least squares
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M03.5              # stubs python/tinyllm/linalg/svd.py into your repo
-ss tests M03.5              # read the test catalog first: rung R0, you write no tests here
-ss check M03.5              # exit code is the verdict
-ss check M03.5 --ref-deps   # only if your M03.3 is not passing yet
-ss diff  M03.5              # after passing: your code against the reference
+ol start M03.5              # stubs python/tinyllm/linalg/svd.py into your repo
+ol tests M03.5              # read the test catalog first: rung R0, you write no tests here
+ol check M03.5              # exit code is the verdict
+ol check M03.5 --ref-deps   # only if your M03.3 is not passing yet
+ol diff  M03.5              # after passing: your code against the reference
 ```
 
 ---

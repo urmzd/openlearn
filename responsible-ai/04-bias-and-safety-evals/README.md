@@ -46,11 +46,11 @@ A fairness or safety claim is only as good as its measurement. Paired templates 
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ethics.04` | [Bias and safety evals](01-bias-and-safety-evals.md) | build | 9 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

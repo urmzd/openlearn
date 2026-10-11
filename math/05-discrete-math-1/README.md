@@ -291,10 +291,10 @@ become database schemas, and functions become the foundation of programming.
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M05.1` | [Counting: params, FLOPs, KV bytes, memory plans](01-counting-params-flops-kv-bytes.md) | build | 5 |
 | 2 | `M05.2` | [Injective, surjective, bijective; the GPT-2 byte map](02-injective-surjective-bijective-gpt2-byte-map.md) | build | 3 |
 | 3 | `S-M05` | [Discrete math 1 problem set: sets, counting, proofs, induction, relations, bijections](90-problem-set.md) | solve | 2 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

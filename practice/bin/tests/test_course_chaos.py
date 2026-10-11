@@ -108,7 +108,7 @@ def _chaos_learner(ss, appender_args="", ms=MS):
 
 
 def _last_run(ss, mid="MS-chaos"):
-    return sorted((ss.learner / ".ss/milestones" / mid).iterdir())[-1]
+    return sorted((ss.learner / ".ol/milestones" / mid).iterdir())[-1]
 
 
 def test_chaos_kills_restart_and_effects_exactly_once(ss):
@@ -237,7 +237,7 @@ def _drill_learner(ss, after: bool):
 
 
 def _journal(ss):
-    runs = sorted(p for p in (ss.learner / ".ss/drills").iterdir() if p.is_dir())
+    runs = sorted(p for p in (ss.learner / ".ol/drills").iterdir() if p.is_dir())
     return [
         json.loads(x) for x in (runs[-1] / "journal.jsonl").read_text().splitlines()
     ]

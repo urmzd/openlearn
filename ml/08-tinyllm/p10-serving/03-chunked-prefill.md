@@ -1,4 +1,4 @@
-<!-- ss:module L10.3 -->
+<!-- ol:module L10.3 -->
 # Chunked prefill (mixed prefill + decode batches)
 
 ## Overview
@@ -24,9 +24,9 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.3               # stubs tl-engine/src/chunk.rs
-ss tests L10.3
-ss check L10.3
+ol start L10.3               # stubs tl-engine/src/chunk.rs
+ol tests L10.3
+ol check L10.3
 ```
 
 ---

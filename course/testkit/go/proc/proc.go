@@ -18,7 +18,7 @@ type Options struct {
 	Kills     int           // how many SIGKILLs before the final run
 	MinUp     time.Duration // earliest kill after a start
 	Jitter    time.Duration // kill at MinUp + uniform[0, Jitter)
-	Seed      uint64        // the offsets are a PCG stream of this seed (SS_SEED)
+	Seed      uint64        // the offsets are a PCG stream of this seed (OL_SEED)
 	Finish    time.Duration // how long the final run may take before it is killed as hung
 	Restart   time.Duration // pause between a kill and the restart
 	OnRestart func(i int)   // called before each restart (i = 1..Kills)

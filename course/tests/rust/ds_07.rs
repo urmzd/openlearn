@@ -49,8 +49,8 @@ impl Pcg32 {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED")
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(0)
@@ -486,6 +486,6 @@ fn model_based_against_a_naive_map() {
     // CATCHES: s01, s02, s04, s05, s06, s08, s10, s11, s13, m01
     // CHAPTER: ds.07 section 4
     for g in [1usize, 2] {
-        model_run(ss_seed(), g);
+        model_run(ol_seed(), g);
     }
 }

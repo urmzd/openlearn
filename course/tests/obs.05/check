@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 # Artifact check for obs.05 (DESIGN 4.5, 6.4; H15): runs in the learner repo.
-# The tests and why each exists are in artifacts.py (`ss tests obs.05`);
+# The tests and why each exists are in artifacts.py (`ol tests obs.05`);
 # promtool comes from PATH or the pinned image (../obs.03/_promtool.py).
 exec python3 "$(dirname "$0")/artifacts.py" "$@"

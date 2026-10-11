@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"supersource.urmzd.com/tl/testkit/faketool"
+	"openlearn.urmzd.com/tl/testkit/faketool"
 )
 
 func rules() *faketool.Rules {

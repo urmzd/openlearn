@@ -1,4 +1,4 @@
-<!-- ss:module lang.01 -->
+<!-- ol:module lang.01 -->
 # Python and numpy: arrays, dtypes, broadcasting, views vs copies, uv projects
 
 ## Overview
@@ -7,9 +7,9 @@
 |---|---|
 | **Module** | `lang.01` · practice · Python · Pass 0 · 3 to 4 h |
 | **You build** | `primers/lang.01/`: a uv project (`pyproject.toml`, `uv.lock`); `worksheet.py` with `broadcast_shape`, `unbroadcast`, `as_c_float32`; `bigram.py` with `bigram_counts`, `row_normalize` |
-| **Contract** | none: a primer exercise, not part of the system. The signatures are in the stubs `ss start lang.01` writes |
+| **Contract** | none: a primer exercise, not part of the system. The signatures are in the stubs `ol start lang.01` writes |
 | **Tests** | `course/tests/lang.01/`, run by its `check` script (what they check: section 4) |
-| **Needs** | nothing: the course starts here. Python 3.11 or later and `uv` on your PATH (`ss doctor`) |
+| **Needs** | nothing: the course starts here. Python 3.11 or later and `uv` on your PATH (`ol doctor`) |
 | **Used by** | no code call site (a primer). It is the concept prerequisite of `L0.0` (byte bigram from counts), optional C exercises such as `M03.1` (row-major matmul), and `L0.1` (broadcasting backward) |
 | **Milestone** | MS-P0 (page: `paths/course-p00-setup/milestone.md`) |
 | **Optional depth** | numpy user guide, "Broadcasting", "Copies and views", "Data type objects" (numpy.org/doc, free); Harris et al., "Array programming with NumPy", *Nature* 585, 2020 (free); uv docs, "Working on projects" (docs.astral.sh/uv, free) |
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start lang.01                             # writes stubs: primers/lang.01/{worksheet,bigram}.py
+ol start lang.01                             # writes stubs: primers/lang.01/{worksheet,bigram}.py
 uv init --bare primers/lang.01               # step 1: your uv project
 uv add --project primers/lang.01 numpy       #         declares numpy and writes uv.lock
-ss tests lang.01                             # read the test catalog first
-ss check lang.01                             # exit code is the verdict
+ol tests lang.01                             # read the test catalog first
+ol check lang.01                             # exit code is the verdict
 ```
 
 ---
@@ -116,7 +116,7 @@ For a count table $C$ with rows $a$, the probability that $b$ follows $a$ is the
 
 ### 2.7 uv projects
 
-A **uv project** is a directory with a `pyproject.toml`. Its `[project].dependencies` list says what the code needs (`numpy>=2.0`). `uv add` edits that list and writes **`uv.lock`**, which pins the exact version and file hash of every package. `uv run <cmd>` first makes the project's own environment (`.venv/` in the project directory) match the lock, then runs `<cmd>` inside it. So `uv run` on your laptop and in CI runs the same numpy. Commit `pyproject.toml` and `uv.lock`; never commit `.venv/` (the `.gitignore` that `ss course init` wrote already ignores it). Installing numpy by hand into some other Python is invisible to `uv run`.
+A **uv project** is a directory with a `pyproject.toml`. Its `[project].dependencies` list says what the code needs (`numpy>=2.0`). `uv add` edits that list and writes **`uv.lock`**, which pins the exact version and file hash of every package. `uv run <cmd>` first makes the project's own environment (`.venv/` in the project directory) match the lock, then runs `<cmd>` inside it. So `uv run` on your laptop and in CI runs the same numpy. Commit `pyproject.toml` and `uv.lock`; never commit `.venv/` (the `.gitignore` that `ol course init` wrote already ignores it). Installing numpy by hand into some other Python is invisible to `uv run`.
 
 ## 3. Worked example by hand
 
@@ -169,7 +169,7 @@ uv add --project primers/lang.01 numpy         # adds numpy to [project].depende
 git add primers/lang.01/pyproject.toml primers/lang.01/uv.lock
 ```
 
-**Step 2, the stubs.** `ss start lang.01` writes `primers/lang.01/worksheet.py` and `primers/lang.01/bigram.py`. Every function body is `raise NotImplementedError("lang.01")`; you replace the bodies, never the signatures.
+**Step 2, the stubs.** `ol start lang.01` writes `primers/lang.01/worksheet.py` and `primers/lang.01/bigram.py`. Every function body is `raise NotImplementedError("lang.01")`; you replace the bodies, never the signatures.
 
 **Step 3, the functions.**
 
@@ -190,7 +190,7 @@ def row_normalize(counts: np.ndarray) -> np.ndarray: ...
     # float64, each nonzero row divided by its sum; zero rows stay zero
 ```
 
-**Step 4, the check.** `ss check lang.01` runs `course/tests/lang.01/check` in your repo. It refuses early, with the reason, if a file is missing, then runs `uv run --project primers/lang.01 --with pytest pytest course/tests/lang.01` with `primers/lang.01` on `PYTHONPATH`. Your project provides numpy; the check adds only pytest.
+**Step 4, the check.** `ol check lang.01` runs `course/tests/lang.01/check` in your repo. It refuses early, with the reason, if a file is missing, then runs `uv run --project primers/lang.01 --with pytest pytest course/tests/lang.01` with `primers/lang.01` on `PYTHONPATH`. Your project provides numpy; the check adds only pytest.
 
 ### What the tests check
 
@@ -250,7 +250,7 @@ def row_normalize(counts: np.ndarray) -> np.ndarray: ...
 | Forward | `L0.1` | the backward of every broadcasting op is `unbroadcast`, and its gradient test is the adjoint identity of 2.4 |
 | Forward | `lang.02` | the next primer: the shell, exit codes, signals, and make |
 
-A primer has no code call site, so no module's `ss check` blocks on it. MS-P0 does: it requires a fresh pass of `lang.01`.
+A primer has no code call site, so no module's `ol check` blocks on it. MS-P0 does: it requires a fresh pass of `lang.01`.
 
 ## Going further
 

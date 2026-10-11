@@ -5,8 +5,8 @@ import os
 import tomllib
 from pathlib import Path
 
-ROOT = Path(os.environ.get("SS_REPO", "."))
-COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[2]))
+ROOT = Path(os.environ.get("OL_REPO", "."))
+COURSE = Path(os.environ.get("OL_COURSE_TREE", Path(__file__).resolve().parents[2]))
 SYSTEM = tomllib.loads((ROOT / "system.toml").read_text())["system"]["name"]
 CHART = ROOT / "deploy/helm" / f"{SYSTEM}-agent"
 

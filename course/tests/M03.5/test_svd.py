@@ -28,7 +28,7 @@ HAND = np.array([[3.0, 0.0], [4.0, 5.0]])
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def numpy_svd_sign_fixed(A: np.ndarray):

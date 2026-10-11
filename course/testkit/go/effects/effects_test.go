@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"supersource.urmzd.com/tl/testkit/effects"
+	"openlearn.urmzd.com/tl/testkit/effects"
 )
 
 func post(t *testing.T, url, key string) {

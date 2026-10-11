@@ -26,7 +26,7 @@ F64 = np.float64
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def check_op(fn, *shapes, lo=-2.0, hi=2.0, salt=0):

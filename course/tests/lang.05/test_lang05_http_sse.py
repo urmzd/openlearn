@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-PRIMER = Path(os.environ.get("SS_PRIMER_DIR", "primers/lang.05")).resolve()
+PRIMER = Path(os.environ.get("OL_PRIMER_DIR", "primers/lang.05")).resolve()
 TARGET = Path(os.environ.get("CARGO_TARGET_DIR", str(PRIMER / "target"))).resolve()
 TIMEOUT = 5.0
 

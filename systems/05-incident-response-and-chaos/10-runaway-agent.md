@@ -1,4 +1,4 @@
-<!-- ss:module ops.10 -->
+<!-- ol:module ops.10 -->
 # Drill: runaway agent
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ops.10
-ss tests ops.10
-ss check ops.10
+ol start ops.10
+ol tests ops.10
+ol check ops.10
 ```
 
 ---

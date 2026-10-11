@@ -19,7 +19,7 @@ import (
 	dlog "tinyllm/durable/log"
 	"tinyllm/durable/server"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 func TestStartHandExample(t *testing.T) {

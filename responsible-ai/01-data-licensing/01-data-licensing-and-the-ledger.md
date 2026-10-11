@@ -1,4 +1,4 @@
-<!-- ss:module ethics.01 -->
+<!-- ol:module ethics.01 -->
 # Data licensing and the ledger
 
 ## Overview
@@ -27,9 +27,9 @@ This chapter teaches you to make provenance auditable. It is not legal advice: w
 ## How to work this chapter
 
 ```bash
-ss start ethics.01            # records the start; you write docs/data/ from section 4
-ss tests ethics.01            # read the test catalog first
-ss check ethics.01            # exit code is the verdict
+ol start ethics.01            # records the start; you write docs/data/ from section 4
+ol tests ethics.01            # read the test catalog first
+ol check ethics.01            # exit code is the verdict
 ```
 
 ---
@@ -166,7 +166,7 @@ why = "One sentence, at least six words."
 
 **The review.** Decide each of these seven licenses, which you will meet on dataset cards, as an `[[allow]]` or a `[[refuse]]`: `CC-BY-4.0`, `CC-BY-SA-4.0`, `CC-BY-NC-4.0`, `CC-BY-ND-4.0`, `ODC-By-1.0`, `MIT`, `NOASSERTION`. Add `CDLA-Sharing-1.0` and `Apache-2.0` (rule 4 of section 2.4) and anything else your sources use.
 
-`ss check ethics.01` runs `course/tests/ethics.01/check` from your repo root; it refuses early if either file is missing.
+`ol check ethics.01` runs `course/tests/ethics.01/check` from your repo root; it refuses early if either file is missing.
 
 ### What the tests check
 

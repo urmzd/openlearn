@@ -29,11 +29,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-COURSE = Path(os.environ.get("SS_COURSE_TREE") or HERE.parents[1]).resolve()
+COURSE = Path(os.environ.get("OL_COURSE_TREE") or HERE.parents[1]).resolve()
 MAT = COURSE / "mutants" / "craft.08"
 
 sys.path.insert(0, str(COURSE / "harness" / "src"))
-from sscourse import markers  # noqa: E402
+from olcourse import markers  # noqa: E402
 
 SEVERITIES = ("blocking", "major", "minor", "nit", "question")
 SERIOUS = ("blocking", "major")
@@ -80,7 +80,7 @@ def reference(unit: str) -> str:
 def apply(patches: list[Path], files: dict[str, str]) -> dict[str, str]:
     """files after `patch -p1` of each patch in order (a patch that does not
     apply raises ValueError naming it)."""
-    with tempfile.TemporaryDirectory(prefix="ss-craft08-") as d:
+    with tempfile.TemporaryDirectory(prefix="ol-craft08-") as d:
         for rel, text in files.items():
             p = Path(d) / rel
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -200,9 +200,9 @@ def branch_blob(learner: Path, pr: PR) -> str | None:
 
 def ensure_branch(learner: Path) -> tuple[str, str]:
     """(state, message): the PR branch exists in the learner's repo with the
-    current head, building it in .ss/craft.08/pr when it is missing or stale."""
-    from sscourse import scratchcopy
-    from sscourse.registry import load as load_registry
+    current head, building it in .ol/craft.08/pr when it is missing or stale."""
+    from olcourse import scratchcopy
+    from olcourse.registry import load as load_registry
 
     pr = build()
     want = blob_id(pr.head[pr.unit])
@@ -247,7 +247,7 @@ def ensure_branch(learner: Path) -> tuple[str, str]:
         git(["branch", "-q", "-D", branch(pr)], learner)
     built = scratchcopy.build(
         learner,
-        learner / ".ss" / "craft.08" / "pr",
+        learner / ".ol" / "craft.08" / "pr",
         pr.spec["name"],
         commits,
         COURSE,
@@ -257,7 +257,7 @@ def ensure_branch(learner: Path) -> tuple[str, str]:
     state = "rebuilt" if have is not None else "built"
     return (
         state,
-        f"{branch(pr)} {state}: {len(built.commits)} commits on your HEAD (scratch copy .ss/craft.08/pr)",
+        f"{branch(pr)} {state}: {len(built.commits)} commits on your HEAD (scratch copy .ol/craft.08/pr)",
     )
 
 
@@ -265,7 +265,7 @@ TEMPLATE = '''# Your review of the pull request on branch {branch} (craft.08, ch
 #
 #   git log --stat {branch}~2..{branch}       the two commits under review
 #   git diff {branch}~2 {branch}              the change
-#   cd .ss/craft.08/pr/go && go test -race ./gateway/limit/...   your tests, against the PR
+#   cd .ol/craft.08/pr/go && go test -race ./gateway/limit/...   your tests, against the PR
 #
 # `line` is a line of the file AT THE PR HEAD ({branch}). Severity: blocking,
 # major, minor, nit, or question. A blocking or major finding needs a
@@ -380,7 +380,7 @@ def go_test(
     reference gateway packages it imports, this limit.go, the course proofs
     (proof/limit_proof_test.go), and optionally the PR's own test file. Its
     own process group, killed on timeout."""
-    with tempfile.TemporaryDirectory(prefix="ss-craft08-go-") as d:
+    with tempfile.TemporaryDirectory(prefix="ol-craft08-go-") as d:
         root = Path(d)
         for pkg in GO_PACKAGES:
             for src in sorted((COURSE / "ref" / pkg).glob("*.go")):

@@ -1,4 +1,4 @@
-<!-- ss:module L0.6 -->
+<!-- ol:module L0.6 -->
 # Safetensors for every dtype, atomic checkpoints, and the token stream
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L0.6              # stubs checkpoint.py and tokens.py; safetensors.py is yours: ss start prints its contract diff
-ss tests L0.6              # read the test catalog first: rung R0
-ss check L0.6              # also reruns L0.0's smoke tests against your safetensors.py
-ss check L0.6 --ref-deps   # only if a dependency is not passing yet
-ss diff  L0.6              # after passing: your code against the reference
+ol start L0.6              # stubs checkpoint.py and tokens.py; safetensors.py is yours: ol start prints its contract diff
+ol tests L0.6              # read the test catalog first: rung R0
+ol check L0.6              # also reruns L0.0's smoke tests against your safetensors.py
+ol check L0.6 --ref-deps   # only if a dependency is not passing yet
+ol diff  L0.6              # after passing: your code against the reference
 ```
 
 Your CLI's `train bigram --method autograd` gains the token-stream form `MS-L0` runs: `--data shard.bin --max-steps N --batch B --seq-len T --ckpt-every K [--resume]` reads windows through `TokenStream`, writes `save_checkpoint(<out>/ckpt, ...)` every K steps with `extra = {"tokens_seen", "data_cursor", "lr", "config_sha256", "git_sha"}` and the cursor's generator state as `rng_state`, and with `--resume` restores model, optimizer, step, and cursor from `load_checkpoint(<out>/ckpt)`. It evaluates the failpoint `train/after-step` after every step (the kata of `craft.03` parses it) and ends with the `final.json` line `MS-L0` compares byte for byte.

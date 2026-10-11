@@ -172,7 +172,7 @@ def test_roundtrip(tmp_path):
     # KIND: property
     # CATCHES: m06
     # CHAPTER: L0.0 section 4, The interface
-    rng = PCG32(seed=int(os.environ.get("SS_SEED", "0")))
+    rng = PCG32(seed=int(os.environ.get("OL_SEED", "0")))
     for trial in range(20):
         tensors = {}
         for i in range(1 + rng.below(4)):

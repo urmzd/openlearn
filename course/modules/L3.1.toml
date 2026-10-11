@@ -27,7 +27,7 @@ determinism_runs = 2
 files = ["course/fixtures/L3.1/rnn_torch.npz"]
 
 # Rung R3 (DESIGN 5.12): the interface and one test are given; you write the
-# tests first (`ss tdd red L3.1`), then the code (`ss tdd green L3.1`).
+# tests first (`ol tdd red L3.1`), then the code (`ol tdd green L3.1`).
 [learner_tests]
 rung      = 3
 path      = "python/tests/l3-1-rnn"

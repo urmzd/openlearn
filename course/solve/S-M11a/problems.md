@@ -1,6 +1,6 @@
 # S-M11a problems: entropy and chain rules, cross-entropy and KL divergence
 
-Answer every question in `solve/S-M11a.toml` (written by `ss start S-M11a`).
+Answer every question in `solve/S-M11a.toml` (written by `ol start S-M11a`).
 The tag after each question is its answer type: `[number]` is an exact value
 (`3/2`, `2 - 3*log(3, 2)/4`, `8*log(2)`), `[expr]` a formula in the named
 variables, `[bool]` `true` or `false`, and `[proof]` a file

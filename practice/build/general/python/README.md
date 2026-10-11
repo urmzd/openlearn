@@ -35,10 +35,10 @@ Master the data model, generators, decorators, and asyncio.
 ## Practising these
 
 ```bash
-practice/bin/ss list  build python          # which of these have references yet
-practice/bin/ss start build python 01       # clone it stubbed into .scratchpad/
-practice/bin/ss check build python 01       # run it; exit code is the verdict
-practice/bin/ss diff  build python 01       # your attempt against the reference
+practice/bin/ol list  build python          # which of these have references yet
+practice/bin/ol start build python 01       # clone it stubbed into .scratchpad/
+practice/bin/ol check build python 01       # run it; exit code is the verdict
+practice/bin/ol diff  build python 01       # your attempt against the reference
 ```
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather

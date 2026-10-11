@@ -1,6 +1,6 @@
 # MS-P1: Every Layer Is Yours
 
-**Spec**: [`course/milestones/MS-P1.toml`](../../course/milestones/MS-P1.toml). **Requires** a fresh pass of your own for every core Pass 1 module: `M03.1`, `L0.0`, `lang.04` to `lang.07`, `L10.0`, `gw.00`, `dep.00`, `obs.00`, `ops.00` (the drill, graded by `ss drill end`), and `craft.02`. MS-P1 also reruns the smoke steps of MS-P0. The C primer `lang.03` is optional practice.
+**Spec**: [`course/milestones/MS-P1.toml`](../../course/milestones/MS-P1.toml). **Requires** a fresh pass of your own for every core Pass 1 module: `M03.1`, `L0.0`, `lang.04` to `lang.07`, `L10.0`, `gw.00`, `dep.00`, `obs.00`, `ops.00` (the drill, graded by `ol drill end`), and `craft.02`. MS-P1 also reruns the smoke steps of MS-P0. The C primer `lang.03` is optional practice.
 
 ## What it runs
 
@@ -8,8 +8,8 @@
 |---|---|---|
 | train-bigram | local | `{tinyllm} train bigram` on the fixture corpus reaches NLL at most 3.2004 nats per byte (the count model gives 3.199389) |
 | greedy-from-your-checkpoint | local | greedy generation of 32 tokens from "Once" equals the fixture ids exactly |
-| engine-conforms-openapi-v0 | local | `ss conform openapi:v0:engine` against your engine |
-| gateway-conforms-openapi-v0 | local | `ss conform openapi:v0:gateway` against your gateway in front of your engine |
+| engine-conforms-openapi-v0 | local | `ol conform openapi:v0:engine` against your engine |
+| gateway-conforms-openapi-v0 | local | `ol conform openapi:v0:gateway` against your gateway in front of your engine |
 | stream-through-your-gateway | local | a keyed streaming request through your gateway yields at least 32 content chunks |
 | adr-0001-present, engine-crashloop-runbook-present | full | the documents exist in your repo |
 | stream-through-the-kind-nodeport | kind | the same stream through the gateway NodePort 30080 |
@@ -18,8 +18,8 @@
 ## Run it
 
 ```bash
-practice/bin/ss milestone MS-P1 --smoke   # local processes only: what PR CI runs
-practice/bin/ss milestone MS-P1           # adds the documents and the kind steps
+practice/bin/ol milestone MS-P1 --smoke   # local processes only: what PR CI runs
+practice/bin/ol milestone MS-P1           # adds the documents and the kind steps
 ```
 
 The runner first runs your `[build].steps`, then starts your engine and gateway on allocated ports and waits for their health URLs. Your `system.toml` declares, per [`spec/cli-roles.md`](../../course/contracts/spec/cli-roles.md):

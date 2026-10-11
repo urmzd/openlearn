@@ -15,7 +15,7 @@
 #include <stdlib.h>
 
 #include "tinyllm.h"
-#include "ss_parity.h"
+#include "ol_parity.h"
 
 #define MAXV (1 << 16)
 

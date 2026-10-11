@@ -2,7 +2,7 @@
 conservation, split purity, whole documents per file, determinism, and the
 header, mostly with the byte tokenizer so a document's ids are its UTF-8
 bytes. They import only names in contracts/py/corpus/{tokenize,shard,stage}.pyi;
-`ss mutate data.07` runs them against the reference with one planted bug at
+`ol mutate data.07` runs them against the reference with one planted bug at
 a time."""
 
 import hashlib

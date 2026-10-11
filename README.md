@@ -7,16 +7,16 @@
     &middot;
     <a href="#course-build-your-own-llm-system">Course</a>
     &middot;
-    <a href="https://github.com/urmzd/supersource/issues">Report Bug</a>
+    <a href="https://github.com/urmzd/openlearn/issues">Report Bug</a>
     &middot;
     <a href="#prerequisite-graph">Prerequisites</a>
   </p>
 </p>
 
 <p align="center">
-  <a href="https://github.com/urmzd/supersource/actions/workflows/ci.yml"><img src="https://github.com/urmzd/supersource/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/urmzd/openlearn/actions/workflows/ci.yml"><img src="https://github.com/urmzd/openlearn/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   &nbsp;
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/urmzd/supersource" alt="License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/urmzd/openlearn" alt="License"></a>
 </p>
 
 ## Contents
@@ -38,12 +38,12 @@
 
 ## Features
 
-- **Build-your-own LLM system course** 12 passes from math 0 to 1 through tokenizers, attention, KV caches, a Rust serving engine, a Go gateway, durable workflows, agents, and a local Kubernetes deploy, graded by `ss check` tests and runnable milestones
+- **Build-your-own LLM system course** 12 passes from math 0 to 1 through tokenizers, attention, KV caches, a Rust serving engine, a Go gateway, durable workflows, agents, and a local Kubernetes deploy, graded by `ol check` tests and runnable milestones
 - **Free-first** free learning routes, with paid books identified as optional references
 - **Graded depth** undergraduate foundations through PhD-level research topics
 - **Multi-track** math, algorithms, ML, systems, info theory, competitive programming
 - **Interview-ready** 19 company-specific guides across Big Tech, quant, and frontier
-- **Role paths** reading orders for one job across tracks, with checkable done-when criteria, in the terminal (`ss learn`) and as a per-role PDF
+- **Role paths** reading orders for one job across tracks, with checkable done-when criteria, in the terminal (`ol learn`) and as a per-role PDF
 - **Practice path** one CLI, three exercise kinds (predict, build, reattempt), attempts cloned to a gitignored scratchpad
 - **Case studies** real builds generalized into runnable, dependency-free implementations that test themselves
 - **Prerequisite graph** mermaid diagram showing topic dependencies
@@ -226,7 +226,7 @@ See [STUDY-PLAN.md](STUDY-PLAN.md) for structured schedules:
 
 ## Course: Build Your Own LLM System
 
-One system, built end to end in Python, Rust, and Go and graded by the harness: a byte-level language model trained on your own numerics, a Rust engine streaming completions, a Go gateway, and the containers, traces, and runbooks that run it on Kubernetes. Python and Rust exchange safetensors, `tokenizer.json`, and fixtures at file boundaries. Optional C modules are standalone exercises with their own test binaries. Each chapter teaches one module from first principles; `ss check <ID>` grades your code against course tests, and each built pass ends at a milestone that runs your system. Pass 12 is currently a design plan.
+One system, built end to end in Python, Rust, and Go and graded by the harness: a byte-level language model trained on your own numerics, a Rust engine streaming completions, a Go gateway, and the containers, traces, and runbooks that run it on Kubernetes. Python and Rust exchange safetensors, `tokenizer.json`, and fixtures at file boundaries. Optional C modules are standalone exercises with their own test binaries. Each chapter teaches one module from first principles; `ol check <ID>` grades your code against course tests, and each built pass ends at a milestone that runs your system. Pass 12 is currently a design plan.
 
 | Pass | Path | Gate |
 |---|---|---|
@@ -247,7 +247,7 @@ One system, built end to end in Python, Rust, and Go and graded by the harness: 
 Start at [paths/course](paths/course/) and its [system map](paths/course/SYSTEM.md):
 
 ```bash
-practice/bin/ss doctor && practice/bin/ss course init --name <system> && practice/bin/ss learn course next
+practice/bin/ol doctor && practice/bin/ol course init --name <system> && practice/bin/ol learn course next
 ```
 
 ## Role Paths
@@ -265,14 +265,14 @@ A [path](paths/) orders existing chapters for one job and says what "done" means
 | [Field Engineering](paths/field-engineering/) | Discovery, sizing, performance testing engagements, POCs, migration, commercials, escalation |
 
 ```bash
-practice/bin/ss learn                        # every path and your progress
-practice/bin/ss learn superstar-fde next     # read the next unfinished stage
+practice/bin/ol learn                        # every path and your progress
+practice/bin/ol learn superstar-fde next     # read the next unfinished stage
 ```
 
 
 ## OpenLearn: the Desktop App
 
-[`app/`](app/) is a desktop learning platform that renders a **course pack**: a directory of markdown with an [`openlearn.json`](openlearn.json) manifest naming its tracks, role paths, and practice CLI. This repository is the pack built into it, and [`packs/languide/`](packs/languide/) (communication-first language guides) ships beside it. The app reads the same `.done` files `ss learn` writes, generates timed exercises from the chapter you are reading, and grades them against a hidden rubric with a local or hosted model.
+[`app/`](app/) is a desktop learning platform that renders a **course pack**: a directory of markdown with an [`openlearn.json`](openlearn.json) manifest naming its tracks, role paths, and practice CLI. This repository is the pack built into it, and [`packs/languide/`](packs/languide/) (communication-first language guides) ships beside it. The app reads the same `.done` files `ol learn` writes, generates timed exercises from the chapter you are reading, and grades them against a hidden rubric with a local or hosted model.
 
 ```bash
 cd app && make init && make dev
@@ -311,9 +311,9 @@ Company-specific guides for 19 companies. See [`interviews/README.md`](interview
 The tracks above are the **learning path**: you read them. [`practice/`](practice/README.md) is the **practice path**: it tells you whether you actually know it. One CLI drives it, and everything you write goes to a gitignored `.scratchpad/`, never into the repo.
 
 ```bash
-practice/bin/ss list                # every exercise, and which you have started
-practice/bin/ss start predict go 01 # clone it into .scratchpad/ and open it
-practice/bin/ss check predict go 01 # exit code is the verdict
+practice/bin/ol list                # every exercise, and which you have started
+practice/bin/ol start predict go 01 # clone it into .scratchpad/ and open it
+practice/bin/ol check predict go 01 # exit code is the verdict
 ```
 
 Three kinds of exercise, distinguished only by what you produce:

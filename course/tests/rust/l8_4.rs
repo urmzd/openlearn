@@ -47,15 +47,15 @@ impl Pcg32 {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED")
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(0)
 }
 
 fn fixture(rel: &str) -> String {
-    let dir = std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss");
+    let dir = std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol");
     std::fs::read_to_string(format!("{dir}/{rel}")).expect("fixture")
 }
 
@@ -305,7 +305,7 @@ fn blocks_are_conserved_and_locked_prefixes_stay() {
     // CHAPTER: L8.4 section 4
     const N: u32 = 64;
     const B: usize = 4;
-    let mut r = Pcg32::new(ss_seed(), 21);
+    let mut r = Pcg32::new(ol_seed(), 21);
     let mut c = RadixCache::new(B);
     let mut free: Vec<BlockId> = (0..N).rev().collect();
     // a running request: its lock node, the cached blocks it reads, its own blocks

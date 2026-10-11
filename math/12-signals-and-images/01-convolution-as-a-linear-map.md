@@ -1,4 +1,4 @@
-<!-- ss:module M12.1 -->
+<!-- ol:module M12.1 -->
 # Convolution as a linear map
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M12.1              # stubs python/tinyllm/sig/conv.py into your repo
-ss tests M12.1              # read the test catalog first: rung R0, you write no tests here
-ss check M12.1              # exit code is the verdict
-ss diff  M12.1              # after passing: your code against the reference
+ol start M12.1              # stubs python/tinyllm/sig/conv.py into your repo
+ol tests M12.1              # read the test catalog first: rung R0, you write no tests here
+ol check M12.1              # exit code is the verdict
+ol diff  M12.1              # after passing: your code against the reference
 ```
 
 ---

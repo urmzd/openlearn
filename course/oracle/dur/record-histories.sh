@@ -14,7 +14,7 @@ trap 'rm -rf "$T"' EXIT
 mkdir -p "$T/go"
 rsync -a --exclude go.mod --exclude go.sum "$C/ref/go/" "$T/go/"
 # go.work provides the contracts module, so its replace and require go away.
-grep -v 'supersource.urmzd.com/tl/contracts' "$C/ref/go/go.mod" > "$T/go/go.mod"
+grep -v 'openlearn.urmzd.com/tl/contracts' "$C/ref/go/go.mod" > "$T/go/go.mod"
 cp "$C/ref/go/go.sum" "$T/go/go.sum"
 cat > "$T/go.work" <<WORK
 go 1.25.0

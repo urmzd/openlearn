@@ -1,4 +1,4 @@
-# id	kind	lang	pass	chapter	units	deps	used_by	milestone	(generated from modules/*.toml by `ss lint --fix-index`; do not edit)
+# id	kind	lang	pass	chapter	units	deps	used_by	milestone	(generated from modules/*.toml by `ol lint --fix-index`; do not edit)
 craft.01	practice	ops	0	software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md	-	-	-	MS-P0
 lang.01	practice	python	0	software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md	primers/lang.01/worksheet.py,primers/lang.01/bigram.py	-	-	MS-P0
 lang.02	practice	c,ops	0	software-craftsmanship/12-language-and-tool-primers/02-shell-git-make.md	-	-	-	MS-P0

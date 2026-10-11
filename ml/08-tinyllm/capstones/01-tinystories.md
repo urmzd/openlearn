@@ -1,4 +1,4 @@
-<!-- ss:module C1 -->
+<!-- ol:module C1 -->
 # Capstone: TinyStories, owned end to end
 
 ## Overview
@@ -25,19 +25,19 @@
 ## How to work this chapter
 
 ```bash
-ss check C1                            # tells you which artifact is missing
+ol check C1                            # tells you which artifact is missing
 <system> data build --dataset tinystories --version v1      # CorpusBuild (data.09)
 {tinyllm} tok train --algo bpe --vocab 4096 --sample 16MB   # and --algo unigram, for the ablation
 <system> train --spec specs/c1/tinystories-short.json        # TrainRun (dur.11); the full spec when you can spare a night
 <system> train --spec specs/c1/abl-mla.json                  # one short run per ablation arm, same seed
 <system> eval --suite zoo                                    # EvalSuite (dur.11) over every family you trained
 # write docs/capstone/c1/report.json from the runs' outputs, then the two ADRs
-ss check C1                            # the artifact check
+ol check C1                            # the artifact check
 <system> release --spec specs/c1/release.json && <system> wf signal <id> approve
-ss milestone MS-C1                     # val loss at the calibrated bar, samples, conformance, artifacts, a trace
+ol milestone MS-C1                     # val loss at the calibrated bar, samples, conformance, artifacts, a trace
 ```
 
-`ss milestone MS-C1 --smoke` runs the same pipeline on the smoke config (about 1M parameters, 200 steps) in minutes; that is what CI runs.
+`ol milestone MS-C1 --smoke` runs the same pipeline on the smoke config (about 1M parameters, 200 steps) in minutes; that is what CI runs.
 
 ---
 
@@ -74,11 +74,11 @@ Every part of your system has passed its own tests. None of them has had to work
 
 | Tier | Model | Tokens | Laptop time (estimate) | Accepted by |
 |---|---|---|---|---|
-| full | about 10.4M parameters | about $10^8$ | 4 to 12 h | `ss check C1`, MS-C1 |
-| short | about 2.4M | about $2 \times 10^7$ | under 1 h | `ss check C1`, MS-C1 at a looser bar |
-| smoke | about 0.8M, 200 steps | about $4 \times 10^5$ | minutes | CI only (`SS_SMOKE=1`, MS-C1 `--smoke`) |
+| full | about 10.4M parameters | about $10^8$ | 4 to 12 h | `ol check C1`, MS-C1 |
+| short | about 2.4M | about $2 \times 10^7$ | under 1 h | `ol check C1`, MS-C1 at a looser bar |
+| smoke | about 0.8M, 200 steps | about $4 \times 10^5$ | minutes | CI only (`OL_SMOKE=1`, MS-C1 `--smoke`) |
 
-$C = 6ND$ sizes the run before you start it: the full tier is $6 \times 1.04 \times 10^7 \times 10^8 \approx 6.2 \times 10^{15}$ FLOP. At an effective 0.2 to 0.4 TFLOP/s for numpy with Accelerate on an M-series laptop that is 4 to 9 hours (uncertain: measure your own throughput with `ss bench` first).
+$C = 6ND$ sizes the run before you start it: the full tier is $6 \times 1.04 \times 10^7 \times 10^8 \approx 6.2 \times 10^{15}$ FLOP. At an effective 0.2 to 0.4 TFLOP/s for numpy with Accelerate on an M-series laptop that is 4 to 9 hours (uncertain: measure your own throughput with `ol bench` first).
 
 ### 2.3 Ablations are paired experiments
 
@@ -135,13 +135,13 @@ The first two blocks are `test_hand_example_parameter_count`; the verdict rule i
 
 The report is written by your tooling from the runs' outputs (a few lines of Python over the progress files and eval reports), never by hand. The course's reference report is a smoke-tier run, `course/oracle/C1/smoke_capstone.py`.
 
-**The check** (`ss check C1`, `course/tests/C1/check`):
+**The check** (`ol check C1`, `course/tests/C1/check`):
 
 | Test | KIND | Checks |
 |---|---|---|
 | `test_hand_example_parameter_count` | unit | section 3, then your report's parameter count against its own config |
 | `test_specs_are_capstone_train_specs` | unit | both specs validate, are Llamas of the tier's size, and train on enough tokens |
-| `test_report_is_complete` | unit | the report schema; a full or short tier (smoke only with `SS_SMOKE=1`); its spec, zoo, samples, and release exist; bpb inside its CI |
+| `test_report_is_complete` | unit | the report schema; a full or short tier (smoke only with `OL_SMOKE=1`); its spec, zoo, samples, and release exist; bpb inside its CI |
 | `test_ablations_are_fair_and_paired` | unit | three ablations; equal vocab, KV bytes, active parameters (recomputed); mean inside its CI; the verdict follows the CI |
 | `test_scaling_fit_reproduces` | unit | three or more sizes; the log-log least-squares fit of the points is the reported fit |
 | `test_zoo_table` | unit | the zoo report validates; KN-4, NPLM, LSTM, GPT, Llama on one text; the other tasks scored or skipped with a reason; the Llama row is the report's bpb; the capstone wins at full and short |

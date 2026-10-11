@@ -34,10 +34,10 @@ Master goroutines, channels, interfaces, and simplicity-driven design.
 ## Practising these
 
 ```bash
-practice/bin/ss list  build go          # which of these have references yet
-practice/bin/ss start build go 01       # clone it stubbed into .scratchpad/
-practice/bin/ss check build go 01       # run it; exit code is the verdict
-practice/bin/ss diff  build go 01       # your attempt against the reference
+practice/bin/ol list  build go          # which of these have references yet
+practice/bin/ol start build go 01       # clone it stubbed into .scratchpad/
+practice/bin/ol check build go 01       # run it; exit code is the verdict
+practice/bin/ol diff  build go 01       # your attempt against the reference
 ```
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather

@@ -1,6 +1,6 @@
 """dep.01 artifact check: production Dockerfiles for your gateway and engine.
 
-Run by `ss check dep.01` in your repo. Two tiers, in order:
+Run by `ol check dep.01` in your repo. Two tiers, in order:
 
   static   the dep.00 image rules still hold; every base image is pinned by
            digest; a HEALTHCHECK in exec form on the health port; the OCI labels;
@@ -53,7 +53,7 @@ VERSION = "0.0.0-check"
 
 
 def course_tree() -> Path:
-    return Path(os.environ.get("SS_COURSE_TREE") or Path(__file__).resolve().parents[2])
+    return Path(os.environ.get("OL_COURSE_TREE") or Path(__file__).resolve().parents[2])
 
 
 def dockerfile(c: Ctx, part: str) -> str:
@@ -258,7 +258,7 @@ def images(c: Ctx) -> dict[str, str]:
         c.cache["images"] = None
         out = {}
         for part in PARTS:
-            tag = f"ss-check/{c.system_name()}-{part}:dep01"
+            tag = f"ol-check/{c.system_name()}-{part}:dep01"
             c.sh(
                 [
                     "docker",
@@ -390,7 +390,7 @@ def dep00(c: Ctx):
     """dep.00's check module: its model training and streaming helpers."""
     if "dep00" not in c.cache:
         p = course_tree() / "tests" / "dep.00" / "artifacts.py"
-        spec = importlib.util.spec_from_file_location("ss_dep00_artifacts", p)
+        spec = importlib.util.spec_from_file_location("ol_dep00_artifacts", p)
         mod = importlib.util.module_from_spec(spec)
         assert spec.loader is not None
         spec.loader.exec_module(mod)
@@ -421,7 +421,7 @@ def test_containers_report_healthy_and_stream(c: Ctx) -> None:
     imgs = images(c)
     d0 = dep00(c)
     model = d0._model(c)
-    tag = f"ss-dep01-{os.getpid()}"
+    tag = f"ol-dep01-{os.getpid()}"
     c.sh(["docker", "network", "create", tag])
     c.cleanups.append(lambda: c.sh(["docker", "network", "rm", tag], check=False))
     eng, gw = f"{tag}-engine", f"{tag}-gateway"

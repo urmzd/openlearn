@@ -161,10 +161,10 @@ transcendental functions and how we analyze the long-run behavior of algorithms.
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M02.1` | [Taylor series, remainder bounds, range reduction](01-taylor-series.md) | build | 2 |
 | 2 | `M02.2` | [Series convergence, EMA as a geometric series, bias correction](02-series-and-the-ema.md) | build | 2 |
 | 3 | `S-M02` | [Calculus 2 problem set: integration techniques, the Gaussian, series, Taylor, polar, ODEs](90-problem-set.md) | solve | 2 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

@@ -1,4 +1,4 @@
-<!-- ss:module lang.10 -->
+<!-- ol:module lang.10 -->
 # Protocol Buffers and gRPC: schema evolution, unary and streaming RPCs, stubs
 
 ## Overview
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start lang.10          # records that you started; the exercise lives in primers/lang.10/
-ss tests lang.10
-ss check lang.10          # first run writes the starter files (stubs), then checks them
+ol start lang.10          # records that you started; the exercise lives in primers/lang.10/
+ol tests lang.10
+ol check lang.10          # first run writes the starter files (stubs), then checks them
 cd primers/lang.10/go && go test ./... && go run ./cmd/kvstore --port 50052 &
 cd primers/lang.10/rust && cargo run -- push --addr http://127.0.0.1:50052 --handle a --blocks 3
 echo 0a01681802 | (cd primers/lang.10/go && go run ./cmd/evolve)
 ```
 
-The first `ss check lang.10` writes the starter files that are missing: `go.mod`, `go.sum`, and `Cargo.toml` as given, `kvstore_test.go` as given, and every `.go` and `.rs` file with each function body replaced by a stub. Both halves build offline: the Go module depends on the vendored `contracts/go` through a `replace`, the Rust package on `contracts/rust/tl-proto` by path. You never run `protoc` (DESIGN 2.7): the course commits the generated code.
+The first `ol check lang.10` writes the starter files that are missing: `go.mod`, `go.sum`, and `Cargo.toml` as given, `kvstore_test.go` as given, and every `.go` and `.rs` file with each function body replaced by a stub. Both halves build offline: the Go module depends on the vendored `contracts/go` through a `replace`, the Rust package on `contracts/rust/tl-proto` by path. You never run `protoc` (DESIGN 2.7): the course commits the generated code.
 
 ---
 
@@ -126,7 +126,7 @@ Every other field is at its default: no bytes. The message is `0a 01 68 18 02`, 
 
 ```text
 primers/lang.10/
-  go/   go.mod (module lang10; replace supersource.urmzd.com/tl/contracts => ../../../contracts/go), go.sum
+  go/   go.mod (module lang10; replace openlearn.urmzd.com/tl/contracts => ../../../contracts/go), go.sum
         kvstore/kvstore.go       type Store; New(); HasBlocks; PushKv; Release; Handles()
         kvstore/kvstore_test.go  given
         cmd/kvstore/main.go      kvstore --port <n>: prints `listening on 127.0.0.1:<port>`; SIGTERM: GracefulStop, exit 0

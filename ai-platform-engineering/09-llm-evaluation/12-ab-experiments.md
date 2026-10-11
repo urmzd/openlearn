@@ -1,4 +1,4 @@
-<!-- ss:module ag.12 -->
+<!-- ol:module ag.12 -->
 # Paired A/B experiments
 
 ## Overview
@@ -40,9 +40,9 @@ Implement `RunExperiment` in `go/agent/eval/experiment`. Return each metric's me
 | `TestEvalSuiteSpecCarriesAB` | forwards experiment configuration |
 
 ```bash
-ss start ag.12
-ss tests ag.12
-ss check ag.12
+ol start ag.12
+ol tests ag.12
+ol check ag.12
 ```
 
 ## 5. Pitfalls

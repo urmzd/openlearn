@@ -1,4 +1,4 @@
-<!-- ss:module M09.6 -->
+<!-- ol:module M09.6 -->
 # Polynomial approximation and range reduction: expf in C (optional)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M09.6              # stubs expf.c into your repo
-ss tests M09.6              # read the test catalog first: rung R0, you write no tests here
-ss check M09.6              # exit code is the verdict
-ss check M09.6 --ref-deps   # only if you skipped rt.02 or M02.1
-ss diff  M09.6              # after passing: your code against the reference
+ol start M09.6              # stubs expf.c into your repo
+ol tests M09.6              # read the test catalog first: rung R0, you write no tests here
+ol check M09.6              # exit code is the verdict
+ol check M09.6 --ref-deps   # only if you skipped rt.02 or M02.1
+ol diff  M09.6              # after passing: your code against the reference
 ```
 
 ---
@@ -143,7 +143,7 @@ Write `pow2i(k)` (the float $2^k$ from its bit pattern, for $-126 \le k \le 127$
 | Forward | `L9.4` | paged decode attention's softmax over the keys of each block table |
 | Forward | `L9.6` | SiLU $x / (1 + e^{-x})$ in `tl_silu_mul_f32` |
 
-If you skip this module, `ss check L9.2` stops with `BLOCKED ... needs M09.6`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L9.2` stops with `BLOCKED ... needs M09.6`: build it, or pass `--ref-deps`.
 
 ## Going further
 

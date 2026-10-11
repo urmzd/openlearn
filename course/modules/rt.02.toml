@@ -23,7 +23,7 @@ smoke     = ["hand_example"]
 timeout_s = 60
 determinism_runs = 2
 
-[learner_tests]                     # rung R4: properties with ss_prop.h (as ds.01)
+[learner_tests]                     # rung R4: properties with ol_prop.h (as ds.01)
 rung      = 4
 path      = "c/tests/rt02_arena_test.c"
 threshold = 0.80

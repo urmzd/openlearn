@@ -52,7 +52,7 @@
 # little: the PR quantization steps bound top-1 agreement and the NLL shift;
 # the nightly steps keep DESIGN 4.3's perplexity budgets on SmolLM2.
 #
-# `ss milestone MS-L8 --smoke` runs the tiny-model steps (seconds).
+# `ol milestone MS-L8 --smoke` runs the tiny-model steps (seconds).
 id       = "MS-L8"
 title    = "Your Python inference stack matches no-cache output token for token"
 requires = ["ds.07", "L8.1", "L8.2", "L8.4", "L8.5", "L8.6", "L8.7", "M09.4"]
@@ -194,7 +194,7 @@ argv      = ["generate", "--model", "{models}/HuggingFaceTB--SmolLM2-135M-Instru
 expect    = { match = "tokens-equal", file = "course/fixtures/smollm2-parity/greedy_32.json", near_tie = { logits = "tinyllm", margin = 1e-3 } }
 timeout_s = 900
 
-# -- 6. local perf: the KV cache pays for itself (ss bench asserts it, never CI) ------
+# -- 6. local perf: the KV cache pays for itself (ol bench asserts it, never CI) ------
 # The reference measured cache_speedup 2.7 on the 2-layer tiny model, where
 # Python overhead dominates; DESIGN 4.3's ">= 5" is kept for SmolLM2.
 [[step]]

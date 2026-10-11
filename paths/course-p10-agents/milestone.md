@@ -17,4 +17,4 @@ The path includes the milestone stages below. Run each component milestone after
 
 Optional local post-training capstone. The v1.0.0 core course ends at C1.
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

@@ -1,4 +1,4 @@
-<!-- ss:module L3.2 -->
+<!-- ol:module L3.2 -->
 # LSTM (torch gate order)
 
 ## Overview
@@ -24,14 +24,14 @@
 ## How to work this chapter
 
 ```bash
-ss start L3.2              # stubs lstm.py; prints your test path and rung (R3)
-ss tests L3.2              # the course tests
+ol start L3.2              # stubs lstm.py; prints your test path and rung (R3)
+ol tests L3.2              # the course tests
 # write ONE test in python/tests/l3-2-lstm/, then:
-ss tdd red L3.2            # must FAIL against your current code
+ol tdd red L3.2            # must FAIL against your current code
 # make it pass, then:
-ss tdd green L3.2          # must PASS with the same test files
+ol tdd green L3.2          # must PASS with the same test files
 # repeat for each test; then:
-ss check L3.2              # course tests, the journal, the mutation grade
+ol check L3.2              # course tests, the journal, the mutation grade
 ```
 
 ---
@@ -159,7 +159,7 @@ Then, one at a time, red then green: the cell against your own numpy formula wit
 | Forward | `L3.6` | `RNNLM(cell='lstm')`, trained with stateful TBPTT; must beat the vanilla RNN at MS-L3 |
 | Forward | `L4.1` | the seq2seq encoder's LSTM option |
 
-If you skip this module, `ss check L3.4` stops with `L3.4 needs L3.2`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L3.4` stops with `L3.4 needs L3.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

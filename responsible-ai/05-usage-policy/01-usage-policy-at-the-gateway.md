@@ -1,4 +1,4 @@
-<!-- ss:module ethics.05 -->
+<!-- ol:module ethics.05 -->
 # Usage policy at the gateway
 
 ## Overview
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ethics.05
-ss tests ethics.05
-ss check ethics.05
+ol start ethics.05
+ol tests ethics.05
+ol check ethics.05
 ```
 
 ## 1. Why now

@@ -1,4 +1,4 @@
-<!-- ss:module L2.3 -->
+<!-- ol:module L2.3 -->
 # word2vec skip-gram with negative sampling, and the PPMI-SVD baseline
 
 ## Overview
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start L2.3              # stubs word2vec.py; prints your test path and rung (R3)
-ss tests L2.3              # the course tests
+ol start L2.3              # stubs word2vec.py; prints your test path and rung (R3)
+ol tests L2.3              # the course tests
 # write ONE test in python/tests/l2-3-word2vec/ (start with section 4's), then:
-ss tdd red L2.3            # must FAIL against your current code: records the red
+ol tdd red L2.3            # must FAIL against your current code: records the red
 # make it pass, then:
-ss tdd green L2.3          # must PASS with the same test files: records the green
+ol tdd green L2.3          # must PASS with the same test files: records the green
 # repeat for each test; then:
-ss check L2.3              # course tests, the red-then-green journal, the mutation grade
-ss mutate L2.3             # the full grade, cached by your test files' hash
+ol check L2.3              # course tests, the red-then-green journal, the mutation grade
+ol mutate L2.3             # the full grade, cached by your test files' hash
 ```
 
 ---
@@ -194,7 +194,7 @@ def test_hand_example_loss_and_gradients():
     np.testing.assert_allclose(gv, [[-1.0, -0.5 + s1]], rtol=1e-12)
 ```
 
-Then, one at a time, red then green: finite differences on a few gradient entries; finite losses at scores of $\pm 1000$; the noise and keep probabilities on counts you choose; the pairs of a short sequence with a scripted generator (a small class whose `uniform()` and `below()` return values you list); a batch where one center appears twice; the initial tables; `fit` against the recipe rebuilt by hand; co-occurrence and PPMI-SVD against numpy on a 4-word matrix; the analogy example; Spearman with ties; the vocabulary order. Import only contract names. `ss check L2.3` requires, for every test file, a `ss tdd red` record before its last `ss tdd green`, a mutation score of at least 0.70, and the required fault killed: it is pitfall 1.
+Then, one at a time, red then green: finite differences on a few gradient entries; finite losses at scores of $\pm 1000$; the noise and keep probabilities on counts you choose; the pairs of a short sequence with a scripted generator (a small class whose `uniform()` and `below()` return values you list); a batch where one center appears twice; the initial tables; `fit` against the recipe rebuilt by hand; co-occurrence and PPMI-SVD against numpy on a 4-word matrix; the analogy example; Spearman with ties; the vocabulary order. Import only contract names. `ol check L2.3` requires, for every test file, a `ol tdd red` record before its last `ol tdd green`, a mutation score of at least 0.70, and the required fault killed: it is pitfall 1.
 
 ## 5. Pitfalls
 

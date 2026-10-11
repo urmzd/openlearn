@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/chaosproxy"
+	"openlearn.urmzd.com/tl/testkit/chaosproxy"
 	"tinyllm/gateway/proxy"
 	"tinyllm/gateway/server"
 )
@@ -42,7 +42,7 @@ func fixtures(t *testing.T) []fixture {
 	t.Helper()
 	dir := os.Getenv("TINYLLM_FIXTURES")
 	if dir == "" {
-		t.Fatal("TINYLLM_FIXTURES is not set (ss check sets it)")
+		t.Fatal("TINYLLM_FIXTURES is not set (ol check sets it)")
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "gw.04", "streams.json"))
 	if err != nil {
@@ -520,7 +520,7 @@ func TestClientDisconnectCancelsUpstream(t *testing.T) {
 
 func BenchmarkFirstByteOverhead(b *testing.B) {
 	// WHY: the gateway may add at most a few milliseconds to time to first
-	//      token (DESIGN gw.04: within 5 ms of upstream); `ss bench gw.04
+	//      token (DESIGN gw.04: within 5 ms of upstream); `ol bench gw.04
 	//      --assert` checks the reported overhead_ms.
 	// KIND: bench
 	// CHAPTER: gw.04 section 4

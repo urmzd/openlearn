@@ -1,4 +1,4 @@
-<!-- ss:module craft.02 -->
+<!-- ol:module craft.02 -->
 # Architecture decision records
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.02           # nothing to stub: this module's artifact is a document
-ss tests craft.02           # read the twelve checks first
+ol start craft.02           # nothing to stub: this module's artifact is a document
+ol tests craft.02           # read the twelve checks first
 $EDITOR docs/adr/0001-<slug>.md
-ss check craft.02           # exit code is the verdict
+ol check craft.02           # exit code is the verdict
 git add docs/adr && git commit -m "docs(adr): record where the languages meet"
 ```
 
@@ -155,7 +155,7 @@ recognize it in the code>.
 **Run the check.**
 
 ```bash
-ss check craft.02
+ol check craft.02
 ```
 
 prints one line per check and exits 0 only when all pass. A failure prints what to change and the check's WHY.
@@ -164,7 +164,7 @@ prints one line per check and exits 0 only when all pass. A failure prints what 
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_adr_0001_exists_with_a_slug` | unit | `docs/adr/0001-<kebab-slug>.md` exists; every file in `docs/adr/` is named `NNNN-<slug>.md` | `ss milestone MS-P1` and later ADRs find records by number |
+| `test_adr_0001_exists_with_a_slug` | unit | `docs/adr/0001-<kebab-slug>.md` exists; every file in `docs/adr/` is named `NNNN-<slug>.md` | `ol milestone MS-P1` and later ADRs find records by number |
 | `test_numbers_are_unique_and_have_no_gaps` | boundary | numbers run 0001, 0002, ... with no duplicate and no gap | "ADR-0003" names one decision forever (pitfall 3) |
 | `test_title_line_matches_the_file_number` | unit | the first line is `# ADR-NNNN: <title>` with the file's own number | the title and the file name never drift apart |
 | `test_sections_appear_in_template_order` | unit | exactly one each of Status, Context, Decision, Consequences, Alternatives considered, in that order | every record reads the same way |
@@ -197,7 +197,7 @@ The section 3 example is the first case: saved as ADR-0002 next to an ADR-0001, 
 | Back | `M03.1` | Python matrix operations used in the tracer's model |
 | Back | `L10.0` | the engine's HTTP and SSE surface, the between-process boundary |
 | Back | `gw.00` | the gateway, the other side of that boundary |
-| Back | `craft.01` | commit the record with a conventional commit; CI keeps `ss check --all --ci` green |
+| Back | `craft.01` | commit the record with a conventional commit; CI keeps `ol check --all --ci` green |
 | Forward | `ops.00` | its runbook is a how-to guide, the document type an ADR is not |
 | Forward | `craft.13` | the KV format v1 to v2 migration supersedes a format decision with a new ADR |
 | Forward | `craft.14` | the API v1 to v2 migration records its deprecation policy as an ADR |
@@ -210,7 +210,7 @@ The section 3 example is the first case: saved as ADR-0002 next to an ADR-0001, 
 |---|---|---|---|
 | `docs/adr/NNNN-*.md` | MADR (Markdown Any Decision Records) | decision drivers, per-option pros and cons, a template ecosystem | [adr.github.io/madr](https://adr.github.io/madr/) (free) |
 | the five-section template | Rust RFCs, Python PEPs, Kubernetes KEPs | public review periods, champions, staged acceptance | `rust-lang/rfcs`, `python/peps`, `kubernetes/enhancements` |
-| `ss check craft.02` | adr-tools, Log4brains | CLI to create and supersede records; a rendered, searchable decision log | `npryce/adr-tools`, `thomvaill/log4brains` |
+| `ol check craft.02` | adr-tools, Log4brains | CLI to create and supersede records; a rendered, searchable decision log | `npryce/adr-tools`, `thomvaill/log4brains` |
 | ADR-0001 | design docs at Google | the design thinking before the decision; the ADR keeps the outcome | *Software Engineering at Google*, ch. 10 (free) |
 
 ## Company Relevance

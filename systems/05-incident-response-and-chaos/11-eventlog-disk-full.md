@@ -1,4 +1,4 @@
-<!-- ss:module ops.11 -->
+<!-- ol:module ops.11 -->
 # Drill: event log disk full
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ops.11
-ss tests ops.11
-ss check ops.11
+ol start ops.11
+ol tests ops.11
+ol check ops.11
 ```
 
 ---

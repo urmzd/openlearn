@@ -34,7 +34,7 @@ FIX = (
     / "M01.4"
     / "scipy_golden.json"
 )
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 
 # The same table as the oracle: name -> vectorized float64 function.
 FUNCS = {

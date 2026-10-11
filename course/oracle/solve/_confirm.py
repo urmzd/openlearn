@@ -5,8 +5,8 @@ Each `course/oracle/solve/<S-ID>.py` recomputes every auto-checked answer of
 force, numpy in the stated precision, SymPy differentiation of the actual
 function) and hands the results to `confirm`, which:
 
-  1. runs each recomputed value through the same checker `ss check` uses
-     (`sscourse.solve_worker.check_one`), so it must pass the key, and
+  1. runs each recomputed value through the same checker `ol check` uses
+     (`olcourse.solve_worker.check_one`), so it must pass the key, and
   2. fails when an auto-checked question has no recomputed value, so no key
      entry rests on the author's hand arithmetic alone.
 
@@ -23,8 +23,8 @@ from pathlib import Path
 COURSE = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(COURSE / "harness" / "src"))
 
-from sscourse.solve import load_key  # noqa: E402
-from sscourse.solve_worker import check_one  # noqa: E402
+from olcourse.solve import load_key  # noqa: E402
+from olcourse.solve_worker import check_one  # noqa: E402
 
 
 def confirm(sid: str, computed: dict[str, str]) -> int:

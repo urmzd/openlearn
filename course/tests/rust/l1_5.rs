@@ -45,12 +45,12 @@ impl Pcg32 {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
 }
 
 fn fixtures() -> std::path::PathBuf {
-    std::path::PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss"))
+    std::path::PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol"))
 }
 
 fn unhex(s: &str) -> Vec<u8> {
@@ -332,7 +332,7 @@ fn json_str(s: &str) -> String {
 }
 
 fn tmpdir(tag: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("ss-l1_5-{}-{tag}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("ol-l1_5-{}-{tag}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
@@ -372,7 +372,7 @@ fn heap_bpe_equals_naive_bpe() {
     // CATCHES: s01, s02
     // CHAPTER: L1.5 section 2.3
     let t = gpt2();
-    let mut g = Pcg32::new(ss_seed(), 5);
+    let mut g = Pcg32::new(ol_seed(), 5);
     let alphabet: Vec<&str> = vec!["a", "b", "e", "r", "s", "t", "th", "in", " ", "é", "0"];
     for _ in 0..3000 {
         let n = (g.next_u32() % 40) as usize;

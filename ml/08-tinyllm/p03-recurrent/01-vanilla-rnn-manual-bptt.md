@@ -1,4 +1,4 @@
-<!-- ss:module L3.1 -->
+<!-- ol:module L3.1 -->
 # Vanilla RNN with manual BPTT and truncation
 
 ## Overview
@@ -24,15 +24,15 @@
 ## How to work this chapter
 
 ```bash
-ss start L3.1              # stubs manual.py; prints your test path and rung (R3)
-ss tests L3.1              # the course tests
+ol start L3.1              # stubs manual.py; prints your test path and rung (R3)
+ol tests L3.1              # the course tests
 # write ONE test in python/tests/l3-1-rnn/, then:
-ss tdd red L3.1            # must FAIL against your current code: records the red
+ol tdd red L3.1            # must FAIL against your current code: records the red
 # make it pass, then:
-ss tdd green L3.1          # must PASS with the same test files: records the green
+ol tdd green L3.1          # must PASS with the same test files: records the green
 # repeat for each test; then:
-ss check L3.1              # course tests, the red-then-green journal, the mutation grade
-ss mutate L3.1             # the full grade, cached by your test files' hash
+ol check L3.1              # course tests, the red-then-green journal, the mutation grade
+ol mutate L3.1             # the full grade, cached by your test files' hash
 ```
 
 ---
@@ -139,7 +139,7 @@ def test_hand_example_two_steps():
     assert np.allclose(g["h0"], [[0.4403500702728342]])
 ```
 
-Then, one at a time, red then green: every gradient against your own central differences (with a `dh_next`); the windows of `tbptt_windows`, including a final partial chunk; `tbptt_grads` with $k_2 \ge T$ equal to `rnn_backward`; one-step windows equal to the immediate terms only; `gradient_flow` on the non-normal $W_{hh}$ of section 4's table; and shape errors. Import only `tinyllm.rnn.manual`. `ss check L3.1` requires a red record before each green, a mutation score of at least 0.70, and the required fault killed: it is pitfall 1.
+Then, one at a time, red then green: every gradient against your own central differences (with a `dh_next`); the windows of `tbptt_windows`, including a final partial chunk; `tbptt_grads` with $k_2 \ge T$ equal to `rnn_backward`; one-step windows equal to the immediate terms only; `gradient_flow` on the non-normal $W_{hh}$ of section 4's table; and shape errors. Import only `tinyllm.rnn.manual`. `ol check L3.1` requires a red record before each green, a mutation score of at least 0.70, and the required fault killed: it is pitfall 1.
 
 ## 5. Pitfalls
 
@@ -162,7 +162,7 @@ Then, one at a time, red then green: every gradient against your own central dif
 | Forward | `L3.2` | the LSTM's cell state keeps the gradient from vanishing |
 | Forward | `L3.6` | `cell='rnn'` wraps `rnn_forward` and `rnn_backward` as one autograd op and trains with stateful TBPTT |
 
-If you skip this module, `ss check L3.6` stops with `L3.6 needs L3.1`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L3.6` stops with `L3.6 needs L3.1`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

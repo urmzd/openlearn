@@ -1,6 +1,6 @@
 """lang.11 artifact check: your SQL over the usage ledger, in primers/lang.11/.
 
-Run by `ss check lang.11` in your repo. Everything runs in Python's sqlite3
+Run by `ol check lang.11` in your repo. Everything runs in Python's sqlite3
 module against temporary database files built from your vendored contract
 contracts/formats/usage.v1.sql and the fixture rows
 course/fixtures/lang.11/usage_rows.jsonl (240 synthetic requests over six
@@ -74,7 +74,7 @@ COLUMNS = [
 
 
 def course_tree() -> Path:
-    return Path(os.environ.get("SS_COURSE_TREE") or Path(__file__).resolve().parents[2])
+    return Path(os.environ.get("OL_COURSE_TREE") or Path(__file__).resolve().parents[2])
 
 
 def contract_sql(c: Ctx) -> str:
@@ -84,7 +84,7 @@ def contract_sql(c: Ctx) -> str:
     ):
         if p.is_file():
             return p.read_text()
-    raise Fail("contracts/formats/usage.v1.sql is missing: run `ss contracts sync`")
+    raise Fail("contracts/formats/usage.v1.sql is missing: run `ol contracts sync`")
 
 
 def fixture_rows() -> list[dict]:
@@ -104,7 +104,7 @@ def sql_file(c: Ctx, name: str) -> str:
 
 def fresh_db(c: Ctx, rows: list[dict] | None = None) -> tuple[sqlite3.Connection, Path]:
     """A new database file with the contract schema and `rows`; autocommit mode."""
-    d = Path(tempfile.mkdtemp(prefix="ss-lang11-"))
+    d = Path(tempfile.mkdtemp(prefix="ol-lang11-"))
     c.cleanups.append(lambda: __import__("shutil").rmtree(d, ignore_errors=True))
     path = d / "usage.db"
     conn = sqlite3.connect(path, isolation_level=None)
@@ -515,7 +515,7 @@ def test_pragmas_set_wal_and_connection_settings(c: Ctx) -> None:
     #      same four on every pooled connection.
     # KIND: unit
     # CHAPTER: lang.11 section 2.2
-    d = Path(tempfile.mkdtemp(prefix="ss-lang11-"))
+    d = Path(tempfile.mkdtemp(prefix="ol-lang11-"))
     path = d / "p.db"
     a = sqlite3.connect(path, isolation_level=None)
     try:

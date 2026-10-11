@@ -53,12 +53,12 @@ jobs:
       # SOLUTION-BEGIN craft.01
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - name: ss check --all --ci at the supersource commit contracts/VERSION names
+      - name: ol check --all --ci at the openlearn commit contracts/VERSION names
         run: |
           set -euo pipefail
           SHA="$(sed -n 's/^sha = "\(.*\)"$/\1/p' contracts/VERSION)"
-          [ -n "$SHA" ] || { echo "contracts/VERSION names no sha; run ss contracts sync" >&2; exit 5; }
-          git clone --quiet https://github.com/urmzd/supersource.git .ss/supersource
-          git -C .ss/supersource checkout --quiet --detach "$SHA"
-          SS_COURSE_HOME="$PWD" .ss/supersource/practice/bin/ss check --all --ci
+          [ -n "$SHA" ] || { echo "contracts/VERSION names no sha; run ol contracts sync" >&2; exit 5; }
+          git clone --quiet https://github.com/urmzd/openlearn.git .ol/openlearn
+          git -C .ol/openlearn checkout --quiet --detach "$SHA"
+          OL_COURSE_HOME="$PWD" .ol/openlearn/practice/bin/ol check --all --ci
       # SOLUTION-END

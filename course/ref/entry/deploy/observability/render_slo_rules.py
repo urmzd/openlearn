@@ -35,7 +35,7 @@ PROFILES = {
         "interval": "30s",
         "for": {"fast": "2m", "slow": "15m"},
     },
-    # 2m30s is written 150s: the same duration, and the spelling `ss drill`'s
+    # 2m30s is written 150s: the same duration, and the spelling `ol drill`'s
     # rule gate looks for.
     "drill": {
         "fast": ("5m", "25s"),

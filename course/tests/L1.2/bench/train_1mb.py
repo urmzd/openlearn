@@ -1,8 +1,8 @@
 """Bench for L1.2 (DESIGN 4.3, the "1 MB train budget"): train a 4096-token
 byte-level BPE on 1 MB of text and print {"seconds", "mb_per_s", "merges"}
-as the last line. `ss bench L1.2` runs it against your units and compares
+as the last line. `ol bench L1.2` runs it against your units and compares
 `seconds` with the [bench] budget in course/modules/L1.2.toml; it is never
-part of `ss check`.
+part of `ol check`.
 
 The text is synthetic and deterministic (random.Random(20261009)): words
 built from English-like syllables with a Zipf-like frequency, so the trainer

@@ -22,7 +22,7 @@ smoke     = ["hand_example_sift", "lazy_remove_hand_example", "differential_agai
 timeout_s = 120
 determinism_runs = 2
 
-[learner_tests]                     # rung R3: tests first (ss tdd red), then code
+[learner_tests]                     # rung R3: tests first (ol tdd red), then code
 rung      = 3
 path      = "rust/crates/tl-ds/tests/ds06_heap.rs"
 threshold = 0.70

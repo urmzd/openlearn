@@ -12,8 +12,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from sscourse import disagg, grpcwire as g
-from sscourse.matchers import MATCHERS, NO_COMMAND
+from olcourse import disagg, grpcwire as g
+from olcourse.matchers import MATCHERS, NO_COMMAND
 
 # -- HPACK and protobuf --------------------------------------------------------
 

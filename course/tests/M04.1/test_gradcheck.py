@@ -28,7 +28,7 @@ from _lib.pcg32 import PCG32
 
 from tinyllm.num import gradcheck as gc
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 
 
 def hand_f(x: np.ndarray) -> float:

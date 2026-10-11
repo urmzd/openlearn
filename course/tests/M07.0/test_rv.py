@@ -35,7 +35,7 @@ FAIR = np.full(6, 1.0 / 6.0)
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 class Recorder:

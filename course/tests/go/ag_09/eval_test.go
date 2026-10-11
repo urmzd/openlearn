@@ -34,7 +34,7 @@ func fixture(t *testing.T, name string) string {
 	t.Helper()
 	dir := os.Getenv("TINYLLM_FIXTURES")
 	if dir == "" {
-		t.Fatal("TINYLLM_FIXTURES is not set (ss check sets it)")
+		t.Fatal("TINYLLM_FIXTURES is not set (ol check sets it)")
 	}
 	return filepath.Join(dir, "ag.09", name)
 }

@@ -1,4 +1,4 @@
-<!-- ss:module M90.3 -->
+<!-- ol:module M90.3 -->
 # Scale rejects non-finite factors
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start M90.3
-ss tests M90.3
-ss check M90.3
+ol start M90.3
+ol tests M90.3
+ol check M90.3
 ```
 
 ---

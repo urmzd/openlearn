@@ -453,7 +453,7 @@ def test_learns_reversed_addition():
     # KIND: learning
     # CATCHES: m01
     # CHAPTER: L5.5 section 2.4, Training recipe
-    seed = int(os.environ.get("SS_SEED", "0"))
+    seed = int(os.environ.get("OL_SEED", "0"))
     src, tgt = addition(2000, 100 + seed)
     vs, vt = addition(200, 999)
     cfg = TransformerConfig(

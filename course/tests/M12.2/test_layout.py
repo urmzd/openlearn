@@ -36,7 +36,7 @@ CLIP_STD = (0.26862954, 0.26130258, 0.27577711)
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def pixels(g: PCG32, shape) -> np.ndarray:

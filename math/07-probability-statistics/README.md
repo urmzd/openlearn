@@ -207,7 +207,7 @@ randomized algorithms and hashing to machine learning, A/B testing, and queueing
 **Key definitions**:
 - **Simple linear regression**: y_hat = b_0 + b_1*x, where b_1 = Sum((x_i - x_bar)(y_i - y_bar)) / Sum((x_i - x_bar)^2) and b_0 = y_bar - b_1*x_bar
 - **Residual**: e_i = y_i - y_hat_i (observed minus predicted)
-- **Coefficient of determination**: R^2 = 1 - SS_res / SS_tot = the proportion of variance in y explained by x
+- **Coefficient of determination**: R^2 = 1 - OL_res / OL_tot = the proportion of variance in y explained by x
 - **Correlation coefficient**: r = b_1 * (s_x / s_y); R^2 = r^2 for simple linear regression
 
 **Key theorems**:
@@ -215,7 +215,7 @@ randomized algorithms and hashing to machine learning, A/B testing, and queueing
 - **Gauss-Markov Theorem**: Under the assumptions of linear regression (linearity, independence, homoscedasticity, no perfect multicollinearity), OLS estimators are the Best Linear Unbiased Estimators (BLUE). *Intuition*: you cannot find an unbiased linear estimator with smaller variance.
 
 **Worked example**:
-> Data: (1,2), (2,4), (3,5), (4,4), (5,5). x_bar = 3, y_bar = 4. Sum((x_i - x_bar)(y_i - y_bar)): (-2)(-2) + (-1)(0) + 0(1) + 1(0) + 2(1) = 4+0+0+0+2 = 6. Sum((x_i - x_bar)^2) = 4+1+0+1+4 = 10. b_1 = 6/10 = 0.6. b_0 = 4 - 0.6*3 = 2.2. Regression line: y_hat = 2.2 + 0.6x. Predicted at x=3: y_hat = 4.0. R^2: SS_res = (2-2.8)^2 + (4-3.4)^2 + (5-4.0)^2 + (4-4.6)^2 + (5-5.2)^2 = 0.64+0.36+1.0+0.36+0.04 = 2.4. SS_tot = 4+0+1+0+1 = 6. R^2 = 1 - 2.4/6 = 0.6. The model explains 60% of the variance in y.
+> Data: (1,2), (2,4), (3,5), (4,4), (5,5). x_bar = 3, y_bar = 4. Sum((x_i - x_bar)(y_i - y_bar)): (-2)(-2) + (-1)(0) + 0(1) + 1(0) + 2(1) = 4+0+0+0+2 = 6. Sum((x_i - x_bar)^2) = 4+1+0+1+4 = 10. b_1 = 6/10 = 0.6. b_0 = 4 - 0.6*3 = 2.2. Regression line: y_hat = 2.2 + 0.6x. Predicted at x=3: y_hat = 4.0. R^2: OL_res = (2-2.8)^2 + (4-3.4)^2 + (5-4.0)^2 + (4-4.6)^2 + (5-5.2)^2 = 0.64+0.36+1.0+0.36+0.04 = 2.4. OL_tot = 4+0+1+0+1 = 6. R^2 = 1 - 2.4/6 = 0.6. The model explains 60% of the variance in y.
 
 **Essential problems**: OpenStax Statistics Ch 12: #1-14, #30-40
 **Challenge problems**: OpenStax Statistics Ch 12: #55-65
@@ -261,7 +261,7 @@ randomized algorithms and hashing to machine learning, A/B testing, and queueing
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M07.0` | [Random variables, expectation, variance, and normal draws by Box-Muller](00-random-variables-and-the-normal.md) | build | 2 |
@@ -276,4 +276,4 @@ randomized algorithms and hashing to machine learning, A/B testing, and queueing
 | 10 | `S-M07b` | [Solve set: joint and covariance, MLE](91-problem-set-b.md) | solve | 3 |
 | 11 | `S-M07c` | [Solve set: LLN/CLT, confidence intervals](92-problem-set-c.md) | solve | 4 |
 | 12 | `S-M07d` | [Solve set: hypothesis tests, regression, queueing and Little's law, balls into bins](93-problem-set-d.md) | solve | 5 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

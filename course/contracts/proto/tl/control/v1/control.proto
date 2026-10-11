@@ -12,7 +12,7 @@ syntax = "proto3";
 
 package tl.control.v1;
 
-option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/control/v1;controlv1";
+option go_package = "openlearn.urmzd.com/tl/contracts/gen/tl/control/v1;controlv1";
 
 service WorkerRegistry {
   rpc Heartbeat(WorkerStatus) returns (HeartbeatAck);

@@ -1,4 +1,4 @@
-<!-- ss:module L10.5 -->
+<!-- ol:module L10.5 -->
 # tl-serve: OpenAI-compatible HTTP + SSE on tokio/hyper
 
 ## Overview
@@ -8,10 +8,10 @@
 | **Module** | `L10.5` · build · Rust · Pass 7 · 16 to 24 h |
 | **You build** | `rust/crates/tl-engine/src/engine.rs`: `Engine`, the step loop over runner, scheduler, block manager, and per-request samplers · `rust/crates/tl-serve/src/server.rs`: the v1 server on tokio and hyper (runtime.toml, the engine thread, bounded admission, abort on disconnect, drain on SIGTERM, health, readiness, `/metrics`) · `openai.rs` (validation and the response and chunk documents) · `sse.rs` (SSE framing, incremental UTF-8, stop strings) · `template.rs` (the chat-template Jinja subset) · the module lines of your `L10.0` crate root `tl-serve/src/lib.rs` · your entry point's `--config` form |
 | **Contract** | HTTP: [`openapi/openai-subset.v1.yaml`](../../../course/contracts/openapi/openai-subset.v1.yaml) (engine tier) · the `engine` role, config form: [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) · `[engine]`: [`config/runtime.schema.json`](../../../course/contracts/config/runtime.schema.json) · chat templates: [`formats/generation-config.schema.json`](../../../course/contracts/formats/generation-config.schema.json) · metric names: [`otel/metrics.yaml`](../../../course/contracts/otel/metrics.yaml) |
-| **Tests** | `course/tests/rust/l10_5.rs`, 19 tests (what they check: section 4); conformance `ss conform openapi:v1 --target engine` from `MS-L10`, including the official `openai` Python client |
+| **Tests** | `course/tests/rust/l10_5.rs`, 19 tests (what they check: section 4); conformance `ol conform openapi:v1 --target engine` from `MS-L10`, including the official `openai` Python client |
 | **Needs** | `L10.1` runner and sampler ([chapter](01-model-runner-and-sampler.md)) · `L10.2` scheduler ([chapter](02-continuous-batching.md)) · `L10.3` chunked prefill ([chapter](03-chunked-prefill.md)) · `L10.4` block manager ([chapter](04-block-manager-and-prefix-cache.md)) · `L10.8` speculative decoding ([chapter](08-speculative-decoding-in-the-engine.md)) · `L1.5` tl-tok: the byte tokenizer and tokenizer.json BPE ([chapter](../p01-tokenizers/05-rust-fast-bpe.md)) · reading: `lang.09` async Rust and tokio ([primer](../../../software-craftsmanship/12-language-and-tool-primers/09-async-rust-and-tokio.md)), `lang.05` HTTP and SSE, `L10.0` the tracer server, `L8.2` generate and the detokenizer · or `--ref-deps` |
 | **Used by** | `L10.6` (disaggregation), `L10.7` (metrics and tracing), and `L10.9` (tool calls) build on this server, and `gw.04`, `ag.01`, `load.01`, and `L12.3` reach it over HTTP |
-| **Milestone** | `MS-L10` (`ss conform openapi:v1 --target engine` 100%) |
+| **Milestone** | `MS-L10` (`ol conform openapi:v1 --target engine` 100%) |
 | **Optional depth** | [OpenAI API reference: chat completions and streaming](https://platform.openai.com/docs/api-reference/chat) (free); [hyper 1.x guide](https://hyper.rs/guides/1/) (free); [Tokio tutorial: channels, select](https://tokio.rs/tokio/tutorial) (free); [Jinja template designer docs](https://jinja.palletsprojects.com/en/stable/templates/) (free); [vLLM's OpenAI server](https://github.com/vllm-project/vllm/tree/main/vllm/entrypoints/openai) (free) |
 
 ## Key Takeaways
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.5               # stubs engine.rs, server.rs, openai.rs, sse.rs, template.rs
-ss tests L10.5
-ss check L10.5
-ss conform openapi:v1 --target engine     # once your entry point serves --config (MS-L10 runs it)
+ol start L10.5               # stubs engine.rs, server.rs, openai.rs, sse.rs, template.rs
+ol tests L10.5
+ol check L10.5
+ol conform openapi:v1 --target engine     # once your entry point serves --config (MS-L10 runs it)
 ```
 
 Add to your `tl-serve/Cargo.toml` what the course manifest lists: `tl-engine` and `tl-tok` by path, `tokio` (full), `hyper` (server, http1), `hyper-util` (tokio), `http-body-util`, `bytes`, `serde_json`, `toml` (`contracts/allowed-deps.toml`). Add `pub mod engine;` to `tl-engine/src/lib.rs` and `pub mod openai; pub mod server; pub mod sse; pub mod template;` to `tl-serve/src/lib.rs`. Your `http.rs` (the tracer) stays as it is: `--model-dir --port --health-port` keeps serving API v0, and `--config <runtime.toml>` now starts `server::run`:

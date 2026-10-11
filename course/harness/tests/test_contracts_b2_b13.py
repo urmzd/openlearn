@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from sscourse import schema
+from olcourse import schema
 
 COURSE = Path(__file__).resolve().parents[2]
 C = COURSE / "contracts"
@@ -925,7 +925,7 @@ def test_protos_match_design_and_generated_code():
         pkg = p.parent.parent.name
         assert f"package tl.{pkg}.v1;" in text
         assert (
-            f'option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/{pkg}/v1;{pkg}v1";'
+            f'option go_package = "openlearn.urmzd.com/tl/contracts/gen/tl/{pkg}/v1;{pkg}v1";'
             in text
         )
         assert set(re.findall(r"rpc (\w+)\(", text)) == rpcs[pkg], pkg

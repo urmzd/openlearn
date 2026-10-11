@@ -1,4 +1,4 @@
-<!-- ss:module M03.4 -->
+<!-- ol:module M03.4 -->
 # Eigenvalues, power iteration, and the spectral radius
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M03.4              # stubs python/tinyllm/linalg/eig.py into your repo
-ss tests M03.4              # read the test catalog first: rung R0, you write no tests here
-ss check M03.4              # exit code is the verdict
-ss check M03.4 --ref-deps   # only if your M03.2 or M03.3 is not passing yet
-ss diff  M03.4              # after passing: your code against the reference
+ol start M03.4              # stubs python/tinyllm/linalg/eig.py into your repo
+ol tests M03.4              # read the test catalog first: rung R0, you write no tests here
+ol check M03.4              # exit code is the verdict
+ol check M03.4 --ref-deps   # only if your M03.2 or M03.3 is not passing yet
+ol diff  M03.4              # after passing: your code against the reference
 ```
 
 ---
@@ -164,7 +164,7 @@ def spectral_radius(W, iters: int = 100) -> float:
 | Forward | `M10.5` | the top Hessian eigenvalue by `power_iteration` on Hessian-vector products; the edge of stability $2/\lambda_{\max}$ |
 | Forward | `M10.1` | the condition number $\kappa = L/\mu$ of a quadratic is $\lambda_{\max}/\lambda_{\min}$ (reading) |
 
-None of the forward modules is in the registry with `M03.4` in its `deps` yet, so `ss verify course M03.4` reports no call site until one lands (course/DEVIATIONS.md, M034-02).
+None of the forward modules is in the registry with `M03.4` in its `deps` yet, so `ol verify course M03.4` reports no call site until one lands (course/DEVIATIONS.md, M034-02).
 
 ## Going further
 

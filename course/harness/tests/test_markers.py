@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from sscourse import markers
+from olcourse import markers
 
 C_SRC = """\
 #include "tinyllm/abi.h"
@@ -179,7 +179,7 @@ def test_glue_units_need_no_markers():
 
 
 def test_bash_strip_solution_honors_ids(tmp_path):
-    ss = Path(__file__).resolve().parents[3] / "practice" / "bin" / "ss"
+    ss = Path(__file__).resolve().parents[3] / "practice" / "bin" / "ol"
     text = ss.read_text()
     fn = text[text.index("strip_solution() {") : text.index("has_markers() {")]
     src = tmp_path / "x.py"

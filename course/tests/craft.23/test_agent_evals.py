@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-ROOT = Path(os.environ.get("SS_REPO", "."))
+ROOT = Path(os.environ.get("OL_REPO", "."))
 
 
 # WHY: distinct agent regressions require distinct scorers so one healthy

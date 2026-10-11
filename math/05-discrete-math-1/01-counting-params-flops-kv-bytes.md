@@ -1,4 +1,4 @@
-<!-- ss:module M05.1 -->
+<!-- ol:module M05.1 -->
 # Counting: params, FLOPs, KV bytes, memory plans
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M05.1              # stubs accounting.py into your repo
-ss tests M05.1              # read the test catalog first
-ss check M05.1              # exit code is the verdict
-ss diff  M05.1              # after passing: your code against the reference
+ol start M05.1              # stubs accounting.py into your repo
+ol tests M05.1              # read the test catalog first
+ol check M05.1              # exit code is the verdict
+ol diff  M05.1              # after passing: your code against the reference
 ```
 
 ---

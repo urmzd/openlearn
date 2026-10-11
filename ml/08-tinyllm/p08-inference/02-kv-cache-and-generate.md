@@ -1,4 +1,4 @@
-<!-- ss:module L8.2 -->
+<!-- ol:module L8.2 -->
 # KV cache, incremental decode, incremental UTF-8 detokenizer, generate
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L8.2               # stubs kvcache.py and generate.py into your repo
-ss tests L8.2               # read the test catalog first
-ss check L8.2               # course tests, then your tests graded by mutation
-ss mutate L8.2              # the full mutation grade of your tests
-ss check L8.2 --ref-deps    # only if you skipped a dependency
-ss diff  L8.2               # after passing: your code against the reference
+ol start L8.2               # stubs kvcache.py and generate.py into your repo
+ol tests L8.2               # read the test catalog first
+ol check L8.2               # course tests, then your tests graded by mutation
+ol mutate L8.2              # the full mutation grade of your tests
+ol check L8.2 --ref-deps    # only if you skipped a dependency
+ol diff  L8.2               # after passing: your code against the reference
 ```
 
 ---
@@ -185,7 +185,7 @@ Write `python/tests/l8-2-generate/` against the contract only. The oracles are t
 | Forward | `L8.5` | quantized models generate through the same loop |
 | Forward | `L10.5` | the Rust server ports the incremental detokenizer for SSE |
 
-If you skip this module, `ss check L8.3` stops with `L8.3 needs L8.2`; `--ref-deps` substitutes the reference.
+If you skip this module, `ol check L8.3` stops with `L8.3 needs L8.2`; `--ref-deps` substitutes the reference.
 
 ## Going further
 

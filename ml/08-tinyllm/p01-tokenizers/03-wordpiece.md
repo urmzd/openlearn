@@ -1,4 +1,4 @@
-<!-- ss:module L1.3 -->
+<!-- ol:module L1.3 -->
 # WordPiece (BERT basic tokenizer + greedy longest match)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L1.3              # stubs wordpiece.py into your repo
-ss tests L1.3              # read the test catalog first
-ss check L1.3              # exit code is the verdict; then grades your tests by mutation
-ss check L1.3 --ref-deps   # only if your L1.1 or M06.2 is not passing yet
-ss diff  L1.3              # after passing: your code against the reference
+ol start L1.3              # stubs wordpiece.py into your repo
+ol tests L1.3              # read the test catalog first
+ol check L1.3              # exit code is the verdict; then grades your tests by mutation
+ol check L1.3 --ref-deps   # only if your L1.1 or M06.2 is not passing yet
+ol diff  L1.3              # after passing: your code against the reference
 ```
 
 ---
@@ -192,7 +192,7 @@ def test_vocab_without_unk_is_rejected():
 | Back | `M06.2` | two tries make each longest-match step one walk; a third splits out special tokens |
 | Forward | `L1.6` | measures bert-base-uncased against Hugging Face's numbers, `[UNK]` counted as a fallback |
 
-`L6.2` (masked language modeling with `[MASK]`) and `L6.3` (ELECTRA) train on these ids when Pass 5 arrives. If you skip this module, `ss check L1.6` stops with `needs L1.3`: build it, or rerun with `--ref-deps`.
+`L6.2` (masked language modeling with `[MASK]`) and `L6.3` (ELECTRA) train on these ids when Pass 5 arrives. If you skip this module, `ol check L1.6` stops with `needs L1.3`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

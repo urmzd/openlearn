@@ -1,4 +1,4 @@
-"""ss export: refusals (dirty tree, incomplete), what is vendored and what is
+"""ol export: refusals (dirty tree, incomplete), what is vendored and what is
 never copied, STATUS.md, and the vendored tests running natively through the
 generated glue in each language."""
 
@@ -51,7 +51,7 @@ def test_refusals(ss):
 
 def test_python_and_c_vendored_and_run_natively(ss):
     # These active tests read a course contract and the asset catalog through
-    # SS_COURSE_TREE. Export must preserve those paths in the vendored tree.
+    # OL_COURSE_TREE. Export must preserve those paths in the vendored tree.
     module = ss.course / "modules" / "M90.2.toml"
     text = module.read_text()
     text = text.replace(
@@ -76,7 +76,7 @@ def test_python_and_c_vendored_and_run_natively(ss):
     dest, res = _export(
         ss, "--allow-incomplete", "--remote", "git@github.com:me/forge.git"
     )
-    v = dest / "third_party/supersource"
+    v = dest / "third_party/openlearn"
     assert set(res["vendored"]) == {"M90.1", "M90.2", "rt.90", "rt.91"}
     for f in (
         "tests/M90.1/test_scale.py",
@@ -95,7 +95,7 @@ def test_python_and_c_vendored_and_run_natively(ss):
         assert (v / f).is_file(), f
     assert not (v / "tests/M90.3").exists()  # not passed, not vendored
     assert res["commands"]["python"][0].startswith("uv run --project python")
-    assert not list(dest.rglob("SOLUTION-BEGIN*")) and not (dest / ".ss").exists()
+    assert not list(dest.rglob("SOLUTION-BEGIN*")) and not (dest / ".ol").exists()
     assert not any(
         "SOLUTION-BEGIN" in p.read_text(errors="ignore")
         for p in dest.rglob("*")
@@ -113,7 +113,7 @@ def test_python_and_c_vendored_and_run_natively(ss):
     )
     log = git(dest, "log", "--format=%s")
     assert (
-        log.startswith("chore(tests): vendor supersource course tests")
+        log.startswith("chore(tests): vendor openlearn course tests")
         and "feat: scale, abi, C sum" in log
     )
     assert git(dest, "status", "--porcelain").strip() == ""
@@ -129,12 +129,12 @@ def test_go_and_rust_glue_run_natively(ss):
     )
     ss.commit_learner("feat: go sum and rust kahan")
     dest, res = _export(ss, "--allow-incomplete")
-    v = dest / "third_party/supersource"
+    v = dest / "third_party/openlearn"
     assert (v / "go.work").is_file() and (v / "tests/go/dur_90/sum_test.go").is_file()
     assert (v / "rust/Cargo.toml").is_file() and (
-        v / "rust/ss-tests/tests/ds_90.rs"
+        v / "rust/ol-tests/tests/ds_90.rs"
     ).is_file()
-    assert "tl-demo" in (v / "rust/ss-tests/Cargo.toml").read_text()
+    assert "tl-demo" in (v / "rust/ol-tests/Cargo.toml").read_text()
     _native(
         dest,
         res["commands"]["go"]

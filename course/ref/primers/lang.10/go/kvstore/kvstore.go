@@ -1,6 +1,6 @@
 // Package kvstore is a toy KV block store behind tl.kv.v1.KvTransferService
 // (contracts/proto/tl/kv/v1/kv.proto), implemented against the vendored
-// generated stubs (supersource.urmzd.com/tl/contracts/gen/tl/kv/v1).
+// generated stubs (openlearn.urmzd.com/tl/contracts/gen/tl/kv/v1).
 //
 // It keeps each block's bytes in a map keyed by block hash, which is
 // enough to practice the three kinds of RPC the engine's real KV transfer
@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	kvv1 "supersource.urmzd.com/tl/contracts/gen/tl/kv/v1"
+	kvv1 "openlearn.urmzd.com/tl/contracts/gen/tl/kv/v1"
 )
 
 // Format is the only KV format this store reads (formats/kv-block.md v1).

@@ -1,4 +1,4 @@
-//! Reference learner tests for ds.06 (rung R3: tests first with `ss tdd red`,
+//! Reference learner tests for ds.06 (rung R3: tests first with `ol tdd red`,
 //! then code). They prove the 0.70 bar and the required mutant (s02, ties)
 //! are reachable through the public API (an integration test).
 

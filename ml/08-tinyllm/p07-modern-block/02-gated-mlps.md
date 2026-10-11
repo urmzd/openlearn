@@ -1,4 +1,4 @@
-<!-- ss:module L7.2 -->
+<!-- ol:module L7.2 -->
 # Gated MLPs: SwiGLU, GeGLU
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L7.2              # stubs mlp.py; prints your test path and rung (R5)
-ss tests L7.2              # the course tests
+ol start L7.2              # stubs mlp.py; prints your test path and rung (R5)
+ol tests L7.2              # the course tests
 # write your oracle tests in python/tests/l7-2-mlp/, then:
-ss check L7.2              # course tests and the mutation grade of your tests
-ss diff  L7.2              # after passing: your code against the reference
+ol check L7.2              # course tests and the mutation grade of your tests
+ol diff  L7.2              # after passing: your code against the reference
 ```
 
 ---
@@ -107,7 +107,7 @@ def llama_ffn_dim(d, multiple_of=256, ffn_dim_multiplier=None) -> int: ...
 
 ### Your graded tests (rung R5)
 
-Your oracle is the formula in numpy float64 with the module's own weights from `state_dict()`: compute gate, up, the activation, the product, and down, and compare with `forward` for both activations, with and without biases. Add the hand example, the parameter names, your own central differences for $x$ and every parameter, and the published `llama_ffn_dim` values. Import only `tinyllm.modern.mlp`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ss check L7.2` requires 0.80 with every pitfall fault killed.
+Your oracle is the formula in numpy float64 with the module's own weights from `state_dict()`: compute gate, up, the activation, the product, and down, and compare with `forward` for both activations, with and without biases. Add the hand example, the parameter names, your own central differences for $x$ and every parameter, and the published `llama_ffn_dim` values. Import only `tinyllm.modern.mlp`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ol check L7.2` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

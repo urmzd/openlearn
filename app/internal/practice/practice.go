@@ -1,17 +1,26 @@
-// Package practice drives a pack's practice CLI on the learner's behalf. The
-// CLI owns the exercises, the scratchpad layout, and the verdicts; this package
-// only runs it and reads what it left on disk, so an exercise checked in the
-// app and one checked in a terminal are the same exercise.
+// Package practice is the exercise engine: it lists a pack's exercises, clones
+// one into the learner's scratchpad with the solution removed, and checks an
+// attempt by running it. It is the only implementation of that loop. The app
+// and the MCP server call it directly, so nothing has to locate, launch, or
+// parse the output of a separate CLI.
 //
-// The contract is the one practice/bin/ss implements: `list`, `start`, `check`,
-// `diff`, `show`, `reset`, each taking <kind> <lang> <name>, with `check`
-// exiting 0 for a pass, 1 for a fail, and 2 when nothing has been attempted.
+// A pack describes its exercises in a spec file (see Spec). The engine supplies
+// the two ways an exercise can be judged:
+//
+//	predict   the learner writes the exact output of a snippet; the snippet is
+//	          run where it lives and the two are compared.
+//	attempt   the learner writes the code; their copy is run and its exit code
+//	          is the verdict.
+//
+// Running an attempt means running a compiler or an interpreter, which is the
+// one process this package starts. Those commands are argument lists from the
+// spec, executed directly with no shell in between.
 package practice
 
 import (
-	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -25,7 +34,59 @@ import (
 	"unicode/utf8"
 )
 
-// Group is the exercises of one kind in one language.
+// Spec is a pack's exercise description: sets of exercises that are found and
+// run the same way.
+type Spec struct {
+	// Scratch is where attempts live, relative to the pack. It is the
+	// learner's own space and should be ignored by the pack's version control.
+	Scratch string `json:"scratch"`
+	Sets    []Set  `json:"sets"`
+}
+
+// Set is the exercises of one kind in one language.
+type Set struct {
+	Kind string `json:"kind"`
+	Lang string `json:"lang"`
+	// Mode is "predict" or "attempt".
+	Mode string `json:"mode"`
+	// Glob finds the exercises: each match is one, named by its base name
+	// without extension. A match may be a file or a directory.
+	Glob string `json:"glob"`
+	// Items lists exercises one by one, for sets that point at files living
+	// elsewhere in the pack.
+	Items []Item `json:"items"`
+	// Show is the file to display for a predict exercise whose match is a
+	// directory.
+	Show string `json:"show"`
+	// Seed files are written into a new attempt when absent, such as the
+	// go.mod a Go directory needs once it is copied out of its module.
+	Seed map[string]string `json:"seed"`
+	Run  Run               `json:"run"`
+}
+
+// Item is one explicitly listed exercise.
+type Item struct {
+	Name   string `json:"name"`
+	Source string `json:"source"`
+}
+
+// Run is how a set's exercises are executed. Steps run in order and stop at the
+// first failure. In an argument, {name} is the exercise name, {out} a build
+// directory outside the attempt, and {file} the attempt's single source file;
+// an argument containing * is expanded against the working directory.
+type Run struct {
+	// Dir is the working directory for predict sets, relative to the pack.
+	// Attempt sets run in the attempt's own directory.
+	Dir   string     `json:"dir"`
+	Steps [][]string `json:"steps"`
+}
+
+const (
+	modePredict = "predict"
+	modeAttempt = "attempt"
+)
+
+// Group is the exercises of one kind in one language, as the UI lists them.
 type Group struct {
 	Kind      string     `json:"kind"`
 	Lang      string     `json:"lang"`
@@ -65,157 +126,261 @@ type Result struct {
 	Output  string `json:"output"`
 }
 
-// kindPredict is the one kind whose attempt is a single prediction file
-// rather than a directory.
-const kindPredict = "predict"
-
 // The verdicts a Result carries.
 const (
-	verdictPass = "pass"
-	verdictFail = "fail"
-	verdictNone = "none"
+	VerdictPass = "pass"
+	VerdictFail = "fail"
+	VerdictNone = "none"
 )
 
-// Runner runs one pack's practice CLI.
+// Runner is the engine bound to one pack on disk.
 type Runner struct {
-	// Root is the pack checkout; commands run with it as their directory.
+	// Root is the pack directory.
 	Root string
-	// CLI is the executable, absolute.
-	CLI string
+	spec Spec
 }
 
-// New returns a runner for the CLI at rel inside root.
+// New loads the spec at rel inside root.
 func New(root, rel string) (*Runner, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
 		return nil, fmt.Errorf("practice: %w", err)
 	}
-	cli := filepath.Join(root, filepath.FromSlash(rel))
-	info, err := os.Stat(cli)
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel))) //nolint:gosec // G304: the spec path comes from the pack's own manifest
 	if err != nil {
 		return nil, fmt.Errorf("practice: %w", err)
 	}
-	if info.IsDir() || info.Mode()&0o111 == 0 {
-		return nil, fmt.Errorf("practice: %s is not executable", cli)
+	var spec Spec
+	if err := json.Unmarshal(data, &spec); err != nil {
+		return nil, fmt.Errorf("practice: parse %s: %w", rel, err)
 	}
-	return &Runner{Root: root, CLI: cli}, nil
-}
-
-// timeout bounds one command. Compiling a first Rust exercise is the slow
-// case; an exercise that loops forever must not hang the app.
-const timeout = 3 * time.Minute
-
-// run executes the CLI and returns its combined output and exit code.
-func (r *Runner) run(ctx context.Context, args ...string) (string, int, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, r.CLI, args...) //nolint:gosec // G204: the CLI is the pack's own, arguments are validated names
-	cmd.Dir = r.Root
-	// EDITOR is what `start` opens the attempt in. The app is the editor, so
-	// it is pointed at a command that does nothing.
-	cmd.Env = append(shellEnv(), "EDITOR=true", "NO_COLOR=1")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	err := cmd.Run()
-	text := strings.TrimRight(out.String(), "\n")
-	if ctx.Err() == context.DeadlineExceeded {
-		return text, -1, fmt.Errorf("practice: timed out after %s", timeout)
+	if spec.Scratch == "" {
+		spec.Scratch = ".scratchpad"
 	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
-		return text, exit.ExitCode(), nil
-	}
-	if err != nil {
-		return text, -1, fmt.Errorf("practice: %w", err)
-	}
-	return text, 0, nil
-}
-
-// List returns every exercise, grouped as the CLI groups them.
-func (r *Runner) List(ctx context.Context) ([]Group, error) {
-	out, code, err := r.run(ctx, "list")
-	if err != nil {
-		return nil, err
-	}
-	if code != 0 {
-		return nil, fmt.Errorf("practice: list failed: %s", firstLine(out))
-	}
-	return ParseList(out), nil
-}
-
-// ParseList reads `list` output: a "kind/lang" heading, then one indented row
-// per exercise ending in "started" or "--".
-func ParseList(out string) []Group {
-	groups := []Group{}
-	sc := bufio.NewScanner(strings.NewReader(out))
-	for sc.Scan() {
-		line := sc.Text()
-		if strings.TrimSpace(line) == "" {
-			continue
+	for i, s := range spec.Sets {
+		if !argSafe(s.Kind) || !argSafe(s.Lang) {
+			return nil, fmt.Errorf("practice: set %d needs a plain kind and lang", i)
 		}
-		if !strings.HasPrefix(line, " ") {
-			kind, lang, ok := strings.Cut(strings.TrimSpace(line), "/")
-			if !ok {
-				continue
+		if s.Mode != modePredict && s.Mode != modeAttempt {
+			return nil, fmt.Errorf("practice: set %s/%s: mode must be %q or %q", s.Kind, s.Lang, modePredict, modeAttempt)
+		}
+		if len(s.Run.Steps) == 0 {
+			return nil, fmt.Errorf("practice: set %s/%s has no run steps", s.Kind, s.Lang)
+		}
+	}
+	return &Runner{Root: root, spec: spec}, nil
+}
+
+// located is one exercise resolved to where it lives.
+type located struct {
+	set  Set
+	name string
+	// source is the exercise's file or directory, absolute.
+	source string
+}
+
+func (r *Runner) scratch() string {
+	if v := os.Getenv("OL_SCRATCH"); v != "" {
+		return v
+	}
+	return filepath.Join(r.Root, filepath.FromSlash(r.spec.Scratch))
+}
+
+// names returns a set's exercises, sorted by name.
+func (r *Runner) names(s Set) []located {
+	var out []located
+	if s.Glob != "" {
+		matches, _ := filepath.Glob(filepath.Join(r.Root, filepath.FromSlash(s.Glob)))
+		for _, m := range matches {
+			name := strings.TrimSuffix(filepath.Base(m), filepath.Ext(m))
+			if info, err := os.Stat(m); err == nil && info.IsDir() {
+				name = filepath.Base(m)
 			}
-			groups = append(groups, Group{Kind: kind, Lang: lang, Exercises: []Exercise{}})
-			continue
+			if argSafe(name) {
+				out = append(out, located{set: s, name: name, source: m})
+			}
 		}
-		fields := strings.Fields(line)
-		if len(groups) == 0 || len(fields) < 2 {
-			continue
-		}
-		g := &groups[len(groups)-1]
-		g.Exercises = append(g.Exercises, Exercise{Name: fields[0], Started: fields[len(fields)-1] == "started"})
 	}
-	return groups
+	for _, it := range s.Items {
+		if argSafe(it.Name) && fs.ValidPath(it.Source) {
+			out = append(out, located{set: s, name: it.Name, source: filepath.Join(r.Root, filepath.FromSlash(it.Source))})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].name < out[j].name })
+	return out
 }
 
-// Start clones the exercise into the scratchpad (a no-op when it is already
-// there) and returns the attempt.
+func (r *Runner) find(kind, lang, name string) (located, error) {
+	if !argSafe(kind) || !argSafe(lang) || !argSafe(name) {
+		return located{}, fmt.Errorf("practice: bad exercise name %s/%s/%s", kind, lang, name)
+	}
+	for _, s := range r.spec.Sets {
+		if s.Kind != kind || s.Lang != lang {
+			continue
+		}
+		for _, l := range r.names(s) {
+			if l.name == name {
+				return l, nil
+			}
+		}
+	}
+	return located{}, fmt.Errorf("practice: no %s exercise %q in %s", kind, name, lang)
+}
+
+// workDir is where an attempt lives. A prediction is a single file beside its
+// siblings; anything else is a directory of its own.
+func (r *Runner) workDir(l located) string {
+	if l.set.Mode == modePredict {
+		return filepath.Join(r.scratch(), l.set.Kind, l.set.Lang)
+	}
+	return filepath.Join(r.scratch(), l.set.Kind, l.set.Lang, l.name)
+}
+
+func (r *Runner) predictionFile(l located) string {
+	return filepath.Join(r.workDir(l), l.name+".txt")
+}
+
+func (r *Runner) started(l located) bool {
+	if l.set.Mode == modePredict {
+		info, err := os.Stat(r.predictionFile(l))
+		return err == nil && info.Size() > 0
+	}
+	info, err := os.Stat(r.workDir(l))
+	return err == nil && info.IsDir()
+}
+
+// List returns every exercise, grouped by set. Sets with no exercises are
+// omitted, so a pack can declare a language before it has anything in it.
+func (r *Runner) List(context.Context) ([]Group, error) {
+	groups := []Group{}
+	for _, s := range r.spec.Sets {
+		found := r.names(s)
+		if len(found) == 0 {
+			continue
+		}
+		g := Group{Kind: s.Kind, Lang: s.Lang, Exercises: make([]Exercise, 0, len(found))}
+		for _, l := range found {
+			g.Exercises = append(g.Exercises, Exercise{Name: l.name, Started: r.started(l)})
+		}
+		groups = append(groups, g)
+	}
+	return groups, nil
+}
+
+// Start clones the exercise into the scratchpad with its solution removed (a
+// no-op when it is already there) and returns the attempt.
 func (r *Runner) Start(ctx context.Context, kind, lang, name string) (Workspace, error) {
-	if err := validate(kind, lang, name); err != nil {
+	l, err := r.find(kind, lang, name)
+	if err != nil {
 		return Workspace{}, err
 	}
-	if out, code, err := r.run(ctx, "start", kind, lang, name); err != nil {
-		return Workspace{}, err
-	} else if code != 0 {
-		return Workspace{}, fmt.Errorf("practice: start failed: %s", firstLine(out))
+	wd := r.workDir(l)
+	if l.set.Mode == modePredict {
+		if err := os.MkdirAll(wd, 0o750); err != nil {
+			return Workspace{}, fmt.Errorf("practice: %w", err)
+		}
+		return r.Workspace(ctx, kind, lang, name)
+	}
+	if _, err := os.Stat(wd); err != nil {
+		if err := r.clone(l, wd); err != nil {
+			_ = os.RemoveAll(wd) // a half-cloned attempt would look started
+			return Workspace{}, err
+		}
 	}
 	return r.Workspace(ctx, kind, lang, name)
 }
 
+// clone copies an exercise into wd, replacing each marked solution region with
+// a TODO. Files with no markers arrive intact, which is how tests and headers
+// come along untouched.
+func (r *Runner) clone(l located, wd string) error {
+	info, err := os.Stat(l.source)
+	if err != nil {
+		return fmt.Errorf("practice: %w", err)
+	}
+	copyOne := func(src, dst string) error {
+		data, err := os.ReadFile(src) //nolint:gosec // G304: a file of the pack's own exercise
+		if err != nil {
+			return err
+		}
+		st, err := os.Stat(src)
+		if err != nil {
+			return err
+		}
+		if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
+			return err
+		}
+		// Executable bits survive so an exercise's own run script still runs.
+		mode := fs.FileMode(0o644)
+		if st.Mode()&0o100 != 0 {
+			mode = 0o755
+		}
+		return os.WriteFile(dst, StripSolution(data), mode) //nolint:gosec // G306: source files the learner's own tools also read
+	}
+	if !info.IsDir() {
+		if err := copyOne(l.source, filepath.Join(wd, filepath.Base(l.source))); err != nil {
+			return fmt.Errorf("practice: %w", err)
+		}
+	} else {
+		err := filepath.WalkDir(l.source, func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			rel, err := filepath.Rel(l.source, p)
+			if err != nil {
+				return err
+			}
+			return copyOne(p, filepath.Join(wd, rel))
+		})
+		if err != nil {
+			return fmt.Errorf("practice: %w", err)
+		}
+	}
+	for rel, body := range l.set.Seed {
+		target := filepath.Join(wd, filepath.FromSlash(rel))
+		if !fs.ValidPath(rel) {
+			continue
+		}
+		if _, err := os.Stat(target); err == nil {
+			continue
+		}
+		if err := os.WriteFile(target, []byte(strings.ReplaceAll(body, "{name}", l.name)), 0o644); err != nil { //nolint:gosec // G306: as above
+			return fmt.Errorf("practice: %w", err)
+		}
+	}
+	return nil
+}
+
+// maxFileBytes keeps a stray build artifact from being read into the editor.
+const maxFileBytes = 1 << 20
+
 // Workspace reads an attempt from the scratchpad.
-func (r *Runner) Workspace(ctx context.Context, kind, lang, name string) (Workspace, error) {
-	if err := validate(kind, lang, name); err != nil {
+func (r *Runner) Workspace(_ context.Context, kind, lang, name string) (Workspace, error) {
+	l, err := r.find(kind, lang, name)
+	if err != nil {
 		return Workspace{}, err
 	}
-	ws := Workspace{Kind: kind, Lang: lang, Name: name, Files: []File{}}
+	ws := Workspace{Kind: kind, Lang: lang, Name: name, Dir: r.workDir(l), Files: []File{}}
 
-	if kind == kindPredict {
-		// A prediction is one text file beside its siblings; the snippet it
-		// predicts stays in the pack and is shown read-only.
-		ws.Dir = filepath.Join(r.scratch(), kind, lang)
-		snippet, code, err := r.run(ctx, "show", kind, lang, name)
+	if l.set.Mode == modePredict {
+		// The snippet stays in the pack and is shown read-only; the learner
+		// writes only what they expect it to print.
+		snippet := l.source
+		if info, err := os.Stat(snippet); err == nil && info.IsDir() {
+			snippet = filepath.Join(snippet, filepath.FromSlash(l.set.Show))
+		}
+		data, err := os.ReadFile(snippet) //nolint:gosec // G304: the pack's own snippet
 		if err != nil {
-			return Workspace{}, err
+			return Workspace{}, fmt.Errorf("practice: %w", err)
 		}
-		if code != 0 {
-			return Workspace{}, fmt.Errorf("practice: show failed: %s", firstLine(snippet))
-		}
-		title, body, _ := strings.Cut(snippet, "\n")
-		ws.Files = append(ws.Files, File{Path: strings.TrimSpace(title), Content: strings.TrimLeft(body, "\n"), ReadOnly: true})
-		pred := name + ".txt"
-		data, _ := os.ReadFile(filepath.Join(ws.Dir, pred)) //nolint:gosec // G304: validated name under the scratchpad
-		ws.Files = append(ws.Files, File{Path: pred, Content: string(data)})
+		rel, _ := filepath.Rel(r.Root, snippet)
+		ws.Files = append(ws.Files, File{Path: filepath.ToSlash(rel), Content: string(data), ReadOnly: true})
+		pred, _ := os.ReadFile(r.predictionFile(l)) //nolint:gosec // G304: validated name under the scratchpad
+		ws.Files = append(ws.Files, File{Path: name + ".txt", Content: string(pred)})
 		return ws, nil
 	}
 
-	ws.Dir = filepath.Join(r.scratch(), kind, lang, name)
-	err := filepath.WalkDir(ws.Dir, func(p string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(ws.Dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -244,128 +409,253 @@ func (r *Runner) Workspace(ctx context.Context, kind, lang, name string) (Worksp
 	return ws, nil
 }
 
-// maxFileBytes keeps a stray build artifact from being read into the editor.
-const maxFileBytes = 1 << 20
-
 // Save writes one file of an attempt.
 func (r *Runner) Save(kind, lang, name, rel, content string) error {
-	if err := validate(kind, lang, name); err != nil {
+	l, err := r.find(kind, lang, name)
+	if err != nil {
 		return err
 	}
 	if !fs.ValidPath(rel) {
 		return fmt.Errorf("practice: bad file path %q", rel)
 	}
-	dir := filepath.Join(r.scratch(), kind, lang, name)
-	if kind == kindPredict {
+	if l.set.Mode == modePredict {
 		if rel != name+".txt" {
 			return fmt.Errorf("practice: a prediction is written to %s.txt", name)
 		}
-		dir = filepath.Join(r.scratch(), kind, lang)
-	}
-	target := filepath.Join(dir, filepath.FromSlash(rel))
-	// Only files the CLI created are written, so the app cannot add files to
-	// an attempt or be talked into writing somewhere new.
-	if kind != kindPredict {
-		if _, err := os.Stat(target); err != nil {
-			return fmt.Errorf("practice: %s is not part of this attempt", rel)
+		if err := os.MkdirAll(r.workDir(l), 0o750); err != nil {
+			return fmt.Errorf("practice: %w", err)
 		}
+		return writeFile(r.predictionFile(l), content)
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
-		return fmt.Errorf("practice: %w", err)
+	target := filepath.Join(r.workDir(l), filepath.FromSlash(rel))
+	// Only files the clone created are written, so a caller cannot add files to
+	// an attempt or be talked into writing somewhere new.
+	if _, err := os.Stat(target); err != nil {
+		return fmt.Errorf("practice: %s is not part of this attempt", rel)
 	}
-	if err := os.WriteFile(target, []byte(content), 0o644); err != nil { //nolint:gosec // G306: source files the learner's own tools also read
-		return fmt.Errorf("practice: save %s: %w", rel, err)
+	return writeFile(target, content)
+}
+
+func writeFile(target, content string) error {
+	// The file's existing mode is kept, so saving a run script does not strip
+	// its executable bit.
+	mode := fs.FileMode(0o644)
+	if info, err := os.Stat(target); err == nil {
+		mode = info.Mode().Perm()
+	}
+	if err := os.WriteFile(target, []byte(content), mode); err != nil { //nolint:gosec // G306: source files the learner's own tools also read
+		return fmt.Errorf("practice: save %s: %w", filepath.Base(target), err)
 	}
 	return nil
 }
 
 // Check runs the attempt and reports the verdict.
 func (r *Runner) Check(ctx context.Context, kind, lang, name string) (Result, error) {
-	if err := validate(kind, lang, name); err != nil {
+	l, err := r.find(kind, lang, name)
+	if err != nil {
 		return Result{}, err
 	}
-	out, code, err := r.run(ctx, "check", kind, lang, name)
-	if err != nil {
-		return Result{Verdict: verdictFail, Output: strings.TrimSpace(out + "\n" + err.Error())}, nil
+	if !r.started(l) {
+		return Result{Verdict: VerdictNone, Output: "Not started yet."}, nil
 	}
-	verdict := verdictFail
-	switch code {
-	case 0:
-		verdict = verdictPass
-	case 2:
-		verdict = verdictNone
+
+	if l.set.Mode == modePredict {
+		actual, ok := r.exec(ctx, l, filepath.Join(r.Root, filepath.FromSlash(l.set.Run.Dir)))
+		if !ok {
+			// The snippet itself failed to run, which says nothing about the
+			// prediction: usually a toolchain that is not installed.
+			return Result{Verdict: VerdictNone, Output: "The snippet could not be run, so there is nothing to compare against.\n\n" + actual}, nil
+		}
+		pred, _ := os.ReadFile(r.predictionFile(l)) //nolint:gosec // G304: validated name under the scratchpad
+		want, got := normalize(string(pred)), normalize(actual)
+		if want == got {
+			return Result{Verdict: VerdictPass, Output: "PASS " + name}, nil
+		}
+		return Result{
+			Verdict: VerdictFail,
+			Output:  "MISS " + name + "\n\n" + Diff("you predicted", "actually printed", want, got),
+		}, nil
 	}
-	return Result{Verdict: verdict, Output: out}, nil
+
+	out, ok := r.exec(ctx, l, r.workDir(l))
+	if ok {
+		return Result{Verdict: VerdictPass, Output: strings.TrimSpace("PASS " + name + "\n\n" + out)}, nil
+	}
+	return Result{Verdict: VerdictFail, Output: strings.TrimSpace("FAIL " + name + "\n\n" + out)}, nil
 }
 
 // Diff compares the attempt with the reference. It spoils the exercise, which
 // is the learner's call to make.
-func (r *Runner) Diff(ctx context.Context, kind, lang, name string) (Result, error) {
-	return r.plain(ctx, "diff", kind, lang, name)
+func (r *Runner) Diff(_ context.Context, kind, lang, name string) (Result, error) {
+	l, err := r.find(kind, lang, name)
+	if err != nil {
+		return Result{}, err
+	}
+	if l.set.Mode == modePredict {
+		return Result{}, errors.New("practice: a prediction has no reference to compare with; check it")
+	}
+	wd := r.workDir(l)
+	if _, err := os.Stat(wd); err != nil {
+		return Result{}, fmt.Errorf("practice: not started: %s/%s/%s", kind, lang, name)
+	}
+	var out strings.Builder
+	compare := func(src, rel string) {
+		ref, err := os.ReadFile(src) //nolint:gosec // G304: the pack's own reference
+		if err != nil || !utf8.Valid(ref) {
+			return
+		}
+		mine, _ := os.ReadFile(filepath.Join(wd, rel)) //nolint:gosec // G304: a file of the attempt
+		a, b := string(mine), string(DropMarkers(ref))
+		if a == b {
+			return
+		}
+		out.WriteString(Diff("yours: "+rel, "reference: "+rel, a, b))
+		out.WriteString("\n")
+	}
+	info, err := os.Stat(l.source)
+	if err != nil {
+		return Result{}, fmt.Errorf("practice: %w", err)
+	}
+	if !info.IsDir() {
+		compare(l.source, filepath.Base(l.source))
+	} else {
+		_ = filepath.WalkDir(l.source, func(p string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() {
+				if rel, rerr := filepath.Rel(l.source, p); rerr == nil {
+					compare(p, rel)
+				}
+			}
+			return nil
+		})
+	}
+	text := strings.TrimSpace(out.String())
+	if text == "" {
+		text = "Your attempt matches the reference."
+	}
+	return Result{Verdict: VerdictNone, Output: text}, nil
 }
 
 // Reset throws the attempt away.
-func (r *Runner) Reset(ctx context.Context, kind, lang, name string) (Result, error) {
-	return r.plain(ctx, "reset", kind, lang, name)
-}
-
-func (r *Runner) plain(ctx context.Context, verb, kind, lang, name string) (Result, error) {
-	if err := validate(kind, lang, name); err != nil {
-		return Result{}, err
-	}
-	out, code, err := r.run(ctx, verb, kind, lang, name)
+func (r *Runner) Reset(_ context.Context, kind, lang, name string) (Result, error) {
+	l, err := r.find(kind, lang, name)
 	if err != nil {
 		return Result{}, err
 	}
-	if code != 0 {
-		return Result{}, fmt.Errorf("practice: %s", firstLine(out))
+	target := r.workDir(l)
+	if l.set.Mode == modePredict {
+		target = r.predictionFile(l)
 	}
-	return Result{Verdict: verdictNone, Output: out}, nil
+	// The target is built from validated names under the scratchpad, and this
+	// is the last check before a recursive delete.
+	if rel, err := filepath.Rel(r.scratch(), target); err != nil || strings.HasPrefix(rel, "..") || rel == "." {
+		return Result{}, fmt.Errorf("practice: refusing to delete outside the scratchpad: %s", target)
+	}
+	if err := os.RemoveAll(target); err != nil {
+		return Result{}, fmt.Errorf("practice: %w", err)
+	}
+	return Result{Verdict: VerdictNone, Output: "Attempt cleared."}, nil
 }
 
-// Learn marks a path stage through the CLI, which is what enforces a stage's
-// check. It returns what the CLI said either way.
-func (r *Runner) Learn(ctx context.Context, top, key string, done bool) (Result, error) {
-	if err := validate(top, "x", "x"); err != nil {
-		return Result{}, err
-	}
-	if !argSafe(strings.ReplaceAll(key, ":", "")) {
-		return Result{}, fmt.Errorf("practice: bad stage %q", key)
-	}
-	flag := "--undo"
-	if done {
-		flag = "--done"
-	}
-	out, code, err := r.run(ctx, "learn", top, flag, key)
-	if err != nil {
-		return Result{}, err
-	}
-	verdict := verdictPass
-	if code != 0 {
-		verdict = verdictFail
-	}
-	return Result{Verdict: verdict, Output: out}, nil
-}
+// timeout bounds one check. Compiling a first Rust exercise is the slow case;
+// an attempt that loops forever must not hang the app.
+const timeout = 3 * time.Minute
 
-func (r *Runner) scratch() string {
-	if v := os.Getenv("SS_SCRATCH"); v != "" {
-		return v
-	}
-	return filepath.Join(r.Root, ".scratchpad")
-}
+// exec runs an exercise's steps in dir and returns their combined output and
+// whether every step succeeded. An attempt that ships its own executable
+// run.sh is run through that instead, for exercises that need something the
+// step list cannot express.
+func (r *Runner) exec(ctx context.Context, l located, dir string) (string, bool) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 
-// validate keeps every argument a plain name. They become both command
-// arguments and path elements, so nothing that could be a flag or climb a
-// directory is let through.
-func validate(parts ...string) error {
-	for _, p := range parts {
-		if !argSafe(p) {
-			return fmt.Errorf("practice: bad name %q", p)
+	steps := l.set.Run.Steps
+	if l.set.Mode == modeAttempt {
+		if info, err := os.Stat(filepath.Join(dir, "run.sh")); err == nil && info.Mode()&0o111 != 0 {
+			steps = [][]string{{"./run.sh"}}
 		}
 	}
-	return nil
+
+	key := strings.NewReplacer("/", "_", string(filepath.Separator), "_").Replace(l.set.Kind + "/" + l.set.Lang + "/" + l.name)
+	outDir := filepath.Join(r.scratch(), ".build", key)
+	if err := os.MkdirAll(outDir, 0o750); err != nil {
+		return err.Error(), false
+	}
+	file := ""
+	if entries, err := os.ReadDir(dir); err == nil && l.set.Mode == modeAttempt {
+		for _, e := range entries {
+			if !e.IsDir() {
+				file = e.Name()
+				break
+			}
+		}
+	}
+	fill := strings.NewReplacer("{name}", l.name, "{out}", outDir, "{file}", file)
+
+	var out bytes.Buffer
+	for _, step := range steps {
+		var args []string
+		for _, a := range step {
+			a = fill.Replace(a)
+			// A bare pattern is expanded here because there is no shell to do
+			// it: "*.c" means the attempt's C files.
+			if strings.ContainsAny(a, "*?") && !strings.ContainsRune(a, filepath.Separator) {
+				if matches, _ := filepath.Glob(filepath.Join(dir, a)); len(matches) > 0 {
+					for _, m := range matches {
+						args = append(args, filepath.Base(m))
+					}
+					continue
+				}
+			}
+			args = append(args, a)
+		}
+		if len(args) == 0 {
+			continue
+		}
+		cmd := exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec // G204: argument lists from the pack's spec, no shell
+		cmd.Dir = dir
+		cmd.Env = shellEnv()
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		err := cmd.Run()
+		if ctx.Err() == context.DeadlineExceeded {
+			fmt.Fprintf(&out, "\nStopped after %s.", timeout)
+			return strings.TrimRight(out.String(), "\n"), false
+		}
+		var exit *exec.ExitError
+		if err != nil && !errors.As(err, &exit) {
+			// Not an exit code: the command could not be started at all.
+			if errors.Is(err, exec.ErrNotFound) {
+				fmt.Fprintf(&out, "This exercise needs %q, which is not installed or not on your PATH.", args[0])
+			} else {
+				fmt.Fprintf(&out, "Could not run %s: %v", args[0], err)
+			}
+			return strings.TrimRight(out.String(), "\n"), false
+		}
+		if err != nil {
+			return strings.TrimRight(out.String(), "\n"), false
+		}
+	}
+	return strings.TrimRight(out.String(), "\n"), true
 }
 
+// normalize strips trailing whitespace and leading and trailing blank lines, so
+// a correct prediction is not called wrong over an extra newline.
+func normalize(s string) string {
+	lines := strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
+	for i := range lines {
+		lines[i] = strings.TrimRight(lines[i], " \t")
+	}
+	for len(lines) > 0 && lines[0] == "" {
+		lines = lines[1:]
+	}
+	for len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return strings.Join(lines, "\n")
+}
+
+// argSafe keeps a name a plain name. Names become path elements, so nothing
+// that could climb a directory or look like a flag is let through.
 func argSafe(s string) bool {
 	if s == "" || s[0] == '-' || s[0] == '.' {
 		return false
@@ -379,20 +669,12 @@ func argSafe(s string) bool {
 	return !strings.Contains(s, "..")
 }
 
-func firstLine(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
-	}
-	return s
-}
-
 var (
 	envOnce sync.Once
 	envVars []string
 )
 
-// shellEnv returns the environment commands run in. A desktop app launched
+// shellEnv returns the environment attempts run in. A desktop app launched
 // from Finder or a dock gets a bare PATH with no compilers on it, while the
 // learner's toolchains are set up by their shell profile. Asking a login shell
 // for its PATH once closes that gap; if the shell cannot be asked, the app's
@@ -416,8 +698,8 @@ func shellEnv() []string {
 		if !ok {
 			return
 		}
-		path, _, ok := strings.Cut(rest, ">>")
-		if !ok || path == "" {
+		p, _, ok := strings.Cut(rest, ">>")
+		if !ok || p == "" {
 			return
 		}
 		kept := envVars[:0:0]
@@ -426,7 +708,7 @@ func shellEnv() []string {
 				kept = append(kept, kv)
 			}
 		}
-		envVars = append(kept, "PATH="+path)
+		envVars = append(kept, "PATH="+p)
 	})
 	return append([]string(nil), envVars...)
 }

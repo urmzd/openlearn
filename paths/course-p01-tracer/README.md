@@ -9,8 +9,8 @@ A thin system through every layer, before any layer is deep. You learn Python, R
 The stages, their chapters, and what "done" means for each are in [`path.tsv`](path.tsv). The engine serves the checkpoint your CLI wrote.
 
 ```bash
-practice/bin/ss learn course-p01-tracer         # stages and progress
-practice/bin/ss learn course-p01-tracer next    # read the next unfinished stage
+practice/bin/ol learn course-p01-tracer         # stages and progress
+practice/bin/ol learn course-p01-tracer next    # read the next unfinished stage
 ```
 
-Pass 1 needs a local kind cluster for stages 8 to 11 (`ss doctor --pass 1`). Everything before stage 8 runs as local processes.
+Pass 1 needs a local kind cluster for stages 8 to 11 (`ol doctor --pass 1`). Everything before stage 8 runs as local processes.

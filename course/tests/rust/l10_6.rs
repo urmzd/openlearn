@@ -34,7 +34,7 @@ use tl_serve::control::{self, ControlService, PrefillBackend, PrefillJob, Prefil
 use tl_engine::kv::{KvCfg, KvPool, TL_F16};
 
 fn fixtures() -> PathBuf {
-    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss"))
+    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol"))
 }
 
 fn rt() -> tokio::runtime::Runtime {

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"supersource.urmzd.com/tl/testkit/faketool"
+	"openlearn.urmzd.com/tl/testkit/faketool"
 	"tinyllm/agent/gate"
 	"tinyllm/agent/loop"
 	"tinyllm/agent/provider"

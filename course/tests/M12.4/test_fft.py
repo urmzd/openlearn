@@ -43,7 +43,7 @@ def bound(n: int, x) -> float:
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def cnormal(g: PCG32, shape) -> np.ndarray:

@@ -3,7 +3,7 @@
 Drill `ops.01`. Blameless: this document is about the system and the process,
 not about who typed the command. A model postmortem: the times and counts
 show the shape of this incident; yours come from your loadgen report and
-`ss drill end`.
+`ol drill end`.
 
 ## Summary
 
@@ -31,7 +31,7 @@ All times UTC.
 
 | Time | Event |
 |---|---|
-| 10:00:00 | `ss drill start kill-decode --seed 7`; the loadgen starts at 20 rps |
+| 10:00:00 | `ol drill start kill-decode --seed 7`; the loadgen starts at 20 rps |
 | 10:00:30 | Decode pod `forge-engine-decode-6c9f...-x2kq` deleted (`--grace-period=0`) |
 | 10:00:30 | 11 streams on it end with an SSE `error` event; new requests fail over |
 | 10:00:45 | Queue depth on the surviving decode pod passes 30 |
@@ -39,7 +39,7 @@ All times UTC.
 | 10:02:40 | Runbook step 1: a decode pod 2 minutes old, `READY 0/1`, loading the model |
 | 10:03:10 | The replacement pod is Ready; the queue drains in 20 s |
 | 10:04:05 | The short window clears; the alert resolves |
-| 10:09:30 | `ss drill end`: TTFT p95 under 500 ms held 300 s; 5xx under 0.5% held 120 s; smoke cases pass |
+| 10:09:30 | `ol drill end`: TTFT p95 under 500 ms held 300 s; 5xx under 0.5% held 120 s; smoke cases pass |
 
 ## Root cause
 

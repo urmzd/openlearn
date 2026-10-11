@@ -1,4 +1,4 @@
-<!-- ss:module M09.4 -->
+<!-- ol:module M09.4 -->
 # FP8 E4M3/E5M2, MXFP4/MXFP8 with E8M0 scales
 
 ## Overview
@@ -50,7 +50,7 @@ For an MX block, first find the largest absolute element. Choose the shared powe
 | `test_scaled_quantization_roundtrip` and `test_quantize_rounds_once` | Ensures scaling does not introduce an extra rounding step. |
 | `test_fp4_values_and_ties`, `test_e8m0_scale_code`, `test_mx_golden`, `test_mx_block_law`, `test_mx_shapes_and_errors` | Check element codes, scale choices, block layout, and input validation. |
 
-Start with `ss start M09.4`, inspect the catalog with `ss tests M09.4`, then run `ss check M09.4`. The file fixture makes results reproducible without optional dependencies at runtime.
+Start with `ol start M09.4`, inspect the catalog with `ol tests M09.4`, then run `ol check M09.4`. The file fixture makes results reproducible without optional dependencies at runtime.
 
 ## 5. Pitfalls
 

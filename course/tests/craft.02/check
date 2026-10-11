@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Artifact check for craft.02 (DESIGN 4.6, 6.4): your ADRs in docs/adr/ lint.
-# `ss check craft.02` runs this from the root of your repo; the exit code is
+# `ol check craft.02` runs this from the root of your repo; the exit code is
 # the verdict. The annotated checks themselves are in adr_checks.py.
 set -euo pipefail
 exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/adr_checks.py" "$PWD"

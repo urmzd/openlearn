@@ -15,7 +15,7 @@
 
 ## How to Study
 
-Work the chapters in order with `ss start <ID>`, `ss check <ID>`. The tracer chapter (`gw.00`) is in Pass 1; the server skeleton, streaming observer, routing, and the rest follow in Pass 7, each upgrading the same `go/gateway/` packages behind the same OpenAI-compatible surface.
+Work the chapters in order with `ol start <ID>`, `ol check <ID>`. The tracer chapter (`gw.00`) is in Pass 1; the server skeleton, streaming observer, routing, and the rest follow in Pass 7, each upgrading the same `go/gateway/` packages behind the same OpenAI-compatible surface.
 
 ---
 
@@ -44,7 +44,7 @@ An LLM gateway is a reverse proxy whose payload is a stream. Every feature it ga
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `gw.00` | [Tracer gateway: static API-key check, SSE pass-through without buffering, traceparent and X-Request-Id propagation](00-streaming-proxy.md) | build | 1 |
@@ -53,4 +53,4 @@ An LLM gateway is a reverse proxy whose payload is a stream. Every feature it ga
 | 4 | `gw.05` | [Worker registry, routing, cascades, failover, disaggregated orchestration](05-routing.md) | build | 7 |
 | 5 | `gw.07` | [Usage ledger, metering, admin API](07-usage-ledger-and-admin-api.md) | build | 7 |
 | 6 | `gw.08` | [Usage policy enforcement](08-usage-policy-enforcement.md) | build | 10 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

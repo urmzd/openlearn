@@ -32,8 +32,8 @@ from pathlib import Path
 
 import pytest
 
-PRIMER = Path(os.environ.get("SS_PRIMER_DIR", "primers/craft.22")).resolve()
-COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[2]))
+PRIMER = Path(os.environ.get("OL_PRIMER_DIR", "primers/craft.22")).resolve()
+COURSE = Path(os.environ.get("OL_COURSE_TREE", Path(__file__).resolve().parents[2]))
 FIXTURES = Path(os.environ.get("TINYLLM_FIXTURES", COURSE / "fixtures"))
 REF = COURSE / "ref" / "primers" / "craft.22"
 TESTS = PRIMER / "test_model_evals.py"
@@ -55,7 +55,7 @@ ALLOWED = {
 }
 
 sys.path.insert(0, str(COURSE / "harness" / "src"))
-from sscourse import markers  # noqa: E402
+from olcourse import markers  # noqa: E402
 
 
 def load_module(path: Path, name: str):
@@ -89,7 +89,7 @@ def patched(patch: Path) -> str:
 def run_suite(model: str, timeout: float = 120) -> tuple[int, str]:
     """Your suite against `model` (the text of a tinymodel.py), in its own
     process group; a run past `timeout` counts as a failure."""
-    with tempfile.TemporaryDirectory(prefix="ss-craft22-") as d:
+    with tempfile.TemporaryDirectory(prefix="ol-craft22-") as d:
         Path(d, "tinymodel.py").write_text(model)
         for f in ("test_model_evals.py", "evals.py", "baseline.json"):
             Path(d, f).write_text((PRIMER / f).read_text())
@@ -146,7 +146,7 @@ def faults() -> list[tuple[str, bool, str]]:
 @pytest.fixture(scope="module")
 def theirs():
     assert (PRIMER / "evals.py").is_file(), (
-        f"no {PRIMER / 'evals.py'}: run ss start craft.22"
+        f"no {PRIMER / 'evals.py'}: run ol start craft.22"
     )
     sys.path.insert(0, str(REF))  # their evals may import tinymodel
     try:

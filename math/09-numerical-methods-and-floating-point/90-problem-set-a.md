@@ -1,4 +1,4 @@
-<!-- ss:module S-M09a -->
+<!-- ol:module S-M09a -->
 # Floating point problem set, part a: representation, rounding, cancellation
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M09a/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M09a/problems.md` and in section 4 |
 | **Needs** | `S-M05` (proof habits). Reading: the [Numerical Methods and Floating Point topic](README.md) and `M03.1` section 2.6 (why float sums depend on order) |
 | **Used by** | no call site (a solve set). Do it with `M09.1` (`decompose_f32`, `ulp`, `round_to_bf16`, `round_to_fp16`) and `M09.2` (`logsumexp`, `softmax`, `kahan_sum`, `pairwise_sum`); part b, `S-M09b` in Pass 6, covers error bounds, Newton, polynomial approximation, and low precision |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Goldberg, "What Every Computer Scientist Should Know About Floating-Point Arithmetic" (1991); Higham, *Accuracy and Stability of Numerical Algorithms*, ch. 1 to 4 |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M09a             # writes solve/S-M09a.toml and the proof file
-ss check S-M09a             # SymPy checks the answers, then asks the proof rubric (y/n)
-ss check S-M09a --regrade   # ask the rubric again after you change the proof
+ol start S-M09a             # writes solve/S-M09a.toml and the proof file
+ol check S-M09a             # SymPy checks the answers, then asks the proof rubric (y/n)
+ol check S-M09a --regrade   # ask the rubric again after you change the proof
 ```
 
 ---
@@ -104,7 +104,7 @@ proof = "S-M09a/q11.md"
 
 Give exact values as powers of two or fractions, not decimals. Only q6(b) accepts a decimal, within a relative tolerance of $10^{-6}$.
 
-<!-- ss:problems S-M09a -->
+<!-- ol:problems S-M09a -->
 
 ### Representation and rounding
 
@@ -140,7 +140,7 @@ Give exact values as powers of two or fractions, not decimals. Only q6(b) accept
 
 **q11.** Prove that $\mathrm{softmax}(x + c\mathbf{1}) = \mathrm{softmax}(x)$ for every real $c$, and that with $c = -\max_i x_i$ every exponent is at most 0, so no $e^{x_i + c}$ overflows and the denominator is at least 1. `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

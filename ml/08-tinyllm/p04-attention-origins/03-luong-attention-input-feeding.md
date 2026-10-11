@@ -1,4 +1,4 @@
-<!-- ss:module L4.3 -->
+<!-- ol:module L4.3 -->
 # Luong attention and input feeding
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L4.3              # stubs luong.py; prints your test path and rung (R5)
-ss tests L4.3              # the course tests
+ol start L4.3              # stubs luong.py; prints your test path and rung (R5)
+ol tests L4.3              # the course tests
 # write your oracle tests in python/tests/l4-3-luong/, then:
-ss check L4.3              # course tests and the mutation grade of your tests
-ss diff  L4.3              # after passing: your code against the reference
+ol check L4.3              # course tests and the mutation grade of your tests
+ol diff  L4.3              # after passing: your code against the reference
 ```
 
 ---

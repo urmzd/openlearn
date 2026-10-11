@@ -1,4 +1,4 @@
-<!-- ss:module L5.1 -->
+<!-- ol:module L5.1 -->
 # Scaled dot-product attention (forward and backward)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L5.1              # stubs sdpa.py; prints your test path and rung (R5)
-ss tests L5.1              # the course tests
+ol start L5.1              # stubs sdpa.py; prints your test path and rung (R5)
+ol tests L5.1              # the course tests
 # write your oracle tests in python/tests/l5-1-sdpa/, then:
-ss check L5.1              # course tests and the mutation grade of your tests
-ss diff  L5.1              # after passing: your code against the reference
+ol check L5.1              # course tests and the mutation grade of your tests
+ol diff  L5.1              # after passing: your code against the reference
 ```
 
 ---

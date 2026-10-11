@@ -16,7 +16,7 @@
 
 ## How to Study
 
-Read each OpenStax chapter with a notebook open and check every identity numerically before you trust it (`math.log`, `cmath.exp`, `numpy`). In the course, take the solve set `S-M00` first: it is the pen-and-paper check of the four build modules, then build `M00.1` to `M00.4` in order with `ss start <ID>` and `ss check <ID>`.
+Read each OpenStax chapter with a notebook open and check every identity numerically before you trust it (`math.log`, `cmath.exp`, `numpy`). In the course, take the solve set `S-M00` first: it is the pen-and-paper check of the four build modules, then build `M00.1` to `M00.4` in order with `ol start <ID>` and `ol check <ID>`.
 
 ---
 
@@ -69,7 +69,7 @@ Precalculus is the toolbox the rest of the math is written in: exponents and log
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `S-M00` | [Solve set: functions, exp/log, trig and Euler, series, polynomials, inequalities](00-solve-set.md) | solve | 2 |
@@ -77,7 +77,7 @@ Precalculus is the toolbox the rest of the math is written in: exponents and log
 | 3 | `M00.2` | [Trig, unit circle, 2D rotations, complex numbers, Euler's formula](02-trig-rotations-and-eulers-formula.md) | build | 2 |
 | 4 | `M00.3` | [Sequences, geometric series, frequency ladders](03-sequences-and-frequency-ladders.md) | build | 2 |
 | 5 | `M00.4` | [Polynomials, Horner, stable quadratic roots](04-polynomials-horner-and-stable-roots.md) | build | 2 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

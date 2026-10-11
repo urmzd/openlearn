@@ -3,7 +3,7 @@
 Each mutant is a (old, new) text substitution on the reference unit with
 its markers dropped (what a learner's file looks like). This script writes
 course/mutants/<ID>/<mid>.patch as a unified diff against that text and
-rewrites course/mutants/<ID>/manifest.tsv. `ss verify course <ID>` (check 6)
+rewrites course/mutants/<ID>/manifest.tsv. `ol verify course <ID>` (check 6)
 then proves every patch applies and is killed by the course tests.
 
     uv run --project course/harness python course/oracle/tok/mutants.py [ID...]
@@ -19,7 +19,7 @@ COURSE = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(COURSE / "harness" / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from sscourse.markers import drop_markers  # noqa: E402
+from olcourse.markers import drop_markers  # noqa: E402
 from mutant_specs import SPECS  # noqa: E402
 
 # Rung R2 modules (DESIGN 5.6): no mutant is required for the learner's grade,

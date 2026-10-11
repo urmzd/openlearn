@@ -5,7 +5,7 @@ lang      = ["c"]
 pass      = 6
 chapter   = "algorithms/16-systems-data-structures/02-swiss-table.md"
 # The interface is the ds.02 section of tinyllm/ds.h, linked from the card;
-# that shared header carries no `chapter:` back-pointer, which `ss lint`
+# that shared header carries no `chapter:` back-pointer, which `ol lint`
 # requires of a listed contract (DEVIATIONS B82-02).
 contract  = ["contracts/c/include/tinyllm/ds.h"]
 deps      = ["rt.02"]

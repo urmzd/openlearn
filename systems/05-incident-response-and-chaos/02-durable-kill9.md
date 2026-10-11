@@ -1,4 +1,4 @@
-<!-- ss:module ops.02 -->
+<!-- ol:module ops.02 -->
 # The durable server is SIGKILLed in a loop during a corpus build
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `ops.02` · drill · ops, docs · Pass 8 · 2 to 3 h |
 | **You build** | `deploy/observability/rules/durable.yaml` (the alerts `DurableRedeliveriesSpike` and `DurableDeadLetters`, shared with `ops.03`), `docs/runbooks/DurableRedeliveriesSpike.md` (Symptoms, Diagnosis, Mitigation), and `docs/postmortems/<date>-durable-kill9.md`; and you show that a corpus build survives five SIGKILLs of its server with the output of a clean run |
 | **Contract** | the drill spec `course/drills/durable-kill9/drill.toml` (what is injected, detected, and checked: section 4); `tl_durable_redeliveries_total`, `tl_durable_task_queue_depth`, and `tl_durable_dlq_size` in [`otel/metrics.yaml`](../../course/contracts/otel/metrics.yaml); the `ctl` verbs fixed by MS-durable (`course/milestones/MS-durable.toml`) |
-| **Tests** | graded by `ss drill end`; no course tests to read (section 4 lists every check) |
+| **Tests** | graded by `ol drill end`; no course tests to read (section 4 lists every check) |
 | **Needs** | `dep.06` (the durable StatefulSet and the worker Deployment it kills pods of) and `obs.05` (the scrapes and the control-plane dashboard you diagnose on); reading: `ops.01` (how a drill runs), `dur.09` (how a killed activity resumes), and the log, lease, and replay chapters of this pass |
 | **Used by** | no call site: a drill. MS-durable requires it; MS-ops reruns the drills |
 | **Milestone** | MS-durable (drill `ops.02` resolved) |
@@ -27,15 +27,15 @@
 ```bash
 kubectl apply -f deploy/observability/rules/durable.yaml   # your two alerts (section 4)
 {ctl} data build --config course/fixtures/MS-corpus/corpus.toml --id drill-kill9 --durable 127.0.0.1:30733 --json
-ss drill start durable-kill9      # five SIGKILLs of the durable pod, 30 s apart, then only the page
+ol drill start durable-kill9      # five SIGKILLs of the durable pod, 30 s apart, then only the page
 # ... dashboard, kubectl, the runbook; wait for the build ...
 {ctl} data build --config course/fixtures/MS-corpus/corpus.toml --id drill-kill9 --durable 127.0.0.1:30733 --wait --json
 TL_ARTIFACTS=artifacts {corpus} ledger verify --config course/fixtures/MS-corpus/corpus.toml
-ss drill end                      # grades detection, resolution, evidence, runbook, postmortem
-ss drill reset
+ol drill end                      # grades detection, resolution, evidence, runbook, postmortem
+ol drill reset
 ```
 
-`{ctl}` and `{corpus}` are your `[entry].ctl` and `[entry].corpus` (`spec/cli-roles.md`); the `ctl` verbs are fixed in MS-durable. `ss drill start` blocks while it kills (about two and a half minutes), so the build starts first. The two commands after the wait are the pass condition `ss drill end` also runs itself (section 4).
+`{ctl}` and `{corpus}` are your `[entry].ctl` and `[entry].corpus` (`spec/cli-roles.md`); the `ctl` verbs are fixed in MS-durable. `ol drill start` blocks while it kills (about two and a half minutes), so the build starts first. The two commands after the wait are the pass condition `ol drill end` also runs itself (section 4).
 
 ---
 
@@ -71,7 +71,7 @@ The page comes from the redeliveries rate, not from pod restarts: a restart that
 
 ## 3. Worked example by hand
 
-$k = 5$ kills at $t = 20, 50, 80, 110, 140$ s after `ss drill start`, $r = 8$ s, $V = 30$ s. The build is in its dedup and shard stages, with about 3 activity tasks leased at any moment.
+$k = 5$ kills at $t = 20, 50, 80, 110, 140$ s after `ol drill start`, $r = 8$ s, $V = 30$ s. The build is in its dedup and shard stages, with about 3 activity tasks leased at any moment.
 
 | Kill | Server down | Leases that expire unanswered | Redeliveries (cumulative) |
 |---|---|---|---|
@@ -87,7 +87,7 @@ Then check the output by hand: the clean numbers of the MS-corpus fixture are 16
 
 ## 4. Inject, detect, mitigate, verify
 
-| Step | What `ss drill` does | What you do |
+| Step | What `ol drill` does | What you do |
 |---|---|---|
 | inject | 20 s after `start`, `kubectl delete pod --grace-period=0 --force` on a Ready pod of `{deploy.services.durable}`; four more, each 30 s after the previous | start the build first; then nothing: the page is your first signal |
 | detect | at `end`, reads the `ALERTS` series: `DurableRedeliveriesSpike` must have fired within 300 s of the first kill | open the control-plane dashboard (`obs.05`) and your runbook |
@@ -111,7 +111,7 @@ Your rules file, a `PrometheusRule` with the label `release: observability` (`co
   annotations: {runbook: docs/runbooks/DurableDeadLetters.md}
 ```
 
-### What `ss drill end` checks
+### What `ol drill end` checks
 
 | Check | Passes when |
 |---|---|
@@ -122,13 +122,13 @@ Your rules file, a `PrometheusRule` with the label `release: observability` (`co
 | postmortem | `docs/postmortems/<date>-durable-kill9.md` has the seven sections |
 | time limit | 45 minutes from start to end (not graded for the CI responder) |
 
-The drill's pass condition also holds two commands, `[[resolve.run]]` in the spec, that `ss drill end` runs and grades: the same start with `--wait` returns `COMPLETED` with 169 documents, 3 shards, 75164 and 6868 tokens; and `{corpus} ledger verify` over `./artifacts` exits 0. Run both yourself first, and put their output in your postmortem's Resolution.
+The drill's pass condition also holds two commands, `[[resolve.run]]` in the spec, that `ol drill end` runs and grades: the same start with `--wait` returns `COMPLETED` with 169 documents, 3 shards, 75164 and 6868 tokens; and `{corpus} ledger verify` over `./artifacts` exits 0. Run both yourself first, and put their output in your postmortem's Resolution.
 
 ## 5. Pitfalls
 
 | Pitfall | Symptom | Caught by |
 |---|---|---|
-| 1. Alerting on restarts instead of redeliveries, or no durable rule loaded | no page, or a page for restarts that hurt nobody | ss drill end, check detected |
+| 1. Alerting on restarts instead of redeliveries, or no durable rule loaded | no page, or a page for restarts that hurt nobody | ol drill end, check detected |
 | 2. Deleting the WAL claim or scaling the StatefulSet to 0 to "reset" the server | every workflow's history is gone; the build never completes | the rollout and queue-depth checks; the build command fails |
 | 3. An activity that writes outputs in place, without a temporary name and a rename | a redelivered attempt sees a half-written shard and keeps it; the token counts differ | the pass-condition commands (clean-run numbers, ledger verify) |
 | 4. A rerun that ignores the idempotency key | a shard written twice, two ledger rows | ledger verify |

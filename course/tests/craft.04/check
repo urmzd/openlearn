@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# ss-export: course-tree (grades against the course's reference katas, never exported)
-# Artifact check for craft.04 (DESIGN 4.6; H15: `ss check craft.04` runs
+# ol-export: course-tree (grades against the course's reference katas, never exported)
+# Artifact check for craft.04 (DESIGN 4.6; H15: `ol check craft.04` runs
 # this in your repo and its exit code is the verdict).
 #
 # It grades YOUR property tests in primers/craft.04/test_props.py three ways
-# (read them with `ss tests craft.04`): they pass against your kata
+# (read them with `ol tests craft.04`): they pass against your kata
 # primers/craft.04/textops.py, they pass against the course's kata, and they
 # fail against each of the ten planted faults (course/mutants/craft.04),
 # the chapter's ten pitfalls. Rung R4: at least 0.80 of the faults, every
@@ -16,11 +16,11 @@
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
-course="${SS_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
+course="${OL_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
 dir="$PWD/primers/craft.04"
 
 fail() { echo "craft.04: $*" >&2; exit 1; }
-command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
+command -v uv >/dev/null || fail "uv is not on PATH (ol doctor)"
 
 if [ ! -f "$dir/textops.py" ]; then
   mkdir -p "$dir"
@@ -29,13 +29,13 @@ import sys
 from pathlib import Path
 course, dest = Path(sys.argv[1]), Path(sys.argv[2])
 sys.path.insert(0, str(course / "harness" / "src"))
-from sscourse import markers
+from olcourse import markers
 text = (course / "ref" / "primers" / "craft.04" / "textops.py").read_text()
 (dest / "textops.py").write_text(markers.stub(text, "primers/craft.04/textops.py", want="craft.04"))
 print("  wrote     primers/craft.04/textops.py  (stub: yours to write)")
 PY
 fi
 
-export SS_PRIMER_DIR="$dir" SS_COURSE_TREE="$course" PYTHONDONTWRITEBYTECODE=1
+export OL_PRIMER_DIR="$dir" OL_COURSE_TREE="$course" PYTHONDONTWRITEBYTECODE=1
 exec uv run --no-project --quiet --with pytest --with hypothesis \
   python -m pytest -q --tb=short -p no:cacheprovider -p no:randomly --rootdir="$tests" --confcutdir="$tests" "$here"

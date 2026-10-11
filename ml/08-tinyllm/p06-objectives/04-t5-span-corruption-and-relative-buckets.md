@@ -1,4 +1,4 @@
-<!-- ss:module L6.4 -->
+<!-- ol:module L6.4 -->
 # T5 span corruption and relative position buckets
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start L6.4              # stubs t5.py
-ss tests L6.4              # the course tests
-ss check L6.4              # exit code is the verdict
-ss diff  L6.4              # after passing: your code against the reference
+ol start L6.4              # stubs t5.py
+ol tests L6.4              # the course tests
+ol check L6.4              # exit code is the verdict
+ol diff  L6.4              # after passing: your code against the reference
 ```
 
 ---

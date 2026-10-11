@@ -62,7 +62,7 @@ class Rng:
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def model_and_opt(s: int, opt_cls=AdamW):

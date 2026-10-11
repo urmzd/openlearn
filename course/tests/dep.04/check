@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 # Artifact check for dep.04 (DESIGN 6.4, H15): runs in the learner repo.
-# The tests and why each exists are in artifacts.py (`ss tests dep.04`);
+# The tests and why each exists are in artifacts.py (`ol tests dep.04`);
 # _tiltfile.py is the recording Tiltfile evaluator.
 exec python3 "$(dirname "$0")/artifacts.py" "$@"

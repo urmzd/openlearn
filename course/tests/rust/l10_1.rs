@@ -30,14 +30,14 @@ use tl_engine::kv::{KvCfg, KvPool, TL_EFULL, TL_F16, TL_KV_FORMAT_V1, TL_EINVAL}
 static SEQ: AtomicUsize = AtomicUsize::new(0);
 
 fn tmpdir(tag: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("ss-l10_1-{}-{}-{tag}", std::process::id(), SEQ.fetch_add(1, Ordering::SeqCst)));
+    let d = std::env::temp_dir().join(format!("ol-l10_1-{}-{}-{tag}", std::process::id(), SEQ.fetch_add(1, Ordering::SeqCst)));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
 }
 
 fn fixtures() -> PathBuf {
-    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss"))
+    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol"))
 }
 
 fn tiny_llama() -> PathBuf {
@@ -155,8 +155,8 @@ mod frozen {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
 }
 
 /// A tiny JSON reader for the fixtures, independent of the code under test.
@@ -452,8 +452,8 @@ fn seeded_sampling_matches_the_distribution() {
         let mut g = stream(seed, PURPOSE_SAMPLE);
         (0..4000).map(|_| sample::sample(&logits, &SamplingParams::default(), &[], &[], &mut g).0).collect::<Vec<u32>>()
     };
-    let a = run(ss_seed() + 11);
-    assert_eq!(a, run(ss_seed() + 11));
+    let a = run(ol_seed() + 11);
+    assert_eq!(a, run(ol_seed() + 11));
     let mut counts = [0f64; 4];
     for &t in &a {
         counts[t as usize] += 1.0;
@@ -604,7 +604,7 @@ fn q4_linear_matches_its_dequantized_weights() {
     // KIND: differential
     // CATCHES: s09
     // CHAPTER: L10.1 section 2
-    let mut g = frozen::Pcg32::new(ss_seed() + 5);
+    let mut g = frozen::Pcg32::new(ol_seed() + 5);
     let (m, out, inp, group) = (3usize, 10usize, 64usize, 16usize);
     let w: Vec<f32> = (0..out * inp).map(|_| g.sym()).collect();
     let x: Vec<f32> = (0..m * inp).map(|_| g.sym()).collect();

@@ -47,8 +47,8 @@ mod frozen {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
 }
 
 /// The fake model: the next token is a function of the sequence so far.
@@ -126,7 +126,7 @@ fn run_fake<B: BlockSpace>(s: &mut Scheduler<B>, quiet: usize, limit: usize, mut
 }
 
 fn tiny_llama() -> PathBuf {
-    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss")).join("L7.9/tiny-llama-2l")
+    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol")).join("L7.9/tiny-llama-2l")
 }
 
 /// The real model with every block of its pool handed to a free list.
@@ -252,7 +252,7 @@ fn every_request_finishes_and_no_block_leaks() {
     // KIND: property
     // CATCHES: s03, s04, s05, s09
     // CHAPTER: L10.2 section 2
-    let mut g = frozen::Pcg32::new(ss_seed() + 101);
+    let mut g = frozen::Pcg32::new(ol_seed() + 101);
     let mut s = Scheduler::new(cfg(4, 24), free_list(4, 12));
     let mut want: HashMap<RequestId, Vec<u32>> = HashMap::new();
     let run = run_fake(&mut s, 60, 5000, |step, s| {

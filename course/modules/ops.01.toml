@@ -6,7 +6,7 @@ pass      = 7
 chapter   = "systems/05-incident-response-and-chaos/01-kill-decode.md"
 contract  = []
 # The drill is detected by obs.03's TTFTBudgetBurnFast under the drill
-# profile (`ss drill start` refuses until obs.03 passes). The deployment it
+# profile (`ol drill start` refuses until obs.03 passes). The deployment it
 # kills a decode pod in is dep.03's, and failover is gw.05's: reading.
 deps      = ["obs.03"]
 reading   = ["ops.00", "gw.05", "dep.03"]

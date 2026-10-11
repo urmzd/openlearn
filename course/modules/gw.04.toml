@@ -24,7 +24,7 @@ determinism_runs = 2
 [fixtures]
 files = ["course/fixtures/gw.04/streams.json"]
 
-[bench]                             # a B test: `ss bench gw.04 --assert`, never `ss check`
+[bench]                             # a B test: `ol bench gw.04 --assert`, never `ol check`
 lang   = "go"
 name   = "FirstByteOverhead"        # BenchmarkFirstByteOverhead in course/tests/go/gw_04/
 metric = "overhead_ms"              # added time to first byte through the proxy, per request

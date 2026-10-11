@@ -23,7 +23,7 @@ Add a component with `npx shadcn@latest add <name>` from `frontend/`. Files unde
 
 ## Layout
 
-The window is three columns: the sidebar, one main view, and the professor panel.
+The window is two columns: the sidebar and one main view. There is no assistant panel: an agent connects from outside, over MCP (see `mcp.md`).
 
 Every main view is built from `components/page.tsx`:
 
@@ -39,17 +39,17 @@ A view does not draw its own header or manage its own scrolling.
 
 ## The sidebar
 
-Flat lists, one line per item, like a list of recent conversations. The sidebar never nests: a track opens in the main pane and its topics are listed there. From the top: the open pack's title, which is also the pack switcher, with the collapse control beside it; then search, navigation, paths, tracks, reference. Settings sits at the bottom.
+Flat lists, one line per item, like a list of recent conversations. The sidebar never nests: a track opens in the main pane and its topics are listed there. From the top: the OpenLearn logo with the collapse control beside it; the course switcher, styled as a select and marked with the course's initial; search; navigation; paths; tracks; reference. Courses and Connect an agent sit at the bottom.
+
+The order follows the tools this borrows from (Claude, ChatGPT, Linear, Langfuse, Braintrust): brand, then the workspace you are in, then what you can do there.
 
 Paths show only the top level. A path included by another path is reachable from the path that includes it.
 
 Search replaces the lists with results while there is a query.
 
-Collapsing leaves a rail of icons. It never hides the sidebar, so the control that collapses it is also the one that expands it and no view needs a second one. Anything without an icon is hidden in the rail.
+Sections are separated by their label alone: small caps with a hairline running to the edge. A full-width rule is used once, above the footer, to set the app-level destinations apart from the course's own lists.
 
-## The professor
-
-The professor is a docked panel on the right, open by default. It has no place in the navigation: Cmd/Ctrl+J toggles it from anywhere, its header has a hide control, and while it is hidden a single floating button in the bottom right brings it back.
+Collapsing leaves a rail of icons. It never hides the sidebar, and no view needs a second toggle: in the rail the logo mark takes the header's place and becomes the expand control on hover. Anything without an icon is hidden in the rail.
 
 ## Lists
 
@@ -66,6 +66,8 @@ Every list in a view is `ListRow` inside a `ListGroup` (`components/list-row.tsx
 | `Picker` | More options than fit on a line |
 
 A setting that takes effect immediately saves on change. There is no Save button for it.
+
+There is no settings page. A setting lives on the screen that uses it (the model on the timed-session screen), and anything that is a task in its own right gets its own destination (Courses, Connect an agent).
 
 ## States
 

@@ -1,4 +1,4 @@
-<!-- ss:module L1.6 -->
+<!-- ol:module L1.6 -->
 # Tokenizer metrics
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L1.6              # stubs metrics.py into your repo
-ss tests L1.6              # read the test catalog first
-ss check L1.6              # exit code is the verdict; then grades your tests by mutation
-ss check L1.6 --ref-deps   # only if your L1.2, L1.3, L1.4, or M11.2 is not passing yet
-ss diff  L1.6              # after passing: your code against the reference
+ol start L1.6              # stubs metrics.py into your repo
+ol tests L1.6              # read the test catalog first
+ol check L1.6              # exit code is the verdict; then grades your tests by mutation
+ol check L1.6 --ref-deps   # only if your L1.2, L1.3, L1.4, or M11.2 is not passing yet
+ol diff  L1.6              # after passing: your code against the reference
 ```
 
 ---
@@ -183,7 +183,7 @@ def test_empty_inputs_raise():
 | Forward | `C1` | the vocabulary ADR and the BPE vs Unigram ablation report these numbers (arrives with B11) |
 | Forward | `data.07` | the corpus manifest records bytes per token of each shard (arrives with B5) |
 
-No call site is registered yet: `C1` and `data.07` add themselves to this module's `used_by` when their batches land, and until then `ss verify course L1.6` reports the missing call site.
+No call site is registered yet: `C1` and `data.07` add themselves to this module's `used_by` when their batches land, and until then `ol verify course L1.6` reports the missing call site.
 
 ## Going further
 

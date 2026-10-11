@@ -11,7 +11,7 @@ dL/db = -2; one SGD step with lr 0.1 gives w = 2.3, b = 0.2.
 
 The learning tests compare against bars in course/fixtures/ref-thresholds.tsv
 (the reference's mean + 3 sd over 5 seeds), recorded by
-`ss verify course L0.5 --record-thresholds`.
+`ol verify course L0.5 --record-thresholds`.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from tinyllm.train.loop import DataLoader, evaluate, train_step
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 class Rng:

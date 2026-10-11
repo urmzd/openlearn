@@ -1,4 +1,4 @@
-<!-- ss:module S-M07b -->
+<!-- ol:module S-M07b -->
 # Solve set: joint and covariance, MLE
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M07b/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M07b/problems.md` and in section 4 |
 | **Needs** | `S-M07a` (axioms, conditioning, expectation, variance). Reading: [`M07.2` MLE, Laplace, absolute discounting](02-mle-laplace-absolute-discounting.md) and the [Probability and Statistics topic](README.md), joint distributions and estimation sections |
 | **Used by** | no call site (a solve set). Do it alongside `M07.2` and before `L1.4` (Unigram EM: q8 is one of its steps by hand, q9 is its M-step); part `S-M07c` follows `M07.4` |
-| **Milestone** | `MS-P3` (the Pass 3 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P3` (the Pass 3 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Blitzstein and Hwang, *Introduction to Probability* (free), ch. 7 "Joint Distributions"; Wasserman, *All of Statistics*, ch. 9 "Parametric Inference" |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M07b             # writes solve/S-M07b.toml and the proof file
-ss check S-M07b             # SymPy checks the answers, then asks the proof rubric (y/n)
-ss check S-M07b --regrade   # ask the rubric again after you change the proof
+ol start S-M07b             # writes solve/S-M07b.toml and the proof file
+ol check S-M07b             # SymPy checks the answers, then asks the proof rubric (y/n)
+ol check S-M07b --regrade   # ask the rubric again after you change the proof
 ```
 
 ---
@@ -98,7 +98,7 @@ proof = "S-M07b/q9.md"
 
 Probabilities are exact fractions; `0.375` fails a question marked exact. Write $\sigma_X^2$ as `vx`, $\sigma_Y^2$ as `vy`, the covariance as `c`, and the sum of the gaps in q7 as `s`.
 
-<!-- ss:problems S-M07b -->
+<!-- ol:problems S-M07b -->
 
 ### Joint distributions and covariance
 
@@ -129,7 +129,7 @@ Probabilities are exact fractions; `0.375` fails a question marked exact. Write 
 
 **q9.** Counts $c_1, \dots, c_V \ge 0$ with $N = c_1 + \dots + c_V > 0$ are observed from a categorical distribution $p = (p_1, \dots, p_V)$. Prove that the log-likelihood $\sum_k c_k \ln p_k$ is maximized over all probability vectors $p$ by $p_k = c_k / N$. `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

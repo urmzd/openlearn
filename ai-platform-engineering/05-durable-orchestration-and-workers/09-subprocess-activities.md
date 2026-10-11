@@ -1,4 +1,4 @@
-<!-- ss:module dur.09 -->
+<!-- ol:module dur.09 -->
 # Subprocess activity runner (Go) and the Python activity helper
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.09         # stubs go/activities/subprocess.go and python/tinyllm/io/{activity,telemetry}.py
-ss tests dur.09         # read the test catalog first
-ss check dur.09         # Go tests (fake child) and Python tests; the exit code is the verdict
-ss diff  dur.09         # after passing: your code against the reference
+ol start dur.09         # stubs go/activities/subprocess.go and python/tinyllm/io/{activity,telemetry}.py
+ol tests dur.09         # read the test catalog first
+ol check dur.09         # Go tests (fake child) and Python tests; the exit code is the verdict
+ol diff  dur.09         # after passing: your code against the reference
 ```
 
 Then wire it in your worker's composition root (`go/cmd/worker`, learner territory). For each Python verb, register an activity that adapts the delivery to the runner:
@@ -300,7 +300,7 @@ The runner takes a `Task` and a `Heartbeat` function instead of importing the wo
 | Forward | `dep.06` | the worker image carries the activity helper and the exporter |
 | Forward | `dur.12`, `C1` | `export` and the capstone run use the same contract |
 
-If you skip this module, `ss check data.09` fails with `needs dur.09: build it, or pass --ref-deps`.
+If you skip this module, `ol check data.09` fails with `needs dur.09: build it, or pass --ref-deps`.
 
 ## Going further
 

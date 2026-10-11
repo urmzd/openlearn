@@ -1,4 +1,4 @@
-<!-- ss:module L12.1 -->
+<!-- ol:module L12.1 -->
 # Supervised fine-tuning: chat rendering, assistant-only loss, packing
 
 ## Overview
@@ -23,9 +23,9 @@
 ## How to work this chapter
 
 ```bash
-ss start L12.1
-ss tests L12.1
-ss check L12.1
+ol start L12.1
+ol tests L12.1
+ol check L12.1
 ```
 
 ## 1. Why now

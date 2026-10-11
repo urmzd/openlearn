@@ -1,4 +1,4 @@
-<!-- ss:module craft.05 -->
+<!-- ol:module craft.05 -->
 # Oracles, golden and differential tests, gradcheck as a test (R5)
 
 ## Overview
@@ -7,7 +7,7 @@
 |---|---|
 | **Module** | `craft.05` · practice · Python · Pass 5 · 3 to 4 h |
 | **You build** | `primers/craft.05/kernels.py` (a kata: four forward passes of Parts 5 to 7 and their hand-written backward passes, in numpy) and `primers/craft.05/test_oracles.py`, your oracle tests for it |
-| **Contract** | the rules in the kata's docstring (`ss check craft.05` writes the kata with stubs on its first run) |
+| **Contract** | the rules in the kata's docstring (`ol check craft.05` writes the kata with stubs on its first run) |
 | **Tests** | `course/tests/craft.05/`: the grade of your oracle tests by planted faults (section 4), with torch's values and gradients in `course/fixtures/craft.05/oracles.npz` (`course/oracle/craft.05/oracles_torch.py`) |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how tests are graded · [`craft.04`](02-property-based-tests.md) laws and models · `M04.1` central differences (your `gradcheck`, which these tests may use) · [`L7.1`](../../ml/08-tinyllm/p07-modern-block/01-pre-ln-rmsnorm.md) RMSNorm and [`L7.2`](../../ml/08-tinyllm/p07-modern-block/02-gated-mlps.md) SwiGLU, two of the kata's ops |
 | **Used by** | no call site (a practice): rung R5 grades your oracle tests in `L7.1` to `L7.9`, and the same three oracles prove your C kernels (`L9`) and Rust engine (`L10.1`) |
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss check craft.05           # first run: writes primers/craft.05/kernels.py (stubs) and fails
+ol check craft.05           # first run: writes primers/craft.05/kernels.py (stubs) and fails
 # write primers/craft.05/test_oracles.py (section 4), then the kata; run your tests yourself:
-TINYLLM_FIXTURES=$PWD/.ss/supersource/course/fixtures uv run --no-project --with pytest --with numpy \
+TINYLLM_FIXTURES=$PWD/.ol/openlearn/course/fixtures uv run --no-project --with pytest --with numpy \
   python -m pytest -q primers/craft.05
-ss check craft.05           # grades your oracles against the planted faults
+ol check craft.05           # grades your oracles against the planted faults
 ```
 
-(`ss check` sets `TINYLLM_FIXTURES` itself; when you run pytest by hand, point it at the course's `fixtures/` directory of your supersource checkout.) Write the tests first, against the stub: they must fail. `ss check` never shows a planted fault's code; a survivor prints only its one-line description.
+(`ol check` sets `TINYLLM_FIXTURES` itself; when you run pytest by hand, point it at the course's `fixtures/` directory of your openlearn checkout.) Write the tests first, against the stub: they must fail. `ol check` never shows a planted fault's code; a survivor prints only its one-line description.
 
 ---
 
@@ -104,7 +104,7 @@ def attention_backward(q, k, v, go, causal=False): ...   # (gq, gk, gv)
 | differential: causal attention equals attention over each query's prefix | the mask |
 | stability: scores of 300 give finite outputs (the mean of the values) | the softmax's max subtraction |
 
-**The check** (`ss check craft.05`, `course/tests/craft.05/check`) runs six tests:
+**The check** (`ol check craft.05`, `course/tests/craft.05/check`) runs six tests:
 
 | Test | KIND | Checks |
 |---|---|---|

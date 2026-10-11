@@ -1,4 +1,4 @@
-<!-- ss:module L6.1 -->
+<!-- ol:module L6.1 -->
 # GPT decoder-only, causal LM loss, GPT-2 weight loading
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start L6.1              # stubs gpt.py; prints your test path and rung (R5)
-ss tests L6.1              # the course tests
-ss check L6.1              # course tests and the mutation grade of your tests
-ss diff  L6.1              # after passing: your code against the reference
+ol start L6.1              # stubs gpt.py; prints your test path and rung (R5)
+ol tests L6.1              # the course tests
+ol check L6.1              # course tests and the mutation grade of your tests
+ol diff  L6.1              # after passing: your code against the reference
 ```
 
 ---
@@ -128,7 +128,7 @@ def save_gpt(model, dir, tokenizer="bytes") / load_gpt(dir)
 
 ### Your graded tests (rung R5)
 
-Make up a GPT-2 state dict in Hugging Face's layout yourself (random `[d, 3d]` `c_attn`, `[in, out]` Conv1D weights, perturbed LayerNorms), write the HF forward in float64 numpy from **that dict** (so your oracle never sees your transposes), load it with `load_hf_gpt2`, and compare logits. Add causality, the section 3 loss, bare keys, the tied head's gradient, and the residual init. `ss check L6.1` requires 0.80 with the pitfall faults killed.
+Make up a GPT-2 state dict in Hugging Face's layout yourself (random `[d, 3d]` `c_attn`, `[in, out]` Conv1D weights, perturbed LayerNorms), write the HF forward in float64 numpy from **that dict** (so your oracle never sees your transposes), load it with `load_hf_gpt2`, and compare logits. Add causality, the section 3 loss, bare keys, the tied head's gradient, and the residual init. `ol check L6.1` requires 0.80 with the pitfall faults killed.
 
 ## 5. Pitfalls
 

@@ -1,4 +1,4 @@
-<!-- ss:module craft.07 -->
+<!-- ol:module craft.07 -->
 # Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss check L4.5               # first: L4.5 passes, and your rung R5 suite is graded
-ss mutate L4.5              # the full grade: which L4.5 mutants your suite misses
-ss check craft.07           # first run: writes primers/craft.07/survivors/ and an empty triage.toml, and fails
+ol check L4.5               # first: L4.5 passes, and your rung R5 suite is graded
+ol mutate L4.5              # the full grade: which L4.5 mutants your suite misses
+ol check craft.07           # first run: writes primers/craft.07/survivors/ and an empty triage.toml, and fails
 cp python/tests/l4-5-seqmetrics/test_*.py primers/craft.07/test_seqmetrics.py   # one file: start from your R5 suite
 # read each survivors/sNN.diff, decide, write triage.toml; add a test per killable survivor;
 # write two patches in primers/craft.07/mutants/ and the tests that kill them
-ss check craft.07           # grades the suite, the triage, and your mutants
+ol check craft.07           # grades the suite, the triage, and your mutants
 ```
 
 The survivors are diffs against the course's L4.5 reference, so they show a few of its lines: finish L4.5 first.
@@ -40,7 +40,7 @@ The survivors are diffs against the course's L4.5 reference, so they show a few 
 
 ## 1. Why now
 
-`ss check L4.5` graded your tests at rung R5: at least 80% of the planted faults, every semantic one included. That number hides two questions. Which 20% survived, and why? And could any test ever have killed them? Pass 4 is the first pass where your graded suites guard real numerical code, the metrics `L6.7` will print for every model you train, and from Pass 6 on the grade uses mutant classes you cannot read as patches at all: a 2x slowdown your benchmark gate must notice (R7), a zeroed layer your model eval must flag (R8). Reading survivors is the skill underneath all of them. This module takes the L4.5 unit you just built, hands you ten mutants that a typical R5 suite lets live, and asks you to sort the real gaps from the impossible ones, close the gaps, and write mutants of your own from the chapter's pitfalls.
+`ol check L4.5` graded your tests at rung R5: at least 80% of the planted faults, every semantic one included. That number hides two questions. Which 20% survived, and why? And could any test ever have killed them? Pass 4 is the first pass where your graded suites guard real numerical code, the metrics `L6.7` will print for every model you train, and from Pass 6 on the grade uses mutant classes you cannot read as patches at all: a 2x slowdown your benchmark gate must notice (R7), a zeroed layer your model eval must flag (R8). Reading survivors is the skill underneath all of them. This module takes the L4.5 unit you just built, hands you ten mutants that a typical R5 suite lets live, and asks you to sort the real gaps from the impossible ones, close the gaps, and write mutants of your own from the chapter's pitfalls.
 
 ## 2. Principles
 
@@ -134,7 +134,7 @@ test    = ""                      # killable: the test in test_seqmetrics.py tha
 
 **Your mutants**, `primers/craft.07/mutants/*.patch`, at least two: unified diffs with paths `a/python/tinyllm/eval/seqmetrics.py` and `b/python/tinyllm/eval/seqmetrics.py`, against the reference shown in the survivors' context lines, each starting with a `# pitfall: ...` line.
 
-**The check** (`ss check craft.07`, `course/tests/craft.07/check`) runs eight tests:
+**The check** (`ol check craft.07`, `course/tests/craft.07/check`) runs eight tests:
 
 | Test | KIND | Checks |
 |---|---|---|

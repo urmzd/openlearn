@@ -1,4 +1,4 @@
-<!-- ss:module L7.8 -->
+<!-- ol:module L7.8 -->
 # Mixture of Experts: routing, sorted dispatch, Switch aux loss, aux-free bias
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L7.8              # stubs moe.py; prints your test path and rung (R5)
-ss tests L7.8              # the course tests
+ol start L7.8              # stubs moe.py; prints your test path and rung (R5)
+ol tests L7.8              # the course tests
 # write your oracle tests in python/tests/l7-8-moe/, then:
-ss check L7.8              # course tests and the mutation grade of your tests
-ss diff  L7.8              # after passing: your code against the reference
+ol check L7.8              # course tests and the mutation grade of your tests
+ol diff  L7.8              # after passing: your code against the reference
 ```
 
 ---
@@ -132,7 +132,7 @@ class MoE(Module):
 
 ### Your graded tests (rung R5)
 
-Your oracle is the per-token loop in numpy float64, with each router's weights computed from the logits by the table in section 2.1 (sorting with an explicit `(score, id)` key for the tie rule), run for every router; add a hand-sized dispatch with known `offsets` and roundtrip, the tie rule, the loss and its gradient on a two-token case, a central difference for the router weight, the bias rule, and the validation errors. Import only `tinyllm.modern.moe` and `tinyllm.autograd`. `ss check L7.8` requires 0.80 with every pitfall fault killed.
+Your oracle is the per-token loop in numpy float64, with each router's weights computed from the logits by the table in section 2.1 (sorting with an explicit `(score, id)` key for the tie rule), run for every router; add a hand-sized dispatch with known `offsets` and roundtrip, the tie rule, the loss and its gradient on a two-token case, a central difference for the router weight, the bias rule, and the validation errors. Import only `tinyllm.modern.moe` and `tinyllm.autograd`. `ol check L7.8` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

@@ -20,7 +20,7 @@
 // replayed as written: `body` as JSON, or `events` as raw bytes, flushed one
 // event at a time (each split in two writes when splitEvents is true).
 //
-// `ss check craft.20` copies this file into its scratch module, so edits to
+// `ol check craft.20` copies this file into its scratch module, so edits to
 // your own copy (primers/craft.20/pact/pact.go) change nothing there.
 package pact
 

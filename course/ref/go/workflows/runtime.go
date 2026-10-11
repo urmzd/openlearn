@@ -31,7 +31,7 @@ import (
 
 	"tinyllm/durable/workflow"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 // ErrCanceled ends a blocking Runtime call once the run has a cancel

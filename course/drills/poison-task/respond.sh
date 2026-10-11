@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Scripted responder for drill ops.03 poison-task (DESIGN 5.10, "Drills in
 # CI"): the reference response, run by the nightly kind job against the
-# reference system after `ss drill run poison-task --respond` saw
-# DurableDeadLetters fire, before `ss drill end`.
+# reference system after `ol drill run poison-task --respond` saw
+# DurableDeadLetters fire, before `ol drill end`.
 #
-#   respond.sh [LEARNER_DIR]     (default: $SS_COURSE_HOME, else the current dir)
+#   respond.sh [LEARNER_DIR]     (default: $OL_COURSE_HOME, else the current dir)
 #
 # The runbook's response: read the dead letter's failure, find what changed
 # (a failpoint in the worker Deployment's environment), roll the workers back
@@ -16,7 +16,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 course="$(cd "$here/../.." && pwd)"
-learner="$(cd "${1:-${SS_COURSE_HOME:-$PWD}}" && pwd)"
+learner="$(cd "${1:-${OL_COURSE_HOME:-$PWD}}" && pwd)"
 
 read -r name ctx ns worker < <(python3 - "$learner/system.toml" <<'PY'
 import sys, tomllib

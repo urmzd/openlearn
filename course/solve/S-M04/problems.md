@@ -1,6 +1,6 @@
 # S-M04 problems: vectors, gradients, the chain rule, directional derivatives, Hessians, multiple integrals, Lagrange
 
-Answer every question in `solve/S-M04.toml` (written by `ss start S-M04`).
+Answer every question in `solve/S-M04.toml` (written by `ol start S-M04`).
 The tag after each question is its answer type. `[number]` is an exact
 value (`14/5`, `sqrt(13)`, `pi/2`). `[expr in x, y]` is a formula in the
 named variables. `[vector]` is a flat list `[8, 7]`, entries possibly formulas

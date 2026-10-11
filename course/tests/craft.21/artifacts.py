@@ -1,8 +1,8 @@
 """craft.21 artifact check: your resilience tests (rung R10).
 
-Run by `ss check craft.21` in your repo. Your artifacts live in primers/craft.21/:
+Run by `ol check craft.21` in your repo. Your artifacts live in primers/craft.21/:
 
-  taskq.go             the kata: a durable task queue and its worker (`ss start`)
+  taskq.go             the kata: a durable task queue and its worker (`ol start`)
   resilience_test.go   your resilience tests (package craft21_test), which
                        kill, crash, pause, and starve the kata with the
                        course's fault kit (faults/faults.go)
@@ -44,7 +44,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def course_tree() -> Path:
-    return Path(os.environ.get("SS_COURSE_TREE") or HERE.parents[1])
+    return Path(os.environ.get("OL_COURSE_TREE") or HERE.parents[1])
 
 
 def sh(argv: list[str], cwd: Path, timeout: float = 120) -> tuple[int, str]:
@@ -77,7 +77,7 @@ def tail(text: str, n: int = 25) -> str:
 
 def reference_kata() -> str:
     sys.path.insert(0, str(course_tree() / "harness" / "src"))
-    from sscourse import markers
+    from olcourse import markers
 
     return markers.drop_markers((course_tree() / "ref" / UNIT).read_text())
 
@@ -121,7 +121,7 @@ def faults() -> list[tuple[str, bool, str, str]]:
 def module(c: Ctx, kata: str, tests: str) -> Path:
     """A scratch module craft21: kata, the course's fault kit, and either your
     tests ("learner") or the course's suite ("course")."""
-    d = Path(tempfile.mkdtemp(prefix="ss-craft21-"))
+    d = Path(tempfile.mkdtemp(prefix="ol-craft21-"))
     c.cleanups.append(lambda: shutil.rmtree(d, ignore_errors=True))
     (d / "go.mod").write_text("module craft21\n\ngo 1.22\n")
     (d / "taskq.go").write_text(kata)
@@ -169,7 +169,7 @@ def test_files_present(c: Ctx) -> None:
     missing = [p for p in (UNIT, TESTS) if not c.path(p).is_file()]
     if missing:
         raise Fail(
-            f"missing: {', '.join(missing)} (run `ss start craft.21` for the kata; section 4 for the tests)"
+            f"missing: {', '.join(missing)} (run `ol start craft.21` for the kata; section 4 for the tests)"
         )
 
 

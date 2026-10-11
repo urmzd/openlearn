@@ -1,6 +1,6 @@
 # S-M09b problems: condition numbers, error bounds, Newton, polynomial approximation, low precision
 
-Answer every question in `solve/S-M09b.toml` (written by `ss start S-M09b`).
+Answer every question in `solve/S-M09b.toml` (written by `ol start S-M09b`).
 The tag after each question is its answer type: `[number]` is an exact value
 (`3/16777213`, `13*2^-24`, `10 - 14*log(2)`) unless the question gives a
 tolerance, `[set]` a set `{1, 2}`, `[choice]` one letter, and `[proof]` a

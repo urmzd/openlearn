@@ -7,8 +7,9 @@
 // query, so finding something never means leaving for another screen.
 //
 // Collapsing leaves a rail of icons rather than hiding the sidebar, so the one
-// control that collapses it is also the one that brings it back. The pack's
-// title at the top is also the pack switcher, the way a workspace name is.
+// control that collapses it is also the one that brings it back. The brand
+// leads, and the course switcher sits under it the way a workspace or project
+// switcher does in the tools people already use.
 
 import { useEffect, useState } from "react";
 import {
@@ -16,8 +17,10 @@ import {
   ChevronsUpDown,
   Gauge,
   Home,
+  Library,
+  PanelLeft,
+  Plug,
   Search as SearchIcon,
-  Settings as SettingsIcon,
   SquareTerminal,
   Timer,
 } from "lucide-react";
@@ -45,8 +48,11 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import { Logo, LogoMark } from "@/components/logo";
 import type { Route } from "@/routes";
 
 interface Props {
@@ -59,6 +65,12 @@ interface Props {
   onOpenDoc: (path: string) => void;
   onSwitchPack: (ref: string) => void;
 }
+
+/** The look of a section break in the sidebar: a small-caps label with a
+ *  hairline running to the edge. Every group uses it, so the breaks between
+ *  lists are quiet and identical. */
+const BREAK =
+  "h-7 gap-2 text-[11px] font-medium tracking-wider text-sidebar-foreground/50 uppercase after:h-px after:flex-1 after:bg-sidebar-border after:content-['']";
 
 /** The open pack is matched by where it was read from: a directory for packs
  *  on disk, the id for built-in ones. */
@@ -80,6 +92,7 @@ export function AppSidebar({
   onOpenDoc,
   onSwitchPack,
 }: Props) {
+  const { toggleSidebar } = useSidebar();
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<course.Hit[] | null>(null);
 
@@ -134,36 +147,61 @@ export function AppSidebar({
       {/* The top padding clears the macOS window controls, which sit over the
           sidebar because the title bar is hidden. */}
       <SidebarHeader className="drag gap-2 pt-9">
-        <div className="flex h-8 items-center gap-1 group-data-[collapsible=icon]:justify-center">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              title="Switch course pack"
-              className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 text-left text-sm font-semibold tracking-tight outline-none group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-            >
-              <span className="truncate">{info?.title ?? "No course pack"}</span>
-              <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="bottom" align="start" className="w-64">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>Course packs</DropdownMenuLabel>
-                {packList.map((p) => (
-                  <DropdownMenuItem key={p.ref} onClick={() => onSwitchPack(p.ref)}>
-                    <span className="truncate">{p.title}</span>
-                    {isOpenPack(p, info) && <Check className="ml-auto" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onNavigate({ kind: "settings" })}>
-                Add or manage packs
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* Brand first, then the course under it: the app is OpenLearn, and
+            the course is what you have open in it. In the rail the mark stands
+            in for the row and turns into the expand control on hover. */}
+        <div className="flex h-8 items-center justify-between pl-2 group-data-[collapsible=icon]:hidden">
+          <Logo />
           <SidebarTrigger
-            className="shrink-0 text-muted-foreground"
-            title="Collapse or expand the sidebar"
+            className="text-muted-foreground"
+            title="Collapse sidebar"
           />
         </div>
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          title="Expand sidebar"
+          className="group/mark hidden size-8 items-center justify-center rounded-md text-sidebar-foreground outline-none group-data-[collapsible=icon]:flex hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        >
+          <LogoMark className="group-hover/mark:hidden" />
+          <PanelLeft className="hidden size-4 group-hover/mark:block" />
+        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            title="Switch course"
+            className="flex h-9 w-full items-center gap-2 rounded-lg border bg-background/40 px-2.5 text-left text-sm outline-none group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          >
+            <span className="flex size-5 shrink-0 items-center justify-center rounded bg-sidebar-accent text-[11px] font-semibold uppercase">
+              {(info?.title ?? "?").charAt(0)}
+            </span>
+            <span className="min-w-0 flex-1 truncate font-medium">
+              {info?.title ?? "No course"}
+            </span>
+            <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="bottom"
+            align="start"
+            className="w-(--anchor-width) min-w-56"
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Courses</DropdownMenuLabel>
+              {packList.map((p) => (
+                <DropdownMenuItem
+                  key={p.ref}
+                  onClick={() => onSwitchPack(p.ref)}
+                >
+                  <span className="truncate">{p.title}</span>
+                  {isOpenPack(p, info) && <Check className="ml-auto" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onNavigate({ kind: "courses" })}>
+              Add or manage courses
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="relative group-data-[collapsible=icon]:hidden">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <SidebarInput
@@ -179,7 +217,7 @@ export function AppSidebar({
       <SidebarContent>
         {hits ? (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel>
+            <SidebarGroupLabel className={BREAK}>
               {hits.length === 0
                 ? "No documents match"
                 : `${hits.length} documents`}
@@ -229,7 +267,7 @@ export function AppSidebar({
 
             {topPaths.length > 0 && (
               <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-                <SidebarGroupLabel>Paths</SidebarGroupLabel>
+                <SidebarGroupLabel className={BREAK}>Paths</SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {topPaths.map((p) => (
@@ -266,7 +304,9 @@ export function AppSidebar({
                   key={g.label}
                   className="group-data-[collapsible=icon]:hidden"
                 >
-                  <SidebarGroupLabel>{g.label}</SidebarGroupLabel>
+                  <SidebarGroupLabel className={BREAK}>
+                    {g.label}
+                  </SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {g.tracks.map((t) => (
@@ -292,18 +332,32 @@ export function AppSidebar({
         )}
       </SidebarContent>
 
+      <SidebarSeparator className="mx-0" />
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              isActive={route.kind === "settings"}
-              onClick={() => onNavigate({ kind: "settings" })}
-              tooltip="Settings"
-            >
-              <SettingsIcon />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {[
+            {
+              label: "Courses",
+              icon: Library,
+              route: { kind: "courses" } as Route,
+            },
+            {
+              label: "Connect an agent",
+              icon: Plug,
+              route: { kind: "connect" } as Route,
+            },
+          ].map((n) => (
+            <SidebarMenuItem key={n.label}>
+              <SidebarMenuButton
+                isActive={route.kind === n.route.kind}
+                onClick={() => onNavigate(n.route)}
+                tooltip={n.label}
+              >
+                <n.icon />
+                <span>{n.label}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

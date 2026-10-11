@@ -1,4 +1,4 @@
-<!-- ss:module S-M07c -->
+<!-- ol:module S-M07c -->
 # Solve set: LLN/CLT, confidence intervals
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M07c/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M07c/problems.md` and in section 4 |
 | **Needs** | `S-M07b` (the variance of a sum). Reading: [`M07.4` LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md) and the [Probability and Statistics topic](README.md), limit theorems and estimation sections |
 | **Used by** | no call site (a solve set). Do it alongside `M07.4`: q3, q6, q7, and q8 are its functions by hand, q5 is why its intervals shrink; part `S-M07d` follows with hypothesis tests |
-| **Milestone** | `MS-P4` (the Pass 4 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P4` (the Pass 4 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Blitzstein and Hwang, *Introduction to Probability* (free), ch. 10 "Inequalities and limit theorems"; Wasserman, *All of Statistics*, ch. 5 to 8 |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M07c             # writes solve/S-M07c.toml and the proof file
-ss check S-M07c             # SymPy checks the answers, then asks the proof rubric (y/n)
-ss check S-M07c --regrade   # ask the rubric again after you change the proof
+ol start S-M07c             # writes solve/S-M07c.toml and the proof file
+ol check S-M07c             # SymPy checks the answers, then asks the proof rubric (y/n)
+ol check S-M07c --regrade   # ask the rubric again after you change the proof
 ```
 
 ---
@@ -98,7 +98,7 @@ proof = "S-M07c/q5.md"
 
 Write $\sigma^2$ as `s2`, $\varepsilon$ as `eps`, $\mu$ as `mu`. An interval is written `[lo, hi]`; exact fractions such as `2/7` are welcome.
 
-<!-- ss:problems S-M07c -->
+<!-- ol:problems S-M07c -->
 
 ### The law of large numbers and the CLT
 
@@ -128,7 +128,7 @@ $$\frac{\hat p + \frac{z^2}{2n} \pm z\sqrt{\frac{\hat p(1 - \hat p)}{n} + \frac{
 (c) The procedure that produced it covers the true $\mu$ in 95% of repeated samples.
 (d) A new sample's mean lands in $[3.1, 4.7]$ with probability 0.95.
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

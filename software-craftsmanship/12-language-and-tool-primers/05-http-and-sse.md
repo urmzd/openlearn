@@ -1,4 +1,4 @@
-<!-- ss:module lang.05 -->
+<!-- ol:module lang.05 -->
 # HTTP/1.1, JSON, and Server-Sent Events from the wire up
 
 ## Overview
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start lang.05          # records that you started; the exercise lives in primers/lang.05/
-ss tests lang.05          # read the test catalog first
-ss check lang.05          # first run writes the starter package (stubs), then checks it
+ol start lang.05          # records that you started; the exercise lives in primers/lang.05/
+ol tests lang.05          # read the test catalog first
+ol check lang.05          # first run writes the starter package (stubs), then checks it
 cd primers/lang.05 && cargo test && cargo run -- --port 8080
 curl -N 'http://127.0.0.1:8080/count?n=5&delay_ms=500'   # watch the events arrive one by one
 ```
 
-The first `ss check lang.05` writes the starter files that are missing into `primers/lang.05/`: `Cargo.toml` as given, and `src/lib.rs` and `src/main.rs` with every function body replaced by `todo!("lang.05")`. The starter compiles and fails. `ss check` never overwrites a file.
+The first `ol check lang.05` writes the starter files that are missing into `primers/lang.05/`: `Cargo.toml` as given, and `src/lib.rs` and `src/main.rs` with every function body replaced by `todo!("lang.05")`. The starter compiles and fails. `ol check` never overwrites a file.
 
 ---
 

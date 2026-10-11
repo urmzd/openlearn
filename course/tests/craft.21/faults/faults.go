@@ -11,7 +11,7 @@
 //	          counts every delivery, so a test sees state and retries
 //
 // The same three ideas, at system scale, are course/testkit/go
-// (failpoint, clock, effects) and ss drill.
+// (failpoint, clock, effects) and ol drill.
 package faults
 
 import (

@@ -55,7 +55,7 @@ CHI2_DF5_P001 = 20.515  # chi-square, 5 degrees of freedom, p = 1e-3
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def hand() -> UnigramTokenizer:

@@ -129,7 +129,7 @@ base_cmd=(
   -V colorlinks=true -V linkcolor=RoyalBlue -V urlcolor=RoyalBlue -V toccolor=black
   -V "title=$TITLE"
   -V "subtitle=$SUBTITLE"
-  -V "author=github.com/urmzd/supersource"
+  -V "author=github.com/urmzd/openlearn"
   -V "date=$BUILD_DATE"
 )
 $WITH_TOC && base_cmd+=(--toc --toc-depth=1)

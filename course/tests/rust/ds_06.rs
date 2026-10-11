@@ -45,8 +45,8 @@ impl Pcg32 {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
 }
 
 fn arr(h: &Heap<i32, fn(&i32, &i32) -> Ordering>) -> Vec<i32> {
@@ -240,7 +240,7 @@ fn differential_against_sorted_vec() {
     // KIND: differential
     // CATCHES: s01, s02, s05, m01, m02
     // CHAPTER: ds.06 section 4
-    let mut g = Pcg32::new(ss_seed(), 5);
+    let mut g = Pcg32::new(ol_seed(), 5);
     let mut h = Heap::new(by_key);
     let mut model: Vec<(u32, u32)> = Vec::new();
     for step in 0..20_000u32 {
@@ -267,7 +267,7 @@ fn lazy_differential_against_model() {
     // KIND: differential
     // CATCHES: s02, s03, s04, s08
     // CHAPTER: ds.06 section 4
-    let mut g = Pcg32::new(ss_seed(), 5);
+    let mut g = Pcg32::new(ol_seed(), 5);
     let mut h = LazyHeap::new(by_key);
     let mut live: Vec<((u32, u32), Handle)> = Vec::new(); // in push order
     let mut dead: Vec<Handle> = Vec::new();

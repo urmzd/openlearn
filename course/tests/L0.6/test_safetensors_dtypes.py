@@ -29,7 +29,7 @@ INT = {"I8": np.int8, "U8": np.uint8, "I32": np.int32}
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def cases() -> dict:

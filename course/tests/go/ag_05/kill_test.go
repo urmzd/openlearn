@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/faketool"
+	"openlearn.urmzd.com/tl/testkit/faketool"
 	"tinyllm/agent/durableagent"
 	"tinyllm/agent/loop"
 	"tinyllm/agent/provider"

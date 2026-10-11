@@ -242,7 +242,7 @@ const file_tl_control_v1_control_proto_rawDesc = "" +
 	"\vroute_epoch\x18\x02 \x01(\x04R\n" +
 	"routeEpoch2W\n" +
 	"\x0eWorkerRegistry\x12E\n" +
-	"\tHeartbeat\x12\x1b.tl.control.v1.WorkerStatus\x1a\x1b.tl.control.v1.HeartbeatAckB@Z>supersource.urmzd.com/tl/contracts/gen/tl/control/v1;controlv1b\x06proto3"
+	"\tHeartbeat\x12\x1b.tl.control.v1.WorkerStatus\x1a\x1b.tl.control.v1.HeartbeatAckB>Z<openlearn.urmzd.com/tl/contracts/gen/tl/control/v1;controlv1b\x06proto3"
 
 var (
 	file_tl_control_v1_control_proto_rawDescOnce sync.Once

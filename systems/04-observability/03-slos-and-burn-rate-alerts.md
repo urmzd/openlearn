@@ -1,4 +1,4 @@
-<!-- ss:module obs.03 -->
+<!-- ol:module obs.03 -->
 # SLOs and multi-window burn-rate alerts
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start obs.03                       # records the start; there are no stubs
-ss tests obs.03                       # read the test catalog first
+ol start obs.03                       # records the start; there are no stubs
+ol tests obs.03                       # read the test catalog first
 # write slo.yaml, render rules/slo-prod.yaml and rules/slo-drill.yaml, then:
-SS_SMOKE=1 ss check obs.03            # schema, rules, and the promtool scenarios
+OL_SMOKE=1 ol check obs.03            # schema, rules, and the promtool scenarios
 kubectl apply -f deploy/observability/rules/slo-prod.yaml
-ss check obs.03                       # adds: Prometheus at [deploy].prometheus loaded all six alerts
+ol check obs.03                       # adds: Prometheus at [deploy].prometheus loaded all six alerts
 ```
 
 ---
@@ -79,7 +79,7 @@ $$\text{fire} \iff B(L) > \phi \ \text{ and } \ B(S) > \phi$$
 | `<SLO>BudgetBurnFast` | 14.4 | 1 h / 5 min | 5 min / 25 s | page |
 | `<SLO>BudgetBurnSlow` | 6 | 6 h / 30 min | 30 min / 150 s | ticket |
 
-$S$ is a twelfth of $L$. The **drill** profile divides both by 12 again, so `ss drill` sees a page within its 300 s budget. Each rule file carries one profile; both may be installed at once, because every series and alert carries an `slo_profile` label.
+$S$ is a twelfth of $L$. The **drill** profile divides both by 12 again, so `ol drill` sees a page within its 300 s budget. Each rule file carries one profile; both may be installed at once, because every series and alert carries an `slo_profile` label.
 
 ### 2.4 Rules as code, and as tests
 
@@ -155,12 +155,12 @@ Write the rules by hand or render them from `slo.yaml` with a small script (the 
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_slo_file_matches_the_schema` | conformance | `slo.yaml` validates; profile `prod` | `ss drill`, MS-prod, and `obs.04` read it by these names |
+| `test_slo_file_matches_the_schema` | conformance | `slo.yaml` validates; profile `prod` | `ol drill`, MS-prod, and `obs.04` read it by these names |
 | `test_latency_thresholds_are_bucket_bounds` | boundary | both thresholds are bounds of their histogram | an exact SLI (section 2.1 of `obs.02`) |
 | `test_targets_are_no_looser_than_the_course_defaults` | boundary | TTFT at most 500 ms, TPOT at most 60 ms | stricter is allowed, looser never |
 | `test_rule_files_are_selected_prometheus_rules` | conformance | `PrometheusRule`, label `release: observability` | the stack loads them |
 | `test_rules_define_the_six_alerts` | unit | each name exactly once per file, severity from `slo.yaml`, no extras | detection by name, page or ticket |
-| `test_rules_use_the_profile_windows` | unit | the four windows of each profile appear as range selectors | the two-window rule; `ss drill`'s gate |
+| `test_rules_use_the_profile_windows` | unit | the four windows of each profile appear as range selectors | the two-window rule; `ol drill`'s gate |
 | `test_rule_groups_evaluate_often_enough` | boundary | group interval at most 60 s (prod), 10 s (drill) | short windows need frequent evaluation |
 | `test_promtool_accepts_the_rules` | conformance | `promtool check rules` passes for both files | no syntax error reaches the cluster |
 | `test_fast_burn_pages_then_resets` | conformance | per SLO: quiet before, page during, no other SLO's alerts, clear after (section 3), both profiles | the page you want |
@@ -175,7 +175,7 @@ Write the rules by hand or render them from `slo.yaml` with a small script (the 
 | 1. The `PrometheusRule` lacks `release: observability` | `kubectl get prometheusrule` lists it; Prometheus has no such alert; nothing ever pages | `test_rule_files_are_selected_prometheus_rules`, `test_rules_loaded_in_prometheus` |
 | 2. One window per alert (only the short one) | a page for every 2-minute blip; people learn to ignore pages | `test_noise_and_short_spikes_stay_quiet` |
 | 3. A latency threshold between bounds, or a rule using another bound than `slo.yaml` | the SLI counts the wrong requests; the scenario built from your file does not page | `test_latency_thresholds_are_bucket_bounds`, `test_fast_burn_pages_then_resets` |
-| 4. The drill profile with prod windows | `ss drill start` refuses; or the drill page arrives after the drill is over | `test_rules_use_the_profile_windows` |
+| 4. The drill profile with prod windows | `ol drill start` refuses; or the drill page arrives after the drill is over | `test_rules_use_the_profile_windows` |
 | 5. Only the long window | the page keeps firing for an hour after the fix | `test_fast_burn_pages_then_resets` (the reset assertion) |
 | 6. Factors swapped, or the budget written as the objective (`14.4 * 0.99`) | a slow burn pages at night, or no burn ever pages | `test_slow_burn_tickets_without_paging`, `test_fast_burn_pages_then_resets` |
 

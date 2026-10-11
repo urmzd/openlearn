@@ -1,4 +1,4 @@
-<!-- ss:module load.01 -->
+<!-- ol:module load.01 -->
 # Open-loop load generator, log-linear histogram, Go PCG32 port
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start load.01             # stubs go/ds/rng/pcg32.go and go/loadgen/{schedule,histogram,run}.go
-ss tests load.01
-ss check load.01             # exit code is the verdict
-ss diff  load.01
-ss parity rng                # your Go generator against the golden vectors and the other three ports
+ol start load.01             # stubs go/ds/rng/pcg32.go and go/loadgen/{schedule,histogram,run}.go
+ol tests load.01
+ol check load.01             # exit code is the verdict
+ol diff  load.01
+ol parity rng                # your Go generator against the golden vectors and the other three ports
 ```
 
 Your `go/cmd/loadgen` main (yours, D16) parses `--target --model --prompt --max-tokens --rate --duration --mode poisson|constant|burst --burst --seed --out`, builds the schedule (`Poisson(rate, rng.Stream(seed, rng.PurposeSample))` for poisson), calls `loadgen.Run`, writes the report to `--out`, and prints it as the final stdout line.

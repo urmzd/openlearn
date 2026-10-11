@@ -6,13 +6,18 @@
 
 import { useEffect, useState } from "react";
 import { Braces, LayoutPanelLeft, Pilcrow, Play, X } from "lucide-react";
-import { GetSettings, SaveSettings, StartSession } from "../../wailsjs/go/main/App";
+import {
+  GetSettings,
+  SaveSettings,
+  StartSession,
+} from "../../wailsjs/go/main/App";
 import type { domain, store } from "../../wailsjs/go/models";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ChoiceGroup, Field, Picker } from "@/components/choice";
+import { ModelSettings } from "@/components/model-settings";
 import { ErrorNote, PageBody, PageHeader, PageTitle } from "@/components/page";
 import { cn } from "@/lib/utils";
 import type { Source } from "@/routes";
@@ -34,9 +39,19 @@ const LEVELS: { value: Level; label: string; hint: string }[] = [
 
 const INTERVALS = [30, 45, 60, 90].map((s) => ({ value: s, label: `${s}s` }));
 
-const LANGUAGES = ["go", "python", "typescript", "java", "rust", "javascript"].map((l) => ({ value: l, label: l }));
+const LANGUAGES = [
+  "go",
+  "python",
+  "typescript",
+  "java",
+  "rust",
+  "javascript",
+].map((l) => ({ value: l, label: l }));
 
-const MODES: Record<Mode, { icon: typeof Braces; name: string; blurb: string; topic: string }> = {
+const MODES: Record<
+  Mode,
+  { icon: typeof Braces; name: string; blurb: string; topic: string }
+> = {
   system_design: {
     icon: LayoutPanelLeft,
     name: "System design",
@@ -62,10 +77,9 @@ interface Props {
   modes: string[];
   source: Source | null;
   onClearSource: () => void;
-  onOpenSettings: () => void;
 }
 
-export function SessionSetup({ modes, source, onClearSource, onOpenSettings }: Props) {
+export function SessionSetup({ modes, source, onClearSource }: Props) {
   const offered = modes.filter((m): m is Mode => m in MODES);
   const [model, setModel] = useState<string | null>(null);
   const [spec, setSpec] = useState<domain.SessionSpec>({
@@ -78,30 +92,51 @@ export function SessionSetup({ modes, source, onClearSource, onOpenSettings }: P
     coachEnabled: true,
     coachIntervalSec: 45,
   } as domain.SessionSpec);
+  // The model is configured here, where it is used. It stays folded away once
+  // one is chosen, and shows itself when none is.
+  const [showModel, setShowModel] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     GetSettings().then((s) => {
       setModel(s.llm.model ?? "");
-      if (s.defaults) setSpec((prev) => ({ ...prev, ...s.defaults, customStatement: "", topic: "" }));
+      if (s.defaults)
+        setSpec((prev) => ({
+          ...prev,
+          ...s.defaults,
+          customStatement: "",
+          topic: "",
+        }));
     });
   }, []);
 
   // The remembered mode may not be one this pack offers.
-  const mode: Mode = offered.includes(spec.mode as Mode) ? (spec.mode as Mode) : (offered[0] ?? "written");
-  const patch = (p: Partial<domain.SessionSpec>) => setSpec({ ...spec, ...p } as domain.SessionSpec);
+  const mode: Mode = offered.includes(spec.mode as Mode)
+    ? (spec.mode as Mode)
+    : (offered[0] ?? "written");
+  const patch = (p: Partial<domain.SessionSpec>) =>
+    setSpec({ ...spec, ...p } as domain.SessionSpec);
 
   const start = async () => {
     setStarting(true);
     setError("");
     try {
       const settings = await GetSettings();
-      if (!settings.llm.model) throw new Error("Choose a model in Settings first.");
-      const next = { ...spec, mode, source: source?.path ?? "", sourceTitle: "" } as domain.SessionSpec;
+      if (!settings.llm.model)
+        throw new Error("Choose a model first, under Model below.");
+      const next = {
+        ...spec,
+        mode,
+        source: source?.path ?? "",
+        sourceTitle: "",
+      } as domain.SessionSpec;
       // Remember these choices for next launch, but not the chapter: the next
       // session is as likely to be about something else.
-      await SaveSettings({ ...settings, defaults: { ...next, source: "" } } as store.Settings);
+      await SaveSettings({
+        ...settings,
+        defaults: { ...next, source: "" },
+      } as store.Settings);
       await StartSession(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -122,18 +157,34 @@ export function SessionSetup({ modes, source, onClearSource, onOpenSettings }: P
           {source && (
             <div className="flex items-center justify-between gap-4 rounded-xl border bg-muted/40 p-4">
               <div className="min-w-0">
-                <div className="text-xs font-medium text-muted-foreground">Drawn from</div>
-                <div className="truncate text-sm font-medium">{source.title}</div>
-                <div className="truncate font-mono text-xs text-muted-foreground">{source.path}</div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  Drawn from
+                </div>
+                <div className="truncate text-sm font-medium">
+                  {source.title}
+                </div>
+                <div className="truncate font-mono text-xs text-muted-foreground">
+                  {source.path}
+                </div>
               </div>
-              <Button variant="ghost" size="icon-sm" onClick={onClearSource} title="Practice without a chapter">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onClearSource}
+                title="Practice without a chapter"
+              >
                 <X />
               </Button>
             </div>
           )}
 
           <Field label="What are you practicing">
-            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.max(1, offered.length)}, minmax(0, 1fr))` }}>
+            <div
+              className="grid gap-2"
+              style={{
+                gridTemplateColumns: `repeat(${Math.max(1, offered.length)}, minmax(0, 1fr))`,
+              }}
+            >
               {offered.map((m) => {
                 const Icon = MODES[m].icon;
                 return (
@@ -148,7 +199,9 @@ export function SessionSetup({ modes, source, onClearSource, onOpenSettings }: P
                   >
                     <Icon className="mb-1 size-4" />
                     <span className="text-sm font-medium">{MODES[m].name}</span>
-                    <span className="text-xs text-muted-foreground">{MODES[m].blurb}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {MODES[m].blurb}
+                    </span>
                   </button>
                 );
               })}
@@ -157,15 +210,29 @@ export function SessionSetup({ modes, source, onClearSource, onOpenSettings }: P
 
           <div className="grid grid-cols-2 gap-6">
             <Field label="Bar to hit">
-              <ChoiceGroup value={spec.level as Level} options={LEVELS} onChange={(level) => patch({ level })} />
+              <ChoiceGroup
+                value={spec.level as Level}
+                options={LEVELS}
+                onChange={(level) => patch({ level })}
+              />
             </Field>
             <Field label="Timebox">
-              <ChoiceGroup value={spec.durationSec} options={DURATIONS} onChange={(durationSec) => patch({ durationSec })} />
+              <ChoiceGroup
+                value={spec.durationSec}
+                options={DURATIONS}
+                onChange={(durationSec) => patch({ durationSec })}
+              />
             </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-6">
-            <Field label={source ? "Focus within the chapter (optional)" : "Topic (optional)"}>
+            <Field
+              label={
+                source
+                  ? "Focus within the chapter (optional)"
+                  : "Topic (optional)"
+              }
+            >
               <Input
                 value={spec.topic}
                 placeholder={MODES[mode].topic}
@@ -174,7 +241,11 @@ export function SessionSetup({ modes, source, onClearSource, onOpenSettings }: P
             </Field>
             {mode === "coding" && (
               <Field label="Language">
-                <Picker value={spec.language} options={LANGUAGES} onChange={(language) => patch({ language })} />
+                <Picker
+                  value={spec.language}
+                  options={LANGUAGES}
+                  onChange={(language) => patch({ language })}
+                />
               </Field>
             )}
           </div>
@@ -187,7 +258,10 @@ export function SessionSetup({ modes, source, onClearSource, onOpenSettings }: P
                   Watches your work and interrupts only when it is worth it.
                 </span>
               </span>
-              <Switch checked={spec.coachEnabled} onCheckedChange={(coachEnabled) => patch({ coachEnabled })} />
+              <Switch
+                checked={spec.coachEnabled}
+                onCheckedChange={(coachEnabled) => patch({ coachEnabled })}
+              />
             </label>
             {spec.coachEnabled && (
               <Field label="How often it may consider speaking">
@@ -208,6 +282,12 @@ export function SessionSetup({ modes, source, onClearSource, onOpenSettings }: P
             </Field>
           </div>
 
+          {(showModel || model === "") && (
+            <Field label="Model">
+              <ModelSettings onChange={setModel} />
+            </Field>
+          )}
+
           {error && <ErrorNote>{error}</ErrorNote>}
 
           <div className="flex items-center gap-4">
@@ -222,9 +302,17 @@ export function SessionSetup({ modes, source, onClearSource, onOpenSettings }: P
                 ""
               ) : (
                 <>
-                  Model: {model ? <span className="font-mono">{model}</span> : "none chosen"}{" "}
-                  <button className="underline underline-offset-4" onClick={onOpenSettings}>
-                    change
+                  Model:{" "}
+                  {model ? (
+                    <span className="font-mono">{model}</span>
+                  ) : (
+                    "none chosen"
+                  )}{" "}
+                  <button
+                    className="underline underline-offset-4"
+                    onClick={() => setShowModel(!showModel)}
+                  >
+                    {showModel ? "hide" : "change"}
                   </button>
                 </>
               )}

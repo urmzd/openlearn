@@ -1,4 +1,4 @@
-<!-- ss:module ds.06 -->
+<!-- ol:module ds.06 -->
 # Binary heap with lazy deletion
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `ds.06` · build · Rust · Pass 3 · 4 to 6 h |
 | **You build** | `rust/crates/tl-ds/src/heap.rs`: `Heap<T, F>` (`new`, `new_min`, `with_capacity`, `from_vec`, `push`, `pop`, `peek`, `len`, `is_empty`, `clear`, `array`, `into_sorted_vec`) and `LazyHeap<T, F>` with `Handle` (`push`, `remove`, `contains`, `pop`, `pop_with_handle`, `peek`, `len`, `is_empty`, `stale_len`, `compact`, `clear`) |
 | **Contract** | the interface in section 4 (no Rust trait file yet; the tests pin it) |
-| **Tests** | `course/tests/rust/ds_06.rs`, 12 tests (what they check: section 4) · your own tests in `rust/crates/tl-ds/tests/ds06_heap.rs`, rung R3 (tests first, `ss tdd red`), graded by mutation (threshold 0.70, mutant `s02` required) |
+| **Tests** | `course/tests/rust/ds_06.rs`, 12 tests (what they check: section 4) · your own tests in `rust/crates/tl-ds/tests/ds06_heap.rs`, rung R3 (tests first, `ol tdd red`), graded by mutation (threshold 0.70, mutant `s02` required) |
 | **Needs** | reading: `lang.04` the [Rust primer](../../software-craftsmanship/12-language-and-tool-primers/04-rust.md) (closures, generics) · the crate root is `ds.05`'s |
 | **Used by** | `L1.5` runs every BPE merge from a `LazyHeap` keyed by (rank, position) · later: `L10.2` keeps the engine's waiting queue in one; `ds.04` (top-k in C) builds on this chapter |
 | **Milestone** | `MS-L1` (the Rust tokenizer's merges come out of your heap) |
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.06              # stubs heap.rs (the tl-ds crate root comes with ds.05)
-ss tdd red ds.06            # rung R3: your tests first, and they must fail on the stub
-ss tests ds.06              # read the test catalog
-ss check ds.06              # exit code is the verdict; then grades your tests by mutation
-ss diff  ds.06              # after passing: your code against the reference
+ol start ds.06              # stubs heap.rs (the tl-ds crate root comes with ds.05)
+ol tdd red ds.06            # rung R3: your tests first, and they must fail on the stub
+ol tests ds.06              # read the test catalog
+ol check ds.06              # exit code is the verdict; then grades your tests by mutation
+ol diff  ds.06              # after passing: your code against the reference
 ```
 
 Write `before`, `sift_up`, `sift_down`, and `pop_root` as free functions over a slice of `Node<T>`: both heaps share them, and the hand example checks them through `Heap::array`.
@@ -133,7 +133,7 @@ impl<T, F: Fn(&T, &T) -> Ordering> LazyHeap<T, F> {
 | `stale_entries_stay_bounded` | boundary | after 10,000 pushes and 9,900 removes at most 2 x live + 32 entries; survivors in order | memory stays proportional to the live queue |
 | `clear_reuses_the_heap_and_stales_every_handle` | boundary | after `clear`, no old handle removes or contains a new item | `L1.5` clears one heap between pieces |
 
-**Your tests (rung R3).** Write `rust/crates/tl-ds/tests/ds06_heap.rs` first and run `ss tdd red ds.06` (they must fail on the stub), then write the code and `ss tdd green ds.06`. Suggested tests: `pops_in_order`, `array_after_pushes`, `ties_are_fifo`, `from_vec_sorts`, `removed_items_never_pop`, `many_removes_stay_bounded`. At least 70% of the planted bugs, and the tie-breaking bug `s02`, must make one of them fail.
+**Your tests (rung R3).** Write `rust/crates/tl-ds/tests/ds06_heap.rs` first and run `ol tdd red ds.06` (they must fail on the stub), then write the code and `ol tdd green ds.06`. Suggested tests: `pops_in_order`, `array_after_pushes`, `ties_are_fifo`, `from_vec_sorts`, `removed_items_never_pop`, `many_removes_stay_bounded`. At least 70% of the planted bugs, and the tie-breaking bug `s02`, must make one of them fail.
 
 ## 5. Pitfalls
 
@@ -158,7 +158,7 @@ impl<T, F: Fn(&T, &T) -> Ordering> LazyHeap<T, F> {
 | Forward | `L10.2` | the continuous-batching scheduler's waiting queue by (priority, arrival), with cancellation by handle |
 | Forward | `ds.04` | the C top-k keeps a size-k min-heap over logits with the same sift operations |
 
-If you skip this module, `ss check L1.5` stops with `needs ds.06: build it, or pass --ref-deps`.
+If you skip this module, `ol check L1.5` stops with `needs ds.06: build it, or pass --ref-deps`.
 
 ## Going further
 

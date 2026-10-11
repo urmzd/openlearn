@@ -1,4 +1,4 @@
-<!-- ss:module L4.1 -->
+<!-- ol:module L4.1 -->
 # Encoder-decoder with teacher forcing
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L4.1              # stubs model.py; prints your test path and rung (R5)
-ss tests L4.1              # the course tests
+ol start L4.1              # stubs model.py; prints your test path and rung (R5)
+ol tests L4.1              # the course tests
 # write your oracle tests in python/tests/l4-1-seq2seq/, then:
-ss check L4.1              # course tests and the mutation grade of your tests
-ss check L4.1 --ref-deps   # if you skipped L3.2 to L3.4, L4.2, or L4.3
-ss diff  L4.1              # after passing: your code against the reference
+ol check L4.1              # course tests and the mutation grade of your tests
+ol check L4.1 --ref-deps   # if you skipped L3.2 to L3.4, L4.2, or L4.3
+ol diff  L4.1              # after passing: your code against the reference
 ```
 
 ---

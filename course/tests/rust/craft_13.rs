@@ -3,7 +3,7 @@
 //! block during a mixed-version deployment.
 use tl_kv_format::{decode, encode, upgrade_v1, Block, Envelope, Error, Shape, V1, V2};
 use std::{fs, path::PathBuf, process::Command};
-fn fixture(name:&str)->Vec<u8>{ let root=PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("ss sets fixture root")); fs::read(root.join("craft.13").join(name)).unwrap() }
+fn fixture(name:&str)->Vec<u8>{ let root=PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("ol sets fixture root")); fs::read(root.join("craft.13").join(name)).unwrap() }
 
 fn shape() -> Shape { Shape { block_tokens: 2, layers: 1, kv_heads: 1, head_dim: 2 } }
 fn sample() -> Envelope {
@@ -89,7 +89,7 @@ fn process_converter_reads_and_atomically_writes_file_payloads() {
     // Language boundaries use a subprocess and files, making this converter callable without linking another runtime.
     let dir=std::env::temp_dir().join(format!("kv-migrate-{}",std::process::id()));let _=fs::remove_dir_all(&dir);fs::create_dir_all(&dir).unwrap();
     let input=dir.join("before.kv");let output=dir.join("after.kv");fs::write(&input,fixture("v1-worked.bin")).unwrap();
-    // ss runs these tests from a generated crate, so build and launch the
+    // ol runs these tests from a generated crate, so build and launch the
     // declared binary target explicitly instead of relying on Cargo's
     // CARGO_BIN_EXE_* variables, which only cover binaries in this package.
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

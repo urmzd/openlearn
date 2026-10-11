@@ -34,7 +34,7 @@ from tinyllm.autograd.tensor import Tensor
 from tinyllm.xfmr.sdpa import scaled_dot_product_attention, sdpa_backward, sdpa_forward
 
 FIX = os.path.join(os.environ.get("TINYLLM_FIXTURES", ""), "L5.1", "sdpa_torch.npz")
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 CASES = ("plain", "causal", "cross", "scaled", "three_d")
 
 HQ = np.array([[2.0, 0.0, 0.0, 0.0]])

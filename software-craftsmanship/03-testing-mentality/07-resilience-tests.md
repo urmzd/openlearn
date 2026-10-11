@@ -1,4 +1,4 @@
-<!-- ss:module craft.21 -->
+<!-- ol:module craft.21 -->
 # Resilience tests (R10)
 
 ## Overview
@@ -6,7 +6,7 @@
 | | |
 |---|---|
 | **Module** | `craft.21` · practice · Go · Pass 8 · 4 to 6 h |
-| **You build** | `primers/craft.21/taskq.go` (a kata written by `ss start`: a durable task queue and its worker, the log, leases, and idempotent effects of your durable engine in one file) and `primers/craft.21/resilience_test.go` (your **resilience tests**, package `craft21_test`) |
+| **You build** | `primers/craft.21/taskq.go` (a kata written by `ol start`: a durable task queue and its worker, the log, leases, and idempotent effects of your durable engine in one file) and `primers/craft.21/resilience_test.go` (your **resilience tests**, package `craft21_test`) |
 | **Contract** | none of its own: the kata's API is in its file, and the course's fault kit is `course/tests/craft.21/faults/faults.go` (copied to `primers/craft.21/faults/` by the first check) |
 | **Tests** | `course/tests/craft.21/check`: the course's suite (`course/tests/go/craft_21/`) on your kata, then the grade of your tests by 12 planted faults (section 4) |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how tests are graded · [`craft.04`](02-property-based-tests.md) properties · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · [`lang.06`](../12-language-and-tool-primers/06-go.md) Go `testing` · [`dur.09`](../../ai-platform-engineering/05-durable-orchestration-and-workers/09-subprocess-activities.md) subprocess activities; the engine pieces the kata models: the event log (`dur.01`), fenced leases (`dur.03`), idempotent activities (`dur.05`) |
@@ -25,16 +25,16 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.21                       # writes primers/craft.21/taskq.go with stub bodies
-ss tests craft.21                       # read the test catalog first
-ss check craft.21                       # first run: writes go.mod and faults/faults.go, then fails (no tests yet)
+ol start craft.21                       # writes primers/craft.21/taskq.go with stub bodies
+ol tests craft.21                       # read the test catalog first
+ol check craft.21                       # first run: writes go.mod and faults/faults.go, then fails (no tests yet)
 # write resilience_test.go (section 4), against the stub first: every test must fail
 (cd primers/craft.21 && go test ./...)
 # then make the kata pass your tests and the course's
-ss check craft.21                       # grades your tests by planted faults
+ol check craft.21                       # grades your tests by planted faults
 ```
 
-`ss check` never shows a planted fault's code. A surviving resilience fault prints its one-line name (they are public: section 2.5); any other survivor prints only "a planted pitfall".
+`ol check` never shows a planted fault's code. A surviving resilience fault prints its one-line name (they are public: section 2.5); any other survivor prints only "a planted pitfall".
 
 ---
 

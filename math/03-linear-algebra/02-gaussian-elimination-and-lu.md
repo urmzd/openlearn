@@ -1,4 +1,4 @@
-<!-- ss:module M03.2 -->
+<!-- ol:module M03.2 -->
 # Gaussian elimination and LU with partial pivoting
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M03.2              # stubs python/tinyllm/linalg/lu.py into your repo
-ss tests M03.2              # read the test catalog first: rung R0, you write no tests here
-ss check M03.2              # exit code is the verdict
-ss diff  M03.2              # after passing: your code against the reference
+ol start M03.2              # stubs python/tinyllm/linalg/lu.py into your repo
+ol tests M03.2              # read the test catalog first: rung R0, you write no tests here
+ol check M03.2              # exit code is the verdict
+ol diff  M03.2              # after passing: your code against the reference
 ```
 
 ---
@@ -162,7 +162,7 @@ def lu_solve(P: ArrayLike, L: ArrayLike, U: ArrayLike, b: ArrayLike) -> NDArray:
 | Forward | `M07.7` | IRLS solves $(X^\top W X)\,\delta = X^\top (y - p)$ at every iteration of logistic regression |
 | Forward | `M10.5` | Newton steps solve with the Hessian |
 
-If you skip this module, `ss check M03.4` stops with `BLOCKED ... needs M03.2`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check M03.4` stops with `BLOCKED ... needs M03.2`: build it, or pass `--ref-deps`.
 
 ## Going further
 

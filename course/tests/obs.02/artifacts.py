@@ -1,6 +1,6 @@
 """obs.02 artifact check: metrics on every service, and logs you can join to traces.
 
-Run by `ss check obs.02` in your repo. Three tiers:
+Run by `ol check obs.02` in your repo. Three tiers:
 
   static   Prometheus scrapes every gateway and engine pod your charts render:
            a ServiceMonitor or PodMonitor under deploy/observability/ selects
@@ -10,7 +10,7 @@ Run by `ss check obs.02` in your repo. Three tiers:
            receives OTLP on 4317 and 4318 and sends traces to Tempo and
            metrics to its prometheus exporter, through memory_limiter and batch
   local    your [build] steps, then [services.engine] and [services.gateway]
-           started from system.toml (as `ss milestone MS-prod --smoke` does);
+           started from system.toml (as `ol milestone MS-prod --smoke` does);
            after a few requests, /metrics on each health port serves the
            contract instruments of contracts/otel/metrics.yaml with their
            types, buckets, labels, and label values; capped labels stay under
@@ -21,7 +21,7 @@ Run by `ss check obs.02` in your repo. Three tiers:
            [deploy].prometheus, and `kubectl logs` of the gateway finds the
            trace id of a request sent through [deploy].gateway_url
 
-The cluster tier fails when the context is missing or down; with SS_SMOKE=1 it
+The cluster tier fails when the context is missing or down; with OL_SMOKE=1 it
 is skipped with the reason instead.
 """
 
@@ -499,10 +499,10 @@ def test_collector_pipelines(c: Ctx) -> None:
 
 def _harness():
     try:
-        from sscourse import placeholders, services, system
+        from olcourse import placeholders, services, system
     except ImportError:
         raise Fail(
-            "the course harness is not importable: run this check through `ss check obs.02`"
+            "the course harness is not importable: run this check through `ol check obs.02`"
         ) from None
     return placeholders, services, system
 
@@ -514,7 +514,7 @@ def _model(c: Ctx) -> str:
             raise Fail(
                 "system.toml has no [entry].tinyllm to train the model your engine serves"
             )
-        work = c.path(".ss/check/obs.02")
+        work = c.path(".ol/check/obs.02")
         shutil.rmtree(work, ignore_errors=True)
         work.mkdir(parents=True)
         (work / "corpus.txt").write_text(CORPUS)
@@ -546,7 +546,7 @@ def _stack(c: Ctx) -> dict:
     ph, services, system = _harness()
     model = _model(c)
     sysm = system.load(c.root)
-    log = c.path(".ss/check/obs.02/run")
+    log = c.path(".ol/check/obs.02/run")
     log.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
     env.pop("VIRTUAL_ENV", None)
@@ -565,7 +565,7 @@ def _stack(c: Ctx) -> dict:
             else None
         ),
     )
-    stack = services.Stack(sysm, log, lookup, env, "ss check obs.02")
+    stack = services.Stack(sysm, log, lookup, env, "ol check obs.02")
     c.cleanups.append(stack.stop)
     try:
         stack.start(["engine", "gateway"])
@@ -741,7 +741,7 @@ def _deploy(c: Ctx) -> dict:
         if smoke_mode():
             c.skipped_cluster = True
             raise Skip(
-                "cluster tier skipped under SS_SMOKE=1: system.toml has no [deploy].kube_context"
+                "cluster tier skipped under OL_SMOKE=1: system.toml has no [deploy].kube_context"
             )
         raise Fail("system.toml has no [deploy].kube_context")
     c.need_cluster(str(d["kube_context"]))

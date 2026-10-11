@@ -29,22 +29,3 @@ func TestDigestKeepsEveryHeadingWhenTheBodyDoesNotFit(t *testing.T) {
 		t.Error("digest cut a UTF-8 sequence in half")
 	}
 }
-
-func TestProfessorPromptCarriesThePageAndBoundsHistory(t *testing.T) {
-	var history []Turn
-	for i := 0; i < 20; i++ {
-		history = append(history, Turn{Role: "user", Text: "old question " + string(rune('a'+i))})
-	}
-	p := buildProfessorPrompt(ProfessorInput{
-		Course: "Demo", DocTitle: "Limits", Material: "A limit is a promise.",
-		History: history, Question: "  why epsilon?  ",
-	})
-	for _, want := range []string{"=== PAGE: Limits ===", "A limit is a promise.", "Student: why epsilon?", "old question t"} {
-		if !strings.Contains(p, want) {
-			t.Errorf("prompt is missing %q", want)
-		}
-	}
-	if strings.Contains(p, "old question a\n") {
-		t.Error("history older than the bound must be dropped")
-	}
-}

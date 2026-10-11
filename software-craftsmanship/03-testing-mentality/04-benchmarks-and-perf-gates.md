@@ -1,4 +1,4 @@
-<!-- ss:module craft.06 -->
+<!-- ol:module craft.06 -->
 # Benchmarks and perf gates (R7)
 
 ## Overview
@@ -6,8 +6,8 @@
 | | |
 |---|---|
 | **Module** | `craft.06` · practice · C and Python · Pass 6 · 3 to 4 h |
-| **You build** | `primers/craft.06/kernels.c` (a kata: four C kernels whose speed depends on how they are written), `primers/craft.06/bench.c` (your benchmark of them with `ss_bench.h`), `primers/craft.06/budget.toml` (your performance budget), and `primers/craft.06/gate.py` (your regression gate) |
-| **Contract** | the kata's spec in `primers/craft.06/kernels.h` (`ss check craft.06` writes it, and the kata with stubs, on its first run) and the timer [`ss_bench.h`](../../course/contracts/c/include/ss_bench.h) |
+| **You build** | `primers/craft.06/kernels.c` (a kata: four C kernels whose speed depends on how they are written), `primers/craft.06/bench.c` (your benchmark of them with `ol_bench.h`), `primers/craft.06/budget.toml` (your performance budget), and `primers/craft.06/gate.py` (your regression gate) |
+| **Contract** | the kata's spec in `primers/craft.06/kernels.h` (`ol check craft.06` writes it, and the kata with stubs, on its first run) and the timer [`ol_bench.h`](../../course/contracts/c/include/ol_bench.h) |
 | **Tests** | `course/tests/craft.06/`: the grade of your gate by ten planted slowdowns (section 4), with `kata_check.c` for your kata's correctness |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how tests are graded · [`craft.05`](03-oracles-golden-and-gradcheck.md) oracles: a fast kernel must first be a right one · [`L9.1`](../../ml/08-tinyllm/p09-kernels/04-tiled-batch-invariant-matmul.md) tiling and loop order · [`L9.6`](../../ml/08-tinyllm/p09-kernels/09-elementwise-kernels.md) RMSNorm |
 | **Used by** | no call site (a practice): rung R7 applies the same gate to your kernels (`L9`) and engine (`L10`), and `ops.07` bisects a perf regression with it |
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss check craft.06           # first run: writes kernels.h and a stubbed kernels.c, then fails
+ol check craft.06           # first run: writes kernels.h and a stubbed kernels.c, then fails
 # write bench.c, budget.toml, gate.py (section 4), then the kata; try your gate yourself:
 python3 primers/craft.06/gate.py --base primers/craft.06/kernels.c --head primers/craft.06/kernels.c \
-  --include .ss/supersource/course/contracts/c/include
-ss check craft.06           # grades your gate against the planted slowdowns
+  --include .ol/openlearn/course/contracts/c/include
+ol check craft.06           # grades your gate against the planted slowdowns
 ```
 
 Run the check on an otherwise idle machine: it times things. Every build and benchmark it starts runs in its own process group with a timeout. The planted slowdowns are shown by their one-line description only.
@@ -52,7 +52,7 @@ Your kernels are correct: `L9.1` to `L9.6` matched their oracles, and `L9.7` run
 
 ### 2.1 What a benchmark measures
 
-A call's time is the work plus noise: other processes, frequency scaling, cache and TLB state, interrupts. Noise is one-sided: it can only add time. So `ss_bench_best(fn, ctx, reps, min_s)` calls `fn` once to warm caches and branch predictors, then runs `reps` repetitions, each calling `fn` as often as it takes to fill at least `min_s` seconds (a 5 µs call is timed over thousands of calls, not one), and returns the **smallest** per-call time. The mean would absorb every hiccup; the minimum is the closest any run came to the work alone.
+A call's time is the work plus noise: other processes, frequency scaling, cache and TLB state, interrupts. Noise is one-sided: it can only add time. So `ol_bench_best(fn, ctx, reps, min_s)` calls `fn` once to warm caches and branch predictors, then runs `reps` repetitions, each calling `fn` as often as it takes to fill at least `min_s` seconds (a 5 µs call is timed over thousands of calls, not one), and returns the **smallest** per-call time. The mean would absorb every hiccup; the minimum is the closest any run came to the work alone.
 
 Three rules make a benchmark mean something:
 
@@ -60,13 +60,13 @@ Three rules make a benchmark mean something:
 - **Keep the result.** Write it to a `volatile` variable. An optimizing compiler deletes a computation whose result is never used, and you time an empty loop.
 - **Sizes that matter.** Big enough to take microseconds to milliseconds (timer resolution and call overhead vanish), small enough that a 1000x slower version still finishes in a second.
 
-The benchmark prints its metrics as the last stdout line, one JSON object (`ss_bench_done`), so any tool can read them.
+The benchmark prints its metrics as the last stdout line, one JSON object (`ol_bench_done`), so any tool can read them.
 
 ### 2.2 A gate compares, it does not remember
 
 The obvious gate stores yesterday's number and fails when today's is slower. It breaks on the first machine change: a laptop on battery, a CI runner of a different generation, a busy neighbor. The robust gate measures **base and head together**: build the benchmark with each version, run them alternately (base, head, base, head, ...) a few times, keep each side's minimum, and compare. Drift over the run (a thermal throttle, a background job) hits both sides alike, and the machine's absolute speed cancels in $\Delta$. This is how `{loadgen} compare` (Pass 7) and production systems such as Go's `benchstat` work.
 
-Absolute budgets still have a place: `ss bench <ID>` checks a module against `ss bench --calibrate`, a reference kernel timed on the same machine, for "at least half the calibrated GFLOP/s". That answers "is it fast enough?"; the gate answers "did this change make it slower?".
+Absolute budgets still have a place: `ol bench <ID>` checks a module against `ol bench --calibrate`, a reference kernel timed on the same machine, for "at least half the calibrated GFLOP/s". That answers "is it fast enough?"; the gate answers "did this change make it slower?".
 
 ### 2.3 The budget
 
@@ -122,7 +122,7 @@ void  kata_rmsnorm(const float *x, const float *w, float *y, int rows, int d, fl
 int   kata_count_below(const float *sorted, int n, float t);           /* binary search: entries < t */
 ```
 
-**Your benchmark**, `primers/craft.06/bench.c`: includes `"kernels.h"` and `"ss_bench.h"`, times every kata kernel with `ss_bench_best`, and ends with `ss_bench_done()`, so its last line is `{"matmul_ns": ..., "sum_ns": ..., "rmsnorm_ns": ..., "count_below_ns": ...}` (your metric names; lower is better). Fixed inputs only.
+**Your benchmark**, `primers/craft.06/bench.c`: includes `"kernels.h"` and `"ol_bench.h"`, times every kata kernel with `ol_bench_best`, and ends with `ol_bench_done()`, so its last line is `{"matmul_ns": ..., "sum_ns": ..., "rmsnorm_ns": ..., "count_below_ns": ...}` (your metric names; lower is better). Fixed inputs only.
 
 **Your budget**, `primers/craft.06/budget.toml`:
 
@@ -141,14 +141,14 @@ count_below_ns = 0.50
 python3 gate.py --base BASE.c --head HEAD.c [--include DIR] [--runs N]
 ```
 
-It builds `bench.c` (next to `gate.py`) against each `kernels.c` with `cc -std=c11 -O2` and `-I` for the gate's own directory (`kernels.h`) and each `--include` (`ss_bench.h`), runs base and head alternately `runs` times, keeps each side's minimum per metric, and prints a table and a final JSON line. It defines `regressed(base, head, max_regression) -> bool` (head more than `max_regression` slower). Exit 0 when nothing regresses, 1 when something does, 2 when it cannot decide (a build failure, a crash, a metric missing). Start every build and benchmark in its own process group with a timeout, so a hung benchmark cannot hang your CI.
+It builds `bench.c` (next to `gate.py`) against each `kernels.c` with `cc -std=c11 -O2` and `-I` for the gate's own directory (`kernels.h`) and each `--include` (`ol_bench.h`), runs base and head alternately `runs` times, keeps each side's minimum per metric, and prints a table and a final JSON line. It defines `regressed(base, head, max_regression) -> bool` (head more than `max_regression` slower). Exit 0 when nothing regresses, 1 when something does, 2 when it cannot decide (a build failure, a crash, a metric missing). Start every build and benchmark in its own process group with a timeout, so a hung benchmark cannot hang your CI.
 
-**The check** (`ss check craft.06`, `course/tests/craft.06/check`) runs six tests:
+**The check** (`ol check craft.06`, `course/tests/craft.06/check`) runs six tests:
 
 | Test | KIND | Checks |
 |---|---|---|
 | `test_hand_example_regression_arithmetic` | unit | section 3 on your `regressed` |
-| `test_your_artifacts_are_a_benchmark_and_a_budget` | unit | `bench.c` uses `ss_bench.h`, times all four kernels, no `rand()`; `budget.toml` has `runs` of at least 2 and a fraction in $(0, 1)$ per kernel; `gate.py` defines `regressed` |
+| `test_your_artifacts_are_a_benchmark_and_a_budget` | unit | `bench.c` uses `ol_bench.h`, times all four kernels, no `rand()`; `budget.toml` has `runs` of at least 2 and a fraction in $(0, 1)$ per kernel; `gate.py` defines `regressed` |
 | `test_your_kata_is_correct` | golden | `kata_check.c` compares your kata with the plain kernels on awkward sizes |
 | `test_your_gate_accepts_the_reference` | conformance | the course's kata as base and head: exit 0, twice in a row |
 | `test_your_kata_keeps_pace` | unit | your kata as head against the course's as base: exit 0 |
@@ -188,7 +188,7 @@ Each run copies the two `kernels.c` versions to a scratch directory; your tree i
 
 | Your piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
-| `ss_bench_best` | Google Benchmark, criterion.rs, Go `testing.B` | automatic iteration counts, statistics (confidence intervals, outlier classes) | criterion.rs user guide, "Analysis Process" |
+| `ol_bench_best` | Google Benchmark, criterion.rs, Go `testing.B` | automatic iteration counts, statistics (confidence intervals, outlier classes) | criterion.rs user guide, "Analysis Process" |
 | `gate.py` base-versus-head | `benchstat`, Bencher, CodSpeed | significance tests over many runs, history dashboards | `golang.org/x/perf/cmd/benchstat` |
 | fixed-machine noise control | instruction counting with `perf stat`, Cachegrind | counts instead of times: deterministic, but blind to cache effects | CodSpeed's instrumentation mode; Valgrind Cachegrind manual |
 | planted slowdowns | performance mutation testing (Delgado-Pérez et al., 2021), regression bisection | mutation operators designed to cost time, not change values; bisection finds which commit made it slow | `git bisect run` with your gate as the test |

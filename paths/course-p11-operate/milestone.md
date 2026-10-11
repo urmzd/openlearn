@@ -14,4 +14,4 @@ The path includes the milestone stages below. Run each component milestone after
 
 
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

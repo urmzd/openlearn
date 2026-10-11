@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/clock"
-	"supersource.urmzd.com/tl/testkit/promscrape"
+	"openlearn.urmzd.com/tl/testkit/clock"
+	"openlearn.urmzd.com/tl/testkit/promscrape"
 	"tinyllm/ds/demo"
 )
 

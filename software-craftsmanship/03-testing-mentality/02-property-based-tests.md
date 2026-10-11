@@ -1,5 +1,5 @@
-<!-- ss:module craft.04 -->
-# Property-based tests (R4) with Hypothesis, proptest, rapid, and ss_prop.h
+<!-- ol:module craft.04 -->
+# Property-based tests (R4) with Hypothesis, proptest, rapid, and ol_prop.h
 
 ## Overview
 
@@ -7,7 +7,7 @@
 |---|---|
 | **Module** | `craft.04` · practice · Python · Pass 3 · 3 to 4 h |
 | **You build** | `primers/craft.04/textops.py` (a kata: `normalize` and `MiniBPE`, the shapes of the corpus normalizer and of BPE) and `primers/craft.04/test_props.py`, your property tests for it |
-| **Contract** | the rules in the kata's docstring (`ss check craft.04` writes the kata with stubs on its first run) |
+| **Contract** | the rules in the kata's docstring (`ol check craft.04` writes the kata with stubs on its first run) |
 | **Tests** | `course/tests/craft.04/`: the grade of your property tests by planted faults (section 4) |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how tests are graded · [`L1.2`](../../ml/08-tinyllm/p01-tokenizers/02-byte-level-bpe.md) BPE in Python · [`L1.5`](../../ml/08-tinyllm/p01-tokenizers/05-rust-fast-bpe.md) and [`ds.05`](../../algorithms/16-systems-data-structures/05-robin-hood-hash-map.md), whose R4 tests you write with proptest |
 | **Used by** | no call site (a practice): rung R4 grades your proptest suites in `L1.5` and `ds.08`, and later your properties for `L3`, the durable engine, and the data structures |
@@ -19,19 +19,19 @@
 - A property is a law that must hold for every input of a kind (`decode(encode(x)) == x`, `normalize(normalize(x)) == normalize(x)`); the framework generates the inputs, and on failure shrinks them to a minimal counterexample.
 - Roundtrip alone is weak: a BPE that merges nothing round-trips. Add a fixpoint property, a model (a slow, obviously correct implementation) to agree with, and the output's shape (`test_planted_faults_are_caught`).
 - Generators decide what you test: random `str` almost never contains `\r\n`, U+3000, or a combining accent, so draw from an alphabet that hits every rule.
-- Reproducible or worthless: the course runs Hypothesis with the `ss` profile (derandomized, no example database) and proptest with a fixed seed and no failure files, so a planted fault is caught or survives the same way every run.
+- Reproducible or worthless: the course runs Hypothesis with the `ol` profile (derandomized, no example database) and proptest with a fixed seed and no failure files, so a planted fault is caught or survives the same way every run.
 - A property test is graded like any test: it must accept the correct kata (`test_your_tests_accept_the_reference`) and catch at least 80% of ten planted faults, every one of them required.
 
 ## How to work this chapter
 
 ```bash
-ss check craft.04           # first run: writes primers/craft.04/textops.py (stubs) and fails
+ol check craft.04           # first run: writes primers/craft.04/textops.py (stubs) and fails
 # write primers/craft.04/test_props.py (section 4), then the kata; run your tests yourself:
 uv run --no-project --with pytest --with hypothesis python -m pytest -q primers/craft.04
-ss check craft.04           # grades your properties against the planted faults
+ol check craft.04           # grades your properties against the planted faults
 ```
 
-Write the properties first, against the stub: they must fail. Then make the kata pass them. `ss check` never shows you a planted fault's code; a survivor prints only its one-line description.
+Write the properties first, against the stub: they must fail. Then make the kata pass them. `ol check` never shows you a planted fault's code; a survivor prints only its one-line description.
 
 ---
 
@@ -47,7 +47,7 @@ So far your tests have been examples: this input, that output. Pass 3 is full of
 |---|---|
 | property | a function of generated inputs that asserts a law; it passes when no generated input breaks the law |
 | generator (strategy) | describes a set of inputs and how to draw from it: `st.text()`, `prop::collection::vec(any::<u8>(), 0..64)`, `rapid.String()` |
-| example | one generated input; a run tries `max_examples` of them (100 in the `ss` profile) |
+| example | one generated input; a run tries `max_examples` of them (100 in the `ol` profile) |
 | shrinking | after a failure, the framework simplifies the input (shorter strings, smaller numbers) while it still fails, and reports the smallest one |
 | model | a second, slow, obviously correct implementation the real one must agree with |
 
@@ -70,10 +70,10 @@ Random tests that fail once in a hundred runs are noise. Every framework has a d
 
 | Language | Framework | Deterministic setting the course uses |
 |---|---|---|
-| Python | Hypothesis (`@given`) | profile `ss`: `derandomize=True`, `database=None`, `deadline=None`, `max_examples=100` (loaded by `ss` for your graded tests) |
+| Python | Hypothesis (`@given`) | profile `ol`: `derandomize=True`, `database=None`, `deadline=None`, `max_examples=100` (loaded by `ol` for your graded tests) |
 | Rust | proptest (`proptest!`) | `Config { rng_seed: RngSeed::Fixed(n), failure_persistence: None, cases: 128, .. }`: a fixed seed and no `proptest-regressions/` files written into the tree |
 | Go | `pgregory.net/rapid` (`rapid.Check`) | `-rapid.seed=N` (a flag of `go test`), checks 100 cases by default |
-| C | `ss_prop.h` (`SS_CHECK_PROP`) | cases seeded from `SS_SEED` with SplitMix64; shrinks by halving the size and prints the seed |
+| C | `ol_prop.h` (`OL_CHECK_PROP`) | cases seeded from `OL_SEED` with SplitMix64; shrinks by halving the size and prints the seed |
 
 Failures still shrink and print the counterexample, so you turn it into an ordinary example test that stays forever (a regression test).
 
@@ -136,7 +136,7 @@ func TestKeyRoundtrip(t *testing.T) {
 }
 ```
 
-and in C with `ss_prop.h`: a property function of a generator and a size returns nonzero when it holds, and `SS_CHECK_PROP(prop, 200, 64)` runs it for 200 seeds of sizes up to 64.
+and in C with `ol_prop.h`: a property function of a generator and a size returns nonzero when it holds, and `OL_CHECK_PROP(prop, 200, 64)` runs it for 200 seeds of sizes up to 64.
 
 ## 4. The artifact and its check
 
@@ -165,7 +165,7 @@ class MiniBPE:
 | fixpoint: no adjacent pair of `encode(x)` has a merge | `MiniBPE` |
 | replacement: `decode(ids) == decode_bytes(ids).decode("utf-8", "replace")` for any ids | `MiniBPE` |
 
-**The check** (`ss check craft.04`, `course/tests/craft.04/check`) runs four tests:
+**The check** (`ol check craft.04`, `course/tests/craft.04/check`) runs four tests:
 
 | Test | KIND | Checks |
 |---|---|---|
@@ -174,7 +174,7 @@ class MiniBPE:
 | `test_your_tests_accept_the_reference` | conformance | your properties hold for the course's kata: they never reject a correct implementation |
 | `test_planted_faults_are_caught` | fault | against each of the 10 planted faults your tests fail; score at least 0.80 and every required fault caught |
 
-Each run copies your test file next to one version of the kata in a scratch directory and runs pytest with the `ss` Hypothesis profile, so the verdict is the same on every run and your tree is never touched.
+Each run copies your test file next to one version of the kata in a scratch directory and runs pytest with the `ol` Hypothesis profile, so the verdict is the same on every run and your tree is never touched.
 
 ## 5. Pitfalls
 

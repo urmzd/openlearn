@@ -1,4 +1,4 @@
-<!-- ss:module obs.04 -->
+<!-- ol:module obs.04 -->
 # Dashboards as code for the serving path
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start obs.04                       # records the start; there are no stubs
-ss tests obs.04                       # read the test catalog first
+ol start obs.04                       # records the start; there are no stubs
+ol tests obs.04                       # read the test catalog first
 # build the dashboard in Grafana (http://127.0.0.1:30300), export JSON, clean it (section 5), then:
-SS_SMOKE=1 ss check obs.04            # the static tier
+OL_SMOKE=1 ol check obs.04            # the static tier
 kubectl -n observability create configmap forge-dashboards --from-file=deploy/observability/dashboards \
   --dry-run=client -o yaml | kubectl label --local -f - grafana_dashboard=1 -o yaml | kubectl apply -f -
-ss check obs.04                       # adds: queries run in Prometheus, the ConfigMap is there
+ol check obs.04                       # adds: queries run in Prometheus, the ConfigMap is there
 ```
 
 ---

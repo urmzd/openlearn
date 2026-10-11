@@ -1,7 +1,7 @@
 // Parity driver for `tokenizer.bpe`, implementation `rust` (L1.5): reads one
 // JSON input per stdin line (`{"text": ...}`), loads GPT-2 tokenizer.json from
 // TINYLLM_FIXTURES, and prints the token ids as one JSON array per line.
-include!("../parity/ss_parity.rs");
+include!("../parity/ol_parity.rs");
 
 use std::path::PathBuf;
 use tl_tok::{ByteBpe, Tokenizer};
