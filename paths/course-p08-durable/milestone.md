@@ -29,16 +29,17 @@ burst with control-plane traces (obs.05), and the drills durable-kill9
 The design's kill loop (500 tl.test.Append activities with SIGKILLs of
 {durable}, {worker}, and the Python children, exactly-once effects in the
 testkit `effects` sink, then CorpusBuild and TrainRun under kills with
-outputs equal to uninterrupted runs) needs three runner features that do
-not exist yet: an effects sink the runner starts, a step that SIGKILLs and
-restarts a named service on a seeded schedule while a command runs, and a
-matcher over the sink. Those steps are written out, commented, at the end
-of this file and are listed as a harness change (DEVIATIONS B103-05). Until
-they land, the same invariants are checked one level down by the course
-tests in `requires`: dur.01 (KillLoop over the log), dur.03 (poison task,
-stale lease), dur.04 and dur.05 (KillLoop over a worker with the effects
-sink), dur.06 (kill the server mid-workflow and replay), dur.09 (SIGKILL a
-worker mid-activity, resume from the checkpoint).
+outputs equal to uninterrupted runs) uses the runner's `chaos` and `sink`
+step keys and the `effects` matcher (DESIGN 5.7). Section 4 runs
+CorpusBuild under kills of both services. Two steps stay PENDING at the end
+of this file, each with its reason: the 500 appends (the worker registers no
+tl.test.Batch) and TrainRun under kills (a second TrainRun of
+specs/tiny.json resumes the first run's final checkpoint). Until they run,
+the same invariants are checked one level down by the course tests in
+`requires`: dur.01 (KillLoop over the log), dur.03 (poison task, stale
+lease), dur.04 and dur.05 (KillLoop over a worker with the effects sink),
+dur.06 (kill the server mid-workflow and replay), dur.09 (SIGKILL a worker
+mid-activity, resume from the checkpoint).
 
 This file fixes the Pass 8 verbs of your `ctl` role (spec/cli-roles.md,
 "Verbs of later passes"). Every verb keeps the rules of that page: exit 2

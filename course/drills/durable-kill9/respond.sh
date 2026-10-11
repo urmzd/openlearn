@@ -9,9 +9,9 @@
 # The fault heals itself (the StatefulSet recreates the pod on the same WAL
 # claim, the server recovers its log, expired leases are redelivered), so the
 # response is the runbook's: confirm the server and the workers are whole,
-# wait for the build to finish, then prove the pass condition `ss drill end`
-# cannot check yet (DEVIATIONS B103-06): the same start returns the finished
-# run with the clean-run numbers, and the ledger has every row once. It
+# wait for the build to finish, then prove the pass condition (the same
+# checks `ss drill end` runs as [[resolve.run]]): the same start returns the
+# finished run with the clean-run numbers, and the ledger has every row once. It
 # refuses any context that is not kind- or k3d- (the drill safety gate's rule)
 # and writes the runbook and today's postmortem from course/ref/docs.
 set -euo pipefail

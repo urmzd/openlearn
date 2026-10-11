@@ -1,10 +1,15 @@
 """ss drill list
 ss drill start <name|id> [--seed N]   inject, then print only the pager symptom
 ss drill status                      elapsed time only
-ss drill end                         grade: detected (TTD), resolved (TTM), trace evidence, postmortem
+ss drill end                         grade: detected (TTD), resolved (TTM; [[resolve.check]] and
+                                     the [[resolve.run]] commands), trace evidence, postmortem
 ss drill reset                       replay the undo journal in reverse
 ss drill run <name|id> [--seed N] --respond   start, wait for the alert, run the
                                      scripted responder (respond.sh), grade without the time limit (CI)
+
+A drill's [workload] (a build the faults land in) is started by `start` in
+the background through your [entry] role, before the injections or, with
+after_inject, after them; `reset` kills it.
 
 Faults go into YOUR kind deployment (DESIGN 5.10); git-branch and
 contract-bump drills work on a branch made in a scratch copy of your repo
@@ -142,6 +147,9 @@ def _inject_all(r: Run, d, k, j, rng, state: dict, seed: int, rdir) -> None:
         "role": lambda role: r.system.entry(role, f"drill {d.id}"),
     }
     injects = list(d.injects)
+    wl = d.raw.get("workload")
+    if wl and not wl.get("after_inject"):
+        _start_workload(r, d, k, j, wl, lk, seed, rdir, state)
     cm = (r.system.deploy or {}).get("slo_configmap")
     if d.slo_profile and cm and k is not None:
         # Switch the learner's SLO windows to the drill profile for the run;
@@ -167,7 +175,7 @@ def _inject_all(r: Run, d, k, j, rng, state: dict, seed: int, rdir) -> None:
                 ),
                 lk,
             )
-            pid = drills.start_loadgen(
+            pid = drills.start_background(
                 argv, r.learner, r.env(seed), rdir / "loadgen.log"
             )
             j.append(
@@ -193,6 +201,45 @@ def _inject_all(r: Run, d, k, j, rng, state: dict, seed: int, rdir) -> None:
         state["picks"].append({"inject": n, "kind": inj["kind"], "did": did, **pick})
         state["injected"] = state["injected"] or time.time()
         _save(r, run, state)
+    if wl and wl.get("after_inject"):
+        _start_workload(r, d, k, j, wl, lk, seed, rdir, state)
+
+
+def _start_workload(r: Run, d, k, j, wl: dict, lk, seed: int, rdir, state) -> None:
+    """[workload]: wait for `wait_rollout` (kubectl rollout status), then start
+    the role's command in the background; the journal's undo kills it."""
+    where = f"{d.path} [workload]"
+    target = wl.get("wait_rollout")
+    if target:
+        if k is None:
+            raise HarnessError(f"{where}: wait_rollout needs the cluster safety gate")
+        target = placeholders.expand(str(target), lk, where)
+        rc, out = k.run(["rollout", "status", target, "--timeout=300s"], timeout=315)
+        if rc != 0:
+            raise HarnessError(
+                f"{where}: rollout status {target} exited {rc}:\n{ctx.indent(ctx.tail(out, 10))}"
+            )
+    argv = r.system.entry(str(wl["role"]), f"drill {d.id}") + placeholders.expand_argv(
+        list(wl.get("argv", [])), lk, where
+    )
+    env = {
+        **r.env(seed),
+        **{
+            k_: placeholders.expand(str(v), lk, where)
+            for k_, v in dict(wl.get("env", {})).items()
+        },
+    }
+    pid = drills.start_background(argv, r.learner, env, rdir / "workload.log")
+    j.append(
+        {
+            "n": "workload",
+            "kind": "workload",
+            "target": " ".join(argv),
+            "undo": [["kill", str(pid)]],
+        }
+    )
+    state["workload"] = {"pid": pid, "log": str(rdir / "workload.log")}
+    _save(r, state["run"], state)
 
 
 def cmd_status(r: Run) -> int:
@@ -316,6 +363,10 @@ def cmd_end(r: Run, scripted: bool = False) -> int:
                 f"{d.path}: resolve.check {i + 1} needs promql, rollout, or suite"
             )
         resolved &= good
+    for i, rr in enumerate((d.raw.get("resolve") or {}).get("run", [])):
+        good, detail = _resolve_run(r, d, st, i, rr)
+        lines.append((f"resolve run {i + 1}", good, detail))
+        resolved &= good
     report.update(resolved=resolved, ttm_s=round(ttm, 1) if resolved else None)
     ok &= resolved
 
@@ -422,6 +473,54 @@ def cmd_end(r: Run, scripted: bool = False) -> int:
         )
     )
     return EXIT_PASS if ok else EXIT_FAIL
+
+
+def _resolve_run(r: Run, d, st: dict, i: int, rr: dict) -> tuple[bool, str]:
+    """[[resolve.run]] i: run the role's command from the learner repo and
+    grade it with a milestone matcher (`expect`, default exit-code)."""
+    where = f"{d.path} resolve.run {i + 1}"
+    lk = placeholders.chain(r.lookup)
+    argv = placeholders.expand_argv(list(rr.get("argv", [])), lk, where)
+    cmd = r.system.entry(str(rr["role"]), f"drill {d.id}") + argv
+    env = {
+        **r.env(st["seed"]),
+        **{
+            k: placeholders.expand(str(v), lk, where)
+            for k, v in dict(rr.get("env", {})).items()
+        },
+    }
+    out_dir = _runs_dir(r) / st["run"] / f"resolve-run-{i + 1}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    rc, text = ctx.run(
+        cmd, cwd=r.learner, env=env, timeout=float(rr.get("timeout_s", 600))
+    )
+    (out_dir / "stdout.txt").write_text(f"$ {' '.join(cmd)}\n{text}")
+
+    def run_role(role, argv_):  # the near-tie rerun of tokens-equal
+        return ctx.run(
+            r.system.entry(role, f"drill {d.id}") + argv_,
+            cwd=r.learner,
+            env=env,
+            timeout=120,
+        )
+
+    mc = matchers.MatchCtx(
+        run=r,
+        lookup=lk,
+        step_name=f"resolve.run {i + 1}",
+        started_at=st["started"],
+        run_role=run_role,
+        step_argv=argv,
+        step_role=str(rr["role"]),
+    )
+    v = matchers.evaluate(
+        dict(rr.get("expect", {"match": "exit-code"})),
+        matchers.StepOut(rc=rc, stdout=text, out_dir=out_dir, argv=cmd),
+        mc,
+    )
+    head = f"{rr['role']} {' '.join(argv)[:60]}"
+    first = (v.detail.splitlines() or [""])[0][:120]
+    return v.ok, f"{head}: {first}" if first else head
 
 
 def cmd_reset(r: Run) -> int:

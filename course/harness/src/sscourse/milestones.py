@@ -21,6 +21,10 @@
     vars      = { steps = "20000" }    # `{steps}`; smoke_vars = { steps = "200" } under --smoke
     expect    = { match = "tokens-equal", file = "course/fixtures/..." }
     timeout_s = 120
+    sink      = "effects"              # start the effects sink for this step's services:
+                                       # {effects.url}, TL_TEST_EFFECTS_URL in their env
+    chaos     = { kill = ["durable", "worker"], every_s = "1..4", count = 20, seed = 1 }
+                                       # seeded SIGKILL + restart while `run` runs (chaos.py)
 
 A pass gate `MS-P<n>` also reruns the smoke steps of every earlier pass gate:
 the spiral invariant (7.2) made executable.
@@ -34,10 +38,11 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import HarnessError, ids
+from . import HarnessError, chaos, ids
 from .matchers import MATCHERS, NO_COMMAND
 
 STEP_CI = ("pr", "nightly", "local", "kind")
+SINKS = ("effects",)
 GATE = re.compile(r"^MS-P(\d+)$")
 
 
@@ -61,6 +66,8 @@ class Step:
     smoke_vars: dict = field(
         default_factory=dict
     )  # their values under --smoke (C1: 200 steps)
+    sink: str | None = None  # "effects": the runner starts the effects sink
+    chaos: chaos.Spec | None = None  # seeded SIGKILLs while the command runs
 
     @property
     def kind(self) -> bool:
@@ -133,7 +140,14 @@ def load(course: Path, msid: str) -> Milestone:
             env=dict(s.get("env", {})),
             vars={k: str(v) for k, v in dict(s.get("vars", {})).items()},
             smoke_vars={k: str(v) for k, v in dict(s.get("smoke_vars", {})).items()},
+            sink=s.get("sink"),
         )
+        if "history" in s:
+            raise HarnessError(
+                f"{p} step {name!r}: `history` (a recorded client history) is not built yet"
+            )
+        if "chaos" in s:
+            st.chaos = chaos.parse(s["chaos"], f"{p} step {name!r}")
         _check_step(p, st)
         steps.append(st)
     return Milestone(
@@ -170,6 +184,14 @@ def _check_step(p: Path, s: Step) -> None:
     extra = sorted(set(s.smoke_vars) - set(s.vars))
     if extra:
         raise HarnessError(f"{where}: smoke_vars {extra} override no `vars` entry")
+    if s.sink is not None and s.sink not in SINKS:
+        raise HarnessError(f"{where}: sink {s.sink!r} is not one of {', '.join(SINKS)}")
+    if m == "effects" and s.sink != "effects":
+        raise HarnessError(f'{where}: the effects matcher needs sink = "effects"')
+    if s.chaos is not None and (not s.run or s.kind):
+        raise HarnessError(
+            f"{where}: chaos needs a local command (`run`) to run the kills against"
+        )
     if m == "perf" and s.ci != "local":
         raise HarnessError(
             f'{where}: a perf step is ci = "local" (benchmarks never run in CI)'

@@ -4,8 +4,14 @@
       id, title, requires, seeded, time_limit_min, slo_profile, symptom
       [[inject]]  kind, target, at ("start" | "+30s" | "loadgen+30s"), plus per-kind keys
       [loadgen]   argv  (for at = "loadgen+Ns"; default --rate 20 --target {deploy.gateway_url})
+      [workload]  role, argv, env, after_inject, wait_rollout: a command `ss drill start`
+                  starts in the background through [entry].<role> (before the
+                  injections, or after them with after_inject = true, once
+                  `kubectl rollout status <wait_rollout>` passes); undo = kill
       [detect]    alert, within_s
       [[resolve.check]]  promql + hold_s, rollout (kubectl rollout status), or suite
+      [[resolve.run]]    role, argv, env, timeout_s, expect (a milestone matcher):
+                         a command `ss drill end` runs as a resolve check
       [[doc]]            path + sections (+ label): a document graded like the postmortem
       [evidence.trace]   a trace matcher table (service, services, spans)
       [postmortem] path (with {date}), sections
@@ -125,7 +131,31 @@ def load_file(p: Path) -> Drill:
             raise HarnessError(
                 f"{p}: inject {i + 1}: at {inj.get('at')!r} is not start, +Ns, or loadgen+Ns"
             )
+    wl = raw.get("workload")
+    if wl is not None:
+        _check_command(p, "[workload]", wl)
+        extra = sorted(
+            set(wl) - {"role", "argv", "env", "after_inject", "wait_rollout"}
+        )
+        if extra:
+            raise HarnessError(f"{p}: [workload]: unknown key(s) {extra}")
+    from .matchers import MATCHERS
+
+    for i, rr in enumerate((raw.get("resolve") or {}).get("run", [])):
+        _check_command(p, f"resolve.run {i + 1}", rr)
+        m = dict(rr.get("expect", {})).get("match", "exit-code")
+        if m not in MATCHERS:
+            raise HarnessError(f"{p}: resolve.run {i + 1}: unknown matcher {m!r}")
     return d
+
+
+def _check_command(p: Path, what: str, t) -> None:
+    if not isinstance(t, dict) or not t.get("role"):
+        raise HarnessError(f"{p}: {what} needs `role` (an [entry] role)")
+    if not isinstance(t.get("argv", []), list):
+        raise HarnessError(f"{p}: {what}: argv must be a list")
+    if not isinstance(t.get("env", {}), dict):
+        raise HarnessError(f"{p}: {what}: env must be a table")
 
 
 def find(course: Path, name: str) -> Drill:
@@ -522,7 +552,7 @@ def _inject_more(k, kind, inj, target, idx, rng, lookup, extra):
             )
         )
         argv = placeholders.expand_argv(role("loadgen") + args, lookup, where)
-        pid = start_loadgen(
+        pid = start_background(
             argv,
             extra["learner"],
             extra["env"],
@@ -567,7 +597,8 @@ def _inject_more(k, kind, inj, target, idx, rng, lookup, extra):
     )
 
 
-def start_loadgen(argv: list[str], cwd: Path, env: dict, log: Path) -> int:
+def start_background(argv: list[str], cwd: Path, env: dict, log: Path) -> int:
+    """Start a command in its own process group (undo = kill it); returns its pid."""
     with open(log, "w") as f:
         p = subprocess.Popen(
             argv,

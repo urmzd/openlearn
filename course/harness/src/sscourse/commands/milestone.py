@@ -38,6 +38,8 @@ from .. import (
 )
 from .. import learner as learner_mod
 from .. import milestones as ms_mod
+from .. import chaos as chaos_mod
+from .. import effects as effects_mod
 from .. import placeholders, services, system, web
 from ..runner import Run, open_run
 
@@ -98,6 +100,7 @@ class Runner:
         self.target = plan.target.id
         self.seed = seed
         self.recorder: dict | None = None
+        self.effects: effects_mod.Sink | None = None
 
     def who(self) -> str:
         return f"milestone {self.target}"
@@ -127,6 +130,23 @@ class Runner:
                         f"{{{name}}}: no earlier step named {name[4:]!r} ran in this milestone"
                     )
                 return str(p)
+            if name.startswith("json:"):
+                # {json:<step>.<key>}: a value from an earlier step's final
+                # JSON line (MS-durable: a run under kills ends with the loss
+                # of the uninterrupted run).
+                sname, _, key = name[5:].rpartition(".")
+                p = self.outs.get(sname)
+                if p is None or not (p / "stdout.txt").is_file():
+                    raise HarnessError(
+                        f"{{{name}}}: no earlier command step named {sname!r} ran in this milestone"
+                    )
+                obj = matchers.last_json((p / "stdout.txt").read_text())
+                if obj is None or key not in obj:
+                    raise HarnessError(
+                        f"{{{name}}}: the last stdout line of step {sname!r} has no {key!r}"
+                    )
+                v = obj[key]
+                return v if isinstance(v, str) else json.dumps(v)
             if name == "ckpt":
                 v = ckpt()
                 if v is None:
@@ -134,6 +154,12 @@ class Runner:
                 return v
             if name == "queue":
                 return step.queue
+            if name == "effects.url":
+                if self.effects is None:
+                    raise HarnessError(
+                        '{effects.url}: no step of these services names sink = "effects"'
+                    )
+                return self.effects.url
             if name == "model_dir":
                 if step.model_dir:
                     return placeholders.expand(step.model_dir, self.r.lookup)
@@ -160,6 +186,7 @@ class Runner:
         )
 
     def run_step(self, step: ms_mod.Step, matrix: dict, label: str) -> matchers.Verdict:
+        self.chaos_note = ""
         out = self.logdir / "out" / _slug(label)
         out.mkdir(parents=True, exist_ok=True)
         lk = self.step_lookup(step, out, matrix)
@@ -175,10 +202,32 @@ class Runner:
                     for k, v in step.env.items()
                 },
             }
+            if self.effects is not None:
+                env["TL_TEST_EFFECTS_URL"] = self.effects.url
             cmd = self.r.system.entry(step.run, self.who()) + argv
-            rc, text = ctx.run(cmd, cwd=self.r.learner, env=env, timeout=step.timeout_s)
+            monkey = None
+            if step.chaos is not None:
+                if self.stack is None:
+                    raise HarnessError(f"{where}: chaos needs the step's services")
+                monkey = chaos_mod.Monkey(
+                    self.stack, step.chaos, self.seed, out / "chaos.jsonl"
+                ).start()
+            try:
+                rc, text = ctx.run(
+                    cmd, cwd=self.r.learner, env=env, timeout=step.timeout_s
+                )
+            finally:
+                if monkey is not None:
+                    monkey.stop()
             so = matchers.StepOut(rc=rc, stdout=text, out_dir=out, argv=cmd)
             (out / "stdout.txt").write_text(f"$ {' '.join(cmd)}\n{text}")
+            if monkey is not None:
+                self.chaos_note = monkey.summary()
+                if monkey.error:
+                    self._done(step, label, out)
+                    return matchers.Verdict(
+                        "fail", f"{self.chaos_note}: {monkey.error}"
+                    )
         elif step.http:
             h = placeholders.expand_obj(dict(step.http), lk, where)
             headers = dict(h.get("headers", {}))
@@ -215,12 +264,21 @@ class Runner:
             step_key=f"{step.origin}/{step.name}",
             smoke=self.smoke,
             recorder=self.recorder,
+            effects=self.effects,
         )
         v = matchers.evaluate(step.expect, so, mc)
+        self._done(step, label, out)
+        if step.chaos is not None and self.chaos_note:
+            v = matchers.Verdict(
+                v.status,
+                f"{self.chaos_note}; {v.detail}" if v.detail else self.chaos_note,
+            )
+        return v
+
+    def _done(self, step: ms_mod.Step, label: str, out: Path) -> None:
         self.outs[label] = out
         self.outs.setdefault(step.name, out)
         self.prev_out = out
-        return v
 
 
 def main(argv: list[str]) -> int:
@@ -442,7 +500,15 @@ def run_milestone(
                         needed.append(n)
             gdir = logdir if group[0].origin == msid else logdir / group[0].origin
             gdir.mkdir(parents=True, exist_ok=True)
-            with services.Stack(r.system, gdir, r.lookup, run.env, run.who()) as stack:
+            # A step naming sink = "effects" gets the sink before its services
+            # start, so their env carries TL_TEST_EFFECTS_URL from the first
+            # process (and from every chaos restart).
+            senv = dict(run.env)
+            if any(s.sink == "effects" and not s.kind for s in group):
+                run.effects = effects_mod.Sink()
+                senv["TL_TEST_EFFECTS_URL"] = run.effects.url
+                say(f"  {ctx.DIM}effects sink on {run.effects.url}{ctx.RST}")
+            with services.Stack(r.system, gdir, r.lookup, senv, run.who()) as stack:
                 run.stack = stack
                 if needed:
                     stack.start(needed)
@@ -493,11 +559,17 @@ def run_milestone(
                         )
                         if not v.ok:
                             say(ctx.indent(ctx.tail(v.detail, 30), 11))
+            if run.effects is not None:
+                run.effects.close()
+                run.effects = None
     except services.ServiceError as e:
         say(f"  {ctx.RED}FAIL{ctx.RST} {e}")
         return _finish(
             say, record, results, logdir, assisted, "fail", str(e).splitlines()[0]
         )
+    finally:
+        if run.effects is not None:
+            run.effects.close()
 
     if any(x["status"] == "error" for x in results):
         return _finish(

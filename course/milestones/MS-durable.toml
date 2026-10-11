@@ -13,16 +13,17 @@
 # The design's kill loop (500 tl.test.Append activities with SIGKILLs of
 # {durable}, {worker}, and the Python children, exactly-once effects in the
 # testkit `effects` sink, then CorpusBuild and TrainRun under kills with
-# outputs equal to uninterrupted runs) needs three runner features that do
-# not exist yet: an effects sink the runner starts, a step that SIGKILLs and
-# restarts a named service on a seeded schedule while a command runs, and a
-# matcher over the sink. Those steps are written out, commented, at the end
-# of this file and are listed as a harness change (DEVIATIONS B103-05). Until
-# they land, the same invariants are checked one level down by the course
-# tests in `requires`: dur.01 (KillLoop over the log), dur.03 (poison task,
-# stale lease), dur.04 and dur.05 (KillLoop over a worker with the effects
-# sink), dur.06 (kill the server mid-workflow and replay), dur.09 (SIGKILL a
-# worker mid-activity, resume from the checkpoint).
+# outputs equal to uninterrupted runs) uses the runner's `chaos` and `sink`
+# step keys and the `effects` matcher (DESIGN 5.7). Section 4 runs
+# CorpusBuild under kills of both services. Two steps stay PENDING at the end
+# of this file, each with its reason: the 500 appends (the worker registers no
+# tl.test.Batch) and TrainRun under kills (a second TrainRun of
+# specs/tiny.json resumes the first run's final checkpoint). Until they run,
+# the same invariants are checked one level down by the course tests in
+# `requires`: dur.01 (KillLoop over the log), dur.03 (poison task, stale
+# lease), dur.04 and dur.05 (KillLoop over a worker with the effects sink),
+# dur.06 (kill the server mid-workflow and replay), dur.09 (SIGKILL a worker
+# mid-activity, resume from the checkpoint).
 #
 # This file fixes the Pass 8 verbs of your `ctl` role (spec/cli-roles.md,
 # "Verbs of later passes"). Every verb keeps the rules of that page: exit 2
@@ -206,30 +207,59 @@ spans      = ["workflow CorpusBuild", "activity shard", "corpus.stage shard"]
 parents    = [["activity shard", "workflow CorpusBuild"], ["corpus.stage shard", "activity shard"]]
 lookback_s = 1800
 
-# -- PENDING: the kill loop (needs the runner features named in the header) -------------
-# Proposed spec, kept here so the harness change has its target:
+# -- 4. under kills (sink and chaos step keys, DESIGN 5.7) ------------------------------
+# The runner SIGKILLs the named services (their whole process groups: the
+# worker's Python activities die with it) on a seeded schedule while the
+# command runs, restarts each with the same ports, runtime.toml, and WAL
+# directory, and waits for its health check. The build finishes with exactly
+# the corpus of the uninterrupted run above. Not smoke: an activity killed
+# mid-run is redelivered after its heartbeat timeout (2 min for the corpus
+# stages), so the step takes about two minutes on the reference.
+
+[[step]]
+name      = "corpus-build-survives-kills"
+run       = "ctl"
+argv      = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "ms-durable-corpus-kill", "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
+chaos     = { kill = ["durable", "worker"], every_s = "0.2..1", count = 6, seed = 2 }
+expect    = { match = "json-last-line", metrics = { n_docs = "== 169", n_shards = "== 3", train_tokens = "== 75164", val_tokens = "== 6868" } }
+timeout_s = 900
+
+# -- PENDING: 500 appends under kills, exactly once --------------------------------------
+# The runner side exists (sink, chaos, and the effects matcher), but the
+# workflow does not: the reference worker's --test-activities registers Echo
+# and SleepDemo, not tl.test.Batch (dur.05's Batch lives in its course test,
+# not in go/cmd/worker). It joins when the worker entry registers
+# tl.test.Batch: input N, one tl.test.Append per index, activity ids "0" to
+# "N-1" (as dur.05's Batch names them), so the sink's keys are
+# "ms-durable-kill/0" to "ms-durable-kill/499". The SDK's default ids count
+# from 1 (Echo's one append lands as "<workflow id>/1"), so a Batch that keeps
+# the defaults needs keys = "1..500".
 #
 # [[step]]
 # name      = "kill-loop-500-appends-exactly-once"
-# smoke     = true
-# sink      = "effects"                    # runner starts testkit/effects; {effects.url}
+# sink      = "effects"                    # {effects.url}; TL_TEST_EFFECTS_URL for the services
 # run       = "ctl"
 # argv      = ["wf", "start", "tl.test.Batch", "--id", "ms-durable-kill", "--input-json", "500",
 #              "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
 # chaos     = { kill = ["durable", "worker"], every_s = "1..4", count = 20, seed = 1 }
-# expect    = { match = "effects", keys = "0..499", exactly_once = true }
+# expect    = { match = "effects", keys = "0..499", prefix = "ms-durable-kill/", exactly_once = true, min_redelivered = 1 }
 # timeout_s = 900
-#
-# [[step]]
-# name      = "corpus-build-survives-kills"
-# run       = "ctl"
-# argv      = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "ms-durable-corpus-kill", ...]
-# chaos     = { kill = ["durable", "worker"], every_s = "5..15", count = 6, seed = 2 }
-# expect    = { match = "json-last-line", metrics = { train_tokens = "== 75164", val_tokens = "== 6868" } }
+
+# -- PENDING: TrainRun under kills -------------------------------------------------------
+# The runner side exists ({json:<step>.<key>} reads the uninterrupted run's
+# final line). The reference fails it without any kill: a second TrainRun of
+# specs/tiny.json (any workflow id) writes the same runs/tiny directory,
+# resumes from the first run's step-000020 checkpoint, trains no step, and
+# its final.json has loss NaN (`ctl: runs/tiny/final.json has no loss`). It
+# joins once a TrainRun resumes only its own checkpoints (for example a run
+# directory per workflow id) or the milestone gets a second spec.
 #
 # [[step]]
 # name      = "train-run-survives-kills"
 # run       = "ctl"
-# argv      = ["train", "--spec", "specs/tiny.json", "--id", "ms-durable-train-kill", ...]
-# chaos     = { kill = ["worker"], every_s = "5..15", count = 3, seed = 3 }
-# expect    = { match = "json-last-line", metrics = { final_loss = "== {out:train-run-through-durable}.final_loss" } }
+# argv      = ["train", "--spec", "specs/tiny.json", "--id", "ms-durable-train-kill",
+#              "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
+# chaos     = { kill = ["worker"], every_s = "0.1..0.4", count = 3, seed = 3 }
+# expect    = { match = "json-last-line", metrics = { steps = "== {json:train-run-through-durable.steps}",
+#               final_loss = "== {json:train-run-through-durable.final_loss}" } }
+# timeout_s = 900

@@ -19,6 +19,7 @@
 | trace           | service, spans, services, parents, base (default [deploy].traces), api (jaeger or tempo) |
 | git-log         | n (default 1): the last n subjects are Conventional Commits          |
 | ci-status       | GitHub: gh run list on the default branch; else [ci].local commands  |
+| effects         | keys ("a..b" or list), prefix, exactly_once, delivered_once, min_redelivered |
 
 Every step that runs a command must also exit `code` (default 0).
 """
@@ -84,6 +85,7 @@ class MatchCtx:
     step_key: str = ""  # <MS-ID>/<step name>: the ref-thresholds key
     smoke: bool = False  # a --smoke run reads the `smoke` thresholds
     recorder: dict | None = None  # --record-thresholds: (key, metric, dir) -> value
+    effects: object | None = None  # effects.Sink when the step names sink = "effects"
 
 
 def normalize(text: str) -> str:
@@ -180,6 +182,8 @@ def m_json_last_line(e, out, mc) -> Verdict:
         return Verdict("fail", "the last stdout line is not a JSON object")
     bad, good = [], []
     for name, spec in (e.get("metrics") or {}).items():
+        if "{" in str(spec):  # "== {json:<step>.<key>}"
+            spec = placeholders.expand(str(spec), mc.lookup)
         if (
             name not in obj
             or not isinstance(obj[name], (int, float))
@@ -984,6 +988,54 @@ def m_perf(e, out, mc) -> Verdict:
     return Verdict("pass" if ok else "fail", f"{metric}: {why}")
 
 
+def m_effects(e, out, mc) -> Verdict:
+    """The effects sink (`sink = "effects"`) holds prefix+k for every k of
+    `keys`, and nothing else under `prefix` (exactly_once: retries are fine,
+    the sink dedupes by idempotency key, as testkit AssertExactlyOnce);
+    `delivered_once` also forbids redelivery; `min_redelivered` asks that at
+    least that many keys were delivered more than once (the kills hit)."""
+    from . import effects
+
+    if mc.effects is None:
+        raise HarnessError(
+            f'step {mc.step_name}: the effects matcher needs sink = "effects"'
+        )
+    if e.get("linearizable"):
+        raise HarnessError(
+            f"step {mc.step_name}: effects.linearizable needs a recorded history, which is not built yet"
+        )
+    if "keys" not in e:
+        raise HarnessError(f"step {mc.step_name}: effects needs `keys`")
+    keys = effects.parse_keys(e["keys"], f"step {mc.step_name}")
+    prefix = placeholders.expand(str(e.get("prefix", "")), mc.lookup)
+    once = bool(e.get("delivered_once", False))
+    if not once and not e.get("exactly_once", True):
+        raise HarnessError(
+            f"step {mc.step_name}: effects checks exactly_once (or delivered_once); false checks nothing"
+        )
+    recs = mc.effects.records()
+    problems, st = effects.check(recs, keys, prefix, once)
+    if out.out_dir is not None:
+        (out.out_dir / "effects.json").write_text(
+            json.dumps([r.__dict__ for r in recs], indent=1)
+        )
+    want_re = int(e.get("min_redelivered", 0))
+    if st["redelivered"] < want_re:
+        problems.append(
+            f"only {st['redelivered']} key(s) were delivered more than once, want >= {want_re}"
+        )
+    summary = (
+        f"{st['applied']} of {st['want']} key(s) applied under {prefix!r}, "
+        f"{st['deliveries']} deliveries, {st['redelivered']} redelivered"
+    )
+    if problems:
+        shown = "; ".join(problems[:20]) + (
+            f"; ... {len(problems) - 20} more" if len(problems) > 20 else ""
+        )
+        return Verdict("fail", f"{summary}: {len(problems)} problem(s): {shown}")
+    return Verdict("pass", summary)
+
+
 MATCHERS = {
     "exit-code": m_exit_code,
     "exact": m_exact,
@@ -1002,6 +1054,7 @@ MATCHERS = {
     "git-log": m_git_log,
     "ci-status": m_ci_status,
     "perf": m_perf,
+    "effects": m_effects,
 }
 NO_COMMAND = {
     "suite",
@@ -1010,6 +1063,7 @@ NO_COMMAND = {
     "git-log",
     "ci-status",
     "file-produced",
+    "effects",
 }
 
 

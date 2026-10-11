@@ -1,8 +1,8 @@
 # ops.02 durable-kill9 (DESIGN 4.5, 5.10). Chapter:
 # systems/05-incident-response-and-chaos/02-durable-kill9.md
 #
-# While your CorpusBuild `drill-kill9` runs on kind (you start it before
-# `ss drill start`, section "How to work this chapter"), the durable server's
+# While your CorpusBuild `drill-kill9` runs on kind (`ss drill start` starts
+# it, the [workload] below, before the first kill), the durable server's
 # pod is SIGKILLed five times, 30 s apart (`kubectl delete pod
 # --grace-period=0 --force`: the container gets SIGKILL, never SIGTERM). Each
 # time the StatefulSet recreates the pod on the same WAL claim, the server
@@ -25,9 +25,9 @@ seeded         = true                  # which replica dies (one, today) is seed
 time_limit_min = 45
 symptom        = "PAGE: DurableRedeliveriesSpike: activity tasks are being delivered again and again; the corpus build drill-kill9 has not finished"
 
-# The build the kills land in. `ss drill start` does not start a workload
-# yet (DEVIATIONS B103-06): start it yourself, just before `ss drill start`,
-# with exactly this command; the nightly job runs it before `ss drill run`.
+# The build the kills land in: `ss drill start` runs this command through
+# your [entry].ctl in the background before the first injection (its output
+# in .ss/drills/<run>/workload.log); `ss drill reset` kills it if it still runs.
 [workload]
 role = "ctl"
 argv = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "drill-kill9", "--durable", "127.0.0.1:30733", "--json"]
@@ -81,9 +81,8 @@ promql = "(sum(tl_durable_task_queue_depth{namespace=\"{deploy.namespace}\"}) or
 hold_s = 60
 
 # The pass condition of DESIGN 4.5 (the corpus equals a clean run's; every
-# effect happened once) needs a command check, which `ss drill end` does not
-# run yet (DEVIATIONS B103-06): until it does, these are run by respond.sh in
-# CI and by you, with the same commands, before `ss drill end`.
+# effect happened once) is two command checks `ss drill end` runs as resolve
+# checks, graded with the milestone matchers:
 #   1. The same start again returns the finished run (started = false) and
 #      its result holds the clean-run numbers MS-corpus fixes.
 #   2. data.08's ledger check over the artifacts: one ledger row per source

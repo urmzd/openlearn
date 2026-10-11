@@ -2742,13 +2742,32 @@ expect  = { match = "tokens-equal", file = "course/fixtures/L7.9/smollm2_greedy_
 | `git-log` | last N commits match Conventional Commits |
 | `ci-status` | the latest learner CI run on the default branch concluded `success` (`gh run list --branch <default> --limit 1 --json conclusion`); without a GitHub remote, the `[ci].local` commands from `system.toml` exit 0 |
 | `perf` | throughput or latency relative to `ss bench --calibrate`; `ci = "local"` only |
+| `effects` | the effects sink of a `sink = "effects"` step holds `prefix` + k for every k of `keys` (`"0..499"`, inclusive, or a list) and no other key under `prefix`; `exactly_once` (default) allows redelivery, as the sink dedupes by idempotency key; `delivered_once` forbids it; `min_redelivered = N` asks that the kills caused at least N redeliveries |
 
-The runner first executes `[build].steps`, then starts services in dependency order (`after`), waits for `health`, runs steps, tears down, and logs to `.ss/milestones/<MS-ID>/<ts>/`. Placeholders:
+The runner first executes `[build].steps`, then starts services in dependency order (`after`), waits for `health`, runs steps, tears down, and logs to `.ss/milestones/<MS-ID>/<ts>/`.
+
+**Faults during a step.** Two step keys put a running stack under test:
+
+```toml
+[[step]]
+name   = "corpus-build-survives-kills"
+run    = "ctl"
+argv   = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "kill", "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
+sink   = "effects"                                  # optional: the effects sink, before the services start
+chaos  = { kill = ["durable", "worker"], every_s = "0.2..1", count = 6, seed = 2 }
+expect = { match = "json-last-line", metrics = { train_tokens = "== 75164" } }
+```
+
+`sink = "effects"` starts the effects sink (the protocol of testkit `effects`, served by the harness) before the services of the step's milestone start; its URL is `{effects.url}` and `TL_TEST_EFFECTS_URL` in every service's environment and in the step's, so `tl.test.Append` records there. `chaos` needs a `run` command: while it runs, the harness sleeps a draw from `every_s`, SIGKILLs the process group of one service named in `kill` (its children die with it), restarts it with the same argv, ports, runtime.toml, and `{data}`, and waits for its health check, `count` times or until the command exits. Draws come from `seed` and `--seed`; the kills are logged to the step's `chaos.jsonl`. A service that does not come back healthy fails the step. `partition` (link cuts through testkit `chaosproxy`), `leader:<glob>` targets, `history = "linearizability"`, and the matcher's `linearizable` are reserved for MS-durable-ha and rejected until built (DEVIATIONS X28).
+
+Placeholders:
 
 | Placeholder | Value |
 |---|---|
 | `{fixture:<path>}`, `{asset:<id>/<path>}` | a committed fixture in the `contracts/VERSION` worktree; a fetched asset under `$TINYLLM_CACHE` (5.11) |
 | `{out}` | a fresh per-run output directory; `{out:<step-name>}` is an earlier step's |
+| `{json:<step-name>.<key>}` | `<key>` of the last stdout JSON line of an earlier step (`json-last-line` thresholds may use it: `"== {json:train.final_loss}"`) |
+| `{effects.url}` | the effects sink of a `sink = "effects"` step |
 | `{ckpt}` | `{out}/ckpt/LATEST` resolved to the step directory it names |
 | `{models}` | `$TINYLLM_CACHE/models` |
 | `{port}`, `{health_port}`, `{grpc_port}`, `{kv_port}`, `{registry_port}` | free ports allocated per service instance (2.16); `{<service>.<port>}` from another entry |
@@ -2875,6 +2894,18 @@ at     = "loadgen+30s"               # start the learner's loadgen at 20 rps, in
 alert    = "TTFTBudgetBurnFast"      # required name from otel/slo.schema.json; drills without [detect] are graded manually (ops.00)
 within_s = 300
 
+# Optional (ops.02, ops.03): a workload the faults land in, and command checks.
+# [workload]
+# role         = "ctl"               # an [entry] role, run from the learner repo in the background
+# argv         = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "drill-x", "--json"]
+# after_inject = true                # default false: start before the first injection
+# wait_rollout = "{deploy.services.worker}"   # kubectl rollout status first
+# [[resolve.run]]
+# role   = "ctl"
+# argv   = ["wf", "describe", "drill-x", "--json"]
+# env    = {}
+# expect = { match = "json-schema", schema = { ... } }   # any milestone matcher (5.7)
+
 [[resolve.check]]
 promql = "histogram_quantile(0.95, sum(rate(gen_ai_server_time_to_first_token_seconds_bucket[5m])) by (le)) < 0.5"
 hold_s = 300
@@ -2904,7 +2935,7 @@ sections = ["Summary", "Impact", "Timeline", "Root cause", "Detection", "Resolut
 | `git-branch` | creates `drill/<name>` with a scripted commit series. Commits never patch learner-written code: ops.06 bumps with `cargo add`/`go get`; ops.07 and craft.08 build a **scratch copy** of the learner repo whose target unit is the reference plus an existing perf or seeded mutant; ops.08 changes only data and ledger rows | ops.06, ops.07, ops.08, craft.08 |
 | `contract-bump` | `ss contracts sync --to kv/v2` or `api/v2` on a branch | ops.04, ops.05 |
 
-`ss drill start <name> --seed N` injects and prints only a pager-style symptom. `ss drill status` shows elapsed time only. `ss drill end` reports: detected (when `[detect]` exists: the required alert fired within `within_s`, from the `ALERTS` series), TTD and TTM, resolved (all checks green, each held for its `hold_s`), trace evidence (a trace spanning gateway and engine exists for the window), and postmortem structure.
+`ss drill start <name> --seed N` starts the `[workload]` (before the injections, or after them with `after_inject`, once `wait_rollout` reports a complete rollout; its undo kills it), injects, and prints only a pager-style symptom. `ss drill status` shows elapsed time only. `ss drill end` reports: detected (when `[detect]` exists: the required alert fired within `within_s`, from the `ALERTS` series), TTD and TTM, resolved (all checks green, each held for its `hold_s`, and every `[[resolve.run]]` command passing its matcher), trace evidence (a trace spanning gateway and engine exists for the window), and postmortem structure.
 
 **Drills in CI.** The nightly `kind-e2e` job runs one drill by rotation against the reference system with a **scripted responder** (`course/drills/<name>/respond.sh`, the reference fix) and checks detection and resolution, not the time limit, so a drill fits the job budget. The `PrometheusRule` label selector the reference charts use is the one pinned in `contracts/helm/observability.md`, which the learner's rules must match too.
 
