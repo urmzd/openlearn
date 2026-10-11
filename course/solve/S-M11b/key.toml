@@ -1,4 +1,4 @@
-# S-M11b answer key (hidden; honor system, DESIGN D34). `ss verify course S-M11b`
+# S-M11b answer key (hidden; honor system, DESIGN D34). `ol verify course S-M11b`
 # check 7 proves every `expect` passes and every `reject` canary fails;
 # course/oracle/solve/S-M11b.py recomputes every value independently (a
 # heap-based Huffman construction, direct sums over the joint distributions

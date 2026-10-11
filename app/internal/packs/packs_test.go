@@ -11,7 +11,7 @@ import (
 )
 
 func manifest(id string) string {
-	return `{"id":"` + id + `","title":"` + id + ` course","practice":"bin/ss"}`
+	return `{"id":"` + id + `","title":"` + id + ` course","practice":"bin/ol"}`
 }
 
 func writePack(t *testing.T, dir, id string) {

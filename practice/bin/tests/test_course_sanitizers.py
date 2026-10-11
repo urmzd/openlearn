@@ -68,5 +68,5 @@ def test_thread_sanitizer_build_catches_a_race(ss):
     race.write_text(text[:start] + RACY.lstrip() + "\n" + text[end:])
     out = ss("check", "rt.92", rc=1).out
     assert "ThreadSanitizer: data race" in out
-    out = ss("check", "rt.92", rc=None, env={"SS_TSAN": "0"}).out
+    out = ss("check", "rt.92", rc=None, env={"OL_TSAN": "0"}).out
     assert "ThreadSanitizer" not in out  # the TSan build is the one that sees it

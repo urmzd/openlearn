@@ -1,4 +1,4 @@
-<!-- ss:module data.08 -->
+<!-- ol:module data.08 -->
 # Licensing ledger verification and the datasheet
 
 ## Overview
@@ -24,13 +24,13 @@
 ## How to work this chapter
 
 ```bash
-ss start data.08              # stubs ledger.py into python/corpus/
-ss tests data.08              # the course test catalog
-ss tdd red data.08            # rung R3: your tests first, failing against the stubs
-ss check data.08              # exit code is the verdict
-ss check data.08 --ref-deps   # only if data.05, data.06, or data.07 is not passing yet
-ss mutate data.08             # how many planted bugs your tests catch
-ss diff  data.08              # after passing: your code against the reference
+ol start data.08              # stubs ledger.py into python/corpus/
+ol tests data.08              # the course test catalog
+ol tdd red data.08            # rung R3: your tests first, failing against the stubs
+ol check data.08              # exit code is the verdict
+ol check data.08 --ref-deps   # only if data.05, data.06, or data.07 is not passing yet
+ol mutate data.08             # how many planted bugs your tests catch
+ol diff  data.08              # after passing: your code against the reference
 ```
 
 Your CLI gains `{corpus} ledger verify` and `{corpus} datasheet` (MS-corpus fixes their flags); copy the generated datasheet to `docs/DATASHEET.md` and write its Motivation section yourself.
@@ -131,7 +131,7 @@ def datasheet(ledger: Path, corpus: Path, tokens: Path | None = None) -> str
 | `test_read_ledger` | boundary | blank lines skipped; a non-object or broken line raises naming it | no silently skipped row |
 | `test_datasheet` | unit | the template's sections in order; split, PII, source, drop, and token numbers from the files; Motivation left to you | the datasheet cannot drift from the data |
 
-**Your tests (rung R3, red then green).** Under `python/tests/data-08-ledger/`, failing first against the stubs: the hand-example expressions; an unknown license raising `LedgerError` with exit code 65; a clean corpus passing `check`; untraceable rows and a license mismatch failing; a non-commercial source claiming train; the latest row and revocation; schema violations; `reconcile`; `read_ledger` rejecting non-objects; the datasheet's seven headings. `ss mutate data.08` grades them: 0.70 of the mutants, including the one behind Pitfall 1.
+**Your tests (rung R3, red then green).** Under `python/tests/data-08-ledger/`, failing first against the stubs: the hand-example expressions; an unknown license raising `LedgerError` with exit code 65; a clean corpus passing `check`; untraceable rows and a license mismatch failing; a non-commercial source claiming train; the latest row and revocation; schema violations; `reconcile`; `read_ledger` rejecting non-objects; the datasheet's seven headings. `ol mutate data.08` grades them: 0.70 of the mutants, including the one behind Pitfall 1.
 
 ## 5. Pitfalls
 

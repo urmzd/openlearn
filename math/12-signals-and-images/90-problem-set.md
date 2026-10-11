@@ -1,4 +1,4 @@
-<!-- ss:module S-M12 -->
+<!-- ol:module S-M12 -->
 # Signals and images problem set: convolution, sampling, Fourier, mel, contrastive losses, and WER
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M12/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M12/problems.md` and in section 4 |
 | **Needs** | no module. Reading: `M12.1` to `M12.6` and the [Signals and Images topic](README.md) |
 | **Used by** | no call site (a solve set). It checks the arithmetic behind `M12.1` to `M12.6`, and holds two solve-only topics the speech and vision parts lean on: contrastive losses (CLIP and SigLIP in `L13`) and word error rate (`L14`) |
-| **Milestone** | `MS-P12` (the Pass 12 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P12` (the Pass 12 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Dumoulin and Visin, "A guide to convolution arithmetic for deep learning" (free); Oppenheim and Schafer, *Discrete-Time Signal Processing*, ch. 4 and 8; van den Oord, Li, Vinyals, "Representation learning with contrastive predictive coding" (2018); Zhai et al., "Sigmoid loss for language image pre-training" (ICCV 2023); Jurafsky and Martin, *Speech and Language Processing*, ch. 2.5 (edit distance, free) |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M12              # writes solve/S-M12.toml and one file per proof
-ss check S-M12              # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M12 --regrade    # ask the rubrics again after you change a proof
+ol start S-M12              # writes solve/S-M12.toml and one file per proof
+ol check S-M12              # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M12 --regrade    # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -104,7 +104,7 @@ proof = "S-M12/q7.md"
 
 Give exact values, not decimals.
 
-<!-- ss:problems S-M12 -->
+<!-- ol:problems S-M12 -->
 
 ### Convolution arithmetic
 
@@ -178,7 +178,7 @@ Give exact values, not decimals.
 
 **q24.** Prove that WER is not a metric on word sequences, by showing it is not symmetric with an example (compute both directions), and state which metric axiom fails and why. `[proof]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

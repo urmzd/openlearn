@@ -210,7 +210,7 @@ How a model is made before it is served. Pairs with RL (weeks 14-19) for the RLH
 
 ## Role Path: Superstar FDE (14 weeks)
 
-~10-12 hours per week. Assumes Python and basic linear algebra. The order and the done-when criteria live in [`paths/`](paths/): the [Superstar FDE](paths/superstar-fde/) path includes six parts, each also a path on its own. Run `practice/bin/ss learn superstar-fde` to follow it. If you already work in inference, do the Field Engineering weeks first.
+~10-12 hours per week. Assumes Python and basic linear algebra. The order and the done-when criteria live in [`paths/`](paths/): the [Superstar FDE](paths/superstar-fde/) path includes six parts, each also a path on its own. Run `practice/bin/ol learn superstar-fde` to follow it. If you already work in inference, do the Field Engineering weeks first.
 
 | Week | Part | Focus |
 |------|------|-------|

@@ -23,12 +23,12 @@ Chapter files: `01-tinystories.md` (C1) and `02-post-trained.md` (C2), per cours
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `C1` | [Capstone: TinyStories, owned end to end](01-tinystories.md) | practice | 9 |
 | 2 | `C2` | [Capstone 2: post-trained TinyStories model](02-post-trained.md) | practice | 10 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Going further
 

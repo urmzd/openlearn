@@ -6,4 +6,4 @@ async Rust, gRPC, and SQL primers; candle-based Rust engine (continuous batching
 
 **Gate**: [MS-P7 = MS-L10 + MS-gateway + MS-prod](milestone.md).
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ss learn course-p07-p07-serving-platform` to see progress.
+Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p07-p07-serving-platform` to see progress.

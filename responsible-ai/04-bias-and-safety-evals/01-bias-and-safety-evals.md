@@ -1,4 +1,4 @@
-<!-- ss:module ethics.04 -->
+<!-- ol:module ethics.04 -->
 # Bias and safety evals
 
 ## Overview
@@ -24,12 +24,12 @@
 ## How to work this chapter
 
 ```bash
-ss start ethics.04              # stubs safety.py and bias.py into your repo
-ss tests ethics.04              # read the test catalog first
-ss check ethics.04              # course tests, then your tests graded by mutation
-ss mutate ethics.04             # the full mutation grade of your tests
-ss check ethics.04 --ref-deps   # only if your M07.4 or M07.7 is not passing
-ss diff  ethics.04              # after passing: your code against the reference
+ol start ethics.04              # stubs safety.py and bias.py into your repo
+ol tests ethics.04              # read the test catalog first
+ol check ethics.04              # course tests, then your tests graded by mutation
+ol mutate ethics.04             # the full mutation grade of your tests
+ol check ethics.04 --ref-deps   # only if your M07.4 or M07.7 is not passing
+ol diff  ethics.04              # after passing: your code against the reference
 ```
 
 ---

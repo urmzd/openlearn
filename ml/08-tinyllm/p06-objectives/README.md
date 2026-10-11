@@ -26,7 +26,7 @@ One architecture, many objectives. GPT's causal language modeling (with GPT-2 we
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L6.1` | [GPT decoder-only, causal LM loss, GPT-2 weight loading](01-gpt-decoder-only.md) | build | 5 |
@@ -36,7 +36,7 @@ One architecture, many objectives. GPT's causal language modeling (with GPT-2 we
 | 5 | `L6.5` | [Fine-tuning heads and the linear-head export](05-fine-tuning-heads-and-the-linear-head-export.md) | build | 5 |
 | 6 | `L6.6` | [LoRA with PiSSA init and merge](06-lora-pissa-and-merge.md) | build | 5 |
 | 7 | `L6.7` | [LM evaluation harness and the model zoo](07-lm-evaluation-harness-and-the-model-zoo.md) | build | 5 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Going further
 

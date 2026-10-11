@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# Artifact check for craft.01 (DESIGN 4.6; H15: `ss check craft.01` runs this
+# Artifact check for craft.01 (DESIGN 4.6; H15: `ol check craft.01` runs this
 # in your repo and its exit code is the verdict).
 #
 # It runs the annotated tests next to this file against YOUR repo: the
 # commit-msg hook is fed a table of good and bad messages and your HEAD
 # commit; the CI workflow is read for its three gates. Read them with
-# `ss tests craft.01`.
+# `ol tests craft.01`.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
 
 fail() { echo "craft.01: $*" >&2; exit 1; }
-command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
-git rev-parse --git-dir >/dev/null 2>&1 || fail "$PWD is not a git repository (ss course init runs git init)"
+command -v uv >/dev/null || fail "uv is not on PATH (ol doctor)"
+git rev-parse --git-dir >/dev/null 2>&1 || fail "$PWD is not a git repository (ol course init runs git init)"
 [ -f .githooks/commit-msg ] || fail ".githooks/commit-msg is missing (chapter, section 4, step 1)"
 [ -f .github/workflows/ci.yml ] || fail ".github/workflows/ci.yml is missing (chapter, section 4, step 2)"
 
-export SS_LEARNER="$PWD" PYTHONDONTWRITEBYTECODE=1
+export OL_LEARNER="$PWD" PYTHONDONTWRITEBYTECODE=1
 exec uv run --no-project --quiet --with pytest --with pyyaml \
   python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

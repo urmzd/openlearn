@@ -4,7 +4,7 @@ equality = "exact"
 golden   = "course/fixtures/parity/quant_int4.json"
 
 # Drivers and golden files land with the modules named below; until then
-# every implementation is pending and `ss parity` passes trivially.
+# every implementation is pending and `ol parity` passes trivially.
 
 [[impl]]
 name   = "python"

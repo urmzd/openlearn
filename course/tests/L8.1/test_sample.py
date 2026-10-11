@@ -42,7 +42,7 @@ HAND_X = [1.0, 3.0, 2.0, 3.0, -1.0]
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def frozen_stream(s: int) -> PCG32:

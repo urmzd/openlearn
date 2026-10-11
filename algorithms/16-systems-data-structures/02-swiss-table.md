@@ -1,4 +1,4 @@
-<!-- ss:module ds.02 -->
+<!-- ol:module ds.02 -->
 # Swiss table tl_map (u64 to u64, optional C)
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `ds.02` · side · C · Pass 6 · 5 to 7 h |
 | **You build** | `c/src/ds/swiss.c`: `tl_map_create`, `tl_map_put`, `tl_map_get`, `tl_map_del`, `tl_map_len`, `tl_map_destroy` |
 | **Contract** | the ds.02 section of [`tinyllm/ds.h`](../../course/contracts/c/include/tinyllm/ds.h); rules in [`c/ABI.md`](../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/ds.02/test_swiss.c`, 11 tests under ASan and UBSan with the counting allocator (what they check: section 4) · your own tests in `c/tests/ds02-swiss/`, rung R2, graded by mutation (threshold 0.60) · bench `ss bench ds.02` |
+| **Tests** | `course/tests/ds.02/test_swiss.c`, 11 tests under ASan and UBSan with the counting allocator (what they check: section 4) · your own tests in `c/tests/ds02-swiss/`, rung R2, graded by mutation (threshold 0.60) · bench `ol bench ds.02` |
 | **Needs** | `rt.02` (C allocation and error support) · reading: `ds.05` [Robin Hood hashing](05-robin-hood-hash-map.md) (the first hash-table chapter) · `S-M06a` [load factor and expected probe length](../../math/06-discrete-math-2/90-problem-set-a.md) |
 | **Used by** | `rt.04` keeps its prefix index (block hash to block id) in a `tl_map` |
 | **Milestone** | `MS-L9`, the optional standalone C module group |
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.02              # stubs c/src/ds/swiss.c (every body returns TL_EUNSUPPORTED or 0)
-ss tests ds.02              # read the test catalog first
-ss check ds.02              # exit code is the verdict; then grades your tests by mutation
-ss bench ds.02              # local: lookups against the linear-probing baseline
-ss diff  ds.02              # after passing: your code against the reference
+ol start ds.02              # stubs c/src/ds/swiss.c (every body returns TL_EUNSUPPORTED or 0)
+ol tests ds.02              # read the test catalog first
+ol check ds.02              # exit code is the verdict; then grades your tests by mutation
+ol bench ds.02              # local: lookups against the linear-probing baseline
+ol diff  ds.02              # after passing: your code against the reference
 ```
 
-Start with `cap_for` and `tl_map_create` on the worked sizes of section 3, then `find` with a plain byte loop over the group (no word tricks yet), `tl_map_put`, and `tl_map_del`. Once `ss check ds.02` passes, replace the byte loop with the SWAR match of section 2.4 and run it again.
+Start with `cap_for` and `tl_map_create` on the worked sizes of section 3, then `find` with a plain byte loop over the group (no word tricks yet), `tl_map_put`, and `tl_map_del`. Once `ol check ds.02` passes, replace the byte loop with the SWAR match of section 2.4 and run it again.
 
 ---
 
@@ -117,7 +117,7 @@ size_t    tl_map_len(const tl_map *m);
 void      tl_map_destroy(tl_map *m);                   /* NULL does nothing */
 ```
 
-Every allocation goes through `tl_alloc` (rt.01), so the counting allocator of `ss_test.h` sees it and can fail it. The chapter fixes what the header leaves open: the hash (section 2.1), the sizing rule of `tl_map_create` and of a rebuild (section 2.3), and the EMPTY-in-group rule for deletes. A different hash still passes every test; the tests pick their keys with this one to force the hard cases.
+Every allocation goes through `tl_alloc` (rt.01), so the counting allocator of `ol_test.h` sees it and can fail it. The chapter fixes what the header leaves open: the hash (section 2.1), the sizing rule of `tl_map_create` and of a rebuild (section 2.3), and the EMPTY-in-group rule for deletes. A different hash still passes every test; the tests pick their keys with this one to force the hard cases.
 
 ### What the tests check
 
@@ -135,9 +135,9 @@ Every allocation goes through `tl_alloc` (rt.01), so the counting allocator of `
 | `create_and_null_arguments` | boundary, fault | `TL_EINVAL` for a NULL out; create under allocation failure; NULL map calls | cleanup paths in rt.04 need no special cases |
 | `differential_against_linear_probing` | differential | $10^6$ seeded puts, gets, deletes agree with the practice `c/02` baseline on every result | the Swiss table is a map |
 
-**Your tests (rung R2).** Write C files under `c/tests/ds02-swiss/` (including only `tinyllm.h`, `tinyllm/*.h`, and `ss_*.h`, with one `main` returning `SS_RUN_ALL()`) with these tests, bodies yours: `fourteen_fit_then_grow`, `overwrite_keeps_len`, `shared_fingerprint_keys`, `spilled_keys_survive_deletes`, `failed_growth_keeps_keys`, `matches_a_simple_model`. `ss check ds.02` runs them against the reference with one planted bug at a time; at least 60% of the planted bugs must make one of them fail.
+**Your tests (rung R2).** Write C files under `c/tests/ds02-swiss/` (including only `tinyllm.h`, `tinyllm/*.h`, and `ol_*.h`, with one `main` returning `OL_RUN_ALL()`) with these tests, bodies yours: `fourteen_fit_then_grow`, `overwrite_keeps_len`, `shared_fingerprint_keys`, `spilled_keys_survive_deletes`, `failed_growth_keeps_keys`, `matches_a_simple_model`. `ol check ds.02` runs them against the reference with one planted bug at a time; at least 60% of the planted bugs must make one of them fail.
 
-**Bench (local).** `ss bench ds.02` times lookups of both tables at load 3/4 (3,071 keys in 4,096 slots). The budget is on misses, the prefix index's common case: `miss_speedup >= 1.3`. The reference measures about 2 to 3 for misses and about 1.05 for hits; the chapter does not ask hits to be faster, because a hit in either table is one compare.
+**Bench (local).** `ol bench ds.02` times lookups of both tables at load 3/4 (3,071 keys in 4,096 slots). The budget is on misses, the prefix index's common case: `miss_speedup >= 1.3`. The reference measures about 2 to 3 for misses and about 1.05 for hits; the chapter does not ask hits to be faster, because a hit in either table is one compare.
 
 ## 5. Pitfalls
 
@@ -165,7 +165,7 @@ Every allocation goes through `tl_alloc` (rt.01), so the counting allocator of `
 | Forward | `rt.04` | the prefix index: `tl_kv_register` puts (hash, id), `tl_kv_lookup` gets, eviction deletes |
 | Forward | `L10.4` | `--prefix-cache=hash` in the engine is your table behind rt.04, benchmarked against the radix tree of `ds.07` |
 
-If you skip this module, `ss check rt.04` stops with `needs ds.02: build it, or pass --ref-deps`.
+If you skip this module, `ol check rt.04` stops with `needs ds.02: build it, or pass --ref-deps`.
 
 ## Going further
 

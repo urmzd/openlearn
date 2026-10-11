@@ -61,7 +61,7 @@ char-rnn file, public domain) and MS-L2's synthetic stand-in for the
 TinyStories token files (course-corpora is not published; DEVIATIONS
 B54-01, B63-06).
 
-`ss milestone MS-L3 --smoke` takes about a minute; the full run about 5.
+`ol milestone MS-L3 --smoke` takes about a minute; the full run about 5.
 
 ## MS-L4: Your encoder-decoders translate dates, and attention closes the gap
 
@@ -123,4 +123,4 @@ Compose the recurrent-model and sequence-to-sequence component gates. The
 two prerequisite stages are part of Pass 4 but outside those gate requires.
 Earlier pass gates' smoke steps rerun as part of the spiral invariant.
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

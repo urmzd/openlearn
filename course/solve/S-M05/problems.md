@@ -1,6 +1,6 @@
 # S-M05 problems: sets, logic, counting, proofs, induction, relations, bijections
 
-Answer every question in `solve/S-M05.toml` (written by `ss start S-M05`).
+Answer every question in `solve/S-M05.toml` (written by `ol start S-M05`).
 The tag after each question is its answer type: `[set]` is `{a, b}`,
 `[matrix]` is a list of rows `[[1, 0], [0, 1]]`, `[number]` is an exact value
 (`120`, `3/4`, `2^32`), `[expr]` is a formula in the named variables

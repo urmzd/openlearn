@@ -20,7 +20,7 @@ from _lib.pcg32 import PCG32
 from tinyllm.infer.kvcache import KVCache
 from tinyllm.infer.paged import OutOfBlocks, PagedKVCache
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 
 
 def rand(g: PCG32, shape, scale=1.0) -> np.ndarray:

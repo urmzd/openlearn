@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from sscourse import HarnessError, matchers
+from olcourse import HarnessError, matchers
 
 
 def _mc(tmp: Path, **kw) -> matchers.MatchCtx:

@@ -18,7 +18,7 @@ symptom        = "PAGE: the engine has been restarting in a loop since the last 
 # The tracer engine takes flags (spec/cli-roles.md, tracer form), and inside
 # Kubernetes it listens on 8000 (HTTP) and 9464 (health) (DESIGN 2.13). The
 # patch replaces the engine container's args with the same flags pointing at
-# /missing; `ss drill reset` restores your args from the journal.
+# /missing; `ol drill reset` restores your args from the journal.
 [[inject]]
 kind      = "deploy-patch"
 target    = "{deploy.services.engine}"
@@ -34,7 +34,7 @@ timeout_s = 60
 [[resolve.check]]
 suite = "openapi:v0:gateway:smoke"
 
-# The runbook this drill teaches (DESIGN 4.5), graded by `ss drill end` like
+# The runbook this drill teaches (DESIGN 4.5), graded by `ol drill end` like
 # the postmortem.
 [[doc]]
 label    = "runbook"

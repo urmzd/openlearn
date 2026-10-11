@@ -28,7 +28,7 @@ from _lib.pcg32 import PCG32
 
 import tinyllm.num.activations as act
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 GOLDEN = (
     Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M01.3" / "activations_torch.npz"
 )

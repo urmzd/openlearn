@@ -1,4 +1,4 @@
-<!-- ss:module L9.2 -->
+<!-- ol:module L9.2 -->
 # Softmax in C: three-pass and online two-pass
 
 ## Overview
@@ -25,12 +25,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L9.2              # stubs c/src/kernels/softmax.c into your repo
-ss tests L9.2              # read the test catalog first
-ss check L9.2              # exit code is the verdict
-ss check L9.2 --ref-deps   # only if rt.02, M09.6, or M09.2 is not passing yet
-ss parity softmax.online   # the golden parity suite against a float64 oracle
-ss diff  L9.2              # after passing: your code against the reference
+ol start L9.2              # stubs c/src/kernels/softmax.c into your repo
+ol tests L9.2              # read the test catalog first
+ol check L9.2              # exit code is the verdict
+ol check L9.2 --ref-deps   # only if rt.02, M09.6, or M09.2 is not passing yet
+ol parity softmax.online   # the golden parity suite against a float64 oracle
+ol diff  L9.2              # after passing: your code against the reference
 ```
 
 ---
@@ -166,7 +166,7 @@ From Python, declare the two symbols on your loader and pass `f32_ptr` buffers, 
 | Forward | `L9.3` | FlashAttention: the online update over tiles of keys, with the output rescaled by the same factor; its C tests build the naive attention oracle from `tl_softmax_f32` |
 | Forward | `L9.4` | paged attention for decode: the online update over KV blocks; its C oracle uses `tl_softmax_f32` too |
 
-If you skip this module, `ss check L9.3` stops with `BLOCKED ... needs L9.2`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L9.3` stops with `BLOCKED ... needs L9.2`: build it, or pass `--ref-deps`.
 
 ## Going further
 

@@ -1,4 +1,4 @@
-<!-- ss:module data.06 -->
+<!-- ol:module data.06 -->
 # Parquet shards, manifest, and the document-hash split
 
 ## Overview
@@ -23,13 +23,13 @@
 ## How to work this chapter
 
 ```bash
-ss start data.06              # stubs shard.py into python/corpus/
-ss tests data.06              # the course test catalog
-ss tdd red data.06            # rung R3: your tests first, failing against the stubs
-ss check data.06              # exit code is the verdict
-ss check data.06 --ref-deps   # only if data.02, data.04, or data.05 is not passing yet
-ss mutate data.06             # how many planted bugs your tests catch
-ss diff  data.06              # after passing: your code against the reference
+ol start data.06              # stubs shard.py into python/corpus/
+ol tests data.06              # the course test catalog
+ol tdd red data.06            # rung R3: your tests first, failing against the stubs
+ol check data.06              # exit code is the verdict
+ol check data.06 --ref-deps   # only if data.02, data.04, or data.05 is not passing yet
+ol mutate data.06             # how many planted bugs your tests catch
+ol diff  data.06              # after passing: your code against the reference
 ```
 
 Add `pyarrow` to your `python/pyproject.toml` (`dependencies = ["numpy>=2", "pyarrow>=18", "zstandard>=0.23"]`); the contract pre-check allows it for `corpus` units only.
@@ -125,7 +125,7 @@ def read_shards(out: Path, split: str | None = None) -> Iterator[Doc]
 | `test_atomic_replace` | fault | a failed run leaves the old output; a stale `.tmp` is cleared | retried activities are safe |
 | `test_read_shards` | unit | manifest and row order, split filter, meta columns, a rewritten shard raises | `data.07` and `data.08` read through it |
 
-**Your tests (rung R3, red then green).** Under `python/tests/data-06-shard/`, failing first against the stubs (`ss tdd red data.06`): the hand example; the split as a function of the text (with the big-endian rule written out); the 248 boundary; shard counts and names, empty corpus included; string order of ids; a missing license raising; a stale `.tmp` cleared on success; PII totals and file hashes; same input, same bytes; column defaults; recorded counts; repeated ids and a tampered shard. `ss mutate data.06` grades them: 0.70 of the mutants, including the one behind Pitfall 2.
+**Your tests (rung R3, red then green).** Under `python/tests/data-06-shard/`, failing first against the stubs (`ol tdd red data.06`): the hand example; the split as a function of the text (with the big-endian rule written out); the 248 boundary; shard counts and names, empty corpus included; string order of ids; a missing license raising; a stale `.tmp` cleared on success; PII totals and file hashes; same input, same bytes; column defaults; recorded counts; repeated ids and a tampered shard. `ol mutate data.06` grades them: 0.70 of the mutants, including the one behind Pitfall 2.
 
 ## 5. Pitfalls
 
@@ -151,7 +151,7 @@ def read_shards(out: Path, split: str | None = None) -> Iterator[Doc]
 | Forward | `data.08` | every row's `source_id` and `license_spdx` are checked against the ledger; the datasheet reads the manifest |
 | Forward | `data.09` | `CorpusBuild`'s `shard` activity; its output hash is the retry check |
 
-If you skip this module, `ss check data.07` stops with `data.07 needs data.06`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check data.07` stops with `data.07 needs data.06`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

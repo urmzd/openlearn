@@ -7,7 +7,7 @@
 #   course/oracle/contracts/gen-proto.sh --check  # fail if they are stale
 #
 # Needs: buf, go, cargo. The plugins are built at pinned versions into
-# $SS_CACHE (default ~/.cache/supersource)/proto-plugins; nothing is
+# $OL_CACHE (default ~/.cache/openlearn)/proto-plugins; nothing is
 # installed on PATH.
 set -euo pipefail
 
@@ -17,7 +17,7 @@ PROTOC_GEN_GO_GRPC=v1.5.1
 here="$(cd "$(dirname "$0")" && pwd)"
 course="$(cd "$here/../.." && pwd)"
 contracts="$course/contracts"
-cache="${SS_CACHE:-$HOME/.cache/supersource}/proto-plugins"
+cache="${OL_CACHE:-$HOME/.cache/openlearn}/proto-plugins"
 check=0
 [ "${1:-}" = "--check" ] && check=1
 

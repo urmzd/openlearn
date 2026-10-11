@@ -1,6 +1,6 @@
 """dep.04 artifact check: the Tilt dev loop (deploy/Tiltfile).
 
-Run by `ss check dep.04` in your repo. Two tiers:
+Run by `ol check dep.04` in your repo. Two tiers:
 
   static   deploy/Tiltfile is evaluated by the course's recording evaluator
            (_tiltfile.py: every Tilt builtin is a fake that records its call;
@@ -13,7 +13,7 @@ Run by `ss check dep.04` in your repo. Two tiers:
   cluster  `tilt ci -f deploy/Tiltfile` on [deploy].kube_context exits 0 within
            the budget (needs tilt on PATH)
 
-The cluster tier fails when the context is missing or down; with SS_SMOKE=1 it
+The cluster tier fails when the context is missing or down; with OL_SMOKE=1 it
 is skipped with the reason instead.
 """
 
@@ -296,13 +296,13 @@ def test_tilt_ci_on_kind(c: Ctx) -> None:
         if smoke_mode():
             c.skipped_cluster = True
             raise Skip(
-                "cluster tier skipped under SS_SMOKE=1: system.toml has no [deploy].kube_context"
+                "cluster tier skipped under OL_SMOKE=1: system.toml has no [deploy].kube_context"
             )
         raise Fail("system.toml has no [deploy].kube_context")
     c.need_cluster(ctx)
     if shutil.which("tilt") is None:
         raise Fail(
-            "tilt is not on PATH (`brew install tilt`; ss doctor lists it from Pass 7)"
+            "tilt is not on PATH (`brew install tilt`; ol doctor lists it from Pass 7)"
         )
     budget = int(min(MAX_CI_TIMEOUT_S, 1800))
     c.sh(

@@ -1,7 +1,7 @@
 """craft.03 course tests: the grade of YOUR tests, primers/craft.03/test_failpoints.py.
 
 This is mutation testing (DESIGN 5.6) in miniature, the same procedure
-`ss check` and `ss mutate` apply to your graded tests from L0.3 on:
+`ol check` and `ol mutate` apply to your graded tests from L0.3 on:
 
   1. your tests pass against your own kata (green);
   2. your tests pass against the course's kata (they do not reject a correct
@@ -29,14 +29,14 @@ from pathlib import Path
 
 import pytest
 
-PRIMER = Path(os.environ.get("SS_PRIMER_DIR", "primers/craft.03"))
+PRIMER = Path(os.environ.get("OL_PRIMER_DIR", "primers/craft.03"))
 TESTS = PRIMER / "test_failpoints.py"
 SPEC_NAMES = {"ACTIONS", "Rule", "parse", "Failpoints", "sleep_seconds"}
 THRESHOLD = 0.70
 
 
 def course_tree() -> Path | None:
-    t = os.environ.get("SS_COURSE_TREE")
+    t = os.environ.get("OL_COURSE_TREE")
     if t and (Path(t) / "ref" / "primers" / "craft.03" / "failpoints.py").is_file():
         return Path(t)
     return None
@@ -161,7 +161,7 @@ def test_your_tests_accept_the_course_kata():
     course = course_tree()
     if course is None:
         pytest.skip(
-            "the course's kata needs the supersource course tree (SS_COURSE_TREE); `ss check craft.03` sets it"
+            "the course's kata needs the openlearn course tree (OL_COURSE_TREE); `ol check craft.03` sets it"
         )
     ok, out = run_tests_against(_dropped(course))
     assert ok, (
@@ -181,7 +181,7 @@ def test_your_tests_kill_the_planted_faults():
     course = course_tree()
     if course is None:
         pytest.skip(
-            "the planted faults need the supersource course tree (SS_COURSE_TREE); `ss check craft.03` sets it"
+            "the planted faults need the openlearn course tree (OL_COURSE_TREE); `ol check craft.03` sets it"
         )
     ok, out = run_tests_against(_dropped(course))
     if not ok:

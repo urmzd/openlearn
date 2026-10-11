@@ -106,7 +106,7 @@ stories, and 5 PII matches; 169 documents remain (140 stories, 24 notes,
 tokenizer under the document-hash split with val_permille 100, which the
 contracts fix, so every correct pipeline prints the same numbers.
 
-`ss milestone MS-corpus --smoke` runs the smoke steps (all of them: this
+`ol milestone MS-corpus --smoke` runs the smoke steps (all of them: this
 milestone needs no services). Every later pass gate reruns them.
 
 ## MS-L2: Your n-gram and neural language models, trained and scored through your CLI
@@ -165,7 +165,7 @@ nll_mean >= ln(0.995 x that). The bigram bar is the same oracle family's
 add-one count bigram (L0.0) fitted on train.bin: 2.142401587 nats per byte on
 val.bin (course/oracle/MS-L2/corpus.py).
 
-`ss milestone MS-L2 --smoke` runs every step (no services, under a minute).
+`ol milestone MS-L2 --smoke` runs every step (no services, under a minute).
 
 ## MS-P3: Tokens and data: deterministic corpus, tokenizers, and language models
 
@@ -174,4 +174,4 @@ Compose tokenizer, corpus, and language-model component gates. The additional
 
 The pass-gate planner reruns smoke steps of every earlier pass gate.
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

@@ -1,6 +1,6 @@
 # MS-P0: Your Repo's CI Is Green
 
-**Spec**: [`course/milestones/MS-P0.toml`](../../course/milestones/MS-P0.toml). **Requires**: `lang.01`, `lang.02`, and `craft.01` each have a fresh pass of your own (`ss check <ID>`); otherwise the milestone is blocked (exit 3).
+**Spec**: [`course/milestones/MS-P0.toml`](../../course/milestones/MS-P0.toml). **Requires**: `lang.01`, `lang.02`, and `craft.01` each have a fresh pass of your own (`ol check <ID>`); otherwise the milestone is blocked (exit 3).
 
 ## What it runs
 
@@ -14,14 +14,14 @@ Both steps are smoke steps, so every later pass gate reruns them: a red CI or a 
 ## Run it
 
 ```bash
-practice/bin/ss milestone MS-P0          # logs in .ss/milestones/MS-P0/<timestamp>/
+practice/bin/ol milestone MS-P0          # logs in .ol/milestones/MS-P0/<timestamp>/
 ```
 
 Without a GitHub remote, declare your local CI in `system.toml`:
 
 ```toml
 [ci]
-local = [["bash", "scripts/ci-local.sh"]]   # SS_BIN points it at practice/bin/ss
+local = [["bash", "scripts/ci-local.sh"]]   # OL_BIN points it at practice/bin/ol
 ```
 
-`ss course ci` prints the recipe your hosted CI runs.
+`ol course ci` prints the recipe your hosted CI runs.

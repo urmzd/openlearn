@@ -1,4 +1,4 @@
-# S-M04 answer key (hidden; honor system, DESIGN D34). `ss verify course S-M04`
+# S-M04 answer key (hidden; honor system, DESIGN D34). `ol verify course S-M04`
 # check 7 proves every `expect` passes and every `reject` canary fails;
 # course/oracle/solve/S-M04.py recomputes every value independently.
 # 58 items, 2 proofs (DESIGN 4.2): vectors and geometry (q1-q8), partials and

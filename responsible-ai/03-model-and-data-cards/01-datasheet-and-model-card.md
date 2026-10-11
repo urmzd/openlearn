@@ -1,4 +1,4 @@
-<!-- ss:module ethics.03 -->
+<!-- ol:module ethics.03 -->
 # Datasheet and model card
 
 ## Overview
@@ -26,9 +26,9 @@ A check can tell that a card is complete, specific, and consistent with your oth
 ## How to work this chapter
 
 ```bash
-ss start ethics.03            # records the start; you write docs/ from section 4
-ss tests ethics.03            # the checks, and why each exists
-ss check ethics.03            # runs course/tests/ethics.03/check in your repo
+ol start ethics.03            # records the start; you write docs/ from section 4
+ol tests ethics.03            # the checks, and why each exists
+ol check ethics.03            # runs course/tests/ethics.03/check in your repo
 ```
 
 ---
@@ -51,7 +51,7 @@ Pass 9 ends with your first release: `dur.12` exports the capstone to `models/<i
 
 **Licenses are consistent across records.** The datasheet's sources, the ledger's rows, and your `ethics.01` allowlist must agree: a source whose SPDX identifier your allowlist does not permit for `train` cannot be in a model you release. The check reads the allowlist and fails on any source license outside it.
 
-**Third-party models are labelled.** The agent model is HuggingFaceTB's SmolLM2-135M-Instruct, fetched by `ss fetch` at the revision pinned in `course/fixtures/ASSETS.tsv`. Its card states plainly that you did not train it, names the upstream repository and revision, keeps the upstream license (Apache-2.0), describes the architecture from its own `config.json`, and reports only evaluations you ran; until Pass 10 runs them, it says they have not been run, rather than quoting numbers you did not reproduce.
+**Third-party models are labelled.** The agent model is HuggingFaceTB's SmolLM2-135M-Instruct, fetched by `ol fetch` at the revision pinned in `course/fixtures/ASSETS.tsv`. Its card states plainly that you did not train it, names the upstream repository and revision, keeps the upstream license (Apache-2.0), describes the architecture from its own `config.json`, and reports only evaluations you ran; until Pass 10 runs them, it says they have not been run, rather than quoting numbers you did not reproduce.
 
 **A card is versioned with the weights.** The release copies `docs/MODEL_CARD.md` into `models/<id>/<version>/` (formats/checkpoint.md); the title names the model id and version so the gate can tell a stale card from the current one.
 
@@ -106,7 +106,7 @@ Write three files in your repo:
 | `docs/DATASHEET.md` | `contracts/templates/DATASHEET.md`, title `# Datasheet: <dataset> <version>` | Motivation · Composition · Collection · Preprocessing · Uses · Distribution and maintenance |
 | `docs/models/smollm2-135m-instruct.md` | this table, title `# Third-party model card: SmolLM2-135M-Instruct` | Provenance · License · Intended use · Evaluation · Limitations |
 
-In the model card, Model details keeps the template's six bullets (`- **Developer:** ...`, Architecture, Training, Release, Third-party components, License with an SPDX id); Intended use keeps `- **Primary uses:**` and `- **Out of scope:**`; Evaluation keeps the table `| Suite | Metric | Value (95% CI) | Release threshold |` with at least a quality row (bpb, perplexity, or loss), a `safety` row, and a `bias` row, each value written `value (lo, hi)`; Data links `[DATASHEET.md](DATASHEET.md)` and names the data's license. Delete the template's angle-bracket placeholders as you fill them in. `ss check ethics.03` runs `course/tests/ethics.03/check`, which needs your `ethics.01` allowlist at `docs/data/license-allowlist.toml` and your `data.08` ledger module: it runs in your `python/` project's environment and imports `permitted_uses` from `corpus.ledger`.
+In the model card, Model details keeps the template's six bullets (`- **Developer:** ...`, Architecture, Training, Release, Third-party components, License with an SPDX id); Intended use keeps `- **Primary uses:**` and `- **Out of scope:**`; Evaluation keeps the table `| Suite | Metric | Value (95% CI) | Release threshold |` with at least a quality row (bpb, perplexity, or loss), a `safety` row, and a `bias` row, each value written `value (lo, hi)`; Data links `[DATASHEET.md](DATASHEET.md)` and names the data's license. Delete the template's angle-bracket placeholders as you fill them in. `ol check ethics.03` runs `course/tests/ethics.03/check`, which needs your `ethics.01` allowlist at `docs/data/license-allowlist.toml` and your `data.08` ledger module: it runs in your `python/` project's environment and imports `permitted_uses` from `corpus.ledger`.
 
 ### What the tests check
 

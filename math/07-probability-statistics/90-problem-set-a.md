@@ -1,4 +1,4 @@
-<!-- ss:module S-M07a -->
+<!-- ol:module S-M07a -->
 # Probability problem set, part a: axioms, Bayes, random variables, Box-Muller
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M07a/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M07a/problems.md` and in section 4 |
 | **Needs** | `S-M05` (counting, sets). Reading: the [Probability and Statistics topic](README.md), probability and random variable sections, and the Gaussian integral of `S-M02` |
 | **Used by** | no call site (a solve set). Do it before `M07.0` (random variables, the normal, and Box-Muller over PCG32) and `M07.3` (variance propagation for initialization); later parts `S-M07b` to `S-M07d` follow `M07.1`, `M07.4`, and `M07.5` |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Blitzstein and Hwang, *Introduction to Probability* (free), ch. 1 to 5; Box and Muller, "A Note on the Generation of Random Normal Deviates" (1958) |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M07a             # writes solve/S-M07a.toml and the proof file
-ss check S-M07a             # SymPy checks the answers, then asks the proof rubric (y/n)
-ss check S-M07a --regrade   # ask the rubric again after you change the proof
+ol start S-M07a             # writes solve/S-M07a.toml and the proof file
+ol check S-M07a             # SymPy checks the answers, then asks the proof rubric (y/n)
+ol check S-M07a --regrade   # ask the rubric again after you change the proof
 ```
 
 ---
@@ -110,7 +110,7 @@ proof = "S-M07a/q6.md"
 
 Probabilities are exact fractions; `0.7` fails a question marked exact. Write $\lambda$ as `lam`, $e$ as `E` or `exp(1)`, and $\pi$ as `pi`.
 
-<!-- ss:problems S-M07a -->
+<!-- ol:problems S-M07a -->
 
 ### Axioms, conditional probability, and Bayes
 
@@ -152,7 +152,7 @@ Probabilities are exact fractions; `0.7` fails a question marked exact. Write $\
 
 **q16.** Give $\int_{-\infty}^{\infty} e^{-x^2/2}\, dx$, the constant that normalizes the standard normal density. `[number]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

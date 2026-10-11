@@ -9,7 +9,7 @@ and scoring calibration are still moving.
 
 | Package | Role |
 |---------|------|
-| `internal/course` | A course pack: manifest, outline, role paths, progress files, search. Reads `path.tsv` and `.done` in the format `ss learn` owns. |
+| `internal/course` | A course pack: manifest, outline, role paths, progress files, search. Reads `path.tsv` and `.done` in the format `ol learn` owns. |
 | `internal/packs` | Finds packs (checkout, linked folder, imported zip, built in) and opens one |
 | `internal/builtin` | The packs embedded in the binary, filled by `cmd/bundle` (`make content`) |
 | `internal/practice` | Runs a pack's practice CLI and reads the attempt it left in the scratchpad |
@@ -25,7 +25,7 @@ and scoring calibration are still moving.
 ## Non-obvious invariants
 
 **The pack owns its formats; the app is a second reader.** `path.tsv`, the `.done` progress
-files, and the practice CLI's verbs and exit codes are defined by `practice/bin/ss`.
+files, and the practice CLI's verbs and exit codes are defined by `practice/bin/ol`.
 `internal/course` and `internal/practice` read them and never extend them. A stage tied to
 a check is only ever marked by the CLI, because the CLI is what knows whether it passed.
 

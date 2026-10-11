@@ -11,7 +11,7 @@
 #include <string.h>
 
 #include "tinyllm.h"
-#include "ss_parity.h"
+#include "ol_parity.h"
 
 int main(void) {
     static char line[1 << 20];

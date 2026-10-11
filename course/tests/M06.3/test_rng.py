@@ -223,7 +223,7 @@ def test_fnv1a64_chains():
     # CATCHES: m03
     # CHAPTER: M06.3 section 2.7
     f = learner_rng.fnv1a64
-    rng = FrozenPCG32(int(os.environ.get("SS_SEED", "0")), seq=63)
+    rng = FrozenPCG32(int(os.environ.get("OL_SEED", "0")), seq=63)
     for _ in range(50):
         a = bytes(rng.below(256) for _ in range(rng.below(20)))
         b = bytes(rng.below(256) for _ in range(rng.below(20)))

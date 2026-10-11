@@ -1,4 +1,4 @@
-/* My tests for rt.03 (rung R4): the partition and exactly-once properties with ss_prop.h, plus
+/* My tests for rt.03 (rung R4): the partition and exactly-once properties with ol_prop.h, plus
  * the concurrency and fault cases. Only the contract headers are included. */
 #define _POSIX_C_SOURCE 200809L
 #include <pthread.h>
@@ -10,8 +10,8 @@
 #include <unistd.h>
 
 #include "tinyllm.h"
-#include "ss_prop.h"
-#include "ss_test.h"
+#include "ol_prop.h"
+#include "ol_test.h"
 
 /* -- a watchdog ---------------------------------------------------------------
  * A pool bug is often a deadlock, which would hang the run until the
@@ -82,71 +82,71 @@ static int exact_partition(record_t *r, int64_t n, int64_t grain) {
     return 1;
 }
 
-SS_TEST(hand_example) {
+OL_TEST(hand_example) {
     WATCH();
     static record_t r;
     memset(&r, 0, sizeof r);
     r.n_threads = 1;
-    SS_EQ(tl_parallel_for(NULL, 10, 4, record, &r), TL_OK);
-    SS_EQ(atomic_load(&r.n), 3);
-    SS_EQ(r.lo[0], 0);
-    SS_EQ(r.hi[0], 4);
-    SS_EQ(r.lo[1], 4);
-    SS_EQ(r.hi[1], 8);
-    SS_EQ(r.lo[2], 8);
-    SS_EQ(r.hi[2], 10);
-    for (int i = 0; i < 3; i++) SS_EQ(r.worker[i], 0);
+    OL_EQ(tl_parallel_for(NULL, 10, 4, record, &r), TL_OK);
+    OL_EQ(atomic_load(&r.n), 3);
+    OL_EQ(r.lo[0], 0);
+    OL_EQ(r.hi[0], 4);
+    OL_EQ(r.lo[1], 4);
+    OL_EQ(r.hi[1], 8);
+    OL_EQ(r.lo[2], 8);
+    OL_EQ(r.hi[2], 10);
+    for (int i = 0; i < 3; i++) OL_EQ(r.worker[i], 0);
 
     tl_pool *p = NULL;
-    SS_EQ(tl_pool_create(4, &p), TL_OK);
-    SS_EQ(tl_pool_threads(p), 4);
+    OL_EQ(tl_pool_create(4, &p), TL_OK);
+    OL_EQ(tl_pool_threads(p), 4);
     memset(&r, 0, sizeof r);
     r.n_threads = 4;
-    SS_EQ(tl_parallel_for(p, 10, 4, record, &r), TL_OK);
-    SS_TRUE(exact_partition(&r, 10, 4));
-    SS_EQ(atomic_load(&r.bad_worker), 0);
+    OL_EQ(tl_parallel_for(p, 10, 4, record, &r), TL_OK);
+    OL_TRUE(exact_partition(&r, 10, 4));
+    OL_EQ(atomic_load(&r.bad_worker), 0);
     tl_pool_destroy(p);
 }
 
-SS_TEST(grain_edges_and_empty_range) {
+OL_TEST(grain_edges_and_empty_range) {
     WATCH();
     static record_t r;
     static const int64_t cases[][2] = {{7, 1}, {7, 7}, {7, 100}, {1000, 7}, {1, 1}, {0, 5}};
     for (int t = 1; t <= 3; t += 2) {
         tl_pool *p = NULL;
-        SS_EQ(tl_pool_create(t, &p), TL_OK);
+        OL_EQ(tl_pool_create(t, &p), TL_OK);
         for (size_t c = 0; c < sizeof cases / sizeof cases[0]; c++) {
             memset(&r, 0, sizeof r);
             r.n_threads = t;
-            SS_EQ(tl_parallel_for(p, cases[c][0], cases[c][1], record, &r), TL_OK);
+            OL_EQ(tl_parallel_for(p, cases[c][0], cases[c][1], record, &r), TL_OK);
             if (!exact_partition(&r, cases[c][0], cases[c][1])) {
                 tl_pool_destroy(p);
-                SS_FAIL("ranges differ from [k*grain, min((k+1)*grain, n))");
+                OL_FAIL("ranges differ from [k*grain, min((k+1)*grain, n))");
             }
         }
         tl_pool_destroy(p);
     }
 }
 
-SS_TEST(bad_arguments) {
+OL_TEST(bad_arguments) {
     WATCH();
     static record_t r;
     memset(&r, 0, sizeof r);
     r.n_threads = 2;
     tl_pool *p = NULL;
-    SS_EQ(tl_pool_create(2, &p), TL_OK);
-    SS_EQ(tl_parallel_for(p, -1, 1, record, &r), TL_EINVAL);
-    SS_EQ(tl_parallel_for(p, 5, 0, record, &r), TL_EINVAL);
-    SS_EQ(tl_parallel_for(NULL, 5, 0, record, &r), TL_EINVAL);
+    OL_EQ(tl_pool_create(2, &p), TL_OK);
+    OL_EQ(tl_parallel_for(p, -1, 1, record, &r), TL_EINVAL);
+    OL_EQ(tl_parallel_for(p, 5, 0, record, &r), TL_EINVAL);
+    OL_EQ(tl_parallel_for(NULL, 5, 0, record, &r), TL_EINVAL);
     tl_set_last_error("");
-    SS_EQ(tl_parallel_for(p, 5, 1, NULL, &r), TL_EINVAL);
-    SS_TRUE(strstr(tl_last_error(), "tl_parallel_for") != NULL);
-    SS_EQ(atomic_load(&r.n), 0);
+    OL_EQ(tl_parallel_for(p, 5, 1, NULL, &r), TL_EINVAL);
+    OL_TRUE(strstr(tl_last_error(), "tl_parallel_for") != NULL);
+    OL_EQ(atomic_load(&r.n), 0);
     tl_pool_destroy(p);
     tl_pool *q = (tl_pool *)&r;
-    SS_EQ(tl_pool_create(-1, &q), TL_EINVAL);
-    SS_EQ(tl_pool_create(2, NULL), TL_EINVAL);
-    SS_EQ(tl_pool_threads(NULL), 1);
+    OL_EQ(tl_pool_create(-1, &q), TL_EINVAL);
+    OL_EQ(tl_pool_create(2, NULL), TL_EINVAL);
+    OL_EQ(tl_pool_threads(NULL), 1);
     tl_pool_destroy(NULL);
 }
 
@@ -164,9 +164,9 @@ static void mark_hits(void *ctx, int64_t lo, int64_t hi, int worker) {
 
 static tl_pool *shared_pool = NULL;
 
-static int each_index_once(ss_gen *g, int size) {
-    int64_t n = ss_gen_int(g, 0, 50 * (int64_t)size + 1);
-    int64_t grain = ss_gen_int(g, 1, 64);
+static int each_index_once(ol_gen *g, int size) {
+    int64_t n = ol_gen_int(g, 0, 50 * (int64_t)size + 1);
+    int64_t grain = ol_gen_int(g, 1, 64);
     _Atomic uint32_t *hits = calloc((size_t)n + 1, sizeof *hits);
     bitmap_t b = {hits};
     int ok = tl_parallel_for(shared_pool, n, grain, mark_hits, &b) == TL_OK;
@@ -175,10 +175,10 @@ static int each_index_once(ss_gen *g, int size) {
     return ok;
 }
 
-SS_TEST(each_index_runs_exactly_once) {
+OL_TEST(each_index_runs_exactly_once) {
     WATCH();
-    SS_EQ(tl_pool_create(8, &shared_pool), TL_OK);
-    SS_CHECK_PROP(each_index_once, 200, 200);
+    OL_EQ(tl_pool_create(8, &shared_pool), TL_OK);
+    OL_CHECK_PROP(each_index_once, 200, 200);
     tl_pool_destroy(shared_pool);
     shared_pool = NULL;
 }
@@ -204,24 +204,24 @@ static void mm_rows(void *ctx, int64_t lo, int64_t hi, int worker) {
         }
 }
 
-SS_TEST(pooled_matmul_is_bitwise_serial) {
+OL_TEST(pooled_matmul_is_bitwise_serial) {
     WATCH();
     static float A[M * K], B[K * N], C0[M * N], C1[M * N];
-    ss_gen g = {ss_prop_base_seed() + 31};
-    for (int i = 0; i < M * K; i++) A[i] = ss_gen_f32(&g, -1.0f, 1.0f);
-    for (int i = 0; i < K * N; i++) B[i] = ss_gen_f32(&g, -1.0f, 1.0f);
+    ol_gen g = {ol_prop_base_seed() + 31};
+    for (int i = 0; i < M * K; i++) A[i] = ol_gen_f32(&g, -1.0f, 1.0f);
+    for (int i = 0; i < K * N; i++) B[i] = ol_gen_f32(&g, -1.0f, 1.0f);
     mm_t ser = {A, B, C0};
-    SS_EQ(tl_parallel_for(NULL, M, 1, mm_rows, &ser), TL_OK);
+    OL_EQ(tl_parallel_for(NULL, M, 1, mm_rows, &ser), TL_OK);
     static const int threads[] = {1, 2, 3, 8};
     for (int t = 0; t < 4; t++)
         for (int64_t grain = 1; grain <= 5; grain += 4) {
             tl_pool *p = NULL;
-            SS_EQ(tl_pool_create(threads[t], &p), TL_OK);
+            OL_EQ(tl_pool_create(threads[t], &p), TL_OK);
             memset(C1, 0xFF, sizeof C1);
             mm_t par = {A, B, C1};
-            SS_EQ(tl_parallel_for(p, M, grain, mm_rows, &par), TL_OK);
+            OL_EQ(tl_parallel_for(p, M, grain, mm_rows, &par), TL_OK);
             tl_pool_destroy(p);
-            SS_EQ(memcmp(C0, C1, sizeof C0), 0);
+            OL_EQ(memcmp(C0, C1, sizeof C0), 0);
         }
 }
 
@@ -251,17 +251,17 @@ static void wait_for_all(void *ctx, int64_t lo, int64_t hi, int worker) {
     }
 }
 
-SS_TEST(all_workers_run_concurrently) {
+OL_TEST(all_workers_run_concurrently) {
     WATCH();
     static barrier_t b;
     memset(&b, 0, sizeof b);
     b.n_threads = 4;
     tl_pool *p = NULL;
-    SS_EQ(tl_pool_create(4, &p), TL_OK);
-    SS_EQ(tl_parallel_for(p, 4, 1, wait_for_all, &b), TL_OK);
+    OL_EQ(tl_pool_create(4, &p), TL_OK);
+    OL_EQ(tl_parallel_for(p, 4, 1, wait_for_all, &b), TL_OK);
     tl_pool_destroy(p);
-    SS_EQ(atomic_load(&b.timed_out), 0);
-    for (int w = 0; w < 4; w++) SS_EQ(atomic_load(&b.seen[w]), 1);
+    OL_EQ(atomic_load(&b.timed_out), 0);
+    for (int w = 0; w < 4; w++) OL_EQ(atomic_load(&b.seen[w]), 1);
 }
 
 /* -- nesting, serialization, destroy ---------------------------------------- */
@@ -287,17 +287,17 @@ static void call_inside(void *ctx, int64_t lo, int64_t hi, int worker) {
     if (tl_parallel_for(NULL, 4, 1, noop, NULL) == TL_OK) atomic_fetch_add(&s->other, 1);
 }
 
-SS_TEST(nested_call_is_busy_not_a_deadlock) {
+OL_TEST(nested_call_is_busy_not_a_deadlock) {
     WATCH();
     static const int threads[] = {1, 3};
     for (int t = 0; t < 2; t++) {
         nest_t s;
         memset(&s, 0, sizeof s);
-        SS_EQ(tl_pool_create(threads[t], &s.p), TL_OK);
-        SS_EQ(tl_parallel_for(s.p, 6, 1, call_inside, &s), TL_OK);
+        OL_EQ(tl_pool_create(threads[t], &s.p), TL_OK);
+        OL_EQ(tl_parallel_for(s.p, 6, 1, call_inside, &s), TL_OK);
         tl_pool_destroy(s.p);
-        SS_EQ(atomic_load(&s.busy), 6);
-        SS_EQ(atomic_load(&s.other), 6);
+        OL_EQ(atomic_load(&s.busy), 6);
+        OL_EQ(atomic_load(&s.other), 6);
     }
 }
 
@@ -321,21 +321,21 @@ static void *call_many(void *arg) {
     return NULL;
 }
 
-SS_TEST(two_callers_are_serialized) {
+OL_TEST(two_callers_are_serialized) {
     WATCH();
     _Atomic long total = 0;
     tl_pool *p = NULL;
-    SS_EQ(tl_pool_create(4, &p), TL_OK);
+    OL_EQ(tl_pool_create(4, &p), TL_OK);
     caller_t a = {p, &total, 0}, b = {p, &total, 0};
     pthread_t ta, tb;
-    SS_EQ(pthread_create(&ta, NULL, call_many, &a), 0);
-    SS_EQ(pthread_create(&tb, NULL, call_many, &b), 0);
+    OL_EQ(pthread_create(&ta, NULL, call_many, &a), 0);
+    OL_EQ(pthread_create(&tb, NULL, call_many, &b), 0);
     void *ra = NULL, *rb = NULL;
     pthread_join(ta, &ra);
     pthread_join(tb, &rb);
     tl_pool_destroy(p);
-    SS_TRUE(ra == NULL && rb == NULL);
-    SS_EQ(atomic_load(&total), 100000);
+    OL_TRUE(ra == NULL && rb == NULL);
+    OL_EQ(atomic_load(&total), 100000);
 }
 
 typedef struct {
@@ -360,53 +360,53 @@ static void *run_slow(void *arg) {
     return (void *)(intptr_t)tl_parallel_for(s->p, 16, 1, slow_range, s);
 }
 
-SS_TEST(destroy_waits_for_running_work) {
+OL_TEST(destroy_waits_for_running_work) {
     WATCH();
     slow_t s;
     memset(&s, 0, sizeof s);
-    SS_EQ(tl_pool_create(4, &s.p), TL_OK);
+    OL_EQ(tl_pool_create(4, &s.p), TL_OK);
     pthread_t t;
-    SS_EQ(pthread_create(&t, NULL, run_slow, &s), 0);
+    OL_EQ(pthread_create(&t, NULL, run_slow, &s), 0);
     while (!atomic_load(&s.inside)) { /* until the call is in flight */
         struct timespec d = {0, 100000};
         nanosleep(&d, NULL);
     }
     tl_pool_destroy(s.p);
-    SS_EQ(atomic_load(&s.done), 16);
+    OL_EQ(atomic_load(&s.done), 16);
     void *rv = NULL;
     pthread_join(t, &rv);
-    SS_EQ((intptr_t)rv, TL_OK);
+    OL_EQ((intptr_t)rv, TL_OK);
 }
 
-SS_TEST(create_failure_leaks_nothing) {
+OL_TEST(create_failure_leaks_nothing) {
     WATCH();
     for (long n = 0; n < 12; n++) {
-        ss_alloc_fail_after(n);
+        ol_alloc_fail_after(n);
         tl_pool *p = (tl_pool *)&n;
         tl_status st = tl_pool_create(6, &p);
-        ss_alloc_fail_after(-1);
+        ol_alloc_fail_after(-1);
         if (st == TL_OK) {
-            SS_EQ(tl_parallel_for(p, 100, 3, noop, NULL), TL_OK);
+            OL_EQ(tl_parallel_for(p, 100, 3, noop, NULL), TL_OK);
             tl_pool_destroy(p);
             continue;
         }
-        SS_EQ(st, TL_ENOMEM);
-        SS_TRUE(p == NULL);
+        OL_EQ(st, TL_ENOMEM);
+        OL_TRUE(p == NULL);
     }
 }
 
-SS_TEST(hardware_concurrency_default) {
+OL_TEST(hardware_concurrency_default) {
     WATCH();
     tl_pool *p = NULL;
-    SS_EQ(tl_pool_create(0, &p), TL_OK);
-    SS_TRUE(tl_pool_threads(p) >= 1);
+    OL_EQ(tl_pool_create(0, &p), TL_OK);
+    OL_TRUE(tl_pool_threads(p) >= 1);
     static record_t r;
     memset(&r, 0, sizeof r);
     r.n_threads = tl_pool_threads(p);
-    SS_EQ(tl_parallel_for(p, 100, 9, record, &r), TL_OK);
-    SS_TRUE(exact_partition(&r, 100, 9));
-    SS_EQ(atomic_load(&r.bad_worker), 0);
+    OL_EQ(tl_parallel_for(p, 100, 9, record, &r), TL_OK);
+    OL_TRUE(exact_partition(&r, 100, 9));
+    OL_EQ(atomic_load(&r.bad_worker), 0);
     tl_pool_destroy(p);
 }
 
-int main(void) { return SS_RUN_ALL(); }
+int main(void) { return OL_RUN_ALL(); }

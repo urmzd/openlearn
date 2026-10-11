@@ -13,7 +13,7 @@ syntax = "proto3";
 
 package tl.engine.v1;
 
-option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/engine/v1;enginev1";
+option go_package = "openlearn.urmzd.com/tl/contracts/gen/tl/engine/v1;enginev1";
 
 service EngineControl {
   // Prefill role only. Runs prefill over prompt_ids, samples the first token

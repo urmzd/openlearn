@@ -5,7 +5,7 @@ lang      = ["ops", "docs"]
 pass      = 1
 chapter   = "systems/05-incident-response-and-chaos/00-first-drill.md"
 contract  = []
-# The drill injects into the deployment dep.00 builds (`ss drill start` refuses
+# The drill injects into the deployment dep.00 builds (`ol drill start` refuses
 # until dep.00 passes); the engine (L10.0) and gateway (gw.00) are what you triage.
 deps      = ["dep.00"]
 reading   = ["lang.07", "L10.0", "gw.00"]

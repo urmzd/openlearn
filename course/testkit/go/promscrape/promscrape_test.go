@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"supersource.urmzd.com/tl/testkit/promscrape"
+	"openlearn.urmzd.com/tl/testkit/promscrape"
 )
 
 const body = `# HELP tl_engine_active_sequences live sequences

@@ -1,4 +1,4 @@
-<!-- ss:module S-M06a -->
+<!-- ol:module S-M06a -->
 # Discrete math 2 problem set, part a: DAGs, modular arithmetic, hashing
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M06a/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M06a/problems.md` and in section 4 |
 | **Needs** | `S-M05` (proof methods, induction, counting, bijections). Reading: the [Discrete Math 2 topic](README.md), graphs and number theory sections |
 | **Used by** | no call site (a solve set). Do it before `M06.1` (iterative toposort for backward; q20 is its correctness proof) and `M06.3` (PCG32, SplitMix64, FNV-1a: wrapping arithmetic, rotations, and the odd multiplier of q22). Part b, `S-M06b` in Pass 3, covers trees, birthday bounds, MinHash, and Bloom filters |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Hammack, *Book of Proof*, ch. 11 and 12; Cormen et al., *Introduction to Algorithms*, ch. 11 (hashing) and 22.4 (topological sort); O'Neill, "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms" (2014), sections 4 and 6 |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M06a             # writes solve/S-M06a.toml and one file per proof
-ss check S-M06a             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M06a --regrade   # ask the rubrics again after you change a proof
+ol start S-M06a             # writes solve/S-M06a.toml and one file per proof
+ol check S-M06a             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M06a --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -106,7 +106,7 @@ proof = "S-M06a/q20.md"
 
 Numbers are exact integers or fractions (`3/4`, `2^31 + 2^30`); no hexadecimal, so convert to decimal.
 
-<!-- ss:problems S-M06a -->
+<!-- ol:problems S-M06a -->
 
 ### Graphs and DAGs
 
@@ -176,7 +176,7 @@ Prove that every node reachable from the root appears in `order` exactly once, a
 
 **q23.** Is $x \mapsto 6x \bmod 16$ a bijection of $\{0, 1, \dots, 15\}$? `[bool]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

@@ -1,4 +1,4 @@
-<!-- ss:module M07.2 -->
+<!-- ol:module M07.2 -->
 # MLE, Laplace, absolute discounting
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M07.2              # stubs mle.py into your repo
-ss tests M07.2              # read the test catalog first
-ss check M07.2              # exit code is the verdict
-ss diff  M07.2              # after passing: your code against the reference
+ol start M07.2              # stubs mle.py into your repo
+ol tests M07.2              # read the test catalog first
+ol check M07.2              # exit code is the verdict
+ol diff  M07.2              # after passing: your code against the reference
 ```
 
 ---
@@ -169,7 +169,7 @@ Counts are finite non-negative numbers: integers from counting (numpy integers a
 | Forward | `M11.4` | PMI divides joint and marginal MLEs from co-occurrence counts |
 | Forward | `M11.2` | $-\ell(q)/N$ is the NLL per token whose exponential is perplexity |
 
-If you skip this module, `ss check L1.4` stops with `L1.4 needs M07.2`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L1.4` stops with `L1.4 needs M07.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

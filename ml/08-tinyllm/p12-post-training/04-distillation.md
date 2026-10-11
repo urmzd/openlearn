@@ -1,4 +1,4 @@
-<!-- ss:module L12.4 -->
+<!-- ol:module L12.4 -->
 # Distillation with forward and reverse KL
 
 ## Overview
@@ -24,9 +24,9 @@
 ## How to work this chapter
 
 ```bash
-ss start L12.4
-ss tests L12.4
-ss check L12.4
+ol start L12.4
+ol tests L12.4
+ol check L12.4
 ```
 
 ## 1. Why now

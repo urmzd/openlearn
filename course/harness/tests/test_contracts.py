@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from sscourse import schema
+from olcourse import schema
 
 COURSE = Path(__file__).resolve().parents[2]
 C = COURSE / "contracts"

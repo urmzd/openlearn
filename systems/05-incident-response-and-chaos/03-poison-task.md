@@ -1,4 +1,4 @@
-<!-- ss:module ops.03 -->
+<!-- ol:module ops.03 -->
 # A poison task lands in the dead-letter queue
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `ops.03` · drill · ops, docs · Pass 8 · 2 to 3 h |
 | **You build** | `docs/runbooks/DurableDeadLetters.md` (Symptoms, Diagnosis, Mitigation), `docs/postmortems/<date>-poison-task.md`, and the alert `DurableDeadLetters` in `deploy/observability/rules/durable.yaml` (written with `ops.02`); and you find the cause of a task that fails every attempt, remove it, redrive the task, and see the build complete |
 | **Contract** | the drill spec `course/drills/poison-task/drill.toml` (section 4); `tl_durable_dlq_size` and `tl_durable_task_queue_depth` in [`otel/metrics.yaml`](../../course/contracts/otel/metrics.yaml); the failpoint hook your worker evaluates (section 2.4); the `ctl` verbs `wf dlq list`, `wf dlq redrive`, `wf describe` fixed by MS-durable |
-| **Tests** | graded by `ss drill end`; no course tests to read (section 4 lists every check) |
+| **Tests** | graded by `ol drill end`; no course tests to read (section 4 lists every check) |
 | **Needs** | `dep.06` (the worker Deployment the fault is shipped to) and `obs.05` (the scrapes and the dead-letter panel); reading: `ops.02` (the rules file and the drill routine), `dur.09` (exit codes and retryable failures), the queue chapter of this pass (retries, the dead-letter queue, redrive) |
 | **Used by** | no call site: a drill. MS-durable requires it; MS-ops reruns the drills |
 | **Milestone** | MS-durable (drill `ops.03` resolved) |
@@ -26,13 +26,13 @@
 
 ```bash
 kubectl apply -f deploy/observability/rules/durable.yaml   # DurableDeadLetters (written with ops.02)
-ss drill start poison-task             # ships the fault to the workers, prints the page
+ol drill start poison-task             # ships the fault to the workers, prints the page
 kubectl -n <system> rollout status deploy/<system>-worker
 {ctl} data build --config course/fixtures/MS-corpus/corpus.toml --id drill-poison --durable 127.0.0.1:30733 --json
 # ... wait for the page; dashboard, wf dlq list, the runbook; fix; redrive ...
 {ctl} wf describe drill-poison --durable 127.0.0.1:30733 --json   # COMPLETED, dead_lettered 0
-ss drill end
-ss drill reset
+ol drill end
+ol drill reset
 ```
 
 `{ctl}` is your `[entry].ctl`; its `wf` and `data build` verbs are fixed in MS-durable. The build starts after the poisoned rollout, as a scheduled build would.
@@ -86,14 +86,14 @@ So the page arrives at most about 45 s after the first failure, well inside the 
 
 ## 4. Inject, detect, mitigate, verify
 
-| Step | What `ss drill` does | What you do |
+| Step | What `ol drill` does | What you do |
 |---|---|---|
 | inject | adds `TL_FAILPOINTS=dur/activity/poison/shard-00001=panic` to the environment of `{deploy.services.worker}` (a JSON patch; the undo restores the old environment) | wait for the rollout, start the build `drill-poison` |
 | detect | at `end`, reads the `ALERTS` series: `DurableDeadLetters` must have fired within 600 s of the injection | read the page, open the dead-letter panel and your runbook |
 | mitigate | | `wf dlq list data` (what failed and how), `rollout history` and the environment (what changed), remove the setting, wait for the rollout, `wf dlq redrive data <task id>` |
 | verify | at `end`: the worker rollout is complete; dead letters at 0 and every queue at depth 0, each held 60 s | `wf describe drill-poison` shows `COMPLETED` and `dead_lettered: 0`; write the runbook and the postmortem |
 
-### What `ss drill end` checks
+### What `ol drill end` checks
 
 | Check | Passes when |
 |---|---|
@@ -103,7 +103,7 @@ So the page arrives at most about 45 s after the first failure, well inside the 
 | postmortem | `docs/postmortems/<date>-poison-task.md` has the seven sections |
 | time limit | 45 minutes from start to end (not graded for the CI responder) |
 
-The design's last condition, that the workflow completes, is a command check `ss drill end` runs and grades (`[[resolve.run]]` in the spec): `{ctl} wf describe drill-poison --json` must report `COMPLETED` with `dead_lettered: 0`. Run it yourself first and quote it in your Resolution.
+The design's last condition, that the workflow completes, is a command check `ol drill end` runs and grades (`[[resolve.run]]` in the spec): `{ctl} wf describe drill-poison --json` must report `COMPLETED` with `dead_lettered: 0`. Run it yourself first and quote it in your Resolution.
 
 ## 5. Pitfalls
 
@@ -112,8 +112,8 @@ The design's last condition, that the workflow completes, is a command check `ss
 | 1. Redriving before fixing | five more panics, a second dead letter, the alert fires again | the dead-letter check fails its hold |
 | 2. Deleting the dead letter to clear the alert | the alert clears, the build waits forever | the queue-depth check; the workflow never completes |
 | 3. Restarting the workers without removing the setting | the new pods read the same environment and panic the same way | the dead-letter check after the redrive |
-| 4. No alert on dead letters, or on the raw count without a `for` | no page, or a page on a scrape blip | ss drill end, check detected |
-| 5. A postmortem that stops at "removed the variable" | the next test setting reaches production the same way | ss drill end, check postmortem; the self review against course/rubrics/postmortem.md |
+| 4. No alert on dead letters, or on the raw count without a `for` | no page, or a page on a scrape blip | ol drill end, check detected |
+| 5. A postmortem that stops at "removed the variable" | the next test setting reaches production the same way | ol drill end, check postmortem; the self review against course/rubrics/postmortem.md |
 
 ## 6. Where it's used next
 

@@ -1,4 +1,4 @@
-<!-- ss:module L0.5 -->
+<!-- ol:module L0.5 -->
 # Training loop and the autograd bigram
 
 ## Overview
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start L0.5              # stubs loop.py; bigram.py is yours already: ss start prints its contract diff
-ss tests L0.5              # read the test catalog first: rung R0
-ss check L0.5              # also reruns L0.0's smoke tests against your bigram.py
-ss check L0.5 --ref-deps   # only if a dependency is not passing yet
-ss diff  L0.5              # after passing: your code against the reference
+ol start L0.5              # stubs loop.py; bigram.py is yours already: ol start prints its contract diff
+ol tests L0.5              # read the test catalog first: rung R0
+ol check L0.5              # also reruns L0.0's smoke tests against your bigram.py
+ol check L0.5 --ref-deps   # only if a dependency is not passing yet
+ol diff  L0.5              # after passing: your code against the reference
 ```
 
-`ss start` never overwrites your `bigram.py`. It prints what the contract adds (`BigramLogits`, the PCG32 sampler): edit your Pass 1 file in place.
+`ol start` never overwrites your `bigram.py`. It prints what the contract adds (`BigramLogits`, the PCG32 sampler): edit your Pass 1 file in place.
 
 Your CLI gains two verbs, fixed by `course/milestones/MS-L0.toml`: `train bigram --method autograd --data F --out DIR` (full-batch training of `BigramLogits` on every byte pair of `F`, then the same model directory as Pass 1, from `to_lm()`) and `train mlp --data digits.npz --hidden 64 --epochs 30 --ckpt DIR` (a two-layer ReLU MLP on the UCI digits through `DataLoader` and `train_step`; standardize each pixel with the training set's mean and standard deviation). `--method counts` stays the Pass 1 verb.
 
@@ -174,7 +174,7 @@ The two learning tests compare against bars in `course/fixtures/ref-thresholds.t
 | Forward | `L10.0` | your Rust engine serves the table `to_lm()` produces, unchanged (`tl_arch = bigram`) |
 | Forward | `L0.6` | takes over `safetensors.py`; its regression run of `L0.0`'s suite exercises your `bigram.py` too |
 
-Later passes (`L2.2`, `L3.6`, `L6.1`, the capstone) call `train_step` and `evaluate` as they are. If you skip this module, `ss milestone MS-L0` cannot train either model.
+Later passes (`L2.2`, `L3.6`, `L6.1`, the capstone) call `train_step` and `evaluate` as they are. If you skip this module, `ol milestone MS-L0` cannot train either model.
 
 ## Going further
 

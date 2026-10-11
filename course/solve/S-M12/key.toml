@@ -1,4 +1,4 @@
-# S-M12 answer key (hidden; honor system, DESIGN D34). `ss verify course S-M12`
+# S-M12 answer key (hidden; honor system, DESIGN D34). `ol verify course S-M12`
 # check 7 proves every `expect` passes and every `reject` canary fails;
 # course/oracle/solve/S-M12.py recomputes every value independently (direct
 # convolution and Toeplitz matrices built by loops, the size formula

@@ -1,4 +1,4 @@
-<!-- ss:module dep.07 -->
+<!-- ol:module dep.07 -->
 # Agent image and chart
 
 ## Overview
@@ -24,9 +24,9 @@
 ## How to work this chapter
 
 ```bash
-ss start dep.07
-ss tests dep.07
-ss check dep.07
+ol start dep.07
+ol tests dep.07
+ol check dep.07
 ```
 
 ## 1. Why now

@@ -1,4 +1,4 @@
-<!-- ss:module ops.00 -->
+<!-- ol:module ops.00 -->
 # First drill: the engine crashloops
 
 ## Overview
@@ -7,8 +7,8 @@
 |---|---|
 | **Module** | `ops.00` · drill · ops, docs · Pass 1 · 1 to 2 h |
 | **You build** | `docs/runbooks/engine-crashloop.md` (Symptoms, Diagnosis, Mitigation) and `docs/postmortems/<date>-engine-crashloop.md`, and you restore the service |
-| **Contract** | the drill spec `course/drills/engine-crashloop/drill.toml` (what is injected and what `ss drill end` checks: section 4) |
-| **Tests** | graded by `ss drill end`; no course tests to read (section 4 lists every check) |
+| **Contract** | the drill spec `course/drills/engine-crashloop/drill.toml` (what is injected and what `ol drill end` checks: section 4) |
+| **Tests** | graded by `ol drill end`; no course tests to read (section 4 lists every check) |
 | **Needs** | [`dep.00`](../../infrastructure/01-containers-kubernetes/00-tracer-deploy.md) (your engine and gateway on kind); you triage what [`L10.0`](../../ml/08-tinyllm/p10-serving/00-your-first-endpoint.md) and [`gw.00`](../../ai-platform-engineering/12-gateway/00-streaming-proxy.md) built, with the `kubectl` of [`lang.07`](../../software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md) |
 | **Used by** | no call site: a drill. Its runbook is the first of the runbooks craft.10 requires per alert |
 | **Milestone** | [MS-P1](../../paths/course-p01-tracer/milestone.md) |
@@ -20,16 +20,16 @@
 - Mitigate first, then find the root cause: `kubectl rollout undo` restores service in seconds; the durable fix goes through the chart.
 - Whether users see an outage depends on your rollout strategy and readiness probe, not only on the bug.
 - A runbook is a how-to guide written for the next person at 3 a.m.: symptoms they will see, commands that narrow the cause, steps that restore service.
-- A blameless postmortem has fixed sections, and `ss drill end` checks that yours does.
+- A blameless postmortem has fixed sections, and `ol drill end` checks that yours does.
 
 ## How to work this chapter
 
 ```bash
-ss drill list                      # engine-crashloop is ops.00
-ss drill start engine-crashloop    # injects the fault, prints only the page
+ol drill list                      # engine-crashloop is ops.00
+ol drill start engine-crashloop    # injects the fault, prints only the page
 # ... triage with kubectl, restore service, write the runbook and the postmortem ...
-ss drill end                       # grades: resolved, runbook, postmortem, time limit
-ss drill reset                     # replays the undo journal; always run it after `end`
+ol drill end                       # grades: resolved, runbook, postmortem, time limit
+ol drill reset                     # replays the undo journal; always run it after `end`
 ```
 
 ---
@@ -78,7 +78,7 @@ Either way the Deployment is broken until you act. The drill grades the service 
 
 **Runbooks and postmortems are different documents.** A **runbook** is a how-to guide for one symptom: what you see, how to narrow the cause, how to restore service. It is written before the next incident and kept current. A **postmortem** is the record of one incident: what happened, when, why, and what will change. It is **blameless**: it names systems and processes, never a person at fault, so people report what really happened. Its sections are fixed: Summary, Impact, Timeline, Root cause, Detection, Resolution, Action items.
 
-**Time to detect, time to mitigate.** $\text{TTD} = t_{det} - t_{inj}$ and $\text{TTM} = t_{mit} - t_{inj}$. Pass 1 has no alerts, so TTD is however long it takes a person to notice. From Pass 7, burn-rate alerts (`obs.03`) cut it to minutes, and `ss drill end` measures both from Prometheus.
+**Time to detect, time to mitigate.** $\text{TTD} = t_{det} - t_{inj}$ and $\text{TTM} = t_{mit} - t_{inj}$. Pass 1 has no alerts, so TTD is however long it takes a person to notice. From Pass 7, burn-rate alerts (`obs.03`) cut it to minutes, and `ol drill end` measures both from Prometheus.
 
 ## 3. Worked example by hand
 
@@ -119,7 +119,7 @@ At 10:03:00 ($t = 180$ s) `kubectl get pods` shows `RESTARTS 4`: attempts 1 to 4
 
 ```toml
 [deploy]
-kube_context = "kind-<system>"           # ss refuses any context that is not kind- or k3d-
+kube_context = "kind-<system>"           # ol refuses any context that is not kind- or k3d-
 namespace    = "<system>"
 gateway_url  = "http://127.0.0.1:30080"  # the gateway NodePort
 traces       = "http://127.0.0.1:30686"  # Jaeger query
@@ -128,7 +128,7 @@ services     = { engine = "deploy/<system>-engine", gateway = "deploy/<system>-g
 
 Export your gateway key in the variable `[endpoints].api_key_env` names (default `TL_API_KEY`); the second resolve check calls the gateway with it.
 
-**Inject.** `ss drill start engine-crashloop` checks the safety gate (current context equals `kube_context`, which starts with `kind-` or `k3d-`; the namespace exists), then patches the first container of `services.engine`: its args become the tracer engine's flags (`spec/cli-roles.md`) with `--model-dir /missing`, at the Kubernetes ports `8000` and `9464`. The undo (your original args) goes to `.ss/drills/<run>/journal.jsonl`. You see only the page.
+**Inject.** `ol drill start engine-crashloop` checks the safety gate (current context equals `kube_context`, which starts with `kind-` or `k3d-`; the namespace exists), then patches the first container of `services.engine`: its args become the tracer engine's flags (`spec/cli-roles.md`) with `--model-dir /missing`, at the Kubernetes ports `8000` and `9464`. The undo (your original args) goes to `.ol/drills/<run>/journal.jsonl`. You see only the page.
 
 **Detect.** There is no alert in Pass 1. Work outside in: which workload is unhealthy, why its last container exited, what its previous log says, and what changed. These commands answer the four questions in that order; your runbook's Diagnosis section says what each output means, in your own words:
 
@@ -167,18 +167,18 @@ Numbered steps that restore service, how to confirm it, and the durable fix.
 
 **Write the postmortem.** `docs/postmortems/<YYYY-MM-DD>-engine-crashloop.md` (the date in UTC), with the headings Summary, Impact, Timeline, Root cause, Detection, Resolution, Action items. The timeline is a table like the one in section 3; the action items say how the next rollout could not cause this (a readiness probe, `maxUnavailable: 0`, changes only through `helm upgrade`).
 
-**Verify.** `ss drill end` grades, then prints the seed and what was injected:
+**Verify.** `ol drill end` grades, then prints the seed and what was injected:
 
 | Check | Passes when | Why it matters |
 |---|---|---|
 | detected | always, with "graded manually": this drill has no `[detect]` block | Pass 1 has no Prometheus; you are the detector |
 | resolve 1 | the engine rollout (`services.engine`) has converged within 60 s: every replica updated and available | Kubernetes, not you, now keeps a Ready engine running |
-| resolve 2 | `ss conform openapi:v0:gateway:smoke` against `[deploy].gateway_url` passes: the v0 smoke cases (completion schema, SSE framing, and 401 without a key; the health case is pending unless `[deploy].gateway_health_url` is set) through your gateway NodePort | completions flow again, so a Ready engine is behind the gateway |
+| resolve 2 | `ol conform openapi:v0:gateway:smoke` against `[deploy].gateway_url` passes: the v0 smoke cases (completion schema, SSE framing, and 401 without a key; the health case is pending unless `[deploy].gateway_health_url` is set) through your gateway NodePort | completions flow again, so a Ready engine is behind the gateway |
 | postmortem | the newest `docs/postmortems/*-engine-crashloop.md` has all seven headings | the incident is recorded in the fixed shape |
 | runbook | `docs/runbooks/engine-crashloop.md` has Symptoms, Diagnosis, Mitigation headings (the drill's `[[doc]]` table) | the next person needs minutes, not your 45 |
 | time limit | `end` within 45 minutes of `start` | keeps the drill honest |
 
-`ss drill end` grades the runbook and the postmortem the same way: a missing file or heading fails the drill. It records the verdict under `ops.00`, which MS-P1 requires. Then run `ss drill reset`: it replays the journal in reverse (after your rollback the replayed undo changes nothing).
+`ol drill end` grades the runbook and the postmortem the same way: a missing file or heading fails the drill. It records the verdict under `ops.00`, which MS-P1 requires. Then run `ol drill reset`: it replays the journal in reverse (after your rollback the replayed undo changes nothing).
 
 ## 5. Pitfalls
 
@@ -188,7 +188,7 @@ Numbered steps that restore service, how to confirm it, and the durable fix.
 | 2 | Deleting the crashing pod to "restart it" | the ReplicaSet makes an identical pod that crashes the same way | resolve 1 and resolve 2 stay red |
 | 3 | Scaling the engine to zero to stop the restarts | the restarts stop and so does the service | resolve 2 stays red |
 | 4 | Fixing the args with `kubectl edit` and never touching the chart | it works until the next `helm upgrade` reapplies whatever the chart says | the postmortem's action items; review |
-| 5 | Running `ss drill reset` before `ss drill end` | the run is marked reset and never graded | ss drill end refuses: no active drill |
+| 5 | Running `ol drill reset` before `ol drill end` | the run is marked reset and never graded | ol drill end refuses: no active drill |
 | 6 | A postmortem that names who broke it, or skips a heading | the team stops reporting honestly; `end` fails on the missing heading | the postmortem check |
 
 ## 6. Where it's used next

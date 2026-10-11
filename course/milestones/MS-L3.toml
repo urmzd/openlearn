@@ -46,7 +46,7 @@
 # TinyStories token files (course-corpora is not published; DEVIATIONS
 # B54-01, B63-06).
 #
-# `ss milestone MS-L3 --smoke` takes about a minute; the full run about 5.
+# `ol milestone MS-L3 --smoke` takes about a minute; the full run about 5.
 id       = "MS-L3"
 title    = "Your recurrent language models, trained, ordered, and scored through your CLI"
 requires = ["L3.1", "L3.2", "L3.3", "L3.4", "L3.6"]

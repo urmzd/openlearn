@@ -1,4 +1,4 @@
-<!-- ss:module ag.02 -->
+<!-- ol:module ag.02 -->
 # Tools, registry, JSON Schema argument validation
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start ag.02
-ss tests ag.02
-ss check ag.02          # runs ag.01's smoke tests first
-ss diff  ag.02
+ol start ag.02
+ol tests ag.02
+ol check ag.02          # runs ag.01's smoke tests first
+ol diff  ag.02
 ```
 
 ---

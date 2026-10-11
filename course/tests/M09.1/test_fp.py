@@ -122,7 +122,7 @@ def test_ulp_matches_numpy_spacing():
     # CHAPTER: M09.1 section 2.2
     x32 = F32[np.abs(F32) < np.finfo(np.float32).max]
     assert (ulp(x32, "f32") == np.abs(np.spacing(x32)).astype(np.float64)).all()
-    g = PCG32(int(os.environ.get("SS_SEED", "0")), seq=111)
+    g = PCG32(int(os.environ.get("OL_SEED", "0")), seq=111)
     x16 = np.array([g.below(0x7BFF) for _ in range(2000)], dtype=np.uint16).view(
         np.float16
     )
@@ -228,7 +228,7 @@ def test_fp16_matches_numpy_bitwise():
     # KIND: differential, golden
     # CATCHES: s06, s07, s08, m02
     # CHAPTER: M09.1 section 2.4
-    g = PCG32(int(os.environ.get("SS_SEED", "0")), seq=112)
+    g = PCG32(int(os.environ.get("OL_SEED", "0")), seq=112)
     rnd = np.array([g.next_u32() for _ in range(100_000)], dtype=np.uint32).view(
         np.float32
     )

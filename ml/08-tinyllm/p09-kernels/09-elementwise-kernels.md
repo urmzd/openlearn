@@ -1,4 +1,4 @@
-<!-- ss:module L9.6 -->
+<!-- ol:module L9.6 -->
 # Elementwise kernels in C: RMSNorm, RoPE, SiLU-mul, embedding, add, argmax
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L9.6              # stubs c/src/kernels/elementwise.c into your repo
-ss tests L9.6              # read the test catalog first
-ss check L9.6              # exit code is the verdict
-ss check L9.6 --ref-deps   # only if rt.02, M09.5, M09.6, L7.1, or L7.3 is not passing yet
-ss diff  L9.6              # after passing: your code against the reference
+ol start L9.6              # stubs c/src/kernels/elementwise.c into your repo
+ol tests L9.6              # read the test catalog first
+ol check L9.6              # exit code is the verdict
+ol check L9.6 --ref-deps   # only if rt.02, M09.5, M09.6, L7.1, or L7.3 is not passing yet
+ol diff  L9.6              # after passing: your code against the reference
 ```
 
 ---

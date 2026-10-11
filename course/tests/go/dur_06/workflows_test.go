@@ -17,7 +17,7 @@ import (
 	"tinyllm/durable/worker"
 	"tinyllm/durable/workflow"
 
-	"supersource.urmzd.com/tl/testkit/failpoint"
+	"openlearn.urmzd.com/tl/testkit/failpoint"
 )
 
 var opts = workflow.ActivityOptions{StartToClose: 10 * time.Second}

@@ -1,4 +1,4 @@
-<!-- ss:module M08.1 -->
+<!-- ol:module M08.1 -->
 # Dual numbers and forward-mode autodiff
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M08.1              # stubs dual.py into your repo, contract alongside
-ss tests M08.1              # read the test catalog first: rung R0, you write no tests here
-ss check M08.1              # exit code is the verdict
-ss check M08.1 --ref-deps   # only if your M01.3 or M04.2 is not passing yet
-ss diff  M08.1              # after passing: your code against the reference
+ol start M08.1              # stubs dual.py into your repo, contract alongside
+ol tests M08.1              # read the test catalog first: rung R0, you write no tests here
+ol check M08.1              # exit code is the verdict
+ol check M08.1 --ref-deps   # only if your M01.3 or M04.2 is not passing yet
+ol diff  M08.1              # after passing: your code against the reference
 ```
 
 ---
@@ -166,7 +166,7 @@ def jvp(f: Callable[[Dual], Any], x: ArrayLike, v: ArrayLike) -> tuple[NDArray, 
 | Forward | `M08.2` | reverse mode is checked against `Dual` on the same expressions |
 | Forward | `L0.2` | each elementwise op's backward is checked against its dual derivative |
 
-If you skip this module, `ss check M08.2` stops with `M08.2 needs M08.1`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check M08.2` stops with `M08.2 needs M08.1`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

@@ -28,7 +28,7 @@ Generating text fast and exactly. The sampler and logit processors in the course
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L8.1` | [Sampling and logit processors](01-sampling-and-logit-processors.md) | build | 6 |
@@ -39,7 +39,7 @@ Generating text fast and exactly. The sampler and logit processors in the course
 | 6 | `L8.6` | [Speculative decoding: n-gram, prompt-lookup, and model drafts](06-speculative-decoding.md) | build | 6 |
 | 7 | `L8.7` | [Constrained decoding: regex to DFA to token masks, JSON-schema subset](07-constrained-decoding.md) | build | 6 |
 | 8 | `rt.04` | [Paged KV block pool (format v1, optional C)](08-paged-kv-block-pool.md) | side | 6 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Going further
 

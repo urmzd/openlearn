@@ -1,4 +1,4 @@
-<!-- ss:module L10.1 -->
+<!-- ol:module L10.1 -->
 # Candle model runner (Llama + bigram, int4), Rust KV cache, sampler and PCG32
 
 ## Overview
@@ -8,10 +8,10 @@
 | **Module** | `L10.1` · build · Rust · Pass 7 · 14 to 20 h |
 | **You build** | `rust/crates/tl-engine/src/kv.rs`: the bounded Rust KV cache · `rust/crates/tl-engine/src/quant.rs` (f16, bf16, int4) · `model.rs` (config.json, the memory-mapped safetensors reader, the weights) · `forward.rs` (the Llama and bigram forwards built with Candle tensors) · `runner.rs` (`ModelRunner`, `EngineConfig`, the KV pool) · `sample.rs` (PCG32 and the sampler) · the module lines of the `tl-engine/src/lib.rs` crate root |
 | **Contract** | files: [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../../course/contracts/formats/config.schema.json), [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md) · determinism: [`spec/sampling.md`](../../../course/contracts/spec/sampling.md), [`spec/pcg32.md`](../../../course/contracts/spec/pcg32.md) |
-| **Tests** | `course/tests/rust/l10_1.rs`, 24 tests (what they check: section 4); parity suites `ss parity sampler rng` (your Rust against your Python, through one golden file) |
+| **Tests** | `course/tests/rust/l10_1.rs`, 24 tests (what they check: section 4); parity suites `ol parity sampler rng` (your Rust against your Python, through one golden file) |
 | **Needs** | `L10.0` the checkpoint contract ([chapter](00-your-first-endpoint.md)) · reading: `lang.04` Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/04-rust.md)), `L8.1` the Python sampler you port, `M06.3` PCG32, `L7.9` the Llama model you port, `L8.5` the int4 scheme, `M09.4` f16 rounding, `L9.7` the Python twin of this runner, `L1.5` tl-tok · or `--ref-deps` |
 | **Used by** | `L10.2` (the scheduler runs this runner), `L10.3` (chunked prefill feeds it), `L10.4` (the block manager hands it blocks), `L10.5` (the engine loop and the server) · later: `L10.6`, `L10.8`, `L10.9` |
-| **Milestone** | `MS-L10` (the engine's greedy stream equals your Python's; `ss parity sampler`) |
+| **Milestone** | `MS-L10` (the engine's greedy stream equals your Python's; `ol parity sampler`) |
 | **Optional depth** | [Rust reference, `Drop`](https://doc.rust-lang.org/reference/destructors.html) (free); [safetensors format](https://github.com/huggingface/safetensors) (free); [Hugging Face `modeling_llama.py`](https://github.com/huggingface/transformers/blob/main/src/transformers/models/llama/modeling_llama.py) (free); [Kwon et al. 2023, PagedAttention](https://arxiv.org/abs/2309.06180) (free) |
 
 ## Key Takeaways
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.1               # stubs tl-engine kv, quant, model, forward, runner, sample
-ss tests L10.1               # read the test catalog first: rung R0, you write no graded tests here
-ss check L10.1               # exit code is the verdict
-ss check L10.1 --ref-deps    # only if a referenced module is not passing yet
-ss parity sampler rng        # your Rust sampler and PCG32 against your Python, through the golden files
+ol start L10.1               # stubs tl-engine kv, quant, model, forward, runner, sample
+ol tests L10.1               # read the test catalog first: rung R0, you write no graded tests here
+ol check L10.1               # exit code is the verdict
+ol check L10.1 --ref-deps    # only if a referenced module is not passing yet
+ol parity sampler rng        # your Rust sampler and PCG32 against your Python, through the golden files
 ```
 
-`ss start` never rewrites your files. Add one `pub mod` line per new file to `tl-engine/src/lib.rs` (yours since `L8.4`). Add Candle, `anyhow`, `memmap2`, and `serde_json` from `contracts/allowed-deps.toml` to `tl-engine/Cargo.toml`.
+`ol start` never rewrites your files. Add one `pub mod` line per new file to `tl-engine/src/lib.rs` (yours since `L8.4`). Add Candle, `anyhow`, `memmap2`, and `serde_json` from `contracts/allowed-deps.toml` to `tl-engine/Cargo.toml`.
 
 ---
 
@@ -192,7 +192,7 @@ pub fn sample(logits: &[f32], p: &SamplingParams, prompt: &[u32], output: &[u32]
 |---|---|---|---|
 | `hand_example_sampling` | unit | section 3: top-k 3 and top-p 0.8 keep ids 1 and 3, $u = 0.80209$, token 3 with logprob $-0.92487$ | the spec's worked example, end to end |
 | `pcg32_reference_vectors` | golden | `pcg32(42)` demo line, `uniform_f64`, `child_seed`, `stream` outputs from `pcg32.vectors.json` | one generator in every language (D10) |
-| `sampler_matches_l81_golden` | differential, golden | 12 cases x 12 tokens: ids and f64 logprobs bit for bit against L8.1's golden | `ss parity sampler`; the engine's seeded streams equal your Python's |
+| `sampler_matches_l81_golden` | differential, golden | 12 cases x 12 tokens: ids and f64 logprobs bit for bit against L8.1's golden | `ol parity sampler`; the engine's seeded streams equal your Python's |
 | `greedy_takes_no_draw_and_sampling_takes_one` | property | greedy leaves the generator untouched; a sampled token takes one `uniform_f64` | draw accounting for the disaggregated hand-off (L10.6) |
 | `top_p_keeps_the_crossing_token` | boundary | mass exactly at $p$ keeps the crossing id | nucleus edge, the most common sampler bug |
 | `penalties_follow_hf_and_openai_semantics` | unit | repetition divides positives and multiplies negatives over prompt and output; presence and frequency over output only | the OpenAI request fields mean what clients expect |

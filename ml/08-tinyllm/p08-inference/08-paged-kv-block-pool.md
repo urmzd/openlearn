@@ -1,4 +1,4 @@
-<!-- ss:module rt.04 -->
+<!-- ol:module rt.04 -->
 # Paged KV block pool (format v1, optional C)
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `rt.04` · side · C · Pass 6 · 6 to 8 h |
 | **You build** | `c/src/runtime/kv_pool.c`: the pool (`tl_kv_pool_create`, `_destroy`, `_cfg`, `tl_kv_alloc`, `tl_kv_ref`, `tl_kv_unref`, `tl_kv_cow`, `tl_kv_set_fill`, `tl_kv_fill`, `tl_kv_block_ptr`, `tl_kv_block_bytes`, `tl_kv_stats_get`), the prefix index (`tl_kv_block_hash`, `tl_kv_register`, `tl_kv_lookup`), and the wire format (`tl_kv_export_bytes`, `tl_kv_export`, `tl_kv_import`, `tl_crc32c`) |
 | **Contract** | [`tinyllm/kv_pool.h`](../../../course/contracts/c/include/tinyllm/kv_pool.h); the hash and the bytes in [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md); rules in [`c/ABI.md`](../../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/rt.04/test_kv_pool.c`, 20 tests under ASan and UBSan with the counting allocator (what they check: section 4) · your own tests in `c/tests/rt04-kv-pool/`, rung R3, graded by mutation (threshold 0.70) · parity suite `ss parity kv.wire.v1` |
+| **Tests** | `course/tests/rt.04/test_kv_pool.c`, 20 tests under ASan and UBSan with the counting allocator (what they check: section 4) · your own tests in `c/tests/rt04-kv-pool/`, rung R3, graded by mutation (threshold 0.70) · parity suite `ol parity kv.wire.v1` |
 | **Needs** | `rt.02` (C allocation and error support) · `ds.01` [`tl_vec`](../../../algorithms/16-systems-data-structures/01-growable-array.md) (the free list) · `ds.02` [the Swiss table](../../../algorithms/16-systems-data-structures/02-swiss-table.md) (the prefix index) · `ds.03` [the intrusive LRU](../../../algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md) (cached blocks) · reading: `M06.3` [FNV-1a](../../../math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) and [`L8.2`'s contiguous cache](README.md) |
 | **Used by** | `L9.4` uses the pool in its standalone C paged-attention exercise; cross-language comparisons use fixture files. |
 | **Milestone** | `MS-L9`, the optional standalone C module group |
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start rt.04              # stubs c/src/runtime/kv_pool.c
-ss tests rt.04              # read the test catalog first
-ss check rt.04              # exit code is the verdict; then grades your tests by mutation
-ss parity kv.wire.v1        # your export bytes against the golden envelopes
-ss diff  rt.04              # after passing: your code against the reference
+ol start rt.04              # stubs c/src/runtime/kv_pool.c
+ol tests rt.04              # read the test catalog first
+ol check rt.04              # exit code is the verdict; then grades your tests by mutation
+ol parity kv.wire.v1        # your export bytes against the golden envelopes
+ol diff  rt.04              # after passing: your code against the reference
 ```
 
 Write it in three passes, each green before the next: (1) create, alloc, ref, unref, cow, block_ptr, stats, with no hashing at all; (2) `tl_crc32c`, `tl_kv_block_hash`, register, lookup, and the LRU of cached blocks; (3) export and import against the 60-byte worked envelope.
@@ -153,9 +153,9 @@ Two choices the header leaves open are fixed here: export refuses a block with f
 | `create_rules_and_alloc_failure` | boundary, fault | format 2 and other dtypes `TL_EUNSUPPORTED`; zero dimensions `TL_EINVAL`; every failing allocation of create `TL_ENOMEM` with no leak | the engine starts or fails cleanly |
 | `random_ops_keep_the_invariants` | property | 40 seeded runs of alloc, ref, unref, cow, register, lookup, export, and import against a model of the refcounts; held blocks keep their contents | the three promises under any interleaving |
 
-**Your tests (rung R3).** First write C files under `c/tests/rt04-kv-pool/` and run `ss tdd red rt.04` against your stub; then implement until `ss tdd green rt.04`. Name them `hash_chain_by_hand`, `alloc_all_or_nothing`, `unref_caches_registered_blocks`, `double_unref_refused`, `lookup_hit_is_not_evicted`, `cow_copies_shared_blocks`, `partial_blocks_not_registered`, `roundtrip_and_bit_flip`. The planted bug "a revived block stays on the eviction list" (`s11`) is required; overall 70%.
+**Your tests (rung R3).** First write C files under `c/tests/rt04-kv-pool/` and run `ol tdd red rt.04` against your stub; then implement until `ol tdd green rt.04`. Name them `hash_chain_by_hand`, `alloc_all_or_nothing`, `unref_caches_registered_blocks`, `double_unref_refused`, `lookup_hit_is_not_evicted`, `cow_copies_shared_blocks`, `partial_blocks_not_registered`, `roundtrip_and_bit_flip`. The planted bug "a revived block stays on the eviction list" (`s11`) is required; overall 70%.
 
-**Parity.** `ss parity kv.wire.v1` feeds six sequences (the worked example, partial tails, several layers and heads) through a driver that builds the blocks with your pool and compares `tl_kv_export` with envelopes written by an independent Python transcription of `formats/kv-block.md`; the Rust writer of `L10.6` joins the same suite.
+**Parity.** `ol parity kv.wire.v1` feeds six sequences (the worked example, partial tails, several layers and heads) through a driver that builds the blocks with your pool and compares `tl_kv_export` with envelopes written by an independent Python transcription of `formats/kv-block.md`; the Rust writer of `L10.6` joins the same suite.
 
 ## 5. Pitfalls
 
@@ -210,7 +210,7 @@ Two choices the header leaves open are fixed here: export refuses a block with f
 | Forward | `L10.4` | the engine's block manager with `--prefix-cache=hash` uses register and lookup |
 | Forward | `L10.6` | prefill and decode engines move blocks as export envelopes |
 
-If you skip this module, `ss check L8.3` stops with `needs rt.04: build it, or pass --ref-deps`.
+If you skip this module, `ol check L8.3` stops with `needs rt.04: build it, or pass --ref-deps`.
 
 ## Going further
 

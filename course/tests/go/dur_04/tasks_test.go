@@ -14,7 +14,7 @@ import (
 	"tinyllm/durable/queue"
 	"tinyllm/durable/server"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 // guard bounds an rpc that long-polls the fake clock: a poll with nothing to

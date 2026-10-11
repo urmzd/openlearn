@@ -6,7 +6,7 @@ pass      = 8
 chapter   = "systems/05-incident-response-and-chaos/03-poison-task.md"
 contract  = []
 # The drill poisons dep.06's worker Deployment and is detected on obs.05's
-# scrapes (`ss drill start` refuses until both pass). The queue's retries,
+# scrapes (`ol drill start` refuses until both pass). The queue's retries,
 # dead-letter queue, and redrive (dur.03) and the worker's failpoint hook
 # (dur.04) join `reading` once B10 registers them (DEVIATIONS B103-04, B103-07).
 deps      = ["dep.06", "obs.05"]

@@ -1,7 +1,7 @@
 # Pass 0: setup (DESIGN 7.4). Stage check column: DESIGN 5.15.
 # stage	title	files	done when	check
-1	Toolchain	paths/course-p00-setup/README.md	ss doctor reports python, uv, cc, cargo, go, docker, kubectl, kind, helm, tilt present.	-
+1	Toolchain	paths/course-p00-setup/README.md	ol doctor reports python, uv, cc, cargo, go, docker, kubectl, kind, helm, tilt present.	-
 2	Python and numpy	software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md	You can predict a broadcast's shape and vectorize a count.	module:lang.01
 3	Shell, git, make, processes	software-craftsmanship/12-language-and-tool-primers/02-shell-git-make.md	Your script exits 143 on SIGTERM and make rebuilds only what changed.	module:lang.02
-4	Your repo and CI gate	software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md	ss course init created your repo; CI lints commit messages, runs native tests, and runs ss check --all --ci.	module:craft.01
+4	Your repo and CI gate	software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md	ol course init created your repo; CI lints commit messages, runs native tests, and runs ol check --all --ci.	module:craft.01
 5	Milestone	paths/course-p00-setup/milestone.md	Your first conventional commit is green in CI.	milestone:MS-P0

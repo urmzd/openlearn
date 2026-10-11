@@ -176,10 +176,10 @@ Retrieval has its own metrics, separate from generation (full treatment in [LLM 
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ag.06` | [RAG ingest: crawler with SSRF allowlist, chunker, embedder, store](06-rag-ingest.md) | build | 10 |
 | 2 | `ag.07` | [Retrieval: BM25, flat and IVF vectors, RRF, MMR](07-retrieval.md) | build | 10 |
 | 3 | `ag.08` | [Context assembly, citations, search_docs tool](08-context-assembly.md) | build | 10 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

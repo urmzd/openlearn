@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # craft.01 reference: the three CI gates run locally, for a repo with no
 # GitHub remote. system.toml declares it as `[ci] local = [["bash", "scripts/ci-local.sh"]]`,
-# which is what MS-P0's ci-status step runs in that case. Set SS_BIN to your
-# supersource clone's practice/bin/ss.
+# which is what MS-P0's ci-status step runs in that case. Set OL_BIN to your
+# openlearn clone's practice/bin/ol.
 # SOLUTION-BEGIN craft.01
 set -euo pipefail
 
@@ -18,9 +18,9 @@ make -s -C primers/lang.02 clean
 (cd primers/lang.01 && uv run --quiet python -c "import bigram, worksheet")
 
 echo "== course-check"
-# The supersource checkout whose ss grades you: $SS_BIN when set (your local
-# clone's practice/bin/ss), else the one the CI recipe clones (ss course ci).
-ss="${SS_BIN:-.ss/supersource/practice/bin/ss}"
-[ -x "$ss" ] || { echo "no ss at $ss: set SS_BIN, or clone supersource as \`ss course ci\` shows" >&2; exit 5; }
-SS_COURSE_HOME="$PWD" "$ss" check --all --ci
+# The openlearn checkout whose ol grades you: $OL_BIN when set (your local
+# clone's practice/bin/ol), else the one the CI recipe clones (ol course ci).
+ss="${OL_BIN:-.ol/openlearn/practice/bin/ol}"
+[ -x "$ol" ] || { echo "no ol at $ss: set OL_BIN, or clone openlearn as \`ol course ci\` shows" >&2; exit 5; }
+OL_COURSE_HOME="$PWD" "$ol" check --all --ci
 # SOLUTION-END

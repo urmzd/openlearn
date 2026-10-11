@@ -9,6 +9,6 @@ The code a model is written in and the files it ships as: PyTorch, JAX, and Kera
 The stages, their chapters, and what "done" means for each are in [`path.tsv`](path.tsv).
 
 ```bash
-practice/bin/ss learn frameworks-and-models          # stages and progress
-practice/bin/ss learn frameworks-and-models next     # read the next unfinished stage
+practice/bin/ol learn frameworks-and-models          # stages and progress
+practice/bin/ol learn frameworks-and-models next     # read the next unfinished stage
 ```

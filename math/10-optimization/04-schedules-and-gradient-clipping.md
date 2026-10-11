@@ -1,4 +1,4 @@
-<!-- ss:module M10.4 -->
+<!-- ol:module M10.4 -->
 # Learning-rate schedules (cosine, WSD, Noam) and gradient clipping
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M10.4              # stubs python/tinyllm/optim/schedule.py, contract alongside
-ss tests M10.4              # read the test catalog first: rung R0, you write no tests here
-ss check M10.4              # exit code is the verdict
-ss diff  M10.4              # after passing: your code against the reference
+ol start M10.4              # stubs python/tinyllm/optim/schedule.py, contract alongside
+ol tests M10.4              # read the test catalog first: rung R0, you write no tests here
+ol check M10.4              # exit code is the verdict
+ol diff  M10.4              # after passing: your code against the reference
 ```
 
 ---
@@ -166,7 +166,7 @@ def clip_grad_norm_(params, max_norm: float) -> float   # in place; returns the 
 | Forward | `L5.5` | the Noam schedule for the 2017 Transformer |
 | Forward | `C1` | WSD with `decay_frac` and `grad_clip = 1.0` from `formats/train-spec.schema.json` |
 
-If you skip this module, `ss check L0.5` stops with `BLOCKED ... needs M10.4`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L0.5` stops with `BLOCKED ... needs M10.4`: build it, or pass `--ref-deps`.
 
 ## Going further
 

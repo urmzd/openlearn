@@ -45,6 +45,6 @@ sooner? Which one, with what threshold?>
 | <action> | <kind> | <you> | <link or "open"> |
 
 <!-- contracts/templates/POSTMORTEM.md (ops.*, every drill): copy to
-     docs/postmortems/<date>-<drill>.md. `ss drill end` checks that every
+     docs/postmortems/<date>-<drill>.md. `ol drill end` checks that every
      section heading above is present and non-empty; content is graded with
      course/rubrics/postmortem.md. -->

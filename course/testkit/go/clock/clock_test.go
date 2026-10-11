@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/clock"
+	"openlearn.urmzd.com/tl/testkit/clock"
 )
 
 var t0 = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)

@@ -1,4 +1,4 @@
-<!-- ss:module M02.2 -->
+<!-- ol:module M02.2 -->
 # Series convergence, EMA as a geometric series, bias correction
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M02.2              # stubs python/tinyllm/num/ema.py into your repo
-ss tests M02.2              # read the test catalog first: rung R0, you write no tests here
-ss check M02.2              # exit code is the verdict
-ss check M02.2 --ref-deps   # only if your M00.3 is not passing yet
-ss diff  M02.2              # after passing: your code against the reference
+ol start M02.2              # stubs python/tinyllm/num/ema.py into your repo
+ol tests M02.2              # read the test catalog first: rung R0, you write no tests here
+ol check M02.2              # exit code is the verdict
+ol check M02.2 --ref-deps   # only if your M00.3 is not passing yet
+ol diff  M02.2              # after passing: your code against the reference
 ```
 
 ---

@@ -1,4 +1,4 @@
-<!-- ss:module ops.05 -->
+<!-- ol:module ops.05 -->
 # Drill: API v2 migration
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ops.05
-ss tests ops.05
-ss check ops.05
+ol start ops.05
+ol tests ops.05
+ol check ops.05
 ```
 
 ---

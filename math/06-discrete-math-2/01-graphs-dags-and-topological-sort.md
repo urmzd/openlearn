@@ -1,4 +1,4 @@
-<!-- ss:module M06.1 -->
+<!-- ol:module M06.1 -->
 # Graphs, DAGs, and an iterative topological sort
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M06.1              # stubs python/tinyllm/autograd/graph.py into your repo
-ss tests M06.1              # read the test catalog first: rung R0, you write no tests here
-ss check M06.1              # exit code is the verdict
-ss diff  M06.1              # after passing: your code against the reference
+ol start M06.1              # stubs python/tinyllm/autograd/graph.py into your repo
+ol tests M06.1              # read the test catalog first: rung R0, you write no tests here
+ol check M06.1              # exit code is the verdict
+ol diff  M06.1              # after passing: your code against the reference
 ```
 
 ---
@@ -188,7 +188,7 @@ def toposort(root: T, parents: Callable[[T], Iterable[T]]) -> list[T]:
 | Forward | `L8.7` | regex and JSON-schema automata are graphs; reachability and cycles come from this traversal |
 | Forward | `M06.2` | tries are trees, the simplest DAGs (reading) |
 
-If you skip this module, `ss check M08.2` stops with `BLOCKED ... needs M06.1`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check M08.2` stops with `BLOCKED ... needs M06.1`: build it, or pass `--ref-deps`.
 
 ## Going further
 

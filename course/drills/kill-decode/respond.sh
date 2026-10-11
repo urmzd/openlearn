@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Scripted responder for drill ops.01 kill-decode (DESIGN 5.10, "Drills in
 # CI"): the reference response, run by the nightly kind job against the
-# reference system after `ss drill start kill-decode`, before `ss drill end`.
+# reference system after `ol drill start kill-decode`, before `ol drill end`.
 #
-#   respond.sh [LEARNER_DIR]     (default: $SS_COURSE_HOME, else the current dir)
+#   respond.sh [LEARNER_DIR]     (default: $OL_COURSE_HOME, else the current dir)
 #
 # The fault heals itself (the Deployment replaces the pod), so the response
 # is the runbook's: diagnose, confirm the replacement becomes Ready, and wait
@@ -14,7 +14,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 course="$(cd "$here/../.." && pwd)"
-learner="$(cd "${1:-${SS_COURSE_HOME:-$PWD}}" && pwd)"
+learner="$(cd "${1:-${OL_COURSE_HOME:-$PWD}}" && pwd)"
 
 read -r name ctx ns target < <(python3 - "$learner/system.toml" <<'PY'
 import sys, tomllib

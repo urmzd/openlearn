@@ -20,7 +20,7 @@ from _lib.close import assert_close
 from _lib.pcg32 import PCG32
 from tinyllm.num.newton import newton, rsqrt_newton
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 SQRT2 = math.sqrt(2.0)
 
 

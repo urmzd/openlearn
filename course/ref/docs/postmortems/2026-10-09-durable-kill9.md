@@ -3,7 +3,7 @@
 Drill `ops.02`. Blameless: this document is about the system and the
 process, not about who typed the command. A model postmortem: the times and
 counts show the shape of this incident; yours come from your dashboard,
-`{ctl} wf describe`, and `ss drill end`.
+`{ctl} wf describe`, and `ol drill end`.
 
 ## Summary
 
@@ -35,7 +35,7 @@ All times UTC.
 | Time | Event |
 |---|---|
 | 10:00:00 | `{ctl} data build ... --id drill-kill9` starts CorpusBuild |
-| 10:00:05 | `ss drill start durable-kill9` |
+| 10:00:05 | `ol drill start durable-kill9` |
 | 10:00:25 | first SIGKILL of `<system>-durable-0` (fetch and filter done, dedup running) |
 | 10:00:33 | the pod is Ready again: recovery truncated 1 torn record, replayed 412 records |
 | 10:00:55 to 10:02:25 | four more kills, 30 s apart |
@@ -46,7 +46,7 @@ All times UTC.
 | 10:04:40 | the alert resolves: no redelivery in the last 2 minutes |
 | 10:06:10 | CorpusBuild completes |
 | 10:07:30 | the same start returns the finished run with the clean-run numbers; the ledger verifies |
-| 10:09:00 | `ss drill end` |
+| 10:09:00 | `ol drill end` |
 
 ## Root cause
 

@@ -35,7 +35,7 @@ def hand_model() -> BigramLM:
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def random_ids(rng: PCG32, n: int, vocab: int) -> np.ndarray:

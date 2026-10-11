@@ -1,4 +1,4 @@
-<!-- ss:module dur.07 -->
+<!-- ol:module dur.07 -->
 # Durable timers and the test clock
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.07
-ss tests dur.07
-ss check dur.07          # needs dur.06 (or --ref-deps)
-ss diff  dur.07
+ol start dur.07
+ol tests dur.07
+ol check dur.07          # needs dur.06 (or --ref-deps)
+ol diff  dur.07
 ```
 
 Write the heap and check it against section 3's trace, then the service, then the server commands.

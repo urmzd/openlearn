@@ -27,7 +27,7 @@ speculation on, and answers a forced tool call with a schema-valid call.
 PR CI runs on L7.9's committed tiny-llama-2l, in its 1024-position copy
 tiny-llama-2l-1k (the same weights: a tool request's schema prompt is about
 470 byte tokens, past the original 256); the nightly step serves
-SmolLM2-135M-Instruct (`ss fetch smollm2-135m-instruct`) and lets it choose
+SmolLM2-135M-Instruct (`ol fetch smollm2-135m-instruct`) and lets it choose
 to call a tool.
 
 Your system.toml must declare (spec/cli-roles.md, DESIGN 2.16):
@@ -68,7 +68,7 @@ fixture logits (L10.1's course tests, parity/sampler); the engine's greedy
 stream equals your Python on the tiny model (L10.1's runner tests and
 conformance chat.nonstream.greedy).
 
-`ss milestone MS-L10 --smoke` runs the conformance step only.
+`ol milestone MS-L10 --smoke` runs the conformance step only.
 
 ## MS-gateway: Your gateway passes conformance and its usage ledger reconciles with the engine
 
@@ -112,7 +112,7 @@ tests (a backend killed before its first byte is retried elsewhere); a
 runner step that stops one engine instance mid-milestone is a harness
 addition (DEVIATIONS B94-17).
 
-`ss milestone MS-gateway --smoke` runs every step except the CLI step.
+`ol milestone MS-gateway --smoke` runs every step except the CLI step.
 
 ## MS-prod: Production on kind: your gateway, disaggregated engines, and observability hold the SLOs
 
@@ -151,11 +151,11 @@ by a ServiceMonitor labelled release: observability (so its series carry
 
 SLO bounds are the course defaults of DESIGN 2.11 (TTFT p95 0.5 s, TPOT p95
 60 ms at 4 rps, 5xx ratio under 0.5%); scaling them by the in-cluster
-calibration (ss bench --calibrate --in-cluster) is a harness change that
+calibration (ol bench --calibrate --in-cluster) is a harness change that
 has not landed (DEVIATIONS B96-05): until it does, a slower machine than the
 reference Mac can miss these bounds with a correct system.
 
-`ss milestone MS-prod --smoke` (PR CI, through MS-P7 --smoke) runs the four
+`ol milestone MS-prod --smoke` (PR CI, through MS-P7 --smoke) runs the four
 local steps: your SLO and rule files, and a short load through your gateway
 started as local processes. The full run (nightly kind job, or your own
 cluster) adds every `ci = "kind"` step; without a reachable cluster they are
@@ -168,4 +168,4 @@ Compose the engine, gateway, and production milestones. Rust and protocol
 primers are direct requirements; optional C exercises are not included.
 Earlier pass-gate smoke steps rerun through the spiral invariant.
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

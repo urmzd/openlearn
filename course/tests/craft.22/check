@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# ss-export: course-tree (grades against the course's reference katas, never exported)
-# Artifact check for craft.22 (DESIGN 4.6, 5.12 rung R8; `ss check craft.22`
+# ol-export: course-tree (grades against the course's reference katas, never exported)
+# Artifact check for craft.22 (DESIGN 4.6, 5.12 rung R8; `ol check craft.22`
 # runs this in your repo and its exit code is the verdict).
 #
 # It grades YOUR model evals in primers/craft.22/: evals.py (the eval
@@ -10,7 +10,7 @@
 # model mutants in course/mutants/craft.22 (a wrong RoPE base, a dropped
 # layer, a tokenizer one merge short, a decoding bug, ...): at least 0.80 of
 # them and always s01 to s03, each flagged at p < 0.05 over five seeds.
-# Read the tests with `ss tests craft.22`.
+# Read the tests with `ol tests craft.22`.
 #
 # The first run writes primers/craft.22/tinymodel.py (the course's model,
 # yours to read and run, never to edit: the check always uses the course's
@@ -20,13 +20,13 @@
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
-course="${SS_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
+course="${OL_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
 dir="$PWD/primers/craft.22"
 
 fail() { echo "craft.22: $*" >&2; exit 1; }
-command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
+command -v uv >/dev/null || fail "uv is not on PATH (ol doctor)"
 [ -f "$course/ref/primers/craft.22/tinymodel.py" ] ||
-  fail "the course tree at $course has no craft.22 model: this check runs inside a supersource checkout (SS_COURSE_TREE)"
+  fail "the course tree at $course has no craft.22 model: this check runs inside a openlearn checkout (OL_COURSE_TREE)"
 
 mkdir -p "$dir"
 uv run --no-project --quiet python - "$course" "$dir" <<'PY' || fail "could not write the starter files"
@@ -34,7 +34,7 @@ import sys
 from pathlib import Path
 course, dest = Path(sys.argv[1]), Path(sys.argv[2])
 sys.path.insert(0, str(course / "harness" / "src"))
-from sscourse import markers
+from olcourse import markers
 ref = course / "ref" / "primers" / "craft.22"
 if not (dest / "tinymodel.py").exists():
     (dest / "tinymodel.py").write_text((ref / "tinymodel.py").read_text())
@@ -44,7 +44,7 @@ if not (dest / "evals.py").exists():
     print("  wrote     primers/craft.22/evals.py  (stub: yours to write)")
 PY
 
-export SS_PRIMER_DIR="$dir" SS_COURSE_TREE="$course" SS_LEARNER_ROOT="$PWD" PYTHONDONTWRITEBYTECODE=1
+export OL_PRIMER_DIR="$dir" OL_COURSE_TREE="$course" OL_LEARNER_ROOT="$PWD" PYTHONDONTWRITEBYTECODE=1
 export TINYLLM_FIXTURES="${TINYLLM_FIXTURES:-$course/fixtures}"
 exec uv run --no-project --quiet --with pytest --with numpy \
   python -m pytest -q --tb=short -p no:cacheprovider -p no:randomly --rootdir="$tests" --confcutdir="$tests" "$here"

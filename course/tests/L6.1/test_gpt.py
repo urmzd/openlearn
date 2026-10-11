@@ -366,7 +366,7 @@ def test_learns_byte_stories():
     # KIND: learning
     # CATCHES: m02
     # CHAPTER: L6.1 section 2.2, The causal LM loss
-    seed = int(os.environ.get("SS_SEED", "0"))
+    seed = int(os.environ.get("OL_SEED", "0"))
     cfg = GPTConfig(vocab=256, n_ctx=64, d_model=64, n_heads=4, n_layers=2, d_ff=256)
     m = GPT(cfg, rng=Rng(seed))
     stream = TokenStream(

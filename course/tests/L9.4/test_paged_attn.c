@@ -11,12 +11,12 @@
 #include <string.h>
 
 #include "tinyllm.h"
-#include "ss_invariance.h"
-#include "ss_prop.h"
-#include "ss_test.h"
+#include "ol_invariance.h"
+#include "ol_prop.h"
+#include "ol_test.h"
 
-static void fill(ss_gen *g, float *x, int64_t n) {
-    for (int64_t i = 0; i < n; i++) x[i] = ss_gen_f32(g, -1, 1);
+static void fill(ol_gen *g, float *x, int64_t n) {
+    for (int64_t i = 0; i < n; i++) x[i] = ol_gen_f32(g, -1, 1);
 }
 
 static tl_kv_pool *make_pool(uint32_t n_blocks, uint32_t bt, uint32_t layers, uint32_t hkv, uint32_t d) {
@@ -56,7 +56,7 @@ static void gather(tl_kv_pool *p, const uint32_t *table, int64_t ctx, uint32_t l
     }
 }
 
-SS_TEST(hand_example) {
+OL_TEST(hand_example) {
     /* WHY: the chapter's worked example, L9.3's numbers in a paged cache:
      *      keys [1,0], [0,1], [1,1] and values [1,2], [3,4], [5,6] at
      *      positions 0, 1, 2, two positions per block, in blocks 3 and 1 of
@@ -67,7 +67,7 @@ SS_TEST(hand_example) {
      * CATCHES: s03, s07, s08
      * CHAPTER: L9.4 section 3 */
     tl_kv_pool *p = make_pool(4, 2, 1, 1, 2);
-    SS_TRUE(p != NULL);
+    OL_TRUE(p != NULL);
     const uint32_t table[2] = {3, 1};
     const float k[3][2] = {{1, 0}, {0, 1}, {1, 1}}, v[3][2] = {{1, 2}, {3, 4}, {5, 6}};
     for (int j = 0; j < 3; j++) put(p, table, j, 0, k[j], v[j]);
@@ -76,9 +76,9 @@ SS_TEST(hand_example) {
     float o[2] = {0};
     tl_status st = tl_paged_attn_decode_f32(q, p, 0, table, 2, &ctx, o, 1, 1, 1, 2, 1.0f, 0, NULL);
     tl_kv_pool_destroy(p);
-    SS_EQ(st, TL_OK);
-    SS_CLOSE(o[0], 3.0, 1e-6, 1e-6);
-    SS_CLOSE(o[1], 4.0, 1e-6, 1e-6);
+    OL_EQ(st, TL_OK);
+    OL_CLOSE(o[0], 3.0, 1e-6, 1e-6);
+    OL_CLOSE(o[1], 4.0, 1e-6, 1e-6);
 }
 
 enum { NB = 64, BT = 16, L = 2, HKV = 2, H = 6, D = 32, MAXB = 8 };
@@ -92,13 +92,13 @@ typedef struct {
 } world;
 
 static int build(world *w, uint64_t seed) {
-    ss_gen g = {seed};
+    ol_gen g = {seed};
     w->p = make_pool(NB, BT, L, HKV, D);
     if (!w->p) return 0;
     uint32_t ids[NB];
     if (tl_kv_alloc(w->p, 3 * MAXB, ids) != TL_OK) return 0;
     for (int i = 3 * MAXB - 1; i > 0; i--) { /* shuffle: tables are not in id order */
-        int r = (int)ss_gen_int(&g, 0, i);
+        int r = (int)ol_gen_int(&g, 0, i);
         uint32_t t = ids[i];
         ids[i] = ids[r], ids[r] = t;
     }
@@ -136,7 +136,7 @@ static int naive_row(const float *q, const float *k, const float *v, int64_t ctx
     return 1;
 }
 
-SS_TEST(matches_naive_over_the_gathered_cache) {
+OL_TEST(matches_naive_over_the_gathered_cache) {
     /* WHY: the kernel against plain attention over the same f16 values,
      *      gathered in position order: GQA (6 query heads on 2 KV heads),
      *      both layers, lengths 1 (one key), 37 (a partial last block), and
@@ -145,7 +145,7 @@ SS_TEST(matches_naive_over_the_gathered_cache) {
      * CATCHES: s01, s02, s04, s05, s06, s07, s08, m01
      * CHAPTER: L9.4 section 4 */
     world w;
-    SS_TRUE(build(&w, 51));
+    OL_TRUE(build(&w, 51));
     static float k[HKV * 70 * D], v[HKV * 70 * D], o[3 * H * D], want[D];
     int ok = 1;
     for (uint32_t layer = 0; layer < L && ok; layer++)
@@ -168,10 +168,10 @@ SS_TEST(matches_naive_over_the_gathered_cache) {
             }
         }
     tl_kv_pool_destroy(w.p);
-    SS_TRUE(ok);
+    OL_TRUE(ok);
 }
 
-SS_TEST(equals_flash_attention_bitwise) {
+OL_TEST(equals_flash_attention_bitwise) {
     /* WHY: a decode step is FlashAttention with one query at position
      *      ctx - 1 (causal) and key tiles of block_tokens: your L9.3 kernel
      *      on the gathered values with Bc = 16 must give the same bits. That
@@ -181,20 +181,20 @@ SS_TEST(equals_flash_attention_bitwise) {
      * CATCHES: s09, s10
      * CHAPTER: L9.4 section 2 */
     world w;
-    SS_TRUE(build(&w, 52));
+    OL_TRUE(build(&w, 52));
     static float k[HKV * 70 * D], v[HKV * 70 * D], o[3 * H * D], f[H * D];
     int ok = tl_paged_attn_decode_f32(w.q, w.p, 1, w.tables, MAXB, w.ctx, o, 3, H, HKV, D, 0.18f, 21, NULL) == TL_OK;
     for (int b = 0; b < 3 && ok; b++) {
         gather(w.p, w.tables + b * MAXB, w.ctx[b], 1, k, v);
         ok = tl_flash_attn_fwd_f32(w.q + b * H * D, k, v, f, NULL, 1, H, HKV, 1, w.ctx[b], D, 0.18f, w.ctx[b] - 1, 1,
                                    21, NULL, 1, BT, NULL, NULL) == TL_OK &&
-             ss_bits_diff_f32(f, o + b * H * D, H * D) < 0;
+             ol_bits_diff_f32(f, o + b * H * D, H * D) < 0;
     }
     tl_kv_pool_destroy(w.p);
-    SS_TRUE(ok);
+    OL_TRUE(ok);
 }
 
-SS_TEST(shared_blocks_and_batch_invariance) {
+OL_TEST(shared_blocks_and_batch_invariance) {
     /* WHY: after a fork (L8.3) two sequences hold the same prefix blocks;
      *      each reads them independently. And a sequence's output must have
      *      the same bits alone or in a batch of 16 (L10.2 batches decode
@@ -205,11 +205,11 @@ SS_TEST(shared_blocks_and_batch_invariance) {
      * CHAPTER: L9.4 section 2 */
     enum { S = 16, CTX = 40 };
     tl_kv_pool *p = make_pool(NB, BT, 1, HKV, D);
-    SS_TRUE(p != NULL);
+    OL_TRUE(p != NULL);
     uint32_t shared[2], tails[S], tables[S * 3];
-    SS_EQ(tl_kv_alloc(p, 2, shared), TL_OK);
-    SS_EQ(tl_kv_alloc(p, S, tails), TL_OK);
-    ss_gen g = {53};
+    OL_EQ(tl_kv_alloc(p, 2, shared), TL_OK);
+    OL_EQ(tl_kv_alloc(p, S, tails), TL_OK);
+    ol_gen g = {53};
     float kv[2][HKV * D];
     static float q[S * H * D], all[S * H * D], one[H * D];
     int32_t ctx[S];
@@ -232,33 +232,33 @@ SS_TEST(shared_blocks_and_batch_invariance) {
     for (int b = 0; b < S && ok; b++) {
         ok = tl_paged_attn_decode_f32(q + b * H * D, p, 0, tables + b * 3, 3, ctx + b, one, 1, H, HKV, D, 0.2f, 0,
                                       NULL) == TL_OK &&
-             ss_bits_diff_f32(one, all + b * H * D, H * D) < 0;
+             ol_bits_diff_f32(one, all + b * H * D, H * D) < 0;
     }
     tl_kv_pool_destroy(p);
-    SS_TRUE(ok);
+    OL_TRUE(ok);
 }
 
-SS_TEST(pool_result_equals_serial_bitwise) {
+OL_TEST(pool_result_equals_serial_bitwise) {
     /* WHY: (sequence, head) rows run on rt.03 workers; each row's
      *      arithmetic is the same on any worker.
      * KIND: property
      * CATCHES: s12
      * CHAPTER: L9.4 section 2 */
     world w;
-    SS_TRUE(build(&w, 54));
+    OL_TRUE(build(&w, 54));
     static float o1[3 * H * D], o4[3 * H * D];
     tl_pool *tp = NULL;
-    SS_EQ(tl_pool_create(4, &tp), TL_OK);
+    OL_EQ(tl_pool_create(4, &tp), TL_OK);
     tl_status st = tl_paged_attn_decode_f32(w.q, w.p, 0, w.tables, MAXB, w.ctx, o4, 3, H, HKV, D, 0.18f, 0, tp);
     tl_pool_destroy(tp);
     tl_status st1 = tl_paged_attn_decode_f32(w.q, w.p, 0, w.tables, MAXB, w.ctx, o1, 3, H, HKV, D, 0.18f, 0, NULL);
     tl_kv_pool_destroy(w.p);
-    SS_EQ(st, TL_OK);
-    SS_EQ(st1, TL_OK);
-    SS_TRUE(ss_bits_diff_f32(o4, o1, 3 * H * D) < 0);
+    OL_EQ(st, TL_OK);
+    OL_EQ(st1, TL_OK);
+    OL_TRUE(ol_bits_diff_f32(o4, o1, 3 * H * D) < 0);
 }
 
-SS_TEST(bad_tables_and_shapes) {
+OL_TEST(bad_tables_and_shapes) {
     /* WHY: the engine passes block tables it built itself; a bug there must
      *      come back as TL_EINVAL (an empty context, a table too short for
      *      the context, a block id or a layer outside the pool) or
@@ -268,7 +268,7 @@ SS_TEST(bad_tables_and_shapes) {
      * CATCHES: s13, s14, s15
      * CHAPTER: L9.4 section 4 */
     tl_kv_pool *p = make_pool(4, 2, 1, 1, 2);
-    SS_TRUE(p != NULL);
+    OL_TRUE(p != NULL);
     const uint32_t table[2] = {0, 1}, bad[2] = {0, 9};
     const float q[2] = {1, 0};
     float o[2] = {5, 5};
@@ -280,14 +280,14 @@ SS_TEST(bad_tables_and_shapes) {
     tl_status s5 = tl_paged_attn_decode_f32(q, p, 0, table, 2, &three, o, 1, 2, 2, 2, 1.0f, 0, NULL);
     tl_status s6 = tl_paged_attn_decode_f32(q, p, 0, table, 2, &three, o, 1, 1, 1, 4, 1.0f, 0, NULL);
     tl_kv_pool_destroy(p);
-    SS_EQ(s1, TL_EINVAL);
-    SS_EQ(s2, TL_EINVAL);
-    SS_EQ(s3, TL_EINVAL);
-    SS_EQ(s4, TL_EINVAL);
-    SS_EQ(s5, TL_ESHAPE);
-    SS_EQ(s6, TL_ESHAPE);
-    SS_EQ(o[0], 5.0f);
-    SS_EQ(o[1], 5.0f);
+    OL_EQ(s1, TL_EINVAL);
+    OL_EQ(s2, TL_EINVAL);
+    OL_EQ(s3, TL_EINVAL);
+    OL_EQ(s4, TL_EINVAL);
+    OL_EQ(s5, TL_ESHAPE);
+    OL_EQ(s6, TL_ESHAPE);
+    OL_EQ(o[0], 5.0f);
+    OL_EQ(o[1], 5.0f);
 }
 
-int main(void) { return SS_RUN_ALL(); }
+int main(void) { return OL_RUN_ALL(); }

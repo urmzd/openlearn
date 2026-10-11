@@ -102,7 +102,7 @@ def cmd_pull(a) -> dict:
     from tinyllm.io.hf import hf_download
 
     cache = a.cache_dir or str(
-        Path(os.environ.get("TINYLLM_CACHE", Path.home() / ".cache" / "supersource"))
+        Path(os.environ.get("TINYLLM_CACHE", Path.home() / ".cache" / "openlearn"))
         / "models"
     )
     files = [f for f in a.files.split(",") if f] if a.files else DEFAULT_FILES

@@ -4,7 +4,7 @@
 // Time is the course testkit's fake clock: refill is an exact function of
 // Advance, so every remaining count and Retry-After below is a number from
 // the chapter, not a range. The concurrency test runs under the race
-// detector (ss check runs Go course tests with -race).
+// detector (ol check runs Go course tests with -race).
 package gw_03
 
 import (
@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"supersource.urmzd.com/tl/testkit/clock"
+	"openlearn.urmzd.com/tl/testkit/clock"
 	"tinyllm/gateway/auth"
 	"tinyllm/gateway/limit"
 	"tinyllm/gateway/server"

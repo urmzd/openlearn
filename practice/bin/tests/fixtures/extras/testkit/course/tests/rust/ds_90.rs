@@ -21,7 +21,7 @@ fn compensates_small_terms() {
 
 #[test]
 fn testkit_clock_and_failpoints_reach_course_tests() {
-    // WHY: the Rust testkit is a dependency of ss-tests (fake clock, failpoints).
+    // WHY: the Rust testkit is a dependency of ol-tests (fake clock, failpoints).
     // KIND: unit
     use tl_testkit::clock::{Clock, FakeClock};
     let c = FakeClock::default();

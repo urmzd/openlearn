@@ -36,7 +36,7 @@ against a hosted model.
 - **A reader built for courses.** Math, diagrams, tables, and links between documents,
   with full-text search across the pack.
 - **Paths with shared progress.** Stages, what "done" means for each, and which you have
-  finished, read from the same `.done` files `ss learn` writes.
+  finished, read from the same `.done` files `ol learn` writes.
 - **Exercises that run for real.** Edit an attempt in the app and check it with the pack's
   own CLI. The exit code is the verdict, the same one a terminal would give you.
 - **Sessions grounded in a chapter.** Start from any document and the exercise and its

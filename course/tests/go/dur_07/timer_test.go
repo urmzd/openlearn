@@ -23,8 +23,8 @@ import (
 	"tinyllm/durable/worker"
 	"tinyllm/durable/workflow"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
-	"supersource.urmzd.com/tl/testkit/clock"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	"openlearn.urmzd.com/tl/testkit/clock"
 )
 
 func at(s int) time.Time { return t0.Add(time.Duration(s) * time.Second) }

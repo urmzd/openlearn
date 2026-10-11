@@ -1,4 +1,4 @@
-<!-- ss:module ds.07 -->
+<!-- ol:module ds.07 -->
 # Radix tree over token ids with index-linked LRU leaf list
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.07              # stubs rust/crates/tl-ds/src/radix.rs; add `pub mod radix;` to your tl-ds lib.rs
-ss tests ds.07              # read the test catalog first
-ss check ds.07              # exit code is the verdict; then grades your tests by mutation
-ss diff  ds.07              # after passing: your code against the reference
+ol start ds.07              # stubs rust/crates/tl-ds/src/radix.rs; add `pub mod radix;` to your tl-ds lib.rs
+ol tests ds.07              # read the test catalog first
+ol check ds.07              # exit code is the verdict; then grades your tests by mutation
+ol diff  ds.07              # after passing: your code against the reference
 ```
 
-`ss start` never rewrites your crate root (it belongs to `ds.05`), so add the one `pub mod radix;` line yourself. Build in this order: `new`, `insert` without splits, `match_prefix` with splits, `lock`/`unlock`, then the LRU list and `evict`. Get the model test passing at granule 1 before granule 2.
+`ol start` never rewrites your crate root (it belongs to `ds.05`), so add the one `pub mod radix;` line yourself. Build in this order: `new`, `insert` without splits, `match_prefix` with splits, `lock`/`unlock`, then the LRU list and `evict`. Get the model test passing at granule 1 before granule 2.
 
 ---
 
@@ -132,7 +132,7 @@ impl<V> RadixTree<V> {
 | `freed_slots_are_reused` | regression | 1,000 insert-and-evict rounds keep node ids below 5 | the arena does not grow over an engine's life |
 | `model_based_against_a_naive_map` | property | 2,500 seeded inserts, matches, locks, unlocks, evictions at granules 1 and 2 against a map of every stored prefix: longest match, stored and handed-back values, no locked prefix evicted, every eviction the oldest unlocked leaf, values conserved | every invariant under any interleaving |
 
-**Your tests (rung R3).** First write `rust/crates/tl-ds/tests/ds07_radix.rs` (an integration test: `use tl_ds::radix::...` only) and run `ss tdd red ds.07` against your stub; then implement until `ss tdd green ds.07`. Name them `split_by_hand`, `match_splits_inside_an_edge`, `insert_hands_back_the_stored_part`, `oldest_leaf_goes_first`, `locks_pin_ancestors`, `parent_becomes_evictable`. The planted bug "a locked leaf stays on the eviction list" (`s11`) is required; overall 70%.
+**Your tests (rung R3).** First write `rust/crates/tl-ds/tests/ds07_radix.rs` (an integration test: `use tl_ds::radix::...` only) and run `ol tdd red ds.07` against your stub; then implement until `ol tdd green ds.07`. Name them `split_by_hand`, `match_splits_inside_an_edge`, `insert_hands_back_the_stored_part`, `oldest_leaf_goes_first`, `locks_pin_ancestors`, `parent_becomes_evictable`. The planted bug "a locked leaf stays on the eviction list" (`s11`) is required; overall 70%.
 
 ## 5. Pitfalls
 
@@ -165,7 +165,7 @@ impl<V> RadixTree<V> {
 | Back | `M06.2` | the trie and longest-prefix match this tree compresses |
 | Forward | `L8.4` | `RadixTree<BlockId>` at granule `block_size` is the prefix cache; locks are running requests |
 
-If you skip this module, `ss check L8.4` stops with `needs ds.07: build it, or pass --ref-deps`.
+If you skip this module, `ol check L8.4` stops with `needs ds.07: build it, or pass --ref-deps`.
 
 ## Going further
 

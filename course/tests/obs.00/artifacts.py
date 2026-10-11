@@ -1,9 +1,9 @@
 """obs.00 artifact check: one request is one trace, gateway.proxy -> POST /v1/completions.
 
-Run by `ss check obs.00` in your repo. Two tiers:
+Run by `ol check obs.00` in your repo. Two tiers:
 
   local    your [build] steps, then your engine and gateway started from system.toml
-           as local processes (as `ss milestone MS-P1 --smoke` does) with
+           as local processes (as `ol milestone MS-P1 --smoke` does) with
            OTEL_EXPORTER_OTLP_ENDPOINT pointing at a course OTLP sink. One streamed
            request must produce the gateway's CLIENT span `gateway.proxy` and, as its
            child in the same trace, the engine's SERVER span `POST /v1/completions`.
@@ -11,7 +11,7 @@ Run by `ss check obs.00` in your repo. Two tiers:
            up in Jaeger ([deploy].traces) as one trace across <system>-gateway and
            <system>-engine.
 
-The cluster tier fails when the context is missing or down; with SS_SMOKE=1 it is
+The cluster tier fails when the context is missing or down; with OL_SMOKE=1 it is
 skipped with the reason instead.
 """
 
@@ -46,10 +46,10 @@ CORPUS = "Once upon a time a request left the gateway and came back as tokens.\n
 
 def _harness():
     try:
-        from sscourse import placeholders, services, system
+        from olcourse import placeholders, services, system
     except ImportError:
         raise Fail(
-            "the course harness is not importable: run this check through `ss check obs.00`"
+            "the course harness is not importable: run this check through `ol check obs.00`"
         ) from None
     return placeholders, services, system
 
@@ -61,7 +61,7 @@ def _model(c: Ctx) -> str:
             raise Fail(
                 "system.toml has no [entry].tinyllm to train the model your engine serves"
             )
-        work = c.path(".ss/check/obs.00")
+        work = c.path(".ol/check/obs.00")
         shutil.rmtree(work, ignore_errors=True)
         work.mkdir(parents=True)
         (work / "corpus.txt").write_text(CORPUS)
@@ -88,7 +88,7 @@ class Local:
         ph, services, system = _harness()
         self.c, self.sink = c, sink
         sysm = system.load(c.root)
-        log = c.path(f".ss/check/obs.00/{tag}")
+        log = c.path(f".ol/check/obs.00/{tag}")
         log.mkdir(parents=True, exist_ok=True)
         env = dict(os.environ)
         env.pop("VIRTUAL_ENV", None)
@@ -112,7 +112,7 @@ class Local:
                 else None
             ),
         )
-        self.stack = services.Stack(sysm, log, lookup, env, "ss check obs.00")
+        self.stack = services.Stack(sysm, log, lookup, env, "ol check obs.00")
         try:
             self.stack.start(["engine", "gateway"])
         except (

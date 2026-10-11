@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Scripted responder for drill ops.02 durable-kill9 (DESIGN 5.10, "Drills in
 # CI"): the reference response, run by the nightly kind job against the
-# reference system after `ss drill run durable-kill9 --respond` injected the
-# kills, before `ss drill end`.
+# reference system after `ol drill run durable-kill9 --respond` injected the
+# kills, before `ol drill end`.
 #
-#   respond.sh [LEARNER_DIR]     (default: $SS_COURSE_HOME, else the current dir)
+#   respond.sh [LEARNER_DIR]     (default: $OL_COURSE_HOME, else the current dir)
 #
 # The fault heals itself (the StatefulSet recreates the pod on the same WAL
 # claim, the server recovers its log, expired leases are redelivered), so the
 # response is the runbook's: confirm the server and the workers are whole,
 # wait for the build to finish, then prove the pass condition (the same
-# checks `ss drill end` runs as [[resolve.run]]): the same start returns the
+# checks `ol drill end` runs as [[resolve.run]]): the same start returns the
 # finished run with the clean-run numbers, and the ledger has every row once. It
 # refuses any context that is not kind- or k3d- (the drill safety gate's rule)
 # and writes the runbook and today's postmortem from course/ref/docs.
@@ -18,7 +18,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 course="$(cd "$here/../.." && pwd)"
-learner="$(cd "${1:-${SS_COURSE_HOME:-$PWD}}" && pwd)"
+learner="$(cd "${1:-${OL_COURSE_HOME:-$PWD}}" && pwd)"
 
 read -r name ctx ns durable worker < <(python3 - "$learner/system.toml" <<'PY'
 import sys, tomllib

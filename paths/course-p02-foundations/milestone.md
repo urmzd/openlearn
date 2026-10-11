@@ -65,7 +65,7 @@ a usage error, the last stdout line is one JSON object.
                          `train/after-step=N*crash` exits 137 on the Nth
                          evaluation of this process, as a SIGKILL would.
 
-`ss milestone MS-L0 --smoke` runs the smoke steps (all of them: this
+`ol milestone MS-L0 --smoke` runs the smoke steps (all of them: this
 milestone needs no services). Every later pass gate reruns them.
 
 ## MS-P2: Foundations: your autograd retrains the model your engine serves
@@ -85,4 +85,4 @@ The engine is unchanged: same model directory, same tensor, same config.
 `requires` is every Pass 2 stage of DESIGN 7.4 (math, solve sets, craft.03,
 L0.1 to L0.6); each needs a fresh pass of your own.
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

@@ -41,7 +41,7 @@ EXACT = dict(rtol=1e-12, atol=1e-14)
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 # The activations of L0.2, written only with Dual operations, so one

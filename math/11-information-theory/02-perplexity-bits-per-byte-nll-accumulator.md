@@ -1,4 +1,4 @@
-<!-- ss:module M11.2 -->
+<!-- ol:module M11.2 -->
 # Perplexity, bits per byte, NLL accumulator
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M11.2              # stubs ppl.py into your repo
-ss tests M11.2              # read the test catalog first
-ss check M11.2              # exit code is the verdict
-ss check M11.2 --ref-deps   # only if your M00.1 is not passing yet
-ss diff  M11.2              # after passing: your code against the reference
+ol start M11.2              # stubs ppl.py into your repo
+ol tests M11.2              # read the test catalog first
+ol check M11.2              # exit code is the verdict
+ol check M11.2 --ref-deps   # only if your M00.1 is not passing yet
+ol diff  M11.2              # after passing: your code against the reference
 ```
 
 ---
@@ -159,7 +159,7 @@ Call `bits_per_byte` from your `M00.1` for `bpb`; with no bytes added, `bpb` is 
 | Forward | `L6.7` | the model zoo scores every family with one accumulator per model and prints bpb |
 | Forward | `L8.5`, `C1` | quantization is allowed a fixed bpb increase; the capstone's training curve and ablations are in bpb |
 
-If you skip this module, `ss check L1.6` stops with `L1.6 needs M11.2`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L1.6` stops with `L1.6 needs M11.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

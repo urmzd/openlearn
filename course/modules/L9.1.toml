@@ -27,7 +27,7 @@ sanitize  = ["thread"]              # the pool test also runs under ThreadSaniti
 timeout_s = 120
 determinism_runs = 2
 
-[bench]                             # a B test: `ss bench L9.1 --assert`, never `ss check`
+[bench]                             # a B test: `ol bench L9.1 --assert`, never `ol check`
 lang   = "c"
 name   = "matmul_512"               # course/tests/L9.1/bench/matmul_512.c
 metric = "speedup_vs_naive"         # against M03.1's triple loop, compiled in the bench

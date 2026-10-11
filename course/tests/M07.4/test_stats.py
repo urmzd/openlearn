@@ -13,7 +13,7 @@ and the Wilson interval for 0 successes in 10 trials is [0, 0.277533].
 
 Golden values come from scipy 1.17.1 (course/fixtures/M07.4/scipy_golden.json,
 written by course/oracle/M07.4/scipy_golden.py). Statistical tests draw from
-the frozen PCG32 at SS_SEED.
+the frozen PCG32 at OL_SEED.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ HAND = [2.0, 4.0, 4.0, 5.0, 7.0, 8.0]
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def golden() -> dict:

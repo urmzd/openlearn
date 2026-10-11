@@ -30,5 +30,5 @@ open, and which alert or symptom brought you here.>
 
 <!-- contracts/templates/RUNBOOK.md (ops.00, craft.10): copy to
      docs/runbooks/<name>.md, one per required alert (otel/slo.schema.json)
-     and per drill. `ss drill end` checks the Symptoms, Diagnosis, and
+     and per drill. `ol drill end` checks the Symptoms, Diagnosis, and
      Mitigation sections. -->

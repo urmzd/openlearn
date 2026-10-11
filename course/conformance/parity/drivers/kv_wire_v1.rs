@@ -7,7 +7,7 @@
 // block as [L][2][H][B][D] with zeros past the fill. The bytes compare with
 // the golden blobs, the C exporter (drivers/kv_wire_v1.c), and the Python
 // transcription.
-include!("../parity/ss_parity.rs");
+include!("../parity/ol_parity.rs");
 
 use tl_engine::kv_transfer::{prompt_hashes, write_envelope, BlockRecord, EnvHeader};
 

@@ -7,7 +7,7 @@
 # requires `Authorization: Bearer <key>` and answers 401 without it. Both
 # tiers serve the same paths and bodies.
 #
-# Conformance (`ss conform openapi:v0[:engine|:gateway]`) validates every
+# Conformance (`ol conform openapi:v0[:engine|:gateway]`) validates every
 # response body against the schema declared here for its path, status, and
 # content type. SSE chunks validate against the `x-tl-chunk` schema of the 200
 # `text/event-stream` content.

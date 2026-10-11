@@ -72,7 +72,7 @@ def test_reset_show_diff_tests(ss):
         in (ss.learner / "python/tinyllm/demo/scale.py").read_text()
     )
     assert "return scale(xs, 1.0 / total)" in ss("show", "M90.2", rc=0).out
-    assert "spoiled" in (ss.learner / ".ss/verdicts.jsonl").read_text()
+    assert "spoiled" in (ss.learner / ".ol/verdicts.jsonl").read_text()
 
 
 def test_check_all_ci(ss):
@@ -121,7 +121,7 @@ def test_next_and_learn_check_column(ss):
     ss.init()
     assert "next: stage 0" in ss("next", rc=0).out
     ss("learn", "course", "--done", "0", rc=0)
-    assert "ss start M90.1" in ss("next", rc=0).out
+    assert "ol start M90.1" in ss("next", rc=0).out
     out = ss("learn", "course", "--done", "1", rc=1).out
     assert "not marked" in out and "needs module:M90.1" in out
     ss("learn", "course", "--done", "1", "--force", rc=0)

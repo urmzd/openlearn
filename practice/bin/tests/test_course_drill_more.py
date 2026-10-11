@@ -1,6 +1,6 @@
 """Drill framework additions (DESIGN 5.10): git-branch through the scratch-copy
 builder (seeded PRs), contract-bump, the durable and tenant injectors, the
-scripted responder (`ss drill run --respond`), and the SLO profile check."""
+scripted responder (`ol drill run --respond`), and the SLO profile check."""
 
 import json
 import os
@@ -27,9 +27,9 @@ def test_seeded_pr_branch_from_a_scratch_copy(ss):
         ss.learner, "log", "--format=%an|%s", "drill/seeded-pr", "-4"
     ).splitlines()
     assert log[:3] == [
-        "ss drill|chore: bump the version file",
-        "ss drill|docs: note the in-place scale",
-        "ss drill|perf: scale in place to save an allocation",
+        "ol drill|chore: bump the version file",
+        "ol drill|docs: note the in-place scale",
+        "ol drill|perf: scale in place to save an allocation",
     ]
     seeded = git(ss.learner, "show", "drill/seeded-pr:python/tinyllm/demo/scale.py")
     assert "xs[i] = k * xs[i]" in seeded and "SOLUTION" not in seeded
@@ -133,7 +133,7 @@ def test_durable_and_tenant_injectors(ss, fake_http):
         gw["TL_FAILPOINTS"] == "dur/activity/shard-3=panic" and gw["TL_LOG"] == "info"
     )
     assert dbg.calls[-1] == ("/debug/clock", {"skew_s": 7200.0})
-    run = sorted(p for p in (ss.learner / ".ss/drills").iterdir() if p.is_dir())[-1]
+    run = sorted(p for p in (ss.learner / ".ol/drills").iterdir() if p.is_dir())[-1]
     journal = [json.loads(x) for x in (run / "journal.jsonl").read_text().splitlines()]
     assert "burst `" in journal[0]["did"] and "exited 0" in journal[0]["did"]
     pid = int(journal[-1]["undo"][0][1])

@@ -1,4 +1,4 @@
-<!-- ss:module obs.01 -->
+<!-- ol:module obs.01 -->
 # Tracing for the serving path
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start obs.01                # stubs go/otelx/*.go into your repo
-ss tests obs.01                # read the test catalog first
+ol start obs.01                # stubs go/otelx/*.go into your repo
+ol tests obs.01                # read the test catalog first
 cd go && go get go.opentelemetry.io/otel@v1.44.0 go.opentelemetry.io/otel/sdk@v1.44.0 \
   go.opentelemetry.io/otel/trace@v1.44.0 \
   go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc@v1.44.0 google.golang.org/grpc@v1.83.1
-ss check obs.01                # exit code is the verdict
-ss diff  obs.01                # after passing: your code against the reference
+ol check obs.01                # exit code is the verdict
+ol diff  obs.01                # after passing: your code against the reference
 ```
 
 ---
@@ -175,7 +175,7 @@ func (t tracer) Start(ctx context.Context, name string) (context.Context, server
 |---|---|---|---|
 | `TestTraceparentHandExample` | unit | the section 3 header parsed, written back, flags kept, a child keeps $T$ | every hop starts here |
 | `TestInvalidTraceparentIsIgnored` | boundary | no flags, version `ff`, zero ids, upper-case hex, 31 digits: no span context | a garbage header must not merge requests |
-| `TestMiddlewareContinuesCallerTrace` | conformance | the SERVER span is the caller's child; the handler sees it; method, route, status | traced clients (the agent, `ss drill` evidence) |
+| `TestMiddlewareContinuesCallerTrace` | conformance | the SERVER span is the caller's child; the handler sees it; method, route, status | traced clients (the agent, `ol drill` evidence) |
 | `TestMiddlewareStartsNewTraceWithoutHeader` | unit | no header gives a root with a valid trace id | the normal case for curl |
 | `TestMiddlewareKeepsSSEStreaming` | unit | the first SSE event reaches the client while the handler still runs | TTFT measured through the gateway |
 | `TestMiddlewareSupportsResponseController` | unit | `SetWriteDeadline` works through the wrapper | write deadlines for slow clients |

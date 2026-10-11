@@ -1,4 +1,4 @@
-<!-- ss:module M11.4 -->
+<!-- ol:module M11.4 -->
 # Mutual information, PMI, and PPMI
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M11.4              # stubs python/tinyllm/info/pmi.py into your repo
-ss tests M11.4              # read the test catalog first: rung R0, you write no tests here
-ss check M11.4              # exit code is the verdict
-ss check M11.4 --ref-deps   # only if your M11.1 is not passing yet
-ss diff  M11.4              # after passing: your code against the reference
+ol start M11.4              # stubs python/tinyllm/info/pmi.py into your repo
+ol tests M11.4              # read the test catalog first: rung R0, you write no tests here
+ol check M11.4              # exit code is the verdict
+ol check M11.4 --ref-deps   # only if your M11.1 is not passing yet
+ol diff  M11.4              # after passing: your code against the reference
 ```
 
 ---

@@ -1,4 +1,4 @@
-"""`ss verify course` and `ss lint` on the fixture: green as committed, and each
+"""`ol verify course` and `ol lint` on the fixture: green as committed, and each
 check catches the defect it exists for."""
 
 import re
@@ -30,7 +30,7 @@ def test_fixture_verifies_globally(ss):
         "fully stubbed reference tree compiles with every course test (c, go, python, rust)"
         in out
     )
-    assert "paths: ss learn --verify" in out and "history snapshots match" in out
+    assert "paths: ol learn --verify" in out and "history snapshots match" in out
 
 
 def test_verify_catches_wrong_marker_id(ss):

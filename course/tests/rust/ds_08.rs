@@ -37,12 +37,12 @@ impl Pcg32 {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
 }
 
 fn fixtures() -> std::path::PathBuf {
-    std::path::PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss"))
+    std::path::PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol"))
 }
 
 fn unhex(s: &str) -> Vec<u8> {
@@ -318,7 +318,7 @@ fn no_false_negatives() {
     // KIND: property
     // CATCHES: s06, s08
     // CHAPTER: ds.08 section 2.1
-    let mut g = Pcg32::new(ss_seed(), 5);
+    let mut g = Pcg32::new(ol_seed(), 5);
     let mut a = Bloom::with_rate(5000, 0.02).unwrap();
     let mut b = Bloom::with_rate(5000, 0.02).unwrap();
     let mut items = Vec::new();
@@ -351,7 +351,7 @@ fn fp_rate_within_three_sigma() {
     // KIND: statistical
     // CATCHES: s07
     // CHAPTER: ds.08 section 2.4
-    let mut g = Pcg32::new(ss_seed(), 5);
+    let mut g = Pcg32::new(ol_seed(), 5);
     let mut b = Bloom::with_rate(2000, 0.01).unwrap();
     for _ in 0..2000 {
         let it = g.bytes(16);

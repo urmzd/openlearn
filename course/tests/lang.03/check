@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Artifact check for lang.03 (DESIGN 4.6 primers; H15: `ss check lang.03`
+# Artifact check for lang.03 (DESIGN 4.6 primers; H15: `ol check lang.03`
 # runs this in your repo and its exit code is the verdict).
 #
 #   primers/lang.03/vec.c with the given vec.h, compiled with
@@ -7,20 +7,20 @@
 #
 # The first run writes the starter files that are missing (the given
 # header and stub for the file you write) into primers/lang.03/;
-# it never overwrites a file. Read the tests with `ss tests lang.03`.
+# it never overwrites a file. Read the tests with `ol tests lang.03`.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
-course="${SS_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
+course="${OL_COURSE_TREE:-$(cd "$here/../.." && pwd)}"
 dir="$PWD/primers/lang.03"
 inc="$PWD/contracts/c/include"
-build="$PWD/.ss/build/lang.03"
+build="$PWD/.ol/build/lang.03"
 
 fail() { echo "lang.03: $*" >&2; exit 1; }
 for tool in cc uv; do
-  command -v "$tool" >/dev/null || fail "$tool is not on PATH (ss doctor)"
+  command -v "$tool" >/dev/null || fail "$tool is not on PATH (ol doctor)"
 done
-[ -f "$inc/ss_test.h" ] || fail "contracts/c/include/ss_test.h is missing: run \`ss contracts sync\`"
+[ -f "$inc/ol_test.h" ] || fail "contracts/c/include/ol_test.h is missing: run \`ol contracts sync\`"
 
 # -- starter files ---------------------------------------------------------
 # Given files are copied as they are; the files you write are copied with
@@ -37,7 +37,7 @@ import sys
 from pathlib import Path
 course, dest, names = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3:]
 sys.path.insert(0, str(course / "harness" / "src"))
-from sscourse import markers
+from olcourse import markers
 for name in names:
     src = course / "ref" / "primers" / "lang.03" / name
     text = src.read_text()

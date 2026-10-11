@@ -1,6 +1,6 @@
 """craft.02 artifact checks: your architecture decision records lint.
 
-Run by `ss check craft.02` (through ./check) from the root of your repo. Each
+Run by `ol check craft.02` (through ./check) from the root of your repo. Each
 test reads docs/adr/ and fails with a message that says what to change.
 Every test carries the course annotation (DESIGN 5.12): WHY it exists and its
 KIND. This file is stdlib only and is not a pytest module: `check` runs every

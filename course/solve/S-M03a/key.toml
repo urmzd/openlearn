@@ -1,4 +1,4 @@
-# S-M03a answer key (hidden; honor system, DESIGN D34). `ss verify course S-M03a`
+# S-M03a answer key (hidden; honor system, DESIGN D34). `ol verify course S-M03a`
 # check 7 proves every `expect` passes and every `reject` canary fails;
 # course/oracle/solve/S-M03a.py recomputes every value independently.
 # 48 items, 4 proofs (DESIGN 4.2): Gauss/LU (q1-q10), span, basis, dimension

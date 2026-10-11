@@ -1,4 +1,4 @@
-<!-- ss:module L8.5 -->
+<!-- ol:module L8.5 -->
 # Quantization: int8, int4 group (packed), fp8, KV quant
 
 ## Overview
@@ -8,7 +8,7 @@
 | **Module** | `L8.5` · build · Python · Pass 6 · 5 to 7 h |
 | **You build** | `python/tinyllm/infer/quant.py`: `quantize_int8_per_channel`, `pack_int4`, `unpack_int4`, `quantize_int4_group`, `quantize_fp8_per_channel`, `quantize_mx`, `quantize_kv_fp8`, `dequantize`, `nbytes`, `QuantLinear`, `quantize_model`, `export_q4`, `output_error_bound`, `quant_ppl`, and the dataclasses `Q8Tensor`, `Q4Tensor`, `FP8Tensor`, `MXTensor`, `KVQuant` |
 | **Contract** | [`course/contracts/py/tinyllm/infer/quant.pyi`](../../../course/contracts/py/tinyllm/infer/quant.pyi); the int4 bytes in [`formats/safetensors.md`](../../../course/contracts/formats/safetensors.md); KV format v2 in [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md) |
-| **Tests** | `course/tests/L8.5/test_quant.py`, 17 tests (what they check: section 4) · golden `course/fixtures/parity/quant_int4.json` · your own tests in `python/tests/l8-5-quant/`, rung R4, graded by mutation (threshold 0.80) · parity suite `ss parity quant.int4` |
+| **Tests** | `course/tests/L8.5/test_quant.py`, 17 tests (what they check: section 4) · golden `course/fixtures/parity/quant_int4.json` · your own tests in `python/tests/l8-5-quant/`, rung R4, graded by mutation (threshold 0.80) · parity suite `ol parity quant.int4` |
 | **Needs** | `M09.4` [FP8 and microscaling formats](../../../math/09-numerical-methods-and-floating-point/04-fp8-and-microscaling-formats.md) (`tinyllm.num.lowp`) · `L0.4` [modules and `Linear`](../p00-foundations/04-module-system-and-layers.md) · `L0.1` [the `Tensor`](../p00-foundations/01-tensor-and-broadcasting-backward.md) · `M09.3` [tolerance budgets](../../../math/09-numerical-methods-and-floating-point/03-error-analysis-condition-numbers-and-tolerance-budgets.md) (`matmul_error_bound`) · `L6.7` [the evaluation harness](../p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) (`eval_ppl`) · reading: `M09.1` [IEEE 754 and float16](../../../math/09-numerical-methods-and-floating-point/01-ieee-754.md), `M07.4` [confidence intervals](../../../math/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md) |
 | **Used by** | later: `L9.5` (the C int4 and int8 kernels read these bytes), `L10.1` (the Rust runner loads `*.q4.safetensors`), `craft.13` (KV format v2 uses `quantize_kv_fp8` as its oracle) |
 | **Milestone** | `MS-L8` (step 2: perplexity under `--quant int8, q4_g32, fp8_e4m3` within budget) |
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L8.5               # stubs python/tinyllm/infer/quant.py
-ss tests L8.5               # read the test catalog first
-ss check L8.5               # exit code is the verdict; then grades your tests by mutation
-ss parity quant.int4        # your packed bytes against the golden file
-ss diff  L8.5               # after passing: your code against the reference
+ol start L8.5               # stubs python/tinyllm/infer/quant.py
+ol tests L8.5               # read the test catalog first
+ol check L8.5               # exit code is the verdict; then grades your tests by mutation
+ol parity quant.int4        # your packed bytes against the golden file
+ol diff  L8.5               # after passing: your code against the reference
 ```
 
 Do int8 first (one scale per row, no packing), then `pack_int4`/`unpack_int4` on the 256 pairs of section 4, then `quantize_int4_group`, then fp8, MX, and KV through `M09.4`, then `QuantLinear` and `quantize_model`.
@@ -120,7 +120,7 @@ The design sketch's optional `awq_search_scales` and `gptq_quantize` are not par
 |---|---|---|---|
 | `test_hand_example_int4_group` | unit | section 3: codes, scales, bytes `E7 10 02 72`, dequantized values | you, the tests, and the C kernel agree on the layout |
 | `test_hand_example_int8_per_channel` | unit | section 3's int8 row, a zero row, ties at scale 2, codes within $[-127, 127]$ | L9.5's `tl_matmul_q8_f32` input |
-| `test_packed_bytes_match_the_golden` | golden | every case of the `quant.int4` parity golden (1 x 2 at group 2 to 5 x 48 at group 16 and 2 x 64 at group 64) byte for byte | the bytes `ss parity quant.int4` and L9.5 compare |
+| `test_packed_bytes_match_the_golden` | golden | every case of the `quant.int4` parity golden (1 x 2 at group 2 to 5 x 48 at group 16 and 2 x 64 at group 64) byte for byte | the bytes `ol parity quant.int4` and L9.5 compare |
 | `test_nibble_roundtrip_every_pair` | property | all 256 pairs pack to distinct bytes and unpack to themselves; out-of-range and odd widths refused | two's complement, even column low |
 | `test_int4_error_is_at_most_half_a_step` | property | every element within $s_{16}/2$ at scales 1e-3 to 100, groups 16 to 64 | the scheme's promise |
 | `test_int4_dequantizes_with_the_stored_scale` | unit | dequantize is code times float16 scale exactly; codes are $\text{rint}(W / s_{16})$, including a hand-made tie at 3.5 stored scales | quantize against what is stored |
@@ -138,7 +138,7 @@ The design sketch's optional `awq_search_scales` and `gptq_quantize` are not par
 
 **Your tests (rung R4).** Write `python/tests/l8-5-quant/test_*.py`, importing only names from `contracts/py`, with properties in prose turned into code (Hypothesis is allowed): "every element is within half its group's stored scale", "pack then unpack is the identity on $[-8, 7]$", "the even column is the low nibble", "QuantLinear equals the dequantized matmul". The planted bugs "the nibbles are swapped" (`s01`) and "codes are chosen against the float32 scale" (`s07`) are required; overall 80%.
 
-**Parity.** `ss parity quant.int4` runs your `quantize_int4_group` through `course/conformance/parity/drivers/quant_int4.py` on the golden cases; `L9.5`'s C side joins the same suite.
+**Parity.** `ol parity quant.int4` runs your `quantize_int4_group` through `course/conformance/parity/drivers/quant_int4.py` on the golden cases; `L9.5`'s C side joins the same suite.
 
 ## 5. Pitfalls
 

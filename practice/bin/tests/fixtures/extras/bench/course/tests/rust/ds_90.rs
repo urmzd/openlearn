@@ -22,7 +22,7 @@ fn compensates_small_terms() {
 #[test]
 #[ignore]
 fn bench_kahan_1m() {
-    // WHY: the course budget for ds.90 (`ss bench ds.90`, release build).
+    // WHY: the course budget for ds.90 (`ol bench ds.90`, release build).
     // KIND: bench
     let xs: Vec<f64> = (0..1_000_000).map(|i| (i % 7) as f64).collect();
     let mut best = f64::INFINITY;

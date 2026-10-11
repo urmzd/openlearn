@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from sscourse import solve
+from olcourse import solve
 
 
 def check(spec: dict, answer: str) -> dict:

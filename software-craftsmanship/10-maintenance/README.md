@@ -30,7 +30,7 @@ A system that cannot change safely is already failing slowly. Every migration in
 
 **Key ideas**:
 - **KV format v1 to v2** (`craft.13`, build): fp8 E4M3 KV blocks with per-(layer, head) scales, mixed-version negotiation during rollout, drill `ops.04`.
-- **API v1 to v2** (`craft.14`, build): the `openai-subset.v2` contract delivered by `ss contracts sync`, served alongside v1 under the deprecation policy, drill `ops.05`.
+- **API v1 to v2** (`craft.14`, build): the `openai-subset.v2` contract delivered by `ol contracts sync`, served alongside v1 under the deprecation policy, drill `ops.05`.
 
 ## 2. Dependencies and regressions
 
@@ -49,14 +49,14 @@ A system that cannot change safely is already failing slowly. Every migration in
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `craft.13` | [Interface migration: KV format v1 to v2](01-kv-format-v1-to-v2.md) | build | 11 |
 | 2 | `craft.14` | [Interface migration: API v1 to v2](02-api-v1-to-v2.md) | build | 11 |
 | 3 | `craft.15` | [Dependency upgrades](03-dependency-upgrades.md) | practice | 11 |
 | 4 | `craft.16` | [Perf regression bisect](04-performance-regression-bisect.md) | practice | 11 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

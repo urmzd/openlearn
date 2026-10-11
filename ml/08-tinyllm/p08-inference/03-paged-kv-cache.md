@@ -1,4 +1,4 @@
-<!-- ss:module L8.3 -->
+<!-- ol:module L8.3 -->
 # Paged KV cache in Python
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L8.3               # stubs python/tinyllm/infer/paged.py
-ss tests L8.3               # read the test catalog first
-ss check L8.3               # exit code is the verdict; then grades your tests by mutation
-ss check L8.3 --ref-deps    # only if L8.2 is not passing yet
-ss diff  L8.3               # after passing: your code against the reference
+ol start L8.3               # stubs python/tinyllm/infer/paged.py
+ol tests L8.3               # read the test catalog first
+ol check L8.3               # exit code is the verdict; then grades your tests by mutation
+ol check L8.3 --ref-deps    # only if L8.2 is not passing yet
+ol diff  L8.3               # after passing: your code against the reference
 ```
 
 Start with `add_seq`, `append` for one token at a time, and `gather`; then multi-token chunks that cross block boundaries; then `fork` with copy on write; then `free` and `OutOfBlocks`.

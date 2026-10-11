@@ -1,6 +1,6 @@
 """dep.03 artifact check: Helm charts for the gateway and the engine, plus the observability stack.
 
-Run by `ss check dep.03` in your repo. Two tiers, in order:
+Run by `ol check dep.03` in your repo. Two tiers, in order:
 
   static   each chart carries contracts/helm/<part>.values.schema.json and Helm
            enforces it; the policy over `helm template` (probes, requests and
@@ -14,7 +14,7 @@ Run by `ss check dep.03` in your repo. Two tiers, in order:
            are available, and the observability release is deployed
 
 `<system>` below is [system].name from system.toml. The cluster tier fails when
-the context is missing or down; with SS_SMOKE=1 it is skipped instead.
+the context is missing or down; with OL_SMOKE=1 it is skipped instead.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ STACK = ("opentelemetry-collector", "kube-prometheus-stack", "tempo")
 
 
 def course_tree() -> Path:
-    return Path(os.environ.get("SS_COURSE_TREE") or Path(__file__).resolve().parents[2])
+    return Path(os.environ.get("OL_COURSE_TREE") or Path(__file__).resolve().parents[2])
 
 
 def chart(c: Ctx, part: str) -> str:
@@ -64,7 +64,7 @@ def contract_path(c: Ctx, rel: str) -> Path:
     for p in (c.path(f"contracts/{rel}"), course_tree() / "contracts" / rel):
         if p.is_file():
             return p
-    raise Fail(f"contracts/{rel} is missing: run `ss contracts sync`")
+    raise Fail(f"contracts/{rel} is missing: run `ol contracts sync`")
 
 
 def renders(c: Ctx) -> list[tuple[str, list]]:

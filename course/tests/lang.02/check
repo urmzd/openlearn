@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Artifact check for lang.02 (DESIGN 4.6 primers; H15: `ss check lang.02`
+# Artifact check for lang.02 (DESIGN 4.6 primers; H15: `ol check lang.02`
 # runs this in your repo and its exit code is the verdict).
 #
 # It runs the annotated tests next to this file against primers/lang.02/ in
 # YOUR repo: the Makefile is exercised in a scratch copy, the worker script
-# is started and signalled. Read them with `ss tests lang.02`.
+# is started and signalled. Read them with `ol tests lang.02`.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
@@ -12,12 +12,12 @@ dir="$PWD/primers/lang.02"
 
 fail() { echo "lang.02: $*" >&2; exit 1; }
 for tool in make cc uv; do
-  command -v "$tool" >/dev/null || fail "$tool is not on PATH (ss doctor)"
+  command -v "$tool" >/dev/null || fail "$tool is not on PATH (ol doctor)"
 done
 for f in Makefile main.c greet.c greet.h worker.sh; do
   [ -f "$dir/$f" ] || fail "primers/lang.02/$f is missing (chapter, section 4)"
 done
 
-export SS_PRIMER_DIR="$dir" PYTHONDONTWRITEBYTECODE=1
+export OL_PRIMER_DIR="$dir" PYTHONDONTWRITEBYTECODE=1
 exec uv run --no-project --quiet --with pytest \
   python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

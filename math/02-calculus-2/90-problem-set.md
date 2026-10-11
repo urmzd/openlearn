@@ -1,4 +1,4 @@
-<!-- ss:module S-M02 -->
+<!-- ol:module S-M02 -->
 # Calculus 2 problem set: integration techniques, the Gaussian, series, Taylor, polar, ODEs
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M02/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M02/problems.md` and in section 4 |
 | **Needs** | no module. Reading: `S-M01` (derivatives and the fundamental theorem) and the [Calculus 2 topic](README.md) |
 | **Used by** | no call site (a solve set). Take it after `M02.1` (Taylor series in code) and `M02.2` (the EMA as a geometric series) in Pass 2; `M07.0` and `M07.3` read its Gaussian integrals, which are the solve-only `M02.3` |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | OpenStax, *Calculus Volume 2* (free), ch. 3 to 7; Trefethen, *Approximation Theory and Approximation Practice*, ch. 1 to 3, for why a few Taylor terms after range reduction are enough |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M02             # writes solve/S-M02.toml and the four proof files
-ss check S-M02             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M02 --regrade   # ask the rubrics again after you change a proof
+ol start S-M02             # writes solve/S-M02.toml and the four proof files
+ol check S-M02             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M02 --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -102,7 +102,7 @@ proof = "S-M02/q12.md"
 
 Numbers are exact (`log(3/2)/2`, not `0.2027`). Taylor polynomials are checked symbolically, in any term order. Write $e$ as `E` or `exp(1)` and $\pi$ as `pi`.
 
-<!-- ss:problems S-M02 -->
+<!-- ol:problems S-M02 -->
 
 ### Integration techniques
 
@@ -220,7 +220,7 @@ Numbers are exact (`log(3/2)/2`, not `0.2027`). Taylor polynomials are checked s
 
 **q52.** Gradient flow on $f(x) = x^2/2$ is $x'(t) = -f'(x) = -x$. Starting from $x(0) = 4$, give the time at which $x(t) = 1$. `[number]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

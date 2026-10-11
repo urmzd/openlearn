@@ -2,8 +2,8 @@
 
 > **Optional language.** Scala is not one of the languages this
 > curriculum targets, so these exercises have no reference implementations
-> yet and are excluded from `ss verify build` and from CI. They are kept
-> because the exercises are worth doing, and every `ss` command works on
+> yet and are excluded from `ol verify build` and from CI. They are kept
+> because the exercises are worth doing, and every `ol` command works on
 > them by name.
 >
 > Toolchain: `brew install scala-cli`. On a chezmoi-managed machine it comes from the
@@ -46,10 +46,10 @@ Master functional programming, the type system, and pattern matching on the JVM.
 ## Practising these
 
 ```bash
-practice/bin/ss list  build scala          # which of these have references yet
-practice/bin/ss start build scala 01       # clone it stubbed into .scratchpad/
-practice/bin/ss check build scala 01       # run it; exit code is the verdict
-practice/bin/ss diff  build scala 01       # your attempt against the reference
+practice/bin/ol list  build scala          # which of these have references yet
+practice/bin/ol start build scala 01       # clone it stubbed into .scratchpad/
+practice/bin/ol check build scala 01       # run it; exit code is the verdict
+practice/bin/ol diff  build scala 01       # your attempt against the reference
 ```
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather

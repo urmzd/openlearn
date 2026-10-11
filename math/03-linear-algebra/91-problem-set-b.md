@@ -1,4 +1,4 @@
-<!-- ss:module S-M03b -->
+<!-- ol:module S-M03b -->
 # Linear algebra problem set, part b: inner products, SVD and low rank, matmul accounting and the roofline
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M03b/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M03b/problems.md` and in section 4 |
 | **Needs** | no module. Reading: `S-M03a`, `M03.5` (SVD, Eckart-Young, least squares), `M03.6` (inner products, cosine, projection), and the [Linear Algebra topic](README.md) |
 | **Used by** | no call site (a solve set). It checks the definitions behind `M03.5` and `M03.6`, which `L2.3`, `L6.6`, `L7.6`, and `C1` call, and the FLOP and byte counts `L9.1` tiles its matmul around |
-| **Milestone** | `MS-P3` (the Pass 3 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P3` (the Pass 3 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Strang, *Introduction to Linear Algebra*, sections 1.2, 4.2, 7.1 to 7.2; Trefethen and Bau, *Numerical Linear Algebra*, lectures 4 and 5; Williams, Waterman, and Patterson, "Roofline: an insightful visual performance model for multicore architectures" (CACM 2009) |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M03b             # writes solve/S-M03b.toml and one file per proof
-ss check S-M03b             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M03b --regrade   # ask the rubrics again after you change a proof
+ol start S-M03b             # writes solve/S-M03b.toml and one file per proof
+ol check S-M03b             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M03b --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -89,7 +89,7 @@ proof = "S-M03b/q3.md"
 
 Give exact values (`sqrt(5)`, not `2.236`).
 
-<!-- ss:problems S-M03b -->
+<!-- ol:problems S-M03b -->
 
 ### Inner products and projections
 
@@ -117,7 +117,7 @@ Give exact values (`sqrt(5)`, not `2.236`).
 
 **q10.** A square $N \times N$ fp32 matmul reads $A$ and $B$ once and writes $C$ once. (a) Give its arithmetic intensity in FLOP per byte. `[expr in N]` (b) A machine has a peak of $10$ TFLOP/s and a memory bandwidth of $100$ GB/s. Give the smallest $N$ at which this matmul reaches the compute-bound side of the roofline (intensity at least the ridge point). `[number]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

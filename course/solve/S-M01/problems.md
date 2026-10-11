@@ -1,6 +1,6 @@
 # S-M01 problems: limits, derivatives, rates, optimization, integrals, L'Hôpital
 
-Answer every question in `solve/S-M01.toml` (written by `ss start S-M01`).
+Answer every question in `solve/S-M01.toml` (written by `ol start S-M01`).
 The tag after each question is its answer type. `[number]` is an exact
 value (`3/5`, `exp(2)`, `2/pi`, `log(2)`, `sqrt(7)/2`); a decimal fails.
 `[expr in x]` is a formula in the named variables (`2*x*cos(x^2)`).

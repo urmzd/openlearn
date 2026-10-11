@@ -25,7 +25,7 @@ const DOCS = path.join(SITE, 'src/content/docs');
 const ASSETS = path.join(SITE, 'public/repo');
 const GENERATED = path.join(SITE, 'src/generated');
 const BASE = '';
-const GITHUB = 'https://github.com/urmzd/supersource';
+const GITHUB = 'https://github.com/urmzd/openlearn';
 
 // Learning order, mirrored from scripts/assemble_book.py.
 const TRACKS = [
@@ -257,7 +257,7 @@ function stageTable(pathDir) {
 			.join('<br />');
 		rows.push(`| ${stage} | **${title}**<br />${links} | ${done.replace(/\|/g, '\\|')} |`);
 	}
-	return `\n\n## Stages\n\nGenerated from \`path.tsv\`. Track progress locally with \`practice/bin/ss learn\`.\n\n${rows.join('\n')}\n`;
+	return `\n\n## Stages\n\nGenerated from \`path.tsv\`. Track progress locally with \`practice/bin/ol learn\`.\n\n${rows.join('\n')}\n`;
 }
 
 // ---------- sidebar ----------

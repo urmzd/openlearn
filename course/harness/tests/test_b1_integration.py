@@ -8,7 +8,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-from sscourse import conform, drills, registry, services, system
+from olcourse import conform, drills, registry, services, system
 
 COURSE = Path(__file__).resolve().parents[2]
 

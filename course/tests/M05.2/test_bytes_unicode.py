@@ -38,7 +38,7 @@ PRINTABLE = list(range(0x21, 0x7F)) + list(range(0xA1, 0xAD)) + list(range(0xAE,
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 # --- the worked example -------------------------------------------------------

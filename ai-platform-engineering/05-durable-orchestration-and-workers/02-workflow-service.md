@@ -1,4 +1,4 @@
-<!-- ss:module dur.02 -->
+<!-- ol:module dur.02 -->
 # Workflow service + idempotent start, describe, list, paged history
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.02          # writes go/durable/server/{server,workflows}.go (and stubs of the later files of the package)
-ss tests dur.02
-ss check dur.02          # dur.01 and dur.03 must pass first, or add --ref-deps
-ss diff  dur.02
+ol start dur.02          # writes go/durable/server/{server,workflows}.go (and stubs of the later files of the package)
+ol tests dur.02
+ol check dur.02          # dur.01 and dur.03 must pass first, or add --ref-deps
+ol diff  dur.02
 ```
 
 Write `apply` first (it is a big switch with one case per event), then `commit` and `StartWorkflow`, then the read rpcs, then `Open`.

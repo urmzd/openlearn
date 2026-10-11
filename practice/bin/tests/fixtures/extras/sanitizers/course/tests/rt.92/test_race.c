@@ -1,13 +1,13 @@
 #include "tinyllm.h"
 #include "tinyllm/race.h"
-#include "ss_test.h"
+#include "ol_test.h"
 
-SS_TEST(hand_example) {
+OL_TEST(hand_example) {
     /* WHY: four threads adding 1000 each give 4000, with no data race (TSan build).
      * KIND: unit */
     int64_t n = 0;
-    SS_EQ(tl_demo_count_parallel(4, 1000, &n), TL_OK);
-    SS_EQ(n, 4000);
+    OL_EQ(tl_demo_count_parallel(4, 1000, &n), TL_OK);
+    OL_EQ(n, 4000);
 }
 
-int main(void) { return SS_RUN_ALL(); }
+int main(void) { return OL_RUN_ALL(); }

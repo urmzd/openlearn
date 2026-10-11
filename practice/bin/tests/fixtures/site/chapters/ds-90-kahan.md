@@ -1,4 +1,4 @@
-<!-- ss:module ds.90 -->
+<!-- ol:module ds.90 -->
 # Kahan sum
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ds.90
-ss tests ds.90
-ss check ds.90
+ol start ds.90
+ol tests ds.90
+ol check ds.90
 ```
 
 ---

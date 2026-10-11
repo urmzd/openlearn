@@ -56,7 +56,7 @@ HAND_LABELS = [1, 0, 1, 1, 0]
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def golden() -> dict:

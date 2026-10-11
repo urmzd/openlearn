@@ -1,4 +1,4 @@
-<!-- ss:module dur.91 -->
+<!-- ol:module dur.91 -->
 # Mean with an empty-input error
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.91
-ss tests dur.91
-ss check dur.91
+ol start dur.91
+ol tests dur.91
+ol check dur.91
 ```
 
 ---

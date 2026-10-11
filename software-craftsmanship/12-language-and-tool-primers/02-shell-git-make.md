@@ -1,4 +1,4 @@
-<!-- ss:module lang.02 -->
+<!-- ol:module lang.02 -->
 # Shell, git, make, processes: exit codes, signals, environment, pipes
 
 ## Overview
@@ -9,14 +9,14 @@
 | **You build** | `primers/lang.02/`: a `Makefile` for the given two-file C program (`main.c`, `greet.c`, `greet.h`), and `worker.sh`, a script that holds a lock file, traps SIGTERM and SIGINT, cleans up, and exits 128 + the signal number |
 | **Contract** | none: a primer exercise, not part of the system |
 | **Tests** | `course/tests/lang.02/`, run by its `check` script (what they check: section 4) |
-| **Needs** | a terminal with `bash`, `make`, `cc`, `git`, and `uv` (`ss doctor`); [`lang.01`](01-python-and-numpy.md) comes first on the path |
-| **Used by** | no code call site (a primer). It is the concept prerequisite of `craft.01` (your CI gate is processes and exit codes), every `ss` verdict (an exit code), `M03.1` and `rt.01` (your C `Makefile`), `L10.0` (your engine shuts down on SIGTERM), and `dep.00` (Kubernetes stops a pod with SIGTERM, then SIGKILL) |
+| **Needs** | a terminal with `bash`, `make`, `cc`, `git`, and `uv` (`ol doctor`); [`lang.01`](01-python-and-numpy.md) comes first on the path |
+| **Used by** | no code call site (a primer). It is the concept prerequisite of `craft.01` (your CI gate is processes and exit codes), every `ol` verdict (an exit code), `M03.1` and `rt.01` (your C `Makefile`), `L10.0` (your engine shuts down on SIGTERM), and `dep.00` (Kubernetes stops a pod with SIGTERM, then SIGKILL) |
 | **Milestone** | MS-P0 (page: `paths/course-p00-setup/milestone.md`) |
 | **Optional depth** | *The Linux Command Line*, Shotts, ch. 6, 10, 24 to 27 (free at linuxcommand.org); GNU Make manual, ch. 2 and 4 (free); `man 7 signal`; *Pro Git*, ch. 1 to 3 (free at git-scm.com) |
 
 ## Key Takeaways
 
-- **Every process ends with an exit status** from 0 to 255; 0 means success. `ss check`, CI, and Kubernetes all decide by that one number.
+- **Every process ends with an exit status** from 0 to 255; 0 means success. `ol check`, CI, and Kubernetes all decide by that one number.
 - **128 + n means "ended by signal n".** A trap that cleans up and exits 143 after SIGTERM keeps that information; a script without a trap is simply killed.
 - **Bash runs a trap only between commands.** Sleep in the background and `wait`, or a 30 s `sleep` delays your shutdown by up to 30 s.
 - **SIGKILL cannot be trapped**, so anything you clean up on exit can be left behind; the next start must detect stale state.
@@ -25,16 +25,16 @@
 ## How to work this chapter
 
 ```bash
-ss start lang.02                 # records the start; there is no stub: you write every file
-ss tests lang.02                 # read the test catalog first
-ss check lang.02                 # exit code is the verdict
+ol start lang.02                 # records the start; there is no stub: you write every file
+ol tests lang.02                 # read the test catalog first
+ol check lang.02                 # exit code is the verdict
 ```
 
 ---
 
 ## 1. Why now
 
-Next, in craft.01, you set up the gate every later change to your system passes through: CI jobs that run commands and decide pass or fail by their exit status. From then on, `ss check` speaks to you in exit codes (0 pass, 1 fail, 3 blocked, 4 contract drift), your C code in Pass 1 is built by a `Makefile` you write, and your Rust engine and Go gateway run as processes that Kubernetes stops by sending SIGTERM and, 30 seconds later, SIGKILL. A server that ignores SIGTERM loses in-flight requests; a build that does not track headers ships objects compiled against an old struct layout; a script that ignores a failing command in a pipe reports green on a broken build. This primer teaches the process model those all share, on two small artifacts you can test in seconds.
+Next, in craft.01, you set up the gate every later change to your system passes through: CI jobs that run commands and decide pass or fail by their exit status. From then on, `ol check` speaks to you in exit codes (0 pass, 1 fail, 3 blocked, 4 contract drift), your C code in Pass 1 is built by a `Makefile` you write, and your Rust engine and Go gateway run as processes that Kubernetes stops by sending SIGTERM and, 30 seconds later, SIGKILL. A server that ignores SIGTERM loses in-flight requests; a build that does not track headers ships objects compiled against an old struct layout; a script that ignores a failing command in a pipe reports green on a broken build. This primer teaches the process model those all share, on two small artifacts you can test in seconds.
 
 ## 2. Principles
 
@@ -71,7 +71,7 @@ In bash, `trap 'commands' TERM` replaces the default action with your commands. 
 
 ### 2.3 Environment
 
-The **environment** is a list of `NAME=value` strings each process carries. A child gets a **copy** of its parent's environment when it starts, so a child can never change its parent's variables. In bash, `export NAME=value` puts a variable into the environment of every later child; `NAME=value cmd` sets it for one command only. `${NAME:-default}` reads a variable and substitutes `default` when it is unset or empty. Configuration by environment variable is how your services are configured in Kubernetes (`TL_*` variables, 2.16 of the design) and how `ss` points every command at your repo (`SS_COURSE_HOME`).
+The **environment** is a list of `NAME=value` strings each process carries. A child gets a **copy** of its parent's environment when it starts, so a child can never change its parent's variables. In bash, `export NAME=value` puts a variable into the environment of every later child; `NAME=value cmd` sets it for one command only. `${NAME:-default}` reads a variable and substitutes `default` when it is unset or empty. Configuration by environment variable is how your services are configured in Kubernetes (`TL_*` variables, 2.16 of the design) and how `ol` points every command at your repo (`OL_COURSE_HOME`).
 
 ### 2.4 Files, pipes, redirection
 
@@ -100,7 +100,7 @@ To build a target, make first brings each prerequisite up to date, then runs the
 
 ### 2.6 git
 
-git records **snapshots**. A **commit** is a full snapshot of the tracked files, plus a message, an author, a time, and a pointer to its parent commit, all named by a hash of that content. You choose what goes into the next snapshot by **staging**: `git add file` copies the file's current content into the staging area, and `git commit -m "..."` turns the staging area into a commit. `git status` shows what changed and what is staged; `git log` walks the parents from the newest commit (**HEAD**); `git diff` shows unstaged changes. `.gitignore` lists files git should never offer to track (build outputs like `*.o`, `.venv/`, `.ss/`). A **branch** is a movable name for a commit; a **remote** is another copy of the repository you `git push` to. git runs **hooks**, scripts in a hooks directory, at fixed moments: craft.01 uses the `commit-msg` hook, which gets the message file and can reject the commit with a nonzero exit status.
+git records **snapshots**. A **commit** is a full snapshot of the tracked files, plus a message, an author, a time, and a pointer to its parent commit, all named by a hash of that content. You choose what goes into the next snapshot by **staging**: `git add file` copies the file's current content into the staging area, and `git commit -m "..."` turns the staging area into a commit. `git status` shows what changed and what is staged; `git log` walks the parents from the newest commit (**HEAD**); `git diff` shows unstaged changes. `.gitignore` lists files git should never offer to track (build outputs like `*.o`, `.venv/`, `.ol/`). A **branch** is a movable name for a commit; a **remote** is another copy of the repository you `git push` to. git runs **hooks**, scripts in a hooks directory, at fixed moments: craft.01 uses the `commit-msg` hook, which gets the message file and can reject the commit with a nonzero exit status.
 
 ## 3. Worked example by hand
 
@@ -205,7 +205,7 @@ int main(int argc, char **argv) {
 3. write its own PID (`$$`) to `worker.lock`, set its traps, then print `ready` as its first line on stdout;
 4. on SIGTERM exit 143, on SIGINT exit 130, in both cases after removing the lock and killing any background child, promptly even while it waits out a 30 s interval.
 
-**The check.** `ss check lang.02` runs `course/tests/lang.02/check` in your repo. It refuses early if `make`, `cc`, `uv`, or one of the five files is missing, then runs the tests with pytest (`uv run --no-project --with pytest`). The make tests work in a scratch copy of the directory, so your repo stays clean.
+**The check.** `ol check lang.02` runs `course/tests/lang.02/check` in your repo. It refuses early if `make`, `cc`, `uv`, or one of the five files is missing, then runs the tests with pytest (`uv run --no-project --with pytest`). The make tests work in a scratch copy of the directory, so your repo stays clean.
 
 ### What the tests check
 
@@ -252,7 +252,7 @@ int main(int argc, char **argv) {
 | Forward | `dep.00` | Kubernetes sends SIGTERM, waits the grace period (30 s by default), then SIGKILL; status 137 in `kubectl describe` means SIGKILL |
 | Forward | `ops.00` | the first drill reads a crashlooping pod's exit status and restart count |
 
-A primer has no code call site, so no module's `ss check` blocks on it. MS-P0 does: it requires a fresh pass of `lang.02`.
+A primer has no code call site, so no module's `ol check` blocks on it. MS-P0 does: it requires a fresh pass of `lang.02`.
 
 ## Going further
 

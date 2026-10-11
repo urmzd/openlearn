@@ -45,8 +45,8 @@ def test_rust_dep_smoke_and_kind_filter(ss):
     assert "ok   ds.90 smoke: hand_example" in out
     out = ss("check", "ds.91", "--kind", "boundary", "--no-cumulative", rc=0).out
     assert "smoke" not in out
-    farm = ss.learner / ".ss/rust-farm"
-    assert (farm / "ss-tests/tests/ds_91.rs").is_file() and "ss-tests" in (
+    farm = ss.learner / ".ol/rust-farm"
+    assert (farm / "ol-tests/tests/ds_91.rs").is_file() and "ol-tests" in (
         farm / "Cargo.toml"
     ).read_text()
 
@@ -69,7 +69,7 @@ def test_go_stub_builds_fails_then_passes(ss):
     assert "todo: dur.90" in ss("check", "dur.90", rc=1).out
     ss.implement("go/ds/demo/sum.go")
     ss("check", "dur.90", rc=0)
-    gomod = (ss.learner / ".ss/overlay/dur.90/go/go.mod").read_text()
+    gomod = (ss.learner / ".ol/overlay/dur.90/go/go.mod").read_text()
     assert "replace" not in gomod  # go.work provides the contracts module
 
 
@@ -87,8 +87,8 @@ def test_go_dependent_smoke(ss):
 
 
 def test_go_race_detector_path(ss):
-    # `ss check` runs `go test -race` by default; the other tests turn it off for speed.
+    # `ol check` runs `go test -race` by default; the other tests turn it off for speed.
     ss.init()
     ss("start", "dur.90", rc=0)
     ss.implement("go/ds/demo/sum.go")
-    assert "PASS dur.90" in ss("check", "dur.90", rc=0, env={"SS_GO_RACE": "1"}).out
+    assert "PASS dur.90" in ss("check", "dur.90", rc=0, env={"OL_GO_RACE": "1"}).out

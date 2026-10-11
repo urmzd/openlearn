@@ -27,7 +27,7 @@ The worked example for `L3.2` is `lstm_cell.c` from [Neural Architectures](../..
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L3.1` | [Vanilla RNN with manual BPTT and truncation](01-vanilla-rnn-manual-bptt.md) | build | 4 |
@@ -36,7 +36,7 @@ The worked example for `L3.2` is `lstm_cell.c` from [Neural Architectures](../..
 | 4 | `L3.4` | [Bidirectional RNN with length-aware reversal](04-bidirectional-rnn.md) | build | 4 |
 | 5 | `L3.5` | [ELMo: biLM, ScalarMix, linear probes](05-elmo-bilm-scalarmix-probes.md) | side | 4 |
 | 6 | `L3.6` | [RNN language model with stateful TBPTT](06-rnn-language-model-stateful-tbptt.md) | build | 4 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->
 
 ## Going further
 

@@ -9,6 +9,6 @@ What sits between the endpoint and the user: token streaming, retrieval, evaluat
 The stages, their chapters, and what "done" means for each are in [`path.tsv`](path.tsv).
 
 ```bash
-practice/bin/ss learn ai-full-stack          # stages and progress
-practice/bin/ss learn ai-full-stack next     # read the next unfinished stage
+practice/bin/ol learn ai-full-stack          # stages and progress
+practice/bin/ol learn ai-full-stack next     # read the next unfinished stage
 ```

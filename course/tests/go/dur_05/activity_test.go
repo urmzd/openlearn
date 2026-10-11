@@ -16,7 +16,7 @@ import (
 	"tinyllm/durable/activity"
 	"tinyllm/durable/worker"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 func guard(t *testing.T, d time.Duration) context.Context {

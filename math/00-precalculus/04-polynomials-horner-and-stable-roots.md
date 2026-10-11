@@ -1,4 +1,4 @@
-<!-- ss:module M00.4 -->
+<!-- ol:module M00.4 -->
 # Polynomials, Horner, stable quadratic roots
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M00.4              # stubs python/tinyllm/num/poly.py into your repo
-ss tests M00.4              # read the test catalog first: rung R0, you write no tests here
-ss check M00.4              # exit code is the verdict
-ss diff  M00.4              # after passing: your code against the reference
+ol start M00.4              # stubs python/tinyllm/num/poly.py into your repo
+ol tests M00.4              # read the test catalog first: rung R0, you write no tests here
+ol check M00.4              # exit code is the verdict
+ol diff  M00.4              # after passing: your code against the reference
 ```
 
 ---

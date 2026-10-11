@@ -66,7 +66,7 @@ its Rust course tests with cargo, as MS-L9 treats its sanitizer step
 little: the PR quantization steps bound top-1 agreement and the NLL shift;
 the nightly steps keep DESIGN 4.3's perplexity budgets on SmolLM2.
 
-`ss milestone MS-L8 --smoke` runs the tiny-model steps (seconds).
+`ol milestone MS-L8 --smoke` runs the tiny-model steps (seconds).
 
 ## MS-P6: Inference: cached, quantized, speculative, and constrained decoding
 
@@ -80,4 +80,4 @@ requirement of MS-P6 or any production runtime milestone. Each required
 module's C check compiles its own test binary, and numerical parity uses the
 checked-in vectors emitted by the corresponding Python reference.
 
-Run a gate with `practice/bin/ss milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

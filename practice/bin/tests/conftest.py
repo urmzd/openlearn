@@ -1,11 +1,11 @@
-"""Harness self-tests: drive practice/bin/ss against a throwaway course tree.
+"""Harness self-tests: drive practice/bin/ol against a throwaway course tree.
 
-`fixtures/site/` is a miniature supersource: a course/ tree with one sample
+`fixtures/site/` is a miniature openlearn: a course/ tree with one sample
 module per language (Python M90.*, C rt.90/rt.91, Rust ds.90/ds.91, Go
 dur.90/dur.91, practice craft.90), its chapters, and a course path. Each test
-copies it into a temp dir, adds the real frozen helpers (ss_test.h, tests/_lib),
+copies it into a temp dir, adds the real frozen helpers (ol_test.h, tests/_lib),
 commits it to a fresh git repo (so contracts/VERSION resolution is real), and
-points ss at it and at a fresh learner repo through SS_* env vars.
+points ol at it and at a fresh learner repo through OL_* env vars.
 
 Run:  uv run --project course/harness pytest practice/bin/tests
 """
@@ -25,7 +25,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[3]
-SS_BIN = REPO / "practice" / "bin" / "ss"
+OL_BIN = REPO / "practice" / "bin" / "ol"
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "site"
 FAKES = Path(__file__).resolve().parent / "fakes"
 EXTRAS = FIXTURE.parent / "extras"
@@ -57,12 +57,12 @@ class SS:
         self.learner = tmp / "learner"
         self.env = {
             **os.environ,
-            "SS_COURSE_ROOT": str(self.course),
-            "SS_COURSE_HOME": str(self.learner),
-            "SS_CACHE": str(tmp / "cache"),
-            "SS_SCRATCH": str(tmp / "scratch"),
-            "SS_PATHS_DIR": str(site / "paths"),
-            "SS_GO_RACE": "0",
+            "OL_COURSE_ROOT": str(self.course),
+            "OL_COURSE_HOME": str(self.learner),
+            "OL_CACHE": str(tmp / "cache"),
+            "OL_SCRATCH": str(tmp / "scratch"),
+            "OL_PATHS_DIR": str(site / "paths"),
+            "OL_GO_RACE": "0",
             "EDITOR": "true",
             "CARGO_TERM_COLOR": "never",
         }
@@ -77,7 +77,7 @@ class SS:
         timeout: float = 120,
     ) -> subprocess.CompletedProcess:
         p = subprocess.run(
-            ["bash", str(SS_BIN), *args],
+            ["bash", str(OL_BIN), *args],
             env={**self.env, **(env or {})},
             cwd=REPO,
             input=input,
@@ -89,7 +89,7 @@ class SS:
         p.out = p.stdout + p.stderr  # type: ignore[attr-defined]
         if rc is not None:
             assert p.returncode == rc, (
-                f"ss {' '.join(args)} exited {p.returncode}, want {rc}\n{p.out}"
+                "ol {' '.join(args)} exited {p.returncode}, want {rc}\n{p.out}"
             )
         return p
 
@@ -113,7 +113,7 @@ class SS:
         dest.write_text(text)
 
     def verdicts(self, mid: str) -> list[dict]:
-        p = self.learner / ".ss" / "verdicts.jsonl"
+        p = self.learner / ".ol" / "verdicts.jsonl"
         return [
             e
             for e in map(json.loads, p.read_text().splitlines())
@@ -150,7 +150,7 @@ class SS:
         git(self.learner, "commit", "-qm", msg, "--allow-empty")
 
     def use_fakes(self, kube_state: dict | None = None) -> dict:
-        """Put fake kubectl, kind, and gh first on PATH for every later ss call."""
+        """Put fake kubectl, kind, and gh first on PATH for every later ol call."""
         self.env["PATH"] = f"{FAKES}{os.pathsep}{self.env['PATH']}"
         self.env["FAKE_KUBE_STATE"] = str(self.tmp / "kube.json")
         self.env["FAKE_KUBE_LOG"] = str(self.tmp / "kube.log")
@@ -303,7 +303,7 @@ def fake_http():
 def ss(tmp_path: Path) -> SS:
     site = tmp_path / "site"
     shutil.copytree(FIXTURE, site)
-    for h in sorted((REPO / "course" / "contracts" / "c" / "include").glob("ss_*.h")):
+    for h in sorted((REPO / "course" / "contracts" / "c" / "include").glob("ol_*.h")):
         shutil.copy2(h, site / "course" / "contracts" / "c" / "include")
     shutil.copytree(
         REPO / "course" / "tests" / "_lib",

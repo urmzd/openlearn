@@ -1,4 +1,4 @@
-<!-- ss:module M11.1 -->
+<!-- ol:module M11.1 -->
 # Entropy, cross-entropy, KL, JS, and the k3 estimator
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M11.1              # stubs entropy.py into your repo, contract alongside
-ss tests M11.1              # read the test catalog first: rung R0, you write no tests here
-ss check M11.1              # exit code is the verdict
-ss check M11.1 --ref-deps   # only if your M09.2 is not passing yet
-ss diff  M11.1              # after passing: your code against the reference
+ol start M11.1              # stubs entropy.py into your repo, contract alongside
+ol tests M11.1              # read the test catalog first: rung R0, you write no tests here
+ol check M11.1              # exit code is the verdict
+ol check M11.1 --ref-deps   # only if your M09.2 is not passing yet
+ol diff  M11.1              # after passing: your code against the reference
 ```
 
 ---
@@ -202,7 +202,7 @@ Each reduces over `axis` and drops it, like `np.sum`. Probabilities are not reno
 | Forward | `L12.3` | the KL penalty to the reference model, per token, with `kl_k3` |
 | Forward | `M11.2` | perplexity is $e^{H}$ of the per-token cross-entropy |
 
-If you skip this module, `ss check M08.3` stops with `M08.3 needs M11.1`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check M08.3` stops with `M08.3 needs M11.1`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

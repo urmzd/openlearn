@@ -1,5 +1,5 @@
 [project]
-name = "supersource"
+name = "openlearn"
 version = "0.14.0"
 description = "Free curriculum for mathematics and algorithm mastery"
 readme = "README.md"

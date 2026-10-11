@@ -1,6 +1,6 @@
 """obs.05 artifact check: observability for the control plane.
 
-Run by `ss check obs.05` in your repo. Three tiers, in order:
+Run by `ol check obs.05` in your repo. Three tiers, in order:
 
   static   deploy/observability/dashboards/control-plane.json is portable
            Grafana JSON whose queries parse (promtool) and name only contract
@@ -18,7 +18,7 @@ Run by `ss check obs.05` in your repo. Three tiers, in order:
            a trace whose spans include workflow TrainRun, activity train,
            train.run, and train.step (MS-durable's kind run makes one)
 
-The cluster tier fails when the context is missing or down; with SS_SMOKE=1 it
+The cluster tier fails when the context is missing or down; with OL_SMOKE=1 it
 is skipped instead.
 """
 
@@ -151,7 +151,7 @@ def test_queries_parse(c: Ctx) -> None:
     ]
     r = _promtool.run(
         c,
-        c.path(".ss/check/obs.05/parse"),
+        c.path(".ol/check/obs.05/parse"),
         ["check", "rules", "queries.yaml"],
         {
             "queries.yaml": yaml.safe_dump(
@@ -475,7 +475,7 @@ def _deploy(c: Ctx, key: str) -> str:
         if smoke_mode():
             c.skipped_cluster = True
             raise Skip(
-                f"cluster tier skipped under SS_SMOKE=1: system.toml has no [deploy].{key}"
+                f"cluster tier skipped under OL_SMOKE=1: system.toml has no [deploy].{key}"
             )
         raise Fail(f"system.toml has no [deploy].{key}")
     return url

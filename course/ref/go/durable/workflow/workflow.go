@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"time"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 // Workflow is the signature of workflow code.

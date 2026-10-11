@@ -1,4 +1,4 @@
-<!-- ss:module ops.04 -->
+<!-- ol:module ops.04 -->
 # Drill: KV v2 migration
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ops.04
-ss tests ops.04
-ss check ops.04
+ol start ops.04
+ol tests ops.04
+ol check ops.04
 ```
 
 ---

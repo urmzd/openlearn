@@ -1,4 +1,4 @@
-<!-- ss:module M12.6 -->
+<!-- ol:module M12.6 -->
 # Mel scale and filterbanks
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M12.6              # stubs python/tinyllm/sig/mel.py into your repo
-ss tests M12.6              # read the test catalog first: rung R0, you write no tests here
-ss check M12.6              # exit code is the verdict
-ss check M12.6 --ref-deps   # only if your M00.1 is not passing yet
-ss diff  M12.6              # after passing: your code against the reference
+ol start M12.6              # stubs python/tinyllm/sig/mel.py into your repo
+ol tests M12.6              # read the test catalog first: rung R0, you write no tests here
+ol check M12.6              # exit code is the verdict
+ol check M12.6 --ref-deps   # only if your M00.1 is not passing yet
+ol diff  M12.6              # after passing: your code against the reference
 ```
 
 ---

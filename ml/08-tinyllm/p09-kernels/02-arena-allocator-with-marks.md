@@ -1,4 +1,4 @@
-<!-- ss:module rt.02 -->
+<!-- ol:module rt.02 -->
 # C runtime support and arena allocator with marks (optional)
 
 ## Overview
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start rt.02              # stubs abi.c and arena.c into your repo
-ss tests rt.02              # read the test catalog first
-ss check rt.02              # exit code is the verdict
-ss check rt.02 --ref-deps   # only if you skipped a listed prerequisite
-ss diff  rt.02              # after passing: your code against the reference
+ol start rt.02              # stubs abi.c and arena.c into your repo
+ol tests rt.02              # read the test catalog first
+ol check rt.02              # exit code is the verdict
+ol check rt.02 --ref-deps   # only if you skipped a listed prerequisite
+ol diff  rt.02              # after passing: your code against the reference
 ```
 
-The counting allocator of `ss_test.h` is installed through `tl_set_allocator`: a test that ends with a block still live fails as a leak, and `ss_alloc_fail_after(n)` makes the n-th allocation fail. The helper API stays inside C test processes; Rust and Python use process and file protocols.
+The counting allocator of `ol_test.h` is installed through `tl_set_allocator`: a test that ends with a block still live fails as a leak, and `ol_alloc_fail_after(n)` makes the n-th allocation fail. The helper API stays inside C test processes; Rust and Python use process and file protocols.
 
 ---
 
@@ -155,7 +155,7 @@ The arena is not thread-safe: one arena per thread (L9.3 gives each worker of th
 | Forward | `L9.1`, `L9.2`, `L9.4`, `L9.5` | Optional C exercises use the shared error and allocator helpers in standalone C test binaries |
 | Forward | `ds.01`, `ds.02`, `ds.04`, `rt.03`, `rt.04` | Optional C exercises reuse the standalone runtime helpers; none are linked into Python or Rust |
 
-If you skip this module, `ss check L9.3` stops with `BLOCKED ... needs rt.02`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L9.3` stops with `BLOCKED ... needs rt.02`: build it, or pass `--ref-deps`.
 
 ## Going further
 

@@ -1,5 +1,5 @@
-"""Course perf budgets (DESIGN 5.11): ss bench --calibrate (host and the
-in-cluster Job through the safety gate), ss bench <ID>|course [--assert] in
+"""Course perf budgets (DESIGN 5.11): ol bench --calibrate (host and the
+in-cluster Job through the safety gate), ol bench <ID>|course [--assert] in
 four languages, and the `perf` milestone matcher."""
 
 import json
@@ -9,10 +9,10 @@ from pathlib import Path
 def test_calibrate_then_bench_four_languages(ss):
     ss.add_extras("bench")
     out = ss("bench", "rt.91", rc=5).out
-    assert "run `ss bench --calibrate` first" in out
+    assert "run `ol bench --calibrate` first" in out
     out = ss("bench", "--calibrate", rc=0).out
     assert "calibrated" in out and "GFLOP/s" in out
-    cal = json.loads((Path(ss.env["SS_CACHE"]) / "calibration.json").read_text())
+    cal = json.loads((Path(ss.env["OL_CACHE"]) / "calibration.json").read_text())
     assert (
         cal["metrics"]["matmul_gflops"] > 0
         and cal["metrics"]["decode_tok_s"] > 0
@@ -53,7 +53,7 @@ def test_learner_bench_runs_your_units(ss):
     assert "ok   rt.91" in out and "yours" in out
     events = [
         json.loads(x)
-        for x in (ss.learner / ".ss/verdicts.jsonl").read_text().splitlines()
+        for x in (ss.learner / ".ol/verdicts.jsonl").read_text().splitlines()
     ]
     assert any(
         e.get("event") == "bench" and e["id"] == "rt.91" and e["ok"] for e in events
@@ -71,7 +71,7 @@ def test_perf_matcher_and_in_cluster_calibration(ss):
     )
     ss.commit_learner("feat: a fast decode loop")
     out = ss("milestone", "MS-B90", rc=5).out
-    assert "run `ss bench --calibrate` first" in out
+    assert "run `ol bench --calibrate` first" in out
     ss("bench", "--calibrate", rc=0)
     out = ss("milestone", "MS-B90", rc=0).out
     assert "tokens_per_s: 1e+09 >=" in out
@@ -86,9 +86,9 @@ def test_perf_matcher_and_in_cluster_calibration(ss):
     assert "in kind-forge/forge: matmul 4.00 GFLOP/s, decode 120 steps/s" in out
     k = ss.kube()
     kinds = [x["kind"] for x in k["applied"]]
-    assert kinds == ["ConfigMap", "Job"] and "job/ss-calibrate" in k["deleted_objects"]
+    assert kinds == ["ConfigMap", "Job"] and "job/ol-calibrate" in k["deleted_objects"]
     cal = json.loads(
-        (Path(ss.env["SS_CACHE"]) / "calibration.in-cluster.json").read_text()
+        (Path(ss.env["OL_CACHE"]) / "calibration.in-cluster.json").read_text()
     )
     assert cal["metrics"] == {"matmul_gflops": 4.0, "decode_tok_s": 120.0}
     st_ = ss.kube()

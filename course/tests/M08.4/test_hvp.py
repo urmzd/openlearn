@@ -37,7 +37,7 @@ GOLDEN = Path(os.environ.get("TINYLLM_FIXTURES", "")) / "M08.4" / "torch_hvp.npz
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def normals(rng: PCG32, shape) -> np.ndarray:

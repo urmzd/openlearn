@@ -1,4 +1,4 @@
-<!-- ss:module M09.7 -->
+<!-- ol:module M09.7 -->
 # Low-precision conversions in standalone C (optional)
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M09.7
-ss tests M09.7
-ss check M09.7
-ss diff M09.7
+ol start M09.7
+ol tests M09.7
+ol check M09.7
+ol diff M09.7
 ```
 
 ---

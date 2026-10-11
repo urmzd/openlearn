@@ -1,7 +1,7 @@
 /* main.c - the tests. Given to you; do not edit them to make them pass.
  *
  * Exits 0 when everything holds, nonzero on the first failure. That is the
- * whole contract `ss check` relies on.
+ * whole contract `ol check` relies on.
  */
 #include "vec.h"
 

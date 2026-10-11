@@ -6,8 +6,8 @@
 //! tokens. The differential test runs the real model (L10.1's runner over
 //! course/fixtures/L7.9/tiny-llama-2l) through your L10.2 scheduler in all
 //! three modes. Random workloads come from the frozen PCG32 in `mod frozen`.
-//! `bench_shared_prefix_ttft` is a B test: `ss bench L10.4 --assert` runs
-//! it, `ss check` never does.
+//! `bench_shared_prefix_ttft` is a B test: `ol bench L10.4 --assert` runs
+//! it, `ol check` never does.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -49,8 +49,8 @@ mod frozen {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
 }
 
 /// A bare pool (no model): blocks of 4 tokens.
@@ -69,7 +69,7 @@ fn sched_cfg(max_seqs: usize, budget: usize) -> SchedulerConfig {
 }
 
 fn tiny_llama() -> PathBuf {
-    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss")).join("L7.9/tiny-llama-2l")
+    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol")).join("L7.9/tiny-llama-2l")
 }
 
 fn bytes(s: &str) -> Vec<u32> {
@@ -219,7 +219,7 @@ fn refcounts_balance_under_random_workload() {
     // CATCHES: s05, s06, s07
     // CHAPTER: L10.4 section 2
     for mode in [PrefixCache::None, PrefixCache::Hash, PrefixCache::Radix] {
-        let mut g = frozen::Pcg32::new(ss_seed() + 404);
+        let mut g = frozen::Pcg32::new(ol_seed() + 404);
         let p = pool(24);
         let bm = BlockManager::new(p.clone(), mode);
         let mut s = Scheduler::new(sched_cfg(4, 64), bm);
@@ -381,7 +381,7 @@ fn identical_outputs_with_and_without_cache() {
 }
 
 #[test]
-#[ignore = "bench: ss bench L10.4 --assert"]
+#[ignore = "bench: ol bench L10.4 --assert"]
 fn bench_shared_prefix_ttft() {
     // WHY: the point of the cache: with a long shared system prompt, the
     //      time to first token of a follow-up request falls by at least 2x

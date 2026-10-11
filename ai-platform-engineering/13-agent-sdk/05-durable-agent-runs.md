@@ -1,4 +1,4 @@
-<!-- ss:module ag.05 -->
+<!-- ol:module ag.05 -->
 # Durable agent runs (AgentRun)
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start ag.05
-ss tests ag.05
-ss check ag.05          # ag.01 to ag.04 smoke tests run first
-ss diff  ag.05
+ol start ag.05
+ol tests ag.05
+ol check ag.05          # ag.01 to ag.04 smoke tests run first
+ol diff  ag.05
 ```
 
 ---

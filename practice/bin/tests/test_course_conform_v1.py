@@ -1,4 +1,4 @@
-"""ss conform v1 and v2 (DESIGN 5.8): every engine and gateway case against
+"""ol conform v1 and v2 (DESIGN 5.8): every engine and gateway case against
 the fixture system, the recording upstream for priority.internal, pending
 cases (requires, --base), the v2 contract probes side by side, and failures
 for a broken stop rule and a leaked priority header."""

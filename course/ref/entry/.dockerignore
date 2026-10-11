@@ -2,7 +2,7 @@
 # outputs, local state, and secrets out of it: they are large, machine-specific,
 # and must never end up in an image layer.
 .git
-.ss
+.ol
 artifacts
 **/target
 c/build

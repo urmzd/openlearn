@@ -29,7 +29,7 @@ func TestParseListReadsGroupsAndStartedMarks(t *testing.T) {
 // fakeCLI is a practice CLI small enough to read: it honors the contract the
 // package documents and nothing else.
 const fakeCLI = `#!/bin/sh
-scratch="${SS_SCRATCH:-$PWD/.scratchpad}"
+scratch="${OL_SCRATCH:-$PWD/.scratchpad}"
 case "$1" in
   list) printf 'build/sh\n  01-echo   --\n' ;;
   start)
@@ -53,11 +53,11 @@ func runner(t *testing.T) *practice.Runner {
 	if err := os.MkdirAll(filepath.Join(root, "bin"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "bin", "ss"), []byte(fakeCLI), 0o700); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "bin", "ol"), []byte(fakeCLI), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("SS_SCRATCH", "")
-	r, err := practice.New(root, "bin/ss")
+	t.Setenv("OL_SCRATCH", "")
+	r, err := practice.New(root, "bin/ol")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestLearnReportsWhetherTheCLIAcceptedTheMark(t *testing.T) {
 // The real CLI, when this runs inside the repository: the list parser has to
 // keep reading what ss actually prints.
 func TestRealCLIListParses(t *testing.T) {
-	r, err := practice.New("../../..", "practice/bin/ss")
+	r, err := practice.New("../../..", "practice/bin/ol")
 	if err != nil {
 		t.Skip("no practice CLI beside the app:", err)
 	}
@@ -150,6 +150,6 @@ func TestRealCLIListParses(t *testing.T) {
 		total += len(g.Exercises)
 	}
 	if total == 0 {
-		t.Error("ss list returned no exercises")
+		t.Error("ol list returned no exercises")
 	}
 }

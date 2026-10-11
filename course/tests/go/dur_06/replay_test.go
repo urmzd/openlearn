@@ -23,8 +23,8 @@ import (
 	"tinyllm/durable/worker"
 	"tinyllm/durable/workflow"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
-	"supersource.urmzd.com/tl/testkit/failpoint"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	"openlearn.urmzd.com/tl/testkit/failpoint"
 )
 
 func fixture(t *testing.T, name string) string {

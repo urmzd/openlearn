@@ -1,5 +1,5 @@
 id        = "craft.04"
-title     = "Property-based tests (R4) with Hypothesis, proptest, rapid, and ss_prop.h"
+title     = "Property-based tests (R4) with Hypothesis, proptest, rapid, and ol_prop.h"
 kind      = "practice"
 lang      = ["python"]
 pass      = 3

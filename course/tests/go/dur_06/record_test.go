@@ -29,8 +29,8 @@ import (
 	"tinyllm/durable/worker"
 	"tinyllm/durable/workflow"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
-	"supersource.urmzd.com/tl/testkit/clock"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	"openlearn.urmzd.com/tl/testkit/clock"
 )
 
 func TestMain(m *testing.M) {

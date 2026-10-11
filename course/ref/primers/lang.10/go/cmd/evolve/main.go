@@ -18,7 +18,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	kvv1 "supersource.urmzd.com/tl/contracts/gen/tl/kv/v1"
+	kvv1 "openlearn.urmzd.com/tl/contracts/gen/tl/kv/v1"
 )
 
 // Fields is what evolve prints.

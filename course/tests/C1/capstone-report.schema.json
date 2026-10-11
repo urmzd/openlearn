@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "C1 capstone report (docs/capstone/c1/report.json)",
-  "description": "What your capstone run measured: the model, the training run, held-out bits per byte with a 95% CI, the three core ablations (each a paired comparison with a CI), the scaling-law fit, and where the zoo table, the samples, and the release spec are. Written by your capstone tooling from the run's own outputs; `ss check C1` recomputes what can be recomputed (parameter counts, KV bytes, active parameters, the fit) and checks the rest for consistency. Course-side schema for now (DEVIATIONS B112-07).",
+  "description": "What your capstone run measured: the model, the training run, held-out bits per byte with a 95% CI, the three core ablations (each a paired comparison with a CI), the scaling-law fit, and where the zoo table, the samples, and the release spec are. Written by your capstone tooling from the run's own outputs; `ol check C1` recomputes what can be recomputed (parameter counts, KV bytes, active parameters, the fit) and checks the rest for consistency. Course-side schema for now (DEVIATIONS B112-07).",
   "type": "object",
   "required": ["format", "tier", "spec", "tokenizer", "model", "train", "eval", "ablations", "scaling", "zoo", "samples", "release"],
   "properties": {
     "format": {"const": "tl.capstone-report.v1"},
-    "tier": {"enum": ["full", "short", "smoke"], "description": "full: the about-10M config; short: the about-2.5M config; smoke: the milestone's --smoke config (accepted only under SS_SMOKE=1)."},
+    "tier": {"enum": ["full", "short", "smoke"], "description": "full: the about-10M config; short: the about-2.5M config; smoke: the milestone's --smoke config (accepted only under OL_SMOKE=1)."},
     "spec": {"type": "string", "description": "The train spec of the main run, a path in your repo (specs/c1/...)."},
     "data": {"type": "object"},
     "tokenizer": {

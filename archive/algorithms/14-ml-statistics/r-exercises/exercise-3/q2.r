@@ -12,8 +12,8 @@ total_df <- function(groups, sample_size) {
   e_df(groups, sample_size) + tr_df(groups)
 }
 
-mse <- function(f_obs, ss_t, groups, sample_size) {
-  ss_t / (f_obs * tr_df(groups) + e_df(groups, sample_size))
+mse <- function(f_obs, ol_t, groups, sample_size) {
+  ol_t / (f_obs * tr_df(groups) + e_df(groups, sample_size))
 }
 
 mst <- function(f_obs, mse) {
@@ -21,16 +21,16 @@ mst <- function(f_obs, mse) {
 }
 
 sstr <- function(groups, sample_size, variance, f_obs) {
-  ss_t <- sst(groups, sample_size, variance)
-  mse <- mse(f_obs, ss_t, groups, sample_size)
+  ol_t <- sst(groups, sample_size, variance)
+  mse <- mse(f_obs, ol_t, groups, sample_size)
   mst <- mst(f_obs, mse)
 
   mst * tr_df(groups)
 }
 
 sse <- function(groups, sample_size, variance, f_obs) {
-  ss_t <- (variance^2) * (sample_size * groups - 1)
-  ss_t - sstr(groups, sample_size, variance, f_obs)
+  ol_t <- (variance^2) * (sample_size * groups - 1)
+  ol_t - sstr(groups, sample_size, variance, f_obs)
 }
 
 sst <- function(groups, sample_size, variance) {
@@ -41,9 +41,9 @@ sstr(4, 11, 2, 0.366)
 sse(4, 11, 2, 0.366)
 groups <- 4
 sample_size <- 11
-ss_t <- sst(4, 11, 2)
+ol_t <- sst(4, 11, 2)
 
 f_obs <- 0.366
-ms <- mse(f_obs, ss_t, groups, sample_size)
+ms <- mse(f_obs, ol_t, groups, sample_size)
 mst(0.366, ms)
 ms

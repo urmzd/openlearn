@@ -1,10 +1,10 @@
 // Parity driver for `sampler`, implementation `rust` (L10.1): an example of
-// the harness crate ss-tests. Reads one case per stdin line
+// the harness crate ol-tests. Reads one case per stdin line
 // {"logits": [repr strings], "params": {...}, "prompt": [...], "seed", "n"}
 // and prints {"ids": [...], "logprobs": [...]}: n tokens drawn one after
 // another with tl_engine::sample::sample from stream(seed, sample), each
 // appended to the output history (spec/sampling.md).
-include!("../parity/ss_parity.rs");
+include!("../parity/ol_parity.rs");
 
 use tl_engine::sample::{sample, stream, SamplingParams, PURPOSE_SAMPLE};
 

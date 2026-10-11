@@ -1,4 +1,4 @@
-<!-- ss:module dur.11 -->
+<!-- ol:module dur.11 -->
 # Platform workflows TrainRun and EvalSuite
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.11          # stubs go/workflows/{train_run,eval_suite}.go
-ss tests dur.11
-ss check dur.11
-ss diff  dur.11
+ol start dur.11          # stubs go/workflows/{train_run,eval_suite}.go
+ol tests dur.11
+ol check dur.11
+ol diff  dur.11
 ```
 
 Then wire your entries: `{tinyllm} train --spec <dir>/spec.json --progress <file> [--resume <ckpt>]` under `tinyllm.io.activity.run` (resume from `--resume`, else from `<run>/ckpt/LATEST`), `{tinyllm} eval --spec`, the activities `train` and `eval` in your worker over the dur.09 runner, and `{ctl} train --spec <file>` starting `TrainRun` with workflow id `train/<name>`.

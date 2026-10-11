@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from sscourse.overlay import Overlay
+from olcourse.overlay import Overlay
 
 
 def test_external_contract_path_is_rebased_for_ref_and_learner(tmp_path: Path):

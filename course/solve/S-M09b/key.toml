@@ -1,4 +1,4 @@
-# S-M09b answer key (hidden; honor system, DESIGN D34). `ss verify course S-M09b`
+# S-M09b answer key (hidden; honor system, DESIGN D34). `ol verify course S-M09b`
 # check 7 proves every `expect` passes and every `reject` canary fails;
 # course/oracle/solve/S-M09b.py recomputes every value independently (SymPy
 # singular values and limits, exact rational Newton steps, float iteration,

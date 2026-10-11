@@ -1,4 +1,4 @@
-<!-- ss:module L7.9 -->
+<!-- ol:module L7.9 -->
 # Llama-family model, HF config, weight loading, downloader
 
 ## Overview
@@ -24,12 +24,12 @@
 ## How to work this chapter
 
 ```bash
-ss start L7.9              # stubs llama.py and hf.py; prints your test path and rung (R5)
-ss tests L7.9              # the course tests
+ol start L7.9              # stubs llama.py and hf.py; prints your test path and rung (R5)
+ol tests L7.9              # the course tests
 # write your oracle tests in python/tests/l7-9-llama/, then:
-ss check L7.9              # course tests and the mutation grade of your tests
-ss milestone MS-L7 --smoke # your CLI on the committed tiny model
-ss diff  L7.9              # after passing: your code against the reference
+ol check L7.9              # course tests and the mutation grade of your tests
+ol milestone MS-L7 --smoke # your CLI on the committed tiny model
+ol diff  L7.9              # after passing: your code against the reference
 ```
 
 ---
@@ -140,7 +140,7 @@ def hf_download(repo_id, filenames, cache_dir, revision="main", endpoint=None, s
 
 ### Your graded tests (rung R5)
 
-Your oracles are the course's golden files (`$TINYLLM_FIXTURES/L7.9/hf_logits.npz` and `hf_params.json`) for all five tiny checkpoints, the full forward as the oracle of the cached one, M05.1's count for SmolLM2 built without weights, and a fake Hub on `127.0.0.1` (`http.server`) that redirects with `X-Linked-Etag`, can cut a response short, ignore ranges, or corrupt a byte. Add config round-trips (with a 4.x `"type"` key), MLA and MoE variants, sink tokens through `SinkWindowCache`, BF16 saving, shards, and the validation errors. Import only the contract modules. `ss check L7.9` requires 0.80 with every pitfall fault killed.
+Your oracles are the course's golden files (`$TINYLLM_FIXTURES/L7.9/hf_logits.npz` and `hf_params.json`) for all five tiny checkpoints, the full forward as the oracle of the cached one, M05.1's count for SmolLM2 built without weights, and a fake Hub on `127.0.0.1` (`http.server`) that redirects with `X-Linked-Etag`, can cut a response short, ignore ranges, or corrupt a byte. Add config round-trips (with a 4.x `"type"` key), MLA and MoE variants, sink tokens through `SinkWindowCache`, BF16 saving, shards, and the validation errors. Import only the contract modules. `ol check L7.9` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

@@ -175,7 +175,7 @@ func fixtureIndex(t *testing.T) *retrieve.Index {
 	t.Helper()
 	dir := os.Getenv("TINYLLM_FIXTURES")
 	if dir == "" {
-		t.Fatal("TINYLLM_FIXTURES is not set (ss check sets it)")
+		t.Fatal("TINYLLM_FIXTURES is not set (ol check sets it)")
 	}
 	x, err := retrieve.Open(filepath.Join(dir, "ag.07", "index"))
 	if err != nil {

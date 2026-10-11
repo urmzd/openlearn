@@ -22,7 +22,7 @@
       "pattern": "^[a-z][a-z0-9_.-]*$"
     },
     "seed": {
-      "description": "The SS_SEED the suite ran with (every sampled quantity derives from it).",
+      "description": "The OL_SEED the suite ran with (every sampled quantity derives from it).",
       "type": "integer",
       "minimum": 0
     },

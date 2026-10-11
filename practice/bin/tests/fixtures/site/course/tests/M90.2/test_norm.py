@@ -26,7 +26,7 @@ def test_fixture_vectors():
 def test_abs_sums_to_one():
     # WHY: the defining property of L1 normalization, over seeded random inputs.
     # KIND: property
-    rng = PCG32(seed=int(os.environ.get("SS_SEED", "0")))
+    rng = PCG32(seed=int(os.environ.get("OL_SEED", "0")))
     for _ in range(20):
         xs = [rng.uniform() * 2 - 1 for _ in range(1 + rng.below(16))]
         assert_close(sum(abs(v) for v in l1_normalize(xs)), 1.0, dtype="float32")

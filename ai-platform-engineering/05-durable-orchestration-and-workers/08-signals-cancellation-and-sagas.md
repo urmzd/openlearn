@@ -1,4 +1,4 @@
-<!-- ss:module dur.08 -->
+<!-- ol:module dur.08 -->
 # Signals, cancellation, sagas (compensation)
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.08          # stubs signals.go, runtime.go, saga.go
-ss tests dur.08          # read the test catalog first
-ss check dur.08          # the exit code is the verdict
-ss diff  dur.08          # after passing: your code against the reference
+ol start dur.08          # stubs signals.go, runtime.go, saga.go
+ol tests dur.08          # read the test catalog first
+ol check dur.08          # the exit code is the verdict
+ol diff  dur.08          # after passing: your code against the reference
 ```
 
 Then add the verbs to your `{ctl}`: `wf signal <id> <name> [--input JSON] [--request-id ID]` and `wf cancel <id> [--reason TEXT]` call the two rpcs.

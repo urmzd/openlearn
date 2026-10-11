@@ -1,4 +1,4 @@
-<!-- ss:module M09.2 -->
+<!-- ol:module M09.2 -->
 # Stable numerics: logsumexp, softmax, compensated sums
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start M09.2              # stubs stable.py into your repo, contract alongside
-ss tests M09.2              # read the test catalog first: rung R0, you write no tests here
-ss check M09.2              # exit code is the verdict
-ss diff  M09.2              # after passing: your code against the reference
+ol start M09.2              # stubs stable.py into your repo, contract alongside
+ol tests M09.2              # read the test catalog first: rung R0, you write no tests here
+ol check M09.2              # exit code is the verdict
+ol diff  M09.2              # after passing: your code against the reference
 ```
 
 ---
@@ -194,7 +194,7 @@ Float inputs keep their dtype; integer inputs are computed in float64. `axis` an
 | Forward | `L6.7` | perplexity over $10^7$ tokens accumulates with `kahan_sum` (through `M11.2`) |
 | Forward | `L9.2` | the same math in C, in one pass with a running maximum |
 
-If you skip this module, `ss check M11.1` stops with `M11.1 needs M09.2`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check M11.1` stops with `M11.1 needs M09.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

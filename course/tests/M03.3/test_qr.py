@@ -23,7 +23,7 @@ from tinyllm.linalg.qr import orthogonal_init, qr_householder
 
 
 def rng(seq: int) -> PCG32:
-    return PCG32(int(os.environ.get("SS_SEED", "0")), seq=seq)
+    return PCG32(int(os.environ.get("OL_SEED", "0")), seq=seq)
 
 
 def numpy_qr_sign_fixed(A: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

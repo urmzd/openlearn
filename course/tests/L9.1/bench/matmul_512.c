@@ -1,10 +1,10 @@
-/* Bench for L9.1 (a B test: `ss bench L9.1 [--assert]`, never `ss check`).
+/* Bench for L9.1 (a B test: `ol bench L9.1 [--assert]`, never `ol check`).
  * Times your tiled tl_matmul_f32 at 512 x 512 x 512 (serial, tp = NULL)
  * against M03.1's triple loop compiled here, and reports
  *   speedup_vs_naive   the budget in course/modules/L9.1.toml (>= 10)
  *   gflops, naive_gflops
  * Both run at -O2 on the same float32 inputs. */
-#include "ss_bench.h" /* first: it sets the POSIX feature macros clock_gettime needs */
+#include "ol_bench.h" /* first: it sets the POSIX feature macros clock_gettime needs */
 #include <stdlib.h>
 
 #include "tinyllm.h"
@@ -38,10 +38,10 @@ int main(void) {
         B[i] = (float)((s >> 40) & 0xffff) / 65536.0f - 0.5f;
     }
     double flops = 2.0 * S * S * S;
-    double t_naive = ss_bench_best(naive, NULL, 2, 0.2);
-    double t_tiled = ss_bench_best(tiled, NULL, 3, 0.2);
-    ss_bench_metric("naive_gflops", flops / t_naive / 1e9);
-    ss_bench_metric("gflops", flops / t_tiled / 1e9);
-    ss_bench_metric("speedup_vs_naive", t_naive / t_tiled);
-    return ss_bench_done();
+    double t_naive = ol_bench_best(naive, NULL, 2, 0.2);
+    double t_tiled = ol_bench_best(tiled, NULL, 3, 0.2);
+    ol_bench_metric("naive_gflops", flops / t_naive / 1e9);
+    ol_bench_metric("gflops", flops / t_tiled / 1e9);
+    ol_bench_metric("speedup_vs_naive", t_naive / t_tiled);
+    return ol_bench_done();
 }

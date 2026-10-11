@@ -1,4 +1,4 @@
-<!-- ss:module L8.7 -->
+<!-- ol:module L8.7 -->
 # Constrained decoding: regex to DFA to token masks, JSON-schema subset
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L8.7              # stubs constrain.py into your repo, contract alongside
-ss tests L8.7              # read the test catalog first
-ss check L8.7              # exit code is the verdict
-ss check L8.7 --ref-deps   # only if you skipped L8.1 or M05.2
-ss diff  L8.7              # after passing: your code against the reference
+ol start L8.7              # stubs constrain.py into your repo, contract alongside
+ol tests L8.7              # read the test catalog first
+ol check L8.7              # exit code is the verdict
+ol check L8.7 --ref-deps   # only if you skipped L8.1 or M05.2
+ol diff  L8.7              # after passing: your code against the reference
 ```
 
 You also write graded tests (rung R5) in `python/tests/l8-7-constrain/`. Python's `re` is a fine oracle for matching; for masks, a brute-force walk of each token through your DFA is the definition.
@@ -186,7 +186,7 @@ def constrained_sample(logits, c: Constraint, p: SamplingParams, history, rng, p
 | Back | `M06.1` | graphs, reachability, breadth-first search (reading; toposort does not apply, because automata have cycles) |
 | Forward | `L10.9` | the Rust engine's tool calls: a tool's JSON schema becomes a DFA, and the per-request masks must equal `masks_golden.json` and yours |
 
-If you skip this module, `ss check L10.9` stops with `BLOCKED ... needs L8.7`: build it, or pass `--ref-deps`.
+If you skip this module, `ol check L10.9` stops with `BLOCKED ... needs L8.7`: build it, or pass `--ref-deps`.
 
 ## Going further
 

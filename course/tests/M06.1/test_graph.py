@@ -214,7 +214,7 @@ def test_random_dags_valid_and_match_graphlib_on_cycles():
     # KIND: property, differential
     # CATCHES: s02, s04, s05, s06, m02
     # CHAPTER: M06.1 section 2
-    rng = PCG32(int(os.environ.get("SS_SEED", "0")), seq=61)
+    rng = PCG32(int(os.environ.get("OL_SEED", "0")), seq=61)
     for _ in range(200):
         n = 2 + rng.below(25)
         nodes = random_dag(rng, n, max_parents=3)

@@ -6,17 +6,17 @@ informative, because it separates two things that feel identical from the inside
 having learned something, and having finished it.
 
 ```bash
-practice/bin/ss list  reattempt case-studies
-practice/bin/ss start reattempt case-studies 02   # stripped, into .scratchpad/
-practice/bin/ss check reattempt case-studies 02   # the original tests, verbatim
-practice/bin/ss diff  reattempt case-studies 02   # against what you wrote before
+practice/bin/ol list  reattempt case-studies
+practice/bin/ol start reattempt case-studies 02   # stripped, into .scratchpad/
+practice/bin/ol check reattempt case-studies 02   # the original tests, verbatim
+practice/bin/ol diff  reattempt case-studies 02   # against what you wrote before
 ```
 
 ## Nothing is duplicated
 
 There is exactly one copy of every solution and it is the one the learning path
 already links to. [`manifest.tsv`](manifest.tsv) points at files in place;
-`ss start` reads the original, strips the region between its solution markers,
+`ol start` reads the original, strips the region between its solution markers,
 and writes the result into `.scratchpad/`. This directory holds no code at all.
 
 That is why the sources carry a `SOLUTION-BEGIN` comment: it is the boundary
@@ -30,7 +30,7 @@ unchanged.
 
 A file that defines a function and never calls it exits zero whether the
 implementation is correct, wrong, or missing entirely. Strip the solution out of
-one and `ss check` reports PASS on an empty stub, which is worse than having no
+one and `ol check` reports PASS on an empty stub, which is worse than having no
 exercise: it teaches you that you still know something you may well have
 forgotten.
 
@@ -57,17 +57,17 @@ For one file:
 3. Wrap the solution body in the markers, leaving the signature and the tests
    outside them.
 4. Add a row to [`manifest.tsv`](manifest.tsv).
-5. `ss verify reattempt algorithms` must report `OK` for it.
+5. `ol verify reattempt algorithms` must report `OK` for it.
 
-The runners `ss` already knows are `.py`, `.js`, `.ts`, and `.c`, which covers
+The runners `ol` already knows are `.py`, `.js`, `.ts`, and `.c`, which covers
 most of the tree. Scheme, R, Prolog, and Perl files would each need a line adding
-to `run_reattempt_file` in [`../bin/ss`](../bin/ss).
+to `run_reattempt_file` in [`../bin/ol`](../bin/ol).
 
 ## Why this beats redoing it from scratch
 
 Rewriting a solution in a fresh file lets you drift toward whatever you remember
 best, and you grade yourself. Reattempting against the original's own tests
 removes both escapes: the contract is fixed, the verdict is an exit code, and
-`ss diff` shows you exactly where this attempt and your previous one disagree.
+`ol diff` shows you exactly where this attempt and your previous one disagree.
 Where they disagree is usually the interesting part, and it is not always the new
 one that is worse.

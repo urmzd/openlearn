@@ -1,4 +1,4 @@
-# id	kind	lang	pass	chapter	units	deps	used_by	milestone	(generated from modules/*.toml by `ss lint --fix-index`; do not edit)
+# id	kind	lang	pass	chapter	units	deps	used_by	milestone	(generated from modules/*.toml by `ol lint --fix-index`; do not edit)
 M90.1	build	python	1	chapters/m90-1-scale.md	python/tinyllm/demo/scale.py	-	M90.2,M90.3	-
 ds.90	build	rust	1	chapters/ds-90-kahan.md	rust/crates/tl-demo/src/lib.rs,rust/crates/tl-demo/src/acc.rs	-	ds.91	-
 dur.90	build	go	1	chapters/dur-90-sum.md	go/ds/demo/sum.go	-	dur.91	-

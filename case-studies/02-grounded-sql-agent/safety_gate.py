@@ -108,7 +108,7 @@ class SafetyResult:
 
 # Reattempt boundary: everything to SOLUTION-END is
 # the SQL scanner, statement splitter, and classifier.
-# `ss start reattempt case-studies <id>` strips it and leaves the tests.
+# `ol start reattempt case-studies <id>` strips it and leaves the tests.
 # SOLUTION-BEGIN
 def _scan(sql: str) -> tuple[str, str]:
     """One pass. Returns ``(cleaned, masked)``, always of equal length.

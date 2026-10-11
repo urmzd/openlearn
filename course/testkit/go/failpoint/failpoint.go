@@ -5,7 +5,7 @@
 // Actions: crash (os.Exit(137), as a SIGKILL would leave it), panic,
 // error(msg) (Inject returns an error), sleep(d), off. A `N*` prefix fires
 // only on the Nth evaluation (`3*crash`); `%P` fires with probability P from
-// a seeded stream (SS_SEED). Code calls Inject at the named point.
+// a seeded stream (OL_SEED). Code calls Inject at the named point.
 package failpoint
 
 import (
@@ -80,7 +80,7 @@ func Load(spec string) error {
 		a.kind, a.arg = kind, arg
 		m[strings.TrimSpace(name)] = a
 	}
-	seed, _ := strconv.ParseUint(os.Getenv("SS_SEED"), 10, 64)
+	seed, _ := strconv.ParseUint(os.Getenv("OL_SEED"), 10, 64)
 	parsed, counts, rng = m, map[string]int{}, rand.New(rand.NewPCG(seed, 54))
 	return nil
 }

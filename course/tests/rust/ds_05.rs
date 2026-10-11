@@ -48,8 +48,8 @@ impl Pcg32 {
     }
 }
 
-fn ss_seed() -> u64 {
-    std::env::var("SS_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
+fn ol_seed() -> u64 {
+    std::env::var("OL_SEED").ok().and_then(|s| s.parse().ok()).unwrap_or(0)
 }
 
 /// Hash = the key itself: `Id` hashes a u64 key to exactly that u64.
@@ -316,7 +316,7 @@ fn probe_length_stays_short_at_high_load() {
     // KIND: property
     // CATCHES: s02
     // CHAPTER: ds.05 section 2.4
-    let mut g = Pcg32::new(ss_seed(), 5);
+    let mut g = Pcg32::new(ol_seed(), 5);
     let mut m: RobinHoodMap<u64, ()> = RobinHoodMap::with_capacity(57_344);
     assert_eq!(m.slot_count(), 65_536);
     while m.len() < 57_344 {
@@ -452,7 +452,7 @@ fn differential_against_std_hashmap() {
     // KIND: differential
     // CATCHES: s01, s03, s04, s05, m01, m02
     // CHAPTER: ds.05 section 4
-    let mut g = Pcg32::new(ss_seed(), 5);
+    let mut g = Pcg32::new(ol_seed(), 5);
     let mut ours: RobinHoodMap<u32, u32> = RobinHoodMap::new();
     let mut std_: HashMap<u32, u32> = HashMap::new();
     for step in 0..30_000u32 {
@@ -489,7 +489,7 @@ fn robin_hood_invariant_holds_after_churn() {
     // KIND: property
     // CATCHES: s01, s03, s04
     // CHAPTER: ds.05 section 2.4
-    let mut g = Pcg32::new(ss_seed(), 5);
+    let mut g = Pcg32::new(ol_seed(), 5);
     let mut m: RobinHoodMap<u64, (), Id> = RobinHoodMap::with_hasher(Id);
     for step in 0..6000 {
         let k = (g.next_u64() & !0xFFFF) | g.below(64) as u64; // 64 keys, random homes

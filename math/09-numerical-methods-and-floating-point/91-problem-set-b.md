@@ -1,4 +1,4 @@
-<!-- ss:module S-M09b -->
+<!-- ol:module S-M09b -->
 # Floating point problem set, part b: condition numbers, error bounds, Newton, polynomial approximation, low precision
 
 ## Overview
@@ -11,7 +11,7 @@
 | **Tests** | `course/solve/S-M09b/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M09b/problems.md` and in section 4 |
 | **Needs** | no code. Reading: `S-M09a` (representation and rounding), `M09.3` (the error bounds and condition numbers as code), `M09.4` (the fp8 and MX formats as code), `M01.2` (Newton's method) |
 | **Used by** | no call site (a solve set). Do it beside `M09.3` and `M09.4`; q14 to q17 prepare `M09.5` (Newton `rsqrt` in C) and q18 to q20 prepare `M09.6` (`expf` in C) |
-| **Milestone** | `MS-P6` (the Pass 6 gate runs `ss check` on every solve part of the pass) |
+| **Milestone** | `MS-P6` (the Pass 6 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Higham, *Accuracy and Stability of Numerical Algorithms*, ch. 2 to 4 and 7; Trefethen, *Approximation Theory and Approximation Practice* (SIAM, 2013), ch. 1 to 4; Muller, *Elementary Functions: Algorithms and Implementation* (3rd ed., 2016), ch. 3 and 11 |
 
 ## Key Takeaways
@@ -25,9 +25,9 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M09b             # writes solve/S-M09b.toml and the proof files
-ss check S-M09b             # SymPy checks the answers, then asks each proof rubric (y/n)
-ss check S-M09b --regrade   # ask the rubrics again after you change a proof
+ol start S-M09b             # writes solve/S-M09b.toml and the proof files
+ol check S-M09b             # SymPy checks the answers, then asks each proof rubric (y/n)
+ol check S-M09b --regrade   # ask the rubrics again after you change a proof
 ```
 
 ---
@@ -96,7 +96,7 @@ proof = "S-M09b/q6.md"
 
 Give exact values as integers, fractions, powers of two, or expressions in `log`; only q13 accepts a decimal, within a relative tolerance of $10^{-6}$.
 
-<!-- ss:problems S-M09b -->
+<!-- ol:problems S-M09b -->
 
 ### Condition numbers
 
@@ -164,7 +164,7 @@ Give exact values as integers, fractions, powers of two, or expressions in `log`
 
 **q28.** Which fp8 format covers the wider range of magnitudes? (a) e4m3 (b) e5m2 `[choice]`
 
-<!-- /ss:problems -->
+<!-- /ol:problems -->
 
 ## 5. Pitfalls
 

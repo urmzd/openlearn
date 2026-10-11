@@ -27,7 +27,7 @@ from tinyllm.num.taylor import (
     exp_taylor_coeffs,
 )
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 LN2 = math.log(2.0)
 
 

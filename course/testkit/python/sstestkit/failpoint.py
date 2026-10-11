@@ -6,7 +6,7 @@ Rust, and C kits:
 Actions: crash (os._exit(137), what a SIGKILL leaves), panic (RuntimeError),
 error(msg) (inject raises FailpointError), sleep(d) with d in ms or s, off.
 `N*` fires only on the Nth evaluation; `P%` with P in [0, 1] fires with that
-probability from a stream seeded by SS_SEED.
+probability from a stream seeded by OL_SEED.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ def load(spec: str | None = None) -> dict:
     _state = {
         "table": table,
         "counts": {},
-        "rng": random.Random(int(os.environ.get("SS_SEED", "0"))),
+        "rng": random.Random(int(os.environ.get("OL_SEED", "0"))),
     }
     return table
 

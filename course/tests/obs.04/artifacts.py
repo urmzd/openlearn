@@ -1,6 +1,6 @@
 """obs.04 artifact check: dashboards as code for the serving path.
 
-Run by `ss check obs.04` in your repo. Two tiers:
+Run by `ol check obs.04` in your repo. Two tiers:
 
   static   every deploy/observability/dashboards/*.json is a portable Grafana
            dashboard (stable uid, no instance id, a Prometheus datasource that
@@ -326,7 +326,7 @@ def test_every_query_parses(c: Ctx) -> None:
     ]
     r = _promtool.run(
         c,
-        c.path(".ss/check/obs.04/parse"),
+        c.path(".ol/check/obs.04/parse"),
         ["check", "rules", "queries.yaml"],
         {
             "queries.yaml": yaml.safe_dump(
@@ -457,7 +457,7 @@ def _prometheus(c: Ctx) -> str:
         if smoke_mode():
             c.skipped_cluster = True
             raise Skip(
-                "cluster tier skipped under SS_SMOKE=1: system.toml has no [deploy].prometheus"
+                "cluster tier skipped under OL_SMOKE=1: system.toml has no [deploy].prometheus"
             )
         raise Fail("system.toml has no [deploy].prometheus (http://127.0.0.1:30090)")
     if d.get("kube_context"):

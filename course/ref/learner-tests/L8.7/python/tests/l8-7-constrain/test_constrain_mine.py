@@ -27,7 +27,7 @@ from tinyllm.infer.sample import SamplingParams, request_rng
 from tinyllm.num.rng import PCG32
 from tinyllm.tok.bytes_unicode import bytes_to_unicode
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 
 HAND = r"(cat|car|dog)s?"
 HAND_VOCAB = [

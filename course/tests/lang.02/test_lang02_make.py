@@ -21,7 +21,7 @@ T0 = int(time.time()) - 10_000  # a moment safely in the past
 
 @pytest.fixture
 def work(tmp_path):
-    src = Path(os.environ["SS_PRIMER_DIR"])
+    src = Path(os.environ["OL_PRIMER_DIR"])
     for name in SOURCES:
         shutil.copy2(src / name, tmp_path / name)
         os.utime(tmp_path / name, (T0, T0))

@@ -15,7 +15,7 @@ import (
 
 	"tinyllm/durable/worker"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 // Defaults of a RetryPolicy field left at zero (durable.proto).

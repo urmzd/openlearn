@@ -1,4 +1,4 @@
-"""ss parity (DESIGN 5.8): golden mode in four languages, live fuzz, pending
+"""ol parity (DESIGN 5.8): golden mode in four languages, live fuzz, pending
 implementations, mismatches, and learner-sourced runs."""
 
 import json

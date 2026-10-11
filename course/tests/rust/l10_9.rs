@@ -18,7 +18,7 @@ use tl_engine::sample::{Pcg32, SamplingParams};
 use tl_serve::tools::{self, ResponseFormat, ToolChoice, ToolEvent, ToolParser};
 
 fn fixtures() -> PathBuf {
-    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ss"))
+    PathBuf::from(std::env::var("TINYLLM_FIXTURES").expect("TINYLLM_FIXTURES is set by ol"))
 }
 
 fn load(rel: &str) -> j::V {
@@ -674,7 +674,7 @@ mod serve {
 
     fn succ_model() -> PathBuf {
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        let d = std::env::temp_dir().join(format!("ss-l10_9-{}-{nanos}", std::process::id())).join("succ");
+        let d = std::env::temp_dir().join(format!("ol-l10_9-{}-{nanos}", std::process::id())).join("succ");
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         let mut w = vec![0.0f32; 256 * 256];

@@ -1,4 +1,4 @@
-<!-- ss:module L0.0 -->
+<!-- ol:module L0.0 -->
 # Byte bigram: counts, logits, safetensors v0
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L0.0              # stubs bigram.py and safetensors.py into your repo
-ss tests L0.0              # read the test catalog first: rung R0, you write no tests here
-ss check L0.0              # exit code is the verdict
-ss check L0.0 --ref-deps   # only if a Python prerequisite is not passing yet
-ss diff  L0.0              # after passing: your code against the reference
+ol start L0.0              # stubs bigram.py and safetensors.py into your repo
+ol tests L0.0              # read the test catalog first: rung R0, you write no tests here
+ol check L0.0              # exit code is the verdict
+ol check L0.0 --ref-deps   # only if a Python prerequisite is not passing yet
+ol diff  L0.0              # after passing: your code against the reference
 ```
 
 You also write the first verbs of your own CLI, `python/tinyllm/__main__.py` (it is yours: the course ships no CLI). [`spec/cli-roles.md`](../../../course/contracts/spec/cli-roles.md) fixes what `MS-P1` will run:
@@ -42,7 +42,7 @@ You also write the first verbs of your own CLI, `python/tinyllm/__main__.py` (it
 
 `config.json` for the tracer is exactly `{"tl_arch": "bigram", "tl_tokenizer": "bytes", "vocab_size": 256, "tl_format": 1}`.
 
-**The Python project.** `python/` is a uv project that is not an installed package, and the CLI runs as a script from the repo root. Three files set it up (`ss start` writes none of them; they are yours):
+**The Python project.** `python/` is a uv project that is not an installed package, and the CLI runs as a script from the repo root. Three files set it up (`ol start` writes none of them; they are yours):
 
 ```toml
 # python/pyproject.toml
@@ -79,7 +79,7 @@ uv run --project python python python/tinyllm/__main__.py train bigram --data so
 uv run --project python python python/tinyllm/__main__.py generate --model artifacts/bigram --prompt Once --greedy
 ```
 
-`ss check L0.0` grades the two library units only; the CLI is an entry point (D16), which `MS-P1` runs.
+`ol check L0.0` grades the two library units only; the CLI is an entry point (D16), which `MS-P1` runs.
 
 ---
 
@@ -264,7 +264,7 @@ The contracts carry the exact rules: which errors are `ValueError`, that `sample
 | Forward | `L0.5` | takes over `bigram.py`: trains the same table with your autograd until it reaches the count model's NLL within $10^{-3}$, and samples with your PCG32 |
 | Forward | `L0.6` | takes over `safetensors.py`: every dtype, atomic checkpoints, the token-stream reader |
 
-If you skip this module, `ss check L10.0` stops with `L10.0 needs L0.0`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L10.0` stops with `L10.0 needs L0.0`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

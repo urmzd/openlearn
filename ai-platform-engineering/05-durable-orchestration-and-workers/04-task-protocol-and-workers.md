@@ -1,4 +1,4 @@
-<!-- ss:module dur.04 -->
+<!-- ol:module dur.04 -->
 # Task gRPC protocol, Go worker SDK, worker pool
 
 ## Overview
@@ -24,10 +24,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dur.04
-ss tests dur.04
-ss check dur.04          # needs dur.02 and dur.03 (or --ref-deps)
-ss diff  dur.04
+ol start dur.04
+ol tests dur.04
+ol check dur.04          # needs dur.02 and dur.03 (or --ref-deps)
+ol diff  dur.04
 ```
 
 Start with the server half (`tasks.go`) and the worked example, driving it by hand over gRPC as the tests do; then the worker.

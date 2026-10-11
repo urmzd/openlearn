@@ -1,4 +1,4 @@
-<!-- ss:module load.02 -->
+<!-- ol:module load.02 -->
 # Run comparison and regression gate
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start load.02             # stubs go/loadgen/compare/compare.go
-ss tests load.02
-ss check load.02             # exit code is the verdict
-ss check load.02 --ref-deps  # only if load.01 is not passing yet
-ss diff  load.02
+ol start load.02             # stubs go/loadgen/compare/compare.go
+ol tests load.02
+ol check load.02             # exit code is the verdict
+ol check load.02 --ref-deps  # only if load.01 is not passing yet
+ol diff  load.02
 ```
 
 Your `{loadgen} compare <base.json> <head.json> --metric ttft_p95 --max-regress 5% [--alpha 0.05] [--permutations 1000] [--seed 0]` reads the two reports, calls `compare.Compare`, prints the verdict as its final JSON line, and exits 1 when `Regressed`.

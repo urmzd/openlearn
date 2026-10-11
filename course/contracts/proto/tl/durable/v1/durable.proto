@@ -22,7 +22,7 @@ syntax = "proto3";
 
 package tl.durable.v1;
 
-option go_package = "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1;durablev1";
+option go_package = "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1;durablev1";
 
 service WorkflowService {
   // [dur.02] Idempotent on workflow_id: while a run with that id exists (any

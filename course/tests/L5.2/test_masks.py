@@ -38,7 +38,7 @@ from tinyllm.xfmr.masks import (
 )
 
 FIX = os.path.join(os.environ.get("TINYLLM_FIXTURES", ""), "L5.2", "masks_torch.npz")
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 
 
 def attend(q, k, v, add):

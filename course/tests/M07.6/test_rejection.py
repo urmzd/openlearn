@@ -10,7 +10,7 @@ q = [1/4, 1/2, 0, 1/4]. The statistical tests either enumerate grids of
 uniforms on distributions whose probabilities are multiples of 1/8, where the
 grid makes every acceptance count an exact integer (so the output
 distribution is compared with p as exact fractions), or draw from the frozen
-PCG32 at SS_SEED and apply a chi-square test at p > 1e-3 (DESIGN 4.0).
+PCG32 at OL_SEED and apply a chi-square test at p > 1e-3 (DESIGN 4.0).
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ GRID = 840
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 def grid(m: int) -> list[float]:

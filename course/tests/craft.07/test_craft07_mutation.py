@@ -20,9 +20,9 @@ import tempfile
 import tomllib
 from pathlib import Path
 
-PRIMER = Path(os.environ.get("SS_PRIMER_DIR", "primers/craft.07")).resolve()
-COURSE = Path(os.environ.get("SS_COURSE_TREE", Path(__file__).resolve().parents[2]))
-LEARNER = Path(os.environ.get("SS_LEARNER_ROOT", ".")).resolve()
+PRIMER = Path(os.environ.get("OL_PRIMER_DIR", "primers/craft.07")).resolve()
+COURSE = Path(os.environ.get("OL_COURSE_TREE", Path(__file__).resolve().parents[2]))
+LEARNER = Path(os.environ.get("OL_LEARNER_ROOT", ".")).resolve()
 SUITE = PRIMER / "test_seqmetrics.py"
 UNIT = "python/tinyllm/eval/seqmetrics.py"
 STATS = "python/tinyllm/prob/stats.py"
@@ -41,7 +41,7 @@ ALLOWED = {
 }
 
 sys.path.insert(0, str(COURSE / "harness" / "src"))
-from sscourse import markers  # noqa: E402
+from olcourse import markers  # noqa: E402
 
 
 def ref(unit: str) -> str:
@@ -58,7 +58,7 @@ def manifest(path: Path) -> list[list[str]]:
 
 def patched(patch: Path) -> str | None:
     """The reference unit with `patch` applied, or None when it does not apply."""
-    with tempfile.TemporaryDirectory(prefix="ss-craft07-p-") as d:
+    with tempfile.TemporaryDirectory(prefix="ol-craft07-p-") as d:
         dst = Path(d) / UNIT
         dst.parent.mkdir(parents=True)
         dst.write_text(ref(UNIT))
@@ -77,7 +77,7 @@ def run(
 ) -> tuple[int, str]:
     """pytest over `target` with tinyllm/eval/seqmetrics.py = unit_text (and
     the reference M07.4 stats.py beside it), in its own process group."""
-    with tempfile.TemporaryDirectory(prefix="ss-craft07-") as d:
+    with tempfile.TemporaryDirectory(prefix="ol-craft07-") as d:
         for rel, text in ((UNIT, unit_text), (STATS, ref(STATS))):
             p = Path(d) / rel
             p.parent.mkdir(parents=True, exist_ok=True)

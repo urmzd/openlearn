@@ -1,4 +1,4 @@
-<!-- ss:module L5.4 -->
+<!-- ol:module L5.4 -->
 # Positional encodings: sinusoidal, learned
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start L5.4              # stubs pos.py; prints your test path and rung (R5)
-ss tests L5.4              # the course tests
-ss check L5.4              # course tests and the mutation grade of your tests
-ss diff  L5.4              # after passing: your code against the reference
+ol start L5.4              # stubs pos.py; prints your test path and rung (R5)
+ol tests L5.4              # the course tests
+ol check L5.4              # course tests and the mutation grade of your tests
+ol diff  L5.4              # after passing: your code against the reference
 ```
 
 ---
@@ -113,7 +113,7 @@ class LearnedPE(Module):      # weight [max_len, d]; positions(T, offset); forwa
 
 ### Your graded tests (rung R5)
 
-Your oracle is the formula itself: compute $\sin(p / b^{2i/d})$ and $\cos(\cdot)$ with Python's `math` in float64 for a few positions, including large ones ($p \ge 10^4$), and compare with `sinusoidal_pe`. Test the shift law, the offset, and the learned table's rows and gradient. `ss check L5.4` requires 0.80 with the pitfall faults killed.
+Your oracle is the formula itself: compute $\sin(p / b^{2i/d})$ and $\cos(\cdot)$ with Python's `math` in float64 for a few positions, including large ones ($p \ge 10^4$), and compare with `sinusoidal_pe`. Test the shift law, the offset, and the learned table's rows and gradient. `ol check L5.4` requires 0.80 with the pitfall faults killed.
 
 ## 5. Pitfalls
 

@@ -34,11 +34,11 @@
 #   {ctl} train --spec ... --id ... --wait --json   as fixed by MS-durable.
 #
 # Tiers: the full run uses `vars` (specs/c1/tinystories-short.json, or
-# change it to tinystories-10m.json); `ss milestone MS-C1 --smoke` (the
+# change it to tinystories-10m.json); `ol milestone MS-C1 --smoke` (the
 # nightly train-smoke job) uses `smoke_vars`, the about-1M-parameter smoke
 # spec. The `<= calibrated` bars come from the reference's 5-seed runs per
 # tier in course/fixtures/ref-thresholds.tsv (key MS-C1/<step>), recorded by
-# `ss milestone MS-C1 --record-thresholds` on the author's machine
+# `ol milestone MS-C1 --record-thresholds` on the author's machine
 # (DESIGN 9, B11; DEVIATIONS B112-10).
 #
 # Your system.toml must declare [entry].tinyllm and [entry].ctl, the

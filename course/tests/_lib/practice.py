@@ -3,7 +3,7 @@
 A practice module's `course/tests/<ID>/check` runs in the learner repo, and
 its exit code is the verdict. The checks in this course are plain Python
 files whose `test_*` functions carry the same WHY/KIND header as every other
-course test, so `ss tests <ID>` lists them and `ss verify course` lints them.
+course test, so `ol tests <ID>` lists them and `ol verify course` lints them.
 
     from _lib.practice import Ctx, Fail, run
     def test_dockerfile_exists(c: Ctx) -> None:
@@ -19,7 +19,7 @@ to fail and `Skip` to skip with a reason.
 Tiers. Static tests always run. Tests that need Docker call `c.need_docker()`,
 which fails when the daemon is unreachable (Docker is required from Pass 1).
 Tests that need a cluster call `c.need_cluster(context)`: when the kube
-context is missing or unreachable they fail, unless `SS_SMOKE=1` is set, in
+context is missing or unreachable they fail, unless `OL_SMOKE=1` is set, in
 which case they are skipped with the reason and the run is reported as
 `smoke` (everything except the cluster was checked).
 """
@@ -47,7 +47,7 @@ class Skip(Exception):
 
 
 def smoke_mode() -> bool:
-    return os.environ.get("SS_SMOKE", "") not in ("", "0")
+    return os.environ.get("OL_SMOKE", "") not in ("", "0")
 
 
 class Ctx:
@@ -99,7 +99,7 @@ class Ctx:
     ) -> subprocess.CompletedProcess:
         tool = argv[0]
         if shutil.which(tool) is None:
-            raise Fail(f"`{tool}` is not on PATH (see `ss doctor --pass 1`)")
+            raise Fail(f"`{tool}` is not on PATH (see `ol doctor --pass 1`)")
         try:
             r = subprocess.run(
                 argv,
@@ -124,7 +124,7 @@ class Ctx:
         if "docker_ok" not in self.cache:
             if shutil.which("docker") is None:
                 self.cache["docker_ok"] = (
-                    "docker is not installed (required from Pass 1, see `ss doctor --pass 1`)"
+                    "docker is not installed (required from Pass 1, see `ol doctor --pass 1`)"
                 )
             else:
                 r = subprocess.run(
@@ -141,13 +141,13 @@ class Ctx:
             raise Fail(self.cache["docker_ok"])
 
     def need_cluster(self, context: str) -> None:
-        """Skip under SS_SMOKE=1 (`ss check --ci`: the cluster tier belongs to
+        """Skip under OL_SMOKE=1 (`ol check --ci`: the cluster tier belongs to
         the milestones' kind steps, and a cluster that happens to exist may
         hold another pass's deployment); otherwise fail unless `context`
         names a reachable cluster."""
         if smoke_mode():
             self.skipped_cluster = True
-            raise Skip(f"cluster tier skipped under SS_SMOKE=1 (context {context})")
+            raise Skip(f"cluster tier skipped under OL_SMOKE=1 (context {context})")
         key = f"cluster:{context}"
         if key not in self.cache:
             why = ""
@@ -180,10 +180,10 @@ class Ctx:
         if why:
             if smoke_mode():
                 self.skipped_cluster = True
-                raise Skip(f"cluster tier skipped under SS_SMOKE=1: {why}")
+                raise Skip(f"cluster tier skipped under OL_SMOKE=1: {why}")
             raise Fail(
                 f"{why}. Create the cluster and deploy (chapter section 4), "
-                "or rerun with SS_SMOKE=1 to check everything except the cluster"
+                "or rerun with OL_SMOKE=1 to check everything except the cluster"
             )
 
     def kubectl_json(self, context: str, args: list[str]) -> dict:
@@ -197,7 +197,7 @@ class Ctx:
             import yaml
         except ImportError:
             raise Fail(
-                "PyYAML is not importable: run this check through `ss check`"
+                "PyYAML is not importable: run this check through `ol check`"
             ) from None
         try:
             return [d for d in yaml.safe_load_all(text) if d is not None]

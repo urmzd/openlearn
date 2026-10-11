@@ -147,9 +147,9 @@ Authorization looks like a boolean function but is really a *language-recognitio
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `gw.02` | [AuthN (API keys) and AuthZ (scopes, model allowlist, tenants)](01-api-keys-and-scopes.md) | build | 7 |
 | 2 | `gw.03` | [Rate limiting: RPM token bucket + TPM reserve/settle](02-rate-limiting.md) | build | 7 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

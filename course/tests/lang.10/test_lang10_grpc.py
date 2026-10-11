@@ -19,11 +19,11 @@ from pathlib import Path
 
 import pytest
 
-PRIMER = Path(os.environ.get("SS_PRIMER_DIR", "primers/lang.10")).resolve()
+PRIMER = Path(os.environ.get("OL_PRIMER_DIR", "primers/lang.10")).resolve()
 TARGET = Path(
     os.environ.get("CARGO_TARGET_DIR", str(PRIMER / "rust" / "target"))
 ).resolve()
-BIN = Path(os.environ.get("SS_PRIMER_BIN", str(PRIMER / "bin"))).resolve()
+BIN = Path(os.environ.get("OL_PRIMER_BIN", str(PRIMER / "bin"))).resolve()
 GO_ENV = dict(
     os.environ, GOPROXY="off", GOWORK="off", GOTOOLCHAIN="local", GOFLAGS="-mod=mod"
 )

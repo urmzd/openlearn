@@ -1,4 +1,4 @@
-# review.01 answer key (hidden; honor system, DESIGN D34). `ss verify course
+# review.01 answer key (hidden; honor system, DESIGN D34). `ol verify course
 # review.01` check 7 proves every `expect` passes and every `reject` canary
 # fails; course/oracle/solve/review.01.py recomputes every value independently.
 

@@ -26,7 +26,7 @@ smoke     = ["hand_example"]
 timeout_s = 60
 determinism_runs = 2
 
-[bench]                             # a B test: `ss bench L9.5 --assert`, never `ss check`
+[bench]                             # a B test: `ol bench L9.5 --assert`, never `ol check`
 lang   = "c"
 name   = "q4_gemv_2048"             # course/tests/L9.5/bench/q4_gemv_2048.c
 metric = "q4_speedup_vs_f32"        # one decode step, M = 1, N = K = 2048, group 32

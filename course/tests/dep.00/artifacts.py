@@ -1,6 +1,6 @@
 """dep.00 artifact check: your engine and gateway as images, charts, and a release on kind.
 
-Run by `ss check dep.00` in your repo. Three tiers, in order:
+Run by `ol check dep.00` in your repo. Three tiers, in order:
 
   static   files, the image rules, the kind config, `helm lint`, the rendered charts,
            the Jaeger manifest, and the [deploy] section of system.toml
@@ -11,7 +11,7 @@ Run by `ss check dep.00` in your repo. Three tiers, in order:
            [deploy].gateway_url, and the Jaeger query API at [deploy].traces
 
 `<system>` below is [system].name from system.toml. The cluster tier fails when the
-context is missing or down; with SS_SMOKE=1 it is skipped with the reason instead.
+context is missing or down; with OL_SMOKE=1 it is skipped with the reason instead.
 """
 
 from __future__ import annotations
@@ -201,7 +201,7 @@ def test_layout_present(c: Ctx) -> None:
 
 def test_dockerignore_keeps_build_outputs_out(c: Ctx) -> None:
     # WHY: the build context is the repo root, so without a .dockerignore every
-    #      `docker build` uploads rust/target (gigabytes), .ss, and artifacts/, and
+    #      `docker build` uploads rust/target (gigabytes), .ol, and artifacts/, and
     #      a COPY of rust/ bakes your laptop's build cache into the image.
     # KIND: unit
     # CHAPTER: dep.00 section 5, Pitfall 1
@@ -212,7 +212,7 @@ def test_dockerignore_keeps_build_outputs_out(c: Ctx) -> None:
     }
     missing = [
         p
-        for p in ("target", ".ss", "artifacts")
+        for p in ("target", ".ol", "artifacts")
         if not ({p, f"**/{p}", f"rust/{p}"} & lines)
     ]
     if missing:
@@ -425,7 +425,7 @@ def _images(c: Ctx) -> dict[str, str]:
         c.cache["images"] = None
         out = {}
         for part in ("engine", "gateway"):
-            tag = f"ss-check/{_name(c)}-{part}:local"
+            tag = f"ol-check/{_name(c)}-{part}:local"
             c.sh(
                 [
                     "docker",
@@ -477,7 +477,7 @@ def _model(c: Ctx) -> Path:
             raise Fail(
                 "system.toml has no [entry].tinyllm, which trains the model the engine image serves"
             )
-        work = c.path(".ss/check/dep.00")
+        work = c.path(".ol/check/dep.00")
         shutil.rmtree(work, ignore_errors=True)
         (work / "model").parent.mkdir(parents=True, exist_ok=True)
         (work / "corpus.txt").write_text(CORPUS)
@@ -514,7 +514,7 @@ def _stack(c: Ctx) -> dict:
         imgs = _images(c)
         model = _model(c)
         c.cache["stack"] = None
-        tag = f"ss-dep00-{os.getpid()}"
+        tag = f"ol-dep00-{os.getpid()}"
         c.sh(["docker", "network", "create", tag])
         c.cleanups.append(lambda: c.sh(["docker", "network", "rm", tag], check=False))
         eng, gw = f"{tag}-engine", f"{tag}-gateway"

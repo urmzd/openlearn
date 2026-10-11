@@ -1,4 +1,4 @@
-<!-- ss:module S-M90a -->
+<!-- ol:module S-M90a -->
 # Demo problem set
 
 ## Overview
@@ -19,8 +19,8 @@
 ## How to work this chapter
 
 ```bash
-ss start S-M90a
-ss check S-M90a
+ol start S-M90a
+ol check S-M90a
 ```
 
 ---

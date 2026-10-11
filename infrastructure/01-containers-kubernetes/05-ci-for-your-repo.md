@@ -1,4 +1,4 @@
-<!-- ss:module dep.05 -->
+<!-- ol:module dep.05 -->
 # CI for the learner repo
 
 ## Overview
@@ -7,7 +7,7 @@
 |---|---|
 | **Module** | `dep.05` · practice · ops · Pass 7 · 3 to 5 h |
 | **You build** | `.github/workflows/platform.yml`: jobs `lint`, `unit`, `images`, and `kind-e2e` (plus `perf-gate` if you did the optional `load.02`), next to `craft.01`'s `ci.yml` (which keeps commit-lint, native-tests, and course-check); `craft.11` adds `release.yml` |
-| **Contract** | [GitHub Actions workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions); the CI recipe of DESIGN 5.13 (supersource at `contracts/VERSION`) |
+| **Contract** | [GitHub Actions workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions); the CI recipe of DESIGN 5.13 (openlearn at `contracts/VERSION`) |
 | **Tests** | `course/tests/dep.05/` (`check` runs `artifacts.py`, which reads the workflow statically; section 4) |
 | **Needs** | `craft.01` (the gate this extends), `dep.04` (`tilt ci` is the kind job) · optional: `load.02`'s `compare` is the perf gate |
 | **Used by** | MS-prod and every later milestone run against what this pipeline keeps green; `ops.06` (dependency upgrade) and `ops.07` (perf regression) are graded by it going red |
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start dep.05                       # records the start; there are no stubs
-ss tests dep.05                       # read the test catalog first
+ol start dep.05                       # records the start; there are no stubs
+ol tests dep.05                       # read the test catalog first
 # write .github/workflows/platform.yml (section 4), then:
-ss check dep.05                       # reads the workflow; static only
+ol check dep.05                       # reads the workflow; static only
 git push                              # the real verdict: the run on GitHub
 gh run list --workflow platform --limit 3
 ```
@@ -37,7 +37,7 @@ gh run list --workflow platform --limit 3
 
 ## 1. Why now
 
-Your repo's CI (`craft.01`) lints commit messages, runs a few native tests, and runs `ss check --all --ci`. Since then the system grew a Rust engine, a Go gateway, Dockerfiles, charts, a Tiltfile, and a load generator, and none of them is exercised when you push. A pull request can break the engine image (a moved `COPY` source), the chart (a renamed value), or TTFT (a lock in the scheduler) and still be green. Pass 7's milestone is about running the system in production shape, and production shape includes a pipeline that refuses those changes.
+Your repo's CI (`craft.01`) lints commit messages, runs a few native tests, and runs `ol check --all --ci`. Since then the system grew a Rust engine, a Go gateway, Dockerfiles, charts, a Tiltfile, and a load generator, and none of them is exercised when you push. A pull request can break the engine image (a moved `COPY` source), the chart (a renamed value), or TTFT (a lock in the scheduler) and still be green. Pass 7's milestone is about running the system in production shape, and production shape includes a pipeline that refuses those changes.
 
 ## 2. Principles
 
@@ -48,7 +48,7 @@ Your repo's CI (`craft.01`) lints commit messages, runs a few native tests, and 
 | `lint` | is the code formatted and free of lint? | `ruff`, `gofmt`, `go vet`, `cargo fmt --check`, `cargo clippy -D warnings` |
 | `unit` | do the native tests pass? | `pytest`, `go test -race`, `cargo test`, the C build |
 | `images` | does every Dockerfile build, as non-root? | a `docker build` |
-| `kind-e2e` | does the system deploy and serve? | `tilt ci`, then `ss milestone MS-prod --smoke` |
+| `kind-e2e` | does the system deploy and serve? | `tilt ci`, then `ol milestone MS-prod --smoke` |
 | `perf-gate` | is main slower than the last green main? | `{loadgen} compare base.json head.json --metric ttft_p95 --max-regress 5%` |
 
 Jobs run in parallel unless `needs:` orders them: `kind-e2e` needs `images` (no point deploying images that do not build) and `unit`.
@@ -65,7 +65,7 @@ A workflow is code that runs with write access to your repository unless you say
 
 ### 2.3 The kind job
 
-`helm/kind-action` creates a kind cluster on the runner from the config you pass. Pass `deploy/kind/cluster.yaml`: the same cluster name and NodePort mappings as on your laptop, so `[deploy]` in `system.toml` is right in CI too. Then `tilt ci` (`dep.04`) builds and deploys, and `ss milestone MS-prod --smoke` runs the milestone's smoke steps from the supersource commit your `contracts/VERSION` names (the `craft.01` recipe). A throwaway API key is generated per run, masked, and stored in the Secret the gateway chart reads.
+`helm/kind-action` creates a kind cluster on the runner from the config you pass. Pass `deploy/kind/cluster.yaml`: the same cluster name and NodePort mappings as on your laptop, so `[deploy]` in `system.toml` is right in CI too. Then `tilt ci` (`dep.04`) builds and deploys, and `ol milestone MS-prod --smoke` runs the milestone's smoke steps from the openlearn commit your `contracts/VERSION` names (the `craft.01` recipe). A throwaway API key is generated per run, masked, and stored in the Secret the gateway chart reads.
 
 ### 2.4 A perf gate needs a baseline
 
@@ -112,9 +112,9 @@ jobs:
       - uses: helm/kind-action@v1.12.0
         with: {cluster_name: forge, config: deploy/kind/cluster.yaml}
       - run: tilt ci -f deploy/Tiltfile --context kind-forge --timeout 15m -- --topology=disaggregated
-      - run: |   # supersource at contracts/VERSION, as in craft.01
-          git -C .ss/supersource checkout --quiet --detach "$SHA"
-          SS_COURSE_HOME="$PWD" .ss/supersource/practice/bin/ss milestone MS-prod --smoke
+      - run: |   # openlearn at contracts/VERSION, as in craft.01
+          git -C .ol/openlearn checkout --quiet --detach "$SHA"
+          OL_COURSE_HOME="$PWD" .ol/openlearn/practice/bin/ol milestone MS-prod --smoke
   perf-gate:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 30
@@ -126,7 +126,7 @@ jobs:
 
 ### What the tests check
 
-GitHub Actions cannot run inside `ss check`, so the check reads the workflow; MS-P0's `ci-status` matcher is what reads the run on GitHub.
+GitHub Actions cannot run inside `ol check`, so the check reads the workflow; MS-P0's `ci-status` matcher is what reads the run on GitHub.
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
@@ -136,7 +136,7 @@ GitHub Actions cannot run inside `ss check`, so the check reads the workflow; MS
 | `test_lint_covers_every_language` | unit | ruff, gofmt, go vet, cargo fmt `--check`, clippy `-D warnings` | cheap failures stay cheap |
 | `test_unit_runs_every_suite` | unit | pytest, `go test -race`, cargo test, `make -C c` | your own tests on every push |
 | `test_images_job_builds_every_dockerfile` | conformance | each `deploy/docker/*.Dockerfile` is built | a broken image fails its own pull request |
-| `test_kind_e2e_job` | conformance | kind from `deploy/kind/cluster.yaml`, `tilt ci`, `ss milestone MS-prod --smoke` at `contracts/VERSION`, `needs: images` | the deployed system on every pull request |
+| `test_kind_e2e_job` | conformance | kind from `deploy/kind/cluster.yaml`, `tilt ci`, `ol milestone MS-prod --smoke` at `contracts/VERSION`, `needs: images` | the deployed system on every pull request |
 | `test_perf_gate_runs_on_main_against_the_last_report` | conformance | if the job exists: `if:` restricted to main; `compare ... --metric ... --max-regress ...`; the report uploaded | regressions fail the commit that made them |
 | `test_least_privilege_and_no_echoed_secrets` | boundary | top-level `permissions:`; no step echoes a secret | a compromised step can do less |
 
@@ -155,7 +155,7 @@ GitHub Actions cannot run inside `ss check`, so the check reads the workflow; MS
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `craft.01` | the three gates of `ci.yml` and the supersource-at-`contracts/VERSION` recipe |
+| Back | `craft.01` | the three gates of `ci.yml` and the openlearn-at-`contracts/VERSION` recipe |
 | Back | `dep.04` | `tilt ci` is the kind job's deploy step |
 | Forward | `craft.11` | `release.yml`: tags, changelog, images pushed only from a release |
 | Forward | `ops.06` | a dependency upgrade lands only with this pipeline green |

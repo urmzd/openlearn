@@ -52,7 +52,7 @@
 #                          `train/after-step=N*crash` exits 137 on the Nth
 #                          evaluation of this process, as a SIGKILL would.
 #
-# `ss milestone MS-L0 --smoke` runs the smoke steps (all of them: this
+# `ol milestone MS-L0 --smoke` runs the smoke steps (all of them: this
 # milestone needs no services). Every later pass gate reruns them.
 id       = "MS-L0"
 title    = "Your autograd retrains the tracer and survives a kill"

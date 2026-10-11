@@ -1,4 +1,4 @@
-<!-- ss:module craft.14 -->
+<!-- ol:module craft.14 -->
 # Interface migration: API v1 to v2
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.14
-ss tests craft.14
-ss check craft.14
+ol start craft.14
+ol tests craft.14
+ol check craft.14
 ```
 
 ---
@@ -54,7 +54,7 @@ The worked request sends `X-TL-API-Version: 2` while the configured default rema
 | `TestSunsetAndUnsupportedVersionReturnOpenAIErrorShape` | boundary | Sunset and unsupported-version errors retain the public error shape. | Existing clients can handle failure consistently. |
 | `v2_error_names_are_specific_and_v1_codes_are_stable` | unit | v2 errors are specific while v1 codes remain stable. | Preserves compatibility through the overlap period. |
 | `cached_token_usage_is_present_only_in_v2` | unit | Exposes cached-token usage only in v2 responses. | Preserves the versioned response contract. |
-| `engine_serves_v1_and_v2_side_by_side` | conformance | The engine echoes the selected version, marks v1 and v2 `/v1/completions` deprecated during the window, adds `cached_tokens` to v2 usage, refuses an unknown version, and answers a sunset v1 with 410. | `ss conform openapi:v2 --target engine` and the ops.05 drill run against this serve loop. |
+| `engine_serves_v1_and_v2_side_by_side` | conformance | The engine echoes the selected version, marks v1 and v2 `/v1/completions` deprecated during the window, adds `cached_tokens` to v2 usage, refuses an unknown version, and answers a sunset v1 with 410. | `ol conform openapi:v2 --target engine` and the ops.05 drill run against this serve loop. |
 
 ## 5. Pitfalls
 

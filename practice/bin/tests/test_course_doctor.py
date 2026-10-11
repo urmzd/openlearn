@@ -1,4 +1,4 @@
-"""ss doctor: required tools by pass, the Docker allocation from Pass 7, the
+"""ol doctor: required tools by pass, the Docker allocation from Pass 7, the
 default pass from the learner's started modules, --json."""
 
 import json

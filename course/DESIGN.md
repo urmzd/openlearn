@@ -11,7 +11,7 @@ Contents:
 
 1. Vision and principles (with the merge **Decisions** list in 1.5)
 2. The system: architecture, contracts, formats, diagrams
-3. Course layout in supersource
+3. Course layout in openlearn
 4. Module catalog: math, ML spine, systems layers, operations, practices
 5. Testing ladder and harness
 6. Pedagogy and the chapter template
@@ -36,7 +36,7 @@ After the `v1.0.0` gate of Pass 11, **Pass 12** (batch B14) makes the same platf
 
 | # | Principle | Consequence |
 |---|---|---|
-| P1 | **One system, owned end to end** | Every `build` module declares `used_by` call sites: other modules (never milestones or side quests) that call its code. A build module with no such call site fails `ss verify course` |
+| P1 | **One system, owned end to end** | Every `build` module declares `used_by` call sites: other modules (never milestones or side quests) that call its code. A build module with no such call site fails `ol verify course` |
 | P2 | **The course ships no prebuilt system** | No CLI, server, API, run script, Dockerfile, chart, or CI file is given to the learner. The course ships contracts, chapters, tests, fixtures, and hidden references |
 | P3 | **Contracts at every boundary** | Language crossings use HTTP, gRPC, subprocess, or file contracts. C headers apply only within standalone C exercises. Conformance suites test the contract, not an implementation |
 | P4 | **Four languages, one job each** | Python: math, models, training, data, model evals. C: optional standalone kernels and systems exercises. Rust: candle inference engine and fast tokenizer. Go: control plane (gateway, durable engine, agent SDK, load generator) |
@@ -44,7 +44,7 @@ After the `v1.0.0` gate of Pass 11, **Pass 12** (batch B14) makes the same platf
 | P6 | **Python is the semantic source of truth** | Optional C exercises and the Rust engine are compared with Python through shared fixture files, never through bindings or a shared process |
 | P7 | **Tracer bullet first, then spiral** | Pass 1 builds a thin version of every layer end to end. Each later module upgrades one component behind an unchanged contract, or changes a contract through an explicit migration chapter |
 | P8 | **Nothing left on its own** | Every chapter has the six beats: Why now, Principles, Worked example, Interface and tests, Pitfalls, Where it's used next |
-| P9 | **Every part ends in a milestone run through the learner's own entry points** | `ss milestone` launches the commands the learner declares in `system.toml`, never ours |
+| P9 | **Every part ends in a milestone run through the learner's own entry points** | `ol milestone` launches the commands the learner declares in `system.toml`, never ours |
 | P10 | **Tests are graded by what they catch** | The learner's own tests run against our reference with one planted fault. Mutation score is the grade |
 | P11 | **Determinism by construction** | One cross-language RNG spec, one sampling op order, explicit seeds, fixed thread counts in tests, bit-exact where we define the algorithm |
 | P12 | **Maintenance is taught** | Drills inject faults into the learner's running cluster. Interface migrations, dependency upgrades, and perf bisects are modules |
@@ -55,10 +55,10 @@ After the `v1.0.0` gate of Pass 11, **Pass 12** (batch B14) makes the same platf
 |---|---|---|
 | Contracts (C headers, `.pyi`, Rust traits, Go interfaces, `.proto`, OpenAPI, format specs) | yes, read-only, vendored | implements them |
 | Chapters (guides) | yes, in the tracks | reads them |
-| Course tests, conformance and parity suites | yes, vendored at export | runs them via `ss` |
-| Fixtures and oracles | yes (small committed, large via `ss fetch`) | uses them |
-| Hidden reference implementations | yes, for course CI, mutation grading, and opt-in `--ref-deps`; never exported or published | never reads them unless they choose `ss show` (recorded as `spoiled`). "Hidden" is an **honor system** (D34): `course/ref/` sits in the public repo the learner clones, because `--ref-deps` and mutation grading run locally |
-| Library code for every module | stubs only, written by `ss start` | yes |
+| Course tests, conformance and parity suites | yes, vendored at export | runs them via `ol` |
+| Fixtures and oracles | yes (small committed, large via `ol fetch`) | uses them |
+| Hidden reference implementations | yes, for course CI, mutation grading, and opt-in `--ref-deps`; never exported or published | never reads them unless they choose `ol show` (recorded as `spoiled`). "Hidden" is an **honor system** (D34): `course/ref/` sits in the public repo the learner clones, because `--ref-deps` and mutation grading run locally |
+| Library code for every module | stubs only, written by `ol start` | yes |
 | CLI, servers, HTTP API handlers, local run scripts | no | yes |
 | Dockerfiles, Helm charts, kind config, Tiltfile, CI | no | yes |
 | Own test suites | annotated exemplars | yes, graded by mutation testing |
@@ -66,14 +66,14 @@ After the `v1.0.0` gate of Pass 11, **Pass 12** (batch B14) makes the same platf
 
 ### 1.4 Naming
 
-The learner names the system once: `ss course init --name <system>`. The name is stored in `system.toml`. Course text uses the literal placeholder `<system>`. **Contract identifiers never contain the name**, so conformance suites run unchanged against any learner's repo.
+The learner names the system once: `ol course init --name <system>`. The name is stored in `system.toml`. Course text uses the literal placeholder `<system>`. **Contract identifiers never contain the name**, so conformance suites run unchanged against any learner's repo.
 
 | Thing | Uses `<system>`? | Example with `<system>=forge` |
 |---|---|---|
 | Repo directory, umbrella CLI binary, Helm release prefix, k8s namespace, kind context | yes | `forge/`, `forge`, `forge-gateway`, `ns/forge`, `kind-forge` |
 | Python packages | no | `tinyllm`, `corpus` |
 | Rust crates | no | `tl-ds`, `tl-tok`, `tl-engine`, `tl-serve` |
-| Go module | no | `tinyllm` (packages `tinyllm/gateway/...`); the vendored contracts are a separate module with a dotted path, `supersource.urmzd.com/tl/contracts`, required through a `replace` to `../contracts/go` in `go/go.mod` |
+| Go module | no | `tinyllm` (packages `tinyllm/gateway/...`); the vendored contracts are a separate module with a dotted path, `openlearn.urmzd.com/tl/contracts`, required through a `replace` to `../contracts/go` in `go/go.mod` |
 | Helm values schemas | no | `contracts/helm/{gateway,engine,durable,worker,agent}.values.schema.json` |
 | C library, header, symbol prefix | no | `libtinyllm`, `tinyllm.h`, `tl_` |
 | Proto packages | no | `tl.engine.v1`, `tl.kv.v1`, `tl.control.v1`, `tl.durable.v1`, `tl.raft.v1` |
@@ -87,8 +87,8 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 |---|---|---|---|
 | D1 | **Ids**: math `Mcc.n`, spine `Lp.n`, capstones `C1`/`C2`, solve sets `S-Mcc` split into lettered parts by pass (`S-M07a`), systems, primers, and practices `<area>.NN` (`lang ds rt data dur gw ag load dep obs ops craft ethics review field iv`), side quests `sq.<slug>`, milestones `MS-<slug>` | `llm.p07.rope` (A), single-letter tracks `L8.3`/`W2.4`/`P1.3` (D), `tinyllm.p0.01`/`math.04.01` (E) | Short ids that read as the part or area; one grammar for the harness regex (5.2) |
 | D2 | **Learner repo top level** `python/ c/ rust/ go/ deploy/ docs/` (A), Python internals per the math/ML catalog, Go packages per the systems catalog, no Go `internal/` | `tinyllm/ kernels/ engine/ control/` (B, E); `py/ rs/` (C, D) | Course tests must import learner Go packages, which `internal/` forbids; language-named roots make the overlay a path mapping |
-| D3 | Harness manifest is **`system.toml`**; service runtime config is **`runtime.toml`** | `course.toml` (A, E), `supersource.toml` (C) | It describes the learner's system, not the course; two files with two jobs |
-| D4 | **Fixed contract names** (1.4): Go module `tinyllm`, contracts module `supersource.urmzd.com/tl/contracts`, crates `tl-ds tl-tok tl-engine tl-serve` | Go `github.com/<you>/<system>/go` (A), crates `tl-tensor tl-sampler tl-kv` (D), `tl-tokenizer tl-server` (B) | Tests import fixed names; no binding crates are needed because language boundaries use processes and files |
+| D3 | Harness manifest is **`system.toml`**; service runtime config is **`runtime.toml`** | `course.toml` (A, E), `openlearn.toml` (C) | It describes the learner's system, not the course; two files with two jobs |
+| D4 | **Fixed contract names** (1.4): Go module `tinyllm`, contracts module `openlearn.urmzd.com/tl/contracts`, crates `tl-ds tl-tok tl-engine tl-serve` | Go `github.com/<you>/<system>/go` (A), crates `tl-tensor tl-sampler tl-kv` (D), `tl-tokenizer tl-server` (B) | Tests import fixed names; no binding crates are needed because language boundaries use processes and files |
 | D5 | **Data plane is HTTP.** Every engine serves the OpenAI subset over HTTP+SSE; the gateway proxies SSE. gRPC is internal only: `tl.engine.v1.EngineControl` (Prefill, Info, Cancel, Drain), `tl.kv.v1`, `tl.control.v1`, `tl.durable.v1`, `tl.raft.v1` | Gateway to engine over gRPC `Generate` (A) | The Part 10 milestone can run OpenAI conformance against the engine before any gateway exists; the tracer engine is plain HTTP |
 | D6 | KV transfer is gRPC `tl.kv.v1` with content-hash dedup (`HasBlocks`, `PushKv`) | framed TCP `TLKV` (C), per-layer proto (B) | Dedup by hash reuses the prefix-cache hash; one RPC stack |
 | D7 | **Rust owns the production model graph on candle** (`candle-core`, `candle-nn`); C modules are optional standalone exercises with their own binaries and fixture parity | Rust forward over C kernels through `tl-sys`; a C full forward in `model.c` | Rust owns production serving without FFI. `candle-transformers` is forbidden so the learner implements each model layer |
@@ -102,7 +102,7 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 | D15 | **Ownership unit is a source file** in every language. A later module may take over a unit with `upgrades = [...]`; the earlier module's tests become its smoke regression | crate- or package-level units (D) | All of `tl-engine` would otherwise be one module; `upgrades` is how the spiral works |
 | D16 | **Entry points are learner territory**: CLI mains, server mains, `go/cmd/*`, `deploy/`, `docs/`. They are never overlaid and are verified only by milestones, conformance suites, and artifact checks. `--ref-deps` substitutes library units only | `--ref-deps loadgen` substituting a binary (B) | Decision 2: no prebuilt system |
 | D17 | Data formats: parquet text shards and llm.c `.bin` token streams (A). Data modules renumbered `data.01` fetch to `data.09` workflow | tokens in parquet (C), `.bin + .idx` (E) | The training loader memory-maps a flat token stream |
-| D18 | Metrics follow OTel GenAI semantic conventions plus `tl.*`; services also expose Prometheus `/metrics` on the health port (`:9464` in k8s, `{health_port}` locally) for tests. SLO defaults from A, scaled by `ss bench --calibrate`, which runs inside the cluster for SLOs checked on kind | `tl_engine_ttft_seconds` (C), `tinyllm_ttft_seconds` (D) | One naming source; portable budgets |
+| D18 | Metrics follow OTel GenAI semantic conventions plus `tl.*`; services also expose Prometheus `/metrics` on the health port (`:9464` in k8s, `{health_port}` locally) for tests. SLO defaults from A, scaled by `ol bench --calibrate`, which runs inside the cluster for SLOs checked on kind | `tl_engine_ttft_seconds` (C), `tinyllm_ttft_seconds` (D) | One naming source; portable budgets |
 | D19 | API keys `tl_<id>_<secret>`, stored as HMAC-SHA256 with a pepper | `tl-<base32>` plus SHA-256 (A) | O(1) lookup by id; pepper limits damage from a leaked key file |
 | D20 | **Placement**: `L11.1` (mixed precision, accumulation, recompute) is core before `C1`; `L11.2` and `L11.3` optional, tensor and pipeline parallelism side quests; `L12` post-training optional after `C1` | core post-training in the agents pass (E) | `C1` needs `L11.1` to finish on a laptop; a 10M TinyStories model cannot drive a tool-calling agent, so agents use the learner's gateway serving SmolLM2-135M-Instruct (a fetched third-party model, labelled as such in the model card) on the learner's engine, or a frontier provider through the same `Provider` |
 | D21 | Prefix bloom in heartbeats dropped; routing is consistent hash with bounded loads plus queue depth | bloom-refined routing (A) | Fewer moving parts; kept as side quest `sq.prefix-bloom` |
@@ -110,16 +110,16 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 | D23 | **Chapter homes** in tracks: spine `ml/08-tinyllm/pNN-<slug>/NN-<slug>.md`; new math topics `00-precalculus`, `08-matrix-calculus-and-autodiff`, `09-numerical-methods-and-floating-point`, `10-optimization`, `11-information-theory`; ethics as new top-level track `responsible-ai/`; durable chapters in `ai-platform-engineering/05-durable-orchestration-and-workers/` | `ml/tinyllm/pNN/mNN/README.md` (A); ethics under craftsmanship (A); durable under `infrastructure/` (A) | Matches existing numbering; decision 9 calls ethics a track; decision 12 merges infra/03 into ai-platform/05 |
 | D24 | The guide (front door, system map, pass intros, milestone pages) lives in `paths/course*/` | guide in `course/` | Existing rule: a path holds its manifest, README, and material about the path |
 | D25 | **Milestones** use one namespace `MS-*`: part milestones (`MS-L0`...), component milestones (`MS-corpus`, `MS-gateway`, `MS-durable-ha`, ...), and pass gates `MS-P0` to `MS-P12` composed of them. Milestones are not module kinds | `MS-L0` only (B), `M-engine` (C), `M0`...`M11` (E), `L8.M` (D) | Keeps every check and gives passes a single gate |
-| D26 | Test `KIND` vocabulary: `unit boundary property statistical differential golden gradcheck learning conformance fault regression bench eval` | B's letter codes, C's tiers | One tag set for lint and `ss tests` |
-| D27 | Fixtures: at most 56 MiB committed (50 MiB through B13, 6 MiB for B14, D52), at most 8 MiB per file, a committed-fixture budget per authoring batch (section 9); the TinyStories slices, token streams, and tiny HF models are pinned assets fetched by `ss fetch`; maintainer generators in `course/oracle/` | 20 MB (A), 60 MB (B), 2 MiB per file (D) | Committing the corpora and tiny models alone would use the whole budget and grow history on every regeneration |
-| D28 | `ss course init` creates the learner repo (default `.scratchpad/course/`, override `SS_COURSE_HOME`); `ss export` produces the standalone repo with vendored tests | `ss export --name` as the creation step (A, E) | The learner works in a git repo from day one; export adds vendoring |
+| D26 | Test `KIND` vocabulary: `unit boundary property statistical differential golden gradcheck learning conformance fault regression bench eval` | B's letter codes, C's tiers | One tag set for lint and `ol tests` |
+| D27 | Fixtures: at most 56 MiB committed (50 MiB through B13, 6 MiB for B14, D52), at most 8 MiB per file, a committed-fixture budget per authoring batch (section 9); the TinyStories slices, token streams, and tiny HF models are pinned assets fetched by `ol fetch`; maintainer generators in `course/oracle/` | 20 MB (A), 60 MB (B), 2 MiB per file (D) | Committing the corpora and tiny models alone would use the whole budget and grow history on every regeneration |
+| D28 | `ol course init` creates the learner repo (default `.scratchpad/course/`, override `OL_COURSE_HOME`); `ol export` produces the standalone repo with vendored tests | `ol export --name` as the creation step (A, E) | The learner works in a git repo from day one; export adds vendoring |
 | D29 | Practice exercises stay as standalone warm-up drills with a pointer to their course module. Hash maps consolidate: `c/02` becomes the `ds.02` baseline, the `rust/03` README row points to `ds.05` (authored fresh), `cpp/03` is archived, zig and java hash-map rows are dropped, `swiss-table/` is removed | retiring the C drills (E) | Only the C and C++ drills have references and pass CI. The Rust, Go, Python, Zig, Java, Scala, and TypeScript build directories hold a README exercise list only, so their mappings are README pointers, not code |
 | D30 | Load generator is Go (`load.01`); `ml/04-llm-systems/serving-and-load/code/loadgen.py` becomes reading | Python loadgen | Control plane is Go (decision 3) |
 | D31 | **Spine content without a call site stays optional.** ELMo (`L3.5`), T5 span corruption (`L6.4`), and the ALiBi part of `L7.4` are optional modules with side-quest call sites. Unigram (`L1.4`, C1 tokenizer ablation) and ELECTRA (`L6.3`, alternative classification backbone in the model zoo) are core | everything in decision 5 core | Decision 1 outranks the topic list of decision 5: a module with no call site in the final system is optional |
 | D32 | **The tracer is byte-level**: vocabulary of 256 ids equal to UTF-8 bytes, no `tokenizer.json`; `config.json` declares `tl_tokenizer = "bytes"`. Every engine keeps serving `tl_arch = bigram` with the byte tokenizer, so the tracer smoke stays green for the whole course | char tokenizer in Pass 1 (B); BPE with zero merges (critic) | No P1 tokenizer module is needed and the Rust tracer needs no JSON parser |
 | D33 | **Usage-policy classifier** = a linear head (L6.5 `SequenceClassifier(pool='mean')` fitted with M07.7 IRLS) over the learner engine's `/v1/embeddings`, exported as `formats/linear-head.schema.json` and evaluated in Go by `gw.08` | Python-served BERT classifier; new engine `/v1/classify` | Python never serves HTTP (D9); no new engine endpoint; Go evaluates a dot product |
-| D34 | **References are an honor system**: `course/ref`, `course/mutants`, and solve keys live in the public repo, are never exported or published, and reading them is recorded only through `ss show` | private submodule fetched by course CI | `--ref-deps` and mutation grading must run on the learner's machine |
-| D35 | **Course tests assert through frozen helpers** (`course/tests/_lib`, `ss_test.h`, `tl-contracts::testing`, `contracts/go/testing`) and construct RNGs from the frozen PCG32 there. The learner's own `gradcheck`, tolerance helpers, and PCG32 decide only their own modules' verdicts | course tests calling the learner's `gradcheck` and `tolerance` through the overlay | A gradcheck that always returns ok would otherwise pass every later test |
+| D34 | **References are an honor system**: `course/ref`, `course/mutants`, and solve keys live in the public repo, are never exported or published, and reading them is recorded only through `ol show` | private submodule fetched by course CI | `--ref-deps` and mutation grading must run on the learner's machine |
+| D35 | **Course tests assert through frozen helpers** (`course/tests/_lib`, `ol_test.h`, `tl-contracts::testing`, `contracts/go/testing`) and construct RNGs from the frozen PCG32 there. The learner's own `gradcheck`, tolerance helpers, and PCG32 decide only their own modules' verdicts | course tests calling the learner's `gradcheck` and `tolerance` through the overlay | A gradcheck that always returns ok would otherwise pass every later test |
 | D36 | **Model zoo**: every `tl_arch` family loads through the checkpoint contract and is evaluated by `L6.7`'s zoo suite, which the `EvalSuite` workflow (`dur.11`) runs. This is the call site of `L2.*`, `L3.*`, `L4.*`, `L5.5`, and `L6.1` to `L6.3` | "referenced by a milestone step" as a call site | Decision 1: a real call site in the final system, not a milestone |
 | D37 | **Engine scope**: speculative decoding (`L10.8`) and tool calls with constrained JSON decoding (`L10.9`) are core engine modules; multi-LoRA serving is `sq.multi-lora` | spec decoding only in Python; multi-LoRA as optional `L10.8` | `L8.6` and `L8.7` need a production call site; MS-agent needs `tool_calls` from the learner's engine |
 | D38 | **Language and tool primers** `lang.01` to `lang.13` precede the first module that uses each language or tool; chapters in `software-craftsmanship/12-language-and-tool-primers/` | assume prior fluency | A learner starting from high-school algebra meets C, Rust, Go, Docker, and Kubernetes in Pass 1 |
@@ -266,7 +266,7 @@ All contract paths are relative to `course/contracts/` (vendored to the learner'
 | Python reference | standalone C module | fixture files consumed by the C test binary | per-module C header and `fixtures/` manifest | module-specific C tests plus Python-generated parity fixtures |
 | Python corpus | Python training | files | `formats/corpus-shard.md`, `formats/tokens-bin.md`, `formats/ledger.schema.json` | `formats/` |
 | Python sampler | Rust sampler | spec | `spec/pcg32.md`, `spec/sampling.md` | `parity/rng`, `parity/sampler` (golden ids from shared fixture logits) |
-| any client | engine | HTTP | `openapi/openai-subset.v1.yaml` (engine tier) | `openapi/` (`ss conform openapi:v1 --target engine`) |
+| any client | engine | HTTP | `openapi/openai-subset.v1.yaml` (engine tier) | `openapi/` (`ol conform openapi:v1 --target engine`) |
 | any client | gateway | HTTP | `openapi/openai-subset.v1.yaml`, `openapi/admin.v1.yaml` | `openapi/` (`--target gateway`), `admin/` |
 | gateway | engine (control) | gRPC | `proto/tl/engine/v1/engine.proto` | `engine-grpc/` |
 | engine prefill | engine decode | gRPC | `proto/tl/kv/v1/kv.proto` + `formats/kv-block.md` | `kv/`, `parity/kv.wire.v1` |
@@ -278,7 +278,7 @@ All contract paths are relative to `course/contracts/` (vendored to the learner'
 | Go worker | Python | subprocess + files | `spec/subprocess-activity.md` | `activity/` |
 | all services | collector | OTLP gRPC `:4317`; OTLP/HTTP JSON `:4318` for the std-only tracer engine | `otel/semconv.md`, `otel/metrics.yaml` | `otel/` (span tree from a recorded trace) |
 | all services | config | TOML + env | `config/runtime.schema.json` | `config/` |
-| harness | learner | TOML | `config/system.schema.json` | `ss` validates `system.toml` on every milestone |
+| harness | learner | TOML | `config/system.schema.json` | `ol` validates `system.toml` on every milestone |
 
 Pass 12 adds these boundaries (no row is a binding, D8, D46):
 
@@ -684,7 +684,7 @@ Internal header `X-TL-MM-Handle` (EPD resume, 2.7) is stripped by the gateway fr
 
 ### 2.7 gRPC services (`proto/tl/*/v1/*.proto`)
 
-Generated code is part of the contract: `contracts/go/gen/` (protoc-gen-go and protoc-gen-go-grpc output, package path `supersource.urmzd.com/tl/contracts/gen/...`) and the `contracts/rust/tl-proto` crate (prost and tonic output committed, no `build.rs`). The learner implements the services against these stubs and never runs `protoc`; `lang.10` shows how the stubs are produced. Every message is capped at 4 MiB.
+Generated code is part of the contract: `contracts/go/gen/` (protoc-gen-go and protoc-gen-go-grpc output, package path `openlearn.urmzd.com/tl/contracts/gen/...`) and the `contracts/rust/tl-proto` crate (prost and tonic output committed, no `build.rs`). The learner implements the services against these stubs and never runs `protoc`; `lang.10` shows how the stubs are produced. Every message is capped at 4 MiB.
 
 **`tl/engine/v1/engine.proto`**: internal engine control, served by every engine on `:50051` (`{grpc_port}` locally).
 
@@ -977,7 +977,7 @@ Prometheus names come from the collector's OTel translation (for example `gen_ai
 | TPOT p95 | < 60 ms | same |
 | Availability | 99.5% (5xx ratio < 0.5% over 30 days) | same |
 
-Latency defaults are scaled by `ss bench --calibrate` (5.11); SLOs checked on kind use the in-cluster calibration Job, not the host. The learner may declare stricter targets, never looser ones. `otel/slo.schema.json` fixes the required alert names (`TTFTBudgetBurnFast`, `TTFTBudgetBurnSlow`, `TPOTBudgetBurnFast`, `TPOTBudgetBurnSlow`, `AvailabilityBudgetBurnFast`, `AvailabilityBudgetBurnSlow`) and two window profiles: `prod` (1h/5m and 6h/30m) and `drill` (the same ratios compressed 12x: 5m/25s and 30m/2.5m), so a drill can fire a burn alert within minutes.
+Latency defaults are scaled by `ol bench --calibrate` (5.11); SLOs checked on kind use the in-cluster calibration Job, not the host. The learner may declare stricter targets, never looser ones. `otel/slo.schema.json` fixes the required alert names (`TTFTBudgetBurnFast`, `TTFTBudgetBurnSlow`, `TPOTBudgetBurnFast`, `TPOTBudgetBurnSlow`, `AvailabilityBudgetBurnFast`, `AvailabilityBudgetBurnSlow`) and two window profiles: `prod` (1h/5m and 6h/30m) and `drill` (the same ratios compressed 12x: 5m/25s and 30m/2.5m), so a drill can fire a burn alert within minutes.
 
 **Pass 12 additions (B14).**
 
@@ -1000,7 +1000,7 @@ Latency defaults are scaled by `ss bench --calibrate` (5.11); SLOs checked on ki
 | `tl.gateway.epd.fallbacks` | counter | ops.13 |
 | `tl.usage.image_tokens{tenant}`, `tl.usage.audio_seconds{tenant}` | counter | metering cross-check |
 
-| SLO (course default, scaled by `ss bench --calibrate --in-cluster`) | Default | Required alerts (`otel/slo.schema.json` minor) |
+| SLO (course default, scaled by `ol bench --calibrate --in-cluster`) | Default | Required alerts (`otel/slo.schema.json` minor) |
 |---|---|---|
 | Encode p95 per image (SmolVLM, one global tile, cpu) | < 400 ms | `EncodeLatencyBurnFast`, `EncodeLatencyBurnSlow` |
 | Image-request TTFT p95 | < 1.5 s at 1 rps | `ImageTTFTBurnFast`, `ImageTTFTBurnSlow` |
@@ -1143,7 +1143,7 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
 
 `contracts/helm/engine.values.schema.json` (minor): `role` enum adds `encode`; `mm.device` (`cpu` only on kind, since the kind node is Linux), `mm.encoderCacheBytes`, `asr.*`, `autoscaling.keda{metric, threshold, min, max}`. The dep.03 policy tests apply unchanged.
 
-**Training on a Mac.** Training inside the kind VM gets Linux OpenBLAS and competes with the cluster for Docker's memory. The learner may run `{worker} --queue train` on the host, connected to the durable NodePort 30733; the trace and the workflow are unchanged. `ss doctor` reports Docker's CPU and memory allocation and fails below 6 CPUs and 12 GiB for Pass 7 onward.
+**Training on a Mac.** Training inside the kind VM gets Linux OpenBLAS and competes with the cluster for Docker's memory. The learner may run `{worker} --queue train` on the host, connected to the durable NodePort 30733; the trace and the workflow are unchanged. `ol doctor` reports Docker's CPU and memory allocation and fails below 6 CPUs and 12 GiB for Pass 7 onward.
 
 ### 2.14 Data structures and their call sites
 
@@ -1170,13 +1170,13 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
 
 ### 2.15 The learner's repo
 
-`ss course init --name <system>` creates it (default `.scratchpad/course/`, which supersource already gitignores; `SS_COURSE_HOME` points every command at an external repo). It writes only `system.toml`, `.gitignore`, and `contracts/`, then runs `git init`. Library manifests (`Cargo.toml` lib targets, `go.mod` with the `replace` for the contracts module, `pyproject.toml`) are written by `ss start` **only if absent** and are never rewritten afterwards, by `ss start`, `ss reset`, or anything else: the learner adds binaries and dependencies to them. The contract pre-check (5.4) verifies the required entries instead (lib targets, crate names, the contracts `replace`, and candle dependencies). Binaries, servers, and deploy files are never written. Entry points are marked `(learner)` below.
+`ol course init --name <system>` creates it (default `.scratchpad/course/`, which openlearn already gitignores; `OL_COURSE_HOME` points every command at an external repo). It writes only `system.toml`, `.gitignore`, and `contracts/`, then runs `git init`. Library manifests (`Cargo.toml` lib targets, `go.mod` with the `replace` for the contracts module, `pyproject.toml`) are written by `ol start` **only if absent** and are never rewritten afterwards, by `ol start`, `ol reset`, or anything else: the learner adds binaries and dependencies to them. The contract pre-check (5.4) verifies the required entries instead (lib targets, crate names, the contracts `replace`, and candle dependencies). Binaries, servers, and deploy files are never written. Entry points are marked `(learner)` below.
 
 ```
 <system>/
   system.toml                    # harness manifest (2.16), learner-maintained
   README.md  justfile            # (learner)
-  contracts/                     # vendored, read-only; VERSION = {semver, supersource sha, content hash}; `ss contracts sync`
+  contracts/                     # vendored, read-only; VERSION = {semver, openlearn sha, content hash}; `ol contracts sync`
   python/
     pyproject.toml               # uv workspace: tinyllm, corpus
     tinyllm/                     # namespace package: no __init__.py at any level (lint-enforced)
@@ -1229,7 +1229,7 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
                       src/mm/{media,image,audio,encoder_cache,hash_ids,vision,merge,epd}.rs, src/asr/{whisper,decode}.rs   # Pass 12
     crates/tl-serve/  src/{lib,http,sse,openai,template,tools,control,metrics,telemetry,audio,encoder_service}.rs, src/main.rs (learner)
   go/
-    go.mod                       # module tinyllm; require supersource.urmzd.com/tl/contracts, replace => ../contracts/go
+    go.mod                       # module tinyllm; require openlearn.urmzd.com/tl/contracts, replace => ../contracts/go
     ds/ring/  ds/rng/
     durable/{log,queue,server,worker,workflow,activity,timer,raft}/
     gateway/{server,auth,limit,proxy,route,cache,ledger,policy,media}/
@@ -1246,7 +1246,7 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
   solve/<S-ID>.toml  solve/<S-ID>/qN.md
   .github/workflows/             # (learner) CI gates
   artifacts/                     # gitignored (but artifacts/c2/run.json, which C2 checks), mounted into kind
-  .ss/                           # gitignored: verdicts.jsonl, overlay/, build/, cache/, drills/, milestones/, supersource/ (CI checkout)
+  .ol/                           # gitignored: verdicts.jsonl, overlay/, build/, cache/, drills/, milestones/, openlearn/ (CI checkout)
 ```
 
 **Pass 12 dependency additions** (`allowed-deps.toml`; versions are requirements at authoring time, exact pins come from the learner's lock files):
@@ -1268,9 +1268,9 @@ flate2 = { version = "1", default-features = false, features = ["zlib"] }   # co
 # stdlib image/png, image/jpeg for DecodeConfig; no new modules
 ```
 
-**Glue files** (crate roots like `tl-engine/src/lib.rs`, Python `__main__`) belong to the first module that creates them. A crate root declares every submodule the contract lists; `ss start` writes stubs for submodules not yet started, so the crate always compiles. A stub keeps every contract signature and replaces only function bodies (5.2), and `ss start` never overwrites an existing learner file.
+**Glue files** (crate roots like `tl-engine/src/lib.rs`, Python `__main__`) belong to the first module that creates them. A crate root declares every submodule the contract lists; `ol start` writes stubs for submodules not yet started, so the crate always compiles. A stub keeps every contract signature and replaces only function bodies (5.2), and `ol start` never overwrites an existing learner file.
 
-**Cross-file seams.** Files of one crate or package reach each other only through names the contract declares (including crate-internal seams such as `tl_engine::sched::Scheduler` or `corpus.stage.Stage`). That is what lets a reference file sit next to learner files in the overlay; `ss verify course` enforces it with an AST lint over the references and by compiling each reference unit against stubbed neighbours.
+**Cross-file seams.** Files of one crate or package reach each other only through names the contract declares (including crate-internal seams such as `tl_engine::sched::Scheduler` or `corpus.stage.Stage`). That is what lets a reference file sit next to learner files in the overlay; `ol verify course` enforces it with an AST lint over the references and by compiling each reference unit against stubbed neighbours.
 
 ### 2.16 `system.toml` (harness manifest)
 
@@ -1333,12 +1333,12 @@ Everything runs on one kind cluster. Every hop carries `traceparent`, and every 
 5. **Serve.** Rust engines mmap the released safetensors, use `tl-tok` to load `tokenizer.json`, manage KV blocks in Rust, and heartbeat to the gateway. A request to `POST /v1/chat/completions` passes auth (HMAC key lookup), the usage policy (rules plus a linear head over the engine's `/v1/embeddings`, D33), the token bucket, and the response cache. It is routed by consistent hash on the first prompt block with bounded loads and queue depth. In unified mode the gateway proxies SSE from the engine. In disaggregated mode it runs the Prefill then resume flow of 2.7.
 6. **Agent.** `cmd/agent-docsqa` uses the learner's agent SDK. Its `Provider` points at their gateway, which serves SmolLM2-135M-Instruct on their engine with tool calls (L10.9), or at a frontier API. Its RAG index covers their own `docs/` and the course chapters, using gateway `/v1/embeddings` and BM25 fused with RRF. Run as `AgentRun` workflows, each LLM call and tool call is an activity, so a crashed agent replays to the step it reached.
 7. **Evaluate.** `<system> eval --suite docsqa --ab base=smol-135m,exp=tinystories-sft` runs deterministic scorers first (exact match, citation coverage, retrieval recall@k), then the LLM judge and the pairwise judge, and writes `results.jsonl` and `summary.json` with bootstrap CIs. The release gate in step 4 reads these numbers.
-8. **Observe.** Every component exports OTLP to the collector, which feeds Tempo and Prometheus. Grafana shows one trace from `<system> train` through workflow and activity spans to `train.step`, and another from an HTTP request through `gateway.route`, `kv.transfer`, and `engine.decode`. SLO dashboards drive the burn-rate alerts that `ss drill` scenarios are graded against.
+8. **Observe.** Every component exports OTLP to the collector, which feeds Tempo and Prometheus. Grafana shows one trace from `<system> train` through workflow and activity spans to `train.step`, and another from an HTTP request through `gateway.route`, `kv.transfer`, and `engine.decode`. SLO dashboards drive the burn-rate alerts that `ol drill` scenarios are graded against.
 9. **See and hear (Pass 12).** A chat request with an `image_url` part passes the gateway's media check (header-only pixel limit, D49), is routed to the VLM pool, and, with EPD, the gateway asks an encode engine to preprocess and encode the image and push its embeddings to the target engine, which merges them at the placeholder tokens and decodes. A repeated image hits the encoder cache and the prefix cache (D45). `POST /v1/audio/transcriptions` with a WAV file goes to the ASR pool; Whisper decodes 30-second windows with temperature fallback. Image tokens and audio seconds land in the usage ledger. `MmCorpusBuild` builds image-text and audio-transcript shards with pHash dedup, EXIF stripping, face redaction, and consent in the ledger; `ModelRelease` gates SmolVLM and whisper-tiny on WER, group gaps, and consent.
 
 ---
 
-## 3. Course layout in supersource
+## 3. Course layout in openlearn
 
 ### 3.1 Placement rules
 
@@ -1354,15 +1354,15 @@ course/
   DESIGN.md                      # this document
   README.md                      # how the harness and course fit together (for maintainers)
   modules/<ID>.toml              # registry: one file per module (3.4)
-  modules.tsv                    # generated index; `ss verify course` checks it is current
+  modules.tsv                    # generated index; `ol verify course` checks it is current
   contracts/                     # source of truth; vendored verbatim to the learner's contracts/; published to the site
     VERSION                      # {semver, sha, content_hash}
     c/include/tinyllm.h  c/include/tinyllm/*.h  c/ABI.md
-    c/include/ss_test.h  ss_prop.h  ss_bench.h        # single-header C test kit (5.9)
+    c/include/ol_test.h  ol_prop.h  ol_bench.h        # single-header C test kit (5.9)
     py/tinyllm/**/*.pyi  py/corpus/**/*.pyi
     rust/tl-contracts/           # traits, shared types, frozen assert_close helpers (D35)
     rust/tl-proto/               # prost + tonic output, committed (2.7)
-    go/                          # module supersource.urmzd.com/tl/contracts: interfaces, testing helpers, gen/ (protoc output)
+    go/                          # module openlearn.urmzd.com/tl/contracts: interfaces, testing helpers, gen/ (protoc output)
     proto/tl/{engine,kv,control,durable,raft,encoder}/v1/*.proto   # encoder from Pass 12
     openapi/{openai-subset.v0,openai-subset.v1,openai-subset.v2,admin.v1}.yaml
     formats/*.md  formats/*.schema.json  formats/usage.v1.sql   # incl. train-spec, eval-spec, eval-case, corpus-config, policy.v1, linear-head
@@ -1380,8 +1380,8 @@ course/
     system.toml                  # points milestone roles at ref/entry
     learner-tests/<ID>/          # reference learner tests; prove each mutation threshold is reachable
   tests/<ID>/                    # Python and C course tests per module; annotated exemplars (5.12)
-  tests/go/<id_>/                # Go course tests, module supersource.urmzd.com/tl/coursetests (id with "." as "_": dur_06)
-  tests/rust/<id_>.rs            # Rust course tests, compiled as `ss-tests --test <id_>` (l10_2)
+  tests/go/<id_>/                # Go course tests, module openlearn.urmzd.com/tl/coursetests (id with "." as "_": dur_06)
+  tests/rust/<id_>.rs            # Rust course tests, compiled as `ol-tests --test <id_>` (l10_2)
   tests/_lib/                    # frozen helpers: close.py (assert_close, assert_close_bounded), pcg32.py, gradcheck.py, fixture loaders (D35)
   conformance/{abi,formats,openapi/cases,admin,parity,engine-grpc,kv,durable,raft,activity,otel,config,encoder-grpc}/
   testkit/                       # fault and determinism kit (5.9)
@@ -1391,7 +1391,7 @@ course/
   drills/<name>/drill.toml (+ assets)
   rubrics/{proof.md,design-review.md,postmortem.md}
   fixtures/<ID>/  fixtures/MANIFEST.tsv  fixtures/ASSETS.tsv
-  harness/                       # uv project `sscourse`: sympy, numpy, pytest, pytest-randomly, hypothesis, mypy (stubtest), openapi-core, openai, httpx, jsonschema, pyarrow
+  harness/                       # uv project `olcourse`: sympy, numpy, pytest, pytest-randomly, hypothesis, mypy (stubtest), openapi-core, openai, httpx, jsonschema, pyarrow
   oracle/                        # maintainer-only uv project: torch, transformers, safetensors, tiktoken, tokenizers, tree-sitter; Pass 12 adds torchaudio, torchvision, pillow, librosa, openai-whisper, jiwer, imagehash, opencv-python-headless, soundfile
 ```
 
@@ -1474,7 +1474,7 @@ time_budget_s = 30
 
 `modules.tsv` (generated) columns: `id, kind, lang, pass, chapter, units, deps, used_by, milestone`.
 
-Registry invariants (checked by `ss verify course`): for a `build` module `A`, `used_by(A)` is exactly the set of non-side modules whose `deps` contain `A` (mirror rule; conceptual prerequisites and ports sit in `reading`, so they do not count); the `pass` of every dep and every `reading` module is at most the module's `pass`; every `used_by` module's `pass` is at least the module's `pass`; a `build` module has at least one `used_by` entry that is not a side quest. One exemption: a module that `upgrades` a unit inherits that unit's call sites, which may sit in earlier passes (ag.12 taking over `EvalSuite`, which dur.12 calls).
+Registry invariants (checked by `ol verify course`): for a `build` module `A`, `used_by(A)` is exactly the set of non-side modules whose `deps` contain `A` (mirror rule; conceptual prerequisites and ports sit in `reading`, so they do not count); the `pass` of every dep and every `reading` module is at most the module's `pass`; every `used_by` module's `pass` is at least the module's `pass`; a `build` module has at least one `used_by` entry that is not a side quest. One exemption: a module that `upgrades` a unit inherits that unit's call sites, which may sit in earlier passes (ag.12 taking over `EvalSuite`, which dur.12 calls).
 
 ### 3.5 Id grammar
 
@@ -1490,7 +1490,7 @@ MS     := "MS-" [A-Za-z0-9-]+                    # MS-L7, MS-gateway, MS-P1
 
 ```
 
-Harness regex: `^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z]?|(lang|ds|rt|data|dur|gw|ag|load|dep|obs|ops|craft|ethics|review|field|iv)\.[0-9]{2}|sq\.[a-z0-9-]+|MS-[A-Za-z0-9-]+)$`. None of the practice kinds (`predict`, `build`, `reattempt`) match it, so `ss start build c 02` is unaffected.
+Harness regex: `^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z]?|(lang|ds|rt|data|dur|gw|ag|load|dep|obs|ops|craft|ethics|review|field|iv)\.[0-9]{2}|sq\.[a-z0-9-]+|MS-[A-Za-z0-9-]+)$`. None of the practice kinds (`predict`, `build`, `reattempt`) match it, so `ol start build c 02` is unaffected.
 
 ---
 
@@ -1515,13 +1515,13 @@ Harness regex: `^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z
 | L | `learning` | trains a tiny config (d <= 64) for a **fixed step count** with a timeout of 10x the reference's time (the "under 8 s" figures in the tables are reference times); pass when the metric is at most `mean_ref + 3 sd_ref` over 5 reference seeds, stored in `ref-thresholds` |
 | C | `conformance` | contract suite shared with the reference (OpenAPI, ABI, formats, replay histories) |
 | F | `fault` | fault injection: kill loops, failpoints, allocation failure, chaos proxy |
-| B | `bench` | perf budget relative to `ss bench --calibrate`; gates `ss bench course --assert`, never `ss check`. **Every ratio or latency bound is a B test** (local or bench job only); `pr` checks stay functional |
+| B | `bench` | perf budget relative to `ol bench --calibrate`; gates `ol bench course --assert`, never `ol check`. **Every ratio or latency bound is a B test** (local or bench job only); `pr` checks stay functional |
 
-**Budgets.** Each module's course tests run in under 10 s on a laptop CPU (fault suites under 60 s). Python course tests use only numpy, the stdlib, and the harness helpers. Learner Python units may import numpy, the stdlib, and the `allowed-deps.toml` entries for their package (`corpus`: `pyarrow`, `zstandard`; `tinyllm.io.telemetry`: `opentelemetry-sdk`, `opentelemetry-exporter-otlp-proto-http`). Model weights are never committed; milestones download them through the learner's own `{tinyllm} pull` (`L7.9`) or `ss fetch`.
+**Budgets.** Each module's course tests run in under 10 s on a laptop CPU (fault suites under 60 s). Python course tests use only numpy, the stdlib, and the harness helpers. Learner Python units may import numpy, the stdlib, and the `allowed-deps.toml` entries for their package (`corpus`: `pyarrow`, `zstandard`; `tinyllm.io.telemetry`: `opentelemetry-sdk`, `opentelemetry-exporter-otlp-proto-http`). Model weights are never committed; milestones download them through the learner's own `{tinyllm} pull` (`L7.9`) or `ol fetch`.
 
-**Overlay and frozen helpers.** Course tests import `tinyllm.*` for the code under test, and the learner's units shadow the references (5.4). Assertions, gradient checks, and RNG construction always come from the frozen harness helpers (D35): `tests/_lib` in Python, `ss_test.h` in C, `tl-contracts::testing` in Rust, `contracts/go/testing` in Go. The learner's own `gradcheck` (M04.1), tolerance helpers (M09.3), and PCG32 (M06.3) are graded by their own modules, including a planted-wrong-gradient test for `gradcheck`, and never decide another module's verdict.
+**Overlay and frozen helpers.** Course tests import `tinyllm.*` for the code under test, and the learner's units shadow the references (5.4). Assertions, gradient checks, and RNG construction always come from the frozen harness helpers (D35): `tests/_lib` in Python, `ol_test.h` in C, `tl-contracts::testing` in Rust, `contracts/go/testing` in Go. The learner's own `gradcheck` (M04.1), tolerance helpers (M09.3), and PCG32 (M06.3) are graded by their own modules, including a planted-wrong-gradient test for `gradcheck`, and never decide another module's verdict.
 
-**Math gates.** Each solve set is split into lettered parts by pass (4.2). A pass closes with `ss check` on every math module it teaches and on the solve parts listed for it in 7.4, so no solve item lags the build module it belongs to. The "Call sites" column is where the code lights up from the learner's own entry points.
+**Math gates.** Each solve set is split into lettered parts by pass (4.2). A pass closes with `ol check` on every math module it teaches and on the solve parts listed for it in 7.4, so no solve item lags the build module it belongs to. The "Call sites" column is where the code lights up from the learner's own entry points.
 
 ### 4.1 Math catalog
 
@@ -2092,7 +2092,7 @@ pub struct StreamDecoder; impl StreamDecoder { pub fn push(&mut self, id: u32) -
 
 1. `{tinyllm} tok train --algo bpe --vocab 4096 --in {asset:course-corpora/ts-5mb.txt} --out {out}`.
 2. `{tinyllm} tok encode --tokenizer {fixture:tok-smollm2/tokenizer.json} --in {fixture:tok-smollm2/cases.jsonl}` prints JSONL ids equal to the oracle exactly; `{tl-tok} encode --tokenizer {fixture:tok-gpt2/tokenizer.json} < {fixture:tok-gpt2/mixed.txt}` equals `{fixture:tok-gpt2/mixed.ids.json}`.
-3. `{tinyllm} tok bench --impl rust` reports `rust_speedup` (a `perf` step, `ci = "local"`; asserted only by `ss bench`).
+3. `{tinyllm} tok bench --impl rust` reports `rust_speedup` (a `perf` step, `ci = "local"`; asserted only by `ol bench`).
 
 Pass: `{"exact_match": 1.0, "bytes_per_token": ...}`; `rust_speedup >= 20` is checked only by the local perf step.
 
@@ -2428,7 +2428,7 @@ L9.1 to L9.6 are optional, skippable standalone C exercises. Each builds its own
 | L10.2 | Continuous batching scheduler: admission by free blocks, priority (from `X-TL-Priority` / `PrefillRequest.priority`) with aging, preemption by recompute | core | Rust | `tl-engine/src/sched.rs` | ds.06, M05.1, L10.1, reading: L8.3 | L10.3 to L10.6, serve loop | I (fake-model simulation: every request finishes, no block leak, bounded max wait under a fake clock), E (batched greedy == single-request, which holds under the engine batching contract), F (KV exhaustion forces preemption and outputs stay identical) |
 | L10.3 | Chunked prefill (mixed prefill + decode batches) | core | Rust | `tl-engine/src/chunk.rs` | L10.2, L10.1 (`q_offset` semantics) | L10.5 serve loop (the TTFT/TPOT tradeoff is measured through L10.7 metrics) | E (chunked == unchunked logits, within the documented floating-point tolerance), I (token budget never exceeded) |
 | L10.4 | Block manager with prefix cache (`--prefix-cache=none|radix`) | core | Rust | `tl-engine/src/block_manager.rs` | L8.4, ds.07, L10.2 | L10.5 serve loop, L10.6, L10.8 (gw.05 routes on its hit metrics over gRPC) | E (identical outputs with and without cache), I (refcounts), B (shared-system-prompt TTFT >= 2x better; radix compared with no cache) |
-| L10.5 | `tl-serve`: OpenAI-compatible HTTP + SSE on tokio + hyper, `--config` via `runtime.toml`, chat template, bounded admission channel (429 + `Retry-After`), abort on disconnect, SIGTERM drain, `/v1/tokenize`, `/v1/embeddings`; upgrades L10.0 | core | Rust | `tl-serve/src/{lib,http,sse,openai,template}.rs` | L10.2 to L10.4, L1.5, lang.09, reading: L8.2 | L10.6, L10.7, L10.9 (gw.04, ag.01, load.01, and L12.3 reach it over HTTP) | C (`ss conform openapi:v1 --target engine`, about 60 cases, plus the official `openai` Python client), F (disconnect frees blocks within one step per `/metrics`; full queue gives 429) |
+| L10.5 | `tl-serve`: OpenAI-compatible HTTP + SSE on tokio + hyper, `--config` via `runtime.toml`, chat template, bounded admission channel (429 + `Retry-After`), abort on disconnect, SIGTERM drain, `/v1/tokenize`, `/v1/embeddings`; upgrades L10.0 | core | Rust | `tl-serve/src/{lib,http,sse,openai,template}.rs` | L10.2 to L10.4, L1.5, lang.09, reading: L8.2 | L10.6, L10.7, L10.9 (gw.04, ag.01, load.01, and L12.3 reach it over HTTP) | C (`ol conform openapi:v1 --target engine`, about 60 cases, plus the official `openai` Python client), F (disconnect frees blocks within one step per `/metrics`; full queue gives 429) |
 | L10.6 | Disaggregated prefill/decode: `EngineControl.Prefill`, `tl.kv.v1` transfer with hash dedup (format v1 only), resume via `X-TL-KV-Handle` with the `KvHandle` RNG hand-off (2.7), `Release`, and the engine's heartbeat client to `tl.control.v1` | core | Rust | `tl-engine/src/{kv_transfer,heartbeat}.rs`, `tl-serve/src/control.rs` | L10.2, L10.4, L10.5, lang.10 | craft.13 (upgrades `kv_transfer.rs`); gw.05 calls it over gRPC | E (disaggregated == colocated, greedy and seeded on fixture prompts), I (bytes moved = missing full blocks x block bytes + the tail block), F (chaos-proxy reset mid-transfer: decode errors, prefill frees blocks, nothing leaks; CRC bit-flip rejected; any `kv_format` other than 1 refused with `FAILED_PRECONDITION`; `Release` frees the handle's blocks) |
 | L10.7 | Serving metrics, SLO histograms, OTel spans and propagation (replaces the tracer's hand-written OTLP) | core | Rust | `tl-serve/src/{metrics,telemetry}.rs` | M07.4, obs.00, L10.5 | serve loop (load.01, obs.03, and drills read its metrics) | C (exposition parse; names and buckets match `otel/metrics.yaml`), I (counters monotone; histogram count == requests) |
 | L10.8 | Speculative decoding in the engine: prompt-lookup and n-gram drafts over the request's context, greedy acceptance at temperature 0 and M07.6 rejection otherwise, KV rollback on reject | core (D37) | Rust | `tl-engine/src/spec.rs` | L8.6, L10.2, L10.4 | serve loop (`[engine].speculative`), metric `tl.engine.spec_accept_rate` | E (accepted tokens == the learner's Python L8.6 on shared draft and target logits; greedy spec output == greedy without spec), I (blocks conserved across rollbacks), B (decode tokens/s with prompt-lookup on a repetitive fixture) |
@@ -2469,7 +2469,7 @@ impl Engine {                                               // composes runner +
 }
 ```
 
-**MS-L10.** The engine starts from the learner's `[entry].engine`. `ss milestone MS-L10` checks: (1) `ss conform openapi:v1 --target engine` 100%; (2) seeded determinism across two runs of the engine, `ss parity sampler` (Rust and Python sampler equal on fixture logits), and the engine's **greedy** stream equals `{tinyllm} generate --greedy` under the near-tie rule; (3) 64 concurrent requests from the learner's loadgen complete with `p50_ttft_ms` and `p50_tpot_ms` reported and KV at baseline afterwards; `throughput_vs_sequential >= 3` is a separate `perf` step (`ci = "local"`); (4) disconnect mid-stream aborts and frees blocks; (5) disaggregated mode (`role=prefill` + two `role=decode`, ports allocated by the runner) passes the conformance subset and survives a transfer reset (the `disagg` matcher, 5.7); (6) with `speculative.draft = "prompt_lookup"`, greedy output is unchanged (the `greedy-equal` matcher across `engine` and `engine-spec`); (7) a `tools` request to `{asset:smollm2-135m-instruct}` returns schema-valid `tool_calls` (nightly; PR CI uses `tiny-llama-2l-1k`, the weights of `tiny-llama-2l` with a 1024-position context so the tool schema prompt fits, with a fixture chat template, where the constraint alone guarantees validity).
+**MS-L10.** The engine starts from the learner's `[entry].engine`. `ol milestone MS-L10` checks: (1) `ol conform openapi:v1 --target engine` 100%; (2) seeded determinism across two runs of the engine, `ol parity sampler` (Rust and Python sampler equal on fixture logits), and the engine's **greedy** stream equals `{tinyllm} generate --greedy` under the near-tie rule; (3) 64 concurrent requests from the learner's loadgen complete with `p50_ttft_ms` and `p50_tpot_ms` reported and KV at baseline afterwards; `throughput_vs_sequential >= 3` is a separate `perf` step (`ci = "local"`); (4) disconnect mid-stream aborts and frees blocks; (5) disaggregated mode (`role=prefill` + two `role=decode`, ports allocated by the runner) passes the conformance subset and survives a transfer reset (the `disagg` matcher, 5.7); (6) with `speculative.draft = "prompt_lookup"`, greedy output is unchanged (the `greedy-equal` matcher across `engine` and `engine-spec`); (7) a `tools` request to `{asset:smollm2-135m-instruct}` returns schema-valid `tool_calls` (nightly; PR CI uses `tiny-llama-2l-1k`, the weights of `tiny-llama-2l` with a 1024-position context so the tool schema prompt fits, with a fixture chat template, where the constraint alone guarantees validity).
 
 #### L11 Training at scale (`ml/08-tinyllm/p11-training-at-scale/`)
 
@@ -2821,7 +2821,7 @@ pub fn transcribe(src: &mut dyn LogitsSource, tok: &dyn Tokenizer, windows: &[Ve
 
 | # | Step | Command | Assertion | CI |
 |---|---|---|---|---|
-| 1 | Engine conformance | `ss conform openapi:v2 --target engine --cases 'mm.*,audio.*'` against `vlm` and `asr` | 100% | pr, smoke |
+| 1 | Engine conformance | `ol conform openapi:v2 --target engine --cases 'mm.*,audio.*'` against `vlm` and `asr` | 100% | pr, smoke |
 | 2 | Engine equals Python | `{ctl} chat --base {vlm.api_base} --image {fixture:L13.7/img-0.png} --prompt-file ... --greedy --max-tokens 32 --json` | `tokens-equal` vs `{tinyllm} vlm generate` ids for the same inputs (near-tie rule) | pr, smoke |
 | 3 | Cache correctness | `{ctl} chat ... --image A` twice, then `--image B` with the same text | second A: `cached_tokens >= image_tokens`; B: no hit past the image span start; `tl_engine_encoder_cache_hits_total` increments by 1 | pr, smoke |
 | 4 | Encoder budget | `{loadgen} --target {vlm.api_base} --workload {fixture:load/images-burst.toml} --duration 30s` with `TL_ENGINE__MM__MAX_ENCODER_TOKENS_PER_STEP=128` | error rate 0; KV and pins at baseline afterwards; text `tpot_p95` within 1.2x of the text-only run is a separate `perf` step (`ci = "local"`) | pr (functional), local (perf) |
@@ -2831,7 +2831,7 @@ pub fn transcribe(src: &mut dyn LogitsSource, tok: &dyn Tokenizer, windows: &[Ve
 | 8 | Mixed load | `{loadgen} --target {gateway.api_base} --workload {fixture:load/mm-mix.toml} --rate 4 --duration 60s` | `error_rate == 0`; the report has `encode_ms`, `rtf`, `image_tokens`; ledger image tokens and audio seconds equal engine usage | pr (30 s), nightly (60 s) |
 | 9 | Real weights | steps 2, 5, 7 on SmolVLM-256M-Instruct and whisper-tiny | as above | nightly |
 
-**MS-mm-kernels** (optional, `optional = true`, never part of a pass gate; `requires` L13.8, L13.9, L14.6). (1) `ss parity conv2d conv1d patch_embed resize stft.mel` runs each standalone C test binary against the Python-generated fixtures within the bounds above. (2) `ss bench course L13.8 L13.9 L14.6` reports each kernel's speedup over its naive baseline (a `perf` step, `ci = "local"`, no bound). There is no engine step (D41).
+**MS-mm-kernels** (optional, `optional = true`, never part of a pass gate; `requires` L13.8, L13.9, L14.6). (1) `ol parity conv2d conv1d patch_embed resize stft.mel` runs each standalone C test binary against the Python-generated fixtures within the bounds above. (2) `ol bench course L13.8 L13.9 L14.6` reports each kernel's speedup over its naive baseline (a `perf` step, `ci = "local"`, no bound). There is no engine step (D41).
 
 ### 4.4 Systems layers
 
@@ -2945,7 +2945,7 @@ type Lease struct { Task Task; Token uint64; Attempt int; Deadline time.Time }
 | dur.07 | Durable timers (own min-heap; merges practice `go/04`) | `go/durable/timer` | dur.06 | dur.08 (timer-backed `workflow.Sleep`); dur.11 eval cadence, dur.12 canary wait, ag.05 approval TTL | U (fake clock), F (restart with pending timers: each fires exactly once, in order; `/debug/clock` under `--test-clock` shifts time and every due timer fires once) | `<system> wf start SleepDemo --for 30s`, kill and restart the server, it completes |
 | dur.08 | Signals, cancellation, sagas (compensation) | `go/durable/workflow` (signal and cancel files) | dur.06 | dur.11 cancel, dur.12 approve, ag.05 approvals, data.09 compensation | F (cancel mid-activity runs compensation exactly once; a signal sent before the workflow waits is not lost) | `<system> wf signal <id> approve` |
 | dur.09 | Subprocess activity runner (Go) and the Python activity helper (2.8) | `go/activities/subprocess.go`, `python/tinyllm/io/activity.py`, `python/tinyllm/io/telemetry.py` (OTLP/HTTP export from `TRACEPARENT`, the D9 exception) | dur.04, dur.05, L0.6 | data.09, dur.11 (`train`, `eval`), dur.12 (`export`), C1 | C (`conformance/activity/` with a fake Python script: progress tailing, heartbeat details, exit-code mapping), F (SIGKILL the worker mid-activity: redelivered with the same idempotency key, resumes from `--resume`; SIGTERM gives exit 130 within 30 s) | `<system> train --spec specs/tiny.json` survives a worker kill |
-| dur.10 | Raft HA for the log (optional) | `go/durable/raft` | dur.01, reading: practice `go/08` README, `infrastructure/02` `raft_election.go` | `{durable} --replicas 3` (side call site: optional module) | U (election, log matching), F (in-process transport with partitions, drops, reorders; linearizability checker (Porcupine-style) over the history; kill the leader and acked appends survive) | `ss milestone MS-durable-ha` |
+| dur.10 | Raft HA for the log (optional) | `go/durable/raft` | dur.01, reading: practice `go/08` README, `infrastructure/02` `raft_election.go` | `{durable} --replicas 3` (side call site: optional module) | U (election, log matching), F (in-process transport with partitions, drops, reorders; linearizability checker (Porcupine-style) over the history; kill the leader and acked appends survive) | `ol milestone MS-durable-ha` |
 | dur.11 | Platform workflows `TrainRun` and `EvalSuite` | `go/workflows/{train_run,eval_suite}.go` | dur.06 to dur.09, data.09, reading: L6.7 | C1 (the capstone runs as `TrainRun`), dur.12 (`ModelRelease` runs `EvalSuite` as a child step), ag.12 (paired experiments extend `EvalSuite`) | C (replay of recorded `TrainRun` and `EvalSuite` histories from the reference), F (kill the worker and the server mid-`TrainRun`: resumes from `LATEST` with attempt 2 and a bitwise-equal final loss on the smoke config; cancel checkpoints and exits 130; a durable timer schedules periodic `eval` activities exactly once each) | `{ctl} train --spec specs/tiny.json`, `{ctl} eval --suite zoo` |
 | dur.12 | `ModelRelease`: export, `EvalSuite`, license and model-card gates, `approve` signal, canary through `PUT /admin/v1/routes`, durable wait, SLO burn check by PromQL, promote or roll back | `go/workflows/model_release.go`, `go/activities/{promql,routes}.go` | dur.07, dur.08, dur.11, data.08, ethics.04 (safety rows), reading: ethics.03, gw.05, gw.07 (routes admin API), obs.03 (burn-rate rules) | C1 release (ops.08 reuses it for the retrain decision) | F (kill the worker mid-canary: the canary weight is not re-applied twice and the wait resumes; a fixture Prometheus series with a fast burn rolls back and restores the previous route ETag; an unlicensed source or a missing model card fails before export, non-retryable), U (PromQL activity parses vector and scalar results; route updates use `If-Match`) | `{ctl} release --model tinystories-10m --version v1` |
 | dur.13 | Multimodal `EvalSuite` and `ModelRelease` (Pass 12): suites `asr`, `vqa`, `caption`, `zeroshot`, `mm_bias`; gates on a WER ceiling, a group-gap ceiling (ethics.07), consent for biometric sources, and the model card's multimodal sections | upgrades `go/workflows/eval_suite.go` (ag.12), `go/workflows/model_release.go` (dur.12) | dur.12, ag.12, data.13, L14.5, ethics.07, ethics.08; gate config in `formats/eval-spec.schema.json` (minor) | inherited (dur.12, ops.08, the MS-C2 path) | C (replay of recorded multimodal `EvalSuite` and `ModelRelease` histories), F (a biometric source with `consent: none` fails before export, non-retryable; a group gap over the ceiling blocks promotion) | `{ctl} release --model whisper-tiny --version v1` |
@@ -3002,7 +3002,7 @@ type Pool string // "text" | "vlm" | "asr" | "encode"
 type EpdPlan struct { Encoders []Target; Prefill, Decode Target; Media []media.Part }
 ```
 
-**MS-gateway.** `{gateway}` in front of `{engine}` (ports allocated by the runner): `ss conform openapi:v1 --target gateway` passes (auth, limits, cache, headers, `priority.internal`), failover before first byte works, and the usage ledger reconciles with engine usage. Cases that declare `requires = ["gw.08"]` (such as `policy.451`) report `pending` until gw.08 passes; the usage policy lands in Pass 10 and is checked by MS-agent.
+**MS-gateway.** `{gateway}` in front of `{engine}` (ports allocated by the runner): `ol conform openapi:v1 --target gateway` passes (auth, limits, cache, headers, `priority.internal`), failover before first byte works, and the usage ledger reconciles with engine usage. Cases that declare `requires = ["gw.08"]` (such as `policy.451`) report `pending` until gw.08 passes; the usage policy lands in Pass 10 and is checked by MS-agent.
 
 Where saige and production gateways go further:
 
@@ -3106,7 +3106,7 @@ These are `practice` modules: the learner writes deploy and observability files 
 | dep.02 | kind cluster + local registry | `deploy/kind/cluster.yaml` | dep.01 | cluster `kind-<system>`, registry `localhost:5001`, `extraMounts` for `./artifacts`, `extraPortMappings` for 30080, 30090 (Prometheus), 30300 (Grafana), 30320 (Tempo), 30733 (durable, for a host-side worker); the cluster is recreated because port mappings are fixed at creation; nodes Ready, images pullable | `kind create cluster` |
 | dep.03 | Helm charts for the gateway and the engine, plus the observability stack | `deploy/helm/<system>-{gateway,engine}`, `deploy/observability/Chart.lock` | dep.02, reading: systems/03 | `values.schema.json` from `contracts/helm/`; engine `role: unified|prefill|decode`; gateway 1 replica; PDBs. Policy test over `helm template`: probes, limits, non-root, no `:latest`, PDB present, **secrets only through `Secret` references** (the pepper and API keys; the values schema rejects literal secret values); `kubectl apply --dry-run=server` on kind; pinned upstream charts and the `PrometheusRule` selector from `contracts/helm/observability.md` | `helm upgrade --install` |
 | dep.04 | Tilt dev loop | `deploy/Tiltfile` | dep.03 | resource deps (engine before gateway; durable before workers once dep.06 lands), live update for Go, rebuild for Rust; `tilt ci` exits 0 within budget | `tilt up` |
-| dep.05 | CI for the learner repo (release workflow added by craft.11) | `.github/workflows/{ci,release}.yml` | craft.01, reading: load.02 | jobs: lint, unit, `ss check --all --ci` through the supersource checkout at `contracts/VERSION` (5.13), image build, kind e2e (`tilt ci` + `ss milestone MS-prod --smoke`), optional load.02 perf gate on main; YAML parse check for required jobs | MS-prod |
+| dep.05 | CI for the learner repo (release workflow added by craft.11) | `.github/workflows/{ci,release}.yml` | craft.01, reading: load.02 | jobs: lint, unit, `ol check --all --ci` through the openlearn checkout at `contracts/VERSION` (5.13), image build, kind e2e (`tilt ci` + `ol milestone MS-prod --smoke`), optional load.02 perf gate on main; YAML parse check for required jobs | MS-prod |
 | dep.06 | Durable and worker images and charts: WAL PVC, StatefulSet, KEDA autoscaling of workers | `deploy/docker/{durable,worker}.Dockerfile`, `deploy/helm/<system>-{durable,worker}` | dep.03, dur.04, dur.09 | the dep.01 and dep.03 policies; the worker image carries the Go worker and the Python env; durable StatefulSet with a PVC and `wal_max_bytes` set; KEDA `ScaledObject` on `tl.durable.task_queue.depth` (KEDA pinned in `Chart.lock`); a queue burst scales workers up and back down on kind | `{ctl} data build` on kind |
 | dep.07 | Agent image and chart | `deploy/docker/agent.Dockerfile`, `deploy/helm/<system>-agent` | dep.06, ag.05 | the dep.01 and dep.03 policies; the agent worker on queue `agent`; the frontier key, if any, only from a `Secret` | `{agent}` on kind |
 | dep.08 | Encoder and ASR pools as their own Deployments (Pass 12): values files for `vlm`, `encode`, `asr`; KEDA `ScaledObject`s on encoder queue depth and queued audio seconds; PDBs; resource requests sized from calibration | `deploy/helm/<system>-engine/values-{vlm,encode,asr}.yaml` | dep.06, dep.03, L15.5 | dep.03 policy over `helm template`; `values.schema.json` minor; a burst of 50 image requests scales `encode` up and back down on kind; ASR scaling is independent of encode | `kubectl get hpa` during a burst |
@@ -3125,22 +3125,22 @@ These are `practice` modules: the learner writes deploy and observability files 
 
 `obs.01` owns a library unit, so it is a `build` module with practice-style artifact checks on top; `go/otelx` is called by dur.04 (activity spans from `ActivityTask.trace_context`) and ag.03 (agent spans).
 
-**MS-prod.** On kind (context from `system.toml`): Helm deploy of the gateway, the engine (unified, then prefill + 2 decode), and the observability stack; `ss conform openapi:v1 --target gateway --base {deploy.gateway_url}`; end-to-end serving traces present; contract metrics scraped; SLO rules loaded; the learner's loadgen meets the SLOs at the rate set by the in-cluster calibration; and drill `ops.01` (kill a decode worker) stays within the error budget. Durable and worker charts join in Pass 8 (dep.06, obs.05, checked by MS-durable on kind), the agent chart in Pass 10 (dep.07).
+**MS-prod.** On kind (context from `system.toml`): Helm deploy of the gateway, the engine (unified, then prefill + 2 decode), and the observability stack; `ol conform openapi:v1 --target gateway --base {deploy.gateway_url}`; end-to-end serving traces present; contract metrics scraped; SLO rules loaded; the learner's loadgen meets the SLOs at the rate set by the in-cluster calibration; and drill `ops.01` (kill a decode worker) stays within the error budget. Durable and worker charts join in Pass 8 (dep.06, obs.05, checked by MS-durable on kind), the agent chart in Pass 10 (dep.07).
 
 #### ops: maintenance and incident drills (`systems/05-incident-response-and-chaos/`)
 
-Every drill requires `docs/postmortems/<date>-<drill>.md` (Summary, Impact, Timeline, Root cause, Detection, Resolution, Action items). `ss drill end` checks the system invariants and the postmortem structure; content is graded with a self rubric. Drill specs and injectors are in 5.10. Drills run with the `drill` SLO profile (compressed windows, 2.11) so burn alerts can fire within `within_s`.
+Every drill requires `docs/postmortems/<date>-<drill>.md` (Summary, Impact, Timeline, Root cause, Detection, Resolution, Action items). `ol drill end` checks the system invariants and the postmortem structure; content is graded with a self rubric. Drill specs and injectors are in 5.10. Drills run with the `drill` SLO profile (compressed windows, 2.11) so burn alerts can fire within `within_s`.
 
-| ID | `ss drill` name | Injection | Expected detection | Pass condition | Teaches | Pass |
+| ID | `ol drill` name | Injection | Expected detection | Pass condition | Teaches | Pass |
 |---|---|---|---|---|---|---|
 | ops.00 | `engine-crashloop` | `deploy-patch`: the engine Deployment's model dir points at `/missing` | **manual** (no Prometheus until Pass 7, so the drill has no `[detect]` block): pod CrashLoopBackOff, `/readyz` failing | rollout healthy; `docs/runbooks/engine-crashloop.md` with Symptoms, Diagnosis, Mitigation | first runbook, `kubectl` triage | P1 |
 | ops.01 | `kill-decode` | delete a decode pod mid-load | fast-burn alert, gateway failover logs | error ratio back under budget in 2 min; in-flight streams end with an SSE error event, not truncation; KV blocks back to baseline; no spliced streams | chaos, gw.05 commit rule | P7 |
 | ops.02 | `durable-kill9` | SIGKILL the durable pod in a loop during `CorpusBuild` | `tl.durable.redeliveries` spike | manifest hash equals the clean run; `effects` shows exactly once | dur.01 to dur.06 | P8 |
 | ops.03 | `poison-task` | an activity panics on one shard | DLQ alert | learner fixes it, redrives, workflow completes | dur.03, runbooks | P8 |
-| ops.04 | `kv-v2-migration` | course ships KV format v2 (`ss contracts sync --to kv/v2` on a branch); the learner implements it (craft.13) and rolls out with mixed prefill/decode versions | negotiation errors if done wrong | zero failed requests during the rolling upgrade under load; v1 readers refuse v2 cleanly; ADR written | interface migration (craft.13), L10.6, rt.04 | P11 |
+| ops.04 | `kv-v2-migration` | course ships KV format v2 (`ol contracts sync --to kv/v2` on a branch); the learner implements it (craft.13) and rolls out with mixed prefill/decode versions | negotiation errors if done wrong | zero failed requests during the rolling upgrade under load; v1 readers refuse v2 cleanly; ADR written | interface migration (craft.13), L10.6, rt.04 | P11 |
 | ops.05 | `api-v2-migration` | course publishes `openai-subset.v2.yaml` | contract tests | gateway serves v1 and v2; v1 responses carry `Deprecation` and `Sunset`; per-version usage in gw.07; both conformance suites pass | deprecation (craft.12, craft.14) | P11 |
 | ops.06 | `dep-upgrade` | a branch bumps a dependency across a breaking major with the package manager (`cargo add <crate>@<major>` or `go get <module>@<major>`), never with a patch to learner code | CI red | upgrade lands with all module checks and MS-L10 green | dependency hygiene (craft.15) | P11 |
-| ops.07 | `perf-regression` | in a **scratch copy** of the learner repo where the target unit (`sched.rs` or `matmul.c`) is replaced by the reference, about 20 commits are generated, one of which applies an existing perf mutant (lock contention, tiling disabled) | load.02 gate fails | learner names the exact commit with `git bisect run` over `{loadgen} compare` or `ss bench course --assert` | bisect, benchmarking (craft.16) | P11 |
+| ops.07 | `perf-regression` | in a **scratch copy** of the learner repo where the target unit (`sched.rs` or `matmul.c`) is replaced by the reference, about 20 commits are generated, one of which applies an existing perf mutant (lock contention, tiling disabled) | load.02 gate fails | learner names the exact commit with `git bisect run` over `{loadgen} compare` or `ol bench course --assert` | bisect, benchmarking (craft.16) | P11 |
 | ops.08 | `data-incident` | one source declared PII-contaminated and license-revoked | ledger query | all derived shards purged via the data.08 ledger; retrain decision recorded; model card updated | ethics, lineage | P11 |
 | ops.09 | `noisy-neighbor` | one tenant floods long prompts | per-tenant latency panel | other tenants' TTFT p95 within SLO after tuning TPM and tenant priority (carried to engines by `X-TL-Priority` and `PrefillRequest.priority`) | gw.03, L10.2 priority | P11 |
 | ops.10 | `runaway-agent` | an agent task that loops tool calls | budget metric | budget stops it before dispatch; the durable run resumes after a budget grant | ag.03, ag.05 | P11 |
@@ -3149,9 +3149,9 @@ Every drill requires `docs/postmortems/<date>-<drill>.md` (Summary, Impact, Time
 | ops.13 | `encoder-pool-loss` | `scale-zero` on the encode Deployment under mixed load | `EncodeLatencyBurnFast` or `ImageTTFTBurnFast` within 300 s | text TTFT p95 within SLO throughout; image requests served by local fallback or 503 `no_capacity` with `Retry-After` (never hanging past the deadline); encode pool restored; postmortem | EPD fallback, gw.11, dep.08 | P12 |
 | ops.14 | `image-flood` | one tenant floods oversized images, pixel bombs, and 20 MB data URLs (`tenant-flood` injector with the `media-flood` loadgen profile) | the `tl.gateway.media.rejections` panel and image TTFT burn | bombs rejected at the gateway before decode; gateway memory below its limit; other tenants' TTFT within SLO after per-tenant image limits are tuned; postmortem | gw.09, gw.10, obs.06 | P12 |
 
-**MS-ops.** Every core drill (`ops.01` to `ops.11`) passes `ss drill end` with a postmortem.
+**MS-ops.** Every core drill (`ops.01` to `ops.11`) passes `ol drill end` with a postmortem.
 
-**MS-multimodal-prod** (Pass 12, kind, nightly; the production component of MS-P12). (1) `helm upgrade --install` of the gateway, `engine-text`, `engine-vlm`, `engine-encode` (2 replicas), and `engine-asr` from the learner's values files; rollouts healthy; the dep.03 policy passes on every release. (2) `ss conform openapi:v2 --target gateway --base {deploy.gateway_url} --cases 'mm.*,audio.*'` and the full v2 smoke set. (3) `trace`: `gateway.media` > `gateway.route` > `Encode` > `encoder.transfer` > `engine.encode`/`engine.prefill` > `engine.decode` for one image request, and `asr.window` spans for one transcription. (4) `promscrape`: every Pass 12 metric (2.11) present with contract names; `multimodal.yaml` rules loaded with the required alert names. (5) `{loadgen} --workload mm-mix.toml --rate {calibrated}` for 10 min with `promql` `hold_s = 300`: encode p95, image TTFT p95, ASR RTF p95, and text TTFT p95 within their SLOs. (6) Separate autoscaling: an image burst raises `encode` to >= 2 replicas and back to min within 5 min, with `asr` unchanged; an audio burst scales `asr` only. (7) Drills `encoder-pool-loss` and `image-flood` with the scripted responder. (8) `{ctl} release --model smolvlm-256m --version v1` and `--model whisper-tiny` through `ModelRelease`: multimodal suites, group-gap ceiling, consent gate, model-card sections. (9) `git-log` and a `v1.1.0` tag; the changelog lists API 2.1.0 and the proto minors.
+**MS-multimodal-prod** (Pass 12, kind, nightly; the production component of MS-P12). (1) `helm upgrade --install` of the gateway, `engine-text`, `engine-vlm`, `engine-encode` (2 replicas), and `engine-asr` from the learner's values files; rollouts healthy; the dep.03 policy passes on every release. (2) `ol conform openapi:v2 --target gateway --base {deploy.gateway_url} --cases 'mm.*,audio.*'` and the full v2 smoke set. (3) `trace`: `gateway.media` > `gateway.route` > `Encode` > `encoder.transfer` > `engine.encode`/`engine.prefill` > `engine.decode` for one image request, and `asr.window` spans for one transcription. (4) `promscrape`: every Pass 12 metric (2.11) present with contract names; `multimodal.yaml` rules loaded with the required alert names. (5) `{loadgen} --workload mm-mix.toml --rate {calibrated}` for 10 min with `promql` `hold_s = 300`: encode p95, image TTFT p95, ASR RTF p95, and text TTFT p95 within their SLOs. (6) Separate autoscaling: an image burst raises `encode` to >= 2 replicas and back to min within 5 min, with `asr` unchanged; an audio burst scales `asr` only. (7) Drills `encoder-pool-loss` and `image-flood` with the scripted responder. (8) `{ctl} release --model smolvlm-256m --version v1` and `--model whisper-tiny` through `ModelRelease`: multimodal suites, group-gap ceiling, consent gate, model-card sections. (9) `git-log` and a `v1.1.0` tag; the changelog lists API 2.1.0 and the proto minors.
 
 ### 4.6 Practices: craftsmanship, testing, security, ethics, reviews, field, interviews
 
@@ -3159,20 +3159,20 @@ Practices apply to the learner's own system. Kinds: `practice` (artifact plus a 
 
 | ID | Title | Kind | Chapter home | Artifact or check | Pass |
 |---|---|---|---|---|---|
-| craft.01 | Your repo and CI gate (conventional commits enforced) | practice | `software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md` | CI with three jobs: commit-message lint, native tests, and `ss check --all --ci` through a checkout of public supersource at `contracts/VERSION` (5.13 recipe; it checks nothing yet in Pass 0 and every started module from Pass 1); `git-log` and `ci-status` matchers | P0 |
+| craft.01 | Your repo and CI gate (conventional commits enforced) | practice | `software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md` | CI with three jobs: commit-message lint, native tests, and `ol check --all --ci` through a checkout of public openlearn at `contracts/VERSION` (5.13 recipe; it checks nothing yet in Pass 0 and every started module from Pass 1); `git-log` and `ci-status` matchers | P0 |
 | craft.02 | Architecture decision records | practice | `software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md` | `docs/adr/0001-*.md` from the template; ADR section lint | P1 |
-| craft.03 | TDD, unit tests, and how you are graded (rungs R0 to R3): includes the mutation-testing primer (what a mutant is, killed vs survived, how the score and required semantic mutants work) before the first mutation grade | practice | `software-craftsmanship/03-testing-mentality/` | `ss tdd red/green` journal; mutation grade on L0 modules | P2 |
-| craft.04 | Property-based tests (R4) with Hypothesis, proptest, `rapid`, and `ss_prop.h` | practice | same | tokenizer roundtrip and pipeline idempotence properties; mutation grade | P3 |
+| craft.03 | TDD, unit tests, and how you are graded (rungs R0 to R3): includes the mutation-testing primer (what a mutant is, killed vs survived, how the score and required semantic mutants work) before the first mutation grade | practice | `software-craftsmanship/03-testing-mentality/` | `ol tdd red/green` journal; mutation grade on L0 modules | P2 |
+| craft.04 | Property-based tests (R4) with Hypothesis, proptest, `rapid`, and `ol_prop.h` | practice | same | tokenizer roundtrip and pipeline idempotence properties; mutation grade | P3 |
 | craft.05 | Oracles, golden and differential tests, gradcheck as a test (R5) | practice | same | differential tests against fixtures for L5 to L7; must kill the "transposed grad" mutant | P5 |
 | craft.06 | Benchmarks and perf gates (R7) | practice | same | benchmark + budget file; perf mutants must trip the gate | P6 |
-| craft.07 | Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors | practice | same | `ss mutate` over the learner's L3/L4 tests | P4 |
+| craft.07 | Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors | practice | same | `ol mutate` over the learner's L3/L4 tests | P4 |
 | craft.08 | Code review: review a seeded PR against your system | practice | `software-craftsmanship/08-code-review-and-ci/02-code-review.md` | the PR is built in a scratch copy where the target unit is the reference plus seeded defects (never a patch to learner code); review findings vs the seeded defect list | P7 |
 | craft.09 | C4 diagrams in D2 | practice | `software-craftsmanship/05-diagramming-c4/` | `docs/c4/{context,containers,components-engine}.d2` render; every container in 2.1 appears | P11 |
 | craft.10 | Runbooks and Diátaxis docs | practice | `software-craftsmanship/06-documentation-writing/` | runbook per required alert; README structure lint | P11 |
 | craft.11 | Commits, semver, releases (`v1.0.0`) | practice | `software-craftsmanship/09-releases-and-deprecation/` | tagged release, changelog, release workflow | P11 |
 | craft.12 | Deprecation policy | practice | same | `Deprecation`/`Sunset` headers, policy doc | P11 |
-| craft.13 | Interface migration: KV format v1 to v2 | **build** | `software-craftsmanship/10-maintenance/` | `upgrades` `c/src/runtime/kv_pool.c`, `c/src/kernels/paged_attn.c` (fp8 reads), `rust/crates/tl-engine/src/kv_transfer.rs`; contracts delivered by `ss contracts sync --to kv/v2`; tests: v2 envelope roundtrip, `parity/kv.wire.v2`, mixed-version negotiation; ADR + drill ops.04 | P11 |
-| craft.14 | Interface migration: API v1 to v2 | **build** | same | owns `rust/crates/tl-serve/src/api_version.rs` and `go/gateway/server/apiversion.go`, `upgrades` `rust/crates/tl-serve/src/server.rs` (the engine selects v1 or v2 per request by `X-TL-API-Version`), `go/gateway/server/` (version routing), `go/gateway/ledger/` (per-version usage); contracts by `ss contracts sync --to api/v2`; `openapi:v1` and `openapi:v2` both pass; drill ops.05 | P11 |
+| craft.13 | Interface migration: KV format v1 to v2 | **build** | `software-craftsmanship/10-maintenance/` | `upgrades` `c/src/runtime/kv_pool.c`, `c/src/kernels/paged_attn.c` (fp8 reads), `rust/crates/tl-engine/src/kv_transfer.rs`; contracts delivered by `ol contracts sync --to kv/v2`; tests: v2 envelope roundtrip, `parity/kv.wire.v2`, mixed-version negotiation; ADR + drill ops.04 | P11 |
+| craft.14 | Interface migration: API v1 to v2 | **build** | same | owns `rust/crates/tl-serve/src/api_version.rs` and `go/gateway/server/apiversion.go`, `upgrades` `rust/crates/tl-serve/src/server.rs` (the engine selects v1 or v2 per request by `X-TL-API-Version`), `go/gateway/server/` (version routing), `go/gateway/ledger/` (per-version usage); contracts by `ol contracts sync --to api/v2`; `openapi:v1` and `openapi:v2` both pass; drill ops.05 | P11 |
 | craft.15 | Dependency upgrades | practice | same | drill ops.06 | P11 |
 | craft.16 | Perf regression bisect | practice | same | drill ops.07 | P11 |
 | craft.17 | Threat model (STRIDE on your DFD) | practice | `software-craftsmanship/11-security/` | `docs/THREAT_MODEL.md` with every trust boundary from 2.3, including the RAG-to-tools path | P11 |
@@ -3204,10 +3204,10 @@ Competitive programming and `practice/` (predict, build, reattempt) are unchange
 
 **Language and tool primers (D38).** Each primer is a `practice` module: a chapter plus small checked exercises in the learner repo's `primers/` (references in `course/ref/primers/`). Each sits immediately before the first module that needs it.
 
-| ID | Primer | Exercises (checked by `ss check lang.NN`) | First use | Pass |
+| ID | Primer | Exercises (checked by `ol check lang.NN`) | First use | Pass |
 |---|---|---|---|---|
 | lang.01 | Python and numpy: arrays, dtypes, broadcasting, views vs copies, `uv` projects | a broadcasting worksheet and a vectorized bigram count | L0.0, L0.1 | P0 |
-| lang.02 | Shell, git, make, processes: exit codes, signals (SIGTERM, SIGKILL), environment, pipes | a `Makefile` for a two-file C program; a script that traps SIGTERM and exits 130 | craft.01, every `ss` verdict | P0 |
+| lang.02 | Shell, git, make, processes: exit codes, signals (SIGTERM, SIGKILL), environment, pipes | a `Makefile` for a two-file C program; a script that traps SIGTERM and exits 130 | craft.01, every `ol` verdict | P0 |
 | lang.03 | C: memory, pointers, structs, the C11 toolchain, sanitizers, headers and linkage | the practice `c/01` dynamic-array drill (reference exists) plus a standalone C header and test-binary exercise | M03.1 | P1 |
 | lang.04 | Rust: ownership, traits, `Result`, cargo workspaces, std TCP | a line-protocol echo server on `std::net` | L10.0, ds.05, L1.5 | P1 |
 | lang.05 | HTTP/1.1, JSON, and Server-Sent Events from the wire up | parse and emit an HTTP request and an SSE stream by hand; `curl -N` against it | L10.0, gw.00 | P1 |
@@ -3274,7 +3274,7 @@ Side quests have no call site in the system. They are optional, checked when the
 
 Pass 12 (B14) adds 45 core modules plus S-M12 and 3 optional C modules: 22 Python, 8 Rust, 6 Go, 3 optional C, and practices. `tl-media` is built by L15.1, so L13.6 is Python only, and the draft's L15.8 is retired (D41).
 
-`ss status --counts` regenerates this table from the registry; the numbers above are the design target.
+`ol status --counts` regenerates this table from the registry; the numbers above are the design target.
 
 ---
 
@@ -3282,29 +3282,29 @@ Pass 12 (B14) adds 45 core modules plus S-M12 and 3 optional C modules: 22 Pytho
 
 ### 5.1 Summary
 
-The course runs on `practice/bin/ss`, extended in place. The existing contract stays: **one committed source of truth per exercise, one command, the exit code is the verdict**. Additions:
+The course runs on `practice/bin/ol`, extended in place. The existing contract stays: **one committed source of truth per exercise, one command, the exit code is the verdict**. Additions:
 
 | Addition | What it does |
 |---|---|
-| Course modules | addressed by id (`ss start L5.1`); each module owns whole source files of one growing system |
+| Course modules | addressed by id (`ol start L5.1`); each module owns whole source files of one growing system |
 | Cumulative overlay | a check runs against the learner's own earlier modules; `--ref-deps` swaps in hidden references for unfinished dependencies and marks the verdict `assisted` |
 | New verdict types | `solve` (SymPy-checked answers), mutation-graded learner tests, milestones run through the learner's own entry points, conformance and parity suites, drills against the learner's kind cluster |
-| Ownership | `ss export` gives the learner a standalone repo with only their code, the contracts, and the vendored course tests |
+| Ownership | `ol export` gives the learner a standalone repo with only their code, the contracts, and the vendored course tests |
 
-`practice/` (predict, build, reattempt) and competitive programming do not change. The heavy lifting is a separate uv project, `course/harness` (`python -m sscourse`), so the root `uv.lock` stays unchanged.
+`practice/` (predict, build, reattempt) and competitive programming do not change. The heavy lifting is a separate uv project, `course/harness` (`python -m olcourse`), so the root `uv.lock` stays unchanged.
 
 ### 5.2 Dispatch and markers
 
-One branch is added before the existing `case "$sub"` in `practice/bin/ss`:
+One branch is added before the existing `case "$sub"` in `practice/bin/ol`:
 
 ```bash
 COURSE_ID_RE='^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z]?|(lang|ds|rt|data|dur|gw|ag|load|dep|obs|ops|craft|ethics|review|field|iv)\.[0-9]{2}|sq\.[a-z0-9-]+|MS-[A-Za-z0-9-]+)$'
-course() { exec uv run --project "$ROOT/course/harness" --quiet python -m sscourse "$@"; }
+course() { exec uv run --project "$ROOT/course/harness" --quiet python -m olcourse "$@"; }
 
 case "$sub" in
   start|check|diff|show|reset|reveal|tests)
     [[ "${1:-}" =~ $COURSE_ID_RE || "${1:-}" == --all ]] && course "$sub" "$@" ;;
-  bench)          # the existing `ss bench [lang] [--assert]` (predict budgets) keeps its meaning
+  bench)          # the existing `ol bench [lang] [--assert]` (predict budgets) keeps its meaning
     [[ "${1:-}" =~ $COURSE_ID_RE || "${1:-}" == course || "${1:-}" == --calibrate ]] && course "$sub" "$@" ;;
   course|status|next|milestone|conform|parity|mutate|tdd|export|drill|fetch|contracts|doctor|lint) course "$sub" "$@" ;;
   verify) [[ "${1:-}" == course ]] && course "$sub" "$@" ;;
@@ -3323,41 +3323,41 @@ tl_status tl_matmul_f32(/* ... */) {
 ```
 
 1. `MARKER_RE="^[^A-Za-z0-9]*(${MARKER_BEGIN}( [A-Za-z][A-Za-z0-9.+-]*)?|${MARKER_END})[^A-Za-z0-9]*$"`.
-2. `strip_solution` takes an optional `want` id: a region is stubbed only when its id is empty or equals `want`. For course files it writes a **body that compiles**, chosen by file extension and return type, instead of today's comment line: Python `raise NotImplementedError("L9.1")`; Rust `todo!("L9.1")`; Go `panic("todo: L9.1")`; C `tl_status` functions `return TL_EUNSUPPORTED;`, pointer returns `return NULL;`, other values `return 0;` (each after setting `tl_last_error` to `"unimplemented: L9.1"`), and `void` functions `abort();`. Practice exercises keep the existing comment stub. `ss verify course` lints that the fully stubbed reference tree compiles in all four languages and that markers sit only around function bodies.
-3. **Ownership rule** (enforced by `ss verify course`): one unit (source file) belongs to exactly one module at a time, and every marker in it carries that module's id. A module with `upgrades = [unit]` takes the unit over; the current reference file then holds the later module's markers, and the earlier module's version is kept as a snapshot in `course/ref/history/<earlier-ID>/<unit>` with its own markers. Verify checks 2 and 5, and the earlier module's mutants, run against that snapshot.
-4. **Upgrades in the learner repo.** `ss start` never overwrites an existing learner file. Starting an upgrading module prints the contract diff for each unit it takes over, and the learner edits their own file in place. From then on the earlier module's verdict is frozen as `pass (superseded by <ID>)`, its tests run as the later module's smoke regression, and a changed tree hash makes only the later module `stale`. This keeps the overlay file-granular with no merge logic.
+2. `strip_solution` takes an optional `want` id: a region is stubbed only when its id is empty or equals `want`. For course files it writes a **body that compiles**, chosen by file extension and return type, instead of today's comment line: Python `raise NotImplementedError("L9.1")`; Rust `todo!("L9.1")`; Go `panic("todo: L9.1")`; C `tl_status` functions `return TL_EUNSUPPORTED;`, pointer returns `return NULL;`, other values `return 0;` (each after setting `tl_last_error` to `"unimplemented: L9.1"`), and `void` functions `abort();`. Practice exercises keep the existing comment stub. `ol verify course` lints that the fully stubbed reference tree compiles in all four languages and that markers sit only around function bodies.
+3. **Ownership rule** (enforced by `ol verify course`): one unit (source file) belongs to exactly one module at a time, and every marker in it carries that module's id. A module with `upgrades = [unit]` takes the unit over; the current reference file then holds the later module's markers, and the earlier module's version is kept as a snapshot in `course/ref/history/<earlier-ID>/<unit>` with its own markers. Verify checks 2 and 5, and the earlier module's mutants, run against that snapshot.
+4. **Upgrades in the learner repo.** `ol start` never overwrites an existing learner file. Starting an upgrading module prints the contract diff for each unit it takes over, and the learner edits their own file in place. From then on the earlier module's verdict is frozen as `pass (superseded by <ID>)`, its tests run as the later module's smoke regression, and a changed tree hash makes only the later module `stale`. This keeps the overlay file-granular with no merge logic.
 
 ### 5.3 Command surface
 
 | Command | Does | Exit codes |
 |---|---|---|
-| `ss course init --name <system> [--at DIR]` | create the learner repo (2.15) | 0, 5 |
-| `ss doctor` | report python/uv, cc, cargo, go, docker (and its CPU and memory allocation: at least 6 CPUs and 12 GiB from Pass 7), kubectl, kind, helm, tilt; optional: protoc (only for `lang.10` exercises; the contracts ship generated code), a pinned Rust nightly (Miri, Rust TSan) | 0, 5 |
-| `ss next` | next stage in `paths/course/path.tsv` whose deps pass | 0 |
-| `ss status [--graph] [--counts] [--json]` | every module: `todo`, `started`, `pass`, `stale`, `assisted`, `spoiled`, `self`, with mutation scores | 0 |
-| `ss start <ID>` | stub the owned units into the learner repo; print chapter, contract, tests, rung | 0, 5 |
-| `ss tests <ID>` | print the annotated test catalog (name, KIND, WHY) | 0 |
-| `ss check <ID> [--ref-deps[=all\|ID,...]] [--no-cumulative] [--kind K] [--json]` | contract pre-check, cumulative smoke, course tests through the overlay, then the mutation grade if `[learner_tests]` exists (required mutants plus a sample, 5.6); for `solve` ids, the answer checker | 0 pass, 1 fail, 2 not started, 3 blocked by deps, 4 contract drift, 5 harness or toolchain |
-| `ss check --all [--ci] [--fresh]` | every started module (owned units present and not stubs), in pass order; `--ci` forbids `--ref-deps`, skips the interactive proof rubrics (reported as `self` skipped), and uses the cached full mutation grade; a pass recorded on exactly the current repo (every owned unit, the same course commit and harness, no reference code) is reused, and dependencies that passed on these files skip their cumulative smoke rerun; `--fresh` checks everything | as above |
-| `ss mutate <ID> [-j N] [--reveal-survivors]` | mutation grade only | 0, 1 |
-| `ss tdd red\|green <ID>` | 5.12 | 0, 1 |
-| `ss diff <ID>` | learner units against the reference with markers dropped (after passing) | 0 |
-| `ss show <ID>` / `ss reveal <ID>` | spoil; ledger records `spoiled` | 0 |
-| `ss reset <ID> [--force]` | restore stubs for the owned units; refuses on uncommitted learner changes without `--force` | 0, 1 |
-| `ss milestone <MS-ID> [--ref-deps] [--smoke]` | 5.7 | 0, 1 |
-| `ss conform openapi[:v0\|v1\|v2] --target engine\|gateway [--base URL]` | 5.8 | 0, 1 |
-| `ss parity [<suite>]` | 5.8 | 0, 1 |
-| `ss bench <ID>\|course [--assert]`, `ss bench --calibrate [--in-cluster]` | course perf budgets relative to machine calibration (5.11); `--in-cluster` runs the calibration as a Job in `[deploy].namespace`. Plain `ss bench [lang] [--assert]` keeps its existing predict meaning | 0, 1 |
-| `ss fetch <asset>` | pinned large assets (5.11) | 0, 5 |
-| `ss contracts sync [--to <tag>]` | re-vendor contracts at the current supersource sha (also how migrations arrive) | 0 |
-| `ss drill list\|start\|status\|end\|reset` | 5.10 | 0, 1 |
-| `ss export <DIR> [--remote URL] [--allow-incomplete]` | 5.13 | 0, 1 |
-| `ss lint [--links] [--fix-index]` | chapter contract, registry, links, no U+2014 (6.5) | 0, 1 |
-| `ss verify course [--changed REF] [--e2e] [--kind] [--nightly]` | maintainer verification (5.14) | 0, 1 |
+| `ol course init --name <system> [--at DIR]` | create the learner repo (2.15) | 0, 5 |
+| `ol doctor` | report python/uv, cc, cargo, go, docker (and its CPU and memory allocation: at least 6 CPUs and 12 GiB from Pass 7), kubectl, kind, helm, tilt; optional: protoc (only for `lang.10` exercises; the contracts ship generated code), a pinned Rust nightly (Miri, Rust TSan) | 0, 5 |
+| `ol next` | next stage in `paths/course/path.tsv` whose deps pass | 0 |
+| `ol status [--graph] [--counts] [--json]` | every module: `todo`, `started`, `pass`, `stale`, `assisted`, `spoiled`, `self`, with mutation scores | 0 |
+| `ol start <ID>` | stub the owned units into the learner repo; print chapter, contract, tests, rung | 0, 5 |
+| `ol tests <ID>` | print the annotated test catalog (name, KIND, WHY) | 0 |
+| `ol check <ID> [--ref-deps[=all\|ID,...]] [--no-cumulative] [--kind K] [--json]` | contract pre-check, cumulative smoke, course tests through the overlay, then the mutation grade if `[learner_tests]` exists (required mutants plus a sample, 5.6); for `solve` ids, the answer checker | 0 pass, 1 fail, 2 not started, 3 blocked by deps, 4 contract drift, 5 harness or toolchain |
+| `ol check --all [--ci] [--fresh]` | every started module (owned units present and not stubs), in pass order; `--ci` forbids `--ref-deps`, skips the interactive proof rubrics (reported as `self` skipped), and uses the cached full mutation grade; a pass recorded on exactly the current repo (every owned unit, the same course commit and harness, no reference code) is reused, and dependencies that passed on these files skip their cumulative smoke rerun; `--fresh` checks everything | as above |
+| `ol mutate <ID> [-j N] [--reveal-survivors]` | mutation grade only | 0, 1 |
+| `ol tdd red\|green <ID>` | 5.12 | 0, 1 |
+| `ol diff <ID>` | learner units against the reference with markers dropped (after passing) | 0 |
+| `ol show <ID>` / `ol reveal <ID>` | spoil; ledger records `spoiled` | 0 |
+| `ol reset <ID> [--force]` | restore stubs for the owned units; refuses on uncommitted learner changes without `--force` | 0, 1 |
+| `ol milestone <MS-ID> [--ref-deps] [--smoke]` | 5.7 | 0, 1 |
+| `ol conform openapi[:v0\|v1\|v2] --target engine\|gateway [--base URL]` | 5.8 | 0, 1 |
+| `ol parity [<suite>]` | 5.8 | 0, 1 |
+| `ol bench <ID>\|course [--assert]`, `ol bench --calibrate [--in-cluster]` | course perf budgets relative to machine calibration (5.11); `--in-cluster` runs the calibration as a Job in `[deploy].namespace`. Plain `ol bench [lang] [--assert]` keeps its existing predict meaning | 0, 1 |
+| `ol fetch <asset>` | pinned large assets (5.11) | 0, 5 |
+| `ol contracts sync [--to <tag>]` | re-vendor contracts at the current openlearn sha (also how migrations arrive) | 0 |
+| `ol drill list\|start\|status\|end\|reset` | 5.10 | 0, 1 |
+| `ol export <DIR> [--remote URL] [--allow-incomplete]` | 5.13 | 0, 1 |
+| `ol lint [--links] [--fix-index]` | chapter contract, registry, links, no U+2014 (6.5) | 0, 1 |
+| `ol verify course [--changed REF] [--e2e] [--kind] [--nightly]` | maintainer verification (5.14) | 0, 1 |
 
 ### 5.4 Cumulative overlay and `--ref-deps`
 
-**Resolution.** For `ss check L8.3`, `closure = transitive deps(L8.3)`. Each module in the closure gets a source:
+**Resolution.** For `ol check L8.3`, `closure = transitive deps(L8.3)`. Each module in the closure gets a source:
 
 | Condition | Source |
 |---|---|
@@ -3370,39 +3370,39 @@ tl_status tl_matmul_f32(/* ... */) {
 
 A verdict produced with any reference source is `assisted`. A milestone counts only when its closure is all learner-sourced; otherwise it is recorded as `assisted`. `--ref-deps` substitutes **library units only**; entry points are always the learner's (D16).
 
-**Cumulative regression.** Before the module's tests, `ss check` reruns the `smoke` tests of every learner-sourced dep, so a change in `L8.3` that breaks `L8.2` reports `REGRESSION L8.2 (smoke: append_then_read)` and fails. `--no-cumulative` skips this.
+**Cumulative regression.** Before the module's tests, `ol check` reruns the `smoke` tests of every learner-sourced dep, so a change in `L8.3` that breaks `L8.2` reports `REGRESSION L8.2 (smoke: append_then_read)` and fails. `--no-cumulative` skips this.
 
-**Which course tree runs.** Course tests, references, mutants, and fixtures are always taken from the supersource commit named in the learner's `contracts/VERSION`, through a cached git worktree (`~/.cache/supersource/worktrees/<sha>`), never from supersource HEAD. The harness code itself runs from HEAD. So a maintainer's contract edit cannot break existing learners or run new tests against old contracts; learners move forward with `ss contracts sync`.
+**Which course tree runs.** Course tests, references, mutants, and fixtures are always taken from the openlearn commit named in the learner's `contracts/VERSION`, through a cached git worktree (`~/.cache/openlearn/worktrees/<sha>`), never from openlearn HEAD. The harness code itself runs from HEAD. So a maintainer's contract edit cannot break existing learners or run new tests against old contracts; learners move forward with `ol contracts sync`.
 
-**Per-language realization.** Substitution happens outside the learner repo, under `.ss/overlay/<ID>/`. Nothing from `course/ref` is copied into the learner repo. A unit outside the closure that the build still needs (a crate root's submodule, a C object a test links) gets the **stub** version of the reference (5.2), never nothing.
+**Per-language realization.** Substitution happens outside the learner repo, under `.ol/overlay/<ID>/`. Nothing from `course/ref` is copied into the learner repo. A unit outside the closure that the build still needs (a crate root's submodule, a C object a test links) gets the **stub** version of the reference (5.2), never nothing.
 
 | Language | Mechanism |
 |---|---|
-| Python | `tinyllm` and `corpus` are namespace packages (no `__init__.py`, lint-enforced). Tests run **in the learner's uv environment**: `uv run --project <learner>/python --with <harness test deps> pytest ...`, so the learner's own dependencies (`pyarrow`, `zstandard`, OpenTelemetry) are present. `PYTHONPATH=.ss/overlay/<ID>/subst/python:<learner>/python`, where `subst/` holds symlinks to the reference units only for reference-sourced modules. First hit per submodule wins, so imports inside reference units resolve to learner code for every other module: that is the cumulative property |
-| C | explicit per-unit object selection, as standalone C test binaries with sanitizers; `cc -std=c11 -O1 -g -fsanitize=address,undefined,float-cast-overflow -I<learner>/contracts/c/include <one .c per unit: learner, ref, or stub> course/tests/<ID>/*.c -o .ss/build/<ID>/test-asan`, used only by the C harness; no shared library is built or loaded by another language. Leaks are checked portably by the counting allocator (4.4) |
-| Rust | a **copy farm** `.ss/overlay/<ID>/rust/` of the learner's `rust/` at file granularity, where each reference-sourced file is a copy of `course/ref/rust/...`. Files are copied, not symlinked (Cargo decides freshness by mtime through links): a file whose source or content hash changed since the last build is rewritten with a fresh mtime, and unchanged files keep theirs, so builds stay warm. The farm has its own generated `Cargo.toml` (the learner's manifests plus the `allowed-deps.toml` pins reference units need, plus the harness crate `ss-tests` whose `tests/<id_>.rs` come from `course/tests/rust/`) and its own `Cargo.lock` seeded from the learner's. `CARGO_TARGET_DIR=<learner>/.ss/target`, shared by every farm and every mutant run. The learner's manifests and lock are never touched |
-| Go | a **copy farm** `.ss/overlay/<ID>/go/` of the learner's module with reference-sourced files copied in, a generated `go.mod`/`go.sum` (the learner's requirements plus the `allowed-deps.toml` pins reference files need), and `GOWORK=.ss/overlay/<ID>/go.work` = the farm + `contracts/go` (`supersource.urmzd.com/tl/contracts`, generated stubs included) + `course/tests/go` (`supersource.urmzd.com/tl/coursetests`). `go test -count=1 supersource.urmzd.com/tl/coursetests/<id_>/...`. `_test.go` files from the learner are never replaced |
+| Python | `tinyllm` and `corpus` are namespace packages (no `__init__.py`, lint-enforced). Tests run **in the learner's uv environment**: `uv run --project <learner>/python --with <harness test deps> pytest ...`, so the learner's own dependencies (`pyarrow`, `zstandard`, OpenTelemetry) are present. `PYTHONPATH=.ol/overlay/<ID>/subst/python:<learner>/python`, where `subst/` holds symlinks to the reference units only for reference-sourced modules. First hit per submodule wins, so imports inside reference units resolve to learner code for every other module: that is the cumulative property |
+| C | explicit per-unit object selection, as standalone C test binaries with sanitizers; `cc -std=c11 -O1 -g -fsanitize=address,undefined,float-cast-overflow -I<learner>/contracts/c/include <one .c per unit: learner, ref, or stub> course/tests/<ID>/*.c -o .ol/build/<ID>/test-asan`, used only by the C harness; no shared library is built or loaded by another language. Leaks are checked portably by the counting allocator (4.4) |
+| Rust | a **copy farm** `.ol/overlay/<ID>/rust/` of the learner's `rust/` at file granularity, where each reference-sourced file is a copy of `course/ref/rust/...`. Files are copied, not symlinked (Cargo decides freshness by mtime through links): a file whose source or content hash changed since the last build is rewritten with a fresh mtime, and unchanged files keep theirs, so builds stay warm. The farm has its own generated `Cargo.toml` (the learner's manifests plus the `allowed-deps.toml` pins reference units need, plus the harness crate `ol-tests` whose `tests/<id_>.rs` come from `course/tests/rust/`) and its own `Cargo.lock` seeded from the learner's. `CARGO_TARGET_DIR=<learner>/.ol/target`, shared by every farm and every mutant run. The learner's manifests and lock are never touched |
+| Go | a **copy farm** `.ol/overlay/<ID>/go/` of the learner's module with reference-sourced files copied in, a generated `go.mod`/`go.sum` (the learner's requirements plus the `allowed-deps.toml` pins reference files need), and `GOWORK=.ol/overlay/<ID>/go.work` = the farm + `contracts/go` (`openlearn.urmzd.com/tl/contracts`, generated stubs included) + `course/tests/go` (`openlearn.urmzd.com/tl/coursetests`). `go test -count=1 openlearn.urmzd.com/tl/coursetests/<id_>/...`. `_test.go` files from the learner are never replaced |
 
-| Env var set by `ss` | Value | Read by |
+| Env var set by `ol` | Value | Read by |
 |---|---|---|
 
 
 
 
 | `TINYLLM_FIXTURES` | the `course/fixtures` of the `contracts/VERSION` worktree | course tests |
-| `TINYLLM_CACHE` | `~/.cache/supersource` | weight loaders, `ss fetch` |
-| `SS_SEED`, `SS_MODULE`, `SS_OVERLAY` | `0`, id, overlay root | tests, debugging |
+| `TINYLLM_CACHE` | `~/.cache/openlearn` | weight loaders, `ol fetch` |
+| `OL_SEED`, `OL_MODULE`, `OL_OVERLAY` | `0`, id, overlay root | tests, debugging |
 
-**Contract pre-check (exit 4).** `contracts/` is compared by **content hash** with `contracts/VERSION` (local edits fail: `contracts/ modified; revert, or run ss contracts sync`). Contracts carry a semver: a minor bump is backward compatible and `ss` only advises a sync; a major bump is a migration chapter. Then: the manifest entries required by 2.15 (lib targets, crate and module names, the contracts `replace`, the declared Rust crate and C test contracts); Python `mypy.stubtest` of each unit against `contracts/py`; C compiles each standalone test binary with `cc -fsyntax-only` and sanitizer flags; Rust `cargo check -p <crate>` in the farm (trait impls from `tl-contracts`); Go `go vet` plus a compile-only assertion file such as `var _ contracts.Queue = (*queue.Queue)(nil)`.
+**Contract pre-check (exit 4).** `contracts/` is compared by **content hash** with `contracts/VERSION` (local edits fail: `contracts/ modified; revert, or run ol contracts sync`). Contracts carry a semver: a minor bump is backward compatible and `ol` only advises a sync; a major bump is a migration chapter. Then: the manifest entries required by 2.15 (lib targets, crate and module names, the contracts `replace`, the declared Rust crate and C test contracts); Python `mypy.stubtest` of each unit against `contracts/py`; C compiles each standalone test binary with `cc -fsyntax-only` and sanitizer flags; Rust `cargo check -p <crate>` in the farm (trait impls from `tl-contracts`); Go `go vet` plus a compile-only assertion file such as `var _ contracts.Queue = (*queue.Queue)(nil)`.
 
-**Verdict ledger.** `.ss/verdicts.jsonl`, one line per check:
+**Verdict ledger.** `.ol/verdicts.jsonl`, one line per check:
 
 ```json
 {"id":"L8.3","kind":"build","tree":"sha256:9f..","sources":{"L8.2":"learner","rt.04":"ref"},"result":"pass",
- "mutation":{"score":0.84,"killed":21,"total":25,"required_ok":true},"ss":"a5a70b1","ts":"2026-10-08T14:02:11Z"}
+ "mutation":{"score":0.84,"killed":21,"total":25,"required_ok":true},"ol":"a5a70b1","ts":"2026-10-08T14:02:11Z"}
 ```
 
-`tree` hashes the module's owned units plus its graded tests; a changed hash makes the verdict `stale`. Verdicts are tagged `tainted` if supersource's own `course/` tree is dirty.
+`tree` hashes the module's owned units plus its graded tests; a changed hash makes the verdict `stale`. Verdicts are tagged `tainted` if openlearn's own `course/` tree is dirty.
 
 ### 5.5 The `solve` kind
 
@@ -3457,9 +3457,9 @@ rubric = ["States the induction hypothesis for n = k", "Proves the base case exp
 | `matrix` / `vector` | same shape, elementwise `expr`, with `up_to` equivalences |
 | `basis` | span equality: `rank(A) == rank(B) == rank([A|B])` |
 | `bool` / `choice` | exact, case-insensitive |
-| `proof` | self-graded rubric in v1: `ss check` prints each rubric line, the learner answers y/n, all must be y; verdict tagged `self`. Lean later takes the same key slot (`type = "lean"`) |
+| `proof` | self-graded rubric in v1: `ol check` prints each rubric line, the learner answers y/n, all must be y; verdict tagged `self`. Lean later takes the same key slot (`type = "lean"`) |
 
-**Input safety.** Allowed characters `[A-Za-z0-9_+\-*/^().,\[\]{} =<>|]` only; reject any `__`, any `.` followed by a letter, and identifiers outside `vars` plus a function whitelist (`sin cos tan exp log sqrt pi E oo I Abs floor ceiling binomial factorial Sum`). Parsing runs in a subprocess with a 5 s timeout. Feedback never shows the expected answer (`q1 FAIL: differs at x=1.30`). `ss verify course` checks for every key that `expect` passes, every `reject` fails, and every key parses.
+**Input safety.** Allowed characters `[A-Za-z0-9_+\-*/^().,\[\]{} =<>|]` only; reject any `__`, any `.` followed by a letter, and identifiers outside `vars` plus a function whitelist (`sin cos tan exp log sqrt pi E oo I Abs floor ceiling binomial factorial Sum`). Parsing runs in a subprocess with a 5 s timeout. Feedback never shows the expected answer (`q1 FAIL: differs at x=1.30`). `ol verify course` checks for every key that `expect` passes, every `reject` fails, and every key parses.
 
 Pen and paper is the only thing `solve` covers. Math that becomes code is a `build` module with call sites.
 
@@ -3477,22 +3477,22 @@ s01	python/tinyllm/infer/paged.py	semantic	pitfall-2	-	y	(hidden until pass)	las
 
 - **Auto mutants** from `course/oracle/mutate.py`: Python `ast` operators, a small `go/ast` mutator, `cargo mutants --list --diff`, tree-sitter-c. Operators: comparison flip, boundary ±1, arithmetic swap, constant replacement, return default, condition negation, statement deletion, swapped arguments.
 - **Semantic mutants**: hand-written, one per chapter Pitfall. The most valuable ones.
-- **Pruning** (maintainer side): a mutant is committed only if it compiles, the course tests kill it, and it is not redundant (same killing test set as another). Target 15 to 40 per module. `ss verify course` re-checks that every patch applies and is still killed.
+- **Pruning** (maintainer side): a mutant is committed only if it compiles, the course tests kill it, and it is not redundant (same killing test set as another). Target 15 to 40 per module. `ol verify course` re-checks that every patch applies and is still killed.
 
-**Run** (`ss mutate`, also at the end of `ss check`):
+**Run** (`ol mutate`, also at the end of `ol check`):
 
 1. Baseline A: learner tests pass against the unmutated reference (deps from the reference). On failure: `your test rejects a correct implementation: <name>`, score 0.
 2. Baseline B: learner tests pass against the learner's implementation.
 3. Budget: baseline within `time_budget_s`; each mutant times out at `max(2 s, 10 x baseline)`.
 4. For each mutant, build the overlay with `ref + patch` and run only the graded test path. Rust and C mutant runs share the one warm `CARGO_TARGET_DIR` and object cache (only the mutated unit rebuilds); Python and Go run in parallel. Killed = nonzero exit or timeout (reported separately).
 5. `score = killed / total`. Pass = `score >= threshold` and every `required` mutant killed.
-6. Results cached by `(hash(learner test files), hash(ref unit), hash(patch))` in `.ss/cache/mutation.json`; the same key caches maintainer-side kill checks in CI.
+6. Results cached by `(hash(learner test files), hash(ref unit), hash(patch))` in `.ol/cache/mutation.json`; the same key caches maintainer-side kill checks in CI.
 
-**Cost control.** `ss check` runs the required mutants plus a seeded sample of up to 8 others and reports an estimate; the verdict records the full grade, which `ss mutate` computes once per learner-test hash and caches, so the full cost is paid only when the tests change. Mutants per module are capped at 40.
+**Cost control.** `ol check` runs the required mutants plus a seeded sample of up to 8 others and reports an estimate; the verdict records the full grade, which `ol mutate` computes once per learner-test hash and caches, so the full cost is paid only when the tests change. Mutants per module are capped at 40.
 
 Survivors show the `public` text and location. Semantic survivors show only `a planted bug from Pitfall 2 survived` until the module passes or `--reveal-survivors` (which records `spoiled`).
 
-**Black-box rule.** Graded tests touch only the contract: Python tests import only names in `contracts/py` (AST scan); Go tests are external `package <pkg>_test`; Rust graded tests are integration tests only; C tests include only `tinyllm/*.h` and `ss_test.h`.
+**Black-box rule.** Graded tests touch only the contract: Python tests import only names in `contracts/py` (AST scan); Go tests are external `package <pkg>_test`; Rust graded tests are integration tests only; C tests include only `tinyllm/*.h` and `ol_test.h`.
 
 | Rung (5.12) | Threshold | Required semantic mutants |
 |---|---|---|
@@ -3501,7 +3501,7 @@ Survivors show the `public` text and location. Semantic survivors show only `a p
 | R4 to R6 | 0.80 | all tagged |
 | R7 to R10 | 0.90 for unit mutants; special mutant classes per 5.12 | all tagged |
 
-`ss verify course` runs `course/ref/learner-tests/<ID>/` through the same pipeline to prove each bar is reachable.
+`ol verify course` runs `course/ref/learner-tests/<ID>/` through the same pipeline to prove each bar is reachable.
 
 ### 5.7 Milestones against learner-supplied commands
 
@@ -3550,10 +3550,10 @@ expect  = { match = "tokens-equal", file = "course/fixtures/L7.9/smollm2_greedy_
 | `trace` | a trace with the named span tree exists in `[deploy].traces` for the window, polled for `wait_s` (default 30). Jaeger: `GET /api/traces?service=`; Tempo (ports 3200 or 30320, a host naming tempo, or `api = "tempo"`): `GET /api/search?tags=service.name=<svc>`, then `GET /api/traces/<id>` (OTLP JSON, hex or base64 ids) |
 | `git-log` | last N commits match Conventional Commits |
 | `ci-status` | the latest learner CI run on the default branch concluded `success` (`gh run list --branch <default> --limit 1 --json conclusion`); without a GitHub remote, the `[ci].local` commands from `system.toml` exit 0 |
-| `perf` | throughput or latency relative to `ss bench --calibrate`; `ci = "local"` only |
+| `perf` | throughput or latency relative to `ol bench --calibrate`; `ci = "local"` only |
 | `effects` | the effects sink of a `sink = "effects"` step holds `prefix` + k for every k of `keys` (`"0..499"`, inclusive, or a list) and no other key under `prefix`; `exactly_once` (default) allows redelivery, as the sink dedupes by idempotency key; `delivered_once` forbids it; `min_redelivered = N` asks that the kills caused at least N redeliveries |
 
-The runner first executes `[build].steps`, then starts services in dependency order (`after`), waits for `health`, runs steps, tears down, and logs to `.ss/milestones/<MS-ID>/<ts>/`.
+The runner first executes `[build].steps`, then starts services in dependency order (`after`), waits for `health`, runs steps, tears down, and logs to `.ol/milestones/<MS-ID>/<ts>/`.
 
 **Faults during a step.** Two step keys put a running stack under test:
 
@@ -3597,7 +3597,7 @@ Placeholders:
 
 | Milestone | Pass | Pass condition (details in section 4) | CI |
 |---|---|---|---|
-| MS-P0 | P0 | `ci-status`: the learner's CI (commit lint, native tests, `ss check --all --ci`) is green on the first conventional commit; `lang.01` and `lang.02` exercises pass | pr |
+| MS-P0 | P0 | `ci-status`: the learner's CI (commit lint, native tests, `ol check --all --ci`) is green on the first conventional commit; `lang.01` and `lang.02` exercises pass | pr |
 | MS-P1 | P1 | tracer: curl with a key through the learner's gateway on kind streams >= 32 tokens from their byte bigram, served by their Rust engine; `openapi:v0` passes; one trace spans gateway and engine in Jaeger; `ops.00` resolved with a runbook; ADR-0001 lints. Smoke steps (local processes): the same stream without kind | pr (smoke), kind job (full) |
 | MS-L0 | P2 | gradcheck suite; autograd bigram = count MLE within 1e-3 nats, served unchanged; MLP digits >= 0.95; bitwise kill-and-resume with the token cursor | pr |
 | MS-L1 | P3 | GPT-2 and SmolLM2 tokenization exact; Rust speedup only in the local perf step | pr, local (perf) |
@@ -3626,7 +3626,7 @@ Placeholders:
 
 ### 5.8 Conformance and parity
 
-**OpenAPI suite.** `ss conform openapi:v1 --target engine|gateway [--base URL]` starts the matching `[services.*]` when no base is given. Every response is validated by `openapi-core`, plus behavioral cases in `course/conformance/openapi/cases/*.toml`. A case may declare `requires = ["<ID>"]`; until that module passes, the harness reports it `pending` instead of failing:
+**OpenAPI suite.** `ol conform openapi:v1 --target engine|gateway [--base URL]` starts the matching `[services.*]` when no base is given. Every response is validated by `openapi-core`, plus behavioral cases in `course/conformance/openapi/cases/*.toml`. A case may declare `requires = ["<ID>"]`; until that module passes, the harness reports it `pending` instead of failing:
 
 | Case | Tier | Asserts |
 |---|---|---|
@@ -3651,7 +3651,7 @@ Placeholders:
 | `client.openai_sdk` | both | the official `openai` Python client completes a chat and a stream |
 | `v0.*`, `v2.*` | both | tracer cases; API v2 cases for `ops.05` (v1 and v2 side by side) |
 
-API v2.1 cases (Pass 12; `ss conform --cases` filters by glob, and the runner validates `multipart/form-data`):
+API v2.1 cases (Pass 12; `ol conform --cases` filters by glob, and the runner validates `multipart/form-data`):
 
 | Case | Tier | Asserts |
 |---|---|---|
@@ -3690,30 +3690,30 @@ API v2.1 cases (Pass 12; `ss conform --cases` filters by glob, and the runner va
 
 ### 5.9 Test frameworks
 
-`practice/` stays framework-free. The course uses idiomatic frameworks because the learner writes tests we grade and wires them into their own CI. `ss` still reduces every run to an exit code.
+`practice/` stays framework-free. The course uses idiomatic frameworks because the learner writes tests we grade and wires them into their own CI. `ol` still reduces every run to an exit code.
 
 | Language | Course and learner tests | Property testing | Bench |
 |---|---|---|---|
 | Python | pytest | Hypothesis | pytest-benchmark (local) |
 | Go | `testing` | `pgregory.net/rapid` | `testing.B` |
 | Rust | `cargo test` | proptest | criterion (local) |
-| C | `ss_test.h` (single header: `SS_TEST`, `SS_EQ`, `SS_CLOSE(a,b,rtol,atol)`, `SS_RUN_ALL()` returning the exit code) | `ss_prop.h` (seeded generators, shrink by halving) | `ss_bench.h` |
+| C | `ol_test.h` (single header: `OL_TEST`, `OL_EQ`, `OL_CLOSE(a,b,rtol,atol)`, `OL_RUN_ALL()` returning the exit code) | `ol_prop.h` (seeded generators, shrink by halving) | `ol_bench.h` |
 
 ```bash
-# what ss check executes (WT = the supersource worktree at contracts/VERSION, OV = .ss/overlay/<ID>)
+# what ol check executes (WT = the openlearn worktree at contracts/VERSION, OV = .ol/overlay/<ID>)
 PYTHONPATH="$OV/subst/python:$LEARNER/python" \
   uv run --project "$LEARNER/python" --with pytest --with pytest-randomly --with hypothesis --with "$ROOT/course/harness" \
-  pytest -q -p no:cacheprovider -p randomly --randomly-seed="$SS_SEED" --hypothesis-profile=ss "$WT/course/tests/L5.1"
-GOWORK=$OV/go.work go test -count=1 -race supersource.urmzd.com/tl/coursetests/dur_06/...
-CARGO_TARGET_DIR=$LEARNER/.ss/target cargo test --manifest-path $OV/rust/Cargo.toml -p ss-tests --test l10_2 -- --test-threads=1
+  pytest -q -p no:cacheprovider -p randomly --randomly-seed="$OL_SEED" --hypothesis-profile=ol "$WT/course/tests/L5.1"
+GOWORK=$OV/go.work go test -count=1 -race openlearn.urmzd.com/tl/coursetests/dur_06/...
+CARGO_TARGET_DIR=$LEARNER/.ol/target cargo test --manifest-path $OV/rust/Cargo.toml -p ol-tests --test l10_2 -- --test-threads=1
 cc -std=c11 -O1 -g -fsanitize=address,undefined ... -o $BUILD/test-asan && $BUILD/test-asan    # counting allocator checks leaks
 ```
 
-The harness's pytest plugin registers the Hypothesis profile `ss` (`derandomize=True`, `database=None`, `deadline=None`, `max_examples=100`), so property tests are reproducible and never write a local example database. Leak detection is the counting allocator on every platform (Apple clang ASan has no LeakSanitizer; `leaks --atExit` does not work on ASan binaries); Linux CI also sets `ASAN_OPTIONS=detect_leaks=1`. The fault and determinism kit is listed in 4.4.
+The harness's pytest plugin registers the Hypothesis profile `ol` (`derandomize=True`, `database=None`, `deadline=None`, `max_examples=100`), so property tests are reproducible and never write a local example database. Leak detection is the counting allocator on every platform (Apple clang ASan has no LeakSanitizer; `leaks --atExit` does not work on ASan binaries); Linux CI also sets `ASAN_OPTIONS=detect_leaks=1`. The fault and determinism kit is listed in 4.4.
 
-### 5.10 `ss drill`: faults against the learner's kind deployment
+### 5.10 `ol drill`: faults against the learner's kind deployment
 
-**Safety gate.** A drill refuses to run unless `kubectl config current-context` equals `[deploy].kube_context`, that context starts with `kind-` or `k3d-`, and the namespace exists. Every action is limited to `[deploy].namespace`. Every injection writes its undo to `.ss/drills/<run>/journal.jsonl`; `ss drill reset` replays undos in reverse. There is no override flag.
+**Safety gate.** A drill refuses to run unless `kubectl config current-context` equals `[deploy].kube_context`, that context starts with `kind-` or `k3d-`, and the namespace exists. Every action is limited to `[deploy].namespace`. Every injection writes its undo to `.ol/drills/<run>/journal.jsonl`; `ol drill reset` replays undos in reverse. There is no override flag.
 
 ```toml
 # course/drills/kill-decode/drill.toml
@@ -3773,23 +3773,23 @@ sections = ["Summary", "Impact", "Timeline", "Root cause", "Detection", "Resolut
 | `activity-poison` | marks one shard so its activity panics | ops.03 |
 | `tenant-flood` | loadgen profile for one tenant | ops.09 |
 | `git-branch` | creates `drill/<name>` with a scripted commit series. Commits never patch learner-written code: ops.06 bumps with `cargo add`/`go get`; ops.07 and craft.08 build a **scratch copy** of the learner repo whose target unit is the reference plus an existing perf or seeded mutant; ops.08 changes only data and ledger rows | ops.06, ops.07, ops.08, craft.08 |
-| `contract-bump` | `ss contracts sync --to kv/v2` or `api/v2` on a branch | ops.04, ops.05 |
+| `contract-bump` | `ol contracts sync --to kv/v2` or `api/v2` on a branch | ops.04, ops.05 |
 
-`ss drill start <name> --seed N` starts the `[workload]` (before the injections, or after them with `after_inject`, once `wait_rollout` reports a complete rollout; its undo kills it), injects, and prints only a pager-style symptom. `ss drill status` shows elapsed time only. `ss drill end` reports: detected (when `[detect]` exists: the required alert fired within `within_s`, from the `ALERTS` series), TTD and TTM, resolved (all checks green, each held for its `hold_s`, and every `[[resolve.run]]` command passing its matcher), trace evidence (a trace spanning gateway and engine exists for the window), and postmortem structure.
+`ol drill start <name> --seed N` starts the `[workload]` (before the injections, or after them with `after_inject`, once `wait_rollout` reports a complete rollout; its undo kills it), injects, and prints only a pager-style symptom. `ol drill status` shows elapsed time only. `ol drill end` reports: detected (when `[detect]` exists: the required alert fired within `within_s`, from the `ALERTS` series), TTD and TTM, resolved (all checks green, each held for its `hold_s`, and every `[[resolve.run]]` command passing its matcher), trace evidence (a trace spanning gateway and engine exists for the window), and postmortem structure.
 
 **Drills in CI.** The nightly `kind-e2e` job runs one drill by rotation against the reference system with a **scripted responder** (`course/drills/<name>/respond.sh`, the reference fix) and checks detection and resolution, not the time limit, so a drill fits the job budget. The `PrometheusRule` label selector the reference charts use is the one pinned in `contracts/helm/observability.md`, which the learner's rules must match too.
 
 ### 5.11 Determinism, fixtures, and calibration
 
-| Variable `ss` exports | Value | Why |
+| Variable `ol` exports | Value | Why |
 |---|---|---|
 | `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS`, `VECLIB_MAXIMUM_THREADS`, `NUMEXPR_NUM_THREADS` | `1` | BLAS reduction order changes with thread count |
 | `RAYON_NUM_THREADS` | `1` (tests), unset for bench | same for Rust |
 | `PYTHONHASHSEED` | `0` | dict and set iteration in tokenizer merges |
-| `SS_SEED` | `0` (override `--seed`) | single seed source |
+| `OL_SEED` | `0` (override `--seed`) | single seed source |
 | `TZ`, `LC_ALL` | `UTC`, `C.UTF-8` | timestamps, collation |
-| `SOURCE_DATE_EPOCH` | supersource HEAD commit time | reproducible artifacts |
-| `GOFLAGS` | `-count=1` | the `ss` ledger is the cache |
+| `SOURCE_DATE_EPOCH` | openlearn HEAD commit time | reproducible artifacts |
+| `GOFLAGS` | `-count=1` | the `ol` ledger is the cache |
 
 | Rule | Enforced by |
 |---|---|
@@ -3798,7 +3798,7 @@ sections = ["Summary", "Impact", "Timeline", "Root cause", "Detection", "Resolut
 | greedy ties go to the lowest index | sampler tests |
 | durable engine, gateway, loadgen take a `Clock`; no `time.Sleep` in tests | Go AST scan of `_test.go` |
 | bit-exact where we define the algorithm (tokenizer, RNG, quant pack, sampling given RNG output, KV wire format); tolerance where floating point reorders | per-test `KIND` |
-| tolerances: f64 rtol 1e-10/atol 1e-12; f32 1e-5/1e-6; bf16 1.6e-2/1e-3; reductions over K scale by `sqrt(K)`; tiny HF models atol 1e-5; SmolLM2 fp32 logits max abs 1e-3 with identical top-5 | `assert_close` in `tests/_lib/close.py`, `ss_test.h`, `tl-contracts::testing`, `contracts/go/testing` |
+| tolerances: f64 rtol 1e-10/atol 1e-12; f32 1e-5/1e-6; bf16 1.6e-2/1e-3; reductions over K scale by `sqrt(K)`; tiny HF models atol 1e-5; SmolLM2 fp32 logits max abs 1e-3 with identical top-5 | `assert_close` in `tests/_lib/close.py`, `ol_test.h`, `tl-contracts::testing`, `contracts/go/testing` |
 
 **Fixtures.** `course/oracle/` is a separate uv project with pinned `torch`, `transformers`, `safetensors`, `tiktoken`, `tokenizers`, `ml_dtypes`, `scipy`, `sklearn`, `sacrebleu`, `trl`; it is never imported by tests. Fixtures are `.npz` (`allow_pickle=False`, dtypes f32/f64/i32/i64/u8, `__meta__` JSON with seed, shapes, generator, upstream revision) or `.jsonl`; decoded image pixels are `.npy` (u8 HWC, D46). Budget: **at most 56 MiB committed (50 MiB through B13, 6 MiB for B14, D52), at most 8 MiB per file**, and a committed budget per authoring batch (section 9), all enforced. `course/fixtures/MANIFEST.tsv` records `path, sha256, bytes, generator, oracle_versions, upstream@revision, license`; every fixture id used in a milestone or test resolves to exactly one row. A PR that changes fixtures without a matching oracle or manifest change fails. A weekly `oracle-drift` job regenerates everything in a pinned container and compares **within tolerance** (the 5.11 tolerances for floats; exact equality only for integer outputs such as token ids and packed bytes), because torch CPU output varies with the runner's instruction set.
 
@@ -3817,7 +3817,7 @@ sections = ["Summary", "Impact", "Timeline", "Root cause", "Detection", "Resolut
 
 About 21 MB committed at design time, which leaves room for per-module fixtures (KV golden blobs, optional C exercise goldens, recorded SSE streams).
 
-**Large assets** (`course/fixtures/ASSETS.tsv`: url, revision, sha256, license) are never committed and are fetched by `ss fetch <asset>` into `$TINYLLM_CACHE`: `smollm2-135m` and `smollm2-135m-instruct` (`HuggingFaceTB/SmolLM2-135M` and `-Instruct` at pinned revisions), `tinystories` (full corpus for C1), `course-corpora` (the TinyStories 5 MB slice and its `ts-train.bin`, `ts-val.bin`, `ts-2m.bin` token streams, `wiki-mini`; about 20 MB), and `tiny-hf-models` (random tiny GPT2, BERT, ELECTRA, Llama variants including `tiny-llama-2l`, `tiny-llama-yarn`, `tiny-llama-3`, Mistral-SWA, DeepseekV3-MLA, Mixtral-MoE: safetensors + logits; about 8 MB). The last two are generated by `course/oracle/` and published as release assets of supersource. CI caches them by sha. Learners can also pull weights with their own `{tinyllm} pull`.
+**Large assets** (`course/fixtures/ASSETS.tsv`: url, revision, sha256, license) are never committed and are fetched by `ol fetch <asset>` into `$TINYLLM_CACHE`: `smollm2-135m` and `smollm2-135m-instruct` (`HuggingFaceTB/SmolLM2-135M` and `-Instruct` at pinned revisions), `tinystories` (full corpus for C1), `course-corpora` (the TinyStories 5 MB slice and its `ts-train.bin`, `ts-val.bin`, `ts-2m.bin` token streams, `wiki-mini`; about 20 MB), and `tiny-hf-models` (random tiny GPT2, BERT, ELECTRA, Llama variants including `tiny-llama-2l`, `tiny-llama-yarn`, `tiny-llama-3`, Mistral-SWA, DeepseekV3-MLA, Mixtral-MoE: safetensors + logits; about 8 MB). The last two are generated by `course/oracle/` and published as release assets of openlearn. CI caches them by sha. Learners can also pull weights with their own `{tinyllm} pull`.
 
 **Pass 12 committed fixtures (B14, about 6.3 MiB).**
 
@@ -3833,7 +3833,7 @@ About 21 MB committed at design time, which leaves room for per-module fixtures 
 
 **Pass 12 assets and licenses (B14).** Verified on 2026-10-10 from the official sources. Weights are never committed. A committed excerpt is allowed only where the license permits redistribution, and its `MANIFEST.tsv` row carries the license and the attribution. Course-generated assets (`tiny-mm-models`, random weights, Apache-2.0; `mm-shapes`, procedural, CC0) are `build:` rows made locally by maintainer generators, never published.
 
-| Asset | Official source (pinned) | License, as stated by the source | `ss fetch` row | May be committed |
+| Asset | Official source (pinned) | License, as stated by the source | `ol fetch` row | May be committed |
 |---|---|---|---|---|
 | `smolvlm-256m-instruct` | https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct at `7e3e67edbbed1bf9888184d9df282b700a323964` | Apache-2.0 (card metadata; card text: "We release the SmolVLM checkpoints under the Apache 2.0 license"). Components: SigLIP `google/siglip-base-patch16-512`, Apache-2.0 (card metadata); SmolLM2-135M-Instruct, Apache-2.0 (already in `ASSETS.tsv`) | yes, 9 files | weights no; derived fixtures (pixel values, sparse logits, greedy ids) yes, with attribution |
 | `whisper-tiny` | https://huggingface.co/openai/whisper-tiny at `169d4a4341b33bc18d8881c4b69c2e104e1cc0af` | Apache-2.0 (HF card metadata). The upstream repository https://github.com/openai/whisper states "Whisper's code and model weights are released under the MIT License". Both are permissive; `ASSETS.tsv` records the HF distribution's Apache-2.0 and the model card cites both | yes, 8 files | weights no; derived fixtures yes |
@@ -3843,11 +3843,11 @@ About 21 MB committed at design time, which leaves room for per-module fixtures 
 | Common Voice | Mozilla Data Collective (https://mozilladatacollective.com; the HF card for `mozilla-foundation/common_voice_17_0` says the datasets are available only there since October 2025) | CC0-1.0 plus dataset terms on its listings: "It is forbidden to attempt to determine the identity of speakers", and on current listings re-hosting or re-sharing the dataset is forbidden; download needs an account | **no** | **no**. Stand-in: `asr-groups-mini`, built locally from `librispeech-test-clean`: speaker groups from LibriSpeech's `SPEAKERS.TXT` (reader sex) plus seeded channel-degradation groups (telephone band 300 to 3400 Hz; white noise at 10 dB SNR, PCG32 per clip). It replaces the draft's `cv-accent-mini`; real accent groups are an optional learner-local step under the learner's own Common Voice account (DEVIATIONS B14-02) |
 | `haarcascade-frontalface` (data.12) | OpenCV `data/haarcascades/haarcascade_frontalface_default.xml` | not yet verified (Intel License Agreement in the file header, BSD-3-style); open question Q20 | not yet | no |
 
-**Calibration.** `ss bench --calibrate` times the reference tiled matmul and decode loop on the current machine and stores the ratios; every local perf matcher is expressed relative to it (for example `learner_tokens_per_s >= 0.5 x ref`). For SLOs checked on kind, `ss bench --calibrate --in-cluster` runs the same benchmark as a Job in the learner's namespace (Linux, the kind VM's CPU and memory), and the SLO defaults scale from that number, not from the host.
+**Calibration.** `ol bench --calibrate` times the reference tiled matmul and decode loop on the current machine and stores the ratios; every local perf matcher is expressed relative to it (for example `learner_tokens_per_s >= 0.5 x ref`). For SLOs checked on kind, `ol bench --calibrate --in-cluster` runs the same benchmark as a Job in the learner's namespace (Linux, the kind VM's CPU and memory), and the SLO defaults scale from that number, not from the host.
 
 ### 5.12 The testing ladder
 
-**Our tests are annotated exemplars.** Every course test carries a header; `ss verify course` rejects tests missing `WHY` or `KIND`.
+**Our tests are annotated exemplars.** Every course test carries a header; `ol verify course` rejects tests missing `WHY` or `KIND`.
 
 ```python
 def test_top_p_keeps_the_crossing_token():
@@ -3868,35 +3868,35 @@ Course rule: every test catches at least one committed mutant or is tagged `smok
 | R0 Read | tracer, L0 | full annotated suite | nothing | course tests pass | craft.03 (and craft.01 for the tracer) |
 | R1 Fill the oracle | L0.3+, math | tests with `expected = ...  # TODO: compute by hand` holes | expected values by hand | hole-filled test passes against ref and their impl; values checked against hidden values | craft.03 |
 | R2 Name-given cases | L1, ds | test names and docstrings, empty bodies | bodies | mutation 0.60 | craft.03 |
-| R3 Red then green | L2, L3, ds | interface and one test | tests first (`ss tdd red`), then code | mutation 0.70 + 1 semantic; red-before-green journal | craft.03 |
-| R4 Properties | L1.5, L3, dur, ds | properties in prose | Hypothesis / proptest / rapid / `ss_prop.h` | mutation 0.80, all semantic | craft.04 |
+| R3 Red then green | L2, L3, ds | interface and one test | tests first (`ol tdd red`), then code | mutation 0.70 + 1 semantic; red-before-green journal | craft.03 |
+| R4 Properties | L1.5, L3, dur, ds | properties in prose | Hypothesis / proptest / rapid / `ol_prop.h` | mutation 0.80, all semantic | craft.04 |
 | R5 Oracles and gradcheck | L4 to L7 | fixtures, their own `gradcheck` (graded tests may use it; course tests never do, D35) | differential tests and gradchecks for every backward | mutation 0.80; must kill the "transposed grad" mutant | craft.05 |
 | R6 Contract tests | gw, ag, L10 (P7) | OpenAPI spec | consumer-driven contract tests for gateway to engine | mutation 0.80 on gateway units | craft.20 |
-| R7 Benchmarks and perf gates | L9, L10 | `ss_bench.h`, criterion, `testing.B` | benchmark + CI regression gate with a budget file | **perf mutants** (2x slowdown: loop order swap, tiling disabled) must trip the gate; 0.90 | craft.06 |
+| R7 Benchmarks and perf gates | L9, L10 | `ol_bench.h`, criterion, `testing.B` | benchmark + CI regression gate with a budget file | **perf mutants** (2x slowdown: loop order swap, tiling disabled) must trip the gate; 0.90 | craft.06 |
 | R8 Model evals | C1, L11 (P9), L12 | held-out split, judge prompt | eval suite: held-out loss, seeded quality score, regression threshold | **model mutants** (wrong RoPE base, one layer zeroed, tokenizer off by one merge) flagged at p < 0.05 over 5 seeds | craft.22 |
 | R9 Agent evals | ag (P10) | saige-style scorer interfaces | suite with scorers, LLM judge, A/B | **agent mutants** (tool description removed, retrieval disabled, system prompt truncated) detected with non-overlapping 95% CIs | craft.23 |
 | R10 Resilience tests | dur (P8), ops | fault injectors as a library | kill a worker mid-workflow and assert exactly once; partition the Raft leader and check linearizability (optional with dur.10) | **resilience mutants** (idempotency key ignored, lease not renewed, fsync skipped) each fail the suite | craft.21 |
 
-`ss tdd red <ID>` runs the learner's graded tests against their current units and **requires failure**, recording `(test hash, unit hash, ts)`. `ss tdd green <ID>` requires a pass with the same test hash. From R3 on, `ss check` requires a red record per test file that predates its green.
+`ol tdd red <ID>` runs the learner's graded tests against their current units and **requires failure**, recording `(test hash, unit hash, ts)`. `ol tdd green <ID>` requires a pass with the same test hash. From R3 on, `ol check` requires a red record per test file that predates its green.
 
-### 5.13 `ss export`
+### 5.13 `ol export`
 
 ```
-ss export ~/src/forge --remote git@github.com:me/forge.git
+ol export ~/src/forge --remote git@github.com:me/forge.git
 ```
 
 1. Refuses on a dirty learner tree.
 2. `git clone --no-hardlinks` of the learner repo, keeping history (their conventional commits are part of the deliverable).
-3. Vendors course tests and fixtures for every passing module into `third_party/supersource/tests/<ID>/` and `third_party/supersource/fixtures/`, plus the frozen helpers (`tests/_lib`), `third_party/supersource/{VERSION,LICENSE,NOTICE}` (Apache-2.0 attribution, supersource sha) and `ASSETS.tsv` for large assets. It also writes the minimum **glue** for the vendored tests to run natively: `third_party/supersource/go.work` (the learner module, `contracts/go`, the vendored Go tests), an `ss-tests` crate whose manifest adds it to a workspace file under `third_party/supersource/rust/`, and a `conftest.py` that sets `TINYLLM_FIXTURES` and registers the Hypothesis profile. The glue is test wiring, not a runner or CI.
-4. Excludes `course/ref`, `course/mutants`, solve keys, `.ss/`, and reference entry points. Nothing from the reference ever lived in the learner repo, so there is nothing to scrub.
-5. Writes `third_party/supersource/STATUS.md`: per module `pass`, `assisted`, `spoiled`, `self`, or `incomplete`, mutation scores, milestones earned. Fails on `incomplete` unless `--allow-incomplete`.
+3. Vendors course tests and fixtures for every passing module into `third_party/openlearn/tests/<ID>/` and `third_party/openlearn/fixtures/`, plus the frozen helpers (`tests/_lib`), `third_party/openlearn/{VERSION,LICENSE,NOTICE}` (Apache-2.0 attribution, openlearn sha) and `ASSETS.tsv` for large assets. It also writes the minimum **glue** for the vendored tests to run natively: `third_party/openlearn/go.work` (the learner module, `contracts/go`, the vendored Go tests), an `ol-tests` crate whose manifest adds it to a workspace file under `third_party/openlearn/rust/`, and a `conftest.py` that sets `TINYLLM_FIXTURES` and registers the Hypothesis profile. The glue is test wiring, not a runner or CI.
+4. Excludes `course/ref`, `course/mutants`, solve keys, `.ol/`, and reference entry points. Nothing from the reference ever lived in the learner repo, so there is nothing to scrub.
+5. Writes `third_party/openlearn/STATUS.md`: per module `pass`, `assisted`, `spoiled`, `self`, or `incomplete`, mutation scores, milestones earned. Fails on `incomplete` unless `--allow-incomplete`.
 6. Prints the native commands that run the vendored tests in each language. It writes no runner and no CI file; wiring them into CI is `dep.05`.
 
-**Learner CI before export (craft.01 recipe).** The learner's repo lives in `.scratchpad/course/` (or `SS_COURSE_HOME`) and is pushed to its own remote, where supersource is not present. Its CI checks out public supersource at the sha in `contracts/VERSION` into `.ss/supersource` and runs `SS_COURSE_HOME=$PWD .ss/supersource/practice/bin/ss check --all --ci`. `--ci` never uses `--ref-deps`. In Pass 0 there are no started modules and the step is trivially green; from Pass 1 it checks every started module.
+**Learner CI before export (craft.01 recipe).** The learner's repo lives in `.scratchpad/course/` (or `OL_COURSE_HOME`) and is pushed to its own remote, where openlearn is not present. Its CI checks out public openlearn at the sha in `contracts/VERSION` into `.ol/openlearn` and runs `OL_COURSE_HOME=$PWD .ol/openlearn/practice/bin/ol check --all --ci`. `--ci` never uses `--ref-deps`. In Pass 0 there are no started modules and the step is trivially green; from Pass 1 it checks every started module.
 
 ### 5.14 Verification and CI
 
-**`ss verify course` (per module):**
+**`ol verify course` (per module):**
 
 | # | Check | Fails when |
 |---|---|---|
@@ -3907,10 +3907,10 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 | 5 | markers | ownership rule (5.2); every unit in `units` has markers for this id; markers wrap whole function bodies only |
 | 6 | mutants | every patch applies and is killed; reference learner tests reach the threshold |
 | 7 | solve keys | `expect` passes, every reject fails |
-| 8 | chapter contract | `ss lint` passes for the chapter (6.5) |
+| 8 | chapter contract | `ol lint` passes for the chapter (6.5) |
 | 9 | call site | `kind = "build"` has a `used_by` entry that is a module, not a milestone or side quest (a milestone reference does not count) |
 | 10 | test annotations | `WHY` and `KIND` present; `CATCHES` ids exist; course tests import assertion, gradcheck, and RNG helpers only from the frozen helpers (D35) |
-| 11 | paths | `ss learn --verify`, including the check column and stage order (a module appears after every dep within its pass) |
+| 11 | paths | `ol learn --verify`, including the check column and stage order (a module appears after every dep within its pass) |
 | 12 | fixtures | manifest hashes, per-file and per-batch size budgets, every referenced fixture id resolves |
 | 13 | registry | the 3.4 invariants: mirror rule for `deps`/`used_by`, pass order of deps, `reading`, and call sites, `upgrades` call-site inheritance |
 | 14 | seams | an AST lint over every reference unit rejects references to another unit's names that the contract does not declare, and each reference unit compiles against stubbed neighbours (2.15) |
@@ -3921,24 +3921,24 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 
 | Job | Trigger | Runner | Budget | Runs |
 |---|---|---|---|---|
-| `lint` | PR | ubuntu | 3 min | ruff, `gofmt -l`, `cargo fmt --check`, `clang-format --dry-run` on `course/`; `ss lint` |
+| `lint` | PR | ubuntu | 3 min | ruff, `gofmt -l`, `cargo fmt --check`, `clang-format --dry-run` on `course/`; `ol lint` |
 | `harness-unit` | PR | ubuntu | 3 min | `pytest course/harness` (solve checker, overlay builder, stubber, mutation runner, matchers); existing `practice/bin/test_measure.py` |
-| `course-verify-changed` | PR | ubuntu | 12 min | `ss verify course --changed origin/main` (changed modules, 4 sampled mutants each with a persisted kill cache; dependents' smoke tests). The full mutant set runs nightly |
+| `course-verify-changed` | PR | ubuntu | 12 min | `ol verify course --changed origin/main` (changed modules, 4 sampled mutants each with a persisted kill cache; dependents' smoke tests). The full mutant set runs nightly |
 | `course-verify-macos` | PR, when C or Rust course files change | macos-14 | 10 min | same for C and Rust modules (Apple clang, Accelerate, standalone C test binaries) |
-| `parity-golden` | PR | ubuntu | 4 min | `ss parity` golden mode |
-| `reference-learner-e2e` | nightly | ubuntu | 100 min | `ss verify course --e2e`: assemble a learner repo from `course/ref` + `course/ref/entry`, run every `ci = "pr"` milestone step **in `--smoke` mode** (reduced configs; full training milestones such as MS-L3, MS-L4, and MS-L6 run nightly) and `ss conform` on both tiers, then `ss export` into a temp dir and run the vendored tests natively through the generated glue |
-| `milestone-p1-kind` | nightly (the kind job runs every kind milestone, MS-P1 included) | ubuntu (kind via `helm/kind-action`) | 15 min | `ss milestone MS-P1` against the reference system, kind steps included |
-| `practice`, `paths` | PR | ubuntu | existing | existing jobs; `ss learn --verify` |
+| `parity-golden` | PR | ubuntu | 4 min | `ol parity` golden mode |
+| `reference-learner-e2e` | nightly | ubuntu | 100 min | `ol verify course --e2e`: assemble a learner repo from `course/ref` + `course/ref/entry`, run every `ci = "pr"` milestone step **in `--smoke` mode** (reduced configs; full training milestones such as MS-L3, MS-L4, and MS-L6 run nightly) and `ol conform` on both tiers, then `ol export` into a temp dir and run the vendored tests natively through the generated glue |
+| `milestone-p1-kind` | nightly (the kind job runs every kind milestone, MS-P1 included) | ubuntu (kind via `helm/kind-action`) | 15 min | `ol milestone MS-P1` against the reference system, kind steps included |
+| `practice`, `paths` | PR | ubuntu | existing | existing jobs; `ol learn --verify` |
 | `full-verify` | nightly | ubuntu + macos-14, **sharded by layer** (math, spine, systems, operations) | 90 min per shard | all modules, 3 determinism runs, `CATCHES` proven per test, mutant recheck through the cache, full reverse-dependent verification, live parity fuzz, `go test -race`, `go test -fuzz` 60 s per target, Miri and Rust TSan on a pinned nightly |
 | `milestones-full` | nightly | ubuntu | 60 min | every `ci = "nightly"` milestone step and full configs of MS-L3, MS-L4, MS-L6 |
-| `hf-real` | nightly | ubuntu | 20 min | `ss fetch smollm2-135m smollm2-135m-instruct` (cached), real-weights parity, tool calls, `ci = "nightly"` steps |
-| `hf-real-mm` | nightly | ubuntu | 20 min | (Pass 12) `ss fetch smolvlm-256m-instruct whisper-tiny librispeech-test-clean` (cached by sha), the real-weight steps of MS-L13, MS-L14, and MS-L15 |
+| `hf-real` | nightly | ubuntu | 20 min | `ol fetch smollm2-135m smollm2-135m-instruct` (cached), real-weights parity, tool calls, `ci = "nightly"` steps |
+| `hf-real-mm` | nightly | ubuntu | 20 min | (Pass 12) `ol fetch smolvlm-256m-instruct whisper-tiny librispeech-test-clean` (cached by sha), the real-weight steps of MS-L13, MS-L14, and MS-L15 |
 | `train-smoke` | nightly | ubuntu | 25 min | capstone pipeline on a 2 MB TinyStories slice through `CorpusBuild`, 300 reference training steps, threshold, serve, conformance (`MS-C1 --smoke`) |
-| `kind-e2e` | nightly | ubuntu (kind) | 40 min | reference charts (including KEDA), OTel/Prometheus/Tempo, `ss conform` through the NodePort, one drill per night by rotation (`--seed $(date +%j)`, including ops.13 and ops.14 from Pass 12) with the scripted responder and the `drill` SLO profile, the MS-multimodal-prod steps, optional Raft linearizability over 5 min |
+| `kind-e2e` | nightly | ubuntu (kind) | 40 min | reference charts (including KEDA), OTel/Prometheus/Tempo, `ol conform` through the NodePort, one drill per night by rotation (`--seed $(date +%j)`, including ops.13 and ops.14 from Pass 12) with the scripted responder and the `drill` SLO profile, the MS-multimodal-prod steps, optional Raft linearizability over 5 min |
 | `oracle-drift` | weekly + manual | ubuntu | 30 min | regenerate fixtures and compare within tolerance (5.11) |
-| local only | never in CI | dev machine | | `ss bench` perf gates and `perf` milestone steps, full C1 training, drills against the learner's own cluster |
+| local only | never in CI | dev machine | | `ol bench` perf gates and `perf` milestone steps, full C1 training, drills against the learner's own cluster |
 
-### 5.15 `path.tsv` check column and `ss learn`
+### 5.15 `path.tsv` check column and `ol learn`
 
 `path.tsv` gains an optional fifth column, `check`. Rows with four columns stay manual.
 
@@ -3962,7 +3962,7 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 
 | File | Change |
 |---|---|
-| `practice/bin/ss` | course dispatch (5.2, including the `bench` routing that keeps `ss bench [lang]`); `MARKER_RE` and `strip_solution(want)` with per-language compiling stubs for course files; `expand_rows`, `learn_mark`, `learn_verify`, `learn_stages` for the check column; `verify course` special case before `fan_out`'s `valid_kind`; usage block lists the course verbs |
+| `practice/bin/ol` | course dispatch (5.2, including the `bench` routing that keeps `ol bench [lang]`); `MARKER_RE` and `strip_solution(want)` with per-language compiling stubs for course files; `expand_rows`, `learn_mark`, `learn_verify`, `learn_stages` for the check column; `verify course` special case before `fan_out`'s `valid_kind`; usage block lists the course verbs |
 | `practice/README.md` | one section, "Course modules", pointing to `course/README.md` |
 | `.github/workflows/ci.yml` | PR jobs from 5.14; new `nightly.yml` and `oracle-drift.yml` |
 | `pyproject.toml`, `uv.lock` | unchanged (harness and oracle are separate uv projects) |
@@ -3979,14 +3979,14 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 - **First principles, every symbol defined.** Beat 2 has a symbol table whenever the chapter contains math.
 - **The worked example reappears as a test.** The beat 3 numbers are the first case in the beat 4 test table, so the learner and the test agree on the definition before any code.
 - **Pitfalls are tests.** Each pitfall row names the course test that catches it and the semantic mutant that plants it.
-- **Nothing left on its own.** Beat 6 links back (prerequisites) and forward (call sites) by module id; `ss lint` enforces that every `deps` id appears as Back and every `used_by` id as Forward.
+- **Nothing left on its own.** Beat 6 links back (prerequisites) and forward (call sites) by module id; `ol lint` enforces that every `deps` id appears as Back and every `used_by` id as Forward.
 - **Textbooks become optional depth.** The card's "Optional depth" row replaces the old "primary reference" framing.
 - **Going further.** Every build chapter ends with where production systems (saige, Temporal, vLLM, SGLang, llama.cpp, FlashAttention, HF tokenizers, datatrove, Envoy) go beyond the learner's piece.
 
 ### 6.2 Build chapter skeleton
 
 ````markdown
-<!-- ss:module M09.2 -->
+<!-- ol:module M09.2 -->
 # Stable numerics: logsumexp, softmax, compensated sums
 
 ## Overview
@@ -4009,11 +4009,11 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 ## How to work this chapter
 
 ```bash
-ss start M09.2              # stubs into your repo, contract alongside
-ss tests M09.2              # read the test catalog first
-ss check M09.2              # exit code is the verdict
-ss check M09.2 --ref-deps   # only if you skipped a prerequisite
-ss diff  M09.2              # after passing: your code against the reference
+ol start M09.2              # stubs into your repo, contract alongside
+ol tests M09.2              # read the test catalog first
+ol check M09.2              # exit code is the verdict
+ol check M09.2 --ref-deps   # only if you skipped a prerequisite
+ol diff  M09.2              # after passing: your code against the reference
 ```
 
 ---
@@ -4068,7 +4068,7 @@ def log_softmax(x: np.ndarray, axis: int = -1) -> np.ndarray: ...
 | Forward | `L0.3` | fused cross-entropy via `log_softmax` |
 | Forward | optional `L9.2` | the same math in one pass, in C |
 
-If you skip this module, `ss check L0.3` fails with
+If you skip this module, `ol check L0.3` fails with
 `needs M09.2: build it, or pass --ref-deps`.
 
 ## Going further
@@ -4086,32 +4086,32 @@ If you skip this module, `ss check L0.3` fails with
 |---|---|
 | `## Overview` (primary reference, prerequisites, time) | `## Overview` becomes the **module card**; textbooks move to "Optional depth" |
 | `## Key Takeaways` | unchanged |
-| `## How to Study` | `## How to work this chapter` (the `ss` verbs) |
+| `## How to Study` | `## How to work this chapter` (the `ol` verbs) |
 | `# Concepts & Techniques`, `## Core Insight`, numbered sections | beats 1 to 5 |
 | Technique Catalog | beat 4 tests table + beat 5 pitfalls table |
 | `## Connections to Other Tracks` | `## 6. Where it's used next` (by module id) |
 | `## Company Relevance` | optional, last |
 | (new) | `## Going further` |
 
-Topic READMEs stay as topic intros in house style and gain a `## Chapters` table (`# | Module | Chapter | Kind | Pass`) generated by `ss lint --fix-index`. Their survey sections remain as optional depth; content duplicated by a chapter is cut to a pointer (section 8).
+Topic READMEs stay as topic intros in house style and gain a `## Chapters` table (`# | Module | Chapter | Kind | Pass`) generated by `ol lint --fix-index`. Their survey sections remain as optional depth; content duplicated by a chapter is cut to a pointer (section 8).
 
 ### 6.4 Kind variants (differences from the build skeleton)
 
 | Kind | Beat 3 | Beat 4 becomes | Verdict |
 |---|---|---|---|
-| `build` | worked example by hand | signature + tests table | `ss check <id>` |
-| `solve` | a worked solution of one problem | **problem set**: numbered problems and answer format (`solve/<S-ID>.toml`) | `ss check <S-ID>` (SymPy) |
-| `proof` | a fully written model proof of a sibling claim | **claim + rubric** from `course/rubrics/` | `ss check <id>` records a self-grade (`self`) |
-| `practice` (primers, craft, deploy, observe, docs, ethics) | a worked artifact (for example a filled ADR for a different decision) | **the artifact and its check**: path, required sections, lint | `ss check <id>` runs the artifact check (`helm lint`, ADR lint, SBOM present, ...) |
-| `drill` | a worked incident timeline | **inject, detect, mitigate, verify** | `ss drill start/end` |
-| milestone page (`paths/course-pNN-*/milestone.md`; not a module kind) | a demo transcript | **entry roles you must declare** in `system.toml` + the steps | `ss milestone <MS-ID>` |
-| `side` | as build | as build | `ss check <id>`; beat 6 says "no call site" and why it is still worth doing |
+| `build` | worked example by hand | signature + tests table | `ol check <id>` |
+| `solve` | a worked solution of one problem | **problem set**: numbered problems and answer format (`solve/<S-ID>.toml`) | `ol check <S-ID>` (SymPy) |
+| `proof` | a fully written model proof of a sibling claim | **claim + rubric** from `course/rubrics/` | `ol check <id>` records a self-grade (`self`) |
+| `practice` (primers, craft, deploy, observe, docs, ethics) | a worked artifact (for example a filled ADR for a different decision) | **the artifact and its check**: path, required sections, lint | `ol check <id>` runs the artifact check (`helm lint`, ADR lint, SBOM present, ...) |
+| `drill` | a worked incident timeline | **inject, detect, mitigate, verify** | `ol drill start/end` |
+| milestone page (`paths/course-pNN-*/milestone.md`; not a module kind) | a demo transcript | **entry roles you must declare** in `system.toml` + the steps | `ol milestone <MS-ID>` |
+| `side` | as build | as build | `ol check <id>`; beat 6 says "no call site" and why it is still worth doing |
 
-### 6.5 Link and lint rules (`ss lint`)
+### 6.5 Link and lint rules (`ol lint`)
 
 | Link | Mechanism | Rule |
 |---|---|---|
-| chapter to module | `<!-- ss:module <id> -->` on line 1 | id exists; card fields equal the registry |
+| chapter to module | `<!-- ol:module <id> -->` on line 1 | id exists; card fields equal the registry |
 | chapter to contract | card link to `course/contracts/...` | file exists; contract header comment `chapter: <path>` points back |
 | chapter to tests | card path + beat 4 table | every test named in beat 4 exists in `course/tests/<id>/`, and every test there is named |
 | chapter to milestone | card link | the milestone exercises the id |
@@ -4169,11 +4169,11 @@ paths/course-p12-multimodal/
 
 ### 7.2 The spiral invariant
 
-**After every pass, the learner's own system runs end to end and `ss milestone MS-P<n>` passes against their own code.** Every later module either upgrades a component **behind an unchanged contract** (declared with `upgrades`) or changes a contract through an explicit migration chapter. Pass gates rerun the smoke steps of every earlier gate, so the invariant is checked, not hoped for.
+**After every pass, the learner's own system runs end to end and `ol milestone MS-P<n>` passes against their own code.** Every later module either upgrades a component **behind an unchanged contract** (declared with `upgrades`) or changes a contract through an explicit migration chapter. Pass gates rerun the smoke steps of every earlier gate, so the invariant is checked, not hoped for.
 
 | Pass | Path | Weeks at 10 to 12 h | System after the pass (all learner-built) | Gate |
 |---|---|---|---|---|
-| P0 | course-p00-setup | 1.5 | Python/numpy and shell/git/make primers; empty repo from `ss course init`; CI runs commit lint, native tests, and `ss check --all --ci` on every push | MS-P0 |
+| P0 | course-p00-setup | 1.5 | Python/numpy and shell/git/make primers; empty repo from `ol course init`; CI runs commit lint, native tests, and `ol check --all --ci` on every push | MS-P0 |
 | P1 | course-p01-tracer | 5 | C, Rust, HTTP/SSE, Go, and container primers; Python byte-level bigram (numpy logits), safetensors, Rust std-only engine streaming SSE with hand-written OTLP, Go gateway with a key check, kind + Helm + Jaeger, one trace, one drill, ADR-0001 | MS-P1 |
 | P2 | course-p02-foundations | 7.5 | the bigram retrained by **their autograd** (L0.5 takes over `bigram.py`), gradcheck everywhere, the token-stream reader; the engine unchanged (same checkpoint contract) | MS-P2 = MS-L0 |
 | P3 | course-p03-tokens-and-data | 7.5 | corpus pipeline v1 with ledger and decontamination, BPE, WordPiece, and Unigram in Python, BPE in Rust, n-gram/NPLM/word2vec run through `{tinyllm}`; the engine keeps serving the bigram | MS-P3 = MS-L1 + MS-corpus + MS-L2 |
@@ -4213,10 +4213,10 @@ P0 and P1 in full:
 
 ```text
 # paths/course-p00-setup/path.tsv
-1	Toolchain	paths/course-p00-setup/README.md	ss doctor reports python, uv, cc, cargo, go, docker, kubectl, kind, helm, tilt present.	-
+1	Toolchain	paths/course-p00-setup/README.md	ol doctor reports python, uv, cc, cargo, go, docker, kubectl, kind, helm, tilt present.	-
 2	Python and numpy	software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md	You can predict a broadcast's shape and vectorize a count.	module:lang.01
 3	Shell, git, make, processes	software-craftsmanship/12-language-and-tool-primers/02-shell-git-make.md	Your script exits 130 on SIGTERM and make rebuilds only what changed.	module:lang.02
-4	Your repo and CI gate	software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md	ss course init created your repo; CI lints commit messages, runs native tests, and runs ss check --all --ci.	module:craft.01
+4	Your repo and CI gate	software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md	ol course init created your repo; CI lints commit messages, runs native tests, and runs ol check --all --ci.	module:craft.01
 5	Milestone	paths/course-p00-setup/milestone.md	Your first conventional commit is green in CI.	milestone:MS-P0
 ```
 
@@ -4238,7 +4238,7 @@ P0 and P1 in full:
 14	Milestone	paths/course-p01-tracer/milestone.md	Every layer is yours and runs end to end.	milestone:MS-P1
 ```
 
-Later passes as ordered stages (each row's check is the module or milestone id; optional items are reachable but not gating). Within a pass, every module follows all of its deps (`ss learn --verify`).
+Later passes as ordered stages (each row's check is the module or milestone id; optional items are reachable but not gating). Within a pass, every module follows all of its deps (`ol learn --verify`).
 
 | Pass | Ordered stages |
 |---|---|
@@ -4254,7 +4254,7 @@ Later passes as ordered stages (each row's check is the module or milestone id; 
 | P11 | craft.09 to craft.12 · craft.13 + drill ops.04 · craft.14 + drill ops.05 · craft.15 + drill ops.06 · craft.16 + drill ops.07 · drills ops.08 to ops.11 · craft.17 to craft.19 · review.02 · review.03 · ethics.06 · field.01 to field.07 · iv.01 · MS-ops · MS-P11 (optional: ops.12) |
 | P12 | lang.12 · M12.1 · M12.2 · M12.3 · M12.4 · M12.5 · M12.6 · S-M12 · L13.1 · L13.2 · L13.3 · L13.4 · L13.5 · L13.6 · L13.7 · MS-L13 · L14.1 · L14.2 · L14.3 · L14.4 · L14.5 · MS-L14 · ethics.08 · data.12 · data.10 · data.11 · data.13 · MS-mm-corpus · lang.13 · ds.10 · L15.1 · L15.2 · L15.3 · L15.4 · L15.5 · L15.6 · L15.7 · MS-L15 · gw.09 · gw.10 · gw.11 · load.03 · ethics.07 · dur.13 · dep.08 · obs.06 · drill ops.13 · drill ops.14 · craft.24 · review.04 · MS-multimodal-prod · MS-P12 (optional standalone C: L13.8 · L13.9 after L13.7 · L14.6 after L14.5 · MS-mm-kernels; side quests sq.audio-llm · sq.streaming-asr · sq.vision-agent · sq.jpeg-decoder · sq.video-frames) |
 
-Solve-only modules (`M02.4`, `M11.3`) remain reachable from their topic READMEs; optional C module M09.7 is reachable from the M09 chapter and standalone C milestone. `ss learn --verify` enforces that every core `build` module appears exactly once across the pass lists and that no stage precedes one of its deps.
+Solve-only modules (`M02.4`, `M11.3`) remain reachable from their topic READMEs; optional C module M09.7 is reachable from the M09 chapter and standalone C milestone. `ol learn --verify` enforces that every core `build` module appears exactly once across the pass lists and that no stage precedes one of its deps.
 
 ### 7.5 Just-in-time math
 
@@ -4295,7 +4295,7 @@ Math is not front-loaded. Each chapter gates the first spine part that calls it:
 
 ## 8. Consolidation map
 
-Churn is minimized: tracks stay top level, moves use `git mv`, and new directories appear only where no topic owns the concept. Historical coursework goes to `archive/` (excluded from the site, the book, and `ss verify`).
+Churn is minimized: tracks stay top level, moves use `git mv`, and new directories appear only where no topic owns the concept. Historical coursework goes to `archive/` (excluded from the site, the book, and `ol verify`).
 
 ### 8.1 Root files and infrastructure
 
@@ -4316,8 +4316,8 @@ Churn is minimized: tracks stay top level, moves use `git mv`, and new directori
 | `scripts/check_diagrams.sh` | diagram dirs updated (`software-craftsmanship/05-diagramming-c4/diagrams`, `responsible-ai`) |
 | `site/scripts/sync-content.mjs` | `TRACKS` edited the same way; `START` gains `paths/course/README.md` first; `SKIP` gains `^archive/` and every `^course/` path except `course/contracts/` (published so chapter contract links resolve); sidebar shows "Course" then "Library" |
 | `.github/workflows/ci.yml` | jobs from 5.14 |
-| `skills/study-plan`, `skills/study-session` | drive `ss next` and milestone status |
-| `skills/practice-impl` | repurposed as the authoring skill: reference + tests + mutants + chapter + registry row, then `ss verify course` |
+| `skills/study-plan`, `skills/study-session` | drive `ol next` and milestone status |
+| `skills/practice-impl` | repurposed as the authoring skill: reference + tests + mutants + chapter + registry row, then `ol verify course` |
 | `skills/puzzles` | unchanged |
 
 ### 8.2 Tracks
@@ -4435,26 +4435,26 @@ All practice rows stay as standalone warm-up drills unless noted (D29). A row wh
 
 ## 9. Authoring build order
 
-Every batch ends green on its verification command and leaves the **reference-assembled system** runnable: `ss verify course --e2e` builds a learner repo from `course/ref` plus `course/ref/entry`, and CI runs the batch's milestones against it (`ss milestone <MS-ID>` with `system.toml` pointing at the reference).
+Every batch ends green on its verification command and leaves the **reference-assembled system** runnable: `ol verify course --e2e` builds a learner repo from `course/ref` plus `course/ref/entry`, and CI runs the batch's milestones against it (`ol milestone <MS-ID>` with `system.toml` pointing at the reference).
 
-**Per-module authoring rule** (enforced by `ss verify course <id>`): the reference passes its tests; the stub fails them; course tests kill every committed mutant and at least 80% of generated ones before pruning; the chapter lints; every already-authored `used_by` module imports it.
+**Per-module authoring rule** (enforced by `ol verify course <id>`): the reference passes its tests; the stub fails them; course tests kill every committed mutant and at least 80% of generated ones before pruning; the chapter lints; every already-authored `used_by` module imports it.
 
 | Batch | Harness work | Modules (reference + tests + mutants + chapter + registry row) | Paths, new topic READMEs, committed fixture budget | Verification |
 |---|---|---|---|---|
-| **B1 Harness + tracer** | `course/modules/*.toml` loader, `modules.tsv` generator, registry invariants (3.4); dispatch including the `bench` routing (5.2); `ss course init`, `start/check/diff/show/reset/tests/status/next` in all four languages; marker ids, the compiling stubber, and the stubbed-tree compile lint; `course/ref/history/` snapshots and `upgrades` handling; cumulative overlay (Python in the learner's uv env with namespace paths, C standalone test binaries with stub objects and the counting allocator, Rust and Go copy farms with generated manifests); `contracts/VERSION` worktree resolution and the content-hash pre-check; `--ref-deps`; verdict ledger; frozen helpers (`tests/_lib` close, pcg32, gradcheck; `ss_test.h`); `ss milestone` with `system.toml` (`[build]`, port allocation, generated `runtime.toml`, smoke and kind tags, matchers including `tokens-equal` over emitted ids, `trace` for Jaeger, `ci-status`); `ss conform openapi:v0`; `ss drill` framework with the safety gate and journal; `ss doctor`; `ss lint`; `path.tsv` column 5; `ss verify course` checks 1 to 14; `ss check --all --ci` and the learner CI recipe; `ss export` with the test glue; site and book publish `course/contracts/` only; CI `course-verify-changed`, `milestone-p1-kind`, `reference-learner-e2e` (smoke) | lang.01 to lang.07, craft.01, M03.1, L0.0, L10.0, gw.00, dep.00, obs.00, ops.00, craft.02; contracts `tinyllm.h` (optional C exercises, matmul), `openai-subset.v0.yaml`, `formats/{safetensors,tokenizer}.md` (with the `bytes` tokenizer), `formats/config.schema.json`, `spec/cli-roles.md`, `config/system.schema.json`; MS-P0, MS-P1; root README gains a Course section | `paths/course/` (README, SYSTEM.md), `course-p00-setup`, `course-p01-tracer`; new topic READMEs `software-craftsmanship/12-language-and-tool-primers/`, `ml/08-tinyllm/` (+ `p00`, `p09`, `p10` part READMEs), `ai-platform-engineering/12-gateway/`, `systems/05-incident-response-and-chaos/`, `software-craftsmanship/{06-documentation-writing,08-code-review-and-ci}/`; fixtures 2 MiB (`small-corpora/tinyshakespeare.txt`, public domain) | `ss lint && ss learn --verify && ss verify course --changed origin/main && ss milestone MS-P0 && ss milestone MS-P1 && ss export "$(mktemp -d)/x" --allow-incomplete` |
-| **B2 Consolidation + solve** | all section 8 moves (`git mv`), `archive/`, binary deletions, link rewrite + `ss lint --links` over all markdown; `assemble_book.py` recursive discovery and track list; `sync-content.mjs`; `solve` checker (SymPy) with lettered parts and the `proof` rubric; `course/rubrics/` | S-M00, M00.1 to M00.4 (new topic); `information-theory` to `math/11`; role paths repointed (7.6) | new topic READMEs `math/00-precalculus/`, `responsible-ai/`, `archive/`; merged `software-craftsmanship/README.md`; fixtures 1 MiB | `ss lint --links && ss learn --verify && ss verify course && ./scripts/build-book.sh --path course && pnpm -C site build && ! git grep -nE '(information-theory\|diagramming-and-documentation\|programming-languages)/' -- '*.md' ':!archive' ':!CHANGELOG.md'` |
-| **B3 Foundations** | mutation runner (`ss mutate`, Python first, cached by unit, test, and patch hash; `ss check` sampling); `ss tdd`; the Hypothesis profile `ss` | M01.1 to M01.3, M02.1, M02.2, M03.1 to M03.4, M04.1, M04.2, M06.1, M06.3 (Python), M07.0, M07.3, M08.1 to M08.3, M09.1, M09.2, M10.1 to M10.4, M11.1; S-M01, S-M02, S-M03a, S-M04, S-M05, S-M06a, S-M07a, S-M08, S-M09a, S-M10a, S-M11a; L0.1 to L0.6 (L0.5 takes over `bigram.py`; L0.6 includes `TokenStream`); craft.03; MS-L0, MS-P2 | `course-p02-foundations`; new topic READMEs `math/{08-matrix-calculus-and-autodiff,09-numerical-methods-and-floating-point,10-optimization}/`, `software-craftsmanship/03-testing-mentality/` chapter index; fixtures 6 MiB (`ops-torch`, `optim-torch`, `digits`) | `ss verify course && ss milestone MS-P2 && ss milestone MS-P1 --smoke` |
-| **B4 Data structures + tokenizers** | Rust farm for standalone `tl-tok` and `tl-engine` crates; `ss fetch` and `ASSETS.tsv`, with `course-corpora` published as a release asset; parity runner (`tokenizer.bpe`, `rng`, `bloom`) | ds.05, ds.06, ds.08; M05.2, M06.2, M07.1, M07.2, M11.2; S-M06b, S-M07b; L1.1 to L1.6 (L1.4 core); craft.04; MS-L1 | first half of `course-p03-tokens-and-data`; new topic READMEs `algorithms/16-systems-data-structures/`, `ml/08-tinyllm/p01-tokenizers/`; fixtures 6 MiB (`tok-gpt2`, `tok-smollm2`, `tok-bert`) | `ss verify course && ss parity && ss milestone MS-L1` |
-| **B5 Data + statistical LM** | local HTTP fixture server (`flakyhttp`, no network in CI); decontamination fixtures | lang.08; data.01 to data.08, ethics.01, ethics.02; M03.5, M03.6, M11.4, S-M03b, S-M11b; L2.1 to L2.3; MS-corpus, MS-L2, MS-P3 | rest of `course-p03-tokens-and-data`; new topic READMEs `data-engineering/05-corpus-pipeline/`, `responsible-ai/{01-data-licensing,02-privacy-and-pii}/`, `ml/08-tinyllm/p02-statistical-lm/`; fixtures 4 MiB | `ss verify course && ss milestone MS-P3` |
-| **B6 Sequence models** | mutation runner for all languages (shared warm target dir, mutant cache); perf, model, agent, and resilience mutant classes scaffolded; `ref-thresholds` from 5 reference seeds | M07.4, S-M07c; L3.1 to L3.6 (L3.5 optional); L4.1 to L4.5; craft.07; MS-L3, MS-L4, MS-P4 | `course-p04-sequence-models`; new topic READMEs `ml/08-tinyllm/{p03-recurrent,p04-attention-origins}/`; fixtures 3 MiB | `ss verify course && ss milestone MS-P4 --smoke` (nightly: full) |
-| **B7 Transformer + modern block + zoo** | `course/oracle` generators for `tiny-hf-models` (published asset) and SmolLM2 parity with margin-filtered prompts; the near-tie rule in `tokens-equal`; zoo report schema | M01.4, M07.5, M07.7, S-M07d, M05.1; L5.1 to L5.5; L6.1 to L6.3, L6.5 to L6.7 (L6.4 optional); L7.1 to L7.9; craft.05; MS-L5, MS-L6, MS-L7, MS-P5 | `course-p05-transformer`; new topic READMEs `ml/08-tinyllm/{p05-transformer-2017,p06-objectives,p07-modern-block}/`; fixtures 8 MiB (`smollm2-parity`, margin prompts, `rope-scaling`, `lowp`, `configs`) | `ss verify course && ss milestone MS-P5 --smoke` (nightly: `hf-real`) |
-| **B8 Inference + kernels** | optional standalone C test binaries with sanitizers on macOS and Linux; the counting allocator; fixture parity suites for optional C modules; no production C backend | M07.6, M09.3 to M09.6, S-M09b; ds.07; L8.1 to L8.7; craft.06; MS-L8, MS-P6 (optional: ds.01 to ds.04, rt.02 to rt.04, M09.5 to M09.7, L9.1 to L9.6) | `course-p06-inference-and-kernels`; new topic READMEs `ml/08-tinyllm/{p08-inference,p09-kernels}/` chapter indexes; fixtures 6 MiB | `ss verify course && ss milestone MS-P6 --smoke` |
-| **B9 Serving platform** | generated proto code in `contracts/` (`tl-proto`, `contracts/go/gen`); full OpenAI conformance (v1, both tiers, `tools.*`, `priority.internal`, `requires`/pending); `testkit` (chaosproxy, otlpsink, promscrape, clock); drill `kill-decode` with the `drill` SLO profile and scripted responder; in-cluster calibration Job; scratch-copy builder for seeded PRs (craft.08); CI `kind-e2e` and `milestones-full` | lang.09 to lang.11; L10.1 to L10.9; load.01, load.02; gw.01 to gw.07, ds.09; dep.01 to dep.05; obs.01 to obs.04; ops.01; craft.08, craft.20; review.01; MS-L10, MS-gateway, MS-prod, MS-P7 | `course-p07-serving-platform`; new chapters in `ml/08-tinyllm/p10-serving/`, `ai-platform-engineering/12-gateway/`, `systems/04-observability/`, `infrastructure/01-containers-kubernetes/`; fixtures 4 MiB (recorded SSE streams, KV golden blobs) | `ss verify course && ss milestone MS-P7 --smoke` (nightly: kind) |
-| **B10 Durable** | `KillLoop`, `effects`, failpoints; `--test-activities` and the course test workflows; recorded histories; drills `durable-kill9`, `poison-task`; KEDA in the pinned charts | dur.01 to dur.09, dur.11 (dur.10 optional, MS-durable-ha); data.09; dep.06, obs.05; craft.21; ops.02, ops.03; MS-durable, MS-P8 | `course-p08-durable`; `ai-platform-engineering/05-durable-orchestration-and-workers/` merged README; fixtures 3 MiB | `ss verify course && ss milestone MS-P8 --smoke` (nightly: full, kind) |
-| **B11 Training at scale + capstone** | milestone `--smoke` mode for C1 (200 steps, about 1M params); the full reference run and the `short` ablations are author-local and calibrate `ref-thresholds` | M08.4; L11.1 (L11.2, L11.3 optional); ethics.03, ethics.04; dur.12; craft.22; C1; MS-L11, MS-C1, MS-P9 | `course-p09-capstone-training`; new topic READMEs `ml/08-tinyllm/{p11-training-at-scale,capstones}/`, `responsible-ai/{03-model-and-data-cards,04-bias-and-safety-evals}/`; fixtures 2 MiB | `ss verify course && ss milestone MS-P9 --smoke` (nightly: `train-smoke`) |
-| **B12 Agents (+ optional post-training)** | `faketool` provider (no network); prompt-injection fixture suite; `smollm2-135m-instruct` asset; frontier provider opt-in via env | ag.01 to ag.12; ethics.05; gw.08; dep.07; craft.23; MS-agent, MS-P10; optional S-M10b, L12.1 to L12.4, C2, MS-C2, `sq.multi-lora` | `course-p10-agents`; new topic READMEs `ai-platform-engineering/13-agent-sdk/`, `responsible-ai/05-usage-policy/`, `ml/08-tinyllm/p12-post-training/`; fixtures 4 MiB | `ss verify course && ss milestone MS-P10 --smoke` (nightly: real model) |
-| **B13 Operate + finish** | drills `kv-v2-migration`, `api-v2-migration`, `dep-upgrade`, `perf-regression`, `data-incident`, `noisy-neighbor`, `runaway-agent`, `eventlog-disk-full`, `raft-partition`; `openai-subset.v2.yaml`, KV v2 contracts and `history/` snapshots for craft.13 and craft.14; role paths (7.6); STUDY-PLAN, CS-CURRICULUM, README final; `sr.yaml` artifacts | craft.09 to craft.19 (craft.13 and craft.14 are build modules); ops.04 to ops.12; review.02, review.03; ethics.06; field.01 to field.07; iv.01; MS-ops, MS-P11 | `course-p11-operate`; new topic READMEs `software-craftsmanship/{05-diagramming-c4,07-type-systems,09-releases-and-deprecation,10-maintenance,11-security}/`, `field-engineering/08-mock-engagement/`, `interviews/defend-your-system/`, `responsible-ai/06-professional-responsibility/`; fixtures 1 MiB | `ss lint --links && ss learn --verify && ss verify course --nightly && for m in MS-P0 MS-P1 MS-P2 MS-P3 MS-P4 MS-P5 MS-P6 MS-P7 MS-P8 MS-P9 MS-P10; do ss milestone $m --smoke \|\| exit 1; done && ./scripts/build-book.sh && pnpm -C site build` |
-| **B14 Multimodal: vision and speech** (Pass 12, after B13) | registry: pass 12 and the `L13` to `L15` parts (`L[0-9]{1,2}` already matches); Rust farm builds with `candle-core`/`candle-nn` (cpu in CI) and the new crate `tl-media` in the contract pre-check; `allowed-deps.toml` additions (Pillow, `image`, `rustfft`, `fast_image_resize`, `rubato`, `flate2`) and the forbidden list; matcher `npz-close`; placeholders `{emb_port}`, `{asset-rev:<id>}`; `chaos` kills for EPD faults; `ss conform --cases` and `multipart/form-data` in the OpenAPI runner (official `openai` client `audio.transcriptions`); conformance suite `encoder-grpc/`; parity suites `image.decode`, `image.preprocess`, `image.tokens`, `audio.logmel`, `asr.decode`, `media.hash`, `embed.wire.v1`; generated code for `tl/encoder/v1` in `tl-proto` and `contracts/go/gen`; standalone C test binaries with fixture parity for the optional `conv.h`, `image.h`, `audio.h` (sanitizers and the counting allocator, as in B8; no stub library for other languages, no `tl-sys`); registry support for `optional = true` milestones; drills `encoder-pool-loss` (`scale-zero`) and `image-flood` (`tenant-flood` with a `media-flood` profile) with scripted responders; `hf-real-mm`; `kind-e2e` rotation adds ops.13 and ops.14 and the MS-multimodal-prod steps; `ASSETS.tsv` rows and `build:` generators per 5.11 | lang.12, lang.13; M12.1 to M12.6, S-M12; L13.1 to L13.7; L14.1 to L14.5; L15.1 to L15.7; ds.10; data.10 to data.13; dur.13; gw.09 to gw.11; load.03; dep.08; obs.06; ops.13, ops.14; ethics.07, ethics.08; craft.24; review.04; MS-L13, MS-L14, MS-mm-corpus, MS-L15, MS-multimodal-prod, MS-P12; optional L13.8, L13.9, L14.6 and MS-mm-kernels (authored last; core verification never depends on them); side quests sq.audio-llm, sq.streaming-asr, sq.vision-agent, sq.jpeg-decoder, sq.video-frames | `paths/course-p12-multimodal/` (README, `path.tsv`, `milestone.md`); `paths/course/path.tsv` gains `@course-p12-multimodal`; new topic README `math/12-signals-and-images/`; new part READMEs `ml/08-tinyllm/{p13-vision,p14-speech,p15-multimodal-serving}/`; chapter indexes in `data-engineering/05-corpus-pipeline/`, `ai-platform-engineering/12-gateway/`, `responsible-ai/{02-privacy-and-pii,04-bias-and-safety-evals}/`; `ml/05-foundation-models/README.md` section 4 gains pointers to L13.5, L13.7, L14; fixtures 6 MiB | `ss lint && ss learn --verify && ss verify course --changed origin/main && ss parity && ss conform openapi:v2 --target engine --cases 'mm.*,audio.*' && ss milestone MS-P12 --smoke` (nightly: `hf-real-mm` for the real-weight steps, `kind-e2e` for MS-multimodal-prod) |
+| **B1 Harness + tracer** | `course/modules/*.toml` loader, `modules.tsv` generator, registry invariants (3.4); dispatch including the `bench` routing (5.2); `ol course init`, `start/check/diff/show/reset/tests/status/next` in all four languages; marker ids, the compiling stubber, and the stubbed-tree compile lint; `course/ref/history/` snapshots and `upgrades` handling; cumulative overlay (Python in the learner's uv env with namespace paths, C standalone test binaries with stub objects and the counting allocator, Rust and Go copy farms with generated manifests); `contracts/VERSION` worktree resolution and the content-hash pre-check; `--ref-deps`; verdict ledger; frozen helpers (`tests/_lib` close, pcg32, gradcheck; `ol_test.h`); `ol milestone` with `system.toml` (`[build]`, port allocation, generated `runtime.toml`, smoke and kind tags, matchers including `tokens-equal` over emitted ids, `trace` for Jaeger, `ci-status`); `ol conform openapi:v0`; `ol drill` framework with the safety gate and journal; `ol doctor`; `ol lint`; `path.tsv` column 5; `ol verify course` checks 1 to 14; `ol check --all --ci` and the learner CI recipe; `ol export` with the test glue; site and book publish `course/contracts/` only; CI `course-verify-changed`, `milestone-p1-kind`, `reference-learner-e2e` (smoke) | lang.01 to lang.07, craft.01, M03.1, L0.0, L10.0, gw.00, dep.00, obs.00, ops.00, craft.02; contracts `tinyllm.h` (optional C exercises, matmul), `openai-subset.v0.yaml`, `formats/{safetensors,tokenizer}.md` (with the `bytes` tokenizer), `formats/config.schema.json`, `spec/cli-roles.md`, `config/system.schema.json`; MS-P0, MS-P1; root README gains a Course section | `paths/course/` (README, SYSTEM.md), `course-p00-setup`, `course-p01-tracer`; new topic READMEs `software-craftsmanship/12-language-and-tool-primers/`, `ml/08-tinyllm/` (+ `p00`, `p09`, `p10` part READMEs), `ai-platform-engineering/12-gateway/`, `systems/05-incident-response-and-chaos/`, `software-craftsmanship/{06-documentation-writing,08-code-review-and-ci}/`; fixtures 2 MiB (`small-corpora/tinyshakespeare.txt`, public domain) | `ol lint && ol learn --verify && ol verify course --changed origin/main && ol milestone MS-P0 && ol milestone MS-P1 && ol export "$(mktemp -d)/x" --allow-incomplete` |
+| **B2 Consolidation + solve** | all section 8 moves (`git mv`), `archive/`, binary deletions, link rewrite + `ol lint --links` over all markdown; `assemble_book.py` recursive discovery and track list; `sync-content.mjs`; `solve` checker (SymPy) with lettered parts and the `proof` rubric; `course/rubrics/` | S-M00, M00.1 to M00.4 (new topic); `information-theory` to `math/11`; role paths repointed (7.6) | new topic READMEs `math/00-precalculus/`, `responsible-ai/`, `archive/`; merged `software-craftsmanship/README.md`; fixtures 1 MiB | `ol lint --links && ol learn --verify && ol verify course && ./scripts/build-book.sh --path course && pnpm -C site build && ! git grep -nE '(information-theory\|diagramming-and-documentation\|programming-languages)/' -- '*.md' ':!archive' ':!CHANGELOG.md'` |
+| **B3 Foundations** | mutation runner (`ol mutate`, Python first, cached by unit, test, and patch hash; `ol check` sampling); `ol tdd`; the Hypothesis profile `ol` | M01.1 to M01.3, M02.1, M02.2, M03.1 to M03.4, M04.1, M04.2, M06.1, M06.3 (Python), M07.0, M07.3, M08.1 to M08.3, M09.1, M09.2, M10.1 to M10.4, M11.1; S-M01, S-M02, S-M03a, S-M04, S-M05, S-M06a, S-M07a, S-M08, S-M09a, S-M10a, S-M11a; L0.1 to L0.6 (L0.5 takes over `bigram.py`; L0.6 includes `TokenStream`); craft.03; MS-L0, MS-P2 | `course-p02-foundations`; new topic READMEs `math/{08-matrix-calculus-and-autodiff,09-numerical-methods-and-floating-point,10-optimization}/`, `software-craftsmanship/03-testing-mentality/` chapter index; fixtures 6 MiB (`ops-torch`, `optim-torch`, `digits`) | `ol verify course && ol milestone MS-P2 && ol milestone MS-P1 --smoke` |
+| **B4 Data structures + tokenizers** | Rust farm for standalone `tl-tok` and `tl-engine` crates; `ol fetch` and `ASSETS.tsv`, with `course-corpora` published as a release asset; parity runner (`tokenizer.bpe`, `rng`, `bloom`) | ds.05, ds.06, ds.08; M05.2, M06.2, M07.1, M07.2, M11.2; S-M06b, S-M07b; L1.1 to L1.6 (L1.4 core); craft.04; MS-L1 | first half of `course-p03-tokens-and-data`; new topic READMEs `algorithms/16-systems-data-structures/`, `ml/08-tinyllm/p01-tokenizers/`; fixtures 6 MiB (`tok-gpt2`, `tok-smollm2`, `tok-bert`) | `ol verify course && ol parity && ol milestone MS-L1` |
+| **B5 Data + statistical LM** | local HTTP fixture server (`flakyhttp`, no network in CI); decontamination fixtures | lang.08; data.01 to data.08, ethics.01, ethics.02; M03.5, M03.6, M11.4, S-M03b, S-M11b; L2.1 to L2.3; MS-corpus, MS-L2, MS-P3 | rest of `course-p03-tokens-and-data`; new topic READMEs `data-engineering/05-corpus-pipeline/`, `responsible-ai/{01-data-licensing,02-privacy-and-pii}/`, `ml/08-tinyllm/p02-statistical-lm/`; fixtures 4 MiB | `ol verify course && ol milestone MS-P3` |
+| **B6 Sequence models** | mutation runner for all languages (shared warm target dir, mutant cache); perf, model, agent, and resilience mutant classes scaffolded; `ref-thresholds` from 5 reference seeds | M07.4, S-M07c; L3.1 to L3.6 (L3.5 optional); L4.1 to L4.5; craft.07; MS-L3, MS-L4, MS-P4 | `course-p04-sequence-models`; new topic READMEs `ml/08-tinyllm/{p03-recurrent,p04-attention-origins}/`; fixtures 3 MiB | `ol verify course && ol milestone MS-P4 --smoke` (nightly: full) |
+| **B7 Transformer + modern block + zoo** | `course/oracle` generators for `tiny-hf-models` (published asset) and SmolLM2 parity with margin-filtered prompts; the near-tie rule in `tokens-equal`; zoo report schema | M01.4, M07.5, M07.7, S-M07d, M05.1; L5.1 to L5.5; L6.1 to L6.3, L6.5 to L6.7 (L6.4 optional); L7.1 to L7.9; craft.05; MS-L5, MS-L6, MS-L7, MS-P5 | `course-p05-transformer`; new topic READMEs `ml/08-tinyllm/{p05-transformer-2017,p06-objectives,p07-modern-block}/`; fixtures 8 MiB (`smollm2-parity`, margin prompts, `rope-scaling`, `lowp`, `configs`) | `ol verify course && ol milestone MS-P5 --smoke` (nightly: `hf-real`) |
+| **B8 Inference + kernels** | optional standalone C test binaries with sanitizers on macOS and Linux; the counting allocator; fixture parity suites for optional C modules; no production C backend | M07.6, M09.3 to M09.6, S-M09b; ds.07; L8.1 to L8.7; craft.06; MS-L8, MS-P6 (optional: ds.01 to ds.04, rt.02 to rt.04, M09.5 to M09.7, L9.1 to L9.6) | `course-p06-inference-and-kernels`; new topic READMEs `ml/08-tinyllm/{p08-inference,p09-kernels}/` chapter indexes; fixtures 6 MiB | `ol verify course && ol milestone MS-P6 --smoke` |
+| **B9 Serving platform** | generated proto code in `contracts/` (`tl-proto`, `contracts/go/gen`); full OpenAI conformance (v1, both tiers, `tools.*`, `priority.internal`, `requires`/pending); `testkit` (chaosproxy, otlpsink, promscrape, clock); drill `kill-decode` with the `drill` SLO profile and scripted responder; in-cluster calibration Job; scratch-copy builder for seeded PRs (craft.08); CI `kind-e2e` and `milestones-full` | lang.09 to lang.11; L10.1 to L10.9; load.01, load.02; gw.01 to gw.07, ds.09; dep.01 to dep.05; obs.01 to obs.04; ops.01; craft.08, craft.20; review.01; MS-L10, MS-gateway, MS-prod, MS-P7 | `course-p07-serving-platform`; new chapters in `ml/08-tinyllm/p10-serving/`, `ai-platform-engineering/12-gateway/`, `systems/04-observability/`, `infrastructure/01-containers-kubernetes/`; fixtures 4 MiB (recorded SSE streams, KV golden blobs) | `ol verify course && ol milestone MS-P7 --smoke` (nightly: kind) |
+| **B10 Durable** | `KillLoop`, `effects`, failpoints; `--test-activities` and the course test workflows; recorded histories; drills `durable-kill9`, `poison-task`; KEDA in the pinned charts | dur.01 to dur.09, dur.11 (dur.10 optional, MS-durable-ha); data.09; dep.06, obs.05; craft.21; ops.02, ops.03; MS-durable, MS-P8 | `course-p08-durable`; `ai-platform-engineering/05-durable-orchestration-and-workers/` merged README; fixtures 3 MiB | `ol verify course && ol milestone MS-P8 --smoke` (nightly: full, kind) |
+| **B11 Training at scale + capstone** | milestone `--smoke` mode for C1 (200 steps, about 1M params); the full reference run and the `short` ablations are author-local and calibrate `ref-thresholds` | M08.4; L11.1 (L11.2, L11.3 optional); ethics.03, ethics.04; dur.12; craft.22; C1; MS-L11, MS-C1, MS-P9 | `course-p09-capstone-training`; new topic READMEs `ml/08-tinyllm/{p11-training-at-scale,capstones}/`, `responsible-ai/{03-model-and-data-cards,04-bias-and-safety-evals}/`; fixtures 2 MiB | `ol verify course && ol milestone MS-P9 --smoke` (nightly: `train-smoke`) |
+| **B12 Agents (+ optional post-training)** | `faketool` provider (no network); prompt-injection fixture suite; `smollm2-135m-instruct` asset; frontier provider opt-in via env | ag.01 to ag.12; ethics.05; gw.08; dep.07; craft.23; MS-agent, MS-P10; optional S-M10b, L12.1 to L12.4, C2, MS-C2, `sq.multi-lora` | `course-p10-agents`; new topic READMEs `ai-platform-engineering/13-agent-sdk/`, `responsible-ai/05-usage-policy/`, `ml/08-tinyllm/p12-post-training/`; fixtures 4 MiB | `ol verify course && ol milestone MS-P10 --smoke` (nightly: real model) |
+| **B13 Operate + finish** | drills `kv-v2-migration`, `api-v2-migration`, `dep-upgrade`, `perf-regression`, `data-incident`, `noisy-neighbor`, `runaway-agent`, `eventlog-disk-full`, `raft-partition`; `openai-subset.v2.yaml`, KV v2 contracts and `history/` snapshots for craft.13 and craft.14; role paths (7.6); STUDY-PLAN, CS-CURRICULUM, README final; `sr.yaml` artifacts | craft.09 to craft.19 (craft.13 and craft.14 are build modules); ops.04 to ops.12; review.02, review.03; ethics.06; field.01 to field.07; iv.01; MS-ops, MS-P11 | `course-p11-operate`; new topic READMEs `software-craftsmanship/{05-diagramming-c4,07-type-systems,09-releases-and-deprecation,10-maintenance,11-security}/`, `field-engineering/08-mock-engagement/`, `interviews/defend-your-system/`, `responsible-ai/06-professional-responsibility/`; fixtures 1 MiB | `ol lint --links && ol learn --verify && ol verify course --nightly && for m in MS-P0 MS-P1 MS-P2 MS-P3 MS-P4 MS-P5 MS-P6 MS-P7 MS-P8 MS-P9 MS-P10; do ol milestone $m --smoke \|\| exit 1; done && ./scripts/build-book.sh && pnpm -C site build` |
+| **B14 Multimodal: vision and speech** (Pass 12, after B13) | registry: pass 12 and the `L13` to `L15` parts (`L[0-9]{1,2}` already matches); Rust farm builds with `candle-core`/`candle-nn` (cpu in CI) and the new crate `tl-media` in the contract pre-check; `allowed-deps.toml` additions (Pillow, `image`, `rustfft`, `fast_image_resize`, `rubato`, `flate2`) and the forbidden list; matcher `npz-close`; placeholders `{emb_port}`, `{asset-rev:<id>}`; `chaos` kills for EPD faults; `ol conform --cases` and `multipart/form-data` in the OpenAPI runner (official `openai` client `audio.transcriptions`); conformance suite `encoder-grpc/`; parity suites `image.decode`, `image.preprocess`, `image.tokens`, `audio.logmel`, `asr.decode`, `media.hash`, `embed.wire.v1`; generated code for `tl/encoder/v1` in `tl-proto` and `contracts/go/gen`; standalone C test binaries with fixture parity for the optional `conv.h`, `image.h`, `audio.h` (sanitizers and the counting allocator, as in B8; no stub library for other languages, no `tl-sys`); registry support for `optional = true` milestones; drills `encoder-pool-loss` (`scale-zero`) and `image-flood` (`tenant-flood` with a `media-flood` profile) with scripted responders; `hf-real-mm`; `kind-e2e` rotation adds ops.13 and ops.14 and the MS-multimodal-prod steps; `ASSETS.tsv` rows and `build:` generators per 5.11 | lang.12, lang.13; M12.1 to M12.6, S-M12; L13.1 to L13.7; L14.1 to L14.5; L15.1 to L15.7; ds.10; data.10 to data.13; dur.13; gw.09 to gw.11; load.03; dep.08; obs.06; ops.13, ops.14; ethics.07, ethics.08; craft.24; review.04; MS-L13, MS-L14, MS-mm-corpus, MS-L15, MS-multimodal-prod, MS-P12; optional L13.8, L13.9, L14.6 and MS-mm-kernels (authored last; core verification never depends on them); side quests sq.audio-llm, sq.streaming-asr, sq.vision-agent, sq.jpeg-decoder, sq.video-frames | `paths/course-p12-multimodal/` (README, `path.tsv`, `milestone.md`); `paths/course/path.tsv` gains `@course-p12-multimodal`; new topic README `math/12-signals-and-images/`; new part READMEs `ml/08-tinyllm/{p13-vision,p14-speech,p15-multimodal-serving}/`; chapter indexes in `data-engineering/05-corpus-pipeline/`, `ai-platform-engineering/12-gateway/`, `responsible-ai/{02-privacy-and-pii,04-bias-and-safety-evals}/`; `ml/05-foundation-models/README.md` section 4 gains pointers to L13.5, L13.7, L14; fixtures 6 MiB | `ol lint && ol learn --verify && ol verify course --changed origin/main && ol parity && ol conform openapi:v2 --target engine --cases 'mm.*,audio.*' && ol milestone MS-P12 --smoke` (nightly: `hf-real-mm` for the real-weight steps, `kind-e2e` for MS-multimodal-prod) |
 
 Committed-fixture budgets sum to 56 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 + 2 + 4 + 1 + 6).
 
@@ -4468,17 +4468,17 @@ Committed-fixture budgets sum to 56 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 +
 
 | # | Question | Current default |
 |---|---|---|
-| Q1 | The fixed Go module path `tinyllm` (D4) means the learner's public agent SDK cannot be `go get`-ed under their own path. Should `ss export --rename-module` rewrite the module path and the vendored test imports? | keep fixed in v1; revisit for export |
+| Q1 | The fixed Go module path `tinyllm` (D4) means the learner's public agent SDK cannot be `go get`-ed under their own path. Should `ol export --rename-module` rewrite the module path and the vendored test imports? | keep fixed in v1; revisit for export |
 | Q2 | Proofs are self-graded in v1. When and how does Lean replace the rubric (`type = "lean"`), and for which claims first? | rubric; Lean pilot on S-M05 induction |
 | Q3 | C1 compute on a Mac (4 to 12 h for 10M params, 100M tokens, plus about 3 to 4 h of `short` runs for the core ablations and scaling sizes) is an estimate. Is the `short` config the default, with the full run optional? | full run recommended, `short` accepted |
 | Q5 | Licenses of committed fixture slices (TinyStories, SST-2, wiki-mini) and of the SmolLM2-135M and SmolLM2-135M-Instruct weights must be verified and recorded in `MANIFEST.tsv`/`ASSETS.tsv` before B4/B7/B9. | blocking for those batches |
 | Q6 | Delete `main.py` and `package.json` at the root? | ask the owner (8.1) |
-| Q7 | Glue-file ownership: crate roots (`tl-tok/src/lib.rs`) and the Python `__main__` dispatch are shared by several modules. The rule "first creator owns it; it declares all submodules; `ss start` stubs the rest; nobody overwrites it" needs a prototype in B1/B4. | as stated in 2.15 and 5.2 |
-| Q8 | Mutation testing cost for Rust and C even with a shared warm target dir, the hash-keyed cache, and `ss check` sampling. Is a cap of 40 mutants per module enough to keep `full-verify` shards inside 90 minutes? | cap at 40; measure in B6 |
-| Q11 | `course-corpora` (about 20 MB) and `tiny-hf-models` (about 8 MB) become release assets of the supersource GitHub repo, fetched by `ss fetch`. Is that hosting acceptable, or should they live elsewhere (a Hugging Face dataset repo)? | supersource release assets |
+| Q7 | Glue-file ownership: crate roots (`tl-tok/src/lib.rs`) and the Python `__main__` dispatch are shared by several modules. The rule "first creator owns it; it declares all submodules; `ol start` stubs the rest; nobody overwrites it" needs a prototype in B1/B4. | as stated in 2.15 and 5.2 |
+| Q8 | Mutation testing cost for Rust and C even with a shared warm target dir, the hash-keyed cache, and `ol check` sampling. Is a cap of 40 mutants per module enough to keep `full-verify` shards inside 90 minutes? | cap at 40; measure in B6 |
+| Q11 | `course-corpora` (about 20 MB) and `tiny-hf-models` (about 8 MB) become release assets of the openlearn GitHub repo, fetched by `ol fetch`. Is that hosting acceptable, or should they live elsewhere (a Hugging Face dataset repo)? | openlearn release assets |
 | Q12 | Pass durations (about 82 weeks part-time: 67 through P11 after adding the primers, 15 for P12) are estimates; recalibrate after the first cohort or self-run. | estimates only |
-| Q13 | The contracts module path `supersource.urmzd.com/tl/contracts` (D4) uses the site's domain. It resolves only through the `replace`; should the site also serve a `go-import` meta tag so the path is fetchable? | `replace` only |
-| Q14 | D34 keeps references readable on disk (honor system), because `--ref-deps` and local mutation grading need them. Is that acceptable, or should graded verdicts (`pass` vs `assisted`) be re-run in the learner's CI against a fresh checkout to make spoiling visible? | honor system plus CI re-run of `ss check --all --ci` |
+| Q13 | The contracts module path `openlearn.urmzd.com/tl/contracts` (D4) uses the site's domain. It resolves only through the `replace`; should the site also serve a `go-import` meta tag so the path is fetchable? | `replace` only |
+| Q14 | D34 keeps references readable on disk (honor system), because `--ref-deps` and local mutation grading need them. Is that acceptable, or should graded verdicts (`pass` vs `assisted`) be re-run in the learner's CI against a fresh checkout to make spoiling visible? | honor system plus CI re-run of `ol check --all --ci` |
 | Q15 | Scope added by the fixes: core ELECTRA (L6.3) and Unigram (L1.4) through the model zoo and tokenizer ablation, engine speculative decoding (L10.8) and tool calls (L10.9), MLA and MoE as core C1 ablations, and eleven `lang.*` primers. Keep all of them core? | core |
 | Q16 | `fast_image_resize` is not documented as PIL bit-compatible. If the engine path misses the 1 LSB bound against PIL, port the learner's Python resize to plain Rust in L15.1, or relax the engine bound to 2 LSB? | test early in B14; fall back to a plain Rust port of M12.3 |
 | Q17 | Metal results differ from CPU beyond the f32 tolerances. Should any milestone step run on Metal, or is Metal only a local `perf` concern? | Metal only in `ci = "local"` perf steps |

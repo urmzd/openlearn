@@ -21,9 +21,9 @@ The gates every change to your course system passes through: a CI workflow that 
 
 ## Chapters
 
-<!-- ss:chapters -->
+<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `craft.01` | [Your repo and CI gate (conventional commits enforced)](01-your-repo-and-ci-gate.md) | practice | 0 |
 | 2 | `craft.08` | [Code review: review a seeded PR against your system](02-code-review.md) | practice | 7 |
-<!-- /ss:chapters -->
+<!-- /ol:chapters -->

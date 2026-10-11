@@ -1,4 +1,4 @@
-<!-- ss:module dep.02 -->
+<!-- ol:module dep.02 -->
 # kind cluster + local registry + port mappings
 
 ## Overview
@@ -25,14 +25,14 @@
 ## How to work this chapter
 
 ```bash
-ss start dep.02                        # records the start; there are no stubs
-ss tests dep.02                        # read the test catalog first
+ol start dep.02                        # records the start; there are no stubs
+ol tests dep.02                        # read the test catalog first
 kind delete cluster --name forge       # the Pass 1 cluster's port mappings cannot change
 deploy/kind/up.sh                      # registry, cluster, node wiring, ConfigMap
 docker tag forge-gateway:0.2.0 localhost:5001/forge-gateway:0.2.0
 docker push localhost:5001/forge-gateway:0.2.0
-ss check dep.02                        # exit code is the verdict
-SS_SMOKE=1 ss check dep.02             # without a cluster: the static tier only
+ol check dep.02                        # exit code is the verdict
+OL_SMOKE=1 ol check dep.02             # without a cluster: the static tier only
 ```
 
 ---

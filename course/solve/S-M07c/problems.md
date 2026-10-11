@@ -1,6 +1,6 @@
 # S-M07c problems: the law of large numbers, the CLT, confidence intervals
 
-Answer every question in `solve/S-M07c.toml` (written by `ss start S-M07c`).
+Answer every question in `solve/S-M07c.toml` (written by `ol start S-M07c`).
 The tag after each question is its answer type: `[expr]` is a formula in the
 named variables (write $\sigma^2$ as `s2`, $\varepsilon$ as `eps`, $\mu$ as
 `mu`), `[number]` a value (exact where the question says so), `[interval]`

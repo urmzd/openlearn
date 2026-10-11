@@ -1,4 +1,4 @@
-<!-- ss:module ag.07 -->
+<!-- ol:module ag.07 -->
 # Retrieval: BM25, flat and IVF vectors, RRF, MMR
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start ag.07          # stubs go/agent/rag/retrieve/*.go into your repo
-ss tests ag.07          # read the test catalog first
-ss check ag.07          # exit code is the verdict
-ss check ag.07 --ref-deps   # only if you skipped load.01 (the Go PCG32)
-ss diff  ag.07          # after passing: your code against the reference
+ol start ag.07          # stubs go/agent/rag/retrieve/*.go into your repo
+ol tests ag.07          # read the test catalog first
+ol check ag.07          # exit code is the verdict
+ol check ag.07 --ref-deps   # only if you skipped load.01 (the Go PCG32)
+ol diff  ag.07          # after passing: your code against the reference
 ```
 
 Then add the `rag search` verb to your umbrella CLI (learner territory): open `/artifacts/rag/<index_id>/`, build IVF when the index is large, embed the query through the same model as the index (`meta.json` `embedding_model`), and print the hits. MS-agent runs `<system> rag search "kv cache eviction"` against the course docs you ingested in `ag.06`.
@@ -263,7 +263,7 @@ func (h *Hybrid) Retrieve(ctx context.Context, q string, k int, f Filter) ([]Hit
 | Back | `load.01` | the Go PCG32 (`rng.Seeded`, `Below`, `Float64`) that seeds k-means++ |
 | Forward | `ag.08` | the `search_docs` tool calls `Hybrid.Retrieve` and assembles the hits into cited context |
 
-If you skip this module, `ss check ag.08` reports `needs ag.07: build it, or pass --ref-deps`.
+If you skip this module, `ol check ag.08` reports `needs ag.07: build it, or pass --ref-deps`.
 
 ## Going further
 

@@ -1,4 +1,4 @@
-<!-- ss:module M08.2 -->
+<!-- ol:module M08.2 -->
 # Scalar reverse mode: the Value graph
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start M08.2              # stubs scalar.py into your repo, contract alongside
-ss tests M08.2              # read the test catalog first: rung R0, you write no tests here
-ss check M08.2              # exit code is the verdict
-ss check M08.2 --ref-deps   # only if your M06.1, M08.1, or M04.2 is not passing yet
-ss diff  M08.2              # after passing: your code against the reference
+ol start M08.2              # stubs scalar.py into your repo, contract alongside
+ol tests M08.2              # read the test catalog first: rung R0, you write no tests here
+ol check M08.2              # exit code is the verdict
+ol check M08.2 --ref-deps   # only if your M06.1, M08.1, or M04.2 is not passing yet
+ol diff  M08.2              # after passing: your code against the reference
 ```
 
 ---
@@ -152,7 +152,7 @@ class Value:
 | Back | `M04.2` | `vjp_numeric` approximates the same $u^\top J$ by central differences |
 | Forward | `L0.1` | your Tensor engine's broadcasting backward is checked against the same computation spelled out in `Value`s |
 
-If you skip this module, `ss check L0.1` stops with `L0.1 needs M08.2`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L0.1` stops with `L0.1 needs M08.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

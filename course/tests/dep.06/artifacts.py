@@ -1,6 +1,6 @@
 """dep.06 artifact check: durable and worker images and charts (WAL PVC, StatefulSet, KEDA).
 
-Run by `ss check dep.06` in your repo. Three tiers, in order:
+Run by `ol check dep.06` in your repo. Three tiers, in order:
 
   static   deploy/docker/{durable,worker}.Dockerfile follow the dep.01 rules;
            deploy/helm/<system>-{durable,worker} carry
@@ -21,7 +21,7 @@ Run by `ss check dep.06` in your repo. Three tiers, in order:
            HPA for it
 
 `<system>` below is [system].name from system.toml. The cluster tier fails when
-the context is missing or down; with SS_SMOKE=1 it is skipped instead. The
+the context is missing or down; with OL_SMOKE=1 it is skipped instead. The
 queue-burst scale-up and scale-down on kind is a step of MS-durable's kind run.
 """
 
@@ -63,7 +63,7 @@ LABELS = [
 
 
 def course_tree() -> Path:
-    return Path(os.environ.get("SS_COURSE_TREE") or Path(__file__).resolve().parents[2])
+    return Path(os.environ.get("OL_COURSE_TREE") or Path(__file__).resolve().parents[2])
 
 
 def chart(c: Ctx, part: str) -> str:
@@ -79,7 +79,7 @@ def contract_path(c: Ctx, rel: str) -> Path:
     for p in (c.path(f"contracts/{rel}"), course_tree() / "contracts" / rel):
         if p.is_file():
             return p
-    raise Fail(f"contracts/{rel} is missing: run `ss contracts sync`")
+    raise Fail(f"contracts/{rel} is missing: run `ol contracts sync`")
 
 
 def workloads(docs: list) -> list[dict]:
@@ -655,7 +655,7 @@ def images(c: Ctx) -> dict[str, str]:
                 )
         out = {}
         for part in PARTS:
-            tag = f"ss-check/{c.system_name()}-{part}:dep06"
+            tag = f"ol-check/{c.system_name()}-{part}:dep06"
             c.sh(
                 [
                     "docker",

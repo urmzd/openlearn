@@ -24,7 +24,7 @@ smoke     = ["test_hand_example", "test_unknown_license_is_a_data_error"]
 timeout_s = 60
 determinism_runs = 2
 
-[learner_tests]                        # rung R3: tests first (ss tdd red, then green)
+[learner_tests]                        # rung R3: tests first (ol tdd red, then green)
 rung      = 3
 path      = "python/tests/data-08-ledger"
 threshold = 0.70

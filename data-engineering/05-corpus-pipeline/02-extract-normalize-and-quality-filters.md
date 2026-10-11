@@ -1,4 +1,4 @@
-<!-- ss:module data.02 -->
+<!-- ol:module data.02 -->
 # Extract, normalize, quality filters (generator stages)
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start data.02              # stubs python/corpus/stage.py and filter.py
-ss tests data.02              # read the test catalog first
-ss check data.02              # needs data.01 passing (or --ref-deps)
-ss diff  data.02              # after passing: your code against the reference
+ol start data.02              # stubs python/corpus/stage.py and filter.py
+ol tests data.02              # read the test catalog first
+ol check data.02              # needs data.01 passing (or --ref-deps)
+ol diff  data.02              # after passing: your code against the reference
 ```
 
 ---
@@ -244,7 +244,7 @@ The golden corpus (`course/oracle/data.02/golden_corpus.py`) has 125 documents t
 | Forward | `data.06` | the shard writer consumes the final `Doc` stream and writes `meta["lang"]` into the `lang` column |
 | Forward | `C1` | `ppl_filter` with the `L2.1` n-gram model trained on clean text |
 
-If you skip this module, `ss check data.03` stops with `data.03 needs data.02`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check data.03` stops with `data.03 needs data.02`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

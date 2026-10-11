@@ -37,7 +37,7 @@ graph LR
 | 05 | [Foundation Models & Architectures](05-foundation-models/) | *AI Engineering* (Huyen) + [aie-book](https://github.com/chiphuyen/aie-book) (free) | 4-5 weeks |
 | 06 | [Neural Architectures & DL History](06-neural-architectures/) | [CS231n](https://cs231n.github.io/) (free) + [AlexNet](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks)/[LSTM](https://www.bioinf.jku.at/publications/older/2604.pdf) papers (free) | 3-4 weeks |
 | 07 | [Training & Post-Training](07-training-and-post-training/) | [Chinchilla](https://arxiv.org/abs/2203.15556) + [DPO](https://arxiv.org/abs/2305.18290) papers (free) + [PyTorch](https://pytorch.org/docs/stable/)/[JAX](https://docs.jax.dev/) docs (free) | 4-6 weeks |
-| 08 | [tinyllm: Build an LLM from Scratch](08-tinyllm/) | the [course](../paths/course/): chapters you build and `ss check` grades | course passes 1 to 11 |
+| 08 | [tinyllm: Build an LLM from Scratch](08-tinyllm/) | the [course](../paths/course/): chapters you build and `ol check` grades | course passes 1 to 11 |
 
 ## Quick Start
 
@@ -48,6 +48,6 @@ graph LR
 5. For MLOps/infra roles: Deep Learning (transformers) → LLM Systems & Inference, pairs with [Cloud Native](../systems/03-cloud-native/) and [Data Engineering](../data-engineering/)
 6. For AI engineering / GenAI roles: Deep Learning → Foundation Models & Architectures (Chip Huyen) → LLM Systems & Inference
 7. For foundations / interviews: pair Deep Learning with [Neural Architectures & DL History](06-neural-architectures/) — backprop, CNNs, RNNs/LSTM, and AlexNet derived from the math and coded from scratch
-8. For forward deployed / inference-cloud roles: follow the [Superstar FDE path](../paths/superstar-fde/) (`practice/bin/ss learn superstar-fde`), which orders this track with the AI platform and [Field Engineering](../field-engineering/) tracks
+8. For forward deployed / inference-cloud roles: follow the [Superstar FDE path](../paths/superstar-fde/) (`practice/bin/ol learn superstar-fde`), which orders this track with the AI platform and [Field Engineering](../field-engineering/) tracks
 
 See [Study Plan](../STUDY-PLAN.md) for the 18-30 week ML/AI schedule.

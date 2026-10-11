@@ -27,36 +27,36 @@ Two rules make this work:
 
 ## The harness
 
-The harness is [`../bin/ss`](../bin/ss), a single bash script with no
+The harness is [`../bin/ol`](../bin/ol), a single bash script with no
 dependencies beyond the language toolchains themselves. It drives the other
 exercise kinds too; these are the verbs that matter here.
 
 | Command | What it does |
 |---------|--------------|
-| `ss list predict [lang]` | Show snippets and whether you have predicted them |
-| `ss show predict <lang> <id>` | Print a snippet's source |
-| `ss start predict <lang> <id>` | Show the source, then open your prediction file in `$EDITOR` |
-| `ss check predict <lang> [id]` | Run for real and diff your prediction against actual output |
-| `ss score predict [lang]` | Tally passed, missed, and not attempted |
-| `ss reveal predict <lang> <id>` | Just run it, burning the exercise |
-| `ss reset predict <lang> <id>` | Delete your prediction and start over |
-| `ss verify predict [lang]` | Maintainer check: every snippet builds, runs, and prints the same thing three times in a row |
-| `ss bench [lang] [--assert]` | Wall time and peak memory per snippet, against the ceilings in `budgets.tsv` |
+| `ol list predict [lang]` | Show snippets and whether you have predicted them |
+| `ol show predict <lang> <id>` | Print a snippet's source |
+| `ol start predict <lang> <id>` | Show the source, then open your prediction file in `$EDITOR` |
+| `ol check predict <lang> [id]` | Run for real and diff your prediction against actual output |
+| `ol score predict [lang]` | Tally passed, missed, and not attempted |
+| `ol reveal predict <lang> <id>` | Just run it, burning the exercise |
+| `ol reset predict <lang> <id>` | Delete your prediction and start over |
+| `ol verify predict [lang]` | Maintainer check: every snippet builds, runs, and prints the same thing three times in a row |
+| `ol bench [lang] [--assert]` | Wall time and peak memory per snippet, against the ceilings in `budgets.tsv` |
 
-`<id>` is the numeric prefix of a snippet, so `ss check predict go 03` is
+`<id>` is the numeric prefix of a snippet, so `ol check predict go 03` is
 enough.
 
 Your predictions are written to `.scratchpad/predict/<lang>/<snippet>.txt` at
 the repo root. They are yours, the whole `.scratchpad/` directory is gitignored,
-and the harness never looks at them until you run `ss check`.
+and the harness never looks at them until you run `ol check`.
 
 ## A session
 
 ```bash
-ss list predict go              # what is here, and what you have attempted
-ss start predict go 03          # read the source, write the exact expected output
-ss check predict go 03          # PASS, or a diff of prediction against reality
-ss score predict                # where you stand across all four languages
+ol list predict go              # what is here, and what you have attempted
+ol start predict go 03          # read the source, write the exact expected output
+ol check predict go 03          # PASS, or a diff of prediction against reality
+ol score predict                # where you stand across all four languages
 ```
 
 A miss prints a unified diff and one instruction: record it in
@@ -64,8 +64,8 @@ A miss prints a unified diff and one instruction: record it in
 slower is better, because the value is entirely in the minute you spend deciding
 what you think happens.
 
-`ss check` runs the real toolchain. First contact with Rust or Go pays for a
-compile, so `ss verify predict <lang>` (below) is a reasonable way to warm the
+`ol check` runs the real toolchain. First contact with Rust or Go pays for a
+compile, so `ol verify predict <lang>` (below) is a reasonable way to warm the
 cache before a session.
 
 ## Where snippets live
@@ -82,7 +82,7 @@ that `go run`, `cargo run`, and friends work with no wrapper.
 
 Every snippet must be **deterministic**. Output that varies between runs (map
 iteration order, goroutine interleaving, timestamps, addresses) makes prediction
-impossible and is a bug in the snippet, not a lesson. `ss verify` is what
+impossible and is a bug in the snippet, not a lesson. `ol verify` is what
 enforces that.
 
 Node runs the TypeScript files by stripping the types, not by checking them.
@@ -121,11 +121,11 @@ stick.
 
 ## Validating the corpus
 
-`ss check` validates *you*. `ss verify` validates the *snippets*, and it is the
+`ol check` validates *you*. `ol verify` validates the *snippets*, and it is the
 one that runs in CI:
 
 ```bash
-$ ss verify predict go
+$ ol verify predict go
 OK    go/01-loop-var-capture (4 lines, stable over 3 runs)
 OK    go/02-nil-interface (7 lines, stable over 3 runs)
 ...
@@ -141,11 +141,11 @@ a fresh checkout without spoiling a single exercise.
 
 ## What it costs
 
-`ss check` asks what a program prints. `ss bench` asks what it costs, which is
+`ol check` asks what a program prints. `ol bench` asks what it costs, which is
 the other half of a mental model and usually the half made of folklore.
 
 ```bash
-$ ss bench rust
+$ ol bench rust
 rust
   01-shadowing-and-blocks             2ms     1504KB  ok
   02-drop-order                       3ms     1488KB  ok
@@ -191,7 +191,7 @@ request.
 variance never trips them:
 
 ```bash
-ss bench --assert          # nonzero exit on a breach; runs in CI
+ol bench --assert          # nonzero exit on a breach; runs in CI
 just run-predict-bench     # the same thing from the repo root
 ```
 

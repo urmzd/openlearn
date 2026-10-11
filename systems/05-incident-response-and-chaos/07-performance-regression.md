@@ -1,4 +1,4 @@
-<!-- ss:module ops.07 -->
+<!-- ol:module ops.07 -->
 # Drill: performance regression bisect
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start ops.07
-ss tests ops.07
-ss check ops.07
+ol start ops.07
+ol tests ops.07
+ol check ops.07
 ```
 
 ---

@@ -1,4 +1,4 @@
-<!-- ss:module craft.23 -->
+<!-- ol:module craft.23 -->
 # Agent evals as tests (R9)
 
 ## Overview
@@ -24,9 +24,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.23
-ss tests craft.23
-ss check craft.23
+ol start craft.23
+ol tests craft.23
+ol check craft.23
 ```
 
 ## 1. Why now

@@ -6,7 +6,7 @@ mutants in course/mutants/M07.1), and the chapter section it comes from.
 
 The chapter's worked example (section 3) is the 5-symbol distribution
 p = [0.1, 0.2, 0.3, 0.4, 0.0]. Statistical tests either enumerate a grid of
-uniforms (exact) or draw from the frozen PCG32 at SS_SEED and apply a
+uniforms (exact) or draw from the frozen PCG32 at OL_SEED and apply a
 chi-square test at p > 1e-3 (DESIGN 4.0, KIND statistical).
 """
 
@@ -34,7 +34,7 @@ CHI2_P001 = {2: 13.816, 3: 16.266, 4: 18.467}
 
 
 def seed() -> int:
-    return int(os.environ.get("SS_SEED", "0"))
+    return int(os.environ.get("OL_SEED", "0"))
 
 
 class Script:

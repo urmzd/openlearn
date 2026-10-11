@@ -1,4 +1,4 @@
-<!-- ss:module lang.04 -->
+<!-- ol:module lang.04 -->
 # Rust: ownership, traits, Result, cargo workspaces, std TCP
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start lang.04          # records that you started; the exercise lives in primers/lang.04/
-ss tests lang.04          # read the test catalog first
-ss check lang.04          # first run writes the starter workspace (stubs), then checks it
+ol start lang.04          # records that you started; the exercise lives in primers/lang.04/
+ol tests lang.04          # read the test catalog first
+ol check lang.04          # first run writes the starter workspace (stubs), then checks it
 cd primers/lang.04 && cargo test && cargo run -p echo -- --port 7878   # your own loop
 ```
 
-The first `ss check lang.04` writes the starter files that are missing into `primers/lang.04/`: the three `Cargo.toml` files as given, and `lineproto/src/lib.rs` and `echo/src/main.rs` with every function body replaced by `todo!("lang.04")`. The starter compiles and fails. `ss check` never overwrites a file, so delete one to get its starter back. Build products go to `.ss/build/lang.04/` in your repo, which `ss course init` gitignored.
+The first `ol check lang.04` writes the starter files that are missing into `primers/lang.04/`: the three `Cargo.toml` files as given, and `lineproto/src/lib.rs` and `echo/src/main.rs` with every function body replaced by `todo!("lang.04")`. The starter compiles and fails. `ol check` never overwrites a file, so delete one to get its starter back. Build products go to `.ol/build/lang.04/` in your repo, which `ol course init` gitignored.
 
 ---
 
@@ -197,7 +197,7 @@ mod tests {
 }
 ```
 
-`cargo test` runs them, and `ss check lang.04` runs your `cargo test` as one of its checks.
+`cargo test` runs them, and `ol check lang.04` runs your `cargo test` as one of its checks.
 
 ## 3. Worked example by hand
 

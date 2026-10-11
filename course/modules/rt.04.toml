@@ -31,7 +31,7 @@ determinism_runs = 2
 [fixtures]
 files = ["course/fixtures/parity/kv_wire_v1.json"]
 
-[learner_tests]                       # rung R3: tests first (ss tdd red), then code
+[learner_tests]                       # rung R3: tests first (ol tdd red), then code
 rung      = 3
 path      = "c/tests/rt04-kv-pool"
 threshold = 0.70

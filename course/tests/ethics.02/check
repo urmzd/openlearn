@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Artifact check for ethics.02 (DESIGN 4.6, 6.4; H15: `ss check ethics.02`
+# Artifact check for ethics.02 (DESIGN 4.6, 6.4; H15: `ol check ethics.02`
 # runs this from the root of your repo and its exit code is the verdict).
 #
 # It runs the annotated tests next to this file against your PII policy,
 # docs/data/PII_POLICY.md, its machine-readable half,
 # docs/data/pii-policy.toml, and your answers to the review cases,
 # docs/data/pii-review.toml. Standard library only (tomllib), so uv supplies
-# a Python >= 3.11 and pytest. Read them with `ss tests ethics.02`.
+# a Python >= 3.11 and pytest. Read them with `ol tests ethics.02`.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tests="$(cd "$here/.." && pwd)"
 
 fail() { echo "ethics.02: $*" >&2; exit 1; }
-command -v uv >/dev/null || fail "uv is not on PATH (ss doctor)"
+command -v uv >/dev/null || fail "uv is not on PATH (ol doctor)"
 for f in docs/data/PII_POLICY.md docs/data/pii-policy.toml docs/data/pii-review.toml; do
   [ -f "$PWD/$f" ] || fail "$f is missing: write it from the chapter's template (section 4)"
 done
 
-export SS_REPO="$PWD" PYTHONPATH="$tests" PYTHONDONTWRITEBYTECODE=1
+export OL_REPO="$PWD" PYTHONPATH="$tests" PYTHONDONTWRITEBYTECODE=1
 exec uv run --no-project --python ">=3.11" --quiet --with pytest \
   python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

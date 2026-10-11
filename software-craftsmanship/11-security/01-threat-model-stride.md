@@ -1,4 +1,4 @@
-<!-- ss:module craft.17 -->
+<!-- ol:module craft.17 -->
 # Threat model (STRIDE on your DFD)
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.17
-ss tests craft.17
-ss check craft.17
+ol start craft.17
+ol tests craft.17
+ol check craft.17
 ```
 
 ---

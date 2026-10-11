@@ -1,4 +1,4 @@
-<!-- ss:module L1.1 -->
+<!-- ol:module L1.1 -->
 # Tokenizer protocol, char tokenizer
 
 ## Overview
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start L1.1              # stubs base.py and char.py into your repo, contracts alongside
-ss tests L1.1              # read the test catalog first
-ss check L1.1              # exit code is the verdict; then grades your tests by mutation
-ss check L1.1 --ref-deps   # only if your M05.2 is not passing yet
-ss mutate L1.1             # the full mutation grade of python/tests/l1-1-tokenizers/
-ss diff  L1.1              # after passing: your code against the reference
+ol start L1.1              # stubs base.py and char.py into your repo, contracts alongside
+ol tests L1.1              # read the test catalog first
+ol check L1.1              # exit code is the verdict; then grades your tests by mutation
+ol check L1.1 --ref-deps   # only if your M05.2 is not passing yet
+ol mutate L1.1             # the full mutation grade of python/tests/l1-1-tokenizers/
+ol diff  L1.1              # after passing: your code against the reference
 ```
 
-This is rung R2 of the testing ladder: you write the bodies of the test names listed at the end of section 4, in `python/tests/l1-1-tokenizers/`. `ss check` runs them against the reference with one planted bug at a time, and at least 60% of the planted bugs must make one of your tests fail.
+This is rung R2 of the testing ladder: you write the bodies of the test names listed at the end of section 4, in `python/tests/l1-1-tokenizers/`. `ol check` runs them against the reference with one planted bug at a time, and at least 60% of the planted bugs must make one of your tests fail.
 
 ---
 
@@ -198,7 +198,7 @@ def test_byte_tokenizer_utf8_and_replacement():
 | Forward | `L1.4` | Unigram implements the protocol; `<unk>` is id 0 there too |
 | Forward | `L1.6` | fertility, bytes per token, and the fallback rate take any `Tokenizer` |
 
-`L1.5` implements a Rust tokenizer independently; Python and Rust compare tokenization through shared `tokenizer.json` files and fixtures. `L3.6` (char-level language models) arrives in a later batch and uses this protocol. If you skip this module, `ss check L1.2` stops with `needs L1.1`: build it, or rerun with `--ref-deps`.
+`L1.5` implements a Rust tokenizer independently; Python and Rust compare tokenization through shared `tokenizer.json` files and fixtures. `L3.6` (char-level language models) arrives in a later batch and uses this protocol. If you skip this module, `ol check L1.2` stops with `needs L1.1`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

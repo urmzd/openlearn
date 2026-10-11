@@ -1,4 +1,4 @@
-<!-- ss:module dep.06 -->
+<!-- ol:module dep.06 -->
 # Durable and worker images and charts: WAL PVC, StatefulSet, KEDA autoscaling of workers
 
 ## Overview
@@ -25,15 +25,15 @@
 ## How to work this chapter
 
 ```bash
-ss start dep.06                       # records the start; there are no stubs
-ss tests dep.06                       # read the test catalog first
+ol start dep.06                       # records the start; there are no stubs
+ol tests dep.06                       # read the test catalog first
 # write the Dockerfiles, both charts, and deploy/keda (section 4), then:
 helm dependency update deploy/keda    # writes deploy/keda/Chart.lock
-SS_SMOKE=1 ss check dep.06            # static and docker tiers, no cluster
+OL_SMOKE=1 ol check dep.06            # static and docker tiers, no cluster
 helm upgrade --install keda deploy/keda -n keda --create-namespace
 helm upgrade --install forge-durable deploy/helm/forge-durable -n forge
 helm upgrade --install forge-worker deploy/helm/forge-worker -n forge
-ss check dep.06                       # every tier, against kind-<system>
+ol check dep.06                       # every tier, against kind-<system>
 ```
 
 ---

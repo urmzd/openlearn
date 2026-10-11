@@ -1,4 +1,4 @@
-<!-- ss:module ag.01 -->
+<!-- ol:module ag.01 -->
 # Types, OpenAI-compatible provider, retry wrapper
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start ag.01          # stubs into your repo
-ss tests ag.01          # read the test catalog first
-ss check ag.01          # exit code is the verdict
-ss diff  ag.01          # after passing: your code against the reference
+ol start ag.01          # stubs into your repo
+ol tests ag.01          # read the test catalog first
+ol check ag.01          # exit code is the verdict
+ol diff  ag.01          # after passing: your code against the reference
 ```
 
 ---
@@ -206,7 +206,7 @@ Use only the standard library. The request is `POST {BaseURL}/chat/completions` 
 | Forward | `ag.09` | `ProviderSubject` evaluates a bare model through `Provider` and `Accumulator` |
 | Forward | `ag.11` | the judge generator uses the shared provider types |
 
-The provider reaches `gw.04` and `L10.9` over HTTP only, so they are reading, not dependencies: `ss check ag.01` never needs them built.
+The provider reaches `gw.04` and `L10.9` over HTTP only, so they are reading, not dependencies: `ol check ag.01` never needs them built.
 
 ## Going further
 

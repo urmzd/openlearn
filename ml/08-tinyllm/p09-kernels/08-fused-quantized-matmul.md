@@ -1,4 +1,4 @@
-<!-- ss:module L9.5 -->
+<!-- ol:module L9.5 -->
 # Fused int4 and int8 dequantize-matmul in C
 
 ## Overview
@@ -16,7 +16,7 @@
 
 ## Key Takeaways
 
-- **Decode is memory-bound,** so reading 4.5 bits per weight instead of 32 makes it faster even though every weight must be unpacked first: the reference int4 GEMV is about 3.9 times faster than your float32 kernel at $N = K = 2048$ (`ss bench L9.5`).
+- **Decode is memory-bound,** so reading 4.5 bits per weight instead of 32 makes it faster even though every weight must be unpacked first: the reference int4 GEMV is about 3.9 times faster than your float32 kernel at $N = K = 2048$ (`ol bench L9.5`).
 - **The layout is a contract:** byte $b$ of row $n$ holds column $2b$ in the low nibble and $2b + 1$ in the high nibble, each a signed 4-bit two's complement value in $[-8, 7]$ (`every_nibble_code`, `hand_example`).
 - **One scale per group of columns**, an IEEE half-precision bit pattern, multiplies the group's partial sum once: $y = \sum_g s_g \sum_{k \in g} x_k q_k$ (`matches_dequantize_then_matmul`, `f16_scales_decode_exactly`).
 - **Fused means the float32 weight never exists:** each chunk of 64 weights is unpacked into a small buffer and consumed immediately.
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start L9.5              # stubs c/src/kernels/qmatmul.c into your repo
-ss tests L9.5              # read the test catalog first
-ss check L9.5              # exit code is the verdict
-ss check L9.5 --ref-deps   # only if rt.02, rt.03, M09.7, L9.1, or L8.5 is not passing yet
-ss bench L9.5 --assert     # at least 2x your float32 kernel on one decode step (local only)
-ss parity quant.int4       # your L8.5 encoder and this decoder against one golden
-ss diff  L9.5              # after passing: your code against the reference
+ol start L9.5              # stubs c/src/kernels/qmatmul.c into your repo
+ol tests L9.5              # read the test catalog first
+ol check L9.5              # exit code is the verdict
+ol check L9.5 --ref-deps   # only if rt.02, rt.03, M09.7, L9.1, or L8.5 is not passing yet
+ol bench L9.5 --assert     # at least 2x your float32 kernel on one decode step (local only)
+ol parity quant.int4       # your L8.5 encoder and this decoder against one golden
+ol diff  L9.5              # after passing: your code against the reference
 ```
 
 ---
@@ -135,7 +135,7 @@ tl_status tl_matmul_q8_f32(const float *x, const int8_t *wq, const float *scales
 | `pool_result_equals_serial_bitwise` | property | 4 threads vs serial, $N = 37$ | threads never change bits |
 | `hand_example` | unit, smoke | numpy packs section 3's bytes; the kernel returns $[-47.5, 10.25]$ | the layout from Python |
 
-The bench (`ss bench L9.5`, local only) runs one decode step, $M = 1$, $N = K = 2048$, group 32, and reports `q4_speedup_vs_f32` (budget $\ge 2$; the reference reaches about 3.9) and the int8 ratio.
+The bench (`ol bench L9.5`, local only) runs one decode step, $M = 1$, $N = K = 2048$, group 32, and reports `q4_speedup_vs_f32` (budget $\ge 2$; the reference reaches about 3.9) and the int8 ratio.
 
 ## 5. Pitfalls
 
@@ -153,7 +153,7 @@ The bench (`ss bench L9.5`, local only) runs one decode step, $M = 1$, $N = K = 
 | accepting a group that does not divide $K$ | reads past `x` and the weights | `shape_and_argument_errors` (mutant `s10`) |
 | skipping the NULL check on the weights | a crash instead of `TL_EINVAL` | `shape_and_argument_errors` (mutant `s11`) |
 | a pooled partition that drops a row | wrong only with threads | `pool_result_equals_serial_bitwise` (mutant `s12`) |
-| accumulating through a pointer parameter | correct but about 1.8 times slower: the lanes are reloaded every step | the bench (ss bench L9.5, local only; no course test checks speed) |
+| accumulating through a pointer parameter | correct but about 1.8 times slower: the lanes are reloaded every step | the bench (ol bench L9.5, local only; no course test checks speed) |
 
 ## 6. Where it's used next
 

@@ -35,10 +35,10 @@ Master the type system, generics, mapped types, and runtime safety patterns.
 ## Practising these
 
 ```bash
-practice/bin/ss list  build typescript          # which of these have references yet
-practice/bin/ss start build typescript 01       # clone it stubbed into .scratchpad/
-practice/bin/ss check build typescript 01       # run it; exit code is the verdict
-practice/bin/ss diff  build typescript 01       # your attempt against the reference
+practice/bin/ol list  build typescript          # which of these have references yet
+practice/bin/ol start build typescript 01       # clone it stubbed into .scratchpad/
+practice/bin/ol check build typescript 01       # run it; exit code is the verdict
+practice/bin/ol diff  build typescript 01       # your attempt against the reference
 ```
 
 Exercises are ordered by concept, not by difficulty, so pick by the stars rather

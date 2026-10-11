@@ -74,7 +74,7 @@
 #       to the manifest) and prints one line per row. Final line: {"suite",
 #       "report", "rows", "ok", "errors", "skipped"}.
 #
-# `ss milestone MS-L6 --smoke` runs every step with 10% of the updates (about
+# `ol milestone MS-L6 --smoke` runs every step with 10% of the updates (about
 # a minute on a laptop). The full run takes about 4 minutes.
 id       = "MS-L6"
 title    = "GPT, BERT, ELECTRA, and LoRA through your CLI, scored by your model zoo"

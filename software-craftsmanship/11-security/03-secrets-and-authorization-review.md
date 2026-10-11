@@ -1,4 +1,4 @@
-<!-- ss:module craft.19 -->
+<!-- ol:module craft.19 -->
 # Secrets and authorization review
 
 ## Overview
@@ -21,9 +21,9 @@
 ## How to work this chapter
 
 ```bash
-ss start craft.19
-ss tests craft.19
-ss check craft.19
+ol start craft.19
+ol tests craft.19
+ol check craft.19
 ```
 
 ---

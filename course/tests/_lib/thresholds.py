@@ -3,16 +3,16 @@
 A learning test trains something small and checks a metric against a bar
 set from the reference run over 5 seeds (mean + 3 sd for a loss, mean - 3 sd
 for an accuracy). The bars live in $TINYLLM_FIXTURES/ref-thresholds.tsv,
-written only by `ss verify course <ID> --record-thresholds`.
+written only by `ol verify course <ID> --record-thresholds`.
 
     from _lib.thresholds import check
 
     def test_nplm_learns():
         # WHY: ...   KIND: learning
-        loss = train_and_eval(seed=int(os.environ.get("SS_SEED", 0)))
+        loss = train_and_eval(seed=int(os.environ.get("OL_SEED", 0)))
         check("L2.2/test_nplm_learns", "val_loss", loss, direction="max")
 
-While recording (SS_RECORD_THRESHOLDS names a file), `check` appends the
+While recording (OL_RECORD_THRESHOLDS names a file), `check` appends the
 observation there and asserts nothing.
 """
 
@@ -48,7 +48,7 @@ def check(
         raise ValueError(
             "direction is 'max' (lower is better) or 'min' (higher is better)"
         )
-    rec = os.environ.get("SS_RECORD_THRESHOLDS")
+    rec = os.environ.get("OL_RECORD_THRESHOLDS")
     if rec:
         with open(rec, "a") as f:
             f.write(
@@ -63,7 +63,7 @@ def check(
                 + "\n"
             )
         return
-    mode = mode or os.environ.get("SS_THRESHOLD_MODE", "full")
+    mode = mode or os.environ.get("OL_THRESHOLD_MODE", "full")
     row = _table().get((key, metric, mode))
     assert row is not None, (
         f"no reference threshold for {key} {metric} ({mode}) in ref-thresholds.tsv"

@@ -55,7 +55,7 @@
 # add-one count bigram (L0.0) fitted on train.bin: 2.142401587 nats per byte on
 # val.bin (course/oracle/MS-L2/corpus.py).
 #
-# `ss milestone MS-L2 --smoke` runs every step (no services, under a minute).
+# `ol milestone MS-L2 --smoke` runs every step (no services, under a minute).
 id       = "MS-L2"
 title    = "Your n-gram and neural language models, trained and scored through your CLI"
 requires = ["L2.1", "L2.2", "L2.3"]

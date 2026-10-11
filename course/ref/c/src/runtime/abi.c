@@ -11,7 +11,7 @@
 #include "tinyllm/abi.h"
 
 /* ---- Given: the error slot ---------------------------------------------
- * This block stays outside the solution markers. When `ss start` stubs
+ * This block stays outside the solution markers. When `ol start` stubs
  * this file, every stubbed function (here and in every other unit) still
  * reports "unimplemented: <id>" through tl_set_last_error, so the setter
  * and its getter must keep working before you write anything.

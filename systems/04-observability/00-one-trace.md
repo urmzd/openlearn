@@ -1,4 +1,4 @@
-<!-- ss:module obs.00 -->
+<!-- ol:module obs.00 -->
 # One trace: gateway to engine in Jaeger (tracer)
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start obs.00                       # records the start; there are no stubs
-ss tests obs.00                       # read the test catalog first
+ol start obs.00                       # records the start; there are no stubs
+ol tests obs.00                       # read the test catalog first
 # wire the export into go/cmd/gateway (section 4), rebuild, then:
-ss check obs.00                       # builds, starts both servers, sends requests to a course OTLP sink
-SS_SMOKE=1 ss check obs.00            # without a cluster: the local tier only
+ol check obs.00                       # builds, starts both servers, sends requests to a course OTLP sink
+OL_SMOKE=1 ol check obs.00            # without a cluster: the local tier only
 # on kind (dep.00): rebuild and load the gateway image, upgrade its release, then
 curl -sN http://127.0.0.1:30080/v1/completions -H "Authorization: Bearer $TL_API_KEY" \
   -H 'Content-Type: application/json' -d '{"model":"tracer","prompt":"Once","max_tokens":8,"stream":true}'
@@ -170,17 +170,17 @@ api := &http.Server{Handler: proxy.NewProxy(proxy.Config{
 
 ### What the tests check
 
-`ss check obs.00` runs `course/tests/obs.00/check` in your repo. The local tier runs your `[build]` steps, trains a throwaway model with `[entry].tinyllm`, and starts `[services.engine]` and `[services.gateway]` from `system.toml` exactly as `ss milestone` does (free ports, `{model_dir}` filled), with `OTEL_EXPORTER_OTLP_ENDPOINT` set to a course OTLP sink that accepts JSON and protobuf.
+`ol check obs.00` runs `course/tests/obs.00/check` in your repo. The local tier runs your `[build]` steps, trains a throwaway model with `[entry].tinyllm`, and starts `[services.engine]` and `[services.gateway]` from `system.toml` exactly as `ol milestone` does (free ports, `{model_dir}` filled), with `OTEL_EXPORTER_OTLP_ENDPOINT` set to a course OTLP sink that accepts JSON and protobuf.
 
 | Test | KIND | Checks | Why it matters downstream |
 |---|---|---|---|
 | `test_one_request_is_one_trace` | conformance | one streamed request gives `gateway.proxy` and a `POST /v1/completions` whose parent is it, in one trace | the MS-P1 trace step, every trace you read later |
 | `test_span_kinds_and_nesting` | unit | CLIENT and SERVER kinds, valid intervals, the engine span inside the gateway span, id lengths | trace viewers draw and time the tree from these |
-| `test_caller_trace_is_continued` | conformance | with the section 2.2 header, `gateway.proxy` is in trace `4bf92f35...` with parent `00f067aa0ba902b7`, and the engine span is its child | traced clients: the agent in Pass 10, `ss drill` evidence |
+| `test_caller_trace_is_continued` | conformance | with the section 2.2 header, `gateway.proxy` is in trace `4bf92f35...` with parent `00f067aa0ba902b7`, and the engine span is its child | traced clients: the agent in Pass 10, `ol drill` evidence |
 | `test_export_never_blocks_requests` | fault | with a collector that accepts and never answers, three requests each take under 1.5 s, and something was exported | a collector outage is not a gateway outage |
 | `test_trace_in_jaeger_on_kind` | conformance | a request through `gateway_url` appears in Jaeger at `traces` as `gateway.proxy` (`<system>-gateway`) parent of `POST /v1/completions` (`<system>-engine`) | the deployed version, read the way MS-P1 reads it |
 
-The last test is the **cluster tier**: without your `kube_context` it fails and says so; `SS_SMOKE=1 ss check obs.00` skips it with the reason.
+The last test is the **cluster tier**: without your `kube_context` it fails and says so; `OL_SMOKE=1 ol check obs.00` skips it with the reason.
 
 ## 5. Pitfalls
 

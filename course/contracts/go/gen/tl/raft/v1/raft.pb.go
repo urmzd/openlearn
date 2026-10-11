@@ -553,7 +553,7 @@ const file_tl_raft_v1_raft_proto_rawDesc = "" +
 	"\x04Raft\x12N\n" +
 	"\vRequestVote\x12\x1e.tl.raft.v1.RequestVoteRequest\x1a\x1f.tl.raft.v1.RequestVoteResponse\x12T\n" +
 	"\rAppendEntries\x12 .tl.raft.v1.AppendEntriesRequest\x1a!.tl.raft.v1.AppendEntriesResponse\x12Z\n" +
-	"\x0fInstallSnapshot\x12\".tl.raft.v1.InstallSnapshotRequest\x1a#.tl.raft.v1.InstallSnapshotResponseB:Z8supersource.urmzd.com/tl/contracts/gen/tl/raft/v1;raftv1b\x06proto3"
+	"\x0fInstallSnapshot\x12\".tl.raft.v1.InstallSnapshotRequest\x1a#.tl.raft.v1.InstallSnapshotResponseB8Z6openlearn.urmzd.com/tl/contracts/gen/tl/raft/v1;raftv1b\x06proto3"
 
 var (
 	file_tl_raft_v1_raft_proto_rawDescOnce sync.Once

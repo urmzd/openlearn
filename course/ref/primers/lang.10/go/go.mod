@@ -9,7 +9,7 @@ go 1.25.0
 require (
 	google.golang.org/grpc v1.83.1
 	google.golang.org/protobuf v1.36.11
-	supersource.urmzd.com/tl/contracts v0.0.0
+	openlearn.urmzd.com/tl/contracts v0.0.0
 )
 
 require (
@@ -19,4 +19,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 )
 
-replace supersource.urmzd.com/tl/contracts => ../../../contracts/go
+replace openlearn.urmzd.com/tl/contracts => ../../../contracts/go

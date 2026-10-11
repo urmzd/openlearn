@@ -9,6 +9,6 @@ How a model is made before it is served: RL foundations, pretraining, SFT, prefe
 The stages, their chapters, and what "done" means for each are in [`path.tsv`](path.tsv).
 
 ```bash
-practice/bin/ss learn training          # stages and progress
-practice/bin/ss learn training next     # read the next unfinished stage
+practice/bin/ol learn training          # stages and progress
+practice/bin/ol learn training next     # read the next unfinished stage
 ```

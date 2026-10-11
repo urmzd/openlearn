@@ -1,4 +1,4 @@
-<!-- ss:module gw.01 -->
+<!-- ol:module gw.01 -->
 # Server skeleton, composition root, go/config, graceful shutdown
 
 ## Overview
@@ -25,10 +25,10 @@
 ## How to work this chapter
 
 ```bash
-ss start gw.01          # writes chain.go, server.go, config.go with stub bodies
-ss tests gw.01          # read the test catalog first
-ss check gw.01          # exit code is the verdict
-ss diff  gw.01          # after passing: your code against the reference
+ol start gw.01          # writes chain.go, server.go, config.go with stub bodies
+ol tests gw.01          # read the test catalog first
+ol check gw.01          # exit code is the verdict
+ol diff  gw.01          # after passing: your code against the reference
 ```
 
 `go/config` uses `github.com/BurntSushi/toml` (allowed in `contracts/allowed-deps.toml`). If your `go/go.mod` was written by `gw.00`, add it once: `go -C go get github.com/BurntSushi/toml@v1.6.0`. Then grow your `go/cmd/gateway/main.go` into the composition root of section 4 and declare the `--config` form in `system.toml`.

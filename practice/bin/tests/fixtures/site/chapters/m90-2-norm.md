@@ -1,4 +1,4 @@
-<!-- ss:module M90.2 -->
+<!-- ol:module M90.2 -->
 # L1 normalize
 
 ## Overview
@@ -20,9 +20,9 @@
 ## How to work this chapter
 
 ```bash
-ss start M90.2
-ss tests M90.2
-ss check M90.2
+ol start M90.2
+ol tests M90.2
+ol check M90.2
 ```
 
 ---

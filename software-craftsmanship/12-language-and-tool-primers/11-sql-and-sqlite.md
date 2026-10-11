@@ -1,4 +1,4 @@
-<!-- ss:module lang.11 -->
+<!-- ol:module lang.11 -->
 # SQL and SQLite: schema, transactions, WAL mode, indexes, aggregates
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start lang.11                         # records that you started; the exercise is primers/lang.11/
-ss tests lang.11                         # read the test catalog first
+ol start lang.11                         # records that you started; the exercise is primers/lang.11/
+ol tests lang.11                         # read the test catalog first
 mkdir -p primers/lang.11                 # write the nine files of section 4
 sqlite3 /tmp/u.db < contracts/formats/usage.v1.sql      # try things by hand
 sqlite3 /tmp/u.db ".param set :tenant acme" ".param set :since 0" ".param set :until 9999999999999" \
   ".read primers/lang.11/q1_tenant_totals.sql"
-ss check lang.11                         # exit code is the verdict
+ol check lang.11                         # exit code is the verdict
 ```
 
 ---

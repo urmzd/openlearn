@@ -40,7 +40,7 @@ import (
 	dlog "tinyllm/durable/log"
 	"tinyllm/durable/queue"
 
-	durablev1 "supersource.urmzd.com/tl/contracts/gen/tl/durable/v1"
+	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
 // Limits from DESIGN 2.7 and durable.proto.

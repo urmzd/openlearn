@@ -1,4 +1,4 @@
-<!-- ss:module L10.8 -->
+<!-- ol:module L10.8 -->
 # Speculative decoding in the engine
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L10.8               # stubs spec.rs
-ss tests L10.8
-ss check L10.8               # exit code is the verdict
-ss check L10.8 --ref-deps    # only if L8.6, L10.1, or L10.1 is not passing yet
-ss diff  L10.8
+ol start L10.8               # stubs spec.rs
+ol tests L10.8
+ol check L10.8               # exit code is the verdict
+ol check L10.8 --ref-deps    # only if L8.6, L10.1, or L10.1 is not passing yet
+ol diff  L10.8
 ```
 
 Declare `pub mod spec;` in `tl-engine/src/lib.rs`. Your engine turns `[engine].speculative = { draft = "prompt_lookup", k = 4 }` into a `SpecConfig` with `SpecConfig::parse`, and its step loop runs one round per sequence: `propose`, one forward over the pending token plus the draft, `verify_draft`, then `rollback` of the sequence's block table to the kept length.

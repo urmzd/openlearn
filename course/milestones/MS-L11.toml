@@ -33,7 +33,7 @@
 #        |loss - base loss| / base loss, "peak_mem_ratio" = peak_mem / base
 #        peak_mem}; --out writes the same object to a file.
 #
-# `ss milestone MS-L11 --smoke` runs 60 steps per run (about 40 s); the full
+# `ol milestone MS-L11 --smoke` runs 60 steps per run (about 40 s); the full
 # run trains 300.
 id       = "MS-L11"
 title    = "Mixed precision, accumulation, and recompute train like fp32 in less memory"

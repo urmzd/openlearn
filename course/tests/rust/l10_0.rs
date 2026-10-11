@@ -23,7 +23,7 @@ use tl_serve::http::{self, Bigram, CompletionRequest, Json, Pcg32, Server, Utf8S
 static SEQ: AtomicUsize = AtomicUsize::new(0);
 
 fn tmpdir(tag: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("ss-l10_0-{}-{}-{tag}", std::process::id(), SEQ.fetch_add(1, Ordering::SeqCst)));
+    let d = std::env::temp_dir().join(format!("ol-l10_0-{}-{}-{tag}", std::process::id(), SEQ.fetch_add(1, Ordering::SeqCst)));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d

@@ -1,4 +1,4 @@
-<!-- ss:module L7.7 -->
+<!-- ol:module L7.7 -->
 # Sliding window, StreamingLLM sinks, learned sinks
 
 ## Overview
@@ -24,11 +24,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L7.7              # stubs window.py; prints your test path and rung (R5)
-ss tests L7.7              # the course tests
+ol start L7.7              # stubs window.py; prints your test path and rung (R5)
+ol tests L7.7              # the course tests
 # write your oracle tests in python/tests/l7-7-window/, then:
-ss check L7.7              # course tests and the mutation grade of your tests
-ss diff  L7.7              # after passing: your code against the reference
+ol check L7.7              # course tests and the mutation grade of your tests
+ol diff  L7.7              # after passing: your code against the reference
 ```
 
 ---
@@ -116,7 +116,7 @@ def attention_mask(cache, layer, T, window, n_sink=0) -> Optional[NDArray]
 
 ### Your graded tests (rung R5)
 
-Your oracles: the visibility rule written as a double loop; attention with a sink computed row by row with `math.exp`; and full attention under the mask as the oracle for streaming through `SinkWindowCache` (decode and chunks, with `L7.5`'s `GQAttention`). Add the hand sink row, `positions()` after eviction, a keep-everything cache with `attention_mask`, and the validation errors. Import only `tinyllm.modern.window`, `tinyllm.modern.gqa`, `tinyllm.modern.rope`, and `tinyllm.autograd.tensor`. `ss check L7.7` requires 0.80 with every pitfall fault killed.
+Your oracles: the visibility rule written as a double loop; attention with a sink computed row by row with `math.exp`; and full attention under the mask as the oracle for streaming through `SinkWindowCache` (decode and chunks, with `L7.5`'s `GQAttention`). Add the hand sink row, `positions()` after eviction, a keep-everything cache with `attention_mask`, and the validation errors. Import only `tinyllm.modern.window`, `tinyllm.modern.gqa`, `tinyllm.modern.rope`, and `tinyllm.autograd.tensor`. `ol check L7.7` requires 0.80 with every pitfall fault killed.
 
 ## 5. Pitfalls
 

@@ -5,7 +5,7 @@
   "repo": "https://github.com/urmzd/openlearn",
   "paths": "paths",
   "featured": "course",
-  "practice": "practice/bin/ss",
+  "practice": "practice/bin/ol",
   "start": [
     { "file": "paths/course/README.md", "title": "The course" },
     { "file": "README.md", "title": "Overview" },

@@ -7,7 +7,7 @@ go 1.25.0
 // mode, `go work init ./go ./contracts/go` at the repo root, which is also how
 // the course overlay builds (a `require` here makes the overlay try to fetch
 // the module; DEVIATIONS B93-18).
-replace supersource.urmzd.com/tl/contracts => ../contracts/go
+replace openlearn.urmzd.com/tl/contracts => ../contracts/go
 
 require (
 	github.com/BurntSushi/toml v1.6.0

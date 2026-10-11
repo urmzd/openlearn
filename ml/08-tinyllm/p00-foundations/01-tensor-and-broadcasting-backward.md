@@ -1,4 +1,4 @@
-<!-- ss:module L0.1 -->
+<!-- ol:module L0.1 -->
 # Tensor, broadcasting backward, and no_grad
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L0.1              # stubs tensor.py and mode.py into your repo
-ss tests L0.1              # read the test catalog first: rung R0, you write no graded tests here
-ss check L0.1              # exit code is the verdict
-ss check L0.1 --ref-deps   # only if M06.1, M08.2, or M08.3 is not passing yet
-ss diff  L0.1              # after passing: your code against the reference
+ol start L0.1              # stubs tensor.py and mode.py into your repo
+ol tests L0.1              # read the test catalog first: rung R0, you write no graded tests here
+ol check L0.1              # exit code is the verdict
+ol check L0.1 --ref-deps   # only if M06.1, M08.2, or M08.3 is not passing yet
+ol diff  L0.1              # after passing: your code against the reference
 ```
 
 `tinyllm` stays a namespace package: no `__init__.py` under `python/tinyllm/autograd/`. Import as `from tinyllm.autograd.tensor import Tensor`.
@@ -213,7 +213,7 @@ The contracts carry the exact rules: the constructor copies its data and rejects
 | Forward | `L0.5` | `train_step` calls `backward`, `evaluate` runs under `no_grad` |
 | Forward | `L0.6` | the checkpoint tests train a model with this autograd before saving it |
 
-If you skip this module, `ss check L0.2` stops with `L0.2 needs L0.1`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check L0.2` stops with `L0.2 needs L0.1`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

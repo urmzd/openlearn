@@ -1,4 +1,4 @@
-<!-- ss:module dep.04 -->
+<!-- ol:module dep.04 -->
 # Tilt dev loop
 
 ## Overview
@@ -25,13 +25,13 @@
 ## How to work this chapter
 
 ```bash
-ss start dep.04                       # records the start; there are no stubs
-ss tests dep.04                       # read the test catalog first
+ol start dep.04                       # records the start; there are no stubs
+ol tests dep.04                       # read the test catalog first
 # write deploy/Tiltfile (section 4), then:
-SS_SMOKE=1 ss check dep.04            # evaluates the Tiltfile without Tilt or a cluster
+OL_SMOKE=1 ol check dep.04            # evaluates the Tiltfile without Tilt or a cluster
 tilt up -f deploy/Tiltfile            # the loop: http://localhost:10350 shows the graph
 tilt ci -f deploy/Tiltfile            # once, as CI runs it (dep.05)
-ss check dep.04                       # adds the cluster tier: `tilt ci` on kind-<system>
+ol check dep.04                       # adds the cluster tier: `tilt ci` on kind-<system>
 ```
 
 ---
@@ -134,7 +134,7 @@ The check does not run Tilt for the static tier: `_tiltfile.py` evaluates your T
 | `test_ci_has_a_budget` | boundary | `ci_settings(timeout=...)` of at most 20 minutes | `dep.05`'s kind job fails fast |
 | `test_tilt_ci_on_kind` | conformance | `tilt ci` on `kind-<system>` exits 0 | the loop works end to end |
 
-The last test is the **cluster tier**; `SS_SMOKE=1` skips it with the reason.
+The last test is the **cluster tier**; `OL_SMOKE=1` skips it with the reason.
 
 ## 5. Pitfalls
 

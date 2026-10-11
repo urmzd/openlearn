@@ -39,7 +39,7 @@ from tinyllm.infer.constrain import (
 from tinyllm.infer.sample import SamplingParams, request_rng
 from tinyllm.tok.bytes_unicode import bytes_to_unicode
 
-SEED = int(os.environ.get("SS_SEED", "0"))
+SEED = int(os.environ.get("OL_SEED", "0"))
 FIX = Path(os.environ.get("TINYLLM_FIXTURES", "")) / "L8.7" / "masks_golden.json"
 
 HAND = r"(cat|car|dog)s?"

@@ -1,4 +1,4 @@
-<!-- ss:module L5.5 -->
+<!-- ol:module L5.5 -->
 # Encoder-decoder Transformer: post-LN and pre-LN, Noam, label smoothing
 
 ## Overview
@@ -25,11 +25,11 @@
 ## How to work this chapter
 
 ```bash
-ss start L5.5              # stubs transformer.py; prints your test path and rung (R5)
-ss tests L5.5              # the course tests
-ss check L5.5              # course tests and the mutation grade of your tests
-ss milestone MS-L5 --smoke # your CLI: train transformer, translate, the LayerNorm demo
-ss diff  L5.5              # after passing: your code against the reference
+ol start L5.5              # stubs transformer.py; prints your test path and rung (R5)
+ol tests L5.5              # the course tests
+ol check L5.5              # course tests and the mutation grade of your tests
+ol milestone MS-L5 --smoke # your CLI: train transformer, translate, the LayerNorm demo
+ol diff  L5.5              # after passing: your code against the reference
 ```
 
 ---
@@ -153,7 +153,7 @@ Masks passed in are padding masks, bool `[B, S]` and `[B, T]`, True = a real tok
 
 ### Your graded tests (rung R5)
 
-Write the whole forward pass again in float64 numpy from the model's `state_dict`: embeddings times $\sqrt d$ plus `sinusoidal_pe`, the attention of `L5.3` written out, LayerNorm, ReLU, and the post-LN and pre-LN orders, for a one-layer model with padding in both source and target, and compare the logits. Add the section 3 numbers, the causal and padding laws, `decode_step` against the forward pass, and a `translate` whose eos is chosen to finish. `ss check L5.5` requires 0.80 with the pitfall faults (`s01` to `s08`) killed.
+Write the whole forward pass again in float64 numpy from the model's `state_dict`: embeddings times $\sqrt d$ plus `sinusoidal_pe`, the attention of `L5.3` written out, LayerNorm, ReLU, and the post-LN and pre-LN orders, for a one-layer model with padding in both source and target, and compare the logits. Add the section 3 numbers, the causal and padding laws, `decode_step` against the forward pass, and a `translate` whose eos is chosen to finish. `ol check L5.5` requires 0.80 with the pitfall faults (`s01` to `s08`) killed.
 
 ## 5. Pitfalls
 

@@ -1,6 +1,6 @@
 """Reference learner tests for L1.6 (rung R2): the bodies of the test names
 and docstrings listed in the chapter, section 4. They import only names in
-contracts/py/tinyllm/tok/{base,char,metrics}.pyi; `ss mutate L1.6` runs them
+contracts/py/tinyllm/tok/{base,char,metrics}.pyi; `ol mutate L1.6` runs them
 against the reference with one planted bug at a time."""
 
 import pytest

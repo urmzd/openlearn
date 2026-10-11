@@ -1,4 +1,4 @@
-<!-- ss:module data.04 -->
+<!-- ol:module data.04 -->
 # Near-duplicate dedup: MinHash, LSH, union-find, and decontamination
 
 ## Overview
@@ -24,13 +24,13 @@
 ## How to work this chapter
 
 ```bash
-ss start data.04              # stubs minhash.py into python/corpus/
-ss tests data.04              # the course test catalog
-ss check data.04              # exit code is the verdict
-ss check data.04 --ref-deps   # only if data.02, data.03, or M06.3 is not passing yet
-ss tdd red data.04            # rung R4: write your property tests first (section 4)
-ss mutate data.04             # how many planted bugs your tests catch
-ss diff  data.04              # after passing: your code against the reference
+ol start data.04              # stubs minhash.py into python/corpus/
+ol tests data.04              # the course test catalog
+ol check data.04              # exit code is the verdict
+ol check data.04 --ref-deps   # only if data.02, data.03, or M06.3 is not passing yet
+ol tdd red data.04            # rung R4: write your property tests first (section 4)
+ol mutate data.04             # how many planted bugs your tests catch
+ol diff  data.04              # after passing: your code against the reference
 ```
 
 ---
@@ -164,7 +164,7 @@ def decontaminate(docs: Iterable[Doc], protected: Sequence[Path], n: int = 13) -
 | `test_decontaminate_streams` | property | reads 5 of an endless stream without running ahead | the stage runs on any corpus size |
 | `test_after_exact_dedup` | regression | after `data.03`, near dedup drops exactly the planted near duplicates | the two dedup counts add up in the manifest |
 
-**Your tests (rung R4, properties).** Write them under `python/tests/data-04-minhash/` before the code (`ss tdd red data.04`): the hand example; the signature formula; for any 1 to $k-1$ words, one shingle; wordless texts never cluster; the estimate is unbiased over fresh pairs; equal values in different bands, or in only $r - 1$ rows of a band, are no candidate; union-find roots are the minimum of each group for any union sequence (Hypothesis); a chain is one cluster; candidates below the threshold are not merged; workers do not change signatures; tags, order, and meta survive `near_dedup`; a protected 13-gram anywhere (any case, any punctuation) contaminates and 12 words do not; id-like keys are not protected; `decontaminate` streams. `ss mutate data.04` grades them: 0.80 of the mutants, and every Pitfall below.
+**Your tests (rung R4, properties).** Write them under `python/tests/data-04-minhash/` before the code (`ol tdd red data.04`): the hand example; the signature formula; for any 1 to $k-1$ words, one shingle; wordless texts never cluster; the estimate is unbiased over fresh pairs; equal values in different bands, or in only $r - 1$ rows of a band, are no candidate; union-find roots are the minimum of each group for any union sequence (Hypothesis); a chain is one cluster; candidates below the threshold are not merged; workers do not change signatures; tags, order, and meta survive `near_dedup`; a protected 13-gram anywhere (any case, any punctuation) contaminates and 12 words do not; id-like keys are not protected; `decontaminate` streams. `ol mutate data.04` grades them: 0.80 of the mutants, and every Pitfall below.
 
 ## 5. Pitfalls
 
@@ -197,7 +197,7 @@ def decontaminate(docs: Iterable[Doc], protected: Sequence[Path], n: int = 13) -
 | Forward | `data.06` | `minhash_cluster` becomes the smallest row index of each cluster; `near_dropped` and `decontaminated` go into the manifest |
 | Forward | `data.09` | `CorpusBuild` runs this stage as the `dedup_near` activity, with an output hash that must not depend on the worker count |
 
-If you skip this module, `ss check data.05` stops with `data.05 needs data.04`: build it, or rerun with `--ref-deps`.
+If you skip this module, `ol check data.05` stops with `data.05 needs data.04`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 

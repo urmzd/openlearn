@@ -32,9 +32,9 @@ action    = "panic"
 at        = "start"
 
 # The build the poison lands in, started once the poisoned workers are rolled
-# out: after the injection, `ss drill start` waits for `kubectl rollout
+# out: after the injection, `ol drill start` waits for `kubectl rollout
 # status` on the workers, then runs this command through your [entry].ctl in
-# the background (.ss/drills/<run>/workload.log); `ss drill reset` kills it.
+# the background (.ol/drills/<run>/workload.log); `ol drill reset` kills it.
 [workload]
 role         = "ctl"
 argv         = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "drill-poison", "--durable", "127.0.0.1:30733", "--json"]
@@ -60,7 +60,7 @@ promql = "(sum(tl_durable_task_queue_depth{namespace=\"{deploy.namespace}\"}) or
 hold_s = 60
 
 # The workflow completed, with nothing dead-lettered: a command check
-# `ss drill end` runs as a resolve check.
+# `ol drill end` runs as a resolve check.
 [[resolve.run]]
 role   = "ctl"
 argv   = ["wf", "describe", "drill-poison", "--durable", "127.0.0.1:30733", "--json"]

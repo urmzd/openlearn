@@ -1,7 +1,7 @@
-# S-M05 answer key (hidden; honor system, DESIGN D34). Checked by `ss check S-M05`
-# through sscourse.solve_worker. Every `expect` must pass its own check and every
+# S-M05 answer key (hidden; honor system, DESIGN D34). Checked by `ol check S-M05`
+# through olcourse.solve_worker. Every `expect` must pass its own check and every
 # `reject` canary (the plausible wrong answer named in its comment) must fail:
-# `ss verify course S-M05` check 7. The values are recomputed independently by
+# `ol verify course S-M05` check 7. The values are recomputed independently by
 # course/oracle/solve/S-M05.py.
 
 # ---- sets and logic ---------------------------------------------------------

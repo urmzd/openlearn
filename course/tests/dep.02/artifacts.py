@@ -1,6 +1,6 @@
 """dep.02 artifact check: the Pass 7 kind cluster with a local registry.
 
-Run by `ss check dep.02` in your repo. Two tiers, in order:
+Run by `ol check dep.02` in your repo. Two tiers, in order:
 
   static   deploy/kind/cluster.yaml maps every platform NodePort on 127.0.0.1,
            mounts ./artifacts, and points containerd at /etc/containerd/certs.d;
@@ -10,7 +10,7 @@ Run by `ss check dep.02` in your repo. Two tiers, in order:
            runs on 127.0.0.1:5001 and joins the kind network, the ConfigMap is
            applied, and an image pushed to localhost:5001 runs in a pod
 
-The cluster tier fails when the context is missing or down; with SS_SMOKE=1
+The cluster tier fails when the context is missing or down; with OL_SMOKE=1
 it is skipped with the reason instead (kind is not installed on every machine
 that runs the course's own verification).
 """
@@ -309,11 +309,11 @@ def test_image_pushed_to_the_registry_runs(c: Ctx) -> None:
     ctx = context(c)
     ns = (c.system().get("deploy") or {}).get("namespace") or c.system_name()
     src = "alpine:3.19@sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1"
-    dst = f"{REGISTRY}/ss-check/alpine:dep02"
+    dst = f"{REGISTRY}/ol-check/alpine:dep02"
     c.sh(["docker", "pull", src], timeout=300)
     c.sh(["docker", "tag", src, dst])
     c.sh(["docker", "push", dst], timeout=300)
-    pod = f"ss-dep02-pull-{os.getpid()}"
+    pod = f"ol-dep02-pull-{os.getpid()}"
     c.sh(
         [
             "kubectl",

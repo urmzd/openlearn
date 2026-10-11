@@ -134,7 +134,7 @@ mod serve {
 
     fn succ_model() -> PathBuf {
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
-        let d = std::env::temp_dir().join(format!("ss-craft_14-{}-{nanos}", std::process::id())).join("succ");
+        let d = std::env::temp_dir().join(format!("ol-craft_14-{}-{nanos}", std::process::id())).join("succ");
         std::fs::create_dir_all(&d).unwrap();
         let mut w = vec![0.0f32; 256 * 256];
         for i in 0..256 {
