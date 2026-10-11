@@ -20,7 +20,8 @@ type trainRunResult struct {
 	Checkpoint string `json:"checkpoint"`
 }
 
-// train starts TrainRun on a train spec (formats/train-spec.schema.json).
+// train starts TrainRun on a train spec (formats/train-spec.schema.json),
+// with "out" defaulting to runs/<workflow id>.
 // With --wait the final line is {workflow_id, status, steps, final_loss,
 // ckpt}; without it, {workflow_id, run_id, started, status}.
 func train(args []string) error {
@@ -48,6 +49,16 @@ func train(args []string) error {
 	var obj map[string]any
 	if err := json.Unmarshal(spec, &obj); err != nil {
 		return usagef("train: --spec %s is not a JSON object: %v", *specPath, err)
+	}
+	// A spec without "out" trains in runs/<workflow id>: every segment of
+	// this run resumes its own checkpoints (ckpt/LATEST), and another run of
+	// the same spec under another id starts fresh instead of resuming this
+	// one's final checkpoint.
+	if _, ok := obj["out"]; !ok {
+		obj["out"] = "runs/" + *id
+		if spec, err = json.Marshal(obj); err != nil {
+			return err
+		}
 	}
 	input, err := json.Marshal(map[string]json.RawMessage{"spec": spec})
 	if err != nil {

@@ -30,16 +30,15 @@ The design's kill loop (500 tl.test.Append activities with SIGKILLs of
 {durable}, {worker}, and the Python children, exactly-once effects in the
 testkit `effects` sink, then CorpusBuild and TrainRun under kills with
 outputs equal to uninterrupted runs) uses the runner's `chaos` and `sink`
-step keys and the `effects` matcher (DESIGN 5.7). Section 4 runs
-CorpusBuild under kills of both services. Two steps stay PENDING at the end
-of this file, each with its reason: the 500 appends (the worker registers no
-tl.test.Batch) and TrainRun under kills (a second TrainRun of
-specs/tiny.json resumes the first run's final checkpoint). Until they run,
-the same invariants are checked one level down by the course tests in
-`requires`: dur.01 (KillLoop over the log), dur.03 (poison task, stale
-lease), dur.04 and dur.05 (KillLoop over a worker with the effects sink),
-dur.06 (kill the server mid-workflow and replay), dur.09 (SIGKILL a worker
-mid-activity, resume from the checkpoint).
+step keys and the `effects` matcher (DESIGN 5.7). Section 4 runs all
+three: CorpusBuild under kills of both services, 500 appends of your
+worker's tl.test.Batch under kills of both, exactly once in the sink, and
+TrainRun under kills of the worker, with the steps and final loss of the
+uninterrupted run. The same invariants are checked one level down by the
+course tests in `requires`: dur.01 (KillLoop over the log), dur.03 (poison
+task, stale lease), dur.04 and dur.05 (KillLoop over a worker with the
+effects sink), dur.06 (kill the server mid-workflow and replay), dur.09
+(SIGKILL a worker mid-activity, resume from the checkpoint).
 
 This file fixes the Pass 8 verbs of your `ctl` role (spec/cli-roles.md,
 "Verbs of later passes"). Every verb keeps the rules of that page: exit 2
@@ -57,6 +56,12 @@ CONTINUED_AS_NEW.
       is the run's result parsed as JSON (null until COMPLETED).
       SleepDemo is registered with the durable timers: input JSON is an
       integer duration in milliseconds and its result is the fired time.
+      tl.test.Batch (input N) runs N tl.test.Append activities with the
+      SDK's activity ids 1 to N, so the effects sink receives the keys
+      "<workflow id>/1" to "<workflow id>/N"; each append holds 100 ms
+      after its effect (a kill then lands between effect and completion);
+      its result is N. --wait polls through a server that answers
+      Unavailable while it restarts, for up to 2 minutes in a row.
   {ctl} wf describe <workflow id> --json
       DescribeWorkflow. Final line: {"workflow_id", "run_id", "status",
       "history_length", "pending_activities", "dead_lettered"} (the last two
@@ -79,8 +84,11 @@ CONTINUED_AS_NEW.
       "workflow_id" and "status".
   {ctl} train --spec <file> --id <workflow id> [--wait] [--json]
       Starts TrainRun (dur.11) on a train spec (formats/train-spec.schema.json).
-      With --wait, the final line is {"workflow_id", "status", "steps",
-      "final_loss", "ckpt"}.
+      A spec without "out" gets out = "runs/<workflow id>", so a run
+      resumes only its own checkpoints. With --wait, the final line is
+      {"workflow_id", "status", "steps", "final_loss", "ckpt"}; the loss is
+      the run directory's final.json, the same after a retry that resumed
+      from the final checkpoint.
 
 Your system.toml must declare:
   [entry].durable, [entry].worker, [entry].ctl

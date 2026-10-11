@@ -19,8 +19,11 @@
 // --test-activities registers the course test activity tl.test.Append (POSTs
 // its idempotency key to $TL_TEST_EFFECTS_URL, the testkit effects sink, and
 // records nothing when that is unset) and the test workflows Echo (one
-// tl.test.Append of its input, returns the input) and SleepDemo (input:
-// milliseconds; result: the fired time in Unix milliseconds).
+// tl.test.Append of its input, returns the input), SleepDemo (input:
+// milliseconds; result: the fired time in Unix milliseconds), and
+// tl.test.Batch (input N: N tl.test.Append activities with ids 1 to N, so
+// the sink's keys are "<workflow id>/1" to "<workflow id>/N"; the kill
+// loop of MS-durable).
 //
 // ReadArtifact (artifact.go) is always registered: it returns a file under
 // the artifacts root, which is how ctl reads what an activity wrote.
@@ -70,7 +73,7 @@ func main() {
 	queues := flag.String("queue", "", "task queue(s) to poll, comma-separated")
 	durable := flag.String("durable", "", "durable server host:port (default $TL_DURABLE_ADDR)")
 	healthPort := flag.Int("health-port", 0, "health port: /healthz and /readyz")
-	testActs := flag.Bool("test-activities", false, "register tl.test.Append, Echo, and SleepDemo (tests only)")
+	testActs := flag.Bool("test-activities", false, "register tl.test.Append, Echo, SleepDemo, and tl.test.Batch (tests only)")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		usage("unexpected arguments: " + strings.Join(flag.Args(), " "))
@@ -126,6 +129,7 @@ func main() {
 	if *testActs {
 		reg.Register("Echo", echo)
 		reg.Register("SleepDemo", sleepDemo)
+		reg.Register("tl.test.Batch", batch)
 	}
 
 	canceled := func(cause error) bool { return errors.Is(cause, worker.ErrCancelRequested) }
@@ -237,27 +241,48 @@ func subprocess(r activities.Subprocess, args func(in []byte) []string) worker.A
 // appendEffect is tl.test.Append: one POST of {key, value} to the effects
 // sink, which dedupes by key, so a retried attempt is visible but harmless.
 // Without a sink (a run that checks no effects, such as the MS-durable
-// smoke) it records nothing and returns its input.
+// smoke) it records nothing and returns its input. An input object with
+// "hold_ms" (tl.test.Batch's) holds that long after the effect before the
+// activity completes: the window in which a kill leaves an applied effect
+// unreported, so the redelivery is what the exactly-once check sees.
 func appendEffect(ctx context.Context, in []byte) ([]byte, error) {
+	if err := postEffect(ctx, in); err != nil {
+		return nil, err
+	}
+	var opt struct {
+		HoldMs int `json:"hold_ms"`
+	}
+	if json.Unmarshal(in, &opt) == nil && opt.HoldMs > 0 {
+		select {
+		case <-time.After(time.Duration(opt.HoldMs) * time.Millisecond):
+		case <-ctx.Done():
+			return nil, context.Cause(ctx)
+		}
+	}
+	return in, nil
+}
+
+// postEffect records the activity's idempotency key in the effects sink.
+func postEffect(ctx context.Context, in []byte) error {
 	url := os.Getenv("TL_TEST_EFFECTS_URL")
 	if url == "" {
-		return in, nil
+		return nil
 	}
 	body, _ := json.Marshal(map[string]string{"key": activity.IdempotencyKey(ctx), "value": string(in)})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("effects sink answered %d", resp.StatusCode)
+		return fmt.Errorf("effects sink answered %d", resp.StatusCode)
 	}
-	return in, nil
+	return nil
 }
 
 var testActivity = workflow.ActivityOptions{StartToClose: 30 * time.Second}
@@ -278,4 +303,32 @@ func sleepDemo(ctx workflow.Context, in []byte) ([]byte, error) {
 		return nil, err
 	}
 	return json.Marshal(workflow.Now(ctx).UnixMilli())
+}
+
+// batchHoldMs is how long each of tl.test.Batch's appends holds after its
+// effect (appendEffect).
+const batchHoldMs = 100
+
+// batch is tl.test.Batch: input N (JSON), N tl.test.Append activities
+// scheduled at once, the i-th (0-based) with input {"index": i, "hold_ms":
+// batchHoldMs}. The SDK numbers activity ids in schedule order from 1, so
+// the i-th has id i+1 and idempotency key "<workflow id>/<i+1>": the keys
+// are "<workflow id>/1" to "<workflow id>/N" on every replay. The result is
+// N once every append completed.
+func batch(ctx workflow.Context, in []byte) ([]byte, error) {
+	var n int
+	if err := json.Unmarshal(in, &n); err != nil || n < 0 {
+		return nil, fmt.Errorf("tl.test.Batch: input is a non-negative integer as JSON, got %q", in)
+	}
+	fs := make([]workflow.Future[[]byte], n)
+	for i := range fs {
+		in := map[string]int{"index": i, "hold_ms": batchHoldMs}
+		fs[i] = workflow.ExecuteActivity[[]byte](ctx, "tl.test.Append", in, testActivity)
+	}
+	for _, f := range fs {
+		if _, err := f.Get(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(n)
 }

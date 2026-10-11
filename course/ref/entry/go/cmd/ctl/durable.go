@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
@@ -19,7 +20,10 @@ import (
 const (
 	rpcTimeout   = 30 * time.Second
 	pollInterval = 250 * time.Millisecond
-	identity     = "ctl"
+	// unavailableGrace is how long --wait polls through a server that
+	// answers Unavailable (down, restarting) before it gives up.
+	unavailableGrace = 2 * time.Minute
+	identity         = "ctl"
 )
 
 // durable is a tl.durable.v1 WorkflowService client.
@@ -65,24 +69,42 @@ func (d *durable) start(wfType, id, queue string, input []byte) (*durablev1.Star
 
 // describe calls DescribeWorkflow on the current run of id.
 func (d *durable) describe(id string) (*durablev1.WorkflowInfo, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
-	defer cancel()
-	info, err := d.wf.DescribeWorkflow(ctx, &durablev1.DescribeWorkflowRequest{WorkflowId: id})
+	info, err := d.describeRPC(id)
 	if err != nil {
 		return nil, rpcErr("DescribeWorkflow", err)
 	}
 	return info, nil
 }
 
+// describeRPC is DescribeWorkflow with the gRPC error as it came.
+func (d *durable) describeRPC(id string) (*durablev1.WorkflowInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), rpcTimeout)
+	defer cancel()
+	return d.wf.DescribeWorkflow(ctx, &durablev1.DescribeWorkflowRequest{WorkflowId: id})
+}
+
 // wait describes the current run of id until it is no longer RUNNING. The
 // current run follows ContinueAsNew, so a continued workflow is waited for
-// to its end.
+// to its end. A server that is down while ctl waits (killed and
+// restarting) answers Unavailable; wait keeps polling through that for up
+// to unavailableGrace in a row, since the run lives on in the server's log.
 func (d *durable) wait(id string) (*durablev1.WorkflowInfo, error) {
+	var downSince time.Time
 	for {
-		info, err := d.describe(id)
+		info, err := d.describeRPC(id)
 		if err != nil {
-			return nil, err
+			if status.Code(err) != codes.Unavailable {
+				return nil, rpcErr("DescribeWorkflow", err)
+			}
+			if downSince.IsZero() {
+				downSince = time.Now()
+			} else if time.Since(downSince) > unavailableGrace {
+				return nil, rpcErr("DescribeWorkflow", err)
+			}
+			time.Sleep(pollInterval)
+			continue
 		}
+		downSince = time.Time{}
 		if info.GetStatus() != durablev1.WorkflowStatus_WORKFLOW_STATUS_RUNNING {
 			return info, nil
 		}
