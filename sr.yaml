@@ -82,3 +82,8 @@ packages:
       - outputs/supersource-course-p10-agents.pdf
       - outputs/supersource-course-p11-operate.pdf
       - outputs/supersource-course-p12-multimodal.pdf
+      # The desktop app, built per platform by the release workflow's app job.
+      - outputs/openlearn-darwin-arm64.zip
+      - outputs/openlearn-darwin-amd64.zip
+      - outputs/openlearn-windows-amd64.zip
+      - outputs/openlearn-linux-amd64.tar.gz

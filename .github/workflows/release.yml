@@ -13,10 +13,51 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
+  # Plan first, so the desktop bundles are only built when a release will
+  # actually be cut, and exist before it is: GitHub rejects uploads to a release
+  # that is already published. sr reports `released` only in release mode, so
+  # the planned tag is the signal: it is empty when nothing is releasable.
+  plan:
+    environment: release
+    name: Plan
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: Iv23liUsXGDICnIdo3Ev
+          private-key: ${{ secrets.SR_RELEASER_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: urmzd/sr@v9
+        id: plan
+        with:
+          mode: plan
+          github-token: ${{ steps.app-token.outputs.token }}
+
+  # The desktop app (app/), one bundle per platform.
+  app:
+    needs: plan
+    if: needs.plan.outputs.tag != ''
+    name: App
+    uses: ./.github/workflows/app-bundle.yml
+
   release:
     environment: release
     name: Release
-    needs: ci
+    needs: [plan, app]
+    if: needs.plan.outputs.tag != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -41,6 +82,14 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: supersource-curriculum-pdf
+          path: outputs
+          merge-multiple: true
+
+      # The desktop bundles built above, into the paths sr.yaml declares.
+      - name: Download desktop app bundles
+        uses: actions/download-artifact@v8
+        with:
+          pattern: openlearn-app-*
           path: outputs
           merge-multiple: true
 
