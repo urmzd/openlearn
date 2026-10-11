@@ -120,6 +120,63 @@ const stripInline = (s) =>
 		.replace(/<[^>]+>/g, '')
 		.trim();
 
+// remark-math pairs any two `$` on a line, so "$7 per hour, against $15" becomes
+// math. Apply pandoc's rule instead: an inline opener is followed by a non-space,
+// a closer follows a non-space and is not followed by a digit. An opener with no
+// valid closer is a literal dollar and is escaped. `$$`, `\$`, and code spans
+// are left alone.
+function escapeLoneDollars(line) {
+	return line
+		.split(/(`+[^`]*`+)/)
+		.map((part, i) => {
+			if (i % 2 === 1 || !part.includes('$')) return part;
+			let out = '';
+			let k = 0;
+			while (k < part.length) {
+				const c = part[k];
+				if (c === '\\') {
+					out += part.slice(k, k + 2);
+					k += 2;
+					continue;
+				}
+				if (c !== '$') {
+					out += c;
+					k++;
+					continue;
+				}
+				if (part[k + 1] === '$') {
+					const end = part.indexOf('$$', k + 2);
+					const stop = end < 0 ? part.length : end + 2;
+					out += part.slice(k, stop);
+					k = stop;
+					continue;
+				}
+				let close = -1;
+				if (part[k + 1] && !/\s/.test(part[k + 1])) {
+					for (let j = k + 1; j < part.length; j++) {
+						if (part[j] === '\\') {
+							j++;
+							continue;
+						}
+						if (part[j] === '$') {
+							if (!/\s/.test(part[j - 1]) && !/\d/.test(part[j + 1] ?? '')) close = j;
+							break;
+						}
+					}
+				}
+				if (close < 0) {
+					out += '\\$';
+					k++;
+					continue;
+				}
+				out += part.slice(k, close + 1);
+				k = close + 1;
+			}
+			return out;
+		})
+		.join('');
+}
+
 function transform(repoPath, text) {
 	if (repoPath === 'README.md') {
 		// The GitHub header block is replaced by the site's own home page.
@@ -166,7 +223,7 @@ function transform(repoPath, text) {
 			}
 		}
 		out.push(
-			line
+			escapeLoneDollars(line)
 				.replace(/(!?\[[^\]]*\]\()([^)\s]+)((?:\s+"[^"]*")?\))/g, (_, a, t, b) => a + rewriteTarget(repoPath, t) + b)
 				.replace(/^(\[[^\]]+\]:\s*)(\S+)/, (_, a, t) => a + rewriteTarget(repoPath, t))
 				.replace(/\b(href|src)="([^"]+)"/g, (_, attr, t) => `${attr}="${rewriteTarget(repoPath, t)}"`),
