@@ -16,6 +16,9 @@ course test, fixture budgets, modules.tsv is current, paths verify.
 With IDs, only those modules (plus the registry rules naming them). --changed maps
 changed files to modules, verifies them fully, and runs the smoke tests of their
 reverse dependents. --nightly uses three determinism runs.
+SS_VERIFY_MUTANT_SAMPLE=N checks only N mutants per module (rotated by
+GITHUB_SHA) and leaves the learner-test threshold to the nightly run; PR CI sets
+it. SS_MUTATION_CACHE names a kill cache that persists across runs.
 
 --e2e assembles a learner repo from course/ref (+ ref/primers, ref/docs,
 ref/entry, ref/system.toml) and runs it as a learner would: check --all --ci,
@@ -25,7 +28,7 @@ runs every milestone with a kind step in full (or only the milestone ids
 given, e.g. `--kind MS-P1`); it needs the reference kind
 cluster. A milestone that requires a drill runs with --ref-deps (drills are
 graded by `ss drill end`). --keep DIR leaves that learner at DIR; --assemble DIR
-only builds it there (the milestone-p1-kind CI job deploys it to kind).
+only builds it there (the nightly kind job deploys it to kind).
 
 Practice modules with an executable `check` get checks 1 and 2 too: the check
 passes in a learner assembled from the whole reference, and fails in a fresh
@@ -240,8 +243,19 @@ def check_mutants(course, reg, m, work, rep: Report) -> None:
         if line.strip() and not line.startswith("#")
     ]
     sources = {x: "ref" for x in [m.id] + reg.closure(m.id)}
-    cache = mutation.Cache(work / "mutation-cache.json")
+    # Keys are content hashes, so CI can keep one file across runs.
+    shared = os.environ.get("SS_MUTATION_CACHE")
+    cache = mutation.Cache(Path(shared) if shared else work / "mutation-cache.json")
     thash = _course_tests_hash(course, reg, m)
+    total = len(rows)
+    sample = int(os.environ.get("SS_VERIFY_MUTANT_SAMPLE") or 0)
+    if 0 < sample < total:
+        # PR CI: a rotating sample per commit; nightly runs every mutant.
+        salt = os.environ.get("GITHUB_SHA", "")
+        rows = sorted(
+            rows,
+            key=lambda r: hashlib.sha256(f"{salt}\0{m.id}\0{r[0]}".encode()).digest(),
+        )[:sample]
     bad, hits = [], 0
     for row in rows:
         mutant, unit = row[0], row[1]
@@ -269,14 +283,18 @@ def check_mutants(course, reg, m, work, rep: Report) -> None:
         else:
             cache.data["mutants"][key] = {"status": "killed"}
     cache.save()
+    of = f"{len(rows)} of {total}" if len(rows) < total else f"{total}"
     if bad:
-        rep.fail(6, f"mutants ({len(bad)} of {len(rows)})", "\n".join(bad))
+        rep.fail(6, f"mutants ({len(bad)} of {of})", "\n".join(bad))
     else:
         rep.ok(
             6,
-            f"{len(rows)} mutants apply and are killed"
+            f"{of} mutants apply and are killed"
             + (f" ({hits} from the kill cache)" if hits else ""),
         )
+    if m.learner_tests and len(rows) < total:
+        rep.skip(6, "reference learner tests' threshold: nightly (sampled run)")
+        return
     if m.learner_tests:
         try:
             root = mutation.scratch_tests_root(course, m, work)
@@ -639,7 +657,7 @@ def verify_practice(reg, course: Path, m, work: Path, rep: Report) -> None:
     """Checks 1 and 2 for a practice module with an executable artifact check
     (H15): it passes in a learner assembled from the reference, and fails in a
     fresh learner where only `ss start <ID>` ran. Run with SS_SMOKE=1: cluster
-    tiers belong to the milestone's kind steps (CI job milestone-p1-kind)."""
+    tiers belong to the milestone's kind steps (the nightly kind job)."""
     from . import e2e
 
     check = course / "tests" / m.id / "check"

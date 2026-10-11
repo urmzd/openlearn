@@ -1,5 +1,5 @@
 """ss verify course --e2e: the reference learner, end to end (DESIGN 5.14,
-CI job `reference-learner-e2e`).
+nightly CI job `reference-learner-e2e`).
 
 Assembles a learner repo from the reference (`assemble`): `ss course init`,
 `ss start` for every build and practice module in pass order, each unit
@@ -54,7 +54,7 @@ def learner_env(course: Path, lr: Path, scratch: Path) -> dict:
             "SS_COURSE_HOME": str(lr),
             "SS_SCRATCH": str(scratch),
             "SS_PATHS_DIR": str(paths.paths_dir(course)),
-            # A deployed reference (CI milestone-p1-kind) holds the caller's key
+            # A deployed reference (the nightly kind job) holds the caller's key
             # in its Secret; otherwise any fresh key serves the local services.
             "TL_API_KEY": os.environ.get("TL_API_KEY")
             or f"tl_e2e_{secrets.token_hex(8)}",

@@ -263,11 +263,16 @@ jobs:
   course-verify-changed:
     name: Course verify (changed modules, shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    # A PR checks 4 mutants per module (rotated per commit); the nightly run
+    # checks every mutant and the learner-test thresholds.
+    env:
+      SS_VERIFY_MUTANT_SAMPLE: "4"
+      SS_MUTATION_CACHE: ${{ github.workspace }}/../ss-mutation/mutation.json
     steps:
       - uses: actions/checkout@v6
         with:
@@ -289,152 +294,24 @@ jobs:
       - name: Toolchain
         run: practice/bin/ss doctor && cargo --version && helm version --short
 
-      - name: Verify changed modules
-        run: practice/bin/ss verify course --changed origin/main --shard ${{ matrix.shard }}/16
-
-  reference-learner-e2e:
-    name: Reference learner end to end (smoke)
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version: stable
-          cache: false
-
-      - uses: azure/setup-helm@v4
-
-      # Mutation results are keyed by content (graded tests, the reference
-      # code of the module's closure, the patch), so the last run's file
-      # answers every unchanged mutant (SS_MUTATION_CACHE).
+      # Kill results are keyed by content, so any earlier run's file is safe.
       - name: Restore the mutation cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/ss-mutation
-          key: ss-mutation-e2e-${{ github.run_id }}
-          restore-keys: ss-mutation-
+          path: ${{ github.workspace }}/../ss-mutation
+          key: ss-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}
+          restore-keys: |
+            ss-mutation-verify-${{ matrix.shard }}-
+            ss-mutation-
 
-      # A learner repo assembled from course/ref + course/ref/entry: ss check
-      # --all --ci, every `ci = "pr"` milestone with --smoke, ss conform on both
-      # tiers, then ss export and the vendored tests natively.
-      - name: Reference learner, smoke milestones, conformance, export
-        env:
-          SS_MUTATION_CACHE: ${{ runner.temp }}/ss-mutation/mutation.json
+      - name: Verify changed modules
         run: |
-          mkdir -p "$RUNNER_TEMP/ss-mutation"
-          practice/bin/ss verify course --e2e
+          mkdir -p "$(dirname "$SS_MUTATION_CACHE")"
+          practice/bin/ss verify course --changed origin/main --shard ${{ matrix.shard }}/16
 
       - name: Save the mutation cache
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/ss-mutation
-          key: ss-mutation-e2e-${{ github.run_id }}
-
-  milestone-p1-kind:
-    name: MS-P1 on kind (reference system)
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    env:
-      TL_API_KEY: tl_ci_kind_reference_key
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      # Only PRs that touch the tracer (anything the course or its harness ships).
-      - name: Does this PR touch the tracer?
-        id: changed
-        run: |
-          if git diff --name-only "origin/${GITHUB_BASE_REF:-main}...HEAD" \
-              | grep -qE '^(course/|practice/bin/ss$|paths/course)'; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "no course files changed: skipping the kind milestone"
-          fi
-
-      - if: steps.changed.outputs.run == 'true'
-        uses: astral-sh/setup-uv@v7
-
-      - if: steps.changed.outputs.run == 'true'
-        name: Set up Python
-        run: uv python install
-
-      - if: steps.changed.outputs.run == 'true'
-        uses: actions/setup-go@v6
-        with:
-          go-version: stable
-          cache: false
-
-      - if: steps.changed.outputs.run == 'true'
-        uses: azure/setup-helm@v4
-
-      - if: steps.changed.outputs.run == 'true'
-        uses: helm/kind-action@v1
-        with:
-          install_only: true
-
-      - if: steps.changed.outputs.run == 'true'
-        name: Assemble the reference learner
-        run: practice/bin/ss verify course --assemble "$RUNNER_TEMP/forge"
-
-      # The dep.00 chapter's deploy sequence, against the reference system.
-      - if: steps.changed.outputs.run == 'true'
-        name: Deploy the reference system to kind
-        working-directory: ${{ runner.temp }}/forge
-        run: |
-          set -euo pipefail
-          make -C c
-          uv run --quiet --project python python python/tinyllm/__main__.py \
-            train bigram --data "$GITHUB_WORKSPACE/course/fixtures/MS-P1/corpus.txt" --out artifacts/models/bigram
-          docker build -f deploy/docker/engine.Dockerfile  -t forge-engine:0.1.0 .
-          docker build -f deploy/docker/gateway.Dockerfile -t forge-gateway:0.1.0 .
-          kind create cluster --config deploy/kind/cluster.yaml --wait 120s
-          kind load docker-image forge-engine:0.1.0 forge-gateway:0.1.0 --name forge
-          kubectl create namespace forge
-          kubectl -n forge create secret generic forge-api-key --from-literal=api-key="$TL_API_KEY"
-          kubectl -n forge create secret generic forge-gateway-pepper --from-literal=pepper="$(openssl rand -hex 32)"
-          kubectl -n forge apply -f deploy/observability/jaeger.yaml
-          helm upgrade --install forge-engine  deploy/helm/forge-engine  -n forge --wait --timeout 5m
-          helm upgrade --install forge-gateway deploy/helm/forge-gateway -n forge --wait --timeout 5m
-          kubectl -n forge rollout status deploy/jaeger --timeout 3m || kubectl -n forge get pods
-
-      - if: steps.changed.outputs.run == 'true'
-        name: Restore the mutation cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ runner.temp }}/ss-mutation
-          key: ss-mutation-kind-${{ github.run_id }}
-          restore-keys: ss-mutation-
-
-      # ss check --all --ci, then MS-P1 in full: local steps, documents, and the
-      # kind steps (stream through NodePort 30080, one trace in Jaeger at 30686).
-      # ops.00 is graded by `ss drill end` in the nightly kind job, so MS-P1
-      # runs with --ref-deps for it. This job deploys the Pass 1 system only;
-      # the nightly kind job deploys the rest and runs every kind milestone.
-      - if: steps.changed.outputs.run == 'true'
-        name: MS-P1 with kind steps
-        env:
-          SS_MUTATION_CACHE: ${{ runner.temp }}/ss-mutation/mutation.json
-        run: |
-          mkdir -p "$RUNNER_TEMP/ss-mutation"
-          practice/bin/ss verify course --kind MS-P1
-
-      - if: always() && steps.changed.outputs.run == 'true'
-        name: Save the mutation cache
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ runner.temp }}/ss-mutation
-          key: ss-mutation-kind-${{ github.run_id }}
-
-      - if: failure() && steps.changed.outputs.run == 'true'
-        name: Cluster state on failure
-        run: kubectl -n forge get all,events -o wide || true
+          path: ${{ github.workspace }}/../ss-mutation
+          key: ss-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}
