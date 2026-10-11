@@ -81,8 +81,8 @@ def check_train_spec(spec: dict) -> list[str]:
     if not spec["data"].get("train"):
         errs.append("data.train needs at least one .bin file")
     b = spec["batch"]
-    if not (isinstance(b.get("size"), int) and b["size"] >= 1 and isinstance(b.get("seq_len"), int) and b["seq_len"] >= 1):
-        errs.append("batch needs size >= 1 and seq_len >= 1")
+    if not all(isinstance(b.get(k, 1), int) and b.get(k, 1) >= 1 for k in ("micro_batch", "accum", "seq_len")) or "micro_batch" not in b or "seq_len" not in b:
+        errs.append("batch needs micro_batch >= 1, seq_len >= 1, and accum >= 1 when given")
     if spec["optimizer"].get("name") != "adamw" or not spec["optimizer"].get("lr", 0) > 0:
         errs.append("optimizer: this trainer runs adamw with lr > 0")
     return errs
@@ -139,7 +139,10 @@ def train_main(act) -> list[str]:
     model = BigramLogits(VOCAB)
     opt = AdamW(list(model.parameters()), lr=lr, weight_decay=float(spec["optimizer"].get("weight_decay", 0.0)))
     rng = PCG32(int(spec["seed"]))
-    stream = TokenStream(shards, int(spec["batch"]["seq_len"]), int(spec["batch"]["size"]), rng, vocab_size=VOCAB)
+    # One optimizer step sees micro_batch * accum windows; this trainer takes
+    # them as one batch (the bigram needs no accumulation to fit in memory).
+    rows = int(spec["batch"]["micro_batch"]) * int(spec["batch"].get("accum", 1))
+    stream = TokenStream(shards, int(spec["batch"]["seq_len"]), rows, rng, vocab_size=VOCAB)
     step, tokens_seen = 0, 0
     resume = None
     if act.resume:

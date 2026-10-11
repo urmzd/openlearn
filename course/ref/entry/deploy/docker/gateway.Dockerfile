@@ -5,11 +5,12 @@
 FROM golang:1.25-alpine@sha256:1ae0735f00daffa3aaf1363a5184c0d2dc55c78e3db4ec70241cdac97bf84b59 AS build
 WORKDIR /src
 # The module files first: `go mod download` stays cached until they change.
-# go/go.mod replaces the contracts module with ../contracts/go (present once a
-# unit imports it), so the whole small contracts/ tree comes along.
+# The --config form imports the vendored contracts module (generated gRPC
+# code), which builds in workspace mode, so the whole small contracts/ tree
+# comes along and a go.work names both modules (as durable.Dockerfile does).
 COPY contracts/ contracts/
 COPY go/go.mod go/go.sum* go/
-RUN cd go && go mod download
+RUN go work init ./go ./contracts/go && cd go && go mod download
 COPY go/ go/
 # CGO_ENABLED=0: a static binary. The usage ledger (gw.07) uses the pure-Go
 # SQLite driver, so nothing needs a C toolchain or libc at run time.

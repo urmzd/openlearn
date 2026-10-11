@@ -192,14 +192,14 @@ argv      = ["generate", "--model", "{models}/HuggingFaceTB--SmolLM2-135M-Instru
 expect    = { match = "tokens-equal", file = "course/fixtures/smollm2-parity/greedy_32.json" }
 timeout_s = 600
 
-# The logits file for the max-abs and top-5 comparison with
-# course/fixtures/smollm2-parity/logits_top.npz. No committed matcher compares
-# an npz yet (DEVIATIONS B75-08): this step checks the file is produced.
+# HF's next-token logits after each of the 8 prompts: every one of the 256
+# largest in course/fixtures/smollm2-parity/logits_top.npz within 1e-3, and
+# the top-5 ids identical, in order.
 [[step]]
 name      = "smollm2-logits"
 ci        = "nightly"
 run       = "tinyllm"
 argv      = ["logits", "--model", "{models}/HuggingFaceTB--SmolLM2-135M-Instruct/12fd25f77366fa6b3b4b768ec3050bf629380bac",
              "--prompts", "{fixture:smollm2-parity/prompts.jsonl}", "--out", "{out}/logits.npz"]
-expect    = { match = "regex", pattern = '"prompts": 8' }
+expect    = { match = "logits-close", file = "course/fixtures/smollm2-parity/logits_top.npz", output = "{out}/logits.npz", atol = 1e-3, top_k = 5 }
 timeout_s = 600

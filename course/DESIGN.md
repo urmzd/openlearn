@@ -879,7 +879,7 @@ All pods mount the hostPath `/artifacts`, backed by the kind node's `extraMounts
   docs/{c4/*.d2, adr/, runbooks/, postmortems/}  THREAT_MODEL.md SBOM.md MODEL_CARD.md DATASHEET.md USAGE_POLICY.md
   solve/<S-ID>.toml  solve/<S-ID>/qN.md
   .github/workflows/             # (learner) CI gates
-  artifacts/                     # gitignored, mounted into kind
+  artifacts/                     # gitignored (but artifacts/c2/run.json, which C2 checks), mounted into kind
   .ss/                           # gitignored: verdicts.jsonl, overlay/, build/, cache/, drills/, milestones/, supersource/ (CI checkout)
 ```
 
@@ -2387,7 +2387,7 @@ Practices apply to the learner's own system. Kinds: `practice` (artifact plus a 
 | craft.11 | Commits, semver, releases (`v1.0.0`) | practice | `software-craftsmanship/09-releases-and-deprecation/` | tagged release, changelog, release workflow | P11 |
 | craft.12 | Deprecation policy | practice | same | `Deprecation`/`Sunset` headers, policy doc | P11 |
 | craft.13 | Interface migration: KV format v1 to v2 | **build** | `software-craftsmanship/10-maintenance/` | `upgrades` `c/src/runtime/kv_pool.c`, `c/src/kernels/paged_attn.c` (fp8 reads), `rust/crates/tl-engine/src/kv_transfer.rs`; contracts delivered by `ss contracts sync --to kv/v2`; tests: v2 envelope roundtrip, `parity/kv.wire.v2`, mixed-version negotiation; ADR + drill ops.04 | P11 |
-| craft.14 | Interface migration: API v1 to v2 | **build** | same | `upgrades` `rust/crates/tl-serve/src/openai.rs`, `go/gateway/server/` (version routing), `go/gateway/ledger/` (per-version usage); contracts by `ss contracts sync --to api/v2`; `openapi:v1` and `openapi:v2` both pass; drill ops.05 | P11 |
+| craft.14 | Interface migration: API v1 to v2 | **build** | same | owns `rust/crates/tl-serve/src/api_version.rs` and `go/gateway/server/apiversion.go`, `upgrades` `rust/crates/tl-serve/src/server.rs` (the engine selects v1 or v2 per request by `X-TL-API-Version`), `go/gateway/server/` (version routing), `go/gateway/ledger/` (per-version usage); contracts by `ss contracts sync --to api/v2`; `openapi:v1` and `openapi:v2` both pass; drill ops.05 | P11 |
 | craft.15 | Dependency upgrades | practice | same | drill ops.06 | P11 |
 | craft.16 | Perf regression bisect | practice | same | drill ops.07 | P11 |
 | craft.17 | Threat model (STRIDE on your DFD) | practice | `software-craftsmanship/11-security/` | `docs/THREAT_MODEL.md` with every trust boundary from 2.3, including the RAG-to-tools path | P11 |
@@ -2733,21 +2733,41 @@ expect  = { match = "tokens-equal", file = "course/fixtures/L7.9/smollm2_greedy_
 | `json-last-line` | the last stdout line parses as a JSON object of named metrics, compared with thresholds (`>=`, `<=`, `ref*1.05`, `calibrated`: mean + 3 sd over 5 reference seeds from `ref-thresholds`) |
 | `tokens-equal` | compares the `ids` array of the final JSON line (`spec/cli-roles.md`) with the expected ids; no tokenizer is involved. **Near-tie rule**: oracle files hold only prompts whose top-2 logit margin is at least 1e-3 at every step; when `near_tie` is set (for learner-trained models with no margin-filtered oracle), the harness reruns the learner's `{tinyllm} logits` under teacher forcing on the expected sequence, and a first divergence at a step whose margin is below `margin` is reported as `near-tie` instead of failing |
 | `numeric` | floats from stdout with `rtol`/`atol` |
+| `logits-close` | the step's `.npz` (`output`, one `logits<i>` row per prompt) against a reference `.npz` (`file`, dense `logits<i>` or the oracle's `top<i>.ids` and `top<i>.values`): the same row count, every reference value within `atol` (default 1e-3), and the `top_k` (default 5) ids identical in order, ties to the lowest id |
 | `json-schema` | stdout validates against a schema |
 | `file-produced` | a path glob exists and passes a sub-matcher (for example parquet row counts via pyarrow) |
-| `suite` | a conformance suite against a started `service` |
+| `suite` | a conformance suite against a started `service`; `params = { "<case id>" = {...} }` overrides a case's `[params]` for this step |
 | `promql` | an instant query against `[deploy].prometheus` meets a bound; `hold_s = N` re-evaluates it every 15 s and requires it to hold for N seconds |
-| `trace` | a trace with the named span tree exists in `[deploy].traces` (Tempo or Jaeger query API) for the window |
+| `trace` | a trace with the named span tree exists in `[deploy].traces` for the window, polled for `wait_s` (default 30). Jaeger: `GET /api/traces?service=`; Tempo (ports 3200 or 30320, a host naming tempo, or `api = "tempo"`): `GET /api/search?tags=service.name=<svc>`, then `GET /api/traces/<id>` (OTLP JSON, hex or base64 ids) |
 | `git-log` | last N commits match Conventional Commits |
 | `ci-status` | the latest learner CI run on the default branch concluded `success` (`gh run list --branch <default> --limit 1 --json conclusion`); without a GitHub remote, the `[ci].local` commands from `system.toml` exit 0 |
 | `perf` | throughput or latency relative to `ss bench --calibrate`; `ci = "local"` only |
+| `effects` | the effects sink of a `sink = "effects"` step holds `prefix` + k for every k of `keys` (`"0..499"`, inclusive, or a list) and no other key under `prefix`; `exactly_once` (default) allows redelivery, as the sink dedupes by idempotency key; `delivered_once` forbids it; `min_redelivered = N` asks that the kills caused at least N redeliveries |
 
-The runner first executes `[build].steps`, then starts services in dependency order (`after`), waits for `health`, runs steps, tears down, and logs to `.ss/milestones/<MS-ID>/<ts>/`. Placeholders:
+The runner first executes `[build].steps`, then starts services in dependency order (`after`), waits for `health`, runs steps, tears down, and logs to `.ss/milestones/<MS-ID>/<ts>/`.
+
+**Faults during a step.** Two step keys put a running stack under test:
+
+```toml
+[[step]]
+name   = "corpus-build-survives-kills"
+run    = "ctl"
+argv   = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "kill", "--durable", "127.0.0.1:{durable.grpc_port}", "--wait", "--json"]
+sink   = "effects"                                  # optional: the effects sink, before the services start
+chaos  = { kill = ["durable", "worker"], every_s = "0.2..1", count = 6, seed = 2 }
+expect = { match = "json-last-line", metrics = { train_tokens = "== 75164" } }
+```
+
+`sink = "effects"` starts the effects sink (the protocol of testkit `effects`, served by the harness) before the services of the step's milestone start; its URL is `{effects.url}` and `TL_TEST_EFFECTS_URL` in every service's environment and in the step's, so `tl.test.Append` records there. `chaos` needs a `run` command: while it runs, the harness sleeps a draw from `every_s`, SIGKILLs the process group of one service named in `kill` (its children die with it), restarts it with the same argv, ports, runtime.toml, and `{data}`, and waits for its health check, `count` times or until the command exits. Draws come from `seed` and `--seed`; the kills are logged to the step's `chaos.jsonl`. A service that does not come back healthy fails the step. `partition` (link cuts through testkit `chaosproxy`), `leader:<glob>` targets, `history = "linearizability"`, and the matcher's `linearizable` are reserved for MS-durable-ha and rejected until built (DEVIATIONS X28).
+
+Placeholders:
 
 | Placeholder | Value |
 |---|---|
 | `{fixture:<path>}`, `{asset:<id>/<path>}` | a committed fixture in the `contracts/VERSION` worktree; a fetched asset under `$TINYLLM_CACHE` (5.11) |
 | `{out}` | a fresh per-run output directory; `{out:<step-name>}` is an earlier step's |
+| `{json:<step-name>.<key>}` | `<key>` of the last stdout JSON line of an earlier step (`json-last-line` thresholds may use it: `"== {json:train.final_loss}"`) |
+| `{effects.url}` | the effects sink of a `sink = "effects"` step |
 | `{ckpt}` | `{out}/ckpt/LATEST` resolved to the step directory it names |
 | `{models}` | `$TINYLLM_CACHE/models` |
 | `{port}`, `{health_port}`, `{grpc_port}`, `{kv_port}`, `{registry_port}` | free ports allocated per service instance (2.16); `{<service>.<port>}` from another entry |
@@ -2757,6 +2777,7 @@ The runner first executes `[build].steps`, then starts services in dependency or
 | `{model_dir}` | the step's `model_dir` field, or the artifact the previous step produced |
 | `{<service>.api_base}` | `http://127.0.0.1:{<service>.port}/v1` |
 | `{deploy.*}` | values from `[deploy]` |
+| `{endpoints.*}` | values from `[endpoints]`; `{endpoints.model}` defaults to `tracer`, the model id the conformance client sends |
 | `{ctl}`, `{tinyllm}`, ... | the learner's `[entry]` roles |
 
 **Smoke and kind steps.** A step marked `smoke = true` is rerun by every later pass gate. A step that needs a cluster is tagged `ci = "kind"`; in PR CI, pass gates run with `--smoke`, which reruns only the non-kind smoke steps as local processes (services started by the runner on allocated ports), and kind steps run in the kind jobs (5.14).
@@ -2873,6 +2894,18 @@ at     = "loadgen+30s"               # start the learner's loadgen at 20 rps, in
 alert    = "TTFTBudgetBurnFast"      # required name from otel/slo.schema.json; drills without [detect] are graded manually (ops.00)
 within_s = 300
 
+# Optional (ops.02, ops.03): a workload the faults land in, and command checks.
+# [workload]
+# role         = "ctl"               # an [entry] role, run from the learner repo in the background
+# argv         = ["data", "build", "--config", "{fixture:MS-corpus/corpus.toml}", "--id", "drill-x", "--json"]
+# after_inject = true                # default false: start before the first injection
+# wait_rollout = "{deploy.services.worker}"   # kubectl rollout status first
+# [[resolve.run]]
+# role   = "ctl"
+# argv   = ["wf", "describe", "drill-x", "--json"]
+# env    = {}
+# expect = { match = "json-schema", schema = { ... } }   # any milestone matcher (5.7)
+
 [[resolve.check]]
 promql = "histogram_quantile(0.95, sum(rate(gen_ai_server_time_to_first_token_seconds_bucket[5m])) by (le)) < 0.5"
 hold_s = 300
@@ -2902,7 +2935,7 @@ sections = ["Summary", "Impact", "Timeline", "Root cause", "Detection", "Resolut
 | `git-branch` | creates `drill/<name>` with a scripted commit series. Commits never patch learner-written code: ops.06 bumps with `cargo add`/`go get`; ops.07 and craft.08 build a **scratch copy** of the learner repo whose target unit is the reference plus an existing perf or seeded mutant; ops.08 changes only data and ledger rows | ops.06, ops.07, ops.08, craft.08 |
 | `contract-bump` | `ss contracts sync --to kv/v2` or `api/v2` on a branch | ops.04, ops.05 |
 
-`ss drill start <name> --seed N` injects and prints only a pager-style symptom. `ss drill status` shows elapsed time only. `ss drill end` reports: detected (when `[detect]` exists: the required alert fired within `within_s`, from the `ALERTS` series), TTD and TTM, resolved (all checks green, each held for its `hold_s`), trace evidence (a trace spanning gateway and engine exists for the window), and postmortem structure.
+`ss drill start <name> --seed N` starts the `[workload]` (before the injections, or after them with `after_inject`, once `wait_rollout` reports a complete rollout; its undo kills it), injects, and prints only a pager-style symptom. `ss drill status` shows elapsed time only. `ss drill end` reports: detected (when `[detect]` exists: the required alert fired within `within_s`, from the `ALERTS` series), TTD and TTM, resolved (all checks green, each held for its `hold_s`, and every `[[resolve.run]]` command passing its matcher), trace evidence (a trace spanning gateway and engine exists for the window), and postmortem structure.
 
 **Drills in CI.** The nightly `kind-e2e` job runs one drill by rotation against the reference system with a **scripted responder** (`course/drills/<name>/respond.sh`, the reference fix) and checks detection and resolution, not the time limit, so a drill fits the job budget. The `PrometheusRule` label selector the reference charts use is the one pinned in `contracts/helm/observability.md`, which the learner's rules must match too.
 
@@ -3026,11 +3059,11 @@ ss export ~/src/forge --remote git@github.com:me/forge.git
 |---|---|---|---|---|
 | `lint` | PR | ubuntu | 3 min | ruff, `gofmt -l`, `cargo fmt --check`, `clang-format --dry-run` on `course/`; `ss lint` |
 | `harness-unit` | PR | ubuntu | 3 min | `pytest course/harness` (solve checker, overlay builder, stubber, mutation runner, matchers); existing `practice/bin/test_measure.py` |
-| `course-verify-changed` | PR | ubuntu | 12 min | `ss verify course --changed origin/main` (changed modules in full, dependents' smoke tests) |
+| `course-verify-changed` | PR | ubuntu | 12 min | `ss verify course --changed origin/main` (changed modules, 4 sampled mutants each with a persisted kill cache; dependents' smoke tests). The full mutant set runs nightly |
 | `course-verify-macos` | PR, when C or Rust course files change | macos-14 | 10 min | same for C and Rust modules (Apple clang, Accelerate, standalone C test binaries) |
 | `parity-golden` | PR | ubuntu | 4 min | `ss parity` golden mode |
-| `reference-learner-e2e` | PR | ubuntu | 10 min | `ss verify course --e2e`: assemble a learner repo from `course/ref` + `course/ref/entry`, run every `ci = "pr"` milestone step **in `--smoke` mode** (reduced configs; full training milestones such as MS-L3, MS-L4, and MS-L6 run nightly) and `ss conform` on both tiers, then `ss export` into a temp dir and run the vendored tests natively through the generated glue |
-| `milestone-p1-kind` | PR touching tracer modules | ubuntu (kind via `helm/kind-action`) | 15 min | `ss milestone MS-P1` against the reference system, kind steps included |
+| `reference-learner-e2e` | nightly | ubuntu | 100 min | `ss verify course --e2e`: assemble a learner repo from `course/ref` + `course/ref/entry`, run every `ci = "pr"` milestone step **in `--smoke` mode** (reduced configs; full training milestones such as MS-L3, MS-L4, and MS-L6 run nightly) and `ss conform` on both tiers, then `ss export` into a temp dir and run the vendored tests natively through the generated glue |
+| `milestone-p1-kind` | nightly (the kind job runs every kind milestone, MS-P1 included) | ubuntu (kind via `helm/kind-action`) | 15 min | `ss milestone MS-P1` against the reference system, kind steps included |
 | `practice`, `paths` | PR | ubuntu | existing | existing jobs; `ss learn --verify` |
 | `full-verify` | nightly | ubuntu + macos-14, **sharded by layer** (math, spine, systems, operations) | 90 min per shard | all modules, 3 determinism runs, `CATCHES` proven per test, mutant recheck through the cache, full reverse-dependent verification, live parity fuzz, `go test -race`, `go test -fuzz` 60 s per target, Miri and Rust TSan on a pinned nightly |
 | `milestones-full` | nightly | ubuntu | 60 min | every `ci = "nightly"` milestone step and full configs of MS-L3, MS-L4, MS-L6 |

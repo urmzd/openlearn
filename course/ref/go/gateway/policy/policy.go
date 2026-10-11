@@ -425,7 +425,7 @@ func Middleware(e *Evaluator, embeddingsURL string) server.Middleware {
 				return
 			}
 			if !decision.Allow {
-				server.WriteError(w, http.StatusUnavailableForLegalReasons, "usage_policy", "usage_policy", "", decision.Reason)
+				server.WriteError(w, http.StatusUnavailableForLegalReasons, "policy_error", "usage_policy", "", decision.RuleID+": "+decision.Reason)
 				return
 			}
 			next.ServeHTTP(w, r)

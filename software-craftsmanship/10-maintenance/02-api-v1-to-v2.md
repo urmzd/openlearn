@@ -6,9 +6,9 @@
 | | |
 |---|---|
 | **Module** | `craft.14` · build · rust, go · Pass 11 · 1 to 2 h |
-| **You build** | rust/crates/tl-serve/src/api_version.rs, go/gateway/server/apiversion.go |
+| **You build** | rust/crates/tl-serve/src/api_version.rs, go/gateway/server/apiversion.go · `rust/crates/tl-serve/src/server.rs`, taken over from `L10.9`: every API request selects its version before dispatch, every response echoes it, v2 answers carry `cached_tokens` and the v2 error codes, and a configured window (`[ext.api]` in runtime.toml) adds `Deprecation` and `Sunset` |
 | **Tests** | `course/tests/go/craft_14/` (named below, with why each exists) |
-| **Needs** | craft.12 |
+| **Needs** | craft.12 · `L10.9` the serve loop you take over |
 | **Used by** | ops.05 |
 | **Milestone** | `MS-P11` |
 
@@ -38,7 +38,7 @@ Keep v1 and v2 contracts explicit. Validate requests against the selected versio
 
 ## 3. Worked example
 
-The worked request sends `X-API-Version: 2` while the configured default remains `1`; assert the reply echoes `2` before introducing v2 routes while v1 remains default for existing clients. Send a canary cohort to v2, compare request errors, streaming behavior, and usage totals, then expand. Retain a switch back to v1 until all consumers migrate.
+The worked request sends `X-TL-API-Version: 2` while the configured default remains `1`; assert the reply echoes `2` before introducing v2 routes while v1 remains default for existing clients. Send a canary cohort to v2, compare request errors, streaming behavior, and usage totals, then expand. Retain a switch back to v1 until all consumers migrate.
 
 ## 4. The interface and tests
 
@@ -54,6 +54,7 @@ The worked request sends `X-API-Version: 2` while the configured default remains
 | `TestSunsetAndUnsupportedVersionReturnOpenAIErrorShape` | boundary | Sunset and unsupported-version errors retain the public error shape. | Existing clients can handle failure consistently. |
 | `v2_error_names_are_specific_and_v1_codes_are_stable` | unit | v2 errors are specific while v1 codes remain stable. | Preserves compatibility through the overlap period. |
 | `cached_token_usage_is_present_only_in_v2` | unit | Exposes cached-token usage only in v2 responses. | Preserves the versioned response contract. |
+| `engine_serves_v1_and_v2_side_by_side` | conformance | The engine echoes the selected version, marks v1 and v2 `/v1/completions` deprecated during the window, adds `cached_tokens` to v2 usage, refuses an unknown version, and answers a sunset v1 with 410. | `ss conform openapi:v2 --target engine` and the ops.05 drill run against this serve loop. |
 
 ## 5. Pitfalls
 
@@ -71,6 +72,7 @@ The worked request sends `X-API-Version: 2` while the configured default remains
 | Back | `craft.02` | Read this declared prerequisite before producing the artifact; use it to verify the relevant contract or evidence. |
 | Back | `course/contracts/openapi/openai-subset.v2.yaml` | Read this declared prerequisite before producing the artifact; use it to verify the relevant contract or evidence. |
 | Back | `gw.07` | Read this declared prerequisite before producing the artifact; use it to verify the relevant contract or evidence. |
+| Back | `L10.9` | The serve loop you take over: version selection runs before its routes, and its usage and error documents take the selected version. |
 | Back | `L10.5` | Read this declared prerequisite before producing the artifact; use it to verify the relevant contract or evidence. |
 | Forward | `ops.05` | This declared call site consumes the artifact; verify its expectations before finalizing. |
 

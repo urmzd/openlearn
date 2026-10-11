@@ -164,3 +164,50 @@ jobs:
       - if: failure()
         name: Cluster state on failure
         run: kubectl get all -A -o wide || true
+
+  # Moved off PRs: about 100 minutes, too slow to gate every push.
+  reference-learner-e2e:
+    name: Reference learner end to end (smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+
+      - uses: azure/setup-helm@v4
+
+      # Mutation results are keyed by content (graded tests, the reference
+      # code of the module's closure, the patch), so the last run's file
+      # answers every unchanged mutant (SS_MUTATION_CACHE).
+      - name: Restore the mutation cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ss-mutation
+          key: ss-mutation-e2e-${{ github.run_id }}
+          restore-keys: ss-mutation-
+
+      # A learner repo assembled from course/ref + course/ref/entry: ss check
+      # --all --ci, every `ci = "pr"` milestone with --smoke, ss conform on both
+      # tiers, then ss export and the vendored tests natively.
+      - name: Reference learner, smoke milestones, conformance, export
+        env:
+          SS_MUTATION_CACHE: ${{ runner.temp }}/ss-mutation/mutation.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/ss-mutation"
+          practice/bin/ss verify course --e2e
+
+      - name: Save the mutation cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ss-mutation
+          key: ss-mutation-e2e-${{ github.run_id }}

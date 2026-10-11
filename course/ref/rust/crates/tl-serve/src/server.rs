@@ -9,6 +9,13 @@
 //! from the raw body (tools.rs), the prompt describes the tools, a request
 //! with a grammar is decoded under its `Constraint` (constrain.rs), and the
 //! answer is parsed into `tool_calls` (a message, or stream deltas).
+//! craft.14 takes it over to serve API v1 and v2 side by side
+//! (openai-subset.v2.yaml): every API request selects a version with
+//! `X-TL-API-Version` (api_version.rs) or gets the configured default, every
+//! response echoes it, v2 usage carries `prompt_tokens_details.cached_tokens`,
+//! v2 errors use the v2 codes, and while a window is configured (`[ext.api]`
+//! in runtime.toml) v1 responses and v2 `/v1/completions` carry `Deprecation`
+//! and `Sunset`, and v1 answers 410 `api_version_sunset` once it has passed.
 //!
 //! Two worlds meet here. HTTP is I/O bound: thousands of connections that
 //! mostly wait, which async tasks on a few threads handle well (lang.09).
@@ -32,7 +39,15 @@
 //!   process exits 0 (spec/cli-roles.md).
 //!
 //! `--config <runtime.toml>` reads `[engine]` (config/runtime.schema.json)
-//! with `TL_ENGINE__<KEY>` environment overrides for scalar keys.
+//! with `TL_ENGINE__<KEY>` environment overrides for scalar keys, and the
+//! API version window from the free-form `[ext.api]` table:
+//!
+//! ```toml
+//! [ext.api]
+//! default_version = "1"        # "1" or "2": a request without the header
+//! deprecated_at   = 1790812800 # Unix seconds; with sunset, opens the window
+//! sunset          = 1798761600 # Unix seconds; v1 answers 410 from then on
+//! ```
 
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -65,6 +80,7 @@ use tl_engine::spec::{self, RunnerTarget, SpecConfig, Target};
 use tl_engine::sched::{AdmitError, FinishReason, RequestId};
 use tl_tok::{ByteBpe, ByteTokenizer, Tokenizer};
 
+use crate::api_version::{self, ApiVersion, VersionError};
 use crate::metrics::{EngineGauges, EngineMetrics, RequestRecord};
 use crate::openai::{self, ApiError, GenSpec, Prompt};
 use crate::sse::{self, TextStream};
@@ -92,11 +108,24 @@ pub struct ServeConfig {
     /// Sleep after every engine step (tests use it to hold requests in
     /// flight; never set from runtime.toml).
     pub step_delay: Duration,
+    /// The API versions this engine serves (craft.14).
+    pub api: ApiConfig,
+}
+
+/// API version selection (openai-subset.v2.yaml): the version a request
+/// without `X-TL-API-Version` gets, and the migration window in Unix
+/// seconds. Both times 0: no window, so no `Deprecation` or `Sunset` and no
+/// 410. Both set: the window is open until `sunset_unix`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ApiConfig {
+    pub default: ApiVersion,
+    pub deprecated_unix: i64,
+    pub sunset_unix: i64,
 }
 
 /// `":8000"` (every interface) or `"host:port"` as a socket address.
 pub fn listen_addr(s: &str) -> Result<SocketAddr, String> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let full = if s.starts_with(':') { format!("0.0.0.0{s}") } else { s.to_string() };
     full.parse().map_err(|_| format!("listen address {s:?} is not host:port"))
     // SOLUTION-END
@@ -105,7 +134,7 @@ pub fn listen_addr(s: &str) -> Result<SocketAddr, String> {
 /// The model id: `model_id`, else the model directory's parent name and
 /// then its own (`models/<id>/<version>/`).
 fn default_model_id(dir: &Path) -> String {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let name = |p: &Path| p.file_name().map(|n| n.to_string_lossy().to_string());
     let own = name(dir).unwrap_or_else(|| "model".to_string());
     // models/<id>/v3/ is served as <id>; any other directory by its own name
@@ -120,7 +149,7 @@ fn default_model_id(dir: &Path) -> String {
 impl ServeConfig {
     /// Defaults of config/runtime.schema.json for a model directory.
     pub fn for_model(dir: &Path) -> ServeConfig {
-        // SOLUTION-BEGIN L10.9
+        // SOLUTION-BEGIN craft.14
         ServeConfig {
             model_dir: dir.to_path_buf(),
             model_id: default_model_id(dir),
@@ -141,6 +170,7 @@ impl ServeConfig {
             speculative: None,
             handle_signals: false,
             step_delay: Duration::ZERO,
+            api: ApiConfig { default: ApiVersion::V1, deprecated_unix: 0, sunset_unix: 0 },
         }
         // SOLUTION-END
     }
@@ -149,7 +179,7 @@ impl ServeConfig {
     /// overrides from `env`. Unknown keys and values this engine cannot
     /// serve (roles other than unified, KV format 2, int8) are errors.
     pub fn from_toml(text: &str, env: &[(String, String)]) -> Result<ServeConfig, String> {
-        // SOLUTION-BEGIN L10.9
+        // SOLUTION-BEGIN craft.14
         let doc: toml::Table = text.parse().map_err(|e| format!("runtime.toml: {e}"))?;
         let mut eng = doc.get("engine").and_then(|v| v.as_table()).cloned().ok_or("runtime.toml: no [engine] table")?;
         for (k, v) in env {
@@ -222,13 +252,16 @@ impl ServeConfig {
                 Some(SpecConfig::parse(draft, k).map_err(|e| format!("runtime.toml: {e}"))?)
             }
         };
+        if let Some(api) = doc.get("ext").and_then(|v| v.get("api")).and_then(|v| v.as_table()) {
+            c.api = api_config(api)?;
+        }
         Ok(c)
         // SOLUTION-END
     }
 
     /// Reads a runtime.toml file with the process environment's overrides.
     pub fn load(path: &Path) -> Result<ServeConfig, String> {
-        // SOLUTION-BEGIN L10.9
+        // SOLUTION-BEGIN craft.14
         let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
         let env: Vec<(String, String)> = std::env::vars().collect();
         ServeConfig::from_toml(&text, &env)
@@ -236,11 +269,40 @@ impl ServeConfig {
     }
 }
 
+/// `[ext.api]` of runtime.toml: `default_version` ("1" or "2"), and
+/// `deprecated_at` and `sunset` (Unix seconds), set together or not at all.
+fn api_config(t: &toml::Table) -> Result<ApiConfig, String> {
+    // SOLUTION-BEGIN craft.14
+    if let Some(k) = t.keys().find(|k| !["default_version", "deprecated_at", "sunset"].contains(&k.as_str())) {
+        return Err(format!("runtime.toml: unknown key ext.api.{k}"));
+    }
+    let default = match t.get("default_version").map(|v| v.as_str()) {
+        None => ApiVersion::V1,
+        Some(Some(v)) => api_version::select(Some(v), ApiVersion::V1, 0, 0).map_err(|_| format!("runtime.toml: ext.api.default_version {v:?} is not \"1\" or \"2\""))?,
+        Some(None) => return Err("runtime.toml: ext.api.default_version must be the string \"1\" or \"2\"".to_string()),
+    };
+    let time = |k: &str| -> Result<i64, String> {
+        match t.get(k) {
+            None => Ok(0),
+            Some(v) => v.as_integer().filter(|x| *x > 0).ok_or(format!("runtime.toml: ext.api.{k} must be Unix seconds > 0")),
+        }
+    };
+    let (deprecated_unix, sunset_unix) = (time("deprecated_at")?, time("sunset")?);
+    if (deprecated_unix == 0) != (sunset_unix == 0) {
+        return Err("runtime.toml: ext.api.deprecated_at and ext.api.sunset open the window together".to_string());
+    }
+    if sunset_unix > 0 && sunset_unix <= deprecated_unix {
+        return Err("runtime.toml: ext.api.sunset must come after ext.api.deprecated_at".to_string());
+    }
+    Ok(ApiConfig { default, deprecated_unix, sunset_unix })
+    // SOLUTION-END
+}
+
 /// The chat template, special-token strings, and EOS ids of a model
 /// directory: generation_config.json first, then tokenizer_config.json,
 /// then config.json's EOS ids and the default template.
 pub fn chat_settings(dir: &Path, config_eos: &[u32]) -> Result<(Template, String, String, Vec<u32>), String> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let read = |name: &str| -> Option<Value> { std::fs::read_to_string(dir.join(name)).ok().and_then(|t| serde_json::from_str(&t).ok()) };
     let gen = read("generation_config.json").unwrap_or(Value::Null);
     let tokc = read("tokenizer_config.json").unwrap_or(Value::Null);
@@ -266,7 +328,7 @@ pub fn chat_settings(dir: &Path, config_eos: &[u32]) -> Result<(Template, String
 
 /// Mean of `hidden` [T, d] over T, divided by its L2 norm (/v1/embeddings).
 pub fn pool_embedding(hidden: &[f32], d: usize) -> Vec<f32> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let t = hidden.len() / d.max(1);
     let mut m = vec![0.0f64; d];
     for row in hidden.chunks_exact(d) {
@@ -343,11 +405,13 @@ struct Shared {
     vocab: usize,
     /// One TokenIndex per grammar pattern (masks are cached inside it).
     grammars: Mutex<HashMap<String, Arc<TokenIndex>>>,
+    /// The API versions served and their window (craft.14).
+    api: ApiConfig,
 }
 
 /// Unix time in nanoseconds.
 fn now_ns() -> u64 {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(0)
     // SOLUTION-END
 }
@@ -361,7 +425,7 @@ struct Live {
 
 /// The AdmitError of the scheduler as an HTTP error.
 fn admit_error(e: AdmitError) -> ApiError {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     match e {
         AdmitError::QueueFull => ApiError::queue_full(),
         AdmitError::Empty => ApiError::invalid(Some("messages"), "the prompt is empty"),
@@ -382,7 +446,7 @@ fn admit_error(e: AdmitError) -> ApiError {
 /// the vocabulary) ends the answer with Stop. `emit` gets each token, its
 /// logprob, and the finish (on the last only); false means the client left.
 fn constrained_generate(runner: &mut ModelRunner, c: &Constrained, req: &GenRequest, tok: &dyn Tokenizer, emit: &mut dyn FnMut(u32, f64, Option<FinishReason>) -> bool) -> Result<(), String> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let mut target = RunnerTarget::new(runner);
     let mut rng = stream(req.seed, PURPOSE_SAMPLE);
     let mut cons = c.trigger.is_none().then(|| Constraint::new(Arc::clone(&c.index)));
@@ -436,7 +500,7 @@ fn constrained_generate(runner: &mut ModelRunner, c: &Constrained, req: &GenRequ
 /// The engine thread: take commands, drop requests whose client is gone
 /// or whose queue deadline passed, run one step, deliver its tokens.
 fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop: Arc<AtomicBool>, deadline: Duration, step_delay: Duration, speculative: Option<SpecConfig>) {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let mut live: HashMap<RequestId, Live> = HashMap::new();
     loop {
         if stop.load(Ordering::SeqCst) {
@@ -575,7 +639,7 @@ impl Body for SseBody {
     type Error = Infallible;
 
     fn poll_frame(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<Frame<Bytes>, Infallible>>> {
-        // SOLUTION-BEGIN L10.9
+        // SOLUTION-BEGIN craft.14
         match self.rx.poll_recv(cx) {
             Poll::Ready(Some(b)) => Poll::Ready(Some(Ok(Frame::data(b)))),
             Poll::Ready(None) => Poll::Ready(None),
@@ -590,14 +654,14 @@ struct Inflight(Arc<Shared>);
 
 impl Drop for Inflight {
     fn drop(&mut self) {
-        // SOLUTION-BEGIN L10.9
+        // SOLUTION-BEGIN craft.14
         self.0.inflight.fetch_sub(1, Ordering::SeqCst);
         // SOLUTION-END
     }
 }
 
 fn full(status: StatusCode, content_type: &str, body: String) -> Response<RespBody> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let mut r = Response::new(Full::new(Bytes::from(body)).boxed());
     *r.status_mut() = status;
     r.headers_mut().insert("content-type", HeaderValue::from_str(content_type).expect("ascii"));
@@ -607,7 +671,7 @@ fn full(status: StatusCode, content_type: &str, body: String) -> Response<RespBo
 
 /// An error in the OpenAI shape; 429 also carries `Retry-After`.
 fn error_response(e: &ApiError) -> Response<RespBody> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let mut r = full(StatusCode::from_u16(e.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR), "application/json", e.to_json());
     if e.status == 429 {
         r.headers_mut().insert("retry-after", HeaderValue::from_static("1"));
@@ -616,16 +680,96 @@ fn error_response(e: &ApiError) -> Response<RespBody> {
     // SOLUTION-END
 }
 
+/// An engine error as the selected version names it (openai-subset.v2.yaml):
+/// v1 codes never change; in v2 the engine's one 429, its own admission
+/// queue, is `queue_full`, and a draining engine's 503 is `model_draining`
+/// (other 503s stay `no_capacity`).
+fn versioned(shared: &Shared, v: ApiVersion, e: &ApiError) -> ApiError {
+    // SOLUTION-BEGIN craft.14
+    let mut e = e.clone();
+    if v == ApiVersion::V2 {
+        e.code = match e.code {
+            Some("rate_limit_exceeded") => Some("queue_full"),
+            Some("no_capacity") if shared.draining.load(Ordering::SeqCst) => Some(api_version::error_code(v, "no_capacity")),
+            c => c,
+        };
+    }
+    e
+    // SOLUTION-END
+}
+
+/// The usage object under the selected version: v2 requires
+/// `prompt_tokens_details.cached_tokens`. The serve loop does not see
+/// per-request prefix-cache hits, so v2 reports 0 (api_version::cached_tokens).
+fn usage(v: ApiVersion, prompt_tokens: usize, completion_tokens: usize) -> Value {
+    // SOLUTION-BEGIN craft.14
+    let mut u = openai::usage(prompt_tokens, completion_tokens);
+    if let Some(n) = api_version::cached_tokens(v, None) {
+        u["prompt_tokens_details"] = serde_json::json!({ "cached_tokens": n });
+    }
+    u
+    // SOLUTION-END
+}
+
+/// Unix seconds as an IMF-fixdate (RFC 9110), the form `Sunset` takes.
+fn http_date(secs: u64) -> String {
+    // SOLUTION-BEGIN craft.14
+    const DAYS: [&str; 7] = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"]; // 1970-01-01 was a Thursday
+    const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    let t = rfc3339(secs * 1_000_000_000); // YYYY-MM-DDTHH:MM:SS.mmmZ
+    let month: usize = t[5..7].parse().expect("rfc3339 writes a month");
+    format!("{}, {} {} {} {} GMT", DAYS[(secs / 86_400 % 7) as usize], &t[8..10], MONTHS[month - 1], &t[0..4], &t[11..19])
+    // SOLUTION-END
+}
+
+/// The version headers of a response: `X-TL-API-Version` always; while a
+/// window is configured, `Deprecation` and `Sunset` on v1 and on v2's
+/// deprecated `/v1/completions`.
+fn version_headers(api: &ApiConfig, v: ApiVersion, path: &str) -> Vec<(&'static str, String)> {
+    // SOLUTION-BEGIN craft.14
+    if api.deprecated_unix <= 0 || api.sunset_unix <= 0 {
+        return vec![("X-TL-API-Version", v.number().to_string())];
+    }
+    let sunset = http_date(api.sunset_unix as u64);
+    let mut h = api_version::response_headers(v, api.deprecated_unix, &sunset);
+    if v == ApiVersion::V2 && path == "/v1/completions" {
+        h.push(("Deprecation", format!("@{}", api.deprecated_unix)));
+        h.push(("Sunset", sunset));
+    }
+    h
+    // SOLUTION-END
+}
+
+/// The answer to a request whose version cannot be served: 400
+/// `unsupported_api_version`, or 410 `api_version_sunset` for v1 after its
+/// sunset (still marked v1, deprecated, with its sunset date).
+fn version_error(api: &ApiConfig, e: VersionError, path: &str) -> Response<RespBody> {
+    // SOLUTION-BEGIN craft.14
+    let (status, code, headers) = match e {
+        VersionError::Unsupported => (400, "unsupported_api_version", Vec::new()),
+        VersionError::Sunset => (410, "api_version_sunset", version_headers(api, ApiVersion::V1, path)),
+    };
+    let err = ApiError { status, kind: "invalid_request_error", message: "API version is unavailable".to_string(), param: None, code: Some(code) };
+    let mut r = error_response(&err);
+    for (k, v) in headers {
+        if let Ok(v) = HeaderValue::from_str(&v) {
+            r.headers_mut().insert(k, v);
+        }
+    }
+    r
+    // SOLUTION-END
+}
+
 /// A fresh hex id.
 fn new_id(shared: &Shared) -> String {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let t = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(0);
     format!("{:016x}", mix64(t ^ shared.seq.fetch_add(1, Ordering::SeqCst).wrapping_mul(0x9E3779B97F4A7C15)))
     // SOLUTION-END
 }
 
 fn unix_now() -> u64 {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
     // SOLUTION-END
 }
@@ -645,7 +789,7 @@ struct Obs {
 /// route with its parameter, and `_other` for everything else (a capped
 /// label must not grow with arbitrary paths).
 fn route_of(path: &str) -> &'static str {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     match path {
         "/v1/chat/completions" => "/v1/chat/completions",
         "/v1/completions" => "/v1/completions",
@@ -678,7 +822,7 @@ struct Outcome {
 
 impl Outcome {
     fn failed(e: &ApiError) -> Outcome {
-        // SOLUTION-BEGIN L10.9
+        // SOLUTION-BEGIN craft.14
         Outcome { status: e.status, error_type: Some(e.code.map(str::to_string).unwrap_or_else(|| e.kind.to_string())), ..Outcome::default() }
         // SOLUTION-END
     }
@@ -686,7 +830,7 @@ impl Outcome {
 
 /// The accept rate of the speculative path since start (0 without it).
 fn spec_rate(shared: &Shared) -> f64 {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     match shared.spec.lock() {
         Ok(s) if s.0 > 0 => s.1 as f64 / s.0 as f64,
         _ => 0.0,
@@ -696,7 +840,7 @@ fn spec_rate(shared: &Shared) -> f64 {
 
 /// A Unix time in nanoseconds as RFC 3339 UTC with milliseconds.
 fn rfc3339(ns: u64) -> String {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let secs = ns / 1_000_000_000;
     let (days, rem) = ((secs / 86_400) as i64, secs % 86_400);
     // civil date from days since 1970-01-01 (Hinnant's algorithm)
@@ -718,7 +862,7 @@ fn rfc3339(ns: u64) -> String {
 /// prompt), then the spans posted to `$OTEL_EXPORTER_OTLP_ENDPOINT/v1/traces`
 /// on a thread of their own (never on the request path) when it is set.
 fn export_spans(spans: Vec<Span>) {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let service = std::env::var("OTEL_SERVICE_NAME").ok().filter(|s| !s.is_empty()).unwrap_or_else(|| "tl-engine".to_string());
     if let Some(root) = spans.first() {
         let status = root.attributes.iter().find(|(k, _)| k == "http.response.status_code").map(|(_, v)| match v {
@@ -745,7 +889,7 @@ fn export_spans(spans: Vec<Span>) {
 /// The SERVER span alone, for a request that never reached the engine
 /// (validation errors, embeddings, tokenize, models). Only a 5xx is ERROR.
 fn server_span(shared: &Shared, obs: &Obs, operation: Option<&str>, status: u16, error_type: Option<&str>) -> Span {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let mut ids = shared.ids.lock().unwrap_or_else(|p| p.into_inner());
     let mut s = Span::start(&mut ids, &format!("{} {}", obs.method, obs.route), SpanKind::Server, obs.parent.as_ref(), obs.received_ns);
     s.end_ns = now_ns();
@@ -769,7 +913,7 @@ fn server_span(shared: &Shared, obs: &Obs, operation: Option<&str>, status: u16,
 /// and its trace (the full tree once the engine took it, else the SERVER
 /// span alone).
 fn finish_request(shared: &Shared, obs: &Obs, operation: &str, model: &str, out: Outcome) {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let end_ns = now_ns();
     let first = out.token_times_ns.first().copied();
     let secs = |ns: u64| ns.saturating_sub(obs.received_ns) as f64 / 1e9;
@@ -823,7 +967,7 @@ fn finish_request(shared: &Shared, obs: &Obs, operation: &str, model: &str, out:
 /// the other EOS ids and the BOS and EOS marker tokens never; ids past the
 /// tokenizer's vocabulary (padding rows) never.
 fn grammar_index(shared: &Shared, pattern: &str) -> Result<Arc<TokenIndex>, ApiError> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let mut cache = shared.grammars.lock().unwrap_or_else(|p| p.into_inner());
     if let Some(i) = cache.get(pattern) {
         return Ok(Arc::clone(i));
@@ -848,7 +992,7 @@ fn grammar_index(shared: &Shared, pattern: &str) -> Result<Arc<TokenIndex>, ApiE
 /// A chat body: the tool fields first, from the raw text so a schema's
 /// properties keep their order (L10.9), then L10.5's validation of the rest.
 fn chat_request(body: &[u8]) -> Result<(GenSpec, Option<ToolReq>), ApiError> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     const KEYS: [&str; 3] = ["tools", "tool_choice", "response_format"];
     let obj = match serde_json::from_slice::<Value>(body) {
         Ok(Value::Object(o)) if KEYS.iter().any(|k| o.get(*k).is_some_and(|v| !v.is_null())) => o,
@@ -868,14 +1012,14 @@ fn chat_request(body: &[u8]) -> Result<(GenSpec, Option<ToolReq>), ApiError> {
 
 /// A chat.completion.chunk around a ready `delta` object.
 fn delta_chunk(job: &Job, created: u64, delta: Value, finish: Option<&str>) -> String {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     serde_json::json!({"id": job.id, "object": "chat.completion.chunk", "created": created, "model": job.model, "choices": [{"index": 0, "delta": delta, "finish_reason": finish}]}).to_string()
     // SOLUTION-END
 }
 
 /// One ToolEvent as a stream chunk.
 fn event_chunk(job: &Job, created: u64, e: &ToolEvent) -> String {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     delta_chunk(job, created, serde_json::from_str(&tools::delta_json(e)).expect("delta_json writes JSON"), None)
     // SOLUTION-END
 }
@@ -896,6 +1040,8 @@ struct Job {
     admitted_ns: u64,
     /// The answer may call tools: parse it into tool_calls.
     tool_calls: bool,
+    /// The API version the request selected.
+    api: ApiVersion,
 }
 
 /// Turns tokens into text pieces with stop strings and EOS handled.
@@ -908,7 +1054,7 @@ struct Detok {
 impl Detok {
     /// One token: the text it releases, and its logprob entry.
     fn token(&mut self, shared: &Shared, token: u32, logprob: f64, finish: Option<FinishReason>) -> (String, Option<Value>) {
-        // SOLUTION-BEGIN L10.9
+        // SOLUTION-BEGIN craft.14
         self.completion_tokens += 1;
         let is_eos = finish == Some(FinishReason::Stop) && shared.eos_ids.contains(&token);
         let bytes = if is_eos { &[][..] } else { shared.tok.token_bytes(token).unwrap_or(&[]) };
@@ -930,13 +1076,13 @@ impl Detok {
 
 /// Validates, renders the prompt, and queues a generation; the response is
 /// decided by the first event (an error, or the first token).
-async fn generate(shared: Arc<Shared>, headers: &hyper::HeaderMap, spec: GenSpec, chat: bool, obs: Obs, tool: Option<ToolReq>) -> Response<RespBody> {
-    // SOLUTION-BEGIN L10.9
+async fn generate(shared: Arc<Shared>, headers: &hyper::HeaderMap, spec: GenSpec, chat: bool, obs: Obs, tool: Option<ToolReq>, v: ApiVersion) -> Response<RespBody> {
+    // SOLUTION-BEGIN craft.14
     let operation = if chat { "chat" } else { "text_completion" };
     // every early answer is a finished request too: recorded, then sent
     let fail = |e: ApiError, out: Outcome| {
         finish_request(&shared, &obs, operation, &spec.model, Outcome { admitted_ns: out.admitted_ns, prompt_tokens: out.prompt_tokens, priority: out.priority, ..Outcome::failed(&e) });
-        error_response(&e)
+        error_response(&versioned(&shared, v, &e))
     };
     if spec.model != shared.model_id {
         return fail(ApiError::model_not_found(&spec.model), Outcome::default());
@@ -1033,6 +1179,7 @@ async fn generate(shared: Arc<Shared>, headers: &hyper::HeaderMap, spec: GenSpec
         priority,
         admitted_ns: admitted_ns.unwrap_or_else(now_ns),
         tool_calls,
+        api: v,
     };
     if job.stream {
         let (btx, brx) = mpsc::unbounded_channel::<Bytes>();
@@ -1085,7 +1232,7 @@ async fn generate(shared: Arc<Shared>, headers: &hyper::HeaderMap, spec: GenSpec
         &spec.model,
         Outcome { status: 200, prompt_tokens: job.prompt_tokens, priority, admitted_ns: Some(job.admitted_ns), token_times_ns: times, finish: Some(finish.to_string()), ..Outcome::default() },
     );
-    let usage = openai::usage(job.prompt_tokens, d.completion_tokens);
+    let usage = usage(v, job.prompt_tokens, d.completion_tokens);
     let body = if let Some(m) = message {
         let msg: Value = serde_json::from_str(&m).expect("message_json writes JSON");
         let mut choice = serde_json::json!({"index": 0, "message": msg, "finish_reason": finish});
@@ -1106,7 +1253,7 @@ async fn generate(shared: Arc<Shared>, headers: &hyper::HeaderMap, spec: GenSpec
 /// piece of text, the finishing chunk, the usage chunk when asked, then
 /// `[DONE]`; a ping comment after 15 s without a token.
 async fn stream_task(shared: Arc<Shared>, job: Job, first: Ev, mut rx: mpsc::UnboundedReceiver<Ev>, out: mpsc::UnboundedSender<Bytes>, _guard: Inflight, obs: Obs) {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let mut times: Vec<u64> = Vec::new();
     // the request ends here whichever way the stream ends
     let done = |times: Vec<u64>, finish: Option<&str>, err: Option<&ApiError>| {
@@ -1141,7 +1288,7 @@ async fn stream_task(shared: Arc<Shared>, job: Job, first: Ev, mut rx: mpsc::Unb
                 Ok(Some(e)) => e,
                 Ok(None) => {
                     let err = ApiError::internal("the engine dropped the request");
-                    send(sse::event(&err.to_json()));
+                    send(sse::event(&versioned(&shared, job.api, &err).to_json()));
                     done(times, None, Some(&err));
                     return;
                 }
@@ -1196,13 +1343,13 @@ async fn stream_task(shared: Arc<Shared>, job: Job, first: Ev, mut rx: mpsc::Unb
             }
             Ev::Admitted { .. } => {}
             Ev::Rejected(e) => {
-                send(sse::event(&e.to_json()));
+                send(sse::event(&versioned(&shared, job.api, &e).to_json()));
                 done(times, None, Some(&e));
                 return;
             }
             Ev::Failed(m) => {
                 let e = ApiError::internal(m);
-                send(sse::event(&e.to_json()));
+                send(sse::event(&versioned(&shared, job.api, &e).to_json()));
                 done(times, None, Some(&e));
                 return;
             }
@@ -1212,18 +1359,18 @@ async fn stream_task(shared: Arc<Shared>, job: Job, first: Ev, mut rx: mpsc::Unb
     done(times, final_finish.as_deref().or(d.finish), None);
     if job.include_usage {
         let object = if job.chat { "chat.completion.chunk" } else { "text_completion" };
-        send(sse::event(&openai::usage_chunk(&job.id, shared.created, &job.model, object, openai::usage(job.prompt_tokens, d.completion_tokens))));
+        send(sse::event(&openai::usage_chunk(&job.id, shared.created, &job.model, object, usage(job.api, job.prompt_tokens, d.completion_tokens))));
     }
     send(sse::DONE.to_string());
     // SOLUTION-END
 }
 
 /// `/v1/embeddings`.
-async fn embeddings(shared: Arc<Shared>, body: &[u8], obs: &Obs) -> Response<RespBody> {
-    // SOLUTION-BEGIN L10.9
+async fn embeddings(shared: Arc<Shared>, body: &[u8], obs: &Obs, v: ApiVersion) -> Response<RespBody> {
+    // SOLUTION-BEGIN craft.14
     let (model, inputs) = match openai::parse_embeddings(body) {
         Ok(x) => x,
-        Err(e) => return error_response(&e),
+        Err(e) => return error_response(&versioned(&shared, v, &e)),
     };
     let result = embed(&shared, &model, inputs).await;
     if let Ok(mut m) = shared.metrics.lock() {
@@ -1233,14 +1380,14 @@ async fn embeddings(shared: Arc<Shared>, body: &[u8], obs: &Obs) -> Response<Res
     }
     match result {
         Ok(body) => full(StatusCode::OK, "application/json", body),
-        Err(e) => error_response(&e),
+        Err(e) => error_response(&versioned(&shared, v, &e)),
     }
     // SOLUTION-END
 }
 
 /// Runs validated embedding inputs on the engine thread: the response body.
 async fn embed(shared: &Arc<Shared>, model: &str, inputs: Vec<String>) -> Result<String, ApiError> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     if model != shared.model_id {
         return Err(ApiError::model_not_found(model));
     }
@@ -1264,7 +1411,7 @@ async fn embed(shared: &Arc<Shared>, model: &str, inputs: Vec<String>) -> Result
 /// The `/metrics` body: the engine gauges refreshed from the step loop's
 /// stats, then every instrument of otel/metrics.yaml.
 fn metrics_body(shared: &Shared) -> String {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let stats = *shared.stats.lock().unwrap_or_else(|p| p.into_inner());
     let rate = spec_rate(shared);
     let mut m = shared.metrics.lock().unwrap_or_else(|p| p.into_inner());
@@ -1275,7 +1422,7 @@ fn metrics_body(shared: &Shared) -> String {
 
 /// Routes of the API port.
 async fn api(shared: Arc<Shared>, req: Request<Incoming>) -> Result<Response<RespBody>, Infallible> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let rid = req
         .headers()
         .get("x-request-id")
@@ -1297,6 +1444,25 @@ async fn api(shared: Arc<Shared>, req: Request<Incoming>) -> Result<Response<Res
         Ok(b) => b.to_bytes(),
         Err(_) => Bytes::new(),
     };
+    // the version is chosen before dispatch: an unknown or sunset one never
+    // reaches a handler
+    let header = parts.headers.get("x-tl-api-version").map(|h| h.to_str().unwrap_or(""));
+    let v = match api_version::select(header, shared.api.default, unix_now() as i64, shared.api.sunset_unix) {
+        Ok(v) => v,
+        Err(e) => {
+            let mut resp = version_error(&shared.api, e, &path);
+            if let Ok(h) = HeaderValue::from_str(&rid) {
+                resp.headers_mut().insert("x-request-id", h);
+            }
+            if path.starts_with("/v1/") {
+                export_spans(vec![server_span(&shared, &o, None, resp.status().as_u16(), None)]);
+            }
+            if let Ok(mut m) = shared.metrics.lock() {
+                let _ = m.record_http(&o.method, o.route, resp.status().as_u16(), o.received.elapsed().as_secs_f64());
+            }
+            return Ok(resp);
+        }
+    };
     // generations record their own request metrics and spans (they may
     // outlive this handler as a stream); the other routes get a SERVER span here
     let mut traced = false;
@@ -1304,24 +1470,24 @@ async fn api(shared: Arc<Shared>, req: Request<Incoming>) -> Result<Response<Res
         (&Method::POST, "/v1/chat/completions") => {
             traced = true;
             match chat_request(&body) {
-                Ok((spec, tool)) => generate(Arc::clone(&shared), &parts.headers, spec, true, obs(), tool).await,
+                Ok((spec, tool)) => generate(Arc::clone(&shared), &parts.headers, spec, true, obs(), tool, v).await,
                 Err(e) => {
                     finish_request(&shared, &o, "chat", &shared.model_id, Outcome::failed(&e));
-                    error_response(&e)
+                    error_response(&versioned(&shared, v, &e))
                 }
             }
         }
         (&Method::POST, "/v1/completions") => {
             traced = true;
             match openai::parse_completion(&body) {
-                Ok(spec) => generate(Arc::clone(&shared), &parts.headers, spec, false, obs(), None).await,
+                Ok(spec) => generate(Arc::clone(&shared), &parts.headers, spec, false, obs(), None, v).await,
                 Err(e) => {
                     finish_request(&shared, &o, "text_completion", &shared.model_id, Outcome::failed(&e));
-                    error_response(&e)
+                    error_response(&versioned(&shared, v, &e))
                 }
             }
         }
-        (&Method::POST, "/v1/embeddings") => embeddings(Arc::clone(&shared), &body, &o).await,
+        (&Method::POST, "/v1/embeddings") => embeddings(Arc::clone(&shared), &body, &o, v).await,
         (&Method::POST, "/v1/tokenize") => match openai::parse_tokenize(&body) {
             Ok((m, _, _)) if m != shared.model_id => error_response(&ApiError::model_not_found(&m)),
             Ok((_, text, _)) => full(StatusCode::OK, "application/json", serde_json::json!({"ids": shared.tok.encode(&text)}).to_string()),
@@ -1350,8 +1516,13 @@ async fn api(shared: Arc<Shared>, req: Request<Incoming>) -> Result<Response<Res
             error_response(&e)
         }
     };
-    if let Ok(v) = HeaderValue::from_str(&rid) {
-        resp.headers_mut().insert("x-request-id", v);
+    if let Ok(h) = HeaderValue::from_str(&rid) {
+        resp.headers_mut().insert("x-request-id", h);
+    }
+    for (k, val) in version_headers(&shared.api, v, &path) {
+        if let Ok(h) = HeaderValue::from_str(&val) {
+            resp.headers_mut().insert(k, h);
+        }
     }
     let status = resp.status().as_u16();
     if !traced && path.starts_with("/v1/") {
@@ -1367,7 +1538,7 @@ async fn api(shared: Arc<Shared>, req: Request<Incoming>) -> Result<Response<Res
 
 /// Routes of the health port.
 async fn health(shared: Arc<Shared>, req: Request<Incoming>) -> Result<Response<RespBody>, Infallible> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let t0 = Instant::now();
     let path = req.uri().path().to_string();
     let resp = match path.as_str() {
@@ -1396,7 +1567,7 @@ where
     F: Fn(Arc<Shared>, Request<Incoming>) -> Fut + Copy + Send + Sync + 'static,
     Fut: std::future::Future<Output = Result<Response<RespBody>, Infallible>> + Send + 'static,
 {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     loop {
         tokio::select! {
             _ = stop.changed() => return,
@@ -1425,14 +1596,14 @@ pub struct ServerHandle {
 impl ServerHandle {
     /// Begins draining, as SIGTERM does.
     pub fn drain(&self) {
-        // SOLUTION-BEGIN L10.9
+        // SOLUTION-BEGIN craft.14
         let _ = self.drain.send(true);
         // SOLUTION-END
     }
 
     /// Waits until the server has drained and stopped.
     pub fn join(mut self) -> Result<(), String> {
-        // SOLUTION-BEGIN L10.9
+        // SOLUTION-BEGIN craft.14
         match self.thread.take() {
             Some(t) => t.join().map_err(|_| "the server thread panicked".to_string())?,
             None => Ok(()),
@@ -1444,7 +1615,7 @@ impl ServerHandle {
 /// Loads the model, binds both listeners, and serves on a thread of its
 /// own (a tokio runtime plus the engine thread). Returns once bound.
 pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let runner = ModelRunner::load(&cfg.model_dir, &cfg.engine).map_err(|e| format!("{e:#}"))?;
     let mcfg = runner.config().clone();
     let tok: Arc<dyn Tokenizer> = match mcfg.tokenizer {
@@ -1476,6 +1647,7 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
         prefill_chunk: cfg.engine.prefill_chunk,
         vocab: mcfg.vocab_size,
         grammars: Mutex::new(HashMap::new()),
+        api: cfg.api,
     });
     let std_http = std::net::TcpListener::bind(listen_addr(&cfg.http_listen)?).map_err(|e| format!("{}: {e}", cfg.http_listen))?;
     let std_health = std::net::TcpListener::bind(listen_addr(&cfg.health_listen)?).map_err(|e| format!("{}: {e}", cfg.health_listen))?;
@@ -1539,7 +1711,7 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
 
 /// The binary's entry: serve until SIGTERM, drain, return (exit 0).
 pub fn run(cfg: ServeConfig) -> Result<(), String> {
-    // SOLUTION-BEGIN L10.9
+    // SOLUTION-BEGIN craft.14
     let h = spawn(ServeConfig { handle_signals: true, ..cfg })?;
     h.join()
     // SOLUTION-END

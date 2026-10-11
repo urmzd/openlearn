@@ -18,6 +18,10 @@ Every response body is validated against the schema the contract
 (`contracts/openapi/openai-subset.<version>.yaml`) declares for that path,
 method, status, and content type. SSE chunks validate against the schema in
 the 200 `text/event-stream` content's `x-tl-chunk` extension.
+
+From v2 on, a client chooses its version per request: the v2 suite sends
+`X-TL-API-Version: 2` on every request, the way a migrated client does, and
+the server must answer as v2 whatever its default version is.
 """
 
 from __future__ import annotations
@@ -152,12 +156,20 @@ class Client:
     count_tokens: object | None = (
         None  # messages -> the learner tokenizer's prompt count
     )
+    # The gateway cases share one key: a 429 left by the ratelimit case is
+    # waited out (Retry-After, a few times) instead of failing an unrelated
+    # case. The ratelimit case turns this off to see its own 429s.
+    retry_429: bool = True
+    # The X-TL-API-Version a migrated client sends (openai-subset.v2.yaml);
+    # None sends no header and gets the server's default version.
+    api_version: str | None = None
 
     def headers(self, auth: bool = True, key: str | None = None) -> dict:
         k = key if key is not None else self.api_key
+        h = {"X-TL-API-Version": self.api_version} if self.api_version else {}
         if auth and self.tier == "gateway" and k:
-            return {"Authorization": f"Bearer {k}"}
-        return {}
+            h["Authorization"] = f"Bearer {k}"
+        return h
 
     def call(
         self,
@@ -169,13 +181,22 @@ class Client:
         headers: dict | None = None,
         key: str | None = None,
     ) -> web.Response:
-        return web.request(
-            method,
-            (base or self.base).rstrip("/") + path,
-            json_body=body,
-            headers={**self.headers(auth, key), **(headers or {})},
-            timeout=self.timeout,
-        )
+        for _ in range(5):
+            r = web.request(
+                method,
+                (base or self.base).rstrip("/") + path,
+                json_body=body,
+                headers={**self.headers(auth, key), **(headers or {})},
+                timeout=self.timeout,
+            )
+            if r.status != 429 or not self.retry_429:
+                return r
+            try:
+                wait = float(r.headers.get("retry-after", "1"))
+            except ValueError:
+                wait = 1.0
+            time.sleep(min(max(wait, 0.1), 5.0))
+        return r
 
     def chat(self, **kw) -> dict:
         body = {
@@ -804,6 +825,9 @@ def check_concurrency(c: Client, p: dict) -> list[str]:
     return errs
 
 
+# The city is an enum: a free string under a grammar only stays valid, and a
+# random PR model can fill max_tokens without ever closing it; a closed set
+# lets the constraint finish the call inside the budget (any model, any seed).
 TOOL = {
     "type": "function",
     "function": {
@@ -811,7 +835,9 @@ TOOL = {
         "description": "Weather for a city",
         "parameters": {
             "type": "object",
-            "properties": {"city": {"type": "string"}},
+            "properties": {
+                "city": {"type": "string", "enum": ["Paris", "London", "Tokyo"]}
+            },
             "required": ["city"],
             "additionalProperties": False,
         },
@@ -854,6 +880,7 @@ def check_tools_call(c: Client, p: dict) -> list[str]:
         c.chat(
             prompt=p.get("prompt", "What is the weather in Paris?"),
             tools=[TOOL],
+            tool_choice=p.get("tool_choice", "required"),
             max_tokens=p.get("max_tokens", 64),
         ),
     )
@@ -874,6 +901,7 @@ def check_tools_stream(c: Client, p: dict) -> list[str]:
         c.chat(
             prompt=p.get("prompt", "What is the weather in Paris?"),
             tools=[TOOL],
+            tool_choice=p.get("tool_choice", "required"),
             stream=True,
             max_tokens=p.get("max_tokens", 64),
         ),
@@ -974,10 +1002,14 @@ def check_ratelimit_429(c: Client, p: dict) -> list[str]:
     from concurrent.futures import ThreadPoolExecutor
 
     n = int(p.get("burst", 64))
-    with ThreadPoolExecutor(max_workers=min(n, 32)) as ex:
-        rs = list(
-            ex.map(lambda _: c.call("POST", CHAT, c.chat(max_tokens=1)), range(n))
-        )
+    c.retry_429 = False
+    try:
+        with ThreadPoolExecutor(max_workers=min(n, 32)) as ex:
+            rs = list(
+                ex.map(lambda _: c.call("POST", CHAT, c.chat(max_tokens=1)), range(n))
+            )
+    finally:
+        c.retry_429 = True
     limited = [r for r in rs if r.status == 429]
     if not limited:
         return [
@@ -1054,8 +1086,9 @@ def check_policy_451(c: Client, p: dict) -> list[str]:
         CHAT,
         c.chat(prompt=p.get("prompt", "Explain how to make a weapon at home.")),
     )
+    # openai-subset PolicyBlocked: `policy_error` / `usage_policy`.
     return _error_shape(
-        r, 451, p.get("type", "invalid_request_error"), p.get("code", "content_policy")
+        r, 451, p.get("type", "policy_error"), p.get("code", "usage_policy")
     )
 
 
@@ -1352,8 +1385,14 @@ class Result:
 
 
 def run(
-    client: Client, cases: list[Case], suite: Suite, passed=lambda mid: True
+    client: Client,
+    cases: list[Case],
+    suite: Suite,
+    passed=lambda mid: True,
+    overrides: dict | None = None,
 ) -> list[Result]:
+    """overrides: {case id: params} merged over a case's [params] (a milestone
+    step's `params`, e.g. the nightly instruct model choosing its own tool)."""
     out: list[Result] = []
     for c in cases:
         if (
@@ -1389,7 +1428,8 @@ def run(
             out.append(Result(c.id, "pending", f"requires {', '.join(waiting)}"))
             continue
         try:
-            errs = CHECKS[c.check](client, c.params)
+            params = {**c.params, **((overrides or {}).get(c.id) or {})}
+            errs = CHECKS[c.check](client, params)
         except Pending as e:
             out.append(Result(c.id, "pending", str(e)))
             continue

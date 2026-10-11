@@ -35,7 +35,7 @@ ss drill end                      # grades detection, resolution, evidence, runb
 ss drill reset
 ```
 
-`{ctl}` and `{corpus}` are your `[entry].ctl` and `[entry].corpus` (`spec/cli-roles.md`); the `ctl` verbs are fixed in MS-durable. `ss drill start` blocks while it kills (about two and a half minutes), so the build starts first. The two commands after the wait are the pass condition `ss drill end` cannot run yet (section 4).
+`{ctl}` and `{corpus}` are your `[entry].ctl` and `[entry].corpus` (`spec/cli-roles.md`); the `ctl` verbs are fixed in MS-durable. `ss drill start` blocks while it kills (about two and a half minutes), so the build starts first. The two commands after the wait are the pass condition `ss drill end` also runs itself (section 4).
 
 ---
 
@@ -122,7 +122,7 @@ Your rules file, a `PrometheusRule` with the label `release: observability` (`co
 | postmortem | `docs/postmortems/<date>-durable-kill9.md` has the seven sections |
 | time limit | 45 minutes from start to end (not graded for the CI responder) |
 
-The drill's pass condition in the design also needs two commands that `ss drill end` does not run yet (the spec lists them as `[[resolve.run]]`; the CI responder runs them and fails without them): the same start with `--wait` returns `COMPLETED` with 169 documents, 3 shards, 75164 and 6868 tokens; and `{corpus} ledger verify` over `./artifacts` exits 0. Run both before `ss drill end`, and put their output in your postmortem's Resolution.
+The drill's pass condition also holds two commands, `[[resolve.run]]` in the spec, that `ss drill end` runs and grades: the same start with `--wait` returns `COMPLETED` with 169 documents, 3 shards, 75164 and 6868 tokens; and `{corpus} ledger verify` over `./artifacts` exits 0. Run both yourself first, and put their output in your postmortem's Resolution.
 
 ## 5. Pitfalls
 

@@ -103,7 +103,7 @@ So the page arrives at most about 45 s after the first failure, well inside the 
 | postmortem | `docs/postmortems/<date>-poison-task.md` has the seven sections |
 | time limit | 45 minutes from start to end (not graded for the CI responder) |
 
-The design's last condition, that the workflow completes, is a command check `ss drill end` does not run yet (`[[resolve.run]]` in the spec; the CI responder runs it): `{ctl} wf describe drill-poison --json` must report `COMPLETED` with `dead_lettered: 0`. Run it before `ss drill end` and quote it in your Resolution.
+The design's last condition, that the workflow completes, is a command check `ss drill end` runs and grades (`[[resolve.run]]` in the spec): `{ctl} wf describe drill-poison --json` must report `COMPLETED` with `dead_lettered: 0`. Run it yourself first and quote it in your Resolution.
 
 ## 5. Pitfalls
 

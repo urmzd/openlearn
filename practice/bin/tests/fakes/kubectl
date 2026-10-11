@@ -5,7 +5,8 @@ State lives in $FAKE_KUBE_STATE (JSON); every invocation is appended to
 $FAKE_KUBE_LOG. Supports exactly what the harness issues: config
 current-context, get (namespace, deploy, statefulset, pods -l, configmap) -o
 json, delete pod, scale, patch (--type=json add/remove, --type=merge on
-configmaps), rollout restart.
+configmaps), rollout restart, rollout status (fails for a target listed in
+the state's "rollout_failing").
 """
 
 import json
@@ -108,6 +109,12 @@ def main(argv):
         return 0
     elif verb == "delete" and rest[1] in ("job", "configmap"):
         st.setdefault("deleted_objects", []).append(f"{rest[1]}/{rest[2]}")
+    elif verb == "rollout" and rest[1] == "status":
+        if rest[2] in st.get("rollout_failing", []):
+            print(f"error: {rest[2]} exceeded its progress deadline", file=sys.stderr)
+            return 1
+        print(f'{rest[2]} successfully rolled out')
+        return 0
     elif verb == "rollout" and rest[1] == "restart":
         o = obj(rest[2])
         o.setdefault("restarts", 0)

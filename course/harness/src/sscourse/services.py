@@ -206,23 +206,7 @@ class Stack:
         inst.health_url = placeholders.expand(
             svc.health, lk, f"[services.{svc.name}].health"
         )
-        with open(inst.log, "w") as logf:
-            logf.write(f"$ {shlex.join(argv)}\n")
-            logf.flush()
-            try:
-                inst.proc = subprocess.Popen(
-                    argv,
-                    cwd=self.system.root,
-                    env=inst.env,
-                    stdout=logf,
-                    stderr=subprocess.STDOUT,
-                    stdin=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-            except OSError as e:
-                raise HarnessError(
-                    f"service {svc.name}: cannot start {argv[0]!r}: {e}"
-                ) from None
+        self._spawn(inst, "w")
         ok, why = web.wait_ok(inst.health_url, svc.ready_timeout_s, inst.alive)
         if not ok:
             log = inst.log.read_text(errors="replace") if inst.log.is_file() else ""
@@ -234,6 +218,56 @@ class Stack:
         ctx.say(
             f"  {ctx.DIM}service {svc.name} up on :{ports['port']} (health :{ports['health_port']}){ctx.RST}"
         )
+
+    def _spawn(self, inst: Instance, mode: str) -> None:
+        with open(inst.log, mode) as logf:
+            logf.write(f"$ {shlex.join(inst.argv)}\n")
+            logf.flush()
+            try:
+                inst.proc = subprocess.Popen(
+                    inst.argv,
+                    cwd=self.system.root,
+                    env=inst.env,
+                    stdout=logf,
+                    stderr=subprocess.STDOUT,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+            except OSError as e:
+                raise HarnessError(
+                    f"service {inst.name}: cannot start {inst.argv[0]!r}: {e}"
+                ) from None
+
+    def kill(self, name: str) -> int:
+        """SIGKILL a running service's whole process group (chaos); returns its pid."""
+        inst = self.instances.get(name)
+        if inst is None or inst.proc is None:
+            raise HarnessError(f"service {name} was not started")
+        p = inst.proc
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        p.wait()
+        return p.pid
+
+    def restart(self, name: str) -> None:
+        """Start a killed service again with the same argv, ports, runtime.toml,
+        and state directory, and wait for its health check. A service that
+        does not come back is a failed verdict (ServiceError is not raised:
+        the step, not the milestone, fails)."""
+        inst = self.instances[name]
+        with open(inst.log, "a") as f:
+            f.write(f"\n--- SIGKILL; restarting at {time.strftime('%H:%M:%S')} ---\n")
+        self._spawn(inst, "a")
+        ok, why = web.wait_ok(inst.health_url, inst.svc.ready_timeout_s, inst.alive)
+        if not ok:
+            log = inst.log.read_text(errors="replace") if inst.log.is_file() else ""
+            raise HarnessError(
+                f"service {name} did not become healthy again at {inst.health_url}: {why}\n"
+                f"{ctx.indent(ctx.tail(log, 30))}",
+                code=1,
+            )
 
     def stop(self) -> None:
         for inst in reversed(list(self.instances.values())):

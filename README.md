@@ -1,9 +1,11 @@
 <p align="center">
   <h1 align="center">Supersource</h1>
   <p align="center">
-    Free, self-paced curriculum from undergraduate foundations through PhD-level depth and Staff/Principal engineer expertise. Free learning routes with optional paid reference books.
+    Free, self-paced curriculum from undergraduate foundations through PhD-level depth and Staff/Principal engineer expertise, plus a hands-on course where you build your own LLM system end to end. Free learning routes with optional paid reference books.
     <br /><br />
     <a href="STUDY-PLAN.md">Study Plans</a>
+    &middot;
+    <a href="#course-build-your-own-llm-system">Course</a>
     &middot;
     <a href="https://github.com/urmzd/supersource/issues">Report Bug</a>
     &middot;
@@ -35,6 +37,7 @@
 
 ## Features
 
+- **Build-your-own LLM system course** 12 passes from math 0 to 1 through tokenizers, attention, KV caches, a Rust serving engine, a Go gateway, durable workflows, agents, and a local Kubernetes deploy, graded by `ss check` tests and runnable milestones
 - **Free-first** free learning routes, with paid books identified as optional references
 - **Graded depth** undergraduate foundations through PhD-level research topics
 - **Multi-track** math, algorithms, ML, systems, info theory, competitive programming

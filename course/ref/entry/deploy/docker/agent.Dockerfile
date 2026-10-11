@@ -1,11 +1,12 @@
-# Build from the repository root. The agent worker uses the durable worker
-# runtime and consumes only the queue configured by its Helm release.
+# Build from the repository root. The agent worker (go/cmd/agent) runs the
+# AgentRun workflow on the durable worker runtime and consumes only the queue
+# configured by its Helm release.
 FROM golang:1.25-alpine@sha256:1ae0735f00daffa3aaf1363a5184c0d2dc55c78e3db4ec70241cdac97bf84b59 AS build
 WORKDIR /src
 COPY go/go.mod go/go.sum* go/
 RUN cd go && go mod download
 COPY go/ go/
-RUN cd go && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agent ./cmd/worker
+RUN cd go && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agent ./cmd/agent
 
 FROM alpine:3.22@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1
 RUN addgroup -S -g 10001 agent && adduser -S -D -H -u 10001 -G agent agent

@@ -1,0 +1,29 @@
+# runtime.toml template for the gateway service (DESIGN 2.12, gw.01 to gw.07).
+# The harness fills listen, health_listen, and registry_listen with allocated
+# ports and passes the file as {config}; {data} is a fresh state directory per
+# run, so every run starts with an empty usage ledger.
+[paths]
+artifacts = "artifacts"
+
+[gateway]
+# The engine the runner started: heartbeated on its behalf, since it starts
+# before the gateway and cannot know the registry port.
+upstream  = "http://127.0.0.1:{engine.port}"
+usage_db  = "{data}/usage.db"
+# Keys made with POST /admin/v1/keys (opened when $TL_GATEWAY_PEPPER is set);
+# the key in $TL_API_KEY ([endpoints].api_key_env) always works, with the
+# scopes infer and admin.
+keys_file = "{data}/keys.jsonl"
+# The usage policy (gw.08). Its hash16 head is fitted in [build] on a set
+# that labels every prompt the course's workloads send; heads are read under
+# [paths].artifacts.
+policy_file = "config/policy.local.yaml"
+
+# The public model id of the course requests, served by the engine.
+[[gateway.routes]]
+model = "tracer"
+
+[ext]
+# The $TL_API_KEY key's requests per minute: under 64, so conformance's burst
+# of 64 (ratelimit.429) meets a 429.
+env_key_rpm = 60

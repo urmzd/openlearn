@@ -34,7 +34,8 @@ Your system.toml must declare (spec/cli-roles.md, DESIGN 2.16):
   [entry].engine        `--config {config}` (L10.5): your tl-serve main reads
                         runtime.toml; its [engine].model_dir is the model
   [services.engine]     config = a runtime.toml template serving
-                        course/fixtures/L7.9/tiny-llama-2l-1k as model "tiny"
+                        course/fixtures/L7.9/tiny-llama-2l-1k as the model
+                        [endpoints].model names (default "tracer")
                         ({fixture:L7.9/tiny-llama-2l-1k} fills the path);
                         health = "http://127.0.0.1:{health_port}/healthz"
   [services.engine-spec]  the same template with

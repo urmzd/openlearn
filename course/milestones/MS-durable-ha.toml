@@ -9,9 +9,13 @@
 # What runs today, and what does not. A local three-replica run needs every
 # replica's raft port before the first starts (the runner allocates ports one
 # service at a time and starts each before the next exists), and the kill
-# loop needs the runner to SIGKILL a named service, cut links between
-# services (testkit chaosproxy), record the history, and check it. None of
-# that exists yet (DEVIATIONS B103-05), so this file holds:
+# loop needs the runner to SIGKILL the current leader, cut links between
+# services (testkit chaosproxy), record the history, and check it. The runner
+# now SIGKILLs and restarts named services (`chaos.kill`) and starts the
+# effects sink (`sink`, matcher `effects`), but leader:<glob> targets,
+# `chaos.partition`, `history = "linearizability"`, the `linearizable` check,
+# and all-ports-first allocation are not built (DEVIATIONS B103-05, X28), so
+# this file holds:
 #   - the steps that run now: dur.10's course tests carry the same checks
 #     against your raft package in-process (a seeded simulation with
 #     partitions, drops, reordering, crash-restarts, and a linearizability
@@ -58,7 +62,9 @@ argv      = ["wf", "history", "ms-durable-ha-echo", "--durable", "127.0.0.1:3073
 expect    = { match = "json-schema", schema = { type = "object", required = ["first", "last"], properties = { first = { const = "WorkflowExecutionStarted" }, last = { const = "WorkflowExecutionCompleted" } } } }
 timeout_s = 60
 
-# -- PENDING: the kill loop against three replicas (needs the runner features named in the header)
+# -- PENDING: the kill loop against three replicas (needs the runner features named in the header:
+# leader:<glob>, partition, history, linearizable, and all-ports-first; sink and kill of a
+# named service exist)
 #
 # services = ["durable-1", "durable-2", "durable-3", "worker"]   # ports allocated for all three first
 #
@@ -69,7 +75,7 @@ timeout_s = 60
 # run       = "ctl"
 # argv      = ["wf", "start", "tl.test.Batch", "--id", "ms-durable-ha-kill", "--input-json", "500", "--wait", "--json"]
 # chaos     = { kill = ["leader:durable-*"], partition = ["leader:durable-*"], every_s = "3..8", count = 12, seed = 1 }
-# expect    = { match = "effects", keys = "0..499", exactly_once = true, linearizable = true }
+# expect    = { match = "effects", keys = "0..499", prefix = "ms-durable-ha-kill/", exactly_once = true, linearizable = true }
 # timeout_s = 900
 
 # ops.12 is an optional end-to-end partition drill. The module verdict covers

@@ -21,7 +21,9 @@
 # Conformance (`ss conform openapi:v1 --target engine|gateway`) validates
 # every response body against the schema declared here for its path, status,
 # and content type. SSE chunks validate against the `x-tl-chunk` schema of
-# the 200 `text/event-stream` content.
+# the 200 `text/event-stream` content. `ss conform openapi:v2` sends
+# `X-TL-API-Version: 2` on every request, and its side-by-side case sends
+# each operation's `x-tl-probe` request and validates the answer.
 openapi: 3.1.0
 info:
   title: tinyllm OpenAI subset, v2
@@ -38,7 +40,8 @@ info:
     and every response echoes the version it used in `X-TL-API-Version`.
     Every v1 response during the window carries `Deprecation` (the date v1
     was deprecated, `@<unix seconds>`) and `Sunset` (the HTTP-date after
-    which v1 requests answer 410 with code `api_version_sunset`). The usage
+    which v1 requests answer 410 with code `api_version_sunset`). Any other
+    `X-TL-API-Version` value answers 400 `unsupported_api_version`. The usage
     ledger records the version of every request (formats/usage.v1.sql
     `api_version`). Everything below is v1 unless a rule says otherwise.
 
@@ -144,6 +147,7 @@ paths:
   /v1/chat/completions:
     post:
       operationId: createChatCompletion
+      x-tl-probe: {status: 200, body: {model: tracer, messages: [{role: user, content: Hello}], max_tokens: 4, temperature: 0}}
       summary: Chat completion, plain or streamed, with optional tool calls.
       security: [{}, {bearer: []}]
       parameters:
@@ -189,6 +193,7 @@ paths:
   /v1/completions:
     post:
       operationId: createCompletion
+      x-tl-probe: {status: 200, body: {model: tracer, prompt: Once upon a time, max_tokens: 4, temperature: 0}}
       summary: Text completion, plain or streamed. Deprecated in v2.
       deprecated: true
       description: |
@@ -241,6 +246,7 @@ paths:
   /v1/embeddings:
     post:
       operationId: createEmbedding
+      x-tl-probe: {status: 200, body: {model: tracer, input: Hello}}
       summary: Mean-pooled final hidden states, L2-normalized.
       description: |
         For each input the engine runs the model without sampling, averages
@@ -275,6 +281,7 @@ paths:
   /v1/models:
     get:
       operationId: listModels
+      x-tl-probe: {status: 200}
       summary: The route table's models (gateway) or the loaded model (engine).
       security: [{}, {bearer: []}]
       responses:
@@ -838,5 +845,6 @@ components:
                 - no_capacity
                 - model_draining
                 - api_version_sunset
+                - unsupported_api_version
                 - internal_error
                 - null

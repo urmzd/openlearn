@@ -1,5 +1,5 @@
 """ss verify course --e2e: the reference learner, end to end (DESIGN 5.14,
-CI job `reference-learner-e2e`).
+nightly CI job `reference-learner-e2e`).
 
 Assembles a learner repo from the reference (`assemble`): `ss course init`,
 `ss start` for every build and practice module in pass order, each unit
@@ -54,7 +54,7 @@ def learner_env(course: Path, lr: Path, scratch: Path) -> dict:
             "SS_COURSE_HOME": str(lr),
             "SS_SCRATCH": str(scratch),
             "SS_PATHS_DIR": str(paths.paths_dir(course)),
-            # A deployed reference (CI milestone-p1-kind) holds the caller's key
+            # A deployed reference (the nightly kind job) holds the caller's key
             # in its Secret; otherwise any fresh key serves the local services.
             "TL_API_KEY": os.environ.get("TL_API_KEY")
             or f"tl_e2e_{secrets.token_hex(8)}",
@@ -267,6 +267,21 @@ def assemble(
     )
 
 
+def _failed_sections(out: str, per: int = 60) -> str:
+    """Each non-passing module's own `check <ID>` block from a check --all
+    run (a tail of the whole output shows only the last module and the
+    table), at most `per` lines each."""
+    lines = out.splitlines()
+    starts = [i for i, x in enumerate(lines) if re.match(r"^check \S+ ", x)]
+    blocks = []
+    for k, i in enumerate(starts):
+        end = starts[k + 1] if k + 1 < len(starts) else len(lines)
+        block = lines[i:end]
+        if any(re.match(r"^(FAIL|BLOCKED|DRIFT) ", x) for x in block):
+            blocks.append("\n".join(block[:per]))
+    return "\n".join(blocks)
+
+
 def run(
     reg,
     course: Path,
@@ -320,7 +335,7 @@ def run(
     # Every module's full mutation grade is verify check 6; here the
     # reference learner's tests run against the required mutants plus a
     # seeded sample, so the whole repo checks in CI time.
-    rc, out = _ss(env, "check", "--all", "--ci", timeout=3600)
+    rc, out = _ss(env, "check", "--all", "--ci", timeout=5400)
     if rc != 0:
         # The status table's non-passing rows, which a tail would cut off.
         bad = [
@@ -331,7 +346,8 @@ def run(
         rep.fail(
             "e2e",
             "ss check --all --ci: " + (", ".join(bad) or "see the output"),
-            out,
+            _failed_sections(out) or out,
+            lines=600,
         )
     else:
         rep.ok("e2e", "ss check --all --ci")

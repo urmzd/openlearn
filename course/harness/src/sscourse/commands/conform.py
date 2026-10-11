@@ -39,6 +39,7 @@ def run_suite(
     base: str,
     health_base: str | None = None,
     model: str | None = None,
+    overrides: dict | None = None,
 ) -> list[conform.Result]:
     client = r.conform_client(suite, base, health_base, model)
     cases = conform.load_cases(r.course)
@@ -46,7 +47,7 @@ def run_suite(
         raise HarnessError(
             f"no conformance cases in {r.course / 'conformance' / 'openapi' / 'cases'}"
         )
-    return conform.run(client, cases, suite, r.module_passed)
+    return conform.run(client, cases, suite, r.module_passed, overrides)
 
 
 def _fake_cases(r: Run, suite: conform.Suite) -> list[conform.Case]:

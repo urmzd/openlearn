@@ -1,0 +1,32 @@
+{
+ "name": "tiny",
+ "model": {
+  "tl_arch": "bigram",
+  "tl_tokenizer": "bytes",
+  "vocab_size": 256,
+  "tl_format": 1
+ },
+ "data": {
+  "train": [
+   "tokens/bytes/small/train-00000.bin"
+  ],
+  "val": [
+   "tokens/bytes/small/val-00000.bin"
+  ]
+ },
+ "optimizer": {
+  "name": "adamw",
+  "lr": 0.05,
+  "weight_decay": 0.0
+ },
+ "schedule": {
+  "name": "constant"
+ },
+ "batch": {
+  "micro_batch": 8,
+  "seq_len": 64
+ },
+ "steps": 20,
+ "ckpt_every": 10,
+ "seed": 0
+}

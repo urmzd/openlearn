@@ -17,8 +17,9 @@ reading   = ["M06.1"]
 # The serve loop calls tools.rs and constrain.rs: this module takes over
 # server.rs (after L10.7) and inherits its call site, obs.02, which runs the
 # engine (DESIGN 3.4 upgrade exemption; DEVIATIONS L10.9). ag.01 and
-# MS-agent read tool_calls over HTTP.
-used_by   = ["obs.02"]
+# MS-agent read tool_calls over HTTP. craft.14 takes server.rs over next to
+# serve API v1 and v2 side by side.
+used_by   = ["obs.02", "craft.14"]
 units     = [
   "rust/crates/tl-engine/src/constrain.rs",
   "rust/crates/tl-serve/src/tools.rs",

@@ -11,7 +11,24 @@ course_version = "0.1.0"
 [build]
 steps = [
   ["cargo", "build", "--release", "--quiet", "--manifest-path", "rust/Cargo.toml", "-p", "tl-serve"],
-  ["go", "build", "-C", "go", "-o", "bin/gateway", "./cmd/gateway"],
+  # The gateway (its --config form routes through gw.05, which calls the
+  # engine's gRPC services), durable, worker, and ctl import the vendored
+  # contracts module, which builds in workspace mode (see go/go.mod). The
+  # workspace file lives in go/bin, which git ignores; GOWORK must be absolute.
+  ["sh", "-c", "mkdir -p go/bin && cd go/bin && rm -f go.work && go work init .. ../../contracts/go"],
+  ["sh", "-c", "GOWORK=\"$PWD/go/bin/go.work\" exec go build -C go -o \"bin/$0\" \"./cmd/$0\"", "gateway"],
+  # Pass 7 (MS-L10, MS-prod): the load generator.
+  ["sh", "-c", "GOWORK=\"$PWD/go/bin/go.work\" exec go build -C go -o \"bin/$0\" \"./cmd/$0\"", "loadgen"],
+  ["sh", "-c", "GOWORK=\"$PWD/go/bin/go.work\" exec go build -C go -o \"bin/$0\" \"./cmd/$0\"", "durable"],
+  ["sh", "-c", "GOWORK=\"$PWD/go/bin/go.work\" exec go build -C go -o \"bin/$0\" \"./cmd/$0\"", "worker"],
+  ["sh", "-c", "GOWORK=\"$PWD/go/bin/go.work\" exec go build -C go -o \"bin/$0\" \"./cmd/$0\"", "ctl"],
+  # Pass 10 (MS-agent): the agent worker, the course-docs RAG index that
+  # `ctl agent ask --suite course-docs` searches (ag.06, hash16 vectors), and
+  # the hash16 usage-policy head the local gateway's policy reads (gw.08).
+  ["sh", "-c", "GOWORK=\"$PWD/go/bin/go.work\" exec go build -C go -o \"bin/$0\" \"./cmd/$0\"", "agent"],
+  ["go/bin/ctl", "rag", "ingest", "--source", "docs", "--index", "artifacts/rag/course-docs"],
+  ["uv", "run", "--quiet", "--project", "python", "python", "scripts/fit_policy_head.py",
+   "--data", "config/policy-train.jsonl", "--out", "artifacts/models/hash16/heads/usage.json"],
   ["uv", "run", "--quiet", "--project", "python", "python", "python/tinyllm/__main__.py",
    "train", "bigram", "--data", "{fixture:MS-P1/corpus.txt}", "--out", "artifacts/models/bigram"],
   # The model the v1 engine serves in PR CI: L7.9's committed tiny-llama-2l,
@@ -26,20 +43,66 @@ tinyllm = ["uv", "run", "--quiet", "--project", "python", "python", "python/tiny
 # The v1 server (L10.5) with its runtime.toml template; `--model-dir` (the tracer form)
 # is still accepted for the Pass 1 entry point.
 engine  = ["rust/target/release/tl-serve", "--config", "{config}"]
-gateway = ["go/bin/gateway", "--port", "{port}", "--health-port", "{health_port}", "--upstream", "http://127.0.0.1:{engine.port}"]
+# The --config form (gw.01): config/gateway.runtime.toml. The tracer form
+# (--port, --health-port, --upstream) still works for the Pass 1 entry point.
+gateway = ["go/bin/gateway", "--config", "{config}"]
+# Pass 7 (load.01): `{loadgen} --target ...` and `{loadgen} compare ...`.
+loadgen = ["go/bin/loadgen"]
 # Pass 3 (MS-L1): built on first use, so the earlier passes' [build] stays as it was.
 tl-tok  = ["cargo", "run", "--release", "--quiet", "--manifest-path", "rust/Cargo.toml", "-p", "tl-tok", "--"]
 # Pass 3 (MS-corpus): the Python corpus CLI.
 corpus  = ["uv", "run", "--quiet", "--project", "python", "python", "python/corpus/__main__.py"]
+# Pass 8 (MS-durable): the durable server, the worker (its Python activities
+# exec the tinyllm and corpus entries above, named by environment variables),
+# and the umbrella CLI.
+durable = ["go/bin/durable", "--config", "{config}"]
+worker  = ["env",
+           "TL_TINYLLM_ENTRY=uv run --quiet --project python python python/tinyllm/__main__.py",
+           "TL_CORPUS_ENTRY=uv run --quiet --project python python python/corpus/__main__.py",
+           "go/bin/worker"]
+ctl     = ["go/bin/ctl"]
+# Pass 10 (MS-agent): the agent worker (AgentRun on the agent queue).
+agent   = ["go/bin/agent"]
 
 [services.engine]
 config = "config/engine.runtime.toml"
 health = "http://127.0.0.1:{health_port}/healthz"
 ready_timeout_s = 30
 
+# MS-L10: the same engine with prompt-lookup speculation on.
+[services.engine-spec]
+config = "config/engine-spec.runtime.toml"
+health = "http://127.0.0.1:{health_port}/healthz"
+ready_timeout_s = 30
+
 [services.gateway]
+config = "config/gateway.runtime.toml"
 health = "http://127.0.0.1:{health_port}/readyz"
 after = ["engine"]
+ready_timeout_s = 30
+
+# MS-durable: the WAL under {data}; one worker on both queues (default for
+# the test workflows and TrainRun, data for CorpusBuild), its artifacts root
+# {data} (config/worker.runtime.toml).
+[services.durable]
+config = "config/durable.runtime.toml"
+health = "http://127.0.0.1:{health_port}/healthz"
+ready_timeout_s = 30
+
+[services.worker]
+config = "config/worker.runtime.toml"
+args = ["--config", "{config}", "--queue", "default,data", "--durable", "127.0.0.1:{durable.grpc_port}", "--test-activities"]
+health = "http://127.0.0.1:{health_port}/healthz"
+after = ["durable"]
+ready_timeout_s = 30
+
+# MS-agent: the agent worker on the agent queue (config/agent.runtime.toml):
+# faketool rules for the model in PR CI, the course-docs index.
+[services.agent]
+config = "config/agent.runtime.toml"
+args = ["--config", "{config}"]
+health = "http://127.0.0.1:{health_port}/readyz"
+after = ["durable"]
 ready_timeout_s = 30
 
 [endpoints]

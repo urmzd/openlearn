@@ -43,9 +43,11 @@ DONE = ("pass", "smoke", "assisted", "spoiled", "self")
 VENDOR = "third_party/supersource"
 
 CONFTEST = '''"""Test glue written by `ss export` (not a runner): lets the vendored
-supersource course tests run natively with pytest from the repo root.
+supersource course tests run natively with pytest from the repo root, one
+module at a time (modules share test file names):
 
-    uv run --project python --with pytest --with hypothesis pytest third_party/supersource/tests
+    uv run --project python --with pytest --with hypothesis --with numpy \\
+        pytest --rootdir third_party/supersource/tests third_party/supersource/tests/<module>
 """
 
 import os
@@ -267,6 +269,12 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         fixtures_assets = v / "fixtures" / "ASSETS.tsv"
         fixtures_assets.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(assets, fixtures_assets)
+    # The learning tests' bars (_lib.thresholds reads them from the fixtures
+    # root), recorded from the reference over 5 seeds.
+    bars = course / "fixtures" / "ref-thresholds.tsv"
+    if bars.is_file():
+        (v / "fixtures").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(bars, v / "fixtures" / bars.name)
 
     c_units = [
         u
@@ -274,8 +282,14 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         if markers.lang_of(u) == "c" and u.endswith(".c") and (s.learner / u).is_file()
     ]
     if py_ids:
+        # One pytest per module, as `ss check` runs them: modules share test
+        # file names (test_metrics.py in L1.6 and M07.7) and sibling helper
+        # names, which one rootless session cannot import twice. The rootdir
+        # keeps tests/conftest.py in reach of a single module's run.
         langs["python"] = [
-            "uv run --project python --with pytest --with hypothesis --with numpy pytest -q "
+            "uv run --project python --with pytest --with hypothesis --with numpy "
+            'bash -c \'rc=0; for t in "$@"; do pytest -q -p no:cacheprovider '
+            f'--rootdir={VENDOR}/tests "$t" || rc=1; done; exit $rc\' _ '
             + " ".join(f"{VENDOR}/tests/{mid}" for mid in py_ids)
         ]
     if go_ids:
@@ -292,10 +306,19 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
                 s.learner / "contracts" / "go" / "go.mod",
             )
         )
-        kit = "\t./testkit/go\n" if (v / "testkit" / "go" / "go.mod").is_file() else ""
-        work = f"go {go_version_str(gv)}\n\nuse (\n\t../../go\n\t./tests/go\n{kit})\n\n"
+        # The contracts module is a workspace module, as the overlay and the
+        # reference [build] use it: your go.mod replaces it without a
+        # `require`, which only workspace mode resolves.
+        uses = ["../../go", "./tests/go"]
         if (s.learner / "contracts" / "go" / "go.mod").is_file():
-            work += "replace supersource.urmzd.com/tl/contracts v0.0.0 => ../../contracts/go\n"
+            uses.append("../../contracts/go")
+        if (v / "testkit" / "go" / "go.mod").is_file():
+            uses.append("./testkit/go")
+        work = (
+            f"go {go_version_str(gv)}\n\nuse (\n"
+            + "".join(f"\t{u}\n" for u in uses)
+            + ")\n"
+        )
         (v / "go.work").write_text(work)
         # Course tests read fixtures and contracts through these, as `ss check`
         # sets them; absolute so the `cd` below keeps them valid.
@@ -312,7 +335,19 @@ def vendor(s: Session, dest: Path, passing: list[str]) -> dict[str, list[str]]:
         if (v / "testkit" / "rust" / "tl-testkit" / "Cargo.toml").is_file():
             deps["tl-testkit"] = {"path": "../../testkit/rust/tl-testkit"}
         (v / "rust" / "Cargo.toml").write_text(
-            tomlw.dumps({"workspace": {"resolver": "2", "members": ["ss-tests"]}})
+            # `crates` (the link below) is excluded: a test that runs
+            # `cargo --manifest-path .../crates/<crate>/Cargo.toml` reaches your
+            # crate through this directory, and cargo must not claim it for
+            # this workspace.
+            tomlw.dumps(
+                {
+                    "workspace": {
+                        "resolver": "2",
+                        "members": ["ss-tests"],
+                        "exclude": ["crates"],
+                    }
+                }
+            )
         )
         (v / "rust" / "ss-tests" / "src").mkdir(parents=True, exist_ok=True)
         # Some course tests include a unit by path from the ss-tests crate
