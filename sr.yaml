@@ -89,3 +89,8 @@ packages:
       - outputs/supersource-inference-performance.pdf
       - outputs/supersource-ai-full-stack.pdf
       - outputs/supersource-field-engineering.pdf
+      # The desktop app, built per platform by the release workflow's app job.
+      - outputs/openlearn-darwin-arm64.zip
+      - outputs/openlearn-darwin-amd64.zip
+      - outputs/openlearn-windows-amd64.zip
+      - outputs/openlearn-linux-amd64.tar.gz
