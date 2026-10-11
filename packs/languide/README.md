@@ -150,4 +150,4 @@ This repo's conventions are available as portable agent skills in [`skills/`](sk
 
 ## License
 
-[Apache-2.0](LICENSE)
+[Apache-2.0](../../LICENSE)
