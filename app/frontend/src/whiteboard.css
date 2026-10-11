@@ -1,0 +1,245 @@
+.wb-root {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+
+.wb-palette {
+  width: 148px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-raised);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.wb-palette-spacer {
+  flex: 1;
+  min-height: 12px;
+}
+
+.wb-palette-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  text-align: left;
+  border-radius: var(--radius-sm);
+}
+
+.wb-palette-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border);
+}
+
+.wb-palette-btn.danger {
+  color: var(--text-faint);
+}
+
+.wb-palette-btn.danger:hover:not(:disabled) {
+  color: var(--critical);
+  border-color: var(--critical);
+}
+
+.wb-palette-icon {
+  width: 15px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.wb-canvas {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+/* React Flow surface */
+.react-flow__renderer,
+.react-flow {
+  background: var(--bg);
+}
+
+.react-flow__controls {
+  box-shadow: none;
+}
+
+.react-flow__controls-button {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  fill: var(--text-dim);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--bg-hover);
+}
+
+.wb-minimap {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.react-flow__edge-path {
+  stroke: #48546b;
+  stroke-width: 1.8;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent);
+}
+
+.react-flow__edge-text {
+  fill: var(--text-dim);
+  font-size: 11px;
+  font-family: var(--font);
+}
+
+.react-flow__edge-textbg {
+  fill: var(--bg);
+}
+
+/* Nodes */
+.wb-node {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 8px 10px 9px;
+  width: 200px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.wb-node.selected {
+  box-shadow: 0 0 0 1px currentColor, 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.wb-node.note {
+  background: #1a1710;
+  border-color: #3a3423;
+  width: 220px;
+}
+
+.wb-node-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.wb-node-icon {
+  font-size: 11px;
+}
+
+.wb-node-label {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.wb-node-label::placeholder {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.wb-node-label:focus {
+  outline: none;
+}
+
+.wb-node-detail {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  width: 100%;
+  overflow: hidden;
+}
+
+.wb-node-detail:focus {
+  outline: none;
+  color: var(--text);
+}
+
+.wb-node-detail::placeholder {
+  color: #4d5668;
+}
+
+.wb-handle {
+  width: 8px;
+  height: 8px;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border-strong);
+}
+
+.wb-handle:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Overlays */
+.wb-empty {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  color: var(--text-dim);
+}
+
+.wb-empty p {
+  margin: 0 0 6px;
+}
+
+.wb-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11.5px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  padding: 5px 11px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.wb-edge-editor {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.wb-edge-editor span {
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.wb-edge-editor input {
+  width: 250px;
+}

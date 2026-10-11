@@ -1,0 +1,193 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Re-release the current tag (use when a previous release partially failed)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    if: github.actor != 'sr-releaser[bot]'
+    uses: ./.github/workflows/ci.yml
+
+  # Plan first so the desktop bundles are built before the release exists.
+  # Publishing the release and then uploading assets is not an option: GitHub
+  # rejects uploads to an already-published immutable release.
+  plan:
+    environment: release
+    needs: ci
+    runs-on: ubuntu-latest
+    # The secrets context is not available in a job-level `if`, so it is lifted
+    # into env where step-level conditions can see it.
+    env:
+      RELEASER_APP_ID: ${{ secrets.SR_RELEASER_APP_ID }}
+    outputs:
+      released: ${{ steps.plan.outputs.released }}
+      tag: ${{ steps.plan.outputs.tag }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      # While the project is in beta the release app may not be installed on the
+      # repo yet. Skipping cleanly keeps main green instead of failing every
+      # push on a credential the repo has deliberately not been given.
+      - name: Check release credentials
+        id: creds
+        run: |
+          if [ -n "$RELEASER_APP_ID" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Releases not configured::SR_RELEASER_APP_ID is unset, so no release will be cut. CI still ran."
+          fi
+
+      - name: Generate app token
+        id: app-token
+        if: steps.creds.outputs.configured == 'true'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: Iv23liUsXGDICnIdo3Ev
+          private-key: ${{ secrets.SR_RELEASER_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+
+      - uses: actions/checkout@v6
+        if: steps.creds.outputs.configured == 'true'
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: urmzd/sr@v9
+        id: plan
+        if: steps.creds.outputs.configured == 'true'
+        with:
+          mode: plan
+          github-token: ${{ steps.app-token.outputs.token }}
+
+  # Wails links against each platform's native webview, so there is no
+  # cross-compilation path: every target needs its own runner.
+  build:
+    needs: plan
+    if: needs.plan.outputs.released == 'true'
+    name: Build (${{ matrix.label }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: darwin-arm64
+            runner: macos-15
+            platform: darwin/arm64
+          - label: darwin-amd64
+            runner: macos-15-intel
+            platform: darwin/amd64
+          - label: windows-amd64
+            runner: windows-latest
+            platform: windows/amd64
+          - label: linux-amd64
+            runner: ubuntu-latest
+            platform: linux/amd64
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install Linux webkit deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+
+      # Wails defaults to webkit2gtk-4.0, which Ubuntu 24.04 no longer ships.
+      # The webkit2_41 tag targets the 4.1 series that is actually available.
+      - name: Build app (Linux)
+        if: runner.os == 'Linux'
+        run: wails build -s -skipbindings -tags webkit2_41 -platform ${{ matrix.platform }}
+
+      - name: Build app
+        if: runner.os != 'Linux'
+        run: wails build -s -skipbindings -platform ${{ matrix.platform }}
+
+      # macOS produces a .app bundle and Windows a bare .exe, so each platform
+      # is packaged into one archive rather than uploaded as a loose binary.
+      - name: Package (unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cd build/bin
+          if [ -d whiteboardy.app ]; then
+            zip -qr "../../dist/whiteboardy-${{ matrix.label }}.zip" whiteboardy.app
+          else
+            tar -czf "../../dist/whiteboardy-${{ matrix.label }}.tar.gz" whiteboardy
+          fi
+
+      - name: Package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path build/bin/whiteboardy.exe -DestinationPath "dist/whiteboardy-${{ matrix.label }}.zip"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bundle-${{ matrix.label }}
+          path: dist/whiteboardy-${{ matrix.label }}.*
+          retention-days: 1
+          if-no-files-found: error
+
+  # Tag, create the release, and attach every bundle in one step, so the
+  # published release is complete the moment it appears.
+  release:
+    environment: release
+    needs: [plan, build]
+    if: needs.plan.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: Iv23liUsXGDICnIdo3Ev
+          private-key: ${{ secrets.SR_RELEASER_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: actions/download-artifact@v6
+        with:
+          path: dist
+          pattern: bundle-*
+          merge-multiple: true
+
+      - name: Release
+        uses: urmzd/sr@v9
+        with:
+          mode: release
+          github-token: ${{ steps.app-token.outputs.token }}
+          artifacts: >-
+            dist/whiteboardy-darwin-arm64.zip
+            dist/whiteboardy-darwin-amd64.zip
+            dist/whiteboardy-windows-amd64.zip
+            dist/whiteboardy-linux-amd64.tar.gz
