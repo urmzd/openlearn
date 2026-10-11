@@ -1,7 +1,7 @@
 name: Pages
 
 # Builds the curriculum website from the repo's markdown (site/) and deploys
-# it to GitHub Pages at https://supersource.urmzd.com. Pull requests build
+# it to GitHub Pages at https://openlearn.urmzd.com. Pull requests build
 # only, so a broken page fails review instead of production.
 
 on:

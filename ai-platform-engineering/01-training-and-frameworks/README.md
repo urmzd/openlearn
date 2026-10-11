@@ -171,7 +171,6 @@ These outlive any framework version:
 | Transformers, backprop, optimizers | [Deep Learning](../../ml/02-deep-learning/) | The models being trained |
 | Serving, KV cache, parallelism, quantization | [LLM Systems & Inference](../../ml/04-llm-systems/) | Deploying training output |
 | K8s, GPU scheduling, autoscaling | [Cloud Native](../../systems/03-cloud-native/) | The training/serving substrate |
-| All-reduce, collectives, memory bandwidth | [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/) | Why distributed training communicates |
 | Vector stores, OLTP/OLAP, sharding, caching | [Distributed Data & Caching](../04-distributed-data-and-caching/) | Where embeddings and data live |
 | Durable workflows, checkpointed pipelines | [Orchestration & Workers](../05-durable-orchestration-and-workers/) | Crash-proof training pipelines |
 | Embedding retrieval, chunking, RAG | [Retrieval & RAG](../07-retrieval-and-rag/) | What the embeddings are for |

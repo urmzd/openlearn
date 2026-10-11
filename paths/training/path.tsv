@@ -1,3 +1,0 @@
-# stage	title	files (comma-separated, repo-relative, read in order)	done when	check
-1	Reinforcement learning foundations	ml/03-reinforcement-learning/README.md	You can derive the policy gradient and the PPO clipped objective, and say what the critic is for.	-
-2	Training and post-training	ml/07-training-and-post-training/README.md	You run a LoRA fine-tune of a small model, evaluate it against the base on a held-out set, and estimate GPU-hours and cost for an 8B customer job before starting.	-

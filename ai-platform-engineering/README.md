@@ -4,7 +4,7 @@ The infrastructure layer underneath modern AI products — but taught as **patte
 
 > **The math analogy**: once you understand limits, derivatives, and integrals, every named technique downstream is a special case. The same is true here. *Cache-aside*, *consistent hashing*, *idempotent retry*, *event-sourced replay*, *the worker pool*, *backpressure*, *the decorator* — learn the pattern and how it works, and "what's trending this quarter" becomes derivative. We name the trendy tools (vLLM, Temporal, Redis, gRPC) as **instances of patterns**, and we note how companies apply them, but the pattern is the lesson.
 
-> **Prerequisites**: [Deep Learning](../ml/02-deep-learning/) (transformers, training loops), [LLM Systems & Inference](../ml/04-llm-systems/) (serving, KV cache, parallelism), [System Design](../systems/01-system-design/), [Cloud Native](../systems/03-cloud-native/), [Data Engineering](../data-engineering/) (OLTP vs OLAP, storage), [Functional Programming](../archive/algorithms/13-functional-programming/). Comfortable with [Concurrency & Systems](../archive/algorithms/12-concurrency-systems/).
+> **Prerequisites**: [Deep Learning](../ml/02-deep-learning/) (transformers, training loops), [LLM Systems & Inference](../ml/04-llm-systems/) (serving, KV cache, parallelism), [System Design](../systems/01-system-design/), [Cloud Native](../systems/03-cloud-native/), [Data Engineering](../data-engineering/) (OLTP vs OLAP, storage).
 
 ## Prerequisite Graph
 

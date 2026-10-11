@@ -6,7 +6,7 @@
   - [Kubernetes documentation](https://kubernetes.io/docs/) -- free, authoritative
   - [The Twelve-Factor App](https://12factor.net/) -- free, the contract a container must honor
 - **Supplementary**: *Cloud Native DevOps with Kubernetes* 2nd ed. (recommended), [Kubernetes the Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) (free), [OCI Image Spec](https://github.com/opencontainers/image-spec) (free), [KEDA docs](https://keda.sh/) (free)
-- **Prerequisites**: Linux basics, [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/), [Diagramming & the C4 Model](../../software-craftsmanship/05-diagramming-c4/) (the deployment view)
+- **Prerequisites**: Linux basics, [Diagramming & the C4 Model](../../software-craftsmanship/05-diagramming-c4/) (the deployment view)
 - **Estimated time**: 1-2 weeks at 8-10 hrs/week
 
 ## Key Takeaways

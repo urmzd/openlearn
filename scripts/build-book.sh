@@ -16,7 +16,7 @@ set -euo pipefail
 #   --skip-mermaid     Leave Mermaid blocks as code (no headless browser needed)
 #   --no-toc           Omit the table of contents
 #   --manifest FILE    Write a build manifest JSON to FILE
-#   --path NAME        Build one role path (paths/NAME/path.tsv) instead of the
+#   --path NAME        Build one path (paths/NAME/path.tsv) instead of the
 #                      whole curriculum; writes supersource-NAME.pdf
 #   --help             Show this help
 #
@@ -105,7 +105,7 @@ if [[ -n "$LEARN_PATH" ]]; then
   PDF_NAME="supersource-$LEARN_PATH.pdf"
   # The path's README H1 is its title, e.g. "Forward Deployed Engineer, ...".
   TITLE="$(sed -n 's/^# //p' "$ROOT_DIR/paths/$LEARN_PATH/README.md" | head -1)"
-  SUBTITLE="A Supersource role path"
+  SUBTITLE="A Supersource course path"
 fi
 python3 "$SCRIPT_DIR/assemble_book.py" "${assemble_args[@]}"
 

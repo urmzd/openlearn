@@ -204,7 +204,7 @@ jobs:
       - name: Verify reference implementations
         run: practice/bin/ol verify build
 
-      - name: Verify role paths
+      - name: Verify paths
         # Every stage a paths/*/path.tsv names must exist and every @include
         # must resolve without a cycle, so ol learn and the per-path PDFs never
         # point at a moved or renamed chapter.
@@ -255,7 +255,7 @@ jobs:
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: ./scripts/build-book.sh --manifest outputs/build-manifest.json
 
-      - name: Build one PDF per role path
+      - name: Build one PDF per path
         env:
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: |
@@ -266,9 +266,9 @@ jobs:
           done
 
           # sr.yaml lists the release PDFs explicitly. Fail here if a listed
-          # course path or role path was omitted from the generated artifact.
-          # Only the PDFs are built here: the desktop bundles sr.yaml also
-          # lists come from the release workflow's app job.
+          # course path was omitted from the generated artifact. Only the PDFs
+          # are built here: the desktop bundles sr.yaml also lists come from the
+          # release workflow's app job.
           while IFS= read -r artifact; do
             [[ "$artifact" == *.pdf ]] || continue
             test -s "$artifact"

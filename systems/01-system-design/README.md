@@ -6,7 +6,7 @@
   - *ByteByteGo System Design* (recommended purchase)
   - *Designing Data-Intensive Applications* by Martin Kleppmann (recommended purchase -- the industry bible)
   - [System Design Primer](https://github.com/donnemartin/system-design-primer) (free)
-- **Prerequisites**: [Algorithms](../../algorithms/), especially [Concurrency & Systems](../../archive/algorithms/12-concurrency-systems/)
+- **Prerequisites**: [Algorithms](../../algorithms/)
 - **Estimated time**: 4-5 weeks at 8-10 hrs/week
 
 ## Key Takeaways

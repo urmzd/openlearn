@@ -8,7 +8,7 @@ import sidebar from './src/generated/sidebar.json' with { type: 'json' };
 
 // Content is generated from the repo's READMEs by scripts/sync-content.mjs.
 export default defineConfig({
-	site: 'https://supersource.urmzd.com',
+	site: 'https://openlearn.urmzd.com',
 	trailingSlash: 'always',
 	// The READMEs write LaTeX as $...$ and $$...$$, the way GitHub renders it.
 	markdown: {

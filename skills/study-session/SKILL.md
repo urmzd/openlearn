@@ -111,9 +111,6 @@ Map shorthand topic names to directories:
 - backtracking → algorithms/09-backtracking/
 - math, bits → algorithms/10-math-bit/
 - recursion, divide-conquer → algorithms/11-recursion-divide-conquer/
-- concurrency, systems → archive/algorithms/12-concurrency-systems/ (archived coursework)
-- functional, fp → archive/algorithms/13-functional-programming/ (archived coursework)
-- ml, statistics → archive/algorithms/14-ml-statistics/ (archived coursework)
 - probabilistic → algorithms/15-probabilistic-structures/
 - calculus-1 through probability → math/{topic}/
 - cp, competitive → competitive-programming/

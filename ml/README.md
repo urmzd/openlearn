@@ -48,6 +48,6 @@ graph LR
 5. For MLOps/infra roles: Deep Learning (transformers) → LLM Systems & Inference, pairs with [Cloud Native](../systems/03-cloud-native/) and [Data Engineering](../data-engineering/)
 6. For AI engineering / GenAI roles: Deep Learning → Foundation Models & Architectures (Chip Huyen) → LLM Systems & Inference
 7. For foundations / interviews: pair Deep Learning with [Neural Architectures & DL History](06-neural-architectures/) — backprop, CNNs, RNNs/LSTM, and AlexNet derived from the math and coded from scratch
-8. For forward deployed / inference-cloud roles: follow the [Superstar FDE path](../paths/superstar-fde/) (`practice/bin/ol learn superstar-fde`), which orders this track with the AI platform and [Field Engineering](../field-engineering/) tracks
+8. To build the whole stack yourself: follow [the course](../paths/course/) (`practice/bin/ol learn course`)
 
 See [Study Plan](../STUDY-PLAN.md) for the 18-30 week ML/AI schedule.

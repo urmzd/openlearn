@@ -9,7 +9,7 @@ Where you *run* an LLM. This maps the inference/serving ecosystem across languag
 ## Overview
 
 - **Primary references** (all free): [llama.cpp](https://github.com/ggml-org/llama.cpp) + [ggml](https://github.com/ggml-org/ggml), [candle](https://github.com/huggingface/candle) docs, [mistral.rs](https://github.com/EricLBuehler/mistral.rs), [ZML](https://github.com/zml/zml), [vLLM](https://docs.vllm.ai/) / [SGLang](https://github.com/sgl-project/sglang) / [TGI](https://huggingface.co/docs/text-generation-inference) docs
-- **Prerequisites**: [LLM Systems & Inference](../) (esp. §9 frameworks, §10 deployment), C/Rust/Zig basics, [Concurrency & Systems](../../../archive/algorithms/12-concurrency-systems/)
+- **Prerequisites**: [LLM Systems & Inference](../) (esp. §9 frameworks, §10 deployment), C/Rust/Zig basics
 - **Estimated time**: 1-2 weeks at 8-10 hrs/week
 
 ## Key Takeaways
@@ -131,7 +131,6 @@ Zig's pitch: **trivial C interop** (`@cImport` reads C headers directly -- no bi
 |---------|-----------------|-------------|
 | GGUF k-quants, ISQ, FP8 | [Quantization: Math → Code](../quantization/) | The formats these frameworks load |
 | Continuous batching, KV cache, SLOs | [LLM Systems & Inference](../) | What the runtime/server layers implement |
-| memory safety, SIMD, allocators | [Concurrency & Systems](../../../archive/algorithms/12-concurrency-systems/) | systems concepts and hot loops |
 | Polyglot idioms (C, Rust, Zig) | [Polyglot Practice](../../../practice/) | Same algorithm, different language tradeoffs |
 | K8s, autoscaling, OpenAI API | [Cloud Native](../../../systems/03-cloud-native/) | Deploying any of these servers |
 

@@ -1,9 +1,0 @@
-# stage	title	files (comma-separated, repo-relative, read in order)	done when	check
-0	Role brief	paths/superstar-fde/README.md	You can say what an inference cloud sells, what an FDE owns, and which part of this path answers each customer question.	-
-@llm-foundations
-@frameworks-and-models
-@training
-@inference-performance
-@ai-full-stack
-@field-engineering
-1	Capstone: one customer, end to end	field-engineering/08-mock-engagement/capstone.md	You deliver every capstone artifact for one mock customer, from discovery notes to a migration plan, and each one passes its stated check.	-

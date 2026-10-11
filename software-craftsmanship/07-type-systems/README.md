@@ -7,7 +7,7 @@
   - [*Programming Language Foundations in Agda* (Wadler, Kokke, Siek)](https://plfa.github.io/) (free, full text) — STLC, type soundness, and inference, mechanized so the proofs run.
   - [*Software Foundations* Vol. 2: *Programming Language Foundations*](https://softwarefoundations.cis.upenn.edu/plf-current/) (free) — progress, preservation, and subtyping in Coq.
 - **Supplementary**: [Cardelli & Wegner, *On Understanding Types, Data Abstraction, and Polymorphism*](https://dl.acm.org/doi/10.1145/6041.6042) (free PDF widely mirrored) — the paper that names the polymorphism taxonomy; [Damas & Milner, *Principal type-schemes for functional programs*](https://dl.acm.org/doi/10.1145/582153.582176) (free) — Algorithm W; [Wadler, *Theorems for Free!*](https://homepages.inf.ed.ac.uk/wadler/papers/free/free.pdf) (free) — parametricity; [Wadler & Blott, *How to make ad-hoc polymorphism less ad hoc*](https://people.csail.mit.edu/dnj/teaching/6898/papers/wadler88.pdf) (free) — typeclasses; the [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html), [Go Generics tutorial](https://go.dev/doc/tutorial/generics), and [Rust Book Ch. 10](https://doc.rust-lang.org/book/ch10-00-generics.html) (all free).
-- **Prerequisites**: [Discrete Math 1](../../math/05-discrete-math-1/) (proofs, induction, relations) and [Functional Programming](../../archive/algorithms/13-functional-programming/) (lambda calculus, recursion). Comfort reading inference rules helps but is taught here.
+- **Prerequisites**: [Discrete Math 1](../../math/05-discrete-math-1/) (proofs, induction, relations). Comfort reading inference rules helps but is taught here.
 - **Estimated time**: 2–3 weeks at 8–10 hrs/week
 
 ## Key Takeaways
@@ -198,7 +198,6 @@ This topic moved here from the former top-level Programming Languages track. It 
 
 | Track / Topic | Connection |
 |---------------|-----------|
-| [Functional Programming](../../archive/algorithms/13-functional-programming/) | The λ-calculus, recursion, and `fold`/`map` this topic types are introduced there untyped — STLC is that calculus *with types*. |
 | [Discrete Math 1](../../math/05-discrete-math-1/) | Inference rules, derivations, induction, and relations (`<:` is a partial order) are the proof machinery soundness is stated in. |
 | [Software Craftsmanship](../) | "Make illegal states unrepresentable," design by contract, and orthogonality are type-system thinking applied to everyday code. |
 | [Information Theory](../../math/11-information-theory/) | Curry–Howard's cousin, the Curry–Howard–Lambek correspondence, ties types to category theory; types are also a *compression* of a program's possible behaviors. |

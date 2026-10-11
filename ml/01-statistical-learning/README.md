@@ -176,7 +176,6 @@ Statistical learning is about finding f(X) that predicts Y, while understanding 
 | Probability (Bayes, distributions) | [Probability](../../math/07-probability-statistics/) | LDA, Naive Bayes, generative models |
 | Gradient descent | [Deep Learning](../02-deep-learning/) | Foundation for neural network optimization |
 | Bias-variance | [Deep Learning](../02-deep-learning/) | Extends to double descent in deep learning |
-| Cross-validation, evaluation | [Algorithms](../../archive/algorithms/14-ml-statistics/) | Code implementations |
 
 ## Company Relevance
 

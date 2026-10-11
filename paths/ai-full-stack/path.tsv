@@ -1,5 +1,0 @@
-# stage	title	files (comma-separated, repo-relative, read in order)	done when	check
-1	Streaming and SSE	ai-platform-engineering/03-streaming-sse/README.md	You stream tokens from an OpenAI-compatible endpoint to a browser over SSE and handle disconnects and backpressure.	-
-2	Retrieval and RAG	ai-platform-engineering/07-retrieval-and-rag/README.md	You build hybrid retrieval (BM25 plus vectors with reranking) over a real corpus and measure recall before touching the generator.	-
-3	LLM evaluation	ai-platform-engineering/09-llm-evaluation/README.md	You run an eval suite against two models on your own endpoint and report the delta with confidence intervals.	-
-4	Model routing and cascades	ai-platform-engineering/11-model-routing-and-cascades/README.md	You can design a cascade that sends easy traffic to a small model and show the cost and quality trade-off on a held-out set.	-

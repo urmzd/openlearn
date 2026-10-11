@@ -394,7 +394,6 @@ The gap between the first two rows of the cost table is the honest conversation:
 | SSE streaming | [Streaming & SSE](../../../ai-platform-engineering/03-streaming-sse/) | How TTFT and ITL reach the client |
 | Metrics, SLOs, alerting | [Observability](../../../systems/04-observability/) | Prometheus signals for autoscaling |
 | Autoscaling, K8s | [Cloud Native](../../../systems/03-cloud-native/) | KEDA/Knative scaling on queue depth |
-| Memory bandwidth, collectives | [Concurrency & Systems](../../../archive/algorithms/12-concurrency-systems/) | Roofline, all-reduce cost |
 
 ## Company Relevance
 

@@ -8,7 +8,7 @@ How a checkpoint becomes a running model, and how to debug it when it does not. 
 
 - **Primary references** (all free): [safetensors format spec](https://github.com/huggingface/safetensors#format) (free), [Transformers: Loading models](https://huggingface.co/docs/transformers/main/en/models) (free), [Transformers: Dynamic weight loading](https://huggingface.co/docs/transformers/main/en/weightconverter) (free), [huggingface_hub: Download files](https://huggingface.co/docs/huggingface_hub/guides/download) and [Understand caching](https://huggingface.co/docs/huggingface_hub/guides/manage-cache) (free), [vLLM engine arguments](https://docs.vllm.ai/en/latest/configuration/engine_args.html) (free), [Transformers: Chat templates](https://huggingface.co/docs/transformers/main/en/chat_templating) (free)
 - **Supplementary**: [GGUF spec](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md) (free), [Hub Xet storage](https://huggingface.co/docs/hub/xet/index) (free), [`hf` CLI guide](https://huggingface.co/docs/huggingface_hub/guides/cli) (free), [vLLM Run:ai Model Streamer](https://docs.vllm.ai/en/latest/models/extensions/runai_model_streamer.html) (free), [fastsafetensors](https://github.com/foundation-model-stack/fastsafetensors) (free), [CoreWeave tensorizer](https://github.com/coreweave/tensorizer) (free), [NVIDIA cuda-checkpoint](https://github.com/NVIDIA/cuda-checkpoint) (free), [PEFT LoRA docs](https://huggingface.co/docs/peft) (free), [LoRA paper](https://arxiv.org/abs/2106.09685) (free), [FP8 formats paper](https://arxiv.org/abs/2209.05433) (free), [OCP Microscaling (MX) spec](https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf) (free), [Flax NNX checkpointing](https://flax.readthedocs.io/en/latest/guides/checkpointing.html) (free), [KerasHub](https://keras.io/keras_hub/) (free)
-- **Prerequisites**: [LLM Systems & Inference](../) (esp. §6 quantization, §8 parallelism), [Deep Learning](../../02-deep-learning/) (transformer blocks, attention), [Concurrency & Systems](../../../archive/algorithms/12-concurrency-systems/) (memory hierarchy, I/O bandwidth)
+- **Prerequisites**: [LLM Systems & Inference](../) (esp. §6 quantization, §8 parallelism), [Deep Learning](../../02-deep-learning/) (transformer blocks, attention)
 - **Estimated time**: 1-2 weeks at 8-10 hrs/week
 - **Versions reviewed** (October 2026): transformers 5.19, huggingface_hub 2.1, safetensors 0.8, vLLM 0.31, hf_xet 1.7. Pin versions in anything you ship; this layer moves monthly
 
@@ -370,7 +370,6 @@ model = nnx.merge(graphdef, state)
 | Transformer blocks, GQA, MoE, RoPE | [Deep Learning](../../02-deep-learning/) | What each tensor name means |
 | FP8/MXFP4/NVFP4, AWQ, GPTQ | [Quantization](../quantization/) | Reading pre-quantized checkpoints |
 | Fine-tuning, LoRA, SFT data formatting | [Training & Post-Training](../../07-training-and-post-training/) | Where adapters and templates come from |
-| Memory hierarchy, I/O bandwidth, mmap | [Concurrency & Systems](../../../archive/algorithms/12-concurrency-systems/) | Cold start math |
 | Image baking, daemonsets, warm pools | [Cloud Native](../../../systems/03-cloud-native/) | Getting weights onto nodes |
 | Load-time and TTFT metrics | [Observability](../../../systems/04-observability/) | Measuring each cold-start term |
 

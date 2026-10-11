@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.17.1 (2026-10-11)
+
+### Bug Fixes
+
+- **site**: serve the site from openlearn.urmzd.com (#28) ([c521034](https://github.com/urmzd/openlearn/commit/c521034de6cce10403fb253fa87c6ec0b18ec169))
+
+### Misc
+
+- **app**: repair the garbled package comment in course ([765f4a5](https://github.com/urmzd/openlearn/commit/765f4a5e6fac126eaffbb72975e741334e7294cb))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.17.0...v0.17.1)
+
+
 ## 0.17.0 (2026-10-11)
 
 ### Features

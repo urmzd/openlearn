@@ -1,6 +1,0 @@
-# stage	title	files (comma-separated, repo-relative, read in order)	done when	check
-1	Inference engine internals	ml/04-llm-systems/README.md	You can explain prefill vs decode, paged KV cache, continuous batching, and speculative decoding to both a researcher and a customer.	-
-2	Quantization	ml/04-llm-systems/quantization/README.md	You can pick a quantization format (FP8, AWQ, GPTQ, NF4, GGUF) for a given GPU and quality bar and say what it does to memory, speed, and accuracy.	-
-3	Inference frameworks across languages	ml/04-llm-systems/frameworks/README.md	You can place llama.cpp, vLLM, SGLang, TensorRT-LLM, candle, and mistral.rs on the deployment map and say when each is the right tool.	-
-4	Serving and load	ml/04-llm-systems/serving-and-load/README.md	You benchmark vLLM and SGLang on the same model, produce TTFT and TPOT vs concurrency curves, and pick a config that meets a stated SLO at the lowest cost per 1M tokens.	-
-5	Serving platforms and reproducibility	ml/04-llm-systems/serving-platforms.md	You can say which layer (router, gateway, orchestration, managed platform, engine) a customer problem lives in, and why batched inference is not bitwise reproducible by default.	-
