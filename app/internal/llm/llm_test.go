@@ -23,7 +23,7 @@ func TestCreativityCompilesPerModel(t *testing.T) {
 		{KindAnthropic, "claude-haiku-5-5", false},
 	}
 	for _, tc := range cases {
-		caps := catalog.MustLookup(string(tc.kind), tc.model)
+		caps := catalog.MustLookup(types.ProviderName(tc.kind), tc.model)
 		o := requestOptions(tc.kind, tc.model)
 		// The dial must send sampling exactly where a raw temperature
 		// would be accepted.

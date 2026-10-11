@@ -19,14 +19,14 @@ import (
 )
 
 // Kind identifies a supported provider backend. The values match saige's
-// provider names, so a Kind passes straight to provider.Build.
+// provider names, so a Kind converts straight to a types.ProviderName.
 type Kind string
 
 const (
-	KindOllama    Kind = provider.Ollama
-	KindOpenAI    Kind = provider.OpenAI
-	KindAnthropic Kind = provider.Anthropic
-	KindGoogle    Kind = provider.Google
+	KindOllama    Kind = Kind(provider.Ollama)
+	KindOpenAI    Kind = Kind(provider.OpenAI)
+	KindAnthropic Kind = Kind(provider.Anthropic)
+	KindGoogle    Kind = Kind(provider.Google)
 )
 
 // Config describes how to reach a model.
@@ -69,8 +69,8 @@ func New(ctx context.Context, cfg Config, log *slog.Logger) (*Client, error) {
 	}
 
 	pc := provider.Config{
-		Provider: string(kind),
-		Model:    cfg.Model,
+		Provider: types.ProviderName(kind),
+		Model:    types.ModelID(cfg.Model),
 		Options:  requestOptions(kind, cfg.Model),
 		Dials:    dials(),
 		// Settings are the only source of credentials and hosts, so the
@@ -106,7 +106,11 @@ func New(ctx context.Context, cfg Config, log *slog.Logger) (*Client, error) {
 		}
 	case KindAnthropic, KindOpenAI:
 		// These adapters no longer retry inside the SDK.
-		p = retry.New(p, retry.DefaultConfig())
+		rp, err := retry.New(p, retry.DefaultConfig())
+		if err != nil {
+			return nil, fmt.Errorf("llm: %w", err)
+		}
+		p = rp
 	}
 
 	return &Client{provider: p, cfg: cfg, log: log}, nil
@@ -123,7 +127,7 @@ func New(ctx context.Context, cfg Config, log *slog.Logger) (*Client, error) {
 // sits visibly empty. The judgment already happened in the decision call;
 // this one just writes two sentences.
 func requestOptions(kind Kind, model string) types.RequestOptions {
-	caps := catalog.MustLookup(string(kind), model)
+	caps := catalog.MustLookup(types.ProviderName(kind), model)
 	var o types.RequestOptions
 	try := func(set func(*types.RequestOptions)) {
 		next := o.Clone()
@@ -165,7 +169,11 @@ func (c *Client) Model() string { return c.cfg.Model }
 
 // Text runs a single-turn completion and returns the accumulated text.
 func (c *Client) Text(ctx context.Context, system, user string) (string, error) {
-	text, err := agentsdk.CollectText(c.agent(system).Invoke(ctx, prompt(user)))
+	a, err := c.agent(system)
+	if err != nil {
+		return "", err
+	}
+	text, err := agentsdk.CollectText(a.Invoke(ctx, prompt(user)))
 	if err != nil {
 		return text, fmt.Errorf("llm: %w", err)
 	}
@@ -180,9 +188,13 @@ func (c *Client) Text(ctx context.Context, system, user string) (string, error) 
 // being written; schema-constrained calls go through Structured instead,
 // because partial JSON is not something a UI can render.
 func (c *Client) TextStream(ctx context.Context, system, user string, onDelta func(string)) (string, error) {
-	t, err := agentsdk.Collect(c.agent(system).Invoke(ctx, prompt(user)), func(d types.Delta) {
-		if td, ok := d.(types.TextContentDelta); ok && onDelta != nil && td.Content != "" {
-			onDelta(td.Content)
+	a, err := c.agent(system)
+	if err != nil {
+		return "", err
+	}
+	t, err := agentsdk.Collect(a.Invoke(ctx, prompt(user)), func(d types.Delta) {
+		if pd, ok := d.(types.PartDelta); ok && onDelta != nil && pd.Text != "" {
+			onDelta(pd.Text)
 		}
 	})
 	if err != nil {
@@ -205,7 +217,12 @@ func Structured[T any](ctx context.Context, c *Client, system, user string, muta
 	for _, m := range mutators {
 		m(&schema)
 	}
-	out, _, err := agentsdk.Structured(ctx, c.agent(system), prompt(user), agentsdk.OutputSpec[T]{
+	a, err := c.agent(system)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	out, _, err := agentsdk.Structured(ctx, a, prompt(user), agentsdk.OutputSpec[T]{
 		Schema: &schema,
 		Repair: structuredRepairs,
 	})
@@ -230,14 +247,18 @@ const contextBudget = 16384
 
 // agent builds a single-turn agent. Each call gets its own, so concurrent
 // generations never share a conversation tree.
-func (c *Client) agent(system string) *agentsdk.Agent {
-	return agentsdk.NewAgent(agentsdk.AgentConfig{
+func (c *Client) agent(system string) (*agentsdk.Agent, error) {
+	a, err := agentsdk.New(agentsdk.Config{
 		Name:         "openlearn",
 		SystemPrompt: system,
 		Provider:     c.provider,
 	}, agentsdk.WithMaxIter(1), agentsdk.WithLogger(c.log))
+	if err != nil {
+		return nil, fmt.Errorf("llm: %w", err)
+	}
+	return a, nil
 }
 
 func prompt(user string) []types.Message {
-	return []types.Message{types.NewUserMessage(user)}
+	return []types.Message{types.UserMsg(types.Text(user))}
 }
