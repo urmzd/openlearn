@@ -1,19 +1,13 @@
-// Pre-session screen: pick the mode, the bar, the clock, and the model.
+// Pre-session screen: pick what to practice, the bar, and the clock.
 //
-// The model picker lives here rather than behind a settings menu because a
-// misconfigured model is the one failure that makes the whole app do nothing,
-// and finding that out 40 seconds into generation is the worst place to learn it.
+// A session can be started cold, or from a document, in which case the exercise
+// and its hidden rubric are written from that document. Which modes are offered
+// is the pack's call: a language guide has no use for a system design board.
 
 import { useEffect, useState } from "react";
-import {
-  CheckModel,
-  GetSettings,
-  ListModels,
-  SaveSettings,
-  StartSession,
-} from "../wailsjs/go/main/App";
-import type { domain, llm, store } from "../wailsjs/go/models";
-import type { Level, Mode, ProviderKind } from "./types";
+import { GetSettings, SaveSettings, StartSession } from "../wailsjs/go/main/App";
+import type { domain, store } from "../wailsjs/go/models";
+import type { Level, Mode } from "./types";
 import "./setup.css";
 
 const DURATIONS = [
@@ -32,14 +26,43 @@ const LEVELS: { id: Level; label: string; blurb: string }[] = [
 
 const LANGUAGES = ["go", "python", "typescript", "java", "rust", "javascript"];
 
-interface Props {
-  onStarted: () => void;
-  onOpenHistory: () => void;
+const MODES: Record<Mode, { icon: string; name: string; blurb: string; topic: string }> = {
+  system_design: {
+    icon: "◫",
+    name: "System design",
+    blurb: "Boxes, arrows, and the numbers behind them on a whiteboard.",
+    topic: "e.g. rate limiter, feed fanout",
+  },
+  coding: {
+    icon: "{ }",
+    name: "Coding",
+    blurb: "An editor, a signature to fill in, and a clock.",
+    topic: "e.g. sliding window, graphs, parsing",
+  },
+  written: {
+    icon: "¶",
+    name: "Written answer",
+    blurb: "Explain it, derive it, or produce it from memory, in prose.",
+    topic: "e.g. backprop through softmax, ordering at a restaurant",
+  },
+};
+
+export interface Source {
+  path: string;
+  title: string;
 }
 
-export function Setup({ onStarted, onOpenHistory }: Props) {
-  const [settings, setSettings] = useState<store.Settings | null>(null);
-  const [models, setModels] = useState<llm.ModelInfo[]>([]);
+interface Props {
+  /** The modes the open pack offers, in its order. */
+  modes: string[];
+  source: Source | null;
+  onClearSource: () => void;
+  onOpenSettings: () => void;
+}
+
+export function Setup({ modes, source, onClearSource, onOpenSettings }: Props) {
+  const offered = modes.filter((m): m is Mode => m in MODES);
+  const [model, setModel] = useState<string | null>(null);
   const [spec, setSpec] = useState<domain.SessionSpec>({
     mode: "system_design",
     level: "senior",
@@ -53,104 +76,76 @@ export function Setup({ onStarted, onOpenHistory }: Props) {
 
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
-  const [probe, setProbe] = useState("");
-  const [probing, setProbing] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     GetSettings().then((s) => {
-      setSettings(s);
-      if (s.defaults) setSpec((prev) => ({ ...prev, ...s.defaults, customStatement: "" }));
+      setModel(s.llm.model ?? "");
+      if (s.defaults) setSpec((prev) => ({ ...prev, ...s.defaults, customStatement: "", topic: "" }));
     });
-    refreshModels();
   }, []);
 
-  const refreshModels = () => {
-    ListModels()
-      .then(setModels)
-      .catch((e) => setError(String(e)));
-  };
-
-  const updateLLM = async (patch: Partial<llm.Config>) => {
-    if (!settings) return;
-    const next = { ...settings, llm: { ...settings.llm, ...patch } } as store.Settings;
-    setSettings(next);
-    setProbe("");
-    await SaveSettings(next).catch((e) => setError(String(e)));
-    if (patch.kind) refreshModels();
-  };
-
-  const check = async () => {
-    setProbing(true);
-    setProbe("");
-    setError("");
-    try {
-      setProbe(await CheckModel());
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setProbing(false);
-    }
-  };
+  // The remembered mode may not be one this pack offers.
+  const mode: Mode = offered.includes(spec.mode as Mode) ? (spec.mode as Mode) : (offered[0] ?? "written");
+  const patch = (p: Partial<domain.SessionSpec>) => setSpec({ ...spec, ...p } as domain.SessionSpec);
 
   const start = async () => {
-    if (!settings?.llm.model) {
-      setError("Pick a model first.");
-      return;
-    }
     setStarting(true);
     setError("");
     try {
-      // Remember these choices for next launch.
-      await SaveSettings({ ...settings, defaults: spec } as store.Settings);
-      await StartSession(spec);
-      onStarted();
+      const settings = await GetSettings();
+      if (!settings.llm.model) throw new Error("Pick a model first, in Settings.");
+      const next = { ...spec, mode, source: source?.path ?? "", sourceTitle: "" } as domain.SessionSpec;
+      // Remember these choices for next launch, but not the chapter: the next
+      // session is as likely to be about something else.
+      await SaveSettings({ ...settings, defaults: { ...next, source: "" } } as store.Settings);
+      await StartSession(next);
     } catch (e) {
-      setError(String(e));
+      setError(e instanceof Error ? e.message : String(e));
       setStarting(false);
     }
   };
-
-  const isCoding = spec.mode === "coding";
-  const kind = settings?.llm.kind ?? "ollama";
-  const isOllama = kind === "ollama";
 
   return (
     <div className="setup">
       <div className="setup-inner">
         <header className="setup-header">
           <div>
-            <h1>OpenLearn</h1>
+            <h1>Practice under a clock</h1>
             <p className="muted">
-              Timeboxed practice with a coach that watches, and a score that tells you where you are.
+              A timed exercise, a coach that watches, and a score against a rubric written before
+              you start.
             </p>
           </div>
-          <button onClick={onOpenHistory}>History &amp; progress</button>
         </header>
+
+        {source && (
+          <section className="card source-card">
+            <div>
+              <span className="label">Drawn from</span>
+              <span className="source-title">{source.title}</span>
+              <span className="faint mono source-path">{source.path}</span>
+            </div>
+            <button className="link-btn" onClick={onClearSource}>
+              Practice without a chapter
+            </button>
+          </section>
+        )}
 
         <section className="card">
           <span className="label">What are you practicing</span>
-          <div className="mode-grid">
-            <button
-              className={`mode-card ${!isCoding ? "active" : ""}`}
-              onClick={() => setSpec({ ...spec, mode: "system_design" } as domain.SessionSpec)}
-            >
-              <span className="mode-icon">◫</span>
-              <span className="mode-name">System design</span>
-              <span className="mode-blurb faint">
-                Boxes, arrows, and the numbers behind them on a whiteboard.
-              </span>
-            </button>
-            <button
-              className={`mode-card ${isCoding ? "active" : ""}`}
-              onClick={() => setSpec({ ...spec, mode: "coding" } as domain.SessionSpec)}
-            >
-              <span className="mode-icon">{"{ }"}</span>
-              <span className="mode-name">Coding</span>
-              <span className="mode-blurb faint">
-                An editor, a signature to fill in, and a clock.
-              </span>
-            </button>
+          <div className="mode-grid" style={{ gridTemplateColumns: `repeat(${Math.max(1, offered.length)}, 1fr)` }}>
+            {offered.map((m) => (
+              <button
+                key={m}
+                className={`mode-card ${mode === m ? "active" : ""}`}
+                onClick={() => patch({ mode: m })}
+              >
+                <span className="mode-icon">{MODES[m].icon}</span>
+                <span className="mode-name">{MODES[m].name}</span>
+                <span className="mode-blurb faint">{MODES[m].blurb}</span>
+              </button>
+            ))}
           </div>
         </section>
 
@@ -163,7 +158,7 @@ export function Setup({ onStarted, onOpenHistory }: Props) {
                   <button
                     key={l.id}
                     className={`pill ${spec.level === l.id ? "active" : ""}`}
-                    onClick={() => setSpec({ ...spec, level: l.id } as domain.SessionSpec)}
+                    onClick={() => patch({ level: l.id })}
                     title={l.blurb}
                   >
                     {l.label}
@@ -171,7 +166,6 @@ export function Setup({ onStarted, onOpenHistory }: Props) {
                 ))}
               </div>
             </div>
-
             <div>
               <span className="label">Timebox</span>
               <div className="pill-row">
@@ -179,7 +173,7 @@ export function Setup({ onStarted, onOpenHistory }: Props) {
                   <button
                     key={d.sec}
                     className={`pill ${spec.durationSec === d.sec ? "active" : ""}`}
-                    onClick={() => setSpec({ ...spec, durationSec: d.sec } as domain.SessionSpec)}
+                    onClick={() => patch({ durationSec: d.sec })}
                     title={d.blurb}
                   >
                     {d.label}
@@ -191,24 +185,17 @@ export function Setup({ onStarted, onOpenHistory }: Props) {
 
           <div className="field-grid" style={{ marginTop: 14 }}>
             <div>
-              <span className="label">Topic (optional)</span>
+              <span className="label">{source ? "Focus within the chapter (optional)" : "Topic (optional)"}</span>
               <input
                 value={spec.topic}
-                placeholder={
-                  isCoding ? "e.g. sliding window, graphs, parsing" : "e.g. rate limiter, feed fanout"
-                }
-                onChange={(e) => setSpec({ ...spec, topic: e.target.value } as domain.SessionSpec)}
+                placeholder={MODES[mode].topic}
+                onChange={(e) => patch({ topic: e.target.value })}
               />
             </div>
-            {isCoding && (
+            {mode === "coding" && (
               <div>
                 <span className="label">Language</span>
-                <select
-                  value={spec.language}
-                  onChange={(e) =>
-                    setSpec({ ...spec, language: e.target.value } as domain.SessionSpec)
-                  }
-                >
+                <select value={spec.language} onChange={(e) => patch({ language: e.target.value })}>
                   {LANGUAGES.map((l) => (
                     <option key={l} value={l}>
                       {l}
@@ -222,80 +209,29 @@ export function Setup({ onStarted, onOpenHistory }: Props) {
 
         <section className="card">
           <div className="spread">
-            <span className="label" style={{ margin: 0 }}>
-              Model
+            <span>
+              <span className="label" style={{ display: "inline", marginRight: 8 }}>
+                Model
+              </span>
+              {model === null ? "" : model ? <span className="mono">{model}</span> : <span className="warn-text">none chosen</span>}
             </span>
-            <button className="link-btn" onClick={() => setShowAdvanced(!showAdvanced)}>
-              {showAdvanced ? "Hide options" : "More options"}
-            </button>
+            <span className="row">
+              <button className="link-btn" onClick={onOpenSettings}>
+                Change
+              </button>
+              <button className="link-btn" onClick={() => setShowAdvanced(!showAdvanced)}>
+                {showAdvanced ? "Hide options" : "More options"}
+              </button>
+            </span>
           </div>
-
-          <div className="field-grid" style={{ marginTop: 10 }}>
-            <div>
-              <span className="label">Provider</span>
-              <select value={kind} onChange={(e) => updateLLM({ kind: e.target.value as ProviderKind })}>
-                <option value="ollama">Ollama (local)</option>
-                <option value="anthropic">Anthropic</option>
-                <option value="openai">OpenAI</option>
-                <option value="google">Google</option>
-              </select>
-            </div>
-            <div>
-              <span className="label">Model</span>
-              {isOllama && models.length > 0 ? (
-                <select
-                  value={settings?.llm.model ?? ""}
-                  onChange={(e) => updateLLM({ model: e.target.value })}
-                >
-                  <option value="">Choose a model…</option>
-                  {models.map((m) => (
-                    <option key={m.name} value={m.name}>
-                      {m.name}
-                      {m.sizeBytes ? ` (${(m.sizeBytes / 1e9).toFixed(1)} GB)` : ""}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  value={settings?.llm.model ?? ""}
-                  placeholder={isOllama ? "no models found - is ollama running?" : "model id"}
-                  onChange={(e) => updateLLM({ model: e.target.value })}
-                />
-              )}
-            </div>
-          </div>
-
-          {!isOllama && (
-            <div style={{ marginTop: 12 }}>
-              <span className="label">API key</span>
-              <input
-                type="password"
-                value={settings?.llm.apiKey ?? ""}
-                placeholder="stored locally"
-                onChange={(e) => updateLLM({ apiKey: e.target.value })}
-              />
-            </div>
-          )}
 
           {showAdvanced && (
             <div className="advanced">
-              {isOllama && (
-                <div>
-                  <span className="label">Ollama host</span>
-                  <input
-                    value={settings?.llm.host ?? ""}
-                    placeholder="http://localhost:11434"
-                    onChange={(e) => updateLLM({ host: e.target.value })}
-                  />
-                </div>
-              )}
               <label className="checkline">
                 <input
                   type="checkbox"
                   checked={spec.coachEnabled}
-                  onChange={(e) =>
-                    setSpec({ ...spec, coachEnabled: e.target.checked } as domain.SessionSpec)
-                  }
+                  onChange={(e) => patch({ coachEnabled: e.target.checked })}
                 />
                 <span>
                   Live coach
@@ -310,9 +246,7 @@ export function Setup({ onStarted, onOpenHistory }: Props) {
                       <button
                         key={s}
                         className={`pill ${spec.coachIntervalSec === s ? "active" : ""}`}
-                        onClick={() =>
-                          setSpec({ ...spec, coachIntervalSec: s } as domain.SessionSpec)
-                        }
+                        onClick={() => patch({ coachIntervalSec: s })}
                       >
                         {s}s
                       </button>
@@ -326,20 +260,11 @@ export function Setup({ onStarted, onOpenHistory }: Props) {
                   rows={3}
                   value={spec.customStatement}
                   placeholder="Paste a problem statement to practice against. The rubric is still generated from it."
-                  onChange={(e) =>
-                    setSpec({ ...spec, customStatement: e.target.value } as domain.SessionSpec)
-                  }
+                  onChange={(e) => patch({ customStatement: e.target.value })}
                 />
               </div>
             </div>
           )}
-
-          <div className="row" style={{ marginTop: 12 }}>
-            <button onClick={check} disabled={probing || !settings?.llm.model}>
-              {probing ? "Checking…" : "Test connection"}
-            </button>
-            {probe && <span className="probe-ok">{probe}</span>}
-          </div>
         </section>
 
         {error && <div className="error-box">{error}</div>}

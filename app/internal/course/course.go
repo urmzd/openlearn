@@ -146,6 +146,18 @@ func Open(fsys fs.FS, dir string) (*Course, error) {
 	return &Course{fsys: fsys, dir: dir, m: m}, nil
 }
 
+// Empty returns a course with nothing in it. It stands in when no pack can be
+// opened, so callers always have a course to ask instead of a nil to check.
+func Empty() *Course {
+	return &Course{fsys: nothing{}, m: Manifest{ID: "none", Title: "No course pack", Paths: "paths"}}
+}
+
+type nothing struct{}
+
+func (nothing) Open(name string) (fs.File, error) {
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+}
+
 // Manifest returns the course's manifest.
 func (c *Course) Manifest() Manifest { return c.m }
 

@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { GetProfile, ListSessions } from "../wailsjs/go/main/App";
-import type { domain } from "../wailsjs/go/models";
+import type { course, domain } from "../wailsjs/go/models";
 import type { Mode } from "./types";
 import "./progress.css";
 
@@ -25,12 +25,22 @@ function barClass(avg: number): string {
   return "low";
 }
 
+const MODE_LABEL: Record<Mode, string> = {
+  system_design: "System design",
+  coding: "Coding",
+  written: "Written answer",
+};
+
 interface Props {
-  onBack: () => void;
+  /** The modes the open pack offers. */
+  modes: string[];
+  paths: course.PathSummary[];
+  onOpenPath: (name: string) => void;
 }
 
-export function Progress({ onBack }: Props) {
-  const [mode, setMode] = useState<Mode>("system_design");
+export function Progress({ modes, paths, onOpenPath }: Props) {
+  const offered = modes.filter((m): m is Mode => m in MODE_LABEL);
+  const [mode, setMode] = useState<Mode>(offered[0] ?? "system_design");
   const [profile, setProfile] = useState<domain.Profile | null>(null);
   const [sessions, setSessions] = useState<domain.Session[]>([]);
 
@@ -47,24 +57,39 @@ export function Progress({ onBack }: Props) {
         <header className="progress-header">
           <div>
             <h1>Where you're at</h1>
-            <p className="muted">Averaged across every scored session, by skill area.</p>
+            <p className="muted">What you have finished, and how your work holds up under a clock.</p>
           </div>
-          <button onClick={onBack}>Back</button>
         </header>
 
+        {paths.length > 0 && (
+          <section className="review-card">
+            <span className="label">Paths</span>
+            <div className="areas">
+              {paths.map((p) => (
+                <button key={p.name} className="area-row path-progress" onClick={() => onOpenPath(p.name)}>
+                  <span className="area-label">{p.title}</span>
+                  <div className="area-bar">
+                    <div
+                      className={`area-fill ${p.done === p.total && p.total > 0 ? "good" : "mid"}`}
+                      style={{ width: `${p.total ? (p.done / p.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="area-value mono">
+                    {p.done}/{p.total}
+                  </span>
+                  <span className="area-trend" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="pill-row" style={{ marginBottom: 4 }}>
-          <button
-            className={`pill ${mode === "system_design" ? "active" : ""}`}
-            onClick={() => setMode("system_design")}
-          >
-            System design
-          </button>
-          <button
-            className={`pill ${mode === "coding" ? "active" : ""}`}
-            onClick={() => setMode("coding")}
-          >
-            Coding
-          </button>
+          {offered.map((m) => (
+            <button key={m} className={`pill ${mode === m ? "active" : ""}`} onClick={() => setMode(m)}>
+              {MODE_LABEL[m]}
+            </button>
+          ))}
         </div>
 
         {!profile || profile.sessions === 0 ? (

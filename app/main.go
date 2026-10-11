@@ -26,6 +26,9 @@ func main() {
 		MinHeight: 700,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
+			// Requests the bundled frontend does not answer are images out of
+			// the open course pack.
+			Handler: packAssets{app},
 		},
 		BackgroundColour: &options.RGBA{R: 11, G: 13, B: 18, A: 1},
 		OnStartup:        app.startup,

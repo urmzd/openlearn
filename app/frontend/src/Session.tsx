@@ -4,11 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { javascript } from "@codemirror/lang-javascript";
-import { python } from "@codemirror/lang-python";
-import { go } from "@codemirror/lang-go";
-import { java } from "@codemirror/lang-java";
-import { rust } from "@codemirror/lang-rust";
+import { langExtension } from "./lang";
 import { Whiteboard, type WhiteboardHandle } from "./Whiteboard";
 import { CoachFeed } from "./CoachFeed";
 import type { SessionState } from "./agui";
@@ -27,23 +23,6 @@ import "./session.css";
  *  the coach is never looking at work more than a few seconds stale. */
 const SNAPSHOT_DEBOUNCE_MS = 1200;
 
-function langExtension(lang: string) {
-  switch (lang) {
-    case "python":
-      return [python()];
-    case "typescript":
-      return [javascript({ typescript: true })];
-    case "javascript":
-      return [javascript()];
-    case "java":
-      return [java()];
-    case "rust":
-      return [rust()];
-    default:
-      return [go()];
-  }
-}
-
 function clock(sec: number): string {
   const abs = Math.max(0, sec);
   const m = Math.floor(abs / 60);
@@ -61,6 +40,7 @@ export function Session({ state, onFinished, onAbandoned }: Props) {
   const status = state.status;
   const problem = status?.problem ?? null;
   const isCoding = problem?.mode === "coding";
+  const isWritten = problem?.mode === "written";
 
   const [code, setCode] = useState("");
   const [notes, setNotes] = useState("");
@@ -221,20 +201,34 @@ export function Session({ state, onFinished, onAbandoned }: Props) {
                 </>
               )}
 
-              <span className="label">Notes</span>
-              <textarea
-                className="notes"
-                rows={9}
-                value={notes}
-                placeholder="Your talking track. Assumptions, numbers, things you would do with more time. This is graded too."
-                onChange={(e) => setNotes(e.target.value)}
-              />
+              {!isWritten && (
+                <>
+                  <span className="label">Notes</span>
+                  <textarea
+                    className="notes"
+                    rows={9}
+                    value={notes}
+                    placeholder="Your talking track. Assumptions, numbers, things you would do with more time. This is graded too."
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </>
+              )}
             </div>
           </aside>
         )}
 
         <main className="canvas">
-          {isCoding ? (
+          {isWritten ? (
+            // A written answer has no separate work surface: the notes pane is
+            // the work, so it takes the whole canvas.
+            <textarea
+              className="answer"
+              value={notes}
+              autoFocus
+              placeholder="Write your answer. Show your steps: the reasoning is graded, not only the result."
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          ) : isCoding ? (
             <CodeMirror
               value={code}
               height="100%"

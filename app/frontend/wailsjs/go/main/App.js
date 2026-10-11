@@ -6,6 +6,14 @@ export function AbandonSession() {
   return window['go']['main']['App']['AbandonSession']();
 }
 
+export function AskProfessor(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AskProfessor'](arg1, arg2, arg3);
+}
+
+export function CheckExercise(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CheckExercise'](arg1, arg2, arg3);
+}
+
 export function CheckModel() {
   return window['go']['main']['App']['CheckModel']();
 }
@@ -14,12 +22,32 @@ export function DeleteSession(arg1) {
   return window['go']['main']['App']['DeleteSession'](arg1);
 }
 
+export function DiffExercise(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DiffExercise'](arg1, arg2, arg3);
+}
+
 export function FinishSession(arg1) {
   return window['go']['main']['App']['FinishSession'](arg1);
 }
 
 export function GetAreas(arg1) {
   return window['go']['main']['App']['GetAreas'](arg1);
+}
+
+export function GetCourse() {
+  return window['go']['main']['App']['GetCourse']();
+}
+
+export function GetDoc(arg1) {
+  return window['go']['main']['App']['GetDoc'](arg1);
+}
+
+export function GetOutline() {
+  return window['go']['main']['App']['GetOutline']();
+}
+
+export function GetPath(arg1) {
+  return window['go']['main']['App']['GetPath'](arg1);
 }
 
 export function GetProfile(arg1) {
@@ -38,24 +66,64 @@ export function GetStoreRoot() {
   return window['go']['main']['App']['GetStoreRoot']();
 }
 
+export function ImportPack(arg1) {
+  return window['go']['main']['App']['ImportPack'](arg1);
+}
+
+export function ListExercises() {
+  return window['go']['main']['App']['ListExercises']();
+}
+
 export function ListModels() {
   return window['go']['main']['App']['ListModels']();
+}
+
+export function ListPacks() {
+  return window['go']['main']['App']['ListPacks']();
+}
+
+export function ListPaths() {
+  return window['go']['main']['App']['ListPaths']();
 }
 
 export function ListSessions() {
   return window['go']['main']['App']['ListSessions']();
 }
 
+export function MarkStage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MarkStage'](arg1, arg2, arg3);
+}
+
+export function OpenPack(arg1) {
+  return window['go']['main']['App']['OpenPack'](arg1);
+}
+
 export function PauseSession() {
   return window['go']['main']['App']['PauseSession']();
+}
+
+export function ResetExercise(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ResetExercise'](arg1, arg2, arg3);
 }
 
 export function ResumeSession() {
   return window['go']['main']['App']['ResumeSession']();
 }
 
+export function SaveExerciseFile(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['SaveExerciseFile'](arg1, arg2, arg3, arg4, arg5);
+}
+
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function Search(arg1) {
+  return window['go']['main']['App']['Search'](arg1);
+}
+
+export function StartExercise(arg1, arg2, arg3) {
+  return window['go']['main']['App']['StartExercise'](arg1, arg2, arg3);
 }
 
 export function StartSession(arg1) {

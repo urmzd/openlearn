@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/urmzd/openlearn/app/internal/agui"
+	"github.com/urmzd/openlearn/app/internal/builtin"
 	"github.com/urmzd/openlearn/app/internal/domain"
 	"github.com/urmzd/openlearn/app/internal/llm"
+	"github.com/urmzd/openlearn/app/internal/packs"
 	"github.com/urmzd/openlearn/app/internal/session"
 	"github.com/urmzd/openlearn/app/internal/store"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -23,6 +26,10 @@ type App struct {
 	log     *slog.Logger
 	store   *store.Store
 	runtime *session.Runtime
+
+	// packs finds course packs; pack is the one that is open.
+	packs packs.Registry
+	pack  *openPack
 
 	mu       sync.RWMutex
 	settings store.Settings
@@ -48,6 +55,15 @@ func NewApp() *App {
 
 	a := &App{log: log, store: st, settings: st.LoadSettings()}
 	a.runtime = session.New(log, agui.EmitterFunc(a.emit), a.persist)
+
+	cwd, _ := os.Getwd()
+	a.packs = packs.Registry{
+		Builtin:    builtin.FS(),
+		InstallDir: filepath.Join(st.Root(), "packs"),
+		Checkout:   cwd,
+		Preferred:  defaultPack,
+	}
+	a.openPack(a.settings.Pack)
 	return a
 }
 
@@ -123,6 +139,10 @@ func (a *App) SaveSettings(s store.Settings) error {
 	if s.LLM.Kind == llm.KindOllama && strings.TrimSpace(s.LLM.Host) == "" {
 		s.LLM.Host = llm.DefaultOllamaHost
 	}
+	// The pack choice is changed through OpenPack and LinkPack, which also
+	// reload it. A settings save from a screen that never saw those fields
+	// must not clear them.
+	s.Pack, s.LinkedPacks = a.settings.Pack, a.settings.LinkedPacks
 	a.settings = s
 	a.mu.Unlock()
 
@@ -170,8 +190,21 @@ func (a *App) CheckModel() (string, error) {
 	return fmt.Sprintf("%s / %s responded: %s", cfg.Kind, cfg.Model, strings.TrimSpace(firstLine(out))), nil
 }
 
-// StartSession generates a problem and starts the timebox.
+// StartSession generates a problem and starts the timebox. A spec that names a
+// source document is grounded in it: the document is read here, once, and the
+// exercise is written from it.
 func (a *App) StartSession(spec domain.SessionSpec) (domain.Problem, error) {
+	if spec.Source != "" {
+		doc, err := a.current().course.Doc(spec.Source)
+		if err != nil {
+			return domain.Problem{}, err
+		}
+		spec.SourceTitle = doc.Title
+		spec.Material = doc.Markdown
+		if strings.TrimSpace(spec.Topic) == "" {
+			spec.Topic = doc.Title
+		}
+	}
 	return a.runtime.Start(a.ctxOrBackground(), spec)
 }
 

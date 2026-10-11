@@ -1,4 +1,4 @@
-.PHONY: all init dev build package test live lint vet fmt typecheck bindings check record clean
+.PHONY: all init dev build package content test live lint vet fmt typecheck bindings check record clean
 
 # The Go binary embeds frontend/dist, so nothing that compiles Go works until
 # the frontend has been built at least once. Targets that touch the Go build
@@ -9,6 +9,12 @@ DIST := frontend/dist/index.html
 # but not necessarily on make's. Resolve it explicitly so a fresh clone works
 # without the caller having to fix their environment first.
 WAILS_VERSION := v2.11.0
+
+# Wails 2.11 loads the app's packages with a type checker that cannot read
+# packages compiled by Go 1.27 ("package time without types was imported"), so
+# `wails dev` dies before it starts on a newer toolchain. Pinning the toolchain
+# go.mod declares keeps the wails targets working whatever `go` is installed.
+export GOTOOLCHAIN ?= go$(shell sed -n 's/^go //p' go.mod)
 WAILS := $(shell command -v wails 2>/dev/null || echo $(shell go env GOPATH)/bin/wails)
 
 all: check
@@ -28,11 +34,18 @@ $(DIST):
 	cd frontend && npm install && npm run build
 	touch frontend/dist/.gitkeep
 
-build: $(DIST)
+# Copies the course packs that ship inside the binary into internal/builtin.
+# A build without this step still works; it just has no built-in course and
+# relies on a pack found on disk.
+PACKS := .. ../packs/languide
+content:
+	go run ./cmd/bundle -out internal/builtin/content $(PACKS)
+
+build: $(DIST) content
 	$(WAILS) build
 
 # Signed/notarized macOS bundle and platform installers.
-package: $(DIST)
+package: $(DIST) content
 	$(WAILS) build -clean -platform darwin/universal
 
 test: $(DIST)

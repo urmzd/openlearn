@@ -21,9 +21,10 @@ import (
 type Settings struct {
 	LLM      llm.Config         `json:"llm"`
 	Defaults domain.SessionSpec `json:"defaults"`
-	// CourseRoot is a course checkout on disk. Empty means find one near the
-	// app, and fall back to the course built into the binary.
-	CourseRoot string `json:"courseRoot"`
+	// Pack is the ref of the course pack to open. Empty means the default.
+	Pack string `json:"pack"`
+	// LinkedPacks are pack directories the user pointed the app at.
+	LinkedPacks []string `json:"linkedPacks"`
 }
 
 // DefaultSettings is the zero-config starting point: local ollama, a 45 minute

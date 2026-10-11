@@ -2,7 +2,7 @@
 // Go enums arrive as bare `string`. These unions restore the constraint on the
 // frontend side. They must stay in step with internal/domain and internal/llm.
 
-export type Mode = "system_design" | "coding";
+export type Mode = "system_design" | "coding" | "written";
 
 export type Level = "junior" | "mid" | "senior" | "staff";
 
