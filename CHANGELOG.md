@@ -1,5 +1,87 @@
 # Changelog
 
+## 0.14.0 (2026-10-11)
+
+### Features
+
+- **app**: make the sidebar title the pack switcher ([8c8c386](https://github.com/urmzd/openlearn/commit/8c8c386ced838cf1dc935e7411e1714f8ea0a526))
+- **app**: collapse the sidebar to a rail, move the pack switcher to its foot, and take the professor out of the navigation ([2c2b277](https://github.com/urmzd/openlearn/commit/2c2b277ce8031577211167e44ed4283034834973))
+- **app**: put the brand and collapse control in the sidebar header, dock the professor open ([63f5bca](https://github.com/urmzd/openlearn/commit/63f5bca2ebcaed5d26aa53265811cf99b67b828c))
+- **app**: rebuild the workbench on Tailwind and shadcn/ui ([d72007d](https://github.com/urmzd/openlearn/commit/d72007d2a1542454eaefb0e8dbc3778c864ac7eb))
+- **app**: add the workbench, pack bindings, practice runner, and professor ([1d5ac7e](https://github.com/urmzd/openlearn/commit/1d5ac7e46c4cd994c24d71d95049a93150fe1f50))
+- **openlearn**: add course packs, search, written evals, and the professor engine ([7df3f92](https://github.com/urmzd/openlearn/commit/7df3f92dba6860c18fbdf362eb6ba5c5baba7c47))
+- **packs**: import languide as a course pack ([0337214](https://github.com/urmzd/openlearn/commit/0337214ccb8b0b2dae5842270885488480118318))
+- **app**: import whiteboardy as the platform app ([2b60859](https://github.com/urmzd/openlearn/commit/2b60859040f5225eff18f2b4e2a8ca3be5193422))
+- timeboxed practice harness with a live coach ([daacf59](https://github.com/urmzd/openlearn/commit/daacf591fe455461f89e9f31e1bcfe9ddfbcdf3e))
+- add teasr demo config (#11) ([03994cb](https://github.com/urmzd/openlearn/commit/03994cb23f1e2379cbe162b16b8e66c9fba19dad))
+- add AGENTS.md, create-language skill, and rewrite README ([f890319](https://github.com/urmzd/openlearn/commit/f8903199792d06eaa3ccfb605b76d2ea43aae89f))
+- add force re-release support to release workflow ([c97dafc](https://github.com/urmzd/openlearn/commit/c97dafc44829f7d5fe122ae05e6a0ba128cbc010))
+- use semantic-release built-in artifact upload instead of separate step ([841a455](https://github.com/urmzd/openlearn/commit/841a455343d52628b5d9f31e7efbc294bfd4d17f))
+- build before release and attach PDFs as release artifacts ([94a3204](https://github.com/urmzd/openlearn/commit/94a3204b80d1ec1621975a7957d3c9b6a6566978))
+- add Spanish guide, fix CJK conditional loading, and clean up project ([773c2db](https://github.com/urmzd/openlearn/commit/773c2db54346cd3a987b15001953bdc5ca7e1cb2))
+- add semantic release and simplify CI/CD to single-job pipeline ([1f867a6](https://github.com/urmzd/openlearn/commit/1f867a66dad450a6ed4b72add75809a5cc1cc86e))
+
+### Bug Fixes
+
+- **docs**: point the CI badge at a workflow that runs on main ([b41dd53](https://github.com/urmzd/openlearn/commit/b41dd532470aa32987c91f3e2d9fa0732f0cf1dd))
+- **coach**: keep the visible feed and the recorded transcript in sync ([054d59c](https://github.com/urmzd/openlearn/commit/054d59cfa2ed95d4a30a32c35dec98109c8e9fa6))
+- **whiteboard**: place new boxes on a grid and cap the board zoom ([a69ad9a](https://github.com/urmzd/openlearn/commit/a69ad9a806e69456cbdecb07ab225273981ec6dd))
+- **ci**: skip releases cleanly when the releaser app is not configured ([868a1e5](https://github.com/urmzd/openlearn/commit/868a1e540813cc95f6e1a37f58d1743f1283a0e0))
+- **ci**: build against webkit2gtk-4.1 on Linux ([d47c7dc](https://github.com/urmzd/openlearn/commit/d47c7dc660b97d864dde09ff3a97af1bc8d39307))
+- **build**: resolve the wails binary explicitly in the Makefile ([a9eed55](https://github.com/urmzd/openlearn/commit/a9eed55e64d6d1cc1a4b00b4968792fae8a538f9))
+- **ci**: drop removed sr action force input ([ce1ad4d](https://github.com/urmzd/openlearn/commit/ce1ad4d3ffa64e20be2faa37405f233a11ea9fdf))
+- use chapters ([ac08d21](https://github.com/urmzd/openlearn/commit/ac08d21dd1aa0b641a9604a21cfd5ab9fdc3253f))
+- extend formatting ([8aabc51](https://github.com/urmzd/openlearn/commit/8aabc5170d7284bfbfa15173dbe43485a4ad2784))
+
+### Refactoring
+
+- **openlearn**: move the app to app/ under the renamed repository ([d4e932e](https://github.com/urmzd/openlearn/commit/d4e932e5152a8a83388f3ecafb97fff1e16d6fa1))
+- **open-learn**: rename the imported app and add the course pack loader ([2cc0f3a](https://github.com/urmzd/openlearn/commit/2cc0f3a0431a6ccd1970c95abe2f11eaccb6f22e))
+- replace Python CLI with shell scripts, unify build pipeline ([15bf85e](https://github.com/urmzd/openlearn/commit/15bf85ef3c10a5df3a0399e99e1a17d2ec5e68c4))
+- replace Python CLI with shell script ([0e27f2e](https://github.com/urmzd/openlearn/commit/0e27f2ed11f8cf56fe1c22d895afc5f73bf51602))
+- unify build pipeline and eliminate duplicated discovery logic ([bbcbfcb](https://github.com/urmzd/openlearn/commit/bbcbfcbd73c9652dd6dbe35dc38f701063dc0db0))
+
+### Misc
+
+- **app**: describe packs, the workbench, and the UI conventions ([52a82d2](https://github.com/urmzd/openlearn/commit/52a82d21beb6dcff758432bc67e8b053c63c4dcf))
+- **deps**: bump saige to v0.34.0 (#5) ([11907e8](https://github.com/urmzd/openlearn/commit/11907e84768469af33bb8badfa5dc2ae905a0ead))
+- **release**: read the sr-releaser key from the release environment (#4) ([abef760](https://github.com/urmzd/openlearn/commit/abef7604aa053fdbb77aa8139f1390cb53b85c18))
+- **release**: read the sr-releaser key from the release environment (#17) ([8367062](https://github.com/urmzd/openlearn/commit/8367062409bd7b483c434965884e406ad81fed26))
+- **deps**: bump saige to v0.24.0 (#3) ([98acb7e](https://github.com/urmzd/openlearn/commit/98acb7e13f7bcb8ea7b795d331c9513640be79a5))
+- upgrade urmzd/sr action to v9 (#2) ([91129b0](https://github.com/urmzd/openlearn/commit/91129b0d698da09c7386521ce805bae2706705a3))
+- upgrade urmzd/sr action to v9 (#16) ([8093b1a](https://github.com/urmzd/openlearn/commit/8093b1a56381515a2311fe6058f198834bfb400e))
+- bump saige to v0.22.0 and adopt its provider and structured output APIs (#1) ([c62c6e1](https://github.com/urmzd/openlearn/commit/c62c6e148e4689f8eb6ef93395a5323a97cedf59))
+- restructure the README to the house standard ([a137e59](https://github.com/urmzd/openlearn/commit/a137e595cd9d8b9dd5dc6bbb9946772e74a1b826))
+- **showcase**: capture the debrief and progress screens, wire up teasr ([a05deed](https://github.com/urmzd/openlearn/commit/a05deed01351e842289bb2a26cd7fb834d38670d))
+- **showcase**: capture the setup and session screens ([c250ca4](https://github.com/urmzd/openlearn/commit/c250ca452289c1f9d37cc5933f3a5c275a2578d7))
+- ignore the fingerprint wails dev writes into frontend ([448aa26](https://github.com/urmzd/openlearn/commit/448aa2697e20e0bf551c386e5182dde62a708efa))
+- bump GitHub Actions to Node 24 majors and switch app token to client-id ([151015a](https://github.com/urmzd/openlearn/commit/151015af0e4dc0d6c261736efd4575a696c390e1))
+- **ci**: bump sr to v8, literal artifact paths ([ab71e64](https://github.com/urmzd/openlearn/commit/ab71e649257e1564260bf38d891f88fc45338888))
+- **ci**: drop force input and redundant artifacts override ([00cda3f](https://github.com/urmzd/openlearn/commit/00cda3f24632bf954328cba940ec233c5aa0c9f8))
+- **community**: add GitHub community-health files ([b318fb4](https://github.com/urmzd/openlearn/commit/b318fb434e22f4dd5af516fecc4fae921a6cb1c5))
+- **fix**: standardize README format ([cf46c40](https://github.com/urmzd/openlearn/commit/cf46c40ee4662c58d860af0e0b9d68f5589f89d7))
+- migrate sr config and action to v7 ([a127571](https://github.com/urmzd/openlearn/commit/a127571c4e9af551cfcdfd2ec197e8f4373c9e1f))
+- migrate sr config and action to v4 ([25370ea](https://github.com/urmzd/openlearn/commit/25370ea1590d68f56b03e7f4c5f66159dc0fad76))
+- add linguist overrides to fix language stats ([c711b2b](https://github.com/urmzd/openlearn/commit/c711b2bf157b1855aa8842ad95fc74168420fe61))
+- **deps**: bump actions/create-github-app-token from 1 to 3 ([346bd2f](https://github.com/urmzd/openlearn/commit/346bd2fdf7e5d296bc58529863fb09c8d902f61f))
+- update sr action from v2 to v3 ([6913aa9](https://github.com/urmzd/openlearn/commit/6913aa9201613627f1517e8980f6a4b2d5cafbaa))
+- **scripts**: use pre-increment operators in build-guide.sh ([9aa9616](https://github.com/urmzd/openlearn/commit/9aa961669497817b4649dccff5484d32b61fe99d))
+- add git hooks for sr integration ([475d5cc](https://github.com/urmzd/openlearn/commit/475d5cc8f757d6eaea4fdbeede9bf22dcea58c13))
+- split into ci.yml and cd.yml, remove run-guide.yml ([2140e14](https://github.com/urmzd/openlearn/commit/2140e1456fd5af46db27b8cbeab4ccdefd0dad42))
+- standardize CI/CD — add sr.yaml, ci.yml, release workflow, justfile ([62601dd](https://github.com/urmzd/openlearn/commit/62601dde7a997cb3b74716ac1c11b1acd1d84b02))
+- update semantic-release action to sr@v2 ([6bf1b90](https://github.com/urmzd/openlearn/commit/6bf1b9049e023bf23800e03153adad44705cc52b))
+- **skills**: migrate to agentskills.io spec structure ([36740de](https://github.com/urmzd/openlearn/commit/36740de439a1ce90f92f6598ca26f697281e0652))
+- apply README standards with centered header and structured sections ([aebc250](https://github.com/urmzd/openlearn/commit/aebc2509a1c902c8e5635273fc5a08ef8e72c63b))
+- standardize GitHub Actions workflows ([da54047](https://github.com/urmzd/openlearn/commit/da54047e2175c7979b345fa0a8aacd9b64fe4990))
+- add sensitive paths to .gitignore ([c1ed5ec](https://github.com/urmzd/openlearn/commit/c1ed5ec3fdb308c6fb1a03262a5822422219fbc8))
+- update semantic-release action to v1 ([fe8333e](https://github.com/urmzd/openlearn/commit/fe8333e9dcfcf84740386cf0eac7f5383f13fe11))
+- license under Apache 2.0 ([411024c](https://github.com/urmzd/openlearn/commit/411024c0115f385ea040268d33db03bf4da6b78f))
+- add note about PDF artifacts in releases ([8ceba88](https://github.com/urmzd/openlearn/commit/8ceba886506b2e51add76b462fa08f8beb5ae6a8))
+- rename project to Languide in README to match repo rename ([e4ca41e](https://github.com/urmzd/openlearn/commit/e4ca41ee2e0167ecb08cb5d227ccc4964649a3cb))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.13.0...v0.14.0)
+
+
 ## 0.13.0 (2026-10-11)
 
 ### Features
