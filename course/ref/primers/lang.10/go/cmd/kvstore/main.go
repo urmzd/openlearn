@@ -32,10 +32,12 @@ func main() {
 	// Every message is capped at 4 MiB (DESIGN 2.7).
 	srv := grpc.NewServer(grpc.MaxRecvMsgSize(4<<20), grpc.MaxSendMsgSize(4<<20))
 	kvv1.RegisterKvTransferServiceServer(srv, kvstore.New())
+	// Install the handler before announcing readiness: a SIGTERM that lands
+	// between the two would otherwise kill the process outright.
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM, os.Interrupt)
 	fmt.Printf("listening on %s\n", lis.Addr())
 	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGTERM, os.Interrupt)
 		<-sig
 		srv.GracefulStop()
 	}()
