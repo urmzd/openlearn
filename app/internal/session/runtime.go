@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/urmzd/supersource/openlearn/internal/agui"
-	"github.com/urmzd/supersource/openlearn/internal/domain"
-	"github.com/urmzd/supersource/openlearn/internal/harness"
-	"github.com/urmzd/supersource/openlearn/internal/llm"
+	"github.com/urmzd/openlearn/app/internal/agui"
+	"github.com/urmzd/openlearn/app/internal/domain"
+	"github.com/urmzd/openlearn/app/internal/harness"
+	"github.com/urmzd/openlearn/app/internal/llm"
 )
 
 // Step names that bracket the slow phases of a run.

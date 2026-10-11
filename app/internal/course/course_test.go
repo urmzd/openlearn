@@ -6,7 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/urmzd/supersource/openlearn/internal/course"
+	"github.com/urmzd/openlearn/app/internal/course"
 )
 
 const manifest = `{

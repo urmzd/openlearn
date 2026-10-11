@@ -8,11 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/urmzd/supersource/openlearn/internal/agui"
-	"github.com/urmzd/supersource/openlearn/internal/domain"
-	"github.com/urmzd/supersource/openlearn/internal/llm"
-	"github.com/urmzd/supersource/openlearn/internal/session"
-	"github.com/urmzd/supersource/openlearn/internal/store"
+	"github.com/urmzd/openlearn/app/internal/agui"
+	"github.com/urmzd/openlearn/app/internal/domain"
+	"github.com/urmzd/openlearn/app/internal/llm"
+	"github.com/urmzd/openlearn/app/internal/session"
+	"github.com/urmzd/openlearn/app/internal/store"
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/urmzd/supersource/openlearn/internal/llm"
+	"github.com/urmzd/openlearn/app/internal/llm"
 )
 
 // The professor is the untimed half of the assistant. The coach watches a

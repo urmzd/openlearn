@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/urmzd/supersource/openlearn/internal/domain"
-	"github.com/urmzd/supersource/openlearn/internal/llm"
+	"github.com/urmzd/openlearn/app/internal/domain"
+	"github.com/urmzd/openlearn/app/internal/llm"
 )
 
 // reviewDTO is the reviewer's constrained output. The overall score is not

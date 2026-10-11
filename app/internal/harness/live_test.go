@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/urmzd/supersource/openlearn/internal/domain"
-	"github.com/urmzd/supersource/openlearn/internal/harness"
-	"github.com/urmzd/supersource/openlearn/internal/llm"
+	"github.com/urmzd/openlearn/app/internal/domain"
+	"github.com/urmzd/openlearn/app/internal/harness"
+	"github.com/urmzd/openlearn/app/internal/llm"
 )
 
 // These tests hit a real model. They are the only way to know whether the

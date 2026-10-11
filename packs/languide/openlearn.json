@@ -2,7 +2,7 @@
   "id": "languide",
   "title": "Languide",
   "tagline": "Communication-first language guides: the phrases and patterns for real conversations.",
-  "repo": "https://github.com/urmzd/supersource/tree/main/packs/languide",
+  "repo": "https://github.com/urmzd/openlearn/tree/main/packs/languide",
   "paths": "paths",
   "featured": "japanese",
   "modes": ["written"],

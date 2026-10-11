@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/urmzd/supersource/openlearn/internal/domain"
-	"github.com/urmzd/supersource/openlearn/internal/llm"
+	"github.com/urmzd/openlearn/app/internal/domain"
+	"github.com/urmzd/openlearn/app/internal/llm"
 )
 
 // Settings is everything the app remembers between launches.

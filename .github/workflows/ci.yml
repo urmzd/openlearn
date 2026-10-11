@@ -117,7 +117,7 @@ jobs:
       - name: Assert cost budgets
         run: practice/bin/ss bench --assert
 
-  # The desktop platform (openlearn/). Its Go tests also open the repository
+  # The desktop platform (app/). Its Go tests also open the repository
   # and packs/languide as course packs, so a path.tsv the app cannot read fails
   # here as well as in `ss learn --verify`.
   openlearn:
@@ -125,14 +125,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: openlearn
+        working-directory: app
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v6
         with:
-          go-version-file: openlearn/go.mod
-          cache-dependency-path: openlearn/go.sum
+          go-version-file: app/go.mod
+          cache-dependency-path: app/go.sum
 
       - name: Check formatting
         run: |
@@ -146,10 +146,10 @@ jobs:
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.11.4
-          working-directory: openlearn
+          working-directory: app
 
       # Live tests are skipped unless OPENLEARN_LIVE is set, so CI never needs
-      # a model. See openlearn/internal/harness/live_test.go.
+      # a model. See app/internal/harness/live_test.go.
       - run: go test ./...
 
   openlearn-frontend:
@@ -157,7 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: openlearn/frontend
+        working-directory: app/frontend
     steps:
       - uses: actions/checkout@v6
 
@@ -165,7 +165,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: openlearn/frontend/package-lock.json
+          cache-dependency-path: app/frontend/package-lock.json
 
       - run: npm ci
 

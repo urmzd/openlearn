@@ -13,8 +13,8 @@ still moving, so expect churn in `internal/harness` in particular.
 ## Getting started
 
 ```bash
-git clone git@github.com:urmzd/supersource.git
-cd supersource/openlearn
+git clone git@github.com:urmzd/openlearn.git
+cd openlearn/app
 make init
 make dev
 ```

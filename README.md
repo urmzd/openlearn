@@ -269,10 +269,10 @@ practice/bin/ss learn superstar-fde next     # read the next unfinished stage
 
 ## OpenLearn: the Desktop App
 
-[`openlearn/`](openlearn/) is a desktop learning platform that renders a **course pack**: a directory of markdown with an [`openlearn.json`](openlearn.json) manifest naming its tracks, role paths, and practice CLI. This repository is the pack built into it, and [`packs/languide/`](packs/languide/) (communication-first language guides) ships beside it. The app reads the same `.done` files `ss learn` writes, generates timed exercises from the chapter you are reading, and grades them against a hidden rubric with a local or hosted model.
+[`app/`](app/) is a desktop learning platform that renders a **course pack**: a directory of markdown with an [`openlearn.json`](openlearn.json) manifest naming its tracks, role paths, and practice CLI. This repository is the pack built into it, and [`packs/languide/`](packs/languide/) (communication-first language guides) ships beside it. The app reads the same `.done` files `ss learn` writes, generates timed exercises from the chapter you are reading, and grades them against a hidden rubric with a local or hosted model.
 
 ```bash
-cd openlearn && make init && make dev
+cd app && make init && make dev
 ```
 
 ## Read Offline (Single PDF)

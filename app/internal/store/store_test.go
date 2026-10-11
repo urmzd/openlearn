@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/urmzd/supersource/openlearn/internal/domain"
-	"github.com/urmzd/supersource/openlearn/internal/store"
+	"github.com/urmzd/openlearn/app/internal/domain"
+	"github.com/urmzd/openlearn/app/internal/store"
 )
 
 func session(day int, mode domain.Mode, overall int, scores map[domain.Area]int) domain.Session {

@@ -1,4 +1,4 @@
-module github.com/urmzd/supersource/openlearn
+module github.com/urmzd/openlearn/app
 
 go 1.26.9
 

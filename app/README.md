@@ -3,9 +3,9 @@
   <p align="center">
     A desktop learning platform: read a course, practice it, and have it graded, with an AI professor alongside.
     <br /><br />
-    <a href="https://github.com/urmzd/supersource/releases">Download</a>
+    <a href="https://github.com/urmzd/openlearn/releases">Download</a>
     &middot;
-    <a href="https://github.com/urmzd/supersource/issues">Report Bug</a>
+    <a href="https://github.com/urmzd/openlearn/issues">Report Bug</a>
   </p>
 </p>
 
@@ -59,8 +59,8 @@ against a hosted model.
 ### Build
 
 ```sh
-git clone https://github.com/urmzd/supersource
-cd supersource/openlearn
+git clone https://github.com/urmzd/openlearn
+cd openlearn/app
 make init
 make build
 ```

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/urmzd/supersource/openlearn/internal/agui"
-	"github.com/urmzd/supersource/openlearn/internal/domain"
-	"github.com/urmzd/supersource/openlearn/internal/harness"
+	"github.com/urmzd/openlearn/app/internal/agui"
+	"github.com/urmzd/openlearn/app/internal/domain"
+	"github.com/urmzd/openlearn/app/internal/harness"
 )
 
 // recorder collects emitted events so tests can assert on the stream the UI
