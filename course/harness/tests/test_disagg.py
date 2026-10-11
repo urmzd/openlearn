@@ -143,6 +143,12 @@ class H2Server:
                 pass
 
     def close(self):
+        # On Linux, close() alone leaves a thread blocked in accept() holding the
+        # listener, so a later connect still lands here; shutdown wakes it first.
+        try:
+            self.ln.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
         self.ln.close()
 
 
