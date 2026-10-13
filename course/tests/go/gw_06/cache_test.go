@@ -302,6 +302,25 @@ func TestTenantIsolation(t *testing.T) {
 	}
 }
 
+func TestAPIVersionIsolation(t *testing.T) {
+	// WHY: v2 usage has cached-token details absent from v1, so a warm v1
+	// cache must never answer a v2 request even when their bodies match.
+	// KIND: regression
+	// CHAPTER: gw.06 section 2.3
+	u := &upstream{}
+	h := chain(u, clock.NewFake(t0), acme)
+	for i, version := range []string{"", "1", "2", "2", "1"} {
+		r := send(h, handA, "X-TL-API-Version", version)
+		want := []string{"miss", "hit", "miss", "hit", "hit"}[i]
+		if got := r.Header().Get("X-TL-Cache"); got != want {
+			t.Fatalf("request %d, version %q: cache %q, want %q", i, version, got, want)
+		}
+	}
+	if u.calls.Load() != 2 {
+		t.Fatalf("want one upstream call per API version, got %d", u.calls.Load())
+	}
+}
+
 func TestStreamReplayByteExact(t *testing.T) {
 	// WHY: a cached stream is replayed as the same SSE bytes with the same
 	//      Content-Type, so a streaming client cannot tell a hit from a miss.

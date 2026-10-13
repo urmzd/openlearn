@@ -95,6 +95,11 @@ func runConfig(path, keyEnv string) int {
 		return 1
 	}
 	g := cfg.Gateway
+	apiConfig, err := apiVersionConfig(cfg)
+	if err != nil {
+		log.Printf("gateway: %v", err)
+		return 1
+	}
 	rpm, err := extInt(cfg, "env_key_rpm", 0)
 	if err != nil {
 		log.Printf("gateway: %v", err)
@@ -179,6 +184,15 @@ func runConfig(path, keyEnv string) int {
 	deps := gateway.Deps(chain)
 	authn := auth.Middleware(keys, slog.Default())
 	deps.Keys = authn
+	// Select the version after authentication but before rate limits, the
+	// response cache, and metering. Admin routes retain their own contract.
+	policy := deps.Policy
+	deps.Policy = func(next http.Handler) http.Handler {
+		if policy != nil {
+			next = policy(next)
+		}
+		return server.VersionedAPI(apiConfig, next)
+	}
 	if lim := deps.Limiter; lim != nil {
 		// Budgets are spent by inference calls only: a GET /v1/models (or a
 		// stray path) neither costs a request nor waits behind a 429.

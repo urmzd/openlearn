@@ -239,7 +239,8 @@ func TestRequestIDStage(t *testing.T) {
 func TestStripsInternalHeaders(t *testing.T) {
 	// WHY: X-TL-Priority and X-TL-KV-Handle are set by the gateway toward
 	//      engines; a client that sends them could jump the queue or resume
-	//      someone else's KV (conformance case priority.internal).
+	//      someone else's KV (conformance case priority.internal). Public
+	//      API version selection must survive this sanitization.
 	// KIND: unit
 	// CATCHES: s04
 	// CHAPTER: gw.01 section 5, Pitfalls, item 4
@@ -248,14 +249,18 @@ func TestStripsInternalHeaders(t *testing.T) {
 	h := server.New(server.Config{}, server.Deps{Proxy: proxy}).Handler()
 	do(t, h, "POST", "/v1/chat/completions", `{}`, map[string]string{
 		"X-TL-Priority": "100", "x-tl-kv-handle": "h-1", "X-Tl-Route": "w", "X-Custom": "kept",
+		"X-TL-API-Version": "2",
 	})
 	for k := range got {
-		if strings.HasPrefix(strings.ToLower(k), "x-tl-") {
+		if strings.HasPrefix(strings.ToLower(k), "x-tl-") && !strings.EqualFold(k, "X-TL-API-Version") {
 			t.Fatalf("client header %s reached the proxy", k)
 		}
 	}
 	if got.Get("X-Custom") != "kept" {
 		t.Fatal("ordinary headers must still reach the proxy")
+	}
+	if got.Get("X-TL-API-Version") != "2" {
+		t.Fatal("public API version selection must reach the version middleware")
 	}
 }
 

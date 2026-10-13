@@ -390,7 +390,8 @@ func (s *Server) requestID(next http.Handler) http.Handler {
 	// SOLUTION-BEGIN gw.08
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		for k := range r.Header {
-			if strings.HasPrefix(strings.ToLower(k), "x-tl-") {
+			// API selection is public; routing and KV handles are internal.
+			if strings.HasPrefix(strings.ToLower(k), "x-tl-") && !strings.EqualFold(k, "X-TL-API-Version") {
 				r.Header.Del(k)
 			}
 		}

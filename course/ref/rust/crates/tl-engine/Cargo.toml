@@ -26,6 +26,7 @@ tonic = "0.14"
 prost = "0.14"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+candle-metal-kernels = "=0.10.2"
 candle-core = { version = "=0.10.2", features = ["metal"] }
 candle-nn = { version = "=0.10.2", features = ["metal"] }
 

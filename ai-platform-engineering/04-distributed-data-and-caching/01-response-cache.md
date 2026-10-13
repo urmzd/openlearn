@@ -71,6 +71,8 @@ $$\mathit{key} = \mathrm{SHA256}(\mathit{tenant} \,\|\, 0 \,\|\, \mathit{rev} \,
 
 The **tenant** (from `gw.02`'s `Principal`) makes the cache private per tenant: two keys of one company share answers, two companies never do, even for byte-equal requests (the prompt may contain their data; so may the answer). The **revision** (`Options.Rev`, for example the route table's epoch from `gw.05`) changes when a route points a public model at a new version, so answers from the old model become unreachable at once instead of lingering for the TTL. Requests without a principal (no authn stage) are not cached at all.
 
+The selected API version also partitions responses: v2 includes usage fields that v1 omits. The middleware adds a version suffix to the revision for v2. An absent version and explicit v1 share the original partition; v2 gets its own cached answer and singleflight group (`TestAPIVersionIsolation`). Select the version before the cache so a configured v2 default reaches the same partition as an explicit v2 header.
+
 ### 2.4 Singleflight
 
 On a miss, the first request for a key becomes the **leader**: it registers the key as in flight and goes upstream. A request for the same key that arrives while the leader runs **waits** for it instead of going upstream too, then is answered from the leader's result as a hit. Without this, a popular question that just expired sends 100 identical prefills to the engines at once (a thundering herd, or cache stampede). Two details make it correct:
@@ -137,6 +139,7 @@ Use only the standard library. The stage caches `POST /v1/chat/completions` and 
 | `TestHitAfterMiss` | unit | miss then hit with the same body and content type, one upstream call | conformance case `cache.hit` |
 | `TestSingleflightOneUpstreamCall` | fault | 100 concurrent identical requests: one upstream call, 100 identical bodies | no stampede after an expiry |
 | `TestTenantIsolation` | fault | another tenant's identical request is a miss that reaches the upstream | no cross-tenant leaks |
+| `TestAPIVersionIsolation` | regression | v1 and v2 each populate one cache entry; implicit and explicit v1 share | no replay across incompatible response schemas |
 | `TestStreamReplayByteExact` | unit | a cached stream replays the same SSE bytes with `text/event-stream` | streaming clients cannot tell |
 | `TestErrorsAndCutStreamsNotCached` | fault | a 503 and a stream without `[DONE]` are not stored | failures are not replayed for 5 minutes |
 | `TestNotCacheableHasNoHeader` | unit | a sampled request: no header, every call upstream | sampling stays random |

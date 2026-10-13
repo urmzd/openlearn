@@ -653,6 +653,37 @@ def reference_learner(reg, course: Path, work: Path) -> tuple[Path | None, str]:
     return lr, ""
 
 
+def verify_smoke(reg, course: Path, mid: str, work: Path, rep: Report) -> None:
+    """Run dependent checks in the same reference context as full checks."""
+    m = reg.get(mid)
+    ctx.say(f"{ctx.BLD}smoke {mid}{ctx.RST}")
+    if m.kind == "practice":
+        lr, why = reference_learner(reg, course, work)
+        if lr is None:
+            rep.fail(1, "assemble the reference learner", why)
+            return
+        env = _practice_env(course, lr, lr.parent / "scratch")
+        rc, out = ctx.run(
+            [str(course / "tests" / mid / "check")],
+            cwd=lr,
+            env=env,
+            timeout=m.timeout_s,
+        )
+        if rc:
+            rep.fail(1, "dependent smoke tests", out)
+        else:
+            rep.ok(1, "reference artifact smoke check")
+        return
+    sources = {x: "ref" for x in [mid] + reg.closure(mid)}
+    rs = _ov(reg, course, mid, sources, work, "smoke").run_tests(mid, m.smoke)
+    if all(r.ok for r in rs):
+        rep.ok(1, f"smoke: {', '.join(m.smoke)}")
+    else:
+        rep.fail(
+            1, "dependent smoke tests", "\n".join(r.output for r in rs if not r.ok)
+        )
+
+
 def verify_practice(reg, course: Path, m, work: Path, rep: Report) -> None:
     """Checks 1 and 2 for a practice module with an executable artifact check
     (H15): it passes in a learner assembled from the reference, and fails in a
@@ -1279,12 +1310,7 @@ def _verify(a, reg, course, ct, work: Path, runs: int) -> int:
         m = reg.get(mid)
         if not m.smoke:
             continue
-        sources = {x: "ref" for x in [mid] + reg.closure(mid)}
-        rs = _ov(reg, course, mid, sources, work, "smoke").run_tests(mid, m.smoke)
-        ctx.say(f"{ctx.BLD}smoke {mid}{ctx.RST}")
-        rep.fail(
-            1, "dependent smoke tests", "\n".join(r.output for r in rs if not r.ok)
-        ) if not all(r.ok for r in rs) else rep.ok(1, f"smoke: {', '.join(m.smoke)}")
+        verify_smoke(reg, course, mid, work, rep)
     if ct.tainted:
         ctx.say(
             f"{ctx.DIM}note: course/ has uncommitted changes (verdicts would be tagged tainted){ctx.RST}"
