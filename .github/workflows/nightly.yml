@@ -11,6 +11,7 @@ permissions:
 env:
   # Local reference services and conformance clients share this test-only key.
   TL_API_KEY: tl_ci_reference_key
+  RUST_BACKTRACE: "1"
 
 concurrency:
   group: nightly-${{ github.ref }}
@@ -151,6 +152,11 @@ jobs:
           kubectl create namespace observability
           kubectl -n forge create secret generic forge-api-key --from-literal=api-key="$TL_API_KEY"
           kubectl -n forge create secret generic forge-gateway-pepper --from-literal=pepper="$(openssl rand -hex 32)"
+          helm repo add kedacore https://kedacore.github.io/charts
+          helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
           helm dependency build deploy/keda
           helm upgrade --install keda deploy/keda -n keda --create-namespace --wait --timeout 5m
           helm dependency build deploy/observability

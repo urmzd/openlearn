@@ -21,7 +21,14 @@ use crate::model::{load_weights, Arch, ModelConfig, SafeTensors, Weights};
 fn engine_device() -> Device {
     // SOLUTION-BEGIN L10.1
     #[cfg(target_os = "macos")]
-    { return Device::new_metal(0).unwrap_or(Device::Cpu); }
+    {
+        // Candle 0.10.2 indexes the device list before returning a Result.
+        // Hosted macOS runners can have no Metal device at all.
+        if candle_metal_kernels::metal::Device::all().is_empty() {
+            return Device::Cpu;
+        }
+        return Device::new_metal(0).unwrap_or(Device::Cpu);
+    }
     #[cfg(not(target_os = "macos"))]
     { Device::Cpu }
     // SOLUTION-END
