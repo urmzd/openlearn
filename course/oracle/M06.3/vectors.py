@@ -8,7 +8,8 @@ spec/pcg32.md, but a test cannot reach the contracts directory once it is
 vendored by `ol export` (only fixtures travel with it). This script rebuilds
 the vectors from spec/pcg32.md with the independent stdlib generator in
 course/oracle/contracts/pcg32_vectors.py, checks that they equal the published
-contract file byte for byte, and writes the same text as a fixture.
+contract file using its floating-point tolerance, and copies the published
+bytes as a fixture so its manifest hash stays stable across platforms.
 
     uv run --script course/oracle/M06.3/vectors.py          # rewrite + MANIFEST row
     uv run --script course/oracle/M06.3/vectors.py --check  # compare only
@@ -18,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -31,8 +33,8 @@ def main() -> int:
     spec = importlib.util.spec_from_file_location("pcg32_vectors", GEN)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    text = mod.render(mod.build())
-    if text != SPEC.read_text():
+    text = SPEC.read_text()
+    if not mod.same(json.loads(text), mod.build()):
         print(f"{SPEC} is stale: regenerate it first", file=sys.stderr)
         return 1
     if "--check" in sys.argv:

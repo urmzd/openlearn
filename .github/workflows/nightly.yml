@@ -32,6 +32,7 @@ jobs:
           go-version-file: course/ref/go/go.mod
           cache: false
       - uses: dtolnay/rust-toolchain@stable
+      - uses: azure/setup-helm@v4
       - name: Verify the layer
         run: |
           python .github/scripts/course-ci-shard.py "${{ matrix.layer }}" > "$RUNNER_TEMP/module-ids.txt"
@@ -50,6 +51,9 @@ jobs:
           go-version-file: course/ref/go/go.mod
           cache: false
       - uses: dtolnay/rust-toolchain@stable
+      - uses: azure/setup-helm@v4
+      - name: Assemble the reference learner
+        run: practice/bin/ol verify course --assemble "$GITHUB_WORKSPACE/.scratchpad/course"
       - name: Run nightly and full training milestones
         run: |
           python - <<'PY' > "$RUNNER_TEMP/milestones.txt"
@@ -62,7 +66,7 @@ jobs:
           print("\n".join(sorted(ids)))
           PY
           while IFS= read -r id; do
-            practice/bin/ol milestone "$id"
+            practice/bin/ol milestone "$id" --ref-deps
           done < "$RUNNER_TEMP/milestones.txt"
 
   hf-real:
@@ -77,12 +81,15 @@ jobs:
           go-version-file: course/ref/go/go.mod
           cache: false
       - uses: dtolnay/rust-toolchain@stable
+      - uses: azure/setup-helm@v4
+      - name: Assemble the reference learner
+        run: practice/bin/ol verify course --assemble "$GITHUB_WORKSPACE/.scratchpad/course"
       - name: Fetch pinned models
         run: practice/bin/ol fetch smollm2-135m smollm2-135m-instruct
       - name: Run real-weight parity, tool calls, and agent evaluation
         run: |
-          practice/bin/ol milestone MS-L7
-          practice/bin/ol milestone MS-agent
+          practice/bin/ol milestone MS-L7 --ref-deps
+          practice/bin/ol milestone MS-agent --ref-deps
 
   train-smoke:
     name: Capstone training smoke
@@ -96,8 +103,11 @@ jobs:
           go-version-file: course/ref/go/go.mod
           cache: false
       - uses: dtolnay/rust-toolchain@stable
+      - uses: azure/setup-helm@v4
+      - name: Assemble the reference learner
+        run: practice/bin/ol verify course --assemble "$GITHUB_WORKSPACE/.scratchpad/course"
       - name: Train, evaluate, serve, and conform
-        run: practice/bin/ol milestone MS-C1 --smoke
+        run: practice/bin/ol milestone MS-C1 --smoke --ref-deps
 
   kind-e2e:
     name: Kind, observability, and rotating drill
@@ -130,9 +140,9 @@ jobs:
             train bigram --data "$GITHUB_WORKSPACE/course/fixtures/MS-P1/corpus.txt" --out artifacts/models/bigram
           docker build -f deploy/docker/engine.Dockerfile -t localhost:5001/forge-engine:0.1.0 .
           docker build -f deploy/docker/gateway.Dockerfile -t localhost:5001/forge-gateway:0.1.0 .
+          deploy/kind/up.sh
           docker push localhost:5001/forge-engine:0.1.0
           docker push localhost:5001/forge-gateway:0.1.0
-          deploy/kind/up.sh
           kubectl create namespace forge
           kubectl create namespace observability
           kubectl -n forge create secret generic forge-api-key --from-literal=api-key="$TL_API_KEY"
@@ -147,7 +157,7 @@ jobs:
       - name: Run kind milestones and one rotating drill
         working-directory: ${{ runner.temp }}/forge
         run: |
-          practice/bin/ol verify course --kind
+          "$GITHUB_WORKSPACE/practice/bin/ol" verify course --kind
           python - <<'PY' > "$RUNNER_TEMP/drill-name"
           from datetime import date
           from pathlib import Path
@@ -158,7 +168,7 @@ jobs:
           print(drills[(date.today().timetuple().tm_yday - 1) % len(drills)])
           PY
           day="$(date +%j)"
-          practice/bin/ol drill run "$(cat "$RUNNER_TEMP/drill-name")" --seed "$day" --respond --max-wait-s 900
+          OL_COURSE_HOME="$PWD" "$GITHUB_WORKSPACE/practice/bin/ol" drill run "$(cat "$RUNNER_TEMP/drill-name")" --seed "$day" --respond --max-wait-s 900
           curl --fail --silent --show-error http://127.0.0.1:30080/healthz
           curl --fail --silent --show-error http://127.0.0.1:30090/-/healthy
       - if: failure()
