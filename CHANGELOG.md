@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.17.2 (2026-10-13)
+
+### Bug Fixes
+
+- **course**: repair learner CI and nightly verification setup (#30) ([9d8ea17](https://github.com/urmzd/openlearn/commit/9d8ea17319f09d2822d22b856e8f2c2367d373b4))
+
+### Misc
+
+- **release**: build the desktop app per platform and attach it to releases (#25) ([50d9576](https://github.com/urmzd/openlearn/commit/50d9576a3da4ba818b1e4b61f961e2a5b36a70b0))
+- prune role paths and archive; course-first site (#29) ([c0174e1](https://github.com/urmzd/openlearn/commit/c0174e1ff0fc777fc9bb75c53f6e8d0981945308))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.17.1...v0.17.2)
+
+
 ## 0.17.1 (2026-10-11)
 
 ### Bug Fixes
