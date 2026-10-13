@@ -229,6 +229,11 @@ def main(argv: list[str] | None = None) -> int:
     code = intercept_activity(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
+    from tinyllm.cli_c1_eval import intercept as intercept_c1_eval
+
+    code = intercept_c1_eval(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
     # Pass 6 (MS-L8): generate with --cache, --kv-dtype, --spec, or
     # --json-schema, eval ppl --quant, and bench decode (no --backend) on a
     # Llama-family directory, glue in cli_infer.py (it claims only those).

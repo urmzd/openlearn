@@ -19,7 +19,8 @@ previous one stopped. <run>/final.json, the loss of the newest step, is
 written before each checkpoint, so an attempt that resumes from the final
 checkpoint reports the same loss. Two runs of one spec end with the same
 loss, bit for bit, however often they were interrupted.
-C1 adds tl_arch llama.
+C1 dispatches tl_arch llama to cli_c1, including file tokenizers, gradient
+accumulation, mixed precision, schedules, and resumable checkpoints.
 
 eval (formats/eval-spec.schema.json). Built-in suite "ppl": each subject is a
 checkpoint step directory or a model directory of a bigram; the cases are
@@ -59,7 +60,12 @@ def intercept(argv: list[str]) -> int | None:
         return None
     from tinyllm.io.activity import run
 
-    return run(train_main if argv[0] == "train" else eval_main, argv[1:])
+    code = run(train_main if argv[0] == "train" else eval_main, argv[1:])
+    if code == 0 and argv[0] == "train":
+        from tinyllm.cli_c1 import print_summary
+
+        print_summary(argv[1:])
+    return code
 
 
 # -- spec checks (the subset of the schemas this reference relies on) -----------
@@ -79,8 +85,12 @@ def check_train_spec(spec: dict) -> list[str]:
     if not isinstance(spec["seed"], int) or spec["seed"] < 0:
         errs.append("seed must be an integer >= 0")
     model = spec["model"]
-    if model.get("tl_arch") != "bigram" or model.get("tl_tokenizer", "bytes") != "bytes":
-        errs.append("this trainer runs tl_arch bigram with tl_tokenizer bytes (C1 adds llama)")
+    if model.get("tl_arch") == "llama":
+        from tinyllm.cli_c1 import check_spec
+
+        errs.extend(check_spec(spec))
+    elif model.get("tl_arch") != "bigram" or model.get("tl_tokenizer", "bytes") != "bytes":
+        errs.append("train supports bigram with bytes or llama with bytes/file tokenizers")
     if not spec["data"].get("train"):
         errs.append("data.train needs at least one .bin file")
     b = spec["batch"]
@@ -125,6 +135,10 @@ def train_main(act) -> list[str]:
     from tinyllm.optim.adamw import AdamW
 
     spec = act.load_spec(check_train_spec)
+    if spec["model"]["tl_arch"] == "llama":
+        from tinyllm.cli_c1 import train
+
+        return train(act, spec)
     run_rel = spec.get("out") or f"runs/{spec['name']}"
     run_dir = under(act, run_rel)
     ckpt = run_dir / "ckpt"
