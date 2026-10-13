@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.17.3 (2026-10-13)
+
+### Bug Fixes
+
+- **course**: repair gateway and reference runtime verification (#31) ([4cd305c](https://github.com/urmzd/openlearn/commit/4cd305c4f92e6b4cf8397dabf4c7ed60e2102494))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.17.2...v0.17.3)
+
+
 ## 0.17.2 (2026-10-13)
 
 ### Bug Fixes
