@@ -56,7 +56,7 @@ kv.rs                   Rust-owned f16 blocks, references, hash index, LRU
 
 ### 2.2 Candle tensors and Rust-owned state
 
-Candle provides tensor storage, device placement, matrix multiplication, softmax, RMSNorm, and embedding lookup. The engine uses `candle-core` and `candle-nn` 0.10.2. The learner still writes the model structure: the layer order, RoPE positions, grouped-query attention, residual connections, SwiGLU, and final norm. CI uses the CPU device; macOS can select Metal.
+Candle provides tensor storage, device placement, matrix multiplication, softmax, RMSNorm, and embedding lookup. The engine uses `candle-core` and `candle-nn` 0.10.2. The learner still writes the model structure: the layer order, RoPE positions, grouped-query attention, residual connections, SwiGLU, and final norm. CI uses the CPU device; macOS can select Metal. Enumerate devices with the matching `candle-metal-kernels` version before selecting GPU 0: a macOS host without a Metal device must fall back to CPU.
 
 The KV cache is a separate Rust data structure. `KvPool` allocates fixed-size K and V slabs as f16 values, tracks references, and keeps released full blocks in an LRU cache when prefix caching is enabled. Its methods return `Result` for invalid dimensions, exhausted capacity, invalid block ids, and format errors. No C library or foreign-function boundary is part of the model runner.
 
