@@ -20,7 +20,7 @@ make -s -C primers/lang.02 clean
 echo "== course-check"
 # The openlearn checkout whose ol grades you: $OL_BIN when set (your local
 # clone's practice/bin/ol), else the one the CI recipe clones (ol course ci).
-ss="${OL_BIN:-.ol/openlearn/practice/bin/ol}"
-[ -x "$ol" ] || { echo "no ol at $ss: set OL_BIN, or clone openlearn as \`ol course ci\` shows" >&2; exit 5; }
+ol="${OL_BIN:-.ol/openlearn/practice/bin/ol}"
+[ -x "$ol" ] || { echo "no ol at $ol: set OL_BIN, or clone openlearn as \`ol course ci\` shows" >&2; exit 5; }
 OL_COURSE_HOME="$PWD" "$ol" check --all --ci
 # SOLUTION-END
