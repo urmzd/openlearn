@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Local reference services and conformance clients share this test-only key.
+  TL_API_KEY: tl_ci_reference_key
+
 concurrency:
   group: nightly-${{ github.ref }}
   cancel-in-progress: false

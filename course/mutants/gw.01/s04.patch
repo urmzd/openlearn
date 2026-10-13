@@ -1,11 +1,5 @@
 --- a/go/gateway/server/chain.go
 +++ b/go/gateway/server/chain.go
-@@ -354,7 +354,7 @@
- func (s *Server) requestID(next http.Handler) http.Handler {
- 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
- 		for k := range r.Header {
--			if strings.HasPrefix(strings.ToLower(k), "x-tl-") {
-+			if false && strings.HasPrefix(strings.ToLower(k), "x-tl-") {
- 				r.Header.Del(k)
- 			}
- 		}
+@@ -358 +358 @@
+-			if strings.HasPrefix(strings.ToLower(k), "x-tl-") && !strings.EqualFold(k, "X-TL-API-Version") {
++			if false && strings.HasPrefix(strings.ToLower(k), "x-tl-") && !strings.EqualFold(k, "X-TL-API-Version") {

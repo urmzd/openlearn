@@ -320,6 +320,11 @@ func Middleware(c *LRU, o Options) server.Middleware {
 			if o.Rev != nil {
 				rev = o.Rev()
 			}
+			// The same prompt has a different response schema in API v2.
+			// Absent and explicit v1 headers retain the original key.
+			if version := r.Header.Get("X-TL-API-Version"); version != "" && version != "1" {
+				rev += "\x00api:" + version
+			}
 			k := KeyOf(p, rev, canon)
 			for {
 				if e, hit := c.Get(r.Context(), k); hit {
