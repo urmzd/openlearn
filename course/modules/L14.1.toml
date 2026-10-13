@@ -14,7 +14,7 @@ reading   = []
 # Call sites (DESIGN 4.1): L14.2 consumes these features; data.11 and the
 # Rust port L15.1 are not registered yet.
 used_by   = []
-planned_by = ["data.11"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
+# Pending call sites: ["data.11"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
 units     = ["python/tinyllm/io/wav.py", "python/tinyllm/speech/frontend.py"]
 upgrades  = []
 milestone = "MS-L14"

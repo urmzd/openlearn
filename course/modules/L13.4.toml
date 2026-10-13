@@ -13,7 +13,7 @@ reading   = ["M12.2", "M05.1"]
 # (placeholder expansion); re-implemented by L15.1 (Rust) and gw.10 (Go
 # ImageTokens) against the parity fixture.
 used_by   = []
-planned_by = ["L13.6", "L13.7"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
+# Pending call sites: ["L13.6", "L13.7"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
 units     = ["python/tinyllm/vision/tiling.py"]
 upgrades  = []
 milestone = "MS-L13"

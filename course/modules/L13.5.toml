@@ -16,7 +16,7 @@ reading   = ["L5.3", "M11.1", "L0.3"]
 # Call sites (DESIGN 4.1): data.10 (the CLIP-score filter) and ethics.07 (the
 # zero-shot disparity probe); neither is registered yet (DEVIATIONS B14L-01).
 used_by   = []
-planned_by = ["data.10", "ethics.07"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
+# Pending call sites: ["data.10", "ethics.07"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
 units     = ["python/tinyllm/vision/contrastive.py"]
 upgrades  = []
 milestone = "MS-L13"

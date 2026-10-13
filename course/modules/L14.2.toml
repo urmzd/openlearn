@@ -17,7 +17,7 @@ reading   = ["L5.1", "L5.4", "L14.1"]
 # Call sites (DESIGN 4.1): L14.3 composes the encoder into Whisper; the
 # Rust encoder of L15.6 is proven against its fixtures (not registered yet).
 used_by   = []
-planned_by = ["L14.3"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
+# Pending call sites: ["L14.3"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
 units     = ["python/tinyllm/speech/encoder.py"]
 upgrades  = []
 milestone = "MS-L14"
