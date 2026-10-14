@@ -47,6 +47,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-dir", required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     torch.set_num_threads(1)
     root = checkpoint(Path(args.model_dir))
@@ -97,6 +98,23 @@ def main():
         "numpy": np.__version__,
         "cases": cases,
     }
+    if args.check:
+        committed = json.loads(
+            Path("course/fixtures/whisper-parity/greedy_timestamps.json").read_text()
+        )
+        if committed["model_revision"] != output["model_revision"]:
+            raise ValueError("real Whisper oracle revision drift")
+        old_cases = committed["cases"]
+        if len(old_cases) != len(cases):
+            raise ValueError("real Whisper oracle case count drift")
+        for old, new in zip(old_cases, cases):
+            for field in ("clip", "ids", "text"):
+                if old[field] != new[field]:
+                    raise ValueError(
+                        f"real Whisper oracle drift: {new['clip']} {field}"
+                    )
+            if new["minimum_margin"] is None or new["minimum_margin"] < 0.001:
+                raise ValueError(f"real Whisper oracle near tie: {new['clip']}")
     Path(args.out).write_text(json.dumps(output, indent=2, allow_nan=False) + "\n")
     print(json.dumps({"cases": len(cases), "out": args.out}))
 

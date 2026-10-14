@@ -25,6 +25,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  whisper-real:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    uses: ./.github/workflows/whisper-real.yml
+
   full-verify:
     if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
     name: Full verify / ${{ matrix.layer }}
