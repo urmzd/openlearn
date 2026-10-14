@@ -9,7 +9,7 @@ on:
         description: Oracle validation scope
         type: choice
         default: all
-        options: [all, whisper]
+        options: [all, whisper, whisper-real]
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   oracle-drift:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'whisper'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Regenerate and compare oracle fixtures
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -53,6 +53,7 @@ jobs:
         run: practice/bin/ol parity --ref
 
   whisper-oracle:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'whisper-real'
     name: Independent Whisper decoder oracle
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -104,4 +105,29 @@ jobs:
             ${{ runner.temp }}/whisper-tokenizer-manifest-row.tsv
             ${{ runner.temp }}/whisper-policy-manifest-row.tsv
             ${{ runner.temp }}/whisper-manifest-row.tsv
+          if-no-files-found: error
+
+  whisper-real:
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'whisper-real'
+    name: Real Whisper timestamp oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Install pinned CPU oracle
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/whisper-real"
+          uv pip install --python "$RUNNER_TEMP/whisper-real/bin/python" torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+          uv pip install --python "$RUNNER_TEMP/whisper-real/bin/python" transformers==5.19.0 numpy==2.5.4 tokenizers==0.23.3
+      - name: Generate real-checkpoint timestamp oracle
+        run: |
+          "$RUNNER_TEMP/whisper-real/bin/python" course/oracle/MS-L14/whisper_real_hf.py --model-dir "$RUNNER_TEMP/whisper-tiny" --out "$RUNNER_TEMP/whisper-real.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: whisper-real-oracle
+          path: ${{ runner.temp }}/whisper-real.json
           if-no-files-found: error
