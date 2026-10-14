@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "numpy>=2"]
+dev = ["pytest>=8", "numpy>=2", "pyarrow>=18", "zstandard>=0.23"]
 
 [build-system]
 requires = ["uv_build>=0.8.3,<0.9"]

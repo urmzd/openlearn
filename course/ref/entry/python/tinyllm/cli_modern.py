@@ -51,7 +51,13 @@ class _Parser(argparse.ArgumentParser):
 def model_dir(path: str) -> str:
     """--model names a model directory, or the config.json inside it."""
     p = Path(path)
-    return str(p.parent) if p.name == "config.json" else str(p)
+    p = p.parent if p.name == "config.json" else p
+    if (p / "LATEST").is_file():
+        name = (p / "LATEST").read_text().strip()
+        if not name.startswith("step-") or not name[5:].isdigit():
+            raise UsageError(f"{p}/LATEST does not name a checkpoint step")
+        p = p / name
+    return str(p)
 
 
 def is_llama_dir(path: str | None) -> bool:

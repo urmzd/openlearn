@@ -120,7 +120,6 @@ course/fixtures/L7.5/gqa_hf.npz	1cfba8afebb4199814ddba778be7dceb1eb64beee3c2b3cd
 course/fixtures/MS-L6/sst2-train.bin	f452e5629225c0ab99296c52efc339f4732fa5bcfa4a2ef4c58b9289540b1002	102492	course/oracle/MS-L6/sst2_train_bin.py	numpy==2.5.3	-	Apache-2.0
 course/fixtures/configs/gpt-tiny.json	16fd69e21f2d4a0c9e24cacfab98816bcf6948e45cb148bdae24b5fb1818b519	165	hand-written (MS-L6 configs)	-	-	Apache-2.0
 course/fixtures/configs/bert-tiny.json	6d33878dc13f4897490d27ceffd3fd08a2e3d836d7785fb191871b842403f407	257	hand-written (MS-L6 configs)	-	-	Apache-2.0
-course/fixtures/ref-thresholds.tsv	888c92cbc6218900b62360a3b65f8c5979917b483badf4a2a829cef3bc501961	3794	ss --record-thresholds	-	-	Apache-2.0
 course/fixtures/L7.6/mla_hf.npz	5d1cf9c461d4b71a4f628cad13d25dbb5664fa154934248faa07609a9e9d4213	43542	course/oracle/L7.6/mla_hf.py	torch==2.14.1,transformers==5.19.0	-	Apache-2.0
 course/fixtures/L7.7/window_hf.npz	fbdc09f6f4cc2cb5436e4b7cc9f65b0849bf39803118dc2d8308847481aafd66	19326	course/oracle/L7.7/window_hf.py	torch==2.14.1,transformers==5.19.0	-	Apache-2.0
 course/fixtures/L7.8/moe_hf.npz	bebab1a2c8458a9aea5d2deff6a96fc7ce1eba9374c61e30209fd5b6e761205d	54378	course/oracle/L7.8/moe_hf.py	torch==2.14.1,transformers==5.19.0	-	Apache-2.0
@@ -215,3 +214,4 @@ course/fixtures/M12.3/resample_torchaudio.npz	fffa1bdd7cc04fe7f893c21ce319840b9a
 course/fixtures/M12.4/fft_numpy.npz	ffac82456434e27b52e063052ddf233446d39daf089dac8d52f1cb4d158bb8cb	174264	course/oracle/M12.4/fft_numpy.py	scipy==1.17.1,numpy==2.5.3	-	Apache-2.0
 course/fixtures/M12.5/stft_torch.npz	831c024d3a12c3e01b0304f87f701fcab2badca71df44ea7b3ab7b895a082ebf	78759	course/oracle/M12.5/stft_torch.py	torch==2.14.1,numpy==2.5.3	-	Apache-2.0
 course/fixtures/M12.6/mel_librosa.npz	9441bf89e8b217d3a9d5b8cae6f8a97ebfb36696ae6f5ffabc8f54df34b20f77	19054	course/oracle/M12.6/mel_librosa.py	librosa==1.0.0,numpy==2.5.3	-	Apache-2.0
+course/fixtures/ref-thresholds.tsv	78e6e66e5290d1de5733f0727399f449be53ef021b37ea0802806b2575ce58b8	3930	ss --record-thresholds	-	-	Apache-2.0

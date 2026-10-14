@@ -64,10 +64,9 @@ if __package__ in (None, ""):
     # Run as a script: make the package importable from python/.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import numpy as np  # noqa: E402
-
-from tinyllm.io.safetensors import load_safetensors, save_safetensors  # noqa: E402
-from tinyllm.lm.bigram import BigramLM  # noqa: E402
+import numpy as np
+from tinyllm.io.safetensors import load_safetensors, save_safetensors
+from tinyllm.lm.bigram import BigramLM
 
 VOCAB = 256  # the byte tokenizer (formats/tokenizer.md)
 TENSOR = "bigram.weight"
@@ -214,6 +213,11 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from tinyllm.cli_c1_data import intercept as intercept_c1_data
+
+    code = intercept_c1_data(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
     # Pass 9 (MS-L11): train llama with --bf16, --accum, and
     # --checkpoint-activations, glue in cli_capstone.py (it claims only that form).
     from tinyllm.cli_capstone import intercept as intercept_capstone
@@ -227,6 +231,11 @@ def main(argv: list[str] | None = None) -> int:
     from tinyllm.cli_activity import intercept as intercept_activity
 
     code = intercept_activity(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
+    from tinyllm.cli_c1_eval import intercept as intercept_c1_eval
+
+    code = intercept_c1_eval(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
     # Pass 6 (MS-L8): generate with --cache, --kv-dtype, --spec, or

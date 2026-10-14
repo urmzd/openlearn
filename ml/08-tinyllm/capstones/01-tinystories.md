@@ -37,7 +37,18 @@ ol check C1                            # the artifact check
 ol milestone MS-C1                     # val loss at the calibrated bar, samples, conformance, artifacts, a trace
 ```
 
-`ol milestone MS-C1 --smoke` runs the same pipeline on the smoke config (about 1M parameters, 200 steps) in minutes; that is what CI runs.
+`ol milestone MS-C1 --smoke` prepares the committed synthetic stories, trains the smoke config (about 1M parameters, 200 steps), measures held-out bpb, and checks 20 seeded samples. The preparation step fits BPE on the first 130 documents only, scrubs the fixture's seeded redaction examples, and keeps the last 32 documents for evaluation. Token manifests and separate corpus ledgers record the files, hashes, counts, and license. The durable training, release, trace, and serving steps require the full milestone and its cluster.
+
+The full milestone expects your completed `CorpusBuild` and tokenizer outputs under `artifacts/`, at the paths named by the training spec. Its preparation step checks and copies those inputs into the run directory without fitting another tokenizer or changing the split. A missing input is an error. Both tiers write a run-local `train-spec.json` with the milestone seed, so five-seed calibration actually trains five independent initializations.
+
+The preparation entry points are:
+
+```sh
+# Full tier: use the inputs produced by your corpus pipeline.
+{tinyllm} capstone prepare --spec specs/c1/tinystories-short.json --inputs artifacts --out runs/c1-inputs --seed 0
+# Smoke tier: TINYLLM_FIXTURES is supplied by the course harness.
+{tinyllm} capstone prepare --spec specs/c1/smoke.json --fixture MS-corpus/sources/stories.jsonl --holdout 32 --license CC0-1.0 --out runs/c1-smoke-inputs --seed 0
+```
 
 ---
 

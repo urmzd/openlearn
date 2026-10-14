@@ -53,14 +53,23 @@ ci       = "nightly"
 # -- 1. train under the subprocess contract, then the held-out bar -----------------------
 
 [[step]]
+name       = "prepare"
+smoke      = true
+ci         = "nightly"
+run        = "tinyllm"
+argv       = ["capstone", "prepare", "--spec", "{spec}", "{source_flag}", "{source}", "--out", "{out}/artifacts", "--holdout", "{holdout}", "--license", "{license}", "--seed", "{seed}"]
+vars       = { spec = "specs/c1/tinystories-short.json", source_flag = "--inputs", source = "artifacts", holdout = "0", license = "CDLA-Sharing-1.0" }
+smoke_vars = { spec = "specs/c1/smoke.json", source_flag = "--fixture", source = "MS-corpus/sources/stories.jsonl", holdout = "32", license = "CC0-1.0" }
+expect     = { match = "json-last-line", metrics = { train_docs = ">= 1", val_tokens = ">= 2", vocab_size = ">= 256" } }
+timeout_s  = 1800
+
+[[step]]
 name       = "train"
 smoke      = true
 ci         = "nightly"
 run        = "tinyllm"
-argv       = ["train", "--spec", "{spec}", "--progress", "{out}/progress.jsonl"]
-env        = { TL_ARTIFACTS = "{out}", TL_IDEMPOTENCY_KEY = "c1" }
-vars       = { spec = "specs/c1/tinystories-short.json" }
-smoke_vars = { spec = "specs/c1/smoke.json" }
+argv       = ["train", "--spec", "{out:prepare}/artifacts/train-spec.json", "--progress", "{out}/progress.jsonl"]
+env        = { TL_ARTIFACTS = "{out:prepare}/artifacts", TL_IDEMPOTENCY_KEY = "c1" }
 expect     = { match = "json-last-line", metrics = { steps = ">= 1", final_loss = "< 10" } }
 timeout_s  = 43200
 
@@ -71,7 +80,7 @@ ci         = "nightly"
 run        = "tinyllm"
 # The held-out split your own training run tokenized (the spec's data.val,
 # under the run's TL_ARTIFACTS).
-argv       = ["eval", "ppl", "--model", "{out:train}/runs/c1/ckpt", "--data", "{out:train}/{val}"]
+argv       = ["eval", "ppl", "--model", "{out:prepare}/artifacts/runs/c1/ckpt", "--data", "{out:prepare}/artifacts/{val}"]
 vars       = { val = "tokens/ts-bpe-4k/ts-val.bin" }
 smoke_vars = { val = "tokens/c1-bpe-512/stories-val.bin" }
 expect     = { match = "json-last-line", metrics = { bpb = "<= calibrated" } }
@@ -84,7 +93,7 @@ name       = "seeded-samples"
 smoke      = true
 ci         = "nightly"
 run        = "tinyllm"
-argv       = ["eval", "--suite", "quality", "--model", "{out:train}/runs/c1/ckpt", "--seed", "0", "--samples", "20"]
+argv       = ["eval", "--suite", "quality", "--model", "{out:prepare}/artifacts/runs/c1/ckpt", "--seed", "{seed}", "--samples", "20"]
 expect     = { match = "json-last-line", metrics = { samples = "== 20", repeat8 = "<= 0.10", distinct1 = ">= 0.30" } }
 timeout_s  = 1800
 

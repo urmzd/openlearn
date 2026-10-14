@@ -4,6 +4,13 @@ on:
   schedule:
     - cron: "17 4 * * *"
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Validation scope
+        type: choice
+        required: true
+        default: all
+        options: [all, capstone]
 
 permissions:
   contents: read
@@ -19,6 +26,7 @@ concurrency:
 
 jobs:
   full-verify:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
     name: Full verify / ${{ matrix.layer }}
     timeout-minutes: 90
     strategy:
@@ -45,6 +53,7 @@ jobs:
           xargs practice/bin/ol verify course --nightly < "$RUNNER_TEMP/module-ids.txt"
 
   milestones-full:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
     name: Full nightly milestones
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -75,6 +84,7 @@ jobs:
           done < "$RUNNER_TEMP/milestones.txt"
 
   hf-real:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
     name: Real weights and agent eval
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -111,10 +121,11 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: Assemble the reference learner
         run: practice/bin/ol verify course --assemble "$GITHUB_WORKSPACE/.scratchpad/course"
-      - name: Train, evaluate, serve, and conform
+      - name: Prepare, train, and evaluate the capstone
         run: practice/bin/ol milestone MS-C1 --smoke --ref-deps
 
   kind-e2e:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
     name: Kind, observability, and rotating drill
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -187,6 +198,7 @@ jobs:
 
   # Moved off PRs: about 100 minutes, too slow to gate every push.
   reference-learner-e2e:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
     name: Reference learner end to end (smoke)
     runs-on: ubuntu-latest
     timeout-minutes: 150
