@@ -88,6 +88,7 @@ The public contracts specify source ownership, tokenizer geometry, decoding opti
 | `test_sparse_seek_and_prefix_identity` | boundary | Same-prefix logits from a different audio window are not reusable. |
 | `test_bad_sparse_recordings_rejected` | boundary | Broken traces must not be repaired into plausible model outputs. |
 | `test_dense_rows_and_duplicate_prefix_validation` | property | Dense and sparse storage share the same unambiguous prefix contract. |
+| `test_cli_matches_independent_milestone_search_traces` | golden | Greedy and beam-5 must match independent recorded traces, with distinct winning paths. |
 | `test_cli_replays_sparse_logits_without_model_weights` | golden | The parity CLI must invoke the real decoding policy without a model. |
 
 | `test_pinned_real_whisper_tokenizer_matches_hf` | golden | Exact token ids and decoded text match pinned HF tokenizers on real checkpoint merges. |
