@@ -154,3 +154,36 @@ def test_loader_is_strict_about_missing_and_wrong_shapes(tmp_path):
     save_safetensors(str(tmp_path / "model.safetensors"), wrong, {})
     with pytest.raises(ValueError, match="shape"):
         Whisper.from_pretrained(str(tmp_path))
+
+
+def test_wav_entry_point_matches_explicit_frontend():
+    # WHY: Raw stereo audio must traverse the frontend before either attention tower.
+    # KIND: property
+    import io
+    import wave
+
+    from tinyllm.speech.frontend import FeatureConfig, pad_or_trim, whisper_log_mel
+
+    m = model()
+    pcm = np.stack([np.arange(400), -np.arange(400) // 2], axis=1).astype("<i2")
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(16000)
+        w.writeframes(pcm.tobytes())
+    cfg = FeatureConfig(feature_size=m.config.n_mels)
+    mono = pcm.astype(np.float64).mean(axis=1) / 32768
+    mel = whisper_log_mel(pad_or_trim(mono, 2 * m.config.n_audio_ctx * 160), cfg)
+    expected = m.encode(mel[None].astype(np.float32))
+    actual = m.encode_wav(out.getvalue())
+    for a, b in zip(actual.k + actual.v, expected.k + expected.v):
+        assert_close(a, b, atol=1e-6, rtol=0)
+    assert_close(
+        m.decoder([1, 2], actual).data,
+        m.decoder([1, 2], expected).data,
+        atol=1e-6,
+        rtol=0,
+    )
+    with pytest.raises(ValueError, match="RIFF"):
+        m.encode_wav(b"invalid")

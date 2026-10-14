@@ -138,6 +138,8 @@ one uint8 unit of error; normalized values allow that error divided by
 | Forward | `L13.7` | Planned VLM image inputs and placeholder expansion. |
 | Forward | `data.10` | Planned corpus decode and orientation before filtering. |
 
+| Forward | `L13.5` | `DualEncoder.encode_images` consumes the complete single-frame image pipeline. |
+
 ## Going further
 
 | Resource | Exercise |

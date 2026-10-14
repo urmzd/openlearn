@@ -171,6 +171,8 @@ def zero_shot_predict(model, pixel_values: Tensor, W: NDArray) -> NDArray: ...  
 | Forward | `data.10` | scores each scraped image-caption pair with the cosine of the two encodings and drops the low ones (not registered yet) |
 | Forward | `ethics.07` | builds zero-shot classifiers and compares accuracy across image source domains (not registered yet) |
 
+| Back | `L13.6` | `encode_images` applies the image processor before encoding each image, rejecting incompatible geometry. |
+
 ## Going further
 
 | Your piece | Production equivalent | What it adds | Where to look |

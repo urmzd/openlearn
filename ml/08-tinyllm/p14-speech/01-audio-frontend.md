@@ -149,6 +149,8 @@ def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray: ... # float32 [n
 | Forward | `data.11` | the audio corpus pipeline parses and normalizes clips with `read_wav` and `to_mono_16k` (with B14's data group) |
 | Forward | `L15.1` | the engine re-implements this frontend in Rust and is checked against these fixtures within $10^{-4}$ |
 
+| Forward | `L14.3` | `Whisper.encode_wav` consumes the WAV parser, resampler and log-mel frontend. |
+
 ## Going further
 
 | Your piece | Production equivalent | What it adds | Where to look |

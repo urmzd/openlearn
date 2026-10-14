@@ -88,6 +88,8 @@ The next one-token call uses positional row two and a `1 x 3` all-true self-atte
 | Back | `L7.9` | Download the checkpoint before calling the local loader. |
 | Forward | `L14.4` | Planned transcription policy consumes these logits; it must be implemented before the call-site gate passes. |
 
+| Back | `L14.1` | `encode_wav` decodes, mixes channels, resamples and computes model-sized log-mel features. |
+
 ## Going further
 
 | Resource | Exercise |

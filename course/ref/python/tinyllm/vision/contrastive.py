@@ -26,6 +26,7 @@ from tinyllm.autograd.tensor import Tensor, from_op
 from tinyllm.nn.layers import Embedding, LayerNorm, Linear, ModuleList
 from tinyllm.nn.module import Module
 from tinyllm.num.rng import PCG32
+from tinyllm.vision.preprocess import ProcessorConfig, preprocess
 from tinyllm.vision.vit import ViT, ViTConfig, VisionBlock
 
 LN100 = math.log(100.0)
@@ -166,6 +167,23 @@ class DualEncoder(Module):
         return siglip_loss(img, txt, self.logit_scale, self.logit_bias)
         # SOLUTION-END
 
+
+    def encode_images(self, images: Sequence[bytes], cfg: ProcessorConfig) -> Tensor:
+        """Encode a batch of image files with one frame per image."""
+        # SOLUTION-BEGIN L13.5
+        if not images:
+            raise ValueError("encode_images: need at least one image")
+        cfg.validate()
+        if cfg.kind != "single" or cfg.do_image_splitting:
+            raise ValueError("encode_images: contrastive models require a single-frame processor")
+        inputs = preprocess(images, cfg)
+        size = self.vision.cfg.image_size
+        expected = (1, self.vision.cfg.n_channels, size, size)
+        if any(item.pixel_values.shape != expected for item in inputs):
+            raise ValueError("encode_images: processor output must match the vision tower")
+        pixels = np.concatenate([item.pixel_values for item in inputs], axis=0)
+        return self.encode_image(Tensor(pixels))
+        # SOLUTION-END
 
 def _encode_prompts(tok: Any, prompts: Sequence[str]) -> NDArray:
     # SOLUTION-BEGIN L13.5

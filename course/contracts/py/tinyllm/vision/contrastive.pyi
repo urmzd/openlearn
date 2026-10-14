@@ -28,6 +28,7 @@ from numpy.typing import NDArray
 from tinyllm.autograd.tensor import Tensor
 from tinyllm.nn.layers import Linear
 from tinyllm.nn.module import Module
+from tinyllm.vision.preprocess import ProcessorConfig
 from tinyllm.vision.vit import ViT
 
 def clip_loss(img_emb: Tensor, txt_emb: Tensor, logit_scale: Tensor) -> Tensor:
@@ -69,6 +70,11 @@ class DualEncoder(Module):
         """ValueError for an unknown loss."""
     def encode_image(self, pixel_values: Tensor) -> Tensor:
         """[N, d_embed], every row L2-normalized."""
+    def encode_images(self, images: Sequence[bytes], cfg: ProcessorConfig) -> Tensor:
+        """L13.6 decode/preprocess then encode_image, preserving input order.
+        Require a nonempty batch, kind single, no splitting, and each
+        output [1, n_channels, image_size, image_size]. Invalid input raises
+        ValueError; no tiling or silent averaging of image embeddings."""
     def encode_text(self, ids: NDArray) -> Tensor:
         """[N, d_embed], every row L2-normalized. ValueError for a row of
         only padding."""

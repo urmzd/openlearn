@@ -182,6 +182,21 @@ class Whisper(Module):
         return self.decoder.cross_kv(self.encoder(mel))
         # SOLUTION-END
 
+    def encode_wav(self, data: bytes) -> CrossKV:
+        """Decode one WAV and encode its first model-sized audio window."""
+        # SOLUTION-BEGIN L14.3
+        from tinyllm.io.wav import read_wav
+        from tinyllm.speech.frontend import (
+            FeatureConfig, pad_or_trim, to_mono_16k, whisper_log_mel,
+        )
+
+        cfg = FeatureConfig(feature_size=self.config.n_mels)
+        samples = to_mono_16k(read_wav(data), cfg)
+        window = pad_or_trim(samples, 2 * self.config.n_audio_ctx * cfg.hop_length)
+        mel = whisper_log_mel(window, cfg)
+        return self.encode(Tensor(mel[None].astype(np.float32)))
+        # SOLUTION-END
+
     def forward(self, mel: Tensor, ids: ArrayLike) -> Tensor:
         # SOLUTION-BEGIN L14.3
         return self.decoder(ids, self.encode(mel))

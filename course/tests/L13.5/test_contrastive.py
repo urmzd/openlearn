@@ -610,3 +610,37 @@ def test_dual_encoder_learns_zero_shot_shapes():
         acc,
         direction="min",
     )
+
+
+def test_encoded_images_match_explicit_pixel_pipeline():
+    # WHY: File order and processor normalization must survive the raw-image entry point.
+    # KIND: property
+    import io
+
+    from PIL import Image
+    from tinyllm.vision.preprocess import ProcessorConfig, preprocess
+
+    m = tiny_model()
+    cfg = ProcessorConfig(size={"height": 4, "width": 4}, do_center_crop=False)
+    images = []
+    for color in [(200, 30, 70), (10, 180, 250)]:
+        buf = io.BytesIO()
+        Image.new("RGB", (7, 5), color).save(buf, format="PNG")
+        images.append(buf.getvalue())
+    pixels = np.concatenate([i.pixel_values for i in preprocess(images, cfg)])
+    expected = m.encode_image(Tensor(pixels)).data
+    actual = m.encode_images(images, cfg).data
+    assert_close(actual, expected, atol=0, rtol=0)
+    assert_close(
+        m.encode_images(images[::-1], cfg).data, actual[::-1], atol=1e-6, rtol=0
+    )
+    assert_close(np.linalg.norm(actual, axis=1), np.ones(2), atol=1e-6, rtol=0)
+    with pytest.raises(ValueError, match="at least one"):
+        m.encode_images([], cfg)
+    with pytest.raises(ValueError, match="single-frame"):
+        m.encode_images(images, ProcessorConfig(do_image_splitting=True))
+    with pytest.raises(ValueError, match="vision tower"):
+        m.encode_images(
+            images,
+            ProcessorConfig(size={"height": 8, "width": 8}, do_center_crop=False),
+        )

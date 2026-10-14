@@ -85,6 +85,11 @@ class Whisper(Module):
     def __init__(self, cfg: WhisperConfig, rng: Any = None) -> None: ...
     def encode(self, mel: Tensor) -> CrossKV:
         """decoder.cross_kv(encoder(mel)): run once per 30 s window."""
+    def encode_wav(self, data: bytes) -> CrossKV:
+        """L14.1 WAV decode, channel mean and resampling to 16 kHz, then
+        pad/trim to 2*n_audio_ctx*160 samples, compute n_mels features and
+        encode once. Only the first window is encoded; long-form seek is
+        a transcription policy concern. Invalid WAV raises ValueError."""
     def forward(self, mel: Tensor, ids: ArrayLike) -> Tensor:
         """decoder(ids, encode(mel)): logits [N, T, vocab]."""
     def new_cache(self, batch: int = 1) -> KVCache:

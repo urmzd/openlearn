@@ -8,7 +8,7 @@ contract = ["contracts/py/tinyllm/vision/preprocess.pyi"]
 deps = ["M12.2", "M12.3", "L13.4", "M06.3"]
 reading = []
 # lang.12 remains an unimplemented reading prerequisite from DESIGN.
-used_by = []
+used_by = ["L13.5"]
 # Pending actual consumers: L13.7 and data.10. No verification credit yet.
 units = ["python/tinyllm/vision/preprocess.py"]
 upgrades = []
