@@ -155,3 +155,17 @@ def test_cli_transcribes_real_wav_with_real_model(tmp_path, capsys):
     assert result["segments"][0]["tokens"] == [0]
     assert result["segments"][0]["end"] == 0.02
     assert cli.intercept(["generate"]) is None
+
+
+def test_pinned_real_whisper_tokenizer_matches_hf():
+    # WHY: A synthetic alphabet cannot expose real checkpoint merge-rank mistakes.
+    # KIND: golden
+    root = Path(os.environ["TINYLLM_FIXTURES"]) / "L14.4"
+    fixture = json.loads((root / "tokenizer_hf.json").read_text())
+    tok = WhisperTokenizer.from_pretrained(str(root / "whisper-tokenizer"))
+    for case in fixture["cases"]:
+        assert tok.encode(case["text"]) == case["ids"]
+        assert tok.decode(case["ids"]) == case["decoded"]
+    assert tok.sot == 50258
+    assert tok.no_speech == 50362
+    assert tok.timestamp_begin == 50364
