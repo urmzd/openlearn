@@ -435,3 +435,52 @@ def test_transcribe_real_model_encodes_each_window_once(monkeypatch):
     assert segments
     assert all(0 <= s.start < s.end <= 0.32 for s in segments)
     assert [s.id for s in segments] == list(range(len(segments)))
+
+
+def test_independent_openai_timestamp_and_search_fixture():
+    # WHY: Internal consistency cannot detect a shared search-policy mistake.
+    # KIND: golden
+    import json
+    from tinyllm.num.rng import PCG32
+    from tinyllm.speech.decode import DecodeOptions, decode_window
+
+    fixture = json.loads(
+        (Path(os.environ["TINYLLM_FIXTURES"]) / "L14.4/decode_openai.json").read_text()
+    )
+    for case in fixture["timestamps"]:
+        row = apply_timestamp_rules(
+            np.array(case["logits"]),
+            case["prefix"],
+            case["sample_begin"],
+            tokenizer(),
+            case["max_initial_index"],
+        )
+        assert np.flatnonzero(np.isfinite(row)).tolist() == case["allowed"]
+    for case in fixture["searches"]:
+
+        class Recorded:
+            def step(self, prefix):
+                return np.array(case["rows"][",".join(map(str, prefix))])
+
+        result = decode_window(
+            Recorded(),
+            search_tokenizer(),
+            [],
+            DecodeOptions(
+                timestamps=False,
+                beam_size=case["beam"],
+                patience=case["patience"],
+                max_tokens=case["max_tokens"],
+                suppress_tokens=(),
+                suppress_blank=False,
+            ),
+            0,
+            PCG32(0),
+        )
+        assert result.tokens == case["tokens"]
+        assert_close(
+            np.array(result.avg_logprob),
+            np.array(case["avg_logprob"]),
+            atol=1e-6,
+            rtol=0,
+        )
