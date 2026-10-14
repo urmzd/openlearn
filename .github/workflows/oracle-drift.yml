@@ -5,6 +5,10 @@ on:
     - cron: "31 5 * * 1"
   workflow_dispatch:
     inputs:
+      bootstrap:
+        description: Generate missing recorded trace fixtures (existing values still checked)
+        type: boolean
+        default: false
       scope:
         description: Oracle validation scope
         type: choice
@@ -128,7 +132,7 @@ jobs:
           uv pip install --python "$RUNNER_TEMP/whisper-traces/bin/python" torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
           uv pip install --python "$RUNNER_TEMP/whisper-traces/bin/python" numpy==2.5.4 tokenizers==0.23.3
       - name: Generate independent greedy and beam traces
-        run: '"$RUNNER_TEMP/whisper-traces/bin/python" course/oracle/MS-L14/recorded_decode.py --check'
+        run: '"$RUNNER_TEMP/whisper-traces/bin/python" course/oracle/MS-L14/recorded_decode.py --check ${{ inputs.bootstrap && ''--bootstrap-missing'' || '''' }}'
       - name: Compare learner CLI outputs
         env:
           PYTHONPATH: ${{ github.workspace }}/course/ref/python

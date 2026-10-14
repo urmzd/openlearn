@@ -8,6 +8,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -120,19 +121,118 @@ def generate(root: Path):
         )
 
 
+def generate_longform(root: Path):
+    spec = importlib.util.spec_from_file_location(
+        "transcribe_oracle", "course/oracle/L14.4/transcribe_openai.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    tokenizer = Tokenizer.from_file(
+        "course/fixtures/L14.4/whisper-tokenizer/tokenizer.json"
+    )
+    controls = {
+        name: tokenizer.token_to_id(f"<|{name}|>")
+        for name in (
+            "startoftranscript",
+            "startofprev",
+            "en",
+            "transcribe",
+            "endoftext",
+            "nocaptions",
+        )
+    }
+    timestamp = tokenizer.token_to_id("<|0.00|>")
+
+    def remap(token):
+        return (
+            timestamp + token - 10
+            if token >= 10
+            else {1: 65, 2: 66, 3: 67, 5: controls["endoftext"]}[token]
+        )
+
+    for case in module.generate()["cases"]:
+        if case["name"] not in ("conditioned", "partial-tail", "unconditioned"):
+            continue
+        name = "longform-" + case["name"]
+        rows = {}
+        for call, window in zip(case["calls"], case["windows"]):
+            seek = window["seek"]
+            prefix = [
+                controls[key] for key in ("startoftranscript", "en", "transcribe")
+            ]
+            if call["prompt"]:
+                prefix = (
+                    [controls["startofprev"]]
+                    + [remap(t) for t in call["prompt"][-223:]]
+                    + prefix
+                )
+            rows[(seek, (controls["startoftranscript"],))] = (
+                [controls["nocaptions"], 70],
+                [-100.0, 0.0],
+            )
+            for token in [remap(t) for t in window["result"]["tokens"]] + [
+                controls["endoftext"]
+            ]:
+                rows[(seek, tuple(prefix))] = ([token, 70], [0.0, -100.0])
+                prefix.append(token)
+        offsets, prefixes, seeks, ids, values = [0], [], [], [], []
+        for (seek, prefix), (row_ids, row_values) in sorted(rows.items()):
+            prefixes.extend(prefix)
+            offsets.append(len(prefixes))
+            seeks.append(seek)
+            ids.append(row_ids)
+            values.append(row_values)
+        np.savez_compressed(
+            root / f"{name}.npz",
+            prefix_offsets=np.array(offsets),
+            prefix_ids=np.array(prefixes),
+            seeks=np.array(seeks),
+            token_ids=np.array(ids),
+            values=np.array(values, dtype=np.float32),
+            vocab_size=np.array(tokenizer.get_vocab_size()),
+        )
+        options = {
+            "tokenizer": "../L14.4/whisper-tokenizer",
+            "duration": case["duration"],
+            "window_frames": case["window_frames"],
+            "decode": {
+                "language": "en",
+                "temperatures": [0.0],
+                "condition_on_previous_text": case["condition_on_previous_text"],
+            },
+        }
+        expected = {
+            "ids": [
+                remap(t) for segment in case["segments"] for t in segment["tokens"]
+            ],
+            "text": " ".join(
+                tokenizer.decode([remap(t) for t in segment["tokens"] if t < 5]).strip()
+                for segment in case["segments"]
+            ),
+        }
+        (root / f"{name}.json").write_text(json.dumps(options, indent=2) + "\n")
+        (root / f"{name}-expected.json").write_text(json.dumps(expected) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--bootstrap-missing", action="store_true")
     args = parser.parse_args()
     root = Path("course/fixtures/MS-L14")
     if not args.check:
         generate(root)
+        generate_longform(root)
         return
     with TemporaryDirectory(prefix="whisper-recorded-oracle-") as temporary:
         generated = Path(temporary)
         generate(generated)
+        generate_longform(generated)
         for path in sorted(generated.iterdir()):
             committed = root / path.name
+            if args.bootstrap_missing and not committed.exists():
+                root.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, committed)
             if path.suffix == ".npz":
                 with (
                     np.load(path, allow_pickle=False) as actual,

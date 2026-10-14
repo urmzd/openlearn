@@ -14,7 +14,13 @@ def main():
     cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cli)
     root = Path("course/fixtures/MS-L14")
-    for name in ("greedy", "beam5"):
+    for name in (
+        "greedy",
+        "beam5",
+        "longform-conditioned",
+        "longform-partial-tail",
+        "longform-unconditioned",
+    ):
         expected = json.loads((root / f"{name}-expected.json").read_text())
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):
