@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.18.0 (2026-10-14)
+
+### Features
+
+- **course**: integrate Rust registry and multimodal foundations (#34) ([e8b0d14](https://github.com/urmzd/openlearn/commit/e8b0d148da539369df4efbceabac1cba432614e3))
+- **course**: run and calibrate the C1 reference capstone (#32) ([30da38f](https://github.com/urmzd/openlearn/commit/30da38fc3bbec9ad67f18f0ed2f0286a37bcd937))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.17.3...v0.18.0)
+
+
 ## 0.17.3 (2026-10-13)
 
 ### Bug Fixes
