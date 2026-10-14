@@ -13,7 +13,7 @@ on:
         description: Oracle validation scope
         type: choice
         default: all
-        options: [all, whisper, whisper-real, whisper-traces]
+        options: [all, whisper, whisper-real, whisper-traces, asr-assets]
 
 permissions:
   contents: read
@@ -142,4 +142,27 @@ jobs:
         with:
           name: whisper-recorded-traces
           path: course/fixtures/MS-L14/
+          if-no-files-found: error
+
+  asr-assets:
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'asr-assets'
+    name: Deterministic licensed ASR assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Build twice and compare asset fingerprints
+        run: |
+          set -euo pipefail
+          uv run --script course/oracle/MS-L14/build_asr_mini.py "$RUNNER_TEMP/asr-a" > "$RUNNER_TEMP/asr-assets.tsv"
+          uv run --script course/oracle/MS-L14/build_asr_mini.py "$RUNNER_TEMP/asr-b" > "$RUNNER_TEMP/asr-assets-repeat.tsv"
+          diff -u "$RUNNER_TEMP/asr-assets.tsv" "$RUNNER_TEMP/asr-assets-repeat.tsv"
+          python course/oracle/MS-L14/verify_asr_assets.py "$RUNNER_TEMP/asr-a"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asr-asset-fingerprints
+          path: |
+            ${{ runner.temp }}/asr-assets.tsv
+            ${{ runner.temp }}/asr-a/attribution.json
           if-no-files-found: error
