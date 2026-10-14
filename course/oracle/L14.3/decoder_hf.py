@@ -45,7 +45,10 @@ def main():
             np.testing.assert_array_equal(
                 old["parameter_count"], model.num_parameters()
             )
-            np.testing.assert_allclose(old["logits"], logits, atol=1e-5, rtol=0)
+            # CPU kernels vary across hosted runner architectures. Allow two
+            # float32 accumulation error units at the fixture's 1e-5 scale;
+            # learner conformance retains its stricter 1e-5 absolute bound.
+            np.testing.assert_allclose(old["logits"], logits, atol=2e-5, rtol=0)
         print("Whisper decoder oracle matches the committed fixture")
         return
     path.parent.mkdir(parents=True, exist_ok=True)
