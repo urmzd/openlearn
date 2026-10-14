@@ -484,3 +484,45 @@ def test_independent_openai_timestamp_and_search_fixture():
             atol=1e-6,
             rtol=0,
         )
+
+
+def test_independent_openai_longform_policy_fixture(monkeypatch):
+    # WHY: Seek, fallback and prompt decisions need an oracle outside this implementation.
+    # KIND: golden
+    import json
+    from dataclasses import asdict
+    from tinyllm.speech import decode
+
+    root = Path(os.environ["TINYLLM_FIXTURES"]) / "L14.4"
+    fixture = json.loads((root / "transcribe_openai.json").read_text())
+    for case in fixture["cases"]:
+        calls = []
+        windows = iter(case["windows"])
+
+        def recorded_window(source, tok, prompt, opts, temperature, rng):
+            expected = next(windows)
+            assert source == expected["seek"]
+            assert temperature == expected["result"]["temperature"]
+            calls.append(
+                {"seek": source, "temperature": temperature, "prompt": list(prompt)}
+            )
+            return decode.Segment(
+                id=0, seek=source, start=0, end=0, text="", **expected["result"]
+            )
+
+        monkeypatch.setattr(decode, "decode_window", recorded_window)
+        segments = decode._transcribe_windows(
+            lambda seek: seek,
+            search_tokenizer(),
+            case["duration"],
+            case["window_frames"],
+            decode.DecodeOptions(
+                language="en",
+                condition_on_previous_text=case["condition_on_previous_text"],
+            ),
+        )
+        assert calls == case["calls"], case["name"]
+        assert [asdict(segment) for segment in segments] == case["segments"], case[
+            "name"
+        ]
+        assert next(windows, None) is None

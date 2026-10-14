@@ -77,6 +77,7 @@ The public contracts specify source ownership, tokenizer geometry, decoding opti
 | `test_longform_skips_silence_but_preserves_confident_speech` | boundary | High no-speech probability alone cannot veto confident transcription. |
 | `test_zero_timestamp_does_not_stall_seek` | boundary | A zero-duration or truncated decode must always advance the window. |
 | `test_transcribe_real_model_encodes_each_window_once` | property | The long-form path must actually connect audio features and Whisper. |
+| `test_independent_openai_longform_policy_fixture` | golden | Seek, fallback, silence and context decisions match the pinned OpenAI transcription function. |
 | `test_independent_openai_timestamp_and_search_fixture` | golden | Internal consistency cannot detect a shared search-policy mistake. |
 | `test_whisper_loader_preserves_bytes_and_controls` | property | Template controls must not be appended to ordinary transcript tokens. |
 | `test_missing_timestamp_or_byte_is_rejected` | boundary | Timestamp arithmetic and byte preservation cannot silently degrade. |
@@ -93,7 +94,7 @@ The public contracts specify source ownership, tokenizer geometry, decoding opti
 
 Start with a tiny scripted source. Log prefixes, selected ids, cumulative scores and seek frames, not raw user audio. A mismatch in beam-one output points to control masking or termination. A mismatch only after a branch switch points to stale self-KV. Repetition after a hot retry points to a prompt reset error. A stalled seek often means an endpoint was interpreted as an absolute token id rather than a timestamp offset.
 
-The committed OpenAI oracle covers timestamp masks and greedy/beam search. It is independent of the learner implementation. Real-model tests connect WAV decoding, feature extraction, weights, tokenizer and CLI. These tests do not establish production speech accuracy. Additional real-checkpoint tokenizer and long-form transcript parity remain integration validation work.
+The committed OpenAI oracle covers timestamp masks, greedy/beam search, and long-form window policy. It is independent of the learner implementation. Real-model tests connect WAV decoding, feature extraction, weights, tokenizer and CLI. These tests do not establish production speech accuracy. Real-checkpoint tokenizer parity is checked against pinned HF tokenizers. Real-checkpoint speech accuracy remains integration validation work.
 
 ```bash
 python -m tinyllm transcribe --model models/whisper-tiny --audio sample.wav --language en --greedy --out segments.json

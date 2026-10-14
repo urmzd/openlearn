@@ -1,0 +1,463 @@
+{
+  "cases": [
+    {
+      "calls": [
+        {
+          "prompt": [],
+          "seek": 0,
+          "temperature": 0.0
+        },
+        {
+          "prompt": [
+            10,
+            1,
+            15
+          ],
+          "seek": 10,
+          "temperature": 0.0
+        }
+      ],
+      "condition_on_previous_text": true,
+      "duration": 0.2,
+      "name": "conditioned",
+      "segments": [
+        {
+          "avg_logprob": 0.0,
+          "compression_ratio": 0.1,
+          "end": 0.1,
+          "id": 0,
+          "no_speech_prob": 0.0,
+          "seek": 0,
+          "start": 0.0,
+          "temperature": 0.0,
+          "text": "a",
+          "tokens": [
+            10,
+            1,
+            15
+          ]
+        },
+        {
+          "avg_logprob": 0.0,
+          "compression_ratio": 0.1,
+          "end": 0.2,
+          "id": 1,
+          "no_speech_prob": 0.0,
+          "seek": 10,
+          "start": 0.1,
+          "temperature": 0.0,
+          "text": "b",
+          "tokens": [
+            10,
+            2,
+            15
+          ]
+        }
+      ],
+      "window_frames": 10,
+      "windows": [
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.0,
+            "temperature": 0.0,
+            "tokens": [
+              10,
+              1,
+              15
+            ]
+          },
+          "seek": 0
+        },
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.0,
+            "temperature": 0.0,
+            "tokens": [
+              10,
+              2,
+              15
+            ]
+          },
+          "seek": 10
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "prompt": [],
+          "seek": 0,
+          "temperature": 0.0
+        },
+        {
+          "prompt": [
+            10,
+            1,
+            12
+          ],
+          "seek": 4,
+          "temperature": 0.0
+        }
+      ],
+      "condition_on_previous_text": true,
+      "duration": 0.1,
+      "name": "partial-tail",
+      "segments": [
+        {
+          "avg_logprob": 0.0,
+          "compression_ratio": 0.1,
+          "end": 0.04,
+          "id": 0,
+          "no_speech_prob": 0.0,
+          "seek": 0,
+          "start": 0.0,
+          "temperature": 0.0,
+          "text": "a",
+          "tokens": [
+            10,
+            1,
+            12
+          ]
+        },
+        {
+          "avg_logprob": 0.0,
+          "compression_ratio": 0.1,
+          "end": 0.1,
+          "id": 1,
+          "no_speech_prob": 0.0,
+          "seek": 4,
+          "start": 0.04,
+          "temperature": 0.0,
+          "text": "b",
+          "tokens": [
+            10,
+            2,
+            13
+          ]
+        }
+      ],
+      "window_frames": 10,
+      "windows": [
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.0,
+            "temperature": 0.0,
+            "tokens": [
+              10,
+              1,
+              12,
+              12,
+              2
+            ]
+          },
+          "seek": 0
+        },
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.0,
+            "temperature": 0.0,
+            "tokens": [
+              10,
+              2,
+              13
+            ]
+          },
+          "seek": 4
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "prompt": [],
+          "seek": 0,
+          "temperature": 0.0
+        },
+        {
+          "prompt": [],
+          "seek": 0,
+          "temperature": 0.2
+        },
+        {
+          "prompt": [],
+          "seek": 0,
+          "temperature": 0.4
+        },
+        {
+          "prompt": [],
+          "seek": 0,
+          "temperature": 0.6
+        },
+        {
+          "prompt": [],
+          "seek": 10,
+          "temperature": 0.0
+        }
+      ],
+      "condition_on_previous_text": true,
+      "duration": 0.2,
+      "name": "hot-fallback",
+      "segments": [
+        {
+          "avg_logprob": 0.0,
+          "compression_ratio": 0.1,
+          "end": 0.1,
+          "id": 0,
+          "no_speech_prob": 0.0,
+          "seek": 0,
+          "start": 0.0,
+          "temperature": 0.6,
+          "text": "a",
+          "tokens": [
+            10,
+            1,
+            15
+          ]
+        },
+        {
+          "avg_logprob": 0.0,
+          "compression_ratio": 0.1,
+          "end": 0.2,
+          "id": 1,
+          "no_speech_prob": 0.0,
+          "seek": 10,
+          "start": 0.1,
+          "temperature": 0.0,
+          "text": "b",
+          "tokens": [
+            10,
+            2,
+            15
+          ]
+        }
+      ],
+      "window_frames": 10,
+      "windows": [
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 3.0,
+            "no_speech_prob": 0.0,
+            "temperature": 0.0,
+            "tokens": [
+              10,
+              1,
+              15
+            ]
+          },
+          "seek": 0
+        },
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 3.0,
+            "no_speech_prob": 0.0,
+            "temperature": 0.2,
+            "tokens": [
+              10,
+              1,
+              15
+            ]
+          },
+          "seek": 0
+        },
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 3.0,
+            "no_speech_prob": 0.0,
+            "temperature": 0.4,
+            "tokens": [
+              10,
+              1,
+              15
+            ]
+          },
+          "seek": 0
+        },
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.0,
+            "temperature": 0.6,
+            "tokens": [
+              10,
+              1,
+              15
+            ]
+          },
+          "seek": 0
+        },
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.0,
+            "temperature": 0.0,
+            "tokens": [
+              10,
+              2,
+              15
+            ]
+          },
+          "seek": 10
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "prompt": [],
+          "seek": 0,
+          "temperature": 0.0
+        },
+        {
+          "prompt": [],
+          "seek": 10,
+          "temperature": 0.0
+        }
+      ],
+      "condition_on_previous_text": true,
+      "duration": 0.2,
+      "name": "silence-override",
+      "segments": [
+        {
+          "avg_logprob": 0.0,
+          "compression_ratio": 0.1,
+          "end": 0.2,
+          "id": 0,
+          "no_speech_prob": 0.9,
+          "seek": 10,
+          "start": 0.1,
+          "temperature": 0.0,
+          "text": "b",
+          "tokens": [
+            10,
+            2,
+            15
+          ]
+        }
+      ],
+      "window_frames": 10,
+      "windows": [
+        {
+          "result": {
+            "avg_logprob": -2.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.9,
+            "temperature": 0.0,
+            "tokens": []
+          },
+          "seek": 0
+        },
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.9,
+            "temperature": 0.0,
+            "tokens": [
+              10,
+              2,
+              15
+            ]
+          },
+          "seek": 10
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "prompt": [],
+          "seek": 0,
+          "temperature": 0.0
+        },
+        {
+          "prompt": [],
+          "seek": 10,
+          "temperature": 0.0
+        }
+      ],
+      "condition_on_previous_text": false,
+      "duration": 0.2,
+      "name": "unconditioned",
+      "segments": [
+        {
+          "avg_logprob": 0.0,
+          "compression_ratio": 0.1,
+          "end": 0.1,
+          "id": 0,
+          "no_speech_prob": 0.0,
+          "seek": 0,
+          "start": 0.0,
+          "temperature": 0.0,
+          "text": "a",
+          "tokens": [
+            10,
+            1,
+            15
+          ]
+        },
+        {
+          "avg_logprob": 0.0,
+          "compression_ratio": 0.1,
+          "end": 0.2,
+          "id": 1,
+          "no_speech_prob": 0.0,
+          "seek": 10,
+          "start": 0.1,
+          "temperature": 0.0,
+          "text": "b",
+          "tokens": [
+            10,
+            2,
+            15
+          ]
+        }
+      ],
+      "window_frames": 10,
+      "windows": [
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.0,
+            "temperature": 0.0,
+            "tokens": [
+              10,
+              1,
+              15
+            ]
+          },
+          "seek": 0
+        },
+        {
+          "result": {
+            "avg_logprob": 0.0,
+            "compression_ratio": 0.1,
+            "no_speech_prob": 0.0,
+            "temperature": 0.0,
+            "tokens": [
+              10,
+              2,
+              15
+            ]
+          },
+          "seek": 10
+        }
+      ]
+    }
+  ],
+  "source_sha256": "176f5ab30e961bec2a7872f5701a1f5bf3cbfc77946e50512f0f0cf00a1ceacf",
+  "upstream_revision": "86098128c0b4f24f0e2aa2994de830614b474227"
+}

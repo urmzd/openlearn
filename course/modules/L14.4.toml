@@ -19,4 +19,4 @@ timeout_s = 120
 determinism_runs = 2
 
 [fixtures]
-files = ["course/fixtures/L14.4/tokenizer_hf.json", "course/fixtures/L14.4/whisper-tokenizer/tokenizer.json", "course/fixtures/L14.4/decode_openai.json", "course/fixtures/L14.2/tiny-whisper-128/config.json", "course/fixtures/L14.2/tiny-whisper-128/model.safetensors", "course/fixtures/L14.2/encoder_hf.npz"]
+files = ["course/fixtures/L14.4/transcribe_openai.json", "course/fixtures/L14.4/tokenizer_hf.json", "course/fixtures/L14.4/whisper-tokenizer/tokenizer.json", "course/fixtures/L14.4/decode_openai.json", "course/fixtures/L14.2/tiny-whisper-128/config.json", "course/fixtures/L14.2/tiny-whisper-128/model.safetensors", "course/fixtures/L14.2/encoder_hf.npz"]
