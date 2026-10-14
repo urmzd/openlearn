@@ -21,7 +21,8 @@ def whisper_state_from_hf(tensors: Mapping[str, NDArray], cfg: WhisperConfig) ->
     """(course state dict, stored sinusoid table or None). Names lose
     "model."; proj_out.weight is dropped after checking it equals
     decoder.embed_tokens.weight; the encoder table is checked against
-    whisper_sinusoids(n_audio_ctx, d) within 1e-4 and returned separately.
+    whisper_sinusoids(n_audio_ctx, d) within 1e-4 (5e-4 for a table
+    exactly representable in float16) and returned separately.
     ValueError for a name without the prefix (other than proj_out.weight),
     an untied proj_out, or a table that is not Whisper's sinusoids."""
 

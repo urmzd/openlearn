@@ -187,3 +187,24 @@ def test_wav_entry_point_matches_explicit_frontend():
     )
     with pytest.raises(ValueError, match="RIFF"):
         m.encode_wav(b"invalid")
+
+
+def test_loader_preserves_half_precision_position_table():
+    # WHY: Published Whisper weights round fixed sinusoids to float16 before storage.
+    # KIND: boundary
+    from tinyllm.speech.encoder import WhisperConfig, whisper_sinusoids
+
+    cfg = WhisperConfig(d=384, n_audio_ctx=1500)
+    table = (
+        whisper_sinusoids(cfg.n_audio_ctx, cfg.d).astype(np.float16).astype(np.float32)
+    )
+    assert np.max(np.abs(table - whisper_sinusoids(cfg.n_audio_ctx, cfg.d))) > 1e-4
+    _, positions = whisper_state_from_hf(
+        {"model.encoder.embed_positions.weight": table}, cfg
+    )
+    np.testing.assert_array_equal(positions, table)
+    positions[0, 0] = 1
+    assert table[0, 0] == 0
+    table[0, 0] = 0.01
+    with pytest.raises(ValueError, match="sinusoids"):
+        whisper_state_from_hf({"model.encoder.embed_positions.weight": table}, cfg)

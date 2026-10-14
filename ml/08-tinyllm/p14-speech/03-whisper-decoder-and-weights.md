@@ -64,6 +64,8 @@ The next one-token call uses positional row two and a `1 x 3` all-true self-atte
 
 | `test_wav_entry_point_matches_explicit_frontend` | WAV channel mixing, padding and mel features produce the same cross-attention keys and logits as the explicit pipeline. |
 
+`test_loader_preserves_half_precision_position_table` checks published-checkpoint precision: a fixed sinusoid table stored in float16 is retained exactly, while a corrupted entry is rejected. The loader permits 5e-4 absolute deviation only for tables exactly representable in float16; other tables retain the 1e-4 bound.
+
 ## 5. Pitfalls
 
 | Mistake | Symptom | Test |

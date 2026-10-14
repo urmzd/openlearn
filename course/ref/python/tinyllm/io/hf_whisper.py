@@ -30,10 +30,17 @@ def whisper_state_from_hf(
                 )
         elif name == "model.encoder.embed_positions.weight":
             expected = whisper_sinusoids(cfg.n_audio_ctx, cfg.d)
+            # Published Whisper checkpoints can store the fixed table after
+            # float16 rounding. At unit magnitude its rounding error is up to
+            # 2**-12, plus float32 phase differences across math libraries.
+            quantized = np.array_equal(
+                value, value.astype(np.float16).astype(np.float32)
+            )
+            tolerance = 5e-4 if quantized else 1e-4
             if (
                 value.shape != expected.shape
                 or not np.all(np.isfinite(value))
-                or np.max(np.abs(value - expected)) > 1e-4
+                or np.max(np.abs(value - expected)) > tolerance
             ):
                 raise ValueError("stored encoder positions are not Whisper sinusoids")
             positions = value.copy()

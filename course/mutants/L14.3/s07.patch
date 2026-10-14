@@ -4,7 +4,7 @@
              if (
                  value.shape != expected.shape
                  or not np.all(np.isfinite(value))
--                or np.max(np.abs(value - expected)) > 1e-4
+-                or np.max(np.abs(value - expected)) > tolerance
 +                or np.max(np.abs(value - expected)) > float("inf")
              ):
                  raise ValueError("stored encoder positions are not Whisper sinusoids")
