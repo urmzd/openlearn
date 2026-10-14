@@ -111,10 +111,14 @@ pub struct ServeConfig {
     /// `[engine].role` (L10.6).
     pub role: Role,
     /// EngineControl's address (`[engine].grpc_listen`): served by the
-    /// prefill and decode roles.
+    /// configured roles, including unified workers registered with a gateway.
     pub grpc_listen: Option<String>,
     /// tl.kv.v1's address (`[engine].kv_listen`): served by the decode role.
     pub kv_listen: Option<String>,
+    /// Gateway WorkerRegistry target; empty disables registration.
+    pub gateway_registry: String,
+    /// Host peers use to reach the bound service ports.
+    pub advertise_host: String,
     /// Exit 0 on SIGTERM after draining (the binary sets it; tests do not).
     pub handle_signals: bool,
     /// Sleep after every engine step (tests use it to hold requests in
@@ -208,6 +212,8 @@ impl ServeConfig {
             role: Role::Unified,
             grpc_listen: None,
             kv_listen: None,
+            gateway_registry: String::new(),
+            advertise_host: "127.0.0.1".to_string(),
             handle_signals: false,
             step_delay: Duration::ZERO,
             api: ApiConfig { default: ApiVersion::V1, deprecated_unix: 0, sunset_unix: 0 },
@@ -263,6 +269,14 @@ impl ServeConfig {
         };
         c.grpc_listen = s("grpc_listen");
         c.kv_listen = s("kv_listen");
+        c.gateway_registry = s("gateway_registry").unwrap_or_default();
+        c.advertise_host = s("advertise_host").unwrap_or(c.advertise_host);
+        if c.advertise_host.is_empty() || c.advertise_host.contains('/') {
+            return Err("runtime.toml: engine.advertise_host must be a nonempty host".to_string());
+        }
+        if !c.gateway_registry.is_empty() && c.grpc_listen.is_none() {
+            c.grpc_listen = Some(":50051".to_string());
+        }
         for a in c.grpc_listen.iter().chain(&c.kv_listen) {
             listen_addr(a)?;
         }
@@ -1920,13 +1934,16 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
     let std_http = std::net::TcpListener::bind(listen_addr(&cfg.http_listen)?).map_err(|e| format!("{}: {e}", cfg.http_listen))?;
     let std_health = std::net::TcpListener::bind(listen_addr(&cfg.health_listen)?).map_err(|e| format!("{}: {e}", cfg.health_listen))?;
     let (http_addr, health_addr) = (std_http.local_addr().map_err(|e| e.to_string())?, std_health.local_addr().map_err(|e| e.to_string())?);
-    // L10.6: EngineControl on the prefill and decode roles (Prefill needs
-    // prefill; Info answers both), tl.kv.v1 on the decode role. They stop
+    // L10.6: EngineControl on every configured role (Prefill needs
+    // prefill; Info answers every role), tl.kv.v1 on the decode role. They stop
     // when the server thread ends.
     let mut grpc: Vec<GrpcServer> = Vec::new();
-    if cfg.role != Role::Unified {
+    let mut grpc_addr = None;
+    let mut kv_addr = None;
+    {
         if let Some(a) = &cfg.grpc_listen {
             let l = std::net::TcpListener::bind(listen_addr(a)?).map_err(|e| format!("{a}: {e}"))?;
+            grpc_addr = Some(l.local_addr().map_err(|e| e.to_string())?);
             let svc = ControlService {
                 backend: Arc::new(EngineBackend { shared: Arc::clone(&shared) }),
                 transport: Arc::new(GrpcTransport { timeout: Duration::from_secs(10) }),
@@ -1936,6 +1953,7 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
         }
         if let (Some(a), Some(r)) = (&cfg.kv_listen, &shared.receiver) {
             let l = std::net::TcpListener::bind(listen_addr(a)?).map_err(|e| format!("{a}: {e}"))?;
+            kv_addr = Some(l.local_addr().map_err(|e| e.to_string())?);
             grpc.push(kvt::serve_kv(l, Arc::clone(r)).map_err(|e| format!("{a}: {e}"))?);
         }
     }
@@ -1952,6 +1970,44 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
         .name("tl-engine".to_string())
         .spawn(move || engine_loop(engine, cmd_rx, eng_shared, eng_stop, deadline, delay, speculative))
         .map_err(|e| e.to_string())?;
+    let heartbeat = if cfg.gateway_registry.is_empty() {
+        None
+    } else {
+        use tl_engine::heartbeat::{self, GrpcRegistry, Heartbeat, Load, WorkerIdentity};
+        let host = cfg.advertise_host.trim_matches(|c| c == '[' || c == ']');
+        let advertised = |addr: SocketAddr| {
+            if host.contains(':') { format!("[{host}]:{}", addr.port()) }
+            else { format!("{host}:{}", addr.port()) }
+        };
+        let identity = WorkerIdentity {
+            worker_id: format!("{}@{}", cfg.role.as_str(), advertised(http_addr)),
+            http_address: advertised(http_addr),
+            grpc_address: grpc_addr.map(advertised).unwrap_or_default(),
+            kv_address: kv_addr.map(advertised).unwrap_or_default(),
+            role: cfg.role.as_str().to_string(),
+            model: cfg.model_id.clone(),
+        };
+        let hb_shared = Arc::clone(&shared);
+        let load = Arc::new(move || {
+            let stats = hb_shared.stats.lock().unwrap_or_else(|e| e.into_inner());
+            Load {
+                queue_depth: stats.waiting.min(i32::MAX as usize) as i32,
+                running: stats.running.min(i32::MAX as usize) as i32,
+                kv_free_blocks: stats.kv_free.min(i32::MAX as u32) as i32,
+                kv_total_blocks: stats.kv_total.min(i32::MAX as u32) as i32,
+                draining: hb_shared.draining.load(Ordering::SeqCst),
+            }
+        });
+        let reg = Arc::new(GrpcRegistry { target: cfg.gateway_registry.clone(), timeout: Duration::from_secs(1) });
+        match Heartbeat::spawn(reg, identity, load, heartbeat::INTERVAL, Duration::from_secs(1)) {
+            Ok(h) => Some(h),
+            Err(e) => {
+                stop.store(true, Ordering::SeqCst);
+                let _ = engine_thread.join();
+                return Err(format!("heartbeat: {e}"));
+            }
+        }
+    };
     let signals = cfg.handle_signals;
     let drain_self = drain_tx.clone();
     let thread = std::thread::Builder::new()
@@ -1969,14 +2025,27 @@ pub fn spawn(cfg: ServeConfig) -> Result<ServerHandle, String> {
                 let h = tokio::spawn(accept_loop(hl, Arc::clone(&shared), health_stop_rx, health));
                 shared.ready.store(true, Ordering::SeqCst);
                 let mut dr = drain_rx.clone();
+                let registry_drain = async {
+                    loop {
+                        if heartbeat.as_ref().is_some_and(|h| h.state.drain_requested()) {
+                            let _ = drain_self.send(true);
+                            break;
+                        }
+                        tokio::time::sleep(Duration::from_millis(20)).await;
+                    }
+                };
                 if signals {
                     let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).map_err(|e| e.to_string())?;
                     tokio::select! {
                         _ = term.recv() => { let _ = drain_self.send(true); }
                         _ = dr.changed() => {}
+                        _ = registry_drain => {}
                     }
                 } else {
-                    let _ = dr.changed().await;
+                    tokio::select! {
+                        _ = dr.changed() => {}
+                        _ = registry_drain => {}
+                    }
                 }
                 shared.draining.store(true, Ordering::SeqCst);
                 let _ = a.await;

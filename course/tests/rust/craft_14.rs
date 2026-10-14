@@ -132,7 +132,7 @@ mod serve {
         }
     }
 
-    fn succ_model() -> PathBuf {
+    pub(super) fn succ_model() -> PathBuf {
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
         let d = std::env::temp_dir().join(format!("ol-craft_14-{}-{nanos}", std::process::id())).join("succ");
         std::fs::create_dir_all(&d).unwrap();
@@ -186,4 +186,73 @@ mod serve {
         let status = head.split(' ').nth(1).unwrap().parse().unwrap();
         (status, head, String::from_utf8_lossy(&out[split + 4..]).into_owned())
     }
+}
+
+
+#[test]
+// WHY: Accepting registry configuration without emitting heartbeats leaves
+//      otherwise healthy engines undiscoverable. A gateway drain must also
+//      stop admission through the actual server lifecycle.
+// KIND: conformance
+fn engine_registers_live_addresses_and_obeys_registry_drain() {
+    use std::sync::{Arc, Mutex};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::time::{Duration, Instant};
+    use tl_engine::kv_transfer::{self as kt, tonic};
+    use kt::tl_proto::tl::control::v1::{HeartbeatAck, WorkerStatus};
+    use kt::tl_proto::tl::control::v1::worker_registry_server::{WorkerRegistry, WorkerRegistryServer};
+    use tl_serve::server::{self, ServeConfig};
+
+    struct Registry {
+        seen: Mutex<Vec<WorkerStatus>>,
+        drain: AtomicBool,
+    }
+    #[tonic::async_trait]
+    impl WorkerRegistry for Registry {
+        async fn heartbeat(&self, r: tonic::Request<WorkerStatus>) -> Result<tonic::Response<HeartbeatAck>, tonic::Status> {
+            self.seen.lock().unwrap().push(r.into_inner());
+            Ok(tonic::Response::new(HeartbeatAck { drain: self.drain.load(Ordering::SeqCst), route_epoch: 7 }))
+        }
+    }
+    let registry = Arc::new(Registry { seen: Mutex::new(Vec::new()), drain: AtomicBool::new(false) });
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let registry_server = kt::spawn_router(listener, tonic::transport::Server::builder().add_service(WorkerRegistryServer::from_arc(Arc::clone(&registry)))).unwrap();
+    let model = serve::succ_model();
+    let cfg = ServeConfig::from_toml(&format!(r#"
+[engine]
+model_dir = {:?}
+http_listen = "127.0.0.1:0"
+health_listen = "127.0.0.1:0"
+grpc_listen = "127.0.0.1:0"
+gateway_registry = {:?}
+advertise_host = "127.0.0.1"
+kv_blocks = 64
+"#, model.to_string_lossy(), registry_server.addr.to_string()), &[]).unwrap();
+    let server = server::spawn(cfg).unwrap();
+    let start = Instant::now();
+    while registry.seen.lock().unwrap().is_empty() {
+        assert!(start.elapsed() < Duration::from_secs(5), "engine emitted no registry heartbeat");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let status = registry.seen.lock().unwrap()[0].clone();
+    assert_eq!(status.http_address, server.http_addr.to_string());
+    assert_eq!(status.role, "unified");
+    assert_eq!(status.model, "succ");
+    assert_eq!(status.kv_total_blocks, 64);
+    assert!(!status.draining);
+    assert!(status.kv_address.is_empty());
+    assert!(!status.grpc_address.ends_with(":0"));
+    let rt = kt::tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    rt.block_on(async {
+        use kt::tl_proto::tl::engine::v1::{InfoRequest, engine_control_client::EngineControlClient};
+        let mut client = EngineControlClient::connect(format!("http://{}", status.grpc_address)).await.unwrap();
+        let info = client.info(InfoRequest {}).await.unwrap().into_inner();
+        assert_eq!(info.roles, vec!["unified"]);
+        assert_eq!(info.model, "succ");
+    });
+    registry.drain.store(true, Ordering::SeqCst);
+    server.join().unwrap();
+    assert!(start.elapsed() < Duration::from_secs(6), "registry drain did not stop the engine");
+    registry_server.shutdown();
+    std::fs::remove_dir_all(model.parent().unwrap()).unwrap();
 }

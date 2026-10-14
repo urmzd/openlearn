@@ -10,7 +10,7 @@
 | **Contract** | gRPC: [`proto/tl/engine/v1/engine.proto`](../../../course/contracts/proto/tl/engine/v1/engine.proto), [`proto/tl/kv/v1/kv.proto`](../../../course/contracts/proto/tl/kv/v1/kv.proto), [`proto/tl/control/v1/control.proto`](../../../course/contracts/proto/tl/control/v1/control.proto), generated code in [`rust/tl-proto`](../../../course/contracts/rust/tl-proto/src/lib.rs) · bytes: [`formats/kv-block.md`](../../../course/contracts/formats/kv-block.md) · conformance: `parity/kv.wire.v1` |
 | **Tests** | `course/tests/rust/l10_6.rs`, 17 tests (what they check: section 4) |
 | **Needs** | `L10.1` `KvPool` and the sampler's `stream` ([chapter](01-model-runner-and-sampler.md)) · `L10.1` the Rust pool: export, import, register, lookup ([chapter](../p08-inference/08-paged-kv-block-pool.md)) · reading: `L10.2`, `L10.4`, `L10.5` the serve loop this plugs into, `lang.09` async Rust ([primer](../../../software-craftsmanship/12-language-and-tool-primers/09-async-rust-and-tokio.md)), `lang.10` gRPC ([primer](../../../software-craftsmanship/12-language-and-tool-primers/10-protocol-buffers-and-grpc.md)) · or `--ref-deps` |
-| **Used by** | `gw.05` calls Prefill and Release over gRPC and serves the registry your heartbeat reaches; `craft.13` takes `kv_transfer.rs` over for KV format v2 |
+| **Used by** | `gw.05` calls Prefill and Release over gRPC and serves the registry your heartbeat reaches; `craft.13` takes `kv_transfer.rs` over for KV format v2; `craft.14` preserves registration and control in the upgraded server |
 | **Milestone** | `MS-L10` (and `MS-prod`, where the engines run as 1 prefill + 2 decode) |
 | **Optional depth** | [DistServe](https://arxiv.org/abs/2401.09670) (free); [Splitwise](https://arxiv.org/abs/2311.18677) (free); [Mooncake](https://arxiv.org/abs/2407.00079) (free); [gRPC core concepts](https://grpc.io/docs/what-is-grpc/core-concepts/) (free) |
 
@@ -231,6 +231,7 @@ The tests run a fake model that writes a fixed f16 pattern per position into rea
 | Back | `L10.1` | `KvPool` (export, import, register, lookup, slabs) and `stream` for the hand-off |
 | Back | `L10.1` | the Rust pool behind both engines: the export envelope, the prefix index, refcounts |
 | Forward | `gw.05` | picks P and D, calls Prefill and Release, serves the registry your heartbeat reaches |
+| Forward | `craft.14` | integrates heartbeat registration and registry-driven draining in the upgraded serve loop |
 | Forward | `craft.13` | takes `kv_transfer.rs` over: format v2 (fp8), mixed-version negotiation |
 
 `MS-prod` runs your engines as 1 prefill + 2 decode on kind, and drill `ops.01` kills a decode pod mid-load. `obs.01` traces `kv.transfer` as a CLIENT span on P and a SERVER span on D.
