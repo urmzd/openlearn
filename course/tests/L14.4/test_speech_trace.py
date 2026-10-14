@@ -142,6 +142,7 @@ def test_cli_replays_sparse_logits_without_model_weights(tmp_path, capsys):
         "longform-conditioned",
         "longform-partial-tail",
         "longform-unconditioned",
+        "longform-fallback-reset",
     ],
 )
 def test_cli_matches_independent_milestone_search_traces(name, capsys):
@@ -172,6 +173,10 @@ def test_cli_matches_independent_milestone_search_traces(name, capsys):
     actual = json.loads(capsys.readouterr().out)
     assert actual["ids"] == expected["ids"]
     assert actual["text"] == expected["text"]
+    if "temperatures" in expected:
+        assert [segment["temperature"] for segment in actual["segments"]] == expected[
+            "temperatures"
+        ]
     greedy = json.loads((root / "greedy-expected.json").read_text())
     beam = json.loads((root / "beam5-expected.json").read_text())
     assert greedy["ids"] != beam["ids"]
