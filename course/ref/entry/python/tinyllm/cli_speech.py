@@ -97,6 +97,7 @@ def intercept(argv: list[str]) -> int | None:
             result = {
                 "text": " ".join(s.text for s in segments),
                 "segments": [asdict(s) for s in segments],
+                "ids": [token for s in segments for token in s.tokens],
             }
         encoded = json.dumps(
             result, ensure_ascii=False, allow_nan=False, sort_keys=True
@@ -153,6 +154,7 @@ def replay(argv: list[str]) -> int:
         result = {
             "text": " ".join(s.text for s in segments),
             "segments": [asdict(s) for s in segments],
+            "ids": [token for s in segments for token in s.tokens],
         }
         encoded = json.dumps(
             result, ensure_ascii=False, sort_keys=True, allow_nan=False

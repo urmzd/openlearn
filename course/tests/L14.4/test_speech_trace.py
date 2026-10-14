@@ -128,6 +128,55 @@ def test_cli_replays_sparse_logits_without_model_weights(tmp_path, capsys):
         == 0
     )
     result = json.loads(capsys.readouterr().out)
+    assert result["ids"] == [65]
     assert result["text"] == "A"
     assert result["segments"][0]["tokens"] == [65]
     assert result["segments"][0]["end"] == 0.1
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "greedy",
+        "beam5",
+        "longform-conditioned",
+        "longform-partial-tail",
+        "longform-unconditioned",
+        "longform-fallback-reset",
+    ],
+)
+def test_cli_matches_independent_milestone_search_traces(name, capsys):
+    # WHY: Search, seek, and prompt histories must match independent policy decisions.
+    # KIND: golden
+    import os
+
+    root = Path(os.environ["TINYLLM_FIXTURES"]) / "MS-L14"
+    cli_path = (
+        Path(__file__).resolve().parents[2] / "ref/entry/python/tinyllm/cli_speech.py"
+    )
+    spec = importlib.util.spec_from_file_location("milestone_trace_cli", cli_path)
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    expected = json.loads((root / f"{name}-expected.json").read_text())
+    assert (
+        cli.intercept(
+            [
+                "transcribe",
+                "--logits-trace",
+                str(root / f"{name}.npz"),
+                "--opts",
+                str(root / f"{name}.json"),
+            ]
+        )
+        == 0
+    )
+    actual = json.loads(capsys.readouterr().out)
+    assert actual["ids"] == expected["ids"]
+    assert actual["text"] == expected["text"]
+    if "temperatures" in expected:
+        assert [segment["temperature"] for segment in actual["segments"]] == expected[
+            "temperatures"
+        ]
+    greedy = json.loads((root / "greedy-expected.json").read_text())
+    beam = json.loads((root / "beam5-expected.json").read_text())
+    assert greedy["ids"] != beam["ids"]
