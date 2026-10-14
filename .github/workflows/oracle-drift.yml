@@ -126,7 +126,13 @@ jobs:
       - name: Generate real-checkpoint timestamp oracle
         run: |
           "$RUNNER_TEMP/whisper-real/bin/python" course/oracle/MS-L14/whisper_real_hf.py --model-dir "$RUNNER_TEMP/whisper-tiny" --out "$RUNNER_TEMP/whisper-real.json"
+      - name: Compare learner real-WAV timestamp tokens
+        env:
+          PYTHONPATH: ${{ github.workspace }}/course/ref/python
+        run: |
+          "$RUNNER_TEMP/whisper-real/bin/python" course/oracle/MS-L14/verify_learner.py --model-dir "$RUNNER_TEMP/whisper-tiny" --oracle course/fixtures/whisper-parity/greedy_timestamps.json
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: whisper-real-oracle
           path: ${{ runner.temp }}/whisper-real.json
