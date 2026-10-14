@@ -106,6 +106,8 @@ def bootstrap_ci(per_item, stat, n=1000, seed=0, alpha=0.05) -> tuple[float, flo
 | `test_zero_shot_topk_ties_to_lower_index` | unit | top-k with ties, argument checks | zero-shot suite scores |
 | `test_bootstrap_ci_resamples_items` | property | the interval recomputed by hand from PCG32 draws | reproducible CIs in Python and Go |
 
+The milestone entry point `tinyllm eval asr --pred SEGMENTS.json --ref TRANSCRIPT.txt` joins generated segments before normalization and scoring. `test_cli_asr_scores_generated_segments` pins one substitution and one deletion in a six-word reference, giving WER 2/6, and rejects malformed segment text.
+
 ## 5. Pitfalls
 
 | Pitfall | Symptom | Caught by |

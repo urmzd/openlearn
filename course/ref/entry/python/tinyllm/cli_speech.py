@@ -10,6 +10,8 @@ import sys
 
 
 def intercept(argv: list[str]) -> int | None:
+    if argv[:2] == ["eval", "asr"]:
+        return evaluate(argv[2:])
     if argv and argv[0] == "features":
         return features(argv[1:])
     if argv and argv[0] == "logits" and "--audio-features" in argv:
@@ -254,4 +256,49 @@ def features(argv: list[str]) -> int:
         return 0
     except (ValueError, OSError, KeyError, TypeError) as error:
         print(f"features: {error}", file=sys.stderr)
+        return 2
+
+
+def evaluate(argv: list[str]) -> int:
+    """Score a generated transcript against a UTF-8 reference transcript."""
+    parser = argparse.ArgumentParser(prog="tinyllm eval asr")
+    parser.add_argument("--pred", required=True)
+    parser.add_argument("--ref", required=True)
+    args = parser.parse_args(argv)
+    try:
+        from tinyllm.eval.mm import basic_normalize, cer, wer, wer_stats
+
+        prediction = json.loads(Path(args.pred).read_text(encoding="utf-8"))
+        if isinstance(prediction, dict):
+            segments = prediction.get("segments")
+            text = prediction.get("text")
+        elif isinstance(prediction, list):
+            segments, text = prediction, None
+        else:
+            raise ValueError("prediction must be a transcript object or segment list")
+        if segments is not None:
+            if not isinstance(segments, list) or any(
+                not isinstance(s, dict) or not isinstance(s.get("text"), str)
+                for s in segments
+            ):
+                raise ValueError("each segment must contain text")
+            text = " ".join(s["text"] for s in segments)
+        if not isinstance(text, str):
+            raise ValueError("prediction must contain text or segments")
+        refs = [basic_normalize(Path(args.ref).read_text(encoding="utf-8"))]
+        hyps = [basic_normalize(text)]
+        stats = wer_stats(refs, hyps).sum(axis=0)
+        result = {
+            "wer": wer(refs, hyps),
+            "cer": cer(refs, hyps),
+            "substitutions": int(stats[0]),
+            "deletions": int(stats[1]),
+            "insertions": int(stats[2]),
+            "reference_words": int(stats[3]),
+            "normalizer": "whisper-basic",
+        }
+        print(json.dumps(result, sort_keys=True, allow_nan=False))
+        return 0
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        print(f"eval asr: {error}", file=sys.stderr)
         return 2

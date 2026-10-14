@@ -162,3 +162,7 @@ oracle evidence. Registration does not establish production ASR accuracy.
 ### Feature extraction CLI
 
 `tinyllm features --audio PATH --kind whisper-log-mel --n-mels 80 --out OUTPUT.npz` accepts a WAV file or a directory of WAV files, sorted by filename. `--n-mels` accepts 80 or 128. The command downmixes, resamples to 16 kHz, and pads or trims each clip to 30 seconds before computing log-mel features. Output keys are `<filename-stem>.f<mel-count>`, each shaped `[mel-count, 3000]`. The final JSON line reports `out`, `clips`, and `n_mels`. Empty directories and malformed WAV input exit 2 without creating the output.
+
+### Transcript scoring CLI
+
+`tinyllm eval asr --pred SEGMENTS.json --ref TRANSCRIPT.txt` accepts the transcription command's object or a list of segment objects. Segment text is joined in order; a text-only object is also accepted. Both transcripts use `basic_normalize`. The final JSON line contains pooled `wer`, `cer`, word substitution/deletion/insertion counts, `reference_words`, and `normalizer` (`whisper-basic`). Invalid predictions and an empty normalized reference exit 2. This command scores a single recording; corpus inference and bootstrap intervals require the separate corpus evaluation path.
