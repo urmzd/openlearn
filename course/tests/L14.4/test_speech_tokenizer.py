@@ -152,6 +152,7 @@ def test_cli_transcribes_real_wav_with_real_model(tmp_path, capsys):
     )
     result = json.loads(capsys.readouterr().out)
     assert result == json.loads(output.read_text())
+    assert result["ids"] == [0]
     assert result["segments"][0]["tokens"] == [0]
     assert result["segments"][0]["end"] == 0.02
     assert cli.intercept(["generate"]) is None

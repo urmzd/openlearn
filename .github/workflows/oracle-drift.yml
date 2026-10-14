@@ -9,7 +9,7 @@ on:
         description: Oracle validation scope
         type: choice
         default: all
-        options: [all, whisper, whisper-real]
+        options: [all, whisper, whisper-real, whisper-traces]
 
 permissions:
   contents: read
@@ -53,7 +53,7 @@ jobs:
         run: practice/bin/ol parity --ref
 
   whisper-oracle:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'whisper-real'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all' || inputs.scope == 'whisper'
     name: Independent Whisper decoder oracle
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -110,3 +110,32 @@ jobs:
   whisper-real:
     if: github.event_name == 'workflow_dispatch' && inputs.scope == 'whisper-real'
     uses: ./.github/workflows/whisper-real.yml
+
+  whisper-traces:
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'whisper-traces'
+    name: Independent recorded Whisper search
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Install pinned CPU oracle
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/whisper-traces"
+          uv pip install --python "$RUNNER_TEMP/whisper-traces/bin/python" torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+          uv pip install --python "$RUNNER_TEMP/whisper-traces/bin/python" numpy==2.5.4 tokenizers==0.23.3
+      - name: Generate independent greedy and beam traces
+        run: '"$RUNNER_TEMP/whisper-traces/bin/python" course/oracle/MS-L14/recorded_decode.py'
+      - name: Compare learner CLI outputs
+        env:
+          PYTHONPATH: ${{ github.workspace }}/course/ref/python
+        run: '"$RUNNER_TEMP/whisper-traces/bin/python" course/oracle/MS-L14/verify_recorded.py'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: whisper-recorded-traces
+          path: course/fixtures/MS-L14/
+          if-no-files-found: error

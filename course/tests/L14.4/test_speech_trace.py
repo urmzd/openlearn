@@ -128,6 +128,7 @@ def test_cli_replays_sparse_logits_without_model_weights(tmp_path, capsys):
         == 0
     )
     result = json.loads(capsys.readouterr().out)
+    assert result["ids"] == [65]
     assert result["text"] == "A"
     assert result["segments"][0]["tokens"] == [65]
     assert result["segments"][0]["end"] == 0.1
