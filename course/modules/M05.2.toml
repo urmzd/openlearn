@@ -12,7 +12,7 @@ deps      = []
 reading   = ["S-M05"]
 # L1.1 and L1.2 list M05.2 in their prereqs. L1.5's Rust byte table is a
 # re-implementation (it reads this chapter), not a call site.
-used_by   = ["L1.1", "L1.2", "L8.7"]
+used_by   = ["L1.1", "L1.2", "L8.7", "L14.4"]
 units     = ["python/tinyllm/tok/bytes_unicode.py"]
 upgrades  = []
 milestone = "MS-P3"

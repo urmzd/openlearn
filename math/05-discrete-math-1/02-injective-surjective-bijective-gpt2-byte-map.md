@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/tok/bytes_unicode.pyi`](../../course/contracts/py/tinyllm/tok/bytes_unicode.pyi) |
 | **Tests** | `course/tests/M05.2/` (what they check: section 4) |
 | **Needs** | no code from earlier modules · reading: `S-M05` (functions and bijections problems) |
-| **Used by** | `L1.1` the tokenizer protocol · `L1.2` byte-level BPE stores its vocabulary and merges in this alphabet · later: `L1.5` re-implements the table in Rust · later: `L8.7` |
+| **Used by** | `L1.1` the tokenizer protocol · `L1.2` byte-level BPE stores its vocabulary and merges in this alphabet · later: `L1.5` re-implements the table in Rust · later: `L8.7`; `L14.4` |
 | **Milestone** | `MS-P3` (tokens and data) |
 | **Optional depth** | Rosen, *Discrete Mathematics and Its Applications*, section 2.3 "Functions"; Radford et al., "Language Models are Unsupervised Multitask Learners" (2019), section 2.2 |
 
@@ -172,3 +172,5 @@ If you skip this module, `ol check L1.2` stops with `L1.2 needs M05.2`: build it
 | `bytes_to_unicode` | Hugging Face `tokenizers` ByteLevel | the same table in Rust, built once in a `lazy_static`, plus `add_prefix_space` and offset tracking | `tokenizers/src/pre_tokenizers/byte_level.rs` (`bytes_char`) |
 | `encode_bytes` / `decode_chars` | OpenAI `tiktoken` | no character map at all: ranks are keyed by raw bytes and stored base64 encoded in `.tiktoken` files | `tiktoken/load.py` (`data_gym_to_mergeable_bpe_ranks` rebuilds this map to read GPT-2's original files) |
 | the rule | openai/gpt-2 | the original 2019 function, with the comment explaining why whitespace and control characters are avoided | `src/encoder.py` |
+
+| Forward | `L14.4` | Whisper decoding consumes this implementation. |
