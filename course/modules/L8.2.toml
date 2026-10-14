@@ -16,7 +16,7 @@ reading   = ["M05.1"]
 # Call site: L8.6 (rolls the cache back with truncate). The optional L8.3
 # paged cache also generates through generate, but side quests are not call
 # sites (DEVIATIONS B81-03).
-used_by   = ["L8.6"]
+used_by = ["L8.6", "L14.3"]
 units     = ["python/tinyllm/infer/kvcache.py", "python/tinyllm/infer/generate.py"]
 upgrades  = []
 milestone = "MS-L8"

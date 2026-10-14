@@ -63,11 +63,14 @@ jobs:
       - name: Install CPU oracle dependencies
         run: |
           uv venv --python 3.12 "$RUNNER_TEMP/whisper-oracle"
-          uv pip install --python "$RUNNER_TEMP/whisper-oracle/bin/python" torch --index-url https://download.pytorch.org/whl/cpu
-          uv pip install --python "$RUNNER_TEMP/whisper-oracle/bin/python" transformers numpy
+          uv pip install --python "$RUNNER_TEMP/whisper-oracle/bin/python" torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+          uv pip install --python "$RUNNER_TEMP/whisper-oracle/bin/python" transformers==5.19.0 numpy==2.5.4
       - name: Generate independent decoder values
         run: |
-          "$RUNNER_TEMP/whisper-oracle/bin/python" course/oracle/L14.3/decoder_hf.py | tee "$RUNNER_TEMP/whisper-manifest-row.tsv"
+          set -euo pipefail
+          args=()
+          if [ "${{ inputs.scope }}" != whisper ] || [ -f course/fixtures/L14.3/decoder_hf.npz ]; then args+=(--check); fi
+          "$RUNNER_TEMP/whisper-oracle/bin/python" course/oracle/L14.3/decoder_hf.py "${args[@]}" | tee "$RUNNER_TEMP/whisper-manifest-row.tsv"
       - uses: actions/upload-artifact@v4
         with:
           name: whisper-decoder-oracle

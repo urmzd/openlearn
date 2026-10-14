@@ -14,7 +14,7 @@ reading   = []
 # L0.4's layers and L0.5's BigramLogits are written in F; L0.6's course
 # tests compute their training loss with it. L0.3's losses are single fused
 # nodes on from_op and call no F op.
-used_by   = ["L0.4", "L0.5", "L0.6", "L2.2", "L3.1", "L3.2", "L3.3", "L3.4", "L3.6", "L4.1", "L4.2", "L4.3", "L5.3", "L5.4", "L5.5", "L6.1", "L6.2", "L6.3", "L6.5", "L6.6", "L7.1", "L7.2", "L7.3", "L7.5", "L7.6", "L7.8", "L7.9", "L13.1", "L13.3", "L14.2", "L13.5"]
+used_by = ["L0.4", "L0.5", "L0.6", "L2.2", "L3.1", "L3.2", "L3.3", "L3.4", "L3.6", "L4.1", "L4.2", "L4.3", "L5.3", "L5.4", "L5.5", "L6.1", "L6.2", "L6.3", "L6.5", "L6.6", "L7.1", "L7.2", "L7.3", "L7.5", "L7.6", "L7.8", "L7.9", "L13.1", "L13.3", "L14.2", "L13.5", "L14.3"]
 units     = ["python/tinyllm/autograd/functional.py"]
 upgrades  = []
 milestone = "MS-L0"

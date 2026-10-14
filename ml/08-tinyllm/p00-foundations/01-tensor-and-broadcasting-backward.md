@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/autograd/tensor.pyi`](../../../course/contracts/py/tinyllm/autograd/tensor.pyi) · [`course/contracts/py/tinyllm/autograd/mode.pyi`](../../../course/contracts/py/tinyllm/autograd/mode.pyi) |
 | **Tests** | `course/tests/L0.1/` (what they check: section 4) |
 | **Needs** | `M06.1` iterative topological sort (`toposort`) · `M08.3` `unbroadcast` and the matmul VJP · `M08.2` the scalar `Value` (the tests' oracle) · reading: `lang.01` broadcasting (or `--ref-deps`) |
-| **Used by** | `L0.2` op library · `L0.3` fused losses · `L0.4` modules · `L0.5` training loop · `L0.6` checkpoint tests · later: `L11.1`, `L2.2`, `L3.1`, `L3.2`, `L3.3`, `L3.4`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.1`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L6.7`, `L7.1`, `L7.2`, `L7.3`, `L7.5`, `L7.6`, `L7.7`, `L7.8`, `L7.9`, `L8.2`, `L8.5`, `L13.1`, `L13.2`, `L13.3`, `L13.5`, `L14.2` |
+| **Used by** | `L0.2` op library · `L0.3` fused losses · `L0.4` modules · `L0.5` training loop · `L0.6` checkpoint tests · later: `L11.1`, `L2.2`, `L3.1`, `L3.2`, `L3.3`, `L3.4`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.1`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L6.7`, `L7.1`, `L7.2`, `L7.3`, `L7.5`, `L7.6`, `L7.7`, `L7.8`, `L7.9`, `L8.2`, `L8.5`, `L13.1`, `L13.2`, `L13.3`, `L13.5`, `L14.2`  · `L14.3` Whisper decoding |
 | **Milestone** | `MS-L0` (your autograd retrains the tracer and survives a kill) |
 | **Optional depth** | Baydin, Pearlmutter, Radul, Siskind, "Automatic Differentiation in Machine Learning: a Survey" (JMLR 2018, free); Karpathy's `micrograd` (the scalar version of this module) |
 
@@ -170,6 +170,7 @@ The contracts carry the exact rules: the constructor copies its data and rejects
 | 10. constants converted to their own dtype | `x * 0.5` makes a float32 model float64 | `test_float32_stays_float32` (mutant `s10`) |
 
 ## 6. Where it's used next
+| Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
 | Forward | `L11.1` | Registered call site uses this module. |
 | Forward | `L2.2` | Registered call site uses this module. |
 | Forward | `L3.1` | Registered call site uses this module. |

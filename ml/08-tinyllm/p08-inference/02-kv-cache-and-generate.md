@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/infer/kvcache.pyi`](../../../course/contracts/py/tinyllm/infer/kvcache.pyi) · [`course/contracts/py/tinyllm/infer/generate.pyi`](../../../course/contracts/py/tinyllm/infer/generate.pyi) |
 | **Tests** | `course/tests/L8.2/` (what they check: section 4; the test models are in `_tinylm.py`) · your own tests in `python/tests/l8-2-generate/`, rung R5, graded by mutation (threshold 0.80, every pitfall mutant required) |
 | **Needs** | `L8.1` (`sample`, `request_rng`, `sampled_entropy`) · `L5.2` (`causal_mask` with `q_offset`) · `L1.2` (the byte-level BPE the detokenizer streams) · `L7.9` (`LlamaForCausalLM`, the model `generate` drives) · `L7.5` (`GQAttention`, whose cache hook this cache implements) · `L7.3` (`RopeSpec`, to build that attention) · `L0.1` (`Tensor`, its input) · reading: `M05.1` KV bytes per token |
-| **Used by** | `L8.4`, `L8.5`, `L8.6` (speculative decoding rolls the cache back with `truncate`), and `L10.5` ports the detokenizer to Rust |
+| **Used by** | `L8.4`, `L8.5`, `L8.6` (speculative decoding rolls the cache back with `truncate`), and `L10.5` ports the detokenizer to Rust  · `L14.3` Whisper decoding |
 | **Milestone** | `MS-L8` (step 1: `generate --cache none,contiguous,paged` give the same greedy text) |
 | **Optional depth** | Pope et al., "Efficiently Scaling Transformer Inference" (2022); Kwon et al., "Efficient Memory Management for Large Language Model Serving with PagedAttention" (2023), section 2; the Unicode Standard, ch. 3.9 (UTF-8 and the replacement of ill-formed sequences) |
 
@@ -180,6 +180,7 @@ Write `python/tests/l8-2-generate/` against the contract only. The oracles are t
 | Back | `L7.5` | `GQAttention` calls `cache.update(layer, k, v)`: this cache is its hook |
 | Back | `L7.3` | `RopeSpec` configures that attention's rotary positions |
 | Back | `L0.1` | `Tensor` wraps the attention's input |
+| Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
 | Forward | `L8.3` | optional: the pure-Python paged cache, compared with this one in float16 |
 | Forward | `L8.6` | speculative decoding verifies drafts and rolls back with `truncate` |
 | Forward | `L8.5` | quantized models generate through the same loop |

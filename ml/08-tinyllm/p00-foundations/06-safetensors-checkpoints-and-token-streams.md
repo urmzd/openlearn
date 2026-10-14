@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/io/safetensors.pyi`](../../../course/contracts/py/tinyllm/io/safetensors.pyi) · [`course/contracts/py/tinyllm/io/checkpoint.pyi`](../../../course/contracts/py/tinyllm/io/checkpoint.pyi) · [`course/contracts/py/tinyllm/io/tokens.pyi`](../../../course/contracts/py/tinyllm/io/tokens.pyi) · formats: [`safetensors.md`](../../../course/contracts/formats/safetensors.md), [`checkpoint.md`](../../../course/contracts/formats/checkpoint.md), [`tokens-bin.md`](../../../course/contracts/formats/tokens-bin.md) |
 | **Tests** | `course/tests/L0.6/` (what they check: section 4), golden files from the pinned `safetensors` library in `course/fixtures/L0.6/safetensors/`; `L0.0`'s safetensors tests keep running as your regression suite |
 | **Needs** | `M09.1` the BF16 bit converters · `L0.1`, `L0.2`, `L0.4` the model the checkpoint tests train · `M10.2` SGD and `M10.3` AdamW (optimizer state to save) · `M06.3` the PCG32 whose state the token cursor carries · `L0.5` its `bigram.py` (`L0.0`'s tests, your regression suite, exercise it) · reading: `L0.0` (or `--ref-deps`) |
-| **Used by** | `L10.0` your engine reads the file this writer produces (inherited from `L0.0` with `safetensors.py`) · `L2.1` the n-gram model saves and loads its tables with `save_safetensors` and `load_safetensors` · later: `L2.2` reads token streams, `L7.9` loads BF16 HF weights, `L10.1` memory-maps the same layout, the capstone trainer and `dur.09` resume from these checkpoints · later: `L3.6`, `L4.1`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7` |
+| **Used by** | `L10.0` your engine reads the file this writer produces (inherited from `L0.0` with `safetensors.py`) · `L2.1` the n-gram model saves and loads its tables with `save_safetensors` and `load_safetensors` · later: `L2.2` reads token streams, `L7.9` loads BF16 HF weights, `L10.1` memory-maps the same layout, the capstone trainer and `dur.09` resume from these checkpoints · later: `L3.6`, `L4.1`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7`  · `L14.3` Whisper decoding |
 | **Milestone** | `MS-L0` (step 4: a run killed after step 60 resumes from step 50 and ends bitwise equal to an uninterrupted one) |
 | **Optional depth** | the safetensors README and `safetensors/src/tensor.rs`; Micikevicius et al., "FP8 Formats for Deep Learning" (2022); Pillai et al., "All File Systems Are Not Created Equal" (OSDI 2014) on crash consistency |
 
@@ -191,6 +191,7 @@ class TokenStream:
 | 12. a cursor naming the window just read | a resumed run repeats one window | `test_hand_example_token_windows` (mutant `s30`) |
 
 ## 6. Where it's used next
+| Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
 | Forward | `L2.2` | Registered call site uses this module. |
 | Forward | `L3.6` | Registered call site uses this module. |
 | Forward | `L4.1` | Registered call site uses this module. |

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/decoder.py
++++ b/python/tinyllm/speech/decoder.py
+@@ -59,7 +59,7 @@
+         x = x + a.out_proj(a.merge_heads(context))
+         a = self.encoder_attn
+         q = a.split_heads(a.q_proj(self.encoder_attn_layer_norm(x)))
+-        context, _ = scaled_dot_product_attention(q, Tensor(xk), Tensor(xv))
++        context, _ = scaled_dot_product_attention(q, Tensor(xk), Tensor(xk))
+         x = x + a.out_proj(a.merge_heads(context))
+         return x + self.fc2(F.gelu(self.fc1(self.final_layer_norm(x))))
+         # SOLUTION-END

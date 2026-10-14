@@ -18,7 +18,7 @@ reading   = ["L0.0"]
 # Inherited with safetensors.py (DESIGN 3.4 upgrade exemption): L10.0 reads
 # the file. L2.1 saves and loads its tables with it. L2.2, L7.9, L10.1, C1, and dur.09 join
 # with their batches.
-used_by   = ["L2.1", "L2.2", "L3.6", "L4.1", "L5.5", "L6.1", "L6.2", "L6.3", "L6.5", "L6.7", "L7.9", "dur.09"]
+used_by = ["L2.1", "L2.2", "L3.6", "L4.1", "L5.5", "L6.1", "L6.2", "L6.3", "L6.5", "L6.7", "L7.9", "dur.09", "L14.3"]
 units     = ["python/tinyllm/io/checkpoint.py", "python/tinyllm/io/tokens.py"]
 upgrades  = ["python/tinyllm/io/safetensors.py"]
 milestone = "MS-L0"

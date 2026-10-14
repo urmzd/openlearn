@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/autograd/functional.pyi`](../../../course/contracts/py/tinyllm/autograd/functional.pyi) |
 | **Tests** | `course/tests/L0.2/` (what they check: section 4), golden values from torch 2.14 in `course/fixtures/L0.2/ops_torch.npz` |
 | **Needs** | `L0.1` `Tensor` and `from_op` · `M01.3` activations and their derivatives · `M09.2` stable softmax, log-softmax, logsumexp · `M08.3` the softmax VJPs and `unbroadcast` · `M08.1` dual numbers · `M04.1` `gradcheck` · `M06.3` PCG32 (or `--ref-deps`) |
-| **Used by** | `L0.4` layers are written in `F` · `L0.5` `BigramLogits` is an `F.embedding` · `L0.6` the checkpoint tests compute their loss with `F` · later: `L2.2`, `L3.1`, `L3.2`, `L3.3`, `L3.4`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L7.1`, `L7.2`, `L7.3`, `L7.5`, `L7.6`, `L7.8`, `L7.9`, `L13.1`, `L13.3`, `L13.5`, `L14.2` |
+| **Used by** | `L0.4` layers are written in `F` · `L0.5` `BigramLogits` is an `F.embedding` · `L0.6` the checkpoint tests compute their loss with `F` · later: `L2.2`, `L3.1`, `L3.2`, `L3.3`, `L3.4`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L7.1`, `L7.2`, `L7.3`, `L7.5`, `L7.6`, `L7.8`, `L7.9`, `L13.1`, `L13.3`, `L13.5`, `L14.2`  · `L14.3` Whisper decoding |
 | **Milestone** | `MS-L0` (step 1: `{tinyllm} gradcheck --suite all`) |
 | **Optional depth** | Griewank and Walther, *Evaluating Derivatives* (2nd ed.), ch. 3 and 4; the PyTorch `derivatives.yaml` file, read as a table of VJPs |
 
@@ -145,6 +145,7 @@ def gradcheck_all(rtol: float = 1e-5) -> dict[str, GradcheckReport]
 | 7. float64 leaking from a mask or a derivative array | a float32 model becomes float64, twice the memory | `test_float32_in_float32_out` (mutant `m04`) |
 
 ## 6. Where it's used next
+| Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
 | Forward | `L2.2` | Registered call site uses this module. |
 | Forward | `L3.1` | Registered call site uses this module. |
 | Forward | `L3.2` | Registered call site uses this module. |

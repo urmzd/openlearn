@@ -15,7 +15,7 @@ reading   = ["L4.3", "S-M08", "M08.3", "L0.2"]
 # L5.3's MultiHeadAttention calls scaled_dot_product_attention once per
 # layer. The other catalog call sites (L7.5, L7.6, L8.2, L9.3 oracle) join
 # when their rows list L5.1 in deps (DEVIATIONS B71-02).
-used_by   = ["L5.3", "L13.3"]
+used_by = ["L5.3", "L13.3", "L14.3"]
 units     = ["python/tinyllm/xfmr/sdpa.py"]
 upgrades  = []
 milestone = "MS-L5"

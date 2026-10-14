@@ -243,3 +243,4 @@ course/fixtures/L14.2/encoder_hf.npz	ceadc1b3e91f5282825cdcd831e9ff5133648c3e09e
 course/fixtures/L13.4/tiling_hf.npz	2e4f1b3d8272052ce9fb67c461e28e0a8c1e4a93837173d934827a753083f4b9	40368	course/oracle/L13.4/tiling_hf.py	torch==2.14.1,transformers==5.19.0,pillow==12.3.0,numpy==2.5.3	-	Apache-2.0
 course/fixtures/L13.5/contrastive_hf.npz	32388b31c9e3a1a5c271fd3c2ba0e63592c1a97e3d5bab57732362deaa203e51	12223	course/oracle/L13.5/contrastive_hf.py	torch==2.14.1,transformers==5.19.0,numpy==2.5.3	-	Apache-2.0
 course/fixtures/ref-thresholds.tsv	47489898143dabfe6842815e676d5aa1cf77d68aeb1b30877205e9e33d2b5fe1	4217	ss --record-thresholds	-	-	Apache-2.0
+course/fixtures/L14.3/decoder_hf.npz	0a886ea57c03415e5567253c503977405fcaa78965a618d52150cceae0eb40f5	2414	course/oracle/L14.3/decoder_hf.py	torch==2.14.1+cpu,transformers==5.19.0,numpy==2.5.4	-	Apache-2.0

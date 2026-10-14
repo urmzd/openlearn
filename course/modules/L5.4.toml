@@ -12,7 +12,7 @@ deps      = ["M00.2", "M00.3", "M07.3", "M06.3", "L0.1", "L0.2", "L0.4"]
 reading   = []
 # L5.5 adds the sinusoidal table; L6.1 (wpe) and L6.2 (position_embeddings)
 # learn theirs.
-used_by   = ["L5.5", "L6.1", "L6.2"]
+used_by = ["L5.5", "L6.1", "L6.2", "L14.3"]
 units     = ["python/tinyllm/xfmr/pos.py"]
 upgrades  = []
 milestone = "MS-L5"

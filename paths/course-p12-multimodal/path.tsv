@@ -16,4 +16,5 @@
 13	Contrastive image-text	ml/08-tinyllm/p13-vision/05-contrastive-image-text.md	Your implementation of L13.5 passes its course checks.	module:L13.5
 14	Audio frontend	ml/08-tinyllm/p14-speech/01-audio-frontend.md	Your implementation of L14.1 passes its course checks.	module:L14.1
 15	Whisper encoder	ml/08-tinyllm/p14-speech/02-whisper-encoder.md	Your implementation of L14.2 passes its course checks.	module:L14.2
-16	Multimodal eval metrics	ml/08-tinyllm/p14-speech/05-multimodal-eval-metrics.md	Your implementation of L14.5 passes its course checks.	module:L14.5
+16	Whisper decoder and weights	ml/08-tinyllm/p14-speech/03-whisper-decoder-and-weights.md	Your implementation of L14.3 passes its course checks.	module:L14.3
+17	Multimodal eval metrics	ml/08-tinyllm/p14-speech/05-multimodal-eval-metrics.md	Your implementation of L14.5 passes its course checks.	module:L14.5

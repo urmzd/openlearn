@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/xfmr/pos.pyi`](../../../course/contracts/py/tinyllm/xfmr/pos.pyi) |
 | **Tests** | `course/tests/L5.4/test_pos.py` (what they check: section 4); the oracle is mpmath at 50 digits; your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
 | **Needs** | `M00.2` `rotate_pairs` · `M00.3` `geometric` · `M07.3` `normal_init` · `M06.3` `PCG32` · `L0.1` `Tensor` · `L0.2` `embedding` · `L0.4` `Module` (or `--ref-deps`) |
-| **Used by** | `L5.5` the transformer's sinusoidal positions · `L6.1` GPT-2's learned `wpe` · `L6.2` BERT's learned position embeddings |
+| **Used by** | `L5.5` the transformer's sinusoidal positions · `L6.1` GPT-2's learned `wpe` · `L6.2` BERT's learned position embeddings  · `L14.3` Whisper decoding |
 | **Milestone** | `MS-L5` (the addition model reads digit positions) |
 | **Optional depth** | Vaswani et al. (2017), section 3.5; Kazemnejad, "Transformer Architecture: The Positional Encoding" (2019); Su et al., "RoFormer" (2021), for where the rotation goes next |
 
@@ -141,6 +141,7 @@ Your oracle is the formula itself: compute $\sin(p / b^{2i/d})$ and $\cos(\cdot)
 | Back | `L0.2` | `embedding` reads learned rows with their gradient |
 | Back | `L0.1` | the `Tensor` the table is added to |
 | Back | `L0.4` | `Module` for both encodings |
+| Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
 | Forward | `L5.5` | `SinusoidalPE` on both the source and the target embeddings |
 | Forward | `L6.1` | `LearnedPE` is GPT-2's `wpe` |
 | Forward | `L6.2` | `LearnedPE` is BERT's position embedding |

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/io/hf_whisper.py
++++ b/python/tinyllm/io/hf_whisper.py
+@@ -23,7 +23,7 @@
+         if name == "proj_out.weight":
+             embedding = tensors.get("model.decoder.embed_tokens.weight")
+             if embedding is None or not np.array_equal(
+-                value, np.asarray(embedding, dtype=np.float32)
++                value, value
+             ):
+                 raise ValueError(
+                     "Whisper output projection is not tied to token embeddings"
