@@ -112,7 +112,7 @@ jobs:
     uses: ./.github/workflows/whisper-real.yml
 
   whisper-traces:
-    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'whisper-traces'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all' || inputs.scope == 'whisper-traces'
     name: Independent recorded Whisper search
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -128,7 +128,7 @@ jobs:
           uv pip install --python "$RUNNER_TEMP/whisper-traces/bin/python" torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
           uv pip install --python "$RUNNER_TEMP/whisper-traces/bin/python" numpy==2.5.4 tokenizers==0.23.3
       - name: Generate independent greedy and beam traces
-        run: '"$RUNNER_TEMP/whisper-traces/bin/python" course/oracle/MS-L14/recorded_decode.py'
+        run: '"$RUNNER_TEMP/whisper-traces/bin/python" course/oracle/MS-L14/recorded_decode.py --check'
       - name: Compare learner CLI outputs
         env:
           PYTHONPATH: ${{ github.workspace }}/course/ref/python

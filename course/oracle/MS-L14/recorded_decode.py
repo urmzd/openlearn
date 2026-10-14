@@ -4,17 +4,19 @@ The learner is never imported. A small vocabulary is embedded in the actual
 Whisper vocabulary so the CLI can use its real tokenizer and control tokens.
 """
 
+import argparse
 import hashlib
 import importlib.util
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 import torch
 from tokenizers import Tokenizer
 
 
-def main():
+def generate(root: Path):
     spec = importlib.util.spec_from_file_location(
         "decode_oracle", "course/oracle/L14.4/decode_openai.py"
     )
@@ -35,7 +37,6 @@ def main():
         )
     ]
     vocabulary = [65, 66, 67, 68, 69, 70, eot]
-    root = Path("course/fixtures/MS-L14")
     root.mkdir(parents=True, exist_ok=True)
     for beam in (0, 5):
         name = "greedy" if beam == 0 else "beam5"
@@ -117,6 +118,36 @@ def main():
         (root / f"{name}-expected.json").write_text(
             json.dumps({"ids": expected, "text": tokenizer.decode(expected)}) + "\n"
         )
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    root = Path("course/fixtures/MS-L14")
+    if not args.check:
+        generate(root)
+        return
+    with TemporaryDirectory(prefix="whisper-recorded-oracle-") as temporary:
+        generated = Path(temporary)
+        generate(generated)
+        for path in sorted(generated.iterdir()):
+            committed = root / path.name
+            if path.suffix == ".npz":
+                with (
+                    np.load(path, allow_pickle=False) as actual,
+                    np.load(committed, allow_pickle=False) as expected,
+                ):
+                    if set(actual.files) != set(expected.files):
+                        raise ValueError(f"trace array keys drift: {path.name}")
+                    for key in actual.files:
+                        if actual[key].dtype != expected[
+                            key
+                        ].dtype or not np.array_equal(actual[key], expected[key]):
+                            raise ValueError(f"trace array drift: {path.name}:{key}")
+            elif json.loads(path.read_text()) != json.loads(committed.read_text()):
+                raise ValueError(f"trace JSON drift: {path.name}")
+    print("Independent recorded-search fixtures match committed values")
 
 
 if __name__ == "__main__":
