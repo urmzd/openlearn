@@ -34,7 +34,7 @@ def main():
             "<|notimestamps|>",
         )
     ]
-    vocabulary = [65, 66, 67, 68, 69, eot]
+    vocabulary = [65, 66, 67, 68, 69, 70, eot]
     root = Path("course/fixtures/MS-L14")
     root.mkdir(parents=True, exist_ok=True)
     for beam in (0, 5):
@@ -44,17 +44,17 @@ def main():
         decoder = (
             algorithms["BeamSearchDecoder"](
                 beam,
-                5,
+                6,
                 type(
                     "Inference", (), {"rearrange_kv_cache": lambda self, indices: None}
                 )(),
                 1.0,
             )
             if beam
-            else algorithms["GreedyDecoder"](0, 5)
+            else algorithms["GreedyDecoder"](0, 6)
         )
         # Upstream only needs generated tokens, with a harmless start marker.
-        tokens = torch.tensor([[6]] * width)
+        tokens = torch.tensor([[7]] * width)
         scores = torch.zeros(width)
         for _ in range(6):
             batch = []
@@ -63,14 +63,14 @@ def main():
                 seed = int.from_bytes(
                     hashlib.sha256(bytes(generated)).digest()[:8], "little"
                 )
-                row = np.random.default_rng(seed).normal(size=6).astype(np.float32)
-                row[5] += len(generated) * 1.2 - 3
+                row = np.random.default_rng(seed).normal(size=7).astype(np.float32)
+                row[6] += len(generated) * 1.2 - 3
                 if not generated:
                     # Greedy selects 0, but 1 leads to a much stronger complete
                     # path. Beam-5 must explore and rank that alternative.
-                    row = np.array([3, 2.9, -20, -20, -20, -20], dtype=np.float32)
+                    row = np.array([3, 2.9, -20, -20, -20, -20, -100], dtype=np.float32)
                 elif generated[0] == 1:
-                    row = np.array([-20, -20, -20, -20, -20, 3], dtype=np.float32)
+                    row = np.array([-20, -20, -20, -20, -20, -20, 3], dtype=np.float32)
                 rows[tuple(prompt + [vocabulary[i] for i in generated])] = row.copy()
                 batch.append(row)
             tokens, done = decoder.update(tokens, torch.tensor(np.stack(batch)), scores)
@@ -80,12 +80,12 @@ def main():
         candidates = []
         for candidate in grouped[0]:
             ids = candidate.tolist()[1:]
-            candidates.append(ids[: ids.index(5)] if 5 in ids else ids)
+            candidates.append(ids[: ids.index(6)] if 6 in ids else ids)
         selected = algorithms["MaximumLikelihoodRanker"](None).rank(
             [[torch.tensor(ids) for ids in candidates]], totals
         )[0]
         expected = [vocabulary[i] for i in candidates[selected]]
-        rows[(prompt[0],)] = np.zeros(6, dtype=np.float32)
+        rows[(prompt[0],)] = np.zeros(7, dtype=np.float32)
         offsets, prefixes, values = [0], [], []
         for prefix, row in sorted(rows.items()):
             prefixes.extend(prefix)
