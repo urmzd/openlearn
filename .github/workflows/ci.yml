@@ -320,7 +320,8 @@ jobs:
             course/tests/L13.1 course/tests/L13.2 course/tests/L13.3 \
             course/tests/L13.4 course/tests/L13.5 course/tests/L13.6 \
             course/tests/L14.1 course/tests/L14.2 course/tests/L14.3 \
-            course/tests/L14.4 course/tests/L14.5 course/tests/ethics.08
+            course/tests/L14.4 course/tests/L14.5 course/tests/ethics.08 \
+            course/tests/integration/test_asr_corpus_cli.py
 
       - name: Verify speech decoding against every mutant
         env:

@@ -166,3 +166,9 @@ oracle evidence. Registration does not establish production ASR accuracy.
 ### Transcript scoring CLI
 
 `tinyllm eval asr --pred SEGMENTS.json --ref TRANSCRIPT.txt` accepts the transcription command's object or a list of segment objects. Segment text is joined in order; a text-only object is also accepted. Both transcripts use `basic_normalize`. The final JSON line contains pooled `wer`, `cer`, word substitution/deletion/insertion counts, `reference_words`, and `normalizer` (`whisper-basic`). Invalid predictions and an empty normalized reference exit 2. This command scores a single recording; corpus inference and bootstrap intervals require the separate corpus evaluation path.
+
+### Corpus evaluation CLI
+
+`tinyllm eval asr --model DIR --data MANIFEST.jsonl [--language CODE] [--seed 0] [--bootstrap 1000]` loads one Whisper model and tokenizer, then transcribes every manifest item. Each JSONL row has `audio` (a WAV path relative to the manifest, or absolute) and `text` (the reference transcript). References must each contain normalized words so every bootstrap resample has a defined denominator. Empty corpora, missing WAV files, and malformed rows fail before model loading.
+
+Output reports pooled `wer`, `cer`, utterance-bootstrap `wer_ci` (95% percentile interval), `items`, `reference_words`, `normalizer`, `seed`, and `bootstrap`. Resampling operates on word-edit count rows; it does not average per-item WER or rerun inference. The seed controls decoding and bootstrap reproducibility. `course/tests/integration/test_asr_corpus_cli.py` checks orchestration and pooled interval semantics; real-checkpoint accuracy requires the separate nightly oracle gate.

@@ -261,6 +261,8 @@ def features(argv: list[str]) -> int:
 
 def evaluate(argv: list[str]) -> int:
     """Score a generated transcript against a UTF-8 reference transcript."""
+    if "--data" in argv:
+        return evaluate_corpus(argv)
     parser = argparse.ArgumentParser(prog="tinyllm eval asr")
     parser.add_argument("--pred", required=True)
     parser.add_argument("--ref", required=True)
@@ -296,6 +298,81 @@ def evaluate(argv: list[str]) -> int:
             "insertions": int(stats[2]),
             "reference_words": int(stats[3]),
             "normalizer": "whisper-basic",
+        }
+        print(json.dumps(result, sort_keys=True, allow_nan=False))
+        return 0
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        print(f"eval asr: {error}", file=sys.stderr)
+        return 2
+
+
+def evaluate_corpus(argv: list[str]) -> int:
+    """Transcribe a JSONL WAV corpus once and bootstrap utterance-level WER."""
+    parser = argparse.ArgumentParser(prog="tinyllm eval asr")
+    parser.add_argument("--model", required=True)
+    parser.add_argument("--data", required=True)
+    parser.add_argument("--language")
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--bootstrap", type=int, default=1000)
+    args = parser.parse_args(argv)
+    try:
+        from tinyllm.eval.mm import basic_normalize, bootstrap_ci, cer, wer, wer_stats
+        from tinyllm.io.wav import read_wav
+        from tinyllm.speech.decode import DecodeOptions, transcribe
+        from tinyllm.speech.decoder import Whisper
+        from tinyllm.speech.frontend import FeatureConfig, to_mono_16k
+        from tinyllm.speech.tokenizer import WhisperTokenizer
+
+        if args.bootstrap < 1:
+            raise ValueError("bootstrap count must be positive")
+        manifest = Path(args.data)
+        rows, refs = [], []
+        for line in manifest.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            if (
+                not isinstance(row, dict)
+                or not isinstance(row.get("audio"), str)
+                or not isinstance(row.get("text"), str)
+            ):
+                raise ValueError("each corpus row needs audio and text strings")
+            ref = basic_normalize(row["text"])
+            if not ref.split():
+                raise ValueError("each corpus reference must contain normalized words")
+            path = manifest.parent / row["audio"]
+            if not path.is_file():
+                raise ValueError(f"corpus audio missing: {path}")
+            rows.append(path)
+            refs.append(ref)
+        if not rows:
+            raise ValueError("corpus must contain at least one row")
+        model = Whisper.from_pretrained(args.model)
+        tok = WhisperTokenizer.from_pretrained(args.model, language=args.language)
+        if model.config.vocab != tok.bpe.vocab_size:
+            raise ValueError("tokenizer and model vocabulary sizes differ")
+        cfg = FeatureConfig(feature_size=model.config.n_mels)
+        opts = DecodeOptions(language=args.language, seed=args.seed)
+        opts.validate()
+        hyps = []
+        for path in rows:
+            audio = to_mono_16k(read_wav(path.read_bytes()), cfg)
+            segments = transcribe(model, tok, audio, opts)
+            hyps.append(basic_normalize(" ".join(s.text for s in segments)))
+        stats = wer_stats(refs, hyps)
+        _, low, high = bootstrap_ci(
+            stats,
+            lambda sample: float(sample[:, :3].sum()) / float(sample[:, 3].sum()),
+            n=args.bootstrap,
+            seed=args.seed,
+        )
+        result = {
+            "wer": wer(refs, hyps),
+            "cer": cer(refs, hyps),
+            "wer_ci": [low, high],
+            "items": len(rows),
+            "reference_words": int(stats[:, 3].sum()),
+            "normalizer": "whisper-basic",
+            "seed": args.seed,
+            "bootstrap": args.bootstrap,
         }
         print(json.dumps(result, sort_keys=True, allow_nan=False))
         return 0
