@@ -30,13 +30,16 @@ class WhisperLogitsSource:
     """One audio window, one bounded decoder cache, arbitrary prefix queries."""
 
     def __init__(self, model: Whisper, xkv: CrossKV) -> None:
+        # SOLUTION-BEGIN L14.4
         self.model = model
         self.xkv = xkv
         self.cache = model.new_cache()
         self.prefix: tuple[int, ...] = ()
         self.last: NDArray | None = None
+        # SOLUTION-END
 
     def step(self, prefix: Sequence[int]) -> NDArray:
+        # SOLUTION-BEGIN L14.4
         ids = np.asarray(prefix)
         if (
             ids.ndim != 1
@@ -65,10 +68,12 @@ class WhisperLogitsSource:
         self.prefix = key
         self.last = np.asarray(row, dtype=np.float32).copy()
         return self.last.copy()
+        # SOLUTION-END
 
 
 def sot_sequence(tok, language: str | None, task: str, timestamps: bool) -> list[int]:
     """Construct explicit language/task controls without changing the tokenizer."""
+    # SOLUTION-BEGIN L14.4
     if task not in ("transcribe", "translate"):
         raise ValueError("task must be transcribe or translate")
     languages = dict(zip(tok.all_language_codes, tok.all_language_tokens, strict=True))
@@ -83,10 +88,12 @@ def sot_sequence(tok, language: str | None, task: str, timestamps: bool) -> list
     if not timestamps:
         result.append(tok.no_timestamps)
     return result
+    # SOLUTION-END
 
 
 def language_probs(src: LogitsSource, tok) -> tuple[str, dict[str, float]]:
     """Normalize only language-token logits after SOT, excluding all text ids."""
+    # SOLUTION-BEGIN L14.4
     codes = tuple(tok.all_language_codes)
     ids = np.asarray(tok.all_language_tokens, dtype=np.int64)
     if (
@@ -109,18 +116,21 @@ def language_probs(src: LogitsSource, tok) -> tuple[str, dict[str, float]]:
     weights = np.exp(values - np.max(values))
     probs = dict(zip(codes, (weights / weights.sum()).tolist(), strict=True))
     return codes[int(np.argmax(weights))], probs
+    # SOLUTION-END
 
 
 def detect_language(
     model: Whisper, mel_window: NDArray, tok
 ) -> tuple[str, dict[str, float]]:
     """Encode one window, then detect language using the unconditioned SOT row."""
+    # SOLUTION-BEGIN L14.4
     mel = np.asarray(mel_window, dtype=np.float32)
     if mel.ndim == 2:
         mel = mel[None]
     if mel.ndim != 3 or mel.shape[0] != 1:
         raise ValueError("language detection accepts exactly one audio window")
     return language_probs(WhisperLogitsSource(model, model.encode(mel)), tok)
+    # SOLUTION-END
 
 
 def apply_timestamp_rules(
@@ -137,6 +147,7 @@ def apply_timestamp_rules(
     Timestamp probability mass, not the best single timestamp, competes with
     the best text token. See contracts/spec/asr-decoding.md.
     """
+    # SOLUTION-BEGIN L14.4
     row = np.asarray(logits, dtype=np.float64).copy()
     begin = tok.timestamp_begin
     if (
@@ -179,6 +190,7 @@ def apply_timestamp_rules(
     if time_mass > text_mass:
         row[:begin] = -np.inf
     return row
+    # SOLUTION-END
 
 
 @dataclass(frozen=True)
@@ -201,6 +213,7 @@ class DecodeOptions:
     suppress_blank: bool = True
 
     def validate(self) -> None:
+        # SOLUTION-BEGIN L14.4
         if self.task not in ("transcribe", "translate"):
             raise ValueError("invalid decoding task")
         if any(
@@ -232,6 +245,7 @@ class DecodeOptions:
             or not 0 <= self.no_speech_threshold <= 1
         ):
             raise ValueError("invalid probability thresholds")
+        # SOLUTION-END
 
 
 @dataclass
@@ -249,6 +263,7 @@ class Segment:
 
 
 def _logprobs(row: NDArray) -> NDArray:
+    # SOLUTION-BEGIN L14.4
     values = np.asarray(row, dtype=np.float64)
     if (
         values.ndim != 1
@@ -262,9 +277,11 @@ def _logprobs(row: NDArray) -> NDArray:
         raise ValueError("no legal token remains")
     shifted = values - peak
     return shifted - np.log(np.exp(shifted).sum())
+    # SOLUTION-END
 
 
 def _filtered_logits(src, tok, initial, tokens, opts):
+    # SOLUTION-BEGIN L14.4
     row = np.array(src.step(initial + list(tokens)), dtype=np.float64, copy=True)
     # Validate before indexing, and mask control tokens independently of the
     # user suppress list. EOT remains available after the first position.
@@ -299,6 +316,7 @@ def _filtered_logits(src, tok, initial, tokens, opts):
     row[tok.timestamp_begin :] = -np.inf
     row[tok.no_timestamps] = -np.inf
     return row
+    # SOLUTION-END
 
 
 def decode_window(
@@ -315,6 +333,7 @@ def decode_window(
     The result retains timestamp ids but excludes EOT. Absolute segment times
     and long-form seeking belong to the transcribe loop.
     """
+    # SOLUTION-BEGIN L14.4
     opts.validate()
     if not math.isfinite(temperature) or temperature < 0:
         raise ValueError("temperature must be finite and nonnegative")
@@ -417,10 +436,12 @@ def decode_window(
         ratio,
         no_speech,
     )
+    # SOLUTION-END
 
 
 def decode_with_fallback(src, tok, prompt, opts: DecodeOptions, rng: PCG32) -> Segment:
     """Retry only failed quality gates; likely silence does not need hotter draws."""
+    # SOLUTION-BEGIN L14.4
     opts.validate()
     for temperature in opts.temperatures:
         result = decode_window(src, tok, prompt, opts, temperature, rng)
@@ -430,10 +451,12 @@ def decode_with_fallback(src, tok, prompt, opts: DecodeOptions, rng: PCG32) -> S
         if silent or not (repetitive or uncertain):
             return result
     return result
+    # SOLUTION-END
 
 
 def _window_segments(result: Segment, tok, offset: float, duration: float):
     """Return completed pieces and the next seek, in seconds relative to a window."""
+    # SOLUTION-BEGIN L14.4
     ids = result.tokens
     is_time = [t >= tok.timestamp_begin for t in ids]
     boundaries = [i for i in range(1, len(ids)) if is_time[i - 1] and is_time[i]]
@@ -487,6 +510,7 @@ def _window_segments(result: Segment, tok, offset: float, duration: float):
             )
     # A truncated or malformed timestamp trace must never spin on the same window.
     return segments, min(duration, advance) if advance > 0 else duration
+    # SOLUTION-END
 
 
 def _transcribe_windows(
@@ -497,6 +521,7 @@ def _transcribe_windows(
     Seek units are 10 ms mel frames. A factory call encodes exactly one window;
     fallback reuses that source and therefore its cross-attention state.
     """
+    # SOLUTION-BEGIN L14.4
     from dataclasses import replace
 
     opts.validate()
@@ -532,12 +557,14 @@ def _transcribe_windows(
             history.clear()
         seek += max(1, round(advance / 0.01))
     return results
+    # SOLUTION-END
 
 
 def transcribe(
     model: Whisper, tok, audio_16k: NDArray, opts: DecodeOptions
 ) -> list[Segment]:
     """Transcribe mono 16 kHz samples with one encoder call per sought window."""
+    # SOLUTION-BEGIN L14.4
     from tinyllm.speech.frontend import FeatureConfig, whisper_log_mel
 
     opts.validate()
@@ -563,3 +590,4 @@ def transcribe(
     return _transcribe_windows(
         source_for_seek, tok, audio.size / 16000, window_frames, opts
     )
+    # SOLUTION-END

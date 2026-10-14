@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/decode.py
++++ b/python/tinyllm/speech/decode.py
+@@ -427,7 +427,7 @@
+         repetitive = result.compression_ratio > opts.compression_ratio_threshold
+         uncertain = result.avg_logprob < opts.logprob_threshold
+         silent = result.no_speech_prob > opts.no_speech_threshold and uncertain
+-        if silent or not (repetitive or uncertain):
++        if not uncertain:
+             return result
+     return result
+ 

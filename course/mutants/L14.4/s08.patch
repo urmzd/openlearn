@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/decode.py
++++ b/python/tinyllm/speech/decode.py
+@@ -342,7 +342,7 @@
+     # Each candidate stores generated ids including a terminating EOT and the
+     # sum of untempered log probabilities. Stable token-id ordering breaks ties.
+     finished: list[tuple[tuple[int, ...], float]] = []
+-    beam = opts.beam_size if temperature == 0 else 0
++    beam = 0
+     if beam > 1:
+         active = [((), 0.0)]
+         wanted = round(beam * opts.patience)

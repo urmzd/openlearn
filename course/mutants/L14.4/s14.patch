@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/trace.py
++++ b/python/tinyllm/speech/trace.py
+@@ -131,7 +131,7 @@
+             def step(self, prefix: Sequence[int]):
+                 if any(not isinstance(t, (int, np.integer)) for t in prefix):
+                     raise ValueError("trace prefix must contain integer ids")
+-                key = (seek, tuple(int(t) for t in prefix))
++                key = (0, tuple(int(t) for t in prefix))
+                 if key not in recording.rows:
+                     raise ValueError(
+                         f"trace has no logits for seek={seek}, prefix={key[1]}"

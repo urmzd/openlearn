@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/decode.py
++++ b/python/tinyllm/speech/decode.py
+@@ -164,7 +164,7 @@
+             row[: tok.eot] = -np.inf
+     times = [t for t in generated if t >= begin]
+     if times:
+-        minimum = times[-1] + (0 if last_is_time and not follows_time else 1)
++        minimum = times[-1]
+         row[begin:minimum] = -np.inf
+     if not generated:
+         row[:begin] = -np.inf

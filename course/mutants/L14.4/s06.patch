@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/decode.py
++++ b/python/tinyllm/speech/decode.py
+@@ -272,7 +272,7 @@
+     blocked = set(opts.suppress_tokens)
+     if -1 in blocked:
+         blocked.remove(-1)
+-        blocked.update(tok.non_speech_tokens)
++        blocked.update(())
+     for name in ("sot", "sot_prev", "sot_lm", "transcribe", "translate", "no_speech"):
+         value = getattr(tok, name, None)
+         if value is not None:

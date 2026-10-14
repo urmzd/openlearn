@@ -20,6 +20,7 @@ class WhisperTokenizer:
         language: str | None = None,
         suppress_tokens: Sequence[int] | None = None,
     ) -> None:
+        # SOLUTION-BEGIN L14.4
         self.bpe = bpe
         self.language = language
         controls = {
@@ -87,20 +88,26 @@ class WhisperTokenizer:
             self.non_speech_tokens = tuple(sorted(set(suppress_tokens)))
         else:
             self.non_speech_tokens = self._non_speech()
+        # SOLUTION-END
 
     def encode(self, text: str) -> list[int]:
         # Text supplied as previous context is ordinary text, never executable
         # tokenizer control syntax. Reject explicit controls instead of injecting.
+        # SOLUTION-BEGIN L14.4
         if any(token in text for token in self.bpe.added):
             raise ValueError("ordinary transcript text contains a special token")
         return self.bpe.encode(text)
+        # SOLUTION-END
 
     def decode(self, ids: Sequence[int]) -> str:
+        # SOLUTION-BEGIN L14.4
         return self.bpe.decode([int(t) for t in ids if t < self.timestamp_begin])
+        # SOLUTION-END
 
     def _non_speech(self) -> tuple[int, ...]:
         # Speaker-label punctuation and music annotations, preserving normal
         # sentence punctuation. Musical UTF-8 prefixes may be multi-token.
+        # SOLUTION-BEGIN L14.4
         symbols = list('"#()*+/:;<=>@[\\]^_`{|}~「」『』')
         symbols.extend(
             [
@@ -134,11 +141,13 @@ class WhisperTokenizer:
                 if len(ids) == 1 or symbol in music:
                     blocked.add(ids[0])
         return tuple(sorted(blocked))
+        # SOLUTION-END
 
     @classmethod
     def from_pretrained(
         cls, directory: str, *, language: str | None = None
     ) -> WhisperTokenizer:
+        # SOLUTION-BEGIN L14.4
         root = Path(directory)
         doc = json.loads((root / "tokenizer.json").read_text())
         if doc.get("version") != "1.0" or doc.get("normalizer") is not None:
@@ -206,3 +215,4 @@ class WhisperTokenizer:
             language=language,
             suppress_tokens=generation.get("suppress_tokens"),
         )
+        # SOLUTION-END

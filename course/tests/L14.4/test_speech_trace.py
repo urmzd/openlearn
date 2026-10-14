@@ -67,7 +67,11 @@ def test_dense_rows_and_duplicate_prefix_validation(tmp_path):
         prefix_ids=np.array([1]),
         logits=np.array([[1.0, 2.0]]),
     )
-    assert RecordedLogits(str(path)).at_seek(0).step([1]).tolist() == [1.0, 2.0]
+    window = RecordedLogits(str(path)).at_seek(0)
+    row = window.step([1])
+    assert row.tolist() == [1.0, 2.0]
+    row[:] = 0
+    assert window.step([1]).tolist() == [1.0, 2.0]
     np.savez(
         path,
         prefix_offsets=np.array([0, 1, 2]),

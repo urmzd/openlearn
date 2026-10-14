@@ -17,6 +17,7 @@ class RecordedLogits:
     """
 
     def __init__(self, path: str, *, context_size: int = 448) -> None:
+        # SOLUTION-BEGIN L14.4
         if type(context_size) is not int or context_size < 2:
             raise ValueError("trace context_size must be an integer >= 2")
         self.context_size = context_size
@@ -119,8 +120,10 @@ class RecordedLogits:
                     None if sparse_ids is None else sparse_ids[row].copy(),
                     values[row].copy(),
                 )
+        # SOLUTION-END
 
     def at_seek(self, seek: int):
+        # SOLUTION-BEGIN L14.4
         if type(seek) is not int or seek < 0:
             raise ValueError("seek must be a nonnegative integer frame")
         recording = self
@@ -144,3 +147,4 @@ class RecordedLogits:
                 return row
 
         return Window()
+        # SOLUTION-END
