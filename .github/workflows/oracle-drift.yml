@@ -73,10 +73,18 @@ jobs:
           args=()
           if [ "${{ inputs.scope }}" != whisper ] || [ -f course/fixtures/L14.3/decoder_hf.npz ]; then args+=(--check); fi
           "$RUNNER_TEMP/whisper-oracle/bin/python" course/oracle/L14.3/decoder_hf.py "${args[@]}" | tee "$RUNNER_TEMP/whisper-manifest-row.tsv"
+      - name: Generate independent decoding policy values
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "${{ inputs.scope }}" != whisper ] || [ -f course/fixtures/L14.4/decode_openai.json ]; then args+=(--check); fi
+          "$RUNNER_TEMP/whisper-oracle/bin/python" course/oracle/L14.4/decode_openai.py "${args[@]}" | tee "$RUNNER_TEMP/whisper-policy-manifest-row.tsv"
       - uses: actions/upload-artifact@v4
         with:
           name: whisper-decoder-oracle
           path: |
             course/fixtures/L14.3/decoder_hf.npz
+            course/fixtures/L14.4/decode_openai.json
+            ${{ runner.temp }}/whisper-policy-manifest-row.tsv
             ${{ runner.temp }}/whisper-manifest-row.tsv
           if-no-files-found: error
