@@ -202,7 +202,7 @@ def test_loader_preserves_half_precision_position_table():
     _, positions = whisper_state_from_hf(
         {"model.encoder.embed_positions.weight": table}, cfg
     )
-    np.testing.assert_array_equal(positions, table)
+    assert_close(positions, table, atol=0, rtol=0)
     positions[0, 0] = 1
     assert table[0, 0] == 0
     table[0, 0] = 0.01
