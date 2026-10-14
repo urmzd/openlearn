@@ -94,10 +94,31 @@ are clamped to the recording, and every iteration advances at least one frame.
 Only accepted segment tokens enter prompt history. Disabled conditioning or a
 selected temperature above 0.5 clears that history before the next window.
 
+## Tokenizer and command line
+
+`WhisperTokenizer.from_pretrained` reads local HF `tokenizer.json` and optional
+`generation_config.json`, reusing the learner's byte BPE. It validates every
+byte symbol and all 1501 contiguous timestamp ids. Both no-speech spellings,
+`<|nospeech|>` and HF's `<|nocaptions|>`, are supported. Template post-processing
+is not executed: the decode policy constructs control sequences explicitly.
+The generation config supplies multilingual mode and suppression ids; without
+it the standard 51864-token English vocabulary is recognized. Other vocabularies
+must contain language controls. Ordinary transcript input rejects special-token
+syntax instead of allowing it to alter the decoder prompt.
+
+`tinyllm transcribe --model DIR --audio FILE.wav` loads model and tokenizer from
+the same directory, checks vocabulary agreement, mixes/resamples WAV input to
+16 kHz and emits JSON text plus segments. `--out` also writes that same JSON.
+`--greedy` disables fallback, while the default temperature schedule retains it.
+`--beam`, `--best-of`, `--patience`, `--language`, `--task`, `--max-tokens`,
+`--seed`, `--no-timestamps` and `--no-condition-on-previous-text` expose the
+policy settings. `--detect-language` returns language probabilities for the
+first window. Invalid inputs return exit code 2 with an error on stderr.
+
 ## Completion status
 
 This contract currently covers the logits adapter, initial controls, language
 selection, timestamp filtering, single-window search, fallback and long-form seeking. L14.4 is not yet registered or complete.
-The tokenizer loader, CLI, independent oracles, mutants, public type contracts,
-module registration and six-beat chapter remain required by DESIGN.md. The new
+Independent oracles, recorded-logit CLI mode, public type contracts, mutants,
+module registration and a six-beat chapter remain required by DESIGN.md. The new
 long-form path still requires independent transcript/segment parity validation.
