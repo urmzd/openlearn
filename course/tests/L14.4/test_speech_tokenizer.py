@@ -250,4 +250,3 @@ def test_cli_features_match_independent_hf(tmp_path, capsys, n_mels):
     assert cli.intercept(argv) == 2
     assert "no WAV files" in capsys.readouterr().err
     assert not output.exists()
-

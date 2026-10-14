@@ -10,6 +10,7 @@
 | json-last-line  | metrics = { name = ">= 0.95" } (ops >= <= > < ==)                    |
 | tokens-equal    | file (JSON ids list or {"ids": [...]}), near_tie = {logits, margin, argv} |
 | numeric         | values, rtol, atol                                                   |
+| npz-close       | file, output, optional keys, atol, rtol; exact shapes and finite values |
 | logits-close    | file (reference npz), output (the step's npz), atol (1e-3), top_k (5) |
 | json-schema     | schema (path or inline table)                                        |
 | file-produced   | glob, min_count, schema, contains, rows (parquet total, e.g. ">= 1000") |
@@ -388,6 +389,84 @@ def read_npz(path: Path) -> dict[str, list]:
             if name.endswith(".npy"):
                 out[name[:-4]] = _npy(z.read(name), f"{path}:{name}")
     return out
+
+
+def _shaped_npz(path: Path) -> dict[str, tuple[tuple, list]]:
+    """Read numeric arrays with shapes, rejecting ambiguous duplicate members."""
+    result = {}
+    with zipfile.ZipFile(path) as archive:
+        for name in archive.namelist():
+            if not name.endswith(".npy"):
+                continue
+            key = name[:-4]
+            if key in result:
+                raise ValueError(f"duplicate array {key}")
+            raw = archive.read(name)
+            values = _npy(raw, f"{path}:{name}")
+            if raw[6] == 1:
+                size, start = struct.unpack("<H", raw[8:10])[0], 10
+            else:
+                size, start = struct.unpack("<I", raw[8:12])[0], 12
+            header = ast.literal_eval(raw[start : start + size].decode("latin-1"))
+            shape = tuple(header["shape"])
+            if any(type(n) is not int or n < 0 for n in shape):
+                raise ValueError(f"invalid shape for {key}")
+            result[key] = (shape, values)
+    return result
+
+
+def m_npz_close(e, out, mc) -> Verdict:
+    """Compare selected numeric arrays, requiring exact shapes and finite values."""
+    if not e.get("file") or not e.get("output"):
+        raise HarnessError("npz-close needs file and output")
+    atol, rtol = float(e.get("atol", 0.0)), float(e.get("rtol", 0.0))
+    if not all(math.isfinite(x) and x >= 0 for x in (atol, rtol)):
+        raise HarnessError("npz-close tolerances must be finite and nonnegative")
+    ref_path = mc.run.course_file(placeholders.expand(e["file"], mc.lookup))
+    got_path = Path(placeholders.expand(e["output"], mc.lookup))
+    if not got_path.is_absolute():
+        got_path = (mc.run.learner or Path.cwd()) / got_path
+    errors = (
+        OSError,
+        ValueError,
+        zipfile.BadZipFile,
+        SyntaxError,
+        struct.error,
+        KeyError,
+        TypeError,
+    )
+    try:
+        ref = _shaped_npz(ref_path)
+    except errors as error:
+        raise HarnessError(f"reference npz {ref_path}: {error}") from None
+    keys = e.get("keys", sorted(ref))
+    if (
+        not isinstance(keys, list)
+        or not keys
+        or any(not isinstance(k, str) or k not in ref for k in keys)
+    ):
+        raise HarnessError("npz-close keys must select nonempty reference arrays")
+    if len(set(keys)) != len(keys):
+        raise HarnessError("npz-close keys must be unique")
+    try:
+        got = _shaped_npz(got_path)
+    except errors as error:
+        return Verdict("fail", f"output npz {got_path}: {error}")
+    if set(got) != set(keys):
+        return Verdict("fail", f"array keys {sorted(got)}, want {sorted(keys)}")
+    for key in keys:
+        shape, expected = ref[key]
+        actual_shape, actual = got[key]
+        if actual_shape != shape:
+            return Verdict("fail", f"{key}: shape {actual_shape}, want {shape}")
+        for i, (a, b) in enumerate(zip(actual, expected)):
+            if not math.isfinite(b):
+                raise HarnessError(f"{key}[{i}]: nonfinite reference value")
+            if not math.isfinite(a) or abs(a - b) > atol + rtol * abs(b):
+                return Verdict(
+                    "fail", f"{key}[{i}]: {a!r} vs {b!r} (atol {atol:g}, rtol {rtol:g})"
+                )
+    return Verdict("pass")
 
 
 def _top_ids(pairs: list[tuple[int, float]], k: int) -> list[int]:
@@ -1120,6 +1199,7 @@ MATCHERS = {
     "tokens-equal": m_tokens_equal,
     "numeric": m_numeric,
     "logits-close": m_logits_close,
+    "npz-close": m_npz_close,
     "json-schema": m_json_schema,
     "file-produced": m_file_produced,
     "sse": m_sse,
