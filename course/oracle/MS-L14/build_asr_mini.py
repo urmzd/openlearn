@@ -13,10 +13,13 @@ Outputs are learner-local assets, never published audio downloads.
 
 import argparse
 import csv
+import gzip
 import hashlib
 import io
 import json
+import shutil
 import struct
+import sys
 import tarfile
 import tempfile
 from pathlib import Path
@@ -41,13 +44,17 @@ def download(path):
         )
     _, _, url, sha, size, *_ = row
     digest, count = hashlib.sha256(), 0
+    print("Downloading pinned LibriSpeech archive", file=sys.stderr, flush=True)
     with urlopen(url, timeout=60) as response, path.open("wb") as target:
         while chunk := response.read(1024 * 1024):
             count += len(chunk)
+            if count > int(size):
+                raise ValueError("LibriSpeech source exceeds pinned size")
             digest.update(chunk)
             target.write(chunk)
     if count != int(size) or digest.hexdigest() != sha:
         raise ValueError("LibriSpeech source fingerprint mismatch")
+    print("LibriSpeech archive SHA-256 verified", file=sys.stderr, flush=True)
     return sha
 
 
@@ -65,86 +72,93 @@ def wav(samples):
 
 
 def build(archive, out, source_sha):
+    # Tar offsets are cheap only on an uncompressed stream. Random reads from
+    # r:gz otherwise decompress the archive repeatedly for transcripts/clips.
+    print("Unpacking archive once for indexed reads", file=sys.stderr, flush=True)
+    with tempfile.TemporaryFile() as unpacked:
+        with gzip.open(archive, "rb") as compressed:
+            shutil.copyfileobj(compressed, unpacked, length=1024 * 1024)
+        unpacked.seek(0)
+        with tarfile.open(fileobj=unpacked, mode="r:") as tar:
+            build_from_tar(tar, out, source_sha)
+
+
+def build_from_tar(tar, out, source_sha):
     out.mkdir(parents=True, exist_ok=True)
-    with tarfile.open(archive, "r:gz") as tar:
-        members = {m.name: m for m in tar.getmembers() if m.isfile()}
-        clips = sorted((n for n in members if n.endswith(".flac")), key=numeric_id)
-        texts = {}
-        for name in sorted(members):
-            if name.endswith(".trans.txt"):
-                for line in (
-                    tar.extractfile(members[name]).read().decode("utf-8").splitlines()
-                ):
-                    key, text = line.split(" ", 1)
-                    texts[key] = text
+    members = {m.name: m for m in tar.getmembers() if m.isfile()}
+    clips = sorted((n for n in members if n.endswith(".flac")), key=numeric_id)
+    texts = {}
+    for name in sorted(members):
+        if name.endswith(".trans.txt"):
+            for line in (
+                tar.extractfile(members[name]).read().decode("utf-8").splitlines()
+            ):
+                key, text = line.split(" ", 1)
+                texts[key] = text
 
-        def read(name):
-            samples, rate = sf.read(
-                io.BytesIO(tar.extractfile(members[name]).read()), dtype="int16"
-            )
-            if rate != RATE or samples.ndim != 1:
-                raise ValueError(f"unexpected source geometry: {name}")
-            return samples
+    def read(name):
+        samples, rate = sf.read(
+            io.BytesIO(tar.extractfile(members[name]).read()), dtype="int16"
+        )
+        if rate != RATE or samples.ndim != 1:
+            raise ValueError(f"unexpected source geometry: {name}")
+        return samples
 
-        def attribution(name):
-            speaker, chapter, utterance = numeric_id(name)
-            return {
-                "id": Path(name).stem,
-                "speaker": speaker,
-                "chapter": chapter,
-                "utterance": utterance,
-                "text": texts[Path(name).stem],
-            }
+    def attribution(name):
+        speaker, chapter, utterance = numeric_id(name)
+        return {
+            "id": Path(name).stem,
+            "speaker": speaker,
+            "chapter": chapter,
+            "utterance": utterance,
+            "text": texts[Path(name).stem],
+        }
 
-        selected, counts = [], {}
-        speakers = sorted({numeric_id(n)[0] for n in clips})[:6]
+    selected, counts = [], {}
+    speakers = sorted({numeric_id(n)[0] for n in clips})[:6]
+    for name in clips:
+        speaker = numeric_id(name)[0]
+        if speaker not in speakers or counts.get(speaker, 0) == 4:
+            continue
+        samples = read(name)
+        if not 2 * RATE <= len(samples) <= 15 * RATE:
+            continue
+        rel = f"clips/{Path(name).stem}.wav"
+        (out / rel).parent.mkdir(exist_ok=True)
+        (out / rel).write_bytes(wav(samples))
+        selected.append({"audio": rel, **attribution(name)})
+        counts[speaker] = counts.get(speaker, 0) + 1
+    if len(selected) != 24:
+        raise ValueError("source no longer yields the specified 24-utterance corpus")
+    (out / "manifest.jsonl").write_text(
+        "".join(json.dumps(row, sort_keys=True) + "\n" for row in selected),
+        encoding="utf-8",
+    )
+    chapters = sorted({numeric_id(n)[:2] for n in clips})
+    for chapter in chapters:
+        pieces, sources, frames = [], [], 0
         for name in clips:
-            speaker = numeric_id(name)[0]
-            if speaker not in speakers or counts.get(speaker, 0) == 4:
+            if numeric_id(name)[:2] != chapter:
                 continue
             samples = read(name)
-            if not 2 * RATE <= len(samples) <= 15 * RATE:
-                continue
-            rel = f"clips/{Path(name).stem}.wav"
-            (out / rel).parent.mkdir(exist_ok=True)
-            (out / rel).write_bytes(wav(samples))
-            selected.append({"audio": rel, **attribution(name)})
-            counts[speaker] = counts.get(speaker, 0) + 1
-        if len(selected) != 24:
-            raise ValueError(
-                "source no longer yields the specified 24-utterance corpus"
-            )
-        (out / "manifest.jsonl").write_text(
-            "".join(json.dumps(row, sort_keys=True) + "\n" for row in selected),
-            encoding="utf-8",
-        )
-        chapters = sorted({numeric_id(n)[:2] for n in clips})
-        for chapter in chapters:
-            pieces, sources, frames = [], [], 0
-            for name in clips:
-                if numeric_id(name)[:2] != chapter:
-                    continue
-                samples = read(name)
-                if frames + len(samples) > 90 * RATE:
-                    break
-                pieces.append(samples)
-                sources.append(
-                    {**attribution(name), "start_frame": frames, "frames": len(samples)}
-                )
-                frames += len(samples)
-            if frames >= 80 * RATE:
+            if frames + len(samples) > 90 * RATE:
                 break
-        else:
-            raise ValueError(
-                "no chapter supplies 80–90 seconds of consecutive complete utterances"
+            pieces.append(samples)
+            sources.append(
+                {**attribution(name), "start_frame": frames, "frames": len(samples)}
             )
-        samples = np.concatenate(
-            [*pieces, np.zeros(90 * RATE - frames, dtype=np.int16)]
+            frames += len(samples)
+        if frames >= 80 * RATE:
+            break
+    else:
+        raise ValueError(
+            "no chapter supplies 80–90 seconds of consecutive complete utterances"
         )
-        (out / "longform-90s.wav").write_bytes(wav(samples))
-        (out / "longform-90s.txt").write_text(
-            " ".join(s["text"] for s in sources) + "\n", encoding="utf-8"
-        )
+    samples = np.concatenate([*pieces, np.zeros(90 * RATE - frames, dtype=np.int16)])
+    (out / "longform-90s.wav").write_bytes(wav(samples))
+    (out / "longform-90s.txt").write_text(
+        " ".join(s["text"] for s in sources) + "\n", encoding="utf-8"
+    )
     provenance = {
         "source": "https://www.openslr.org/12/",
         "license": "CC-BY-4.0",
