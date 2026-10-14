@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/decode.py
++++ b/python/tinyllm/speech/decode.py
+@@ -528,7 +528,7 @@
+             segment.seek = seek
+             results.append(segment)
+             history.extend(segment.tokens)
+-        if not opts.condition_on_previous_text or result.temperature > 0.5:
++        if not opts.condition_on_previous_text:
+             history.clear()
+         seek += max(1, round(advance / 0.01))
+     return results

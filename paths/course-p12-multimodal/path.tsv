@@ -18,5 +18,6 @@
 15	Audio frontend	ml/08-tinyllm/p14-speech/01-audio-frontend.md	Your implementation of L14.1 passes its course checks.	module:L14.1
 16	Whisper encoder	ml/08-tinyllm/p14-speech/02-whisper-encoder.md	Your implementation of L14.2 passes its course checks.	module:L14.2
 17	Whisper decoder and weights	ml/08-tinyllm/p14-speech/03-whisper-decoder-and-weights.md	Your implementation of L14.3 passes its course checks.	module:L14.3
-18	Multimodal eval metrics	ml/08-tinyllm/p14-speech/05-multimodal-eval-metrics.md	Your implementation of L14.5 passes its course checks.	module:L14.5
-19	Consent and biometric evidence	responsible-ai/02-privacy-and-pii/02-consent-and-biometric-evidence.md	Your model card numbers match runnable evidence and every source has valid consent records.	module:ethics.08
+18	Whisper decoding and transcription	ml/08-tinyllm/p14-speech/04-whisper-decoding.md	Your implementation of L14.4 passes its course checks.	module:L14.4
+19	Multimodal eval metrics	ml/08-tinyllm/p14-speech/05-multimodal-eval-metrics.md	Your implementation of L14.5 passes its course checks.	module:L14.5
+20	Consent and biometric evidence	responsible-ai/02-privacy-and-pii/02-consent-and-biometric-evidence.md	Your model card numbers match runnable evidence and every source has valid consent records.	module:ethics.08

@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/io/wav.pyi`](../../../course/contracts/py/tinyllm/io/wav.pyi), [`course/contracts/py/tinyllm/speech/frontend.pyi`](../../../course/contracts/py/tinyllm/speech/frontend.pyi) |
 | **Tests** | `course/tests/L14.1/test_frontend.py` (what they check: section 4), fixtures from `course/oracle/L14.1/frontend_hf.py` (scipy 1.17, transformers 5.19) in `course/fixtures/L14.1/` |
 | **Needs** | `M12.3` `resample_audio` · `M12.5` `hann`, `stft`, `power` · `M12.6` `mel_filterbank`, `log_mel_whisper` (or `--ref-deps`). Catalog prereq `lang.12` (RIFF from the bytes up) is not registered yet; section 2.1 covers what you need |
-| **Used by** | `L14.3`; `L14.2` (the encoder eats these features) · later `data.11` (audio corpus) and `L15.1` (the Rust port in the engine) |
+| **Used by** | `ethics.08`; `L14.3`; `L14.2` (the encoder eats these features) · later `data.11` (audio corpus) and `L15.1` (the Rust port in the engine); `L14.4` |
 | **Milestone** | `MS-L14` step 1 (log-mel within $10^{-4}$ of HF on the fixture clips) |
 | **Optional depth** | Microsoft, "Multimedia Programming Interface and Data Specifications 1.0" (1991), the RIFF and WAVE chapters; Microsoft, `WAVEFORMATEXTENSIBLE` documentation; Radford et al., "Robust speech recognition via large-scale weak supervision" (2022), section 2.2 |
 
@@ -151,6 +151,9 @@ def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray: ... # float32 [n
 
 | Forward | `L14.3` | `Whisper.encode_wav` consumes the WAV parser, resampler and log-mel frontend. |
 
+| Forward | `L14.4` | Whisper decoding consumes this implementation. |
+| Forward | `ethics.08` | Decode consent-bound WAV evidence before computing generated WER. |
+
 ## Going further
 
 | Your piece | Production equivalent | What it adds | Where to look |
@@ -159,3 +162,5 @@ def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray: ... # float32 [n
 | `whisper_log_mel` | HF `WhisperFeatureExtractor` | batching, attention masks, a torch path on GPU | `transformers/models/whisper/feature_extraction_whisper.py` |
 | `whisper_log_mel` | `openai-whisper` `log_mel_spectrogram` | the same recipe in torch with the filters loaded from `mel_filters.npz` | `whisper/audio.py` |
 | `to_mono_16k` | `ffmpeg -ac 1 -ar 16000` | every codec and container; Whisper's CLI shells out to it | ffmpeg `libswresample` |
+
+

@@ -1,0 +1,22 @@
+id = "L14.4"
+title = "Whisper decoding and long-form transcription"
+kind = "build"
+lang = ["python"]
+pass = 12
+chapter = "ml/08-tinyllm/p14-speech/04-whisper-decoding.md"
+contract = ["contracts/py/tinyllm/speech/decode.pyi", "contracts/py/tinyllm/speech/tokenizer.pyi", "contracts/py/tinyllm/speech/trace.pyi", "contracts/spec/asr-decoding.md"]
+deps = ["L14.3", "L14.1", "L1.2", "M05.2", "M06.3"]
+reading = ["L8.1", "L4.4"]
+used_by = ["ethics.08"]
+units = ["python/tinyllm/speech/decode.py", "python/tinyllm/speech/tokenizer.py", "python/tinyllm/speech/trace.py"]
+upgrades = []
+milestone = "MS-L14"
+ci = "pr"
+
+[tests]
+dir = "course/tests/L14.4"
+timeout_s = 120
+determinism_runs = 2
+
+[fixtures]
+files = ["course/fixtures/L14.4/transcribe_openai.json", "course/fixtures/L14.4/tokenizer_hf.json", "course/fixtures/L14.4/whisper-tokenizer/tokenizer.json", "course/fixtures/L14.4/decode_openai.json", "course/fixtures/L14.2/tiny-whisper-128/config.json", "course/fixtures/L14.2/tiny-whisper-128/model.safetensors", "course/fixtures/L14.2/encoder_hf.npz"]

@@ -9,7 +9,7 @@
 | **You build** | A consent policy, multimodal source ledger, runnable evidence program, recorded-prediction report and model-card supplement |
 | **Contract** | Section 4 specifies the artifacts and evidence functions; the ledger extends `formats/ledger.schema.json` |
 | **Tests** | `course/tests/ethics.08/check` recomputes reports and runs actual tiny image and Whisper towers |
-| **Needs** | `L13.5`, `L14.3`, `L14.5`, `data.08`; reading: `ethics.02`, `ethics.03` |
+| **Needs** | `L13.5`, `L14.3`, `L14.4`, `L14.1`, `L14.5`, `data.08`; reading: `ethics.02`, `ethics.03` |
 | **Used by** | A terminal artifact practice; future multimodal release automation will consume these records |
 | **Milestone** | `MS-P12` |
 
@@ -130,4 +130,17 @@ quality claim. Use actual model predictions and source terms for your own card.
 
 Later release automation can consume the artifacts after adding its own
 provenance, consent and quality gates. This practice does not implement that
-release workflow or the unbuilt transcription and VLM policies.
+release workflow or the unbuilt VLM policy.
+
+| Back | `L14.4` | Generate transcripts before computing WER and CER. |
+| Back | `L14.1` | Decode and resample consent-bound WAV evidence. |
+
+`transcribed_report` validates the current consent ledger and binds every WAV
+byte string to its source SHA-256 before calling the model. It returns generated
+predictions plus a recomputed `asr-generated` report; it does not relabel the
+teacher-forced diagnostic as WER. A changed or revoked recording fails before
+inference. The synthetic tests establish plumbing, not trained model quality.
+
+| Test | Kind | Contract |
+|---|---|---|
+| `test_generated_transcripts_bind_audio_consent_before_inference` | conformance | Actual transcription supplies metric inputs; changed and revoked audio never reach the model. |

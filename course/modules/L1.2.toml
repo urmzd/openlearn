@@ -13,7 +13,7 @@ reading   = ["M06.3"]                 # the course tests draw random text from t
 # tests load GPT-2 and SmolLM2 through from_hf_json to measure them. L7.9,
 # L8.2, and C1 join used_by with their batches: the mirror rule only accepts
 # call sites in the registry (DEVIATIONS L1-02).
-used_by   = ["L1.5", "L1.6", "L8.2", "data.07"]
+used_by   = ["L1.5", "L1.6", "L8.2", "data.07", "L14.4"]
 units     = ["python/tinyllm/tok/bpe.py", "python/tinyllm/tok/pretok.py"]
 upgrades  = []
 milestone = "MS-L1"

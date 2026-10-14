@@ -7,8 +7,8 @@ chapter = "ml/08-tinyllm/p14-speech/03-whisper-decoder-and-weights.md"
 contract = ["contracts/py/tinyllm/speech/decoder.pyi", "contracts/py/tinyllm/io/hf_whisper.pyi"]
 deps = ["L14.1", "L14.2", "L8.2", "L0.6", "L0.4", "L0.2", "L0.1", "L5.1", "L5.2", "L5.4", "M06.3"]
 reading = ["L7.9"]
-used_by = ["ethics.08"]
-# ethics.08 provides a diagnostic consumer; L14.4 transcription remains planned.
+used_by = ["ethics.08", "L14.4"]
+# ethics.08 provides diagnostics; L14.4 supplies transcription policy.
 units = ["python/tinyllm/speech/decoder.py", "python/tinyllm/io/hf_whisper.py"]
 upgrades = []
 milestone = "MS-L14"

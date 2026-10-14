@@ -213,6 +213,11 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from tinyllm.cli_speech import intercept as intercept_speech
+
+    code = intercept_speech(sys.argv[1:] if argv is None else list(argv))
+    if code is not None:
+        return code
     from tinyllm.cli_c1_data import intercept as intercept_c1_data
 
     code = intercept_c1_data(sys.argv[1:] if argv is None else list(argv))

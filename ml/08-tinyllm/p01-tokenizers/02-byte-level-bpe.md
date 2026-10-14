@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/tok/bpe.pyi`](../../../course/contracts/py/tinyllm/tok/bpe.pyi) · [`course/contracts/py/tinyllm/tok/pretok.pyi`](../../../course/contracts/py/tinyllm/tok/pretok.pyi) · formats: [`tokenizer.md`](../../../course/contracts/formats/tokenizer.md) (the `tokenizer.json` subset), [`tokenizer-json.schema.json`](../../../course/contracts/formats/tokenizer-json.schema.json) |
 | **Tests** | `course/tests/L1.2/` (what they check: section 4) · your own tests in `python/tests/l1-2-bpe/`, rung R2, graded by mutation (threshold 0.60) |
 | **Needs** | `L1.1` the protocol and `check_ids` · `M05.2` the byte map · `M06.2` the trie (`insert`, `longest_prefix`) that splits out added tokens (or `--ref-deps`) |
-| **Used by** | `L1.5` ports it to Rust (`tl-tok`) and is proven id for id against your Python · `L1.6` measures GPT-2 and SmolLM2 through `from_hf_json` · `data.07` tokenizes corpus files with the Rust tokenizer process · later: `L7.9` loads SmolLM2, `L8.2` detokenizes, `C1` trains a 4096-token vocabulary |
+| **Used by** | `L1.5` ports it to Rust (`tl-tok`) and is proven id for id against your Python · `L1.6` measures GPT-2 and SmolLM2 through `from_hf_json` · `data.07` tokenizes corpus files with the Rust tokenizer process · later: `L7.9` loads SmolLM2, `L8.2` detokenizes, `C1` trains a 4096-token vocabulary; `L14.4` |
 | **Milestone** | `MS-L1` (`tok train --algo bpe`, `tok encode` against the SmolLM2 oracle) |
 | **Optional depth** | Sennrich, Haddow, and Birch, *Neural Machine Translation of Rare Words with Subword Units* (2016); Radford et al., *Language Models are Unsupervised Multitask Learners* (GPT-2, 2019), section 2.2 |
 
@@ -229,6 +229,8 @@ def test_round_trip_any_text():
 
 Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2` detokenizes streams, and `C1` trains its 4096-token vocabulary with your trainer. If you skip this module, `ol check L1.6` stops with `needs L1.2`: build it, or rerun with `--ref-deps`.
 
+| Forward | `L14.4` | Whisper decoding consumes this implementation. |
+
 ## Going further
 
 | Your piece | Production equivalent | What it adds | Where to look |
@@ -238,3 +240,4 @@ Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2`
 | `pretokenize_gpt2` | the `fancy-regex` / `onig` pre-tokenizer | the real regex engine, plus `cl100k`-style splits (numbers of 1 to 3 digits) | `tokenizers/src/pre_tokenizers/byte_level.rs` |
 | `from_hf_json` | `tokenizers` `Tokenizer::from_file` | the full pipeline (normalizers, offsets, truncation, padding) | `tokenizers/src/tokenizer/serialization.rs` |
 | merge cache per pre-token | `tokenizers` BPE cache | a bounded cache shared across threads; `L1.5` builds the Rust version | `tokenizers/src/utils/cache.rs` |
+

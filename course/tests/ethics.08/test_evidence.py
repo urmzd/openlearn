@@ -213,3 +213,80 @@ def test_report_command_checks_consent_before_writing(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="revoked"):
         e.main()
     assert not out.exists()
+
+
+def test_generated_transcripts_bind_audio_consent_before_inference(monkeypatch):
+    # WHY: Generated WER must use actual decoding, and only consent-bound bytes.
+    # KIND: conformance
+    import hashlib
+    from types import SimpleNamespace
+    from tinyllm.speech.decode import DecodeOptions, transcribe
+    from tinyllm.speech.frontend import FeatureConfig, to_mono_16k
+    from tinyllm.io.wav import read_wav
+
+    e = evidence()
+    model = Whisper.from_pretrained(str(FIX / "L14.2/tiny-whisper-128"))
+    tok = SimpleNamespace(
+        sot=6,
+        eot=5,
+        no_timestamps=9,
+        timestamp_begin=10,
+        transcribe=7,
+        translate=8,
+        sot_prev=16,
+        language="en",
+        all_language_codes=("en",),
+        all_language_tokens=(3,),
+        non_speech_tokens=(),
+        encode=lambda text: [0],
+        decode=lambda ids: " ".join("word" for _ in ids),
+    )
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(16000)
+        wav.writeframes(np.zeros(320, dtype="<i2").tobytes())
+    audio = buf.getvalue()
+    source = copy.deepcopy(records()[0])
+    source.update(
+        source_id="audio-fixture",
+        modality="audio",
+        biometric=True,
+        consent="explicit-donation",
+        sha256=hashlib.sha256(audio).hexdigest(),
+    )
+    rows = [
+        {
+            "id": "one",
+            "group": "synthetic",
+            "reference": "word",
+            "source_id": "audio-fixture",
+            "audio": audio,
+        }
+    ]
+    opts = DecodeOptions(
+        language="en", timestamps=False, max_tokens=1, temperatures=(0.0,)
+    )
+    expected = " ".join(
+        s.text
+        for s in transcribe(
+            model, tok, to_mono_16k(read_wav(audio), FeatureConfig()), opts
+        )
+    )
+    result = e.transcribed_report(model, tok, rows, [source], opts)
+    assert result["predictions"][0]["hypothesis"] == expected
+    assert result["report"]["suite"] == "asr-generated"
+    assert result["report"]["n"] == 1
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("model executed before consent validation")
+
+    monkeypatch.setattr(e, "transcribe", forbidden)
+    with pytest.raises(ValueError, match="differ"):
+        e.transcribed_report(
+            model, tok, [{**rows[0], "audio": audio + b"x"}], [source], opts
+        )
+    source["revoked"] = True
+    with pytest.raises(ValueError, match="revoked"):
+        e.transcribed_report(model, tok, rows, [source], opts)

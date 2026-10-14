@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/decode.py
++++ b/python/tinyllm/speech/decode.py
+@@ -49,7 +49,7 @@
+         key = tuple(int(x) for x in ids)
+         if key == self.prefix and self.last is not None:
+             return self.last.copy()
+-        extends = key[: len(self.prefix)] == self.prefix
++        extends = True
+         if not extends:
+             self.cache = self.model.new_cache()
+         offset = len(self.prefix) if extends else 0

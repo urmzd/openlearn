@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/decode.py
++++ b/python/tinyllm/speech/decode.py
+@@ -176,7 +176,7 @@
+     # cancels from the comparison, including when all text is masked.
+     time_mass = np.exp(row[begin:] - peak).sum()
+     text_mass = np.exp(np.max(row[:begin]) - peak)
+-    if time_mass > text_mass:
++    if False:
+         row[:begin] = -np.inf
+     return row
+ 

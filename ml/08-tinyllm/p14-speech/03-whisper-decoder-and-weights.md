@@ -10,7 +10,7 @@
 | **Contract** | `course/contracts/py/tinyllm/speech/decoder.pyi`, `course/contracts/py/tinyllm/io/hf_whisper.pyi` |
 | **Tests** | `course/tests/L14.3/test_decoder.py` |
 | **Needs** | `L14.1`; `L14.2`, `L8.2`, `L0.6`, `L0.4`, `L0.2`, `L0.1`, `L5.1`, `L5.2`, `L5.4`, `M06.3`. Reading: `L7.9` |
-| **Used by** | `ethics.08`; Planned: `L14.4` transcription. The policy remains future work. |
+| **Used by** | `ethics.08`, `L14.4` |
 | **Milestone** | `MS-L14` |
 | **Optional depth** | Compare token-at-a-time and chunked decoding, including a batch with different prompts. |
 
@@ -88,11 +88,12 @@ The next one-token call uses positional row two and a `1 x 3` all-true self-atte
 | Back | `L5.4` | Learned positional embeddings. |
 | Back | `M06.3` | Reproducible parameter initialization. |
 | Back | `L7.9` | Download the checkpoint before calling the local loader. |
-| Forward | `L14.4` | Planned transcription policy consumes these logits; it must be implemented before the call-site gate passes. |
 
 | Back | `L14.1` | `encode_wav` decodes, mixes channels, resamples and computes model-sized log-mel features. |
 
 | Forward | `ethics.08` | The consent and model-card evidence practice calls this implementation. |
+
+| Forward | `L14.4` | Transcription policy consumes these logits and reuses cross-KV per window. |
 
 ## Going further
 

@@ -6,7 +6,7 @@ pass = 12
 chapter = "responsible-ai/02-privacy-and-pii/02-consent-and-biometric-evidence.md"
 contract = []
 # The evidence program calls the actual image and speech towers and metrics.
-deps = ["L13.5", "L14.3", "L14.5", "data.08"]
+deps = ["L13.5", "L14.3", "L14.4", "L14.1", "L14.5", "data.08"]
 reading = ["ethics.02", "ethics.03"]
 used_by = []
 units = []
