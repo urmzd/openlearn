@@ -1,5 +1,7 @@
 """Validate real-corpus geometry and complete-utterance long-form assembly."""
 
+import csv
+import hashlib
 import json
 import sys
 import wave
@@ -7,6 +9,17 @@ from pathlib import Path
 
 
 def main(root):
+    with Path("course/fixtures/ASSETS.tsv").open() as source:
+        registered = [
+            r for r in csv.reader(source, delimiter="\t") if r and r[0] == "asr-mini"
+        ]
+    if not registered:
+        raise AssertionError("asr-mini asset fingerprints are not registered")
+    for _, name, _, sha, size, *_ in registered:
+        payload = (root / name).read_bytes()
+        assert (
+            len(payload) == int(size) and hashlib.sha256(payload).hexdigest() == sha
+        ), name
     attribution = json.loads((root / "attribution.json").read_text())
     rows = [
         json.loads(line) for line in (root / "manifest.jsonl").read_text().splitlines()

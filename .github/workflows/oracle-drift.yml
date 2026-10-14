@@ -13,7 +13,7 @@ on:
         description: Oracle validation scope
         type: choice
         default: all
-        options: [all, whisper, whisper-real, whisper-traces, asr-assets, asr-accuracy]
+        options: [all, whisper, whisper-real, whisper-traces, asr-assets, asr-accuracy, mls-languages]
 
 permissions:
   contents: read
@@ -207,4 +207,20 @@ jobs:
             ${{ runner.temp }}/asr-learner*.json
             ${{ runner.temp }}/asr-assets.tsv
             ${{ runner.temp }}/asr-mini/attribution.json
+          if-no-files-found: error
+
+  mls-languages:
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'mls-languages'
+    name: Licensed MLS language excerpts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Extract bounded official MLS excerpts
+        run: uv run --script course/oracle/MS-L14/mls_languages.py "$RUNNER_TEMP/mls-languages"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mls-languages
+          path: ${{ runner.temp }}/mls-languages
           if-no-files-found: error
