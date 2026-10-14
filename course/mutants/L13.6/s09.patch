@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/preprocess.py
++++ b/python/tinyllm/vision/preprocess.py
+@@ -469,7 +469,7 @@
+ def _center_crop(a: NDArray, size: tuple[int, int]) -> NDArray:
+     h, w = a.shape[:2]
+     oh, ow = size
+-    top, left = (h - oh) // 2, (w - ow) // 2
++    top, left = (h - oh + 1) // 2, (w - ow + 1) // 2
+     out = np.zeros((oh, ow, 3), dtype=np.uint8)
+     sy, sx = max(top, 0), max(left, 0)
+     dy, dx = max(-top, 0), max(-left, 0)

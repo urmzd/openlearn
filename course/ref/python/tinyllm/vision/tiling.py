@@ -25,7 +25,7 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
-from tinyllm.sig.resample import resize
+from tinyllm.sig.resample import Kernel, resize
 
 MAX_IMAGE_SIZE = 4096
 
@@ -81,7 +81,7 @@ def _rgb(img: NDArray, who: str) -> NDArray:
 
 
 def anyres_tiles(
-    img: NDArray, pinpoints: Sequence[tuple[int, int]], tile: int
+    img: NDArray, pinpoints: Sequence[tuple[int, int]], tile: int, *, kernel: Kernel = "bicubic"
 ) -> tuple[list[NDArray], NDArray, tuple[int, int]]:
     # SOLUTION-BEGIN L13.4
     a = _rgb(img, "anyres_tiles")
@@ -90,13 +90,13 @@ def anyres_tiles(
     h, w, c = a.shape
     th, tw = select_best_resolution((h, w), pinpoints)
     nh, nw = fit_size((h, w), (th, tw))
-    fitted = resize(a, (nh, nw), "bicubic")
+    fitted = resize(a, (nh, nw), kernel)
     py, ry = divmod(th - nh, 2)
     px, rx = divmod(tw - nw, 2)
     canvas = np.pad(fitted, ((py, py + ry), (px, px + rx), (0, 0)))
     rows, cols = th // tile, tw // tile
     tiles = [canvas[i * tile : (i + 1) * tile, j * tile : (j + 1) * tile].copy() for i in range(rows) for j in range(cols)]
-    base = resize(a, (tile, tile), "bicubic")
+    base = resize(a, (tile, tile), kernel)
     return tiles, base, (rows, cols)
     # SOLUTION-END
 
@@ -146,7 +146,8 @@ def idefics3_resize_size(hw: tuple[int, int], longest_edge: int, tile: int, spli
         raise ValueError(f"idefics3_resize_size: need a size >= 1, got {hw}")
     if not split:
         return tile, tile
-    h, w = _longest_edge_size(h, w, longest_edge)
+    if longest_edge:
+        h, w = _longest_edge_size(h, w, longest_edge)
     aspect = w / h
     if w >= h:
         w = math.ceil(w / tile) * tile
@@ -159,23 +160,25 @@ def idefics3_resize_size(hw: tuple[int, int], longest_edge: int, tile: int, spli
 
 
 def idefics3_split(
-    img: NDArray, longest_edge: int, tile: int, split: bool = True
+    img: NDArray, longest_edge: int, tile: int, split: bool = True, *, kernel: Kernel = "lanczos3"
 ) -> tuple[list[NDArray], NDArray, tuple[int, int]]:
     # SOLUTION-BEGIN L13.4
     a = _rgb(img, "idefics3_split")
     h, w = a.shape[:2]
     if not split:
         # Two Lanczos passes, as the processor: to the longest edge, then square.
-        a = resize(a, _longest_edge_size(h, w, longest_edge), "lanczos3")
-        return [], resize(a, (tile, tile), "lanczos3"), (0, 0)
-    a = resize(a, _longest_edge_size(h, w, longest_edge), "lanczos3")
-    big = resize(a, idefics3_resize_size((h, w), longest_edge, tile), "lanczos3")
+        if longest_edge:
+            a = resize(a, _longest_edge_size(h, w, longest_edge), kernel)
+        return [], resize(a, (tile, tile), kernel), (0, 0)
+    if longest_edge:
+        a = resize(a, _longest_edge_size(h, w, longest_edge), kernel)
+    big = resize(a, idefics3_resize_size((h, w), longest_edge, tile), kernel)
     bh, bw = big.shape[:2]
     if bh <= tile and bw <= tile:
-        return [], resize(big, (tile, tile), "lanczos3"), (0, 0)
+        return [], resize(big, (tile, tile), kernel), (0, 0)
     rows, cols = bh // tile, bw // tile
     tiles = [big[i * tile : (i + 1) * tile, j * tile : (j + 1) * tile].copy() for i in range(rows) for j in range(cols)]
-    return tiles, resize(big, (tile, tile), "lanczos3"), (rows, cols)
+    return tiles, resize(big, (tile, tile), kernel), (rows, cols)
     # SOLUTION-END
 
 

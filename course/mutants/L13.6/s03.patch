@@ -1,11 +1,11 @@
 --- a/python/tinyllm/vision/preprocess.py
 +++ b/python/tinyllm/vision/preprocess.py
-@@ -121,7 +121,7 @@
+@@ -402,7 +402,7 @@
          # Exact integer round-half-up of compositing over white. uint32
          # avoids overflow for both products and their sum.
          opacity = np.asarray(alpha, dtype=np.uint32)[..., None]
 -        rgb = (rgb.astype(np.uint32) * opacity + 255 * (255 - opacity) + 127) // 255
 +        rgb = (rgb.astype(np.uint32) * opacity + 0 * (255 - opacity) + 127) // 255
      return np.asarray(rgb, dtype=np.uint8)
-     # SOLUTION-END
+ 
  

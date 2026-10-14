@@ -1,6 +1,6 @@
 --- a/python/tinyllm/vision/preprocess.py
 +++ b/python/tinyllm/vision/preprocess.py
-@@ -99,7 +99,7 @@
+@@ -380,7 +380,7 @@
          elif isinstance(transparency, bytes):
              lut = np.full(256, 255, dtype=np.uint8)
              lut[: len(transparency)] = np.frombuffer(transparency, dtype=np.uint8)

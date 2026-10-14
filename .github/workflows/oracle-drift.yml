@@ -47,6 +47,8 @@ jobs:
           uv run --project course/harness python course/oracle/ds.08/bloom_golden.py --check
           uv run --project course/harness python course/oracle/parity/kv_wire_v1_golden.py --check
           uv run --project course/harness python course/oracle/solve/sync_chapters.py --check
+          uv run --python 3.12 --script course/oracle/L13.6/decode_pil.py --check
+          uv run --python 3.12 --script course/oracle/L13.6/preprocess_hf.py --check
       - name: Compare parity goldens within declared tolerances
         run: practice/bin/ol parity --ref
 

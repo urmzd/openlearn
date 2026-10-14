@@ -4,6 +4,7 @@
 # ///
 """Synthetic decode/orientation oracle; imports no learner implementation."""
 
+import argparse
 import hashlib
 import io
 import json
@@ -17,6 +18,9 @@ from PIL import Image, ImageOps
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
     arrays = {}
     rgb = np.arange(3 * 5 * 3, dtype=np.uint8).reshape(3, 5, 3) * 5
 
@@ -84,6 +88,13 @@ def main():
         dtype=np.uint8,
     )
     out = Path("course/fixtures/L13.6/decode_pil.npz")
+    if args.check:
+        with np.load(out) as old:
+            assert set(old.files) == set(arrays)
+            for name, value in arrays.items():
+                np.testing.assert_array_equal(old[name], value, err_msg=name)
+        print("Image decode oracle matches the committed fixture")
+        return
     out.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(out, **arrays)
     data = out.read_bytes()

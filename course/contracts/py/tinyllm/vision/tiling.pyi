@@ -17,6 +17,9 @@
 # and append a global image (the resized image squeezed to tile x tile);
 # otherwise the image alone, squeezed to tile x tile, with rows = cols = 0.
 # Every tile becomes image_seq_len tokens after pixel shuffle.
+# longest_edge=0 skips the initial resize (HF do_resize=False).
+# The split functions accept a kernel override; defaults preserve the
+# canonical recipes above.
 #
 # LLaVA-NeXT AnyRes ("llava_next"): choose the pinpoint resolution (H, W)
 # with select_best_resolution, resize the image to fit inside it keeping the
@@ -34,6 +37,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from numpy.typing import NDArray
+from tinyllm.sig.resample import Kernel
 
 @dataclass
 class TilingConfig:
@@ -59,7 +63,7 @@ def fit_size(hw: tuple[int, int], target: tuple[int, int]) -> tuple[int, int]:
     """The (h, w) an image of size hw is resized to inside target before
     AnyRes padding, as described above."""
 
-def anyres_tiles(img: NDArray, pinpoints: Sequence[tuple[int, int]], tile: int) -> tuple[list[NDArray], NDArray, tuple[int, int]]:
+def anyres_tiles(img: NDArray, pinpoints: Sequence[tuple[int, int]], tile: int, *, kernel: Kernel = "bicubic") -> tuple[list[NDArray], NDArray, tuple[int, int]]:
     """(tiles row-major, base image, (rows, cols)) for uint8 HWC img, each
     tile and the base uint8 [tile, tile, C]. ValueError unless every
     pinpoint is a multiple of tile."""
@@ -74,7 +78,7 @@ def idefics3_resize_size(hw: tuple[int, int], longest_edge: int, tile: int, spli
     """The (H', W') the image is resized to before cutting (above). Without
     split, (tile, tile)."""
 
-def idefics3_split(img: NDArray, longest_edge: int, tile: int, split: bool = True) -> tuple[list[NDArray], NDArray, tuple[int, int]]:
+def idefics3_split(img: NDArray, longest_edge: int, tile: int, split: bool = True, *, kernel: Kernel = "lanczos3") -> tuple[list[NDArray], NDArray, tuple[int, int]]:
     """(tiles row-major, global image, (rows, cols)) for uint8 HWC img, as
     above; with rows = cols = 0 the tile list is empty and the global image
     is the only one. Tiles and global are uint8 [tile, tile, C]."""

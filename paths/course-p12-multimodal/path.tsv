@@ -14,7 +14,8 @@
 11	Vision transformer encoder	ml/08-tinyllm/p13-vision/03-vision-transformer.md	Your implementation of L13.3 passes its course checks.	module:L13.3
 12	Dynamic resolution and tiling	ml/08-tinyllm/p13-vision/04-dynamic-resolution-and-tiling.md	Your implementation of L13.4 passes its course checks.	module:L13.4
 13	Contrastive image-text	ml/08-tinyllm/p13-vision/05-contrastive-image-text.md	Your implementation of L13.5 passes its course checks.	module:L13.5
-14	Audio frontend	ml/08-tinyllm/p14-speech/01-audio-frontend.md	Your implementation of L14.1 passes its course checks.	module:L14.1
-15	Whisper encoder	ml/08-tinyllm/p14-speech/02-whisper-encoder.md	Your implementation of L14.2 passes its course checks.	module:L14.2
-16	Whisper decoder and weights	ml/08-tinyllm/p14-speech/03-whisper-decoder-and-weights.md	Your implementation of L14.3 passes its course checks.	module:L14.3
-17	Multimodal eval metrics	ml/08-tinyllm/p14-speech/05-multimodal-eval-metrics.md	Your implementation of L14.5 passes its course checks.	module:L14.5
+14	Image preprocessing	ml/08-tinyllm/p13-vision/06-image-preprocessing.md	Your implementation of L13.6 passes its course checks.	module:L13.6
+15	Audio frontend	ml/08-tinyllm/p14-speech/01-audio-frontend.md	Your implementation of L14.1 passes its course checks.	module:L14.1
+16	Whisper encoder	ml/08-tinyllm/p14-speech/02-whisper-encoder.md	Your implementation of L14.2 passes its course checks.	module:L14.2
+17	Whisper decoder and weights	ml/08-tinyllm/p14-speech/03-whisper-decoder-and-weights.md	Your implementation of L14.3 passes its course checks.	module:L14.3
+18	Multimodal eval metrics	ml/08-tinyllm/p14-speech/05-multimodal-eval-metrics.md	Your implementation of L14.5 passes its course checks.	module:L14.5

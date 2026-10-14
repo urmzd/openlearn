@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/preprocess.py
++++ b/python/tinyllm/vision/preprocess.py
+@@ -530,7 +530,7 @@
+             tiles, base, grid = idefics3_split(
+                 a, tiling.longest_edge, cfg.tile_size, split, kernel=cfg.resample
+             )
+-            frames = tiles + [base]
++            frames = [base] + tiles
+         elif cfg.kind == "llava_next":
+             bh, bw = (
+                 (cfg.size["height"], cfg.size["width"])

@@ -55,6 +55,8 @@ A language model is a function from a prefix of token ids to a distribution over
 | p10 | [Serving](p10-serving/) | L10.0 your first endpoint | 1 (tracer), 7 |
 | p11 | [Training at Scale](p11-training-at-scale/) | none yet (B11) | 9 |
 | p12 | [Post-Training (optional)](p12-post-training/) | none yet (B12) | 10 |
+| p13 | [Vision foundations](p13-vision/) | L13.1 through L13.6 | 12 |
+| p14 | [Speech](p14-speech/) | L14.1 through L14.3 and L14.5 | 12 |
 | C1, C2 | [Capstones](capstones/) | none yet (B11, B12) | 9, 10 |
 
 Each part README lists its planned modules; chapters arrive with their authoring batches, and the [course path](../../paths/course/) lists what is available.

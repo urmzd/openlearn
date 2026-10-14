@@ -1,7 +1,7 @@
 --- a/python/tinyllm/vision/tiling.py
 +++ b/python/tinyllm/vision/tiling.py
 @@ -78,7 +78,7 @@
-     img: NDArray, pinpoints: Sequence[tuple[int, int]], tile: int
+     img: NDArray, pinpoints: Sequence[tuple[int, int]], tile: int, *, kernel: Kernel = "bicubic"
  ) -> tuple[list[NDArray], NDArray, tuple[int, int]]:
      a = _rgb(img, "anyres_tiles")
 -    if any(ph % tile or pw % tile for ph, pw in pinpoints):

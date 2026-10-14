@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from _lib.close import assert_close
 from tinyllm.vision.preprocess import (
     decode_image,
     exif_orientation,
@@ -42,7 +43,7 @@ def test_frozen_decode(name):
         got = decode_image(encoded, max_pixels=15)
         want = z[name + ".rgb"]
     assert got.dtype == np.uint8 and got.flags.c_contiguous and got.flags.owndata
-    np.testing.assert_allclose(got, want, rtol=0, atol=2 if name == "jpeg" else 0)
+    assert_close(got, want, rtol=0, atol=2 if name == "jpeg" else 0)
     assert image_header(encoded) == ("JPEG" if name == "jpeg" else "PNG", 5, 3)
     assert exif_orientation(encoded) == (
         int(name[4:]) if name.startswith("exif") else None

@@ -8,9 +8,8 @@ contract  = ["contracts/py/tinyllm/image/layout.pyi"]
 deps      = []
 reading   = ["M03.1", "lang.01"]   # row-major layout and strides; numpy views vs copies
 # Call sites (DESIGN 4.1): L13.3 (patchify), L13.6 (rescale_normalize),
-# data.10 (to_grayscale_pil). None is registered yet, so verify check 9
-# fails until B14's L13 group lands (DEVIATIONS B14M12-01).
-used_by   = []
+# data.10 (to_grayscale_pil). L13.6 is the registered normalization caller.
+used_by   = ["L13.6"]
 units     = ["python/tinyllm/image/layout.py"]
 upgrades  = []
 milestone = "MS-P12"

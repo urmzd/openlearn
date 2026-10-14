@@ -1,6 +1,6 @@
 --- a/python/tinyllm/vision/preprocess.py
 +++ b/python/tinyllm/vision/preprocess.py
-@@ -157,7 +157,7 @@
+@@ -436,7 +436,7 @@
                  ):
                      raise ValueError(f"invalid EXIF orientation: {orientation!r}")
                  image.load()
