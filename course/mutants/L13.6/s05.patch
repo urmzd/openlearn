@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/preprocess.py
++++ b/python/tinyllm/vision/preprocess.py
+@@ -143,7 +143,7 @@
+         with warnings.catch_warnings():
+             warnings.simplefilter("error", Image.DecompressionBombWarning)
+             with Image.open(io.BytesIO(data)) as image:
+-                if image.width * image.height > max_pixels:
++                if False:
+                     raise ValueError(f"image exceeds max_pixels={max_pixels}")
+                 # Pillow exposes 16-bit RGB PNG as mode RGB after discarding
+                 # low bits, so inspect the IHDR depth before decompression.

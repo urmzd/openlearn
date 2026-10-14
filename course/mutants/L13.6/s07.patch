@@ -1,0 +1,9 @@
+--- a/python/tinyllm/vision/preprocess.py
++++ b/python/tinyllm/vision/preprocess.py
+@@ -173,5 +173,5 @@
+     # SOLUTION-BEGIN L13.6
+     if kind not in ("image", "audio"):
+         raise ValueError(f"unsupported media kind: {kind!r}")
+-    return fnv1a64(bytes([1 if kind == "image" else 2]) + data)
++    return fnv1a64(data)
+     # SOLUTION-END
