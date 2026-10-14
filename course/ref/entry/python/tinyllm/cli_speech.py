@@ -10,6 +10,8 @@ import sys
 
 
 def intercept(argv: list[str]) -> int | None:
+    if argv and argv[0] == "features":
+        return features(argv[1:])
     if argv and argv[0] == "logits" and "--audio-features" in argv:
         return logits(argv[1:])
     if not argv or argv[0] != "transcribe":
@@ -214,4 +216,42 @@ def logits(argv: list[str]) -> int:
         return 0
     except (ValueError, OSError, KeyError, TypeError, OverflowError) as error:
         print(f"logits: {error}", file=sys.stderr)
+        return 2
+
+
+def features(argv: list[str]) -> int:
+    """Extract deterministic Whisper features from a WAV or sorted WAV directory."""
+    parser = argparse.ArgumentParser(prog="tinyllm features")
+    parser.add_argument("--audio", required=True)
+    parser.add_argument("--kind", choices=["whisper-log-mel"], required=True)
+    parser.add_argument("--n-mels", type=int, choices=[80, 128], default=80)
+    parser.add_argument("--out", required=True)
+    args = parser.parse_args(argv)
+    try:
+        import numpy as np
+        from tinyllm.io.wav import read_wav
+        from tinyllm.speech.frontend import (
+            FeatureConfig,
+            pad_or_trim,
+            to_mono_16k,
+            whisper_log_mel,
+        )
+
+        source = Path(args.audio)
+        paths = sorted(source.glob("*.wav")) if source.is_dir() else [source]
+        if not paths:
+            raise ValueError("audio directory contains no WAV files")
+        cfg = FeatureConfig(feature_size=args.n_mels)
+        arrays = {}
+        for path in paths:
+            samples = to_mono_16k(read_wav(path.read_bytes()), cfg)
+            arrays[f"{path.stem}.f{args.n_mels}"] = whisper_log_mel(
+                pad_or_trim(samples, cfg.n_samples), cfg
+            )
+        with Path(args.out).open("wb") as output:
+            np.savez_compressed(output, **arrays)
+        print(json.dumps({"out": args.out, "clips": len(paths), "n_mels": args.n_mels}))
+        return 0
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        print(f"features: {error}", file=sys.stderr)
         return 2

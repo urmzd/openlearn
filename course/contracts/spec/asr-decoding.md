@@ -158,3 +158,7 @@ oracle evidence. Registration does not establish production ASR accuracy.
 ### Teacher-forced logits CLI
 
 `tinyllm logits --model DIR --audio-features FEATURES.npz --decoder-prompts PROMPTS.jsonl --out OUTPUT.npz` runs the Whisper forward pass. The feature archive contains `mel`, a finite floating array `[batch, mel, frames]`; `--feature-key NAME` selects another key. Each JSONL row contains `ids`, a nonempty list of nonnegative integer token ids. Rows match the feature batch and have equal lengths. The output archive contains `logits` with shape `[batch, tokens, vocab]`. The final stdout line reports `out` and `prompts`. Invalid inputs exit 2 without creating the output.
+
+### Feature extraction CLI
+
+`tinyllm features --audio PATH --kind whisper-log-mel --n-mels 80 --out OUTPUT.npz` accepts a WAV file or a directory of WAV files, sorted by filename. `--n-mels` accepts 80 or 128. The command downmixes, resamples to 16 kHz, and pads or trims each clip to 30 seconds before computing log-mel features. Output keys are `<filename-stem>.f<mel-count>`, each shaped `[mel-count, 3000]`. The final JSON line reports `out`, `clips`, and `n_mels`. Empty directories and malformed WAV input exit 2 without creating the output.
