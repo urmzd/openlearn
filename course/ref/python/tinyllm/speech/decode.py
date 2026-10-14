@@ -7,7 +7,12 @@ self-attention state when the requested prefix extends the cached one.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+import math
+import zlib
 from typing import Protocol, Sequence
+
+from tinyllm.num.rng import PCG32
 
 import numpy as np
 from numpy.typing import NDArray
@@ -174,3 +179,239 @@ def apply_timestamp_rules(
     if time_mass > text_mass:
         row[:begin] = -np.inf
     return row
+
+
+@dataclass(frozen=True)
+class DecodeOptions:
+    task: str = "transcribe"
+    language: str | None = None
+    timestamps: bool = True
+    beam_size: int = 0
+    best_of: int = 5
+    patience: float = 1.0
+    temperatures: tuple[float, ...] = (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
+    compression_ratio_threshold: float = 2.4
+    logprob_threshold: float = -1.0
+    no_speech_threshold: float = 0.6
+    condition_on_previous_text: bool = True
+    max_initial_timestamp: float = 1.0
+    seed: int = 0
+    max_tokens: int = 224
+    suppress_tokens: tuple[int, ...] = (-1,)
+    suppress_blank: bool = True
+
+    def validate(self) -> None:
+        if self.task not in ("transcribe", "translate"):
+            raise ValueError("invalid decoding task")
+        if any(
+            type(x) is not int for x in (self.beam_size, self.best_of, self.max_tokens)
+        ):
+            raise ValueError("search sizes must be integers")
+        if self.beam_size < 0 or self.best_of < 1 or self.max_tokens < 1:
+            raise ValueError("invalid search sizes")
+        if not math.isfinite(self.patience) or self.patience <= 0:
+            raise ValueError("patience must be positive and finite")
+        if self.beam_size and round(self.beam_size * self.patience) < 1:
+            raise ValueError("patience leaves no finished candidates")
+        if not self.temperatures or any(
+            not math.isfinite(t) or t < 0 for t in self.temperatures
+        ):
+            raise ValueError("temperatures must be finite and nonnegative")
+        if (
+            not math.isfinite(self.max_initial_timestamp)
+            or self.max_initial_timestamp < 0
+        ):
+            raise ValueError("max_initial_timestamp must be finite and nonnegative")
+        if (
+            not math.isfinite(self.compression_ratio_threshold)
+            or self.compression_ratio_threshold <= 0
+        ):
+            raise ValueError("compression threshold must be positive and finite")
+        if (
+            not math.isfinite(self.logprob_threshold)
+            or not 0 <= self.no_speech_threshold <= 1
+        ):
+            raise ValueError("invalid probability thresholds")
+
+
+@dataclass
+class Segment:
+    id: int
+    seek: int
+    start: float
+    end: float
+    text: str
+    tokens: list[int]
+    temperature: float
+    avg_logprob: float
+    compression_ratio: float
+    no_speech_prob: float
+
+
+def _logprobs(row: NDArray) -> NDArray:
+    values = np.asarray(row, dtype=np.float64)
+    if (
+        values.ndim != 1
+        or not values.size
+        or np.any(np.isnan(values))
+        or np.any(np.isposinf(values))
+    ):
+        raise ValueError("logits must be a vector without NaN or positive infinity")
+    peak = np.max(values)
+    if not np.isfinite(peak):
+        raise ValueError("no legal token remains")
+    shifted = values - peak
+    return shifted - np.log(np.exp(shifted).sum())
+
+
+def _filtered_logits(src, tok, initial, tokens, opts):
+    row = np.array(src.step(initial + list(tokens)), dtype=np.float64, copy=True)
+    # Validate before indexing, and mask control tokens independently of the
+    # user suppress list. EOT remains available after the first position.
+    _logprobs(row)
+    blocked = set(opts.suppress_tokens)
+    if -1 in blocked:
+        blocked.remove(-1)
+        blocked.update(tok.non_speech_tokens)
+    for name in ("sot", "sot_prev", "sot_lm", "transcribe", "translate", "no_speech"):
+        value = getattr(tok, name, None)
+        if value is not None:
+            blocked.add(value)
+    if opts.suppress_blank and not tokens:
+        blocked.update(tok.encode(" "))
+        blocked.add(tok.eot)
+    if any(type(t) is not int or not 0 <= t < row.size for t in blocked):
+        raise ValueError("suppressed token outside the vocabulary")
+    if (
+        not 0 <= tok.eot < tok.timestamp_begin < row.size
+        or not 0 <= tok.no_timestamps < tok.timestamp_begin
+    ):
+        raise ValueError("invalid tokenizer vocabulary geometry")
+    row[list(blocked)] = -np.inf
+    if opts.timestamps:
+        return apply_timestamp_rules(
+            row,
+            initial + list(tokens),
+            len(initial),
+            tok,
+            round(opts.max_initial_timestamp / 0.02),
+        )
+    row[tok.timestamp_begin :] = -np.inf
+    row[tok.no_timestamps] = -np.inf
+    return row
+
+
+def decode_window(
+    src: LogitsSource,
+    tok,
+    prompt: Sequence[int],
+    opts: DecodeOptions,
+    temperature: float,
+    rng: PCG32,
+) -> Segment:
+    """Decode one window with greedy, beam search, or best-of sampling.
+
+    `prompt` is preceding transcript context, not the SOT control sequence.
+    The result retains timestamp ids but excludes EOT. Absolute segment times
+    and long-form seeking belong to the transcribe loop.
+    """
+    opts.validate()
+    if not math.isfinite(temperature) or temperature < 0:
+        raise ValueError("temperature must be finite and nonnegative")
+    context = getattr(getattr(src, "model", None), "config", None)
+    context_size = context.n_text_ctx if context is not None else 448
+    initial = sot_sequence(tok, opts.language, opts.task, opts.timestamps)
+    if len(prompt):
+        if any(not isinstance(t, (int, np.integer)) or t < 0 for t in prompt):
+            raise ValueError("prompt must contain nonnegative integer token ids")
+        initial = [tok.sot_prev] + list(prompt[-(context_size // 2 - 1) :]) + initial
+    limit = min(opts.max_tokens, context_size - len(initial))
+    if limit < 1:
+        raise ValueError("initial prompt leaves no decoding context")
+    # Silence is evaluated at SOT before masking or conditioning on a language.
+    silence = getattr(tok, "no_speech", None)
+    no_speech = 0.0
+    if silence is not None:
+        first = _logprobs(src.step([tok.sot]))
+        if not 0 <= silence < len(first):
+            raise ValueError("no_speech token outside the vocabulary")
+        no_speech = float(np.exp(first[silence]))
+
+    # Each candidate stores generated ids including a terminating EOT and the
+    # sum of untempered log probabilities. Stable token-id ordering breaks ties.
+    finished: list[tuple[tuple[int, ...], float]] = []
+    beam = opts.beam_size if temperature == 0 else 0
+    if beam > 1:
+        active = [((), 0.0)]
+        wanted = round(beam * opts.patience)
+        for _ in range(limit):
+            candidates = {}
+            for tokens, score in active:
+                lp = _logprobs(_filtered_logits(src, tok, initial, tokens, opts))
+                order = np.argsort(-lp, kind="stable")[: beam + 1]
+                for token in order:
+                    if np.isfinite(lp[token]):
+                        ids = tokens + (int(token),)
+                        candidates[ids] = score + float(lp[token])
+            active = []
+            ended = []
+            for ids, score in sorted(
+                candidates.items(), key=lambda pair: (-pair[1], pair[0])
+            ):
+                if ids[-1] == tok.eot:
+                    ended.append((ids, score))
+                else:
+                    active.append((ids, score))
+                    if len(active) == beam:
+                        break
+            finished.extend(ended[: max(0, wanted - len(finished))])
+            if len(finished) >= wanted or not active:
+                break
+        if len(finished) < beam:
+            for tokens, score in sorted(active, key=lambda pair: (-pair[1], pair[0])):
+                finished.append((tokens + (tok.eot,), score))
+                if len(finished) >= beam:
+                    break
+    else:
+        for _ in range(opts.best_of if temperature > 0 else 1):
+            tokens: tuple[int, ...] = ()
+            score = 0.0
+            for _ in range(limit):
+                row = _filtered_logits(src, tok, initial, tokens, opts)
+                lp = _logprobs(row)
+                if temperature == 0:
+                    token = int(np.argmax(lp))
+                else:
+                    probabilities = np.exp(_logprobs(row / temperature))
+                    # PCG32 is shared with the Rust parity implementation.
+                    cdf = np.cumsum(probabilities)
+                    cdf[-1] = 1.0
+                    token = int(np.searchsorted(cdf, rng.uniform(), side="right"))
+                score += float(lp[token])
+                tokens += (token,)
+                if token == tok.eot:
+                    break
+            if tokens[-1] != tok.eot:
+                tokens += (tok.eot,)
+            finished.append((tokens, score))
+    if not finished:
+        raise ValueError("search produced no candidate")
+    # Rank by generated length excluding EOT, as Whisper's default ranker does.
+    tokens, score = max(finished, key=lambda pair: pair[1] / max(1, len(pair[0]) - 1))
+    ids = list(tokens[:-1])
+    text = tok.decode([t for t in ids if t < tok.eot]).strip()
+    encoded = text.encode("utf-8")
+    ratio = len(encoded) / len(zlib.compress(encoded))
+    times = [0.02 * (t - tok.timestamp_begin) for t in ids if t >= tok.timestamp_begin]
+    return Segment(
+        0,
+        0,
+        times[0] if times else 0.0,
+        times[-1] if len(times) > 1 else 0.0,
+        text,
+        ids,
+        temperature,
+        score / (len(ids) + 1),
+        ratio,
+        no_speech,
+    )

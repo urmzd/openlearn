@@ -125,3 +125,129 @@ def test_cached_source_extends_repeats_rewinds_and_switches_branches():
     with pytest.raises(ValueError):
         source.step([1.5])
     assert source.cache.seq_len() == 2
+
+
+def search_tokenizer():
+    tok = tokenizer()
+    tok.sot_prev = 16
+    tok.non_speech_tokens = (4,)
+    tok.encode = lambda text: [0]
+    tok.decode = lambda ids: "".join(
+        {0: " ", 1: "a", 2: "b", 3: "c", 4: "!"}[i] for i in ids
+    )
+    return tok
+
+
+class ScriptedSource:
+    def __init__(self, rows):
+        self.rows = rows
+        self.calls = []
+
+    def step(self, prefix):
+        self.calls.append(tuple(prefix))
+        # Controls end in no_timestamps in these search tests.
+        generated = tuple(prefix[prefix.index(9) + 1 :])
+        row = np.full(18, -np.inf)
+        for token, value in self.rows[generated].items():
+            row[token] = value
+        return row
+
+
+def test_greedy_and_beam_one_match_with_control_suppression():
+    # WHY: Beam size one must not explore a different path than greedy.
+    # KIND: property
+    from tinyllm.num.rng import PCG32
+    from tinyllm.speech.decode import DecodeOptions, decode_window
+
+    rows = {(): {0: 20, 1: 0, 6: 30, 4: 40}, (1,): {5: 0}}
+    for beam in (0, 1):
+        result = decode_window(
+            ScriptedSource(rows),
+            search_tokenizer(),
+            [],
+            DecodeOptions(timestamps=False, beam_size=beam),
+            0,
+            PCG32(0),
+        )
+        assert result.tokens == [1]
+        assert result.text == "a"
+        assert result.avg_logprob == 0
+
+
+def test_beam_explores_lower_first_token_and_ranks_complete_paths():
+    # WHY: Choosing only the locally largest logit is not beam search.
+    # KIND: golden
+    from tinyllm.num.rng import PCG32
+    from tinyllm.speech.decode import DecodeOptions, decode_window
+
+    rows = {(): {1: 0, 2: -0.1}, (1,): {5: 0, 3: -0.01}, (2,): {5: 0}, (1, 3): {5: 0}}
+    result = decode_window(
+        ScriptedSource(rows),
+        search_tokenizer(),
+        [],
+        DecodeOptions(timestamps=False, beam_size=2, max_tokens=2),
+        0,
+        PCG32(0),
+    )
+    assert result.tokens == [2]
+    assert result.text == "b"
+
+
+def test_sampling_is_reproducible_and_scores_untempered_probability():
+    # WHY: Temperature changes draws, not the average-logprob fallback statistic.
+    # KIND: property
+    from tinyllm.num.rng import PCG32
+    from tinyllm.speech.decode import DecodeOptions, decode_window
+
+    rows = {(): {1: 0, 2: -1}, (1,): {5: 0}, (2,): {5: 0}}
+    opts = DecodeOptions(timestamps=False, best_of=3)
+    a = decode_window(ScriptedSource(rows), search_tokenizer(), [], opts, 0.5, PCG32(7))
+    b = decode_window(ScriptedSource(rows), search_tokenizer(), [], opts, 0.5, PCG32(7))
+    assert a == b
+    expected = (-np.log1p(np.exp(-1)) - (a.tokens[0] == 2)) / 2
+    assert_close(np.array(a.avg_logprob), np.array(expected), atol=1e-12, rtol=0)
+
+
+def test_prompt_context_and_generation_limit():
+    # WHY: Previous text conditions the model but never appears as new output.
+    # KIND: boundary
+    from tinyllm.num.rng import PCG32
+    from tinyllm.speech.decode import DecodeOptions, decode_window
+
+    source = ScriptedSource({(): {1: 0}})
+    result = decode_window(
+        source,
+        search_tokenizer(),
+        [2, 3],
+        DecodeOptions(timestamps=False, max_tokens=1),
+        0,
+        PCG32(0),
+    )
+    assert source.calls[0] == (16, 2, 3, 6, 3, 7, 9)
+    assert result.tokens == [1]
+    assert result.avg_logprob == 0
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"beam_size": -1},
+        {"max_tokens": 0},
+        {"best_of": 1.5},
+        {"patience": float("nan")},
+        {"temperatures": ()},
+        {"no_speech_threshold": 2},
+    ],
+)
+def test_invalid_search_options_fail_before_model_calls(change):
+    # WHY: Malformed requests must not mutate decoder state.
+    # KIND: boundary
+    from tinyllm.num.rng import PCG32
+    from tinyllm.speech.decode import DecodeOptions, decode_window
+
+    source = ScriptedSource({})
+    with pytest.raises(ValueError):
+        decode_window(
+            source, search_tokenizer(), [], DecodeOptions(**change), 0, PCG32(0)
+        )
+    assert source.calls == []

@@ -45,10 +45,39 @@ The state machine follows the reference
 [OpenAI Whisper decoding policy](https://github.com/openai/whisper/blob/main/whisper/decoding.py).
 Recorded-logit parity must check it independently of the model adapter.
 
+## Window search
+
+`DecodeOptions` defaults match DESIGN.md. Additional explicit bounds are
+`max_tokens=224`, `suppress_tokens=(-1,)` and `suppress_blank=True`. Minus one
+expands to the tokenizer's non-speech list. SOT, previous-context, task and
+no-speech control tokens are always suppressed during generation. The initial
+blank and EOT are suppressed when `suppress_blank` is enabled.
+
+Previous transcript tokens are prefixed by `sot_prev`, truncated to at most
+half the model context minus one, before the current SOT sequence. Generated
+length is bounded by both `max_tokens` and remaining model context. A result
+excludes EOT and preceding context. Timestamp ids remain in `tokens`; `text`
+decodes only ordinary text ids and strips boundary whitespace.
+
+Temperature zero uses greedy selection when beam size is zero or one. Larger
+beams retain the best cumulative-log-probability live paths and collect up to
+`round(beam_size * patience)` completed paths. At the length limit, unfinished
+paths can fill missing candidates with an unscored EOT. Positive temperatures
+use `best_of` independent trajectories with the supplied course PCG32 stream.
+Sampling uses the temperature-scaled distribution; scores always use the
+untempered filtered distribution. Candidate selection divides cumulative log
+probability by generated length excluding EOT. `avg_logprob` divides by that
+length plus one. Stable ascending token ids break equal-logit choices.
+
+No-speech probability comes from the unfiltered SOT row. Compression ratio is
+UTF-8 text byte length divided by `len(zlib.compress(text_bytes))`. Window
+results have relative timestamp endpoints; the long-form loop must still turn
+them into duration-bounded absolute segments and decide fallback/seek behavior.
+
 ## Completion status
 
 This contract currently covers the logits adapter, initial controls, language
-selection and timestamp filtering. L14.4 is not yet registered or complete.
-The tokenizer loader, decode-window search, suppress lists, temperature fallback,
+selection, timestamp filtering and single-window search. L14.4 is not yet registered or complete.
+The tokenizer loader, temperature fallback,
 no-speech handling, prompt conditioning, long-form segments, CLI, independent
 oracles, mutants and six-beat chapter remain required by DESIGN.md.
