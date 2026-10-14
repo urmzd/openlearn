@@ -156,7 +156,7 @@ class ScriptedSource:
 def test_greedy_and_beam_one_match_with_control_suppression():
     # WHY: Beam size one must not explore a different path than greedy.
     # KIND: property
-    from tinyllm.num.rng import PCG32
+    from _lib.pcg32 import PCG32
     from tinyllm.speech.decode import DecodeOptions, decode_window
 
     rows = {(): {0: 20, 1: 0, 6: 30, 4: 40}, (1,): {5: 0}}
@@ -177,7 +177,7 @@ def test_greedy_and_beam_one_match_with_control_suppression():
 def test_beam_explores_lower_first_token_and_ranks_complete_paths():
     # WHY: Choosing only the locally largest logit is not beam search.
     # KIND: golden
-    from tinyllm.num.rng import PCG32
+    from _lib.pcg32 import PCG32
     from tinyllm.speech.decode import DecodeOptions, decode_window
 
     rows = {(): {1: 0, 2: -0.1}, (1,): {5: 0, 3: -0.01}, (2,): {5: 0}, (1, 3): {5: 0}}
@@ -196,7 +196,7 @@ def test_beam_explores_lower_first_token_and_ranks_complete_paths():
 def test_sampling_is_reproducible_and_scores_untempered_probability():
     # WHY: Temperature changes draws, not the average-logprob fallback statistic.
     # KIND: property
-    from tinyllm.num.rng import PCG32
+    from _lib.pcg32 import PCG32
     from tinyllm.speech.decode import DecodeOptions, decode_window
 
     rows = {(): {1: 0, 2: -1}, (1,): {5: 0}, (2,): {5: 0}}
@@ -211,7 +211,7 @@ def test_sampling_is_reproducible_and_scores_untempered_probability():
 def test_prompt_context_and_generation_limit():
     # WHY: Previous text conditions the model but never appears as new output.
     # KIND: boundary
-    from tinyllm.num.rng import PCG32
+    from _lib.pcg32 import PCG32
     from tinyllm.speech.decode import DecodeOptions, decode_window
 
     source = ScriptedSource({(): {1: 0}})
@@ -242,7 +242,7 @@ def test_prompt_context_and_generation_limit():
 def test_invalid_search_options_fail_before_model_calls(change):
     # WHY: Malformed requests must not mutate decoder state.
     # KIND: boundary
-    from tinyllm.num.rng import PCG32
+    from _lib.pcg32 import PCG32
     from tinyllm.speech.decode import DecodeOptions, decode_window
 
     source = ScriptedSource({})
@@ -262,7 +262,7 @@ def window_result(tokens, *, temperature=0.0, avg_logprob=0.0, ratio=0.1, silenc
 def test_fallback_retries_quality_but_stops_for_probable_silence(monkeypatch):
     # WHY: Silence must not trigger six expensive retries and hallucinated text.
     # KIND: boundary
-    from tinyllm.num.rng import PCG32
+    from _lib.pcg32 import PCG32
     from tinyllm.speech import decode
 
     calls = []
@@ -441,7 +441,7 @@ def test_independent_openai_timestamp_and_search_fixture():
     # WHY: Internal consistency cannot detect a shared search-policy mistake.
     # KIND: golden
     import json
-    from tinyllm.num.rng import PCG32
+    from _lib.pcg32 import PCG32
     from tinyllm.speech.decode import DecodeOptions, decode_window
 
     fixture = json.loads(

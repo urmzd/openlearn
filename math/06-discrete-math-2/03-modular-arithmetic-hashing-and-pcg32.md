@@ -251,6 +251,8 @@ def universal_hash(x: int, a: int, b: int, p: int, m: int) -> int: ...
 | Forward | `L13.5` | the dual encoder initializes from `PCG32` |
 | Forward | `L14.2` | the encoder initializes from `PCG32` |
 
+| Forward | `L14.4` | Whisper decoding consumes this implementation. |
+
 ## Going further
 
 | Your piece | Production equivalent | What it adds | Where to look |
@@ -261,4 +263,3 @@ def universal_hash(x: int, a: int, b: int, p: int, m: int) -> int: ...
 | FNV-1a | xxHash, wyhash | many bytes per step with SIMD, better avalanche, still non-cryptographic | `xxhash.h` (`XXH3`) |
 | block hash chaining | vLLM prefix caching | hashes each KV block with its parent hash and extra keys (LoRA id, multimodal inputs) | vLLM `vllm/v1/core/kv_cache_utils.py`, `hash_block_tokens` |
 
-| Forward | `L14.4` | Whisper decoding consumes this implementation. |

@@ -7,7 +7,7 @@
 |---|---|
 | **Module** | `L14.4` · build · Python · Pass 12 · 6 to 8 h |
 | **You build** | `python/tinyllm/speech/decode.py`, `tokenizer.py`, `trace.py` |
-| **Contract** | `course/contracts/py/tinyllm/speech/{decode,tokenizer,trace}.pyi`; `course/contracts/spec/asr-decoding.md` |
+| **Contract** | `course/contracts/py/tinyllm/speech/decode.pyi`, `course/contracts/py/tinyllm/speech/tokenizer.pyi`, `course/contracts/py/tinyllm/speech/trace.pyi`; `course/contracts/spec/asr-decoding.md` |
 | **Tests** | `course/tests/L14.4/` |
 | **Needs** | `L14.3`, `L14.1`, `L1.2`, `M05.2`, `M06.3`. Reading: `L8.1`, `L4.4` |
 | **Used by** | `ethics.08` generated transcript evidence |
@@ -47,6 +47,8 @@ Fallback retries the configured temperatures for excessive compression ratio or 
 
 ## 3. Worked example
 
+`test_start_controls` checks this hand calculation: with SOT 6, French 4, translate 8 and no-timestamps 9, a French translation prompt is `[6, 4, 8, 9]`. An English transcription with timestamps uses `[6, 3, 7]`. The tokenizer is not mutated by either request.
+
 Let the timestamp vocabulary begin at 100. A generated sequence `[100, 7, 102, 102, 8]` has a completed segment ending at 40 ms and an incomplete next segment. Emit the text represented by token 7 over `[0, 0.04]`, and seek forward four 10 ms mel frames. The next window receives the completed segment's tokens as previous context. It must decode token 8 again from new audio context rather than count the unfinished tail as a completed transcript.
 
 For a scored two-token transcript followed by EOT, cumulative log probability `-1.5` gives average log probability `-0.5`. Candidate ranking divides by two, giving `-0.75`. A temperature of 0.6 changes sampling probabilities, not either denominator. A high-temperature result clears context before the next window so repetition does not propagate.
@@ -85,7 +87,7 @@ The public contracts specify source ownership, tokenizer geometry, decoding opti
 | `test_dense_rows_and_duplicate_prefix_validation` | property | Dense and sparse storage share the same unambiguous prefix contract. |
 | `test_cli_replays_sparse_logits_without_model_weights` | golden | The parity CLI must invoke the real decoding policy without a model. |
 
-## 5. Build and debug
+## 5. Pitfalls
 
 Start with a tiny scripted source. Log prefixes, selected ids, cumulative scores and seek frames, not raw user audio. A mismatch in beam-one output points to control masking or termination. A mismatch only after a branch switch points to stale self-KV. Repetition after a hot retry points to a prompt reset error. A stalled seek often means an endpoint was interpreted as an absolute token id rather than a timestamp offset.
 
@@ -96,7 +98,7 @@ python -m tinyllm transcribe --model models/whisper-tiny --audio sample.wav --la
 python -m tinyllm transcribe --logits-trace traces.npz --opts opts.json
 ```
 
-## 6. Connections
+## 6. Where it's used next
 
 | Direction | Module | Connection |
 |---|---|---|

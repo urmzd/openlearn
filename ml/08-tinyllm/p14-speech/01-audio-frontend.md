@@ -151,6 +151,9 @@ def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray: ... # float32 [n
 
 | Forward | `L14.3` | `Whisper.encode_wav` consumes the WAV parser, resampler and log-mel frontend. |
 
+| Forward | `L14.4` | Whisper decoding consumes this implementation. |
+| Forward | `ethics.08` | Decode consent-bound WAV evidence before computing generated WER. |
+
 ## Going further
 
 | Your piece | Production equivalent | What it adds | Where to look |
@@ -160,6 +163,4 @@ def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray: ... # float32 [n
 | `whisper_log_mel` | `openai-whisper` `log_mel_spectrogram` | the same recipe in torch with the filters loaded from `mel_filters.npz` | `whisper/audio.py` |
 | `to_mono_16k` | `ffmpeg -ac 1 -ar 16000` | every codec and container; Whisper's CLI shells out to it | ffmpeg `libswresample` |
 
-| Forward | `L14.4` | Whisper decoding consumes this implementation. |
 
-| Forward | `ethics.08` | Decode consent-bound WAV evidence before computing generated WER. |

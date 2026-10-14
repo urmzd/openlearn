@@ -88,11 +88,12 @@ The next one-token call uses positional row two and a `1 x 3` all-true self-atte
 | Back | `L5.4` | Learned positional embeddings. |
 | Back | `M06.3` | Reproducible parameter initialization. |
 | Back | `L7.9` | Download the checkpoint before calling the local loader. |
-| Forward | `L14.4` | Transcription policy consumes these logits and reuses cross-KV per window. |
 
 | Back | `L14.1` | `encode_wav` decodes, mixes channels, resamples and computes model-sized log-mel features. |
 
 | Forward | `ethics.08` | The consent and model-card evidence practice calls this implementation. |
+
+| Forward | `L14.4` | Transcription policy consumes these logits and reuses cross-KV per window. |
 
 ## Going further
 

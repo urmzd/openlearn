@@ -1,3 +1,4 @@
+# chapter: ml/08-tinyllm/p14-speech/04-whisper-decoding.md
 """L14.4: learner BPE with explicit Whisper controls, no automatic template."""
 from typing import Sequence
 from tinyllm.tok.bpe import BPETokenizer

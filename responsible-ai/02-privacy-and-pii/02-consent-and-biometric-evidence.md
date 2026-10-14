@@ -130,7 +130,7 @@ quality claim. Use actual model predictions and source terms for your own card.
 
 Later release automation can consume the artifacts after adding its own
 provenance, consent and quality gates. This practice does not implement that
-release workflow or the unbuilt transcription and VLM policies.
+release workflow or the unbuilt VLM policy.
 
 | Back | `L14.4` | Generate transcripts before computing WER and CER. |
 | Back | `L14.1` | Decode and resample consent-bound WAV evidence. |

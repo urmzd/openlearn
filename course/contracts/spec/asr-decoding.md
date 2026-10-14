@@ -1,3 +1,4 @@
+<!-- chapter: ml/08-tinyllm/p14-speech/04-whisper-decoding.md -->
 # Speech decoding policy
 
 L14.4 owns token selection and long-form seeking; L14.3 owns model execution.
@@ -148,8 +149,8 @@ same recordings without re-running an encoder or downloading model weights.
 
 ## Completion status
 
-This contract currently covers the logits adapter, initial controls, language
-selection, timestamp filtering, single-window search, fallback and long-form seeking. L14.4 is not yet registered or complete.
-Additional independent long-form/tokenizer oracles, public type contracts, mutants,
-module registration and a six-beat chapter remain required by DESIGN.md. The new
-long-form path still requires independent transcript/segment parity validation.
+L14.4 is registered with public contracts, a six-beat chapter, semantic mutants
+and generated-transcript evidence consumers. Full course verification remains
+the completion gate. Independent timestamp and greedy/beam fixtures pass;
+real-checkpoint tokenizer and long-form transcript parity require separate
+oracle evidence. Registration does not establish production ASR accuracy.

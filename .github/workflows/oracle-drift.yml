@@ -66,7 +66,7 @@ jobs:
         run: |
           uv venv --python 3.12 "$RUNNER_TEMP/whisper-oracle"
           uv pip install --python "$RUNNER_TEMP/whisper-oracle/bin/python" torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
-          uv pip install --python "$RUNNER_TEMP/whisper-oracle/bin/python" transformers==5.19.0 numpy==2.5.4
+          uv pip install --python "$RUNNER_TEMP/whisper-oracle/bin/python" transformers==5.19.0 numpy==2.5.4 tokenizers==0.23.3
       - name: Generate independent decoder values
         run: |
           set -euo pipefail
@@ -79,12 +79,21 @@ jobs:
           args=()
           if [ "${{ inputs.scope }}" != whisper ] || [ -f course/fixtures/L14.4/decode_openai.json ]; then args+=(--check); fi
           "$RUNNER_TEMP/whisper-oracle/bin/python" course/oracle/L14.4/decode_openai.py "${args[@]}" | tee "$RUNNER_TEMP/whisper-policy-manifest-row.tsv"
+      - name: Generate independent tokenizer values
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "${{ inputs.scope }}" != whisper ] || [ -f course/fixtures/L14.4/tokenizer_hf.json ]; then args+=(--check); fi
+          "$RUNNER_TEMP/whisper-oracle/bin/python" course/oracle/L14.4/tokenizer_hf.py "${args[@]}" | tee "$RUNNER_TEMP/whisper-tokenizer-manifest-row.tsv"
       - uses: actions/upload-artifact@v4
         with:
           name: whisper-decoder-oracle
           path: |
             course/fixtures/L14.3/decoder_hf.npz
             course/fixtures/L14.4/decode_openai.json
+            course/fixtures/L14.4/tokenizer_hf.json
+            course/fixtures/L14.4/whisper-tokenizer/tokenizer.json
+            ${{ runner.temp }}/whisper-tokenizer-manifest-row.tsv
             ${{ runner.temp }}/whisper-policy-manifest-row.tsv
             ${{ runner.temp }}/whisper-manifest-row.tsv
           if-no-files-found: error

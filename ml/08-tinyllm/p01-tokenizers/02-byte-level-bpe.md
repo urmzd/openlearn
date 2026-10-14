@@ -229,6 +229,8 @@ def test_round_trip_any_text():
 
 Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2` detokenizes streams, and `C1` trains its 4096-token vocabulary with your trainer. If you skip this module, `ol check L1.6` stops with `needs L1.2`: build it, or rerun with `--ref-deps`.
 
+| Forward | `L14.4` | Whisper decoding consumes this implementation. |
+
 ## Going further
 
 | Your piece | Production equivalent | What it adds | Where to look |
@@ -239,4 +241,3 @@ Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2`
 | `from_hf_json` | `tokenizers` `Tokenizer::from_file` | the full pipeline (normalizers, offsets, truncation, padding) | `tokenizers/src/tokenizer/serialization.rs` |
 | merge cache per pre-token | `tokenizers` BPE cache | a bounded cache shared across threads; `L1.5` builds the Rust version | `tokenizers/src/utils/cache.rs` |
 
-| Forward | `L14.4` | Whisper decoding consumes this implementation. |

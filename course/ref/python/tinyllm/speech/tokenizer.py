@@ -91,9 +91,9 @@ class WhisperTokenizer:
         # SOLUTION-END
 
     def encode(self, text: str) -> list[int]:
+        # SOLUTION-BEGIN L14.4
         # Text supplied as previous context is ordinary text, never executable
         # tokenizer control syntax. Reject explicit controls instead of injecting.
-        # SOLUTION-BEGIN L14.4
         if any(token in text for token in self.bpe.added):
             raise ValueError("ordinary transcript text contains a special token")
         return self.bpe.encode(text)
@@ -105,9 +105,9 @@ class WhisperTokenizer:
         # SOLUTION-END
 
     def _non_speech(self) -> tuple[int, ...]:
+        # SOLUTION-BEGIN L14.4
         # Speaker-label punctuation and music annotations, preserving normal
         # sentence punctuation. Musical UTF-8 prefixes may be multi-token.
-        # SOLUTION-BEGIN L14.4
         symbols = list('"#()*+/:;<=>@[\\]^_`{|}~「」『』')
         symbols.extend(
             [

@@ -1,3 +1,4 @@
+# chapter: ml/08-tinyllm/p14-speech/04-whisper-decoding.md
 """L14.4: dense/sparse NPZ v1 in spec/asr-decoding.md."""
 from tinyllm.speech.decode import LogitsSource
 
