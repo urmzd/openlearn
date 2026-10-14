@@ -109,7 +109,7 @@ There are two reasons to stop a child, and they are **different results**:
 | the activity is cancelled (a workflow cancel) | a heartbeat answer with `cancel_requested` | `Canceled`, non-retryable |
 | the worker is going away (SIGTERM drain on a deploy, or a lost lease) | `ctx` ends | `WorkerShutdown`, **retryable**: another worker resumes from the checkpoint |
 
-The worker SDK of `dur.04` reports a `cancel_requested` heartbeat answer by cancelling the activity's context with its own cause; `Subprocess.Canceled` tells the runner which causes mean "cancelled" (everything else is a shutdown). Either way the runner sends SIGTERM to the group, waits up to $g$, then sends SIGKILL. The Python handler only sets a flag; the training loop notices it at its next step, saves a checkpoint, emits its `ckpt` event, and raises `Cancelled` (exit 130). The runner heartbeats that last checkpoint even after `ctx` has ended (on a fresh context with a short timeout) and returns it in `Failure.Details` for `FailActivityRequest.last_heartbeat_details`.
+The worker SDK of `dur.04` reports a `cancel_requested` heartbeat answer by cancelling the activity's context with its own cause; `Subprocess.Canceled` tells the runner which causes mean "cancelled" (everything else is a shutdown). Either way the runner sends SIGTERM to the group, waits up to $g$, then sends SIGKILL. The Python handler only sets a flag; the training loop notices it at its next step, saves a checkpoint, emits its `ckpt` event, and raises `Cancelled` (exit 130). The runner heartbeats that last checkpoint even after `ctx` has ended (on a fresh context with a short timeout) and returns it in `Failure.Details` for `FailActivityRequest.last_heartbeat_details`. Track the last acknowledged checkpoint separately from the last one read: a stopping poll or failed heartbeat can leave an unreported checkpoint even when the final file read is empty.
 
 A worker that dies outright cannot stop its child. The child notices instead: its parent pid changes (it is reparented), and `Activity.cancelled` becomes true.
 
@@ -218,6 +218,7 @@ The runner takes a `Task` and a `Heartbeat` function instead of importing the wo
 | `TestGraceThenSIGKILL` | fault | a child ignoring SIGTERM is SIGKILLed after the grace, grandchild included | a stuck child never holds a worker slot |
 | `TestOwnProcessGroup` | unit | the child leads its own group | group signals reach grandchildren only |
 | `TestWorkerShutdownIsRetryable` | fault | `ctx` ending gives a retryable `WorkerShutdown` with `Details` = the exit checkpoint | a deploy does not end a training run for good |
+| `TestShutdownFlushesUnacknowledgedCheckpoint` | fault | A failed checkpoint heartbeat is retried on shutdown even when the final tail read is empty | resume state reaches the server |
 | `TestCancelCauseFromContext` | fault | with `Subprocess.Canceled` set, a ctx cancelled with the SDK's cancel cause ends `Canceled`; any other cause stays `WorkerShutdown` | the worker SDK's cancel reaches the child as a cancel |
 | `TestSpecWrittenAtomically` | unit | `spec.json` replaced by rename, never rewritten in place | a retry never shows half a spec |
 | `TestStderrTailIsBounded` | boundary | the last 4 KiB of stderr, traceback included | failures stay small in the history |

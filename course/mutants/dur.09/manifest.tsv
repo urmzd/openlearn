@@ -39,3 +39,4 @@ s36	python/tinyllm/io/telemetry.py	semantic	pitfall-32	233	y	(hidden until pass)
 s37	python/tinyllm/io/telemetry.py	semantic	pitfall-33	149	y	(hidden until pass)	step sampling is off by one
 s38	python/tinyllm/io/telemetry.py	semantic	pitfall-34	244	y	(hidden until pass)	a gauge keeps its first value
 s39	python/tinyllm/io/telemetry.py	semantic	pitfall-35	219	y	(hidden until pass)	spans ended after shutdown are still queued
+s41	go/activities/subprocess.go	semantic	checkpoint-flush	470	y	(hidden until pass)	forget a checkpoint consumed before exit whose heartbeat was not acknowledged

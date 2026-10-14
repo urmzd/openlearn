@@ -385,6 +385,12 @@ jobs:
           OL_VERIFY_MUTANT_SAMPLE: "0"
         run: practice/bin/ol verify course gw.06
 
+      - name: Verify checkpoint recovery against every mutant
+        if: matrix.shard == 11
+        env:
+          OL_VERIFY_MUTANT_SAMPLE: "0"
+        run: practice/bin/ol verify course dur.09
+
       - name: Verify changed modules
         run: |
           mkdir -p "$(dirname "$OL_MUTATION_CACHE")"
