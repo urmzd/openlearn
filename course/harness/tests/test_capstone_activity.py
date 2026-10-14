@@ -52,7 +52,7 @@ def test_llama_activity_resume_is_exact(
             "tie_word_embeddings": True,
             "tl_format": 1,
         },
-        "data": {"train": ["train.bin"]},
+        "data": {"train": ["train.bin"], "val": ["train.bin"]},
         "optimizer": {"name": "adamw", "lr": 0.003, "betas": [0.9, 0.95]},
         "schedule": {
             "name": "wsd",
@@ -126,6 +126,29 @@ def test_llama_activity_resume_is_exact(
     assert metric["tokens"] == 319
     assert np.isfinite(metric["ppl"]) and metric["ppl"] > 1
     assert metric["bpb"] == pytest.approx(np.log2(metric["ppl"]))
+
+    from types import SimpleNamespace
+
+    from tinyllm.cli_activity import eval_main
+
+    eval_spec = {
+        "name": "mini-eval",
+        "suites": ["ppl"],
+        "subjects": [{"id": "trained", "model": "runs/mini/ckpt/step-000004"}],
+        "seed": 3,
+    }
+    activity = SimpleNamespace(
+        artifacts=str(base / "part"),
+        key="eval",
+        load_spec=lambda check: eval_spec,
+        check_cancel=lambda: None,
+        metric=lambda *args: None,
+    )
+    outputs = eval_main(activity)
+    summary = json.loads((base / "part" / outputs[0]).read_text())
+    assert summary["metrics"]["trained"]["nll"]["mean"] == pytest.approx(
+        np.log(metric["ppl"])
+    )
     root = Path(__file__).resolve().parents[3]
     suite = base / "primers/craft.22/evals.py"
     suite.parent.mkdir(parents=True)
@@ -176,3 +199,79 @@ def test_latest_cannot_escape_checkpoint_root(tmp_path, capstone):
     (tmp_path / "LATEST").write_text("../other")
     with pytest.raises(UsageError, match="checkpoint step"):
         model_dir(str(tmp_path))
+
+
+def test_preparation_records_clean_disjoint_inputs(tmp_path, capstone):
+    from corpus.ledger import verify
+    from corpus.shard import read_shards
+    from tinyllm.cli_c1 import train_shards
+    from tinyllm.cli_c1_data import prepare, stage_inputs
+    from tinyllm.io.activity import SpecError
+
+    root = Path(__file__).resolve().parents[3]
+    spec = json.loads((root / "course/ref/entry/specs/c1/smoke.json").read_text())
+    spec["model"]["vocab_size"] = 256
+    spec_path = tmp_path / "spec.json"
+    spec_path.write_text(json.dumps(spec))
+    source = tmp_path / "source.jsonl"
+    texts = [
+        "Training example: contact ana@example.com for the story.",
+        "Another training story about a frog.",
+        "Held-out story about the moon.",
+    ]
+    source.write_text("".join(json.dumps({"text": text}) + "\n" for text in texts))
+    result = prepare(spec_path, source, tmp_path / "out", 1, "CC0-1.0", seed=4)
+    assert result["train_docs"] == 2 and result["val_docs"] == 1
+    assert json.loads((tmp_path / "out/train-spec.json").read_text())["seed"] == 4
+    train = list(read_shards(tmp_path / "out/corpus/train"))
+    val = list(read_shards(tmp_path / "out/corpus/val"))
+    assert len(train) == 2 and len(val) == 1
+    assert "<EMAIL>" in train[0].text and "ana@example.com" not in train[0].text
+    assert val[0].text == texts[-1]
+    for split, use in [("train", "train"), ("val", "eval")]:
+        folder = tmp_path / "out/corpus" / split
+        assert not verify(folder / "LEDGER.jsonl", folder, use=use)
+    manifest = tmp_path / "out" / result["train"]
+    staged = stage_inputs(spec_path, tmp_path / "out", tmp_path / "staged", seed=2)
+    assert staged["train_docs"] == 2 and staged["val_tokens"] > 1
+    assert json.loads((tmp_path / "staged/train-spec.json").read_text())["seed"] == 2
+    assert (tmp_path / "staged" / result["tokenizer"]).read_bytes() == (
+        tmp_path / "out" / result["tokenizer"]
+    ).read_bytes()
+    shards = train_shards([manifest], 256)
+    assert len(shards) == 1
+    Path(shards[0]).write_bytes(Path(shards[0]).read_bytes()[:-1])
+    with pytest.raises(SpecError, match="checksum mismatch"):
+        train_shards([manifest], 256)
+    with pytest.raises(ValueError, match="must be empty"):
+        prepare(spec_path, source, tmp_path / "out", 1, "CC0-1.0")
+    source.write_text(
+        json.dumps({"text": texts[0]}) + "\n" + json.dumps({"text": texts[0]}) + "\n"
+    )
+    with pytest.raises(ValueError, match="identical documents"):
+        prepare(spec_path, source, tmp_path / "duplicate", 1, "CC0-1.0")
+    assert not (tmp_path / "duplicate").exists()
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        None,
+        [],
+        {"steps": "many"},
+        {"model": []},
+        {"precision": None},
+        {"data": {"train": "file.bin"}},
+        {"optimizer": {"name": "adamw", "lr": None}},
+    ],
+)
+def test_training_spec_errors_are_reported(capstone, bad):
+    from tinyllm.cli_activity import check_train_spec
+
+    root = Path(__file__).resolve().parents[3]
+    spec = json.loads((root / "course/ref/entry/specs/c1/smoke.json").read_text())
+    if isinstance(bad, dict):
+        spec.update(bad)
+    else:
+        spec = bad
+    assert check_train_spec(spec)

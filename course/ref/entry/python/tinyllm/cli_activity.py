@@ -72,18 +72,27 @@ def intercept(argv: list[str]) -> int | None:
 
 
 def check_train_spec(spec: dict) -> list[str]:
+    if not isinstance(spec, dict):
+        return ["training spec must be an object"]
     errs = []
     for k in ("name", "model", "data", "optimizer", "schedule", "batch", "steps", "seed"):
         if k not in spec:
             errs.append(f"missing {k}")
     if errs:
         return errs
+    for key in ("model", "data", "optimizer", "schedule", "batch", "precision", "tokenizer"):
+        if key in spec and not isinstance(spec[key], dict):
+            errs.append(f"{key} must be an object")
+    if errs:
+        return errs
     if not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", str(spec["name"])):
         errs.append(f"name {spec['name']!r} does not match ^[a-z0-9][a-z0-9._-]*$")
-    if not isinstance(spec["steps"], int) or spec["steps"] < 1:
+    if type(spec["steps"]) is not int or spec["steps"] < 1:
         errs.append("steps must be an integer >= 1")
-    if not isinstance(spec["seed"], int) or spec["seed"] < 0:
+    if type(spec["seed"]) is not int or spec["seed"] < 0:
         errs.append("seed must be an integer >= 0")
+    if errs:
+        return errs
     model = spec["model"]
     if model.get("tl_arch") == "llama":
         from tinyllm.cli_c1 import check_spec
@@ -91,12 +100,14 @@ def check_train_spec(spec: dict) -> list[str]:
         errs.extend(check_spec(spec))
     elif model.get("tl_arch") != "bigram" or model.get("tl_tokenizer", "bytes") != "bytes":
         errs.append("train supports bigram with bytes or llama with bytes/file tokenizers")
-    if not spec["data"].get("train"):
-        errs.append("data.train needs at least one .bin file")
+    train = spec["data"].get("train")
+    if not isinstance(train, list) or not train or not all(isinstance(p, str) and p for p in train):
+        errs.append("data.train needs a nonempty list of token files or manifests")
     b = spec["batch"]
     if not all(isinstance(b.get(k, 1), int) and b.get(k, 1) >= 1 for k in ("micro_batch", "accum", "seq_len")) or "micro_batch" not in b or "seq_len" not in b:
         errs.append("batch needs micro_batch >= 1, seq_len >= 1, and accum >= 1 when given")
-    if spec["optimizer"].get("name") != "adamw" or not spec["optimizer"].get("lr", 0) > 0:
+    lr = spec["optimizer"].get("lr")
+    if spec["optimizer"].get("name") != "adamw" or type(lr) not in (float, int) or not math.isfinite(lr) or lr <= 0:
         errs.append("optimizer: this trainer runs adamw with lr > 0")
     return errs
 
@@ -277,31 +288,46 @@ def eval_main(act) -> list[str]:
         val = json.loads(run_spec.read_text())["data"].get("val") or []
         if not val:
             raise SpecError(f"{run_spec}: data.val is empty")
-        w = bigram_weight_of(mdir)
-        logp = w - np.log(np.exp(w - w.max(axis=1, keepdims=True)).sum(axis=1, keepdims=True)) - w.max(axis=1, keepdims=True)
+        config_path = mdir / "config.json"
+        llama = config_path.is_file() and json.loads(config_path.read_text()).get("tl_arch") == "llama"
+        model = None
+        if llama:
+            from tinyllm.cli_modern import load
+            from tinyllm.eval.lm import token_nlls
+
+            model, _ = load(str(mdir))
+        else:
+            w = bigram_weight_of(mdir)
+            logp = w - np.log(np.exp(w - w.max(axis=1, keepdims=True)).sum(axis=1, keepdims=True)) - w.max(axis=1, keepdims=True)
         nlls = []
         for vf in val:
             ids = np.asarray(open_tokens(str(under(act, vf))), dtype=np.int64)
+            losses = None
+            if model is not None and len(ids) > 1:
+                context = model.config.max_position_embeddings
+                losses = token_nlls(model, ids, context, max(1, context // 2))
             for i in range(0, len(ids) - 1, CHUNK):
                 x, y = ids[i : i + CHUNK], ids[i + 1 : i + CHUNK + 1]
                 x = x[: len(y)]
                 if len(y) == 0:
                     continue
-                nll = float(-logp[x, y].mean())
+                nll = float(losses[i:i + len(y)].mean()) if losses is not None else float(-logp[x, y].mean())
                 case = f"{Path(vf).name}:{i}"
                 nlls.append(nll)
                 rows.append({
                     "suite": "ppl", "case_id": case, "subject": subj["id"],
                     "input_sha": hashlib.sha256(ids[i : i + CHUNK + 1].tobytes()).hexdigest(),
                     "output": None, "scores": {"nll": nll}, "latency_ms": 0.0, "ttft_ms": None,
-                    "tokens": int(len(y)), "trace_id": None,
+                    "tokens": len(y), "trace_id": None,
                 })
             act.check_cancel()
+        if not nlls:
+            raise SpecError(f"{run_spec}: validation streams contain no prediction targets")
         arr = np.asarray(nlls)
         g = np.random.default_rng(int(spec["seed"]))
         boots = arr[g.integers(0, len(arr), size=(1000, len(arr)))].mean(axis=1)
         metrics[subj["id"]] = {"nll": {"mean": float(arr.mean()), "ci_low": float(np.quantile(boots, 0.025)),
-                                       "ci_high": float(np.quantile(boots, 0.975)), "n": int(len(arr)), "errored": 0}}
+                                       "ci_high": float(np.quantile(boots, 0.975)), "n": len(arr), "errored": 0}}
         subjects.append(subj["id"])
         act.metric(f"ppl.{subj['id']}.nll", float(arr.mean()))
     summary = {"suite": "ppl", "run_id": run_id, "subjects": subjects, "metrics": metrics, "n_boot": 1000, "seed": int(spec["seed"])}
