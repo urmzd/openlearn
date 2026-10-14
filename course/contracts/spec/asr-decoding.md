@@ -154,3 +154,7 @@ and generated-transcript evidence consumers. Full course verification remains
 the completion gate. Independent timestamp and greedy/beam fixtures pass;
 real-checkpoint tokenizer and long-form transcript parity require separate
 oracle evidence. Registration does not establish production ASR accuracy.
+
+### Teacher-forced logits CLI
+
+`tinyllm logits --model DIR --audio-features FEATURES.npz --decoder-prompts PROMPTS.jsonl --out OUTPUT.npz` runs the Whisper forward pass. The feature archive contains `mel`, a finite floating array `[batch, mel, frames]`; `--feature-key NAME` selects another key. Each JSONL row contains `ids`, a nonempty list of nonnegative integer token ids. Rows match the feature batch and have equal lengths. The output archive contains `logits` with shape `[batch, tokens, vocab]`. The final stdout line reports `out` and `prompts`. Invalid inputs exit 2 without creating the output.

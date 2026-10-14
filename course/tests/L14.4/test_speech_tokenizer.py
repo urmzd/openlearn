@@ -169,3 +169,44 @@ def test_pinned_real_whisper_tokenizer_matches_hf():
     assert tok.sot == 50258
     assert tok.no_speech == 50362
     assert tok.timestamp_begin == 50364
+
+
+def test_cli_whisper_logits_match_independent_hf(tmp_path, capsys):
+    # WHY: The milestone entry point must preserve full teacher-forced HF logits.
+    # KIND: golden
+    from _lib.close import assert_close
+
+    root = Path(os.environ["TINYLLM_FIXTURES"])
+    path = (
+        Path(__file__).resolve().parents[2] / "ref/entry/python/tinyllm/cli_speech.py"
+    )
+    spec = importlib.util.spec_from_file_location("speech_logits_cli_test", path)
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    with np.load(root / "L14.3/decoder_hf.npz") as golden:
+        ids, expected = golden["ids"], golden["logits"]
+    prompts = tmp_path / "prompts.jsonl"
+    prompts.write_text("".join(json.dumps({"ids": row.tolist()}) + "\n" for row in ids))
+    output = tmp_path / "result.data"
+    argv = [
+        "logits",
+        "--model",
+        str(root / "L14.2/tiny-whisper-128"),
+        "--audio-features",
+        str(root / "L14.2/encoder_hf.npz"),
+        "--feature-key",
+        "small.mel",
+        "--decoder-prompts",
+        str(prompts),
+        "--out",
+        str(output),
+    ]
+    assert cli.intercept(argv) == 0
+    with np.load(output) as actual:
+        assert_close(actual["logits"], expected, atol=1e-5, rtol=0)
+    assert json.loads(capsys.readouterr().out) == {"out": str(output), "prompts": 2}
+    output.unlink()
+    prompts.write_text('{"ids": [true]}\n')
+    assert cli.intercept(argv) == 2
+    assert "nonnegative integer ids" in capsys.readouterr().err
+    assert not output.exists()

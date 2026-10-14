@@ -82,6 +82,7 @@ The public contracts specify source ownership, tokenizer geometry, decoding opti
 | `test_whisper_loader_preserves_bytes_and_controls` | property | Template controls must not be appended to ordinary transcript tokens. |
 | `test_missing_timestamp_or_byte_is_rejected` | boundary | Timestamp arithmetic and byte preservation cannot silently degrade. |
 | `test_english_only_and_suppression_defaults` | boundary | English checkpoints still contain language tokens but must not use them. |
+| `test_cli_whisper_logits_match_independent_hf` | golden | The speech milestone CLI preserves full teacher-forced HF logits and rejects malformed prompts. |
 | `test_cli_transcribes_real_wav_with_real_model` | property | Tokenizer, WAV frontend, model loading and search must work together. |
 | `test_sparse_seek_and_prefix_identity` | boundary | Same-prefix logits from a different audio window are not reusable. |
 | `test_bad_sparse_recordings_rejected` | boundary | Broken traces must not be repaired into plausible model outputs. |

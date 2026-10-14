@@ -10,6 +10,8 @@ import sys
 
 
 def intercept(argv: list[str]) -> int | None:
+    if argv and argv[0] == "logits" and "--audio-features" in argv:
+        return logits(argv[1:])
     if not argv or argv[0] != "transcribe":
         return None
     if "--logits-trace" in argv:
@@ -157,4 +159,59 @@ def replay(argv: list[str]) -> int:
         return 0
     except (ValueError, OSError, KeyError, TypeError) as error:
         print(f"transcribe: {error}", file=sys.stderr)
+        return 2
+
+
+def logits(argv: list[str]) -> int:
+    """Teacher-forced Whisper logits for independently recorded feature batches."""
+    parser = argparse.ArgumentParser(prog="tinyllm logits")
+    parser.add_argument("--model", required=True)
+    parser.add_argument("--audio-features", required=True)
+    parser.add_argument("--feature-key", default="mel")
+    parser.add_argument("--decoder-prompts", required=True)
+    parser.add_argument("--out", required=True)
+    args = parser.parse_args(argv)
+    try:
+        import numpy as np
+        from tinyllm.speech.decoder import Whisper
+
+        with np.load(args.audio_features, allow_pickle=False) as archive:
+            features = archive[args.feature_key]
+        if (
+            features.ndim != 3
+            or features.dtype.kind != "f"
+            or not np.isfinite(features).all()
+        ):
+            raise ValueError(
+                "audio features must be finite floating [batch, mel, frames]"
+            )
+        prompts = []
+        for line in Path(args.decoder_prompts).read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            ids = row.get("ids") if isinstance(row, dict) else None
+            if (
+                not isinstance(ids, list)
+                or not ids
+                or any(type(i) is not int or i < 0 for i in ids)
+            ):
+                raise ValueError(
+                    "each decoder prompt must contain nonnegative integer ids"
+                )
+            prompts.append(ids)
+        if len(prompts) != features.shape[0] or not prompts:
+            raise ValueError("one decoder prompt is required per feature batch row")
+        if len({len(ids) for ids in prompts}) != 1:
+            raise ValueError("decoder prompts must have equal lengths")
+        model = Whisper.from_pretrained(args.model)
+        ids = np.asarray(prompts, dtype=np.int64)
+        if np.any(ids >= model.config.vocab):
+            raise ValueError("decoder prompt id exceeds model vocabulary")
+        values = model(features, ids).data
+        # An open file preserves the requested path, including non-.npz suffixes.
+        with Path(args.out).open("wb") as output:
+            np.savez(output, logits=values)
+        print(json.dumps({"out": args.out, "prompts": len(prompts)}))
+        return 0
+    except (ValueError, OSError, KeyError, TypeError, OverflowError) as error:
+        print(f"logits: {error}", file=sys.stderr)
         return 2
