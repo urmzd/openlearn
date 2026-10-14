@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.20.0 (2026-10-14)
+
+### Features
+
+- **speech**: add milestone commands and real Whisper parity (#36) ([c715904](https://github.com/urmzd/openlearn/commit/c715904c8b8bf8489b1cce0e4ea51862fd0fae7c))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.19.0...v0.20.0)
+
+
 ## 0.19.0 (2026-10-14)
 
 ### Features
