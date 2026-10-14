@@ -320,7 +320,7 @@ jobs:
             course/tests/L13.1 course/tests/L13.2 course/tests/L13.3 \
             course/tests/L13.4 course/tests/L13.5 course/tests/L13.6 \
             course/tests/L14.1 course/tests/L14.2 course/tests/L14.3 \
-            course/tests/L14.5 course/tests/ethics.08
+            course/tests/L14.4 course/tests/L14.5 course/tests/ethics.08
 
       - name: Harness self-tests
         run: uv run --project course/harness --quiet pytest -q -p no:cacheprovider course/harness/tests practice/bin/tests
