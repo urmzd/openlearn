@@ -83,6 +83,8 @@ def test_hand_example_pooled_error_rates():
         evidence().transcript_report(rows + rows)
     with pytest.raises(ValueError):
         evidence().transcript_report([])
+    with pytest.raises(ValueError, match="reserved"):
+        evidence().transcript_report([dict(rows[0], group="overall")])
 
 
 @pytest.mark.parametrize(

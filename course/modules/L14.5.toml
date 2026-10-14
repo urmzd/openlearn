@@ -12,8 +12,8 @@ deps      = ["L4.5", "M07.4", "M06.3"]
 # category test; no call.
 reading   = ["M05.2"]
 # Call sites (DESIGN 4.1): ethics.07 (per-group WER gaps), data.11 (the
-# normalizer), dur.13 (multimodal EvalSuite rows); none is registered yet
-# (DEVIATIONS B14L-01).
+# normalizer), dur.13 (multimodal EvalSuite rows) remain planned.
+# ethics.08 now consumes these metrics for model-card evidence.
 used_by   = ["ethics.08"]
 # Pending call sites: ["ethics.07", "data.11", "dur.13"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
 units     = ["python/tinyllm/eval/mm.py"]

@@ -31,6 +31,8 @@ def transcript_report(rows: list[dict]) -> dict:
         for r in rows
     ):
         raise ValueError('predictions need id, group, reference and hypothesis')
+    if any(r['group'] == 'overall' for r in rows):
+        raise ValueError('overall is reserved for the pooled metric')
     if len({r['id'] for r in rows}) != len(rows):
         raise ValueError('duplicate prediction id')
     refs = [basic_normalize(r['reference']) for r in rows]
