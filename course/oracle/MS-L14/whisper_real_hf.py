@@ -70,10 +70,16 @@ def main():
                     output_scores=True,
                 )
             margins = []
-            for score in result["scores"]:
-                top = score[0].topk(2).values
-                if torch.isfinite(top).all():
-                    margins.append(float(top[0] - top[1]))
+            # Timestamp generation retains each underlying decoder result on
+            # its segments; several segments can share one decoder invocation.
+            decoded = {}
+            for segment in result["segments"][0]:
+                decoded[id(segment["result"])] = segment["result"]
+            for output in decoded.values():
+                for score in output["scores"]:
+                    top = score.reshape(-1).topk(2).values
+                    if torch.isfinite(top).all():
+                        margins.append(float(top[0] - top[1]))
             ids = result["sequences"][0].tolist()
             cases.append(
                 {
