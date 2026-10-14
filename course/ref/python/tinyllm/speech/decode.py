@@ -2,7 +2,7 @@
 
 The logits seam accepts complete prefixes, including when beam search changes
 branches. The model adapter reuses cross-attention for a window and only appends
-self-attention state when the requested prefix extends the cached one.
+self-attention state after the common prefix of the old and new branch.
 """
 
 from __future__ import annotations
@@ -52,10 +52,15 @@ class WhisperLogitsSource:
         key = tuple(int(x) for x in ids)
         if key == self.prefix and self.last is not None:
             return self.last.copy()
-        extends = key[: len(self.prefix)] == self.prefix
-        if not extends:
-            self.cache = self.model.new_cache()
-        offset = len(self.prefix) if extends else 0
+        common = 0
+        for previous, requested in zip(self.prefix, key):
+            if previous != requested:
+                break
+            common += 1
+        # A rewind needs its last token recomputed to recover the logits row.
+        # Causal attention makes all earlier shared-prefix KV reusable.
+        offset = min(common, len(key) - 1)
+        self.cache.truncate(offset)
         try:
             row = self.model.decoder(ids[offset:], self.xkv, self.cache).data[-1]
         except Exception:

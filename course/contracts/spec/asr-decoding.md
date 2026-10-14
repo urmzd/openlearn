@@ -5,8 +5,9 @@ L14.4 owns token selection and long-form seeking; L14.3 owns model execution.
 A `LogitsSource.step(prefix)` returns the next-token row for a complete,
 nonempty prefix. Prefixes may repeat, shrink, or switch branches. A source
 must not mutate previously returned rows. Whisper's adapter shares cross-KV
-within an audio window, appends self-KV only for extensions, and resets self-KV
-on branch changes or failed decoder calls. Its storage remains bounded by one
+within an audio window and reuses the common-prefix self-KV across branch
+changes. It truncates changed suffixes, recomputes the final token on a rewind,
+and resets self-KV after failed decoder calls. Its storage remains bounded by one
 model context, rather than retaining every explored beam.
 
 ## Initial controls and language

@@ -13,7 +13,7 @@ class LogitsSource(Protocol):
 class WhisperLogitsSource:
     def __init__(self, model: Whisper, xkv: CrossKV) -> None: ...
     def step(self, prefix: Sequence[int]) -> NDArray:
-        """Reuse self-KV only for prefix extensions; reset on branch/rewind/error.
+        """Reuse shared-prefix self-KV across branches; truncate suffixes, reset on error.
         Cross-KV is shared for this audio window; duplicate queries return copies."""
 
 @dataclass(frozen=True)

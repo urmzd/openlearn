@@ -197,6 +197,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/course/ref/python
         run: |
+          "$RUNNER_TEMP/asr-env/bin/python" course/oracle/MS-L14/verify_languages.py --model-dir "$RUNNER_TEMP/whisper-tiny"
           "$RUNNER_TEMP/asr-env/bin/python" course/oracle/MS-L14/verify_accuracy.py --data "$RUNNER_TEMP/asr-mini" --model-dir "$RUNNER_TEMP/whisper-tiny" --oracle "$RUNNER_TEMP/asr-oracle.json" --out "$RUNNER_TEMP/asr-learner.json"
       - uses: actions/upload-artifact@v4
         if: always()
