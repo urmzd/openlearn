@@ -70,11 +70,11 @@ def main():
                     output_scores=True,
                 )
             margins = []
-            for score in result.scores:
+            for score in result["scores"]:
                 top = score[0].topk(2).values
                 if torch.isfinite(top).all():
                     margins.append(float(top[0] - top[1]))
-            ids = result.sequences[0].tolist()
+            ids = result["sequences"][0].tolist()
             cases.append(
                 {
                     "clip": f"en-{i}.wav",
