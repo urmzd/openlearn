@@ -11,6 +11,9 @@ import json
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+import warnings
+import zlib
 
 import numpy as np
 import torch
@@ -121,6 +124,87 @@ def generate(root: Path):
         )
 
 
+def fallback_case(module):
+    """Let upstream transcribe decide retries and prompt resets for repetition."""
+    calls, windows = [], []
+    tok = SimpleNamespace(
+        eot=5,
+        timestamp_begin=10,
+        decode=lambda ids: "".join({1: "b", 2: "c"}.get(t, "") for t in ids),
+    )
+
+    def pad(values, length):
+        return torch.nn.functional.pad(
+            values[:, :length], (0, max(0, length - values.shape[-1]))
+        )
+
+    namespace = dict(
+        torch=torch,
+        np=np,
+        warnings=warnings,
+        tqdm=SimpleNamespace(tqdm=module.Progress),
+        N_FRAMES=10,
+        N_SAMPLES=1600,
+        HOP_LENGTH=160,
+        SAMPLE_RATE=16000,
+        FRAMES_PER_SECOND=100,
+        exact_div=lambda a, b: a // b,
+        log_mel_spectrogram=lambda *a, **kw: torch.arange(30).float()[None],
+        pad_or_trim=pad,
+        get_tokenizer=lambda *a, **kw: tok,
+        DecodingOptions=lambda **kw: SimpleNamespace(**kw),
+    )
+    exec(module.upstream(), namespace)
+
+    def decode(segment, options):
+        seek = int(segment[0, 0])
+        tokens = [1] * 40 if seek == 0 else [2]
+        text = tok.decode(tokens).encode()
+        result = dict(
+            tokens=tokens,
+            temperature=options.temperature,
+            avg_logprob=0.0,
+            compression_ratio=len(text) / len(zlib.compress(text)),
+            no_speech_prob=0.0,
+        )
+        calls.append(
+            dict(
+                seek=seek, temperature=options.temperature, prompt=list(options.prompt)
+            )
+        )
+        windows.append(dict(seek=seek, result=result))
+        return SimpleNamespace(**result)
+
+    model = SimpleNamespace(
+        device=torch.device("cpu"),
+        is_multilingual=False,
+        num_languages=0,
+        dims=SimpleNamespace(n_mels=80, n_audio_ctx=5, n_text_ctx=448),
+        decode=decode,
+    )
+    result = namespace["transcribe"](
+        model,
+        np.zeros(3200),
+        verbose=None,
+        fp16=False,
+        language="en",
+        temperature=(0.0, 0.6),
+    )
+    assert [call["temperature"] for call in calls] == [0.0, 0.6, 0.0]
+    assert calls[-1]["prompt"] == []
+    return dict(
+        name="fallback-reset",
+        duration=0.2,
+        window_frames=10,
+        condition_on_previous_text=True,
+        timestamps=False,
+        temperatures=[0.0, 0.6],
+        calls=calls,
+        windows=windows,
+        segments=result["segments"],
+    )
+
+
 def generate_longform(root: Path):
     spec = importlib.util.spec_from_file_location(
         "transcribe_oracle", "course/oracle/L14.4/transcribe_openai.py"
@@ -139,6 +223,7 @@ def generate_longform(root: Path):
             "transcribe",
             "endoftext",
             "nocaptions",
+            "notimestamps",
         )
     }
     timestamp = tokenizer.token_to_id("<|0.00|>")
@@ -150,8 +235,13 @@ def generate_longform(root: Path):
             else {1: 65, 2: 66, 3: 67, 5: controls["endoftext"]}[token]
         )
 
-    for case in module.generate()["cases"]:
-        if case["name"] not in ("conditioned", "partial-tail", "unconditioned"):
+    for case in module.generate()["cases"] + [fallback_case(module)]:
+        if case["name"] not in (
+            "conditioned",
+            "partial-tail",
+            "unconditioned",
+            "fallback-reset",
+        ):
             continue
         name = "longform-" + case["name"]
         rows = {}
@@ -160,6 +250,8 @@ def generate_longform(root: Path):
             prefix = [
                 controls[key] for key in ("startoftranscript", "en", "transcribe")
             ]
+            if case.get("timestamps") is False:
+                prefix.append(controls["notimestamps"])
             if call["prompt"]:
                 prefix = (
                     [controls["startofprev"]]
@@ -210,6 +302,13 @@ def generate_longform(root: Path):
                 for segment in case["segments"]
             ),
         }
+        if case["name"] == "fallback-reset":
+            options["decode"].update(
+                timestamps=False, temperatures=case["temperatures"], best_of=1
+            )
+            expected["temperatures"] = [
+                segment["temperature"] for segment in case["segments"]
+            ]
         (root / f"{name}.json").write_text(json.dumps(options, indent=2) + "\n")
         (root / f"{name}-expected.json").write_text(json.dumps(expected) + "\n")
 

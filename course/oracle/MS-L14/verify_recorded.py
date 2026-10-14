@@ -20,6 +20,7 @@ def main():
         "longform-conditioned",
         "longform-partial-tail",
         "longform-unconditioned",
+        "longform-fallback-reset",
     ):
         expected = json.loads((root / f"{name}-expected.json").read_text())
         stdout = io.StringIO()
@@ -37,6 +38,10 @@ def main():
         actual = json.loads(stdout.getvalue())
         assert actual["ids"] == expected["ids"], (name, actual["ids"], expected["ids"])
         assert actual["text"] == expected["text"], name
+        if "temperatures" in expected:
+            assert [
+                segment["temperature"] for segment in actual["segments"]
+            ] == expected["temperatures"], name
         print(json.dumps({"trace": name, "ids": actual["ids"], "matches": True}))
 
 
