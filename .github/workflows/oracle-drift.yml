@@ -13,7 +13,7 @@ on:
         description: Oracle validation scope
         type: choice
         default: all
-        options: [all, whisper, whisper-real, whisper-traces, asr-assets]
+        options: [all, whisper, whisper-real, whisper-traces, asr-assets, asr-accuracy]
 
 permissions:
   contents: read
@@ -165,4 +165,46 @@ jobs:
           path: |
             ${{ runner.temp }}/asr-assets.tsv
             ${{ runner.temp }}/asr-a/attribution.json
+          if-no-files-found: error
+
+  asr-accuracy:
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'asr-accuracy'
+    name: Real speech accuracy and runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Install pinned independent oracle
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/asr-env"
+          uv pip install --python "$RUNNER_TEMP/asr-env/bin/python" torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+          uv pip install --python "$RUNNER_TEMP/asr-env/bin/python" numpy==2.5.4 soundfile==0.13.1 transformers==5.19.0 tokenizers==0.23.3 "openai-whisper @ git+https://github.com/openai/whisper.git@86098128c0b4f24f0e2aa2994de830614b474227"
+      - name: Build licensed real speech corpus
+        run: |
+          "$RUNNER_TEMP/asr-env/bin/python" course/oracle/MS-L14/build_asr_mini.py "$RUNNER_TEMP/asr-mini" > "$RUNNER_TEMP/asr-assets.tsv"
+          python course/oracle/MS-L14/verify_asr_assets.py "$RUNNER_TEMP/asr-mini"
+      - name: Generate independent corpus and long-form accuracy oracle
+        run: |
+          "$RUNNER_TEMP/asr-env/bin/python" course/oracle/MS-L14/accuracy_openai.py --data "$RUNNER_TEMP/asr-mini" --model-cache "$RUNNER_TEMP/openai-model" --out "$RUNNER_TEMP/asr-oracle.json"
+      - name: Fetch verified learner checkpoint
+        run: |
+          "$RUNNER_TEMP/asr-env/bin/python" -c 'import sys; from pathlib import Path; sys.path.insert(0, "course/oracle/MS-L14"); from whisper_real_hf import checkpoint; checkpoint(Path(sys.argv[1]))' "$RUNNER_TEMP/whisper-tiny"
+      - name: Compare learner accuracy and record runtime
+        env:
+          PYTHONPATH: ${{ github.workspace }}/course/ref/python
+        run: |
+          "$RUNNER_TEMP/asr-env/bin/python" course/oracle/MS-L14/verify_accuracy.py --data "$RUNNER_TEMP/asr-mini" --model-dir "$RUNNER_TEMP/whisper-tiny" --oracle "$RUNNER_TEMP/asr-oracle.json" --out "$RUNNER_TEMP/asr-learner.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: asr-accuracy-results
+          path: |
+            ${{ runner.temp }}/asr-oracle.json
+            ${{ runner.temp }}/asr-learner*.json
+            ${{ runner.temp }}/asr-assets.tsv
+            ${{ runner.temp }}/asr-mini/attribution.json
           if-no-files-found: error
