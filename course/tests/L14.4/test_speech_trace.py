@@ -134,9 +134,18 @@ def test_cli_replays_sparse_logits_without_model_weights(tmp_path, capsys):
     assert result["segments"][0]["end"] == 0.1
 
 
-@pytest.mark.parametrize("name", ["greedy", "beam5"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "greedy",
+        "beam5",
+        "longform-conditioned",
+        "longform-partial-tail",
+        "longform-unconditioned",
+    ],
+)
 def test_cli_matches_independent_milestone_search_traces(name, capsys):
-    # WHY: Beam-5 must rank a better complete path than the greedy first choice.
+    # WHY: Search, seek, and prompt histories must match independent policy decisions.
     # KIND: golden
     import os
 

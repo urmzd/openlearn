@@ -1,0 +1,12 @@
+{
+  "tokenizer": "../L14.4/whisper-tokenizer",
+  "duration": 0.2,
+  "window_frames": 10,
+  "decode": {
+    "language": "en",
+    "temperatures": [
+      0.0
+    ],
+    "condition_on_previous_text": true
+  }
+}
