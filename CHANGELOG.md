@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.21.0 (2026-10-14)
+
+### Features
+
+- **speech**: validate real corpus and long-form accuracy (#38) ([9012717](https://github.com/urmzd/openlearn/commit/9012717dffbc5fd75985116131086584f67f6ffc))
+
+### Misc
+
+- **speech**: add independent milestone search traces (#37) ([707e493](https://github.com/urmzd/openlearn/commit/707e49316bf2dfbf5e3a55dcb99c2aa76afee402))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.20.0...v0.21.0)
+
+
 ## 0.20.0 (2026-10-14)
 
 ### Features
