@@ -319,7 +319,9 @@ def decode_window(
     if not math.isfinite(temperature) or temperature < 0:
         raise ValueError("temperature must be finite and nonnegative")
     context = getattr(getattr(src, "model", None), "config", None)
-    context_size = context.n_text_ctx if context is not None else 448
+    context_size = (
+        context.n_text_ctx if context is not None else getattr(src, "context_size", 448)
+    )
     initial = sot_sequence(tok, opts.language, opts.task, opts.timestamps)
     if len(prompt):
         if any(not isinstance(t, (int, np.integer)) or t < 0 for t in prompt):

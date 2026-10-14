@@ -115,10 +115,41 @@ the same directory, checks vocabulary agreement, mixes/resamples WAV input to
 policy settings. `--detect-language` returns language probabilities for the
 first window. Invalid inputs return exit code 2 with an error on stderr.
 
+## Recorded-logit playback
+
+`tinyllm transcribe --logits-trace traces.npz --opts opts.json` uses the same
+fallback and long-form loop without loading weights. Options contain a local
+`tokenizer` directory (relative to the options file), `duration` in seconds,
+`window_frames` in 10 ms frames, optional `context_size` (448), and a `decode`
+object matching `DecodeOptions`. Unknown option keys fail.
+
+NPZ arrays use this v1 layout, loaded with pickle disabled:
+
+| Array | Shape | Meaning |
+|---|---|---|
+| `prefix_offsets` | `[R+1]` integer | Strictly increasing boundaries, from 0 to N |
+| `prefix_ids` | `[N]` integer | Concatenated complete, nonempty prefixes |
+| `seeks` | `[R]` integer, optional | Nonnegative mel-frame offsets; default zero |
+| `logits` | `[R,V]` float | Dense next-token rows |
+| `token_ids`, `values` | `[R,K]` integer/float | Alternative sparse top-k rows |
+| `vocab_size` | scalar integer | Required only for sparse rows |
+
+Dense and sparse encodings cannot be mixed. Sparse ids must be unique within
+a row; unrecorded vocabulary entries are negative infinity. Each row must have
+a finite choice. Duplicate seek/prefix keys, missing queried prefixes, NaN,
+positive infinity, invalid offsets, and vocabulary/context violations fail.
+Playback returns copies so timestamp masks cannot alter the recording. Sparse
+rows remain sparse in storage and expand only when queried.
+
+A recording must include every branch visited by its selected search settings,
+SOT language/silence queries, and all fallback attempts. Missing branches are
+errors, never extrapolated logits. Python and Rust can therefore consume the
+same recordings without re-running an encoder or downloading model weights.
+
 ## Completion status
 
 This contract currently covers the logits adapter, initial controls, language
 selection, timestamp filtering, single-window search, fallback and long-form seeking. L14.4 is not yet registered or complete.
-Independent oracles, recorded-logit CLI mode, public type contracts, mutants,
+Additional independent long-form/tokenizer oracles, public type contracts, mutants,
 module registration and a six-beat chapter remain required by DESIGN.md. The new
 long-form path still requires independent transcript/segment parity validation.

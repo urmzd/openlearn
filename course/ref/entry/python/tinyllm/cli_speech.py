@@ -12,6 +12,8 @@ import sys
 def intercept(argv: list[str]) -> int | None:
     if not argv or argv[0] != "transcribe":
         return None
+    if "--logits-trace" in argv:
+        return replay(argv[1:])
     parser = argparse.ArgumentParser(prog="tinyllm transcribe")
     parser.add_argument("--model", required=True)
     parser.add_argument("--audio", required=True)
@@ -98,5 +100,61 @@ def intercept(argv: list[str]) -> int | None:
         print(encoded)
         return 0
     except (ValueError, OSError, KeyError) as error:
+        print(f"transcribe: {error}", file=sys.stderr)
+        return 2
+
+
+def replay(argv: list[str]) -> int:
+    """Run the same long-form policy on recorded model outputs, without weights."""
+    parser = argparse.ArgumentParser(prog="tinyllm transcribe --logits-trace")
+    parser.add_argument("--logits-trace", required=True)
+    parser.add_argument("--opts", required=True)
+    parser.add_argument("--out")
+    args = parser.parse_args(argv)
+    try:
+        from tinyllm.speech.decode import DecodeOptions, _transcribe_windows
+        from tinyllm.speech.tokenizer import WhisperTokenizer
+        from tinyllm.speech.trace import RecordedLogits
+
+        options_path = Path(args.opts)
+        document = json.loads(options_path.read_text())
+        allowed = {"tokenizer", "decode", "duration", "window_frames", "context_size"}
+        if not isinstance(document, dict) or set(document) - allowed:
+            raise ValueError("unknown recorded-logit options")
+        if not {"tokenizer", "duration", "window_frames"} <= set(document):
+            raise ValueError(
+                "trace options require tokenizer, duration and window_frames"
+            )
+        tokenizer_path = Path(document["tokenizer"])
+        if not tokenizer_path.is_absolute():
+            tokenizer_path = options_path.parent / tokenizer_path
+        opts = DecodeOptions(**document.get("decode", {}))
+        opts.validate()
+        tok = WhisperTokenizer.from_pretrained(
+            str(tokenizer_path), language=opts.language
+        )
+        trace = RecordedLogits(
+            args.logits_trace, context_size=document.get("context_size", 448)
+        )
+        if trace.vocab_size != tok.bpe.vocab_size:
+            raise ValueError("trace and tokenizer vocabulary sizes differ")
+        frames = document["window_frames"]
+        if type(frames) is not int or frames < 1:
+            raise ValueError("window_frames must be a positive integer")
+        segments = _transcribe_windows(
+            trace.at_seek, tok, float(document["duration"]), frames, opts
+        )
+        result = {
+            "text": " ".join(s.text for s in segments),
+            "segments": [asdict(s) for s in segments],
+        }
+        encoded = json.dumps(
+            result, ensure_ascii=False, sort_keys=True, allow_nan=False
+        )
+        if args.out:
+            Path(args.out).write_text(encoded + "\n", encoding="utf-8")
+        print(encoded)
+        return 0
+    except (ValueError, OSError, KeyError, TypeError) as error:
         print(f"transcribe: {error}", file=sys.stderr)
         return 2
