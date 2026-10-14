@@ -14,7 +14,7 @@ reading   = ["M05.2"]
 # Call sites (DESIGN 4.1): ethics.07 (per-group WER gaps), data.11 (the
 # normalizer), dur.13 (multimodal EvalSuite rows); none is registered yet
 # (DEVIATIONS B14L-01).
-used_by   = []
+used_by   = ["ethics.08"]
 # Pending call sites: ["ethics.07", "data.11", "dur.13"]   # designed callers, not registered yet (DEVIATIONS B14L-01)
 units     = ["python/tinyllm/eval/mm.py"]
 upgrades  = []

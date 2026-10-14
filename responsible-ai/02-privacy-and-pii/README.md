@@ -61,3 +61,5 @@ Privacy in an ML system is a data-flow property: personal data enters through th
 | [Corpus Pipeline](../../data-engineering/05-corpus-pipeline/) | the PII scrub (`data.05`) |
 | [Observability](../../systems/04-observability/) | what traces and logs may contain |
 | [Security](../../software-craftsmanship/11-security/) | secrets review and the threat model |
+
+Pass 12: [Consent and biometric evidence in model cards](02-consent-and-biometric-evidence.md) (`ethics.08`).

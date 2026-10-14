@@ -10,7 +10,7 @@
 | **Contract** | `course/contracts/py/tinyllm/vision/preprocess.pyi` |
 | **Tests** | `course/tests/L13.6/test_decode.py`, `course/tests/L13.6/test_preprocess.py` |
 | **Needs** | `M12.2`, `M12.3`, `L13.4`, `M06.3` |
-| **Used by** | Planned: `L13.7` and `data.10`. Missing implementations remain verification failures. |
+| **Used by** | `L13.5`; Planned: `L13.7` and `data.10`. Those integrations remain future work. |
 | **Milestone** | `MS-L13` |
 | **Optional depth** | Compare every supported resize kernel on a thin image and explain edge rounding. |
 

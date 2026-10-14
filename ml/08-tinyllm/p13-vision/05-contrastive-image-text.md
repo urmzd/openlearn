@@ -9,8 +9,8 @@
 | **You build** | `python/tinyllm/vision/contrastive.py`: `clip_loss`, `siglip_loss`, `TextEncoder`, `DualEncoder` (`encode_image`, `encode_text`, `loss`), `zero_shot_classifier`, `zero_shot_predict` |
 | **Contract** | [`course/contracts/py/tinyllm/vision/contrastive.pyi`](../../../course/contracts/py/tinyllm/vision/contrastive.pyi) |
 | **Tests** | `course/tests/L13.5/test_contrastive.py` (what they check: section 4), golden values in `course/fixtures/L13.5/contrastive_hf.npz` from `course/oracle/L13.5/contrastive_hf.py` (HF `CLIPModel` and `SiglipModel` losses and autograd gradients on fixture embeddings, transformers 5.19.0, float64) |
-| **Needs** | `L13.3` `ViT`, `VisionBlock`, `ViTConfig` · `L0.4` `Embedding`, `LayerNorm`, `Linear`, `ModuleList`, `Module` · `L0.2` `matmul`, `transpose`, `log_softmax`, `exp`, `sum`, `mean`, `reshape` · `L0.1` `Tensor`, `from_op` · `M06.3` `PCG32` (or `--ref-deps`). Reading: `L5.3` attention, `M11.1` softmax with a temperature, `L0.3` cross-entropy |
-| **Used by** | later `data.10` (the CLIP-score filter for image-text pairs) · `ethics.07` (the zero-shot disparity probe); neither is registered yet |
+| **Needs** | `L13.6`; `L13.3` `ViT`, `VisionBlock`, `ViTConfig` · `L0.4` `Embedding`, `LayerNorm`, `Linear`, `ModuleList`, `Module` · `L0.2` `matmul`, `transpose`, `log_softmax`, `exp`, `sum`, `mean`, `reshape` · `L0.1` `Tensor`, `from_op` · `M06.3` `PCG32` (or `--ref-deps`). Reading: `L5.3` attention, `M11.1` softmax with a temperature, `L0.3` cross-entropy |
+| **Used by** | `ethics.08`; later `data.10` (the CLIP-score filter for image-text pairs) · `ethics.07` (the zero-shot disparity probe); neither is registered yet |
 | **Milestone** | `MS-L13` step 2 (a tiny dual encoder learns zero-shot classification of 24 color-shape classes) |
 | **Optional depth** | Radford et al., "Learning transferable visual models from natural language supervision" (2021), sections 2.3 and 3.1; Zhai et al., "Sigmoid loss for language image pre-training" (2023), sections 3 and 4; van den Oord et al., "Representation learning with contrastive predictive coding" (2018), for InfoNCE as a bound on mutual information |
 
@@ -134,6 +134,8 @@ def zero_shot_predict(model, pixel_values: Tensor, W: NDArray) -> NDArray: ...  
 | `test_bad_embedding_shapes_are_refused` | boundary | unequal batches or widths raise `ValueError` | no loss on broadcast noise |
 | `test_dual_encoder_learns_zero_shot_shapes` | learning | 600 SigLIP steps on PCG32-drawn shapes: zero-shot accuracy at least the reference threshold (0.80) | the parts train together (`MS-L13` step 2) |
 
+| `test_encoded_images_match_explicit_pixel_pipeline` | Encoded images traverse the complete processor with preserved order; incompatible processors fail. |
+
 ## 5. Pitfalls
 
 | Pitfall | Symptom | Caught by |
@@ -172,6 +174,8 @@ def zero_shot_predict(model, pixel_values: Tensor, W: NDArray) -> NDArray: ...  
 | Forward | `ethics.07` | builds zero-shot classifiers and compares accuracy across image source domains (not registered yet) |
 
 | Back | `L13.6` | `encode_images` applies the image processor before encoding each image, rejecting incompatible geometry. |
+
+| Forward | `ethics.08` | The consent and model-card evidence practice calls this implementation. |
 
 ## Going further
 

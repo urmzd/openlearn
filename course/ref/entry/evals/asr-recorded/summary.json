@@ -1,0 +1,17 @@
+{
+  "cer": 0.3333333333333333,
+  "groups": {
+    "clear": {
+      "n": 2,
+      "wer": 0.25
+    },
+    "noisy": {
+      "n": 2,
+      "wer": 0.5
+    }
+  },
+  "n": 4,
+  "predictions_sha256": "6d9e809ebec9cc03d7e60487dee1af23ff90d37b07284c39039c5f20d72def2e",
+  "suite": "asr-recorded",
+  "wer": 0.375
+}

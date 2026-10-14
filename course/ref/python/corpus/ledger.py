@@ -117,7 +117,7 @@ def row_errors(row: Mapping[str, Any]) -> list[str]:
     """Violations of formats/ledger.schema.json by one row."""
     # SOLUTION-BEGIN data.08
     errs = [f"missing key {k!r}" for k in _REQUIRED if k not in row]
-    errs += [f"unknown key {k!r}" for k in row if k not in _REQUIRED and k != "revoked"]
+    errs += [f"unknown key {k!r}" for k in row if k not in _REQUIRED and k not in ("revoked", "modality", "biometric", "consent", "attribution", "prohibited_uses")]
 
     def check(key: str, ok: bool, what: str) -> None:
         if key in row and not ok:
@@ -169,6 +169,12 @@ def row_errors(row: Mapping[str, Any]) -> list[str]:
     )
     check("notes", isinstance(row.get("notes"), str), "a string")
     check("revoked", isinstance(row.get("revoked"), bool), "true or false")
+    check("modality", row.get("modality") in ("text", "image", "audio"), "text, image, or audio")
+    check("biometric", isinstance(row.get("biometric"), bool), "true or false")
+    check("consent", row.get("consent") in ("none", "public-domain", "cc-licensed", "explicit-donation"), "a consent category")
+    check("attribution", isinstance(row.get("attribution"), str), "a string")
+    uses = row.get("prohibited_uses")
+    check("prohibited_uses", isinstance(uses, list) and all(isinstance(x, str) for x in uses), "a list of strings")
     return errs
     # SOLUTION-END
 

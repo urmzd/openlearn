@@ -1,4 +1,4 @@
 # Source of the vendored contracts/VERSION (course/DESIGN.md 5.4).
 # Vendoring (`ol course init`, `ol contracts sync`) adds `sha` and `content_hash`.
 # Minor bump: backward compatible. Major bump: a migration chapter.
-semver = "0.4.0"
+semver = "0.5.0"

@@ -1086,3 +1086,16 @@ L14.3 now includes the decoder and strict checkpoint loader, independently check
 | B14PRE-01 | L13.6 now includes bounded decoding, HF config loading, CLIP/SigLIP/Idefics3/AnyRes recipes, media hashes, token counts, independent fixtures, 19 semantic mutants and its chapter. Its missing L13.7/data.10 consumers still fail verify check 9. | Registration alone does not prove downstream integration. |
 | B14PRE-02 | Add `do_center_crop`, `crop_size`, processor kind, AnyRes pinpoints, patch geometry, allocation budget and `preprocess_rev` to the DESIGN sketch. `ImageInputs.original_size` preserves oriented dimensions for feature unpadding. | Real HF recipes and the later VLM require information omitted from the short sketch. |
 | B14PRE-03 | Predecoded pixels use dimension-framed RGB bytes for their D44 hash; encoded inputs retain the exact original-byte hash. `lang.12` remains an unregistered reading prerequisite; the chapter teaches the needed container checks directly. | A pixel fixture has no original file encoding; shape framing avoids identity collisions between reshapes. The missing primer is still completion work. |
+
+
+### B14 integration: evidence consumers before transcription
+
+The standalone image processor is now consumed by L13.5's encoded-image
+entry point, and the audio frontend by L14.3's WAV entry point. ethics.08
+is implemented before dur.13: its runnable evidence artifact calls the real
+contrastive and Whisper towers and L14.5 metrics. The practice checks source
+consent, recorded-prediction reports and model-card numbers. Teacher-forced
+Whisper scores are explicitly diagnostic, not ASR WER. This supplies real
+callers for the foundations without weakening verification or claiming the
+unbuilt transcription, VLM, bias-gap or release workflows are complete.
+Earlier missing-callsite notes describe the state before these integrations.

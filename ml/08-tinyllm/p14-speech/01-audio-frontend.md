@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/io/wav.pyi`](../../../course/contracts/py/tinyllm/io/wav.pyi), [`course/contracts/py/tinyllm/speech/frontend.pyi`](../../../course/contracts/py/tinyllm/speech/frontend.pyi) |
 | **Tests** | `course/tests/L14.1/test_frontend.py` (what they check: section 4), fixtures from `course/oracle/L14.1/frontend_hf.py` (scipy 1.17, transformers 5.19) in `course/fixtures/L14.1/` |
 | **Needs** | `M12.3` `resample_audio` · `M12.5` `hann`, `stft`, `power` · `M12.6` `mel_filterbank`, `log_mel_whisper` (or `--ref-deps`). Catalog prereq `lang.12` (RIFF from the bytes up) is not registered yet; section 2.1 covers what you need |
-| **Used by** | `L14.2` (the encoder eats these features) · later `data.11` (audio corpus) and `L15.1` (the Rust port in the engine) |
+| **Used by** | `L14.3`; `L14.2` (the encoder eats these features) · later `data.11` (audio corpus) and `L15.1` (the Rust port in the engine) |
 | **Milestone** | `MS-L14` step 1 (log-mel within $10^{-4}$ of HF on the fixture clips) |
 | **Optional depth** | Microsoft, "Multimedia Programming Interface and Data Specifications 1.0" (1991), the RIFF and WAVE chapters; Microsoft, `WAVEFORMATEXTENSIBLE` documentation; Radford et al., "Robust speech recognition via large-scale weak supervision" (2022), section 2.2 |
 

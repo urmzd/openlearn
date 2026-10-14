@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/eval/mm.pyi`](../../../course/contracts/py/tinyllm/eval/mm.pyi) |
 | **Tests** | `course/tests/L14.5/test_mm_metrics.py` (what they check: section 4), golden values from `course/oracle/L14.5/metrics_oracle.py` (jiwer 4.0, sacreBLEU 2.6, transformers' `BasicTextNormalizer`) |
 | **Needs** | `L4.5` `corpus_bleu`, `chrf` · `M07.4` `bootstrap_ci` · `M06.3` `PCG32` (or `--ref-deps`). Reading: `M05.2` (text as Unicode code points) |
-| **Used by** | later `ethics.07` (per-group WER gaps) · `data.11` (the normalizer) · `dur.13` (multimodal `EvalSuite` rows); they join the registry with B14's ethics, data, and durable groups |
+| **Used by** | `ethics.08`; later `ethics.07` (per-group WER gaps) · `data.11` (the normalizer) · `dur.13` (multimodal `EvalSuite` rows); they join the registry with B14's ethics, data, and durable groups |
 | **Milestone** | `MS-L14` steps 7 and 8 (`eval asr`: WER within 0.01 of the oracle run, with `wer_ci`) |
 | **Optional depth** | Levenshtein, "Binary codes capable of correcting deletions, insertions, and reversals" (1966); Antol et al., "VQA: Visual Question Answering" (2015), section 4; Radford et al. (2022), appendix C (text normalization); Efron and Tibshirani, *An Introduction to the Bootstrap* (1993), chapter 13 |
 
@@ -141,6 +141,8 @@ def bootstrap_ci(per_item, stat, n=1000, seed=0, alpha=0.05) -> tuple[float, flo
 | Forward | `ethics.07` | per-group WER and gaps with two-sample bootstrap intervals (with B14's ethics group) |
 | Forward | `data.11` | `basic_normalize` on transcripts before dedup and splits |
 | Forward | `dur.13` | the `asr`, `vqa`, `caption`, `zeroshot` suites score with these functions |
+
+| Forward | `ethics.08` | The consent and model-card evidence practice calls this implementation. |
 
 ## Going further
 
