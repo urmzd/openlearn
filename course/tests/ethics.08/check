@@ -9,5 +9,5 @@ for f in primers/ethics.08/evidence.py docs/data/CONSENT_POLICY.md docs/data/mm-
 done
 export OL_REPO="$PWD" PYTHONPATH="$PWD/python:$tests" PYTHONDONTWRITEBYTECODE=1
 export OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1
-exec uv run --no-project --python '>=3.11' --quiet --with pytest --with numpy --with pillow --with pyarrow \
+exec uv run --no-project --python '>=3.11' --quiet --with pytest --with numpy --with pillow --with pyarrow --with zstandard \
   python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

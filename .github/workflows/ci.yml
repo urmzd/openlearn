@@ -305,6 +305,23 @@ jobs:
           go-version: stable
           cache: false
 
+      - name: Multimodal reference integration
+        env:
+          OL_REPO: ${{ runner.temp }}/mm-evidence
+          TINYLLM_FIXTURES: ${{ github.workspace }}/course/fixtures
+          PYTHONPATH: ${{ github.workspace }}/course/ref/python:${{ github.workspace }}/course/tests
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+          VECLIB_MAXIMUM_THREADS: "1"
+        run: |
+          mkdir -p "$OL_REPO"
+          cp -R course/ref/docs course/ref/primers course/ref/entry/evals "$OL_REPO/"
+          uv run --project course/harness --quiet pytest -q -p no:cacheprovider \
+            course/tests/L13.1 course/tests/L13.2 course/tests/L13.3 \
+            course/tests/L13.4 course/tests/L13.5 course/tests/L13.6 \
+            course/tests/L14.1 course/tests/L14.2 course/tests/L14.3 \
+            course/tests/L14.5 course/tests/ethics.08
+
       - name: Harness self-tests
         run: uv run --project course/harness --quiet pytest -q -p no:cacheprovider course/harness/tests practice/bin/tests
 
@@ -320,7 +337,8 @@ jobs:
   course-verify-changed:
     name: Course verify (changed modules, shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Cold reference-system assembly plus the full shard can exceed 25 minutes.
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -329,7 +347,7 @@ jobs:
     # checks every mutant and the learner-test thresholds.
     env:
       OL_VERIFY_MUTANT_SAMPLE: "4"
-      OL_MUTATION_CACHE: ${{ github.workspace }}/../ol-mutation/mutation.json
+      OL_MUTATION_CACHE: ${{ github.workspace }}/.scratchpad/ci-mutation/mutation.json
     steps:
       - uses: actions/checkout@v6
         with:
@@ -355,11 +373,17 @@ jobs:
       - name: Restore the mutation cache
         uses: actions/cache/restore@v4
         with:
-          path: ${{ github.workspace }}/../ol-mutation
+          path: ${{ github.workspace }}/.scratchpad/ci-mutation
           key: ol-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}
           restore-keys: |
             ol-mutation-verify-${{ matrix.shard }}-
             ol-mutation-
+
+      - name: Verify cache coalescing against every mutant
+        if: matrix.shard == 3
+        env:
+          OL_VERIFY_MUTANT_SAMPLE: "0"
+        run: practice/bin/ol verify course gw.06
 
       - name: Verify changed modules
         run: |
@@ -370,5 +394,5 @@ jobs:
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: ${{ github.workspace }}/../ol-mutation
+          path: ${{ github.workspace }}/.scratchpad/ci-mutation
           key: ol-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}

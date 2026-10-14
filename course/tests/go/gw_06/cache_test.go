@@ -196,7 +196,11 @@ const sse = "data: {\"choices\":[{\"delta\":{\"content\":\"hi\"}}]}\n\ndata: [DO
 func (u *upstream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	n := u.calls.Add(1)
 	if u.gate != nil {
-		<-u.gate
+		select {
+		case <-u.gate:
+		case <-r.Context().Done():
+			return
+		}
 	}
 	if u.status != 0 && u.status != 200 {
 		server.WriteError(w, u.status, "server_error", "no_capacity", "", "down")
@@ -275,6 +279,15 @@ func TestSingleflightOneUpstreamCall(t *testing.T) {
 	for u.calls.Load() == 0 {
 		<-time.After(time.Millisecond) // wait for the leader to reach the upstream
 	}
+	// Keep the leader blocked while a canceled follower traverses the
+	// middleware synchronously. A coalesced waiter exits on cancellation;
+	// a missing singleflight branch reaches the upstream and increments its
+	// count. This detects s07 even if the scheduler has not run the other
+	// goroutines before the leader's gate opens.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	req := httptest.NewRequest("POST", "/v1/chat/completions", strings.NewReader(handA)).WithContext(ctx)
+	h.ServeHTTP(httptest.NewRecorder(), req)
 	close(u.gate)
 	wg.Wait()
 	if n := u.calls.Load(); n != 1 {
