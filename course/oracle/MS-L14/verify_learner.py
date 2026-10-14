@@ -18,7 +18,37 @@ def main():
     parser.add_argument("--oracle", required=True)
     args = parser.parse_args()
     expected = json.loads(Path(args.oracle).read_text())
-    model = Whisper.from_pretrained(args.model_dir)
+    try:
+        model = Whisper.from_pretrained(args.model_dir)
+    except ValueError:
+        import numpy as np
+        from tinyllm.io.safetensors import load_safetensors
+        from tinyllm.speech.encoder import WhisperConfig, whisper_sinusoids
+
+        config = WhisperConfig.from_hf(args.model_dir)
+        tensors, _ = load_safetensors(str(Path(args.model_dir) / "model.safetensors"))
+        stored = tensors["model.encoder.embed_positions.weight"]
+        expected_positions = whisper_sinusoids(config.n_audio_ctx, config.d)
+        error = np.abs(stored - expected_positions)
+        index = np.unravel_index(error.argmax(), error.shape)
+        print(
+            json.dumps(
+                {
+                    "position_dtype": str(stored.dtype),
+                    "position_max_error": float(error.max()),
+                    "position_stored": float(stored[index]),
+                    "position_generated": float(expected_positions[index]),
+                    "position_fp16_error": float(
+                        np.abs(
+                            stored
+                            - expected_positions.astype(np.float16).astype(np.float32)
+                        ).max()
+                    ),
+                }
+            ),
+            flush=True,
+        )
+        raise
     tok = WhisperTokenizer.from_pretrained(args.model_dir, language="en")
     cfg = FeatureConfig(feature_size=model.config.n_mels)
     options = DecodeOptions(language="en", temperatures=(0.0,), max_tokens=128)
