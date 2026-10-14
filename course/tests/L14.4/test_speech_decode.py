@@ -127,6 +127,29 @@ def test_cached_source_extends_repeats_rewinds_and_switches_branches():
     assert source.cache.seq_len() == 2
 
 
+def test_shared_prefix_reuse_limits_branch_recomputation(monkeypatch):
+    # WHY: Beam branches must retain causal prefix KV instead of rescoring history.
+    # KIND: property
+    fix = Path(os.environ["TINYLLM_FIXTURES"])
+    model = Whisper.from_pretrained(str(fix / "L14.2/tiny-whisper-128"))
+    mel = np.load(fix / "L14.2/encoder_hf.npz")["small.mel"][:1]
+    xkv = model.encode(mel)
+    prefixes = ([1, 2, 3, 4], [1, 2, 3, 4, 5], [1, 2, 3, 6, 7], [1, 2])
+    expected = [model.decoder(np.array(p), xkv).data[-1] for p in prefixes]
+    forward = model.decoder.forward
+    tokens = []
+
+    def counted(ids, *args, **kwargs):
+        tokens.append(len(ids))
+        return forward(ids, *args, **kwargs)
+
+    monkeypatch.setattr(model.decoder, "forward", counted)
+    source = WhisperLogitsSource(model, xkv)
+    for prefix, row in zip(prefixes, expected):
+        assert_close(source.step(prefix), row, atol=1e-5, rtol=0)
+    assert sum(tokens) <= 8
+
+
 def search_tokenizer():
     tok = tokenizer()
     tok.sot_prev = 16

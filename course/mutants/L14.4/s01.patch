@@ -1,11 +1,11 @@
 --- a/python/tinyllm/speech/decode.py
 +++ b/python/tinyllm/speech/decode.py
-@@ -48,7 +48,7 @@
+@@ -51,7 +51,7 @@
              raise ValueError("prefix must contain valid token ids within the context")
          key = tuple(int(x) for x in ids)
          if key == self.prefix and self.last is not None:
 -            return self.last.copy()
 +            return self.last
-         extends = key[: len(self.prefix)] == self.prefix
-         if not extends:
-             self.cache = self.model.new_cache()
+         common = 0
+         for previous, requested in zip(self.prefix, key):
+             if previous != requested:

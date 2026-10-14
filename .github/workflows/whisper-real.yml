@@ -31,6 +31,11 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/course/ref/python
         run: |
           "$RUNNER_TEMP/whisper-real/bin/python" course/oracle/MS-L14/verify_learner.py --model-dir "$RUNNER_TEMP/whisper-tiny" --oracle course/fixtures/whisper-parity/greedy_timestamps.json
+      - name: Check MLS language detection
+        env:
+          PYTHONPATH: ${{ github.workspace }}/course/ref/python
+        run: |
+          "$RUNNER_TEMP/whisper-real/bin/python" course/oracle/MS-L14/verify_languages.py --model-dir "$RUNNER_TEMP/whisper-tiny"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

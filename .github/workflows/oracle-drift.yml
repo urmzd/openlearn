@@ -13,7 +13,7 @@ on:
         description: Oracle validation scope
         type: choice
         default: all
-        options: [all, whisper, whisper-real, whisper-traces]
+        options: [all, whisper, whisper-real, whisper-traces, asr-assets, asr-accuracy, mls-languages]
 
 permissions:
   contents: read
@@ -142,4 +142,86 @@ jobs:
         with:
           name: whisper-recorded-traces
           path: course/fixtures/MS-L14/
+          if-no-files-found: error
+
+  asr-assets:
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'asr-assets'
+    name: Deterministic licensed ASR assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Build twice and compare asset fingerprints
+        run: |
+          set -euo pipefail
+          uv run --script course/oracle/MS-L14/build_asr_mini.py "$RUNNER_TEMP/asr-a" > "$RUNNER_TEMP/asr-assets.tsv"
+          uv run --script course/oracle/MS-L14/build_asr_mini.py "$RUNNER_TEMP/asr-b" > "$RUNNER_TEMP/asr-assets-repeat.tsv"
+          diff -u "$RUNNER_TEMP/asr-assets.tsv" "$RUNNER_TEMP/asr-assets-repeat.tsv"
+          python course/oracle/MS-L14/verify_asr_assets.py "$RUNNER_TEMP/asr-a"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asr-asset-fingerprints
+          path: |
+            ${{ runner.temp }}/asr-assets.tsv
+            ${{ runner.temp }}/asr-a/attribution.json
+          if-no-files-found: error
+
+  asr-accuracy:
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'asr-accuracy'
+    name: Real speech accuracy and runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Install pinned independent oracle
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/asr-env"
+          uv pip install --python "$RUNNER_TEMP/asr-env/bin/python" torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+          uv pip install --python "$RUNNER_TEMP/asr-env/bin/python" numpy==2.5.4 soundfile==0.13.1 transformers==5.19.0 tokenizers==0.23.3 "openai-whisper @ git+https://github.com/openai/whisper.git@86098128c0b4f24f0e2aa2994de830614b474227"
+      - name: Build licensed real speech corpus
+        run: |
+          "$RUNNER_TEMP/asr-env/bin/python" course/oracle/MS-L14/build_asr_mini.py "$RUNNER_TEMP/asr-mini" > "$RUNNER_TEMP/asr-assets.tsv"
+          python course/oracle/MS-L14/verify_asr_assets.py "$RUNNER_TEMP/asr-mini"
+      - name: Generate independent corpus and long-form accuracy oracle
+        run: |
+          "$RUNNER_TEMP/asr-env/bin/python" course/oracle/MS-L14/accuracy_openai.py --data "$RUNNER_TEMP/asr-mini" --model-cache "$RUNNER_TEMP/openai-model" --out "$RUNNER_TEMP/asr-oracle.json"
+      - name: Fetch verified learner checkpoint
+        run: |
+          "$RUNNER_TEMP/asr-env/bin/python" -c 'import sys; from pathlib import Path; sys.path.insert(0, "course/oracle/MS-L14"); from whisper_real_hf import checkpoint; checkpoint(Path(sys.argv[1]))' "$RUNNER_TEMP/whisper-tiny"
+      - name: Compare learner accuracy and record runtime
+        env:
+          PYTHONPATH: ${{ github.workspace }}/course/ref/python
+        run: |
+          "$RUNNER_TEMP/asr-env/bin/python" course/oracle/MS-L14/verify_languages.py --model-dir "$RUNNER_TEMP/whisper-tiny"
+          "$RUNNER_TEMP/asr-env/bin/python" course/oracle/MS-L14/verify_accuracy.py --data "$RUNNER_TEMP/asr-mini" --model-dir "$RUNNER_TEMP/whisper-tiny" --oracle "$RUNNER_TEMP/asr-oracle.json" --out "$RUNNER_TEMP/asr-learner.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: asr-accuracy-results
+          path: |
+            ${{ runner.temp }}/asr-oracle.json
+            ${{ runner.temp }}/asr-learner*.json
+            ${{ runner.temp }}/asr-assets.tsv
+            ${{ runner.temp }}/asr-mini/attribution.json
+          if-no-files-found: error
+
+  mls-languages:
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'mls-languages'
+    name: Licensed MLS language excerpts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Extract bounded official MLS excerpts
+        run: uv run --script course/oracle/MS-L14/mls_languages.py "$RUNNER_TEMP/mls-languages"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mls-languages
+          path: ${{ runner.temp }}/mls-languages
           if-no-files-found: error

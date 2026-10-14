@@ -1,0 +1,50 @@
+[
+  {
+    "attribution": "Multilingual LibriSpeech, Pratap et al. (2020), derived from LibriVox",
+    "audio": "lang-de.wav",
+    "dataset_url": "https://www.openslr.org/94/",
+    "excerpt_frames": 128000,
+    "language": "de",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "rate": 16000,
+    "sha256": "6da52629110c296529b6adc220b2dd29f8564b47fa8c09099a5a7a77399dc806",
+    "source_flac_sha256": "b24849dc1e6e5b9d0406c4fa94704c2b66ad900e4f38f6d6bafe36d279b50e8c",
+    "source_frames": 282400,
+    "source_member": "mls_german/dev/audio/137/82/137_82_000007.flac",
+    "source_url": "https://dl.fbaipublicfiles.com/mls/mls_german.tar.gz",
+    "start_frame": 0
+  },
+  {
+    "attribution": "Multilingual LibriSpeech, Pratap et al. (2020), derived from LibriVox",
+    "audio": "lang-es.wav",
+    "dataset_url": "https://www.openslr.org/94/",
+    "excerpt_frames": 128000,
+    "language": "es",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "rate": 16000,
+    "sha256": "ee2960ceb4449c9fc39f7491b00dcd1f65e11916371e46dfe912c6e66424a27f",
+    "source_flac_sha256": "6d57954aa74a1045c6bba222636e26278507bcf2169c16a3015ccc559e2e94d3",
+    "source_frames": 320000,
+    "source_member": "mls_spanish/dev/audio/13257/11991/13257_11991_000081.flac",
+    "source_url": "https://dl.fbaipublicfiles.com/mls/mls_spanish.tar.gz",
+    "start_frame": 0
+  },
+  {
+    "attribution": "Multilingual LibriSpeech, Pratap et al. (2020), derived from LibriVox",
+    "audio": "lang-fr.wav",
+    "dataset_url": "https://www.openslr.org/94/",
+    "excerpt_frames": 128000,
+    "language": "fr",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "rate": 16000,
+    "sha256": "32b38cdf08de47e728f494ec60e859ee3eeae690112e832115774d3c30d77ebd",
+    "source_flac_sha256": "1d74b1b1e48b05676d43fdb9e272eedd18460629848ea7974b22dbf96e0f87f4",
+    "source_frames": 296000,
+    "source_member": "mls_french/dev/audio/577/394/577_394_000030.flac",
+    "source_url": "https://dl.fbaipublicfiles.com/mls/mls_french.tar.gz",
+    "start_frame": 0
+  }
+]

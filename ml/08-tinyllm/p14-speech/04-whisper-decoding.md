@@ -37,7 +37,7 @@ The encoder and decoder can score any prefix. Turning those scores into a transc
 
 Load byte BPE from the checkpoint and identify controls by spelling. HF calls the no-speech token `nocaptions`; the OpenAI tokenizer also supports the spelling `nospeech`. Require all 256 bytes and a contiguous suffix of 1501 timestamp tokens, spaced 20 ms apart. Ignore automatic post-processing templates: construct SOT, language, task and optional no-timestamps controls yourself. Detect language by restricting the SOT row to language ids and renormalizing their probabilities.
 
-Treat a logits source as a function of the complete prefix. Repeated queries return independent rows. Extending the same prefix appends only new self-KV; rewinding or switching a beam branch resets that cache. Cross-KV is constant for an audio window. If a decoder layer fails after another appended state, reset before accepting another request.
+Treat a logits source as a function of the complete prefix. Repeated queries return independent rows. Extending the same prefix appends only new self-KV; rewinding or switching a beam branch truncates self-KV to the shared prefix. Recompute the final token on an exact rewind to recover its logits. Cross-KV is constant for an audio window. If a decoder layer fails after another appended state, reset before accepting another request.
 
 Timestamp filtering is a state machine. The first generated token is a bounded timestamp. A start timestamp must be followed by text or EOT; an end timestamp must be followed by another start or EOT. End times advance strictly, while a new start may equal the preceding end. After these masks, force a timestamp when the sum of timestamp probabilities exceeds the best individual text probability. Compare probabilities after subtracting a common logit maximum to avoid overflow.
 
@@ -65,6 +65,7 @@ The public contracts specify source ownership, tokenizer geometry, decoding opti
 | `test_timestamp_mass_forces_time_even_when_each_token_is_weaker` | property | Comparing argmaxes misses a diffuse but dominant timestamp mass. |
 | `test_no_legal_timestamp_is_an_error` | boundary | An all-masked row must not turn into NaNs and an arbitrary token. |
 | `test_language_distribution_excludes_dominant_text` | property | Detection renormalizes among language tokens, not the vocabulary. |
+| `test_shared_prefix_reuse_limits_branch_recomputation` | property | Beam branches retain causal prefix KV instead of rescoring history. |
 | `test_cached_source_extends_repeats_rewinds_and_switches_branches` | property | Beam branches cannot inherit another branch's self-attention state. |
 | `test_greedy_and_beam_one_match_with_control_suppression` | property | Beam size one must not explore a different path than greedy. |
 | `test_beam_explores_lower_first_token_and_ranks_complete_paths` | golden | Choosing only the locally largest logit is not beam search. |
