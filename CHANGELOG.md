@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.19.0 (2026-10-14)
+
+### Features
+
+- **speech**: implement Whisper decoding policy (#35) ([df406f4](https://github.com/urmzd/openlearn/commit/df406f42e9a797fd4eca31a46af72a3a5653c05f))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.18.0...v0.19.0)
+
+
 ## 0.18.0 (2026-10-14)
 
 ### Features
