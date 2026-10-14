@@ -415,3 +415,149 @@ def decode_window(
         ratio,
         no_speech,
     )
+
+
+def decode_with_fallback(src, tok, prompt, opts: DecodeOptions, rng: PCG32) -> Segment:
+    """Retry only failed quality gates; likely silence does not need hotter draws."""
+    opts.validate()
+    for temperature in opts.temperatures:
+        result = decode_window(src, tok, prompt, opts, temperature, rng)
+        repetitive = result.compression_ratio > opts.compression_ratio_threshold
+        uncertain = result.avg_logprob < opts.logprob_threshold
+        silent = result.no_speech_prob > opts.no_speech_threshold and uncertain
+        if silent or not (repetitive or uncertain):
+            return result
+    return result
+
+
+def _window_segments(result: Segment, tok, offset: float, duration: float):
+    """Return completed pieces and the next seek, in seconds relative to a window."""
+    ids = result.tokens
+    is_time = [t >= tok.timestamp_begin for t in ids]
+    boundaries = [i for i in range(1, len(ids)) if is_time[i - 1] and is_time[i]]
+    terminal_time = len(ids) >= 2 and not is_time[-2] and is_time[-1]
+    pieces = []
+    advance = duration
+    if boundaries:
+        cuts = boundaries + ([len(ids)] if terminal_time else [])
+        start = 0
+        for end in cuts:
+            piece = ids[start:end]
+            if (
+                len(piece) >= 2
+                and piece[0] >= tok.timestamp_begin
+                and piece[-1] >= tok.timestamp_begin
+            ):
+                pieces.append(
+                    (
+                        piece,
+                        0.02 * (piece[0] - tok.timestamp_begin),
+                        0.02 * (piece[-1] - tok.timestamp_begin),
+                    )
+                )
+            start = end
+        if not terminal_time:
+            advance = 0.02 * (ids[boundaries[-1] - 1] - tok.timestamp_begin)
+    elif ids:
+        end = duration
+        times = [t for t in ids if t >= tok.timestamp_begin]
+        if times and times[-1] != tok.timestamp_begin:
+            end = min(duration, 0.02 * (times[-1] - tok.timestamp_begin))
+        pieces.append((ids, 0.0, end))
+    segments = []
+    for piece, start, end in pieces:
+        start, end = min(duration, max(0.0, start)), min(duration, max(0.0, end))
+        text = tok.decode([t for t in piece if t < tok.eot]).strip()
+        if end > start and text:
+            segments.append(
+                Segment(
+                    0,
+                    0,
+                    offset + start,
+                    offset + end,
+                    text,
+                    list(piece),
+                    result.temperature,
+                    result.avg_logprob,
+                    result.compression_ratio,
+                    result.no_speech_prob,
+                )
+            )
+    # A truncated or malformed timestamp trace must never spin on the same window.
+    return segments, min(duration, advance) if advance > 0 else duration
+
+
+def _transcribe_windows(
+    source_for_seek, tok, duration: float, window_frames: int, opts: DecodeOptions
+):
+    """Shared long-form policy for model windows and recorded-logit sources.
+
+    Seek units are 10 ms mel frames. A factory call encodes exactly one window;
+    fallback reuses that source and therefore its cross-attention state.
+    """
+    from dataclasses import replace
+
+    opts.validate()
+    if not math.isfinite(duration) or duration < 0 or window_frames < 1:
+        raise ValueError("invalid audio duration or window size")
+    if duration == 0:
+        return []
+    seek = 0
+    history: list[int] = []
+    results = []
+    rng = PCG32(opts.seed).substream("sample")
+    while seek * 0.01 < duration:
+        source = source_for_seek(seek)
+        if opts.language is None and tok.all_language_codes:
+            language, _ = language_probs(source, tok)
+            opts = replace(opts, language=language)
+        remaining = min(window_frames * 0.01, duration - seek * 0.01)
+        result = decode_with_fallback(source, tok, history, opts, rng)
+        silent = (
+            result.no_speech_prob > opts.no_speech_threshold
+            and result.avg_logprob <= opts.logprob_threshold
+        )
+        if silent:
+            seek += window_frames
+            continue
+        segments, advance = _window_segments(result, tok, seek * 0.01, remaining)
+        for segment in segments:
+            segment.id = len(results)
+            segment.seek = seek
+            results.append(segment)
+            history.extend(segment.tokens)
+        if not opts.condition_on_previous_text or result.temperature > 0.5:
+            history.clear()
+        seek += max(1, round(advance / 0.01))
+    return results
+
+
+def transcribe(
+    model: Whisper, tok, audio_16k: NDArray, opts: DecodeOptions
+) -> list[Segment]:
+    """Transcribe mono 16 kHz samples with one encoder call per sought window."""
+    from tinyllm.speech.frontend import FeatureConfig, whisper_log_mel
+
+    opts.validate()
+    audio = np.asarray(audio_16k, dtype=np.float32)
+    if audio.ndim != 1 or not np.isfinite(audio).all():
+        raise ValueError("audio must be a finite mono 16 kHz array")
+    if not audio.size:
+        return []
+    if audio.size > 30 * 60 * 16000:
+        raise ValueError("audio exceeds the 30 minute input limit")
+    window_frames = 2 * model.config.n_audio_ctx
+    # Analyze the full recording once: normalizing independently per window
+    # would change quiet-window features and the reference timestamp decisions.
+    padded = np.pad(audio, (0, max(400, window_frames * 160)))
+    mel = whisper_log_mel(padded, FeatureConfig(feature_size=model.config.n_mels))
+
+    def source_for_seek(seek):
+        features = mel[:, seek : seek + window_frames]
+        if features.shape[1] != window_frames:
+            raise ValueError("feature padding failed to supply a complete window")
+        return WhisperLogitsSource(model, model.encode(features[None]))
+
+    return _transcribe_windows(
+        source_for_seek, tok, audio.size / 16000, window_frames, opts
+    )

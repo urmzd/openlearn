@@ -74,10 +74,30 @@ UTF-8 text byte length divided by `len(zlib.compress(text_bytes))`. Window
 results have relative timestamp endpoints; the long-form loop must still turn
 them into duration-bounded absolute segments and decide fallback/seek behavior.
 
+## Fallback and long-form seeking
+
+Fallback tries `temperatures` in order until compression ratio and average
+log probability pass their thresholds. A window with high no-speech probability
+and low average log probability stops retries. The long-form loop skips that
+window; confident speech overrides a high no-speech probability.
+
+`transcribe` accepts finite mono 16 kHz samples, at most 30 minutes. It computes
+log-mel features once for the full recording with a padded final window. Each
+seek encodes its feature window once; fallback attempts reuse the same cross-KV.
+Language detection runs only for the first window when no language was supplied.
+Seek is measured in 10 ms feature frames; output times are absolute seconds.
+
+Consecutive timestamp tokens delimit completed segments. An incomplete trailing
+segment resumes at the last completed endpoint. A terminal timestamp consumes
+the full current window. Empty or zero-duration pieces are omitted, endpoints
+are clamped to the recording, and every iteration advances at least one frame.
+Only accepted segment tokens enter prompt history. Disabled conditioning or a
+selected temperature above 0.5 clears that history before the next window.
+
 ## Completion status
 
 This contract currently covers the logits adapter, initial controls, language
-selection, timestamp filtering and single-window search. L14.4 is not yet registered or complete.
-The tokenizer loader, temperature fallback,
-no-speech handling, prompt conditioning, long-form segments, CLI, independent
-oracles, mutants and six-beat chapter remain required by DESIGN.md.
+selection, timestamp filtering, single-window search, fallback and long-form seeking. L14.4 is not yet registered or complete.
+The tokenizer loader, CLI, independent oracles, mutants, public type contracts,
+module registration and six-beat chapter remain required by DESIGN.md. The new
+long-form path still requires independent transcript/segment parity validation.

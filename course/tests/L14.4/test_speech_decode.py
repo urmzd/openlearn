@@ -251,3 +251,187 @@ def test_invalid_search_options_fail_before_model_calls(change):
             source, search_tokenizer(), [], DecodeOptions(**change), 0, PCG32(0)
         )
     assert source.calls == []
+
+
+def window_result(tokens, *, temperature=0.0, avg_logprob=0.0, ratio=0.1, silence=0.0):
+    from tinyllm.speech.decode import Segment
+
+    return Segment(0, 0, 0, 0, "a", tokens, temperature, avg_logprob, ratio, silence)
+
+
+def test_fallback_retries_quality_but_stops_for_probable_silence(monkeypatch):
+    # WHY: Silence must not trigger six expensive retries and hallucinated text.
+    # KIND: boundary
+    from tinyllm.num.rng import PCG32
+    from tinyllm.speech import decode
+
+    calls = []
+
+    def window(src, tok, prompt, opts, temperature, rng):
+        calls.append(temperature)
+        return window_result(
+            [1], temperature=temperature, ratio=3 if temperature == 0 else 1
+        )
+
+    monkeypatch.setattr(decode, "decode_window", window)
+    result = decode.decode_with_fallback(
+        None, None, [], decode.DecodeOptions(), PCG32(0)
+    )
+    assert calls == [0.0, 0.2]
+    assert result.temperature == 0.2
+    calls.clear()
+
+    def silent(src, tok, prompt, opts, temperature, rng):
+        calls.append(temperature)
+        return window_result([], avg_logprob=-2, silence=0.9, ratio=3)
+
+    monkeypatch.setattr(decode, "decode_window", silent)
+    decode.decode_with_fallback(None, None, [], decode.DecodeOptions(), PCG32(0))
+    assert calls == [0.0]
+
+
+def test_longform_seeks_last_complete_boundary_and_reuses_context(monkeypatch):
+    # WHY: Incomplete trailing speech must be retried from its prior boundary.
+    # KIND: golden
+    from tinyllm.speech import decode
+
+    seeks, prompts = [], []
+
+    def factory(seek):
+        seeks.append(seek)
+        return seek
+
+    def window(source, tok, prompt, opts, rng):
+        prompts.append(list(prompt))
+        if source == 0:
+            return window_result([10, 1, 12, 12, 2])
+        return window_result([10, 2, 13])
+
+    monkeypatch.setattr(decode, "decode_with_fallback", window)
+    segments = decode._transcribe_windows(
+        factory, search_tokenizer(), 0.1, 10, decode.DecodeOptions(language="en")
+    )
+    assert seeks == [0, 4]
+    assert prompts == [[], [10, 1, 12]]
+    assert [(s.id, s.seek, s.text) for s in segments] == [(0, 0, "a"), (1, 4, "b")]
+    assert_close(
+        np.array([(s.start, s.end) for s in segments]),
+        np.array([[0, 0.04], [0.04, 0.1]]),
+        atol=1e-12,
+        rtol=0,
+    )
+
+
+def test_longform_clears_hot_context_and_bounds_final_segment(monkeypatch):
+    # WHY: Fallback hallucinations must not condition subsequent windows.
+    # KIND: boundary
+    from tinyllm.speech import decode
+
+    prompts = []
+
+    def window(source, tok, prompt, opts, rng):
+        prompts.append(list(prompt))
+        return window_result([10, 1, 25], temperature=0.6)
+
+    monkeypatch.setattr(decode, "decode_with_fallback", window)
+    segments = decode._transcribe_windows(
+        lambda seek: seek,
+        search_tokenizer(),
+        0.15,
+        10,
+        decode.DecodeOptions(language="en"),
+    )
+    assert prompts == [[], []]
+    assert len(segments) == 2
+    assert_close(
+        np.array([segments[0].end, segments[1].end]),
+        np.array([0.1, 0.15]),
+        atol=1e-12,
+        rtol=0,
+    )
+
+
+def test_longform_skips_silence_but_preserves_confident_speech(monkeypatch):
+    # WHY: High no-speech probability alone cannot veto confident transcription.
+    # KIND: boundary
+    from tinyllm.speech import decode
+
+    seeks = []
+
+    def window(source, tok, prompt, opts, rng):
+        seeks.append(source)
+        return window_result(
+            [10, 1, 15], avg_logprob=-2 if source == 0 else 0, silence=0.9
+        )
+
+    monkeypatch.setattr(decode, "decode_with_fallback", window)
+    segments = decode._transcribe_windows(
+        lambda seek: seek,
+        search_tokenizer(),
+        0.2,
+        10,
+        decode.DecodeOptions(language="en"),
+    )
+    assert seeks == [0, 10]
+    assert len(segments) == 1
+    assert segments[0].seek == 10
+
+
+def test_zero_timestamp_does_not_stall_seek(monkeypatch):
+    # WHY: A zero-duration or truncated decode must always advance the window.
+    # KIND: boundary
+    from tinyllm.speech import decode
+
+    seeks = []
+
+    def window(source, tok, prompt, opts, rng):
+        seeks.append(source)
+        return window_result([10, 1, 10, 10])
+
+    monkeypatch.setattr(decode, "decode_with_fallback", window)
+    assert (
+        decode._transcribe_windows(
+            lambda seek: seek,
+            search_tokenizer(),
+            0.2,
+            10,
+            decode.DecodeOptions(language="en"),
+        )
+        == []
+    )
+    assert seeks == [0, 10]
+
+
+def test_transcribe_real_model_encodes_each_window_once(monkeypatch):
+    # WHY: The long-form path must actually connect audio features and Whisper.
+    # KIND: property
+    from tinyllm.speech.decode import DecodeOptions, transcribe
+
+    fix = Path(os.environ["TINYLLM_FIXTURES"])
+    model = Whisper.from_pretrained(str(fix / "L14.2/tiny-whisper-128"))
+    encode = model.encode
+    shapes = []
+
+    def counted(mel):
+        shapes.append(mel.shape)
+        return encode(mel)
+
+    monkeypatch.setattr(model, "encode", counted)
+    samples = 0.1 * np.sin(np.arange(5120) * (2 * np.pi * 440 / 16000))
+    segments = transcribe(
+        model,
+        search_tokenizer(),
+        samples,
+        DecodeOptions(
+            language="en",
+            timestamps=False,
+            max_tokens=2,
+            temperatures=(0.0, 0.2),
+            logprob_threshold=-100,
+            compression_ratio_threshold=100,
+        ),
+    )
+    assert shapes == [(1, 128, 16), (1, 128, 16)]
+    assert segments
+    assert all(0 <= s.start < s.end <= 0.32 for s in segments)
+    assert [s.id for s in segments] == list(range(len(segments)))
