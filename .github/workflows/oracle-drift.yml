@@ -85,6 +85,12 @@ jobs:
           args=()
           if [ "${{ inputs.scope }}" != whisper ] || [ -f course/fixtures/L14.4/tokenizer_hf.json ]; then args+=(--check); fi
           "$RUNNER_TEMP/whisper-oracle/bin/python" course/oracle/L14.4/tokenizer_hf.py "${args[@]}" | tee "$RUNNER_TEMP/whisper-tokenizer-manifest-row.tsv"
+      - name: Generate independent long-form policy values
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "${{ inputs.scope }}" != whisper ] || [ -f course/fixtures/L14.4/transcribe_openai.json ]; then args+=(--check); fi
+          "$RUNNER_TEMP/whisper-oracle/bin/python" course/oracle/L14.4/transcribe_openai.py "${args[@]}" | tee "$RUNNER_TEMP/whisper-longform-manifest-row.tsv"
       - uses: actions/upload-artifact@v4
         with:
           name: whisper-decoder-oracle
@@ -92,6 +98,8 @@ jobs:
             course/fixtures/L14.3/decoder_hf.npz
             course/fixtures/L14.4/decode_openai.json
             course/fixtures/L14.4/tokenizer_hf.json
+            course/fixtures/L14.4/transcribe_openai.json
+            ${{ runner.temp }}/whisper-longform-manifest-row.tsv
             course/fixtures/L14.4/whisper-tokenizer/tokenizer.json
             ${{ runner.temp }}/whisper-tokenizer-manifest-row.tsv
             ${{ runner.temp }}/whisper-policy-manifest-row.tsv
