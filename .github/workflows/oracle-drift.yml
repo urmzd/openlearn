@@ -9,7 +9,7 @@ on:
         description: Oracle validation scope
         type: choice
         default: all
-        options: [all, whisper]
+        options: [all, whisper, whisper-real]
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   oracle-drift:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'whisper'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Regenerate and compare oracle fixtures
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -53,6 +53,7 @@ jobs:
         run: practice/bin/ol parity --ref
 
   whisper-oracle:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'whisper-real'
     name: Independent Whisper decoder oracle
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -105,3 +106,7 @@ jobs:
             ${{ runner.temp }}/whisper-policy-manifest-row.tsv
             ${{ runner.temp }}/whisper-manifest-row.tsv
           if-no-files-found: error
+
+  whisper-real:
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'whisper-real'
+    uses: ./.github/workflows/whisper-real.yml

@@ -58,11 +58,14 @@ The next one-token call uses positional row two and a `1 x 3` all-true self-atte
 | `test_causality_and_one_dimensional_ids` | property | A changed suffix cannot affect prefix logits; one-dimensional ids preserve the documented output shape. |
 | `test_bad_tokens_and_positions_are_rejected` | boundary | Invalid token ids, ranks and positions leave the cache untouched. |
 | `test_cross_kv_and_cache_shapes_are_validated` | boundary | Batch, layer, head and feature widths are checked before decoding. |
+| `test_loader_preserves_half_precision_position_table` | boundary | Rounded fixed positions retain checkpoint values; corrupted entries fail. |
 | `test_loader_rejects_untied_weights_and_wrong_sinusoids` | boundary | Incompatible weight names, positions and output ties fail explicitly. |
 | `test_sharded_loader_and_index_integrity` | conformance | Sharded and unsharded states agree; paths cannot escape the checkpoint directory. |
 | `test_loader_is_strict_about_missing_and_wrong_shapes` | boundary | Incomplete checkpoints cannot leave random parameters in the model. |
 
 | `test_wav_entry_point_matches_explicit_frontend` | WAV channel mixing, padding and mel features produce the same cross-attention keys and logits as the explicit pipeline. |
+
+`test_loader_preserves_half_precision_position_table` checks published-checkpoint precision: a fixed sinusoid table stored in float16 is retained exactly, while a corrupted entry is rejected. The loader permits 5e-4 absolute deviation only for tables exactly representable in float16; other tables retain the 1e-4 bound.
 
 ## 5. Pitfalls
 

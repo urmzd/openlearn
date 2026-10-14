@@ -154,3 +154,21 @@ and generated-transcript evidence consumers. Full course verification remains
 the completion gate. Independent timestamp and greedy/beam fixtures pass;
 real-checkpoint tokenizer and long-form transcript parity require separate
 oracle evidence. Registration does not establish production ASR accuracy.
+
+### Teacher-forced logits CLI
+
+`tinyllm logits --model DIR --audio-features FEATURES.npz --decoder-prompts PROMPTS.jsonl --out OUTPUT.npz` runs the Whisper forward pass. The feature archive contains `mel`, a finite floating array `[batch, mel, frames]`; `--feature-key NAME` selects another key. Each JSONL row contains `ids`, a nonempty list of nonnegative integer token ids. Rows match the feature batch and have equal lengths. The output archive contains `logits` with shape `[batch, tokens, vocab]`. The final stdout line reports `out` and `prompts`. Invalid inputs exit 2 without creating the output.
+
+### Feature extraction CLI
+
+`tinyllm features --audio PATH --kind whisper-log-mel --n-mels 80 --out OUTPUT.npz` accepts a WAV file or a directory of WAV files, sorted by filename. `--n-mels` accepts 80 or 128. The command downmixes, resamples to 16 kHz, and pads or trims each clip to 30 seconds before computing log-mel features. Output keys are `<filename-stem>.f<mel-count>`, each shaped `[mel-count, 3000]`. The final JSON line reports `out`, `clips`, and `n_mels`. Empty directories and malformed WAV input exit 2 without creating the output.
+
+### Transcript scoring CLI
+
+`tinyllm eval asr --pred SEGMENTS.json --ref TRANSCRIPT.txt` accepts the transcription command's object or a list of segment objects. Segment text is joined in order; a text-only object is also accepted. Both transcripts use `basic_normalize`. The final JSON line contains pooled `wer`, `cer`, word substitution/deletion/insertion counts, `reference_words`, and `normalizer` (`whisper-basic`). Invalid predictions and an empty normalized reference exit 2. This command scores a single recording; corpus inference and bootstrap intervals require the separate corpus evaluation path.
+
+### Corpus evaluation CLI
+
+`tinyllm eval asr --model DIR --data MANIFEST.jsonl [--language CODE] [--seed 0] [--bootstrap 1000]` loads one Whisper model and tokenizer, then transcribes every manifest item. Each JSONL row has `audio` (a WAV path relative to the manifest, or absolute) and `text` (the reference transcript). References must each contain normalized words so every bootstrap resample has a defined denominator. Empty corpora, missing WAV files, and malformed rows fail before model loading.
+
+Output reports pooled `wer`, `cer`, utterance-bootstrap `wer_ci` (95% percentile interval), `items`, `reference_words`, `normalizer`, `seed`, and `bootstrap`. Resampling operates on word-edit count rows; it does not average per-item WER or rerun inference. The seed controls decoding and bootstrap reproducibility. `course/tests/integration/test_asr_corpus_cli.py` checks orchestration and pooled interval semantics; real-checkpoint accuracy requires the separate nightly oracle gate.
