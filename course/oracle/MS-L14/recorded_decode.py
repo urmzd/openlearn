@@ -65,6 +65,12 @@ def main():
                 )
                 row = np.random.default_rng(seed).normal(size=6).astype(np.float32)
                 row[5] += len(generated) * 1.2 - 3
+                if not generated:
+                    # Greedy selects 0, but 1 leads to a much stronger complete
+                    # path. Beam-5 must explore and rank that alternative.
+                    row = np.array([3, 2.9, -20, -20, -20, -20], dtype=np.float32)
+                elif generated[0] == 1:
+                    row = np.array([-20, -20, -20, -20, -20, 3], dtype=np.float32)
                 rows[tuple(prompt + [vocabulary[i] for i in generated])] = row.copy()
                 batch.append(row)
             tokens, done = decoder.update(tokens, torch.tensor(np.stack(batch)), scores)
