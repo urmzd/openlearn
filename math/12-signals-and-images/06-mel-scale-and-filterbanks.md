@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/sig/mel.pyi`](../../course/contracts/py/tinyllm/sig/mel.pyi) |
 | **Tests** | `course/tests/M12.6/test_mel.py` (what they check: section 4), golden values from `course/oracle/M12.6/mel_librosa.py` (librosa 1.0) in `course/fixtures/M12.6/mel_librosa.npz` |
 | **Needs** | `M00.1` `log_base` (or `--ref-deps`). Reading: `M12.5` (the power spectrogram the filters pool) |
-| **Used by** | later `L14.1` (Whisper's log-mel) · `data.11` (mel dHash for audio near-duplicates); they join the registry with B14's L14 and data groups |
+| **Used by** | `L14.1` (Whisper's log-mel) · later `data.11` (mel dHash for audio near-duplicates), which joins the registry with B14's data group |
 | **Milestone** | `MS-P12` (the multimodal gate) |
 | **Optional depth** | Stevens, Volkmann, Newman, "A scale for the measurement of the psychological magnitude pitch" (1937); Slaney, *Auditory Toolbox* (1998), `MakeERBFilters` and `mfcc`; Radford et al., "Robust speech recognition via large-scale weak supervision" (2022), section 2.2 |
 
@@ -125,7 +125,7 @@ def log_mel_whisper(power_spec, filters) -> NDArray: ...
 |---|---|---|
 | Back | `M00.1` | `power_to_db` and `log_mel_whisper` take base-10 logs with `log_base(x, 10)` |
 | Back | `M12.5` | the filters pool its power spectrogram (reading) |
-| Forward | `L14.1` | `log_mel_whisper(power(stft(...))[:, :-1], mel_filterbank(16000, 400, 80))` (with B14's L14 group) |
+| Forward | `L14.1` | `log_mel_whisper(power(stft(...))[:, :-1], mel_filterbank(16000, 400, 80))` |
 | Forward | `data.11` | mel dHash windows for audio near-duplicates |
 | Forward | `S-M12` | mel, logs, decibels, and Whisper's scaling by hand |
 

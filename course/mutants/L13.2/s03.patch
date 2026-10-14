@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/rope2d.py
++++ b/python/tinyllm/vision/rope2d.py
+@@ -45,7 +45,7 @@
+     xy = patch_coords(grid_hw, merge)
+     half = d_rot // 2  # pairs; each axis owns half of them
+     # One ladder for both axes, over the half-width: base^(-2i / half).
+-    inv = 1.0 / (base ** (np.arange(0, half, 2, dtype=np.float32) / np.float32(half)))
++    inv = 1.0 / (base ** (np.arange(0, half, 2, dtype=np.float32) / np.float32(d_rot)))
+     ch, sh = rope_cos_sin(xy[:, 0], inv)
+     cw, sw = rope_cos_sin(xy[:, 1], inv)
+     return np.concatenate([ch, cw], axis=-1), np.concatenate([sh, sw], axis=-1)

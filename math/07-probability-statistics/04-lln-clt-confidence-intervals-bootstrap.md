@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/prob/stats.pyi`](../../course/contracts/py/tinyllm/prob/stats.pyi) · the generator behind `rng`: [`spec/pcg32.md`](../../course/contracts/spec/pcg32.md) |
 | **Tests** | `course/tests/M07.4/` (what they check: section 4), golden values from scipy 1.17.1 in `course/fixtures/M07.4/scipy_golden.json` |
 | **Needs** | no code from earlier modules · reading: [`M07.1`](01-categorical-sampling.md) one uniform per draw, [`M07.0`](00-random-variables-and-the-normal.md) expectation, variance, the normal, [`S-M07b`](91-problem-set-b.md) the variance of a sum |
-| **Used by** | later: `L4.5` sequence metrics with bootstrap CIs · `L6.7` every evaluation metric carries a CI · `L8.5` quantization verdicts · `L10.7` · `ag.12` re-implements the bootstrap in Go · `M07.5` hypothesis tests build on it · later: `L12.3`, `ethics.04` |
+| **Used by** | later: `L4.5` sequence metrics with bootstrap CIs · `L6.7` every evaluation metric carries a CI · `L8.5` quantization verdicts · `L10.7` · `ag.12` re-implements the bootstrap in Go · `M07.5` hypothesis tests build on it · later: `L12.3`, `ethics.04` · `L14.5` WER, VQA, and caption intervals |
 | **Milestone** | `MS-P4` (sequence models; the pass gate runs `ol check` on every math module of the pass) |
 | **Optional depth** | Wasserman, *All of Statistics*, ch. 5 to 8 (convergence, the bootstrap); Efron and Tibshirani, *An Introduction to the Bootstrap* (1993), ch. 13; Brown, Cai, DasGupta, "Interval Estimation for a Binomial Proportion" (2001) |
 
@@ -159,6 +159,7 @@ def bootstrap_ci(x, stat, n_boot: int, alpha: float, rng) -> tuple[float, float,
 | Forward | `L8.5` | quantization verdicts: is the perplexity change inside the noise |
 | Forward | `M07.5` | permutation tests and McNemar build on the same resampling |
 | Forward | `ag.12` | the Go eval harness re-implements `bootstrap_ci` from the same seed |
+| Forward | `L14.5` | WER, VQA, caption, and zero-shot intervals resample items with `bootstrap_ci` |
 
 If you skip this module, `ol check L6.7` stops with `L6.7 needs M07.4`: build it, or rerun with `--ref-deps`.
 

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/preprocess.py
++++ b/python/tinyllm/vision/preprocess.py
+@@ -328,7 +328,7 @@
+             with Image.open(io.BytesIO(data)) as image:
+                 value = image.getexif().get(0x0112)
+         if value is not None and (
+-            not isinstance(value, int) or value not in range(1, 9)
++            not isinstance(value, int) or value not in range(1, 10)
+         ):
+             raise ValueError(f"invalid EXIF orientation: {value!r}")
+         return value

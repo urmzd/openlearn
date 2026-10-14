@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/nn/module.pyi`](../../../course/contracts/py/tinyllm/nn/module.pyi) · [`course/contracts/py/tinyllm/nn/layers.pyi`](../../../course/contracts/py/tinyllm/nn/layers.pyi) |
 | **Tests** | `course/tests/L0.4/` (what they check: section 4), golden values from torch 2.14 in `course/fixtures/L0.4/layers_torch.npz`; your tests are graded by mutation, threshold 0.70 plus one required fault, with a red-then-green journal |
 | **Needs** | `L0.1` `Tensor` (parameters) · `L0.2` the ops every forward is written in · `M07.3` `normal_init` · `M06.3` PCG32 init and dropout streams · reading: `craft.03` red then green (or `--ref-deps`) |
-| **Used by** | `L0.5` `BigramLogits` is a `Module`, the loop trains `Linear` stacks · `L0.6` a checkpoint is a module's `state_dict` · later: `L11.1`, `L2.2`, `L3.2`, `L3.3`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L7.1`, `L7.2`, `L7.5`, `L7.6`, `L7.8`, `L7.9`, `L8.5` |
+| **Used by** | `L0.5` `BigramLogits` is a `Module`, the loop trains `Linear` stacks · `L0.6` a checkpoint is a module's `state_dict` · later: `L11.1`, `L2.2`, `L3.2`, `L3.3`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L7.1`, `L7.2`, `L7.5`, `L7.6`, `L7.8`, `L7.9`, `L8.5`, `L13.1`, `L13.3`, `L13.5`, `L14.2`  · `L14.3` Whisper decoding |
 | **Milestone** | `MS-L0` (the digits MLP is two `Linear` layers) |
 | **Optional depth** | the PyTorch `torch.nn.Module` documentation and source (`torch/nn/modules/module.py`); Ba, Kiros, Hinton, "Layer Normalization" (2016) |
 
@@ -162,6 +162,7 @@ Then, one at a time, red then green: state_dict names in registration order with
 | 6. `Linear` weight as `[in, out]`, or a forward without the transpose | trains fine from scratch, then torch and HF weights load transposed or fail | `test_hand_example_linear`, `test_matches_torch` (mutants `s01`, `s02`) |
 
 ## 6. Where it's used next
+| Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
 | Forward | `L11.1` | Registered call site uses this module. |
 | Forward | `L2.2` | Registered call site uses this module. |
 | Forward | `L3.2` | Registered call site uses this module. |
@@ -194,6 +195,10 @@ Then, one at a time, red then green: state_dict names in registration order with
 | Back | `M06.3` | `PCG32(0).substream("init")` and `substream("dropout")` are the defaults |
 | Forward | `L0.5` | `BigramLogits` subclasses `Module`; the loop trains `Sequential` MLPs |
 | Forward | `L0.6` | `save_checkpoint` writes `state_dict()` and resume calls `load_state_dict` |
+| Forward | `L13.1` | `Conv2d`, `Conv1d`, and LeNet-5 are `Module`s; the classifier head is `Linear` |
+| Forward | `L13.3` | `ViT` stacks `LayerNorm`, `Linear`, and `Embedding` in a `ModuleList` |
+| Forward | `L13.5` | the text tower and both projections are `Module`s |
+| Forward | `L14.2` | `WhisperEncoder` stacks `LayerNorm` and `Linear` in a `ModuleList` |
 
 If you skip this module, `ol check L0.5` stops with `L0.5 needs L0.4`: build it, or rerun with `--ref-deps`.
 

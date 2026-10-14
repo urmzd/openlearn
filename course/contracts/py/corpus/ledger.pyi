@@ -41,7 +41,9 @@ def row_errors(row: Mapping[str, Any]) -> list[str]:
     """Violations of formats/ledger.schema.json by one row: a missing or
     extra key, a wrong type, a source_id or sha256 that does not match its
     pattern, a negative count, an allowed_uses or pii_policy value outside
-    its enum. [] for a valid row."""
+    its enum. Optional modality, biometric, consent, attribution and
+    prohibited_uses fields follow the multimodal ledger extension.
+    [] for a valid row."""
 
 def permitted_uses(
     license_spdx: str, allowlist: Mapping[str, Iterable[str]] = ...

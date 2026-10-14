@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -158,7 +158,7 @@
+     if g.dtype.kind not in "iu" or (g < 0).any() or (g >= c).any():
+         raise ValueError(f"gold labels must be integers in [0, {c})")
+     # A stable sort of -score ranks ties by the lower class index.
+-    top = np.argsort(-s, axis=1, kind="stable")[:, :k]
++    top = np.argsort(s, axis=1, kind="stable")[:, ::-1][:, :k]
+     return float((top == g[:, None]).any(axis=1).mean())
+ 
+ 

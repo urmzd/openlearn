@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/conv.py
++++ b/python/tinyllm/vision/conv.py
+@@ -65,7 +65,7 @@
+     y = np.empty((n, kout, p * q))
+     for g in range(groups):
+         y[:, g * kg : (g + 1) * kg] = np.einsum(
+-            "kj,njl->nkl", wflat[g * kg : (g + 1) * kg], cols[:, g * crs : (g + 1) * crs]
++            "kj,njl->nkl", wflat[g * kg : (g + 1) * kg], cols[:, 0:crs]
+         )
+     if b is not None:
+         y += b.data.astype(np.float64)[None, :, None]

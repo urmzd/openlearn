@@ -13,6 +13,7 @@
 
 [python.tinyllm]
 numpy = ">=2"
+pillow = ">=11" # D46: container parsing and pixel decoding only.
 # OTLP/HTTP export of dur.09's telemetry.py may use the SDK or hand-written
 # JSON over urllib; both are allowed.
 opentelemetry-sdk = ">=1.30"

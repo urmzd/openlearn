@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/modern/rope.pyi`](../../../course/contracts/py/tinyllm/modern/rope.pyi) |
 | **Tests** | `course/tests/L7.3/test_rope.py` (what they check: section 4), golden values from transformers 5.19.0 (`LlamaRotaryEmbedding`, `apply_rotary_pos_emb`, GPT-NeoX partial rotary) and Meta's complex-number `apply_rotary_emb` in `course/fixtures/L7.3/rope_hf.npz` (`course/oracle/L7.3/rope_hf.py`); your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
 | **Needs** | `L0.2` `F.concat`, `F.stack`, `F.reshape` · `L0.1` `Tensor` and its indexing · `M00.2` `rotate_pairs` (the tests compare against it) · reading: `M00.3` (the frequency ladder) (or `--ref-deps`) |
-| **Used by** | `L7.5` rotates queries and keys · `L7.6` the decoupled rope key of MLA · `L7.7` windowed attention · `L7.9` every Llama attention layer · `L8.2` decoding at the right positions · later: `L9.6` the C `tl_rope_f32` |
+| **Used by** | `L7.5` rotates queries and keys · `L7.6` the decoupled rope key of MLA · `L7.7` windowed attention · `L7.9` every Llama attention layer · `L8.2` decoding at the right positions · later: `L9.6` the C `tl_rope_f32`, `L13.2`, `L13.3` |
 | **Milestone** | `MS-L7` (SmolLM2-135M logits match Hugging Face) |
 | **Optional depth** | Su et al., "RoFormer: Enhanced Transformer with Rotary Position Embedding" (2021), sections 3.2 to 3.4; EleutherAI blog, "Rotary Embeddings: A Relative Revolution" (2021) |
 
@@ -147,6 +147,8 @@ Your oracle is complex multiplication in numpy float64: form $a + ib$ from each 
 | Forward | `L7.9` | `config.json`'s `rope_theta` and `rope_scaling` build the spec |
 | Forward | `L8.2` | decoding passes each new token's absolute position |
 | Forward | `L9.6` | `tl_rope_f32` in C must match this |
+| Forward | `L13.2` | `rope_cos_sin` per axis and `apply_rope` build 2D RoPE and M-RoPE |
+| Forward | `L13.3` | `pos='rope2d'` rotates queries and keys with `apply_rope` |
 
 ## Going further
 

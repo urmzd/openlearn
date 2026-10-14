@@ -7,9 +7,8 @@ chapter   = "math/12-signals-and-images/05-sampling-windows-and-stft.md"
 contract  = ["contracts/py/tinyllm/sig/stft.pyi"]
 deps      = ["M12.4"]   # stft runs rfft on every frame; istft runs irfft
 reading   = []
-# Call site (DESIGN 4.1): L14.1's Whisper frontend, not registered yet
-# (DEVIATIONS B14M12-01).
-used_by   = []
+# Call site (DESIGN 4.1): L14.1's Whisper frontend.
+used_by   = ["L14.1"]
 units     = ["python/tinyllm/sig/stft.py"]
 upgrades  = []
 milestone = "MS-P12"

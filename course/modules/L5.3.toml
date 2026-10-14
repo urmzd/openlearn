@@ -11,7 +11,7 @@ contract  = ["contracts/py/tinyllm/xfmr/mha.pyi"]
 deps      = ["L5.1", "L0.1", "L0.2", "L0.4", "M06.3"]
 reading   = ["L4.3"]   # Luong's dot score, which L5.1 scales
 # L5.5's encoder and decoder layers, L6.1's GPT blocks, L6.2's BERT layers.
-used_by   = ["L5.5", "L6.1", "L6.2"]
+used_by   = ["L5.5", "L6.1", "L6.2", "L13.3", "L14.2"]
 units     = ["python/tinyllm/xfmr/mha.py"]
 upgrades  = []
 milestone = "MS-L5"

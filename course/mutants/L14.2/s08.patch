@@ -1,0 +1,12 @@
+--- a/python/tinyllm/speech/encoder.py
++++ b/python/tinyllm/speech/encoder.py
+@@ -139,7 +139,8 @@
+ 
+     def forward(self, x: Tensor) -> Tensor:
+         h = self.self_attn_layer_norm(x)
+-        x = x + self.self_attn(h, h)
++        T = h.shape[1]
++        x = x + self.self_attn(h, h, mask=np.tril(np.ones((T, T), dtype=bool)))
+         h = self.final_layer_norm(x)
+         return x + self.fc2(F.gelu(self.fc1(h)))
+ 

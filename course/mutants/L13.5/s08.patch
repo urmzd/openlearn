@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/contrastive.py
++++ b/python/tinyllm/vision/contrastive.py
+@@ -70,7 +70,7 @@
+ def siglip_loss(img_emb: Tensor, txt_emb: Tensor, t: Tensor, b: Tensor) -> Tensor:
+     c = _pairs(img_emb, txt_emb, "siglip_loss")
+     n = c.shape[0]
+-    logits = c * F.exp(F.reshape(t, ())) + F.reshape(b, ())
++    logits = (c + F.reshape(b, ())) * F.exp(F.reshape(t, ()))
+     z = 2.0 * np.eye(n) - 1.0  # +1 for the matching pair, -1 for every other
+     return -F.sum(_logsigmoid(logits * z)) * (1.0 / n)
+ 

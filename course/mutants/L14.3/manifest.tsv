@@ -1,0 +1,9 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/speech/decoder.py	semantic	pitfall-1	137	y	(hidden until pass)	cached position offset resets
+s02	python/tinyllm/speech/decoder.py	semantic	pitfall-2	58	y	(hidden until pass)	causal mask omitted
+s03	python/tinyllm/speech/decoder.py	semantic	pitfall-3	62	y	(hidden until pass)	cross keys substituted for values
+s04	python/tinyllm/speech/decoder.py	semantic	pitfall-4	163	n	(hidden until pass)	final normalization omitted
+s05	python/tinyllm/speech/decoder.py	semantic	pitfall-5	200	n	(hidden until pass)	frozen encoder positions missing from count
+s06	python/tinyllm/speech/decoder.py	semantic	pitfall-6	211	n	(hidden until pass)	partial checkpoint silently accepted
+s07	python/tinyllm/io/hf_whisper.py	semantic	pitfall-7	36	n	(hidden until pass)	stored sinusoid values unchecked
+s08	python/tinyllm/io/hf_whisper.py	semantic	pitfall-8	26	n	(hidden until pass)	output tie compared to itself

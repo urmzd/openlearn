@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/frontend.py
++++ b/python/tinyllm/speech/frontend.py
+@@ -72,7 +72,7 @@
+     a = np.asarray(x, dtype=np.float64)
+     if a.ndim != 1:
+         raise ValueError(f"pad_or_trim: need a 1-D signal, got shape {a.shape}")
+-    if n_samples < 1:
++    if n_samples < 0:
+         raise ValueError(f"pad_or_trim: n_samples must be >= 1, got {n_samples}")
+     if a.size >= n_samples:
+         return a[:n_samples].copy()

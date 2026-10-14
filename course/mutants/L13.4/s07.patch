@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/tiling.py
++++ b/python/tinyllm/vision/tiling.py
+@@ -111,7 +111,7 @@
+     if w >= h:
+         w = max_len
+         h = int(w / aspect)
+-        h += h % 2
++        pass
+     else:
+         h = max_len
+         w = int(h * aspect)

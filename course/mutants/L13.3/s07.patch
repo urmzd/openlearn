@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/vit.py
++++ b/python/tinyllm/vision/vit.py
+@@ -311,7 +311,7 @@
+         if cfg.pos == "rope2d":
+             cos, sin = rope2d_cos_sin(grid_hw, cfg.d // cfg.n_heads, cfg.rope_base, cfg.rope_merge)
+             rope = (cos, sin, s)
+-        hidden = [h] if output_hidden_states else []
++        hidden = []
+         for layer in self.encoder.layers:
+             h = layer(h, mask, rope)
+             if output_hidden_states:

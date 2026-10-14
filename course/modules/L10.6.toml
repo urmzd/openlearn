@@ -16,7 +16,7 @@ contract  = ["contracts/proto/tl/engine/v1/engine.proto", "contracts/proto/tl/kv
 deps      = ["L10.1"]
 reading   = ["L10.2", "L10.4", "L10.5", "lang.09", "lang.10"]   # the serve loop it plugs into; async Rust; gRPC and the generated stubs
 # The gateway calls Prefill and Release over the shared gRPC contracts.
-used_by   = ["gw.05"]
+used_by   = ["gw.05", "craft.14"]
 units     = [
   "rust/crates/tl-engine/src/kv_transfer.rs",
   "rust/crates/tl-engine/src/heartbeat.rs",

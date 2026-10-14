@@ -12,7 +12,7 @@ reading   = ["data.01", "ethics.01"]   # fetch appends the rows; ethics.01 sets 
 # ethics.03's check judges the datasheet's licenses with permitted_uses.
 # dur.12 (license gate, a Go port of the row checks) and ops.08 (the
 # data-incident drill) read this module without calling it.
-used_by   = ["ethics.03"]
+used_by   = ["ethics.03", "ethics.08"]
 units     = ["python/corpus/ledger.py"]
 upgrades  = []
 milestone = "MS-corpus"

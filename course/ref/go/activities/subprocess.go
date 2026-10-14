@@ -402,6 +402,7 @@ func (s Subprocess) Run(ctx context.Context, t Task, args []string, spec []byte,
 	lastBeat := time.Time{}
 	var stopReason string // "" running, "Canceled", "WorkerShutdown"
 	var kill <-chan time.Time
+	acknowledged := string(last) // checkpoint already recorded by the durable server
 
 	stop := func(reason string) {
 		if stopReason != "" {
@@ -418,6 +419,9 @@ func (s Subprocess) Run(ctx context.Context, t Task, args []string, spec []byte,
 		lastBeat = time.Now()
 		if err == nil && cancel {
 			stop("Canceled")
+		}
+		if err == nil {
+			acknowledged = string(last)
 		}
 	}
 	drain := func() bool {
@@ -458,9 +462,11 @@ loop:
 	}
 	// Whatever the child left behind in its group goes too.
 	_ = syscall.Kill(-pgid, syscall.SIGKILL)
-	if drain() {
-		// A checkpoint written on the way out (SIGTERM) is the next
-		// attempt's resume point: record it even when ctx has ended.
+	fresh := drain()
+	if fresh || string(last) != acknowledged {
+		// A stopping poll can consume a checkpoint without heartbeating it.
+		// Also retry a checkpoint whose earlier heartbeat failed. Flush the
+		// latest unacknowledged resume point even when the final read is empty.
 		fctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		_, _ = hb(fctx, last)
 		cancel()

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/encoder.py
++++ b/python/tinyllm/speech/encoder.py
+@@ -116,7 +116,7 @@
+     inc = np.float32(math.log(max_timescale) / (half - 1))
+     inv = np.exp(-inc * np.arange(half, dtype=np.float32))
+     t = (np.arange(length, dtype=np.float32)[:, None] * inv[None, :]).astype(np.float64)
+-    return np.concatenate([np.sin(t), np.cos(t)], axis=1).astype(np.float32)
++    return np.concatenate([np.cos(t), np.sin(t)], axis=1).astype(np.float32)
+ 
+ 
+ class WhisperAttention(MultiHeadAttention):

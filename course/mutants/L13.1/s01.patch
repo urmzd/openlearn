@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/conv.py
++++ b/python/tinyllm/vision/conv.py
+@@ -196,7 +196,7 @@
+     n, c, h, w = x.shape
+     # argmax returns the first maximum: the lowest (r, s) in the window, which
+     # is the lowest flat index of x.
+-    arg = np.argmax(cols, axis=1)  # [N*C, P*Q]
++    arg = cols.shape[1] - 1 - np.argmax(cols[:, ::-1], axis=1)  # [N*C, P*Q]
+     y = np.take_along_axis(cols, arg[:, None, :], axis=1)[:, 0]
+     out = y.reshape(n, c, p, q).astype(x.data.dtype)
+ 

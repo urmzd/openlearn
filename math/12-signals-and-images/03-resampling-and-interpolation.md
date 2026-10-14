@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/sig/resample.pyi`](../../course/contracts/py/tinyllm/sig/resample.pyi) |
 | **Tests** | `course/tests/M12.3/test_resample.py` (what they check: section 4), golden values from `course/oracle/M12.3/resize_pil.py` (Pillow 12.3, torchvision 0.29, `F.interpolate`) and `course/oracle/M12.3/resample_torchaudio.py` (torchaudio 2.11) in `course/fixtures/M12.3/` |
 | **Needs** | `M12.1` `conv1d_direct` (or `--ref-deps`). Reading: `M12.2` (uint8 HWC images), `M02.1` (series and the sinc), `M12.5` (aliasing, as a concept) |
-| **Used by** | later `L13.6` (`resize` in every image processor) · `L13.3` (`interpolate_pos_embed` through `resize_planar_f32`) · `L14.1` (`resample_audio` to 16 kHz) · `data.10` (hash thumbnails); they join the registry with B14's L13, L14, and data groups |
+| **Used by** | later `L13.6` (`resize` in every image processor) · `L13.3` (`interpolate_pos_embed` through `resize_planar_f32`) · `L14.1` (`resample_audio` to 16 kHz) · `data.10` (hash thumbnails); they join the registry with B14's L13, L14, and data groups · later: `L13.4` |
 | **Milestone** | `MS-P12` (the multimodal gate) |
 | **Optional depth** | Keys, "Cubic convolution interpolation for digital image processing" (1981); Smith, *Digital Audio Resampling Home Page* (free, the bandlimited interpolation derivation); Pillow `src/libImaging/Resample.c` |
 
@@ -140,6 +140,7 @@ def resample_audio(x, sr_in, sr_out, lowpass_filter_width=6, rolloff=0.99) -> ND
 | Forward | `L14.1` | `resample_audio` brings every clip to 16 kHz |
 | Forward | `data.10` | thumbnails for perceptual hashes |
 | Forward | `S-M12` | sampling, aliasing, and interpolation kernels by hand |
+| Forward | `L13.4` | `resize` fits the base image and each tile grid |
 
 ## Going further
 

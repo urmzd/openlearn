@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/conv.py
++++ b/python/tinyllm/vision/conv.py
+@@ -85,7 +85,7 @@
+         dx = col2im(dcols, xd.shape, r, s, stride, pad, dilation)
+         grads = [dx.astype(dt), dw.reshape(wd.shape).astype(wd.dtype)]
+         if b is not None:
+-            grads.append(gy.sum(axis=(0, 2)).astype(b.data.dtype))
++            grads.append(gy[0].sum(axis=1).astype(b.data.dtype))
+         return tuple(grads)
+ 
+     parents = (x, w) if b is None else (x, w, b)

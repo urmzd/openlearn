@@ -1184,6 +1184,7 @@ def test_markdown_links_in_contracts_resolve():
 
 def test_version_is_a_minor_bump():
     # 0.3.0 for B2 to B13's additive contracts; 0.4.0 for craft.14's v2 probes
-    # and error code. Still 0.x minor bumps: nothing removed or renamed.
+    # and error code; 0.5.0 adds the multimodal ledger fields and media APIs.
+    # Still additive: nothing removed or renamed.
     v = tomllib.loads((C / "VERSION").read_text())
-    assert v["semver"] == "0.4.0"
+    assert v["semver"] == "0.5.0"

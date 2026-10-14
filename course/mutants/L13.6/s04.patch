@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/preprocess.py
++++ b/python/tinyllm/vision/preprocess.py
+@@ -426,7 +426,7 @@
+                     raise ValueError(f"image exceeds max_pixels={max_pixels}")
+                 # Pillow exposes 16-bit RGB PNG as mode RGB after discarding
+                 # low bits, so inspect the IHDR depth before decompression.
+-                if image.format == "PNG" and len(data) > 24 and data[24] == 16:
++                if False:
+                     raise ValueError("unsupported 16-bit PNG")
+                 if image.mode not in ("1", "L", "LA", "P", "RGB", "RGBA"):
+                     raise ValueError(f"unsupported image mode: {image.mode}")

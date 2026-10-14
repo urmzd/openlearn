@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/preprocess.py
++++ b/python/tinyllm/vision/preprocess.py
+@@ -557,7 +557,7 @@
+             [
+                 rescale_normalize(
+                     frame,
+-                    cfg.rescale_factor if cfg.do_rescale else 1.0,
++                    1.0,
+                     cfg.image_mean if cfg.do_normalize else (0.0,) * 3,
+                     cfg.image_std if cfg.do_normalize else (1.0,) * 3,
+                 )

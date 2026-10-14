@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -36,7 +36,7 @@
+     # Marks, symbols, and punctuation become spaces; letters and digits stay.
+     s = "".join(
+         " " if unicodedata.category(c)[0] in "MSP" else c
+-        for c in unicodedata.normalize("NFKC", s)
++        for c in s
+     ).lower()
+     return re.sub(r"\s+", " ", s)
+ 

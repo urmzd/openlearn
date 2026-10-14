@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/corpus/ledger.pyi`](../../course/contracts/py/corpus/ledger.pyi) · the rows: [`formats/ledger.schema.json`](../../course/contracts/formats/ledger.schema.json) · the template: [`templates/DATASHEET.md`](../../course/contracts/templates/DATASHEET.md) · exit codes: [`spec/subprocess-activity.md`](../../course/contracts/spec/subprocess-activity.md) |
 | **Tests** | `course/tests/data.08/` (what they check: section 4) |
 | **Needs** | `data.05` the PII kinds · `data.06` `read_shards` and the manifest · `data.07` the tokens manifest (or `--ref-deps`) · reading: `data.01` (it appends the ledger rows), `ethics.01` (the license policy) |
-| **Used by** | `ethics.03`'s check judges the datasheet's licenses with your `permitted_uses` · later: `dur.12` refuses to release a model whose sources are not licensed for training · `ops.08` purges a revoked source |
+| **Used by** | `ethics.08`; `ethics.03`'s check judges the datasheet's licenses with your `permitted_uses` · later: `dur.12` refuses to release a model whose sources are not licensed for training · `ops.08` purges a revoked source |
 | **Milestone** | `MS-corpus` |
 | **Optional depth** | Gebru et al., [*Datasheets for Datasets*](https://arxiv.org/abs/1803.09010) (free); the [SPDX license expression syntax](https://spdx.github.io/spdx-spec/v2.3/SPDX-license-expressions/) (free); Longpre et al., [*The Data Provenance Initiative*](https://arxiv.org/abs/2310.16787) (free) |
 
@@ -160,6 +160,8 @@ def datasheet(ledger: Path, corpus: Path, tokens: Path | None = None) -> str
 | Forward | `ethics.03` | its check runs your `permitted_uses` over the ethics.01 allowlist on every license the datasheet lists; the model card links the datasheet (Pass 9) |
 
 `MS-corpus` already runs `ledger verify` through your CLI; `ethics.03` (Pass 9) is the registered call site.
+
+| Forward | `ethics.08` | The consent and model-card evidence practice calls this implementation. |
 
 ## Going further
 

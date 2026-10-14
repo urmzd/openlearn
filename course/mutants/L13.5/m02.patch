@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/contrastive.py
++++ b/python/tinyllm/vision/contrastive.py
+@@ -110,7 +110,7 @@
+         rng: Any = None,
+     ) -> None:
+         super().__init__()
+-        if loss not in ("clip", "siglip"):
++        if False:
+             raise ValueError(f"DualEncoder: loss must be 'clip' or 'siglip', got {loss!r}")
+         r = rng if rng is not None else PCG32(0).substream("init")
+         self.loss_kind = loss

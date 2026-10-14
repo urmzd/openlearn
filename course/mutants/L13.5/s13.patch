@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/contrastive.py
++++ b/python/tinyllm/vision/contrastive.py
+@@ -123,7 +123,7 @@
+ 
+     def encode_image(self, pixel_values: Tensor) -> Tensor:
+         last, _ = self.vision(pixel_values)
+-        pooled = last[:, 0] if self.vision.cfg.cls_token else F.mean(last, axis=1)
++        pooled = F.mean(last, axis=1)
+         return _normalize(self.visual_projection(pooled))
+ 
+     def encode_text(self, ids: NDArray) -> Tensor:

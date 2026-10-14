@@ -1,0 +1,11 @@
+--- a/go/activities/subprocess.go
++++ b/go/activities/subprocess.go
+@@ -448,7 +448,7 @@
+ 	// Whatever the child left behind in its group goes too.
+ 	_ = syscall.Kill(-pgid, syscall.SIGKILL)
+ 	fresh := drain()
+-	if fresh || string(last) != acknowledged {
++	if fresh {
+ 		// A stopping poll can consume a checkpoint without heartbeating it.
+ 		// Also retry a checkpoint whose earlier heartbeat failed. Flush the
+ 		// latest unacknowledged resume point even when the final read is empty.

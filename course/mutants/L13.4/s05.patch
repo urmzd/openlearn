@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/tiling.py
++++ b/python/tinyllm/vision/tiling.py
+@@ -193,7 +193,7 @@
+     # Hugging Face's Idefics3Connector, op for op.
+     y = a.reshape(n, s, s, d).reshape(n, s, s // r, d * r)
+     y = y.transpose(0, 2, 1, 3).reshape(n, s // r, s // r, d * r * r)
+-    return y.transpose(0, 2, 1, 3).reshape(n, seq // (r * r), d * r * r)
++    return y.reshape(n, seq // (r * r), d * r * r)
+ 
+ 
+ def pixel_unshuffle(y: NDArray, r: int) -> NDArray:

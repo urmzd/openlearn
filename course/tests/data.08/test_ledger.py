@@ -189,6 +189,24 @@ def test_rows_follow_the_schema(tmp_path):
     schema = json.loads((CONTRACTS / "formats" / "ledger.schema.json").read_text())
     good = row("web", revoked=False)
     assert row_errors(good) == [] and errors(good, schema) == []
+    multimodal = dict(
+        good,
+        modality="audio",
+        biometric=True,
+        consent="cc-licensed",
+        attribution="fixture author",
+        prohibited_uses=["speaker-identification"],
+    )
+    assert row_errors(multimodal) == [] and errors(multimodal, schema) == []
+    for key, value in [
+        ("modality", "video"),
+        ("biometric", "false"),
+        ("consent", "unknown"),
+        ("attribution", 7),
+        ("prohibited_uses", "speaker-identification"),
+    ]:
+        invalid = dict(multimodal, **{key: value})
+        assert row_errors(invalid) and errors(invalid, schema)
     bad = [
         {k: v for k, v in good.items() if k != "notes"},
         {**good, "extra": 1},

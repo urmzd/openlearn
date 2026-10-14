@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/encoder.py
++++ b/python/tinyllm/speech/encoder.py
+@@ -113,7 +113,7 @@
+     # one ulp, which at angle 1499 moves a table entry by about 3e-5, so
+     # L14.3's loader uses the table a checkpoint stores after checking it
+     # against this one.
+-    inc = np.float32(math.log(max_timescale) / (half - 1))
++    inc = np.float32(math.log(max_timescale) / half)
+     inv = np.exp(-inc * np.arange(half, dtype=np.float32))
+     t = (np.arange(length, dtype=np.float32)[:, None] * inv[None, :]).astype(np.float64)
+     return np.concatenate([np.sin(t), np.cos(t)], axis=1).astype(np.float32)

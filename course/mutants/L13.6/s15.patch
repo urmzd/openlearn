@@ -1,0 +1,10 @@
+--- a/python/tinyllm/vision/preprocess.py
++++ b/python/tinyllm/vision/preprocess.py
+@@ -591,6 +591,6 @@
+     result = []
+     for data in images:
+         item = preprocess_pixels([decode_image(data, cfg.max_pixels)], cfg, detail)[0]
+-        item.media_hash = media_hash("image", data)
++        item.media_hash = item.media_hash
+         result.append(item)
+     return result

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/speech/frontend.py
++++ b/python/tinyllm/speech/frontend.py
+@@ -89,7 +89,7 @@
+         )
+     spec = stft(a, cfg.n_fft, cfg.hop_length, hann(cfg.n_fft, periodic=True))
+     # 1 + n // hop frames; Whisper keeps n // hop of them (3001 -> 3000).
+-    p = power(spec)[:, :-1]
++    p = power(spec)
+     fb = mel_filterbank(cfg.sampling_rate, cfg.n_fft, cfg.feature_size)
+     # The clip at max - 8 sees only the kept frames.
+     return log_mel_whisper(p, fb).astype(np.float32)

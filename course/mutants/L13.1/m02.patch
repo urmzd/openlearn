@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/conv.py
++++ b/python/tinyllm/vision/conv.py
+@@ -80,7 +80,7 @@
+             cg_ = cols[:, g * crs : (g + 1) * crs]  # [N, CRS/g, PQ]
+             dw[g * kg : (g + 1) * kg] = np.einsum("nkl,njl->kj", gg, cg_)
+             dcols[:, g * crs : (g + 1) * crs] = np.einsum(
+-                "kj,nkl->njl", wflat[g * kg : (g + 1) * kg], gg
++                "kj,nkl->njl", wflat[0:kg], gg
+             )
+         dx = col2im(dcols, xd.shape, r, s, stride, pad, dilation)
+         grads = [dx.astype(dt), dw.reshape(wd.shape).astype(wd.dtype)]

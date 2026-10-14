@@ -1,0 +1,11 @@
+--- a/python/tinyllm/io/wav.py
++++ b/python/tinyllm/io/wav.py
+@@ -112,7 +112,7 @@
+         )
+     if channels not in (1, 2):
+         raise ValueError(f"read_wav: {channels} channels; mono or stereo only")
+-    if not 1 <= sr <= _MAX_SR:
++    if not 1 <= sr < _MAX_SR:
+         raise ValueError(f"read_wav: sample rate {sr} outside [1, {_MAX_SR}]")
+     if block != channels * bits // 8 or byte_rate != sr * block:
+         raise ValueError(

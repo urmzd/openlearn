@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/tiling.py
++++ b/python/tinyllm/vision/tiling.py
+@@ -99,7 +99,7 @@
+     if w / h > cw / ch:
+         new_h = int(round(h * (cw / w), 7))
+         pad = (ch - new_h) // 2
+-        return ch - 2 * pad, cw
++        return ch - pad, cw
+     new_w = int(round(w * (ch / h), 7))
+     pad = (cw - new_w) // 2
+     return ch, cw - 2 * pad

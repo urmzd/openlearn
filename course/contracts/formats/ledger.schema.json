@@ -83,6 +83,33 @@
     },
     "notes": {
       "type": "string"
+    },
+    "modality": {
+      "enum": [
+        "text",
+        "image",
+        "audio"
+      ]
+    },
+    "biometric": {
+      "type": "boolean"
+    },
+    "consent": {
+      "enum": [
+        "none",
+        "public-domain",
+        "cc-licensed",
+        "explicit-donation"
+      ]
+    },
+    "attribution": {
+      "type": "string"
+    },
+    "prohibited_uses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "examples": [

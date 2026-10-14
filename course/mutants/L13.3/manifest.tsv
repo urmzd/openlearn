@@ -1,0 +1,12 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/vision/vit.py	semantic	pitfall-1	285	y	(hidden until pass)	CLS token gets no position row
+s02	python/tinyllm/vision/vit.py	semantic	pitfall-2	309	y	(hidden until pass)	padding mask hides queries instead of keys
+s03	python/tinyllm/vision/vit.py	semantic	pitfall-3	154	y	(hidden until pass)	a coordinate on a bucket boundary goes to the lower bucket
+s04	python/tinyllm/vision/vit.py	semantic	pitfall-4	127	n	(hidden until pass)	position table resized bilinearly
+s05	python/tinyllm/vision/vit.py	semantic	pitfall-5	219	n	(hidden until pass)	2D RoPE rotates the queries only
+s06	python/tinyllm/vision/vit.py	semantic	pitfall-6	102	n	(hidden until pass)	quick_gelu without its 1.702
+s07	python/tinyllm/vision/vit.py	semantic	pitfall-7	314	n	(hidden until pass)	hidden states leave out the block-0 input
+s08	python/tinyllm/vision/vit.py	semantic	pitfall-8	114	n	(hidden until pass)	sin-cos table puts cosines first
+m01	python/tinyllm/vision/vit.py	auto	cond_drop	74	n	missing-key check dropped	if removed
+m02	python/tinyllm/vision/vit.py	auto	cond_drop	261	n	patch size check dropped	if removed
+m03	python/tinyllm/vision/vit.py	auto	stmt_drop	78	n	config override dropped	layer_norm_eps ignored

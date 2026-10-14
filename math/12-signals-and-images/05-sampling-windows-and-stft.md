@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/sig/stft.pyi`](../../course/contracts/py/tinyllm/sig/stft.pyi) |
 | **Tests** | `course/tests/M12.5/test_stft.py` (what they check: section 4), golden values from `course/oracle/M12.5/stft_torch.py` (`torch.stft`, `torch.hann_window`) in `course/fixtures/M12.5/stft_torch.npz` |
 | **Needs** | `M12.4` `rfft` and `irfft` (or `--ref-deps`) |
-| **Used by** | later `L14.1` the Whisper frontend (power spectrogram of 400-sample frames at hop 160), with B14's L14 group |
+| **Used by** | `L14.1` the Whisper frontend (power spectrogram of 400-sample frames at hop 160) |
 | **Milestone** | `MS-P12` (the multimodal gate) |
 | **Optional depth** | Oppenheim and Schafer, *Discrete-Time Signal Processing*, ch. 4 and 10; Harris, "On the use of windows for harmonic analysis with the discrete Fourier transform" (Proc. IEEE 1978); Smith, *Spectral Audio Signal Processing* (free), the overlap-add chapters |
 
@@ -132,7 +132,7 @@ def power(S) -> NDArray: ...
 |---|---|---|
 | Back | `M12.4` | `stft` runs `rfft` on every frame; `istft` runs `irfft` |
 | Forward | `M12.6` | its filterbank pools this power spectrogram into mel bands (reading) |
-| Forward | `L14.1` | the Whisper frontend: `stft(x, 400, 160, hann(400))`, drop the last frame, `power` (with B14's L14 group) |
+| Forward | `L14.1` | the Whisper frontend: `stft(x, 400, 160, hann(400))`, drop the last frame, `power` |
 | Forward | `S-M12` | Nyquist, aliasing, windows, COLA, and frame counts by hand |
 
 ## Going further

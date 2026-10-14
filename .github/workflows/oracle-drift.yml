@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "31 5 * * 1"
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Oracle validation scope
+        type: choice
+        default: all
+        options: [all, whisper]
 
 permissions:
   contents: read
@@ -14,6 +20,7 @@ concurrency:
 
 jobs:
   oracle-drift:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'whisper'
     name: Regenerate and compare oracle fixtures
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -40,5 +47,36 @@ jobs:
           uv run --project course/harness python course/oracle/ds.08/bloom_golden.py --check
           uv run --project course/harness python course/oracle/parity/kv_wire_v1_golden.py --check
           uv run --project course/harness python course/oracle/solve/sync_chapters.py --check
+          uv run --python 3.12 --script course/oracle/L13.6/decode_pil.py --check
+          uv run --python 3.12 --script course/oracle/L13.6/preprocess_hf.py --check
       - name: Compare parity goldens within declared tolerances
         run: practice/bin/ol parity --ref
+
+  whisper-oracle:
+    name: Independent Whisper decoder oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - name: Install CPU oracle dependencies
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/whisper-oracle"
+          uv pip install --python "$RUNNER_TEMP/whisper-oracle/bin/python" torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+          uv pip install --python "$RUNNER_TEMP/whisper-oracle/bin/python" transformers==5.19.0 numpy==2.5.4
+      - name: Generate independent decoder values
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "${{ inputs.scope }}" != whisper ] || [ -f course/fixtures/L14.3/decoder_hf.npz ]; then args+=(--check); fi
+          "$RUNNER_TEMP/whisper-oracle/bin/python" course/oracle/L14.3/decoder_hf.py "${args[@]}" | tee "$RUNNER_TEMP/whisper-manifest-row.tsv"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: whisper-decoder-oracle
+          path: |
+            course/fixtures/L14.3/decoder_hf.npz
+            ${{ runner.temp }}/whisper-manifest-row.tsv
+          if-no-files-found: error

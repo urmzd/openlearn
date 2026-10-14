@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/num/rng.pyi`](../../course/contracts/py/tinyllm/num/rng.pyi) · the algorithm, to the bit: [`spec/pcg32.md`](../../course/contracts/spec/pcg32.md) |
 | **Tests** | `course/tests/M06.3/test_rng.py` checks Python against published golden vectors (section 4) |
 | **Needs** | nothing to build first. Reading: `S-M05` (counting), `S-M06a` (modular arithmetic and hashing by hand) |
-| **Used by** | `M07.0` normal draws by Box-Muller · `L0.2` dropout masks · `L0.4` the default init and dropout streams · `L0.5` the bigram's sampler · `L0.6` the token stream's window starts · later `L8.1` the sampler, `rt.04` KV block hashes, `data.03` Bloom hashing, `data.04` MinHash, and `ethics.04` reproducible bootstrap resampling; ported to Rust by `L10.1` and to Go by `load.01` · later: `L2.2`, `L2.3`, `L3.2`, `L3.3`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7`, `L7.2`, `L7.5`, `L7.6`, `L7.8`, `L7.9` |
+| **Used by** | `M07.0` normal draws by Box-Muller · `L0.2` dropout masks · `L0.4` the default init and dropout streams · `L0.5` the bigram's sampler · `L0.6` the token stream's window starts · later `L8.1` the sampler, `rt.04` KV block hashes, `data.03` Bloom hashing, `data.04` MinHash, and `ethics.04` reproducible bootstrap resampling; ported to Rust by `L10.1` and to Go by `load.01` · later: `L2.2`, `L2.3`, `L3.2`, `L3.3`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7`, `L7.2`, `L7.5`, `L7.6`, `L7.8`, `L7.9` · `L14.5` the WER bootstrap stream (`PCG32(seed)`), `L13.1`, `L13.3`, `L13.5`, `L14.2`  · `L14.3` Whisper decoding · `L13.6` image preprocessing |
 | **Milestone** | `MS-P2` (the foundations gate) |
 | **Optional depth** | O'Neill, "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation" (2014); Knuth, *TAOCP* vol. 2, ch. 3 (linear congruential generators, the spectral test); Steele, Lea, and Flood, "Fast Splittable Pseudorandom Number Generators" (2014); Carter and Wegman, "Universal Classes of Hash Functions" (1979); Noll's FNV page (isthe.com/chongo/tech/comp/fnv) |
 
@@ -207,6 +207,8 @@ def universal_hash(x: int, a: int, b: int, p: int, m: int) -> int: ...
 | accepting an even `inc` in `set_state` | a corrupt checkpoint resumes a non-PCG sequence | `test_state_roundtrip_resumes_the_stream` (mutant `s12`) |
 
 ## 6. Where it's used next
+| Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
+| Forward | `L13.6` | Image preprocessing uses this module directly. |
 | Forward | `L2.2` | Registered call site uses this module. |
 | Forward | `L2.3` | Registered call site uses this module. |
 | Forward | `L3.2` | Registered call site uses this module. |
@@ -243,6 +245,11 @@ def universal_hash(x: int, a: int, b: int, p: int, m: int) -> int: ...
 | Forward | `L8.1` | the sampler: one `uniform()` per token on `stream(seed, sample)` (`spec/sampling.md`) |
 | Forward | `L10.1`, `load.01` | the Rust and Go ports, held to the same published vectors |
 | Forward | `data.03` | the Python Bloom screen derives stable bit positions from FNV-1a and SplitMix64 |
+| Forward | `L14.5` | `bootstrap_ci` in the multimodal metrics draws its resamples from `PCG32(seed)` |
+| Forward | `L13.1` | conv weights draw from a `PCG32` stream |
+| Forward | `L13.3` | patch, position, and block weights draw from `PCG32` |
+| Forward | `L13.5` | the dual encoder initializes from `PCG32` |
+| Forward | `L14.2` | the encoder initializes from `PCG32` |
 
 ## Going further
 

@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/vit.py
++++ b/python/tinyllm/vision/vit.py
+@@ -75,7 +75,7 @@
+             raise ValueError(f"ViTConfig.from_hf: config lacks {missing}")
+         kw = dict(HF_KINDS[kind])
+         if "layer_norm_eps" in config:
+-            kw["ln_eps"] = float(config["layer_norm_eps"])
++            pass
+         if "hidden_act" in config:
+             if config["hidden_act"] not in HF_ACTS:
+                 raise ValueError(f"ViTConfig.from_hf: hidden_act {config['hidden_act']!r} is not supported")

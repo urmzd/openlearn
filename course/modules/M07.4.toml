@@ -15,7 +15,7 @@ reading   = ["M07.1", "M07.0", "S-M07b"]
 # Catalog call sites: L4.5 (sequence metrics carry a bootstrap CI), L6.7
 # (every metric carries a CI), L8.5 verdicts, L10.7. None is registered yet,
 # so verify check 9 fails until one lists M07.4 in deps (DEVIATIONS B6M-02).
-used_by   = ["L12.3", "L4.5", "L6.7", "ethics.04"]
+used_by   = ["L12.3", "L4.5", "L6.7", "ethics.04", "L14.5"]
 units     = ["python/tinyllm/prob/stats.py"]
 upgrades  = []
 milestone = "MS-P4"

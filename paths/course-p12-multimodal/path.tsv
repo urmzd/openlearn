@@ -9,3 +9,14 @@
 6	Sampling, Nyquist, windows, and the STFT	math/12-signals-and-images/05-sampling-windows-and-stft.md	Your implementation of M12.5 passes its course checks.	module:M12.5
 7	Mel scale and filterbanks	math/12-signals-and-images/06-mel-scale-and-filterbanks.md	Your implementation of M12.6 passes its course checks.	module:M12.6
 8	Signals and images problem set	math/12-signals-and-images/90-problem-set.md	You complete the S-M12 solve set and its check passes.	solve:S-M12
+9	Conv layers and pooling	ml/08-tinyllm/p13-vision/01-conv-layers-and-pooling.md	Your implementation of L13.1 passes its course checks.	module:L13.1
+10	2D RoPE and M-RoPE	ml/08-tinyllm/p13-vision/02-rope-2d-and-m-rope.md	Your implementation of L13.2 passes its course checks.	module:L13.2
+11	Vision transformer encoder	ml/08-tinyllm/p13-vision/03-vision-transformer.md	Your implementation of L13.3 passes its course checks.	module:L13.3
+12	Dynamic resolution and tiling	ml/08-tinyllm/p13-vision/04-dynamic-resolution-and-tiling.md	Your implementation of L13.4 passes its course checks.	module:L13.4
+13	Image preprocessing	ml/08-tinyllm/p13-vision/06-image-preprocessing.md	Your implementation of L13.6 passes its course checks.	module:L13.6
+14	Contrastive image-text	ml/08-tinyllm/p13-vision/05-contrastive-image-text.md	Your implementation of L13.5 passes its course checks.	module:L13.5
+15	Audio frontend	ml/08-tinyllm/p14-speech/01-audio-frontend.md	Your implementation of L14.1 passes its course checks.	module:L14.1
+16	Whisper encoder	ml/08-tinyllm/p14-speech/02-whisper-encoder.md	Your implementation of L14.2 passes its course checks.	module:L14.2
+17	Whisper decoder and weights	ml/08-tinyllm/p14-speech/03-whisper-decoder-and-weights.md	Your implementation of L14.3 passes its course checks.	module:L14.3
+18	Multimodal eval metrics	ml/08-tinyllm/p14-speech/05-multimodal-eval-metrics.md	Your implementation of L14.5 passes its course checks.	module:L14.5
+19	Consent and biometric evidence	responsible-ai/02-privacy-and-pii/02-consent-and-biometric-evidence.md	Your model card numbers match runnable evidence and every source has valid consent records.	module:ethics.08

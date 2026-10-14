@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/vit.py
++++ b/python/tinyllm/vision/vit.py
+@@ -151,7 +151,7 @@
+         fh = np.minimum(np.arange(hp, dtype=np.float32) * step_h, np.float32(1.0 - 1e-6))
+         fw = np.minimum(np.arange(wp, dtype=np.float32) * step_w, np.float32(1.0 - 1e-6))
+         bh = np.searchsorted(bounds, fh, side="right")
+-        bw = np.searchsorted(bounds, fw, side="right")
++        bw = np.searchsorted(bounds, fw, side="left")
+         ids = (bh[:, None] * n_side + bw[None, :]).reshape(-1)
+         keep = m[b].reshape(-1)
+         out[b, keep] = ids[keep]

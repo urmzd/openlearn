@@ -10,7 +10,7 @@
 | **Contract** | [`course/contracts/py/tinyllm/xfmr/masks.pyi`](../../../course/contracts/py/tinyllm/xfmr/masks.pyi) |
 | **Tests** | `course/tests/L5.2/test_masks.py` (what they check: section 4), golden values from torch 2.14.1 in `course/fixtures/L5.2/masks_torch.npz` (`course/oracle/L5.2/masks_torch.py`); your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
 | **Needs** | nothing to call. Reading: `S-M05` (logic: AND, implication), [`M09.2` stable softmax](../../../math/09-numerical-methods-and-floating-point/02-stable-numerics.md) (an all $-\infty$ row gives zeros) |
-| **Used by** | `L5.3` and `L5.5` build every attention mask here · later `L6.1` (GPT's causal mask), `L7.7` (sliding windows), `L8.2` (`q_offset` while decoding with a KV cache), `L9.3` and `L9.4` (the same rules as kernel flags) |
+| **Used by** | `L5.3` and `L5.5` build every attention mask here · later `L6.1` (GPT's causal mask), `L7.7` (sliding windows), `L8.2` (`q_offset` while decoding with a KV cache), `L9.3` and `L9.4` (the same rules as kernel flags)  · `L14.3` Whisper decoding |
 | **Milestone** | `MS-L5` |
 | **Optional depth** | Vaswani et al., "Attention Is All You Need" (2017), section 3.2.3 (masking in the decoder); Beltagy, Peters, Cohan, "Longformer" (2020) and Jiang et al., "Mistral 7B" (2023), section 2 (sliding-window attention) |
 
@@ -147,6 +147,7 @@ The oracle is the definition written as two nested loops over $(i, j)$: compare 
 |---|---|---|
 | Back | `S-M05` | AND of conditions, and implication as a matrix (reading) |
 | Back | `M09.2` | the softmax that maps an all $-\infty$ row to zeros (reading) |
+| Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
 | Forward | `L5.1` | `scaled_dot_product_attention(q, k, v, mask)` takes these masks (True = attend) |
 | Forward | `L5.3` | multi-head attention broadcasts one mask over every head |
 | Forward | `L5.5` | the decoder's mask is `combine(causal_mask(T), padding)` |

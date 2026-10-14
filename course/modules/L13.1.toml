@@ -1,0 +1,34 @@
+id        = "L13.1"
+title     = "Conv layers and pooling on autograd"
+kind      = "build"
+lang      = ["python"]
+pass      = 12
+chapter   = "ml/08-tinyllm/p13-vision/01-conv-layers-and-pooling.md"
+contract  = ["contracts/py/tinyllm/vision/conv.pyi"]
+# conv.py: M12.1's im2col, col2im, and conv_out_size; one autograd op per
+# layer on L0.1's Tensor (from_op) with L0.2's reshape, relu, permute; L0.4's
+# Module and Linear for LeNet; M07.3's normal_init and M06.3's PCG32 for the
+# weights.
+deps      = ["M12.1", "L0.1", "L0.2", "L0.4", "M07.3", "M06.3"]
+# Concepts: L0.3's cross-entropy and M10.3's Adam train LeNet in the chapter
+# (the course test carries its own frozen copy).
+reading   = ["L0.3", "M10.3", "ml/06-neural-architectures/code/lenet.rs"]
+# Call sites (DESIGN 4.1): L13.3 (PatchEmbed is a stride-p Conv2d) and
+# L14.2 (the Whisper conv stem, B14's L14 group).
+used_by   = ["L13.3", "L14.2"]
+units     = ["python/tinyllm/vision/conv.py"]
+upgrades  = []
+milestone = "MS-L13"
+ci        = "pr"
+
+[tests]
+dir       = "course/tests/L13.1"
+smoke     = ["test_hand_example_pooling"]
+timeout_s = 120
+determinism_runs = 2
+
+[fixtures]
+files = [
+  "course/fixtures/L13.1/conv_layers_torch.npz",
+  "course/fixtures/digits/digits.npz",
+]

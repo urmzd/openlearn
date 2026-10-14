@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Supported Hugging Face image/audio preprocessing configuration",
+  "description": "Unknown keys are preserved for HF compatibility. Runtime validation also enforces positive standard deviations and processor-specific geometry.",
+  "type": "object",
+  "properties": {
+    "do_resize": {
+      "type": "boolean"
+    },
+    "do_center_crop": {
+      "type": "boolean"
+    },
+    "do_rescale": {
+      "type": "boolean"
+    },
+    "do_normalize": {
+      "type": "boolean"
+    },
+    "do_image_splitting": {
+      "type": "boolean"
+    },
+    "size": {
+      "oneOf": [
+        {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        {
+          "type": "integer",
+          "minimum": 1
+        }
+      ]
+    },
+    "crop_size": {
+      "oneOf": [
+        {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        {
+          "type": "integer",
+          "minimum": 1
+        }
+      ]
+    },
+    "max_image_size": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "tile_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "scale_factor": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "image_seq_len": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "patch_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_pixels": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sampling_rate": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "n_fft": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "hop_length": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "feature_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "chunk_length": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "image_mean": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        }
+      ]
+    },
+    "image_std": {
+      "oneOf": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      ]
+    },
+    "resample": {
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        "nearest",
+        "bilinear",
+        "bicubic",
+        "lanczos3"
+      ]
+    },
+    "rescale_factor": {
+      "type": "number"
+    },
+    "preprocess_rev": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295
+    },
+    "base_extra": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "kind": {
+      "enum": [
+        "single",
+        "idefics3",
+        "llava_next"
+      ]
+    },
+    "image_grid_pinpoints": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "feature_extractor_type": {
+      "const": "WhisperFeatureExtractor"
+    },
+    "padding_value": {
+      "type": "number"
+    },
+    "image_processor_type": {
+      "enum": [
+        "CLIPImageProcessor",
+        "CLIPImageProcessorPil",
+        "CLIPImageProcessorFast",
+        "SiglipImageProcessor",
+        "SiglipImageProcessorPil",
+        "SiglipImageProcessorFast",
+        "Idefics3ImageProcessor",
+        "Idefics3ImageProcessorPil",
+        "Idefics3ImageProcessorFast",
+        "SmolVLMImageProcessor",
+        "SmolVLMImageProcessorPil",
+        "SmolVLMImageProcessorFast",
+        "LlavaImageProcessor",
+        "LlavaImageProcessorPil",
+        "LlavaImageProcessorFast",
+        "LlavaNextImageProcessor",
+        "LlavaNextImageProcessorPil",
+        "LlavaNextImageProcessorFast"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

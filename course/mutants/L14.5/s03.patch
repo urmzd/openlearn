@@ -1,0 +1,11 @@
+--- a/python/tinyllm/eval/mm.py
++++ b/python/tinyllm/eval/mm.py
+@@ -66,7 +66,7 @@
+         else:
+             I += 1
+             j -= 1
+-    return S, D, I, n
++    return S, I, D, n
+ 
+ 
+ def _pairs(refs: Sequence[str], hyps: Sequence[str]) -> None:

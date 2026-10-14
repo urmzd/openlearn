@@ -1,0 +1,20 @@
+# mid	unit	tier	operator	line	required	public	private
+s01	python/tinyllm/vision/contrastive.py	semantic	pitfall-1	42	y	(hidden until pass)	loss scores raw dot products, rows not normalized
+s02	python/tinyllm/vision/contrastive.py	semantic	pitfall-2	58	y	(hidden until pass)	CLIP loss in one direction only (texts pick images)
+s03	python/tinyllm/vision/contrastive.py	semantic	pitfall-3	56	y	(hidden until pass)	cosines divided by exp(logit_scale)
+s04	python/tinyllm/vision/contrastive.py	semantic	pitfall-4	56	n	(hidden until pass)	temperature never clamped at 100
+s05	python/tinyllm/vision/contrastive.py	semantic	pitfall-5	75	n	(hidden until pass)	SigLIP loss averaged over B^2 pairs, not divided by B
+s06	python/tinyllm/vision/contrastive.py	semantic	pitfall-6	74	n	(hidden until pass)	SigLIP labels 1 and 0 instead of +1 and -1
+s07	python/tinyllm/vision/contrastive.py	semantic	pitfall-7	64	n	(hidden until pass)	log(sigmoid(x)) computed as written, overflows
+s08	python/tinyllm/vision/contrastive.py	semantic	pitfall-8	73	n	(hidden until pass)	SigLIP bias added before the scale
+s09	python/tinyllm/vision/contrastive.py	semantic	pitfall-9	136	n	(hidden until pass)	text mean pooling counts padding positions
+s10	python/tinyllm/vision/contrastive.py	semantic	pitfall-10	127	n	(hidden until pass)	encode_image returns unnormalized rows
+s11	python/tinyllm/vision/contrastive.py	semantic	pitfall-11	73	n	(hidden until pass)	SigLIP t used as the scale, not exp(t)
+s12	python/tinyllm/vision/contrastive.py	semantic	pitfall-12	97	n	(hidden until pass)	text tower attends to padding
+s13	python/tinyllm/vision/contrastive.py	semantic	pitfall-13	126	n	(hidden until pass)	image pooled by mean even with a CLS token
+s14	python/tinyllm/vision/contrastive.py	semantic	pitfall-14	161	n	(hidden until pass)	prompt ensemble mean not renormalized
+s15	python/tinyllm/vision/contrastive.py	semantic	pitfall-15	66	n	(hidden until pass)	log sigmoid's derivative written as sigmoid(x)
+s16	python/tinyllm/vision/contrastive.py	semantic	pitfall-16	56	n	(hidden until pass)	clamp computed in numpy, logit_scale never gets a gradient
+m01	python/tinyllm/vision/contrastive.py	auto	cond_drop	40	n	embedding shape check dropped	if removed
+m02	python/tinyllm/vision/contrastive.py	auto	cond_drop	113	n	loss name check dropped	if removed
+m03	python/tinyllm/vision/contrastive.py	auto	cond_drop	133	n	all-padding row check dropped	if removed

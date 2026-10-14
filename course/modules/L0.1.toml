@@ -12,7 +12,7 @@ deps      = ["M06.1", "M08.3", "M08.2"]
 reading   = ["lang.01"]   # broadcasting rules; a primer has no code call site
 # Every later Part 0 unit builds on Tensor and from_op; L0.6's course tests
 # train the model they checkpoint with it.
-used_by   = ["L0.2", "L0.3", "L0.4", "L0.5", "L0.6", "L11.1", "L2.2", "L3.1", "L3.2", "L3.3", "L3.4", "L3.6", "L4.1", "L4.2", "L4.3", "L5.1", "L5.3", "L5.4", "L5.5", "L6.1", "L6.2", "L6.3", "L6.5", "L6.6", "L6.7", "L7.1", "L7.2", "L7.3", "L7.5", "L7.6", "L7.7", "L7.8", "L7.9", "L8.2", "L8.5"]
+used_by = ["L0.2", "L0.3", "L0.4", "L0.5", "L0.6", "L11.1", "L2.2", "L3.1", "L3.2", "L3.3", "L3.4", "L3.6", "L4.1", "L4.2", "L4.3", "L5.1", "L5.3", "L5.4", "L5.5", "L6.1", "L6.2", "L6.3", "L6.5", "L6.6", "L6.7", "L7.1", "L7.2", "L7.3", "L7.5", "L7.6", "L7.7", "L7.8", "L7.9", "L8.2", "L8.5", "L13.1", "L13.2", "L13.3", "L14.2", "L13.5", "L14.3"]
 units     = ["python/tinyllm/autograd/tensor.py", "python/tinyllm/autograd/mode.py"]
 upgrades  = []
 milestone = "MS-L0"

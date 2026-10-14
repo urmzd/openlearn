@@ -645,3 +645,37 @@ func TestStderrTailIsBounded(t *testing.T) {
 		t.Fatalf("want the last <= 4096 bytes of stderr ending in the traceback, got %d bytes ending %q", len(f.Message), f.Message[max(0, len(f.Message)-40):])
 	}
 }
+
+func TestShutdownFlushesUnacknowledgedCheckpoint(t *testing.T) {
+	// WHY: a checkpoint consumed before shutdown must still reach the
+	// server if its heartbeat failed; the final tail read can be empty.
+	// KIND: fault
+	// CATCHES: s41
+	// CHAPTER: dur.09 section 5, Pitfalls
+	r, _ := runner(t)
+	ctx, cancel := context.WithCancel(runCtx(t))
+	defer cancel()
+	const checkpoint = "runs/fake/ckpt/unacknowledged"
+	b := &beats{}
+	failed := false
+	hb := func(hctx context.Context, details []byte) (bool, error) {
+		if err := hctx.Err(); err != nil {
+			return false, err
+		}
+		if string(details) == checkpoint && !failed {
+			failed = true
+			cancel() // deterministic shutdown after the checkpoint was consumed
+			return false, errors.New("temporary heartbeat transport failure")
+		}
+		return b.hb(hctx, details)
+	}
+	_, err := r.Run(ctx, activities.Task{IdempotencyKey: "flush/1", Attempt: 1, HeartbeatTimeout: 150 * time.Millisecond}, nil,
+		script("exit130", emit(map[string]any{"kind": "ckpt", "step": 1, "ckpt": checkpoint}), act("wait_term", 8.0)), hb)
+	f := failure(t, err)
+	if !failed || f.Type != "WorkerShutdown" || f.NonRetryable() {
+		t.Fatalf("checkpoint heartbeat must fail once, then drain retryably: failed=%v, failure=%+v", failed, f)
+	}
+	if string(f.Details) != checkpoint || b.last() != checkpoint {
+		t.Fatalf("checkpoint was consumed but not acknowledged: details=%q heartbeat=%q", f.Details, b.last())
+	}
+}

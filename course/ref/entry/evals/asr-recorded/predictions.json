@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "group": "clear",
+    "reference": "a b",
+    "hypothesis": "a b"
+  },
+  {
+    "id": "2",
+    "group": "clear",
+    "reference": "c d",
+    "hypothesis": "c x"
+  },
+  {
+    "id": "3",
+    "group": "noisy",
+    "reference": "e f",
+    "hypothesis": ""
+  },
+  {
+    "id": "4",
+    "group": "noisy",
+    "reference": "g h",
+    "hypothesis": "g h"
+  }
+]

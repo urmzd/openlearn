@@ -1,0 +1,11 @@
+--- a/python/tinyllm/vision/conv.py
++++ b/python/tinyllm/vision/conv.py
+@@ -215,7 +215,7 @@
+     out = cols.mean(axis=1).reshape(n, c, p, q).astype(x.data.dtype)
+ 
+     def vjp(g: NDArray) -> tuple[NDArray]:
+-        gg = g.reshape(n * c, 1, p * q).astype(np.float64) / (k * k)
++        gg = g.reshape(n * c, 1, p * q).astype(np.float64) / k
+         dcols = np.broadcast_to(gg, cols.shape).copy()
+         dx = col2im(dcols, (n * c, 1, h, w), k, k, (s, s))
+         return (dx.reshape(n, c, h, w).astype(x.data.dtype),)

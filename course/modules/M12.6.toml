@@ -7,9 +7,9 @@ chapter   = "math/12-signals-and-images/06-mel-scale-and-filterbanks.md"
 contract  = ["contracts/py/tinyllm/sig/mel.pyi"]
 deps      = ["M00.1"]   # decibels and Whisper's log10 go through log_base(x, 10)
 reading   = ["M12.5"]   # the power spectrogram the filters pool (a concept here)
-# Call sites (DESIGN 4.1): L14.1 (Whisper log-mel) and data.11 (mel dHash),
-# not registered yet (DEVIATIONS B14M12-01).
-used_by   = []
+# Call sites (DESIGN 4.1): L14.1 (Whisper log-mel) and data.11 (mel dHash);
+# data.11 is not registered yet (DEVIATIONS B14M12-01).
+used_by   = ["L14.1"]
 units     = ["python/tinyllm/sig/mel.py"]
 upgrades  = []
 milestone = "MS-P12"

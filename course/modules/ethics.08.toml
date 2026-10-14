@@ -1,0 +1,20 @@
+id = "ethics.08"
+title = "Consent and biometric evidence in model cards"
+kind = "practice"
+lang = ["python", "docs"]
+pass = 12
+chapter = "responsible-ai/02-privacy-and-pii/02-consent-and-biometric-evidence.md"
+contract = []
+# The evidence program calls the actual image and speech towers and metrics.
+deps = ["L13.5", "L14.3", "L14.5", "data.08"]
+reading = ["ethics.02", "ethics.03"]
+used_by = []
+units = []
+artifacts = ["primers/ethics.08/evidence.py", "docs/data/CONSENT_POLICY.md", "docs/data/mm-ledger.jsonl", "docs/models/multimodal.md", "evals/asr-recorded/predictions.json", "evals/asr-recorded/summary.json"]
+upgrades = []
+milestone = "MS-P12"
+ci = "pr"
+
+[tests]
+dir = "course/tests/ethics.08"
+timeout_s = 120
