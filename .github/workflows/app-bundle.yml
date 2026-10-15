@@ -64,6 +64,8 @@ jobs:
 
       # The packs that ship inside the binary: this repository and languide.
       - name: Bundle the built-in course packs
+        env:
+          PYTHONUTF8: "1"
         shell: bash
         run: |
           python3 ../../scripts/course_catalog.py export --reading-only --output "${{ runner.temp }}/course-packs"
