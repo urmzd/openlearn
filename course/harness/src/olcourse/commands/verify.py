@@ -1047,6 +1047,7 @@ def verify_global(reg, course, work: Path, rep: Report) -> None:
     env = ctx.base_env()
     env["OL_COURSE_ROOT"] = str(course)
     env["OL_PATHS_DIR"] = str(paths.paths_dir(course))
+    env["OL_LEARN_ROOT"] = str(ctx.site_root(course))
     rc, out = ctx.run(["bash", str(ss), "learn", "--verify"], env=env)
     rep.fail(11, "paths (ol learn --verify)", out) if rc != 0 else rep.ok(
         11, "paths: ol learn --verify"
