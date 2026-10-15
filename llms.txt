@@ -1,0 +1,27 @@
+# Supersource
+
+> A self-paced curriculum and course publishing platform for computer science, mathematics, and engineering. Course manifests reuse canonical lessons across websites, PDFs, and portable desktop packs; the LLM systems course also provides implementation contracts and grading tools.
+
+## Docs
+
+- [README](https://github.com/urmzd/openlearn/blob/main/README.md): Installation, study, practice, and publishing
+- [Course catalogue](https://github.com/urmzd/openlearn/blob/main/content/courses/README.md): Available learning routes and study plans
+- [Course publication](https://github.com/urmzd/openlearn/blob/main/docs/courses.md): Manifest fields, exports, and independent websites
+- [LLM systems course](https://github.com/urmzd/openlearn/blob/main/content/courses/build-an-llm/README.md): Implementation sequence, interfaces, checks, and milestones
+- [Source register](https://github.com/urmzd/openlearn/blob/main/content/references/sources.md): Attribution, access terms, and validation evidence
+
+## API / Key Files
+
+- [Catalogue manifest](https://github.com/urmzd/openlearn/blob/main/openlearn.json): Registered courses and default navigation
+- [Publication pipeline](https://github.com/urmzd/openlearn/blob/main/scripts/course_catalog.py): Source resolution, validation, and portable exports
+- [Practice guide](https://github.com/urmzd/openlearn/blob/main/practice/README.md): Exercise commands, attempts, and grading
+
+## Skills
+
+- [Study sessions](https://github.com/urmzd/openlearn/blob/main/skills/study-session/SKILL.md): Interactive quizzes, drills, reviews, and explanations
+- [Study plans](https://github.com/urmzd/openlearn/blob/main/skills/study-plan/SKILL.md): Personalized learning goals, schedules, and milestones
+
+## Optional
+
+- [Desktop architecture](https://github.com/urmzd/openlearn/blob/main/apps/desktop/docs/architecture.md): Course packs, exercise engine, and application runtime
+- [License](https://github.com/urmzd/openlearn/blob/main/LICENSE): Apache License 2.0
