@@ -17,6 +17,25 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/urmzd/openlearn" alt="License"></a>
 </p>
 
+## Screenshots
+
+![Course catalog with alphabetically ordered courses and a search field](showcase/course-catalog.png)
+
+<details>
+<summary>See the course outline and reading experience</summary>
+
+The course outline keeps chapters in order and supporting references separate.
+
+![Mathematics Foundations course outline with ordered chapters and supporting references](showcase/mathematics-course.png)
+
+Chapters introduce one idea at a time, with worked examples and rendered equations.
+
+![Mathematics chapter showing a cost model, a worked example, and chapter navigation](showcase/mathematics-chapter.png)
+
+</details>
+
+Captured with [teasr](https://github.com/urmzd/teasr). Rebuild the website, then run `teasr run --config teasr.toml` to refresh these screenshots.
+
 ## Features
 
 - **Course catalogue:** 18 learning routes across mathematics, algorithms, ML, systems, data engineering, infrastructure, and related subjects.
