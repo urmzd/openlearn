@@ -10,7 +10,7 @@ Put a course's curriculum, study plan, and unique chapters in its own directory.
 
 ## Manifest
 
-The manifest is the desktop platform's existing `openlearn.json` format. Publishing also reads it:
+The `openlearn.json` manifest defines publication for the web app, PDF, and source pack:
 
 | Field | Meaning |
 |---|---|
@@ -44,7 +44,7 @@ python3 scripts/course_catalog.py export --course mathematics --zip
 
 The export writes `outputs/packs/mathematics/openlearn.json` and the selected source files beneath it. Relative paths remain intact. Links to material outside the pack become repository source links. `--reading-only` omits runtime tools. Export refuses to overwrite an existing destination; use a fresh output directory for another build.
 
-The desktop app opens the exported directory or imports the zip. `make content` embeds reading packs for every registered course and Languide. Runnable packs include their declared tools, but users still install the relevant language runtimes.
+Source packs contain readable Markdown and any declared local tools. In the PWA, use Save offline to download published lessons, diagrams, and the app resources needed to read them. Local practice still requires the relevant language runtimes.
 
 ```bash
 cd apps/web
@@ -60,4 +60,4 @@ CI builds one PDF and pack per course and attaches them to releases. Course page
 1. Write its curriculum or study plan only where it adds information beyond existing lessons.
 2. Create `content/courses/<id>/openlearn.json`, referencing existing lessons and any new chapters.
 3. Register the manifest in the root `openlearn.json` and add its PDF/zip names to `sr.yaml`.
-4. Run catalogue validation, assemble the PDF, and open an exported pack. The web and desktop builds discover the new course from the catalogue.
+4. Run catalogue validation, assemble the PDF, and inspect an exported source pack. The PWA discovers the new course from the catalogue.

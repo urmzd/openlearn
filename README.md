@@ -41,14 +41,14 @@ Captured with [teasr](https://github.com/urmzd/teasr). Rebuild the website, then
 - **Course catalogue:** 18 learning routes across mathematics, algorithms, ML, systems, data engineering, infrastructure, and related subjects.
 - **Build Your Own LLM System:** implement tokenizers, attention, KV caches, inference, serving, and operations against readable interfaces and tests.
 - **Practice:** predict program output, build implementations, and reattempt solved problems. Keep your work in a private local scratchpad.
-- **Read anywhere:** browse shared lessons on the web, download course PDFs, or open portable packs in the OpenLearn desktop app.
+- **Read anywhere:** browse shared lessons on the web, download course PDFs, or install the PWA and save courses for offline reading.
 - **Publish from one source:** use a course manifest to select the same Markdown lessons for its website, PDF, and downloadable pack.
 
 Courses state their assessment boundaries. Suggested reading and projects do not imply automated grading.
 
 ## Installation
 
-Read the [website](https://openlearn.urmzd.com) without installing anything. Download PDFs, portable course packs, and the desktop app from [releases](https://github.com/urmzd/openlearn/releases/latest). Extract a course pack and open its folder in the desktop app, or import its zip.
+Read the [website](https://openlearn.urmzd.com) without installing anything. Download PDFs and source packs from [releases](https://github.com/urmzd/openlearn/releases/latest). Install the web app from your browser. Choose Save offline on a course to download its lessons and diagrams.
 
 ### Prerequisites
 
@@ -66,7 +66,7 @@ git clone https://github.com/urmzd/openlearn.git
 cd openlearn
 ```
 
-Run `practice/bin/ol doctor` before starting the LLM course. See the [desktop build instructions](apps/desktop/README.md#build) for development prerequisites.
+Run `practice/bin/ol doctor` before starting the LLM course. Browser reading progress and notes stay on your device; verified code checks run through the CLI.
 
 ## Quick Start
 
@@ -109,7 +109,7 @@ python3 scripts/course_catalog.py validate
 python3 scripts/course_catalog.py export --course mathematics --zip
 ```
 
-Open `outputs/packs/mathematics/` in the desktop app or import `outputs/packs/openlearn-mathematics.zip`. Export refuses to overwrite an existing destination; use `--output` with a fresh directory for another export.
+Read the Markdown sources in `outputs/packs/mathematics/` or share `outputs/packs/openlearn-mathematics.zip`. For offline reading in the PWA, use Save offline in the course library. Export refuses to overwrite an existing destination; use `--output` with a fresh directory for another export.
 
 ### Build a PDF
 
@@ -146,9 +146,9 @@ See [course authoring and publication](docs/courses.md) for manifest fields and 
 
 ## Architecture
 
-A course references canonical lessons through its manifest. The web app, PDF builder, and pack exporter use the same publication inventory. The desktop app opens those packs; courses opt into the exercise engine or LLM grading backend when applicable.
+A course references canonical lessons through its manifest. The web app, PDF builder, and pack exporter use the same publication inventory. The installable PWA saves courses, reading progress, bookmarks, and notes on your device. Code exercises and verified LLM course checks use the local CLI.
 
-Read the [course publication guide](docs/courses.md) and [desktop architecture guide](apps/desktop/docs/architecture.md) for implementation details. Consult the [source register](content/references/sources.md) for attribution, resource access, and validation evidence.
+Read the [course publication guide](docs/courses.md) and [PWA guide](docs/pwa.md) for implementation details. Consult the [source register](content/references/sources.md) for attribution, resource access, and validation evidence.
 
 ## Agent Skill
 

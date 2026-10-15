@@ -330,20 +330,42 @@ for (const { course, chapters, references } of outlines) {
 			...sectionMarkdown(references), '</details>', '',
 		] : []),
 		'## Take the course offline', '',
-		`[Download PDF](${releases}/openlearn-${course.id}.pdf) · [Download course pack](${releases}/openlearn-${course.id}.zip)`, '',
+		"import CourseActions from '../../../../components/CourseActions.astro';", '',
+		`<CourseActions id="${course.id}" />`, '',
+		`[Download PDF](${releases}/openlearn-${course.id}.pdf) · [Download source pack](${releases}/openlearn-${course.id}.zip)`, '',
 	];
-	const dest = path.join(DOCS, 'learn', course.id, 'index.md');
+	const dest = path.join(DOCS, 'learn', course.id, 'index.mdx');
 	fs.mkdirSync(path.dirname(dest), { recursive: true });
 	fs.writeFileSync(dest, body.join('\n'));
 }
+const library = {
+	title: manifest.title,
+	courses: [...publications].sort((a, b) => a.manifest.title.localeCompare(b.manifest.title, 'en', { sensitivity: 'base' })).map(({ manifest: course, reading }) => ({
+		id: course.id,
+		title: course.title,
+		description: course.tagline ?? course.tracks.map((t) => t.title).slice(0, 3).join(', '),
+		href: `/learn/${course.id}/`,
+		lessons: reading.flatMap((section) => section.files).filter((f) => sources.includes(f)).map((f) => ({ key: f, title: titles.get(f), url: routeOf(f) })),
+	})),
+};
+fs.mkdirSync(GENERATED, { recursive: true });
+fs.writeFileSync(path.join(GENERATED, 'library.json'), JSON.stringify(library));
+fs.mkdirSync(path.join(SITE, 'public/app'), { recursive: true });
+fs.writeFileSync(path.join(SITE, 'public/app/catalog.json'), JSON.stringify(library));
 const home = [
-	'---', `title: ${JSON.stringify(selected ? manifest.title : `${manifest.title} courses`)}`, 'prev: false', 'next: false', '---', '',
-	'Choose a course that interests you. Each course has an ordered chapter sequence and supporting references. Start with its overview to check the prerequisites.', '',
-	...courseItems.map(({ label, link }) => `- [${label}](${link})`), '',
-	'Read online, download a PDF, or open a portable course pack in the desktop app.', '',
+	'---', `title: ${JSON.stringify(selected ? manifest.title : 'Your next chapter')}`, 'description: Courses for curious people. Learn at your own pace, online or offline.', '---', '',
+	"import CourseLibrary from '../../components/CourseLibrary.astro';", '', '<CourseLibrary />', '',
 ];
-fs.writeFileSync(path.join(DOCS, 'index.md'), home.join('\n'));
+fs.writeFileSync(path.join(DOCS, 'index.mdx'), home.join('\n'));
+const myLearning = [
+	'---', 'title: My learning', 'description: Your reading progress, notes, and downloaded courses.', '---', '',
+	"import MyLearning from '../../../components/MyLearning.astro';", '', '<MyLearning />', '',
+];
+fs.mkdirSync(path.join(DOCS, 'my-learning'), { recursive: true });
+fs.writeFileSync(path.join(DOCS, 'my-learning/index.mdx'), myLearning.join('\n'));
+
 const sidebar = [
+	{ label: 'My learning', link: '/my-learning/' },
 	{ label: 'All courses', link: '/' },
 	{ label: 'Courses', items: courseGroups },
 ];

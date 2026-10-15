@@ -24,3 +24,6 @@ pnpm-debug.log*
 src/content/docs/*
 src/generated/
 public/repo/
+
+# Generated course inventory for the PWA
+public/app/

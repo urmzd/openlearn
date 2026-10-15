@@ -41,11 +41,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Test offline and progress behavior
+        run: pnpm test
+
       - name: Build an independent course
         run: OPENLEARN_COURSE=diagramming pnpm build
 
       - name: Build
         run: pnpm build
+
+      - name: Verify installable PWA
+        run: node --test tests/build.test.mjs
 
       - uses: actions/upload-pages-artifact@v4
         if: github.event_name != 'pull_request'
