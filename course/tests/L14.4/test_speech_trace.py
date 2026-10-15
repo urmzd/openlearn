@@ -113,7 +113,8 @@ def test_cli_replays_sparse_logits_without_model_weights(tmp_path, capsys):
     cli_path = (
         Path(cli_spec.origin)
         if cli_spec is not None
-        else Path(__file__).resolve().parents[2] / "ref/entry/python/tinyllm/cli_speech.py"
+        else Path(__file__).resolve().parents[2]
+        / "ref/entry/python/tinyllm/cli_speech.py"
     )
     spec = importlib.util.spec_from_file_location("trace_cli", cli_path)
     cli = importlib.util.module_from_spec(spec)
@@ -158,7 +159,8 @@ def test_cli_matches_independent_milestone_search_traces(name, capsys):
     cli_path = (
         Path(cli_spec.origin)
         if cli_spec is not None
-        else Path(__file__).resolve().parents[2] / "ref/entry/python/tinyllm/cli_speech.py"
+        else Path(__file__).resolve().parents[2]
+        / "ref/entry/python/tinyllm/cli_speech.py"
     )
     spec = importlib.util.spec_from_file_location("milestone_trace_cli", cli_path)
     cli = importlib.util.module_from_spec(spec)
