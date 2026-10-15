@@ -5,7 +5,7 @@ kind      = "side"
 # cache; the engine reimplements paging in Rust (L10.2, L10.4 read it).
 lang      = ["python"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p08-inference/03-paged-kv-cache.md"
+chapter   = "content/courses/build-an-llm/p08-inference/03-paged-kv-cache.md"
 contract  = ["contracts/py/tinyllm/infer/paged.pyi"]
 # This pure-Python implementation owns its page table, allocation, and
 # copy-on-write behavior; the optional C pool is a separate exercise.

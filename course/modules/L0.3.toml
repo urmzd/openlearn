@@ -3,7 +3,7 @@ title     = "Losses with a fused backward"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "ml/08-tinyllm/p00-foundations/03-losses-with-fused-backward.md"
+chapter   = "content/courses/build-an-llm/p00-foundations/03-losses-with-fused-backward.md"
 contract  = ["contracts/py/tinyllm/autograd/losses.pyi"]
 # L0.1 from_op; M09.2 log_softmax for the forward. The course tests compare
 # the fused gradient with M08.3's cross_entropy_vjp and the rows with M11.1's

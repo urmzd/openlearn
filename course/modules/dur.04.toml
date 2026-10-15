@@ -3,7 +3,7 @@ title     = "Task gRPC protocol, Go worker SDK, worker pool"
 kind      = "build"
 lang      = ["go"]
 pass      = 8
-chapter   = "ai-platform-engineering/05-durable-orchestration-and-workers/04-task-protocol-and-workers.md"
+chapter   = "content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/04-task-protocol-and-workers.md"
 # Implements tl.durable.v1.TaskService's poll and complete rpcs and the
 # worker SDK of DESIGN 2.7 (linked from the card).
 contract  = []
@@ -11,7 +11,7 @@ deps      = ["dur.02", "dur.03"]
 # obs.01's go/otelx is where activity spans come from in obs.05; the worker
 # hands ActivityTask.trace_context to activities in Info and calls no otelx
 # code itself (deviation B101-09), so obs.01 is reading here.
-reading   = ["obs.01", "lang.10", "ai-platform-engineering/02-rpc-and-protocols"]
+reading   = ["obs.01", "lang.10", "content/tracks/ai-platform-engineering/02-rpc-and-protocols"]
 used_by   = ["dur.05", "dur.08"]
 units     = ["go/durable/server/tasks.go", "go/durable/worker/worker.go"]
 upgrades  = []

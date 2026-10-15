@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/modern/window.pyi (L7.7): sliding windows, StreamingLLM sink tokens, learned sinks
-# chapter: ml/08-tinyllm/p07-modern-block/07-sliding-window-and-sinks.md
+# chapter: content/courses/build-an-llm/p07-modern-block/07-sliding-window-and-sinks.md
 #
 # Three ways to bound what a query reads, and so what the KV cache must hold:
 #

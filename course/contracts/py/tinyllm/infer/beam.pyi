@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/infer/beam.pyi (L4.4): beam search, generic over a step function
-# chapter: ml/08-tinyllm/p04-attention-origins/04-beam-search.md
+# chapter: content/courses/build-an-llm/p04-attention-origins/04-beam-search.md
 #
 # Beam search keeps the beam_size best prefixes (by summed log-probability)
 # and extends them one token at a time. It knows nothing about the model:

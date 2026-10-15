@@ -3,7 +3,7 @@ title     = "Error analysis, condition numbers, tolerance budgets"
 kind      = "build"
 lang      = ["python"]
 pass      = 6
-chapter   = "math/09-numerical-methods-and-floating-point/03-error-analysis-condition-numbers-and-tolerance-budgets.md"
+chapter   = "content/tracks/math/09-numerical-methods-and-floating-point/03-error-analysis-condition-numbers-and-tolerance-budgets.md"
 contract  = ["contracts/py/tinyllm/num/tolerance.pyi"]
 # cond() takes its singular values from M03.5's svd; the course tests run
 # M01.1's central_diff to show the optimal step on a real difference.

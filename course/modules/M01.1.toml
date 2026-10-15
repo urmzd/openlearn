@@ -3,7 +3,7 @@ title     = "Derivative as a limit, finite differences, step-size choice"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/01-calculus-1/01-derivatives-and-finite-differences.md"
+chapter   = "content/tracks/math/01-calculus-1/01-derivatives-and-finite-differences.md"
 contract  = ["contracts/py/tinyllm/num/diff.pyi"]
 deps      = []
 # Powers and logs (M00.1) and polynomials (M00.4) are the language of the

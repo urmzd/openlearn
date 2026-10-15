@@ -3,7 +3,7 @@ title     = "Paged KV block pool (format v1, optional C)"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p08-inference/08-paged-kv-block-pool.md"
+chapter   = "content/courses/build-an-llm/p08-inference/08-paged-kv-block-pool.md"
 # The interface is tinyllm/kv_pool.h and the bytes formats/kv-block.md,
 # both linked from the card; neither carries a `chapter:` back-pointer
 # (DEVIATIONS B82-02).
@@ -12,7 +12,7 @@ contract  = ["contracts/c/include/tinyllm/kv_pool.h"]
 # create (ds.01), the Swiss table (ds.02) for the prefix index, and the
 # intrusive LRU (ds.03) for cached blocks.
 deps      = ["ds.01", "ds.02", "ds.03", "rt.02"]
-reading   = ["M06.3", "ml/08-tinyllm/p08-inference/README.md"]   # FNV-1a; L8.2's contiguous cache
+reading   = ["M06.3", "content/courses/build-an-llm/p08-inference/README.md"]   # FNV-1a; L8.2's contiguous cache
 # L8.3 is the Python cache over the pool; L9.4's paged attention kernel
 # reads its slabs. L10.4 (block manager), L10.6 (KV transfer), and craft.13
 # (format v2, upgrades kv_pool.c) join with their batches.

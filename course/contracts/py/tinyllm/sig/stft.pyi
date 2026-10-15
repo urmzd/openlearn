@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/sig/stft.pyi (M12.5): windows, frames, and the STFT
-# chapter: math/12-signals-and-images/05-sampling-windows-and-stft.md
+# chapter: content/tracks/math/12-signals-and-images/05-sampling-windows-and-stft.md
 #
 # Semantics of torch.stft(x, n_fft, hop_length, window=window, center,
 # pad_mode, return_complex=True) for a 1-D float signal and a window of

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/modern/mla.pyi (L7.6): multi-head latent attention and weight absorption
-# chapter: ml/08-tinyllm/p07-modern-block/06-multi-head-latent-attention.md
+# chapter: content/courses/build-an-llm/p07-modern-block/06-multi-head-latent-attention.md
 #
 # MLA (DeepSeek-V2 2024, DeepSeek-V3 2024) caches ONE small latent vector per
 # token instead of a key and a value per kv head. Every head's key and value

@@ -3,7 +3,7 @@ title     = "Interface migration: API v1 to v2"
 kind      = "build"
 lang      = ["rust", "go"]
 pass      = 11
-chapter   = "software-craftsmanship/10-maintenance/02-api-v1-to-v2.md"
+chapter   = "content/tracks/software-craftsmanship/10-maintenance/02-api-v1-to-v2.md"
 contract  = []
 # L10.9: the serve loop (server.rs) this module takes over to serve v1 and
 # v2 side by side; L10.9 took it over from L10.7, which took it from L10.5.

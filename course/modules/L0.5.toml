@@ -3,7 +3,7 @@ title     = "Training loop and the autograd bigram"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "ml/08-tinyllm/p00-foundations/05-training-loop-and-the-autograd-bigram.md"
+chapter   = "content/courses/build-an-llm/p00-foundations/05-training-loop-and-the-autograd-bigram.md"
 contract  = ["contracts/py/tinyllm/train/loop.pyi", "contracts/py/tinyllm/lm/bigram.pyi"]
 # loop.py: L0.1 (no_grad, Tensor), L0.4 (Module), M10.4 (clip_grad_norm_),
 # M02.2 (train_step smooths the logged loss with a debiased EMA).

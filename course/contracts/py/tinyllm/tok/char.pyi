@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/tok/char.pyi (L1.1)
-# chapter: ml/08-tinyllm/p01-tokenizers/01-tokenizer-protocol-and-char.md
+# chapter: content/courses/build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md
 #
 # One id per Unicode code point; saved as tinyllm_char.json
 # (formats/tokenizer.md, formats/tokenizer-char.schema.json).

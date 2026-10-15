@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/obj/heads.pyi (L6.5): fine-tuning heads and the linear-head export
-# chapter: ml/08-tinyllm/p06-objectives/05-fine-tuning-heads-and-the-linear-head-export.md
+# chapter: content/courses/build-an-llm/p06-objectives/05-fine-tuning-heads-and-the-linear-head-export.md
 #
 # A head reads a backbone's hidden states h [B, T, d]:
 #   backbone with a hidden(ids) method (L6.1's GPT): h = backbone.hidden(ids)

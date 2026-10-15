@@ -3,7 +3,7 @@ title     = "Paged attention for decode in C"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p09-kernels/07-paged-attention-decode.md"
+chapter   = "content/courses/build-an-llm/p09-kernels/07-paged-attention-decode.md"
 contract  = ["contracts/c/include/tinyllm/attention.h"]
 # paged_attn.c: rt.04's pool (tl_kv_pool_cfg,
 # tl_kv_block_ptr), M09.4's tl_f16_to_f32, M09.6's tl_expf, rt.03's

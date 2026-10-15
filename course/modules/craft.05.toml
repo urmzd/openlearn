@@ -3,7 +3,7 @@ title     = "Oracles, golden and differential tests, gradcheck as a test (R5)"
 kind      = "practice"
 lang      = ["python"]
 pass      = 5
-chapter   = "software-craftsmanship/03-testing-mentality/03-oracles-golden-and-gradcheck.md"
+chapter   = "content/tracks/software-craftsmanship/03-testing-mentality/03-oracles-golden-and-gradcheck.md"
 contract  = []
 deps      = []
 # craft.03 (how a test is graded) and craft.04 (laws as tests) come first;

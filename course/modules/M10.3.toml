@@ -3,7 +3,7 @@ title     = "Adam and AdamW: bias correction and decoupled weight decay"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/10-optimization/03-adam-and-adamw.md"
+chapter   = "content/tracks/math/10-optimization/03-adam-and-adamw.md"
 contract  = ["contracts/py/tinyllm/optim/adamw.pyi"]
 deps      = []
 # M10.2 defines the Optimizer protocol AdamW follows structurally (no import);

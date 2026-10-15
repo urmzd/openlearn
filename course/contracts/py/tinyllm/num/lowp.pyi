@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/lowp.pyi (M09.4; the C half is tinyllm/numerics.h, M09.4 section)
-# chapter: math/09-numerical-methods-and-floating-point/04-fp8-and-microscaling-formats.md
+# chapter: content/tracks/math/09-numerical-methods-and-floating-point/04-fp8-and-microscaling-formats.md
 #
 # Low-precision formats, emulated exactly in numpy:
 #

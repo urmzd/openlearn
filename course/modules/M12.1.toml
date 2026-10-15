@@ -3,13 +3,13 @@ title     = "Convolution as a linear map"
 kind      = "build"
 lang      = ["python"]
 pass      = 12
-chapter   = "math/12-signals-and-images/01-convolution-as-a-linear-map.md"
+chapter   = "content/tracks/math/12-signals-and-images/01-convolution-as-a-linear-map.md"
 contract  = ["contracts/py/tinyllm/sig/conv.pyi"]
 deps      = []
 # Catalog prereqs M03.2, M03.3, M08.2 are concepts (a linear map as a matrix,
 # a transpose as the backward), not calls (B41-03 rule); conv2d.c is the
 # naive loop beat 3 compares with.
-reading   = ["M03.2", "M03.3", "M08.2", "ml/06-neural-architectures/code/conv2d.c"]
+reading   = ["M03.2", "M03.3", "M08.2", "content/tracks/ml/06-neural-architectures/code/conv2d.c"]
 # Call sites (DESIGN 4.1): L13.1 (im2col, col2im) and L14.2 (conv_out_size)
 # join used_by with B14's L13 and L14 groups. M12.3's resample_audio calls
 # conv1d_direct today.

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/gradcheck.pyi (M04.1)
-# chapter: math/04-calculus-3/01-gradients-and-gradcheck.md
+# chapter: content/tracks/math/04-calculus-3/01-gradients-and-gradcheck.md
 #
 # Numerical gradients of a scalar function of several arrays, and the check
 # that compares them with an analytic gradient. Course tests never call this

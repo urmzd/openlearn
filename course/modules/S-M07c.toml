@@ -3,13 +3,13 @@ title     = "Solve set: LLN/CLT, confidence intervals"
 kind      = "solve"
 lang      = ["none"]
 pass      = 4
-chapter   = "math/07-probability-statistics/92-problem-set-c.md"
+chapter   = "content/tracks/math/07-probability-statistics/92-problem-set-c.md"
 contract  = []
 deps      = []
 # Pen and paper. Part b (S-M07b, Pass 3) gives the variance of a sum (q3 there
 # is q1 here); M07.4 is the code q3, q7, q8, and q10 explain. Part d (S-M07d,
 # P5) follows with hypothesis tests.
-reading   = ["S-M07b", "M07.4", "math/07-probability-statistics/README.md"]
+reading   = ["S-M07b", "M07.4", "content/tracks/math/07-probability-statistics/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

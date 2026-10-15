@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/autograd/mode.pyi (L0.1): grad mode
-# chapter: ml/08-tinyllm/p00-foundations/01-tensor-and-broadcasting-backward.md
+# chapter: content/courses/build-an-llm/p00-foundations/01-tensor-and-broadcasting-backward.md
 #
 # Grad mode decides whether an op records a graph node. It is on by default,
 # per thread, and `no_grad` turns it off for the body of a `with` block:

@@ -3,7 +3,7 @@ title     = "Consistent hash ring with bounded loads"
 kind      = "build"
 lang      = ["go"]
 pass      = 7
-chapter   = "algorithms/16-systems-data-structures/09-consistent-hash-ring.md"
+chapter   = "content/tracks/algorithms/16-systems-data-structures/09-consistent-hash-ring.md"
 # No Go interface contract exists yet (contracts/go, K01): the package API is
 # fixed by the chapter (section 4), the course tests, and parity/ring.hash
 # (DEVIATIONS B93-01).

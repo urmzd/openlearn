@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/prob/tests.pyi (M07.5)
-# chapter: math/07-probability-statistics/05-hypothesis-tests.md
+# chapter: content/tracks/math/07-probability-statistics/05-hypothesis-tests.md
 #
 # Hypothesis tests for "is model B really better than model A?": a p-value is
 # the probability, if the null hypothesis H0 is true, of a statistic at least

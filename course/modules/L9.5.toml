@@ -3,7 +3,7 @@ title     = "Fused int4 and int8 dequantize-matmul in C"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p09-kernels/08-fused-quantized-matmul.md"
+chapter   = "content/courses/build-an-llm/p09-kernels/08-fused-quantized-matmul.md"
 contract  = ["contracts/c/include/tinyllm/qmatmul.h"]
 # qmatmul.c: M09.4's Python-written f16 scale fixture and
 # rt.03's tl_parallel_for (with a pool). The C tests build their float32

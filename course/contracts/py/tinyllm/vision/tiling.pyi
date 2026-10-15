@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/vision/tiling.pyi (L13.4): dynamic resolution and tiling
-# chapter: ml/08-tinyllm/p13-vision/04-dynamic-resolution-and-tiling.md
+# chapter: content/courses/build-an-llm/p13-vision/04-dynamic-resolution-and-tiling.md
 #
 # A vision tower sees fixed tiles (SmolVLM 512 x 512, LLaVA-NeXT 336 x 336);
 # a large or oddly shaped image is cut into several tiles plus one

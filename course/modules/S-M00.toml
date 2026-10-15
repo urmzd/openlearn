@@ -3,7 +3,7 @@ title     = "Solve set: functions, exp/log, trig and Euler, series, polynomials,
 kind      = "solve"
 lang      = ["none"]
 pass      = 2
-chapter   = "math/00-precalculus/00-solve-set.md"
+chapter   = "content/tracks/math/00-precalculus/00-solve-set.md"
 contract  = []
 deps      = []
 # Parts 2 to 5 check the pen-and-paper side of M00.1 to M00.4; parts 1 and 6

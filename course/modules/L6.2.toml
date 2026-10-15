@@ -3,7 +3,7 @@ title     = "BERT encoder and MLM masking"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p06-objectives/02-bert-masked-lm.md"
+chapter   = "content/courses/build-an-llm/p06-objectives/02-bert-masked-lm.md"
 contract  = ["contracts/py/tinyllm/obj/bert.pyi"]
 # bert.py: L5.3's attention, L5.4's LearnedPE, L1.3's WordPieceTokenizer
 # (mlm_batch), M07.1's sample_categorical (the 80/10/10 action), M06.3's

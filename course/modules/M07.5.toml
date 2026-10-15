@@ -3,7 +3,7 @@ title     = "Hypothesis tests: paired and two-sample permutation, McNemar, Holm"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "math/07-probability-statistics/05-hypothesis-tests.md"
+chapter   = "content/tracks/math/07-probability-statistics/05-hypothesis-tests.md"
 contract  = ["contracts/py/tinyllm/prob/tests.pyi"]
 # No other module's code is called: the tests draw from the rng the caller
 # passes (course tests pass the frozen PCG32) and McNemar's tail is exact

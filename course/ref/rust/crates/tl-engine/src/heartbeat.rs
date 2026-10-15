@@ -11,7 +11,7 @@
 //! with `drain = true` (the admin API's model drain) is remembered until the
 //! engine has drained.
 //!
-//! Chapter: ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md.
+//! Chapter: content/courses/build-an-llm/p10-serving/06-disaggregated-prefill-decode.md.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;

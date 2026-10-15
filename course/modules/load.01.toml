@@ -3,7 +3,7 @@ title     = "Open-loop load generator, log-linear histogram, Go PCG32 port"
 kind      = "build"
 lang      = ["go"]
 pass      = 7
-chapter   = "ml/08-tinyllm/p10-serving/10-load-generator.md"
+chapter   = "content/courses/build-an-llm/p10-serving/10-load-generator.md"
 # The report is formats/loadgen-report.schema.json and the generator
 # spec/pcg32.md, linked from the card; neither carries a `chapter:`
 # back-pointer for this chapter (DEVIATIONS B92-03).

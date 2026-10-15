@@ -1,0 +1,23 @@
+{
+  "id": "competitive-programming",
+  "title": "Competitive Programming",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/tracks/competitive-programming/README.md",
+      "title": "Overview"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/competitive-programming",
+      "title": "Competitive Programming"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

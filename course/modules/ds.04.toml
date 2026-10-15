@@ -3,7 +3,7 @@ title     = "Binary heap top-k in C (optional)"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "algorithms/16-systems-data-structures/04-binary-heap-top-k.md"
+chapter   = "content/tracks/algorithms/16-systems-data-structures/04-binary-heap-top-k.md"
 contract  = ["contracts/c/include/tinyllm/topk.h"]
 # The standalone binary compares deterministic inputs with L8.1-generated
 # parity fixtures; it does not load a shared library into Python.

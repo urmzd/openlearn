@@ -3,12 +3,12 @@ title     = "Parquet shards, manifest, and the document-hash split"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "data-engineering/05-corpus-pipeline/06-parquet-shards-and-manifest.md"
+chapter   = "content/tracks/data-engineering/05-corpus-pipeline/06-parquet-shards-and-manifest.md"
 contract  = ["contracts/py/corpus/shard.pyi"]
 # Doc (data.02); data.04's minhash_cluster becomes a row index; data.05's
 # manifest_counts names the pii totals. Units may import pyarrow (allowed-deps.toml).
 deps      = ["data.02", "data.04", "data.05"]
-reading   = ["data-engineering/02-storage-warehousing/"]   # columnar files
+reading   = ["content/tracks/data-engineering/02-storage-warehousing/"]   # columnar files
 used_by   = ["data.07", "data.08"]     # read_shards feeds the tokenizer and the ledger check
 units     = ["python/corpus/shard.py"]
 upgrades  = []

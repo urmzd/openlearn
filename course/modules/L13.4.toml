@@ -3,7 +3,7 @@ title     = "Dynamic resolution and tiling"
 kind      = "build"
 lang      = ["python"]
 pass      = 12
-chapter   = "ml/08-tinyllm/p13-vision/04-dynamic-resolution-and-tiling.md"
+chapter   = "content/courses/build-an-llm/p13-vision/04-dynamic-resolution-and-tiling.md"
 contract  = ["contracts/py/tinyllm/vision/tiling.pyi"]
 # tiling.py: M12.3's resize (Pillow-exact Lanczos and bicubic) for the tiles.
 deps      = ["M12.3"]

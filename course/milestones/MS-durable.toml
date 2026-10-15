@@ -1,6 +1,6 @@
 # MS-durable: the durable execution component milestone (DESIGN 4.4
 # "MS-durable", 5.7 catalog). MS-P8 includes it. Page:
-# paths/course-p08-durable/milestone.md (owned by the pass gate's author).
+# content/courses/build-an-llm/paths/course-p08-durable/milestone.md (owned by the pass gate's author).
 #
 # Your durable server, your worker, and the Python activities it execs run
 # workflows to completion through your own CLI: a start is idempotent, the

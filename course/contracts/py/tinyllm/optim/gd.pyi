@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/optim/gd.pyi (M10.1): gradient descent and backtracking line search
-# chapter: math/10-optimization/01-gradient-descent-and-line-search.md
+# chapter: content/tracks/math/10-optimization/01-gradient-descent-and-line-search.md
 #
 # f maps a float64 array x to a float; grad maps x to an array of x's shape.
 # Iterates are float64 arrays; nothing here mutates the caller's arrays.

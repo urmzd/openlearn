@@ -3,12 +3,12 @@ title     = "Helm charts for the gateway and the engine, plus the observability 
 kind      = "practice"
 lang      = ["ops"]
 pass      = 7
-chapter   = "infrastructure/01-containers-kubernetes/03-helm-charts-and-observability-stack.md"
+chapter   = "content/tracks/infrastructure/01-containers-kubernetes/03-helm-charts-and-observability-stack.md"
 # contracts/helm/{gateway,engine}.values.schema.json and helm/observability.md,
 # linked from the chapter card (no `chapter:` back-pointer; DEVIATIONS B94-01).
 contract  = ["contracts/helm/gateway.values.schema.json", "contracts/helm/engine.values.schema.json", "contracts/helm/observability.md"]
 deps      = ["dep.01", "dep.02"]        # the images it runs and the cluster and registry it installs into
-reading   = ["dep.00", "gw.07", "systems/03-cloud-native"]
+reading   = ["dep.00", "gw.07", "content/tracks/systems/03-cloud-native"]
 used_by   = []                          # MS-prod deploys these charts; obs.01 to obs.04 and dep.04 build on them
 units     = []                          # entry-point territory (D16): deploy/helm/ and deploy/observability/ are yours
 artifacts = ["deploy/helm", "deploy/observability"]

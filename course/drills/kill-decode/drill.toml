@@ -1,5 +1,5 @@
 # ops.01 kill-decode (DESIGN 4.5, 5.10). Chapter:
-# systems/05-incident-response-and-chaos/01-kill-decode.md
+# content/tracks/systems/05-incident-response-and-chaos/01-kill-decode.md
 #
 # Under load (your loadgen at 20 rps through the gateway NodePort), one ready
 # decode pod is deleted with no grace period. Its in-flight streams die mid

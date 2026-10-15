@@ -3,12 +3,12 @@ title     = "Tilt dev loop"
 kind      = "practice"
 lang      = ["ops"]
 pass      = 7
-chapter   = "infrastructure/01-containers-kubernetes/04-tilt-dev-loop.md"
+chapter   = "content/tracks/infrastructure/01-containers-kubernetes/04-tilt-dev-loop.md"
 contract  = []
 # The Tiltfile deploys dep.03's engine and gateway charts and builds the
 # images of dep.00 and dep.01 (DESIGN 4.5 prereq dep.03).
 deps      = ["dep.03"]
-reading   = ["lang.07", "infrastructure/01-containers-kubernetes"]
+reading   = ["lang.07", "content/tracks/infrastructure/01-containers-kubernetes"]
 used_by   = []
 units     = []                          # entry-point territory (D16): deploy/ is yours; reference in course/ref/entry/deploy/
 artifacts = ["deploy/Tiltfile"]         # learner files the check grades: hashed into the verdict, present = started (I16)

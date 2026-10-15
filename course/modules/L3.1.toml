@@ -3,7 +3,7 @@ title     = "Vanilla RNN with manual BPTT and truncation"
 kind      = "build"
 lang      = ["python"]
 pass      = 4
-chapter   = "ml/08-tinyllm/p03-recurrent/01-vanilla-rnn-manual-bptt.md"
+chapter   = "content/courses/build-an-llm/p03-recurrent/01-vanilla-rnn-manual-bptt.md"
 contract  = ["contracts/py/tinyllm/rnn/manual.pyi"]
 # M08.3 matmul_vjp is each step's backward; M03.4 spectral_radius is the
 # exploding-gradient diagnostic. The course tests differentiate the same

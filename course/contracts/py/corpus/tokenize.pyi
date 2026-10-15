@@ -1,6 +1,6 @@
 # contracts/py/corpus/tokenize.pyi (data.07): tokenize the shards and pack
 # llm.c .bin token streams
-# chapter: data-engineering/05-corpus-pipeline/07-tokenize-and-pack.md
+# chapter: content/tracks/data-engineering/05-corpus-pipeline/07-tokenize-and-pack.md
 #
 # Files: formats/tokens-bin.md (a 1024-byte header of 256 little-endian
 # int32 [20240520, version, n_tokens, vocab_size, 0...], then the ids,

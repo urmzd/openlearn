@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/modern/rope.pyi (L7.3): rotary position embeddings
-# chapter: ml/08-tinyllm/p07-modern-block/03-rope.md
+# chapter: content/courses/build-an-llm/p07-modern-block/03-rope.md
 #
 # RoPE (Su et al. 2021) rotates pair i of a query or key vector at position
 # p by the angle p * inv_freq[i] (inv_freq from M00.3's ladder, or from

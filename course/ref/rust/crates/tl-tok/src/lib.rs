@@ -14,7 +14,7 @@
 //!   GPT-2's `vocab.json` + `merges.txt`.
 //!
 //! The Python BPE (L1.2) is the specification: every id here equals the id
-//! your Python computes. Chapter: ml/08-tinyllm/p01-tokenizers/05-rust-fast-bpe.md
+//! your Python computes. Chapter: content/courses/build-an-llm/p01-tokenizers/05-rust-fast-bpe.md
 
 use std::fmt;
 use std::path::PathBuf;

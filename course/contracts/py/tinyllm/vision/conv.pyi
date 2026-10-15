@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/vision/conv.pyi (L13.1): conv layers and pooling on autograd
-# chapter: ml/08-tinyllm/p13-vision/01-conv-layers-and-pooling.md
+# chapter: content/courses/build-an-llm/p13-vision/01-conv-layers-and-pooling.md
 #
 # Shapes are PyTorch's: Conv2d takes x [N, C, H, W] (NCHW) and holds
 # weight [K, C/groups, R, S] (KCRS) and bias [K]; Conv1d takes x [N, C, L]

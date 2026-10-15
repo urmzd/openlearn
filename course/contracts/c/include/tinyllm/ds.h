@@ -1,7 +1,7 @@
 /* tinyllm/ds.h (ds.01 to ds.03): the data structures the C runtime uses.
- * chapter: algorithms/16-systems-data-structures/01-growable-array.md
- * chapter: algorithms/16-systems-data-structures/02-swiss-table.md
- * chapter: algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md
+ * chapter: content/tracks/algorithms/16-systems-data-structures/01-growable-array.md
+ * chapter: content/tracks/algorithms/16-systems-data-structures/02-swiss-table.md
+ * chapter: content/tracks/algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md
  * Rules in c/ABI.md.
  *
  *   tl_vec  ds.01  c/src/ds/vec.c     type-erased growable array (rt.04 block tables)

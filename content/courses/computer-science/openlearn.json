@@ -1,0 +1,69 @@
+{
+  "id": "computer-science",
+  "title": "Computer Science",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/courses/computer-science/README.md",
+      "title": "Curriculum"
+    },
+    {
+      "file": "content/courses/computer-science/prerequisites.md",
+      "title": "Prerequisites"
+    },
+    {
+      "file": "content/courses/computer-science/study-plan.md",
+      "title": "Study plan"
+    },
+    {
+      "file": "practice/README.md",
+      "title": "Practice"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/math",
+      "title": "Mathematics Foundations"
+    },
+    {
+      "dir": "content/tracks/algorithms",
+      "title": "Algorithm Mastery"
+    },
+    {
+      "dir": "content/tracks/systems",
+      "title": "Systems & Architecture"
+    },
+    {
+      "dir": "content/tracks/data-engineering",
+      "title": "Data Engineering"
+    },
+    {
+      "dir": "content/tracks/software-craftsmanship",
+      "title": "Software Craftsmanship"
+    },
+    {
+      "dir": "content/tracks/ml",
+      "title": "Machine Learning & AI"
+    },
+    {
+      "dir": "content/tracks/responsible-ai",
+      "title": "Responsible AI"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ],
+  "practice": "practice/exercises.json",
+  "runtime": [
+    "practice",
+    "content/tracks/algorithms",
+    "content/case-studies",
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version",
+    ".mise.toml"
+  ]
+}

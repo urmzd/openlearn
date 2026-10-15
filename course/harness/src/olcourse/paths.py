@@ -23,7 +23,11 @@ class Row:
 
 def paths_dir(course: Path | None = None) -> Path:
     env = os.environ.get("OL_PATHS_DIR")
-    return Path(env) if env else ctx.site_root(course) / "paths"
+    return (
+        Path(env)
+        if env
+        else ctx.site_root(course) / "content" / "courses" / "build-an-llm" / "paths"
+    )
 
 
 def expand(name: str, base: Path, stack: tuple[str, ...] = ()) -> list[Row]:

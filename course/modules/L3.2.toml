@@ -3,7 +3,7 @@ title     = "LSTM (torch gate order)"
 kind      = "build"
 lang      = ["python"]
 pass      = 4
-chapter   = "ml/08-tinyllm/p03-recurrent/02-lstm.md"
+chapter   = "content/courses/build-an-llm/p03-recurrent/02-lstm.md"
 contract  = ["contracts/py/tinyllm/rnn/lstm.pyi"]
 # L0.1 Tensor parameters; L0.2 the ops the cell is written in; L0.4 Module,
 # load_state_dict, and Dropout; M07.3 xavier_uniform and M03.3

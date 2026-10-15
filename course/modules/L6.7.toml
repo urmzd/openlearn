@@ -3,7 +3,7 @@ title     = "LM evaluation harness and the model zoo"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md"
+chapter   = "content/courses/build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md"
 contract  = ["contracts/py/tinyllm/eval/lm.pyi", "contracts/py/tinyllm/eval/zoo.pyi"]
 # lm.py: M11.2's NLLAccumulator, M07.4's mean_ci and bootstrap_ci, M07.5's
 # paired_permutation_test, L0.1's Tensor and no_grad, M06.3's PCG32.

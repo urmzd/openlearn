@@ -3,7 +3,7 @@ title     = "Collectives over processes: ring all-reduce"
 kind      = "side"
 lang      = ["python"]
 pass      = 9
-chapter   = "ml/08-tinyllm/p11-training-at-scale/02-collectives-over-processes.md"
+chapter   = "content/courses/build-an-llm/p11-training-at-scale/02-collectives-over-processes.md"
 contract  = ["contracts/py/tinyllm/dist/comm.pyi"]
 # Optional (DESIGN 4.3, D20). comm.py calls no other unit: numpy and the
 # standard library's multiprocessing only.

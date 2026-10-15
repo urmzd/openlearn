@@ -3,7 +3,7 @@ title     = "Near-duplicate dedup: MinHash, LSH, union-find, and decontamination
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "data-engineering/05-corpus-pipeline/04-near-dedup-minhash-lsh.md"
+chapter   = "content/tracks/data-engineering/05-corpus-pipeline/04-near-dedup-minhash-lsh.md"
 contract  = ["contracts/py/corpus/minhash.pyi"]
 # Doc (data.02); PCG32 and the FNV constants (M06.3) draw and hash the
 # MinHash permutations; the course tests run exact dedup (data.03) first.

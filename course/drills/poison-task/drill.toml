@@ -1,5 +1,5 @@
 # ops.03 poison-task (DESIGN 4.5, 5.10). Chapter:
-# systems/05-incident-response-and-chaos/03-poison-task.md
+# content/tracks/systems/05-incident-response-and-chaos/03-poison-task.md
 #
 # A bad rollout ships a debug fault to the workers: the worker Deployment
 # gains TL_FAILPOINTS=dur/activity/poison/shard-00001=panic, so the activity

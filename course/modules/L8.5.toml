@@ -3,7 +3,7 @@ title     = "Quantization: int8, int4 group (packed), fp8, KV quant"
 kind      = "build"
 lang      = ["python"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p08-inference/05-quantization.md"
+chapter   = "content/courses/build-an-llm/p08-inference/05-quantization.md"
 contract  = ["contracts/py/tinyllm/infer/quant.pyi"]
 # FP8 and MX codes from M09.4's lowp; QuantLinear is an L0.4 Module over
 # L0.1 Tensors and quantize_model finds L0.4 Linears. output_error_bound is

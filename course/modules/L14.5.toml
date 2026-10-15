@@ -3,7 +3,7 @@ title     = "Multimodal eval metrics: WER, CER, VQA, captions, zero-shot"
 kind      = "build"
 lang      = ["python"]
 pass      = 12
-chapter   = "ml/08-tinyllm/p14-speech/05-multimodal-eval-metrics.md"
+chapter   = "content/courses/build-an-llm/p14-speech/05-multimodal-eval-metrics.md"
 contract  = ["contracts/py/tinyllm/eval/mm.pyi"]
 # corpus_bleu and chrf for captions (L4.5), bootstrap_ci for intervals
 # (M07.4), PCG32 for the resampling stream (M06.3).

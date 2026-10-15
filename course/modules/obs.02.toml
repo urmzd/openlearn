@@ -3,7 +3,7 @@ title     = "Metrics and log correlation"
 kind      = "practice"
 lang      = ["ops", "go"]
 pass      = 7
-chapter   = "systems/04-observability/02-metrics-and-log-correlation.md"
+chapter   = "content/tracks/systems/04-observability/02-metrics-and-log-correlation.md"
 contract  = []
 # The gateway's telemetry is wired with go/otelx (LogHandler, Middleware,
 # Setup), so obs.01 is a dep and obs.02 its call site; the static tier
@@ -13,7 +13,7 @@ contract  = []
 # site. L10.5 (the gauges' source) and the gateway (gw.01 composition) stay
 # reading (B95-06).
 deps      = ["obs.01", "dep.03", "L10.7"]
-reading   = ["obs.00", "L10.5", "gw.01", "systems/04-observability"]
+reading   = ["obs.00", "L10.5", "gw.01", "content/tracks/systems/04-observability"]
 used_by   = []
 units     = []                          # entry points and deploy files (D16)
 artifacts = ["deploy/observability/monitors.yaml", "deploy/observability/collector.yaml"]

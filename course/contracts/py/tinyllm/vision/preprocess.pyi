@@ -1,5 +1,5 @@
 # L13.6 image preprocessing: D44 identity and D46 bounded decoding.
-# chapter: ml/08-tinyllm/p13-vision/06-image-preprocessing.md
+# chapter: content/courses/build-an-llm/p13-vision/06-image-preprocessing.md
 from typing import Literal
 
 from numpy.typing import NDArray

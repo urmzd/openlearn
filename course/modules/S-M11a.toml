@@ -3,12 +3,12 @@ title     = "Information theory problem set, part a: entropy, chain rules, KL an
 kind      = "solve"
 lang      = ["none"]
 pass      = 2
-chapter   = "math/11-information-theory/90-problem-set-a.md"
+chapter   = "content/tracks/math/11-information-theory/90-problem-set-a.md"
 contract  = []
 deps      = []
 # Pen and paper after M11.1 (DESIGN 4.2, 7.4). Part b (S-M11b, Pass 3)
 # arrives with batch B5.
-reading   = ["S-M07a", "math/11-information-theory/README.md"]
+reading   = ["S-M07a", "content/tracks/math/11-information-theory/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

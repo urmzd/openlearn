@@ -1,5 +1,5 @@
 # MS-L5: the Part 5 milestone (DESIGN 4.3 "MS-L5", 5.7, 7.2). MS-P5 includes it.
-# Page: paths/course-p05-transformer/milestone.md (B7 paths work).
+# Page: content/courses/build-an-llm/paths/course-p05-transformer/milestone.md (B7 paths work).
 #
 # Your encoder-decoder Transformer (L5.1 to L5.5), trained and decoded through
 # your own entry point: it learns three-digit addition to an exact-match rate

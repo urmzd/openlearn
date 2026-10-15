@@ -3,7 +3,7 @@ title     = "Durable and worker images and charts: WAL PVC, StatefulSet, KEDA au
 kind      = "practice"
 lang      = ["ops"]
 pass      = 8
-chapter   = "infrastructure/01-containers-kubernetes/06-durable-and-worker-charts.md"
+chapter   = "content/tracks/infrastructure/01-containers-kubernetes/06-durable-and-worker-charts.md"
 # contracts/helm/{durable,worker}.values.schema.json and helm/observability.md
 # (the KEDA pin), linked from the chapter card (no `chapter:` back-pointer, as
 # B94-01).
@@ -13,7 +13,7 @@ contract  = []
 # also lists dur.04 (the worker entry the image builds); it joins once B10's
 # engine modules are registered (DEVIATIONS B10B-07).
 deps      = ["dep.03", "dur.09"]
-reading   = ["dep.01", "dep.02", "infrastructure/01-containers-kubernetes"]
+reading   = ["dep.01", "dep.02", "content/tracks/infrastructure/01-containers-kubernetes"]
 used_by   = ["dep.07"]                 # agent image and chart extends the worker deployment
 units     = []                          # entry-point territory (D16): deploy/ is yours; reference in course/ref/entry/deploy/
 artifacts = ["deploy/docker/durable.Dockerfile", "deploy/docker/worker.Dockerfile", "deploy/helm", "deploy/keda"]

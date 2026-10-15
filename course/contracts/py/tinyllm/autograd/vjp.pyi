@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/autograd/vjp.pyi (M08.3): closed-form vector-Jacobian products
-# chapter: math/08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md
+# chapter: content/tracks/math/08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md
 #
 # For an op Y = f(X) inside a scalar loss L, the VJP maps the upstream
 # gradient G = dL/dY to dL/dX. Every function here is pure: it reads its

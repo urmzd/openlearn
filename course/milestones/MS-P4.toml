@@ -1,5 +1,5 @@
 # MS-P4: the Pass 4 gate (DESIGN 5.7 catalog, 7.2, 7.4).
-# Page: paths/course-p04-sequence-models/milestone.md.
+# Page: content/courses/build-an-llm/paths/course-p04-sequence-models/milestone.md.
 #
 # Compose the recurrent-model and sequence-to-sequence component gates. The
 # two prerequisite stages are part of Pass 4 but outside those gate requires.

@@ -3,13 +3,13 @@ title     = "Information theory problem set, part b: coding and Huffman, mutual 
 kind      = "solve"
 lang      = ["none"]
 pass      = 3
-chapter   = "math/11-information-theory/91-problem-set-b.md"
+chapter   = "content/tracks/math/11-information-theory/91-problem-set-b.md"
 contract  = []
 deps      = []
 # Pen and paper after M11.2 and M11.4 in Pass 3 (DESIGN 4.2, 7.4). It also
 # holds the solve-only topics M11.5 (maximum entropy, temperature) and M11.6
 # (rate-distortion), and the coding theorems behind the optional M11.3.
-reading   = ["S-M11a", "M11.2", "M11.4", "math/11-information-theory/README.md"]
+reading   = ["S-M11a", "M11.2", "M11.4", "content/tracks/math/11-information-theory/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

@@ -3,7 +3,7 @@ title     = "Positional encodings: sinusoidal, learned"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p05-transformer-2017/04-positional-encodings.md"
+chapter   = "content/courses/build-an-llm/p05-transformer-2017/04-positional-encodings.md"
 contract  = ["contracts/py/tinyllm/xfmr/pos.pyi"]
 # pos.py: M00.3's geometric for the frequency ladder, M00.2's rotate_pairs for
 # the shift, M07.3's normal_init and M06.3's PCG32 for the learned table,

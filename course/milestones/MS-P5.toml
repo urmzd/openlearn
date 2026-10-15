@@ -1,6 +1,6 @@
 # MS-P5: the Pass 5 gate (DESIGN 5.7 milestone catalog, 7.2, 7.4).
 # MS-P5 = MS-L5 + MS-L6 + MS-L7.
-# Page: paths/course-p05-transformer/milestone.md (B7 paths work).
+# Page: content/courses/build-an-llm/paths/course-p05-transformer/milestone.md (B7 paths work).
 #
 # Pass 5 builds the transformer three times over: the 2017 encoder-decoder
 # (MS-L5), the objectives and the model zoo (MS-L6), and the modern decoder

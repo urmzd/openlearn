@@ -18,6 +18,7 @@ rc=0
 fail() { echo "FAIL $*"; rc=1; }
 
 while IFS= read -r d2; do
+  [[ -f "$d2" ]] || continue  # A tracked diagram may have been moved or deleted.
   svg="${d2%.d2}.svg"
   if [[ ! -f "$svg" ]]; then fail "$d2: no rendered $svg"; continue; fi
   if ! git ls-files --error-unmatch "$svg" >/dev/null 2>&1; then

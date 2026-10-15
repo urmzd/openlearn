@@ -1,5 +1,5 @@
 # MS-L2: the Part 2 milestone (DESIGN 4.3 "MS-L2", 5.7, 7.2). MS-P3 includes it.
-# Page: paths/course-p03-tokens-and-data/milestone.md
+# Page: content/courses/build-an-llm/paths/course-p03-tokens-and-data/milestone.md
 #
 # Your statistical language models, run through your own entry point: a
 # Kneser-Ney 4-gram (L2.1) trained and scored to within 0.5% of the exact

@@ -3,7 +3,7 @@ title     = "Floating point problem set, part b: condition numbers, error bounds
 kind      = "solve"
 lang      = ["none"]
 pass      = 6
-chapter   = "math/09-numerical-methods-and-floating-point/91-problem-set-b.md"
+chapter   = "content/tracks/math/09-numerical-methods-and-floating-point/91-problem-set-b.md"
 contract  = []
 deps      = []
 # Pen and paper beside M09.3 and M09.4 (DESIGN 4.2, 7.4): part a's

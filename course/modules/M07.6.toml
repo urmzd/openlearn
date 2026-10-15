@@ -3,7 +3,7 @@ title     = "Rejection sampling and residual distributions"
 kind      = "build"
 lang      = ["python"]
 pass      = 6
-chapter   = "math/07-probability-statistics/06-rejection-sampling-and-residual-distributions.md"
+chapter   = "content/tracks/math/07-probability-statistics/06-rejection-sampling-and-residual-distributions.md"
 contract  = ["contracts/py/tinyllm/prob/rejection.pyi"]
 # speculative_step and rejection_sample draw with M07.1's inverse CDF
 # (sample_categorical), and the contract takes M07.1's UniformSource.

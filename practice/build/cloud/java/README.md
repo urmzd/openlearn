@@ -71,4 +71,4 @@ harness works.
 | 09 | Reactive streams publisher | `Flow` API, backpressure, `SubmissionPublisher` | ⭐⭐⭐⭐ |
 | 10 | Annotation processor | `javax.annotation.processing`, code generation | ⭐⭐⭐⭐ |
 
-Exercise 02 (concurrent hash map) is consolidated into the course modules `ds.02` and `ds.05` ([Systems Data Structures](../../../../algorithms/16-systems-data-structures/)); the row had no reference.
+Exercise 02 (concurrent hash map) is consolidated into the course modules `ds.02` and `ds.05` ([Systems Data Structures](../../../../content/tracks/algorithms/16-systems-data-structures/)); the row had no reference.

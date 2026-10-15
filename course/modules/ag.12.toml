@@ -3,10 +3,10 @@ title     = "Paired A/B experiments"
 kind      = "build"
 lang      = ["go"]
 pass      = 10
-chapter   = "ai-platform-engineering/09-llm-evaluation/12-ab-experiments.md"
+chapter   = "content/tracks/ai-platform-engineering/09-llm-evaluation/12-ab-experiments.md"
 contract  = []
 deps      = ["ag.09", "ag.10", "ag.11", "load.01", "dur.11"]
-reading   = ["M07.4", "M07.5", "ai-platform-engineering/09-llm-evaluation"]
+reading   = ["M07.4", "M07.5", "content/tracks/ai-platform-engineering/09-llm-evaluation"]
 # This unit upgrades EvalSuite; its existing dur.12 caller remains attached
 # to the owner in the registry, while ag.12 extends its behavior.
 used_by   = ["craft.23"]

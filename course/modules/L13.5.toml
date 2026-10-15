@@ -3,7 +3,7 @@ title     = "Contrastive image-text: CLIP and SigLIP"
 kind      = "build"
 lang      = ["python"]
 pass      = 12
-chapter   = "ml/08-tinyllm/p13-vision/05-contrastive-image-text.md"
+chapter   = "content/courses/build-an-llm/p13-vision/05-contrastive-image-text.md"
 contract  = ["contracts/py/tinyllm/vision/contrastive.pyi"]
 # contrastive.py: L13.3's ViT (the image tower) and VisionBlock (the text
 # tower's blocks), L0.4's Embedding, LayerNorm, Linear, ModuleList, Module,

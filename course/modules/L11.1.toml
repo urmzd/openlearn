@@ -3,7 +3,7 @@ title     = "Mixed precision, loss scaling, gradient accumulation, and activatio
 kind      = "build"
 lang      = ["python"]
 pass      = 9
-chapter   = "ml/08-tinyllm/p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md"
+chapter   = "content/courses/build-an-llm/p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md"
 contract  = ["contracts/py/tinyllm/train/precision.pyi", "contracts/py/tinyllm/train/recompute.pyi"]
 # precision.py: L0.1's Tensor and from_op (cast, the patched matmul), L0.4's
 # Module, M09.1's round_to_bf16 and round_to_fp16, M10.4's clip_grad_norm_.

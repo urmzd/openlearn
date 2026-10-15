@@ -3,13 +3,13 @@ title     = "One trace: gateway to engine in Jaeger (tracer)"
 kind      = "practice"
 lang      = ["ops", "go"]
 pass      = 1
-chapter   = "systems/04-observability/00-one-trace.md"
+chapter   = "content/tracks/systems/04-observability/00-one-trace.md"
 contract  = []
 # Span export lives in entry points (D16): the gateway's go/cmd/gateway hooks
 # proxy.Config.OnSpan, and the engine's hand-written OTLP/HTTP JSON export is
 # part of L10.0. No owned library units.
 deps      = ["dep.00", "L10.0", "gw.00"]  # the deployment whose trace the cluster tier reads; the two services whose spans it joins (DESIGN 4.5)
-reading   = ["L0.0", "systems/04-observability"]
+reading   = ["L0.0", "content/tracks/systems/04-observability"]
 used_by   = []
 units     = []
 artifacts = []                     # none: it grades go/cmd/gateway, which exists from gw.00 on, so its presence would mark obs.00 started too early (I28)

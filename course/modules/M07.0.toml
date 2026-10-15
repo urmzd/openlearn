@@ -3,12 +3,12 @@ title     = "Random variables, expectation, variance, and normal draws by Box-Mu
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/07-probability-statistics/00-random-variables-and-the-normal.md"
+chapter   = "content/tracks/math/07-probability-statistics/00-random-variables-and-the-normal.md"
 contract  = ["contracts/py/tinyllm/prob/rv.pyi"]
 # normal(rng, n) draws from the PCG32 every caller passes (M06.3, spec order);
 # course tests pass the frozen copy (D35).
 deps      = ["M06.3"]
-reading   = ["M00.2", "math/02-calculus-2"]   # cos, sin, the unit circle; the Gaussian integral (S-M02 when registered)
+reading   = ["M00.2", "content/tracks/math/02-calculus-2"]   # cos, sin, the unit circle; the Gaussian integral (S-M02 when registered)
 used_by   = ["M03.3", "M07.3"]
 units     = ["python/tinyllm/prob/rv.py"]
 upgrades  = []

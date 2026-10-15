@@ -70,10 +70,10 @@
     {
       "kind": "reattempt", "lang": "case-studies", "mode": "attempt",
       "items": [
-        { "name": "01-order-book-matching", "source": "case-studies/01-order-book-matching/matching_engine.py" },
-        { "name": "02-grounded-sql-agent", "source": "case-studies/02-grounded-sql-agent/safety_gate.py" },
-        { "name": "03-exactly-once-event-api", "source": "case-studies/03-exactly-once-event-api/event_api.py" },
-        { "name": "04-kmeans-optimization", "source": "case-studies/04-kmeans-optimization/kmeans_ladder.py" }
+        { "name": "01-order-book-matching", "source": "content/case-studies/01-order-book-matching/matching_engine.py" },
+        { "name": "02-grounded-sql-agent", "source": "content/case-studies/02-grounded-sql-agent/safety_gate.py" },
+        { "name": "03-exactly-once-event-api", "source": "content/case-studies/03-exactly-once-event-api/event_api.py" },
+        { "name": "04-kmeans-optimization", "source": "content/case-studies/04-kmeans-optimization/kmeans_ladder.py" }
       ],
       "run": { "steps": [["uv", "run", "--no-project", "--quiet", "python", "{file}"]] }
     }

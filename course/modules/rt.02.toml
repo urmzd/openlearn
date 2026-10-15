@@ -3,7 +3,7 @@ title     = "C runtime support and arena allocator with marks (optional)"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p09-kernels/02-arena-allocator-with-marks.md"
+chapter   = "content/courses/build-an-llm/p09-kernels/02-arena-allocator-with-marks.md"
 # abi.c provides shared status, error, and allocator support; arena.c builds
 # the bump allocator on those hooks. Both stay within standalone C programs.
 contract  = ["contracts/c/include/tinyllm/abi.h", "contracts/c/include/tinyllm/arena.h"]

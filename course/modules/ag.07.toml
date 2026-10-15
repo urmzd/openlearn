@@ -3,7 +3,7 @@ title     = "Retrieval: BM25, flat and IVF vectors, RRF, MMR"
 kind      = "build"
 lang      = ["go"]
 pass      = 10
-chapter   = "ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md"
+chapter   = "content/tracks/ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md"
 # The index directory is formats/rag-index.md (linked from the card; it
 # names ag.07 in its modules comment). The Go API of
 # go/agent/rag/retrieve is fixed by the chapter's section 4 and the course
@@ -16,8 +16,8 @@ deps      = ["ag.06", "load.01"]
 # BM25 from infrastructure/04 and the k-means++ and TF-IDF worked examples
 # (case study 04, archived algorithms/14) are reading; M03.6 (cosine, top-k)
 # is re-implemented in Go, never called.
-reading   = ["M03.6", "infrastructure/04-search-and-indexing", "case-studies/04-kmeans-optimization",
-             "ai-platform-engineering/07-retrieval-and-rag"]
+reading   = ["M03.6", "content/tracks/infrastructure/04-search-and-indexing", "content/case-studies/04-kmeans-optimization",
+             "content/tracks/ai-platform-engineering/07-retrieval-and-rag"]
 used_by   = ["ag.08"]
 units     = [
   "go/agent/rag/retrieve/retrieve.go",

@@ -3,7 +3,7 @@ title     = "Perplexity, bits per byte, NLL accumulator"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "math/11-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md"
+chapter   = "content/tracks/math/11-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md"
 contract  = ["contracts/py/tinyllm/info/ppl.pyi"]
 deps      = ["M00.1"]   # bits_per_byte (tinyllm/num/units.py)
 # Cross-entropy (M11.1) and compensated sums (M09.2) are the concepts; no code

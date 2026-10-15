@@ -3,7 +3,7 @@ title     = "ELECTRA replaced-token detection"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p06-objectives/03-electra-replaced-token-detection.md"
+chapter   = "content/courses/build-an-llm/p06-objectives/03-electra-replaced-token-detection.md"
 contract  = ["contracts/py/tinyllm/obj/electra.pyi"]
 # electra.py: L6.2's mlm_mask, BertEncoder (the discriminator's body),
 # BertForMLM (the generator), and INIT_STD; M07.1's sample_categorical (the

@@ -3,7 +3,7 @@ title     = "Rust fast BPE (tl-tok), byte tokenizer, streaming decoder"
 kind      = "build"
 lang      = ["rust"]
 pass      = 3
-chapter   = "ml/08-tinyllm/p01-tokenizers/05-rust-fast-bpe.md"
+chapter   = "content/courses/build-an-llm/p01-tokenizers/05-rust-fast-bpe.md"
 # Rust implementation and file-based parity vectors are described in the chapter.
 contract  = ["contracts/formats/tokenizer.md"]
 # The Rust CLI keeps its tables in RobinHoodMap (ds.05) and merges from

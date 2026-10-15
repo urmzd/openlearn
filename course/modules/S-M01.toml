@@ -3,12 +3,12 @@ title     = "Calculus 1 problem set: limits, derivatives, rates, optimization, i
 kind      = "solve"
 lang      = ["none"]
 pass      = 2
-chapter   = "math/01-calculus-1/90-problem-set.md"
+chapter   = "content/tracks/math/01-calculus-1/90-problem-set.md"
 contract  = []
 deps      = []
 # Pen and paper for M01.1 to M01.4 (taken after M01.3 in Pass 2, 7.4); the
 # precalculus set comes first.
-reading   = ["S-M00", "math/01-calculus-1/README.md"]
+reading   = ["S-M00", "content/tracks/math/01-calculus-1/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

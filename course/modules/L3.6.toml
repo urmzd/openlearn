@@ -3,7 +3,7 @@ title     = "RNN language model with stateful TBPTT"
 kind      = "build"
 lang      = ["python"]
 pass      = 4
-chapter   = "ml/08-tinyllm/p03-recurrent/06-rnn-language-model-stateful-tbptt.md"
+chapter   = "content/courses/build-an-llm/p03-recurrent/06-rnn-language-model-stateful-tbptt.md"
 contract  = ["contracts/py/tinyllm/rnn/rnnlm.pyi"]
 # rnnlm.py: L3.1's rnn_forward and rnn_backward (the fused Elman op), L3.2's
 # LSTM, L3.3's GRU, L0.5's train_step (which clips with M10.4), L0.3's

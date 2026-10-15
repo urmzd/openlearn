@@ -3,7 +3,7 @@ title     = "Server skeleton, composition root, go/config, graceful shutdown"
 kind      = "build"
 lang      = ["go"]
 pass      = 7
-chapter   = "ai-platform-engineering/12-gateway/01-server-skeleton.md"
+chapter   = "content/tracks/ai-platform-engineering/12-gateway/01-server-skeleton.md"
 # config/runtime.schema.json and spec/cli-roles.md (the --config form of the
 # gateway role) are linked from the chapter card; they carry no `chapter:`
 # back-pointer to this chapter, so they are not listed here (B82-02).
@@ -11,7 +11,7 @@ contract  = []
 deps      = []
 # gw.00's NewProxy is what your composition root plugs in as Deps.Proxy until
 # gw.04; the server package itself calls none of it.
-reading   = ["lang.06", "gw.00", "ai-platform-engineering/12-gateway"]
+reading   = ["lang.06", "gw.00", "content/tracks/ai-platform-engineering/12-gateway"]
 # Every stage package uses server.Middleware, the Exchange, and WriteError;
 # gw.07 also the chain's meter slot.
 used_by   = ["gw.02", "gw.03", "gw.04", "gw.05", "gw.06", "gw.07", "gw.08"]

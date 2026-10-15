@@ -11,7 +11,7 @@
 //! length, the full-block hashes, and how many uniform draws P took (the RNG
 //! hand-off, DESIGN 2.7).
 //!
-//! Chapter: ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md.
+//! Chapter: content/courses/build-an-llm/p10-serving/06-disaggregated-prefill-decode.md.
 
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};

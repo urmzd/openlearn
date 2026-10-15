@@ -3,7 +3,7 @@ title     = "Robin Hood hash map with backward-shift deletion"
 kind      = "build"
 lang      = ["rust"]
 pass      = 3
-chapter   = "algorithms/16-systems-data-structures/05-robin-hood-hash-map.md"
+chapter   = "content/tracks/algorithms/16-systems-data-structures/05-robin-hood-hash-map.md"
 # No Rust trait contract exists yet (rust/tl-contracts, K01): the interface is
 # fixed by the chapter (section 4) and the course tests (DEVIATIONS B43-02).
 contract  = []

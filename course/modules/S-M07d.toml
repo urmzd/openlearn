@@ -3,14 +3,14 @@ title     = "Solve set: hypothesis tests, regression, queueing and Little's law,
 kind      = "solve"
 lang      = ["none"]
 pass      = 5
-chapter   = "math/07-probability-statistics/93-problem-set-d.md"
+chapter   = "content/tracks/math/07-probability-statistics/93-problem-set-d.md"
 contract  = []
 deps      = []
 # Pen and paper. q1 to q4 are M07.5's tests by hand, q5 to q9 M07.7's
 # regression, AUC, and convexity; part c (S-M07c, Pass 4) gave the sampling
 # distributions. Queueing and balls into bins are read again by load.01 and
 # gw.05 (routing), which do not exist yet.
-reading   = ["S-M07c", "M07.5", "M07.7", "math/07-probability-statistics/README.md"]
+reading   = ["S-M07c", "M07.5", "M07.7", "content/tracks/math/07-probability-statistics/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

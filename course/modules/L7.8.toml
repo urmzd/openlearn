@@ -3,7 +3,7 @@ title     = "Mixture of Experts: routing, sorted dispatch, Switch aux loss, aux-
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p07-modern-block/08-mixture-of-experts.md"
+chapter   = "content/courses/build-an-llm/p07-modern-block/08-mixture-of-experts.md"
 contract  = ["contracts/py/tinyllm/modern/moe.pyi"]
 # moe.py: every expert (and the shared experts) is L7.2's GatedMLP; the
 # router is L0.4's Linear in an L0.4 ModuleList; L0.2's ops (softmax,

@@ -3,7 +3,7 @@ title     = "Tool calls and constrained JSON decoding in the engine"
 kind      = "build"
 lang      = ["rust"]
 pass      = 7
-chapter   = "ml/08-tinyllm/p10-serving/09-tool-calls-and-constrained-decoding.md"
+chapter   = "content/courses/build-an-llm/p10-serving/09-tool-calls-and-constrained-decoding.md"
 # No Rust trait contract (K01); constrain.pyi (L8.7), whose subset this port
 # follows, and openai-subset.v1.yaml (tools, tool_choice, response_format)
 # are linked from the card.

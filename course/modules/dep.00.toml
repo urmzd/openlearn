@@ -3,14 +3,14 @@ title     = "Tracer deploy: engine and gateway images, kind cluster, two Helm ch
 kind      = "practice"
 lang      = ["ops"]
 pass      = 1
-chapter   = "infrastructure/01-containers-kubernetes/00-tracer-deploy.md"
+chapter   = "content/tracks/infrastructure/01-containers-kubernetes/00-tracer-deploy.md"
 contract  = []
 # The check builds your engine (L10.0) and gateway (gw.00) into images and
 # runs them, so both are deps (DESIGN 4.5 prereqs) and dep.00 is their call
 # site. It trains the model with your tinyllm CLI (L0.0), an entry point
 # (D16), so L0.0 stays in `reading`. lang.07 is the primer it applies.
 deps      = ["L10.0", "gw.00"]
-reading   = ["lang.07", "L0.0", "infrastructure/01-containers-kubernetes"]
+reading   = ["lang.07", "L0.0", "content/tracks/infrastructure/01-containers-kubernetes"]
 used_by   = ["obs.00", "ops.00"]        # obs.00 reads traces from this deployment; ops.00 drills it
 units     = []                          # entry-point territory (D16): deploy/ is yours; reference in course/ref/entry/deploy/
 artifacts = ["deploy", ".dockerignore"] # learner files the check grades: hashed into the verdict, present = started (I16)

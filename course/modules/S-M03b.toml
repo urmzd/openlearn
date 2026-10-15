@@ -3,12 +3,12 @@ title     = "Linear algebra problem set, part b: inner products, SVD and low ran
 kind      = "solve"
 lang      = ["none"]
 pass      = 3
-chapter   = "math/03-linear-algebra/91-problem-set-b.md"
+chapter   = "content/tracks/math/03-linear-algebra/91-problem-set-b.md"
 contract  = []
 deps      = []
 # Pen and paper for M03.5 and M03.6, taken after them in Pass 3 (DESIGN 4.2,
 # 7.4); the roofline items prepare L9.1.
-reading   = ["S-M03a", "M03.5", "M03.6", "math/03-linear-algebra/README.md"]
+reading   = ["S-M03a", "M03.5", "M03.6", "content/tracks/math/03-linear-algebra/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

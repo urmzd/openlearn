@@ -3,7 +3,7 @@ title     = "word2vec skip-gram with negative sampling, and the PPMI-SVD baselin
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "ml/08-tinyllm/p02-statistical-lm/03-word2vec-and-ppmi-svd.md"
+chapter   = "content/courses/build-an-llm/p02-statistical-lm/03-word2vec-and-ppmi-svd.md"
 contract  = ["contracts/py/tinyllm/lm/word2vec.pyi"]
 # Every dep is a call in word2vec.py (DEVIATIONS B54-03): M07.1 AliasTable
 # (the negative sampler), M03.5 svd, M03.6 normalize, cosine_sim, and

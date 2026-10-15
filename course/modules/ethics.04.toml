@@ -3,7 +3,7 @@ title     = "Bias and safety evals"
 kind      = "build"
 lang      = ["python"]
 pass      = 9
-chapter   = "responsible-ai/04-bias-and-safety-evals/01-bias-and-safety-evals.md"
+chapter   = "content/tracks/responsible-ai/04-bias-and-safety-evals/01-bias-and-safety-evals.md"
 contract  = ["contracts/py/tinyllm/eval/safety.pyi", "contracts/py/tinyllm/eval/bias.pyi"]
 # safety.py: M07.4's wilson_interval, M07.7's roc_curve and roc_auc.
 # bias.py: M07.4's bootstrap_ci and wilson_interval.

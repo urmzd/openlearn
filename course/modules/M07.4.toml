@@ -3,7 +3,7 @@ title     = "LLN, CLT, confidence intervals, bootstrap"
 kind      = "build"
 lang      = ["python"]
 pass      = 4
-chapter   = "math/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md"
+chapter   = "content/tracks/math/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md"
 contract  = ["contracts/py/tinyllm/prob/stats.pyi"]
 # No other module's code is called: quantiles come from math.erfc and the
 # closed-form t series, resampling from the rng the caller passes (course

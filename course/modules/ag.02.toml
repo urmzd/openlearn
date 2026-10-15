@@ -3,14 +3,14 @@ title     = "Tools, registry, JSON Schema argument validation"
 kind      = "build"
 lang      = ["go"]
 pass      = 10
-chapter   = "ai-platform-engineering/13-agent-sdk/02-tools-and-schemas.md"
+chapter   = "content/tracks/ai-platform-engineering/13-agent-sdk/02-tools-and-schemas.md"
 # The Go API of go/agent/tool is fixed by the chapter's section 4 and the
 # course tests (no contracts/go file yet, K01; DEVIATIONS B121-01). The
 # schema subset is a superset of openai-subset.v1's Tool.parameters subset
 # (L8.7), so every schema the engine can constrain to also validates here.
 contract  = []
 deps      = ["ag.01"]               # types.ToolDef, types.ToolCall, types.Message
-reading   = ["L8.7", "ai-platform-engineering/13-agent-sdk"]
+reading   = ["L8.7", "content/tracks/ai-platform-engineering/13-agent-sdk"]
 # ag.08: search_docs is a tool.Tool in the agent's registry.
 used_by   = ["ag.03", "ag.04", "ag.05", "ag.08", "ag.09", "ag.10"]  # scorers validate JSON Schema through ag.02
 units     = ["go/agent/tool/tool.go", "go/agent/tool/registry.go", "go/agent/tool/schema.go"]

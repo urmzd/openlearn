@@ -3,7 +3,7 @@ title     = "Your first endpoint: a std-only Rust HTTP/1.1 + SSE server"
 kind      = "build"
 lang      = ["rust"]
 pass      = 1
-chapter   = "ml/08-tinyllm/p10-serving/00-your-first-endpoint.md"
+chapter   = "content/courses/build-an-llm/p10-serving/00-your-first-endpoint.md"
 # The v0 HTTP surface and the engine role; the model directory formats and
 # the model directory format it reads is linked from the chapter card.
 contract  = ["contracts/openapi/openai-subset.v0.yaml", "contracts/spec/cli-roles.md"]

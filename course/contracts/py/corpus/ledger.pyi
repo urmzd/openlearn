@@ -1,6 +1,6 @@
 # contracts/py/corpus/ledger.pyi (data.08): licensing ledger verification
 # and the datasheet
-# chapter: data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md
+# chapter: content/tracks/data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md
 #
 # The ledger is corpus/LEDGER.jsonl, one formats/ledger.schema.json object
 # per line, append-only: data.01 appends a row per fetched source, and

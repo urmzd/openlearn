@@ -1,6 +1,6 @@
 # MS-P9: the Pass 9 gate (DESIGN 5.7 milestone catalog, 7.2, 7.4).
 # MS-P9 = MS-L11 + MS-C1.
-# Page: paths/course-p09-capstone-training/milestone.md (the paths work).
+# Page: content/courses/build-an-llm/paths/course-p09-capstone-training/milestone.md (the paths work).
 #
 # Pass 9 trains at scale and runs the capstone: mixed precision, gradient
 # accumulation, and activation checkpointing that match fp32 in less memory

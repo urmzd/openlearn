@@ -7,9 +7,9 @@
  *
  * Every function here is pure or touches only its own generator, so all are
  * reentrant.
- * chapter: math/09-numerical-methods-and-floating-point/07-low-precision-c-conversions.md
- * chapter: math/09-numerical-methods-and-floating-point/05-fixed-point-iteration-and-rsqrt.md
- * chapter: math/09-numerical-methods-and-floating-point/06-polynomial-approximation-and-expf.md */
+ * chapter: content/tracks/math/09-numerical-methods-and-floating-point/07-low-precision-c-conversions.md
+ * chapter: content/tracks/math/09-numerical-methods-and-floating-point/05-fixed-point-iteration-and-rsqrt.md
+ * chapter: content/tracks/math/09-numerical-methods-and-floating-point/06-polynomial-approximation-and-expf.md */
 #ifndef TINYLLM_NUMERICS_H
 #define TINYLLM_NUMERICS_H
 

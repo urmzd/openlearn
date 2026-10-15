@@ -3,7 +3,7 @@ title     = "Property-based tests (R4) with Hypothesis, proptest, rapid, and ol_
 kind      = "practice"
 lang      = ["python"]
 pass      = 3
-chapter   = "software-craftsmanship/03-testing-mentality/02-property-based-tests.md"
+chapter   = "content/tracks/software-craftsmanship/03-testing-mentality/02-property-based-tests.md"
 contract  = []
 deps      = []
 # craft.03 (how tests are graded), the two laws the kata stands for (BPE

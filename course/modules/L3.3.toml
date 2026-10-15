@@ -3,7 +3,7 @@ title     = "GRU (torch gate order)"
 kind      = "build"
 lang      = ["python"]
 pass      = 4
-chapter   = "ml/08-tinyllm/p03-recurrent/03-gru.md"
+chapter   = "content/courses/build-an-llm/p03-recurrent/03-gru.md"
 contract  = ["contracts/py/tinyllm/rnn/gru.pyi"]
 # The same seams as L3.2: Tensor, ops, Module and Dropout, the two
 # initializers, and the default PCG32 stream.

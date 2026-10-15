@@ -3,7 +3,7 @@ title     = "Counting: params, FLOPs, KV bytes, memory plans"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "math/05-discrete-math-1/01-counting-params-flops-kv-bytes.md"
+chapter   = "content/tracks/math/05-discrete-math-1/01-counting-params-flops-kv-bytes.md"
 contract  = ["contracts/py/tinyllm/accounting.pyi"]
 deps      = []
 # Concepts only: exponents and logs for the orders of magnitude (M00.1), the

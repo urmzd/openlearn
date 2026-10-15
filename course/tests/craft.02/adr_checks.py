@@ -7,7 +7,7 @@ KIND. This file is stdlib only and is not a pytest module: `check` runs every
 `test_*` function in order and reports each one.
 
 The format the tests enforce is the ADR template in the chapter
-software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md:
+content/tracks/software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md:
 
     docs/adr/NNNN-<kebab-case-slug>.md
     # ADR-NNNN: <title>

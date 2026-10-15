@@ -5,7 +5,7 @@
  * a unit reaches abi.c only through the names in this header.
  *
  * module: rt.02
- * chapter: ml/08-tinyllm/p09-kernels/02-arena-allocator-with-marks.md */
+ * chapter: content/courses/build-an-llm/p09-kernels/02-arena-allocator-with-marks.md */
 #ifndef TINYLLM_ABI_H
 #define TINYLLM_ABI_H
 

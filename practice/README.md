@@ -79,7 +79,7 @@ passing.
 Every `build` exercise is self-testing: one entry point, its own assertions,
 nonzero exit on the first failure. No test framework in any of the nine
 languages, which is why `ol check` is the same command everywhere. The
-[case studies](../case-studies/) already worked this way and CI already depended
+[case studies](../content/case-studies/) already worked this way and CI already depended
 on it.
 
 ## Build exercises
@@ -164,7 +164,7 @@ just run-predict-bench     # ol bench --assert
 
 ## Course modules
 
-The course (start at [`paths/course/`](../paths/course/); design:
+The course (start at [`paths/course/`](../content/courses/build-an-llm/paths/course/); design:
 [`course/DESIGN.md`](../course/DESIGN.md)) runs on the
 same `ol`. A verb whose first argument is a course id (`M03.1`, `L8.3`,
 `rt.01`, `lang.02`, `S-M07a`, `sq.multi-lora`, `MS-P1`) goes to the course
@@ -179,7 +179,7 @@ in it, and checks run against your own earlier modules.
 
 ```bash
 ol course init --name forge   # your repo, at .scratchpad/course/ (or OL_COURSE_HOME)
-ol next                       # the next stage of paths/course whose deps pass
+ol next                       # the next stage of content/courses/build-an-llm/paths/course whose deps pass
 ol start M03.1                # stub the module's units into your repo
 ol tests M03.1                # what each course test checks, and why
 ol check M03.1                # the exit code is the verdict
@@ -299,7 +299,7 @@ uv run --project course/harness pytest course/harness/tests practice/bin/tests
 |----------|---------|--------------|
 | `OL_COURSE_HOME` | `.scratchpad/course/` | your course repo |
 | `OL_COURSE_ROOT` | `course/` | the live course tree |
-| `OL_PATHS_DIR` | `paths/` | the learning paths |
+| `OL_PATHS_DIR` | `content/courses/build-an-llm/paths/` | the learning paths |
 | `OL_CACHE` | `~/.cache/openlearn` | course-tree worktrees, the verify venv |
 | `OL_GO_RACE` | `1` | `0` drops `-race` from Go course tests |
 | `OL_TSAN` | `1` | `0` skips the ThreadSanitizer build of modules with `sanitize = ["thread"]` |

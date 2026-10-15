@@ -3,7 +3,7 @@ title     = "Sequence metrics: exact match, BLEU, chrF"
 kind      = "build"
 lang      = ["python"]
 pass      = 4
-chapter   = "ml/08-tinyllm/p04-attention-origins/05-sequence-metrics.md"
+chapter   = "content/courses/build-an-llm/p04-attention-origins/05-sequence-metrics.md"
 contract  = ["contracts/py/tinyllm/eval/seqmetrics.pyi"]
 # metric_ci resamples sentences with M07.4's bootstrap_ci (the catalog
 # prereq, and a real call).

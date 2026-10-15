@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/integrate.pyi (M01.4)
-# chapter: math/01-calculus-1/04-definite-integrals-trapezoid-simpson.md
+# chapter: content/tracks/math/01-calculus-1/04-definite-integrals-trapezoid-simpson.md
 #
 # Definite integrals by quadrature: the area under a curve from samples
 # (trapezoid) or from a function evaluated on n equal steps (the composite

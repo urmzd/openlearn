@@ -3,13 +3,13 @@ title     = "Solve set: trees, birthday bounds, Jaccard/MinHash/LSH S-curve, Blo
 kind      = "solve"
 lang      = ["none"]
 pass      = 3
-chapter   = "math/06-discrete-math-2/91-problem-set-b.md"
+chapter   = "content/tracks/math/06-discrete-math-2/91-problem-set-b.md"
 contract  = []
 deps      = []
 # Pen and paper. S-M06a (part a, Pass 2) and M06.2 (tries) come first.
 # ds.08 (Bloom sizing) and data.04 (MinHash, LSH bands) list S-M06b in their
 # own `reading` (DESIGN 4.4); a solve set has no call site.
-reading   = ["S-M06a", "M06.2", "math/06-discrete-math-2/README.md"]
+reading   = ["S-M06a", "M06.2", "content/tracks/math/06-discrete-math-2/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

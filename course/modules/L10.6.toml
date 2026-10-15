@@ -3,7 +3,7 @@ title     = "Disaggregated prefill/decode, KV transfer, heartbeat client"
 kind      = "build"
 lang      = ["rust"]
 pass      = 7
-chapter   = "ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md"
+chapter   = "content/courses/build-an-llm/p10-serving/06-disaggregated-prefill-decode.md"
 # The interfaces are proto/tl/{engine,kv,control}/v1 (generated code in
 # contracts/rust/tl-proto) and the bytes formats/kv-block.md, all linked from
 # the chapter card; none carries a `chapter:` back-pointer yet (DEVIATIONS

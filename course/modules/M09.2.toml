@@ -3,7 +3,7 @@ title     = "Stable numerics: logsumexp, softmax, compensated sums"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/09-numerical-methods-and-floating-point/02-stable-numerics.md"
+chapter   = "content/tracks/math/09-numerical-methods-and-floating-point/02-stable-numerics.md"
 contract  = ["contracts/py/tinyllm/num/stable.pyi"]
 deps      = []
 # Concepts only: overflow thresholds and ULPs (M09.1), Taylor's view of

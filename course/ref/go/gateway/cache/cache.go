@@ -9,7 +9,7 @@
 // Contract: openapi/openai-subset.v1.yaml, openapi/admin.v1.yaml
 // (POST /admin/v1/cache:purge), config/runtime.schema.json ([gateway]
 // cache_entries, cache_ttl_s). Chapter:
-// ai-platform-engineering/04-distributed-data-and-caching/01-response-cache.md.
+// content/tracks/ai-platform-engineering/04-distributed-data-and-caching/01-response-cache.md.
 package cache
 
 import (

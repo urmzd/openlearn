@@ -3,7 +3,7 @@ title     = "Elementwise kernels in C: RMSNorm, RoPE, SiLU-mul, embedding, add, 
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p09-kernels/09-elementwise-kernels.md"
+chapter   = "content/courses/build-an-llm/p09-kernels/09-elementwise-kernels.md"
 contract  = ["contracts/c/include/tinyllm/elementwise.h"]
 # elementwise.c: M09.5's tl_rsqrtf (RMSNorm) and M09.6's tl_expf (SiLU).
 # The C suite compares against fixture vectors from Python references for

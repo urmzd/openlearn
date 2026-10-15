@@ -3,7 +3,7 @@ title     = "Architecture decision records"
 kind      = "practice"
 lang      = ["docs"]
 pass      = 1
-chapter   = "software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md"
+chapter   = "content/tracks/software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md"
 contract  = []
 deps      = []
 # ADR-0001 records the boundaries these modules built: the Python matrix contract (M03.1),

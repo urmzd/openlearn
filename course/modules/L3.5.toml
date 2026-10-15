@@ -5,7 +5,7 @@ title     = "ELMo: biLM, ScalarMix, linear probes"
 kind      = "side"
 lang      = ["python"]
 pass      = 4
-chapter   = "ml/08-tinyllm/p03-recurrent/05-elmo-bilm-scalarmix-probes.md"
+chapter   = "content/courses/build-an-llm/p03-recurrent/05-elmo-bilm-scalarmix-probes.md"
 contract  = ["contracts/py/tinyllm/rnn/elmo.pyi"]
 # elmo.py: L3.2's LSTM, L3.4's reverse_padded, L0.3's cross_entropy, L0.4's
 # Embedding, Linear, ModuleList, L0.2's ops on L0.1's Tensor, M06.3's PCG32.
@@ -13,7 +13,7 @@ contract  = ["contracts/py/tinyllm/rnn/elmo.pyi"]
 deps      = ["L0.1", "L0.2", "L0.3", "L0.4", "M06.3", "M10.3", "L3.2", "L3.4"]
 # M07.7's IRLS logistic regression (pass 5) is the catalog's probe; the probe
 # here is its own gradient-descent softmax regression (B62-02).
-reading   = ["L3.6", "math/07-probability-statistics"]
+reading   = ["L3.6", "content/tracks/math/07-probability-statistics"]
 used_by   = []
 units     = ["python/tinyllm/rnn/elmo.py"]
 upgrades  = []

@@ -3,7 +3,7 @@ title     = "Context assembly, citations, search_docs tool"
 kind      = "build"
 lang      = ["go"]
 pass      = 10
-chapter   = "ai-platform-engineering/07-retrieval-and-rag/08-context-assembly.md"
+chapter   = "content/tracks/ai-platform-engineering/07-retrieval-and-rag/08-context-assembly.md"
 # The Go API of go/agent/rag/assemble is fixed by the chapter's section 4 and
 # the course tests (no contracts/go file, K01; DEVIATIONS B122-01).
 # Citations name chunk_ids that resolve in docs.jsonl (formats/rag-index.md).
@@ -12,7 +12,7 @@ contract  = []
 # registered in the agent's tool.Registry (the catalog lists ag.08 among
 # ag.02's call sites).
 deps      = ["ag.07", "ag.02"]
-reading   = ["ai-platform-engineering/07-retrieval-and-rag"]
+reading   = ["content/tracks/ai-platform-engineering/07-retrieval-and-rag"]
 # ag.10's citation scorer reads the [n] markers back with ParseCitations and
 # Resolve. The catalog's "ag.03 toolset" is the agent's composition root
 # (an entry point, D16), not a module (DEVIATIONS B122-03).

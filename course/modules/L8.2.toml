@@ -3,7 +3,7 @@ title     = "KV cache, incremental decode, incremental UTF-8 detokenizer, genera
 kind      = "build"
 lang      = ["python"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p08-inference/02-kv-cache-and-generate.md"
+chapter   = "content/courses/build-an-llm/p08-inference/02-kv-cache-and-generate.md"
 contract  = ["contracts/py/tinyllm/infer/kvcache.pyi", "contracts/py/tinyllm/infer/generate.pyi"]
 # kvcache.py: L5.2's causal_mask with q_offset is the decode mask. generate.py:
 # L8.1's sample, request_rng, and sampled_entropy every step. The course tests

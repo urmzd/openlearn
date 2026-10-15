@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "chapter: responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md\nchapter: ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md",
+  "$comment": "chapter: content/tracks/responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md\nchapter: content/tracks/ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md",
   "title": "linear head (models/<id>/heads/<name>.json)",
   "description": "A linear classifier over an embedding model's /v1/embeddings output (D33): logits = W e + b, probabilities = softmax(logits), with e the L2-normalized embedding of the request text. Exported by L6.5 / ethics.05 (fitted with M07.7 IRLS), evaluated in Go by gw.08; Go and Python scores agree within 1e-6.",
   "type": "object",

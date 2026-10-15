@@ -1,0 +1,23 @@
+{
+  "id": "field-engineering",
+  "title": "Field Engineering",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/tracks/field-engineering/README.md",
+      "title": "Overview"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/field-engineering",
+      "title": "Field Engineering"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

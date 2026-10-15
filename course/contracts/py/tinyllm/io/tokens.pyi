@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/io/tokens.pyi (L0.6): the token-stream reader
-# chapter: ml/08-tinyllm/p00-foundations/06-safetensors-checkpoints-and-token-streams.md
+# chapter: content/courses/build-an-llm/p00-foundations/06-safetensors-checkpoints-and-token-streams.md
 #
 # Shards are formats/tokens-bin.md files (llm.c .bin): a 1024-byte header of
 # 256 little-endian int32 [magic 20240520, version, n_tokens, vocab_size],

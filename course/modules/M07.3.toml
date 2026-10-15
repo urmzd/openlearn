@@ -3,7 +3,7 @@ title     = "Variance propagation and initialization"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/07-probability-statistics/03-variance-propagation-and-initialization.md"
+chapter   = "content/tracks/math/07-probability-statistics/03-variance-propagation-and-initialization.md"
 contract  = ["contracts/py/tinyllm/nn/init.pyi"]
 deps      = ["M07.0"]                # tinyllm.prob.rv.normal draws every normal weight
 # M01.3 gives the activations whose second moments set the gains; M06.3 the

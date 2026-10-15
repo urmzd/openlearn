@@ -15,8 +15,8 @@
 //
 // Contract: openapi/openai-subset.v1.yaml (gateway tier), spec/cli-roles.md
 // (role gateway, --config form). Chapter:
-// ai-platform-engineering/12-gateway/01-server-skeleton.md; policy wiring:
-// ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md.
+// content/tracks/ai-platform-engineering/12-gateway/01-server-skeleton.md; policy wiring:
+// content/tracks/ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md.
 package server
 
 import (

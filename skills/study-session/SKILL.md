@@ -24,7 +24,7 @@ Ask 5-10 questions that escalate in difficulty:
 
 ### drill [topic] [language]
 Rapid-fire coding exercises:
-1. Read the topic README from `algorithms/` or `practice/` for context
+1. Read the topic README from `content/tracks/algorithms/` or `practice/` for context
 2. Present a small, focused coding task (5-15 min)
 3. The user writes code, you evaluate for:
    - Correctness (does it work?)
@@ -66,12 +66,12 @@ Full diagnostic assessment:
 
 1. Parse the mode, topic, and optional language from: `{args}`
 2. If a topic is given, read the relevant README(s):
-   - Algorithm topics: `algorithms/{topic-dir}/README.md`
-   - Math topics: `math/{topic-dir}/README.md`
+   - Algorithm topics: `content/tracks/algorithms/{topic-dir}/README.md`
+   - Math topics: `content/tracks/math/{topic-dir}/README.md`
    - Practice languages: `practice/{tier}/{lang}/README.md`
-   - Competitive programming: `competitive-programming/README.md`
-   - Information theory: `math/11-information-theory/README.md`
-   - Case studies: `case-studies/{study-dir}/README.md`
+   - Competitive programming: `content/tracks/competitive-programming/README.md`
+   - Information theory: `content/tracks/math/11-information-theory/README.md`
+   - Case studies: `content/case-studies/{study-dir}/README.md`
 3. If a language is given, frame code questions in that language and evaluate idiom
 4. For language-specific questions, also read `practice/{tier}/{lang}/README.md` for idiom reference
 5. Use existing problem implementations in the repo as reference (but don't show them to the user during quizzes)
@@ -100,22 +100,22 @@ When evaluating user responses:
 ## Topic Mapping
 
 Map shorthand topic names to directories:
-- arrays, hashing → algorithms/01-arrays-hashing/
-- two-pointers, sliding-window → algorithms/02-two-pointers-sliding-window/
-- binary-search → algorithms/03-binary-search/
-- linked-lists → algorithms/04-linked-lists/
-- trees → algorithms/05-trees/
-- graphs → algorithms/06-graphs/
-- dp, dynamic-programming → algorithms/07-dynamic-programming/
-- greedy → algorithms/08-greedy/
-- backtracking → algorithms/09-backtracking/
-- math, bits → algorithms/10-math-bit/
-- recursion, divide-conquer → algorithms/11-recursion-divide-conquer/
-- probabilistic → algorithms/15-probabilistic-structures/
-- calculus-1 through probability → math/{topic}/
-- cp, competitive → competitive-programming/
-- info-theory → math/11-information-theory/
-- order-book, matching → case-studies/01-order-book-matching/
-- sql-agent, text-to-sql → case-studies/02-grounded-sql-agent/
-- events, idempotency, exactly-once → case-studies/03-exactly-once-event-api/
-- kmeans, clustering-optimization → case-studies/04-kmeans-optimization/
+- arrays, hashing → content/tracks/algorithms/01-arrays-hashing/
+- two-pointers, sliding-window → content/tracks/algorithms/02-two-pointers-sliding-window/
+- binary-search → content/tracks/algorithms/03-binary-search/
+- linked-lists → content/tracks/algorithms/04-linked-lists/
+- trees → content/tracks/algorithms/05-trees/
+- graphs → content/tracks/algorithms/06-graphs/
+- dp, dynamic-programming → content/tracks/algorithms/07-dynamic-programming/
+- greedy → content/tracks/algorithms/08-greedy/
+- backtracking → content/tracks/algorithms/09-backtracking/
+- math, bits → content/tracks/algorithms/10-math-bit/
+- recursion, divide-conquer → content/tracks/algorithms/11-recursion-divide-conquer/
+- probabilistic → content/tracks/algorithms/15-probabilistic-structures/
+- calculus-1 through probability → content/tracks/math/{topic}/
+- cp, competitive → content/tracks/competitive-programming/
+- info-theory → content/tracks/math/11-information-theory/
+- order-book, matching → content/case-studies/01-order-book-matching/
+- sql-agent, text-to-sql → content/case-studies/02-grounded-sql-agent/
+- events, idempotency, exactly-once → content/case-studies/03-exactly-once-event-api/
+- kmeans, clustering-optimization → content/case-studies/04-kmeans-optimization/

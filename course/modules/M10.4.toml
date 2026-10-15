@@ -3,7 +3,7 @@ title     = "Learning-rate schedules (cosine, WSD, Noam) and gradient clipping"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/10-optimization/04-schedules-and-gradient-clipping.md"
+chapter   = "content/tracks/math/10-optimization/04-schedules-and-gradient-clipping.md"
 contract  = ["contracts/py/tinyllm/optim/schedule.pyi"]
 deps      = []
 # M00.3 teaches the sequences and the geometric sum the schedules are built

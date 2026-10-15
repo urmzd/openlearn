@@ -1,6 +1,6 @@
 name: Pages
 
-# Builds the curriculum website from the repo's markdown (site/) and deploys
+# Builds the curriculum website from the repo's markdown (apps/web/) and deploys
 # it to GitHub Pages at https://openlearn.urmzd.com. Pull requests build
 # only, so a broken page fails review instead of production.
 
@@ -24,22 +24,25 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: site
+        working-directory: apps/web
     steps:
       - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v4
         with:
-          package_json_file: site/package.json
+          package_json_file: apps/web/package.json
 
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: site/pnpm-lock.yaml
+          cache-dependency-path: apps/web/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build an independent course
+        run: OPENLEARN_COURSE=diagramming pnpm build
 
       - name: Build
         run: pnpm build
@@ -47,7 +50,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         if: github.event_name != 'pull_request'
         with:
-          path: site/dist
+          path: apps/web/dist
 
   deploy:
     name: Deploy

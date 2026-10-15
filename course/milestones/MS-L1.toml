@@ -1,5 +1,5 @@
 # MS-L1: the Part 1 milestone (DESIGN 4.3 "MS-L1", 5.7, 7.2). MS-P3 includes it.
-# Page: paths/course-p03-tokens-and-data/milestone.md
+# Page: content/courses/build-an-llm/paths/course-p03-tokens-and-data/milestone.md
 #
 # Your tokenizers, run through their own entry points: the Python BPE (L1.2)
 # trains a vocabulary and encodes exactly like Hugging Face on GPT-2's and

@@ -3,7 +3,7 @@ title     = "Capstone: TinyStories, owned end to end"
 kind      = "practice"
 lang      = ["python", "go", "ops"]
 pass      = 9
-chapter   = "ml/08-tinyllm/capstones/01-tinystories.md"
+chapter   = "content/courses/build-an-llm/capstones/01-tinystories.md"
 contract  = []                       # formats/train-spec, eval-results, ledger schemas and the report schema in course/tests/C1, linked from the card
 # The check runs YOUR ModelRelease preflight and spec validation (dur.12)
 # on your capstone release spec. Its training and release specs also exercise
@@ -12,7 +12,7 @@ contract  = []                       # formats/train-spec, eval-results, ledger 
 # MS-C1 drives.
 deps      = ["dur.12", "L11.1", "ethics.04"]
 reading   = ["data.07", "data.08", "L1.2", "L1.4", "L1.6", "L2.1", "L6.7", "L7.4", "L7.6", "L7.8", "L7.9",
-             "M03.5", "M05.1", "M07.5", "M10.3", "M10.4", "dur.09", "craft.22", "ml/08-tinyllm/capstones"]
+             "M03.5", "M05.1", "M07.5", "M10.3", "M10.4", "dur.09", "craft.22", "content/courses/build-an-llm/capstones"]
 used_by   = ["C2"]                   # C2 starts post-training from the released base checkpoint
 units     = []
 artifacts = ["specs/c1", "docs/capstone/c1"]   # specs, report, zoo, samples, card, ledger: hashed into the verdict, present = started

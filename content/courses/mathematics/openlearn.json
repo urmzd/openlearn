@@ -1,0 +1,27 @@
+{
+  "id": "mathematics",
+  "title": "Mathematics",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/tracks/math/README.md",
+      "title": "Overview"
+    },
+    {
+      "file": "content/courses/mathematics/study-plan.md",
+      "title": "Study plan"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/math",
+      "title": "Mathematics Foundations"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

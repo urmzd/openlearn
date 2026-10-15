@@ -3,7 +3,7 @@ title     = "Observability for the control plane: workflow and activity spans, q
 kind      = "practice"
 lang      = ["ops"]
 pass      = 8
-chapter   = "systems/04-observability/05-control-plane-observability.md"
+chapter   = "content/tracks/systems/04-observability/05-control-plane-observability.md"
 # otel/semconv.md (the span tree) and otel/metrics.yaml (tl.durable.*,
 # tl.train.*), linked from the chapter card (no `chapter:` back-pointer).
 contract  = []
@@ -12,7 +12,7 @@ contract  = []
 # obs.04: the dashboards-as-code conventions and the promtool checks reused.
 # data.09 (CorpusBuild spans) is reading: no code of it runs here.
 deps      = ["dep.06", "dur.09", "obs.04"]
-reading   = ["obs.01", "obs.02", "systems/04-observability"]
+reading   = ["obs.01", "obs.02", "content/tracks/systems/04-observability"]
 used_by   = []
 units     = []
 artifacts = ["deploy/observability/dashboards/control-plane.json", "deploy/observability/control-plane-monitors.yaml"]

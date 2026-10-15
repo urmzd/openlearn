@@ -3,12 +3,12 @@ title     = "Matrix calculus problem set: differentials, trace trick, VJPs, SDPA
 kind      = "solve"
 lang      = ["none"]
 pass      = 2
-chapter   = "math/08-matrix-calculus-and-autodiff/90-problem-set.md"
+chapter   = "content/tracks/math/08-matrix-calculus-and-autodiff/90-problem-set.md"
 contract  = []
 deps      = []
 # Pen and paper: the derivations behind M08.3's closed-form VJPs (DESIGN 4.1,
 # 4.2). In the Pass 2 stage list it follows M08.1 to M08.3 (7.4).
-reading   = ["S-M05", "math/08-matrix-calculus-and-autodiff/README.md"]
+reading   = ["S-M05", "content/tracks/math/08-matrix-calculus-and-autodiff/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

@@ -1,0 +1,27 @@
+{
+  "id": "machine-learning",
+  "title": "Machine Learning and AI",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/tracks/ml/README.md",
+      "title": "Overview"
+    },
+    {
+      "file": "content/courses/machine-learning/study-plan.md",
+      "title": "Study plan"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/ml",
+      "title": "Machine Learning & AI"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

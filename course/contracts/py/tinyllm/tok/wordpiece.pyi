@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/tok/wordpiece.pyi (L1.3)
-# chapter: ml/08-tinyllm/p01-tokenizers/03-wordpiece.md
+# chapter: content/courses/build-an-llm/p01-tokenizers/03-wordpiece.md
 #
 # BERT's tokenizer: the basic tokenizer (Hugging Face BertNormalizer and
 # BertPreTokenizer) and greedy longest-match WordPiece. Ids equal

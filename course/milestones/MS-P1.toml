@@ -1,5 +1,5 @@
 # MS-P1: the Pass 1 gate (DESIGN 5.7 milestone catalog, 7.2, 7.4).
-# Page: paths/course-p01-tracer/milestone.md
+# Page: content/courses/build-an-llm/paths/course-p01-tracer/milestone.md
 #
 # Every core layer of the tracer is yours and runs end to end: your byte bigram
 # (L0.0) and Python matrix operations (M03.1), served by your Rust engine

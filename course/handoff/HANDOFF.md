@@ -63,7 +63,7 @@ Modules that touch FFI today: `ds.04 L0.0 L10.1 L1.5 L10.6 L10.0 L10.4 L10.8 L9.
 Merge `course/design/B14-multimodal.md` into `course/DESIGN.md` (with decision 6 above and its optional C kernels standalone, no `kernels = "c"` switch). Use these defaults for its open questions: Pass 12 is core but after v1.0.0; raise the committed-fixture cap to 56 MiB; accept no cross-request batching in the encoder; WAV-only audio input for v1. Verify the licenses (SmolVLM-256M-Instruct, whisper-tiny, PD12M, LibriSpeech, Common Voice) before committing any of their assets; if a license is unclear, use a synthetic stand-in and record it. Then build all B14 modules.
 
 ### Step D: integrate
-Apply every SHARED change in `open-items.txt` that is consistent with the design and section 3. Regenerate `course/modules.tsv`. Fill `paths/course-p02` through `course-p12` and the role paths with the check column. Link chapters from track index READMEs. CI jobs per DESIGN 5.14 in `.github/workflows`. sr.yaml artifacts. Final STUDY-PLAN.md, CS-CURRICULUM.md, README.md.
+Apply every SHARED change in `open-items.txt` that is consistent with the design and section 3. Regenerate `course/modules.tsv`. Fill `paths/course-p02` through `course-p12` and the role paths with the check column. Link chapters from track index READMEs. CI jobs per DESIGN 5.14 in `.github/workflows`. sr.yaml artifacts. Final content/courses/README.md, content/courses/computer-science/README.md, README.md.
 
 ### Step E: adversarial verification and fixes
 Per layer (math; early ML; late ML; Rust; Go; ops and practices; multimodal): act as a learner and implement a few modules from the chapter alone; plant wrong implementations and confirm the tests catch them; check chapters for the six-beat template, correct math, first-principles completeness, and no em dashes. Fix every real defect.
@@ -75,7 +75,7 @@ practice/bin/ol verify course
 practice/bin/ol verify course --e2e
 (cd course/harness && uv run pytest -q)
 PATH=~/.local/share/fnm/aliases/default/bin:$PATH practice/bin/ol verify predict
-(cd site && pnpm build)   # if site/ exists on this branch
+(cd apps/web && pnpm build)   # if apps/web/ exists on this branch
 practice/bin/ol milestone <each pass gate MS-P0 .. MS-P12> --smoke
 ```
 kind is NOT installed and must not be installed: kind-only tiers run through `--smoke` and are reported as blocked.

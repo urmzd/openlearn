@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/rnn/elmo.pyi (L3.5, optional): ELMo's biLM, ScalarMix, and linear probes
-# chapter: ml/08-tinyllm/p03-recurrent/05-elmo-bilm-scalarmix-probes.md
+# chapter: content/courses/build-an-llm/p03-recurrent/05-elmo-bilm-scalarmix-probes.md
 #
 # Peters et al. (2018). Two language models read the same sentence: a forward
 # LM predicts token t + 1 from tokens 0..t, a backward LM predicts token t - 1

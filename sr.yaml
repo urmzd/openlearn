@@ -64,24 +64,46 @@ packages:
     # doesn't drift after each release (which fails the next CI uv sync).
     stage_files:
       - uv.lock
-    # The curriculum and every course/role path PDF are built by CI's "Book PDF"
+    # Each course PDF and portable pack is built by CI's "Book PDF"
     # job and downloaded into outputs/ by the release workflow before sr runs.
     # Each declared artifact must exist on disk before a tag is created.
     artifacts:
-      - outputs/supersource-curriculum.pdf
-      - outputs/supersource-course-p00-setup.pdf
-      - outputs/supersource-course-p01-tracer.pdf
-      - outputs/supersource-course-p02-foundations.pdf
-      - outputs/supersource-course-p03-tokens-and-data.pdf
-      - outputs/supersource-course-p04-sequence-models.pdf
-      - outputs/supersource-course-p05-transformer.pdf
-      - outputs/supersource-course-p06-inference-and-kernels.pdf
-      - outputs/supersource-course-p07-serving-platform.pdf
-      - outputs/supersource-course-p08-durable.pdf
-      - outputs/supersource-course-p09-capstone-training.pdf
-      - outputs/supersource-course-p10-agents.pdf
-      - outputs/supersource-course-p11-operate.pdf
-      - outputs/supersource-course-p12-multimodal.pdf
+      - outputs/openlearn-ai-platform-engineering.pdf
+      - outputs/openlearn-ai-platform-engineering.zip
+      - outputs/openlearn-algorithms.pdf
+      - outputs/openlearn-algorithms.zip
+      - outputs/openlearn-build-an-llm.pdf
+      - outputs/openlearn-build-an-llm.zip
+      - outputs/openlearn-case-studies.pdf
+      - outputs/openlearn-case-studies.zip
+      - outputs/openlearn-competitive-programming.pdf
+      - outputs/openlearn-competitive-programming.zip
+      - outputs/openlearn-computer-science.pdf
+      - outputs/openlearn-computer-science.zip
+      - outputs/openlearn-data-engineering.pdf
+      - outputs/openlearn-data-engineering.zip
+      - outputs/openlearn-diagramming.pdf
+      - outputs/openlearn-diagramming.zip
+      - outputs/openlearn-field-engineering.pdf
+      - outputs/openlearn-field-engineering.zip
+      - outputs/openlearn-infrastructure.pdf
+      - outputs/openlearn-infrastructure.zip
+      - outputs/openlearn-interview-preparation.pdf
+      - outputs/openlearn-interview-preparation.zip
+      - outputs/openlearn-machine-learning.pdf
+      - outputs/openlearn-machine-learning.zip
+      - outputs/openlearn-mathematics.pdf
+      - outputs/openlearn-mathematics.zip
+      - outputs/openlearn-programming-languages.pdf
+      - outputs/openlearn-programming-languages.zip
+      - outputs/openlearn-research.pdf
+      - outputs/openlearn-research.zip
+      - outputs/openlearn-responsible-ai.pdf
+      - outputs/openlearn-responsible-ai.zip
+      - outputs/openlearn-software-craftsmanship.pdf
+      - outputs/openlearn-software-craftsmanship.zip
+      - outputs/openlearn-systems.pdf
+      - outputs/openlearn-systems.zip
       # The desktop app, built per platform by the release workflow's app job.
       - outputs/openlearn-darwin-arm64.zip
       - outputs/openlearn-darwin-amd64.zip

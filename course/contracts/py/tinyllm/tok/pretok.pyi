@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/tok/pretok.pyi (L1.2)
-# chapter: ml/08-tinyllm/p01-tokenizers/02-byte-level-bpe.md
+# chapter: content/courses/build-an-llm/p01-tokenizers/02-byte-level-bpe.md
 #
 # The GPT-2 pre-tokenizer written over unicodedata (no regex module), and the
 # Hugging Face Digits pre-tokenizer. For every str x, "".join(f(x)) == x and

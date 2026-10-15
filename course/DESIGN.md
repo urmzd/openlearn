@@ -107,14 +107,14 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 | D20 | **Placement**: `L11.1` (mixed precision, accumulation, recompute) is core before `C1`; `L11.2` and `L11.3` optional, tensor and pipeline parallelism side quests; `L12` post-training optional after `C1` | core post-training in the agents pass (E) | `C1` needs `L11.1` to finish on a laptop; a 10M TinyStories model cannot drive a tool-calling agent, so agents use the learner's gateway serving SmolLM2-135M-Instruct (a fetched third-party model, labelled as such in the model card) on the learner's engine, or a frontier provider through the same `Provider` |
 | D21 | Prefix bloom in heartbeats dropped; routing is consistent hash with bounded loads plus queue depth | bloom-refined routing (A) | Fewer moving parts; kept as side quest `sq.prefix-bloom` |
 | D22 | **Course layout** is the harness section's `course/` tree with one `course/modules/<ID>.toml` per module and a generated `modules.tsv`; `course/ref/` mirrors the learner layout path for path | `modules.tsv` as hand-edited source (E); bundled `course/modules/<layer>/<nn>/CHAPTER.md` (C) | TOML carries smoke tests, learner-test grading, and `upgrades`; chapters belong in tracks |
-| D23 | **Chapter homes** in tracks: spine `ml/08-tinyllm/pNN-<slug>/NN-<slug>.md`; new math topics `00-precalculus`, `08-matrix-calculus-and-autodiff`, `09-numerical-methods-and-floating-point`, `10-optimization`, `11-information-theory`; ethics as new top-level track `responsible-ai/`; durable chapters in `ai-platform-engineering/05-durable-orchestration-and-workers/` | `ml/tinyllm/pNN/mNN/README.md` (A); ethics under craftsmanship (A); durable under `infrastructure/` (A) | Matches existing numbering; decision 9 calls ethics a track; decision 12 merges infra/03 into ai-platform/05 |
-| D24 | The guide (front door, system map, pass intros, milestone pages) lives in `paths/course*/` | guide in `course/` | Existing rule: a path holds its manifest, README, and material about the path |
+| D23 | **Chapter homes** in tracks: spine `ml/08-tinyllm/pNN-<slug>/NN-<slug>.md`; new math topics `00-precalculus`, `08-matrix-calculus-and-autodiff`, `09-numerical-methods-and-floating-point`, `10-optimization`, `11-information-theory`; ethics as new top-level track `content/tracks/responsible-ai/`; durable chapters in `content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/` | `ml/tinyllm/pNN/mNN/README.md` (A); ethics under craftsmanship (A); durable under `content/tracks/infrastructure/` (A) | Matches existing numbering; decision 9 calls ethics a track; decision 12 merges infra/03 into ai-platform/05 |
+| D24 | The guide (front door, system map, pass intros, milestone pages) lives in `content/courses/build-an-llm/paths/course*/` | guide in `course/` | Existing rule: a path holds its manifest, README, and material about the path |
 | D25 | **Milestones** use one namespace `MS-*`: part milestones (`MS-L0`...), component milestones (`MS-corpus`, `MS-gateway`, `MS-durable-ha`, ...), and pass gates `MS-P0` to `MS-P12` composed of them. Milestones are not module kinds | `MS-L0` only (B), `M-engine` (C), `M0`...`M11` (E), `L8.M` (D) | Keeps every check and gives passes a single gate |
 | D26 | Test `KIND` vocabulary: `unit boundary property statistical differential golden gradcheck learning conformance fault regression bench eval` | B's letter codes, C's tiers | One tag set for lint and `ol tests` |
 | D27 | Fixtures: at most 56 MiB committed (50 MiB through B13, 6 MiB for B14, D52), at most 8 MiB per file, a committed-fixture budget per authoring batch (section 9); the TinyStories slices, token streams, and tiny HF models are pinned assets fetched by `ol fetch`; maintainer generators in `course/oracle/` | 20 MB (A), 60 MB (B), 2 MiB per file (D) | Committing the corpora and tiny models alone would use the whole budget and grow history on every regeneration |
 | D28 | `ol course init` creates the learner repo (default `.scratchpad/course/`, override `OL_COURSE_HOME`); `ol export` produces the standalone repo with vendored tests | `ol export --name` as the creation step (A, E) | The learner works in a git repo from day one; export adds vendoring |
 | D29 | Practice exercises stay as standalone warm-up drills with a pointer to their course module. Hash maps consolidate: `c/02` becomes the `ds.02` baseline, the `rust/03` README row points to `ds.05` (authored fresh), `cpp/03` is archived, zig and java hash-map rows are dropped, `swiss-table/` is removed | retiring the C drills (E) | Only the C and C++ drills have references and pass CI. The Rust, Go, Python, Zig, Java, Scala, and TypeScript build directories hold a README exercise list only, so their mappings are README pointers, not code |
-| D30 | Load generator is Go (`load.01`); `ml/04-llm-systems/serving-and-load/code/loadgen.py` becomes reading | Python loadgen | Control plane is Go (decision 3) |
+| D30 | Load generator is Go (`load.01`); `content/tracks/ml/04-llm-systems/serving-and-load/code/loadgen.py` becomes reading | Python loadgen | Control plane is Go (decision 3) |
 | D31 | **Spine content without a call site stays optional.** ELMo (`L3.5`), T5 span corruption (`L6.4`), and the ALiBi part of `L7.4` are optional modules with side-quest call sites. Unigram (`L1.4`, C1 tokenizer ablation) and ELECTRA (`L6.3`, alternative classification backbone in the model zoo) are core | everything in decision 5 core | Decision 1 outranks the topic list of decision 5: a module with no call site in the final system is optional |
 | D32 | **The tracer is byte-level**: vocabulary of 256 ids equal to UTF-8 bytes, no `tokenizer.json`; `config.json` declares `tl_tokenizer = "bytes"`. Every engine keeps serving `tl_arch = bigram` with the byte tokenizer, so the tracer smoke stays green for the whole course | char tokenizer in Pass 1 (B); BPE with zero merges (critic) | No P1 tokenizer module is needed and the Rust tracer needs no JSON parser |
 | D33 | **Usage-policy classifier** = a linear head (L6.5 `SequenceClassifier(pool='mean')` fitted with M07.7 IRLS) over the learner engine's `/v1/embeddings`, exported as `formats/linear-head.schema.json` and evaluated in Go by `gw.08` | Python-served BERT classifier; new engine `/v1/classify` | Python never serves HTTP (D9); no new engine endpoint; Go evaluates a dot product |
@@ -122,7 +122,7 @@ The five source sections disagreed on ids, paths, and some architecture. Each li
 | D35 | **Course tests assert through frozen helpers** (`course/tests/_lib`, `ol_test.h`, `tl-contracts::testing`, `contracts/go/testing`) and construct RNGs from the frozen PCG32 there. The learner's own `gradcheck`, tolerance helpers, and PCG32 decide only their own modules' verdicts | course tests calling the learner's `gradcheck` and `tolerance` through the overlay | A gradcheck that always returns ok would otherwise pass every later test |
 | D36 | **Model zoo**: every `tl_arch` family loads through the checkpoint contract and is evaluated by `L6.7`'s zoo suite, which the `EvalSuite` workflow (`dur.11`) runs. This is the call site of `L2.*`, `L3.*`, `L4.*`, `L5.5`, and `L6.1` to `L6.3` | "referenced by a milestone step" as a call site | Decision 1: a real call site in the final system, not a milestone |
 | D37 | **Engine scope**: speculative decoding (`L10.8`) and tool calls with constrained JSON decoding (`L10.9`) are core engine modules; multi-LoRA serving is `sq.multi-lora` | spec decoding only in Python; multi-LoRA as optional `L10.8` | `L8.6` and `L8.7` need a production call site; MS-agent needs `tool_calls` from the learner's engine |
-| D38 | **Language and tool primers** `lang.01` to `lang.13` precede the first module that uses each language or tool; chapters in `software-craftsmanship/12-language-and-tool-primers/` | assume prior fluency | A learner starting from high-school algebra meets C, Rust, Go, Docker, and Kubernetes in Pass 1 |
+| D38 | **Language and tool primers** `lang.01` to `lang.13` precede the first module that uses each language or tool; chapters in `content/tracks/software-craftsmanship/12-language-and-tool-primers/` | assume prior fluency | A learner starting from high-school algebra meets C, Rust, Go, Docker, and Kubernetes in Pass 1 |
 | D39 | **Optional C modules stand alone**: `L9.1` to `L9.6`, `ds.01` to `ds.04`, `rt.02` to `rt.04`, and `M09.5` to `M09.7` are optional, skippable, and each has a C test binary. The Python reference generates parity fixtures | A runtime switch that links C kernels into Python or Rust | Optional C depth has no FFI and no pass-gate dependency |
 | D40 | **Retired FFI modules**: retire `rt.01`, `L9.7`, `tl-py`, and `tl-sys`. Rust owns serving with `candle-core` and `candle-nn`; Rust's `tl-tok` tokenizer serves the engine, while Python keeps its own BPE | PyO3 tokenizer bridge, ctypes backend, C kernel backend switch | Production engine remains Rust and all cross-language seams use process or file contracts |
 | D41 | **Kernels are optional in Pass 12.** Convolution, resize, patch embedding, FFT, STFT, and mel are numpy reference code in `M12`, `L13`, and `L14` (core). C versions are optional standalone exercises `L13.8` (conv2d via im2col, conv1d stem, patch embed), `L13.9` (resize, rescale and normalize), and `L14.6` (FFT, STFT power, mel, Whisper log), each with its own C test binary and parity against fixture files generated by the Python reference. There is no engine backend switch and no `tl-sys`; the B14 draft's `L15.8` (C backend for the engine) is retired | mandatory C kernels; an engine switch `[engine.mm] kernels = "c"` through `tl-sys` (B14 draft) | Kernels teach the memory layout and FLOP story behind conv and STFT, and D39 already makes that depth optional and standalone; a switch would be FFI (D8) |
@@ -1344,8 +1344,8 @@ Everything runs on one kind cluster. Every hop carries `traceparent`, and every 
 
 1. **Machinery goes in `course/`.** Contracts, hidden references, tests, mutants, solve keys, milestone and drill specs, fixtures, the harness, and the fixture oracle.
 2. **Chapters go in the tracks.** A chapter is a file inside the topic directory that owns its concept. A new topic directory is created only when no existing topic owns the concept. Tracks stay top level.
-3. **The guide goes in `paths/course*/`.** The front door, the system map, pass intros, and milestone pages.
-4. **Only `course/contracts/` is published** from `course/`, so chapter links to contracts resolve on the site. The rest of `course/` (references, mutants, solve keys, tests, fixtures, harness) and all of `archive/` are never published to the site or the book (`SKIP` in `site/scripts/sync-content.mjs` keeps `course/contracts/`; `scripts/assemble_book.py` excludes `course/` and `archive/` and renders contract links as repository URLs).
+3. **The guide goes in `content/courses/build-an-llm/paths/course*/`.** The front door, the system map, pass intros, and milestone pages.
+4. **Only `course/contracts/` is published** from `course/`, so chapter links to contracts resolve on the site. The rest of `course/` (references, mutants, solve keys, tests, fixtures, harness) and all of `archive/` are never published to the site or the book (`SKIP` in `apps/web/scripts/sync-content.mjs` keeps `course/contracts/`; `scripts/assemble_book.py` excludes `course/` and `archive/` and renders contract links as repository URLs).
 
 ### 3.2 `course/` tree
 
@@ -1401,39 +1401,39 @@ course/
 |---|---|
 | Math `M00` to `M11` | `math/NN-<slug>/NN-<slug>.md`; new topics `00-precalculus`, `08-matrix-calculus-and-autodiff`, `09-numerical-methods-and-floating-point`, `10-optimization`, `11-information-theory` (moved from `information-theory/`) |
 | Spine `L0` to `L11` | `ml/08-tinyllm/pNN-<slug>/NN-<slug>.md` plus a part `README.md` (intro, milestone pointer, chapters table) |
-| `L12` | `ml/08-tinyllm/p12-post-training/` |
-| `C1`, `C2` | `ml/08-tinyllm/capstones/{01-tinystories,02-post-trained}.md` |
+| `L12` | `content/courses/build-an-llm/p12-post-training/` |
+| `C1`, `C2` | `content/courses/build-an-llm/capstones/{01-tinystories,02-post-trained}.md` |
 | `lang.*` | `software-craftsmanship/12-language-and-tool-primers/NN-<slug>.md` (new) |
-| optional `rt.02` and `rt.03` | `ml/08-tinyllm/p09-kernels/` |
-| `rt.04` | `ml/08-tinyllm/p08-inference/` |
-| `load.*` | `ml/08-tinyllm/p10-serving/` |
-| `ds.*` | `algorithms/16-systems-data-structures/` |
-| `data.*` | `data-engineering/05-corpus-pipeline/` |
-| `dur.*` | `ai-platform-engineering/05-durable-orchestration-and-workers/` (absorbs `infrastructure/03-distributed-workers`) |
-| `gw.00`, `gw.01`, `gw.04`, `gw.05` | `ai-platform-engineering/12-gateway/` (new) |
-| `gw.02`, `gw.03` | `ai-platform-engineering/08-authorization-and-access-control/` |
-| `gw.06` | `ai-platform-engineering/04-distributed-data-and-caching/` |
-| `gw.07`, `gw.08` | `ai-platform-engineering/12-gateway/` |
-| `ag.01` to `ag.05` | `ai-platform-engineering/13-agent-sdk/` (new) |
-| `ag.06` to `ag.08` | `ai-platform-engineering/07-retrieval-and-rag/` |
-| `ag.09` to `ag.12` | `ai-platform-engineering/09-llm-evaluation/` |
-| `dep.*` | `infrastructure/01-containers-kubernetes/` |
-| `obs.*` | `systems/04-observability/` |
-| `ops.*` | `systems/05-incident-response-and-chaos/` (new) |
-| `craft.*` | `software-craftsmanship/` (testing ladder in `03-testing-mentality/`; new `05` to `11`, see 8.2) |
+| optional `rt.02` and `rt.03` | `content/courses/build-an-llm/p09-kernels/` |
+| `rt.04` | `content/courses/build-an-llm/p08-inference/` |
+| `load.*` | `content/courses/build-an-llm/p10-serving/` |
+| `ds.*` | `content/tracks/algorithms/16-systems-data-structures/` |
+| `data.*` | `content/tracks/data-engineering/05-corpus-pipeline/` |
+| `dur.*` | `content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/` (absorbs `infrastructure/03-distributed-workers`) |
+| `gw.00`, `gw.01`, `gw.04`, `gw.05` | `content/tracks/ai-platform-engineering/12-gateway/` (new) |
+| `gw.02`, `gw.03` | `content/tracks/ai-platform-engineering/08-authorization-and-access-control/` |
+| `gw.06` | `content/tracks/ai-platform-engineering/04-distributed-data-and-caching/` |
+| `gw.07`, `gw.08` | `content/tracks/ai-platform-engineering/12-gateway/` |
+| `ag.01` to `ag.05` | `content/tracks/ai-platform-engineering/13-agent-sdk/` (new) |
+| `ag.06` to `ag.08` | `content/tracks/ai-platform-engineering/07-retrieval-and-rag/` |
+| `ag.09` to `ag.12` | `content/tracks/ai-platform-engineering/09-llm-evaluation/` |
+| `dep.*` | `content/tracks/infrastructure/01-containers-kubernetes/` |
+| `obs.*` | `content/tracks/systems/04-observability/` |
+| `ops.*` | `content/tracks/systems/05-incident-response-and-chaos/` (new) |
+| `craft.*` | `content/tracks/software-craftsmanship/` (testing ladder in `03-testing-mentality/`; new `05` to `11`, see 8.2) |
 | `ethics.*` | `responsible-ai/0N-*/` (new track) |
-| `review.*` | `systems/01-system-design/` |
-| `field.*` | `field-engineering/08-mock-engagement/` (new); field.06 and field.07 apply `field-engineering/06` and `07` |
-| `iv.01` | `interviews/defend-your-system/` (new) |
+| `review.*` | `content/tracks/systems/01-system-design/` |
+| `field.*` | `content/tracks/field-engineering/08-mock-engagement/` (new); field.06 and field.07 apply `field-engineering/06` and `07` |
+| `iv.01` | `content/interviews/defend-your-system/` (new) |
 | `M12` (Pass 12) | `math/12-signals-and-images/NN-<slug>.md` (new topic: no existing topic owns sampling, the DFT, or interpolation) |
-| `L13`, `L14`, `L15` (Pass 12) | `ml/08-tinyllm/p13-vision/`, `p14-speech/`, `p15-multimodal-serving/` |
+| `L13`, `L14`, `L15` (Pass 12) | `content/courses/build-an-llm/p13-vision/`, `p14-speech/`, `p15-multimodal-serving/` |
 | optional `L13.8`, `L13.9`, `L14.6` | their part directories (`p13-vision/`, `p14-speech/`) |
-| `ds.10`, `data.10` to `data.13`, `dur.13`, `gw.09` to `gw.11`, `load.03` | the homes of their areas above (`gw.09` to `gw.11` in `ai-platform-engineering/12-gateway/`) |
-| `dep.08`, `obs.06`, `ops.13`, `ops.14` | `infrastructure/01-containers-kubernetes/`, `systems/04-observability/`, `systems/05-incident-response-and-chaos/` |
-| `ethics.07`, `ethics.08` | `responsible-ai/04-bias-and-safety-evals/`, `responsible-ai/02-privacy-and-pii/` |
-| `craft.24`, `review.04` | `software-craftsmanship/11-security/`, `systems/01-system-design/` |
-| `lang.12`, `lang.13` | `software-craftsmanship/12-language-and-tool-primers/{12-media-formats,13-candle-tensors}.md` |
-| Guide | `paths/course/` (README, `SYSTEM.md`, `path.tsv`), `paths/course-p00-setup/` to `paths/course-p12-multimodal/` (pass README, `path.tsv`, `milestone.md`) |
+| `ds.10`, `data.10` to `data.13`, `dur.13`, `gw.09` to `gw.11`, `load.03` | the homes of their areas above (`gw.09` to `gw.11` in `content/tracks/ai-platform-engineering/12-gateway/`) |
+| `dep.08`, `obs.06`, `ops.13`, `ops.14` | `content/tracks/infrastructure/01-containers-kubernetes/`, `content/tracks/systems/04-observability/`, `content/tracks/systems/05-incident-response-and-chaos/` |
+| `ethics.07`, `ethics.08` | `content/tracks/responsible-ai/04-bias-and-safety-evals/`, `content/tracks/responsible-ai/02-privacy-and-pii/` |
+| `craft.24`, `review.04` | `content/tracks/software-craftsmanship/11-security/`, `content/tracks/systems/01-system-design/` |
+| `lang.12`, `lang.13` | `content/tracks/software-craftsmanship/12-language-and-tool-primers/{12-media-formats,13-candle-tensors}.md` |
+| Guide | `content/courses/build-an-llm/paths/course/` (README, `SYSTEM.md`, `path.tsv`), `content/courses/build-an-llm/paths/course-p00-setup/` to `content/courses/build-an-llm/paths/course-p12-multimodal/` (pass README, `path.tsv`, `milestone.md`) |
 
 ### 3.4 Registry: `course/modules/<ID>.toml`
 
@@ -1445,7 +1445,7 @@ title     = "Paged KV cache"
 kind      = "build"                 # build | solve | proof | practice | drill | side (milestones live in course/milestones/)
 lang      = ["python"]              # one or more of python | c | rust | go | cuda | ops | docs | none
 pass      = 6                       # course pass that first teaches it (7.2)
-chapter   = "ml/08-tinyllm/p08-inference/03-paged-kv-cache.md"
+chapter   = "content/courses/build-an-llm/p08-inference/03-paged-kv-cache.md"
 contract  = ["contracts/py/tinyllm/infer/paged.pyi"]
 deps      = ["L8.2", "rt.04"]       # module ids whose code this module's units or course tests call
 reading   = []                      # prerequisites whose code is not called: module ids (concepts, solve sets, ports) or track paths
@@ -1525,7 +1525,7 @@ Harness regex: `^(M[0-9]{2}\.[0-9]{1,2}|L[0-9]{1,2}\.[0-9]|C[12]|S-M[0-9]{2}[a-z
 
 ### 4.1 Math catalog
 
-#### M00 Precalculus (new: `math/00-precalculus/`)
+#### M00 Precalculus (new: `content/tracks/math/00-precalculus/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1549,7 +1549,7 @@ def horner(coeffs: Sequence[float], x: NDArray) -> NDArray
 def quadratic_roots(a: float, b: float, c: float) -> tuple[float, float]   # no cancellation
 ```
 
-#### M01 Calculus 1 (`math/01-calculus-1/`)
+#### M01 Calculus 1 (`content/tracks/math/01-calculus-1/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1569,7 +1569,7 @@ def trapezoid(y: NDArray, x: NDArray) -> float
 def simpson(f: Callable[[NDArray], NDArray], a: float, b: float, n: int) -> float
 ```
 
-#### M02 Calculus 2 (`math/02-calculus-2/`)
+#### M02 Calculus 2 (`content/tracks/math/02-calculus-2/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1589,7 +1589,7 @@ class EMA:
 def euler(f: Callable[[float, NDArray], NDArray], y0: NDArray, t0: float, t1: float, n: int) -> NDArray
 ```
 
-#### M03 Linear Algebra (`math/03-linear-algebra/`)
+#### M03 Linear Algebra (`content/tracks/math/03-linear-algebra/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1614,7 +1614,7 @@ def cosine_sim(a: NDArray, b: NDArray, axis: int = -1, eps: float = 1e-8) -> NDA
 def topk_cosine(query: NDArray, matrix: NDArray, k: int) -> tuple[NDArray, NDArray]
 ```
 
-#### M04 Calculus 3 (`math/04-calculus-3/`)
+#### M04 Calculus 3 (`content/tracks/math/04-calculus-3/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1635,7 +1635,7 @@ def vjp_numeric(f, x: NDArray, u: NDArray) -> NDArray
 def jvp_numeric(f, x: NDArray, v: NDArray) -> NDArray
 ```
 
-#### M05 Discrete Math 1 (`math/05-discrete-math-1/`)
+#### M05 Discrete Math 1 (`content/tracks/math/05-discrete-math-1/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1658,7 +1658,7 @@ def bytes_to_unicode() -> dict[int, str]
 def unicode_to_bytes() -> dict[str, int]
 ```
 
-#### M06 Discrete Math 2 (`math/06-discrete-math-2/`)
+#### M06 Discrete Math 2 (`content/tracks/math/06-discrete-math-2/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1685,7 +1685,7 @@ def fnv1a64(data: bytes, h: int = 0xcbf29ce484222325) -> int
 def universal_hash(x: int, a: int, b: int, p: int, m: int) -> int
 ```
 
-#### M07 Probability and Statistics (`math/07-probability-statistics/`)
+#### M07 Probability and Statistics (`content/tracks/math/07-probability-statistics/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1726,7 +1726,7 @@ def roc_auc(scores: NDArray, labels: NDArray) -> float
 def ece(probs: NDArray, labels: NDArray, n_bins: int = 15) -> float
 ```
 
-#### M08 Matrix Calculus and Autodiff (new: `math/08-matrix-calculus-and-autodiff/`)
+#### M08 Matrix Calculus and Autodiff (new: `content/tracks/math/08-matrix-calculus-and-autodiff/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1754,7 +1754,7 @@ def hvp_fd(grad_fn: Callable[[NDArray], NDArray], x: NDArray, v: NDArray, eps: f
 def checkpoint_schedule(n_layers: int, mem_budget_layers: int) -> list[int]   # segment boundaries (sqrt(n))
 ```
 
-#### M09 Numerical Methods and Floating Point (new: `math/09-numerical-methods-and-floating-point/`)
+#### M09 Numerical Methods and Floating Point (new: `content/tracks/math/09-numerical-methods-and-floating-point/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1786,7 +1786,7 @@ def mx_quantize(x: NDArray, block: int = 32, elem: Literal['fp4_e2m1','fp8_e4m3'
 def mx_dequantize(codes: NDArray, scales_e8m0: NDArray, block: int, elem: str) -> NDArray
 ```
 
-#### M10 Optimization (new: `math/10-optimization/`)
+#### M10 Optimization (new: `content/tracks/math/10-optimization/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1815,7 +1815,7 @@ def newton_schulz5(G: NDArray, steps: int = 5, coeffs=(3.4445, -4.7750, 2.0315))
 class Muon(Optimizer):  def __init__(self, params_2d, lr: float, momentum: float = 0.95, nesterov: bool = True, adamw_params=(), adamw_lr: float = 3e-4)
 ```
 
-#### M11 Information Theory (moved: `information-theory/` to `math/11-information-theory/`)
+#### M11 Information Theory (moved: `information-theory/` to `content/tracks/math/11-information-theory/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -1844,13 +1844,13 @@ def pmi_matrix(cooc: NDArray, cds_alpha: float = 0.75) -> NDArray
 def ppmi(cooc: NDArray, cds_alpha: float = 0.75) -> NDArray
 ```
 
-#### M12 Signals and images (new: `math/12-signals-and-images/`, Pass 12)
+#### M12 Signals and images (new: `content/tracks/math/12-signals-and-images/`, Pass 12)
 
 These are the numpy reference semantics for everything in L13 to L15. Images are `uint8[H, W, C]` (HWC, RGB) until normalized; `pixel_values` are `float32[N, C, H, W]`.
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
-| M12.1 | Convolution as a linear map: cross-correlation vs convolution, output size with padding, stride, dilation, groups; doubly block Toeplitz matrix; im2col and its adjoint col2im; the gradient of a conv is a conv | core | Py | `tinyllm/sig/conv.py` | M03.2, M03.3, M08.2, reading: `ml/06-neural-architectures/code/conv2d.c` | L13.1 (im2col, col2im), L14.2 (`conv_out_size` for the stem) | O (torch `conv1d`/`conv2d` and `F.unfold`/`F.fold` incl. groups and dilation), E (direct == im2col @ W == `conv_matrix` @ vec), I (adjoint: `<im2col x, y> == <x, col2im y>`; flipping the kernel turns correlation into convolution) |
+| M12.1 | Convolution as a linear map: cross-correlation vs convolution, output size with padding, stride, dilation, groups; doubly block Toeplitz matrix; im2col and its adjoint col2im; the gradient of a conv is a conv | core | Py | `tinyllm/sig/conv.py` | M03.2, M03.3, M08.2, reading: `content/tracks/ml/06-neural-architectures/code/conv2d.c` | L13.1 (im2col, col2im), L14.2 (`conv_out_size` for the stem) | O (torch `conv1d`/`conv2d` and `F.unfold`/`F.fold` incl. groups and dilation), E (direct == im2col @ W == `conv_matrix` @ vec), I (adjoint: `<im2col x, y> == <x, col2im y>`; flipping the kernel turns correlation into convolution) |
 | M12.2 | Image tensors and layouts: NCHW, NHWC, channels-last strides, contiguity, u8 to f32 rescale and normalize, PIL grayscale, patchify as a reshape | core | Py | `tinyllm/image/layout.py` | M03.1, lang.01 | L13.3 (patchify), L13.6 (rescale_normalize), data.10 (grayscale for hashes) | U (strides table, hand example 2x3x4), O (PIL `convert("L")` on fixture pixels, exact), I (layout roundtrip; `unpatchify(patchify(x)) == x`) |
 | M12.3 | Resampling and interpolation: sampling theorem in 2D, nearest, bilinear, bicubic (a = -0.5 vs -0.75), Lanczos3, antialias as a low-pass, separable passes and PIL rounding; 1D band-limited audio resampling | core | Py | `tinyllm/sig/resample.py` | M12.2, M02.1, reading: M12.5 (aliasing, as concept) | L13.6 (resize), L13.3 (`interpolate_pos_embed`), L14.1 (`resample_audio`), data.10 (hash thumbnails) | O (PIL `resize` per kernel: at most 1 LSB on 100% of pixels and exact on >= 99%; torchvision antialias float mode atol 1e-4; torchaudio `resample` atol 1e-5), I (weights sum to 1; upsample then downsample of a band-limited signal within bound; identity at equal size) |
 | M12.4 | DFT and FFT: the DFT matrix, unitarity, convolution theorem, radix-2 Cooley-Tukey, mixed radix for `n = 400`, real FFT packing, DCT-II via FFT | core | Py | `tinyllm/sig/fft.py` | M00.2 (Euler), M03.3, M09.3 | M12.5 (stft), data.10 (`dct2_ortho` in pHash) | O (numpy `fft` and scipy `dct(norm='ortho')` within the frozen f64 bound), E (FFT == `dft_matrix @ x`; `fft_convolve` == `np.convolve`), I (Parseval; `ifft(fft(x)) == x`; an unsupported prime factor raises) |
@@ -1963,7 +1963,7 @@ def save_safetensors(path: str, tensors: dict[str, NDArray], meta: dict[str, str
 
 Tracer sampling is greedy or seeded but not yet parity-checked. `L0.0` may use `numpy.random.default_rng(seed)`; it is the only lint exemption to the RNG rule, and it expires at MS-P2: `L0.5` takes over `bigram.py` (`upgrades`), adds the autograd-trained `BigramLogits` model, and switches its sampler to the learner's PCG32. The tracer role takes `--model-dir --port` (no TOML parser in a std-only crate); `--config` arrives with `L10.5`.
 
-#### L0 Autograd and foundations (`ml/08-tinyllm/p00-foundations/`)
+#### L0 Autograd and foundations (`content/courses/build-an-llm/p00-foundations/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2026,7 +2026,7 @@ def gradcheck_all(rtol: float = 1e-5) -> dict[str, "GradcheckReport"]  # L0.2, e
 3. `{tinyllm} train mlp --data {fixture:small-corpora/digits.npz} --hidden 64 --epochs 30 --seed 0 --ckpt {out}` gives `{"test_acc": >= 0.95}`.
 4. Kill and resume: `{tinyllm} train bigram --data {fixture:small-corpora/tinyshakespeare.bin} --max-steps 100` then `--resume` gives a final loss **bitwise equal** to the uninterrupted run, token cursor included. Reference time under 60 s.
 
-#### L1 Tokenizers (`ml/08-tinyllm/p01-tokenizers/`)
+#### L1 Tokenizers (`content/courses/build-an-llm/p01-tokenizers/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2096,7 +2096,7 @@ pub struct StreamDecoder; impl StreamDecoder { pub fn push(&mut self, id: u32) -
 
 Pass: `{"exact_match": 1.0, "bytes_per_token": ...}`; `rust_speedup >= 20` is checked only by the local perf step.
 
-#### L2 Statistical language models (`ml/08-tinyllm/p02-statistical-lm/`)
+#### L2 Statistical language models (`content/courses/build-an-llm/p02-statistical-lm/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2126,7 +2126,7 @@ def ppmi_svd_embeddings(cooc: NDArray, dim: int) -> NDArray
 
 **MS-L2.** `{tinyllm} lm train ngram --n 4 --train {asset:course-corpora/ts-train.bin} --out {out}/kn`, `{tinyllm} eval --model {out}/kn --data {asset:course-corpora/ts-val.bin}`, `{tinyllm} lm train nplm ...`, then `{tinyllm} generate --model {out}/nplm --prompt "Once upon a time" --seed 7 --max-tokens 40` twice. Pass: `ppl_kn4` within 0.5% of the reference; `ppl_nplm` at the calibrated threshold and below the bigram; generation identical across the two runs; both report `bpb` (M00.1 `bits_per_byte`). Reference time under 3 min. The NPLM checkpoint (`tl_arch = "nplm"`) runs through `{tinyllm}` and the L6.7 zoo; the Rust engine keeps serving the bigram until L10.1 (D32).
 
-#### L3 Recurrent networks (`ml/08-tinyllm/p03-recurrent/`)
+#### L3 Recurrent networks (`content/courses/build-an-llm/p03-recurrent/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2156,7 +2156,7 @@ def train_tbptt(model: RNNLM, stream: NDArray, k: int, batch: int, opt: Optimize
 
 **MS-L3.** (1) `{tinyllm} train rnnlm --cell {rnn,lstm,gru} --data {fixture:small-corpora/tinyshakespeare.txt} --steps 3000 --seed 0` for each cell emits `{"val_bpc": ...}`. Pass: LSTM and GRU at the calibrated threshold, RNN bpc > LSTM bpc (ordering asserted), and `{tinyllm} generate` samples. (2) `{tinyllm} train rnnlm --cell lstm --data {asset:course-corpora/ts-train.bin} --steps 1500 --seed 0`, then `{tinyllm} eval --model {out}/lstm-ts --data {asset:course-corpora/ts-val.bin}`: its `bpb` is below the MS-L2 NPLM's `bpb` on the same file (both through M00.1 `bits_per_byte`, so the units match). Reference time under 10 min; the `--smoke` variant runs 300 steps.
 
-#### L4 Attention origins (`ml/08-tinyllm/p04-attention-origins/`)
+#### L4 Attention origins (`content/courses/build-an-llm/p04-attention-origins/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2188,7 +2188,7 @@ def chrf(hyps, refs, n: int = 6, beta: float = 2.0) -> float
 
 **MS-L4.** `{tinyllm} train seq2seq --task {fixture:small-corpora/dates.tsv} --attn {none,bahdanau,luong} --out {out}/<attn>`, then `{tinyllm} translate --model {out}/<attn> --beam 5 --in {fixture:small-corpora/dates-test.txt}`. Pass: `em_bahdanau >= 0.97` and `em_luong >= 0.97`; `em_none` lower by at least 0.1 on the long-input bucket (that gap is the lesson); beam 5 beats greedy. Under 10 min.
 
-#### L5 Transformer 2017 (`ml/08-tinyllm/p05-transformer-2017/`)
+#### L5 Transformer 2017 (`content/courses/build-an-llm/p05-transformer-2017/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2222,7 +2222,7 @@ class Transformer(Module):
 
 **MS-L5.** (1) `{tinyllm} train transformer --task {fixture:small-corpora/add5.tsv} --cfg {fixture:configs/xfmr-small.json}`, then `{tinyllm} translate --beam 4`: `{"em_transformer": >= 0.98}`, with `em_seq2seq_luong` reported from the L4 model on the same task. (2) `--norm post --warmup 0` logs `{"post_ln_no_warmup_diverged": true}` and the same run with `--norm pre` (taught in L5.5) converges, which motivates the pre-norm default of Part 7.
 
-#### L6 Objectives and adaptation (`ml/08-tinyllm/p06-objectives/`)
+#### L6 Objectives and adaptation (`content/courses/build-an-llm/p06-objectives/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2271,7 +2271,7 @@ def run_zoo(manifest: str, rng) -> list[Result]                        # every f
 
 **MS-L6.** (1) `{tinyllm} train gpt --cfg {fixture:configs/gpt-tiny.json} --data {asset:course-corpora/ts-2m.bin} --steps 2000`: `val_loss` at the calibrated threshold. (2) `{tinyllm} train bert ...` and `{tinyllm} train electra ...`, then `{tinyllm} finetune classify --base {out}/{bert,electra} --lora r=8 --data {fixture:small-corpora/sst2-2k}`: `acc` at the calibrated threshold, `trainable_frac < 0.05`. (3) `{tinyllm} eval ppl --model {out}/gpt` reports a CI. (4) `{tinyllm} eval --suite zoo --manifest {out}/zoo.json` reports one row per family trained so far. Reference budget 20 min; the `--smoke` variant uses 10% of the steps.
 
-#### L7 Modern decoder block (`ml/08-tinyllm/p07-modern-block/`)
+#### L7 Modern decoder block (`content/courses/build-an-llm/p07-modern-block/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2332,7 +2332,7 @@ def hf_download(repo_id: str, filenames: Sequence[str], cache_dir: str, revision
 
 **MS-L7.** (1) `{tinyllm} pull HuggingFaceTB/SmolLM2-135M` with the learner's downloader. (2) `{tinyllm} logits --model {models}/SmolLM2-135M --prompts {fixture:smollm2-parity/prompts.jsonl} --out {out}/logits.npz`: last-position logits vs HF fp32 max abs <= 1e-3 and identical top-5. (3) `{tinyllm} generate --model ... --greedy --max-tokens 32` is token-exact against HF greedy on 8 prompts. (4) `{tinyllm} info --model ...` reports `params` equal to HF `num_parameters()`. Steps 1 to 4 run nightly in CI; PR CI runs the same steps on `{asset:tiny-hf-models/tiny-llama-2l}`. Greedy comparisons use oracle prompts whose top-2 logit margin is at least 1e-3 at every step (5.7 near-tie rule).
 
-#### L8 Inference (`ml/08-tinyllm/p08-inference/`)
+#### L8 Inference (`content/courses/build-an-llm/p08-inference/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2402,7 +2402,7 @@ impl RadixCache {
 
 **MS-L8** (SmolLM2-135M; `tiny-llama-2l` in PR CI). (1) `{tinyllm} generate --cache {none,contiguous} --greedy --kv-dtype f16`: token-identical under the near-tie rule (the optional L8.3 paged cache is checked by its own course tests, not here). (2) `{tinyllm} eval ppl --quant {int8,q4_g32,fp8_e4m3} --data {asset:course-corpora/wiki-mini.txt}`: ppl increase <= reference degradation + 1 point per scheme (int4 within 5%). (3) `{tinyllm} generate --spec ngram --k 4 --greedy`: token-identical output, `acceptance_rate` reported. (4) `{tinyllm} bench decode --tokens 256` reports `cache_speedup` (a `perf` step, `ci = "local"`, bound `>= 5`). (5) the L8.4 course tests pass from `cargo test`.
 
-#### L9 Optional kernels in C (`ml/08-tinyllm/p09-kernels/`)
+#### L9 Optional kernels in C (`content/courses/build-an-llm/p09-kernels/`)
 
 L9.1 to L9.6 are optional, skippable standalone C exercises. Each builds its own C test binary and checks parity against fixture files generated by the Python reference. No C library is loaded into Python or linked into Rust, and no core pass or milestone depends on these modules. C build details are in 5.4. Runtime exercises `rt.02` to `rt.04` are catalogued in 4.4.
 
@@ -2420,7 +2420,7 @@ L9.1 to L9.6 are optional, skippable standalone C exercises. Each builds its own
 
 **Optional L9 check.** A learner may run standalone C test binaries for L9.1 to L9.6 and review fixture parity. This check is local enrichment only; no pass gate or core milestone depends on it.
 
-#### L10 Serving (`ml/08-tinyllm/p10-serving/`, Rust)
+#### L10 Serving (`content/courses/build-an-llm/p10-serving/`, Rust)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2471,7 +2471,7 @@ impl Engine {                                               // composes runner +
 
 **MS-L10.** The engine starts from the learner's `[entry].engine`. `ol milestone MS-L10` checks: (1) `ol conform openapi:v1 --target engine` 100%; (2) seeded determinism across two runs of the engine, `ol parity sampler` (Rust and Python sampler equal on fixture logits), and the engine's **greedy** stream equals `{tinyllm} generate --greedy` under the near-tie rule; (3) 64 concurrent requests from the learner's loadgen complete with `p50_ttft_ms` and `p50_tpot_ms` reported and KV at baseline afterwards; `throughput_vs_sequential >= 3` is a separate `perf` step (`ci = "local"`); (4) disconnect mid-stream aborts and frees blocks; (5) disaggregated mode (`role=prefill` + two `role=decode`, ports allocated by the runner) passes the conformance subset and survives a transfer reset (the `disagg` matcher, 5.7); (6) with `speculative.draft = "prompt_lookup"`, greedy output is unchanged (the `greedy-equal` matcher across `engine` and `engine-spec`); (7) a `tools` request to `{asset:smollm2-135m-instruct}` returns schema-valid `tool_calls` (nightly; PR CI uses `tiny-llama-2l-1k`, the weights of `tiny-llama-2l` with a 1024-position context so the tool schema prompt fits, with a fixture chat template, where the constraint alone guarantees validity).
 
-#### L11 Training at scale (`ml/08-tinyllm/p11-training-at-scale/`)
+#### L11 Training at scale (`content/courses/build-an-llm/p11-training-at-scale/`)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2479,7 +2479,7 @@ impl Engine {                                               // composes runner +
 | L11.2 | Collectives over processes (ring all-reduce over shared memory) | optional | Py | `tinyllm/dist/comm.py` | M05.1 | L11.3; multi-process `TrainRun` | E (== numpy sum), I (bytes moved = 2(p-1)/p · n) |
 | L11.3 | DDP and ZeRO-1/2/3 | optional | Py | `tinyllm/dist/zero.py` | L11.2, M10.3 | C1 `--world 4` option | E (params after N steps == single process within 1e-6), I (per-rank memory about 1/p of the M05.1 plan) |
 
-Tensor parallelism (Megatron column/row) and the 1F1B pipeline schedule are side quests `sq.tensor-parallel` and `sq.pipeline-parallel` (no call site on one laptop); `ml/04-llm-systems/diagrams/parallelism.d2` is their figure.
+Tensor parallelism (Megatron column/row) and the 1F1B pipeline schedule are side quests `sq.tensor-parallel` and `sq.pipeline-parallel` (no call site on one laptop); `content/tracks/ml/04-llm-systems/diagrams/parallelism.d2` is their figure.
 
 ```python
 @contextmanager
@@ -2542,7 +2542,7 @@ def contains_required_words(story: str, words: Sequence[str]) -> float
 
 **MS-C2** (optional). `{tinyllm} post sft --base {ckpt} --data {fixture:post/ts-instruct.jsonl}`, `{tinyllm} post grpo --reward required_words --rollout-url {engine.api_base}`, then serve the result as `tinystories-instruct` through the same gateway. Pass: held-out reward >= base + 0.2, confirmed by a paired permutation test p < 0.05 run through the learner's Go A/B experiment runner (ag.12).
 
-#### L13 Vision (`ml/08-tinyllm/p13-vision/`, Python, Pass 12)
+#### L13 Vision (`content/courses/build-an-llm/p13-vision/`, Python, Pass 12)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2553,7 +2553,7 @@ def contains_required_words(story: str, words: Sequence[str]) -> float
 | L13.5 | Contrastive image-text: CLIP symmetric InfoNCE with learned temperature (clamp at 100), SigLIP sigmoid loss with learned t and b (init log 10 and -10), dual encoder with a tiny text tower, zero-shot classifiers from prompt templates | core | Py | `tinyllm/vision/contrastive.py` | L13.3, L5.3, M11.1, L0.3 | data.10 (CLIP-score filter), ethics.07 (zero-shot disparity probe) | G, O (HF `clip_loss` and `SiglipModel` loss on fixture embeddings), I (CLIP loss symmetric in modalities; SigLIP defined at batch 1; temperature gradient sign), L (tiny dual encoder on `mm-shapes`, 600 steps: zero-shot accuracy over 24 color-shape classes >= calibrated threshold) |
 | L13.6 | Image preprocessing to the spec: decode with Pillow (D46), EXIF orientation 1 to 8 applied by the learner from the parsed tag, RGB conversion, resize, splitting, rescale, normalize, `preprocessor_config.json` loading, media hash | core | Py | `tinyllm/vision/preprocess.py` | M12.2, M12.3, L13.4, M06.3 (FNV-1a), lang.12 | L13.7, data.10 (decode, orientation); re-implemented by L15.1 (Rust) | O (HF `CLIPImageProcessor`, `SiglipImageProcessor`, `Idefics3ImageProcessor` from pre-decoded `.npy` pixels: u8 resized pixels within 1 LSB, `pixel_values` atol `1/(255*std)`), U (Pillow decode vs the committed `.npy` pixels: PNG exact, JPEG within 2 LSB; EXIF orientations 1 to 8; CMYK and 16-bit PNG rejected), F (truncated files; a header pixel bomb rejected from the header size before `load()`), I (media hash stable; preprocessing idempotent on already-sized inputs) |
 | L13.7 | Vision-language model: vision tower + projector (`linear` after pixel shuffle, `mlp2x_gelu`) + Llama LM, placeholder expansion in the chat template, embedding merge, freezing schedule (projector-only then full or LoRA), HF weight loading for SmolVLM-256M-Instruct, LLaVA, Qwen2-VL tiny | core | Py | `tinyllm/vision/vlm.py`, `tinyllm/io/hf_vlm.py` | L13.3, L13.4, L13.6, L13.2, L7.9, L6.6, L1.2, M10.3 | dur.13 (`vqa` and `caption` suites run `{tinyllm}`); L15.3's engine logits are proven against it through fixtures | O (tiny random `Idefics3ForConditionalGeneration`, `LlavaForConditionalGeneration`, `LlavaNextForConditionalGeneration`, `Qwen2VLForConditionalGeneration` logits atol 1e-5 on oracle `pixel_values`), E (merge == HF `inputs_embeds`), I (stage 1: frozen params bitwise unchanged and no optimizer state; placeholders == feature rows), L (tiny VLM on `mm-shapes`: align 200 steps then SFT 300 steps, VQA accuracy >= calibrated) |
-| L13.8 | Conv kernels in C: im2col + `tl_matmul_f32` conv2d (groups, stride, padding, dilation), conv1d for the Whisper stem, fused patch embedding (NCHW and NHWC) | **optional** (standalone, D41) | C | `c/src/kernels/conv.c` | M12.1, L13.1, L9.1 (optional), rt.02, rt.03, reading: `ml/06-neural-architectures/code/conv2d.c` | none (standalone C test binary) | E (the C test binary vs fixture files generated by the Python reference `conv2d_direct`, `Conv1d`, `PatchEmbed` and by the torch oracle, within the frozen dot-product bound), I (per image, output bitwise equal at N = 1 and N = 7; im2col row order matches M12.1), F (alloc fail-after-n), B (>= 5x the naive `conv2d.c` loop at 3x224x224, k 16, s 16) |
+| L13.8 | Conv kernels in C: im2col + `tl_matmul_f32` conv2d (groups, stride, padding, dilation), conv1d for the Whisper stem, fused patch embedding (NCHW and NHWC) | **optional** (standalone, D41) | C | `c/src/kernels/conv.c` | M12.1, L13.1, L9.1 (optional), rt.02, rt.03, reading: `content/tracks/ml/06-neural-architectures/code/conv2d.c` | none (standalone C test binary) | E (the C test binary vs fixture files generated by the Python reference `conv2d_direct`, `Conv1d`, `PatchEmbed` and by the torch oracle, within the frozen dot-product bound), I (per image, output bitwise equal at N = 1 and N = 7; im2col row order matches M12.1), F (alloc fail-after-n), B (>= 5x the naive `conv2d.c` loop at 3x224x224, k 16, s 16) |
 | L13.9 | Resize kernels in C: separable nearest, bilinear, bicubic (a = -0.5), Lanczos3 with antialias and PIL rounding; planar f32 resize; fused rescale + normalize to CHW | **optional** (standalone, D41) | C | `c/src/kernels/image.c` | M12.2, M12.3, L13.6, rt.02, rt.03 | none (standalone C test binary) | E (u8 output bit-exact with the Python reference `resize(mode='pil')` outputs in the fixture and within 1 LSB of PIL; f32 path within 1e-5), I (weights sum to 1; identity at equal size), F (huge dims overflow-checked, `TL_EINVAL`) |
 
 ```python
@@ -2651,7 +2651,7 @@ def apply_stage(model: Module, stage: FreezeStage) -> list[str]                 
 | 8 | Freezing schedule | `{tinyllm} train vlm --cfg {fixture:configs/vlm-tiny.json} --data {asset:mm-shapes} --stage align --steps 200 --out {out}/vlm`, then `--stage sft --steps 300 --resume {out}/vlm`, then `{tinyllm} eval vqa --model {out}/vlm --data {asset:mm-shapes/vqa-test.jsonl}` | stage 1 last line `frozen_params_changed == 0`; `vqa_acc >= calibrated` | pr (`--smoke`: 60 + 90 steps, looser threshold), nightly full |
 | 9 | Param count | `{tinyllm} info --model {models}/SmolVLM-256M-Instruct` | `params` == HF `num_parameters()` from the fixture | nightly |
 
-#### L14 Speech (`ml/08-tinyllm/p14-speech/`, Python, Pass 12)
+#### L14 Speech (`content/courses/build-an-llm/p14-speech/`, Python, Pass 12)
 
 | ID | Module | Core | Lang | Path | Prereqs | Call sites | Tests |
 |---|---|---|---|---|---|---|---|
@@ -2853,7 +2853,7 @@ The spine owns model math and inference algorithms. Optional C modules provide s
 | sanitizers | C, Rust | ASan+UBSan on the sanitized C test build; TSan on `rt.03`; Rust TSan on `L10.2` and Miri on `tl-ds` unsafe blocks run **nightly only** on a pinned nightly toolchain |
 | counting allocator | C | leak detection on every platform: the harness installs a counting allocator through `tl_set_allocator` and asserts zero live allocations at exit (Apple clang has no LeakSanitizer) |
 
-#### ds: data structures with call sites (`algorithms/16-systems-data-structures/`)
+#### ds: data structures with call sites (`content/tracks/algorithms/16-systems-data-structures/`)
 
 | ID | Title | Lang | Path | Prereqs | Interface | Call sites | Tests | Lights up at |
 |---|---|---|---|---|---|---|---|---|
@@ -2870,7 +2870,7 @@ The spine owns model math and inference algorithms. Optional C modules provide s
 
 The engine flag Rust uses its own radix prefix cache; optional C modules have no production call sites.
 
-#### rt: Optional standalone C runtime exercises (`ml/08-tinyllm/p09-kernels/`, `rt.04` in `p08-inference/`)
+#### rt: Optional standalone C runtime exercises (`content/courses/build-an-llm/p09-kernels/`, `rt.04` in `p08-inference/`)
 
 | ID | Title | Path | Prereqs | Call sites | Tests | Lights up at |
 |---|---|---|---|---|---|---|
@@ -2879,7 +2879,7 @@ The engine flag Rust uses its own radix prefix cache; optional C modules have no
 | rt.03 | Thread pool + `tl_parallel_for` | `c/src/runtime/pool.c` | lang.03 | optional standalone C parallel loop exercise | U (grain edges, n=0), I (each index runs exactly once, atomic bitmap), TSan clean, E (pooled matmul bitwise equal to single-thread via a deterministic partition), F (destroy with pending work joins cleanly) | `{tinyllm} bench matmul --native --threads 1,2,4,8` scaling table |
 | rt.04 | Standalone C exercise: paged KV block pool, refcount, CoW, chained hash, LRU, export/import fixtures, stats; not thread-safe | `c/src/runtime/kv_pool.c` | ds.01 to ds.03, M06.3 (FNV-1a), reading: L8.2 | optional C tests only | U (CoW, chained hash vectors), I (model-based random ops: refcount >= 0, a referenced block is never evicted, free + used + cached == n_blocks), F (double unref gives `TL_EINVAL` without corruption; export/import roundtrip; bit flip gives `TL_EFORMAT`; a partial block is never registered) | optional fixture comparison |
 
-#### data: corpus pipeline (`data-engineering/05-corpus-pipeline/`, Python `python/corpus/`)
+#### data: corpus pipeline (`content/tracks/data-engineering/05-corpus-pipeline/`, Python `python/corpus/`)
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -2911,7 +2911,7 @@ Learner Python units may import `pyarrow` and `zstandard` (listed for `corpus` i
 
 **MS-mm-corpus** (Pass 12). (1) `{corpus} mm build --config {fixture:mm-corpus/small-mm.toml} --workers {w}`, matrix `w = [1, 4]`: image and audio shards and `_MANIFEST.json` pass `conformance/formats/`, with an output hash equal across worker counts (pr, smoke). (2) `{corpus} mm audit --manifest {out:build}/_MANIFEST.json`: `near_dup_recall >= 0.95`, `false_drops == 0`, `exif_chunks == 0`, `faces_redacted >= {fixture count}`, `speakers_crossing_splits == 0`, `raw_speaker_ids == 0` (pr, smoke). (3) `{corpus} ledger verify` exits 0 and every multimodal row has `modality`, `consent`, and `biometric` (pr, smoke). (4) `{ctl} data build-mm --dataset mm-small --version v1` under kills: the manifest hash equals step 1 (nightly).
 
-#### dur: durable execution engine (`ai-platform-engineering/05-durable-orchestration-and-workers/`, Go)
+#### dur: durable execution engine (`content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/`, Go)
 
 ```go
 // dur.01  go/durable/log
@@ -3083,7 +3083,7 @@ Where saige goes further:
 | ag.06 to ag.08 | `rag/{chunker/semantic, hyde, reranker/crossencoder, contextassembler/compressing, pgstore, knowledge}` |
 | ag.09 to ag.12 | `eval/{sampler, experiment, harness}`, `rag/eval` (faithfulness, answer relevancy, context precision/recall), stream timing scorers |
 
-#### load: load generator (`ml/08-tinyllm/p10-serving/`, Go)
+#### load: load generator (`content/courses/build-an-llm/p10-serving/`, Go)
 
 | ID | Title | Path | Prereqs | Interface | Call sites | Tests | Lights up at |
 |---|---|---|---|---|---|---|---|
@@ -3097,7 +3097,7 @@ Further: vLLM `benchmark_serving`, LLMPerf, k6 open-model executors, HdrHistogra
 
 These are `practice` modules: the learner writes deploy and observability files (entry-point territory, D16), and the course checks them with artifact checks and milestones.
 
-#### dep: deployment (`infrastructure/01-containers-kubernetes/`)
+#### dep: deployment (`content/tracks/infrastructure/01-containers-kubernetes/`)
 
 | ID | Title | Learner path | Prereqs | Contract and checks | Lights up at |
 |---|---|---|---|---|---|
@@ -3111,7 +3111,7 @@ These are `practice` modules: the learner writes deploy and observability files 
 | dep.07 | Agent image and chart | `deploy/docker/agent.Dockerfile`, `deploy/helm/<system>-agent` | dep.06, ag.05 | the dep.01 and dep.03 policies; the agent worker on queue `agent`; the frontier key, if any, only from a `Secret` | `{agent}` on kind |
 | dep.08 | Encoder and ASR pools as their own Deployments (Pass 12): values files for `vlm`, `encode`, `asr`; KEDA `ScaledObject`s on encoder queue depth and queued audio seconds; PDBs; resource requests sized from calibration | `deploy/helm/<system>-engine/values-{vlm,encode,asr}.yaml` | dep.06, dep.03, L15.5 | dep.03 policy over `helm template`; `values.schema.json` minor; a burst of 50 image requests scales `encode` up and back down on kind; ASR scaling is independent of encode | `kubectl get hpa` during a burst |
 
-#### obs: observability (`systems/04-observability/`)
+#### obs: observability (`content/tracks/systems/04-observability/`)
 
 | ID | Title | Learner path | Prereqs | Contract and checks | Lights up at |
 |---|---|---|---|---|---|
@@ -3127,7 +3127,7 @@ These are `practice` modules: the learner writes deploy and observability files 
 
 **MS-prod.** On kind (context from `system.toml`): Helm deploy of the gateway, the engine (unified, then prefill + 2 decode), and the observability stack; `ol conform openapi:v1 --target gateway --base {deploy.gateway_url}`; end-to-end serving traces present; contract metrics scraped; SLO rules loaded; the learner's loadgen meets the SLOs at the rate set by the in-cluster calibration; and drill `ops.01` (kill a decode worker) stays within the error budget. Durable and worker charts join in Pass 8 (dep.06, obs.05, checked by MS-durable on kind), the agent chart in Pass 10 (dep.07).
 
-#### ops: maintenance and incident drills (`systems/05-incident-response-and-chaos/`)
+#### ops: maintenance and incident drills (`content/tracks/systems/05-incident-response-and-chaos/`)
 
 Every drill requires `docs/postmortems/<date>-<drill>.md` (Summary, Impact, Timeline, Root cause, Detection, Resolution, Action items). `ol drill end` checks the system invariants and the postmortem structure; content is graded with a self rubric. Drill specs and injectors are in 5.10. Drills run with the `drill` SLO profile (compressed windows, 2.11) so burn alerts can fire within `within_s`.
 
@@ -3159,46 +3159,46 @@ Practices apply to the learner's own system. Kinds: `practice` (artifact plus a 
 
 | ID | Title | Kind | Chapter home | Artifact or check | Pass |
 |---|---|---|---|---|---|
-| craft.01 | Your repo and CI gate (conventional commits enforced) | practice | `software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md` | CI with three jobs: commit-message lint, native tests, and `ol check --all --ci` through a checkout of public openlearn at `contracts/VERSION` (5.13 recipe; it checks nothing yet in Pass 0 and every started module from Pass 1); `git-log` and `ci-status` matchers | P0 |
-| craft.02 | Architecture decision records | practice | `software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md` | `docs/adr/0001-*.md` from the template; ADR section lint | P1 |
-| craft.03 | TDD, unit tests, and how you are graded (rungs R0 to R3): includes the mutation-testing primer (what a mutant is, killed vs survived, how the score and required semantic mutants work) before the first mutation grade | practice | `software-craftsmanship/03-testing-mentality/` | `ol tdd red/green` journal; mutation grade on L0 modules | P2 |
+| craft.01 | Your repo and CI gate (conventional commits enforced) | practice | `content/tracks/software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md` | CI with three jobs: commit-message lint, native tests, and `ol check --all --ci` through a checkout of public openlearn at `contracts/VERSION` (5.13 recipe; it checks nothing yet in Pass 0 and every started module from Pass 1); `git-log` and `ci-status` matchers | P0 |
+| craft.02 | Architecture decision records | practice | `content/tracks/software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md` | `docs/adr/0001-*.md` from the template; ADR section lint | P1 |
+| craft.03 | TDD, unit tests, and how you are graded (rungs R0 to R3): includes the mutation-testing primer (what a mutant is, killed vs survived, how the score and required semantic mutants work) before the first mutation grade | practice | `content/tracks/software-craftsmanship/03-testing-mentality/` | `ol tdd red/green` journal; mutation grade on L0 modules | P2 |
 | craft.04 | Property-based tests (R4) with Hypothesis, proptest, `rapid`, and `ol_prop.h` | practice | same | tokenizer roundtrip and pipeline idempotence properties; mutation grade | P3 |
 | craft.05 | Oracles, golden and differential tests, gradcheck as a test (R5) | practice | same | differential tests against fixtures for L5 to L7; must kill the "transposed grad" mutant | P5 |
 | craft.06 | Benchmarks and perf gates (R7) | practice | same | benchmark + budget file; perf mutants must trip the gate | P6 |
 | craft.07 | Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors | practice | same | `ol mutate` over the learner's L3/L4 tests | P4 |
-| craft.08 | Code review: review a seeded PR against your system | practice | `software-craftsmanship/08-code-review-and-ci/02-code-review.md` | the PR is built in a scratch copy where the target unit is the reference plus seeded defects (never a patch to learner code); review findings vs the seeded defect list | P7 |
-| craft.09 | C4 diagrams in D2 | practice | `software-craftsmanship/05-diagramming-c4/` | `docs/c4/{context,containers,components-engine}.d2` render; every container in 2.1 appears | P11 |
-| craft.10 | Runbooks and Diátaxis docs | practice | `software-craftsmanship/06-documentation-writing/` | runbook per required alert; README structure lint | P11 |
-| craft.11 | Commits, semver, releases (`v1.0.0`) | practice | `software-craftsmanship/09-releases-and-deprecation/` | tagged release, changelog, release workflow | P11 |
+| craft.08 | Code review: review a seeded PR against your system | practice | `content/tracks/software-craftsmanship/08-code-review-and-ci/02-code-review.md` | the PR is built in a scratch copy where the target unit is the reference plus seeded defects (never a patch to learner code); review findings vs the seeded defect list | P7 |
+| craft.09 | C4 diagrams in D2 | practice | `content/tracks/software-craftsmanship/05-diagramming-c4/` | `docs/c4/{context,containers,components-engine}.d2` render; every container in 2.1 appears | P11 |
+| craft.10 | Runbooks and Diátaxis docs | practice | `content/tracks/software-craftsmanship/06-documentation-writing/` | runbook per required alert; README structure lint | P11 |
+| craft.11 | Commits, semver, releases (`v1.0.0`) | practice | `content/tracks/software-craftsmanship/09-releases-and-deprecation/` | tagged release, changelog, release workflow | P11 |
 | craft.12 | Deprecation policy | practice | same | `Deprecation`/`Sunset` headers, policy doc | P11 |
-| craft.13 | Interface migration: KV format v1 to v2 | **build** | `software-craftsmanship/10-maintenance/` | `upgrades` `c/src/runtime/kv_pool.c`, `c/src/kernels/paged_attn.c` (fp8 reads), `rust/crates/tl-engine/src/kv_transfer.rs`; contracts delivered by `ol contracts sync --to kv/v2`; tests: v2 envelope roundtrip, `parity/kv.wire.v2`, mixed-version negotiation; ADR + drill ops.04 | P11 |
+| craft.13 | Interface migration: KV format v1 to v2 | **build** | `content/tracks/software-craftsmanship/10-maintenance/` | `upgrades` `c/src/runtime/kv_pool.c`, `c/src/kernels/paged_attn.c` (fp8 reads), `rust/crates/tl-engine/src/kv_transfer.rs`; contracts delivered by `ol contracts sync --to kv/v2`; tests: v2 envelope roundtrip, `parity/kv.wire.v2`, mixed-version negotiation; ADR + drill ops.04 | P11 |
 | craft.14 | Interface migration: API v1 to v2 | **build** | same | owns `rust/crates/tl-serve/src/api_version.rs` and `go/gateway/server/apiversion.go`, `upgrades` `rust/crates/tl-serve/src/server.rs` (the engine selects v1 or v2 per request by `X-TL-API-Version`), `go/gateway/server/` (version routing), `go/gateway/ledger/` (per-version usage); contracts by `ol contracts sync --to api/v2`; `openapi:v1` and `openapi:v2` both pass; drill ops.05 | P11 |
 | craft.15 | Dependency upgrades | practice | same | drill ops.06 | P11 |
 | craft.16 | Perf regression bisect | practice | same | drill ops.07 | P11 |
-| craft.17 | Threat model (STRIDE on your DFD) | practice | `software-craftsmanship/11-security/` | `docs/THREAT_MODEL.md` with every trust boundary from 2.3, including the RAG-to-tools path | P11 |
+| craft.17 | Threat model (STRIDE on your DFD) | practice | `content/tracks/software-craftsmanship/11-security/` | `docs/THREAT_MODEL.md` with every trust boundary from 2.3, including the RAG-to-tools path | P11 |
 | craft.18 | SBOM and supply chain | practice | same | SBOM per image via syft, pinned digests, `allowed-deps.toml` honored | P11 |
 | craft.19 | Secrets and authz review | practice | same | no secrets in repo or images; authz matrix review of gw.02 | P11 |
-| craft.20 | Contract tests (R6): consumer-driven tests for gateway to engine | practice | `software-craftsmanship/03-testing-mentality/` | learner contract tests graded by mutation on gateway units (0.80) | P7 |
+| craft.20 | Contract tests (R6): consumer-driven tests for gateway to engine | practice | `content/tracks/software-craftsmanship/03-testing-mentality/` | learner contract tests graded by mutation on gateway units (0.80) | P7 |
 | craft.21 | Resilience tests (R10) | practice | same | kill a worker mid-workflow and assert exactly once; the resilience mutants (idempotency key ignored, lease not renewed, fsync skipped) each fail the suite | P8 |
 | craft.22 | Model evals as tests (R8) | practice | same | held-out loss and seeded quality score with a regression threshold; model mutants flagged at p < 0.05 over 5 seeds | P9 |
 | craft.23 | Agent evals as tests (R9) | practice | same | suite with scorers, judge, and A/B; agent mutants detected with non-overlapping 95% CIs | P10 |
-| craft.24 | Untrusted media: threat model update (new boundary: media bytes from clients and remote hosts), fuzz targets for the Rust WAV and image-header paths (`cargo fuzz`, nightly only) and the Go parsers, decompression-bomb tests | practice | `software-craftsmanship/11-security/` | `docs/THREAT_MODEL.md` STRIDE rows for media paths; `rust/crates/tl-media/fuzz/`, `go/gateway/media/*_test.go` fuzzers run 60 s each without findings; a seeded crash mutant (`s01`, unchecked chunk length) is found by the learner's fuzzer within budget | P12 |
-| ethics.01 | Data licensing and the ledger | practice | `responsible-ai/01-data-licensing/` | ledger schema and allowlist; pairs with data.08 | P3 |
-| ethics.02 | Privacy and PII policy | practice | `responsible-ai/02-privacy-and-pii/` | PII policy doc; pairs with data.05 | P3 |
-| ethics.03 | Datasheet and model card | practice | `responsible-ai/03-model-and-data-cards/` | `DATASHEET.md`, `MODEL_CARD.md` from templates (third-party models such as SmolLM2-135M-Instruct labelled as such); `ModelRelease` gate checks presence | P9 |
-| ethics.04 | Bias and safety evals | build (Python) | `responsible-ai/04-bias-and-safety-evals/` | `tinyllm/eval/{safety,bias}.py`: templated bias probes with CIs, refusal and toxicity rates on fixture sets, ROC-AUC (M01.4, M07.7); call site: dur.12's release gate reads the safety rows that `EvalSuite` produces with `{tinyllm} eval --suite safety` | P9 |
-| ethics.05 | Usage policy at the gateway | practice | `responsible-ai/05-usage-policy/` | `USAGE_POLICY.md`, `policy.v1.yaml`, a linear policy head trained with L6.5 over the engine's embeddings and exported per D33, wired into the gw.08 classifier rule; red-team fixture set blocked | P10 |
-| ethics.06 | Professional responsibility and disclosure | proof (rubric) | `responsible-ai/06-professional-responsibility/` | written reflection graded by rubric | P11 |
-| ethics.07 | Multimodal bias evals: per-group WER with two-sample bootstrap CIs on gaps vs overall (`asr-groups-mini`, the LibriSpeech-derived stand-in for accent groups, 5.11), zero-shot accuracy disparity across image source domains, counterfactual caption probes (occupation x gendered term) on fixed images; real accent groups from Common Voice only as an optional learner-local step | build (Python) | `responsible-ai/04-bias-and-safety-evals/` | `tinyllm/eval/mm_bias.py`: `group_wer_gaps(...) -> list[GroupGap]`, `zeroshot_disparity(...)`, `caption_counterfactuals(...)`; call site: dur.13 (`mm_bias` suite rows gate release); tests O (gap values on fixture predictions), S (a planted 5-point gap detected; a null gap's CI covers 0 at the nominal rate over 200 seeds) | P12 |
-| ethics.08 | Consent and biometric data: `CONSENT_POLICY.md` (voice and face are biometric; no speaker identification, no face recognition; the dataset terms of every audio source, including Common Voice's for learners who take the optional step), ledger `consent`/`biometric`/`prohibited_uses` filled for every multimodal source, model-card multimodal sections with real numbers | practice | `responsible-ai/02-privacy-and-pii/` | sections lint; the ledger validates; the model card's per-group WER equals `evals/<suite>/summary.json` within rounding | P12 |
-| review.01 | Design review: tracer and serving platform | proof (rubric) | `systems/01-system-design/` | review doc against `rubrics/design-review.md` | P7 |
+| craft.24 | Untrusted media: threat model update (new boundary: media bytes from clients and remote hosts), fuzz targets for the Rust WAV and image-header paths (`cargo fuzz`, nightly only) and the Go parsers, decompression-bomb tests | practice | `content/tracks/software-craftsmanship/11-security/` | `docs/THREAT_MODEL.md` STRIDE rows for media paths; `rust/crates/tl-media/fuzz/`, `go/gateway/media/*_test.go` fuzzers run 60 s each without findings; a seeded crash mutant (`s01`, unchecked chunk length) is found by the learner's fuzzer within budget | P12 |
+| ethics.01 | Data licensing and the ledger | practice | `content/tracks/responsible-ai/01-data-licensing/` | ledger schema and allowlist; pairs with data.08 | P3 |
+| ethics.02 | Privacy and PII policy | practice | `content/tracks/responsible-ai/02-privacy-and-pii/` | PII policy doc; pairs with data.05 | P3 |
+| ethics.03 | Datasheet and model card | practice | `content/tracks/responsible-ai/03-model-and-data-cards/` | `DATASHEET.md`, `MODEL_CARD.md` from templates (third-party models such as SmolLM2-135M-Instruct labelled as such); `ModelRelease` gate checks presence | P9 |
+| ethics.04 | Bias and safety evals | build (Python) | `content/tracks/responsible-ai/04-bias-and-safety-evals/` | `tinyllm/eval/{safety,bias}.py`: templated bias probes with CIs, refusal and toxicity rates on fixture sets, ROC-AUC (M01.4, M07.7); call site: dur.12's release gate reads the safety rows that `EvalSuite` produces with `{tinyllm} eval --suite safety` | P9 |
+| ethics.05 | Usage policy at the gateway | practice | `content/tracks/responsible-ai/05-usage-policy/` | `USAGE_POLICY.md`, `policy.v1.yaml`, a linear policy head trained with L6.5 over the engine's embeddings and exported per D33, wired into the gw.08 classifier rule; red-team fixture set blocked | P10 |
+| ethics.06 | Professional responsibility and disclosure | proof (rubric) | `content/tracks/responsible-ai/06-professional-responsibility/` | written reflection graded by rubric | P11 |
+| ethics.07 | Multimodal bias evals: per-group WER with two-sample bootstrap CIs on gaps vs overall (`asr-groups-mini`, the LibriSpeech-derived stand-in for accent groups, 5.11), zero-shot accuracy disparity across image source domains, counterfactual caption probes (occupation x gendered term) on fixed images; real accent groups from Common Voice only as an optional learner-local step | build (Python) | `content/tracks/responsible-ai/04-bias-and-safety-evals/` | `tinyllm/eval/mm_bias.py`: `group_wer_gaps(...) -> list[GroupGap]`, `zeroshot_disparity(...)`, `caption_counterfactuals(...)`; call site: dur.13 (`mm_bias` suite rows gate release); tests O (gap values on fixture predictions), S (a planted 5-point gap detected; a null gap's CI covers 0 at the nominal rate over 200 seeds) | P12 |
+| ethics.08 | Consent and biometric data: `CONSENT_POLICY.md` (voice and face are biometric; no speaker identification, no face recognition; the dataset terms of every audio source, including Common Voice's for learners who take the optional step), ledger `consent`/`biometric`/`prohibited_uses` filled for every multimodal source, model-card multimodal sections with real numbers | practice | `content/tracks/responsible-ai/02-privacy-and-pii/` | sections lint; the ledger validates; the model card's per-group WER equals `evals/<suite>/summary.json` within rounding | P12 |
+| review.01 | Design review: tracer and serving platform | proof (rubric) | `content/tracks/systems/01-system-design/` | review doc against `rubrics/design-review.md` | P7 |
 | review.02 | Design review: control plane | proof (rubric) | same | same | P11 |
 | review.03 | Design review: the whole system | proof (rubric) | same | same | P11 |
 | review.04 | Design review: the multimodal platform (EPD trade-offs, encoder cache sizing, candle vs the optional standalone kernels, the determinism rule D43) | proof (rubric) | same | `docs/reviews/multimodal.md` against `rubrics/design-review.md` | P12 |
-| field.01 to field.05 | Mock engagement against your platform: discovery, qualification and sizing, performance engagement, POC and evaluation, migration plan | practice | `field-engineering/08-mock-engagement/` | deliverables per stage, graded by rubric; sizing uses M05.1 and the learner's load reports | P11 |
+| field.01 to field.05 | Mock engagement against your platform: discovery, qualification and sizing, performance engagement, POC and evaluation, migration plan | practice | `content/tracks/field-engineering/08-mock-engagement/` | deliverables per stage, graded by rubric; sizing uses M05.1 and the learner's load reports | P11 |
 | field.06 | Commercials and security review: answer a customer security questionnaire from your threat model and SBOM | practice | same (applies `field-engineering/06`) | completed questionnaire citing `THREAT_MODEL.md`, SBOMs, and the usage policy | P11 |
 | field.07 | Escalation and handoff: hand the platform to a mock customer team using your runbooks | practice | same (applies `field-engineering/07`) | handoff doc and an escalation drill walked through the learner's runbooks | P11 |
-| iv.01 | Defend your system | proof (rubric) | `interviews/defend-your-system/` | question bank answered against the learner's own design | P11 |
+| iv.01 | Defend your system | proof (rubric) | `content/interviews/defend-your-system/` | question bank answered against the learner's own design | P11 |
 
 Competitive programming and `practice/` (predict, build, reattempt) are unchanged and off the course spine.
 
@@ -3229,15 +3229,15 @@ Side quests have no call site in the system. They are optional, checked when the
 | `sq.cnns` | `ml/06` perceptron, `backprop_xor.c`, `conv2d.c/.cu`, `lenet.rs`, `alexnet.py`; cites L13.1 as the course version of conv layers (Pass 12) |
 | `sq.rl-classics` | `ml/03` classic RL (policy gradient and PPO remain reading for L12.3) |
 | `sq.frameworks-port` | port your GPT to PyTorch and JAX (`ai-platform-engineering/01`, `ml/07` train-step files) |
-| `sq.engines-tour` | `ml/04-llm-systems/frameworks` code |
+| `sq.engines-tour` | `content/tracks/ml/04-llm-systems/frameworks` code |
 | `sq.gguf-export` | export your model to GGUF and run it in llama.cpp (`ai-platform-engineering/10`) |
 | `sq.spark`, `sq.airflow-dbt`, `sq.apache-stack` | the same pipeline on industry tools (`data-engineering/03`, `04`, `infrastructure/05`) |
 | `sq.kafka-consumers`, `sq.backpressure` | `infrastructure/03` consumer samples, `infrastructure/02` backpressure demos |
 | `sq.tantivy` | `infrastructure/04` tantivy example |
-| `sq.type-systems` | `software-craftsmanship/07-type-systems/` (OCaml, Haskell) |
+| `sq.type-systems` | `content/tracks/software-craftsmanship/07-type-systems/` (OCaml, Haskell) |
 | `sq.prefix-bloom` | Bloom of cached block hashes in heartbeats to refine routing (D21) |
 
-| `sq.tensor-parallel`, `sq.pipeline-parallel` | Megatron column/row parallel layers over L11.2 collectives; the 1F1B schedule and its bubble `(p-1)/(m+p-1)`; figure `ml/04-llm-systems/diagrams/parallelism.d2` |
+| `sq.tensor-parallel`, `sq.pipeline-parallel` | Megatron column/row parallel layers over L11.2 collectives; the 1F1B schedule and its bubble `(p-1)/(m+p-1)`; figure `content/tracks/ml/04-llm-systems/diagrams/parallelism.d2` |
 | `sq.multi-lora` | batched multi-adapter serving in the engine (`tl-engine/src/lora.rs`) over L6.6 adapters; serves C2 next to the base model |
 | `sq.lm-compressor` | compress TinyStories with your model and M11.3 arithmetic coding |
 | `sq.audio-llm` (P12) | audio encoder (the learner's Whisper encoder) + frame stacking (k = 4) + MLP projector into SmolLM2-135M, trained projector-only on a synthetic spoken-digits task; served through `input_audio` parts (Ultravox / Qwen2-Audio pattern) |
@@ -3333,7 +3333,7 @@ tl_status tl_matmul_f32(/* ... */) {
 |---|---|---|
 | `ol course init --name <system> [--at DIR]` | create the learner repo (2.15) | 0, 5 |
 | `ol doctor` | report python/uv, cc, cargo, go, docker (and its CPU and memory allocation: at least 6 CPUs and 12 GiB from Pass 7), kubectl, kind, helm, tilt; optional: protoc (only for `lang.10` exercises; the contracts ship generated code), a pinned Rust nightly (Miri, Rust TSan) | 0, 5 |
-| `ol next` | next stage in `paths/course/path.tsv` whose deps pass | 0 |
+| `ol next` | next stage in `content/courses/build-an-llm/paths/course/path.tsv` whose deps pass | 0 |
 | `ol status [--graph] [--counts] [--json]` | every module: `todo`, `started`, `pass`, `stale`, `assisted`, `spoiled`, `self`, with mutation scores | 0 |
 | `ol start <ID>` | stub the owned units into the learner repo; print chapter, contract, tests, rung | 0, 5 |
 | `ol tests <ID>` | print the annotated test catalog (name, KIND, WHY) | 0 |
@@ -3945,8 +3945,8 @@ ol export ~/src/forge --remote git@github.com:me/forge.git
 ```
 # stage	title	files	done when	check
 3	Matmul and standalone C exercise	math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md	Your Python matmul matches numpy; the C exercise is optional standalone depth.	module:M03.1
-12	Inference milestone	paths/course-p06-inference-and-kernels/milestone.md	Your stack matches no-cache output token for token.	milestone:MS-L8
-4	Chain rule by hand	math/01-calculus-1/README.md	You differentiate compositions without a table.	solve:S-M01
+12	Inference milestone	content/courses/build-an-llm/paths/course-p06-inference-and-kernels/milestone.md	Your stack matches no-cache output token for token.	milestone:MS-L8
+4	Chain rule by hand	content/tracks/math/01-calculus-1/README.md	You differentiate compositions without a table.	solve:S-M01
 30	Decode worker dies	systems/05-incident-response-and-chaos/02-chaos-catalog.md	You detect within 5 minutes and restore the SLO.	drill:ops.01
 ```
 
@@ -3967,7 +3967,7 @@ ol export ~/src/forge --remote git@github.com:me/forge.git
 | `.github/workflows/ci.yml` | PR jobs from 5.14; new `nightly.yml` and `oracle-drift.yml` |
 | `pyproject.toml`, `uv.lock` | unchanged (harness and oracle are separate uv projects) |
 | `.gitignore` | `.scratchpad/` already covers the default learner home |
-| `site/scripts/sync-content.mjs`, `scripts/assemble_book.py` | publish `course/contracts/` only; exclude the rest of `course/` and all of `archive/`; see 3.1 and 8.1 |
+| `apps/web/scripts/sync-content.mjs`, `scripts/assemble_book.py` | publish `course/contracts/` only; exclude the rest of `course/` and all of `archive/`; see 3.1 and 8.1 |
 
 ---
 
@@ -4140,18 +4140,18 @@ Topic READMEs stay as topic intros in house style and gain a `## Chapters` table
 ### 7.1 Shape
 
 ```
-paths/course/                 README.md (front door), SYSTEM.md (system map + contract index), path.tsv
-paths/course-p00-setup/       README.md (pass intro), path.tsv, milestone.md
-paths/course-p01-tracer/      ...
+content/courses/build-an-llm/paths/course/                 README.md (front door), SYSTEM.md (system map + contract index), path.tsv
+content/courses/build-an-llm/paths/course-p00-setup/       README.md (pass intro), path.tsv, milestone.md
+content/courses/build-an-llm/paths/course-p01-tracer/      ...
 ...
-paths/course-p11-operate/
-paths/course-p12-multimodal/
+content/courses/build-an-llm/paths/course-p11-operate/
+content/courses/build-an-llm/paths/course-p12-multimodal/
 ```
 
 ```text
-# paths/course/path.tsv
+# content/courses/build-an-llm/paths/course/path.tsv
 # stage	title	files	done when	check
-0	The system you will build	paths/course/README.md,paths/course/SYSTEM.md	You can name every component, its language, and the contract it serves.	-
+0	The system you will build	content/courses/build-an-llm/paths/course/README.md,content/courses/build-an-llm/paths/course/SYSTEM.md	You can name every component, its language, and the contract it serves.	-
 @course-p00-setup
 @course-p01-tracer
 @course-p02-foundations
@@ -4212,30 +4212,30 @@ About 82 weeks part-time (67 through P11, 15 for P12). These are planning estima
 P0 and P1 in full:
 
 ```text
-# paths/course-p00-setup/path.tsv
-1	Toolchain	paths/course-p00-setup/README.md	ol doctor reports python, uv, cc, cargo, go, docker, kubectl, kind, helm, tilt present.	-
-2	Python and numpy	software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md	You can predict a broadcast's shape and vectorize a count.	module:lang.01
-3	Shell, git, make, processes	software-craftsmanship/12-language-and-tool-primers/02-shell-git-make.md	Your script exits 130 on SIGTERM and make rebuilds only what changed.	module:lang.02
-4	Your repo and CI gate	software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md	ol course init created your repo; CI lints commit messages, runs native tests, and runs ol check --all --ci.	module:craft.01
-5	Milestone	paths/course-p00-setup/milestone.md	Your first conventional commit is green in CI.	milestone:MS-P0
+# content/courses/build-an-llm/paths/course-p00-setup/path.tsv
+1	Toolchain	content/courses/build-an-llm/paths/course-p00-setup/README.md	ol doctor reports python, uv, cc, cargo, go, docker, kubectl, kind, helm, tilt present.	-
+2	Python and numpy	content/tracks/software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md	You can predict a broadcast's shape and vectorize a count.	module:lang.01
+3	Shell, git, make, processes	content/tracks/software-craftsmanship/12-language-and-tool-primers/02-shell-git-make.md	Your script exits 130 on SIGTERM and make rebuilds only what changed.	module:lang.02
+4	Your repo and CI gate	content/tracks/software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md	ol course init created your repo; CI lints commit messages, runs native tests, and runs ol check --all --ci.	module:craft.01
+5	Milestone	content/courses/build-an-llm/paths/course-p00-setup/milestone.md	Your first conventional commit is green in CI.	milestone:MS-P0
 ```
 
 ```text
-# paths/course-p01-tracer/path.tsv
-1	C	software-craftsmanship/12-language-and-tool-primers/03-c.md	Your dynamic array passes under ASan as a standalone C test binary.	module:lang.03
+# content/courses/build-an-llm/paths/course-p01-tracer/path.tsv
+1	C	content/tracks/software-craftsmanship/12-language-and-tool-primers/03-c.md	Your dynamic array passes under ASan as a standalone C test binary.	module:lang.03
 2	Matmul in Python	math/03-linear-algebra/01-vectors-matrices-and-matmul-in-c.md	Your Python matmul matches numpy; the C exercise is optional standalone depth.	module:M03.1
-3	Byte bigram	ml/08-tinyllm/p00-foundations/00-byte-bigram.md	Your bigram reaches the count-MLE NLL and writes a safetensors file; your CLI trains and samples from a clean shell.	module:L0.0
-4	Rust	software-craftsmanship/12-language-and-tool-primers/04-rust.md	Your std-only echo server handles two clients.	module:lang.04
-5	HTTP and SSE	software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md	You parse an HTTP request and emit an SSE stream by hand.	module:lang.05
-6	Your first endpoint	ml/08-tinyllm/p10-serving/00-your-first-endpoint.md	Your Rust server streams SSE completions from your checkpoint and exports its span.	module:L10.0
-7	Go	software-craftsmanship/12-language-and-tool-primers/06-go.md	Your streaming proxy honors a deadline.	module:lang.06
-8	Your gateway	ai-platform-engineering/12-gateway/00-streaming-proxy.md	Your Go gateway rejects bad keys and streams without buffering.	module:gw.00
-9	Containers and Kubernetes	software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md	Your image runs on kind behind a Helm chart and a NodePort.	module:lang.07
-10	Images, kind, and Helm	infrastructure/01-containers-kubernetes/00-tracer-deploy.md	helm install brings both up on kind and curl through the gateway works.	module:dep.00
-11	One trace	systems/04-observability/00-one-trace.md	One request shows as one trace across gateway and engine in Jaeger.	module:obs.00
-12	First drill	systems/05-incident-response-and-chaos/00-first-drill.md	You fixed engine-crashloop and wrote its runbook.	drill:ops.00
-13	First ADR	software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md	ADR-0001 records why the languages meet at process and file boundaries.	module:craft.02
-14	Milestone	paths/course-p01-tracer/milestone.md	Every layer is yours and runs end to end.	milestone:MS-P1
+3	Byte bigram	content/courses/build-an-llm/p00-foundations/00-byte-bigram.md	Your bigram reaches the count-MLE NLL and writes a safetensors file; your CLI trains and samples from a clean shell.	module:L0.0
+4	Rust	content/tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md	Your std-only echo server handles two clients.	module:lang.04
+5	HTTP and SSE	content/tracks/software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md	You parse an HTTP request and emit an SSE stream by hand.	module:lang.05
+6	Your first endpoint	content/courses/build-an-llm/p10-serving/00-your-first-endpoint.md	Your Rust server streams SSE completions from your checkpoint and exports its span.	module:L10.0
+7	Go	content/tracks/software-craftsmanship/12-language-and-tool-primers/06-go.md	Your streaming proxy honors a deadline.	module:lang.06
+8	Your gateway	content/tracks/ai-platform-engineering/12-gateway/00-streaming-proxy.md	Your Go gateway rejects bad keys and streams without buffering.	module:gw.00
+9	Containers and Kubernetes	content/tracks/software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md	Your image runs on kind behind a Helm chart and a NodePort.	module:lang.07
+10	Images, kind, and Helm	content/tracks/infrastructure/01-containers-kubernetes/00-tracer-deploy.md	helm install brings both up on kind and curl through the gateway works.	module:dep.00
+11	One trace	content/tracks/systems/04-observability/00-one-trace.md	One request shows as one trace across gateway and engine in Jaeger.	module:obs.00
+12	First drill	content/tracks/systems/05-incident-response-and-chaos/00-first-drill.md	You fixed engine-crashloop and wrote its runbook.	drill:ops.00
+13	First ADR	content/tracks/software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md	ADR-0001 records why the languages meet at process and file boundaries.	module:craft.02
+14	Milestone	content/courses/build-an-llm/paths/course-p01-tracer/milestone.md	Every layer is yours and runs end to end.	milestone:MS-P1
 ```
 
 Later passes as ordered stages (each row's check is the module or milestone id; optional items are reachable but not gating). Within a pass, every module follows all of its deps (`ol learn --verify`).
@@ -4282,7 +4282,7 @@ Math is not front-loaded. Each chapter gates the first spine part that calls it:
 
 | Path | New content |
 |---|---|
-| `superstar-fde` | `@course` then `@field-engineering`; `capstone.md` moves to `field-engineering/08-mock-engagement/` |
+| `superstar-fde` | `@course` then `@field-engineering`; `capstone.md` moves to `content/tracks/field-engineering/08-mock-engagement/` |
 | `llm-foundations` | rows point at L0 to L7 chapters; check column = module ids |
 | `frameworks-and-models` | `sq.frameworks-port`, L7.9 |
 | `training` | L11, L12, C1, `ml/03` reading |
@@ -4301,10 +4301,10 @@ Churn is minimized: tracks stay top level, moves use `git mv`, and new directori
 
 | Item | Fate |
 |---|---|
-| `README.md` | rewritten front door: the course first (the system, the pass table, link to `paths/course/`), the tracks kept below as "Library"; prerequisite graph regenerated with new dirs |
-| `STUDY-PLAN.md` | re-expressed as course pacing (weeks per pass at 10 to 12 h/wk and 20 to 24 h/wk); old math and algorithm plans kept as a "Refresher schedules" appendix |
-| `CS-CURRICULUM.md` | kept as an appendix with a "Course passes vs terms" table; "Mathematics must produce working artifacts" points at the math call sites |
-| `SOURCES.md` | kept; adds OpenStax Precalculus, Higham, Trefethen and Bau, Boyd and Vandenberghe, Parr and Howard *Matrix Calculus*, Sennrich BPE, Kudo Unigram, FlashAttention, PagedAttention, SGLang, Temporal docs, saige |
+| `README.md` | rewritten front door: the course first (the system, the pass table, link to `content/courses/build-an-llm/paths/course/`), the tracks kept below as "Library"; prerequisite graph regenerated with new dirs |
+| `content/courses/README.md` | re-expressed as course pacing (weeks per pass at 10 to 12 h/wk and 20 to 24 h/wk); old math and algorithm plans kept as a "Refresher schedules" appendix |
+| `content/courses/computer-science/README.md` | kept as an appendix with a "Course passes vs terms" table; "Mathematics must produce working artifacts" points at the math call sites |
+| `content/references/sources.md` | kept; adds OpenStax Precalculus, Higham, Trefethen and Bau, Boyd and Vandenberghe, Parr and Howard *Matrix Calculus*, Sennrich BPE, Kudo Unigram, FlashAttention, PagedAttention, SGLang, Temporal docs, saige |
 | `CHANGELOG.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `LICENSE` | unchanged |
 | `sr.yaml` | adds `outputs/supersource-course.pdf` and per-pass PDFs |
 | `pyproject.toml`, `uv.lock` | unchanged (course tooling lives in `course/harness` and `course/oracle`) |
@@ -4313,8 +4313,8 @@ Churn is minimized: tracks stay top level, moves use `git mv`, and new directori
 | `swiss-table/` (empty stub) | removed; content becomes `ds.02` |
 | `scripts/assemble_book.py` | track list edited (remove `information-theory`, `programming-languages`, `diagramming-and-documentation`; add `responsible-ai`); chapter discovery becomes recursive (`README.md`, then `[0-9][0-9]-*.md`, then `p[0-9][0-9]-*/`); excludes `course/` and `archive/` |
 | `scripts/build-book.sh` | `--path course` yields `supersource-course.pdf` with one Part per pass |
-| `scripts/check_diagrams.sh` | diagram dirs updated (`software-craftsmanship/05-diagramming-c4/diagrams`, `responsible-ai`) |
-| `site/scripts/sync-content.mjs` | `TRACKS` edited the same way; `START` gains `paths/course/README.md` first; `SKIP` gains `^archive/` and every `^course/` path except `course/contracts/` (published so chapter contract links resolve); sidebar shows "Course" then "Library" |
+| `scripts/check_diagrams.sh` | diagram dirs updated (`content/tracks/software-craftsmanship/05-diagramming-c4/diagrams`, `responsible-ai`) |
+| `apps/web/scripts/sync-content.mjs` | `TRACKS` edited the same way; `START` gains `content/courses/build-an-llm/paths/course/README.md` first; `SKIP` gains `^archive/` and every `^course/` path except `course/contracts/` (published so chapter contract links resolve); sidebar shows "Course" then "Library" |
 | `.github/workflows/ci.yml` | jobs from 5.14 |
 | `skills/study-plan`, `skills/study-session` | drive `ol next` and milestone status |
 | `skills/practice-impl` | repurposed as the authoring skill: reference + tests + mutants + chapter + registry row, then `ol verify course` |
@@ -4325,32 +4325,32 @@ Churn is minimized: tracks stay top level, moves use `git mv`, and new directori
 | Track / topic | Fate |
 |---|---|
 | `math/01` to `07` | topic READMEs stay as intros and depth; gain module chapters (4.1) |
-| `math/` new `00`, `08`, `09`, `10` | new topics |
-| `information-theory/` | `git mv` to `math/11-information-theory/`; top-level dir removed, links fixed |
+| `content/tracks/math/` new `00`, `08`, `09`, `10` | new topics |
+| `information-theory/` | `git mv` to `content/tracks/math/11-information-theory/`; top-level dir removed, links fixed |
 | `algorithms/01` to `11`, `15` | stay as interview-pattern chapters (off spine, `paths/interview-drills`); solutions stay as `reattempt`; `15/bloom.py` is the ds.08 worked example |
 | `algorithms/06-graphs/a.out`, `algorithms/12-concurrency-systems/miner/miner` | delete (committed binaries) |
-| `algorithms/12-concurrency-systems`, `13-functional-programming`, `14-ml-statistics` | to `archive/algorithms/` (historical coursework); Huffman (`08-greedy`) is cited from M11.3; the archived `14-ml-statistics/{k-means,tf-idf-vector-search}.py` are cited from ag.07 as worked examples |
-| `algorithms/` new `16-systems-data-structures` | `ds.*` |
-| `ml/01-statistical-learning` | optional depth; logistic regression linked from L6.5 and M07.7 |
-| `ml/02-deep-learning` | depth; section 11 "Transformers" cut to a pointer to L5 to L7 (transformer was taught 3x; now one sequence); section 12 RLHF becomes a pointer to L12 |
-| `ml/03-reinforcement-learning` | depth reading for L12.3 (policy gradient, PPO); classic RL becomes `sq.rl-classics` |
-| `ml/04-llm-systems` README | section 1 cut to a pointer to L7; sections 3 to 7 and diagrams become figures and depth: `paged-kv-cache.d2` and `disaggregated-serving.d2` for L8 to L10, `parallelism.d2` for `sq.tensor-parallel` and `sq.pipeline-parallel`, `serving-stack.d2` for `paths/course/SYSTEM.md` |
+| `algorithms/12-concurrency-systems`, `13-functional-programming`, `14-ml-statistics` | to `archive/content/tracks/algorithms/` (historical coursework); Huffman (`08-greedy`) is cited from M11.3; the archived `14-ml-statistics/{k-means,tf-idf-vector-search}.py` are cited from ag.07 as worked examples |
+| `content/tracks/algorithms/` new `16-systems-data-structures` | `ds.*` |
+| `content/tracks/ml/01-statistical-learning` | optional depth; logistic regression linked from L6.5 and M07.7 |
+| `content/tracks/ml/02-deep-learning` | depth; section 11 "Transformers" cut to a pointer to L5 to L7 (transformer was taught 3x; now one sequence); section 12 RLHF becomes a pointer to L12 |
+| `content/tracks/ml/03-reinforcement-learning` | depth reading for L12.3 (policy gradient, PPO); classic RL becomes `sq.rl-classics` |
+| `content/tracks/ml/04-llm-systems` README | section 1 cut to a pointer to L7; sections 3 to 7 and diagrams become figures and depth: `paged-kv-cache.d2` and `disaggregated-serving.d2` for L8 to L10, `parallelism.d2` for `sq.tensor-parallel` and `sq.pipeline-parallel`, `serving-stack.d2` for `content/courses/build-an-llm/paths/course/SYSTEM.md` |
 | `ml/04/model-loading` | depth for L7.9; `safetensors_inspect.py` and `config_explain.py` become L0.6/L7.9 worked examples |
 | `ml/04/quantization` | depth for L8.5 and optional L9.5; `nf4_quant.c`, `turboquant.c` stay as worked examples; `burn_quantize.rs` becomes side-quest reading (the `.zig` files are in `ml/04/frameworks/code` and go with `sq.engines-tour`) |
 | `ml/04/frameworks` | "Going further" reading for L8; code becomes `sq.engines-tour` |
 | `ml/04/serving-and-load` | depth for L10; `capacity.py` becomes the M05.1 worked example; `loadgen.py` is reading, superseded by load.01 |
 | `ml/04/serving-platforms.md` | reading, linked from gw.05 |
-| `ml/05-foundation-models` | section 2 "variants" cut to a pointer to L7; the rest is "read any config.json" depth for L7.9 |
-| `ml/06-neural-architectures` | history stays as reading; sections 6 and 7 (RNN, LSTM) merge into L3 chapters; `lstm_cell.c` is the L3.2 worked example; CNN code becomes `sq.cnns` |
-| `ml/07-training-and-post-training` | depth for L11 and L12; `memory_calc.py`, `lora_from_scratch.py`, `dpo_loss.py` become M05.1, L6.6, L12.2 worked examples (the learner writes their own); `train_step_torch/jax.py` become `sq.frameworks-port` |
-| `ml/` new `08-tinyllm` | the spine |
-| `systems/01-system-design` | hosts review.01 to review.03; README stays as depth |
-| `systems/02-software-architecture`, `03-cloud-native` | reading, linked from craft.02/craft.09 and dep.02/dep.03 |
-| `systems/04-observability` | hosts obs.*; prose source for the chapters |
-| `systems/` new `05-incident-response-and-chaos` | ops.* |
+| `content/tracks/ml/05-foundation-models` | section 2 "variants" cut to a pointer to L7; the rest is "read any config.json" depth for L7.9 |
+| `content/tracks/ml/06-neural-architectures` | history stays as reading; sections 6 and 7 (RNN, LSTM) merge into L3 chapters; `lstm_cell.c` is the L3.2 worked example; CNN code becomes `sq.cnns` |
+| `content/tracks/ml/07-training-and-post-training` | depth for L11 and L12; `memory_calc.py`, `lora_from_scratch.py`, `dpo_loss.py` become M05.1, L6.6, L12.2 worked examples (the learner writes their own); `train_step_torch/jax.py` become `sq.frameworks-port` |
+| `content/tracks/ml/` new `08-tinyllm` | the spine |
+| `content/tracks/systems/01-system-design` | hosts review.01 to review.03; README stays as depth |
+| `content/tracks/systems/02-software-architecture`, `03-cloud-native` | reading, linked from craft.02/craft.09 and dep.02/dep.03 |
+| `content/tracks/systems/04-observability` | hosts obs.*; prose source for the chapters |
+| `content/tracks/systems/` new `05-incident-response-and-chaos` | ops.* |
 | `data-engineering/01`, `02` | depth for data.* (02 for Parquet in data.06) |
 | `data-engineering/03` (Spark), `04` (Airflow, dbt) | `sq.spark`, `sq.airflow-dbt`; 04 is also the "Going further" for data.09 and dur.* |
-| `data-engineering/` new `05-corpus-pipeline` | data.* |
+| `content/tracks/data-engineering/` new `05-corpus-pipeline` | data.* |
 | `ai-platform-engineering/01` | `sq.frameworks-port` |
 | `ai-platform-engineering/02` | depth for dur.04 and L10.6 (gRPC) |
 | `ai-platform-engineering/03` | depth for gw.04 and L10.5 (SSE) |
@@ -4362,33 +4362,33 @@ Churn is minimized: tracks stay top level, moves use `git mv`, and new directori
 | `ai-platform-engineering/09` | hosts ag.09 to ag.12; depth for L6.7 |
 | `ai-platform-engineering/10` | `sq.gguf-export`; sliding-window content becomes a pointer to L7.7 |
 | `ai-platform-engineering/11` | depth for gw.05 cascades |
-| `ai-platform-engineering/` new `12-gateway`, `13-agent-sdk` | gw.00, gw.01, gw.04, gw.05, gw.07, gw.08; ag.01 to ag.05 |
+| `content/tracks/ai-platform-engineering/` new `12-gateway`, `13-agent-sdk` | gw.00, gw.01, gw.04, gw.05, gw.07, gw.08; ag.01 to ag.05 |
 | `infrastructure/01` | hosts dep.*; `manifests/` stay as annotated examples (the learner writes their own); `diagrams/deployment-k8s.d2` becomes the dep.03 figure |
 | `infrastructure/02` | depth for dur.03; `raft_election.go` seeds dur.10; backpressure demos become `sq.backpressure` |
 | `infrastructure/03` | merged into `ai-platform-engineering/05` (its `diagrams/kafka-consumption.d2` moves to `05/side-quests/kafka-consumers/`); directory removed |
 | `infrastructure/04` | depth for ag.07; `bm25_from_scratch.py/.rs` seed the BM25 oracle; tantivy example becomes `sq.tantivy` |
 | `infrastructure/05` | `sq.apache-stack` |
-| `programming-languages/01-type-systems` | `git mv` to `software-craftsmanship/07-type-systems/` as `sq.type-systems`; the top-level `programming-languages/README.md` is folded into `software-craftsmanship/README.md`; top-level dir removed |
-| `diagramming-and-documentation/` | `01-*` and `diagrams/` move to `software-craftsmanship/05-diagramming-c4/`; `02-*` moves to `software-craftsmanship/06-documentation-writing/`; the top-level README is folded into `software-craftsmanship/README.md`; top-level dir removed |
+| `programming-languages/01-type-systems` | `git mv` to `content/tracks/software-craftsmanship/07-type-systems/` as `sq.type-systems`; the top-level `programming-languages/README.md` is folded into `content/tracks/software-craftsmanship/README.md`; top-level dir removed |
+| `diagramming-and-documentation/` | `01-*` and `diagrams/` move to `content/tracks/software-craftsmanship/05-diagramming-c4/`; `02-*` moves to `content/tracks/software-craftsmanship/06-documentation-writing/`; the top-level README is folded into `content/tracks/software-craftsmanship/README.md`; top-level dir removed |
 | `software-craftsmanship/01`, `02`, `04` | reading (01's "tracer bullets" section is cited by the P1 intro; 02 by craft.08 and craft.11) |
-| `software-craftsmanship/03-testing-mentality` | hosts the testing ladder craft.03 to craft.07 and craft.20 to craft.23 |
-| `software-craftsmanship/` new `05` to `12` | diagramming-c4, documentation-writing, type-systems, code-review-and-ci, releases-and-deprecation, maintenance, security, language-and-tool-primers (`lang.*`) |
-| `responsible-ai/` (new track) | `01-data-licensing`, `02-privacy-and-pii`, `03-model-and-data-cards`, `04-bias-and-safety-evals`, `05-usage-policy`, `06-professional-responsibility` |
+| `content/tracks/software-craftsmanship/03-testing-mentality` | hosts the testing ladder craft.03 to craft.07 and craft.20 to craft.23 |
+| `content/tracks/software-craftsmanship/` new `05` to `12` | diagramming-c4, documentation-writing, type-systems, code-review-and-ci, releases-and-deprecation, maintenance, security, language-and-tool-primers (`lang.*`) |
+| `content/tracks/responsible-ai/` (new track) | `01-data-licensing`, `02-privacy-and-pii`, `03-model-and-data-cards`, `04-bias-and-safety-evals`, `05-usage-policy`, `06-professional-responsibility` |
 | `field-engineering/01` to `07` | stay; each gains "Apply it to your platform" exercises: `01` to `05` feed field.01 to field.05, `06-commercials-and-security` feeds field.06, `07-escalation-and-handoff` feeds field.07 |
-| `field-engineering/` new `08-mock-engagement` | field.*; absorbs `paths/superstar-fde/capstone.md` |
+| `content/tracks/field-engineering/` new `08-mock-engagement` | field.*; absorbs `paths/superstar-fde/capstone.md` |
 | `case-studies/01`, `04` | side quests (reattempt); 04 is the ag.07 k-means++ worked example |
 | `case-studies/02` | stays; `safety_gate.py` seeds ag.04 (ported to Go; BLOCKED corpus becomes the conformance fixture) |
 | `case-studies/03` | stays; seeds dur.02 and dur.03 (constraint-based dedup, atomic claim) |
 | `case-studies/05` | stays; seeds ag.10 (set-relation grader, oracle + mutant suite) |
-| `competitive-programming/`, `interviews/` companies and shared concepts | unchanged; new `interviews/defend-your-system/` (iv.01) |
-| `paths/` | re-expressed (7.6) plus the course paths |
+| `content/tracks/competitive-programming/`, `content/interviews/` companies and shared concepts | unchanged; new `content/interviews/defend-your-system/` (iv.01) |
+| `content/courses/build-an-llm/paths/` | re-expressed (7.6) plus the course paths |
 | `archive/` (new) | historical coursework only |
-| `math/` new `12-signals-and-images` (P12) | M12.* |
-| `ml/08-tinyllm` new `p13-vision`, `p14-speech`, `p15-multimodal-serving` (P12) | L13, L14, L15 |
-| `ml/05-foundation-models/README.md` section 4 (modalities) | stays as the topic overview; cited by the `p13` and `p14` part READMEs as "why now"; its fusion-pattern bullets point to L13.5 (dual encoder) and L13.7 (projector into the LLM) |
-| `ml/06-neural-architectures/code/conv2d.c` | worked example for M12.1 beat 3 (valid cross-correlation, output size formula) and the naive baseline the optional L13.8 kernel is benchmarked against |
-| `ml/06-neural-architectures/code/conv2d.cu` | stays in `sq.cnns`; `sq.cuda-kernels` may add an im2col variant, never in CI |
-| `ml/06-neural-architectures/code/lenet.rs`, `alexnet.py` | `sq.cnns` reading; L13.1 beat 6 "Going further" cites them; LeNet is the L13.1 learning-test architecture in numpy |
+| `content/tracks/math/` new `12-signals-and-images` (P12) | M12.* |
+| `content/courses/build-an-llm` new `p13-vision`, `p14-speech`, `p15-multimodal-serving` (P12) | L13, L14, L15 |
+| `content/tracks/ml/05-foundation-models/README.md` section 4 (modalities) | stays as the topic overview; cited by the `p13` and `p14` part READMEs as "why now"; its fusion-pattern bullets point to L13.5 (dual encoder) and L13.7 (projector into the LLM) |
+| `content/tracks/ml/06-neural-architectures/code/conv2d.c` | worked example for M12.1 beat 3 (valid cross-correlation, output size formula) and the naive baseline the optional L13.8 kernel is benchmarked against |
+| `content/tracks/ml/06-neural-architectures/code/conv2d.cu` | stays in `sq.cnns`; `sq.cuda-kernels` may add an im2col variant, never in CI |
+| `content/tracks/ml/06-neural-architectures/code/lenet.rs`, `alexnet.py` | `sq.cnns` reading; L13.1 beat 6 "Going further" cites them; LeNet is the L13.1 learning-test architecture in numpy |
 
 ### 8.3 Practice exercises
 
@@ -4441,20 +4441,20 @@ Every batch ends green on its verification command and leaves the **reference-as
 
 | Batch | Harness work | Modules (reference + tests + mutants + chapter + registry row) | Paths, new topic READMEs, committed fixture budget | Verification |
 |---|---|---|---|---|
-| **B1 Harness + tracer** | `course/modules/*.toml` loader, `modules.tsv` generator, registry invariants (3.4); dispatch including the `bench` routing (5.2); `ol course init`, `start/check/diff/show/reset/tests/status/next` in all four languages; marker ids, the compiling stubber, and the stubbed-tree compile lint; `course/ref/history/` snapshots and `upgrades` handling; cumulative overlay (Python in the learner's uv env with namespace paths, C standalone test binaries with stub objects and the counting allocator, Rust and Go copy farms with generated manifests); `contracts/VERSION` worktree resolution and the content-hash pre-check; `--ref-deps`; verdict ledger; frozen helpers (`tests/_lib` close, pcg32, gradcheck; `ol_test.h`); `ol milestone` with `system.toml` (`[build]`, port allocation, generated `runtime.toml`, smoke and kind tags, matchers including `tokens-equal` over emitted ids, `trace` for Jaeger, `ci-status`); `ol conform openapi:v0`; `ol drill` framework with the safety gate and journal; `ol doctor`; `ol lint`; `path.tsv` column 5; `ol verify course` checks 1 to 14; `ol check --all --ci` and the learner CI recipe; `ol export` with the test glue; site and book publish `course/contracts/` only; CI `course-verify-changed`, `milestone-p1-kind`, `reference-learner-e2e` (smoke) | lang.01 to lang.07, craft.01, M03.1, L0.0, L10.0, gw.00, dep.00, obs.00, ops.00, craft.02; contracts `tinyllm.h` (optional C exercises, matmul), `openai-subset.v0.yaml`, `formats/{safetensors,tokenizer}.md` (with the `bytes` tokenizer), `formats/config.schema.json`, `spec/cli-roles.md`, `config/system.schema.json`; MS-P0, MS-P1; root README gains a Course section | `paths/course/` (README, SYSTEM.md), `course-p00-setup`, `course-p01-tracer`; new topic READMEs `software-craftsmanship/12-language-and-tool-primers/`, `ml/08-tinyllm/` (+ `p00`, `p09`, `p10` part READMEs), `ai-platform-engineering/12-gateway/`, `systems/05-incident-response-and-chaos/`, `software-craftsmanship/{06-documentation-writing,08-code-review-and-ci}/`; fixtures 2 MiB (`small-corpora/tinyshakespeare.txt`, public domain) | `ol lint && ol learn --verify && ol verify course --changed origin/main && ol milestone MS-P0 && ol milestone MS-P1 && ol export "$(mktemp -d)/x" --allow-incomplete` |
-| **B2 Consolidation + solve** | all section 8 moves (`git mv`), `archive/`, binary deletions, link rewrite + `ol lint --links` over all markdown; `assemble_book.py` recursive discovery and track list; `sync-content.mjs`; `solve` checker (SymPy) with lettered parts and the `proof` rubric; `course/rubrics/` | S-M00, M00.1 to M00.4 (new topic); `information-theory` to `math/11`; role paths repointed (7.6) | new topic READMEs `math/00-precalculus/`, `responsible-ai/`, `archive/`; merged `software-craftsmanship/README.md`; fixtures 1 MiB | `ol lint --links && ol learn --verify && ol verify course && ./scripts/build-book.sh --path course && pnpm -C site build && ! git grep -nE '(information-theory\|diagramming-and-documentation\|programming-languages)/' -- '*.md' ':!archive' ':!CHANGELOG.md'` |
-| **B3 Foundations** | mutation runner (`ol mutate`, Python first, cached by unit, test, and patch hash; `ol check` sampling); `ol tdd`; the Hypothesis profile `ol` | M01.1 to M01.3, M02.1, M02.2, M03.1 to M03.4, M04.1, M04.2, M06.1, M06.3 (Python), M07.0, M07.3, M08.1 to M08.3, M09.1, M09.2, M10.1 to M10.4, M11.1; S-M01, S-M02, S-M03a, S-M04, S-M05, S-M06a, S-M07a, S-M08, S-M09a, S-M10a, S-M11a; L0.1 to L0.6 (L0.5 takes over `bigram.py`; L0.6 includes `TokenStream`); craft.03; MS-L0, MS-P2 | `course-p02-foundations`; new topic READMEs `math/{08-matrix-calculus-and-autodiff,09-numerical-methods-and-floating-point,10-optimization}/`, `software-craftsmanship/03-testing-mentality/` chapter index; fixtures 6 MiB (`ops-torch`, `optim-torch`, `digits`) | `ol verify course && ol milestone MS-P2 && ol milestone MS-P1 --smoke` |
-| **B4 Data structures + tokenizers** | Rust farm for standalone `tl-tok` and `tl-engine` crates; `ol fetch` and `ASSETS.tsv`, with `course-corpora` published as a release asset; parity runner (`tokenizer.bpe`, `rng`, `bloom`) | ds.05, ds.06, ds.08; M05.2, M06.2, M07.1, M07.2, M11.2; S-M06b, S-M07b; L1.1 to L1.6 (L1.4 core); craft.04; MS-L1 | first half of `course-p03-tokens-and-data`; new topic READMEs `algorithms/16-systems-data-structures/`, `ml/08-tinyllm/p01-tokenizers/`; fixtures 6 MiB (`tok-gpt2`, `tok-smollm2`, `tok-bert`) | `ol verify course && ol parity && ol milestone MS-L1` |
-| **B5 Data + statistical LM** | local HTTP fixture server (`flakyhttp`, no network in CI); decontamination fixtures | lang.08; data.01 to data.08, ethics.01, ethics.02; M03.5, M03.6, M11.4, S-M03b, S-M11b; L2.1 to L2.3; MS-corpus, MS-L2, MS-P3 | rest of `course-p03-tokens-and-data`; new topic READMEs `data-engineering/05-corpus-pipeline/`, `responsible-ai/{01-data-licensing,02-privacy-and-pii}/`, `ml/08-tinyllm/p02-statistical-lm/`; fixtures 4 MiB | `ol verify course && ol milestone MS-P3` |
-| **B6 Sequence models** | mutation runner for all languages (shared warm target dir, mutant cache); perf, model, agent, and resilience mutant classes scaffolded; `ref-thresholds` from 5 reference seeds | M07.4, S-M07c; L3.1 to L3.6 (L3.5 optional); L4.1 to L4.5; craft.07; MS-L3, MS-L4, MS-P4 | `course-p04-sequence-models`; new topic READMEs `ml/08-tinyllm/{p03-recurrent,p04-attention-origins}/`; fixtures 3 MiB | `ol verify course && ol milestone MS-P4 --smoke` (nightly: full) |
-| **B7 Transformer + modern block + zoo** | `course/oracle` generators for `tiny-hf-models` (published asset) and SmolLM2 parity with margin-filtered prompts; the near-tie rule in `tokens-equal`; zoo report schema | M01.4, M07.5, M07.7, S-M07d, M05.1; L5.1 to L5.5; L6.1 to L6.3, L6.5 to L6.7 (L6.4 optional); L7.1 to L7.9; craft.05; MS-L5, MS-L6, MS-L7, MS-P5 | `course-p05-transformer`; new topic READMEs `ml/08-tinyllm/{p05-transformer-2017,p06-objectives,p07-modern-block}/`; fixtures 8 MiB (`smollm2-parity`, margin prompts, `rope-scaling`, `lowp`, `configs`) | `ol verify course && ol milestone MS-P5 --smoke` (nightly: `hf-real`) |
-| **B8 Inference + kernels** | optional standalone C test binaries with sanitizers on macOS and Linux; the counting allocator; fixture parity suites for optional C modules; no production C backend | M07.6, M09.3 to M09.6, S-M09b; ds.07; L8.1 to L8.7; craft.06; MS-L8, MS-P6 (optional: ds.01 to ds.04, rt.02 to rt.04, M09.5 to M09.7, L9.1 to L9.6) | `course-p06-inference-and-kernels`; new topic READMEs `ml/08-tinyllm/{p08-inference,p09-kernels}/` chapter indexes; fixtures 6 MiB | `ol verify course && ol milestone MS-P6 --smoke` |
-| **B9 Serving platform** | generated proto code in `contracts/` (`tl-proto`, `contracts/go/gen`); full OpenAI conformance (v1, both tiers, `tools.*`, `priority.internal`, `requires`/pending); `testkit` (chaosproxy, otlpsink, promscrape, clock); drill `kill-decode` with the `drill` SLO profile and scripted responder; in-cluster calibration Job; scratch-copy builder for seeded PRs (craft.08); CI `kind-e2e` and `milestones-full` | lang.09 to lang.11; L10.1 to L10.9; load.01, load.02; gw.01 to gw.07, ds.09; dep.01 to dep.05; obs.01 to obs.04; ops.01; craft.08, craft.20; review.01; MS-L10, MS-gateway, MS-prod, MS-P7 | `course-p07-serving-platform`; new chapters in `ml/08-tinyllm/p10-serving/`, `ai-platform-engineering/12-gateway/`, `systems/04-observability/`, `infrastructure/01-containers-kubernetes/`; fixtures 4 MiB (recorded SSE streams, KV golden blobs) | `ol verify course && ol milestone MS-P7 --smoke` (nightly: kind) |
-| **B10 Durable** | `KillLoop`, `effects`, failpoints; `--test-activities` and the course test workflows; recorded histories; drills `durable-kill9`, `poison-task`; KEDA in the pinned charts | dur.01 to dur.09, dur.11 (dur.10 optional, MS-durable-ha); data.09; dep.06, obs.05; craft.21; ops.02, ops.03; MS-durable, MS-P8 | `course-p08-durable`; `ai-platform-engineering/05-durable-orchestration-and-workers/` merged README; fixtures 3 MiB | `ol verify course && ol milestone MS-P8 --smoke` (nightly: full, kind) |
-| **B11 Training at scale + capstone** | milestone `--smoke` mode for C1 (200 steps, about 1M params); the full reference run and the `short` ablations are author-local and calibrate `ref-thresholds` | M08.4; L11.1 (L11.2, L11.3 optional); ethics.03, ethics.04; dur.12; craft.22; C1; MS-L11, MS-C1, MS-P9 | `course-p09-capstone-training`; new topic READMEs `ml/08-tinyllm/{p11-training-at-scale,capstones}/`, `responsible-ai/{03-model-and-data-cards,04-bias-and-safety-evals}/`; fixtures 2 MiB | `ol verify course && ol milestone MS-P9 --smoke` (nightly: `train-smoke`) |
-| **B12 Agents (+ optional post-training)** | `faketool` provider (no network); prompt-injection fixture suite; `smollm2-135m-instruct` asset; frontier provider opt-in via env | ag.01 to ag.12; ethics.05; gw.08; dep.07; craft.23; MS-agent, MS-P10; optional S-M10b, L12.1 to L12.4, C2, MS-C2, `sq.multi-lora` | `course-p10-agents`; new topic READMEs `ai-platform-engineering/13-agent-sdk/`, `responsible-ai/05-usage-policy/`, `ml/08-tinyllm/p12-post-training/`; fixtures 4 MiB | `ol verify course && ol milestone MS-P10 --smoke` (nightly: real model) |
-| **B13 Operate + finish** | drills `kv-v2-migration`, `api-v2-migration`, `dep-upgrade`, `perf-regression`, `data-incident`, `noisy-neighbor`, `runaway-agent`, `eventlog-disk-full`, `raft-partition`; `openai-subset.v2.yaml`, KV v2 contracts and `history/` snapshots for craft.13 and craft.14; role paths (7.6); STUDY-PLAN, CS-CURRICULUM, README final; `sr.yaml` artifacts | craft.09 to craft.19 (craft.13 and craft.14 are build modules); ops.04 to ops.12; review.02, review.03; ethics.06; field.01 to field.07; iv.01; MS-ops, MS-P11 | `course-p11-operate`; new topic READMEs `software-craftsmanship/{05-diagramming-c4,07-type-systems,09-releases-and-deprecation,10-maintenance,11-security}/`, `field-engineering/08-mock-engagement/`, `interviews/defend-your-system/`, `responsible-ai/06-professional-responsibility/`; fixtures 1 MiB | `ol lint --links && ol learn --verify && ol verify course --nightly && for m in MS-P0 MS-P1 MS-P2 MS-P3 MS-P4 MS-P5 MS-P6 MS-P7 MS-P8 MS-P9 MS-P10; do ol milestone $m --smoke \|\| exit 1; done && ./scripts/build-book.sh && pnpm -C site build` |
-| **B14 Multimodal: vision and speech** (Pass 12, after B13) | registry: pass 12 and the `L13` to `L15` parts (`L[0-9]{1,2}` already matches); Rust farm builds with `candle-core`/`candle-nn` (cpu in CI) and the new crate `tl-media` in the contract pre-check; `allowed-deps.toml` additions (Pillow, `image`, `rustfft`, `fast_image_resize`, `rubato`, `flate2`) and the forbidden list; matcher `npz-close`; placeholders `{emb_port}`, `{asset-rev:<id>}`; `chaos` kills for EPD faults; `ol conform --cases` and `multipart/form-data` in the OpenAPI runner (official `openai` client `audio.transcriptions`); conformance suite `encoder-grpc/`; parity suites `image.decode`, `image.preprocess`, `image.tokens`, `audio.logmel`, `asr.decode`, `media.hash`, `embed.wire.v1`; generated code for `tl/encoder/v1` in `tl-proto` and `contracts/go/gen`; standalone C test binaries with fixture parity for the optional `conv.h`, `image.h`, `audio.h` (sanitizers and the counting allocator, as in B8; no stub library for other languages, no `tl-sys`); registry support for `optional = true` milestones; drills `encoder-pool-loss` (`scale-zero`) and `image-flood` (`tenant-flood` with a `media-flood` profile) with scripted responders; `hf-real-mm`; `kind-e2e` rotation adds ops.13 and ops.14 and the MS-multimodal-prod steps; `ASSETS.tsv` rows and `build:` generators per 5.11 | lang.12, lang.13; M12.1 to M12.6, S-M12; L13.1 to L13.7; L14.1 to L14.5; L15.1 to L15.7; ds.10; data.10 to data.13; dur.13; gw.09 to gw.11; load.03; dep.08; obs.06; ops.13, ops.14; ethics.07, ethics.08; craft.24; review.04; MS-L13, MS-L14, MS-mm-corpus, MS-L15, MS-multimodal-prod, MS-P12; optional L13.8, L13.9, L14.6 and MS-mm-kernels (authored last; core verification never depends on them); side quests sq.audio-llm, sq.streaming-asr, sq.vision-agent, sq.jpeg-decoder, sq.video-frames | `paths/course-p12-multimodal/` (README, `path.tsv`, `milestone.md`); `paths/course/path.tsv` gains `@course-p12-multimodal`; new topic README `math/12-signals-and-images/`; new part READMEs `ml/08-tinyllm/{p13-vision,p14-speech,p15-multimodal-serving}/`; chapter indexes in `data-engineering/05-corpus-pipeline/`, `ai-platform-engineering/12-gateway/`, `responsible-ai/{02-privacy-and-pii,04-bias-and-safety-evals}/`; `ml/05-foundation-models/README.md` section 4 gains pointers to L13.5, L13.7, L14; fixtures 6 MiB | `ol lint && ol learn --verify && ol verify course --changed origin/main && ol parity && ol conform openapi:v2 --target engine --cases 'mm.*,audio.*' && ol milestone MS-P12 --smoke` (nightly: `hf-real-mm` for the real-weight steps, `kind-e2e` for MS-multimodal-prod) |
+| **B1 Harness + tracer** | `course/modules/*.toml` loader, `modules.tsv` generator, registry invariants (3.4); dispatch including the `bench` routing (5.2); `ol course init`, `start/check/diff/show/reset/tests/status/next` in all four languages; marker ids, the compiling stubber, and the stubbed-tree compile lint; `course/ref/history/` snapshots and `upgrades` handling; cumulative overlay (Python in the learner's uv env with namespace paths, C standalone test binaries with stub objects and the counting allocator, Rust and Go copy farms with generated manifests); `contracts/VERSION` worktree resolution and the content-hash pre-check; `--ref-deps`; verdict ledger; frozen helpers (`tests/_lib` close, pcg32, gradcheck; `ol_test.h`); `ol milestone` with `system.toml` (`[build]`, port allocation, generated `runtime.toml`, smoke and kind tags, matchers including `tokens-equal` over emitted ids, `trace` for Jaeger, `ci-status`); `ol conform openapi:v0`; `ol drill` framework with the safety gate and journal; `ol doctor`; `ol lint`; `path.tsv` column 5; `ol verify course` checks 1 to 14; `ol check --all --ci` and the learner CI recipe; `ol export` with the test glue; site and book publish `course/contracts/` only; CI `course-verify-changed`, `milestone-p1-kind`, `reference-learner-e2e` (smoke) | lang.01 to lang.07, craft.01, M03.1, L0.0, L10.0, gw.00, dep.00, obs.00, ops.00, craft.02; contracts `tinyllm.h` (optional C exercises, matmul), `openai-subset.v0.yaml`, `formats/{safetensors,tokenizer}.md` (with the `bytes` tokenizer), `formats/config.schema.json`, `spec/cli-roles.md`, `config/system.schema.json`; MS-P0, MS-P1; root README gains a Course section | `content/courses/build-an-llm/paths/course/` (README, SYSTEM.md), `course-p00-setup`, `course-p01-tracer`; new topic READMEs `content/tracks/software-craftsmanship/12-language-and-tool-primers/`, `content/courses/build-an-llm/` (+ `p00`, `p09`, `p10` part READMEs), `content/tracks/ai-platform-engineering/12-gateway/`, `content/tracks/systems/05-incident-response-and-chaos/`, `content/tracks/software-craftsmanship/{06-documentation-writing,08-code-review-and-ci}/`; fixtures 2 MiB (`small-corpora/tinyshakespeare.txt`, public domain) | `ol lint && ol learn --verify && ol verify course --changed origin/main && ol milestone MS-P0 && ol milestone MS-P1 && ol export "$(mktemp -d)/x" --allow-incomplete` |
+| **B2 Consolidation + solve** | all section 8 moves (`git mv`), `archive/`, binary deletions, link rewrite + `ol lint --links` over all markdown; `assemble_book.py` recursive discovery and track list; `sync-content.mjs`; `solve` checker (SymPy) with lettered parts and the `proof` rubric; `course/rubrics/` | S-M00, M00.1 to M00.4 (new topic); `information-theory` to `math/11`; role paths repointed (7.6) | new topic READMEs `content/tracks/math/00-precalculus/`, `content/tracks/responsible-ai/`, `archive/`; merged `content/tracks/software-craftsmanship/README.md`; fixtures 1 MiB | `ol lint --links && ol learn --verify && ol verify course && ./scripts/build-book.sh --path course && pnpm -C site build && ! git grep -nE '(information-theory\|diagramming-and-documentation\|programming-languages)/' -- '*.md' ':!archive' ':!CHANGELOG.md'` |
+| **B3 Foundations** | mutation runner (`ol mutate`, Python first, cached by unit, test, and patch hash; `ol check` sampling); `ol tdd`; the Hypothesis profile `ol` | M01.1 to M01.3, M02.1, M02.2, M03.1 to M03.4, M04.1, M04.2, M06.1, M06.3 (Python), M07.0, M07.3, M08.1 to M08.3, M09.1, M09.2, M10.1 to M10.4, M11.1; S-M01, S-M02, S-M03a, S-M04, S-M05, S-M06a, S-M07a, S-M08, S-M09a, S-M10a, S-M11a; L0.1 to L0.6 (L0.5 takes over `bigram.py`; L0.6 includes `TokenStream`); craft.03; MS-L0, MS-P2 | `course-p02-foundations`; new topic READMEs `content/tracks/math/{08-matrix-calculus-and-autodiff,09-numerical-methods-and-floating-point,10-optimization}/`, `content/tracks/software-craftsmanship/03-testing-mentality/` chapter index; fixtures 6 MiB (`ops-torch`, `optim-torch`, `digits`) | `ol verify course && ol milestone MS-P2 && ol milestone MS-P1 --smoke` |
+| **B4 Data structures + tokenizers** | Rust farm for standalone `tl-tok` and `tl-engine` crates; `ol fetch` and `ASSETS.tsv`, with `course-corpora` published as a release asset; parity runner (`tokenizer.bpe`, `rng`, `bloom`) | ds.05, ds.06, ds.08; M05.2, M06.2, M07.1, M07.2, M11.2; S-M06b, S-M07b; L1.1 to L1.6 (L1.4 core); craft.04; MS-L1 | first half of `course-p03-tokens-and-data`; new topic READMEs `content/tracks/algorithms/16-systems-data-structures/`, `content/courses/build-an-llm/p01-tokenizers/`; fixtures 6 MiB (`tok-gpt2`, `tok-smollm2`, `tok-bert`) | `ol verify course && ol parity && ol milestone MS-L1` |
+| **B5 Data + statistical LM** | local HTTP fixture server (`flakyhttp`, no network in CI); decontamination fixtures | lang.08; data.01 to data.08, ethics.01, ethics.02; M03.5, M03.6, M11.4, S-M03b, S-M11b; L2.1 to L2.3; MS-corpus, MS-L2, MS-P3 | rest of `course-p03-tokens-and-data`; new topic READMEs `content/tracks/data-engineering/05-corpus-pipeline/`, `content/tracks/responsible-ai/{01-data-licensing,02-privacy-and-pii}/`, `content/courses/build-an-llm/p02-statistical-lm/`; fixtures 4 MiB | `ol verify course && ol milestone MS-P3` |
+| **B6 Sequence models** | mutation runner for all languages (shared warm target dir, mutant cache); perf, model, agent, and resilience mutant classes scaffolded; `ref-thresholds` from 5 reference seeds | M07.4, S-M07c; L3.1 to L3.6 (L3.5 optional); L4.1 to L4.5; craft.07; MS-L3, MS-L4, MS-P4 | `course-p04-sequence-models`; new topic READMEs `content/courses/build-an-llm/{p03-recurrent,p04-attention-origins}/`; fixtures 3 MiB | `ol verify course && ol milestone MS-P4 --smoke` (nightly: full) |
+| **B7 Transformer + modern block + zoo** | `course/oracle` generators for `tiny-hf-models` (published asset) and SmolLM2 parity with margin-filtered prompts; the near-tie rule in `tokens-equal`; zoo report schema | M01.4, M07.5, M07.7, S-M07d, M05.1; L5.1 to L5.5; L6.1 to L6.3, L6.5 to L6.7 (L6.4 optional); L7.1 to L7.9; craft.05; MS-L5, MS-L6, MS-L7, MS-P5 | `course-p05-transformer`; new topic READMEs `content/courses/build-an-llm/{p05-transformer-2017,p06-objectives,p07-modern-block}/`; fixtures 8 MiB (`smollm2-parity`, margin prompts, `rope-scaling`, `lowp`, `configs`) | `ol verify course && ol milestone MS-P5 --smoke` (nightly: `hf-real`) |
+| **B8 Inference + kernels** | optional standalone C test binaries with sanitizers on macOS and Linux; the counting allocator; fixture parity suites for optional C modules; no production C backend | M07.6, M09.3 to M09.6, S-M09b; ds.07; L8.1 to L8.7; craft.06; MS-L8, MS-P6 (optional: ds.01 to ds.04, rt.02 to rt.04, M09.5 to M09.7, L9.1 to L9.6) | `course-p06-inference-and-kernels`; new topic READMEs `content/courses/build-an-llm/{p08-inference,p09-kernels}/` chapter indexes; fixtures 6 MiB | `ol verify course && ol milestone MS-P6 --smoke` |
+| **B9 Serving platform** | generated proto code in `contracts/` (`tl-proto`, `contracts/go/gen`); full OpenAI conformance (v1, both tiers, `tools.*`, `priority.internal`, `requires`/pending); `testkit` (chaosproxy, otlpsink, promscrape, clock); drill `kill-decode` with the `drill` SLO profile and scripted responder; in-cluster calibration Job; scratch-copy builder for seeded PRs (craft.08); CI `kind-e2e` and `milestones-full` | lang.09 to lang.11; L10.1 to L10.9; load.01, load.02; gw.01 to gw.07, ds.09; dep.01 to dep.05; obs.01 to obs.04; ops.01; craft.08, craft.20; review.01; MS-L10, MS-gateway, MS-prod, MS-P7 | `course-p07-serving-platform`; new chapters in `content/courses/build-an-llm/p10-serving/`, `content/tracks/ai-platform-engineering/12-gateway/`, `content/tracks/systems/04-observability/`, `content/tracks/infrastructure/01-containers-kubernetes/`; fixtures 4 MiB (recorded SSE streams, KV golden blobs) | `ol verify course && ol milestone MS-P7 --smoke` (nightly: kind) |
+| **B10 Durable** | `KillLoop`, `effects`, failpoints; `--test-activities` and the course test workflows; recorded histories; drills `durable-kill9`, `poison-task`; KEDA in the pinned charts | dur.01 to dur.09, dur.11 (dur.10 optional, MS-durable-ha); data.09; dep.06, obs.05; craft.21; ops.02, ops.03; MS-durable, MS-P8 | `course-p08-durable`; `content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/` merged README; fixtures 3 MiB | `ol verify course && ol milestone MS-P8 --smoke` (nightly: full, kind) |
+| **B11 Training at scale + capstone** | milestone `--smoke` mode for C1 (200 steps, about 1M params); the full reference run and the `short` ablations are author-local and calibrate `ref-thresholds` | M08.4; L11.1 (L11.2, L11.3 optional); ethics.03, ethics.04; dur.12; craft.22; C1; MS-L11, MS-C1, MS-P9 | `course-p09-capstone-training`; new topic READMEs `content/courses/build-an-llm/{p11-training-at-scale,capstones}/`, `content/tracks/responsible-ai/{03-model-and-data-cards,04-bias-and-safety-evals}/`; fixtures 2 MiB | `ol verify course && ol milestone MS-P9 --smoke` (nightly: `train-smoke`) |
+| **B12 Agents (+ optional post-training)** | `faketool` provider (no network); prompt-injection fixture suite; `smollm2-135m-instruct` asset; frontier provider opt-in via env | ag.01 to ag.12; ethics.05; gw.08; dep.07; craft.23; MS-agent, MS-P10; optional S-M10b, L12.1 to L12.4, C2, MS-C2, `sq.multi-lora` | `course-p10-agents`; new topic READMEs `content/tracks/ai-platform-engineering/13-agent-sdk/`, `content/tracks/responsible-ai/05-usage-policy/`, `content/courses/build-an-llm/p12-post-training/`; fixtures 4 MiB | `ol verify course && ol milestone MS-P10 --smoke` (nightly: real model) |
+| **B13 Operate + finish** | drills `kv-v2-migration`, `api-v2-migration`, `dep-upgrade`, `perf-regression`, `data-incident`, `noisy-neighbor`, `runaway-agent`, `eventlog-disk-full`, `raft-partition`; `openai-subset.v2.yaml`, KV v2 contracts and `history/` snapshots for craft.13 and craft.14; role paths (7.6); STUDY-PLAN, CS-CURRICULUM, README final; `sr.yaml` artifacts | craft.09 to craft.19 (craft.13 and craft.14 are build modules); ops.04 to ops.12; review.02, review.03; ethics.06; field.01 to field.07; iv.01; MS-ops, MS-P11 | `course-p11-operate`; new topic READMEs `content/tracks/software-craftsmanship/{05-diagramming-c4,07-type-systems,09-releases-and-deprecation,10-maintenance,11-security}/`, `content/tracks/field-engineering/08-mock-engagement/`, `content/interviews/defend-your-system/`, `content/tracks/responsible-ai/06-professional-responsibility/`; fixtures 1 MiB | `ol lint --links && ol learn --verify && ol verify course --nightly && for m in MS-P0 MS-P1 MS-P2 MS-P3 MS-P4 MS-P5 MS-P6 MS-P7 MS-P8 MS-P9 MS-P10; do ol milestone $m --smoke \|\| exit 1; done && ./scripts/build-book.sh && pnpm -C site build` |
+| **B14 Multimodal: vision and speech** (Pass 12, after B13) | registry: pass 12 and the `L13` to `L15` parts (`L[0-9]{1,2}` already matches); Rust farm builds with `candle-core`/`candle-nn` (cpu in CI) and the new crate `tl-media` in the contract pre-check; `allowed-deps.toml` additions (Pillow, `image`, `rustfft`, `fast_image_resize`, `rubato`, `flate2`) and the forbidden list; matcher `npz-close`; placeholders `{emb_port}`, `{asset-rev:<id>}`; `chaos` kills for EPD faults; `ol conform --cases` and `multipart/form-data` in the OpenAPI runner (official `openai` client `audio.transcriptions`); conformance suite `encoder-grpc/`; parity suites `image.decode`, `image.preprocess`, `image.tokens`, `audio.logmel`, `asr.decode`, `media.hash`, `embed.wire.v1`; generated code for `tl/encoder/v1` in `tl-proto` and `contracts/go/gen`; standalone C test binaries with fixture parity for the optional `conv.h`, `image.h`, `audio.h` (sanitizers and the counting allocator, as in B8; no stub library for other languages, no `tl-sys`); registry support for `optional = true` milestones; drills `encoder-pool-loss` (`scale-zero`) and `image-flood` (`tenant-flood` with a `media-flood` profile) with scripted responders; `hf-real-mm`; `kind-e2e` rotation adds ops.13 and ops.14 and the MS-multimodal-prod steps; `ASSETS.tsv` rows and `build:` generators per 5.11 | lang.12, lang.13; M12.1 to M12.6, S-M12; L13.1 to L13.7; L14.1 to L14.5; L15.1 to L15.7; ds.10; data.10 to data.13; dur.13; gw.09 to gw.11; load.03; dep.08; obs.06; ops.13, ops.14; ethics.07, ethics.08; craft.24; review.04; MS-L13, MS-L14, MS-mm-corpus, MS-L15, MS-multimodal-prod, MS-P12; optional L13.8, L13.9, L14.6 and MS-mm-kernels (authored last; core verification never depends on them); side quests sq.audio-llm, sq.streaming-asr, sq.vision-agent, sq.jpeg-decoder, sq.video-frames | `content/courses/build-an-llm/paths/course-p12-multimodal/` (README, `path.tsv`, `milestone.md`); `content/courses/build-an-llm/paths/course/path.tsv` gains `@course-p12-multimodal`; new topic README `content/tracks/math/12-signals-and-images/`; new part READMEs `content/courses/build-an-llm/{p13-vision,p14-speech,p15-multimodal-serving}/`; chapter indexes in `content/tracks/data-engineering/05-corpus-pipeline/`, `content/tracks/ai-platform-engineering/12-gateway/`, `content/tracks/responsible-ai/{02-privacy-and-pii,04-bias-and-safety-evals}/`; `content/tracks/ml/05-foundation-models/README.md` section 4 gains pointers to L13.5, L13.7, L14; fixtures 6 MiB | `ol lint && ol learn --verify && ol verify course --changed origin/main && ol parity && ol conform openapi:v2 --target engine --cases 'mm.*,audio.*' && ol milestone MS-P12 --smoke` (nightly: `hf-real-mm` for the real-weight steps, `kind-e2e` for MS-multimodal-prod) |
 
 Committed-fixture budgets sum to 56 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 + 2 + 4 + 1 + 6).
 
@@ -4494,7 +4494,7 @@ Committed-fixture budgets sum to 56 MiB (2 + 1 + 6 + 6 + 4 + 3 + 8 + 6 + 4 + 3 +
 | Q9 | Leak checks use the counting allocator on every platform (4.4); Linux CI adds LeakSanitizer; Miri and Rust TSan run nightly on a pinned toolchain. |
 | Q10 | A frontier key is never required: MS-agent runs on SmolLM2-135M-Instruct served by the learner's engine with tool calls (L10.9), and CI uses the `faketool` provider. |
 | Q11 (v1) | SmolLM2-135M-Instruct is an acceptable agent model, fetched as an asset and labelled as third-party in the model card (D20). |
-| Q13, Q14 (v1) | Removed: they reopened decision 3 (optional C++/Zig drills stay) and decision 9 (`responsible-ai/` is a new track). |
+| Q13, Q14 (v1) | Removed: they reopened decision 3 (optional C++/Zig drills stay) and decision 9 (`content/tracks/responsible-ai/` is a new track). |
 | B14 Q1 | The committed-fixture cap rises to 56 MiB (D52). |
 | B14 Q2 | Licenses verified and recorded (5.11); Common Voice replaced by a LibriSpeech-derived stand-in. |
 | B14 Q4 | No cross-request batching in the encoder or the Whisper decoder in v1 (D43). |

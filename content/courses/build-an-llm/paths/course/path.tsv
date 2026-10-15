@@ -1,0 +1,16 @@
+# The course: every pass, in order. Stage check column: DESIGN 5.15.
+# stage	title	files	done when	check
+0	The system you will build	content/courses/build-an-llm/README.md,content/courses/build-an-llm/paths/course/SYSTEM.md	You can name every component, its language, and the contract it serves.	-
+@course-p00-setup
+@course-p01-tracer
+@course-p02-foundations
+@course-p03-tokens-and-data
+@course-p04-sequence-models
+@course-p05-transformer
+@course-p06-inference-and-kernels
+@course-p07-serving-platform
+@course-p08-durable
+@course-p09-capstone-training
+@course-p10-agents
+@course-p11-operate
+@course-p12-multimodal

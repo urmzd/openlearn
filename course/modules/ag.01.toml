@@ -3,7 +3,7 @@ title     = "Types, OpenAI-compatible provider, retry wrapper"
 kind      = "build"
 lang      = ["go"]
 pass      = 10
-chapter   = "ai-platform-engineering/13-agent-sdk/01-types-and-provider.md"
+chapter   = "content/tracks/ai-platform-engineering/13-agent-sdk/01-types-and-provider.md"
 # The wire contract is openapi/openai-subset.v1.yaml (chat completions with
 # tools, Streaming), linked from the card; the Go API of go/agent/types and
 # go/agent/provider is fixed by the chapter's section 4 and the course tests
@@ -13,7 +13,7 @@ deps      = []
 # lang.06: the Go primer. gw.04 and L10.9 are the two ends of the stream this
 # client reads (the gateway's SSE proxy, the engine's tool-call deltas); the
 # provider reaches them over HTTP only, so they are reading, not deps.
-reading   = ["lang.06", "gw.04", "L10.9", "ai-platform-engineering/13-agent-sdk"]
+reading   = ["lang.06", "gw.04", "L10.9", "content/tracks/ai-platform-engineering/13-agent-sdk"]
 # ag.09: ProviderSubject streams through Provider and Accumulator. ag.11's
 # judge generator joins with its batch (registered callers only).
 used_by   = ["ag.02", "ag.03", "ag.04", "ag.05", "ag.06", "ag.09", "ag.11"]

@@ -3,7 +3,7 @@ title     = "Vision transformer encoder"
 kind      = "build"
 lang      = ["python"]
 pass      = 12
-chapter   = "ml/08-tinyllm/p13-vision/03-vision-transformer.md"
+chapter   = "content/courses/build-an-llm/p13-vision/03-vision-transformer.md"
 contract  = ["contracts/py/tinyllm/vision/vit.pyi"]
 # vit.py: L13.1's Conv2d (PatchEmbed), L13.2's rope2d_cos_sin, L7.3's
 # apply_rope, L5.3's MultiHeadAttention projections and L5.1's

@@ -3,7 +3,7 @@ title     = "Intrusive list + LRU (optional C)"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md"
+chapter   = "content/tracks/algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md"
 contract  = ["contracts/c/include/tinyllm/ds.h"]
 deps      = []                        # pure pointer code: no allocation, no error slot
 # The catalog lists ds.02 as a prerequisite (the order of the chapters);

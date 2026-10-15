@@ -17,7 +17,7 @@
 //! nothing. Every sum is a left-to-right f64 loop in ascending id order, so
 //! the accepted tokens equal your Python L8.6 on the same logits and seed.
 //!
-//! Chapter: ml/08-tinyllm/p10-serving/08-speculative-decoding-in-the-engine.md.
+//! Chapter: content/courses/build-an-llm/p10-serving/08-speculative-decoding-in-the-engine.md.
 //! Configuration: `[engine].speculative = { draft = "none" | "ngram" |
 //! "prompt_lookup", k = 4 }` (config/runtime.schema.json); the accept rate is
 //! the gauge `tl.engine.spec_accept_rate` (otel/metrics.yaml).

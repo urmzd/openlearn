@@ -1,6 +1,6 @@
 # contracts/py/tinyllm/modern/gqa.pyi (L7.5): grouped-query attention with a cache hook,
 # a sliding window, and learned sinks
-# chapter: ml/08-tinyllm/p07-modern-block/05-gqa-attention.md
+# chapter: content/courses/build-an-llm/p07-modern-block/05-gqa-attention.md
 #
 # H query heads share Hkv key/value heads (Ainslie et al. 2023): kv head j
 # serves query heads j * n_rep .. (j + 1) * n_rep - 1, n_rep = H / Hkv.

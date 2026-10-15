@@ -3,7 +3,7 @@ title     = "Licensing ledger verification and the datasheet"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md"
+chapter   = "content/tracks/data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md"
 contract  = ["contracts/py/corpus/ledger.pyi"]   # formats/ledger.schema.json is linked from the card
 # read_shards (data.06) joins the shards with the ledger; the datasheet names
 # data.05's PII kinds and reads data.07's token manifest.

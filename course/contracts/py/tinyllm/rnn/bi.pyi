@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/rnn/bi.pyi (L3.4): bidirectional RNNs with length-aware reversal
-# chapter: ml/08-tinyllm/p03-recurrent/04-bidirectional-rnn.md
+# chapter: content/courses/build-an-llm/p03-recurrent/04-bidirectional-rnn.md
 #
 # A batch of sequences of different lengths is padded to T steps, time first:
 # x [T, B, ...], with sequence b real at t < lengths[b] and padding after.

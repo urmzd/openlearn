@@ -1,0 +1,27 @@
+{
+  "id": "ai-platform-engineering",
+  "title": "AI Platform Engineering",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/tracks/ai-platform-engineering/README.md",
+      "title": "Overview"
+    },
+    {
+      "file": "content/courses/ai-platform-engineering/study-plan.md",
+      "title": "Study plan"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/ai-platform-engineering",
+      "title": "AI Platform Engineering"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

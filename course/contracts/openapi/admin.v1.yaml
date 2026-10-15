@@ -1,5 +1,5 @@
 # contracts/openapi/admin.v1.yaml: the gateway's admin API (DESIGN 2.6).
-# chapter: ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md
+# chapter: content/tracks/ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md
 #
 # modules: gw.02 (keys), gw.05 (workers, routes, drain), gw.06 (cache purge),
 # gw.07 (usage; owns the server side of this file), gw.08 (policy),

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/obj/gpt.pyi (L6.1): GPT, the causal LM loss, GPT-2 weights
-# chapter: ml/08-tinyllm/p06-objectives/01-gpt-decoder-only.md
+# chapter: content/courses/build-an-llm/p06-objectives/01-gpt-decoder-only.md
 #
 # Radford et al. (2019), GPT-2. One stack of pre-LN blocks over token plus
 # learned position embeddings (L5.4's LearnedPE), causal self-attention

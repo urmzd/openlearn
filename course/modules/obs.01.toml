@@ -3,7 +3,7 @@ title     = "Tracing for the serving path"
 kind      = "build"
 lang      = ["go"]
 pass      = 7
-chapter   = "systems/04-observability/01-tracing-for-the-serving-path.md"
+chapter   = "content/tracks/systems/04-observability/01-tracing-for-the-serving-path.md"
 # The span names, kinds, attributes, and propagation rules are
 # contracts/otel/semconv.md; the Go API of go/otelx is fixed by the chapter's
 # section 4 and the course tests (B95-01: no contracts/go file).
@@ -12,7 +12,7 @@ deps      = []                          # otelx calls no other module's code
 # obs.00 is the hand-written tracer export this module replaces; the topic
 # README is the reading. L10.7 (the engine's tracing-opentelemetry setup) is
 # the Rust half of the same trace and is linked from the chapter.
-reading   = ["obs.00", "L10.7", "systems/04-observability"]
+reading   = ["obs.00", "L10.7", "content/tracks/systems/04-observability"]
 # Call sites: obs.02 wires otelx into the gateway (LogHandler, Middleware,
 # Setup); dur.04 (activity spans from ActivityTask.trace_context) and ag.03
 # (agent spans) join with their batches (DESIGN 4.5).
