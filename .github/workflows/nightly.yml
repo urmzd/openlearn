@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-latest, macos-15-intel]
         layer: [math, spine, systems, operations]
     runs-on: ${{ matrix.os }}
     steps:
@@ -50,6 +50,12 @@ jobs:
           cache: false
       - uses: dtolnay/rust-toolchain@stable
       - uses: azure/setup-helm@v4
+      # Hosted ARM macOS cannot run the nested VM required by Docker.
+      - name: Set up Docker on macOS
+        if: runner.os == 'macOS'
+        uses: douglascamata/setup-docker-macos-action@d5ccc6aae0ce23e7700154f5e63cc53e6433ac48
+      - name: Check Docker is ready
+        run: docker info
       - name: Verify the layer
         run: |
           python .github/scripts/course-ci-shard.py "${{ matrix.layer }}" > "$RUNNER_TEMP/module-ids.txt"
@@ -165,6 +171,8 @@ jobs:
           docker push localhost:5001/forge-gateway:0.1.0
           kubectl create namespace forge
           kubectl create namespace observability
+          kubectl -n observability create secret generic grafana-admin \
+            --from-literal=admin-user=admin --from-literal=admin-password="$(openssl rand -hex 16)"
           kubectl -n forge create secret generic forge-api-key --from-literal=api-key="$TL_API_KEY"
           kubectl -n forge create secret generic forge-gateway-pepper --from-literal=pepper="$(openssl rand -hex 32)"
           helm repo add kedacore https://kedacore.github.io/charts
