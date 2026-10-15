@@ -14,6 +14,7 @@ async function walk(dir) {
 const generated = new Set(['sw.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'app/offline.json']);
 const files = (await walk(dist)).filter((file) => !generated.has(path.relative(dist, file).split(path.sep).join('/')));
 const workerSource = await fs.readFile(path.join(root, 'src/service-worker.js'), 'utf8');
+const builderSource = await fs.readFile(fileURLToPath(import.meta.url));
 const data = JSON.parse(await fs.readFile(path.join(dist, 'app/catalog.json'), 'utf8'));
 const shared = files.filter((p) => /\/(?:_astro|pagefind)\//.test(p) && !p.endsWith('.map'));
 const toURL = (p) => '/' + path.relative(dist, p).split(path.sep).join('/');
@@ -22,7 +23,7 @@ for (const p of files) {
   const bytes = await fs.readFile(p);
   descriptions.set(toURL(p), { hash: hash(bytes), bytes: bytes.length });
 }
-const build = hash([...descriptions].map(([url, meta]) => `${url}:${meta.hash}`).sort().join('\n') + hash(workerSource)).slice(0, 16);
+const build = hash([...descriptions].map(([url, meta]) => `${url}:${meta.hash}`).sort().join('\n') + hash(workerSource) + hash(builderSource)).slice(0, 16);
 const courses = {};
 for (const course of data.courses) {
   const urls = new Set([course.href, ...course.lessons.map((l) => l.url)]);

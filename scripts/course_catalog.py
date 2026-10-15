@@ -2,8 +2,8 @@
 """One course manifest supplies the website, PDF reading order, and portable pack.
 
 Paths in source manifests are repository-relative. Exported packs preserve those
-paths and put the selected manifest at their root, so the desktop platform can
-open them without the original checkout. Only build outputs duplicate files.
+paths and put the selected manifest at their root for offline source access
+and local practice. The installable web app saves published courses directly. Only build outputs duplicate files.
 """
 
 from __future__ import annotations

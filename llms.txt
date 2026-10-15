@@ -1,6 +1,6 @@
 # Supersource
 
-> A self-paced curriculum and course publishing platform for computer science, mathematics, and engineering. Course manifests reuse canonical lessons across websites, PDFs, and portable desktop packs; the LLM systems course also provides implementation contracts and grading tools.
+> A self-paced curriculum and course publishing platform for computer science, mathematics, and engineering. Course manifests reuse canonical lessons across websites, PDFs, and downloadable source packs and an offline PWA; the LLM systems course also provides implementation contracts and grading tools.
 
 ## Docs
 
@@ -23,5 +23,5 @@
 
 ## Optional
 
-- [Desktop architecture](https://github.com/urmzd/openlearn/blob/main/apps/desktop/docs/architecture.md): Course packs, exercise engine, and application runtime
+- [PWA guide](https://github.com/urmzd/openlearn/blob/main/docs/pwa.md): Offline downloads, progress, installation, and updates
 - [License](https://github.com/urmzd/openlearn/blob/main/LICENSE): Apache License 2.0

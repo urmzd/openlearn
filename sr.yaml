@@ -104,8 +104,3 @@ packages:
       - outputs/openlearn-software-craftsmanship.zip
       - outputs/openlearn-systems.pdf
       - outputs/openlearn-systems.zip
-      # The desktop app, built per platform by the release workflow's app job.
-      - outputs/openlearn-darwin-arm64.zip
-      - outputs/openlearn-darwin-amd64.zip
-      - outputs/openlearn-windows-amd64.zip
-      - outputs/openlearn-linux-amd64.tar.gz
