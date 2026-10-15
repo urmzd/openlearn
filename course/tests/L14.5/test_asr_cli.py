@@ -10,7 +10,12 @@ import pytest
 def test_cli_asr_scores_generated_segments(tmp_path, capsys):
     # WHY: Segment files must be scored as one normalized transcript, not averaged per segment.
     # KIND: golden
-    path = Path(importlib.util.find_spec("tinyllm.cli_speech").origin)
+    cli_spec = importlib.util.find_spec("tinyllm.cli_speech")
+    path = (
+        Path(cli_spec.origin)
+        if cli_spec is not None
+        else Path(__file__).resolve().parents[2] / "ref/entry/python/tinyllm/cli_speech.py"
+    )
     spec = importlib.util.spec_from_file_location("speech_eval_cli_test", path)
     cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cli)
