@@ -78,14 +78,17 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: Assemble the reference learner
         run: practice/bin/ol verify course --assemble "$GITHUB_WORKSPACE/.scratchpad/course"
-      - name: Run nightly and full training milestones
+      - name: Run hosted nightly milestones
         run: |
           python - <<'PY' > "$RUNNER_TEMP/milestones.txt"
           import glob, tomllib
           ids = {"MS-L3", "MS-L4", "MS-L6"}
+          # MS-P9 documents full capstone training as learner-local. The
+          # train-smoke job covers its self-contained CI tier separately.
+          learner_local = {"MS-C1", "MS-P9"}
           for path in glob.glob("course/milestones/*.toml"):
               data = tomllib.load(open(path, "rb"))
-              if data.get("ci") == "nightly":
+              if data.get("ci") == "nightly" and data["id"] not in learner_local:
                   ids.add(data["id"])
           print("\n".join(sorted(ids)))
           PY
