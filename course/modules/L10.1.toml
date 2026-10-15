@@ -3,7 +3,7 @@ title     = "Candle model runner (Llama + bigram, int4), Rust KV cache, sampler 
 kind      = "build"
 lang      = ["rust"]
 pass      = 7
-chapter   = "ml/08-tinyllm/p10-serving/01-model-runner-and-sampler.md"
+chapter   = "content/courses/build-an-llm/p10-serving/01-model-runner-and-sampler.md"
 # No Rust trait contract yet (K01): formats/safetensors.md,
 # spec/sampling.md, and spec/pcg32.md are linked from the chapter card.
 contract  = []

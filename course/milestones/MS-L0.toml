@@ -1,5 +1,5 @@
 # MS-L0: the Part 0 milestone (DESIGN 4.3 "MS-L0", 5.7, 7.2). MS-P2 includes it.
-# Page: paths/course-p02-foundations/milestone.md
+# Page: content/courses/build-an-llm/paths/course-p02-foundations/milestone.md
 #
 # Your autograd (L0.1 to L0.4) checks its own gradients, retrains the tracer
 # bigram to the count MLE in a model directory the unchanged tracer engine

@@ -1084,7 +1084,7 @@ def stage_order_errors(reg, course: Path) -> list[str]:
             for d in reg.get(mid).deps:
                 if d in first and first[d] > i:
                     errs.append(
-                        f"paths/{name}: {mid} (row {i + 1}) comes before its dep {d} (row {first[d] + 1})"
+                        f"content/courses/build-an-llm/paths/{name}: {mid} (row {i + 1}) comes before its dep {d} (row {first[d] + 1})"
                     )
     return errs
 

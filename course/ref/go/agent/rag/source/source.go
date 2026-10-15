@@ -3,7 +3,7 @@
 // directory, and Crawler (crawler.go) fetches web pages behind an SSRF
 // guard, robots.txt, and a per-host rate limit.
 //
-// Chapter: ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md.
+// Chapter: content/tracks/ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md.
 // Format: course/contracts/formats/rag-index.md (doc_id, source, uri).
 package source
 

@@ -6,7 +6,7 @@
 // result the model can read and correct against. It never panics and never
 // runs a tool on invalid arguments.
 //
-// Chapter: ai-platform-engineering/13-agent-sdk/02-tools-and-schemas.md.
+// Chapter: content/tracks/ai-platform-engineering/13-agent-sdk/02-tools-and-schemas.md.
 package tool
 
 import (

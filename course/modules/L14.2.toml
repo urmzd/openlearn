@@ -3,7 +3,7 @@ title     = "Whisper encoder: conv stem, sinusoids, pre-LN blocks"
 kind      = "build"
 lang      = ["python"]
 pass      = 12
-chapter   = "ml/08-tinyllm/p14-speech/02-whisper-encoder.md"
+chapter   = "content/courses/build-an-llm/p14-speech/02-whisper-encoder.md"
 contract  = ["contracts/py/tinyllm/speech/encoder.pyi"]
 # Conv1d for the stem (L13.1), conv_out_size for the length check (M12.1),
 # MultiHeadAttention as the base of WhisperAttention (L5.3), Linear,

@@ -3,7 +3,7 @@ title     = "Serving metrics, SLO histograms, OTel spans and propagation"
 kind      = "build"
 lang      = ["rust"]
 pass      = 7
-chapter   = "ml/08-tinyllm/p10-serving/07-serving-metrics-and-tracing.md"
+chapter   = "content/courses/build-an-llm/p10-serving/07-serving-metrics-and-tracing.md"
 # The interfaces are otel/metrics.yaml and otel/semconv.md, linked from the
 # card; neither carries a `chapter:` back-pointer for this chapter
 # (DEVIATIONS B92-03).

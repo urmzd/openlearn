@@ -19,93 +19,93 @@ run-parallel +targets:
 
 run-01-arrays-hashing:
   command -v node >/dev/null
-  node algorithms/01-arrays-hashing/contains-duplicate.js
-  node algorithms/01-arrays-hashing/missing-number.js
-  node algorithms/01-arrays-hashing/product-of-array-expect-self.js
-  node algorithms/01-arrays-hashing/two-sum.js
+  node content/tracks/algorithms/01-arrays-hashing/contains-duplicate.js
+  node content/tracks/algorithms/01-arrays-hashing/missing-number.js
+  node content/tracks/algorithms/01-arrays-hashing/product-of-array-expect-self.js
+  node content/tracks/algorithms/01-arrays-hashing/two-sum.js
 
 run-02-two-pointers-sliding-window:
   command -v node >/dev/null
-  node algorithms/02-two-pointers-sliding-window/3sum.js
-  node algorithms/02-two-pointers-sliding-window/container-with-most-water.js
+  node content/tracks/algorithms/02-two-pointers-sliding-window/3sum.js
+  node content/tracks/algorithms/02-two-pointers-sliding-window/container-with-most-water.js
 
 run-03-binary-search:
   command -v node >/dev/null
-  node algorithms/03-binary-search/find-minimum-in-rotated-sorted-array.js
-  node algorithms/03-binary-search/liss.js
-  node algorithms/03-binary-search/search-in-rotated-sorted-array.js
+  node content/tracks/algorithms/03-binary-search/find-minimum-in-rotated-sorted-array.js
+  node content/tracks/algorithms/03-binary-search/liss.js
+  node content/tracks/algorithms/03-binary-search/search-in-rotated-sorted-array.js
 
 run-04-linked-lists:
   command -v node >/dev/null
-  node algorithms/04-linked-lists/add-two-numbers.js
+  node content/tracks/algorithms/04-linked-lists/add-two-numbers.js
 
 run-05-trees:
   command -v python3 >/dev/null
-  python3 algorithms/05-trees/example-7.py
+  python3 content/tracks/algorithms/05-trees/example-7.py
 
 run-06-graphs:
   command -v node >/dev/null
-  node algorithms/06-graphs/clone-graph.js
-  node algorithms/06-graphs/course-schedule.js
-  node algorithms/06-graphs/number-of-islands.js
+  node content/tracks/algorithms/06-graphs/clone-graph.js
+  node content/tracks/algorithms/06-graphs/course-schedule.js
+  node content/tracks/algorithms/06-graphs/number-of-islands.js
   if command -v ts-node >/dev/null; then \
-    ts-node algorithms/06-graphs/pacific-atlantic-water-flow.ts; \
+    ts-node content/tracks/algorithms/06-graphs/pacific-atlantic-water-flow.ts; \
   else \
-    echo "ts-node not installed; run: ts-node algorithms/06-graphs/pacific-atlantic-water-flow.ts"; \
+    echo "ts-node not installed; run: ts-node content/tracks/algorithms/06-graphs/pacific-atlantic-water-flow.ts"; \
   fi
 
 run-07-dynamic-programming:
   command -v node >/dev/null
-  node algorithms/07-dynamic-programming/change-coin.js
-  node algorithms/07-dynamic-programming/climbing-stairs.js
-  node algorithms/07-dynamic-programming/decode-ways.js
-  node algorithms/07-dynamic-programming/house-robber.js
-  node algorithms/07-dynamic-programming/lcs.js
-  node algorithms/07-dynamic-programming/maximum-product-subarray.js
-  node algorithms/07-dynamic-programming/maximum-subarray.js
-  node algorithms/07-dynamic-programming/rob-houses-pt-2.js
-  node algorithms/07-dynamic-programming/unique-paths.js
-  node algorithms/07-dynamic-programming/word-break.js
+  node content/tracks/algorithms/07-dynamic-programming/change-coin.js
+  node content/tracks/algorithms/07-dynamic-programming/climbing-stairs.js
+  node content/tracks/algorithms/07-dynamic-programming/decode-ways.js
+  node content/tracks/algorithms/07-dynamic-programming/house-robber.js
+  node content/tracks/algorithms/07-dynamic-programming/lcs.js
+  node content/tracks/algorithms/07-dynamic-programming/maximum-product-subarray.js
+  node content/tracks/algorithms/07-dynamic-programming/maximum-subarray.js
+  node content/tracks/algorithms/07-dynamic-programming/rob-houses-pt-2.js
+  node content/tracks/algorithms/07-dynamic-programming/unique-paths.js
+  node content/tracks/algorithms/07-dynamic-programming/word-break.js
   command -v python3 >/dev/null
-  python3 algorithms/07-dynamic-programming/example-1.py
-  python3 algorithms/07-dynamic-programming/example-2.py
-  python3 algorithms/07-dynamic-programming/example-3.py
-  python3 algorithms/07-dynamic-programming/example-4.py
-  python3 algorithms/07-dynamic-programming/example-6.py
+  python3 content/tracks/algorithms/07-dynamic-programming/example-1.py
+  python3 content/tracks/algorithms/07-dynamic-programming/example-2.py
+  python3 content/tracks/algorithms/07-dynamic-programming/example-3.py
+  python3 content/tracks/algorithms/07-dynamic-programming/example-4.py
+  python3 content/tracks/algorithms/07-dynamic-programming/example-6.py
   # C examples require input; compile/run manually if desired.
-  echo "C examples: cc algorithms/07-dynamic-programming/example-5.c -o /tmp/example-5 && /tmp/example-5"
-  echo "C examples (requires input): cc algorithms/07-dynamic-programming/example-8.c -o /tmp/example-8 && /tmp/example-8"
+  echo "C examples: cc content/tracks/algorithms/07-dynamic-programming/example-5.c -o /tmp/example-5 && /tmp/example-5"
+  echo "C examples (requires input): cc content/tracks/algorithms/07-dynamic-programming/example-8.c -o /tmp/example-8 && /tmp/example-8"
 
 run-08-greedy:
   command -v node >/dev/null
-  node algorithms/08-greedy/best-time-to-buy-and-sell-stock.js
-  node algorithms/08-greedy/jump-game.js
+  node content/tracks/algorithms/08-greedy/best-time-to-buy-and-sell-stock.js
+  node content/tracks/algorithms/08-greedy/jump-game.js
   command -v python3 >/dev/null
-  python3 algorithms/08-greedy/example-1.py
-  python3 algorithms/08-greedy/example-2.py
-  python3 algorithms/08-greedy/example-3.py
+  python3 content/tracks/algorithms/08-greedy/example-1.py
+  python3 content/tracks/algorithms/08-greedy/example-2.py
+  python3 content/tracks/algorithms/08-greedy/example-3.py
 
 run-09-backtracking:
   command -v node >/dev/null
-  node algorithms/09-backtracking/combination-sum.js
+  node content/tracks/algorithms/09-backtracking/combination-sum.js
   command -v python3 >/dev/null
-  python3 algorithms/09-backtracking/example-2.py
+  python3 content/tracks/algorithms/09-backtracking/example-2.py
 
 run-10-math-bit:
   command -v node >/dev/null
-  node algorithms/10-math-bit/count-number-of-bits.js
-  node algorithms/10-math-bit/number-of-1-bits.js
-  node algorithms/10-math-bit/reverse-bits.js
-  node algorithms/10-math-bit/sum-of-two-integers.js
+  node content/tracks/algorithms/10-math-bit/count-number-of-bits.js
+  node content/tracks/algorithms/10-math-bit/number-of-1-bits.js
+  node content/tracks/algorithms/10-math-bit/reverse-bits.js
+  node content/tracks/algorithms/10-math-bit/sum-of-two-integers.js
 
 run-11-recursion-divide-conquer:
   command -v python3 >/dev/null
-  python3 algorithms/11-recursion-divide-conquer/example-1.py
-  python3 algorithms/11-recursion-divide-conquer/example-3.py
+  python3 content/tracks/algorithms/11-recursion-divide-conquer/example-1.py
+  python3 content/tracks/algorithms/11-recursion-divide-conquer/example-3.py
 
 run-15-probabilistic-structures:
   command -v python3 >/dev/null
-  python3 algorithms/15-probabilistic-structures/bloom.py
+  python3 content/tracks/algorithms/15-probabilistic-structures/bloom.py
 
 run-predict:
   practice/bin/ol verify predict

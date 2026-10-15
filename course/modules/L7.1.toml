@@ -3,7 +3,7 @@ title     = "Pre-LN, RMSNorm"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p07-modern-block/01-pre-ln-rmsnorm.md"
+chapter   = "content/courses/build-an-llm/p07-modern-block/01-pre-ln-rmsnorm.md"
 contract  = ["contracts/py/tinyllm/modern/norm.pyi"]
 # norm.py: L0.4's Module, L0.2's ops (mean, power) on L0.1's Tensor. The
 # course tests also build an L0.4 Linear as the sublayer of the Pre-LN step.

@@ -3,7 +3,7 @@ title     = "Polynomial approximation and range reduction: expf in C (optional)"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "math/09-numerical-methods-and-floating-point/06-polynomial-approximation-and-expf.md"
+chapter   = "content/tracks/math/09-numerical-methods-and-floating-point/06-polynomial-approximation-and-expf.md"
 # The C half of the shared tinyllm/numerics.h (M09.6 section), linked from the
 # chapter card; the header carries no `chapter:` back-pointer (DEVIATIONS
 # M063-02, B83-01).

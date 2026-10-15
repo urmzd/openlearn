@@ -3,7 +3,7 @@ title     = "Benchmarks and perf gates (R7)"
 kind      = "practice"
 lang      = ["c", "python"]
 pass      = 6
-chapter   = "software-craftsmanship/03-testing-mentality/04-benchmarks-and-perf-gates.md"
+chapter   = "content/tracks/software-craftsmanship/03-testing-mentality/04-benchmarks-and-perf-gates.md"
 contract  = []
 deps      = []
 # craft.03 (how a test is graded) and craft.05 (oracles: a fast kernel must

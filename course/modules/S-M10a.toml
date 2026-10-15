@@ -3,12 +3,12 @@ title     = "Optimization problem set, part a: convexity, GD rates, momentum, Ad
 kind      = "solve"
 lang      = ["none"]
 pass      = 2
-chapter   = "math/10-optimization/90-problem-set-a.md"
+chapter   = "content/tracks/math/10-optimization/90-problem-set-a.md"
 contract  = []
 deps      = []
 # Pen and paper after M10.1 to M10.4 (DESIGN 4.2, 7.4). Part b (S-M10b,
 # optional, Pass 10) arrives with batch B12.
-reading   = ["S-M05", "math/10-optimization/README.md"]
+reading   = ["S-M05", "content/tracks/math/10-optimization/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

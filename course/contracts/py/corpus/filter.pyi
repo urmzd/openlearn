@@ -1,5 +1,5 @@
 # contracts/py/corpus/filter.pyi (data.02): normalization and quality filters, each a Stage
-# chapter: data-engineering/05-corpus-pipeline/02-extract-normalize-and-quality-filters.md
+# chapter: content/tracks/data-engineering/05-corpus-pipeline/02-extract-normalize-and-quality-filters.md
 #
 # Words used below:
 #   words       text.split(): maximal runs of non-white-space characters

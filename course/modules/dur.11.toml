@@ -3,7 +3,7 @@ title     = "Platform workflows TrainRun and EvalSuite"
 kind      = "build"
 lang      = ["go"]
 pass      = 8
-chapter   = "ai-platform-engineering/05-durable-orchestration-and-workers/11-trainrun-and-evalsuite.md"
+chapter   = "content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/11-trainrun-and-evalsuite.md"
 # formats/train-spec.schema.json, formats/eval-spec.schema.json, and
 # spec/subprocess-activity.md, linked from the card.
 contract  = []
@@ -11,7 +11,7 @@ contract  = []
 # CorpusBuild. Training and evaluation run as `{tinyllm} train|eval --spec`
 # subprocess activities (dur.09, L0.6 checkpoints), so those are reading.
 deps      = ["dur.08", "data.09"]
-reading   = ["dur.09", "L0.6", "L6.7", "ai-platform-engineering/05-durable-orchestration-and-workers"]
+reading   = ["dur.09", "L0.6", "L6.7", "content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers"]
 # dur.12: ModelRelease evaluates the candidate with EvalSuite. C1 runs its
 # capstone as a TrainRun through {ctl}, an entry point (reading there).
 used_by   = ["dur.12", "ag.12"]   # ModelRelease evaluates; A/B experiments upgrade EvalSuite

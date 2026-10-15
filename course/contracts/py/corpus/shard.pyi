@@ -1,6 +1,6 @@
 # contracts/py/corpus/shard.pyi (data.06): Parquet shards, the manifest, and
 # the document-hash train/val split
-# chapter: data-engineering/05-corpus-pipeline/06-parquet-shards-and-manifest.md
+# chapter: content/tracks/data-engineering/05-corpus-pipeline/06-parquet-shards-and-manifest.md
 #
 # The files are fixed by formats/corpus-shard.md and
 # formats/corpus-manifest.schema.json; this module writes and reads them

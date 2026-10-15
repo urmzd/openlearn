@@ -9,7 +9,7 @@
  * a fixed tree, groups in increasing order (batch invariance, c/ABI.md rule 10).
  *
  * module: L9.5 (c/src/kernels/qmatmul.c)
- * chapter: ml/08-tinyllm/p09-kernels/08-fused-quantized-matmul.md
+ * chapter: content/courses/build-an-llm/p09-kernels/08-fused-quantized-matmul.md
  */
 #ifndef TINYLLM_QMATMUL_H
 #define TINYLLM_QMATMUL_H

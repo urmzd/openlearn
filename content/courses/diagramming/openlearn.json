@@ -1,0 +1,31 @@
+{
+  "id": "diagramming",
+  "title": "Diagramming and Documentation",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/tracks/software-craftsmanship/05-diagramming-c4/README.md",
+      "title": "Overview"
+    },
+    {
+      "file": "content/courses/diagramming/study-plan.md",
+      "title": "Study plan"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/software-craftsmanship/05-diagramming-c4",
+      "title": "Diagramming & the C4 Model"
+    },
+    {
+      "dir": "content/tracks/software-craftsmanship/06-documentation-writing",
+      "title": "Documentation Writing"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

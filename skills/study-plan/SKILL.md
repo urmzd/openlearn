@@ -19,15 +19,15 @@ Create personalized study plans that adapt to the user's goals, experience, and 
    - What's your current level? (beginner, intermediate, advanced in each area)
    - How many hours per week can you dedicate?
    - Which languages do you want to practice in?
-   - Any specific companies you're targeting? (reference interviews/ guides)
+   - Any specific companies you're targeting? (reference content/interviews/ guides)
    - Timeline? (weeks until deadline)
 3. Read the relevant curriculum READMEs to understand available content:
    - `README.md` — overall structure
-   - `STUDY-PLAN.md` — existing structured plans
-   - `algorithms/README.md` — algorithm topics
-   - `math/README.md` — math foundations
+   - `content/courses/README.md` — existing structured plans
+   - `content/tracks/algorithms/README.md` — algorithm topics
+   - `content/tracks/math/README.md` — math foundations
    - `practice/README.md` — polyglot practice track
-   - `interviews/README.md` — company guides
+   - `content/interviews/README.md` — company guides
 4. Generate a week-by-week plan
 
 ## Plan Types
@@ -38,7 +38,7 @@ Optimized for technical interviews:
 - Week 3: System design + company-specific patterns
 - Week 4+: Mock interviews, weak-area drilling, secondary language practice
 - Daily: 1 algorithm problem + 1 language-specific exercise from practice/
-- Include company-specific guidance from interviews/{company}/
+- Include company-specific guidance from content/interviews/{company}/
 
 ### language-mastery [languages...]
 Deep fluency in target languages:
@@ -54,11 +54,11 @@ Systems programming depth:
 - Phase 2: Concurrency (pthreads → channels → async, across C/Rust/Zig/Go)
 - Phase 3: Performance (profiling, cache-awareness, SIMD, zero-copy)
 - Phase 4: Systems projects (allocator, network server, file system)
-- Pair with the C runtime chapters in ml/08-tinyllm/p09-kernels/ (rt.02 arena, rt.03 thread pool)
+- Pair with the C runtime chapters in content/courses/build-an-llm/p09-kernels/ (rt.02 arena, rt.03 thread pool)
 
 ### full-stack [weeks]
 Comprehensive curriculum:
-- Follow the Combined Path from STUDY-PLAN.md
+- Follow the Combined Path from content/courses/README.md
 - Add polyglot practice exercises alongside each algorithm topic
 - Integrate company interview prep in final weeks
 - Adjust pace based on user's starting level
@@ -111,10 +111,10 @@ Generate plans as a structured weekly schedule:
 ## Cross-References
 
 Reference specific content from the curriculum:
-- Algorithm patterns → `algorithms/{topic}/README.md`
+- Algorithm patterns → `content/tracks/algorithms/{topic}/README.md`
 - Practice exercises → `practice/{tier}/{lang}/README.md`
-- Interview prep → `interviews/{company}/README.md`
-- Study routines → `STUDY-PLAN.md` (daily routine sections)
-- Math prerequisites → `math/README.md`
-- Competitive programming → `competitive-programming/README.md`
-- Worked builds → `case-studies/{study-dir}/README.md` (each has a runnable implementation)
+- Interview prep → `content/interviews/{company}/README.md`
+- Study routines → `content/courses/README.md` (daily routine sections)
+- Math prerequisites → `content/tracks/math/README.md`
+- Competitive programming → `content/tracks/competitive-programming/README.md`
+- Worked builds → `content/case-studies/{study-dir}/README.md` (each has a runnable implementation)

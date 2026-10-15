@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/lm/nplm.pyi (L2.2): Bengio's neural probabilistic language model
-# chapter: ml/08-tinyllm/p02-statistical-lm/02-bengio-nplm.md
+# chapter: content/courses/build-an-llm/p02-statistical-lm/02-bengio-nplm.md
 #
 # Bengio, Ducharme, Vincent, and Jauvin (JMLR 2003). The next token is
 # predicted from a fixed window of the `context` = n - 1 tokens before it.

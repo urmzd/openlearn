@@ -3,7 +3,7 @@ title     = "Resampling and interpolation"
 kind      = "build"
 lang      = ["python"]
 pass      = 12
-chapter   = "math/12-signals-and-images/03-resampling-and-interpolation.md"
+chapter   = "content/tracks/math/12-signals-and-images/03-resampling-and-interpolation.md"
 contract  = ["contracts/py/tinyllm/sig/resample.pyi"]
 deps      = ["M12.1"]   # resample_audio is one strided conv1d_direct
 # M12.2 (HWC pixels), M02.1 (the sinc and its series), M12.5 (aliasing) are

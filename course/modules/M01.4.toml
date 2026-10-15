@@ -3,7 +3,7 @@ title     = "Definite integrals, trapezoid, Simpson"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "math/01-calculus-1/04-definite-integrals-trapezoid-simpson.md"
+chapter   = "content/tracks/math/01-calculus-1/04-definite-integrals-trapezoid-simpson.md"
 contract  = ["contracts/py/tinyllm/num/integrate.pyi"]
 deps      = []
 # Concepts only: the derivative and Richardson's step (M01.1, section 2.6 of

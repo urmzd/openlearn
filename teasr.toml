@@ -1,0 +1,50 @@
+[output]
+dir = "./showcase"
+formats = [{ output_type = "png" }]
+
+[server]
+command = "python3 -m http.server 4329 --bind 127.0.0.1 --directory apps/web/dist"
+url = "http://127.0.0.1:4329"
+timeout = 10000
+
+[[scenes]]
+type = "web"
+name = "course-catalog"
+uri = "/"
+viewport = { width = 1440, height = 1000 }
+full_page = false
+
+[[scenes.interactions]]
+type = "wait"
+duration = 1500
+
+[[scenes.interactions]]
+type = "snapshot"
+
+[[scenes]]
+type = "web"
+name = "mathematics-course"
+uri = "/learn/mathematics/"
+viewport = { width = 1440, height = 1000 }
+full_page = false
+
+[[scenes.interactions]]
+type = "wait"
+duration = 1500
+
+[[scenes.interactions]]
+type = "snapshot"
+
+[[scenes]]
+type = "web"
+name = "mathematics-chapter"
+uri = "/courses/mathematics/01-quantities-and-relationships/"
+viewport = { width = 1440, height = 1000 }
+full_page = false
+
+[[scenes.interactions]]
+type = "wait"
+duration = 1500
+
+[[scenes.interactions]]
+type = "snapshot"

@@ -62,10 +62,13 @@ jobs:
 
       # Each case study is a self-contained, dependency-free implementation that
       # runs its own assertions. Not continue-on-error: these must actually pass.
+      - name: Verify course publication
+        run: uv run pytest scripts/tests
+
       - name: Verify case-study implementations
         run: |
           set -euo pipefail
-          for file in case-studies/*/*.py; do
+          for file in content/case-studies/*/*.py; do
             echo "--- $file"
             (cd "$(dirname "$file")" && uv run --no-project python "$(basename "$file")" >/dev/null)
           done
@@ -117,7 +120,7 @@ jobs:
       - name: Assert cost budgets
         run: practice/bin/ol bench --assert
 
-  # The desktop platform (app/). Its Go tests also open the repository
+  # The desktop platform (apps/desktop/). Its Go tests also open the repository
   # and packs/languide as course packs, so a path.tsv the app cannot read fails
   # here as well as in `ol learn --verify`.
   openlearn:
@@ -125,14 +128,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: app
+        working-directory: apps/desktop
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v7
         with:
-          go-version-file: app/go.mod
-          cache-dependency-path: app/go.sum
+          go-version-file: apps/desktop/go.mod
+          cache-dependency-path: apps/desktop/go.sum
 
       - name: Check formatting
         run: |
@@ -146,10 +149,10 @@ jobs:
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.11.4
-          working-directory: app
+          working-directory: apps/desktop
 
       # Live tests are skipped unless OPENLEARN_LIVE is set, so CI never needs
-      # a model. See app/internal/harness/live_test.go.
+      # a model. See apps/desktop/internal/harness/live_test.go.
       - run: go test ./...
 
   openlearn-frontend:
@@ -157,7 +160,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: app/frontend
+        working-directory: apps/desktop/frontend
     steps:
       - uses: actions/checkout@v6
 
@@ -165,7 +168,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: app/frontend/package-lock.json
+          cache-dependency-path: apps/desktop/frontend/package-lock.json
 
       - run: npm ci
 
@@ -205,7 +208,7 @@ jobs:
         run: practice/bin/ol verify build
 
       - name: Verify paths
-        # Every stage a paths/*/path.tsv names must exist and every @include
+        # Every stage a content/courses/build-an-llm/paths/*/path.tsv names must exist and every @include
         # must resolve without a cycle, so ol learn and the per-path PDFs never
         # point at a moved or renamed chapter.
         run: practice/bin/ol learn --verify
@@ -250,37 +253,32 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: "true"
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
 
-      - name: Build the curriculum PDF
-        env:
-          PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
-        run: ./scripts/build-book.sh --manifest outputs/build-manifest.json
+      - name: Validate course definitions
+        run: python3 scripts/course_catalog.py validate
 
-      - name: Build one PDF per path
+      - name: Build one PDF and portable pack per course
         env:
           PUPPETEER_EXECUTABLE_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: |
           set -euo pipefail
-          for tsv in paths/*/path.tsv; do
-            name="$(basename "$(dirname "$tsv")")"
-            ./scripts/build-book.sh --path "$name" --manifest "outputs/build-manifest-$name.json"
-          done
-
-          # sr.yaml lists the release PDFs explicitly. Fail here if a listed
-          # course path was omitted from the generated artifact. Only the PDFs
-          # are built here: the desktop bundles sr.yaml also lists come from the
-          # release workflow's app job.
+          while IFS= read -r course; do
+            ./scripts/build-book.sh --course "$course" --manifest "outputs/build-manifest-$course.json"
+          done < <(python3 scripts/course_catalog.py list)
+          python3 scripts/course_catalog.py export --output outputs/packs --zip
+          cp outputs/packs/*.zip outputs/
           while IFS= read -r artifact; do
-            [[ "$artifact" == *.pdf ]] || continue
+            [[ "$artifact" == outputs/openlearn-*.pdf || "$artifact" == outputs/openlearn-*.zip ]] || continue
+            [[ "$artifact" == *darwin* || "$artifact" == *windows* ]] && continue
             test -s "$artifact"
           done < <(sed -n '/^    artifacts:/,/^[^ ]/s/^      - //p' sr.yaml)
 
-      - name: Upload PDF artifact
+      - name: Upload course publications
         uses: actions/upload-artifact@v7
         with:
-          name: supersource-curriculum-pdf
+          name: openlearn-courses
           path: |
-            outputs/supersource-curriculum.pdf
-            outputs/supersource-*.pdf
+            outputs/openlearn-*.pdf
+            outputs/openlearn-*.zip
             outputs/build-manifest*.json
           if-no-files-found: error
 

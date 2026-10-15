@@ -3,7 +3,7 @@ title     = "A decode worker dies mid-stream"
 kind      = "drill"
 lang      = ["ops", "docs"]
 pass      = 7
-chapter   = "systems/05-incident-response-and-chaos/01-kill-decode.md"
+chapter   = "content/tracks/systems/05-incident-response-and-chaos/01-kill-decode.md"
 contract  = []
 # The drill is detected by obs.03's TTFTBudgetBurnFast under the drill
 # profile (`ol drill start` refuses until obs.03 passes). The deployment it

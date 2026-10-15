@@ -3,7 +3,7 @@ title     = "Multi-head attention"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p05-transformer-2017/03-multi-head-attention.md"
+chapter   = "content/courses/build-an-llm/p05-transformer-2017/03-multi-head-attention.md"
 contract  = ["contracts/py/tinyllm/xfmr/mha.pyi"]
 # mha.py: L5.1's scaled_dot_product_attention on every head at once, L0.4's
 # Linear and Module, L0.2's reshape and transpose on L0.1's Tensor, M06.3's

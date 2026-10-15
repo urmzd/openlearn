@@ -1,5 +1,5 @@
 # MS-L8: the Part 8 milestone (DESIGN 4.3 "MS-L8", 5.7, 7.2). MS-P6 includes it.
-# Page: paths/course-p06-inference-and-kernels/milestone.md (B8 paths work).
+# Page: content/courses/build-an-llm/paths/course-p06-inference-and-kernels/milestone.md (B8 paths work).
 #
 # Your Python inference stack, run through your own entry point, on the Llama
 # model of MS-L7: the same greedy tokens with no cache, your contiguous cache

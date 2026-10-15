@@ -3,7 +3,7 @@ title     = "Encoder-decoder with teacher forcing"
 kind      = "build"
 lang      = ["python"]
 pass      = 4
-chapter   = "ml/08-tinyllm/p04-attention-origins/01-encoder-decoder-teacher-forcing.md"
+chapter   = "content/courses/build-an-llm/p04-attention-origins/01-encoder-decoder-teacher-forcing.md"
 contract  = ["contracts/py/tinyllm/seq2seq/model.pyi"]
 # model.py: L3.4's bidirectional over L3.3 GRUs (encoder), L3.3's GRUCell
 # or L3.2's LSTMCell (decoder), L4.2's length_mask and AdditiveAttention and

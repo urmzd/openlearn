@@ -3,7 +3,7 @@ title     = "Swiss table tl_map (u64 to u64, optional C)"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "algorithms/16-systems-data-structures/02-swiss-table.md"
+chapter   = "content/tracks/algorithms/16-systems-data-structures/02-swiss-table.md"
 # The interface is the ds.02 section of tinyllm/ds.h, linked from the card;
 # that shared header carries no `chapter:` back-pointer, which `ol lint`
 # requires of a listed contract (DEVIATIONS B82-02).

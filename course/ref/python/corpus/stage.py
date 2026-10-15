@@ -8,7 +8,7 @@ yields zero or one (or more), and never holds the stream.
     pipeline = compose(normalize_unicode, lang_filter(0.65), gopher_rules())
     for doc in pipeline(extract(manifest)): ...
 
-Chapter: data-engineering/05-corpus-pipeline/02-extract-normalize-and-quality-filters.md.
+Chapter: content/tracks/data-engineering/05-corpus-pipeline/02-extract-normalize-and-quality-filters.md.
 """
 
 from __future__ import annotations

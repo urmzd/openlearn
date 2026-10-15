@@ -3,7 +3,7 @@ title     = "The op library and gradcheck_all"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "ml/08-tinyllm/p00-foundations/02-op-library-and-gradcheck.md"
+chapter   = "content/courses/build-an-llm/p00-foundations/02-op-library-and-gradcheck.md"
 contract  = ["contracts/py/tinyllm/autograd/functional.pyi"]
 # L0.1 from_op and Tensor; M01.3 activations and their derivatives; M09.2 the
 # stable softmax family; M08.3 the softmax VJPs and unbroadcast; M08.1 the

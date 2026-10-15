@@ -1,5 +1,5 @@
 # MS-gateway: the gateway component milestone (DESIGN 4.4 "MS-gateway", 5.7).
-# MS-P7 includes it. Page: paths/course-p07-serving-platform/milestone.md.
+# MS-P7 includes it. Page: content/courses/build-an-llm/paths/course-p07-serving-platform/milestone.md.
 #
 # Your gateway (gw.01 to gw.07) in front of your engine (L10.5), started by the
 # runner on allocated ports, as a client sees it: the gateway tier of

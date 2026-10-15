@@ -18,7 +18,7 @@
 //! The generated gRPC code (`tl_proto`), and the `tonic` and `tokio` it runs
 //! on, are re-exported so the engine binary and the tests name one version.
 //!
-//! Chapter: ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md.
+//! Chapter: content/courses/build-an-llm/p10-serving/06-disaggregated-prefill-decode.md.
 
 use std::collections::HashMap;
 use std::fmt;

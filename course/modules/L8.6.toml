@@ -3,7 +3,7 @@ title     = "Speculative decoding: n-gram, prompt-lookup, and model drafts"
 kind      = "build"
 lang      = ["python"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p08-inference/06-speculative-decoding.md"
+chapter   = "content/courses/build-an-llm/p08-inference/06-speculative-decoding.md"
 contract  = ["contracts/py/tinyllm/infer/spec.pyi"]
 # M07.6: speculative_step is the sampled verification. L8.2: the target's
 # KVCache (truncate is the rollback), cache_dims, and Generation; the course

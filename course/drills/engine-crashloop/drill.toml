@@ -1,5 +1,5 @@
 # ops.00 engine-crashloop (DESIGN 4.5, 5.10). Chapter:
-# systems/05-incident-response-and-chaos/00-first-drill.md
+# content/tracks/systems/05-incident-response-and-chaos/00-first-drill.md
 #
 # A bad rollout points the engine at a model directory that does not exist.
 # The engine exits at startup, Kubernetes restarts it with growing back-off

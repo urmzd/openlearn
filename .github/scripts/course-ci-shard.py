@@ -14,6 +14,9 @@ LAYERS = {"math", "spine", "systems", "operations"}
 
 def layer_of(module: dict) -> str:
     chapter = module.get("chapter", "")
+    chapter = chapter.removeprefix("content/tracks/").removeprefix("content/")
+    if chapter.startswith("courses/build-an-llm/"):
+        return "spine"
     top = chapter.split("/", 1)[0]
     if top in {"math", "algorithms"}:
         return "math"

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/autograd/graph.pyi (M06.1)
-# chapter: math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md
+# chapter: content/tracks/math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md
 #
 # A computation graph is a directed acyclic graph (DAG): each node is a value,
 # and `parents(node)` lists the nodes it was computed from (an op's inputs).

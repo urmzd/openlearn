@@ -1,5 +1,5 @@
 # KV blocks: hashing and the export envelope
-<!-- chapter: ml/08-tinyllm/p10-serving/06-disaggregated-prefill-decode.md -->
+<!-- chapter: content/courses/build-an-llm/p10-serving/06-disaggregated-prefill-decode.md -->
 
 <!-- modules: rt.04 (C pool, export and import), L10.4 (prefix cache), L10.6 (transfer), craft.13 (format v2)
      conformance: parity/kv.wire.v1, parity/kv.wire.v2 -->

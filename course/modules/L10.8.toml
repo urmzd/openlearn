@@ -3,7 +3,7 @@ title     = "Speculative decoding in the engine"
 kind      = "build"
 lang      = ["rust"]
 pass      = 7
-chapter   = "ml/08-tinyllm/p10-serving/08-speculative-decoding-in-the-engine.md"
+chapter   = "content/courses/build-an-llm/p10-serving/08-speculative-decoding-in-the-engine.md"
 # No Rust trait contract (K01); spec.pyi (L8.6), whose rules this port
 # follows, and config/runtime.schema.json's [engine].speculative are linked
 # from the card.

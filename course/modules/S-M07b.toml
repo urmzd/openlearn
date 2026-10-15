@@ -3,14 +3,14 @@ title     = "Solve set: joint and covariance, MLE"
 kind      = "solve"
 lang      = ["none"]
 pass      = 3
-chapter   = "math/07-probability-statistics/91-problem-set-b.md"
+chapter   = "content/tracks/math/07-probability-statistics/91-problem-set-b.md"
 contract  = []
 deps      = []
 # Pen and paper. Part a (S-M07a, Pass 2) comes first; M07.2 (count MLE and
 # Laplace) is the code q5 and q9 explain. L1.4 (Unigram EM, q8) is a peer in
 # pass 3 and points back here from its chapter. Parts c and d (S-M07c P4,
 # S-M07d P5) arrive with B6 and B7.
-reading   = ["S-M07a", "M07.2", "math/07-probability-statistics/README.md"]
+reading   = ["S-M07a", "M07.2", "content/tracks/math/07-probability-statistics/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

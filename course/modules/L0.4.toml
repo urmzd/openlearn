@@ -3,7 +3,7 @@ title     = "Module system and basic layers"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "ml/08-tinyllm/p00-foundations/04-module-system-and-layers.md"
+chapter   = "content/courses/build-an-llm/p00-foundations/04-module-system-and-layers.md"
 contract  = ["contracts/py/tinyllm/nn/module.pyi", "contracts/py/tinyllm/nn/layers.pyi"]
 # L0.1 Tensor (parameters); L0.2 the ops every forward is written in; M07.3
 # normal_init; M06.3 the default PCG32 init and dropout streams.

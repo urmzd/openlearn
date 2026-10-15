@@ -3,7 +3,7 @@ title     = "Tensor, broadcasting backward, and no_grad"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "ml/08-tinyllm/p00-foundations/01-tensor-and-broadcasting-backward.md"
+chapter   = "content/courses/build-an-llm/p00-foundations/01-tensor-and-broadcasting-backward.md"
 contract  = ["contracts/py/tinyllm/autograd/tensor.pyi", "contracts/py/tinyllm/autograd/mode.pyi"]
 # M06.1: backward walks graph.toposort's order. M08.3: every broadcast input's
 # gradient goes through vjp.unbroadcast. M08.2: the course tests use the

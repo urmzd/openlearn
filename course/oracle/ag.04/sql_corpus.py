@@ -3,7 +3,7 @@
     python course/oracle/ag.04/sql_corpus.py   # rewrites course/fixtures/ag.04/sql_corpus.json
 
 The oracle is the Python classifier of case study 02
-(case-studies/02-grounded-sql-agent/safety_gate.py), which the Go gate
+(content/case-studies/02-grounded-sql-agent/safety_gate.py), which the Go gate
 ports: every expected (allowed, operation, cleared SQL) below is that
 classifier's output, so the Go port is checked against an independent
 implementation, not against itself. The corpus is the case study's ALLOWED

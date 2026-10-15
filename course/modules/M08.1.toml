@@ -3,7 +3,7 @@ title     = "Dual numbers and forward-mode autodiff"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/08-matrix-calculus-and-autodiff/01-dual-numbers-forward-mode.md"
+chapter   = "content/tracks/math/08-matrix-calculus-and-autodiff/01-dual-numbers-forward-mode.md"
 contract  = ["contracts/py/tinyllm/autograd/dual.pyi"]
 # The course tests compare Dual derivatives with M01.3's closed forms and
 # Dual JVPs with M04.2's jvp_numeric (catalog 4.1, M08.1 Tests column).

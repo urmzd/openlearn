@@ -3,7 +3,7 @@ title     = "MQA/GQA attention with cache hook, window, learned sinks"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p07-modern-block/05-gqa-attention.md"
+chapter   = "content/courses/build-an-llm/p07-modern-block/05-gqa-attention.md"
 contract  = ["contracts/py/tinyllm/modern/gqa.pyi"]
 # gqa.py: L7.3's rope_cos_sin, apply_rope, RopeSpec; L0.4's Linear and
 # Module; L0.2's ops (matmul, masked_fill, softmax, concat) on L0.1's Tensor;

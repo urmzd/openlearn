@@ -3,7 +3,7 @@ title     = "Sampling and logit processors"
 kind      = "build"
 lang      = ["python"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p08-inference/01-sampling-and-logit-processors.md"
+chapter   = "content/courses/build-an-llm/p08-inference/01-sampling-and-logit-processors.md"
 contract  = ["contracts/py/tinyllm/infer/sample.pyi"]
 # sample.py: M07.1's sample_categorical is step 11 (the inverse CDF) and its
 # UniformSource the generator type; M06.3's PCG32 builds the request stream

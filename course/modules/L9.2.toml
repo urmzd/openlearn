@@ -3,7 +3,7 @@ title     = "Softmax in C: three-pass and online two-pass"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p09-kernels/05-softmax-three-pass-and-online.md"
+chapter   = "content/courses/build-an-llm/p09-kernels/05-softmax-three-pass-and-online.md"
 contract  = ["contracts/c/include/tinyllm/softmax.h"]
 # softmax.c uses optional C expf and compares with M09.2's Python softmax.
 deps      = ["M09.6", "rt.02"]

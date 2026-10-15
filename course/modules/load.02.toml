@@ -5,7 +5,7 @@ kind      = "side"
 # `{loadgen} compare` entry point, and no later module calls the package.
 lang      = ["go"]
 pass      = 7
-chapter   = "ml/08-tinyllm/p10-serving/11-run-comparison-and-regression-gate.md"
+chapter   = "content/courses/build-an-llm/p10-serving/11-run-comparison-and-regression-gate.md"
 # The input is formats/loadgen-report.schema.json, linked from the card
 # (DEVIATIONS B92-03).
 contract  = ["contracts/formats/loadgen-report.schema.json"]

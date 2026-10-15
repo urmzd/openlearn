@@ -3,12 +3,12 @@ title     = "Calculus 2 problem set: integration techniques, the Gaussian, serie
 kind      = "solve"
 lang      = ["none"]
 pass      = 2
-chapter   = "math/02-calculus-2/90-problem-set.md"
+chapter   = "content/tracks/math/02-calculus-2/90-problem-set.md"
 contract  = []
 deps      = []
 # Pen and paper for M02.1 to M02.4, taken after M02.2 in Pass 2 (7.4). The
 # Gaussian integral (q16 to q18) is the solve-only M02.3, read by M07.0 and M07.3.
-reading   = ["S-M01", "math/02-calculus-2/README.md"]
+reading   = ["S-M01", "content/tracks/math/02-calculus-2/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

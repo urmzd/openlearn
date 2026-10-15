@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/stable.pyi (M09.2): stable reductions over floats
-# chapter: math/09-numerical-methods-and-floating-point/02-stable-numerics.md
+# chapter: content/tracks/math/09-numerical-methods-and-floating-point/02-stable-numerics.md
 #
 # Every function takes a numpy array (anything np.asarray accepts). Float
 # inputs keep their dtype (float32 in, float32 out); integer inputs are

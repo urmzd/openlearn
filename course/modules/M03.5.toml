@@ -3,7 +3,7 @@ title     = "SVD, Eckart-Young low rank, and least squares"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "math/03-linear-algebra/05-svd-low-rank-and-least-squares.md"
+chapter   = "content/tracks/math/03-linear-algebra/05-svd-low-rank-and-least-squares.md"
 contract  = ["contracts/py/tinyllm/linalg/svd.pyi"]
 deps      = ["M03.3"]             # lstsq factors A with qr_householder
 # M03.4: singular values are the square roots of the eigenvalues of A^T A

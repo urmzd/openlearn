@@ -1,6 +1,6 @@
 name: App bundle
 
-# Builds the desktop app (app/) for every platform. The release workflow calls
+# Builds the desktop app (apps/desktop/) for every platform. The release workflow calls
 # this; a pull request that edits this file runs it too, so a change to the
 # build is proven before it can block a release.
 on:
@@ -22,7 +22,7 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: app
+        working-directory: apps/desktop
     strategy:
       fail-fast: false
       matrix:
@@ -44,14 +44,14 @@ jobs:
 
       - uses: actions/setup-go@v7
         with:
-          go-version-file: app/go.mod
-          cache-dependency-path: app/go.sum
+          go-version-file: apps/desktop/go.mod
+          cache-dependency-path: apps/desktop/go.sum
 
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: app/frontend/package-lock.json
+          cache-dependency-path: apps/desktop/frontend/package-lock.json
 
       - name: Install Linux webkit deps
         if: runner.os == 'Linux'
@@ -64,10 +64,13 @@ jobs:
 
       # The packs that ship inside the binary: this repository and languide.
       - name: Bundle the built-in course packs
-        run: go run ./cmd/bundle -out internal/builtin/content .. ../packs/languide
+        shell: bash
+        run: |
+          python3 ../../scripts/course_catalog.py export --reading-only --output "${{ runner.temp }}/course-packs"
+          go run ./cmd/bundle -out internal/builtin/content "${{ runner.temp }}/course-packs"/* ../../packs/languide
 
       - name: Build the frontend
-        working-directory: app/frontend
+        working-directory: apps/desktop/frontend
         run: npm ci && npm run build
 
       # -s: the frontend is already built above. -skipbindings: the generated
@@ -105,6 +108,6 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: openlearn-app-${{ matrix.label }}
-          path: app/dist/openlearn-${{ matrix.label }}.*
+          path: apps/desktop/dist/openlearn-${{ matrix.label }}.*
           retention-days: 1
           if-no-files-found: error

@@ -3,7 +3,7 @@ title     = "Cache-blocked, packed, batch-invariant matmul in C (optional)"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p09-kernels/04-tiled-batch-invariant-matmul.md"
+chapter   = "content/courses/build-an-llm/p09-kernels/04-tiled-batch-invariant-matmul.md"
 contract  = ["contracts/c/include/tinyllm/matmul.h"]
 # matmul.c uses the optional C pool; the C suite runs as a standalone binary.
 deps      = ["rt.03", "rt.02"]

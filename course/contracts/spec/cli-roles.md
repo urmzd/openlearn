@@ -1,7 +1,7 @@
 # CLI roles
 
-<!-- chapter: ml/08-tinyllm/p10-serving/00-your-first-endpoint.md
-     chapter: ai-platform-engineering/12-gateway/00-streaming-proxy.md -->
+<!-- chapter: content/courses/build-an-llm/p10-serving/00-your-first-endpoint.md
+     chapter: content/tracks/ai-platform-engineering/12-gateway/00-streaming-proxy.md -->
 
 The course never builds or runs your binaries by guessing. You declare each entry point once in `system.toml` under `[entry]` (schema: [`config/system.schema.json`](../config/system.schema.json)) as an argv list, and milestones call it by its **role**. A milestone step written `{tinyllm} generate --prompt hi` runs your `[entry].tinyllm` argv followed by `generate --prompt hi`.
 

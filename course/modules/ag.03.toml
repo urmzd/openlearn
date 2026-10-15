@@ -3,7 +3,7 @@ title     = "Agent loop"
 kind      = "build"
 lang      = ["go"]
 pass      = 10
-chapter   = "ai-platform-engineering/13-agent-sdk/03-agent-loop.md"
+chapter   = "content/tracks/ai-platform-engineering/13-agent-sdk/03-agent-loop.md"
 # Span names and attributes: otel/semconv.md (agent.run, agent.llm_call,
 # agent.tool <name>), linked from the card. The Go API of go/agent/loop is
 # fixed by the chapter's section 4 and the course tests (K01; B121-01).
@@ -14,7 +14,7 @@ deps      = ["ag.01", "ag.02"]
 # obs.01 (go/otelx) is the catalog prereq: the loop takes an OpenTelemetry
 # trace.Tracer through WithTracer and never imports otelx, so the agent's
 # composition root passes otelx's tracer (B121-02).
-reading   = ["obs.01", "ai-platform-engineering/13-agent-sdk"]
+reading   = ["obs.01", "content/tracks/ai-platform-engineering/13-agent-sdk"]
 # ag.04's injection suite drives this loop; ag.05 runs it durably; ag.09's
 # AgentSubject evaluates it.
 used_by   = ["ag.04", "ag.05", "ag.09"]

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/modern/mlp.pyi (L7.2): gated MLPs (SwiGLU, GeGLU)
-# chapter: ml/08-tinyllm/p07-modern-block/02-gated-mlps.md
+# chapter: content/courses/build-an-llm/p07-modern-block/02-gated-mlps.md
 #
 # Shazeer (2020): the first projection is split in two, one half gated by an
 # activation of the other:

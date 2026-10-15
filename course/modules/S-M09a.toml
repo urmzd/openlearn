@@ -3,12 +3,12 @@ title     = "Floating point problem set, part a: representation, rounding, cance
 kind      = "solve"
 lang      = ["none"]
 pass      = 2
-chapter   = "math/09-numerical-methods-and-floating-point/90-problem-set-a.md"
+chapter   = "content/tracks/math/09-numerical-methods-and-floating-point/90-problem-set-a.md"
 contract  = []
 deps      = []
 # Pen and paper beside M09.1 and M09.2 (DESIGN 4.2, 7.4). Part b (S-M09b,
 # Pass 6) arrives with batch B8.
-reading   = ["S-M05", "math/09-numerical-methods-and-floating-point/README.md"]
+reading   = ["S-M05", "content/tracks/math/09-numerical-methods-and-floating-point/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

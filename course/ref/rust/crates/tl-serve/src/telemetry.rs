@@ -14,7 +14,7 @@
 //! ids as lowercase hex, 64-bit integers as strings), which the OpenTelemetry
 //! collector, Jaeger, and Tempo all accept.
 //!
-//! Chapter: ml/08-tinyllm/p10-serving/07-serving-metrics-and-tracing.md.
+//! Chapter: content/courses/build-an-llm/p10-serving/07-serving-metrics-and-tracing.md.
 
 use std::fmt::Write as _;
 use std::io::{Read, Write};

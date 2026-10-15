@@ -3,12 +3,12 @@ title     = "Calculus 3 problem set: vectors, gradients, the chain rule, Hessian
 kind      = "solve"
 lang      = ["none"]
 pass      = 2
-chapter   = "math/04-calculus-3/90-problem-set.md"
+chapter   = "content/tracks/math/04-calculus-3/90-problem-set.md"
 contract  = []
 deps      = []
 # Pen and paper for M04.1 and M04.2 and the solve-only M04.3 to M04.5 (Hessian,
 # multiple integrals, Lagrange), taken after M04.2 in Pass 2 (7.4).
-reading   = ["S-M01", "math/04-calculus-3/README.md"]
+reading   = ["S-M01", "content/tracks/math/04-calculus-3/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

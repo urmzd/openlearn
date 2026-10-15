@@ -3,7 +3,7 @@ title     = "Categorical sampling: inverse CDF, Gumbel-max, alias method"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "math/07-probability-statistics/01-categorical-sampling.md"
+chapter   = "content/tracks/math/07-probability-statistics/01-categorical-sampling.md"
 contract  = ["contracts/py/tinyllm/prob/sampling.pyi"]
 # M06.3's PCG32 is called through the UniformSource protocol (rng.uniform()),
 # and M07.0 defines random variables and the uniform. M06.3's catalog call

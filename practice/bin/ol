@@ -2,7 +2,7 @@
 # ol - the openlearn practice harness.
 #
 # The learning path is the track directories: you read them, in the order a
-# role path under paths/ gives (ol learn). The practice path is everything
+# role path under content/courses/build-an-llm/paths/ gives (ol learn). The practice path is everything
 # else here: you do them. Every exercise works the same way, whatever its kind
 # or language.
 #
@@ -54,7 +54,7 @@
 # Kinds:
 #   predict     you write the exact output you expect, then diff against reality
 #   build       you implement from scratch against a self-testing reference
-#   reattempt   an already-solved problem from algorithms/ or case-studies/,
+#   reattempt   an already-solved problem from content/tracks/algorithms/ or content/case-studies/,
 #               handed back to you with the solution stripped out
 #
 # Your work lives in .scratchpad/ at the repo root and is gitignored. Nothing
@@ -232,7 +232,7 @@ resolve_name() {
 # ---------------------------------------------------------------------------
 # reattempt manifest
 #
-# algorithms/ and case-studies/ already hold solved, committed code. Rather
+# content/tracks/algorithms/ and content/case-studies/ already hold solved, committed code. Rather
 # than copy any of it into practice/, the manifest points at it in place and
 # ol strips the solution on the way into the scratchpad.
 #
@@ -406,7 +406,7 @@ run_build_dir() {
 
 # Run a reattempt source file, by extension. As above, anything compiled lands
 # in the scratchpad rather than beside the source, which here would mean
-# dropping binaries into algorithms/ and case-studies/.
+# dropping binaries into content/tracks/algorithms/ and content/case-studies/.
 run_reattempt_file() {
   local f="$1" d out; d="$(dirname "$f")"
   out="$SCRATCH/.build/$(printf '%s' "${f#$ROOT/}" | tr '/' '_')"
@@ -867,7 +867,7 @@ cmd_where() {
 # ---------------------------------------------------------------------------
 # Learn
 #
-# A path is paths/<name>/path.tsv, one row per stage, tab-separated as
+# A path is content/courses/build-an-llm/paths/<name>/path.tsv, one row per stage, tab-separated as
 #   stage  title  files  done-when  [check]
 # where files is a comma-separated list of repo-relative markdown files read in
 # order. The optional fifth column ties the stage to a verdict (course/DESIGN.md
@@ -881,9 +881,13 @@ cmd_where() {
 # included one. Progress is one stage number per line in
 # .scratchpad/learn/<owning path>.done.
 
-PATHS_DIR="${OL_PATHS_DIR:-$ROOT/paths}"
-# Stage files are relative to the directory holding paths/ (the repo root).
-LEARN_ROOT="$(cd "$PATHS_DIR/.." 2>/dev/null && pwd)"
+PATHS_DIR="${OL_PATHS_DIR:-$ROOT/content/courses/build-an-llm/paths}"
+# Stage files are repo-relative. Custom path trees retain the adjacent-root convention.
+if [[ -n "${OL_PATHS_DIR:-}" ]]; then
+  LEARN_ROOT="$(cd "$PATHS_DIR/.." 2>/dev/null && pwd)"
+else
+  LEARN_ROOT="$ROOT"
+fi
 COURSE_ROOT="${OL_COURSE_ROOT:-$ROOT/course}"
 
 path_names() {

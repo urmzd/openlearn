@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/info/entropy.pyi (M11.1): entropy and divergences, in nats
-# chapter: math/11-information-theory/01-entropy-cross-entropy-and-kl.md
+# chapter: content/tracks/math/11-information-theory/01-entropy-cross-entropy-and-kl.md
 #
 # Distributions are float arrays along `axis` (default the last), compared
 # position by position; the result has the other axes (the reduced axis is

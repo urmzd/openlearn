@@ -1,4 +1,4 @@
-# Pass 0 gate (DESIGN 5.7 milestone catalog, 7.4). Page: paths/course-p00-setup/milestone.md
+# Pass 0 gate (DESIGN 5.7 milestone catalog, 7.4). Page: content/courses/build-an-llm/paths/course-p00-setup/milestone.md
 #
 # Pass condition: the learner's own CI (commit lint, native tests, and
 # `ol check --all --ci`) is green on their first conventional commit, and the

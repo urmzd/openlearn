@@ -7,7 +7,7 @@
 // insufficient_scope), openapi/admin.v1.yaml (KeyCreate, KeyInfo, KeyCreated),
 // config/runtime.schema.json ([gateway] keys_file, pepper_env,
 // key_cache_ttl_s). Chapter:
-// ai-platform-engineering/08-authorization-and-access-control/01-api-keys-and-scopes.md.
+// content/tracks/ai-platform-engineering/08-authorization-and-access-control/01-api-keys-and-scopes.md.
 package auth
 
 import (

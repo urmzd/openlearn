@@ -3,7 +3,7 @@ title     = "The durable server is SIGKILLed in a loop during a corpus build"
 kind      = "drill"
 lang      = ["ops", "docs"]
 pass      = 8
-chapter   = "systems/05-incident-response-and-chaos/02-durable-kill9.md"
+chapter   = "content/tracks/systems/05-incident-response-and-chaos/02-durable-kill9.md"
 contract  = []
 # The drill kills pods of dep.06's StatefulSet and is diagnosed on obs.05's
 # scrapes and dashboard (`ol drill start` refuses until both pass). The log

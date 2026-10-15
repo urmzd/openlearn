@@ -3,7 +3,7 @@ title     = "tl-serve: OpenAI-compatible HTTP + SSE on tokio/hyper"
 kind      = "build"
 lang      = ["rust"]
 pass      = 7
-chapter   = "ml/08-tinyllm/p10-serving/05-openai-server-on-tokio.md"
+chapter   = "content/courses/build-an-llm/p10-serving/05-openai-server-on-tokio.md"
 # openapi/openai-subset.v1.yaml is the contract; it has no `chapter:`
 # back-pointer to this chapter yet (shared change, DEVIATIONS B91-08), so it
 # is linked from the chapter card instead of listed here.

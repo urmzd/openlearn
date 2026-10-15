@@ -1,0 +1,27 @@
+{
+  "id": "data-engineering",
+  "title": "Data Engineering",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/tracks/data-engineering/README.md",
+      "title": "Overview"
+    },
+    {
+      "file": "content/courses/data-engineering/study-plan.md",
+      "title": "Study plan"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/data-engineering",
+      "title": "Data Engineering"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

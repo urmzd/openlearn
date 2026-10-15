@@ -3,7 +3,7 @@ title     = "Scaled dot-product attention (forward and backward)"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p05-transformer-2017/01-scaled-dot-product-attention.md"
+chapter   = "content/courses/build-an-llm/p05-transformer-2017/01-scaled-dot-product-attention.md"
 contract  = ["contracts/py/tinyllm/xfmr/sdpa.pyi"]
 # sdpa.py: the stable softmax of M09.2 (a fully masked row is zeros) and one
 # autograd node through L0.1's from_op. The course tests build masks as

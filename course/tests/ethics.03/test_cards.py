@@ -5,7 +5,7 @@ Run by `ol check ethics.03` (through ./check) from the root of your repo,
 which `check` passes as OL_REPO. Annotated exemplars (DESIGN 5.12): every
 test says why it exists and fails with a message that says what to change.
 
-The files and their sections are the chapter's (responsible-ai/
+The files and their sections are the chapter's (content/tracks/responsible-ai/
 03-model-and-data-cards/01-datasheet-and-model-card.md, section 4):
 
     docs/MODEL_CARD.md                       from contracts/templates/MODEL_CARD.md

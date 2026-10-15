@@ -3,7 +3,7 @@ title     = "MLE, Laplace, absolute discounting"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "math/07-probability-statistics/02-mle-laplace-absolute-discounting.md"
+chapter   = "content/tracks/math/07-probability-statistics/02-mle-laplace-absolute-discounting.md"
 contract  = ["contracts/py/tinyllm/prob/mle.pyi"]
 # No code of another module is called: M00.1 (logs) and S-M05 (counting) are
 # the concepts, so both are reading (DEVIATIONS B41-03).

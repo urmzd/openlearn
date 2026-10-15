@@ -3,7 +3,7 @@ title     = "Hessian-vector products and the recompute-versus-memory schedule"
 kind      = "build"
 lang      = ["python"]
 pass      = 9
-chapter   = "math/08-matrix-calculus-and-autodiff/04-hessian-vector-products-and-recompute.md"
+chapter   = "content/tracks/math/08-matrix-calculus-and-autodiff/04-hessian-vector-products-and-recompute.md"
 contract  = ["contracts/py/tinyllm/autograd/hvp.pyi"]
 # hvp.py calls no other unit, and the golden tests write M08.3's
 # cross-entropy gradient out in numpy, so nothing is called (DEVIATIONS B111-01).

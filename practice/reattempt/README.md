@@ -36,12 +36,12 @@ forgotten.
 
 | Source | Status | Why |
 |--------|--------|-----|
-| [`case-studies/`](../../case-studies/) | 4 exercises, ready | Already self-testing with real assertions, and CI already depended on it |
-| [`algorithms/`](../../algorithms/) | Not yet listed | LeetCode-shaped: a function definition and no assertions, so there is nothing to check against |
+| [`case-studies/`](../../content/case-studies/) | 4 exercises, ready | Already self-testing with real assertions, and CI already depended on it |
+| [`algorithms/`](../../content/tracks/algorithms/) | Not yet listed | LeetCode-shaped: a function definition and no assertions, so there is nothing to check against |
 
 ## Promoting an algorithms solution
 
-The `algorithms/` tree is 60-odd committed solutions with no tests. Each one can
+The `content/tracks/algorithms/` tree is 60-odd committed solutions with no tests. Each one can
 become a reattempt exercise, but the assertions have to come first, and that is
 worth doing on its own terms: it moves a file from "parses" to "verified", which
 is the more useful of the two states by a wide margin.

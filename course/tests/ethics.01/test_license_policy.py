@@ -4,7 +4,7 @@ Run by `ol check ethics.01` (through ./check) from the root of your repo,
 which `check` passes as OL_REPO. Annotated exemplars (DESIGN 5.12): every
 test says why it exists and fails with a message that says what to change.
 
-The formats are the chapter's (responsible-ai/01-data-licensing/
+The formats are the chapter's (content/tracks/responsible-ai/01-data-licensing/
 01-data-licensing-and-the-ledger.md, section 4):
 
     docs/data/LICENSE_POLICY.md          the policy, in prose, with fixed `##` sections

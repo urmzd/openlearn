@@ -5,7 +5,7 @@ title     = "T5 span corruption and relative position buckets"
 kind      = "side"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p06-objectives/04-t5-span-corruption-and-relative-buckets.md"
+chapter   = "content/courses/build-an-llm/p06-objectives/04-t5-span-corruption-and-relative-buckets.md"
 contract  = ["contracts/py/tinyllm/obj/t5.pyi"]
 # t5.py: L0.4's Embedding (the bias table), L0.2's permute on L0.1's Tensor.
 # Span corruption draws with rng.below (a PCG32, M06.3); the course tests pass

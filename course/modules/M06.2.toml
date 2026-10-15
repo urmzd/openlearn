@@ -3,7 +3,7 @@ title     = "Trees and tries, longest-prefix match"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "math/06-discrete-math-2/02-trees-and-tries-longest-prefix-match.md"
+chapter   = "content/tracks/math/06-discrete-math-2/02-trees-and-tries-longest-prefix-match.md"
 contract  = ["contracts/py/tinyllm/tok/trie.pyi"]
 # No code of another module is called. M06.1 (graphs, iterative traversal)
 # is the concept the trie walk reuses, so it is reading (DEVIATIONS B41-02).

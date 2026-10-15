@@ -3,7 +3,7 @@ title     = "Logistic regression (IRLS), ROC-AUC, calibration (ECE)"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "math/07-probability-statistics/07-logistic-regression-roc-auc-calibration.md"
+chapter   = "content/tracks/math/07-probability-statistics/07-logistic-regression-roc-auc-calibration.md"
 contract  = ["contracts/py/tinyllm/prob/metrics.pyi"]
 # metrics.py: each IRLS step is one lu + lu_solve (M03.2); roc_auc is
 # trapezoid(tpr, fpr) (M01.4); fit_temperature finds the root of the NLL's

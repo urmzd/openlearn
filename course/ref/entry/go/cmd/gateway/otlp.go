@@ -10,7 +10,7 @@
 //
 // Wiring, in main: proxy.Config{..., OnSpan: newSpanExporter()}.
 //
-// Rules this file follows (systems/04-observability/00-one-trace.md):
+// Rules this file follows (content/tracks/systems/04-observability/00-one-trace.md):
 //   - OTEL_EXPORTER_OTLP_ENDPOINT unset or empty: export nothing (nil hook).
 //   - Never block the request path: the hook hands the span to a bounded
 //     queue and returns; a full queue drops the span and counts it.

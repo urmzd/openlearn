@@ -3,7 +3,7 @@ title     = "Modular arithmetic, hashing, and PCG32 in Python"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md"
+chapter   = "content/tracks/math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md"
 # The core module owns the Python implementation; other language ports consume
 # the published vectors through their own module and process boundary.
 contract  = ["contracts/py/tinyllm/num/rng.pyi"]

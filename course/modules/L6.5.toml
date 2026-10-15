@@ -3,7 +3,7 @@ title     = "Fine-tuning heads and the linear-head export"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p06-objectives/05-fine-tuning-heads-and-the-linear-head-export.md"
+chapter   = "content/courses/build-an-llm/p06-objectives/05-fine-tuning-heads-and-the-linear-head-export.md"
 contract  = ["contracts/py/tinyllm/obj/heads.pyi"]
 # heads.py: L6.1's GPT and GPTConfig and L6.2's BertEncoder and BertConfig
 # (the backbones it reads and rebuilds from a classifier directory), L6.6's

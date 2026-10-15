@@ -3,13 +3,13 @@ title     = "CI for the learner repo"
 kind      = "practice"
 lang      = ["ops"]
 pass      = 7
-chapter   = "infrastructure/01-containers-kubernetes/05-ci-for-your-repo.md"
+chapter   = "content/tracks/infrastructure/01-containers-kubernetes/05-ci-for-your-repo.md"
 contract  = []
 # craft.01 is the CI gate this extends; dep.04's `tilt ci` is the kind job.
 # load.02 (the perf gate's `compare`) runs through your loadgen entry point
 # in CI, not in this check, so it is reading (B95-04).
 deps      = ["craft.01", "dep.04"]
-reading   = ["load.02", "infrastructure/01-containers-kubernetes"]
+reading   = ["load.02", "content/tracks/infrastructure/01-containers-kubernetes"]
 used_by   = []
 units     = []                          # CI is learner territory (D16); reference in course/ref/entry/.github/workflows/
 artifacts = [".github/workflows/platform.yml"] # its own file: craft.01 owns ci.yml (B95-05)

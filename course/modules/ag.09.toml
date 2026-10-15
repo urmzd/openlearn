@@ -3,7 +3,7 @@ title     = "Eval runner"
 kind      = "build"
 lang      = ["go"]
 pass      = 10
-chapter   = "ai-platform-engineering/09-llm-evaluation/09-eval-runner.md"
+chapter   = "content/tracks/ai-platform-engineering/09-llm-evaluation/09-eval-runner.md"
 # Suites are formats/eval-case.schema.json and reports
 # formats/eval-result.schema.json (rows and summary), linked from the card;
 # the Go API of go/agent/eval is fixed by the chapter's section 4 and the
@@ -15,7 +15,7 @@ contract  = []
 # PCG32 behind the bootstrap.
 deps      = ["ag.01", "ag.02", "ag.03", "ag.05", "load.01"]
 # M07.4 (bootstrap CIs) is re-implemented in Go, never called.
-reading   = ["M07.4", "ai-platform-engineering/09-llm-evaluation"]
+reading   = ["M07.4", "content/tracks/ai-platform-engineering/09-llm-evaluation"]
 used_by   = ["ag.10", "ag.11", "ag.12", "craft.23"]
 units     = [
   "go/agent/eval/eval.go",

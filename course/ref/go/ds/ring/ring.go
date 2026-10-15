@@ -4,7 +4,7 @@
 // the replica whose prefix cache already holds it, and no replica takes more
 // than ceil(c * average) of the in-flight work.
 //
-// Chapter: algorithms/16-systems-data-structures/09-consistent-hash-ring.md.
+// Chapter: content/tracks/algorithms/16-systems-data-structures/09-consistent-hash-ring.md.
 // Conformance: parity/ring.hash (golden key-to-node map from the Python
 // reference in course/oracle/ds.09/ring_golden.py).
 //

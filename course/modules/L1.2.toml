@@ -3,7 +3,7 @@ title     = "Byte-level BPE (GPT-2 compatible): pre-tokenizer, trainer, HF loade
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "ml/08-tinyllm/p01-tokenizers/02-byte-level-bpe.md"
+chapter   = "content/courses/build-an-llm/p01-tokenizers/02-byte-level-bpe.md"
 contract  = ["contracts/py/tinyllm/tok/bpe.pyi", "contracts/py/tinyllm/tok/pretok.pyi"]
 # check_ids (L1.1), the byte map (M05.2), and the trie that splits out added
 # tokens (M06.2) are called by bpe.py.

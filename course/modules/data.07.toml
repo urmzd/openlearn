@@ -3,7 +3,7 @@ title     = "Tokenize and pack to llm.c .bin"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "data-engineering/05-corpus-pipeline/07-tokenize-and-pack.md"
+chapter   = "content/tracks/data-engineering/05-corpus-pipeline/07-tokenize-and-pack.md"
 contract  = ["contracts/py/corpus/tokenize.pyi"]
 # Python BPETokenizer (L1.2) encodes tokenizer.json corpora; L1.6's
 # bytes_per_token gives the val split's bits-per-byte factor; read_shards

@@ -1,4 +1,4 @@
-<!-- chapter: ml/08-tinyllm/p14-speech/04-whisper-decoding.md -->
+<!-- chapter: content/courses/build-an-llm/p14-speech/04-whisper-decoding.md -->
 # Speech decoding policy
 
 L14.4 owns token selection and long-form seeking; L14.3 owns model execution.

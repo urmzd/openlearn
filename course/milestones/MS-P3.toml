@@ -1,5 +1,5 @@
 # MS-P3: the Pass 3 gate (DESIGN 5.7 catalog, 7.2, 7.4).
-# Page: paths/course-p03-tokens-and-data/milestone.md.
+# Page: content/courses/build-an-llm/paths/course-p03-tokens-and-data/milestone.md.
 #
 # Compose tokenizer, corpus, and language-model component gates. The additional
 # `requires` entries are the Pass 3 foundations outside those component gates.

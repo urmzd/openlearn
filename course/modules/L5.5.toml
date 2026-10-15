@@ -3,7 +3,7 @@ title     = "Encoder-decoder Transformer: post-LN and pre-LN, Noam, label smooth
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p05-transformer-2017/05-encoder-decoder-transformer.md"
+chapter   = "content/courses/build-an-llm/p05-transformer-2017/05-encoder-decoder-transformer.md"
 contract  = ["contracts/py/tinyllm/xfmr/transformer.pyi"]
 # transformer.py: L5.2's causal_mask and combine, L5.3's attention, L5.4's
 # SinusoidalPE; L0.4's layers, L0.2's ops, L0.1's Tensor and no_grad, L0.3's

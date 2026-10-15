@@ -1,5 +1,5 @@
 # MS-L7: the Part 7 milestone (DESIGN 4.3 "MS-L7", 5.7, 7.2). MS-P5 includes it.
-# Page: paths/course-p05-transformer/milestone.md (B7 paths work).
+# Page: content/courses/build-an-llm/paths/course-p05-transformer/milestone.md (B7 paths work).
 #
 # Your modern decoder, run through your own entry point: a Llama-family
 # checkpoint exactly as transformers saves it loads into your L7.9 model

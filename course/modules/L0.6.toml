@@ -3,7 +3,7 @@ title     = "Safetensors for every dtype, atomic checkpoints, and the token stre
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "ml/08-tinyllm/p00-foundations/06-safetensors-checkpoints-and-token-streams.md"
+chapter   = "content/courses/build-an-llm/p00-foundations/06-safetensors-checkpoints-and-token-streams.md"
 contract  = ["contracts/py/tinyllm/io/safetensors.pyi", "contracts/py/tinyllm/io/checkpoint.pyi", "contracts/py/tinyllm/io/tokens.pyi"]
 # M09.1: BF16 is written and read through its bit-level converters. The
 # course tests checkpoint a Linear (L0.4) trained with L0.1's Tensor and

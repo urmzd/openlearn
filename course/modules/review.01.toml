@@ -3,7 +3,7 @@ title     = "Design review: tracer and serving platform"
 kind      = "proof"
 lang      = ["docs"]
 pass      = 7
-chapter   = "systems/01-system-design/01-design-review-tracer-and-serving-platform.md"
+chapter   = "content/tracks/systems/01-system-design/01-design-review-tracer-and-serving-platform.md"
 contract  = []
 deps      = []
 # A design review of what Passes 1 and 7 built: no code is called. The
@@ -14,7 +14,7 @@ deps      = []
 # modules not registered when this was written (L10.6, obs.03, load.01,
 # dep.03) are named in the chapter by id (DEVIATIONS B96-07).
 reading   = ["L10.0", "gw.00", "dep.00", "obs.00", "craft.02", "L10.2", "L10.4", "L10.5", "obs.01",
-             "gw.01", "gw.03", "gw.05", "craft.08", "systems/01-system-design/README.md"]
+             "gw.01", "gw.03", "gw.05", "craft.08", "content/tracks/systems/01-system-design/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

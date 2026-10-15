@@ -10,7 +10,7 @@
 //	health.Handler = tel.withMetrics(health.Handler, upstream)
 //	defer tel.shutdown(ctx)
 //
-// Rules this file follows (systems/04-observability/02-metrics-and-log-correlation.md):
+// Rules this file follows (content/tracks/systems/04-observability/02-metrics-and-log-correlation.md):
 //   - names, bounds, and labels exactly as metrics.yaml; capped labels keep
 //     64 values per process, later ones are recorded as _other
 //   - the prompt, the completion, and the key never reach a log line

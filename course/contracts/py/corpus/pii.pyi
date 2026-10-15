@@ -1,6 +1,6 @@
 # contracts/py/corpus/pii.pyi (data.05): PII scrub with typed placeholders
 # and audit spans
-# chapter: data-engineering/05-corpus-pipeline/05-pii-scrub.md
+# chapter: content/tracks/data-engineering/05-corpus-pipeline/05-pii-scrub.md
 #
 # Five detectors, each a candidate regex plus a validator. Offsets are
 # Python str indexes (code points) into the text the detector was given.

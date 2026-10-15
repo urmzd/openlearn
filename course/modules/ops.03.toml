@@ -3,7 +3,7 @@ title     = "A poison task lands in the dead-letter queue"
 kind      = "drill"
 lang      = ["ops", "docs"]
 pass      = 8
-chapter   = "systems/05-incident-response-and-chaos/03-poison-task.md"
+chapter   = "content/tracks/systems/05-incident-response-and-chaos/03-poison-task.md"
 contract  = []
 # The drill poisons dep.06's worker Deployment and is detected on obs.05's
 # scrapes (`ol drill start` refuses until both pass). The queue's retries,

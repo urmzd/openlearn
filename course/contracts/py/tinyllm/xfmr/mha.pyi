@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/xfmr/mha.pyi (L5.3): multi-head attention
-# chapter: ml/08-tinyllm/p05-transformer-2017/03-multi-head-attention.md
+# chapter: content/courses/build-an-llm/p05-transformer-2017/03-multi-head-attention.md
 #
 # Vaswani et al. (2017), section 3.2.2. With d_head = d_model / n_heads:
 #

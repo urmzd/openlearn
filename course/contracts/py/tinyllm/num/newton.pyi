@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/newton.pyi (M01.2)
-# chapter: math/01-calculus-1/02-newtons-method.md
+# chapter: content/tracks/math/01-calculus-1/02-newtons-method.md
 #
 # Newton's method for a root of a scalar function, and the division-free
 # Newton iteration for 1 / sqrt(x) that M09.5 ports to C.

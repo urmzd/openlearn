@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/infer/kvcache.pyi (L8.2)
-# chapter: ml/08-tinyllm/p08-inference/02-kv-cache-and-generate.md
+# chapter: content/courses/build-an-llm/p08-inference/02-kv-cache-and-generate.md
 #
 # Contiguous KV caches for incremental decoding. Keys and values of every
 # position already processed are kept per layer, so a decode step computes

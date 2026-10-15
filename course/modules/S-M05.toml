@@ -3,12 +3,12 @@ title     = "Discrete math 1 problem set: sets, counting, proofs, induction, rel
 kind      = "solve"
 lang      = ["none"]
 pass      = 2
-chapter   = "math/05-discrete-math-1/90-problem-set.md"
+chapter   = "content/tracks/math/05-discrete-math-1/90-problem-set.md"
 contract  = []
 deps      = []
 # Pen and paper. The build modules that use it list S-M05 in their own
 # `reading` (M06.3, M07.2, M05.1 per DESIGN 4.1); a solve set has no call site.
-reading   = ["math/05-discrete-math-1/README.md"]
+reading   = ["content/tracks/math/05-discrete-math-1/README.md"]
 used_by   = []
 units     = []
 upgrades  = []

@@ -17,52 +17,20 @@ Mermaid fenced code blocks are left untouched -- pandoc's ``mermaid-filter``
 renders them downstream (or they fall back to code blocks).
 
 With ``--path NAME`` it assembles one path instead: the stages listed in
-``paths/NAME/path.tsv``, each a Part holding that stage's files in order, with
+``content/courses/build-an-llm/paths/NAME/path.tsv``, each a Part holding that stage's files in order, with
 the stage's "done when" criterion as the Part's opening line.
 
 Usage:
-    python scripts/assemble_book.py --out /tmp/book.md [--root .] [--path NAME]
+    python scripts/assemble_book.py --out /tmp/book.md [--root .] [--course ID | --path NAME]
 """
 
 from __future__ import annotations
 
 import argparse
 import re
-import sys
 from pathlib import Path
 
-# Ordered learning sequence: (directory, Part title). Within each directory the
-# chapters are discovered recursively (see collect_files): the README first,
-# then numbered chapter files, then numbered topic and part directories, so the
-# 01-, 02-, p00-, p01-, ... prefixes order naturally. course/ (except the
-# contracts appendix) and archive/ are never part of the book (DESIGN 3.1).
-TRACKS: list[tuple[str, str]] = [
-    ("math", "Mathematics Foundations"),
-    ("algorithms", "Algorithm Mastery"),
-    ("ml", "Machine Learning & AI"),
-    ("systems", "Systems & Architecture"),
-    ("data-engineering", "Data Engineering"),
-    ("ai-platform-engineering", "AI Platform Engineering"),
-    ("software-craftsmanship", "Software Craftsmanship"),
-    ("infrastructure", "Infrastructure"),
-    ("responsible-ai", "Responsible AI"),
-    ("competitive-programming", "Competitive Programming"),
-    ("field-engineering", "Field Engineering"),
-    ("case-studies", "Case Studies"),
-]
-
-# Appended after the tracks as a final Part. Of course/, only the contracts
-# are published (course/DESIGN.md 5.16): the reference system, tests, and
-# design notes stay out of the book.
-APPENDICES: list[tuple[str, str]] = [
-    ("STUDY-PLAN.md", "Appendix: Study Plans"),
-    ("CS-CURRICULUM.md", "Appendix: Computer Science Curriculum"),
-    ("SOURCES.md", "Appendix: Sources and Validation"),
-    ("course/contracts", "Appendix: Course Contracts"),
-]
-
-# Directories whose every markdown file is a chapter (no README per topic).
-ALL_MARKDOWN = {"course/contracts"}
+from course_catalog import catalog, publication, select
 
 # Markdown inline image:  ![alt](target "title")
 IMAGE_RE = re.compile(r"(!\[[^\]]*\]\()([^)\s]+)([^)]*\))")
@@ -181,69 +149,39 @@ def part_divider(title: str) -> str:
     return f"\n```{{=latex}}\n\\part{{{latex_escape(title)}}}\n```\n\n"
 
 
-# Directories a chapter walk descends into: numbered topics (`05-trees`),
-# spine parts (`p08-inference`), and the capstone chapters of the spine.
-CHAPTER_DIR_RE = re.compile(r"^(\d\d|p\d\d)-|^capstones$")
-CHAPTER_FILE_RE = re.compile(r"^\d\d-.*\.md$")
-# Never part of the book, wherever they appear.
-EXCLUDED = ("course", "archive")
-
-
-def chapter_files(base: Path) -> list[Path]:
-    """README.md, then [0-9][0-9]-*.md, then each chapter directory, recursively."""
-    files: list[Path] = []
-    readme = base / "README.md"
-    if readme.exists():
-        files.append(readme)
-    files.extend(
-        sorted(
-            p for p in base.iterdir() if p.is_file() and CHAPTER_FILE_RE.match(p.name)
-        )
-    )
-    # Capstones close a spine, so they sort after every numbered part.
-    subs = sorted(
-        (p for p in base.iterdir() if p.is_dir()),
-        key=lambda p: (p.name == "capstones", p.name),
-    )
-    for sub in subs:
-        if CHAPTER_DIR_RE.match(sub.name):
-            files.extend(chapter_files(sub))
-    return files
-
-
-def collect_files(root: Path, directory: str) -> list[Path]:
-    base = root / directory
-    if base.is_file():  # an appendix like STUDY-PLAN.md
-        return [base]
-    if directory in ALL_MARKDOWN:
-        return sorted(p for p in base.rglob("*.md") if p.is_file())
-    if directory.split("/")[0] in EXCLUDED or not base.is_dir():
-        return []
-    return chapter_files(base)
+def assemble_course(
+    root: Path, manifest: dict, seen: set[str] | None = None
+) -> tuple[str, int]:
+    seen = set() if seen is None else seen
+    chunks = []
+    count = 0
+    for section in publication(manifest, root)["reading"]:
+        files = [f for f in section["files"] if f not in seen]
+        if not files:
+            continue
+        seen.update(files)
+        chunks.append(part_divider(section["title"]))
+        note = f"> **Done when:** {section['done']}" if section.get("done") else ""
+        chunks.extend(stage_text(root, section["title"], files, note))
+        count += len(files)
+    return "".join(chunks), count
 
 
 def assemble(root: Path) -> tuple[str, int]:
-    chunks: list[str] = []
-    chapters = 0
-    for directory, title in [*TRACKS, *APPENDICES]:
-        files = collect_files(root, directory)
-        if not files:
-            print(f"[warn] no content for '{directory}', skipping", file=sys.stderr)
-            continue
-        chunks.append(part_divider(title))
-        for path in files:
-            text = path.read_text(encoding="utf-8")
-            text = single_chapter(text)
-            text = rewrite_links(text, path.parent, root)
-            text = substitute_glyphs(rewrite_images(text, path.parent))
-            chunks.append(text)
-            chunks.append("\n\n")
-            chapters += 1
-    return "".join(chunks), chapters
+    chunks = []
+    count = 0
+    seen: set[str] = set()
+    for manifest in catalog(root):
+        body, n = assemble_course(root, manifest, seen)
+        chunks.append(body)
+        count += n
+    return "".join(chunks), count
 
 
 def path_title(root: Path, name: str) -> str:
-    readme = root / "paths" / name / "README.md"
+    readme = (
+        root / "content" / "courses" / "build-an-llm" / "paths" / name / "README.md"
+    )
     for line in readme.read_text(encoding="utf-8").splitlines():
         if line.startswith("# "):
             return line[2:].strip()
@@ -253,14 +191,14 @@ def path_title(root: Path, name: str) -> str:
 def read_path(
     root: Path, name: str, stack: tuple[str, ...] = ()
 ) -> list[tuple[str, str, str, list[str], str]]:
-    """Stages of paths/<name>/path.tsv with @includes expanded, in order.
+    """Stages of content/courses/build-an-llm/paths/<name>/path.tsv with @includes expanded, in order.
 
     Each row is (owner, stage, title, files, done_when): ``owner`` is the path
     the stage belongs to, which differs from ``name`` for included parts.
     """
     if name in stack:
         raise SystemExit(f"[error] include cycle: {' -> '.join((*stack, name))}")
-    tsv = root / "paths" / name / "path.tsv"
+    tsv = root / "content" / "courses" / "build-an-llm" / "paths" / name / "path.tsv"
     if not tsv.exists():
         raise SystemExit(f"[error] no path manifest at {tsv}")
     rows = []
@@ -295,7 +233,7 @@ def stage_text(root: Path, stage: str, files: list[str], note: str) -> list[str]
         if not path.exists():
             raise SystemExit(f"[error] stage {stage} names missing file {rel}")
         text = single_chapter(path.read_text(encoding="utf-8"))
-        if i == 0:
+        if i == 0 and note:
             text = after_title(text, note)
         text = rewrite_links(text, path.parent, root)
         chunks.append(substitute_glyphs(rewrite_images(text, path.parent)))
@@ -338,11 +276,18 @@ def main() -> int:
     parser.add_argument(
         "--root", default=Path(__file__).resolve().parent.parent, type=Path
     )
-    parser.add_argument("--path", help="assemble one path from paths/<NAME>/path.tsv")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--course", help="course id from the catalog")
+    group.add_argument(
+        "--path",
+        help="assemble one path from content/courses/build-an-llm/paths/<NAME>/path.tsv",
+    )
     args = parser.parse_args()
 
     root = args.root.resolve()
-    if args.path:
+    if args.course:
+        body, chapters = assemble_course(root, select(args.course, root))
+    elif args.path:
         body, chapters = assemble_path(root, args.path)
     else:
         body, chapters = assemble(root)

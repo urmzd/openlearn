@@ -46,7 +46,7 @@ jobs:
           mode: plan
           github-token: ${{ steps.app-token.outputs.token }}
 
-  # The desktop app (app/), one bundle per platform.
+  # The desktop app (apps/desktop/), one bundle per platform.
   app:
     needs: plan
     if: needs.plan.outputs.tag != ''
@@ -76,12 +76,12 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
 
       # The CI "Book PDF" job (run via the reusable workflow above) built the
-      # curriculum and every path PDF. Place all of them on disk so sr can upload
+      # course PDFs and portable packs. Place all of them on disk so sr can upload
       # the declared artifacts in sr.yaml packages[].artifacts.
-      - name: Download curriculum and path PDFs
+      - name: Download course PDFs and packs
         uses: actions/download-artifact@v8
         with:
-          pattern: supersource-curriculum-pdf
+          pattern: openlearn-courses
           path: outputs
           merge-multiple: true
 

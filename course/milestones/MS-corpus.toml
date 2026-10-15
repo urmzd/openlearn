@@ -1,5 +1,5 @@
 # MS-corpus: the corpus pipeline milestone (DESIGN 4.4 "MS-corpus", 5.7).
-# MS-P3 includes it. Page: paths/course-p03-tokens-and-data/milestone.md
+# MS-P3 includes it. Page: content/courses/build-an-llm/paths/course-p03-tokens-and-data/milestone.md
 # (owned by the pass gate's author).
 #
 # Your `corpus` CLI (data.01 to data.08 composed: fetch, filter, exact and

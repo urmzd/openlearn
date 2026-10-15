@@ -1,0 +1,27 @@
+# Pass 10: course-p10-agents (DESIGN 7.4). Stage check column: DESIGN 5.15.
+# stage	title	files	done when	check
+1	Types, OpenAI-compatible provider, retry wrapper	content/tracks/ai-platform-engineering/13-agent-sdk/01-types-and-provider.md	Your implementation of ag.01 passes its course checks.	module:ag.01
+2	Tools, registry, JSON Schema argument validation	content/tracks/ai-platform-engineering/13-agent-sdk/02-tools-and-schemas.md	Your implementation of ag.02 passes its course checks.	module:ag.02
+3	Agent loop	content/tracks/ai-platform-engineering/13-agent-sdk/03-agent-loop.md	Your implementation of ag.03 passes its course checks.	module:ag.03
+4	Tool gate, SQL safety gate, prompt-injection suite	content/tracks/ai-platform-engineering/13-agent-sdk/04-tool-gate-and-injection.md	Your implementation of ag.04 passes its course checks.	module:ag.04
+5	Durable agent runs (AgentRun)	content/tracks/ai-platform-engineering/13-agent-sdk/05-durable-agent-runs.md	Your implementation of ag.05 passes its course checks.	module:ag.05
+6	RAG ingest: crawler with SSRF allowlist, chunker, embedder, store	content/tracks/ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md	Your implementation of ag.06 passes its course checks.	module:ag.06
+7	Retrieval: BM25, flat and IVF vectors, RRF, MMR	content/tracks/ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md	Your implementation of ag.07 passes its course checks.	module:ag.07
+8	Context assembly, citations, search_docs tool	content/tracks/ai-platform-engineering/07-retrieval-and-rag/08-context-assembly.md	Your implementation of ag.08 passes its course checks.	module:ag.08
+9	Eval runner	content/tracks/ai-platform-engineering/09-llm-evaluation/09-eval-runner.md	Your implementation of ag.09 passes its course checks.	module:ag.09
+10	Agent evaluation scorers	content/tracks/ai-platform-engineering/09-llm-evaluation/10-scorers.md	Your implementation of ag.10 passes its course checks.	module:ag.10
+11	LLM judge with position control	content/tracks/ai-platform-engineering/09-llm-evaluation/11-llm-judge.md	Your implementation of ag.11 passes its course checks.	module:ag.11
+12	Paired A/B experiments	content/tracks/ai-platform-engineering/09-llm-evaluation/12-ab-experiments.md	Your implementation of ag.12 passes its course checks.	module:ag.12
+13	Usage policy at the gateway	content/tracks/responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md	Your implementation of ethics.05 passes its course checks.	module:ethics.05
+14	Usage policy enforcement	content/tracks/ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md	Your implementation of gw.08 passes its course checks.	module:gw.08
+15	Agent image and chart	content/tracks/infrastructure/01-containers-kubernetes/07-agent-image-and-chart.md	Your implementation of dep.07 passes its course checks.	module:dep.07
+16	Agent evals as tests (R9)	content/tracks/software-craftsmanship/03-testing-mentality/23-agent-evals-as-tests.md	Your implementation of craft.23 passes its course checks.	module:craft.23
+17	Milestone agent	content/courses/build-an-llm/paths/course-p10-agents/milestone.md	The MS-agent gate passes for your system.	milestone:MS-agent
+18	Milestone P10	content/courses/build-an-llm/paths/course-p10-agents/milestone.md	The MS-P10 gate passes for your system.	milestone:MS-P10
+19	Optimization problem set, part b: constrained optimization, duality, and DPO	content/tracks/math/10-optimization/91-problem-set-b.md	You complete the S-M10b solve set and its check passes.	solve:S-M10b
+20	Supervised fine-tuning: chat rendering, assistant-only loss, packing	content/courses/build-an-llm/p12-post-training/01-supervised-fine-tuning.md	Your implementation of L12.1 passes its course checks.	module:L12.1
+21	Direct preference optimization and IPO	content/courses/build-an-llm/p12-post-training/02-direct-preference-optimization.md	Your implementation of L12.2 passes its course checks.	module:L12.2
+22	Group relative policy optimization with verifiable rewards	content/courses/build-an-llm/p12-post-training/03-grpo-with-verifiable-rewards.md	Your implementation of L12.3 passes its course checks.	module:L12.3
+23	Distillation with forward and reverse KL	content/courses/build-an-llm/p12-post-training/04-distillation.md	Your implementation of L12.4 passes its course checks.	module:L12.4
+24	Capstone 2: post-trained TinyStories model	content/courses/build-an-llm/capstones/02-post-trained.md	Your implementation of C2 passes its course checks.	module:C2
+25	Milestone C2	content/courses/build-an-llm/paths/course-p10-agents/milestone.md	The MS-C2 gate passes for your system.	milestone:MS-C2

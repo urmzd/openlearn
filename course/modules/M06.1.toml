@@ -3,11 +3,11 @@ title     = "Graphs, DAGs, and an iterative topological sort"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md"
+chapter   = "content/tracks/math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md"
 contract  = ["contracts/py/tinyllm/autograd/graph.pyi"]
 deps      = []
 # M05.4 (proof techniques) is not in the registry yet; its track stands in.
-reading   = ["math/05-discrete-math-1"]
+reading   = ["content/tracks/math/05-discrete-math-1"]
 # Call sites (DESIGN 4.1): M08.2 the scalar autodiff and L0.1
 # Tensor.backward walk toposort's order. L8.7 (the automaton graphs) joins
 # with its batch: only registered modules may be named (mirror rule,

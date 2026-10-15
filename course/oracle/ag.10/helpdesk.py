@@ -1,5 +1,5 @@
 """The helpdesk-world oracle and mutant suite for ag.10's state grader
-(case study 05, case-studies/05-agent-eval-harness/, ported).
+(case study 05, content/case-studies/05-agent-eval-harness/, ported).
 
     uv run python course/oracle/ag.10/helpdesk.py
 

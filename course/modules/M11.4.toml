@@ -3,7 +3,7 @@ title     = "Mutual information, PMI, and PPMI"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "math/11-information-theory/04-mutual-information-pmi-ppmi.md"
+chapter   = "content/tracks/math/11-information-theory/04-mutual-information-pmi-ppmi.md"
 contract  = ["contracts/py/tinyllm/info/pmi.pyi"]
 deps      = ["M11.1"]   # mutual_information is kl(joint, product of marginals)
 # M07.2: PMI's probabilities are the MLE ratios of counts; the unit divides

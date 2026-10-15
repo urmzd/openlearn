@@ -3,7 +3,7 @@ title     = "DFT and FFT"
 kind      = "build"
 lang      = ["python"]
 pass      = 12
-chapter   = "math/12-signals-and-images/04-dft-and-fft.md"
+chapter   = "content/tracks/math/12-signals-and-images/04-dft-and-fft.md"
 contract  = ["contracts/py/tinyllm/sig/fft.pyi"]
 deps      = []
 # Euler's formula, unitary matrices, and the error bound are concepts, not

@@ -15,7 +15,7 @@
 //     summary.json), so the release gate (dur.12) and the A/B runner read
 //     one format
 //
-// Chapter: ai-platform-engineering/09-llm-evaluation/09-eval-runner.md.
+// Chapter: content/tracks/ai-platform-engineering/09-llm-evaluation/09-eval-runner.md.
 package eval
 
 import (

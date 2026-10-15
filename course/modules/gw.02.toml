@@ -3,12 +3,12 @@ title     = "AuthN (API keys) and AuthZ (scopes, model allowlist, tenants)"
 kind      = "build"
 lang      = ["go"]
 pass      = 7
-chapter   = "ai-platform-engineering/08-authorization-and-access-control/01-api-keys-and-scopes.md"
+chapter   = "content/tracks/ai-platform-engineering/08-authorization-and-access-control/01-api-keys-and-scopes.md"
 # openapi/openai-subset.v1.yaml (401, 403) and openapi/admin.v1.yaml (the
 # keys paths) are linked from the card; no `chapter:` back-pointer (B82-02).
 contract  = []
 deps      = ["gw.01"]
-reading   = ["ai-platform-engineering/08-authorization-and-access-control"]   # craft.19 reviews it later
+reading   = ["content/tracks/ai-platform-engineering/08-authorization-and-access-control"]   # craft.19 reviews it later
 # The Principal: limits key by its id (gw.03), routing shows X-TL-Route to
 # debug keys (gw.05), the cache scopes by tenant (gw.06), the ledger records
 # tenant and key id and checks the admin scope (gw.07).

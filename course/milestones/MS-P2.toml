@@ -1,5 +1,5 @@
 # MS-P2: the Pass 2 gate (DESIGN 5.7 milestone catalog, 7.2, 7.4). MS-P2 = MS-L0.
-# Page: paths/course-p02-foundations/milestone.md
+# Page: content/courses/build-an-llm/paths/course-p02-foundations/milestone.md
 #
 # Pass 2 rebuilds the tracer's model on foundations you wrote: the math
 # modules, your autograd, your loader and checkpoints. The gate is MS-L0 plus

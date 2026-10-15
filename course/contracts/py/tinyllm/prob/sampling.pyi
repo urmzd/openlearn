@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/prob/sampling.pyi (M07.1)
-# chapter: math/07-probability-statistics/01-categorical-sampling.md
+# chapter: content/tracks/math/07-probability-statistics/01-categorical-sampling.md
 #
 # Three exact ways to draw from a categorical distribution p over the ids
 # 0..n-1, plus the inverse CDF of the exponential distribution for Poisson

@@ -1,5 +1,5 @@
 # MS-L6: the Part 6 milestone (DESIGN 4.3 "MS-L6", 5.7, 7.2). MS-P5 includes it.
-# Page: paths/course-p05-transformer/milestone.md (B7 paths work).
+# Page: content/courses/build-an-llm/paths/course-p05-transformer/milestone.md (B7 paths work).
 #
 # Your objectives and your evaluation harness, run through your own entry
 # point: a GPT trained on the byte corpus to the reference's calibrated

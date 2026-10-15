@@ -3,7 +3,7 @@ title     = "Pipeline as a durable workflow CorpusBuild"
 kind      = "build"
 lang      = ["go"]
 pass      = 8
-chapter   = "data-engineering/05-corpus-pipeline/09-corpusbuild-as-a-durable-workflow.md"
+chapter   = "content/tracks/data-engineering/05-corpus-pipeline/09-corpusbuild-as-a-durable-workflow.md"
 # formats/corpus-config.schema.json (the stage spec) and
 # spec/subprocess-activity.md, linked from the card.
 contract  = []
@@ -11,7 +11,7 @@ contract  = []
 # data.08) runs as `{corpus} run --stage` subprocess activities (dur.09)
 # through the worker's composition root, so those are reading.
 deps      = ["dur.08"]
-reading   = ["data.08", "dur.09", "data-engineering/05-corpus-pipeline"]
+reading   = ["data.08", "dur.09", "content/tracks/data-engineering/05-corpus-pipeline"]
 used_by   = ["dur.11"]          # TrainRun builds its corpus first; C1 joins with its batch
 units     = ["go/workflows/corpus_build.go"]
 upgrades  = []

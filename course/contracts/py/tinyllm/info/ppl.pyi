@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/info/ppl.pyi (M11.2)
-# chapter: math/11-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md
+# chapter: content/tracks/math/11-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md
 #
 # Evaluation numbers from per-token negative log-likelihoods. A model that
 # gives the true next token probability q pays nll = -ln q nats. Over a text

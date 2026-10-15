@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/io/hf.pyi (L7.9): download files from the Hugging Face Hub
-# chapter: ml/08-tinyllm/p07-modern-block/09-llama-family-model.md
+# chapter: content/courses/build-an-llm/p07-modern-block/09-llama-family-model.md
 #
 # The Hub serves every file of a repository at
 #

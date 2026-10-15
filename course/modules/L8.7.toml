@@ -3,7 +3,7 @@ title     = "Constrained decoding: regex to DFA to token masks, JSON-schema subs
 kind      = "build"
 lang      = ["python"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p08-inference/07-constrained-decoding.md"
+chapter   = "content/courses/build-an-llm/p08-inference/07-constrained-decoding.md"
 contract  = ["contracts/py/tinyllm/infer/constrain.pyi"]
 # L8.1: constrained_sample is L8.1's sample on masked logits. M05.2:
 # vocab_bytes undoes the GPT-2 byte map with unicode_to_bytes.

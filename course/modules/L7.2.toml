@@ -3,7 +3,7 @@ title     = "Gated MLPs: SwiGLU, GeGLU"
 kind      = "build"
 lang      = ["python"]
 pass      = 5
-chapter   = "ml/08-tinyllm/p07-modern-block/02-gated-mlps.md"
+chapter   = "content/courses/build-an-llm/p07-modern-block/02-gated-mlps.md"
 contract  = ["contracts/py/tinyllm/modern/mlp.pyi"]
 # mlp.py: L0.4's Linear and Module, L0.2's F.silu and F.gelu on L0.1's
 # Tensor, M06.3's PCG32 for the default rng.

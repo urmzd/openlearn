@@ -1,6 +1,6 @@
 # MS-L10: the Part 10 milestone, your inference engine (DESIGN 4.3 "MS-L10",
 # 5.7 catalog, 7.2). MS-P7 = MS-L10 + MS-gateway + MS-prod.
-# Page: paths/course-p07-serving-platform/milestone.md (B9 paths work).
+# Page: content/courses/build-an-llm/paths/course-p07-serving-platform/milestone.md (B9 paths work).
 #
 # Your Rust engine, started from your own entry point, serves the OpenAI
 # subset v1 conformantly (streaming, stop strings, seeds, 16 concurrent

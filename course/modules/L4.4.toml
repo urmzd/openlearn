@@ -3,7 +3,7 @@ title     = "Beam search, generic over a step function"
 kind      = "build"
 lang      = ["python"]
 pass      = 4
-chapter   = "ml/08-tinyllm/p04-attention-origins/04-beam-search.md"
+chapter   = "content/courses/build-an-llm/p04-attention-origins/04-beam-search.md"
 contract  = ["contracts/py/tinyllm/infer/beam.pyi"]
 # beam.py: M09.2's log_softmax normalizes each step's logits. The course
 # tests drive L4.1's Seq2Seq (with L4.3's Luong attention) through

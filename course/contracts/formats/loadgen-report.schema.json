@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "chapter: ml/08-tinyllm/p10-serving/11-run-comparison-and-regression-gate.md",
+  "$comment": "chapter: content/courses/build-an-llm/p10-serving/11-run-comparison-and-regression-gate.md",
   "title": "loadgen report (bench/<run_id>/report.json)",
   "description": "One load-generator run (DESIGN 2.9; load.01 writes, load.02 compares). Latencies are in milliseconds from the client's view: TTFT to the first content byte, TPOT = (E2E - TTFT) / (output tokens - 1), ITL between consecutive content chunks. Quantiles come from a log-linear histogram with at most 1% relative error. goodput is the fraction of requests that met every SLO in slo.",
   "type": "object",

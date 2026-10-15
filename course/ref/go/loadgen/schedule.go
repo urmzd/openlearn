@@ -4,7 +4,7 @@
 // client's side into log-linear histograms, and writes the report of
 // course/contracts/formats/loadgen-report.schema.json.
 //
-// Chapter: ml/08-tinyllm/p10-serving/10-load-generator.md. load.02
+// Chapter: content/courses/build-an-llm/p10-serving/10-load-generator.md. load.02
 // (loadgen/compare) compares two reports; the learner's {loadgen} main
 // drives MS-L10, MS-gateway, MS-prod, and the drills.
 package loadgen

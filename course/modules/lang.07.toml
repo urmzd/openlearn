@@ -3,10 +3,10 @@ title     = "Containers and Kubernetes: images, layers, Pods, Deployments, Servi
 kind      = "practice"
 lang      = ["ops"]
 pass      = 1
-chapter   = "software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md"
+chapter   = "content/tracks/software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md"
 contract  = []
 deps      = []
-reading   = ["lang.06", "infrastructure/01-containers-kubernetes"]
+reading   = ["lang.06", "content/tracks/infrastructure/01-containers-kubernetes"]
 used_by   = []                       # a primer has no code call site; dep.00 lists it in `reading`
 units     = []                       # primer exercise: primers/lang.07/ (reference in course/ref/primers/lang.07/)
 artifacts = ["primers/lang.07"]   # learner files the check grades: hashed into the verdict, present = started (I16)

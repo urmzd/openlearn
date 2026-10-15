@@ -3,7 +3,7 @@ title     = "Continuous batching scheduler with priority and preemption"
 kind      = "build"
 lang      = ["rust"]
 pass      = 7
-chapter   = "ml/08-tinyllm/p10-serving/02-continuous-batching.md"
+chapter   = "content/courses/build-an-llm/p10-serving/02-continuous-batching.md"
 contract  = []                      # no Rust trait contract yet (K01); section 4 pins it
 # sched.rs uses L10.1's SchedPolicy and its tests run L10.1's runner; the
 # waiting queue is tl-ds's LazyHeap (ds.06).

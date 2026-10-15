@@ -1,0 +1,27 @@
+{
+  "id": "infrastructure",
+  "title": "Infrastructure",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/tracks/infrastructure/README.md",
+      "title": "Overview"
+    },
+    {
+      "file": "content/courses/infrastructure/study-plan.md",
+      "title": "Study plan"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/infrastructure",
+      "title": "Infrastructure"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

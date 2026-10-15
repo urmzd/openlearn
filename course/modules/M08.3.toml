@@ -3,7 +3,7 @@ title     = "Matrix differentials, the trace trick, and closed-form VJPs"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md"
+chapter   = "content/tracks/math/08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md"
 contract  = ["contracts/py/tinyllm/autograd/vjp.pyi"]
 # cross_entropy_vjp calls M09.2's softmax; the course tests differentiate
 # M11.1's cross_entropy and compare with M04.2's vjp_numeric.

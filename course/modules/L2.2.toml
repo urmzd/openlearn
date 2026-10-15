@@ -3,7 +3,7 @@ title     = "Bengio's neural probabilistic language model"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "ml/08-tinyllm/p02-statistical-lm/02-bengio-nplm.md"
+chapter   = "content/courses/build-an-llm/p02-statistical-lm/02-bengio-nplm.md"
 contract  = ["contracts/py/tinyllm/lm/nplm.pyi"]
 # Every dep is a call in nplm.py (DEVIATIONS B54-03): L0.1 Tensor and
 # no_grad, L0.2 F.reshape and F.tanh, L0.3 cross_entropy, L0.4 Module,

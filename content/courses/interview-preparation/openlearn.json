@@ -1,0 +1,23 @@
+{
+  "id": "interview-preparation",
+  "title": "Interview Preparation",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/interviews/README.md",
+      "title": "Overview"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/interviews",
+      "title": "Interview Preparation Guides"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

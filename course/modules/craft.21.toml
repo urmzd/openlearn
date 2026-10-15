@@ -3,7 +3,7 @@ title     = "Resilience tests (R10)"
 kind      = "practice"
 lang      = ["go"]
 pass      = 8
-chapter   = "software-craftsmanship/03-testing-mentality/07-resilience-tests.md"
+chapter   = "content/tracks/software-craftsmanship/03-testing-mentality/07-resilience-tests.md"
 contract  = []                       # the kata's API is its own file; the fault kit is course/tests/craft.21/faults
 deps      = []
 # craft.03 (how a test is graded), craft.04 (properties), craft.07 (reading

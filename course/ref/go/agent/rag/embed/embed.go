@@ -3,7 +3,7 @@
 // L2-normalized, openai-subset.v1) or a frontier API's, with the provider's
 // retry policy (ag.01) for overload and broken connections.
 //
-// Chapter: ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md.
+// Chapter: content/tracks/ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md.
 package embed
 
 import (

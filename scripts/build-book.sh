@@ -16,8 +16,9 @@ set -euo pipefail
 #   --skip-mermaid     Leave Mermaid blocks as code (no headless browser needed)
 #   --no-toc           Omit the table of contents
 #   --manifest FILE    Write a build manifest JSON to FILE
-#   --path NAME        Build one path (paths/NAME/path.tsv) instead of the
+#   --path NAME        Build one path (content/courses/build-an-llm/paths/NAME/path.tsv) instead of the
 #                      whole curriculum; writes supersource-NAME.pdf
+#   --course ID       Build a course from its manifest
 #   --help             Show this help
 #
 # Requirements: pandoc, a LaTeX engine (xelatex), python3.
@@ -33,6 +34,7 @@ SKIP_MERMAID=false
 WITH_TOC=true
 MANIFEST=""
 LEARN_PATH=""
+COURSE_ID=""
 
 # Font candidates (Unicode-capable serif/sans cover the math glyphs the
 # curriculum uses: → ≠ ∝ σ Σ · etc).
@@ -72,11 +74,14 @@ while [[ $# -gt 0 ]]; do
     --no-toc) WITH_TOC=false; shift ;;
     --manifest) MANIFEST="$2"; shift 2 ;;
     --path) LEARN_PATH="$2"; shift 2 ;;
+    --course) COURSE_ID="$2"; shift 2 ;;
     --help|-h) usage ;;
     -*) die "Unknown option: $1" ;;
     *) die "Unexpected argument: $1" ;;
   esac
 done
+
+[[ -z "$LEARN_PATH" || -z "$COURSE_ID" ]] || die "choose --course or --path"
 
 # --- preflight --------------------------------------------------------------
 
@@ -100,11 +105,16 @@ COMBINED_MD="$WORK_DIR/supersource-book.md"
 info "Assembling curriculum into one document..."
 assemble_args=(--root "$ROOT_DIR" --out "$COMBINED_MD")
 PDF_NAME="supersource-curriculum.pdf"
-if [[ -n "$LEARN_PATH" ]]; then
+if [[ -n "$COURSE_ID" ]]; then
+  assemble_args+=(--course "$COURSE_ID")
+  PDF_NAME="openlearn-$COURSE_ID.pdf"
+  TITLE="$(python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["manifest"]["title"])' < <(python3 "$SCRIPT_DIR/course_catalog.py" index --course "$COURSE_ID"))"
+  SUBTITLE="An OpenLearn course"
+elif [[ -n "$LEARN_PATH" ]]; then
   assemble_args+=(--path "$LEARN_PATH")
   PDF_NAME="supersource-$LEARN_PATH.pdf"
   # The path's README H1 is its title, e.g. "Forward Deployed Engineer, ...".
-  TITLE="$(sed -n 's/^# //p' "$ROOT_DIR/paths/$LEARN_PATH/README.md" | head -1)"
+  TITLE="$(sed -n 's/^# //p' "$ROOT_DIR/content/courses/build-an-llm/paths/$LEARN_PATH/README.md" | head -1)"
   SUBTITLE="A Supersource course path"
 fi
 python3 "$SCRIPT_DIR/assemble_book.py" "${assemble_args[@]}"

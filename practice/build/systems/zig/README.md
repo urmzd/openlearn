@@ -71,4 +71,4 @@ harness works.
 | 09 | Build system plugin | build.zig, custom steps, dependency graph | ⭐⭐⭐ |
 | 10 | Toy ELF linker | Binary formats, memory layout, relocations | ⭐⭐⭐⭐⭐ |
 
-Exercise 02 (hash map) is consolidated into the course modules `ds.02` and `ds.05` ([Systems Data Structures](../../../../algorithms/16-systems-data-structures/)); the row had no reference.
+Exercise 02 (hash map) is consolidated into the course modules `ds.02` and `ds.05` ([Systems Data Structures](../../../../content/tracks/algorithms/16-systems-data-structures/)); the row had no reference.

@@ -6,7 +6,7 @@ kind      = "side"
 # the `bloom` parity suite.
 lang      = ["rust"]
 pass      = 3
-chapter   = "algorithms/16-systems-data-structures/08-bloom-filter.md"
+chapter   = "content/tracks/algorithms/16-systems-data-structures/08-bloom-filter.md"
 contract  = ["contracts/formats/bloom.md"]
 deps      = []
 reading   = ["S-M06b", "M06.3"]     # FP rate and optimal k; FNV-1a and the SplitMix finalizer

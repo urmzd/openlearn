@@ -1,0 +1,123 @@
+{
+  "id": "build-an-llm",
+  "title": "Build Your Own LLM System",
+  "repo": "https://github.com/urmzd/openlearn",
+  "paths": "content/courses/build-an-llm/paths",
+  "featured": "course",
+  "practice": "practice/exercises.json",
+  "stageCheck": [
+    "practice/bin/ol",
+    "learn",
+    "{path}",
+    "--done",
+    "{stage}"
+  ],
+  "start": [
+    {
+      "file": "content/courses/build-an-llm/README.md",
+      "title": "Overview"
+    },
+    {
+      "file": "content/courses/build-an-llm/study-plan.md",
+      "title": "Study plan"
+    },
+    {
+      "file": "content/courses/build-an-llm/paths/course/SYSTEM.md",
+      "title": "System map"
+    },
+    {
+      "file": "content/courses/build-an-llm/concepts.md",
+      "title": "Architecture overview"
+    },
+    {
+      "file": "practice/README.md",
+      "title": "Practice"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/courses/build-an-llm/capstones",
+      "title": "Capstones"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p00-foundations",
+      "title": "Part 0: Foundations"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p01-tokenizers",
+      "title": "Part 1: Tokenizers"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p02-statistical-lm",
+      "title": "Part 2: Statistical Language Models"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p03-recurrent",
+      "title": "Part 3: Recurrent Networks"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p04-attention-origins",
+      "title": "Part 4: Attention Origins"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p05-transformer-2017",
+      "title": "Part 5: The Transformer (2017)"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p06-objectives",
+      "title": "Part 6: Objectives and Adaptation"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p07-modern-block",
+      "title": "Part 7: The Modern Decoder Block"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p08-inference",
+      "title": "Part 8: Inference"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p09-kernels",
+      "title": "Part 9: Optional standalone C kernels"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p10-serving",
+      "title": "Part 10: Serving"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p11-training-at-scale",
+      "title": "Part 11: Training at Scale"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p12-post-training",
+      "title": "Post-training"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p13-vision",
+      "title": "Vision foundations"
+    },
+    {
+      "dir": "content/courses/build-an-llm/p14-speech",
+      "title": "Speech recognition"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "course/contracts",
+      "title": "Contracts"
+    },
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ],
+  "runtime": [
+    "course",
+    "practice",
+    "content/tracks/algorithms",
+    "content/case-studies",
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version",
+    ".mise.toml"
+  ]
+}

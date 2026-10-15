@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$comment": "chapter: infrastructure/01-containers-kubernetes/07-agent-image-and-chart.md",
+  "$comment": "chapter: content/tracks/infrastructure/01-containers-kubernetes/07-agent-image-and-chart.md",
   "title": "values.yaml of the agent chart",
   "description": "<system>-agent (dep.07, ag.*). Runs AgentRun workflows and tools on queue agent; a frontier key, if any, only from a Secret. Policy checked by dep.03, dep.06, dep.07 over `helm template`: probes, resource requests and limits, non-root, no image tag latest, a PodDisruptionBudget, and secrets only through Secret references (this schema rejects literal secret values). Copy this file into the chart as values.schema.json; Helm then validates every install. Draft-07, because that is what Helm validates.",
   "type": "object",

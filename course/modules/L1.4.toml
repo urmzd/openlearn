@@ -3,7 +3,7 @@ title     = "Unigram LM tokenizer (EM, Viterbi, subword sampling)"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "ml/08-tinyllm/p01-tokenizers/04-unigram-lm.md"
+chapter   = "content/courses/build-an-llm/p01-tokenizers/04-unigram-lm.md"
 contract  = ["contracts/py/tinyllm/tok/unigram.pyi"]
 # check_ids (L1.1), Trie.prefixes for the lattice (M06.2), and mle to score
 # the seed pieces (M07.2) are called by unigram.py.

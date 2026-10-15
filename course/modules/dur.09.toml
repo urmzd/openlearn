@@ -3,7 +3,7 @@ title     = "Subprocess activity runner (Go) and the Python activity helper"
 kind      = "build"
 lang      = ["go", "python"]
 pass      = 8
-chapter   = "ai-platform-engineering/05-durable-orchestration-and-workers/09-subprocess-activities.md"
+chapter   = "content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/09-subprocess-activities.md"
 # contracts/spec/subprocess-activity.md is the shared interface (linked from
 # the card); the two .pyi files are this module's own contracts.
 contract  = ["contracts/py/tinyllm/io/activity.pyi",
@@ -15,7 +15,7 @@ contract  = ["contracts/py/tinyllm/io/activity.pyi",
 # without them, and the worker's composition root adapts a delivery to it
 # (DEVIATIONS B10B-02).
 deps      = ["L0.6"]
-reading   = ["lang.02", "ai-platform-engineering/05-durable-orchestration-and-workers"]
+reading   = ["lang.02", "content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers"]
 # dep.06's worker image carries these units and obs.05's check runs
 # telemetry.py. The workflows (data.09, dur.11, dur.12) reach the runner only
 # through activity names registered in the worker's composition root (an

@@ -7,7 +7,7 @@
 // tests (consumer_test.go) pin those expectations down; craft.20's check
 // grades the tests by the planted faults they catch.
 //
-// Chapter: software-craftsmanship/03-testing-mentality/06-contract-tests.md.
+// Chapter: content/tracks/software-craftsmanship/03-testing-mentality/06-contract-tests.md.
 package craft20
 
 import (

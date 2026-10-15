@@ -3,7 +3,7 @@ title     = "Audio frontend: WAV parsing and Whisper's log-mel"
 kind      = "build"
 lang      = ["python"]
 pass      = 12
-chapter   = "ml/08-tinyllm/p14-speech/01-audio-frontend.md"
+chapter   = "content/courses/build-an-llm/p14-speech/01-audio-frontend.md"
 contract  = ["contracts/py/tinyllm/io/wav.pyi", "contracts/py/tinyllm/speech/frontend.pyi"]
 # resample_audio for other rates, hann/stft/power for the spectrogram, and
 # mel_filterbank/log_mel_whisper for the features. lang.12 (RIFF chunks from

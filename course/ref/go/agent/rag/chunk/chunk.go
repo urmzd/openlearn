@@ -2,7 +2,7 @@
 // counting with the tokenizer of the model that will embed them: the
 // learner engine's /v1/tokenize, or the tracer's byte-level tokenizer.
 //
-// Chapter: ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md.
+// Chapter: content/tracks/ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md.
 // Format: course/contracts/formats/rag-index.md (chunk_id, n_tokens,
 // fingerprint).
 package chunk

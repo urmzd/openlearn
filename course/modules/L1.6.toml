@@ -3,7 +3,7 @@ title     = "Tokenizer metrics"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "ml/08-tinyllm/p01-tokenizers/06-tokenizer-metrics.md"
+chapter   = "content/courses/build-an-llm/p01-tokenizers/06-tokenizer-metrics.md"
 contract  = ["contracts/py/tinyllm/tok/metrics.pyi"]
 # metrics.py is written against the L1.1 protocol. The course tests measure
 # the real tokenizers of L1.2 (GPT-2, SmolLM2), L1.3 (BERT), and L1.4 (a

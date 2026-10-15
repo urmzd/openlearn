@@ -1,5 +1,5 @@
 # MS-P6: the Pass 6 gate (DESIGN 5.7 catalog, 7.2, 7.4).
-# Page: paths/course-p06-inference-and-kernels/milestone.md.
+# Page: content/courses/build-an-llm/paths/course-p06-inference-and-kernels/milestone.md.
 #
 # MS-L8 verifies the core Python inference stack. Standalone C exercises are
 # optional and deliberately do not gate this pass. Earlier pass smoke steps

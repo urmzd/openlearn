@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/optim/sgd.pyi (M10.2): the Optimizer protocol and SGD
-# chapter: math/10-optimization/02-optimizer-protocol-and-sgd.md
+# chapter: content/tracks/math/10-optimization/02-optimizer-protocol-and-sgd.md
 #
 # A parameter is any object with a float ndarray `data` and a `grad` that
 # is an ndarray of the same shape or None (no gradient this step). The

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "chapter: software-craftsmanship/03-testing-mentality/23-agent-evals-as-tests.md",
+  "$comment": "chapter: content/tracks/software-craftsmanship/03-testing-mentality/23-agent-evals-as-tests.md",
   "title": "eval-results",
   "description": "The report an eval suite writes (`{tinyllm} eval --suite <name>`, EvalSuite dur.11). The model zoo (L6.7, D36) is the suite `zoo`: one row per model family trained so far, each loaded through the checkpoint contract by its tl_arch and scored on its task: bpb for language models, EM with beam search for seq2seq and transformer, accuracy for classifiers, Spearman for word2vec. A row that could not be scored says why (status skipped or error) instead of disappearing.",
   "type": "object",

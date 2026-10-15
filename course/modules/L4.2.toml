@@ -3,7 +3,7 @@ title     = "Bahdanau additive attention"
 kind      = "build"
 lang      = ["python"]
 pass      = 4
-chapter   = "ml/08-tinyllm/p04-attention-origins/02-bahdanau-additive-attention.md"
+chapter   = "content/courses/build-an-llm/p04-attention-origins/02-bahdanau-additive-attention.md"
 contract  = ["contracts/py/tinyllm/seq2seq/additive.pyi"]
 # additive.py: L0.4's Linear and Module, L0.2's ops (tanh, masked_fill,
 # softmax, matmul) on L0.1's Tensor, M06.3's PCG32 for the default rng.

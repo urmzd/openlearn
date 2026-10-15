@@ -1,4 +1,4 @@
-"""ol next   the next stage in paths/course/path.tsv whose deps pass (DESIGN 5.3)
+"""ol next   the next stage in content/courses/build-an-llm/paths/course/path.tsv whose deps pass (DESIGN 5.3)
 
 A stage with a `module:`/`solve:` check is done when that module has a fresh
 pass in the ledger (or the stage is marked done by `ol learn`); a manual stage

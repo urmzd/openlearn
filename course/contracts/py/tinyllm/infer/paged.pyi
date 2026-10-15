@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/infer/paged.pyi (L8.3): a pure-Python paged KV cache
-# chapter: ml/08-tinyllm/p08-inference/03-paged-kv-cache.md
+# chapter: content/courses/build-an-llm/p08-inference/03-paged-kv-cache.md
 #
 # The cache stores K and V in fixed-size NumPy blocks. A sequence is a block
 # table, the list of block ids holding its positions in order: position p is

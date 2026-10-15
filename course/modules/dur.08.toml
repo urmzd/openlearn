@@ -3,7 +3,7 @@ title     = "Signals, cancellation, sagas (compensation)"
 kind      = "build"
 lang      = ["go"]
 pass      = 8
-chapter   = "ai-platform-engineering/05-durable-orchestration-and-workers/08-signals-cancellation-and-sagas.md"
+chapter   = "content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/08-signals-cancellation-and-sagas.md"
 # proto/tl/durable/v1/durable.proto (SignalWorkflow, CancelWorkflow, and the
 # cancel commands, all [dur.08]) is linked from the card; the Go API of the
 # Runtime seam is fixed by the chapter's section 4 and the course tests.
@@ -13,7 +13,7 @@ contract  = []
 # SDK half extends package workflow through dur.06's eventHooks, and the
 # end-to-end tests run timers through dur.07's service (DEVIATIONS B10B-05).
 deps      = ["dur.02", "dur.04", "dur.05", "dur.06", "dur.07"]
-reading   = ["lang.06", "ai-platform-engineering/05-durable-orchestration-and-workers"]
+reading   = ["lang.06", "content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers"]
 # data.09 compensates with Saga; dur.11 ends on ErrCanceled; dur.12 waits
 # for the approve signal through the Runtime. ag.05 joins with its batch.
 used_by   = ["data.09", "dur.11", "dur.12"]

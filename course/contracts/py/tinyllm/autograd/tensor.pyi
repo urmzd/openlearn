@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/autograd/tensor.pyi (L0.1): the autograd Tensor
-# chapter: ml/08-tinyllm/p00-foundations/01-tensor-and-broadcasting-backward.md
+# chapter: content/courses/build-an-llm/p00-foundations/01-tensor-and-broadcasting-backward.md
 #
 # A Tensor is a numpy array plus the record of how it was computed. An op on
 # tensors that require grad returns a new tensor holding its inputs

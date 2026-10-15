@@ -3,7 +3,7 @@ title     = "Async fetch with resume, checksums, license capture"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "data-engineering/05-corpus-pipeline/01-async-fetch-resume-checksums.md"
+chapter   = "content/tracks/data-engineering/05-corpus-pipeline/01-async-fetch-resume-checksums.md"
 contract  = ["contracts/py/corpus/fetch.pyi"]
 deps      = []
 # lang.08 (asyncio: tasks, semaphores, cancellation, timeouts) and lang.05

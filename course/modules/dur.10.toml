@@ -7,7 +7,7 @@ title     = "Raft HA for the durable log (optional)"
 kind      = "side"
 lang      = ["go"]
 pass      = 8
-chapter   = "ai-platform-engineering/05-durable-orchestration-and-workers/10-raft-ha.md"
+chapter   = "content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/10-raft-ha.md"
 # contracts/proto/tl/raft/v1/raft.proto is the wire form the server's
 # composition root adapts Message to; it is linked from the chapter card. No
 # contracts/go interface exists yet (K01), so the package API is fixed by the
@@ -19,7 +19,7 @@ deps      = []
 # dur.01 (the log it replicates) joins `reading` once B10 registers it
 # (DEVIATIONS B103-03); until then the chapter home and the KRaft election
 # demo of infrastructure/02 stand in.
-reading   = ["lang.06", "ai-platform-engineering/05-durable-orchestration-and-workers", "infrastructure/02-messaging-and-queueing"]
+reading   = ["lang.06", "content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers", "content/tracks/infrastructure/02-messaging-and-queueing"]
 used_by   = []
 units     = ["go/durable/raft/raft.go"]
 upgrades  = []

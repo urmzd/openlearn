@@ -24,7 +24,7 @@
 //! trained on: `<tool_call>{"name":"<name>","arguments":<object>}</tool_call>`,
 //! several calls separated by "\n".
 //!
-//! Chapter: ml/08-tinyllm/p10-serving/09-tool-calls-and-constrained-decoding.md.
+//! Chapter: content/courses/build-an-llm/p10-serving/09-tool-calls-and-constrained-decoding.md.
 //! Conformance: `tools.call`, `tools.stream`, `tools.choice`
 //! (course/conformance/openapi/cases, `requires = ["L10.9"]`).
 

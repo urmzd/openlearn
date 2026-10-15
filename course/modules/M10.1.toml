@@ -3,7 +3,7 @@ title     = "Convexity, smoothness, gradient descent, and Armijo line search"
 kind      = "build"
 lang      = ["python"]
 pass      = 2
-chapter   = "math/10-optimization/01-gradient-descent-and-line-search.md"
+chapter   = "content/tracks/math/10-optimization/01-gradient-descent-and-line-search.md"
 contract  = ["contracts/py/tinyllm/optim/gd.pyi"]
 deps      = []
 # Concepts only: gradients (M04.1) and eigenvalues of a symmetric matrix

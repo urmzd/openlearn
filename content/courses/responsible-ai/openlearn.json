@@ -1,0 +1,23 @@
+{
+  "id": "responsible-ai",
+  "title": "Responsible AI",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/tracks/responsible-ai/README.md",
+      "title": "Overview"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/tracks/responsible-ai",
+      "title": "Responsible AI"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ]
+}

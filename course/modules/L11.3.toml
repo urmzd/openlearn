@@ -3,7 +3,7 @@ title     = "Data parallelism and ZeRO stages 1 to 3"
 kind      = "side"
 lang      = ["python"]
 pass      = 9
-chapter   = "ml/08-tinyllm/p11-training-at-scale/03-ddp-and-zero.md"
+chapter   = "content/courses/build-an-llm/p11-training-at-scale/03-ddp-and-zero.md"
 contract  = ["contracts/py/tinyllm/dist/zero.pyi"]
 # Optional (DESIGN 4.3, D20). zero.py: L11.2's Comm and chunk_bounds, L0.4's
 # Module (DDP is one), L0.1's Tensor. The course tests train L0.4 layers with

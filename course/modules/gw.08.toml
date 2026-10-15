@@ -3,10 +3,10 @@ title     = "Usage policy enforcement"
 kind      = "build"
 lang      = ["go"]
 pass      = 10
-chapter   = "ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md"
+chapter   = "content/tracks/ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md"
 contract  = ["contracts/formats/policy.v1.schema.json", "contracts/formats/linear-head.schema.json"]
 deps      = ["gw.01", "gw.02", "gw.05"]   # policy reads route.InferenceRequest
-reading   = ["ethics.05", "data.05", "ai-platform-engineering/12-gateway"]
+reading   = ["ethics.05", "data.05", "content/tracks/ai-platform-engineering/12-gateway"]
 # The upgraded chain invokes the policy middleware between authn and limits;
 # gw.07 inherits the server-chain call site from gw.01.
 used_by   = ["gw.07"]

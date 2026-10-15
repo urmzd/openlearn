@@ -3,7 +3,7 @@ title     = "Thread pool and tl_parallel_for (optional C)"
 kind      = "side"
 lang      = ["c"]
 pass      = 6
-chapter   = "ml/08-tinyllm/p09-kernels/03-thread-pool-and-parallel-for.md"
+chapter   = "content/courses/build-an-llm/p09-kernels/03-thread-pool-and-parallel-for.md"
 # tinyllm/pool.h is linked from the chapter card; like arena.h it names its
 # module but has no `chapter:` back-pointer yet (DEVIATIONS B83-01).
 contract  = ["contracts/c/include/tinyllm/pool.h"]

@@ -1,0 +1,41 @@
+{
+  "id": "case-studies",
+  "title": "Case Studies",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/case-studies/README.md",
+      "title": "Overview"
+    },
+    {
+      "file": "content/courses/case-studies/study-plan.md",
+      "title": "Study plan"
+    },
+    {
+      "file": "practice/README.md",
+      "title": "Practice"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/case-studies",
+      "title": "Case Studies"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ],
+  "practice": "practice/exercises.json",
+  "runtime": [
+    "practice",
+    "content/tracks/algorithms",
+    "content/case-studies",
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version",
+    ".mise.toml"
+  ]
+}

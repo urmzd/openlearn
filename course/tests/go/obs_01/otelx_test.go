@@ -11,7 +11,7 @@
 //
 // The span names, kinds, attributes, and the propagation rules are
 // course/contracts/otel/semconv.md; the chapter is
-// systems/04-observability/01-tracing-for-the-serving-path.md.
+// content/tracks/systems/04-observability/01-tracing-for-the-serving-path.md.
 package obs_01
 
 import (

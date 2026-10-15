@@ -3,7 +3,7 @@ title     = "n-gram language model with interpolated modified Kneser-Ney"
 kind      = "build"
 lang      = ["python"]
 pass      = 3
-chapter   = "ml/08-tinyllm/p02-statistical-lm/01-ngram-kneser-ney.md"
+chapter   = "content/courses/build-an-llm/p02-statistical-lm/01-ngram-kneser-ney.md"
 contract  = ["contracts/py/tinyllm/lm/ngram.pyi"]
 # M07.2: Y = n1 / (n1 + 2 n2) is ney_discount. M11.2: perplexity sums the
 # per-token NLLs with NLLAccumulator. L0.6: save/load go through

@@ -3,7 +3,7 @@ title     = "First drill: the engine crashloops"
 kind      = "drill"
 lang      = ["ops", "docs"]
 pass      = 1
-chapter   = "systems/05-incident-response-and-chaos/00-first-drill.md"
+chapter   = "content/tracks/systems/05-incident-response-and-chaos/00-first-drill.md"
 contract  = []
 # The drill injects into the deployment dep.00 builds (`ol drill start` refuses
 # until dep.00 passes); the engine (L10.0) and gateway (gw.00) are what you triage.
