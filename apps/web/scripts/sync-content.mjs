@@ -290,12 +290,25 @@ for (const f of sources) {
 	pages.set(f, page);
 }
 
+// Guided chapters have explicit neighbors, independent of the library sidebar.
+const chapterNavigation = new Map();
+for (const { manifest: course } of publications.filter((p) => p.manifest.guided)) {
+	for (const [i, chapter] of course.start.entries()) {
+		const neighbor = (item) => item ? { label: item.title, link: navOf(item.file) } : false;
+		chapterNavigation.set(chapter.file, {
+			prev: i === 0 ? { label: course.title, link: `/learn/${course.id}/` } : neighbor(course.start[i - 1]),
+			next: neighbor(course.start[i + 1]),
+		});
+	}
+}
+
 for (const [f, { title, body }] of pages) {
 	const extra = publications.some((p) => p.manifest.paths && f.startsWith(`${p.manifest.paths}/`)) && path.posix.basename(f) === 'README.md' ? stageTable(path.posix.dirname(f)) : '';
 	const front = [
 		'---',
 		`title: ${JSON.stringify(title)}`,
 		`editUrl: ${JSON.stringify(`${GITHUB}/edit/main/${f}`)}`,
+		...Object.entries(chapterNavigation.get(f) ?? {}).map(([key, value]) => `${key}: ${JSON.stringify(value)}`),
 		'---',
 		'',
 	].join('\n');
@@ -315,11 +328,19 @@ for (const { manifest: course, reading } of publications) {
 	for (const section of reading) {
 		for (const f of section.files) rows.push(`- [${titles.get(f) ?? section.title}](${sources.includes(f) ? routeOf(f) : `${GITHUB}/blob/main/${f}`})`);
 	}
+	const guided = course.guided ? [
+		course.tagline, '',
+		`**[Begin the course](${routeOf(course.start[0].file)})**`, '',
+		'## Your learning path', '',
+		...course.start.map(({ file, title }) => `- [${title}](${routeOf(file)})`), '',
+		'## Further study', '',
+		'The introductory chapters are the main route. Use the subject library when you want more depth.', '',
+		...course.tracks.map(({ dir, title }) => `- [${title}](${routeOf(`${dir}/README.md`)})`), '',
+	] : ['The reading list below, the PDF, and the portable pack use the same source lessons.', '', '## Reading order', '', ...rows, ''];
 	const body = [
 		'---', `title: ${JSON.stringify(course.title)}`, '---', '',
 		`[Download PDF](${releases}/openlearn-${course.id}.pdf) · [Download course pack](${releases}/openlearn-${course.id}.zip)`, '',
-		'The reading list below, the PDF, and the portable pack use the same source lessons.', '',
-		'## Reading order', '', ...rows, '',
+		...guided,
 	];
 	const dest = path.join(DOCS, 'learn', course.id, 'index.md');
 	fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -333,8 +354,13 @@ const home = [
 fs.writeFileSync(path.join(DOCS, 'index.md'), home.join('\n'));
 const sidebar = [
 	{ label: 'Courses', items: courseItems },
-	{ label: 'Start here', items: START.filter(([f]) => sources.includes(f)).map(([f, label]) => ({ label, link: navOf(f) })) },
-	{ label: 'Lessons', items: TRACKS.filter(([d]) => sources.some((f) => f.startsWith(`${d}/`))).map(([d, label]) => tree(d, label)) },
+	...publications.filter((p) => p.manifest.guided).map(({ manifest: course }) => ({
+		label: course.title,
+		collapsed: !selected,
+		items: course.start.map(({ file, title }) => ({ label: title, link: navOf(file) })),
+	})),
+	...(selected && manifest.guided ? [] : [{ label: 'Start here', items: START.filter(([f]) => sources.includes(f)).map(([f, label]) => ({ label, link: navOf(f) })) }]),
+	{ label: selected && manifest.guided ? 'Further study' : 'Lessons', items: TRACKS.filter(([d]) => sources.some((f) => f.startsWith(`${d}/`))).map(([d, label]) => tree(d, label)) },
 	...EXTRA_TREES.filter(([d]) => sources.some((f) => f.startsWith(`${d}/`))).map(([d, label]) => tree(d, label)),
 ];
 fs.mkdirSync(GENERATED, { recursive: true });

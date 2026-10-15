@@ -1,11 +1,11 @@
 {
   "id": "computer-science",
-  "title": "Computer Science",
+  "title": "Technology Foundations",
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
       "file": "content/courses/computer-science/README.md",
-      "title": "Curriculum"
+      "title": "Learning guide"
     },
     {
       "file": "content/courses/computer-science/prerequisites.md",

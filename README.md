@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">Supersource</h1>
   <p align="center">
-    Free, self-paced courses in computer science, mathematics, and engineering. Read online, practise, or take a course offline.
+    Free, self-paced learning across technology, mathematics, and engineering, for people from all backgrounds. Read online, practise, or take a course offline.
     <br /><br />
     <a href="https://github.com/urmzd/openlearn/releases/latest">Download</a>
     &middot;
@@ -59,7 +59,7 @@ python3 scripts/course_catalog.py list
 
 | Start here | What to expect |
 |---|---|
-| [Computer Science](content/courses/computer-science/README.md) | A foundation-to-specialization curriculum with prerequisites and assessment expectations |
+| [Technology Foundations](content/courses/computer-science/README.md) | Explore programming, mathematics, systems, data, AI, and other areas of technology at your own pace |
 | [Build Your Own LLM System](content/courses/build-an-llm/README.md) | A staged implementation course with module checks and runnable milestones |
 | [Course catalogue](content/courses/README.md) | Subject-specific study plans and other learning routes |
 

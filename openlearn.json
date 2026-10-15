@@ -1,7 +1,7 @@
 {
   "id": "supersource",
   "title": "Supersource",
-  "tagline": "Undergraduate foundations through PhD-level depth and Staff/Principal engineering, free and self-paced.",
+  "tagline": "Explore technology, mathematics, and engineering at your own pace, whatever your background.",
   "repo": "https://github.com/urmzd/openlearn",
   "paths": "content/courses/build-an-llm/paths",
   "featured": "course",
@@ -28,7 +28,7 @@
     },
     {
       "file": "content/courses/computer-science/README.md",
-      "title": "CS Curriculum"
+      "title": "Technology Foundations"
     },
     {
       "file": "content/references/sources.md",

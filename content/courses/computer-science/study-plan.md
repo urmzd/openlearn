@@ -1,6 +1,6 @@
-# Combined Path (40+ weeks)
+# Technology Foundations: Suggested Study Plan
 
-The full journey from foundations through PhD-level depth and Staff+ engineering expertise.
+A suggested route through mathematics, programming, AI, systems, and applied technology. Learners from any background can choose the subjects relevant to their interests. The week ranges below are pacing suggestions, not deadlines or promises of expertise. Use the [learning guide](README.md) and [prerequisite map](prerequisites.md) to find your starting point.
 
 | Weeks | Focus | Details |
 |-------|-------|---------|

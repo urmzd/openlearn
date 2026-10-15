@@ -1,22 +1,22 @@
-# Computer Science: Foundations to Specialization
+# Technology Foundations: Explore and Build
 
-A degree-shaped self-study curriculum: programming, mathematics, theory, computer systems, data, software engineering, and a substantial capstone. This is a learning plan, not an accredited degree or a claim that all university requirements are implemented here. The short track schedules are introductions or refreshers, not substitutes for semester courses.
+An open learning guide across programming, mathematics, systems, data, AI, software engineering, and the human side of technology. It is for people from all walks of life: no computing degree or professional title is required. Choose an area that interests you, check its prerequisites, and build toward a project that matters to you. You do not need to complete every subject.
 
-Use the [source register](../../references/sources.md) for textbook identity, access, and validation evidence. The breadth checklist is informed by [ACM/IEEE-CS/AAAI CS2023](https://csed.acm.org/knowledge-areas/); the sequencing, projects, and assessment rules below are Supersource's recommendations, not requirements quoted from that standard.
+Use the [source register](../../references/sources.md) for textbook identity, access, and validation evidence. The suggested sequence, projects, and assessment rules below are learning aids, not degree requirements.
 
 ## Entry requirements and pacing
 
-Start with algebra, functions, exponentials/logarithms, and trigonometry. If these are unfamiliar, work through those topics before calculus. No prior programming is required for the first term. Read technical English, use a terminal, and learn Git alongside programming.
+Prerequisites depend on the subjects you choose. For calculus, start with algebra, functions, exponentials/logarithms, and trigonometry. No prior programming is required for the first programming stage. Learn terminal basics and Git alongside programming; you do not need to finish the mathematics sequence before you begin.
 
-The eight terms below describe ordering, not guaranteed completion dates. Budget roughly 12-15 weeks per term and 8-12 hours per active subject each week; three subjects imply 24-36 hours per week before a capstone. These are planning estimates. At 10 hours total per week, take one subject at a time. Advance on demonstrated competence, not elapsed weeks.
+The eight stages below suggest an order for learners who want a broad foundation. You can follow an individual subject instead. Budget roughly 12-15 weeks per stage and 8-12 hours per active subject each week; three subjects imply 24-36 hours per week before a capstone. These are planning estimates. At 10 hours total per week, take one subject at a time. Advance on demonstrated competence, not elapsed weeks.
 
-## Core sequence
+## Suggested learning sequence
 
-| Term | Subjects and readings | Prerequisites | Required evidence |
+| Stage | Subjects and readings | Prerequisites | Required evidence |
 |---|---|---|---|
 | 1 | Programming with [Composing Programs](https://composingprograms.com/); [Discrete Math 1](../../tracks/math/05-discrete-math-1/), Hammack; [Calculus 1](../../tracks/math/01-calculus-1/), OpenStax | Entry algebra; trigonometry for calculus | Tested command-line program; direct, contradiction, and induction proofs; derivative and integral problems |
-| 2 | Data structures with [Open Data Structures](https://opendatastructures.org/) and [practice](../../../practice/); [Discrete Math 2](../../tracks/math/06-discrete-math-2/), Levin; [Linear Algebra](../../tracks/math/03-linear-algebra/), Hefferon | Term 1 programming and proofs | Implement a hash table and graph traversal; prove a loop invariant; solve systems and explain rank/nullity |
-| 3 | [Algorithms](../../tracks/algorithms/), Erickson after basic data structures; architecture with [Nand to Tetris](https://www.nand2tetris.org/); [Calculus 2](../../tracks/math/02-calculus-2/) | Terms 1-2 | Correctness proof and complexity analysis; logic gates through CPU and assembler; numerical integration with error comparison |
+| 2 | Data structures with [Open Data Structures](https://opendatastructures.org/) and [practice](../../../practice/); [Discrete Math 2](../../tracks/math/06-discrete-math-2/), Levin; [Linear Algebra](../../tracks/math/03-linear-algebra/), Hefferon | Stage 1 programming and proofs | Implement a hash table and graph traversal; prove a loop invariant; solve systems and explain rank/nullity |
+| 3 | [Algorithms](../../tracks/algorithms/), Erickson after basic data structures; architecture with [Nand to Tetris](https://www.nand2tetris.org/); [Calculus 2](../../tracks/math/02-calculus-2/) | Stages 1-2 | Correctness proof and complexity analysis; logic gates through CPU and assembler; numerical integration with error comparison |
 | 4 | OS with [Operating Systems: Three Easy Pieces](https://pages.cs.wisc.edu/~remzi/OSTEP/); [networking](https://intronetworks.cs.luc.edu/); [Probability & Statistics](../../tracks/math/07-probability-statistics/) | Architecture, programming, discrete math; Calculus 2 for continuous probability | Shell/process exercise; concurrent queue with race tests; socket protocol handling partial reads; simulation and interval estimates |
 | 5 | Databases with [Berkeley CS186](https://cs186berkeley.net/); theory with [MIT 6.045J](https://ocw.mit.edu/courses/6-045j-automata-computability-and-complexity-spring-2011/); [Calculus 3](../../tracks/math/04-calculus-3/) | Algorithms, proofs, OS; Calculus 2 and linear algebra | SQL and query-plan analysis; transaction anomaly reproduction; automata and reduction proofs; gradient checking |
 | 6 | [Programming Languages](../../tracks/software-craftsmanship/), including parsing, interpreters and type checking; [Software Craftsmanship](../../tracks/software-craftsmanship/); security with [Berkeley CS161](https://textbook.cs161.org/) | Programming, theory, OS and networks | Small interpreter and type checker; team review and CI; threat model and security regression cases |
@@ -27,9 +27,9 @@ Practice technical writing, accessibility, privacy, attribution, and professiona
 
 ## Breadth audit
 
-These are **coverage judgments**, not certification of CS2023 learning outcomes. “Local” means relevant material exists, not that a full semester or an independently graded assessment is available. External courses fill gaps in this plan; their existence does not mean their content has been imported.
+These notes describe available material and where additional study is needed. “Local” means relevant material exists, not that a full semester or an independently graded assessment is available. External courses fill gaps in this plan; their existence does not mean their content has been imported.
 
-| CS area | Current route | Coverage boundary |
+| Area | Current route | Coverage boundary |
 |---|---|---|
 | Software development fundamentals | Composing Programs + local practice | Introductory teaching supplied externally |
 | Algorithmic foundations | Local algorithms + Erickson + MIT theory | Formal computability/complexity supplied externally |
@@ -79,8 +79,8 @@ Use [Mathematics for Machine Learning](https://mml-book.github.io/) to connect l
 
 For AI engineering, read **Chip Huyen, AI Engineering: Building Applications with Foundation Models (2025)** as an optional paid companion. Her [official repository](https://github.com/chiphuyen/aie-book) provides free supporting materials. Use its evaluation, RAG, data, and inference topics with the local platform modules. Read *Designing Machine Learning Systems* for the broader traditional ML lifecycle. Neither book replaces math, algorithms, or systems foundations.
 
-## Completion gate
+## Putting your learning into practice
 
 Keep a portfolio containing solved unseen problems, proofs, executable projects, raw measurements, and short technical reports. For each subject, explain one failure case without consulting the solution. Have an independent reviewer assess correctness, assumptions, and reproducibility; record unresolved disagreements. Automated checks verify behavior but do not establish conceptual understanding.
 
-The final capstone must include a research question, source and dataset provenance, a baseline, an experiment plan fixed before final evaluation, reproducible commands, tests, limitations, and a presentation. Reserve a held-out dataset or workload. Do not tune on it and then report it as an independent test. Include writing, teamwork and broader science/humanities study separately when using this as preparation for university-level education.
+The final capstone must include a research question, source and dataset provenance, a baseline, an experiment plan fixed before final evaluation, reproducible commands, tests, limitations, and a presentation. Reserve a held-out dataset or workload. Do not tune on it and then report it as an independent test. Include writing, collaboration, and the social context of your work as part of your learning.

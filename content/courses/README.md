@@ -5,7 +5,7 @@ Each course has one manifest, an ordered reading list, and reusable source lesso
 | Course | Study plan |
 |---|---|
 | Build Your Own LLM System (about 67 weeks) | [build-an-llm](build-an-llm/study-plan.md) |
-| Math Foundations (16 weeks) | [mathematics](mathematics/study-plan.md) |
+| Mathematics Foundations | [Start the guided course](mathematics/README.md) |
 | Algorithm Mastery (17 days) | [algorithms](algorithms/study-plan.md) |
 | ML & AI (18-37 weeks) | [machine-learning](machine-learning/study-plan.md) |
 | Systems & Architecture (11-15 weeks) | [systems](systems/study-plan.md) |
@@ -16,7 +16,7 @@ Each course has one manifest, an ordered reading list, and reusable source lesso
 | Software Craftsmanship (3-4 weeks) | [software-craftsmanship](software-craftsmanship/study-plan.md) |
 | Infrastructure (5-7 weeks) | [infrastructure](infrastructure/study-plan.md) |
 | Case Studies (4-8 days) | [case-studies](case-studies/study-plan.md) |
-| Combined Path (40+ weeks) | [computer-science](computer-science/study-plan.md) |
+| Technology Foundations | [Learning plan](computer-science/study-plan.md) |
 | PhD Research Track (20+ weeks) | [research](research/study-plan.md) |
 
 ## More courses

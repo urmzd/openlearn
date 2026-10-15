@@ -1,51 +1,21 @@
-# Math Foundations (16 weeks)
+# Mathematics: choose your next subject
 
-~10-12 hours per active subject per week, or ~20-24 hours while two subjects are paired. At 10-12 hours total, take subjects sequentially and extend the schedule.
+Start with the [introductory course](README.md) if you want practice turning everyday questions into mathematical models. Its five chapters are a reading sequence, not a timed schedule.
 
-### Weeks 1-4: Calculus 1 + Linear Algebra
+## After the introductory project
 
-| Week | Calculus 1 | Linear Algebra |
-|------|-----------|----------------|
-| 1 | Limits and continuity | Linear systems, Gauss's method |
-| 2 | Derivatives (rules and computation) | Vector spaces, subspaces |
-| 3 | Applications of derivatives (optimization, MVT) | Linear transformations, matrices |
-| 4 | Integration and FTC | Determinants, eigenvalues intro |
+Choose one subject based on a question you want to answer. Work through its prerequisites before moving to advanced material.
 
-### Weeks 5-8: Calculus 2 + Discrete Math 1
+| Your question | Next subject | Preparation |
+|---|---|---|
+| How do I manipulate formulas and describe growth? | [Precalculus](../../tracks/math/00-precalculus/) | Arithmetic and basic equations |
+| How fast is something changing? | [Calculus 1](../../tracks/math/01-calculus-1/) | Algebra, functions, and trigonometry |
+| How do several quantities fit together? | [Linear algebra](../../tracks/math/03-linear-algebra/) | Algebra and basic equations |
+| How can I justify a mathematical claim? | [Discrete math 1](../../tracks/math/05-discrete-math-1/) | Algebra and willingness to write arguments |
+| What can uncertain evidence tell me? | [Probability and statistics](../../tracks/math/07-probability-statistics/) | Check that subject's prerequisites; continuous probability uses calculus |
 
-| Week | Calculus 2 | Discrete Math 1 |
-|------|-----------|-----------------|
-| 5 | Integration techniques (by parts, partial fractions) | Sets, logic, truth tables |
-| 6 | Applications of integration | Direct proof, contrapositive |
-| 7 | Sequences and convergence tests | Proof by contradiction, induction |
-| 8 | Power series, Taylor series | Relations, functions, cardinality |
+## A sustainable routine
 
-### Weeks 9-12: Calculus 3 + Discrete Math 2
+Read one explanation, reproduce its worked example without copying, then attempt a new problem. Record a mistake and explain the correction. Move on when you can explain the idea and solve a variation, rather than when a week has passed.
 
-| Week | Calculus 3 | Discrete Math 2 |
-|------|-----------|-----------------|
-| 9 | Vectors in space, dot/cross product | Graph theory fundamentals |
-| 10 | Partial derivatives, gradient | Graph coloring, Euler/Hamilton |
-| 11 | Multiple integrals | Number theory, modular arithmetic |
-| 12 | Vector calculus (Green's, Stokes') | Recurrence relations, generating functions |
-
-### Weeks 13: Review & Catch-up
-
-Revisit the hardest topics from each subject. Work through challenge problems.
-
-### Weeks 14-16: Probability & Statistics
-
-| Week | Focus |
-|------|-------|
-| 14 | Probability axioms, conditional probability, Bayes' theorem, discrete distributions |
-| 15 | Continuous distributions, joint distributions, expectation & variance |
-| 16 | Law of large numbers, CLT, hypothesis testing, confidence intervals, regression |
-
-### Daily Routine (Math)
-
-1. **Read** (30 min) -- textbook sections for the day's concept
-2. **Work problems** (60-90 min) -- essential problems first, then challenge problems
-3. **Review** (30 min) -- revisit previous day's concepts, rework one problem from memory
-4. **Connect** (15 min) -- read the "Connections to CS" section, think about how the math applies
-
----
+The [reference library](../../tracks/math/README.md) contains the full subject list and prerequisite map. Advanced implementation chapters connect mathematics to LLM systems; those chapters assume programming and course-specific preparation and are optional for introductory learners.

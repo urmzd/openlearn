@@ -1,6 +1,10 @@
 # Mathematics Foundations
 
-A free, self-paced math curriculum built on open-source textbooks. This track covers the
+Looking for a clear starting point? Begin with the [Mathematics Foundations guided course](../../courses/mathematics/README.md): five introductory chapters and a practical project, with no programming required.
+
+## Reference library
+
+A free, self-paced math library built on open-source textbooks. This track covers the
 mathematical foundations required for computer science, machine learning, and software
 engineering: from precalculus and single-variable calculus through probability and statistics,
 and on to the math an LLM system runs on (matrix calculus and autodiff, numerical methods and
@@ -83,6 +87,6 @@ Full textbook coverage and degree-level mastery require additional problem sets 
 
 ## Apply the mathematics
 
-Use the [CS curriculum math labs](../../courses/computer-science/README.md#mathematics-must-produce-working-artifacts) alongside these topics: prove a scheduler correct, implement least squares and PCA, check gradients, measure integration error, and simulate statistical inference. Each assignment requires a derivation, implementation, independent comparison, and failure analysis.
+Use the [Technology Foundations math labs](../../courses/computer-science/README.md#mathematics-must-produce-working-artifacts) alongside these topics: prove a scheduler correct, implement least squares and PCA, check gradients, measure integration error, and simulate statistical inference. Each assignment requires a derivation, implementation, independent comparison, and failure analysis.
 
 After the foundations, read Deisenroth, Faisal and Ong's [Mathematics for Machine Learning](https://mml-book.github.io/) for the bridge to numerical optimization and data applications.
