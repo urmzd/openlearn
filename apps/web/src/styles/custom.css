@@ -45,3 +45,13 @@
 	display: flex;
 	justify-content: center;
 }
+
+/* A caret conveys expansion; type weight should not imply a different kind of subject. */
+#starlight__sidebar :is(a, summary .large) {
+	font-size: var(--sl-text-sm);
+	font-weight: 400;
+}
+
+#starlight__sidebar a[aria-current='page'] {
+	font-weight: 600;
+}

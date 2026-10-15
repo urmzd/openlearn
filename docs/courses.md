@@ -16,7 +16,7 @@ The manifest is the desktop platform's existing `openlearn.json` format. Publish
 |---|---|
 | `id`, `title` | Stable course identity and display name |
 | `start` | Curriculum and study-plan documents, in order |
-| `guided` | Optional web presentation: use `start` as the main chapter sequence, with explicit previous/next links; show track trees as further study |
+| `guided` | Optional introductory route: use `start` as the chapter sequence and group other reading material under references |
 | `tagline` | Optional short course description for the web landing page |
 | `tracks` | Ordered trees of reusable lessons |
 | `paths`, `featured` | Optional staged route; its stage order takes precedence over track order in the PDF |
@@ -28,6 +28,8 @@ The manifest is the desktop platform's existing `openlearn.json` format. Publish
 A reading course does not need a CLI, grading implementation, or synthetic exercises. Only declare assessment capabilities that exist.
 
 For a guided course, put the introduction first in `start`, followed by ordered lessons, a project, and next steps. Keep each lesson focused on a question, explain symbols when they first appear, and provide a worked example and a self-check. Mathematics Foundations is the first example. Its PDF and portable pack include the guided chapters first and the full reference library afterward.
+
+The website presents one alphabetical course catalog. Inside each course, chapters follow the manifest's publication order; auxiliary references are grouped separately. It does not expose source tracks as a competing lesson catalog. A chapter used by only one course has explicit previous/next links. A shared chapter links back to the courses that teach it, so pagination cannot silently cross into another course.
 
 ## One publishing pipeline
 
