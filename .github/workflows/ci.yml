@@ -120,60 +120,32 @@ jobs:
       - name: Assert cost budgets
         run: practice/bin/ol bench --assert
 
-  # The desktop platform (apps/desktop/). Its Go tests also open the repository
-  # and packs/languide as course packs, so a path.tsv the app cannot read fails
-  # here as well as in `ol learn --verify`.
-  openlearn:
-    name: OpenLearn (Go)
+  pwa:
+    name: Learning PWA
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/desktop
+        working-directory: apps/web
     steps:
       - uses: actions/checkout@v6
-
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
+      - uses: pnpm/action-setup@v4
         with:
-          go-version-file: apps/desktop/go.mod
-          cache-dependency-path: apps/desktop/go.sum
-
-      - name: Check formatting
-        run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "The following files are not formatted:"
-            echo "$unformatted"
-            exit 1
-          fi
-
-      - uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.11.4
-          working-directory: apps/desktop
-
-      # Live tests are skipped unless OPENLEARN_LIVE is set, so CI never needs
-      # a model. See apps/desktop/internal/harness/live_test.go.
-      - run: go test ./...
-
-  openlearn-frontend:
-    name: OpenLearn (frontend)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/desktop/frontend
-    steps:
-      - uses: actions/checkout@v6
-
+          package_json_file: apps/web/package.json
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: apps/desktop/frontend/package-lock.json
-
-      - run: npm ci
-
-      - name: Typecheck and build
-        run: npm run build
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - name: Build an independent course
+        run: OPENLEARN_COURSE=diagramming pnpm build
+      - name: Verify independent PWA
+        run: node --test tests/build.test.mjs
+      - name: Build the catalogue
+        run: pnpm build
+      - name: Verify catalogue PWA
+        run: node --test tests/build.test.mjs
 
   build-exercises:
     name: Build Exercises
@@ -268,7 +240,6 @@ jobs:
           cp outputs/packs/*.zip outputs/
           while IFS= read -r artifact; do
             [[ "$artifact" == outputs/openlearn-*.pdf || "$artifact" == outputs/openlearn-*.zip ]] || continue
-            [[ "$artifact" == *darwin* || "$artifact" == *windows* ]] && continue
             test -s "$artifact"
           done < <(sed -n '/^    artifacts:/,/^[^ ]/s/^      - //p' sr.yaml)
 

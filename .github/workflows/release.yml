@@ -13,10 +13,6 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  # Plan first, so the desktop bundles are only built when a release will
-  # actually be cut, and exist before it is: GitHub rejects uploads to a release
-  # that is already published. sr reports `released` only in release mode, so
-  # the planned tag is the signal: it is empty when nothing is releasable.
   plan:
     environment: release
     name: Plan
@@ -46,17 +42,10 @@ jobs:
           mode: plan
           github-token: ${{ steps.app-token.outputs.token }}
 
-  # The desktop app (apps/desktop/), one bundle per platform.
-  app:
-    needs: plan
-    if: needs.plan.outputs.tag != ''
-    name: App
-    uses: ./.github/workflows/app-bundle.yml
-
   release:
     environment: release
     name: Release
-    needs: [plan, app]
+    needs: plan
     if: needs.plan.outputs.tag != ''
     runs-on: ubuntu-latest
     permissions:
@@ -82,14 +71,6 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: openlearn-courses
-          path: outputs
-          merge-multiple: true
-
-      # The desktop bundles built above, into the paths sr.yaml declares.
-      - name: Download desktop app bundles
-        uses: actions/download-artifact@v8
-        with:
-          pattern: openlearn-app-*
           path: outputs
           merge-multiple: true
 

@@ -19,19 +19,15 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: course.title,
+			favicon: '/icon.svg',
 			description: course.description,
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/urmzd/openlearn' }],
 			customCss: ['katex/dist/katex.min.css', './src/styles/custom.css'],
-			head: [
-				{
-					tag: 'script',
-					attrs: { type: 'module' },
-					content: `
-import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-const dark = document.documentElement.dataset.theme === 'dark';
-mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'neutral' });`,
-				},
-			],
+			components: {
+				Head: './src/components/Head.astro',
+				PageTitle: './src/components/PageTitle.astro',
+				Footer: './src/components/Footer.astro',
+			},
 			plugins: [starlightLlmsTxt()],
 			sidebar,
 		}),
