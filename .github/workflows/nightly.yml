@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-latest, macos-15-intel]
         layer: [math, spine, systems, operations]
     runs-on: ${{ matrix.os }}
     steps:
@@ -44,12 +44,18 @@ jobs:
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
         with:
           go-version-file: course/ref/go/go.mod
           cache: false
       - uses: dtolnay/rust-toolchain@stable
       - uses: azure/setup-helm@v4
+      # Hosted ARM macOS cannot run the nested VM required by Docker.
+      - name: Set up Docker on macOS
+        if: runner.os == 'macOS'
+        uses: douglascamata/setup-docker-macos-action@d5ccc6aae0ce23e7700154f5e63cc53e6433ac48
+      - name: Check Docker is ready
+        run: docker info
       - name: Verify the layer
         run: |
           python .github/scripts/course-ci-shard.py "${{ matrix.layer }}" > "$RUNNER_TEMP/module-ids.txt"
@@ -64,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
         with:
           go-version-file: course/ref/go/go.mod
           cache: false
@@ -72,14 +78,17 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: Assemble the reference learner
         run: practice/bin/ol verify course --assemble "$GITHUB_WORKSPACE/.scratchpad/course"
-      - name: Run nightly and full training milestones
+      - name: Run hosted nightly milestones
         run: |
           python - <<'PY' > "$RUNNER_TEMP/milestones.txt"
           import glob, tomllib
           ids = {"MS-L3", "MS-L4", "MS-L6"}
+          # MS-P9 documents full capstone training as learner-local. The
+          # train-smoke job covers its self-contained CI tier separately.
+          learner_local = {"MS-C1", "MS-P9"}
           for path in glob.glob("course/milestones/*.toml"):
               data = tomllib.load(open(path, "rb"))
-              if data.get("ci") == "nightly":
+              if data.get("ci") == "nightly" and data["id"] not in learner_local:
                   ids.add(data["id"])
           print("\n".join(sorted(ids)))
           PY
@@ -95,7 +104,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
         with:
           go-version-file: course/ref/go/go.mod
           cache: false
@@ -117,7 +126,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
         with:
           go-version-file: course/ref/go/go.mod
           cache: false
@@ -141,7 +150,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
         with:
           go-version-file: course/ref/go/go.mod
           cache: false
@@ -165,6 +174,8 @@ jobs:
           docker push localhost:5001/forge-gateway:0.1.0
           kubectl create namespace forge
           kubectl create namespace observability
+          kubectl -n observability create secret generic grafana-admin \
+            --from-literal=admin-user=admin --from-literal=admin-password="$(openssl rand -hex 16)"
           kubectl -n forge create secret generic forge-api-key --from-literal=api-key="$TL_API_KEY"
           kubectl -n forge create secret generic forge-gateway-pepper --from-literal=pepper="$(openssl rand -hex 32)"
           helm repo add kedacore https://kedacore.github.io/charts
@@ -214,7 +225,7 @@ jobs:
       - name: Set up Python
         run: uv python install
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
         with:
           go-version: stable
           cache: false

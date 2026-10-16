@@ -123,8 +123,12 @@ def test_cli_transcribes_real_wav_with_real_model(tmp_path, capsys):
     )
     audio = tmp_path / "audio.wav"
     audio.write_bytes(b"RIFF" + struct.pack("<I", len(body)) + body)
+    cli_spec = importlib.util.find_spec("tinyllm.cli_speech")
     path = (
-        Path(__file__).resolve().parents[2] / "ref/entry/python/tinyllm/cli_speech.py"
+        Path(cli_spec.origin)
+        if cli_spec is not None
+        else Path(__file__).resolve().parents[2]
+        / "ref/entry/python/tinyllm/cli_speech.py"
     )
     spec = importlib.util.spec_from_file_location("speech_cli_test", path)
     cli = importlib.util.module_from_spec(spec)
@@ -178,8 +182,12 @@ def test_cli_whisper_logits_match_independent_hf(tmp_path, capsys):
     from _lib.close import assert_close
 
     root = Path(os.environ["TINYLLM_FIXTURES"])
+    cli_spec = importlib.util.find_spec("tinyllm.cli_speech")
     path = (
-        Path(__file__).resolve().parents[2] / "ref/entry/python/tinyllm/cli_speech.py"
+        Path(cli_spec.origin)
+        if cli_spec is not None
+        else Path(__file__).resolve().parents[2]
+        / "ref/entry/python/tinyllm/cli_speech.py"
     )
     spec = importlib.util.spec_from_file_location("speech_logits_cli_test", path)
     cli = importlib.util.module_from_spec(spec)
@@ -220,8 +228,12 @@ def test_cli_features_match_independent_hf(tmp_path, capsys, n_mels):
     from _lib.close import assert_close
 
     root = Path(os.environ["TINYLLM_FIXTURES"]) / "L14.1"
+    cli_spec = importlib.util.find_spec("tinyllm.cli_speech")
     path = (
-        Path(__file__).resolve().parents[2] / "ref/entry/python/tinyllm/cli_speech.py"
+        Path(cli_spec.origin)
+        if cli_spec is not None
+        else Path(__file__).resolve().parents[2]
+        / "ref/entry/python/tinyllm/cli_speech.py"
     )
     spec = importlib.util.spec_from_file_location("speech_features_cli_test", path)
     cli = importlib.util.module_from_spec(spec)

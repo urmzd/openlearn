@@ -883,7 +883,9 @@ cmd_where() {
 
 PATHS_DIR="${OL_PATHS_DIR:-$ROOT/content/courses/build-an-llm/paths}"
 # Stage files are repo-relative. Custom path trees retain the adjacent-root convention.
-if [[ -n "${OL_PATHS_DIR:-}" ]]; then
+if [[ -n "${OL_LEARN_ROOT:-}" ]]; then
+  LEARN_ROOT="$OL_LEARN_ROOT"
+elif [[ -n "${OL_PATHS_DIR:-}" ]]; then
   LEARN_ROOT="$(cd "$PATHS_DIR/.." 2>/dev/null && pwd)"
 else
   LEARN_ROOT="$ROOT"

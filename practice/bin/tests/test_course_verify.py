@@ -3,6 +3,8 @@ check catches the defect it exists for."""
 
 import re
 
+import pytest
+
 
 def _line(out: str, n: int) -> str:
     """The first report line for check n."""
@@ -24,7 +26,13 @@ def test_fixture_verifies_c_and_rust_modules(ss):
         assert _line(out, n).lstrip().startswith("ok"), (n, out)
 
 
-def test_fixture_verifies_globally(ss):
+@pytest.mark.parametrize("nested_paths", [False, True])
+def test_fixture_verifies_globally(ss, nested_paths):
+    if nested_paths:
+        nested = ss.site / "content/courses/build-an-llm/paths"
+        nested.parent.mkdir(parents=True)
+        (ss.site / "paths").rename(nested)
+        ss.env["OL_PATHS_DIR"] = str(nested)
     out = ss("verify", "course", "--global", rc=0).out
     assert (
         "fully stubbed reference tree compiles with every course test (c, go, python, rust)"
