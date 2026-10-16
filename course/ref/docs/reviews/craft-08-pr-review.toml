@@ -2,7 +2,7 @@
 # course/oracle/craft.08/make_pr.py with the current head's lines and blob.
 
 pr      = "drill/craft-08"
-blob    = "f4185502cef220baa55bb8cf54dad5f7f13d8103"
+blob    = "43fabc5ce2393e2862b5b8727f89b794a7b7e2d3"
 verdict = "request-changes"
 summary = "The PR bounds the limiter's memory by sweeping idle keys on every 256th Reserve and adds Len for a keys gauge. The approach is right, but three changes break observable behavior: the sweep forgives overrun debt, Len races with Reserve, and the RetryAfterSeconds rewrite tells clients to retry too early. Two more need fixing before merge: keys with in-flight reservations are swept, and the cadence check sweeps on every call after the 256th. Requesting changes."
 
