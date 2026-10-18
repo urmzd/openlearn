@@ -10,7 +10,7 @@ on:
         type: choice
         required: true
         default: all
-        options: [all, capstone, milestones]
+        options: [all, capstone, milestones, kind]
 
 permissions:
   contents: read
@@ -21,7 +21,7 @@ env:
   RUST_BACKTRACE: "1"
 
 concurrency:
-  group: nightly-${{ github.ref }}
+  group: nightly-${{ github.ref }}-${{ inputs.scope || 'all' }}
   cancel-in-progress: false
 
 jobs:
@@ -64,7 +64,7 @@ jobs:
           xargs practice/bin/ol verify course --nightly --shard "${{ matrix.shard }}/4" < "$RUNNER_TEMP/module-ids.txt"
 
   milestones-full:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all' || inputs.scope == 'milestones'
     name: Full nightly milestones
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -135,7 +135,7 @@ jobs:
           practice/bin/ol milestone MS-agent --ref-deps
 
   train-smoke:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'milestones'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all' || inputs.scope == 'capstone'
     name: Capstone training smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -154,10 +154,10 @@ jobs:
         run: practice/bin/ol milestone MS-C1 --smoke --ref-deps
 
   kind-e2e:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all' || inputs.scope == 'kind'
     name: Kind, observability, and rotating drill
     runs-on: ubuntu-latest
-    # The reference grade alone takes about 100 minutes before kind milestones.
+    # Cold image builds, cluster checks, and the rotating drill share this budget.
     timeout-minutes: 180
     env:
       TL_API_KEY: tl_ci_kind_reference_key
@@ -224,7 +224,15 @@ jobs:
                   print(name)
           PY
           test -s "$RUNNER_TEMP/kind-milestones.txt"
-          xargs "$GITHUB_WORKSPACE/practice/bin/ol" verify course --kind < "$RUNNER_TEMP/kind-milestones.txt"
+          # The reference-learner-e2e job grades the complete course. Here,
+          # run the cluster checks against the reference we already deployed.
+          failed=0
+          while IFS= read -r id; do
+            OL_COURSE_HOME="$PWD" "$GITHUB_WORKSPACE/practice/bin/ol" milestone "$id" --ref-deps || failed=1
+          done < "$RUNNER_TEMP/kind-milestones.txt"
+          if [ "$failed" != 0 ]; then
+            exit "$failed"
+          fi
           python - <<'PY' > "$RUNNER_TEMP/drill-name"
           from datetime import date
           from pathlib import Path

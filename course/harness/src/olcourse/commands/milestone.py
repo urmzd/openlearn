@@ -138,7 +138,7 @@ class Runner:
                 p = self.outs.get(sname)
                 if p is None or not (p / "stdout.txt").is_file():
                     raise HarnessError(
-                        f"{{{name}}}: no earlier command step named {sname!r} ran in this milestone"
+                        f"{{{name}}}: no earlier JSON-producing step named {sname!r} ran in this milestone"
                     )
                 obj = matchers.last_json((p / "stdout.txt").read_text())
                 if obj is None or key not in obj:
@@ -251,6 +251,8 @@ class Runner:
                 rc=None, stdout=resp.text, http_status=resp.status, out_dir=out
             )
             (out / "response.txt").write_text(f"HTTP {resp.status}\n{resp.text}")
+            # JSON placeholders use the same output channel for HTTP and CLI steps.
+            (out / "stdout.txt").write_text(resp.text)
         mc = matchers.MatchCtx(
             run=self.r,
             lookup=lk,

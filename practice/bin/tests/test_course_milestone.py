@@ -7,6 +7,42 @@ import json
 import tomllib
 
 
+def test_http_step_json_can_supply_a_later_command_environment(ss, fake_http):
+    ss.init()
+    ss.install_system()
+    api = fake_http({"/load-key": lambda body: (201, {"key": "isolated-load-key"})})
+    st = ss.learner / "system.toml"
+    st.write_text(
+        st.read_text().replace(
+            "[entry]\n", '[entry]\nprobe = ["python3", "probe.py"]\n'
+        )
+    )
+    (ss.learner / "probe.py").write_text(
+        'import json, os\nprint(json.dumps({"key": os.environ["LOAD_KEY"]}))\n'
+    )
+    (ss.course / "milestones/MS-HTTP90.toml").write_text(
+        """
+id = "MS-HTTP90"
+title = "HTTP response data reaches a later command"
+requires = []
+pass = 1
+ci = "pr"
+[[step]]
+name = "mint-key"
+http = { method = "POST", url = "FAKE_URL/load-key", json = { scopes = ["infer"] } }
+expect = { match = "json-schema", status = 201, schema = { type = "object", required = ["key"] } }
+[[step]]
+name = "load"
+run = "probe"
+env = { LOAD_KEY = "{json:mint-key.key}" }
+expect = { match = "contains", text = "isolated-load-key" }
+""".replace("FAKE_URL", api.url)
+    )
+    out = ss("milestone", "MS-HTTP90", rc=0).out
+    assert "PASS" in out
+    assert api.calls == [("/load-key", {"scopes": ["infer"]})]
+
+
 def _pass_m901(ss):
     ss("start", "M90.1", rc=0)
     ss.implement("python/tinyllm/demo/scale.py", owner="M90.1")
