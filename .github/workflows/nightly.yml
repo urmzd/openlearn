@@ -31,13 +31,14 @@ jobs:
 
   full-verify:
     if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
-    name: Full verify / ${{ matrix.layer }}
+    name: Full verify / ${{ matrix.os }} / ${{ matrix.layer }} / ${{ matrix.shard }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-15-intel]
         layer: [math, spine, systems, operations]
+        shard: [0, 1, 2, 3]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -60,7 +61,7 @@ jobs:
         run: |
           python .github/scripts/course-ci-shard.py "${{ matrix.layer }}" > "$RUNNER_TEMP/module-ids.txt"
           test -s "$RUNNER_TEMP/module-ids.txt"
-          xargs practice/bin/ol verify course --nightly < "$RUNNER_TEMP/module-ids.txt"
+          xargs practice/bin/ol verify course --nightly --shard "${{ matrix.shard }}/4" < "$RUNNER_TEMP/module-ids.txt"
 
   milestones-full:
     if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
@@ -152,7 +153,8 @@ jobs:
     if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Kind, observability, and rotating drill
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # The reference grade alone takes about 100 minutes before kind milestones.
+    timeout-minutes: 180
     env:
       TL_API_KEY: tl_ci_kind_reference_key
       COURSE_ROOT: ${{ github.workspace }}/course
