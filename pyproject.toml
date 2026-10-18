@@ -1,6 +1,6 @@
 [project]
 name = "openlearn"
-version = "0.21.0"
+version = "0.22.0"
 description = "Free curriculum for mathematics and algorithm mastery"
 readme = "README.md"
 requires-python = ">=3.11"

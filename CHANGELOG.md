@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.22.0 (2026-10-18)
+
+### Features
+
+- **web**: deploy installable learning PWA through GitHub Pages ([d0f6e7b](https://github.com/urmzd/openlearn/commit/d0f6e7bf54f0bdb3459cd04ee9ed49beb3a36b45))
+- introduce guided mathematics foundations course ([063a582](https://github.com/urmzd/openlearn/commit/063a582fc65153dc250eec36744d918a75baaf8f))
+- **courses**: unify course sources and portable publications ([2a3f049](https://github.com/urmzd/openlearn/commit/2a3f0496de4dd1c5f382302d7925468415f8fae8))
+
+### Bug Fixes
+
+- **ci**: repair release dependencies and nightly verification (#40) ([245fe15](https://github.com/urmzd/openlearn/commit/245fe15a0c19c03b26180e6285c7ea19509e5f1a))
+- **ci**: repair nightly services and speech export checks (#39) ([e121d52](https://github.com/urmzd/openlearn/commit/e121d525c0523368780637599d015f9004d105fc))
+
+### Refactoring
+
+- replace desktop app with learning PWA ([46d48ff](https://github.com/urmzd/openlearn/commit/46d48ffa5691cfa778645b4b74f3ccdb00636b6a))
+- **web**: organize navigation around courses and references ([0e912a2](https://github.com/urmzd/openlearn/commit/0e912a2839044b1fc489c290e5f5362ce1f0f80c))
+
+### Misc
+
+- add teasr screenshots of course navigation ([84475a0](https://github.com/urmzd/openlearn/commit/84475a0ed7ddb0a78f4d5faffa8395fd7767d823))
+- refresh README and add LLM discovery index ([1c73e7d](https://github.com/urmzd/openlearn/commit/1c73e7ddbfdb9779774da9374e7d494fc7840b35))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.21.0...v0.22.0)
+
+
 ## 0.21.0 (2026-10-14)
 
 ### Features
