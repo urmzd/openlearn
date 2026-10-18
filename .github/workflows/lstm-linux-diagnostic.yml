@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        seed: [0, 1, 2, 3, 4]
+        seed: [0]
     env:
       OPENBLAS_NUM_THREADS: "1"
       OMP_NUM_THREADS: "1"
@@ -22,11 +22,11 @@ jobs:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
       - name: Record runtime
-        run: uv run --project course/harness --python 3.11 python -c 'import sys, numpy; print(sys.version); print(numpy.__version__); numpy.show_config()'
+        run: uv run --project course/ref/entry/python --python 3.11 python -c 'import sys, numpy; print(sys.version); print(numpy.__version__); numpy.show_config()'
       - name: Train and evaluate the reference
         run: |
-          uv run --project course/harness --python 3.11 python -m tinyllm train rnnlm --cell lstm --data course/fixtures/MS-L2/train.bin --out "$RUNNER_TEMP/model" --steps 1500 --seed ${{ matrix.seed }} --d-emb 32 --hidden 128 --bptt 32 --batch 32 --lr 0.01 --clip 1.0 | tee train.json
-          uv run --project course/harness --python 3.11 python -m tinyllm eval --model "$RUNNER_TEMP/model" --data course/fixtures/MS-L2/val.bin | tee eval.json
+          uv run --project course/ref/entry/python --python 3.11 python -m tinyllm train rnnlm --cell lstm --data course/fixtures/MS-L2/train.bin --out "$RUNNER_TEMP/model" --steps 1500 --seed ${{ matrix.seed }} --d-emb 32 --hidden 128 --bptt 32 --batch 32 --lr 0.01 --clip 1.0 | tee train.json
+          uv run --project course/ref/entry/python --python 3.11 python -m tinyllm eval --model "$RUNNER_TEMP/model" --data course/fixtures/MS-L2/val.bin | tee eval.json
       - uses: actions/upload-artifact@v7
         with:
           name: lstm-seed-${{ matrix.seed }}
