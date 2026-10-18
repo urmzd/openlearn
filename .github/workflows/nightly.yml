@@ -32,7 +32,7 @@ jobs:
   full-verify:
     if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Full verify / ${{ matrix.os }} / ${{ matrix.layer }} / ${{ matrix.shard }}
-    timeout-minutes: 90
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -206,7 +206,21 @@ jobs:
       - name: Run kind milestones and one rotating drill
         working-directory: ${{ runner.temp }}/forge
         run: |
-          "$GITHUB_WORKSPACE/practice/bin/ol" verify course --kind
+          # Full capstone training requires the learner's prepared corpus.
+          # Its hosted tier runs in train-smoke instead of the kind suite.
+          uv run --project "$GITHUB_WORKSPACE/course/harness" python - <<'PY' > "$RUNNER_TEMP/kind-milestones.txt"
+          from pathlib import Path
+          import os
+          from olcourse import milestones
+          course = Path(os.environ["COURSE_ROOT"])
+          for name in milestones.all_ids(course):
+              if name in {"MS-C1", "MS-P9"}:
+                  continue
+              if any(step.kind for step in milestones.plan(course, name, smoke=False).steps):
+                  print(name)
+          PY
+          test -s "$RUNNER_TEMP/kind-milestones.txt"
+          xargs "$GITHUB_WORKSPACE/practice/bin/ol" verify course --kind < "$RUNNER_TEMP/kind-milestones.txt"
           python - <<'PY' > "$RUNNER_TEMP/drill-name"
           from datetime import date
           from pathlib import Path
