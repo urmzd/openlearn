@@ -10,7 +10,7 @@ on:
         type: choice
         required: true
         default: all
-        options: [all, capstone]
+        options: [all, capstone, milestones]
 
 permissions:
   contents: read
@@ -26,11 +26,11 @@ concurrency:
 
 jobs:
   whisper-real:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     uses: ./.github/workflows/whisper-real.yml
 
   full-verify:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Full verify / ${{ matrix.layer }}
     timeout-minutes: 90
     strategy:
@@ -92,12 +92,22 @@ jobs:
                   ids.add(data["id"])
           print("\n".join(sorted(ids)))
           PY
+          failed=0
           while IFS= read -r id; do
-            practice/bin/ol milestone "$id" --ref-deps
+            practice/bin/ol milestone "$id" --ref-deps || failed=1
           done < "$RUNNER_TEMP/milestones.txt"
+          exit "$failed"
+      - name: Retain milestone failure details
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-milestone-logs
+          path: .scratchpad/course/.ol/milestones
+          include-hidden-files: true
+          retention-days: 7
 
   hf-real:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Real weights and agent eval
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -120,6 +130,7 @@ jobs:
           practice/bin/ol milestone MS-agent --ref-deps
 
   train-smoke:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'milestones'
     name: Capstone training smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -138,7 +149,7 @@ jobs:
         run: practice/bin/ol milestone MS-C1 --smoke --ref-deps
 
   kind-e2e:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Kind, observability, and rotating drill
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -213,7 +224,7 @@ jobs:
 
   # Moved off PRs: about 100 minutes, too slow to gate every push.
   reference-learner-e2e:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Reference learner end to end (smoke)
     runs-on: ubuntu-latest
     timeout-minutes: 150
