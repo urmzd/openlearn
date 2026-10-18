@@ -81,16 +81,20 @@ jobs:
         run: practice/bin/ol verify course --assemble "$GITHUB_WORKSPACE/.scratchpad/course"
       - name: Run hosted nightly milestones
         run: |
-          python - <<'PY' > "$RUNNER_TEMP/milestones.txt"
-          import glob, tomllib
+          uv run --project course/harness python - <<'PY' > "$RUNNER_TEMP/milestones.txt"
+          from pathlib import Path
+          from olcourse import milestones
+          course = Path("course")
           ids = {"MS-L3", "MS-L4", "MS-L6"}
-          # MS-P9 documents full capstone training as learner-local. The
-          # train-smoke job covers its self-contained CI tier separately.
-          learner_local = {"MS-C1", "MS-P9"}
-          for path in glob.glob("course/milestones/*.toml"):
-              data = tomllib.load(open(path, "rb"))
-              if data.get("ci") == "nightly" and data["id"] not in learner_local:
-                  ids.add(data["id"])
+          # Full capstone training is learner-local; cluster milestones run
+          # in kind-e2e, where their required cluster is available.
+          for name in milestones.all_ids(course):
+              if name in {"MS-C1", "MS-P9"}:
+                  continue
+              if milestones.load(course, name).ci != "nightly":
+                  continue
+              if not any(step.kind for step in milestones.plan(course, name, smoke=False).steps):
+                  ids.add(name)
           print("\n".join(sorted(ids)))
           PY
           failed=0
