@@ -21,7 +21,7 @@ env:
   RUST_BACKTRACE: "1"
 
 concurrency:
-  group: nightly-${{ github.ref }}
+  group: nightly-${{ github.ref }}-${{ inputs.scope || 'all' }}
   cancel-in-progress: false
 
 jobs:
