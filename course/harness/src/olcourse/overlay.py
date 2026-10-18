@@ -575,8 +575,13 @@ class Overlay:
                 desired[f"ol-tests/tests/{name}.rs"] = src.read_bytes()
         keep = {"Cargo.lock"}
         _sync(farm, desired, keep)
-        lock = self.learner / "rust" / "Cargo.lock" if self.learner else None
-        if lock and lock.is_file() and not (farm / "Cargo.lock").is_file():
+        # Fresh reference/stub farms need the reviewed dependency resolution too:
+        # resolving from scratch can reject a dependency that was later yanked.
+        locks = [self.course / "ref" / "rust" / "Cargo.lock"]
+        if self.learner:
+            locks.insert(0, self.learner / "rust" / "Cargo.lock")
+        lock = next((path for path in locks if path.is_file()), None)
+        if lock and not (farm / "Cargo.lock").is_file():
             shutil.copy2(lock, farm / "Cargo.lock")
         return farm
 
