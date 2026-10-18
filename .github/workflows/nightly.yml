@@ -10,7 +10,7 @@ on:
         type: choice
         required: true
         default: all
-        options: [all, capstone]
+        options: [all, capstone, milestones]
 
 permissions:
   contents: read
@@ -26,18 +26,19 @@ concurrency:
 
 jobs:
   whisper-real:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     uses: ./.github/workflows/whisper-real.yml
 
   full-verify:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
-    name: Full verify / ${{ matrix.layer }}
-    timeout-minutes: 90
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
+    name: Full verify / ${{ matrix.os }} / ${{ matrix.layer }} / ${{ matrix.shard }}
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-15-intel]
         layer: [math, spine, systems, operations]
+        shard: [0, 1, 2, 3]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -60,7 +61,7 @@ jobs:
         run: |
           python .github/scripts/course-ci-shard.py "${{ matrix.layer }}" > "$RUNNER_TEMP/module-ids.txt"
           test -s "$RUNNER_TEMP/module-ids.txt"
-          xargs practice/bin/ol verify course --nightly < "$RUNNER_TEMP/module-ids.txt"
+          xargs practice/bin/ol verify course --nightly --shard "${{ matrix.shard }}/4" < "$RUNNER_TEMP/module-ids.txt"
 
   milestones-full:
     if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
@@ -80,24 +81,38 @@ jobs:
         run: practice/bin/ol verify course --assemble "$GITHUB_WORKSPACE/.scratchpad/course"
       - name: Run hosted nightly milestones
         run: |
-          python - <<'PY' > "$RUNNER_TEMP/milestones.txt"
-          import glob, tomllib
+          uv run --project course/harness python - <<'PY' > "$RUNNER_TEMP/milestones.txt"
+          from pathlib import Path
+          from olcourse import milestones
+          course = Path("course")
           ids = {"MS-L3", "MS-L4", "MS-L6"}
-          # MS-P9 documents full capstone training as learner-local. The
-          # train-smoke job covers its self-contained CI tier separately.
-          learner_local = {"MS-C1", "MS-P9"}
-          for path in glob.glob("course/milestones/*.toml"):
-              data = tomllib.load(open(path, "rb"))
-              if data.get("ci") == "nightly" and data["id"] not in learner_local:
-                  ids.add(data["id"])
+          # Full capstone training is learner-local; cluster milestones run
+          # in kind-e2e, where their required cluster is available.
+          for name in milestones.all_ids(course):
+              if name in {"MS-C1", "MS-P9"}:
+                  continue
+              if milestones.load(course, name).ci != "nightly":
+                  continue
+              if not any(step.kind for step in milestones.plan(course, name, smoke=False).steps):
+                  ids.add(name)
           print("\n".join(sorted(ids)))
           PY
+          failed=0
           while IFS= read -r id; do
-            practice/bin/ol milestone "$id" --ref-deps
+            practice/bin/ol milestone "$id" --ref-deps || failed=1
           done < "$RUNNER_TEMP/milestones.txt"
+          exit "$failed"
+      - name: Retain milestone failure details
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-milestone-logs
+          path: .scratchpad/course/.ol/milestones
+          include-hidden-files: true
+          retention-days: 7
 
   hf-real:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Real weights and agent eval
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -120,6 +135,7 @@ jobs:
           practice/bin/ol milestone MS-agent --ref-deps
 
   train-smoke:
+    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'milestones'
     name: Capstone training smoke
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -138,10 +154,11 @@ jobs:
         run: practice/bin/ol milestone MS-C1 --smoke --ref-deps
 
   kind-e2e:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Kind, observability, and rotating drill
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # The reference grade alone takes about 100 minutes before kind milestones.
+    timeout-minutes: 180
     env:
       TL_API_KEY: tl_ci_kind_reference_key
       COURSE_ROOT: ${{ github.workspace }}/course
@@ -193,7 +210,21 @@ jobs:
       - name: Run kind milestones and one rotating drill
         working-directory: ${{ runner.temp }}/forge
         run: |
-          "$GITHUB_WORKSPACE/practice/bin/ol" verify course --kind
+          # Full capstone training requires the learner's prepared corpus.
+          # Its hosted tier runs in train-smoke instead of the kind suite.
+          uv run --project "$GITHUB_WORKSPACE/course/harness" python - <<'PY' > "$RUNNER_TEMP/kind-milestones.txt"
+          from pathlib import Path
+          import os
+          from olcourse import milestones
+          course = Path(os.environ["COURSE_ROOT"])
+          for name in milestones.all_ids(course):
+              if name in {"MS-C1", "MS-P9"}:
+                  continue
+              if any(step.kind for step in milestones.plan(course, name, smoke=False).steps):
+                  print(name)
+          PY
+          test -s "$RUNNER_TEMP/kind-milestones.txt"
+          xargs "$GITHUB_WORKSPACE/practice/bin/ol" verify course --kind < "$RUNNER_TEMP/kind-milestones.txt"
           python - <<'PY' > "$RUNNER_TEMP/drill-name"
           from datetime import date
           from pathlib import Path
@@ -213,7 +244,7 @@ jobs:
 
   # Moved off PRs: about 100 minutes, too slow to gate every push.
   reference-learner-e2e:
-    if: github.event_name != 'workflow_dispatch' || inputs.scope != 'capstone'
+    if: github.event_name != 'workflow_dispatch' || inputs.scope == 'all'
     name: Reference learner end to end (smoke)
     runs-on: ubuntu-latest
     timeout-minutes: 150

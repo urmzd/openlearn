@@ -242,7 +242,6 @@ course/fixtures/L14.2/tiny-whisper-128/model.safetensors	c3129de4f0ab5e4f5cb9abe
 course/fixtures/L14.2/encoder_hf.npz	ceadc1b3e91f5282825cdcd831e9ff5133648c3e09ef7a6492af237aef0bc4e0	617320	course/oracle/L14.2/whisper_tiny_hf.py	torch==2.14.1,transformers==5.19.0	-	Apache-2.0
 course/fixtures/L13.4/tiling_hf.npz	2e4f1b3d8272052ce9fb67c461e28e0a8c1e4a93837173d934827a753083f4b9	40368	course/oracle/L13.4/tiling_hf.py	torch==2.14.1,transformers==5.19.0,pillow==12.3.0,numpy==2.5.3	-	Apache-2.0
 course/fixtures/L13.5/contrastive_hf.npz	32388b31c9e3a1a5c271fd3c2ba0e63592c1a97e3d5bab57732362deaa203e51	12223	course/oracle/L13.5/contrastive_hf.py	torch==2.14.1,transformers==5.19.0,numpy==2.5.3	-	Apache-2.0
-course/fixtures/ref-thresholds.tsv	47489898143dabfe6842815e676d5aa1cf77d68aeb1b30877205e9e33d2b5fe1	4217	ss --record-thresholds	-	-	Apache-2.0
 course/fixtures/L14.3/decoder_hf.npz	0a886ea57c03415e5567253c503977405fcaa78965a618d52150cceae0eb40f5	2414	course/oracle/L14.3/decoder_hf.py	torch==2.14.1+cpu,transformers==5.19.0,numpy==2.5.4	-	Apache-2.0
 course/fixtures/L13.6/decode_pil.npz	2be07054cf063c775597d254c54d1aa041aa6e3084bcced26187680a14a3262f	13232	course/oracle/L13.6/decode_pil.py	pillow==12.3.0,numpy==2.5.3	-	Apache-2.0
 course/fixtures/L13.6/preprocess_hf.npz	e24826c00ba434575a61738156ecc0206e592cec1ed3c143f3b41af71640330c	145546	course/oracle/L13.6/preprocess_hf.py	transformers==5.19.0,pillow==12.3.0,numpy==2.5.3	-	Apache-2.0
@@ -273,3 +272,4 @@ course/fixtures/whisper-parity/lang-de.wav	6da52629110c296529b6adc220b2dd29f8564
 course/fixtures/whisper-parity/lang-es.wav	ee2960ceb4449c9fc39f7491b00dcd1f65e11916371e46dfe912c6e66424a27f	256044	course/oracle/MS-L14/mls_languages.py	numpy==2.5.4,soundfile==0.13.1	https://www.openslr.org/94/; source members in languages.json	CC-BY-4.0
 course/fixtures/whisper-parity/lang-fr.wav	32b38cdf08de47e728f494ec60e859ee3eeae690112e832115774d3c30d77ebd	256044	course/oracle/MS-L14/mls_languages.py	numpy==2.5.4,soundfile==0.13.1	https://www.openslr.org/94/; source members in languages.json	CC-BY-4.0
 course/fixtures/whisper-parity/languages.json	869879ba916f82f40f2cb1f60174af0710a4b0b17c96d22560d1aabd55ece1eb	2165	course/oracle/MS-L14/mls_languages.py	numpy==2.5.4,soundfile==0.13.1	https://www.openslr.org/94/; source members in languages.json	CC-BY-4.0
+course/fixtures/ref-thresholds.tsv	e48bb86143bf977775b6e0c8b7ca8eb5844cbffbe12fb808e9928d2790a63476	4213	ss --record-thresholds	-	-	Apache-2.0
