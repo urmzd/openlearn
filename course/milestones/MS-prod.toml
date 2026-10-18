@@ -88,7 +88,9 @@ smoke      = true
 ci         = "pr"
 run        = "loadgen"
 argv       = ["--target", "http://127.0.0.1:{gateway.port}", "--rate", "{rate}", "--duration", "{duration}"]
-vars       = { rate = "4", duration = "60s" }
+# The local probe stays within the reference conformance key's 60 RPM.
+# The production SLO test below uses a separate key at the full load rate.
+vars       = { rate = "1", duration = "60s" }
 smoke_vars = { rate = "2", duration = "10s" }
 expect     = { match = "json-last-line", metrics = { error_rate = "<= 0.005", requests = ">= 10" } }
 timeout_s  = 180
@@ -122,11 +124,18 @@ expect = { match = "suite", suite = "openapi:v1:gateway" }
 # -- load at the SLO rate, then the SLOs as your Prometheus sees them -------------
 
 [[step]]
+name      = "load-test-key"
+ci        = "kind"
+http      = { method = "POST", url = "{deploy.gateway_url}/admin/v1/keys", auth = true, json = { tenant = "load-test", name = "MS-prod performance", scopes = ["infer"], models = ["{endpoints.model}"], rpm = 600, tpm = 1000000 } }
+expect    = { match = "json-schema", status = 201, schema = { type = "object", required = ["key"], properties = { key = { type = "string", minLength = 1 } } } }
+
+[[step]]
 name      = "load-at-the-slo-rate"
 ci        = "kind"
 run       = "loadgen"
-argv      = ["--target", "{deploy.gateway_url}", "--rate", "{rate}", "--duration", "{duration}"]
+argv      = ["--target", "{deploy.gateway_url}", "--rate", "{rate}", "--duration", "{duration}", "--api-key-env", "TL_LOADGEN_API_KEY"]
 vars      = { rate = "4", duration = "300s" }
+env       = { TL_LOADGEN_API_KEY = "{json:load-test-key.key}" }
 expect    = { match = "json-last-line", metrics = { error_rate = "<= 0.005", requests = ">= 1000" } }
 timeout_s = 420
 
