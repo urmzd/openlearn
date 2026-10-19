@@ -27,7 +27,7 @@ Sections 1 to 3 build the pipeline from first principles (regex to NFA to canoni
 
 ## 1. Why now
 
-Part 10's agents call tools: the model must emit `{"city": "Oslo", "days": 3}` for a function whose arguments are described by a JSON schema, and the gateway hands those arguments to code that expects exactly that shape. A 135M-parameter model left alone produces almost-JSON: a missing quote, a trailing comma, `"days": "three"`. Retrying until it parses wastes passes and still fails sometimes. Constrained decoding makes invalid output impossible instead: before each sampling step, every token that would take the text outside the allowed language gets logit $-\infty$, and L8.1's sampler never draws it. The engine (L10.9) will do this in Rust, per request, at serving speed; this module builds the semantics in Python, from regex to masks, and a golden file that the Rust port must match.
+Part 10's agents call tools: the model must emit `{"city": "Oslo", "days": 3}` for a function whose arguments are described by a JSON schema, and the gateway hands those arguments to code that expects exactly that shape. A 135M-parameter model left alone produces almost-JSON: a missing quote, a trailing comma, `"days": "three"`. Retrying until it parses wastes passes and still fails sometimes. Constrained decoding makes invalid output impossible instead: before each sampling step, every token that would take the text outside the allowed language gets logit $-\infty$, and L8.1's sampler never draws it. The engine (L10.9) will do this in Rust, per request, at serving speed; this module builds the semantics in Python, from regex to masks, and fixes the masks the Rust port must match.
 
 ## 2. Principles
 

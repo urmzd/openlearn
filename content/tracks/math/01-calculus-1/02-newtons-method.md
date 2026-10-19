@@ -8,7 +8,7 @@
 | **Solution** | [`course/solutions/python/tinyllm/num/newton.py`](../../../../course/solutions/python/tinyllm/num/newton.py): `newton` (roots of a scalar function, with a convergence report) and `rsqrt_newton` (the division-free iteration for $1/\sqrt{x}$) |
 | **Contract** | [`course/contracts/py/tinyllm/num/newton.pyi`](../../../../course/contracts/py/tinyllm/num/newton.pyi) |
 | **Needs** | `M01.1` `central_diff`, the slope Newton uses when no derivative is passed |
-| **Used by** | `M07.7`'s `fit_temperature` (temperature scaling) solves for $1/T$ with `newton` · optional `M09.5` ports `rsqrt_newton` to C as the reciprocal square root inside `L9.6`'s RMSNorm kernel and checks it against this Python · optional `M10.6` uses Newton-Schulz iterations for Muon (section 6) |
+| **Used by** | `M07.7`'s `fit_temperature` (temperature scaling) solves for $1/T$ with `newton` · optional `M09.5` ports `rsqrt_newton` to C as the reciprocal square root inside `L9.6`'s RMSNorm kernel and checks it against this Python · optional `M10.6` uses Newton-Schulz iterations for Muon (section 7) |
 | **Optional depth** | OpenStax, *Calculus Volume 1* (free), section 4.9 (Newton's method); Sauer, *Numerical Analysis*, sections 1.4 and 1.5 (convergence order, when Newton fails); Lomont, "Fast inverse square root" (2003) for the magic constant |
 
 ## Key Takeaways
@@ -120,42 +120,174 @@ def rsqrt_newton(x: ArrayLike, y0: ArrayLike, iters: int) -> NDArray: ...
 
 `newton` returns `(root, updates)`. It raises `ValueError` for a non-finite `x0`, `tol <= 0`, or `max_iter < 1`, and `RuntimeError` naming the cause when the derivative is zero or not finite ("derivative"), an iterate is not finite ("diverged"), or `max_iter` updates do not converge ("no convergence"). `rsqrt_newton` broadcasts `x` against `y0` and computes in their floating dtype (float64 for integers).
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example` | unit, smoke | section 3: the fractions, 6 updates, 5 evaluations | you and the tests agree on the iteration and the count |
-| `test_digits_double_per_step` | property | $e_{n+1}/e_n^2 \to 0.354$ | quadratic convergence, the reason Newton is used at all |
-| `test_returns_on_exact_root` | boundary | $f(x_0) = 0$ returns $(x_0, 0)$ | no needless step or miscount |
-| `test_relative_tolerance_for_large_roots` | boundary | $\sqrt{1.6 \times 10^8}$ and $\sqrt[3]{3 \times 10^{20}}$ converge | roots of every scale |
-| `test_converges_on_many_roots` | golden | 30 seeded square and cube roots to full precision | the closed forms are the oracle |
-| `test_numeric_derivative_when_df_is_none` | unit | $e^x = 3$ with `df=None` gives $\ln 3$ | your `M01.1` slope inside Newton |
-| `test_zero_derivative_raises` | boundary | a flat or nan tangent raises `RuntimeError` ("derivative") | failures are reported, not divided by |
-| `test_cycle_raises_after_max_iter` | boundary | the 0, 1, 0, 1 cycle raises `RuntimeError` | local convergence has a budget |
-| `test_max_iter_counts_updates` | boundary | 6 updates fit `max_iter = 6`, not 5 | the budget is exact |
-| `test_divergence_raises` | boundary | $\sqrt[3]{x}$ doubles away until inf; `RuntimeError` ("diverged") | runaway iterates are caught |
-| `test_rejects_bad_arguments` | boundary | nan or inf start, `tol <= 0`, `max_iter = 0` | caller bugs surface at once |
-| `test_rsqrt_hand_example` | unit, smoke | 0.472, then 0.4977 | the update formula |
-| `test_rsqrt_error_squares_each_step` | golden | from the bit-trick guess, float32 errors 3.5e-2, 1.8e-3, 5e-6 | `M09.5`'s accuracy target |
-| `test_rsqrt_float64_reaches_full_precision` | golden | four float64 steps reach rounding level | the error keeps squaring |
-| `test_rsqrt_keeps_dtype_and_broadcasts` | unit | float32 step for step, bit for bit; ints in float64; `iters = 0`; `iters < 0` raises | the C port is compared bit for bit |
+| the hand-worked $\sqrt 2$ | unit | section 3: the fractions, 6 updates, $f$ evaluated at $x_0, \ldots, x_5$ | everyone agrees on the iteration and the count |
+| digits double per step | property | $e_{n+1}/e_n^2 \to 0.354$ | quadratic convergence, the reason Newton is used at all |
+| an exact root at the start | boundary | $f(x_0) = 0$ returns $(x_0, 0)$ | no needless step or miscount |
+| large roots | boundary | $\sqrt{1.6 \times 10^8}$ and $\sqrt[3]{3 \times 10^{20}}$ converge | roots of every scale |
+| many roots | golden | 30 seeded square and cube roots to full precision | the closed forms are the oracle |
+| no derivative given | unit | $e^x = 3$ with `df=None` gives $\ln 3$ | the `M01.1` slope inside Newton |
+| a flat tangent | boundary | a flat or nan tangent raises `RuntimeError` ("derivative") | failures are reported, not divided by |
+| a cycle | boundary | the 0, 1, 0, 1 cycle raises `RuntimeError` | local convergence has a budget |
+| the budget counts updates | boundary | 6 updates fit `max_iter = 6`, not 5 | the budget is exact |
+| divergence | boundary | $\sqrt[3]{x}$ doubles away until inf; `RuntimeError` ("diverged") | runaway iterates are caught |
+| bad arguments | boundary | nan or inf start, `tol <= 0`, `max_iter = 0` | caller bugs surface at once |
+| the hand-worked $1/\sqrt 4$ | unit | 0.472, then 0.4977 | the update formula |
+| rsqrt error squares each step | golden | from the bit-trick guess, float32 errors 3.5e-2, 1.8e-3, 5e-6 | `M09.5`'s accuracy target |
+| rsqrt in float64 | golden | four float64 steps reach rounding level | the error keeps squaring |
+| rsqrt dtype and broadcasting | unit | float32 step for step, bit for bit; ints in float64; `iters = 0`; `iters < 0` raises | the C port is compared bit for bit |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **One loop iteration is one tangent step.** Section 2.2: evaluate $f(x_n)$ and $f'(x_n)$, then $x_{n+1} = x_n - f(x_n)/f'(x_n)$. Count *updates*, the number of times $x$ moved, because that is what the convergence analysis is about and what `max_iter` budgets.
+2. **Check for an exact root before computing a slope.** If $f(x_n) = 0$ there is nothing to do; return $x_n$ with the updates so far (0 if $x_0$ was already a root).
+3. **Refuse to divide by a useless slope.** A zero, NaN, or infinite derivative has no tangent root; dividing would produce inf or NaN that surfaces later as a misleading failure. Raise with the word "derivative" now.
+4. **Re-evaluate the derivative at every iterate.** Section 2.3: a frozen derivative (the chord method) converges only linearly. When `df` is `None`, the slope is `central_diff(f, x_n)` at the current point, accurate to about $10^{-10}$, which keeps convergence effectively quadratic.
+5. **Catch runaways immediately.** If $x_{n+1}$ is not finite, the method diverged; report it at that step, not one step later as a flat tangent at infinity.
+6. **Stop on a relative step.** Section 2.3: stop when $|x_{n+1} - x_n| \le \text{tol} \cdot \max(1, |x_{n+1}|)$. Relative for large roots (float spacing grows with $|x|$), absolute near 0 (a relative test would demand impossible precision there).
+7. **Running out of budget is a failure, not an answer.** If `max_iter` updates pass without meeting the test, raise; the last iterate of a cycle is not a root.
+8. **The rsqrt iteration is the same idea, specialised.** Section 2.4: $y \leftarrow y(\tfrac32 - \tfrac12 x y^2)$, run a fixed number of times on whole arrays. It must compute in the inputs' float dtype so the float32 version matches the C port operation for operation. The factor $\tfrac12 x$ does not change between steps, so it is computed once.
+
+### The code, annotated
+
+```python
+def newton(
+    f: Callable[[float], float],
+    df: Optional[Callable[[float], float]],
+    x0: float,
+    tol: float = 1e-12,
+    max_iter: int = 50,
+) -> tuple[float, int]:
+    x = float(x0)
+    if not math.isfinite(x):
+        raise ValueError(f"x0 must be finite, got {x0}")
+    if not tol > 0:                       # also rejects a nan tol
+        raise ValueError(f"tol must be > 0, got {tol}")
+    if max_iter < 1:
+        raise ValueError(f"max_iter must be >= 1, got {max_iter}")
+    # No derivative given: a fresh central difference at each iterate (step 4).
+    deriv = df if df is not None else (lambda t: central_diff(f, t))
+    for n in range(max_iter):             # n = updates made so far
+        fx = float(f(x))
+        if fx == 0.0:
+            return x, n                   # x is a root: no step needed (step 2)
+        d = float(deriv(x))
+        if d == 0.0 or not math.isfinite(d):
+            raise RuntimeError(
+                f"derivative is {d} at x = {x!r} (step {n}): the tangent has no root"
+            )
+        x_new = x - fx / d                # the tangent's zero
+        if not math.isfinite(x_new):
+            raise RuntimeError(f"iterate {n + 1} is {x_new}: Newton diverged")
+        # Relative step test: near a root of size 1e10 an absolute 1e-12 is
+        # below the float spacing and could never be met.
+        if abs(x_new - x) <= tol * max(1.0, abs(x_new)):
+            return x_new, n + 1           # this was update n + 1
+        x = x_new
+    raise RuntimeError(f"no convergence after {max_iter} updates (last iterate {x!r})")
+```
+
+The count works out exactly: in the iteration with index `n`, `n` updates have already happened, and computing `x_new` is update `n + 1`. On the $\sqrt 2$ example the loop runs with `n = 0, ..., 5`, evaluates $f$ at $x_0, \ldots, x_5$, and returns at `n = 5` with 6 updates, which fits `max_iter = 6` exactly. On the cycle $x^3 - 2x + 2$ from 0 every update is a full step of size 1, the test is never met, and after 50 updates the function raises "no convergence" instead of returning 0. On $\sqrt[3]{x}$ from 1 each step doubles $|x|$, so with a large enough budget iterate 1024 overflows to inf and the "diverged" branch fires.
+
+```python
+def rsqrt_newton(x: ArrayLike, y0: ArrayLike, iters: int) -> NDArray:
+    if iters < 0:
+        raise ValueError(f"iters must be >= 0, got {iters}")
+    xa, ya = np.asarray(x), np.asarray(y0)
+    dt = np.result_type(xa, ya)                  # float32 + float32 stays float32
+    if not np.issubdtype(dt, np.floating):
+        dt = np.dtype(np.float64)                # integers compute in float64
+    xa, y = np.broadcast_arrays(xa.astype(dt), ya.astype(dt))
+    y = y.copy()                                 # broadcast views are read-only and may alias y0
+    half, three_halves = dt.type(0.5), dt.type(1.5)   # constants in the working dtype
+    hx = half * xa                               # 0.5 x, hoisted out of the loop
+    for _ in range(int(iters)):
+        y = y * (three_halves - hx * y * y)      # y (3/2 - x y^2 / 2): no division, no sqrt
+    return y
+```
+
+Every operand in the loop has dtype `dt`, so a float32 call does float32 arithmetic throughout and returns float32, which is what lets `M09.5` compare its C output bit for bit; the C port must then group the products the same way, `((hx * y) * y)`. `iters = 0` returns a fresh copy of the broadcast guess.
+
+The function takes the first guess `y0` from the caller. The bit-trick guess of section 2.4 is one line of numpy (shown here for reference, not part of the module):
+
+```python
+x = np.array([4.0, 2.0, 1e-3, 7e5], dtype=np.float32)
+y0 = (np.uint32(0x5f3759df) - (x.view(np.uint32) >> np.uint32(1))).view(np.float32)
+# relative error of rsqrt_newton(x, y0, k) for k = 0, 1, 2: about 3.4e-2, 1.7e-3, 4.4e-6
+```
+
+Full solution: [`newton.py`](../../../../course/solutions/python/tinyllm/num/newton.py).
+
+### Why this solution
+
+- **Cost.** Each update costs one evaluation of $f$ and one of $f'$ (or two more of $f$ for the central difference). Quadratic convergence means the number of updates grows only like $\log_2$ of the digits wanted: the $\sqrt 2$ example goes from 0 to 16 correct digits in 6 updates. `rsqrt_newton` is 3 multiplications and 1 subtraction per element per step, with no division or square root.
+- **Exceptions over sentinel values.** Returning the last iterate or a NaN on failure invites callers like `fit_temperature` (`M07.7`) to use a wrong temperature. Distinct messages ("derivative", "diverged", "no convergence") tell the caller which assumption broke.
+- **Alternatives.** Bisection or Brent's method (Going further) cannot diverge but converge linearly or superlinearly, and need a bracket the caller must supply. A safeguarded Newton combines both; this module keeps plain Newton so its behaviour, including its failures, is visible. For $1/\sqrt{x}$, computing `1 / np.sqrt(x)` is simpler in Python but is not the operation the C kernel performs, so it cannot serve as a step-for-step reference.
+- **Tradeoffs accepted.** The stopping test looks at the step, not at $|f(x)|$, so on a function that is very flat near its root it can stop with a small step but a modest residual; and a multiple root (where $f'(x^\star) = 0$) converges only linearly and may exhaust the budget. Both are documented properties of Newton's method that the contract leaves to the caller.
+
+### Explain it back
+
+**1. Why does `newton` return `(x, n)` when $f(x) = 0$, but `(x_new, n + 1)` when the step test passes?**
+
+<details><summary>Answer</summary>
+
+`n` counts updates already made. An exact root needs no further update, so the count stays `n` (0 if $x_0$ is a root). When the step test passes, the update that produced `x_new` has just happened, so it is counted: `n + 1`. Getting this wrong makes `max_iter = 6` fail on a problem that needs exactly 6 updates.
+
+</details>
+
+**2. Why is the stopping test $|x_{n+1} - x_n| \le \text{tol} \cdot \max(1, |x_{n+1}|)$ rather than $|x_{n+1} - x_n| \le \text{tol}$?**
+
+<details><summary>Answer</summary>
+
+Float spacing near $x$ is about $2.2 \times 10^{-16}|x|$. Near $12649 \approx \sqrt{1.6 \times 10^8}$ that is $1.8 \times 10^{-12}$, so the last steps hop between neighbouring floats and never get below an absolute $10^{-12}$: the method would report "no convergence" at the right answer. Scaling by $|x_{n+1}|$ makes the test relative; the $\max(1, \cdot)$ keeps it absolute near 0, where relative precision is unreachable.
+
+</details>
+
+**3. Why check `math.isfinite(x_new)` separately when the derivative check already rejects non-finite slopes?**
+
+<details><summary>Answer</summary>
+
+A finite $f$ and a finite, nonzero, but tiny slope can still produce a step that overflows, and a diverging iteration like $\sqrt[3]{x}$ reaches inf through finite steps. Without the check the next iteration would evaluate $f(\infty)$ and fail with a misleading message about the derivative; catching it at the step that produced it reports "diverged" accurately.
+
+</details>
+
+**4. Why does `rsqrt_newton` build its constants with `dt.type(0.5)` and hoist `hx = half * xa`?**
+
+<details><summary>Answer</summary>
+
+Typed constants keep every operation in the working dtype, so float32 inputs give float32 arithmetic, the same rounding as the C port, rather than being promoted to float64 under older numpy casting rules. Hoisting $\tfrac12 x$ saves one multiplication per step and fixes the operation order the C code reproduces.
+
+</details>
+
+**5. With $g(y) = 1/y^2 - x$ the step needs no division. Why not use the simpler-looking $g(y) = y^2 - 1/x$?**
+
+<details><summary>Answer</summary>
+
+Its Newton step is $y - (y^2 - 1/x)/(2y) = \tfrac12(y + 1/(xy))$, which needs $1/x$ and a division by $y$ at each step: exactly the expensive operations the iteration is meant to avoid. $1/y^2 - x$ puts the unknown in the denominator of $g$, and the division cancels algebraically in the step.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. not checking for a zero or non-finite derivative | `ZeroDivisionError`, or a nan that later looks like "no convergence" | `test_zero_derivative_raises` (mutant `s07`) |
-| 2. returning the last iterate when the method did not converge | the cycle's last point (0.0) reported as a root of $x^3 - 2x + 2$ | `test_cycle_raises_after_max_iter` (mutant `s08`) |
-| 2b. letting an inf iterate continue | the failure is blamed on a flat tangent one step later | `test_divergence_raises` (mutant `s09`) |
-| 3. an absolute stopping test | no convergence at the right answer near $1.3 \times 10^4$ | `test_relative_tolerance_for_large_roots` (mutant `s05`) |
-| 4. computing the derivative once at $x_0$ (chord method) | linear convergence, or divergence when $f'$ changes a lot | `test_digits_double_per_step` (mutant `s03`), `test_numeric_derivative_when_df_is_none` (mutant `s06`) |
-| 5. dropping a factor of $y$ in $y(\frac{3}{2} - \frac{1}{2} x y^2)$ | converges to the wrong value, $1/x$-like | `test_rsqrt_hand_example` (mutant `s10`) |
-| 6. computing float32 inputs in float64 | results that differ from the C port in the last bits, and a float64 array where float32 was expected | `test_rsqrt_keeps_dtype_and_broadcasts` (mutant `s12`) |
-| stepping uphill, $x + f/f'$, or multiplying by $f'$ | the hand example's iterates go wrong at step 1 | `test_hand_example` (mutants `s01`, `s02`) |
-| always stepping once, even at an exact root | $(3.0, 1)$ instead of $(3.0, 0)$ | `test_returns_on_exact_root` (mutant `s04`) |
-| one Newton step fewer than asked | the error after two steps is $1.8 \times 10^{-3}$, not $5 \times 10^{-6}$ | `test_rsqrt_error_squares_each_step` (mutant `s11`) |
+| 1. not checking for a zero or non-finite derivative | `ZeroDivisionError`, or a nan that later looks like "no convergence" | raises "derivative" before dividing; step 3 |
+| 2. returning the last iterate when the method did not converge | the cycle's last point (0.0) reported as a root of $x^3 - 2x + 2$ | raises "no convergence" after the loop; step 7 |
+| 2b. letting an inf iterate continue | the failure is blamed on a flat tangent one step later | checks `math.isfinite(x_new)` right after the step; step 5 |
+| 3. an absolute stopping test | no convergence at the right answer near $1.3 \times 10^4$ | `tol * max(1.0, abs(x_new))`; step 6 |
+| 4. computing the derivative once at $x_0$ (chord method) | linear convergence, or divergence when $f'$ changes a lot | calls `deriv(x)` inside the loop, including `central_diff` at each iterate; step 4 |
+| 5. dropping a factor of $y$ in $y(\frac{3}{2} - \frac{1}{2} x y^2)$ | converges to the wrong value, $1/x$-like | `y * (three_halves - hx * y * y)`: two factors of $y$ inside, one outside |
+| 6. computing float32 inputs in float64 | results that differ from the C port in the last bits, and a float64 array where float32 was expected | `dt = np.result_type(...)` and constants of type `dt`; step 8 |
+| stepping uphill, $x + f/f'$, or multiplying by $f'$ | the hand example's iterates go wrong at step 1 | `x_new = x - fx / d` |
+| always stepping once, even at an exact root | $(3.0, 1)$ instead of $(3.0, 0)$ | the `fx == 0.0` check comes before any step; step 2 |
+| one Newton step fewer than asked | the error after two steps is $1.8 \times 10^{-3}$, not $5 \times 10^{-6}$ | `range(int(iters))` runs exactly `iters` steps |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|

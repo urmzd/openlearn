@@ -1,42 +1,33 @@
-<!-- ol:module M01.3 -->
 # Activation functions and their derivatives
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M01.3` · build · Python · Pass 2 · 3 to 4 h |
-| **You build** | `python/tinyllm/num/activations.py`: `sigmoid`, `tanh`, `relu`, `softplus`, `gelu_tanh`, `gelu_erf`, `silu`, each with its derivative `d<name>` |
+| **Module** | `M01.3` · build · Python · Pass 2 · 1.5 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/num/activations.py`](../../../../course/solutions/python/tinyllm/num/activations.py): `sigmoid`, `tanh`, `relu`, `softplus`, `gelu_tanh`, `gelu_erf`, `silu`, each with its derivative `d<name>` |
 | **Contract** | [`course/contracts/py/tinyllm/num/activations.pyi`](../../../../course/contracts/py/tinyllm/num/activations.pyi) |
-| **Tests** | `course/tests/M01.3/test_activations.py`, with the PyTorch golden values in `course/fixtures/M01.3/activations_torch.npz` (what they check: section 4) |
-| **Needs** | `M02.1` `erf_series`, which `gelu_erf` calls (or `--ref-deps`). Reading: `M01.1` (derivatives), `M00.1` (exp and log) |
+| **Needs** | `M02.1` `erf_series`, which `gelu_erf` calls. Reading: `M01.1` (derivatives), `M00.1` (exp and log) |
 | **Used by** | `M08.1` checks its dual-number derivatives against these closed forms · later `L0.2` wraps them as autograd ops, `L3.2` uses sigmoid and tanh for LSTM gates, `L7.2` uses SiLU in SwiGLU, `L9.6` ports SiLU to C |
-| **Milestone** | `MS-P2` (the Pass 2 gate) |
 | **Optional depth** | OpenStax, *Calculus Volume 1* (free), sections 3.3 to 3.6 (derivative rules, the chain rule) and 3.9 (exponential and logarithm); Hendrycks and Gimpel, "Gaussian Error Linear Units" (2016); Ramachandran, Zoph, and Le, "Searching for Activation Functions" (2017, SiLU/swish) |
 
 ## Key Takeaways
 
-- An **activation** is a nonlinear function applied elementwise between linear layers; without one, any stack of layers is a single matrix. Training needs each one's **derivative**, which the chain rule multiplies into every gradient (`test_hand_example_at_one`, `test_derivatives_pass_gradcheck`).
-- The derivatives come from three rules: $(e^x)' = e^x$, the quotient or chain rule, and the product rule. $\sigma' = \sigma(x)\sigma(-x)$, $\tanh' = 1 - \tanh^2$, $\mathrm{softplus}' = \sigma$, $\mathrm{silu}' = \sigma(x)(1 + x\sigma(-x))$, $\mathrm{gelu}' = \Phi + x\varphi$ (`test_matches_torch_golden`).
-- **Overflow is avoided, not silenced**: $e^{-|x|}$ never overflows, so sigmoid and softplus are written in terms of it, and every function is finite and warning-free at $x = \pm 10^{30}$ in float32 and float64 (`test_no_overflow_for_any_finite_input`).
-- Writing $\sigma' $ as $\sigma(x)\sigma(-x)$ instead of $\sigma(1 - \sigma)$ keeps full **relative accuracy** in the tails (`test_derivative_tails_keep_relative_accuracy`).
-- The two GELUs are **different functions** (they differ in the fourth digit at $x = 1$), and $\mathrm{relu}'(0) = 0$ by convention: match the checkpoint you load (`test_hand_example_gelus`, `test_relu_derivative_at_zero_is_zero`).
+- An **activation** is a nonlinear function applied elementwise between linear layers; without one, any stack of layers is a single matrix. Training needs each one's **derivative**, which the chain rule multiplies into every gradient.
+- The derivatives come from three rules: $(e^x)' = e^x$, the quotient or chain rule, and the product rule. $\sigma' = \sigma(x)\sigma(-x)$, $\tanh' = 1 - \tanh^2$, $\mathrm{softplus}' = \sigma$, $\mathrm{silu}' = \sigma(x)(1 + x\sigma(-x))$, $\mathrm{gelu}' = \Phi + x\varphi$.
+- **Overflow is avoided, not silenced**: $e^{-|x|}$ never overflows, so sigmoid and softplus are written in terms of it, and every function is finite and warning-free at $x = \pm 10^{30}$ in float32 and float64.
+- Writing $\sigma' $ as $\sigma(x)\sigma(-x)$ instead of $\sigma(1 - \sigma)$ keeps full **relative accuracy** in the tails.
+- The two GELUs are **different functions** (they differ in the fourth digit at $x = 1$), and $\mathrm{relu}'(0) = 0$ by convention: match the checkpoint you load.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M01.3              # stubs python/tinyllm/num/activations.py into your repo
-ol tests M01.3              # read the test catalog first: rung R0, you write no tests here
-ol check M01.3              # exit code is the verdict
-ol check M01.3 --ref-deps   # only if your M02.1 is not passing yet
-ol diff  M01.3              # after passing: your code against the reference
-```
+Sections 1 and 2 derive each activation and its derivative from the rules of calculus, and show how to evaluate them without overflow or loss of relative accuracy. Section 3 works every one by hand at $x = 1$. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-The tracer's bigram is one table lookup: no layers, nothing between them. Pass 2 replaces it with models that have hidden layers (the MLP of `L0.4`, later recurrent cells and transformer blocks), and a hidden layer is a matrix product followed by an activation function. Your autograd engine (`L0.2`) needs both halves of every activation: the function for the forward pass and its derivative for the backward pass. Get a derivative wrong and the model still trains, slowly and to a worse loss, with no error anywhere; get the forward pass numerically careless and one large logit after a bad optimizer step turns the whole batch into nan. This module derives each activation and its derivative from the rules of calculus, writes them so that no input can overflow, and checks them against PyTorch at 1000 points from $-40$ to $40$.
+The tracer's bigram is one table lookup: no layers, nothing between them. Pass 2 replaces it with models that have hidden layers (the MLP of `L0.4`, later recurrent cells and transformer blocks), and a hidden layer is a matrix product followed by an activation function. The autograd engine (`L0.2`) needs both halves of every activation: the function for the forward pass and its derivative for the backward pass. Get a derivative wrong and the model still trains, slowly and to a worse loss, with no error anywhere; get the forward pass numerically careless and one large logit after a bad optimizer step turns the whole batch into nan. This module derives each activation and its derivative from the rules of calculus, writes them so that no input can overflow, and checks them against PyTorch at 1000 points from $-40$ to $40$.
 
 ## 2. Principles
 
@@ -74,7 +65,7 @@ $$\sigma(x) = \begin{cases} \frac{1}{1 + z} & x \ge 0 \\ \frac{z}{1 + z} & x < 0
 
 ### 2.3 ReLU and softplus
 
-$\mathrm{relu}(x) = \max(x, 0)$ is the identity for positive inputs and zero otherwise; its derivative is 1 for $x > 0$ and 0 for $x < 0$. At $x = 0$ the graph has a corner and no derivative exists. Frameworks pick a value: PyTorch uses 0, and so does this course, because a gradient that differs from the framework's exactly at zeros makes your gradients disagree with any checkpoint's training history there.
+$\mathrm{relu}(x) = \max(x, 0)$ is the identity for positive inputs and zero otherwise; its derivative is 1 for $x > 0$ and 0 for $x < 0$. At $x = 0$ the graph has a corner and no derivative exists. Frameworks pick a value: PyTorch uses 0, and so does this course, because a gradient that differs from the framework's exactly at zeros makes gradients disagree with any checkpoint's training history there.
 
 $\mathrm{softplus}(x) = \ln(1 + e^x)$ is a smooth relu: about $x$ for large $x$, about $e^x$ for very negative $x$. Its derivative is $\frac{e^x}{1 + e^x} = \sigma(x)$. Naively, $\ln(1 + e^{1000})$ overflows, and $\ln(1 + e^{-40})$ gives exactly 0 because $1 + 4.2 \times 10^{-18}$ rounds to 1. The stable form splits off the large part and uses `log1p`, which computes $\ln(1 + u)$ accurately for tiny $u$:
 
@@ -86,7 +77,7 @@ The Gaussian error linear unit weights its input by the probability that a stand
 
 $$\mathrm{gelu}(x) = x\,\Phi(x) = \frac{x}{2}\left(1 + \operatorname{erf}\frac{x}{\sqrt 2}\right), \qquad \mathrm{gelu}'(x) = \Phi(x) + x\,\varphi(x)$$
 
-by the product rule, since $\Phi' = \varphi$. Your `gelu_erf` calls `erf_series` from `M02.1`. Before erf was fast on GPUs, GPT-2 and BERT used a tanh approximation:
+by the product rule, since $\Phi' = \varphi$. The solution's `gelu_erf` calls `erf_series` from `M02.1`. Before erf was fast on GPUs, GPT-2 and BERT used a tanh approximation:
 
 $$\mathrm{gelu}_{\tanh}(x) = \frac{x}{2}\left(1 + \tanh u\right), \quad u = \sqrt{2/\pi}\,(x + 0.044715\, x^3) .$$
 
@@ -100,9 +91,9 @@ $$\mathrm{silu}'(x) = \sigma(x) + x\,\sigma(x)(1 - \sigma(x)) = \sigma(x)\left(1
 
 Forgetting the product rule and writing $\sigma(x)$ alone is the classic bug: it is right at $x = 0$ and wrong everywhere else.
 
-### 2.6 Identities the tests use
+### 2.6 Identities a correct solution satisfies
 
-$\sigma(x) + \sigma(-x) = 1$; $\tanh x = 2\sigma(2x) - 1$; and for $f$ in $\{\mathrm{softplus}, \mathrm{silu}, \mathrm{gelu}, \mathrm{gelu}_{\tanh}\}$, $f(x) - f(-x) = x$ (each is $x$ times something that adds to 1 at $\pm x$, or for softplus $\ln\frac{1 + e^x}{1 + e^{-x}} = \ln e^x$). These hold for every $x$, so `test_identities` checks them at 500 seeded points.
+$\sigma(x) + \sigma(-x) = 1$; $\tanh x = 2\sigma(2x) - 1$; and for $f$ in $\{\mathrm{softplus}, \mathrm{silu}, \mathrm{gelu}, \mathrm{gelu}_{\tanh}\}$, $f(x) - f(-x) = x$ (each is $x$ times something that adds to 1 at $\pm x$, or for softplus $\ln\frac{1 + e^x}{1 + e^{-x}} = \ln e^x$). These hold for every $x$, so they are an independent check of signs and symmetry at any point.
 
 ### 2.7 Dtypes
 
@@ -122,7 +113,7 @@ At $x = 1$, with $e^{-1} = 0.3678794$:
 | gelu (erf) | $1 \times \Phi(1)$ | 0.8413447 | $\Phi(1) + \varphi(1) = 0.8413447 + 0.2419707$ | 1.0833155 |
 | gelu (tanh) | $u = 0.7978846 \times 1.044715 = 0.8335620$, $\frac12(1 + \tanh u) = \frac12(1 + 0.6823840)$ | 0.8411920 | (section 2.4) | |
 
-The exact and approximate GELU differ by $1.5 \times 10^{-4}$ here. These numbers are the first two tests, `test_hand_example_at_one` and `test_hand_example_gelus`.
+The exact and approximate GELU differ by $1.5 \times 10^{-4}$ here.
 
 ## 4. The interface
 
@@ -174,17 +165,15 @@ Every function keeps the shape and the float32 or float64 dtype of its input, re
 | Back | `M02.1` | `gelu_erf` and `dgelu_erf` call `erf_series(x / sqrt(2), 160)` |
 | Back | `M01.1` | derivatives as limits; the frozen gradcheck in the tests is `M01.1`'s central difference (reading) |
 | Back | `M00.1` | $e^x$ and $\ln$ (reading) |
-| Forward | `M08.1` | dual numbers compute the same derivatives by forward-mode autodiff; its tests compare them with yours to $10^{-15}$ |
+| Forward | `M08.1` | dual numbers compute the same derivatives by forward-mode autodiff; its tests compare them with these to $10^{-15}$ |
 | Forward | `L0.2` | the elementwise ops of `tinyllm.F` (forward and backward) |
 | Forward | `L3.2` | LSTM gates: sigmoid for input, forget, output; tanh for the cell |
 | Forward | `L7.2` | SwiGLU $= \mathrm{silu}(xW) \odot xV$ |
-| Forward | `L9.6` | `tl_silu_mul_f32` in C, checked against your Python |
-
-`L0.2`, `L3.2`, `L7.2`, and `L9.6` join `used_by` when they are authored (`course/DEVIATIONS.md` row B31-02).
+| Forward | `L9.6` | `tl_silu_mul_f32` in C, checked against this Python |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `sigmoid`, `silu`, `gelu_*` | PyTorch `torch.nn.functional` | fused CUDA kernels, autocast to bf16, in-place variants | `aten/src/ATen/native/Activation.cpp`, `cuda/ActivationGeluKernel.cu` |
 | stable `softplus` | PyTorch `F.softplus(beta, threshold)` | returns $x$ above a threshold (default 20) instead of computing the log, trading $2 \times 10^{-9}$ for speed | `aten/src/ATen/native/cpu/Activation.cpp` |

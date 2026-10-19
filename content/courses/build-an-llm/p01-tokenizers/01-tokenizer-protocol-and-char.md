@@ -1,4 +1,3 @@
-<!-- ol:module L1.1 -->
 # Tokenizer protocol, char tokenizer
 
 ## Overview
@@ -6,40 +5,29 @@
 | | |
 |---|---|
 | **Module** | `L1.1` · build · Python · Pass 3 · 2 to 3 h |
-| **You build** | `python/tinyllm/tok/base.py`: the `Tokenizer` protocol, `check_ids`, `ByteTokenizer`; `python/tinyllm/tok/char.py`: `CharTokenizer` (`train`, `encode`, `decode`, `save`, `load`) |
+| **Solution** | [`base.py`](../../../../course/solutions/python/tinyllm/tok/base.py): the `Tokenizer` protocol, `check_ids`, `ByteTokenizer` · [`char.py`](../../../../course/solutions/python/tinyllm/tok/char.py): `CharTokenizer` (`train`, `encode`, `decode`, `save`, `load`) · model tests: [`test_tokenizers.py`](../../../../course/solutions/learner-tests/L1.1/python/tests/l1-1-tokenizers/test_tokenizers.py) |
 | **Contract** | [`course/contracts/py/tinyllm/tok/base.pyi`](../../../../course/contracts/py/tinyllm/tok/base.pyi) · [`course/contracts/py/tinyllm/tok/char.pyi`](../../../../course/contracts/py/tinyllm/tok/char.pyi) · formats: [`tokenizer.md`](../../../../course/contracts/formats/tokenizer.md), [`tokenizer-char.schema.json`](../../../../course/contracts/formats/tokenizer-char.schema.json) |
-| **Tests** | `course/tests/L1.1/` (what they check: section 4) · your own tests in `python/tests/l1-1-tokenizers/`, rung R2, graded by mutation (threshold 0.60) |
-| **Needs** | `M05.2` the GPT-2 byte map (`bytes_to_unicode`, `unicode_to_bytes`) · reading: `L0.0` the tracer's byte ids (or `--ref-deps`) |
-| **Used by** | `L1.2` byte-level BPE, `L1.3` WordPiece, and `L1.4` Unigram implement the protocol and call `check_ids` · `L1.6` measures any `Tokenizer` · later: `L1.5` the Rust tokenizer behind the same protocol, `L3.6` char-level language models |
-| **Milestone** | `MS-L1` (tokenizers, part of the pass gate `MS-P3`) |
+| **Needs** | `M05.2` the GPT-2 byte map (`bytes_to_unicode`, `unicode_to_bytes`) · reading: `L0.0` the tracer's byte ids |
+| **Used by** | `L1.2` byte-level BPE, `L1.3` WordPiece, and `L1.4` Unigram implement the protocol and call `check_ids` · `L1.6` measures any `Tokenizer` · later: `L1.5` the Rust tokenizer behind the same protocol, `L3.6` char-level language models. With `L1.2` to `L1.6`, this completes the tokenizer layer of Pass 3 |
 | **Optional depth** | The Unicode Standard, ch. 2 "General Structure" and ch. 3 section 3.9 (UTF-8); Jurafsky and Martin, *Speech and Language Processing* (3rd ed. draft), ch. 2 "Regular Expressions, Tokenization, Edit Distance" |
 
 ## Key Takeaways
 
-- A tokenizer is a contract, not an algorithm: every tokenizer in your system (bytes, char, BPE, WordPiece, Unigram, and later Rust) has the same six members, so everything that consumes tokens is written once (`test_both_satisfy_the_protocol`).
-- The byte tokenizer of the tracer is already a tokenizer: 256 ids, no training, every text round-trips, and its token strings are the GPT-2 byte map, the alphabet BPE starts from (`test_hand_example_bytes`, `test_byte_tokens_are_the_gpt2_byte_map`).
-- A char tokenizer's ids must not depend on the order of the training texts: `<unk>` is 0, the specials follow, then code points sorted by code point (`test_hand_example_vocab`).
-- Unknown input is data, not an exception: an unseen character becomes `<unk>`, and special-token texts typed by a user stay ordinary characters (`test_hand_example_encode_decode`, `test_special_text_is_not_matched`).
-- Decoding never trusts ids and loading never trusts files: `-1`, `vocab_size`, `True`, and a malformed `tinyllm_char.json` are all `ValueError` (`test_decode_rejects_bad_ids`, `test_load_rejects_invalid_files`).
+- A tokenizer is a contract, not an algorithm: every tokenizer in the system (bytes, char, BPE, WordPiece, Unigram, and later Rust) has the same six members, so everything that consumes tokens is written once.
+- The byte tokenizer of the tracer is already a tokenizer: 256 ids, no training, every text round-trips, and its token strings are the GPT-2 byte map, the alphabet BPE starts from.
+- A char tokenizer's ids must not depend on the order of the training texts: `<unk>` is 0, the specials follow, then code points sorted by code point.
+- Unknown input is data, not an exception: an unseen character becomes `<unk>`, and special-token texts typed by a user stay ordinary characters.
+- Decoding never trusts ids and loading never trusts files: `-1`, `vocab_size`, `True`, and a malformed `tinyllm_char.json` are all `ValueError`.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L1.1              # stubs base.py and char.py into your repo, contracts alongside
-ol tests L1.1              # read the test catalog first
-ol check L1.1              # exit code is the verdict; then grades your tests by mutation
-ol check L1.1 --ref-deps   # only if your M05.2 is not passing yet
-ol mutate L1.1             # the full mutation grade of python/tests/l1-1-tokenizers/
-ol diff  L1.1              # after passing: your code against the reference
-```
-
-This is rung R2 of the testing ladder: you write the bodies of the test names listed at the end of section 4, in `python/tests/l1-1-tokenizers/`. `ol check` runs them against the reference with one planted bug at a time, and at least 60% of the planted bugs must make one of your tests fail.
+Sections 1 to 3 build the protocol and the char tokenizer's vocabulary rule from first principles and work them by hand. Section 4 fixes the interface and lists what a correct solution must handle. Section 5 walks through `base.py` and `char.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Your tracer speaks bytes. `L0.0` trained on raw UTF-8 bytes and `L10.0` serves `tl_tokenizer = "bytes"`, so `é` costs two tokens and the model spends capacity learning how to spell UTF-8. Pass 3 replaces that with trained vocabularies: byte-level BPE (`L1.2`), WordPiece (`L1.3`), and Unigram (`L1.4`), compared by `L1.6` and chosen for the capstone. Four tokenizers with four call conventions would mean four versions of the corpus pipeline, the metrics, and the engine's tokenizer factory. This module fixes the shape first: one `Tokenizer` protocol, the byte tokenizer you already have written against it, and the simplest trained tokenizer, one id per character, which also becomes the vocabulary of the char-level models in `L3.6`.
+The tracer speaks bytes. `L0.0` trained on raw UTF-8 bytes and `L10.0` serves `tl_tokenizer = "bytes"`, so `é` costs two tokens and the model spends capacity learning how to spell UTF-8. Pass 3 replaces that with trained vocabularies: byte-level BPE (`L1.2`), WordPiece (`L1.3`), and Unigram (`L1.4`), compared by `L1.6` and chosen for the capstone. Four tokenizers with four call conventions would mean four versions of the corpus pipeline, the metrics, and the engine's tokenizer factory. This module fixes the shape first: one `Tokenizer` protocol, the existing byte tokenizer written against it, and the simplest trained tokenizer, one id per character, which also becomes the vocabulary of the char-level models in `L3.6`.
 
 ## 2. Principles
 
