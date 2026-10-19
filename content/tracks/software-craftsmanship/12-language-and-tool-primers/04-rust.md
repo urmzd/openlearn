@@ -272,7 +272,233 @@ The binary, `echo/src/main.rs`: `echo --port <n>` binds `127.0.0.1:<n>` (no flag
 | two clients at once | fault | a stalled client does not block another | the engine serves many clients (`L10.0`) |
 | a client vanishing mid-line leaves the server up | fault | an abrupt disconnect ends only that connection | clients die all the time |
 
-@@SOLUTION@@
+## 5. The solution, step by step
+
+### 5.1 From first principles
+
+1. The protocol rules are pure functions of one line's bytes, so they belong in a library with no I/O, testable with plain calls (2.1). The binary only moves bytes between a socket and that library.
+2. A line from a socket is bytes, and only valid UTF-8 can become a `&str` (2.2). So the first step of handling a line is `from_utf8`, and a failure is a protocol error, not a crash.
+3. Every way a request can be wrong is a value of one enum, `ProtoError`. Its `Display` impl is the error text, so the reply `ERR <reason>` is one `format!` and cannot drift from the variants.
+4. The text of `ECHO` must come back byte for byte, so the line is split once, at the first space, and the rest is not touched.
+5. `LEN` counts encoded bytes, which is exactly what `str::len` returns (2.6); no counting code is needed.
+6. Whether to close after a reply depends on the command, so the top-level function returns the reply and a flag together; the server never inspects the command itself.
+7. TCP delivers a byte stream (2.7), so the server buffers and reads up to each `\n`. A final fragment without `\n` means the client left mid-line, and there is nothing to answer.
+8. One thread per connection keeps a slow client from blocking others (2.8); `move` gives each thread sole ownership of its socket, so the compiler rules out two threads sharing one by accident.
+
+### 5.2 The code, annotated
+
+**The types.**
+
+```rust
+/// A parsed request. `Echo` and `Len` own their text (a `String`), so a
+/// `Command` outlives the buffer the line was read into.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Command { Ping, Echo(String), Len(String), Quit }
+
+/// Every way a line can fail. The `Display` impl is the text after `ERR `.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProtoError { Empty, InvalidUtf8, Unknown(String) }
+
+impl fmt::Display for ProtoError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {                       // exhaustive: a new variant cannot lack a message
+            ProtoError::Empty => write!(f, "empty line"),
+            ProtoError::InvalidUtf8 => write!(f, "invalid utf-8"),
+            ProtoError::Unknown(word) => write!(f, "unknown command {word}"),
+        }
+    }
+}
+impl std::error::Error for ProtoError {}
+```
+
+`PartialEq` is derived so `reply` can ask `cmd == Command::Quit`, and unit tests can compare results with `assert_eq!`.
+
+**Parsing.**
+
+```rust
+pub fn parse(line: &str) -> Result<Command, ProtoError> {
+    let line = line.strip_suffix('\n').unwrap_or(line);   // "\n" first...
+    let line = line.strip_suffix('\r').unwrap_or(line);   // ...then a "\r" before it
+    if line.is_empty() {
+        return Err(ProtoError::Empty);
+    }
+    // split at the FIRST space only: the text keeps every later space (step 4)
+    let (word, text) = line.split_once(' ').unwrap_or((line, ""));
+    match word {                           // case-sensitive: "ping" is unknown
+        "PING" => Ok(Command::Ping),
+        "QUIT" => Ok(Command::Quit),
+        "ECHO" => Ok(Command::Echo(text.to_string())),   // owned copy (2.2)
+        "LEN" => Ok(Command::Len(text.to_string())),
+        _ => Err(ProtoError::Unknown(word.to_string())),
+    }
+}
+```
+
+The order of the two `strip_suffix` calls is what makes `\r\n` work: stripping `\r` first would find `\n` at the end and do nothing. Each `strip_suffix` returns `Option<&str>`, a view into the same line, so no copying happens until `to_string`. Section 3's `ECHO  two  spaces` splits into `"ECHO"` and `" two  spaces"`, keeping the leading space. `PING extra` parses as `Ping`: the text is ignored for commands that take none.
+
+**Responding.**
+
+```rust
+pub fn byte_len(text: &str) -> usize {
+    text.len()                             // UTF-8 bytes, NUL included (step 5)
+}
+
+pub fn respond(cmd: &Command) -> String {
+    match cmd {
+        Command::Ping => "PONG".to_string(),
+        Command::Echo(text) => text.clone(),
+        Command::Len(text) => byte_len(text).to_string(),
+        Command::Quit => "BYE".to_string(),
+    }
+}
+```
+
+`respond` borrows the command (`&Command`), so it cannot consume it and the caller can still compare it with `Quit` afterwards.
+
+**The whole protocol for one line.**
+
+```rust
+pub fn reply(line: &[u8]) -> (String, bool) {
+    let answer = std::str::from_utf8(line)
+        .map_err(|_| ProtoError::InvalidUtf8)        // step 2: bytes -> &str or a ProtoError
+        .and_then(parse)                             // a second fallible step, chained
+        .map(|cmd| (respond(&cmd), cmd == Command::Quit));   // step 6: reply and close flag
+    match answer {
+        Ok(pair) => pair,
+        Err(e) => (format!("ERR {e}"), false),       // step 3; errors never close
+    }
+}
+```
+
+The chain reads as the rule: decode, then parse, then answer, with the first failure skipping the rest. Trace `LEN héllo\n`: `from_utf8` gives `Ok("LEN héllo\n")`, `parse` gives `Ok(Len("héllo"))`, `map` gives `("6", false)`. For `JUMP high\n`, `parse` returns `Err(Unknown("JUMP"))`, `map` is skipped, and the reply is `ERR unknown command JUMP`.
+
+**The server: startup.**
+
+```rust
+fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let port = match parse_port(&args) {
+        Ok(p) => p,
+        Err(e) => { eprintln!("echo: {e}"); process::exit(2); }   // usage error: status 2
+    };
+    let listener = match TcpListener::bind(("127.0.0.1", port)) {
+        Ok(l) => l,
+        Err(e) => { eprintln!("echo: bind 127.0.0.1:{port}: {e}"); process::exit(1); }
+    };
+    let addr = listener.local_addr().expect("a bound listener has an address");
+    println!("listening on {addr}");       // after bind: with port 0, this is the real port
+    let _ = io::stdout().flush();          // stdout to a pipe is buffered: push the line out now
+    // ... accept loop below
+}
+
+fn parse_port(args: &[String]) -> Result<u16, String> {
+    match args {                           // a slice pattern: exactly zero or two arguments
+        [] => Ok(7878),
+        [flag, value] if flag == "--port" => value.parse::<u16>().map_err(|e| format!("--port {value}: {e}")),
+        _ => Err("usage: echo [--port <n>]".to_string()),
+    }
+}
+```
+
+`u16` is the type of a port, so `--port 70000` fails to parse and exits 2 instead of wrapping. The flush matters because a script reading the first line through a pipe would otherwise wait for a buffer that never fills.
+
+**The server: one thread per connection.**
+
+```rust
+    for conn in listener.incoming() {
+        match conn {
+            Ok(stream) => {
+                // `move` hands this thread ownership of `stream`; the loop
+                // keeps no reference to it.
+                thread::spawn(move || {
+                    if let Err(e) = serve(stream) {
+                        eprintln!("echo: connection: {e}");   // one connection's error, logged
+                    }
+                });
+            }
+            Err(e) => eprintln!("echo: accept: {e}"),         // a failed accept does not stop the server
+        }
+    }
+```
+
+**The server: reading lines.**
+
+```rust
+fn serve(stream: TcpStream) -> io::Result<()> {
+    // Two handles on one socket: a buffered reader (a single read() may hold
+    // half a line or three lines) and the stream itself for writing.
+    let mut reader = BufReader::new(stream.try_clone()?);
+    let mut writer = stream;
+    let mut line = Vec::new();             // reused for every line: one allocation per connection
+    loop {
+        line.clear();
+        let n = reader.read_until(b'\n', &mut line)?;   // exactly one line, however it arrived
+        if n == 0 || line.last() != Some(&b'\n') {
+            return Ok(()); // EOF, or the client left mid-line: nothing to answer
+        }
+        let (text, close) = lineproto::reply(&line);
+        writer.write_all(text.as_bytes())?;
+        writer.write_all(b"\n")?;
+        if close {
+            return Ok(());                 // QUIT: returning drops both handles, closing the socket
+        }
+    }
+}
+```
+
+`read_until` reads into `Vec<u8>`, not `String`, because the bytes are not yet known to be UTF-8; `reply` decides that. Three pipelined lines in one packet sit in the `BufReader`'s buffer and come out one per call; a line split across three packets is assembled by `read_until` before it returns. A client that resets the connection makes a read or write return `Err`, which `?` passes up to the thread, which logs it and ends; the accept loop never sees it.
+
+Full solution: [`lib.rs`](../../../../course/solutions/primers/lang.04/lineproto/src/lib.rs), [`main.rs`](../../../../course/solutions/primers/lang.04/echo/src/main.rs).
+
+### 5.3 Why this solution
+
+- **Cost.** Each line is handled in time linear in its length; each connection costs one OS thread (a stack of a few MB of address space, mostly untouched) and one buffer.
+- **Library plus binary** rather than one `main.rs`: the rules are tested with `reply(b"...")` in microseconds, and the binary is small enough to read in one sitting. `L10.0` uses the same split.
+- **`BufReader::read_until`** rather than one `read` per request: TCP has no message boundaries, so anything else is wrong under pipelining or slow networks.
+- **A thread per connection** rather than async: no runtime and no dependency, at the cost of scaling to hundreds rather than tens of thousands of connections. `lang.09` makes the async trade.
+- **Tradeoff accepted:** no limit on line length. A client that sends gigabytes without a newline grows `line` without bound; a production server caps it (for example with `take` on the reader) and answers an error.
+
+### 5.4 Explain it back
+
+**Why does `reply` take `&[u8]` rather than `&str`?**
+
+<details><summary>Answer</summary>
+
+The bytes come straight from a socket and may not be UTF-8. Taking bytes lets `reply` own the decision and answer `ERR invalid utf-8` instead of making every caller decode first, or worse, unwrap.
+
+</details>
+
+**What does `serve` do with the bytes `PI` followed by a closed connection?**
+
+<details><summary>Answer</summary>
+
+`read_until` returns 2 with no trailing `\n`, so `serve` returns `Ok(())` without replying. The client left mid-line; there is nobody to answer and no complete request to answer.
+
+</details>
+
+**Why is `stream` moved into the thread instead of borrowed?**
+
+<details><summary>Answer</summary>
+
+The thread may outlive the loop iteration that accepted the connection. A borrow would have to outlive the stack variable it points at, which the compiler rejects. Moving gives the thread ownership, so the socket lives exactly as long as the thread needs it and closes when `serve` returns.
+
+</details>
+
+**Why strip `\n` before `\r`?**
+
+<details><summary>Answer</summary>
+
+The line ends with `\r\n`. The last character is `\n`, so `strip_suffix('\r')` first would find nothing to strip; stripping `\n` exposes the `\r`, which the second call then removes.
+
+</details>
+
+**`LEN héllo` answers 6. What would `text.chars().count()` answer, and why is that wrong here?**
+
+<details><summary>Answer</summary>
+
+5, the number of Unicode scalar values. The protocol defines `LEN` as the UTF-8 byte length, the quantity byte-oriented protocols need (a `Content-Length`, a buffer size), and `é` is two bytes.
+
+</details>
 
 ## 6. Pitfalls
 
