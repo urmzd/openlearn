@@ -233,7 +233,7 @@ The EMA shows up as soon as you train anything. In *Build Your Own LLM System*, 
 - Kingma and Ba, "Adam" (2015), section 3: initialization bias correction. Adam and AdamW in `torch/optim/adam.py` apply the same correction to two moments, often folded into the step size $\alpha \sqrt{1 - \beta_2^t}/(1 - \beta_1^t)$.
 - PyTorch `torch.optim.swa_utils.AveragedModel` with `get_ema_multi_avg_fn` (`torch/optim/swa_utils.py`): an EMA of every parameter tensor and buffer, updated in place on the device.
 - TensorBoard's smoothing slider (`tensorboard/plugins/scalar`, the `smoothing` weight): a debiased EMA of the plotted scalar, exactly the one built here.
-- `numpy.expm1` and `numpy.log1p`, the functions that make $1 - \beta^t$ accurate for $\beta = 0.9999`; see [Sequences, geometric series, and frequency ladders](../00-precalculus/03-sequences-and-frequency-ladders.md).
+- `numpy.expm1` and `numpy.log1p`, the functions that make $1 - \beta^t$ accurate for $\beta = 0.9999$; see [Sequences, geometric series, and frequency ladders](../00-precalculus/03-sequences-and-frequency-ladders.md).
 
 ## Key terms
 

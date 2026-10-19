@@ -1,34 +1,19 @@
 # Eigenvalues, power iteration, and the spectral radius
 
-## Overview
+Training a recurrent network, as in [Vanilla RNN with manual BPTT and truncation](../../build-an-llm/p03-recurrent/01-vanilla-rnn-manual-bptt.md) in *Build Your Own LLM System*, multiplies the hidden state by the same weight matrix $W$ at every step, and backpropagation multiplies the gradient by $W^\top$ the same number of times. Whether that product grows without bound or fades to nothing over 200 steps is decided by one number, the spectral radius $\rho(W)$: above 1 the gradients explode, below 1 they vanish. The training monitor in [Training loop and the autograd bigram](../../build-an-llm/p00-foundations/05-training-loop-and-the-autograd-bigram.md) prints it for every weight matrix, and the same machinery later finds the largest curvature of a loss, which bounds the learning rate.
 
-| | |
-|---|---|
-| **Module** | `M03.4` · build · Python · Pass 2 · about 2 h reading |
-| **Solution** | [`eig.py`](../../../../course/solutions/python/tinyllm/linalg/eig.py): `power_iteration(matvec, n, iters, rng)` (the dominant eigenpair), `inverse_iteration(A, shift, iters, rng)` (the eigenpair nearest a shift, one LU and many solves), `spectral_radius(W, iters)` ($\max_i \lvert\lambda_i\rvert$ by the QR algorithm, complex eigenvalues included) |
-| **Contract** | [`course/contracts/py/tinyllm/linalg/eig.pyi`](../../../../course/contracts/py/tinyllm/linalg/eig.pyi) |
-| **Needs** | `M03.2` `lu` and `lu_solve` ([`lu.py`](../../../../course/solutions/python/tinyllm/linalg/lu.py)), `M03.3` `qr_householder` ([`qr.py`](../../../../course/solutions/python/tinyllm/linalg/qr.py)) |
-| **Used by** | later `L0.5` (the training monitor reports $\rho$ of weight matrices), `L3.1` (the exploding-gradient diagnostic), `M10.5` (the top Hessian eigenvalue); `M10.1` reads it for the condition number |
-| **Optional depth** | Trefethen and Bau, *Numerical Linear Algebra*, lectures 24 to 28 (eigenvalue problems, power and inverse iteration, the QR algorithm); Strang, *Introduction to Linear Algebra*, ch. 6; Pascanu, Mikolov, and Bengio, "On the difficulty of training recurrent neural networks" (2013) |
+`numpy.linalg.eigvals` would answer, but the method is simple enough to build from scratch: multiply, normalize, repeat. This section builds it, sees where it fails (rotations), and fixes that failure with the QR factorization from [Orthogonality, Householder QR, and orthogonal initialization](03-orthogonality-and-householder-qr.md). Along the way it reuses `lu` and `lu_solve` from [Gaussian elimination and LU with partial pivoting](02-gaussian-elimination-and-lu.md) ([`lu.py`](../../../../course/solutions/python/tinyllm/linalg/lu.py)) and `qr_householder` ([`qr.py`](../../../../course/solutions/python/tinyllm/linalg/qr.py)).
 
-## Key Takeaways
+The solution is [`eig.py`](../../../../course/solutions/python/tinyllm/linalg/eig.py), with contract [`eig.pyi`](../../../../course/contracts/py/tinyllm/linalg/eig.pyi). It has three functions: `power_iteration(matvec, n, iters, rng)` for the dominant eigenpair, `inverse_iteration(A, shift, iters, rng)` for the eigenpair nearest a shift (one LU and many solves), and `spectral_radius(W, iters)` for $\max_i \lvert\lambda_i\rvert$ by the QR algorithm, complex eigenvalues included.
 
-- An **eigenvector** is a direction a matrix only stretches, $Av = \lambda v$; repeated multiplication amplifies the eigenvalue of largest modulus fastest, so **power iteration** converges to it at the rate $\lvert\lambda_2/\lambda_1\rvert$ per step.
-- Return the **Rayleigh quotient** $v^\top A v$, not $\lVert Av \rVert$, and renormalize every step: the first loses the sign, the second overflows.
-- **Inverse iteration** runs power iteration on $(A - \sigma I)^{-1}$, whose dominant eigenvalue belongs to the $\lambda$ nearest $\sigma$; factor $A - \sigma I$ **once** with LU and solve at every step.
-- A real matrix's dominant eigenvalues can be a **complex pair** (a rotation), where power iteration never converges. The **QR algorithm** $A_{t+1} = R_t Q_t$ exposes them as $2 \times 2$ blocks, and the **spectral radius** $\rho(W) = \max_i \lvert\lambda_i\rvert$ reads off the blocks.
+> **Learning objectives**
+> - Derive why power iteration converges to the dominant eigenvector at the rate $\lvert\lambda_2/\lambda_1\rvert$ per step, and run it by hand.
+> - Explain why the Rayleigh quotient, a random start, and per-step normalization are each required.
+> - Find the eigenvalue nearest a shift by inverse iteration with one LU factorization.
+> - Explain why power iteration fails on rotations and how the QR algorithm reads complex pairs from $2 \times 2$ blocks.
+> - Relate the spectral radius to exploding and vanishing gradients.
 
-## How to read this chapter
-
-Sections 1 to 3 build power iteration, inverse iteration, and the QR algorithm from first principles and run them by hand. Section 4 fixes the interface and the cases a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
-
----
-
-## 1. Why now
-
-Training a recurrent network (`L3.1`) multiplies the hidden state by the same weight matrix $W$ at every step, and backpropagation multiplies the gradient by $W^\top$ the same number of times. Whether that product grows without bound or fades to nothing over 200 steps is decided by one number, the spectral radius $\rho(W)$: above 1 the gradients explode, below 1 they vanish. The training monitor (`L0.5`) prints it for every weight matrix, and `M10.5` uses the same machinery to find the largest curvature of the loss, which bounds the learning rate. `numpy.linalg.eigvals` would answer, but the method is simple enough to build from scratch: multiply, normalize, repeat. This chapter builds it, sees where it fails (rotations), and fixes that failure with the QR factorization from `M03.3`.
-
-## 2. Principles
+## Notation
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -42,43 +27,47 @@ Training a recurrent network (`L3.1`) multiplies the hidden state by the same we
 | $A_t = Q_t R_t$ | the QR factorization at step $t$ of the QR algorithm | |
 | $i$ | the imaginary unit, $i^2 = -1$ | |
 
-### 2.1 Eigenvalues and eigenvectors
+## Eigenvalues and eigenvectors
 
-A non-zero vector $v$ is an **eigenvector** of $A$ with **eigenvalue** $\lambda$ when $Av = \lambda v$: $A$ maps $v$ onto its own line. The eigenvalues are the roots of the characteristic polynomial $\det(A - \lambda I) = 0$, a polynomial of degree $n$, so there are $n$ of them counted with multiplicity, possibly complex (a real polynomial's complex roots come in conjugate pairs $a \pm bi$). For a $2 \times 2$ matrix $\begin{pmatrix} a & b \\ c & d \end{pmatrix}$ the polynomial is $\lambda^2 - (a + d)\lambda + (ad - bc)$: trace and determinant, solved by the quadratic formula. A **symmetric** matrix has only real eigenvalues and an orthonormal basis of eigenvectors.
+A non-zero vector $v$ is an **eigenvector** of $A$ with **eigenvalue** $\lambda$ when $Av = \lambda v$: $A$ maps $v$ onto its own line, only stretching it. The eigenvalues are the roots of the characteristic polynomial $\det(A - \lambda I) = 0$, a polynomial of degree $n$, so there are $n$ of them counted with multiplicity, possibly complex; a real polynomial's complex roots come in conjugate pairs $a \pm bi$. For a $2 \times 2$ matrix $\begin{pmatrix} a & b \\ c & d \end{pmatrix}$ the polynomial is $\lambda^2 - (a + d)\lambda + (ad - bc)$: trace and determinant, solved by the quadratic formula. A **symmetric** matrix has only real eigenvalues and an orthonormal basis of eigenvectors.
 
-### 2.2 Power iteration
+## Power iteration
 
-Write a start vector in the eigenvector basis, $v_0 = \sum_i c_i v_i$. Then
+Computing roots of a degree-$n$ polynomial is not how you find eigenvalues in practice. Instead, let the matrix find them for you. Write a start vector in the eigenvector basis, $v_0 = \sum_i c_i v_i$. Then
 
 $$A^t v_0 = \sum_i c_i \lambda_i^t v_i = \lambda_1^t \Big( c_1 v_1 + \sum_{i \ge 2} c_i \big(\tfrac{\lambda_i}{\lambda_1}\big)^t v_i \Big).$$
 
-If $\lvert\lambda_1\rvert > \lvert\lambda_2\rvert$ and $c_1 \ne 0$, every other term shrinks like $\lvert\lambda_2/\lambda_1\rvert^t$, so the **direction** of $A^t v_0$ converges to $v_1$. Three practical rules follow.
+If $\lvert\lambda_1\rvert > \lvert\lambda_2\rvert$ and $c_1 \ne 0$, every other term shrinks like $\lvert\lambda_2/\lambda_1\rvert^t$, so the **direction** of $A^t v_0$ converges to $v_1$. Three practical rules follow from that formula.
 
-1. **Normalize every step**, $v_{t+1} = Av_t / \lVert Av_t \rVert$. The direction is all that matters, and $\lambda_1^t$ overflows: $10^{400}$ is `inf` in float64, and `inf/inf` is NaN.
-2. **Start at random.** A start with $c_1 = 0$ never finds $v_1$ (in exact arithmetic): $e_1$ is exactly such a start for $\operatorname{diag}(1, 3)$. Random entries make $c_1 = 0$ an event of probability zero. The contract draws $v_0$ from the caller's generator, $2u - 1$ for $n$ uniforms, so runs are reproducible.
-3. **Report the Rayleigh quotient** $r(v) = v^\top A v$. For an exact eigenvector it equals $\lambda$, **with its sign**; $\lVert Av \rVert$ equals $\lvert\lambda\rvert$ and turns $-5$ into $5$. For a symmetric matrix its error is the *square* of the direction's error, so it converges twice as fast.
+First, **normalize every step**, $v_{t+1} = Av_t / \lVert Av_t \rVert$. The direction is all that matters, and $\lambda_1^t$ overflows: $10^{400}$ is `inf` in float64, and `inf/inf` is NaN.
 
-If some $Av_t$ is exactly zero, $v_t$ lies in the null space: the eigenvalue is 0, and dividing would produce NaN, so return 0.
+Second, **start at random**. A start with $c_1 = 0$ never finds $v_1$ in exact arithmetic, and $e_1$ is exactly such a start for $\operatorname{diag}(1, 3)$. Random entries make $c_1 = 0$ an event of probability zero. The contract draws $v_0$ from the caller's generator, $2u - 1$ for $n$ uniforms, so runs are reproducible.
 
-### 2.3 Inverse iteration
+Third, **report the Rayleigh quotient** $r(v) = v^\top A v$. For an exact eigenvector it equals $\lambda$, *with its sign*; $\lVert Av \rVert$ equals $\lvert\lambda\rvert$ and turns $-5$ into $5$. For a symmetric matrix, the Rayleigh quotient's error is the *square* of the direction's error, so it converges twice as fast.
 
-The matrix $(A - \sigma I)^{-1}$ has the same eigenvectors as $A$, with eigenvalues $1/(\lambda_i - \sigma)$. The largest of those belongs to the $\lambda_i$ **nearest** $\sigma$, so power iteration on $(A - \sigma I)^{-1}$ finds it, at the rate $\lvert\lambda_{\text{near}} - \sigma\rvert / \lvert\lambda_{\text{next}} - \sigma\rvert$ per step: very fast for a good shift. Each step needs $w = (A - \sigma I)^{-1} v$, that is, a solve with $A - \sigma I$. Never form the inverse, and never refactor: `lu` once ($\frac{2}{3}n^3$ operations, `M03.2`), then `lu_solve` per step ($2n^2$). The answer reported is $v^\top A v$, an eigenvalue of $A$ itself. If $\sigma$ is exactly an eigenvalue, $A - \sigma I$ is singular and there is nothing to solve with: raise.
+One corner remains: if some $Av_t$ is exactly zero, $v_t$ lies in the null space. The eigenvalue is 0, and dividing would produce NaN, so return 0.
 
-### 2.4 Complex pairs and the QR algorithm
+## Inverse iteration
 
-The rotation $W = \begin{pmatrix} 0 & -2 \\ 2 & 0 \end{pmatrix}$ has trace 0 and determinant 4, so $\lambda^2 + 4 = 0$ and $\lambda = \pm 2i$: equal moduli, no real eigenvector. Power iteration sends $(1, 0)$ to $(0, 2)$, then $(-4, 0)$, then $(0, -8)$: the direction turns by $90°$ every step and never settles. Recurrent weight matrices are full of such rotations.
+Power iteration finds only the largest eigenvalue. To find others, change the matrix. $(A - \sigma I)^{-1}$ has the same eigenvectors as $A$, with eigenvalues $1/(\lambda_i - \sigma)$. The largest of those belongs to the $\lambda_i$ **nearest** $\sigma$, so power iteration on $(A - \sigma I)^{-1}$ finds it, at the rate $\lvert\lambda_{\text{near}} - \sigma\rvert / \lvert\lambda_{\text{next}} - \sigma\rvert$ per step: very fast for a good shift.
+
+Each step needs $w = (A - \sigma I)^{-1} v$, which is a solve with $A - \sigma I$. Never form the inverse, and never refactor: call `lu` once ($\frac{2}{3}n^3$ operations), then `lu_solve` per step ($2n^2$). The answer reported is $v^\top A v$, an eigenvalue of $A$ itself. If $\sigma$ is exactly an eigenvalue, $A - \sigma I$ is singular and there is nothing to solve with, so raise.
+
+## Complex pairs and the QR algorithm
+
+Power iteration has a blind spot. The rotation $W = \begin{pmatrix} 0 & -2 \\ 2 & 0 \end{pmatrix}$ has trace 0 and determinant 4, so $\lambda^2 + 4 = 0$ and $\lambda = \pm 2i$: equal moduli, no real eigenvector. Power iteration sends $(1, 0)$ to $(0, 2)$, then $(-4, 0)$, then $(0, -8)$. The direction turns by $90°$ every step and never settles, and recurrent weight matrices are full of such rotations.
 
 The **QR algorithm** handles them. Start from $A_0 = W$ and repeat
 
-$$A_t = Q_t R_t \ \text{(QR factorization, M03.3)}, \qquad A_{t+1} = R_t Q_t .$$
+$$A_t = Q_t R_t \ \text{(QR factorization)}, \qquad A_{t+1} = R_t Q_t .$$
 
-Since $R_t = Q_t^\top A_t$, $A_{t+1} = Q_t^\top A_t Q_t$: a **similarity transform**, which never changes the eigenvalues. It is power iteration on all $n$ directions at once, kept orthonormal by the QR step: the first column follows $\lambda_1$, the first two span the dominant 2-dimensional invariant subspace, and so on. When the moduli separate, $A_t$ converges to **block upper triangular** form (the real Schur form): entry $(j+1, j)$ decays like $\lvert\lambda_{j+1}/\lambda_j\rvert^t$, and what remains on the diagonal are $1 \times 1$ blocks (real eigenvalues) and $2 \times 2$ blocks (complex pairs, whose subdiagonal never vanishes). The spectral radius is the largest modulus over the blocks: $\lvert a \rvert$ for a $1 \times 1$ block, the quadratic formula of 2.1 for a $2 \times 2$ one. `spectral_radius` treats a subdiagonal entry below $10^{-12}$ times the largest entry as zero.
+Since $R_t = Q_t^\top A_t$, you have $A_{t+1} = Q_t^\top A_t Q_t$: a **similarity transform**, which never changes the eigenvalues. It is power iteration on all $n$ directions at once, kept orthonormal by the QR step: the first column follows $\lambda_1$, the first two span the dominant 2-dimensional invariant subspace, and so on. When the moduli separate, $A_t$ converges to **block upper triangular** form (the real Schur form). Entry $(j+1, j)$ decays like $\lvert\lambda_{j+1}/\lambda_j\rvert^t$, and what remains on the diagonal are $1 \times 1$ blocks (real eigenvalues) and $2 \times 2$ blocks (complex pairs, whose subdiagonal never vanishes). The spectral radius is the largest modulus over the blocks: $\lvert a \rvert$ for a $1 \times 1$ block, the quadratic formula above for a $2 \times 2$ one. `spectral_radius` treats a subdiagonal entry below $10^{-12}$ times the largest entry as zero.
 
-### 2.5 Why the spectral radius decides explosion
+## Why the spectral radius decides explosion
 
-For any vector norm, $\lVert W^t \rVert^{1/t} \to \rho(W)$ as $t \to \infty$ (Gelfand's formula), so $\lVert W^t h \rVert$ grows like $\rho^t$ when $\rho > 1$ and shrinks like $\rho^t$ when $\rho < 1$, up to factors polynomial in $t$. Backpropagation through $t$ steps of $h_t = W h_{t-1}$ multiplies by $(W^\top)^t$, which has the same spectral radius. Note $\rho(W) \le \lVert W \rVert_2$, with equality for symmetric (and orthogonal) $W$: an orthogonal initialization (`M03.3`) starts every recurrent weight at exactly $\rho = 1$.
+You now have a way to compute $\rho$; it remains to see why it is the number that matters. For any vector norm, $\lVert W^t \rVert^{1/t} \to \rho(W)$ as $t \to \infty$ (Gelfand's formula), so $\lVert W^t h \rVert$ grows like $\rho^t$ when $\rho > 1$ and shrinks like $\rho^t$ when $\rho < 1$, up to factors polynomial in $t$. Backpropagation through $t$ steps of $h_t = W h_{t-1}$ multiplies by $(W^\top)^t$, which has the same spectral radius. Note that $\rho(W) \le \lVert W \rVert_2$, with equality for symmetric (and orthogonal) $W$: an orthogonal initialization starts every recurrent weight at exactly $\rho = 1$.
 
-## 3. Worked example by hand
+## Working it by hand
 
 **Power iteration on** $A = \begin{pmatrix} 2 & 1 \\ 1 & 2 \end{pmatrix}$, with eigenvalues 3 (eigenvector $(1, 1)$) and 1 (eigenvector $(1, -1)$). Take the start $(1, 0) = \tfrac12 (1, 1) + \tfrac12 (1, -1)$ (the solution draws a random one) and skip the normalization to keep integers:
 
@@ -95,7 +84,7 @@ The wrong component stays $\tfrac12(1, -1)$ while the right one triples, so the 
 
 $$\lambda = 1.5\cos 0.7 \pm \sqrt{2.25\cos^2 0.7 - 2.25} = 1.5(\cos 0.7 \pm i \sin 0.7), \qquad \lvert\lambda\rvert = 1.5 .$$
 
-## 4. The interface
+## Designing the API
 
 ```python
 def power_iteration(matvec, n: int, iters: int, rng) -> tuple[float, NDArray]:
@@ -110,39 +99,13 @@ def spectral_radius(W, iters: int = 100) -> float:
     """max |lambda| by the unshifted QR algorithm with qr_householder; 0.0 for 0 x 0."""
 ```
 
-`power_iteration` takes a function, not a matrix, so `M10.5` can pass a Hessian-vector product without ever forming the Hessian.
+The one design decision worth dwelling on is that `power_iteration` takes a function, not a matrix. The algorithm only ever needs products $Av$, so a callable lets inverse iteration substitute a solve with the LU factors, and lets later optimization code pass a Hessian-vector product without ever forming the Hessian.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| Hand example, power iteration | unit | section 3: $\lambda = 3$, $v = \pm(1, 1)/\sqrt 2$ | pins the method |
-| Negative dominant eigenvalue | boundary | $\operatorname{diag}(-5, 1, 2)$ gives $-5$ | `M10.5` tells a maximum from a saddle by the sign |
-| A matrix where $e_1$ is a bad start | boundary | $\operatorname{diag}(1, 3)$ gives 3, not 1 | a fixed start can be orthogonal to $v_1$ |
-| Start vector draw order | unit | with 0 steps, $v$ is the normalized $2u - 1$ draws | reproducible from the seed (P11) |
-| Long run, $\lambda = 10$ | boundary | 400 steps stay finite | long runs |
-| Symmetric matrices | differential | 20 matrices, dominant $\pm 2$ against $1.5$, versus `np.linalg.eigh` | the sign and the vector, at a slow ratio |
-| Zero map, bad arguments | boundary | $Av = 0$ gives 0 without NaN; bad `n` and `iters` raise | rank-deficient weights |
-| Inverse iteration, spectrum $\{1, 3, 7\}$ | unit | shift 2.9 finds 3, shift 0 finds 1; an exact eigenvalue as the shift raises | the smallest Hessian eigenvalue in `M10.5` |
-| Inverse iteration, 25 steps | unit | `lu` is called exactly once | the point of a factorization |
-| Scaled rotation | unit | section 3: $\rho = 1.5$ | recurrent weights rotate |
-| Non-symmetric matrices | differential | five matrices with real, negative, and complex dominant eigenvalues, versus `np.linalg.eigvals` | the `L3.1` diagnostic on realistic matrices |
-| Edge sizes | boundary | $1 \times 1$, $0 \times 0$, a nilpotent matrix (all eigenvalues 0), non-square input | |
-| Input preserved | boundary | the caller's $W$ is unchanged | the monitor reads live weights |
+The reasoning chain follows the principles. Power iteration needs only products $Av$, so it takes a `matvec` callable. The start must have $c_1 \ne 0$ almost surely and be reproducible, so it is $n$ draws of $2u - 1$ from the caller's generator, normalized. Only the direction matters and $\lambda_1^t$ overflows, so each step divides by $\lVert Av \rVert$; a zero norm means $v$ is in the null space, so return eigenvalue 0 rather than $0/0$. The estimate must keep its sign, so the return value is the Rayleigh quotient $v^\top A v$ of the final unit vector, which costs one more `matvec`; in the worked example this is the column that converges to 3 with its error shrinking by $1/9$ per step.
 
-## 5. The solution, step by step
-
-### From first principles
-
-1. Power iteration needs only products $Av$ (2.2), so the solution takes a `matvec` callable instead of a matrix. That one choice lets inverse iteration pass a solve and `M10.5` pass a Hessian-vector product, with no new code.
-2. The start must have $c_1 \ne 0$ almost surely and be reproducible, so it is $n$ draws of $2u - 1$ from the caller's generator, normalized.
-3. Only the direction matters and $\lambda_1^t$ overflows, so each step divides by $\lVert Av \rVert$. A zero norm means $v$ is in the null space: return eigenvalue 0 rather than $0/0$.
-4. The eigenvalue estimate must keep its sign, so the return value is the Rayleigh quotient $v^\top A v$ of the final unit vector, which costs one more `matvec`. In the worked example this is the column that converges to 3 with error shrinking by $1/9$ per step.
-5. Inverse iteration is power iteration with `matvec = solve with A - \sigma I` (2.3). Factor once, outside the loop; check the pivots once so a shift equal to an eigenvalue raises. The reported value must belong to $A$, not to the inverse, so it is recomputed as $v^\top A v$.
-6. The spectral radius cannot come from power iteration because a complex pair never converges (2.4). The QR algorithm $T \leftarrow RQ$ preserves eigenvalues and drives $T$ to block triangular form; reading moduli from $1 \times 1$ and $2 \times 2$ diagonal blocks then covers both real and complex cases.
-7. "Zero" on the subdiagonal must be relative to the matrix's scale, so the threshold is $10^{-12} \max\lvert T\rvert$.
-
-### The code, annotated
+Inverse iteration is power iteration with "solve with $A - \sigma I$" as the `matvec`. Factor once, outside the loop, and check the pivots once so a shift equal to an eigenvalue raises. The reported value must belong to $A$, not to the inverse, so it is recomputed as $v^\top A v$. The spectral radius cannot come from power iteration because a complex pair never converges, so it uses the QR algorithm $T \leftarrow RQ$, which preserves eigenvalues and drives $T$ to block triangular form; reading moduli from the $1 \times 1$ and $2 \times 2$ diagonal blocks covers both real and complex cases. "Zero" on the subdiagonal must be relative to the matrix's scale, so the threshold is $10^{-12} \max\lvert T\rvert$.
 
 The start vector:
 
@@ -157,7 +120,7 @@ def _start(n: int, rng: Any) -> NDArray:
     return v / norm
 ```
 
-Power iteration, with the three rules of 2.2 visible as three lines:
+Power iteration, with the three rules visible as three lines:
 
 ```python
 def power_iteration(matvec, n, iters, rng):
@@ -227,24 +190,71 @@ def _block_moduli(T):
     return out
 ```
 
-On the scaled rotation, $T$ stays equal to $W$, the subdiagonal $1.5 \sin 0.7$ is far above the threshold, and the $2 \times 2$ formula gives $\lvert\lambda\rvert = 1.5$ twice.
+On the scaled rotation, $T$ stays equal to $W$, the subdiagonal $1.5 \sin 0.7$ is far above the threshold, and the $2 \times 2$ formula gives $\lvert\lambda\rvert = 1.5$ twice. The full solution is [`eig.py`](../../../../course/solutions/python/tinyllm/linalg/eig.py).
 
-Full solution: [`eig.py`](../../../../course/solutions/python/tinyllm/linalg/eig.py).
+### Why this design
 
-### Why this solution
+Power iteration costs `iters` matvecs plus one; for a dense matrix that is $O(\text{iters} \cdot n^2)$ time and $O(n)$ memory. Inverse iteration adds one $\frac{2}{3}n^3$ factorization and then $2n^2$ per step. The unshifted QR algorithm costs $O(\text{iters} \cdot n^3)$, acceptable for the small weight matrices a monitor inspects.
 
-- **Cost.** Power iteration costs `iters` matvecs plus one; for a dense matrix that is $O(\text{iters} \cdot n^2)$ and $O(n)$ memory. Inverse iteration adds one $\frac{2}{3}n^3$ factorization and then $2n^2$ per step. The unshifted QR algorithm costs $O(\text{iters} \cdot n^3)$, acceptable for the small weight matrices a monitor inspects.
-- **Why not $\lVert Av\rVert$.** It loses the sign and converges at the angle rate, not its square.
-- **Why not power iteration for $\rho$.** It fails on exactly the matrices recurrent networks produce (rotations), and it cannot be patched by more iterations.
-- **Why not shifts and Hessenberg reduction.** Production QR (LAPACK) reduces to Hessenberg form and uses Francis double shifts for quadratic convergence. That is faster but adds bookkeeping that hides the idea; the unshifted version converges linearly, at the ratio of consecutive moduli, which is enough for a diagnostic. The accepted tradeoff: if two eigenvalue moduli are very close but distinct, 100 iterations may leave a large subdiagonal and the pair is read as a $2 \times 2$ block, which still gives the right moduli.
+Each rejected alternative fails for a specific reason. $\lVert Av\rVert$ loses the sign and converges at the angle rate, not its square. Power iteration for $\rho$ fails on exactly the matrices recurrent networks produce, rotations, and cannot be patched by more iterations. Production QR (LAPACK) reduces to Hessenberg form and uses Francis double shifts for quadratic convergence; that is faster but adds bookkeeping that hides the idea, while the unshifted version converges linearly, at the ratio of consecutive moduli, which is enough for a diagnostic. The tradeoff accepted is that if two eigenvalue moduli are very close but distinct, 100 iterations may leave a large subdiagonal and the pair is read as a $2 \times 2$ block, which still gives the right moduli.
 
-### Explain it back
+## What can go wrong
+
+A correct solution has to pass a set of targeted checks. The hand example must give $\lambda = 3$ and $v = \pm(1, 1)/\sqrt 2$. $\operatorname{diag}(-5, 1, 2)$ must give $-5$, because a later optimizer tells a maximum from a saddle by the sign. $\operatorname{diag}(1, 3)$ must give 3, not 1, because a fixed start like $e_1$ can be orthogonal to $v_1$. With 0 steps, $v$ must be the normalized $2u - 1$ draws, so results are reproducible from the seed. A long run with $\lambda = 10$ must stay finite over 400 steps. Twenty symmetric matrices with dominant eigenvalue $\pm 2$ against $1.5$ must match `np.linalg.eigh` in sign and vector at that slow ratio. The zero map must give 0 without NaN (rank-deficient weights exist), and bad `n` and `iters` must raise.
+
+Inverse iteration on the spectrum $\{1, 3, 7\}$ must find 3 with shift 2.9 and 1 with shift 0, and an exact eigenvalue as the shift must raise; that is how the smallest Hessian eigenvalue is found later. Over 25 steps `lu` must be called exactly once, which is the point of a factorization. For `spectral_radius`, the scaled rotation must give $\rho = 1.5$, since recurrent weights rotate; five non-symmetric matrices with real, negative, and complex dominant eigenvalues must match `np.linalg.eigvals`; the edge sizes ($1 \times 1$, $0 \times 0$, a nilpotent matrix with all eigenvalues 0, non-square input) must behave; and the caller's $W$ must be unchanged, because the monitor reads live weights.
+
+The mistakes behind those failures:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| returning $\lVert Av \rVert$ instead of $v^\top A v$ | $+5$ reported for eigenvalue $-5$ | returns `v @ matvec(v)` |
+| a fixed start such as $e_1$ | the wrong eigenvalue whenever $e_1$ is orthogonal to $v_1$ | draws the start from the generator in `_start` |
+| normalizing only at the end | `inf`, then NaN, after a few hundred steps | `v = w / norm` inside the loop |
+| dividing by $\lVert Av \rVert = 0$ | NaN for a vector in the null space | returns `(0.0, v)` when `norm == 0.0` |
+| iterating with $A - \sigma I$ instead of its inverse | finds the eigenvalue farthest from $\sigma$ | passes `lu_solve` as the `matvec` |
+| refactoring at every step | correct but `iters` times slower | calls `lu` before the loop; the lambda only solves |
+| spectral radius by power iteration | never converges on rotations; wrong $\rho$ for complex pairs | uses the QR algorithm, not power iteration |
+| reading only the diagonal after the QR algorithm | complex pairs reported as their real parts | `_block_moduli` solves each $2 \times 2$ block in closed form |
+| iterating in the caller's array | the weights being monitored change | iterates on `np.array(W)`, a copy |
+
+## Where this leads
+
+In *Build Your Own LLM System*, the training monitor of [Training loop and the autograd bigram](../../build-an-llm/p00-foundations/05-training-loop-and-the-autograd-bigram.md) logs $\rho$ of each weight matrix, and [Vanilla RNN with manual BPTT and truncation](../../build-an-llm/p03-recurrent/01-vanilla-rnn-manual-bptt.md) uses it as the exploding-gradient diagnostic: gradient norms grow when $\rho(W_{hh}) > 1$. In this book, [Convexity, smoothness, gradient descent, and Armijo line search](../10-optimization/01-gradient-descent-and-line-search.md) reads the condition number $\kappa = L/\mu$ of a quadratic as $\lambda_{\max}/\lambda_{\min}$. Later optimization material finds the top Hessian eigenvalue by `power_iteration` on Hessian-vector products, which sets the edge of stability $2/\lambda_{\max}$, and the smallest one by inverse iteration.
+
+### Further reading
+
+- LAPACK `dhseqr` (via `numpy.linalg.eigvals`; `SRC/dhseqr.f`, `dlahqr.f`): reduction to Hessenberg form first ($O(n^2)$ per step instead of $O(n^3)$), Wilkinson and Francis double shifts for quadratic convergence, deflation, and aggressive early deflation.
+- Lanczos and Arnoldi (ARPACK, `scipy.sparse.linalg.eigsh`; `scipy/sparse/linalg/_eigen/arpack/`): keep every iterate and extract eigenvalues from the whole Krylov subspace, giving many eigenpairs from far fewer products.
+- PyHessian (Yao et al., 2020): power iteration and Lanczos on Hessian-vector products of a real network.
+- Spectral normalization in GANs (`torch.nn.utils.parametrizations.spectral_norm`): one power-iteration step per training step to keep $\lVert W \rVert_2 \le 1$.
+- Trefethen and Bau, *Numerical Linear Algebra*, lectures 24 to 28; Strang, *Introduction to Linear Algebra*, ch. 6; Pascanu, Mikolov, and Bengio, "On the difficulty of training recurrent neural networks" (2013).
+
+## Key terms
+
+- **Eigenvector / eigenvalue**: a non-zero $v$ and scalar $\lambda$ with $Av = \lambda v$.
+- **Spectral radius**: $\rho(A) = \max_i \lvert\lambda_i\rvert$.
+- **Power iteration**: repeated multiplication and normalization, converging to the dominant eigenvector.
+- **Rayleigh quotient**: $v^\top A v$ for a unit vector $v$; the signed eigenvalue estimate.
+- **Inverse iteration**: power iteration on $(A - \sigma I)^{-1}$, finding the eigenvalue nearest the shift $\sigma$.
+- **Similarity transform**: $Q^\top A Q$ for orthogonal $Q$, which preserves eigenvalues.
+- **QR algorithm**: the iteration $A_{t+1} = R_t Q_t$, converging to block upper triangular (real Schur) form.
+
+## Summary
+
+- An eigenvector is a direction a matrix only stretches, $Av = \lambda v$; repeated multiplication amplifies the eigenvalue of largest modulus fastest, so power iteration converges to it at the rate $\lvert\lambda_2/\lambda_1\rvert$ per step.
+- Return the Rayleigh quotient $v^\top A v$, not $\lVert Av \rVert$, and renormalize every step: the first loses the sign, the second overflows.
+- Inverse iteration runs power iteration on $(A - \sigma I)^{-1}$, whose dominant eigenvalue belongs to the $\lambda$ nearest $\sigma$; factor $A - \sigma I$ once with LU and solve at every step.
+- A real matrix's dominant eigenvalues can be a complex pair (a rotation), where power iteration never converges; the QR algorithm $A_{t+1} = R_t Q_t$ exposes them as $2 \times 2$ blocks, and $\rho(W)$ reads off the blocks.
+- $\rho(W) > 1$ means gradients explode through repeated multiplication, $\rho(W) < 1$ means they vanish.
+
+## Review questions
 
 1. Why does `power_iteration` take a function and not a matrix?
 
    <details><summary>Answer</summary>
 
-   The algorithm only ever needs $Av$. A callable lets inverse iteration substitute a solve with the LU factors and lets `M10.5` substitute a Hessian-vector product, without forming either matrix.
+   The algorithm only ever needs $Av$. A callable lets inverse iteration substitute a solve with the LU factors and lets an optimizer substitute a Hessian-vector product, without forming either matrix.
 
    </details>
 
@@ -279,37 +289,3 @@ Full solution: [`eig.py`](../../../../course/solutions/python/tinyllm/linalg/eig
    Whether an entry is negligible depends on the size of the matrix entries. For weights of size $10^{-8}$ a fixed threshold would call every entry zero and drop complex pairs; for entries of size $10^{6}$ it would never declare convergence.
 
    </details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| returning $\lVert Av \rVert$ instead of $v^\top A v$ | $+5$ reported for eigenvalue $-5$ | returns `v @ matvec(v)`; see step 4 |
-| a fixed start such as $e_1$ | the wrong eigenvalue whenever $e_1$ is orthogonal to $v_1$ | draws the start from the generator in `_start` |
-| normalizing only at the end | `inf`, then NaN, after a few hundred steps | `v = w / norm` inside the loop |
-| dividing by $\lVert Av \rVert = 0$ | NaN for a vector in the null space | returns `(0.0, v)` when `norm == 0.0` |
-| iterating with $A - \sigma I$ instead of its inverse | finds the eigenvalue farthest from $\sigma$ | passes `lu_solve` as the `matvec` |
-| refactoring at every step | correct but `iters` times slower | calls `lu` before the loop; the lambda only solves |
-| spectral radius by power iteration | never converges on rotations; wrong $\rho$ for complex pairs | uses the QR algorithm, not power iteration; see step 6 |
-| reading only the diagonal after the QR algorithm | complex pairs reported as their real parts | `_block_moduli` solves each $2 \times 2$ block in closed form |
-| iterating in the caller's array | the weights being monitored change | iterates on `np.array(W)`, a copy |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `M03.2` | `lu` once and `lu_solve` per step in `inverse_iteration` |
-| Back | `M03.3` | `qr_householder` drives the QR algorithm in `spectral_radius` |
-| Forward | `L0.5` | the training monitor logs $\rho$ of each weight matrix |
-| Forward | `L3.1` | the exploding-gradient diagnostic: gradient norms grow when $\rho(W_{hh}) > 1$ |
-| Forward | `M10.5` | the top Hessian eigenvalue by `power_iteration` on Hessian-vector products; the edge of stability $2/\lambda_{\max}$ |
-| Forward | `M10.1` | the condition number $\kappa = L/\mu$ of a quadratic is $\lambda_{\max}/\lambda_{\min}$ (reading) |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| unshifted QR algorithm | LAPACK `dhseqr` (via `numpy.linalg.eigvals`) | reduction to Hessenberg form first ($O(n^2)$ per step instead of $O(n^3)$), Wilkinson and Francis double shifts for quadratic convergence, deflation, aggressive early deflation | LAPACK `SRC/dhseqr.f`, `dlahqr.f` |
-| power iteration on a `matvec` | Lanczos and Arnoldi (ARPACK, `scipy.sparse.linalg.eigsh`) | keep every iterate and extract eigenvalues from the whole Krylov subspace: many eigenpairs, far fewer products | `scipy/sparse/linalg/_eigen/arpack/` |
-| Hessian top eigenvalue (`M10.5`) | PyHessian | power iteration and Lanczos on Hessian-vector products of a real network | Yao et al., "PyHessian" (2020) |
-| spectral radius monitoring | spectral normalization in GANs | one power-iteration step per training step to keep $\lVert W \rVert_2 \le 1$ | `torch.nn.utils.parametrizations.spectral_norm` |
