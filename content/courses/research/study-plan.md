@@ -4,11 +4,11 @@ This plan is for readers pursuing research depth in machine learning and AI. It 
 
 ## Deep learning, in full
 
-Spend the first eight weeks on [Deep learning](../machine-learning/02-deep-learning/README.md) in *Machine Learning and AI*, reading Goodfellow, Bengio, and Courville in full: Parts I to III, all twenty chapters. This is the longest stage because everything after it assumes it. For a from-scratch view of the same ideas, the autograd sections of [Foundations](../build-an-llm/p00-foundations/README.md) in *Build Your Own LLM System* build the machinery by hand.
+Spend the first eight weeks on [Deep learning](../machine-learning/02-deep-learning/README.md) in *Machine Learning and AI*, reading Goodfellow, Bengio, and Courville in full: Parts I to III, all twenty chapters. This is the longest stage because everything after it assumes it. For a from-scratch view of the same ideas, the autograd sections of [Foundations](../build-an-llm/01-foundations/README.md) in *Build Your Own LLM System* build the machinery by hand.
 
 ## Information theory
 
-Weeks nine and ten cover entropy, KL divergence, and channel coding with MacKay, alongside [Information Theory](../mathematics-for-computing/11-information-theory/README.md) in *Mathematics for Computing*. These quantities come back in every loss function and evaluation metric you will read about.
+Weeks nine and ten cover entropy, KL divergence, and channel coding with MacKay, alongside [Information Theory](../mathematics-for-computing/12-information-theory/README.md) in *Mathematics for Computing*. These quantities come back in every loss function and evaluation metric you will read about.
 
 ## Reinforcement learning
 
@@ -16,11 +16,11 @@ Weeks eleven to fourteen read Sutton and Barto in full, together with the key pa
 
 ## Transformer architectures
 
-Weeks fifteen to seventeen read the papers that define modern language models: *Attention Is All You Need*, BERT, GPT, and the scaling-laws papers. [Foundation models](../machine-learning/05-foundation-models/README.md) frames them, and [The transformer (2017)](../build-an-llm/p05-transformer-2017/README.md), [Objectives and adaptation](../build-an-llm/p06-objectives/README.md), and [The modern decoder block](../build-an-llm/p07-modern-block/README.md) in *Build Your Own LLM System* implement each idea so you can check your reading against working code.
+Weeks fifteen to seventeen read the papers that define modern language models: *Attention Is All You Need*, BERT, GPT, and the scaling-laws papers. [Foundation models](../machine-learning/05-foundation-models/README.md) frames them, and [The transformer (2017)](../build-an-llm/06-transformer-2017/README.md), [Objectives and adaptation](../build-an-llm/07-objectives/README.md), and [The modern decoder block](../build-an-llm/08-modern-block/README.md) in *Build Your Own LLM System* implement each idea so you can check your reading against working code.
 
 ## Alignment and safety
 
-Weeks eighteen and nineteen read the Constitutional AI, RLHF, and DPO papers. [Training and post-training](../machine-learning/07-training-and-post-training/README.md) in *Machine Learning and AI* and [Post-training](../build-an-llm/p12-post-training/README.md) in *Build Your Own LLM System* cover the methods, and [Responsible AI](../responsible-ai/README.md) covers the evaluation and governance around them.
+Weeks eighteen and nineteen read the Constitutional AI, RLHF, and DPO papers. [Training and post-training](../machine-learning/07-training-and-post-training/README.md) in *Machine Learning and AI* and [Post-training](../build-an-llm/13-post-training/README.md) in *Build Your Own LLM System* cover the methods, and [Responsible AI](../responsible-ai/README.md) covers the evaluation and governance around them.
 
 ## Research exploration
 

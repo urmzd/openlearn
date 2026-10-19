@@ -48,7 +48,7 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 | 09 | Build system plugin | build.zig, custom steps, dependency graph | 3 |
 | 10 | Toy ELF linker | Binary formats, memory layout, relocations | 5 |
 
-There is no exercise 02. It was a hash map, and that problem is now covered in full by [A Swiss table](../../../../content/courses/algorithms/16-systems-data-structures/02-swiss-table.md) and [A Robin Hood hash map](../../../../content/courses/algorithms/16-systems-data-structures/05-robin-hood-hash-map.md) in the [Systems data structures](../../../../content/courses/algorithms/16-systems-data-structures/) chapter of *Algorithms*. For exercise 03, the C [arena allocator](../c/08-arena-allocator/README.md) is a worked version of the same idea.
+There is no exercise 02. It was a hash map, and that problem is now covered in full by [A Swiss table](../../../../content/courses/algorithms/13-systems-data-structures/02-swiss-table.md) and [A Robin Hood hash map](../../../../content/courses/algorithms/13-systems-data-structures/05-robin-hood-hash-map.md) in the [Systems data structures](../../../../content/courses/algorithms/13-systems-data-structures/) chapter of *Algorithms*. For exercise 03, the C [arena allocator](../c/08-arena-allocator/README.md) is a worked version of the same idea.
 
 ## Further reading
 

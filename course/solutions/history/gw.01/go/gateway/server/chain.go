@@ -15,7 +15,7 @@
 //
 // Contract: openapi/openai-subset.v1.yaml (gateway tier), spec/cli-roles.md
 // (role gateway, --config form). Chapter:
-// content/courses/ai-platform-engineering/12-gateway/01-server-skeleton.md.
+// content/courses/ai-platform-engineering/12-gateway/02-server-skeleton.md.
 package server
 
 import (

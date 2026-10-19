@@ -13,7 +13,7 @@ This chapter is about those two questions, portability and realtime, and about t
 
 ## Before you begin
 
-This chapter assumes you know how models are served and parallelized from [Training and Frameworks](../01-training-and-frameworks/), and the KV cache and quantization from [LLM Systems and Inference](../../machine-learning/04-llm-systems/) in *Machine Learning and AI*, including its [inference frameworks deep-dive](../../machine-learning/04-llm-systems/frameworks/). The architecture discussion builds on attention and RNNs from [Neural Architectures](../../machine-learning/06-neural-architectures/). Streaming output uses the path from [Streaming and SSE](../03-streaming-sse/).
+This chapter assumes you know how models are served and parallelized from [Training and Frameworks](../01-training-and-frameworks/), and the KV cache and quantization from [LLM Systems and Inference](../../machine-learning/04-llm-systems/) in *Machine Learning and AI*, including its [inference frameworks deep-dive](../../machine-learning/04-llm-systems/02-frameworks/). The architecture discussion builds on attention and RNNs from [Neural Architectures](../../machine-learning/06-neural-architectures/). Streaming output uses the path from [Streaming and SSE](../03-streaming-sse/).
 
 ## The deployment spectrum
 
@@ -25,7 +25,7 @@ There is a deployment spectrum, not a binary. The same model can run on a datace
 | **Single-box / self-host** | **llama.cpp**, Ollama, candle/mistral.rs | One GPU or a strong CPU | Simplicity, cost, control |
 | **On-device / edge** | **MLX** (Apple), **ExecuTorch** (PyTorch), ONNX Runtime, llama.cpp | Phone, laptop, Jetson, browser (WASM) | Privacy, offline use, no round trip to the cloud |
 
-The key idea is that it is the **same pattern at every tier**: load weights, manage a KV cache, decode token by token. What you learned in [LLM Systems](../../machine-learning/04-llm-systems/) transfers down-market. What changes is the memory budget, which forces quantization, and the runtime, which trades features for portability. The cross-language landscape of these engines is mapped in the [inference frameworks deep-dive](../../machine-learning/04-llm-systems/frameworks/).
+The key idea is that it is the **same pattern at every tier**: load weights, manage a KV cache, decode token by token. What you learned in [LLM Systems](../../machine-learning/04-llm-systems/) transfers down-market. What changes is the memory budget, which forces quantization, and the runtime, which trades features for portability. The cross-language landscape of these engines is mapped in the [inference frameworks deep-dive](../../machine-learning/04-llm-systems/02-frameworks/).
 
 ## llama.cpp and GGUF: the local end-to-end path
 
@@ -34,7 +34,7 @@ Of the single-box and edge runtimes, one stands out as the end-to-end local path
 The pipeline from a Hugging Face checkpoint to a running model has three steps:
 
 1. **Convert**: `convert_hf_to_gguf.py` turns a Hugging Face checkpoint into a GGUF file.
-2. **Quantize**: `llama-quantize` compresses the weights to 8, 5, 4, 3, or 2 bits using **k-quants** (mixed per-block precision) or **i-quants** (guided by an importance matrix); see [Quantization](../../machine-learning/04-llm-systems/quantization/).
+2. **Quantize**: `llama-quantize` compresses the weights to 8, 5, 4, 3, or 2 bits using **k-quants** (mixed per-block precision) or **i-quants** (guided by an importance matrix); see [Quantization](../../machine-learning/04-llm-systems/01-quantization/).
 3. **Run**: `llama-cli` runs one-shot, and `llama-server` is an **OpenAI-compatible** HTTP server with token streaming that plugs straight into the [SSE](../03-streaming-sse/) last mile.
 
 **Ollama** is a model manager and daemon built on top of llama.cpp: `ollama run mistral` handles the download, the GGUF file, prompt templating, and an API. It is the ergonomic front end to the same engine. For a platform, this path is your offline, air-gapped, edge, and development-loop story, and a cheap way to serve small or quantized models without a GPU fleet.
@@ -43,7 +43,7 @@ The best way to internalize it is to take one Hugging Face model end to end on y
 
 ## On-device runtimes
 
-Below the single box, a family of runtimes targets phones, laptops, and embedded hardware. **MLX** is Apple's array framework, tuned for the unified memory of Apple silicon and well suited to Macs and iPhones. **ExecuTorch** exports a PyTorch model to a portable, ahead-of-time-compiled runtime for phones and microcontrollers. **ONNX Runtime** and **TFLite** export to a standard graph and run it cross-platform with hardware delegates such as NNAPI, CoreML, and QNN. llama.cpp, candle, and ZML also target the edge through WASM and static binaries, as the [frameworks deep-dive](../../machine-learning/04-llm-systems/frameworks/) describes. Whatever the runtime, the constraint is the same: tiny memory and power budgets force small language models (see [Training and Frameworks](../01-training-and-frameworks/)), heavy quantization, and sometimes NPU-specific kernels.
+Below the single box, a family of runtimes targets phones, laptops, and embedded hardware. **MLX** is Apple's array framework, tuned for the unified memory of Apple silicon and well suited to Macs and iPhones. **ExecuTorch** exports a PyTorch model to a portable, ahead-of-time-compiled runtime for phones and microcontrollers. **ONNX Runtime** and **TFLite** export to a standard graph and run it cross-platform with hardware delegates such as NNAPI, CoreML, and QNN. llama.cpp, candle, and ZML also target the edge through WASM and static binaries, as the [frameworks deep-dive](../../machine-learning/04-llm-systems/02-frameworks/) describes. Whatever the runtime, the constraint is the same: tiny memory and power budgets force small language models (see [Training and Frameworks](../01-training-and-frameworks/)), heavy quantization, and sometimes NPU-specific kernels.
 
 ## Realtime and streaming encoders
 
@@ -75,7 +75,7 @@ The through-line is this. The quadratic, KV-cache-growing vanilla transformer is
 
 A concrete local, realtime-capable stack draws on every part of this book:
 
-1. **Pick and shrink the model**: a small model, or an SWA, GQA, or SSM model ([Training and Frameworks](../01-training-and-frameworks/)), quantized to GGUF ([Quantization](../../machine-learning/04-llm-systems/quantization/)).
+1. **Pick and shrink the model**: a small model, or an SWA, GQA, or SSM model ([Training and Frameworks](../01-training-and-frameworks/)), quantized to GGUF ([Quantization](../../machine-learning/04-llm-systems/01-quantization/)).
 2. **Run it**: `llama-server`, Ollama, or MLX locally, all OpenAI-compatible.
 3. **Stream it**: tokens out over [SSE](../03-streaming-sse/); for audio, a streaming Conformer or RNN-T encoder feeding the model.
 4. **Ground it**: local [RAG](../07-retrieval-and-rag/) over an on-device vector store, [permission-filtered](../08-authorization-and-access-control/) if there are multiple users.
@@ -101,7 +101,7 @@ When choosing among these options, this mapping from need to tool summarizes the
 
 Mistral leans on efficiency architectures and open weights: SWA, GQA, the Mixtral MoE, Codestral Mamba, and Voxtral. ggml-org and Ollama make local inference portable with llama.cpp, GGUF, and Ollama. Apple runs on-device inference over unified memory with MLX, CoreML, and on-device models. NVIDIA combines streaming speech recognition (Riva, with Conformer and RNN-T) with edge hardware (Jetson). OpenAI's Whisper is the reference for robust offline transcription. Meta and Google research state-space models, linear attention, and on-device models such as Gemma and LLaMA.
 
-The chapter connects to several others. Quantization with k-quants, i-quants, and GGUF is covered in [LLM Systems: Quantization](../../machine-learning/04-llm-systems/quantization/), and the llama.cpp, candle, and ZML landscape in [LLM Systems: Frameworks](../../machine-learning/04-llm-systems/frameworks/). The attention variants, RNNs, and CNNs behind SWA, GQA, MoE, and SSMs are in [Neural Architectures](../../machine-learning/06-neural-architectures/), and the attention math and KV cache that explain why GQA and SWA help decode are in [LLM Systems](../../machine-learning/04-llm-systems/). The small models, quantization, and adapters that fit on-device are in [Training and Frameworks](../01-training-and-frameworks/). Token and audio streaming with cancellation is [Streaming and SSE](../03-streaming-sse/), and measuring quantized-versus-full quality and RTF is [LLM Evaluation](../09-llm-evaluation/).
+The chapter connects to several others. Quantization with k-quants, i-quants, and GGUF is covered in [LLM Systems: Quantization](../../machine-learning/04-llm-systems/01-quantization/), and the llama.cpp, candle, and ZML landscape in [LLM Systems: Frameworks](../../machine-learning/04-llm-systems/02-frameworks/). The attention variants, RNNs, and CNNs behind SWA, GQA, MoE, and SSMs are in [Neural Architectures](../../machine-learning/06-neural-architectures/), and the attention math and KV cache that explain why GQA and SWA help decode are in [LLM Systems](../../machine-learning/04-llm-systems/). The small models, quantization, and adapters that fit on-device are in [Training and Frameworks](../01-training-and-frameworks/). Token and audio streaming with cancellation is [Streaming and SSE](../03-streaming-sse/), and measuring quantized-versus-full quality and RTF is [LLM Evaluation](../09-llm-evaluation/).
 
 ## Key takeaways
 

@@ -31,7 +31,7 @@ This chapter assumes the idempotency and partial-failure reasoning of [RPC and P
 11. [Platform workflows: TrainRun and EvalSuite](11-trainrun-and-evalsuite.md). Training as segments with evaluation at fixed steps, resumable bit for bit after any kill.
 12. [ModelRelease: gates, canary, burn check, and rollback](12-model-release.md). The release as a workflow: model card and ledger gates, human approval, a canary measured against the error budget, and a saga that rolls back.
 
-The chapter also has a hands-on side quest, [Kafka consumer groups](side-quests/kafka-consumers/README.md), which puts the partitioned-consumer ideas at the end of this opening into practice.
+The chapter also has a hands-on side quest, [Kafka consumer groups](13-kafka-consumers/README.md), which puts the partitioned-consumer ideas at the end of this opening into practice.
 
 ## The problem: long-running, failure-prone processes
 
@@ -99,13 +99,13 @@ Tail latency is where users feel pain, so profile the p99 path, not the average.
 
 ## Partitioned consumers
 
-The durable engine owns *workflow* state. The other common worker shape is a pool of consumers reading a partitioned log such as Kafka, where the partition, not an engine, decides who does what. Read [Messaging and Distributed Queueing](../../infrastructure/02-messaging-and-queueing/README.md) first for the dynamics (queue versus log, push versus pull, delivery semantics); the runnable consumers and a hands-on lab are in the side quest [Kafka consumer groups](side-quests/kafka-consumers/README.md).
+The durable engine owns *workflow* state. The other common worker shape is a pool of consumers reading a partitioned log such as Kafka, where the partition, not an engine, decides who does what. Read [Messaging and Distributed Queueing](../../infrastructure/02-messaging-and-queueing/README.md) first for the dynamics (queue versus log, push versus pull, delivery semantics); the runnable consumers and a hands-on lab are in the side quest [Kafka consumer groups](13-kafka-consumers/README.md).
 
 ### The partition is the unit of everything
 
 A **worker** is a process that pulls work off a log and does it. Once you accept at-least-once delivery, the entire job becomes operational: distribute partitions across a pool, keep the group stable through joins and leaves, make handlers tolerate redelivery, contain poison messages, and size the pool to the backlog. The unifying constraint is the **partition**: it is simultaneously the unit of ordering, the unit of assignment, and the **ceiling on useful parallelism** within a group.
 
-![Kafka partitions, consumer groups, and the parallelism cap](side-quests/kafka-consumers/kafka-consumption.svg)
+![Kafka partitions, consumer groups, and the parallelism cap](13-kafka-consumers/kafka-consumption.svg)
 
 ```mermaid
 graph LR
@@ -131,7 +131,7 @@ Pick the partition count for your *peak* worker count plus headroom. Over-partit
 
 When a consumer joins, leaves, or dies, the group **rebalances**: partitions are reassigned across the surviving members. The mechanics cause real incidents.
 
-The classic **eager** (stop-the-world) protocol revokes *all* partitions from *all* members and then reassigns from scratch, so consumption pauses across the entire group during the reassignment. It is cheap to reason about and expensive in availability. **Cooperative, incremental rebalancing** ([KIP-429](https://cwiki.apache.org/confluence/display/KAFKA/KIP-429%3A+Kafka+Consumer+Incremental+Rebalance+Protocol), `CooperativeStickyAssignor`) revokes *only* the partitions that must move and lets everyone else keep consuming, with no global stall. Use it for any group where a stop-the-world pause hurts, which is most of them; it is what [`consumer-go.go`](side-quests/kafka-consumers/consumer-go.go) and its siblings configure.
+The classic **eager** (stop-the-world) protocol revokes *all* partitions from *all* members and then reassigns from scratch, so consumption pauses across the entire group during the reassignment. It is cheap to reason about and expensive in availability. **Cooperative, incremental rebalancing** ([KIP-429](https://cwiki.apache.org/confluence/display/KAFKA/KIP-429%3A+Kafka+Consumer+Incremental+Rebalance+Protocol), `CooperativeStickyAssignor`) revokes *only* the partitions that must move and lets everyone else keep consuming, with no global stall. Use it for any group where a stop-the-world pause hurts, which is most of them; it is what [`consumer-go.go`](13-kafka-consumers/consumer-go.go) and its siblings configure.
 
 > **Warning:** If a consumer does not call `poll()` within `max.poll.interval.ms`, the broker assumes it is dead and kicks it, triggering a rebalance and reprocessing of its partitions. A handler that occasionally takes 6 minutes on a 5-minute interval will flap the whole group. Keep handlers fast, lower `max.poll.records` so each poll batch finishes in time, or raise the interval to cover the worst case.
 

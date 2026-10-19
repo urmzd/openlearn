@@ -19,7 +19,7 @@
   "tracks": [
     {
       "dir": "content/courses/programming-languages/01-type-systems",
-      "title": "Type Systems & Polymorphism"
+      "title": "Type Systems and Polymorphism"
     },
     {
       "dir": "content/courses/programming-languages/02-language-and-tool-primers",

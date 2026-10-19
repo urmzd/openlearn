@@ -8,8 +8,8 @@
 //
 // Contract: course/contracts/openapi/openai-subset.v1.yaml (Streaming,
 // Disconnect, Errors; gateway tier) and openai-subset.v0.yaml for NewProxy.
-// Chapters: content/courses/ai-platform-engineering/12-gateway/00-streaming-proxy.md (gw.00)
-// and content/courses/ai-platform-engineering/12-gateway/04-sse-streaming-proxy.md (gw.04).
+// Chapters: content/courses/ai-platform-engineering/12-gateway/01-streaming-proxy.md (gw.00)
+// and content/courses/ai-platform-engineering/12-gateway/03-sse-streaming-proxy.md (gw.04).
 package proxy
 
 import (

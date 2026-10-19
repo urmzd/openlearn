@@ -1,6 +1,6 @@
 # contracts/py/tinyllm/io/safetensors.pyi (L0.0 v0: F32 only; L0.6 takes the unit over and adds every dtype)
-# chapter: content/courses/build-an-llm/p00-foundations/06-safetensors-checkpoints-and-token-streams.md
-# chapter: content/courses/build-an-llm/p00-foundations/00-byte-bigram.md (v0)
+# chapter: content/courses/build-an-llm/01-foundations/07-safetensors-checkpoints-and-token-streams.md
+# chapter: content/courses/build-an-llm/01-foundations/01-byte-bigram.md (v0)
 #
 # The file format and the canonical writer rules are formats/safetensors.md.
 # The v0 signatures are unchanged: the Pass 1 CLI verbs keep working.

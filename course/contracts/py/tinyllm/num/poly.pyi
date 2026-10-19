@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/poly.pyi (M00.4)
-# chapter: content/courses/mathematics-for-computing/00-precalculus/04-polynomials-horner-and-stable-roots.md
+# chapter: content/courses/mathematics-for-computing/01-precalculus/04-polynomials-horner-and-stable-roots.md
 #
 # A polynomial p(x) = c[0] + c[1] x + ... + c[n] x^n is its list of
 # coefficients in ASCENDING order of power (coeffs[k] multiplies x^k).

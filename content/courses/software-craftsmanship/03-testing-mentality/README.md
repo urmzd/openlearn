@@ -110,7 +110,7 @@ The practice sections form a ladder, each placed where the system first needs th
 6. [Contract tests](06-contract-tests.md) writes a consumer-driven pact for the gateway's client of the engine, with a two-sided mock and static provider verification.
 7. [Resilience tests](07-resilience-tests.md) crashes a durable task queue at its worst moments with a fake disk and a manual clock, and checks durability, exclusivity, and exactly-once effects.
 8. [Model evals as tests](08-model-evals-as-tests.md) turns held-out bits per byte and a seeded quality score into a regression test with a margin and an exact sign-flip test.
-9. [Agent evals as tests](23-agent-evals-as-tests.md) designs a repeatable agent eval suite with disjoint splits, per-property scorers, and paired confidence intervals.
+9. [Agent evals as tests](09-agent-evals-as-tests.md) designs a repeatable agent eval suite with disjoint splits, per-property scorers, and paired confidence intervals.
 
 ## Further reading
 

@@ -20,7 +20,7 @@ Work through the CSES Problem Set in order; it is deliberately sequenced. Read t
 
 Handbook chapters 21 and 22 cover the number theory that contest problems lean on. Modular arithmetic comes first: operations under a modulus, and the modular inverse via Fermat's little theorem, $a^{p-2} \bmod p$. The sieve of Eratosthenes generates primes in $O(n \log \log n)$, and a linear sieve computes multiplicative functions. The extended Euclidean algorithm solves $ax + by = \gcd(a, b)$, which is Bezout's identity. The Chinese remainder theorem solves systems of modular equations, and Euler's totient counts coprime integers, with RSA as its best-known application.
 
-Start with the CSES problems Exponentiation, Counting Divisors, Common Divisors, and Sum of Divisors. For a challenge, try Necklace of Beads and GCD Table on Codeforces. The theory behind this topic is [Discrete math 2](../mathematics-for-computing/06-discrete-math-2/README.md) in *Mathematics for Computing*, and the same ideas reach into cryptography and quant interview puzzles.
+Start with the CSES problems Exponentiation, Counting Divisors, Common Divisors, and Sum of Divisors. For a challenge, try Necklace of Beads and GCD Table on Codeforces. The theory behind this topic is [Discrete math 2](../mathematics-for-computing/07-discrete-math-2/README.md) in *Mathematics for Computing*, and the same ideas reach into cryptography and quant interview puzzles.
 
 ## Advanced graph algorithms
 
@@ -38,13 +38,13 @@ Start with Static Range Sum, Dynamic Range Sum, Range Minimum Queries, and Range
 
 Handbook chapter 26 covers strings. Polynomial rolling hashes power Rabin-Karp, and double hashing avoids collisions. KMP uses a failure function to match a pattern in $O(n + m)$, and the Z-algorithm builds a Z-array as an alternative. A trie is a prefix tree, and Aho-Corasick extends it to many patterns at once. A suffix array builds in $O(n \log n)$ and, with its LCP array, answers substring queries; a suffix automaton is a DAG of all substrings built in $O(n)$.
 
-Start with String Matching, Finding Borders, Finding Periods, and Minimal Rotation; the challenges are Substring Order I and II and Repeating Substring. The connections run to compression, in [Information theory](../mathematics-for-computing/11-information-theory/README.md), and to sequence alignment in bioinformatics.
+Start with String Matching, Finding Borders, Finding Periods, and Minimal Rotation; the challenges are Substring Order I and II and Repeating Substring. The connections run to compression, in [Information theory](../mathematics-for-computing/12-information-theory/README.md), and to sequence alignment in bioinformatics.
 
 ## Geometry
 
 Handbook chapters 29 and 30 cover computational geometry. The cross product is the workhorse: it gives the orientation test (left, right, or collinear) and the area of a triangle or polygon. The convex hull comes from Andrew's monotone chain in $O(n \log n)$ or a Graham scan. Line intersection uses a parametric form or a sweep line, the closest pair of points uses divide and conquer in $O(n \log n)$, and polygon operations include point-in-polygon by ray casting and area by the shoelace formula.
 
-Start with Point Location Test, Line Segment Intersection, Polygon Area, and Convex Hull; the challenges are Point in Polygon and Minimum Euclidean Distance. The vector background is in [Calculus 3](../mathematics-for-computing/04-calculus-3/README.md), and the same methods drive computer graphics and robot path planning.
+Start with Point Location Test, Line Segment Intersection, Polygon Area, and Convex Hull; the challenges are Point in Polygon and Minimum Euclidean Distance. The vector background is in [Calculus 3](../mathematics-for-computing/05-calculus-3/README.md), and the same methods drive computer graphics and robot path planning.
 
 ## Advanced dynamic programming
 
@@ -62,7 +62,7 @@ Start with Stick Game, Nim Game, Stair Game, and Grundy's Game; the challenges a
 
 The handbook treats the FFT among its number-theory applications in chapter 24. The FFT multiplies polynomials in $O(n \log n)$ through the discrete Fourier transform, using the Cooley-Tukey algorithm. The number-theoretic transform (NTT) is the FFT over a finite field, which keeps the arithmetic exact for integers. Applications include multiplying large numbers, string matching with wildcards, convolution, and evaluating generating functions, and polynomial division uses the modular inverse of a polynomial.
 
-Start with Polynomial Multiplication on CSES, then convolution problems on Codeforces. The FFT connects to signal processing and to [Information theory](../mathematics-for-computing/11-information-theory/README.md).
+Start with Polynomial Multiplication on CSES, then convolution problems on Codeforces. The FFT connects to signal processing and to [Information theory](../mathematics-for-computing/12-information-theory/README.md).
 
 ## Techniques at a glance
 

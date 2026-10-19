@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/sig/fft.pyi (M12.4): the DFT and a mixed-radix FFT
-# chapter: content/courses/mathematics-for-computing/12-signals-and-images/04-dft-and-fft.md
+# chapter: content/courses/mathematics-for-computing/13-signals-and-images/04-dft-and-fft.md
 #
 # Sign and scale follow numpy.fft: X[k] = sum_j x[j] exp(-2 pi i j k / n),
 # the inverse divides by n. Transforms act on the LAST axis and broadcast

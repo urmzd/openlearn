@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/taylor.pyi (M02.1)
-# chapter: content/courses/mathematics-for-computing/02-calculus-2/01-taylor-series.md
+# chapter: content/courses/mathematics-for-computing/03-calculus-2/01-taylor-series.md
 #
 # Truncated Taylor series with their remainder bounds, and range reduction:
 # evaluate a series only where it converges fast, and map every other input

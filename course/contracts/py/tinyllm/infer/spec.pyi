@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/infer/spec.pyi (L8.6)
-# chapter: content/courses/build-an-llm/p08-inference/06-speculative-decoding.md
+# chapter: content/courses/build-an-llm/09-inference/06-speculative-decoding.md
 #
 # Speculative decoding: a cheap draft proposes k tokens, the target model
 # scores all of them in ONE forward pass, and a verification rule keeps the

@@ -8,12 +8,7 @@
       "title": "Overview"
     }
   ],
-  "tracks": [
-    {
-      "dir": "content/courses/competitive-programming",
-      "title": "Competitive Programming"
-    }
-  ],
+  "tracks": [],
   "reference": [
     {
       "dir": "content/references",

@@ -16,7 +16,7 @@ Each section has a matching incident drill in [Incident Response and Chaos](../.
 
 ## Before you begin
 
-You need [Releases and Deprecation](../06-releases-and-deprecation/), whose policy each migration follows, and [The Testing Mentality](../03-testing-mentality/), especially the benchmarks and perf gates. The migrations change parts of the running system built in *Build Your Own LLM System*: the KV block pool from [Inference](../../build-an-llm/p08-inference/) and the serving stack from [Serving](../../build-an-llm/p10-serving/). The fp8 encoding behind KV v2 is explained in [FP8 and microscaling formats](../../mathematics-for-computing/09-numerical-methods-and-floating-point/04-fp8-and-microscaling-formats.md) in *Mathematics for Computing*. A useful exercise before the last section is to practise `git bisect run` on a small repository with a planted regression.
+You need [Releases and Deprecation](../06-releases-and-deprecation/), whose policy each migration follows, and [The Testing Mentality](../03-testing-mentality/), especially the benchmarks and perf gates. The migrations change parts of the running system built in *Build Your Own LLM System*: the KV block pool from [Inference](../../build-an-llm/09-inference/) and the serving stack from [Serving](../../build-an-llm/11-serving/). The fp8 encoding behind KV v2 is explained in [FP8 and microscaling formats](../../mathematics-for-computing/10-numerical-methods-and-floating-point/04-fp8-and-microscaling-formats.md) in *Mathematics for Computing*. A useful exercise before the last section is to practise `git bisect run` on a small repository with a planted regression.
 
 ## In this chapter
 

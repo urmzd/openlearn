@@ -49,7 +49,7 @@ Attendance can exceed its expected value. A different audience, season, location
 
 ## Where this leads
 
-You now have every idea the project needs: a cost function, a way to compare kinds of change, constraints on a plan, and careful reasoning about uncertain attendance. The next chapter, [Project: plan a community event](05-community-event.md), brings them together. For the full theory of probability and of drawing conclusions from data, see the [Probability and Statistics](../mathematics-for-computing/07-probability-statistics/README.md) chapter in *Mathematics for Computing*.
+You now have every idea the project needs: a cost function, a way to compare kinds of change, constraints on a plan, and careful reasoning about uncertain attendance. The next chapter, [Project: plan a community event](05-community-event.md), brings them together. For the full theory of probability and of drawing conclusions from data, see the [Probability and Statistics](../mathematics-for-computing/08-probability-statistics/README.md) chapter in *Mathematics for Computing*.
 
 ## Key terms
 

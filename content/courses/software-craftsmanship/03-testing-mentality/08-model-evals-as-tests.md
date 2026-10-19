@@ -4,7 +4,7 @@ The [first capstone](../../build-an-llm/capstones/01-tinystories.md) of *Build Y
 
 This section builds that test: measured numbers, recorded from a good model, compared with statistics that know the difference between noise and a defect. A model eval **is a test**: a held-out metric and a regression rule, run on every change, that fails the build, and it is judged like any test, by the defects it catches. The section builds the statistics from first principles, works four candidates by hand, then walks through the solution function by function and the three-test suite. Try to compute each p-value before reading it.
 
-It builds on judging tests by planted faults ([TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md)) and reading survivors ([Mutation testing in depth](05-mutation-testing-in-depth.md)). From *Mathematics for Computing* it uses permutation tests ([Hypothesis tests](../../mathematics-for-computing/07-probability-statistics/05-hypothesis-tests.md)) and bits per byte ([Perplexity, bits per byte, NLL accumulator](../../mathematics-for-computing/11-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md)); from *Build Your Own LLM System*, the [The evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) and [RoPE](../../build-an-llm/p07-modern-block/03-rope.md).
+It builds on judging tests by planted faults ([TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md)) and reading survivors ([Mutation testing in depth](05-mutation-testing-in-depth.md)). From *Mathematics for Computing* it uses permutation tests ([Hypothesis tests](../../mathematics-for-computing/08-probability-statistics/06-hypothesis-tests.md)) and bits per byte ([Perplexity, bits per byte, NLL accumulator](../../mathematics-for-computing/12-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md)); from *Build Your Own LLM System*, the [The evaluation harness and the model zoo](../../build-an-llm/07-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) and [RoPE](../../build-an-llm/08-modern-block/03-rope.md).
 
 The solution is [`evals.py`](../../../../course/solutions/primers/craft.22/evals.py), a kata with held-out bits per byte `heldout_bpb`, a seeded sample-quality score `quality_score`, the paired sign-flip test `sign_flip_p`, and the regression rule `regressed`; [`test_model_evals.py`](../../../../course/solutions/primers/craft.22/test_model_evals.py), the eval suite; and [`baseline.json`](../../../../course/solutions/primers/craft.22/baseline.json), the good model, measured. The model under test is [`tinymodel.py`](../../../../course/solutions/primers/craft.22/tinymodel.py). The contract is the rules in the kata's docstring. The solution is used like this (the fixtures, `tinylm.npz`, `val.txt`, and `words.txt`, live under `$TINYLLM_FIXTURES/craft.22/`):
 
@@ -227,7 +227,7 @@ The suite is cheap: $5 \text{ seeds} \times (16 \text{ forward passes} + 4 \text
 
 The sign-flip test beats a paired t-test here. The t-test assumes normal differences, which five seeds cannot check; the sign-flip test is exact under the symmetric null. Its price is coarse p-values ($k/32$).
 
-It also beats a bootstrap interval at this size. A bootstrap over five values is unstable, and with small $n$ an exact test is the honest choice. The bootstrap fits better when there are hundreds of items, as in [Agent evals as tests](23-agent-evals-as-tests.md).
+It also beats a bootstrap interval at this size. A bootstrap over five values is unstable, and with small $n$ an exact test is the honest choice. The bootstrap fits better when there are hundreds of items, as in [Agent evals as tests](09-agent-evals-as-tests.md).
 
 More seeds would give more power and finer p-values at linear cost; five is the minimum that can ever reject at 0.05, chosen to keep the gate fast.
 
@@ -252,11 +252,11 @@ Eight pitfalls account for the ways a model eval suite fails to protect anything
 
 ## Where this leads
 
-This section reused judging by planted faults from [TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md), the permutation tests of [Hypothesis tests](../../mathematics-for-computing/07-probability-statistics/05-hypothesis-tests.md) (the sign flip is their paired, one-sided, exact form), and bits per byte from [Perplexity, bits per byte, NLL accumulator](../../mathematics-for-computing/11-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md). Going forward:
+This section reused judging by planted faults from [TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md), the permutation tests of [Hypothesis tests](../../mathematics-for-computing/08-probability-statistics/06-hypothesis-tests.md) (the sign flip is their paired, one-sided, exact form), and bits per byte from [Perplexity, bits per byte, NLL accumulator](../../mathematics-for-computing/12-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md). Going forward:
 
-- The [first capstone](../../build-an-llm/capstones/01-tinystories.md) gates its release on held-out bpb and a seeded quality score with regression thresholds, measured this way; the [post-training chapter](../../build-an-llm/p12-post-training/README.md) and the [second capstone](../../build-an-llm/capstones/02-post-trained.md) use model evals too.
+- The [first capstone](../../build-an-llm/capstones/01-tinystories.md) gates its release on held-out bpb and a seeded quality score with regression thresholds, measured this way; the [post-training chapter](../../build-an-llm/13-post-training/README.md) and the [second capstone](../../build-an-llm/capstones/02-post-trained.md) use model evals too.
 - [ModelRelease](../../ai-platform-engineering/05-durable-orchestration-and-workers/12-model-release.md) gates on the rows these evals produce.
-- [Agent evals as tests](23-agent-evals-as-tests.md) applies the same discipline with scorers, a judge, and confidence intervals.
+- [Agent evals as tests](09-agent-evals-as-tests.md) applies the same discipline with scorers, a judge, and confidence intervals.
 
 Each piece has a production equivalent:
 

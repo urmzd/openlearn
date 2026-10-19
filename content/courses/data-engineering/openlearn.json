@@ -14,8 +14,24 @@
   ],
   "tracks": [
     {
-      "dir": "content/courses/data-engineering",
-      "title": "Data Engineering"
+      "dir": "content/courses/data-engineering/01-foundations",
+      "title": "Foundations"
+    },
+    {
+      "dir": "content/courses/data-engineering/02-storage-warehousing",
+      "title": "Storage and Warehousing"
+    },
+    {
+      "dir": "content/courses/data-engineering/03-batch-streaming",
+      "title": "Batch and Streaming Processing"
+    },
+    {
+      "dir": "content/courses/data-engineering/04-orchestration-modeling",
+      "title": "Orchestration and Modeling"
+    },
+    {
+      "dir": "content/courses/data-engineering/05-corpus-pipeline",
+      "title": "Corpus Pipeline"
     }
   ],
   "reference": [

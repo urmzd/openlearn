@@ -6,7 +6,7 @@ The textbooks named here are recorded, with their access and validation evidence
 
 ## Before you begin
 
-What you need depends on what you choose. For calculus, start with algebra, functions, exponentials and logarithms, and trigonometry; [Precalculus](../mathematics-for-computing/00-precalculus/README.md) in *Mathematics for Computing* covers them. No prior programming is required for the first programming stage. Learn terminal basics and Git alongside programming, with [Shell, git, make, and processes](../programming-languages/02-language-and-tool-primers/02-shell-git-make.md) in *Programming Languages*. You do not need to finish the mathematics before you begin programming; the two run side by side.
+What you need depends on what you choose. For calculus, start with algebra, functions, exponentials and logarithms, and trigonometry; [Precalculus](../mathematics-for-computing/01-precalculus/README.md) in *Mathematics for Computing* covers them. No prior programming is required for the first programming stage. Learn terminal basics and Git alongside programming, with [Shell, git, make, and processes](../programming-languages/02-language-and-tool-primers/02-shell-git-make.md) in *Programming Languages*. You do not need to finish the mathematics before you begin programming; the two run side by side.
 
 On pacing: the stages below are sized at roughly twelve to fifteen weeks each, with eight to twelve hours a week for each active subject, so three subjects at once means 24 to 36 hours a week before a capstone. These are planning estimates. At ten hours a week in total, take one subject at a time. Advance on demonstrated competence, not elapsed weeks.
 
@@ -16,23 +16,23 @@ The eight stages suggest an order for readers who want a broad foundation. You c
 
 ### Programming, proof, and the first calculus
 
-Begin with programming in [Composing Programs](https://composingprograms.com/), proofs in [Discrete Math 1](../mathematics-for-computing/05-discrete-math-1/README.md) (with Hammack's book), and [Calculus 1](../mathematics-for-computing/01-calculus-1/README.md) (with OpenStax). The stage assumes entry-level algebra, and trigonometry for calculus. You have it when you can write a tested command-line program, write direct, contradiction, and induction proofs, and work derivative and integral problems.
+Begin with programming in [Composing Programs](https://composingprograms.com/), proofs in [Discrete Math 1](../mathematics-for-computing/06-discrete-math-1/README.md) (with Hammack's book), and [Calculus 1](../mathematics-for-computing/02-calculus-1/README.md) (with OpenStax). The stage assumes entry-level algebra, and trigonometry for calculus. You have it when you can write a tested command-line program, write direct, contradiction, and induction proofs, and work derivative and integral problems.
 
 ### Data structures and the second layer of mathematics
 
-Next come data structures with [Open Data Structures](https://opendatastructures.org/) and the library's [practice problems](../../../practice/README.md), [Discrete Math 2](../mathematics-for-computing/06-discrete-math-2/README.md) (with Levin), and [Linear Algebra](../mathematics-for-computing/03-linear-algebra/README.md) (with Hefferon). This stage assumes the programming and proofs of the first. The evidence is implementing a hash table and a graph traversal, proving a loop invariant, and solving linear systems while explaining rank and nullity.
+Next come data structures with [Open Data Structures](https://opendatastructures.org/) and the library's [practice problems](../../../practice/README.md), [Discrete Math 2](../mathematics-for-computing/07-discrete-math-2/README.md) (with Levin), and [Linear Algebra](../mathematics-for-computing/04-linear-algebra/README.md) (with Hefferon). This stage assumes the programming and proofs of the first. The evidence is implementing a hash table and a graph traversal, proving a loop invariant, and solving linear systems while explaining rank and nullity.
 
 ### Algorithms and how a computer works
 
-With data structures in hand, read [Algorithms](../algorithms/README.md) alongside Erickson's textbook, build a computer from logic gates up with [Nand to Tetris](https://www.nand2tetris.org/), and continue with [Calculus 2](../mathematics-for-computing/02-calculus-2/README.md). The evidence is a correctness proof with a complexity analysis, logic gates carried through a CPU and an assembler, and a numerical integration compared against its error.
+With data structures in hand, read [Algorithms](../algorithms/README.md) alongside Erickson's textbook, build a computer from logic gates up with [Nand to Tetris](https://www.nand2tetris.org/), and continue with [Calculus 2](../mathematics-for-computing/03-calculus-2/README.md). The evidence is a correctness proof with a complexity analysis, logic gates carried through a CPU and an assembler, and a numerical integration compared against its error.
 
 ### Operating systems, networks, and probability
 
-Then study operating systems with [Operating Systems: Three Easy Pieces](https://pages.cs.wisc.edu/~remzi/OSTEP/), networking with [An Introduction to Computer Networks](https://intronetworks.cs.luc.edu/), and [Probability and Statistics](../mathematics-for-computing/07-probability-statistics/README.md). This stage assumes architecture, programming, and discrete mathematics, plus Calculus 2 for continuous probability. The evidence is a shell and process exercise, a concurrent queue with race tests, a socket protocol that handles partial reads, and a simulation with interval estimates.
+Then study operating systems with [Operating Systems: Three Easy Pieces](https://pages.cs.wisc.edu/~remzi/OSTEP/), networking with [An Introduction to Computer Networks](https://intronetworks.cs.luc.edu/), and [Probability and Statistics](../mathematics-for-computing/08-probability-statistics/README.md). This stage assumes architecture, programming, and discrete mathematics, plus Calculus 2 for continuous probability. The evidence is a shell and process exercise, a concurrent queue with race tests, a socket protocol that handles partial reads, and a simulation with interval estimates.
 
 ### Databases, theory of computation, and multivariable calculus
 
-Study databases with [Berkeley CS186](https://cs186berkeley.net/), automata, computability, and complexity with [MIT 6.045J](https://ocw.mit.edu/courses/6-045j-automata-computability-and-complexity-spring-2011/), and [Calculus 3](../mathematics-for-computing/04-calculus-3/README.md). This stage assumes algorithms, proofs, and operating systems, plus Calculus 2 and linear algebra. The evidence is SQL with query-plan analysis, a reproduced transaction anomaly, automata and reduction proofs, and a gradient check.
+Study databases with [Berkeley CS186](https://cs186berkeley.net/), automata, computability, and complexity with [MIT 6.045J](https://ocw.mit.edu/courses/6-045j-automata-computability-and-complexity-spring-2011/), and [Calculus 3](../mathematics-for-computing/05-calculus-3/README.md). This stage assumes algorithms, proofs, and operating systems, plus Calculus 2 and linear algebra. The evidence is SQL with query-plan analysis, a reproduced transaction anomaly, automata and reduction proofs, and a gradient check.
 
 ### Languages, craft, and security
 
@@ -87,7 +87,7 @@ Mathematics sticks when it produces something that runs. For each of the labs be
 | Probability and inference | Queue simulation and A/B experiment | Seeded replications; estimated uncertainty; assumptions about sampling and independence; false-positive simulation |
 | Optimization and numerical analysis | Regularized regression and gradient descent | Compare with closed-form or library reference; learning-rate and conditioning experiment; stopping criterion |
 
-[Mathematics for Machine Learning](https://mml-book.github.io/) connects linear algebra, vector calculus, probability, and optimization to regression, PCA, and mixture models. It complements the foundational books; it is not a replacement for learning proof or elementary calculus. Within the library, [Optimization](../mathematics-for-computing/10-optimization/README.md) and [Numerical methods and floating point](../mathematics-for-computing/09-numerical-methods-and-floating-point/README.md) supply the numerical-optimization depth that data and machine-learning work needs.
+[Mathematics for Machine Learning](https://mml-book.github.io/) connects linear algebra, vector calculus, probability, and optimization to regression, PCA, and mixture models. It complements the foundational books; it is not a replacement for learning proof or elementary calculus. Within the library, [Optimization](../mathematics-for-computing/11-optimization/README.md) and [Numerical methods and floating point](../mathematics-for-computing/10-numerical-methods-and-floating-point/README.md) supply the numerical-optimization depth that data and machine-learning work needs.
 
 ## Specializations after the core
 
@@ -101,7 +101,7 @@ For **systems and infrastructure**, go from architecture to operating systems, n
 
 For **languages and theory**, go from discrete proofs to algorithms, automata and computability, and [type systems](../programming-languages/01-type-systems/README.md). The capstone is an interpreter or compiler with semantics, type rules, and positive and negative tests.
 
-For **graphics and scientific computing**, go from linear algebra to calculus, [numerical methods](../mathematics-for-computing/09-numerical-methods-and-floating-point/README.md), and CS184. The capstone is a renderer or simulation with convergence and error measurements and a performance profile.
+For **graphics and scientific computing**, go from linear algebra to calculus, [numerical methods](../mathematics-for-computing/10-numerical-methods-and-floating-point/README.md), and CS184. The capstone is a renderer or simulation with convergence and error measurements and a performance profile.
 
 For **security and human-centered software**, go from networks and operating systems to CS161, HCI, and [authorization and access control](../ai-platform-engineering/08-authorization-and-access-control/README.md). The capstone is an accessible application with usability evidence, a threat model, and adversarial permission tests.
 

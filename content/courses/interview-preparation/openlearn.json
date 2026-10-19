@@ -10,8 +10,28 @@
   ],
   "tracks": [
     {
-      "dir": "content/courses/interview-preparation",
-      "title": "Interview Preparation Guides"
+      "dir": "content/courses/interview-preparation/01-shared-concepts",
+      "title": "Shared Concepts"
+    },
+    {
+      "dir": "content/courses/interview-preparation/02-big-tech-and-ai-labs",
+      "title": "Big Tech and AI Labs"
+    },
+    {
+      "dir": "content/courses/interview-preparation/03-infrastructure-and-data-platforms",
+      "title": "Infrastructure and Data Platforms"
+    },
+    {
+      "dir": "content/courses/interview-preparation/04-quantitative-trading-firms",
+      "title": "Quantitative Trading Firms"
+    },
+    {
+      "dir": "content/courses/interview-preparation/05-aerospace-and-hardware",
+      "title": "Aerospace and Hardware"
+    },
+    {
+      "dir": "content/courses/interview-preparation/06-defend-your-system",
+      "title": "Defend Your System"
     }
   ],
   "reference": [

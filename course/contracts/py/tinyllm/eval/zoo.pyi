@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/eval/zoo.pyi (L6.7): the model zoo (D36)
-# chapter: content/courses/build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md
+# chapter: content/courses/build-an-llm/07-objectives/07-lm-evaluation-harness-and-the-model-zoo.md
 #
 # The manifest (zoo.json): {"suite": "zoo", "models": [entry, ...]}; paths in
 # an entry are relative to the manifest's directory. Every entry has "id",

@@ -11,7 +11,7 @@
 //!
 //! Caller: `data.03` exact dedup screens paragraph hashes with it and
 //! confirms every positive. Chapter:
-//! content/courses/algorithms/16-systems-data-structures/08-bloom-filter.md
+//! content/courses/algorithms/13-systems-data-structures/08-bloom-filter.md
 
 use std::fmt;
 

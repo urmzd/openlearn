@@ -6,39 +6,40 @@
     {
       "file": "content/courses/mathematics/README.md",
       "title": "Start here"
-    },
-    {
-      "file": "content/courses/mathematics/01-quantities-and-relationships.md",
-      "title": "1. Quantities and relationships"
-    },
-    {
-      "file": "content/courses/mathematics/02-change-and-growth.md",
-      "title": "2. Change and growth"
-    },
-    {
-      "file": "content/courses/mathematics/03-vectors-and-constraints.md",
-      "title": "3. Vectors and constraints"
-    },
-    {
-      "file": "content/courses/mathematics/04-uncertainty-and-evidence.md",
-      "title": "4. Uncertainty and evidence"
-    },
-    {
-      "file": "content/courses/mathematics/05-community-event.md",
-      "title": "5. Project: plan a community event"
-    },
-    {
-      "file": "content/courses/mathematics/study-plan.md",
-      "title": "Choose your next subject"
     }
   ],
-  "tracks": [],
+  "tracks": [
+    {
+      "dir": "content/courses/mathematics/01-quantities-and-relationships.md",
+      "title": "Quantities and relationships"
+    },
+    {
+      "dir": "content/courses/mathematics/02-change-and-growth.md",
+      "title": "Change and growth"
+    },
+    {
+      "dir": "content/courses/mathematics/03-vectors-and-constraints.md",
+      "title": "Vectors and constraints"
+    },
+    {
+      "dir": "content/courses/mathematics/04-uncertainty-and-evidence.md",
+      "title": "Uncertainty and evidence"
+    },
+    {
+      "dir": "content/courses/mathematics/05-community-event.md",
+      "title": "Project: plan a community event"
+    },
+    {
+      "dir": "content/courses/mathematics/study-plan.md",
+      "title": "Choose your next subject",
+      "unnumbered": true
+    }
+  ],
   "reference": [
     {
       "dir": "content/references",
       "title": "Sources"
     }
   ],
-  "tagline": "Learn to model quantities, change, constraints, and uncertainty, then plan a community event.",
-  "guided": true
+  "tagline": "Learn to model quantities, change, constraints, and uncertainty, then plan a community event."
 }

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/io/checkpoint.pyi (L0.6): atomic checkpoints
-# chapter: content/courses/build-an-llm/p00-foundations/06-safetensors-checkpoints-and-token-streams.md
+# chapter: content/courses/build-an-llm/01-foundations/07-safetensors-checkpoints-and-token-streams.md
 #
 # The on-disk layout is formats/checkpoint.md: <dir>/step-<nnnnnn>/ holding
 # model.safetensors, optimizer.safetensors, trainer_state.json

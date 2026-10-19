@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/rnn/rnnlm.pyi (L3.6): an RNN language model trained with stateful TBPTT
-# chapter: content/courses/build-an-llm/p03-recurrent/06-rnn-language-model-stateful-tbptt.md
+# chapter: content/courses/build-an-llm/04-recurrent/06-rnn-language-model-stateful-tbptt.md
 #
 # A recurrent language model reads token ids one at a time and predicts the
 # next one from its hidden state:

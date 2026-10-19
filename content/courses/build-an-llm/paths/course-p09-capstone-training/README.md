@@ -16,8 +16,8 @@ This pass needs [Pass 8](../course-p08-durable/README.md), whose TrainRun workfl
 
 ## In this pass
 
-1. [Hessian-vector products and the recompute-versus-memory schedule](../../../mathematics-for-computing/08-matrix-calculus-and-autodiff/04-hessian-vector-products-and-recompute.md). Afterwards you can explain how a Hessian-vector product is computed without the Hessian and how the recompute-versus-memory schedule is chosen.
-2. [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](../../p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md). Afterwards you can explain how mixed precision with loss scaling, gradient accumulation, and activation checkpointing train like fp32 in less memory.
+1. [Hessian-vector products and the recompute-versus-memory schedule](../../../mathematics-for-computing/09-matrix-calculus-and-autodiff/04-hessian-vector-products-and-recompute.md). Afterwards you can explain how a Hessian-vector product is computed without the Hessian and how the recompute-versus-memory schedule is chosen.
+2. [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](../../12-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md). Afterwards you can explain how mixed precision with loss scaling, gradient accumulation, and activation checkpointing train like fp32 in less memory.
 3. [Datasheet and model card](../../../responsible-ai/03-model-and-data-cards/01-datasheet-and-model-card.md). Afterwards you can explain what the datasheet and model card report and why each section is there.
 4. [Bias and safety evals](../../../responsible-ai/04-bias-and-safety-evals/01-bias-and-safety-evals.md). Afterwards you can explain what the bias and safety evals measure and how their results are reported.
 5. [ModelRelease: gates, canary, burn check, and rollback](../../../ai-platform-engineering/05-durable-orchestration-and-workers/12-model-release.md). Afterwards you can explain how ModelRelease gates a model, runs a canary, checks the PromQL burn rate, and rolls back.
@@ -29,7 +29,7 @@ This pass needs [Pass 8](../course-p08-durable/README.md), whose TrainRun workfl
 
 Two optional sections explain what changes when training moves from one machine to many. The capstone does not need them:
 
-9. [Collectives over processes: ring all-reduce](../../p11-training-at-scale/02-collectives-over-processes.md). Afterwards you can explain how ring all-reduce over processes sums gradients with bandwidth-optimal traffic.
-10. [Data parallelism and ZeRO stages 1 to 3](../../p11-training-at-scale/03-ddp-and-zero.md). Afterwards you can explain how DDP and ZeRO stages 1 to 3 partition optimizer state, gradients, and parameters.
+9. [Collectives over processes: ring all-reduce](../../12-training-at-scale/02-collectives-over-processes.md). Afterwards you can explain how ring all-reduce over processes sums gradients with bandwidth-optimal traffic.
+10. [Data parallelism and ZeRO stages 1 to 3](../../12-training-at-scale/03-ddp-and-zero.md). Afterwards you can explain how DDP and ZeRO stages 1 to 3 partition optimizer state, gradients, and parameters.
 
 The stages are also in this pass's manifest, [`path.tsv`](path.tsv). [Pass 10](../course-p10-agents/README.md) puts an agent on top of the served system.

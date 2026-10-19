@@ -46,33 +46,33 @@ graph LR
 
 The first eight chapters are the classical foundations, each built on a free open textbook.
 
-[Precalculus](00-precalculus/README.md) is the toolbox the rest of the book is written in: exponents and logarithms (and the units of information they define), trigonometry, complex numbers and Euler's formula, sequences, and polynomials. Its companion text is OpenStax *Precalculus 2e*.
+[Precalculus](01-precalculus/README.md) is the toolbox the rest of the book is written in: exponents and logarithms (and the units of information they define), trigonometry, complex numbers and Euler's formula, sequences, and polynomials. Its companion text is OpenStax *Precalculus 2e*.
 
-[Calculus 1](01-calculus-1/README.md) develops limits, derivatives, and integrals and the fundamental theorem that connects them: the mathematics of change and accumulation behind every training step and every averaged metric. It follows OpenStax *Calculus* Volume 1.
+[Calculus 1](02-calculus-1/README.md) develops limits, derivatives, and integrals and the fundamental theorem that connects them: the mathematics of change and accumulation behind every training step and every averaged metric. It follows OpenStax *Calculus* Volume 1.
 
-[Calculus 2](02-calculus-2/README.md) extends integration and then represents functions as infinite sums, which is how computers approximate $e^x$, $\sin x$, and $\operatorname{erf}$ and how you analyze the long-run behavior of iterative methods. It follows OpenStax *Calculus* Volume 2.
+[Calculus 2](03-calculus-2/README.md) extends integration and then represents functions as infinite sums, which is how computers approximate $e^x$, $\sin x$, and $\operatorname{erf}$ and how you analyze the long-run behavior of iterative methods. It follows OpenStax *Calculus* Volume 2.
 
-[Linear Algebra](03-linear-algebra/README.md) studies linear maps and the matrices that represent them: elimination and LU, orthogonality and QR, eigenvalues, and the SVD and least squares. Its companion text is Hefferon's *Linear Algebra*.
+[Linear Algebra](04-linear-algebra/README.md) studies linear maps and the matrices that represent them: elimination and LU, orthogonality and QR, eigenvalues, and the SVD and least squares. Its companion text is Hefferon's *Linear Algebra*.
 
-[Calculus 3](04-calculus-3/README.md) generalizes derivative and integral to several variables: gradients, Jacobians, multiple integrals, and the theorems of Green, Stokes, and Gauss. It follows OpenStax *Calculus* Volume 3.
+[Calculus 3](05-calculus-3/README.md) generalizes derivative and integral to several variables: gradients, Jacobians, multiple integrals, and the theorems of Green, Stokes, and Gauss. It follows OpenStax *Calculus* Volume 3.
 
-[Discrete Math 1](05-discrete-math-1/README.md) teaches proof, together with sets, logic, induction, relations, functions, and counting. Its companion text is Hammack's *Book of Proof*.
+[Discrete Math 1](06-discrete-math-1/README.md) teaches proof, together with sets, logic, induction, relations, functions, and counting. Its companion text is Hammack's *Book of Proof*.
 
-[Discrete Math 2](06-discrete-math-2/README.md) covers the discrete structures that turn up most directly in algorithms and systems: graphs, number theory, recurrences, and advanced counting. It follows Levin's *Discrete Mathematics*.
+[Discrete Math 2](07-discrete-math-2/README.md) covers the discrete structures that turn up most directly in algorithms and systems: graphs, number theory, recurrences, and advanced counting. It follows Levin's *Discrete Mathematics*.
 
-[Probability and Statistics](07-probability-statistics/README.md) is the mathematics of reasoning under uncertainty: random variables, sampling, estimation, the central limit theorem, hypothesis tests, and calibration. It draws on Grinstead and Snell and OpenStax *Statistics*.
+[Probability and Statistics](08-probability-statistics/README.md) is the mathematics of reasoning under uncertainty: random variables, sampling, estimation, the central limit theorem, hypothesis tests, and calibration. It draws on Grinstead and Snell and OpenStax *Statistics*.
 
 The last five chapters are the mathematics of a language-model system, and each has code that a system calls.
 
-[Matrix Calculus and Autodiff](08-matrix-calculus-and-autodiff/README.md) treats a gradient as a linear map and a program as a composition of differentiable steps. It builds forward and reverse mode and derives the closed-form vector-Jacobian products of the common primitives, after Parr and Howard and Baydin et al.
+[Matrix Calculus and Autodiff](09-matrix-calculus-and-autodiff/README.md) treats a gradient as a linear map and a program as a composition of differentiable steps. It builds forward and reverse mode and derives the closed-form vector-Jacobian products of the common primitives, after Parr and Howard and Baydin et al.
 
-[Numerical Methods and Floating Point](09-numerical-methods-and-floating-point/README.md) explains how floating point fails (overflow, underflow, cancellation, accumulated rounding), the algorithmic fix for each, and the error bounds that become test tolerances, from IEEE 754 to FP8 and microscaling formats. It draws on Goldberg and Higham.
+[Numerical Methods and Floating Point](10-numerical-methods-and-floating-point/README.md) explains how floating point fails (overflow, underflow, cancellation, accumulated rounding), the algorithmic fix for each, and the error bounds that become test tolerances, from IEEE 754 to FP8 and microscaling formats. It draws on Goldberg and Higham.
 
-[Optimization](10-optimization/README.md) answers the three questions every optimizer answers: which direction to step, how far in each coordinate, and how the step size should change over time. It uses Boyd and Vandenberghe for the convex vocabulary.
+[Optimization](11-optimization/README.md) answers the three questions every optimizer answers: which direction to step, how far in each coordinate, and how the step size should change over time. It uses Boyd and Vandenberghe for the convex vocabulary.
 
-[Information Theory](11-information-theory/README.md) measures information with entropy and connects it to losses, perplexity, bits per byte, KL divergence, and mutual information, after *A Student's Guide to Coding and Information Theory* and MacKay.
+[Information Theory](12-information-theory/README.md) measures information with entropy and connects it to losses, perplexity, bits per byte, KL divergence, and mutual information, after *A Student's Guide to Coding and Information Theory* and MacKay.
 
-[Signals and Images](12-signals-and-images/README.md) builds the numerical front end of vision and speech models: convolution as a linear map, image layouts, resampling, the DFT and FFT, the STFT, and the mel scale. It draws on Oppenheim and Schafer and on Smith's free signal-processing books.
+[Signals and Images](13-signals-and-images/README.md) builds the numerical front end of vision and speech models: convolution as a linear map, image layouts, resampling, the DFT and FFT, the STFT, and the mel scale. It draws on Oppenheim and Schafer and on Smith's free signal-processing books.
 
 Read the first seven chapters in order if you take one subject at a time, respecting the graph. If you have time for two at once, Calculus and Discrete Math pair well, followed by Linear Algebra alongside Probability and Statistics.
 

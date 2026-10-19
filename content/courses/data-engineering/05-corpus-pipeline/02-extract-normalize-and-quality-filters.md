@@ -110,7 +110,7 @@ Every occurrence of a duplicated n-gram counts, the first one included. `repetit
 
 ## Perplexity and the configured pipeline
 
-The last filter asks a model. `ppl_filter(lm, max_ppl)` keeps documents a language model does not find too surprising. Any object with `perplexity(text) -> float` works, and in the TinyStories capstone the [n-gram model with Kneser-Ney smoothing](../../build-an-llm/p02-statistical-lm/01-ngram-kneser-ney.md), trained on clean text, plugs in. The score is recorded as `meta["ppl"]`.
+The last filter asks a model. `ppl_filter(lm, max_ppl)` keeps documents a language model does not find too surprising. Any object with `perplexity(text) -> float` works, and in the TinyStories capstone the [n-gram model with Kneser-Ney smoothing](../../build-an-llm/03-statistical-lm/01-ngram-kneser-ney.md), trained on clean text, plugs in. The score is recorded as `meta["ppl"]`.
 
 `build_filters(filters, lm=None)` turns the corpus config's `filters` table into one stage, with defaults from the schema, in this order: `normalize_unicode`, `length_filter(min_chars, max_chars)`, `lang_filter(lang_min_conf, langs)`, `gopher_rules(**gopher)`, `repetition_filter(repetition.n, repetition.max_frac)`, and `ppl_filter(lm, ppl.max_ppl)` when the table has `ppl.max_ppl` (a `ValueError` when it does but no `lm` is passed). Normalization comes first so every later rule counts the characters the model will see. The configured pipeline is deterministic end to end: on a corpus of documents whose fate was decided when they were written, the kept ids, their order, and every output byte are fixed.
 
@@ -426,7 +426,7 @@ Ignoring unknown threshold names lets a typo in the config silently use the defa
 
 ## Where this leads
 
-Every later stage of this chapter is a `Stage` over these `Doc`s. [Exact dedup](03-exact-dedup-bloom-and-sort-merge.md) runs `exact_dedup` after the filters; [near dedup with MinHash and LSH](04-near-dedup-minhash-lsh.md) is composed after exact dedup; [the PII scrub](05-pii-scrub.md) returns new `Doc`s with redaction counts in `meta`; and [the shard writer](06-parquet-shards-and-manifest.md) consumes the final stream and writes `meta["lang"]` into the `lang` column. In [TinyStories, owned end to end](../../build-an-llm/capstones/01-tinystories.md), `ppl_filter` runs with the [Kneser-Ney n-gram model](../../build-an-llm/p02-statistical-lm/01-ngram-kneser-ney.md) trained on clean text.
+Every later stage of this chapter is a `Stage` over these `Doc`s. [Exact dedup](03-exact-dedup-bloom-and-sort-merge.md) runs `exact_dedup` after the filters; [near dedup with MinHash and LSH](04-near-dedup-minhash-lsh.md) is composed after exact dedup; [the PII scrub](05-pii-scrub.md) returns new `Doc`s with redaction counts in `meta`; and [the shard writer](06-parquet-shards-and-manifest.md) consumes the final stream and writes `meta["lang"]` into the `lang` column. In [TinyStories, owned end to end](../../build-an-llm/capstones/01-tinystories.md), `ppl_filter` runs with the [Kneser-Ney n-gram model](../../build-an-llm/03-statistical-lm/01-ngram-kneser-ney.md) trained on clean text.
 
 ### Further reading
 

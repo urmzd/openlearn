@@ -13,7 +13,7 @@ This is the longest chapter in the book because DP is less one pattern than a fa
 
 ## Before you begin
 
-You should be comfortable with recursion, as in [Recursion and divide-and-conquer](../11-recursion-divide-conquer/README.md), and with tree traversal from [Trees](../05-trees/README.md) for the last pattern. Some examples read graph structure, covered in [Graphs](../06-graphs/README.md), and one uses probabilities; [Probability and statistics](../../mathematics-for-computing/07-probability-statistics/README.md) in *Mathematics for Computing* covers the background.
+You should be comfortable with recursion, as in [Recursion and divide-and-conquer](../11-recursion-divide-conquer/README.md), and with tree traversal from [Trees](../05-trees/README.md) for the last pattern. Some examples read graph structure, covered in [Graphs](../06-graphs/README.md), and one uses probabilities; [Probability and statistics](../../mathematics-for-computing/08-probability-statistics/README.md) in *Mathematics for Computing* covers the background.
 
 ## Linear DP
 

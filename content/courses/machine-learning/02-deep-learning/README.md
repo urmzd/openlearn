@@ -15,7 +15,7 @@ The chapter follows the arc of Goodfellow, Bengio, and Courville's *Deep Learnin
 
 ## Before you begin
 
-This chapter assumes [Statistical Learning](../01-statistical-learning/README.md), the previous chapter, for the bias-variance vocabulary. From *Mathematics for Computing* you need [Linear Algebra](../../mathematics-for-computing/03-linear-algebra/README.md), multivariable calculus through [Calculus 3](../../mathematics-for-computing/04-calculus-3/README.md) (gradients, Jacobians, and the chain rule), and [Probability and Statistics](../../mathematics-for-computing/07-probability-statistics/README.md).
+This chapter assumes [Statistical Learning](../01-statistical-learning/README.md), the previous chapter, for the bias-variance vocabulary. From *Mathematics for Computing* you need [Linear Algebra](../../mathematics-for-computing/04-linear-algebra/README.md), multivariable calculus through [Calculus 3](../../mathematics-for-computing/05-calculus-3/README.md) (gradients, Jacobians, and the chain rule), and [Probability and Statistics](../../mathematics-for-computing/08-probability-statistics/README.md).
 
 The primary text is [*Deep Learning*](https://www.deeplearningbook.org/) by Goodfellow, Bengio, and Courville, free online; read it for theory. For hands-on implementation, use [fast.ai](https://course.fast.ai/), [Stanford CS231n](http://cs231n.stanford.edu/), or Andrej Karpathy's [Neural Networks: Zero to Hero](https://karpathy.ai/zero-to-hero.html), all free. Implement a simple neural network from scratch, forward pass and backpropagation, before you rely on a framework. For each architecture, make sure you can say what inductive bias it encodes and what problem it was designed for. And read the original papers for transformers, ResNet, and batch normalization.
 
@@ -106,7 +106,7 @@ The **variational autoencoder** (VAE) makes this probabilistic. The encoder outp
 
 $$\text{ELBO} = E_{q(z \mid x)}[\log p(x \mid z)] - D_{\mathrm{KL}}\big(q(z \mid x) \,\Vert\, p(z)\big).$$
 
-Because the ELBO is a lower bound on $\log p(x)$, maximizing it approximately maximizes the likelihood of the data. The KL term connects directly to [Information Theory](../../mathematics-for-computing/11-information-theory/README.md) in *Mathematics for Computing*: it measures how far the encoder's distribution is from the prior.
+Because the ELBO is a lower bound on $\log p(x)$, maximizing it approximately maximizes the likelihood of the data. The KL term connects directly to [Information Theory](../../mathematics-for-computing/12-information-theory/README.md) in *Mathematics for Computing*: it measures how far the encoder's distribution is from the prior.
 
 ## Generative models
 
@@ -164,7 +164,7 @@ The architectures in this chapter differ most clearly in the inductive bias they
 
 ## Where this leads
 
-The mathematics behind this chapter runs through the rest of the book. Backpropagation *is* the chain rule from [Calculus 3](../../mathematics-for-computing/04-calculus-3/README.md); eigenvalues and SVD from [Linear Algebra](../../mathematics-for-computing/03-linear-algebra/README.md) appear in PCA, weight initialization, and spectral normalization; and KL divergence and entropy from [Information Theory](../../mathematics-for-computing/11-information-theory/README.md) define the VAE objective and the cross-entropy loss. The bias-variance tradeoff of [Statistical Learning](../01-statistical-learning/README.md) extends into the double-descent behavior of large networks. The next chapter, [Reinforcement Learning](../03-reinforcement-learning/README.md), supplies the algorithms behind RLHF, and [Neural Network Architectures & the History of Deep Learning](../06-neural-architectures/README.md) derives backpropagation, CNNs, and LSTMs from the math and codes them from scratch.
+The mathematics behind this chapter runs through the rest of the book. Backpropagation *is* the chain rule from [Calculus 3](../../mathematics-for-computing/05-calculus-3/README.md); eigenvalues and SVD from [Linear Algebra](../../mathematics-for-computing/04-linear-algebra/README.md) appear in PCA, weight initialization, and spectral normalization; and KL divergence and entropy from [Information Theory](../../mathematics-for-computing/12-information-theory/README.md) define the VAE objective and the cross-entropy loss. The bias-variance tradeoff of [Statistical Learning](../01-statistical-learning/README.md) extends into the double-descent behavior of large networks. The next chapter, [Reinforcement Learning](../03-reinforcement-learning/README.md), supplies the algorithms behind RLHF, and [Neural Network Architectures & the History of Deep Learning](../06-neural-architectures/README.md) derives backpropagation, CNNs, and LSTMs from the math and codes them from scratch.
 
 These topics are also central to interviews at AI-focused companies, as the table below shows:
 

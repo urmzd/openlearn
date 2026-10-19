@@ -4,7 +4,7 @@
 // client's side into log-linear histograms, and writes the report of
 // course/contracts/formats/loadgen-report.schema.json.
 //
-// Chapter: content/courses/build-an-llm/p10-serving/10-load-generator.md. load.02
+// Chapter: content/courses/build-an-llm/11-serving/11-load-generator.md. load.02
 // (loadgen/compare) compares two reports; the {loadgen} main drives
 // the serving benchmarks, the gateway load runs, and the incident game days.
 package loadgen

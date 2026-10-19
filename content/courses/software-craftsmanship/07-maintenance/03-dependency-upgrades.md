@@ -2,7 +2,7 @@
 
 A dependency upgrade is a change you did not write. It can alter APIs, performance, and security properties all at once, and because you cannot review its diff line by line, the usual tools of review do not apply. What you can do is make the upgrade deliberate: isolate it so any regression has one cause, measure its effects against evidence you agreed on in advance, and keep a reversible path back. That turns "bump and hope" into an ordinary change that rolls out like any other.
 
-This section works through a model upgrade review, [`dependency-upgrades.md`](../../../../course/solutions/docs/maintenance/dependency-upgrades.md), for the gateway's OpenTelemetry family. The version requirements each component may use are fixed by the contract [`course/contracts/allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml). The section has no prerequisites, and the same procedure is exercised under pressure in [A breaking dependency upgrade](../../systems/05-incident-response-and-chaos/06-dependency-upgrade.md) in *Systems and Architecture*. Before reading the model answer, write down what you would check.
+This section works through a model upgrade review, [`dependency-upgrades.md`](../../../../course/solutions/docs/maintenance/dependency-upgrades.md), for the gateway's OpenTelemetry family. The version requirements each component may use are fixed by the contract [`course/contracts/allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml). The section has no prerequisites, and the same procedure is exercised under pressure in [A breaking dependency upgrade](../../systems/05-incident-response-and-chaos/07-dependency-upgrade.md) in *Systems and Architecture*. Before reading the model answer, write down what you would check.
 
 > **Learning objectives**
 > - Scope an upgrade to one compatibility family and say why.
@@ -98,7 +98,7 @@ Four pitfalls recur. A review that names a decision without the evidence that su
 
 ## Where this leads
 
-A major upgrade that changes an interface deserves an [architecture decision record](../../diagramming/02-documentation-writing/01-architecture-decision-records.md), described in *Diagramming and Documentation*, as well as a review. The procedure is put under pressure in [A breaking dependency upgrade](../../systems/05-incident-response-and-chaos/06-dependency-upgrade.md), where a lockfile leaves the policy and this procedure finds and reverts it.
+A major upgrade that changes an interface deserves an [architecture decision record](../../diagramming/02-documentation-writing/01-architecture-decision-records.md), described in *Diagramming and Documentation*, as well as a review. The procedure is put under pressure in [A breaking dependency upgrade](../../systems/05-incident-response-and-chaos/07-dependency-upgrade.md), where a lockfile leaves the policy and this procedure finds and reverts it.
 
 ### Further reading
 

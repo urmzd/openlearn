@@ -19,7 +19,7 @@
 //!
 //! Callers: `tl-tok` (L1.5) keeps its vocabulary `bytes -> id` and its merge
 //! ranks `(left, right) -> (rank, id)` in this map. Chapter:
-//! content/courses/algorithms/16-systems-data-structures/05-robin-hood-hash-map.md
+//! content/courses/algorithms/13-systems-data-structures/05-robin-hood-hash-map.md
 
 use std::borrow::Borrow;
 use std::fmt;

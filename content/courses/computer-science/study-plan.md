@@ -4,7 +4,7 @@ This plan suggests a route through mathematics, programming, AI, systems, and ap
 
 ## The mathematics, in parallel
 
-The first sixteen weeks build the mathematics, two subjects at a time, because the topics are designed to be studied side by side. Spend the first four weeks on [Calculus 1](../mathematics-for-computing/01-calculus-1/README.md) and [Linear Algebra](../mathematics-for-computing/03-linear-algebra/README.md), the next four on [Calculus 2](../mathematics-for-computing/02-calculus-2/README.md) and [Discrete Math 1](../mathematics-for-computing/05-discrete-math-1/README.md), and weeks nine to twelve on [Calculus 3](../mathematics-for-computing/04-calculus-3/README.md) and [Discrete Math 2](../mathematics-for-computing/06-discrete-math-2/README.md). Keep week thirteen free for review: revisit the hardest topics and catch up on anything that slipped. Weeks fourteen to sixteen complete the sequence with [Probability and Statistics](../mathematics-for-computing/07-probability-statistics/README.md).
+The first sixteen weeks build the mathematics, two subjects at a time, because the topics are designed to be studied side by side. Spend the first four weeks on [Calculus 1](../mathematics-for-computing/02-calculus-1/README.md) and [Linear Algebra](../mathematics-for-computing/04-linear-algebra/README.md), the next four on [Calculus 2](../mathematics-for-computing/03-calculus-2/README.md) and [Discrete Math 1](../mathematics-for-computing/06-discrete-math-1/README.md), and weeks nine to twelve on [Calculus 3](../mathematics-for-computing/05-calculus-3/README.md) and [Discrete Math 2](../mathematics-for-computing/07-discrete-math-2/README.md). Keep week thirteen free for review: revisit the hardest topics and catch up on anything that slipped. Weeks fourteen to sixteen complete the sequence with [Probability and Statistics](../mathematics-for-computing/08-probability-statistics/README.md).
 
 ## Algorithms and contests
 
@@ -12,7 +12,7 @@ Weeks seventeen to nineteen work through [Algorithms](../algorithms/README.md), 
 
 ## Machine learning
 
-Weeks twenty-two to twenty-six move from [Statistical learning](../machine-learning/01-statistical-learning/README.md), read with ISLR, into [Deep learning](../machine-learning/02-deep-learning/README.md), read with Goodfellow. Weeks twenty-seven to thirty continue deep learning to research-level depth, alongside [Information Theory](../mathematics-for-computing/11-information-theory/README.md). Weeks thirty-one to thirty-four cover [Reinforcement learning](../machine-learning/03-reinforcement-learning/README.md) with Sutton and Barto and Spinning Up.
+Weeks twenty-two to twenty-six move from [Statistical learning](../machine-learning/01-statistical-learning/README.md), read with ISLR, into [Deep learning](../machine-learning/02-deep-learning/README.md), read with Goodfellow. Weeks twenty-seven to thirty continue deep learning to research-level depth, alongside [Information Theory](../mathematics-for-computing/12-information-theory/README.md). Weeks thirty-one to thirty-four cover [Reinforcement learning](../machine-learning/03-reinforcement-learning/README.md) with Sutton and Barto and Spinning Up.
 
 ## Systems and the platform
 

@@ -10,8 +10,56 @@
   ],
   "tracks": [
     {
-      "dir": "content/courses/mathematics-for-computing",
-      "title": "Mathematics for Computing"
+      "dir": "content/courses/mathematics-for-computing/01-precalculus",
+      "title": "Precalculus"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/02-calculus-1",
+      "title": "Calculus 1"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/03-calculus-2",
+      "title": "Calculus 2"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/04-linear-algebra",
+      "title": "Linear Algebra"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/05-calculus-3",
+      "title": "Calculus 3"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/06-discrete-math-1",
+      "title": "Discrete Math 1"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/07-discrete-math-2",
+      "title": "Discrete Math 2"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/08-probability-statistics",
+      "title": "Probability and Statistics"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/09-matrix-calculus-and-autodiff",
+      "title": "Matrix Calculus and Autodiff"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/10-numerical-methods-and-floating-point",
+      "title": "Numerical Methods and Floating Point"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/11-optimization",
+      "title": "Optimization"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/12-information-theory",
+      "title": "Information Theory"
+    },
+    {
+      "dir": "content/courses/mathematics-for-computing/13-signals-and-images",
+      "title": "Signals and Images"
     }
   ],
   "reference": [

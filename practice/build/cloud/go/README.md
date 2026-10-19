@@ -42,7 +42,7 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 
 | # | Exercise | Concepts | Difficulty (1-5) | Worked elsewhere |
 |---|----------|----------|------------------|------------------|
-| 01 | Concurrent web crawler | Goroutines, channels, `sync.WaitGroup`, rate limiting | 3 | [RAG Ingest: Crawler, Chunker, Embedder, and Store](../../../../content/courses/ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md) |
+| 01 | Concurrent web crawler | Goroutines, channels, `sync.WaitGroup`, rate limiting | 3 | [RAG Ingest: Crawler, Chunker, Embedder, and Store](../../../../content/courses/ai-platform-engineering/07-retrieval-and-rag/01-rag-ingest.md) |
 | 02 | In-memory key-value store | `sync.RWMutex`, interfaces, HTTP handler | 2 | [Response cache: LRU, TTL, singleflight, and tenant-scoped keys](../../../../content/courses/ai-platform-engineering/04-distributed-data-and-caching/01-response-cache.md) |
 | 03 | Worker pool | Bounded concurrency, `context` cancellation | 3 | [The task protocol and workers](../../../../content/courses/ai-platform-engineering/05-durable-orchestration-and-workers/04-task-protocol-and-workers.md) |
 | 04 | Generic sorted set | Generics, type constraints, `cmp.Ordered` | 3 | [Durable timers](../../../../content/courses/ai-platform-engineering/05-durable-orchestration-and-workers/07-durable-timers.md) |

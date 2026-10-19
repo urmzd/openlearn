@@ -14,8 +14,24 @@
   ],
   "tracks": [
     {
-      "dir": "content/courses/case-studies",
-      "title": "Case Studies"
+      "dir": "content/courses/case-studies/01-order-book-matching",
+      "title": "Order Book Matching"
+    },
+    {
+      "dir": "content/courses/case-studies/02-grounded-sql-agent",
+      "title": "Grounded SQL Agent"
+    },
+    {
+      "dir": "content/courses/case-studies/03-exactly-once-event-api",
+      "title": "Exactly-Once Event API"
+    },
+    {
+      "dir": "content/courses/case-studies/04-kmeans-optimization",
+      "title": "K-Means Optimization"
+    },
+    {
+      "dir": "content/courses/case-studies/05-agent-eval-harness",
+      "title": "Agent Evaluation Harness"
     }
   ],
   "reference": [

@@ -1,5 +1,5 @@
 /* tinyllm/kv_pool.h (rt.04): the paged KV block pool, KV format v1.
- * chapter: content/courses/build-an-llm/p08-inference/08-paged-kv-block-pool.md
+ * chapter: content/courses/build-an-llm/09-inference/08-paged-kv-block-pool.md
  * Rules in c/ABI.md; the hash and the export envelope in formats/kv-block.md.
  *
  * The pool owns n_blocks fixed-size blocks. A block holds K and V for

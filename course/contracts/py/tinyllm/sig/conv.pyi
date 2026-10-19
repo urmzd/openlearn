@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/sig/conv.pyi (M12.1): convolution as a linear map
-# chapter: content/courses/mathematics-for-computing/12-signals-and-images/01-convolution-as-a-linear-map.md
+# chapter: content/courses/mathematics-for-computing/13-signals-and-images/01-convolution-as-a-linear-map.md
 #
 # Shapes: 1-D x [N, C, L] with w [K, C/groups, R]; 2-D x [N, C, H, W]
 # (NCHW) with w [K, C/groups, R, S] (KCRS). "Convolution" here is what deep

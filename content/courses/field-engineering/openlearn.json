@@ -10,8 +10,36 @@
   ],
   "tracks": [
     {
-      "dir": "content/courses/field-engineering",
-      "title": "Field Engineering"
+      "dir": "content/courses/field-engineering/01-discovery",
+      "title": "Discovery"
+    },
+    {
+      "dir": "content/courses/field-engineering/02-qualification-and-sizing",
+      "title": "Qualification and Sizing"
+    },
+    {
+      "dir": "content/courses/field-engineering/03-performance-testing-engagements",
+      "title": "Performance Testing Engagements"
+    },
+    {
+      "dir": "content/courses/field-engineering/04-poc-and-evaluation",
+      "title": "POC and Evaluation"
+    },
+    {
+      "dir": "content/courses/field-engineering/05-migration-and-cutover",
+      "title": "Migration and Cutover"
+    },
+    {
+      "dir": "content/courses/field-engineering/06-commercials-and-security",
+      "title": "Commercials and Security"
+    },
+    {
+      "dir": "content/courses/field-engineering/07-escalation-and-handoff",
+      "title": "Escalation and Handoff"
+    },
+    {
+      "dir": "content/courses/field-engineering/08-mock-engagement",
+      "title": "Mock Engagement"
     }
   ],
   "reference": [

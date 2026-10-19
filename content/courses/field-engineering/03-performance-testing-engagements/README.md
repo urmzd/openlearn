@@ -4,7 +4,7 @@ A benchmark run **for a customer** is not the same thing as a benchmark run for 
 
 A customer benchmark answers one question: **at their traffic shape, how much load meets their SLO, and at what cost?** Anything else is a demo. This chapter shows how to answer that question honestly. You will agree the question in writing, build the workload from the customer's logs, pick the right load model, keep the runs clean, measure from where the customer's users are, compare fairly against the incumbent provider, and write a report that leads with curves and goodput under the SLO rather than a single headline number.
 
-The load-testing math and tools are developed in [Serving & Load section 8](../../machine-learning/04-llm-systems/serving-and-load/#8-load-testing-methodology) in *Machine Learning and AI*; this chapter is about running that method with and for a customer. In practice an FDE usually leads, an SE runs pre-sales smoke tests, and the performance team reviews anything that will be quoted in a contract.
+The load-testing math and tools are developed in [Serving & Load section 8](../../machine-learning/04-llm-systems/04-serving-and-load/#8-load-testing-methodology) in *Machine Learning and AI*; this chapter is about running that method with and for a customer. In practice an FDE usually leads, an SE runs pre-sales smoke tests, and the performance team reviews anything that will be quoted in a contract.
 
 > **Learning objectives**
 > - Write the benchmark question as one signed-off sentence that names the SLO, the comparison, and what is out of scope.
@@ -15,7 +15,7 @@ The load-testing math and tools are developed in [Serving & Load section 8](../.
 
 ## Before you begin
 
-This chapter tests the hypothesis you wrote in [Qualification and Sizing](../02-qualification-and-sizing/README.md), so have it to hand, along with sections 3 and 8 of [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/). The primary references are the [`vllm bench serve` docs](https://docs.vllm.ai/en/stable/cli/bench/serve.html) and the [vLLM benchmark CLI guide](https://docs.vllm.ai/en/latest/benchmarking/cli/) (both free), which cover request rate, burstiness, maximum concurrency, goodput, warmups, and custom datasets. Useful supplements are [AIPerf](https://github.com/ai-dynamo/aiperf), NVIDIA's successor to GenAI-Perf (see the [migration notes](https://docs.nvidia.com/aiperf/getting-started/migrating-from-gen-ai-perf)); [GuideLLM](https://github.com/vllm-project/guidellm); the in-repository [`loadgen.py`](../../machine-learning/04-llm-systems/serving-and-load/code/loadgen.py), which uses only the standard library and is readable in one sitting; and [*Service Level Objectives*](https://sre.google/sre-book/service-level-objectives/) from the SRE book. All are free.
+This chapter tests the hypothesis you wrote in [Qualification and Sizing](../02-qualification-and-sizing/README.md), so have it to hand, along with sections 3 and 8 of [Serving & Load](../../machine-learning/04-llm-systems/04-serving-and-load/). The primary references are the [`vllm bench serve` docs](https://docs.vllm.ai/en/stable/cli/bench/serve.html) and the [vLLM benchmark CLI guide](https://docs.vllm.ai/en/latest/benchmarking/cli/) (both free), which cover request rate, burstiness, maximum concurrency, goodput, warmups, and custom datasets. Useful supplements are [AIPerf](https://github.com/ai-dynamo/aiperf), NVIDIA's successor to GenAI-Perf (see the [migration notes](https://docs.nvidia.com/aiperf/getting-started/migrating-from-gen-ai-perf)); [GuideLLM](https://github.com/vllm-project/guidellm); the in-repository [`loadgen.py`](../../machine-learning/04-llm-systems/04-serving-and-load/code/loadgen.py), which uses only the standard library and is readable in one sitting; and [*Service Level Objectives*](https://sre.google/sre-book/service-level-objectives/) from the SRE book. All are free.
 
 ## Agree the question before the run
 
@@ -80,7 +80,7 @@ Even with the right workload and load model, a handful of mistakes can make the 
 | **Single run** | Noise read as signal | Repeat key points; report spread |
 | **Undisclosed config** | Nobody can reproduce the number | Record engine, version, flags, model revision, quantization, GPU type and count |
 
-You can see the first two effects for yourself. Run [`loadgen.py`](../../machine-learning/04-llm-systems/serving-and-load/code/loadgen.py) with `--mock --sweep 2,8,32` and find the knee, then rerun it with `--shared-prefix-len 800` and explain the change in TTFT.
+You can see the first two effects for yourself. Run [`loadgen.py`](../../machine-learning/04-llm-systems/04-serving-and-load/code/loadgen.py) with `--mock --sweep 2,8,32` and find the knee, then rerun it with `--shared-prefix-len 800` and explain the change in TTFT.
 
 ## Measuring from the customer's region
 
@@ -126,7 +126,7 @@ $$
 \text{cost per 1M tokens} = \frac{\text{GPU \$/hr} \times \text{GPUs}}{\text{tok/s} \times 3600} \times 10^6
 $$
 
-The full cost model is in [Commercials and Security](../06-commercials-and-security/README.md). Finally, keep **the bound and the measurement** apart: quote the measured number, and explain the roofline bound only as a ceiling ([Serving & Load section 8](../../machine-learning/04-llm-systems/serving-and-load/#8-load-testing-methodology)).
+The full cost model is in [Commercials and Security](../06-commercials-and-security/README.md). Finally, keep **the bound and the measurement** apart: quote the measured number, and explain the roofline bound only as a ceiling ([Serving & Load section 8](../../machine-learning/04-llm-systems/04-serving-and-load/#8-load-testing-methodology)).
 
 ### Tools
 
@@ -134,7 +134,7 @@ Three tools cover the run matrix: the readable standard-library client for open-
 
 ```bash
 # Open-loop sweep with the customer's SLO, readable stdlib client (in repo)
-python content/courses/machine-learning/04-llm-systems/serving-and-load/code/loadgen.py \
+python content/courses/machine-learning/04-llm-systems/04-serving-and-load/code/loadgen.py \
     --base-url https://<endpoint> --api-key "$KEY" --model <model> --endpoint chat \
     --sweep 2,4,8,12 --num-requests 600 --warmup 10 \
     --input-len 2000 --output-len 300 --len-dist lognormal \
@@ -219,7 +219,7 @@ point: $<z> per 1M tokens. Compared with <incumbent>: <result, with caveats>.>
 
 ## Where this leads
 
-The method behind every run, open versus closed loop, goodput, and warmup, comes from [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/). Poisson arrivals and tail percentiles are the subject of [Probability & Statistics](../../mathematics-for-computing/07-probability-statistics/) in *Mathematics for Computing*. Why client TTFT differs from server TTFT, including buffering proxies, is explained in [Streaming & SSE](../../ai-platform-engineering/03-streaming-sse/) in *AI Platform Engineering*, and the server-side metrics you report next to client results come from [Observability](../../systems/04-observability/) in *Systems and Architecture*.
+The method behind every run, open versus closed loop, goodput, and warmup, comes from [Serving & Load](../../machine-learning/04-llm-systems/04-serving-and-load/). Poisson arrivals and tail percentiles are the subject of [Probability & Statistics](../../mathematics-for-computing/08-probability-statistics/) in *Mathematics for Computing*. Why client TTFT differs from server TTFT, including buffering proxies, is explained in [Streaming & SSE](../../ai-platform-engineering/03-streaming-sse/) in *AI Platform Engineering*, and the server-side metrics you report next to client results come from [Observability](../../systems/04-observability/) in *Systems and Architecture*.
 
 This work shows up across the industry at an advanced level. Fireworks AI, Together AI, and Baseten run head-to-head benchmarks against a customer's incumbent during evaluation. NVIDIA maintains AIPerf, GenAI-Perf, and the MLPerf Inference methodology, and the vLLM and SGLang maintainers design `bench serve` and `bench_serving`. Any enterprise buying inference will eventually ask for a benchmark report it can audit.
 

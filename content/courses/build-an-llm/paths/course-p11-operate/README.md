@@ -21,17 +21,17 @@ This pass needs [Pass 10](../course-p10-agents/README.md), and with it the whole
 3. [Commits, semver, and releases](../../../software-craftsmanship/06-releases-and-deprecation/01-commits-semver-and-releases.md). Afterwards you can explain how conventional commits drive semver and how v1.0.0 is released.
 4. [Deprecation policy](../../../software-craftsmanship/06-releases-and-deprecation/02-deprecation-policy.md). Afterwards you can explain the deprecation policy and how it protects users.
 5. [Interface migration: KV format v1 to v2](../../../software-craftsmanship/07-maintenance/01-kv-format-v1-to-v2.md). Afterwards you can explain how the KV format migrates from v1 to v2 without downtime.
-6. [The KV format v2 migration](../../../systems/05-incident-response-and-chaos/04-kv-v2-migration.md). Afterwards you can diagnose a failure during the KV v2 migration, explain the fix, and explain how it is prevented.
+6. [The KV format v2 migration](../../../systems/05-incident-response-and-chaos/05-kv-v2-migration.md). Afterwards you can diagnose a failure during the KV v2 migration, explain the fix, and explain how it is prevented.
 7. [Interface migration: API v1 to v2](../../../software-craftsmanship/07-maintenance/02-api-v1-to-v2.md). Afterwards you can explain how the API migrates from v1 to v2 while v1 clients keep working.
-8. [The API v2 migration](../../../systems/05-incident-response-and-chaos/05-api-v2-migration.md). Afterwards you can diagnose a failure during the API v2 migration, explain the fix, and explain how it is prevented.
+8. [The API v2 migration](../../../systems/05-incident-response-and-chaos/06-api-v2-migration.md). Afterwards you can diagnose a failure during the API v2 migration, explain the fix, and explain how it is prevented.
 9. [Dependency upgrades](../../../software-craftsmanship/07-maintenance/03-dependency-upgrades.md). Afterwards you can explain how a dependency upgrade is planned, tested, and rolled out.
-10. [A breaking dependency upgrade](../../../systems/05-incident-response-and-chaos/06-dependency-upgrade.md). Afterwards you can diagnose a breaking dependency upgrade, explain the fix, and explain how it is prevented.
+10. [A breaking dependency upgrade](../../../systems/05-incident-response-and-chaos/07-dependency-upgrade.md). Afterwards you can diagnose a breaking dependency upgrade, explain the fix, and explain how it is prevented.
 11. [Performance regression bisect](../../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md). Afterwards you can explain how a performance regression is bisected to one commit.
-12. [A performance regression bisect](../../../systems/05-incident-response-and-chaos/07-performance-regression.md). Afterwards you can bisect a performance regression from its symptoms, explain the fix, and explain how it is prevented.
-13. [A data incident](../../../systems/05-incident-response-and-chaos/08-data-incident.md). Afterwards you can diagnose the data incident, explain the fix, and explain how it is prevented.
-14. [A noisy neighbor](../../../systems/05-incident-response-and-chaos/09-noisy-neighbor.md). Afterwards you can diagnose the noisy neighbor, explain the fix, and explain how it is prevented.
-15. [A runaway agent](../../../systems/05-incident-response-and-chaos/10-runaway-agent.md). Afterwards you can diagnose the runaway agent, explain the fix, and explain how it is prevented.
-16. [The event log disk fills up](../../../systems/05-incident-response-and-chaos/11-eventlog-disk-full.md). Afterwards you can diagnose the full event-log disk, explain the fix, and explain how it is prevented.
+12. [A performance regression bisect](../../../systems/05-incident-response-and-chaos/08-performance-regression.md). Afterwards you can bisect a performance regression from its symptoms, explain the fix, and explain how it is prevented.
+13. [A data incident](../../../systems/05-incident-response-and-chaos/09-data-incident.md). Afterwards you can diagnose the data incident, explain the fix, and explain how it is prevented.
+14. [A noisy neighbor](../../../systems/05-incident-response-and-chaos/10-noisy-neighbor.md). Afterwards you can diagnose the noisy neighbor, explain the fix, and explain how it is prevented.
+15. [A runaway agent](../../../systems/05-incident-response-and-chaos/11-runaway-agent.md). Afterwards you can diagnose the runaway agent, explain the fix, and explain how it is prevented.
+16. [The event log disk fills up](../../../systems/05-incident-response-and-chaos/12-eventlog-disk-full.md). Afterwards you can diagnose the full event-log disk, explain the fix, and explain how it is prevented.
 17. [Threat modeling with STRIDE](../../../software-craftsmanship/08-security/01-threat-model-stride.md). Afterwards you can explain the STRIDE threat model of the system's data-flow diagram.
 18. [SBOM and supply chain](../../../software-craftsmanship/08-security/02-sbom-and-supply-chain.md). Afterwards you can explain how the SBOM is generated and what supply-chain checks it enables.
 19. [Secrets and authorization review](../../../software-craftsmanship/08-security/03-secrets-and-authorization-review.md). Afterwards you can explain how secrets are handled and how authorization is reviewed.
@@ -45,13 +45,13 @@ This pass needs [Pass 10](../course-p10-agents/README.md), and with it the whole
 27. [Planning the staged migration](../../../field-engineering/08-mock-engagement/05-migration-plan.md). Afterwards you can explain the migration plan and its risks.
 28. [Answering the security questionnaire](../../../field-engineering/08-mock-engagement/06-commercials-and-security.md). Afterwards you can explain the commercials and how the security review is answered.
 29. [Handing off operations](../../../field-engineering/08-mock-engagement/07-escalation-and-handoff.md). Afterwards you can explain how escalations are handled and how the engagement is handed off.
-30. [Defend your system](../../../interview-preparation/defend-your-system/01-defend-your-system.md). Afterwards you can defend the system's design and tradeoffs under questioning.
+30. [Defend your system](../../../interview-preparation/06-defend-your-system/01-defend-your-system.md). Afterwards you can defend the system's design and tradeoffs under questioning.
 31. [What the System Does After Pass 11](milestone.md). Afterwards you can explain how v1.0.0 is released, migrated, operated through its incident drills, reviewed, and handed off.
 
 ## Going deeper
 
 One optional drill exercises the Raft-replicated durable log from [Pass 8](../course-p08-durable/README.md):
 
-32. [A Raft partition (optional)](../../../systems/05-incident-response-and-chaos/12-raft-partition.md). Afterwards you can diagnose a Raft partition, explain what the cluster guarantees during it, and explain the fix.
+32. [A Raft partition (optional)](../../../systems/05-incident-response-and-chaos/13-raft-partition.md). Afterwards you can diagnose a Raft partition, explain what the cluster guarantees during it, and explain the fix.
 
 The stages are also in this pass's manifest, [`path.tsv`](path.tsv). The core course ends here at v1.0.0; [Pass 12](../course-p12-multimodal/README.md) extends the system to images and audio.

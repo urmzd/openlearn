@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/xfmr/masks.pyi (L5.2): attention masks
-# chapter: content/courses/build-an-llm/p05-transformer-2017/02-masks.md
+# chapter: content/courses/build-an-llm/06-transformer-2017/02-masks.md
 #
 # A mask says which keys each query may read. Every boolean mask here uses
 # one convention, the one scaled_dot_product_attention (L5.1) takes:

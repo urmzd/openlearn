@@ -142,7 +142,7 @@ base_cmd=(
   -V "author=github.com/urmzd/openlearn"
   -V "date=$BUILD_DATE"
 )
-$WITH_TOC && base_cmd+=(--toc --toc-depth=1)
+$WITH_TOC && base_cmd+=(--toc --toc-depth=2)
 
 # Fonts (best-effort; pandoc uses LaTeX defaults if none found).
 mf="$(find_font SERIF_CANDIDATES)" && base_cmd+=(-V "mainfont=$mf")

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/obj/bert.pyi (L6.2): BERT and masked-LM masking
-# chapter: content/courses/build-an-llm/p06-objectives/02-bert-masked-lm.md
+# chapter: content/courses/build-an-llm/07-objectives/02-bert-masked-lm.md
 #
 # Devlin et al. (2019). A post-LN encoder (L5.5's norm="post") with exact
 # GELU, learned positions (L5.4), and token type (segment) embeddings, read in

@@ -32,7 +32,7 @@ The two traces below exercise most of the control plane between them: the log, t
 
 Now ask "crash here?" at each step. If the worker dies at step 3 or 4, the lease expires and the task is delivered again; the rerun sees the same idempotency key and its work directory, and resumes rather than duplicating. If the server is SIGKILLed, it truncates the torn last record on restart, rebuilds queues from the log, and redelivers the leases that were live. A late completion from the old worker carries an old fencing token and is refused. The effect is at least once; the idempotency key is what makes it look exactly once.
 
-This is not a hypothetical. The drill [The durable server is SIGKILLed in a loop during a corpus build](../05-incident-response-and-chaos/02-durable-kill9.md) measured it: five kills, 14 tasks delivered twice and 3 three times, no acknowledged event lost, and the shards hold every row once ([`2026-10-09-durable-kill9.md`](../../../../course/solutions/docs/postmortems/2026-10-09-durable-kill9.md)).
+This is not a hypothetical. The drill [The durable server is SIGKILLed in a loop during a corpus build](../05-incident-response-and-chaos/03-durable-kill9.md) measured it: five kills, 14 tasks delivered twice and 3 three times, no acknowledged event lost, and the shards hold every row once ([`2026-10-09-durable-kill9.md`](../../../../course/solutions/docs/postmortems/2026-10-09-durable-kill9.md)).
 
 ### An AgentRun write tool that needs approval
 

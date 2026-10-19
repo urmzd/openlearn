@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/accounting.pyi (M05.1): counting parameters, FLOPs, KV bytes, memory
-# chapter: content/courses/mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md
+# chapter: content/courses/mathematics-for-computing/06-discrete-math-1/01-counting-params-flops-kv-bytes.md
 #
 # Exact integer counts for a Llama-family decoder (L7.9): token embedding,
 # n_layers blocks of [RMSNorm, attention, RMSNorm, gated MLP], a final

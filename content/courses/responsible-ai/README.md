@@ -46,7 +46,7 @@ You do not have to read in order. If you are shipping a model at work, start wit
 
 ## Prerequisites and related books
 
-The reading needs no prerequisites. The applied sections assume the system they apply to: the [Corpus Pipeline](../data-engineering/05-corpus-pipeline/) chapter of *Data Engineering* for the licensing and privacy chapters, the capstone model of *Build Your Own LLM System* for the cards and evals, and the [Gateway](../ai-platform-engineering/12-gateway/) chapter of *AI Platform Engineering* for the usage policy. The evals use confidence intervals and ROC curves from [Probability & Statistics](../mathematics-for-computing/07-probability-statistics/) in *Mathematics for Computing*. Related material appears in *Software Craftsmanship* (the [Security](../software-craftsmanship/08-security/) chapter's threat model) and *Systems and Architecture* (incident response and postmortems).
+The reading needs no prerequisites. The applied sections assume the system they apply to: the [Corpus Pipeline](../data-engineering/05-corpus-pipeline/) chapter of *Data Engineering* for the licensing and privacy chapters, the capstone model of *Build Your Own LLM System* for the cards and evals, and the [Gateway](../ai-platform-engineering/12-gateway/) chapter of *AI Platform Engineering* for the usage policy. The evals use confidence intervals and ROC curves from [Probability & Statistics](../mathematics-for-computing/08-probability-statistics/) in *Mathematics for Computing*. Related material appears in *Software Craftsmanship* (the [Security](../software-craftsmanship/08-security/) chapter's threat model) and *Systems and Architecture* (incident response and postmortems).
 
 ## Conventions
 

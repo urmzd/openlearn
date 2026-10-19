@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/xfmr/sdpa.pyi (L5.1): scaled dot-product attention
-# chapter: content/courses/build-an-llm/p05-transformer-2017/01-scaled-dot-product-attention.md
+# chapter: content/courses/build-an-llm/06-transformer-2017/01-scaled-dot-product-attention.md
 #
 # Vaswani et al. (2017), equation 1, with a hand-written backward:
 #

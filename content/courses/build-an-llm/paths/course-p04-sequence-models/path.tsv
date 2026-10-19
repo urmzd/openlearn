@@ -1,17 +1,17 @@
 # Pass 4: course-p04-sequence-models.
 # stage	title	files	done when
-1	LLN, CLT, confidence intervals, bootstrap	content/courses/mathematics-for-computing/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md	You can explain why a sample mean concentrates and how a bootstrap interval is computed (M07.4).
-2	Solve set: LLN/CLT, confidence intervals	content/courses/mathematics-for-computing/07-probability-statistics/92-problem-set-c.md	You can work every S-M07c problem and explain each answer.
-3	Vanilla RNN with manual BPTT and truncation	content/courses/build-an-llm/p03-recurrent/01-vanilla-rnn-manual-bptt.md	You can derive backpropagation through time for a vanilla RNN and explain what truncation trades away (L3.1).
-4	LSTM (torch gate order)	content/courses/build-an-llm/p03-recurrent/02-lstm.md	You can explain each LSTM gate in torch's order and why the cell state eases vanishing gradients (L3.2).
-5	GRU (torch gate order)	content/courses/build-an-llm/p03-recurrent/03-gru.md	You can explain how the GRU merges the LSTM's gates and how torch orders them (L3.3).
-6	Bidirectional RNN with length-aware reversal	content/courses/build-an-llm/p03-recurrent/04-bidirectional-rnn.md	You can explain how the bidirectional RNN reverses padded sequences by length (L3.4).
-7	RNN language model with stateful TBPTT	content/courses/build-an-llm/p03-recurrent/06-rnn-language-model-stateful-tbptt.md	You can explain how stateful TBPTT carries hidden state across batches and where it is detached (L3.6).
-8	Bahdanau additive attention	content/courses/build-an-llm/p04-attention-origins/02-bahdanau-additive-attention.md	You can derive Bahdanau's additive attention scores and context vector (L4.2).
-9	Luong attention and input feeding	content/courses/build-an-llm/p04-attention-origins/03-luong-attention-input-feeding.md	You can explain Luong's score functions and why input feeding helps (L4.3).
-10	Encoder-decoder with teacher forcing	content/courses/build-an-llm/p04-attention-origins/01-encoder-decoder-teacher-forcing.md	You can explain teacher forcing and how the encoder-decoder is trained and decoded (L4.1).
-11	Beam search, generic over a step function	content/courses/build-an-llm/p04-attention-origins/04-beam-search.md	You can explain how beam search over a generic step function ranks and prunes hypotheses (L4.4).
-12	Sequence metrics: exact match, BLEU, chrF	content/courses/build-an-llm/p04-attention-origins/05-sequence-metrics.md	You can compute exact match, BLEU and chrF by hand on a small example (L4.5).
+1	LLN, CLT, confidence intervals, bootstrap	content/courses/mathematics-for-computing/08-probability-statistics/05-lln-clt-confidence-intervals-bootstrap.md	You can explain why a sample mean concentrates and how a bootstrap interval is computed (M07.4).
+2	Solve set: LLN/CLT, confidence intervals	content/courses/mathematics-for-computing/08-probability-statistics/11-problem-set-c.md	You can work every S-M07c problem and explain each answer.
+3	Vanilla RNN with manual BPTT and truncation	content/courses/build-an-llm/04-recurrent/01-vanilla-rnn-manual-bptt.md	You can derive backpropagation through time for a vanilla RNN and explain what truncation trades away (L3.1).
+4	LSTM (torch gate order)	content/courses/build-an-llm/04-recurrent/02-lstm.md	You can explain each LSTM gate in torch's order and why the cell state eases vanishing gradients (L3.2).
+5	GRU (torch gate order)	content/courses/build-an-llm/04-recurrent/03-gru.md	You can explain how the GRU merges the LSTM's gates and how torch orders them (L3.3).
+6	Bidirectional RNN with length-aware reversal	content/courses/build-an-llm/04-recurrent/04-bidirectional-rnn.md	You can explain how the bidirectional RNN reverses padded sequences by length (L3.4).
+7	RNN language model with stateful TBPTT	content/courses/build-an-llm/04-recurrent/06-rnn-language-model-stateful-tbptt.md	You can explain how stateful TBPTT carries hidden state across batches and where it is detached (L3.6).
+8	Bahdanau additive attention	content/courses/build-an-llm/05-attention-origins/02-bahdanau-additive-attention.md	You can derive Bahdanau's additive attention scores and context vector (L4.2).
+9	Luong attention and input feeding	content/courses/build-an-llm/05-attention-origins/03-luong-attention-input-feeding.md	You can explain Luong's score functions and why input feeding helps (L4.3).
+10	Encoder-decoder with teacher forcing	content/courses/build-an-llm/05-attention-origins/01-encoder-decoder-teacher-forcing.md	You can explain teacher forcing and how the encoder-decoder is trained and decoded (L4.1).
+11	Beam search, generic over a step function	content/courses/build-an-llm/05-attention-origins/04-beam-search.md	You can explain how beam search over a generic step function ranks and prunes hypotheses (L4.4).
+12	Sequence metrics: exact match, BLEU, chrF	content/courses/build-an-llm/05-attention-origins/05-sequence-metrics.md	You can compute exact match, BLEU and chrF by hand on a small example (L4.5).
 13	Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors	content/courses/software-craftsmanship/03-testing-mentality/05-mutation-testing-in-depth.md	You can explain equivalent and semantic mutants and what a surviving mutant says about a test suite (craft.07).
 14	What the system does after Pass 4	content/courses/build-an-llm/paths/course-p04-sequence-models/milestone.md	You can explain why the LSTM beats the RNN and the NPLM, and why attention closes the long-date gap that beam search alone cannot.
-15	ELMo: biLM, ScalarMix, linear probes	content/courses/build-an-llm/p03-recurrent/05-elmo-bilm-scalarmix-probes.md	You can explain ScalarMix and what a linear probe measures about a biLM's layers (L3.5).
+15	ELMo: biLM, ScalarMix, linear probes	content/courses/build-an-llm/04-recurrent/05-elmo-bilm-scalarmix-probes.md	You can explain ScalarMix and what a linear probe measures about a biLM's layers (L3.5).

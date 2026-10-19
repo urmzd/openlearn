@@ -15,7 +15,7 @@ Two lessons are worth carrying out of the chapter. Simple models such as linear 
 
 ## Before you begin
 
-You need linear algebra (matrix products, inverses, eigendecomposition) and basic probability and statistics (expectation, variance, distributions). Both are covered in *Mathematics for Computing*: see [Linear Algebra](../../mathematics-for-computing/03-linear-algebra/README.md) and [Probability and Statistics](../../mathematics-for-computing/07-probability-statistics/README.md).
+You need linear algebra (matrix products, inverses, eigendecomposition) and basic probability and statistics (expectation, variance, distributions). Both are covered in *Mathematics for Computing*: see [Linear Algebra](../../mathematics-for-computing/04-linear-algebra/README.md) and [Probability and Statistics](../../mathematics-for-computing/08-probability-statistics/README.md).
 
 The chapter follows two free textbooks. The primary text is [*An Introduction to Statistical Learning*](https://www.statlearning.com/) (ISLR), which is deliberately sequenced for teaching, so read its chapters in order. The advanced reference is [*The Elements of Statistical Learning*](https://hastie.su.domains/ElemStatLearn/) (ESL), which gives the mathematical depth behind the same ideas; turn to it for topics that interest you. For each topic, do ISLR's conceptual exercises first and then its applied exercises in R or Python. The exercises listed in each section are the essential ones. Finally, implement at least linear regression, logistic regression, and K-means from scratch; nothing else makes the mechanics stick as well.
 
@@ -160,7 +160,7 @@ The methods in this chapter can be compared along the same axes the chapter has 
 
 ## Where this leads
 
-The linear algebra and probability you used here keep paying off. SVD and eigendecomposition from [Linear Algebra](../../mathematics-for-computing/03-linear-algebra/README.md) underlie PCA and the normal equations, and Bayes' rule and distributions from [Probability and Statistics](../../mathematics-for-computing/07-probability-statistics/README.md) underlie LDA, Naive Bayes, and generative models generally. The next chapter, [Deep Learning](../02-deep-learning/README.md), builds on two ideas from this one: gradient-based fitting becomes the foundation of neural network optimization, and the bias-variance tradeoff is extended (and complicated) by the double-descent behavior of very large models.
+The linear algebra and probability you used here keep paying off. SVD and eigendecomposition from [Linear Algebra](../../mathematics-for-computing/04-linear-algebra/README.md) underlie PCA and the normal equations, and Bayes' rule and distributions from [Probability and Statistics](../../mathematics-for-computing/08-probability-statistics/README.md) underlie LDA, Naive Bayes, and generative models generally. The next chapter, [Deep Learning](../02-deep-learning/README.md), builds on two ideas from this one: gradient-based fitting becomes the foundation of neural network optimization, and the bias-variance tradeoff is extended (and complicated) by the double-descent behavior of very large models.
 
 These topics also come up constantly in interviews, which is one reason to learn them well. The table below shows how they appear at several companies covered in *Interview Preparation*:
 

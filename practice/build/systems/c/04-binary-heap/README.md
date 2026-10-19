@@ -2,7 +2,7 @@
 
 A priority queue answers one question fast: what is the smallest thing waiting? Schedulers, timers, Dijkstra's algorithm, and top-k queries all ask it. This section builds the standard answer, a binary min-heap, where the entire data structure is one flat array and the tree shape exists only in index arithmetic. Then it builds heapsort, which is the same machinery run in place with no extra memory at all.
 
-Three ideas carry the section: a complete binary tree fits in an array with no pointers; two repair operations, `sift_up` and `sift_down`, restore the heap property after any change; and building a heap from scratch is O(n), not the O(n log n) your intuition suggests. A final twist, turning a min-heap into an ascending sort without writing a second `sift_down`, turns out to hide an integer overflow. The heap's backing array grows exactly like the [dynamic array](../01-dynamic-array/README.md), and [Heap top-k in C](../../../../../content/courses/algorithms/16-systems-data-structures/04-binary-heap-top-k.md) in *Algorithms* puts the structure to work.
+Three ideas carry the section: a complete binary tree fits in an array with no pointers; two repair operations, `sift_up` and `sift_down`, restore the heap property after any change; and building a heap from scratch is O(n), not the O(n log n) your intuition suggests. A final twist, turning a min-heap into an ascending sort without writing a second `sift_down`, turns out to hide an integer overflow. The heap's backing array grows exactly like the [dynamic array](../01-dynamic-array/README.md), and [Heap top-k in C](../../../../../content/courses/algorithms/13-systems-data-structures/04-binary-heap-top-k.md) in *Algorithms* puts the structure to work.
 
 > **Learning objectives**
 > - Map a complete binary tree onto an array and compute parent and child indices.
@@ -192,7 +192,7 @@ Heapsort's instability is the other thing to understand rather than fix. `heap_p
 
 ## Where this leads
 
-The natural extension is `heap_decrease_key`, which is what Dijkstra actually needs and what makes a heap awkward: you must find the element first, and the array gives you no way to do that in less than O(n). The usual fix is a side table from element identity to current index, updated on every swap, which is a good illustration of how a clean data structure grows a wart the moment a real algorithm uses it. *Algorithms* takes the heap further in [Heap top-k in C](../../../../../content/courses/algorithms/16-systems-data-structures/04-binary-heap-top-k.md) and [A binary heap with lazy deletion](../../../../../content/courses/algorithms/16-systems-data-structures/06-binary-heap-lazy-deletion.md), which sidesteps the find problem by marking entries dead instead of removing them.
+The natural extension is `heap_decrease_key`, which is what Dijkstra actually needs and what makes a heap awkward: you must find the element first, and the array gives you no way to do that in less than O(n). The usual fix is a side table from element identity to current index, updated on every swap, which is a good illustration of how a clean data structure grows a wart the moment a real algorithm uses it. *Algorithms* takes the heap further in [Heap top-k in C](../../../../../content/courses/algorithms/13-systems-data-structures/04-binary-heap-top-k.md) and [A binary heap with lazy deletion](../../../../../content/courses/algorithms/13-systems-data-structures/06-binary-heap-lazy-deletion.md), which sidesteps the find problem by marking entries dead instead of removing them.
 
 ## Key terms
 

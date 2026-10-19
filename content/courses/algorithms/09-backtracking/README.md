@@ -13,7 +13,7 @@ This chapter presents the choose, explore, unchoose loop in five forms (subsets,
 
 ## Before you begin
 
-You should be comfortable with recursion ([Recursion and divide-and-conquer](../11-recursion-divide-conquer/README.md)) and with DFS on grids ([Graphs](../06-graphs/README.md)). Counting arguments for subsets and permutations are covered in [Counting params, FLOPs, and KV bytes](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md) in *Mathematics for Computing*.
+You should be comfortable with recursion ([Recursion and divide-and-conquer](../11-recursion-divide-conquer/README.md)) and with DFS on grids ([Graphs](../06-graphs/README.md)). Counting arguments for subsets and permutations are covered in [Counting params, FLOPs, and KV bytes](../../mathematics-for-computing/06-discrete-math-1/01-counting-params-flops-kv-bytes.md) in *Mathematics for Computing*.
 
 ## Subsets
 

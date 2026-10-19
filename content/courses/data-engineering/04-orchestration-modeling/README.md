@@ -23,7 +23,7 @@ The best way to learn this material is to run it. Build an Airflow (or Dagster) 
 
 The chapter's prose is accompanied by two pieces of working code:
 
-- [The Streamflow dbt project](dbt/README.md): a minimal, runnable dbt project that turns the Spark-produced silver orders into a tested `daily_revenue` mart, illustrating `ref()`, materializations, medallion layering, and tests.
+- [The Streamflow dbt project](01-dbt/README.md): a minimal, runnable dbt project that turns the Spark-produced silver orders into a tested `daily_revenue` mart, illustrating `ref()`, materializations, medallion layering, and tests.
 - [The Streamflow orders DAG](airflow/streamflow_orders_dag.py): an Airflow DAG that chains the Spark job to dbt with retries, exponential backoff, and date-partitioned backfills.
 
 ## Orchestration fundamentals
@@ -88,7 +88,7 @@ dbt also makes testing routine. Built-in tests (`unique`, `not_null`, `accepted_
 
 Why did this matter so much? Because it brought version control, modularity, testing, and CI/CD to analytics SQL, which until then had lived in ad hoc scripts. That shift is the foundation of the analytics engineering role.
 
-The [The Streamflow dbt Project](dbt/README.md) implements exactly this staging, intermediate, and marts chain over the Spark-produced silver table, with built-in tests (`not_null`, `unique`, `accepted_values`), a source freshness check, and a custom singular test. Trace it end to end: `source('silver','orders')` feeds `stg_orders`, which feeds `int_orders_enriched`, which feeds `daily_revenue`. Then run `dbt build` against DuckDB, with zero infrastructure, and `dbt docs serve` to browse the lineage graph.
+The [The Streamflow dbt Project](01-dbt/README.md) implements exactly this staging, intermediate, and marts chain over the Spark-produced silver table, with built-in tests (`not_null`, `unique`, `accepted_values`), a source freshness check, and a custom singular test. Trace it end to end: `source('silver','orders')` feeds `stg_orders`, which feeds `int_orders_enriched`, which feeds `daily_revenue`. Then run `dbt build` against DuckDB, with zero infrastructure, and `dbt docs serve` to browse the lineage graph.
 
 ## Data modeling for consumption
 
@@ -106,7 +106,7 @@ Data quality has several dimensions: accuracy, completeness, consistency, timeli
 
 Tools such as dbt tests, [Great Expectations](https://docs.greatexpectations.io/), and Soda express these as assertions that fail the pipeline before bad data reaches consumers. A final technique, **reconciliation**, cross-checks totals against a source of truth to catch silent loss or duplication that row-level tests miss.
 
-The Streamflow project's custom test, [`tests/assert_daily_revenue_is_sane.sql`](dbt/tests/assert_daily_revenue_is_sane.sql), is a good model of writing the test before trusting the output. It asserts that the mart's grain holds (at most one row per `order_date` and `currency`) and that revenue is never negative.
+The Streamflow project's custom test, [`tests/assert_daily_revenue_is_sane.sql`](01-dbt/tests/assert_daily_revenue_is_sane.sql), is a good model of writing the test before trusting the output. It asserts that the mart's grain holds (at most one row per `order_date` and `currency`) and that revenue is never negative.
 
 ## Data contracts and governance
 

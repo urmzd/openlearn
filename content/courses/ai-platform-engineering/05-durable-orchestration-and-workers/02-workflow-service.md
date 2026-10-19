@@ -424,7 +424,7 @@ The solution's tests cover the following cases, each tied to something downstrea
 | list newest first, paged | unit | newest first, pages of 2, type and status filters | `wf list` |
 | not found and bad tokens | boundary | unknown workflow or run is `NOT_FOUND`; bad tokens `INVALID_ARGUMENT` | CLI error messages |
 | page token round trip | unit | `ParsePageToken(PageToken(n)) = n`; empty is 1; 0 is refused | workers pass tokens back unchanged |
-| quota is RESOURCE_EXHAUSTED | fault | `RESOURCE_EXHAUSTED` at the WAL quota, no half-registered run, raising the quota resumes | the [disk-full drill](../../systems/05-incident-response-and-chaos/11-eventlog-disk-full.md) |
+| quota is RESOURCE_EXHAUSTED | fault | `RESOURCE_EXHAUSTED` at the WAL quota, no half-registered run, raising the quota resumes | the [disk-full drill](../../systems/05-incident-response-and-chaos/12-eventlog-disk-full.md) |
 
 ## What can go wrong
 

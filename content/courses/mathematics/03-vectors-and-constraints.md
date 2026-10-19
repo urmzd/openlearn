@@ -51,7 +51,7 @@ $140+2l \le 170$ gives $l \le 15$. The maximum is 15 larger packs and 5 standard
 
 ## Where this leads
 
-Every calculation so far has assumed you know exactly how many people will come. The next chapter, [Uncertainty and evidence](04-uncertainty-and-evidence.md), drops that assumption. For the full theory of vectors and of choosing the best feasible plan, see the [Linear Algebra](../mathematics-for-computing/03-linear-algebra/README.md) and [Optimization](../mathematics-for-computing/10-optimization/README.md) chapters in *Mathematics for Computing*.
+Every calculation so far has assumed you know exactly how many people will come. The next chapter, [Uncertainty and evidence](04-uncertainty-and-evidence.md), drops that assumption. For the full theory of vectors and of choosing the best feasible plan, see the [Linear Algebra](../mathematics-for-computing/04-linear-algebra/README.md) and [Optimization](../mathematics-for-computing/11-optimization/README.md) chapters in *Mathematics for Computing*.
 
 ## Key terms
 

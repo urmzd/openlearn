@@ -1,6 +1,6 @@
 # Rust: ownership, traits, Result, cargo workspaces, std TCP
 
-By the time a system can compute a bigram's logits and has a checkpoint on disk, nothing can reach it over a network yet. No process listens on a port, so a gateway has nothing to forward to and a cluster has nothing to run. The next step in *Build Your Own LLM System*, [Your first endpoint](../../build-an-llm/p10-serving/00-your-first-endpoint.md), writes that process: an inference engine in **Rust** that accepts TCP connections, reads requests, and runs the model for every token. It uses only Rust's standard library, so every byte on the wire is visible in its own code.
+By the time a system can compute a bigram's logits and has a checkpoint on disk, nothing can reach it over a network yet. No process listens on a port, so a gateway has nothing to forward to and a cluster has nothing to run. The next step in *Build Your Own LLM System*, [Your first endpoint](../../build-an-llm/11-serving/01-your-first-endpoint.md), writes that process: an inference engine in **Rust** that accepts TCP connections, reads requests, and runs the model for every token. It uses only Rust's standard library, so every byte on the wire is visible in its own code.
 
 This section builds the same skeleton with a trivial protocol: a server that reads lines from many clients at once and answers each line. When you reach the engine, the only new ideas will be HTTP, the model, and tracing. The solution is a Cargo workspace ([`Cargo.toml`](../../../../course/solutions/primers/lang.04/Cargo.toml)) with the library [`lineproto/src/lib.rs`](../../../../course/solutions/primers/lang.04/lineproto/src/lib.rs) (`Command`, `ProtoError`, `parse`, `byte_len`, `respond`, `reply`) and the binary [`echo/src/main.rs`](../../../../course/solutions/primers/lang.04/echo/src/main.rs) (`main`, `parse_port`, `serve`: a line-protocol server on `std::net`, one thread per connection). The protocol table and signatures below are the whole contract. To run it: `cd primers/lang.04 && cargo test && cargo run -p echo -- --port 7878`.
 
@@ -156,7 +156,7 @@ thread::spawn(move || {
 });
 ```
 
-`thread::spawn` runs a **closure** (an anonymous function) on a new operating-system thread. `move` makes the closure take ownership of what it uses, here `stream`, so the new thread owns the socket and the accept loop keeps no reference to it: the compiler would reject sharing it by accident. When `serve` returns, `stream` is dropped and the socket closes. Threads cost memory (a stack each), which is fine for a primer and for the tracer engine; [Async Rust and tokio](09-async-rust-and-tokio.md) and the [OpenAI-compatible server on tokio](../../build-an-llm/p10-serving/05-openai-server-on-tokio.md) replace them with **async** tasks.
+`thread::spawn` runs a **closure** (an anonymous function) on a new operating-system thread. `move` makes the closure take ownership of what it uses, here `stream`, so the new thread owns the socket and the accept loop keeps no reference to it: the compiler would reject sharing it by accident. When `serve` returns, `stream` is dropped and the socket closes. Threads cost memory (a stack each), which is fine for a primer and for the tracer engine; [Async Rust and tokio](09-async-rust-and-tokio.md) and the [OpenAI-compatible server on tokio](../../build-an-llm/11-serving/06-openai-server-on-tokio.md) replace them with **async** tasks.
 
 ## Tests
 
@@ -446,7 +446,7 @@ The pitfalls that break these checks are these:
 
 ## Where this leads
 
-The engine in [Your first endpoint](../../build-an-llm/p10-serving/00-your-first-endpoint.md) is this server grown up: `TcpListener`, a thread per connection, a `BufRead` parser, and candle-based inference. The next section, [HTTP/1.1, JSON, and Server-Sent Events](05-http-and-sse.md), keeps the same server shape but speaks HTTP/1.1, JSON, and SSE instead of lines. In *Algorithms*, the [Robin Hood hash map](../../algorithms/16-systems-data-structures/05-robin-hood-hash-map.md) uses traits and generics (`Hash`, `Eq`, `BuildHasher`), and in *Build Your Own LLM System*, the [Rust fast BPE tokenizer](../../build-an-llm/p01-tokenizers/05-rust-fast-bpe.md) is a Rust crate whose Python parity is checked with shared fixtures.
+The engine in [Your first endpoint](../../build-an-llm/11-serving/01-your-first-endpoint.md) is this server grown up: `TcpListener`, a thread per connection, a `BufRead` parser, and candle-based inference. The next section, [HTTP/1.1, JSON, and Server-Sent Events](05-http-and-sse.md), keeps the same server shape but speaks HTTP/1.1, JSON, and SSE instead of lines. In *Algorithms*, the [Robin Hood hash map](../../algorithms/13-systems-data-structures/05-robin-hood-hash-map.md) uses traits and generics (`Hash`, `Eq`, `BuildHasher`), and in *Build Your Own LLM System*, the [Rust fast BPE tokenizer](../../build-an-llm/02-tokenizers/05-rust-fast-bpe.md) is a Rust crate whose Python parity is checked with shared fixtures.
 
 ### Further reading
 

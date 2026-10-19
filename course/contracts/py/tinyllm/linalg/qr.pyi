@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/linalg/qr.pyi (M03.3)
-# chapter: content/courses/mathematics-for-computing/03-linear-algebra/03-orthogonality-and-householder-qr.md
+# chapter: content/courses/mathematics-for-computing/04-linear-algebra/03-orthogonality-and-householder-qr.md
 #
 # QR by Householder reflections, and the orthogonal initializer built on it.
 from typing import Any

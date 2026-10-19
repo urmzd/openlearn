@@ -11,7 +11,7 @@
  * Not thread-safe: the caller serializes every call on one arena.
  *
  * module: rt.02 (c/src/runtime/arena.c)
- * chapter: content/courses/build-an-llm/p09-kernels/02-arena-allocator-with-marks.md */
+ * chapter: content/courses/build-an-llm/10-kernels/01-arena-allocator-with-marks.md */
 #ifndef TINYLLM_ARENA_H
 #define TINYLLM_ARENA_H
 

@@ -4,7 +4,7 @@
 
 Once this section is done, `{worker} --queue default` processes a queue, and the rest of the platform builds on it: [CorpusBuild as a durable workflow](../../data-engineering/05-corpus-pipeline/09-corpusbuild-as-a-durable-workflow.md) in *Data Engineering*, [TrainRun and EvalSuite](11-trainrun-and-evalsuite.md), [ModelRelease](12-model-release.md), and [durable agent runs](../13-agent-sdk/05-durable-agent-runs.md) all register their workflows and activities on this worker.
 
-You will need the server core and the queue from the previous two sections, gRPC from [Protocol Buffers and gRPC](../../programming-languages/02-language-and-tool-primers/10-protocol-buffers-and-grpc.md) in *Programming Languages*, the partial-failure thinking of [RPC and protocols](../02-rpc-and-protocols/), and, for the trace context that rides on every task, [Tracing for the serving path](../../systems/04-observability/01-tracing-for-the-serving-path.md) in *Systems and Architecture*. The contract is `tl.durable.v1.TaskService` in [`proto/tl/durable/v1/durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto); the Go SDK surface and package API are given below. The full solution is the server half in [`go/durable/server/tasks.go`](../../../../course/solutions/go/durable/server/tasks.go) (`PollWorkflowTask`, `CompleteWorkflowTask` and the command table, `PollActivityTask`, `CompleteActivityTask`) and the worker in [`go/durable/worker/worker.go`](../../../../course/solutions/go/durable/worker/worker.go) (`New`, `RegisterActivity`, `Run`, `Heartbeat`, `InfoFrom`, `ReconnectDelay`).
+You will need the server core and the queue from the previous two sections, gRPC from [Protocol Buffers and gRPC](../../programming-languages/02-language-and-tool-primers/10-protocol-buffers-and-grpc.md) in *Programming Languages*, the partial-failure thinking of [RPC and protocols](../02-rpc-and-protocols/), and, for the trace context that rides on every task, [Tracing for the serving path](../../systems/04-observability/02-tracing-for-the-serving-path.md) in *Systems and Architecture*. The contract is `tl.durable.v1.TaskService` in [`proto/tl/durable/v1/durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto); the Go SDK surface and package API are given below. The full solution is the server half in [`go/durable/server/tasks.go`](../../../../course/solutions/go/durable/server/tasks.go) (`PollWorkflowTask`, `CompleteWorkflowTask` and the command table, `PollActivityTask`, `CompleteActivityTask`) and the worker in [`go/durable/worker/worker.go`](../../../../course/solutions/go/durable/worker/worker.go) (`New`, `RegisterActivity`, `Run`, `Heartbeat`, `InfoFrom`, `ReconnectDelay`).
 
 > **Learning objectives**
 > - Trace a workflow from start to completion through the task protocol, event by event.
@@ -118,7 +118,7 @@ func Heartbeat(ctx context.Context, details []byte) error
 func ReconnectDelay(n int, initial, max time.Duration) time.Duration
 ```
 
-The `WorkflowHandler` is implemented by the workflow registry in [deterministic replay](06-deterministic-replay.md). The `Failpoint` hook is what the [poison-task drill](../../systems/05-incident-response-and-chaos/03-poison-task.md) uses to make an activity fail on purpose.
+The `WorkflowHandler` is implemented by the workflow registry in [deterministic replay](06-deterministic-replay.md). The `Failpoint` hook is what the [poison-task drill](../../systems/05-incident-response-and-chaos/04-poison-task.md) uses to make an activity fail on purpose.
 
 ## Building it step by step
 
@@ -402,7 +402,7 @@ The tests check the protocol and the worker against these cases:
 | worker bounded concurrency | unit, property | 2 slots: exactly 2 running and 2 leased while 4 wait | the pool bound and slot-first polling |
 | worker drains on cancel | fault | polling stops, the running activity finishes uncanceled and reports, then `Run` returns | rolling deploys |
 | missed heartbeat cancels the activity | fault | canceled at exactly the heartbeat timeout with `ErrHeartbeatTimeout`; nothing reported | no two copies write |
-| worker reconnects after a server restart | fault | the worker keeps working across a server restart on the same address | the [SIGKILL-loop drill](../../systems/05-incident-response-and-chaos/02-durable-kill9.md) |
+| worker reconnects after a server restart | fault | the worker keeps working across a server restart on the same address | the [SIGKILL-loop drill](../../systems/05-incident-response-and-chaos/03-durable-kill9.md) |
 
 ## What can go wrong
 

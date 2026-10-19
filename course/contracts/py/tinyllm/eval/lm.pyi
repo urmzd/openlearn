@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/eval/lm.pyi (L6.7): the language-model evaluation harness
-# chapter: content/courses/build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md
+# chapter: content/courses/build-an-llm/07-objectives/07-lm-evaluation-harness-and-the-model-zoo.md
 #
 # A model here is anything callable as model(ids int64 [1, T]) that returns
 # logits [1, T, V] (a Tensor or an ndarray), or a tuple whose first item is

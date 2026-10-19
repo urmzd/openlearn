@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/tok/trie.pyi (M06.2)
-# chapter: content/courses/mathematics-for-computing/06-discrete-math-2/02-trees-and-tries-longest-prefix-match.md
+# chapter: content/courses/mathematics-for-computing/07-discrete-math-2/02-trees-and-tries-longest-prefix-match.md
 #
 # A trie is a rooted tree whose edges are labelled with characters. The path
 # from the root to a node spells a string; a node is terminal when that

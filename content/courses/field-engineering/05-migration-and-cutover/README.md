@@ -14,7 +14,7 @@ This chapter follows a successful POC from [POC and Evaluation](../04-poc-and-ev
 
 ## Before you begin
 
-You need a passed POC and the eval parity method from [POC and Evaluation](../04-poc-and-evaluation/README.md). The primary reference is [Model Loading: Tokenizers and Chat Templates](../../machine-learning/04-llm-systems/model-loading/#7-tokenizers-and-chat-templates) in *Machine Learning and AI*, where template and tokenizer depth lives. Supplements are the chapters on deprecation and large-scale changes in [*Software Engineering at Google*](https://abseil.io/resources/swe-book) (free), [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/) for parity checks, and [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/) for the latency rows of the failure table.
+You need a passed POC and the eval parity method from [POC and Evaluation](../04-poc-and-evaluation/README.md). The primary reference is [Model Loading: Tokenizers and Chat Templates](../../machine-learning/04-llm-systems/03-model-loading/#7-tokenizers-and-chat-templates) in *Machine Learning and AI*, where template and tokenizer depth lives. Supplements are the chapters on deprecation and large-scale changes in [*Software Engineering at Google*](https://abseil.io/resources/swe-book) (free), [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/) for parity checks, and [Serving & Load](../../machine-learning/04-llm-systems/04-serving-and-load/) for the latency rows of the failure table.
 
 To build intuition before an engagement, point an OpenAI SDK client at a local `vllm serve` running a small instruct model, and send the same request with and without an explicit `temperature` and `top_p`; note what changes. Then render a chat template locally from a model's `tokenizer_config.json`, compare the token IDs with what the server reports, and find one way they could differ.
 
@@ -98,14 +98,14 @@ When something goes wrong after a migration, the symptom usually points to a sma
 | Cost overrun on serverless | Volume crossed the dedicated breakeven, or output tokens grew (reasoning) | Monthly tokens versus breakeven; output length trend |
 | Cold starts after idle | Scale-to-zero with large weights | Time from scale event to first 200; consider a minimum of one replica |
 | Rate-limit errors at modest load | Account tier limits, not capacity | Response headers and tier limits |
-| Nondeterministic outputs at temperature 0 | Batch-dependent numerics | Expected behavior; see [reproducibility](../../machine-learning/04-llm-systems/serving-platforms.md#reproducibility-mechanism-availability-and-incentives) |
+| Nondeterministic outputs at temperature 0 | Batch-dependent numerics | Expected behavior; see [reproducibility](../../machine-learning/04-llm-systems/05-serving-platforms.md#reproducibility-mechanism-availability-and-incentives) |
 | Latency fine on server, slow for users | Client-side buffering, proxy without streaming, cross-region hops | Measure TTFT at the client and the server for one request ([Measuring from the customer's region](../03-performance-testing-engagements/README.md#measuring-from-the-customers-region)) |
 
 A useful drill is to walk this table on a local setup and write, for each row, the exact command or metric you would check first. When the first check does not explain the symptom and the remaining knobs are not yours, escalate using the template in [Escalation and Handoff](../07-escalation-and-handoff/README.md).
 
 ## Where this leads
 
-The audit in this chapter applies the chat templates, tokenizers, and `generation_config.json` of [Model Loading](../../machine-learning/04-llm-systems/model-loading/), and the structured-output and latency rows draw on constrained and speculative decoding in [LLM Systems & Inference](../../machine-learning/04-llm-systems/). The canary and rollback mechanics are feature flags and progressive delivery, covered in [Cloud Native](../../systems/03-cloud-native/) in *Systems and Architecture*, and the canary triggers are SLO alerts from [Observability](../../systems/04-observability/). Retiring the incumbent path is a deprecation and large-scale change of the kind discussed in *[Software Craftsmanship](../../software-craftsmanship/)*.
+The audit in this chapter applies the chat templates, tokenizers, and `generation_config.json` of [Model Loading](../../machine-learning/04-llm-systems/03-model-loading/), and the structured-output and latency rows draw on constrained and speculative decoding in [LLM Systems & Inference](../../machine-learning/04-llm-systems/). The canary and rollback mechanics are feature flags and progressive delivery, covered in [Cloud Native](../../systems/03-cloud-native/) in *Systems and Architecture*, and the canary triggers are SLO alerts from [Observability](../../systems/04-observability/). Retiring the incumbent path is a deprecation and large-scale change of the kind discussed in *[Software Craftsmanship](../../software-craftsmanship/)*.
 
 At Fireworks AI, Together AI, and Baseten, "migrate from OpenAI in a week" engagements and debugging template mismatches are advanced day-to-day work. Teams using OpenRouter or LiteLLM do gateway-level provider swaps and fallbacks, and any platform team does progressive delivery of a critical dependency.
 
@@ -113,7 +113,7 @@ When a failure is not yours to fix, the next chapter, [Escalation and Handoff](.
 
 ### Further reading
 
-- [Model Loading: Tokenizers and Chat Templates](../../machine-learning/04-llm-systems/model-loading/#7-tokenizers-and-chat-templates).
+- [Model Loading: Tokenizers and Chat Templates](../../machine-learning/04-llm-systems/03-model-loading/#7-tokenizers-and-chat-templates).
 - [*Software Engineering at Google*](https://abseil.io/resources/swe-book) (free), chapters on deprecation and large-scale changes.
 
 ## Exercise

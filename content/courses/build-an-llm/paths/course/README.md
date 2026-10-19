@@ -1,4 +1,4 @@
-# Build Your Own LLM System
+# The course path
 
 This path is the whole course in one reading order: a single LLM system, called `forge` in the reference solutions, built end to end in Python, Rust, Go, and C. It does not follow the chapter order of *Build Your Own LLM System*. Instead it interleaves sections from that book with the mathematics, systems, infrastructure, and craft sections from the other books in the library, in the order the system needs them. A section is read when the component it explains is about to be built, so every idea arrives with a reason to care about it.
 

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/vision/contrastive.pyi (L13.5): contrastive image-text learning
-# chapter: content/courses/build-an-llm/p13-vision/05-contrastive-image-text.md
+# chapter: content/courses/build-an-llm/14-vision/05-contrastive-image-text.md
 #
 # A dual encoder embeds images and texts into one space where matching pairs
 # are close. Both losses take a batch of B matching pairs (row i of img_emb

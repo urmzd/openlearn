@@ -19,17 +19,17 @@ This pass needs [Pass 0](../course-p00-setup/README.md): a working toolchain and
 
 The sections build the system from the model outward, then deploy and observe it:
 
-1. [Matmul in Python](../../../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md). Afterwards you can explain how the triple-loop Python matmul indexes rows and columns and why it matches numpy on the golden cases.
-2. [Byte bigram](../../p00-foundations/00-byte-bigram.md). Afterwards you can explain why the count-based bigram reaches the maximum-likelihood NLL and how it is written to a safetensors file.
+1. [Matmul in Python](../../../mathematics-for-computing/04-linear-algebra/01-vectors-matrices-and-matmul.md). Afterwards you can explain how the triple-loop Python matmul indexes rows and columns and why it matches numpy on the golden cases.
+2. [Byte bigram](../../01-foundations/01-byte-bigram.md). Afterwards you can explain why the count-based bigram reaches the maximum-likelihood NLL and how it is written to a safetensors file.
 3. [Rust](../../../programming-languages/02-language-and-tool-primers/04-rust.md). Afterwards you can explain how the Rust echo server serves two clients at once and who owns each connection.
 4. [HTTP and SSE](../../../programming-languages/02-language-and-tool-primers/05-http-and-sse.md). Afterwards you can trace how an HTTP request is parsed and how an SSE stream is framed by hand.
-5. [Your first endpoint](../../p10-serving/00-your-first-endpoint.md). Afterwards you can trace how the Rust server loads the checkpoint, streams SSE completions, and exports its span.
+5. [Your first endpoint](../../11-serving/01-your-first-endpoint.md). Afterwards you can trace how the Rust server loads the checkpoint, streams SSE completions, and exports its span.
 6. [Go](../../../programming-languages/02-language-and-tool-primers/06-go.md). Afterwards you can explain how the Go streaming proxy propagates a deadline through its context.
-7. [Your gateway](../../../ai-platform-engineering/12-gateway/00-streaming-proxy.md). Afterwards you can explain why the Go gateway rejects bad keys before proxying and how it streams without buffering.
+7. [Your gateway](../../../ai-platform-engineering/12-gateway/01-streaming-proxy.md). Afterwards you can explain why the Go gateway rejects bad keys before proxying and how it streams without buffering.
 8. [Containers and Kubernetes](../../../programming-languages/02-language-and-tool-primers/07-containers-and-kubernetes.md). Afterwards you can explain how the image runs on kind behind a Helm chart and a NodePort.
-9. [Images, kind, and Helm](../../../infrastructure/01-containers-kubernetes/00-tracer-deploy.md). Afterwards you can trace how helm install brings up the gateway and the engine on kind and how a curl reaches the engine through the gateway.
-10. [One trace](../../../systems/04-observability/00-one-trace.md). Afterwards you can explain how trace context propagates so one request shows as one trace across gateway and engine in Jaeger.
-11. [First drill](../../../systems/05-incident-response-and-chaos/00-first-drill.md). Afterwards you can diagnose the engine crashloop from its symptoms, explain the fix, and explain what its runbook says.
+9. [Images, kind, and Helm](../../../infrastructure/01-containers-kubernetes/01-tracer-deploy.md). Afterwards you can trace how helm install brings up the gateway and the engine on kind and how a curl reaches the engine through the gateway.
+10. [One trace](../../../systems/04-observability/01-one-trace.md). Afterwards you can explain how trace context propagates so one request shows as one trace across gateway and engine in Jaeger.
+11. [First drill](../../../systems/05-incident-response-and-chaos/01-first-drill.md). Afterwards you can diagnose the engine crashloop from its symptoms, explain the fix, and explain what its runbook says.
 12. [First ADR](../../../diagramming/02-documentation-writing/01-architecture-decision-records.md). Afterwards you can explain why ADR-0001 has the languages meet at process and file boundaries.
 13. [What the System Does After Pass 1](milestone.md). Afterwards you can explain how every layer runs end to end, starting with the CLI training and sampling the bigram from a clean shell.
 

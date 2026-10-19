@@ -41,7 +41,7 @@ Spark also handles streams through **Structured Streaming**, which treats a stre
 
 ### Working through the bronze-to-silver job
 
-The runnable job [`spark/orders_bronze_to_silver.py`](spark/orders_bronze_to_silver.py) makes three of these ideas concrete. It reads one day of raw Streamflow order events that were landed from Kafka as JSON, cleans and deduplicates them, and writes a partitioned silver table that the [dbt project](../04-orchestration-modeling/dbt/) in the next chapter builds its marts on.
+The runnable job [`spark/orders_bronze_to_silver.py`](spark/orders_bronze_to_silver.py) makes three of these ideas concrete. It reads one day of raw Streamflow order events that were landed from Kafka as JSON, cleans and deduplicates them, and writes a partitioned silver table that the [dbt project](../04-orchestration-modeling/01-dbt/) in the next chapter builds its marts on.
 
 The job starts by declaring an explicit schema rather than inferring one. That schema is a data contract with the producer: if raw events stop matching it, the job fails visibly instead of silently shifting columns and producing wrong numbers.
 

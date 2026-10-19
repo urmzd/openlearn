@@ -50,7 +50,7 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 | 09 | Reactive streams publisher | `Flow` API, backpressure, `SubmissionPublisher` | 4 |
 | 10 | Annotation processor | `javax.annotation.processing`, code generation | 4 |
 
-There is no exercise 02. It was a concurrent hash map, and that problem is now covered in full by [A Swiss table](../../../../content/courses/algorithms/16-systems-data-structures/02-swiss-table.md) and [A Robin Hood hash map](../../../../content/courses/algorithms/16-systems-data-structures/05-robin-hood-hash-map.md) in the [Systems data structures](../../../../content/courses/algorithms/16-systems-data-structures/) chapter of *Algorithms*.
+There is no exercise 02. It was a concurrent hash map, and that problem is now covered in full by [A Swiss table](../../../../content/courses/algorithms/13-systems-data-structures/02-swiss-table.md) and [A Robin Hood hash map](../../../../content/courses/algorithms/13-systems-data-structures/05-robin-hood-hash-map.md) in the [Systems data structures](../../../../content/courses/algorithms/13-systems-data-structures/) chapter of *Algorithms*.
 
 ## Further reading
 

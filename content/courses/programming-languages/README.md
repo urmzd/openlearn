@@ -23,7 +23,7 @@ The book has two chapters, one conceptual and one practical. You can read them i
 
 ## Prerequisites and related books
 
-You should be comfortable programming in at least one language and using a terminal. The type-systems chapter leans on proofs, induction, and relations from [Discrete Math 1](../mathematics-for-computing/05-discrete-math-1/) in *Mathematics for Computing*; the notation for inference rules is taught as it is needed.
+You should be comfortable programming in at least one language and using a terminal. The type-systems chapter leans on proofs, induction, and relations from [Discrete Math 1](../mathematics-for-computing/06-discrete-math-1/) in *Mathematics for Computing*; the notation for inference rules is taught as it is needed.
 
 Two books pair naturally with this one. [*Practice: Predict and Build*](../../../practice/README.md) gives you short programs in Go, Python, Rust, and TypeScript whose output you predict before reading the explanation, which is the fastest way to test whether a mental model from this book has stuck. [*Build Your Own LLM System*](../build-an-llm/README.md) uses every language in this book in one system, and each primer names the section of that book where its ideas are first put to work.
 

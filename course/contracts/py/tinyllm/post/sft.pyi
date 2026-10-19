@@ -1,4 +1,4 @@
-# chapter: content/courses/build-an-llm/p12-post-training/01-supervised-fine-tuning.md
+# chapter: content/courses/build-an-llm/13-post-training/01-supervised-fine-tuning.md
 from __future__ import annotations
 from typing import Sequence
 import numpy as np

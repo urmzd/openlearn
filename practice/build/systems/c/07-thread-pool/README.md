@@ -2,7 +2,7 @@
 
 Creating a thread per task is simple and slow: thread creation costs tens of microseconds, and ten thousand simultaneous threads exhaust memory long before they finish. A thread pool fixes both by starting a fixed set of worker threads once and feeding them tasks through a queue. This section builds one with pthreads: a bounded queue that pushes back on the producer when it is full, workers that sleep on condition variables when it is empty, a `pool_wait` that knows the difference between "nothing queued" and "nothing running", and a clean shutdown that finishes everything it accepted.
 
-Concurrent code is where "it passed the tests" means least. Every rule in this section (wait in a loop, run the task outside the lock, broadcast on shutdown) describes a bug that works on a lightly loaded laptop and fails in production. You should be comfortable with mutexes and condition variables as concepts; the code shows exactly how to use them. The same design, extended with a `parallel_for` over index ranges, is [Thread pool and tl_parallel_for](../../../../../content/courses/build-an-llm/p09-kernels/03-thread-pool-and-parallel-for.md) in *Build Your Own LLM System*.
+Concurrent code is where "it passed the tests" means least. Every rule in this section (wait in a loop, run the task outside the lock, broadcast on shutdown) describes a bug that works on a lightly loaded laptop and fails in production. You should be comfortable with mutexes and condition variables as concepts; the code shows exactly how to use them. The same design, extended with a `parallel_for` over index ranges, is [Thread pool and tl_parallel_for](../../../../../content/courses/build-an-llm/10-kernels/02-thread-pool-and-parallel-for.md) in *Build Your Own LLM System*.
 
 > **Learning objectives**
 > - Guard a pool's shared state with one mutex and use one condition variable per reason to sleep.
@@ -226,7 +226,7 @@ Every one of these bugs passes a single-threaded or lightly loaded test.
 
 ## Where this leads
 
-The next step is work stealing: give each worker its own deque and let idle workers steal from the back of a busy one's. Go's scheduler, Rayon, and Java's `ForkJoinPool` all do this, and the reason is contention: one shared queue means every worker touches the same cache line on every task, which stops scaling long before the cores run out. In *Build Your Own LLM System*, [Thread pool and tl_parallel_for](../../../../../content/courses/build-an-llm/p09-kernels/03-thread-pool-and-parallel-for.md) uses a pool like this one to parallelise kernel loops.
+The next step is work stealing: give each worker its own deque and let idle workers steal from the back of a busy one's. Go's scheduler, Rayon, and Java's `ForkJoinPool` all do this, and the reason is contention: one shared queue means every worker touches the same cache line on every task, which stops scaling long before the cores run out. In *Build Your Own LLM System*, [Thread pool and tl_parallel_for](../../../../../content/courses/build-an-llm/10-kernels/02-thread-pool-and-parallel-for.md) uses a pool like this one to parallelise kernel loops.
 
 ## Key terms
 

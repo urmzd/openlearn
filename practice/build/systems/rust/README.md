@@ -38,13 +38,13 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 
 | # | Exercise | Concepts | Difficulty (1-5) | Worked elsewhere |
 |---|----------|----------|------------------|------------------|
-| 01 | `Vec<T>` from scratch | Unsafe, `RawVec`, `Drop`, `Deref` | 3 | Do this before [the Candle model runner](../../../../content/courses/build-an-llm/p10-serving/01-model-runner-and-sampler.md) |
-| 02 | Doubly linked list | `Rc<RefCell<T>>` or unsafe, borrow checker challenges | 4 | [A radix tree over token ids](../../../../content/courses/algorithms/16-systems-data-structures/07-radix-tree.md) |
-| 03 | Hash map (Robin Hood) | Hashing, `Entry` API, generics with trait bounds | 4 | [A Robin Hood hash map](../../../../content/courses/algorithms/16-systems-data-structures/05-robin-hood-hash-map.md) |
+| 01 | `Vec<T>` from scratch | Unsafe, `RawVec`, `Drop`, `Deref` | 3 | Do this before [the Candle model runner](../../../../content/courses/build-an-llm/11-serving/02-model-runner-and-sampler.md) |
+| 02 | Doubly linked list | `Rc<RefCell<T>>` or unsafe, borrow checker challenges | 4 | [A radix tree over token ids](../../../../content/courses/algorithms/13-systems-data-structures/07-radix-tree.md) |
+| 03 | Hash map (Robin Hood) | Hashing, `Entry` API, generics with trait bounds | 4 | [A Robin Hood hash map](../../../../content/courses/algorithms/13-systems-data-structures/05-robin-hood-hash-map.md) |
 | 04 | Channel (`mpsc` clone) | `Arc<Mutex<T>>`, `Condvar`, `Send` bounds | 4 | [Async Rust and tokio](../../../../content/courses/programming-languages/02-language-and-tool-primers/09-async-rust-and-tokio.md) |
-| 05 | Iterator adaptor library | `Iterator` trait, associated types, lazy evaluation | 3 | [Fast BPE in Rust](../../../../content/courses/build-an-llm/p01-tokenizers/05-rust-fast-bpe.md) |
+| 05 | Iterator adaptor library | `Iterator` trait, associated types, lazy evaluation | 3 | [Fast BPE in Rust](../../../../content/courses/build-an-llm/02-tokenizers/05-rust-fast-bpe.md) |
 | 06 | CLI argument parser | Lifetimes, `&str` vs `String`, builder pattern | 2 | |
-| 07 | Async TCP echo server | `async`/`await`, `tokio`, `Pin`, `Future` | 4 | [Async Rust and tokio](../../../../content/courses/programming-languages/02-language-and-tool-primers/09-async-rust-and-tokio.md); [the OpenAI-compatible server on tokio](../../../../content/courses/build-an-llm/p10-serving/05-openai-server-on-tokio.md) |
+| 07 | Async TCP echo server | `async`/`await`, `tokio`, `Pin`, `Future` | 4 | [Async Rust and tokio](../../../../content/courses/programming-languages/02-language-and-tool-primers/09-async-rust-and-tokio.md); [the OpenAI-compatible server on tokio](../../../../content/courses/build-an-llm/11-serving/06-openai-server-on-tokio.md) |
 | 08 | ECS (Entity Component System) | Trait objects vs enums, `Any`, downcast, arena allocation | 5 | |
 | 09 | Proc macro for `derive(Builder)` | Procedural macros, `syn`, `quote`, token streams | 4 | |
 | 10 | Lock-free stack | `AtomicPtr`, `compare_exchange`, ABA problem | 5 | |

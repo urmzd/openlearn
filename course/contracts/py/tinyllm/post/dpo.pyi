@@ -1,4 +1,4 @@
-# chapter: content/courses/build-an-llm/p12-post-training/02-direct-preference-optimization.md
+# chapter: content/courses/build-an-llm/13-post-training/02-direct-preference-optimization.md
 from __future__ import annotations
 import numpy as np
 
