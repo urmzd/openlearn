@@ -97,7 +97,7 @@ The honest rule is that most "real-time" requirements are actually "fresh enough
 
 ## Where this leads
 
-The ideas in this chapter recur everywhere. CAP, replication, and consistency are the shared distributed-systems core with [System Design](../../systems/01-system-design/). The reason columnar data compresses so well is an entropy argument, developed in [Information Theory](../../mathematics-for-computing/11-information-theory/) in *Mathematics for Computing*. Feature pipelines that feed models are covered in [LLM Systems](../../machine-learning/04-llm-systems/).
+The ideas in this chapter recur everywhere. CAP, replication, and consistency are the shared distributed-systems core with [System Design](../../systems/01-system-design/). The reason columnar data compresses so well is an entropy argument, developed in [Information Theory](../../mathematics-for-computing/12-information-theory/) in *Mathematics for Computing*. Feature pipelines that feed models are covered in [LLM Systems](../../machine-learning/04-llm-systems/).
 
 In industry, these are not abstractions. The lakehouse, the lifecycle, and Spark are Databricks's product. Amazon's Redshift, S3, and Glue are a reference data lake architecture. Netflix runs a massive batch and streaming data platform. Palantir's business is data integration and modeling at scale. Snowflake built its cloud warehouse on ELT and the separation of storage and compute.
 

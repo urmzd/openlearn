@@ -58,7 +58,7 @@ function slugOf(repoPath) {
 	const publicPath = repoPath
 		.replace(/^content\/courses\/build-an-llm\/paths\//, 'paths/')
 		.replace(/^content\/courses\/build-an-llm\/concepts\.md$/, 'ml/08-tinyllm/README.md')
-		.replace(/^content\/courses\/build-an-llm\/(?=p\d|capstones)/, 'ml/08-tinyllm/')
+		.replace(/^content\/courses\/build-an-llm\/(?=\d\d-|capstones)/, 'ml/08-tinyllm/')
 		.replace(/^content\/courses\/computer-science\/README\.md$/, 'CS-CURRICULUM.md')
 		.replace(/^content\/courses\/README\.md$/, 'STUDY-PLAN.md')
 		.replace(/^content\/references\/sources\.md$/, 'SOURCES.md')
@@ -120,7 +120,9 @@ const escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace
 const stripInline = (s) =>
 	s
 		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-		.replace(/[`*_]/g, '')
+		.replace(/[`*]/g, '')
+		// Underscores mark emphasis only at word edges; keep snake_case names.
+		.replace(/(^|[\s(])_+|_+(?=[\s).,:;!?]|$)/g, '$1')
 		.replace(/<[^>]+>/g, '')
 		.trim();
 
@@ -283,6 +285,27 @@ for (const f of sources) {
 const outlines = courseOutlines(publications, (file) => pages.has(file));
 const chapterNavigation = chapterNeighbors(outlines, navOf);
 
+// Number pages by their place in the book: "Chapter 5: ...", "5.3 ...",
+// "Appendix A: ...". The catalog derives the numbers from manifest order.
+const chapterLabel = ({ title, number, kind }) => {
+	if (kind === 'appendix') return `Appendix ${number}: ${title}`;
+	if (kind === 'chapter') return `${number}. ${title}`;
+	return title;
+};
+const isOpening = (chapter, file) => chapter.number && chapter.labels[file] === chapter.number;
+for (const { chapters } of outlines) {
+	for (const chapter of chapters) {
+		for (const file of chapter.files) {
+			const label = chapter.labels?.[file];
+			const page = pages.get(file);
+			if (!label || !page) continue;
+			const word = chapter.kind === 'appendix' ? 'Appendix' : 'Chapter';
+			page.title = isOpening(chapter, file) ? `${word} ${label}: ${page.title}` : `${label} ${page.title}`;
+			titles.set(file, page.title);
+		}
+	}
+}
+
 for (const [f, { title, body }] of pages) {
 	const extra = publications.some((p) => p.manifest.paths && f.startsWith(`${p.manifest.paths}/`)) && path.posix.basename(f) === 'README.md' ? stageTable(path.posix.dirname(f)) : '';
 	const owners = chapterNavigation.get(f) ?? [];
@@ -309,13 +332,15 @@ for (const [f, { title, body }] of pages) {
 
 // Course landing pages and the sidebar use the same ordered chapter outline.
 const releases = `${GITHUB}/releases/latest/download`;
-const pageLink = (file) => ({ label: titles.get(file), link: navOf(file) });
-const sectionItem = ({ title, files }) => files.length === 1
-	? { label: title, link: navOf(files[0]) }
-	: { label: title, collapsed: true, items: files.map(pageLink) };
-const sectionMarkdown = (sections) => sections.flatMap(({ title, files }) => files.length === 1
-	? [`- [${title}](${routeOf(files[0])})`, '']
-	: [`### ${title}`, '', ...files.map((file) => `- [${titles.get(file)}](${routeOf(file)})`), '']);
+// Inside a chapter's group the opening page is its introduction; the group
+// label already carries the chapter number and title.
+const pageLabel = (section, file) => (isOpening(section, file) ? 'Introduction' : titles.get(file));
+const sectionItem = (section) => section.files.length === 1
+	? { label: chapterLabel(section), link: navOf(section.files[0]) }
+	: { label: chapterLabel(section), collapsed: true, items: section.files.map((file) => ({ label: pageLabel(section, file), link: navOf(file) })) };
+const sectionMarkdown = (sections) => sections.flatMap((section) => section.files.length === 1
+	? [`- [${chapterLabel(section)}](${routeOf(section.files[0])})`, '']
+	: [`### ${chapterLabel(section)}`, '', ...section.files.map((file) => `- [${pageLabel(section, file)}](${routeOf(file)})`), '']);
 const courseItems = [];
 const courseGroups = [];
 for (const { course, chapters, references } of outlines) {

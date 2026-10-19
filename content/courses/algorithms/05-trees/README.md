@@ -14,7 +14,7 @@ This chapter builds a toolkit of seven patterns: bottom-up and top-down DFS, lev
 
 ## Before you begin
 
-You need to be comfortable with recursion and with queues; [Recursion and divide-and-conquer](../11-recursion-divide-conquer/README.md) covers base cases and input reduction if you want a refresher first. [Trees and tries: longest prefix match](../../mathematics-for-computing/06-discrete-math-2/02-trees-and-tries-longest-prefix-match.md) in *Mathematics for Computing* gives the discrete-math view of trees.
+You need to be comfortable with recursion and with queues; [Recursion and divide-and-conquer](../11-recursion-divide-conquer/README.md) covers base cases and input reduction if you want a refresher first. [Trees and tries: longest prefix match](../../mathematics-for-computing/07-discrete-math-2/02-trees-and-tries-longest-prefix-match.md) in *Mathematics for Computing* gives the discrete-math view of trees.
 
 ## Bottom-up DFS (post-order)
 
@@ -160,4 +160,4 @@ Interviewers favor different variants. As a rough guide:
 
 - [AVL tree with range queries](example-7.py): a self-balancing binary search tree in Python. Each node tracks its height; after every insertion, the balance factor decides between a single rotation (left or right) and a double rotation, keeping the tree height-balanced. The comparison logic is passed in as a `comparator` with configurable keys, so the same tree can order tuples by any field. The program uses the tree to find the longest subsequence of its input in which each element is at least the previous one and at most 3 more: for each value it queries the best chain ending in the range `[S[i] - 3, S[i]]`, inserts the extended chain, and reconstructs the answer through each node's link to its predecessor. The comments document two known limitations: inserting duplicate values loses them, and `range_max` runs in $O(n)$ rather than the $O(\log n)$ an augmented tree would give. Run it with `python3 05-trees/example-7.py`, optionally followed by integers to use as input; without arguments it uses `[1, 9, 2, 3, 7, 6, 5]`.
 
-The systems chapter builds a production tree over token ids in [the radix tree](../16-systems-data-structures/07-radix-tree.md).
+The systems chapter builds a production tree over token ids in [the radix tree](../13-systems-data-structures/07-radix-tree.md).

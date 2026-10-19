@@ -1,5 +1,5 @@
 # contracts/openapi/openai-subset.v1.yaml: the full serving surface .
-# chapter: content/courses/build-an-llm/p10-serving/05-openai-server-on-tokio.md
+# chapter: content/courses/build-an-llm/11-serving/06-openai-server-on-tokio.md
 #
 # modules: L10.5 (engine tier), L10.9 (tools, response_format), gw.02 to
 # gw.07 (gateway tier), gw.08 (451 usage_policy), load.01 and ag.01 (clients)

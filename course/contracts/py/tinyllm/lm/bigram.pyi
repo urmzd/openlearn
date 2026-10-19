@@ -1,6 +1,6 @@
 # contracts/py/tinyllm/lm/bigram.pyi (L0.0 v0; L0.5 takes the unit over: adds BigramLogits, samples with PCG32)
-# chapter: content/courses/build-an-llm/p00-foundations/05-training-loop-and-the-autograd-bigram.md
-# chapter: content/courses/build-an-llm/p00-foundations/00-byte-bigram.md (v0)
+# chapter: content/courses/build-an-llm/01-foundations/06-training-loop-and-the-autograd-bigram.md
+# chapter: content/courses/build-an-llm/01-foundations/01-byte-bigram.md (v0)
 #
 # A bigram language model is a [V, V] table `weight`: row i holds the
 # next-token logits after token i, and softmax(weight[i]) is the model's

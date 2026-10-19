@@ -56,19 +56,22 @@ def chapters(root: Path, directory: str) -> list[str]:
         return [directory]
 
     # Overview first, then numbered topics, with capstones last.
+    # Section files and section folders interleave by name, so 04-x/ comes
+    # before 05-y.md.
     def walk(folder: Path) -> list[str]:
-        files = sorted(
-            folder.glob("*.md"), key=lambda p: (p.name != "README.md", p.name)
-        )
-        out = [p.relative_to(root).as_posix() for p in files if p.name != "AGENTS.md"]
+        out = []
         for child in sorted(
-            folder.iterdir(), key=lambda p: (p.name == "capstones", p.name)
+            folder.iterdir(),
+            key=lambda p: (p.name != "README.md", p.name == "capstones", p.name),
         ):
-            if (
-                child.is_dir()
-                and not child.name.startswith(".")
-                and child.name not in {"node_modules", "target", "__pycache__"}
-            ):
+            if child.is_file():
+                if child.suffix == ".md" and child.name != "AGENTS.md":
+                    out.append(child.relative_to(root).as_posix())
+            elif not child.name.startswith(".") and child.name not in {
+                "node_modules",
+                "target",
+                "__pycache__",
+            }:
                 out.extend(walk(child))
         return out
 
@@ -107,6 +110,43 @@ def stages(
 # Appendices every book may include; everything else belongs to exactly one book.
 SHARED_APPENDICES = ("content/references/",)
 
+# Folders inside a chapter that hold code or figures, not sections.
+SUPPORT_DIRS = {"code", "diagrams", "assets", "images", "img"}
+
+
+def section_labels(root: Path, directory: str, files: list[str], number: str) -> dict:
+    """Number a chapter's files by position: README is the chapter, then 5.1, 5.2, ...
+
+    A section can be a folder; its README takes the section number and the
+    pages inside it are numbered 5.1.1, 5.1.2, ... Files in code or figure
+    folders are not sections and get no number.
+    """
+    if (root / directory).is_file():
+        return {directory: number}
+    labels: dict[str, str] = {}
+    sections: dict[str, int] = {}
+    pages: dict[tuple[str, str], int] = {}
+    for f in files:
+        parts = Path(f).relative_to(directory).parts
+        if parts == ("README.md",):
+            labels[f] = number
+            continue
+        if any(p in SUPPORT_DIRS for p in parts[:-1]):
+            continue
+        k = sections.setdefault(parts[0], len(sections) + 1)
+        if len(parts) == 1 or parts[1:] == ("README.md",):
+            labels[f] = f"{number}.{k}"
+        elif len(parts) == 2:
+            j = pages.setdefault(
+                (parts[0], parts[1]), sum(1 for s, _ in pages if s == parts[0]) + 1
+            )
+            labels[f] = f"{number}.{k}.{j}"
+    return labels
+
+
+def letters(i: int) -> str:
+    return chr(ord("A") + i)
+
 
 def publication(manifest: dict, root: Path = ROOT) -> dict:
     """Ordered, deduplicated sources for one book."""
@@ -117,10 +157,25 @@ def publication(manifest: dict, root: Path = ROOT) -> dict:
     if manifest.get("featured"):
         sections.extend(stages(root, manifest["paths"], manifest["featured"]))
     else:
-        sections.extend(
-            {"title": t["title"], "files": chapters(root, t["dir"])}
-            for t in manifest.get("tracks", [])
-        )
+        # Each track is one chapter: numbered 1..N in manifest order, then
+        # appendices A, B, ... Unnumbered tracks (closing notes) get no label.
+        chapter = appendix = 0
+        for t in manifest.get("tracks", []):
+            files = chapters(root, t["dir"])
+            section = {"title": t["title"], "files": files}
+            if t.get("appendix"):
+                section["kind"] = "appendix"
+                section["number"] = letters(appendix)
+                appendix += 1
+            elif not t.get("unnumbered"):
+                chapter += 1
+                section["kind"] = "chapter"
+                section["number"] = str(chapter)
+            if "number" in section:
+                section["labels"] = section_labels(
+                    root, t["dir"], files, section["number"]
+                )
+            sections.append(section)
     sections.extend(
         {"title": t["title"], "files": chapters(root, t["dir"])}
         for t in manifest.get("reference", [])

@@ -12,27 +12,27 @@ The book has three kinds of chapters. The foundation chapters come first because
 
 ### Foundations
 
-[Shared concepts](shared-concepts/README.md) collects the material that every system design round returns to, whatever the company. Its sections cover [distributed systems fundamentals](shared-concepts/distributed-systems.md) (consistency, replication, partitioning, consensus, and failure), [full-stack AI engineering](shared-concepts/full-stack-ai.md) (every layer of an AI system from data pipelines and feature stores to serving and monitoring), and [ML infrastructure patterns](shared-concepts/ml-infrastructure.md) (registries, promotion, distributed training, drift detection, and retraining). Start here.
+[Shared concepts](01-shared-concepts/README.md) collects the material that every system design round returns to, whatever the company. Its sections cover [distributed systems fundamentals](01-shared-concepts/01-distributed-systems.md) (consistency, replication, partitioning, consensus, and failure), [full-stack AI engineering](01-shared-concepts/02-full-stack-ai.md) (every layer of an AI system from data pipelines and feature stores to serving and monitoring), and [ML infrastructure patterns](01-shared-concepts/03-ml-infrastructure.md) (registries, promotion, distributed training, drift detection, and retraining). Start here.
 
-### Big tech and AI labs
+### [Big tech and AI labs](02-big-tech-and-ai-labs/README.md)
 
-[Anthropic](anthropic/README.md) is the most detailed chapter in the book, with one section per round of the infrastructure loop and three concept sections on concurrency, GPU inference serving, and streaming over Server-Sent Events. [Google](google/README.md) covers data structures and algorithms at scale, system design, Googleyness, and TPU and ML topics. [Google DeepMind](deepmind/README.md) covers its research-grade engineering bar, JAX, and the systems behind AlphaFold and Gemini. [OpenAI](openai/README.md) covers API infrastructure, ML systems, and mission alignment. [Meta](meta/README.md) covers planetary-scale systems, its AI-enabled coding round, and LLaMA. [Apple](apple/README.md) covers privacy-first ML, on-device inference, and product excellence. [NVIDIA](nvidia/README.md) covers GPU and CUDA programming, parallel computing, and AI infrastructure. And [Moonshot AI](moonshot/README.md) covers long-context LLMs and NLP research at the Chinese AI frontier.
+[Anthropic](02-big-tech-and-ai-labs/01-anthropic/README.md) is the most detailed chapter in the book, with one section per round of the infrastructure loop and three concept sections on concurrency, GPU inference serving, and streaming over Server-Sent Events. [Google](02-big-tech-and-ai-labs/02-google/README.md) covers data structures and algorithms at scale, system design, Googleyness, and TPU and ML topics. [Google DeepMind](02-big-tech-and-ai-labs/03-deepmind/README.md) covers its research-grade engineering bar, JAX, and the systems behind AlphaFold and Gemini. [OpenAI](02-big-tech-and-ai-labs/04-openai/README.md) covers API infrastructure, ML systems, and mission alignment. [Meta](02-big-tech-and-ai-labs/05-meta/README.md) covers planetary-scale systems, its AI-enabled coding round, and LLaMA. [Apple](02-big-tech-and-ai-labs/06-apple/README.md) covers privacy-first ML, on-device inference, and product excellence. [NVIDIA](02-big-tech-and-ai-labs/07-nvidia/README.md) covers GPU and CUDA programming, parallel computing, and AI infrastructure. And [Moonshot AI](02-big-tech-and-ai-labs/08-moonshot/README.md) covers long-context LLMs and NLP research at the Chinese AI frontier.
 
-### Infrastructure and data platforms
+### [Infrastructure and data platforms](03-infrastructure-and-data-platforms/README.md)
 
-[Netflix](netflix/README.md) covers distributed systems, streaming, recommendations, and its distinctive culture. [Amazon](amazon/README.md) covers the Leadership Principles that are tested in every round, services architecture, and AWS ML. [Databricks](databricks/README.md) covers the most selective loop outside the largest platforms, with runnable-code rounds and Lakehouse, Spark, and Delta Lake design. [Stripe](stripe/README.md) covers its no-LeetCode loop: practical coding, the bug bash, payment infrastructure, and financial correctness. And [Palantir](palantir/README.md) covers problem decomposition, data platforms, entity modeling, and AIP.
+[Netflix](03-infrastructure-and-data-platforms/01-netflix/README.md) covers distributed systems, streaming, recommendations, and its distinctive culture. [Amazon](03-infrastructure-and-data-platforms/02-amazon/README.md) covers the Leadership Principles that are tested in every round, services architecture, and AWS ML. [Databricks](03-infrastructure-and-data-platforms/03-databricks/README.md) covers the most selective loop outside the largest platforms, with runnable-code rounds and Lakehouse, Spark, and Delta Lake design. [Stripe](03-infrastructure-and-data-platforms/04-stripe/README.md) covers its no-LeetCode loop: practical coding, the bug bash, payment infrastructure, and financial correctness. And [Palantir](03-infrastructure-and-data-platforms/05-palantir/README.md) covers problem decomposition, data platforms, entity modeling, and AIP.
 
-### Quantitative trading firms
+### [Quantitative trading firms](04-quantitative-trading-firms/README.md)
 
-[Jane Street](jane-street/README.md) covers OCaml, probability, low latency, and market making. [Two Sigma](two-sigma/README.md) covers DP-heavy coding, data infrastructure, and quantitative reasoning. [Citadel and Citadel Securities](citadel/README.md) covers some of the hardest algorithm rounds anywhere, C++, and low-latency matching engines. [Hudson River Trading](hrt/README.md) covers nanosecond latency, C++, FPGAs, and kernel bypass. And [Renaissance Technologies](renaissance-technologies/README.md) covers the most exclusive firm of all: invitation-only, with a PhD-level bar.
+[Jane Street](04-quantitative-trading-firms/01-jane-street/README.md) covers OCaml, probability, low latency, and market making. [Two Sigma](04-quantitative-trading-firms/02-two-sigma/README.md) covers DP-heavy coding, data infrastructure, and quantitative reasoning. [Citadel and Citadel Securities](04-quantitative-trading-firms/03-citadel/README.md) covers some of the hardest algorithm rounds anywhere, C++, and low-latency matching engines. [Hudson River Trading](04-quantitative-trading-firms/04-hrt/README.md) covers nanosecond latency, C++, FPGAs, and kernel bypass. And [Renaissance Technologies](04-quantitative-trading-firms/05-renaissance-technologies/README.md) covers the most exclusive firm of all: invitation-only, with a PhD-level bar.
 
-### Aerospace and hardware
+### [Aerospace and hardware](05-aerospace-and-hardware/README.md)
 
-[SpaceX](spacex/README.md) covers a seven-to-nine-round process, mission-critical software, and Starlink.
+[SpaceX](05-aerospace-and-hardware/01-spacex/README.md) covers a seven-to-nine-round process, mission-critical software, and Starlink.
 
 ### Defending your own system
 
-[Defend your system](defend-your-system/README.md) closes the book. It is a bank of design questions answered against a system you have actually built, with the architecture decision records, load reports, and postmortems that back each answer. Its premise is that the strongest interview answer is about a system you know where it breaks.
+[Defend your system](06-defend-your-system/README.md) closes the book. It is a bank of design questions answered against a system you have actually built, with the architecture decision records, load reports, and postmortems that back each answer. Its premise is that the strongest interview answer is about a system you know where it breaks.
 
 ## Choosing your targets
 
@@ -40,25 +40,25 @@ The companies differ in focus and pay. Reported senior compensation and focus ar
 
 | Company | Focus Areas | Comp Range (Senior) |
 |---------|-------------|-------------------|
-| [Anthropic](anthropic/README.md) | LLM inference, GPU serving, concurrency, safety | ~$550K |
-| [Google](google/README.md) | DS&A at scale, system design, Googleyness, TPU/ML | ~$400-650K |
-| [Google DeepMind](deepmind/README.md) | ML research + engineering, JAX, AlphaFold, Gemini | ~$400-750K |
-| [OpenAI](openai/README.md) | API infrastructure, ML systems, mission alignment | ~$450-600K |
-| [Meta](meta/README.md) | Planetary scale, AI-enabled coding round, LLaMA | ~$450-700K |
-| [Apple](apple/README.md) | Privacy-first ML, on-device inference, product excellence | ~$400-650K |
-| [NVIDIA](nvidia/README.md) | GPU/CUDA programming, parallel computing, AI infra | ~$400-750K |
-| [Moonshot AI](moonshot/README.md) | Long-context LLMs, NLP research, Chinese AI frontier | Competitive + equity |
-| [Netflix](netflix/README.md) | Distributed systems, streaming, culture, recommendations | ~$350-500K (cash) |
-| [Amazon](amazon/README.md) | Leadership Principles, services architecture, AWS/ML | ~$350-450K (Y1) |
-| [Databricks](databricks/README.md) | Most selective non-FAANG, Lakehouse, Spark, Delta Lake | ~$400-700K |
-| [Stripe](stripe/README.md) | No leetcode, bug bash, payments infra, financial correctness | ~$400-650K |
-| [Palantir](palantir/README.md) | Decomposition, data platforms, entity modeling, AIP | ~$350-500K |
-| [Jane Street](jane-street/README.md) | OCaml, probability, low-latency, market making | ~$600K-1.5M |
-| [Two Sigma](two-sigma/README.md) | DP-heavy coding, data infra, quant reasoning | ~$500K-1M+ |
-| [Citadel / Citadel Securities](citadel/README.md) | Hardest algo rounds, C++, low-latency matching | ~$500K-1.5M+ |
-| [HRT](hrt/README.md) | Nanosecond latency, C++, FPGA, kernel bypass | ~$700K-2M+ |
-| [Renaissance Technologies](renaissance-technologies/README.md) | Most exclusive firm on Earth, invite-only, PhD bar | ~$1M-5M+ |
-| [SpaceX](spacex/README.md) | 7-9 rounds, mission-critical software, Starlink | ~$300-500K + equity |
+| [Anthropic](02-big-tech-and-ai-labs/01-anthropic/README.md) | LLM inference, GPU serving, concurrency, safety | ~$550K |
+| [Google](02-big-tech-and-ai-labs/02-google/README.md) | DS&A at scale, system design, Googleyness, TPU/ML | ~$400-650K |
+| [Google DeepMind](02-big-tech-and-ai-labs/03-deepmind/README.md) | ML research + engineering, JAX, AlphaFold, Gemini | ~$400-750K |
+| [OpenAI](02-big-tech-and-ai-labs/04-openai/README.md) | API infrastructure, ML systems, mission alignment | ~$450-600K |
+| [Meta](02-big-tech-and-ai-labs/05-meta/README.md) | Planetary scale, AI-enabled coding round, LLaMA | ~$450-700K |
+| [Apple](02-big-tech-and-ai-labs/06-apple/README.md) | Privacy-first ML, on-device inference, product excellence | ~$400-650K |
+| [NVIDIA](02-big-tech-and-ai-labs/07-nvidia/README.md) | GPU/CUDA programming, parallel computing, AI infra | ~$400-750K |
+| [Moonshot AI](02-big-tech-and-ai-labs/08-moonshot/README.md) | Long-context LLMs, NLP research, Chinese AI frontier | Competitive + equity |
+| [Netflix](03-infrastructure-and-data-platforms/01-netflix/README.md) | Distributed systems, streaming, culture, recommendations | ~$350-500K (cash) |
+| [Amazon](03-infrastructure-and-data-platforms/02-amazon/README.md) | Leadership Principles, services architecture, AWS/ML | ~$350-450K (Y1) |
+| [Databricks](03-infrastructure-and-data-platforms/03-databricks/README.md) | Most selective non-FAANG, Lakehouse, Spark, Delta Lake | ~$400-700K |
+| [Stripe](03-infrastructure-and-data-platforms/04-stripe/README.md) | No leetcode, bug bash, payments infra, financial correctness | ~$400-650K |
+| [Palantir](03-infrastructure-and-data-platforms/05-palantir/README.md) | Decomposition, data platforms, entity modeling, AIP | ~$350-500K |
+| [Jane Street](04-quantitative-trading-firms/01-jane-street/README.md) | OCaml, probability, low-latency, market making | ~$600K-1.5M |
+| [Two Sigma](04-quantitative-trading-firms/02-two-sigma/README.md) | DP-heavy coding, data infra, quant reasoning | ~$500K-1M+ |
+| [Citadel / Citadel Securities](04-quantitative-trading-firms/03-citadel/README.md) | Hardest algo rounds, C++, low-latency matching | ~$500K-1.5M+ |
+| [HRT](04-quantitative-trading-firms/04-hrt/README.md) | Nanosecond latency, C++, FPGA, kernel bypass | ~$700K-2M+ |
+| [Renaissance Technologies](04-quantitative-trading-firms/05-renaissance-technologies/README.md) | Most exclusive firm on Earth, invite-only, PhD bar | ~$1M-5M+ |
+| [SpaceX](05-aerospace-and-hardware/01-spacex/README.md) | 7-9 rounds, mission-critical software, Starlink | ~$300-500K + equity |
 
 Difficulty varies as much as pay. The tiers below reflect selectivity and the technical bar:
 

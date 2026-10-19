@@ -14,8 +14,56 @@
   ],
   "tracks": [
     {
-      "dir": "content/courses/ai-platform-engineering",
-      "title": "AI Platform Engineering"
+      "dir": "content/courses/ai-platform-engineering/01-training-and-frameworks",
+      "title": "Training and Frameworks"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/02-rpc-and-protocols",
+      "title": "RPC and Protocols"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/03-streaming-sse",
+      "title": "Streaming and SSE"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/04-distributed-data-and-caching",
+      "title": "Distributed Data and Caching"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/05-durable-orchestration-and-workers",
+      "title": "Durable Orchestration and Workers"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/06-coding-and-design-patterns",
+      "title": "Coding and Design Patterns"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/07-retrieval-and-rag",
+      "title": "Retrieval and RAG"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/08-authorization-and-access-control",
+      "title": "Authorization and Access Control"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/09-llm-evaluation",
+      "title": "LLM Evaluation"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/10-edge-realtime-inference",
+      "title": "Edge, Realtime & On-Device Inference"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/11-model-routing-and-cascades",
+      "title": "Model Routing & Cascades"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/12-gateway",
+      "title": "Gateway"
+    },
+    {
+      "dir": "content/courses/ai-platform-engineering/13-agent-sdk",
+      "title": "Agent SDK"
     }
   ],
   "reference": [

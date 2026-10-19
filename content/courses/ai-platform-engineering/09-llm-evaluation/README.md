@@ -13,7 +13,7 @@ This chapter starts with the intrinsic side, because the training loss is the fi
 
 ## Before you begin
 
-You should be comfortable with entropy, KL divergence, and cross-entropy from [Information Theory](../../mathematics-for-computing/11-information-theory/) in *Mathematics for Computing*, and with the training loss from [Deep Learning](../../machine-learning/02-deep-learning/) in *Machine Learning and AI*. The RAG metrics assume you know what a retrieval pipeline does, from [Retrieval and RAG](../07-retrieval-and-rag/). The agent sections use the agent SDK from [the agent SDK chapter](../13-agent-sdk/README.md) and the durable `EvalSuite` workflow from [Durable orchestration and workers](../05-durable-orchestration-and-workers/README.md).
+You should be comfortable with entropy, KL divergence, and cross-entropy from [Information Theory](../../mathematics-for-computing/12-information-theory/) in *Mathematics for Computing*, and with the training loss from [Deep Learning](../../machine-learning/02-deep-learning/) in *Machine Learning and AI*. The RAG metrics assume you know what a retrieval pipeline does, from [Retrieval and RAG](../07-retrieval-and-rag/). The agent sections use the agent SDK from [the agent SDK chapter](../13-agent-sdk/README.md) and the durable `EvalSuite` workflow from [Durable orchestration and workers](../05-durable-orchestration-and-workers/README.md).
 
 ## Cross-entropy: the loss that is an eval
 
@@ -101,16 +101,16 @@ When you need to pick a metric quickly, this mapping from question to measuremen
 
 The same patterns appear across the industry. OpenAI and Anthropic combine held-out loss with capability and safety evals: bits-per-byte, internal evals, and red-teaming. LMSYS turns human pairwise votes into Elo ratings in Chatbot Arena. Stanford CRFM standardizes multi-metric benchmarking in HELM, and EleutherAI provides a reproducible benchmark harness in lm-evaluation-harness. Ragas and other eval vendors use LLM-as-judge for RAG metrics such as faithfulness and context precision and recall, and saige, the reference implementation for this chapter, applies one composable `Scorer` across RAG, agent, and knowledge-graph metrics.
 
-The ideas also connect to other parts of the library. Entropy, KL divergence, and compression in [Information Theory](../../mathematics-for-computing/11-information-theory/) explain why the loss measures bits. [Deep Learning](../../machine-learning/02-deep-learning/) covers the training objective and scaling laws behind the loss as the first eval. [Retrieval and RAG](../07-retrieval-and-rag/) is the pipeline that context precision, recall, and faithfulness evaluate. [LLM Systems](../../machine-learning/04-llm-systems/) and [Streaming and SSE](../03-streaming-sse/) cover the TTFT, TTLT, cost, and serving SLOs behind operational evaluation. [Coding and Design Patterns](../06-coding-and-design-patterns/) motivates the scorer as a composable pure function, [Software Craftsmanship](../../software-craftsmanship/) treats eval suites as CI-gated tests, and the [agent eval harness case study](../../case-studies/05-agent-eval-harness/) works through grading an agent that changes state, with replay, set-based checks, oracles, and mutants.
+The ideas also connect to other parts of the library. Entropy, KL divergence, and compression in [Information Theory](../../mathematics-for-computing/12-information-theory/) explain why the loss measures bits. [Deep Learning](../../machine-learning/02-deep-learning/) covers the training objective and scaling laws behind the loss as the first eval. [Retrieval and RAG](../07-retrieval-and-rag/) is the pipeline that context precision, recall, and faithfulness evaluate. [LLM Systems](../../machine-learning/04-llm-systems/) and [Streaming and SSE](../03-streaming-sse/) cover the TTFT, TTLT, cost, and serving SLOs behind operational evaluation. [Coding and Design Patterns](../06-coding-and-design-patterns/) motivates the scorer as a composable pure function, [Software Craftsmanship](../../software-craftsmanship/) treats eval suites as CI-gated tests, and the [agent eval harness case study](../../case-studies/05-agent-eval-harness/) works through grading an agent that changes state, with replay, set-based checks, oracles, and mutants.
 
 ## In this chapter
 
 The four sections build the agent evaluation pipeline in Go, each plugging into the one before it. As you read, try to predict each aggregate and each step before you read the solution's.
 
-1. [Eval runner](09-eval-runner.md): run every case of a suite through a subject concurrently and deterministically, exclude and count failed scores, and report means with cluster bootstrap intervals in a schema-defined file.
-2. [Agent evaluation scorers](10-scorers.md): deterministic scorers for text, schema, timing, tool use, retrieval ranking, citations, and state changes graded as sets.
-3. [LLM judge with position control](11-llm-judge.md): a rubric judge with strict parsing, a pairwise comparison that detects position bias, Cohen's kappa against human labels, and deterministic sampling.
-4. [Paired A/B experiments](12-ab-experiments.md): compare two versions on the same cases with paired deltas, a paired bootstrap interval, and a sign permutation p-value.
+1. [Eval runner](01-eval-runner.md): run every case of a suite through a subject concurrently and deterministically, exclude and count failed scores, and report means with cluster bootstrap intervals in a schema-defined file.
+2. [Agent evaluation scorers](02-scorers.md): deterministic scorers for text, schema, timing, tool use, retrieval ranking, citations, and state changes graded as sets.
+3. [LLM judge with position control](03-llm-judge.md): a rubric judge with strict parsing, a pairwise comparison that detects position bias, Cohen's kappa against human labels, and deterministic sampling.
+4. [Paired A/B experiments](04-ab-experiments.md): compare two versions on the same cases with paired deltas, a paired bootstrap interval, and a sign permutation p-value.
 
 ## Further reading
 

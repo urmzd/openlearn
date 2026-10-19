@@ -1,5 +1,5 @@
 # Observability stack: pinned charts and the rule selector
-<!-- chapter: content/courses/infrastructure/01-containers-kubernetes/03-helm-charts-and-observability-stack.md -->
+<!-- chapter: content/courses/infrastructure/01-containers-kubernetes/04-helm-charts-and-observability-stack.md -->
 
 <!-- modules: dep.00 (Jaeger, Pass 1), dep.02 and dep.03 (Pass 7 stack), dep.06 (KEDA), obs.01 to obs.05 -->
 

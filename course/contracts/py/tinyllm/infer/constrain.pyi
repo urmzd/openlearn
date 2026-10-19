@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/infer/constrain.pyi (L8.7)
-# chapter: content/courses/build-an-llm/p08-inference/07-constrained-decoding.md
+# chapter: content/courses/build-an-llm/09-inference/07-constrained-decoding.md
 #
 # Constrained decoding: the model may only emit tokens that keep the output a
 # prefix of some string in a regular language. A regex (or a JSON schema,

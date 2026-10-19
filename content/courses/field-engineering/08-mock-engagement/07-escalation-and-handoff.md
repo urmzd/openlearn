@@ -80,7 +80,7 @@ The tradeoff accepted is that cutover waits for a rehearsal and for every critic
 
 ## Where this leads
 
-The handoff puts into practice the incident and access answers from [Answering the security questionnaire](06-commercials-and-security.md) and links the runbooks of [Runbooks and Diataxis docs](../../diagramming/02-documentation-writing/02-runbooks-and-diataxis.md). It closes the mock engagement. The [capstone](capstone.md) then applies the whole sequence, from discovery to escalation, to a single new customer.
+The handoff puts into practice the incident and access answers from [Answering the security questionnaire](06-commercials-and-security.md) and links the runbooks of [Runbooks and Diataxis docs](../../diagramming/02-documentation-writing/02-runbooks-and-diataxis.md). It closes the mock engagement. The [capstone](08-capstone.md) then applies the whole sequence, from discovery to escalation, to a single new customer.
 
 Further reading:
 

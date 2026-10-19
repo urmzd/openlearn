@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/prob/rv.pyi (M07.0)
-# chapter: content/courses/mathematics-for-computing/07-probability-statistics/00-random-variables-and-the-normal.md
+# chapter: content/courses/mathematics-for-computing/08-probability-statistics/01-random-variables-and-the-normal.md
 #
 # Discrete random variables as (values, probs) tables, and standard normal
 # draws by Box-Muller over the PCG32 uniforms of spec/pcg32.md.

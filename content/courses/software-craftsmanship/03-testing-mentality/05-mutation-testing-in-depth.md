@@ -1,8 +1,8 @@
 # Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors
 
-The model suite of [Sequence metrics: exact match, BLEU, chrF](../../build-an-llm/p04-attention-origins/05-sequence-metrics.md) in *Build Your Own LLM System* kills at least 80% of its planted faults, every semantic one included. That number hides two questions. Which 20% survived, and why? And could any test ever have killed them? The sequence metrics are the first place where the suites guard real numerical code: they are the metrics the [LM evaluation harness](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) will print for every model trained. Later in this chapter the mutant classes cannot be read as patches at all: a 2x slowdown the benchmark gate must notice ([Benchmarks and perf gates](04-benchmarks-and-perf-gates.md)), a zeroed layer the model eval must flag ([Model evals as tests](08-model-evals-as-tests.md)). Reading survivors is the skill underneath all of them.
+The model suite of [Sequence metrics: exact match, BLEU, chrF](../../build-an-llm/05-attention-origins/05-sequence-metrics.md) in *Build Your Own LLM System* kills at least 80% of its planted faults, every semantic one included. That number hides two questions. Which 20% survived, and why? And could any test ever have killed them? The sequence metrics are the first place where the suites guard real numerical code: they are the metrics the [LM evaluation harness](../../build-an-llm/07-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) will print for every model trained. Later in this chapter the mutant classes cannot be read as patches at all: a 2x slowdown the benchmark gate must notice ([Benchmarks and perf gates](04-benchmarks-and-perf-gates.md)), a zeroed layer the model eval must flag ([Model evals as tests](08-model-evals-as-tests.md)). Reading survivors is the skill underneath all of them.
 
-This section takes the sequence-metrics unit and ten mutants that a typical 80%-kill suite lets live. It sorts the real gaps from the impossible ones, closes the gaps, and adds mutants of its own from the unit's pitfalls. It assumes you know how a suite is judged by planted faults from [TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md) and laws as tests from [Property-based tests](02-property-based-tests.md). Read [Sequence metrics](../../build-an-llm/p04-attention-origins/05-sequence-metrics.md) first, since the survivors are small diffs against its `seqmetrics.py`; the contract the suite tests is [`seqmetrics.pyi`](../../../../course/contracts/py/tinyllm/eval/seqmetrics.pyi).
+This section takes the sequence-metrics unit and ten mutants that a typical 80%-kill suite lets live. It sorts the real gaps from the impossible ones, closes the gaps, and adds mutants of its own from the unit's pitfalls. It assumes you know how a suite is judged by planted faults from [TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md) and laws as tests from [Property-based tests](02-property-based-tests.md). Read [Sequence metrics](../../build-an-llm/05-attention-origins/05-sequence-metrics.md) first, since the survivors are small diffs against its `seqmetrics.py`; the contract the suite tests is [`seqmetrics.pyi`](../../../../course/contracts/py/tinyllm/eval/seqmetrics.pyi).
 
 The solution has three artifacts in [`primers/craft.07/`](../../../../course/solutions/primers/craft.07/): [`test_seqmetrics.py`](../../../../course/solutions/primers/craft.07/test_seqmetrics.py), the sequence-metrics suite deepened until it kills every mutant; [`triage.toml`](../../../../course/solutions/primers/craft.07/triage.toml), the verdict on ten survivors; and [`mutants/p01.patch`](../../../../course/solutions/primers/craft.07/mutants/p01.patch) and [`mutants/p02.patch`](../../../../course/solutions/primers/craft.07/mutants/p02.patch), two semantic mutants written from the unit's pitfalls. Before reading each verdict, decide it yourself from the diff alone.
 
@@ -72,7 +72,7 @@ def test_13a_splits_a_final_period_after_a_digit():
 
 "Looks equivalent" is not "is equivalent": deleting padding before a tokenizer that collapses white space is harmless on almost every input and wrong on one.
 
-**A semantic mutant.** The pitfall "arithmetic mean instead of geometric mean" is already planted among the unit's own mutants (`s07` there), so write a new one from the rule that [BLEU](../../build-an-llm/p04-attention-origins/05-sequence-metrics.md#bleu) counts orders 1 to 4, as a third patch, `p03.patch`:
+**A semantic mutant.** The pitfall "arithmetic mean instead of geometric mean" is already planted among the unit's own mutants (`s07` there), so write a new one from the rule that [BLEU](../../build-an-llm/05-attention-origins/05-sequence-metrics.md#bleu) counts orders 1 to 4, as a third patch, `p03.patch`:
 
 ```diff
 # pitfall: BLEU uses n-gram orders 1 to 4 (L4.5 section 2.2); this mutant stops at 3
@@ -223,7 +223,7 @@ A single sentence does not show s09: with one sentence, the order whose referenc
 
 ### The two hand-written mutants
 
-**p01** comes from the [tokenization rule](../../build-an-llm/p04-attention-origins/05-sequence-metrics.md#tokens) that 13a splits a dash only after a digit:
+**p01** comes from the [tokenization rule](../../build-an-llm/05-attention-origins/05-sequence-metrics.md#tokens) that 13a splits a dash only after a digit:
 
 ```diff
 # pitfall: 13a splits a dash only after a digit (L4.5 section 2.1); this mutant forgets the rule, so 10-12 stays one token
@@ -244,7 +244,7 @@ def test_13a_splits_a_dash_after_a_digit():
     assert tokenize_13a("pages 10-12") == "pages 10 - 12"
 ```
 
-**p02** comes from the rule that [chrF](../../build-an-llm/p04-attention-origins/05-sequence-metrics.md#chrf)'s beta is a parameter:
+**p02** comes from the rule that [chrF](../../build-an-llm/05-attention-origins/05-sequence-metrics.md#chrf)'s beta is a parameter:
 
 ```diff
 # pitfall: chrF's beta is a parameter (L4.5 section 2.3); this mutant always weights recall by 2^2
@@ -291,12 +291,12 @@ Most mistakes in this work are verdicts or kills made for the wrong reason:
 
 ## Where this leads
 
-This section extended killed and survived, the two baselines, and required mutants from [TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md), used laws as tests from [Property-based tests](02-property-based-tests.md) (a property often kills a whole family of survivors at once), and took its unit and pitfalls from [Sequence metrics](../../build-an-llm/p04-attention-origins/05-sequence-metrics.md). Every later testing section reads survivors this way, and several use mutant classes of their own:
+This section extended killed and survived, the two baselines, and required mutants from [TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md), used laws as tests from [Property-based tests](02-property-based-tests.md) (a property often kills a whole family of survivors at once), and took its unit and pitfalls from [Sequence metrics](../../build-an-llm/05-attention-origins/05-sequence-metrics.md). Every later testing section reads survivors this way, and several use mutant classes of their own:
 
 - [Oracles, golden and differential tests, gradcheck as a test](03-oracles-golden-and-gradcheck.md) judges oracle suites for the transformer kernels with the same survivor reading.
 - [Benchmarks and perf gates](04-benchmarks-and-perf-gates.md) uses perf mutants: a survivor is a slowdown the benchmark gate did not trip.
 - [Resilience tests](07-resilience-tests.md) uses resilience mutants: a survivor is a fault the kill loop did not expose.
-- [Model evals as tests](08-model-evals-as-tests.md) and [Agent evals as tests](23-agent-evals-as-tests.md) use model and agent mutants.
+- [Model evals as tests](08-model-evals-as-tests.md) and [Agent evals as tests](09-agent-evals-as-tests.md) use model and agent mutants.
 
 Each piece has a production equivalent:
 

@@ -45,7 +45,7 @@ Solve $60 + 4n \le 180$: subtract 60, then divide by 4, giving $n \le 30$. The m
 
 ## Where this leads
 
-The cost rule $C(n) = 60 + 4n$ grows by the same amount for every extra attendee. The next chapter, [Change and growth](02-change-and-growth.md), compares that kind of change with growth by repeated multiplication. For a full treatment of functions and algebra, see the [Precalculus](../mathematics-for-computing/00-precalculus/README.md) chapter of *Mathematics for Computing*.
+The cost rule $C(n) = 60 + 4n$ grows by the same amount for every extra attendee. The next chapter, [Change and growth](02-change-and-growth.md), compares that kind of change with growth by repeated multiplication. For a full treatment of functions and algebra, see the [Precalculus](../mathematics-for-computing/01-precalculus/README.md) chapter of *Mathematics for Computing*.
 
 ## Key terms
 

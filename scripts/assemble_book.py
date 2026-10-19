@@ -149,17 +149,97 @@ def part_divider(title: str) -> str:
     return f"\n```{{=latex}}\n\\part{{{latex_escape(title)}}}\n```\n\n"
 
 
+def demote(text: str, levels: int = 1) -> str:
+    """Push every heading down ``levels`` levels (H6 stays H6). Fence-aware."""
+    out: list[str] = []
+    fence = ""
+    for line in text.split("\n"):
+        marker = line.lstrip()[:3]
+        if fence:
+            if marker == fence:
+                fence = ""
+        elif marker in ("```", "~~~"):
+            fence = marker
+        elif re.match(r"#{1,6} ", line):
+            hashes = len(line) - len(line.lstrip("#"))
+            line = "#" * min(6, hashes + levels) + line[hashes:]
+        out.append(line)
+    return "\n".join(out)
+
+
+def retitle(text: str, title: str, level: int) -> str:
+    """Replace the first heading at ``level`` with ``title``, or add one."""
+    lines = text.split("\n")
+    prefix = "#" * level + " "
+    for i, line in enumerate(lines):
+        if line.startswith(prefix):
+            lines[i] = prefix + title
+            return "\n".join(lines)
+    return f"{prefix}{title}\n\n{text}"
+
+
+def first_title(text: str) -> str:
+    for line in text.split("\n"):
+        if line.startswith("# "):
+            return line[2:].strip()
+    return ""
+
+
+def chapter_text(root: Path, section: dict, files: list[str]) -> list[str]:
+    """One numbered chapter: its opening is the PDF chapter, sections are H2s.
+
+    "Chapter 5: Title" heads the chapter, "5.3 Title" each section; every
+    other heading moves down a level so sections are the only H2s.
+    """
+    number, labels = section["number"], section.get("labels", {})
+    word = "Appendix" if section.get("kind") == "appendix" else "Chapter"
+    chunks: list[str] = []
+    opened = False
+    for rel in files:
+        path = root / rel
+        text = single_chapter(path.read_text(encoding="utf-8"))
+        label = labels.get(rel)
+        if label == number:
+            title = first_title(text) or section["title"]
+            body = demote(text, 1)
+            text = retitle(body, f"{word} {number}: {title}", 2).replace(
+                f"## {word} {number}: {title}", f"# {word} {number}: {title}", 1
+            )
+            opened = True
+        else:
+            if not opened:
+                chunks.append(f"# {word} {number}: {section['title']}\n\n")
+                opened = True
+            depth = 1 if label is None or label.count(".") == 1 else 2
+            title = first_title(text)
+            text = demote(text, depth)
+            if label:
+                text = retitle(text, f"{label} {title}", 1 + depth)
+        text = rewrite_links(text, path.parent, root)
+        chunks.append(substitute_glyphs(rewrite_images(text, path.parent)))
+        chunks.append("\n\n")
+    return chunks
+
+
 def assemble_course(
     root: Path, manifest: dict, seen: set[str] | None = None
 ) -> tuple[str, int]:
     seen = set() if seen is None else seen
     chunks = []
     count = 0
+    appendices = False
     for section in publication(manifest, root)["reading"]:
         files = [f for f in section["files"] if f not in seen]
         if not files:
             continue
         seen.update(files)
+        if section.get("number"):
+            if section.get("kind") == "appendix" and not appendices:
+                chunks.append(part_divider("Appendices"))
+                appendices = True
+            chunks.extend(chapter_text(root, section, files))
+            count += len(files)
+            continue
         chunks.append(part_divider(section["title"]))
         note = f"> **Done when:** {section['done']}" if section.get("done") else ""
         chunks.extend(stage_text(root, section["title"], files, note))

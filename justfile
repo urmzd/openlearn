@@ -103,9 +103,9 @@ run-11-recursion-divide-conquer:
   python3 content/courses/algorithms/11-recursion-divide-conquer/example-1.py
   python3 content/courses/algorithms/11-recursion-divide-conquer/example-3.py
 
-run-15-probabilistic-structures:
+run-12-probabilistic-structures:
   command -v python3 >/dev/null
-  python3 content/courses/algorithms/15-probabilistic-structures/bloom.py
+  python3 content/courses/algorithms/12-probabilistic-structures/bloom.py
 
 # Run every C and C++ practice solution (each one asserts its own behaviour).
 run-practice-solutions:
@@ -139,7 +139,7 @@ run-all: \
   run-09-backtracking \
   run-10-math-bit \
   run-11-recursion-divide-conquer \
-  run-15-probabilistic-structures
+  run-12-probabilistic-structures
 
 run-all-parallel:
   @just --parallel \
@@ -154,4 +154,4 @@ run-all-parallel:
     run-09-backtracking \
     run-10-math-bit \
     run-11-recursion-divide-conquer \
-              run-15-probabilistic-structures
+              run-12-probabilistic-structures

@@ -12,7 +12,7 @@ This chapter presents each primitive with a template, closes with an edge-case c
 
 ## Before you begin
 
-The fast and slow pointer idea was introduced in [Two pointers and sliding window](../02-two-pointers-sliding-window/README.md). You should be comfortable with references (or pointers) and with recursion. The doubly linked list behind an LRU cache is built in full in [the intrusive list and LRU](../16-systems-data-structures/03-intrusive-list-and-lru.md) in this book's systems chapter.
+The fast and slow pointer idea was introduced in [Two pointers and sliding window](../02-two-pointers-sliding-window/README.md). You should be comfortable with references (or pointers) and with recursion. The doubly linked list behind an LRU cache is built in full in [the intrusive list and LRU](../13-systems-data-structures/03-intrusive-list-and-lru.md) in this book's systems chapter.
 
 ## Dummy head nodes
 

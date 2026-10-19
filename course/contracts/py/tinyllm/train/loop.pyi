@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/train/loop.pyi (L0.5): data loader, train step, eval loop
-# chapter: content/courses/build-an-llm/p00-foundations/05-training-loop-and-the-autograd-bigram.md
+# chapter: content/courses/build-an-llm/01-foundations/06-training-loop-and-the-autograd-bigram.md
 #
 # The three pieces every training run in the course is made of:
 #

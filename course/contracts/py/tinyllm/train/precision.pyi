@@ -1,6 +1,6 @@
 # contracts/py/tinyllm/train/precision.pyi (L11.1): emulated mixed precision,
 # dynamic loss scaling, and gradient accumulation
-# chapter: content/courses/build-an-llm/p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md
+# chapter: content/courses/build-an-llm/12-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md
 #
 # numpy has no bfloat16, so low precision is emulated: a value "stored in
 # bf16" is a float array whose every entry is a bf16 value, made by M09.1's

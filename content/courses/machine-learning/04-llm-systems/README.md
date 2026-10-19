@@ -19,11 +19,11 @@ The best preparation is practical: serve a real model locally with vLLM before r
 
 ## In this chapter
 
-1. **[Quantization: Math to Code](quantization/README.md).** The quantizer zoo (GPTQ, AWQ, SmoothQuant, NF4, GGUF k-quants, FP8, QuIP#, and TurboQuant) derived from the math and implemented in C, CUDA, and Rust.
-2. **[Inference Frameworks: The Cross-Language Landscape](frameworks/README.md).** The inference stack across C (llama.cpp), Python (vLLM, TGI, SGLang), Rust (candle, mistral.rs), and Zig (ZML), with runnable Rust and Zig examples.
-3. **[Model Loading: Hub to GPU](model-loading/README.md).** Hub repo anatomy, the safetensors byte layout, what `from_pretrained` does, how engines shard weights, cold-start math, and chat templates, with a triage playbook for failed loads.
-4. **[Serving, Capacity & Load Testing: Math to Code](serving-and-load/README.md).** The roofline for prefill and decode, memory budgets, SLOs and goodput, parallelism, vLLM and SGLang knobs, load-testing methodology, and cost per token.
-5. **[LLM Serving Platforms: How They Work and When to Use Them](serving-platforms.md).** How Anyscale, Ray, vLLM, SGLang, RouteLLM, and OpenRouter work, their use cases and trade-offs, and what reproducibility costs.
+1. **[Quantization: Math to Code](01-quantization/README.md).** The quantizer zoo (GPTQ, AWQ, SmoothQuant, NF4, GGUF k-quants, FP8, QuIP#, and TurboQuant) derived from the math and implemented in C, CUDA, and Rust.
+2. **[Inference Frameworks: The Cross-Language Landscape](02-frameworks/README.md).** The inference stack across C (llama.cpp), Python (vLLM, TGI, SGLang), Rust (candle, mistral.rs), and Zig (ZML), with runnable Rust and Zig examples.
+3. **[Model Loading: Hub to GPU](03-model-loading/README.md).** Hub repo anatomy, the safetensors byte layout, what `from_pretrained` does, how engines shard weights, cold-start math, and chat templates, with a triage playbook for failed loads.
+4. **[Serving, Capacity & Load Testing: Math to Code](04-serving-and-load/README.md).** The roofline for prefill and decode, memory budgets, SLOs and goodput, parallelism, vLLM and SGLang knobs, load-testing methodology, and cost per token.
+5. **[LLM Serving Platforms: How They Work and When to Use Them](05-serving-platforms.md).** How Anyscale, Ray, vLLM, SGLang, RouteLLM, and OpenRouter work, their use cases and trade-offs, and what reproducibility costs.
 
 The rest of this opening builds the shared vocabulary those sections rely on.
 
@@ -79,7 +79,7 @@ There are several flavors. **Weight-only quantization** to INT8 or INT4 (GPTQ, A
 
 > **Warning:** Aggressive quantization (INT4) can degrade quality on hard tasks. Always evaluate on your own benchmark, not just on perplexity.
 
-[Quantization: Math to Code](quantization/README.md) covers the full quantizer zoo, GPTQ, AWQ, SmoothQuant, NF4, GGUF k-quants, FP8, QuIP#, and TurboQuant, with the underlying math translated into runnable C, CUDA, and Rust ([Burn](https://burn.dev/)) examples.
+[Quantization: Math to Code](01-quantization/README.md) covers the full quantizer zoo, GPTQ, AWQ, SmoothQuant, NF4, GGUF k-quants, FP8, QuIP#, and TurboQuant, with the underlying math translated into runnable C, CUDA, and Rust ([Burn](https://burn.dev/)) examples.
 
 ## Decoding optimizations
 
@@ -108,13 +108,13 @@ All of these techniques are packaged in serving frameworks, each with its own ni
 | **ZML / llama.cpp.zig** (Zig) | Native compile, minimal deps, C interop | MLIR/XLA multi-vendor, or `@cImport` over llama.cpp |
 | **Ray Serve / KServe** | Orchestration layer | Autoscaling, multi-model, request routing on top of a runtime |
 
-[Inference Frameworks: The Cross-Language Landscape](frameworks/README.md) maps the full stack across C (llama.cpp and ggml), Python (vLLM, TGI, SGLang), Rust (candle, mistral.rs, burn, ratchet, luminal), and Zig (ZML, llama.cpp.zig), with runnable Rust and Zig examples. [LLM Serving Platforms](serving-platforms.md) covers the orchestration, gateway, and routing layers above the engines.
+[Inference Frameworks: The Cross-Language Landscape](02-frameworks/README.md) maps the full stack across C (llama.cpp and ggml), Python (vLLM, TGI, SGLang), Rust (candle, mistral.rs, burn, ratchet, luminal), and Zig (ZML, llama.cpp.zig), with runnable Rust and Zig examples. [LLM Serving Platforms](05-serving-platforms.md) covers the orchestration, gateway, and routing layers above the engines.
 
 ## Deployment: GPU clusters and Kubernetes
 
 Serving meets [Cloud Native](../../systems/03-cloud-native/README.md) infrastructure when the framework is deployed on a cluster. On Kubernetes, the NVIDIA device plugin exposes `nvidia.com/gpu` as a schedulable resource, and node selectors, taints, and `nodeAffinity` pin pods to the right GPU SKU (A100, H100, L40S). GPUs can be shared: **Multi-Instance GPU** (MIG) partitions one A100 or H100 into isolated slices, while time-slicing shares a GPU across pods for low-traffic models. **Multi-node serving** uses LeaderWorkerSet or multi-host inference for models spanning nodes, with RDMA or InfiniBand and topology-aware scheduling for the parallelism interconnect.
 
-**Autoscaling** should key on GPU-aware signals, such as queue depth, tokens per second, and KV-cache utilization, via KEDA or custom metrics, *not* CPU. Cold starts are brutal, because model weights run to tens or hundreds of gigabytes, so keep warm pools and use fast model loading: streaming from object storage, RDMA, or a local NVMe cache ([Model Loading: Hub to GPU](model-loading/README.md) does the math). **Operators** such as KServe, Ray, NVIDIA NIM, or KubeAI manage model deployments declaratively, with canary rollouts and scale-to-zero. The main **cost levers** are spot or preemptible GPUs with checkpointing, right-sizing the GPU to the model, and bin-packing many small models per GPU with MIG.
+**Autoscaling** should key on GPU-aware signals, such as queue depth, tokens per second, and KV-cache utilization, via KEDA or custom metrics, *not* CPU. Cold starts are brutal, because model weights run to tens or hundreds of gigabytes, so keep warm pools and use fast model loading: streaming from object storage, RDMA, or a local NVMe cache ([Model Loading: Hub to GPU](03-model-loading/README.md) does the math). **Operators** such as KServe, Ray, NVIDIA NIM, or KubeAI manage model deployments declaratively, with canary rollouts and scale-to-zero. The main **cost levers** are spot or preemptible GPUs with checkpointing, right-sizing the GPU to the model, and bin-packing many small models per GPU with MIG.
 
 ## Serving metrics and SLOs
 
@@ -128,7 +128,7 @@ Finally, a serving system is judged by a handful of metrics, each driven by a di
 | **Goodput** | Throughput that *meets* SLOs | Scheduling quality under load |
 | **Utilization** | GPU compute/memory busy fraction | Batching, phase mix |
 
-The key tension is that optimizing throughput with big batches hurts TTFT and TPOT for individual users. Serving systems therefore schedule to maximize goodput: throughput *subject to* latency SLOs. [Serving, Capacity & Load Testing](serving-and-load/README.md) turns these definitions into capacity plans and load tests.
+The key tension is that optimizing throughput with big batches hurts TTFT and TPOT for individual users. Serving systems therefore schedule to maximize goodput: throughput *subject to* latency SLOs. [Serving, Capacity & Load Testing](04-serving-and-load/README.md) turns these definitions into capacity plans and load tests.
 
 ## Optimization at a glance
 
@@ -147,7 +147,7 @@ Each technique in this chapter targets a specific goal, and it works for a speci
 
 ## Where this leads
 
-This chapter connects to much of the rest of the library. The model being served, with its attention, transformers, and scaling laws, comes from [Deep Learning](../02-deep-learning/README.md). Kubernetes, autoscaling, containers, and GPU scheduling form the deployment substrate in [Cloud Native](../../systems/03-cloud-native/README.md); caching, load balancing, queueing, and SLOs for request routing and capacity planning come from [System Design](../../systems/01-system-design/README.md); and tail latency, RED and USE metrics, and profiling for measuring TTFT and TPOT come from [Observability](../../systems/04-observability/README.md), all in *Systems and Architecture*. Quantization as lossy compression, the bits-per-weight versus quality tradeoff, rests on [Information Theory](../../mathematics-for-computing/11-information-theory/README.md) in *Mathematics for Computing*. Getting data to and from the model through streaming pipelines and feature serving is the subject of [*Data Engineering*](../../data-engineering/README.md).
+This chapter connects to much of the rest of the library. The model being served, with its attention, transformers, and scaling laws, comes from [Deep Learning](../02-deep-learning/README.md). Kubernetes, autoscaling, containers, and GPU scheduling form the deployment substrate in [Cloud Native](../../systems/03-cloud-native/README.md); caching, load balancing, queueing, and SLOs for request routing and capacity planning come from [System Design](../../systems/01-system-design/README.md); and tail latency, RED and USE metrics, and profiling for measuring TTFT and TPOT come from [Observability](../../systems/04-observability/README.md), all in *Systems and Architecture*. Quantization as lossy compression, the bits-per-weight versus quality tradeoff, rests on [Information Theory](../../mathematics-for-computing/12-information-theory/README.md) in *Mathematics for Computing*. Getting data to and from the model through streaming pipelines and feature serving is the subject of [*Data Engineering*](../../data-engineering/README.md).
 
 These skills are in demand across the industry: at NVIDIA (TensorRT-LLM, kernel optimization, FP8, Triton, MIG); at Anthropic, OpenAI, and Google DeepMind, where inference serving at scale, KV cache management, parallelism, latency SLOs, TPU inference, and cost per token are research-level problems; at Databricks (model serving with vLLM and MosaicML, GPU orchestration); at Meta (LLaMA serving, quantization research, edge inference); and at Together, Fireworks, and Anyscale, which sell high-throughput serving as a product.
 

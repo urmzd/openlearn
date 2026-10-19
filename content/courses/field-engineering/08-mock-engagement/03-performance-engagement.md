@@ -2,7 +2,7 @@
 
 A performance engagement should answer one customer question with repeatable measurements. That sounds simple, but most benchmarks run for customers fail in one of two ways: they measure something other than what the customer asked, or they cannot separate a real bottleneck from noise in the environment. The cure is a protocol, written and agreed before any load is sent.
 
-This section takes the estimate from [Qualifying and sizing the engagement](02-qualification-and-sizing.md) and writes the protocol that will test it, applying the methods of [Performance Testing Engagements](../03-performance-testing-engagements/README.md) from earlier in this book. The measurements come from the [open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md) in *Build Your Own LLM System*, and regressions are located with the [perf regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md) from *Software Craftsmanship*. The model answer is [`docs/engagement/performance.md`](../../../../course/solutions/docs/engagement/performance.md). Try listing the protocol's rules yourself before reading the walkthrough.
+This section takes the estimate from [Qualifying and sizing the engagement](02-qualification-and-sizing.md) and writes the protocol that will test it, applying the methods of [Performance Testing Engagements](../03-performance-testing-engagements/README.md) from earlier in this book. The measurements come from the [open-loop load generator](../../build-an-llm/11-serving/11-load-generator.md) in *Build Your Own LLM System*, and regressions are located with the [perf regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md) from *Software Craftsmanship*. The model answer is [`docs/engagement/performance.md`](../../../../course/solutions/docs/engagement/performance.md). Try listing the protocol's rules yourself before reading the walkthrough.
 
 > **Learning objectives**
 > - State the question a test decides and, just as explicitly, what it cannot establish.
@@ -82,7 +82,7 @@ The tradeoff accepted is cost: three 30-minute runs per condition consume severa
 
 ## Where this leads
 
-This protocol tests the estimate from [Qualifying and sizing the engagement](02-qualification-and-sizing.md), using the generator and reports of the [open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md) and, on a regression, the [perf regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md). Next, [Pre-registering the POC](04-poc-and-evaluation.md) measures latency and reliability with this same protocol.
+This protocol tests the estimate from [Qualifying and sizing the engagement](02-qualification-and-sizing.md), using the generator and reports of the [open-loop load generator](../../build-an-llm/11-serving/11-load-generator.md) and, on a regression, the [perf regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md). Next, [Pre-registering the POC](04-poc-and-evaluation.md) measures latency and reliability with this same protocol.
 
 Further reading:
 

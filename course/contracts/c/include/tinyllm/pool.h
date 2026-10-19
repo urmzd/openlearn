@@ -1,5 +1,5 @@
 /* tinyllm/pool.h (rt.03): a fixed pthread pool and a blocking parallel for.
- * chapter: content/courses/build-an-llm/p09-kernels/03-thread-pool-and-parallel-for.md
+ * chapter: content/courses/build-an-llm/10-kernels/02-thread-pool-and-parallel-for.md
  * Rules in c/ABI.md.
  *
  * The partition is deterministic: tl_parallel_for(p, n, grain, fn, ctx)

@@ -13,7 +13,7 @@ The arc is from one request to the whole fleet. It starts with a single trace th
 
 ## Before you begin
 
-This chapter assumes some production experience and the material of [Cloud Native](../03-cloud-native/README.md): containers, Kubernetes, and Helm. The sections instrument a system built elsewhere, so it helps to have read [Tracer deploy](../../infrastructure/01-containers-kubernetes/00-tracer-deploy.md) in *Infrastructure*, [The tracer gateway](../../ai-platform-engineering/12-gateway/00-streaming-proxy.md) in *AI Platform Engineering*, and [Your first endpoint](../../build-an-llm/p10-serving/00-your-first-endpoint.md) in *Build Your Own LLM System*. The primary reference is *Observability Engineering* by Charity Majors, Liz Fong-Jones, and George Miranda (O'Reilly); the free [Google SRE Book](https://sre.google/sre-book/) is the supplementary one.
+This chapter assumes some production experience and the material of [Cloud Native](../03-cloud-native/README.md): containers, Kubernetes, and Helm. The sections instrument a system built elsewhere, so it helps to have read [Tracer deploy](../../infrastructure/01-containers-kubernetes/01-tracer-deploy.md) in *Infrastructure*, [The tracer gateway](../../ai-platform-engineering/12-gateway/01-streaming-proxy.md) in *AI Platform Engineering*, and [Your first endpoint](../../build-an-llm/11-serving/01-your-first-endpoint.md) in *Build Your Own LLM System*. The primary reference is *Observability Engineering* by Charity Majors, Liz Fong-Jones, and George Miranda (O'Reilly); the free [Google SRE Book](https://sre.google/sre-book/) is the supplementary one.
 
 ## Core ideas
 
@@ -52,12 +52,12 @@ Different organizations emphasize different parts of this picture:
 
 ## In this chapter
 
-1. [One trace from gateway to engine](00-one-trace.md): spans, `traceparent` propagation, and OTLP/HTTP JSON, built by hand into a gateway exporter that can never slow a request, with the result checked in Jaeger.
-2. [Tracing for the serving path](01-tracing-for-the-serving-path.md): the `go/otelx` kit that every Go service shares, with HTTP and gRPC propagation, CLIENT spans that cover streamed bodies, `ParentBased` sampling, and batch export.
-3. [Metrics and log correlation](02-metrics-and-log-correlation.md): contract histograms with exact bounds, capped labels, PodMonitors, the OpenTelemetry Collector, and JSON logs that grep by trace id.
-4. [SLOs and multi-window burn-rate alerts](03-slos-and-burn-rate-alerts.md): error budgets, burn rates, two-window alerts in prod and drill profiles, rendered from one SLO file and tested with `promtool`.
-5. [Dashboards as code for the serving path](04-dashboards-as-code.md): a portable Grafana dashboard with one row per incident question, and heatmaps that show what a p95 line hides.
-6. [Observability for the control plane](05-control-plane-observability.md): one trace from the CLI to a Python training step, and a queue dashboard for depth, dead letters, redeliveries, and schedule-to-start latency.
+1. [One trace from gateway to engine](01-one-trace.md): spans, `traceparent` propagation, and OTLP/HTTP JSON, built by hand into a gateway exporter that can never slow a request, with the result checked in Jaeger.
+2. [Tracing for the serving path](02-tracing-for-the-serving-path.md): the `go/otelx` kit that every Go service shares, with HTTP and gRPC propagation, CLIENT spans that cover streamed bodies, `ParentBased` sampling, and batch export.
+3. [Metrics and log correlation](03-metrics-and-log-correlation.md): contract histograms with exact bounds, capped labels, PodMonitors, the OpenTelemetry Collector, and JSON logs that grep by trace id.
+4. [SLOs and multi-window burn-rate alerts](04-slos-and-burn-rate-alerts.md): error budgets, burn rates, two-window alerts in prod and drill profiles, rendered from one SLO file and tested with `promtool`.
+5. [Dashboards as code for the serving path](05-dashboards-as-code.md): a portable Grafana dashboard with one row per incident question, and heatmaps that show what a p95 line hides.
+6. [Observability for the control plane](06-control-plane-observability.md): one trace from the CLI to a Python training step, and a queue dashboard for depth, dead letters, redeliveries, and schedule-to-start latency.
 
 ## Further reading
 

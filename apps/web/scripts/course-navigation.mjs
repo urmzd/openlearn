@@ -16,8 +16,9 @@ export function courseOutlines(publications, isPublished = () => true) {
 						: referenceDirs.some((dir) => file.startsWith(dir)) && !introductions.has(file);
 					(isReference ? auxiliary : main).push(file);
 				}
-				if (main.length) chapters.push({ title: section.title, files: main });
-				if (auxiliary.length) references.push({ title: section.title, files: auxiliary });
+				const { title, number, kind, labels = {} } = section;
+				if (main.length) chapters.push({ title, number, kind, labels, files: main });
+				if (auxiliary.length) references.push({ title, files: auxiliary });
 			}
 			return { course, chapters, references };
 		});

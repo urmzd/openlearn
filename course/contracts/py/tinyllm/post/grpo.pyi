@@ -1,4 +1,4 @@
-# chapter: content/courses/build-an-llm/p12-post-training/03-grpo-with-verifiable-rewards.md
+# chapter: content/courses/build-an-llm/13-post-training/03-grpo-with-verifiable-rewards.md
 from __future__ import annotations
 import numpy as np
 

@@ -8,11 +8,11 @@ Once you have finished the project, choose one subject from *Mathematics for Com
 
 | Your question | Next subject | Preparation |
 |---|---|---|
-| How do I manipulate formulas and describe growth? | [Precalculus](../mathematics-for-computing/00-precalculus/README.md) | Arithmetic and basic equations |
-| How fast is something changing? | [Calculus 1](../mathematics-for-computing/01-calculus-1/README.md) | Algebra, functions, and trigonometry |
-| How do several quantities fit together? | [Linear Algebra](../mathematics-for-computing/03-linear-algebra/README.md) | Algebra and basic equations |
-| How can I justify a mathematical claim? | [Discrete Math 1](../mathematics-for-computing/05-discrete-math-1/README.md) | Algebra and willingness to write arguments |
-| What can uncertain evidence tell me? | [Probability and Statistics](../mathematics-for-computing/07-probability-statistics/README.md) | Check that subject's prerequisites; continuous probability uses calculus |
+| How do I manipulate formulas and describe growth? | [Precalculus](../mathematics-for-computing/01-precalculus/README.md) | Arithmetic and basic equations |
+| How fast is something changing? | [Calculus 1](../mathematics-for-computing/02-calculus-1/README.md) | Algebra, functions, and trigonometry |
+| How do several quantities fit together? | [Linear Algebra](../mathematics-for-computing/04-linear-algebra/README.md) | Algebra and basic equations |
+| How can I justify a mathematical claim? | [Discrete Math 1](../mathematics-for-computing/06-discrete-math-1/README.md) | Algebra and willingness to write arguments |
+| What can uncertain evidence tell me? | [Probability and Statistics](../mathematics-for-computing/08-probability-statistics/README.md) | Check that subject's prerequisites; continuous probability uses calculus |
 
 If you are unsure, Precalculus is the gentlest next step: it revisits the functions and growth of the first two chapters here in much more depth. If the vectors and constraints chapter was the one you enjoyed most, go to Linear Algebra; if it was uncertainty, go to Probability and Statistics once you have the calculus it asks for.
 

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/sig/mel.pyi (M12.6): mel scale, filterbanks, decibels
-# chapter: content/courses/mathematics-for-computing/12-signals-and-images/06-mel-scale-and-filterbanks.md
+# chapter: content/courses/mathematics-for-computing/13-signals-and-images/06-mel-scale-and-filterbanks.md
 #
 # librosa semantics (librosa.hz_to_mel, mel_to_hz, filters.mel,
 # power_to_db) and Whisper's log-mel scaling (openai/whisper audio.py).

@@ -19,19 +19,19 @@ The drills act on the Kubernetes objects of [Cloud Native](../03-cloud-native/RE
 
 ## In this chapter
 
-1. [First drill: the engine crashloops](00-first-drill.md). A bad rollout points the engine at a missing model directory. With no alerting, you triage the crashloop by hand, roll back, and write your first runbook and postmortem.
-2. [A decode worker dies mid-stream](01-kill-decode.md). One of two decode pods is deleted under load. The TTFT budget burns, the gateway's commit rule keeps streams honest, and the root cause is capacity during replacement.
-3. [The durable server is SIGKILLed in a loop during a corpus build](02-durable-kill9.md). Five kills cost time but not correctness: leases redeliver, idempotent activities make the second delivery harmless, and the output must equal a clean run's.
-4. [A poison task lands in the dead-letter queue](03-poison-task.md). A test-only failpoint reaches production and one task fails every attempt. You find what failed and what changed, fix, then redrive.
-5. [The KV format v2 migration](04-kv-v2-migration.md). A planned format change where readers must upgrade before writers, with block-hash evidence and a one-flag rollback.
-6. [The API v2 migration](05-api-v2-migration.md). v1 and v2 served side by side, selected per request by a header, with every signal split by version.
-7. [A breaking dependency upgrade](06-dependency-upgrade.md). One dependency at a time, gated on contract suites and a like-for-like load comparison against the last known good image.
-8. [A performance regression bisect](07-performance-regression.md). Control the measurement, fix the threshold in advance, and let `git bisect run` find the first bad commit.
-9. [A data incident](08-data-incident.md). Bad data leaves every service green; quarantine, trace forward through the ledger, and rebuild from a verified snapshot.
-10. [A noisy neighbor](09-noisy-neighbor.md). One tenant's flood raises everyone's TTFT; attribute it per tenant and contain only the offender.
-11. [A runaway agent](10-runaway-agent.md). An agent loop bounded on every axis, with propagated cancellation and a terminal reason that names the budget.
-12. [The event log disk fills up](11-eventlog-disk-full.md). A WAL quota turns a full disk into a clean `RESOURCE_EXHAUSTED` that never loses acknowledged work.
-13. [A Raft partition (optional)](12-raft-partition.md). For the three-replica durable log: minority writes fail, the majority elects a new leader, and you heal before any membership change.
+1. [First drill: the engine crashloops](01-first-drill.md). A bad rollout points the engine at a missing model directory. With no alerting, you triage the crashloop by hand, roll back, and write your first runbook and postmortem.
+2. [A decode worker dies mid-stream](02-kill-decode.md). One of two decode pods is deleted under load. The TTFT budget burns, the gateway's commit rule keeps streams honest, and the root cause is capacity during replacement.
+3. [The durable server is SIGKILLed in a loop during a corpus build](03-durable-kill9.md). Five kills cost time but not correctness: leases redeliver, idempotent activities make the second delivery harmless, and the output must equal a clean run's.
+4. [A poison task lands in the dead-letter queue](04-poison-task.md). A test-only failpoint reaches production and one task fails every attempt. You find what failed and what changed, fix, then redrive.
+5. [The KV format v2 migration](05-kv-v2-migration.md). A planned format change where readers must upgrade before writers, with block-hash evidence and a one-flag rollback.
+6. [The API v2 migration](06-api-v2-migration.md). v1 and v2 served side by side, selected per request by a header, with every signal split by version.
+7. [A breaking dependency upgrade](07-dependency-upgrade.md). One dependency at a time, gated on contract suites and a like-for-like load comparison against the last known good image.
+8. [A performance regression bisect](08-performance-regression.md). Control the measurement, fix the threshold in advance, and let `git bisect run` find the first bad commit.
+9. [A data incident](09-data-incident.md). Bad data leaves every service green; quarantine, trace forward through the ledger, and rebuild from a verified snapshot.
+10. [A noisy neighbor](10-noisy-neighbor.md). One tenant's flood raises everyone's TTFT; attribute it per tenant and contain only the offender.
+11. [A runaway agent](11-runaway-agent.md). An agent loop bounded on every axis, with propagated cancellation and a terminal reason that names the budget.
+12. [The event log disk fills up](12-eventlog-disk-full.md). A WAL quota turns a full disk into a clean `RESOURCE_EXHAUSTED` that never loses acknowledged work.
+13. [A Raft partition (optional)](13-raft-partition.md). For the three-replica durable log: minority writes fail, the majority elects a new leader, and you heal before any membership change.
 
 ## Further reading
 

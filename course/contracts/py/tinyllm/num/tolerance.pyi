@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/tolerance.pyi (M09.3)
-# chapter: content/courses/mathematics-for-computing/09-numerical-methods-and-floating-point/03-error-analysis-condition-numbers-and-tolerance-budgets.md
+# chapter: content/courses/mathematics-for-computing/10-numerical-methods-and-floating-point/03-error-analysis-condition-numbers-and-tolerance-budgets.md
 #
 # Error analysis turned into test tolerances. The model of floating point is
 # fl(a op b) = (a op b)(1 + delta) with |delta| <= u, the unit roundoff of

@@ -1,5 +1,5 @@
 -- contracts/formats/usage.v1.sql: the gateway's usage ledger.
--- chapter: content/courses/ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md
+-- chapter: content/courses/ai-platform-engineering/12-gateway/05-usage-ledger-and-admin-api.md
 -- chapter: content/courses/programming-languages/02-language-and-tool-primers/11-sql-and-sqlite.md
 -- SQLite, at [gateway].usage_db (/artifacts/gateway/usage.db), WAL mode, so
 -- a SIGKILL leaves every row complete or absent (gw.07).

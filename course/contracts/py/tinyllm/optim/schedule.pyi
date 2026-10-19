@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/optim/schedule.pyi (M10.4)
-# chapter: content/courses/mathematics-for-computing/10-optimization/04-schedules-and-gradient-clipping.md
+# chapter: content/courses/mathematics-for-computing/11-optimization/04-schedules-and-gradient-clipping.md
 #
 # Learning-rate schedules are pure functions of `step`, the number of
 # optimizer updates already taken (0 for the first update). The train loop

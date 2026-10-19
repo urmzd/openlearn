@@ -2,7 +2,7 @@
 
 Most linked lists you have seen allocate a node that points at your data. The Linux kernel does it the other way round: the node lives *inside* your struct, and the list links those embedded nodes together. This section builds that list, a circular doubly linked list with a sentinel head, together with the `container_of` macro that recovers your struct from a pointer to its node.
 
-The payoff is a list that never allocates, so insertion cannot fail, and an object that can sit on several lists at once by carrying several nodes. Along the way you will meet two techniques that are useful far beyond lists: a sentinel element that deletes every edge case, and byte-level pointer arithmetic with a compile-time type check. The same structure, extended into an LRU cache, is [An intrusive list and an LRU](../../../../../content/courses/algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md) in *Algorithms*. You need nothing beyond comfortable C pointers to follow this one.
+The payoff is a list that never allocates, so insertion cannot fail, and an object that can sit on several lists at once by carrying several nodes. Along the way you will meet two techniques that are useful far beyond lists: a sentinel element that deletes every edge case, and byte-level pointer arithmetic with a compile-time type check. The same structure, extended into an LRU cache, is [An intrusive list and an LRU](../../../../../content/courses/algorithms/13-systems-data-structures/03-intrusive-list-and-lru.md) in *Algorithms*. You need nothing beyond comfortable C pointers to follow this one.
 
 > **Learning objectives**
 > - Implement insert, remove, and splice on a circular sentinel list with no branches for empty, first, or last.
@@ -190,7 +190,7 @@ The remaining hazards are summarised below.
 
 ## Where this leads
 
-An intrusive list is the backbone of an LRU cache: a hash map finds the entry, and the embedded node moves it to the front in O(1). [An intrusive list and an LRU](../../../../../content/courses/algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md) in *Algorithms* builds exactly that. Kernel run queues, allocator free lists, and timer wheels all use the same pattern.
+An intrusive list is the backbone of an LRU cache: a hash map finds the entry, and the embedded node moves it to the front in O(1). [An intrusive list and an LRU](../../../../../content/courses/algorithms/13-systems-data-structures/03-intrusive-list-and-lru.md) in *Algorithms* builds exactly that. Kernel run queues, allocator free lists, and timer wheels all use the same pattern.
 
 ## Key terms
 

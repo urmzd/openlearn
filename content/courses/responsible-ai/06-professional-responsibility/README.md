@@ -20,7 +20,7 @@ This chapter draws on the rest of the book, especially the model card from [Mode
 
 - [Professional responsibility and disclosure](01-professional-responsibility.md): what responsibility asks of an engineer shipping this system, a design-review checklist, and a fully worked review of the model card's safety claim, from evidence and options to failure modes, open questions, and a decision.
 
-For practice explaining your choices under questioning, see [Defend Your System](../../interview-preparation/defend-your-system/) in *Interview Preparation*. The [Security](../../software-craftsmanship/08-security/) chapter holds the threat model and supply-chain records a disclosure cites.
+For practice explaining your choices under questioning, see [Defend Your System](../../interview-preparation/06-defend-your-system/) in *Interview Preparation*. The [Security](../../software-craftsmanship/08-security/) chapter holds the threat model and supply-chain records a disclosure cites.
 
 ## Further reading
 

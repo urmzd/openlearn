@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/obj/electra.pyi (L6.3): ELECTRA replaced-token detection
-# chapter: content/courses/build-an-llm/p06-objectives/03-electra-replaced-token-detection.md
+# chapter: content/courses/build-an-llm/07-objectives/03-electra-replaced-token-detection.md
 #
 # Clark et al. (2020). A generator G (a small masked LM, L6.2's BertForMLM)
 # and a discriminator D (L6.2's BertEncoder plus a token head). One step on

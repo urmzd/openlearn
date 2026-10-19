@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/nn/init.pyi (M07.3)
-# chapter: content/courses/mathematics-for-computing/07-probability-statistics/03-variance-propagation-and-initialization.md
+# chapter: content/courses/mathematics-for-computing/08-probability-statistics/04-variance-propagation-and-initialization.md
 #
 # Weight initializers that keep activation variance constant through depth.
 # A weight of shape (out, in, *kernel) has fan_in = in * prod(kernel) and

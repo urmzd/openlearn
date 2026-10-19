@@ -70,7 +70,7 @@ Full diagnostic assessment:
    - Math topics: `content/courses/mathematics-for-computing/{topic-dir}/README.md`
    - Practice languages: `practice/build/{tier}/{lang}/README.md`
    - Competitive programming: `content/courses/competitive-programming/README.md`
-   - Information theory: `content/courses/mathematics-for-computing/11-information-theory/README.md`
+   - Information theory: `content/courses/mathematics-for-computing/12-information-theory/README.md`
    - Case studies: `content/courses/case-studies/{study-dir}/README.md`
 3. If a language is given, frame code questions in that language and evaluate idiom
 4. For language-specific questions, also read `practice/build/{tier}/{lang}/README.md` for idiom reference
@@ -111,10 +111,10 @@ Map shorthand topic names to directories:
 - backtracking → content/courses/algorithms/09-backtracking/
 - math, bits → content/courses/algorithms/10-math-bit/
 - recursion, divide-conquer → content/courses/algorithms/11-recursion-divide-conquer/
-- probabilistic → content/courses/algorithms/15-probabilistic-structures/
+- probabilistic → content/courses/algorithms/12-probabilistic-structures/
 - calculus-1 through probability → content/courses/mathematics-for-computing/{topic}/
 - cp, competitive → content/courses/competitive-programming/
-- info-theory → content/courses/mathematics-for-computing/11-information-theory/
+- info-theory → content/courses/mathematics-for-computing/12-information-theory/
 - order-book, matching → content/courses/case-studies/01-order-book-matching/
 - sql-agent, text-to-sql → content/courses/case-studies/02-grounded-sql-agent/
 - events, idempotency, exactly-once → content/courses/case-studies/03-exactly-once-event-api/

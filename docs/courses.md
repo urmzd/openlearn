@@ -4,7 +4,22 @@ Each course is a book. It owns its chapters: every chapter lives in exactly one 
 
 ## Ownership
 
-Put a book's front matter (`README.md`, `study-plan.md`) and its chapters in `content/courses/<id>/`, one directory per chapter, one file per section. A chapter that another book needs stays where it is and is linked, not copied or listed in the other manifest. Reading guides (`computer-science`, `research`) own no chapters; they recommend an order across books. Source attribution lives in `content/references/sources.md`, the one appendix every book shares. The `docs/` directory describes the platform, not its learning content.
+Put a book's front matter (`README.md`, `study-plan.md`) and its chapters in `content/courses/<id>/`, one directory per chapter, one file per section:
+
+```
+<book>/
+├── README.md              front matter
+├── 01-<chapter>/
+│   ├── README.md          the chapter opening
+│   ├── 01-<section>.md    section 1.1
+│   ├── 02-<section>/      section 1.2, a folder when it has pages of its own
+│   │   ├── README.md
+│   │   └── 01-<page>.md   page 1.2.1
+│   └── 03-problem-set.md  problem sets are the last sections
+└── 02-<chapter>/
+```
+
+Number folders and files 01, 02, ... with no gaps. Folders named `code`, `diagrams`, `assets`, or `images` hold supporting files, not sections. A chapter that another book needs stays where it is and is linked, not copied or listed in the other manifest. Reading guides (`computer-science`, `research`) own no chapters; they recommend an order across books. Source attribution lives in `content/references/sources.md`, the one appendix every book shares. The `docs/` directory describes the platform, not its learning content.
 
 `course/` holds the reference solutions (`course/solutions/`) and interface contracts (`course/contracts/`) that the Build Your Own LLM System chapters quote and explain. `practice/` holds predict-the-output puzzles and data-structure implementations with worked answers. These are supporting directories, not competing course outlines. A course declares the solution files to ship in its portable pack with `runtime`.
 
@@ -16,16 +31,17 @@ The `openlearn.json` manifest defines publication for the web app, PDF, and sour
 |---|---|
 | `id`, `title` | Stable course identity and display name |
 | `start` | Curriculum and study-plan documents, in order |
-| `guided` | Optional introductory route: use `start` as the chapter sequence and group other reading material under references |
 | `tagline` | Optional short course description for the web landing page |
-| `tracks` | Ordered trees of reusable lessons |
+| `tracks` | The chapters, in order. Each entry is one chapter directory (or file). Mark appendices with `"appendix": true` and a closing note with `"unnumbered": true` |
 | `paths`, `featured` | Optional staged route; its stage order takes precedence over track order in the PDF |
 | `reference` | Source register, contracts, or other supporting trees |
 | `runtime` | Repository files/trees (such as solution code) included in portable packs |
 
 Every course is a reading course. Chapters show the solution and explain it; nothing is graded.
 
-For a guided course, put the introduction first in `start`, followed by ordered lessons, a project, and next steps. Keep each lesson focused on a question, explain symbols when they first appear, and provide a worked example, the solution step by step, and explain-it-back questions with answers. Mathematics Foundations is the first example. Its PDF and portable pack include the guided chapters first and the full reference library afterward.
+## Numbering
+
+Chapter numbers come from the order of `tracks`: chapters are 1, 2, 3, ... and appendices A, B, ... Section numbers come from the order of files inside the chapter: its `README.md` is the chapter itself, the next file or folder is section 1.1, and the pages inside a section folder are 1.1.1, 1.1.2, ... Headings in the Markdown carry no numbers. The website, the PDF, and the course landing page add them ("Chapter 5: Durable Orchestration and Workers", "5.3 The task queue", "Appendix A: Capstones"), so reordering a book is a rename, not an edit to every heading.
 
 The website presents one alphabetical course catalog. Inside each course, chapters follow the manifest's publication order; auxiliary references are grouped separately. It does not expose source tracks as a competing lesson catalog. A chapter used by only one course has explicit previous/next links. A shared chapter links back to the courses that teach it, so pagination cannot silently cross into another course.
 

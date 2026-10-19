@@ -4,7 +4,7 @@ Incidents recur when operating knowledge lives only in chat. The engineer who fi
 
 This section builds both for the platform from *Build Your Own LLM System*. You will produce a documentation index, [`docs/README.md`](../../../../course/solutions/docs/README.md), that sorts every document by reader goal, and a directory [`docs/runbooks/`](../../../../course/solutions/docs/runbooks/) with one runbook per paging alert. The model answers are [`TTFTBudgetBurnFast.md`](../../../../course/solutions/docs/runbooks/TTFTBudgetBurnFast.md), [`engine-crashloop.md`](../../../../course/solutions/docs/runbooks/engine-crashloop.md), [`DurableDeadLetters.md`](../../../../course/solutions/docs/runbooks/DurableDeadLetters.md), [`DurableRedeliveriesSpike.md`](../../../../course/solutions/docs/runbooks/DurableRedeliveriesSpike.md), and [`RaftPartition.md`](../../../../course/solutions/docs/runbooks/RaftPartition.md), all following the template in [`course/contracts/templates/RUNBOOK.md`](../../../../course/contracts/templates/RUNBOOK.md).
 
-The section builds on the Diátaxis framework from the [chapter opening](README.md) and on [Architecture decision records](01-architecture-decision-records.md): ADRs are explanation, runbooks are how-to, and the index keeps the two apart. The alerts themselves come from [SLOs and multi-window burn-rate alerts](../../systems/04-observability/03-slos-and-burn-rate-alerts.md) in *Systems and Architecture*. Before you read the annotated runbook below, write down the four diagnostic questions you would ask for its alert.
+The section builds on the Diátaxis framework from the [chapter opening](README.md) and on [Architecture decision records](01-architecture-decision-records.md): ADRs are explanation, runbooks are how-to, and the index keeps the two apart. The alerts themselves come from [SLOs and multi-window burn-rate alerts](../../systems/04-observability/04-slos-and-burn-rate-alerts.md) in *Systems and Architecture*. Before you read the annotated runbook below, write down the four diagnostic questions you would ask for its alert.
 
 > **Learning objectives**
 > - Build a documentation index that sorts documents by reader goal into the four Diátaxis types.
@@ -76,7 +76,7 @@ their first token. At that rate the 30-day error budget is gone in about two
 days.
 ```
 
-"Gone in about two days" tells the reader how urgent the page is without asking them to do burn-rate math: $30 / 14.4 \approx 2$. The runbook was written after the drill in [A decode worker dies mid-stream](../../systems/05-incident-response-and-chaos/01-kill-decode.md), so its commands are ones that actually worked. Next come the symptoms: what the reader will see on the page, on the dashboard, and from users, so they can confirm they are in the right runbook.
+"Gone in about two days" tells the reader how urgent the page is without asking them to do burn-rate math: $30 / 14.4 \approx 2$. The runbook was written after the drill in [A decode worker dies mid-stream](../../systems/05-incident-response-and-chaos/02-kill-decode.md), so its commands are ones that actually worked. Next come the symptoms: what the reader will see on the page, on the dashboard, and from users, so they can confirm they are in the right runbook.
 
 Diagnosis is four questions, each with a command and how to read its result:
 
@@ -125,7 +125,7 @@ The third is leaving the owner, threshold, or scope implicit, so two engineers r
 
 ## Where this leads
 
-The index keeps ADRs (explanation) apart from runbooks (how-to), the distinction set up in [Architecture decision records](01-architecture-decision-records.md). The first runbook in the set, the engine crashloop, came out of [First drill: the engine crashloops](../../systems/05-incident-response-and-chaos/00-first-drill.md), and every later drill in *Systems and Architecture* ends with a runbook or postmortem in the same shape.
+The index keeps ADRs (explanation) apart from runbooks (how-to), the distinction set up in [Architecture decision records](01-architecture-decision-records.md). The first runbook in the set, the engine crashloop, came out of [First drill: the engine crashloops](../../systems/05-incident-response-and-chaos/01-first-drill.md), and every later drill in *Systems and Architecture* ends with a runbook or postmortem in the same shape.
 
 Further reading:
 

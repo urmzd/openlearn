@@ -12,7 +12,7 @@ This chapter opens the book because nearly every efficient solution that follows
 
 ## Before you begin
 
-You need to be comfortable with loops and arrays in JavaScript or Python. It helps to know what a hash table does and why its lookups are constant time on average; [Modular arithmetic, hashing, and PCG32](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) in *Mathematics for Computing* covers the math, and [the Swiss table](../16-systems-data-structures/02-swiss-table.md) in this book's systems chapter builds a production hash map.
+You need to be comfortable with loops and arrays in JavaScript or Python. It helps to know what a hash table does and why its lookups are constant time on average; [Modular arithmetic, hashing, and PCG32](../../mathematics-for-computing/07-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) in *Mathematics for Computing* covers the math, and [the Swiss table](../13-systems-data-structures/02-swiss-table.md) in this book's systems chapter builds a production hash map.
 
 ## Complement lookup with a hash map
 

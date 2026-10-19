@@ -16,11 +16,11 @@ The first chapters share one running example, **Streamflow**, an event-driven or
 
 [Messaging and Distributed Queueing](02-messaging-and-queueing/README.md) gives you the dynamics of asynchronous systems: queue versus log, push versus pull, competing consumers versus publish-subscribe, delivery semantics and the crash window, Little's Law, and the coordination story from ZooKeeper to KRaft to Redpanda.
 
-The operational side of consuming (rebalancing, idempotency, dead-letter queues, lag-based scaling) lives in the [partitioned consumers](../ai-platform-engineering/05-durable-orchestration-and-workers/README.md#partitioned-consumers) part of [Durable Orchestration and Workers](../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) in *AI Platform Engineering*, with working Kafka consumers in its [side quest](../ai-platform-engineering/05-durable-orchestration-and-workers/side-quests/kafka-consumers/). Read it between the messaging and search chapters if you are building workers.
+The operational side of consuming (rebalancing, idempotency, dead-letter queues, lag-based scaling) lives in the [partitioned consumers](../ai-platform-engineering/05-durable-orchestration-and-workers/README.md#partitioned-consumers) part of [Durable Orchestration and Workers](../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) in *AI Platform Engineering*, with working Kafka consumers in its [side quest](../ai-platform-engineering/05-durable-orchestration-and-workers/13-kafka-consumers/). Read it between the messaging and search chapters if you are building workers.
 
-[Search and Indexing](04-search-and-indexing/README.md) goes from the inverted index and the derivation of BM25 down to Lucene's segment model and the engines built on it (Elasticsearch, OpenSearch, Solr), and shows when an embeddable library such as Tantivy beats a cluster. Its retrieval-augmented side connects to [Retrieval and RAG](../ai-platform-engineering/07-retrieval-and-rag/README.md).
+[Search and Indexing](03-search-and-indexing/README.md) goes from the inverted index and the derivation of BM25 down to Lucene's segment model and the engines built on it (Elasticsearch, OpenSearch, Solr), and shows when an embeddable library such as Tantivy beats a cluster. Its retrieval-augmented side connects to [Retrieval and RAG](../ai-platform-engineering/07-retrieval-and-rag/README.md).
 
-[The Apache Stack](05-apache-stack/README.md) is the bird's-eye view: the Apache data ecosystem grouped into seven problem families, the Google-paper lineage behind it, and a table that maps problems to projects.
+[The Apache Stack](04-apache-stack/README.md) is the bird's-eye view: the Apache data ecosystem grouped into seven problem families, the Google-paper lineage behind it, and a table that maps problems to projects.
 
 ```mermaid
 graph LR

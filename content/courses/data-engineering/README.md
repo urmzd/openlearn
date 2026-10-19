@@ -48,7 +48,7 @@ A small end-to-end pipeline for **Streamflow orders** runs through the middle of
 | Stage | File | Chapter |
 |-------|------|---------|
 | Transform raw to clean (Spark, bronze to silver) | [`spark/orders_bronze_to_silver.py`](03-batch-streaming/spark/orders_bronze_to_silver.py) | [Batch and Streaming Processing](03-batch-streaming/README.md) |
-| Model clean data into tested marts (dbt, silver to gold) | [`dbt/`](04-orchestration-modeling/dbt/) | [Orchestration and Modeling](04-orchestration-modeling/README.md) |
+| Model clean data into tested marts (dbt, silver to gold) | [`dbt/`](04-orchestration-modeling/01-dbt/) | [Orchestration and Modeling](04-orchestration-modeling/README.md) |
 | Orchestrate the whole DAG (Airflow) | [`airflow/streamflow_orders_dag.py`](04-orchestration-modeling/airflow/streamflow_orders_dag.py) | [Orchestration and Modeling](04-orchestration-modeling/README.md) |
 
 ### Choosing a path

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "chapter: content/courses/responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md\nchapter: content/courses/ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md",
+  "$comment": "chapter: content/courses/responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md\nchapter: content/courses/ai-platform-engineering/12-gateway/06-usage-policy-enforcement.md",
   "title": "usage policy v1 (gateway/policy.v1.yaml)",
   "description": "The gateway's usage policy (gw.08, ethics.05), as the JSON value of the parsed YAML. Rules are tried in order and the first whose match holds decides; when none holds, default_action decides. A rule matches when every condition it states holds: model and tenant are exact names (a list means any of them); max_tokens holds when the request's token limit exceeds it; classifier holds when softmax(W e + b)[class] >= threshold for the linear head over the engine's /v1/embeddings of the request's text (D33). A classifier rule whose embeddings call fails denies with 503 (fail closed). Every deny is audit-logged with the rule id and answered 451 usage_policy.",
   "type": "object",

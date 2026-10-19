@@ -56,7 +56,7 @@ The exercises are ordered by concept, not by difficulty, so if you are choosing 
 9. [Graph with concepts](09-graph-concepts/README.md) (difficulty 3). BFS, DFS, shortest path, and Dijkstra written once against a concept and run on three unrelated graph types.
 10. [Memory pool allocator](10-pool-allocator/README.md) (difficulty 4). A fixed-size block allocator with an intrusive free list, and the standard-library adaptor that lets `std::list` and `std::map` use it.
 
-Exercise 03 was a hash map. Six hash maps across the exercises were consolidated into two worked sections of *Algorithms*: [A Swiss table](../../../../content/courses/algorithms/16-systems-data-structures/02-swiss-table.md), in C, and [A Robin Hood hash map](../../../../content/courses/algorithms/16-systems-data-structures/05-robin-hood-hash-map.md), in Rust, both in the [Systems data structures](../../../../content/courses/algorithms/16-systems-data-structures/) chapter.
+Exercise 03 was a hash map. Six hash maps across the exercises were consolidated into two worked sections of *Algorithms*: [A Swiss table](../../../../content/courses/algorithms/13-systems-data-structures/02-swiss-table.md), in C, and [A Robin Hood hash map](../../../../content/courses/algorithms/13-systems-data-structures/05-robin-hood-hash-map.md), in Rust, both in the [Systems data structures](../../../../content/courses/algorithms/13-systems-data-structures/) chapter.
 
 ## Further reading
 

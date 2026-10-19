@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/io/hf_whisper.pyi (L14.3): Hugging Face Whisper checkpoints
-# chapter: content/courses/build-an-llm/p14-speech/03-whisper-decoder-and-weights.md
+# chapter: content/courses/build-an-llm/15-speech/03-whisper-decoder-and-weights.md
 #
 # An HF Whisper directory holds config.json (WhisperConfig.from_hf, L14.2)
 # and model.safetensors (L0.6's reader; every dtype becomes float32). Its

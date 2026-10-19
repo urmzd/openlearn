@@ -8,7 +8,7 @@
 //! A histogram is cumulative on the wire: `<name>_bucket{le="b"}` counts the
 //! observations <= b, the last bucket is `le="+Inf"` and equals `_count`.
 //!
-//! Chapter: content/courses/build-an-llm/p10-serving/07-serving-metrics-and-tracing.md.
+//! Chapter: content/courses/build-an-llm/11-serving/08-serving-metrics-and-tracing.md.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;

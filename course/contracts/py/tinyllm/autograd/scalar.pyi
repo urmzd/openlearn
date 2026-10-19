@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/autograd/scalar.pyi (M08.2): scalar reverse-mode autodiff
-# chapter: content/courses/mathematics-for-computing/08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md
+# chapter: content/courses/mathematics-for-computing/09-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md
 #
 # Each Value is one node of a computation graph: a float `data`, the
 # gradient `grad` of the final output with respect to it, the nodes it was

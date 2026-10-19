@@ -13,7 +13,7 @@ This chapter follows [Dynamic programming](../07-dynamic-programming/README.md) 
 
 ## Before you begin
 
-Read [Dynamic programming](../07-dynamic-programming/README.md) first, so you can recognize when greedy fails and DP is needed. The heap-based patterns use a priority queue; [the binary heap for top-k](../16-systems-data-structures/04-binary-heap-top-k.md) builds one, and Huffman coding builds a binary tree as in [Trees](../05-trees/README.md).
+Read [Dynamic programming](../07-dynamic-programming/README.md) first, so you can recognize when greedy fails and DP is needed. The heap-based patterns use a priority queue; [the binary heap for top-k](../13-systems-data-structures/04-binary-heap-top-k.md) builds one, and Huffman coding builds a binary tree as in [Trees](../05-trees/README.md).
 
 ## Sort, then choose
 
@@ -84,7 +84,7 @@ while len(heap) > 1:
     heapq.heappush(heap, (lo[0] + hi[0], Node(lo, hi)))
 ```
 
-With $k$ distinct symbols this takes $O(k \log k)$. Huffman Coding and Minimum Cost to Merge Stones are the classic problems; [Huffman coding](huffman-coding/README.md) in this chapter implements the full encoder and decoder.
+With $k$ distinct symbols this takes $O(k \log k)$. Huffman Coding and Minimum Cost to Merge Stones are the classic problems; [Huffman coding](01-huffman-coding/README.md) in this chapter implements the full encoder and decoder.
 
 ## Greedy or DP?
 
@@ -119,4 +119,4 @@ The JavaScript files are solution functions; run them with Node and a small driv
 - [Answering the most questions](example-1.py): given a time budget `h` and the time each question takes, answers the shortest questions first, keeping every question whose cumulative sorted time fits within `h`. Run it as `python3 example-1.py <h> <times...>`.
 - [Fewest pit stops](example-2.py): a diver who can cover distance `d` on one breath travels between pit stops separated by the given distances, and stops only when the next leg would exceed `d`. Going as far as possible before each stop minimizes the number of stops, by the classic refueling exchange argument. Run it as `python3 example-2.py <d> <distances...>`.
 - [Greedy subsequence partition](example-3.py): sweeps the sequence's values in sorted order, appending each to the current subsequence while it also comes later in the original order, and starting a new subsequence otherwise.
-- [Huffman coding](huffman-coding/README.md): a Java program that compresses a text file with a Huffman tree and decodes it again.
+- [Huffman coding](01-huffman-coding/README.md): a Java program that compresses a text file with a Huffman tree and decodes it again.

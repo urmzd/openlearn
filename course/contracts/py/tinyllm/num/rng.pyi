@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/rng.pyi (M06.3; the C half is tinyllm/numerics.h)
-# chapter: content/courses/mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md
+# chapter: content/courses/mathematics-for-computing/07-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md
 #
 # The one random generator of the system, exactly as spec/pcg32.md: PCG-XSH-RR
 # with a 64-bit state and 32-bit outputs, seeded like O'Neill's

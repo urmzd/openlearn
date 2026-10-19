@@ -13,7 +13,7 @@ This chapter first collects the bit-level patterns (single-bit operations, XOR t
 
 ## Before you begin
 
-You should be comfortable with binary representation and two's complement. [Modular arithmetic, hashing, and PCG32](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) in *Mathematics for Computing* covers the modular arithmetic used here, and [Counting params, FLOPs, and KV bytes](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md) covers counting.
+You should be comfortable with binary representation and two's complement. [Modular arithmetic, hashing, and PCG32](../../mathematics-for-computing/07-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) in *Mathematics for Computing* covers the modular arithmetic used here, and [Counting params, FLOPs, and KV bytes](../../mathematics-for-computing/06-discrete-math-1/01-counting-params-flops-kv-bytes.md) covers counting.
 
 ## Single-bit operations
 

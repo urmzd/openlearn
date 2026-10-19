@@ -2,7 +2,7 @@
 
 Discovery becomes an engagement only when the problem, the sponsor, the resources, and the decision are clear. Qualification is the check that they are; sizing is the first piece of technical work, translating the customer's workload into a capacity estimate that a test can confirm or refute. Both belong in one record, because a sizing that nobody can act on is wasted, and a qualified engagement with no numbers has nothing to test.
 
-This section continues the Northstar Commerce engagement from [Writing the discovery record](01-discovery.md) and applies the methods of [Qualification and Sizing](../02-qualification-and-sizing/README.md) from earlier in this book. The capacity arithmetic is the same as in [Counting: parameters, FLOPs, KV bytes, and memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md) in *Mathematics for Computing*, and the estimate must eventually be checked against the reports of the [open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md) from *Build Your Own LLM System*. The model answer is [`docs/engagement/qualification.md`](../../../../course/solutions/docs/engagement/qualification.md). Try the sizing arithmetic yourself before reading the walkthrough.
+This section continues the Northstar Commerce engagement from [Writing the discovery record](01-discovery.md) and applies the methods of [Qualification and Sizing](../02-qualification-and-sizing/README.md) from earlier in this book. The capacity arithmetic is the same as in [Counting: parameters, FLOPs, KV bytes, and memory plans](../../mathematics-for-computing/06-discrete-math-1/01-counting-params-flops-kv-bytes.md) in *Mathematics for Computing*, and the estimate must eventually be checked against the reports of the [open-loop load generator](../../build-an-llm/11-serving/11-load-generator.md) from *Build Your Own LLM System*. The model answer is [`docs/engagement/qualification.md`](../../../../course/solutions/docs/engagement/qualification.md). Try the sizing arithmetic yourself before reading the walkthrough.
 
 > **Learning objectives**
 > - Qualify an engagement on urgency, authority, data access, budget, and decision date, with an owner for each gap.
@@ -87,7 +87,7 @@ The tradeoff accepted is that the record proceeds without the budget owner, but 
 
 ## Where this leads
 
-This record qualifies the findings and open questions from [Writing the discovery record](01-discovery.md). Its estimate rests on the arithmetic of [Counting: parameters, FLOPs, KV bytes, and memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md) and must be validated against reports from the [open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md). Next, [Designing the performance test protocol](03-performance-engagement.md) tests the estimate, and the POC inherits its gates.
+This record qualifies the findings and open questions from [Writing the discovery record](01-discovery.md). Its estimate rests on the arithmetic of [Counting: parameters, FLOPs, KV bytes, and memory plans](../../mathematics-for-computing/06-discrete-math-1/01-counting-params-flops-kv-bytes.md) and must be validated against reports from the [open-loop load generator](../../build-an-llm/11-serving/11-load-generator.md). Next, [Designing the performance test protocol](03-performance-engagement.md) tests the estimate, and the POC inherits its gates.
 
 Further reading:
 

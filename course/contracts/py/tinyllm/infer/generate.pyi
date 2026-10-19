@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/infer/generate.pyi (L8.2)
-# chapter: content/courses/build-an-llm/p08-inference/02-kv-cache-and-generate.md
+# chapter: content/courses/build-an-llm/09-inference/02-kv-cache-and-generate.md
 #
 # Autoregressive generation: encode the prompt, run the model once over it
 # (prefill), then repeatedly sample one token (L8.1) and run the model on

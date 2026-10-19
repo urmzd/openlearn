@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/autograd/dual.pyi (M08.1): forward-mode autodiff with dual numbers
-# chapter: content/courses/mathematics-for-computing/08-matrix-calculus-and-autodiff/01-dual-numbers-forward-mode.md
+# chapter: content/courses/mathematics-for-computing/09-matrix-calculus-and-autodiff/01-dual-numbers-forward-mode.md
 #
 # A dual number a + b eps with eps^2 = 0 carries a value a and a tangent b.
 # Evaluating f on x + v eps gives f(x) + (J_f(x) v) eps: the value and the

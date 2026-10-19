@@ -12,7 +12,7 @@ The chapter's single section, [Bias and safety evals](01-bias-and-safety-evals.m
 
 ## Before you begin
 
-You need the model evaluation harness from [The evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) in *Build Your Own LLM System*, the confidence intervals and paired tests of [Probability & Statistics](../../mathematics-for-computing/07-probability-statistics/) in *Mathematics for Computing*, and the model card from [Model and Data Cards](../03-model-and-data-cards/README.md), where these numbers are reported. Reading BBQ and RealToxicityPrompts, then the HELM sections on bias and toxicity metrics, is good preparation.
+You need the model evaluation harness from [The evaluation harness and the model zoo](../../build-an-llm/07-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) in *Build Your Own LLM System*, the confidence intervals and paired tests of [Probability & Statistics](../../mathematics-for-computing/08-probability-statistics/) in *Mathematics for Computing*, and the model card from [Model and Data Cards](../03-model-and-data-cards/README.md), where these numbers are reported. Reading BBQ and RealToxicityPrompts, then the HELM sections on bias and toxicity metrics, is good preparation.
 
 ## In this chapter
 

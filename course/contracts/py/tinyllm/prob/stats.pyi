@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/prob/stats.pyi (M07.4)
-# chapter: content/courses/mathematics-for-computing/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md
+# chapter: content/courses/mathematics-for-computing/08-probability-statistics/05-lln-clt-confidence-intervals-bootstrap.md
 #
 # Confidence intervals: the error bars every metric in the course carries
 # (L4.5 sequence metrics, L6.7 evaluation, L8.5 quantization verdicts, L10.7).

@@ -10,8 +10,44 @@
   ],
   "tracks": [
     {
-      "dir": "practice",
-      "title": "Practice"
+      "dir": "practice/predict",
+      "title": "Predict-Then-Read"
+    },
+    {
+      "dir": "practice/build/systems/c",
+      "title": "C"
+    },
+    {
+      "dir": "practice/build/systems/cpp",
+      "title": "C++"
+    },
+    {
+      "dir": "practice/build/cloud/go",
+      "title": "Go"
+    },
+    {
+      "dir": "practice/build/systems/rust",
+      "title": "Rust"
+    },
+    {
+      "dir": "practice/build/general/python",
+      "title": "Python"
+    },
+    {
+      "dir": "practice/build/general/typescript",
+      "title": "TypeScript"
+    },
+    {
+      "dir": "practice/build/systems/zig",
+      "title": "Zig"
+    },
+    {
+      "dir": "practice/build/cloud/scala",
+      "title": "Scala"
+    },
+    {
+      "dir": "practice/build/cloud/java",
+      "title": "Java"
     }
   ],
   "reference": [

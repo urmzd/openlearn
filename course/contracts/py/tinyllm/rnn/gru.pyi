@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/rnn/gru.pyi (L3.3): the GRU, in torch's gate order
-# chapter: content/courses/build-an-llm/p03-recurrent/03-gru.md
+# chapter: content/courses/build-an-llm/04-recurrent/03-gru.md
 #
 # One step, with x [B, D], state h [B, H], and the three gates stacked in
 # torch's order r, z, n (rows 0:H, H:2H, 2H:3H of the weights):

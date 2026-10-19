@@ -13,7 +13,7 @@ This chapter builds the traversal toolkit first (BFS for shortest paths, DFS for
 
 ## Before you begin
 
-You should know queues, stacks, and recursion, and be comfortable with the tree traversals in [Trees](../05-trees/README.md), since a tree is a graph without cycles. [Graphs, DAGs, and topological sort](../../mathematics-for-computing/06-discrete-math-2/01-graphs-dags-and-topological-sort.md) in *Mathematics for Computing* covers the definitions and proofs. Dijkstra's algorithm uses a priority queue; [the binary heap for top-k](../16-systems-data-structures/04-binary-heap-top-k.md) builds one.
+You should know queues, stacks, and recursion, and be comfortable with the tree traversals in [Trees](../05-trees/README.md), since a tree is a graph without cycles. [Graphs, DAGs, and topological sort](../../mathematics-for-computing/07-discrete-math-2/01-graphs-dags-and-topological-sort.md) in *Mathematics for Computing* covers the definitions and proofs. Dijkstra's algorithm uses a priority queue; [the binary heap for top-k](../13-systems-data-structures/04-binary-heap-top-k.md) builds one.
 
 ## BFS for shortest unweighted paths
 

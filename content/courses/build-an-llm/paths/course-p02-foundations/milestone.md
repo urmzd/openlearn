@@ -2,7 +2,7 @@
 
 Pass 2 rebuilds the tracer's model on foundations written in the course: the mathematics, the autograd, the loader, and checkpoints. The bigram is now retrained by the course's own autograd, which takes over `bigram.py`; gradcheck covers every op; and a token-stream reader feeds training. Everything from Pass 1 keeps working. CI stays green, and the engine still streams the bigram through the gateway, now from a checkpoint trained by gradient descent, with no change to the engine because the checkpoint contract has not changed.
 
-The capability rests on the autograd sections of *Build Your Own LLM System*, from [Tensor, broadcasting backward, and no_grad](../../p00-foundations/01-tensor-and-broadcasting-backward.md), [The op library and gradcheck_all](../../p00-foundations/02-op-library-and-gradcheck.md), [Losses with a fused backward](../../p00-foundations/03-losses-with-fused-backward.md), and [Module system and basic layers](../../p00-foundations/04-module-system-and-layers.md) to [Training loop and the autograd bigram](../../p00-foundations/05-training-loop-and-the-autograd-bigram.md) and [Safetensors, atomic checkpoints, and the token stream](../../p00-foundations/06-safetensors-checkpoints-and-token-streams.md). Those in turn rest on the mathematics, numerics, probability, optimization, and testing sections listed in the [pass opening](README.md).
+The capability rests on the autograd sections of *Build Your Own LLM System*, from [Tensor, broadcasting backward, and no_grad](../../01-foundations/02-tensor-and-broadcasting-backward.md), [The op library and gradcheck_all](../../01-foundations/03-op-library-and-gradcheck.md), [Losses with a fused backward](../../01-foundations/04-losses-with-fused-backward.md), and [Module system and basic layers](../../01-foundations/05-module-system-and-layers.md) to [Training loop and the autograd bigram](../../01-foundations/06-training-loop-and-the-autograd-bigram.md) and [Safetensors, atomic checkpoints, and the token stream](../../01-foundations/07-safetensors-checkpoints-and-token-streams.md). Those in turn rest on the mathematics, numerics, probability, optimization, and testing sections listed in the [pass opening](README.md).
 
 ## The autograd retrains the tracer and survives a kill
 
@@ -14,7 +14,7 @@ Each piece earns its place. Gradcheck is the only independent evidence that ever
 
 The solution's `tinyllm` entry point, [`__main__.py`](../../../../../course/solutions/entry/python/tinyllm/__main__.py), adds four Pass 2 verbs, specified under "Verbs of later passes" in [`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md). Every verb keeps the rules of that page: exit 2 on a usage error, and the last stdout line is one JSON object.
 
-The first runs every gradient check. It calls `F.gradcheck_all()` from [The op library and gradcheck_all](../../p00-foundations/02-op-library-and-gradcheck.md), which applies the method of [Partial derivatives, gradients, and gradcheck](../../../mathematics-for-computing/04-calculus-3/01-gradients-and-gradcheck.md) in float64, and exits 0 only when every check passes:
+The first runs every gradient check. It calls `F.gradcheck_all()` from [The op library and gradcheck_all](../../01-foundations/03-op-library-and-gradcheck.md), which applies the method of [Partial derivatives, gradients, and gradcheck](../../../mathematics-for-computing/05-calculus-3/01-gradients-and-gradcheck.md) in float64, and exits 0 only when every check passes:
 
 ```text
 {tinyllm} gradcheck --suite all

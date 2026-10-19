@@ -102,9 +102,9 @@ The ideas also connect across this book and its neighbors: encoders, fine-tuning
 
 The three sections build a complete, minimal RAG stack in Go, in pipeline order.
 
-1. [RAG Ingest: Crawler, Chunker, Embedder, and Store](06-rag-ingest.md) builds the index: sources that yield clean text, a chunker that packs to a true token budget, an embedder that cannot misalign rows, fingerprint dedup so re-ingest is cheap, and a crawler hardened against SSRF.
-2. [Retrieval: BM25, Flat and IVF Vectors, RRF, and MMR](07-retrieval.md) searches that index lexically and densely, fuses the two lists by rank, diversifies the result, and treats the index file as a byte-exact contract between programs.
-3. [Context Assembly, Citations, and the search_docs Tool](08-context-assembly.md) packs hits into a budgeted context of numbered excerpts, numbers citations with one ledger per agent run, reads them back from the answer, and exposes it all as a tool.
+1. [RAG Ingest: Crawler, Chunker, Embedder, and Store](01-rag-ingest.md) builds the index: sources that yield clean text, a chunker that packs to a true token budget, an embedder that cannot misalign rows, fingerprint dedup so re-ingest is cheap, and a crawler hardened against SSRF.
+2. [Retrieval: BM25, Flat and IVF Vectors, RRF, and MMR](02-retrieval.md) searches that index lexically and densely, fuses the two lists by rank, diversifies the result, and treats the index file as a byte-exact contract between programs.
+3. [Context Assembly, Citations, and the search_docs Tool](03-context-assembly.md) packs hits into a budgeted context of numbered excerpts, numbers citations with one ledger per agent run, reads them back from the answer, and exposes it all as a tool.
 
 ## Further reading
 

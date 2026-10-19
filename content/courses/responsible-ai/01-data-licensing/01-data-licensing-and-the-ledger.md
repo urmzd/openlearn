@@ -68,7 +68,7 @@ Rows are appended, never edited: a new version of a source is a new row with a n
 
 ## Revocation
 
-Decisions can turn out wrong. A license can be misread, an author can ask for removal, a host can change its terms. The policy says in advance what happens: the source is refused from then on, every shard and token stream derived from it is rebuilt without it, and a model trained on it is retrained or withdrawn before its next release. The drill in [A data incident](../../systems/05-incident-response-and-chaos/08-data-incident.md) from *Systems and Architecture* rehearses exactly this.
+Decisions can turn out wrong. A license can be misread, an author can ask for removal, a host can change its terms. The policy says in advance what happens: the source is refused from then on, every shard and token stream derived from it is rebuilt without it, and a model trained on it is retrained or withdrawn before its next release. The drill in [A data incident](../../systems/05-incident-response-and-chaos/09-data-incident.md) from *Systems and Architecture* rehearses exactly this.
 
 ## Working it by hand
 

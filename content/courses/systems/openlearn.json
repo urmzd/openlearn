@@ -14,8 +14,24 @@
   ],
   "tracks": [
     {
-      "dir": "content/courses/systems",
-      "title": "Systems & Architecture"
+      "dir": "content/courses/systems/01-system-design",
+      "title": "System Design"
+    },
+    {
+      "dir": "content/courses/systems/02-software-architecture",
+      "title": "Software Architecture"
+    },
+    {
+      "dir": "content/courses/systems/03-cloud-native",
+      "title": "Cloud Native"
+    },
+    {
+      "dir": "content/courses/systems/04-observability",
+      "title": "Observability"
+    },
+    {
+      "dir": "content/courses/systems/05-incident-response-and-chaos",
+      "title": "Incident Response and Chaos"
     }
   ],
   "reference": [

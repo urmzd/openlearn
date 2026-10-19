@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/units.pyi (M00.1)
-# chapter: content/courses/mathematics-for-computing/00-precalculus/01-exponents-logs-and-units-of-information.md
+# chapter: content/courses/mathematics-for-computing/01-precalculus/01-exponents-logs-and-units-of-information.md
 #
 # Units of information. A probability p carries -log_b(p) units of surprise;
 # b = e gives nats, b = 2 gives bits. Losses in the course are in nats (the

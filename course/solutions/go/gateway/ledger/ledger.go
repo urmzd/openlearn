@@ -9,7 +9,7 @@
 //
 // Contract: formats/usage.v1.sql (the schema, applied verbatim),
 // openapi/admin.v1.yaml (GET /admin/v1/usage, UsageRow). Chapter:
-// content/courses/ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md.
+// content/courses/ai-platform-engineering/12-gateway/05-usage-ledger-and-admin-api.md.
 package ledger
 
 import (

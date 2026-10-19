@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/image/layout.pyi (M12.2): image tensors and memory layouts
-# chapter: content/courses/mathematics-for-computing/12-signals-and-images/02-image-tensors-and-layouts.md
+# chapter: content/courses/mathematics-for-computing/13-signals-and-images/02-image-tensors-and-layouts.md
 #
 # Images arrive as uint8 [H, W, C] (HWC, RGB) from a decoder and leave as
 # float32 [C, H, W] (CHW; batched NCHW) for a model. A layout names the

@@ -352,7 +352,7 @@ The tests cover the heap, the service, the clock, and the server path:
 | timer commands validated | boundary | zero duration, no id, a duplicate or pending id, canceling an unknown timer; `TimerCanceled` and never fired | cancellation |
 | `FireTimer` is idempotent | unit, fault | duplicate and unknown fires append nothing | exactly once |
 | `FireTimer` retries when the append fails | fault | a fire whose append fails re-arms the timer | a full disk does not lose a wakeup |
-| restart with pending timers | fault | two restarts: three timers fire once each, in deadline order; fired ones are not re-armed | the [SIGKILL-loop drill](../../systems/05-incident-response-and-chaos/02-durable-kill9.md) |
+| restart with pending timers | fault | two restarts: three timers fire once each, in deadline order; fired ones are not re-armed | the [SIGKILL-loop drill](../../systems/05-incident-response-and-chaos/03-durable-kill9.md) |
 | sleep workflow survives a restart | fault | `SleepDemo(30 s)` through the worker, a server restart in the middle, wakes once and completes | the section's demo |
 
 ## What can go wrong

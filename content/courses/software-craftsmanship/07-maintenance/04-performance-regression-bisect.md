@@ -4,7 +4,7 @@ A latency regression costs users and capacity, and it rarely announces which cha
 
 The catch is that a bisect is only as good as its oracle. If the benchmark is noisy, bisection converges confidently on a random commit. So most of this section is about making the measurement trustworthy: fixing the workload, host, configuration, and sampling, and writing the regression rule down before looking at any commit. The model record is [`perf-bisect.md`](../../../../course/solutions/docs/maintenance/perf-bisect.md), a TTFT regression bisect with its reproduction envelope, decision rule, and procedure.
 
-This section builds on [Benchmarks and perf gates](../03-testing-mentality/04-benchmarks-and-perf-gates.md), whose measurement discipline the gate script reuses. The same procedure is run on an injected regression in [A performance regression bisect](../../systems/05-incident-response-and-chaos/07-performance-regression.md) in *Systems and Architecture*. Try writing the regression rule yourself before you read the model's.
+This section builds on [Benchmarks and perf gates](../03-testing-mentality/04-benchmarks-and-perf-gates.md), whose measurement discipline the gate script reuses. The same procedure is run on an injected regression in [A performance regression bisect](../../systems/05-incident-response-and-chaos/08-performance-regression.md) in *Systems and Architecture*. Try writing the regression rule yourself before you read the model's.
 
 > **Learning objectives**
 > - Define a reproduction envelope that makes a benchmark a consistent oracle for bisection.
@@ -123,7 +123,7 @@ Four pitfalls recur. A record that names a commit without the evidence that supp
 
 ## Where this leads
 
-The measurement discipline here comes from [Benchmarks and perf gates](../03-testing-mentality/04-benchmarks-and-perf-gates.md), which shows how a budget file and a gate turn a benchmark into a pass/fail decision. Next, [A performance regression bisect](../../systems/05-incident-response-and-chaos/07-performance-regression.md) runs this procedure to find an injected slowdown.
+The measurement discipline here comes from [Benchmarks and perf gates](../03-testing-mentality/04-benchmarks-and-perf-gates.md), which shows how a budget file and a gate turn a benchmark into a pass/fail decision. Next, [A performance regression bisect](../../systems/05-incident-response-and-chaos/08-performance-regression.md) runs this procedure to find an injected slowdown.
 
 ### Further reading
 

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/rotation.pyi (M00.2)
-# chapter: content/courses/mathematics-for-computing/00-precalculus/02-trig-rotations-and-eulers-formula.md
+# chapter: content/courses/mathematics-for-computing/01-precalculus/02-trig-rotations-and-eulers-formula.md
 #
 # Angles are in radians. Pairs are INTERLEAVED: pair i of a vector of length
 # 2k is (x[2i], x[2i+1]), the layout of the original RoPE paper and Meta's

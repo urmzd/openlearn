@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/obj/t5.pyi (L6.4, optional): T5 span corruption and relative position buckets
-# chapter: content/courses/build-an-llm/p06-objectives/04-t5-span-corruption-and-relative-buckets.md
+# chapter: content/courses/build-an-llm/07-objectives/04-t5-span-corruption-and-relative-buckets.md
 #
 # Raffel et al. (2020). Span corruption picks a noise mask of whole spans,
 # T5's random_spans_noise_mask:

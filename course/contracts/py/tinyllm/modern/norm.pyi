@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/modern/norm.pyi (L7.1): RMSNorm and the Pre-LN residual step
-# chapter: content/courses/build-an-llm/p07-modern-block/01-pre-ln-rmsnorm.md
+# chapter: content/courses/build-an-llm/08-modern-block/01-pre-ln-rmsnorm.md
 #
 # RMSNorm (Zhang and Sennrich 2019) rescales each vector to unit root mean
 # square over its last axis, then multiplies by a learned gain. Unlike
