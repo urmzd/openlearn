@@ -1,6 +1,6 @@
 # Grouped-Query Attention with a Cache Hook, Windows, and Sinks
 
-The multi-head attention of [Multi-head attention](../p05-transformer-2017/03-multi-head-attention.md) gives every query head its own key and value head. At inference the engine caches keys and values for every past token (you will build that cache in [KV cache and generate](../p08-inference/02-kv-cache-and-generate.md), and the Rust engine in [Serving](../p10-serving/) keeps one too), so cache memory, not compute, limits how many requests run at once.
+The multi-head attention of [Multi-head attention](../p05-transformer-2017/03-multi-head-attention.md) gives every query head its own key and value head. At inference the engine caches keys and values for every past token (you will build that cache in [KV cache and generate](../p08-inference/02-kv-cache-and-generate.md), and the Rust engine in [Serving](../p10-serving/README.md) keeps one too), so cache memory, not compute, limits how many requests run at once.
 
 Open SmolLM2-135M's checkpoint and you will see the response to that pressure: `k_proj.weight` is $192 \times 576$, a third of `q_proj`'s $576 \times 576$. The model has 9 query heads but only 3 key/value heads, and plain multi-head attention cannot load it. Newer models add two more things to the same layer: a **sliding window** (Mistral, gpt-oss) so the cache stops growing, and **learned sinks** (gpt-oss) so a head can decline to attend. This section builds that attention layer, together with the hook through which the KV cache will later plug in.
 

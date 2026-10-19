@@ -16,7 +16,7 @@ Attention itself is next, and its theme is that KV bytes, not FLOPs, are the ser
 
 ## Before you begin
 
-You should have [The Transformer (2017)](../p05-transformer-2017/README.md) and [Objectives](../p06-objectives/README.md) behind you, along with the `Tensor`, op library, and module system of the [foundations chapter](../p00-foundations/README.md). From *Mathematics for Computing*, [Counting: params, FLOPs, KV bytes, memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md) supplies the parameter and KV-byte counts used throughout, and the rotations and frequency ladders of [Precalculus](../../mathematics-for-computing/00-precalculus/README.md) are the mathematics behind RoPE.
+You should have [The Transformer (2017)](../p05-transformer-2017/README.md) and [Objectives and Adaptation](../p06-objectives/README.md) behind you, along with the `Tensor`, op library, and module system of the [foundations chapter](../p00-foundations/README.md). From *Mathematics for Computing*, [Counting: params, FLOPs, KV bytes, memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md) supplies the parameter and KV-byte counts used throughout, and the rotations and frequency ladders of [Precalculus](../../mathematics-for-computing/00-precalculus/README.md) are the mathematics behind RoPE.
 
 ## In this chapter
 
