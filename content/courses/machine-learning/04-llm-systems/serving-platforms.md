@@ -1,8 +1,21 @@
 # LLM Serving Platforms: How They Work and When to Use Them
 
-A practical guide to the layers between an application and a generated token. Primary sources reviewed September 12, 2026; use cases and trade-off judgments below are engineering guidance, not benchmark guarantees.
+Between an application that wants an answer and the GPU that produces a token sit several layers, and the names attached to them, Anyscale, Ray, vLLM, SGLang, RouteLLM, OpenRouter, are easy to blur together. Some are inference engines, some orchestrate clusters, some choose which model answers, and some are organizations rather than software at all. Choosing well starts with knowing which layer each one occupies, because adding a component that solves a problem you do not have only adds cost, latency, and another thing to debug.
+
+This section is a practical guide to those layers. It explains how each platform works, what problem it is good for, and what it costs you, then turns to two questions that cut across all of them: whether results are reproducible, and what public evidence of production use actually establishes. The use cases and trade-off judgments are engineering guidance, not benchmark guarantees; primary sources were reviewed on September 12, 2026.
+
+You should have read the chapter opening, [LLM Systems & Inference](README.md), for the engine-level ideas (continuous batching, the KV cache, prefix caching) that this section assumes. [Inference Frameworks](frameworks/README.md) covers the wider engine landscape across C, Rust, and Zig, and [Serving, Capacity & Load Testing](serving-and-load/README.md) covers how to size and benchmark an engine once you have chosen one.
+
+> **Learning objectives**
+> - Place each of Anyscale, Ray, vLLM, SGLang, RouteLLM, and OpenRouter in the correct layer of the serving stack.
+> - Explain how each works, when it is worth using, and its main trade-off.
+> - Distinguish provider selection, model fallbacks, and automatic model selection in a gateway, and explain how each affects caching and evaluation.
+> - Explain why LLM inference can be nondeterministic and what batch-invariant execution costs.
+> - Read production-adoption evidence for what it does and does not establish.
 
 ## Who is who?
+
+Start with the cast. The table below names each organization or project, its role, and the primary reference to read:
 
 | Organization or project | Role | Primary reference |
 |---|---|---|
@@ -17,6 +30,8 @@ A practical guide to the layers between an application and a generated token. Pr
 
 ## Start with the layer you need
 
+With the names sorted out, the more useful way to approach them is by question. Each layer answers a different one:
+
 | Question | Layer | Examples |
 |---|---|---|
 | Which model should answer? | Model selection | RouteLLM, OpenRouter Auto Router |
@@ -27,7 +42,7 @@ A practical guide to the layers between an application and a generated token. Pr
 
 LMSYS and Thinking Machines are organizations producing research and software, not additional request-processing layers.
 
-A possible self-hosted deployment is:
+To see how the layers compose, consider two request paths. A possible self-hosted deployment is:
 
 ```text
 Application -> Ray Serve endpoint -> model replica -> vLLM -> GPU -> tokens
@@ -42,7 +57,7 @@ A hosted API path is:
 Application -> OpenRouter -> selected provider endpoint -> provider's engine
 ```
 
-The provider chooses its own engine; this diagram does not imply OpenRouter's providers all use vLLM. Neither path requires a learned model router.
+The provider chooses its own engine; this diagram does not imply OpenRouter's providers all use vLLM. Neither path requires a learned model router. The sections that follow walk the self-hosted path from the managed platform (Anyscale) through orchestration (Ray) to the engines (vLLM, SGLang, and others), and then turn to model selection and gateways.
 
 ## Anyscale: managed operations for Ray workloads
 
@@ -84,13 +99,17 @@ Automatic prefix caching reuses previously computed attention state for matching
 
 ## Other engines you will encounter
 
+vLLM and SGLang are not the only engines. Three others appear often enough that you should know how each works, why you might use it, and its main trade-off:
+
 | Engine | How it works | Why use it? | Main trade-off |
 |---|---|---|---|
 | [TensorRT-LLM](https://nvidia.github.io/TensorRT-LLM/architecture/overview.html) | NVIDIA-oriented optimized kernels and runtimes, with PyTorch and TensorRT execution paths. | Tune supported models for an NVIDIA deployment. | Hardware/backend coupling and version-specific support; not every path requires the same build workflow. |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) | C/C++ inference, GGUF model files, CPU/GPU backends, and an optional server. | Local inference, quantized models, or deployment on varied consumer hardware. | Model fit and performance remain device-dependent; do not assume datacenter throughput from a laptop result. |
 | [TGI](https://huggingface.co/docs/text-generation-inference/en/index) | Hugging Face's model-serving toolkit with batching, streaming, and multiple backends. | Understand or maintain an existing deployment. | Official documentation lists maintenance mode at review time; evaluate maintenance and model support before a new deployment. |
 
-The [cross-language framework guide](frameworks/) covers the wider C, Rust, and Zig ecosystem.
+The [cross-language framework guide](frameworks/README.md) covers the wider C, Rust, and Zig ecosystem.
+
+Everything so far assumes you already know which model should answer. The next two layers make that decision, or route around it.
 
 ## RouteLLM: decide when a stronger model is worth a call
 
@@ -102,19 +121,21 @@ The [cross-language framework guide](frameworks/) covers the wider C, Rust, and 
 
 ### Read the evidence and the implementation
 
+Before relying on RouteLLM, read what its sources actually show, and how the implementation behaves on inputs its training did not anticipate:
+
 - [RouteLLM paper](https://arxiv.org/abs/2406.18665): preference-trained routing and evaluation across model pairs.
 - [LMSYS research introduction](https://www.lmsys.org/blog/2024-07-01-routellm/): benchmark cost/quality trade-offs and the importance of relevant training data. Arena-only routers performed near randomly on MMLU before augmentation. Historical benchmark savings are not production guarantees.
 - [Controller source](https://github.com/lm-sys/RouteLLM/blob/main/routellm/controller.py): the reviewed implementation scores the last message, then forwards the conversation to the selected model. Its comment notes first-turn training. Study what happens when the last message is merely “continue” or a tool result.
 - [Matrix-factorization source](https://github.com/lm-sys/RouteLLM/blob/main/routellm/routers/matrix_factorization/model.py): prompt embedding plus learned model representations produces a preference score. The embedding request adds a network dependency.
 - [Prompt-caching documentation](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) and [model-switch behavior](https://code.claude.com/docs/en/prompt-caching#switching-models): cache hits, writes, expiry, and model changes affect the actual bill.
 
-**Evaluation exercise:** compare a pinned model against a fixed router on complete held-out sessions. Measure task success, cost per successful task, latency, cache usage, and retries. Include the router version, threshold, candidate models, prompts, tools, and fallback policy in the evaluated configuration. Automatic selection is testable; an untracked policy change invalidates the comparison.
+The right way to evaluate a router follows from those caveats. Compare a pinned model against a fixed router on complete held-out sessions. Measure task success, cost per successful task, latency, cache usage, and retries. Include the router version, threshold, candidate models, prompts, tools, and fallback policy in the evaluated configuration. Automatic selection is testable; an untracked policy change invalidates the comparison.
 
 ## OpenRouter: gateway, provider selection, and model routing
 
 [OpenRouter](https://openrouter.ai/docs/quickstart) provides a common API for accessing models from multiple providers. An application sends its request to OpenRouter, which forwards it to a selected provider endpoint and returns the response. This is a hosted intermediary, whereas RouteLLM is a routing framework you can run yourself and vLLM is an inference engine.
 
-Distinguish three decisions:
+OpenRouter makes three distinct decisions, and it is important not to conflate them:
 
 | Feature | What changes? | Primary reference |
 |---|---|---|
@@ -128,6 +149,8 @@ Using OpenRouter with an explicit model does not inherently mean using automatic
 
 **Caching matters here:** OpenRouter documents [provider stickiness](https://openrouter.ai/docs/guides/best-practices/prompt-caching) to preserve cache reuse, with explicit `session_id` support. Router models can also reuse the resolved model on a best-effort basis while it remains eligible. This is not a hard model pin, and a provider failure can cause fallback. Do not assume that all gateways ignore cache economics or that stickiness guarantees cache hits.
 
+Each benefit of a gateway comes with a corresponding trade-off:
+
 | Benefit | Corresponding trade-off |
 |---|---|
 | One integration for multiple providers | Another service dependency and request-processing hop |
@@ -138,6 +161,8 @@ Using OpenRouter with an explicit model does not inherently mean using automatic
 Check the current [FAQ and billing terms](https://openrouter.ai/docs/faq) before comparing costs. For reproducible evaluation, record the resolved model and provider, constrain allowed routes, and compare complete sessions rather than assuming a single model slug describes the entire deployed system.
 
 ## Reproducibility: mechanism, availability, and incentives
+
+Gateways and fallbacks raise a question that applies to every layer: if you send the same request twice, do you get the same answer? Often you do not, even at temperature zero, and the reason is numerical rather than random. Three sources describe the mechanism and what engines currently offer:
 
 - [Thinking Machines: Defeating Nondeterminism in LLM Inference](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/), September 2025: batch shape can alter reduction order and floating-point results. Batch-invariant kernels produced 1,000 identical completions in the reported test. The workload took 26 seconds by default, 55 seconds with unoptimized deterministic kernels, and 42 seconds with improved attention. These imply approximately 53% and 38% lower throughput for that setup, not universal penalties.
 - [vLLM batch invariance](https://docs.vllm.ai/en/stable/features/batch_invariance/): opt-in configuration with documented hardware/model constraints and beta status at review time. Availability does not establish deployment-wide adoption or a customer-facing API guarantee.
@@ -150,6 +175,8 @@ Separate the mathematical forward pass, deliberate sampling, and numerical execu
 
 ## Production evidence and adoption limits
 
+Claims that an engine "runs in production everywhere" are common, so it is worth reading the public evidence carefully. Each source below establishes something specific, and each leaves something unestablished:
+
 | Source | What it establishes | What it does not establish |
 |---|---|---|
 | [LinkedIn engineering, August 2025](https://www.linkedin.com/blog/engineering/ai/how-we-leveraged-vllm-to-power-our-genai-applications) | vLLM supported 50+ GenAI use cases across thousands of hosts. | How many deployments enable deterministic execution. |
@@ -158,16 +185,43 @@ Separate the mathematical forward pass, deliberate sampling, and numerical execu
 
 The cited RouteLLM sources establish research results and a serving implementation, not comparable named production scale. Lack of such evidence is not proof of non-use.
 
-## Study exercise: choose a layer before a vendor
+## Choosing a layer before a vendor
 
-Take a support assistant with a shared policy document, a custom model, and an overnight embedding job. Draw its online request path and offline data path separately. Mark where the model is chosen, where replicas are scheduled, where KV state lives, and who pays for idle resources. Then remove any component that does not solve a measured requirement.
+The discipline this section argues for is to choose a layer before choosing a vendor. Try it on a concrete case. Take a support assistant with a shared policy document, a custom model, and an overnight embedding job. Draw its online request path and offline data path separately. Mark where the model is chosen, where replicas are scheduled, where KV state lives, and who pays for idle resources. Then remove any component that does not solve a measured requirement.
 
 Compare a fixed model, a fixed model with provider fallback, and a learned model router on the same sessions. Record task success, total cost, time to first token, per-token latency, retries, and cache hits. Repeat with cold and warm caches. Treat provider-published benchmark results as hypotheses to test on your workload.
 
-## Related curriculum
+## Where this leads
 
-- [LLM Systems & Inference](README.md)
-- [Inference Frameworks](frameworks/)
-- [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/)
-- [Model Routing & Cascades](../../ai-platform-engineering/11-model-routing-and-cascades/): router families, oracle versus deployed router, escalation policy, and decision models
-- [Training & Frameworks](../../ai-platform-engineering/01-training-and-frameworks/)
+Within this chapter, [Inference Frameworks](frameworks/README.md) maps the engine layer across languages, [Model Loading: Hub to GPU](model-loading/README.md) explains how engines get weights onto GPUs, and [Serving, Capacity & Load Testing](serving-and-load/README.md) shows how to size and benchmark a chosen engine. The routing and evaluation questions raised here are developed in *AI Platform Engineering*: [Model Routing & Cascades](../../ai-platform-engineering/11-model-routing-and-cascades/README.md) covers router families, oracle versus deployed routers, escalation policy, and decision models; [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/README.md) covers evaluating complete sessions; and [Training & Frameworks](../../ai-platform-engineering/01-training-and-frameworks/README.md) covers the training side of the same stack.
+
+## Key terms
+
+- **inference engine**: software that loads weights, schedules requests, manages the KV cache, and generates tokens (vLLM, SGLang, TensorRT-LLM, llama.cpp).
+- **serving orchestration**: coordinating model replicas and cluster resources across machines, as Ray Serve does, separate from token-level scheduling inside each engine.
+- **managed platform**: a service, such as Anyscale, that provisions, operates, and observes clusters on your behalf.
+- **model router**: a policy, such as RouteLLM's, that predicts before generation whether a stronger or weaker model should answer a request.
+- **gateway**: a hosted intermediary, such as OpenRouter, that forwards requests to a selected provider endpoint behind one API.
+- **provider stickiness**: a gateway's best-effort reuse of the same provider for a session to preserve prompt-cache hits.
+- **batch invariance**: the property that a request's numerical results do not depend on what else is in its batch.
+
+## Summary
+
+- Each platform occupies one layer: model selection (RouteLLM, OpenRouter Auto Router), gateway and provider selection (OpenRouter), distributed orchestration (Ray), managed operations (Anyscale), and the inference engine (vLLM, SGLang, and others).
+- Every layer has a cost; add one only when it solves a measured requirement, and choose the layer before the vendor.
+- Routers and gateways change what actually runs, so evaluations must record the resolved model, provider, policy, and cache behavior and compare complete sessions.
+- Batch shape can change floating-point reduction order and therefore outputs; batch-invariant kernels restore reproducibility at a workload-dependent throughput cost.
+- Public adoption evidence establishes specific facts, such as install counts or one company's usage, not market share or feature adoption.
+
+## Review questions
+
+1. In the self-hosted path `Application -> Ray Serve endpoint -> model replica -> vLLM -> GPU`, which component does token-level batching, and what does Anyscale contribute?
+   <details><summary>Answer</summary>vLLM, inside each replica, does token-level scheduling with continuous batching and paged KV-cache management. Ray Serve scales and routes among replicas. Anyscale's control plane manages cluster provisioning, scaling, and rollouts; it is not another model inspecting each prompt.</details>
+2. Does calling OpenRouter with an explicit model slug pin the full deployed system? What should you record for reproducible evaluation?
+   <details><summary>Answer</summary>No. Pinning the model name does not pin its serving provider, and provider fallback can change the execution environment and cache location. Using an explicit model also does not mean automatic model selection is in use. Record the resolved model and provider, constrain allowed routes, and compare complete sessions.</details>
+3. Why can a learned router fail to save money even when its benchmark results look good?
+   <details><summary>Answer</summary>Routing errors, classifier overhead (including the embedding request it may make), and distribution shift can erase the savings, and preference scores are not correctness guarantees. Cache misses caused by switching models, retries, and agent trajectories in which early decisions change later inputs must all be counted. The reviewed RouteLLM controller scores only the last message, which may be just "continue" or a tool result.</details>
+4. Why can the same prompt produce different outputs at temperature zero, and what does fixing it cost?
+   <details><summary>Answer</summary>Batch shape can change the reduction order of floating-point operations and therefore the logits, so results depend on what else was batched with the request; a fixed seed does not repair changing logits. In the Thinking Machines test, batch-invariant kernels gave 1,000 identical completions, with the workload taking 26 s by default, 55 s with unoptimized deterministic kernels, and 42 s with improved attention, roughly 53% and 38% lower throughput for that setup.</details>
+5. What does vLLM's report of 5.6M+ monthly pip installs establish, and what does it not?
+   <details><summary>Answer</summary>It establishes project-reported download volume. It does not establish the number of unique people, organizations, or production deployments.</details>

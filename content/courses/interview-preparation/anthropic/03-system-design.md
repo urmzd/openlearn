@@ -198,7 +198,7 @@ Draw the full picture first and resist diving into one component too early. Quan
 
 ## Where this leads
 
-The serving concepts here are developed further in [GPU inference serving](concepts/gpu-inference.md), and the streaming layer in [Streaming and SSE](concepts/streaming-sse.md). For a ground-up build of an inference server, see *Build an LLM*, and for the infrastructure under it, *Infrastructure*, starting from its [front matter](../../infrastructure/README.md).
+The serving concepts here are developed further in [GPU inference serving](concepts/gpu-inference.md), and the streaming layer in [Streaming and SSE](concepts/streaming-sse.md). For a ground-up build of an inference server, see the serving chapter of *Build Your Own LLM System*, starting with [Continuous batching scheduler with priority and preemption](../../build-an-llm/p10-serving/02-continuous-batching.md); for the infrastructure under it, see *Infrastructure*, starting from its [front matter](../../infrastructure/README.md).
 
 ## Key terms
 

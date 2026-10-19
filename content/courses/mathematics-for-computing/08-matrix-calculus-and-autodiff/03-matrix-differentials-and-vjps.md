@@ -147,7 +147,7 @@ def rmsnorm_vjp(g, x, rstd, w) -> tuple[NDArray, NDArray]                     # 
 def cross_entropy_vjp(logits, targets, ignore_index: int = -100) -> NDArray
 ```
 
-LayerNorm and RMSNorm normalize the last axis; `rstd` may be passed with shape `x.shape[:-1]` or `x.shape[:-1] + (1,)`, and the parameter gradients sum over every leading axis. `matmul_vjp` needs at least 2-D operands and unbroadcasts both gradients. The forward passes are not part of this module: the op library writes them and saves `y`, `xhat`, and `rstd`.
+LayerNorm and RMSNorm normalize the last axis; `rstd` may be passed with shape `x.shape[:-1]` or `x.shape[:-1] + (1,)`, and the parameter gradients sum over every leading axis. `matmul_vjp` needs at least 2-D operands and unbroadcasts both gradients. The forward passes are not part of this code: the op library writes them and saves `y`, `xhat`, and `rstd`.
 
 ## Building it step by step
 

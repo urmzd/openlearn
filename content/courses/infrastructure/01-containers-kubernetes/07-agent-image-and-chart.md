@@ -1,69 +1,51 @@
-# Agent image and chart
+# The agent image and chart
 
-## Overview
+[Durable agent runs](../../ai-platform-engineering/13-agent-sdk/05-durable-agent-runs.md) in *AI Platform Engineering* can resume an interrupted agent run, but only if some worker process is packaged and scheduled to poll the `agent` queue. This section provides that process: an image for the agent worker [`go/cmd/agent`](../../../../course/solutions/entry/go/cmd/agent/main.go) and a Helm chart, `deploy/helm/forge-agent/`, that runs it next to the durable service and the gateway. A dedicated chart lets the agent worker scale and restart independently of the gateway and engine services.
 
-| | |
-|---|---|
-| **Module** | `dep.07` · practice · Docker and Helm · Pass 10 · 1 to 2 h |
-| **Solution** | [`deploy/docker/agent.Dockerfile`](../../../../course/solutions/entry/deploy/docker/agent.Dockerfile) and [`deploy/helm/forge-agent/`](../../../../course/solutions/entry/deploy/helm/forge-agent/values.yaml) (`templates/deployment.yaml`, `templates/pdb.yaml`, `values.schema.json`), running the agent worker [`go/cmd/agent`](../../../../course/solutions/entry/go/cmd/agent/main.go) |
-| **Contract** | [`agent.values.schema.json`](../../../../course/contracts/helm/agent.values.schema.json) |
-| **Needs** | `dep.06` worker chart, `ag.05` durable agent runs |
-| **Used by** | the Pass 10 agent platform runs the worker on the `agent` queue next to the durable service and the gateway · `ops.10` the runaway-agent drill |
-| **Optional depth** | Separate agent and tool sandbox workloads |
+The work is mostly the rules you already know, applied once more. The chart follows the conventions of the worker chart from [Durable and worker images and charts](06-durable-and-worker-charts.md) for probes, resources, and secrets, and the image follows [Dockerfiles for the gateway and the engine](01-dockerfiles-for-gateway-and-engine.md). The contract is [`agent.values.schema.json`](../../../../course/contracts/helm/agent.values.schema.json). The section is also the first place where the solution is worth reading critically: two of its values contradict principles from earlier sections, and you will see why.
 
-## Key takeaways
+> **Learning objectives**
+> - Explain why the agent worker is its own failure domain with its own image and Deployment.
+> - Trace how the worker resolves its settings and where its durable run journal lives.
+> - Inject provider credentials only through Secret references enforced by a values schema.
+> - Critique a chart's disruption budget and grace period against the arithmetic of earlier sections.
 
-- The image runs the agent worker as a numeric non-root user, built static from Go onto a digest-pinned alpine.
-- The chart consumes the durable address and the `agent` queue.
-- Provider keys are injected only through Kubernetes Secret references.
-- Resource limits and probes make failure visible to the scheduler.
+## What the chart must configure
 
-## How to read this chapter
+The image is a pinned multi-stage build that copies only the built worker and its runtime files, sets a numeric non-root uid, and runs a static Go binary on a digest-pinned alpine. The chart gives the container CPU and memory requests and limits, and readiness and liveness probes on the worker's health endpoint, so failure is visible to the scheduler. Its configuration identifies the durable service, the queue, the provider URL, the model, the artifacts mount, and an optional OTel endpoint. Any API key comes from a Secret key reference.
 
-Sections 1 to 3 explain why the agent worker gets its own workload and trace its configuration by hand. Section 4 fixes what a correct image and chart must do. Section 5 walks through the solution Dockerfile and chart, explains each choice, and points out two values worth changing. Try to predict each part before reading it.
-
-## 1. Why now
-
-`ag.05` can resume durable agent runs, but a worker process must be packaged and scheduled for the agent queue. A dedicated chart lets it scale and restart independently from gateway and engine services.
-
-## 2. Principles
-
-Use a pinned multi-stage base image, copy only the built worker and runtime files, set a non-root numeric uid, and provide CPU and memory requests and limits. Readiness and liveness probes use the worker health endpoint. Configuration identifies the durable service, queue, provider URL, model, artifacts mount, and optional OTel endpoint. Any API key comes from a Secret key reference.
+Four settings carry most of the meaning:
 
 | Setting | Purpose |
 |---|---|
-| `durableAddress` | gRPC address for durable workflow service |
+| `durableAddress` | gRPC address of the durable workflow service |
 | `provider.baseUrl` | the system's gateway or an explicitly configured frontier endpoint |
-| `provider.apiKey` | Secret reference, never a literal |
-| `replicaCount` | bounded worker count for this local chart (the schema allows exactly 1) |
+| `provider.apiKey` | a Secret reference, never a literal |
+| `replicaCount` | a bounded worker count for this local chart (the schema allows exactly 1) |
 
-## 3. Worked example
+## Tracing the configuration by hand
 
-The chart points `durableAddress` at `forge-durable:7233` (the Service of `dep.06`), points the provider at `http://forge-gateway:8080` with model `smollm2-135m-instruct`, mounts `/artifacts` read-write for run state, and reads `PROVIDER_API_KEY` from Secret `agent-provider`, key `api-key`. The worker resolves its settings in a fixed order: defaults (queue `agent`, health on `:9464`, artifacts at `/artifacts`), then a `--config` file if given, then flags (`--queue agent --durable-address forge-durable:7233`), then the `PROVIDER_*` environment. Its run journal lands in `/artifacts/agent-runs`, so a retried activity replays the completed model and tool steps instead of repeating them. A readiness failure removes the pod from service while its durable workflow lease can expire and be reclaimed.
+The chart points `durableAddress` at `forge-durable:7233`, the Service from the durable chart. It points the provider at `http://forge-gateway:8080` with model `smollm2-135m-instruct`, mounts `/artifacts` read-write for run state, and reads `PROVIDER_API_KEY` from Secret `agent-provider`, key `api-key`.
 
-## 4. The artifact and what it must do
+The worker resolves its settings in a fixed order: defaults first (queue `agent`, health on `:9464`, artifacts at `/artifacts`), then a `--config` file if given, then flags (`--queue agent --durable-address forge-durable:7233`), then the `PROVIDER_*` environment. Its run journal lands in `/artifacts/agent-runs`, so a retried activity replays the completed model and tool steps instead of repeating them. A readiness failure removes the Pod from service, while its durable workflow lease can expire and be reclaimed by another worker.
 
-The image must have a pinned base, a numeric non-root runtime user, and only the built binary in its final stage. The chart must render under the contract schema, select the `agent` queue, read `PROVIDER_API_KEY` with `secretKeyRef` (the values file holds only the Secret name and key), and carry probes, resource bounds, and a PodDisruptionBudget. A chart must not carry provider credentials in values files or image layers.
+## What a correct image and chart must do
 
-### What a correct solution must handle
+The image must have a pinned base, a numeric non-root runtime user, and only the built binary in its final stage: no root execution, no mutable base tags, and no broad source copies, so a developer's `.env` stays out. These are the image rules every image in this chapter follows.
 
-| Case | What must hold | Why it matters downstream |
-|---|---|---|
-| image policy | no root execution, no mutable base tags, no broad source copies (`.env` stays out) | the dep.01 rules for every image |
-| chart schema | the chart's `values.schema.json` equals the published contract | the same shape as every other chart |
-| queue and secret | the `agent` queue, the Secret reference, probes, resource bounds, a PodDisruptionBudget | the worker takes agent work only, and no key leaks |
+The chart must render under the contract schema, and its `values.schema.json` must equal the published contract, giving it the same shape as every other chart. It must select the `agent` queue, read `PROVIDER_API_KEY` with `secretKeyRef` (the values file holds only the Secret name and key), and carry probes, resource bounds, and a PodDisruptionBudget. Together these make the worker take agent work only, and ensure no key leaks. A chart must never carry provider credentials in values files or image layers.
 
-## 5. The solution, step by step
+## Building it step by step
 
-### 5.1 From first principles
+### Reasoning from first principles
 
-1. **The agent worker is a separate failure domain.** Agent runs are long and call out to a model and tools; sharing a pod with other workers would let a runaway run starve them. So it gets its own image and Deployment, consuming one queue.
+1. **The agent worker is a separate failure domain.** Agent runs are long and call out to a model and tools; sharing a Pod with other workers would let a runaway run starve them. So it gets its own image and Deployment, consuming one queue.
 2. **The queue is the routing.** The durable server hands `AgentRun` tasks only to pollers of queue `agent`, so the chart must pass `--queue agent` explicitly rather than rely on a default that could change.
 3. **The key never touches Helm.** The provider key enters as `PROVIDER_API_KEY` through `secretKeyRef`; values hold only `{name, key}`, which the contract schema enforces.
-4. **Run state must survive the pod.** The durable agent journal under `/artifacts/agent-runs` is what makes a retried run resume, so `/artifacts` is mounted read-write, and the root filesystem stays read-only with an `emptyDir` at `/tmp`.
-5. **The rest is the dep.01 and dep.03 rules applied once more:** a static binary on a pinned base, a numeric user, probes on the health port, requests and limits.
+4. **Run state must survive the Pod.** The durable agent journal under `/artifacts/agent-runs` is what makes a retried run resume, so `/artifacts` is mounted read-write, and the root filesystem stays read-only with an `emptyDir` at `/tmp`.
+5. **The rest is the image and chart rules applied once more:** a static binary on a pinned base, a numeric user, probes on the health port, requests and limits.
 
-### 5.2 The image
+### The image
 
 ```dockerfile
 # Build from the repository root. The agent worker (go/cmd/agent) runs the
@@ -91,11 +73,9 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
 ENTRYPOINT ["/usr/local/bin/agent"]
 ```
 
-The health check goes through `/bin/sh -c`, which alpine has; the exec-form `["wget", ...]` of `dep.01` would avoid the shell entirely. Unlike the gateway image, this one carries no OCI labels; adding the `ARG VERSION`, `ARG REVISION`, and `LABEL` block of `dep.01` is a straightforward improvement.
+The health check goes through `/bin/sh -c`, which alpine has; the exec-form `["wget", ...]` used by the gateway image would avoid the shell entirely. Unlike the gateway image, this one carries no OCI labels, so adding the `ARG VERSION`, `ARG REVISION`, and `LABEL` block from [Dockerfiles for the gateway and the engine](01-dockerfiles-for-gateway-and-engine.md) is a straightforward improvement. The full solution is [`agent.Dockerfile`](../../../../course/solutions/entry/deploy/docker/agent.Dockerfile).
 
-Full solution: [`agent.Dockerfile`](../../../../course/solutions/entry/deploy/docker/agent.Dockerfile).
-
-### 5.3 The Deployment
+### The Deployment
 
 ```yaml
 spec:
@@ -149,54 +129,65 @@ spec:
           emptyDir: {}
 ```
 
-The worker needs no `TL_ARTIFACTS` variable: its configuration default for `[paths].artifacts` is already `/artifacts`, and the default health port is 9464, so the template sets only what differs per deployment. The image line has no digest suffix; the gateway and engine charts' `{{ with .Values.image.digest }}@{{ . }}{{ end }}` would let the agent be pinned by digest too.
+The worker needs no `TL_ARTIFACTS` variable. Its configuration default for `[paths].artifacts` is already `/artifacts`, and the default health port is 9464, so the template sets only what differs per deployment. The image line has no digest suffix; the gateway and engine charts' `{{ with .Values.image.digest }}@{{ . }}{{ end }}` would let the agent be pinned by digest too.
 
-Full solution: [`deployment.yaml`](../../../../course/solutions/entry/deploy/helm/forge-agent/templates/deployment.yaml), [`values.yaml`](../../../../course/solutions/entry/deploy/helm/forge-agent/values.yaml).
+The full solution is [`deployment.yaml`](../../../../course/solutions/entry/deploy/helm/forge-agent/templates/deployment.yaml) and [`values.yaml`](../../../../course/solutions/entry/deploy/helm/forge-agent/values.yaml).
 
-### 5.4 Two values worth a second look
+### Two values worth a second look
 
-The solution's chart has two settings that the principles of earlier chapters argue against; reading them critically is part of understanding the design.
+The solution's chart has two settings that the principles of earlier sections argue against. Reading them critically is part of understanding the design.
 
-- **`pdb.maxUnavailable: 0` with one replica.** By the arithmetic of `dep.03` (section 2.2), $a = \min(0, 1) = 0$: no voluntary eviction is ever allowed, so `kubectl drain` of the node hangs. The intent (never interrupt a run) is better served by the durable journal, which already makes an interrupted run resume. `maxUnavailable: 1`, as in the worker chart, keeps drains finishing.
-- **No `terminationGracePeriodSeconds`.** The agent drains for up to 60 s on SIGTERM (`go/cmd/agent`), but the pod default is 30 s, so a long run can be killed mid-step during a rollout. As with the worker chart of `dep.06`, the grace period should exceed the drain budget (for example 75 s). The journal limits the damage to repeating the step that was in flight.
+> **Warning:** `pdb.maxUnavailable: 0` with one replica. By the disruption-budget arithmetic of [Helm charts and the observability stack](03-helm-charts-and-observability-stack.md), $a = \min(0, 1) = 0$: no voluntary eviction is ever allowed, so `kubectl drain` of the node hangs. The intent (never interrupt a run) is better served by the durable journal, which already makes an interrupted run resume. `maxUnavailable: 1`, as in the worker chart, keeps drains finishing.
 
-The selector also hard-codes `app.kubernetes.io/name: forge-agent` instead of `{{ .Release.Name }}`, which is fine for one release but would collide if the chart were installed twice.
+> **Warning:** No `terminationGracePeriodSeconds`. The agent drains for up to 60 s on SIGTERM (`go/cmd/agent`), but the Pod default is 30 s, so a long run can be killed mid-step during a rollout. As with the worker chart of [Durable and worker images and charts](06-durable-and-worker-charts.md), the grace period should exceed the drain budget, for example 75 s. The journal limits the damage to repeating the step that was in flight.
 
-### 5.5 Why this solution
+The selector also hard-codes `app.kubernetes.io/name: forge-agent` instead of `{{ .Release.Name }}`. That is fine for one release but would collide if the chart were installed twice.
 
-- **A dedicated release over adding `agent` to the worker's queues.** Separate resource limits, separate scaling, and a runaway run (`ops.10`) that cannot exhaust the training worker's memory.
-- **Provider settings in the environment over a ConfigMap.** Three values do not need a file; the environment also lets `PROVIDER_API_KEY` come straight from a Secret.
-- **alpine over the Python base of the worker.** The agent runs no Python activities, so it does not need the worker's heavy runtime.
+### Why this design
+
+- **A dedicated release over adding `agent` to the worker's queues.** Separate resource limits, separate scaling, and a runaway run (the subject of the [runaway agent drill](../../systems/05-incident-response-and-chaos/10-runaway-agent.md)) that cannot exhaust the training worker's memory.
+- **Provider settings in the environment over a ConfigMap.** Three values do not need a file, and the environment also lets `PROVIDER_API_KEY` come straight from a Secret.
+- **alpine over the worker's Python base.** The agent runs no Python activities, so it does not need the worker's heavy runtime.
 - **Tradeoff accepted:** `hostPath` run state ties the agent to one node, as everywhere else on kind.
 
-### 5.6 Explain it back
+## What can go wrong
+
+Beyond the two values above, three mistakes are easy to make with a chart like this:
+
+| Pitfall | How the solution avoids it |
+|---|---|
+| Copying a developer `.env` into the image | the build stage copies only `go/`; the final stage only the binary |
+| Starting on the default queue instead of `agent` | `--queue agent` fixed in the template's `args` |
+| Omitting resource limits | `resources.requests` and `limits` in values, required by the contract schema |
+
+## Where this leads
+
+This chart reuses the worker chart's conventions for probes, resources, and secrets from [Durable and worker images and charts](06-durable-and-worker-charts.md), and packages the durable agent worker and its queue configuration from [Durable agent runs](../../ai-platform-engineering/13-agent-sdk/05-durable-agent-runs.md). The agent platform runs this worker alongside the durable service and the system's gateway, and the [runaway agent drill](../../systems/05-incident-response-and-chaos/10-runaway-agent.md) in *Systems and Architecture* injects a runaway agent and checks its budget and resume behavior.
+
+Production systems go further: they isolate untrusted tool execution in separate sandbox workloads, use workload identity for secrets, and persist artifacts in a multi-node store. Each of those changes needs an explicit threat model and storage recovery tests.
+
+## Key terms
+
+- **failure domain**: a unit (here, a Deployment) whose failure or overload does not take others down with it.
+- **task queue**: the durable server's routing key; only pollers of queue `agent` receive `AgentRun` tasks.
+- **run journal**: the durable record under `/artifacts/agent-runs` that lets a retried activity replay completed steps.
+- **settings resolution order**: defaults, then a `--config` file, then flags, then the `PROVIDER_*` environment.
+
+## Summary
+
+- The image runs the agent worker as a numeric non-root user, built static from Go onto a digest-pinned alpine.
+- The chart consumes the durable address and fixes the `agent` queue in its args.
+- Provider keys are injected only through Kubernetes Secret references, which the contract schema enforces.
+- Resource limits and probes make failure visible to the scheduler, and `/artifacts` is writable so the run journal survives the Pod.
+- The solution's `maxUnavailable: 0` and default 30 s grace period are worth changing to 1 and about 75 s.
+
+## Review questions
 
 1. Why does the chart pass `--queue agent` even though `agent` is already the worker's default queue?
-   <details><summary>Answer</summary>The queue decides which work the pod receives. Making it explicit in the template means a change to the program's default, or a <code>--config</code> file with another <code>task_queue</code>, cannot silently move the agent worker onto another queue (flags win over the file).</details>
+   <details><summary>Answer</summary>The queue decides which work the Pod receives. Making it explicit in the template means a change to the program's default, or a <code>--config</code> file with another <code>task_queue</code>, cannot silently move the agent worker onto another queue (flags win over the file).</details>
 2. A provider key appears in `helm get values`. What went wrong, and what prevents it?
    <details><summary>Answer</summary>Someone put the key into values (for example as an env entry with a literal <code>value</code>). The contract schema rejects a secret-looking name without <code>valueFrom</code> and accepts <code>provider.apiKey</code> only as <code>{name, key}</code>, so the key can only arrive through <code>secretKeyRef</code>.</details>
 3. Why must `/artifacts` be writable for the agent but not for the engine?
    <details><summary>Answer</summary>The agent writes its durable run journal under <code>/artifacts/agent-runs</code>; that journal is what lets a retried activity replay completed steps. The engine only reads model files.</details>
 4. With the solution's PDB, what happens when an operator drains the agent's node?
-   <details><summary>Answer</summary><code>maxUnavailable: 0</code> on one replica allows zero evictions, so the drain waits forever. Changing it to 1 lets the pod be evicted; the run resumes from its journal on the replacement pod.</details>
-
-## 6. Pitfalls
-
-| Pitfall | How the solution avoids it |
-|---|---|
-| Copying a developer `.env` into the image | the build stage copies only `go/`; the final stage only the binary (5.2) |
-| Starting the default queue instead of `agent` | `--queue agent` fixed in the template's `args` (5.3) |
-| Omitting resource limits | `resources.requests` and `limits` in values, required by the contract schema (5.3) |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `dep.06` | Reuses the worker chart conventions for probes, resources, and secrets. |
-| Back | `ag.05` | Packages the durable agent worker and its queue configuration. |
-| Forward | Pass 10 agent platform | Runs the agent worker with the durable service and the system's gateway. |
-| Forward | `ops.10` | Injects a runaway agent and checks its budget and resume behavior. |
-
-## Going further
-
-Production systems isolate untrusted tool execution, use workload identity for secrets, and persist artifacts in a multi-node store. Those changes need explicit threat models and storage recovery tests.
+   <details><summary>Answer</summary><code>maxUnavailable: 0</code> on one replica allows zero evictions, so the drain waits forever. Changing it to 1 lets the Pod be evicted; the run resumes from its journal on the replacement Pod.</details>

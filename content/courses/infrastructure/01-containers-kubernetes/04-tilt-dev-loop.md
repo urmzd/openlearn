@@ -18,7 +18,7 @@ From the repo root:
 
 ```bash
 tilt up -f deploy/Tiltfile            # the loop: http://localhost:10350 shows the graph
-tilt ci -f deploy/Tiltfile            # once, as CI runs it (CI for your repo)
+tilt ci -f deploy/Tiltfile            # once, as CI runs it
 ```
 
 What Tilt does when you save a file depends on a small vocabulary, which is where to start.

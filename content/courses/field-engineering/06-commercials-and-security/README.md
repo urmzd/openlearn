@@ -1,44 +1,29 @@
 # Commercials and Security
 
-The numbers and paperwork that decide a deal after the technology works: cost per 1M tokens, total cost of ownership (TCO) of self-hosting versus serverless versus dedicated, the breakeven point, committed-use and reserved capacity, security questionnaires, and how procurement and legal fit into the timeline.
+Customers do not buy tokens per second. They buy a cost line and a risk profile. Once the technology works, two conversations decide the deal. The commercial conversation converts the benchmark into money: cost per 1M tokens, the total cost of ownership (TCO) of self-hosting versus serverless versus dedicated, the breakeven point, and the size of any commitment. The security conversation converts the deployment architecture into assurances: reports, contracts, and data flows. Both are evidence-based, both have owners other than the field engineer, and both take calendar time that the technical plan must account for.
 
-> Parent track: [Field Engineering](../). Builds on the sizing in [02](../02-qualification-and-sizing/) and the measured operating point from [03](../03-performance-testing-engagements/). The cost formulas are derived in [Serving & Load sections 7 and 8](../../machine-learning/04-llm-systems/serving-and-load/#7-multi-lora-serverless-vs-dedicated-cold-start-autoscaling).
+This chapter covers both. It builds on the sizing in [Qualification and Sizing](../02-qualification-and-sizing/README.md) and the measured operating point from [Performance Testing Engagements](../03-performance-testing-engagements/README.md); the underlying cost formulas are derived in [Serving & Load sections 7 and 8](../../machine-learning/04-llm-systems/serving-and-load/#7-multi-lora-serverless-vs-dedicated-cold-start-autoscaling) in *Machine Learning*. You will compute blended and dedicated cost per 1M tokens, build a TCO, find the breakeven, size a commitment, and then learn what security documents customers ask for and how procurement and legal fit into the timeline.
 
-**All prices in this topic are placeholders chosen to show the method.** They are not any vendor's list price. Plug in the current price sheet and the customer's real rates before showing a number to anyone.
+> **Warning:** All prices in this chapter are placeholders chosen to show the method. They are not any vendor's list price. Plug in the current price sheet and the customer's real rates before showing a number to anyone.
 
-## Overview
+> **Learning objectives**
+> - Compute blended serverless cost per 1M tokens from a customer's input/output mix, and dedicated cost per 1M tokens at a measured operating point.
+> - Build a TCO for self-host, dedicated, and serverless that includes utilization and engineering time.
+> - Compute breakeven per GPU and per deployment, and check it against goodput and the traffic curve.
+> - Recommend a commitment sized to the forecast floor, and name its risk.
+> - Identify which security document (SOC 2, ISO 27001, BAA, DPA, transfer mechanism, ZDR terms) answers a customer's question, and run questionnaires and paperwork in parallel with the technical plan.
 
-- **Primary references**: [AICPA SOC 2 overview](https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2) (free); [GDPR full text with article index](https://gdpr-info.eu/) (free); [HHS HIPAA cloud computing guidance](https://www.hhs.gov/hipaa/for-professionals/special-topics/cloud-computing/index.html) (free)
-- **Supplementary**: [45 CFR 164.504](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.504) (free, business associate contract requirements); [European Commission: EU-US data transfers](https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/eu-us-data-transfers_en) (free); [CSA Cloud Controls Matrix and CAIQ](https://cloudsecurityalliance.org/research/cloud-controls-matrix) (free); [Shared Assessments SIG](https://sharedassessments.org/sig/) (paid license)
-- **Prerequisites**: [Qualification and Sizing](../02-qualification-and-sizing/); the [role landscape](../#who-owns-what) (pricing authority sits with the AE)
-- **Estimated time**: 3-4 days at 6-8 hrs/week
-- **Usually led by**: AE owns price and contract; SE or FDE owns the cost model and technical answers; the vendor's security team owns questionnaire answers and reports
+## Before you begin
 
-## Key Takeaways
+You should have your hypothesis from [Qualification and Sizing](../02-qualification-and-sizing/README.md) and know from the [role landscape](../README.md#who-owns-what) that pricing authority sits with the account executive (AE). In practice the AE owns price and contract, the SE or FDE owns the cost model and the technical answers, and the vendor's security team owns questionnaire answers and reports.
 
-- Quote **cost per 1M tokens at the measured operating point**, never at the roofline bound or at saturation.
-- TCO of self-hosting is dominated by **utilization** and **engineering time**, not the GPU hourly rate. A cheap GPU at 40% utilization with two engineers on call is not cheap.
-- Dedicated beats serverless above a **breakeven** volume: `GPU $/hr / serverless $ per token`. Below it, serverless wins; above it, dedicated wins only if utilization actually stays high.
-- Commit to the **floor** of the forecast, not the peak. Unused commitment is money the customer may lose.
-- Security and legal review is usually the longest pole. Start it in the first week of the POC, and answer questionnaires from the vendor's maintained answers, never from memory.
+The primary references are free: the [AICPA SOC 2 overview](https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2), the [GDPR full text with article index](https://gdpr-info.eu/), and the [HHS HIPAA cloud computing guidance](https://www.hhs.gov/hipaa/for-professionals/special-topics/cloud-computing/index.html). Supplements are [45 CFR 164.504](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.504) (business associate contract requirements), the European Commission's page on [EU-US data transfers](https://commission.europa.eu/law/law-topic/data-protection/international-dimension-data-protection/eu-us-data-transfers_en), the [CSA Cloud Controls Matrix and CAIQ](https://cloudsecurityalliance.org/research/cloud-controls-matrix), all free, and the [Shared Assessments SIG](https://sharedassessments.org/sig/) (paid license). You will not give legal advice, but you must know which document a question is about, so read the headings of GDPR [Article 28](https://gdpr-info.eu/art-28-gdpr/) and [Chapter V](https://gdpr-info.eu/chapter-5/) once.
 
-## How to Study
+## Cost per 1M tokens
 
-- Rebuild the TCO table below in a spreadsheet with every input as a cell. Then change utilization from 50% to 80% and engineering from 1.5 FTE to 0.5 FTE and see which moves the answer more.
-- Read GDPR [Article 28](https://gdpr-info.eu/art-28-gdpr/) and [Chapter V](https://gdpr-info.eu/chapter-5/) headings once. You will not give legal advice, but you must know which document a question is about.
-- Download a public CAIQ from any cloud vendor's trust center and find the ten questions an inference vendor would find hardest (retention, sub-processors, model training on customer data).
+The basic unit of the commercial conversation is cost per 1M tokens, and the rule for quoting it is strict: quote it **at the measured operating point**, never at the roofline bound or at saturation.
 
----
-
-# Concepts & Techniques
-
-## Core Insight
-
-Customers do not buy tokens per second; they buy a cost line and a risk profile. The commercial conversation converts the benchmark into money (cost per 1M tokens, TCO, breakeven, commitment size), and the security conversation converts the deployment architecture into assurances (reports, contracts, data flows). Both are evidence-based, both have owners other than the field engineer, and both take calendar time the technical plan must account for.
-
-## 1. Cost per 1M Tokens
-
-**Serverless** prices are usually per token, often with separate input and output rates. Compute the **blended** rate from the customer's own mix:
+**Serverless** prices are usually per token, often with separate input and output rates. Compute the **blended** rate from the customer's own mix, here the support copilot from [Qualification and Sizing](../02-qualification-and-sizing/README.md):
 
 ```text
 cost per request = T_in x p_in / 1e6 + T_out x p_out / 1e6
@@ -50,9 +35,9 @@ cost per request = 2,000 x 0.60e-6 + 300 x 2.40e-6 = $0.00120 + $0.00072 = $0.00
 blended          = 0.00192 / 2,300 x 1e6 = ~$0.83 per 1M tokens
 ```
 
-Input-heavy workloads (RAG, long documents, contract review) are dominated by the input rate. Some providers discount cached input tokens; whether and how much is vendor-specific (**check the current price sheet**).
+Input-heavy workloads such as RAG, long documents, and contract review are dominated by the input rate. Some providers discount cached input tokens; whether and by how much is vendor-specific, so **check the current price sheet**.
 
-**Dedicated** cost per 1M tokens at an operating point:
+**Dedicated** cost per 1M tokens at an operating point has two forms, per hour and per month:
 
 ```text
 $ per 1M = (GPU $/hr x GPUs) / (tokens/s served x 3600) x 1e6
@@ -63,9 +48,9 @@ support copilot: (4,320 GPU-h x $4.00) / 89,000M tokens = ~$0.19 per 1M
 
 The monthly form already includes idle time, which is why it is the honest one.
 
-## 2. TCO: Self-Hosting versus Serverless versus Dedicated
+## TCO: self-hosting versus serverless versus dedicated
 
-Self-hosting looks cheapest on a GPU price list because the list omits utilization and people. A TCO includes:
+Self-hosting looks cheapest on a GPU price list because the list omits utilization and people. In fact the TCO of self-hosting is dominated by **utilization** and **engineering time**, not by the GPU hourly rate: a cheap GPU at 40% utilization with two engineers on call is not cheap. A real TCO includes every line below:
 
 | Cost line | Self-host (own cloud GPUs) | Dedicated (vendor) | Serverless (vendor) |
 |---|---|---|---|
@@ -75,7 +60,7 @@ Self-hosting looks cheapest on a GPU price list because the list omits utilizati
 | **Capacity risk** | Customer must secure GPUs | Vendor capacity, may need reservation | Rate limits by tier |
 | **Hidden** | Observability, storage, egress, security review of the stack | Egress, private networking | Rate-limit headroom |
 
-Worked example, support copilot (89B tokens/month, [02](../02-qualification-and-sizing/#2-worked-example-support-copilot)). **Every price and salary is a placeholder.**
+Applied to the support copilot (89B tokens a month, from the [worked example in Qualification and Sizing](../02-qualification-and-sizing/README.md#working-an-example-by-hand-a-support-copilot)), with **every price and salary a placeholder**, the TCO comes out as follows:
 
 | Line | Self-host | Dedicated | Serverless |
 |---|---|---|---|
@@ -86,11 +71,13 @@ Worked example, support copilot (89B tokens/month, [02](../02-qualification-and-
 | **Monthly total** | **~$54,850** | **~$22,990** | **~$82,180** |
 | **Effective $ per 1M tokens** | ~$0.62 | ~$0.26 | ~$0.92 |
 
-Read the result, not the digits: with these inputs, self-hosting loses to dedicated because of engineering time and idle reserved GPUs, and serverless loses because the volume is well above breakeven. The self-host column also assumes the customer's engine matches the vendor's throughput per GPU, which is the vendor's core claim and should be tested, not assumed ([03](../03-performance-testing-engagements/)).
+Read the result, not the digits. With these inputs, self-hosting loses to dedicated because of engineering time and idle reserved GPUs, and serverless loses because the volume is well above breakeven. The self-host column also assumes the customer's engine matches the vendor's throughput per GPU, which is the vendor's core claim and should be tested, not assumed (see [Performance Testing Engagements](../03-performance-testing-engagements/README.md)). To feel which inputs matter, rebuild the table in a spreadsheet with every input as a cell, then change utilization from 50% to 80% and engineering from 1.5 FTE to 0.5 FTE and see which moves the answer more.
 
-## 3. Breakeven
+## Breakeven
 
-**Per GPU**: dedicated is cheaper when the tokens a GPU serves per hour exceed what the same money buys on serverless.
+The TCO showed serverless losing "because the volume is above breakeven." That threshold can be computed two ways. Below it serverless wins; above it, dedicated wins, but only if utilization actually stays high.
+
+**Per GPU**, dedicated is cheaper when the tokens a GPU serves per hour exceed what the same money buys on serverless. With a GPU-hour rate $R$ and a blended serverless price $P$ per 1M tokens:
 
 ```text
 breakeven tokens per GPU-hour = R / (P / 1e6)
@@ -98,7 +85,7 @@ placeholders R = $4.00 per GPU-hour, P = $0.90 per 1M blended:
   4.00 / 0.90e-6 = ~4.44M tokens per GPU-hour = ~1,235 tokens/s sustained per GPU
 ```
 
-**Per deployment**: a dedicated deployment has a minimum monthly cost (its floor). Volume below that floor's token equivalent belongs on serverless.
+**Per deployment**, a dedicated deployment has a minimum monthly cost, its floor, and volume below that floor's token equivalent belongs on serverless:
 
 ```text
 floor: one TP4 replica, always on = 4 GPUs x 720 h x $4.00 = $11,520/month
@@ -106,25 +93,28 @@ breakeven monthly tokens = 11,520 / 0.90 x 1e6 = ~12.8B tokens/month (~4,900 tok
 support copilot: 89B tokens/month -> well above breakeven -> dedicated
 ```
 
-[Serving & Load section 7](../../machine-learning/04-llm-systems/serving-and-load/#7-multi-lora-serverless-vs-dedicated-cold-start-autoscaling) works the same formula with different placeholders. Two checks before trusting a breakeven:
+[Serving & Load section 7](../../machine-learning/04-llm-systems/serving-and-load/#7-multi-lora-serverless-vs-dedicated-cold-start-autoscaling) works the same formula with different placeholders. Before trusting any breakeven, make two checks. First, the dedicated deployment must actually serve that volume **within the SLO**, which is goodput (see [Reporting curves, goodput, and cost](../03-performance-testing-engagements/README.md#reporting-curves-goodput-and-cost)), not just at saturation. Second, the traffic curve matters: a workload with a high peak-to-mean ratio pays for idle GPUs unless autoscaling is fast enough for the ramp.
 
-- The dedicated deployment must actually serve that volume **within the SLO** (goodput from [03](../03-performance-testing-engagements/#7-reporting-curves-goodput-cost)), not just at saturation.
-- The traffic curve matters: a workload with a high peak-to-mean ratio pays for idle GPUs unless autoscaling is fast enough for the ramp.
+## Committed use and reserved capacity
 
-## 4. Committed Use and Reserved Capacity
+With the tier chosen, the last commercial question is how much to commit to. The options trade a lower rate for risk the customer carries:
 
 | Concept | What the customer gets | What the customer risks | Field rule |
 |---|---|---|---|
 | **On-demand** | Pay per hour or per token, no commitment | Price and availability not guaranteed | Use for evaluation and POCs |
 | **Reserved capacity** | Specific GPUs held for a term at a lower rate | Pays whether used or not | Size to the measured floor, not the peak |
 | **Committed spend** | A discount in exchange for spending an agreed amount over a term, often across products | Unused commitment may be forfeited (terms vary by vendor and contract; **not confirmed** for any specific vendor) | Commit to the floor of the forecast; leave growth to on-demand |
-| **Ramp deal** | Commitment that grows by quarter as migration proceeds | Migration slips while the commitment rises | Tie ramp steps to migration milestones in [05](../05-migration-and-cutover/) |
+| **Ramp deal** | Commitment that grows by quarter as migration proceeds | Migration slips while the commitment rises | Tie ramp steps to migration milestones in [Migration and Cutover](../05-migration-and-cutover/README.md) |
 
-The AE owns price and terms. The field engineer owns the inputs: measured operating point, forecast floor and peak, migration schedule, and the risk list. Never quote a discount.
+The general rule is to commit to the **floor** of the forecast, not the peak, because unused commitment is money the customer may lose. The AE owns price and terms. The field engineer owns the inputs: the measured operating point, the forecast floor and peak, the migration schedule, and the risk list. Never quote a discount.
 
-## 5. Security and Compliance
+## Security and compliance
+
+The second conversation runs alongside the first. Security and legal review is usually the longest pole, so start it in the first week of the POC, and answer questionnaires from the vendor's maintained answers, never from memory.
 
 ### What the customer will ask for
+
+Most security questions resolve to one of a small set of documents. Knowing which document answers which question is the field engineer's job; interpreting the law is not.
 
 | Item | What it is | What to provide | Source |
 |---|---|---|---|
@@ -136,9 +126,11 @@ The AE owns price and terms. The field engineer owns the inputs: measured operat
 | **Data residency** | Processing (and any storage) stays in a named region | Region list for the tier and model; where logs, metrics, and support access live | Vendor docs |
 | **Zero data retention (ZDR)** | Prompts and completions are not stored after the request | Exactly what is still kept (token counts for billing, abuse-monitoring logs, error traces), for how long, and on which tiers | Vendor docs and contract |
 | **No training on customer data** | Customer prompts and outputs are not used to train vendor models | Contract clause, not a blog post | Contract |
-| **VPC / BYOC** | Private networking to a vendor deployment, or the deployment runs in the customer's cloud account | Network diagram, who operates it, who holds keys, which features are missing in that mode | Vendor docs ([role landscape](../#what-the-companies-sell)) |
+| **VPC / BYOC** | Private networking to a vendor deployment, or the deployment runs in the customer's cloud account | Network diagram, who operates it, who holds keys, which features are missing in that mode | Vendor docs ([what the companies sell](../README.md#what-the-companies-sell)) |
 
 ### Questionnaires
+
+Most enterprise customers also send a questionnaire, which comes in one of three shapes:
 
 | Questionnaire | Publisher | Shape |
 |---|---|---|
@@ -146,9 +138,15 @@ The AE owns price and terms. The field engineer owns the inputs: measured operat
 | **SIG** | Shared Assessments | Broad third-party risk questionnaire for any vendor, common in financial services and healthcare |
 | **Custom spreadsheet** | The customer's security team | Often a mix of the above plus AI-specific questions: training on data, retention, model provenance, prompt injection handling |
 
-**Rules**: answer from the vendor's maintained answer library and current reports; route any new question to the security team with a due date; never improvise an answer about retention, sub-processors, or encryption. A wrong "yes" in a questionnaire can become a contractual misrepresentation.
+The rules for answering are strict. Answer from the vendor's maintained answer library and current reports. Route any new question to the security team with a due date. Never improvise an answer about retention, sub-processors, or encryption.
 
-## 6. Procurement and Legal in the Timeline
+> **Warning:** A wrong "yes" in a questionnaire can become a contractual misrepresentation.
+
+To practice, download a public CAIQ from any cloud vendor's trust center and find the ten questions an inference vendor would find hardest: retention, sub-processors, and model training on customer data are good places to start.
+
+## Procurement and legal in the timeline
+
+The paperwork has its own critical path, and it runs in parallel with the technical one:
 
 ```mermaid
 flowchart LR
@@ -167,34 +165,26 @@ flowchart LR
     PO --> PROD["Production access"]
 ```
 
-**Key ideas**:
-- **Run both tracks in parallel.** Discovery should surface who owns security review and how long it takes ([01](../01-discovery/#2-question-bank)); start it the day production data is mentioned.
-- **Production data needs paperwork first.** A POC on real prompts usually needs the NDA, the security review, and the DPA (or BAA) signed.
-- **Redlines take calendar time.** DPA and BAA terms go between legal teams; the field engineer supplies accurate technical descriptions of data flows and does not negotiate terms.
-- **Procurement has its own gates**: vendor onboarding, insurance certificates, payment terms. Ask the customer's champion for their checklist early.
-- How long each step takes varies widely by customer size and industry; this track gives no typical durations (**not sourced**). Ask the customer.
+**Run both tracks in parallel.** Discovery should surface who owns the security review and how long it takes (see [the question bank](../01-discovery/README.md#the-question-bank)); start the review the day production data is mentioned. **Production data needs paperwork first**: a POC on real prompts usually needs the NDA, the security review, and the DPA (or BAA) signed. **Redlines take calendar time**: DPA and BAA terms go back and forth between legal teams, and the field engineer supplies accurate technical descriptions of data flows without negotiating terms. **Procurement has its own gates**, such as vendor onboarding, insurance certificates, and payment terms, so ask the customer's champion for their checklist early. How long each step takes varies widely by customer size and industry; this book gives no typical durations, because none are sourced. Ask the customer.
 
-## Connections to Other Tracks
+## Where this leads
 
-| Concept | Connected Track | Application |
-|---------|-----------------|-------------|
-| Cost per token, breakeven, autoscaling floor | [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/) | Sections 1 to 3 |
-| Authorization, tenancy, access control | [Authorization & Access Control](../../ai-platform-engineering/08-authorization-and-access-control/) | Questionnaire answers on access |
-| Private networking, VPCs, Kubernetes | [Cloud Native](../../systems/03-cloud-native/) | VPC and BYOC architecture |
-| Audit logging, retention | [Observability](../../systems/04-observability/) | What ZDR means for logs and traces |
+The cost per token, breakeven, and autoscaling floor of the first three sections come from [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/). Questionnaire answers on access control draw on [Authorization & Access Control](../../ai-platform-engineering/08-authorization-and-access-control/) in *AI Platform Engineering*. VPC and BYOC architectures rest on the private networking and Kubernetes of [Cloud Native](../../systems/03-cloud-native/), and what ZDR means for logs and traces is a question for [Observability](../../systems/04-observability/), both in *Systems*.
 
-## Company Relevance
+TCO and breakeven conversations, plus trust center and questionnaire support, are routine at Fireworks AI, Together AI, and Baseten. AWS, GCP, and Azure run committed-use and reserved-capacity programs and publish BAA-eligible service lists. OpenAI and Anthropic have ZDR, data residency, and DPA conversations with enterprise API customers. For healthcare and legal-tech customers, BAA and residency are gating requirements and the conversation is at its hardest.
 
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| Fireworks AI / Together AI / Baseten | TCO and breakeven conversations; trust center and questionnaire support | Intermediate |
-| AWS / GCP / Azure | Committed use and reserved capacity programs; BAA-eligible service lists | Intermediate |
-| OpenAI / Anthropic (enterprise) | ZDR, data residency, and DPA conversations for API customers | Intermediate |
-| Healthcare and legal-tech customers | BAA and residency as gating requirements | Advanced |
+The last chapter of the engagement, [Escalation and Handoff](../07-escalation-and-handoff/README.md), covers what happens when production goes wrong.
+
+### Further reading
+
+- [AICPA SOC 2 overview](https://www.aicpa-cima.com/topic/audit-assurance/audit-and-assurance-greater-than-soc-2) (free).
+- [GDPR full text with article index](https://gdpr-info.eu/) (free).
+- [HHS HIPAA cloud computing guidance](https://www.hhs.gov/hipaa/for-professionals/special-topics/cloud-computing/index.html) (free).
+- [CSA Cloud Controls Matrix and CAIQ](https://cloudsecurityalliance.org/research/cloud-controls-matrix) (free).
 
 ## Exercise
 
-**Deliverable**: a **commercial and security brief for Lexa** ([brief](../01-discovery/#exercise)), two pages, built on your [02](../02-qualification-and-sizing/#exercise) hypothesis and [03](../03-performance-testing-engagements/#exercise) operating point:
+The deliverable is a two-page **commercial and security brief for Lexa** (see the [brief](../01-discovery/README.md#exercise)), built on your hypothesis from the [Qualification and Sizing exercise](../02-qualification-and-sizing/README.md#exercise) and your operating point from the [Performance Testing Engagements exercise](../03-performance-testing-engagements/README.md#exercise):
 
 1. Blended cost per 1M tokens for their mix on serverless (placeholder prices, labelled), and dedicated cost per 1M at your operating point.
 2. A TCO table for self-host, dedicated, and serverless, with the online path and the nightly job as separate rows, compared with their $60k/month spend and the "cut by half" goal.
@@ -208,3 +198,32 @@ flowchart LR
 - The nightly job is priced on a batch or async surface.
 - The growth projection changes or confirms the tier choice, and the brief says which.
 - No security answer is asserted without naming the document that supports it.
+
+## Key terms
+
+- **Blended rate**: the cost per 1M tokens for a customer's own input/output mix when input and output are priced separately.
+- **TCO**: total cost of ownership, including GPU time, utilization, engineering, capacity risk, and hidden costs.
+- **Breakeven**: the volume at which dedicated GPU-hours cost the same as serverless tokens, per GPU or per deployment floor.
+- **Committed spend**: a discount in exchange for an agreed spend over a term; unused commitment may be forfeited.
+- **SOC 2 Type II**: an independent attestation that controls operated effectively over a period, as opposed to Type I at a point in time.
+- **DPA**: the data processing agreement that GDPR Article 28 requires between a controller and a processor.
+- **Zero data retention (ZDR)**: prompts and completions are not stored after the request; what else is kept must be stated exactly.
+
+## Summary
+
+- Quote cost per 1M tokens at the measured operating point, never at the roofline bound or at saturation.
+- Self-hosting TCO is dominated by utilization and engineering time, not the GPU hourly rate.
+- Dedicated beats serverless above breakeven (GPU $/hr divided by serverless $ per token), and only if utilization stays high and the SLO holds.
+- Commit to the floor of the forecast, not the peak; the AE owns price, the field engineer owns the inputs.
+- Security and legal review is usually the longest pole: start it in week 1 and answer from maintained documents, never from memory.
+
+## Review questions
+
+1. Why is the monthly form of dedicated cost per 1M tokens the honest one?
+   <details><summary>Answer</summary>It divides all GPU-hours paid for, including idle time off-peak, by the tokens actually served. The per-hour form at an operating point ignores the hours the deployment sits underused.</details>
+2. In the placeholder TCO, why does self-hosting lose to dedicated even though its GPU rate is lower ($2.50 versus $4.00)?
+   <details><summary>Answer</summary>Reserved GPUs cannot autoscale cheaply, so it pays for 12 GPUs around the clock at about 50% utilization, and it needs 1.5 FTE of engineering ($31,250 a month) against 0.25 FTE for dedicated.</details>
+3. A customer's volume is twice the per-deployment breakeven. Is dedicated automatically the right answer?
+   <details><summary>Answer</summary>No. Check that the deployment serves that volume within the SLO (goodput, not saturation throughput), and that the traffic curve's peak-to-mean ratio does not leave GPUs idle because autoscaling cannot follow the ramp.</details>
+4. A questionnaire asks whether prompts are retained for abuse monitoring, and you think the answer is no. What do you do?
+   <details><summary>Answer</summary>Do not answer from memory. Check the vendor's maintained answer library and ZDR terms; if the question is new, route it to the security team with a due date. A wrong "no" can become a contractual misrepresentation.</details>

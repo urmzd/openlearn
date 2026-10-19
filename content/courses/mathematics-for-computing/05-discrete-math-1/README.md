@@ -1,298 +1,151 @@
 # Discrete Math 1
 
-## Overview
-- **Textbook**: *Book of Proof* by Richard Hammack -- https://people.vcu.edu/~rhammack/BookOfProof/ (CC BY-ND)
-- **Prerequisites**: None
-- **Estimated time**: 4 weeks at 10-12 hrs/week
-
-## Key Takeaways
-- Learn to read and write rigorous mathematical proofs -- the single most transferable mathematical skill
-- Master the language of sets, logic, and quantifiers used in every CS theory course
-- Develop fluency with direct proof, contrapositive, contradiction, and induction
-- Understand relations and functions as formal structures underlying databases and programming
-- Build counting skills (permutations, combinations) essential for algorithm analysis and probability
+Discrete mathematics is the mathematics of distinct, separated structures, as opposed to the continuous structures of calculus. Its central activity is proof: constructing airtight logical arguments. Every concept in it appears directly in computer science. Sets become data structures, logic becomes boolean algebra and type systems, induction becomes recursive correctness arguments, relations become database schemas, and functions become the foundation of programming. Counting, meanwhile, is how you size anything: a model's parameters, the FLOPs of a forward pass, the bytes of a cache.
 
-## How to Study
-- Read each chapter and attempt the exercises before looking at solutions
-- Write proofs by hand in complete sentences -- proof is a form of technical writing
-- For each proof technique, practice on at least 10 problems until the pattern becomes automatic
-- Compare your proofs with Hammack's solutions for style and rigor
-- Revisit counting problems when you reach probability and algorithms courses
+This chapter starts where the rest of the book needs it most. Its problem set builds the vocabulary and the proof habits that later chapters assume: sets and logic, counting, the standard proof methods, induction and loop invariants, relations, and functions. Its two build sections then put two of those ideas to work. The first counts a transformer's parameters, FLOPs, KV-cache bytes, and training memory exactly, from a handful of config integers. The second uses injective, surjective, and bijective to derive the byte-to-character map that every GPT-2 style tokenizer depends on. The survey after the section list covers the wider territory of a first discrete math course, following Hammack's *Book of Proof*, with a worked example for each topic.
 
----
+> **Learning objectives**
+> - Read and write rigorous proofs: direct, contrapositive, contradiction, cases, and induction, including loop invariants.
+> - Use the language of sets, logic, and quantifiers, including negating nested quantifiers.
+> - Count with the product rule, permutations, combinations, and stars and bars, and apply them to parameter, FLOP, and KV-cache counts.
+> - Classify relations, and recognize equivalence relations as partitions.
+> - Prove functions injective, surjective, or bijective, and explain why only bijections have inverses.
 
-# Concepts & Techniques
+## Before you begin
 
-## Core Insight
+The chapter needs no earlier mathematics beyond high-school algebra. For the counting section, powers of ten and logarithms from [Exponents, logs, change of base, units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md) help with reading counts like $6.7 \times 10^9$. The problem set comes last in the list below by file order, but it is designed to be worked first.
 
-Discrete mathematics is the mathematics of distinct, separated structures (as opposed to the
-continuous structures of calculus). Proof is the central activity: you must learn to construct
-airtight logical arguments. Every concept in this course -- sets, logic, counting, relations,
-functions -- appears directly in computer science. Sets become data structures, logic becomes
-boolean algebra and type systems, induction becomes recursive correctness arguments, relations
-become database schemas, and functions become the foundation of programming.
+## In this chapter
 
-## 1. Sets
+1. [Counting: parameters, FLOPs, KV bytes, and memory plans](01-counting-params-flops-kv-bytes.md): counts a decoder's parameters per component so they match Hugging Face exactly for dense, GQA, MoE, and MLA models, and derives KV-cache bytes, FLOPs per token, and a training memory plan, all as exact integers.
+2. [Injective, surjective, bijective: the GPT-2 byte map](02-injective-surjective-bijective-gpt2-byte-map.md): builds the three definitions as checks on a dict, and derives GPT-2's bijection from the 256 bytes to 256 visible characters that byte-level BPE vocabularies are written in.
+3. [Discrete math 1 problem set](90-problem-set.md): problems with worked answers and model proofs on sets and logic, counting, proof techniques, induction and loop invariants, relations, and functions and bijections. Work it before the two sections above.
 
-**Textbook sections**: Ch 1, Sections 1.1-1.8
+## A survey of the subject
 
-**Key definitions**:
-- **Set**: An unordered collection of distinct elements; described by listing {1,2,3} or set-builder {x in Z : x > 0}
-- **Subset**: A is a subset of B if every element of A is in B
-- **Power set**: P(A) = the set of all subsets of A; |P(A)| = 2^|A|
-- **Union**: A union B = {x : x in A or x in B}
-- **Intersection**: A intersect B = {x : x in A and x in B}
-- **Complement**: A^c = {x in U : x not in A}
-- **Cartesian product**: A x B = {(a,b) : a in A, b in B}; |A x B| = |A| * |B|
+The sections above focus on the parts of discrete math that code depends on. The rest of this opening surveys a first course in the subject, following Hammack's *Book of Proof*. Each topic gives the key definitions and theorems, worked examples, and the textbook exercises to practice on.
 
-**Key theorems**:
-- **De Morgan's Laws**: (A union B)^c = A^c intersect B^c, and (A intersect B)^c = A^c union B^c. *Intuition*: "not (this or that)" is the same as "not this and not that" -- negation swaps union and intersection.
-- **Inclusion-Exclusion (2 sets)**: |A union B| = |A| + |B| - |A intersect B|. *Intuition*: adding the sizes double-counts the overlap, so subtract it once.
-- **Power Set Cardinality**: |P(A)| = 2^|A|. *Intuition*: for each element, independently choose "in" or "out" -- that is 2 choices per element.
+### Sets
 
-**Worked example**:
-> Prove that A intersect (B union C) = (A intersect B) union (A intersect C). Let x be in A intersect (B union C). Then x is in A and x is in B union C. Case 1: x in B. Then x in A intersect B, so x in (A intersect B) union (A intersect C). Case 2: x in C. Then x in A intersect C, so x in (A intersect B) union (A intersect C). The reverse direction is similar.
+Book of Proof chapter 1, sections 1.1 to 1.8. A **set** is an unordered collection of distinct elements, described by listing, $\{1,2,3\}$, or in set-builder notation, $\{x \in \mathbb{Z} : x > 0\}$. $A$ is a **subset** of $B$ if every element of $A$ is in $B$. The **power set** $\mathcal{P}(A)$ is the set of all subsets of $A$. The **union** is $A \cup B = \{x : x \in A \text{ or } x \in B\}$, the **intersection** is $A \cap B = \{x : x \in A \text{ and } x \in B\}$, and the **complement** is $A^c = \{x \in U : x \notin A\}$. The **Cartesian product** is $A \times B = \{(a,b) : a \in A, b \in B\}$, with $\lvert A \times B \rvert = \lvert A \rvert \cdot \lvert B \rvert$.
 
-**Essential problems**: Hammack Ch 1, Exercises: #1-8, #13-18, #25-30
-**Challenge problems**: Hammack Ch 1, Exercises: #31-36
+Three results recur. **De Morgan's laws**, $(A \cup B)^c = A^c \cap B^c$ and $(A \cap B)^c = A^c \cup B^c$, say that "not (this or that)" is "not this and not that": negation swaps union and intersection. **Inclusion-exclusion** for two sets, $\lvert A \cup B \rvert = \lvert A \rvert + \lvert B \rvert - \lvert A \cap B \rvert$, corrects the double count of the overlap. And $\lvert \mathcal{P}(A) \rvert = 2^{\lvert A \rvert}$, because each element is independently in or out.
 
-## 2. Logic
+For example, prove $A \cap (B \cup C) = (A \cap B) \cup (A \cap C)$. Let $x \in A \cap (B \cup C)$. Then $x \in A$ and $x \in B \cup C$. If $x \in B$, then $x \in A \cap B$, so $x$ is in the right side. If $x \in C$, then $x \in A \cap C$, so again $x$ is in the right side. The reverse inclusion is similar.
 
-**Textbook sections**: Ch 2, Sections 2.1-2.10
+Practice: Hammack chapter 1 exercises 1 to 8, 13 to 18, and 25 to 30; for a challenge, 31 to 36.
 
-**Key definitions**:
-- **Proposition**: A statement that is either true or false
-- **Conjunction (AND)**: P AND Q is true only when both P and Q are true
-- **Disjunction (OR)**: P OR Q is true when at least one of P, Q is true
-- **Negation (NOT)**: NOT P reverses the truth value
-- **Conditional**: P => Q (if P then Q); false only when P is true and Q is false
-- **Biconditional**: P <=> Q (P if and only if Q); true when P and Q have the same truth value
-- **Predicate**: A statement with a variable, e.g., P(x) = "x is even"
-- **Universal quantifier**: For all x, P(x) -- asserts P holds for every x in the domain
-- **Existential quantifier**: There exists x such that P(x) -- asserts P holds for at least one x
+### Logic
 
-**Key theorems**:
-- **Logical Equivalences**: P => Q is equivalent to NOT P OR Q. *Intuition*: "if P then Q" only fails when P is true and Q is false; in all other cases, the implication holds.
-- **Contrapositive**: P => Q is equivalent to NOT Q => NOT P. *Intuition*: "if it rained then the ground is wet" is the same as "if the ground is dry then it didn't rain."
-- **Negation of Quantifiers**: NOT(for all x, P(x)) is equivalent to there exists x such that NOT P(x). NOT(there exists x, P(x)) is equivalent to for all x, NOT P(x). *Intuition*: negation swaps quantifiers, just as De Morgan's Laws swap AND/OR.
+Book of Proof chapter 2, sections 2.1 to 2.10. A **proposition** is a statement that is either true or false. $P \land Q$ is true only when both are; $P \lor Q$ when at least one is; $\lnot P$ reverses the truth value. The **conditional** $P \Rightarrow Q$ is false only when $P$ is true and $Q$ is false, and the **biconditional** $P \iff Q$ is true when $P$ and $Q$ have the same truth value. A **predicate** is a statement with a variable, such as $P(x)$ = "$x$ is even". The **universal quantifier** $\forall x\, P(x)$ asserts $P$ for every $x$ in the domain; the **existential quantifier** $\exists x\, P(x)$ asserts it for at least one.
 
-**Worked example**:
-> Negate "For every epsilon > 0, there exists delta > 0 such that |x-a| < delta implies |f(x)-L| < epsilon." Negation: "There exists epsilon > 0 such that for all delta > 0, there exists x with |x-a| < delta and |f(x)-L| >= epsilon." Each quantifier flips, and the implication becomes a conjunction with negated consequent.
+$P \Rightarrow Q$ is equivalent to $\lnot P \lor Q$: "if $P$ then $Q$" fails only when $P$ is true and $Q$ is false. It is also equivalent to its **contrapositive** $\lnot Q \Rightarrow \lnot P$: "if it rained then the ground is wet" is the same as "if the ground is dry then it didn't rain." And negation swaps quantifiers, $\lnot \forall x\, P(x) \iff \exists x\, \lnot P(x)$ and $\lnot \exists x\, P(x) \iff \forall x\, \lnot P(x)$, just as De Morgan's laws swap AND and OR.
 
-**Essential problems**: Hammack Ch 2, Exercises: #1-10, #15-22
-**Challenge problems**: Hammack Ch 2, Exercises: #23-28
+For example, negate "for every $\epsilon > 0$ there exists $\delta > 0$ such that $|x - a| < \delta$ implies $|f(x) - L| < \epsilon$." The negation is "there exists $\epsilon > 0$ such that for all $\delta > 0$ there exists $x$ with $|x - a| < \delta$ and $|f(x) - L| \ge \epsilon$." Each quantifier flips, and the implication becomes a conjunction with the consequent negated.
 
-## 3. Counting
+Practice: Hammack chapter 2 exercises 1 to 10 and 15 to 22; for a challenge, 23 to 28.
 
-**Textbook sections**: Ch 3, Sections 3.1-3.5
+### Counting
 
-**Key definitions**:
-- **Multiplication principle**: If task 1 has m outcomes and task 2 has n outcomes, the sequence has m*n outcomes
-- **Addition principle**: If task 1 has m outcomes and task 2 has n outcomes (mutually exclusive), total is m+n
-- **Permutation**: An ordered arrangement; P(n,k) = n! / (n-k)!
-- **Combination**: An unordered selection; C(n,k) = n! / (k!(n-k)!)
-- **Binomial coefficient**: C(n,k), also written "n choose k"
+Book of Proof chapter 3, sections 3.1 to 3.5. The **multiplication principle**: if task 1 has $m$ outcomes and task 2 has $n$, the sequence has $mn$. The **addition principle**: if the tasks are mutually exclusive, the total is $m + n$. A **permutation** is an ordered arrangement, $P(n,k) = n!/(n-k)!$; a **combination** is an unordered selection, $\binom{n}{k} = n!/(k!(n-k)!)$, read "$n$ choose $k$".
 
-**Key theorems**:
-- **Binomial Theorem**: (x + y)^n = Sum from k=0 to n of C(n,k) * x^(n-k) * y^k. *Intuition*: expanding (x+y)^n, each term chooses x from some factors and y from the rest. The number of ways to choose k factors for y is C(n,k).
-- **Pascal's Identity**: C(n,k) = C(n-1,k-1) + C(n-1,k). *Intuition*: to choose k items from n, either include item n (then choose k-1 from the remaining n-1) or exclude it (choose k from n-1).
-- **Stars and Bars**: The number of ways to distribute n identical objects into k distinct bins is C(n+k-1, k-1). *Intuition*: arrange n stars and k-1 dividers in a row.
+The **binomial theorem** is $(x + y)^n = \sum_{k=0}^{n} \binom{n}{k} x^{n-k} y^k$: expanding $(x+y)^n$, each term chooses $x$ from some factors and $y$ from the rest, and there are $\binom{n}{k}$ ways to choose the $k$ factors for $y$. **Pascal's identity**, $\binom{n}{k} = \binom{n-1}{k-1} + \binom{n-1}{k}$, says that to choose $k$ items from $n$, you either include item $n$ (then choose $k-1$ from the remaining $n-1$) or exclude it (choose $k$ from $n-1$). **Stars and bars**: the number of ways to distribute $n$ identical objects into $k$ distinct bins is $\binom{n+k-1}{k-1}$, the arrangements of $n$ stars and $k-1$ dividers in a row.
 
-**Worked example**:
-> How many 5-card poker hands contain exactly 2 aces? Choose 2 aces from 4: C(4,2) = 6. Choose remaining 3 cards from the 48 non-aces: C(48,3) = 17296. Total: 6 * 17296 = 103776.
+Two examples. How many 5-card poker hands contain exactly 2 aces? Choose 2 aces from 4, $\binom{4}{2} = 6$, and the remaining 3 cards from the 48 non-aces, $\binom{48}{3} = 17296$, for $6 \cdot 17296 = 103776$. How many bit strings of length 8 have exactly 3 ones? Choose the positions of the ones: $\binom{8}{3} = 56$.
 
-> How many bit strings of length 8 have exactly 3 ones? Choose positions for the ones: C(8,3) = 56.
+Practice: Hammack chapter 3 exercises 1 to 12 and 17 to 24; for a challenge, 25 to 30.
 
-**Essential problems**: Hammack Ch 3, Exercises: #1-12, #17-24
-**Challenge problems**: Hammack Ch 3, Exercises: #25-30
+### Direct proof
 
-## 4. Direct Proof
+Book of Proof chapter 4, sections 4.1 to 4.5. A **direct proof** of $P \Rightarrow Q$ assumes $P$ and uses definitions, theorems, and logical reasoning to conclude $Q$. The technique is always the same: assume the hypothesis, unpack the definitions, manipulate using known results, and arrive at the conclusion.
 
-**Textbook sections**: Ch 4, Sections 4.1-4.5
+Prove that if $n$ is odd, then $n^2$ is odd. Assume $n$ is odd, so $n = 2k + 1$ for some integer $k$. Then $n^2 = (2k+1)^2 = 4k^2 + 4k + 1 = 2(2k^2 + 2k) + 1$. Since $2k^2 + 2k$ is an integer, $n^2$ has the form $2m + 1$, so it is odd.
 
-**Key definitions**:
-- **Direct proof of P => Q**: Assume P is true, then use definitions, theorems, and logical reasoning to conclude Q
+Prove that if $a \mid b$ and $b \mid c$, then $a \mid c$. Since $a \mid b$, $b = ak$ for some integer $k$; since $b \mid c$, $c = bj$ for some integer $j$. Then $c = (ak)j = a(kj)$, and since $kj$ is an integer, $a \mid c$.
 
-**Key technique**:
-- Assume the hypothesis. Unpack definitions. Manipulate using known results. Arrive at the conclusion.
+Practice: Hammack chapter 4 exercises 1 to 8, 13 to 18, and 23 to 28; for a challenge, 29 to 34.
 
-**Worked example**:
-> Prove: If n is odd, then n^2 is odd. Assume n is odd, so n = 2k+1 for some integer k. Then n^2 = (2k+1)^2 = 4k^2 + 4k + 1 = 2(2k^2 + 2k) + 1. Since 2k^2 + 2k is an integer, n^2 has the form 2m+1, so n^2 is odd.
+### Contrapositive proof
 
-> Prove: If a | b and b | c, then a | c. Since a | b, we have b = ak for some integer k. Since b | c, we have c = bj for some integer j. Then c = (ak)j = a(kj). Since kj is an integer, a | c.
+Book of Proof chapter 5, sections 5.1 to 5.3. A **contrapositive proof** of $P \Rightarrow Q$ proves the logically equivalent $\lnot Q \Rightarrow \lnot P$ instead. Use it when the negation of $Q$ gives you more to work with than assuming $P$ directly.
 
-**Essential problems**: Hammack Ch 4, Exercises: #1-8, #13-18, #23-28
-**Challenge problems**: Hammack Ch 4, Exercises: #29-34
+Prove that if $n^2$ is even, then $n$ is even. The contrapositive is: if $n$ is odd, then $n^2$ is odd. Assume $n = 2k + 1$; then $n^2 = 4k^2 + 4k + 1 = 2(2k^2 + 2k) + 1$, which is odd. This avoids the difficulty of working directly from "$n^2$ is even."
 
-## 5. Contrapositive Proof
+Prove that if $5x + 3$ is odd, then $x$ is even. The contrapositive: if $x$ is odd, $x = 2k + 1$, then $5x + 3 = 10k + 5 + 3 = 10k + 8 = 2(5k + 4)$, which is even.
 
-**Textbook sections**: Ch 5, Sections 5.1-5.3
+Practice: Hammack chapter 5 exercises 1 to 8 and 11 to 16; for a challenge, 17 to 20.
 
-**Key definitions**:
-- **Contrapositive proof of P => Q**: Prove NOT Q => NOT P instead (logically equivalent)
+### Proof by contradiction
 
-**Key technique**:
-- Use when the negation of Q gives you more to work with than assuming P directly.
+Book of Proof chapter 6, sections 6.1 to 6.4. A **proof by contradiction** assumes the statement is false and derives a logical contradiction: reason until you reach an impossibility (a number that is both even and odd, or a rational that is irrational), and conclude that the original statement must be true.
 
-**Worked example**:
-> Prove: If n^2 is even, then n is even. Contrapositive: If n is odd, then n^2 is odd. Assume n = 2k+1. Then n^2 = 4k^2+4k+1 = 2(2k^2+2k)+1, which is odd. (This avoids the difficulty of working directly from "n^2 is even.")
+Prove that $\sqrt2$ is irrational. Assume $\sqrt2 = a/b$ in lowest terms, $\gcd(a, b) = 1$. Then $2 = a^2/b^2$, so $a^2 = 2b^2$. Thus $a^2$ is even, so $a$ is even (by the contrapositive proof above). Write $a = 2c$. Then $4c^2 = 2b^2$, so $b^2 = 2c^2$, and $b$ is even. But then both $a$ and $b$ are even, contradicting $\gcd(a, b) = 1$.
 
-> Prove: If 5x + 3 is odd, then x is even. Contrapositive: If x is odd (x = 2k+1), then 5x+3 = 10k+5+3 = 10k+8 = 2(5k+4), which is even.
+Prove that there are infinitely many primes. Assume there are finitely many, $p_1, p_2, \dots, p_n$, and consider $N = p_1 p_2 \cdots p_n + 1$. $N$ is not divisible by any $p_i$ (the remainder is 1), so $N$ is either prime itself or has a prime factor not in the list. Either way, the list was not complete: a contradiction.
 
-**Essential problems**: Hammack Ch 5, Exercises: #1-8, #11-16
-**Challenge problems**: Hammack Ch 5, Exercises: #17-20
+Practice: Hammack chapter 6 exercises 1 to 8 and 13 to 18; for a challenge, 19 to 24.
 
-## 6. Proof by Contradiction
+### Non-conditional proofs
 
-**Textbook sections**: Ch 6, Sections 6.1-6.4
+Book of Proof chapter 7, sections 7.1 to 7.4. Some statements are not a single implication. An **if-and-only-if proof** proves both directions, $P \Rightarrow Q$ and $Q \Rightarrow P$. An **existence proof** shows that an object with the desired property exists, constructively or not. A **uniqueness proof** shows at most one object has the property: assume two, and show they are equal. A **proof by cases** breaks the claim into exhaustive cases and proves each separately.
 
-**Key definitions**:
-- **Proof by contradiction**: Assume the statement is false, then derive a logical contradiction
+Prove that $n$ is odd if and only if $n^2$ is odd. ($\Rightarrow$) If $n = 2k + 1$, then $n^2 = 4k^2 + 4k + 1 = 2(2k^2 + 2k) + 1$ is odd. ($\Leftarrow$) By contrapositive: if $n = 2k$, then $n^2 = 4k^2 = 2(2k^2)$ is even. Both directions are established.
 
-**Key technique**:
-- Assume NOT(statement). Reason logically until you reach an impossibility (e.g., a number that is both even and odd, or a rational that is irrational). Conclude the original statement must be true.
+Practice: Hammack chapter 7 exercises 1 to 8, 13 to 18, and 25 to 30; for a challenge, 31 to 36.
 
-**Worked example**:
-> Prove: sqrt(2) is irrational. Assume sqrt(2) = a/b where a/b is in lowest terms (gcd(a,b)=1). Then 2 = a^2/b^2, so a^2 = 2b^2. Thus a^2 is even, so a is even (by contrapositive from concept 5). Write a = 2c. Then 4c^2 = 2b^2, so b^2 = 2c^2, so b is even. But then both a and b are even, contradicting gcd(a,b)=1.
+### Mathematical induction
 
-> Prove: There are infinitely many primes. Assume there are finitely many: p_1, p_2, ..., p_n. Consider N = p_1*p_2*...*p_n + 1. N is not divisible by any p_i (remainder 1). So N is either prime itself or has a prime factor not in the list. Contradiction.
+Book of Proof chapter 10, sections 10.1 to 10.4. **Weak induction** proves $P(\text{base})$, then assumes $P(k)$ and proves $P(k+1)$, and concludes $P(n)$ for all $n \ge \text{base}$. **Strong induction** assumes $P(j)$ for all $\text{base} \le j \le k$ and proves $P(k+1)$. **Structural induction** inducts on recursively defined structures such as trees, lists, and formulas. Underneath all three is the **well-ordering principle**: every nonempty subset of the natural numbers has a least element. It is logically equivalent to induction: if induction failed, there would be a smallest counterexample, contradicting well-ordering.
 
-**Essential problems**: Hammack Ch 6, Exercises: #1-8, #13-18
-**Challenge problems**: Hammack Ch 6, Exercises: #19-24
+Prove $1 + 2 + \dots + n = n(n+1)/2$. Base case $n = 1$: the left side is 1 and the right side is $1 \cdot 2/2 = 1$. Inductive step: assume $1 + 2 + \dots + k = k(k+1)/2$. Then $1 + 2 + \dots + k + (k+1) = k(k+1)/2 + (k+1) = (k+1)(k/2 + 1) = (k+1)(k+2)/2$, the formula with $n = k + 1$.
 
-## 7. Non-Conditional Proofs
+Prove $2^n > n$ for all $n \ge 1$, in strong induction style. Base: $2^1 = 2 > 1$. Assume $2^j > j$ for all $1 \le j \le k$. Then $2^{k+1} = 2 \cdot 2^k > 2k \ge k + 1$, since $k \ge 1$.
 
-**Textbook sections**: Ch 7, Sections 7.1-7.4
+By structural induction, every binary tree with $n$ internal nodes has $n + 1$ leaves. Base: a tree with 0 internal nodes has 1 leaf. Inductive step: a tree with a root has a left subtree ($n_L$ internal nodes, $n_L + 1$ leaves) and a right subtree ($n_R$ internal, $n_R + 1$ leaves). Its internal nodes total $n_L + n_R + 1$, and its leaves $(n_L + 1) + (n_R + 1) = n_L + n_R + 2$, which is the internal count plus 1.
 
-**Key definitions**:
-- **If-and-only-if proof**: Prove both directions: P => Q and Q => P
-- **Existence proof**: Show an object with the desired property exists (constructive or non-constructive)
-- **Uniqueness proof**: Show at most one object has the property (assume two, show they are equal)
-- **Proof by cases**: Break into exhaustive cases and prove each separately
+Practice: Hammack chapter 10 exercises 1 to 10, 15 to 22, and 27 to 32; for a challenge, 33 to 38.
 
-**Worked example**:
-> Prove: n is odd if and only if n^2 is odd. (=>) If n is odd, n=2k+1, n^2=4k^2+4k+1=2(2k^2+2k)+1 is odd. (<=) Contrapositive: if n is even, n=2k, n^2=4k^2=2(2k^2) is even. Both directions established.
+### Relations
 
-**Essential problems**: Hammack Ch 7, Exercises: #1-8, #13-18, #25-30
-**Challenge problems**: Hammack Ch 7, Exercises: #31-36
+Book of Proof chapter 11, sections 11.1 to 11.6. A **relation** on $A$ is a subset $R$ of $A \times A$; write $a\,R\,b$ for $(a,b) \in R$. It is **reflexive** if $a\,R\,a$ for all $a$, **symmetric** if $a\,R\,b$ implies $b\,R\,a$, and **transitive** if $a\,R\,b$ and $b\,R\,c$ imply $a\,R\,c$. An **equivalence relation** has all three properties, and the **equivalence class** of $a$ is $[a] = \{x \in A : x\,R\,a\}$. A **partition** is a collection of nonempty, pairwise disjoint subsets whose union is $A$. A **partial order** is reflexive, **antisymmetric** ($a\,R\,b$ and $b\,R\,a$ imply $a = b$), and transitive.
 
-## 8. Mathematical Induction
+The **fundamental theorem of equivalence relations** says the equivalence classes of an equivalence relation on $A$ form a partition of $A$, and conversely every partition defines an equivalence relation. They are the same concept viewed from two angles: "being equivalent" means "being in the same part."
 
-**Textbook sections**: Ch 10, Sections 10.1-10.4
+For example, on $\mathbb{Z}$ define $a \sim b$ if and only if $3 \mid (a - b)$, congruence mod 3. It is reflexive, since $3 \mid (a - a) = 0$; symmetric, since $3 \mid (a - b)$ implies $3 \mid -(a - b) = (b - a)$; and transitive, since $3 \mid (a - b)$ and $3 \mid (b - c)$ imply $3 \mid (a - b) + (b - c) = (a - c)$. Its classes are $[0] = \{\dots, -6, -3, 0, 3, 6, \dots\}$, $[1] = \{\dots, -5, -2, 1, 4, 7, \dots\}$, and $[2] = \{\dots, -4, -1, 2, 5, 8, \dots\}$, which partition $\mathbb{Z}$.
 
-**Key definitions**:
-- **Weak induction**: Prove P(base). Assume P(k), prove P(k+1). Conclude P(n) for all n >= base.
-- **Strong induction**: Prove P(base). Assume P(j) for all base <= j <= k, prove P(k+1).
-- **Structural induction**: Induction on recursively defined structures (trees, lists, formulas)
+Practice: Hammack chapter 11 exercises 1 to 10 and 15 to 22; for a challenge, 23 to 28.
 
-**Key theorems**:
-- **Well-Ordering Principle**: Every nonempty subset of the natural numbers has a least element. *Intuition*: this is logically equivalent to the principle of induction -- if induction fails, there is a smallest counterexample, contradicting well-ordering.
+### Functions
 
-**Worked example**:
-> Prove: 1 + 2 + ... + n = n(n+1)/2. Base case: n=1, LHS = 1, RHS = 1(2)/2 = 1. Inductive step: Assume 1+2+...+k = k(k+1)/2. Then 1+2+...+k+(k+1) = k(k+1)/2 + (k+1) = (k+1)(k/2 + 1) = (k+1)(k+2)/2. This is the formula with n = k+1.
+Book of Proof chapter 12, sections 12.1 to 12.6. A **function** from $A$ to $B$ is a relation in which every element of $A$ is related to exactly one element of $B$. It is an **injection** (one-to-one) if $f(a) = f(b)$ implies $a = b$, a **surjection** (onto) if every $b \in B$ has some $a$ with $f(a) = b$, and a **bijection** if both, a one-to-one correspondence. **Composition** is $(g \circ f)(x) = g(f(x))$, and the **inverse** $f^{-1}$ exists if and only if $f$ is a bijection, with $f^{-1}(f(a)) = a$.
 
-> Prove: 2^n > n for all n >= 1 (strong induction style). Base: 2^1 = 2 > 1. Assume 2^j > j for all 1 <= j <= k. Then 2^(k+1) = 2 * 2^k > 2k >= k+1 (since k >= 1). Done.
+Four theorems organize the topic. Composition preserves the properties: if $f$ and $g$ are injective, so is $g \circ f$, and likewise for surjective; composing two "no-collision" maps gives a "no-collision" map, and composing two "everything is hit" maps gives an "everything is hit" map. $f$ has an inverse if and only if it is a bijection: to undo a function, every output must come from exactly one input. **Cantor's theorem**, $\lvert A \rvert < \lvert \mathcal{P}(A) \rvert$ for any set $A$ (there is no surjection from $A$ onto its power set), says there are always more subsets than elements, which is the source of different sizes of infinity. **Schröder-Bernstein**: if there are injections $A \to B$ and $B \to A$, there is a bijection between them; if each set fits inside the other, they are the same size.
 
-> Structural induction: Prove every binary tree with n internal nodes has n+1 leaves. Base: 0 internal nodes, 1 leaf. Inductive: A tree with root has left subtree (n_L internal, n_L+1 leaves) and right subtree (n_R internal, n_R+1 leaves). Total internal = n_L + n_R + 1. Total leaves = (n_L+1) + (n_R+1) = n_L + n_R + 2 = (internal nodes) + 1.
+Two examples. $f: \mathbb{Z} \to \mathbb{Z}$, $f(n) = 2n + 1$, is injective but not surjective. If $2a + 1 = 2b + 1$ then $a = b$; but $2n + 1 = 4$ requires $n = 3/2 \notin \mathbb{Z}$, so 4 has no preimage. And $f: \mathbb{R} \to \mathbb{R}$, $f(x) = x^3$, is a bijection: if $a^3 = b^3$ then $a = b$ (the cube root is well defined on $\mathbb{R}$), and for any $y$, $x = y^{1/3}$ satisfies $f(x) = y$. Its inverse is $f^{-1}(y) = y^{1/3}$.
 
-**Essential problems**: Hammack Ch 10, Exercises: #1-10, #15-22, #27-32
-**Challenge problems**: Hammack Ch 10, Exercises: #33-38
+Practice: Hammack chapter 12 exercises 1 to 10, 15 to 22, and 27 to 34; for a challenge, 35 to 40.
 
-## 9. Relations
+### Choosing a technique
 
-**Textbook sections**: Ch 11, Sections 11.1-11.6
+Much of the skill in the subject is recognizing which method fits a claim. This table pairs each with when to reach for it:
 
-**Key definitions**:
-- **Relation on A**: A subset R of A x A; we write a R b or (a,b) in R
-- **Reflexive**: a R a for all a in A
-- **Symmetric**: a R b implies b R a
-- **Transitive**: a R b and b R c implies a R c
-- **Equivalence relation**: A relation that is reflexive, symmetric, and transitive
-- **Equivalence class**: [a] = {x in A : x R a}; the set of all elements equivalent to a
-- **Partition**: A collection of nonempty, pairwise disjoint subsets whose union is A
-- **Partial order**: A relation that is reflexive, antisymmetric (a R b and b R a implies a = b), and transitive
+| Technique | When to use | Key formula or idea |
+|---|---|---|
+| Direct proof | prove $P \Rightarrow Q$ when definitions lead forward | assume $P$, derive $Q$ |
+| Contrapositive | $P \Rightarrow Q$ is hard; $\lnot Q \Rightarrow \lnot P$ is easier | negate both, reverse the direction |
+| Contradiction | existence, uniqueness, or irrationality proofs | assume the negation, derive an impossibility |
+| Weak induction | prove $P(n)$ for all $n \ge$ base | base case, plus $P(k) \Rightarrow P(k+1)$ |
+| Strong induction | $P(k+1)$ depends on several prior cases | base case, plus (all $P(j)$ for $j \le k$) $\Rightarrow P(k+1)$ |
+| Structural induction | properties of recursive structures (trees, lists) | base structure, plus induction on construction |
+| Proof by cases | the domain splits naturally | prove each case; make sure the cases are exhaustive |
+| Counting (multiplication) | sequential independent choices | multiply the options at each stage |
+| Counting (combinations) | unordered selections | $\binom{n}{k} = n!/(k!(n-k)!)$ |
+| Bijective proof | show two counts are equal | find a one-to-one correspondence |
 
-**Key theorems**:
-- **Fundamental Theorem of Equivalence Relations**: The equivalence classes of an equivalence relation on A form a partition of A, and conversely every partition of A defines an equivalence relation. *Intuition*: equivalence relations and partitions are the same concept viewed from two angles. "Being equivalent" means "being in the same part."
+## Where this leads
 
-**Worked example**:
-> On Z, define a ~ b iff 3 | (a - b) (congruence mod 3). Reflexive: 3 | (a-a) = 0. Symmetric: if 3 | (a-b), then 3 | (-(a-b)) = (b-a). Transitive: if 3 | (a-b) and 3 | (b-c), then 3 | ((a-b)+(b-c)) = (a-c). Equivalence classes: [0] = {...,-6,-3,0,3,6,...}, [1] = {...,-5,-2,1,4,7,...}, [2] = {...,-4,-1,2,5,8,...}. These partition Z.
+These ideas surface throughout computing. Propositional logic is boolean algebra, circuit design, and SAT solving; quantifiers and predicates are the WHERE clauses of database queries. Induction proves recursive algorithms correct, and loop invariants prove iterative ones, as in [Graphs, DAGs, and an iterative topological sort](../06-discrete-math-2/01-graphs-dags-and-topological-sort.md). Sets underlie data structures such as hash sets and tree sets, and type systems. Equivalence relations underlie union-find and database normalization, and partial orders underlie topological sort and dependency resolution. Bijections are the basis of encoding and decoding, hashing, and encryption, and [Modular arithmetic, hashing, and PCG32](../06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) continues in that direction. Counting and combinatorics drive algorithm analysis, from average cases and expected values in [Probability and statistics](../07-probability-statistics/) to the binomial sums in divide-and-conquer recurrences.
 
-**Essential problems**: Hammack Ch 11, Exercises: #1-10, #15-22
-**Challenge problems**: Hammack Ch 11, Exercises: #23-28
+### Further reading
 
-## 10. Functions
-
-**Textbook sections**: Ch 12, Sections 12.1-12.6
-
-**Key definitions**:
-- **Function**: A relation f from A to B such that every element of A is related to exactly one element of B
-- **Injection (one-to-one)**: f(a) = f(b) implies a = b
-- **Surjection (onto)**: For every b in B, there exists a in A with f(a) = b
-- **Bijection**: A function that is both injective and surjective; establishes a one-to-one correspondence
-- **Composition**: (g o f)(x) = g(f(x))
-- **Inverse**: f^(-1) exists iff f is a bijection; f^(-1)(f(a)) = a
-
-**Key theorems**:
-- **Composition Preserves Properties**: If f and g are injective, then g o f is injective. If f and g are surjective, then g o f is surjective. *Intuition*: composing two "no-collision" maps gives a "no-collision" map; composing two "everything-is-hit" maps gives an "everything-is-hit" map.
-- **Bijection and Inverse**: f has an inverse iff f is a bijection. *Intuition*: to "undo" a function, every output must come from exactly one input.
-- **Cantor's Theorem**: |A| < |P(A)| for any set A (there is no surjection from A onto its power set). *Intuition*: there are always more subsets of a set than elements -- this is the source of different sizes of infinity.
-- **Schroder-Bernstein**: If there exist injections A -> B and B -> A, then there exists a bijection A <-> B. *Intuition*: if each set "fits inside" the other, they must be the same size.
-
-**Worked example**:
-> Prove f: Z -> Z defined by f(n) = 2n + 1 is injective but not surjective. Injection: if 2a+1 = 2b+1, then a = b. Not surjective: is there n with 2n+1 = 4? That requires n = 3/2, which is not in Z. So 4 has no preimage.
-
-> Prove f: R -> R defined by f(x) = x^3 is a bijection. Injection: if a^3 = b^3, then a = b (cube root is well-defined on R). Surjection: for any y in R, x = y^(1/3) satisfies f(x) = y. Inverse: f^(-1)(y) = y^(1/3).
-
-**Essential problems**: Hammack Ch 12, Exercises: #1-10, #15-22, #27-34
-**Challenge problems**: Hammack Ch 12, Exercises: #35-40
-
----
-
-## Technique Catalog
-
-| Technique | When to Use | Key Formula/Idea |
-|-----------|-------------|------------------|
-| Direct Proof | Prove P => Q when definitions lead forward | Assume P, derive Q |
-| Contrapositive | P => Q is hard; NOT Q => NOT P is easier | Negate both, reverse direction |
-| Contradiction | Existence/uniqueness or irrationality proofs | Assume NOT(statement), derive impossibility |
-| Weak Induction | Prove P(n) for all n >= base | Base + (P(k) => P(k+1)) |
-| Strong Induction | P(k+1) depends on multiple prior cases | Base + (all P(j) for j <= k => P(k+1)) |
-| Structural Induction | Properties of recursive structures (trees, lists) | Base structure + induction on construction |
-| Proof by Cases | When the domain naturally splits | Prove each case separately, ensure exhaustive |
-| Counting (Multiplication) | Sequential independent choices | Multiply the number of options at each stage |
-| Counting (Combinations) | Unordered selections | C(n,k) = n! / (k!(n-k)!) |
-| Bijective Proof | Show two counts are equal | Find a one-to-one correspondence |
-
-## Connections to CS & Algorithms
-
-| Math Concept | CS Application | Repo Link |
-|-------------|----------------|-----------|
-| Propositional logic | Boolean algebra, circuit design, SAT solvers | algorithms track |
-| Quantifiers & predicates | Database query languages (SQL WHERE clauses) | systems track |
-| Induction | Proving correctness of recursive algorithms | algorithms track |
-| Sets & operations | Data structures (HashSet, TreeSet), type systems | algorithms track |
-| Relations (equivalence) | Union-Find data structure, database normalization | algorithms track |
-| Relations (partial order) | Topological sort, dependency resolution | algorithms track |
-| Functions (bijections) | Hashing, encoding/decoding, encryption | systems track |
-| Counting / combinatorics | Algorithm analysis (average case, expected values) | [07-probability-statistics](../07-probability-statistics/) |
-| Binomial theorem | Analyzing divide-and-conquer recurrences | algorithms track |
-
-## Company Relevance
-
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| Google/Meta | Combinatorics in interview problems (counting valid configurations) | Medium |
-| Amazon | Logic puzzles and constraint reasoning in interviews | Medium |
-| Any SWE role | Proving loop invariants, arguing correctness of algorithms | Medium |
-| Security (Cloudflare, CrowdStrike) | Logic underpins formal verification and access control | Hard |
-| Database companies (Snowflake, Databricks) | Relations, normalization, query equivalence | Medium |
-| Functional programming shops | Functions as first-class objects, composition, bijections | Medium |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `M05.1` | [Counting: params, FLOPs, KV bytes, memory plans](01-counting-params-flops-kv-bytes.md) | build | 5 |
-| 2 | `M05.2` | [Injective, surjective, bijective; the GPT-2 byte map](02-injective-surjective-bijective-gpt2-byte-map.md) | build | 3 |
-| 3 | `S-M05` | [Discrete math 1 problem set: sets, counting, proofs, induction, relations, bijections](90-problem-set.md) | solve | 2 |
+- Richard Hammack, [*Book of Proof*](https://people.vcu.edu/~rhammack/BookOfProof/) (CC BY-ND), the textbook this chapter follows. Write your proofs by hand in complete sentences and compare them with Hammack's solutions for style and rigor.

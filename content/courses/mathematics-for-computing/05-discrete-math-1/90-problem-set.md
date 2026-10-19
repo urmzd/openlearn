@@ -1,35 +1,22 @@
 # Discrete math 1 problem set: sets, counting, proofs, induction, relations, bijections
 
-## Overview
+The chapters ahead are arguments as much as code. [Graphs, DAGs, and an iterative topological sort](../06-discrete-math-2/01-graphs-dags-and-topological-sort.md) must order every node of the autograd graph before backward runs, and the only convincing evidence that it does is an induction over the traversal. [Modular arithmetic, hashing, and PCG32](../06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) builds a generator whose state wraps modulo $2^{64}$ and whose output is a counted rotation of bits. [Counting: parameters, FLOPs, KV bytes, and memory plans](01-counting-params-flops-kv-bytes.md) turns a `ModelConfig` into counts that decide whether a model fits on a laptop, and [Injective, surjective, bijective: the GPT-2 byte map](02-injective-surjective-bijective-gpt2-byte-map.md) proves a byte table invertible. In *Build Your Own LLM System*, [Masks: causal, padding, sliding window, additive](../../build-an-llm/p05-transformer-2017/02-masks.md) builds attention masks from boolean algebra, and [Softmax in C: three-pass and online two-pass](../../build-an-llm/p09-kernels/05-softmax-three-pass-and-online.md) streams a softmax in one pass under a loop invariant.
 
-| | |
-|---|---|
-| **Module** | `S-M05` · solve · none · Pass 2 · 8 to 10 h |
-| **Solution** | a worked answer after every problem in section 4: 23 problems with exact answers (34 parts) and 18 proofs (model proofs also in [`course/solutions/solve/S-M05/`](../../../../course/solutions/solve/S-M05/)) |
-| **Contract** | none: a pen and paper set |
-| **Needs** | high-school algebra. Reading: the [Discrete Math 1 topic](README.md), sections 1 to 6 |
-| **Used by** | no call site (a solve set). Do it before `M06.1` (toposort correctness is an induction), `M06.3` (PCG32 is counting and modular arithmetic), `M05.1` (parameter, FLOP, and KV-byte counts), `M05.2` (the GPT-2 byte bijection), `L5.2` (mask algebra), and `L9.2` (the online softmax invariant) |
-| **Optional depth** | Hammack, *Book of Proof* (free), ch. 1 to 10 and 12; Velleman, *How to Prove It*, ch. 3 and 6 |
+This set gives the vocabulary and the proof habits those sections assume: sets and logic, counting, the standard proof methods, induction, relations, and functions. It needs only high-school algebra and the overview in the [chapter opening](README.md), and it is best worked before the two sections of this chapter.
 
-## Key Takeaways
+The set has 23 problems with exact answers (34 parts) and 18 proofs, whose model proofs are also in [`course/solutions/solve/S-M05/`](../../../../course/solutions/solve/S-M05/). Every problem is followed by a collapsed worked answer with the final result or a complete model proof, and the common wrong answers and why they are wrong. Try each problem before opening its answer.
 
-- An attention mask is a set of allowed (query, key) pairs, so combining masks is set intersection and a fully masked row is the negation of "every row has a key" (q4, q5).
-- Every size in the system is a count: parameters are sums of matrix shapes, FLOPs are $2mkn$ per matmul, and KV-cache bytes are $2 \cdot L \cdot H_{kv} \cdot d_h \cdot b$ per token (q9 to q15).
-- A loop is correct when an invariant holds before it, survives one iteration, and implies the result at exit; the online softmax of `L9.2` is proved this way (q29, q30).
-- An equivalence relation is the same thing as "has the same image under some function", which is how Unicode normalization groups strings (q36).
-- A bijection is injective plus surjective; GPT-2's byte map is checked by exactly those two halves (q38 to q41).
+> **Learning objectives**
+> - Manipulate sets and quantified statements, including negating nested quantifiers, and read an attention mask as a set.
+> - Count with the product, permutation, combination, and stars-and-bars rules, and apply them to parameters, FLOPs, and KV-cache bytes.
+> - Write complete direct, contrapositive, contradiction, case, and pigeonhole proofs.
+> - Prove statements by induction and prove loops correct with invariants.
+> - Classify relations, and prove functions injective, surjective, or bijective.
 
-## How to read this chapter
+## The ideas you will use
 
-Sections 1 to 3 review the definitions and proof methods and work a count and a proof by hand. Section 4 is the problem set: every problem is followed by a collapsed worked answer with the final result or a complete model proof, and the common wrong answers and why they are wrong. Try each problem before opening its answer.
+Before the problems, here is a review of the definitions and methods they rely on, beginning with the notation:
 
----
-
-## 1. Why now
-
-Pass 1 gave a running tracer: a byte bigram trained in Python, served from Rust, behind a Go gateway. Pass 2 turns it into a stack you can reason about, and the next modules are arguments as much as code. `M06.1` must order every node of the autograd graph before backward runs, and the only convincing evidence that it does is an induction over the traversal. `M06.3` builds PCG32, whose state wraps modulo $2^{64}$ and whose output is a counted rotation of bits. `M05.1` turns a `ModelConfig` into parameter, FLOP, and KV-byte counts that decide whether a model fits on a laptop. `L5.2` builds attention masks from boolean algebra, and `L9.2` streams a softmax in one pass under a loop invariant. This set gives the vocabulary and the proof habits those modules assume: sets and logic, counting, the standard proof methods, induction, relations, and functions.
-
-## 2. Principles
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -46,21 +33,22 @@ Pass 1 gave a running tracer: a byte bigram trained in Python, served from Rust,
 | $f: X \to Y$ | a function: each $x \in X$ has exactly one image $f(x) \in Y$ | |
 | $g \circ f$ | composition, $x \mapsto g(f(x))$ | function |
 
-### 2.1 Sets
+
+### Sets
 
 A **set** is an unordered collection of distinct elements, written by listing, $\{1, 2, 3\}$, or by a rule, $\{x \in \mathbb{Z} : x > 0\}$. Order and repetition do not matter: $\{2, 1, 2\} = \{1, 2\}$. Two sets are **equal** when each is a subset of the other, which is how set identities are proved: take an arbitrary element of one side and show it is in the other, then the reverse ("double inclusion"). The **power set** $\mathcal{P}(A)$ is the set of all subsets of $A$; it has $2^{\lvert A \rvert}$ elements, because each element is independently in or out.
 
 A boolean mask is a set in disguise. An attention mask over $T$ positions is a subset of $\{0, \dots, T-1\}^2$, the pairs (query $i$, key $j$) that may interact, stored as a 0/1 matrix. The causal mask is $\{(i, j) : j \le i\}$, a padding mask is $\{(i, j) : j < L\}$, and applying both is their intersection, elementwise AND.
 
-### 2.2 Logic and quantifiers
+### Logic and quantifiers
 
 A **proposition** is a statement that is true or false. Connectives build new ones, defined by truth tables: $P \land Q$ is true when both are, $P \lor Q$ when at least one is, $\lnot P$ flips $P$, and $P \Rightarrow Q$ is false only when $P$ is true and $Q$ false. Two propositions are **logically equivalent** when they agree on every row of the truth table. The **contrapositive** $\lnot Q \Rightarrow \lnot P$ is equivalent to $P \Rightarrow Q$; the **converse** $Q \Rightarrow P$ is not. **De Morgan's laws** move a negation inward and swap the connective: $\lnot (P \lor Q) \iff \lnot P \land \lnot Q$ and $\lnot (P \land Q) \iff \lnot P \lor \lnot Q$. For sets they read $(A \cup B)^c = A^c \cap B^c$.
 
 A **predicate** $P(x)$ becomes a proposition once $x$ is fixed. **Quantifiers** close it over a domain: $\forall x\, P(x)$ ("for every $x$") and $\exists x\, P(x)$ ("there exists $x$"). Negation swaps them: $\lnot \forall x\, P(x) \iff \exists x\, \lnot P(x)$, and $\lnot \exists x\, P(x) \iff \forall x\, \lnot P(x)$. With nested quantifiers, swap each one and negate the innermost predicate.
 
-### 2.3 Counting
+### Counting
 
-Four rules count almost everything in this course.
+Four rules count almost everything in this book.
 
 - **Product rule.** A choice made in $k$ independent steps with $n_1, \dots, n_k$ options has $n_1 n_2 \cdots n_k$ outcomes. Strings of length $k$ over an alphabet of size $n$: $n^k$.
 - **Ordered without repetition.** Arranging $k$ of $n$ distinct items in order: $n(n-1)\cdots(n-k+1) = \frac{n!}{(n-k)!}$. All $n$ of them: $n!$.
@@ -71,7 +59,7 @@ The **sum rule** adds the sizes of disjoint cases. When the cases overlap, **inc
 
 Model sizes are counts of this kind. A matrix of shape $m \times n$ holds $mn$ numbers; a layer's parameter count is the sum over its matrices and vectors. A matrix product $C = AB$ with $A$ of shape $m \times k$ and $B$ of shape $k \times n$ computes $mn$ outputs, each a sum of $k$ products, so it takes $mkn$ multiplications and as many additions: $2mkn$ floating-point operations (FLOPs). A forward pass over $N$ parameters costs about $2N$ FLOPs per token, and training about $6N$ (the backward pass costs twice the forward), so training on $D$ tokens costs about $6ND$. The KV cache stores one key vector and one value vector of length $d_h$ per KV head per layer per token, at $b$ bytes per number: $2 L H_{kv} d_h b$ bytes per token.
 
-### 2.4 Proof methods
+### Proof methods
 
 A **proof** is a finite chain of statements, each a definition, an assumption, an earlier result, or a logical consequence of earlier lines, ending in the claim. The methods differ in what they assume first.
 
@@ -86,25 +74,25 @@ A **proof** is a finite chain of statements, each a definition, an assumption, a
 
 Definitions are the raw material: an integer $n$ is **even** if $n = 2k$ and **odd** if $n = 2k + 1$ for an integer $k$; a number is **rational** if it is $p/q$ for integers $p, q$ with $q \ne 0$; an integer $p \ge 2$ is **prime** if its only positive divisors are 1 and $p$.
 
-### 2.5 Induction and loop invariants
+### Induction and loop invariants
 
 **Induction** proves $P(n)$ for every integer $n \ge n_0$ in two steps: the **base case** $P(n_0)$, and the **inductive step** "if $P(k)$ then $P(k + 1)$" for every $k \ge n_0$. The assumption $P(k)$ is the **induction hypothesis**, and the step must use it rather than the conclusion. **Strong induction** assumes $P(m)$ for every $m$ with $n_0 \le m < n$ and proves $P(n)$; it suits claims where $n$ breaks into smaller pieces of arbitrary size, such as factorizations.
 
-A **loop invariant** is induction over iterations. To prove a loop correct, show three things: the invariant holds before the first iteration (initialization), one iteration preserves it (maintenance), and the loop stops (termination: some nonnegative integer strictly decreases). At exit, the invariant plus the exit condition imply the result. `L9.2` and `M06.1` both rest on arguments of this shape.
+A **loop invariant** is induction over iterations. To prove a loop correct, show three things: the invariant holds before the first iteration (initialization), one iteration preserves it (maintenance), and the loop stops (termination: some nonnegative integer strictly decreases). At exit, the invariant plus the exit condition imply the result. The online softmax kernel and the topological sort both rest on arguments of this shape.
 
-### 2.6 Relations
+### Relations
 
 A **relation** $R$ on a set $X$ is a set of ordered pairs from $X \times X$; write $x R y$ for $(x, y) \in R$. It is **reflexive** if $x R x$ for every $x$, **symmetric** if $x R y \Rightarrow y R x$, **antisymmetric** if $x R y \land y R x \Rightarrow x = y$, and **transitive** if $x R y \land y R z \Rightarrow x R z$.
 
-An **equivalence relation** is reflexive, symmetric, and transitive. Its **equivalence classes** $[x] = \{y : x R y\}$ partition $X$ into disjoint nonempty blocks, and every partition comes from exactly one equivalence relation, so counting equivalence relations on an $n$-set is counting its partitions (the Bell number $B_n$: $B_1 = 1, B_2 = 2, B_3 = 5$). A **partial order** is reflexive, antisymmetric, and transitive, like $\le$ on numbers, $\subseteq$ on sets, or "must run before" on the nodes of a computation graph (`M06.1`).
+An **equivalence relation** is reflexive, symmetric, and transitive. Its **equivalence classes** $[x] = \{y : x R y\}$ partition $X$ into disjoint nonempty blocks, and every partition comes from exactly one equivalence relation, so counting equivalence relations on an $n$-set is counting its partitions (the Bell number $B_n$: $B_1 = 1, B_2 = 2, B_3 = 5$). A **partial order** is reflexive, antisymmetric, and transitive, like $\le$ on numbers, $\subseteq$ on sets, or "must run before" on the nodes of a computation graph ([Graphs, DAGs, and an iterative topological sort](../06-discrete-math-2/01-graphs-dags-and-topological-sort.md)).
 
-### 2.7 Functions and bijections
+### Functions and bijections
 
 A function $f: X \to Y$ is **injective** (one-to-one) if $f(x) = f(x') \Rightarrow x = x'$, **surjective** (onto) if every $y \in Y$ equals some $f(x)$, and **bijective** if both; a bijection has an inverse $f^{-1}$. Between finite sets of equal size, injective and surjective imply each other. The number of functions from a $k$-set to an $n$-set is $n^k$, the injective ones number $\frac{n!}{(n-k)!}$, and the bijections of an $n$-set to itself number $n!$. To prove $f$ injective, take $x \ne x'$ and show $f(x) \ne f(x')$, often by cases on where $x$ and $x'$ lie.
 
-## 3. Worked example by hand
+## A count and a proof, worked by hand
 
-This is a sibling of q11 and q26, not one of the problems of the set.
+These two examples are siblings of q11 and q26, not problems of the set, and they show the level of detail the answers use.
 
 **Count.** SmolLM2-135M's attention uses grouped-query attention: width $d = 576$, 9 query heads and 3 key/value heads of size $d_h = 64$, no biases. How many parameters do its four projections hold?
 
@@ -114,11 +102,11 @@ The query projection maps width 576 to $9 \cdot 64 = 576$ outputs: a $576 \times
 
 *Method: induction on $n$.* Base case $n = 1$: the left side is $1 = 1^2$. Induction hypothesis: for some $k \ge 1$, $\sum_{i=1}^{k} (2i - 1) = k^2$. Inductive step: $\sum_{i=1}^{k+1} (2i - 1) = k^2 + (2(k+1) - 1)$ by the hypothesis, $= k^2 + 2k + 1 = (k+1)^2$, the claim for $n = k + 1$. By induction the claim holds for every $n \ge 1$.
 
-What makes it a complete proof: the claim and every symbol are stated, the method is named, the base case is explicit, the hypothesis is stated for $n = k$ and used in the step (not the conclusion), and the last line restates the claim. The model proofs for q26 to q30 in section 4 have the same shape.
+What makes it a complete proof: the claim and every symbol are stated, the method is named, the base case is explicit, the hypothesis is stated for $n = k$ and used in the step (not the conclusion), and the last line restates the claim. The model proofs for q26 to q30 below have the same shape.
 
-## 4. The problem set, with worked answers
+## The problems
 
-Answers are exact (for example $\binom{10}{3}$ or $3/4$, not $0.75$). Lettered parts share one answer block. The tag after each problem says what kind of answer is expected.
+The problems follow the same order as the review: sets and logic, counting, proof techniques, induction and loop invariants, relations, and functions and bijections. Answers are exact (for example $\binom{10}{3}$ or $3/4$, not $0.75$). Lettered parts share one answer block. The tag after each problem says what kind of answer is expected.
 
 ### Sets and logic
 
@@ -127,7 +115,7 @@ Answers are exact (for example $\binom{10}{3}$ or $3/4$, not $0.75$). Lettered p
 
 <details><summary>Answer</summary>
 
-**(a) $\{2, 4, 6\}$, (b) $\{1, 3, 5\}$, (c) $\{7, 9, 10\}$.** (a) The elements in both: $2, 4, 6$. (b) The elements of $A$ that are not in $B$: $1, 3, 5$. (c) $A \cup B = \{1, 2, 3, 4, 5, 6, 8\}$, and the rest of $U$ is $\{7, 9, 10\}$. Common mistakes: the union $\{1, 2, 3, 4, 5, 6, 8\}$ for (a); $B \setminus A = \{8\}$ for (b), since difference is not symmetric; and $\{7, 8, 9, 10\}$ for (c), the complement of $A$ alone. These are the operations of the mask algebra in `L5.2`.
+**(a) $\{2, 4, 6\}$, (b) $\{1, 3, 5\}$, (c) $\{7, 9, 10\}$.** (a) The elements in both: $2, 4, 6$. (b) The elements of $A$ that are not in $B$: $1, 3, 5$. (c) $A \cup B = \{1, 2, 3, 4, 5, 6, 8\}$, and the rest of $U$ is $\{7, 9, 10\}$. Common mistakes: the union $\{1, 2, 3, 4, 5, 6, 8\}$ for (a); $B \setminus A = \{8\}$ for (b), since difference is not symmetric; and $\{7, 8, 9, 10\}$ for (c), the complement of $A$ alone. These are the operations of the mask algebra in [Masks: causal, padding, sliding window, additive](../../build-an-llm/p05-transformer-2017/02-masks.md) in *Build Your Own LLM System*.
 
 </details>
 
@@ -165,7 +153,7 @@ Answers are exact (for example $\binom{10}{3}$ or $3/4$, not $0.75$). Lettered p
 
 <details><summary>Answer</summary>
 
-**(a).** The statement is $\forall i\ \exists j\ M_{ij} = 1$. Negating swaps each quantifier and negates the predicate: $\exists i\ \forall j\ M_{ij} = 0$, a row with no allowed key. That fully masked row is the NaN case of `L5.2` and `M09.2`. A common mistake is (c), which negates only the inner predicate and describes any matrix with a single 0; (b) is much stronger than the negation.
+**(a).** The statement is $\forall i\ \exists j\ M_{ij} = 1$. Negating swaps each quantifier and negates the predicate: $\exists i\ \forall j\ M_{ij} = 0$, a row with no allowed key. That fully masked row is the NaN case of [Masks: causal, padding, sliding window, additive](../../build-an-llm/p05-transformer-2017/02-masks.md) and of [Stable numerics: logsumexp, softmax, compensated sums](../09-numerical-methods-and-floating-point/02-stable-numerics.md). A common mistake is (c), which negates only the inner predicate and describes any matrix with a single 0; (b) is much stronger than the negation.
 
 </details>
 
@@ -209,7 +197,7 @@ Model proof also in [`q6.md`](../../../../course/solutions/solve/S-M05/q6.md).
 
 <details><summary>Answer</summary>
 
-**$mn + m$.** $W$ is $m \times n$, so $mn$ weights, plus one bias per output: $m$. This is how `M05.1`'s `param_count` adds biases. Common mistakes: $mn$ forgets the bias, and $mn + n$ sizes the bias by the input.
+**$mn + m$.** $W$ is $m \times n$, so $mn$ weights, plus one bias per output: $m$. This is how `param_count` in [Counting: parameters, FLOPs, KV bytes, and memory plans](01-counting-params-flops-kv-bytes.md) adds biases. Common mistakes: $mn$ forgets the bias, and $mn + n$ sizes the bias by the input.
 
 </details>
 
@@ -233,7 +221,7 @@ Model proof also in [`q6.md`](../../../../course/solutions/solve/S-M05/q6.md).
 
 <details><summary>Answer</summary>
 
-**$2mkn$.** $C$ has $mn$ entries, and each is a dot product of length $k$: $k$ multiplications and $k$ additions into the accumulator, $2k$ FLOPs. That is the $2MKN$ of `M03.1` and the `L9.1` roofline. A common mistake is $mkn$, which counts multiply-adds, not FLOPs.
+**$2mkn$.** $C$ has $mn$ entries, and each is a dot product of length $k$: $k$ multiplications and $k$ additions into the accumulator, $2k$ FLOPs. That is the $2MKN$ of [Vectors, matrices, row-major layout, and matmul](../03-linear-algebra/01-vectors-matrices-and-matmul.md) and of the roofline in [the matmul kernel](../../build-an-llm/p09-kernels/04-tiled-batch-invariant-matmul.md). A common mistake is $mkn$, which counts multiply-adds, not FLOPs.
 
 </details>
 
@@ -517,7 +505,7 @@ Model proof also in [`q29.md`](../../../../course/solutions/solve/S-M05/q29.md).
 
 </details>
 
-**q30.** The online softmax (the C kernel of `L9.2`) reads $x_0, x_1, \dots$ once, keeping a running maximum $m$ and a running sum $s$. It starts at $m = -\infty$, $s = 0$ (with $e^{-\infty} = 0$), and for each new $x_i$ sets $m' = \max(m, x_i)$ and $s' = s \cdot e^{m - m'} + e^{x_i - m'}$. Prove that after reading $x_0, \dots, x_{i-1}$ it holds that $m = \max_{j < i} x_j$ and $s = \sum_{j < i} e^{x_j - m}$. `[proof]`
+**q30.** The online softmax (the C kernel of [Softmax in C: three-pass and online two-pass](../../build-an-llm/p09-kernels/05-softmax-three-pass-and-online.md)) reads $x_0, x_1, \dots$ once, keeping a running maximum $m$ and a running sum $s$. It starts at $m = -\infty$, $s = 0$ (with $e^{-\infty} = 0$), and for each new $x_i$ sets $m' = \max(m, x_i)$ and $s' = s \cdot e^{m - m'} + e^{x_i - m'}$. Prove that after reading $x_0, \dots, x_{i-1}$ it holds that $m = \max_{j < i} x_j$ and $s = \sum_{j < i} e^{x_j - m}$. `[proof]`
 
 <details><summary>Answer</summary>
 
@@ -579,7 +567,7 @@ Model proof also in [`q30.md`](../../../../course/solutions/solve/S-M05/q30.md).
 
 </details>
 
-**q36.** Prove: for any function $f: X \to Y$, the relation $x \sim y \iff f(x) = f(y)$ is an equivalence relation on $X$. (Unicode normalization in `L1.1` is this relation with $f = \mathrm{NFC}$.) `[proof]`
+**q36.** Prove: for any function $f: X \to Y$, the relation $x \sim y \iff f(x) = f(y)$ is an equivalence relation on $X$. (Unicode normalization in [Tokenizer protocol, char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md) is this relation with $f = \mathrm{NFC}$.) `[proof]`
 
 <details><summary>Answer</summary>
 
@@ -625,7 +613,7 @@ Model proof also in [`q37.md`](../../../../course/solutions/solve/S-M05/q37.md).
 
 <details><summary>Answer</summary>
 
-**(a) True, (b) false.** (a) $2n + 1 = 2n' + 1$ gives $n = n'$. (b) $2n + 1$ is always odd, so no even integer (for example 0) is an image. Injective and surjective are the two halves of `M05.2`'s bijection test, and they are independent.
+**(a) True, (b) false.** (a) $2n + 1 = 2n' + 1$ gives $n = n'$. (b) $2n + 1$ is always odd, so no even integer (for example 0) is an image. Injective and surjective are the two halves of the bijection test in [Injective, surjective, bijective: the GPT-2 byte map](02-injective-surjective-bijective-gpt2-byte-map.md), and they are independent.
 
 </details>
 
@@ -655,7 +643,7 @@ Model proof also in [`q40.md`](../../../../course/solutions/solve/S-M05/q40.md).
 
 </details>
 
-**q41.** GPT-2's byte-to-character map (`M05.2`) keeps the 188 printable bytes $P = \{33, \dots, 126\} \cup \{161, \dots, 172\} \cup \{174, \dots, 255\}$ as themselves ($f(b) = b$) and sends the other 68 bytes, in increasing order, to $256, 257, \dots, 323$. Prove that $f: \{0, \dots, 255\} \to \mathbb{N}$ is injective, so it is a bijection onto its image. `[proof]`
+**q41.** GPT-2's byte-to-character map ([Injective, surjective, bijective: the GPT-2 byte map](02-injective-surjective-bijective-gpt2-byte-map.md)) keeps the 188 printable bytes $P = \{33, \dots, 126\} \cup \{161, \dots, 172\} \cup \{174, \dots, 255\}$ as themselves ($f(b) = b$) and sends the other 68 bytes, in increasing order, to $256, 257, \dots, 323$. Prove that $f: \{0, \dots, 255\} \to \mathbb{N}$ is injective, so it is a bijection onto its image. `[proof]`
 
 <details><summary>Answer</summary>
 
@@ -677,30 +665,55 @@ Model proof also in [`q41.md`](../../../../course/solutions/solve/S-M05/q41.md).
 
 </details>
 
-## 5. Pitfalls
+## What can go wrong
 
-| Pitfall | Symptom | How the solution avoids it |
+The common wrong answers discussed under the problems come from a small number of recurring mistakes. Each has a symptom you would see in real code, and a habit that prevents it:
+
+| Pitfall | Symptom | How to avoid it |
 |---|---|---|
-| Combining masks with OR, or forgetting the padding key | a pad position gets attention weight | intersects the two masks (AND) and clears the pad column (q4) |
-| Negating only the inner predicate of a nested quantifier | one tests "some entry is 0" instead of "some row is all 0" | swaps every quantifier, outermost first, then negates the predicate (q5) |
-| Counting multiply-adds instead of FLOPs | FLOP and roofline numbers off by 2 | counts a multiplication and an addition separately: $2k$ per output entry (q12) |
-| Using $2ND$ (forward only) for training compute | a training budget 3 times too small | uses $6ND$: 2 for the forward pass, 4 for the backward (q13) |
-| Caching keys only, or sizing the cache by query heads | KV memory off by 2 or by the GQA group size | writes the factor 2 for keys and values and uses $H_{kv}$, not $H$ (q14) |
-| Adding overlapping cases twice | inclusion-exclusion overcount | subtracts the intersection once (q16) |
-| Checking many cases instead of proving | a "for every $n$" claim believed from $n = 1$ to $40$ | looks for one counterexample, $n = 41$, instead of checking cases (q23) |
-| Using the conclusion inside the inductive step | a circular proof | states the hypothesis for $k$ and uses it only to derive the case $k + 1$ (q26 to q30) |
-| Forgetting the running sum must be rescaled when the max changes | online softmax overflows or is wrong after a new max | multiplies $s$ by $e^{m - m'}$ on every step, so every term is shifted by the current max (q30, q33) |
-| Confusing all functions with injective ones | $n^k$ where $\frac{n!}{(n-k)!}$ was asked | counts images one element at a time without reuse: $n(n-1)\cdots$ (q39) |
+| Combining masks with OR, or forgetting the padding key | a pad position gets attention weight | intersect the two masks (AND) and clear the pad column (q4) |
+| Negating only the inner predicate of a nested quantifier | one tests "some entry is 0" instead of "some row is all 0" | swap every quantifier, outermost first, then negate the predicate (q5) |
+| Counting multiply-adds instead of FLOPs | FLOP and roofline numbers off by 2 | count a multiplication and an addition separately: $2k$ per output entry (q12) |
+| Using $2ND$ (forward only) for training compute | a training budget 3 times too small | use $6ND$: 2 for the forward pass, 4 for the backward (q13) |
+| Caching keys only, or sizing the cache by query heads | KV memory off by 2 or by the GQA group size | write the factor 2 for keys and values and use $H_{kv}$, not $H$ (q14) |
+| Adding overlapping cases twice | inclusion-exclusion overcount | subtract the intersection once (q16) |
+| Checking many cases instead of proving | a "for every $n$" claim believed from $n = 1$ to $40$ | look for one counterexample, $n = 41$, instead of checking cases (q23) |
+| Using the conclusion inside the inductive step | a circular proof | state the hypothesis for $k$ and use it only to derive the case $k + 1$ (q26 to q30) |
+| Forgetting the running sum must be rescaled when the max changes | online softmax overflows or is wrong after a new max | multiply $s$ by $e^{m - m'}$ on every step, so every term is shifted by the current max (q30, q33) |
+| Confusing all functions with injective ones | $n^k$ where $\frac{n!}{(n-k)!}$ was asked | count images one element at a time without reuse: $n(n-1)\cdots$ (q39) |
 
-## 6. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Forward | `M06.1` | toposort over the autograd graph; its correctness proof is an induction over the traversal (S-M06a q20) |
-| Forward | `M06.3` | PCG32 and SplitMix64: counting bits, rotations, and arithmetic modulo $2^{64}$ |
-| Forward | `M05.1` | `param_count`, `flops_per_token`, `kv_bytes_per_token`, `memory_plan` are q9 to q15 as code |
-| Forward | `M05.2` | `bytes_to_unicode` is the bijection of q41; a correct solution must be injective and surjective |
-| Forward | `L5.2` | causal and padding masks combined as sets (q4, q5) |
-| Forward | `L9.2` | the online softmax kernel in C; q30 is its correctness argument |
-| Forward | `L1.1` | Unicode normalization as an equivalence relation (q36) |
-| Forward | `S-M06a` | graphs, modular arithmetic, and hashing build on these counting and proof tools |
+The tools of this set are used directly in code throughout the book and in *Build Your Own LLM System*:
+
+- [Graphs, DAGs, and an iterative topological sort](../06-discrete-math-2/01-graphs-dags-and-topological-sort.md) orders the autograd graph; its correctness proof is an induction over the traversal (q20 of [the first discrete math 2 problem set](../06-discrete-math-2/90-problem-set-a.md)).
+- [Modular arithmetic, hashing, and PCG32](../06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) builds PCG32 and SplitMix64 from counting bits, rotations, and arithmetic modulo $2^{64}$.
+- [Counting: parameters, FLOPs, KV bytes, and memory plans](01-counting-params-flops-kv-bytes.md) turns q9 to q15 into code: `param_count`, `flops_per_token`, `kv_bytes_per_token`, and `memory_plan`.
+- [Injective, surjective, bijective: the GPT-2 byte map](02-injective-surjective-bijective-gpt2-byte-map.md) implements the bijection of q41; a correct solution must be injective and surjective.
+- [Masks: causal, padding, sliding window, additive](../../build-an-llm/p05-transformer-2017/02-masks.md) combines causal and padding masks as sets (q4, q5).
+- [Softmax in C: three-pass and online two-pass](../../build-an-llm/p09-kernels/05-softmax-three-pass-and-online.md) is the online softmax kernel; q30 is its correctness argument.
+- [Tokenizer protocol, char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md) treats Unicode normalization as an equivalence relation (q36).
+- [The first discrete math 2 problem set](../06-discrete-math-2/90-problem-set-a.md) builds graphs, modular arithmetic, and hashing on these counting and proof tools.
+
+### Further reading
+
+- Hammack, *Book of Proof* (free), chapters 1 to 10 and 12.
+- Velleman, *How to Prove It*, chapters 3 and 6.
+
+## Key terms
+
+- **Set**: an unordered collection of distinct elements.
+- **Contrapositive**: $\lnot Q \Rightarrow \lnot P$, logically equivalent to $P \Rightarrow Q$.
+- **Binomial coefficient**: $\binom{n}{k}$, the number of $k$-element subsets of an $n$-element set.
+- **Induction hypothesis**: the assumption $P(k)$ used to prove $P(k + 1)$.
+- **Loop invariant**: a statement that holds before a loop, survives each iteration, and with the exit condition implies the result.
+- **Equivalence relation**: a reflexive, symmetric, transitive relation; its classes partition the set.
+- **Bijection**: a function that is both injective and surjective, and so has an inverse.
+
+## Summary
+
+- An attention mask is a set of allowed (query, key) pairs, so combining masks is set intersection and a fully masked row is the negation of "every row has a key" (q4, q5).
+- Every size in the system is a count: parameters are sums of matrix shapes, FLOPs are $2mkn$ per matmul, and KV-cache bytes are $2 \cdot L \cdot H_{kv} \cdot d_h \cdot b$ per token (q9 to q15).
+- A loop is correct when an invariant holds before it, survives one iteration, and implies the result at exit; the online softmax kernel is proved this way (q29, q30).
+- An equivalence relation is the same thing as "has the same image under some function", which is how Unicode normalization groups strings (q36).
+- A bijection is injective plus surjective; GPT-2's byte map is checked by exactly those two halves (q38 to q41).
