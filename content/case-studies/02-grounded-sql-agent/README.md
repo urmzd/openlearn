@@ -98,7 +98,7 @@ The tool split lets the model narrow first and fetch detail second.
 large. The next step is a retrieval layer over table and column descriptions,
 fetching only the top-k relevant tables per question -- which makes this a RAG
 problem, and hands it to [Retrieval &
-RAG](../../content/tracks/ai-platform-engineering/07-retrieval-and-rag/). Knowing the point at
+RAG](../../tracks/ai-platform-engineering/07-retrieval-and-rag/). Knowing the point at
 which your design breaks is part of the design.
 
 ## 3. Bounded self-correction

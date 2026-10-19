@@ -1,45 +1,37 @@
-<!-- ol:module craft.22 -->
 # Model evals as tests (R8)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `craft.22` · practice · Python · Pass 9 · 3 to 4 h |
-| **You build** | `primers/craft.22/evals.py` (a kata: held-out bits per byte, a seeded sample-quality score, the paired sign-flip test, and the regression rule), `primers/craft.22/test_model_evals.py` (your eval suite), and `primers/craft.22/baseline.json` (the good model, measured) |
-| **Contract** | the rules in the kata's docstring (`ol start craft.22` writes the stub; `ol check craft.22` writes the course's model `tinymodel.py` beside it) |
-| **Tests** | `course/tests/craft.22/`: the grade of your suite by two harmless variants and seven model mutants (section 4), on the model in `course/fixtures/craft.22/` (`course/oracle/craft.22/train_tinylm.py`) |
-| **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how tests are graded · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · `M07.5` permutation tests · `M11.2` bits per byte · `L6.7` the eval harness and zoo · `L7.3` RoPE |
-| **Used by** | no call site (a practice): rung R8 grades the model evals of `C1` (and of `L12` and `C2`), whose release gates are these numbers |
-| **Milestone** | `MS-C1` (the capstone's held-out loss and seeded quality are measured with your evals) |
+| **Module** | `craft.22` · practice · Python · Pass 9 · 2 h reading |
+| **Solution** | [`evals.py`](../../../../course/solutions/primers/craft.22/evals.py) (a kata: held-out bits per byte `heldout_bpb`, a seeded sample-quality score `quality_score`, the paired sign-flip test `sign_flip_p`, and the regression rule `regressed`), [`test_model_evals.py`](../../../../course/solutions/primers/craft.22/test_model_evals.py) (the eval suite), and [`baseline.json`](../../../../course/solutions/primers/craft.22/baseline.json) (the good model, measured); the model under test is [`tinymodel.py`](../../../../course/solutions/primers/craft.22/tinymodel.py) |
+| **Contract** | the rules in the kata's docstring (quoted in section 4) |
+| **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how a test suite is judged by planted faults · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · `M07.5` permutation tests · `M11.2` bits per byte · `L6.7` the eval harness and zoo · `L7.3` RoPE |
+| **Used by** | no call site (a practice): rung R8 asks for model evals in `C1` (and `L12` and `C2`), whose release gates are these numbers; the capstone's held-out loss and seeded quality are measured this way |
 | **Optional depth** | Dror et al., ["The Hitchhiker's Guide to Testing Statistical Significance in NLP"](https://aclanthology.org/P18-1128/) (ACL 2018, free); Good, *Permutation, Parametric, and Bootstrap Tests of Hypotheses*, ch. 3; Biderman et al., ["Lessons from the Trenches on Reproducible Evaluation of Language Models"](https://arxiv.org/abs/2405.14782) (2024, free) |
 
 ## Key Takeaways
 
-- A model eval **is a test**: a held-out metric and a regression rule, run on every change, that fails the build. It is graded like any test, by the defects it catches.
-- A model is never bit-identical to its baseline: float64 arithmetic, another BLAS, or a new sampling stream all move the numbers. A **margin and a significance test** keep the suite quiet on harmless changes (`test_no_false_alarms`).
-- **Five seeds is the minimum** for $p < 0.05$ with an exact paired sign-flip test: the smallest possible p-value is $1/2^n$, and $1/16 > 0.05$ (`test_hand_example_five_seeds`).
-- **One metric is not enough.** Held-out loss is blind to decoding bugs, and a broken final norm can make bpb *better* while samples get worse; the suite needs a loss and a seeded generation score (`test_model_mutants_are_flagged`).
+- A model eval **is a test**: a held-out metric and a regression rule, run on every change, that fails the build. It is judged like any test, by the defects it catches.
+- A model is never bit-identical to its baseline: float64 arithmetic, another BLAS, or a new sampling stream all move the numbers. A **margin and a significance test** keep the suite quiet on harmless changes.
+- **Five seeds is the minimum** for $p < 0.05$ with an exact paired sign-flip test: the smallest possible p-value is $1/2^n$, and $1/16 > 0.05$.
+- **One metric is not enough.** Held-out loss is blind to decoding bugs, and a broken final norm can make bpb *better* while samples get worse; the suite needs a loss and a seeded generation score.
 
-## How to work this chapter
+## How to read this chapter
+
+Sections 1 to 3 build the statistics from first principles and work four candidates by hand. Section 4 fixes the kata's rules and the model's interface. Section 5 walks through the solution function by function, then the three-test suite, and explains why each choice is right. Try to compute each p-value before reading it. The solution is used like this (the fixtures, `tinylm.npz`, `val.txt`, and `words.txt`, live under `$TINYLLM_FIXTURES/craft.22/`):
 
 ```bash
-ol start craft.22           # writes primers/craft.22/evals.py (stubs)
-ol check craft.22           # first run: also writes tinymodel.py, then fails
-# write evals.py, record the baseline, write test_model_evals.py, run it yourself:
-export TINYLLM_FIXTURES=$PWD/.ol/openlearn/course/fixtures
-uv run --no-project --with numpy python primers/craft.22/evals.py --record
-(cd primers/craft.22 && uv run --no-project --with pytest --with numpy python -m pytest -q test_model_evals.py)
-ol check craft.22           # grades your suite: harmless variants and model mutants
+uv run --no-project --with numpy python course/solutions/primers/craft.22/evals.py --record   # writes baseline.json
+(cd course/solutions/primers/craft.22 && uv run --no-project --with pytest --with numpy python -m pytest -q test_model_evals.py)
 ```
-
-(`ol check` sets `TINYLLM_FIXTURES` itself; point it at the `fixtures/` directory of your openlearn checkout when you run by hand.) A survivor prints only its one-line description, never the planted code.
 
 ---
 
 ## 1. Why now
 
-Your capstone (`C1`) trains for hours, and your release workflow (`dur.12`) gates on eval numbers. Until now a model was right when its logits matched a fixture to $10^{-5}$ (Parts 5 to 8). That oracle is gone the moment you train your own model: there is no reference to match, and two correct runs differ. Yet the bugs are real and quiet. A RoPE base read from the wrong config key, a layer skipped by an off-by-one, a tokenizer that lost one merge: every one of them still trains, still produces plausible text, and costs a few tenths of a bit per byte. Without a regression test you find out from users. This module builds the test: measured numbers, recorded from a good model, compared with statistics that know the difference between noise and a defect.
+The capstone (`C1`) trains for hours, and the release workflow (`dur.12`) gates on eval numbers. Until now a model was right when its logits matched a fixture to $10^{-5}$ (Parts 5 to 8). That oracle is gone the moment you train a new model: there is no reference to match, and two correct runs differ. Yet the bugs are real and quiet. A RoPE base read from the wrong config key, a layer skipped by an off-by-one, a tokenizer that lost one merge: every one of them still trains, still produces plausible text, and costs a few tenths of a bit per byte. Without a regression test you find out from users. This module builds the test: measured numbers, recorded from a good model, compared with statistics that know the difference between noise and a defect.
 
 ## 2. Principles
 
@@ -82,9 +74,9 @@ Five seeds. The baseline's bpb is 1.00 at each, $\delta = 0.02$, $\alpha = 0.05$
 
 **Four seeds**, all worse: $p = 1/16 = 0.0625$. Nothing can ever be flagged.
 
-These numbers are `test_hand_example_five_seeds`.
+A correct `sign_flip_p` and `regressed` must reproduce these four verdicts exactly.
 
-## 4. The artifact and its check
+## 4. The artifacts
 
 **The kata**, `primers/craft.22/evals.py` (its docstring is the spec):
 
@@ -101,42 +93,187 @@ def regressed(base, cand, margin, alpha=0.05, higher_is_better=False) -> bool
 # python evals.py --record   writes baseline.json
 ```
 
-**The model**, `primers/craft.22/tinymodel.py` (the course's; read it, do not edit it): `load()`, `encode`, `decode`, `log_probs(ids)`, `sample(prompt, tokens, rng, temperature=0.8)`. It is a two-layer Llama-style decoder (RMSNorm, RoPE, SwiGLU, tied embeddings) over a character BPE of 96 merges, trained on synthetic stories; the held-out stories and the training vocabulary are fixtures.
+**The model**, `primers/craft.22/tinymodel.py` (given, not part of the solution's design): `load()`, `encode`, `decode`, `log_probs(ids)`, `sample(prompt, tokens, rng, temperature=0.8)`. It is a two-layer Llama-style decoder (RMSNorm, RoPE, SwiGLU, tied embeddings) over a character BPE of 96 merges, trained on synthetic stories; the held-out stories and the training vocabulary are fixtures.
 
-**Your suite**, `primers/craft.22/test_model_evals.py`: at least two tests, importing only `evals`, `tinymodel`, numpy, pytest, and the stdlib, reading the fixtures through `TINYLLM_FIXTURES`, and failing when held-out bpb or sample quality regressed against `baseline.json` (margins 0.02 each work well).
+**The suite**, `primers/craft.22/test_model_evals.py`: at least two tests, importing only `evals`, `tinymodel`, numpy, pytest, and the stdlib, reading the fixtures through `TINYLLM_FIXTURES`, and failing when held-out bpb or sample quality regressed against `baseline.json` (margins 0.02 each).
 
-**The check** (`ol check craft.22`, `course/tests/craft.22/check`) runs eight tests:
+### What a correct solution must handle
 
-| Test | KIND | Checks |
+| Case | Kind of check | Why it matters downstream |
 |---|---|---|
-| `test_hand_example_five_seeds` | unit | section 3 with your `sign_flip_p` and `regressed` |
-| `test_your_evals_match_the_reference` | golden | your bpb, word, repeat, and quality functions equal the course's |
-| `test_your_suite_is_an_eval_suite` | unit | the suite exists, at least 2 tests, allowed imports, `TINYLLM_FIXTURES`; `baseline.json` has 5 or more seeds |
-| `test_your_baseline_is_the_good_model` | golden | `baseline.json` equals the good model measured now |
-| `test_your_suite_passes_on_the_good_model` | conformance | baseline A: your suite passes on the model it was recorded from |
-| `test_no_false_alarms` | conformance | your suite passes on `b01` (float64) and `b02` (another sampling stream) |
-| `test_model_mutants_are_flagged` | fault | your suite fails on at least 80% of the 7 model mutants, always on `s01` to `s03` |
+| section 3's four candidates on `sign_flip_p` and `regressed` | unit | the decision rule every release gate uses |
+| bpb, word, repeat, and quality functions follow the docstring exactly (window choice, pooling, the one rng) | golden | a baseline recorded with one definition and compared with another is meaningless |
+| `baseline.json` has 5 or more seeds and equals the good model measured now | golden | a stale or typed-in baseline gates against a model that does not exist |
+| the suite passes on the good model | conformance | a gate that fails the model it was recorded from is switched off |
+| the suite passes on two harmless variants: float64 arithmetic, another sampling stream | conformance | no false alarms on changes that do not matter |
+| the suite fails on at least 80% of seven model mutants, always on the wrong RoPE base, a dropped layer, and a tokenizer one merge short | fault | rung R8: the defects that train and generate but are wrong |
 
-Each run copies your suite, your evals, and your baseline next to one version of the model in a scratch directory and runs pytest in its own process group with a timeout.
+## 5. The solution, step by step
 
-## 5. Pitfalls
+### 5.1 From first principles
 
-| Pitfall | Symptom | Caught by |
+1. **There is no exact oracle for a trained model,** so a test must compare a candidate with a recorded good model and decide whether the difference is a defect. That needs a measurement, a baseline, and a rule.
+2. **Differences between windows are larger than differences between models.** So measure both models on the same windows with the same seeds, and test the per-seed differences: pairing cancels window difficulty (2.1). This forces the seed to choose the windows (`default_rng(seed)`), so the baseline and the candidate see the same text.
+3. **The metric must not depend on the tokenizer,** or a tokenizer bug hides in it. Bits per byte, pooled as total bits over total bytes, has that property; a mean of per-window ratios would overweight short windows, and a per-token loss rewards a tokenizer that makes more, easier tokens.
+4. **The first token of a window is never predicted,** so its bytes must not be in the denominator; otherwise bpb is biased low by a tokenizer-dependent amount.
+5. **Generation bugs are invisible to teacher-forced loss.** So a second metric must run the sampler with a seeded generator and score the text; the score must be cheap and catch the two ways a broken model fails: non-words and loops.
+6. **The rule needs a margin and a p-value** (2.3), and an exact test needs no distributional assumption. With $n = 5$ the sign-flip test enumerates 32 vectors, which is trivially cheap and exact.
+7. **Two metrics, two directions.** bpb is lower-better, quality higher-better; one `regressed` with a flag keeps the "worse is positive" convention in one place.
+
+### 5.2 The measurements
+
+```python
+def heldout_bpb(model, text: str, seed: int, windows: int = 16, chars: int = 80) -> float:
+    rng = np.random.default_rng(seed)                     # the seed picks the windows: paired across models
+    starts = rng.integers(0, len(text) - chars, size=windows)
+    bits = 0.0
+    nbytes = 0
+    for s in starts:
+        w = text[int(s) : int(s) + chars]
+        ids = model.encode(w)
+        lp = model.log_probs(ids)                         # lp[t] predicts ids[t + 1]
+        bits += -sum(float(lp[t, ids[t + 1]]) for t in range(len(ids) - 1)) / math.log(2)  # nats to bits
+        nbytes += len(w.encode()) - len(model.decode(ids[:1]).encode())                     # the first token is never predicted
+    return bits / nbytes                                  # pooled: total bits over total bytes
+```
+
+Windows are 80 characters at random offsets, so they cut words; that is fine because both models see the same cuts. Dividing once at the end pools the windows (step 3).
+
+```python
+def repeat_ngram_rate(ws: Sequence[str], n: int = 4) -> float:
+    grams = [tuple(ws[i : i + n]) for i in range(len(ws) - n + 1)]
+    if not grams:
+        return 0.0
+    seen: set[tuple[str, ...]] = set()
+    repeats = 0
+    for g in grams:
+        repeats += g in seen           # a repeat of an n-gram that started earlier
+        seen.add(g)
+    return repeats / len(grams)
+
+
+def quality_score(model, vocabulary: set[str], seed: int, tokens: int = 48) -> float:
+    rng = np.random.default_rng(seed)                                     # one stream for all four prompts
+    text = " ".join(model.sample(p, tokens, rng) for p in PROMPTS)        # in order: the stream is reproducible
+    return valid_word_rate(text, vocabulary) * (1.0 - repeat_ngram_rate(words(text), 4))
+```
+
+The product is 1 only when every word is real and no 4-gram repeats; a model that loops scores low on the second factor, one that emits fragments on the first. Using one generator for the prompts in a fixed order means the score at seed $s$ is a deterministic function of the model, so it can be paired.
+
+### 5.3 The decision rule
+
+```python
+def sign_flip_p(diffs: Sequence[float]) -> float:
+    d = np.asarray(diffs, dtype=np.float64)
+    observed = d.sum()
+    hits = sum(
+        # every sign vector; ties count, with a 1e-12 tolerance so the identity always counts
+        float(np.dot(s, d)) >= observed - 1e-12 for s in itertools.product((1.0, -1.0), repeat=len(d))
+    )
+    return hits / 2 ** len(d)                     # >= 1/2^n: the identity is always a hit
+
+
+def regressed(base, cand, margin, alpha=0.05, higher_is_better=False) -> bool:
+    b, c = np.asarray(base, dtype=np.float64), np.asarray(cand, dtype=np.float64)
+    worse = b - c if higher_is_better else c - b  # positive means worse, for either metric
+    return bool(worse.mean() > margin and sign_flip_p(worse) < alpha)   # it matters AND it is not noise
+```
+
+On section 3: candidate A gives `worse = [0.03]*5`, mean 0.03 > 0.02, and only the identity reaches the sum, so $p = 1/32$: regressed. Candidate B's mean is 0.022, but two vectors reach 0.11, $p = 2/32$: not regressed. The `1e-12` tolerance exists because a sum of floats in a different order can differ in the last bit: without it, a sign vector whose sum equals the observed one mathematically (a tie, which the definition counts) could be dropped by rounding, making $p$ too small.
+
+Full kata: [`evals.py`](../../../../course/solutions/primers/craft.22/evals.py).
+
+### 5.4 The suite
+
+```python
+FIX = Path(os.environ["TINYLLM_FIXTURES"]) / "craft.22"   # the model and texts are fixtures, not code
+
+
+@pytest.fixture(scope="module")
+def current():                                            # measured once per run: the expensive part
+    model = tinymodel.load(FIX / "tinylm.npz")
+    text = (FIX / "val.txt").read_text()
+    vocab = set((FIX / "words.txt").read_text().split())
+    return evals.measure(model, text, vocab)
+
+
+@pytest.fixture(scope="module")
+def baseline():
+    return json.loads((HERE / "baseline.json").read_text())
+
+
+def test_seeds_match_the_baseline(current, baseline):
+    # Pairing is only valid on the same seeds, and five is the minimum for p < 0.05.
+    assert current["seeds"] == baseline["seeds"] and len(baseline["seeds"]) >= 5
+
+
+def test_heldout_bpb_did_not_regress(current, baseline):
+    assert not evals.regressed(baseline["bpb"], current["bpb"], evals.BPB_MARGIN), (
+        f"bpb {current['bpb']} vs baseline {baseline['bpb']}"
+    )
+
+
+def test_sample_quality_did_not_regress(current, baseline):
+    assert not evals.regressed(
+        baseline["quality"], current["quality"], evals.QUALITY_MARGIN, higher_is_better=True
+    ), f"quality {current['quality']} vs baseline {baseline['quality']}"
+```
+
+Each metric is its own test, so a failure names which property regressed. The baseline is a file written by `evals.py --record` from the good model, never typed in; the recorded bpb ranges from 0.97 to 1.20 across seeds, which is exactly the window-difficulty spread that pairing removes. How the seven mutants relate to the two metrics:
+
+| Mutant | Which metric must catch it |
+|---|---|
+| RoPE base 500 instead of 10000 | either: the forward pass is wrong, so teacher-forced bpb moves |
+| the last layer never runs | either, as above |
+| the tokenizer is one merge short | bpb, measured per byte so the extra tokens cannot hide it |
+| decoding samples from the previous position's logits | quality only: teacher forcing never calls `sample`, so bpb is unchanged |
+| attention scores not scaled by $1/\sqrt{d}$ | either: the forward pass is wrong |
+| the causal mask shows the next token | either: the forward pass sees what it must predict |
+| the final norm loses its gain | quality only in the direction that matters: bpb *improves* by 0.16 while samples get worse |
+
+Two of the seven are invisible to a bpb-only suite, which is why a single-metric suite cannot reach 80%.
+
+Full suite: [`test_model_evals.py`](../../../../course/solutions/primers/craft.22/test_model_evals.py).
+
+### 5.5 Why this solution
+
+- **Cost.** $5 \text{ seeds} \times (16 \text{ forward passes} + 4 \text{ samples of } 48 \text{ tokens})$ on a two-layer model: seconds. The sign-flip test is $O(2^n \cdot n)$, 160 multiply-adds at $n = 5$; beyond about 20 seeds one would sample sign vectors instead of enumerating them.
+- **Sign-flip versus a paired t-test.** The t-test assumes normal differences, which five seeds cannot check; the sign-flip test is exact under the symmetric null. Its price is coarse p-values ($k/32$).
+- **Sign-flip versus a bootstrap interval.** A bootstrap over five values is unstable; with small $n$ an exact test is the honest choice. The bootstrap fits better when there are hundreds of items (as in `craft.23`).
+- **More seeds.** More seeds give more power and finer p-values at linear cost; five is the minimum that can ever reject at 0.05, chosen to keep the gate fast.
+- **Margins.** 0.02 bits per byte and 0.02 quality are set above the harmless variants' shifts and below the mutants' effects. A fixed margin is a decision someone signs, like the perf budget in `craft.06`.
+
+### 5.6 Explain it back
+
+1. Why can a four-seed suite never flag a regression at $\alpha = 0.05$?
+   <details><summary>Answer</summary>The identity sign vector always reaches the observed sum, so $p \ge 1/2^n$. For $n = 4$ that is $1/16 = 0.0625 > 0.05$, so `sign_flip_p(worse) < alpha` is never true.</details>
+2. Why is the first token's byte length subtracted from the denominator in `heldout_bpb`?
+   <details><summary>Answer</summary>The model never predicts the first token of a window (there is no context), so its bits are not in the numerator. Keeping its bytes in the denominator would lower bpb by an amount that depends on how long the tokenizer's first token is, which a tokenizer change would shift.</details>
+3. Why does float64 arithmetic, which shifts every seed's bpb by about $10^{-7}$ in the same direction, not fail the suite?
+   <details><summary>Answer</summary>All differences positive gives $p = 1/32 < 0.05$, so significance alone would flag it. The mean, $10^{-7}$, is far below the 0.02 margin, so `regressed` is false. This is why both conditions are required.</details>
+4. Which mutant does held-out bpb miss, and why does the quality score catch it?
+   <details><summary>Answer</summary>Sampling from the previous position's logits: teacher-forced `log_probs` never calls `sample`, so bpb is identical. The generated text is shifted by one step and turns into fragments and repeats, so the valid-word rate and the repeat factor drop.</details>
+5. Why must `quality_score` use one generator for the four prompts in a fixed order?
+   <details><summary>Answer</summary>So the score at seed $s$ is a deterministic function of the model and the seed. Then the baseline's and the candidate's scores at the same seed are paired measurements, and a difference is due to the model, not to which random numbers each prompt happened to draw.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. checking only that the model runs | a wrong RoPE base, a dropped layer, a tokenizer one merge short, an unscaled attention, a mask that shows the next token: all train and all generate | `test_model_mutants_are_flagged` (mutants `s01`, `s02`, `s03`, `s05`, `s06`) |
-| 2. held-out loss as the only metric | a decoder that samples from the previous position's logits has a perfect bpb | `test_model_mutants_are_flagged` (mutant `s04`) |
-| 3. "lower bpb is better, so it passed" | dropping the final norm's gain improves bpb by 0.16 and ruins the samples | `test_model_mutants_are_flagged` (mutant `s07`) |
-| 4. exact equality with the baseline | float64 arithmetic or another machine fails the build | `test_no_false_alarms` |
-| 5. a margin without a significance test | another sampling stream, 0.03 worse on average with mixed signs, fails the build | `test_no_false_alarms` |
-| 6. four seeds, or unpaired windows | nothing can ever reach $p < 0.05$; window difficulty drowns the difference | `test_your_suite_is_an_eval_suite`, `test_model_mutants_are_flagged` |
-| 7. a stale or typed-in baseline | the suite compares with a model that no longer exists | `test_your_baseline_is_the_good_model` |
-| 8. bpb averaged per window, or per token | a tokenizer change hides behind more, easier tokens | `test_your_evals_match_the_reference` |
+| 1. checking only that the model runs | a wrong RoPE base, a dropped layer, a tokenizer one merge short, an unscaled attention, a mask that shows the next token: all train and all generate | a measured bpb and quality compared with a recorded baseline (5.4) |
+| 2. held-out loss as the only metric | a decoder that samples from the previous position's logits has a perfect bpb | a second, generation-based metric, `quality_score` |
+| 3. "lower bpb is better, so it passed" | dropping the final norm's gain improves bpb by 0.16 and ruins the samples | the quality test fails independently of bpb |
+| 4. exact equality with the baseline | float64 arithmetic or another machine fails the build | `regressed` requires the mean to exceed a margin |
+| 5. a margin without a significance test | another sampling stream, 0.03 worse on average with mixed signs, fails the build | `regressed` also requires `sign_flip_p < 0.05` |
+| 6. four seeds, or unpaired windows | nothing can ever reach $p < 0.05$; window difficulty drowns the difference | five seeds, asserted by `test_seeds_match_the_baseline`; the seed picks the windows |
+| 7. a stale or typed-in baseline | the suite compares with a model that no longer exists | `baseline.json` is written only by `evals.py --record` |
+| 8. bpb averaged per window, or per token | a tokenizer change hides behind more, easier tokens | bits and bytes are pooled before one division (5.2) |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `craft.03` | mutation grading: baselines A and B, required faults |
+| Back | `craft.03` | judging tests by planted faults: baselines A and B, required faults |
 | Back | `M07.5` | permutation tests; the sign flip is the paired, one-sided, exact form |
 | Back | `M11.2` | bits per byte |
 | Forward | `C1` | the capstone's held-out bpb and seeded quality score, with regression thresholds, gate its release |
@@ -145,7 +282,7 @@ Each run copies your suite, your evals, and your baseline next to one version of
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `heldout_bpb` | EleutherAI lm-evaluation-harness | rolling-window perplexity, bits per byte and per word, hundreds of tasks | `lm_eval/api/task.py` (`loglikelihood_rolling`) |
 | `regressed` | Dror et al.'s significance testing for NLP | test selection by metric, multiple comparisons (Holm), effect sizes | the paper above |

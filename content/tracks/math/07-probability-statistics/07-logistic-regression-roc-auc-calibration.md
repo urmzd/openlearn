@@ -126,51 +126,247 @@ def fit_temperature(logits: ArrayLike, labels: ArrayLike, max_iter: int = 50) ->
 
 The intercept is the **last** weight, the layout `L6.5` writes into the linear head's `b`. `roc_curve` starts at $(0, 0)$ with threshold $+\infty$ and has one more point per distinct score; `roc_auc` is `trapezoid(tpr, fpr)`. Bins are $(b/B, (b+1)/B]$ with index $\operatorname{clip}(\lceil cB \rceil - 1, 0, B - 1)$.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_newton_step` | unit, smoke | one step gives $2/3$; converged $w = 2(1 - \sigma(w))$ | you and the tests agree on $g$ and $H$ |
-| `test_hand_example_roc_auc` | unit, smoke | the six corners and $2/3$ | `L6.5`'s reported AUC |
-| `test_hand_example_ece` | unit, smoke | bins $(0, 0, 1, 2, 1)$ and ECE 0.25 | the safety report's calibration line |
-| `test_logistic_matches_scipy` | golden | IRLS equals scipy's BFGS minimizer on four datasets | the policy head is the right fit |
-| `test_fit_is_a_stationary_point` | property | gradient below $10^{-9}$; mean $p$ = base rate | section 2.1 |
-| `test_newton_converges_quadratically` | property | errors square per step; 8 steps equal 50 | section 2.2 |
-| `test_l2_shrinks_feature_weights` | property | weight norm falls with $\lambda$; intercept free | section 2.3 |
-| `test_sigmoid_never_overflows` | boundary | $z = \pm 1000$ gives exactly 1 and 0, never NaN | embeddings with large norms |
-| `test_predict_proba_intercept_last` | unit | the intercept is the last weight | the linear-head format |
-| `test_roc_matches_brute_force` | golden | corners and thresholds on continuous and tied scores | section 2.4 |
-| `test_auc_is_mann_whitney` | golden | AUC = $U/(PN)$ | section 2.5 |
-| `test_auc_properties` | property | monotone invariance, label flip $1 - \text{AUC}$, 1 and 0.5 | AUC is about ranking only |
-| `test_ties_take_a_diagonal_step` | boundary | two tied examples give 0.5 in either order | quantized scores tie often |
-| `test_reliability_and_ece_match_reference` | golden | bins and ECE, binary and 3-class | section 2.6 |
-| `test_ece_calibrated_vs_overconfident` | statistical | calibrated under 0.04, sharpened above 0.1 | ECE measures the right gap |
-| `test_bin_edges` | boundary | 0.5, 0.75, 1.0, and 0 land in the right bins | cross-language agreement |
-| `test_multiclass_top_label` | unit | first argmax, row max confidence | `L6.5`'s multi-class heads |
-| `test_rejects_bad_arguments` | boundary | bad labels, shapes, penalties, one-class ROC, bad probabilities raise | bugs surface at the call |
-| `test_hand_example_temperature` | unit, smoke | $T = 1/\ln 2$ for gap 1, twice that for gap 2 | section 3 |
-| `test_temperature_calibrates_an_overconfident_model` | property | logits 3 times too sharp give $T$ near 3, a true NLL minimum, the same argmax, half the ECE | section 2.7 |
-| `test_temperature_rejects_bad_input` | boundary | 1-D logits, bad classes, NaN, worse than chance raise | no negative temperatures |
+| one Newton step by hand | unit | one step gives $2/3$; converged $w = 2(1 - \sigma(w))$ | everyone agrees on $g$ and $H$ |
+| ROC and AUC by hand | unit | the six corners and $2/3$ | `L6.5`'s reported AUC |
+| ECE by hand | unit | bins $(0, 0, 1, 2, 1)$ and ECE 0.25 | the safety report's calibration line |
+| IRLS against scipy | golden | IRLS equals scipy's BFGS minimizer on four datasets | the policy head is the right fit |
+| a stationary point | property | gradient below $10^{-9}$; mean $p$ = base rate | section 2.1 |
+| quadratic convergence | property | errors square per step; 8 steps equal 50 | section 2.2 |
+| L2 shrinks feature weights | property | weight norm falls with $\lambda$; intercept free | section 2.3 |
+| the sigmoid never overflows | boundary | $z = \pm 1000$ gives exactly 1 and 0, never NaN | embeddings with large norms |
+| intercept last | unit | the intercept is the last weight | the linear-head format |
+| ROC against brute force | golden | corners and thresholds on continuous and tied scores | section 2.4 |
+| AUC is Mann-Whitney | golden | AUC = $U/(PN)$ | section 2.5 |
+| AUC properties | property | monotone invariance, label flip $1 - \text{AUC}$, 1 and 0.5 | AUC is about ranking only |
+| ties take a diagonal step | boundary | two tied examples give 0.5 in either order | quantized scores tie often |
+| reliability bins and ECE | golden | bins and ECE, binary and 3-class | section 2.6 |
+| calibrated against overconfident | statistical | calibrated under 0.04, sharpened above 0.1 | ECE measures the right gap |
+| bin edges | boundary | 0.5, 0.75, 1.0, and 0 land in the right bins | cross-language agreement |
+| multi-class top label | unit | first argmax, row max confidence | `L6.5`'s multi-class heads |
+| bad arguments | boundary | bad labels, shapes, penalties, one-class ROC, bad probabilities raise | bugs surface at the call |
+| temperature by hand | unit | $T = 1/\ln 2$ for gap 1, twice that for gap 2 | section 3 |
+| temperature calibrates an overconfident model | property | logits 3 times too sharp give $T$ near 3, a true NLL minimum, the same argmax, half the ECE | section 2.7 |
+| bad temperature input | boundary | 1-D logits, bad classes, NaN, worse than chance raise | no negative temperatures |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **A stable sigmoid first.** Section 2.2: compute $e = e^{-|z|} \le 1$ and return $1/(1+e)$ for $z \ge 0$, $e/(1+e)$ otherwise. Both branches are the exact sigmoid and neither can overflow.
+2. **Append the intercept as the last column.** Then the model is $\sigma(X_a w)$ for all cases, and the last weight is the head's `b` (the format `L6.5` writes).
+3. **Penalize features, not the intercept.** A penalty vector `pen` equal to $\lambda$ except 0 in the intercept slot; it enters the gradient as `pen * w` and the Hessian as `diag(pen)` (section 2.3).
+4. **Each IRLS iteration is one Newton step.** From $w = 0$: $p = \sigma(X_a w)$, $g = X_a^\top(p - y) + \text{pen}\, w$, $H = X_a^\top S X_a + \operatorname{diag}(\text{pen})$, solve $H\delta = g$ with `M03.2`'s LU, $w \leftarrow w - \delta$. $S$ is applied by scaling the rows of $X_a$, never formed as an $n \times n$ matrix. Stop when the step is below $10^{-12}$ relative, or after `iters` steps.
+5. **ROC: sort descending, cumulate, keep one point per distinct score.** Cumulative sums of $y$ and $1 - y$ give TP and FP at every cut; keeping only the last index of each run of equal scores makes ties enter together. Prepend $(0, 0)$ with threshold $+\infty$.
+6. **AUC is the trapezoid of that staircase.** Vertical steps add no area; horizontal ones add their height; diagonal (tie) steps add a trapezoid, which is the $\tfrac12$ credit for tied pairs.
+7. **Reliability bins: a confidence and a correctness per example, then three bincounts.** Binary: prediction $p \ge 0.5$, confidence $\max(p, 1-p)$. Multi-class: argmax and row max. Bin index $\operatorname{clip}(\lceil cB \rceil - 1, 0, B-1)$ for right-closed bins. ECE weights each bin's gap by its count.
+8. **Temperature: Newton on $\ell'(\beta)$ from $\beta = 0$.** The derivative and curvature are the mean of $\mathbb{E}_p[z] - z_y$ and of $\operatorname{Var}_p[z]$ (section 2.7), computed from a max-shifted softmax; reject $\beta \le 0$; return $T = 1/\beta$.
+
+### The code, annotated
+
+```python
+def _sigmoid(z: NDArray) -> NDArray:
+    # exp of a non-positive number never overflows: use e^{-|z|} on both sides.
+    e = np.exp(-np.abs(z))
+    return np.where(z >= 0, 1.0 / (1.0 + e), e / (1.0 + e))
+
+
+def logistic_regression_fit(X, y, l2: float, iters: int, fit_intercept: bool = True) -> NDArray:
+    Xa = _design(X, fit_intercept)            # 2-D, finite; a column of ones appended last
+    n, k = Xa.shape
+    t = _binary(y, n)                         # labels as 0.0 / 1.0
+    # (l2 >= 0 and iters >= 1 checks elided)
+    pen = np.full(k, l2)
+    if fit_intercept:
+        pen[-1] = 0.0  # the intercept is never shrunk toward 0
+    w = np.zeros(k)
+    for _ in range(int(iters)):
+        p = _sigmoid(Xa @ w)
+        g = Xa.T @ (p - t) + pen * w          # gradient of the loss (not the likelihood)
+        # Hessian: X^T S X with S = diag(p (1 - p)), the Bernoulli variances.
+        H = Xa.T @ (Xa * (p * (1.0 - p))[:, None]) + np.diag(pen)
+        P, L, U = lu(H)                       # M03.2: one factorization per step
+        delta = lu_solve(P, L, U, g)
+        w = w - delta                         # Newton: w - H^{-1} g
+        if np.max(np.abs(delta)) <= 1e-12 * max(1.0, float(np.max(np.abs(w)))):
+            break                             # relative step test, as in M01.2
+    return w
+```
+
+Section 3's step, traced: $X_a = [[1], [-1]]$ (no intercept), $p = (\tfrac12, \tfrac12)$, `g = 1·(-1/2) + (-1)·(1/2) + 0 = -1`, `H = 1/4 + 1/4 + 1 = 3/2`, `delta = -2/3`, so $w = 2/3$. `Xa * s[:, None]` scales row $i$ by $s_i$, so `Xa.T @ (...)` is $X_a^\top S X_a$ in $O(nk^2)$ without an $n \times n$ matrix.
+
+```python
+def logistic_predict_proba(X, w, fit_intercept: bool = True) -> NDArray:
+    Xa = _design(X, fit_intercept)
+    wa = np.asarray(w, dtype=np.float64)
+    if wa.shape != (Xa.shape[1],):            # a weight vector from another layout fails loudly
+        raise ValueError(f"w must have shape ({Xa.shape[1]},), got {wa.shape}")
+    return _sigmoid(Xa @ wa)
+```
+
+```python
+def roc_curve(scores, labels) -> tuple[NDArray, NDArray, NDArray]:
+    # (1-D, finite checks elided)
+    t = _binary(labels, s.size)
+    P = float(np.sum(t))
+    N = float(s.size) - P
+    if P == 0 or N == 0:
+        raise ValueError("ROC needs both classes among the labels")   # a rate over 0 examples
+    order = np.argsort(-s, kind="stable")     # descending: the threshold walks down
+    s, t = s[order], t[order]
+    tp = np.cumsum(t)                         # positives at or above each cut
+    fp = np.cumsum(1.0 - t)                   # negatives at or above each cut
+    # One point per distinct score: the last index of each run of ties, so
+    # tied scores enter together (a diagonal step).
+    last = np.r_[np.nonzero(np.diff(s))[0], s.size - 1]
+    fpr = np.r_[0.0, fp[last] / N]            # start at (0, 0), threshold +inf
+    tpr = np.r_[0.0, tp[last] / P]
+    thresholds = np.r_[np.inf, s[last]]
+    return fpr, tpr, thresholds
+
+
+def roc_auc(scores, labels) -> float:
+    fpr, tpr, _ = roc_curve(scores, labels)
+    return trapezoid(tpr, fpr)                # M01.4; ties get their triangle, i.e. 1/2 credit
+```
+
+On section 3's scores (already descending, all distinct), `last` is every index, and the cumulative counts give the six corners of the table. With two tied examples of opposite labels, `last` keeps only the second, so the curve goes straight from $(0, 0)$ to $(1, 1)$ and the area is 0.5 whichever comes first in the input.
+
+```python
+def reliability_bins(probs, labels, n_bins: int = 15) -> tuple[NDArray, NDArray, NDArray]:
+    # (shape, range, and label checks elided)
+    if p.ndim == 1:                           # binary: p is P(y = 1)
+        t = _binary(y, p.size)
+        pred = (p >= 0.5).astype(np.float64)
+        conf = np.maximum(p, 1.0 - p)         # confidence in the predicted class
+        correct = pred == t
+    else:                                     # [n, C]: top-label
+        pred = np.argmax(p, axis=1)           # first argmax on ties
+        conf = np.max(p, axis=1)
+        correct = pred == yf.astype(np.int64)
+    # Right-closed bins (b/B, (b+1)/B]; 0 goes to bin 0, 1.0 to bin B - 1.
+    idx = np.clip(np.ceil(conf * n_bins).astype(np.int64) - 1, 0, n_bins - 1)
+    counts = np.bincount(idx, minlength=n_bins).astype(np.int64)
+    csum = np.bincount(idx, weights=conf, minlength=n_bins)
+    asum = np.bincount(idx, weights=correct.astype(np.float64), minlength=n_bins)
+    safe = np.maximum(counts, 1)              # empty bins report 0, not 0/0
+    return counts, csum / safe, asum / safe
+
+
+def ece(probs, labels, n_bins: int = 15) -> float:
+    counts, conf, acc = reliability_bins(probs, labels, n_bins)
+    n = float(np.sum(counts))
+    return float(np.sum(counts / n * np.abs(acc - conf)))   # count-weighted; empty bins weigh 0
+```
+
+Section 3: confidences $(0.9, 0.8, 0.7, 0.6)$ map to bins $4, 3, 3, 2$; counts $(0, 0, 1, 2, 1)$; the weighted gaps sum to $0.25$.
+
+```python
+def fit_temperature(logits, labels, max_iter: int = 50) -> float:
+    # (shape, finiteness, and label checks elided: [n, C], C >= 2, classes in range)
+    zy = z[np.arange(z.shape[0]), yf.astype(np.int64)]     # the label's logit per row
+
+    def moments(beta: float) -> tuple[NDArray, NDArray]:
+        a = beta * z
+        p = np.exp(a - a.max(axis=1, keepdims=True))       # max-shifted softmax: no overflow
+        p /= p.sum(axis=1, keepdims=True)
+        mean = (p * z).sum(axis=1)                         # E_p[z] per row
+        return mean, (p * z * z).sum(axis=1) - mean * mean # Var_p[z] per row
+
+    # NLL(beta) = mean(logsumexp(beta z) - beta z_y) is convex in beta = 1/T:
+    # its derivative is the mean of E_p[z] - z_y, its second derivative the
+    # mean variance of z under p. Newton (M01.2) finds the derivative's root.
+    # It starts at beta = 0 (p uniform), where the variance is largest: from
+    # beta = 1 a peaked softmax has almost no curvature and the first step
+    # overshoots far past the root.
+    beta, _ = newton(
+        lambda b: float(np.mean(moments(b)[0] - zy)),
+        lambda b: float(np.mean(moments(b)[1])),
+        0.0,
+        tol=1e-12,
+        max_iter=max_iter,
+    )
+    if not beta > 0:
+        raise ValueError(f"no positive temperature: the NLL is smallest at 1/T = {beta}")
+    return 1.0 / beta                                      # report T, not beta
+```
+
+On section 3's three items with logits $(0, 1)$: $\mathbb{E}_p[z] = \sigma(\beta)$ for every row and the mean $z_y$ is $\tfrac23$, so `newton` finds $\sigma(\beta) = \tfrac23$, $\beta = \ln 2$, and the function returns $1/\ln 2 = 1.4427$.
+
+Full solution: [`metrics.py`](../../../../course/solutions/python/tinyllm/prob/metrics.py). It calls [`lu.py`](../../../../course/solutions/python/tinyllm/linalg/lu.py), [`integrate.py`](../../../../course/solutions/python/tinyllm/num/integrate.py), and [`newton.py`](../../../../course/solutions/python/tinyllm/num/newton.py).
+
+### Why this solution
+
+- **Cost.** One IRLS step is $O(nk^2)$ to build $H$ plus $O(k^3)$ for the LU; five or six steps suffice. `roc_curve` is $O(n \log n)$ for the sort; `reliability_bins` is $O(nC)$; each Newton step of `fit_temperature` is $O(nC)$.
+- **Newton over gradient descent.** For a convex problem with a few hundred weights the $k \times k$ solve is cheap, there is no learning rate to tune, and quadratic convergence reaches rounding in a handful of steps. L-BFGS (scikit-learn's default) avoids forming $H$, which matters only when $k$ is in the many thousands.
+- **Sort-and-cumulate over pairwise AUC.** Counting all $PN$ pairs is $O(PN)$; the staircase gives the same number (ties included) in $O(n \log n)$, plus the curve and thresholds for free.
+- **Right-closed bins and top-label confidence.** They match Guo et al. and the Go port, so a reported ECE means the same number everywhere; the floor rule $[\text{lo}, \text{hi})$ moves edge values like 0.8 up a bin.
+- **Tradeoffs accepted.** Unpenalized fits on separable data have no finite optimum and stop at `iters`; callers always pass $\lambda > 0$. ECE with equal-width bins is noisy for small $n$ and ignores where in a bin the confidences fall; it is a coarse but standard summary.
+
+### Explain it back
+
+**1. Why is the gradient $X_a^\top(p - y)$ and not $X_a^\top(y - p)$?**
+
+<details><summary>Answer</summary>
+
+The function minimizes the negative log-likelihood; its derivative with respect to each logit is $p_i - y_i$. $X_a^\top(y - p)$ is the gradient of the likelihood, and $w - H^{-1}(\text{that})$ steps uphill: on section 3 it would give $w = -2/3$ and move away from the optimum $0.6748$.
+
+</details>
+
+**2. Why is the intercept's penalty set to 0?**
+
+<details><summary>Answer</summary>
+
+The intercept sets the base rate: at the optimum $\sum_i (p_i - y_i) = 0$, so the mean prediction equals the fraction of positives. Shrinking it toward 0 pulls every probability toward $\sigma(0) = 0.5$, a bias unrelated to overfitting the features. As $\lambda \to \infty$ the unpenalized intercept still lets $\sigma(b)$ equal the base rate.
+
+</details>
+
+**3. Why does `roc_curve` keep only the last index of each run of tied scores?**
+
+<details><summary>Answer</summary>
+
+No threshold can separate examples with the same score, so they must enter the curve together. Keeping intermediate points would create corners that depend on the input order: a positive listed before its tied negative gives AUC 1 for that pair, after it gives 0. Jumping to the end of the run gives a diagonal step whose trapezoid is the $\tfrac12$ credit Mann-Whitney assigns to ties.
+
+</details>
+
+**4. For a binary probability, why is the confidence $\max(p, 1 - p)$ and not $p$?**
+
+<details><summary>Answer</summary>
+
+Calibration compares confidence in the *predicted* class with how often that prediction is right. A prediction $p = 0.1$ predicts class 0 with confidence 0.9; filing it in the 0.1 bin would compare a confident correct negative against an accuracy that measures a different event and inflate the ECE.
+
+</details>
+
+**5. Why does `fit_temperature` start Newton at $\beta = 0$ rather than at $\beta = 1$ (no change)?**
+
+<details><summary>Answer</summary>
+
+$\ell''(\beta)$ is the mean variance of the logits under the softmax. At $\beta = 0$ the softmax is uniform and that variance is largest, so the first step is moderate and the iterates climb toward the root. At $\beta = 1$ an overconfident model's softmax is nearly one-hot, the variance is almost 0, and the step $-\ell'/\ell''$ is enormous, overshooting by thousands of units.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. $e^{z}/(1 + e^{z})$ or $1/(1 + e^{-z})$ without care | NaN probabilities for large logits | `test_sigmoid_never_overflows` (mutant `s01`) |
-| 2. penalizing the intercept | probabilities pulled toward 0.5; base rate lost | `test_l2_shrinks_feature_weights` (mutant `s02`) |
-| 3. the gradient of the likelihood instead of the loss | Newton walks uphill and diverges | `test_hand_example_newton_step` (mutant `s03`) |
-| 4. a Hessian without the weights $p(1-p)$ | linear, not quadratic, convergence; wrong after few steps | `test_newton_converges_quadratically` (mutant `s04`) |
-| 5. stepping through tied scores one at a time | the AUC depends on the input order | `test_ties_take_a_diagonal_step` (mutant `s05`) |
-| 6. sorting scores ascending | AUC reported as $1 - \text{AUC}$ | `test_hand_example_roc_auc` (mutant `s06`) |
-| 7. a curve that does not start at $(0, 0)$ | the first corner is missing from plots and thresholds | `test_roc_matches_brute_force` (mutant `s07`) |
-| 8. an unweighted mean over bins | one stray prediction in an empty corner dominates the ECE | `test_reliability_and_ece_match_reference` (mutant `s08`) |
-| 9. binary confidence $p$ instead of $\max(p, 1 - p)$ | confident negatives counted as unconfident | `test_hand_example_ece` (mutant `s09`) |
-| 10. bins $[\text{lo}, \text{hi})$ by floor | edge values one bin up; another number than Go and the paper | `test_bin_edges` (mutant `s10`) |
-| 11. the intercept column first | the head's `b` holds a feature weight | `test_predict_proba_intercept_last` (mutant `s11`) |
-| 12. returning $\beta$ instead of $T = 1/\beta$ | an overconfident model gets sharper, not softer | `test_hand_example_temperature` (mutant `s12`) |
-| 13. $\ell'$ without the label's logit | the root no longer depends on the labels | `test_hand_example_temperature` (mutant `s13`) |
+| 1. $e^{z}/(1 + e^{z})$ or $1/(1 + e^{-z})$ without care | NaN probabilities for large logits | `_sigmoid` uses $e^{-\lvert z \rvert}$ and picks the formula by sign; step 1 |
+| 2. penalizing the intercept | probabilities pulled toward 0.5; base rate lost | `pen[-1] = 0.0`; step 3 |
+| 3. the gradient of the likelihood instead of the loss | Newton walks uphill and diverges | `g = Xa.T @ (p - t) + pen * w`; step 4 |
+| 4. a Hessian without the weights $p(1-p)$ | linear, not quadratic, convergence; wrong after few steps | rows scaled by `p * (1.0 - p)`; step 4 |
+| 5. stepping through tied scores one at a time | the AUC depends on the input order | `last` keeps one point per distinct score; step 5 |
+| 6. sorting scores ascending | AUC reported as $1 - \text{AUC}$ | `np.argsort(-s, ...)`; step 5 |
+| 7. a curve that does not start at $(0, 0)$ | the first corner is missing from plots and thresholds | `np.r_[0.0, ...]` and `np.r_[np.inf, ...]`; step 5 |
+| 8. an unweighted mean over bins | one stray prediction in an empty corner dominates the ECE | `counts / n * np.abs(acc - conf)`; step 7 |
+| 9. binary confidence $p$ instead of $\max(p, 1 - p)$ | confident negatives counted as unconfident | `conf = np.maximum(p, 1.0 - p)`; step 7 |
+| 10. bins $[\text{lo}, \text{hi})$ by floor | edge values one bin up; another number than Go and the paper | `np.ceil(conf * n_bins) - 1`, clipped; step 7 |
+| 11. the intercept column first | the head's `b` holds a feature weight | `_design` appends the ones column last; step 2 |
+| 12. returning $\beta$ instead of $T = 1/\beta$ | an overconfident model gets sharper, not softer | `return 1.0 / beta`; step 8 |
+| 13. $\ell'$ without the label's logit | the root no longer depends on the labels | `moments(b)[0] - zy`; step 8 |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|

@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SKIP_PREFIXES = ("packs/", "CHANGELOG.md")
 LINK = re.compile(r"\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 FENCE = re.compile(r"^\s*(```|~~~)")
+INLINE_CODE = re.compile(r"`[^`]*`")
 
 
 def tracked_markdown() -> list[Path]:
@@ -40,7 +41,8 @@ def broken_links(path: Path) -> list[tuple[int, str]]:
             continue
         if in_fence:
             continue
-        for target in LINK.findall(line):
+        # Links inside inline code are examples, not links.
+        for target in LINK.findall(INLINE_CODE.sub("", line)):
             if re.match(r"^[a-z][a-z0-9+.-]*:", target) or target.startswith("#"):
                 continue
             file_part = target.split("#", 1)[0].split("?", 1)[0]
