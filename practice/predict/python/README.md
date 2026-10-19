@@ -1,16 +1,40 @@
-# Python: predict the output
+# Predicting Python output
 
-Six Python snippets, each with its exact output and an explanation of every
-numbered line. Read the source, write down what you think it prints, then open
-the fold. See the [predict introduction](../README.md) for how to use these
-pages.
+Python is easy to read, and that is the trap: code that reads like pseudocode
+invites you to run it in your head with pseudocode semantics. Real Python has
+precise and sometimes surprising rules about when expressions are evaluated,
+what a name is bound to, and where an attribute is looked up. A default list
+that remembers earlier calls, lambdas that all return the same number, a copy
+that is not independent, a generator that is empty the second time: each is
+the language working exactly as specified. The six snippets in this section
+make those rules visible.
 
-The outputs were produced with CPython 3.13. Two lines (in snippet 03) depend
-on CPython implementation details rather than the language definition, and
-they are marked as such. To reproduce an output, run
-`python3 predict/NN-name.py` from this directory.
+Work through them as the [predict introduction](../README.md) describes: read
+the source, write down the exact output line by line, then open the fold. Each
+explanation states the rule from first principles (what objects exist, which
+names refer to them, and when code actually runs), applies it to the snippet,
+and names the common wrong prediction and its misconception. The goal is a
+model of names, objects, and evaluation time that you can use to predict any
+Python program, not a list of gotchas.
 
-## 01-mutable-default-arg
+> **Learning objectives**
+> - Explain why default arguments and class bodies are evaluated once, and use the `None` sentinel idiom.
+> - Predict what closures capture, which constructs create a scope, and when `nonlocal` is required.
+> - Distinguish identity (`is`) from equality (`==`), including CPython caching details and NaN in containers.
+> - Predict how far a copy goes and when `+=` mutates in place.
+> - Trace generator execution and exhaustion, and attribute lookup through the MRO and `super()`.
+
+## Before you begin
+
+The outputs were produced with CPython 3.13. Two lines in the
+[identity snippet](#identity-versus-equality) depend on CPython implementation
+details rather than the language definition, and they are marked as such. To
+reproduce an output, run `python3 predict/NN-name.py` from this directory. The
+aliasing snippet is the Python face of a model that also appears in
+[Go's slice snippet](../go/README.md#slice-aliasing-and-append) and
+[Rust's move snippet](../rust/README.md#moves-and-reference-counting).
+
+## Mutable default arguments
 
 Source: [`predict/01-mutable-default-arg.py`](predict/01-mutable-default-arg.py)
 
@@ -78,7 +102,7 @@ initialiser. Per-instance state belongs in `__init__`.
 
 </details>
 
-## 02-late-binding-closures
+## Late-binding closures
 
 Source: [`predict/02-late-binding-closures.py`](predict/02-late-binding-closures.py)
 
@@ -111,7 +135,8 @@ that `i` holds its last value, 2.
 the value it sees at creation. It snapshots nothing; it remembers where to look.
 
 **Line 2: `[0, 1, 2]`.** `lambda i=i: i` evaluates the default `i` when each
-lambda is created (the rule from snippet 01), copying the current value into
+lambda is created (the rule from
+[mutable default arguments](#mutable-default-arguments)), copying the current value into
 the lambda's own parameter. This is the standard fix (another is
 `functools.partial`).
 
@@ -150,7 +175,7 @@ makes line 1 concrete: the lambdas there all hold the same cell.
 
 </details>
 
-## 03-identity-vs-equality
+## Identity versus equality
 
 Source: [`predict/03-identity-vs-equality.py`](predict/03-identity-vs-equality.py)
 
@@ -228,7 +253,7 @@ the only identity check that belongs in ordinary code.
 
 </details>
 
-## 04-aliasing-and-copies
+## Aliasing and copies
 
 Source: [`predict/04-aliasing-and-copies.py`](predict/04-aliasing-and-copies.py)
 
@@ -305,7 +330,7 @@ with `list.sort`).
 
 </details>
 
-## 05-generators-and-exhaustion
+## Generators and exhaustion
 
 Source: [`predict/05-generators-and-exhaustion.py`](predict/05-generators-and-exhaustion.py)
 
@@ -389,7 +414,7 @@ is lazy. `zip` asks `range(4)` first each round; when `range` is exhausted,
 
 </details>
 
-## 06-class-attrs-and-mro
+## Class attributes and the MRO
 
 Source: [`predict/06-class-attrs-and-mro.py`](predict/06-class-attrs-and-mro.py)
 
@@ -456,3 +481,40 @@ it raises `AttributeError`, and the instance has no `__dict__`.
 accepts arbitrary attributes. That is true only for objects with a `__dict__`.
 
 </details>
+
+## Where this leads
+
+These rules are behind a large share of real Python bugs: shared mutable
+defaults in long-running services, callbacks registered in a loop that all see
+the last value, grids built with `[[0] * n] * n`, functions that silently
+process nothing because a generator was consumed earlier. Compare them with
+the [Go](../go/README.md), [Rust](../rust/README.md), and
+[TypeScript](../ts/README.md) sets, using the pairings described in the
+[predict introduction](../README.md#the-corpus).
+
+## Key terms
+
+- **Default value evaluation**: default expressions are evaluated once, when `def` runs, and stored in `__defaults__`.
+- **Cell**: the object through which a closure refers to a variable of an enclosing scope.
+- **Identity**: whether two names refer to the same object, tested with `is`.
+- **Shallow copy**: a new outer container holding the same element references.
+- **Generator**: a paused function frame that runs to the next `yield` on each `next` and is exhausted once its body finishes.
+- **MRO**: the method resolution order, the C3-linearised list of classes that attribute reads and `super()` follow.
+
+## Summary
+
+- `def` and class bodies run once; per-call or per-instance state must be created in the body or `__init__`.
+- Closures capture variables, looked up when the function runs; comprehensions create a scope, `for` loops do not.
+- `is` compares objects, `==` calls `__eq__`; small-int and string caching are CPython details, and containers check identity before equality.
+- Assignment never copies, every copy except `deepcopy` is shallow, and list `+=` mutates in place.
+- Generators run nothing until iterated and are one-shot; `zip` may consume an element it then discards.
+- Attribute reads walk the instance and the MRO, writes go to the instance, and `super()` follows the instance's MRO.
+
+## Review questions
+
+1. Why does `def f(x=[])` accumulate state across calls, and what is the fix?
+   <details><summary>Answer</summary>The default list is created once, when `def` runs, and every call that omits `x` binds it to that same object. Default to `None` and create a new list inside the body, which runs on every call.</details>
+2. Why does `[lambda: i for i in range(3)]` produce lambdas that all return 2?
+   <details><summary>Answer</summary>All three lambdas close over the same `i` variable of the comprehension's scope and read it when called, after the comprehension has left it at 2. Binding it as a default (`lambda i=i: i`) copies the current value at creation.</details>
+3. Why does `self.count += 1` on a class attribute `count = 0` not produce a shared counter?
+   <details><summary>Answer</summary>`+=` reads `self.count` (falling through to the class's 0) and then writes `self.count`, and writes always go to the instance's own `__dict__`. Each instance ends up with its own attribute, and the class attribute stays 0.</details>
