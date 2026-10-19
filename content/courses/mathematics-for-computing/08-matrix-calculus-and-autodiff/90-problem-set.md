@@ -1,35 +1,21 @@
 # Matrix calculus problem set: differentials, trace trick, VJPs, SDPA Jacobian
 
-## Overview
+By now you have a scalar autograd engine, [Scalar reverse mode: the Value graph](02-scalar-reverse-mode.md), that differentiates one number at a time. It is correct and hopeless at scale: applying one $576 \times 576$ weight to one vector would create a third of a million scalar multiplication nodes. [Matrix differentials, the trace trick, and closed-form VJPs](03-matrix-differentials-and-vjps.md) replaces it with closed-form vector-Jacobian products, one per operation, that take the upstream gradient as an array and return the input gradients as arrays, and [The op library and gradcheck_all](../../build-an-llm/p00-foundations/02-op-library-and-gradcheck.md) in *Build Your Own LLM System* registers them as the ops of the tensor autograd. Each closed form is a derivation to get right on paper first, because a gradient with the right shape and the wrong value trains, slowly and badly, rather than crashing.
 
-| | |
-|---|---|
-| **Module** | `S-M08` · solve · none · Pass 2 · 8 to 10 h |
-| **Solution** | a worked answer after every problem in section 4: 42 answers (counting lettered parts) and 4 derivations (q16, q20, q28, q34; model derivations also in [`course/solutions/solve/S-M08/`](../../../../course/solutions/solve/S-M08/)) |
-| **Contract** | none: a pen and paper set |
-| **Needs** | `S-M05` (proof habits). Reading: the [Matrix Calculus and Autodiff topic](README.md), and the gradients and chain rule of `S-M04` |
-| **Used by** | no call site (a solve set). It checks the derivations behind `M08.3` (`matmul_vjp`, `softmax_vjp`, `log_softmax_vjp`, `layernorm_vjp`, `rmsnorm_vjp`, `cross_entropy_vjp`), which `L0.2`, `L0.3`, and `L7.1` register as ops; q33 and q34 are the attention backward of `L4.*` and `L9.4` |
-| **Optional depth** | Parr and Howard, "The Matrix Calculus You Need for Deep Learning" (2018); Minka, "Old and New Matrix Algebra Useful for Statistics" (2000); Baydin et al., "Automatic Differentiation in Machine Learning: a Survey" (2018), sections 2 and 3; Dao et al., "FlashAttention" (2022), appendix B |
+This problem set drills exactly those derivations: the shape bookkeeping, matrix differentials, the trace trick, the VJPs of softmax, log-softmax, cross-entropy, LayerNorm, and RMSNorm, the cost model of forward and reverse mode, and the attention backward that returns in [Scaled dot-product attention (forward and backward)](../../build-an-llm/p05-transformer-2017/01-scaled-dot-product-attention.md) and in FlashAttention. It is a pen-and-paper set with no code to write. Every problem is followed by a collapsed worked answer with the final result, the derivation, and the common wrong answers and why they are wrong; 42 answers in all, counting lettered parts, including four proofs (q16, q20, q28, q34) whose model derivations are also in [`course/solutions/solve/S-M08/`](../../../../course/solutions/solve/S-M08/). Try each problem before opening its answer.
 
-## Key Takeaways
+The proofs assume the habits of the [Discrete math 1 problem set](../05-discrete-math-1/90-problem-set.md), and the set leans on the gradients and chain rule of the [Calculus 3 problem set](../04-calculus-3/90-problem-set.md). The opening of this chapter, [Matrix Calculus and Autodiff](README.md), gives the wider picture.
 
-- A gradient has the shape of its variable, and broadcasting in the forward pass becomes a sum over the broadcast axes in the backward pass (q1, q3).
-- Write the differential $dL = \operatorname{tr}(G^\top dY)$, push $dY$ through the product rule, rotate with the cyclic trace, and read off the gradient: $\partial L/\partial W = X^\top G$, $\partial L/\partial X = G W^\top$ (q18, q20).
-- Softmax's VJP is $y \odot (g - \langle g, y\rangle)$ and cross-entropy's gradient with respect to logits is $\mathrm{softmax}(z) - \mathrm{onehot}(y)$, both $O(V)$ (q21, q24, q28).
-- Normalizations differentiate through their statistics: LayerNorm's input gradient sums to zero, and RMSNorm's is orthogonal to $x$ (q26, q27).
-- Reverse mode costs one pass per output, so one backward pass gives a million-parameter gradient, at about twice the forward FLOPs (q29, q32).
+> **Learning objectives**
+> - Give the shape of any gradient and the strides of any row-major view, and turn broadcasting into a backward sum.
+> - Differentiate matrix expressions with the product rule and read off gradients with the trace trick.
+> - Compute the VJPs of matmul, softmax, log-softmax, cross-entropy, LayerNorm, and RMSNorm by hand, and check them with their invariances.
+> - Count the passes, bytes, and FLOPs of forward and reverse mode.
+> - Derive the backward of scaled dot-product attention from the matmul and softmax rules.
 
-## How to read this chapter
+## The ideas you will need
 
-Sections 1 to 3 review the ideas and work two examples by hand. Section 4 is the problem set: every problem is followed by a collapsed worked answer with the final result, the derivation, and the common wrong answers and why they are wrong. Try each problem before opening its answer.
-
----
-
-## 1. Why now
-
-By this point in Pass 2 there is a scalar autograd engine (`M08.2`) that differentiates one number at a time. It is correct and hopeless at scale: applying one $576 \times 576$ weight to one vector would create a third of a million scalar multiplication nodes. `M08.3` replaces it with closed-form vector-Jacobian products, one per operation, that take the upstream gradient as an array and return the input gradients as arrays, and `L0.2` registers them as the ops of the tensor autograd. Each closed form is a derivation to get right on paper first, because a gradient with the right shape and the wrong value trains, slowly and badly, rather than crashing. This set drills the shape bookkeeping, matrix differentials, the trace trick, the VJPs of softmax, log-softmax, cross-entropy, LayerNorm, and RMSNorm, the cost model of forward and reverse mode, and the attention backward you will meet again in `L9.4`.
-
-## 2. Principles
+The problems use a small set of symbols, collected here.
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -45,21 +31,21 @@ By this point in Pass 2 there is a scalar autograd engine (`M08.2`) that differe
 | $\delta_{ij}$ | 1 if $i = j$, else 0 | |
 | $\mathbf{1}$ | the all-ones vector | |
 
-### 2.1 Shapes, layouts, and strides
+### Shapes, layouts, and strides
 
-The convention in this course (and in PyTorch) is the **denominator layout**: $\partial L/\partial X$ has the shape of $X$, entry by entry $(\partial L/\partial X)_{ij} = \partial L/\partial X_{ij}$. A row-major array of shape $(n_0, n_1, n_2)$ stores index $(i, j, k)$ at element offset $i\,s_0 + j\,s_1 + k\,s_2$ with **strides** $s = (n_1 n_2, n_2, 1)$. A **view** reinterprets the same memory with other strides: swapping two axes swaps their strides and copies nothing. **Broadcasting** reuses one value along an axis; its backward is a sum over that axis, which `L0.1`'s `unbroadcast` performs. A **Jacobian** of a map from $\mathbb{R}^n$ to $\mathbb{R}^m$ is $m \times n$, which for a layer is enormous; reverse mode never builds it.
+The convention in this book (and in PyTorch) is the **denominator layout**: $\partial L/\partial X$ has the shape of $X$, entry by entry $(\partial L/\partial X)_{ij} = \partial L/\partial X_{ij}$. A row-major array of shape $(n_0, n_1, n_2)$ stores index $(i, j, k)$ at element offset $i\,s_0 + j\,s_1 + k\,s_2$ with **strides** $s = (n_1 n_2, n_2, 1)$. A **view** reinterprets the same memory with other strides: swapping two axes swaps their strides and copies nothing. **Broadcasting** reuses one value along an axis; its backward is a sum over that axis, which the `unbroadcast` of the tensor engine in [Tensor, broadcasting backward, and no_grad](../../build-an-llm/p00-foundations/01-tensor-and-broadcasting-backward.md) performs. A **Jacobian** of a map from $\mathbb{R}^n$ to $\mathbb{R}^m$ is $m \times n$, which for a layer is enormous; reverse mode never builds it.
 
-### 2.2 Differentials
+### Differentials
 
-The **differential** of $F$ at $X$ is the linear part of $F(X + dX) - F(X)$. It obeys the rules you know for scalars, with the order of factors kept: $d(A + B) = dA + dB$, $d(AB) = (dA)B + A(dB)$, $d(A^\top) = (dA)^\top$, $d\operatorname{tr}(A) = \operatorname{tr}(dA)$, and $d(X^{-1}) = -X^{-1}(dX)X^{-1}$ (q16). For $\log \det X$ the result is $\operatorname{tr}(X^{-1} dX)$. For an elementwise function $y = f(x)$, $dy = f'(x) \odot dx$, so its Jacobian is diagonal.
+With shapes settled, the next tool is the differential. The **differential** of $F$ at $X$ is the linear part of $F(X + dX) - F(X)$. It obeys the rules you know for scalars, with the order of factors kept: $d(A + B) = dA + dB$, $d(AB) = (dA)B + A(dB)$, $d(A^\top) = (dA)^\top$, $d\operatorname{tr}(A) = \operatorname{tr}(dA)$, and $d(X^{-1}) = -X^{-1}(dX)X^{-1}$ (q16). For $\log \det X$ the result is $\operatorname{tr}(X^{-1} dX)$. For an elementwise function $y = f(x)$, $dy = f'(x) \odot dx$, so its Jacobian is diagonal.
 
-### 2.3 The trace trick
+### The trace trick
 
-For a scalar $L$ of a matrix $M$, $dL = \sum_{ij} \frac{\partial L}{\partial M_{ij}}\, dM_{ij} = \langle \partial L/\partial M, dM \rangle = \operatorname{tr}((\partial L/\partial M)^\top dM)$. So **once $dL$ is written as $\operatorname{tr}(N^\top dM)$, the gradient is $N$**. The tool for getting there is the **cyclic property**: $\operatorname{tr}(ABC) = \operatorname{tr}(BCA) = \operatorname{tr}(CAB)$ whenever the products are defined (a cyclic shift, never an arbitrary swap), together with $\operatorname{tr}(A^\top) = \operatorname{tr}(A)$. A scalar is its own trace, so any scalar expression may be wrapped in one.
+A differential becomes a gradient through the trace. For a scalar $L$ of a matrix $M$, $dL = \sum_{ij} \frac{\partial L}{\partial M_{ij}}\, dM_{ij} = \langle \partial L/\partial M, dM \rangle = \operatorname{tr}((\partial L/\partial M)^\top dM)$. So **once $dL$ is written as $\operatorname{tr}(N^\top dM)$, the gradient is $N$**. The tool for getting there is the **cyclic property**: $\operatorname{tr}(ABC) = \operatorname{tr}(BCA) = \operatorname{tr}(CAB)$ whenever the products are defined (a cyclic shift, never an arbitrary swap), together with $\operatorname{tr}(A^\top) = \operatorname{tr}(A)$. A scalar is its own trace, so any scalar expression may be wrapped in one.
 
-### 2.4 VJPs of the ops the library registers
+### VJPs of the ops the library registers
 
-A **vector-Jacobian product** maps an upstream gradient $g = \partial L/\partial y$ to $\partial L/\partial x = J^\top g$ without forming $J$. The ones `M08.3` implements:
+A **vector-Jacobian product** maps an upstream gradient $g = \partial L/\partial y$ to $\partial L/\partial x = J^\top g$ without forming $J$. The table lists the ones implemented in [Matrix differentials, the trace trick, and closed-form VJPs](03-matrix-differentials-and-vjps.md).
 
 | Op | Forward | VJP |
 |---|---|---|
@@ -72,33 +58,31 @@ A **vector-Jacobian product** maps an upstream gradient $g = \partial L/\partial
 
 Here $\overline{v}$ is the mean of the entries of $v$, $\mu$ the mean of $x$, $\sigma = \sqrt{\tfrac1n \sum (x_i - \mu)^2 + \epsilon}$, and $e_t$ the one-hot vector of the target. **LayerNorm** and **RMSNorm** are functions of a whole row: LayerNorm centers and scales it to mean 0 and variance 1, RMSNorm only scales it to root-mean-square 1, and both then apply a learned gain. Because each normalizes by a statistic of its own input, the gradient has a correction term that a "treat the statistic as constant" derivation misses. Two checks catch it: LayerNorm's input gradient sums to zero (shifting $x$ changes nothing), and RMSNorm's is orthogonal to $x$ when $\epsilon = 0$ (scaling $x$ changes nothing).
 
-### 2.5 Forward versus reverse mode
+### Forward versus reverse mode
 
-For $f: \mathbb{R}^n \to \mathbb{R}^m$, forward mode (`M08.1`'s dual numbers) computes one Jacobian-vector product $J v$ per pass, so the full Jacobian takes $n$ passes. Reverse mode computes one $J^\top u$ per pass, so it takes $m$. A loss has $m = 1$: one backward pass gives the gradient with respect to every parameter, at the price of storing the forward activations it needs. For a matrix product the backward computes two products of the same size as the forward one, so backward costs about twice the forward FLOPs, and a training step about three times: the $6N$ per token of `S-M05` q13.
+Which mode to run is a question of counting. For $f: \mathbb{R}^n \to \mathbb{R}^m$, forward mode (the dual numbers of [Dual numbers and forward-mode autodiff](01-dual-numbers-forward-mode.md)) computes one Jacobian-vector product $J v$ per pass, so the full Jacobian takes $n$ passes. Reverse mode computes one $J^\top u$ per pass, so it takes $m$. A loss has $m = 1$: one backward pass gives the gradient with respect to every parameter, at the price of storing the forward activations it needs. For a matrix product the backward computes two products of the same size as the forward one, so backward costs about twice the forward FLOPs, and a training step about three times: the $6N$ per token of q13 in the [Discrete math 1 problem set](../05-discrete-math-1/90-problem-set.md).
 
-### 2.6 Attention
+### Attention
 
-**Scaled dot-product attention** (SDPA) for $T$ positions computes scores $S = QK^\top/\sqrt{d}$, weights $P = \mathrm{softmax}(S)$ along each row, and output $O = PV$. Its backward chains the three rules above: matmul for $O = PV$, softmax row by row, matmul again for $S$ (q34).
+Everything above comes together in attention. **Scaled dot-product attention** (SDPA) for $T$ positions computes scores $S = QK^\top/\sqrt{d}$, weights $P = \mathrm{softmax}(S)$ along each row, and output $O = PV$. Its backward chains the three rules above: matmul for $O = PV$, softmax row by row, matmul again for $S$ (q34).
 
-## 3. Worked example by hand
+## Two examples worked by hand
 
-This is a sibling of q21 and q24, not one of the problems of the set.
+Before the set itself, two warm-ups. They are siblings of q21 and q24, not problems of the set.
 
-**Softmax VJP.** Let $x = (0, 0)$, so $y = \mathrm{softmax}(x) = (1/2, 1/2)$, and let the upstream gradient be $g = (1, 3)$.
-
-- $\langle g, y \rangle = 1 \cdot \tfrac12 + 3 \cdot \tfrac12 = 2$.
-- $g - 2 \cdot \mathbf{1} = (-1, 1)$.
-- $\partial L/\partial x = y \odot (-1, 1) = (-1/2, 1/2)$.
+**Softmax VJP.** Let $x = (0, 0)$, so $y = \mathrm{softmax}(x) = (1/2, 1/2)$, and let the upstream gradient be $g = (1, 3)$. Then $\langle g, y \rangle = 1 \cdot \tfrac12 + 3 \cdot \tfrac12 = 2$, so $g - 2 \cdot \mathbf{1} = (-1, 1)$ and $\partial L/\partial x = y \odot (-1, 1) = (-1/2, 1/2)$.
 
 Check against the Jacobian: for two classes $J = \begin{pmatrix} y_1(1-y_1) & -y_1 y_2 \\ -y_1 y_2 & y_2(1 - y_2)\end{pmatrix} = \begin{pmatrix} 1/4 & -1/4 \\ -1/4 & 1/4 \end{pmatrix}$, and $J^\top g = (1/4 - 3/4,\ -1/4 + 3/4) = (-1/2, 1/2)$. The entries sum to 0, as every softmax input gradient must.
 
 **Cross-entropy.** Logits $z = (\log 3, 0)$, target class 0. Then $\mathrm{softmax}(z) = (3/4, 1/4)$, $L = -\log(3/4) = \log(4/3)$, and $\partial L/\partial z = (3/4 - 1, 1/4 - 0) = (-1/4, 1/4)$: lower the wrong logit, raise the right one, by how far the prediction is from the target.
 
-## 4. The problem set, with worked answers
+## The problems
 
-Vectors are flat lists; matrices are lists of rows. A gradient answer has the variable's shape. Answers are exact ($\sqrt2$, $e$), not decimals. Lettered parts are answered separately. The tag after each problem says what kind of answer is expected.
+Vectors are flat lists; matrices are lists of rows. A gradient answer has the variable's shape. Answers are exact ($\sqrt2$, $e$), not decimals. Lettered parts are answered separately. The tag after each problem names the form the answer takes.
 
 ### Layouts and shapes
+
+The first four problems are bookkeeping: before any derivative, you need to know what shape each gradient has and how arrays sit in memory.
 
 A linear layer computes $Y = X W^\top + b$ for a batch $X$ of shape $(B, T, d_{in}) = (2, 3, 4)$, stored row-major in float32, with $W$ of shape $(d_{out}, d_{in}) = (5, 4)$ and $b$ of shape $(5)$. $L$ is a scalar loss.
 
@@ -135,6 +119,8 @@ A linear layer computes $Y = X W^\top + b$ for a batch $X$ of shape $(B, T, d_{i
 </details>
 
 ### Differentials of matrix expressions
+
+The next group practices the differential rules on small expressions, ending with the proof of the inverse rule that q8 uses.
 
 **q5.** $f(x) = x^\top A x$ with $A = \begin{pmatrix} 1 & 2 \\ 0 & 3 \end{pmatrix}$ and $x = (x_1, x_2)$. Give $\nabla f$. `[vector in x1, x2]`
 
@@ -188,7 +174,7 @@ A linear layer computes $Y = X W^\top + b$ for a batch $X$ of shape $(B, T, d_{i
 
 <details><summary>Answer</summary>
 
-**$\sigma'(z) = \dfrac{e^{-z}}{(1 + e^{-z})^2} = \sigma(z)(1 - \sigma(z))$.** Chain rule on $(1 + e^{-z})^{-1}$: $-(1 + e^{-z})^{-2} \cdot (-e^{-z})$. The second form follows from $1 - \sigma = e^{-z}/(1 + e^{-z})$, and is the one `L0.2` uses because it reuses the forward output. Common mistakes: $\sigma(z)$ itself; the same fraction with a minus sign, losing the sign of the inner derivative $-e^{-z}$.
+**$\sigma'(z) = \dfrac{e^{-z}}{(1 + e^{-z})^2} = \sigma(z)(1 - \sigma(z))$.** Chain rule on $(1 + e^{-z})^{-1}$: $-(1 + e^{-z})^{-2} \cdot (-e^{-z})$. The second form follows from $1 - \sigma = e^{-z}/(1 + e^{-z})$, and is the one [The op library and gradcheck_all](../../build-an-llm/p00-foundations/02-op-library-and-gradcheck.md) uses because it reuses the forward output. Common mistakes: $\sigma(z)$ itself; the same fraction with a minus sign, losing the sign of the inner derivative $-e^{-z}$.
 
 </details>
 
@@ -204,7 +190,7 @@ A linear layer computes $Y = X W^\top + b$ for a batch $X$ of shape $(B, T, d_{i
 
 <details><summary>Answer</summary>
 
-**$\left(\dfrac{e^{x_1}}{e^{x_1} + e^{x_2}},\ \dfrac{e^{x_2}}{e^{x_1} + e^{x_2}}\right) = \mathrm{softmax}(x)$.** $\partial/\partial x_i$ of $\log Z$ is $(\partial Z/\partial x_i)/Z = e^{x_i}/Z$. The gradient of log-sum-exp is softmax, which `M09.2` and `L0.3` rest on. Common mistake: $(e^{x_1}, e^{x_2})$, forgetting the derivative of the outer log.
+**$\left(\dfrac{e^{x_1}}{e^{x_1} + e^{x_2}},\ \dfrac{e^{x_2}}{e^{x_1} + e^{x_2}}\right) = \mathrm{softmax}(x)$.** $\partial/\partial x_i$ of $\log Z$ is $(\partial Z/\partial x_i)/Z = e^{x_i}/Z$. The gradient of log-sum-exp is softmax, which [Stable numerics: logsumexp, softmax, compensated sums](../09-numerical-methods-and-floating-point/02-stable-numerics.md) and [Losses with a fused backward](../../build-an-llm/p00-foundations/03-losses-with-fused-backward.md) rest on. Common mistake: $(e^{x_1}, e^{x_2})$, forgetting the derivative of the outer log.
 
 </details>
 
@@ -242,6 +228,8 @@ A complete derivation starts from $XX^{-1} = I$, uses the product rule and $dI =
 
 ### The trace trick
 
+These problems turn the differential into a gradient with the cyclic property, ending with the proof of the matmul VJP.
+
 **q17.** For conformable matrices: (a) is $\operatorname{tr}(ABC) = \operatorname{tr}(CAB)$ always? (b) Is $\operatorname{tr}(ABC) = \operatorname{tr}(BAC)$ always? `[bool]`
 
 <details><summary>Answer</summary>
@@ -254,7 +242,7 @@ A complete derivation starts from $XX^{-1} = I$, uses the product rule and $dI =
 
 <details><summary>Answer</summary>
 
-**(a) $\begin{pmatrix} 1 & 3 \\ 2 & 4 \end{pmatrix}$. (b) $\begin{pmatrix} 1 & 0 \\ 1 & 2 \end{pmatrix}$.** By q20, $\partial L/\partial W = X^\top G = X^\top$ and $\partial L/\partial X = GW^\top = W^\top$ when $G = I$. `M08.3`'s `matmul_vjp` returns exactly these two. Common mistakes: $GX = X$ for (a), the factors in the wrong order and untransposed; the $\partial L/\partial X$ answer given for (a); $GW = W$ for (b), forgetting the transpose.
+**(a) $\begin{pmatrix} 1 & 3 \\ 2 & 4 \end{pmatrix}$. (b) $\begin{pmatrix} 1 & 0 \\ 1 & 2 \end{pmatrix}$.** By q20, $\partial L/\partial W = X^\top G = X^\top$ and $\partial L/\partial X = GW^\top = W^\top$ when $G = I$. The `matmul_vjp` of [Matrix differentials, the trace trick, and closed-form VJPs](03-matrix-differentials-and-vjps.md) returns exactly these two. Common mistakes: $GX = X$ for (a), the factors in the wrong order and untransposed; the $\partial L/\partial X$ answer given for (a); $GW = W$ for (b), forgetting the transpose.
 
 </details>
 
@@ -281,6 +269,8 @@ Shapes check: $X$ is $m \times k$, $W$ is $k \times n$, $G$ is $m \times n$; $X^
 </details>
 
 ### VJPs by hand
+
+Now the rules the op library registers, each on numbers small enough to check by hand, ending with the proof of the softmax VJP.
 
 **q21.** $y = \mathrm{softmax}(x) = (1/2, 1/4, 1/4)$ and the upstream gradient is $g = (1, 0, 0)$. Give $\partial L / \partial x$. `[vector]`
 
@@ -356,6 +346,8 @@ A complete derivation gets the Jacobian from the quotient rule, contracts it wit
 
 ### Forward versus reverse mode
 
+Four short problems on what each mode costs, in passes, bytes, and FLOPs.
+
 **q29.** A loss $f: \mathbb{R}^n \to \mathbb{R}$ has $n = 10^6$ parameters. How many (a) Jacobian-vector products (forward mode) and (b) vector-Jacobian products (reverse mode) give the full gradient? `[number]`
 
 <details><summary>Answer</summary>
@@ -376,7 +368,7 @@ A complete derivation gets the Jacobian from the quotient rule, contracts it wit
 
 <details><summary>Answer</summary>
 
-**$2\,097\,152$ bytes** (2 MiB). $16 \text{ layers} \times 32 \text{ rows} \times 1024 \text{ columns} \times 4 \text{ bytes}$. Memory that grows with depth and batch is what `M08.4`'s checkpointing trades for recompute. Common mistake: $524\,288$, counting floats rather than bytes.
+**$2\,097\,152$ bytes** (2 MiB). $16 \text{ layers} \times 32 \text{ rows} \times 1024 \text{ columns} \times 4 \text{ bytes}$. Memory that grows with depth and batch is what the checkpointing of [Hessian-vector products and the recompute-versus-memory schedule](04-hessian-vector-products-and-recompute.md) trades for recompute. Common mistake: $524\,288$, counting floats rather than bytes.
 
 </details>
 
@@ -384,13 +376,15 @@ A complete derivation gets the Jacobian from the quotient rule, contracts it wit
 
 <details><summary>Answer</summary>
 
-**(a) $4mkn$. (b) $3$.** Forward: $XW$ costs $2mkn$ FLOPs ($mn$ outputs, $k$ multiply-adds each). Backward computes two products of the same size: $GW^\top$ ($m \times n$ times $n \times k$) and $X^\top G$ ($k \times m$ times $m \times n$), $2mkn$ each. (b) $(2 + 4)/2 = 3$: the $6N$ FLOPs per token of `S-M05` q13. Common mistakes: $2mkn$, counting only one of the two products; $mkn$, counting multiply-adds as one FLOP; $2$ for (b), the backward-to-forward ratio rather than the total.
+**(a) $4mkn$. (b) $3$.** Forward: $XW$ costs $2mkn$ FLOPs ($mn$ outputs, $k$ multiply-adds each). Backward computes two products of the same size: $GW^\top$ ($m \times n$ times $n \times k$) and $X^\top G$ ($k \times m$ times $m \times n$), $2mkn$ each. (b) $(2 + 4)/2 = 3$: the $6N$ FLOPs per token of q13 in the [Discrete math 1 problem set](../05-discrete-math-1/90-problem-set.md). Common mistakes: $2mkn$, counting only one of the two products; $mkn$, counting multiply-adds as one FLOP; $2$ for (b), the backward-to-forward ratio rather than the total.
 
 </details>
 
 ### The SDPA Jacobian
 
-Scaled dot-product attention: $S = Q K^\top / \sqrt{d}$, $P = \mathrm{softmax}(S)$ row by row, $O = P V$. Take $T = 2$ positions, $d = 1$, $Q = \begin{pmatrix} 1 \\ 0 \end{pmatrix}$, $K = \begin{pmatrix} 0 \\ 1 \end{pmatrix}$, $V = \begin{pmatrix} 1 \\ 3 \end{pmatrix}$, no mask. Write $e$ as `E`.
+The set closes by chaining the matmul and softmax rules through scaled dot-product attention.
+
+Scaled dot-product attention: $S = Q K^\top / \sqrt{d}$, $P = \mathrm{softmax}(S)$ row by row, $O = P V$. Take $T = 2$ positions, $d = 1$, $Q = \begin{pmatrix} 1 \\ 0 \end{pmatrix}$, $K = \begin{pmatrix} 0 \\ 1 \end{pmatrix}$, $V = \begin{pmatrix} 1 \\ 3 \end{pmatrix}$, no mask.
 
 **q33.** (a) Give $O$. `[matrix]` With upstream gradient $\partial L / \partial O = \begin{pmatrix} 1 \\ 0 \end{pmatrix}$, give (b) $\partial L / \partial V$ and (c) $\partial L / \partial Q$. `[matrix]`
 
@@ -414,37 +408,45 @@ Shapes: $Q, K$ are $T \times d$, $V$ is $T \times d_v$, $S$ and $P$ are $T \time
 2. Row $i$ of $P$ is the softmax of row $i$ of $S$, and rows do not interact. By q28 on row $i$ with upstream $dP_{i,:}$: $dS_{ij} = P_{ij}(dP_{ij} - \langle dP_{i,:}, P_{i,:}\rangle)$.
 3. $S = QK^\top/\sqrt d$ is a scaled product. By q20 with $X = Q$, $W = K^\top$, and the constant $1/\sqrt d$ carried through: $dQ = dS\,(K^\top)^\top/\sqrt d = dS\,K/\sqrt d$ ($T \times d$, like $Q$), and $d(K^\top) = Q^\top dS/\sqrt d$, so $dK = dS^\top Q/\sqrt d$ ($T \times d$, like $K$).
 
-Every gradient has its variable's shape. A causal mask sets masked $S_{ij}$ to $-\infty$, so $P_{ij} = 0$ there and step 2 gives $dS_{ij} = 0$: no gradient flows through masked entries. FlashAttention's backward (`L9.4`) recomputes $P$ tile by tile and applies these rules, with $\sum_k dP_{ik}P_{ik} = \sum_k dO_{ik}O_{ik}$ precomputed per row.
+Every gradient has its variable's shape. A causal mask sets masked $S_{ij}$ to $-\infty$, so $P_{ij} = 0$ there and step 2 gives $dS_{ij} = 0$: no gradient flows through masked entries. FlashAttention's backward recomputes $P$ tile by tile and applies these rules, with $\sum_k dP_{ik}P_{ik} = \sum_k dO_{ik}O_{ik}$ precomputed per row.
 
 A complete derivation gets $dV$ and $dP$ from the matmul rule, applies the softmax VJP row by row, gets $dQ$ and $dK$ from the scaled product, and checks every shape. Model derivation also in [`q34.md`](../../../../course/solutions/solve/S-M08/q34.md).
 
 </details>
 
-## 5. Pitfalls
+## Common mistakes across the set
 
-| Pitfall | Symptom | How the solution avoids it |
+The wrong answers listed under each problem cluster into a handful of recurring errors. The table collects them, with the problems where each one shows up.
+
+| Mistake | Symptom | The fix |
 |---|---|---|
-| Gradient transposed relative to its variable | shape error in the optimizer, or a silently wrong square gradient | gives every gradient its variable's shape (q1 b); $X^{-\top}$, not $X^{-1}$ (q9) |
-| Not summing over broadcast axes | bias gradient of shape (B, T, d) | sums $\partial L/\partial Y$ over $B$ and $T$, six terms per entry (q1 c, q3) |
+| Gradient transposed relative to its variable | shape error in the optimizer, or a silently wrong square gradient | give every gradient its variable's shape (q1 b); $X^{-\top}$, not $X^{-1}$ (q9) |
+| Not summing over broadcast axes | bias gradient of shape (B, T, d) | sum $\partial L/\partial Y$ over $B$ and $T$, six terms per entry (q1 c, q3) |
 | Counting bytes as strides, or using a contiguous copy's strides for a view | wrong element read through a view | strides in elements; a transpose view swaps strides (q2) |
 | $\nabla x^\top A x = 2Ax$ for a non-symmetric $A$ | wrong gradient for asymmetric forms | $(A + A^\top)x$ from both terms of the product rule (q5) |
-| Dropping the factor 2 of a square | gradients half as large; learning rates tuned to hide it | keeps the 2 from $d(r^\top r) = 2r^\top dr$ (q7, q10) |
-| Swapping a non-cyclic order inside a trace | an identity that holds only for commuting matrices | rotates cyclically only (q17, q20) |
+| Dropping the factor 2 of a square | gradients half as large; learning rates tuned to hide it | keep the 2 from $d(r^\top r) = 2r^\top dr$ (q7, q10) |
+| Swapping a non-cyclic order inside a trace | an identity that holds only for commuting matrices | rotate cyclically only (q17, q20) |
 | Softmax VJP without the $\langle g, y\rangle$ term | input gradients that do not sum to zero | $y \odot (g - \langle g, y\rangle\mathbf 1)$ (q21, q28) |
 | One-hot minus softmax | gradient ascent on the loss | softmax minus one-hot (q24 a) |
-| Mean over all positions including ignored ones | loss and gradient scaled down by the padding fraction | divides by the kept count (q25) |
-| Treating a normalization's statistics as constants | RMSNorm or LayerNorm gradients without the correction term | differentiates through $r$, $\mu$, and $\sigma$; checks orthogonality and zero sum (q26, q27) |
+| Mean over all positions including ignored ones | loss and gradient scaled down by the padding fraction | divide by the kept count (q25) |
+| Treating a normalization's statistics as constants | RMSNorm or LayerNorm gradients without the correction term | differentiate through $r$, $\mu$, and $\sigma$; check orthogonality and zero sum (q26, q27) |
 | Using $P\,dO$ for $dV$ | value gradients from the wrong positions | $dV = P^\top dO$ from the matmul rule (q33 b, q34) |
 
-## 6. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `S-M05` | proof structure for q16, q20, q28, q34 |
-| Forward | `M08.1` | dual numbers compute the JVPs of section 2.5 |
-| Forward | `M08.2` | scalar reverse mode, the oracle against which `M08.3` is tested |
-| Forward | `M08.3` | the VJP table of section 2.4 as code, gradchecked rule by rule |
-| Forward | `L0.2` | registers those VJPs as tensor ops, with `unbroadcast` from q1 and q3 |
-| Forward | `L0.3` | fused cross-entropy with `ignore_index` (q24, q25) |
-| Forward | `L7.1` | RMSNorm in the modern block (q26) |
-| Forward | `L9.4` | FlashAttention backward recomputes $P$ and applies q34's rules tile by tile |
+Every derivation here becomes code. The dual numbers of [Dual numbers and forward-mode autodiff](01-dual-numbers-forward-mode.md) compute the JVPs of the forward-versus-reverse discussion; [Scalar reverse mode: the Value graph](02-scalar-reverse-mode.md) is the oracle against which the closed-form VJPs are tested; and [Matrix differentials, the trace trick, and closed-form VJPs](03-matrix-differentials-and-vjps.md) turns the VJP table into code, gradchecked rule by rule. In *Build Your Own LLM System*, [The op library and gradcheck_all](../../build-an-llm/p00-foundations/02-op-library-and-gradcheck.md) registers those VJPs as tensor ops, with the `unbroadcast` of q1 and q3; [Losses with a fused backward](../../build-an-llm/p00-foundations/03-losses-with-fused-backward.md) implements fused cross-entropy with `ignore_index` (q24, q25); [Pre-LN, RMSNorm](../../build-an-llm/p07-modern-block/01-pre-ln-rmsnorm.md) puts RMSNorm in the modern block (q26); the attention of the [Attention Origins](../../build-an-llm/p04-attention-origins/README.md) chapter and [Scaled dot-product attention (forward and backward)](../../build-an-llm/p05-transformer-2017/01-scaled-dot-product-attention.md) use the backward of q33 and q34; and FlashAttention, whose forward pass is built in [FlashAttention forward in C](../../build-an-llm/p09-kernels/06-flash-attention-forward.md), recomputes $P$ in its backward and applies q34's rules tile by tile.
+
+Further reading:
+
+- Parr and Howard, "The Matrix Calculus You Need for Deep Learning" (2018).
+- Minka, "Old and New Matrix Algebra Useful for Statistics" (2000).
+- Baydin et al., "Automatic Differentiation in Machine Learning: a Survey" (2018), sections 2 and 3.
+- Dao et al., "FlashAttention" (2022), appendix B.
+
+## Summary
+
+- A gradient has the shape of its variable, and broadcasting in the forward pass becomes a sum over the broadcast axes in the backward pass (q1, q3).
+- Write the differential $dL = \operatorname{tr}(G^\top dY)$, push $dY$ through the product rule, rotate with the cyclic trace, and read off the gradient: $\partial L/\partial W = X^\top G$, $\partial L/\partial X = G W^\top$ (q18, q20).
+- Softmax's VJP is $y \odot (g - \langle g, y\rangle)$ and cross-entropy's gradient with respect to logits is $\mathrm{softmax}(z) - \mathrm{onehot}(y)$, both $O(V)$ (q21, q24, q28).
+- Normalizations differentiate through their statistics: LayerNorm's input gradient sums to zero, and RMSNorm's is orthogonal to $x$ (q26, q27).
+- Reverse mode costs one pass per output, so one backward pass gives a million-parameter gradient, at about twice the forward FLOPs (q29, q32).

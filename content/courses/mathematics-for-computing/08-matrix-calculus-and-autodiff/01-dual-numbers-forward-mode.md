@@ -1,59 +1,35 @@
 # Dual numbers and forward-mode autodiff
 
-## Overview
+An automatic differentiation engine is a pile of derivative rules: one per operation, each easy to get subtly wrong. Before you build one, you need a way to check those rules that is better than the tools you have so far. The closed forms of [Activation functions and their derivatives](../01-calculus-1/03-activation-functions.md) cover only the functions someone differentiated by hand. The central differences of [Partial derivatives, gradients, gradcheck](../04-calculus-3/01-gradients-and-gradcheck.md) and [Jacobians, multivariable chain rule, numeric JVP/VJP](../04-calculus-3/02-jacobians-and-the-chain-rule.md) work for anything, but they carry a step-size error near $10^{-10}$ and cannot tell a correct rule from one that is off by $10^{-11}$. Neither is good enough to serve as an oracle.
 
-| | |
-|---|---|
-| **Module** | `M08.1` · build · Python · Pass 2 · about 1 to 1.5 h reading |
-| **Solution** | [`dual.py`](../../../../course/solutions/python/tinyllm/autograd/dual.py): `Dual` (arithmetic, powers, `@`, indexing), `dual_exp`, `dual_log`, `dual_tanh`, `dual_erf`, `derivative`, `jvp` |
-| **Contract** | [`course/contracts/py/tinyllm/autograd/dual.pyi`](../../../../course/contracts/py/tinyllm/autograd/dual.pyi) |
-| **Needs** | `M01.3` activation derivatives (the dual derivatives must match them) · `M04.2` numeric JVP · reading: `M02.1` Taylor series |
-| **Used by** | `M08.2` the forward-mode oracle for reverse mode · `L0.2` the derivative oracle for every elementwise op, on the way to the Pass 2 result: a bigram trained by the course's own autograd |
-| **Optional depth** | Baydin, Pearlmutter, Radul, and Siskind, [*Automatic Differentiation in Machine Learning: a Survey*](https://www.jmlr.org/papers/v18/17-468.html) (JMLR 2018), sections 2 and 3.1; Griewank and Walther, *Evaluating Derivatives* (SIAM, 2nd ed.), ch. 3 |
+Dual numbers give a third way. You write the forward computation once, run it on a number that carries its own derivative, and read off the exact derivative of the whole composition. No step size, no symbolic algebra: the derivative falls out of ordinary arithmetic. In *Build Your Own LLM System*, [The op library and gradcheck_all](../../build-an-llm/p00-foundations/02-op-library-and-gradcheck.md) uses this to check the backward of every elementwise op, on the way to a bigram trained by the book's own autograd engine, and the next section, [Scalar reverse mode: the Value graph](02-scalar-reverse-mode.md), checks reverse mode against it.
 
-## Key Takeaways
+This section builds dual numbers from first principles, works three examples by hand, and then walks through a complete implementation, [`dual.py`](../../../../course/solutions/python/tinyllm/autograd/dual.py), whose interface is fixed by the contract [`course/contracts/py/tinyllm/autograd/dual.pyi`](../../../../course/contracts/py/tinyllm/autograd/dual.pyi). It leans on [Taylor series, remainder bounds, range reduction](../02-calculus-2/01-taylor-series.md) for the reason the method works, and on the closed-form activation derivatives that the dual derivatives must match.
 
-- A dual number $a + b\varepsilon$ with $\varepsilon^2 = 0$ turns Taylor's theorem into an identity: $f(a + b\varepsilon) = f(a) + f'(a)\, b\, \varepsilon$, so evaluating a function on $x + \varepsilon$ returns its value and its exact derivative together.
-- One rule per primitive is enough; the chain rule happens by itself when operations compose.
-- With a vector tangent, one forward pass computes a Jacobian-vector product $J v$; a full Jacobian costs one pass per input.
-- Dual derivatives have no step size and match closed-form derivatives to rounding, which makes them the oracle for every elementwise op in the autograd library.
+> **Learning objectives**
+> - Derive the dual-number rules for sum, product, quotient, and the elementwise functions from $\varepsilon^2 = 0$ and Taylor's theorem.
+> - Compute a derivative and a Jacobian-vector product by hand by propagating tangents.
+> - Implement a `Dual` class that interoperates with numpy on either side of an operator, including `@` and indexing.
+> - Explain why dual derivatives are exact to rounding, and why forward mode costs one pass per input direction.
 
-## How to read this chapter
+## The algebra of dual numbers
 
-Sections 1 to 3 build dual numbers from first principles and work three examples by hand. Section 4 fixes the interface and the cases a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
+Start with a formal symbol $\varepsilon$ that is not zero but whose square is: $\varepsilon \ne 0$, $\varepsilon^2 = 0$. A dual number is $a + b\varepsilon$, with a value $a$ and a tangent $b$; in code it is `Dual(val, eps)`. Throughout this section, $f$ and $f'$ are a differentiable function and its derivative, $x \in \mathbb{R}^n$ is an input point and $v \in \mathbb{R}^n$ a tangent direction (both `float64[n]`), $J_f(x) \in \mathbb{R}^{m \times n}$ is the Jacobian of $f: \mathbb{R}^n \to \mathbb{R}^m$ with $J_{ij} = \partial f_i / \partial x_j$, $J_f(x)\, v \in \mathbb{R}^m$ is the Jacobian-vector product (JVP), $W$ is a constant $m \times n$ matrix, and $u \approx 1.1 \times 10^{-16}$ is the unit roundoff of float64.
 
----
-
-## 1. Why now
-
-This pass replaces the tracer's count table with a bigram trained by the course's own autograd (`L0.1` to `L0.5`), and an autograd engine is a pile of derivative rules: one per op, each easy to get subtly wrong. So far there are two ways to check a derivative, and neither is good enough as an oracle. The closed forms of `M01.3` cover only the functions differentiated by hand. The central differences of `M04.1` and `M04.2` work for anything, but carry a step-size error near $10^{-10}$ and cannot tell a correct rule from one that is off by $10^{-11}$. Dual numbers give a third way: write the forward computation once, run it on a number that carries its own derivative, and read off the exact derivative of the composition. `L0.2` uses this to check each elementwise op's backward, and `M08.2` checks reverse mode against it.
-
-## 2. Principles
-
-| Symbol | Meaning | Type / shape |
-|---|---|---|
-| $\varepsilon$ | a formal symbol with $\varepsilon^2 = 0$ (and $\varepsilon \ne 0$) | |
-| $a + b\varepsilon$ | a dual number: value $a$, tangent $b$ | `Dual(val, eps)` |
-| $f, f'$ | a differentiable function and its derivative | |
-| $x \in \mathbb{R}^n$ | an input point | `float64[n]` |
-| $v \in \mathbb{R}^n$ | a tangent direction | `float64[n]` |
-| $J_f(x) \in \mathbb{R}^{m \times n}$ | the Jacobian of $f: \mathbb{R}^n \to \mathbb{R}^m$, $J_{ij} = \partial f_i / \partial x_j$ | `float64[m, n]` |
-| $J_f(x)\, v$ | the Jacobian-vector product (JVP) | `float64[m]` |
-| $W$ | a constant matrix | `float64[m, n]` |
-| $u$ | unit roundoff of float64, about $1.1 \times 10^{-16}$ | scalar |
-
-**The algebra.** Dual numbers add and multiply like polynomials in $\varepsilon$, then drop every $\varepsilon^2$:
+Dual numbers add and multiply like polynomials in $\varepsilon$, after which you drop every $\varepsilon^2$:
 
 $$(a + b\varepsilon) + (c + d\varepsilon) = (a + c) + (b + d)\varepsilon,$$
 $$(a + b\varepsilon)(c + d\varepsilon) = ac + (ad + bc)\varepsilon + bd\,\varepsilon^2 = ac + (ad + bc)\varepsilon.$$
 
-The tangent of a product is the product rule. Division follows by multiplying with the conjugate $c - d\varepsilon$, since $(c + d\varepsilon)(c - d\varepsilon) = c^2$:
+Look at the tangent of the product: it is the product rule. Division follows by multiplying top and bottom by the conjugate $c - d\varepsilon$, since $(c + d\varepsilon)(c - d\varepsilon) = c^2$:
 
 $$\frac{a + b\varepsilon}{c + d\varepsilon} = \frac{(a + b\varepsilon)(c - d\varepsilon)}{c^2} = \frac{a}{c} + \frac{bc - ad}{c^2}\varepsilon,$$
 
-the quotient rule. A plain number $c$ is the dual number $c + 0\varepsilon$: a constant has tangent 0.
+and the tangent is the quotient rule. A plain number $c$ is the dual number $c + 0\varepsilon$: a constant has tangent 0.
 
-**Why it computes derivatives.** Taylor's theorem (`M02.1`) expands a smooth $f$ around $a$:
+## Why the tangent is the derivative
+
+That the arithmetic reproduces the product and quotient rules is not a coincidence. Taylor's theorem expands a smooth $f$ around $a$:
 
 $$f(a + h) = f(a) + f'(a)\,h + \tfrac12 f''(a)\,h^2 + \dots$$
 
@@ -61,9 +37,9 @@ Put $h = b\varepsilon$. Every term from $h^2$ on contains $\varepsilon^2 = 0$, s
 
 $$f(a + b\varepsilon) = f(a) + f'(a)\, b\, \varepsilon \quad \text{exactly.}$$
 
-No step size, no truncation: the tangent is the derivative times the input tangent, and floating point adds only the rounding of each operation.
+There is no step size and no truncation: the tangent is the derivative times the input tangent, and floating point adds only the rounding of each operation.
 
-**One rule per primitive.** Read off each function's dual rule from its derivative:
+This tells you how to extend the algebra to any primitive: read its dual rule straight off its derivative. The table collects the rules this section implements.
 
 | Function | Dual rule |
 |---|---|
@@ -75,19 +51,23 @@ No step size, no truncation: the tangent is the derivative times the input tange
 | $c^x$, constant $c > 0$ | $c^a + c^a \ln c\; b\,\varepsilon$ |
 | $x^y$, both dual | $a^c + a^c\left(d \ln a + c\,b/a\right)\varepsilon$ for $x = a + b\varepsilon$, $y = c + d\varepsilon$ |
 
-**The chain rule comes free.** If $f(a + \varepsilon) = f(a) + f'(a)\varepsilon$, then feeding that into $g$ gives $g(f(a)) + g'(f(a))\, f'(a)\,\varepsilon$: the derivative of $g \circ f$. Every program built from the primitives is differentiated by running it.
+You need one rule per primitive and nothing more, because the chain rule comes for free. If $f(a + \varepsilon) = f(a) + f'(a)\varepsilon$, then feeding that into $g$ gives $g(f(a)) + g'(f(a))\, f'(a)\,\varepsilon$, which is the derivative of $g \circ f$. Every program built from the primitives is differentiated simply by running it.
 
-**Vectors and Jacobian-vector products.** Give every input its own tangent: $x + v\varepsilon$ with $v \in \mathbb{R}^n$. The multivariable Taylor expansion has the same shape, $f(x + v\varepsilon) = f(x) + J_f(x)\, v\,\varepsilon$, so the output tangent is the JVP. A linear map passes tangents through itself: $W(x + v\varepsilon) = Wx + (Wv)\varepsilon$. To build the whole Jacobian, run once per basis vector $e_j$, getting column $j$ each time: forward mode costs one pass per input. It is ideal for few inputs and many outputs; a loss with millions of parameters and one output is the opposite case, and the reason `M08.2` builds reverse mode.
+## From derivatives to Jacobian-vector products
 
-**Arrays of dual numbers.** Store a vector of dual numbers as two arrays of one shape, `val` and `eps`, and apply every rule elementwise. Indexing and slicing take the same entries from both arrays; `@` maps the tangent by the same matrix.
+So far each number carried a scalar tangent. Give every input its own tangent instead: $x + v\varepsilon$ with $v \in \mathbb{R}^n$. The multivariable Taylor expansion has the same shape, $f(x + v\varepsilon) = f(x) + J_f(x)\, v\,\varepsilon$, so the output tangent is the JVP. A linear map passes tangents through itself: $W(x + v\varepsilon) = Wx + (Wv)\varepsilon$.
 
-**numpy on the left.** `np.float64(2.0) * d` asks numpy first. numpy's scalar and array types try to treat `d` as an element of an object array, and the tangent is lost (or an object array comes back). Setting the class attribute `__array_ufunc__ = None` tells numpy to return `NotImplemented` for any operation with a `Dual`, and Python then calls `Dual.__rmul__`. Every reflected method (`__radd__`, `__rsub__`, `__rmul__`, `__rtruediv__`, `__rpow__`, `__rmatmul__`) must keep the operand order: $c - x$ has tangent $-b$, and $c / x$ has tangent $-cb/a^2$.
+To build the whole Jacobian, run once per basis vector $e_j$, getting column $j$ each time. Forward mode therefore costs one pass per input. It is ideal for few inputs and many outputs. A loss with millions of parameters and one output is the opposite case, and it is the reason the next section builds reverse mode.
 
-**Exact versus approximate.** A central difference $(f(x + h) - f(x - h)) / 2h$ has truncation error about $h^2 |f'''|/6$ and rounding error about $u |f| / h$, balanced near $h = 10^{-5}$ at an error near $10^{-10}$ (`M01.1`). A dual derivative is as accurate as evaluating $f$ itself, about $u$ relative. That is why dual derivatives can be compared with `M01.3`'s closed forms at a relative tolerance of $10^{-12}$, but with `M04.2`'s numeric JVP only at $10^{-6}$.
+In code, a vector of dual numbers is stored as two arrays of one shape, `val` and `eps`, and every rule is applied elementwise. Indexing and slicing take the same entries from both arrays; `@` maps the tangent by the same matrix.
 
-## 3. Worked example by hand
+## Exact versus approximate
 
-**$f(x) = x e^x + 3$ at $x = 1$.** Seed the input with tangent 1: $x = 1 + \varepsilon$.
+It is worth being precise about how much better this is than finite differences. A central difference $(f(x + h) - f(x - h)) / 2h$ has truncation error about $h^2 |f'''|/6$ and rounding error about $u |f| / h$; as [Derivative as a limit, finite differences, step-size choice](../01-calculus-1/01-derivatives-and-finite-differences.md) shows, these balance near $h = 10^{-5}$ at an error near $10^{-10}$. A dual derivative is as accurate as evaluating $f$ itself, about $u$ relative. That is why dual derivatives can be compared with the closed-form activation derivatives at a relative tolerance of $10^{-12}$, but with the numeric JVP of *Calculus 3* only at $10^{-6}$.
+
+## Working it by hand
+
+With the rules in place, trace a few evaluations by hand. First, $f(x) = x e^x + 3$ at $x = 1$. Seed the input with tangent 1, so $x = 1 + \varepsilon$, and propagate:
 
 | step | value | tangent | rule |
 |---|---|---|---|
@@ -96,15 +76,15 @@ No step size, no truncation: the tangent is the derivative times the input tange
 | $x \cdot e^x$ | $1 \cdot e = 2.718282$ | $1 \cdot e + 1 \cdot e = 5.436564$ | product |
 | $+ 3$ | $5.718282$ | $5.436564$ | constant |
 
-So $f(1) = e + 3 = 5.718282$ and $f'(1) = 2e = 5.436564$. By hand, $f'(x) = e^x + x e^x$, which is $2e$ at 1. Same number, from one evaluation.
+So $f(1) = e + 3 = 5.718282$ and $f'(1) = 2e = 5.436564$. By hand, $f'(x) = e^x + x e^x$, which is $2e$ at 1: the same number, from one evaluation. This example becomes the first test of the implementation.
 
-**A quotient, $(x + 1)/(x - 1)$ at $x = 3$.** Numerator $4 + \varepsilon$, denominator $2 + \varepsilon$; by the quotient rule the tangent is $(1 \cdot 2 - 4 \cdot 1)/2^2 = -0.5$. The function is 2 there, and its derivative $-2/(x-1)^2 = -0.5$.
+Next, a quotient: $(x + 1)/(x - 1)$ at $x = 3$. The numerator is $4 + \varepsilon$ and the denominator $2 + \varepsilon$; by the quotient rule the tangent is $(1 \cdot 2 - 4 \cdot 1)/2^2 = -0.5$. The function is 2 there, and its derivative $-2/(x-1)^2 = -0.5$.
 
-**A JVP.** $f(x_1, x_2) = (x_1 x_2,\; x_1 + x_2^2)$ at $(2, 3)$ along $v = (1, 0)$: $x_1 = 2 + \varepsilon$, $x_2 = 3 + 0\varepsilon$. Then $x_1 x_2 = 6 + 3\varepsilon$ and $x_1 + x_2^2 = 11 + \varepsilon$, so $J v = (3, 1)$: the first column of $J = \begin{bmatrix} x_2 & x_1 \\ 1 & 2x_2 \end{bmatrix} = \begin{bmatrix} 3 & 2 \\ 1 & 6 \end{bmatrix}$.
+Finally, a JVP. Take $f(x_1, x_2) = (x_1 x_2,\; x_1 + x_2^2)$ at $(2, 3)$ along $v = (1, 0)$, so $x_1 = 2 + \varepsilon$ and $x_2 = 3 + 0\varepsilon$. Then $x_1 x_2 = 6 + 3\varepsilon$ and $x_1 + x_2^2 = 11 + \varepsilon$, so $J v = (3, 1)$: the first column of $J = \begin{bmatrix} x_2 & x_1 \\ 1 & 2x_2 \end{bmatrix} = \begin{bmatrix} 3 & 2 \\ 1 & 6 \end{bmatrix}$.
 
-The first example is the first case in section 4; the quotient is one of the arithmetic rules.
+## Designing the interface
 
-## 4. The interface
+The implementation exposes one class and a handful of functions:
 
 ```python
 # python/tinyllm/autograd/dual.py
@@ -117,37 +97,22 @@ def derivative(f: Callable[[Dual], Any], x: float) -> float
 def jvp(f: Callable[[Dual], Any], x: ArrayLike, v: ArrayLike) -> tuple[NDArray, NDArray]
 ```
 
-`derivative` seeds `Dual(x, 1.0)` and returns the output's tangent (0.0 when `f` ignores its input). `jvp` seeds `Dual(x, v)` and returns `(f(x), J v)` as float64 arrays. numpy has no `erf`; the solution uses `math.erf`, elementwise for arrays (`np.vectorize`).
+`derivative` seeds `Dual(x, 1.0)` and returns the output's tangent (0.0 when `f` ignores its input). `jvp` seeds `Dual(x, v)` and returns `(f(x), J v)` as float64 arrays. numpy has no `erf`, so the solution uses `math.erf`, applied elementwise for arrays through `np.vectorize`.
 
-### What a correct solution must handle
+One design point needs care before any code: numpy on the left of an operator. `np.float64(2.0) * d` asks numpy first. numpy's scalar and array types try to treat `d` as an element of an object array, and the tangent is lost (or an object array comes back). Setting the class attribute `__array_ufunc__ = None` tells numpy to return `NotImplemented` for any operation with a `Dual`, and Python then calls `Dual.__rmul__`. Every reflected method (`__radd__`, `__rsub__`, `__rmul__`, `__rtruediv__`, `__rpow__`, `__rmatmul__`) must keep the operand order: $c - x$ has tangent $-b$, and $c / x$ has tangent $-cb/a^2$.
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| Hand example | unit | $f(1) = e + 3$, $f'(1) = 2e$ for $x e^x + 3$ | pins what a dual number carries |
-| Arithmetic rules | unit | 13 primitives and reflected forms against known derivatives | each rule is right on its own |
-| Power rules | unit | $x^3$, $x^{0.5}$, $x^{-1}$, $2^x$, $x^x$ | three different rules behind `**` |
-| Activation derivatives | differential | sigmoid, tanh, SiLU, both GELUs, softplus at 1001 points in $[-40, 40]$ against `M01.3` | the exact oracle `L0.2` relies on |
-| JVP against numeric JVP | differential | $J v$ of a map $\mathbb{R}^4 \to \mathbb{R}^3$ against `M04.2`'s `jvp_numeric` | vector forward mode is right |
-| numpy operand on the left | boundary | `np.float64(2) * d`, `1 - d`, `array + d` stay `Dual` | numpy scalars appear everywhere in real code |
-| Constant function | boundary | a constant gives 0, `jvp` gives zeros, no nested `Dual` | functions that ignore their input |
-| Chain rule | property | $\frac{d}{dx}\tanh(x e^x)$ at 40 points | composition is the chain rule |
-| JVP is linear in $v$ | property | linearity in $v$; basis vectors give the Jacobian's columns | the cost model of forward mode |
-| Indexing and matmul | unit | slices, `W @ x`, `x @ W.T` move val and tangent together | layers are matrices |
+## Building it step by step
 
-## 5. The solution, step by step
+The reasoning that leads to the code runs in six steps.
 
-### From first principles
-
-1. A dual number is a pair (value, tangent), and section 2 showed that $f(a + b\varepsilon) = f(a) + f'(a)b\varepsilon$ exactly. So the representation is two fields, `val` and `eps`, and every operation must produce a new pair whose tangent is the derivative rule for that primitive applied to the input tangents.
+1. A dual number is a pair (value, tangent), and $f(a + b\varepsilon) = f(a) + f'(a)b\varepsilon$ exactly. So the representation is two fields, `val` and `eps`, and every operation must produce a new pair whose tangent is the derivative rule for that primitive applied to the input tangents.
 2. Every binary operation can meet a plain number. A constant is $c + 0\varepsilon$, so the code lifts any non-`Dual` operand to `Dual(c, 0.0)` once (`_lift`) and then writes each rule only for two duals.
 3. Commutative operations (`+`, `*`) can reuse the forward method for the reflected one. Non-commutative ones (`-`, `/`, `**`, `@`) cannot: $c - x$ and $x - c$ have opposite tangents, so each reflected method computes `other op self` explicitly.
 4. A vector of duals is the same pair with arrays in both fields, and every rule above is already elementwise in numpy. The only array-specific operations are those that mix entries: indexing takes the same entries from both arrays, and `@` applies the same linear map to both, $W(x + v\varepsilon) = Wx + (Wv)\varepsilon$.
 5. numpy must not get the first chance at `ndarray op Dual`, or it builds an object array. Setting `__array_ufunc__ = None` makes numpy return `NotImplemented`, so Python falls through to the reflected method.
 6. The entry points only seed and read: `derivative` seeds tangent 1 and reads `eps`; `jvp` seeds tangent `v` and returns both fields. A function that ignores its input returns a plain number, whose derivative is 0.
 
-### The code, annotated
-
-The class: two fields, scalars kept as Python floats and arrays copied to one broadcast shape.
+The class itself has two fields, with scalars kept as Python floats and arrays copied to one broadcast shape:
 
 ```python
 class Dual:
@@ -170,7 +135,7 @@ class Dual:
             self.eps = np.broadcast_to(e, shape).copy()
 ```
 
-The arithmetic rules. Each tangent line is the derivative rule from section 2, with the operand order kept in the reflected forms:
+The arithmetic rules come next. Each tangent line is one of the derivative rules from earlier in the section, with the operand order kept in the reflected forms:
 
 ```python
     def __sub__(self, other):
@@ -221,7 +186,7 @@ def _lift(x):
     return x if isinstance(x, Dual) else Dual(x, 0.0)
 ```
 
-`__add__`, `__radd__`, `__rmul__`, and `__neg__` are the one-line versions of the same pattern (addition and multiplication commute, so the reflected forms call the forward ones). Three separate rules sit behind `**`, because $x^k$, $c^x$, and $x^y$ have different derivatives; using the general $x^y$ rule for a constant exponent would call `log` on a negative base.
+`__add__`, `__radd__`, `__rmul__`, and `__neg__` are the one-line versions of the same pattern (addition and multiplication commute, so the reflected forms call the forward ones). Notice that three separate rules sit behind `**`, because $x^k$, $c^x$, and $x^y$ have different derivatives. Using the general $x^y$ rule for a constant exponent would call `log` on a negative base.
 
 The elementwise functions each compute the forward value once and reuse it in the tangent:
 
@@ -246,7 +211,7 @@ def dual_erf(x):
     return Dual(_erf(d.val), TWO_OVER_SQRT_PI * np.exp(-d.val * d.val) * d.eps)
 ```
 
-The entry points:
+The entry points only seed and read:
 
 ```python
 def derivative(f, x):
@@ -269,19 +234,68 @@ def jvp(f, x, v):
     return y, np.broadcast_to(np.asarray(out.eps, dtype=np.float64), y.shape).copy()
 ```
 
-On the worked example, `derivative(lambda x: x * dual_exp(x) + 3, 1.0)` runs `dual_exp` to get $(e, e)$, `__mul__` to get $(e, 1 \cdot e + 1 \cdot e)$, and `__radd__` with $3 + 0\varepsilon$, returning $2e$.
+To connect the code back to the hand computation: `derivative(lambda x: x * dual_exp(x) + 3, 1.0)` runs `dual_exp` to get $(e, e)$, `__mul__` to get $(e, 1 \cdot e + 1 \cdot e)$, and `__radd__` with $3 + 0\varepsilon$, returning $2e$. The full solution is [`dual.py`](../../../../course/solutions/python/tinyllm/autograd/dual.py).
 
-Full solution: [`dual.py`](../../../../course/solutions/python/tinyllm/autograd/dual.py).
+## Why this design
 
-### Why this solution
+Each operation does a constant number of extra multiplies, so a forward pass with tangents costs a small constant factor (about 2 to 3) times the plain evaluation, and memory is doubled. A JVP is one pass; a full $m \times n$ Jacobian is $n$ passes.
 
-- **Cost.** Each operation does a constant number of extra multiplies, so a forward pass with tangents costs a small constant factor (about 2 to 3) times the plain evaluation, and memory is doubled. A JVP is one pass; a full $m \times n$ Jacobian is $n$ passes.
-- **Why not finite differences.** They need a step size and give about 5 to 10 correct digits; dual numbers give the derivative to rounding, which is what an oracle must do.
-- **Why not symbolic differentiation.** Symbolic derivatives of compositions grow in size (expression swell) and need a separate evaluator. Dual numbers differentiate the program as it runs, through loops and branches, with no expression tree.
-- **Why operator overloading.** The functions being checked (`M01.3`'s activations, `L0.2`'s forward code) are written in numpy-style arithmetic. Overloading lets the same code run on duals unchanged, apart from calling `dual_exp` and friends where numpy's ufuncs would be.
-- **Tradeoff accepted.** Forward mode costs one pass per input, so it is the wrong tool for a gradient of a loss with millions of parameters. It is used here as an oracle on small cases, where exactness matters and cost does not.
+Compare the alternatives. Finite differences need a step size and give about 5 to 10 correct digits; dual numbers give the derivative to rounding, which is what an oracle must do. Symbolic differentiation suffers from expression swell, since symbolic derivatives of compositions grow in size, and it needs a separate evaluator; dual numbers differentiate the program as it runs, through loops and branches, with no expression tree. Operator overloading is the right delivery mechanism because the functions being checked (the activations of *Calculus 1*, the forward code of the op library) are written in numpy-style arithmetic. Overloading lets the same code run on duals unchanged, apart from calling `dual_exp` and friends where numpy's ufuncs would be.
 
-### Explain it back
+The tradeoff you accept is the cost model: forward mode costs one pass per input, so it is the wrong tool for the gradient of a loss with millions of parameters. Here it is used as an oracle on small cases, where exactness matters and cost does not.
+
+## What a correct implementation must handle
+
+The tests that pin the implementation down fall into a few groups. The hand example fixes what a dual number carries: $f(1) = e + 3$ and $f'(1) = 2e$ for $x e^x + 3$. Unit tests check 13 primitives and their reflected forms against known derivatives, so each rule is right on its own, and the power rules separately, with $x^3$, $x^{0.5}$, $x^{-1}$, $2^x$, and $x^x$, because three different rules hide behind `**`. Indexing and matmul tests check that slices, `W @ x`, and `x @ W.T` move value and tangent together, since layers are matrices.
+
+Differential tests compare against independent references. Sigmoid, tanh, SiLU, both GELUs, and softplus are differentiated at 1001 points in $[-40, 40]$ and compared with the closed forms of *Calculus 1*: this is the exact oracle the op library relies on. A JVP $J v$ of a map $\mathbb{R}^4 \to \mathbb{R}^3$ is compared with `jvp_numeric` from *Calculus 3*, confirming that vector forward mode is right.
+
+Boundary tests cover the cases real code throws at you. A numpy operand on the left (`np.float64(2) * d`, `1 - d`, `array + d`) must stay `Dual`, because numpy scalars appear everywhere. A constant function must give derivative 0, `jvp` must give zeros, and no nested `Dual` may appear. Finally, two property tests: the chain rule, checked through $\frac{d}{dx}\tanh(x e^x)$ at 40 points, and linearity of the JVP in $v$, with basis vectors giving the Jacobian's columns, which is the cost model of forward mode.
+
+Most mistakes in this code produce a plausible but wrong number rather than an error, so it helps to know the usual ones.
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| Keeping one term of the product rule | $f'(1) = e$ instead of $2e$ in the worked example | `__mul__` adds both $a\,d$ and $b\,c$ |
+| Reflected operators that swap the order | $4 - x$ gets slope $+1$; $6/x$ gets the wrong sign | `__rsub__` computes `o - self`; `__rtruediv__` lifts `other` to the numerator |
+| No `__array_ufunc__ = None` | `np.float64(2) * d` silently loses the tangent | the class attribute sends numpy operands to the reflected methods |
+| `W @ x` that maps the value but not the tangent | JVPs of layers are wrong while scalar cases pass | `__rmatmul__` applies `w` to both `val` and `eps` |
+| A sign in the quotient rule, $1 + \tanh^2$, $\mathrm{erf}' = e^{-x^2}/\sqrt\pi$ | wrong slopes for division, tanh, and GELU | $(bc - ad)/c^2$; $1 - t^2$; the constant `TWO_OVER_SQRT_PI` |
+| $k x^k$ instead of $k x^{k-1}$; $c^x$ without $\ln c$ | power and exponential slopes off | separate rules for constant exponent, constant base, and both dual |
+| Seeding the input tangent with 0 | every derivative is 0 | `derivative` seeds `Dual(x, 1.0)`; `jvp` seeds `Dual(x, v)` |
+| Indexing the value but not the tangent | slices carry another entry's derivative | `__getitem__` indexes both fields with the same `idx` |
+
+> **Warning:** The `W @ x` pitfall is the dangerous one. Every scalar test passes, and only JVPs through a layer come out wrong.
+
+## Where this leads
+
+This section stands on three earlier ones: the closed-form derivatives of [Activation functions and their derivatives](../01-calculus-1/03-activation-functions.md) are what the dual derivatives must match; `jvp_numeric` from [Jacobians, multivariable chain rule, numeric JVP/VJP](../04-calculus-3/02-jacobians-and-the-chain-rule.md) approximates the same JVP by central differences; and [Taylor series, remainder bounds, range reduction](../02-calculus-2/01-taylor-series.md) explains why $f(a + b\varepsilon) = f(a) + f'(a)b\varepsilon$ and gives `erf` as a series. Going forward, [Scalar reverse mode: the Value graph](02-scalar-reverse-mode.md) checks reverse mode against `Dual` on the same expressions, and [The op library and gradcheck_all](../../build-an-llm/p00-foundations/02-op-library-and-gradcheck.md) checks each elementwise op's backward against its dual derivative.
+
+Production systems carry the same idea further. PyTorch's forward-mode AD provides dual tensors (`fwAD.make_dual`, `unpack_dual`) and `torch.func.jvp` over every op (`torch/autograd/forward_ad.py`). JAX's `jax.jvp` does forward mode by tracing, composable with `vmap` and with reverse mode, which gives forward-over-reverse Hessian-vector products as in [Hessian-vector products and the recompute-versus-memory schedule](04-hessian-vector-products-and-recompute.md) (`jax/_src/interpreters/ad.py`). Julia's ForwardDiff.jl uses chunked tangents, up to 12 directions per pass, so a gradient costs $n / 12$ passes (`src/dual.jl`).
+
+Further reading:
+
+- Baydin, Pearlmutter, Radul, and Siskind, [*Automatic Differentiation in Machine Learning: a Survey*](https://www.jmlr.org/papers/v18/17-468.html) (JMLR 2018), sections 2 and 3.1.
+- Griewank and Walther, *Evaluating Derivatives* (SIAM, 2nd ed.), chapter 3.
+
+## Key terms
+
+- **Dual number**: a pair $a + b\varepsilon$ with $\varepsilon^2 = 0$, whose tangent $b$ propagates derivatives through arithmetic.
+- **Tangent**: the $\varepsilon$ coefficient of a dual number; the derivative of the value along the seeded direction.
+- **Seed**: the tangent given to the inputs before evaluation (1 for a derivative, $v$ for a JVP).
+- **Jacobian-vector product (JVP)**: $J_f(x)\,v$, the directional derivative of a vector function, computed by one forward-mode pass.
+- **Forward mode**: automatic differentiation that carries tangents alongside values, costing one pass per input direction.
+- **Reflected operator**: a method such as `__rsub__` that Python calls when the left operand does not handle the operation.
+
+## Summary
+
+- A dual number $a + b\varepsilon$ with $\varepsilon^2 = 0$ turns Taylor's theorem into an identity: $f(a + b\varepsilon) = f(a) + f'(a)\, b\, \varepsilon$, so evaluating a function on $x + \varepsilon$ returns its value and its exact derivative together.
+- One rule per primitive is enough; the chain rule happens by itself when operations compose.
+- With a vector tangent, one forward pass computes a Jacobian-vector product $J v$; a full Jacobian costs one pass per input.
+- Dual derivatives have no step size and match closed-form derivatives to rounding, which makes them the oracle for every elementwise op in the autograd library.
+- Interoperating with numpy requires `__array_ufunc__ = None` and reflected methods that preserve operand order.
+
+## Review questions
 
 1. Why does `__rsub__` not just call `__sub__` the way `__radd__` calls `__add__`?
 
@@ -295,7 +309,7 @@ Full solution: [`dual.py`](../../../../course/solutions/python/tinyllm/autograd/
 
    <details><summary>Answer</summary>
 
-   `np.float64(2) * d` is handled by numpy first. It treats `d` as an element of an object array, so the result is an object array instead of a `Dual`, or the tangent is lost (section 2). With the attribute set to `None`, numpy refuses, and Python calls `Dual.__rmul__`, which applies the product rule.
+   `np.float64(2) * d` is handled by numpy first. It treats `d` as an element of an object array, so the result is an object array instead of a `Dual`, or the tangent is lost. With the attribute set to `None`, numpy refuses, and Python calls `Dual.__rmul__`, which applies the product rule.
 
    </details>
 
@@ -323,33 +337,10 @@ Full solution: [`dual.py`](../../../../course/solutions/python/tinyllm/autograd/
 
    </details>
 
-## 6. Pitfalls
+6. Using dual numbers, compute the derivative of $(x + 1)/(x - 1)$ at $x = 3$.
 
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. keeping one term of the product rule | $f'(1) = e$ instead of $2e$ in the worked example | `__mul__` adds both $a\,d$ and $b\,c$ |
-| 2. reflected operators that swap the order | $4 - x$ gets slope $+1$; $6/x$ gets the wrong sign | `__rsub__` computes `o - self`; `__rtruediv__` lifts `other` to the numerator |
-| 3. no `__array_ufunc__ = None` | `np.float64(2) * d` silently loses the tangent | the class attribute sends numpy operands to the reflected methods |
-| 4. `W @ x` that maps the value but not the tangent | JVPs of layers are wrong while scalar cases pass | `__rmatmul__` applies `w` to both `val` and `eps` |
-| 5. a sign in the quotient rule, $1 + \tanh^2$, $\mathrm{erf}' = e^{-x^2}/\sqrt\pi$ | wrong slopes for division, tanh, and GELU | $(bc - ad)/c^2$; $1 - t^2$; the constant `TWO_OVER_SQRT_PI` |
-| 6. $k x^k$ instead of $k x^{k-1}$; $c^x$ without $\ln c$ | power and exponential slopes off | separate rules for constant exponent, constant base, and both dual |
-| 7. seeding the input tangent with 0 | every derivative is 0 | `derivative` seeds `Dual(x, 1.0)`; `jvp` seeds `Dual(x, v)` |
-| 8. indexing the value but not the tangent | slices carry another entry's derivative | `__getitem__` indexes both fields with the same `idx` |
+   <details><summary>Answer</summary>
 
-## 7. Where it's used next
+   The numerator is $4 + \varepsilon$ and the denominator $2 + \varepsilon$. The quotient rule on duals gives tangent $(1 \cdot 2 - 4 \cdot 1)/2^2 = -0.5$, matching $-2/(x-1)^2 = -0.5$.
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `M01.3` | its closed-form derivatives are what the dual derivatives must match |
-| Back | `M04.2` | its `jvp_numeric` approximates the same JVP by central differences |
-| Back | `M02.1` | Taylor's theorem is why $f(a + b\varepsilon) = f(a) + f'(a)b\varepsilon$; `erf` as a series |
-| Forward | `M08.2` | reverse mode is checked against `Dual` on the same expressions |
-| Forward | `L0.2` | each elementwise op's backward is checked against its dual derivative |
-
-## Going further
-
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `Dual` | PyTorch forward-mode AD | dual tensors (`fwAD.make_dual`, `unpack_dual`) and `torch.func.jvp` over every op | `torch/autograd/forward_ad.py` |
-| `jvp` | JAX `jax.jvp` | forward mode by tracing, composable with `vmap` and with reverse mode (forward-over-reverse Hessian-vector products, `M08.4`) | `jax/_src/interpreters/ad.py` |
-| arrays of duals | Julia ForwardDiff.jl | chunked tangents: up to 12 directions per pass, so a gradient costs $n / 12$ passes | `src/dual.jl` |
+   </details>
