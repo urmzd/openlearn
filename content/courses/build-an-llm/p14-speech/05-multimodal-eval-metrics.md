@@ -124,7 +124,7 @@ def basic_normalize(text: str) -> str:
     s = "".join(
         " " if unicodedata.category(c)[0] in "MSP" else c
         for c in unicodedata.normalize("NFKC", s)
-    ).lower()                                 # NFKC can produce new uppercase forms
+    ).lower()                                 # lowercase again after NFKC folding
     return re.sub(r"\s+", " ", s)
 ```
 

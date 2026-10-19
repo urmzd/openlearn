@@ -250,7 +250,7 @@ def _estimate(self, adj_k: dict[tuple, int]) -> tuple[float, float, float]:
     nj = Counter(a for a in adj_k.values() if 1 <= a <= 4)
     n1, n2, n3, n4 = nj[1], nj[2], nj[3], nj[4]
     if min(n1, n2, n3, n4) == 0:
-        return FALLBACK_DISCOUNTS                  # a formula would divide by 0 (or give D = j exactly)
+        return FALLBACK_DISCOUNTS                  # an empty bucket: a formula divides by 0 or is degenerate
     Y = ney_discount(adj_k)                        # n1 / (n1 + 2 n2)
     D = (1.0 - 2.0 * Y * n2 / n1, 2.0 - 3.0 * Y * n3 / n2, 3.0 - 4.0 * Y * n4 / n3)
     if not all(0.0 < d <= j for d, j in zip(D, (1, 2, 3))):
@@ -349,7 +349,7 @@ Full solution: [`ngram.py`](../../../../course/solutions/python/tinyllm/lm/ngram
 2. Why do `<s>`-initial grams keep raw counts at lower orders?
    <details><summary>Answer</summary>A continuation count is the number of distinct symbols seen right before the gram, and nothing ever precedes `<s>`, so it would be 0. Every start-of-sequence context would then have no evidence and fall through to the lower order, forgetting that stories start with "Once".</details>
 3. What does the model predict after a history it never saw, and why not the uniform distribution?
-   <details><summary>Answer</summary>The order with the unseen history is skipped, so the result is the next lower order's estimate, down to the KN unigram. Jumping to uniform would discard everything the lower orders know; on section 3's corpus with an unseen history the answer is the unigram $(23, 7, 15, 3)/48$ in the four-token test, not $1/4$ each.</details>
+   <details><summary>Answer</summary>The order with the unseen history is skipped, so the result is the next lower order's estimate, down to the KN unigram. Jumping to uniform would discard everything the lower orders know: a bigram over section 3's corpus would answer an unseen history with the KN unigram $(1/2, 1/6, 1/3)$, not $1/3$ each.</details>
 4. Why must a discount be at most $j$ for counts in bucket $j$?
    <details><summary>Answer</summary>The numerator is $\max(a - D, 0)$; if $D > a$ the max clips at 0 but $\gamma$ still adds $D$, so the total exceeds 1. The formulas can produce such values (or negative ones) on small data, which is why `_estimate` checks $0 < D_j \le j$ and falls back to $(0.5, 1, 1.5)$.</details>
 5. Why is the context `[c, c, a, b]` the same as `[a, b]` for a trigram, but `[b]` is not the same as `[a, b]`?

@@ -1,35 +1,27 @@
-<!-- ol:module M01.4 -->
 # Definite integrals, trapezoid, Simpson
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M01.4` · build · Python · Pass 5 · 2 to 3 h |
-| **You build** | `python/tinyllm/num/integrate.py`: `trapezoid`, `trapezoid_rule`, `simpson` |
+| **Module** | `M01.4` · build · Python · Pass 5 · 1 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/num/integrate.py`](../../../../course/solutions/python/tinyllm/num/integrate.py): `trapezoid`, `trapezoid_rule`, `simpson` (with the helpers `_samples`, `_nodes`) |
 | **Contract** | [`course/contracts/py/tinyllm/num/integrate.pyi`](../../../../course/contracts/py/tinyllm/num/integrate.pyi) |
-| **Tests** | `course/tests/M01.4/test_integrate.py` (what they check: section 4) |
 | **Needs** | nothing to call. Reading: [`M01.1` finite differences](01-derivatives-and-finite-differences.md) (Richardson extrapolation, section 2.6 here) |
 | **Used by** | `M07.7` computes ROC-AUC as `trapezoid(tpr, fpr)` · later `ethics.04` integrates the safety report's ROC and reliability curves the same way |
-| **Milestone** | `MS-P5` (the Pass 5 gate) |
 | **Optional depth** | OpenStax, *Calculus Volume 1* (free), sections 5.1 to 5.3 (the definite integral and the fundamental theorem) and 3.6 of *Volume 2* (numerical integration); Sauer, *Numerical Analysis*, sections 5.2 and 5.3 (Newton-Cotes rules and Romberg) |
 
 ## Key Takeaways
 
-- The **definite integral** $\int_a^b f(x)\,dx$ is the signed area under $f$, the limit of sums of thin slices; a computer stops at $n$ slices of width $h$ (`test_hand_example`).
-- The **trapezoid rule** joins neighbouring points by straight lines: error proportional to $h^2$, exact on lines (`test_trapezoid_error_order_two`, `test_trapezoid_rule_exact_on_lines`).
-- **Simpson's rule** fits a parabola through each three points: error proportional to $h^4$ and, by a symmetry bonus, exact on cubics (`test_simpson_error_order_four`, `test_simpson_exact_on_cubics`).
-- Simpson is **Richardson extrapolation of the trapezoid rule**: $(4T(h/2) - T(h))/3$, the same error-cancelling step as `M01.1` (`test_simpson_is_richardson_of_trapezoid`).
-- Samples that are not on a grid, such as the corners of an ROC curve, are integrated **step by step with each step's own signed width** (`test_trapezoid_samples_match_scipy`).
+- The **definite integral** $\int_a^b f(x)\,dx$ is the signed area under $f$, the limit of sums of thin slices; a computer stops at $n$ slices of width $h$.
+- The **trapezoid rule** joins neighbouring points by straight lines: error proportional to $h^2$, exact on lines.
+- **Simpson's rule** fits a parabola through each three points: error proportional to $h^4$ and, by a symmetry bonus, exact on cubics.
+- Simpson is **Richardson extrapolation of the trapezoid rule**: $(4T(h/2) - T(h))/3$, the same error-cancelling step as `M01.1`.
+- Samples that are not on a grid, such as the corners of an ROC curve, are integrated **step by step with each step's own signed width**.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M01.4              # stubs python/tinyllm/num/integrate.py into your repo
-ol tests M01.4              # read the test catalog first: rung R0, you write no tests here
-ol check M01.4              # exit code is the verdict
-ol diff  M01.4              # after passing: your code against the reference
-```
+Sections 1 and 2 build the definite integral, the trapezoid and Simpson rules, their error orders, and the link to Richardson extrapolation from first principles. Section 3 works them by hand on $x^3$ and on an ROC curve. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
@@ -56,7 +48,7 @@ Pass 5 trains classifiers for the first time: BERT and ELECTRA heads in `L6.3` a
 
 Cut $[a, b]$ into $n$ slices of width $h$, stand a rectangle on each slice with the height of $f$ somewhere in it, and add the areas: $\sum_i f(\xi_i)\, h$. This is a **Riemann sum**. As $h \to 0$ the sums for a continuous $f$ settle on one number whatever points $\xi_i$ you chose, and that number is the definite integral $\int_a^b f(x)\,dx$. Area below the axis counts as negative, which is why it is a *signed* area. Running from $b$ to $a$ makes every width $-h$, so $\int_b^a f = -\int_a^b f$, and an interval of length 0 has integral 0.
 
-The **fundamental theorem of calculus** links this area to derivatives (`M01.1`): if $F' = f$, then $\int_a^b f(x)\,dx = F(b) - F(a)$. For $f(x) = x^3$, $F(x) = x^4/4$, so $\int_0^2 x^3\,dx = 16/4 - 0 = 4$. Most integrals you meet in practice have no $F$ in closed form ($e^{-x^2/2}$, the normal density, is the famous one) or $f$ is only known at sample points. Then you compute the area numerically, which is called **quadrature**.
+The **fundamental theorem of calculus** links this area to derivatives (`M01.1`): if $F' = f$, then $\int_a^b f(x)\,dx = F(b) - F(a)$. For $f(x) = x^3$, $F(x) = x^4/4$, so $\int_0^2 x^3\,dx = 16/4 - 0 = 4$. Most integrals met in practice have no $F$ in closed form ($e^{-x^2/2}$, the normal density, is the famous one) or $f$ is only known at sample points. Then the area is computed numerically, which is called **quadrature**.
 
 ### 2.2 The trapezoid
 
@@ -91,7 +83,7 @@ The trapezoid rule is **second order**: halve $h$ and the error drops by 4. Simp
 | trapezoid error | $4.3 \times 10^{-1}$ | $1.0 \times 10^{-1}$ | $2.6 \times 10^{-2}$ | $6.4 \times 10^{-3}$ | $1.6 \times 10^{-3}$ |
 | Simpson error | $9.4 \times 10^{-2}$ | $4.6 \times 10^{-3}$ | $2.7 \times 10^{-4}$ | $1.7 \times 10^{-5}$ | $1.0 \times 10^{-6}$ |
 
-Each column divides the trapezoid error by 4 and the Simpson error by 16: the slopes 2 and 4 the order tests measure. The error formulas assume a smooth $f$ at the scale of $h$. On Runge's peak $1/(1 + 25x^2)$ over $[-1, 1]$ with $n = 8$, Simpson's error is 0.026 and the trapezoid's 0.0075: the parabolas overshoot a peak that is narrower than two steps. Higher order pays off only once $h$ resolves the function.
+Each column divides the trapezoid error by 4 and the Simpson error by 16: the log-log slopes 2 and 4. The error formulas assume a smooth $f$ at the scale of $h$. On Runge's peak $1/(1 + 25x^2)$ over $[-1, 1]$ with $n = 8$, Simpson's error is 0.026 and the trapezoid's 0.0075: the parabolas overshoot a peak that is narrower than two steps. Higher order pays off only once $h$ resolves the function.
 
 ### 2.6 Simpson is Richardson
 
@@ -99,7 +91,7 @@ The trapezoid error is not just $O(h^2)$; it is a series in even powers, $T(h) =
 
 $$\frac{4\,T(h) - T(2h)}{3} = I + O(h^4).$$
 
-Write it out node by node and the weights come out as 1, 4, 2, 4, ..., 1 over 3: it *is* Simpson's rule on the finer grid. Repeating the step (weights $16, 64, \ldots$) is Romberg integration. The test `test_simpson_is_richardson_of_trapezoid` checks this identity to rounding.
+Write it out node by node and the weights come out as 1, 4, 2, 4, ..., 1 over 3: it *is* Simpson's rule on the finer grid. Repeating the step (weights $16, 64, \ldots$) is Romberg integration. The solution's `simpson` and `trapezoid_rule` satisfy this identity to rounding.
 
 ## 3. Worked example by hand
 
@@ -114,7 +106,7 @@ Take $\int_0^2 x^3\,dx = 4$.
 
 Halving $h$ divided the trapezoid error by exactly 4 (here $f'' = 6x$ and the error formula is exact up to the mean value). Simpson is exact because $x^3$ is a cubic, and Richardson's combination of the two trapezoid values gives the same 4.
 
-Now three samples, the corners of an ROC curve: $(0, 0)$, $(0.5, 0.75)$, $(1, 1)$. Two trapezoids: $0.5 \cdot (0 + 0.75)/2 = 0.1875$ and $0.5 \cdot (0.75 + 1)/2 = 0.4375$, total **0.625**. Counting each step at its left height only (a left Riemann sum) gives $0.5 \cdot 0 + 0.5 \cdot 0.75 = 0.375$. These numbers are the first two tests, `test_hand_example` and `test_hand_example_samples`.
+Now three samples, the corners of an ROC curve: $(0, 0)$, $(0.5, 0.75)$, $(1, 1)$. Two trapezoids: $0.5 \cdot (0 + 0.75)/2 = 0.1875$ and $0.5 \cdot (0.75 + 1)/2 = 0.4375$, total **0.625**. Counting each step at its left height only (a left Riemann sum) gives $0.5 \cdot 0 + 0.5 \cdot 0.75 = 0.375$.
 
 ## 4. The interface
 
@@ -167,11 +159,9 @@ def simpson(f: Callable[[NDArray], NDArray], a: float, b: float, n: int) -> floa
 | Forward | `ethics.04` | the safety report's ROC area and reliability curve |
 | Forward | `S-M07d` | q8 computes an AUC by hand, the same area as pairs ranked correctly |
 
-If you skip this module, `ol check M07.7` stops with `BLOCKED ... needs M01.4`: build it, or pass `--ref-deps`.
-
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `trapezoid` | `numpy.trapezoid`, `scipy.integrate.trapezoid` | integration along any axis of an N-d array | `numpy/lib/_function_base_impl.py` |
 | `simpson` | `scipy.integrate.simpson` | uneven sample spacing and an odd number of intervals (a corrected last panel) | `scipy/integrate/_quadrature.py` |
