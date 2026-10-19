@@ -1,35 +1,20 @@
-# Paged KV cache in Python
+# A paged KV cache in Python
 
-## Overview
+[The contiguous KV cache](02-kv-cache-and-generate.md) preallocates `max_len` positions per sequence and layer. With a 2,048-token context and SmolLM2's 30 layers, 3 KV heads, and 64 dimensions, that is $2048 \cdot 30 \cdot 2 \cdot 3 \cdot 64 \cdot 2 = 47$ MB per sequence in float16, whether the sequence ends after 20 tokens or 2,000. Beam search with 4 beams copies the whole prompt 4 times. Most of that memory is reserved and never used.
 
-| | |
-|---|---|
-| **Module** | `L8.3` · side · Python · Pass 6 · 2 h reading (optional) |
-| **Solution** | [`paged.py`](../../../../course/solutions/python/tinyllm/infer/paged.py): `PagedKVCache` (`add_seq`, `fork`, `append`, `block_table`, `seq_len`, `gather`, `free`, `stats`, `num_free_blocks`, `close`) and `OutOfBlocks`; the `PagedHook` adapter in [`cli_infer.py`](../../../../course/solutions/entry/python/tinyllm/cli_infer.py); model property tests in [`test_paged.py`](../../../../course/solutions/learner-tests/L8.3/python/tests/l8-3-paged/test_paged.py) |
-| **Contract** | [`course/contracts/py/tinyllm/infer/paged.pyi`](../../../../course/contracts/py/tinyllm/infer/paged.pyi); the implementation owns its NumPy blocks |
-| **Needs** | `L8.2` [the contiguous KV cache](02-kv-cache-and-generate.md) (the oracle) |
-| **Used by** | no module: the Rust engine (`L10.2`, `L10.4`) reimplements paging and reads this module as its behavioral reference; the system's `generate --cache paged` runs on it and gives the same greedy text as the contiguous cache |
-| **Optional depth** | Kwon et al., [*Efficient Memory Management for LLM Serving with PagedAttention*](https://arxiv.org/abs/2309.06180), section 4; Silberschatz et al., *Operating System Concepts*, chapter 9 (paging) |
+This section stores the cache the way an operating system stores a process's memory: in fixed-size blocks, with a table per sequence, reference counts, and copy on write. It matches the contiguous cache exactly, so `generate` can switch to paged memory, and the Rust engine ([continuous batching](../p10-serving/02-continuous-batching.md) and [the block manager](../p10-serving/04-block-manager-and-prefix-cache.md)) has a clear behavioral reference.
 
-## Key Takeaways
+This section is optional. No later Python section calls it, because the engine reimplements paging in Rust; the system's `generate --cache paged` runs on it and gives the same greedy text as the contiguous cache. Read it to see block tables and copy on write in a few hundred lines before meeting them in the engine. It builds only on [the contiguous cache](02-kv-cache-and-generate.md), which serves as its oracle. The solution is [`paged.py`](../../../../course/solutions/python/tinyllm/infer/paged.py), with the `PagedHook` adapter in [`cli_infer.py`](../../../../course/solutions/entry/python/tinyllm/cli_infer.py); the contract is [`paged.pyi`](../../../../course/contracts/py/tinyllm/infer/paged.pyi), and the implementation owns its NumPy blocks.
 
-- A paged cache is a block table per sequence: position $p$ lives in slot $p \bmod B$ of block `table[p // B]`, so memory grows one block at a time.
-- The cache stores float16 K and V values in NumPy blocks and gathers them into contiguous arrays.
-- A fork copies a table and takes references; the first write into a shared block copies that block alone.
-- Paged and contiguous float16 caches hold the same numbers, so a decoder gives the same logits and the same greedy tokens from either.
-- An append that cannot get its blocks raises `OutOfBlocks` before anything visible changes, so the scheduler can preempt and retry.
+> **Learning objectives**
+> - Map a sequence position to its block and slot through a block table.
+> - Explain why one block holds all layers while each layer keeps its own length.
+> - Implement fork with reference counts and copy on write that copies only the touched block.
+> - Make an append fail with `OutOfBlocks` without any visible side effect.
 
-## How to read this chapter
+## Block tables
 
-Sections 1 to 3 derive block tables, per-layer lengths, copy on write, and failure without side effects, and trace five appends and a fork by hand. Section 4 fixes the interface and the cases a correct solution must handle. Section 5 walks through the solution in the order it is easiest to understand: allocation, `append` one token at a time, chunks that cross block boundaries, `fork` with copy on write, then `free` and `OutOfBlocks`. Try to predict each step of the solution before reading it.
-
----
-
-## 1. Why now
-
-`L8.2`'s `KVCache` preallocates `max_len` positions per sequence and layer. With a 2,048-token context and SmolLM2's 30 layers, 3 KV heads, and 64 dimensions, that is $2048 \cdot 30 \cdot 2 \cdot 3 \cdot 64 \cdot 2 = 47$ MB per sequence in float16, whether the sequence ends after 20 tokens or 2,000; and beam search with 4 beams copies the whole prompt 4 times. This module stores the cache in fixed-size blocks in Python, with reference counts and copy on write. This module matches the contiguous cache, so `generate` can switch to paged memory and the Rust engine (`L10.4`) has a clear behavioral reference. It is optional: no later Python module calls it, because the engine reimplements paging in Rust. Read it to see block tables and copy on write in a few hundred lines before meeting them in `L10.2` and `L10.4`.
-
-## 2. Principles
+The notation is small.
 
 | Symbol | Meaning | Type |
 |---|---|---|
@@ -39,19 +24,25 @@ Sections 1 to 3 derive block tables, per-layer lengths, copy on write, and failu
 | table | the sequence's block ids in position order | `list[int]` |
 | $T$ | positions appended by one call | `int` |
 
-**Block tables.** Position $p$ of a sequence lives in slot $p \bmod B$ of block `table[p // B]`. A sequence of $n$ positions needs $\lceil n / B \rceil$ blocks; the last one is usually partial. Appending $T$ positions starting at $\ell$ touches blocks $\lfloor \ell / B \rfloor$ through $\lfloor (\ell + T - 1) / B \rfloor$ and allocates the ones past the end of the table.
+Position $p$ of a sequence lives in slot $p \bmod B$ of block `table[p // B]`. A sequence of $n$ positions needs $\lceil n / B \rceil$ blocks; the last one is usually partial. Appending $T$ positions starting at $\ell$ touches blocks $\lfloor \ell / B \rfloor$ through $\lfloor (\ell + T - 1) / B \rfloor$ and allocates the ones past the end of the table. Memory now grows one block at a time.
 
-**Layers append separately.** A forward pass appends layer 0's keys and values, then layer 1's, and so on, so mid-pass the layers hold different lengths. Each block holds all layers, while each layer has its own length. A page table may contain enough blocks for the longest layer; unused slots remain zero until that layer appends there.
+## Layers append separately
 
-**The block view.** Each page stores a float16 K slab and a float16 V slab. Appends copy slices into the requested layer and slots; gather copies those slots in sequence order. Values round to float16 on write, so gather matches a contiguous float16 cache exactly.
+A forward pass appends layer 0's keys and values, then layer 1's, and so on, so mid-pass the layers hold different lengths. Each block holds all layers, while each layer has its own length. A page table may contain enough blocks for the longest layer; unused slots remain zero until that layer appends there.
 
-**Copy on write.** `fork(parent, child)` copies the table and increments every block reference. Before `append` writes into a shared block, it copies that block for the writer. The parent and child then diverge in their last block only; every full block of the shared prompt stays shared.
+Each page stores a float16 K slab and a float16 V slab. Appends copy slices into the requested layer and slots; gather copies those slots back in sequence order into contiguous arrays. Values round to float16 on write, so gather matches a contiguous float16 cache exactly.
 
-**Failure without side effects.** `append` checks capacity before allocating or changing the table, copies shared blocks it will touch, then writes and advances the length. If the cache has too few free blocks, it raises `OutOfBlocks`, and `gather` and `seq_len` return what they did before.
+## Copy on write
 
-## 3. Worked example by hand
+Blocks make sharing cheap. `fork(parent, child)` copies the table and increments every block's reference count. Before `append` writes into a shared block, it copies that block for the writer. The parent and child then diverge in their last block only; every full block of the shared prompt stays shared.
 
-$B = 2$, one layer, one head, $D = 2$. Append five tokens one at a time, with K of token $t$ = `[t + 0.5, -t]` and V = `-K`:
+## Failure without side effects
+
+A pool can run out. `append` checks capacity before allocating or changing the table, copies shared blocks it will touch, then writes and advances the length. If the cache has too few free blocks, it raises `OutOfBlocks`, and `gather` and `seq_len` return what they did before. That is what lets a scheduler preempt a sequence and retry.
+
+## Working it by hand
+
+Take $B = 2$, one layer, one head, $D = 2$. Append five tokens one at a time, with K of token $t$ = `[t + 0.5, -t]` and V = `-K`. The table shows the state after each token, in a pool of 4 blocks.
 
 | After token | Length | Table | Where the token went | Pool (free, used) of 4 |
 |---|---|---|---|---|
@@ -61,9 +52,9 @@ $B = 2$, one layer, one head, $D = 2$. Append five tokens one at a time, with K 
 | 3 | 4 | `[b0, b1]` | `b1` slot 1 | (2, 2) |
 | 4 | 5 | `[b0, b1, b2]` | `b2` slot 0 | (1, 3) |
 
-`gather(0, 0)` gives K positions `0.5 1.5 2.5 3.5 4.5` in the first dimension. A fork now shares `b0`, `b1`, `b2` (each at refcount 2, still 3 used); the child's sixth token goes into `b2` slot 1, so `b2` is copied first (4 used), and the parent's view is unchanged.
+`gather(0, 0)` gives K positions `0.5 1.5 2.5 3.5 4.5` in the first dimension. A fork now shares `b0`, `b1`, `b2` (each at refcount 2, still 3 used). The child's sixth token goes into `b2` slot 1, so `b2` is copied first (4 used), and the parent's view is unchanged.
 
-## 4. The interface
+## Designing the API
 
 ```python
 class OutOfBlocks(RuntimeError): ...
@@ -84,28 +75,11 @@ class PagedKVCache:
 
 Shapes have no batch axis: one sequence per call. The Python allocator owns its blocks and page tables; it does not expose a native pointer.
 
-### What a correct solution must handle
+The property tests, [`test_paged.py`](../../../../course/solutions/learner-tests/L8.3/python/tests/l8-3-paged/test_paged.py), import only the contract (`tinyllm.infer.paged`) and turn properties stated in prose into Hypothesis tests: "gather after any sequence of appends equals the concatenation of what was appended, in float16", "a fork then an append to the child never changes the parent", "freeing every sequence returns every block", "an `OutOfBlocks` append changes nothing". Properties suit a data structure like this one: the bugs that matter (a missing reference, a shared block written in place) appear only after particular sequences of operations, which random sequences find and hand-written examples miss.
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| the hand example's block table | unit | section 3: a block only when a position needs it; the gathered token values; allocation counts | the solution and the reader agree on the mapping |
-| gather keeps head, token, dimension order | unit | gathered arrays use `[heads, tokens, dimensions]` order | attention receives the expected layout |
-| gather matches a contiguous float16 cache | differential | chunks of 1 to 7 tokens, 3 layers, 2 interleaved sequences equal a contiguous float16 cache exactly | positions in order across block boundaries |
-| layers keep independent lengths | unit | each layer can append independently while sharing the sequence block table | transformer layers advance in order |
-| a fork shares until a write | unit | a fork allocates nothing; the first write into the shared partial block copies it; full blocks stay shared | beam search and parallel sampling |
-| free restores the pool | unit | a forked block returns only when both holders free it; freeing all restores every block | KV usage back to baseline after each request |
-| out of blocks changes nothing | fault | a multi-block append that cannot be satisfied leaves length, values, and allocation counts as they were | the scheduler preempts and retries safely |
-| bad arguments | boundary | bad shapes, empty chunks, unknown or reused ids, bad layers, sizes below 1 | engine bugs fail loudly |
-| paged matches contiguous decoding | differential | a 2-layer toy decoder: logits within 1e-5 and the same greedy ids from the paged cache and from `L8.2`'s `KVCache(dtype=float16)`, through a prompt and two forked branches | the equivalence `generate --cache paged` relies on |
-| random operations conserve blocks | property | $10^4$ seeded add, fork, append, free operations against a numpy oracle; allocated and free block counts add up after each; freeing all restores every block | no refcount drifts or leaks over a long run |
+## Building it step by step
 
-### Model property tests
-
-[`test_paged.py`](../../../../course/solutions/learner-tests/L8.3/python/tests/l8-3-paged/test_paged.py) imports only the contract (`tinyllm.infer.paged`) and turns properties stated in prose into Hypothesis tests: "gather after any sequence of appends equals the concatenation of what was appended, in float16", "a fork then an append to the child never changes the parent", "freeing every sequence returns every block", "an `OutOfBlocks` append changes nothing". Properties suit a data structure like this one: the bugs that matter (a missing reference, a shared block written in place) appear only after particular sequences of operations, which random sequences find and hand-written examples miss.
-
-## 5. The solution, step by step
-
-### 5.1 From first principles
+### The reasoning
 
 1. Memory should grow with what a sequence actually holds. So storage is a pool of fixed-size blocks, and each sequence owns a **table** of block ids in position order; position $p$ lives at slot $p \bmod B$ of block `table[p // B]`.
 2. One block holds all layers for its $B$ positions, so one table serves every layer. Layers append one after another within a forward pass, so each layer keeps its own length, and `gather` reads exactly that many positions.
@@ -115,9 +89,7 @@ Shapes have no batch axis: one sequence per call. The Python allocator owns its 
 6. A shared block must never be written in place. Before an append writes into a block with refcount above 1, it gives the writer its own copy (copy on write). Only blocks the write touches are copied, so full prompt blocks stay shared.
 7. A failed append must leave no trace, so the scheduler can preempt and retry. Count everything the append needs (new blocks plus copies) and compare with the free list **before** allocating, copying, or touching a table or length.
 
-### 5.2 The code, annotated
-
-**State and allocation.**
+### State and allocation
 
 ```python
 @dataclass
@@ -148,9 +120,9 @@ class _Block:
             self._free.append(block_id)                   # back to the pool
 ```
 
-The free list is a stack initialised in reverse, so blocks come out as `b0, b1, b2, ...`, matching section 3's table.
+The free list is a stack initialised in reverse, so blocks come out as `b0, b1, b2, ...`, matching the hand example's table.
 
-**Sequences, forks, and frees.**
+### Sequences, forks, and frees
 
 ```python
     def add_seq(self, seq_id):
@@ -175,7 +147,9 @@ The free list is a stack initialised in reverse, so blocks come out as `b0, b1, 
         del self._lens[seq_id]
 ```
 
-**Append: plan, check, then act.**
+### Append: plan, check, then act
+
+The append is where all the rules meet, so it is written in three phases. First it plans: which blocks the write touches, which of those are shared, and how many new ones it needs.
 
 ```python
     def append(self, seq_id, layer, k, v):
@@ -199,7 +173,9 @@ The free list is a stack initialised in reverse, so blocks come out as `b0, b1, 
             raise OutOfBlocks("the KV cache has no free block left")   # nothing has changed yet
 ```
 
-`last` uses `end - 1`, the last position written, so a write that ends exactly on a block boundary does not allocate the next block. With $B = 2$, token 1 (`start = 1, end = 2`) gives `first = last = 0`: no new block, as in section 3's second row.
+`last` uses `end - 1`, the last position written, so a write that ends exactly on a block boundary does not allocate the next block. With $B = 2$, token 1 (`start = 1, end = 2`) gives `first = last = 0`: no new block, as in the hand example's second row.
+
+Second, it reserves: copies for the shared blocks, then the new blocks.
 
 ```python
         # Reserve every required block before changing references or tables.
@@ -219,7 +195,7 @@ The free list is a stack initialised in reverse, so blocks come out as `b0, b1, 
         table.extend(allocated)
 ```
 
-Because the capacity check already passed, every `_alloc_id` here succeeds, so there is no half-allocated state to undo.
+Because the capacity check already passed, every `_alloc_id` here succeeds, so there is no half-allocated state to undo. Third, it writes:
 
 ```python
         pos = start
@@ -234,9 +210,9 @@ Because the capacity check already passed, every `_alloc_id` here succeeds, so t
         self._lens[seq_id][layer] = end                   # the length moves last
 ```
 
-The loop writes a chunk in block-sized pieces, starting at the chunk's slot within its first block. Section 3's fork: the child appends token 5 at `start = 5`; block index 2 has refcount 2, so it is in `shared`, a fourth block is allocated and filled with `b2`'s contents, the child's table points at it, `b2`'s refcount drops to 1, and the write lands in the copy's slot 1. The parent still reads the original `b2`.
+The loop writes a chunk in block-sized pieces, starting at the chunk's slot within its first block. Follow the hand example's fork: the child appends token 5 at `start = 5`; block index 2 has refcount 2, so it is in `shared`, a fourth block is allocated and filled with `b2`'s contents, the child's table points at it, `b2`'s refcount drops to 1, and the write lands in the copy's slot 1. The parent still reads the original `b2`.
 
-**Gather.**
+### Gather
 
 ```python
     def gather(self, seq_id, layer):
@@ -256,7 +232,9 @@ The loop writes a chunk in block-sized pieces, starting at the chunk's slot with
 
 `close` frees every sequence and is also called by `__exit__` and `__del__`, so a cache used in a `with` block always returns its blocks.
 
-**Plugging into `generate`.** `L8.2`'s `generate` takes any object with `update`, `seq_len`, and `positions`. The entry point's `PagedHook` wraps one sequence of the paged cache in that interface:
+### Plugging into generate
+
+The contiguous cache's `generate` takes any object with `update`, `seq_len`, and `positions`. The entry point's `PagedHook` wraps one sequence of the paged cache in that interface:
 
 ```python
 class PagedHook:
@@ -278,17 +256,84 @@ class PagedHook:
 
 Because both caches store float16 and return the stored values, `generate --cache paged` and `generate --cache contiguous --kv-dtype f16` attend over identical keys and values.
 
-Full solution: [`paged.py`](../../../../course/solutions/python/tinyllm/infer/paged.py).
+The full solution is [`paged.py`](../../../../course/solutions/python/tinyllm/infer/paged.py).
 
-### 5.3 Why this solution
+### Why this design
 
-- **Memory.** A sequence of $n$ positions holds $\lceil n/B \rceil$ blocks, wasting at most $B - 1$ slots, against `max_len` slots for the contiguous cache. A fork costs nothing until a write, and then one block.
-- **Cost.** `append` is $O(T)$ copying plus one block copy per shared block touched (at most one for decode). `gather` copies the whole sequence, $O(n)$ per layer per step: acceptable for a reference, and the reason real engines (vLLM, FlashInfer, `L10.4`) instead let the attention kernel read blocks through the table directly.
-- **One block for all layers.** A block per layer would need $L$ tables or $L$ times the bookkeeping; one table per sequence matches how vLLM shares block ids across layers.
-- **Check before acting.** Rolling back a half-done append (undoing copies and allocations) is error-prone. Counting first makes failure a pure early return.
-- **Reverse free stack.** Any order is correct; handing out low ids first makes tables predictable and section 3 reproducible.
+The memory argument is the point of the exercise. A sequence of $n$ positions holds $\lceil n/B \rceil$ blocks, wasting at most $B - 1$ slots, against `max_len` slots for the contiguous cache. A fork costs nothing until a write, and then one block.
 
-### 5.4 Explain it back
+The time cost is where this reference falls short of production. `append` is $O(T)$ copying plus one block copy per shared block touched (at most one for decode). `gather` copies the whole sequence, $O(n)$ per layer per step: acceptable for a reference, and the reason real engines (vLLM, FlashInfer, [the engine's block manager](../p10-serving/04-block-manager-and-prefix-cache.md)) instead let the attention kernel read blocks through the table directly.
+
+One block for all layers keeps the bookkeeping small: a block per layer would need $L$ tables or $L$ times the bookkeeping, and one table per sequence matches how vLLM shares block ids across layers. Checking before acting avoids rollback, which is error-prone (undoing copies and allocations); counting first makes failure a pure early return. The reverse free stack is a convenience: any order is correct, but handing out low ids first makes tables predictable and the hand example reproducible.
+
+## What can go wrong
+
+These are the cases a correct solution must handle, and what each protects downstream.
+
+| Case | Kind of check | Checks | Why it matters downstream |
+|---|---|---|---|
+| the hand example's block table | unit | a block only when a position needs it; the gathered token values; allocation counts | the solution and the reader agree on the mapping |
+| gather keeps head, token, dimension order | unit | gathered arrays use `[heads, tokens, dimensions]` order | attention receives the expected layout |
+| gather matches a contiguous float16 cache | differential | chunks of 1 to 7 tokens, 3 layers, 2 interleaved sequences equal a contiguous float16 cache exactly | positions in order across block boundaries |
+| layers keep independent lengths | unit | each layer can append independently while sharing the sequence block table | transformer layers advance in order |
+| a fork shares until a write | unit | a fork allocates nothing; the first write into the shared partial block copies it; full blocks stay shared | beam search and parallel sampling |
+| free restores the pool | unit | a forked block returns only when both holders free it; freeing all restores every block | KV usage back to baseline after each request |
+| out of blocks changes nothing | fault | a multi-block append that cannot be satisfied leaves length, values, and allocation counts as they were | the scheduler preempts and retries safely |
+| bad arguments | boundary | bad shapes, empty chunks, unknown or reused ids, bad layers, sizes below 1 | engine bugs fail loudly |
+| paged matches contiguous decoding | differential | a 2-layer toy decoder: logits within 1e-5 and the same greedy ids from the paged cache and from `KVCache(dtype=float16)`, through a prompt and two forked branches | the equivalence `generate --cache paged` relies on |
+| random operations conserve blocks | property | $10^4$ seeded add, fork, append, free operations against a numpy oracle; allocated and free block counts add up after each; freeing all restores every block | no refcount drifts or leaks over a long run |
+
+Paging bugs are mostly off-by-one errors and missing references. This table lists the common ones by symptom.
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| Allocating a block when a write ends exactly on a block boundary | one block per sequence wasted; tables longer than $\lceil n / B \rceil$ | `last = (end - 1) // block_size` |
+| Gathering whole blocks | the partial last block returns stale positions | `count = min(block_size, n - start)` |
+| Viewing a block as `[B][H][D]` | dimensions land in the wrong slots | blocks are `[layers, heads, block_size, d_head]` and are sliced as `[layer, :, slots, :]` |
+| Writing K into the V slab | attention mixes the wrong values | `block.k` gets `k16`, `block.v` gets `v16` |
+| A chunk ignoring its starting slot | the write runs past the block's slab | `divmod(pos, block_size)` gives the slot; `count` stops at the block's end |
+| Forking without taking a reference on each shared block | the parent's free returns blocks the child still reads | `fork` increments `refs` for every block in the table |
+| Writing into a shared block in place | the parent sees the child's tokens | blocks with `refs > 1` in the write's range are cloned first |
+| Freeing the table without releasing blocks | blocks leak on every request | `free` calls `_unref` on every block |
+| Releasing only the first block | leaks all but one block per request | `free` loops over the whole table |
+| Moving the length before allocating | a failed append still grows the sequence | the length is set last, after the writes |
+| Allocating new blocks one at a time | a failed multi-block append keeps what it took | one capacity check for copies plus new blocks before any allocation |
+| Gathering every layer to the longest layer's length | a layer that has not been written yet returns positions it never stored | `gather` reads `self._lens[seq_id][layer]` |
+| Accepting an empty chunk | silent no-ops hide engine bugs | `want[1] < 1` raises `ValueError` |
+
+## Where this leads
+
+The next section, [radix prefix caching](04-radix-prefix-cache.md), shares blocks across requests rather than only across forks, and [the paged KV block pool](08-paged-kv-block-pool.md) is the optional C version of this allocator with hashing and an LRU. In the serving engine, [continuous batching](../p10-serving/02-continuous-batching.md) and [the block manager](../p10-serving/04-block-manager-and-prefix-cache.md) reimplement paging in Rust and read this section as their behavioral reference.
+
+Production systems build the same structure with more machinery:
+
+- vLLM's `KVCacheManager` ([`vllm/v1/core/kv_cache_manager.py`](https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/kv_cache_manager.py)) corresponds to `PagedKVCache`: block tables on the GPU, prefix-cache hits at allocation, sliding-window and hybrid layouts.
+- vLLM v0's `BlockSpaceManager.fork` ([`vllm/core/block_manager.py`](https://github.com/vllm-project/vllm/blob/v0.6.6/vllm/core/block_manager.py)) is the same refcounted fork for beam search.
+- [FlashInfer](https://github.com/flashinfer-ai/flashinfer)'s paged KV (`include/flashinfer/page.cuh`) goes beyond float16 blocks: page tables consumed directly by fused attention kernels.
+
+### Further reading
+
+- Kwon et al., [*Efficient Memory Management for LLM Serving with PagedAttention*](https://arxiv.org/abs/2309.06180), section 4.
+- Silberschatz et al., *Operating System Concepts*, chapter 9 (paging).
+
+## Key terms
+
+- **Block**: a fixed-size unit of KV storage holding $B$ positions for every layer.
+- **Block table**: a sequence's list of block ids in position order.
+- **Reference count**: the number of sequences holding a block; it returns to the pool at 0.
+- **Fork**: creating a child sequence that shares the parent's blocks by reference.
+- **Copy on write**: giving a writer a private copy of a shared block before writing into it.
+- **`OutOfBlocks`**: the error an append raises, before changing anything, when the pool cannot satisfy it.
+
+## Summary
+
+- A paged cache is a block table per sequence: position $p$ lives in slot $p \bmod B$ of block `table[p // B]`, so memory grows one block at a time.
+- The cache stores float16 K and V values in NumPy blocks and gathers them into contiguous arrays.
+- A fork copies a table and takes references; the first write into a shared block copies that block alone.
+- Paged and contiguous float16 caches hold the same numbers, so a decoder gives the same logits and the same greedy tokens from either.
+- An append that cannot get its blocks raises `OutOfBlocks` before anything visible changes, so the scheduler can preempt and retry.
+
+## Review questions
 
 1. Why does `append` compute the last touched block from `end - 1` rather than `end`?
    <details><summary>Answer</summary>`end` is one past the last position written. A chunk that ends exactly at a block boundary writes nothing into the next block, so allocating it from `end // B` would waste a block per sequence.</details>
@@ -300,35 +345,3 @@ Full solution: [`paged.py`](../../../../course/solutions/python/tinyllm/infer/pa
    <details><summary>Answer</summary>Mid-pass, earlier layers hold more positions than later ones. The table may already include a block for the longest layer; reading that many positions for a later layer would return zero slots it never wrote.</details>
 5. What happens to a block shared by a parent and child when only the parent is freed?
    <details><summary>Answer</summary>`free` calls `_unref`, which lowers the count from 2 to 1; the block stays allocated for the child. It returns to the pool only when the child frees it too.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| Allocating a block when a write ends exactly on a block boundary | one block per sequence wasted; tables longer than $\lceil n / B \rceil$ | `last = (end - 1) // block_size` |
-| Gathering whole blocks | the partial last block returns stale positions | `count = min(block_size, n - start)` |
-| Viewing a block as `[B][H][D]` | dimensions land in the wrong slots | blocks are `[layers, heads, block_size, d_head]` and are sliced as `[layer, :, slots, :]` |
-| Writing K into the V slab | attention mixes the wrong values | `block.k` gets `k16`, `block.v` gets `v16` |
-| A chunk ignoring its starting slot | the write runs past the block's slab | `divmod(pos, block_size)` gives the slot; `count` stops at the block's end |
-| Forking without taking a reference on each shared block | the parent's free returns blocks the child still reads | `fork` increments `refs` for every block in the table |
-| Writing into a shared block in place | the parent sees the child's tokens | blocks with `refs > 1` in the write's range are cloned first (step 6) |
-| Freeing the table without releasing blocks | blocks leak on every request | `free` calls `_unref` on every block |
-| Releasing only the first block | leaks all but one block per request | `free` loops over the whole table |
-| Moving the length before allocating | a failed append still grows the sequence | the length is set last, after the writes |
-| Allocating new blocks one at a time | a failed multi-block append keeps what it took | one capacity check for copies plus new blocks before any allocation (step 7) |
-| Gathering every layer to the longest layer's length | a layer that has not been written yet returns positions it never stored | `gather` reads `self._lens[seq_id][layer]` |
-| Accepting an empty chunk | silent no-ops hide engine bugs | `want[1] < 1` raises `ValueError` |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `L8.2` | the contiguous float16 cache is the oracle; `generate(cache="paged")` takes this cache |
-
-## Going further
-
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `PagedKVCache` | vLLM's `KVCacheManager` | block tables on the GPU, prefix-cache hits at allocation, sliding-window and hybrid layouts | [`vllm/v1/core/kv_cache_manager.py`](https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/kv_cache_manager.py) |
-| `fork` with copy on write | vLLM v0 `BlockSpaceManager.fork` | the same refcounted fork for beam search | [`vllm/core/block_manager.py`](https://github.com/vllm-project/vllm/blob/v0.6.6/vllm/core/block_manager.py) |
-| float16 blocks | FlashInfer paged KV | page tables consumed directly by fused attention kernels | [FlashInfer](https://github.com/flashinfer-ai/flashinfer) `include/flashinfer/page.cuh` |

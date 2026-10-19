@@ -1,35 +1,21 @@
-# Thread pool and tl_parallel_for (optional C)
+# Thread pool and tl_parallel_for
 
-## Overview
+The matmul from [Vectors, matrices, row-major layout, and matmul](../../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md) in *Mathematics for Computing* runs on one core. The kernels in this chapter can do better: the [tiled matmul](04-tiled-batch-invariant-matmul.md) splits independent rows across workers, [FlashAttention](06-flash-attention-forward.md) splits heads, and other kernels parallelize rows or sequences. Starting threads for every call costs tens of microseconds, which is more than many kernels take, so these standalone C exercises keep a pool of threads that sleeps between calls and wakes for each job. (The production Rust engine owns its own Rust thread pool and its own kernels; this pool exists only in the C exercises.)
 
-| | |
-|---|---|
-| **Module** | `rt.03` · side · C · Pass 6 |
-| **Solution** | [`pool.c`](../../../../course/solutions/c/src/runtime/pool.c): `tl_pool_create`, `tl_parallel_for`, `tl_pool_threads`, `tl_pool_destroy`, and the helpers `run_ranges`, `worker_main`, `shutdown_pool` |
-| **Contract** | [`course/contracts/c/include/tinyllm/pool.h`](../../../../course/contracts/c/include/tinyllm/pool.h) · rules: [`c/ABI.md`](../../../../course/contracts/c/ABI.md) (pthreads only; batch invariance, rule 10) |
-| **Needs** | [`rt.02` runtime support](02-arena-allocator-with-marks.md): `tl_alloc`, `tl_free`, `tl_set_last_error`. Reading: [`lang.03` C](../../programming-languages/02-language-and-tool-primers/03-c.md) |
-| **Used by** | `L9.1`, `L9.3`, `L9.4`, and `L9.5` use the pool in their optional standalone C implementations, which together form the optional C module group of the kernels pass |
-| **Optional depth** | Herlihy and Shavit, *The Art of Multiprocessor Programming*, ch. 16 (work distribution); Butenhof, *Programming with POSIX Threads*, ch. 3 and 7; the OpenMP specification, `schedule(dynamic, chunk)` |
+There is a second requirement, and it shapes the whole design: parallelism must not change the answer. Each kernel owns a fixed reduction order, so scheduling may change *which* worker computes a result but must never change the result's bits. This section shows how a fixed partition, one atomic counter, and careful bookkeeping around "done" deliver both speed and bitwise reproducibility, and how the pool avoids deadlocking or corrupting itself when calls nest, race, or overlap with shutdown.
 
-## Key Takeaways
+You will need the support layer from [C runtime support and an arena allocator with marks](02-arena-allocator-with-marks.md) (`tl_alloc`, `tl_free`, `tl_set_last_error`) and the C background in [C: memory, pointers, structs, headers, and the C11 toolchain](../../programming-languages/02-language-and-tool-primers/03-c.md) in *Programming Languages*. The contract is [`pool.h`](../../../../course/contracts/c/include/tinyllm/pool.h), under the rules in [`c/ABI.md`](../../../../course/contracts/c/ABI.md) (pthreads only; batch invariance is rule 10). The reference solution is [`pool.c`](../../../../course/solutions/c/src/runtime/pool.c): `tl_pool_create`, `tl_parallel_for`, `tl_pool_threads`, `tl_pool_destroy`, and the helpers `run_ranges`, `worker_main`, and `shutdown_pool`. Concurrency bugs rarely show in a single run, so plan to run every test under ThreadSanitizer as well as AddressSanitizer, with a watchdog that turns a deadlock into a failure instead of a hang.
 
-- **The partition is part of the contract**: ranges are always $[kg, \min((k+1)g, n))$, whoever runs them, so a kernel that reduces only inside a range gives the same bits with 1 or 8 threads.
-- **One atomic counter hands out ranges**: `atomic_fetch_add` gives each range to exactly one thread; a read followed by a write gives some ranges twice.
-- **"Done" means every thread that woke has finished**, not that the counter ran out; returning early lets the next job overwrite one still being read.
-- **A nested call on the same pool is `TL_EBUSY`, not a deadlock**, and calls from two threads are serialized.
-- **Destroy waits for a running call** and joins every thread; a failed create leaks nothing.
+> **Learning objectives**
+> - Define a partition of $[0, n)$ that depends only on $n$ and the grain, and explain why it makes pooled kernels bitwise identical for any thread count.
+> - Hand out ranges with one atomic counter so each runs exactly once, and explain why a read-then-write does not.
+> - Decide when a parallel call is finished, and explain why "the counter ran out" is not enough.
+> - Make nested calls return `TL_EBUSY`, serialize concurrent callers, and make destroy wait for a running call.
+> - Write a create that leaks nothing on any failure.
 
-## How to read this chapter
+## Threads and the tools that order them
 
-Sections 1 to 3 build the pool from first principles (threads and their synchronisation, the fixed partition, handing out ranges, finishing a job safely) and work one partition by hand. Section 4 fixes the interface. Section 5 walks through the solution, and explains why each choice is the right one. Concurrency bugs rarely show in a single run, so the cases in section 4 are meant to be run under ThreadSanitizer as well as AddressSanitizer, with a watchdog that turns a deadlock into a failure instead of a hang.
-
----
-
-## 1. Why now
-
-The C matmul of M03.1 runs on one core. The optional tiled kernel of L9.1 can split independent columns across workers; attention (L9.3) splits heads, and other optional C exercises parallelize rows or sequences. Each implementation still owns a fixed reduction order, so scheduling changes which worker computes a result but does not change the result's bits. Starting threads per call costs tens of microseconds, so these standalone C exercises keep a pool that sleeps between calls. The production Rust engine owns its own Rust thread pool and independent kernels.
-
-## 2. Principles
+The pool uses a small vocabulary, which the rest of the section refers to by these symbols:
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -40,47 +26,51 @@ The C matmul of M03.1 runs on one core. The optional tiled kernel of L9.1 can sp
 | $T$ | the number of workers, counting the caller | `int` |
 | $w$ | a worker id, $0 \le w < T$; the caller is 0 | `int` |
 
-### 2.1 Threads, mutexes, condition variables, atomics
+A **thread** runs a function concurrently with the others in the same address space (`pthread_create`, `pthread_join`). The ABI's rule 8 says pthreads only, since `<threads.h>` is missing on macOS. Two threads touching the same memory, at least one of them writing, with nothing ordering the two accesses, is a **data race**, which is undefined behavior in C11.
 
-A **thread** runs a function concurrently with the others in the same address space (`pthread_create`, `pthread_join`; c/ABI.md rule 8: pthreads only, since `<threads.h>` is missing on macOS). Two threads touching the same memory, at least one writing, with nothing ordering the two accesses, is a **data race**, which is undefined behavior in C11. Three tools order accesses: a **mutex** (`pthread_mutex_lock`/`unlock`: one holder at a time, and everything written before an unlock is visible after the next lock), a **condition variable** (`pthread_cond_wait` releases the mutex and sleeps until another thread signals; always re-check the condition in a loop, because wakeups can be spurious), and an **atomic** (`<stdatomic.h>`: `atomic_fetch_add` reads, adds, and writes as one indivisible step). ThreadSanitizer (`-fsanitize=thread`) instruments every access and reports any pair not ordered by these tools.
+Three tools order accesses. A **mutex** (`pthread_mutex_lock`/`unlock`) allows one holder at a time, and everything written before an unlock is visible after the next lock. A **condition variable** (`pthread_cond_wait`) releases the mutex and sleeps until another thread signals; you always re-check the condition in a loop, because wakeups can be spurious. An **atomic** (`<stdatomic.h>`) operation such as `atomic_fetch_add` reads, adds, and writes as one indivisible step. ThreadSanitizer (`-fsanitize=thread`) instruments every access and reports any pair not ordered by these tools.
 
-### 2.2 The partition
+## The partition is part of the contract
 
 `tl_parallel_for(p, n, g, fn, ctx)` calls `fn(ctx, lo, hi, w)` once for each range
 
 $$[\,k g,\ \min((k + 1) g,\ n)\,) \quad \text{for } k = 0, 1, \dots, R - 1,\quad R = \lceil n/g \rceil = \lfloor (n - 1)/g \rfloor + 1 \ (n > 0).$$
 
-The second form of $R$ avoids overflow in $n + g - 1$. The last range is short when $g$ does not divide $n$. Nothing about the ranges depends on $T$: only which worker runs which range, and in which order, does. A kernel that writes each output element inside one range, from a reduction in a fixed order, is therefore **bitwise identical** for every $T$. The obvious alternative, "split $n$ into $T$ equal chunks", changes the ranges with $T$ and breaks this.
+The second form of $R$ avoids overflow in $n + g - 1$. The last range is short when $g$ does not divide $n$.
 
-### 2.3 Handing out ranges
+The important property is what the ranges do *not* depend on: $T$. Only which worker runs which range, and in which order, depends on the thread count. A kernel that writes each output element inside one range, from a reduction in a fixed order, is therefore **bitwise identical** for every $T$. The obvious alternative, splitting $n$ into $T$ equal chunks, changes the ranges with $T$ and breaks this.
 
-The pool has $T$ workers: the caller is worker 0 and $T - 1$ pthreads are workers $1 \dots T - 1$. A job publishes $(n, g, R, \mathit{fn}, \mathit{ctx})$ and resets an atomic counter `next` to 0. Every participant then loops:
+## Handing out ranges
+
+With the ranges fixed, the next question is who runs each one. The pool has $T$ workers: the caller is worker 0 and $T - 1$ pthreads are workers $1 \dots T - 1$. A job publishes $(n, g, R, \mathit{fn}, \mathit{ctx})$ and resets an atomic counter `next` to 0. Every participant then loops:
 
 ```c
 for (;;) { int64_t k = atomic_fetch_add(&next, 1); if (k >= R) break; run range k; }
 ```
 
-`atomic_fetch_add` returns each value of the counter to exactly one caller, so each range runs exactly once, and fast workers simply take more ranges (dynamic scheduling, which balances uneven ranges). Writing it as `k = next; next = k + 1;` lets two threads read the same $k$: a race, and a range run twice (ThreadSanitizer reports it, and a per-index counter sees a 2).
+`atomic_fetch_add` returns each value of the counter to exactly one caller, so each range runs exactly once, and fast workers simply take more ranges. That is dynamic scheduling, and it balances uneven ranges for free. Writing the same step as `k = next; next = k + 1;` lets two threads read the same $k$: a race, and a range run twice. ThreadSanitizer reports it, and a per-index counter in a test sees a 2.
 
-### 2.4 Waking, finishing, and reusing the job
+## Waking, finishing, and reusing the job
 
-Workers sleep on a condition variable `wake` and wait for a **generation** number to change. `tl_parallel_for` locks the mutex, writes the job, sets `active` to the number of pthreads, bumps the generation, broadcasts, unlocks, and runs ranges itself. Each pthread that woke runs ranges until the counter passes $R$, then, under the mutex, decrements `active`; the one that reaches 0 signals `idle`. The caller returns only after waiting for `active == 0`.
+Workers sleep on a condition variable `wake` and wait for a **generation** number to change. `tl_parallel_for` locks the mutex, writes the job, sets `active` to the number of pthreads, bumps the generation, broadcasts, unlocks, and then runs ranges itself. Each pthread that woke runs ranges until the counter passes $R$, then, under the mutex, decrements `active`; the one that reaches 0 signals `idle`. The caller returns only after waiting for `active == 0`.
 
-Why wait for `active`, when the counter alone says no range is left? Because "no range left to hand out" is not "no range still running", and a worker that took the last range may still be inside `fn`. Worse, a worker that is between waking and reading the job would read the **next** job's fields if the caller returned and was called again. Waiting for every woken thread to check in is what makes the job struct safe to overwrite.
+Why wait for `active`, when the counter alone says no range is left? Because "no range left to hand out" is not "no range still running": a worker that took the last range may still be inside `fn`. Worse, a worker that is between waking and reading the job would read the **next** job's fields if the caller returned and was called again. Waiting for every woken thread to check in is what makes the job struct safe to overwrite.
 
-### 2.5 Nested calls, concurrent callers, destroy
+## Nested calls, concurrent callers, and destroy
 
-**Nested.** If `fn` calls `tl_parallel_for` on the same pool, the inner call would wait for workers that are busy running the outer call's ranges, forever. A thread-local pointer records which pool's ranges the current thread is running; a call on that pool returns `TL_EBUSY`. A 1-thread pool has no pthreads but must refuse too, because the contract does not depend on $T$. A call with `p = NULL` (serial) inside a range is fine.
+A pool that works for one caller still has to survive composition. Three situations need explicit handling.
 
-**Concurrent callers.** Two threads calling on one pool would overwrite each other's job. A second mutex, `call_lock`, held for the whole call, makes the second wait for the first.
+**Nested calls.** If `fn` calls `tl_parallel_for` on the same pool, the inner call would wait for workers that are busy running the outer call's ranges, forever. A thread-local pointer records which pool's ranges the current thread is running, and a call on that pool returns `TL_EBUSY`. A 1-thread pool has no pthreads but must refuse too, because the contract does not depend on $T$. A call with `p = NULL` (serial) inside a range is fine.
+
+**Concurrent callers.** Two threads calling on one pool would overwrite each other's job. A second mutex, `call_lock`, held for the whole call, makes the second caller wait for the first.
 
 **Destroy.** `tl_pool_destroy` first takes and releases `call_lock`, which waits for a call running on another thread to return; then it sets `stop`, broadcasts, joins every pthread, destroys the mutexes and condition variables, and frees through the hook. Joining the workers alone is not enough: the caller of the running call (worker 0) still reads the pool after the workers have run out of ranges.
 
-**Create.** All allocations (the pool, the thread table, the thread arguments) happen on the creating thread, so the allocator hook never needs to be thread-safe. If a `pthread_create` fails, the threads already started are stopped and joined, everything is freed, and the result is `TL_EIO`; a failed allocation gives `TL_ENOMEM`. `n_threads == 0` means the hardware concurrency, `sysconf(_SC_NPROCESSORS_ONLN)`.
+**Create** has its own discipline. All allocations (the pool, the thread table, the thread arguments) happen on the creating thread, so the allocator hook never needs to be thread-safe. If a `pthread_create` fails, the threads already started are stopped and joined, everything is freed, and the result is `TL_EIO`; a failed allocation gives `TL_ENOMEM`. `n_threads == 0` means the hardware concurrency, `sysconf(_SC_NPROCESSORS_ONLN)`.
 
-## 3. Worked example by hand
+## Working it by hand
 
-$n = 10$, $g = 4$: $R = \lfloor 9 / 4 \rfloor + 1 = 3$.
+Take $n = 10$ and $g = 4$. Then $R = \lfloor 9 / 4 \rfloor + 1 = 3$, and the ranges are:
 
 | $k$ | range | length |
 |---|---|---|
@@ -88,11 +78,11 @@ $n = 10$, $g = 4$: $R = \lfloor 9 / 4 \rfloor + 1 = 3$.
 | 1 | $[4, 8)$ | 4 |
 | 2 | $[8, \min(12, 10)) = [8, 10)$ | 2 (the short last range) |
 
-With `p = NULL` the three calls run in this order on the caller with `worker = 0`. With a 4-thread pool, one possible run: the caller takes $k = 0$, worker 2 takes $k = 1$, worker 1 takes $k = 2$, worker 3 finds the counter at 3 $\ge R$ and takes nothing. Another run gives other workers other ranges, but the set of three ranges is always the table above (sorted by `lo`).
+With `p = NULL` the three calls run in this order on the caller with `worker = 0`. With a 4-thread pool, one possible run is: the caller takes $k = 0$, worker 2 takes $k = 1$, worker 1 takes $k = 2$, and worker 3 finds the counter at 3 $\ge R$ and takes nothing. Another run gives other workers other ranges, but the set of three ranges, sorted by `lo`, is always the table above.
 
-For the bitwise claim: a $37 \times 211$ by $211 \times 29$ product where range $[i_0, i_1)$ computes rows $i_0 \dots i_1 - 1$, each element summed over $k$ from 0 to 210 in order. Whether row 5 is computed by worker 0 or worker 3, the same 211 products are added in the same order, so the results compare equal under `memcmp`.
+Now the bitwise claim. Consider a $37 \times 211$ by $211 \times 29$ product where range $[i_0, i_1)$ computes rows $i_0 \dots i_1 - 1$, each element summed over $k$ from 0 to 210 in order. Whether row 5 is computed by worker 0 or worker 3, the same 211 products are added in the same order, so the results compare equal under `memcmp`.
 
-## 4. The interface
+## The interface
 
 ```c
 typedef struct tl_pool tl_pool;
@@ -104,39 +94,17 @@ int       tl_pool_threads(const tl_pool *p);               /* T; 1 for NULL */
 void      tl_pool_destroy(tl_pool *p);                     /* waits for a running call; NULL is a no-op */
 ```
 
-`worker` is stable during one call of `fn` and is below `tl_pool_threads(p)`, so a kernel can index per-worker scratch with it (one rt.02 arena per worker, for instance).
+`worker` is stable during one call of `fn` and is below `tl_pool_threads(p)`, so a kernel can index per-worker scratch with it, for instance one [arena](02-arena-allocator-with-marks.md) per worker.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| The hand example | unit, smoke | section 3: serial order and worker 0 with `p = NULL`; the same three ranges on 4 threads | the partition is pinned by a table you can check by hand |
-| Grain edges and the empty range | boundary | $g = 1$, $g = n$, $g > n$, a short last range, $n = 0$ (no call), on 1 and 3 threads | every kernel's edge shapes |
-| Bad arguments | boundary | $n < 0$, $g < 1$, `fn == NULL`, $T < 0$, `out == NULL`; no range runs | defined behavior at the boundary |
-| Each index runs exactly once | property | 200 seeded $(n, g)$ on 8 threads: an atomic counter per index ends at exactly 1 | no lost or doubled rows |
-| A pooled matmul is bitwise serial | differential | a row-range matmul on 1, 2, 3, 8 threads and grains 1 and 5 equals the serial one under `memcmp` | batch invariance (c/ABI.md rule 10) |
-| All workers run concurrently | unit | 4 ranges on 4 threads each wait for all 4 to start; worker ids 0 to 3 each seen once | real parallelism, correct worker ids |
-| A nested call is busy, not a deadlock | fault | a range calling on its own pool gets `TL_EBUSY` (1 and 3 threads); `p = NULL` inside works | no deadlock in composed kernels |
-| Two callers are serialized | fault | two threads, 50 calls each of 1000 indices: the total is 100000; TSan clean | the engine and a benchmark sharing a pool |
-| Destroy waits for running work | fault | destroy during another thread's call (whose caller is still inside a 100 ms range) returns after all 16 ranges | clean engine shutdown |
-| A failed create leaks nothing | fault | the n-th allocation fails for each n: `TL_ENOMEM`, `out == NULL`, no leak; success still works | every constructor's failure path |
-| The hardware-concurrency default | unit | $T = 0$ resolves to at least 1 and runs the exact partition | `[engine].threads` unset |
+The design falls out of the requirements one at a time. Bitwise results for any $T$ force the partition to be independent of $T$, so the ranges are fixed by $(n, g)$ alone and the only thing threads change is who runs which range. Threads must be reused, because creating them per call costs more than many kernels, so workers sleep on a condition variable between jobs and a job is published in shared fields. Each range must run exactly once with uneven speeds balanced, and a shared atomic counter is the simplest correct dispenser: `fetch_add` is one indivisible read-modify-write, and fast threads take more.
 
-## 5. The solution, step by step
+The caller must not return while anyone can still read the job, so every woken thread checks in (`active--`) and the caller waits for `active == 0`, not for the counter. Workers must tell a new job from a spurious wakeup, so they wait on a generation number, bumped once per job, and each remembers the last one it served. The pool must not deadlock or corrupt itself under composition: it refuses a nested call on the same pool (a thread-local marker), serializes callers from different threads (`call_lock`), and makes destroy wait for a running call (by taking `call_lock`). Finally, allocation happens only on the creating thread, so the allocator hook need not be thread-safe, and every failure path frees what it took.
 
-### From first principles
+### The state
 
-1. **Bitwise results for any $T$ force the partition to be independent of $T$.** So the ranges are fixed by $(n, g)$ alone (section 2.2), and the only thing threads change is who runs which range.
-2. **Threads must be reused**, because creating them per call costs more than many kernels. So workers sleep on a condition variable between jobs, and a job is published in shared fields.
-3. **Each range must run exactly once, with uneven speeds balanced.** A shared atomic counter is the simplest correct dispenser: `fetch_add` is one indivisible read-modify-write, and fast threads take more.
-4. **The caller must not return while anyone can still read the job.** So every woken thread checks in (`active--`) and the caller waits for `active == 0`, not for the counter.
-5. **Workers must tell a new job from a spurious wakeup.** A generation number, bumped once per job, is what they wait on; each remembers the last one it served.
-6. **The pool must not deadlock or corrupt itself under composition**: refuse a nested call on the same pool (thread-local marker), serialise callers from different threads (`call_lock`), and make destroy wait for a running call (take `call_lock`).
-7. **Allocation happens only on the creating thread**, so the rt.02 hook need not be thread-safe, and every failure path frees what it took.
-
-### The code, annotated
-
-The state, all guarded by `mu` except the counter:
+Everything is guarded by `mu` except the counter:
 
 ```c
 struct tl_pool {
@@ -161,7 +129,7 @@ struct tl_pool {
 static _Thread_local tl_pool *running_for = NULL;
 ```
 
-Handing out ranges, step 3:
+### Handing out ranges
 
 ```c
 static void run_ranges(tl_pool *p, int worker) {
@@ -178,7 +146,9 @@ static void run_ranges(tl_pool *p, int worker) {
 }
 ```
 
-A worker's life, steps 4 and 5:
+### A worker's life
+
+The generation number and the `active` count appear here:
 
 ```c
 static void *worker_main(void *arg) {
@@ -203,7 +173,7 @@ static void *worker_main(void *arg) {
 }
 ```
 
-The call itself:
+### The call itself
 
 ```c
 tl_status tl_parallel_for(tl_pool *p, int64_t n, int64_t grain, tl_range_fn fn, void *ctx) {
@@ -246,9 +216,11 @@ tl_status tl_parallel_for(tl_pool *p, int64_t n, int64_t grain, tl_range_fn fn, 
 }
 ```
 
-On the worked example with 4 threads: $R = 3$; the counter hands out 0, 1, 2 to whichever three threads reach `fetch_add` first and 3 to the fourth, which returns at once. `active` starts at 3 (the pthreads); the caller returns only when all three have decremented it.
+Trace the worked example through this code with 4 threads: $R = 3$; the counter hands out 0, 1, 2 to whichever three threads reach `fetch_add` first and 3 to the fourth, which returns at once. `active` starts at 3 (the pthreads), and the caller returns only when all three have decremented it.
 
-Create and destroy, steps 6 and 7. Create resolves $T = 0$ through `sysconf(_SC_NPROCESSORS_ONLN)` (capped at 1024), allocates the pool, the thread table, and the argument table on the calling thread (any failure frees what was taken and returns `TL_ENOMEM`), initialises the mutexes and condition variables, and starts workers $1 \dots T - 1$, counting `n_started`. If a `pthread_create` fails, `shutdown_pool` stops and joins exactly the `n_started` threads already running and frees everything (`TL_EIO`). Destroy waits for a running call first:
+### Create and destroy
+
+Create resolves $T = 0$ through `sysconf(_SC_NPROCESSORS_ONLN)` (capped at 1024), allocates the pool, the thread table, and the argument table on the calling thread (any failure frees what was taken and returns `TL_ENOMEM`), initializes the mutexes and condition variables, and starts workers $1 \dots T - 1$, counting `n_started`. If a `pthread_create` fails, `shutdown_pool` stops and joins exactly the `n_started` threads already running and frees everything (`TL_EIO`). Destroy waits for a running call first:
 
 ```c
 void tl_pool_destroy(tl_pool *p) {
@@ -261,17 +233,77 @@ void tl_pool_destroy(tl_pool *p) {
 }
 ```
 
-Full solution: [`pool.c`](../../../../course/solutions/c/src/runtime/pool.c); contract: [`pool.h`](../../../../course/contracts/c/include/tinyllm/pool.h).
+The full solution is [`pool.c`](../../../../course/solutions/c/src/runtime/pool.c), against the contract [`pool.h`](../../../../course/contracts/c/include/tinyllm/pool.h).
 
-### Why this solution
+### Why this design
 
-- **Cost.** Per call: one lock and broadcast to publish, one `fetch_add` per range plus one that finds the end per thread, one lock per thread to check in. With a sensible grain this is a few microseconds, versus tens for creating threads.
-- **Against static chunks of $n/T$.** No counter traffic, but the ranges change with $T$, so any kernel whose reduction order follows the ranges stops being bitwise reproducible, and uneven ranges leave threads idle.
-- **Against work stealing.** Per-thread deques with stealing (TBB, rayon) handle nested parallelism and very uneven work better, at much higher complexity. A blocking parallel for over independent output regions does not need it.
-- **Against a barrier per job.** A `pthread_barrier` would also wait for everyone, but it is optional on macOS and does not handle the "woken but not yet started" case without the same generation logic.
-- **Tradeoff accepted.** Nested calls on the same pool are refused rather than run; a kernel that needs inner parallelism passes `NULL` (serial) inside a range.
+Per call, the pool costs one lock and broadcast to publish, one `fetch_add` per range plus one per thread that finds the end, and one lock per thread to check in. With a sensible grain this is a few microseconds, against tens for creating threads.
 
-### Explain it back
+Static chunks of $n/T$ would avoid the counter traffic, but the ranges would change with $T$, so any kernel whose reduction order follows the ranges stops being bitwise reproducible, and uneven ranges leave threads idle. Work stealing with per-thread deques (TBB, rayon) handles nested parallelism and very uneven work better, at much higher complexity; a blocking parallel-for over independent output regions does not need it. A `pthread_barrier` per job would also wait for everyone, but barriers are optional on macOS and do not handle the "woken but not yet started" case without the same generation logic. The tradeoff accepted is that nested calls on the same pool are refused rather than run: a kernel that needs inner parallelism passes `NULL` (serial) inside a range.
+
+## What can go wrong
+
+The tests for this pool are designed to catch races and deadlocks that a single happy run would hide:
+
+| Case | Kind of check | Checks | Why it matters downstream |
+|---|---|---|---|
+| The hand example | unit, smoke | serial order and worker 0 with `p = NULL`; the same three ranges on 4 threads | the partition is pinned by a table you can check by hand |
+| Grain edges and the empty range | boundary | $g = 1$, $g = n$, $g > n$, a short last range, $n = 0$ (no call), on 1 and 3 threads | every kernel's edge shapes |
+| Bad arguments | boundary | $n < 0$, $g < 1$, `fn == NULL`, $T < 0$, `out == NULL`; no range runs | defined behavior at the boundary |
+| Each index runs exactly once | property | 200 seeded $(n, g)$ on 8 threads: an atomic counter per index ends at exactly 1 | no lost or doubled rows |
+| A pooled matmul is bitwise serial | differential | a row-range matmul on 1, 2, 3, 8 threads and grains 1 and 5 equals the serial one under `memcmp` | batch invariance (ABI rule 10) |
+| All workers run concurrently | unit | 4 ranges on 4 threads each wait for all 4 to start; worker ids 0 to 3 each seen once | real parallelism, correct worker ids |
+| A nested call is busy, not a deadlock | fault | a range calling on its own pool gets `TL_EBUSY` (1 and 3 threads); `p = NULL` inside works | no deadlock in composed kernels |
+| Two callers are serialized | fault | two threads, 50 calls each of 1000 indices: the total is 100000; TSan clean | the engine and a benchmark sharing a pool |
+| Destroy waits for running work | fault | destroy during another thread's call (whose caller is still inside a 100 ms range) returns after all 16 ranges | clean engine shutdown |
+| A failed create leaks nothing | fault | the n-th allocation fails for each n: `TL_ENOMEM`, `out == NULL`, no leak; success still works | every constructor's failure path |
+| The hardware-concurrency default | unit | $T = 0$ resolves to at least 1 and runs the exact partition | `[engine].threads` unset |
+
+The classic mistakes map one-to-one onto those tests.
+
+> **Warning:** Taking a range with a plain read and write of the counter runs some ranges twice and others never, and ThreadSanitizer reports the race. Use `atomic_fetch_add_explicit` on `next`.
+
+Splitting $n$ into $T$ chunks instead of by grain gives different sums with different thread counts and fails the edge partitions; the ranges must be $[kg, \min((k+1)g, n))$, independent of $T$. Computing $R = \lfloor n/g \rfloor$ drops the short last range; use `n_ranges = (n - 1) / grain + 1`. Returning when the counter runs out, rather than when the workers finish, leaves a range running after return and lets the next job be read half-written; the caller must wait on `idle` until `active == 0`. Forgetting to reset the counter for each job makes the second call run nothing; the solution does `atomic_store(&next, 0)` while publishing the job.
+
+If the caller does all the work, or every worker reports id 0, there is no speedup and per-worker scratch is shared by all; pthreads are woken before the caller joins in, and each passes its own `a.worker`. Omitting the nested-call check, or omitting it for the 1-thread pool, makes the inner call wait forever; `running_for == p` returns `TL_EBUSY`, and the 1-thread path sets `running_for` too. Without a lock between two callers, one caller's job overwrites the other's; `call_lock` is held for the whole call. A destroy that only joins the workers, or detaches them, frees the pool under a running call, which ASan and TSan both catch; destroy takes `call_lock` first, then joins. And a failed create that frees only part of what it allocated leaks on every failure; every failure path frees the tables and the pool, and `shutdown_pool` joins exactly `n_started` threads.
+
+## Where this leads
+
+Every parallel kernel in this chapter schedules independent output regions through this pool. `tl_matmul_f32(..., tp)` in the [tiled matmul](04-tiled-batch-invariant-matmul.md) splits rows of C into ranges, with each output element reduced inside one range. [FlashAttention](06-flash-attention-forward.md) gives each (batch, head) pair to a range and uses worker ids to index per-worker scratch [arenas](02-arena-allocator-with-marks.md). [Paged decode attention](07-paged-attention-decode.md) splits the batch's sequences and heads into ranges, and the [int4 and int8 matmuls](08-fused-quantized-matmul.md) split output rows.
+
+Production libraries generalize each part of this design:
+
+| This piece | Production equivalent | What it adds | Where to look |
+|---|---|---|---|
+| `tl_parallel_for` | OpenMP `parallel for schedule(dynamic, g)`, TBB `parallel_for` | work stealing between per-thread deques, nested parallelism without deadlock | oneTBB `include/oneapi/tbb/parallel_for.h` |
+| fixed partition | ggml's threadpool and `ggml_compute_forward_mul_mat` | splits rows by `ith`/`nth` per thread, with a barrier between graph nodes | `ggml/src/ggml-cpu/ggml-cpu.c` |
+| sleeping workers | Rust `rayon` | work-stealing scheduler, `join` and parallel iterators, a global pool | the rayon `rayon-core` crate |
+| the counter | PyTorch `at::parallel_for` | a grain size to avoid overhead on small loops, thread-local intra-op pools | `aten/src/ATen/Parallel.h` |
+
+### Further reading
+
+- Herlihy and Shavit, *The Art of Multiprocessor Programming*, ch. 16 (work distribution).
+- Butenhof, *Programming with POSIX Threads*, ch. 3 and 7.
+- The OpenMP specification, `schedule(dynamic, chunk)`.
+
+## Key terms
+
+- **data race**: two unordered accesses to the same memory from different threads, at least one a write; undefined behavior in C11.
+- **grain**: the number of indices in each range handed to a worker.
+- **fixed partition**: ranges $[kg, \min((k+1)g, n))$ determined by $n$ and $g$ alone, never by the thread count.
+- **dynamic scheduling**: workers take the next range from a shared counter, so faster workers take more.
+- **generation number**: a counter bumped once per job that lets a sleeping worker tell a new job from a spurious wakeup.
+- **batch invariance**: the property that a kernel's output bits do not depend on how the work was split or scheduled.
+
+## Summary
+
+- The partition is part of the contract: ranges are always $[kg, \min((k+1)g, n))$, whoever runs them, so a kernel that reduces only inside a range gives the same bits with 1 or 8 threads.
+- One atomic counter hands out ranges: `atomic_fetch_add` gives each range to exactly one thread; a read followed by a write gives some ranges twice.
+- "Done" means every thread that woke has finished, not that the counter ran out; returning early lets the next job overwrite one still being read.
+- A nested call on the same pool is `TL_EBUSY`, not a deadlock, and calls from two threads are serialized.
+- Destroy waits for a running call and joins every thread; a failed create leaks nothing.
+
+## Review questions
 
 1. Why can the counter use `memory_order_relaxed`?
    <details><summary>Answer</summary>The job's fields (`n`, `grain`, `fn`, `ctx`, `n_ranges`) are written under `mu` and read by workers only after they took `mu` and saw the new generation, so the mutex orders them. The counter itself only has to hand each value to one thread, which atomicity alone guarantees.</details>
@@ -283,38 +315,5 @@ Full solution: [`pool.c`](../../../../course/solutions/c/src/runtime/pool.c); co
    <details><summary>Answer</summary>A call running on another thread holds `call_lock` until it returns, and its caller (worker 0) still reads the pool after the pthreads ran out of ranges. Acquiring the lock waits for that call to finish; only then is it safe to stop, join, and free.</details>
 5. Why are ranges $[kg, \min((k+1)g, n))$ enough to make a row-range matmul bitwise identical across thread counts?
    <details><summary>Answer</summary>Each output element is computed entirely inside one range by one thread, summing over the inner dimension in the same fixed order. Which thread computes it, and when, changes nothing about the sequence of floating-point operations, so the bits are the same.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. taking a range with a plain read and write of the counter | some ranges run twice, others never; TSan reports the race | `atomic_fetch_add_explicit` on `next` |
-| 2. splitting $n$ into $T$ chunks instead of by grain | different sums with different thread counts; the edge partitions fail | ranges are $[kg, \min((k+1)g, n))$, independent of $T$ |
-| 3. $R = \lfloor n/g \rfloor$ | the short last range is dropped | `n_ranges = (n - 1) / grain + 1` |
-| 4. returning when the counter runs out, not when the workers finish | a range still running after return; the next job is read half-written | the caller waits on `idle` until `active == 0` |
-| 5. not resetting the counter for each job | the second call runs nothing | `atomic_store(&next, 0)` while publishing the job |
-| 6. the caller doing all the work, or every worker reporting id 0 | no speedup; per-worker scratch shared by all | pthreads are woken before the caller joins in; each passes its own `a.worker` |
-| 7. no nested-call check, or none for the 1-thread pool | the inner call waits forever | `running_for == p` returns `TL_EBUSY`; the 1-thread path sets `running_for` too |
-| 8. no lock between two callers | one caller's job overwrites the other's | `call_lock` held for the whole call |
-| 9. destroy that only joins the workers, or detaches them | the pool freed under a running call (ASan, TSan) | destroy takes `call_lock` first, then joins |
-| 10. a failed create that frees only part of what it allocated | a leak per failed create | every failure path frees the tables and the pool; `shutdown_pool` joins exactly `n_started` threads |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `rt.02` | `tl_alloc`/`tl_free` for the pool and its tables (counted in tests), `tl_set_last_error` for failures |
-| Forward | `L9.1` | `tl_matmul_f32(..., tp)` splits rows of C into ranges; each output element is reduced in one range |
-| Forward | `L9.3` | FlashAttention gives each (batch, head) pair to a range; worker ids index per-worker scratch arenas (rt.02) |
-| Forward | `L9.4` | paged decode attention splits the batch's sequences and heads into ranges |
-| Forward | `L9.5` | the int4 and int8 matmuls split output rows into ranges |
-| Forward | `L9.1`, `L9.3`, `L9.4`, `L9.5` | Optional standalone C kernels use the pool to schedule independent output regions |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `tl_parallel_for` | OpenMP `parallel for schedule(dynamic, g)`, TBB `parallel_for` | work stealing between per-thread deques, nested parallelism without deadlock | oneTBB `include/oneapi/tbb/parallel_for.h` |
-| fixed partition | ggml's threadpool and `ggml_compute_forward_mul_mat` | splits rows by `ith`/`nth` per thread, with a barrier between graph nodes | `ggml/src/ggml-cpu/ggml-cpu.c` |
-| sleeping workers | Rust `rayon` | work-stealing scheduler, `join` and parallel iterators, a global pool | the rayon `rayon-core` crate |
-| the counter | PyTorch `at::parallel_for` | a grain size to avoid overhead on small loops, thread-local intra-op pools | `aten/src/ATen/Parallel.h` |
+6. For $n = 10$ and $g = 4$, why is $R$ computed as $\lfloor (n-1)/g \rfloor + 1$ rather than $\lfloor (n + g - 1)/g \rfloor$?
+   <details><summary>Answer</summary>Both give 3 here, but $n + g - 1$ can overflow `int64_t` when $n$ is near its maximum, while $(n - 1)/g + 1$ cannot for $n > 0$.</details>

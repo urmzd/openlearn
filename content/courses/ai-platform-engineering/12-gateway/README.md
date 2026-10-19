@@ -1,54 +1,38 @@
 # Gateway
 
-## Overview
+An LLM gateway is the one front door to every model server. Authentication, rate limits, usage policy, caching, routing, and metering all live there, so the engines behind it can stay simple and keyless. Put that way, a gateway sounds like any reverse proxy with a middleware chain, and structurally it is. What makes it its own subject is that its payload is a stream. Every feature it gains is a step in front of, or around, one operation: copy the engine's response to the client, chunk by chunk, without delaying the first token.
 
-- **Primary references**: [RFC 9110 HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110) (free), [W3C Trace Context](https://www.w3.org/TR/trace-context/) (free), [OpenAI API reference](https://platform.openai.com/docs/api-reference) (free)
-- **Supplementary**: [Envoy AI Gateway](https://aigateway.envoyproxy.io/) (free), [LiteLLM proxy](https://docs.litellm.ai/docs/simple_proxy) (free), [`net/http/httputil.ReverseProxy`](https://pkg.go.dev/net/http/httputil#ReverseProxy) (free)
-- **Prerequisites**: [Streaming & SSE](../03-streaming-sse/), the Go primer [`lang.06`](../../programming-languages/02-language-and-tool-primers/06-go.md), the engine's API (`L10.0`)
-- **Estimated time**: Pass 1 for the tracer (`gw.00`); the full gateway arrives in Pass 7
+That one constraint shapes everything in this chapter. Bytes are forwarded and flushed as they arrive, never parsed and re-emitted. Each request is two HTTP exchanges, client to gateway and gateway to engine, so hop-by-hop headers stay on their hop and the gateway's own key never travels further. Before the first byte of a response the gateway can still choose a status (401, 429, 503) or try another worker; after it, the only honest signal of failure is an SSE error event. And the gateway continues the caller's trace with its own span, so one request is one trace from client to engine.
 
-## Key Takeaways
+The chapter builds the gateway in the order the request meets it. It starts with a tracer gateway that is the core operation plus a key check and trace propagation, then gives it a skeleton: an ordered middleware chain, `requestid -> otel -> recover -> authn -> policy -> ratelimit -> cache -> route -> proxy -> meter`, a shared request record, graceful shutdown, and configuration. The streaming proxy learns to observe a stream without touching it, the router spreads requests over a fleet of engines with failover, cascades, and disaggregated serving, the usage ledger records who used what and assembles the whole chain, and the policy stage enforces usage restrictions. Two stages of the chain, authentication and rate limiting, are built in [Authorization and access control](../08-authorization-and-access-control/README.md), and the response cache in [Distributed data and caching](../04-distributed-data-and-caching/README.md). Each section extends the same `go/gateway/` packages behind the same OpenAI-compatible surface.
 
-- A gateway is the **one front door** to every model server: authentication, limits, routing, caching, and metering live there, so the engines stay simple and keyless.
-- Everything it adds must leave **streaming intact**: bytes are forwarded and flushed as they arrive, and failures after the first byte become SSE error events.
-- The gateway **continues the caller's trace** with its own span, so one request is one trace from client to engine.
+> **Learning objectives**
+> - Build a streaming reverse proxy that checks keys in constant time, fails closed, flushes every chunk, and propagates W3C trace context and request ids.
+> - Compose gateway stages in a contractual order through a composition root, and shut the server down without cutting streams.
+> - Observe SSE streams for time to first token and usage without changing a byte, and draw the commitment boundary that decides what may be retried.
+> - Route requests across a live fleet with heartbeats, load-aware and cache-aware policies, canaries, cascades, failover, and disaggregated prefill and decode.
+> - Meter every request durably in SQLite, serve a fail-closed admin API, and enforce an auditable usage policy.
 
-## How to Study
+## Before you begin
 
-Read the chapters in order. Each one builds the idea from first principles, then walks through the solution in [`course/solutions/go/gateway/`](../../../../course/solutions/go/gateway/) and explains why it is written that way. The tracer chapter (`gw.00`) is in Pass 1; the server skeleton, streaming observer, routing, and the rest follow in Pass 7, each extending the same `go/gateway/` packages behind the same OpenAI-compatible surface.
+You should be comfortable reading Go; [Go: packages, interfaces, goroutines, channels, context, net/http, testing](../../programming-languages/02-language-and-tool-primers/06-go.md) in *Programming Languages* covers what the chapter uses. The wire format the gateway forwards is the subject of [Streaming and SSE](../03-streaming-sse/README.md). The engine the gateway fronts, and its API, comes from [Your first endpoint](../../build-an-llm/p10-serving/00-your-first-endpoint.md) in *Build Your Own LLM System*. The routing section draws on [Model routing and cascades](../11-model-routing-and-cascades/README.md) for the ideas behind cascades, and the gateway's spans and metrics feed [Observability](../../systems/04-observability/00-one-trace.md) in *Systems and Architecture*.
 
----
+The full solution code for every section lives in [`course/solutions/go/gateway/`](../../../../course/solutions/go/gateway/).
 
-# Concepts & Techniques
+## In this chapter
 
-## Core Insight
+1. [The tracer gateway](00-streaming-proxy.md). The thinnest gateway that closes the engine's open port: a static API key checked in constant time and failing closed, SSE pass-through with a flush per chunk, the before-and-after-first-byte failure rules, and `traceparent` and `X-Request-Id` propagation.
+2. [The server skeleton](01-server-skeleton.md). The ordered middleware chain and why each stage sits where it does, the composition root that lets the server be built before its stages, the request-scoped `Exchange`, a drain that Kubernetes rollouts cannot cut, and one configuration loader for every Go service.
+3. [The SSE streaming proxy](04-sse-streaming-proxy.md). Relaying a stream byte for byte while a splitter observes its events, first byte, and usage on the side, and the commitment boundary that tells the router which failures it may retry.
+4. [Routing, cascades, and failover](05-routing.md). A heartbeat registry with exact eviction, three routing policies including prefix affinity with bounded loads, canary splits, failover before the first byte, cascades with a cost and accuracy curve, and disaggregated prefill and decode.
+5. [The usage ledger and admin API](07-usage-ledger-and-admin-api.md). A meter that writes one durable SQLite row per request, including stream usage the client never asked for; half-open usage queries; a fail-closed admin front door; and the assembly of every stage into the chain.
+6. [Usage policy enforcement](08-usage-policy-enforcement.md). An ordered, first-match policy of model, tenant, token-cap, and classifier rules, with a numerically stable linear head, fail-closed 503s, 451 denials with stable rule ids, and redacted audit events.
 
-An LLM gateway is a reverse proxy whose payload is a stream. Every feature it gains (keys, rate limits, caching, routing, usage accounting) is a step in a middleware chain in front of one operation: copy the engine's response to the client, chunk by chunk, without delaying the first token. The tracer gateway is that operation plus a key check and trace propagation; later modules insert the rest of the chain around it.
+## Further reading
 
-## 1. The request path
-
-**Key ideas**:
-- Two HTTP exchanges per request: client to gateway, gateway to engine. Hop-by-hop headers stay on their hop; the gateway's own key never travels further.
-- Middleware order is a contract (`gw.01`): `requestid -> otel -> recover -> authn -> policy -> ratelimit -> cache -> route -> proxy -> meter`.
-- Before the first byte the gateway can still choose a status (401, 429, 503); after it, only an SSE error event.
-
-## Connections to Other Tracks
-
-| Track | Connection |
-|---|---|
-| [Streaming & SSE](../03-streaming-sse/) | the wire format the gateway forwards |
-| [Authorization & Access Control](../08-authorization-and-access-control/) | API keys and scopes (`gw.02`, `gw.03`) |
-| [Distributed Data & Caching](../04-distributed-data-and-caching/) | the response cache (`gw.06`) |
-| [Model Routing & Cascades](../11-model-routing-and-cascades/) | routing and cascades (`gw.05`) |
-| [Observability](../../systems/04-observability/) | the `gateway.proxy` span and gateway metrics (`obs.*`) |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `gw.00` | [Tracer gateway: static API-key check, SSE pass-through without buffering, traceparent and X-Request-Id propagation](00-streaming-proxy.md) | build | 1 |
-| 2 | `gw.01` | [Server skeleton, composition root, go/config, graceful shutdown](01-server-skeleton.md) | build | 7 |
-| 3 | `gw.04` | [SSE streaming proxy (upgrades gw.00)](04-sse-streaming-proxy.md) | build | 7 |
-| 4 | `gw.05` | [Worker registry, routing, cascades, failover, disaggregated orchestration](05-routing.md) | build | 7 |
-| 5 | `gw.07` | [Usage ledger, metering, admin API](07-usage-ledger-and-admin-api.md) | build | 7 |
-| 6 | `gw.08` | [Usage policy enforcement](08-usage-policy-enforcement.md) | build | 10 |
+- [RFC 9110 HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110) (free)
+- [W3C Trace Context](https://www.w3.org/TR/trace-context/) (free)
+- [OpenAI API reference](https://platform.openai.com/docs/api-reference) (free)
+- [Envoy AI Gateway](https://aigateway.envoyproxy.io/) (free)
+- [LiteLLM proxy](https://docs.litellm.ai/docs/simple_proxy) (free)
+- [`net/http/httputil.ReverseProxy`](https://pkg.go.dev/net/http/httputil#ReverseProxy) (free)
