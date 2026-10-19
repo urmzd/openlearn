@@ -239,7 +239,7 @@ The worked example came from the [byte bigram](../../build-an-llm/p00-foundation
 - MacKay, *Information Theory, Inference, and Learning Algorithms* (free), section 2.4, on the information content of an outcome.
 - EleutherAI's lm-evaluation-harness, whose perplexity tasks report `word_perplexity`, `byte_perplexity`, and `bits_per_byte` for every model on the same text; see `bits_per_byte` in `lm_eval/api/metrics.py`.
 - Gao et al., *The Pile* (2020), which reports bits per byte so that models with different tokenizers land on one scale; see its evaluation of GPT-2 and GPT-3 on the Pile components.
-- The numpy reference, "Exponents and logarithms": `log2` (exact for powers of two), `log10`, `log1p` (accurate near 1, used in [the next section but one](03-sequences-and-frequency-ladders.md)), and `logaddexp` (stable sums of exponentials, developed in [Stable numerics](../09-numerical-methods-and-floating-point/02-stable-numerics.md)).
+- The numpy reference, "Exponents and logarithms": `log2` (exact for powers of two), `log10`, `log1p` (accurate near 1, used in [Sequences, geometric series, and frequency ladders](03-sequences-and-frequency-ladders.md)), and `logaddexp` (stable sums of exponentials, developed in [Stable numerics](../09-numerical-methods-and-floating-point/02-stable-numerics.md)).
 
 ## Key terms
 
