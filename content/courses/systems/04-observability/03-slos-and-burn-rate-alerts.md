@@ -1,45 +1,21 @@
 # SLOs and multi-window burn-rate alerts
 
-## Overview
+The stack is now deployed, traced ([Tracing for the serving path](01-tracing-for-the-serving-path.md)), and scraped ([Metrics and log correlation](02-metrics-and-log-correlation.md)), and a production system must answer a question none of that answers: is it good enough, and when is it not? The obvious alert, "page when TTFT p95 goes over 500 ms", fires all night at 3 requests a minute and never fires during a slow, steady leak. The incident drills of the next chapter, starting with [A decode worker dies mid-stream](../05-incident-response-and-chaos/01-kill-decode.md), only work if the alerts detect the fault within a time limit and stay quiet the rest of the time. That needs targets everyone agreed on, and alerts derived from them.
 
-| | |
-|---|---|
-| **Module** | `obs.03` · practice · ops · Pass 7 · 4 to 6 h |
-| **Solution** | [`deploy/observability/slo.yaml`](../../../../course/solutions/entry/deploy/observability/slo.yaml) (three SLOs, six alerts), the renderer [`render_slo_rules.py`](../../../../course/solutions/entry/deploy/observability/render_slo_rules.py) (`error_ratio`, `render`, the `PROFILES` table), and the PrometheusRule files it writes, [`rules/slo-prod.yaml`](../../../../course/solutions/entry/deploy/observability/rules/slo-prod.yaml) and [`rules/slo-drill.yaml`](../../../../course/solutions/entry/deploy/observability/rules/slo-drill.yaml) |
-| **Contract** | [`otel/slo.schema.json`](../../../../course/contracts/otel/slo.schema.json) (the SLO file, the six alert names, both window profiles), [`otel/metrics.yaml`](../../../../course/contracts/otel/metrics.yaml) (the SLIs' series and bucket bounds), [`helm/observability.md`](../../../../course/contracts/helm/observability.md) (the rule selector) |
-| **Needs** | `obs.02` (the series, scraped as `job="<system>-gateway"`) |
-| **Used by** | `obs.04` shows burn rates and firing alerts; `ops.01` is detected by `TTFTBudgetBurnFast`; the production system loads the rules and keeps its load within SLO |
-| **Optional depth** | *The Site Reliability Workbook*, ch. 2 and 5 ("Alerting on SLOs", free online), [Prometheus alerting rules](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) and [unit tests](https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/) (free) |
+This section turns "fast enough" into numbers and those numbers into alerts. You will define three SLOs over the series the gateway already serves, derive burn-rate thresholds from them, and render a pair of Prometheus rule files, one for production and one compressed for drills, from a single SLO file. Then you will prove the rules behave correctly by replaying synthetic traffic through them with `promtool`.
 
-## Key Takeaways
+The solution is [`deploy/observability/slo.yaml`](../../../../course/solutions/entry/deploy/observability/slo.yaml) (three SLOs, six alerts), the renderer [`render_slo_rules.py`](../../../../course/solutions/entry/deploy/observability/render_slo_rules.py) (`error_ratio`, `render`, the `PROFILES` table), and the PrometheusRule files it writes, [`rules/slo-prod.yaml`](../../../../course/solutions/entry/deploy/observability/rules/slo-prod.yaml) and [`rules/slo-drill.yaml`](../../../../course/solutions/entry/deploy/observability/rules/slo-drill.yaml). The contracts are [`otel/slo.schema.json`](../../../../course/contracts/otel/slo.schema.json) (the SLO file, the six alert names, both window profiles), [`otel/metrics.yaml`](../../../../course/contracts/otel/metrics.yaml) (the SLIs' series and bucket bounds), and [`helm/observability.md`](../../../../course/contracts/helm/observability.md) (the rule selector).
 
-- An SLO turns "fast enough" into a number: an **SLI** (fraction of good requests), an **objective** (0.99), and a period (30 days). The **error budget** is $1 - \text{objective}$ of the requests.
-- The **burn rate** is how many times faster than allowed the budget is being spent. Alerting on burn rate, not on raw error counts, makes one threshold work at any traffic level.
-- **Two windows per alert**: the long one proves the burn is big enough to matter, the short one proves it is still happening. A short spike is vetoed by the long window; a page clears minutes after a fix because the short window recovers first.
-- **Fast** (14.4x over 1 h and 5 min) pages, **slow** (6x over 6 h and 30 min) opens a ticket. The **drill** profile compresses the windows 12x so a drill pages within minutes.
-- A latency SLI is exact only at a histogram bound, and rules that Prometheus never loaded alert no one. `promtool test rules` replays synthetic traffic through the rules to prove they fire when they should and only then.
+> **Learning objectives**
+> - Define an SLO as an SLI, an objective, and a period, and compute its error budget and burn rate.
+> - Derive the 14.4x and 6x burn-rate factors from the fraction of budget an hour or six hours may cost.
+> - Explain why each alert needs a long and a short window, and work an outage, a blip, and a recovery through both by hand.
+> - Render recording and alerting rules for two window profiles from one SLO file, and keep latency SLIs exact by using bucket bounds.
+> - Test alert behaviour, not just syntax, with `promtool test rules`.
 
-## How to read this chapter
+## SLI, objective, and error budget
 
-Sections 1 to 3 build SLOs and burn-rate alerting from first principles and work an outage, a blip, and a recovery by hand. Section 4 fixes the SLO file and the rule shape. Section 5 walks through the solution (`slo.yaml` and the script that renders it into rules) and explains why each choice is the right one. Try to predict each step before reading it.
-
-The solution is used like this:
-
-```bash
-python3 deploy/observability/render_slo_rules.py --system forge   # writes rules/slo-prod.yaml and rules/slo-drill.yaml
-promtool check rules deploy/observability/rules/slo-*.yaml
-kubectl apply -f deploy/observability/rules/slo-prod.yaml
-```
-
----
-
-## 1. Why now
-
-The stack is deployed, traced (`obs.01`), and scraped (`obs.02`), and a production system must answer a question none of that answers: is it good enough, and when is it not? "Alert when TTFT p95 goes over 500 ms" fires all night at 3 requests a minute and never fires during a slow, steady leak. The incident drills from here on (`ops.01` first) only work if the alerts detect the fault within a time limit and stay quiet the rest of the time. That needs targets everyone agreed on, and alerts derived from them.
-
-## 2. Principles
-
-### 2.1 SLI, objective, error budget
+An SLO has three parts: an **SLI** (the fraction of good requests), an **objective** (say 0.99), and a period (30 days). The rest of this section uses a small vocabulary:
 
 | Symbol | Meaning | Type |
 |---|---|---|
@@ -52,7 +28,7 @@ The stack is deployed, traced (`obs.01`), and scraped (`obs.02`), and a producti
 | $\phi$ | an alert's burn-rate factor (14.4 fast, 6 slow) | constant |
 | $L$, $S$ | an alert's long and short windows | durations |
 
-The three SLOs of the system (`otel/slo.schema.json`):
+The system has three SLOs, defined in `otel/slo.schema.json`. Each one says what a good request is and which series measure it:
 
 | SLO | Good request | Series (`metrics.yaml`) |
 |---|---|---|
@@ -60,17 +36,21 @@ The three SLOs of the system (`otel/slo.schema.json`):
 | `tpot` | each later token within `threshold_ms` | `gen_ai_server_time_per_output_token_seconds_bucket{le=T}` over `_count` |
 | `availability` | not a 5xx | 1 minus `http_server_request_duration_seconds_count{http_response_status_code=~"5.."}` over all |
 
-### 2.2 Burn rate
+## Burn rate
 
-Over a 30-day period at burn rate $B$, the budget lasts $30 / B$ days. At $B = 1$ it lasts exactly the period; at $B = 14.4$ it is gone in about 2 days, and one hour at that rate spends $14.4 \cdot 1 / 720 = 2\%$ of it. That is the reasoning behind the factors: a fast alert fires when an hour has cost 2% of the month's budget, a slow one when six hours cost $6 \cdot 6 / 720 = 5\%$.
+The burn rate says how many times faster than allowed the budget is being spent. Over a 30-day period at burn rate $B$, the budget lasts $30 / B$ days. At $B = 1$ it lasts exactly the period; at $B = 14.4$ it is gone in about 2 days, and one hour at that rate spends $14.4 \cdot 1 / 720 = 2\%$ of it. That is the reasoning behind the factors: a fast alert fires when an hour has cost 2% of the month's budget, a slow one when six hours cost $6 \cdot 6 / 720 = 5\%$.
 
-Burn rate is a ratio of ratios, so the same rule works at 3 requests a second or 3 000. It is also bounded: $B \le 1/\beta$, because $e \le 1$. With $o = 0.95$, $B$ can never exceed 20, so a 14.4x alert needs 72% of requests to be bad. That is why the solution promises $o = 0.99$ for both latency SLOs: $B$ can reach 100, and 14.4% slow requests are enough to page.
+Burn rate is a ratio of ratios, so the same rule works at 3 requests a second or 3 000. Alerting on burn rate, not on raw error counts, is what makes one threshold work at any traffic level.
 
-### 2.3 Two windows
+Burn rate is also bounded: $B \le 1/\beta$, because $e \le 1$. With $o = 0.95$, $B$ can never exceed 20, so a 14.4x alert needs 72% of requests to be bad. That is why the solution promises $o = 0.99$ for both latency SLOs: $B$ can reach 100, and 14.4% slow requests are enough to page.
 
-An alert over one window has to trade detection time against noise. Long windows ignore short spikes but take long to fire and, worse, keep firing for a whole window after the problem is fixed. Short windows react fast and page on every hiccup. The multi-window rule asks both:
+## Two windows per alert
+
+Knowing the threshold, the remaining question is over what window to measure the burn. An alert over one window has to trade detection time against noise. Long windows ignore short spikes but take long to fire and, worse, keep firing for a whole window after the problem is fixed. Short windows react fast and page on every hiccup. The multi-window rule asks both:
 
 $$\text{fire} \iff B(L) > \phi \ \text{ and } \ B(S) > \phi$$
+
+The long window proves the burn is big enough to matter; the short one proves it is still happening. A short spike is vetoed by the long window, and a page clears minutes after a fix because the short window recovers first. The system has two kinds of alert per SLO:
 
 | Alert | $\phi$ | $L$ / $S$ (prod) | $L$ / $S$ (drill) | Severity |
 |---|---|---|---|---|
@@ -79,17 +59,19 @@ $$\text{fire} \iff B(L) > \phi \ \text{ and } \ B(S) > \phi$$
 
 $S$ is a twelfth of $L$. The **drill** profile divides both by 12 again, so a drill sees a page within its 300 s budget. Each rule file carries one profile; both may be installed at once, because every series and alert carries an `slo_profile` label.
 
-### 2.4 Rules as code, and as tests
+## Rules as code, and as tests
 
-The rules are Prometheus **recording rules** (one error ratio per SLO and window, `slo:sli_error:ratio_rate<w>`) and **alerting rules** (the comparison above), wrapped in a `PrometheusRule` object that kube-prometheus-stack loads only with the label `release: observability`. `promtool test rules` evaluates rules against synthetic series with a fake clock, which is how to check behaviour, not just syntax: generate traffic from `slo.yaml` (its thresholds and objectives), replay it through the rendered rules, and assert which alerts fire when.
+These conditions become Prometheus **recording rules** (one error ratio per SLO and window, `slo:sli_error:ratio_rate<w>`) and **alerting rules** (the comparison above), wrapped in a `PrometheusRule` object that kube-prometheus-stack loads only with the label `release: observability`. Rules that Prometheus never loaded alert no one.
 
-## 3. Worked example by hand
+Loading is necessary, not sufficient. `promtool test rules` evaluates rules against synthetic series with a fake clock, which is how to check behaviour rather than just syntax: generate traffic from `slo.yaml` (its thresholds and objectives), replay it through the rendered rules, and assert which alerts fire when.
 
-Availability, $o = 0.995$, so $\beta = 0.005$; prod profile; 10 requests a second.
+## Working it by hand
 
-**A total outage.** From 10:00 every request fails. Then $e(5m) = 1$ after 5 minutes and $B(5m) = 1 / 0.005 = 200 > 14.4$. The long window needs $e(1h) > 14.4 \cdot 0.005 = 0.072$: 7.2% of the hour, $0.072 \cdot 60 = 4.3$ minutes. `AvailabilityBudgetBurnFast` fires at about 10:04:20 (plus the rule's `for`).
+Start with availability at $o = 0.995$, so $\beta = 0.005$, under the prod profile at 10 requests a second.
 
-**A two-minute blip.** From 10:00 to 10:02 every request fails, then all succeed.
+**A total outage.** From 10:00 every request fails. After 5 minutes $e(5m) = 1$ and $B(5m) = 1 / 0.005 = 200 > 14.4$. The long window needs $e(1h) > 14.4 \cdot 0.005 = 0.072$: 7.2% of the hour, or $0.072 \cdot 60 = 4.3$ minutes. `AvailabilityBudgetBurnFast` fires at about 10:04:20, plus the rule's `for`.
+
+**A two-minute blip.** From 10:00 to 10:02 every request fails, then all succeed. At 10:02 the four windows read:
 
 | Window | $e$ at 10:02 | $B = e / 0.005$ | Over its $\phi$? |
 |---|---|---|---|
@@ -100,13 +82,13 @@ Availability, $o = 0.995$, so $\beta = 0.005$; prod profile; 10 requests a secon
 
 Each short window alone would page; each long window vetoes. Nobody is woken for 2 minutes that cost $2/43\,200 \approx 0.005\%$ of the month. A good noise scenario for `promtool` is this blip on top of a steady burn at $0.5\beta$.
 
-**Recovery.** After the outage of the first example is fixed at 11:00, $e(1h)$ stays above 0.072 until about 11:56, but $e(5m)$ is 0 from 11:05: the page clears at 11:05, not at noon. A long-window-only alert keeps paging for the hour, which is what a reset scenario catches.
+**Recovery.** After the outage of the first example is fixed at 11:00, $e(1h)$ stays above 0.072 until about 11:56, but $e(5m)$ is 0 from 11:05, so the page clears at 11:05, not at noon. A long-window-only alert keeps paging for the hour, which is what a reset scenario catches.
 
-**TTFT, $o = 0.99$.** $\beta = 0.01$, fast threshold $e > 0.144$. A fast scenario burns at twice that, $e = 0.288$ ($B = 28.8$), for 75 minutes; a correct rule set pages 70 minutes in, fires nothing from TPOT or availability, and no longer pages 8 minutes after the burn stops. A slow scenario burns at $1.5 \cdot 6 = 9$ times the budget: a ticket, and no page, because $9 < 14.4$.
+**TTFT at $o = 0.99$.** Here $\beta = 0.01$ and the fast threshold is $e > 0.144$. A fast scenario burns at twice that, $e = 0.288$ ($B = 28.8$), for 75 minutes. A correct rule set pages 70 minutes in, fires nothing from TPOT or availability, and no longer pages 8 minutes after the burn stops. A slow scenario burns at $1.5 \cdot 6 = 9$ times the budget: a ticket, and no page, because $9 < 14.4$.
 
-## 4. The interface
+## The SLO file and the rule shape
 
-`deploy/observability/slo.yaml` (validated against `otel/slo.schema.json`):
+The source of truth is `deploy/observability/slo.yaml`, validated against `otel/slo.schema.json`:
 
 ```yaml
 version: 1
@@ -123,7 +105,7 @@ alerts:
   # ... the other five, as the schema names them
 ```
 
-`deploy/observability/rules/slo-prod.yaml` and `rules/slo-drill.yaml`, one rendered alert:
+The rules go to `deploy/observability/rules/slo-prod.yaml` and `rules/slo-drill.yaml`. One rendered alert looks like this:
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -147,40 +129,33 @@ spec:
           annotations: {runbook: docs/runbooks/TTFTBudgetBurnFast.md}
 ```
 
-The rules can be written by hand or rendered from `slo.yaml` with a small script (the solution does, section 5). The synthetic `promtool` series carry `job="<system>-gateway"` (and copies under `<system>-engine`), `namespace`, `tl_engine_role`, `gen_ai_operation_name`, `gen_ai_request_model`, and for HTTP `http_request_method`, `http_route`, `http_response_status_code`; select on any of them. Write `le` as Prometheus stores it (`"0.5"`, `"0.05"`, `"1.0"`). Rule groups evaluate every minute or faster (prod) and every 10 s or faster (drill).
+The rules could be written by hand; the solution renders them from `slo.yaml` with a small script. The synthetic `promtool` series carry `job="<system>-gateway"` (and copies under `<system>-engine`), `namespace`, `tl_engine_role`, `gen_ai_operation_name`, `gen_ai_request_model`, and for HTTP `http_request_method`, `http_route`, and `http_response_status_code`, so rules may select on any of them. Write `le` as Prometheus stores it (`"0.5"`, `"0.05"`, `"1.0"`). Rule groups evaluate every minute or faster in prod and every 10 s or faster in the drill profile. The solution is used like this:
 
-### What a correct solution must handle
+```bash
+python3 deploy/observability/render_slo_rules.py --system forge   # writes rules/slo-prod.yaml and rules/slo-drill.yaml
+promtool check rules deploy/observability/rules/slo-*.yaml
+kubectl apply -f deploy/observability/rules/slo-prod.yaml
+```
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| The SLO file matches the schema | conformance | `slo.yaml` validates; profile `prod` | drills, the production system, and `obs.04` read it by these names |
-| Latency thresholds are bucket bounds | boundary | both thresholds are bounds of their histogram | an exact SLI (section 2.1 of `obs.02`) |
-| Targets no looser than the defaults | boundary | TTFT at most 500 ms, TPOT at most 60 ms | stricter is allowed, looser never |
-| Rule files are selected PrometheusRules | conformance | `PrometheusRule`, label `release: observability` | the stack loads them |
-| The six alerts | unit | each name exactly once per file, severity from `slo.yaml`, no extras | detection by name, page or ticket |
-| Profile windows | unit | the four windows of each profile appear as range selectors | the two-window rule; drills look for the drill windows |
-| Groups evaluate often enough | boundary | group interval at most 60 s (prod), 10 s (drill) | short windows need frequent evaluation |
-| `promtool check rules` accepts both files | conformance | no syntax errors | no syntax error reaches the cluster |
-| A fast burn pages, then resets | conformance | per SLO: quiet before, page during, no other SLO's alerts, clear after (section 3), both profiles | the page you want |
-| A slow burn tickets without paging | conformance | per SLO, 9x: Slow fires, Fast does not | tickets are not pages |
-| Noise and short spikes stay quiet | conformance | $0.5\beta$ with a 2-minute spike: nothing fires, at 7 points | the pages you do not want |
-| Rules loaded in Prometheus | conformance | on kind: `/api/v1/rules` lists all six alerts | the selector matched |
+## Building it step by step
 
-## 5. The solution, step by step
+Seven decisions produce the solution. First, choose SLIs where the user is: TTFT, TPOT, and 5xx ratio, all measured at the gateway (`job="<system>-gateway"`), because that is the latency and the error a client sees.
 
-### 5.1 From first principles
+Second, make each latency SLI exact. A latency SLI is exact only at a histogram bound, as the previous section showed, so the threshold must be a bucket bound. 500 ms is a TTFT bound. 60 ms is not a TPOT bound, so the solution picks the next stricter bound, 50 ms.
 
-1. **Choose SLIs where the user is.** TTFT, TPOT, and 5xx ratio, all measured at the gateway (`job="<system>-gateway"`), because that is the latency and the error a client sees.
-2. **Make each latency SLI exact.** The threshold must be a bucket bound (`obs.02`, section 2.1). 500 ms is a TTFT bound. 60 ms is not a TPOT bound, so the solution picks the next stricter bound, 50 ms.
-3. **Choose objectives that can page.** Section 2.2 shows $B \le 1/\beta$. A 14.4x alert must be reachable well before every request is bad, so the latency objectives are 0.99 ($B$ up to 100) and availability 0.995 ($B$ up to 200).
-4. **One error ratio per SLO and window.** The alert expression compares ratios over two windows; computing each ratio once as a recording rule makes the six alerts cheap and lets dashboards (`obs.04`) reuse the same series.
-5. **Compare the ratio, not the burn rate.** $B(w) > \phi \iff e(w) > \phi \beta$, so the threshold is a constant $\phi(1 - o)$ written into the alert, and no division happens at evaluation.
-6. **Two profiles from one source.** Prod and drill differ only in windows, evaluation interval, and `for`; everything else must be identical, so both are rendered from one `slo.yaml`, and every series and alert carries `slo_profile` so both can be loaded together.
-7. **Rules are only real once loaded.** The `PrometheusRule` must carry `release: observability`, the stack's rule selector.
+Third, choose objectives that can page. Since $B \le 1/\beta$, a 14.4x alert must be reachable well before every request is bad, so the latency objectives are 0.99 ($B$ up to 100) and availability is 0.995 ($B$ up to 200).
 
-### 5.2 The code, annotated
+Fourth, compute one error ratio per SLO and window. The alert expression compares ratios over two windows; computing each ratio once as a recording rule makes the six alerts cheap and lets dashboards reuse the same series.
 
-**The SLO file** is the single source. The comments record why each number was chosen:
+Fifth, compare the ratio, not the burn rate. Because $B(w) > \phi \iff e(w) > \phi \beta$, the threshold is a constant $\phi(1 - o)$ written into the alert, and no division happens at evaluation.
+
+Sixth, render two profiles from one source. Prod and drill differ only in windows, evaluation interval, and `for`; everything else must be identical, so both are rendered from one `slo.yaml`, and every series and alert carries `slo_profile` so both can be loaded together.
+
+Seventh, remember that rules are only real once loaded: the `PrometheusRule` must carry `release: observability`, the stack's rule selector.
+
+### The SLO file
+
+The SLO file is the single source, and its comments record why each number was chosen:
 
 ```yaml
 # Latency SLOs are ratio SLIs over the gateway's histograms: the fraction of
@@ -205,7 +180,9 @@ alerts:
   # ... TPOT and Availability, Fast (page) and Slow (ticket)
 ```
 
-**The profiles** live in the renderer, because they are a property of where the rules run, not of the SLO:
+### The profiles
+
+The profiles live in the renderer, because they are a property of where the rules run, not of the SLO:
 
 ```python
 PROFILES = {
@@ -225,9 +202,11 @@ PROFILES = {
 }
 ```
 
-`for` is a small hold so that a single evaluation over the threshold does not page; it is short relative to the short window, so it adds little to detection time.
+`for` is a small hold so that a single evaluation over the threshold does not page. It is short relative to the short window, so it adds little to detection time.
 
-**The error ratio** is the bad fraction $e(w)$. For latency it is one minus the good fraction read at the threshold's bucket; for availability it is the 5xx fraction directly:
+### The error ratio
+
+The error ratio is the bad fraction $e(w)$. For latency it is one minus the good fraction read at the threshold's bucket; for availability it is the 5xx fraction directly:
 
 ```python
 def fmt_le(seconds: float) -> str:
@@ -250,9 +229,11 @@ def error_ratio(slo: str, spec: dict, window: str, system: str) -> str:
     )
 ```
 
-`sum(...)` before the division aggregates across pods, models, and roles, so the SLI is the whole service's fraction, not an average of per-pod fractions (which would weight an idle pod like a busy one).
+The `sum(...)` before the division aggregates across pods, models, and roles, so the SLI is the whole service's fraction, not an average of per-pod fractions, which would weight an idle pod like a busy one.
 
-**Rendering** writes one recording rule per SLO per window, labelled with `slo` and `slo_profile`, then one alert per entry of `alerts`:
+### Rendering
+
+Rendering writes one recording rule per SLO per window, labelled with `slo` and `slo_profile`, then one alert per entry of `alerts`:
 
 ```python
     factors = {k: float(v["burn_rate"]) for k, v in doc["windows"].items()}
@@ -265,7 +246,7 @@ def error_ratio(slo: str, spec: dict, window: str, system: str) -> str:
             f"        - alert: {name}",
             "          expr: |",
             f'            slo:sli_error:ratio_rate{long_}{{slo="{slo}",slo_profile="{profile}"}} > {thr}',
-            "            and",                                      # both windows (section 2.3)
+            "            and",                                      # both windows
             f'            slo:sli_error:ratio_rate{short}{{slo="{slo}",slo_profile="{profile}"}} > {thr}',
             f"          for: {p['for'][kind]}",
             # ... labels: severity, slo, slo_profile; annotations: summary and
@@ -290,54 +271,76 @@ One rendered drill recording rule, as it appears in `rules/slo-drill.yaml`:
             slo_profile: drill
 ```
 
-Full solution: [`slo.yaml`](../../../../course/solutions/entry/deploy/observability/slo.yaml), [`render_slo_rules.py`](../../../../course/solutions/entry/deploy/observability/render_slo_rules.py), [`rules/slo-prod.yaml`](../../../../course/solutions/entry/deploy/observability/rules/slo-prod.yaml), [`rules/slo-drill.yaml`](../../../../course/solutions/entry/deploy/observability/rules/slo-drill.yaml).
+The full solution is in [`slo.yaml`](../../../../course/solutions/entry/deploy/observability/slo.yaml), [`render_slo_rules.py`](../../../../course/solutions/entry/deploy/observability/render_slo_rules.py), [`rules/slo-prod.yaml`](../../../../course/solutions/entry/deploy/observability/rules/slo-prod.yaml), and [`rules/slo-drill.yaml`](../../../../course/solutions/entry/deploy/observability/rules/slo-drill.yaml).
 
-### 5.3 Why this solution
+### Why this design
 
-- **Cost.** 3 SLOs times 4 windows is 12 recording rules per profile, each a `rate` over at most two series families; the six alerts only compare recorded series. Evaluation cost does not grow with the number of alerts.
-- **Why render instead of writing YAML by hand?** Twelve near-identical expressions per profile, two profiles: a hand edit that changes a threshold in one place and not another is the classic SLO bug. One source and a renderer make the files consistent by construction. The renderer is stdlib-only (a small parser for exactly this file's shape), so it runs anywhere.
-- **Why two windows and not one with a long `for`?** A long `for` delays detection by the same amount and still keeps firing after a fix as long as the one window stays high; the short window is what makes the alert clear minutes after recovery.
-- **Why request-based SLIs?** They are directly computable from the histograms `obs.02` serves. The accepted cost is noise at very low traffic (one bad request in three is 33%); Going further lists the fix.
+Three SLOs times four windows is 12 recording rules per profile, each a `rate` over at most two series families; the six alerts only compare recorded series. Evaluation cost does not grow with the number of alerts.
 
-### 5.4 Explain it back
+Rendering beats hand-written YAML because there are twelve near-identical expressions per profile and two profiles. A hand edit that changes a threshold in one place and not another is the classic SLO bug; one source and a renderer make the files consistent by construction. The renderer is stdlib-only (a small parser for exactly this file's shape), so it runs anywhere.
+
+Two windows beat one window with a long `for`, because a long `for` delays detection by the same amount and still keeps firing after a fix as long as the one window stays high. The short window is what makes the alert clear minutes after recovery.
+
+Request-based SLIs are directly computable from the histograms the services already serve. The accepted cost is noise at very low traffic, where one bad request in three is 33%; the fix is discussed at the end of this section.
+
+## What can go wrong
+
+A correct solution is checked case by case. `slo.yaml` must validate against the schema with profile `prod`, because the drills, the production system, and the dashboards read it by these names. Both latency thresholds must be bounds of their histogram, so the SLIs are exact, and no looser than the defaults: TTFT at most 500 ms, TPOT at most 60 ms (stricter is allowed, looser never). Both rule files must be `PrometheusRule` objects labelled `release: observability`, so the stack loads them. Each of the six alert names must appear exactly once per file, with the severity from `slo.yaml` and no extras, because detection is by name and severity decides page or ticket. The four windows of each profile must appear as range selectors, since drills look for the drill windows. Group intervals must be at most 60 s (prod) and 10 s (drill), because short windows need frequent evaluation. And `promtool check rules` must accept both files, so no syntax error reaches the cluster.
+
+Behaviour is tested by replay. For each SLO and both profiles, a fast burn must be quiet before, page during, fire none of the other SLOs' alerts, and clear after, as in the worked example. A slow burn at 9x must fire Slow and not Fast, because tickets are not pages. Noise at $0.5\beta$ with a 2-minute spike must fire nothing, checked at 7 points in time; these are the pages you do not want. Finally, on kind, `/api/v1/rules` must list all six alerts, which proves the selector matched.
+
+The usual mistakes, with their symptoms:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| The `PrometheusRule` lacks `release: observability` | `kubectl get prometheusrule` lists it; Prometheus has no such alert; nothing ever pages | `render` writes the label into every file's metadata |
+| One window per alert (only the short one) | a page for every 2-minute blip; people learn to ignore pages | every alert is `long > thr and short > thr` |
+| A latency threshold between bounds, or a rule using another bound than `slo.yaml` | the SLI counts the wrong requests; a scenario built from the SLO file does not page | thresholds are bounds (500 ms, 50 ms), and `le` is derived from `threshold_ms` by `fmt_le`, never typed twice |
+| The drill profile with prod windows | the drill refuses to start; or the drill page arrives after the drill is over | `PROFILES["drill"]` holds the 12x-compressed windows |
+| Only the long window | the page keeps firing for an hour after the fix | the short window clears the alert minutes after recovery |
+| Factors swapped, or the budget written as the objective (`14.4 * 0.99`) | a slow burn pages at night, or no burn ever pages | factors come from `windows.<kind>.burn_rate`; the threshold uses `1 - objective` |
+
+## Where this leads
+
+These rules read the histograms and 5xx counts of [Metrics and log correlation](02-metrics-and-log-correlation.md), under the scrape jobs it named. Going forward, [Dashboards as code for the serving path](04-dashboards-as-code.md) shows burn-rate stats and a firing-alerts table that read `slo:sli_error:*` and `ALERTS`. In [A decode worker dies mid-stream](../05-incident-response-and-chaos/01-kill-decode.md), `TTFTBudgetBurnFast` under the drill profile detects the killed decode pod. And the release workflow in [ModelRelease: gates, canary, burn check, and rollback](../../ai-platform-engineering/05-durable-orchestration-and-workers/12-model-release.md), in *AI Platform Engineering*, checks the burn rate during a canary before promoting.
+
+Each piece here has a production equivalent. `slo.yaml` and a render script correspond to Sloth, Pyrra, and OpenSLO, which compile SLO specs to rules and dashboards and produce error-budget reports. Request-based SLIs can give way to window-based SLIs ("good minutes"), which are robust to traffic swings and closer to a user's experience of an outage. Two fixed profiles grow into burn-rate alerts with a low-traffic fallback: a minimum request count so that 1 failure in 3 requests does not page. The `promtool` unit tests belong in rules CI on every change, as in [CI for the platform repo](../../infrastructure/01-containers-kubernetes/05-ci-for-your-repo.md), with recorded production series. And severity labels feed Alertmanager routing, inhibition, and silences: pages to on-call, tickets to a queue, drill pages to a drill channel.
+
+### Further reading
+
+- *The Site Reliability Workbook*, chapters 2 and 5 ("Alerting on SLOs", free online), including "Low-traffic services"
+- [Prometheus alerting rules](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) and [unit tests](https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/) (free)
+- [Sloth](https://sloth.dev/) and [OpenSLO](https://openslo.com/)
+- Alex Hidalgo, *Implementing Service Level Objectives* (O'Reilly), chapter 3
+- [Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/)
+
+## Key terms
+
+- **SLI**: the fraction of good requests over a window.
+- **SLO objective**: the SLI value promised over a period, such as 0.99 over 30 days.
+- **error budget**: $1 - \text{objective}$, the fraction of requests allowed to be bad.
+- **burn rate**: the error ratio divided by the error budget; 1 spends the budget exactly over the period.
+- **multi-window alert**: an alert that fires only when the burn rate exceeds its factor over both a long and a short window.
+- **recording rule**: a Prometheus rule that precomputes an expression as a new series.
+- **window profile**: a set of alert windows, evaluation interval, and `for` durations; prod and a 12x-compressed drill profile.
+
+## Summary
+
+- An SLO turns "fast enough" into a number: an SLI, an objective, and a period; the error budget is $1 - \text{objective}$ of the requests.
+- The burn rate is how many times faster than allowed the budget is being spent; alerting on it makes one threshold work at any traffic level.
+- Each alert uses two windows: the long one proves the burn matters, the short one proves it is still happening, so blips are vetoed and pages clear minutes after a fix.
+- Fast (14.4x over 1 h and 5 min) pages, slow (6x over 6 h and 30 min) opens a ticket; the drill profile compresses the windows 12x so a drill pages within minutes.
+- A latency SLI is exact only at a histogram bound, rules that Prometheus never loaded alert no one, and `promtool test rules` proves the rules fire when they should and only then.
+
+## Review questions
 
 1. Why is the alert threshold `14.4 * 0.01` and not `14.4 * 0.99`?
    <details><summary>Answer</summary>The recorded series is the error ratio $e$; the burn rate is $e / \beta$ with $\beta = 1 - o = 0.01$. $B > 14.4 \iff e > 14.4 \beta = 0.144$. Multiplying by the objective (0.99) gives 14.26, which an error ratio in $[0, 1]$ can never exceed, so nothing would ever page.</details>
 2. Why is the TPOT threshold 50 ms when the default target is 60 ms?
    <details><summary>Answer</summary>60 ms is not a bucket bound of the TPOT histogram, so no counter says how many requests were at most 60 ms. The nearest exact bound that is no looser is 50 ms.</details>
-3. In the 2-minute blip of section 3, which condition stops the fast alert from paging?
+3. In the 2-minute blip of the worked example, which condition stops the fast alert from paging?
    <details><summary>Answer</summary>The long window: $e(1h) = 2/60 \approx 0.033$, below $14.4 \cdot 0.005 = 0.072$, while the short window alone ($e = 0.4$) would page.</details>
 4. Why does every recording rule and alert carry `slo_profile`?
    <details><summary>Answer</summary>Both profiles record a `ratio_rate5m` series for each SLO (the prod short fast window and the drill long fast window are both 5 minutes). Without the label, the two would be the same series from two rules and collide; with it, both files can be installed at once and routed separately.</details>
 5. Why does the error ratio sum across pods before dividing?
    <details><summary>Answer</summary>The SLI is a fraction of the service's requests. Summing numerator and denominator first weights each pod by its traffic; averaging per-pod ratios would let an idle pod with one slow request count as much as a busy one.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. The `PrometheusRule` lacks `release: observability` | `kubectl get prometheusrule` lists it; Prometheus has no such alert; nothing ever pages | `render` writes the label into every file's metadata |
-| 2. One window per alert (only the short one) | a page for every 2-minute blip; people learn to ignore pages | every alert is `long > thr and short > thr` |
-| 3. A latency threshold between bounds, or a rule using another bound than `slo.yaml` | the SLI counts the wrong requests; a scenario built from the SLO file does not page | thresholds are bounds (500 ms, 50 ms), and `le` is derived from `threshold_ms` by `fmt_le`, never typed twice |
-| 4. The drill profile with prod windows | the drill refuses to start; or the drill page arrives after the drill is over | `PROFILES["drill"]` holds the 12x-compressed windows |
-| 5. Only the long window | the page keeps firing for an hour after the fix | the short window clears the alert minutes after recovery |
-| 6. Factors swapped, or the budget written as the objective (`14.4 * 0.99`) | a slow burn pages at night, or no burn ever pages | factors come from `windows.<kind>.burn_rate`; the threshold uses `1 - objective` |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `obs.02` | the histograms and the 5xx counts, under the scrape jobs it named |
-| Forward | `obs.04` | burn-rate stats and the firing-alerts table read `slo:sli_error:*` and `ALERTS` |
-| Forward | `ops.01` | `TTFTBudgetBurnFast` under the drill profile detects the killed decode pod |
-| Forward | `dur.12` | the release workflow checks the burn rate during a canary before promoting |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `slo.yaml` and a render script | Sloth, Pyrra, OpenSLO | SLO specs compiled to rules and dashboards, error-budget reports | [Sloth](https://sloth.dev/), [OpenSLO](https://openslo.com/) |
-| request-based SLIs | window-based SLIs ("good minutes") | robust to traffic swings, closer to a user's experience of an outage | *Implementing Service Level Objectives*, ch. 3 |
-| two fixed profiles | burn-rate alerts with a low-traffic fallback | a minimum request count so 1 failure in 3 requests does not page | SRE Workbook ch. 5, "Low-traffic services" |
-| promtool unit tests | rules CI on every change | the same tests in CI (`dep.05`), with recorded production series | `promtool test rules` |
-| severity labels | Alertmanager routing, inhibition, silences | pages to on-call, tickets to a queue, drill pages to a drill channel | [Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/) |

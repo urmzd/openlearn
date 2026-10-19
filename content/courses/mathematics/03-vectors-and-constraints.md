@@ -1,6 +1,14 @@
-# 3. Vectors and constraints
+# Vectors and constraints
 
 The event now offers two refreshment packs. A standard pack costs 4 currency units and a larger pack costs 6. We need to track both counts without confusing them.
+
+Real plans involve several quantities at once, and several requirements that must all hold. This chapter introduces the vector, a way to keep related quantities together in a fixed order, and shows how to combine requirements into a set of conditions a plan must satisfy. By the end you will be able to decide whether a plan is feasible and find the most of something a budget allows.
+
+> **Learning objectives**
+> - Write related quantities as a vector and explain why the order matters.
+> - Compute a total cost by multiplying matching entries of two vectors and adding.
+> - Combine an equation and an inequality and solve them by substitution.
+> - Decide whether a given plan is feasible.
 
 ## Keep related quantities together
 
@@ -16,7 +24,7 @@ For $(12,8)$, the cost is $4(12)+6(8)=96$. Including the room, the total is $60+
 
 ## Combine requirements
 
-Suppose we need exactly 20 packs and have a total budget of 160. The plan must satisfy both:
+A cost is only half of a plan; the plan also has to meet its requirements. Suppose we need exactly 20 packs and have a total budget of 160. The plan must satisfy both:
 
 $$
 s+l=20, \qquad 60+4s+6l \le 160.
@@ -41,6 +49,31 @@ $140+2l \le 170$ gives $l \le 15$. The maximum is 15 larger packs and 5 standard
 
 </details>
 
-Before moving on, explain why satisfying the pack count alone does not guarantee a feasible plan.
+## Where this leads
 
-Next: [Uncertainty and evidence](04-uncertainty-and-evidence.md). Further study: [linear algebra](../mathematics-for-computing/03-linear-algebra/) and [optimization](../mathematics-for-computing/10-optimization/).
+Every calculation so far has assumed you know exactly how many people will come. The next chapter, [Uncertainty and evidence](04-uncertainty-and-evidence.md), drops that assumption. For the full theory of vectors and of choosing the best feasible plan, see the [Linear Algebra](../mathematics-for-computing/03-linear-algebra/README.md) and [Optimization](../mathematics-for-computing/10-optimization/README.md) chapters in *Mathematics for Computing*.
+
+## Key terms
+
+- **Vector**: an ordered collection of numbers, such as $(s, l)$.
+- **Constraint**: a condition a plan must satisfy, written as an equation or an inequality.
+- **Feasible plan**: a plan that satisfies every constraint at once.
+- **Substitution**: using one equation to replace a quantity in another, such as $s = 20 - l$.
+
+## Summary
+
+- A vector keeps related quantities together; the position of each entry says what it means.
+- Multiplying matching entries of a count vector and a price vector and adding gives a total cost.
+- Requirements become constraints; a feasible plan satisfies all of them.
+- Substitution reduces several constraints to one condition on a single quantity, such as $l \le 10$.
+
+## Review questions
+
+1. Explain why satisfying the pack count alone does not guarantee a feasible plan.
+   <details><summary>Answer</summary>
+   The pack count $s + l = 20$ is only one of the constraints. A plan with the right number of packs can still cost too much: $(4, 16)$ has 20 packs but costs 172, more than a budget of 170. A feasible plan must satisfy the budget constraint and the count constraint together, and have whole-number counts at least zero.
+   </details>
+2. What is the difference between the plans $(12, 8)$ and $(8, 12)$?
+   <details><summary>Answer</summary>
+   Order matters in a vector. $(12, 8)$ is 12 standard and 8 larger packs, costing $48 + 48 = 96$; $(8, 12)$ is 8 standard and 12 larger packs, costing $32 + 72 = 104$.
+   </details>
