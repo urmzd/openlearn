@@ -1,34 +1,20 @@
 # Convolution as a linear map
 
-## Overview
+Every vision tower starts with a convolution. A ViT's patch embedding is a convolution whose kernel equals its stride, and Whisper's encoder starts with two 1-D convolutions over the log-mel frames. To build `Conv2d` on an autograd engine you need more than the definition: a Python loop over output pixels is far too slow, and a vectorized version needs im2col for the forward pass and col2im for the backward pass. The details are unforgiving. Get the output size wrong and the Whisper stem hands 1501 positions to an encoder whose position table has 1500; get the row order of im2col wrong and the weights multiply the wrong pixels while every shape still lines up.
 
-| | |
-|---|---|
-| **Module** | `M12.1` · build · Python · Pass 12 · 3 to 4 h |
-| **Solution** | [`python/tinyllm/sig/conv.py`](../../../../course/solutions/python/tinyllm/sig/conv.py): `conv_out_size`, `conv1d_direct` and `conv2d_direct` (stride, padding, dilation, groups), `correlate_vs_convolve`, `im2col` and its adjoint `col2im`, and `conv_matrix` (the doubly block Toeplitz form) |
-| **Contract** | [`course/contracts/py/tinyllm/sig/conv.pyi`](../../../../course/contracts/py/tinyllm/sig/conv.pyi) |
-| **Needs** | no module code. Reading: `M03.2` and `M03.3` (a linear map is a matrix; its transpose), `M08.2` (a backward pass is a transposed Jacobian), and the naive loop in [`ml/06-neural-architectures/code/conv2d.c`](../../machine-learning/06-neural-architectures/code/conv2d.c) |
-| **Used by** | `M12.3` (`resample_audio` is one strided `conv1d_direct`) · later `L13.1` Conv2d and Conv1d on autograd (im2col, col2im) · `L14.2` the Whisper stem (`conv_out_size`). Part of Pass 12, which teaches the system to see and hear |
-| **Optional depth** | Dumoulin and Visin, "A guide to convolution arithmetic for deep learning" (2016, free); Chellapilla, Puri, Simard, "High performance convolutional neural networks for document processing" (2006), the im2col paper; Goodfellow, Bengio, Courville, *Deep Learning*, ch. 9 (free) |
+This section builds convolution up from a sliding dot product to a matrix, then to im2col and col2im, and finally to the backward pass. It leans on two ideas from earlier chapters: that a linear map is a matrix and its adjoint is the transpose (see [Gaussian elimination and LU with partial pivoting](../03-linear-algebra/02-gaussian-elimination-and-lu.md) and [Orthogonality, Householder QR, and orthogonal initialization](../03-linear-algebra/03-orthogonality-and-householder-qr.md)), and that a backward pass multiplies by a transposed Jacobian ([Scalar reverse mode: the Value graph](../08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md)). It is also worth glancing at the naive loop in [`ml/06-neural-architectures/code/conv2d.c`](../../machine-learning/06-neural-architectures/code/conv2d.c) from *Machine Learning and AI* before you start; this section explains why that loop is correct and how to make it fast.
 
-## Key Takeaways
+The reference implementation is [`python/tinyllm/sig/conv.py`](../../../../course/solutions/python/tinyllm/sig/conv.py), with its interface in [`course/contracts/py/tinyllm/sig/conv.pyi`](../../../../course/contracts/py/tinyllm/sig/conv.pyi). It provides `conv_out_size`, `conv1d_direct` and `conv2d_direct` (with stride, padding, dilation, and groups), `correlate_vs_convolve`, `im2col` and its adjoint `col2im`, and `conv_matrix`, the doubly block Toeplitz form. As you read, try to predict each step before you see it.
 
-- A deep-learning "convolution" is a cross-correlation: no kernel flip. Flipping the kernel gives the true convolution of signal processing.
-- One formula sizes every conv output: $\lfloor (n + 2p - d(k-1) - 1)/s \rfloor + 1$.
-- A conv is linear, so it is a matrix: the doubly block Toeplitz $T$ with $\operatorname{vec}(y) = T \operatorname{vec}(x)$. im2col turns it into one matmul with the flattened weights.
-- col2im is the adjoint of im2col (it sums overlapping windows), so the backward pass of a conv is built from the same two functions.
+> **Learning objectives**
+> - Distinguish deep learning's convolution (cross-correlation) from signal processing's, and convert one into the other.
+> - Compute the output size of any convolution from $n$, $k$, $s$, $p$, and $d$, and explain how groups split channels.
+> - Write a convolution as a doubly block Toeplitz matrix and as one im2col matmul, with the correct $(c, r, s)$ row order.
+> - Explain why col2im, the adjoint of im2col, adds where windows overlap, and use the pair to derive a convolution's backward pass.
 
-## How to read this chapter
+## Notation
 
-Sections 1 to 3 build convolution up from a sliding dot product to a matrix, im2col and col2im, and the backward pass, and work one example by hand. Section 4 fixes the interface and lists what a correct implementation must handle. Section 5 walks through the solution, [`conv.py`](../../../../course/solutions/python/tinyllm/sig/conv.py), and explains why every index is what it is. Try to predict each step before reading it.
-
----
-
-## 1. Why now
-
-Pass 12 teaches the system to see and hear. Every vision tower in `L13` starts with a convolution (a ViT's patch embedding is a conv whose kernel equals its stride), and Whisper's encoder in `L14` starts with two 1-D convolutions over the log-mel frames. Without this module, `L13.1` has no way to build `Conv2d` on the autograd engine: a Python loop over output pixels is far too slow, and a vectorized version needs im2col for the forward pass and col2im for the backward pass. Get the output size wrong and the Whisper stem hands 1501 positions to an encoder whose position table has 1500; get the row order of im2col wrong and the weights multiply the wrong pixels while every shape still lines up.
-
-## 2. Principles
+The symbols used throughout the section are collected here.
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -41,39 +27,47 @@ Pass 12 teaches the system to see and hear. Every vision tower in `L13` starts w
 | $\operatorname{vec}(\cdot)$ | row-major flattening | |
 | $T$ | doubly block Toeplitz matrix of a single-channel conv | `float64[P*Q, H*W]` |
 
-### 2.1 Correlation and convolution
+## Correlation and convolution
 
 The cross-correlation of an image $x$ with a kernel $w$ slides $w$ over $x$ and takes a dot product at each position:
 $$y[i, j] = \sum_{r, s} w[r, s]\, x[i + r, j + s].$$
-Signal processing's convolution flips the kernel first, $y[i,j] = \sum_{r,s} w[r,s]\,x[i - r, j - s]$, which is the same as correlating with $w$ rotated by 180 degrees. Flipping is what makes convolution commutative and makes the convolution theorem (`M12.4`) hold. A learned kernel does not care: whatever it would learn flipped, it learns unflipped. So every framework computes the correlation and calls it a convolution, and `conv2d_direct` does the same. `correlate_vs_convolve` returns both to make the difference visible: on one row the true convolution is exactly `numpy.convolve(..., 'valid')`.
+Signal processing's convolution flips the kernel first, $y[i,j] = \sum_{r,s} w[r,s]\,x[i - r, j - s]$, which is the same as correlating with $w$ rotated by 180 degrees. Flipping is what makes convolution commutative and makes the convolution theorem (see [DFT and FFT](04-dft-and-fft.md)) hold.
 
-### 2.2 Output size, stride, padding, dilation, groups
+A learned kernel does not care: whatever it would learn flipped, it learns unflipped. So every framework computes the correlation and calls it a convolution, and `conv2d_direct` does the same. `correlate_vs_convolve` returns both to make the difference visible: on one row the true convolution is exactly `numpy.convolve(..., 'valid')`.
 
-A kernel of size $k$ with dilation $d$ places its taps $d$ samples apart, so it spans $d(k-1) + 1$ input samples. Padding adds $p$ zeros at each end, and a stride $s$ moves the window $s$ samples per output. The first window starts at 0; the last must end inside the padded input. The number of outputs is
+## Output size, stride, padding, dilation, and groups
+
+Once you know what each output computes, the next question is how many outputs there are. A kernel of size $k$ with dilation $d$ places its taps $d$ samples apart, so it spans $d(k-1) + 1$ input samples. Padding adds $p$ zeros at each end, and a stride $s$ moves the window $s$ samples per output. The first window starts at 0; the last must end inside the padded input. The number of outputs is
 $$\text{out} = \left\lfloor \frac{n + 2p - d(k - 1) - 1}{s} \right\rfloor + 1 .$$
-Output position $o$, tap $r$ reads padded index $o s + r d$, which is input index $o s + r d - p$. Groups split the $C$ input channels into $g$ blocks of $C/g$ and the $K$ output channels into $g$ blocks of $K/g$; output channel $k$ only sees input block $\lfloor k / (K/g) \rfloor$. That is why the weight's second axis is $C/g$, not $C$. Depthwise convolution is $g = C$. Whisper's stem uses $k = 3$, $p = 1$, which keeps 3000 frames at $s = 1$ and halves them to 1500 at $s = 2$.
+Output position $o$, tap $r$ reads padded index $o s + r d$, which is input index $o s + r d - p$.
 
-### 2.3 A conv is a matrix
+Groups split the $C$ input channels into $g$ blocks of $C/g$ and the $K$ output channels into $g$ blocks of $K/g$; output channel $k$ only sees input block $\lfloor k / (K/g) \rfloor$. That is why the weight's second axis is $C/g$, not $C$. Depthwise convolution is $g = C$. Whisper's stem uses $k = 3$, $p = 1$, which keeps 3000 frames at $s = 1$ and halves them to 1500 at $s = 2$.
 
-Each output is a fixed linear combination of inputs, so for a single-channel image there is a matrix $T$ with $\operatorname{vec}(y) = T \operatorname{vec}(x)$. Row $(p, q)$ of $T$ holds the kernel's taps in the columns of the pixels that window touches, and zeros elsewhere: each block of rows repeats the same pattern shifted by one column (Toeplitz), and the blocks repeat shifted by one image row (block Toeplitz), hence "doubly block Toeplitz". Taps that land in the zero padding have no column. `conv_matrix` builds $T$ explicitly; it is $PQ \times HW$, mostly zeros, and only for understanding. The forward pass is $T x$; the backward pass with respect to $x$ is $T^\top g$ (`M08.2`: a VJP is a transposed Jacobian).
+## A convolution is a matrix
 
-### 2.4 im2col and col2im
+Each output is a fixed linear combination of inputs, so for a single-channel image there is a matrix $T$ with $\operatorname{vec}(y) = T \operatorname{vec}(x)$. Row $(p, q)$ of $T$ holds the kernel's taps in the columns of the pixels that window touches, and zeros elsewhere. Each block of rows repeats the same pattern shifted by one column (Toeplitz), and the blocks repeat shifted by one image row (block Toeplitz), hence "doubly block Toeplitz". Taps that land in the zero padding have no column.
 
-The practical form keeps the matrix structure but moves it to the data. im2col copies every receptive field of $x$ into a column: row index $(c, r, s)$, column index $(p, q)$, shape $[N, C R S, P Q]$. Flattening the weights in the same $(c, r, s)$ order gives $W_{\text{flat}} \in \mathbb{R}^{K \times CRS}$, and
+`conv_matrix` builds $T$ explicitly. It is $PQ \times HW$, mostly zeros, and only for understanding. The forward pass is $T x$; the backward pass with respect to $x$ is $T^\top g$, because a vector-Jacobian product is a multiplication by the transposed Jacobian.
+
+## im2col and col2im
+
+The Toeplitz matrix is the right picture but the wrong computation. The practical form keeps the matrix structure but moves it to the data. im2col copies every receptive field of $x$ into a column: row index $(c, r, s)$, column index $(p, q)$, shape $[N, C R S, P Q]$. Flattening the weights in the same $(c, r, s)$ order gives $W_{\text{flat}} \in \mathbb{R}^{K \times CRS}$, and
 $$Y = W_{\text{flat}} \cdot \operatorname{im2col}(x), \qquad Y \in \mathbb{R}^{N \times K \times PQ},$$
-one large matmul that BLAS runs at full speed. The row order matters: any other order still produces the right shapes, but pairs each weight with the wrong pixel. im2col is a linear map that copies; its adjoint, col2im, sends every column entry back to the pixel it came from and **adds** where windows overlap. Adjoint means $\langle \operatorname{im2col}(x), y \rangle = \langle x, \operatorname{col2im}(y) \rangle$ for all $x, y$. With stride smaller than the kernel, a pixel sits in several windows; assigning instead of adding loses all but the last contribution.
+one large matmul that BLAS runs at full speed. The row order matters: any other order still produces the right shapes, but pairs each weight with the wrong pixel.
 
-### 2.5 The gradient of a conv is a conv
+im2col is a linear map that copies. Its adjoint, col2im, sends every column entry back to the pixel it came from and **adds** where windows overlap. Adjoint means $\langle \operatorname{im2col}(x), y \rangle = \langle x, \operatorname{col2im}(y) \rangle$ for all $x, y$. With stride smaller than the kernel, a pixel sits in several windows; assigning instead of adding loses all but the last contribution.
 
-With $Y = W_{\text{flat}} X_c$ where $X_c = \operatorname{im2col}(x)$ and upstream gradient $G$ (shaped like $Y$), the matrix calculus of `M08` gives
+## The gradient of a convolution is a convolution
+
+The im2col form makes the backward pass a matter of matrix calculus. With $Y = W_{\text{flat}} X_c$ where $X_c = \operatorname{im2col}(x)$ and upstream gradient $G$ (shaped like $Y$), the rules of [Matrix differentials, the trace trick, and closed-form VJPs](../08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md) give
 $$\frac{\partial L}{\partial W_{\text{flat}}} = \sum_n G_n X_{c,n}^\top, \qquad \frac{\partial L}{\partial x} = \operatorname{col2im}\Big(W_{\text{flat}}^\top G\Big), \qquad \frac{\partial L}{\partial b_k} = \sum_{n, p, q} G[n, k, p, q].$$
-The weight gradient is a correlation of the input with the upstream gradient, and the input gradient is a "transposed convolution" of the upstream gradient with the weights: both are convolutions again. `L13.1` implements Conv2d's backward exactly this way.
+The weight gradient is a correlation of the input with the upstream gradient, and the input gradient is a "transposed convolution" of the upstream gradient with the weights: both are convolutions again. [Conv layers and pooling on autograd](../../build-an-llm/p13-vision/01-conv-layers-and-pooling.md) in *Build Your Own LLM System* implements Conv2d's backward exactly this way.
 
-## 3. Worked example by hand
+## Working it by hand
 
-Image and kernel:
+Take this image and kernel:
 $$x = \begin{pmatrix} 1 & 2 & 0 & 1 \\ 0 & 1 & 3 & 1 \\ 2 & 1 & 0 & 0 \\ 1 & 0 & 1 & 2 \end{pmatrix}, \qquad w = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}.$$
-The output is $4 - 2 + 1 = 3$ on each axis (`conv_out_size(4, 2) = 3`). The correlation is $y[i, j] = x[i, j] - x[i+1, j+1]$:
+The output is $4 - 2 + 1 = 3$ on each axis (`conv_out_size(4, 2) = 3`). The correlation is $y[i, j] = x[i, j] - x[i+1, j+1]$, which fills this table:
 
 | | $j = 0$ | $j = 1$ | $j = 2$ |
 |---|---|---|---|
@@ -83,7 +77,9 @@ The output is $4 - 2 + 1 = 3$ on each axis (`conv_out_size(4, 2) = 3`). The corr
 
 The flipped kernel is $\begin{pmatrix} -1 & 0 \\ 0 & 1 \end{pmatrix}$, so the true convolution is $-x[i, j] + x[i+1, j+1]$: exactly the negative of the table. In im2col form, column $(0, 1)$ of `im2col(x, 2, 2)` is the window $(2, 0, 1, 3)$ in $(r, s)$ order, and $W_{\text{flat}} = (1, 0, 0, -1)$ gives $2 - 3 = -1$, the same entry.
 
-## 4. The interface
+## Designing the interface
+
+The module exposes five core functions (plus `conv1d_direct`, the 1-D twin of `conv2d_direct`, and `correlate_vs_convolve`):
 
 ```python
 def conv_out_size(n, k, stride=1, pad=0, dilation=1) -> int: ...
@@ -93,26 +89,13 @@ def col2im(cols, x_shape, kh, kw, stride=(1, 1), pad=(0, 0), dilation=(1, 1)) ->
 def conv_matrix(in_shape, w, stride=(1, 1), pad=(0, 0)) -> NDArray:   # T with vec(y) = T vec(x)
 ```
 
-### What a correct solution must handle
+`conv_out_size` is the single owner of the size formula, and everything else calls it. The forward functions follow PyTorch's conventions (NCHW input, KCRS weights, symmetric padding, no kernel flip) so that their outputs can be compared to `F.conv2d` and `F.conv1d` value for value. `im2col` and `col2im` follow the layout of `F.unfold` and `F.fold`. Shapes that do not fit are rejected with an error rather than producing a silently wrong array, and inputs are never modified.
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| the hand-example correlation | unit | section 3's correlation and its negated convolution | everyone agrees on "no flip" |
-| the output-size table | unit | Whisper stem, ViT patch conv, dilation, exact fit, and bad arguments | every L13 and L14 layer sizes itself with it |
-| conv2d matches PyTorch | golden | four conv2d cases against `F.conv2d`: plain, strided and dilated with groups, depthwise, patch embedding | `L13.1` must equal PyTorch |
-| conv1d matches PyTorch | golden | three conv1d cases including Whisper's stride-2 stem | `L14.2`'s stem |
-| im2col and col2im match unfold and fold | golden | im2col equals `F.unfold`, col2im equals `F.fold` | row order and summed overlaps |
-| a conv is one matmul | differential | direct loop, grouped im2col matmul, and the Toeplitz matrix agree | the three views of one map |
-| the backward pass is a conv | golden | dW, dx, db from im2col and col2im equal PyTorch's autograd | `L13.1`'s backward |
-| col2im is the adjoint of im2col | property | $\langle \operatorname{im2col} x, y\rangle = \langle x, \operatorname{col2im} y\rangle$ with overlapping windows | why col2im is the right backward |
-| flipping turns correlation into convolution | property | flipped-kernel correlation is convolution; one row equals `numpy.convolve` | the definition, independently |
-| shapes that do not fit are rejected | boundary | groups that do not divide, wrong channel count, oversized kernel, wrong cols; inputs untouched | model-definition bugs fail loudly |
+## Building it step by step
 
-## 5. The solution, step by step
+The design follows from a chain of small decisions, each forced by the one before.
 
-### 5.1 From first principles
-
-1. **Size first, because everything else indexes into it.** Every function needs $P$ and $Q$ before it can allocate, so one function, `conv_out_size`, owns the formula of section 2.2, and every other function calls it. An oversized kernel is an error, not an empty output, while an exact fit (span equal to the padded input) is one output.
+1. **Size first, because everything else indexes into it.** Every function needs $P$ and $Q$ before it can allocate, so one function, `conv_out_size`, owns the formula, and every other function calls it. An oversized kernel is an error, not an empty output, while an exact fit (span equal to the padded input) is one output.
 2. **Pad once, then forget about padding.** Zero-padding the input by $p$ on each side turns "input index $os + rd - p$" into "padded index $os + rd$", so no inner loop needs a bounds check. Symmetric padding is what PyTorch does.
 3. **Loop over taps, not over outputs.** For a fixed tap $(i, j)$, the pixels read by all outputs form a strided slice of the padded input: rows $i d_h, i d_h + s_h, \dots$ (exactly $P$ of them) and likewise for columns. So the conv is $R \cdot S$ slice-and-accumulate steps, each a small matrix product over channels, instead of $P \cdot Q$ Python iterations. This is the same loop that im2col uses to fill its columns, which is why the two agree.
 4. **Groups are independent convs on channel blocks.** Group $g$ reads input channels $[g C/g, (g+1) C/g)$ and writes output channels $[g K/g, (g+1) K/g)$. Slicing both and running the ungrouped computation per group is the definition; both $C$ and $K$ must be divisible by $g$ and the weight's second axis must be $C/g$.
@@ -121,11 +104,9 @@ def conv_matrix(in_shape, w, stride=(1, 1), pad=(0, 0)) -> NDArray:   # T with v
 7. **col2im is the transpose of a copy, so it adds.** im2col copies pixel $x_k$ into every column entry whose window contains it. The transpose of "copy $x_k$ to positions $A_k$" is "sum the entries at $A_k$ back into $x_k$". So col2im is the same tap loop with `+=` in place of `=`, followed by cropping the padding away (gradients that land in padding belong to no pixel).
 8. **The Toeplitz matrix is the same index map written into a matrix.** Row $(o_p, o_q)$, tap $(i, j)$ reads input pixel $(o_p s_h + i - p_h,\ o_q s_w + j - p_w)$; if it is inside the image, put $w[i, j]$ at that pixel's column. Taps in the padding have no column, because the padding is zeros.
 
-### 5.2 The code, annotated
+In the listings below, signatures are shortened (type hints dropped) and argument validation is elided as `...`; the bodies are as in the solution.
 
-In the quotes below, signatures are shortened (type hints dropped) and argument validation is elided as `...`; the bodies are as in the solution.
-
-The size formula, with the two validity conditions:
+Start with the size formula and its two validity conditions:
 
 ```python
 def conv_out_size(n, k, stride=1, pad=0, dilation=1) -> int:
@@ -139,9 +120,9 @@ def conv_out_size(n, k, stride=1, pad=0, dilation=1) -> int:
     return (n + 2 * pad - span) // stride + 1   # the "+1" counts the first window
 ```
 
-Written with `span`, the formula is $\lfloor (n + 2p - \text{span})/s \rfloor + 1$, the same as section 2.2's. Check against Whisper's stem: $n = 3000$, $k = 3$, $p = 1$, $s = 2$ gives $\lfloor 2999/2 \rfloor + 1 = 1500$.
+Written with `span`, the formula is $\lfloor (n + 2p - \text{span})/s \rfloor + 1$, the same as the one derived earlier. Check it against Whisper's stem: $n = 3000$, $k = 3$, $p = 1$, $s = 2$ gives $\lfloor 2999/2 \rfloor + 1 = 1500$.
 
-The direct 2-D conv: pad once, then for each group and each tap, one strided slice and one `einsum`.
+The direct 2-D conv pads once, then for each group and each tap takes one strided slice and one `einsum`:
 
 ```python
 def conv2d_direct(x, w, b, stride=(1, 1), pad=(0, 0), dilation=(1, 1), groups=1):
@@ -200,7 +181,7 @@ def im2col(x, kh, kw, stride=(1, 1), pad=(0, 0), dilation=(1, 1)):
     return cols.reshape(n, c * kh * kw, p * q)
 ```
 
-With it, an ungrouped conv is `w.reshape(K, -1) @ im2col(x, R, S)` (a `[K, CRS]` matrix times `[N, CRS, PQ]`, broadcast over $N$), reshaped to `[N, K, P, Q]`; the agreement of that product with `conv2d_direct` and with the Toeplitz matrix is one of the cases in section 4.
+With it, an ungrouped conv is `w.reshape(K, -1) @ im2col(x, R, S)` (a `[K, CRS]` matrix times `[N, CRS, PQ]`, broadcast over $N$), reshaped to `[N, K, P, Q]`. That product agrees with `conv2d_direct` and with the Toeplitz matrix, three views of one map.
 
 col2im is the same loop with the arrow reversed and `+=`:
 
@@ -227,7 +208,7 @@ def col2im(cols, x_shape, kh, kw, stride=(1, 1), pad=(0, 0), dilation=(1, 1)):
 
 Within one `+=`, the strided slice never hits the same pixel twice (consecutive outputs are $s \ge 1$ apart), so NumPy's buffered `+=` is safe; overlaps come from different taps $(i, j)$, which are separate statements.
 
-The Toeplitz matrix, one entry per (output, tap) pair inside the image:
+Finally, the Toeplitz matrix writes one entry per (output, tap) pair inside the image:
 
 ```python
 def conv_matrix(in_shape, w, stride=(1, 1), pad=(0, 0)):
@@ -247,17 +228,78 @@ def conv_matrix(in_shape, w, stride=(1, 1), pad=(0, 0)):
 
 Here the padding offset $-p$ is explicit because there is no padded array: the matrix acts on the original image.
 
-Full solution: [`conv.py`](../../../../course/solutions/python/tinyllm/sig/conv.py).
+The full solution is [`conv.py`](../../../../course/solutions/python/tinyllm/sig/conv.py).
 
-### 5.3 Why this solution
+## Why this design
 
-- **Cost.** The direct conv does $N K (C/g) R S P Q$ multiply-adds, the minimum for a direct method, but in $g R S$ vectorized steps rather than a Python loop per output. im2col uses $R S$ times the input's memory (each pixel is copied once per window it appears in); that is the price of turning the conv into one BLAS matmul, and the reason production libraries use implicit GEMM, which never materializes the columns.
-- **Why loop over taps.** A loop over output pixels is $PQ$ Python iterations (2.25 million for a 1500x1500 output); a loop over taps is $RS$ (9 for a 3x3 kernel). Both compute the same sums; only the second is fast in NumPy.
-- **Why `conv_matrix` exists but is never used for compute.** $T$ is $PQ \times HW$, quadratic in image size and almost all zeros. It exists to make "a conv is a linear map" concrete and to check the other two forms against it, and it gives the backward pass for free in theory: $T^\top$.
-- **Why col2im rather than a separate transposed-conv routine.** The adjoint of im2col is exactly what the input gradient needs ($\partial L/\partial x = \operatorname{col2im}(W_{\text{flat}}^\top G)$), so one pair of functions covers forward and backward, and their adjointness is a property one inner product can check.
-- **Tradeoff accepted.** Everything is float64 and single-threaded; this module is about getting the index map right once, so `L13.1` can build on it.
+The direct conv does $N K (C/g) R S P Q$ multiply-adds, the minimum for a direct method, but in $g R S$ vectorized steps rather than a Python loop per output. A loop over output pixels is $PQ$ Python iterations (2.25 million for a 1500x1500 output); a loop over taps is $RS$ (9 for a 3x3 kernel). Both compute the same sums; only the second is fast in NumPy.
 
-### 5.4 Explain it back
+im2col uses $R S$ times the input's memory, because each pixel is copied once per window it appears in. That is the price of turning the conv into one BLAS matmul, and the reason production libraries use implicit GEMM, which never materializes the columns.
+
+`conv_matrix` exists but is never used for compute. $T$ is $PQ \times HW$, quadratic in image size and almost all zeros. It exists to make "a conv is a linear map" concrete and to check the other two forms against it, and it gives the backward pass for free in theory: $T^\top$.
+
+There is no separate transposed-conv routine because the adjoint of im2col is exactly what the input gradient needs ($\partial L/\partial x = \operatorname{col2im}(W_{\text{flat}}^\top G)$). One pair of functions covers forward and backward, and their adjointness is a property one inner product can check.
+
+The tradeoff accepted is speed: everything is float64 and single-threaded. The point is to get the index map right once, so that the autograd layers in *Build Your Own LLM System* can build on it.
+
+## What can go wrong
+
+A correct implementation has to survive a specific set of checks. It must reproduce the hand-worked correlation above and its negated convolution, so everyone agrees on "no flip". The output-size function must get the Whisper stem, the ViT patch conv, dilation, and an exact fit right, and reject bad arguments, since every vision and speech layer sizes itself with it. `conv2d_direct` must match PyTorch's `F.conv2d` on a plain case, a strided and dilated case with groups, a depthwise case, and a patch embedding; `conv1d_direct` must match `F.conv1d` on three cases including Whisper's stride-2 stem. im2col must equal `F.unfold` and col2im must equal `F.fold`, which pins down row order and summed overlaps. The direct loop, the grouped im2col matmul, and the Toeplitz matrix must agree with each other. The gradients dW, dx, and db computed from im2col and col2im must equal PyTorch's autograd. The adjoint identity $\langle \operatorname{im2col} x, y\rangle = \langle x, \operatorname{col2im} y\rangle$ must hold with overlapping windows, and correlating with a flipped kernel must give the convolution, with one row equal to `numpy.convolve`. Finally, shapes that do not fit (groups that do not divide, the wrong channel count, an oversized kernel, wrong `cols`) must be rejected, with inputs untouched, so model-definition bugs fail loudly.
+
+The bugs these checks catch are worth knowing by symptom. The table pairs each with how the solution avoids it.
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| flipping the kernel (true convolution) | every output differs from PyTorch; pretrained weights give garbage | reads `x[o*s + r*d]` with `w[r]`, same direction; only `correlate_vs_convolve` flips (step 5) |
+| leaving dilation out of the kernel span | dilated layers get too many outputs | `span = dilation * (k - 1) + 1` in `conv_out_size` |
+| col2im assigning instead of adding | wrong input gradients wherever windows overlap | `xp[...] += blocks[:, :, i, j]` (step 7) |
+| im2col rows in $(r, s, c)$ order | shapes fine, values wrong for $C > 1$ | builds `[N, C, R, S, P, Q]` and reshapes, giving $(c, r, s)$ rows (step 6) |
+| every group reading the first group's channels | grouped and depthwise convs wrong | slices `xp[:, g*cg:(g+1)*cg]` and `w[g*kg:(g+1)*kg]` per group |
+| all the padding on one side | outputs shifted by $p$ | `np.pad(..., (ph, ph), (pw, pw))`, symmetric |
+| Toeplitz columns without the padding offset | $T x$ shifted against the direct conv | `conv_matrix` uses `op*sh + i - ph` (step 8) |
+| dropping the $+1$ in the size formula | one output too few everywhere | `(n + 2*pad - span) // stride + 1` |
+| rejecting an exact fit | a kernel as large as the input raises | raises only when `n + 2*pad < span` |
+| not checking that groups divide the output channels | silent zero channels | `_check_groups` tests `c % groups`, `kout % groups`, and `cg == c // groups` |
+
+> **Warning:** The im2col row-order bug is invisible to shape checks. Only a value comparison, against `F.unfold` or the direct conv, catches it.
+
+## Where this leads
+
+Within this chapter, [Resampling and interpolation](03-resampling-and-interpolation.md) applies its sinc filter bank in `resample_audio` as one strided `conv1d_direct`, and the [problem set](90-problem-set.md) works output sizes, receptive fields, the Toeplitz form, and the adjoint by hand. In *Build Your Own LLM System*, [Conv layers and pooling on autograd](../../build-an-llm/p13-vision/01-conv-layers-and-pooling.md) builds `Conv2d`, `Conv1d`, and pooling with im2col forward and col2im backward; the [Vision transformer encoder](../../build-an-llm/p13-vision/03-vision-transformer.md) uses a `PatchEmbed` that is a conv with kernel equal to stride; and the [Whisper encoder](../../build-an-llm/p14-speech/02-whisper-encoder.md) sizes its stem's output with `conv_out_size`.
+
+Each piece of the solution has a production counterpart that adds speed or generality:
+
+| Solution piece | Production equivalent | What it adds | Where to look |
+|---|---|---|---|
+| `im2col` + matmul | PyTorch `aten/src/ATen/native/ConvolutionMM2d.cpp` (`slow_conv2d`) | the same unfold-then-GEMM path, threaded, for CPU fallbacks | `slow_conv2d_forward_out_cpu` |
+| `conv2d_direct` | oneDNN / cuDNN | Winograd and FFT algorithms, implicit GEMM without materializing columns, autotuning per shape | cuDNN `cudnnFindConvolutionForwardAlgorithm` |
+| `col2im` | `F.fold` / `conv_transpose2d` | the adjoint as a first-class layer (upsampling in decoders) | `aten/src/ATen/native/Col2Im.cpp` |
+| the C loop in `conv2d.c` | an optional C kernel | im2col in C with a blocked matmul, benchmarked against the naive loop | `c/src/kernels/conv.c` |
+
+### Further reading
+
+- Dumoulin and Visin, "A guide to convolution arithmetic for deep learning" (2016, free).
+- Chellapilla, Puri, Simard, "High performance convolutional neural networks for document processing" (2006), the im2col paper.
+- Goodfellow, Bengio, Courville, *Deep Learning*, ch. 9 (free).
+
+## Key terms
+
+- **Cross-correlation**: sliding a kernel over a signal and taking a dot product at each position, with no flip; what deep learning calls convolution.
+- **Dilation**: spacing a kernel's taps $d$ samples apart, so a size-$k$ kernel spans $d(k-1)+1$ samples.
+- **Groups**: splitting input and output channels into $g$ blocks that are convolved independently; $g = C$ is depthwise convolution.
+- **Doubly block Toeplitz matrix**: the matrix $T$ of a 2-D convolution, with $\operatorname{vec}(y) = T \operatorname{vec}(x)$.
+- **im2col**: copying every receptive field into a column, ordered $(c, r, s)$, so a convolution becomes one matmul.
+- **col2im**: the adjoint of im2col, which sums column entries back into the pixels they came from.
+
+## Summary
+
+- A deep-learning "convolution" is a cross-correlation: no kernel flip. Flipping the kernel gives the true convolution of signal processing.
+- One formula sizes every conv output: $\lfloor (n + 2p - d(k-1) - 1)/s \rfloor + 1$.
+- A conv is linear, so it is a matrix: the doubly block Toeplitz $T$ with $\operatorname{vec}(y) = T \operatorname{vec}(x)$. im2col turns it into one matmul with the flattened weights.
+- col2im is the adjoint of im2col (it sums overlapping windows), so the backward pass of a conv is built from the same two functions.
+- Looping over taps instead of outputs makes the NumPy version fast; the Toeplitz matrix is for understanding and checking only.
+
+## Review questions
 
 1. Why is the weight's second axis $C/g$ and not $C$?
    <details><summary>Answer</summary>
@@ -279,39 +321,3 @@ Full solution: [`conv.py`](../../../../course/solutions/python/tinyllm/sig/conv.
    <details><summary>Answer</summary>
    $\lfloor (3000 - 3)/2 \rfloor + 1 = 1499$, one short of the 1500 positions the encoder's positional table expects; the stem's $p = 1$ gives exactly 1500. An off-by-one here makes the shapes disagree downstream (or silently drops a frame if the code slices to fit).
    </details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. flipping the kernel (true convolution) | every output differs from PyTorch; pretrained weights give garbage | reads `x[o*s + r*d]` with `w[r]`, same direction; only `correlate_vs_convolve` flips; see step 5 |
-| 2. leaving dilation out of the kernel span | dilated layers get too many outputs | `span = dilation * (k - 1) + 1` in `conv_out_size` |
-| 3. col2im assigning instead of adding | wrong input gradients wherever windows overlap | `xp[...] += blocks[:, :, i, j]`; see step 7 |
-| 4. im2col rows in $(r, s, c)$ order | shapes fine, values wrong for $C > 1$ | builds `[N, C, R, S, P, Q]` and reshapes, giving $(c, r, s)$ rows; see step 6 |
-| 5. every group reading the first group's channels | grouped and depthwise convs wrong | slices `xp[:, g*cg:(g+1)*cg]` and `w[g*kg:(g+1)*kg]` per group |
-| 6. all the padding on one side | outputs shifted by $p$ | `np.pad(..., (ph, ph), (pw, pw))`, symmetric |
-| 7. Toeplitz columns without the padding offset | $T x$ shifted against the direct conv | `conv_matrix` uses `op*sh + i - ph`; see step 8 |
-| 8. dropping the $+1$ in the size formula | one output too few everywhere | `(n + 2*pad - span) // stride + 1` |
-| 9. rejecting an exact fit | a kernel as large as the input raises | raises only when `n + 2*pad < span` |
-| 10. not checking that groups divide the output channels | silent zero channels | `_check_groups` tests `c % groups`, `kout % groups`, and `cg == c // groups` |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `M03.2`, `M03.3` | a linear map is a matrix and its adjoint is the transpose (reading) |
-| Back | `M08.2` | a backward pass multiplies by the transposed Jacobian (reading) |
-| Forward | `M12.3` | `resample_audio` applies its sinc filter bank as one strided `conv1d_direct` |
-| Forward | `L13.1` | `Conv2d`, `Conv1d`, and pooling on autograd: im2col forward, col2im backward |
-| Forward | `L13.3` | `PatchEmbed` is a conv with kernel = stride |
-| Forward | `L14.2` | the Whisper stem sizes its output with `conv_out_size` |
-| Forward | `S-M12` | output sizes, receptive fields, the Toeplitz form, and the adjoint by hand |
-
-## Going further
-
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `im2col` + matmul | PyTorch `aten/src/ATen/native/ConvolutionMM2d.cpp` (`slow_conv2d`) | the same unfold-then-GEMM path, threaded, for CPU fallbacks | `slow_conv2d_forward_out_cpu` |
-| `conv2d_direct` | oneDNN / cuDNN | Winograd and FFT algorithms, implicit GEMM without materializing columns, autotuning per shape | cuDNN `cudnnFindConvolutionForwardAlgorithm` |
-| `col2im` | `F.fold` / `conv_transpose2d` | the adjoint as a first-class layer (upsampling in decoders) | `aten/src/ATen/native/Col2Im.cpp` |
-| the C loop in `conv2d.c` | optional `L13.8` | im2col in C with a blocked matmul, benchmarked against the naive loop | `c/src/kernels/conv.c` |
