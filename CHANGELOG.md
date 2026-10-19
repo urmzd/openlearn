@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.25.0 (2026-10-19)
+
+### Features
+
+- number every chapter and section, one chapter per track (#49) ([a774dba](https://github.com/urmzd/openlearn/commit/a774dba32843e19fed488c42665414d0f813c7dd))
+
+### Misc
+
+- finish the book prose rewrite (5) (#48) ([f54addd](https://github.com/urmzd/openlearn/commit/f54addd70ead3815abada80f635d33d7648d9dee))
+- rewrite more chapters as book prose (4) (#47) ([d46955e](https://github.com/urmzd/openlearn/commit/d46955e85af47eefe57e141f3d27034091ad7248))
+- rewrite more chapters as book prose (3) (#46) ([2a04e45](https://github.com/urmzd/openlearn/commit/2a04e4540a53d17632346fd9b98d7c950aa35d25))
+- rewrite more chapters as book prose (2) (#45) ([f1cbc77](https://github.com/urmzd/openlearn/commit/f1cbc77546efaa24b60b56a560bb5712dc23c92f))
+- rewrite the first chapters as book prose (#44) ([1c3c5c9](https://github.com/urmzd/openlearn/commit/1c3c5c91d9df1c92a21386ed7ae6f4b6f2cd0d21))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.24.0...v0.25.0)
+
+
 ## 0.24.0 (2026-10-19)
 
 ### Breaking
