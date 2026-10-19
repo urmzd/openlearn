@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Module** | `L11.1` · build · Python · Pass 9 · 5 to 6 h |
+| **Module** | `L11.1` · build · Python · Pass 9 |
 | **Solution** | [`precision.py`](../../../../course/solutions/python/tinyllm/train/precision.py): `cast`, `autocast`, `autocast_bf16`, `autocast_dtype`, `DynamicLossScaler`, `grad_accumulate`, `train_step_mixed` · [`recompute.py`](../../../../course/solutions/python/tinyllm/train/recompute.py): `checkpoint`, `checkpoint_sequential` |
 | **Contract** | [`course/contracts/py/tinyllm/train/precision.pyi`](../../../../course/contracts/py/tinyllm/train/precision.pyi) · [`course/contracts/py/tinyllm/train/recompute.pyi`](../../../../course/contracts/py/tinyllm/train/recompute.pyi) |
 | **Needs** | `L0.1` Tensor, `from_op`, grad mode · `L0.3` `mse` (the examples' loss) · `L0.4` Module and layers · `M09.1` `round_to_bf16`, `round_to_fp16` · `M10.2` SGD and `M10.3` AdamW (the examples' optimizers) · `M10.4` `clip_grad_norm_` · `M08.4` `checkpoint_schedule` · reading: `M05.1` the memory plan, `L0.5` `train_step` |
@@ -161,7 +161,7 @@ def checkpoint_sequential(layers, x, mem_budget_layers, rngs=()) -> Tensor      
 
 ### The code, annotated
 
-The cast and the patched matmul. `_round` keeps the array's own float dtype, so a float64 test stays float64 (pitfall 4).
+The cast and the patched matmul. `_round` keeps the array's own float dtype, so a float64 model stays float64 (pitfall 4).
 
 ```python
 def _round(a: np.ndarray, dtype: str) -> np.ndarray:

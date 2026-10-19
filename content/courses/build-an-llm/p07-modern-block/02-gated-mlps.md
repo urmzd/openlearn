@@ -1,41 +1,32 @@
-<!-- ol:module L7.2 -->
 # Gated MLPs: SwiGLU, GeGLU
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L7.2` · build · Python · Pass 5 · 2 h, plus your graded tests (rung R5) |
-| **You build** | `python/tinyllm/modern/mlp.py`: `GatedMLP` and `llama_ffn_dim`; and your own oracle tests in `python/tests/l7-2-mlp/` |
+| **Module** | `L7.2` · build · Python · Pass 5 · 45 min reading |
+| **Solution** | [`python/tinyllm/modern/mlp.py`](../../../../course/solutions/python/tinyllm/modern/mlp.py): `GatedMLP` and `llama_ffn_dim`; model oracle tests in [`learner-tests/L7.2/.../test_mlp.py`](../../../../course/solutions/learner-tests/L7.2/python/tests/l7-2-mlp/test_mlp.py) |
 | **Contract** | [`course/contracts/py/tinyllm/modern/mlp.pyi`](../../../../course/contracts/py/tinyllm/modern/mlp.pyi) |
-| **Tests** | `course/tests/L7.2/test_mlp.py` (what they check: section 4), golden values from transformers 5.19.0 `LlamaMLP` and `GemmaMLP` in `course/fixtures/L7.2/gated_mlp_hf.npz` (`course/oracle/L7.2/gated_mlp_hf.py`); your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
-| **Needs** | `L0.4` `Linear`, `Module` · `L0.2` `F.silu`, `F.gelu` · `L0.1` `Tensor` · `M06.3` `PCG32` (default initialization) · reading: `M01.3` (silu and the tanh GELU) (or `--ref-deps`) |
-| **Used by** | `L7.8` every expert is a gated MLP · `L7.9` every Llama MLP · later: `L9.6` the C `tl_silu_mul_f32` |
-| **Milestone** | `MS-L7` (SmolLM2-135M logits match Hugging Face) |
+| **Needs** | `L0.4` `Linear`, `Module` · `L0.2` `F.silu`, `F.gelu` · `L0.1` `Tensor` · `M06.3` `PCG32` (default initialization) · reading: `M01.3` (silu and the tanh GELU) |
+| **Used by** | `L7.8` every expert is a gated MLP · `L7.9` every Llama MLP, where SmolLM2-135M's logits must match Hugging Face · later: `L9.6` the C `tl_silu_mul_f32` |
 | **Optional depth** | Shazeer, "GLU Variants Improve Transformer" (2020); Dauphin et al., "Language Modeling with Gated Convolutional Networks" (2017), section 3; Touvron et al., "LLaMA" (2023), section 2.2 |
 
 ## Key Takeaways
 
-- A gated MLP computes two projections of the input and multiplies one by the activation of the other: $\text{down}(\text{act}(\text{gate}(x)) \odot \text{up}(x))$ (`test_hand_example`).
-- The activation belongs on the **gate**: a closed gate shuts its unit off whatever the other projection says (`test_closed_gate_blocks_the_unit`).
-- Three matrices at width $\frac{8}{3} d$ cost what two at $4d$ cost, which is where Llama's odd widths come from (`test_parameter_count_matches_a_4d_mlp`, `test_llama_ffn_dim`).
-- Gemma's GeGLU uses the tanh approximation of GELU, not the erf form (`test_golden_hf_geglu`).
+- A gated MLP computes two projections of the input and multiplies one by the activation of the other: $\text{down}(\text{act}(\text{gate}(x)) \odot \text{up}(x))$.
+- The activation belongs on the **gate**: a closed gate shuts its unit off whatever the other projection says.
+- Three matrices at width $\frac{8}{3} d$ cost what two at $4d$ cost, which is where Llama's odd widths come from.
+- Gemma's GeGLU uses the tanh approximation of GELU, not the erf form.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L7.2              # stubs mlp.py; prints your test path and rung (R5)
-ol tests L7.2              # the course tests
-# write your oracle tests in python/tests/l7-2-mlp/, then:
-ol check L7.2              # course tests and the mutation grade of your tests
-ol diff  L7.2              # after passing: your code against the reference
-```
+Sections 1 to 3 derive the gated MLP and its width and work both activations and the Llama sizes by hand. Section 4 fixes the interface. Section 5 walks through the solution line by line and explains why each choice is right. Try to predict each step before reading it.
 
 ---
 
 ## 1. Why now
 
-Your 2017 transformer's MLP is `Linear(d, 4d)`, ReLU or GELU, `Linear(4d, d)`. Open SmolLM2-135M's checkpoint and the MLP has three matrices per layer, `gate_proj`, `up_proj`, and `down_proj`, of width 1536 for a model width of 576: not $4 \cdot 576 = 2304$. Your MLP cannot load these weights, and if you guess how the three combine you get logits that look plausible and are wrong. Every model in the Llama family, Mistral, Qwen, Gemma, and the experts of every MoE (`L7.8`) use this gated form. This module builds it and explains the width.
+The 2017 transformer's MLP is `Linear(d, 4d)`, ReLU or GELU, `Linear(4d, d)`. Open SmolLM2-135M's checkpoint and the MLP has three matrices per layer, `gate_proj`, `up_proj`, and `down_proj`, of width 1536 for a model width of 576: not $4 \cdot 576 = 2304$. The 2017 MLP cannot load these weights, and a wrong guess at how the three combine gives logits that look plausible and are wrong. Every model in the Llama family, Mistral, Qwen, Gemma, and the experts of every MoE (`L7.8`) use this gated form. This module gives the gated form and explains the width.
 
 ## 2. Principles
 
@@ -78,8 +69,6 @@ $d = f = 1$, $W_g = 1$, $W_u = 2$, $W_d = 3$, $x = 1$.
 
 Sizes: Llama-2 7B has $d = 4096$: $\lfloor 2 \cdot 16384 / 3 \rfloor = 10922$, rounded up to a multiple of 256 is $43 \cdot 256 = 11008$. SmolLM2: $\lfloor 2 \cdot 2304 / 3 \rfloor = 1536$, already a multiple of 256.
 
-These are `test_hand_example` and `test_llama_ffn_dim`.
-
 ## 4. The interface
 
 ```python
@@ -89,41 +78,109 @@ class GatedMLP(Module):
 def llama_ffn_dim(d, multiple_of=256, ffn_dim_multiplier=None) -> int: ...
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example` | unit | section 3 for both activations | you and the test agree on the formula |
-| `test_golden_hf_swiglu` | golden | output and gradients against `LlamaMLP` | SmolLM2's MLPs in `L7.9` |
-| `test_golden_hf_swiglu_bias` | golden | `mlp_bias` checkpoints | biased variants load |
-| `test_golden_hf_geglu` | golden | `GemmaMLP` with `gelu_pytorch_tanh` | Gemma-style checkpoints |
-| `test_gradcheck_every_parameter` | gradcheck | float64, both activations, with biases | every matrix trains |
-| `test_parameter_names_order_and_shapes` | unit | HF names, order, shapes, `act` | the safetensors keys |
-| `test_rng_draw_order` | unit | gate, up, down drawn from one rng in order | one seed fixes the weights everywhere |
-| `test_closed_gate_blocks_the_unit` | property | a negative gate shuts the unit | the activation is on the gate |
-| `test_parameter_count_matches_a_4d_mlp` | property | $3 d \cdot \frac{8}{3} d = 8 d^2$ | equal-parameter comparisons |
-| `test_llama_ffn_dim` | unit | 11008, 14336, 8192, 1536 | configs without `intermediate_size` |
-| `test_validation` | boundary | unknown activation, zero width | config typos fail loudly |
+| the hand-worked example | unit | section 3 for both activations | everyone agrees on the formula |
+| agreement with Hugging Face SwiGLU | golden | output and gradients against transformers' `LlamaMLP` | SmolLM2's MLPs in `L7.9` |
+| SwiGLU with biases | golden | `mlp_bias` checkpoints | biased variants load |
+| agreement with Hugging Face GeGLU | golden | `GemmaMLP` with `gelu_pytorch_tanh` | Gemma-style checkpoints |
+| gradients of every parameter | gradcheck | float64, both activations, with biases | every matrix trains |
+| parameter names, order and shapes | unit | HF names, order, shapes, `act` | the safetensors keys |
+| rng draw order | unit | gate, up, down drawn from one rng in order | one seed fixes the weights everywhere |
+| a closed gate blocks the unit | property | a negative gate shuts the unit | the activation is on the gate |
+| parameter count matches a $4d$ MLP | property | $3 d \cdot \frac{8}{3} d = 8 d^2$ | equal-parameter comparisons |
+| `llama_ffn_dim` | unit | 11008, 14336, 8192, 1536 | configs without `intermediate_size` |
+| bad arguments | boundary | unknown activation, zero width | config typos fail loudly |
 
-### Your graded tests (rung R5)
+A model test suite whose oracle is the formula in numpy float64 with the module's own weights from `state_dict()` is in [`test_mlp.py`](../../../../course/solutions/learner-tests/L7.2/python/tests/l7-2-mlp/test_mlp.py).
 
-Your oracle is the formula in numpy float64 with the module's own weights from `state_dict()`: compute gate, up, the activation, the product, and down, and compare with `forward` for both activations, with and without biases. Add the hand example, the parameter names, your own central differences for $x$ and every parameter, and the published `llama_ffn_dim` values. Import only `tinyllm.modern.mlp`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ol check L7.2` requires 0.80 with every pitfall fault killed.
+## 5. The solution, step by step
 
-## 5. Pitfalls
+### 5.1 From first principles
 
-| Pitfall | Symptom | Caught by |
+1. The checkpoint fixes the shape: three matrices named `gate_proj`, `up_proj` (both $f \times d$) and `down_proj` ($d \times f$). So the module is three `Linear` layers under exactly those names.
+2. The formula must be the one the weights were trained with: $W_d(\operatorname{act}(W_g x) \odot W_u x)$. The activation goes on the gate, because that is what makes "closed" mean closed: $\operatorname{silu}(g) \approx 0$ for very negative $g$ shuts unit $i$ whatever $u_i$ is.
+3. The activation is a configuration choice: `silu` for SwiGLU (Llama, SmolLM2) and the **tanh** GELU for GeGLU (Gemma's `gelu_pytorch_tanh`), since the erf form differs by about $10^{-4}$ per unit.
+4. Registration order sets both the `state_dict` order and the order weights are drawn from one rng. Following HF (gate, up, down) makes both reproducible.
+5. A missing `intermediate_size` must be derived the way Meta does: $h = \lfloor \frac{2}{3} \cdot 4d \rfloor$, optionally times `ffn_dim_multiplier` (truncated), rounded **up** to `multiple_of`. For $d = 4096$ that gives $10922 \to 11008$.
+6. The backward follows from `F.silu`, `F.gelu` and the product; all three projections are parameters used as Tensors, so all three train.
+
+### 5.2 The code, annotated
+
+```python
+class GatedMLP(Module):
+    def __init__(self, d, d_ff, act="silu", bias=False, rng=None):
+        super().__init__()
+        # ... positive sizes; act in ("silu", "gelu_tanh") ...
+        r = rng if rng is not None else PCG32(0).substream("init")   # ONE stream for all three
+        self.act = act
+        # Registration order is HF's LlamaMLP order: gate, up, down.
+        self.gate_proj = Linear(d, d_ff, bias=bias, rng=r)
+        self.up_proj = Linear(d, d_ff, bias=bias, rng=r)
+        self.down_proj = Linear(d_ff, d, bias=bias, rng=r)
+
+    def forward(self, x: Tensor) -> Tensor:
+        g = self.gate_proj(x)
+        a = F.silu(g) if self.act == "silu" else F.gelu(g, approximate="tanh")
+        # The activation gates the OTHER projection: act(gate) * up.
+        return self.down_proj(a * self.up_proj(x))
+```
+
+On the worked example ($W_g = 1$, $W_u = 2$, $W_d = 3$, $x = 1$): $g = 1$, $a = \operatorname{silu}(1) = 0.731059$, $a \cdot u = 1.462117$, and down gives $4.386352$. Writing `act(a * up)` instead would give $3\operatorname{silu}(2) = 5.2848$, a different function with the same parameters. `bias` applies to all three layers, as HF's `mlp_bias` does.
+
+```python
+def llama_ffn_dim(d, multiple_of=256, ffn_dim_multiplier=None):
+    # ... d and multiple_of positive ...
+    h = int(2 * (4 * d) / 3)                       # floor(8d/3): equal parameters to a 4d MLP
+    if ffn_dim_multiplier is not None:
+        # ... must be positive ...
+        h = int(ffn_dim_multiplier * h)            # Llama 3's widening, truncated like Meta's code
+    # Round UP to a multiple: hardware-friendly matmul widths.
+    return multiple_of * ((h + multiple_of - 1) // multiple_of)
+```
+
+`(h + m - 1) // m` is the integer ceiling of $h / m$. Llama 3 8B ($d = 4096$, multiplier 1.3, `multiple_of` 1024): $h = 10922$, $\lfloor 1.3 \cdot 10922 \rfloor = 14198$, rounded up to $14 \cdot 1024 = 14336$.
+
+Full solution: [`mlp.py`](../../../../course/solutions/python/tinyllm/modern/mlp.py).
+
+### 5.3 Why this solution
+
+- **Cost.** Three matmuls of $d \times f$ per token: $3df$ multiply-adds and parameters, equal to a plain $4d$ MLP's $8d^2$ at $f = \frac83 d$. The elementwise activation and product are $O(f)$.
+- **Three separate `Linear` layers** rather than one fused $[2f, d]$ gate-and-up matrix: the keys load from HF checkpoints directly. Production engines (vLLM) fuse them for speed; the C kernel of `L9.6` fuses $\operatorname{silu}(g) \odot u$.
+- **The activation as a string option** rather than a callable: the two allowed values map to checkpoint conventions, and a typo fails at construction.
+- **Rounding up**, never down: a width smaller than the checkpoint's cannot hold its weights.
+- **Tradeoff accepted.** The gated form's advantage over ReLU/GELU MLPs is empirical (Shazeer 2020), not derived; the solution adopts it because every model it must load does.
+
+### 5.4 Explain it back
+
+1. Why is the activation applied to the gate projection and not to the up projection?
+   <details><summary>Answer</summary>The trained weights assume $\operatorname{act}(W_g x) \odot W_u x$. Swapping the roles loads without error (the shapes are equal) but computes a different function, so every logit is wrong. Functionally, the activation on the gate is what lets a unit be switched off independently of its value.</details>
+2. Why is $d_{ff}$ about $\frac{8}{3}d$ rather than $4d$?
+   <details><summary>Answer</summary>The gated MLP has three $f \times d$ matrices instead of two. Matching the plain MLP's $8d^2$ parameters requires $3df = 8d^2$, so $f = \frac83 d$.</details>
+3. Why must all three layers draw from the same rng in the order gate, up, down?
+   <details><summary>Answer</summary>A seed should fix the weights in every language and implementation. One stream consumed in HF's registration order gives the same weights everywhere; a fresh stream per layer would make, for example, two different seeds produce identical down weights.</details>
+4. What goes wrong if `llama_ffn_dim` rounds down?
+   <details><summary>Answer</summary>For $d = 4096$ it would give 10752 instead of 11008, and the module's shapes would not match the checkpoint's `gate_proj`, `up_proj` and `down_proj`.</details>
+5. Why does GeGLU use `approximate="tanh"`?
+   <details><summary>Answer</summary>Gemma's config uses `gelu_pytorch_tanh`. The erf GELU differs by about $10^{-4}$ per unit, and those errors accumulate across layers until parity with Hugging Face fails.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. activation on the up projection | loads fine, every logit wrong | `test_golden_hf_swiglu`, `test_closed_gate_blocks_the_unit` (mutant `s01`) |
-| 2. exact GELU for GeGLU | Gemma outputs off by about 1e-4 per unit, growing with depth | `test_golden_hf_geglu` (mutant `s02`) |
-| 3. rounding `d_ff` down | 10752 instead of 11008; the checkpoint shapes do not match | `test_llama_ffn_dim` (mutant `s03`) |
-| 4. activating the product, $\operatorname{act}(g \odot u)$ | a different function with the same parameters | `test_hand_example` (mutant `s04`) |
-| registering up before gate | `state_dict` order and draws differ from Hugging Face | `test_parameter_names_order_and_shapes` (mutant `s05`) |
-| dropping the down bias | biased checkpoints load and are off by the bias | `test_golden_hf_swiglu_bias` (mutant `s06`) |
-| ignoring `ffn_dim_multiplier` | Llama-3 widths wrong | `test_llama_ffn_dim` (mutant `s07`) |
-| the up projection as a constant | up never trains | `test_gradcheck_every_parameter` (mutant `s08`) |
-| a fresh rng for the last layer | two seeds give the same down weights | `test_rng_draw_order` (mutant `s09`) |
+| 1. activation on the up projection | loads fine, every logit wrong | `a` is computed from `gate_proj(x)` and multiplies `up_proj(x)` |
+| 2. exact GELU for GeGLU | Gemma outputs off by about 1e-4 per unit, growing with depth | `F.gelu(g, approximate="tanh")` |
+| 3. rounding `d_ff` down | 10752 instead of 11008; the checkpoint shapes do not match | integer ceiling `(h + m - 1) // m` |
+| 4. activating the product, $\operatorname{act}(g \odot u)$ | a different function with the same parameters | the activation is applied to `g` before the product |
+| registering up before gate | `state_dict` order and draws differ from Hugging Face | layers assigned in the order gate, up, down |
+| dropping the down bias | biased checkpoints load and are off by the bias | `bias=bias` on all three layers |
+| ignoring `ffn_dim_multiplier` | Llama-3 widths wrong | `h = int(ffn_dim_multiplier * h)` before rounding |
+| the up projection as a constant | up never trains | `self.up_proj(x)` is a Tensor op on a parameter |
+| a fresh rng for the last layer | two seeds give the same down weights | one `r` is passed to all three layers |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -137,7 +194,7 @@ Your oracle is the formula in numpy float64 with the module's own weights from `
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `GatedMLP` | HF `LlamaMLP`, `GemmaMLP` | the same three matrices; tensor-parallel splits shard `gate` and `up` by rows and `down` by columns | `transformers/models/llama/modeling_llama.py` |
 | `GatedMLP` | vLLM `MergedColumnParallelLinear` + `SiluAndMul` | gate and up fused into one $[2f, d]$ matrix, the activation fused with the product | vLLM `model_executor/layers/activation.py` |
