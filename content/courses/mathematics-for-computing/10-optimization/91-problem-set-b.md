@@ -1,56 +1,44 @@
 # Optimization problem set, part b: constrained optimization, duality, and DPO
 
-## Overview
+Post-training a language model, in the optional post-training chapter of *Build Your Own LLM System*, uses a KL penalty to keep an updated model near its supervised fine-tuned reference. The method that chapter builds, [Direct preference optimization and IPO](../../build-an-llm/p12-post-training/02-direct-preference-optimization.md), rests on one closed-form result: the policy that maximizes reward minus a KL penalty is the reference policy tilted by the exponentiated reward. This problem set derives that result and the constrained-optimization machinery behind it, so that when you meet the DPO loss you can see where every term comes from.
 
-| | |
-|---|---|
-| **Module** | `S-M10b` · solve · none · Pass 10 · 3 to 4 h |
-| **Solution** | worked answers to all 18 problems (17 exact answers and one short derivation), each under its problem in section 4 |
-| **Contract** | none: a pen and paper set |
-| **Needs** | `M04.2` constrained optimization, `M11.1` KL; reading: [Optimization](README.md) |
-| **Used by** | no call site; optional analysis behind L12.2 DPO in Pass 10 |
-| **Optional depth** | Boyd and Vandenberghe, *Convex Optimization*, ch. 5; DPO derivation in Rafailov et al. |
+The set has 18 problems (17 exact answers and one short derivation) in three groups: Lagrange multipliers and the KKT conditions, duality, and the KL-regularized objective with DPO. It is optional pen-and-paper work. It assumes the constrained optimization and Lagrange material of the [Calculus 3 problem set](../04-calculus-3/90-problem-set.md) and the KL divergence of [Entropy, cross-entropy, KL, JS, and the k3 estimator](../11-information-theory/01-entropy-cross-entropy-and-kl.md). Attempt each problem on paper before opening its answer. The answers name the common wrong answer and why it fails, since sign conventions are where these derivations usually go wrong.
 
-## Key Takeaways
+> **Learning objectives**
+> - Write the KKT conditions for a problem with constraints $g_i(x) \le 0$ and solve small instances by hand, with multipliers of the correct sign.
+> - Form the dual function as an infimum over the primal variable, maximize it, and check for a zero duality gap.
+> - Derive the optimum of a KL-regularized reward objective, $\pi^* \propto \pi_{\text{ref}} \exp(r/\beta)$.
+> - Explain why the DPO log ratio cancels the intractable normalizer $Z(x)$.
 
-- KKT multipliers pair with the chosen inequality sign convention.
-- Strong duality equates primal and dual optima under suitable convexity and feasibility assumptions.
-- A KL-regularized policy optimum is proportional to the reference policy times exponentiated reward.
-- The DPO log-ratio subtracts away the unknown normalization constant.
+## The toolkit
 
-## How to read this chapter
+For a minimization problem with inequality constraints $g_i(x) \le 0$, the Lagrangian is
 
-Sections 1 to 3 set up the KKT conditions, the dual, and the KL-regularized optimum, and work one example by hand. Section 4 states every problem with its worked answer folded underneath; attempt each on paper before opening it. The answers name the common wrong answer and why it fails, since sign conventions are where these derivations usually go wrong.
+$$L(x, \lambda) = f(x) + \sum_i \lambda_i\, g_i(x).$$
 
-## 1. Why now
+The KKT conditions at an optimum are four: stationarity ($\nabla_x L = 0$), primal feasibility ($g_i(x) \le 0$), dual feasibility ($\lambda_i \ge 0$), and complementary slackness ($\lambda_i\, g_i(x) = 0$). The sign of the multiplier pairs with the sign convention of the constraint, which is why every inequality in this set is written as $g(x) \le 0$ with $\lambda \ge 0$ before $L$ is formed. The dual function is $d(\lambda) = \inf_x L(x, \lambda)$, and the dual problem maximizes it over $\lambda \ge 0$. Weak duality says the dual optimum never exceeds the primal one; strong duality, which holds under suitable convexity and feasibility assumptions such as Slater's condition, makes them equal.
 
-The optional post-training sequence uses a KL penalty to keep an updated model near its SFT reference. These problems derive the optimization constraints and the closed-form policy that motivates DPO. They follow the earlier gradient and KL material and are not required for the core agent pass.
+For a KL-regularized reward objective, maximizing $\mathbb{E}_{\pi}[r] - \beta\, D_{\mathrm{KL}}(\pi \,\|\, \pi_{\text{ref}})$ gives
 
-## 2. Principles
+$$\pi^*(y \mid x) = \frac{\pi_{\text{ref}}(y \mid x)\, \exp(r(x, y)/\beta)}{Z(x)}.$$
 
-For a minimization problem with inequality `g_i(x) <= 0`, KKT multipliers satisfy `lambda_i >= 0`, stationarity, primal feasibility, and complementary slackness `lambda_i g_i(x)=0`. The Lagrangian is `L(x,lambda)=f(x)+Σ lambda_i g_i(x)`. For a KL-regularized reward objective, maximizing `E_pi[r] - beta D_KL(pi || pi_ref)` gives `pi*(y|x) = pi_ref(y|x) exp(r(x,y)/beta) / Z(x)`.
+The symbols, briefly:
 
 | Symbol | Meaning |
 |---|---|
-| `g_i(x)` | inequality constraint, nonpositive when feasible |
-| `lambda_i` | nonnegative KKT multiplier |
-| `pi_ref` | fixed reference policy |
-| `beta` | KL strength, positive |
-| `Z(x)` | normalizer over candidate completions |
+| $g_i(x)$ | inequality constraint, nonpositive when feasible |
+| $\lambda_i$ | nonnegative KKT multiplier |
+| $\pi_{\text{ref}}$ | fixed reference policy |
+| $\beta$ | KL strength, positive |
+| $Z(x)$ | normalizer over candidate completions |
 
-## 3. Worked example
+## A problem worked in full
 
-Minimize `x²` subject to `x >= 1`, written `1-x <= 0`. At `x=1`, stationarity gives `2x-lambda=0`, hence `lambda=2`. The primal value is 1. For two outcomes with equal reference probability, rewards `[1,0]`, and `beta=1`, the optimal policy has probabilities `[e/(1+e), 1/(1+e)]` and log odds 1. These values reappear in q3 to q6 and q11 to q17.
+Minimize $x^2$ subject to $x \ge 1$, written $1 - x \le 0$. At $x = 1$, stationarity gives $2x - \lambda = 0$, hence $\lambda = 2$, and the primal value is 1. For the KL side, take two outcomes with equal reference probability, rewards $[1, 0]$, and $\beta = 1$: the optimal policy has probabilities $[e/(1+e),\ 1/(1+e)]$ and log odds 1. These values reappear in q3 to q6 and q11 to q17.
 
-## 4. The problem set
+## The problems
 
-For KKT questions, use the convention `g(x) <= 0` and multipliers `lambda >= 0`. Each answer below gives the result, the derivation, and the common wrong answer.
-
-| What a correct answer must handle | Why it matters | Problems |
-|---|---|---|
-| KKT stationarity and feasibility | finds sign convention mistakes | q1 to q10 |
-| Dual value | the dual is an infimum over the primal variable; the gap is zero in this convex example | q11 to q14 |
-| DPO odds | connects reward differences to policy/reference ratios | q15 to q18 |
+For KKT questions, use the convention `g(x) <= 0` and multipliers `lambda >= 0`. Each answer gives the result, the derivation, and the common wrong answer. The first group (q1 to q10) catches sign-convention mistakes in stationarity and feasibility; the second (q11 to q14) builds the dual as an infimum over the primal variable and shows the gap is zero in this convex example; the third (q15 to q18) connects reward differences to policy-to-reference ratios.
 
 ### Lagrange multipliers and KKT
 
@@ -204,23 +192,31 @@ The cancellation is the whole point: $Z(x)$ is a sum over every possible complet
 
 </details>
 
-## 5. Pitfalls
+## Mistakes to watch for
 
-| Pitfall | How the solution avoids it |
+Four mistakes account for most wrong answers in this set:
+
+| Pitfall | How to avoid it |
 |---|---|
-| Using a negative multiplier for `g<=0` | writes every inequality as `g(x) <= 0` before forming `L = f + lambda g`, so stationarity gives `lambda >= 0`; see q4 and q8 |
-| Forgetting feasibility along with stationarity | checks all four KKT conditions, not just the gradient; see q10 |
-| Maximizing over `x` when forming the dual | the dual function is an infimum over `x`, then a maximum over `lambda >= 0`; see q12 and q13 |
-| Keeping the unknown `Z(x)` in log odds | takes a difference of log ratios for the same prompt, so `log Z(x)` cancels; see q18 |
+| Using a negative multiplier for `g<=0` | write every inequality as `g(x) <= 0` before forming `L = f + lambda g`, so stationarity gives `lambda >= 0` (q4, q8) |
+| Forgetting feasibility along with stationarity | check all four KKT conditions, not just the gradient (q10) |
+| Maximizing over `x` when forming the dual | the dual function is an infimum over `x`, then a maximum over `lambda >= 0` (q12, q13) |
+| Keeping the unknown `Z(x)` in log odds | take a difference of log ratios for the same prompt, so `log Z(x)` cancels (q18) |
 
-## 6. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `M04.2`, `M11.1` | constraints, gradients, and KL |
-| Forward | `L12.2` | DPO uses the optimal policy's reference-adjusted odds |
-| Forward | `C2` | optional post-training applies the preference objective |
+The closed-form optimum of q15 and the cancellation of q18 are exactly what [Direct preference optimization and IPO](../../build-an-llm/p12-post-training/02-direct-preference-optimization.md) uses: DPO trains on the optimal policy's reference-adjusted odds, and [Capstone 2: post-trained TinyStories model](../../build-an-llm/capstones/02-post-trained.md) applies the preference objective to a real model.
 
-## Going further
+A caution about how far the derivation reaches. Strong duality needs assumptions such as convex objectives, convex constraints, and a strict feasible point. Real preference learning also has noisy labels and finite data, so a closed-form derivation is a guide to the objective rather than a guarantee of learned behavior.
 
-Strong duality needs assumptions such as convex objectives, convex constraints, and a strict feasible point. Real preference learning also has noisy labels and finite data, so a closed-form derivation is a guide to the objective rather than a guarantee of learned behavior.
+### Further reading
+
+- Boyd and Vandenberghe, [*Convex Optimization*](https://web.stanford.edu/~boyd/cvxbook/), chapter 5.
+- Rafailov et al., "Direct Preference Optimization: Your Language Model is Secretly a Reward Model" (2023), for the DPO derivation.
+
+## Summary
+
+- KKT multipliers pair with the chosen inequality sign convention: with $g(x) \le 0$ and $L = f + \lambda g$, multipliers are nonnegative, and an inactive constraint has $\lambda = 0$.
+- Strong duality equates primal and dual optima under suitable convexity and feasibility assumptions, such as Slater's condition.
+- A KL-regularized policy optimum is proportional to the reference policy times exponentiated reward.
+- The DPO log ratio subtracts away the unknown normalization constant $Z(x)$.

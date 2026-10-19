@@ -1,277 +1,131 @@
-# Probability & Statistics
-
-## Overview
-- **Textbook (Probability)**: *Introduction to Probability* by Grinstead & Snell -- https://math.dartmouth.edu/~prob/prob/prob.pdf (free)
-- **Textbook (Statistics)**: *Introductory Statistics* -- https://openstax.org/details/books/introductory-statistics (CC BY 4.0)
-- **Supplementary**: [Seeing Theory](https://seeing-theory.brown.edu) (interactive visualizations)
-- **Prerequisites**: [Calculus 2](../02-calculus-2/), [Discrete Math 1](../05-discrete-math-1/)
-- **Estimated time**: 3-4 weeks at 10-12 hrs/week
+# Probability and Statistics
 
-## Key Takeaways
-- Formalize probability with axioms and understand conditional probability and Bayes' theorem
-- Master the major discrete and continuous distributions and know when each applies
-- Connect random variables to expectation, variance, and covariance -- the language of data science
-- Understand the Law of Large Numbers and Central Limit Theorem as the theoretical foundation of statistical inference
-- Perform hypothesis testing and confidence intervals -- the tools behind A/B testing and experimental design
-- Fit simple linear regression models and interpret coefficients, residuals, and R^2
+Probability is the mathematics of reasoning under uncertainty, and statistics is the craft of drawing conclusions from data. For anyone who builds software, and especially anyone who builds learning systems, both are everywhere. Every weight a neural network starts with is a random draw; every token a language model emits is sampled from a distribution; every count-based model is an estimate; and every claim that "model B is better" is a statement about noise. Beyond machine learning, the same ideas analyse randomized algorithms and hashing, size queues and load balancers, and run A/B tests in production.
 
-## How to Study
-- Read Grinstead & Snell for probability (Chapters 1-9) and OpenStax for statistics
-- Use Seeing Theory for interactive exploration of distributions, CLT, and regression
-- Solve problems by hand before using calculators or code
-- Simulate experiments in Python (NumPy/SciPy) to verify theoretical results
-- Focus on building intuition for when to use each distribution and each test
+The bridge between the two subjects is the central limit theorem: whatever the underlying distribution, sample means are approximately normal, and that is why confidence intervals and hypothesis tests work at all. This chapter walks that bridge in the order a system needs it. It starts with random variables, expectation, and variance, and turns uniform random numbers into normal ones. It then samples categorical distributions three ways, estimates distributions from counts, and uses variance to choose how neural network weights are initialized. With those in hand it builds the inferential layer: the law of large numbers, the central limit theorem, confidence intervals and the bootstrap, and permutation tests for comparing models. It closes with rejection sampling, the exact probability behind speculative decoding, and with logistic regression, ROC-AUC, and calibration, the tools for fitting and trusting a classifier. Four problem sets, placed alongside the sections they support, let you work every idea by hand.
 
----
+Each build section comes with a reference implementation under [`course/solutions/python/tinyllm/prob/`](../../../../course/solutions/python/tinyllm/prob/), and each problem set has worked answers inline.
 
-# Concepts & Techniques
+> **Learning objectives**
+> - Use the axioms, conditional probability, and Bayes' rule, and compute expectations, variances, and covariances of discrete and continuous random variables.
+> - Sample any distribution from uniform random numbers: by inverse CDF, by Box-Muller, by Gumbel-max, by alias tables, and by rejection.
+> - Estimate distributions by maximum likelihood, smooth them, and fit logistic regression by Newton's method.
+> - Explain the law of large numbers and the central limit theorem, and build t, Wilson, and bootstrap intervals.
+> - Compare models with permutation tests, McNemar, and Holm's correction, and evaluate a classifier with ROC-AUC and ECE.
 
-## Core Insight
+## Before you begin
 
-Probability provides the mathematical framework for reasoning about uncertainty, and statistics
-provides the tools for drawing conclusions from data. The Central Limit Theorem bridges them:
-no matter the underlying distribution, sample means are approximately normal, which is why
-confidence intervals and hypothesis tests work. For CS, probability is everywhere -- from
-randomized algorithms and hashing to machine learning, A/B testing, and queueing theory.
+The chapter assumes integration from [Calculus 2](../02-calculus-2/README.md), including the Gaussian integral, and counting and sets from [Discrete Math 1](../05-discrete-math-1/README.md). Several sections draw their uniform random numbers from the PCG32 generator built in [Modular arithmetic, hashing, and PCG32 in Python](../06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md), and the last section reuses LU from [Linear Algebra](../03-linear-algebra/README.md) and Newton's method and the trapezoid rule from [Calculus 1](../01-calculus-1/README.md). The overview below reviews the classical foundations; if they are new to you, read it with one of the textbooks listed under "Further reading" open beside it.
 
-## 1. Probability Foundations
+## In this chapter
 
-**Textbook sections**: Grinstead & Snell, Ch 1 and Ch 4
+The sections and problem sets are listed in the order you should read them.
 
-**Key definitions**:
-- **Sample space**: Omega = the set of all possible outcomes
-- **Event**: A subset of Omega
-- **Probability axioms**: (1) P(A) >= 0; (2) P(Omega) = 1; (3) P(A union B) = P(A) + P(B) for disjoint A, B (extends to countable unions)
-- **Conditional probability**: P(A | B) = P(A intersect B) / P(B)
-- **Independence**: A and B are independent if P(A intersect B) = P(A) * P(B)
+1. [Probability problem set, part a: axioms, Bayes, random variables, Box-Muller](90-problem-set-a.md). The vocabulary for the whole chapter, by hand: axioms, conditioning, Bayes' rule, discrete and continuous random variables, their moments, and the normal.
+2. [Random variables, expectation, variance, and normal draws by Box-Muller](00-random-variables-and-the-normal.md). Defines expectation and variance, computes variance stably in two passes, and turns PCG32's uniforms into normals in a fixed draw order.
+3. [Categorical sampling: inverse CDF, Gumbel-max, alias method](01-categorical-sampling.md). Three exact ways to draw a token id from a distribution, each a pure function of its uniforms, plus Poisson arrivals from exponential gaps.
+4. [MLE, Laplace, absolute discounting](02-mle-laplace-absolute-discounting.md). Why count over total is the maximum-likelihood estimate, why it fails on unseen outcomes, and how add-alpha smoothing and absolute discounting repair it.
+5. [Probability problem set, part b: joint distributions, covariance, MLE](91-problem-set-b.md). Joint and conditional tables, covariance and the variance of a sum, maximum likelihood by calculus, and one EM step by hand.
+6. [Variance propagation and initialization](03-variance-propagation-and-initialization.md). Derives the variance of a layer's pre-activation and from it the Xavier and Kaiming initializations and residual scaling.
+7. [LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md). Why error bars shrink as $1/\sqrt{n}$, and how to build t, Wilson, and percentile-bootstrap intervals reproducibly.
+8. [Probability problem set, part c: limit theorems and confidence intervals](92-problem-set-c.md). The weak law proved from Chebyshev, CLT tail approximations, the three intervals by hand, and what a 95% interval actually promises.
+9. [Hypothesis tests: paired and two-sample permutation, McNemar, Holm](05-hypothesis-tests.md). P-values built by relabelling, exact tests for classifiers on the same examples, and a correction for many comparisons.
+10. [Rejection sampling and residual distributions](06-rejection-sampling-and-residual-distributions.md). Von Neumann's sampler and the accept-or-resample rule that makes speculative decoding sample the target distribution exactly.
+11. [Logistic regression (IRLS), ROC-AUC, calibration (ECE)](07-logistic-regression-roc-auc-calibration.md). Fits a classifier by Newton's method and measures whether it ranks well and whether its probabilities mean what they say.
+12. [Probability problem set, part d: hypothesis tests, regression, queueing, balls into bins](93-problem-set-d.md). The tests and regression by hand, then Little's law, the M/M/1 queue, and the balls-into-bins arithmetic behind load balancing.
 
-**Key theorems**:
-- **Bayes' Theorem**: P(A | B) = P(B | A) * P(A) / P(B). *Intuition*: to "reverse" a conditional probability, weight the likelihood P(B|A) by the prior P(A) and normalize. This is the engine of Bayesian inference.
-- **Law of Total Probability**: P(B) = Sum over i of P(B | A_i) * P(A_i) where {A_i} partitions Omega. *Intuition*: compute the probability of B by considering all the mutually exclusive ways B can happen.
-- **Inclusion-Exclusion for Probability**: P(A union B) = P(A) + P(B) - P(A intersect B). *Intuition*: same as set inclusion-exclusion but with probabilities.
+## The foundations at a glance
 
-**Worked example**:
-> A test for a disease is 99% sensitive (P(+|disease) = 0.99) and 95% specific (P(-|no disease) = 0.95). The disease prevalence is 1%. What is P(disease | +)? By Bayes': P(disease|+) = P(+|disease)*P(disease) / P(+). P(+) = P(+|disease)*0.01 + P(+|no disease)*0.99 = 0.99*0.01 + 0.05*0.99 = 0.0099 + 0.0495 = 0.0594. P(disease|+) = 0.0099/0.0594 = 0.167. Despite 99% sensitivity, the positive predictive value is only 16.7% due to low prevalence.
+The sections above build specific tools. This overview collects the classical results they rest on, with one worked example for each topic, so that you can check a definition quickly or fill a gap before a section needs it.
 
-**Essential problems**: Grinstead & Snell Ch 1: #1-8, #13-18; Ch 4: #1-10, #17-22
-**Challenge problems**: Grinstead & Snell Ch 4: #25-30
+### Probability foundations
 
-## 2. Discrete Random Variables
+A **sample space** $\Omega$ is the set of all possible outcomes, and an **event** is a subset of $\Omega$. Probability satisfies three axioms: $P(A) \ge 0$; $P(\Omega) = 1$; and $P(A \cup B) = P(A) + P(B)$ for disjoint $A$ and $B$, extending to countable unions. **Conditional probability** is $P(A \mid B) = P(A \cap B)/P(B)$, and $A$ and $B$ are **independent** if $P(A \cap B) = P(A)P(B)$.
 
-**Textbook sections**: Grinstead & Snell, Ch 5 and Ch 6
+Three theorems follow. **Bayes' theorem**, $P(A \mid B) = P(B \mid A)P(A)/P(B)$, reverses a conditional probability: weight the likelihood $P(B \mid A)$ by the prior $P(A)$ and normalize. It is the engine of Bayesian inference. The **law of total probability**, $P(B) = \sum_i P(B \mid A_i)P(A_i)$ for a partition $\{A_i\}$ of $\Omega$, computes the probability of $B$ by considering all the mutually exclusive ways it can happen. And **inclusion-exclusion**, $P(A \cup B) = P(A) + P(B) - P(A \cap B)$, is the set identity carried over to probabilities.
 
-**Key definitions**:
-- **Random variable**: A function X: Omega -> R that assigns a numerical value to each outcome
-- **PMF (probability mass function)**: P(X = x) for each possible value x
-- **CDF (cumulative distribution function)**: F(x) = P(X <= x)
-- **Expected value**: E[X] = Sum over x of x * P(X = x)
-- **Variance**: Var(X) = E[(X - E[X])^2] = E[X^2] - (E[X])^2
-- **Standard deviation**: SD(X) = sqrt(Var(X))
+Here is the classic example. A test for a disease is 99% sensitive ($P(+ \mid \text{disease}) = 0.99$) and 95% specific ($P(- \mid \text{no disease}) = 0.95$), and the prevalence is 1%. By total probability, $P(+) = 0.99 \cdot 0.01 + 0.05 \cdot 0.99 = 0.0099 + 0.0495 = 0.0594$, and by Bayes, $P(\text{disease} \mid +) = 0.0099/0.0594 = 0.167$. Despite 99% sensitivity, the positive predictive value is only 16.7%, because the disease is rare.
 
-**Key distributions**:
-- **Bernoulli(p)**: X in {0,1}, P(X=1) = p. E[X] = p, Var(X) = p(1-p)
-- **Binomial(n,p)**: Number of successes in n independent Bernoulli trials. P(X=k) = C(n,k)*p^k*(1-p)^(n-k). E[X] = np, Var(X) = np(1-p)
-- **Geometric(p)**: Number of trials until first success. P(X=k) = (1-p)^(k-1)*p. E[X] = 1/p
-- **Poisson(lambda)**: Number of events in a fixed interval. P(X=k) = e^(-lambda)*lambda^k/k!. E[X] = Var(X) = lambda
+### Discrete random variables
 
-**Key theorems**:
-- **Linearity of Expectation**: E[aX + bY] = aE[X] + bE[Y], always (even for dependent variables). *Intuition*: expectation is a linear operator, no independence needed. This is one of the most useful properties in all of probability.
-- **Variance of Sum (independent)**: Var(X + Y) = Var(X) + Var(Y) when X, Y are independent. *Intuition*: independent fluctuations add in quadrature.
+A **random variable** is a function $X: \Omega \to \mathbb{R}$ that assigns a number to each outcome. Its **probability mass function** gives $P(X = x)$ for each value, and its **cumulative distribution function** is $F(x) = P(X \le x)$. The **expected value** is $E[X] = \sum_x x\,P(X = x)$, the **variance** is $\operatorname{Var}(X) = E[(X - E[X])^2] = E[X^2] - (E[X])^2$, and the **standard deviation** is $\sqrt{\operatorname{Var}(X)}$.
 
-**Worked example**:
-> A fair die is rolled 10 times. Let X = number of sixes. X ~ Binomial(10, 1/6). E[X] = 10*(1/6) = 5/3. Var(X) = 10*(1/6)*(5/6) = 25/18. P(X=0) = (5/6)^10 = 0.1615. P(X >= 3) = 1 - P(X=0) - P(X=1) - P(X=2) = 1 - (5/6)^10 - C(10,1)*(1/6)*(5/6)^9 - C(10,2)*(1/6)^2*(5/6)^8 = 0.2248.
+Four discrete distributions cover most needs. A **Bernoulli**($p$) variable takes values in $\{0, 1\}$ with $P(X = 1) = p$, so $E[X] = p$ and $\operatorname{Var}(X) = p(1 - p)$. A **Binomial**($n, p$) counts successes in $n$ independent Bernoulli trials: $P(X = k) = \binom{n}{k}p^k(1-p)^{n-k}$, $E[X] = np$, $\operatorname{Var}(X) = np(1-p)$. A **Geometric**($p$) counts trials until the first success: $P(X = k) = (1-p)^{k-1}p$ and $E[X] = 1/p$. A **Poisson**($\lambda$) counts events in a fixed interval: $P(X = k) = e^{-\lambda}\lambda^k/k!$ and $E[X] = \operatorname{Var}(X) = \lambda$.
 
-> Expected number of distinct coupons when collecting n types: E = n * H_n = n * (1 + 1/2 + ... + 1/n) (the Coupon Collector Problem, using linearity of expectation over geometric waiting times).
+**Linearity of expectation**, $E[aX + bY] = aE[X] + bE[Y]$, always holds, even for dependent variables; it is one of the most useful properties in all of probability. For independent $X$ and $Y$, $\operatorname{Var}(X + Y) = \operatorname{Var}(X) + \operatorname{Var}(Y)$: independent fluctuations add in quadrature.
 
-**Essential problems**: Grinstead & Snell Ch 5: #1-10, #15-22; Ch 6: #1-8
-**Challenge problems**: Grinstead & Snell Ch 6: #15-20
+For example, roll a fair die 10 times and let $X$ count the sixes, so $X \sim \text{Binomial}(10, 1/6)$. Then $E[X] = 10/6 = 5/3$, $\operatorname{Var}(X) = 10 \cdot \frac16 \cdot \frac56 = 25/18$, $P(X = 0) = (5/6)^{10} = 0.1615$, and $P(X \ge 3) = 1 - (5/6)^{10} - \binom{10}{1}\frac16(5/6)^9 - \binom{10}{2}(1/6)^2(5/6)^8 = 0.2248$. Linearity also solves the coupon collector problem: the expected number of draws needed to collect all $n$ coupon types is $n H_n = n(1 + 1/2 + \cdots + 1/n)$, a sum of geometric waiting times.
 
-## 3. Continuous Random Variables
+### Continuous random variables
 
-**Textbook sections**: Grinstead & Snell, Ch 2 (continuous density) and Ch 5
+A continuous variable has a **probability density function** $f(x) \ge 0$ with $\int_{-\infty}^{\infty} f(x)\,dx = 1$ and $P(a \le X \le b) = \int_a^b f(x)\,dx$. Its CDF is $F(x) = \int_{-\infty}^{x} f(t)\,dt$, so $f = F'$. Expectation and variance become integrals: $E[X] = \int x f(x)\,dx$ and $\operatorname{Var}(X) = \int (x - \mu)^2 f(x)\,dx$.
 
-**Key definitions**:
-- **PDF (probability density function)**: f(x) >= 0 and integral from -inf to inf of f(x) dx = 1; P(a <= X <= b) = integral from a to b of f(x) dx
-- **CDF**: F(x) = P(X <= x) = integral from -inf to x of f(t) dt; f(x) = F'(x)
-- **Expected value**: E[X] = integral from -inf to inf of x * f(x) dx
-- **Variance**: Var(X) = integral from -inf to inf of (x - mu)^2 * f(x) dx
+The **Uniform**($a, b$) density is $1/(b - a)$ on $[a, b]$, with $E[X] = (a + b)/2$ and $\operatorname{Var}(X) = (b - a)^2/12$. The **Exponential**($\lambda$) density is $\lambda e^{-\lambda x}$ for $x \ge 0$, with $E[X] = 1/\lambda$ and $\operatorname{Var}(X) = 1/\lambda^2$. The **Normal**($\mu, \sigma^2$) density is $\frac{1}{\sigma\sqrt{2\pi}}\exp\bigl(-(x - \mu)^2/(2\sigma^2)\bigr)$, the bell curve, with $E[X] = \mu$ and $\operatorname{Var}(X) = \sigma^2$; standardizing, $Z = (X - \mu)/\sigma \sim N(0, 1)$.
 
-**Key distributions**:
-- **Uniform(a,b)**: f(x) = 1/(b-a) on [a,b]. E[X] = (a+b)/2, Var(X) = (b-a)^2/12
-- **Exponential(lambda)**: f(x) = lambda*e^(-lambda*x) for x >= 0. E[X] = 1/lambda, Var(X) = 1/lambda^2. Memoryless property: P(X > s+t | X > s) = P(X > t)
-- **Normal(mu, sigma^2)**: f(x) = (1/(sigma*sqrt(2*pi))) * exp(-(x-mu)^2/(2*sigma^2)). The "bell curve." E[X] = mu, Var(X) = sigma^2
-- **Standard Normal**: Z = (X - mu)/sigma ~ Normal(0,1)
+Two facts are worth memorizing. The **68-95-99.7 rule** says a normal puts about 68% of its mass within one standard deviation of the mean, 95% within two, and 99.7% within three: it concentrates tightly. The exponential is **memoryless**, $P(X > s + t \mid X > s) = P(X > t)$: it forgets how long you have been waiting, so the remaining wait has the same distribution regardless. It is the continuous analogue of the geometric distribution.
 
-**Key theorems**:
-- **68-95-99.7 Rule**: For a normal distribution, approximately 68% of values fall within 1 SD, 95% within 2 SD, 99.7% within 3 SD. *Intuition*: the normal distribution concentrates tightly around the mean.
-- **Memoryless Property of Exponential**: P(X > s+t | X > s) = P(X > t). *Intuition*: the exponential distribution "forgets" how long you have been waiting -- the remaining wait time has the same distribution regardless. This is the continuous analogue of the geometric distribution.
+For example, if scores are Normal(72, 64), so the standard deviation is 8, the fraction above 88 is $P(Z > (88 - 72)/8) = P(Z > 2) = 1 - 0.9772 = 0.0228$, about 2.3%. And if service time is Exponential($\lambda = 0.5$), then $P(X > 4) = e^{-0.5 \cdot 4} = e^{-2} = 0.1353$.
 
-**Worked example**:
-> Scores are Normal(72, 64) (mean 72, variance 64, so SD = 8). What fraction scores above 88? Standardize: Z = (88-72)/8 = 2. P(Z > 2) = 1 - 0.9772 = 0.0228. About 2.3% score above 88.
+### Joint distributions
 
-> If service time is Exponential(lambda = 0.5), what is P(service > 4 minutes)? P(X > 4) = e^(-0.5*4) = e^(-2) = 0.1353.
+A **joint** mass function $P(X = x, Y = y)$ or density $f(x, y)$ gives probabilities for pairs. The **marginal** of $X$ is $f_X(x) = \sum_y f(x, y)$ (or $\int f(x, y)\,dy$), and the **conditional** is $f(y \mid x) = f(x, y)/f_X(x)$. **Covariance**, $\operatorname{Cov}(X, Y) = E[XY] - E[X]E[Y]$, measures linear association, and **correlation**, $\rho(X, Y) = \operatorname{Cov}(X, Y)/(\operatorname{SD}(X)\operatorname{SD}(Y))$, always lies in $[-1, 1]$.
 
-**Essential problems**: Grinstead & Snell Ch 2: #1-10; Ch 5: #10-20 (continuous sections)
-**Challenge problems**: Grinstead & Snell Ch 5: #25-30
+$X$ and $Y$ are independent if and only if $f(x, y) = f_X(x)f_Y(y)$ for all $x, y$: knowing $X$ tells you nothing about $Y$. In general $\operatorname{Var}(X + Y) = \operatorname{Var}(X) + \operatorname{Var}(Y) + 2\operatorname{Cov}(X, Y)$, so positively correlated variables sum to something that fluctuates more than independent ones would. Covariance is bilinear: $\operatorname{Cov}(aX, bY) = ab\operatorname{Cov}(X, Y)$, $\operatorname{Cov}(X + Y, Z) = \operatorname{Cov}(X, Z) + \operatorname{Cov}(Y, Z)$, and $\operatorname{Cov}(X, X) = \operatorname{Var}(X)$.
 
-## 4. Joint Distributions
+For example, let $P(0,0) = 0.1$, $P(0,1) = 0.2$, $P(1,0) = 0.3$, $P(1,1) = 0.4$. The marginals are $P(X = 0) = 0.3$, $P(X = 1) = 0.7$, $P(Y = 0) = 0.4$, $P(Y = 1) = 0.6$. Since $P(X = 0)P(Y = 0) = 0.12 \ne 0.1$, the variables are not independent. With $E[X] = 0.7$, $E[Y] = 0.6$, and $E[XY] = 0.4$ (only the cell $(1, 1)$ contributes), $\operatorname{Cov}(X, Y) = 0.4 - 0.7 \cdot 0.6 = -0.02$.
 
-**Textbook sections**: Grinstead & Snell, Ch 7
+### Limit theorems
 
-**Key definitions**:
-- **Joint PMF/PDF**: P(X=x, Y=y) or f(x,y) giving probabilities for pairs
-- **Marginal distribution**: f_X(x) = Sum over y of f(x,y) (discrete) or integral over y of f(x,y) dy (continuous)
-- **Conditional distribution**: f(y|x) = f(x,y) / f_X(x)
-- **Covariance**: Cov(X,Y) = E[XY] - E[X]*E[Y]; measures linear association
-- **Correlation**: rho(X,Y) = Cov(X,Y) / (SD(X)*SD(Y)); always in [-1,1]
+The **sample mean** is $\bar X = (X_1 + \cdots + X_n)/n$, and $X_n$ **converges in probability** to $c$ if $P(|X_n - c| > \varepsilon) \to 0$ for every $\varepsilon > 0$. The **weak law of large numbers** says that if $X_1, X_2, \ldots$ are iid with mean $\mu$, then $\bar X \to \mu$ in probability: the average of many independent measurements converges to the true mean, which is why sampling works. The **central limit theorem** says that if the $X_i$ are iid with mean $\mu$ and variance $\sigma^2$, then $(\bar X - \mu)/(\sigma/\sqrt{n})$ converges in distribution to $N(0, 1)$: whatever the shape of the original distribution, the sample mean becomes approximately normal for large $n$, which is why the normal appears everywhere. **Chebyshev's inequality**, $P(|X - \mu| \ge k\sigma) \le 1/k^2$, is a distribution-free bound on spread: weak, but universally applicable.
 
-**Key theorems**:
-- **Independence Characterization**: X and Y are independent iff f(x,y) = f_X(x)*f_Y(y) for all x,y. *Intuition*: knowing X tells you nothing about Y.
-- **Variance of Sum (general)**: Var(X+Y) = Var(X) + Var(Y) + 2*Cov(X,Y). *Intuition*: when variables are positively correlated, their sum fluctuates more than independent variables would.
-- **Covariance Properties**: Cov(aX, bY) = ab*Cov(X,Y). Cov(X+Y, Z) = Cov(X,Z) + Cov(Y,Z). Cov(X,X) = Var(X).
+For example, a factory produces items with mean weight 500 g and standard deviation 10 g. For a sample of $n = 100$, the CLT gives $\bar X \approx N(500, 100/100) = N(500, 1)$, so $P(\bar X > 502) = P(Z > 2) = 0.0228$: about a 2.3% chance. Chebyshev, for any distribution with $\mu = 100$ and $\sigma = 15$, gives $P(|X - 100| \ge 45) \le (15/45)^2 = 1/9$: at most 11.1% of values lie three or more standard deviations out, against 0.3% for a normal. Chebyshev is loose but general.
 
-**Worked example**:
-> Let X and Y have joint PMF: P(0,0)=0.1, P(0,1)=0.2, P(1,0)=0.3, P(1,1)=0.4. Marginals: P(X=0) = 0.3, P(X=1) = 0.7, P(Y=0) = 0.4, P(Y=1) = 0.6. Check independence: P(X=0)*P(Y=0) = 0.12 != 0.1 = P(X=0,Y=0). So X and Y are not independent. E[X] = 0.7, E[Y] = 0.6, E[XY] = 0*0*0.1 + 0*1*0.2 + 1*0*0.3 + 1*1*0.4 = 0.4. Cov(X,Y) = 0.4 - 0.7*0.6 = -0.02.
+### Descriptive statistics
 
-**Essential problems**: Grinstead & Snell Ch 7: #1-10, #15-20
-**Challenge problems**: Grinstead & Snell Ch 7: #23-28
+The **measures of center** are the mean (arithmetic average), median (middle value), and mode (most frequent value). The **measures of spread** are the range, the interquartile range $\text{IQR} = Q_3 - Q_1$, the variance, and the standard deviation, where $Q_1$, $Q_2$ (the median), and $Q_3$ are the 25th, 50th, and 75th percentiles. A **box plot** displays the minimum, $Q_1$, median, $Q_3$, and maximum, and flags outliers beyond $1.5 \times \text{IQR}$ from the quartiles. A distribution is left-skewed when mean < median, right-skewed when mean > median, and symmetric when they are equal.
 
-## 5. Limit Theorems
+For example, for the data 3, 7, 7, 12, 15, 18, 22: the mean is $84/7 = 12$ and the median is 12 (the 4th value); $Q_1 = 7$, $Q_3 = 18$, and $\text{IQR} = 11$. The outlier fences are $7 - 1.5 \cdot 11 = -9.5$ and $18 + 1.5 \cdot 11 = 34.5$, so there are no outliers.
 
-**Textbook sections**: Grinstead & Snell, Ch 8 and Ch 9
+### Inference
 
-**Key definitions**:
-- **Sample mean**: X_bar = (X_1 + X_2 + ... + X_n) / n
-- **Convergence in probability**: X_n converges to c if P(|X_n - c| > epsilon) -> 0 for every epsilon > 0
+A **point estimate** is a single value estimating a parameter, as $\bar X$ estimates $\mu$. A **confidence interval** is an interval $[L, U]$ with $P(L \le \theta \le U) = 1 - \alpha$, for example $\bar X \pm z_{\alpha/2}\,\sigma/\sqrt{n}$. Its interpretation is about the procedure, not any single interval: if you repeat the experiment many times, 95% of the 95% intervals constructed will contain the true parameter.
 
-**Key theorems**:
-- **Law of Large Numbers (Weak)**: If X_1, X_2, ... are iid with mean mu, then X_bar converges to mu in probability as n -> inf. *Intuition*: the average of many independent measurements converges to the true mean. This is why sampling works.
-- **Central Limit Theorem**: If X_1, ..., X_n are iid with mean mu and variance sigma^2, then (X_bar - mu) / (sigma/sqrt(n)) converges in distribution to N(0,1) as n -> inf. *Intuition*: no matter the shape of the original distribution, the distribution of the sample mean becomes approximately normal for large n. This is why the normal distribution appears everywhere.
-- **Chebyshev's Inequality**: P(|X - mu| >= k*sigma) <= 1/k^2. *Intuition*: a distribution-free bound on how spread out a random variable can be. Weak but universally applicable.
+A test starts from a **null hypothesis** $H_0$, the default claim (say $\mu = \mu_0$), and an **alternative** $H_a$, the claim you seek evidence for ($\mu \ne \mu_0$, or $\mu > \mu_0$). The **test statistic** is $Z = (\bar X - \mu_0)/(\sigma/\sqrt{n})$, or $T = (\bar X - \mu_0)/(s/\sqrt{n})$ when $\sigma$ is estimated. The **p-value** is the probability, assuming $H_0$, of a statistic as extreme as or more extreme than the one observed. In the Neyman-Pearson framework you choose the significance level $\alpha$ before the experiment and reject $H_0$ when $p < \alpha$, so $\alpha$ controls how often you falsely declare an effect. A **type I error** rejects a true $H_0$ (probability $\alpha$); a **type II error** fails to reject a false one (probability $\beta$).
 
-**Worked example**:
-> A factory produces items with mean weight 500g and SD 10g. For a sample of n = 100, what is P(X_bar > 502)? By CLT: X_bar ~ approx. N(500, 100/100) = N(500, 1). Z = (502 - 500)/1 = 2. P(Z > 2) = 0.0228. There is about a 2.3% chance the sample mean exceeds 502g.
+For example, a company claims its batteries last 500 hours, and a sample of 36 gives $\bar X = 490$ and $s = 30$. Testing $H_0: \mu = 500$ against $H_a: \mu < 500$ at $\alpha = 0.05$, $Z = (490 - 500)/(30/6) = -10/5 = -2.0$ and $p = P(Z < -2.0) = 0.0228 < 0.05$, so you reject $H_0$: there is significant evidence that the mean lifetime is below 500 hours. The 95% interval $490 \pm 1.96 \cdot (30/6) = 490 \pm 9.8 = (480.2, 499.8)$ excludes 500, consistent with the rejection.
 
-> Chebyshev: For any distribution with mu = 100, sigma = 15, P(|X - 100| >= 45) <= (15/45)^2 = 1/9. At most 11.1% of values can be more than 3 standard deviations from the mean (compare to 0.3% for normal -- Chebyshev is loose but general).
+### Regression
 
-**Essential problems**: Grinstead & Snell Ch 8: #1-8; Ch 9: #1-6
-**Challenge problems**: Grinstead & Snell Ch 9: #10-14
+**Simple linear regression** fits $\hat y = b_0 + b_1 x$ with $b_1 = \sum(x_i - \bar x)(y_i - \bar y)/\sum(x_i - \bar x)^2$ and $b_0 = \bar y - b_1\bar x$. A **residual** is $e_i = y_i - \hat y_i$, observed minus predicted. The **coefficient of determination** $R^2 = 1 - SS_\text{res}/SS_\text{tot}$ is the proportion of the variance in $y$ explained by $x$, and the correlation coefficient is $r = b_1(s_x/s_y)$, with $R^2 = r^2$ for simple regression.
 
-## 6. Descriptive Statistics
+The least-squares estimates minimize $\sum e_i^2$: among all lines, the regression line makes the total squared error smallest, which is orthogonal projection from linear algebra, $A^\top A x = A^\top b$. The **Gauss-Markov theorem** adds that under the regression assumptions (linearity, independence, homoscedasticity, no perfect multicollinearity), the least-squares estimators are the best linear unbiased estimators: no unbiased linear estimator has smaller variance.
 
-**Textbook sections**: OpenStax Introductory Statistics, Ch 1-2
+For example, take the points (1, 2), (2, 4), (3, 5), (4, 4), (5, 5), so $\bar x = 3$ and $\bar y = 4$. Then $\sum(x_i - \bar x)(y_i - \bar y) = (-2)(-2) + (-1)(0) + 0(1) + 1(0) + 2(1) = 6$ and $\sum(x_i - \bar x)^2 = 4 + 1 + 0 + 1 + 4 = 10$, giving $b_1 = 0.6$ and $b_0 = 4 - 0.6 \cdot 3 = 2.2$. The line is $\hat y = 2.2 + 0.6x$, predicting 4.0 at $x = 3$. The residual sum of squares is $(2 - 2.8)^2 + (4 - 3.4)^2 + (5 - 4.0)^2 + (4 - 4.6)^2 + (5 - 5.2)^2 = 0.64 + 0.36 + 1.0 + 0.36 + 0.04 = 2.4$, and $SS_\text{tot} = 4 + 0 + 1 + 0 + 1 = 6$, so $R^2 = 1 - 2.4/6 = 0.6$: the model explains 60% of the variance in $y$.
 
-**Key definitions**:
-- **Measures of center**: Mean (arithmetic average), median (middle value), mode (most frequent)
-- **Measures of spread**: Range, interquartile range (IQR = Q3 - Q1), variance, standard deviation
-- **Percentiles and quartiles**: Q1 (25th percentile), Q2 (median), Q3 (75th percentile)
-- **Box plot**: Displays min, Q1, median, Q3, max; outliers beyond 1.5*IQR from quartiles
-- **Skewness**: Left-skewed (mean < median), right-skewed (mean > median), symmetric (mean = median)
+### Which technique when
 
-**Worked example**:
-> Data: 3, 7, 7, 12, 15, 18, 22. Mean = 84/7 = 12. Median = 12 (4th value). Q1 = 7, Q3 = 18, IQR = 11. Outlier fences: 7 - 1.5*11 = -9.5 (lower), 18 + 1.5*11 = 34.5 (upper). No outliers.
+The table collects the techniques above by the question each answers.
 
-**Essential problems**: OpenStax Statistics Ch 2: #1-12, #20-28
-**Challenge problems**: OpenStax Statistics Ch 2: #45-52
+| Technique | When to use | Key formula or idea |
+|---|---|---|
+| Bayes' theorem | Reverse a conditional probability | $P(A \mid B) = P(B \mid A)P(A)/P(B)$ |
+| Law of total probability | Decompose by cases | $P(B) = \sum_i P(B \mid A_i)P(A_i)$ |
+| Linearity of expectation | Expected value of a sum | $E[X + Y] = E[X] + E[Y]$, always |
+| CLT approximation | Distribution of a sample mean | $\bar X \approx N(\mu, \sigma^2/n)$ for large $n$ |
+| Z-test or t-test | Test a hypothesis about a mean | Compare the statistic with a critical value |
+| Confidence interval | Estimate a parameter with uncertainty | $\bar X \pm z\,\sigma/\sqrt{n}$ |
+| Least squares | Fit a linear model | Minimize the sum of squared residuals |
+| Standardization | Convert to the standard normal | $Z = (X - \mu)/\sigma$ |
 
-## 7. Inference
-
-**Textbook sections**: OpenStax Introductory Statistics, Ch 8-10
-
-**Key definitions**:
-- **Point estimate**: A single value estimating a parameter (e.g., X_bar estimates mu)
-- **Confidence interval**: An interval [L, U] such that P(L <= theta <= U) = 1 - alpha; e.g., X_bar +/- z_(alpha/2) * sigma/sqrt(n)
-- **Null hypothesis (H_0)**: The default claim (e.g., mu = mu_0)
-- **Alternative hypothesis (H_a)**: The claim we seek evidence for (e.g., mu != mu_0, or mu > mu_0)
-- **Test statistic**: Z = (X_bar - mu_0) / (sigma/sqrt(n)) or T = (X_bar - mu_0) / (s/sqrt(n))
-- **p-value**: The probability of observing a test statistic as extreme as (or more extreme than) the one observed, assuming H_0 is true
-- **Type I error**: Rejecting H_0 when it is true (probability = alpha)
-- **Type II error**: Failing to reject H_0 when it is false (probability = beta)
-
-**Key theorems**:
-- **CI Interpretation**: A 95% confidence interval means that if we repeat the experiment many times, 95% of the constructed intervals will contain the true parameter. *Intuition*: it is a statement about the procedure, not about any single interval.
-- **Neyman-Pearson Framework**: Choose alpha (significance level) before the experiment. Reject H_0 if p-value < alpha. *Intuition*: alpha controls the rate of false positives -- how often you incorrectly declare an effect.
-
-**Worked example**:
-> A company claims its batteries last 500 hours. A sample of 36 gives X_bar = 490, s = 30. Test at alpha = 0.05. H_0: mu = 500, H_a: mu < 500. Test statistic: Z = (490 - 500)/(30/6) = -10/5 = -2.0. p-value = P(Z < -2.0) = 0.0228 < 0.05. Reject H_0. There is significant evidence that the mean lifetime is less than 500 hours.
-
-> 95% CI for a population mean: X_bar +/- 1.96 * s/sqrt(n) = 490 +/- 1.96*(30/6) = 490 +/- 9.8 = (480.2, 499.8). Since 500 is outside this interval, this is consistent with rejecting H_0.
-
-**Essential problems**: OpenStax Statistics Ch 8: #1-12; Ch 9: #1-14; Ch 10: #1-10
-**Challenge problems**: OpenStax Statistics Ch 9: #60-70; Ch 10: #40-48
-
-## 8. Regression
-
-**Textbook sections**: OpenStax Introductory Statistics, Ch 12
-
-**Key definitions**:
-- **Simple linear regression**: y_hat = b_0 + b_1*x, where b_1 = Sum((x_i - x_bar)(y_i - y_bar)) / Sum((x_i - x_bar)^2) and b_0 = y_bar - b_1*x_bar
-- **Residual**: e_i = y_i - y_hat_i (observed minus predicted)
-- **Coefficient of determination**: R^2 = 1 - OL_res / OL_tot = the proportion of variance in y explained by x
-- **Correlation coefficient**: r = b_1 * (s_x / s_y); R^2 = r^2 for simple linear regression
-
-**Key theorems**:
-- **Least Squares Optimality**: The OLS estimates b_0, b_1 minimize the sum of squared residuals Sum(e_i^2). *Intuition*: among all lines, the regression line makes the total squared error as small as possible -- this connects directly to orthogonal projection in linear algebra (A^T A x = A^T b).
-- **Gauss-Markov Theorem**: Under the assumptions of linear regression (linearity, independence, homoscedasticity, no perfect multicollinearity), OLS estimators are the Best Linear Unbiased Estimators (BLUE). *Intuition*: you cannot find an unbiased linear estimator with smaller variance.
-
-**Worked example**:
-> Data: (1,2), (2,4), (3,5), (4,4), (5,5). x_bar = 3, y_bar = 4. Sum((x_i - x_bar)(y_i - y_bar)): (-2)(-2) + (-1)(0) + 0(1) + 1(0) + 2(1) = 4+0+0+0+2 = 6. Sum((x_i - x_bar)^2) = 4+1+0+1+4 = 10. b_1 = 6/10 = 0.6. b_0 = 4 - 0.6*3 = 2.2. Regression line: y_hat = 2.2 + 0.6x. Predicted at x=3: y_hat = 4.0. R^2: OL_res = (2-2.8)^2 + (4-3.4)^2 + (5-4.0)^2 + (4-4.6)^2 + (5-5.2)^2 = 0.64+0.36+1.0+0.36+0.04 = 2.4. OL_tot = 4+0+1+0+1 = 6. R^2 = 1 - 2.4/6 = 0.6. The model explains 60% of the variance in y.
-
-**Essential problems**: OpenStax Statistics Ch 12: #1-14, #30-40
-**Challenge problems**: OpenStax Statistics Ch 12: #55-65
-
----
-
-## Technique Catalog
-
-| Technique | When to Use | Key Formula/Idea |
-|-----------|-------------|------------------|
-| Bayes' Theorem | Reverse conditional probabilities | P(A|B) = P(B|A)*P(A) / P(B) |
-| Law of Total Probability | Decompose by cases | P(B) = Sum P(B|A_i)*P(A_i) |
-| Linearity of Expectation | Compute expected values of sums | E[X+Y] = E[X] + E[Y], always |
-| CLT Approximation | Approximate distribution of sample mean | X_bar ~ N(mu, sigma^2/n) for large n |
-| Z-test / T-test | Hypothesis testing for means | Compare test statistic to critical value |
-| Confidence Interval | Estimate a parameter with uncertainty | X_bar +/- z * sigma/sqrt(n) |
-| Least Squares | Fit a linear model to data | Minimize sum of squared residuals |
-| Standardization | Convert to standard normal | Z = (X - mu) / sigma |
-
-## Connections to CS & Algorithms
-
-| Math Concept | CS Application | Repo Link |
-|-------------|----------------|-----------|
-| Bayes' Theorem | Spam filters (Naive Bayes), ML classification | ML track |
-| Distributions (Poisson, exponential) | Queueing theory, network traffic modeling | systems track |
-| Expected value / linearity | Randomized algorithm analysis (QuickSort, hashing) | algorithms track |
-| CLT | A/B testing, confidence intervals in production | systems track |
-| Hypothesis testing | Feature flag experiments, statistical significance | systems track |
-| Regression | Machine learning (linear models as baseline) | ML track |
-| Conditional probability | Hidden Markov Models, Bayesian networks | ML track |
-| Variance / covariance | Portfolio theory, PCA, feature engineering | ML track |
-
-## Company Relevance
-
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| Google/Meta | A/B testing at scale, experiment design, statistical significance | Medium |
-| Amazon | Demand forecasting, recommendation confidence, pricing experiments | Medium |
-| Quantitative Finance | Risk modeling (VaR), option pricing, stochastic processes | Hard |
-| ML/AI Startups | Bayesian inference, probabilistic models, evaluation metrics | Hard |
-| Any Data Science role | Hypothesis testing, regression, confidence intervals daily | Medium |
-| Gaming (Riot, Blizzard) | Matchmaking algorithms use Bayesian rating systems (TrueSkill, Elo) | Medium |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `M07.0` | [Random variables, expectation, variance, and normal draws by Box-Muller](00-random-variables-and-the-normal.md) | build | 2 |
-| 2 | `M07.1` | [Categorical sampling: inverse CDF, Gumbel-max, alias method](01-categorical-sampling.md) | build | 3 |
-| 3 | `M07.2` | [MLE, Laplace, absolute discounting](02-mle-laplace-absolute-discounting.md) | build | 3 |
-| 4 | `M07.3` | [Variance propagation and initialization](03-variance-propagation-and-initialization.md) | build | 2 |
-| 5 | `M07.4` | [LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md) | build | 4 |
-| 6 | `M07.5` | [Hypothesis tests: paired and two-sample permutation, McNemar, Holm](05-hypothesis-tests.md) | build | 5 |
-| 7 | `M07.6` | [Rejection sampling and residual distributions](06-rejection-sampling-and-residual-distributions.md) | build | 6 |
-| 8 | `M07.7` | [Logistic regression (IRLS), ROC-AUC, calibration (ECE)](07-logistic-regression-roc-auc-calibration.md) | build | 5 |
-| 9 | `S-M07a` | [Probability problem set, part a: axioms, Bayes, random variables, Box-Muller](90-problem-set-a.md) | solve | 2 |
-| 10 | `S-M07b` | [Solve set: joint and covariance, MLE](91-problem-set-b.md) | solve | 3 |
-| 11 | `S-M07c` | [Solve set: LLN/CLT, confidence intervals](92-problem-set-c.md) | solve | 4 |
-| 12 | `S-M07d` | [Solve set: hypothesis tests, regression, queueing and Little's law, balls into bins](93-problem-set-d.md) | solve | 5 |
+### Where these ideas appear in computing
+
+The same handful of ideas turns up across the field. Bayes' theorem drives spam filters (naive Bayes) and probabilistic classification, and conditional probability underlies hidden Markov models and Bayesian networks. Poisson and exponential distributions model network traffic and queues. Linearity of expectation is the main tool for analysing randomized algorithms such as quicksort and hashing. The CLT and hypothesis testing are what make A/B tests and feature-flag experiments trustworthy, and regression is the baseline for machine learning. Variance and covariance appear in portfolio theory, PCA, and feature engineering.
+
+In industry, this is the daily language of experimentation and data science: A/B testing at scale and experiment design at large web companies; demand forecasting, recommendation confidence, and pricing experiments in retail; risk models, option pricing, and stochastic processes in quantitative finance; Bayesian inference and evaluation metrics in machine learning; and Bayesian rating systems such as TrueSkill and Elo for matchmaking in games.
+
+## Further reading
+
+- Grinstead and Snell, *Introduction to Probability* (free): https://math.dartmouth.edu/~prob/prob/prob.pdf. Chapters 1 and 4 cover the foundations, 2 and 5 continuous densities, 5 and 6 discrete random variables, 7 joint distributions, and 8 and 9 the limit theorems. Useful exercises: Ch. 1 #1-8, #13-18; Ch. 2 #1-10; Ch. 4 #1-10, #17-22 (challenge #25-30); Ch. 5 #1-22 (continuous sections #10-20, challenge #25-30); Ch. 6 #1-8 (challenge #15-20); Ch. 7 #1-10, #15-20 (challenge #23-28); Ch. 8 #1-8; Ch. 9 #1-6 (challenge #10-14).
+- OpenStax, *Introductory Statistics* (CC BY 4.0): https://openstax.org/details/books/introductory-statistics. Chapters 1 and 2 cover descriptive statistics, 8 to 10 inference, and 12 regression. Useful exercises: Ch. 2 #1-12, #20-28 (challenge #45-52); Ch. 8 #1-12; Ch. 9 #1-14 (challenge #60-70); Ch. 10 #1-10 (challenge #40-48); Ch. 12 #1-14, #30-40 (challenge #55-65).
+- [Seeing Theory](https://seeing-theory.brown.edu), interactive visualizations of distributions, the CLT, and regression.
+- Simulating experiments in Python with NumPy and SciPy is the fastest way to check a theoretical result; solve by hand first, then verify.

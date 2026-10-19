@@ -1,10 +1,23 @@
-# Palantir Software Engineer Interview Guide
+# Palantir
 
-Comprehensive preparation for Palantir Forward Deployed Engineer (FDE) and Backend Engineer roles, with focus on data infrastructure and AI systems.
+Palantir builds data integration and analysis platforms (Gotham, Foundry, and the newer AIP) for governments and large enterprises. Its interviews are shaped by that work. The coding rounds favour graph problems, because Palantir's products are fundamentally about entities and relationships. And Palantir has a signature round found almost nowhere else, the decomposition interview, in which you are handed a vague real-world problem ("help a hospital manage patient flow") and asked to break it into entities, workflows, and technical components.
 
-## Interview Process Overview
+This chapter prepares you for Palantir's Forward Deployed Engineer (FDE) and Backend Engineer roles, with a focus on data infrastructure and AI systems. It covers the two tracks and the process, the coding round with graph, data transformation, and timeline problems, a complete worked decomposition, the system design round on data integration, enterprise LLM assistants, and geospatial analytics, and the values round, including how to engage with the ethical questions Palantir's work raises.
 
-Timeline: **3-5 weeks**, **4-5 rounds**
+> **Learning objectives**
+> - Distinguish Palantir's FDE and backend tracks and describe the interview loop.
+> - Implement BFS shortest path, connected components, and three-colour cycle detection on an adjacency-set graph.
+> - Write a path-based transformer for nested data and a sweep-line merge of overlapping timelines.
+> - Decompose an ambiguous scenario into an ontology, workflows, an architecture, and trade-offs within thirty minutes.
+> - Design a data integration platform and an ontology-grounded LLM assistant with access control and audit.
+
+## Before you begin
+
+The graph algorithms assume familiarity with BFS and DFS. The design material draws on [Full-stack AI](../shared-concepts/full-stack-ai.md) for retrieval-augmented generation and on [Distributed systems](../shared-concepts/distributed-systems.md) for pipelines and storage. Data modelling practice, designing schemas for real domains, is the best general preparation for the decomposition round.
+
+## The interview process
+
+Expect three to five weeks and four or five rounds:
 
 | Round | Format | Duration | Focus |
 |-------|--------|----------|-------|
@@ -15,38 +28,21 @@ Timeline: **3-5 weeks**, **4-5 rounds**
 | Onsite 3 | System Design | 60 min | Data platform architecture |
 | Onsite 4 | Behavioral / Values | 45 min | Mission, collaboration, impact |
 
-Palantir has two main SWE tracks:
-- **Forward Deployed Engineer (FDE)**: Client-facing, full-stack, adapts Palantir to customer needs
-- **Backend / Infra Engineer**: Core platform development (Gotham, Foundry, AIP)
+Palantir has two main SWE tracks. Forward Deployed Engineers are client-facing and full-stack, adapting Palantir's platforms to each customer's needs. Backend and infrastructure engineers develop the core platforms: Gotham, Foundry, and AIP.
 
-## Compensation (Reported Ranges)
+Reported total compensation is about $200-250K for new grads, $350-500K for senior SWEs, and $500-800K for staff and above. Equity is RSUs with four-year vesting, and since Palantir is public, the equity is liquid.
 
-- **New Grad**: ~$200-250K total comp
-- **Senior SWE**: ~$350-500K total comp
-- **Staff+**: ~$500-800K total comp
-- RSUs with 4-year vesting; Palantir went public so equity is liquid
+## What Palantir looks for
 
-## Key Themes
+The decomposition round is unique to Palantir and is its signature interview, testing your ability to break an ambiguous, real-world problem into technical components. Behind it is data platform thinking: ontologies, data models, and workflows. Palantir is mission-driven, working with governments and large enterprises, and looks for candidates who care about impact and can handle the ethical complexity. It wants full-stack generalists, especially for FDE roles: engineers who can do frontend, backend, data engineering, and client communication. And its fastest-growing product, AIP (Artificial Intelligence Platform), integrates LLMs into enterprise workflows, so AI and ML platform knowledge is increasingly relevant.
 
-1. **Decomposition is unique to Palantir** -- The "decomposition" round is their signature interview. It tests your ability to break an ambiguous, real-world problem into technical components.
-2. **Data platform thinking** -- Palantir builds data integration and analysis platforms. Think about ontologies, data models, and workflows.
-3. **Mission-driven** -- Palantir works with governments and large enterprises. They look for candidates who care about impact and can handle the ethical complexity.
-4. **Full-stack generalists** -- Especially for FDE roles, they want engineers who can do frontend, backend, data engineering, and client communication.
-5. **AI/ML platform** -- AIP (Artificial Intelligence Platform) integrates LLMs into enterprise workflows. This is their fastest-growing product.
+## The coding round
 
-## Coding Round
+The coding round is standard data structures and algorithms at medium to hard difficulty, on HackerRank for the phone screen or a whiteboard onsite. Clean code matters: variable naming, modularity, and edge cases. Three problem families are reported most often.
 
-### What to Expect
+### Graph problems
 
-- Standard DS&A, medium to hard difficulty
-- Clean code matters -- variable naming, modularity, edge cases
-- May be on HackerRank (phone) or whiteboard (onsite)
-
-### Frequently Reported Problems
-
-#### Graph Problems (Very Common)
-
-Palantir loves graph problems because their products are fundamentally about entities and relationships.
+Graph problems are very common, since Palantir's products are about entities and relationships. A single adjacency-set class covers the usual three questions. Shortest path in an unweighted graph is BFS, carrying the path along with each node and marking nodes visited when they are enqueued so none is queued twice. Connected components is repeated DFS from every unvisited node. Cycle detection in a directed graph uses three colours: white for unvisited, grey for on the current DFS path, black for finished. Meeting a grey neighbour means you have found a back edge, which is a cycle.
 
 ```python
 from collections import defaultdict, deque
@@ -109,7 +105,11 @@ class Graph:
         return any(dfs(n) for n in self.adj if color[n] == WHITE)
 ```
 
-#### Data Transformation / ETL
+> **Warning:** Because `adj` is a `defaultdict`, merely reading `self.adj[v]` inserts `v` as a key. In a directed graph, a node that only ever appears as an edge target is not yet a key, so `detect_cycle` inserts it while iterating over `self.adj` and Python raises `RuntimeError: dictionary changed size during iteration`. Iterating over `list(self.adj)`, or adding both endpoints as keys in `add_edge`, fixes it. Copying `path + [neighbor]` at every BFS step also costs $O(\text{length})$ per enqueue; storing parent pointers and rebuilding the path at the end is the efficient version. The recursive DFS can also hit Python's recursion limit on deep graphs.
+
+### Data transformation
+
+The second family is ETL-style transformation of nested data. This transformer takes rules keyed by dot-separated paths, where `*` matches every element of a list, and applies each rule's function at the matching locations of a deep copy of the input, so the original is never mutated.
 
 ```python
 from typing import Any
@@ -156,7 +156,11 @@ class DataTransformer:
         return obj
 ```
 
-#### Interval / Timeline Problems
+Notice the asymmetry at the end of a path. For a dict key the function's return value replaces the value, but when the last segment is `*` the function is called on each list item and its return value is discarded, so it only has an effect if it mutates the item in place. A rule like `tags.*` with `str.upper` therefore does nothing. Assigning `data[i] = fn(item)` makes the two cases consistent, and an interviewer will likely ask whether you noticed.
+
+### Timelines and intervals
+
+The third family is interval problems. Here the task is to merge overlapping labelled events into non-overlapping segments, each tagged with the set of labels active during it. The sweep-line approach turns each event into an enter boundary and an exit boundary, sorts them by time, and walks them while keeping a count of active events per label. Whenever time advances and some label is active, the span since the previous boundary becomes a segment.
 
 ```python
 def merge_timelines(events: list[tuple[int, int, str]]) -> list[tuple[int, int, set[str]]]:
@@ -193,29 +197,18 @@ def merge_timelines(events: list[tuple[int, int, str]]) -> list[tuple[int, int, 
     return result
 ```
 
-## Decomposition Round (Palantir-Specific)
+For example, `[(1, 5, "a"), (3, 8, "b")]` produces `[(1, 3, {"a"}), (3, 5, {"a", "b"}), (5, 8, {"b"})]`. Counting per label, rather than storing a set, handles two overlapping events with the same label. One detail to be precise about: the key `(x[0], -x[1])` actually sorts enters (`-1`) before exits (`1`) at the same timestamp, the opposite of what the comment says. It happens not to matter here, because no segment is emitted between boundaries at the same instant and the counts are correct once all of them are processed, but you should be able to say so. Sorting dominates, so the algorithm is $O(n \log n)$.
 
-### What It Is
+## The decomposition round
 
-You're given a vague, real-world problem and asked to break it down into concrete technical components. This is Palantir's most distinctive interview round.
+The decomposition round is Palantir's most distinctive interview. You are given a vague, real-world problem and asked to break it down into concrete technical components. The interviewer presents a high-level scenario, such as "help a hospital manage patient flow". You ask clarifying questions to understand the problem, identify the key entities, relationships, and workflows, sketch a technical solution (data model, services, UI components), and finish by discussing trade-offs and prioritisation. The best way to understand the round is to work one through.
 
-### Format
+### A worked decomposition: disaster response
 
-1. Interviewer presents a high-level scenario (e.g., "Help a hospital manage patient flow")
-2. You ask clarifying questions to understand the problem
-3. You identify the key entities, relationships, and workflows
-4. You sketch a technical solution: data model, services, UI components
-5. You discuss trade-offs and prioritization
+Suppose the prompt is "Build a system to manage disaster response". Start by clarifying. What types of disasters: natural, industrial, others? Who are the users: emergency coordinators, field responders, logistics staff? What decisions must be made: resource allocation, evacuation routing, supply chain? And what data sources exist: satellite imagery, weather, population data, real-time reports?
 
-### Example: "Build a system to manage disaster response"
+With those answers, identify the entities. This is the ontology, and it maps directly to how Palantir's platforms model the world:
 
-**Step 1: Clarify**
-- What type of disasters? (Natural, industrial, etc.)
-- Who are the users? (Emergency coordinators, field responders, logistics)
-- What decisions need to be made? (Resource allocation, evacuation routing, supply chain)
-- What data sources exist? (Satellite, weather, population data, real-time reports)
-
-**Step 2: Identify entities (ontology)**
 ```
 Entities:
 - Incident (location, type, severity, status)
@@ -225,7 +218,8 @@ Entities:
 - Report (source, timestamp, content, verified)
 ```
 
-**Step 3: Identify workflows**
+Next, identify the workflows: what people actually do with those entities, with the inputs, processing, and outputs of each.
+
 ```
 1. Situation Assessment
    Input: Reports, sensor data, satellite imagery
@@ -248,7 +242,8 @@ Entities:
    Output: Re-allocation recommendations
 ```
 
-**Step 4: Technical architecture**
+Only now sketch the technical architecture, layer by layer, from ingestion through fusion and analytics to the interfaces each user group needs:
+
 ```
 [Data Ingestion Layer]
 ├── Satellite feed adapter
@@ -274,32 +269,19 @@ Entities:
 └── Notification system
 ```
 
-**Step 5: Trade-offs**
-- Real-time vs. accuracy: Faster updates may be less verified
-- Centralized vs. distributed: Single coordinator vs. regional autonomy
-- Complexity vs. usability: More features vs. ease of use under stress
+Finish with the trade-offs. Real-time updates trade against accuracy, since faster updates may be less verified. A centralised design with a single coordinator trades against a distributed one with regional autonomy. And complexity trades against usability: more features versus ease of use under stress, which matters a great deal for people working in a disaster.
 
-### Other Decomposition Scenarios
+### Practising decomposition
 
-- "Help a city manage its transportation system"
-- "Build a system for tracking supply chain across multiple countries"
-- "Design a platform for clinical trials management"
-- "Help a military organization plan logistics"
-- "Build a fraud detection system for a bank"
+Other scenarios reported include "Help a city manage its transportation system", "Build a system for tracking supply chain across multiple countries", "Design a platform for clinical trials management", "Help a military organization plan logistics", and "Build a fraud detection system for a bank".
 
-### Tips for Decomposition
+Five habits make the difference. Ask lots of questions, because the problem is intentionally vague and clarifying it shows product thinking. Think in entities and relationships, which maps directly to Palantir's ontology model. Prioritise ruthlessly: you cannot build everything, so say what the MVP is. Consider the human: who uses this, what decisions they make, and what they need to see. And put the data model first, getting the ontology right before thinking about features.
 
-1. **Ask lots of questions** -- The problem is intentionally vague. Clarifying shows product thinking.
-2. **Think in entities and relationships** -- This maps directly to Palantir's ontology model.
-3. **Prioritize ruthlessly** -- You can't build everything. What's the MVP?
-4. **Consider the human** -- Who uses this? What decisions do they make? What do they need to see?
-5. **Data model first** -- Get the ontology right before thinking about features.
+## The system design round
 
-## System Design Round
+Palantir's design questions are about data platforms, and three come up often.
 
-### Common Topics
-
-#### Design a Data Integration Platform
+### A data integration platform
 
 This is literally what Palantir Foundry does:
 
@@ -317,13 +299,9 @@ This is literally what Palantir Foundry does:
                     [Search/Query]  [Analytics]    [Actions/Workflows]
 ```
 
-- **Schema mapping**: Map heterogeneous sources to unified ontology
-- **Entity resolution**: Deduplicate entities across sources (fuzzy matching, ML-based)
-- **Lineage tracking**: Know where every data point came from
-- **Access control**: Row-level and column-level security based on user clearance
-- **Versioning**: Time-travel queries, audit trail
+Schema mapping maps heterogeneous sources onto the unified ontology. Entity resolution deduplicates entities across sources with fuzzy or ML-based matching. Lineage tracking records where every data point came from. Access control is row-level and column-level, based on each user's clearance. And versioning supports time-travel queries and an audit trail.
 
-#### Design an LLM-Powered Enterprise Assistant (AIP)
+### An LLM-powered enterprise assistant (AIP)
 
 ```
 [User Query] --> [Context Assembly]
@@ -337,73 +315,41 @@ This is literally what Palantir Foundry does:
               [Tool Execution] or [Response]
 ```
 
-- **Ontology-grounded**: LLM has access to the enterprise data ontology
-- **RAG (Retrieval Augmented Generation)**: Pull relevant data objects, not just documents
-- **Action framework**: LLM can propose actions (write data, trigger workflow), but human approves
-- **Access control**: LLM's view is restricted to the user's permissions
-- **Audit trail**: Every LLM interaction logged for compliance
+What distinguishes this from a generic chatbot is grounding in the ontology: the LLM has access to the enterprise data ontology, and retrieval-augmented generation pulls relevant data objects, not just documents. An action framework lets the LLM propose actions, such as writing data or triggering a workflow, but a human approves them. The LLM's view is restricted to the user's own permissions, and every interaction is logged for compliance.
 
-#### Design a Geospatial Analytics System
+### Geospatial analytics
 
-- **Indexing**: H3 hexagonal grid or S2 geometry for geospatial queries
-- **Temporal**: Time-series analysis on moving entities
-- **Visualization**: Heatmaps, trajectories, clustering on a map
-- **Scale**: Billions of location events per day
+A geospatial system indexes with the H3 hexagonal grid or S2 geometry, runs time-series analysis on moving entities, visualises heatmaps, trajectories, and clusters on a map, and must scale to billions of location events per day.
 
-## Behavioral / Values Round
+## The behavioral and values round
 
-### Palantir Values
+Palantir builds for defence, intelligence, healthcare, and enterprise, and you should be comfortable with that. The values it looks for are mission focus, being impact-driven ("What's the most impactful thing you've worked on?"), intellectual rigour, caring about getting things right, and ownership, end to end from data model to deployment.
 
-- **Mission focus**: They build for defense, intelligence, healthcare, and enterprise. Be comfortable with this.
-- **Impact-driven**: "What's the most impactful thing you've worked on?"
-- **Intellectual rigor**: Deep thinkers who care about getting it right.
-- **Ownership**: End-to-end, from data model to deployment.
+Common questions include "Why Palantir?", "Tell me about a time you had to make sense of a complex, messy dataset.", "Describe a project where you had to balance technical and non-technical stakeholders.", "What's the most complex system you've designed end-to-end?", and "How do you approach a problem you've never seen before?" Be genuine about the first one: if you are uncomfortable with defence work, Palantir may not be the right fit.
 
-### Common Questions
+Palantir's work with government agencies is controversial, and you should expect to discuss it. Be prepared to articulate your personal stance honestly, show that you have thought about the ethical implications, discuss how technology can be used responsibly, and demonstrate that you can engage with hard questions maturely.
 
-- "Why Palantir?" (Be genuine. If you're uncomfortable with defense work, this may not be the right fit.)
-- "Tell me about a time you had to make sense of a complex, messy dataset."
-- "Describe a project where you had to balance technical and non-technical stakeholders."
-- "What's the most complex system you've designed end-to-end?"
-- "How do you approach a problem you've never seen before?"
+## AI and ML at Palantir
 
-### Ethics / Controversial Topics
+AIP integrates enterprise LLMs with ontology-grounded context, supports tool calling and action execution within enterprise workflows, fine-tunes on domain-specific data under privacy constraints, and performs RAG over structured enterprise data rather than just documents. On the ML infrastructure side, Foundry supports feature engineering on its data pipelines, model training and deployment within the platform, model monitoring with retraining triggers, and integration with external frameworks such as PyTorch and TensorFlow.
 
-Palantir's work with government agencies is controversial. Be prepared to:
-- Articulate your personal stance honestly
-- Show you've thought about the ethical implications
-- Discuss how technology can be used responsibly
-- Demonstrate you can engage with hard questions maturely
+## Preparing
 
-## AI/ML at Palantir
+Practise decomposition by taking any real-world problem and breaking it into entities, workflows, and technical components in thirty minutes. Practise graph problems (BFS, DFS, shortest path, connected components, cycle detection), because Palantir loves them. Practise data modelling by designing schemas for real domains such as healthcare, supply chain, and finance. Read about Palantir's products until you understand Gotham, Foundry, and AIP at a conceptual level. Prepare impact stories, so that every behavioral answer highlights measurable impact. Think about data quality, since messy, incomplete, and conflicting data is the norm. And form an opinion on Palantir's mission: you will be asked, and a thoughtful perspective matters more than the specific stance.
 
-### AIP (Artificial Intelligence Platform)
-- Enterprise LLM integration with ontology-grounded context
-- Tool calling and action execution within enterprise workflows
-- Fine-tuning on domain-specific data with privacy constraints
-- RAG with structured enterprise data (not just documents)
+## Summary
 
-### ML Infrastructure
-- Feature engineering on top of Foundry data pipelines
-- Model training and deployment within the Foundry platform
-- Model monitoring and retraining triggers
-- Integration with external ML frameworks (PyTorch, TensorFlow)
+- Palantir hires FDEs and backend engineers, and both face a signature decomposition round.
+- Graph problems dominate the coding round; know BFS, components, and three-colour cycle detection, and their Python pitfalls.
+- A decomposition moves from clarifying questions to ontology, workflows, architecture, and trade-offs.
+- System design centres on data integration: schema mapping, entity resolution, lineage, fine-grained access control, and ontology-grounded LLMs.
+- Expect to discuss the ethics of Palantir's work honestly and maturely.
 
-## Preparation Tips
-
-1. **Practice decomposition** -- Take any real-world problem and break it into entities, workflows, and technical components. Time yourself to 30 minutes.
-2. **Graph problems** -- Palantir loves graphs. Practice BFS, DFS, shortest path, connected components, cycle detection.
-3. **Data modeling** -- Practice designing schemas for real-world domains (healthcare, supply chain, finance).
-4. **Read about Palantir's products** -- Understand Gotham, Foundry, and AIP at a conceptual level.
-5. **Prepare impact stories** -- Every behavioral answer should highlight measurable impact.
-6. **Think about data quality** -- Messy, incomplete, conflicting data is the norm. How do you handle it?
-7. **Form an opinion on their mission** -- You'll be asked. Having a thoughtful perspective matters more than the specific stance.
-
-## Sources
+## Further reading
 
 - [Palantir Careers](https://www.palantir.com/careers/)
 - [Palantir Blog](https://blog.palantir.com/)
 - [Palantir AIP Documentation](https://www.palantir.com/platforms/aip/)
-- [Glassdoor - Palantir SWE Interview Questions](https://www.glassdoor.com/Interview/Palantir-Technologies-Software-Engineer-Interview-Questions-EI_IE236375.0,21_KO22,39.htm)
-- [levels.fyi - Palantir Compensation Data](https://www.levels.fyi/companies/palantir-technologies/salaries/software-engineer)
-- r/cscareerquestions, Blind (community reports)
+- [Glassdoor: Palantir SWE Interview Questions](https://www.glassdoor.com/Interview/Palantir-Technologies-Software-Engineer-Interview-Questions-EI_IE236375.0,21_KO22,39.htm)
+- [levels.fyi: Palantir Compensation Data](https://www.levels.fyi/companies/palantir-technologies/salaries/software-engineer)
+- Community reports on r/cscareerquestions and Blind.

@@ -1,9 +1,9 @@
 # Practice
 
-The rest of this repository is the **learning path**: tracks you read, in
-order, with a textbook behind each topic. This directory is the **practice
-part of the manual**: small, self-contained problems, each shown with its
-answer and a worked explanation of why that answer is right.
+The rest of this repository is a shelf of books: you read each one in order,
+chapter by chapter, with a full explanation behind every topic. This directory
+is the companion workbook. It holds small, self-contained problems, each shown
+with its answer and a worked explanation of why that answer is right.
 
 Reading on its own produces recognition, which feels like knowledge and is
 not. You nod along to a correct solution and come away unable to rebuild it,
@@ -13,7 +13,14 @@ explain the optimal one from first principles. Every page here is written for
 that: the problem first, the answer folded away, and the reasoning laid out so
 you can check yours step by step.
 
-## Two parts
+> **What you will be able to do**
+> - Say what a short program prints and name the language rule that makes it print that.
+> - Explain why a reference implementation is shaped the way it is, and what breaks with the obvious alternatives.
+> - Recognize when several surprises across languages are really one missing mental model.
+
+## Two kinds of problem
+
+The workbook has two parts, and they test different things:
 
 | Part | What it shows | What you should be able to do afterwards |
 |------|---------------|------------------------------------------|
@@ -27,10 +34,11 @@ two, why this lock and not that one, why the destructor runs here.
 
 ## Predict: worked output explanations
 
-Twenty-four snippets across Go, Rust, Python, and TypeScript, six each, every
-one aimed at a belief that is common, load-bearing, and wrong. Start at
-[`predict/README.md`](predict/README.md) for how to use them and why the
-cross-language pairings are the real payload, or go straight to a language:
+There are twenty-four snippets across Go, Rust, Python, and TypeScript, six
+each, and every one is aimed at a belief that is common, load-bearing, and
+wrong. Start at [`predict/README.md`](predict/README.md) for how to use them
+and why the cross-language pairings are the real payload, or go straight to a
+language:
 
 | Language | Worked answers |
 |----------|----------------|
@@ -46,16 +54,18 @@ nothing.
 
 ## Build: reference implementations with walkthroughs
 
-Ten exercises per language, ordered by concept rather than by difficulty, so
-read the stars and not the numbers. Standard library only unless an exercise
-says otherwise: the point is to see how the thing itself is built, not which
+Once `predict` has shown you where your model of a language is thin, `build`
+asks you to defend whole designs. There are ten exercises per language,
+ordered by concept rather than by difficulty, so read the stars and not the
+numbers. Everything uses the standard library only unless an exercise says
+otherwise: the point is to see how the thing itself is built, not which
 library already does it.
 
 Solutions with walkthroughs exist today for C and C++. The other languages
 list the exercise briefs only, which are still useful as design questions to
 reason through before reading a solution in a language that has one.
 
-### Core
+### Core languages
 
 | Language | Focus | Status |
 |----------|-------|--------|
@@ -66,10 +76,10 @@ reason through before reading a solution in a language that has one.
 | [Python](build/general/python/README.md) | Data model, metaprogramming, asyncio | Exercise briefs |
 | [TypeScript](build/general/typescript/README.md) | Type narrowing, generics, runtime safety | Exercise briefs |
 
-### Optional
+### Optional languages
 
-Kept because the exercises are worth thinking through, not because the
-languages are used elsewhere in this repository.
+These are kept because the exercises are worth thinking through, not because
+the languages are used elsewhere in this repository.
 
 | Language | Focus | Status |
 |----------|-------|--------|
@@ -80,9 +90,10 @@ languages are used elsewhere in this repository.
 Every solution is a single self-testing program: one entry point, its own
 assertions, nonzero exit on the first failure. The assertions are part of the
 answer, since they state exactly what "correct" means for the exercise. The
-[case studies](../content/courses/case-studies/) are built the same way.
+programs in [*Case Studies*](../content/courses/case-studies/) are built the
+same way.
 
-## Picking something
+## Where to start
 
 Start with `predict`. It takes minutes, and the gap between what you expected
 and what the explanation says tells you which `build` walkthrough is worth your
@@ -91,6 +102,7 @@ three languages is not three gaps, it is one missing model of value versus
 reference semantics, and the dynamic array and vector walkthroughs in `build/`
 are where that model is built.
 
-The full course, which builds a working system chapter by chapter with the
-same solution-and-walkthrough shape, starts at
+When you want the same solution-and-walkthrough shape at the scale of a whole
+system, turn to *Build Your Own LLM System*, which builds a working system
+chapter by chapter; its reading path starts at
 [`paths/course/`](../content/courses/build-an-llm/paths/course/).

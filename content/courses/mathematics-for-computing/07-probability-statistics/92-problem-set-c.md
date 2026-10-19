@@ -1,35 +1,21 @@
-# Solve set: LLN/CLT, confidence intervals
+# Probability problem set, part c: limit theorems and confidence intervals
 
-## Overview
+[LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md) puts an interval on every number your models report: the bits per character of the [RNN language model](../../build-an-llm/p03-recurrent/06-rnn-language-model-stateful-tbptt.md), the BLEU of [beam search](../../build-an-llm/p04-attention-origins/04-beam-search.md), the accuracies of the [evaluation harness](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) in *Build Your Own LLM System*. Code computes those intervals without complaint whether or not you understand them, and a misread interval is worse than none: "95% sure model B is better" is not what a 95% interval says.
 
-| | |
-|---|---|
-| **Module** | `S-M07c` · solve · none · Pass 4 · 2 to 3 h |
-| **Solution** | a worked answer after every problem in section 4: 9 answers (counting lettered parts) and 1 proof (q5; model proof also in [`course/solutions/solve/S-M07c/q5.md`](../../../../course/solutions/solve/S-M07c/q5.md)) |
-| **Contract** | none: a pen and paper set |
-| **Needs** | `S-M07b` (the variance of a sum). Reading: [`M07.4` LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md) and the [Probability and Statistics topic](README.md), limit theorems and estimation sections |
-| **Used by** | no call site (a solve set). Read it alongside `M07.4`: q3, q6, q7, and q8 are its functions by hand, q5 is why its intervals shrink; part `S-M07d` follows with hypothesis tests |
-| **Optional depth** | Blitzstein and Hwang, *Introduction to Probability* (free), ch. 10 "Inequalities and limit theorems"; Wasserman, *All of Statistics*, ch. 5 to 8 |
+This problem set makes three ideas concrete by hand, so that the code becomes a transcription: why averaging works (the law of large numbers), why the error is normal and shrinks like $1/\sqrt{n}$ (the central limit theorem), and what exactly an interval promises. It is a pen-and-paper set with 9 answers (counting lettered parts) and one proof. A short review and three examples by hand come first; then the problems, each followed by a collapsed worked answer with the final result, the derivation, and the common wrong answers and why they are wrong. Try each problem before opening its answer. Read it alongside the limit-theorems section: Problems 3, 6, 7, and 8 are its functions by hand, and Problem 5 is why its intervals shrink. [Problem set D](93-problem-set-d.md) follows with hypothesis tests.
 
-## Key Takeaways
+The set builds on the variance of a sum from [problem set B](91-problem-set-b.md) and on the limit-theorem and inference material in the [chapter opening](README.md).
 
-- The mean of $n$ independent draws has the same mean and $1/n$ of the variance, so its error shrinks like $1/\sqrt{n}$; halving an error bar costs four times the data (q1, q4).
-- Chebyshev's inequality turns that variance into the weak law of large numbers in three lines (q2, q5).
-- The central limit theorem lets a normal table answer questions about sums of non-normal variables, such as coin flips (q3).
-- A confidence interval is a statement about the procedure, not about one interval: 95% of the intervals it would produce cover the true value (q9).
-- Student's t, Wilson, and the type 7 percentile rule are each a few lines of arithmetic, the same numbers `M07.4` computes (q6, q7, q8).
+> **Learning objectives**
+> - Compute the mean and variance of a sample mean and explain why its error shrinks like $1/\sqrt{n}$.
+> - Derive Chebyshev's inequality from Markov's and use it to prove the weak law of large numbers.
+> - Approximate tail probabilities of sums with the central limit theorem.
+> - Compute Student t, Wilson, and type 7 percentile intervals by hand.
+> - State correctly what a 95% confidence interval does and does not promise.
 
-## How to read this chapter
+## Notation
 
-Sections 1 to 3 review the ideas and work three examples by hand. Section 4 is the problem set: every problem is followed by a collapsed worked answer with the final result, the derivation, and the common wrong answers and why they are wrong. Try each problem before opening its answer.
-
----
-
-## 1. Why now
-
-`M07.4` puts an interval on every number your models report from Pass 4 on: the bits per character of `L3.6`, the BLEU of `L4.4`, the accuracies of `L6.7`. Code computes those intervals without complaint whether or not you understand them, and a misread interval is worse than none: "95% sure model B is better" is not what a 95% interval says. This set makes the three ideas concrete by hand, so that the code is a transcription: why averaging works (the law of large numbers), why the error is normal and shrinks like $1/\sqrt{n}$ (the central limit theorem), and what exactly an interval promises.
-
-## 2. Principles
+The set uses these symbols.
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -42,43 +28,45 @@ Sections 1 to 3 review the ideas and work three examples by hand. Section 4 is t
 | $k, n, \hat p, z$ | successes, trials, $k/n$, the normal quantile | integers, reals |
 | $s_0 \le \dots \le s_{B-1}$ | sorted bootstrap replicates | reals |
 
-### 2.1 Averages
+## Averages
 
-Linearity of expectation gives $E[\bar X_n] = \mu$. Independence makes every covariance in $\operatorname{Var}(\sum X_i)$ vanish (`S-M07b` q3), so the variance of the sum is $n\sigma^2$, and dividing by $n$ divides the variance by $n^2$: $\operatorname{Var}(\bar X_n) = \sigma^2/n$. The standard deviation of the mean is $\sigma/\sqrt{n}$.
+Linearity of expectation gives $E[\bar X_n] = \mu$. Independence makes every covariance in $\operatorname{Var}(\sum X_i)$ vanish (Problem 3 of [set B](91-problem-set-b.md)), so the variance of the sum is $n\sigma^2$, and dividing by $n$ divides the variance by $n^2$: $\operatorname{Var}(\bar X_n) = \sigma^2/n$. The standard deviation of the mean is $\sigma/\sqrt{n}$.
 
-### 2.2 Chebyshev and the law of large numbers
+## Chebyshev and the law of large numbers
 
-Markov's inequality, $P(Z \ge a) \le E[Z]/a$ for $Z \ge 0$ and $a > 0$, holds because $a\,\mathbf{1}[Z \ge a] \le Z$. Applied to $Z = (Y - EY)^2$ with $a = \varepsilon^2$ it becomes Chebyshev's inequality, $P(|Y - EY| \ge \varepsilon) \le \operatorname{Var}(Y)/\varepsilon^2$. With $Y = \bar X_n$ the bound shrinks to 0 as $n$ grows: that is the weak law of large numbers.
+That variance turns into a law in three lines. Markov's inequality, $P(Z \ge a) \le E[Z]/a$ for $Z \ge 0$ and $a > 0$, holds because $a\,\mathbf{1}[Z \ge a] \le Z$. Applied to $Z = (Y - EY)^2$ with $a = \varepsilon^2$ it becomes Chebyshev's inequality, $P(|Y - EY| \ge \varepsilon) \le \operatorname{Var}(Y)/\varepsilon^2$. With $Y = \bar X_n$ the bound shrinks to 0 as $n$ grows: that is the weak law of large numbers.
 
-### 2.3 The central limit theorem
+## The central limit theorem
 
-For large $n$, $(\bar X_n - \mu)/(\sigma/\sqrt{n})$ is approximately standard normal whatever the distribution of each $X_i$. Equivalently a sum $S_n = n\bar X_n$ is approximately normal with mean $n\mu$ and variance $n\sigma^2$, so $P(S_n \ge c) \approx 1 - \Phi\bigl((c - n\mu)/\sqrt{n\sigma^2}\bigr)$.
+The law of large numbers says the error goes to zero; the central limit theorem says what shape it has on the way. For large $n$, $(\bar X_n - \mu)/(\sigma/\sqrt{n})$ is approximately standard normal whatever the distribution of each $X_i$. Equivalently, a sum $S_n = n\bar X_n$ is approximately normal with mean $n\mu$ and variance $n\sigma^2$, so $P(S_n \ge c) \approx 1 - \Phi\bigl((c - n\mu)/\sqrt{n\sigma^2}\bigr)$.
 
-### 2.4 Intervals
+## Intervals
 
-A 95% confidence interval is a **procedure**: data in, interval out, built so that over repeated samples 95% of the intervals contain the fixed, unknown $\mu$. Once computed, a particular interval either contains $\mu$ or not; the 95% belongs to the procedure. The three procedures of `M07.4`:
+A 95% confidence interval is a **procedure**: data in, interval out, built so that over repeated samples 95% of the intervals contain the fixed, unknown $\mu$. Once computed, a particular interval either contains $\mu$ or not; the 95% belongs to the procedure. The limit-theorems section implements three procedures.
 
 - **Student t**: $\bar x \pm t_{1-\alpha/2,\,n-1}\, s/\sqrt{n}$.
 - **Wilson** for a proportion: $\bigl(\hat p + \frac{z^2}{2n} \pm z\sqrt{\frac{\hat p(1-\hat p)}{n} + \frac{z^2}{4n^2}}\bigr) / (1 + \frac{z^2}{n})$.
 - **Percentile bootstrap**: the type 7 quantiles at $\alpha/2$ and $1 - \alpha/2$ of the replicates: $h = (B - 1)q$, $i = \lfloor h \rfloor$, value $s_i + (h - i)(s_{i+1} - s_i)$.
 
-## 3. Worked example by hand
+## Three examples by hand
 
-These are siblings of q3, q6, and q8, not problems of the set.
+These are siblings of Problems 3, 6, and 8, not problems of the set.
 
-**A CLT tail.** 400 fair coin flips; $P(\text{at least } 220 \text{ heads})$. The count has mean $400 \cdot \frac{1}{2} = 200$ and variance $400 \cdot \frac{1}{4} = 100$, sd 10, so $z = (220 - 200)/10 = 2$ and the probability is about $1 - \Phi(2) = 1 - 0.97725 = 0.02275$. Twenty extra heads out of 400 is as surprising as ten out of 100: the sd grows like $\sqrt{n}$, not $n$.
+**A CLT tail.** Take 400 fair coin flips and ask for $P(\text{at least } 220 \text{ heads})$. The count has mean $400 \cdot \frac{1}{2} = 200$ and variance $400 \cdot \frac{1}{4} = 100$, sd 10, so $z = (220 - 200)/10 = 2$ and the probability is about $1 - \Phi(2) = 1 - 0.97725 = 0.02275$. Twenty extra heads out of 400 is as surprising as ten out of 100: the sd grows like $\sqrt{n}$, not $n$.
 
-**A t interval.** $n = 16$, $\bar x = 3$, $s = 4$, $t_{0.975,\,15} = 2.131$: the half-width is $2.131 \times 4/\sqrt{16} = 2.131$, so the interval is $[0.869, 5.131]$.
+**A t interval.** With $n = 16$, $\bar x = 3$, $s = 4$, and $t_{0.975,\,15} = 2.131$, the half-width is $2.131 \times 4/\sqrt{16} = 2.131$, so the interval is $[0.869, 5.131]$.
 
-**A percentile interval.** Five replicates $2, 3, 3, 7, 10$ and $q = 0.25$: $h = 4 \times 0.25 = 1$, $i = 1$, value $s_1 = 3$; $q = 0.75$: $h = 3$, value $s_3 = 7$. The 50% interval is $[3, 7]$.
+**A percentile interval.** Take five replicates $2, 3, 3, 7, 10$. For $q = 0.25$: $h = 4 \times 0.25 = 1$, $i = 1$, value $s_1 = 3$. For $q = 0.75$: $h = 3$, value $s_3 = 7$. The 50% interval is $[3, 7]$.
 
-## 4. The problem set, with worked answers
+## The problems
 
-$\sigma^2$ is written `s2`, $\varepsilon$ is `eps`, $\mu$ is `mu`. An interval is written $[lo, hi]$, and exact fractions such as $2/7$ are kept exact. Lettered parts are answered separately. The tag after each problem says what kind of answer is expected.
+$\sigma^2$ is written `s2`, $\varepsilon$ is `eps`, and $\mu$ is `mu`. An interval is written $[lo, hi]$, and exact fractions such as $2/7$ are kept exact. Lettered parts are answered separately, and the tag after each problem says what kind of answer is expected.
 
 ### The law of large numbers and the CLT
 
-**q1.** $X_1, \dots, X_n$ are independent, each with mean $\mu$ and variance $\sigma^2$, and $\bar X_n = (X_1 + \dots + X_n)/n$. (a) $E[\bar X_n]$. `[expr in mu]` (b) $\operatorname{Var}(\bar X_n)$. `[expr in s2, n]`
+The first five problems build from the variance of a mean to a full proof of the weak law.
+
+**Problem 1.** $X_1, \dots, X_n$ are independent, each with mean $\mu$ and variance $\sigma^2$, and $\bar X_n = (X_1 + \dots + X_n)/n$. (a) $E[\bar X_n]$. `[expr in mu]` (b) $\operatorname{Var}(\bar X_n)$. `[expr in s2, n]`
 
 <details><summary>Answer</summary>
 
@@ -86,15 +74,15 @@ $\sigma^2$ is written `s2`, $\varepsilon$ is `eps`, $\mu$ is `mu`. An interval i
 
 </details>
 
-**q2.** For the same $\bar X_n$ and any $\varepsilon > 0$, Chebyshev's inequality $P(|Y - E Y| \ge \varepsilon) \le \operatorname{Var}(Y)/\varepsilon^2$ bounds $P(|\bar X_n - \mu| \ge \varepsilon)$. Give the bound. `[expr in s2, n, eps]`
+**Problem 2.** For the same $\bar X_n$ and any $\varepsilon > 0$, Chebyshev's inequality $P(|Y - E Y| \ge \varepsilon) \le \operatorname{Var}(Y)/\varepsilon^2$ bounds $P(|\bar X_n - \mu| \ge \varepsilon)$. Give the bound. `[expr in s2, n, eps]`
 
 <details><summary>Answer</summary>
 
-**$\dfrac{\sigma^2}{n\varepsilon^2}$** (`s2/(n*eps^2)`). Apply Chebyshev to $Y = \bar X_n$, whose mean is $\mu$ and variance $\sigma^2/n$ (q1): $P(|\bar X_n - \mu| \ge \varepsilon) \le \frac{\sigma^2/n}{\varepsilon^2}$. For fixed $\varepsilon$ this goes to 0 as $n$ grows, which is the law of large numbers (q5). Common mistakes: $\sigma^2/\varepsilon^2$, the bound for one draw, which does not shrink; $\sigma^2/(n\varepsilon)$, with $\varepsilon$ not squared.
+**$\dfrac{\sigma^2}{n\varepsilon^2}$** (`s2/(n*eps^2)`). Apply Chebyshev to $Y = \bar X_n$, whose mean is $\mu$ and variance $\sigma^2/n$ (Problem 1): $P(|\bar X_n - \mu| \ge \varepsilon) \le \frac{\sigma^2/n}{\varepsilon^2}$. For fixed $\varepsilon$ this goes to 0 as $n$ grows, which is the law of large numbers (Problem 5). Common mistakes: $\sigma^2/\varepsilon^2$, the bound for one draw, which does not shrink; $\sigma^2/(n\varepsilon)$, with $\varepsilon$ not squared.
 
 </details>
 
-**q3.** You flip a fair coin 100 times. Using the central limit theorem without a continuity correction, and $\Phi(2) = 0.97725$ for the standard normal CDF, approximate $P(\text{at least } 60 \text{ heads})$. `[number, 3 significant digits]`
+**Problem 3.** You flip a fair coin 100 times. Using the central limit theorem without a continuity correction, and $\Phi(2) = 0.97725$ for the standard normal CDF, approximate $P(\text{at least } 60 \text{ heads})$. `[number, 3 significant digits]`
 
 <details><summary>Answer</summary>
 
@@ -102,7 +90,7 @@ $\sigma^2$ is written `s2`, $\varepsilon$ is `eps`, $\mu$ is `mu`. An interval i
 
 </details>
 
-**q4.** A 95% interval for an eval score is $\bar x \pm 1.96\, s/\sqrt{n}$. By what factor must $n$ grow to halve its width (with $s$ unchanged)? `[number, exact]`
+**Problem 4.** A 95% interval for an eval score is $\bar x \pm 1.96\, s/\sqrt{n}$. By what factor must $n$ grow to halve its width (with $s$ unchanged)? `[number, exact]`
 
 <details><summary>Answer</summary>
 
@@ -110,7 +98,7 @@ $\sigma^2$ is written `s2`, $\varepsilon$ is `eps`, $\mu$ is `mu`. An interval i
 
 </details>
 
-**q5.** Prove the weak law of large numbers for finite variance: if $X_1, X_2, \dots$ are independent with mean $\mu$ and variance $\sigma^2 < \infty$, then for every $\varepsilon > 0$, $P(|\bar X_n - \mu| \ge \varepsilon) \to 0$ as $n \to \infty$. `[proof]`
+**Problem 5.** Prove the weak law of large numbers for finite variance: if $X_1, X_2, \dots$ are independent with mean $\mu$ and variance $\sigma^2 < \infty$, then for every $\varepsilon > 0$, $P(|\bar X_n - \mu| \ge \varepsilon) \to 0$ as $n \to \infty$. `[proof]`
 
 <details><summary>Answer</summary>
 
@@ -124,13 +112,15 @@ $\sigma^2$ is written `s2`, $\varepsilon$ is `eps`, $\mu$ is `mu`. An interval i
 4. **Combine.** With $Y = \bar X_n$: $P(|\bar X_n - \mu| \ge \varepsilon) \le \frac{\sigma^2}{n\varepsilon^2}$.
 5. **Limit.** The right side is a constant times $1/n$ and tends to 0; probabilities are at least 0, so the left side tends to 0 too.
 
-Hence $\bar X_n \to \mu$ in probability. A complete proof computes the mean and variance (using independence for the variance), states or derives Chebyshev, takes the limit for every fixed $\varepsilon$, and says where finite variance is used. Model proof also in [`q5.md`](../../../../course/solutions/solve/S-M07c/q5.md).
+Hence $\bar X_n \to \mu$ in probability. A complete proof computes the mean and variance (using independence for the variance), states or derives Chebyshev, takes the limit for every fixed $\varepsilon$, and says where finite variance is used. The model proof is also in [`course/solutions/solve/S-M07c/q5.md`](../../../../course/solutions/solve/S-M07c/q5.md).
 
 </details>
 
 ### Confidence intervals
 
-**q6.** An eval of $n = 25$ prompts has mean score $\bar x = 10$ and sample standard deviation $s = 2$ (divisor $n - 1$). With $t_{0.975,\,24} = 2.064$, give the 95% Student t interval for the true mean. `[interval, exact decimals]`
+The last four problems compute each of the three intervals and then ask what one of them means.
+
+**Problem 6.** An eval of $n = 25$ prompts has mean score $\bar x = 10$ and sample standard deviation $s = 2$ (divisor $n - 1$). With $t_{0.975,\,24} = 2.064$, give the 95% Student t interval for the true mean. `[interval, exact decimals]`
 
 <details><summary>Answer</summary>
 
@@ -138,7 +128,7 @@ Hence $\bar X_n \to \mu$ in probability. A complete proof computes the mean and 
 
 </details>
 
-**q7.** A safety check fails on 0 of $n = 10$ prompts. Give the Wilson score interval for the failure rate with $z = 2$:
+**Problem 7.** A safety check fails on 0 of $n = 10$ prompts. Give the Wilson score interval for the failure rate with $z = 2$:
 $$\frac{\hat p + \frac{z^2}{2n} \pm z\sqrt{\frac{\hat p(1 - \hat p)}{n} + \frac{z^2}{4n^2}}}{1 + \frac{z^2}{n}}.$$
 `[interval, exact]`
 
@@ -148,15 +138,15 @@ $$\frac{\hat p + \frac{z^2}{2n} \pm z\sqrt{\frac{\hat p(1 - \hat p)}{n} + \frac{
 
 </details>
 
-**q8.** Nine bootstrap replicates of a statistic, sorted, are $1, 2, 4, 5, 5, 6, 8, 9, 13$. With the type 7 quantile (for sorted $s_0, \dots, s_{B-1}$ and level $q$: $h = (B - 1)q$, $i = \lfloor h \rfloor$, value $s_i + (h - i)(s_{i+1} - s_i)$), give the 80% percentile interval $[\text{quantile}(0.1), \text{quantile}(0.9)]$. `[interval, exact]`
+**Problem 8.** Nine bootstrap replicates of a statistic, sorted, are $1, 2, 4, 5, 5, 6, 8, 9, 13$. With the type 7 quantile (for sorted $s_0, \dots, s_{B-1}$ and level $q$: $h = (B - 1)q$, $i = \lfloor h \rfloor$, value $s_i + (h - i)(s_{i+1} - s_i)$), give the 80% percentile interval $[\text{quantile}(0.1), \text{quantile}(0.9)]$. `[interval, exact]`
 
 <details><summary>Answer</summary>
 
-**$[9/5, 49/5] = [1.8, 9.8]$.** $B = 9$. For $q = 0.1$: $h = 8 \times 0.1 = 0.8$, $i = 0$, value $s_0 + 0.8(s_1 - s_0) = 1 + 0.8 = 1.8$. For $q = 0.9$: $h = 7.2$, $i = 7$, value $s_7 + 0.2(s_8 - s_7) = 9 + 0.2 \times 4 = 9.8$. This is the rule numpy uses by default, so `M07.4`'s Python and Go agree with it. Common mistakes: $[1, 9]$, taking $s_{\lfloor h \rfloor}$ without interpolating; $[2, 9]$, a nearest-rank rule.
+**$[9/5, 49/5] = [1.8, 9.8]$.** $B = 9$. For $q = 0.1$: $h = 8 \times 0.1 = 0.8$, $i = 0$, value $s_0 + 0.8(s_1 - s_0) = 1 + 0.8 = 1.8$. For $q = 0.9$: $h = 7.2$, $i = 7$, value $s_7 + 0.2(s_8 - s_7) = 9 + 0.2 \times 4 = 9.8$. This is the rule numpy uses by default, so the Python and Go implementations of the limit-theorems section agree with it. Common mistakes: $[1, 9]$, taking $s_{\lfloor h \rfloor}$ without interpolating; $[2, 9]$, a nearest-rank rule.
 
 </details>
 
-**q9.** From one sample you compute the 95% confidence interval $[3.1, 4.7]$ for a mean $\mu$. Which statement is correct? `[choice]`
+**Problem 9.** From one sample you compute the 95% confidence interval $[3.1, 4.7]$ for a mean $\mu$. Which statement is correct? `[choice]`
 (a) $P(3.1 \le \mu \le 4.7) = 0.95$, with $\mu$ random.
 (b) 95% of the observations lie in $[3.1, 4.7]$.
 (c) The procedure that produced it covers the true $\mu$ in 95% of repeated samples.
@@ -168,26 +158,37 @@ $$\frac{\hat p + \frac{z^2}{2n} \pm z\sqrt{\frac{\hat p(1 - \hat p)}{n} + \frac{
 
 </details>
 
-## 5. Pitfalls
+## What can go wrong
 
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| Forgetting that $1/n$ is squared in a variance | the variance of a mean reported as $\sigma^2$ or $\sigma^2/n^2$ | $n\sigma^2$ for the sum, times $1/n^2$ (q1 b) |
-| Confusing the variance with the standard error | $\sqrt{\sigma^2/n}$ where a variance is asked | reports the variance, $\sigma^2/n$, and keeps the root for the interval (q1 b, q6) |
-| Chebyshev on one draw instead of the mean | a bound that does not shrink with $n$ | applies it to $\bar X_n$, variance $\sigma^2/n$ (q2) |
-| A two-sided tail for a one-sided question | 0.0455 instead of 0.02275 | takes $1 - \Phi(z)$ once (q3) |
-| Width proportional to $1/n$ | "double the data, halve the bar" | width $\propto 1/\sqrt n$, so four times the data (q4) |
-| The normal 1.96 with an estimated $s$ at small $n$, or $s$ without $\sqrt{n}$ | intervals too narrow, or 5 times too wide | uses $t_{0.975,\,n-1}$ times $s/\sqrt n$ (q6) |
-| The Wald interval at $k = 0$ | $[0, 0]$: certainty from ten trials | uses Wilson, which stays open at $k = 0$ (q7) |
-| Nearest-rank instead of interpolated quantiles | a bootstrap interval that disagrees with numpy and Go | interpolates with type 7 (q8) |
-| Reading the 95% as a probability about this one interval | "95% chance the mean is in here" | attaches the 95% to the procedure (q9) |
+The variance mistakes come first and propagate into everything else. Forgetting that $1/n$ is squared in a variance reports the variance of a mean as $\sigma^2$ or $\sigma^2/n^2$; the sum has variance $n\sigma^2$, times $1/n^2$ (Problem 1b). Confusing the variance with the standard error puts $\sqrt{\sigma^2/n}$ where a variance is asked; report $\sigma^2/n$ and keep the root for the interval (Problems 1b and 6). Applying Chebyshev to one draw instead of the mean gives a bound that does not shrink with $n$; apply it to $\bar X_n$, whose variance is $\sigma^2/n$ (Problem 2). Answering a one-sided question with a two-sided tail gives 0.0455 instead of 0.02275; take $1 - \Phi(z)$ once (Problem 3). And treating width as proportional to $1/n$ leads to "double the data, halve the bar"; width goes as $1/\sqrt n$, so it takes four times the data (Problem 4).
 
-## 6. Where it's used next
+> **Warning:** Using the normal 1.96 with an estimated $s$ at small $n$ gives intervals that are too narrow, and multiplying by $s$ without dividing by $\sqrt{n}$ gives intervals 5 times too wide. Use $t_{0.975,\,n-1}$ times $s/\sqrt n$ (Problem 6).
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `S-M07b` | the variance of a sum with covariances, q3 there |
-| Back | `M07.4` | `mean_ci`, `wilson_interval`, `quantile`, and `bootstrap_ci` are q6, q7, and q8 in code (reading) |
-| Forward | `S-M07d` | hypothesis tests: the same sampling distributions, read as p-values |
-| Forward | `L6.7` | every metric with its interval, and what the interval does and does not claim |
-| Forward | `L4.5` | bootstrap intervals over sentences for BLEU |
+The interval-specific pitfalls are about procedure. The Wald interval at $k = 0$ gives $[0, 0]$, certainty from ten trials; Wilson stays open at $k = 0$ (Problem 7). Nearest-rank quantiles instead of interpolated ones produce a bootstrap interval that disagrees with numpy and Go; interpolate with type 7 (Problem 8). And reading the 95% as a probability about this one interval ("95% chance the mean is in here") misattributes it; the 95% belongs to the procedure (Problem 9).
+
+## Where this leads
+
+The variance of a sum with covariances is Problem 3 of [problem set B](91-problem-set-b.md), and [LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md) implements `mean_ci`, `wilson_interval`, `quantile`, and `bootstrap_ci`, which are Problems 6, 7, and 8 in code. [Problem set D](93-problem-set-d.md) reads the same sampling distributions as p-values. In *Build Your Own LLM System*, [LM evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) reports every metric with its interval, together with what the interval does and does not claim, and [Sequence metrics: exact match, BLEU, chrF](../../build-an-llm/p04-attention-origins/05-sequence-metrics.md) bootstraps intervals over sentences for BLEU.
+
+### Further reading
+
+- Blitzstein and Hwang, *Introduction to Probability* (free), ch. 10 "Inequalities and limit theorems".
+- Wasserman, *All of Statistics*, ch. 5 to 8.
+
+## Key terms
+
+- **Standard error**: $\sigma/\sqrt{n}$, the standard deviation of a sample mean.
+- **Chebyshev's inequality**: $P(|Y - EY| \ge \varepsilon) \le \operatorname{Var}(Y)/\varepsilon^2$, a distribution-free tail bound derived from Markov's inequality.
+- **Weak law of large numbers**: the sample mean converges in probability to the true mean.
+- **Central limit theorem**: the standardized sample mean is approximately standard normal for large $n$, whatever the distribution of each draw.
+- **Confidence interval**: a procedure that, over repeated samples, produces intervals covering the fixed true parameter at the stated rate.
+- **Wilson interval**: a confidence interval for a proportion that stays sensible at 0 or $n$ successes.
+- **Type 7 quantile**: the linearly interpolated quantile $s_i + (h - i)(s_{i+1} - s_i)$ with $h = (B - 1)q$, numpy's default.
+
+## Summary
+
+- The mean of $n$ independent draws has the same mean and $1/n$ of the variance, so its error shrinks like $1/\sqrt{n}$; halving an error bar costs four times the data (Problems 1 and 4).
+- Chebyshev's inequality turns that variance into the weak law of large numbers in three lines (Problems 2 and 5).
+- The central limit theorem lets a normal table answer questions about sums of non-normal variables, such as coin flips (Problem 3).
+- A confidence interval is a statement about the procedure, not about one interval: 95% of the intervals it would produce cover the true value (Problem 9).
+- Student's t, Wilson, and the type 7 percentile rule are each a few lines of arithmetic, the same numbers the limit-theorems section computes (Problems 6, 7, and 8).

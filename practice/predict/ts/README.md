@@ -1,9 +1,28 @@
-# TypeScript: predict the output
+# Predicting TypeScript output
 
-Six TypeScript snippets, each with its exact output and an explanation of
-every numbered line. Read the source, write down what you think it prints,
-then open the fold. See the [predict introduction](../README.md) for how to use
-these pages.
+TypeScript's types describe a program; they do not run it. What runs is
+JavaScript, with JavaScript's number type, its coercing `==`, its
+call-site-dependent `this`, and its event loop. Most TypeScript surprises come
+from forgetting that: trusting a type assertion the runtime never checks,
+assuming `sort` compares numbers, or expecting a `setTimeout(fn, 0)` to run
+before a promise callback. The six snippets in this section each isolate one
+of those runtime rules.
+
+Use them as the [predict introduction](../README.md) describes: read the
+source, commit to the exact output line by line, then open the fold. Each
+explanation gives the rule in terms of what the JavaScript engine actually
+does, applies it to the snippet, and names the common wrong prediction and the
+model that produces it. By the end you should be able to look at TypeScript
+and see the JavaScript underneath, which is where the behaviour lives.
+
+> **Learning objectives**
+> - Explain the limits of IEEE 754 doubles, including the 53-bit integer range.
+> - Predict default `sort` order and how iteration methods treat array holes.
+> - Apply the Abstract Equality algorithm and the relational comparison rules to mixed-type operands.
+> - Determine `this` from the call site, `bind`, or an arrow function's defining scope.
+> - Explain type erasure, and order synchronous code, microtasks, and timers on the event loop.
+
+## Before you begin
 
 The outputs were produced with Node 22, which runs `.ts` files by **stripping
 the types** without checking them (Node 22.18 and later do this by default;
@@ -13,10 +32,11 @@ several snippets: what runs is JavaScript, and the types have no say in it.
 module and runs in strict mode. To reproduce an output, run
 `node predict/NN-name.ts` from this directory.
 
+Two printing details help when you write your predictions down:
 `console.log` prints its arguments separated by single spaces, and prints
 strings without quotes.
 
-## 01-number-precision
+## Number precision
 
 Source: [`predict/01-number-precision.ts`](predict/01-number-precision.ts)
 
@@ -107,7 +127,7 @@ Mixing `bigint` and `number` in arithmetic throws a `TypeError`.
 
 </details>
 
-## 02-array-sort-and-holes
+## Array sort and holes
 
 Source: [`predict/02-array-sort-and-holes.ts`](predict/02-array-sort-and-holes.ts)
 
@@ -200,7 +220,7 @@ returns them; `slice` would return a copy and leave `xs` alone.
 
 </details>
 
-## 03-equality-coercion
+## Equality and coercion
 
 Source: [`predict/03-equality-coercion.ts`](predict/03-equality-coercion.ts)
 
@@ -296,7 +316,7 @@ renders `null` as empty).
 
 </details>
 
-## 04-this-binding
+## How this is bound
 
 Source: [`predict/04-this-binding.ts`](predict/04-this-binding.ts)
 
@@ -369,7 +389,7 @@ inner bound function, which discards it and uses `{ n: 1000 }`.
 
 </details>
 
-## 05-types-are-erased
+## Types are erased
 
 Source: [`predict/05-types-are-erased.ts`](predict/05-types-are-erased.ts)
 
@@ -448,7 +468,7 @@ run time.
 
 </details>
 
-## 06-async-ordering
+## Async ordering
 
 Source: [`predict/06-async-ordering.ts`](predict/06-async-ordering.ts)
 
@@ -509,3 +529,40 @@ microtask queue is empty.
 microtasks can starve timers forever for the same reason.
 
 </details>
+
+## Where this leads
+
+Every one of these rules shows up in production TypeScript: currency amounts
+in floating point, numeric arrays sorted as strings, methods passed as
+callbacks that lose `this`, API responses cast with `as` and never validated,
+and ordering bugs between promises and timers. Compare them with the
+[Go](../go/README.md), [Rust](../rust/README.md), and
+[Python](../python/README.md) sets, using the pairings described in the
+[predict introduction](../README.md#the-corpus).
+
+## Key terms
+
+- **IEEE 754 double**: the 64-bit floating-point format of every JavaScript `number`, exact for integers up to 2^53.
+- **Hole**: an array index with no property at all, distinct from a property holding `undefined`.
+- **Abstract Equality**: the coercing algorithm behind `==`, as opposed to the non-converting `===`.
+- **Call-site `this`**: the rule that an ordinary function's `this` is set by how it is called, not where it is defined.
+- **Type erasure**: the removal of all type annotations, interfaces, and assertions before the program runs.
+- **Microtask queue**: the queue of promise reactions and `await` continuations, drained completely before the next macrotask.
+
+## Summary
+
+- Every `number` is a double; integers beyond 2^53 lose precision silently.
+- Default `sort` compares strings in place, and ES5 iteration methods skip holes while spread and `for...of` do not.
+- `==` coerces by a fixed algorithm, `null == undefined` and nothing else, and relational operators use a different numeric conversion.
+- `this` comes from the call site unless fixed by `bind` or inherited by an arrow function.
+- Types and assertions are erased; only JavaScript checks run at run time.
+- Synchronous code runs first, then the whole microtask queue, then the next timer or I/O callback.
+
+## Review questions
+
+1. Why does `[10, 9, 1].sort()` return `[1, 10, 9]`?
+   <details><summary>Answer</summary>With no comparator, `sort` converts each element to a string and compares UTF-16 code units, so `"10"` sorts before `"9"`. Pass `(a, b) => a - b` to sort numerically.</details>
+2. Why does a method passed as a callback lose its object, and why does an arrow function not?
+   <details><summary>Answer</summary>An ordinary function's `this` is decided at the call site; a bare call passes `undefined` in strict mode. An arrow function has no `this` of its own and reads it from the scope where it was defined, so the call site cannot change it.</details>
+3. Why does a `setTimeout(fn, 0)` callback run after promise callbacks scheduled later in the same script?
+   <details><summary>Answer</summary>A timer is a macrotask. After the script finishes, the event loop drains the entire microtask queue, including microtasks queued during draining, before taking the next macrotask.</details>

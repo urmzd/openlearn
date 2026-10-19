@@ -1,10 +1,23 @@
-# NVIDIA Software Engineer Interview Guide
+# NVIDIA
 
-Comprehensive preparation for NVIDIA engineering roles, with focus on GPU computing, AI infrastructure, and systems programming.
+Everything at NVIDIA revolves around parallel computation on GPUs, and its interviews assume that even "software" roles understand GPU architecture. The process is highly domain-specific: roles range from driver development to AI platform engineering, and the interview content varies significantly by team. What they share is a performance obsession. Memory access patterns, cache utilisation, and instruction-level parallelism are the vocabulary of every round, and microseconds matter.
 
-## Interview Process Overview
+This chapter prepares you for NVIDIA engineering roles with a focus on GPU computing, AI infrastructure, and systems programming. It begins with the GPU architecture you must understand for any NVIDIA interview, then works through the coding rounds (naive and tiled CUDA matrix multiplication, parallel reduction, a lock-free stack, and a GPU memory allocator), the system design round on multi-GPU training, inference optimisation, cluster scheduling, and GPU cloud, the core performance optimisations, and the hiring manager round.
 
-Timeline: **3-6 weeks**, **4-6 rounds**
+> **Learning objectives**
+> - Describe the NVIDIA GPU hierarchy from GPC to warp, and the latency of each level of GPU memory.
+> - Write naive and shared-memory tiled matrix multiplication kernels and explain why tiling helps.
+> - Implement a parallel sum reduction and explain the warp-level step and its synchronisation requirements.
+> - Implement a first-fit GPU memory allocator with alignment and coalescing, and measure its fragmentation.
+> - Design multi-GPU training, a TensorRT-style optimiser, and a topology-aware GPU scheduler.
+
+## Before you begin
+
+You should be comfortable in C and C++ (pointers, atomics, and memory ordering). The [Hudson River Trading](../hrt/README.md) chapter covers CPU caches and lock-free queues, which this chapter extends to GPUs, and [ML infrastructure](../shared-concepts/ml-infrastructure.md) covers the distributed training concepts behind the design round.
+
+## The interview process
+
+Expect three to six weeks and four to six rounds:
 
 | Round | Format | Duration | Focus |
 |-------|--------|----------|-------|
@@ -15,30 +28,15 @@ Timeline: **3-6 weeks**, **4-6 rounds**
 | Onsite 3 | System Design | 60 min | GPU infrastructure, ML systems |
 | Onsite 4 | Hiring Manager | 45 min | Culture, experience, motivation |
 
-NVIDIA's process is **highly domain-specific**. Roles range from driver development to AI platform engineering. The interview content varies significantly by team.
+For a senior engineer in the US, base salary is $180-250K, RSUs are about $200-500K per year, and the bonus is 10-15% of base. Total compensation is about $400-750K at senior and $700K-1.2M or more at principal and staff. NVIDIA's stock has been explosive, and that equity appreciation has made it one of the highest-paying companies.
 
-## Compensation (Senior, US)
+## What NVIDIA looks for
 
-- **Base**: $180-250K
-- **Equity**: RSUs, ~$200-500K/yr (NVIDIA stock has been explosive)
-- **Bonus**: 10-15% of base
-- **Total Comp**: ~$400-750K (Senior), ~$700K-1.2M+ (Principal/Staff)
-- NVIDIA's equity appreciation has made it one of the highest-paying companies
+GPU-centric thinking comes first: even software roles require understanding GPU architecture. For systems and infrastructure roles, CUDA is the lingua franca, expected or at least valued. AI infrastructure is the growth engine; data centre GPUs (H100, B200), DGX, NVIDIA AI Enterprise, and TensorRT are the profit centres. Interviewers are performance-obsessed, thinking in memory access patterns, cache utilisation, and instruction-level parallelism. Systems programming depth matters, in heavy C and C++, with an understanding of memory hierarchies, SIMD, and vectorisation. And NVIDIA covers the full stack from silicon to cloud: hardware, drivers, libraries, frameworks, and cloud services.
 
-## Key Themes
+## GPU architecture
 
-1. **GPU-centric thinking** -- Everything at NVIDIA revolves around parallel computation on GPUs. Even "software" roles require understanding GPU architecture.
-2. **CUDA is the lingua franca** -- For systems/infra roles, CUDA knowledge is expected or at least valued
-3. **AI infrastructure is the growth engine** -- Data center GPU (H100, B200), DGX, NVIDIA AI Enterprise, TensorRT are the profit centers
-4. **Performance obsessed** -- Microseconds matter. Memory access patterns, cache utilization, instruction-level parallelism
-5. **Systems programming depth** -- C/C++ heavy. Understanding of memory hierarchies, SIMD, vectorization
-6. **Full stack from silicon to cloud** -- NVIDIA covers hardware, drivers, libraries, frameworks, and cloud services
-
-## GPU Architecture Fundamentals
-
-**You must understand this for any NVIDIA interview.**
-
-### NVIDIA GPU Architecture (Simplified)
+You must understand this material for any NVIDIA interview. A GPU is a hierarchy of clusters. The chip contains several graphics processing clusters (GPCs), each with texture processing clusters (TPCs), each holding two streaming multiprocessors (SMs). The SM is where execution happens: it has CUDA cores for FP32 and INT32 work, Tensor Cores for matrix operations, shared memory and L1 cache, a register file, and warp schedulers that issue instructions to warps of 32 threads. Outside the SMs sit the L2 cache, the memory controllers, and HBM.
 
 ```
 [GPU]
@@ -58,12 +56,12 @@ NVIDIA's process is **highly domain-specific**. Roles range from driver developm
 └── [HBM (High Bandwidth Memory)]
 ```
 
-### Key Concepts
+The programming model maps onto that hardware through a handful of concepts:
 
 | Concept | Description |
 |---------|-------------|
 | **Warp** | 32 threads executing in lockstep (SIMT) |
-| **SM** | Streaming Multiprocessor -- the basic execution unit |
+| **SM** | Streaming Multiprocessor, the basic execution unit |
 | **Thread Block** | Group of threads (up to 1024) sharing shared memory |
 | **Grid** | Collection of thread blocks launched by a kernel |
 | **Shared Memory** | Fast on-chip memory shared within a thread block (~48-164 KB) |
@@ -72,7 +70,7 @@ NVIDIA's process is **highly domain-specific**. Roles range from driver developm
 | **NVLink** | High-bandwidth GPU-to-GPU interconnect (900 GB/s on H100) |
 | **PCIe** | GPU-to-CPU interconnect (64 GB/s Gen5) |
 
-### Memory Hierarchy
+The memory hierarchy is where performance is won or lost. Each step down costs roughly an order of magnitude in latency:
 
 ```
 Register File:    ~256 KB/SM,  0 cycles latency
@@ -83,21 +81,15 @@ HBM (Global):     ~80 GB,      ~400+ cycles latency
 CPU Memory:       ~TBs,        ~10,000+ cycles (over PCIe)
 ```
 
-**Optimization principle**: Move data up the hierarchy. Minimize global memory access. Maximize shared memory reuse.
+The optimisation principle follows directly: move data up the hierarchy, minimise global memory access, and maximise reuse of shared memory. Most of the code in the next section is that principle applied.
 
-## Coding Rounds
+## Coding rounds
 
-### What to Expect
+Systems roles focus on C and C++, while AI platform roles use Python. Expect GPU-aware algorithm design, memory management and pointer manipulation, parallel algorithm implementation, and possibly actual CUDA kernel writing. Four problem types are reported.
 
-- **C/C++ focused** for systems roles (Python for AI platform roles)
-- GPU-aware algorithm design
-- Memory management, pointer manipulation
-- Parallel algorithm implementation
-- May include actual CUDA kernel writing
+### Matrix multiplication in CUDA
 
-### Reported Problem Types
-
-#### 1. CUDA Kernel: Matrix Multiplication
+The canonical CUDA question is matrix multiplication, first naively and then with shared memory tiling. In the naive kernel each thread computes one element of `C` by reading a full row of `A` and a full column of `B` from global memory, so every input element is read $N$ times from HBM. The tiled kernel has each block cooperatively load a `TILE_SIZE` by `TILE_SIZE` tile of `A` and of `B` into shared memory, synchronise, accumulate the partial products from the fast tiles, and synchronise again before loading the next pair. Each global element is now read once per tile rather than once per thread, cutting global traffic by a factor of `TILE_SIZE`. Out-of-range elements are loaded as zero, so `N` need not be a multiple of the tile size.
 
 ```cuda
 // Naive matrix multiply
@@ -150,9 +142,11 @@ __global__ void matmul_tiled(float* A, float* B, float* C, int N) {
 }
 ```
 
-**Discussion points**: Shared memory bank conflicts, occupancy tuning, coalesced memory access.
+The follow-up discussion usually covers three topics: shared memory bank conflicts (when threads in a warp hit the same bank at different addresses and serialise), occupancy tuning (how many blocks fit on an SM given their registers and shared memory), and coalesced memory access (adjacent threads in `threadIdx.x` reading adjacent addresses, which both loads here do).
 
-#### 2. Parallel Reduction
+### Parallel reduction
+
+The second classic is summing an array in parallel. Each thread first adds two input elements, halving the work before shared memory is touched. A tree reduction in shared memory then halves the active threads at each step, with a `__syncthreads()` between steps, until 64 values remain. The last steps run within a single warp and are unrolled.
 
 ```cuda
 __global__ void reduce_sum(float* input, float* output, int n) {
@@ -188,7 +182,13 @@ __global__ void reduce_sum(float* input, float* output, int n) {
 }
 ```
 
-#### 3. Memory-Efficient Data Structures (C++)
+Each block writes one partial sum to `output[blockIdx.x]`, so a second launch (or an atomic add) combines the blocks. The kernel assumes a block size of 256 to match `sdata`.
+
+> **Warning:** The comment "no sync needed within a warp" was true when warps executed in strict lockstep. Since Volta, threads in a warp can be scheduled independently, and the `volatile` trick alone is no longer guaranteed correct. Modern code inserts `__syncwarp()` between the unrolled steps, or better, uses warp shuffles (`__shfl_down_sync`) and avoids shared memory for the last 32 values entirely. Knowing this is a strong signal in an NVIDIA interview.
+
+### A lock-free stack
+
+Systems roles also ask CPU-side concurrency. A Treiber stack pushes by pointing a new node at the current head and swinging `head` to the new node with compare-and-swap, retrying if another thread got there first; `compare_exchange_weak` updates `new_node->next` with the current head on failure, so the loop body is empty. Pop swings `head` to `old_head->next` the same way.
 
 ```cpp
 #include <atomic>
@@ -232,7 +232,11 @@ public:
 };
 ```
 
-#### 4. Python: GPU Memory Manager
+The comment on `delete` hides the interesting part. Between loading `old_head` and reading `old_head->next`, another thread may pop and free that node, so `pop` can read freed memory; and if the freed address is reused for a new node, the CAS can succeed on a stale view of the stack, which is the ABA problem. Hazard pointers, epoch-based reclamation, or tagged pointers fix it.
+
+### A GPU memory allocator
+
+The fourth problem, in Python, is a simple GPU memory allocator. Memory is a list of blocks ordered by offset. Allocation is first fit: find the first free block that can hold the request after aligning its start, then split it into an optional padding block, the allocated block, and an optional remainder. The alignment arithmetic `(offset + alignment - 1) & ~(alignment - 1)` rounds up to the next multiple of a power-of-two alignment. Freeing marks the block free and coalesces adjacent free blocks so the space can be reused for larger requests.
 
 ```python
 from dataclasses import dataclass
@@ -306,11 +310,13 @@ class GPUMemoryAllocator:
         return 1.0 - (largest_free / total_free) if total_free > 0 else 0.0
 ```
 
-## System Design Round
+The fragmentation ratio is $1 - \text{largest free block} / \text{total free}$: zero when all free memory is one contiguous block, and approaching one as free memory splinters into small pieces that cannot satisfy a large request. Allocation and coalescing both scan the block list, so they are $O(n)$ in the number of blocks; size-segregated free lists or a balanced tree keyed by size are the usual improvements. (The `heapq` import is unused, a hint that a heap of free blocks was the intended next step.)
 
-### Common Topics
+## The system design round
 
-#### Design a Multi-GPU Training System
+Design questions at NVIDIA are about GPU infrastructure and ML systems. Four are common.
+
+### Multi-GPU training
 
 ```
 [Training Coordinator]
@@ -326,23 +332,13 @@ class GPUMemoryAllocator:
                      [Checkpoint Manager]
 ```
 
-Key considerations:
-- **Data parallelism**: Distribute batches across GPUs, synchronize gradients
-- **Model parallelism**: Split large model layers across GPUs
-- **Pipeline parallelism**: Micro-batching to reduce pipeline bubbles
-- **Communication**: NCCL for GPU-to-GPU communication, NVLink within node, InfiniBand across nodes
-- **Gradient compression**: Mixed precision (FP16/BF16 forward, FP32 accumulation)
-- **Fault tolerance**: Checkpointing, elastic training, spot instance resilience
+Cover the three kinds of parallelism. Data parallelism distributes batches across GPUs and synchronises gradients; model parallelism splits large layers across GPUs; and pipeline parallelism assigns layers to stages and uses micro-batching to reduce pipeline bubbles. Communication runs over NCCL, using NVLink within a node and InfiniBand across nodes. Mixed precision (FP16 or BF16 forward, FP32 accumulation) halves the bytes that move, which is the simplest form of gradient compression. For fault tolerance, discuss checkpointing, elastic training, and resilience to spot instance loss.
 
-#### Design TensorRT Inference Optimizer
+### A TensorRT-style inference optimiser
 
-- **Graph optimization**: Layer fusion, constant folding, dead code elimination
-- **Precision calibration**: Determine optimal precision (FP32/FP16/INT8) per layer
-- **Kernel auto-tuning**: Profile multiple implementations per operation, select fastest
-- **Memory planning**: Optimize memory allocation across the execution graph
-- **Dynamic shapes**: Handle variable batch sizes and sequence lengths
+An inference optimiser rewrites a trained model for speed. Graph optimisation applies layer fusion, constant folding, and dead code elimination. Precision calibration determines the best precision (FP32, FP16, or INT8) for each layer. Kernel auto-tuning profiles multiple implementations of each operation and picks the fastest. Memory planning optimises allocation across the execution graph, and the optimiser must also handle dynamic shapes, meaning variable batch sizes and sequence lengths.
 
-#### Design a GPU Cluster Scheduler
+### A GPU cluster scheduler
 
 ```
 [Job Queue] --> [Scheduler] --> [GPU Cluster]
@@ -352,21 +348,15 @@ Key considerations:
               [Job Placement]  [GPU Health Monitor]
 ```
 
-- **Topology-aware scheduling**: Place multi-GPU jobs on GPUs with NVLink connectivity
-- **Gang scheduling**: All GPUs for a training job start simultaneously
-- **Preemption**: High-priority inference workloads preempt training
-- **GPU health**: Monitor for ECC errors, thermal throttling, GPU hang
-- **Fractional GPUs**: MIG (Multi-Instance GPU) for sharing a single GPU
+Scheduling must be topology-aware, placing multi-GPU jobs on GPUs connected by NVLink. Training jobs need gang scheduling, so that all their GPUs start simultaneously. High-priority inference workloads may preempt training. The scheduler monitors GPU health for ECC errors, thermal throttling, and hangs. And fractional GPUs via MIG (Multi-Instance GPU) let several jobs share one GPU.
 
-#### Design NVIDIA DGX Cloud
+### DGX Cloud
 
-- **Multi-tenant GPU sharing**: MIG + time-slicing + Kubernetes
-- **Storage**: High-throughput distributed filesystem (GPUDirect Storage)
-- **Networking**: RDMA / RoCE / InfiniBand for inter-node communication
-- **Monitoring**: GPU metrics (SM utilization, memory bandwidth, tensor core usage)
-- **Cost optimization**: Spot instances for training, reserved for inference
+A GPU cloud adds multi-tenancy: GPUs are shared through MIG, time-slicing, and Kubernetes. Storage is a high-throughput distributed filesystem with GPUDirect Storage. Inter-node networking uses RDMA, RoCE, or InfiniBand. Monitoring tracks GPU metrics (SM utilisation, memory bandwidth, Tensor Core usage), and cost is optimised by running training on spot instances and inference on reserved capacity.
 
-### Performance Optimization Concepts
+### Performance optimisations
+
+Whatever the design, expect to discuss the standard GPU optimisations and roughly what each buys:
 
 | Optimization | Description | Impact |
 |-------------|-------------|--------|
@@ -378,39 +368,27 @@ Key considerations:
 | Kernel fusion | Combine multiple kernels | Eliminate memory round-trips |
 | Asynchronous data transfer | Overlap compute and memory transfer | Hide transfer latency |
 
-## Behavioral / Hiring Manager
+## The hiring manager round
 
-### NVIDIA Culture
+NVIDIA's culture is innovation-driven ("the way we do the impossible is by imagining the unimaginable"), fast (Jensen Huang is famous for fast iteration and pivoting), technically deep, and collaborative across hardware and software teams. Common questions include "What excites you about GPU computing?", "Tell me about a performance optimization you're proud of.", "Describe a time you had to learn a new domain quickly.", "How do you approach debugging a performance regression?", and "What's your view on the future of AI hardware?"
 
-- **Innovation driven** -- "The way we do the impossible is by imagining the unimaginable"
-- **Speed** -- Jensen Huang is famous for fast iteration and pivoting
-- **Technical depth** -- Engineers are expected to go deep
-- **Collaborative** -- Cross-team work between hardware and software
+## Preparing
 
-### Common Questions
+Learn the CUDA basics even if you will not write CUDA daily: the execution model, the memory hierarchy, and the common patterns. For systems roles, be proficient in modern C++ (C++17/20, smart pointers, move semantics, templates). Know the GPU architecture (SM, warp, thread block, memory hierarchy) and read the H100 whitepaper. Cultivate a performance mindset in terms of memory bandwidth, compute utilisation, and latency hiding. Read the NVIDIA developer blog at developer.nvidia.com/blog, which has excellent technical content. Know NCCL, NVIDIA's multi-GPU communication library, and its collectives (AllReduce, broadcast, and so on), and understand TensorRT for model optimisation and inference serving. Finally, practise systems problems: memory allocators, lock-free structures, and cache-friendly algorithms.
 
-- "What excites you about GPU computing?"
-- "Tell me about a performance optimization you're proud of."
-- "Describe a time you had to learn a new domain quickly."
-- "How do you approach debugging a performance regression?"
-- "What's your view on the future of AI hardware?"
+## Summary
 
-## Preparation Tips
+- NVIDIA interviews are domain-specific, but all assume you understand GPU architecture and the memory hierarchy.
+- Tiling into shared memory and coalescing global accesses are the two most important kernel optimisations.
+- Know the classic kernels (matmul, reduction) and their modern caveats, such as warp synchronisation since Volta.
+- CPU-side systems questions (lock-free structures, allocators) probe memory reclamation and fragmentation.
+- Design questions centre on multi-GPU training, inference optimisation, and topology-aware scheduling.
 
-1. **Learn CUDA basics** -- Even if you won't write CUDA daily, understand the execution model, memory hierarchy, and common patterns.
-2. **C++ proficiency** -- For systems roles, modern C++ (C++17/20), smart pointers, move semantics, templates.
-3. **GPU architecture** -- Know SM, warp, thread block, memory hierarchy. Read the H100 whitepaper.
-4. **Performance mindset** -- Think in terms of memory bandwidth, compute utilization, latency hiding.
-5. **Read NVIDIA tech blog** -- developer.nvidia.com/blog has excellent technical content.
-6. **Know NCCL** -- NVIDIA's multi-GPU communication library. Understand AllReduce, broadcast, etc.
-7. **Understand TensorRT** -- Model optimization and inference serving on GPUs.
-8. **Practice systems problems** -- Memory allocators, lock-free structures, cache-friendly algorithms.
-
-## Sources
+## Further reading
 
 - [NVIDIA Developer Blog](https://developer.nvidia.com/blog)
 - [NVIDIA H100 Whitepaper](https://resources.nvidia.com/en-us-tensor-core)
 - [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/)
-- [Glassdoor - NVIDIA SWE Interview Questions](https://www.glassdoor.com/Interview/NVIDIA-Software-Engineer-Interview-Questions-EI_IE7633.0,6_KO7,24.htm)
-- [levels.fyi - NVIDIA Compensation Data](https://www.levels.fyi/companies/nvidia/salaries/software-engineer)
-- r/cscareerquestions, r/ExperiencedDevs, Blind (community reports)
+- [Glassdoor: NVIDIA SWE Interview Questions](https://www.glassdoor.com/Interview/NVIDIA-Software-Engineer-Interview-Questions-EI_IE7633.0,6_KO7,24.htm)
+- [levels.fyi: NVIDIA Compensation Data](https://www.levels.fyi/companies/nvidia/salaries/software-engineer)
+- Community reports on r/cscareerquestions, r/ExperiencedDevs, and Blind.

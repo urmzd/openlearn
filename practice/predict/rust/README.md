@@ -1,16 +1,39 @@
-# Rust: predict the output
+# Predicting Rust output
 
-Six Rust snippets, each with its exact output and an explanation of every
-numbered line. Read the source, write down what you think it prints, then open
-the fold. See the [predict introduction](../README.md) for how to use these
-pages.
+Rust's compiler rejects most wrong programs, which gives people the impression
+that a Rust program that compiles does what they think it does. It does what
+the language says, and in a handful of places that differs sharply from
+intuition: a second `let` that does not mutate anything, a `let _ =` that drops
+a value immediately, a `map` closure that never runs, an `as` cast that keeps
+only the low bits, a string slice that panics in the middle of a character.
+The six snippets in this section are aimed at those places.
+
+Use them as the [predict introduction](../README.md) describes: read the
+source, commit to the exact output line by line, and only then open the fold.
+Each explanation states the rule in terms of what the program actually owns,
+stores, and executes, applies it to the snippet, and names the common wrong
+prediction and the model that produces it. The aim is a mental model of
+ownership, scope, and laziness precise enough to predict output, not just to
+satisfy the borrow checker.
+
+> **Learning objectives**
+> - Explain shadowing as the introduction of a new binding, and predict the value of a block from its final expression.
+> - Predict the exact order in which destructors run, including temporaries and `let _ =`.
+> - Trace how lazy iterator adapters pull elements one at a time through a chain, and when work stops.
+> - Choose the overflow behaviour you want explicitly, and predict what `as` casts do when a value does not fit.
+> - Reason about byte-indexed `String`/`&str` slicing, moves versus copies, and `Rc` reference counts.
+
+## Before you begin
 
 Every snippet is its own binary in one Cargo package, [`predict/`](predict/)
 (edition 2024). To reproduce an output, run `cargo run --quiet --bin NN-name`
 inside `predict/`. The outputs are the same in debug and release builds: the
-snippets that touch overflow say explicitly which overflow behaviour they want.
+snippets that touch overflow say explicitly which overflow behaviour they
+want. If you have already read the [Go snippets](../go/README.md), the strings
+snippet here makes a useful comparison with
+[Go's strings snippet](../go/README.md#strings-bytes-and-runes).
 
-## 01-shadowing-and-blocks
+## Shadowing and block values
 
 Source: [`predict/src/bin/01-shadowing-and-blocks.rs`](predict/src/bin/01-shadowing-and-blocks.rs)
 
@@ -70,7 +93,7 @@ itself is unaffected, and the next iteration starts from the next range value.
 
 </details>
 
-## 02-drop-order
+## Drop order
 
 Source: [`predict/src/bin/02-drop-order.rs`](predict/src/bin/02-drop-order.rs)
 
@@ -141,7 +164,7 @@ always destroyed first.
 
 </details>
 
-## 03-iterator-laziness
+## Iterator laziness
 
 Source: [`predict/src/bin/03-iterator-laziness.rs`](predict/src/bin/03-iterator-laziness.rs)
 
@@ -211,7 +234,7 @@ the two characters of `"ab"`.
 
 </details>
 
-## 04-integer-overflow
+## Integer overflow and casts
 
 Source: [`predict/src/bin/04-integer-overflow.rs`](predict/src/bin/04-integer-overflow.rs)
 
@@ -301,7 +324,7 @@ evaluates constant overflow at compile time and rejects it.
 
 </details>
 
-## 05-string-vs-str
+## Owned and borrowed strings
 
 Source: [`predict/src/bin/05-string-vs-str.rs`](predict/src/bin/05-string-vs-str.rs)
 
@@ -338,7 +361,8 @@ chars.
 would produce invalid UTF-8. Rust never creates an invalid `&str`, so `get`
 refuses.
 *Common wrong prediction:* `Some("hé")` (slicing by characters) or
-`Some("h\xc3")`, which is what Go does in its snippet 05. Go strings are just
+`Some("h\xc3")`, which is what Go does in its
+[strings snippet](../go/README.md#strings-bytes-and-runes). Go strings are just
 bytes; Rust's `str` type carries a validity guarantee, and slicing must keep
 it.
 
@@ -383,7 +407,7 @@ bytes.
 
 </details>
 
-## 06-move-and-rc
+## Moves and reference counting
 
 Source: [`predict/src/bin/06-move-and-rc.rs`](predict/src/bin/06-move-and-rc.rs)
 
@@ -454,3 +478,42 @@ order is what makes it legal: borrowing and then moving is fine, moving and
 then borrowing is not.
 
 </details>
+
+## Where this leads
+
+Ownership and drop order are the foundation of resource management in Rust:
+locks released at scope end, files closed when their handle drops, and the
+reason `let _guard = lock()` and `let _ = lock()` behave differently. Lazy
+iterators are how Rust writes data pipelines without intermediate
+allocations, and explicit overflow methods are how it writes arithmetic that
+behaves the same in every build. Compare these snippets with the
+[Go](../go/README.md), [Python](../python/README.md), and
+[TypeScript](../ts/README.md) sets, using the pairings in the
+[predict introduction](../README.md#the-corpus).
+
+## Key terms
+
+- **Shadowing**: introducing a new binding with an existing name, hiding the old one until the scope ends.
+- **Block expression**: a block whose value is its final expression when that expression has no trailing semicolon.
+- **Drop**: running a value's destructor when its owner goes out of scope; locals drop in reverse declaration order.
+- **Lazy adapter**: an iterator method such as `map` that builds a wrapper and does no work until a consumer calls `next`.
+- **Saturating and wrapping arithmetic**: explicit methods that clamp to the type's bounds or wrap modulo its width.
+- **`Rc<T>`**: a reference-counted pointer giving shared ownership, freed when the strong count reaches zero.
+
+## Summary
+
+- `let` always creates a new binding; shadowing never mutates.
+- Locals drop in reverse order, temporaries at the end of their statement, and `let _ =` binds nothing.
+- Iterator chains pull one element at a time through every stage, and stop when the consumer stops.
+- Plain `+` panics on overflow in debug and wraps in release by default; name the behaviour you want, and know that `as` truncates, reinterprets, or saturates.
+- `String` and `&str` are UTF-8 measured and sliced in bytes; slices must fall on character boundaries.
+- Assignment moves unless the type is `Copy`; `Rc::clone` copies a pointer and increments a count.
+
+## Review questions
+
+1. What is the difference between `let _guard = make()` and `let _ = make()`?
+   <details><summary>Answer</summary>`_guard` is a variable, so it owns the value until the end of the scope. `_` is a pattern that binds nothing, so the value has no owner and is dropped at the end of the statement.</details>
+2. Why might a `map` closure with a side effect never run?
+   <details><summary>Answer</summary>Adapters are lazy: `map` only builds a struct. The closure runs only when a consumer such as `collect`, `count`, or a `for` loop calls `next`, and only for as many elements as the consumer pulls.</details>
+3. Why does `&s[0..2]` panic for `s = "héllo"`, and what is the non-panicking alternative?
+   <details><summary>Answer</summary>`é` occupies bytes 1 and 2, so byte offset 2 is not a character boundary and the slice would not be valid UTF-8. `s.get(0..2)` returns `None` instead of panicking.</details>

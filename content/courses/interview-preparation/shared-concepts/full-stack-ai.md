@@ -1,8 +1,8 @@
-# Full-Stack AI Engineering
+# Full-stack AI engineering
 
-End-to-end knowledge for building, deploying, and scaling AI systems -- from data to production.
+A model is a small part of an AI system. Around it sit the pipelines that collect and validate data, the feature store that serves inputs consistently to training and inference, the training and evaluation machinery, the servers that batch requests onto GPUs, the application and API that users touch, and the monitoring that tells you when the world has drifted away from what the model learned. A full-stack AI engineer can work at every one of those layers, and interviews for AI roles increasingly probe all of them in a single design conversation.
 
-## The Full-Stack AI Engineer's Domain
+This section walks the stack from bottom to top, in the order data flows through it:
 
 ```
 [Data Collection] --> [Data Processing] --> [Feature Engineering]
@@ -18,11 +18,18 @@ End-to-end knowledge for building, deploying, and scaling AI systems -- from dat
                               [User-Facing Application (Web/Mobile/API)]
 ```
 
-A full-stack AI engineer can work at every layer. This document covers what you need to know across all of them.
+For each layer it gives the patterns and trade-offs interviewers expect, with code for the pieces you may be asked to build: a data validator, an online feature store, an evaluator, a dynamically batching model server, and a drift detector. It assumes the general background in [Distributed systems fundamentals](distributed-systems.md); the training side is covered in more depth in [ML infrastructure patterns](ml-infrastructure.md).
 
-## Data Layer
+> **Learning objectives**
+> - Choose a data pipeline pattern and validation checks for a given ML workload.
+> - Explain online and offline feature stores and why point-in-time correctness matters for training.
+> - Pick distributed training and hyperparameter search strategies, and offline and online evaluation methods.
+> - Implement dynamic batching for a model server and explain its latency-throughput trade-off.
+> - Design an ML API and a monitoring plan, including drift detection.
 
-### Data Pipelines
+## The data layer
+
+Everything starts with data, and the first decision is how it moves. The common pipeline patterns differ in latency:
 
 | Pattern | Use Case | Tools |
 |---------|----------|-------|
@@ -31,7 +38,7 @@ A full-stack AI engineer can work at every layer. This document covers what you 
 | Change Data Capture | Database -> feature store sync | Debezium, DynamoDB Streams |
 | Lambda architecture | Combined batch + real-time | Batch layer + speed layer |
 
-### Data Quality
+Whatever the pipeline, bad data silently produces bad models, so validate it before training. A small framework is enough: register named checks, each a function that returns whether it passed and a human-readable detail, with a severity so that warnings can be distinguished from blocking errors. The check constructors below are closures over a column name, which keeps each check reusable.
 
 ```python
 class DataValidator:
@@ -75,15 +82,11 @@ def no_duplicates(columns):
     return check
 ```
 
-### Data Versioning
+Data also needs versioning, because a training run is only reproducible if its data version is pinned. DVC (Data Version Control) provides Git-like versioning for datasets, and table formats such as Delta Lake and Apache Iceberg provide time travel and versioning at the table level.
 
-- **DVC (Data Version Control)**: Git-like versioning for datasets
-- **Delta Lake / Apache Iceberg**: Table format with time-travel and versioning
-- **Importance**: Reproducibility of training runs requires pinned data versions
+## Feature engineering
 
-## Feature Engineering
-
-### Feature Store Architecture
+Raw data becomes model inputs through features, and the central piece of infrastructure is the feature store. A feature pipeline writes each feature to two places: an online store (Redis or DynamoDB) that serves the latest values with low latency for real-time inference, and an offline store (S3 or BigQuery) that keeps history for building training sets.
 
 ```
 [Raw Data] --> [Feature Pipeline] --> [Feature Store]
@@ -96,7 +99,7 @@ def no_duplicates(columns):
                      [Real-time serving]         [Training data]
 ```
 
-### Feature Types
+Computing both from one pipeline is what prevents training-serving skew, where a feature is computed one way for training and another way in production. Features differ in how fresh they must be:
 
 | Type | Example | Latency | Update Frequency |
 |------|---------|---------|-----------------|
@@ -105,7 +108,7 @@ def no_duplicates(columns):
 | Near-real-time | Last 5 items viewed | Seconds | On event |
 | Real-time | Current session duration | Milliseconds | Continuous |
 
-### Feature Implementation
+A simplified online feature store fits in a page. Each entity maps feature names to a value with a timestamp and version. `get_features` serves inference, returning `None` for missing features. `get_training_data` builds training rows and takes an `as_of` time, so that a training example never sees a feature value recorded after the moment it describes.
 
 ```python
 from dataclasses import dataclass
@@ -158,9 +161,11 @@ class FeatureStore:
         return rows
 ```
 
-## Model Training
+> **Warning:** Because this store keeps only the latest value of each feature, `get_training_data` can only avoid leakage, not achieve full point-in-time correctness: if a feature was updated after `as_of`, it returns `None` instead of the value that was current at `as_of`. A real offline store keeps the full history and does an "as of" join, picking for each example the latest value with a timestamp at or before the example's time. Being able to explain that difference is the point of the question.
 
-### Training Pipeline
+## Model training
+
+With features in hand, training follows a pipeline from data loading and preprocessing through training, hyperparameter search, and evaluation, ending in a model registry that versions the result:
 
 ```
 [Data Loader] --> [Preprocessing] --> [Model Training]
@@ -172,19 +177,9 @@ class FeatureStore:
                                     [Model Registry]
 ```
 
-### Experiment Tracking
+Every training run should be tracked, recording its hyperparameters, dataset version, metrics (loss, accuracy, and custom metrics), model artifacts, code version (the git hash), and environment (library versions). MLflow, Weights & Biases, Neptune, and Comet are the common tools.
 
-Track every training run with:
-- Hyperparameters
-- Dataset version
-- Metrics (loss, accuracy, custom metrics)
-- Model artifacts
-- Code version (git hash)
-- Environment (library versions)
-
-Tools: MLflow, Weights & Biases, Neptune, Comet
-
-### Distributed Training Patterns
+When a model or dataset outgrows one GPU, training is distributed in one of four ways:
 
 | Pattern | What's Distributed | Use When |
 |---------|-------------------|----------|
@@ -193,7 +188,7 @@ Tools: MLflow, Weights & Biases, Neptune, Comet
 | Pipeline Parallel | Model stages as pipeline | Very deep models |
 | ZeRO | Optimizer state, gradients, parameters | Memory-efficient data parallel |
 
-### Hyperparameter Optimization
+Hyperparameter search has its own trade-offs. Random search is often better than grid search when there are many parameters, because it does not waste trials on unimportant dimensions:
 
 | Strategy | Description | When to Use |
 |----------|-------------|------------|
@@ -202,9 +197,9 @@ Tools: MLflow, Weights & Biases, Neptune, Comet
 | Bayesian Optimization | Model the objective, sample promising points | Expensive evaluations |
 | Population-Based Training | Evolutionary approach across workers | Very large scale |
 
-## Model Evaluation
+## Model evaluation
 
-### Offline Evaluation
+Before a model ships it is evaluated offline, on held-out data. The evaluator below computes weighted precision, recall, and F1 for classification (weighted by class support, so imbalanced classes are accounted for), plus a one-vs-rest AUC when probabilities are available, and MSE, MAE, and $R^2$ for regression. $R^2 = 1 - \sum (y - \hat y)^2 / \sum (y - \bar y)^2$ measures how much better the model does than always predicting the mean.
 
 ```python
 from sklearn.metrics import precision_score, recall_score, f1_score
@@ -238,16 +233,11 @@ class ModelEvaluator:
         return roc_auc_score(y_true, y_prob, multi_class="ovr", average="weighted")
 ```
 
-### Online Evaluation (A/B Testing)
+Offline metrics only predict online behaviour, so the model is then evaluated on real traffic, carefully. In shadow mode the new model runs alongside production and its outputs are compared without being served. A canary deployment serves 1-5% of traffic with the new model. Interleaving mixes results from the old and new models in the same response, which is a sensitive test for ranking. And throughout, guardrail metrics for safety and quality are monitored and must not degrade.
 
-- **Shadow mode**: Run new model alongside production, compare outputs without serving
-- **Canary deployment**: Serve 1-5% of traffic with new model
-- **Interleaving**: Mix results from old and new model in the same response
-- **Guardrail metrics**: Monitor safety/quality metrics that must not degrade
+## Model serving
 
-## Model Serving
-
-### Serving Patterns
+Serving patterns are defined by their latency budget:
 
 | Pattern | Latency | Throughput | Use Case |
 |---------|---------|------------|----------|
@@ -256,7 +246,7 @@ class ModelEvaluator:
 | Batch | Minutes-hours | Very high | Recommendations, reports |
 | Streaming | Continuous | High | Anomaly detection, monitoring |
 
-### Model Serving Architecture
+For real-time serving on GPUs, the key technique is dynamic batching. A GPU processes a batch of 32 inputs in little more time than one, so a server that groups concurrent requests gets far more throughput. The listing below shows how. Each call to `predict` enqueues its input with a future and awaits the future. A background loop waits for at least one request, then keeps collecting until it has `max_batch_size` requests or `max_wait_ms` has elapsed since the first, runs one batched inference, and resolves each caller's future with its own result, or with the exception if the batch failed.
 
 ```python
 from abc import ABC, abstractmethod
@@ -331,7 +321,9 @@ class BatchingModelServer(ModelServer):
         return {"status": "healthy", "queue_size": self.queue.qsize()}
 ```
 
-### Model Optimization for Serving
+`max_wait_ms` is the knob that trades latency for throughput: under light load a request waits at most 10 ms for company, and under heavy load batches fill instantly and no one waits. Two production details to mention: `model.predict_batch` is called synchronously, so it blocks the event loop while the GPU works (run it in an executor), and inside coroutines `asyncio.get_running_loop()` is the modern replacement for `get_event_loop()`. LLM servers go a step further with continuous batching, adding and removing sequences at every decoding step.
+
+Batching is one of several ways to make serving cheaper. Roughly what each buys, and costs:
 
 | Technique | Speed Improvement | Quality Impact |
 |-----------|-------------------|----------------|
@@ -342,9 +334,9 @@ class BatchingModelServer(ModelServer):
 | TensorRT | 2-5x | None-minor |
 | Batching | 3-10x throughput | None |
 
-## Frontend / Application Layer
+## The application layer
 
-### AI-Powered UI Patterns
+At the top of the stack, AI products have developed their own UI patterns:
 
 | Pattern | Description | Example |
 |---------|-------------|---------|
@@ -354,7 +346,7 @@ class BatchingModelServer(ModelServer):
 | Feedback collection | Thumbs up/down on outputs | Training data for improvement |
 | Explanation | Show reasoning or sources | RAG with citations |
 
-### API Design for ML Services
+The API behind them should follow five principles. Make it asynchronous by default, because inference can be slow. Include request IDs for tracing. Return confidence scores, not just labels. Support streaming for long-running inference. And version your models in the API, so that clients choose when to move. A request and response for a text classifier look like this:
 
 ```python
 # Good ML API design principles
@@ -394,9 +386,9 @@ class BatchingModelServer(ModelServer):
 }
 ```
 
-## Monitoring & Observability
+## Monitoring and drift
 
-### What to Monitor
+The loop closes with monitoring. An ML system needs the usual service metrics plus two kinds that ordinary services lack, model quality and data quality:
 
 | Category | Metrics | Alerting Threshold |
 |----------|---------|-------------------|
@@ -407,7 +399,7 @@ class BatchingModelServer(ModelServer):
 | Data quality | Feature null rates, value distributions | Out of expected range |
 | Resources | GPU utilization, memory, CPU | > 90% sustained |
 
-### Model Drift Detection
+Model quality is the hard one, because labels usually arrive late or never. A practical proxy is drift in the distribution of predictions. The detector below records a reference histogram from validation predictions, keeps a sliding window of recent predictions, and once the window is half full compares the two with the KL divergence $D_{KL}(P_\text{ref} \,\|\, P_\text{cur}) = \sum_i p_i \log (p_i / q_i)$, flagging drift above a threshold. The small constant added to each bin avoids dividing by or taking the log of zero.
 
 ```python
 import numpy as np
@@ -444,7 +436,11 @@ class DriftDetector:
         return kl_div > self.threshold
 ```
 
-## Key Numbers for System Design
+Two refinements are worth raising. With `density=True` the histogram values are densities, not probabilities, so the sum is scaled by the inverse bin width; normalising the counts to sum to one makes the threshold independent of the bins. And because the current histogram reuses the reference bin edges, predictions outside the reference range are silently dropped, which is exactly the kind of drift you most want to catch. Recomputing the histogram on every observation is also costly; checking every few hundred observations is usually enough. The [ML infrastructure patterns](ml-infrastructure.md) section covers PSI and the Kolmogorov-Smirnov test as alternatives.
+
+## Numbers for system design
+
+Latency estimates for an ML system draw on a few component figures:
 
 | Component | Latency | Notes |
 |-----------|---------|-------|
@@ -456,14 +452,62 @@ class DriftDetector:
 | Image model inference | 50-200ms | ResNet/ViT class |
 | Batch training job | Minutes-days | Depends on data/model size |
 
-## Interview Application
+## Where this leads
 
-This knowledge maps to interviews at:
-- **Google**: Recommendation system design, ML serving platform
-- **OpenAI/Anthropic**: LLM inference, training infrastructure
-- **Netflix**: Recommendation ML, A/B testing platform
-- **Amazon**: SageMaker-like platform design, product ranking
-- **Apple**: On-device ML, privacy-preserving ML
-- **NVIDIA**: GPU-optimized training/inference
-- **Palantir**: Enterprise ML platform, data pipeline
-- **Jane Street**: Signal generation, online learning
+This material comes up across the companies in this book, each with its own emphasis. At [Google](../google/README.md) it is recommendation system design and ML serving platforms; at [OpenAI](../openai/README.md) and [Anthropic](../anthropic/README.md), LLM inference and training infrastructure; at [Netflix](../netflix/README.md), recommendation ML and A/B testing platforms; at [Amazon](../amazon/README.md), SageMaker-like platform design and product ranking; at [Apple](../apple/README.md), on-device and privacy-preserving ML; at [NVIDIA](../nvidia/README.md), GPU-optimised training and inference; at [Palantir](../palantir/README.md), enterprise ML platforms and data pipelines; and at [Jane Street](../jane-street/README.md), signal generation and online learning. The next section, [ML infrastructure patterns](ml-infrastructure.md), goes deeper into training infrastructure, experiment tracking, and drift detection.
+
+### Further reading
+
+- Chip Huyen, *Designing Machine Learning Systems*, for the end-to-end view this section summarises.
+- D. Sculley et al., "Hidden Technical Debt in Machine Learning Systems" (NeurIPS 2015), on why the model is the smallest part of the system.
+
+## Key terms
+
+- **Feature store**: a system that computes features once and serves them both online, for inference, and offline, for training.
+- **Training-serving skew**: a mismatch between how features are computed for training and for production.
+- **Point-in-time correctness**: building each training example only from feature values that existed at the example's timestamp.
+- **Dynamic batching**: grouping concurrent inference requests into one batch, bounded by a size and a maximum wait.
+- **Shadow mode**: running a candidate model on live traffic without serving its outputs.
+- **Drift**: a change in the distribution of inputs or predictions relative to what the model was trained on.
+
+## Summary
+
+- An AI system is a pipeline from data to monitoring; the model is one stage of it.
+- Validate and version data, and serve features from one pipeline to avoid training-serving skew and leakage.
+- Evaluate offline with metrics suited to the task, then online with shadow mode, canaries, interleaving, and guardrails.
+- Dynamic batching trades a bounded wait for large GPU throughput gains; quantisation, distillation, and compilers cut cost further.
+- Monitor model and data quality as well as service health, using prediction drift as a proxy when labels are late.
+
+## Review questions
+
+1. Why does a feature store have both an online and an offline store, rather than one?
+
+   <details><summary>Answer</summary>
+
+   Inference needs the latest value of a few features for one entity within milliseconds, which suits a key-value store such as Redis. Training needs historical values of many features for millions of entities, which suits a warehouse or object store. Writing both from the same pipeline keeps the two consistent and prevents training-serving skew.
+
+   </details>
+
+2. What is label leakage through features, and how does an `as_of` timestamp prevent it?
+
+   <details><summary>Answer</summary>
+
+   Leakage happens when a training example includes a feature value recorded after the event it is meant to predict, so the model learns from information it will not have at inference time. Restricting each example to values with timestamps at or before its `as_of` time prevents it; a full implementation picks the latest such value from the feature's history.
+
+   </details>
+
+3. In the batching server, what happens to latency and throughput as `max_wait_ms` increases?
+
+   <details><summary>Answer</summary>
+
+   Under light load, larger waits let more requests join each batch, raising throughput but adding up to `max_wait_ms` of latency to each request. Under heavy load batches fill to `max_batch_size` before the deadline, so the wait rarely matters. The setting is a cap on the latency you are willing to pay for batching.
+
+   </details>
+
+4. Why monitor the distribution of predictions rather than accuracy directly?
+
+   <details><summary>Answer</summary>
+
+   Accuracy needs ground-truth labels, which often arrive days later or never. The distribution of predictions is available immediately, and a significant shift in it is an early signal that inputs have drifted or the model is behaving differently.
+
+   </details>

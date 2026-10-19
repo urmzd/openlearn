@@ -1,26 +1,11 @@
-# Infrastructure (5-7 weeks)
+# Study Plan
 
-~8-10 hours per week. How distributed systems actually run. Topics 1-3 stay anchored to the Streamflow event-driven platform.
+This book reads well over five to seven weeks at roughly eight to ten hours a week. The first chapters stay anchored to the Streamflow event-driven platform, so read them in order; the last two can be read in either order once you have the messaging chapter behind you.
 
-### Weeks 1-2: Containers, Kubernetes & Workloads
+Give the first two weeks to [Containers, Kubernetes, and Workloads](01-containers-kubernetes/README.md). In the first week, get comfortable with what a container is (namespaces, cgroups, image layers), with multi-stage and distroless builds, and with the twelve-factor contract a container must honor; the Docker documentation and [12factor.net](https://12factor.net/) are good companions. In the second week, learn to see Kubernetes as a reconcile loop, work through its objects and the difference between stateful and stateless workloads, and spend real time on the caveats (limits and OOM kills, probes, SIGTERM, disruption budgets) and on scaling with the HPA, VPA, Cluster Autoscaler, and KEDA, with the [Kubernetes documentation](https://kubernetes.io/docs/) open beside you.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 1 | Containers (namespaces/cgroups/layers), multi-stage + distroless, 12-factor | Docker / 12factor.net |
-| 2 | K8s as a reconcile loop; objects; stateful vs stateless; caveats (limits/OOM, probes, SIGTERM, PDB); scaling (HPA/VPA/Cluster Autoscaler/KEDA) | Kubernetes docs |
+Weeks three and four are about messaging and the workers that consume it. In week three, read [Messaging and Distributed Queueing](02-messaging-and-queueing/README.md): queue versus log, push, pull, and long-poll, pub-sub versus competing consumers, delivery semantics, Little's Law, and ZooKeeper versus KRaft versus Redpanda. Run its backpressure and Raft demos as you go, and pair it with the Kafka documentation and Chapter 11 of *Designing Data-Intensive Applications*. In week four, turn to the consuming side in [Durable Orchestration and Workers](../ai-platform-engineering/05-durable-orchestration-and-workers/README.md#partitioned-consumers) in *AI Platform Engineering*: consumer groups and the partition cap, rebalancing, idempotency and the outbox, dead-letter queues, and lag-driven KEDA scaling, with the Kafka consumer documentation as reference.
 
-### Weeks 3-4: Messaging & Distributed Workers
+Spend weeks five and six on search and the wider ecosystem. Week five is [Search and Indexing](04-search-and-indexing/README.md): the inverted index, the path from TF-IDF to BM25, Lucene segments and merges, and Elasticsearch versus OpenSearch versus Solr. Run the from-scratch BM25 code and the Tantivy example, and keep the Lucene documentation and the Elasticsearch guide nearby. Week six is [The Apache Stack](05-apache-stack/README.md), a map of the Apache data ecosystem across messaging, storage and tables, OLAP, search, and orchestration; it is short, so use the rest of the week to follow its links into the chapters that go deeper.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 3 | Queue vs log, push/pull/long-poll, pub-sub vs competing consumers, delivery semantics, Little's Law; ZooKeeper vs KRaft vs Redpanda | Kafka docs + DDIA Ch 11 |
-| 4 | Consumer groups, partition cap, rebalancing, idempotency/outbox, DLQ, lag → KEDA scaling | Kafka consumer docs |
-
-### Weeks 5-6: Search & the Apache Stack
-
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 5 | Inverted index, TF-IDF → BM25, Lucene segments/merges, Elasticsearch vs OpenSearch vs Solr | Lucene / ES Guide |
-| 6 | The Apache data ecosystem map: messaging, storage/tables, OLAP, search, orchestration | Apache docs + DDIA |
-
----
+If you have a seventh week, use it to revisit whichever chapter's review questions you found hardest, or to stand up the single-broker Redpanda and KRaft-mode Kafka exercise from the messaging chapter end to end.

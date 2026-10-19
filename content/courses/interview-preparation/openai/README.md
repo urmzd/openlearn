@@ -1,12 +1,23 @@
-# OpenAI Software Engineer Interview Guide
+# OpenAI
 
-Comprehensive preparation for OpenAI engineering roles, with focus on AI infrastructure and full-stack development.
+OpenAI ships products, ChatGPT and the API above all, at startup speed and enormous scale, and its interviews reflect both halves of that. Like Anthropic, it prefers production-quality code to LeetCode tricks, and its problems tend to be applied and systems-oriented: rate limiters, async task queues, validators, and usage meters, the components an API platform is built from. Alongside the engineering, OpenAI cares deeply that you believe in its mission of safe AGI.
 
-> **Preparation resources**: [OpenAI Interview Guide](https://openai.com/interview-guide/) (official), [Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/) (OpenAI's own RL curriculum), [Deep Learning track](../../machine-learning/02-deep-learning/), [Reinforcement Learning track](../../machine-learning/03-reinforcement-learning/)
+This chapter prepares you for OpenAI engineering roles with a focus on AI infrastructure and full-stack development. It covers the process and OpenAI's unusual equity, the themes the company hires for, four reported coding problems worked in full, four system design prompts from ChatGPT's backend to embedding search, and the hiring manager round on mission, leadership, and speed.
 
-## Interview Process Overview
+> **Learning objectives**
+> - Describe the OpenAI interview loop and what each round assesses.
+> - Implement sliding-window-log and token-bucket rate limiters and explain how they differ.
+> - Build an asyncio task queue with bounded concurrency and retries with exponential backoff and jitter.
+> - Write a recursive JSON Schema validator and a windowed token usage tracker.
+> - Design the ChatGPT backend, the API platform, a training data pipeline, and a vector search service.
 
-Timeline: **3-5 weeks**, **5-6 rounds**
+## Before you begin
+
+OpenAI publishes an official [interview guide](https://openai.com/interview-guide/), and its [Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/) is OpenAI's own reinforcement learning curriculum. For ML background, see the [Deep Learning](../../machine-learning/02-deep-learning/README.md) and [Reinforcement Learning](../../machine-learning/03-reinforcement-learning/README.md) chapters of *Machine Learning and AI*. Within this book, the [Anthropic](../anthropic/README.md) chapter covers very similar coding and serving problems, and [Full-stack AI](../shared-concepts/full-stack-ai.md) covers the ML systems background.
+
+## The interview process
+
+Expect three to five weeks and five or six rounds:
 
 | Round | Format | Duration | Focus |
 |-------|--------|----------|-------|
@@ -17,35 +28,23 @@ Timeline: **3-5 weeks**, **5-6 rounds**
 | Onsite 3 | Coding / ML | 60 min | Applied ML or infra coding |
 | Onsite 4 | Hiring Manager / Culture | 45-60 min | Mission alignment, collaboration |
 
-## Compensation (Reported Ranges)
+Reported total compensation is about $450-600K for a senior SWE (L4) and $600-900K for a staff SWE (L5). Equity comes as Profit Participation Units (PPUs), unique to OpenAI's capped-profit structure. Compensation is extremely competitive, especially the equity upside.
 
-- **Senior SWE (L4)**: ~$450-600K total comp
-- **Staff SWE (L5)**: ~$600-900K total comp
-- **Equity**: Profit Participation Units (PPUs) -- unique to OpenAI's capped-profit structure
-- OpenAI's comp is extremely competitive, especially equity upside
+## What OpenAI looks for
 
-## Key Themes
+Five themes stand out. Hiring is mission-driven: OpenAI cares that you believe in safe AGI, and genuine passion for AI safety and alignment matters. The company combines startup speed with massive scale, so expect questions about pragmatic trade-offs. It thinks API-first, since ChatGPT and the API are the core products, which puts API design, rate limiting, and developer experience at the centre. Many roles are full-stack AI, spanning model training infrastructure to user-facing products, so be ready to discuss both. And the codebase is heavily Python, so deep Python knowledge (asyncio, typing, packaging) is expected.
 
-1. **Mission-driven hiring** -- OpenAI cares deeply that you believe in their mission of safe AGI. Genuine passion for AI safety and alignment matters.
-2. **Startup speed, massive scale** -- They ship fast but at enormous scale. Expect questions about pragmatic trade-offs.
-3. **API-first thinking** -- ChatGPT and the API are core products. API design, rate limiting, and developer experience are central.
-4. **Full-stack AI** -- Many roles span from model training infrastructure to user-facing products. Be ready to discuss both.
-5. **Python-heavy** -- The codebase is heavily Python. Deep Python knowledge (asyncio, typing, packaging) is expected.
+## Coding rounds
 
-## Coding Rounds (2-3 rounds)
+There are two or three coding rounds. In spirit they resemble Anthropic's: production-quality code over LeetCode tricks, with problems that are more applied and systems-oriented than pure algorithms. Concurrency, API design, and data pipeline problems are common, and you may be asked to extend an existing codebase rather than start from scratch. Four problems are reported.
 
-### What to Expect
+### An API rate limiter
 
-- Similar to Anthropic in spirit: production-quality code over leetcode tricks
-- Problems tend to be more applied/systems-oriented than pure algorithms
-- Concurrency, API design, and data pipeline problems are common
-- You may be asked to extend an existing codebase rather than start from scratch
+The first asks you to design and implement a rate limiter supporting multiple strategies. Two are worth having ready.
 
-### Reported Problem Types
+A sliding-window log keeps, for each client, a deque of the timestamps of its accepted requests. On each call it evicts timestamps older than the window, then allows the request if fewer than `max_requests` remain. It is exact, never letting more than the limit through in any window, but its memory grows with the limit.
 
-#### 1. API Rate Limiter
-
-Design and implement a rate limiter supporting multiple strategies.
+A token bucket keeps, for each client, a token count and the time of the last refill. Each call first adds `elapsed * rate` tokens, capped at `bucket_size`, then spends the request's cost if enough tokens are available. It uses constant memory per client, permits short bursts up to the bucket size, and supports requests of different costs, which is useful when the cost is a number of model tokens.
 
 ```python
 import time
@@ -105,7 +104,11 @@ class TokenBucketRateLimiter:
             return False
 ```
 
-#### 2. Async Task Queue with Retries
+Both use `time.monotonic()` so that clock adjustments cannot grant or deny requests, and both hold a lock across the read-modify-write so that concurrent requests cannot spend the same capacity twice.
+
+### An async task queue with retries
+
+The second is an asyncio task queue. Workers pull tasks from an `asyncio.Queue`; a semaphore caps how many execute at once; synchronous and coroutine functions are both supported. A failed task is retried up to `max_retries` times with exponential backoff plus random jitter (about 2, 4, 8 seconds, plus up to one more), the jitter preventing many failed tasks from retrying in lockstep. `run` starts the workers, waits on `queue.join()` until every task is marked done, and then cancels them.
 
 ```python
 import asyncio
@@ -178,7 +181,11 @@ class AsyncTaskQueue:
             w.cancel()
 ```
 
-#### 3. JSON Schema Validator
+The ordering in the retry path matters: the task is put back on the queue before the worker calls `task_done()` for the failed attempt, so the queue's unfinished count never drops to zero while a retry is pending and `join()` cannot return early. Two improvements make good discussion points. The backoff sleep happens while the worker holds a semaphore slot, so a burst of failures stalls healthy work; scheduling the re-enqueue with `asyncio.create_task` or a delayed queue frees the slot. And a synchronous `fn` runs on the event loop thread and blocks every other task; `asyncio.to_thread` avoids that.
+
+### A JSON Schema validator
+
+The third, very relevant to function calling and structured outputs, is validating a JSON value against a subset of JSON Schema. The validator recurses on the schema's `type`, accumulating error messages with a JSONPath-style location (`$.user.tags[2]`) rather than stopping at the first error. Objects check `required` fields, recurse into known `properties`, and reject extra keys when `additionalProperties` is false. Arrays recurse into `items` and check `minItems`; strings check `minLength`; numbers check `minimum`.
 
 ```python
 def validate(instance, schema: dict) -> list[str]:
@@ -229,9 +236,11 @@ def _validate(instance, schema: dict, errors: list, path: str):
             errors.append(f"{path}: {instance} is less than minimum {schema['minimum']}")
 ```
 
-#### 4. Streaming Token Counter
+> **Warning:** Two Python subtleties slip through this validator. `bool` is a subclass of `int`, so `True` passes as a number; and `"integer"` accepts `3.5` because it shares the number branch. A careful answer excludes `bool` explicitly and checks `float(instance).is_integer()` for integers. Schemas without a `type`, and keywords such as `enum` or `boolean`, are silently accepted.
 
-Track token usage across concurrent API requests with real-time aggregation.
+### A streaming token counter
+
+The fourth tracks token usage across concurrent API requests with real-time aggregation over a sliding window, the basis of usage-based limits and billing. Each request appends a timestamped record; a usage query prunes records older than the window and sums the rest. An `asyncio.Lock` guards the shared dictionary.
 
 ```python
 import asyncio
@@ -272,11 +281,13 @@ class TokenUsageTracker:
             return total
 ```
 
-## System Design Round
+Each query costs time proportional to the records in the window, and records are pruned only when someone reads them. At API scale you would bucket usage into fixed intervals (one counter per second, say), which makes both recording and querying constant-time per bucket.
 
-### Common Topics
+## The system design round
 
-#### Design the ChatGPT Backend
+The design round focuses on ML infrastructure and API design. Four prompts are common.
+
+### The ChatGPT backend
 
 ```
 [Client (Web/Mobile)] --> [API Gateway] --> [Conversation Manager]
@@ -294,22 +305,13 @@ class TokenUsageTracker:
                                         [SSE Stream to Client]
 ```
 
-Key considerations:
-- **Conversation state**: Store message history, manage context windows
-- **Streaming**: SSE for real-time token delivery (same patterns as Anthropic)
-- **Multi-turn**: Efficient context management, truncation strategies
-- **Plugins/Function calling**: Route tool calls, manage external API interactions
-- **Safety**: Content moderation pipeline, PII detection
+The conversation manager stores message history and manages the context window. Responses stream to the client over server-sent events for real-time token delivery, the same pattern described in the [Anthropic system design](../anthropic/03-system-design.md) section. Multi-turn conversations need efficient context management and a truncation strategy for when history outgrows the window. Plugins and function calling require routing tool calls and managing interactions with external APIs. And the safety layer runs a content moderation pipeline and PII detection.
 
-#### Design the OpenAI API Platform
+### The OpenAI API platform
 
-- **Multi-tenancy**: Isolate customers, enforce rate limits per API key
-- **Model routing**: Route requests to appropriate model (GPT-4, GPT-3.5, embeddings)
-- **Usage metering**: Real-time token counting for billing
-- **Batch API**: Queue large offline jobs, different pricing tier
-- **Fine-tuning pipeline**: Upload data, train, deploy custom models
+The API platform is multi-tenant: it isolates customers and enforces rate limits per API key. A model router sends each request to the right model (GPT-4, GPT-3.5, embeddings). Usage metering counts tokens in real time for billing. A batch API queues large offline jobs at a different pricing tier, and a fine-tuning pipeline lets customers upload data, train, and deploy custom models.
 
-#### Design a Training Data Pipeline
+### A training data pipeline
 
 ```
 [Raw Data Sources] --> [Ingestion] --> [Dedup & Filtering]
@@ -323,60 +325,39 @@ Key considerations:
                                        [Training Data Loader]
 ```
 
-- **Scale**: Trillions of tokens, petabytes of data
-- **Quality**: Automated filtering (perplexity, toxicity scores, dedup)
-- **Reproducibility**: Deterministic data ordering for experiment comparison
-- **Streaming**: Data must be fed to GPUs without bottlenecking training
+The scale is trillions of tokens and petabytes of data. Quality is maintained by automated filtering on perplexity, toxicity scores, and deduplication. Data ordering must be deterministic so that experiments can be compared reproducibly. And the pipeline must stream data to the GPUs fast enough never to bottleneck training.
 
-#### Design a Vector Database / Embedding Search
+### A vector database for embedding search
 
-- **Indexing**: HNSW, IVF, or product quantization for ANN search
-- **Sharding**: Partition embedding space across nodes
-- **Real-time updates**: Handle new documents without full re-indexing
-- **Hybrid search**: Combine vector similarity with keyword/metadata filters
-- **Serving latency**: Sub-50ms for top-K retrieval
+Approximate nearest-neighbour search is built on an index such as HNSW, IVF, or product quantization. The embedding space is partitioned across nodes. New documents must be indexed in real time without a full rebuild. Hybrid search combines vector similarity with keyword and metadata filters. And serving latency should be under 50 ms for top-K retrieval.
 
-## Hiring Manager / Culture Round
+## The hiring manager and culture round
 
-### Mission Alignment
+OpenAI's mission is to ensure AGI benefits all of humanity, and the round probes your alignment with it: "Why OpenAI over other AI companies?", "What does safe AI development mean to you?", "How do you think about the trade-off between moving fast and being cautious?", and "What's your view on open-sourcing AI models?" Be genuine. A nuanced view that acknowledges trade-offs is better than repeating the mission statement.
 
-OpenAI's mission is to ensure AGI benefits all of humanity. They'll probe:
+The round also covers technical leadership: "Tell me about a system you designed that had to evolve significantly.", "Describe a time you had to make a technical decision with incomplete information.", "How do you approach technical debt in a fast-moving environment?", and "Tell me about a time you had to push back on a product requirement."
 
-- "Why OpenAI over other AI companies?"
-- "What does safe AI development mean to you?"
-- "How do you think about the trade-off between moving fast and being cautious?"
-- "What's your view on open-sourcing AI models?"
+Finally, because OpenAI moves fast, interviewers want to know whether you collaborate well at speed: whether you can make decisions quickly with 70% of the information, whether you over-engineer or find the pragmatic solution, and whether you can work across research, product, and infrastructure teams.
 
-Be genuine. Having a nuanced view (acknowledging trade-offs) is better than repeating their mission statement.
+## Preparing
 
-### Technical Leadership
+Study the OpenAI API by using it and building something: understand rate limits, streaming, function calling, and error codes intimately. A project that uses GPT-4, function calling, or embeddings shows genuine engagement. Read OpenAI's research (the GPT-4 technical report, DALL-E, Whisper, the RLHF papers); you do not need every equation, but know the key ideas. Practise designing RESTful APIs for ML services, with attention to versioning, backwards compatibility, and error handling. Make asyncio second nature by writing async services. And know the competitive landscape (Anthropic, Google DeepMind, Meta AI, Mistral) well enough to say what differentiates OpenAI.
 
-- "Tell me about a system you designed that had to evolve significantly."
-- "Describe a time you had to make a technical decision with incomplete information."
-- "How do you approach technical debt in a fast-moving environment?"
-- "Tell me about a time you had to push back on a product requirement."
+## Summary
 
-### Collaboration at Speed
+- OpenAI's coding rounds are applied: rate limiters, async queues, validators, and usage meters, judged on production quality.
+- Know the trade-off between a sliding-window log (exact, more memory) and a token bucket (constant memory, bursts, weighted costs).
+- Async code must handle retries, backoff with jitter, and the interaction between semaphores, sleeps, and `queue.join()`.
+- System design centres on ChatGPT and the API platform: streaming, multi-tenancy, metering, and data pipelines.
+- Mission alignment is assessed directly; bring a genuine, nuanced view of AI safety.
 
-OpenAI moves fast. They want to know:
-- Can you make decisions quickly with 70% information?
-- Do you over-engineer or find the pragmatic solution?
-- Can you work across teams (research, product, infra)?
+## Further reading
 
-## Preparation Tips
-
-1. **Study the OpenAI API** -- Use it. Build something. Understand rate limits, streaming, function calling, and error codes intimately.
-2. **Read OpenAI research** -- GPT-4 technical report, DALL-E, Whisper, RLHF papers. You don't need to understand every equation, but know the key ideas.
-3. **Practice API design** -- Design RESTful APIs for ML services. Think about versioning, backwards compatibility, error handling.
-4. **Concurrency in Python** -- asyncio is foundational. Practice writing async services.
-5. **Know the competitive landscape** -- Anthropic, Google DeepMind, Meta AI, Mistral. What differentiates OpenAI?
-6. **Build something with the API** -- Having a project that uses GPT-4 / function calling / embeddings shows genuine engagement.
-
-## Sources
-
+- [OpenAI Interview Guide](https://openai.com/interview-guide/)
 - [OpenAI API Documentation](https://platform.openai.com/docs)
 - [OpenAI Research](https://openai.com/research)
-- [Glassdoor - OpenAI Interview Questions](https://www.glassdoor.com/Interview/OpenAI-Interview-Questions-E1880775.htm)
-- [levels.fyi - OpenAI Compensation Data](https://www.levels.fyi/companies/openai/salaries/software-engineer)
-- [The Reality of Tech Interviews in 2025 - Pragmatic Engineer](https://newsletter.pragmaticengineer.com/p/the-reality-of-tech-interviews)
-- r/cscareerquestions, r/ExperiencedDevs, Blind (community reports)
+- [Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/)
+- [Glassdoor: OpenAI Interview Questions](https://www.glassdoor.com/Interview/OpenAI-Interview-Questions-E1880775.htm)
+- [levels.fyi: OpenAI Compensation Data](https://www.levels.fyi/companies/openai/salaries/software-engineer)
+- [The Reality of Tech Interviews in 2025 (Pragmatic Engineer)](https://newsletter.pragmaticengineer.com/p/the-reality-of-tech-interviews)
+- Community reports on r/cscareerquestions, r/ExperiencedDevs, and Blind.

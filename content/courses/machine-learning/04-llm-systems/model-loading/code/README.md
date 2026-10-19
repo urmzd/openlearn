@@ -1,6 +1,8 @@
-# Model Loading: Code
+# Model Loading Code
 
-Runnable companions to [Model Loading: Hub to GPU](../). The first two are stdlib-only Python (3.11+) and need no install.
+These are the runnable companions to [Model Loading: Hub to GPU](../README.md). They let you do by hand everything that section describes: read a safetensors header byte by byte, derive a model's size and KV-cache footprint from its `config.json`, and run the reference transformers load path end to end. The first two scripts are stdlib-only Python (3.11+) and need no install; the third pulls in transformers, torch, and accelerate through `uv`.
+
+Each file, what it does, and how to run it:
 
 | File | What it does | Run |
 |------|--------------|-----|
@@ -10,6 +12,8 @@ Runnable companions to [Model Loading: Hub to GPU](../). The first two are stdli
 | [`samples/`](samples/) | Verbatim public `config.json` files: Llama 3.1 8B Instruct (dense, GQA, llama3 RoPE), Qwen3-30B-A3B (MoE, 128 experts top-8), DeepSeek-V3 (MLA, 256 experts + shared, FP8, YaRN) | |
 
 ## Examples
+
+Three invocations cover the common cases: inspecting a remote checkpoint without downloading its weights, checking a sharded checkpoint's index against its shard headers, and sizing the KV cache with an FP8 cache dtype.
 
 ```bash
 # Inspect a remote checkpoint without downloading the weights
@@ -23,6 +27,6 @@ python safetensors_inspect.py /mnt/models/customer-ft/model.safetensors.index.js
 python config_explain.py samples/llama-3.1-8b-instruct.config.json --kv-dtype fp8
 ```
 
-The Llama sample reproduces the official checkpoint exactly: `config_explain.py` computes 8,030,261,248 parameters, and the Hub index reports `total_size = 16,060,522,496` bytes in BF16 (2 bytes each).
+As a check on the arithmetic, the Llama sample reproduces the official checkpoint exactly: `config_explain.py` computes 8,030,261,248 parameters, and the Hub index reports `total_size = 16,060,522,496` bytes in BF16 (2 bytes each).
 
 Sample sources: [Llama 3.1 8B Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) (gated; values match the public mirror), [Qwen3-30B-A3B](https://huggingface.co/Qwen/Qwen3-30B-A3B), [DeepSeek-V3](https://huggingface.co/deepseek-ai/DeepSeek-V3). Fetched October 2026.

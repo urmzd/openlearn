@@ -1,8 +1,19 @@
-# ML Infrastructure Patterns
+# ML infrastructure patterns
 
-Production ML infrastructure patterns that appear across top-tier AI company interviews.
+Training a good model once is a research result. Training it again next week on fresh data, proving it is better than the one in production, rolling it out without an outage, noticing when it starts to degrade, and doing all of that at a cost the business can afford is infrastructure. Interviews at AI companies probe this second kind of work constantly, because it is where most of the engineering effort in production ML actually goes.
 
-## MLOps Maturity Levels
+This section collects the production ML infrastructure patterns that recur across those interviews. It begins with a maturity model that tells you what level of automation to aim for in a design, then works through the pieces in lifecycle order: feature stores and point-in-time correctness, the model registry and promotion pipeline, training infrastructure from a single GPU to distributed data parallel, serving infrastructure, experimentation, monitoring and drift, retraining, LLM-specific infrastructure, and cost. It builds directly on [Full-stack AI engineering](full-stack-ai.md), which introduces the stack layer by layer, and on [Distributed systems fundamentals](distributed-systems.md).
+
+> **Learning objectives**
+> - Place a design on the MLOps maturity scale and explain what moving up a level requires.
+> - Explain point-in-time correctness and design a model promotion pipeline with validation gates.
+> - Write a DDP training loop, name the NCCL collectives and their uses, and checkpoint correctly.
+> - Detect drift with the KS test and PSI, and choose retraining triggers.
+> - Choose between prompting, RAG, and fine-tuning, and compute cost per prediction for alternative GPUs.
+
+## MLOps maturity
+
+A useful way to frame any ML infrastructure design is by how much of the lifecycle is automated:
 
 | Level | Description | Characteristics |
 |-------|-------------|----------------|
@@ -11,19 +22,11 @@ Production ML infrastructure patterns that appear across top-tier AI company int
 | 2 | CI/CD for ML | Automated retraining, A/B testing, model validation gates |
 | 3 | Full MLOps | Automated everything, drift detection, self-healing |
 
-Most companies are between Level 1 and 2. Aim for Level 2 in your designs.
+Most companies are between levels 1 and 2. In an interview, aim for level 2: automated retraining with validation gates and experimentation, which is ambitious but credible. The rest of this section describes the components that level requires.
 
-## Feature Stores
+## Feature stores
 
-### Why Feature Stores Exist
-
-Without a feature store:
-- Training and serving use different code paths -> training/serving skew
-- Features computed redundantly across teams
-- Point-in-time correctness is hard to get right
-- No discovery: "Does anyone already compute this feature?"
-
-### Architecture
+Feature stores exist because, without one, four problems appear. Training and serving use different code paths, which produces training-serving skew. Teams compute the same features redundantly. Point-in-time correctness is hard to get right. And nobody can discover whether a feature already exists. A feature store addresses all four with a shared registry and one set of pipelines writing to both an online and an offline store:
 
 ```
 [Data Sources] --> [Feature Pipelines (Batch/Stream)]
@@ -39,9 +42,9 @@ Without a feature store:
        (get_features())           (get_training_data())
 ```
 
-### Point-in-Time Correctness
+### Point-in-time correctness
 
-The most critical concept for ML feature stores:
+Point-in-time correctness is the most critical concept for feature stores. Every training example describes a moment, and its features must reflect only what was known at that moment:
 
 ```
 Training Example:
@@ -51,6 +54,8 @@ Training Example:
 WRONG: Using features computed on March 20 (data leakage)
 RIGHT: Using features as of March 14 23:59:59
 ```
+
+Using the March 20 features leaks the future into training. The model looks excellent offline, because it has effectively seen the answer, and then disappoints in production, where that information is not available. The fix is to request features as of each event's timestamp:
 
 ```python
 def get_training_features(events, feature_store):
@@ -67,16 +72,11 @@ def get_training_features(events, feature_store):
     return training_data
 ```
 
-### Tools
-- **Feast**: Open-source feature store
-- **Tecton**: Managed feature platform
-- **Hopsworks**: Feature store + ML platform
-- **Vertex AI Feature Store**: Google Cloud managed
-- **SageMaker Feature Store**: AWS managed
+The common tools are Feast (open source), Tecton (a managed feature platform), Hopsworks (a feature store plus ML platform), Vertex AI Feature Store (managed, on Google Cloud), and SageMaker Feature Store (managed, on AWS).
 
-## Model Registry
+## The model registry
 
-### What It Stores
+Once models are trained, they need a home that records not just the weights but everything needed to reproduce, serve, and audit them. A registry entry holds the artifact, the metadata of the run that produced it, its serving configuration, its lifecycle stage, and its lineage:
 
 ```
 Model Registry Entry:
@@ -102,7 +102,7 @@ Model Registry Entry:
     └── Data source versions
 ```
 
-### Model Promotion Pipeline
+The lifecycle stages define a promotion pipeline. A new model enters as Development. Automated validation checks that accuracy exceeds a threshold, latency is within the SLO, there are no safety regressions, and bias checks pass; a model that passes moves to Staging. There it is shadow-tested or canaried against the production model and monitored for 24-48 hours. Only then is it promoted to Production, and even then traffic moves gradually.
 
 ```
 [Training] --> [Model Registry: "Development"]
@@ -124,9 +124,9 @@ Model Registry Entry:
                 [Gradual Rollout: 1% -> 10% -> 50% -> 100%]
 ```
 
-## Training Infrastructure
+## Training infrastructure
 
-### Single-Node Training
+Training starts from the standard PyTorch loop on a single device: move a batch to the device, zero the gradients, run the forward pass, compute the loss, backpropagate, and step the optimiser.
 
 ```python
 # Standard PyTorch training loop
@@ -141,7 +141,9 @@ def train(model, dataloader, optimizer, criterion, device):
         optimizer.step()
 ```
 
-### Distributed Data Parallel (DDP)
+### Distributed data parallel
+
+When one GPU is too slow, Distributed Data Parallel (DDP) runs one process per GPU, each holding a full copy of the model. A `DistributedSampler` gives each rank a disjoint shard of the data, and DDP all-reduces the gradients during the backward pass so that every replica takes the same optimiser step. The training loop itself is unchanged. Calling `sampler.set_epoch(epoch)` matters: without it, every epoch shuffles the shards identically.
 
 ```python
 import torch.distributed as dist
@@ -166,7 +168,11 @@ def train_ddp(rank, world_size, model, dataset):
             pass
 ```
 
-### Communication Primitives (NCCL)
+The listing is a sketch: it assumes `torch`, `DataLoader`, and `num_epochs` are in scope, and the per-batch body is the single-device loop above.
+
+### Communication primitives
+
+DDP's gradient sync is one use of the collective operations that NCCL provides. Knowing which collective each form of parallelism needs is a common interview question:
 
 | Operation | Description | Use Case |
 |-----------|-------------|----------|
@@ -177,6 +183,8 @@ def train_ddp(rank, world_size, model, dataset):
 | All-to-All | Each GPU sends different data to each GPU | Expert parallelism (MoE) |
 
 ### Checkpointing
+
+Long training runs fail, so they checkpoint. A checkpoint must include the optimiser state as well as the model weights; resuming with a fresh optimiser loses Adam's moment estimates and destabilises training.
 
 ```python
 def save_checkpoint(model, optimizer, epoch, loss, path):
@@ -194,15 +202,11 @@ def load_checkpoint(model, optimizer, path):
     return checkpoint['epoch'], checkpoint['loss']
 ```
 
-Best practices:
-- Checkpoint every N steps (not just every epoch)
-- Use async checkpointing (don't block training)
-- Store to distributed storage (S3, GCS) not local disk
-- Keep last K checkpoints, prune old ones
+Four practices make checkpointing robust. Checkpoint every $N$ steps, not just every epoch, so a failure loses little work. Checkpoint asynchronously, so training is not blocked while the file is written. Store checkpoints on distributed storage such as S3 or GCS rather than local disk, which disappears with the machine. And keep the last $K$ checkpoints, pruning older ones.
 
-## Model Serving Infrastructure
+## Serving infrastructure
 
-### Serving Topology
+On the serving side, requests pass through a load balancer and API gateway to a model router that decides which model version or variant handles each request, and then to a pool of inference servers. One pool can serve several models:
 
 ```
 [Load Balancer]
@@ -218,10 +222,7 @@ Best practices:
 [Model A] [Model A] [Model B]  (multi-model serving)
 ```
 
-### Key Serving Concepts
-
-#### Dynamic Batching
-Collect individual requests into batches for GPU efficiency:
+Three serving concepts come up repeatedly. The first is dynamic batching, which collects individual requests into batches for GPU efficiency. On this timeline, three requests arriving over five time units are sent to the GPU as one batch when the timeout fires, and their results are dispatched back to the individual clients:
 
 ```
 Time -->
@@ -232,22 +233,15 @@ Time -->
   t=6: Results returned, dispatch to individual clients
 ```
 
-#### Model Warm-Up
-Before serving traffic:
-1. Load model weights to GPU
-2. Run N dummy inferences to warm up CUDA kernels
-3. Mark instance as "ready" in service discovery
-4. Start receiving traffic
+The [Full-stack AI engineering](full-stack-ai.md) section implements this as an asyncio server.
 
-#### Multi-Model Serving
-On a single GPU:
-- **Time-multiplexing**: Swap models in/out of GPU memory
-- **Memory-multiplexing**: Multiple small models loaded simultaneously
-- **MIG (Multi-Instance GPU)**: Hardware partitioning (NVIDIA A100/H100)
+The second is warm-up. Before an instance takes traffic, it loads the model weights to the GPU, runs $N$ dummy inferences so that CUDA kernels are compiled and caches populated, and only then marks itself ready in service discovery. Skipping this makes the first real requests very slow.
 
-### Inference Optimization
+The third is multi-model serving on a single GPU, which comes in three forms: time-multiplexing, swapping models in and out of GPU memory; memory-multiplexing, loading several small models at once; and MIG (Multi-Instance GPU), hardware partitioning on NVIDIA A100 and H100.
 
-#### Quantization
+### Inference optimisation
+
+Quantisation is the most effective single optimisation. Each halving of precision halves memory and roughly doubles speed, at some cost in quality:
 
 ```
 FP32:  32 bits per weight -> Baseline
@@ -258,7 +252,7 @@ INT4:   4 bits per weight -> 8x memory reduction, ~6x speed
 Quality impact: FP32 ≈ FP16 > INT8 >> INT4
 ```
 
-#### TensorRT Optimization Pipeline
+Compilers such as TensorRT combine several optimisations into one pipeline, taking an ONNX model through layer fusion, precision calibration, and kernel auto-tuning to produce an optimised engine:
 
 ```
 [ONNX Model] --> [Layer Fusion] --> [Precision Calibration] --> [Kernel Auto-Tuning]
@@ -266,9 +260,9 @@ Quality impact: FP32 ≈ FP16 > INT8 >> INT4
                                                                 [Optimized Engine]
 ```
 
-## Experiment Tracking & A/B Testing
+## Experimentation
 
-### Experiment Lifecycle
+A new model is not better until an experiment says so. Every experiment follows the same lifecycle:
 
 ```
 1. Hypothesis: "Model B will improve click-through rate by 5%"
@@ -278,16 +272,9 @@ Quality impact: FP32 ≈ FP16 > INT8 >> INT4
 5. Decision: Ship, iterate, or kill
 ```
 
-### Statistical Considerations
+The statistics need care. Calculate the sample size required for the statistical power you want before starting. When testing several metrics, correct for multiple testing, for example with a Bonferroni correction. Sequential testing lets you stop early when results are clear, which saves time, but it must be designed in rather than done by peeking. And watch for novelty and primacy effects, since users often behave differently at first.
 
-- **Sample size**: Calculate required sample for desired statistical power
-- **Multiple testing**: Bonferroni correction when testing multiple metrics
-- **Sequential testing**: Stop early if results are clear (saves time)
-- **Novelty/primacy effects**: Users may behave differently initially
-
-### Guardrail Metrics
-
-Metrics that must NOT degrade, regardless of the experiment:
+Every experiment also carries guardrail metrics that must not degrade, whatever the primary metric does:
 
 | Metric | Type | Threshold |
 |--------|------|-----------|
@@ -296,11 +283,11 @@ Metrics that must NOT degrade, regardless of the experiment:
 | Revenue per user | Business | No decrease > 1% |
 | Safety violations | Safety | No increase |
 
-If any guardrail is breached, the experiment is automatically stopped.
+If any guardrail is breached, the experiment stops automatically.
 
-## Model Monitoring
+## Monitoring and drift
 
-### What to Monitor
+Once in production, a model is monitored at both ends of inference: inputs are validated and their feature distributions checked, and the distribution of outputs is checked after the model runs.
 
 ```
 [Request] --> [Input Validation] --> [Feature Distribution Check]
@@ -312,7 +299,7 @@ If any guardrail is breached, the experiment is automatically stopped.
                                      [Response]
 ```
 
-### Types of Drift
+What those checks look for is drift, which comes in four types:
 
 | Type | What Changes | Detection |
 |------|-------------|-----------|
@@ -321,7 +308,7 @@ If any guardrail is breached, the experiment is automatically stopped.
 | Model drift | Model performance over time | Track production metrics vs. baseline |
 | Feature drift | Feature computation changes | Compare feature distributions |
 
-### Monitoring Implementation
+Two detectors cover most needs. The two-sample Kolmogorov-Smirnov test compares a feature's current values with its reference values and reports the largest gap between their empirical CDFs; a p-value below the threshold (0.05 here) flags drift. The Population Stability Index (PSI) bins predictions and sums $(c_i - r_i)\ln(c_i / r_i)$ over the bins, where $r_i$ and $c_i$ are the reference and current proportions; by convention a PSI above 0.1 is a moderate shift and above 0.25 a major one.
 
 ```python
 from scipy import stats
@@ -368,9 +355,11 @@ class ProductionMonitor:
         }
 ```
 
-## Retraining Pipelines
+> **Warning:** PSI's conventional thresholds assume proportions that sum to one. With `density=True` and ten bins of width 0.1, each histogram value is ten times the bin's proportion, so this code reports ten times the standard PSI and its 0.1 / 0.2 / 0.25 thresholds fire far too easily. Dividing the raw counts by their total fixes it. Also note that with very large samples the KS test flags tiny, harmless differences as significant; teams often threshold the KS statistic itself rather than the p-value.
 
-### Triggers for Retraining
+## Retraining
+
+Drift is one reason to retrain. The common triggers are:
 
 | Trigger | Description | Example |
 |---------|-------------|---------|
@@ -380,7 +369,7 @@ class ProductionMonitor:
 | Data-based | When new labeled data available | 10K new labels collected |
 | Manual | Human-triggered | After fixing a data quality issue |
 
-### Automated Retraining Pipeline
+An automated retraining pipeline reuses the promotion machinery from earlier in the section. The evaluation gate is what keeps automation safe: a retrained model must match or beat the current production model, show no safety regressions, and stay within the latency SLO before it can even reach staging.
 
 ```
 [Trigger] --> [Data Preparation]
@@ -401,9 +390,9 @@ class ProductionMonitor:
               [Promotion to Production]
 ```
 
-## LLM-Specific Infrastructure
+## LLM-specific infrastructure
 
-### RAG (Retrieval-Augmented Generation)
+Large language models add infrastructure of their own, starting with retrieval-augmented generation (RAG). A query is embedded, the nearest document chunks are retrieved from a vector index, and they are assembled into the prompt as context:
 
 ```
 [User Query] --> [Embedding Model] --> [Vector Search]
@@ -415,13 +404,9 @@ class ProductionMonitor:
                                     [LLM with Context] --> [Response]
 ```
 
-Key decisions:
-- **Chunk size**: 256-1024 tokens per chunk (trade-off: specificity vs. context)
-- **Overlap**: 10-20% overlap between chunks (preserves context at boundaries)
-- **Embedding model**: All-MiniLM, text-embedding-ada-002, E5-large
-- **Vector DB**: Pinecone, Weaviate, Milvus, pgvector, Qdrant
+The key decisions are chunk size, typically 256-1024 tokens, trading specificity against context; overlap between chunks, typically 10-20%, which preserves context at chunk boundaries; the embedding model (All-MiniLM, text-embedding-ada-002, E5-large); and the vector database (Pinecone, Weaviate, Milvus, pgvector, Qdrant).
 
-### Fine-Tuning Infrastructure
+RAG is one of several ways to adapt an LLM to a task, and choosing among them is a frequent design question. Always try the cheapest first:
 
 | Approach | Data Needed | Cost | When to Use |
 |----------|-------------|------|-------------|
@@ -431,7 +416,9 @@ Key decisions:
 | Fine-tuning (LoRA) | 100-10K | Medium | Domain adaptation, style |
 | Full fine-tuning | 10K-1M+ | High | Fundamental capability changes |
 
-### LLM Evaluation
+### Evaluating LLM outputs
+
+LLM evaluation is harder than classification, because there is rarely one right answer. The evaluator below combines a reference-based metric with reference-free heuristics. ROUGE-L computes the longest common subsequence of words between the response and a reference by dynamic programming and reports the F1 of the resulting precision ($\text{LCS}/m$) and recall ($\text{LCS}/n$). The repetition score is the fraction of word trigrams that are repeats, 0 for none and approaching 1 for degenerate looping output. The coherence heuristic penalises high variance in sentence length.
 
 ```python
 class LLMEvaluator:
@@ -500,9 +487,11 @@ class LLMEvaluator:
         return max(0, 1.0 - variance / 100)
 ```
 
-## Cost Optimization
+Be candid in an interview about what these numbers can and cannot tell you. ROUGE-L rewards word overlap, not correctness, and the coherence heuristic measures sentence-length regularity, not meaning. They are cheap regression signals; real LLM evaluation adds task-specific test sets, model-graded rubrics, and human review.
 
-### GPU Cost Reduction Strategies
+## Cost
+
+GPUs are the dominant cost of ML infrastructure, and there are many ways to reduce it:
 
 | Strategy | Savings | Effort |
 |----------|---------|--------|
@@ -514,7 +503,7 @@ class LLMEvaluator:
 | Autoscaling (scale to zero off-peak) | 30-60% | Medium |
 | Multi-model serving (share GPUs) | 40-60% | High |
 
-### Cost Per Prediction
+The number that ties these together is cost per prediction, the GPU's hourly cost divided by the predictions it serves per hour. A worked comparison shows why the most expensive GPU is not always the cheapest choice:
 
 ```
 Cost per prediction = GPU cost per hour / predictions per hour
@@ -531,4 +520,74 @@ Example:
   Cost: $0.003 per prediction
 ```
 
-Always evaluate: Do you need the most expensive GPU, or can a cheaper one meet your latency SLO?
+The A10G serves less than a third of the H100's throughput, but at an eighth of the price it is cheaper per prediction ($1/300 \approx \$0.0033$). So always ask whether you need the most expensive GPU, or whether a cheaper one can meet your latency SLO.
+
+## Where this leads
+
+These patterns appear in the system design rounds of nearly every AI company in this book. [Google DeepMind](../deepmind/README.md) and [NVIDIA](../nvidia/README.md) push deepest on training infrastructure, [Netflix](../netflix/README.md) and [Meta](../meta/README.md) on experimentation, and [OpenAI](../openai/README.md) and [Anthropic](../anthropic/README.md) on serving and LLM-specific infrastructure. For the systems vocabulary underneath, return to [Distributed systems fundamentals](distributed-systems.md).
+
+### Further reading
+
+- Google Cloud, "MLOps: Continuous delivery and automation pipelines in machine learning", the source of the maturity-level framing.
+- Ron Kohavi, Diane Tang, and Ya Xu, *Trustworthy Online Controlled Experiments*, for the statistics of A/B testing.
+- The PyTorch documentation on `DistributedDataParallel` and the NCCL collectives.
+
+## Key terms
+
+- **MLOps maturity**: how much of the ML lifecycle, from training to monitoring and retraining, is automated.
+- **Model registry**: a versioned store of model artifacts with their metadata, serving configuration, lifecycle stage, and lineage.
+- **Distributed Data Parallel (DDP)**: one model replica per GPU, each on a data shard, with gradients all-reduced every step.
+- **AllReduce**: a collective that combines a value across all GPUs and leaves the result on every GPU.
+- **Guardrail metric**: a metric an experiment must not degrade, whose breach stops the experiment.
+- **Population Stability Index (PSI)**: a binned measure of how far one distribution has shifted from a reference.
+- **Cost per prediction**: GPU cost per hour divided by predictions served per hour.
+
+## Summary
+
+- Aim designs at MLOps level 2: automated retraining with validation gates and experimentation.
+- Point-in-time correct features and a registry with lineage make training reproducible and leakage-free.
+- DDP plus NCCL AllReduce is the default for scaling training; checkpoint model and optimiser state often and asynchronously.
+- Promote models through validation, shadow or canary, and gradual rollout, with guardrails that stop bad experiments.
+- Monitor for drift with KS and PSI (on proportions), retrain on clear triggers, and judge hardware by cost per prediction.
+
+## Review questions
+
+1. A model scores far better offline than it does in production. What feature store failure would you suspect first, and why?
+
+   <details><summary>Answer</summary>
+
+   A point-in-time correctness failure. If training examples were built with feature values computed after the events they describe, the model learned from future information that is unavailable at inference time, which inflates offline metrics.
+
+   </details>
+
+2. Why must `sampler.set_epoch(epoch)` be called in a DDP training loop?
+
+   <details><summary>Answer</summary>
+
+   `DistributedSampler` seeds its shuffle from the epoch number. Without updating it, every epoch uses the same permutation, so each rank sees its data in the same order every epoch, which weakens the benefit of shuffling.
+
+   </details>
+
+3. Which NCCL collective does ZeRO rely on for gradients, and which does mixture-of-experts parallelism need?
+
+   <details><summary>Answer</summary>
+
+   ZeRO uses ReduceScatter, so each rank ends up with only the reduced slice of the gradients it owns. Mixture-of-experts needs All-to-All, because each GPU sends different tokens to the GPUs that hold their experts.
+
+   </details>
+
+4. An A10G at $1 per hour serves 300 predictions per hour; an H100 at $8 per hour serves 1000. Which is cheaper per prediction, and what else must you check before choosing it?
+
+   <details><summary>Answer</summary>
+
+   The A10G, at about $0.0033 per prediction against the H100's $0.008. You must also check that the A10G meets the latency SLO and that you can provision enough of them for peak throughput.
+
+   </details>
+
+5. When would you choose RAG over LoRA fine-tuning?
+
+   <details><summary>Answer</summary>
+
+   When the task is knowledge-intensive and the knowledge changes or must be cited: RAG retrieves current documents at query time without retraining. Fine-tuning suits changing the model's style or domain behaviour, which retrieval cannot provide.
+
+   </details>
