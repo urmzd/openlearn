@@ -259,7 +259,7 @@ In the gate, the decision is one line; everything else is making the measurement
 ```python
 def regressed(base: float, head: float, max_regression: float) -> bool:
     """True when head is more than max_regression slower than base."""
-    return head > base * (1.0 + max_regression)   # strict >: Delta == budget is ok (section 3, row 3)
+    return head > base * (1.0 + max_regression)   # strict >: Delta == budget is ok (worked example, row 3)
 ```
 
 Running a subprocess safely is the second piece:

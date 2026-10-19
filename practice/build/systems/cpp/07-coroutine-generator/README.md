@@ -1,17 +1,18 @@
-# C++ 07: Coroutine generator
+# Coroutine generator
 
-**Concepts:** C++20 coroutines, `co_yield`, lazy sequences
-**Difficulty:** ⭐⭐⭐⭐
+A generator is a function that produces a sequence one value at a time, pausing between values and resuming exactly where it left off. Python has had them for decades; C++20 added the machinery but not the type. The language provides no coroutine *type* at all. It provides a protocol: write a function containing `co_yield`, and the compiler looks at the declared return type, finds its nested `promise_type`, and calls specific members at fixed points. This section builds `Generator<T>`, which turns any function containing `co_yield` into a lazy, composable sequence that works in a range-`for`.
 
-A `Generator<T>` that turns any function containing `co_yield` into a lazy,
-composable sequence. The solution is the header
-[`generator.hpp`](generator.hpp); [`main.cpp`](main.cpp) is the test suite.
+Two choices in the promise decide whether infinite generators are safe and whether the handle stays usable after the body ends. Ownership of the coroutine frame follows exactly the rules of [UniquePtr](../02-unique-ptr/README.md), and exceptions have to be smuggled from inside the coroutine to the consumer's stack. By the end you will be able to read the coroutine protocol as a short list of hooks and say what each choice does. The solution is the header [`generator.hpp`](generator.hpp); [`main.cpp`](main.cpp) is the test suite.
 
-## The problem
+> **Learning objectives**
+> - Describe the C++20 coroutine protocol: the frame, the promise, the handle, and when each promise member is called.
+> - Choose `initial_suspend` and `final_suspend` so a generator is lazy and its handle stays valid after the body ends.
+> - Own a coroutine frame correctly in a move-only type.
+> - Propagate exceptions from a coroutine body to the consumer, and expose the sequence as an input iterator.
 
-C++20 provides no coroutine *type*. It provides a protocol: write a function
-containing `co_yield`, and the compiler looks at the declared return type, finds
-its nested `promise_type`, and calls specific members at fixed points.
+## The protocol
+
+These are the members the compiler calls, and when:
 
 | Member | Called |
 |--------|--------|
@@ -23,13 +24,9 @@ its nested `promise_type`, and calls specific members at fixed points.
 | `unhandled_exception()` | If the body throws |
 | `~Generator()` | Must `destroy()` the frame |
 
-The generator must be lazy (infinite generators are safe), move-only, free its
-frame when dropped, rethrow body exceptions to the consumer, and work in a
-range-`for`.
+The generator must be lazy (so infinite generators are safe), move-only, free its frame when dropped, rethrow body exceptions to the consumer, and work in a range-`for`.
 
-## Build and run
-
-From this directory:
+To build and run the tests from this directory:
 
 ```bash
 c++ -std=c++20 -Wall -Wextra -O2 main.cpp -o generator && ./generator
@@ -38,61 +35,41 @@ c++ -std=c++20 -Wall -Wextra -O2 main.cpp -o generator && ./generator
 
 Add `-g -fsanitize=address` to turn the abandonment test into a leak check.
 
-## What to notice
+## Suspending at the start and at the end
 
-**`initial_suspend` returning `suspend_always` is what makes infinite
-generators possible.** With `suspend_never` the body runs to its first
-`co_yield` during construction. Suspending immediately means nothing executes
-until the consumer asks.
+`initial_suspend` returning `suspend_always` is what makes infinite generators possible. With `suspend_never` the body runs to its first `co_yield` during construction. Suspending immediately means nothing executes until the consumer asks.
 
-**`final_suspend` returning `suspend_always` is what keeps the handle usable.**
-Return `suspend_never` and the frame is destroyed the instant the body finishes,
-so every later `handle_.done()` is a use-after-free.
+`final_suspend` returning `suspend_always` is what keeps the handle usable. Return `suspend_never` and the frame is destroyed the instant the body finishes, so every later `handle_.done()` is a use-after-free.
 
-**The frame is heap-allocated and uniquely owned.** That is why `Generator` is
-move-only with a `destroy()` in the destructor: it is a `unique_ptr` wearing a
-different name. `test_abandonment_frees_the_frame` drops a thousand suspended
-generators.
+## Owning the frame
 
-**Stash the exception, do not let it escape.** `unhandled_exception` is called
-*inside* the coroutine, where there is no consumer stack to unwind into.
-Capturing it with `std::current_exception()` and rethrowing on the consumer's
-next `next()` makes a throwing generator behave like a throwing loop.
+The frame is heap-allocated and uniquely owned. That is why `Generator` is move-only with a `destroy()` in the destructor: it is a `unique_ptr` wearing a different name. `test_abandonment_frees_the_frame` drops a thousand suspended generators.
 
-**Interleaving is real, not batching.** `test_interleaving_is_real` records a
-log from both sides and asserts the exact alternation. A generator that ran the
-body to completion and buffered the results would pass a values-only test.
+## Exceptions and iteration
 
-**Only an input iterator is honest here.** A single-pass lazy sequence cannot
-provide a forward iterator: you cannot revisit an element, and copying the
-position does not copy the state.
+Stash the exception; do not let it escape. `unhandled_exception` is called *inside* the coroutine, where there is no consumer stack to unwind into. Capturing it with `std::current_exception()` and rethrowing on the consumer's next `next()` makes a throwing generator behave like a throwing loop.
 
-**Composition is where laziness pays.** `take(squares_of(naturals()), 5)`
-evaluates exactly five elements and builds no intermediate container.
+Only an input iterator is honest here. A single-pass lazy sequence cannot provide a forward iterator: you cannot revisit an element, and copying the position does not copy the state.
 
-## The solution, step by step
+Composition is where laziness pays. `take(squares_of(naturals()), 5)` evaluates exactly five elements and builds no intermediate container.
 
-### From first principles
+## Deriving the design
 
-1. **A coroutine's locals live in a heap frame the compiler allocates.** The
-   promise object is inside that frame, and a `coroutine_handle` is a pointer to
-   it. Whoever holds the handle must eventually call `destroy()`, exactly once:
-   the `Generator` owns the handle like a `unique_ptr` owns its pointer.
-2. **Laziness means not running until asked.** Suspend at the start
-   (`initial_suspend` returns `suspend_always`); each `next()` resumes the body
-   until the next `co_yield` suspends it again.
-3. **A yielded value must outlive the suspension.** `yield_value` moves it into
-   the promise (`current`), and the consumer reads it from there.
-4. **The end must be observable.** Suspend at the end too (`final_suspend`
-   returns `suspend_always`), so `done()` can be asked safely and the destructor
-   remains the only place the frame is freed.
-5. **Exceptions belong to the consumer.** Record them in the promise and rethrow
-   from `next()`, on the consumer's stack.
-6. **Iteration is `next()` in disguise.** `begin()` advances once; `++` advances
-   again; an iterator becomes "end" (a null generator pointer) when `next()`
-   returns false.
+Six observations build the type.
 
-### The code, annotated
+A coroutine's locals live in a heap frame the compiler allocates. The promise object is inside that frame, and a `coroutine_handle` is a pointer to it. Whoever holds the handle must eventually call `destroy()`, exactly once: the `Generator` owns the handle as a `unique_ptr` owns its pointer.
+
+Laziness means not running until asked. Suspend at the start (`initial_suspend` returns `suspend_always`); each `next()` resumes the body until the next `co_yield` suspends it again.
+
+A yielded value must outlive the suspension. `yield_value` moves it into the promise (`current`), and the consumer reads it from there.
+
+The end must be observable. Suspend at the end too (`final_suspend` returns `suspend_always`), so `done()` can be asked safely and the destructor remains the only place the frame is freed.
+
+Exceptions belong to the consumer. Record them in the promise and rethrow from `next()`, on the consumer's stack.
+
+Iteration is `next()` in disguise. `begin()` advances once; `++` advances again; an iterator becomes "end" (a null generator pointer) when `next()` returns false.
+
+## Building it step by step
 
 The promise, the compiler's interface:
 
@@ -192,25 +169,52 @@ class iterator {
 };
 ```
 
-Full solution: [`generator.hpp`](generator.hpp).
+The full solution is in [`generator.hpp`](generator.hpp).
 
-### Why this solution
+## Why this design
 
-- **Cost.** One heap allocation per generator (the frame; compilers may elide
-  it when the lifetime is visible), and a resume/suspend pair per element,
-  roughly the cost of an indirect call.
-- **Versus returning a `std::vector`.** Eager: computes everything up front,
-  needs memory for all of it, and cannot express infinite sequences.
-- **Versus a hand-written iterator class.** Same laziness, but the loop state
-  must be turned into member variables by hand; the coroutine keeps it as
-  ordinary locals.
-- **Versus C++23 `std::generator`.** The standard one adds recursive yielding
-  and allocator support; this one is the minimal core of the same protocol.
-- **Accepted trade.** `T current` requires `T` to be default-constructible, and
-  values are copied/moved into the promise. Storing a pointer to the yielded
-  value (it lives in the suspended frame) would avoid both.
+Each generator costs one heap allocation (the frame; compilers may elide it when the lifetime is visible), and each element costs a resume/suspend pair, roughly the cost of an indirect call.
 
-### Explain it back
+Returning a `std::vector` instead is eager: it computes everything up front, needs memory for all of it, and cannot express infinite sequences. A hand-written iterator class has the same laziness, but the loop state must be turned into member variables by hand; the coroutine keeps it as ordinary locals. C++23's `std::generator` adds recursive yielding and allocator support; this one is the minimal core of the same protocol.
+
+The accepted trade is that `T current` requires `T` to be default-constructible, and values are copied or moved into the promise. Storing a pointer to the yielded value (it lives in the suspended frame) would avoid both.
+
+## What can go wrong
+
+Interleaving is real, not batching, and a values-only test cannot tell the difference. `test_interleaving_is_real` records a log from both sides and asserts the exact alternation; a generator that ran the body to completion and buffered the results would pass a test that only checked the values.
+
+| Mistake | Consequence |
+|---------|-------------|
+| `initial_suspend` returns `suspend_never` | The first value is computed during construction and then skipped |
+| `final_suspend` returns `suspend_never` | The frame is freed when the body ends; `done()` is a use-after-free |
+| Resuming without checking `done()` | Undefined behaviour at the final suspend point |
+| Letting the exception escape `unhandled_exception` | There is no consumer stack to unwind into |
+| Copyable `Generator` | Two destructors destroy one frame |
+| Claiming a forward iterator | Copies of the iterator share, not copy, the sequence state |
+
+After an exception the coroutine is at its final suspend, so later `next()` calls return `false` rather than rethrowing again.
+
+## Where this leads
+
+Try `co_await` on a generator to flatten nested sequences, which needs an awaiter type and is how recursive generators avoid O(depth) resumption cost. Then compare with `std::generator` in C++23, which standardises this exercise and adds exactly that recursive-yield support. The same promise-and-handle protocol underlies asynchronous C++ code, where `co_await` suspends on I/O instead of on a yielded value.
+
+## Key terms
+
+- **Coroutine**: a function that can suspend and later resume, keeping its locals in a heap-allocated frame.
+- **Promise type**: the nested `promise_type` whose members the compiler calls at fixed points in a coroutine's life.
+- **Coroutine handle**: a non-owning pointer to a coroutine frame, used to resume, query, and destroy it.
+- **Suspend point**: a place where the coroutine pauses; initial and final suspend are the two implicit ones.
+- **Input iterator**: a single-pass iterator whose copies do not independently preserve position.
+
+## Summary
+
+- C++20 provides a protocol, not a type: `Generator<T>` supplies the `promise_type` the compiler calls.
+- Suspending at the start makes the generator lazy; suspending at the end keeps the handle valid until the destructor frees the frame.
+- `Generator` owns its frame like a `unique_ptr`: move-only, with `destroy()` in the destructor.
+- Body exceptions are captured in the promise and rethrown from `next()` on the consumer's stack.
+- Iteration is an input iterator over `next()`, and composition evaluates only the elements consumed.
+
+## Review questions
 
 1. What would `initial_suspend` returning `suspend_never` do to
    `Generator<int> naturals()` with a `while (true)` body?
@@ -252,10 +256,3 @@ Full solution: [`generator.hpp`](generator.hpp).
    would resume the same state.
 
    </details>
-
-## Extending it
-
-Try `co_await` on a generator to flatten nested sequences, which needs an
-awaiter type and is how recursive generators avoid O(depth) resumption cost.
-Then compare with `std::generator` in C++23, which standardises this exercise
-and adds exactly that recursive-yield support.

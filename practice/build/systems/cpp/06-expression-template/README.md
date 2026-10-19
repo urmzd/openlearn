@@ -1,14 +1,16 @@
-# C++ 06: Expression templates
+# Expression templates
 
-**Concepts:** CRTP, operator overloading, lazy evaluation
-**Difficulty:** ⭐⭐⭐⭐
+Write `d = a + b + c` for vectors with ordinary operator overloading and you get two temporary arrays, two extra passes over memory, and code several times slower than the hand-written loop. Expression templates fix this by having `+` return a description of the work rather than the work's result. The description is a tree of types; assigning it to a vector walks the tree once per element, so the whole expression computes in a single pass with no temporaries.
 
-Make `d = a + b + c` compute in a single pass with no temporary arrays, by
-having `+` return a description of the work rather than the work's result. The
-solution is the header [`expr.hpp`](expr.hpp); [`main.cpp`](main.cpp) is the
-test suite.
+The technique powers Eigen, Blaze, and xtensor, and it rests on two ideas you will use elsewhere: the curiously recurring template pattern (CRTP), which gives you an interface without a vtable, and a careful decision about which operands to store by reference and which by value. Getting that decision wrong produces the most famous bug in expression templates, which the reference implementation itself had until AddressSanitizer caught it. This section assumes comfort with templates and operator overloading at the level of the [compile-time matrix](../04-constexpr-matrix/README.md). The solution is the header [`expr.hpp`](expr.hpp); [`main.cpp`](main.cpp) is the test suite.
 
-## The problem
+> **Learning objectives**
+> - Explain why naive operator overloading on arrays is bound by memory bandwidth.
+> - Use CRTP to give expression nodes a shared interface with static dispatch.
+> - Build a lazy expression tree that evaluates in one loop at assignment.
+> - Choose by-reference or by-value storage per node type so `auto` expressions do not dangle.
+
+## The interface
 
 | Type | Role |
 |------|------|
@@ -18,86 +20,46 @@ test suite.
 | `BinaryExpr` / `UnaryExpr` | Nodes holding operands and an operation |
 | `operator+ - * /`, unary `-` | Return nodes, never a `Vec` |
 
-Constraints: no intermediate arrays, every element of every input read exactly
-once per assignment, `Scalar` usable on either side, and `auto e = a + b + c;`
-must not dangle.
+The constraints are: no intermediate arrays, every element of every input read exactly once per assignment, `Scalar` usable on either side, and `auto e = a + b + c;` must not dangle.
 
-## Build and run
-
-From this directory:
+To build and run the tests from this directory:
 
 ```bash
 c++ -std=c++20 -Wall -Wextra -O2 main.cpp -o expr && ./expr
 # ok  cpp/06-expression-template  40 checks passed
 ```
 
-Build once with `-g -fsanitize=address` as well: the dangling-temporary bug
-described below is exactly what AddressSanitizer reports.
+Build once with `-g -fsanitize=address` as well: the dangling-temporary bug described below is exactly what AddressSanitizer reports.
 
-## What to notice
+## The cost of temporaries
 
-**The naive version's cost is memory bandwidth, not arithmetic.** `a + b + c`
-with ordinary overloading allocates a temporary for `a + b`, fills it, then
-allocates another for the outer sum. On anything large, that traffic *is* the
-runtime, which is why Eigen, Blaze, and xtensor are all built on this technique.
+The naive version's cost is memory bandwidth, not arithmetic. `a + b + c` with ordinary overloading allocates a temporary for `a + b`, fills it, then allocates another for the outer sum. On anything large, that traffic *is* the run time, which is why the major numerical libraries are all built on this technique.
 
-**CRTP is static polymorphism: the base downcasts to the derived type.**
-`static_cast<const Derived&>(*this)` costs nothing and inlines, where a virtual
-call would defeat the whole purpose by preventing the compiler from collapsing
-the tree. You get an interface without a vtable.
+## Static polymorphism with CRTP
 
-**The recursion happens at compile time, and the loop happens once.** By the
-time `Vec::operator=` runs its single loop, `expr[i]` has expanded into
-`a[i] + b[i] + c[i]` as one inlined expression.
-`test_no_intermediate_materialisation` proves it by counting reads: four inputs
-of four elements must be exactly sixteen reads.
+CRTP is static polymorphism: the base downcasts to the derived type. `static_cast<const Derived&>(*this)` costs nothing and inlines, where a virtual call would defeat the whole purpose by preventing the compiler from collapsing the tree. You get an interface without a vtable.
 
-**Storing operands by reference is the obvious choice and it is wrong.** This is
-the most famous bug in expression templates, and the reference implementation
-was first written with it before AddressSanitizer caught it:
+The recursion happens at compile time, and the loop happens once. By the time `Vec::operator=` runs its single loop, `expr[i]` has expanded into `a[i] + b[i] + c[i]` as one inlined expression. `test_no_intermediate_materialisation` proves it by counting reads: four inputs of four elements must be exactly sixteen reads.
 
-```cpp
-auto e = a + b + c;   // (a + b) is a temporary...
-Vec  v = e;           // ...that died at the semicolon above
-```
+The interface is open. The tests define their own leaf type, `CountingVec`, which lives in `main.cpp`, inherits `Expr<CountingVec>`, and immediately works with every operator. Any type providing `operator[]` and `size()` participates.
 
-Assigning directly is safe because every temporary lives to the end of that
-full expression. Reach for `auto` and the outer node holds a reference to an
-intermediate that no longer exists.
+## Deriving the design
 
-**`size()` cannot just take the left operand's.** `Scalar` reports 0 so that a
-binary node can take its length from whichever side is a real array. Taking the
-left unconditionally works for `v * Scalar(2)` and breaks on `Scalar(2) * v`,
-which is why the tests do both.
+Six observations build the library.
 
-**The tests define their own leaf type.** `CountingVec` lives in `main.cpp`,
-inherits `Expr<CountingVec>`, and immediately works with every operator. The
-interface is open: any type providing `operator[]` and `size()` participates.
+To avoid temporaries, delay the work. If `a + b` returns an object that *describes* the sum (references to `a` and `b`, and the operation), then `(a + b) + c` is a tree of descriptions. Only assignment to a `Vec` needs numbers, and it can compute element `i` of the whole tree directly.
 
-## The solution, step by step
+Element access is the only operation the tree needs. A node's `[i]` is `op(left[i], right[i])`. Recursing through the tree is just nested calls, which the compiler inlines into one expression per element.
 
-### From first principles
+The node types must be known at compile time to inline. So every node is a distinct template type, and the shared interface is a CRTP base `Expr<Derived>` that casts to `Derived` statically, never virtually.
 
-1. **To avoid temporaries, delay the work.** If `a + b` returns an object that
-   *describes* the sum (references to `a` and `b`, and the operation), then
-   `(a + b) + c` is a tree of descriptions. Only assignment to a `Vec` needs
-   numbers, and it can compute element `i` of the whole tree directly.
-2. **Element access is the only operation the tree needs.** A node's `[i]` is
-   `op(left[i], right[i])`. Recursing through the tree is just nested calls,
-   which the compiler inlines into one expression per element.
-3. **The node types must be known at compile time to inline.** So every node is
-   a distinct template type, and the shared interface is a CRTP base
-   `Expr<Derived>` that casts to `Derived` statically, never virtually.
-4. **Operators accept any `Expr<L>` and `Expr<R>`.** That one template overload
-   per operator covers vectors, scalars, nodes, and user types alike.
-5. **Ownership decides storage.** User containers outlive the expression and
-   must not be copied: hold them by reference. Intermediate nodes are temporaries
-   that may die before evaluation: hold them by value (they are just a couple of
-   references, so copying is free). A trait, `ExprStorage<T>`, picks per type.
-6. **Length comes from a real array.** A scalar has no length, so it reports 0
-   and a binary node takes the non-zero side.
+Operators accept any `Expr<L>` and `Expr<R>`. That one template overload per operator covers vectors, scalars, nodes, and user types alike.
 
-### The code, annotated
+Ownership decides storage. User containers outlive the expression and must not be copied: hold them by reference. Intermediate nodes are temporaries that may die before evaluation: hold them by value (they are just a couple of references, so copying is free). A trait, `ExprStorage<T>`, picks per type.
+
+Length comes from a real array. A scalar has no length, so it reports 0 and a binary node takes the non-zero side.
+
+## Building it step by step
 
 The CRTP base:
 
@@ -185,23 +147,52 @@ Vec(const Expr<E>& e) {
 `operator=` has the same body. Because each element is read and written at the
 same index, `a = a + b` is safe: `a[i]` is read before `a[i]` is overwritten.
 
-Full solution: [`expr.hpp`](expr.hpp).
+The full solution is in [`expr.hpp`](expr.hpp).
 
-### Why this solution
+## Why this design
 
-- **Cost.** Evaluating an expression with `k` leaves over `n` elements reads
-  `k·n` values and writes `n`, with no allocation beyond the destination.
-  Ordinary overloading would write `(k - 1)·n` extra values to temporaries.
-- **Versus virtual nodes.** A virtual `operator[]` per node would also be lazy
-  but costs an indirect call per element per node and blocks vectorisation.
-- **Versus all-by-reference storage.** Correct only when the whole expression is
-  consumed within one full expression; `auto` makes it dangle.
-- **Accepted trade.** Error messages and types are huge, and aliasing beyond the
-  same index (shifts, slices) would need an explicit evaluation step. A
-  temporary `Vec` used as a leaf (`auto e = Vec{1,2} + a;`) is still held by
-  reference and still dangles; Eigen documents the same caveat.
+Evaluating an expression with $k$ leaves over $n$ elements reads $k \cdot n$ values and writes $n$, with no allocation beyond the destination. Ordinary overloading would write $(k - 1) \cdot n$ extra values to temporaries.
 
-### Explain it back
+Virtual nodes would also be lazy, but a virtual `operator[]` per node costs an indirect call per element per node and blocks vectorisation. All-by-reference storage is correct only when the whole expression is consumed within one full expression; `auto` makes it dangle.
+
+The accepted trade is that error messages and types are huge, and aliasing beyond the same index (shifts, slices) would need an explicit evaluation step.
+
+## What can go wrong
+
+Storing operands by reference is the obvious choice, and it is wrong:
+
+```cpp
+auto e = a + b + c;   // (a + b) is a temporary...
+Vec  v = e;           // ...that died at the semicolon above
+```
+
+Assigning directly is safe because every temporary lives to the end of that full expression. Reach for `auto` and the outer node holds a reference to an intermediate that no longer exists. That is why `ExprStorage` stores nodes by value.
+
+`size()` cannot just take the left operand's. `Scalar` reports 0 so that a binary node can take its length from whichever side is a real array. Taking the left unconditionally works for `v * Scalar(2)` and breaks on `Scalar(2) * v`, which is why the tests do both.
+
+> **Warning:** A temporary `Vec` used as a leaf, as in `auto e = Vec{1,2} + a;`, is still held by reference and still dangles. Eigen documents the same caveat. Name your vectors, or evaluate the expression in the same statement.
+
+## Where this leads
+
+Add a `Slice` node so `v[range(2,5)] = expr` works and see how quickly aliasing becomes a real problem: `v = v + shift(v, 1)` reads elements it has already overwritten. Eigen's answer is an explicit `.eval()` and a documented aliasing rule, and understanding why they could not simply detect it is the interesting part. The type-erasure section, [Function](../08-function/README.md), is the mirror image of this one: it hides types behind a uniform interface at run time, where expression templates expose them all at compile time.
+
+## Key terms
+
+- **Expression template**: a type that represents an unevaluated expression, evaluated later in one pass.
+- **CRTP**: the curiously recurring template pattern, `class D : Base<D>`, letting the base call the derived type statically.
+- **Lazy evaluation**: deferring computation until its result is needed.
+- **Dangling reference**: a reference to an object whose lifetime has ended.
+- **Full expression**: the outermost expression of a statement; temporaries live until it ends.
+
+## Summary
+
+- Operators return node objects describing the computation, and only assignment to `Vec` runs a loop.
+- CRTP gives nodes a common interface with static dispatch, so the tree inlines into one expression per element.
+- Leaves are stored by reference and intermediate nodes by value, chosen by the `ExprStorage` trait, so `auto` expressions stay valid.
+- `Scalar` reports size 0 and binary nodes take the non-zero side, so scalars work on either side.
+- Same-index aliasing (`a = a + b`) is safe; shifted aliasing and temporary leaves are not.
+
+## Review questions
 
 1. Why does `auto e = a + b + c; Vec v = e;` dangle if nodes store operands by
    reference?
@@ -244,11 +235,3 @@ Full solution: [`expr.hpp`](expr.hpp).
    every element of every node and prevent that collapse.
 
    </details>
-
-## Extending it
-
-Add a `Slice` node so `v[range(2,5)] = expr` works and see how quickly aliasing
-becomes a real problem: `v = v + shift(v, 1)` reads elements it has already
-overwritten. Eigen's answer is an explicit `.eval()` and a documented aliasing
-rule, and understanding why they could not simply detect it is the interesting
-part.
