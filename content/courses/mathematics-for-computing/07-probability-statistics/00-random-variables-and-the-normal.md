@@ -1,34 +1,20 @@
 # Random variables, expectation, variance, and normal draws by Box-Muller
 
-## Overview
+By the end of the previous chapter you had a reproducible generator, [PCG32](../06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md), that produces uniform numbers in $[0, 1)$. Neural networks are not initialized with uniform numbers. Almost every weight in *Build Your Own LLM System*, from the first `Linear` layer in [Module system and basic layers](../../build-an-llm/p00-foundations/04-module-system-and-layers.md) to the [Llama-family model](../../build-an-llm/p07-modern-block/09-llama-family-model.md), starts as a draw from a **normal distribution** with a carefully chosen spread. The first place this book needs one is [orthogonal initialization](../03-linear-algebra/03-orthogonality-and-householder-qr.md), which is the QR factorization of a Gaussian matrix.
 
-| | |
-|---|---|
-| **Module** | `M07.0` · build · Python · Pass 2 · 1 to 1.5 h reading |
-| **Solution** | [`course/solutions/python/tinyllm/prob/rv.py`](../../../../course/solutions/python/tinyllm/prob/rv.py): `expectation(values, probs)`, `variance(values, probs)` (two-pass), `box_muller(u1, u2)`, `normal(rng, n)` (standard normals in the cross-language order of `spec/pcg32.md`) |
-| **Contract** | [`course/contracts/py/tinyllm/prob/rv.pyi`](../../../../course/contracts/py/tinyllm/prob/rv.pyi) · draw order: [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md) |
-| **Needs** | `M06.3` the PCG32 generator every caller passes in ([`rng.py`](../../../../course/solutions/python/tinyllm/num/rng.py)). Reading: `M00.2` (cos, sin, the unit circle), [Calculus 2](../02-calculus-2/) (the Gaussian integral) |
-| **Used by** | `M03.3` orthogonal initialization draws its Gaussian matrix here · `M07.3` `normal_init` and variance propagation through layers; part of the Pass 2 foundations every later pass builds on |
-| **Optional depth** | Blitzstein and Hwang, *Introduction to Probability*, ch. 3 to 5 and 7.5 (Box-Muller); Grinstead and Snell, *Introduction to Probability*, ch. 6; Box and Muller, "A Note on the Generation of Random Normal Deviates" (1958); Welford, "Note on a Method for Calculating Corrected Sums of Squares and Products" (1962) |
+Choosing that spread is a variance calculation, the subject of [Variance propagation and initialization](03-variance-propagation-and-initialization.md): too large and activations explode through 20 layers, too small and they vanish. This section lays the groundwork. It defines random variables, expectation, and variance from the beginning, shows how to compute a variance without destroying its digits, and turns uniforms into normals with the Box-Muller transform, in exactly the order the Rust and Go ports use, so that one seed means the same weights everywhere.
 
-## Key Takeaways
+You will need the generator from [Modular arithmetic, hashing, and PCG32](../06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) (the solution's [`rng.py`](../../../../course/solutions/python/tinyllm/num/rng.py)), cosine, sine, and the unit circle from [Trig, rotations, and Euler's formula](../00-precalculus/02-trig-rotations-and-eulers-formula.md), and, for background, the Gaussian integral from [Calculus 2](../02-calculus-2/), which its [problem set](../02-calculus-2/90-problem-set.md) works through. The reference implementation is [`course/solutions/python/tinyllm/prob/rv.py`](../../../../course/solutions/python/tinyllm/prob/rv.py), its contract is [`rv.pyi`](../../../../course/contracts/py/tinyllm/prob/rv.pyi), and the cross-language draw order is fixed by [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md).
 
-- A discrete **random variable** is a table of values and probabilities; its **expectation** is the probability-weighted mean and its **variance** the expected squared distance from that mean.
-- $\operatorname{Var}[aX + c] = a^2 \operatorname{Var}[X]$: shifting does nothing, scaling scales by the square. `M07.3` sizes every initialization with this rule.
-- Compute the variance in **two passes** (mean first, then squared deviations). $E[X^2] - E[X]^2$ subtracts two huge, nearly equal numbers and can return 0 or a negative variance.
-- **Box-Muller** turns two independent uniforms into two independent standard normals: a radius $\sqrt{-2\ln(1-u_1)}$ and an angle $2\pi u_2$. Drawn in the spec's order, the same seed gives the same normals in Python, Rust, and Go.
+> **Learning objectives**
+> - Compute the expectation and variance of a discrete distribution, and validate that a table really is a distribution.
+> - Derive $\operatorname{Var}[aX + c] = a^2 \operatorname{Var}[X]$ and explain why independent variances add.
+> - Explain why $E[X^2] - E[X]^2$ fails numerically and compute the variance in two passes instead.
+> - Derive the Box-Muller transform from the polar form of two independent normals and implement it in the spec's draw order.
 
-## How to read this chapter
+## Notation
 
-Sections 1 and 2 build expectation, variance, and Box-Muller from first principles, and section 3 works each by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
-
----
-
-## 1. Why now
-
-The system now has a reproducible generator (`M06.3`) that produces uniform numbers in $[0, 1)$. Neural networks are not initialized with uniform numbers: almost every weight in this course, from the first `Linear` layer (`L0.4`) to the Llama blocks (`L7.9`), starts as a draw from a **normal distribution** with a carefully chosen spread, and the next module that needs one is `M03.3`, whose orthogonal initializer is the QR factorization of a Gaussian matrix. Choosing the spread is a variance calculation (`M07.3`): too large and activations explode through 20 layers, too small and they vanish. This module defines random variables, expectation, and variance from the beginning, and turns its uniforms into normals with Box-Muller, in exactly the order the Rust and Go ports will use, so that one seed means the same weights everywhere.
-
-## 2. Principles
+The section uses the following symbols throughout.
 
 | Symbol | Meaning | Type |
 |---|---|---|
@@ -43,39 +29,41 @@ The system now has a reproducible generator (`M06.3`) that produces uniform numb
 | $u_1, u_2$ | two uniform draws | `float` |
 | $r, \theta$ | polar radius and angle | `float` |
 
-### 2.1 Random variables and distributions
+## Random variables and distributions
 
-A **random variable** assigns a number to each outcome of a random experiment. A **discrete** one takes values $x_1, \dots, x_k$ with probabilities $p_1, \dots, p_k$, where every $p_i \ge 0$ and $\sum_i p_i = 1$; that table *is* its distribution. A table whose probabilities do not sum to 1 (say, raw counts) or contain a negative entry describes no random variable, and the functions in this module reject it rather than average with it.
+A **random variable** assigns a number to each outcome of a random experiment. A **discrete** one takes values $x_1, \dots, x_k$ with probabilities $p_1, \dots, p_k$, where every $p_i \ge 0$ and $\sum_i p_i = 1$; that table *is* its distribution. A table whose probabilities do not sum to 1 (say, raw counts) or contain a negative entry describes no random variable, and the functions in this section reject it rather than average with it.
 
 A **continuous** random variable has a **density** $f \ge 0$ with $\int f = 1$; probabilities are areas under $f$, and any single value has probability 0. $U$, uniform on $[0, 1)$, has $f = 1$ on that interval.
 
-### 2.2 Expectation and variance
+## Expectation and variance
 
-The **expectation** is the probability-weighted average of the values,
+Once you have a distribution, the first two things to ask of it are where it sits and how widely it spreads. The **expectation** answers the first. It is the probability-weighted average of the values,
 
 $$E[X] = \sum_i p_i\, x_i \qquad \Big(\text{continuous: } \int z f(z)\,dz\Big),$$
 
 the long-run average of many independent draws. It is **linear**: $E[aX + c] = aE[X] + c$, and $E[X + Y] = E[X] + E[Y]$ for any $X, Y$.
 
-The **variance** measures spread, as the expected squared distance from the mean:
+The **variance** answers the second, as the expected squared distance from the mean:
 
 $$\operatorname{Var}[X] = E\big[(X - \mu)^2\big] = \sum_i p_i\,(x_i - \mu)^2, \qquad \mu = E[X].$$
 
-From linearity: $\operatorname{Var}[aX + c] = E[(aX + c - a\mu - c)^2] = a^2 \operatorname{Var}[X]$. A shift moves the distribution without spreading it; a scale by $a$ spreads it by $\lvert a \rvert$, so the variance grows by $a^2$. For **independent** $X$ and $Y$, variances add: $\operatorname{Var}[X + Y] = \operatorname{Var}[X] + \operatorname{Var}[Y]$. A neuron $\sum_{j=1}^{n} w_j x_j$ with independent zero-mean terms therefore has variance $n \operatorname{Var}[w]\operatorname{Var}[x]$, which is why `M07.3` scales initial weights by $1/\sqrt{n}$.
+From linearity, $\operatorname{Var}[aX + c] = E[(aX + c - a\mu - c)^2] = a^2 \operatorname{Var}[X]$. A shift moves the distribution without spreading it; a scale by $a$ spreads it by $\lvert a \rvert$, so the variance grows by $a^2$. For **independent** $X$ and $Y$, variances add: $\operatorname{Var}[X + Y] = \operatorname{Var}[X] + \operatorname{Var}[Y]$. A neuron $\sum_{j=1}^{n} w_j x_j$ with independent zero-mean terms therefore has variance $n \operatorname{Var}[w]\operatorname{Var}[x]$, which is why [Variance propagation and initialization](03-variance-propagation-and-initialization.md) scales initial weights by $1/\sqrt{n}$. Every initialization in the book is sized with this rule.
 
 Two examples recur everywhere. A **Bernoulli**($p$) variable (1 with probability $p$, else 0) has $E = p$ and $\operatorname{Var} = p(1 - p)$: every accuracy you will ever measure is an average of these. A **point mass** (one value with probability 1) has variance exactly 0.
 
-### 2.3 Computing the variance without cancellation
+## Computing the variance without cancellation
 
-Expanding the square gives the textbook shortcut $\operatorname{Var}[X] = E[X^2] - E[X]^2$, which is algebraically equal and numerically dangerous. Take $X = 10^9 + B$ with $B$ a fair coin: the true variance is $\tfrac14$. But $E[X^2] \approx 10^{18}$ and $E[X]^2 \approx 10^{18}$, and float64 numbers near $10^{18}$ are spaced 128 apart, so their difference is a multiple of 128 near zero: the answer comes out 0 or $-64$, every digit wrong, sometimes negative. The **two-pass** method computes $\mu$ first, then $\sum_i p_i (x_i - \mu)^2$: the deviations $x_i - \mu$ are small numbers computed with small errors, and the squares are all non-negative. (`M09.2` returns to this as Welford's and Kahan's algorithms.)
+The definition is clear; the arithmetic is where implementations go wrong. Expanding the square gives the textbook shortcut $\operatorname{Var}[X] = E[X^2] - E[X]^2$, which is algebraically equal and numerically dangerous. Take $X = 10^9 + B$ with $B$ a fair coin: the true variance is $\tfrac14$. But $E[X^2] \approx 10^{18}$ and $E[X]^2 \approx 10^{18}$, and float64 numbers near $10^{18}$ are spaced 128 apart, so their difference is a multiple of 128 near zero: the answer comes out 0 or $-64$, every digit wrong, sometimes negative.
 
-### 2.4 The normal distribution
+The **two-pass** method computes $\mu$ first, then $\sum_i p_i (x_i - \mu)^2$. The deviations $x_i - \mu$ are small numbers computed with small errors, and the squares are all non-negative. [Stable numerics](../09-numerical-methods-and-floating-point/02-stable-numerics.md) returns to this problem with Welford's and Kahan's algorithms.
 
-The **standard normal** $\mathcal{N}(0, 1)$ has density $f(z) = \frac{1}{\sqrt{2\pi}} e^{-z^2/2}$: mean 0, variance 1, symmetric, with about 68% of its mass within one standard deviation and 99.7% within three. $\mu + \sigma Z$ is $\mathcal{N}(\mu, \sigma^2)$. The constant $\frac{1}{\sqrt{2\pi}}$ comes from the Gaussian integral $\int_{-\infty}^{\infty} e^{-z^2/2}\,dz = \sqrt{2\pi}$, computed by squaring it and switching to polar coordinates, and the same trick in reverse is how normals are generated.
+## The normal distribution
 
-### 2.5 Box-Muller
+With expectation and variance in hand, you can describe the distribution the rest of the section is about. The **standard normal** $\mathcal{N}(0, 1)$ has density $f(z) = \frac{1}{\sqrt{2\pi}} e^{-z^2/2}$: mean 0, variance 1, symmetric, with about 68% of its mass within one standard deviation and 99.7% within three. $\mu + \sigma Z$ is $\mathcal{N}(\mu, \sigma^2)$. The constant $\frac{1}{\sqrt{2\pi}}$ comes from the Gaussian integral $\int_{-\infty}^{\infty} e^{-z^2/2}\,dz = \sqrt{2\pi}$, computed by squaring it and switching to polar coordinates, and the same trick in reverse is how normals are generated.
 
-Two independent standard normals $(Z_0, Z_1)$ form a point in the plane whose density $\frac{1}{2\pi} e^{-(z_0^2 + z_1^2)/2}$ depends only on the distance from the origin. In polar coordinates $(r, \theta)$:
+## Box-Muller
+
+Two independent standard normals $(Z_0, Z_1)$ form a point in the plane whose density $\frac{1}{2\pi} e^{-(z_0^2 + z_1^2)/2}$ depends only on the distance from the origin. In polar coordinates $(r, \theta)$, two facts follow:
 
 - the **angle** $\theta$ is uniform on $[0, 2\pi)$, by the rotational symmetry;
 - the **radius** satisfies $\Pr[R > r] = e^{-r^2/2}$ (integrate the density outside the circle of radius $r$), so $R^2/2$ is exponential with mean 1.
@@ -84,13 +72,15 @@ To sample $R$, invert its survival function: if $V$ is uniform on $(0, 1]$, $R =
 
 $$r = \sqrt{-2 \ln(1 - u_1)}, \qquad \theta = 2\pi u_2, \qquad (z_0, z_1) = (r\cos\theta,\ r\sin\theta).$$
 
-Using $1 - u_1$ instead of $u_1$ matters at the edge: `uniform()` can return exactly 0.0 (probability $2^{-53}$, but over $10^9$ draws not never), and $\ln 0 = -\infty$ would produce an infinite "normal"; $1 - u_1$ lies in $(0, 1]$, so the log is finite and $r$ is finite. Both outputs are independent standard normals; throwing the sine away wastes half the work.
+Using $1 - u_1$ instead of $u_1$ matters at the edge. `uniform()` can return exactly 0.0 (probability $2^{-53}$, but over $10^9$ draws not never), and $\ln 0 = -\infty$ would produce an infinite "normal"; $1 - u_1$ lies in $(0, 1]$, so the log is finite and $r$ is finite. Both outputs are independent standard normals; throwing the sine away wastes half the work.
 
-**The order is a contract** (`spec/pcg32.md`): for each pair, draw $u_1$ then $u_2$, emit $z_0$ (cosine) then $z_1$ (sine). `normal(rng, n)` fills $n$ values pair by pair; for odd $n$ it still draws a whole last pair and drops the final sine. (The spec's generator-level `normal()` keeps that sine as a spare for the next call; `normal(rng, n)` is a free function over any generator, so it keeps no state between calls.) Every other port reproduces this order, which is how normals can be compared across languages.
+**The order is a contract.** [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md) fixes it: for each pair, draw $u_1$ then $u_2$, emit $z_0$ (cosine) then $z_1$ (sine). `normal(rng, n)` fills $n$ values pair by pair; for odd $n$ it still draws a whole last pair and drops the final sine. (The spec's generator-level `normal()` keeps that sine as a spare for the next call; `normal(rng, n)` is a free function over any generator, so it keeps no state between calls.) Every other port reproduces this order, which is how normals can be compared across languages.
 
-## 3. Worked example by hand
+## Working it by hand
 
-**A fair die**. Values $1, \dots, 6$, each with probability $\tfrac16$:
+Before writing code, it helps to have three answers you can check it against.
+
+**A fair die.** Values $1, \dots, 6$, each with probability $\tfrac16$:
 
 $$E[X] = \frac{1 + 2 + 3 + 4 + 5 + 6}{6} = \frac{21}{6} = 3.5 .$$
 
@@ -98,11 +88,13 @@ The deviations from 3.5 are $\pm 2.5, \pm 1.5, \pm 0.5$, so
 
 $$\operatorname{Var}[X] = \frac{2\,(6.25 + 2.25 + 0.25)}{6} = \frac{17.5}{6} = \frac{35}{12} \approx 2.9167 .$$
 
-**Box-Muller by hand**. Choose $u_1 = 1 - e^{-2} \approx 0.8647$ and $u_2 = \tfrac18$. Then $1 - u_1 = e^{-2}$, so $r = \sqrt{-2 \ln e^{-2}} = \sqrt{4} = 2$; and $\theta = 2\pi/8 = \pi/4$. The pair is $(2\cos\frac{\pi}{4},\ 2\sin\frac{\pi}{4}) = (\sqrt2, \sqrt2) \approx (1.41421, 1.41421)$.
+**Box-Muller by hand.** Choose $u_1 = 1 - e^{-2} \approx 0.8647$ and $u_2 = \tfrac18$. Then $1 - u_1 = e^{-2}$, so $r = \sqrt{-2 \ln e^{-2}} = \sqrt{4} = 2$; and $\theta = 2\pi/8 = \pi/4$. The pair is $(2\cos\frac{\pi}{4},\ 2\sin\frac{\pi}{4}) = (\sqrt2, \sqrt2) \approx (1.41421, 1.41421)$.
 
-**The first normals of seed 0**. `PCG32(0)` gives $u_1 = 0.2803122753265841$ and $u_2 = 0.4892241428740438$ (`M06.3` section 3). Then $\ln(1 - u_1) = \ln 0.71969 = -0.328938$, $r = \sqrt{0.657876} = 0.811095$, $\theta = 3.073886$ (just under $\pi$, so the point lies left of the origin, slightly up), $\cos\theta = -0.997709$, $\sin\theta = 0.067655$, and the first two normals are $z_0 = -0.809237$ and $z_1 = 0.054875$: the first two entries of `normal["0"]` in `spec/pcg32.vectors.json`.
+**The first normals of seed 0.** `PCG32(0)` gives $u_1 = 0.2803122753265841$ and $u_2 = 0.4892241428740438$ (worked by hand in the [PCG32 section](../06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md)). Then $\ln(1 - u_1) = \ln 0.71969 = -0.328938$, $r = \sqrt{0.657876} = 0.811095$, $\theta = 3.073886$ (just under $\pi$, so the point lies left of the origin, slightly up), $\cos\theta = -0.997709$, $\sin\theta = 0.067655$, and the first two normals are $z_0 = -0.809237$ and $z_1 = 0.054875$: the first two entries of `normal["0"]` in `spec/pcg32.vectors.json`.
 
-## 4. The interface
+## Designing the interface
+
+Four functions cover the section:
 
 ```python
 def expectation(values, probs) -> float: ...     # sum p_i x_i; ValueError unless a distribution
@@ -111,36 +103,19 @@ def box_muller(u1: float, u2: float) -> tuple[float, float]: ...   # (r cos t, r
 def normal(rng, n: int) -> NDArray: ...          # float64 [n]; u1, u2 per pair; cosine first
 ```
 
-`rng` is anything with a `uniform()` method returning the spec's 53-bit doubles, in the system [`tinyllm.num.rng.PCG32`](../../../../course/solutions/python/tinyllm/num/rng.py) (`M06.3`). Any implementation of the spec gives the same uniforms bit for bit.
+`rng` is anything with a `uniform()` method returning the spec's 53-bit doubles; in this system that is [`tinyllm.num.rng.PCG32`](../../../../course/solutions/python/tinyllm/num/rng.py). Any implementation of the spec gives the same uniforms bit for bit.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| the fair die | unit | section 3: $E = 7/2$, $\operatorname{Var} = 35/12$ | everyone agrees on the definitions |
-| Bernoulli and point mass | unit | $E = p$, $\operatorname{Var} = p(1 - p)$; a point mass has variance 0 | every accuracy metric is a Bernoulli mean (`M07.4`) |
-| no catastrophic cancellation | boundary | $10^9 + \{0, 1\}$ gives exactly $\tfrac14$ | statistics of large-mean quantities (token counts, timestamps) |
-| shift and scale laws | property | $\operatorname{Var}[aX + c] = a^2\operatorname{Var}[X]$ and $E[aX + c] = aE[X] + c$ on 50 random tables | the scaling rule of `M07.3` |
-| tables that are not distributions | boundary | sums other than 1, negative entries, shape mismatches, empty and 2-D tables raise | unnormalized counts are caught upstream |
-| Box-Muller by hand | unit | section 3: $(\sqrt2, \sqrt2)$, and $(0, 2)$ at $\theta = \pi/2$ | the transform itself |
-| $u_1 = 0$ stays finite | boundary | $u_1 = 0$ gives radius 0; $u_1$ just below 1 gives a large finite value | no infinite weights |
-| the spec vectors | golden | the first 8 normals of seeds 0, 1, $2^{63}$ within 4 ulp | the Rust and Go ports draw the same normals |
-| odd $n$ | unit | `normal(rng, 3)` uses 4 uniforms and equals the first 3 of `normal(rng, 4)`; `n = 0` and `n < 0` | the stream position after a call |
-| the moments | statistical | 20 000 draws: mean and variance within 3 standard errors of 0 and 1 | a missing factor 2 halves every initial variance |
-| the shape | statistical | 20 bins equally likely under $\Phi$: Pearson statistic below 43.82 (19 degrees of freedom, $p > 10^{-3}$) | the right moments are not the right shape |
-| the two halves of a pair | statistical | the cosine and sine halves have correlation within 3 standard errors of 0 | independent draws |
+The implementation follows from five observations, each of which you should try to predict before reading on.
 
-## 5. The solution, step by step
-
-### From first principles
-
-1. **A distribution is a validated table.** Section 2.1: values and probabilities must be 1-D, the same non-zero length, finite, with $p_i \ge 0$ and $\sum p_i = 1$. Anything else (raw counts, a negative entry) is not a random variable, so both `expectation` and `variance` share one validator that raises instead of averaging. The sum test needs a tolerance ($10^{-9}$) because probabilities computed in floating point need not sum to exactly 1.
+1. **A distribution is a validated table.** Values and probabilities must be 1-D, the same non-zero length, finite, with $p_i \ge 0$ and $\sum p_i = 1$. Anything else (raw counts, a negative entry) is not a random variable, so both `expectation` and `variance` share one validator that raises instead of averaging. The sum test needs a tolerance ($10^{-9}$) because probabilities computed in floating point need not sum to exactly 1.
 2. **The expectation is a dot product.** $E[X] = \sum_i p_i x_i = x \cdot p$. Weighting by $p$ (not dividing by $k$) is what makes it right for non-uniform tables.
-3. **The variance centres first, then squares.** Section 2.3: $E[X^2] - E[X]^2$ cancels catastrophically near $10^{18}$. Computing $\mu$ once, then $d = x - \mu$ and $\sum_i p_i d_i^2$, keeps every term small and non-negative, so $10^9 + \{0, 1\}$ gives exactly $\tfrac14$ and no variance can come out negative.
-4. **Box-Muller samples the polar form.** Section 2.5: $r = \sqrt{-2\ln V}$ with $V$ in $(0, 1]$ and $\theta = 2\pi u_2$. Taking $V = 1 - u_1$ maps the generator's $[0, 1)$ onto $(0, 1]$, so $u_1 = 0$ gives $r = 0$ instead of $\infty$.
-5. **The draw order is part of the answer.** `spec/pcg32.md` fixes it: per pair, $u_1$ then $u_2$; emit cosine then sine. A loop over pairs that writes `z0` always and `z1` only when there is room implements both the even and odd cases, and an odd $n$ still consumes two uniforms for the last pair, so the generator ends at the same position as in every other port.
+3. **The variance centres first, then squares.** $E[X^2] - E[X]^2$ cancels catastrophically near $10^{18}$. Computing $\mu$ once, then $d = x - \mu$ and $\sum_i p_i d_i^2$, keeps every term small and non-negative, so $10^9 + \{0, 1\}$ gives exactly $\tfrac14$ and no variance can come out negative.
+4. **Box-Muller samples the polar form.** $r = \sqrt{-2\ln V}$ with $V$ in $(0, 1]$ and $\theta = 2\pi u_2$. Taking $V = 1 - u_1$ maps the generator's $[0, 1)$ onto $(0, 1]$, so $u_1 = 0$ gives $r = 0$ instead of $\infty$.
+5. **The draw order is part of the answer.** Per pair, $u_1$ then $u_2$; emit cosine then sine. A loop over pairs that writes `z0` always and `z1` only when there is room implements both the even and odd cases, and an odd $n$ still consumes two uniforms for the last pair, so the generator ends at the same position as in every other port.
 
-### The code, annotated
+The validator comes first:
 
 ```python
 def _table(values: ArrayLike, probs: ArrayLike) -> tuple[NDArray, NDArray]:
@@ -163,6 +138,8 @@ def _table(values: ArrayLike, probs: ArrayLike) -> tuple[NDArray, NDArray]:
 
 Raw counts such as `[3, 1]` sum to 4 and are rejected here, which is the point: a caller who forgot to normalize hears about it at once rather than getting an expectation four times too large.
 
+With a validated table, the two moments are short:
+
 ```python
 def expectation(values: ArrayLike, probs: ArrayLike) -> float:
     x, p = _table(values, probs)
@@ -176,7 +153,9 @@ def variance(values: ArrayLike, probs: ArrayLike) -> float:
     return float((d * d) @ p)            # sum_i p_i (x_i - mu)^2, every term >= 0
 ```
 
-On the die, `mu = 3.5`, `d` is $\pm 2.5, \pm 1.5, \pm 0.5$, and the weighted sum of squares is $17.5/6 = 35/12$, exactly section 3. On $10^9 + \{0, 1\}$ the deviations are exactly $\pm\tfrac12$, so the result is exactly $\tfrac14$.
+On the die, `mu = 3.5`, `d` is $\pm 2.5, \pm 1.5, \pm 0.5$, and the weighted sum of squares is $17.5/6 = 35/12$, exactly the hand calculation. On $10^9 + \{0, 1\}$ the deviations are exactly $\pm\tfrac12$, so the result is exactly $\tfrac14$.
+
+The transform and the sampler that drives it complete the module:
 
 ```python
 def box_muller(u1: float, u2: float) -> tuple[float, float]:
@@ -200,89 +179,114 @@ def normal(rng: Any, n: int) -> NDArray:
     return out
 ```
 
-`normal` keeps no spare between calls: it is a free function over any object with `uniform()`, so the only state is the generator's. `n = 0` returns an empty array and draws nothing.
+`normal` keeps no spare between calls: it is a free function over any object with `uniform()`, so the only state is the generator's. `n = 0` returns an empty array and draws nothing. The full solution is [`rv.py`](../../../../course/solutions/python/tinyllm/prob/rv.py).
 
-Full solution: [`rv.py`](../../../../course/solutions/python/tinyllm/prob/rv.py).
+### Why this design
 
-### Why this solution
+The costs are modest. `expectation` is one pass over the table and `variance` two, both $O(k)$ time and $O(k)$ extra space for `d`. `normal(rng, n)` makes $2\lceil n/2 \rceil$ uniform draws and one `log`, `sqrt`, `cos`, `sin` per pair.
 
-- **Cost.** `expectation` is one pass over the table and `variance` two, both $O(k)$ time and $O(k)$ extra space for `d`. `normal(rng, n)` makes $2\lceil n/2 \rceil$ uniform draws and one `log`, `sqrt`, `cos`, `sin` per pair.
-- **Two-pass over the shortcut.** $E[X^2] - E[X]^2$ also needs two sums and saves nothing in a setting where the whole table is in memory; it only loses digits. Welford's one-pass update (Going further) is the right choice for streams, which is not this function's job.
-- **Box-Muller over alternatives.** The Ziggurat algorithm is faster but needs tables and a rejection loop whose number of draws per normal varies, which makes cross-language reproduction harder. The polar (Marsaglia) method also rejects. Box-Muller uses exactly two uniforms per pair, so the stream position after `normal(rng, n)` is a simple function of $n$, which is what the Rust and Go ports rely on.
-- **Tradeoffs accepted.** The Python loop is slow for millions of normals (one Python iteration per pair); initializers in this course draw at most a few million values, and bit-for-bit agreement with the spec matters more than speed here.
+The two-pass variance beats the shortcut outright. $E[X^2] - E[X]^2$ also needs two sums and saves nothing in a setting where the whole table is in memory; it only loses digits. Welford's one-pass update (see Further reading) is the right choice for streams, which is not this function's job.
 
-### Explain it back
+Box-Muller wins over its alternatives for a reason specific to this system. The Ziggurat algorithm is faster but needs tables and a rejection loop whose number of draws per normal varies, which makes cross-language reproduction harder. The polar (Marsaglia) method also rejects. Box-Muller uses exactly two uniforms per pair, so the stream position after `normal(rng, n)` is a simple function of $n$, which is what the Rust and Go ports rely on.
 
-**1. Why does `variance` compute `d = x - mu` before squaring instead of returning `(x * x) @ p - mu * mu`?**
+The tradeoff accepted is speed: the Python loop is slow for millions of normals (one Python iteration per pair). Initializers in the book draw at most a few million values, and bit-for-bit agreement with the spec matters more than speed here.
 
-<details><summary>Answer</summary>
+## What can go wrong
 
-For large means both $E[X^2]$ and $\mu^2$ are near $10^{18}$, where float64 spacing is 128, so their difference is a multiple of 128 near zero: 0 or $-64$ for a true variance of $\tfrac14$. The deviations $x_i - \mu$ are small and exact (or nearly), and their squares are non-negative, so the two-pass sum is accurate and cannot go negative.
+A correct implementation has to pass checks of several kinds, from hand-worked unit cases to statistical tests of the output's shape. The table lists them along with why each matters later.
 
-</details>
-
-**2. Why `math.log(1.0 - u1)` and not `math.log(u1)`? Both are uniform on the unit interval.**
-
-<details><summary>Answer</summary>
-
-Distributionally they are equivalent, but the generator returns values in $[0, 1)$: $u_1 = 0$ is possible and $\ln 0 = -\infty$ gives an infinite radius. $1 - u_1$ lies in $(0, 1]$, so the log is finite. It also fixes which value every port computes from a given $u_1$, so the normals agree across languages.
-
-</details>
-
-**3. For odd $n$, why draw a whole pair and throw the sine away instead of drawing one uniform?**
-
-<details><summary>Answer</summary>
-
-Box-Muller needs both uniforms to make even one normal (the radius uses $u_1$, the angle $u_2$). And the spec defines the stream position: `normal(rng, 3)` must consume 4 uniforms and equal the first 3 of `normal(rng, 4)`, so that the next draw from the generator is the same in Python, Rust, and Go.
-
-</details>
-
-**4. What would happen to `M07.3`'s initial weights if the radius were $\sqrt{-\ln(1 - u_1)}$, without the 2?**
-
-<details><summary>Answer</summary>
-
-$R^2$ would be exponential with mean 1 instead of 2, so each coordinate would have variance $\tfrac12$. Every weight scaled by a carefully derived $\sigma$ would actually have standard deviation $\sigma/\sqrt2$, and activations would shrink layer after layer. The mean is still 0, so only a variance check notices.
-
-</details>
-
-**5. Why does `_table` reject a table whose probabilities sum to 4 instead of normalizing it?**
-
-<details><summary>Answer</summary>
-
-A table that does not sum to 1 is almost always a bug upstream (raw counts passed where probabilities were meant). Silently normalizing would hide it in this function and leave it in every other caller that trusts the same array. Raising makes the error visible where it is cheapest to fix.
-
-</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| averaging the values without the probabilities | right only for uniform tables | `x @ p` weights each value; step 2 |
-| returning the standard deviation as the variance | $\sqrt{35/12}$ instead of $35/12$ | returns the weighted sum of squares, no square root |
-| $E[X^2] - E[X]^2$ | variance 0 or negative for large means | centres first: `d = x - mu`; step 3 |
-| not validating the table | silent nonsense from unnormalized counts | `_table` checks shape, finiteness, sign, and sum; step 1 |
-| $\ln u_1$ instead of $\ln(1 - u_1)$ | an infinite value once in $2^{53}$ draws; different values from every port | `math.log(1.0 - u1)`; step 4 |
-| $\sqrt{-\ln(\cdot)}$ without the 2 | variance $\tfrac12$: every initial weight too small by $\sqrt2$ | `math.sqrt(-2.0 * ...)` |
-| angle $\pi u_2$ instead of $2\pi u_2$ | the sine half is always positive; wrong shape | `theta = 2.0 * math.pi * u2` |
-| sine first | statistically fine, but matches no other language | returns `(r * cos, r * sin)` and writes `z0` first; step 5 |
-| both halves from the cosine | perfectly correlated pairs | `z1` is `r * sin(theta)` |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `M06.3` | the generator: two `uniform()` calls per pair, the same uniforms in every language |
-| Back | `M00.2` | cosine, sine, and the unit circle (reading) |
-| Back | [Calculus 2](../02-calculus-2/) | the Gaussian integral behind $\frac{1}{\sqrt{2\pi}}$ (reading; `S-M02` works it) |
-| Forward | `M03.3` | `orthogonal_init` factors `normal(rng, rows * cols)` |
-| Forward | `M07.3` | `normal_init`, Xavier and Kaiming normals, and the variance propagation rule $n\operatorname{Var}[w]\operatorname{Var}[x]$ |
-| Forward | `M07.1` | categorical sampling builds on the same uniforms (reading) |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| Box-Muller | the Ziggurat algorithm (numpy's `standard_normal`, Rust `rand_distr`) | almost always one uniform and one table lookup per normal, no `log`, `sin`, or `cos` | numpy `numpy/random/src/distributions/distributions.c`, `random_standard_normal` |
-| Box-Muller | the Marsaglia polar method | rejection inside the unit disc replaces $\sin$ and $\cos$ | Marsaglia and Bray (1964) |
-| two-pass variance | Welford's online algorithm, parallel merging (Chan et al.) | one pass over a stream, mergeable across workers | `torch.var_mean`, Welford (1962) |
-| `normal(rng, n)` | `torch.nn.init.normal_`, `jax.random.normal` | per-device counter-based generators, many values per call | `torch/nn/init.py`, `jax/_src/random.py` |
+| the fair die | unit | $E = 7/2$, $\operatorname{Var} = 35/12$ | everyone agrees on the definitions |
+| Bernoulli and point mass | unit | $E = p$, $\operatorname{Var} = p(1 - p)$; a point mass has variance 0 | every accuracy metric is a Bernoulli mean ([confidence intervals](04-lln-clt-confidence-intervals-bootstrap.md)) |
+| no catastrophic cancellation | boundary | $10^9 + \{0, 1\}$ gives exactly $\tfrac14$ | statistics of large-mean quantities (token counts, timestamps) |
+| shift and scale laws | property | $\operatorname{Var}[aX + c] = a^2\operatorname{Var}[X]$ and $E[aX + c] = aE[X] + c$ on 50 random tables | the scaling rule of [initialization](03-variance-propagation-and-initialization.md) |
+| tables that are not distributions | boundary | sums other than 1, negative entries, shape mismatches, empty and 2-D tables raise | unnormalized counts are caught upstream |
+| Box-Muller by hand | unit | $(\sqrt2, \sqrt2)$, and $(0, 2)$ at $\theta = \pi/2$ | the transform itself |
+| $u_1 = 0$ stays finite | boundary | $u_1 = 0$ gives radius 0; $u_1$ just below 1 gives a large finite value | no infinite weights |
+| the spec vectors | golden | the first 8 normals of seeds 0, 1, $2^{63}$ within 4 ulp | the Rust and Go ports draw the same normals |
+| odd $n$ | unit | `normal(rng, 3)` uses 4 uniforms and equals the first 3 of `normal(rng, 4)`; `n = 0` and `n < 0` | the stream position after a call |
+| the moments | statistical | 20 000 draws: mean and variance within 3 standard errors of 0 and 1 | a missing factor 2 halves every initial variance |
+| the shape | statistical | 20 bins equally likely under $\Phi$: Pearson statistic below 43.82 (19 degrees of freedom, $p > 10^{-3}$) | the right moments are not the right shape |
+| the two halves of a pair | statistical | the cosine and sine halves have correlation within 3 standard errors of 0 | independent draws |
+
+The mistakes that break these checks are few and recognizable. Averaging the values without the probabilities is right only for uniform tables; the solution weights each value with `x @ p`. Returning the standard deviation as the variance gives $\sqrt{35/12}$ instead of $35/12$; the solution returns the weighted sum of squares with no square root. Using $E[X^2] - E[X]^2$ gives a variance of 0 or a negative number for large means; the solution centres first with `d = x - mu`. Skipping validation turns unnormalized counts into silent nonsense; `_table` checks shape, finiteness, sign, and sum.
+
+The Box-Muller mistakes are subtler, because several of them still produce plausible-looking numbers:
+
+> **Warning:** $\ln u_1$ instead of $\ln(1 - u_1)$ produces an infinite value once in $2^{53}$ draws and different values from every other port. Dropping the 2 in $\sqrt{-2\ln(\cdot)}$ gives variance $\tfrac12$, so every initial weight is too small by $\sqrt2$. An angle of $\pi u_2$ instead of $2\pi u_2$ makes the sine half always positive, the wrong shape. Taking both halves from the cosine gives perfectly correlated pairs.
+
+Emitting the sine first is statistically fine but matches no other language; the solution returns `(r * cos, r * sin)` and writes `z0` first.
+
+## Where this leads
+
+The normals built here feed two sections directly. [Orthogonality, Householder QR, and orthogonal initialization](../03-linear-algebra/03-orthogonality-and-householder-qr.md) factors `normal(rng, rows * cols)` in `orthogonal_init`, and [Variance propagation and initialization](03-variance-propagation-and-initialization.md) builds `normal_init`, Xavier and Kaiming normals, and the propagation rule $n\operatorname{Var}[w]\operatorname{Var}[x]$ on top of them. The next section, [Categorical sampling](01-categorical-sampling.md), builds on the same uniforms to draw tokens.
+
+### Further reading
+
+- Blitzstein and Hwang, *Introduction to Probability*, chapters 3 to 5 and 7.5 (Box-Muller).
+- Grinstead and Snell, *Introduction to Probability*, chapter 6.
+- Box and Muller, "A Note on the Generation of Random Normal Deviates" (1958).
+- Welford, "Note on a Method for Calculating Corrected Sums of Squares and Products" (1962); `torch.var_mean` and Chan et al.'s parallel merging extend it to one pass over a stream, mergeable across workers.
+- The Ziggurat algorithm (numpy's `standard_normal`, Rust `rand_distr`): almost always one uniform and one table lookup per normal, no `log`, `sin`, or `cos`. See `random_standard_normal` in numpy's `numpy/random/src/distributions/distributions.c`.
+- Marsaglia and Bray (1964), the polar method: rejection inside the unit disc replaces $\sin$ and $\cos$.
+- `torch.nn.init.normal_` (`torch/nn/init.py`) and `jax.random.normal` (`jax/_src/random.py`): per-device counter-based generators, many values per call.
+
+## Key terms
+
+- **Random variable**: a number assigned to each outcome of a random experiment; a discrete one is a table of values and probabilities.
+- **Expectation**: the probability-weighted mean of a random variable's values.
+- **Variance**: the expected squared distance from the mean; its square root is the standard deviation.
+- **Catastrophic cancellation**: the loss of all significant digits when two large, nearly equal floating-point numbers are subtracted.
+- **Two-pass variance**: computing the mean first, then the weighted sum of squared deviations from it.
+- **Standard normal**: the distribution $\mathcal{N}(0, 1)$ with density $\frac{1}{\sqrt{2\pi}} e^{-z^2/2}$.
+- **Box-Muller transform**: a map from two independent uniforms to two independent standard normals via a radius $\sqrt{-2\ln(1-u_1)}$ and angle $2\pi u_2$.
+
+## Summary
+
+- A discrete random variable is a table of values and probabilities; its expectation is the probability-weighted mean and its variance the expected squared distance from that mean.
+- $\operatorname{Var}[aX + c] = a^2 \operatorname{Var}[X]$: shifting does nothing, scaling scales by the square. Every initialization is sized with this rule.
+- Compute the variance in two passes (mean first, then squared deviations). $E[X^2] - E[X]^2$ subtracts two huge, nearly equal numbers and can return 0 or a negative variance.
+- Box-Muller turns two independent uniforms into two independent standard normals: a radius $\sqrt{-2\ln(1-u_1)}$ and an angle $2\pi u_2$. Drawn in the spec's order, the same seed gives the same normals in Python, Rust, and Go.
+
+## Review questions
+
+1. Why does `variance` compute `d = x - mu` before squaring instead of returning `(x * x) @ p - mu * mu`?
+
+   <details><summary>Answer</summary>
+
+   For large means both $E[X^2]$ and $\mu^2$ are near $10^{18}$, where float64 spacing is 128, so their difference is a multiple of 128 near zero: 0 or $-64$ for a true variance of $\tfrac14$. The deviations $x_i - \mu$ are small and exact (or nearly), and their squares are non-negative, so the two-pass sum is accurate and cannot go negative.
+
+   </details>
+
+2. Why `math.log(1.0 - u1)` and not `math.log(u1)`? Both are uniform on the unit interval.
+
+   <details><summary>Answer</summary>
+
+   Distributionally they are equivalent, but the generator returns values in $[0, 1)$: $u_1 = 0$ is possible and $\ln 0 = -\infty$ gives an infinite radius. $1 - u_1$ lies in $(0, 1]$, so the log is finite. It also fixes which value every port computes from a given $u_1$, so the normals agree across languages.
+
+   </details>
+
+3. For odd $n$, why draw a whole pair and throw the sine away instead of drawing one uniform?
+
+   <details><summary>Answer</summary>
+
+   Box-Muller needs both uniforms to make even one normal (the radius uses $u_1$, the angle $u_2$). And the spec defines the stream position: `normal(rng, 3)` must consume 4 uniforms and equal the first 3 of `normal(rng, 4)`, so that the next draw from the generator is the same in Python, Rust, and Go.
+
+   </details>
+
+4. What would happen to the initial weights of [Variance propagation and initialization](03-variance-propagation-and-initialization.md) if the radius were $\sqrt{-\ln(1 - u_1)}$, without the 2?
+
+   <details><summary>Answer</summary>
+
+   $R^2$ would be exponential with mean 1 instead of 2, so each coordinate would have variance $\tfrac12$. Every weight scaled by a carefully derived $\sigma$ would actually have standard deviation $\sigma/\sqrt2$, and activations would shrink layer after layer. The mean is still 0, so only a variance check notices.
+
+   </details>
+
+5. Why does `_table` reject a table whose probabilities sum to 4 instead of normalizing it?
+
+   <details><summary>Answer</summary>
+
+   A table that does not sum to 1 is almost always a bug upstream (raw counts passed where probabilities were meant). Silently normalizing would hide it in this function and leave it in every other caller that trusts the same array. Raising makes the error visible where it is cheapest to fix.
+
+   </details>
