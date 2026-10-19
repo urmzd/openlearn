@@ -1,19 +1,19 @@
-# Round 4: Coding Round 2 (Live)
+# The Second Coding Round: Data Structures and Concurrency Primitives
 
-## Format
+The second live coding round is another 60 minutes over video in a shared editor. Python is preferred, although Java or C++ may be used for some problems. Where [the first coding round](02-coding-round-1.md) centered on asyncio and I/O-bound concurrency, this one is about data structures, concurrency primitives, and systems-level coding: you will be asked to build a structure from scratch and then make it safe to share between threads.
 
-- **Duration**: 60 minutes
-- **Setting**: Live video with shared editor
-- **Focus**: Data structures, concurrency primitives, systems-level coding
-- **Language**: Python preferred, but may use Java/C++ for certain problems
+This section works through the five problems candidates report. The first, converting stack samples into trace events, is a sequence-diffing problem and the one most worth practicing. The rest are concurrent data structures (a thread-safe min-heap, a top-K tracker over a concurrent stream, a trie with a readers-writer lock) and an inverted index. For each you will see the reference solution, why it is shaped the way it is, and the follow-up questions to expect.
 
-## Reported Problems
+> **Learning objectives**
+> - Convert periodic stack samples into enter and exit trace events by diffing consecutive samples, including recursive stacks.
+> - Build a blocking thread-safe priority queue with a `Condition`, and explain the tie-breaking counter.
+> - Maintain a top-K frequency count over a concurrent stream with a bounded min-heap, and name approximate and windowed alternatives.
+> - Implement a readers-writer lock from two mutexes and a counter, and explain why it can starve writers.
+> - Build an inverted index that answers AND and OR queries with set operations.
 
-### 1. Stack Sampling Profiler -> Trace Events
+## Stack samples to trace events
 
-Given periodic stack samples from a profiler, convert them into trace events (enter/exit) suitable for a flame graph or Chrome trace viewer.
-
-#### Input
+A sampling profiler records the call stack periodically. Your task is to turn those snapshots into trace events, enter (`B`) and exit (`E`) markers, suitable for a flame graph or the Chrome trace viewer. Each sample lists function names from the bottom of the stack first:
 
 ```python
 # Each sample is a list of function names, bottom of stack first
@@ -27,7 +27,7 @@ samples = [
 ]
 ```
 
-#### Output
+The convention is that a function is assumed to start at the first sample where it appears and to end at the first sample where it no longer appears. So `bar`, seen at $t = 0$ and $t = 1$, gets `B` at 0 and `E` at 2. Functions still on the stack after the last sample are closed at the timestamp one past it, `len(samples)`, which is 6 here. The expected output is:
 
 ```python
 # Trace events with enter (B) and exit (E) markers
@@ -41,11 +41,13 @@ samples = [
     {"name": "foo",  "ph": "E", "ts": 4},
     {"name": "qux",  "ph": "B", "ts": 4},
     {"name": "qux",  "ph": "E", "ts": 5},
-    {"name": "main", "ph": "E", "ts": 5},  # implicit at end
+    {"name": "main", "ph": "E", "ts": 6},  # implicit at end
 ]
 ```
 
-#### Solution
+### The divergence-point algorithm
+
+The key observation is that two consecutive samples share a common prefix, the part of the stack that did not change, and differ only above it. So for each sample you find the **divergence point**: the length of the longest common prefix with the previous sample. Every frame of the previous sample above that point has exited, and you emit their exits from the top down so the events nest properly. Every frame of the current sample above that point has entered, and you emit their enters from the bottom up. After the last sample, you close whatever remains on the stack, again top down.
 
 ```python
 def samples_to_trace_events(samples: list[list[str]]) -> list[dict]:
@@ -79,9 +81,11 @@ def samples_to_trace_events(samples: list[list[str]]) -> list[dict]:
     return events
 ```
 
-#### Edge Case: Recursive Functions
+Trace it once on the example. At $t = 2$ the common prefix with `["main", "foo", "bar"]` is `["main", "foo"]`, depth 2, so `bar` exits and `baz` enters. At $t = 4$ the common prefix with `["main", "foo", "baz"]` is just `["main"]`, so `baz` and then `foo` exit, and `qux` enters. Each step costs time proportional to the two stacks' depths.
 
-When a function calls itself, matching by name alone breaks. Track by **position in the stack**, not just name.
+### Recursive functions
+
+Recursion is the edge case interviewers ask about. When a function calls itself, matching frames by name breaks, because the same name appears at several depths. The fix is to track frames by **position in the stack**, not by name:
 
 ```python
 samples = [
@@ -91,16 +95,15 @@ samples = [
 ]
 ```
 
-The divergence-point algorithm already handles this correctly because it compares position-by-position, not by searching for names.
+The divergence-point algorithm already handles this correctly, because it compares position by position instead of searching for names. At $t = 1$ the common depth is 3, so exactly one `fib`, the one at index 3, exits.
 
----
+> **Note:** Sampling has an inherent blind spot worth mentioning. If a function returns and is called again at the same depth between two samples, the stacks look identical and no exit or enter is emitted. A profiler can only report what its samples show.
 
-### 2. Thread-Safe Min-Heap
+## A thread-safe min-heap
 
-Implement a concurrent priority queue that supports:
-- `push(item, priority)` -- thread-safe insert
-- `pop()` -- thread-safe extract-min, blocks if empty
-- `peek()` -- non-blocking read of minimum element
+The second problem is a concurrent priority queue with three operations: `push(item, priority)`, a thread-safe insert; `pop()`, a thread-safe extract-min that blocks while the heap is empty; and `peek()`, a non-blocking read of the minimum element.
+
+The design wraps `heapq` with a lock, and builds a `Condition` on that same lock so that `pop` can wait efficiently for data instead of spinning. `push` notifies one waiter after inserting. `pop` waits in a `while` loop, not an `if`, because a woken thread must recheck the condition: another consumer may have taken the item first. Each heap entry is a tuple `(priority, counter, item)`.
 
 ```python
 import threading
@@ -140,16 +143,13 @@ class ThreadSafeMinHeap:
             return len(self._heap)
 ```
 
-**Discussion points**:
-- Why `Condition` over just `Lock`? -- Allows `pop()` to block efficiently until data arrives
-- Why a counter tie-breaker? -- Without it, heapq breaks when priorities are equal and items aren't comparable
-- `ConcurrentHashMap` vs `Hashtable` (Java context) -- ConcurrentHashMap uses segment-level locking (finer granularity), Hashtable locks entire structure
+Expect three discussion points. *Why a `Condition` rather than just a `Lock`?* It lets `pop()` block efficiently until data arrives, releasing the lock while it waits. *Why the counter?* Without a tie-breaker, two entries with equal priority are compared by their items, and `heapq` raises an error when the items are not comparable; the counter also makes equal-priority items come out in insertion order. And in a Java context you may be asked about *`ConcurrentHashMap` versus `Hashtable`*: `ConcurrentHashMap` uses finer-grained, segment-level locking, while `Hashtable` locks the entire structure on every operation.
 
----
+## Top-K frequent queries from a concurrent stream
 
-### 3. Top-K Frequent Queries from Concurrent Stream
+The third problem gives you a stream of queries arriving from multiple threads and asks you to maintain a real-time top-K frequency count.
 
-Given a stream of queries arriving from multiple threads, maintain a real-time top-K frequency count.
+Recording is a locked increment in a dictionary. Answering is the classic bounded-heap technique: keep a min-heap of at most K `(count, query)` pairs, and replace the root whenever you see a count larger than the smallest one in the heap. That costs $O(n \log K)$ for $n$ distinct queries instead of $O(n \log n)$ for a full sort. If there are no more than K distinct queries, a plain sort is simpler.
 
 ```python
 import threading
@@ -182,16 +182,13 @@ class TopKTracker:
             return sorted([(q, c) for c, q in heap], key=lambda x: -x[1])
 ```
 
-**Follow-up discussions**:
-- Approximate counting with Count-Min Sketch for massive streams
-- Sharding by query hash for parallelism
-- Sliding window (time-decayed counts) vs. all-time counts
+The lock around `counts[query] += 1` is necessary: the increment is a read-modify-write, and the GIL does not make it atomic. Note also that `top_k` holds the lock for its whole scan, which blocks writers; that is a reasonable first answer and a natural place for the follow-ups. Those follow-ups are approximate counting with a **Count-Min Sketch** for massive streams, **sharding by query hash** so independent counters can be updated in parallel, and **sliding windows** or time-decayed counts as opposed to all-time counts.
 
----
+## A trie with a readers-writer lock
 
-### 4. Trie with Read-Write Locks
+The fourth problem asks for a concurrent trie supporting insert, exact search, and prefix search, with read-write locking so that concurrent reads do not block one another.
 
-Implement a concurrent trie supporting insert, search, and prefix search with read-write locking for better concurrent read performance.
+Python's standard library has no readers-writer lock, so you build one. The classic construction uses a reader count protected by its own mutex, plus a write lock. The *first* reader to arrive acquires the write lock on behalf of all readers, and the *last* reader to leave releases it. Writers simply take the write lock. Many readers can therefore proceed together, while a writer excludes everyone. (A `threading.Lock` may be released by a different thread than the one that acquired it, which this construction relies on.)
 
 ```python
 import threading
@@ -202,11 +199,7 @@ class TrieNode:
         self.is_end = False
 
 class ConcurrentTrie:
-    def __init__(self):
-        self.root = TrieNode()
-        self.lock = threading.RWLock()  # Python doesn't have RWLock natively
-
-    # In practice, implement RWLock or use a readers-writer pattern:
+    # Python doesn't have an RWLock natively, so build a readers-writer pattern:
     def __init__(self):
         self.root = TrieNode()
         self._readers = 0
@@ -269,11 +262,13 @@ class ConcurrentTrie:
             self._collect(child, path + ch, results)
 ```
 
----
+The `try`/`finally` around each read guarantees the reader count is decremented even when the method returns early, which matters: a leaked reader would hold the write lock forever.
 
-### 5. Inverted Index
+> **Warning:** This readers-preference lock can starve writers. As long as readers keep overlapping, the reader count never reaches zero and a writer never gets the lock. Be ready to discuss fixes: writer preference (block new readers once a writer is waiting) or fair, queue-ordered locking.
 
-Build an inverted index for full-text search supporting AND/OR queries.
+## An inverted index
+
+The last reported problem is an inverted index for full-text search with AND and OR queries. Each token maps to the set of document IDs containing it, so AND is set intersection and OR is set union. Tokenization lowercases the text and extracts word characters, and queries are lowercased the same way, which keeps index-time and query-time analysis consistent.
 
 ```python
 from collections import defaultdict
@@ -310,10 +305,44 @@ class InvertedIndex:
         return re.findall(r'\w+', text.lower())
 ```
 
-## Preparation Tips
+Two details are easy to get wrong. `search_and` copies the first posting set before intersecting into it, because `&=` would otherwise mutate the index itself. And it uses `self.index.get` rather than indexing the `defaultdict`, so a query for an unknown term does not insert an empty entry. Production engines use sorted postings lists with skip pointers and rank results with BM25; that design is developed in [Search and Indexing](../../infrastructure/04-search-and-indexing/README.md) in *Infrastructure*.
 
-1. **Practice diffing algorithms** -- The profiler problem tests your ability to diff two sequences and generate events. Draw it out.
-2. **Know your concurrency primitives** -- `Lock`, `RLock`, `Condition`, `Semaphore`, `Event`, `Barrier`. Know when to use each.
-3. **Implement data structures from scratch** -- Don't rely on library implementations. Know the internals of heaps, tries, and hash maps.
-4. **Think about fairness** -- Reader-writer locks can starve writers. Discuss solutions (writer-preference, fair queuing).
-5. **Test concurrent code mentally** -- Walk through scenarios with 2-3 threads interleaving. Find the race condition before the interviewer does.
+## Preparing for the round
+
+Practice diffing algorithms: the profiler problem tests your ability to diff two sequences and generate events, so draw it out. Know your concurrency primitives (`Lock`, `RLock`, `Condition`, `Semaphore`, `Event`, `Barrier`) and when to use each. Implement data structures from scratch rather than relying on library implementations; know the internals of heaps, tries, and hash maps. Think about fairness, since readers-writer locks can starve writers. And test concurrent code mentally: walk through scenarios with two or three threads interleaving, and find the race before the interviewer does.
+
+## Where this leads
+
+The primitives used here, and the reasoning about races and deadlocks, are developed in [Concurrency patterns](concepts/concurrency-patterns.md). The asyncio side of the same skills is in [the first coding round](02-coding-round-1.md).
+
+## Key terms
+
+- **Trace event**: a timestamped enter (`B`) or exit (`E`) marker for a function, as consumed by flame graphs and the Chrome trace viewer.
+- **Divergence point**: the length of the longest common prefix of two consecutive stack samples.
+- **Condition variable**: a primitive that lets a thread release a lock and sleep until another thread signals that state has changed.
+- **Readers-writer lock**: a lock that admits many concurrent readers or one exclusive writer.
+- **Writer starvation**: a writer waiting indefinitely because overlapping readers never release a readers-preference lock.
+- **Count-Min Sketch**: a fixed-size probabilistic structure that estimates frequencies in a stream with bounded overcount.
+
+## Summary
+
+- Stack samples become trace events by diffing consecutive samples at their divergence point: exits top down, enters bottom up, and remaining frames closed at the end.
+- Comparing frames by position, not name, makes recursion work.
+- A blocking priority queue is `heapq` plus a lock and a `Condition`, with a counter to break priority ties.
+- Top-K over a stream uses a locked counter and a size-K min-heap; scale with sketches, sharding, or windows.
+- A readers-writer lock can be built from a reader count and two mutexes, and it can starve writers.
+
+## Review questions
+
+1. Using the divergence-point algorithm, what events are produced at $t = 4$ when the previous sample is `["main", "foo", "baz"]` and the current one is `["main", "qux"]`?
+   <details><summary>Answer</summary>The common depth is 1 (<code>main</code>). Exits are emitted top down for <code>baz</code> then <code>foo</code>, each at ts 4, followed by an enter for <code>qux</code> at ts 4.</details>
+2. Why does the profiler algorithm handle `["main", "fib", "fib", "fib"]` followed by `["main", "fib", "fib"]` correctly?
+   <details><summary>Answer</summary>It compares frames position by position. The first three positions match, so the common depth is 3 and exactly one exit is emitted, for the <code>fib</code> at index 3. A name-based search would be confused by the repeated name.</details>
+3. Why does `pop` in the thread-safe heap wait inside a `while` loop rather than an `if`?
+   <details><summary>Answer</summary>When a waiting thread wakes, another consumer may already have taken the item, and condition variables can also wake spuriously. The loop rechecks that the heap is non-empty before popping.</details>
+4. What goes wrong if the heap stores `(priority, item)` without the counter?
+   <details><summary>Answer</summary>When two entries have equal priority, tuple comparison falls through to the items. If the items are not comparable (for example, dicts or custom objects), <code>heapq</code> raises a <code>TypeError</code>. The counter breaks ties and preserves insertion order.</details>
+5. In the readers-writer trie, what happens if a reader returns early without releasing its read lock?
+   <details><summary>Answer</summary>The reader count never returns to zero, so the write lock acquired by the first reader is never released and every subsequent insert blocks forever. That is why every read is wrapped in <code>try</code>/<code>finally</code>.</details>
+6. Why does `search_and` call `.copy()` on the first posting set?
+   <details><summary>Answer</summary>Intersecting with <code>&=</code> mutates the set in place. Without the copy, the query would shrink the index's own posting set for the first term, corrupting future results.</details>

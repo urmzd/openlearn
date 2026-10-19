@@ -1,87 +1,41 @@
 # Precalculus
 
-## Overview
+Precalculus is the toolbox the rest of the mathematics in this book is written in: exponents and logarithms, trigonometry and complex numbers, sequences and series, and polynomials. None of it is new if you took algebra at school, but this chapter treats each topic the way a language-model system uses it, and each one has a concrete call site. Logarithms measure information, so a model's loss in nats becomes bits by dividing by $\ln 2$, and bits per byte is the number every tokenizer and model in *Build Your Own LLM System* is judged by. Rotations encode position: rotating a 2D pair by $\theta$ is multiplying $x + iy$ by $e^{i\theta}$, and RoPE applies that to every pair of a query and a key. Geometric ladders set frequencies: RoPE's inverse frequencies $b^{-2i/d}$ and ALiBi's head slopes are geometric sequences, whose sums and ratios decide how far a position signal reaches. And polynomials approximate the functions a C kernel cannot call.
 
-- **Primary reference**: OpenStax, [*Precalculus 2e*](https://openstax.org/details/books/precalculus-2e) (free, CC BY)
-- **Supplementary**: OpenStax, [*College Algebra 2e*](https://openstax.org/details/books/college-algebra-2e) (free) for the algebra review; Paul's Online Notes, [Algebra and Trig Review](https://tutorial.math.lamar.edu/Extras/AlgebraTrigReview/AlgebraTrigReview.aspx) (free); 3Blue1Brown, [Euler's formula with introductory group theory](https://www.youtube.com/watch?v=mvmuCPvRoWQ) (free)
-- **Prerequisites**: high-school algebra (solving linear equations, manipulating fractions and powers)
-- **Estimated time**: 2 to 3 weeks at 10 to 12 h/week; in the course, the first stages of Pass 2
+A second theme runs underneath: how you evaluate a formula matters as much as the formula. Horner's rule is the cheapest and most stable way to evaluate a polynomial, and the textbook quadratic formula can lose most of its digits for the small root when $b^2 \gg 4ac$. Several sections show a formula that is correct on paper and wrong in floating point, and the rewrite that fixes it.
 
-## Key Takeaways
+The chapter opens with a problem set that practises all of these skills by hand, and then builds each topic into a small, tested Python module. Each build section derives its solution from first principles and walks through the code line by line.
 
-- **Logarithms turn products into sums and change the unit of information.** A model's loss in nats becomes bits by dividing by $\ln 2$; bits per byte is the comparison every tokenizer and model in the course is judged by.
-- **A rotation is a multiplication by a unit complex number.** Rotating a 2D pair by $\theta$ is multiplying $x + iy$ by $e^{i\theta}$; RoPE applies that to every pair of a query and a key.
-- **Geometric sequences are frequency ladders.** RoPE's inverse frequencies $b^{-2i/d}$ and ALiBi's head slopes are geometric sequences; their sums and ratios decide how far a position signal reaches.
-- **How you evaluate a formula matters as much as the formula.** Horner's rule is the cheapest and most stable way to evaluate a polynomial, and the textbook quadratic formula can lose most of its digits for the small root when $b^2 \gg 4ac$.
+> **Learning objectives**
+> - Manipulate exponents and logarithms, convert between nats and bits, and compute bits per byte for a model.
+> - Rotate vectors with matrices and with complex numbers, and explain why rotations make attention scores depend only on relative position.
+> - Sum geometric series accurately, including near a ratio of 1, and build RoPE's frequency ladder and ALiBi's slopes.
+> - Evaluate polynomials with Horner's rule and compute both roots of a quadratic without catastrophic cancellation.
+> - Find inverses of functions, use monotonicity, and solve inequalities by hand.
 
-## How to Study
+## Before you begin
 
-Read each OpenStax chapter with a notebook open and check every identity numerically before you trust it (`math.log`, `cmath.exp`, `numpy`). In the course, work the solve set `S-M00` first: it is the pen-and-paper version of the four build modules, with a worked answer for every problem. Then read `M00.1` to `M00.4` in order; each chapter derives its solution from first principles and walks through the code line by line.
+You need high-school algebra: solving linear equations and manipulating fractions and powers. The build sections use Python and numpy; if you are new to numpy arrays, dtypes, and broadcasting, read [Python and numpy](../../programming-languages/02-language-and-tool-primers/01-python-and-numpy.md) in *Programming Languages* first. Read each section with a notebook open and check every identity numerically before you trust it, with `math.log`, `cmath.exp`, or `numpy`.
 
----
+## In this chapter
 
-# Concepts & Techniques
+[Problem set: functions, logarithms, trigonometry, series, polynomials, and inequalities](00-solve-set.md) is the pen-and-paper side of the chapter: sixty problems with a worked answer for every one, including the most common wrong answer and why it is wrong. It also teaches functions, inverses, monotonicity, and inequalities, which have no build section because none of that becomes code. Work it first, or alongside the sections it points to.
 
-## Core Insight
+[Exponents, logarithms, and units of information](01-exponents-logs-and-units-of-information.md) derives the laws of exponents and logarithms and the change-of-base formula, shows that the base of a logarithm is a unit of information, and builds the bits-per-byte conversion that compares models across tokenizers.
 
-Precalculus is the toolbox the rest of the math is written in: exponents and logarithms, trigonometry and complex numbers, sequences and series, and polynomials. Each one has a call site in an LLM system: logarithms measure information, rotations encode position, geometric ladders set frequencies, and polynomials approximate the functions a C kernel cannot call.
+[Trigonometry, rotations, complex numbers, and Euler's formula](02-trig-rotations-and-eulers-formula.md) builds rotations from the unit circle, proves that the dot product of two rotated vectors depends only on the difference of their angles, and implements the pairwise rotation that RoPE calls, in matrix and complex form.
 
-## 1. Exponents, logarithms, and units of information
+[Sequences, geometric series, and frequency ladders](03-sequences-and-frequency-ladders.md) sums geometric series, shows why the closed form loses digits near a ratio of 1 and how `expm1` and `log1p` fix it, and builds RoPE's inverse frequencies and ALiBi's head slopes.
 
-**Key ideas**:
-- **Laws**: $a^{m}a^{n} = a^{m+n}$, $\log_b(xy) = \log_b x + \log_b y$, change of base $\log_b x = \ln x / \ln b$.
-- **Units**: a negative log-likelihood summed in nats over a text of $n$ bytes is $\text{bpb} = \text{nll} / (n \ln 2)$ bits per byte, a number comparable across tokenizers.
-- **Call sites**: `M11.2` perplexity and bits per byte, `L1.6` tokenizer metrics, `L6.7` the model-zoo table, `C1`.
+[Polynomials, Horner's rule, and stable quadratic roots](04-polynomials-horner-and-stable-roots.md) evaluates polynomials with Horner's rule, bounds its error, and replaces the textbook quadratic formula with one that never cancels.
 
-## 2. Trigonometry, rotations, and complex numbers
+## Where this chapter leads
 
-**Key ideas**:
-- **Unit circle**: $(\cos\theta, \sin\theta)$; a 2D rotation is the matrix $\begin{pmatrix}\cos\theta & -\sin\theta\\ \sin\theta & \cos\theta\end{pmatrix}$, which preserves length and composes by adding angles: $R(a)R(b) = R(a+b)$.
-- **Euler's formula**: $e^{i\theta} = \cos\theta + i\sin\theta$, so the same rotation is one complex multiplication.
-- **Call sites**: `L5.4` sinusoidal positional encoding, `L7.3` RoPE.
+[Calculus 1](../01-calculus-1/README.md) builds limits and derivatives on functions, exponentials, and logarithms. In [Numerical Methods and Floating Point](../09-numerical-methods-and-floating-point/README.md), range reduction and polynomial approximation of `exp` start from Horner's rule. In [Information Theory](../11-information-theory/README.md), entropy and perplexity are logarithms with a unit. And in *[Build Your Own LLM System](../../build-an-llm/README.md)*, RoPE, ALiBi, and bits per byte are the first places this mathematics runs.
 
-## 3. Sequences, series, and frequency ladders
+## Further reading
 
-**Key ideas**:
-- **Geometric sequence**: $a, ar, ar^2, \dots$ with sum $a(1 - r^n)/(1 - r)$ for $r \ne 1$.
-- **Ladders**: RoPE `inv_freq` is $b^{-2i/d}$ for $i = 0, \dots, d/2 - 1$; ALiBi slopes are a geometric sequence per head, with a rule for head counts that are not powers of two.
-- **Call sites**: `L7.3` RoPE, `L7.4` ALiBi and YaRN, `M02.2`, `M10.4` schedules.
-
-## 4. Polynomials, Horner's rule, and stable roots
-
-**Key ideas**:
-- **Horner**: $a_0 + x(a_1 + x(a_2 + \dots))$ uses $n$ multiplications and $n$ additions and is the form every polynomial kernel uses.
-- **Cancellation**: when $b^2 \gg 4ac$ one root of $-b \pm \sqrt{b^2 - 4ac}$ subtracts two nearly equal numbers; compute the large-magnitude root first and get the other from $x_1 x_2 = c/a$.
-- **Call sites**: `M02.1` Taylor polynomials, `M09.6` the polynomial core of `tl_expf`.
-
-## Course modules
-
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `S-M00` | Precalculus problem set (with worked answers) | solve | 2 |
-| `M00.1` | Exponents, logs, change of base, units of information | build | 2 |
-| `M00.2` | Trig, unit circle, 2D rotations, complex numbers, Euler's formula | build | 2 |
-| `M00.3` | Sequences, geometric series, frequency ladders | build | 2 |
-| `M00.4` | Polynomials, Horner, stable quadratic roots | build | 2 |
-| `M00.5` | Functions, inverses, monotonicity, inequalities | solve | solve set |
-
-`M00.5` (functions, inverses, monotonicity, inequalities) is solve-only: it appears as items of `S-M00` and is used by `M01.1` and `M05.2`.
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `S-M00` | [Solve set: functions, exp/log, trig and Euler, series, polynomials, inequalities](00-solve-set.md) | solve | 2 |
-| 2 | `M00.1` | [Exponents, logs, change of base, units of information](01-exponents-logs-and-units-of-information.md) | build | 2 |
-| 3 | `M00.2` | [Trig, unit circle, 2D rotations, complex numbers, Euler's formula](02-trig-rotations-and-eulers-formula.md) | build | 2 |
-| 4 | `M00.3` | [Sequences, geometric series, frequency ladders](03-sequences-and-frequency-ladders.md) | build | 2 |
-| 5 | `M00.4` | [Polynomials, Horner, stable quadratic roots](04-polynomials-horner-and-stable-roots.md) | build | 2 |
-
-## Connections to Other Tracks
-
-| Track | Connection |
-|---|---|
-| [Calculus 1](../01-calculus-1/) | limits and derivatives build on functions, exponentials, and logarithms |
-| [Numerical Methods and Floating Point](../09-numerical-methods-and-floating-point/) | range reduction and polynomial approximation of `exp` (M09.6) start from Horner's rule |
-| [Information Theory](../11-information-theory/) | entropy and perplexity are logarithms with a unit |
-| [tinyllm](../../../courses/build-an-llm/) | RoPE, ALiBi, and bits per byte are the first places this math runs |
+- OpenStax, [*Precalculus 2e*](https://openstax.org/details/books/precalculus-2e) (free, CC BY), the primary reference for the chapter.
+- OpenStax, [*College Algebra 2e*](https://openstax.org/details/books/college-algebra-2e) (free), for the algebra review.
+- Paul's Online Notes, [Algebra and Trig Review](https://tutorial.math.lamar.edu/Extras/AlgebraTrigReview/AlgebraTrigReview.aspx) (free).
+- 3Blue1Brown, [Euler's formula with introductory group theory](https://www.youtube.com/watch?v=mvmuCPvRoWQ) (free).

@@ -1,94 +1,56 @@
 # Order Book Matching
 
-## Overview
+A limit order book with a matching engine is the canonical live-coding problem at trading firms, and a good test of data-structure judgment anywhere latency matters. The domain is small enough to state in three rules, yet the obvious implementation is slow in a way you have to name precisely before you can fix it. This case study builds the engine the way it was actually built under time pressure: the flat, obviously correct version first, then a heap of price levels, then a tick-indexed ladder, each earned by an explicit analysis of what the previous one wasted, and all three behind one interface so the matching loop never changes.
 
-- **Problem**: build a limit order book with a matching engine, live, under time
-  pressure, and be able to defend every data-structure choice.
-- **Runnable**: [`matching_engine.py`](matching_engine.py) -- three book layers
-  behind one interface, standard library only, `python matching_engine.py`.
-- **Prerequisites**: heaps, hash maps, amortised analysis. No finance knowledge;
-  the three rules below are the entire domain model.
-- **Estimated time**: 1-2 days
+The runnable implementation is [`matching_engine.py`](matching_engine.py): three book layers behind one interface, standard library only, with its own tests. Run it with `python matching_engine.py`. No finance knowledge is needed; the three rules below are the entire domain model.
 
-## Key Takeaways
+> **Learning objectives**
+> - State the three matching rules and the invariant that makes the engine testable.
+> - Explain why two independent orderings need two structures, and why the heap holds price levels rather than orders.
+> - Justify each optimization with a bottleneck, unnecessary-work, and duplicated-work (BUD) analysis, and state what the ladder costs.
+> - Name the small details that produce real bugs, and the test that catches each one.
+> - Prove that a storage refactor did not change behavior with a cross-implementation equivalence test.
 
-- **Two orderings in the rules means two structures in the storage.** Price and
-  time are ranked independently, so trying to serve both from one container is
-  the mistake that makes the rest hard.
-- **Write the O(n) version first.** It is correct by inspection, it gets the
-  matching loop under test, and it gives you a working system to point at while
-  discussing improvements. Skipping it to look clever costs more than it saves.
-- **One invariant makes the whole thing testable**: the book is never crossed.
-  Assert it after every event and a replay becomes a real test.
-- **The engine must not change when the storage does.** That is the payoff of
-  the interface, and it is provable: the same order stream through all three
-  layers produces byte-identical fill logs.
+## Before you begin
 
-## How to Study
+You need heaps, hash maps, and amortized analysis; [Algorithms](../../algorithms/README.md) covers all three. Before reading past the rules, try writing the flat-list version yourself. It takes about fifteen minutes, and it makes everything after it easier to judge.
 
-- Read the three rules, then write the flat-list version yourself before
-  reading further. It takes about fifteen minutes.
-- Run the implementation, then break it deliberately: remove the zero-quantity
-  removal in `fill()` and watch `test_exact_fill_leaves_no_ghost` catch the
-  classic blocking-ghost bug.
-- Say the BUD analysis out loud before reading Layer 2. If you cannot name the
-  bottleneck in the list version, the heap is a memorised answer rather than a
-  derived one.
+## The problem
 
----
+Orders arrive one at a time, each with a side, a limit price, and a quantity. Three rules define the entire system:
 
-# Concepts & Techniques
-
-## The Problem
-
-Orders arrive one at a time, each with a side, a limit price, and a quantity.
-Three rules define the entire system:
-
-1. **Match on arrival.** An incoming order matches against resting orders on the
-   opposite side while prices are compatible. Whatever is left rests in the book.
+1. **Match on arrival.** An incoming order matches against resting orders on the opposite side while prices are compatible. Whatever is left rests in the book.
 2. **Best price first, then oldest first.** This is *price-time priority*.
 3. **The execution prints at the resting order's price**, not the arriving one.
 
-Rule 3 catches people out. The arriving order was willing to do worse; the
-resting order set the terms by waiting. Waiting is what earns the better price,
-and that is the economic content of the whole mechanism.
+Rule 3 catches people out. The arriving order was willing to do worse; the resting order set the terms by waiting. Waiting is what earns the better price, and that is the economic content of the whole mechanism.
 
-## The Invariant
+## The invariant
+
+One property holds after every event:
 
 > After every event, the best bid is strictly below the best ask.
 
-If a buy and a sell could rest simultaneously at compatible prices, rule 1 was
-violated somewhere. This single assertion turns a deterministic replay into a
-genuine test: feed a known stream, check the invariant after every order, and
-compare the fill log against expected output.
+If a buy and a sell could rest simultaneously at compatible prices, rule 1 was violated somewhere. This single assertion turns a deterministic replay into a genuine test: feed a known stream, check the invariant after every order, and compare the fill log against the expected output.
 
-It is also the property that makes the three-layer refactor safe. Any layer that
-breaks price-time priority produces a different fill log, and the cross-layer
-equivalence test fails immediately.
+It is also the property that makes the three-layer refactor safe. Any layer that breaks price-time priority produces a different fill log, and the cross-layer equivalence test fails immediately.
 
-## 1. Two orderings, two structures
+## Two orderings, two structures
 
-Rule 2 ranks by price, then by time. These are independent orderings, so the
-storage layer needs one structure for each:
+Rule 2 ranks by price, then by time. These are independent orderings, so the storage layer needs one structure for each:
 
 | Ordering | Question it answers | Structure |
 |----------|--------------------|-----------|
 | Price | Which level is best? | Heap of prices, or an indexed array |
 | Time | Which order in this level is oldest? | Insertion-ordered dict per level |
 
-Python dicts preserve insertion order, so a level is a queue for free: adding is
-joining the back, and `next(iter(level.values()))` is the front. In a language
-without that guarantee, a deque or an intrusive linked list plays the same role.
+Trying to serve both from one container is the mistake that makes everything else hard. Python dicts preserve insertion order, so a level is a queue for free: adding is joining the back, and `next(iter(level.values()))` is the front. In a language without that guarantee, a deque or an intrusive linked list plays the same role.
 
-## 2. The heap holds levels, not orders
+## The heap holds levels, not orders
 
-This is the detail that makes the heap version work at all. One entry per price
-*level*, pushed once when the level is created, so the heap stays bounded by the
-number of distinct live prices rather than the number of resting orders.
+The detail that makes the heap version work at all is what goes in the heap. There is one entry per price *level*, pushed once when the level is created, so the heap stays bounded by the number of distinct live prices rather than the number of resting orders.
 
-The consequence: `fill()` never touches the heap. When a level empties, its heap
-entry is left behind as a stale price and swept lazily on the way down in
-`best()`.
+The consequence is that `fill()` never touches the heap. When a level empties, its heap entry is left behind as a stale price and swept lazily on the way down in `best()`:
 
 ```python
 def best(self):
@@ -101,50 +63,27 @@ def best(self):
     return None
 ```
 
-Eager deletion would mean finding an arbitrary entry in a heap, which is O(n) --
-exactly the cost being avoided. Lazy deletion is amortised O(1) because every
-stale entry is swept at most once.
+Eager deletion would mean finding an arbitrary entry in a heap, which is O(n), exactly the cost being avoided. Lazy deletion is amortized O(1), because every stale entry is swept at most once.
 
-## 3. Earning each layer with BUD
+## Earning each layer with BUD
 
-The jump from one layer to the next is justified by naming three things about
-the previous one: the **B**ottleneck, the **U**nnecessary work, and the
-**D**uplicated work.
+Each jump from one layer to the next is justified by naming three things about the previous one: the **B**ottleneck, the **U**nnecessary work, and the **D**uplicated work. Say this analysis out loud before reading the heap layer. If you cannot name the bottleneck in the list version, the heap is a memorized answer rather than a derived one.
 
-**List to heap:**
+Going from the list to the heap, the bottleneck is that `best()` scans every resting order, O(n), once per fill iteration. The unnecessary work is scanning orders at prices that cannot possibly win. The duplicated work is that the best price rarely changes between calls, yet it is recomputed from scratch every single time.
 
-- *Bottleneck*: `best()` scans every resting order, O(n), once per fill iteration.
-- *Unnecessary*: it scans orders at prices that cannot possibly win.
-- *Duplicated*: the best price rarely changes between calls, yet it is
-  recomputed from scratch every single time.
+Going from the heap to the ladder, the bottleneck is that `heappush` is O(log L) in the number of live levels, and it runs on every new price. The unnecessary work is comparisons at all: real venues quote a bounded price range on a fixed tick, so a price is a small integer, an array index rather than a sort key. The duplicated work is that the best price moves by small steps, so re-deriving it from a heap discards the locality of the previous answer.
 
-**Heap to ladder:**
+The ladder therefore replaces the heap with a preallocated array plus a pointer that only walks away from the top of the book and gets pulled back by `add()`. That is amortized O(1), with no comparisons and no allocation on the hot path.
 
-- *Bottleneck*: `heappush` is O(log L) in the number of live levels, and it runs
-  on every new price.
-- *Unnecessary*: comparisons at all. Real venues quote a bounded price range on a
-  fixed tick, so a price is a small integer -- an array index, not a sort key.
-- *Duplicated*: the best price moves by small steps, so re-deriving it from a
-  heap discards the locality of the previous answer.
+## What the ladder costs
 
-The ladder replaces the heap with a preallocated array plus a pointer that only
-walks away from the top of the book, and gets pulled back by `add()`. Amortised
-O(1), no comparisons, no allocation on the hot path.
+State the cost out loud, because it is what makes the optimization legitimate rather than a micro-optimization. The ladder uses memory proportional to the price range, not to the number of orders, and it makes a hard assumption that prices stay inside that range. `LadderBook` raises on a price outside `[0, max_price]` instead of corrupting silently.
 
-## 4. What the ladder costs
+That trade is correct for an exchange with circuit breakers and a tick size. It is wrong for an arbitrary-precision or unbounded-price market. The structure encodes a domain assumption, and the honest move is to name it.
 
-State this out loud, because it is what makes the optimisation legitimate rather
-than a micro-optimisation:
+## The details that produce real bugs
 
-- **Memory** proportional to the price range, not to the number of orders.
-- **A hard assumption** that prices stay inside that range. `LadderBook` raises
-  on a price outside `[0, max_price]` instead of corrupting silently.
-
-That trade is correct for an exchange with circuit breakers and a tick size. It
-is wrong for an arbitrary-precision or unbounded-price market. The structure
-encodes a domain assumption, and the honest move is to name it.
-
-## 5. The details that produce real bugs
+The structures are the interesting part, but small details are where the real bugs live. Each row below has a named test in the implementation, and that is no coincidence: these are the failure modes worth encoding, and the test names are the documentation.
 
 | Detail | What breaks without it |
 |--------|------------------------|
@@ -155,35 +94,27 @@ encodes a domain assumption, and the honest move is to name it.
 | Frozen `Fill` records | Later mutation of order quantities would otherwise rewrite fill history |
 | Sequence stamped on arrival | Time priority needs a total order that survives equal timestamps |
 
-Each of these has a named test. That is not coincidence: they are the failure
-modes worth encoding, and the test names are the documentation.
+> **Try it:** Remove the zero-quantity removal in `fill()` and run the tests. `test_exact_fill_leaves_no_ghost` catches the classic blocking-ghost bug.
 
-## Build Log
+## The build log
 
-The order this was assembled in, which is the transferable part:
+The order the engine was assembled in is the transferable part of this study:
 
-1. **Restate the three rules and the invariant** before writing anything. If the
-   rules are wrong, nothing downstream matters.
-2. **Data first.** `Order` (mutable quantity, stamped sequence) and `Fill`
-   (frozen). Integer prices, decided and justified up front.
+1. **Restate the three rules and the invariant** before writing anything. If the rules are wrong, nothing downstream matters.
+2. **Data first.** `Order` (mutable quantity, stamped sequence) and `Fill` (frozen). Integer prices, decided and justified up front.
 3. **The flat-list book.** Correct by inspection, three methods, no cleverness.
-4. **The engine.** The matching loop, written once and never touched again. This
-   is where partial fills, the resting-price rule, and the zero-remainder guard
-   get worked out, against a book simple enough that bugs are obviously bugs.
+4. **The engine.** The matching loop, written once and never touched again. This is where partial fills, the resting-price rule, and the zero-remainder guard get worked out, against a book simple enough that bugs are obviously bugs.
 5. **The invariant check**, wired into a replay harness.
-6. **Scenario tests**: level sweeping, FIFO within a price, partial fill keeping
-   position, the exact-fill ghost, the empty book.
+6. **Scenario tests**: level sweeping, FIFO within a price, a partial fill keeping its position, the exact-fill ghost, and the empty book.
 7. **Only then, the heap layer.** BUD analysis first, implementation second.
-8. **Cross-layer equivalence test.** A 400-order pseudo-random stream through
-   every layer, asserting identical fill logs. This is what proves the interface
-   was real rather than aspirational.
+8. **The cross-layer equivalence test.** A 400-order pseudo-random stream through every layer, asserting identical fill logs. This is what proves the interface was real rather than aspirational.
 9. **The ladder layer**, with its assumption stated and enforced.
 
-Steps 3 through 6 produce a complete, defensible system. Everything after is
-optional improvement on a working base, which is the position you want to be in
-when the clock runs out.
+Steps 3 through 6 produce a complete, defensible system. Writing the O(n) version first is not a concession: it is correct by inspection, it gets the matching loop under test, and it gives you a working system to point at while discussing improvements. Skipping it to look clever costs more than it saves. Everything after step 6 is optional improvement on a working base, which is the position you want to be in when the clock runs out. And because the engine does not change when the storage does, the payoff of the interface is provable: the same order stream through all three layers produces byte-identical fill logs.
 
-## Technique Catalog
+## Techniques to take away
+
+The techniques in this build recur well beyond order books:
 
 | Technique | When to apply |
 |-----------|---------------|
@@ -194,22 +125,40 @@ when the clock runs out.
 | Invariant asserted after every event | Any stateful system with a "cannot happen" property |
 | Deterministic replay | Validating stateful systems without a live environment |
 | Cross-implementation equivalence | Any refactor that swaps a structure behind an interface |
-| BUD analysis | Justifying an optimisation instead of reciting one |
+| BUD analysis | Justifying an optimization instead of reciting one |
 
-## Connections to Other Tracks
+## Where this leads
 
-| Concept | Connected Track | How |
-|---------|-----------------|-----|
-| Heaps, amortised analysis, ordering | [Algorithms](../../algorithms/) | The underlying data structures |
-| Interface stability across implementations | [The Pragmatic Programmer](../../software-craftsmanship/01-pragmatic-programmer/) | Orthogonality: change storage without touching the engine |
-| Invariants and property-based testing | [The Testing Mentality](../../software-craftsmanship/03-testing-mentality/) | The invariant is the property; replay is the harness |
-| Latency budgets and tail behaviour | [System Design](../../systems/01-system-design/) | Why the constant factor is worth this much attention |
-| Named constants over magic numbers | [Lessons from Practice](../../software-craftsmanship/04-lessons-from-practice/) | The failure mode this build avoids |
+The underlying heaps, ordering, and amortized analysis are in [Algorithms](../../algorithms/README.md). Changing storage without touching the engine is orthogonality, from [The Pragmatic Programmer](../../software-craftsmanship/01-pragmatic-programmer/README.md). The invariant is a property and the replay is its harness, which is the subject of [The testing mentality](../../software-craftsmanship/03-testing-mentality/README.md). Why the constant factor deserves this much attention is a question of latency budgets and tail behavior, covered in [System design](../../systems/01-system-design/README.md). And [Lessons from practice](../../software-craftsmanship/04-lessons-from-practice/README.md) catalogs the failure mode this build avoids by using named constants over magic numbers.
 
-## Company Relevance
+Where the problem shows up: trading firms use the order book as a live-coding problem that rewards correctness first and constant factors second; low-latency roles probe bounded key ranges, cache behavior, and allocation on the hot path; and any systems interview can ask you to refactor behind a stable interface under pressure.
 
-| Company | How This Appears | Focus |
-|---------|-----------------|-------|
-| Trading firms | The order book is the canonical live-coding problem | Correctness first, then constant factors |
-| Any low-latency role | Bounded key ranges, cache behaviour, allocation on the hot path | Where the log factor goes |
-| Any systems interview | Refactoring behind a stable interface | Orthogonality under pressure |
+## Key terms
+
+- **Price-time priority**: matching the best price first and, within a price, the oldest order first.
+- **Price level**: the set of resting orders on one side at one price, kept in arrival order.
+- **Crossed book**: a book in which the best bid is at or above the best ask; it must never happen.
+- **Lazy deletion**: leaving stale entries in a heap and discarding them when they reach the top.
+- **Ladder**: a preallocated array indexed by price tick, with a pointer to the best level.
+- **BUD analysis**: justifying an optimization by naming the bottleneck, the unnecessary work, and the duplicated work.
+
+## Summary
+
+- Two independent orderings in the rules mean two structures in the storage: a price structure of levels and a time-ordered queue per level.
+- The heap holds one entry per level and sweeps empty levels lazily, so `fill()` never touches it.
+- Each layer is earned by a BUD analysis of the previous one, and the ladder's cost (memory and a bounded price range) is stated and enforced.
+- One invariant, that the book is never crossed, makes replay a real test.
+- The same order stream through all three layers produces identical fill logs, which proves the interface.
+
+## Review questions
+
+1. Why does the execution print at the resting order's price?
+   <details><summary>Answer</summary>The resting order set the terms by waiting, while the arriving order was willing to do worse. Waiting is what earns the better price; that is the economic content of the mechanism.</details>
+2. Why does the heap hold price levels rather than orders, and what does that mean for `fill()`?
+   <details><summary>Answer</summary>One entry per level keeps the heap bounded by the number of distinct live prices instead of the number of resting orders. `fill()` never touches the heap; an emptied level's entry stays as a stale price and is swept lazily by `best()`, which is amortized O(1) because each stale entry is swept at most once.</details>
+3. Give the BUD analysis that justifies replacing the heap with a ladder.
+   <details><summary>Answer</summary>Bottleneck: `heappush` is O(log L) on every new price. Unnecessary: comparisons at all, since a price on a fixed tick in a bounded range is an array index. Duplicated: the best price moves in small steps, and re-deriving it from a heap throws away the previous answer's locality.</details>
+4. What does a zero-quantity ghost do, and which test catches it?
+   <details><summary>Answer</summary>If an exactly filled order is not removed, it sits at the front of its level with zero quantity and blocks every future match at that price. `test_exact_fill_leaves_no_ghost` catches it.</details>
+5. How do you prove that swapping the storage layer did not change behavior?
+   <details><summary>Answer</summary>Run the same 400-order pseudo-random stream through every layer and assert that the fill logs are identical. Any layer that breaks price-time priority produces a different log.</details>

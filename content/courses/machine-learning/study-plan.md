@@ -1,81 +1,37 @@
-# ML & AI (18-37 weeks)
+# A reading plan for Machine Learning and AI
 
-~10-12 hours per week. Requires math foundations (linear algebra, calculus, probability).
+This plan paces the book over roughly 18 to 37 weeks at ten to twelve hours a week, depending on how many chapters you read. It is a suggestion, not a schedule to keep: the [front matter](README.md) offers shorter reading paths for specific goals, and you can skip or reorder chapters to match them. The plan assumes you have the mathematical foundations in hand, meaning linear algebra, calculus, and probability from *Mathematics for Computing*.
 
-### Weeks 1-5: Statistical Learning
+## Statistical learning (about five weeks)
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 1 | Statistical learning framework, bias-variance | ISLR Ch 2 |
-| 2 | Linear regression, model selection | ISLR Ch 3 |
-| 3 | Classification (logistic regression, LDA, Naive Bayes) | ISLR Ch 4 |
-| 4 | Resampling, regularization (ridge, lasso) | ISLR Ch 5-6 |
-| 5 | Trees, random forests, boosting, SVMs, unsupervised | ISLR Ch 8-9, 12 |
+Begin with [Statistical Learning](01-statistical-learning/README.md), reading *An Introduction to Statistical Learning* alongside it. The first week is the statistical learning framework and the bias-variance tradeoff (chapter 2 of ISLR). The second is linear regression and model selection (chapter 3), and the third is classification with logistic regression, LDA, and naive Bayes (chapter 4). In the fourth week cover resampling and regularization with ridge and lasso (chapters 5 and 6), and in the fifth, trees, random forests, boosting, SVMs, and unsupervised learning (chapters 8, 9, and 12).
 
-### Weeks 6-13: Deep Learning
+## Deep learning (about eight weeks)
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 6 | ML basics, feedforward networks, backpropagation | Goodfellow Ch 5-6 |
-| 7 | Regularization, optimization (SGD, Adam) | Goodfellow Ch 7-8 |
-| 8 | CNNs -- architectures (LeNet to ResNet), applications | Goodfellow Ch 9 |
-| 9 | RNNs, LSTMs, sequence-to-sequence | Goodfellow Ch 10 |
-| 10 | Practical methodology, debugging, hyperparameter tuning | Goodfellow Ch 11 |
-| 11 | Autoencoders, generative models (VAE, GAN) | Goodfellow Ch 14, 20 |
-| 12 | Transformers, attention, BERT, GPT, scaling laws | Beyond book -- papers |
-| 13 | Representation learning, self-supervised, transfer learning | Goodfellow Ch 15 + papers |
+[Deep Learning](02-deep-learning/README.md) takes the next eight weeks, following Goodfellow, Bengio, and Courville. Start with the machine-learning basics, feedforward networks, and backpropagation (chapters 5 and 6), then regularization and optimization with SGD and Adam (chapters 7 and 8). Spend a week on CNNs and their architectures from LeNet to ResNet (chapter 9), and another on RNNs, LSTMs, and sequence-to-sequence models (chapter 10). The fifth week is practical methodology, debugging, and hyperparameter tuning (chapter 11), and the sixth is autoencoders and generative models, VAEs and GANs (chapters 14 and 20). The last two weeks go beyond the book into the papers: transformers, attention, BERT, GPT, and scaling laws, and then representation learning, self-supervised learning, and transfer learning (with chapter 15).
 
-### Weeks 14-19: Reinforcement Learning
+If you are interested in foundations, this is the time to read [Neural Architectures and the History of Deep Learning](06-neural-architectures/README.md) alongside it; see below.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 14 | Bandits, MDPs, Bellman equations | Sutton & Barto Ch 2-3 |
-| 15 | DP, Monte Carlo, TD learning, Q-learning | Sutton & Barto Ch 4-6 |
-| 16 | Function approximation, DQN | Sutton & Barto Ch 9-10 |
-| 17 | Policy gradient, actor-critic, A2C/A3C | Sutton & Barto Ch 13 |
-| 18 | PPO, DDPG, TD3, SAC | Spinning Up |
-| 19 | RLHF, alignment, model-based RL | Research papers |
+## Reinforcement learning (about six weeks)
 
-### Weeks 20-25: LLM Systems & Inference
+[Reinforcement Learning](03-reinforcement-learning/README.md) follows Sutton and Barto. Week one is bandits, MDPs, and the Bellman equations (chapters 2 and 3); week two is dynamic programming, Monte Carlo methods, TD learning, and Q-learning (chapters 4 to 6); week three is function approximation and DQN (chapters 9 and 10); and week four is policy gradients, actor-critic methods, and A2C/A3C (chapter 13). Use OpenAI's Spinning Up for the fifth week on PPO, DDPG, TD3, and SAC, and the research papers for the sixth on RLHF, alignment, and model-based RL.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 20 | Transformer serving view, prefill vs decode, TTFT/TPOT | ML Systems + vLLM docs |
-| 21 | KV cache, PagedAttention, prefix caching | vLLM (PagedAttention) paper |
-| 22 | Continuous batching, FlashAttention, kernel optimization | TGI + FlashAttention papers |
-| 23 | Quantization (GPTQ/AWQ/FP8), speculative decoding | Lilian Weng inference blog |
-| 24 | Tensor/pipeline/expert parallelism, multi-GPU serving | TensorRT-LLM docs |
-| 25 | GPU clusters, K8s deployment, autoscaling, SLOs | K8s + KServe/Ray Serve docs |
+## LLM systems and inference (about six weeks)
 
-### Weeks 26-30: Foundation Models & Architectures
+[LLM Systems and Inference](04-llm-systems/README.md) moves from models to serving, with *Machine Learning Systems* and the vLLM docs as companions. Start with the serving view of a transformer: prefill versus decode and the TTFT and TPOT metrics. Then study the KV cache, PagedAttention, and prefix caching with the vLLM PagedAttention paper, followed by continuous batching, FlashAttention, and kernel optimization with the TGI and FlashAttention papers. The fourth week is quantization (GPTQ, AWQ, FP8) and speculative decoding, for which Lilian Weng's inference blog post is a good guide, and the fifth is tensor, pipeline, and expert parallelism and multi-GPU serving, with the TensorRT-LLM docs. Finish with GPU clusters, Kubernetes deployment, autoscaling, and SLOs, reading the Kubernetes, KServe, and Ray Serve docs.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 26 | Foundation models, the AI-engineering shift, adaptation ladder | Huyen *AI Engineering* Ch 1-2 |
-| 27 | Transformer architecture variants (RMSNorm, RoPE, SwiGLU, MoE) | Llama/Gemma tech reports |
-| 28 | Attention mechanisms (MHA/MQA/GQA/MLA, sliding-window, sparse) | DeepSeek + Mistral papers |
-| 29 | Modalities: text vs audio vs vision, multimodal fusion (CLIP, VLMs) | HF Transformers + Whisper/CLIP |
-| 30 | Diffusion models (DDPM, latent diffusion, DiT, flow matching) | HF Diffusers + Lilian Weng |
+## Foundation models and architectures (about five weeks)
 
-### Weeks 31-33: Neural Architectures & DL History
+[Foundation Models and Architectures](05-foundation-models/README.md) opens with foundation models, the shift to AI engineering, and the adaptation ladder (chapters 1 and 2 of Huyen's *AI Engineering*). The second week is the transformer architecture variants, RMSNorm, RoPE, SwiGLU, and MoE, read through the Llama and Gemma technical reports; the third is attention mechanisms (MHA, MQA, GQA, MLA, sliding-window, and sparse attention) with the DeepSeek and Mistral papers. In the fourth week compare modalities, text, audio, and vision, and multimodal fusion with CLIP and VLMs, using the Hugging Face Transformers docs and the Whisper and CLIP papers. The last week is diffusion models: DDPM, latent diffusion, DiT, and flow matching, with the Hugging Face Diffusers docs and Lilian Weng's post.
 
-Foundations deep dive — best done alongside Deep Learning (weeks 6-9). Derive each architecture from its math and code it from scratch.
+## Neural architectures and the history of deep learning (about three weeks)
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 31 | History (perceptron → XOR winter → backprop); foundational math; code perceptron + MLP backprop | CS231n + Rumelhart 1986 |
-| 32 | CNNs: convolution math, pooling, LeNet→AlexNet→VGG→ResNet; AlexNet deep dive | CS231n + AlexNet/ResNet papers |
-| 33 | RNNs, BPTT, vanishing gradients; LSTM/GRU gate equations; CNNs vs RNNs vs Transformers | LSTM paper + Goodfellow Ch 10 |
+[Neural Architectures and the History of Deep Learning](06-neural-architectures/README.md) is a foundations deep dive that is best read alongside the first four weeks of Deep Learning. Derive each architecture from its math and code it from scratch. The first week is the history, from the perceptron through the XOR winter to backpropagation, along with the foundational math and coding a perceptron and an MLP with backprop (CS231n and Rumelhart et al. 1986). The second is CNNs: convolution math, pooling, and the line from LeNet through AlexNet and VGG to ResNet, with a deep dive on AlexNet (CS231n and the AlexNet and ResNet papers). The third is RNNs, backpropagation through time, and vanishing gradients, the LSTM and GRU gate equations, and a comparison of CNNs, RNNs, and transformers (the LSTM paper and chapter 10 of Goodfellow).
 
-### Weeks 34-37: Training & Post-Training
+## Training and post-training (about four weeks)
 
-How a model is made before it is served. Pairs with RL (weeks 14-19) for the RLHF and GRPO sections.
+[Training and Post-Training](07-training-and-post-training/README.md) shows how a model is made before it is served, and pairs with the reinforcement learning weeks for its RLHF and GRPO material. In the first week work through pretraining: cross entropy, the $6ND$ FLOP count, Chinchilla versus inference-optimal overtraining, and MFU, with the Chinchilla paper and the chapter's `code/memory_calc.py`. In the second, study training memory and parallelism, from Adam's optimizer state through ZeRO and FSDP2, TP, PP, CP, and EP, to JAX sharding, reading the ZeRO and Megatron papers and the PyTorch and JAX docs. The third week is post-training: SFT, PPO-based RLHF, the derivation of DPO, and GRPO with verifiable rewards, with the InstructGPT, DPO, and DeepSeekMath papers. Finish with parameter-efficient fine-tuning and scoping: the LoRA, QLoRA, and DoRA math, running a LoRA fine-tune yourself, and evaluating base against tuned, with the LoRA and QLoRA papers and `code/lora_from_scratch.py`.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 34 | Pretraining: cross entropy, 6ND FLOPs, Chinchilla vs inference-optimal overtraining, MFU | Chinchilla + `code/memory_calc.py` |
-| 35 | Training memory and parallelism: Adam state, ZeRO/FSDP2, TP/PP/CP/EP, JAX sharding | ZeRO + Megatron papers, PyTorch/JAX docs |
-| 36 | Post-training: SFT, PPO-RLHF, DPO derivation, GRPO and verifiable rewards | InstructGPT, DPO, DeepSeekMath papers |
-| 37 | PEFT and scoping: LoRA/QLoRA/DoRA math, run a LoRA fine-tune, eval base vs tuned | LoRA, QLoRA papers + `code/lora_from_scratch.py` |
+## Going further
 
----
+To see the whole stack built end to end, continue with *[Build Your Own LLM System](../build-an-llm/README.md)*, following its [course path](../build-an-llm/paths/course/README.md), which walks through a worked solution for every layer from autograd to serving and post-training.

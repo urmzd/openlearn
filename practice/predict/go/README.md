@@ -1,17 +1,38 @@
-# Go: predict the output
+# Predicting Go output
 
-Six Go snippets, each with its exact output and an explanation of every
-numbered line. Read the source, write down what you think it prints, then open
-the fold. See the [predict introduction](../README.md) for how to use these
-pages.
+Go is a small language, and that smallness is exactly why its surprises hurt.
+There are few rules, so people fill the gaps with rules borrowed from other
+languages, and those borrowed rules are wrong in precisely the places Go code
+breaks in production: an `error` that is not nil on the success path, an
+`append` that overwrites a caller's data, a `defer` that silently changes a
+return value. The six snippets in this section each target one of those gaps.
 
-The module declares `go 1.26` in [`go.mod`](go.mod). That matters for snippet
-01: loop-variable semantics are chosen by the module's Go version, not by the
-compiler you happen to have installed.
+Work through them the way the [predict introduction](../README.md) describes:
+read the source, write down the exact output line by line, then open the fold
+and compare. For every line you missed, the explanation gives the rule from
+first principles, applies it to the code, and names the wrong prediction most
+people make and the misconception behind it. By the end you should be able to
+reason about Go's runtime representations (interface pairs, slice headers,
+string bytes, channel states) rather than guessing from surface syntax.
 
-To reproduce an output, run `go run ./predict/NN-name` from this directory.
+> **Learning objectives**
+> - Predict which loops create a fresh variable per iteration since Go 1.22, and what a closure inside them captures.
+> - Explain why an interface holding a nil pointer is not nil, and write success paths that return a true `nil` error.
+> - Use a slice's (pointer, length, capacity) header to predict when `append` aliases and when it reallocates.
+> - State when deferred calls run, when their arguments are evaluated, and how they can change a named result.
+> - Distinguish bytes, runes, and characters in Go strings, and predict receives on closed, empty, and nil channels.
 
-## 01-loop-var-capture
+## Before you begin
+
+The module declares `go 1.26` in [`go.mod`](go.mod). That matters for the
+first snippet: loop-variable semantics are chosen by the module's Go version,
+not by the compiler you happen to have installed. To reproduce an output, run
+`go run ./predict/NN-name` from this directory. The snippets pair naturally
+with their counterparts in the other languages: compare the slice snippet with
+[Python's aliasing snippet](../python/README.md#aliasing-and-copies), and the
+strings snippet with [Rust's](../rust/README.md#owned-and-borrowed-strings).
+
+## Loop variables and closures
 
 Source: [`predict/01-loop-var-capture/main.go`](predict/01-loop-var-capture/main.go)
 
@@ -68,7 +89,7 @@ before 1.22.
 
 </details>
 
-## 02-nil-interface
+## Nil interfaces
 
 Source: [`predict/02-nil-interface/main.go`](predict/02-nil-interface/main.go)
 
@@ -142,7 +163,7 @@ evaluated first).
 
 </details>
 
-## 03-slice-aliasing
+## Slice aliasing and append
 
 Source: [`predict/03-slice-aliasing/main.go`](predict/03-slice-aliasing/main.go)
 
@@ -217,7 +238,7 @@ writes are shared, but length changes and reallocations are not.
 
 </details>
 
-## 04-defer-order
+## Defer ordering
 
 Source: [`predict/04-defer-order/main.go`](predict/04-defer-order/main.go)
 
@@ -289,7 +310,7 @@ noticing it was deferred after the loop.
 
 </details>
 
-## 05-strings-and-runes
+## Strings, bytes, and runes
 
 Source: [`predict/05-strings-and-runes/main.go`](predict/05-strings-and-runes/main.go)
 
@@ -368,7 +389,7 @@ mutates shared storage.
 
 </details>
 
-## 06-channels-and-close
+## Channels and close
 
 Source: [`predict/06-channels-and-close/main.go`](predict/06-channels-and-close/main.go)
 
@@ -433,3 +454,40 @@ receives until after `wg.Wait()`. The ordering is safe here only because the
 buffer is large enough.
 
 </details>
+
+## Where this leads
+
+The models in this section recur throughout systems code. The interface pair
+explains every `if err != nil` check; the slice header explains why APIs that
+return sub-slices often cap their capacity; closed-channel semantics are the
+basis of cancellation and fan-out patterns. For the same ideas in other
+languages, read the [Rust](../rust/README.md), [Python](../python/README.md),
+and [TypeScript](../ts/README.md) snippets, and see the
+[predict introduction](../README.md#the-corpus) for how the pairs line up.
+
+## Key terms
+
+- **Per-iteration loop variable**: since Go 1.22, each variable declared in a `for` header is a new variable on every iteration.
+- **Interface value**: a pair of dynamic type and dynamic value, nil only when both halves are nil.
+- **Slice header**: the (pointer, length, capacity) triple that views a backing array.
+- **Full slice expression**: `a[low:high:max]`, which also sets the capacity of the resulting slice.
+- **Rune**: a Unicode code point, the unit yielded by `for range` over a string.
+- **Comma-ok receive**: `v, ok := <-ch`, where `ok` is false once a closed channel is drained.
+
+## Summary
+
+- Closures capture variables, not values; the question is how many variables exist.
+- Converting a typed nil pointer to an interface records its type, so the interface is not nil.
+- `append` shares memory exactly when length is below capacity; otherwise it reallocates and the alias breaks.
+- Deferred calls run LIFO with arguments fixed at the `defer` statement, and can edit named results.
+- Strings are bytes: `len`, indexing, and slicing count bytes, while `range` decodes runes.
+- Receives on a closed, drained channel never block; receives on a nil channel block forever.
+
+## Review questions
+
+1. Why does returning a nil `*opErr` from a function declared to return `error` make `err != nil` true?
+   <details><summary>Answer</summary>The return converts the pointer to an interface, producing the pair (`*opErr`, nil). An interface is nil only when both its type and value halves are nil, and here the type half is set. Return the untyped `nil` literal on the success path instead.</details>
+2. Given `b := a[1:3]` with `len(a) == 5`, why can `append(b, 99)` change `a`, and how do you prevent it?
+   <details><summary>Answer</summary>`b` has length 2 and capacity 4, so `append` writes into the shared backing array at `a[3]`. Using the full slice expression `a[1:3:3]` caps capacity at the length, forcing `append` to allocate a new array.</details>
+3. Why does `close` work as a broadcast signal to any number of receivers?
+   <details><summary>Answer</summary>Once a closed channel's buffer is drained, every receive returns immediately with the zero value and `ok == false`. All waiting and future receivers therefore observe the close without anyone sending a value per receiver.</details>

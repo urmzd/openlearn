@@ -1,10 +1,23 @@
-# Jane Street Software Engineer Interview Guide
+# Jane Street
 
-Comprehensive preparation for Jane Street SWE roles, with focus on systems engineering, quantitative thinking, and functional programming.
+Jane Street is a quantitative trading firm whose engineering culture is unlike almost anywhere else: most of its production code is written in OCaml, its interview problems are original rather than drawn from LeetCode, and its interviewers care more about how you think than about the answer you reach. Interviews are longer and more conversational than typical tech interviews, and they mix coding with probability, market-making puzzles, and the design of real-time trading systems.
 
-## Interview Process Overview
+This chapter prepares you for Jane Street SWE roles with a focus on systems engineering, quantitative thinking, and functional programming. It describes the process and compensation, explains how to approach a problem that is meant to be solved through discussion, and then works through the coding rounds (OCaml essentials, an order book, a feed handler, and an expression evaluator), the probability and market-making round, trading system design, and the behavioral round.
 
-Timeline: **3-6 weeks**, **5-7 rounds**
+> **Learning objectives**
+> - Explain how Jane Street's conversational interview style changes the way you should work a problem.
+> - Read and write basic OCaml: pattern matching, options, records, and the pipe operator.
+> - Implement a limit order book with price-time priority, a feed handler with gap detection, and a recursive-descent expression evaluator.
+> - Solve expected-value, Bayesian, and market-making problems and explain the reasoning aloud.
+> - Design a low-latency trading pipeline, a risk system, and a market data distribution system.
+
+## Before you begin
+
+Comfort with conditional probability and expected value is assumed. Low-latency systems concepts recur from the [Hudson River Trading](../hrt/README.md) chapter, which goes deeper into hardware, and [Distributed systems](../shared-concepts/distributed-systems.md) covers the sequencing and recovery ideas behind market data feeds.
+
+## The interview process
+
+Expect three to six weeks and five to seven rounds:
 
 | Round | Format | Duration | Focus |
 |-------|--------|----------|-------|
@@ -16,50 +29,21 @@ Timeline: **3-6 weeks**, **5-7 rounds**
 | Onsite 3 | Probability / Math | 60 min | Quantitative reasoning |
 | Onsite 4 | Behavioral / Fit | 45 min | Culture, collaboration |
 
-Jane Street interviews are **longer and more conversational** than typical tech interviews. They care about how you think, not just what answer you reach.
+Jane Street pays significantly above Big Tech. A new-grad SWE earns about $400-500K in total compensation in the first year, a senior SWE about $600K-1.5M or more, and principal and senior staff $1M-3M or more. Compensation is heavily bonus-weighted, with base salary a fraction of the total. There is no equity: the firm is a partnership, so compensation is cash plus bonus.
 
-## Compensation
+## What Jane Street looks for
 
-Jane Street pays significantly above Big Tech:
+The single most important theme is to think out loud. Jane Street values the thought process above all; silence is bad, and even a wrong but well-reasoned approach earns credit. The rest follows from the firm's work. OCaml is the primary language for most production code; you do not need to know it before interviewing, but familiarity with functional programming helps enormously. Quantitative reasoning (probability, expected value, mathematical thinking) permeates everything. Trading systems have microsecond-level latency requirements, so you should understand low-latency patterns. There is no LeetCode: problems are original and open-ended, testing reasoning rather than pattern matching. The interviews are collaborative, with interviewers actively helping you, more conversation than exam. And AI and ML are a growing area in trading, for signal generation, execution optimization, and anomaly detection.
 
-- **New Grad SWE**: ~$400-500K total comp (Year 1)
-- **Senior SWE**: ~$600K-1.5M+ total comp
-- **Principal/Senior**: $1M-3M+
-- Compensation is heavily bonus-weighted (base is a fraction of total)
-- No equity -- it's a partnership, comp is cash + bonus
+That collaborative style deserves a word on its own, because it changes how you should work. Jane Street problems are designed to be solved through discussion. The interviewer will give hints if you are stuck, ask you to extend your solution, probe edge cases, and ask "what if we change this constraint?" Your job is to think clearly, communicate your reasoning, and respond to the hints. A candidate who ignores a hint to defend their first idea does worse than one who takes it and runs.
 
-## Key Themes
+## Coding rounds
 
-1. **Think out loud** -- Jane Street values the thought process above all. Silence is bad. Even wrong-but-reasoned approaches earn credit.
-2. **OCaml is the primary language** -- Most production code is OCaml. You don't need to know it before interviewing, but familiarity with functional programming helps enormously.
-3. **Quantitative reasoning** -- Probability, expected value, and mathematical thinking permeate everything.
-4. **Real-time systems** -- Trading systems have microsecond-level latency requirements. Understand low-latency patterns.
-5. **No leetcode** -- Problems are original and open-ended. They test reasoning, not pattern matching.
-6. **Collaborative interviews** -- Interviewers actively help you. It's a conversation, not an exam.
-7. **AI/ML in trading** -- Signal generation, execution optimization, anomaly detection. ML is a growing area.
+OCaml is preferred, but Python and C++ are accepted. A clean, functional style is valued: immutability, pattern matching, and type safety. Problems are open-ended and often have a real-world trading flavour, and the sessions are long (60-90 minutes), exploring one problem deeply rather than several shallowly.
 
-## Problem-Solving Approach
+### OCaml essentials
 
-Jane Street problems are designed to be solved **through discussion**. The interviewer will:
-- Give hints if you're stuck
-- Ask you to extend your solution
-- Probe edge cases
-- Ask "what if we change this constraint?"
-
-**Your job**: Think clearly, communicate your reasoning, and be responsive to hints.
-
-## Coding Rounds
-
-### What to Expect
-
-- **Language**: OCaml preferred, but Python/C++ accepted
-- **Style**: Clean, functional style valued. Immutability, pattern matching, type safety.
-- **Problems**: Open-ended, often with real-world trading flavor
-- **Duration**: Longer sessions (60-90 min), deeper exploration of one problem
-
-### OCaml Essentials
-
-If you want to stand out, learn basic OCaml:
+If you want to stand out, learn basic OCaml. The listing shows the four features you will use most: recursive functions defined by pattern matching on lists, option types in place of null, records (here an order with a polymorphic variant for its side), and the pipe operator `|>`, which reads a transformation top to bottom.
 
 ```ocaml
 (* Pattern matching *)
@@ -89,9 +73,11 @@ let process orders =
   |> List.map (fun o -> o.symbol)
 ```
 
-### Reported Problem Types
+Three problem types are reported often enough to practise. All three are given here in Python, since that is the most common fallback language.
 
-#### 1. Order Book Implementation
+### An order book
+
+The classic problem is a limit order book with price-time priority. Bids and asks are each a sorted map from price to a queue of resting orders, ordered by arrival timestamp. An incoming buy matches against asks from the lowest price upward, as long as the ask is at or below its limit; an incoming sell matches against bids from the highest price downward. Whatever quantity is left rests in the book at the order's own price. Each fill is reported as `(price, quantity, passive_order_id)`, at the resting order's price.
 
 ```python
 from collections import defaultdict
@@ -187,7 +173,11 @@ class OrderBook:
         return ba - bb if bb is not None and ba is not None else None
 ```
 
-#### 2. Market Data Parser / Feed Handler
+Notice two details that interviewers like to probe. Emptied price levels are collected in `keys_to_remove` and deleted after the loop, because deleting from a `SortedDict` while iterating over its keys is unsafe. And the `orders` index lets `cancel_order` find an order's level directly, though removal within the level is still a linear scan; a natural follow-up is to make cancellation $O(1)$ with an intrusive linked list per level. Using `list.pop(0)` for the front of a level is also $O(n)$, and a `deque` would fix it.
+
+### A market data feed handler
+
+The second problem is a feed handler that processes a sequenced market data feed per symbol. Each message carries a sequence number. A number below the expected one is a duplicate and is dropped. A number above it means a gap: messages were lost or reordered, so the handler buffers the early message rather than dispatching it out of order. When the expected message arrives, it is dispatched and the buffer is drained for as long as the next sequence number is present.
 
 ```python
 from dataclasses import dataclass
@@ -243,7 +233,11 @@ class FeedHandler:
             cb(update)
 ```
 
-#### 3. Expression Evaluator / Mini Language
+The obvious extension is what happens if the missing message never arrives. A production handler would start a timer on gap detection and, when it fires, request the missing range over a recovery channel or resynchronise from a snapshot; this is the "recovery" piece of the market data distribution design later in the chapter.
+
+### An expression evaluator
+
+The third problem is a small language: evaluate arithmetic with the usual precedence. The tokenizer treats a `-` as part of a number when it appears at the start or after an operator or opening parenthesis, which handles unary minus on literals. The evaluator is a recursive-descent parser with one function per precedence level: `parse_expr` handles `+` and `-` over terms, `parse_term` handles `*` and `/` over factors, and `parse_factor` handles a parenthesised expression or a number. Because each level loops left to right, the operators are left-associative.
 
 ```python
 from typing import Union
@@ -306,29 +300,23 @@ def evaluate(expr: str) -> float:
     return parse_expr()
 ```
 
-## Probability / Math Round
+> **Warning:** The tokenizer's check `tokens[-1] in '(+-*/'` only works because the previous token is a string. When the previous token is a number, `float in str` raises a `TypeError`, so an input like `3 - 2` fails at the minus sign. Checking `isinstance(tokens[-1], str)` first fixes it. The parser also skips `)` without checking it, so unbalanced input is not reported. These are exactly the edge cases a Jane Street interviewer will ask you to find.
 
-### What to Expect
+## The probability and math round
 
-- Brain teasers with rigorous mathematical reasoning
-- Expected value calculations
-- Probability and combinatorics
-- Game theory scenarios
-- Market-making scenarios
+This round consists of brain teasers that demand rigorous mathematical reasoning: expected value calculations, probability and combinatorics, game theory, and market-making scenarios. Three classic problems show the range.
 
-### Classic Problems
+### Expected value: the St. Petersburg paradox
 
-#### Expected Value
+"You flip a fair coin until you get heads. You get $\$2^n$, where $n$ is the number of flips. What's the expected payout?" The game ends on flip $n$ with probability $(1/2)^n$, so
 
-**"You flip a fair coin until you get heads. You get $2^n where n is the number of flips. What's the expected payout?"**
+$$E = \sum_{n=1}^{\infty} 2^n \left(\tfrac{1}{2}\right)^n = \sum_{n=1}^{\infty} 1 = \infty.$$
 
-E = sum(2^n * (1/2)^n for n in 1..inf) = sum(1 for n in 1..inf) = infinity (St. Petersburg paradox)
+The follow-up is the interesting part: "Would you pay $1M to play? Why not?" The answer turns on risk aversion and utility theory (the expected utility of the payout is finite for a concave utility), and on practical bounds, since no counterparty can pay out an arbitrarily large sum.
 
-Follow-up: "Would you pay $1M to play? Why not?" -- Risk aversion, utility theory, practical bounds.
+### Bayesian updating: the double-headed coin
 
-#### Probability
-
-**"You have 100 coins in a bag. 99 are fair, 1 is double-headed. You pick one and flip it 10 times, getting all heads. What's the probability it's the double-headed coin?"**
+"You have 100 coins in a bag. 99 are fair, 1 is double-headed. You pick one and flip it 10 times, getting all heads. What's the probability it's the double-headed coin?" Apply Bayes' theorem:
 
 ```
 P(double | 10H) = P(10H | double) * P(double) / P(10H)
@@ -338,29 +326,19 @@ P(double | 10H) = P(10H | double) * P(double) / P(10H)
                 ≈ 0.912
 ```
 
-#### Market Making
+Ten heads are about a thousand times likelier from the double-headed coin, which overwhelms its 1-in-100 prior.
 
-**"I'm going to flip a coin. If heads, this stock is worth $100. If tails, $0. Make a market."**
+### Market making
 
-You bid $45, offer $55 (or tighter). Discuss:
-- Why a spread? (Compensation for adverse selection risk)
-- What if I flip and tell you the result, then ask again? (Update based on information)
-- What if you must make a market 1000 times? (Law of large numbers, optimal spread)
+"I'm going to flip a coin. If heads, this stock is worth $100. If tails, $0. Make a market." The fair value is $50, so you might bid $45 and offer $55, or tighter. Then discuss the follow-ups. Why a spread at all? It is compensation for adverse selection risk: the person trading with you may know something you do not. What if I flip and tell you the result, then ask again? You update on the information, and the market collapses to $0 or $100. What if you must make a market 1000 times? The law of large numbers lets you narrow the spread, and the question becomes what spread is optimal.
 
-### Topics to Study
+To prepare for this round, study Bayes' theorem and conditional probability, expected value and variance, Markov chains, basic combinatorics (permutations, combinations, stars and bars), betting strategies and the Kelly criterion, and arbitrage detection.
 
-- Bayes' theorem and conditional probability
-- Expected value and variance
-- Markov chains
-- Basic combinatorics (permutations, combinations, stars and bars)
-- Betting strategies and Kelly criterion
-- Arbitrage detection
+## The system design round
 
-## System Design Round
+System design at Jane Street is trading system design, where the constraints are latency, determinism, and never losing an order.
 
-### Trading System Design
-
-#### Design a Low-Latency Trading System
+### A low-latency trading system
 
 ```
 [Market Data Feed] --> [Feed Handler] --> [Signal Generator]
@@ -372,79 +350,44 @@ You bid $45, offer $55 (or tighter). Discuss:
                                           [Exchange Gateway]
 ```
 
-Key requirements:
-- **Latency**: Tick-to-trade < 10 microseconds
-- **Deterministic**: No GC pauses, no page faults
-- **Fault tolerance**: Failover without losing orders
+The requirements are a tick-to-trade latency under 10 microseconds, deterministic behaviour with no GC pauses or page faults, and failover without losing orders. Each design decision serves those requirements. Network I/O uses kernel bypass (DPDK or RDMA) to skip the kernel's TCP/IP stack. Stages communicate through lock-free single-producer single-consumer ring buffers. All buffers are preallocated, with no `malloc` in the hot path. Threads are pinned to cores and isolated from the OS scheduler, and memory is allocated NUMA-aware, close to the CPU that uses it. There is no logging in the hot path; logs are written asynchronously from a buffer in shared memory.
 
-Design decisions:
-- **Kernel bypass**: DPDK / RDMA for network I/O, bypass kernel TCP/IP stack
-- **Lock-free queues**: SPSC (single producer, single consumer) ring buffers
-- **Memory pre-allocation**: No malloc in hot path, pre-allocate all buffers
-- **CPU pinning**: Pin threads to cores, isolate from OS scheduler
-- **NUMA awareness**: Allocate memory close to the CPU that uses it
-- **No logging in hot path**: Log asynchronously, buffer in shared memory
+### A risk management system
 
-#### Design a Risk Management System
+A risk system performs pre-trade checks (position limits, order size limits, price bands), computes real-time P&L by marking positions to market continuously, tracks net exposure by asset, sector, and geography, and trips circuit breakers that halt trading if losses exceed a threshold. Because it sits in the order path, the risk check must add less than a microsecond.
 
-- **Pre-trade checks**: Position limits, order size limits, price bands
-- **Real-time P&L**: Mark positions to market continuously
-- **Exposure tracking**: Net exposure by asset, sector, geography
-- **Circuit breakers**: Halt trading if losses exceed threshold
-- **Latency requirement**: Risk check must add < 1 microsecond
+### Market data distribution
 
-#### Design a Market Data Distribution System
+Distributing market data internally uses UDP multicast, which is one-to-many without TCP overhead. Sequence numbers allow gap detection, as in the feed handler above. During bursts, conflation sends only the latest price rather than every tick. A separate request/response channel recovers missed messages, and a normalisation layer converts different exchange formats into one unified schema.
 
-- **Multicast**: UDP multicast for market data (one-to-many, no TCP overhead)
-- **Sequencing**: Sequence numbers for gap detection
-- **Conflation**: During bursts, send only latest price (not every tick)
-- **Recovery**: Request/response channel for filling gaps
-- **Normalization**: Normalize different exchange formats into unified schema
+## The behavioral round
 
-## Behavioral / Fit
+Jane Street's culture has four traits that this round looks for: intellectual curiosity, meaning you find hard problems genuinely fun; collaboration, since trading is inherently team-based and there are no lone wolves; humility, being confident but not arrogant and willing to say "I don't know"; and pragmatism, preferring simple, correct solutions over clever ones.
 
-### Jane Street Culture
+Common questions include "What's the most interesting technical problem you've worked on?", "Tell me about a time you were wrong about something technical.", "How do you approach learning a new domain?", "What do you know about quantitative trading?", and "Why Jane Street over a tech company?"
 
-- **Intellectual curiosity** -- They want people who find hard problems genuinely fun
-- **Collaborative** -- No lone wolves. Trading is inherently team-based.
-- **Humble** -- Confident but not arrogant. Willing to say "I don't know."
-- **Pragmatic** -- Simple, correct solutions over clever ones
+## AI and ML in trading
 
-### Common Questions
+For AI-focused roles, be ready to discuss how ML fits into trading: signal generation with models that predict price movements; execution optimisation that minimises market impact through optimal order splitting; anomaly detection for unusual market behaviour or system issues; feature engineering that derives signals from raw market data; online learning, with models that adapt in real time to regime changes; and interpretability, understanding why a model makes a prediction, which matters for regulators and for risk.
 
-- "What's the most interesting technical problem you've worked on?"
-- "Tell me about a time you were wrong about something technical."
-- "How do you approach learning a new domain?"
-- "What do you know about quantitative trading?"
-- "Why Jane Street over a tech company?"
+## Preparing
 
-## AI/ML in Trading Context
+Learn functional programming: OCaml, Haskell, or at minimum Python written in a functional style, with immutability, pattern matching, and higher-order functions. Practise probability with *A Practical Guide to Quantitative Finance Interviews* (the "green book") and *Heard on the Street*. Practise thinking out loud until it is habitual, because Jane Street values it above answer correctness. Learn the low-latency fundamentals (kernel bypass, lock-free programming, cache-friendly data structures) and the basics of market microstructure: order books, the bid-ask spread, and market making. You do not need a finance degree, but you should understand the fundamentals. Practise Fermi estimation and back-of-envelope calculation ("How many piano tuners in Chicago?"). And be genuinely curious: these interviews are conversations, so ask about the interviewer's problems and show that you find them interesting.
 
-For AI-focused roles at Jane Street:
+## Summary
 
-- **Signal generation**: ML models for predicting price movements
-- **Execution optimization**: Minimize market impact, optimal order splitting
-- **Anomaly detection**: Identify unusual market behavior or system issues
-- **Feature engineering**: Derive trading signals from raw market data
-- **Online learning**: Models that adapt in real-time to market regime changes
-- **Interpretability**: Understanding WHY a model makes predictions (regulatory and risk)
+- Interviews are long, collaborative conversations; reasoning aloud and using hints matters more than reaching the answer alone.
+- OCaml is the house language, and a functional style is valued in any language.
+- Practise the order book, the sequenced feed handler, and recursive-descent parsing, and know their edge cases.
+- Probability problems reward exact setup: expected value sums, Bayes' theorem, and spread as compensation for adverse selection.
+- Trading system design is about microsecond determinism: kernel bypass, lock-free queues, preallocation, and pinning.
 
-## Preparation Tips
-
-1. **Learn functional programming** -- OCaml, Haskell, or at minimum, write Python in a functional style. Immutability, pattern matching, higher-order functions.
-2. **Practice probability** -- Work through "A Practical Guide to Quantitative Finance Interviews" (the "green book") and Heard on the Street.
-3. **Think out loud always** -- Practice verbalizing your thought process. Jane Street values this above answer correctness.
-4. **Low-latency systems** -- Understand kernel bypass, lock-free programming, cache-friendly data structures.
-5. **Study market microstructure** -- Order books, bid-ask spread, market making basics. You don't need a finance degree, but understand the fundamentals.
-6. **Practice estimation** -- Fermi estimation, back-of-envelope calculations. "How many piano tuners in Chicago?"
-7. **Be genuinely curious** -- Jane Street interviews are conversations. Ask questions about their problems. Show you find it interesting.
-
-## Sources
+## Further reading
 
 - [Jane Street Careers](https://www.janestreet.com/join-jane-street/)
 - [Jane Street Tech Blog](https://blog.janestreet.com/)
 - [Jane Street Puzzles](https://www.janestreet.com/puzzles/)
-- [Glassdoor - Jane Street SWE Interview Questions](https://www.glassdoor.com/Interview/Jane-Street-Software-Engineer-Interview-Questions-EI_IE255549.0,11_KO12,29.htm)
+- [Glassdoor: Jane Street SWE Interview Questions](https://www.glassdoor.com/Interview/Jane-Street-Software-Engineer-Interview-Questions-EI_IE255549.0,11_KO12,29.htm)
 - [A Practical Guide to Quantitative Finance Interviews (Green Book)](https://www.amazon.com/Practical-Guide-Quantitative-Finance-Interviews/dp/1438236662)
-- [Wall Street Oasis - Quant Firm Discussions](https://www.wallstreetoasis.com/forum/hedge-fund)
-- r/cscareerquestions, Blind (community reports)
+- [Wall Street Oasis: Quant Firm Discussions](https://www.wallstreetoasis.com/forum/hedge-fund)
+- Community reports on r/cscareerquestions and Blind.

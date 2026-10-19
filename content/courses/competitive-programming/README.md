@@ -1,169 +1,72 @@
 # Competitive Programming
 
-Advanced algorithmic problem-solving techniques beyond standard interview prep. Builds the speed and depth needed for ICPC, Codeforces, and quantitative trading interviews.
+This book covers algorithmic problem-solving beyond standard interview preparation: the speed and depth needed for ICPC, Codeforces, and quantitative trading interviews. It is a guided companion to a free textbook and a curated problem set rather than a set of chapters of its own. For each topic it tells you what to read, which ideas matter, which problems to solve first, and where the topic connects to the rest of the library.
 
-## Overview
+It is written for readers who have finished the fundamentals and want to go further. Competitive programming demands both correctness and speed: O(n log n) is not always enough, and constant factors matter. Most hard problems combine two or three known techniques, and the skill is recognizing which ones. Implementation speed comes from having templates and patterns internalized, not from typing fast, and the gap between knowing an algorithm and solving a problem with it is pattern recognition. By the end you will be able to identify the structure of a hard problem, pick the right technique, and implement it cleanly under time pressure.
 
-- **Primary textbook**: *Competitive Programmer's Handbook* by Antti Laaksonen -- [Free PDF](https://cses.fi/book/book.pdf)
-- **Problem sets**: [CSES Problem Set](https://cses.fi/problemset/) (300 curated problems), [Codeforces](https://codeforces.com/), [AtCoder](https://atcoder.jp/)
-- **Prerequisites**: [Algorithms track](../algorithms/) (especially topics 01-11)
-- **Estimated time**: 6-8 weeks at 8-10 hrs/week (ongoing practice after)
+## The core insight
 
-## Key Takeaways
+Every competitive programming problem reduces to three steps: identify the mathematical structure, pick the right data structure, and implement it cleanly in under 30 minutes. The topics below are the structures and techniques that appear most often in hard problems and quant interviews, and that are rarely covered in interview preparation.
 
-- Competitive programming demands both correctness and speed -- O(n log n) isn't always enough; constant factors matter
-- Most hard problems combine 2-3 known techniques; the skill is recognizing which ones
-- Implementation speed comes from having templates and patterns internalized, not from typing fast
-- The gap between "knowing the algorithm" and "solving the problem" is pattern recognition
+## Prerequisites and materials
 
-## How to Study
+You should be comfortable with the material in [Algorithms](../algorithms/README.md), especially its first eleven chapters. The primary textbook is Antti Laaksonen's *Competitive Programmer's Handbook*, available as a [free PDF](https://cses.fi/book/book.pdf). The problems come from the [CSES Problem Set](https://cses.fi/problemset/), 300 curated problems, with harder practice on [Codeforces](https://codeforces.com/) and [AtCoder](https://atcoder.jp/).
 
-- Work through the CSES Problem Set in order -- it's deliberately sequenced
-- Read the handbook chapter before attempting problems in that category
-- Time yourself: 30 min per problem initially, reduce to 15 min as you improve
-- Upsolve every problem you can't solve -- read editorials, implement, then re-solve next week
+## How to work through the book
 
----
+Work through the CSES Problem Set in order; it is deliberately sequenced. Read the handbook chapter for a topic before attempting problems in that category. Time yourself, starting at 30 minutes per problem and working down to 15 as you improve. And upsolve every problem you cannot solve: read the editorial, implement the solution, then solve it again from scratch a week later. Practice continues well after the last topic.
 
-# Concepts & Techniques
+## Number theory
 
-## Core Insight
+Handbook chapters 21 and 22 cover the number theory that contest problems lean on. Modular arithmetic comes first: operations under a modulus, and the modular inverse via Fermat's little theorem, $a^{p-2} \bmod p$. The sieve of Eratosthenes generates primes in $O(n \log \log n)$, and a linear sieve computes multiplicative functions. The extended Euclidean algorithm solves $ax + by = \gcd(a, b)$, which is Bezout's identity. The Chinese remainder theorem solves systems of modular equations, and Euler's totient counts coprime integers, with RSA as its best-known application.
 
-Every competitive programming problem reduces to: (1) identify the mathematical structure, (2) pick the right data structure, (3) implement it cleanly in under 30 minutes. The handbook covers techniques rarely seen in interview prep but essential for hard problems and quant interviews.
+Start with the CSES problems Exponentiation, Counting Divisors, Common Divisors, and Sum of Divisors. For a challenge, try Necklace of Beads and GCD Table on Codeforces. The theory behind this topic is [Discrete math 2](../mathematics-for-computing/06-discrete-math-2/README.md) in *Mathematics for Computing*, and the same ideas reach into cryptography and quant interview puzzles.
 
-## 1. Number Theory
+## Advanced graph algorithms
 
-**Handbook sections**: Ch 21-22
+Handbook chapters 15 to 20 cover graphs beyond traversal. For shortest paths, Dijkstra handles non-negative weights, Bellman-Ford handles negative edges, Floyd-Warshall computes all pairs, and SPFA is a queue-based variant of Bellman-Ford. Minimum spanning trees come from Kruskal's algorithm with union-find or Prim's with a priority queue. Strongly connected components come from Kosaraju's or Tarjan's algorithm, and 2-SAT reduces to them. Network flow runs from Ford-Fulkerson through Edmonds-Karp, $O(VE^2)$, to Dinic's, $O(V^2 E)$, with the min-cut max-flow theorem tying flows to cuts. Bipartite matching uses the Hungarian algorithm or Hopcroft-Karp, and Euler tours and paths use Hierholzer's algorithm once their necessary conditions hold.
 
-**Key ideas**:
-- **Modular arithmetic**: operations under mod, modular inverse via Fermat's little theorem (a^(p-2) mod p)
-- **Sieve of Eratosthenes**: O(n log log n) prime generation; linear sieve for multiplicative functions
-- **GCD & Extended Euclidean**: ax + by = gcd(a,b); Bezout's identity
-- **Chinese Remainder Theorem**: solving systems of modular equations
-- **Euler's totient**: counting coprime integers; application to RSA
+Start with Shortest Routes I and II, Road Reparation, Planets and Kingdoms, and Download Speed on CSES; the challenge problems are Police Chase, School Dance, and Distinct Routes. The basics are in [Graphs](../algorithms/06-graphs/README.md), and network flow appears in quant trading in problems of optimal execution.
 
-**Essential problems**: CSES -- Exponentiation, Counting Divisors, Common Divisors, Sum of Divisors
-**Challenge problems**: Codeforces -- Necklace of Beads, GCD Table
+## Segment trees and range queries
 
-**Connections**: [Discrete Math 2](../mathematics-for-computing/06-discrete-math-2/) (number theory), cryptography, quant interview math puzzles
+Handbook chapters 9 and 28 cover range queries. Static queries need only prefix sums, in one or two dimensions, or a sparse table, which answers range-minimum queries in $O(1)$ after an $O(n \log n)$ build. A segment tree supports a point update and a range query in $O(\log n)$ and builds in $O(n)$. Lazy propagation extends it to range updates in $O(\log n)$ by deferring work, and a persistent segment tree keeps version history at $O(\log n)$ per operation. A Fenwick tree (binary indexed tree) is a simpler alternative for prefix operations, with $O(\log n)$ update and query, and a merge sort tree answers range order statistics.
 
-## 2. Advanced Graph Algorithms
+Start with Static Range Sum, Dynamic Range Sum, Range Minimum Queries, and Range Update Queries; the challenges are Salary Queries, Prefix Sum Queries, and Pizzeria Queries. The same structures show up in database indexing, computational geometry, and interval scheduling.
 
-**Handbook sections**: Ch 15-20
+## String algorithms
 
-**Key ideas**:
-- **Shortest paths**: Dijkstra (non-negative), Bellman-Ford (negative edges), Floyd-Warshall (all-pairs), SPFA
-- **Minimum spanning trees**: Kruskal's (union-find), Prim's (priority queue)
-- **Strongly connected components**: Kosaraju's, Tarjan's algorithms; 2-SAT reduction
-- **Network flow**: Ford-Fulkerson, Edmonds-Karp (O(VE^2)), Dinic's (O(V^2 E)); min-cut max-flow theorem
-- **Bipartite matching**: Hungarian algorithm, Hopcroft-Karp
-- **Euler tours & paths**: Hierholzer's algorithm; necessary conditions
+Handbook chapter 26 covers strings. Polynomial rolling hashes power Rabin-Karp, and double hashing avoids collisions. KMP uses a failure function to match a pattern in $O(n + m)$, and the Z-algorithm builds a Z-array as an alternative. A trie is a prefix tree, and Aho-Corasick extends it to many patterns at once. A suffix array builds in $O(n \log n)$ and, with its LCP array, answers substring queries; a suffix automaton is a DAG of all substrings built in $O(n)$.
 
-**Essential problems**: CSES -- Shortest Routes I/II, Road Reparation, Planets and Kingdoms, Download Speed
-**Challenge problems**: CSES -- Police Chase, School Dance, Distinct Routes
+Start with String Matching, Finding Borders, Finding Periods, and Minimal Rotation; the challenges are Substring Order I and II and Repeating Substring. The connections run to compression, in [Information theory](../mathematics-for-computing/11-information-theory/README.md), and to sequence alignment in bioinformatics.
 
-**Connections**: [Graphs](../algorithms/06-graphs/) for basics; network flow appears in quant trading (optimal execution)
+## Geometry
 
-## 3. Segment Trees & Range Queries
+Handbook chapters 29 and 30 cover computational geometry. The cross product is the workhorse: it gives the orientation test (left, right, or collinear) and the area of a triangle or polygon. The convex hull comes from Andrew's monotone chain in $O(n \log n)$ or a Graham scan. Line intersection uses a parametric form or a sweep line, the closest pair of points uses divide and conquer in $O(n \log n)$, and polygon operations include point-in-polygon by ray casting and area by the shoelace formula.
 
-**Handbook sections**: Ch 9, Ch 28
+Start with Point Location Test, Line Segment Intersection, Polygon Area, and Convex Hull; the challenges are Point in Polygon and Minimum Euclidean Distance. The vector background is in [Calculus 3](../mathematics-for-computing/04-calculus-3/README.md), and the same methods drive computer graphics and robot path planning.
 
-**Key ideas**:
-- **Static range queries**: prefix sums (1D, 2D), sparse table (O(1) RMQ after O(n log n) build)
-- **Segment tree**: point update + range query in O(log n); build in O(n)
-- **Lazy propagation**: range updates in O(log n); deferred updates
-- **Persistent segment tree**: version history, O(log n) per operation
-- **Fenwick tree (BIT)**: simpler alternative for prefix operations; O(log n) update/query
-- **Merge sort tree**: range order statistics
+## Advanced dynamic programming
 
-**Essential problems**: CSES -- Static Range Sum, Dynamic Range Sum, Range Minimum Queries, Range Update Queries
-**Challenge problems**: CSES -- Salary Queries, Prefix Sum Queries, Pizzeria Queries
+Handbook chapters 10, 24, and 25 cover dynamic programming beyond the standard patterns. Bitmask DP enumerates subsets for problems such as the Hamiltonian path and the assignment problem, in $O(2^n \cdot n)$. Digit DP counts numbers up to $N$ that satisfy constraints. DP on trees uses the rerooting technique for problems such as the tree diameter and subtree queries. The convex hull trick, and its Li Chao tree variant, optimizes DPs whose transitions are linear functions. Divide-and-conquer optimization applies when $\text{opt}[i][j] \le \text{opt}[i][j+1]$ and reduces $O(kn^2)$ to $O(kn \log n)$, and Knuth's optimization applies when the cost satisfies the quadrangle inequality.
 
-**Connections**: Database indexing, computational geometry, interval scheduling
+Start with Elevator Rides, Counting Tilings, and Hamiltonian Flights; the challenges are Money Sums, Removal Game, and Two Sets II. The foundations are in [Dynamic programming](../algorithms/07-dynamic-programming/README.md).
 
-## 4. String Algorithms
+## Game theory
 
-**Handbook sections**: Ch 26
+Handbook chapter 25 covers games. In Nim, the XOR of the pile sizes determines the winner. The Sprague-Grundy theorem generalizes this: every impartial game is equivalent to a Nim heap whose size is the game's Grundy value. Minimax gives optimal play in two-player zero-sum games, with alpha-beta pruning to cut the search. And any game can be modeled as a graph, positions as states and moves as edges, in which each position is classified as winning or losing.
 
-**Key ideas**:
-- **Hashing**: polynomial rolling hash; Rabin-Karp; double hashing to avoid collisions
-- **KMP**: failure function, O(n+m) pattern matching
-- **Z-algorithm**: Z-array construction, pattern matching alternative to KMP
-- **Trie**: prefix tree, Aho-Corasick for multiple pattern matching
-- **Suffix array**: O(n log n) construction; LCP array; substring queries
-- **Suffix automaton**: DAG of all substrings; O(n) construction
+Start with Stick Game, Nim Game, Stair Game, and Grundy's Game; the challenges are Another Game and Nim Game II. The ideas connect to game-playing agents in [Reinforcement learning](../machine-learning/03-reinforcement-learning/README.md) and to quant interview puzzles.
 
-**Essential problems**: CSES -- String Matching, Finding Borders, Finding Periods, Minimal Rotation
-**Challenge problems**: CSES -- Substring Order I/II, Repeating Substring
+## The fast Fourier transform and polynomial arithmetic
 
-**Connections**: [Information Theory](../mathematics-for-computing/11-information-theory/) (compression), bioinformatics (sequence alignment)
+The handbook treats the FFT among its number-theory applications in chapter 24. The FFT multiplies polynomials in $O(n \log n)$ through the discrete Fourier transform, using the Cooley-Tukey algorithm. The number-theoretic transform (NTT) is the FFT over a finite field, which keeps the arithmetic exact for integers. Applications include multiplying large numbers, string matching with wildcards, convolution, and evaluating generating functions, and polynomial division uses the modular inverse of a polynomial.
 
-## 5. Geometry
+Start with Polynomial Multiplication on CSES, then convolution problems on Codeforces. The FFT connects to signal processing and to [Information theory](../mathematics-for-computing/11-information-theory/README.md).
 
-**Handbook sections**: Ch 29-30
+## Techniques at a glance
 
-**Key ideas**:
-- **Cross product**: orientation test (left/right/collinear), area of triangle/polygon
-- **Convex hull**: Andrew's monotone chain O(n log n), Graham scan
-- **Line intersection**: parametric intersection, sweep line
-- **Closest pair of points**: divide-and-conquer O(n log n)
-- **Polygon operations**: point-in-polygon (ray casting), area (shoelace formula)
-
-**Essential problems**: CSES -- Point Location Test, Line Segment Intersection, Polygon Area, Convex Hull
-**Challenge problems**: CSES -- Point in Polygon, Minimum Euclidean Distance
-
-**Connections**: [Calculus 3](../mathematics-for-computing/04-calculus-3/) (vectors), computer graphics, robotics path planning
-
-## 6. Advanced Dynamic Programming
-
-**Handbook sections**: Ch 10, Ch 24-25
-
-**Key ideas**:
-- **Bitmask DP**: subset enumeration, Hamiltonian path, assignment problem; O(2^n * n)
-- **Digit DP**: counting numbers with constraints up to N
-- **DP on trees**: rerooting technique, tree diameter, subtree queries
-- **Convex hull trick**: optimizing DP with linear functions; Li Chao tree
-- **Divide-and-conquer optimization**: when opt[i][j] <= opt[i][j+1]; reduces O(kn^2) to O(kn log n)
-- **Knuth's optimization**: when cost satisfies quadrilateral inequality
-
-**Essential problems**: CSES -- Elevator Rides, Counting Tilings, Hamiltonian Flights
-**Challenge problems**: CSES -- Money Sums, Removal Game, Two Sets II
-
-**Connections**: [Dynamic Programming](../algorithms/07-dynamic-programming/) for foundations
-
-## 7. Game Theory
-
-**Handbook sections**: Ch 25
-
-**Key ideas**:
-- **Nim**: XOR of pile sizes determines winner; Sprague-Grundy theorem
-- **Sprague-Grundy**: every impartial game is equivalent to a Nim heap; Grundy values
-- **Minimax**: optimal play in two-player zero-sum games; alpha-beta pruning
-- **Game graphs**: position → state, move → edge; winning/losing position classification
-
-**Essential problems**: CSES -- Stick Game, Nim Game, Stair Game, Grundy's Game
-**Challenge problems**: CSES -- Another Game, Nim Game II
-
-**Connections**: [Reinforcement Learning](../machine-learning/03-reinforcement-learning/) (game-playing agents), quant interview puzzles
-
-## 8. Fast Fourier Transform (FFT) & Polynomial Arithmetic
-
-**Handbook sections**: Ch 24 (Number Theory applications)
-
-**Key ideas**:
-- **FFT**: O(n log n) polynomial multiplication via DFT; Cooley-Tukey algorithm
-- **NTT**: Number Theoretic Transform -- FFT over finite fields (exact integer arithmetic)
-- **Applications**: large number multiplication, string matching with wildcards, convolution, generating function evaluation
-- **Polynomial division**: modular inverse of polynomials
-
-**Essential problems**: CSES -- Polynomial Multiplication
-**Challenge problems**: Codeforces -- Convolution problems
-
-**Connections**: Signal processing, [Information Theory](../mathematics-for-computing/11-information-theory/)
-
----
-
-## Technique Catalog
+The table collects the main techniques with their costs, for quick recall during practice:
 
 | Technique | Time Complexity | When to Use |
 |-----------|----------------|-------------|
@@ -178,7 +81,9 @@ Every competitive programming problem reduces to: (1) identify the mathematical 
 | Convex hull trick | O(n) / O(n log n) | DP optimization with linear cost |
 | Sprague-Grundy | Game-dependent | Impartial combinatorial games |
 
-## Progression Path
+## Measuring progress
+
+Codeforces ratings give a rough map of what to focus on at each stage:
 
 | Level | Rating (CF) | Focus |
 |-------|------------|-------|
@@ -188,13 +93,6 @@ Every competitive programming problem reduces to: (1) identify the mathematical 
 | Expert | 2000-2400 | Flows, FFT, advanced data structures, geometry |
 | Master | 2400+ | Combining techniques, novel reductions, research-level |
 
-## Company Relevance
+## Where it shows up
 
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| Jane Street | Probability puzzles, game theory, optimization under constraints | Expert |
-| Citadel | Fast algorithms, mathematical problem-solving | Advanced-Expert |
-| Two Sigma | Algorithmic puzzles, data structure design | Advanced |
-| HRT | Low-latency thinking, bit manipulation, cache-friendly algorithms | Advanced |
-| Google | Hard Leetcode-style with DP/graph twists | Advanced |
-| DeepMind | Research-flavored algorithm design | Expert |
+These skills are tested directly in some interviews. Jane Street asks probability puzzles, game theory, and optimization under constraints at an expert level. Citadel looks for fast algorithms and mathematical problem-solving at an advanced to expert level. Two Sigma asks algorithmic puzzles and data-structure design, and HRT probes low-latency thinking, bit manipulation, and cache-friendly algorithms, both at an advanced level. Google asks hard LeetCode-style problems with DP or graph twists, and DeepMind asks research-flavored algorithm design at an expert level.

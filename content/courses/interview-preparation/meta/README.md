@@ -1,10 +1,23 @@
-# Meta Software Engineer Interview Guide
+# Meta
 
-Comprehensive preparation for Meta SWE roles. Meta is one of the largest AI-focused employers globally, with a structured, well-documented interview process operating at planetary scale.
+Meta is one of the largest AI-focused employers in the world, and its interview process is among the most structured and best documented in the industry. That cuts both ways. Because the process is consistent and draws from a known pool of problems, it is one of the most "preparable" interviews you will face; because everyone else knows that too, the bar for speed is high. Two coding problems in 45 minutes leaves about twenty minutes each, with no time for hesitation.
 
-## Interview Process Overview
+The process has also changed recently. Since 2025 Meta screens with a proctored online assessment and has added an AI-enabled coding round in which you work with an AI assistant in the editor. This chapter covers both, along with the traditional coding round and its key patterns, the product-centred system design round with five common prompts and the numbers that describe Meta's scale, the behavioral round built on Meta's core values, and the AI and ML technologies worth knowing.
 
-Timeline: **3-6 weeks**, **5-6 rounds**
+> **Learning objectives**
+> - Describe the Meta interview loop, including the online assessment and the AI-enabled coding round.
+> - Solve the core Meta coding patterns (hash-map lookups, level-order BFS, graph cloning, monotonic stacks) in under twenty minutes each.
+> - Work productively with an AI assistant in an interview while showing you understand and can correct its output.
+> - Design News Feed, Stories, Messenger, a social graph service, and a recommender, including the fan-out trade-off.
+> - Prepare concise, quantified behavioral stories aligned to Meta's values.
+
+## Before you begin
+
+The system design material assumes the vocabulary in [Distributed systems](../shared-concepts/distributed-systems.md) (caching, sharding, consistency) and, for recommendation, [Full-stack AI](../shared-concepts/full-stack-ai.md). The online assessment closely resembles the [Anthropic online assessment](../anthropic/01-online-assessment.md), which is worth reading alongside this chapter.
+
+## The interview process
+
+Expect three to six weeks and five or six rounds:
 
 | Round | Format | Duration | Focus |
 |-------|--------|----------|-------|
@@ -16,44 +29,25 @@ Timeline: **3-6 weeks**, **5-6 rounds**
 | Onsite 3 | System Design | 45 min | Large-scale distributed systems |
 | Onsite 4 | Behavioral | 45 min | Meta core values alignment |
 
-**New in 2025-2026**: Meta introduced an **AI-enabled coding round** where candidates have access to an AI assistant in CoderPad. This tests your ability to leverage AI tools effectively, not just raw coding ability.
+The AI-enabled round is new for 2025-2026. Candidates have access to an AI assistant in CoderPad, and the round tests your ability to use AI tools effectively, not just raw coding ability.
 
-## Compensation (E5 Senior, US)
+At E5 (senior) in the US, base salary is $190-220K, RSUs are about $250-500K per year (vesting quarterly after a one-year cliff), and the bonus is 15-25% of base. Total compensation is around $450-700K at E5 and $700K-1.2M or more at E6 (staff). Meta refreshes equity aggressively for top performers.
 
-- **Base**: $190-220K
-- **Equity**: RSUs ~$250-500K/yr (vest quarterly after 1-year cliff)
-- **Bonus**: 15-25% of base
-- **Total Comp**: ~$450-700K (E5), ~$700K-1.2M+ (E6 Staff)
-- Meta refreshes equity aggressively for top performers
+## What Meta looks for
 
-## Key Themes
+Five themes run through the loop. The first is speed and volume: the interviews are fast-paced, and two coding problems in 45 minutes means about twenty minutes per problem. The second is the cultural counterpart, "move fast": Meta values velocity, so in behavioral answers show a bias toward action and quick iteration. The third is the AI-first transformation; Meta is pivoting aggressively to AI (LLaMA, AI assistants, recommendation engines), so AI knowledge is increasingly relevant. The fourth is that scale is the default: everything serves billions of users, and "how does this work at 3B users?" is always the lens. The fifth is the structured process itself, which is well documented and consistent and therefore rewards preparation.
 
-1. **Speed and volume** -- Meta interviews are fast-paced. 2 coding problems in 45 minutes means ~20 min per problem. No time for hesitation.
-2. **Move fast** -- Meta's culture values velocity. In behavioral, show you bias toward action and iterate quickly.
-3. **AI-first transformation** -- Meta is pivoting aggressively to AI (LLaMA, AI assistants, recommendation engines). AI knowledge is increasingly relevant.
-4. **Scale is the default** -- Everything at Meta serves billions of users. "How does this work at 3B users?" is always the lens.
-5. **Structured process** -- Meta's interview is well-documented and consistent. This makes it one of the most "preparable" interviews.
+## The online assessment
 
-## Online Assessment (New Screening Step)
+As of 2025, Meta screens with CodeSignal under full video and microphone proctoring. You get 90 minutes for one complex problem divided into four progressive stages that unlock sequentially. Reported problems include an in-memory database with key-value operations (SET, GET, DELETE, filtering, transactions), a cloud-based file storage service (upload, download, permissions, versioning), and a task scheduling system with dependencies and priorities. The format is very similar to Anthropic's online assessment, and as there, production quality matters: later stages are much easier if the early code was clean.
 
-As of 2025, Meta uses CodeSignal with **full video and microphone proctoring**.
+## Coding rounds
 
-- **Format**: 1 complex problem divided into 4 progressive stages that unlock sequentially
-- **Duration**: 90 minutes
-- **Reported problems**:
-  - In-memory database with key-value operations (SET, GET, DELETE, filtering, transactions)
-  - Cloud-based file storage service (upload, download, permissions, versioning)
-  - Task scheduling system with dependencies and priorities
+There are two coding rounds onsite: a traditional one and the AI-enabled one.
 
-This is very similar to Anthropic's OA format. Production quality matters.
+### The traditional round
 
-## Coding Rounds (2 rounds)
-
-### Traditional Coding Round (45 min)
-
-2 problems, medium difficulty, 20 minutes each + 5 min intro.
-
-**Meta draws heavily from these categories**:
+The traditional round gives you two medium problems in 45 minutes, about twenty minutes each plus a five-minute introduction. Meta draws heavily from these categories:
 
 | Category | Frequency | Classic Problems |
 |----------|-----------|-----------------|
@@ -68,9 +62,9 @@ This is very similar to Anthropic's OA format. Production quality matters.
 | Stacks/Queues | Medium | Valid parentheses, min stack |
 | Intervals | Medium | Merge intervals, meeting rooms |
 
-### Key Meta Coding Patterns
+Four patterns cover a large share of these, and you should be able to write each from memory.
 
-#### Two-Pass HashMap
+The first is the one-pass hash map. For Two Sum you walk the array once, and for each number ask whether its complement has already been seen. Storing each number after the check means an element is never paired with itself.
 
 ```python
 def two_sum(nums: list[int], target: int) -> list[int]:
@@ -83,7 +77,7 @@ def two_sum(nums: list[int], target: int) -> list[int]:
     return []
 ```
 
-#### BFS with Level Tracking
+The second is BFS with level tracking. Recording `len(queue)` at the start of each iteration tells you exactly how many nodes belong to the current level, so you can act on the first or last node of each level. For the right side view, the answer is the last node of every level.
 
 ```python
 from collections import deque
@@ -107,7 +101,7 @@ def right_side_view(root) -> list[int]:
     return result
 ```
 
-#### Graph Clone (DFS with Visited Map)
+The third is graph cloning with a visited map. The map from original node to copy does double duty: it prevents infinite recursion on cycles, and it ensures each node is copied exactly once so shared neighbours stay shared. The copy is registered in the map before its neighbours are visited, which is what makes cycles work.
 
 ```python
 def clone_graph(node):
@@ -127,7 +121,7 @@ def clone_graph(node):
     return dfs(node)
 ```
 
-#### Monotonic Stack
+The fourth is the monotonic stack. To find, for each day, how many days until a warmer one, keep a stack of indices whose temperatures are decreasing. Each new temperature pops every cooler day off the stack and resolves its answer. Each index is pushed and popped at most once, so the whole pass is $O(n)$.
 
 ```python
 def daily_temperatures(temperatures: list[int]) -> list[int]:
@@ -142,30 +136,15 @@ def daily_temperatures(temperatures: list[int]) -> list[int]:
     return result
 ```
 
-### AI-Enabled Coding Round (60 min, new)
+### The AI-enabled round
 
-This round gives you access to an AI coding assistant in the editor.
+The newer 60-minute round gives you an AI coding assistant in the editor. What it tests is not whether you can get the AI to write code, but whether you can work with it as an engineer: whether you can prompt it effectively, whether you understand the code it generates, whether you can debug that code, whether you can tell when its output is wrong, and whether you can iterate and refine with its help.
 
-**What they're testing**:
-- Can you effectively prompt the AI for help?
-- Do you understand the code the AI generates?
-- Can you debug AI-generated code?
-- Do you know when AI output is wrong?
-- Can you iterate and refine with AI assistance?
+The strategy follows from that. Use the AI for boilerplate, syntax reminders, and generating edge cases. Always review and understand its output before you use it. Explain your reasoning to the interviewer as you go rather than copying and pasting. And expect the problems to be harder than in the traditional round, precisely because you have help.
 
-**Strategy**:
-- Use the AI for boilerplate, syntax reminders, and edge case generation
-- Always review and understand AI output before using it
-- Explain your reasoning to the interviewer -- don't just copy-paste AI output
-- The problems may be harder since you have AI help
+## The system design round
 
-## System Design Round
-
-### Meta-Specific Focus Areas
-
-Meta system design revolves around their products: News Feed, Messenger, Instagram, WhatsApp, and increasingly AI/ML systems.
-
-### Approach Framework
+Meta's system design questions revolve around its products, News Feed, Messenger, Instagram, and WhatsApp, and increasingly around AI and ML systems. The round follows a predictable shape, and keeping to the time budget for each phase matters:
 
 ```
 1. Clarify requirements (3-5 min)
@@ -192,9 +171,9 @@ Meta system design revolves around their products: News Feed, Messenger, Instagr
 6. Trade-offs & Wrap-up (5 min)
 ```
 
-### Common System Design Questions
+Five prompts come up often.
 
-#### Design Facebook News Feed
+### News Feed
 
 ```
 [User Action] --> [Write Path]
@@ -209,36 +188,19 @@ Meta system design revolves around their products: News Feed, Messenger, Instagr
    [Read Path] --> [Feed Ranking] --> [Response]
 ```
 
-Key decisions:
-- **Fan-out on write** (push model): Pre-compute feeds for followers when a post is created
-  - Good for users with few followers
-  - Celebrity problem: Fan-out to 100M followers is expensive
-- **Fan-out on read** (pull model): Compute feed at read time
-  - Good for celebrities
-  - Higher read latency
-- **Hybrid**: Push for normal users, pull for celebrities
+The central decision is when to fan out. With fan-out on write (the push model), you precompute each follower's feed when a post is created. That is good for users with few followers, but it creates the celebrity problem: fanning out to 100M followers is expensive. With fan-out on read (the pull model), you compute the feed at read time, which suits celebrities but raises read latency. The usual answer is a hybrid: push for normal users and pull for celebrities, merging the two at read time.
 
-Feed ranking:
-- **Features**: Post age, engagement (likes, comments), relationship strength, content type
-- **ML model**: Deep learning ranker trained on engagement signals
-- **Diversity**: Ensure variety (don't show 10 posts from same friend)
+Ranking then orders the candidate posts. Its features include post age, engagement (likes, comments), relationship strength, and content type; the model is a deep learning ranker trained on engagement signals; and a diversity pass ensures variety, so you do not see ten posts from the same friend.
 
-#### Design Instagram Stories
+### Instagram Stories
 
-- **Write path**: Upload video/image -> encode -> distribute to CDN
-- **Read path**: Fetch stories from followed users, sorted by recency and engagement
-- **Ephemeral storage**: Stories expire after 24 hours -- TTL in storage layer
-- **Ring UI**: Client-side state management for viewed/unviewed
+On the write path, an uploaded video or image is encoded and distributed to the CDN. On the read path, the client fetches stories from followed users, sorted by recency and engagement. Stories are ephemeral and expire after 24 hours, which is naturally expressed as a TTL in the storage layer. The ring UI's viewed and unviewed state is managed on the client.
 
-#### Design Facebook Messenger
+### Messenger
 
-- **Real-time delivery**: WebSocket connections for online users, push notifications for offline
-- **Message storage**: Ordered by timestamp per conversation, sharded by conversation ID
-- **Presence**: Distributed presence service (who's online now)
-- **End-to-end encryption**: Key exchange, message encryption/decryption
-- **Group messaging**: Fan-out within group, last-writer-wins for reactions
+Messenger needs real-time delivery, over WebSocket connections for online users and push notifications for offline ones. Messages are stored ordered by timestamp within each conversation and sharded by conversation ID. A distributed presence service tracks who is online. End-to-end encryption requires key exchange and per-message encryption and decryption. Group messaging fans out within the group, and reactions can use last-writer-wins.
 
-#### Design a Social Graph Service
+### A social graph service
 
 ```
 [Query: "Friends of friends who like hiking"]
@@ -253,12 +215,9 @@ Feed ranking:
     +-- [Index Service]  -- Inverted index for attribute search
 ```
 
-- **Storage**: Adjacency list, sharded by entity ID
-- **Caching**: Aggressive caching (social graph is read-heavy, ~1000:1 read:write)
-- **TAO**: Meta's graph store (Trillions of edges, billions of nodes)
-- **Consistency**: Eventual consistency for social graph, strong for auth/permissions
+The graph is stored as adjacency lists sharded by entity ID. Because the social graph is read-heavy, around 1000:1 reads to writes, caching is aggressive. Meta's own store, TAO, holds trillions of edges and billions of nodes. The consistency model is split: eventual consistency is fine for the social graph, but authentication and permissions need strong consistency.
 
-#### Design a Content Recommendation System (AI-Flavored)
+### A content recommendation system
 
 ```
 [User Interaction Stream]
@@ -271,12 +230,11 @@ Feed ranking:
                                               [Personalized Feed]
 ```
 
-- **Two-tower model**: User embedding + item embedding, nearest neighbor retrieval
-- **Ranking**: Multi-task learning (predict likes, comments, shares, time spent)
-- **Exploration**: Epsilon-greedy or Thompson sampling for new content
-- **Safety**: Content integrity classifier filters harmful/misleading content
+Retrieval uses a two-tower model, a user embedding and an item embedding, with nearest-neighbour search. Ranking uses multi-task learning to predict likes, comments, shares, and time spent together. Exploration of new content uses epsilon-greedy or Thompson sampling. A content integrity classifier filters harmful or misleading content before anything is shown.
 
-### Numbers to Know (Meta Scale)
+### Numbers to know
+
+Meta-scale estimates start from these figures:
 
 | Metric | Value |
 |--------|-------|
@@ -288,9 +246,9 @@ Feed ranking:
 | Cache hit rate (TAO) | >99.9% |
 | News Feed reads/sec | Millions |
 
-## Behavioral Round
+## The behavioral round
 
-### Meta Core Values
+The behavioral round assesses alignment with Meta's core values:
 
 | Value | What They Assess |
 |-------|-----------------|
@@ -300,53 +258,33 @@ Feed ranking:
 | Build Social Value | Care about user impact |
 | Be Open | Transparent communication, share information |
 
-### Common Questions
+Common questions include "Tell me about a time you had to move fast under uncertainty.", "Describe a time you had to make a decision with incomplete data.", "Tell me about a project that failed. What did you learn?", "How do you handle disagreements with teammates?", "Describe a time you had to balance speed with quality.", and "Tell me about a time you influenced a decision without authority."
 
-- "Tell me about a time you had to move fast under uncertainty."
-- "Describe a time you had to make a decision with incomplete data."
-- "Tell me about a project that failed. What did you learn?"
-- "How do you handle disagreements with teammates?"
-- "Describe a time you had to balance speed with quality."
-- "Tell me about a time you influenced a decision without authority."
+Use the STAR format, adapted for Meta. Keep each answer to two or three minutes, because interviewers often have many questions to get through. Quantify impact, since Meta loves metrics. Show velocity: how fast you moved, and why. And demonstrate learning by saying what you would do differently.
 
-### STAR Format Tips for Meta
+## AI and ML at Meta
 
-- Keep answers to **2-3 minutes** (Meta interviewers often have many questions)
-- **Quantify impact** -- Meta loves metrics
-- **Show velocity** -- How fast did you move? Why?
-- **Demonstrate learning** -- What would you do differently?
+Know the key technologies: LLaMA, Meta's open-source LLM family (know the architecture basics); PyTorch, Meta's ML framework, used everywhere; FAISS, for vector similarity search, which comes up in recommendation design; and Meta's custom AI chips for inference. On the infrastructure side, know the feature store that supplies real-time features to recommendation models, the large-scale distributed training on custom GPU clusters, low-latency serving of ranking models across all products, and the massive A/B testing platform that runs thousands of concurrent experiments.
 
-## AI/ML at Meta
+## Preparing
 
-### Key Technologies
-- **LLaMA**: Open-source LLM family (know architecture basics)
-- **PyTorch**: Meta's ML framework (used everywhere)
-- **FAISS**: Vector similarity search (know for recommendation design)
-- **Custom silicon**: Meta is developing custom AI chips for inference
+Work the LeetCode Meta-tagged problems, focusing on the 50 most asked, since Meta draws from a known pool. Speed is critical: practise solving mediums in 15-20 minutes, because you need two in 45. Write clean code fast, with no pseudocode, just working code with good variable names. Prepare for the AI-enabled round by practising with Copilot or Cursor until you know when to trust the tool and when to override it. In system design, always think in billions: how many servers, what the storage costs. Read the Meta engineering blog at engineering.fb.com, focusing on TAO, News Feed ranking, and ML infrastructure. And do not under-prepare for behavioral, which is about 25% of the score; have six to eight strong stories ready.
 
-### ML Infrastructure
-- **Feature Store**: Real-time features for recommendation models
-- **Training infrastructure**: Large-scale distributed training on custom GPU clusters
-- **Model serving**: Low-latency inference for ranking models across all products
-- **A/B testing**: Massive experimentation platform (thousands of concurrent experiments)
+## Summary
 
-## Preparation Tips
+- Meta's loop is structured and preparable, but fast: about twenty minutes per coding problem.
+- The proctored online assessment is a four-stage progressive problem where clean early code pays off.
+- The AI-enabled round tests judgment about AI output, not the ability to paste it.
+- News Feed design hinges on the push, pull, or hybrid fan-out trade-off; the social graph is read-heavy and cached.
+- Behavioral answers should be short, quantified, and show velocity and learning.
 
-1. **Leetcode Meta-tagged problems** -- Focus on the top 50 most-asked. Meta draws from a known pool.
-2. **Speed is critical** -- Practice solving mediums in 15-20 minutes. You need two in 45 minutes.
-3. **Write clean code fast** -- No pseudocode. Working code with good variable names.
-4. **Prepare for AI-enabled round** -- Practice using Copilot/Cursor effectively. Know when to trust and when to override.
-5. **System design at Meta scale** -- Always think in billions. "How many servers?" "What's the storage cost?"
-6. **Read Meta engineering blog** -- engineering.fb.com. Focus on TAO, News Feed ranking, and ML infrastructure.
-7. **Behavioral is 25% of score** -- Don't under-prepare. Have 6-8 strong stories ready.
+## Further reading
 
-## Sources
-
-- [Meta E5 Interview Guide - HelloInterview](https://www.hellointerview.com/guides/meta/e5)
-- [Meta System Design Interview - IGotAnOffer](https://igotanoffer.com/blogs/tech/meta-system-design-interview)
+- [Meta E5 Interview Guide (HelloInterview)](https://www.hellointerview.com/guides/meta/e5)
+- [Meta System Design Interview (IGotAnOffer)](https://igotanoffer.com/blogs/tech/meta-system-design-interview)
 - [Meta Engineering Blog](https://engineering.fb.com/)
-- [Proven Meta Software Engineer Interview Guide - Prepfully](https://prepfully.com/interview-guides/meta-software-engineer)
-- [Senior Engineer's Guide to Meta Interviews - interviewing.io](https://interviewing.io/guides/hiring-process/meta-facebook)
-- [Glassdoor - Meta SWE Interview Questions](https://www.glassdoor.com/Interview/Meta-Software-Engineer-Interview-Questions-EI_IE40772.0,4_KO5,22.htm)
-- [levels.fyi - Meta Compensation Data](https://www.levels.fyi/companies/meta/salaries/software-engineer)
-- r/cscareerquestions, Blind (community reports)
+- [Proven Meta Software Engineer Interview Guide (Prepfully)](https://prepfully.com/interview-guides/meta-software-engineer)
+- [Senior Engineer's Guide to Meta Interviews (interviewing.io)](https://interviewing.io/guides/hiring-process/meta-facebook)
+- [Glassdoor: Meta SWE Interview Questions](https://www.glassdoor.com/Interview/Meta-Software-Engineer-Interview-Questions-EI_IE40772.0,4_KO5,22.htm)
+- [levels.fyi: Meta Compensation Data](https://www.levels.fyi/companies/meta/salaries/software-engineer)
+- Community reports on r/cscareerquestions and Blind.

@@ -1,6 +1,6 @@
-# Serving & Load: Code
+# Serving and Load Code
 
-> Parent topic: [Serving, Capacity & Load Testing](../). Both scripts are Python 3.11+ stdlib only.
+These are the runnable companions to [Serving, Capacity & Load Testing: Math to Code](../README.md). One script turns the memory budget and the decode roofline into numbers for a specific model and GPU; the other measures a real or mock server under open-loop load and reports the latency distributions and goodput that make up an SLO. Both are Python 3.11+ with the standard library only, so they run anywhere without an install, and both can be verified offline:
 
 | File | What it does | Verify offline |
 |------|--------------|----------------|
@@ -8,6 +8,8 @@
 | [`loadgen.py`](loadgen.py) | Open-loop Poisson load generator for OpenAI-compatible streaming endpoints: TTFT, TPOT, ITL, E2E, tok/s, goodput, p50/p90/p99 | `python loadgen.py --mock --rate 8 --num-requests 100` |
 
 ## capacity.py
+
+The capacity calculator works from built-in presets or from any Hugging Face `config.json`. These invocations reproduce the rows of the memory-budget table in the section and extend it to DeepSeek-V3 on H200:
 
 ```bash
 python capacity.py --list-presets
@@ -19,9 +21,11 @@ python capacity.py --preset deepseek-v3 --gpu h200 --tp 8 --weight-bytes 1 --kv-
 python capacity.py --hf-config ./config.json --tp 2 --context 32768 --mbu 0.7 --gpu-hourly 3.00
 ```
 
-`--mbu` (model bandwidth utilization) scales the bandwidth bound to what engines actually reach; 1.0 is the physical ceiling. `--util` mirrors vLLM `--gpu-memory-utilization`. `--activation-gib` is the per-GPU reserve for activations, CUDA graphs, and NCCL buffers that the engine profiles at startup.
+Three flags deserve explanation. `--mbu` (model bandwidth utilization) scales the bandwidth bound to what engines actually reach; 1.0 is the physical ceiling. `--util` mirrors vLLM `--gpu-memory-utilization`. `--activation-gib` is the per-GPU reserve for activations, CUDA graphs, and NCCL buffers that the engine profiles at startup.
 
 ## loadgen.py
+
+The load generator has an in-process mock engine, so you can see the shape of a latency-throughput curve before you have a GPU. Start with a single rate, then sweep rates to get the curve, then point it at a real server:
 
 ```bash
 # offline self-test (in-process fake engine that slows down as its batch grows)
@@ -37,9 +41,9 @@ python loadgen.py --base-url http://localhost:8000 --model meta-llama/Llama-3.1-
     --slo-ttft-ms 500 --slo-tpot-ms 40 --json-out run.jsonl
 ```
 
-Every prompt starts with a unique nonce so prefix caching cannot inflate results; pass `--shared-prefix-len 800` to measure the cache on purpose. `--burstiness < 1` draws gamma inter-arrivals (burstier than Poisson), matching `vllm bench serve --burstiness`.
+Two design choices keep results honest. Every prompt starts with a unique nonce so prefix caching cannot inflate results; pass `--shared-prefix-len 800` to measure the cache on purpose. `--burstiness < 1` draws gamma inter-arrivals (burstier than Poisson), matching `vllm bench serve --burstiness`.
 
-For production numbers, cross-check with the engine-native tools, which tokenize exactly:
+`loadgen.py` is for understanding what a benchmark computes. For production numbers, cross-check with the engine-native tools, which tokenize exactly:
 
 ```bash
 vllm bench serve --backend openai-chat --endpoint /v1/chat/completions \
@@ -54,7 +58,9 @@ python -m sglang.bench_serving --backend sglang --host 127.0.0.1 --port 30000 \
     --num-prompts 1000 --request-rate 8 --max-concurrency 256
 ```
 
-## Example engine launches (Llama-3.1-8B-Instruct, 1x H100 80GB)
+## Example engine launches
+
+The launches below configure Llama-3.1-8B-Instruct on one 80 GB H100 for several tenants: a chat-tuned FP8 deployment, a latency-bound tenant with EAGLE-3 speculative decoding, a multi-LoRA pool, and the SGLang equivalents. Each flag maps to a term of the memory budget or step-time equation explained in the section.
 
 ```bash
 # vLLM: chat-tuned, FP8 weights + FP8 KV, prefix caching, 16k context

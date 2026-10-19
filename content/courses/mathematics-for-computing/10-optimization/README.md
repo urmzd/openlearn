@@ -1,86 +1,39 @@
 # Optimization
 
-## Overview
+Training a model means minimizing an average loss using noisy gradients. Everything an optimizer does answers one of three questions. Which direction should the step go? That is the gradient, smoothed by momentum. How far should it go in each coordinate? That is the learning rate, which Adam scales per parameter. How should the step size change over time? That is the schedule. Convex theory gives the vocabulary and the convergence rates. Neural networks break its assumptions, but its intuitions survive, and the tools in this chapter are the ones every model in the series trains with.
 
-- **Primary references**: Boyd and Vandenberghe, [*Convex Optimization*](https://web.stanford.edu/~boyd/cvxbook/) (free PDF); Nocedal and Wright, *Numerical Optimization* (Springer, 2nd ed.)
-- **Supplementary**: Kingma and Ba, [*Adam*](https://arxiv.org/abs/1412.6980) (free); Loshchilov and Hutter, [*Decoupled Weight Decay Regularization*](https://arxiv.org/abs/1711.05101) (free); Goh, [*Why Momentum Really Works*](https://distill.pub/2017/momentum/) (free); Cohen et al., [*Gradient Descent on Neural Networks Typically Occurs at the Edge of Stability*](https://arxiv.org/abs/2103.00065) (free); Jordan, [*Muon*](https://kellerjordan.github.io/posts/muon/) (free)
-- **Prerequisites**: [Calculus 3](../04-calculus-3/) (gradients, Hessians), [Linear Algebra](../03-linear-algebra/) (eigenvalues), [Precalculus](../00-precalculus/) (geometric series for schedules)
-- **Estimated time**: 3 weeks at 10 to 12 h/week; in the course, Pass 2 (M10.1 to M10.4), with optional curvature and Muon in Pass 9
+The chapter starts with plain gradient descent, where the theory is exact: on a quadratic, the step must stay under $2/L$, and the number of steps grows with the condition number $\kappa = L/\mu$. The gap shrinks by about $1 - 1/\kappa$ per step. Next it wraps that update behind a common `Optimizer` protocol and adds momentum, Nesterov, and weight decay. Then it builds Adam and AdamW, where bias correction fixes the first steps and decoupled weight decay keeps regularization out of the adaptive scale. Last come learning-rate schedules and gradient clipping, which often decide whether a run trains at all. Two problem sets check the derivations by hand. The second one also covers Lagrangians, duality, and the KL-regularized objective behind direct preference optimization.
 
-## Key Takeaways
+Optimizers are stateful objects, and that fact runs through the whole chapter. To resume a run bit for bit, the checkpoint must hold the moments, the step count, and the position in the schedule. Each implementation is checked against PyTorch's trajectory, so recipes written for PyTorch carry over unchanged.
 
-- **Gradient descent converges at a rate set by the condition number** $\kappa = L/\mu$: the gap shrinks by about $(1 - 1/\kappa)$ per step on a quadratic.
-- **Momentum and Nesterov** average past gradients to move faster along shallow directions; **Adam** adds a per-parameter scale from the second moment, with bias correction for early steps.
-- **Weight decay is not L2 regularization under Adam**: AdamW decouples it from the adaptive scale.
-- **The schedule is part of the optimizer.** Warmup, cosine or warmup-stable-decay, and gradient clipping decide whether a run trains at all.
-- **Optimizers are stateful**: resuming a run bitwise needs the moments, the step count, and the schedule position in the checkpoint.
+> **Learning objectives**
+> - Derive the stability limit $\eta < 2/L$ and the $1 - 1/\kappa$ rate of gradient descent, and use a backtracking line search when $L$ is unknown.
+> - Implement SGD with momentum, Nesterov momentum, and coupled weight decay behind a resumable `Optimizer` protocol.
+> - Implement Adam and AdamW with bias correction and decoupled weight decay, and match PyTorch step for step.
+> - Build cosine, warmup-stable-decay, and Noam schedules and global-norm gradient clipping, with correct phase boundaries.
+> - Solve KKT, duality, and KL-regularized problems by hand, including the derivation behind DPO.
 
-## How to Study
+## Before you begin
 
-Read Boyd and Vandenberghe chapters 2, 3, and 9 for convexity and descent methods, then the Adam and AdamW papers in full. Plot every optimizer on a 2D ill-conditioned quadratic before you trust it on a network. In the course, `M10.1` to `M10.4` are built in Pass 2 and train every model after; `S-M10a` checks the derivations; the optional `M10.5` and `M10.6` are C1 diagnostics and an A/B experiment.
+You should be comfortable with gradients and Hessians from [Calculus 3](../04-calculus-3/README.md), eigenvalues from [Linear Algebra](../03-linear-algebra/README.md), and geometric series from [Precalculus](../00-precalculus/README.md), which explain both bias correction and warmup schedules. The gradients these optimizers consume come from [Matrix Calculus and Autodiff](../08-matrix-calculus-and-autodiff/README.md). Its section [Hessian-vector products and the recompute-versus-memory schedule](../08-matrix-calculus-and-autodiff/04-hessian-vector-products-and-recompute.md) supplies the curvature tools for going beyond first-order methods.
 
----
+## In this chapter
 
-# Concepts & Techniques
+1. [Convexity, smoothness, gradient descent, and Armijo line search](01-gradient-descent-and-line-search.md) derives the step-size limit $2/L$ and the $1 - 1/\kappa$ rate, then builds gradient descent and a backtracking line search that handle divergence and NaN correctly.
+2. [The Optimizer protocol: SGD, momentum, Nesterov, weight decay](02-optimizer-protocol-and-sgd.md) defines the four-method interface every optimizer shares and builds a PyTorch-compatible SGD that resumes bit for bit.
+3. [Adam and AdamW: bias correction and decoupled weight decay](03-adam-and-adamw.md) derives Adam's two moving averages, the bias correction, and why weight decay must be decoupled, then implements both to match torch exactly.
+4. [Learning-rate schedules (cosine, WSD, Noam) and gradient clipping](04-schedules-and-gradient-clipping.md) builds three schedules as pure functions of the step, along with global-norm clipping that keeps the update direction.
+5. [Optimization problem set, part a: convexity, GD rates, momentum, Adam](90-problem-set-a.md) has 17 problems with worked answers on convexity, gradient descent rates, momentum, and Adam.
+6. [Optimization problem set, part b: constrained optimization, duality, and DPO](91-problem-set-b.md) has 18 optional problems on KKT conditions, duality, and the KL-regularized optimum that DPO relies on.
 
-## Core Insight
+## Where this chapter leads
 
-Training is minimization of an average loss with noisy gradients. Everything in an optimizer answers one of three questions: which direction (the gradient, smoothed by momentum), how far in each coordinate (the learning rate, scaled per parameter by Adam), and how that step size changes over time (the schedule). Convex theory gives the vocabulary and the rates; neural networks break its assumptions but keep its intuitions.
+In *Build Your Own LLM System*, [Training loop and the autograd bigram](../../build-an-llm/p00-foundations/05-training-loop-and-the-autograd-bigram.md) trains with these optimizers, and every later model in that book does too. [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) in *Machine Learning and AI* covers optimizer memory and large-scale training practice. Beyond this chapter, the same ideas extend to curvature. The top Hessian eigenvalue can be found by power iteration on Hessian-vector products, and gradient descent stays stable only while $\eta < 2/\lambda_{\max}$, which is the edge of stability. Muon orthogonalizes the momentum of 2D weights with Newton-Schulz iterations.
 
-## 1. Convexity, smoothness, and gradient descent
+## Further reading
 
-**Key ideas**:
-- **Definitions**: $f$ is $L$-smooth if its gradient is $L$-Lipschitz and $\mu$-strongly convex if $f(y) \ge f(x) + \nabla f(x)^{\top}(y - x) + \tfrac{\mu}{2}\|y - x\|^2$.
-- **Armijo line search** backtracks until the decrease is at least $c\,\alpha\,\nabla f^{\top} d$ (`M10.1`).
-
-## 2. The `Optimizer` protocol: SGD, momentum, AdamW
-
-**Key ideas**:
-- **Protocol**: `step`, `zero_grad`, `state_dict`, `load_state_dict`, shared by every optimizer the course trains with (`M10.2`, `M10.3`).
-- **AdamW**: $m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t$, $v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2$, step $\eta\,\hat{m}_t / (\sqrt{\hat{v}_t} + \epsilon) + \eta\lambda\theta$.
-
-## 3. Schedules and clipping
-
-**Key ideas**:
-- **Cosine with warmup**, **warmup-stable-decay** (the C1 schedule), and **Noam** (the 2017 transformer), plus global-norm gradient clipping (`M10.4`).
-
-## 4. Curvature and beyond (optional)
-
-**Key ideas**:
-- **Top Hessian eigenvalue** by power iteration on Hessian-vector products; gradient descent is stable only while $\eta < 2/\lambda_{\max}$ (`M10.5`).
-- **Muon** orthogonalizes the momentum of 2D weights with Newton-Schulz iterations (`M10.6`).
-- **Lagrangians and KKT** conditions are solve-only (`M10.7`); they derive the closed form behind DPO in `L12.2`.
-
-## Course modules
-
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `S-M10a` | Descent methods and optimizers problem set | solve | 2 |
-| `S-M10b` | Lagrangians and KL-regularized objectives problem set | solve | 10, optional |
-| `M10.1` | Convexity, L-smoothness, gradient descent, Armijo line search. Beat 2 defines the condition number κ = L/μ (M09.3 later generalizes it to matrices) | build | 2 |
-| `M10.2` | Optimizer protocol, SGD, momentum, Nesterov, weight decay | build | 2 |
-| `M10.3` | Adam/AdamW, bias correction, decoupled decay | build | 2 |
-| `M10.4` | Schedules (cosine, WSD, Noam) and gradient clipping | build | 2 |
-| `M10.5` | Curvature: Newton step, top Hessian eigenvalue, edge of stability | build | 9, optional |
-| `M10.6` | Muon: Newton-Schulz orthogonalized momentum | build | 9, optional |
-| `M10.7` | Lagrangians, KKT, duality, KL-regularized objectives | solve | solve set |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `M10.1` | [Convexity, smoothness, gradient descent, and Armijo line search](01-gradient-descent-and-line-search.md) | build | 2 |
-| 2 | `M10.2` | [The Optimizer protocol: SGD, momentum, Nesterov, weight decay](02-optimizer-protocol-and-sgd.md) | build | 2 |
-| 3 | `M10.3` | [Adam and AdamW: bias correction and decoupled weight decay](03-adam-and-adamw.md) | build | 2 |
-| 4 | `M10.4` | [Learning-rate schedules (cosine, WSD, Noam) and gradient clipping](04-schedules-and-gradient-clipping.md) | build | 2 |
-| 5 | `S-M10a` | [Optimization problem set, part a: convexity, GD rates, momentum, Adam](90-problem-set-a.md) | solve | 2 |
-| 6 | `S-M10b` | [Optimization problem set, part b: constrained optimization, duality, and DPO](91-problem-set-b.md) | solve | 10 |
-
-## Connections to Other Tracks
-
-| Track | Connection |
-|---|---|
-| [Calculus 3](../04-calculus-3/) | gradients, Hessians, and Taylor models of the loss |
-| [Matrix Calculus and Autodiff](../08-matrix-calculus-and-autodiff/) | where the gradients come from; Hessian-vector products |
-| [tinyllm Part 0](../../../courses/build-an-llm/p00-foundations/) | `L0.5` trains with these optimizers |
-| [Training and Post-Training](../../machine-learning/07-training-and-post-training/) | optimizer memory and large-scale training practice |
+- Boyd and Vandenberghe, [*Convex Optimization*](https://web.stanford.edu/~boyd/cvxbook/) (free PDF), chapters 2, 3, and 9 for convexity and descent methods; Nocedal and Wright, *Numerical Optimization* (Springer, 2nd ed.).
+- Kingma and Ba, [*Adam*](https://arxiv.org/abs/1412.6980), and Loshchilov and Hutter, [*Decoupled Weight Decay Regularization*](https://arxiv.org/abs/1711.05101), both worth reading in full.
+- Goh, [*Why Momentum Really Works*](https://distill.pub/2017/momentum/). It pairs well with plotting every optimizer on a 2D ill-conditioned quadratic before you trust it on a network.
+- Cohen et al., [*Gradient Descent on Neural Networks Typically Occurs at the Edge of Stability*](https://arxiv.org/abs/2103.00065).
+- Jordan, [*Muon*](https://kellerjordan.github.io/posts/muon/).

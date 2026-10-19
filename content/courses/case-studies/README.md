@@ -1,58 +1,34 @@
 # Case Studies
 
-Real builds, generalised. Each case study takes a system that was actually
-designed and shipped under a deadline, strips it to the concepts that transfer,
-and records the sequence it was built in.
+This book is a collection of real builds, generalized. Each case study takes a system that was actually designed and shipped under a deadline, strips it down to the concepts that transfer, and records the order in which it was built. They are worked builds: the problem, the concepts, the decisions and their trade-offs, and the sequence the thing was actually assembled in. They are not project archives. No original source is preserved; every implementation here was rewritten to be self-contained, dependency-free, and runnable, so it teaches the idea rather than documenting a codebase.
 
-> **Prerequisites**: varies by study. Each one names its own, and every study
-> links back to the track that teaches the underlying theory.
+The book is for engineers who already know the underlying theory and want to see it applied under pressure, and for anyone preparing to defend design decisions in a live interview or a design review. By the end you will be able to sequence a build so that a defensible system exists early, find the one invariant that makes a system testable, earn each optimization with evidence, and say plainly what you chose not to build.
 
-## Overview
+## Three ideas that run through every study
 
-- **What these are**: worked builds. Problem, concepts, the decisions and their
-  trade-offs, and the order the thing was actually assembled in.
-- **What these are not**: project archives. No original source is preserved.
-  Every implementation here was rewritten to be self-contained, dependency-free,
-  and runnable, so it teaches the idea rather than documenting a codebase.
-- **Estimated time**: 1-2 days each, or an afternoon if you only read.
+The build order is the lesson. Knowing that a matching engine needs price-time priority is cheap; knowing to write the O(n) version first and earn the heap is what actually separates outcomes under time pressure.
 
-## Key Takeaways
+Every study has one invariant that makes testing possible: a book that is never crossed, an event that never fires twice, a query that is always bounded, an inertia that never rises, a record that always replays. Find that property and validation stops being guesswork.
 
-- **The build order is the lesson.** Knowing that a matching engine needs
-  price-time priority is cheap; knowing to write the O(n) version first and earn
-  the heap is what actually separates outcomes under time pressure.
-- **Every study has one invariant that makes testing possible.** A crossed book,
-  a double-fired event, an unbounded query, a rising inertia, a record that
-  does not replay. Find that property
-  and validation stops being guesswork.
-- **The interesting decisions are refusals.** Not adding durability, not letting
-  the model be the safety boundary, not shipping exactly-once. Each study states
-  what it deliberately did not build.
+And the interesting decisions are refusals: not adding durability, not letting the model be the safety boundary, not claiming exactly-once. Each study states what it deliberately did not build.
 
-## How to Study
+## How the book is organized
 
-- Read the README, then run the implementation. Every one is standard library
-  only and executes its own tests: `python <file>.py`.
-- Then delete a safeguard and watch a test fail. Remove the row cap, remove the
-  primary key, skip the zero-quantity removal. The tests exist to catch exactly
-  those, and breaking them on purpose is the fastest way to see why they matter.
-- Read the build log last, and compare it to how you would have sequenced it.
+There are five studies, and they can be read in any order, though the agent evaluation harness builds on the grounded SQL agent.
 
-## Studies
+[Order book matching](01-order-book-matching/README.md) builds a limit order book and matching engine three times behind one interface: a flat list, a heap of price levels, and a tick-indexed ladder. It is a study in data structures under a latency budget and in justifying each optimization with a bottleneck analysis. Its runnable file is [`matching_engine.py`](01-order-book-matching/matching_engine.py).
 
-| # | Study | Domain | Runnable |
-|---|-------|--------|----------|
-| 01 | [Order Book Matching](01-order-book-matching/) | Data structures under a latency budget | [`matching_engine.py`](01-order-book-matching/matching_engine.py) |
-| 02 | [Grounded SQL Agent](02-grounded-sql-agent/) | LLM tool loops, grounding, and safety | [`safety_gate.py`](02-grounded-sql-agent/safety_gate.py) |
-| 03 | [Exactly-Once Event API](03-exactly-once-event-api/) | API design and processing guarantees | [`event_api.py`](03-exactly-once-event-api/event_api.py) |
-| 04 | [K-Means Optimization](04-kmeans-optimization/) | Optimising an algorithm in tiers | [`kmeans_ladder.py`](04-kmeans-optimization/kmeans_ladder.py) |
-| 05 | [Agent Evaluation Harness](05-agent-eval-harness/) | Grading an agent that changes state | [`eval_harness.py`](05-agent-eval-harness/eval_harness.py) |
+[Grounded SQL agent](02-grounded-sql-agent/README.md) turns natural-language questions into SQL against an unseen database, executes it safely behind a deterministic gate, and proves the answers right by result-set equivalence. Its central evidence is an ablation showing that grounding, not model size, closed the accuracy gap. Its runnable file is [`safety_gate.py`](02-grounded-sql-agent/safety_gate.py).
 
-## The Shared Shape
+[Exactly-once event API](03-exactly-once-event-api/README.md) designs an API in which submitting twice never processes twice, using a unique constraint as the dedup and an atomic claim for workers, and is honest that the result is at-most-once. Its runnable file is [`event_api.py`](03-exactly-once-event-api/event_api.py).
 
-Four of the five studies are the same move applied to different domains: build
-the obvious correct version, name its bottleneck precisely, then earn each
-improvement.
+[K-means optimization](04-kmeans-optimization/README.md) implements k-means in three tiers behind one contract and measures where each improvement helps and where it does not, showing that initialization outweighs every constant-factor change. Its runnable file is [`kmeans_ladder.py`](04-kmeans-optimization/kmeans_ladder.py).
+
+[Agent evaluation harness](05-agent-eval-harness/README.md) grades an agent that changes state, with isolated sessions, replay verification, a set-based checker, and oracles and mutants that test the checker itself. Its runnable file is [`eval_harness.py`](05-agent-eval-harness/eval_harness.py).
+
+## The shared shape
+
+Four of the five studies are the same move applied to different domains: build the obvious correct version, name its bottleneck precisely, then earn each improvement. The table lines them up:
 
 | Study | Baseline | Earned improvement | What the jump costs |
 |-------|----------|--------------------|---------------------|
@@ -62,18 +38,14 @@ improvement.
 | Event API | Check-then-act dedup | Constraint dedup, then atomic claim | Nothing; the correct version is also simpler |
 | Eval harness | Compare final rows | Replay verification, then oracles and mutants | Storage per call, and a suite to maintain |
 
-The last row is worth sitting with. Dedup done properly is *less* code than
-dedup done by checking first, and it is correct under concurrency. Not every
-improvement is a trade-off; some are just the right answer written down.
+The event API row is worth sitting with. Dedup done properly is *less* code than dedup done by checking first, and it is correct under concurrency. Not every improvement is a trade-off; some are just the right answer written down.
 
-## Connections to Other Tracks
+## Prerequisites and related books
 
-| Study | Theory lives in |
-|-------|-----------------|
-| Order Book Matching | [Algorithms](../algorithms/) (heaps, ordering, amortised analysis) |
-| Grounded SQL Agent | [LLM Evaluation](../ai-platform-engineering/09-llm-evaluation/), [Retrieval & RAG](../ai-platform-engineering/07-retrieval-and-rag/), [Authorization](../ai-platform-engineering/08-authorization-and-access-control/) |
-| Exactly-Once Event API | [Distributed Workers](../ai-platform-engineering/05-durable-orchestration-and-workers/), [Durable Orchestration](../ai-platform-engineering/05-durable-orchestration-and-workers/) |
-| K-Means Optimization | [Statistical Learning](../machine-learning/01-statistical-learning/) |
+Prerequisites vary by study, and each one names its own in its "Before you begin" section. Every study links back to the book that teaches its theory. The order book rests on [Algorithms](../algorithms/README.md), for heaps, ordering, and amortized analysis. The SQL agent and the evaluation harness rest on [LLM evaluation](../ai-platform-engineering/09-llm-evaluation/README.md), [Retrieval and RAG](../ai-platform-engineering/07-retrieval-and-rag/README.md), and [Authorization and access control](../ai-platform-engineering/08-authorization-and-access-control/README.md) in *AI Platform Engineering*. The event API rests on [Durable orchestration and workers](../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) in the same book. K-means rests on [Statistical learning](../machine-learning/01-statistical-learning/README.md) in *Machine Learning*. For the failure modes these builds were consciously avoiding, see [Lessons from practice](../software-craftsmanship/04-lessons-from-practice/README.md) in *Software Craftsmanship*.
 
-For the failure modes these builds were consciously avoiding, see
-[Lessons from Practice](../software-craftsmanship/04-lessons-from-practice/).
+## Conventions
+
+Each study opens with the problem and a short list of learning objectives, develops the concepts in the order they matter, and then gives the build log: the order in which the system was assembled, which is the most transferable part. A table of techniques to take away, a closing section linking to related books, key terms, a summary, and review questions with answers in collapsible blocks end each study.
+
+Every implementation is standard-library Python and runs its own tests with `python <file>.py`, from the study's directory. Code listings in the text are excerpts from those files. Call-outs marked **Try it** suggest a deliberate break, such as removing a safeguard and watching a named test fail; breaking a system on purpose is the fastest way to see why each safeguard matters. Call-outs marked **Warning** flag a trap that looks correct. Read each study's concepts first, run the implementation, then read the build log and compare it with how you would have sequenced the work.
