@@ -1,193 +1,123 @@
 # Calculus 3
 
-## Overview
-- **Textbook**: *Calculus Volume 3* -- https://openstax.org/details/books/calculus-volume-3 (CC BY-NC-SA 4.0)
-- **Supplementary**: [Paul's Online Math Notes](https://tutorial.math.lamar.edu/Classes/CalcIII/CalcIII.aspx)
-- **Prerequisites**: [Calculus 2](../02-calculus-2/), [Linear Algebra](../03-linear-algebra/)
-- **Estimated time**: 4 weeks at 10-12 hrs/week
+Multivariable calculus generalizes the single-variable ideas of derivative and integral to functions of several variables. The gradient replaces the derivative, multiple integrals replace single integrals, and the classical theorems of Green, Stokes, and Gauss reveal that integration over a region and integration over its boundary are deeply related. For computing, the payoff is direct: the gradient is the engine of optimization (gradient descent), the Jacobian is the engine of backpropagation, and multiple integrals compute joint probabilities.
 
-## Key Takeaways
-- Extend differentiation and integration to functions of several variables
-- Master partial derivatives, the gradient, and directional derivatives -- the language of optimization in higher dimensions
-- Understand Lagrange multipliers as the standard method for constrained optimization
-- Compute double and triple integrals using coordinate transformations and the Jacobian
-- Connect line integrals, surface integrals, and the classical integral theorems (Green's, Stokes', Divergence)
+This chapter has two parts. Its two build sections turn partial derivatives and Jacobians into code that later chapters depend on: a gradient checker that referees every backward rule you will ever write, and numeric oracles for the Jacobian-vector and vector-Jacobian products that forward and reverse mode compute. Its problem set then works the hand computations behind the rest of the subject: vectors and geometry, gradients, the chain rule, directional derivatives, Hessians, multiple integrals, and Lagrange multipliers. The survey below the section list covers the wider territory of a Calculus 3 course, including vector-valued functions and vector calculus, with a worked example for each topic.
 
-## How to Study
-- Read textbook sections and work through all inline examples before attempting exercises
-- Draw pictures constantly -- multivariable calculus is deeply geometric
-- Use Paul's Online Math Notes for additional worked examples and practice problems
-- Practice setting up integrals from word problems -- choosing the right coordinate system is half the battle
-- Connect gradient descent to partial derivatives early; this motivates the entire course for CS students
+> **Learning objectives**
+> - Compute partial derivatives, gradients, and directional derivatives, and explain why $-\nabla f$ is the direction of steepest descent.
+> - Build and use a numerical gradient check with a mixed absolute and relative tolerance.
+> - Form Jacobians, apply the multivariable chain rule as a matrix product, and compute JVPs and VJPs without forming the matrix.
+> - Classify critical points with the Hessian, and solve constrained problems with Lagrange multipliers.
+> - Evaluate double and triple integrals with a change of variables, and state Green's, Stokes', and the Divergence theorems.
 
----
+## Before you begin
 
-# Concepts & Techniques
+You should be comfortable with one-variable derivatives and finite differences from [Calculus 1](../01-calculus-1/), especially [Derivative as a limit, finite differences, step-size choice](../01-calculus-1/01-derivatives-and-finite-differences.md), whose `central_diff` the first section calls; with Taylor series from [Calculus 2](../02-calculus-2/); and with matrices, row-major layout, and matrix products from [Linear Algebra](../03-linear-algebra/), especially [Vectors, matrices, row-major layout, and matmul](../03-linear-algebra/01-vectors-matrices-and-matmul.md).
 
-## Core Insight
+## In this chapter
 
-Multivariable calculus generalizes the single-variable ideas of derivative and integral to
-functions of several variables. The gradient replaces the derivative, multiple integrals replace
-single integrals, and the classical theorems of Green, Stokes, and Gauss reveal that integration
-over a region and integration over its boundary are deeply related. For CS, the gradient is the
-engine of optimization (gradient descent), the Jacobian is the engine of backpropagation, and
-multiple integrals compute joint probabilities.
+1. [Partial derivatives, gradients, and gradcheck](01-gradients-and-gradcheck.md): builds the gradient of a scalar function of several arrays from one central difference per element, and a `gradcheck` that rejects real backward-pass bugs and points at the element furthest past its tolerance.
+2. [Jacobians, the multivariable chain rule, and numeric JVP/VJP](02-jacobians-and-the-chain-rule.md): defines the Jacobian and the chain rule as a matrix product, and builds numeric oracles for $Jv$ and $u^\top J$ that the autodiff chapter checks against.
+3. [Calculus 3 problem set](90-problem-set.md): 58 problems with worked answers on vectors, gradients, the chain rule, directional derivatives, Hessians, multiple integrals, and Lagrange multipliers. It is the book's treatment of the Hessian, multiple integrals, and Lagrange multipliers.
 
-## 1. Vectors in Space
+## A survey of the subject
 
-**Textbook sections**: Ch 2, Sections 2.1-2.5
+The sections above focus on the parts of multivariable calculus that code depends on. The rest of this opening surveys the whole subject, following *Calculus Volume 3* from OpenStax, so you can see where those parts sit. Each topic gives the key definitions and theorems, a worked example, and the textbook exercises to practice on.
 
-**Key definitions**:
-- **Dot product**: u . v = u_1*v_1 + u_2*v_2 + u_3*v_3 = ||u|| ||v|| cos(theta)
-- **Cross product**: u x v = (u_2*v_3 - u_3*v_2, u_3*v_1 - u_1*v_3, u_1*v_2 - u_2*v_1); result is perpendicular to both u and v with magnitude ||u|| ||v|| sin(theta)
-- **Line in space**: r(t) = r_0 + t*d (point + direction)
-- **Plane**: n . (r - r_0) = 0, or ax + by + cz = d where (a,b,c) is the normal vector
+### Vectors in space
 
-**Key theorems**:
-- **Geometric Interpretation of Dot Product**: u . v = ||u|| ||v|| cos(theta). *Intuition*: the dot product measures how much two vectors point in the same direction. Zero means perpendicular.
-- **Cross Product Magnitude**: ||u x v|| = ||u|| ||v|| sin(theta) = area of the parallelogram spanned by u and v. *Intuition*: the cross product encodes both a direction (normal to the plane of u,v) and a magnitude (area).
-- **Triple Scalar Product**: u . (v x w) = det([u; v; w]) = signed volume of the parallelepiped. *Intuition*: determinants measure volume, and the triple product is exactly a 3x3 determinant.
+Textbook chapter 2, sections 2.1 to 2.5. The **dot product** is $u \cdot v = u_1 v_1 + u_2 v_2 + u_3 v_3 = \lVert u \rVert \lVert v \rVert \cos\theta$. It measures how much two vectors point in the same direction; zero means perpendicular. The **cross product** is
 
-**Worked example**:
-> Find the equation of the plane through (1,2,3), (2,0,1), and (0,1,2). Two vectors in the plane: v = (1,-2,-2), w = (-1,-1,-1). Normal: v x w = ((-2)(-1)-(-2)(-1), (-2)(-1)-1(-1), 1(-1)-(-2)(-1)) = (0, 3, -3). Simplify normal to (0,1,-1). Plane: (y-2) - (z-3) = 0, or y - z + 1 = 0.
+$$u \times v = (u_2 v_3 - u_3 v_2,\; u_3 v_1 - u_1 v_3,\; u_1 v_2 - u_2 v_1),$$
 
-**Essential problems**: OpenStax 2.3 Exercises: #123-135; 2.4 Exercises: #161-175; 2.5 Exercises: #215-228
-**Challenge problems**: OpenStax 2.5 Exercises: #237-242
+perpendicular to both $u$ and $v$, with magnitude $\lVert u \times v \rVert = \lVert u \rVert \lVert v \rVert \sin\theta$, the area of the parallelogram they span. So the cross product encodes both a direction (normal to the plane of $u$ and $v$) and a magnitude (area). The **triple scalar product** $u \cdot (v \times w) = \det([u; v; w])$ is the signed volume of the parallelepiped: determinants measure volume, and the triple product is exactly a $3 \times 3$ determinant.
 
-## 2. Vector-Valued Functions
+A **line** in space is $r(t) = r_0 + t d$, a point plus a direction. A **plane** is $n \cdot (r - r_0) = 0$, or $ax + by + cz = d$ where $(a, b, c)$ is the normal vector.
 
-**Textbook sections**: Ch 3, Sections 3.1-3.4
+For example, find the plane through $(1,2,3)$, $(2,0,1)$, and $(0,1,2)$. Two vectors in the plane are $v = (1,-2,-2)$ and $w = (-1,-1,-1)$. The normal is
 
-**Key definitions**:
-- **Vector-valued function**: r(t) = <x(t), y(t), z(t)>; describes a curve in space
-- **Derivative**: r'(t) = <x'(t), y'(t), z'(t)>; tangent vector to the curve
-- **Arc length**: L = integral from a to b of ||r'(t)|| dt
-- **Unit tangent vector**: T(t) = r'(t) / ||r'(t)||
-- **Curvature**: kappa = ||T'(t)|| / ||r'(t)|| = ||r'(t) x r''(t)|| / ||r'(t)||^3
+$$v \times w = \bigl((-2)(-1)-(-2)(-1),\; (-2)(-1)-1\cdot(-1),\; 1\cdot(-1)-(-2)(-1)\bigr) = (0, 3, -3),$$
 
-**Key theorems**:
-- **Arc Length Parameterization**: Every smooth curve can be reparameterized by arc length s, so that ||r'(s)|| = 1 everywhere. *Intuition*: arc length parameterization means traveling at unit speed -- the parameter directly measures distance along the curve.
-- **Curvature Formula**: kappa = ||r' x r''|| / ||r'||^3. *Intuition*: curvature measures how sharply a curve bends. A straight line has kappa = 0; a circle of radius R has kappa = 1/R.
+which simplifies to $(0,1,-1)$. The plane is $(y-2) - (z-3) = 0$, or $y - z + 1 = 0$.
 
-**Worked example**:
-> Find the curvature of r(t) = <cos(t), sin(t), t> (helix). r'(t) = <-sin(t), cos(t), 1>, ||r'|| = sqrt(2). r''(t) = <-cos(t), -sin(t), 0>. r' x r'' = <sin(t), -cos(t), 1>. ||r' x r''|| = sqrt(2). kappa = sqrt(2) / (sqrt(2))^3 = 1/2. The helix has constant curvature 1/2.
+Practice: OpenStax 2.3 exercises 123 to 135, 2.4 exercises 161 to 175, and 2.5 exercises 215 to 228; for a challenge, 2.5 exercises 237 to 242.
 
-**Essential problems**: OpenStax 3.2 Exercises: #60-72; 3.3 Exercises: #100-112; 3.4 Exercises: #130-140
-**Challenge problems**: OpenStax 3.4 Exercises: #145-150
+### Vector-valued functions
 
-## 3. Partial Derivatives
+Textbook chapter 3, sections 3.1 to 3.4. A **vector-valued function** $r(t) = \langle x(t), y(t), z(t) \rangle$ describes a curve in space. Its derivative $r'(t) = \langle x'(t), y'(t), z'(t) \rangle$ is the tangent vector, the **arc length** is $L = \int_a^b \lVert r'(t) \rVert\,dt$, and the **unit tangent** is $T(t) = r'(t) / \lVert r'(t) \rVert$. Every smooth curve can be reparameterized by arc length $s$ so that $\lVert r'(s) \rVert = 1$ everywhere: traveling at unit speed, the parameter directly measures distance along the curve.
 
-**Textbook sections**: Ch 4, Sections 4.1-4.8
+**Curvature** measures how sharply a curve bends:
 
-**Key definitions**:
-- **Partial derivative**: f_x(x,y) = lim(h->0) [f(x+h,y) - f(x,y)] / h; differentiate with respect to x holding y constant
-- **Gradient**: grad f = (f_x, f_y, f_z); points in the direction of steepest ascent
-- **Directional derivative**: D_u f = grad f . u; rate of change in direction u
-- **Tangent plane**: z - z_0 = f_x(x_0,y_0)(x - x_0) + f_y(x_0,y_0)(y - y_0)
-- **Critical point**: A point where grad f = 0 or grad f is undefined
-- **Hessian matrix**: H = [[f_xx, f_xy],[f_yx, f_yy]]; encodes second-order behavior
+$$\kappa = \frac{\lVert T'(t) \rVert}{\lVert r'(t) \rVert} = \frac{\lVert r'(t) \times r''(t) \rVert}{\lVert r'(t) \rVert^3}.$$
 
-**Key theorems**:
-- **Chain Rule (Multivariable)**: If z = f(x,y) where x = x(t), y = y(t), then dz/dt = f_x * dx/dt + f_y * dy/dt. *Intuition*: each variable contributes its own rate of change, weighted by how the function responds to that variable.
-- **Clairaut's Theorem**: If f_xy and f_yx are continuous, then f_xy = f_yx. *Intuition*: the order of mixed partial derivatives does not matter (under mild smoothness conditions).
-- **Second Derivative Test**: At a critical point (a,b), let D = f_xx * f_yy - (f_xy)^2. If D > 0 and f_xx > 0: local min. If D > 0 and f_xx < 0: local max. If D < 0: saddle point. *Intuition*: D is the determinant of the Hessian -- it checks whether the surface curves the same way in all directions.
-- **Lagrange Multipliers**: To optimize f subject to g = c, solve grad f = lambda * grad g and g = c. *Intuition*: at a constrained extremum, the gradient of f must be parallel to the gradient of g -- otherwise you could improve f by moving along the constraint.
+A straight line has $\kappa = 0$; a circle of radius $R$ has $\kappa = 1/R$. For the helix $r(t) = \langle \cos t, \sin t, t \rangle$: $r'(t) = \langle -\sin t, \cos t, 1 \rangle$ with $\lVert r' \rVert = \sqrt2$, $r''(t) = \langle -\cos t, -\sin t, 0 \rangle$, and $r' \times r'' = \langle \sin t, -\cos t, 1 \rangle$ with $\lVert r' \times r'' \rVert = \sqrt2$. So $\kappa = \sqrt2 / (\sqrt2)^3 = 1/2$: the helix has constant curvature $1/2$.
 
-**Worked example**:
-> Find the minimum of f(x,y) = x^2 + y^2 subject to x + y = 4. Lagrange: grad f = lambda * grad g gives (2x, 2y) = lambda(1, 1). So 2x = lambda and 2y = lambda, thus x = y. Constraint: x + y = 4 gives x = y = 2. Minimum value: f(2,2) = 8.
+Practice: OpenStax 3.2 exercises 60 to 72, 3.3 exercises 100 to 112, and 3.4 exercises 130 to 140; for a challenge, 3.4 exercises 145 to 150.
 
-> Second Derivative Test: f(x,y) = x^3 - 3xy + y^3. Critical points: f_x = 3x^2 - 3y = 0, f_y = -3x + 3y^2 = 0. From the first: y = x^2. Substituting: -3x + 3x^4 = 0, so x(x^3 - 1) = 0, giving (0,0) and (1,1). At (1,1): f_xx = 6, f_yy = 6, f_xy = -3, D = 36 - 9 = 27 > 0 and f_xx > 0, so local minimum. At (0,0): D = 0 - 9 = -9 < 0, so saddle point.
+### Partial derivatives
 
-**Essential problems**: OpenStax 4.3 Exercises: #115-128; 4.5 Exercises: #200-215; 4.6 Exercises: #240-252; 4.8 Exercises: #340-355
-**Challenge problems**: OpenStax 4.8 Exercises: #360-368
+Textbook chapter 4, sections 4.1 to 4.8. The **partial derivative** $f_x(x,y) = \lim_{h \to 0} [f(x+h,y) - f(x,y)]/h$ differentiates with respect to $x$ holding $y$ constant. The **gradient** $\nabla f = (f_x, f_y, f_z)$ points in the direction of steepest ascent, and the **directional derivative** $D_u f = \nabla f \cdot u$ is the rate of change in direction $u$. The **tangent plane** at $(x_0, y_0)$ is $z - z_0 = f_x(x_0,y_0)(x - x_0) + f_y(x_0,y_0)(y - y_0)$. A **critical point** is where $\nabla f = 0$ or $\nabla f$ is undefined, and the **Hessian** $H = \begin{pmatrix} f_{xx} & f_{xy} \\ f_{yx} & f_{yy} \end{pmatrix}$ encodes second-order behavior.
 
-## 4. Multiple Integrals
+Four results organize the topic. The **multivariable chain rule**: if $z = f(x,y)$ with $x = x(t)$, $y = y(t)$, then $dz/dt = f_x\,dx/dt + f_y\,dy/dt$; each variable contributes its own rate of change, weighted by how the function responds to it. **Clairaut's theorem**: if $f_{xy}$ and $f_{yx}$ are continuous, they are equal, so the order of mixed partials does not matter under mild smoothness. The **second derivative test**: at a critical point $(a,b)$, let $D = f_{xx} f_{yy} - f_{xy}^2$; if $D > 0$ and $f_{xx} > 0$ it is a local minimum, if $D > 0$ and $f_{xx} < 0$ a local maximum, and if $D < 0$ a saddle. $D$ is the determinant of the Hessian, and it checks whether the surface curves the same way in all directions. **Lagrange multipliers**: to optimize $f$ subject to $g = c$, solve $\nabla f = \lambda \nabla g$ and $g = c$. At a constrained extremum the gradient of $f$ must be parallel to the gradient of $g$; otherwise you could improve $f$ by moving along the constraint.
 
-**Textbook sections**: Ch 5, Sections 5.1-5.7
+Two worked examples. First, minimize $f(x,y) = x^2 + y^2$ subject to $x + y = 4$. Lagrange gives $(2x, 2y) = \lambda(1, 1)$, so $2x = \lambda = 2y$ and $x = y$. The constraint gives $x = y = 2$, and the minimum is $f(2,2) = 8$.
 
-**Key definitions**:
-- **Double integral**: integral integral_R f(x,y) dA = iterated integrals over x and y
-- **Triple integral**: integral integral integral_E f(x,y,z) dV
-- **Polar coordinates**: x = r*cos(theta), y = r*sin(theta), dA = r dr d(theta)
-- **Cylindrical coordinates**: (r, theta, z), dV = r dr d(theta) dz
-- **Spherical coordinates**: x = rho*sin(phi)*cos(theta), y = rho*sin(phi)*sin(theta), z = rho*cos(phi), dV = rho^2 * sin(phi) d(rho) d(phi) d(theta)
-- **Jacobian**: For a transformation (x,y) = T(u,v), J = det([[dx/du, dx/dv],[dy/du, dy/dv]]); dA = |J| du dv
+Second, classify the critical points of $f(x,y) = x^3 - 3xy + y^3$. Setting $f_x = 3x^2 - 3y = 0$ and $f_y = -3x + 3y^2 = 0$, the first gives $y = x^2$; substituting, $-3x + 3x^4 = 0$, so $x(x^3 - 1) = 0$, giving $(0,0)$ and $(1,1)$. At $(1,1)$, $f_{xx} = 6$, $f_{yy} = 6$, $f_{xy} = -3$, so $D = 36 - 9 = 27 > 0$ with $f_{xx} > 0$: a local minimum. At $(0,0)$, $D = 0 - 9 = -9 < 0$: a saddle.
 
-**Key theorems**:
-- **Fubini's Theorem**: If f is continuous on a rectangle R = [a,b] x [c,d], then the double integral equals either iterated integral. *Intuition*: you can integrate in either order -- slice horizontally or vertically and get the same answer.
-- **Change of Variables**: integral integral_R f(x,y) dA = integral integral_S f(T(u,v)) |J| du dv. *Intuition*: the Jacobian determinant measures how much the transformation stretches or compresses area, just as |dx/du| does in single-variable substitution.
+Practice: OpenStax 4.3 exercises 115 to 128, 4.5 exercises 200 to 215, 4.6 exercises 240 to 252, and 4.8 exercises 340 to 355; for a challenge, 4.8 exercises 360 to 368.
 
-**Worked example**:
-> Compute integral integral over the disk x^2 + y^2 <= 4 of (x^2 + y^2) dA. Switch to polar: integral from 0 to 2*pi integral from 0 to 2 of r^2 * r dr d(theta) = integral from 0 to 2*pi d(theta) * integral from 0 to 2 of r^3 dr = 2*pi * [r^4/4] from 0 to 2 = 2*pi * 4 = 8*pi.
+### Multiple integrals
 
-**Essential problems**: OpenStax 5.1 Exercises: #1-14; 5.3 Exercises: #130-145; 5.5 Exercises: #240-255; 5.7 Exercises: #340-352
-**Challenge problems**: OpenStax 5.7 Exercises: #358-365
+Textbook chapter 5, sections 5.1 to 5.7. A **double integral** $\iint_R f(x,y)\,dA$ is computed as iterated integrals over $x$ and $y$, and a **triple integral** $\iiint_E f(x,y,z)\,dV$ likewise. **Fubini's theorem** says that if $f$ is continuous on a rectangle $R = [a,b] \times [c,d]$, the double integral equals either iterated integral: you can slice horizontally or vertically and get the same answer.
 
-## 5. Vector Calculus
+Other coordinate systems simplify circular and spherical regions. **Polar**: $x = r\cos\theta$, $y = r\sin\theta$, $dA = r\,dr\,d\theta$. **Cylindrical**: $(r, \theta, z)$ with $dV = r\,dr\,d\theta\,dz$. **Spherical**: $x = \rho\sin\phi\cos\theta$, $y = \rho\sin\phi\sin\theta$, $z = \rho\cos\phi$, $dV = \rho^2 \sin\phi\,d\rho\,d\phi\,d\theta$. All are instances of the **change of variables** formula. For a transformation $(x,y) = T(u,v)$ with Jacobian determinant $J = \det\begin{pmatrix} \partial x/\partial u & \partial x/\partial v \\ \partial y/\partial u & \partial y/\partial v \end{pmatrix}$, $dA = |J|\,du\,dv$ and
 
-**Textbook sections**: Ch 6, Sections 6.1-6.8
+$$\iint_R f(x,y)\,dA = \iint_S f(T(u,v))\,|J|\,du\,dv.$$
 
-**Key definitions**:
-- **Vector field**: F(x,y,z) = <P(x,y,z), Q(x,y,z), R(x,y,z)>
-- **Line integral of a scalar**: integral_C f ds = integral from a to b of f(r(t)) * ||r'(t)|| dt
-- **Line integral of a vector field**: integral_C F . dr = integral from a to b of F(r(t)) . r'(t) dt (work done by F along C)
-- **Conservative field**: F = grad f for some scalar potential f; then integral_C F . dr = f(end) - f(start)
-- **Curl**: curl F = (R_y - Q_z, P_z - R_x, Q_x - P_y); measures local rotation
-- **Divergence**: div F = P_x + Q_y + R_z; measures local expansion
-- **Surface integral**: integral integral_S F . dS = integral integral_D F . (r_u x r_v) dA
+The Jacobian determinant measures how much the transformation stretches or compresses area, just as $|dx/du|$ does in single-variable substitution.
 
-**Key theorems**:
-- **Fundamental Theorem for Line Integrals**: If F = grad f, then integral_C F . dr = f(B) - f(A). *Intuition*: for gradient fields, work depends only on endpoints, not the path -- just like the FTC.
-- **Green's Theorem**: integral_C (P dx + Q dy) = integral integral_D (Q_x - P_y) dA. *Intuition*: the circulation around a closed curve equals the total curl inside. Boundary behavior encodes interior behavior.
-- **Stokes' Theorem**: integral_C F . dr = integral integral_S (curl F) . dS. *Intuition*: generalizes Green's theorem to 3D; the circulation of F around a closed curve equals the flux of curl F through any surface bounded by that curve.
-- **Divergence Theorem**: integral integral_S F . dS = integral integral integral_E (div F) dV. *Intuition*: the total outward flux through a closed surface equals the total divergence inside. What flows out must be produced within.
+For example, integrate $x^2 + y^2$ over the disk $x^2 + y^2 \le 4$. In polar coordinates,
 
-**Worked example**:
-> Use Green's Theorem to evaluate integral_C (y^2 dx + x^2 dy) where C is the unit circle traversed counterclockwise. P = y^2, Q = x^2. Q_x - P_y = 2x - 2y. By Green's: integral integral_D (2x - 2y) dA. Switch to polar: integral from 0 to 2*pi integral from 0 to 1 of (2r*cos(theta) - 2r*sin(theta)) * r dr d(theta). The integral of cos(theta) and sin(theta) over [0, 2*pi] are both 0, so the result is 0.
+$$\int_0^{2\pi}\!\int_0^2 r^2 \cdot r\,dr\,d\theta = \int_0^{2\pi} d\theta \int_0^2 r^3\,dr = 2\pi \left[\frac{r^4}{4}\right]_0^2 = 2\pi \cdot 4 = 8\pi.$$
 
-**Essential problems**: OpenStax 6.2 Exercises: #55-70; 6.3 Exercises: #115-130; 6.4 Exercises: #155-168; 6.7 Exercises: #285-298; 6.8 Exercises: #325-338
-**Challenge problems**: OpenStax 6.8 Exercises: #345-352
+Practice: OpenStax 5.1 exercises 1 to 14, 5.3 exercises 130 to 145, 5.5 exercises 240 to 255, and 5.7 exercises 340 to 352; for a challenge, 5.7 exercises 358 to 365.
 
----
+### Vector calculus
 
-## Technique Catalog
+Textbook chapter 6, sections 6.1 to 6.8. A **vector field** is $F(x,y,z) = \langle P, Q, R \rangle$. The **line integral of a scalar** is $\int_C f\,ds = \int_a^b f(r(t))\,\lVert r'(t) \rVert\,dt$, and the **line integral of a vector field**, the work done by $F$ along $C$, is $\int_C F \cdot dr = \int_a^b F(r(t)) \cdot r'(t)\,dt$. A field is **conservative** if $F = \nabla f$ for some scalar potential $f$. **Curl**, $\nabla \times F = (R_y - Q_z,\; P_z - R_x,\; Q_x - P_y)$, measures local rotation; **divergence**, $\nabla \cdot F = P_x + Q_y + R_z$, measures local expansion. A **surface integral** is $\iint_S F \cdot dS = \iint_D F \cdot (r_u \times r_v)\,dA$.
 
-| Technique | When to Use | Key Formula/Idea |
-|-----------|-------------|------------------|
-| Gradient | Find direction of steepest ascent | grad f = (f_x, f_y, f_z) |
-| Lagrange Multipliers | Constrained optimization | grad f = lambda * grad g |
-| Second Derivative Test | Classify critical points in 2D | Check det(Hessian) and f_xx |
-| Polar/Cylindrical/Spherical | Integrate over circular/spherical regions | Include Jacobian factor (r, r, rho^2 sin phi) |
-| Green's Theorem | Convert line integral to double integral (2D) | Circulation = integral of curl over region |
-| Stokes' Theorem | Convert line integral to surface integral (3D) | Circulation = flux of curl |
-| Divergence Theorem | Convert surface integral to volume integral | Flux = integral of divergence |
-| Change of Variables | Simplify integration domain | dA = |J| du dv |
+Four theorems relate integrals over a region to integrals over its boundary:
 
-## Connections to CS & Algorithms
+- **Fundamental theorem for line integrals**: if $F = \nabla f$, then $\int_C F \cdot dr = f(B) - f(A)$. For gradient fields, work depends only on the endpoints, not the path, just like the fundamental theorem of calculus.
+- **Green's theorem**: $\oint_C (P\,dx + Q\,dy) = \iint_D (Q_x - P_y)\,dA$. The circulation around a closed curve equals the total curl inside.
+- **Stokes' theorem**: $\oint_C F \cdot dr = \iint_S (\nabla \times F) \cdot dS$. It generalizes Green's theorem to 3D: the circulation of $F$ around a closed curve equals the flux of the curl through any surface bounded by that curve.
+- **Divergence theorem**: $\iint_S F \cdot dS = \iiint_E (\nabla \cdot F)\,dV$. The total outward flux through a closed surface equals the total divergence inside: what flows out must be produced within.
 
-| Math Concept | CS Application | Repo Link |
-|-------------|----------------|-----------|
-| Gradient & directional derivative | Gradient descent in ML and deep learning | ML track |
-| Jacobian | Backpropagation in neural networks (chain rule for vector functions) | ML track |
-| Lagrange multipliers | Constrained optimization (SVMs, regularization) | ML track |
-| Multiple integrals | Joint probability distributions, expected values | [07-probability-statistics](../07-probability-statistics/) |
-| Divergence / curl | Physics simulation, fluid dynamics in games | systems track |
-| Change of variables | Normalizing flows in generative models | ML track |
+For example, use Green's theorem to evaluate $\oint_C (y^2\,dx + x^2\,dy)$ around the unit circle, counterclockwise. With $P = y^2$ and $Q = x^2$, $Q_x - P_y = 2x - 2y$, so the integral is $\iint_D (2x - 2y)\,dA$. In polar coordinates this is $\int_0^{2\pi}\!\int_0^1 (2r\cos\theta - 2r\sin\theta)\,r\,dr\,d\theta$, and since $\cos\theta$ and $\sin\theta$ each integrate to 0 over $[0, 2\pi]$, the result is 0.
 
-## Company Relevance
+Practice: OpenStax 6.2 exercises 55 to 70, 6.3 exercises 115 to 130, 6.4 exercises 155 to 168, 6.7 exercises 285 to 298, and 6.8 exercises 325 to 338; for a challenge, 6.8 exercises 345 to 352.
 
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| ML/AI Roles (OpenAI, DeepMind, Meta) | Gradient descent, backprop Jacobians, constrained optimization | Hard |
-| Quantitative Finance | Multivariate optimization for portfolio theory | Hard |
-| Graphics/Gaming (NVIDIA, Unity, Epic) | Surface normals, physics simulation, fluid dynamics | Medium |
-| Robotics (Boston Dynamics, Tesla) | 3D kinematics, trajectory optimization | Hard |
-| A/B Testing (any tech company) | Joint distributions require multiple integration | Medium |
+### Choosing a technique
 
-## Chapters
+Most problems in the subject reduce to recognizing which tool applies. This table pairs each technique with when to reach for it:
 
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `M04.1` | [Partial derivatives, gradients, gradcheck](01-gradients-and-gradcheck.md) | build | 2 |
-| 2 | `M04.2` | [Jacobians, multivariable chain rule, numeric JVP/VJP](02-jacobians-and-the-chain-rule.md) | build | 2 |
-| 3 | `S-M04` | [Calculus 3 problem set: vectors, gradients, the chain rule, Hessians, multiple integrals, Lagrange](90-problem-set.md) | solve | 2 |
+| Technique | When to use | Key formula or idea |
+|---|---|---|
+| Gradient | find the direction of steepest ascent | $\nabla f = (f_x, f_y, f_z)$ |
+| Lagrange multipliers | constrained optimization | $\nabla f = \lambda \nabla g$ |
+| Second derivative test | classify critical points in 2D | check $\det H$ and $f_{xx}$ |
+| Polar, cylindrical, spherical coordinates | integrate over circular or spherical regions | include the Jacobian factor ($r$, $r$, $\rho^2 \sin\phi$) |
+| Green's theorem | convert a line integral to a double integral (2D) | circulation = integral of curl over the region |
+| Stokes' theorem | convert a line integral to a surface integral (3D) | circulation = flux of curl |
+| Divergence theorem | convert a surface integral to a volume integral | flux = integral of divergence |
+| Change of variables | simplify the integration domain | $dA = \lvert J \rvert\,du\,dv$ |
+
+## Where this leads
+
+The gradient and directional derivative drive gradient descent in [Optimization](../10-optimization/). The Jacobian is the chain rule for vector functions, which is backpropagation, and [Matrix calculus and autodiff](../08-matrix-calculus-and-autodiff/) builds it three ways. Lagrange multipliers underlie constrained optimization such as SVMs and regularization, and the reading of softmax as a maximum-entropy distribution in [Information theory](../11-information-theory/). Multiple integrals compute joint probability distributions and expected values in [Probability and statistics](../07-probability-statistics/). The change of variables formula is the core of normalizing flows in generative models, and divergence and curl appear in physics simulation and fluid dynamics for games.
+
+### Further reading
+
+- OpenStax, [*Calculus Volume 3*](https://openstax.org/details/books/calculus-volume-3) (CC BY-NC-SA 4.0), the textbook this chapter follows.
+- [Paul's Online Math Notes, Calculus III](https://tutorial.math.lamar.edu/Classes/CalcIII/CalcIII.aspx), for additional worked examples and practice problems.

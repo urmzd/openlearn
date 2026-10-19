@@ -1,51 +1,31 @@
 # Performance Testing Engagements
 
-How to run a benchmark **for a customer**: agree the workload shape from their logs, pick the right load model, measure from where their users are, compare fairly against their incumbent provider, and write a results document that reports curves and goodput under their SLO instead of a single headline number.
+A benchmark run **for a customer** is not the same thing as a benchmark run for yourself. It is evidence in a decision, and the customer will quote it to their own leadership. That makes method more important than the number. A result measured on the wrong length mix, from the wrong region, with prefix-cache hits from repeated prompts, will be wrong in production and will be remembered as the vendor's promise. The engineering is the same as any load test; the field skill is agreeing the method with the customer before running it, and writing down what the number does not cover.
 
-> Parent track: [Field Engineering](../). The load-testing math and tools are in [Serving & Load section 8](../../machine-learning/04-llm-systems/serving-and-load/#8-load-testing-methodology); this topic is about running that method with and for a customer. Next: [POC and Evaluation](../04-poc-and-evaluation/) wraps the benchmark into a decision.
+A customer benchmark answers one question: **at their traffic shape, how much load meets their SLO, and at what cost?** Anything else is a demo. This chapter shows how to answer that question honestly. You will agree the question in writing, build the workload from the customer's logs, pick the right load model, keep the runs clean, measure from where the customer's users are, compare fairly against the incumbent provider, and write a report that leads with curves and goodput under the SLO rather than a single headline number.
 
-## Overview
+The load-testing math and tools are developed in [Serving & Load section 8](../../machine-learning/04-llm-systems/serving-and-load/#8-load-testing-methodology) in *Machine Learning*; this chapter is about running that method with and for a customer. In practice an FDE usually leads, an SE runs pre-sales smoke tests, and the performance team reviews anything that will be quoted in a contract.
 
-- **Primary reference**: [`vllm bench serve` docs](https://docs.vllm.ai/en/stable/cli/bench/serve.html) (free) and [vLLM benchmark CLI guide](https://docs.vllm.ai/en/latest/benchmarking/cli/) (free): request rate, burstiness, max concurrency, goodput, warmups, custom datasets
-- **Supplementary**: [AIPerf](https://github.com/ai-dynamo/aiperf) (free, NVIDIA's successor to GenAI-Perf, [migration notes](https://docs.nvidia.com/aiperf/getting-started/migrating-from-gen-ai-perf)); [GuideLLM](https://github.com/vllm-project/guidellm) (free); the in-repo [`loadgen.py`](../../machine-learning/04-llm-systems/serving-and-load/code/loadgen.py) (stdlib only, readable in one sitting); [*Service Level Objectives*](https://sre.google/sre-book/service-level-objectives/) (free)
-- **Prerequisites**: [Qualification and Sizing](../02-qualification-and-sizing/) (the hypothesis you are testing); [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/) sections 3 and 8
-- **Estimated time**: 4-5 days at 6-8 hrs/week
-- **Usually led by**: FDE; SE for pre-sales smoke tests; performance team reviews anything that will be quoted in a contract
+> **Learning objectives**
+> - Write the benchmark question as one signed-off sentence that names the SLO, the comparison, and what is out of scope.
+> - Build a workload spec from the customer's logs and choose a dataset that preserves their length mix and prefix structure.
+> - Use closed-loop runs to find saturation and open-loop runs to prove the SLO, and control the common sources of bad data.
+> - Measure TTFT from the customer's region and separate network time from engine time.
+> - Report latency-throughput curves, goodput, and cost at the operating point, and avoid promises the data does not support.
 
-## Key Takeaways
+## Before you begin
 
-- A customer benchmark answers one question: **at their traffic shape, how much load meets their SLO, and at what cost?** Anything else is a demo.
-- The workload comes from **their logs**: input and output length distributions, arrival pattern, prefix sharing. Synthetic fixed lengths are a last resort, and the report says so.
-- Use **closed loop** to find saturation and **open loop** to prove the SLO. Closed-loop latency hides queueing.
-- Measure TTFT **from the customer's region**, and report client-side and server-side numbers separately so network round trips are visible, not blamed on the engine.
-- Comparisons with the incumbent use the same prompts, the same output-length control, the same region, and the same time window, or they are not comparisons.
-- Report the **latency-throughput curve** and **goodput** at the SLO. Never promise a p99 without load data, and never quote a vendor benchmark as the customer's number.
+This chapter tests the hypothesis you wrote in [Qualification and Sizing](../02-qualification-and-sizing/README.md), so have it to hand, along with sections 3 and 8 of [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/). The primary references are the [`vllm bench serve` docs](https://docs.vllm.ai/en/stable/cli/bench/serve.html) and the [vLLM benchmark CLI guide](https://docs.vllm.ai/en/latest/benchmarking/cli/) (both free), which cover request rate, burstiness, maximum concurrency, goodput, warmups, and custom datasets. Useful supplements are [AIPerf](https://github.com/ai-dynamo/aiperf), NVIDIA's successor to GenAI-Perf (see the [migration notes](https://docs.nvidia.com/aiperf/getting-started/migrating-from-gen-ai-perf)); [GuideLLM](https://github.com/vllm-project/guidellm); the in-repository [`loadgen.py`](../../machine-learning/04-llm-systems/serving-and-load/code/loadgen.py), which uses only the standard library and is readable in one sitting; and [*Service Level Objectives*](https://sre.google/sre-book/service-level-objectives/) from the SRE book. All are free.
 
-## How to Study
+## Agree the question before the run
 
-- Run [`loadgen.py`](../../machine-learning/04-llm-systems/serving-and-load/code/loadgen.py) `--mock --sweep 2,8,32` and find the knee. Then rerun with `--shared-prefix-len 800` and explain the change in TTFT.
-- Take any public request trace (or invent a 200-row CSV of input and output lengths) and write the workload spec in section 2 from it.
-- Write the [report template](#8-benchmark-report-template) for the mock run as if a customer's VP will read only the first paragraph.
+The first deliverable of a benchmark engagement is a sentence, not a number. Write the question as one sentence the customer signs off on, for example: "At the request mix in last Tuesday's logs, what arrival rate does one replica sustain with TTFT p95 < 500 ms and TPOT p95 < 40 ms, measured from eu-west?"
 
----
+That sentence names the **SLO** completely: the metric, the percentile, the threshold, and where it is measured. Name the **comparison** up front too, whether it is the incumbent, a previous configuration, or none. Agree what is out of scope (for example quality, cold start, or multi-region failover) so nobody assumes it is covered. And agree who runs the client. If the customer runs it, give them the exact command; if you run it, give them the raw output.
 
-# Concepts & Techniques
+## The workload shape from their logs
 
-## Core Insight
-
-A benchmark run for a customer is evidence in a decision, and the customer will quote it to their own leadership. That makes method more important than the number: a result measured on the wrong length mix, from the wrong region, with prefix-cache hits from repeated prompts, will be wrong in production and will be remembered as the vendor's promise. The engineering is the same as any load test; the field skill is agreeing the method with the customer before running it, and writing down what the number does not cover.
-
-## 1. Agree the Question Before the Run
-
-**Key ideas**:
-- Write the question as one sentence the customer signs off on: "At the request mix in last Tuesday's logs, what arrival rate does one replica sustain with TTFT p95 < 500 ms and TPOT p95 < 40 ms, measured from eu-west?"
-- Name the **SLO** (metric, percentile, threshold, where measured) and the **comparison** (incumbent, previous config, or none) up front.
-- Agree what is out of scope (for example: quality, cold start, multi-region failover) so it is not assumed to be covered.
-- Agree who runs the client. If the customer runs it, give them the exact command; if you run it, give them the raw output.
-
-## 2. Workload Shape from Their Logs
-
-Ask for one representative day (or the peak hour) of request logs with token counts, sanitized. From it, build a **workload spec**:
+The workload comes from **their logs**. Ask for one representative day, or the peak hour, of sanitized request logs with token counts, and build a **workload spec** from it. Synthetic fixed lengths are a last resort, and if you use them the report says so. Each dimension of the spec, what to extract, and what to do when logs are missing are listed here:
 
 | Dimension | Extract from logs | Why it matters | If logs are missing |
 |---|---|---|---|
@@ -56,7 +36,7 @@ Ask for one representative day (or the peak hour) of request logs with token cou
 | **Session shape** | Turns per conversation; agent loops with tool calls | Context growth, KV reuse across turns | Single-turn only, stated as a limitation |
 | **Features** | Streaming, tool calls, JSON schema, LoRA adapter per request | Parser and constrained-decoding overhead | Test each feature at least once |
 
-Then choose the dataset:
+With the spec in hand, choose a dataset. Replaying real prompts is best, and the other options trade fidelity for privacy or control:
 
 | Option | When | Tool support |
 |---|---|---|
@@ -65,14 +45,19 @@ Then choose the dataset:
 | **Synthetic from fitted distributions** | Logs cannot leave the customer | `loadgen.py --len-dist lognormal`, `vllm bench serve --dataset-name random` |
 | **Shared-prefix synthetic** | Measuring the prefix cache on purpose | `vllm bench serve --dataset-name prefix_repetition`, `loadgen.py --shared-prefix-len` |
 
-## 3. Load Model: Closed Loop, Open Loop, Replay
+To practice, take any public request trace, or invent a 200-row CSV of input and output lengths, and write a workload spec from it.
 
-**Key ideas**:
-- **Closed loop** keeps N requests in flight and sends a new one when one finishes. It measures maximum throughput but hides queueing, because the load backs off when the server slows. Use it to find **saturation throughput per replica** (`--max-concurrency` sweeps, AIPerf `--concurrency`).
-- **Open loop** sends requests on a schedule (Poisson at a target rate, or burstier) regardless of completions. It shows what users see when traffic does not wait. Use it to **prove the SLO** (`--request-rate`, `--burstiness`, `loadgen.py --rate` or `--sweep`).
-- **Replay** of a real traffic hour adds realistic burstiness and length mix; run it last, as confirmation.
+## The load model: closed loop, open loop, replay
 
-A standard run matrix:
+The workload says *what* to send; the load model says *when*. The choice changes what the measurement means.
+
+A **closed loop** keeps $N$ requests in flight and sends a new one whenever one finishes. It measures maximum throughput but hides queueing, because the load backs off when the server slows down. Use it to find **saturation throughput per replica**, with `--max-concurrency` sweeps or AIPerf's `--concurrency`.
+
+An **open loop** sends requests on a schedule (Poisson at a target rate, or burstier) regardless of completions. It shows what users see when traffic does not wait for the server. Use it to **prove the SLO**, with `--request-rate` and `--burstiness`, or `loadgen.py --rate` or `--sweep`. The short version: use closed loop to find saturation and open loop to prove the SLO, because closed-loop latency hides queueing.
+
+**Replay** of a real traffic hour adds realistic burstiness and length mix. Run it last, as confirmation.
+
+Put together, a standard engagement runs four experiments:
 
 | Run | Mode | Load | Purpose |
 |---|---|---|---|
@@ -81,7 +66,9 @@ A standard run matrix:
 | C | Open loop | Replay of a real traffic hour | Realistic burstiness and length mix |
 | D | Scale event | 1 replica to N under ramping load | Time to absorb the morning ramp (cold start) |
 
-## 4. Run Hygiene
+## Run hygiene
+
+Even with the right workload and load model, a handful of mistakes can make the data worthless. Each has a known control:
 
 | Pitfall | What goes wrong | Control |
 |---|---|---|
@@ -93,9 +80,11 @@ A standard run matrix:
 | **Single run** | Noise read as signal | Repeat key points; report spread |
 | **Undisclosed config** | Nobody can reproduce the number | Record engine, version, flags, model revision, quantization, GPU type and count |
 
-## 5. Measuring from the Customer's Region
+You can see the first two effects for yourself. Run [`loadgen.py`](../../machine-learning/04-llm-systems/serving-and-load/code/loadgen.py) with `--mock --sweep 2,8,32` and find the knee, then rerun it with `--shared-prefix-len 800` and explain the change in TTFT.
 
-TTFT at the client is not TTFT at the server:
+## Measuring from the customer's region
+
+TTFT at the client is not TTFT at the server. The number the user experiences is a sum of several pieces, only some of which the engine controls:
 
 ```text
 client TTFT = connection setup (DNS, TCP, TLS; first request only)
@@ -106,16 +95,11 @@ client TTFT = connection setup (DNS, TCP, TLS; first request only)
             + network time for the first streamed chunk
 ```
 
-**Key ideas**:
-- Run the client in the **same cloud region** as the customer's application, or from their network if they insist. A benchmark from your laptop in another continent measures the ocean.
-- Measure **RTT** separately (a trivial authenticated request, or the time to first byte of a 1-token completion) and report it next to TTFT.
-- Reuse connections (keep-alive) as production does; report whether the first request's handshake is included.
-- Report **client-side and server-side** TTFT (engine metrics) side by side. The difference is network plus gateway; it tells the customer whether to fix region placement or the deployment.
-- Check that proxies on the path stream; a buffering proxy turns good TTFT into E2E latency.
+That decomposition drives five practices. Run the client in the **same cloud region** as the customer's application, or from their network if they insist; a benchmark from your laptop on another continent measures the ocean. Measure **round-trip time** separately, with a trivial authenticated request or the time to first byte of a one-token completion, and report it next to TTFT. Reuse connections (keep-alive) as production does, and report whether the first request's handshake is included. Report **client-side and server-side** TTFT (from engine metrics) side by side; the difference is network plus gateway, and it tells the customer whether to fix region placement or the deployment. Finally, check that every proxy on the path streams, because a buffering proxy turns good TTFT into end-to-end latency.
 
-## 6. Apples-to-Apples Against the Incumbent
+## Apples to apples against the incumbent
 
-Customers usually want "faster than what we have". A comparison is only fair if every row below matches:
+Customers usually want to know whether you are "faster than what we have." A comparison is only fair if every control below matches; otherwise it is not a comparison.
 
 | Control | Why | How |
 |---|---|---|
@@ -128,17 +112,25 @@ Customers usually want "faster than what we have". A comparison is only fair if 
 | Same load model and rate | Different modes give different curves | Open loop at the same rates |
 | Rate limits | Incumbent tier limits can cap the run, not capacity | Record 429s separately from errors; state the account tier |
 
-When a control cannot be matched (for example, the incumbent's region), write it in the report as a limitation next to the result it affects.
+When a control cannot be matched (the incumbent's region, for example), write it in the report as a limitation next to the result it affects.
 
-## 7. Reporting: Curves, Goodput, Cost
+## Reporting curves, goodput, and cost
 
-**Key ideas**:
-- **One chart**: x = achieved throughput (req/s or output tok/s), y = TTFT p95/p99 and TPOT p95/p99, one point per offered rate, SLO lines drawn, operating point marked. The knee is the finding.
-- **Goodput**: requests per second that meet every SLO. Throughput past the knee is not capacity the customer can use. `vllm bench serve --goodput ttft:500 tpot:40` and `loadgen.py --slo-ttft-ms 500 --slo-tpot-ms 40` both report it.
-- **Cost per 1M tokens at the operating point**: `(GPU $/hr x GPUs) / (tok/s x 3600) x 1e6` ([06](../06-commercials-and-security/)), not at saturation.
-- **The bound versus the measurement**: quote the measured number; explain the roofline bound as a ceiling ([Serving & Load section 8](../../machine-learning/04-llm-systems/serving-and-load/#8-load-testing-methodology)).
+The report is where method becomes evidence. Its centerpiece is **one chart**: achieved throughput (req/s or output tok/s) on the x-axis, TTFT p95/p99 and TPOT p95/p99 on the y-axis, one point per offered rate, the SLO lines drawn, and the operating point marked. The knee is the finding.
+
+Next to the chart goes **goodput**: the requests per second that meet every SLO. Throughput past the knee is not capacity the customer can use. Both `vllm bench serve --goodput ttft:500 tpot:40` and `loadgen.py --slo-ttft-ms 500 --slo-tpot-ms 40` report it.
+
+Then **cost per 1M tokens at the operating point**, not at saturation:
+
+$$
+\text{cost per 1M tokens} = \frac{\text{GPU \$/hr} \times \text{GPUs}}{\text{tok/s} \times 3600} \times 10^6
+$$
+
+The full cost model is in [Commercials and Security](../06-commercials-and-security/README.md). Finally, keep **the bound and the measurement** apart: quote the measured number, and explain the roofline bound only as a ceiling ([Serving & Load section 8](../../machine-learning/04-llm-systems/serving-and-load/#8-load-testing-methodology)).
 
 ### Tools
+
+Three tools cover the run matrix: the readable standard-library client for open-loop sweeps, `vllm bench serve` for replaying sanitized prompts with goodput, and AIPerf for closed-loop saturation with a multiprocess client.
 
 ```bash
 # Open-loop sweep with the customer's SLO, readable stdlib client (in repo)
@@ -161,9 +153,11 @@ aiperf profile --model <model> --url https://<endpoint> \
     --endpoint-type chat --streaming --concurrency 128 --request-count 2000
 ```
 
-Flags change between releases; check `--help` for the installed version before quoting a command in a customer document.
+> **Warning:** Flags change between releases. Check `--help` for the installed version before quoting a command in a customer document.
 
 ### What never to promise
+
+The report is also where engagements go wrong, because a number in a customer document becomes a commitment. Never promise a p99 without load data at their traffic shape, and never quote a vendor benchmark as the customer's number. The full list, with what to say instead:
 
 | Do not promise | Why | Say instead |
 |---|---|---|
@@ -172,9 +166,11 @@ Flags change between releases; check `--help` for the installed version before q
 | Throughput at saturation as capacity | Past the knee, latency breaks the SLO | Goodput at the SLO |
 | Results from serverless as dedicated performance (or the reverse) | Different batching, isolation, and neighbors | Benchmark the tier you will sell |
 | Cost from the roofline bound | Assumes full utilization and no SLO | Cost at the measured operating point |
-| Numbers on a config you will not ship | Quantization or flags may change quality | Benchmark the config that passed the eval ([04](../04-poc-and-evaluation/)) |
+| Numbers on a config you will not ship | Quantization or flags may change quality | Benchmark the config that passed the eval ([POC and Evaluation](../04-poc-and-evaluation/README.md)) |
 
-## 8. Benchmark Report Template
+## The benchmark report template
+
+Everything above lands in one document, and its first paragraph is the only one some readers will see. Write it as if the customer's VP will read only the verdict.
 
 ```markdown
 # Benchmark report: <customer> / <workload> / <YYYY-MM-DD>
@@ -221,30 +217,26 @@ point: $<z> per 1M tokens. Compared with <incumbent>: <result, with caveats>.>
 - Commands, dataset hash, raw outputs: <links>
 ```
 
-## Connections to Other Tracks
+## Where this leads
 
-| Concept | Connected Track | Application |
-|---------|-----------------|-------------|
-| Open versus closed loop, goodput, warmup | [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/) | The method behind every run |
-| Poisson arrivals, percentiles | [Probability & Statistics](../../mathematics-for-computing/07-probability-statistics/) | Arrival models and tail estimation |
-| SSE streaming, buffering proxies | [Streaming & SSE](../../ai-platform-engineering/03-streaming-sse/) | Why client TTFT differs from server TTFT |
-| Latency SLIs, dashboards | [Observability](../../systems/04-observability/) | Server-side metrics next to client results |
+The method behind every run, open versus closed loop, goodput, and warmup, comes from [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/). Poisson arrivals and tail percentiles are the subject of [Probability & Statistics](../../mathematics-for-computing/07-probability-statistics/) in *Mathematics for Computing*. Why client TTFT differs from server TTFT, including buffering proxies, is explained in [Streaming & SSE](../../ai-platform-engineering/03-streaming-sse/) in *AI Platform Engineering*, and the server-side metrics you report next to client results come from [Observability](../../systems/04-observability/) in *Systems*.
 
-## Company Relevance
+This work shows up across the industry at an advanced level. Fireworks AI, Together AI, and Baseten run head-to-head benchmarks against a customer's incumbent during evaluation. NVIDIA maintains AIPerf, GenAI-Perf, and the MLPerf Inference methodology, and the vLLM and SGLang maintainers design `bench serve` and `bench_serving`. Any enterprise buying inference will eventually ask for a benchmark report it can audit.
 
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| Fireworks AI / Together AI / Baseten | Head-to-head benchmarks against a customer's incumbent during evaluation | Advanced |
-| NVIDIA | AIPerf, GenAI-Perf, and MLPerf Inference methodology | Advanced |
-| vLLM / SGLang maintainers | `bench serve` and `bench_serving` design | Advanced |
-| Any enterprise buying inference | Procurement asks for a benchmark report it can audit | Intermediate |
+The next chapter, [POC and Evaluation](../04-poc-and-evaluation/README.md), wraps the benchmark into a decision.
+
+### Further reading
+
+- [`vllm bench serve`](https://docs.vllm.ai/en/stable/cli/bench/serve.html) and the [vLLM benchmark CLI guide](https://docs.vllm.ai/en/latest/benchmarking/cli/) (free).
+- [AIPerf](https://github.com/ai-dynamo/aiperf) and [GuideLLM](https://github.com/vllm-project/guidellm) (free).
+- [*Service Level Objectives*](https://sre.google/sre-book/service-level-objectives/), *Site Reliability Engineering* ch. 4 (free).
 
 ## Exercise
 
-**Deliverable**: a **benchmark plan and mock report for Lexa** ([brief](../01-discovery/#exercise)), using your hypothesis from [02](../02-qualification-and-sizing/#exercise):
+The deliverable is a **benchmark plan and mock report for Lexa** (see the [brief](../01-discovery/README.md#exercise)), using your hypothesis from the [Qualification and Sizing exercise](../02-qualification-and-sizing/README.md#exercise):
 
-1. The one-sentence question, with the SLO you would propose given they "measure about 8 seconds per section" (state which latency you chose and why).
-2. The workload spec from section 2, filling unknown rows with stated assumptions and the data request that would replace each.
+1. The one-sentence question, with the SLO you would propose given that they "measure about 8 seconds per section" (state which latency you chose and why).
+2. The workload spec, filling unknown rows with stated assumptions and the data request that would replace each.
 3. The run matrix (A to D) adapted to Lexa's online path, plus how you would test the nightly job (throughput and completion time, not TTFT).
 4. The apples-to-apples controls you can and cannot match against their closed frontier API.
 5. A filled report template using results from `loadgen.py --mock` as stand-in data, clearly labelled as mock.
@@ -255,3 +247,32 @@ point: $<z> per 1M tokens. Compared with <incumbent>: <result, with caveats>.>
 - The client region is in the EU and the RTT is reported.
 - No result is stated without its percentile, rate, and region.
 - The "what never to promise" table has been checked against your verdict paragraph line by line.
+
+## Key terms
+
+- **Workload spec**: the input and output length distributions, arrival pattern, prefix sharing, session shape, and features extracted from a customer's logs.
+- **Closed loop**: a load model that keeps a fixed number of requests in flight; it finds saturation but hides queueing.
+- **Open loop**: a load model that sends requests on a schedule regardless of completions; it proves the SLO.
+- **Goodput**: requests per second that meet every SLO.
+- **Knee**: the point on the latency-throughput curve where latency starts rising steeply; capacity past it is unusable.
+- **Operating point**: the load at which the deployment is meant to run, below the knee, where cost is quoted.
+
+## Summary
+
+- A customer benchmark answers one question: at their traffic shape, how much load meets their SLO, and at what cost.
+- The workload comes from their logs; synthetic fixed lengths are a last resort, and the report says so.
+- Closed loop finds saturation; open loop proves the SLO; replay confirms.
+- Measure TTFT from the customer's region and report client-side and server-side numbers separately.
+- Comparisons with the incumbent match prompts, output-length control, region, and time window, or they are not comparisons.
+- Report the latency-throughput curve and goodput at the SLO; never promise a p99 without load data or quote a vendor benchmark as the customer's number.
+
+## Review questions
+
+1. Why does closed-loop latency hide queueing?
+   <details><summary>Answer</summary>A closed loop sends a new request only when one finishes, so when the server slows down the offered load drops with it. Requests never pile up the way real traffic does, so latency looks better than users would see. Open loop sends on a schedule regardless and exposes the queue.</details>
+2. Client-side TTFT is 420 ms and server-side TTFT is 150 ms at the operating point. What do you tell the customer?
+   <details><summary>Answer</summary>About 270 ms is network and gateway, not the engine. The fix is region placement, connection reuse, or the gateway path (check for a buffering proxy), not the deployment configuration.</details>
+3. Why use a unique nonce at the start of every prompt?
+   <details><summary>Answer</summary>Reusing identical prompts across runs produces prefix-cache hits, so the run measures cache lookups instead of prefill. The nonce defeats the cache, unless the cache is deliberately under test, in which case the report says so.</details>
+4. Why is cost quoted at the operating point rather than at saturation or from the roofline?
+   <details><summary>Answer</summary>Past the knee the SLO breaks, so saturation throughput is not usable capacity; the roofline assumes full utilization and no SLO. Only the measured operating point reflects what the customer will actually pay per token.</details>

@@ -1,44 +1,31 @@
-# Tilt dev loop
+# The Tilt dev loop
 
-## Overview
+While you build the serving platform, the engine and the gateway change every day: continuous batching, routing, rate limits, caching. On kind, each change is currently `docker build` (a minute for the gateway, several for the engine), `kind load docker-image`, `helm upgrade`, a wait for the rollout, and then a look at logs in another terminal, repeated for each service you touched and in the right order. That loop is slow enough that you stop testing on the cluster and start testing only locally. Then the bugs that exist only in the cluster, such as probes, Service names, the `/artifacts` mount, or the gateway reaching the engine, wait until the next full deployment.
 
-| | |
-|---|---|
-| **Module** | `dep.04` · practice · ops · Pass 7 · 2 to 4 h |
-| **Solution** | [`deploy/Tiltfile`](../../../../course/solutions/entry/deploy/Tiltfile): images for the engine (full rebuild) and the gateway (live update of a host-compiled binary), the Helm charts deployed into `<system>`, the gateway after the engine, a guard against any context but `kind-<system>`, and a `tilt ci` budget; plus the gateway's dev image [`deploy/tilt/gateway.dev.Dockerfile`](../../../../course/solutions/entry/deploy/tilt/gateway.dev.Dockerfile) |
-| **Contract** | the system's charts and Dockerfiles (`dep.00`, later `dep.01` to `dep.03`); [Tiltfile API](https://docs.tilt.dev/api.html) |
-| **Needs** | `dep.03` (the Pass 7 charts the loop deploys), with the Dockerfiles of `dep.00` and `dep.01` |
-| **Used by** | `dep.05` runs `tilt ci` in its kind job, and the deployment it produces is the Pass 7 production platform; every later chart (`dep.06`, `dep.07`) joins the graph |
-| **Optional depth** | [Tilt docs: Tiltfile concepts, live update](https://docs.tilt.dev/) (free), [restart_process extension](https://github.com/tilt-dev/tilt-extensions/tree/master/restart_process) (free) |
+A dev loop that redeploys in seconds keeps the cluster the place where the code runs. This section builds one with Tilt: a single `deploy/Tiltfile` that builds the engine image, live-updates a host-compiled gateway binary, deploys the production Helm charts into `<system>`, starts the gateway after the engine, refuses any kube context but `kind-<system>`, and gives `tilt ci` a time budget. A small dev image for the gateway, `deploy/tilt/gateway.dev.Dockerfile`, completes it.
 
-## Key Takeaways
+The loop deploys the charts from [Helm charts and the observability stack](03-helm-charts-and-observability-stack.md), using the Dockerfiles from [the tracer deploy](00-tracer-deploy.md) and [Dockerfiles for the gateway and the engine](01-dockerfiles-for-gateway-and-engine.md), onto the cluster from [kind cluster, local registry, and port mappings](02-kind-cluster-and-local-registry.md). Its interface is the system's own charts and Dockerfiles plus the [Tiltfile API](https://docs.tilt.dev/api.html).
 
-- The loop is a **graph of resources**: image builds, local commands, and Kubernetes workloads, with explicit dependencies. Tilt watches files and reruns only what a change reaches.
-- Tilt deploys a freshly built image only into containers whose image **repository equals** the `docker_build` ref. A mismatch builds the new code and deploys the old image, silently.
-- **Go**: compile on the host for `linux` with `CGO_ENABLED=0`, sync the one binary into the running container, restart the process: seconds. **Rust**: rebuild the image; the runtime image has no toolchain to compile in.
-- A Tiltfile is code that deploys to whatever context kubectl points at: make it **refuse** every context but `kind-<system>`.
-- `tilt ci` runs the same graph once and exits 0 when every resource is ready; give it a budget so a stuck pod fails CI in minutes, not half an hour.
+> **Learning objectives**
+> - Model a dev loop as a graph of image builds, local commands, and Kubernetes workloads with explicit dependencies.
+> - Explain how Tilt pairs a built image with a workload, and diagnose the silent failure when the names differ.
+> - Choose between a live update (Go) and a full image rebuild (Rust) and justify the choice.
+> - Guard a Tiltfile against deploying to the wrong cluster, and bound `tilt ci` with a budget.
 
-## How to read this chapter
+## Running the loop
 
-Sections 1 to 3 explain why the cluster needs a fast inner loop, which kind of change takes which path, and time both paths by hand. Section 4 fixes the Tiltfile's shape. Section 5 walks through the solution Tiltfile and the gateway's dev image block by block. Try to predict each block before reading it.
-
-The solution is run from the repo root:
+From the repo root:
 
 ```bash
 tilt up -f deploy/Tiltfile            # the loop: http://localhost:10350 shows the graph
-tilt ci -f deploy/Tiltfile            # once, as CI runs it (dep.05)
+tilt ci -f deploy/Tiltfile            # once, as CI runs it
 ```
 
----
+What Tilt does when you save a file depends on a small vocabulary, which is where to start.
 
-## 1. Why now
+## Resources and the graph
 
-Pass 7 changes the engine and the gateway every day: continuous batching, routing, rate limits, caching. On kind, each change today is `docker build` (a minute for the gateway, several for the engine), `kind load docker-image`, `helm upgrade`, wait for the rollout, then look at logs in another terminal, repeated for each service you touched and in the right order. That loop is slow enough that you stop testing on the cluster and start testing only locally, and the bugs that exist only in the cluster (probes, Service names, the `/artifacts` mount, the gateway reaching the engine) wait until the next full deployment. A dev loop that redeploys in seconds keeps the cluster the place where the code runs.
-
-## 2. Principles
-
-### 2.1 Resources and the graph
+The loop is a **graph of resources** with explicit dependencies. Tilt watches files and reruns only what a change reaches. Five terms describe the graph:
 
 | Term | Meaning |
 |---|---|
@@ -48,29 +35,33 @@ Pass 7 changes the engine and the gateway every day: continuous batching, routin
 | `resource_deps` | resources that must be ready before this one starts, in `k8s_resource(name, resource_deps=[...])` |
 | live update | steps that patch a running container instead of replacing it: `sync(local, remote)`, `run(cmd)` |
 
-Tilt matches images to workloads by name: every container whose image repository equals a `docker_build` ref gets the image Tilt built, retagged with a content hash (`forge-engine:tilt-3f9c...`), and is loaded into kind. The chart's own tag is ignored.
+Tilt matches images to workloads by name. Every container whose image repository **equals** a `docker_build` ref gets the image Tilt built, retagged with a content hash (`forge-engine:tilt-3f9c...`) and loaded into kind. The chart's own tag is ignored. A mismatch builds the new code and deploys the old image, silently; you will see exactly how below.
 
-### 2.2 Two kinds of change
+## Two kinds of change
+
+Not every change deserves the same path. The fastest correct one depends on the language and on what the runtime image contains:
 
 | Change | Fast path | Why |
 |---|---|---|
 | Go source of the gateway | `go build` on the host (2 s), `sync` the binary into the container, restart the process | Go cross-compiles to a static binary; the container needs nothing but the file |
-| Rust or C source of the engine | full image rebuild, then a new pod | the engine links the system's C library and needs the toolchain; the runtime image (debian slim) has neither, by design (`dep.01` keeps images small) |
+| Rust or C source of the engine | full image rebuild, then a new Pod | the engine links the system's C library and needs the toolchain; the runtime image (Debian slim) has neither, by design, to keep images small |
 | a chart or a values file | redeploy the YAML | Tilt diffs the rendered objects |
 
-For the Go path, two details decide whether it works: the kind node is Linux, so the host build needs `GOOS=linux` (a macOS binary dies with `exec format error`), and `CGO_ENABLED=0`, so the binary needs no libc in the image. Restarting the process is the `restart_process` extension's `docker_build_with_restart`, which wraps the entrypoint so a sync triggers a restart; it needs a shell in the image, so the dev image is alpine, not distroless.
+Two details decide whether the Go path works. The kind node is Linux, so the host build needs `GOOS=linux`; a macOS binary dies with `exec format error`. And it needs `CGO_ENABLED=0`, so the binary needs no libc in the image. Restarting the process is the job of the `restart_process` extension's `docker_build_with_restart`, which wraps the entrypoint so a sync triggers a restart. The wrapper needs a shell in the image, so the dev image is alpine, not distroless.
 
-### 2.3 Ordering
+## Ordering
 
-The gateway's `/readyz` waits on the engine. Started first, it fails readiness, restarts, and fills its log with 503s that hide real problems. `resource_deps` makes the order explicit. The same will hold for the durable server before its workers (`dep.06`).
+Fast paths are useless if services start in the wrong order. The gateway's `/readyz` waits on the engine. Started first, the gateway fails readiness, restarts, and fills its log with 503s that hide real problems. `resource_deps` makes the order explicit. The same will hold for the durable server before its workers, in [Durable and worker images and charts](06-durable-and-worker-charts.md).
 
-### 2.4 The context guard and `tilt ci`
+## The context guard and `tilt ci`
 
-`k8s_context()` is the current kubectl context. Tilt deploys there, after a warning only for contexts it does not recognize as local. One `if k8s_context() != 'kind-forge': fail(...)` at the top makes a wrong context an error before anything is built. `tilt ci` evaluates the same Tiltfile, builds and deploys everything once, streams logs, and exits 0 when every resource is ready (non-zero when any fails); `ci_settings(timeout=...)` bounds it.
+A Tiltfile is code that deploys to whatever context kubectl points at. `k8s_context()` returns the current context, and Tilt deploys there after a warning only for contexts it does not recognize as local. One `if k8s_context() != 'kind-forge': fail(...)` at the top makes a wrong context an error before anything is built.
 
-## 3. Worked example by hand
+`tilt ci` evaluates the same Tiltfile, builds and deploys everything once, streams logs, and exits 0 when every resource is ready (non-zero when any fails). `ci_settings(timeout=...)` bounds it, so a stuck Pod fails CI in minutes, not half an hour.
 
-The solution's graph after you save `go/gateway/route/route.go` (times are typical for a laptop; yours will differ, the ratio will not):
+## Timing both paths by hand
+
+Here is the solution's graph after you save `go/gateway/route/route.go`. The times are typical for a laptop; yours will differ, but the ratio will not.
 
 | Resource | Triggered by | Steps | Time |
 |---|---|---|---|
@@ -78,19 +69,21 @@ The solution's graph after you save `go/gateway/route/route.go` (times are typic
 | `forge-gateway` (image) | `deploy/tilt/build/gateway` changed (its `only`) | live update: `sync('tilt/build/gateway', '/usr/local/bin/gateway')`, restart the process | 0.6 s |
 | `forge-engine` | nothing (no engine file changed) | none | 0 s |
 
-About 3 seconds from save to the new gateway answering. Now edit `rust/crates/tl-engine/src/sched.rs`:
+That is about 3 seconds from save to the new gateway answering. Now edit `rust/crates/tl-engine/src/sched.rs`:
 
 | Resource | Steps | Time |
 |---|---|---|
 | `forge-engine` (image) | `docker build -f docker/engine.Dockerfile ..` (contracts and C layers cached, `cargo build --release` of the changed crates) | 70 s |
 | `forge-engine` | `kind load`, new ReplicaSet, readiness on `/healthz` | 12 s |
-| `forge-gateway` | unchanged; its upstream is the Service, so it follows the new pod | 0 s |
+| `forge-gateway` | unchanged; its upstream is the Service, so it follows the new Pod | 0 s |
 
-**The name match.** The engine chart renders `image: "forge-engine:0.1.0"`. The ref `forge-engine` has the same repository, so Tilt deploys `forge-engine:tilt-<hash>` instead. Had the Tiltfile said `docker_build('engine', ...)`, Tilt would build `engine`, find no container using it, and deploy `forge-engine:0.1.0`, the image from the last manual build: your edit would never run, and no error would say so.
+**The name match.** The engine chart renders `image: "forge-engine:0.1.0"`. The ref `forge-engine` has the same repository, so Tilt deploys `forge-engine:tilt-<hash>` instead. Had the Tiltfile said `docker_build('engine', ...)`, Tilt would build `engine`, find no container using it, and deploy `forge-engine:0.1.0`, the image from the last manual build. Your edit would never run, and no error would say so.
 
 **The guard.** With `kubectl config use-context prod-east`, evaluating the solution Tiltfile stops at the guard with `deploy/Tiltfile deploys only to kind-forge; current context is prod-east (kubectl config use-context kind-forge)`.
 
-## 4. The interface
+## The shape of the Tiltfile
+
+The whole interface fits on one screen. Paths are relative to `deploy/`:
 
 ```python
 # deploy/Tiltfile (paths are relative to deploy/)
@@ -112,36 +105,26 @@ k8s_yaml(helm('helm/%s-gateway' % SYSTEM, name=SYSTEM + '-gateway', namespace=SY
 k8s_resource(SYSTEM + '-gateway', resource_deps=[SYSTEM + '-engine', 'gateway-compile'])
 ```
 
-`tilt up` runs one unified engine, which starts fastest. The production topology is one engine release per role (`<system>-engine-prefill`, and `<system>-engine-decode` with 2 replicas); the solution Tiltfile switches with a Tilt config flag, `tilt up -f deploy/Tiltfile -- --topology=disaggregated`, and makes the gateway wait on every engine release.
+`tilt up` runs one unified engine, which starts fastest. The production topology is one engine release per role (`<system>-engine-prefill`, and `<system>-engine-decode` with 2 replicas). The solution Tiltfile switches with a Tilt config flag, `tilt up -f deploy/Tiltfile -- --topology=disaggregated`, and makes the gateway wait on every engine release.
 
 ### What a correct solution must handle
 
-| Case | Kind of check | What must hold | Why it matters downstream |
-|---|---|---|---|
-| the Tiltfile evaluates | static | it runs with `k8s_context() == 'kind-<system>'` | every `tilt up` and `tilt ci` |
-| it refuses other clusters | fault | with any other context (say `prod-cluster`) it calls `fail()` | dev images never reach a cluster you did not mean |
-| images match the charts | conformance | each chart's image repository has a `docker_build` of the same name | edits actually deploy |
-| the engine rebuilds from its Dockerfile | static | engine: no live update, `deploy/docker/engine.Dockerfile`, repo-root context | the same image `dep.00` and CI build |
-| the gateway live-updates a Linux binary | static | gateway: a sync, a restart, a `go build` with `CGO_ENABLED=0 GOOS=linux` that watches `../go` | seconds per Go change |
-| the charts are deployed | static | `helm()` of both charts into `<system>`; both workloads rendered | the production charts, no dev copies |
-| the gateway starts after the engine | static | `resource_deps` puts the engine first (and durable before workers, once they exist) | no crash loop at startup |
-| CI has a budget | boundary | `ci_settings(timeout=...)` of at most 20 minutes | `dep.05`'s kind job fails fast |
-| `tilt ci` on kind | cluster | `tilt ci` on `kind-<system>` exits 0 | the loop works end to end |
+The Tiltfile must evaluate with `k8s_context() == 'kind-<system>'`, since every `tilt up` and `tilt ci` depends on it, and with any other context (say `prod-cluster`) it must call `fail()`, so dev images never reach a cluster you did not mean. Each chart's image repository must have a `docker_build` of the same name, so edits actually deploy. The engine must have no live update and must build from `deploy/docker/engine.Dockerfile` with the repo-root context, the same image the tracer deploy and CI build. The gateway must have a sync, a restart, and a `go build` with `CGO_ENABLED=0 GOOS=linux` that watches `../go`, which is what makes a Go change take seconds. Both charts must be deployed through `helm()` into `<system>` with both workloads rendered: the production charts, no dev copies. `resource_deps` must put the engine first (and durable before workers, once they exist), so there is no crash loop at startup. `ci_settings(timeout=...)` must be at most 20 minutes, so the kind job in CI fails fast. And end to end, `tilt ci` on `kind-<system>` must exit 0.
 
-The static cases can be checked without Tilt or a cluster by evaluating the Tiltfile as Python with a recording fake for each builtin, and rendering the charts with the real `helm template`.
+The static cases can be checked without Tilt or a cluster, by evaluating the Tiltfile as Python with a recording fake for each builtin and rendering the charts with the real `helm template`.
 
-## 5. The solution, step by step
+## Building it step by step
 
-### 5.1 From first principles
+### Reasoning from first principles
 
-1. **Only what a change reaches should rerun.** So the loop is a dependency graph of resources (2.1), and each resource declares exactly the files it depends on (`only`, `deps`, `ignore`).
+1. **Only what a change reaches should rerun.** So the loop is a dependency graph of resources, and each resource declares exactly the files it depends on (`only`, `deps`, `ignore`).
 2. **A built image must reach the workload that runs it.** Tilt pairs them by repository name, so each `docker_build` ref must equal the chart's `image.repository`: `forge-engine`, `forge-gateway`. No other mechanism links the two.
 3. **The fastest correct path differs by language.** Go cross-compiles to a static Linux binary on the host in seconds, so the gateway's change is one file synced into a running container. Rust links native code and the runtime image has no toolchain, so the engine's change is a full rebuild with layer caching.
 4. **Order follows readiness dependencies.** The gateway's readiness waits on the engine; durable workers poll the durable server. `resource_deps` encodes both, so startup has no crash loops.
-5. **A deploy script must know where it may deploy.** A Tiltfile deploys to the current context, so it must fail on any other than `kind-<system>`, before building anything.
-6. **CI must fail in minutes.** `tilt ci` without a budget waits 30 minutes on a stuck pod; `ci_settings(timeout='15m')` bounds it.
+5. **A deploy script must know where it may deploy.** A Tiltfile deploys to the current context, so it must fail on any context other than `kind-<system>`, before building anything.
+6. **CI must fail in minutes.** `tilt ci` without a budget waits 30 minutes on a stuck Pod; `ci_settings(timeout='15m')` bounds it.
 
-### 5.2 The guard and the budget
+### The guard and the budget
 
 ```python
 load('ext://restart_process', 'docker_build_with_restart')
@@ -164,7 +147,7 @@ ci_settings(timeout='15m')
 
 The guard comes before every `docker_build` and `k8s_yaml`, so a wrong context costs nothing but the error message, which names the fix.
 
-### 5.3 The engine: rebuild the image
+### The engine: rebuild the image
 
 ```python
 # A Rust change needs the toolchain and a relink, so there is no live update:
@@ -180,9 +163,9 @@ docker_build(
 )
 ```
 
-`only` limits both what is watched and what is sent as context; `ignore` removes the build directories inside those trees, without which every `cargo build` on the host would retrigger the image build (pitfall 5).
+`only` limits both what is watched and what is sent as context. `ignore` removes the build directories inside those trees; without it, every `cargo build` on the host would retrigger the image build.
 
-### 5.4 The gateway: compile on the host, sync, restart
+### The gateway: compile on the host, sync, restart
 
 ```python
 # Cross-compile for the kind node (linux, no cgo), then copy the one file
@@ -216,9 +199,9 @@ EXPOSE 8080 9464
 ENTRYPOINT ["/usr/local/bin/gateway"]
 ```
 
-The chain is: a save under `go/` reruns `gateway-compile`; its output `deploy/tilt/build/gateway` is the only file in the image's `only`, so the image's live update fires; `sync` copies the binary into the container and the wrapped entrypoint restarts it. `deploy/tilt/build/` is git-ignored.
+Follow the chain. A save under `go/` reruns `gateway-compile`. Its output, `deploy/tilt/build/gateway`, is the only file in the image's `only`, so the image's live update fires. `sync` copies the binary into the container, and the wrapped entrypoint restarts it. `deploy/tilt/build/` is git-ignored.
 
-### 5.5 The charts and the graph
+### The charts and the graph
 
 ```python
 # `tilt up` runs one unified engine (fast to start). The per-role topology:
@@ -244,53 +227,77 @@ k8s_resource(SYSTEM + '-gateway', resource_deps=ENGINES + ['gateway-compile'],
 # ... (dep.06: forge-worker after forge-durable)
 ```
 
-`helm()` renders the same charts `dep.03` installs, values schema included, so the loop cannot drift from production. `ENGINES` is a list so the gateway waits on every engine release in either topology. Release names are the resource names, which is what `k8s_resource` refers to.
+`helm()` renders the same charts that [Helm charts and the observability stack](03-helm-charts-and-observability-stack.md) installs, values schema included, so the loop cannot drift from production. `ENGINES` is a list so the gateway waits on every engine release in either topology. Release names are the resource names, which is what `k8s_resource` refers to.
 
-Full solution: [`Tiltfile`](../../../../course/solutions/entry/deploy/Tiltfile), [`gateway.dev.Dockerfile`](../../../../course/solutions/entry/deploy/tilt/gateway.dev.Dockerfile).
+The full solution is [`Tiltfile`](../../../../course/solutions/entry/deploy/Tiltfile) and [`gateway.dev.Dockerfile`](../../../../course/solutions/entry/deploy/tilt/gateway.dev.Dockerfile).
 
-### 5.6 Why this solution
+### Why this design
 
-- **Host compile and sync over an in-cluster `go build`.** Building inside the container would need the Go toolchain in the dev image and a module cache per pod; the host already has both, warm.
+- **Host compile and sync over an in-cluster `go build`.** Building inside the container would need the Go toolchain in the dev image and a module cache per Pod; the host already has both, warm.
 - **A full rebuild for the engine over a synced binary.** A host-built Rust binary would link the host's glibc and C library; on macOS it would not even be a Linux binary. The image build is slower but always correct.
 - **The production charts over dev manifests.** A separate dev YAML would drift; using `helm()` means a chart bug shows up in the loop first.
 - **A `fail()` guard over `allow_k8s_contexts` alone.** `allow_k8s_contexts` only suppresses a warning for listed contexts; it does not stop a deploy to a context Tilt considers local or one you click through. `fail()` stops everything.
-- **Tradeoff accepted:** the dev gateway image differs from the production one (no digest pin, no `HEALTHCHECK`, no labels). CI (`dep.05`) still builds and tests the production image.
+- **Tradeoff accepted:** the dev gateway image differs from the production one (no digest pin, no `HEALTHCHECK`, no labels). [CI for the platform repo](05-ci-for-your-repo.md) still builds and tests the production image.
 
-### 5.7 Explain it back
+## What can go wrong
 
-1. The Tiltfile says `docker_build('engine', ...)`, the build is green, and the pod still runs old code. Why, and why is there no error?
-   <details><summary>Answer</summary>Tilt substitutes its build only into containers whose image repository equals the ref. The chart's container uses <code>forge-engine</code>, so nothing matches <code>engine</code>; the pod keeps <code>forge-engine:0.1.0</code> from the last manual build. An unused image is not an error in Tilt's model.</details>
+Most Tilt failures are quiet: the dashboard is green and the cluster is wrong. These five cause most of them:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| No context guard | `tilt up` in the wrong terminal deploys dev images to a shared cluster | `fail()` on any context but `kind-forge`, before any build |
+| `docker_build('engine', ...)` while the chart runs `forge-engine` | Tilt shows a green build; the Pod runs yesterday's image | refs `SYSTEM + '-engine'` and `SYSTEM + '-gateway'` equal the charts' repositories |
+| `go build` without `GOOS=linux` (on a Mac) or with cgo | the synced binary fails with `exec format error`, or `not found` for libc | `CGO_ENABLED=0 GOOS=linux` in `gateway-compile` |
+| No `resource_deps` | the gateway restarts until the engine is up; real errors drown in 503s | `resource_deps=ENGINES + ['gateway-compile']` |
+| Build context `..` without `only` or `.dockerignore` | every save under `rust/target` triggers an engine rebuild | `only` plus `ignore=['rust/target', 'c/build']`, and the `.dockerignore` from the tracer deploy |
+
+## Where this leads
+
+The loop deploys the charts of [Helm charts and the observability stack](03-helm-charts-and-observability-stack.md) into the cluster of [kind cluster, local registry, and port mappings](02-kind-cluster-and-local-registry.md), with the Dockerfiles of [the tracer deploy](00-tracer-deploy.md) and [Dockerfiles for the gateway and the engine](01-dockerfiles-for-gateway-and-engine.md). Next, [CI for the platform repo](05-ci-for-your-repo.md) runs `tilt ci -f deploy/Tiltfile` in its kind job, and the deployment it produces is the production platform. The durable and worker charts of [Durable and worker images and charts](06-durable-and-worker-charts.md) join the graph, durable first, and every later chart does the same. The monitors and collector of [Metrics and log correlation](../../systems/04-observability/02-metrics-and-log-correlation.md) in *Systems and Architecture* can be applied from the same Tiltfile.
+
+The local pieces have production cousins:
+
+| Your piece | Production equivalent | What it adds |
+|---|---|---|
+| Tilt on kind | Skaffold, Garden, DevSpace | the same loop with other tradeoffs (profiles, remote clusters, test stages) |
+| host compile and sync | remote dev containers, Telepresence | run one service locally against the cluster |
+| `kind load` of every image | a local registry (`localhost:5001`) | faster loads, the same flow as a real registry |
+| one Tiltfile | Tilt extensions and `include()` | per-team Tiltfiles composed into one graph |
+
+### Further reading
+
+- [Tilt docs: Tiltfile concepts, live update](https://docs.tilt.dev/)
+- [restart_process extension](https://github.com/tilt-dev/tilt-extensions/tree/master/restart_process)
+- [Skaffold](https://skaffold.dev/)
+- [Telepresence](https://www.telepresence.io/)
+- [kind local registry](https://kind.sigs.k8s.io/docs/user/local-registry/)
+- [tilt-extensions](https://github.com/tilt-dev/tilt-extensions)
+
+## Key terms
+
+- **resource graph**: Tilt's model of image builds, local commands, and workloads, with dependencies, rerun only where a change reaches.
+- **image target**: a `docker_build` declaration; Tilt substitutes its image into containers whose repository equals the ref.
+- **local resource**: a command on your machine that reruns when its `deps` change.
+- **live update**: patching a running container (sync files, run commands) instead of replacing the Pod.
+- **`resource_deps`**: the resources that must be ready before another starts.
+- **context guard**: a `fail()` at the top of the Tiltfile that refuses any kube context but the intended one.
+- **`tilt ci`**: a one-shot run of the graph that exits 0 when every resource is ready, bounded by `ci_settings(timeout=...)`.
+
+## Summary
+
+- The loop is a graph of resources (image builds, local commands, Kubernetes workloads) with explicit dependencies; Tilt reruns only what a change reaches.
+- Tilt deploys a freshly built image only into containers whose image repository equals the `docker_build` ref; a mismatch silently deploys the old image.
+- Go: compile on the host for `linux` with `CGO_ENABLED=0`, sync the one binary, restart the process, in seconds. Rust: rebuild the image, because the runtime image has no toolchain.
+- A Tiltfile deploys to whatever context kubectl points at, so make it refuse every context but `kind-<system>`.
+- `tilt ci` runs the same graph once and exits 0 when every resource is ready; a budget makes a stuck Pod fail CI in minutes.
+
+## Review questions
+
+1. The Tiltfile says `docker_build('engine', ...)`, the build is green, and the Pod still runs old code. Why, and why is there no error?
+   <details><summary>Answer</summary>Tilt substitutes its build only into containers whose image repository equals the ref. The chart's container uses <code>forge-engine</code>, so nothing matches <code>engine</code>; the Pod keeps <code>forge-engine:0.1.0</code> from the last manual build. An unused image is not an error in Tilt's model.</details>
 2. Why must the host build set `GOOS=linux` even when your laptop runs Linux?
    <details><summary>Answer</summary>On a Linux laptop it is redundant but harmless; on macOS the default would be a Darwin binary, which fails in the container with <code>exec format error</code>. Setting it makes the Tiltfile correct on every host.</details>
 3. Why is the dev image alpine and not distroless?
    <details><summary>Answer</summary><code>docker_build_with_restart</code> wraps the entrypoint in a small restart helper that needs a shell. Distroless has none, so the restart after a sync would fail.</details>
 4. What does `resource_deps=ENGINES + ['gateway-compile']` prevent?
-   <details><summary>Answer</summary>Two failure modes at startup: the gateway image being built before the binary exists, and the gateway pod starting before any engine is ready, which fails <code>/readyz</code>, crash-loops, and floods the log with 503s.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. No context guard | `tilt up` in the wrong terminal deploys dev images to a shared cluster | `fail()` on any context but `kind-forge`, before any build (5.2) |
-| 2. `docker_build('engine', ...)` while the chart runs `forge-engine` | Tilt shows a green build; the pod runs yesterday's image | refs `SYSTEM + '-engine'` and `SYSTEM + '-gateway'` equal the charts' repositories (5.3, 5.4) |
-| 3. `go build` without `GOOS=linux` (on a Mac) or with cgo | the synced binary fails with `exec format error`, or `not found` for libc | `CGO_ENABLED=0 GOOS=linux` in `gateway-compile` (5.4) |
-| 4. No `resource_deps` | the gateway restarts until the engine is up; real errors drown in 503s | `resource_deps=ENGINES + ['gateway-compile']` (5.5) |
-| 5. Build context `..` without `only` or `.dockerignore` | every save under `rust/target` triggers an engine rebuild | `only` plus `ignore=['rust/target', 'c/build']`, and the `.dockerignore` from dep.00 (5.3) |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `dep.03` | the charts the loop deploys, into the kind cluster of `dep.02`, with the Dockerfiles of `dep.00` and `dep.01` |
-| Forward | `dep.05` | CI's kind job runs `tilt ci -f deploy/Tiltfile` |
-| Forward | `dep.06` | durable and worker charts join the graph, durable first |
-| Forward | `obs.02` | the monitors and the collector can be applied from the same Tiltfile |
-
-## Going further
-
-| Your piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| Tilt on kind | Skaffold, Garden, DevSpace | the same loop with other tradeoffs (profiles, remote clusters, test stages) | [Skaffold](https://skaffold.dev/) |
-| host compile and sync | remote dev containers, Telepresence | run one service locally against the cluster | [Telepresence](https://www.telepresence.io/) |
-| `kind load` of every image | a local registry (`localhost:5001`, `dep.02`) | faster loads, the same flow as a real registry | [kind local registry](https://kind.sigs.k8s.io/docs/user/local-registry/) |
-| one Tiltfile | Tilt extensions and `include()` | per-team Tiltfiles composed into one graph | [tilt-extensions](https://github.com/tilt-dev/tilt-extensions) |
+   <details><summary>Answer</summary>Two failure modes at startup: the gateway image being built before the binary exists, and the gateway Pod starting before any engine is ready, which fails <code>/readyz</code>, crash-loops, and floods the log with 503s.</details>
