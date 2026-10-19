@@ -1,40 +1,32 @@
-<!-- ol:module M07.2 -->
 # MLE, Laplace, absolute discounting
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M07.2` · build · Python · Pass 3 · 2 to 3 h |
-| **You build** | `python/tinyllm/prob/mle.py`: `mle`, `log_likelihood`, `laplace`, `absolute_discount`, `ney_discount` |
+| **Module** | `M07.2` · build · Python · Pass 3 · 1 to 1.5 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/prob/mle.py`](../../../../course/solutions/python/tinyllm/prob/mle.py): `mle`, `log_likelihood`, `laplace`, `absolute_discount`, `ney_discount` |
 | **Contract** | [`course/contracts/py/tinyllm/prob/mle.pyi`](../../../../course/contracts/py/tinyllm/prob/mle.pyi) |
-| **Tests** | `course/tests/M07.2/` (what they check: section 4) |
 | **Needs** | no code from earlier modules · reading: `M00.1` logs and nats, `S-M05` counting |
-| **Used by** | `L1.4` Unigram EM re-estimates piece probabilities · later: `L2.1` interpolated Kneser-Ney, `M11.4` PMI from co-occurrence counts |
-| **Milestone** | `MS-P3` (tokens and data) |
+| **Used by** | `L1.4` Unigram EM re-estimates piece probabilities · later: `L2.1` interpolated Kneser-Ney, `M11.4` PMI from co-occurrence counts; part of the Pass 3 tokens-and-data layer |
 | **Optional depth** | Jurafsky and Martin, *Speech and Language Processing* (3rd ed. draft), ch. 3 "N-gram Language Models"; Chen and Goodman, "An Empirical Study of Smoothing Techniques for Language Modeling" (1998) |
 
 ## Key Takeaways
 
-- The maximum-likelihood estimate of a categorical distribution is the observed frequency $c_k / N$; no other distribution gives the data a higher log-likelihood (`test_hand_example_mle`, `test_mle_maximizes_the_likelihood`).
-- The MLE gives every unseen outcome probability 0, so a single unseen word in new text makes its likelihood 0 and its perplexity infinite (`test_log_likelihood_zero_terms_and_impossible_data`).
-- Add-alpha smoothing divides by $N + \alpha V$, one pseudo-count per word of the whole vocabulary, seen or not (`test_hand_example_laplace`, `test_laplace_full_distribution_sums_to_one`).
-- Absolute discounting takes a fixed $d$ from every seen count and gives exactly that mass, $dT/N$, to a backoff distribution: the core of Kneser-Ney (`test_hand_example_absolute_discount`, `test_absolute_discount_sums_to_one`).
+- The maximum-likelihood estimate of a categorical distribution is the observed frequency $c_k / N$; no other distribution gives the data a higher log-likelihood.
+- The MLE gives every unseen outcome probability 0, so a single unseen word in new text makes its likelihood 0 and its perplexity infinite.
+- Add-alpha smoothing divides by $N + \alpha V$, one pseudo-count per word of the whole vocabulary, seen or not.
+- Absolute discounting takes a fixed $d$ from every seen count and gives exactly that mass, $dT/N$, to a backoff distribution: the core of Kneser-Ney.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M07.2              # stubs mle.py into your repo
-ol tests M07.2              # read the test catalog first
-ol check M07.2              # exit code is the verdict
-ol diff  M07.2              # after passing: your code against the reference
-```
+Sections 1 and 2 derive the MLE, add-alpha smoothing, and absolute discounting from first principles, and section 3 works each by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Your tracer bigram (`L0.0`) already smooths: it adds one to every count, because a byte pair never seen in training would otherwise get probability 0, the sampler could never produce it, and its NLL on new text would be infinite. That was one formula in one place. Pass 3 estimates distributions from counts all over the system: the Unigram tokenizer (`L1.4`) re-estimates its piece probabilities from expected counts on every EM step, the n-gram model (`L2.1`) estimates the next word for millions of contexts most of which were seen once or never, and PMI (`M11.4`) divides co-occurrence counts. Each needs the same three decisions made correctly: what the best estimate from counts is, how much probability to keep for what was not seen, and where that probability goes. This module makes those decisions once, as functions with exact answers.
+The tracer bigram (`L0.0`) already smooths: it adds one to every count, because a byte pair never seen in training would otherwise get probability 0, the sampler could never produce it, and its NLL on new text would be infinite. That was one formula in one place. Pass 3 estimates distributions from counts all over the system: the Unigram tokenizer (`L1.4`) re-estimates its piece probabilities from expected counts on every EM step, the n-gram model (`L2.1`) estimates the next word for millions of contexts most of which were seen once or never, and PMI (`M11.4`) divides co-occurrence counts. Each needs the same three decisions made correctly: what the best estimate from counts is, how much probability to keep for what was not seen, and where that probability goes. This module makes those decisions once, as functions with exact answers.
 
 ## 2. Principles
 
@@ -58,7 +50,7 @@ Your tracer bigram (`L0.0`) already smooths: it adds one to every count, because
 
 $$\ell(q) - \ell(\hat p) = \sum_k c_k \ln \frac{q_k}{\hat p_k} = N \sum_k \hat p_k \ln \frac{q_k}{\hat p_k} = -N \, \mathrm{KL}(\hat p \,\Vert\, q) \le 0,$$
 
-because the Kullback-Leibler divergence is never negative (Gibbs' inequality, `M11.1`), and it is 0 only when $q = \hat p$. So the frequency wins against every other distribution, which is what `test_mle_maximizes_the_likelihood` checks numerically. It needs $N > 0$: with no data, $0/0$ is not an estimate.
+because the Kullback-Leibler divergence is never negative (Gibbs' inequality, `M11.1`), and it is 0 only when $q = \hat p$. So the frequency wins against every other distribution, which can also be checked numerically by scoring random competitors. It needs $N > 0$: with no data, $0/0$ is not an estimate.
 
 **The zero problem.** The MLE puts all its mass on what was seen. A word with $c_k = 0$ gets $\hat p_k = 0$, and new text containing it gets likelihood 0 and perplexity $\infty$ (`M11.2`). In language most words are rare, so most of the vocabulary has $c_k = 0$ in any given context: this is the normal case, not an edge case.
 
@@ -107,7 +99,7 @@ Sum: $28/60 + 18/60 + 8/60 + 3/60 + 3/60 = 1$. Without the clamp, `d` would get 
 
 **Ney's discount.** One word seen once (`c`), one seen twice (`b`): $D = 1/(1 + 2 \cdot 1) = 1/3$.
 
-These numbers are the first cases in section 4: `test_hand_example_mle`, `test_hand_example_laplace`, `test_hand_example_absolute_discount`, `test_hand_example_ney_discount`, and `test_hand_example_log_likelihood`.
+These numbers are the first five cases in section 4.
 
 ## 4. The interface
 

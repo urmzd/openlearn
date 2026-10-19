@@ -480,7 +480,7 @@ Full solution: [`main.go`](../../../../course/solutions/primers/lang.07/main.go)
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `docker build` | BuildKit with cache mounts and `docker buildx` | parallel stages, `--mount=type=cache` for module caches, multi-arch images | [BuildKit docs](https://docs.docker.com/build/buildkit/) |
 | `alpine` runtime stage | distroless or `scratch` | no shell or package manager at all; smaller attack surface | [distroless](https://github.com/GoogleContainerTools/distroless) |
