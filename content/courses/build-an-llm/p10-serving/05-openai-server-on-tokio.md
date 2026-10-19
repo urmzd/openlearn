@@ -1,29 +1,12 @@
 # tl-serve: OpenAI-compatible HTTP + SSE on tokio/hyper
 
-## Overview
+The previous four sections built an engine that batches requests, chunks prompts, and shares prefixes, and nothing outside a Rust test can use it: the tracer server from [Your first endpoint](00-your-first-endpoint.md) still runs one bigram request per thread. Every client in the rest of the book (the gateway, the load generator, the agent SDK, the official OpenAI client) speaks the v1 API: chat messages, streaming with roles, stop sequences, and error codes. This section puts the engine behind that API, on tokio and hyper, with the operational behaviors a server needs to live in a cluster: bounded admission, disconnect handling, readiness, and draining. The result is the v1 engine that the OpenAI conformance cases, and the official `openai` Python client, run against.
 
-| | |
-|---|---|
-| **Module** | `L10.5` · build · Rust · Pass 7 · 8 to 12 h reading |
-| **Solution** | [`tl-engine/src/engine.rs`](../../../../course/solutions/rust/crates/tl-engine/src/engine.rs): `Engine`, the step loop over runner, scheduler, block manager, and per-request samplers · [`tl-serve/src/server.rs`](../../../../course/solutions/history/L10.5/rust/crates/tl-serve/src/server.rs) (as of this module; [later version](../../../../course/solutions/rust/crates/tl-serve/src/server.rs)): `ServeConfig`, `spawn`, `run`, the engine thread `engine_loop`, `generate`, `stream_task`, bounded admission, abort on disconnect, drain on SIGTERM, health, readiness, `/metrics` · [`openai.rs`](../../../../course/solutions/rust/crates/tl-serve/src/openai.rs): `ApiError`, `parse_chat`, `parse_completion`, the response and chunk documents · [`sse.rs`](../../../../course/solutions/rust/crates/tl-serve/src/sse.rs): `event`, `TextStream` (incremental UTF-8, stop strings) · [`template.rs`](../../../../course/solutions/rust/crates/tl-serve/src/template.rs): `Template`, the chat-template Jinja subset · the entry point's `--config` form in [`main.rs`](../../../../course/solutions/entry/rust/crates/tl-serve/src/main.rs) |
-| **Contract** | HTTP: [`openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml) (engine tier) · the `engine` role, config form: [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) · `[engine]`: [`config/runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json) · chat templates: [`formats/generation-config.schema.json`](../../../../course/contracts/formats/generation-config.schema.json) · metric names: [`otel/metrics.yaml`](../../../../course/contracts/otel/metrics.yaml) |
-| **Needs** | `L10.1` runner and sampler ([chapter](01-model-runner-and-sampler.md)) · `L10.2` scheduler ([chapter](02-continuous-batching.md)) · `L10.3` chunked prefill ([chapter](03-chunked-prefill.md)) · `L10.4` block manager ([chapter](04-block-manager-and-prefix-cache.md)) · `L10.8` speculative decoding ([chapter](08-speculative-decoding-in-the-engine.md)) · `L1.5` tl-tok: the byte tokenizer and tokenizer.json BPE ([chapter](../p01-tokenizers/05-rust-fast-bpe.md)) · reading: `lang.09` async Rust and tokio ([primer](../../programming-languages/02-language-and-tool-primers/09-async-rust-and-tokio.md)), `lang.05` HTTP and SSE, `L10.0` the tracer server, `L8.2` generate and the detokenizer |
-| **Used by** | `L10.6` (disaggregation), `L10.7` (metrics and tracing), and `L10.9` (tool calls) build on this server, and `gw.04`, `ag.01`, `load.01`, and `L12.3` reach it over HTTP. This is the v1 engine that the OpenAI conformance cases, and the official `openai` Python client, run against |
-| **Optional depth** | [OpenAI API reference: chat completions and streaming](https://platform.openai.com/docs/api-reference/chat) (free); [hyper 1.x guide](https://hyper.rs/guides/1/) (free); [Tokio tutorial: channels, select](https://tokio.rs/tokio/tutorial) (free); [Jinja template designer docs](https://jinja.palletsprojects.com/en/stable/templates/) (free); [vLLM's OpenAI server](https://github.com/vllm-project/vllm/tree/main/vllm/entrypoints/openai) (free) |
+The server composes everything in this chapter so far: [the Candle model runner](01-model-runner-and-sampler.md) and its sampler, [the continuous batching scheduler](02-continuous-batching.md), [chunked prefill](03-chunked-prefill.md), [the block manager](04-block-manager-and-prefix-cache.md), and, when configured, [speculative decoding](08-speculative-decoding-in-the-engine.md). It tokenizes with `tl-tok`, the byte tokenizer and tokenizer.json BPE from [Rust fast BPE](../p01-tokenizers/05-rust-fast-bpe.md). For background, read [Async Rust and tokio](../../programming-languages/02-language-and-tool-primers/09-async-rust-and-tokio.md) and [HTTP/1.1, JSON, and Server-Sent Events from the wire up](../../programming-languages/02-language-and-tool-primers/05-http-and-sse.md) in *Programming Languages*, the tracer server, and [KV cache, incremental decode, incremental UTF-8 detokenizer, generate](../p08-inference/02-kv-cache-and-generate.md) for the detokenizer.
 
-## Key Takeaways
+The contracts are the HTTP API [`openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml) (engine tier), the `engine` role's config form in [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md), the `[engine]` table in [`config/runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json), chat templates in [`formats/generation-config.schema.json`](../../../../course/contracts/formats/generation-config.schema.json), and metric names in [`otel/metrics.yaml`](../../../../course/contracts/otel/metrics.yaml). The solution spans five files: [`tl-engine/src/engine.rs`](../../../../course/solutions/rust/crates/tl-engine/src/engine.rs) (`Engine`, the step loop over runner, scheduler, block manager, and per-request samplers); [`tl-serve/src/server.rs`](../../../../course/solutions/history/L10.5/rust/crates/tl-serve/src/server.rs) as of this section, with a [later version](../../../../course/solutions/rust/crates/tl-serve/src/server.rs) that later sections extend (`ServeConfig`, `spawn`, `run`, the engine thread `engine_loop`, `generate`, `stream_task`, bounded admission, abort on disconnect, drain on SIGTERM, health, readiness, `/metrics`); [`openai.rs`](../../../../course/solutions/rust/crates/tl-serve/src/openai.rs) (`ApiError`, `parse_chat`, `parse_completion`, the response and chunk documents); [`sse.rs`](../../../../course/solutions/rust/crates/tl-serve/src/sse.rs) (`event`, `TextStream` with incremental UTF-8 and stop strings); and [`template.rs`](../../../../course/solutions/rust/crates/tl-serve/src/template.rs) (`Template`, the chat-template Jinja subset). The entry point's `--config` form is in [`main.rs`](../../../../course/solutions/entry/rust/crates/tl-serve/src/main.rs).
 
-- The model runs on one OS thread and HTTP on tokio tasks; they meet in channels: a bounded admission queue in, one event channel per request out, so eight concurrent streams give the same answers as eight serial ones.
-- A chat request is rendered through the model's own chat template, with the generation prompt, before tokenization, and `usage.prompt_tokens` counts that rendered prompt.
-- Streaming is `data: <json>\n\n` events: the role first, text as it becomes valid UTF-8 and safe from a stop string, `finish_reason` on the last content chunk, the usage chunk when asked, then `[DONE]`.
-- Every error has the v1 shape, and the status says what kind: 400 bad value, 422 unsupported value, 404 unknown model, 429 full queue with `Retry-After`.
-- A client that leaves frees its KV blocks within one step, and SIGTERM drains: `/readyz` turns 503, in-flight streams finish, then exit 0.
-
-## How to read this chapter
-
-Sections 1 to 3 explain why the engine needs an HTTP front end, the principles that shape it (one compute thread, bounded admission, templates, streaming, errors, draining), and work one request by hand. Section 4 fixes the interface. Section 5 walks through the solution, from the engine step to the SSE task, and explains why each choice is the right one. Try to predict each step before reading it.
-
-The solution adds `pub mod engine;` to `tl-engine/src/lib.rs` and `pub mod openai; pub mod server; pub mod sse; pub mod template;` to `tl-serve/src/lib.rs`. `tl-serve` depends on `tl-engine` and `tl-tok` by path, `tokio` (full), `hyper` (server, http1), `hyper-util` (tokio), `http-body-util`, `bytes`, `serde_json`, and `toml` (the allowed list is [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml)). The tracer `http.rs` stays as it is: `--model-dir --port --health-port` keeps serving API v0, and `--config <runtime.toml>` starts `server::run`:
+The solution adds `pub mod engine;` to `tl-engine/src/lib.rs` and `pub mod openai; pub mod server; pub mod sse; pub mod template;` to `tl-serve/src/lib.rs`. `tl-serve` depends on `tl-engine` and `tl-tok` by path, `tokio` (full), `hyper` (server, http1), `hyper-util` (tokio), `http-body-util`, `bytes`, `serde_json`, and `toml`; the allowed list is [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml). The tracer `http.rs` stays as it is: `--model-dir --port --health-port` keeps serving API v0, and `--config <runtime.toml>` starts `server::run`:
 
 ```toml
 # runtime.toml
@@ -40,17 +23,16 @@ rust/target/release/tl-serve --config runtime.toml
 curl -N localhost:8000/v1/chat/completions -d '{"model":"smol-135m","messages":[{"role":"user","content":"Hi"}],"stream":true}'
 ```
 
----
+> **Learning objectives**
+> - Explain why the model runs on one OS thread and HTTP on tokio tasks, and how bounded admission and per-request channels connect them.
+> - Render a chat request through the model's own chat template and count `usage.prompt_tokens` over the rendered prompt.
+> - Stream chat completion chunks with incremental UTF-8 and stop strings that never leak, even across tokens.
+> - Map every invalid or unsupported request to the right status and the v1 error shape.
+> - Free a departed client's KV blocks within one step, and drain cleanly on SIGTERM.
 
-## 1. Why now
+## One compute thread, many I/O tasks
 
-`L10.1` to `L10.4` built an engine that batches requests, chunks prompts, and shares prefixes, and nothing outside a Rust test can use it: the tracer server (`L10.0`) still runs one bigram request per thread. Every client in the rest of the course (the gateway, the load generator, the agent SDK, the official OpenAI client) speaks the v1 API: chat messages, streaming with roles, stop sequences, error codes. This module puts the engine behind that API, on tokio and hyper, with the operational behaviors a server needs to live in a cluster: bounded admission, disconnect handling, readiness, and draining.
-
-## 2. Principles
-
-### 2.1 One compute thread, many I/O tasks
-
-HTTP connections spend almost all their time waiting; tokio runs thousands of them as tasks on a few threads (`lang.09`). The model is the opposite: each step is milliseconds of pure CPU, and an `.await` inside it would block a runtime thread. So the engine runs on its own OS thread and the two sides talk through channels:
+The first design decision shapes everything else. HTTP connections spend almost all their time waiting, and tokio runs thousands of them as tasks on a few threads. The model is the opposite: each step is milliseconds of pure CPU, and an `.await` inside it would block a runtime thread. So the engine runs on its own OS thread and the two sides talk through channels:
 
 ```text
 handler task  --try_send(Generate)-->  bounded admission queue  -->  engine thread
@@ -61,25 +43,27 @@ handler task  --try_send(Generate)-->  bounded admission queue  -->  engine thre
 handler / SSE task  <--Ev::Token-------  one unbounded channel per request  --
 ```
 
-`Engine::step` is the whole of continuous batching: `schedule` (`L10.2`), `plan` (`L10.3`) over the block manager's tables (`L10.4`), `ModelRunner::forward` (`L10.1`), one `sample` per sampled row with the request's own parameters and generator `stream(seed, sample)`, then `on_step`. A token in `stop_ids` (EOS) finishes the request with `stop`.
+`Engine::step` is the whole of continuous batching: the scheduler's `schedule`, chunked prefill's `plan` over the block manager's tables, `ModelRunner::forward`, one `sample` per sampled row with the request's own parameters and generator `stream(seed, sample)`, then `on_step`. A token in `stop_ids` (EOS) finishes the request with `stop`. Because the requests meet only in channels, eight concurrent streams give the same answers as eight serial ones.
 
-### 2.2 The admission queue is bounded
+## The admission queue is bounded
 
-An unbounded queue turns overload into unbounded latency: every new request waits behind all the others and times out at the client anyway. The admission channel and the scheduler's waiting queue have capacity `queue_capacity`; a request that does not fit is answered **at once** with 429 `rate_limit_exceeded` and `Retry-After: 1`, which load balancers and the gateway (`gw.04`) understand. A request admitted but kept waiting for KV blocks past `queue_deadline_ms` gets 503 `no_capacity`.
+An unbounded queue turns overload into unbounded latency: every new request waits behind all the others and times out at the client anyway. The admission channel and the scheduler's waiting queue therefore have capacity `queue_capacity`. A request that does not fit is answered **at once** with 429 `rate_limit_exceeded` and `Retry-After: 1`, which load balancers and [the SSE streaming proxy](../../ai-platform-engineering/12-gateway/04-sse-streaming-proxy.md) understand. A request admitted but kept waiting for KV blocks past `queue_deadline_ms` gets 503 `no_capacity`.
 
-### 2.3 A chat becomes a prompt
+## A chat becomes a prompt
 
-The model was trained on conversations written in one exact text format. The model directory carries it as a template (`generation_config.json`'s `chat_template`, else `tokenizer_config.json`'s); `template.rs` renders `messages` through it with `add_generation_prompt`, the opening of an assistant turn, so the model continues as the assistant. SmolLM2's template is
+Once admitted, a chat request has to become tokens. The model was trained on conversations written in one exact text format. The model directory carries that format as a template (`generation_config.json`'s `chat_template`, else `tokenizer_config.json`'s), and `template.rs` renders `messages` through it with `add_generation_prompt`, the opening of an assistant turn, so the model continues as the assistant. SmolLM2's template is
 
 ```jinja
 {% for message in messages %}{% if loop.first and messages[0]['role'] != 'system' %}{{ '<|im_start|>system\nYou are a helpful AI assistant named SmolLM, trained by Hugging Face<|im_end|>\n' }}{% endif %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}
 ```
 
-The interpreter is a small compiler: split the source into text, `{{ expression }}`, and `{% statement %}` segments (with `-` trimming whitespace on that side), parse statements into a tree (`for`, `if` / `elif` / `else`), parse expressions by recursive descent (`or` < `and` < `not` < `==`, `!=`, `is defined` < `+`, `~` < `.name`, `[key]`, `| filter` < literals and names), and evaluate over JSON values. Syntax errors surface when the model loads, never on a request. A model with no template (the tracer bigram, the tiny test models) gets a plain default, `<|role|>\ncontent\n` per message and `<|assistant|>\n`.
+The interpreter is a small compiler. It splits the source into text, `{{ expression }}`, and `{% statement %}` segments (with `-` trimming whitespace on that side), parses statements into a tree (`for`, `if` / `elif` / `else`), parses expressions by recursive descent (`or` < `and` < `not` < `==`, `!=`, `is defined` < `+`, `~` < `.name`, `[key]`, `| filter` < literals and names), and evaluates over JSON values. Syntax errors surface when the model loads, never on a request. A model with no template (the tracer bigram, the tiny test models) gets a plain default, `<|role|>\ncontent\n` per message and `<|assistant|>\n`.
 
-The rendered prompt is tokenized with the model's tokenizer (`tl-tok`: bytes, or tokenizer.json BPE with its special tokens matched first), and `usage.prompt_tokens` counts those tokens: what the model reads and what the gateway's ledger bills.
+The rendered prompt is tokenized with the model's tokenizer (`tl-tok`: bytes, or tokenizer.json BPE with its special tokens matched first), and `usage.prompt_tokens` counts those tokens, which is what the model reads and what the gateway's ledger bills.
 
-### 2.4 Streaming text
+## Streaming text
+
+On the way out, tokens have to become text. The notation:
 
 | Symbol | Meaning | Type |
 |---|---|---|
@@ -88,43 +72,50 @@ The rendered prompt is tokenized with the model's tokenizer (`tl-tok`: bytes, or
 | $T$ | decoded text not yet sent | string |
 | $\Sigma$ | the stop strings of the request (at most 4) | strings |
 
-`TextStream::push` appends a token's bytes to $P$, moves the longest valid UTF-8 prefix of $P$ into $T$ (an invalid sequence becomes U+FFFD; an incomplete tail waits), then: if some $\sigma \in \Sigma$ occurs in $T$, it sends $T$ up to the first occurrence and stops; otherwise it holds back the longest suffix of $T$ that is a proper prefix of some $\sigma$ and sends the rest. So a stop string never appears in the output, even split across tokens, and the concatenation of everything sent equals the non-streamed text.
+`TextStream::push` appends a token's bytes to $P$ and moves the longest valid UTF-8 prefix of $P$ into $T$ (an invalid sequence becomes U+FFFD; an incomplete tail waits). Then, if some $\sigma \in \Sigma$ occurs in $T$, it sends $T$ up to the first occurrence and stops; otherwise it holds back the longest suffix of $T$ that is a proper prefix of some $\sigma$ and sends the rest. So a stop string never appears in the output, even split across tokens, and the concatenation of everything sent equals the non-streamed text.
 
-An SSE stream is the bytes `data: <ChatCompletionChunk json>\n\n` per chunk: the first with `delta.role: "assistant"`, then `delta.content` pieces (possibly empty), the last content chunk with `finish_reason` (`length`, or `stop` for EOS and stop strings), the usage chunk (`choices: []`) when `stream_options.include_usage` is set, and `data: [DONE]\n\n`. After 15 s without a token the server sends the comment `: ping\n\n`. hyper frames a body of unknown length with chunked transfer encoding; every event is written as soon as it exists.
+An SSE stream is the bytes `data: <ChatCompletionChunk json>\n\n` per chunk: the first with `delta.role: "assistant"`, then `delta.content` pieces (possibly empty), the last content chunk with `finish_reason` (`length`, or `stop` for EOS and stop strings), the usage chunk (`choices: []`) when `stream_options.include_usage` is set, and finally `data: [DONE]\n\n`. After 15 s without a token the server sends the comment `: ping\n\n`. hyper frames a body of unknown length with chunked transfer encoding, and every event is written as soon as it exists.
 
-### 2.5 Validation and errors
+## Validation and errors
 
-Every request body is checked against the v1 schema before it reaches the engine: a value out of range (`temperature` outside 0 to 2, `top_p` not in (0, 1], `max_tokens` 0, a stop list of 5) is 400 `invalid_request_error` with `param` naming the field; a supported field with a value this engine does not serve (`n` > 1, `echo`, content as an array of parts, and until `L10.9` `tools`, `tool_choice`, `response_format`) is 422 `unsupported_parameter`; an unknown model is 404 `model_not_found`; a prompt plus `max_tokens` past the context is 400 `context_length_exceeded`. Unknown fields are ignored. Every error body is `{"error": {"message", "type", "param", "code"}}` with `application/json`, and every response carries `X-Request-Id` (echoed, or generated).
+Every request body is checked against the v1 schema before it reaches the engine, and the status code says what kind of problem it is:
 
-### 2.6 Disconnects and draining
+- a value out of range (`temperature` outside 0 to 2, `top_p` not in (0, 1], `max_tokens` 0, a stop list of 5) is 400 `invalid_request_error` with `param` naming the field;
+- a supported field with a value this engine does not serve (`n` > 1, `echo`, content as an array of parts, and until [tool calls and constrained decoding](09-tool-calls-and-constrained-decoding.md) also `tools`, `tool_choice`, `response_format`) is 422 `unsupported_parameter`;
+- an unknown model is 404 `model_not_found`;
+- a prompt plus `max_tokens` past the context is 400 `context_length_exceeded`.
 
-When a client goes away, hyper drops the response body. For a stream, the body is the receiving end of a channel fed by the request's SSE task; that task's next send fails, it returns, and it drops the request's event channel. The engine thread checks `is_closed()` on every live request before each step and aborts the closed ones: the scheduler releases their blocks within one step. A stop string ends a request the same way: the handler stops reading and drops its channel.
+Unknown fields are ignored. Every error body is `{"error": {"message", "type", "param", "code"}}` with `application/json`, and every response carries `X-Request-Id` (echoed, or generated).
 
-On SIGTERM (Kubernetes' stop signal) the server closes its API listener, answers `/readyz` with 503 so no new traffic is routed, answers new requests on open connections with 503, waits (up to 30 s) until every in-flight request has finished, stops the engine thread, and exits 0. `/healthz` stays 200 throughout: the process is alive.
+## Disconnects and draining
 
-### 2.7 Embeddings
+Two lifecycle events remain: a client that leaves early, and a server that is asked to stop. When a client goes away, hyper drops the response body. For a stream, the body is the receiving end of a channel fed by the request's SSE task; that task's next send fails, it returns, and it drops the request's event channel. The engine thread checks `is_closed()` on every live request before each step and aborts the closed ones, so the scheduler releases their blocks within one step. A stop string ends a request the same way: the handler stops reading and drops its channel.
 
-`/v1/embeddings` runs each input once (`ModelRunner::run_once`, between steps on the engine thread), takes the final-normed hidden states $h_1, \dots, h_T \in \mathbb{R}^d$, and returns $e = \bar h / \lVert \bar h \rVert_2$ with $\bar h = \frac{1}{T} \sum_t h_t$. The gateway's usage-policy classifier (D33) is a linear head over exactly this vector.
+On SIGTERM (Kubernetes' stop signal) the server closes its API listener, answers `/readyz` with 503 so no new traffic is routed, answers new requests on open connections with 503, waits (up to 30 s) until every in-flight request has finished, stops the engine thread, and exits 0. `/healthz` stays 200 throughout, because the process is alive.
 
-## 3. Worked example by hand
+## Embeddings
 
-The succ bigram (after byte $i$, byte $i + 1$) in a directory `succ`, with the template `{% for m in messages %}{{ m.content }}{% endfor %}`.
+`/v1/embeddings` runs each input once (`ModelRunner::run_once`, between steps on the engine thread), takes the final-normed hidden states $h_1, \dots, h_T \in \mathbb{R}^d$, and returns $e = \bar h / \lVert \bar h \rVert_2$ with $\bar h = \frac{1}{T} \sum_t h_t$. The gateway's usage-policy classifier (decision D33) is a linear head over exactly this vector.
 
-**Request.** `POST /v1/chat/completions` with `{"model": "succ", "messages": [{"role": "user", "content": "a"}], "max_tokens": 3, "temperature": 0}`.
+## Working it by hand
+
+Take the succ bigram (after byte $i$, byte $i + 1$) in a directory `succ`, with the template `{% for m in messages %}{{ m.content }}{% endfor %}`, and send `POST /v1/chat/completions` with `{"model": "succ", "messages": [{"role": "user", "content": "a"}], "max_tokens": 3, "temperature": 0}`. The request passes through five stages:
 
 1. Validation: `model` is the served id; `temperature` 0 is in range; `max_tokens` 3 plus the prompt fits the context.
-2. Template: one message, so the loop emits its content: the prompt is `a`.
-3. Tokenize: the byte tokenizer gives `[97]`; `prompt_tokens` = 1.
-4. Engine: step 1 prefills position 0 and samples greedily from row 97: `b` (98); steps 2 and 3 decode `c`, `d`. The third token reaches `max_tokens`: finish `length`.
-5. Response: `{"object": "chat.completion", "choices": [{"index": 0, "message": {"role": "assistant", "content": "bcd"}, "finish_reason": "length"}], "usage": {"prompt_tokens": 1, "completion_tokens": 3, "total_tokens": 4}, ...}`. This is `hand_example_chat_completion`.
+2. Template: one message, so the loop emits its content, and the prompt is `a`.
+3. Tokenize: the byte tokenizer gives `[97]`, so `prompt_tokens` = 1.
+4. Engine: step 1 prefills position 0 and samples greedily from row 97, giving `b` (98); steps 2 and 3 decode `c` and `d`. The third token reaches `max_tokens`, so the finish is `length`.
+5. Response: `{"object": "chat.completion", "choices": [{"index": 0, "message": {"role": "assistant", "content": "bcd"}, "finish_reason": "length"}], "usage": {"prompt_tokens": 1, "completion_tokens": 3, "total_tokens": 4}, ...}`. This is the test `hand_example_chat_completion`.
 
-With `"stream": true, "stream_options": {"include_usage": true}` the body is six events: role (`content: ""`), `b`, `c`, `d` with `finish_reason: "length"`, the usage chunk, `[DONE]`.
+With `"stream": true, "stream_options": {"include_usage": true}` the body is six events: the role (`content: ""`), `b`, `c`, `d` with `finish_reason: "length"`, the usage chunk, and `[DONE]`.
 
-**A stop string across tokens.** With `"stop": ["de"]` and `max_tokens` 10, the tokens arrive as `b`, `c`, `d`, `e`, ... After `d` the text not yet sent is `d`, a prefix of `de`: held back. After `e` it is `de`: the stop string, so nothing more is sent and the answer is `bc` with `finish_reason: "stop"` (`stop_strings_end_generation_across_tokens`).
+**A stop string across tokens.** With `"stop": ["de"]` and `max_tokens` 10, the tokens arrive as `b`, `c`, `d`, `e`, and so on. After `d` the text not yet sent is `d`, a prefix of `de`, so it is held back. After `e` it is `de`, the stop string, so nothing more is sent and the answer is `bc` with `finish_reason: "stop"` (the test `stop_strings_end_generation_across_tokens`).
 
-**The template, by hand** (`chat_template_hand_example`). SmolLM2's template with `[{"role": "user", "content": "Hi"}]`: `loop.first` is true and `messages[0]['role']` is `user`, not `system`, so the default system turn is emitted first; then `<|im_start|>user\nHi<|im_end|>\n`; then, because `add_generation_prompt` is true, `<|im_start|>assistant\n`.
+**The template, by hand** (`chat_template_hand_example`). Render SmolLM2's template with `[{"role": "user", "content": "Hi"}]`. `loop.first` is true and `messages[0]['role']` is `user`, not `system`, so the default system turn is emitted first; then comes `<|im_start|>user\nHi<|im_end|>\n`; then, because `add_generation_prompt` is true, `<|im_start|>assistant\n`.
 
-## 4. The interface
+## Designing the interface
+
+The engine side is one type in `tl-engine`:
 
 ```rust
 // rust/crates/tl-engine/src/engine.rs
@@ -139,6 +130,8 @@ impl Engine {
     pub fn runner_mut(&mut self) -> &mut ModelRunner;
 }
 ```
+
+The server side spans four modules of `tl-serve`:
 
 ```rust
 // rust/crates/tl-serve/src/{server,openai,sse,template}.rs
@@ -168,49 +161,27 @@ impl Template { pub fn parse(src: &str) -> Result<Template, String>;  pub fn ren
 pub const DEFAULT_TEMPLATE: &str;
 ```
 
-Routes: API port `POST /v1/chat/completions`, `POST /v1/completions`, `POST /v1/embeddings`, `POST /v1/tokenize`, `GET /v1/models`, `GET /v1/models/{id}`, `GET /healthz`; health port `GET /healthz`, `GET /readyz`, `GET /metrics` (`tl_engine_kv_blocks{state}`, `tl_engine_queue_depth`, `tl_engine_active_sequences`, `tl_engine_batch_tokens`, `tl_engine_prefix_cache_hit_ratio`, `tl_engine_preemptions_total`, `tl_engine_kv_evictions_total`; `L10.7` adds the histograms and traces). `X-TL-Priority` (an integer in -100 to 100) sets the request's priority; `X-TL-KV-Handle` answers 404 `kv_handle_not_found` until `L10.6`.
+The API port serves `POST /v1/chat/completions`, `POST /v1/completions`, `POST /v1/embeddings`, `POST /v1/tokenize`, `GET /v1/models`, `GET /v1/models/{id}`, and `GET /healthz`. The health port serves `GET /healthz`, `GET /readyz`, and `GET /metrics`, which reports `tl_engine_kv_blocks{state}`, `tl_engine_queue_depth`, `tl_engine_active_sequences`, `tl_engine_batch_tokens`, `tl_engine_prefix_cache_hit_ratio`, `tl_engine_preemptions_total`, and `tl_engine_kv_evictions_total`; [Serving metrics and tracing](07-serving-metrics-and-tracing.md) adds the histograms and traces. The `X-TL-Priority` header (an integer in -100 to 100) sets the request's priority, and `X-TL-KV-Handle` answers 404 `kv_handle_not_found` until [disaggregated prefill and decode](06-disaggregated-prefill-decode.md) gives it meaning.
 
-Your `main.rs`: `--config <path>` loads `ServeConfig::load` (with `TL_ENGINE__<KEY>` overrides) and calls `server::run`; exit 0 after the drain.
+In `main.rs`, `--config <path>` loads `ServeConfig::load` (with `TL_ENGINE__<KEY>` overrides) and calls `server::run`, exiting 0 after the drain.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Checks | Why it matters downstream |
-|---|---|---|
-| The hand example | section 3: `bcd`, `length`, usage 1 + 3, every field of `chat.completion` | the worked example over the wire |
-| Stream framing | content type, one id, role first, finish on the last content chunk, usage chunk, `[DONE]` | every SSE client parses this |
-| Stream equals non-stream at temperature 0 | deltas concatenate to the plain content on the tiny Llama | conformance case `chat.stream.equals_nonstream` |
-| Seeds reproduce sampling | the same seed repeats, another seed differs | case `chat.seed` |
-| Stop strings across tokens | `de` split across tokens stops at `bc`, plain and streamed | case `chat.stop` |
-| Errors in the OpenAI shape | thirteen bad requests: status, shape, `param`, `code` | cases `err.400`, `err.422`, `route` errors |
-| `/v1/completions` and usage | default 16 tokens, usage | the text endpoint of v1 |
-| Usage counts the templated prompt | `prompt_tokens` = tokens of the rendered default template | case `chat.usage`, the gateway's billing |
-| A full queue | queue of one: the third request gets 429 with `Retry-After` at once; the queued one runs later | bounded admission |
-| A disconnect | `/metrics` shows 0 active sequences and 0 used blocks within 2 s | case `cancel.disconnect` |
-| A drain | `/readyz` 503, new connections refused, the open stream reaches `[DONE]` | rolling deploys on Kubernetes |
-| Embeddings | each vector is the normalized mean of the hidden states, in input order | the policy classifier's input (D33) |
-| Tokenize, models, health, request id | `/v1/tokenize`, `/v1/models`, health on both ports, `X-Request-Id` | the gateway's TPM cost and routing |
-| Concurrent streams | eight parallel streams equal the serial answers | case `concurrency.16` |
-| The chat template by hand | SmolLM2's real template, filters, `elif`, `loop.last`, whitespace control, the default template | the agent model (D20) gets the prompt it was trained on |
-| Template errors at parse | unclosed blocks, unknown statements and filters refused at parse | a broken template fails at load |
-| Stop-prefix hold-back | stop-prefix hold-back and incremental UTF-8, byte by byte | streams never leak a stop string |
-| runtime.toml and env overrides | `[engine]` keys, defaults, `TL_ENGINE__` overrides, refused keys and values | the config form of spec/cli-roles.md |
-| Speculative config | `[engine].speculative` selects the runner-backed L10.8 path; greedy output matches ordinary serving | prompt lookup can be enabled without changing greedy answers |
+### The reasoning chain
 
-## 5. The solution, step by step
+Try to predict each step before reading it.
 
-### 5.1 From first principles
-
-1. **The model step is CPU-bound and long; HTTP is I/O-bound and wide.** A step costs milliseconds of matrix work, a connection mostly waits. Putting a step inside an async task blocks a tokio worker for its whole duration and stalls every connection scheduled there (section 2.1). So the step must run on a thread tokio does not own.
+1. **The model step is CPU-bound and long; HTTP is I/O-bound and wide.** A step costs milliseconds of matrix work, while a connection mostly waits. Putting a step inside an async task blocks a tokio worker for its whole duration and stalls every connection scheduled there. So the step must run on a thread tokio does not own.
 2. **One engine thread forces message passing.** The scheduler, block manager, and runner are mutable state with one owner. Handlers cannot call into them; they send a command (`Cmd::Generate`) and receive events (`Ev::Token`). The engine owns all state, so it needs no locks around the model.
-3. **Admission must be bounded and must answer at once.** If the command channel were unbounded, overload would become queueing delay. A `sync_channel(queue_capacity)` with `try_send` turns "full" into an immediate 429 (section 2.2), and the scheduler's own `max_waiting` refuses with `QueueFull` behind it.
+3. **Admission must be bounded and must answer at once.** If the command channel were unbounded, overload would become queueing delay. A `sync_channel(queue_capacity)` with `try_send` turns "full" into an immediate 429, and the scheduler's own `max_waiting` refuses with `QueueFull` behind it.
 4. **Per-request events need per-request channels.** Each request gets its own unbounded `mpsc` sender. Unbounded is safe here because the engine produces at most one token per request per step; the producer, not the channel, sets the rate. The channel also carries cancellation for free: when the receiver is dropped, `is_closed()` turns true on the engine side.
-5. **Text cannot be produced per token.** A token is bytes, possibly half a character, and a stop string may span tokens. So a stateful `TextStream` sits between tokens and output: it releases only complete UTF-8 and holds back any tail that could still become a stop string (section 2.4, the `de` example of section 3).
+5. **Text cannot be produced per token.** A token is bytes, possibly half a character, and a stop string may span tokens. So a stateful `TextStream` sits between tokens and output: it releases only complete UTF-8 and holds back any tail that could still become a stop string, as in the `de` example.
 6. **The response kind is decided by the first event.** A request that the scheduler refuses (too long, never fits) must get an HTTP error, not a 200 stream that then fails. So `generate` waits for the first event before choosing between an error, a JSON body, and an SSE body.
 7. **Draining is a count.** A rolling deploy needs "stop taking new work, finish old work". An atomic in-flight counter, incremented before admission and decremented by a guard's `Drop` when the response or its stream ends, makes "finished" observable without tracking each request.
 
-### 5.2 The engine step
+### The engine step
 
-[`engine.rs`](../../../../course/solutions/rust/crates/tl-engine/src/engine.rs) composes the earlier modules. Each request keeps its own sampling state, so a request's tokens do not depend on what else is batched with it:
+[`engine.rs`](../../../../course/solutions/rust/crates/tl-engine/src/engine.rs) composes the earlier sections. Each request keeps its own sampling state, so a request's tokens do not depend on what else is batched with it:
 
 ```rust
 struct ReqState {
@@ -266,11 +237,11 @@ pub fn step(&mut self) -> Result<Vec<TokenOut>> {
 }
 ```
 
-The finish reason comes from the scheduler, not from the server: the server never has to guess whether the last token was a length cut, which is how a length cut is never reported as `stop`.
+The finish reason comes from the scheduler, not from the server. The server never has to guess whether the last token was a length cut, which is how a length cut is never reported as `stop`.
 
-### 5.3 The engine thread
+### The engine thread
 
-The engine loop in [`server.rs`](../../../../course/solutions/history/L10.5/rust/crates/tl-serve/src/server.rs) has three phases per iteration: take commands, drop the dead, step.
+The engine loop in [`server.rs`](../../../../course/solutions/history/L10.5/rust/crates/tl-serve/src/server.rs) has three phases per iteration: take commands, drop the dead, and step.
 
 ```rust
 fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop: Arc<AtomicBool>, deadline: Duration, step_delay: Duration, speculative: Option<SpecConfig>) {
@@ -344,7 +315,7 @@ fn engine_loop(mut engine: Engine, rx: Receiver<Cmd>, shared: Arc<Shared>, stop:
 
 The `is_closed()` sweep runs before every step, so an abandoned request is aborted at most one step after its client leaves. That is the "frees its blocks within a step" guarantee, and it needs no message from the handler: dropping the receiver is the message. `/metrics` reads a copy of `EngineStats` under a mutex, so a scrape never touches the engine.
 
-### 5.4 Admission and the first event
+### Admission and the first event
 
 `generate` validates, renders, tokenizes, and admits:
 
@@ -428,7 +399,7 @@ pub fn parse_chat(body: &[u8]) -> Result<GenSpec, ApiError> {
 }
 ```
 
-### 5.5 Detokenizing and the SSE task
+### Detokenizing and the SSE task
 
 `Detok` wraps `TextStream` and turns the engine's finish into the wire's `finish_reason`:
 
@@ -450,7 +421,7 @@ fn token(&mut self, shared: &Shared, token: u32, logprob: f64, finish: Option<Fi
 }
 ```
 
-`TextStream::push` in [`sse.rs`](../../../../course/solutions/rust/crates/tl-serve/src/sse.rs) is section 2.4's algorithm:
+`TextStream::push` in [`sse.rs`](../../../../course/solutions/rust/crates/tl-serve/src/sse.rs) is the streaming-text algorithm described earlier:
 
 ```rust
 pub fn push(&mut self, bytes: &[u8]) -> String {
@@ -483,7 +454,7 @@ pub fn push(&mut self, bytes: &[u8]) -> String {
 }
 ```
 
-In the `de` example: after `d`, `held` is `d`, which equals the prefix `de[..1]`, so `keep = 1` and nothing is sent; after `e`, `held` is `de`, `find` returns 0, and the stream stops with `bc` already sent. `decode` uses `Utf8Error::error_len()`: `Some(n)` means an invalid sequence (emit U+FFFD, skip `n` bytes), `None` means an incomplete one (wait, unless this is `finish`).
+In the `de` example: after `d`, `held` is `d`, which equals the prefix `de[..1]`, so `keep = 1` and nothing is sent; after `e`, `held` is `de`, `find` returns 0, and the stream stops with `bc` already sent. `decode` uses `Utf8Error::error_len()`: `Some(n)` means an invalid sequence (emit U+FFFD, skip `n` bytes), and `None` means an incomplete one (wait, unless this is `finish`).
 
 The SSE task writes one event per piece and owns the guard, so the drain waits for the stream, not just the handler:
 
@@ -530,7 +501,7 @@ async fn stream_task(shared: Arc<Shared>, job: Job, first: Ev, mut rx: mpsc::Unb
 
 Every `return` on a failed `send` drops `rx`, which is how a disconnect reaches the engine's `is_closed()` sweep. The response body is `SseBody`, a `Body` whose `poll_frame` just polls the `Bytes` channel; hyper frames it with chunked encoding and writes each event as it arrives.
 
-### 5.6 Draining
+### Draining
 
 The server thread in `spawn` runs the tokio runtime and owns the shutdown sequence:
 
@@ -553,11 +524,11 @@ let _ = h.await;
 // ... then stop.store(true) and join the engine thread; run() returns Ok -> exit 0
 ```
 
-The order matters: readiness drops first so the load balancer stops routing, then the listener closes, then in-flight work finishes, and only then does the engine stop. `/healthz` stays 200 the whole time because the process is alive and should not be restarted.
+The order matters. Readiness drops first so the load balancer stops routing, then the listener closes, then in-flight work finishes, and only then does the engine stop. `/healthz` stays 200 the whole time because the process is alive and should not be restarted.
 
-### 5.7 The chat template and embeddings
+### The chat template and embeddings
 
-[`template.rs`](../../../../course/solutions/rust/crates/tl-serve/src/template.rs) parses once (every syntax error surfaces at model load, in `Template::parse`) and renders a node tree. The `for` node is where `loop.first` comes from:
+[`template.rs`](../../../../course/solutions/rust/crates/tl-serve/src/template.rs) parses once, so every syntax error surfaces at model load in `Template::parse`, and renders a node tree. The `for` node is where `loop.first` comes from:
 
 ```rust
 Node::For { var, iter, body } => {
@@ -596,103 +567,121 @@ pub fn pool_embedding(hidden: &[f32], d: usize) -> Vec<f32> {
 }
 ```
 
-`ServeConfig::from_toml` parses `[engine]`, applies `TL_ENGINE__<KEY>` environment overrides on top (lower-cased, integers parsed as integers), rejects unknown keys, and refuses values this engine cannot serve (a role other than `unified`, `kv_format` 2, `quant` other than `none` or `int4`) at load rather than at first request.
+Finally, `ServeConfig::from_toml` parses `[engine]`, applies `TL_ENGINE__<KEY>` environment overrides on top (lower-cased, integers parsed as integers), rejects unknown keys, and refuses values this engine cannot serve (a role other than `unified`, `kv_format` 2, `quant` other than `none` or `int4`) at load rather than at first request.
 
-Full solution: [`engine.rs`](../../../../course/solutions/rust/crates/tl-engine/src/engine.rs), [`server.rs`](../../../../course/solutions/history/L10.5/rust/crates/tl-serve/src/server.rs), [`openai.rs`](../../../../course/solutions/rust/crates/tl-serve/src/openai.rs), [`sse.rs`](../../../../course/solutions/rust/crates/tl-serve/src/sse.rs), [`template.rs`](../../../../course/solutions/rust/crates/tl-serve/src/template.rs).
+The full solution is [`engine.rs`](../../../../course/solutions/rust/crates/tl-engine/src/engine.rs), [`server.rs`](../../../../course/solutions/history/L10.5/rust/crates/tl-serve/src/server.rs), [`openai.rs`](../../../../course/solutions/rust/crates/tl-serve/src/openai.rs), [`sse.rs`](../../../../course/solutions/rust/crates/tl-serve/src/sse.rs), and [`template.rs`](../../../../course/solutions/rust/crates/tl-serve/src/template.rs).
 
-### 5.8 Why this solution
+### Why this design
 
-- **Cost.** Per step the engine thread does $O(L)$ work for $L$ live requests on top of the forward pass (the closed-channel sweep and token delivery), negligible next to the model. `TextStream::push` is $O(|T| \cdot \sum |\sigma|)$ for the held text $T$, and $T$ is at most the longest stop string, so it is constant per token in practice.
-- **Why not `spawn_blocking` per step, or a mutex around the engine?** Both put several tasks in contention for one model; a mutex serializes them anyway and makes batching impossible, because batching needs one owner to see every request at once. The single owner thread is the batching.
-- **Why not stream tokens straight to the socket?** The engine would block on a slow client. With a per-request channel the engine never waits on I/O; a slow reader only grows its own channel by one token per step.
-- **Why decide the status on the first event?** Once headers are sent as 200 `text/event-stream`, a later rejection can only be an error event inside the stream, which many clients treat as a success with garbage. Waiting for the first token costs one step of latency on the header and buys correct status codes.
-- **Tradeoffs accepted.** The engine thread polls with a 20 ms timeout when idle, so the first request after idle can wait up to 20 ms. Drain has a 30 s ceiling, after which remaining streams are cut, matching Kubernetes' default grace period.
+Per step, the engine thread does $O(L)$ work for $L$ live requests on top of the forward pass (the closed-channel sweep and token delivery), negligible next to the model. `TextStream::push` is $O(|T| \cdot \sum |\sigma|)$ for the held text $T$, and $T$ is at most the longest stop string, so it is constant per token in practice.
 
-### 5.9 Explain it back
+Why not `spawn_blocking` per step, or a mutex around the engine? Both put several tasks in contention for one model. A mutex serializes them anyway and makes batching impossible, because batching needs one owner to see every request at once: the single owner thread *is* the batching. Why not stream tokens straight to the socket? The engine would block on a slow client. With a per-request channel the engine never waits on I/O, and a slow reader only grows its own channel by one token per step. Why decide the status on the first event? Once headers are sent as 200 `text/event-stream`, a later rejection can only be an error event inside the stream, which many clients treat as a success with garbage. Waiting for the first token costs one step of latency on the header and buys correct status codes.
 
-**Why does the engine use `try_send` on a bounded channel instead of `send().await`?**
+Two tradeoffs are accepted. The engine thread polls with a 20 ms timeout when idle, so the first request after idle can wait up to 20 ms. And drain has a 30 s ceiling, after which remaining streams are cut, matching Kubernetes' default grace period.
 
-<details><summary>Answer</summary>
+## What can go wrong
 
-`send().await` on a full channel waits, so overload becomes unbounded latency, and the client times out anyway. `try_send` fails immediately on `Full`, which becomes 429 with `Retry-After: 1`: a signal the gateway and load balancers can act on (retry elsewhere, back off) instead of a hung connection.
+A correct server handles these cases:
 
-</details>
+| Case | Checks | Why it matters downstream |
+|---|---|---|
+| The hand example | `bcd`, `length`, usage 1 + 3, every field of `chat.completion` | the worked example over the wire |
+| Stream framing | content type, one id, role first, finish on the last content chunk, usage chunk, `[DONE]` | every SSE client parses this |
+| Stream equals non-stream at temperature 0 | deltas concatenate to the plain content on the tiny Llama | conformance case `chat.stream.equals_nonstream` |
+| Seeds reproduce sampling | the same seed repeats, another seed differs | case `chat.seed` |
+| Stop strings across tokens | `de` split across tokens stops at `bc`, plain and streamed | case `chat.stop` |
+| Errors in the OpenAI shape | thirteen bad requests: status, shape, `param`, `code` | cases `err.400`, `err.422`, `route` errors |
+| `/v1/completions` and usage | default 16 tokens, usage | the text endpoint of v1 |
+| Usage counts the templated prompt | `prompt_tokens` = tokens of the rendered default template | case `chat.usage`, the gateway's billing |
+| A full queue | queue of one: the third request gets 429 with `Retry-After` at once; the queued one runs later | bounded admission |
+| A disconnect | `/metrics` shows 0 active sequences and 0 used blocks within 2 s | case `cancel.disconnect` |
+| A drain | `/readyz` 503, new connections refused, the open stream reaches `[DONE]` | rolling deploys on Kubernetes |
+| Embeddings | each vector is the normalized mean of the hidden states, in input order | the policy classifier's input (D33) |
+| Tokenize, models, health, request id | `/v1/tokenize`, `/v1/models`, health on both ports, `X-Request-Id` | the gateway's TPM cost and routing |
+| Concurrent streams | eight parallel streams equal the serial answers | case `concurrency.16` |
+| The chat template by hand | SmolLM2's real template, filters, `elif`, `loop.last`, whitespace control, the default template | the agent model (D20) gets the prompt it was trained on |
+| Template errors at parse | unclosed blocks, unknown statements and filters refused at parse | a broken template fails at load |
+| Stop-prefix hold-back | stop-prefix hold-back and incremental UTF-8, byte by byte | streams never leak a stop string |
+| runtime.toml and env overrides | `[engine]` keys, defaults, `TL_ENGINE__` overrides, refused keys and values | the config form of `spec/cli-roles.md` |
+| Speculative config | `[engine].speculative` selects the runner-backed speculative path; greedy output matches ordinary serving | prompt lookup can be enabled without changing greedy answers |
 
-**How does a client disconnect reach the scheduler, given that no code sends an "abort" message?**
+The pitfall that undermines the whole design is the first one in the reasoning chain.
 
-<details><summary>Answer</summary>
+> **Warning:** Running a step inside an async task means one long prefill stalls every connection on that runtime thread. The engine runs on its own OS thread in `tl-engine`, and HTTP never waits on it.
 
-hyper drops the `SseBody`, so the `Bytes` channel's receiver is gone; the SSE task's next `send` returns false and the task returns, dropping its `Ev` receiver. On the engine thread `l.tx.is_closed()` is now true, and the sweep before the next step calls `engine.abort(id)`, which releases the blocks. The step after the disconnect is the latest point the blocks are freed.
-
-</details>
-
-**Why does `TextStream` hold back `d` when the stop string is `de`, and why only at character boundaries?**
-
-<details><summary>Answer</summary>
-
-`d` might be the start of `de`; if it were sent and `e` followed, the client would already have shown part of the stop string, and the streamed text would differ from the non-streamed `bc`. Holding back the longest suffix that is a proper prefix of some stop string is the least you can hold and still be safe. The prefixes are taken at `char_indices` so a slice never cuts a multi-byte character, which would panic on a `str`.
-
-</details>
-
-**Why is `usage.prompt_tokens` the length of the rendered template and not of the user's text?**
-
-<details><summary>Answer</summary>
-
-The model reads the rendered prompt: system turn, role markers, and the generation prompt included. That is what occupies KV blocks and what the gateway bills. Counting only the user's text would undercount every chat by the template's overhead.
-
-</details>
-
-**Why does the drain keep the health listener open until the in-flight count reaches zero?**
-
-<details><summary>Answer</summary>
-
-`/readyz` must keep answering 503 during the drain so Kubernetes and the gateway route nothing new to this pod; closing the health port would look like a crash. `/healthz` keeps answering 200 so the pod is not killed early. Only when every stream has finished (the `Inflight` guards have all dropped) is it safe to stop both.
-
-</details>
-
-## 6. Pitfalls
+The rest, grouped roughly by where they bite:
 
 | Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Reporting a length cut as `stop` | clients think the model finished its answer | the finish reason comes from the scheduler's `Finished` event, mapped one to one in `Detok::token`; see 5.2 and 5.5 |
-| Rendering without the generation prompt | the model continues the user's turn instead of answering | `render_chat(..., true, ...)` always passes `add_generation_prompt = true`; see 5.4 |
+| Reporting a length cut as `stop` | clients think the model finished its answer | the finish reason comes from the scheduler's `Finished` event, mapped one to one in `Detok::token` |
+| Rendering without the generation prompt | the model continues the user's turn instead of answering | `render_chat(..., true, ...)` always passes `add_generation_prompt = true` |
 | Ending an SSE event with one newline | every client merges all chunks into one event | `sse::event` writes `data: {payload}\n\n`, and `DONE` and `PING` end with a blank line too |
-| No role in the first delta | the OpenAI client cannot assemble the message | `stream_task` sends `chunk("", true, ...)` before any token; see 5.5 |
-| Sending text that may begin a stop string | the stream shows `d` of `de` before it stops | `TextStream::push` holds back the longest stop-string prefix at the tail; see 5.5 |
+| No role in the first delta | the OpenAI client cannot assemble the message | `stream_task` sends `chunk("", true, ...)` before any token |
+| Sending text that may begin a stop string | the stream shows `d` of `de` before it stops | `TextStream::push` holds back the longest stop-string prefix at the tail |
 | Returning the stop string itself | answers end with the stop sequence | `push` returns `held[..at]`, the text before the first occurrence |
-| Accepting out-of-range values | `temperature: -1` reaches the sampler | `number` checks every field's range and returns 400 with `param`; see 5.4 |
+| Accepting out-of-range values | `temperature: -1` reaches the sampler | `number` checks every field's range and returns 400 with `param` |
 | Ignoring `n` | a client asking for 2 choices silently gets 1 | `n != 1` is 422 `unsupported_parameter` |
-| A full queue answered with 503 or a wait | clients and the gateway cannot tell overload from failure; latency grows unbounded | `try_send` on the bounded channel; `Full` becomes 429 with `Retry-After: 1`; see 5.4 |
-| `abort` that does not reach the scheduler | a gone client keeps generating and holding blocks | `Engine::abort` calls `sched.abort`, and the engine loop sweeps `is_closed()` before every step; see 5.3 |
-| Exiting on SIGTERM without waiting | every rolling deploy cuts streams mid-answer | the drain waits for the `Inflight` count to reach zero before stopping the engine; see 5.6 |
-| Returning the mean without normalizing | cosine similarities and the policy head are off | `pool_embedding` divides by the L2 norm; see 5.7 |
-| `loop.first` off by one | the default system turn appears in the wrong place | `first` is `i == 0` over the 0-based enumerate; see 5.7 |
+| A full queue answered with 503 or a wait | clients and the gateway cannot tell overload from failure; latency grows unbounded | `try_send` on the bounded channel; `Full` becomes 429 with `Retry-After: 1` |
+| `abort` that does not reach the scheduler | a gone client keeps generating and holding blocks | `Engine::abort` calls `sched.abort`, and the engine loop sweeps `is_closed()` before every step |
+| Exiting on SIGTERM without waiting | every rolling deploy cuts streams mid-answer | the drain waits for the `Inflight` count to reach zero before stopping the engine |
+| Returning the mean without normalizing | cosine similarities and the policy head are off | `pool_embedding` divides by the L2 norm |
+| `loop.first` off by one | the default system turn appears in the wrong place | `first` is `i == 0` over the 0-based enumerate |
 | Ignoring `TL_ENGINE__` overrides | a ConfigMap cannot be tuned per pod | `from_toml` merges the overrides into `[engine]` before reading any key |
 | Dropping `X-Request-Id` | one request cannot be followed through gateway and engine logs | every response echoes the header, or generates one |
-| Running a step inside an async task | one long prefill stalls every connection on that runtime thread | the engine runs on its own OS thread, `tl-engine`; see 5.1 and 5.3 |
 
-## 7. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `L10.1` | the runner (also for embeddings) and the sampler with per-request `stream(seed, sample)` |
-| Back | `L10.2` | the scheduler: `add`, `abort`, `schedule`, `on_step`; `QueueFull` becomes 429 |
-| Back | `L10.3` | `plan` builds every step; `prefill_chunk` turns chunking on |
-| Back | `L10.4` | the block manager in the mode `prefix_cache` names; hit ratio and block counts in `/metrics` |
-| Back | `L10.8` | runner-backed speculative generation when `[engine].speculative` is configured |
-| Back | `L1.5` | tl-tok: byte tokenizer and tokenizer.json BPE for prompts and token bytes |
-| Forward | `L10.6` | disaggregated prefill and decode add `EngineControl` and the `X-TL-KV-Handle` resume to this server |
-| Forward | `L10.7` | histograms, OpenTelemetry spans, and trace propagation join `/metrics` |
-| Forward | `L10.9` | `tools`, `tool_choice`, and `response_format` replace today's 422 |
-| Forward | `gw.04`, `load.01`, `ag.01` | the gateway proxies this API; the load generator and the agent SDK are its clients |
-| Forward | `L12.3` | GRPO uses this serving API and its chat template |
+This server is where the chapter's pieces meet. It uses the runner (also for embeddings) and the sampler with a per-request `stream(seed, sample)`; the scheduler's `add`, `abort`, `schedule`, and `on_step`, with `QueueFull` becoming 429; chunked prefill's `plan` for every step, with `prefill_chunk` turning chunking on; the block manager in the mode `prefix_cache` names, with its hit ratio and block counts in `/metrics`; the runner-backed speculative path when `[engine].speculative` is configured; and `tl-tok` for prompts and token bytes.
 
-## Going further
+Later sections build on it directly. [Disaggregated prefill and decode](06-disaggregated-prefill-decode.md) adds `EngineControl` and the `X-TL-KV-Handle` resume. [Serving metrics and tracing](07-serving-metrics-and-tracing.md) adds histograms, OpenTelemetry spans, and trace propagation to `/metrics`. [Tool calls and constrained decoding](09-tool-calls-and-constrained-decoding.md) replaces today's 422 for `tools`, `tool_choice`, and `response_format`. Beyond this chapter, [the SSE streaming proxy](../../ai-platform-engineering/12-gateway/04-sse-streaming-proxy.md) proxies this API, while [the load generator](10-load-generator.md) and [the agent SDK's OpenAI-compatible provider](../../ai-platform-engineering/13-agent-sdk/01-types-and-provider.md) are its clients, and [Group relative policy optimization with verifiable rewards](../p12-post-training/03-grpo-with-verifiable-rewards.md) uses this serving API and its chat template.
+
+Production systems take each piece further:
 
 | This solution | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | one engine thread and channels | vLLM's `AsyncLLM` with a separate engine core process | the engine in another process (ZeroMQ), so Python's GIL never blocks it | `vllm/v1/engine/async_llm.py` |
 | a Jinja subset | [minijinja](https://github.com/mitsuhiko/minijinja), Hugging Face `apply_chat_template` | the full template language: macros, `raise_exception`, namespaces | `transformers` `apply_chat_template` |
-| bounded queue + 429 | admission control with token buckets and fairness | per-tenant limits, priority classes | `gw.03`, `gw.04` |
-| hand-written validation | OpenAPI-generated servers ([utoipa](https://github.com/juhaku/utoipa), [progenitor](https://github.com/oxidecomputer/progenitor)) | schema and code from one source | `craft.14`'s v2 migration |
-| `/metrics` gauges | OpenTelemetry metrics and traces | histograms of TTFT and TPOT, spans per request | `L10.7` |
+| bounded queue + 429 | admission control with token buckets and fairness | per-tenant limits, priority classes | [Rate limiting](../../ai-platform-engineering/08-authorization-and-access-control/02-rate-limiting.md), [the SSE streaming proxy](../../ai-platform-engineering/12-gateway/04-sse-streaming-proxy.md) |
+| hand-written validation | OpenAPI-generated servers ([utoipa](https://github.com/juhaku/utoipa), [progenitor](https://github.com/oxidecomputer/progenitor)) | schema and code from one source | the v2 migration in [Interface migration: API v1 to v2](../../software-craftsmanship/07-maintenance/02-api-v1-to-v2.md) |
+| `/metrics` gauges | OpenTelemetry metrics and traces | histograms of TTFT and TPOT, spans per request | [Serving metrics and tracing](07-serving-metrics-and-tracing.md) |
+
+### Further reading
+
+- [OpenAI API reference: chat completions and streaming](https://platform.openai.com/docs/api-reference/chat) (free).
+- [hyper 1.x guide](https://hyper.rs/guides/1/) (free).
+- [Tokio tutorial: channels, select](https://tokio.rs/tokio/tutorial) (free).
+- [Jinja template designer docs](https://jinja.palletsprojects.com/en/stable/templates/) (free).
+- [vLLM's OpenAI server](https://github.com/vllm-project/vllm/tree/main/vllm/entrypoints/openai) (free).
+
+## Key terms
+
+- **engine thread**: the single OS thread that owns the scheduler, block manager, and runner and runs every step.
+- **bounded admission**: a fixed-capacity command queue filled with `try_send`, so a full queue is an immediate 429.
+- **chat template**: the model's own Jinja template that turns `messages` into the exact text format it was trained on.
+- **generation prompt**: the opening of an assistant turn appended by `add_generation_prompt`, so the model answers as the assistant.
+- **stop-string hold-back**: withholding the longest tail of decoded text that could still become a stop string.
+- **readiness**: `/readyz`, which answers 503 while draining so no new traffic is routed; distinct from liveness (`/healthz`).
+- **drain**: stop accepting work, let in-flight requests finish (up to 30 s), then exit 0.
+
+## Summary
+
+- The model runs on one OS thread and HTTP on tokio tasks; they meet in channels, a bounded admission queue in and one event channel per request out, so eight concurrent streams give the same answers as eight serial ones.
+- A chat request is rendered through the model's own chat template, with the generation prompt, before tokenization, and `usage.prompt_tokens` counts that rendered prompt.
+- Streaming is `data: <json>\n\n` events: the role first, text as it becomes valid UTF-8 and safe from a stop string, `finish_reason` on the last content chunk, the usage chunk when asked, then `[DONE]`.
+- Every error has the v1 shape, and the status says what kind: 400 bad value, 422 unsupported value, 404 unknown model, 429 full queue with `Retry-After`.
+- A client that leaves frees its KV blocks within one step, and SIGTERM drains: `/readyz` turns 503, in-flight streams finish, then exit 0.
+
+## Review questions
+
+1. Why does the server use `try_send` on a bounded channel instead of `send().await`?
+   <details><summary>Answer</summary>`send().await` on a full channel waits, so overload becomes unbounded latency, and the client times out anyway. `try_send` fails immediately on `Full`, which becomes 429 with `Retry-After: 1`: a signal the gateway and load balancers can act on (retry elsewhere, back off) instead of a hung connection.</details>
+2. How does a client disconnect reach the scheduler, given that no code sends an "abort" message?
+   <details><summary>Answer</summary>hyper drops the `SseBody`, so the `Bytes` channel's receiver is gone; the SSE task's next `send` returns false and the task returns, dropping its `Ev` receiver. On the engine thread `l.tx.is_closed()` is now true, and the sweep before the next step calls `engine.abort(id)`, which releases the blocks. The step after the disconnect is the latest point the blocks are freed.</details>
+3. Why does `TextStream` hold back `d` when the stop string is `de`, and why only at character boundaries?
+   <details><summary>Answer</summary>`d` might be the start of `de`; if it were sent and `e` followed, the client would already have shown part of the stop string, and the streamed text would differ from the non-streamed `bc`. Holding back the longest suffix that is a proper prefix of some stop string is the least you can hold and still be safe. The prefixes are taken at `char_indices` so a slice never cuts a multi-byte character, which would panic on a `str`.</details>
+4. Why is `usage.prompt_tokens` the length of the rendered template and not of the user's text?
+   <details><summary>Answer</summary>The model reads the rendered prompt: system turn, role markers, and the generation prompt included. That is what occupies KV blocks and what the gateway bills. Counting only the user's text would undercount every chat by the template's overhead.</details>
+5. Why does the drain keep the health listener open until the in-flight count reaches zero?
+   <details><summary>Answer</summary>`/readyz` must keep answering 503 during the drain so Kubernetes and the gateway route nothing new to this pod; closing the health port would look like a crash. `/healthz` keeps answering 200 so the pod is not killed early. Only when every stream has finished (the `Inflight` guards have all dropped) is it safe to stop both.</details>
+6. Why does `generate` wait for the first event before choosing the response kind?
+   <details><summary>Answer</summary>A request the scheduler refuses (too long, never fits, queue deadline) must get an HTTP error status. Once a 200 `text/event-stream` header is sent, the status can no longer change, so the decision waits one step for the first event.</details>

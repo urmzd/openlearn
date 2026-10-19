@@ -1,59 +1,41 @@
-# Async fetch with resume, checksums, license capture
+# Async fetch with resume, checksums, and license capture
 
-## Overview
+The tokenizers in [Tokenizers](../../build-an-llm/p01-tokenizers/README.md) from *Build an LLM* are trained on whatever text they are handed, and so far that text has been a file copied by hand. The corpus pipeline starts here. A config names the sources (a URL, the sha256 you reviewed, the license), and the pipeline must turn that list into documents on disk: the same documents every time, with a record of where each came from and under what terms.
 
-| | |
-|---|---|
-| **Module** | `data.01` · build · Python · Pass 3 · 2 to 3 h reading |
-| **Solution** | [`python/corpus/fetch.py`](../../../../course/solutions/python/corpus/fetch.py): `Source`, `Fetched`, `Manifest`, `FetchError`, `sources_from_config`, `split_documents`, `read_raw`, `ledger_row`, and `async def fetch`, with the private `_open` (HTTP/1.1 over asyncio streams), `_attempt` (one resumable GET), `_one` (one source end to end), and `_write_parts` · the CLI that runs it: [`corpus/__main__.py`](../../../../course/solutions/entry/python/corpus/__main__.py) |
-| **Contract** | [`course/contracts/py/corpus/fetch.pyi`](../../../../course/contracts/py/corpus/fetch.pyi) · formats: [`corpus-shard.md`](../../../../course/contracts/formats/corpus-shard.md) (raw documents), [`ledger.schema.json`](../../../../course/contracts/formats/ledger.schema.json), [`corpus-config.schema.json`](../../../../course/contracts/formats/corpus-config.schema.json) · exit codes: [`spec/subprocess-activity.md`](../../../../course/contracts/spec/subprocess-activity.md) |
-| **Needs** | nothing to call: reading `lang.08` (asyncio), `lang.05` (HTTP/1.1), `ethics.01` (what the ledger is for) |
-| **Used by** | `data.02` extracts documents from the raw parts with `read_raw` · later: the `CorpusBuild` workflow runs `fetch` as its first activity (`data.09`), and `data.08` verifies the ledger rows it writes. It is the first stage of the corpus build: every later stage reads what it wrote. |
-| **Optional depth** | RFC 9110 sections 14 (Range requests) and 15.3.7 / 15.5.17 (206, 416); Penedo et al., *The FineWeb Datasets* (2024), section 3 (how a web-scale corpus is collected); Gebru et al., *Datasheets for Datasets* (2021), "Collection process" |
+The network makes this hard. A 300 MB download from a dataset mirror fails at 280 MB more often than you would like; mirrors answer `503` under load; a URL you pinned last month now serves different bytes; and the durable `CorpusBuild` workflow, built in [CorpusBuild as a durable workflow](09-corpusbuild-as-a-durable-workflow.md), will rerun this step after every crash. Without resume, every cut restarts from zero. Without the checksum, a changed file silently changes the corpus. Without the ledger, nobody can later answer "may we train on this?".
 
-## Key Takeaways
+This section builds the fetch stage, the first stage of the corpus build: every later stage reads what it writes. It leans on three primers. [Python asyncio](../../programming-languages/02-language-and-tool-primers/08-python-asyncio.md) and [HTTP/1.1 from the wire up](../../programming-languages/02-language-and-tool-primers/05-http-and-sse.md) in *Programming Languages* supply the event loop, bounded concurrency, and the protocol; [Data licensing and the ledger](../../responsible-ai/01-data-licensing/01-data-licensing-and-the-ledger.md) in *Responsible AI* explains what the ledger is for. The complete solution is [`python/corpus/fetch.py`](../../../../course/solutions/python/corpus/fetch.py), its contract is [`course/contracts/py/corpus/fetch.pyi`](../../../../course/contracts/py/corpus/fetch.pyi), and it uses only the standard library plus `zstandard` (allowed for `corpus` in `contracts/allowed-deps.toml`), because the raw parts are zstd files. As you read the implementation, try to predict each step before you see it.
 
-- A cut download resumes with `Range: bytes=<size>-`: a `206` continues the file, a `200` means the server ignored the range and the file starts over, a `416` means the partial file is already whole.
-- The checksum pinned in the config is the only one to trust. A mismatch is quarantined, not retried, and never reaches the corpus.
-- The license is captured at fetch time, one ledger row per source, tied to the sha256 of the exact bytes.
-- A rerun downloads nothing the ledger already records, so a crashed or retried pipeline costs nothing twice.
-- Errors say whether a retry can help: `FetchError.retryable` maps to exit 75 or 65 under the subprocess activity contract.
+> **Learning objectives**
+> - Resume a cut download with an HTTP `Range` request and interpret `206`, `200`, and `416` correctly.
+> - Explain why only the checksum pinned in the config counts, and why a mismatch is quarantined rather than retried.
+> - Classify fetch errors as retryable or not and map them to exit codes 75 and 65.
+> - Capture one ledger row per source at fetch time, written deterministically in config order.
+> - Make a rerun download nothing the ledger already records.
 
-## How to read this chapter
+## What fetch produces
 
-Sections 1 to 3 build the fetch step from first principles: what it writes, how HTTP Range resumes a cut download, why only the pinned checksum counts, what is retryable, and how reruns stay free; then they trace one source through a cut and a resume by hand. Section 4 fixes the interface and lists what a correct fetch must handle. Section 5 walks through [`fetch.py`](../../../../course/solutions/python/corpus/fetch.py) from the bottom up: one HTTP attempt, one source, then the concurrent driver and the ledger. The solution uses only the standard library plus `zstandard` (allowed for `corpus` in `contracts/allowed-deps.toml`), because the raw parts are zstd files. Try to predict each step before reading it.
-
----
-
-## 1. Why now
-
-The tokenizers (Pass 3, `L1.*`) are trained on whatever text they are handed, and so far that text has been a file copied by hand. The corpus pipeline starts here: a config names the sources (a URL, the sha256 you reviewed, the license), and the pipeline must turn that list into documents on disk, the same documents every time, with a record of where each came from and under what terms. The network makes this hard. A 300 MB download from a dataset mirror fails at 280 MB more often than you would like; mirrors answer `503` under load; a URL you pinned last month now serves different bytes; and the `CorpusBuild` workflow (`data.09`) will rerun this step after every crash. Without resume, every cut restarts from zero; without the checksum, a changed file silently changes the corpus; without the ledger, nobody can later answer "may we train on this?".
-
-## 2. Principles
-
-### 2.1 What fetch produces
-
-For each source of the config, `fetch` writes under `dest` (the corpus directory, `/artifacts/corpus`):
+Start with the output, because everything else is in service of it. For each source of the config, `fetch` writes under `dest` (the corpus directory, `/artifacts/corpus`) the following paths:
 
 | Path | Content |
 |---|---|
 | `downloads/<id>/<name>.part` | a download in progress; its size is how many bytes have arrived |
 | `downloads/<id>/<name>` | a complete download (renamed from `.part`) |
 | `quarantine/<id>/<name>` | a complete download whose sha256 is not the pinned one |
-| `raw/<id>/<yyyymmdd>/part-<nnnnn>.jsonl.zst` | the source split into documents (`formats/corpus-shard.md`) |
-| `LEDGER.jsonl` | one row per fetched source (`formats/ledger.schema.json`) |
+| `raw/<id>/<yyyymmdd>/part-<nnnnn>.jsonl.zst` | the source split into documents ([`formats/corpus-shard.md`](../../../../course/contracts/formats/corpus-shard.md)) |
+| `LEDGER.jsonl` | one row per fetched source ([`formats/ledger.schema.json`](../../../../course/contracts/formats/ledger.schema.json)) |
 
-`<name>` is the last segment of the URL's path; `<yyyymmdd>` is the UTC date of the fetch. A raw document line is compact JSON with keys in this order:
+`<name>` is the last segment of the URL's path; `<yyyymmdd>` is the UTC date of the fetch. The config itself follows [`corpus-config.schema.json`](../../../../course/contracts/formats/corpus-config.schema.json). A raw document line is compact JSON with keys in this order:
 
 ```json
 {"url":"http://127.0.0.1:8765/tiny.jsonl#1","fetched_at":"2026-01-01T00:00:00Z","license_spdx":"CC-BY-4.0","text":"Tom has a red ball."}
 ```
 
-`#<line>` is the 1-based line where the document starts in the source file, so every document points back into the checksummed bytes. A source's `format` says how to split it: `jsonl` takes the string `"text"` field of each non-blank line, and `text` takes each block of non-blank lines (a line of only spaces is blank too), joined by `\n`. A line that is not JSON, or has no string `text`, is a data error named by its line number.
+The `#<line>` suffix is the 1-based line where the document starts in the source file, so every document points back into the checksummed bytes. A source's `format` says how to split it. `jsonl` takes the string `"text"` field of each non-blank line. `text` takes each block of non-blank lines (a line of only spaces counts as blank too), joined by `\n`. A line that is not JSON, or has no string `text`, is a data error named by its line number.
 
-### 2.2 Resuming with Range
+## Resuming with Range
 
-HTTP lets a client ask for part of a file with a **Range** header (RFC 9110, section 14):
+With the outputs fixed, the first hard problem is the cut connection. HTTP lets a client ask for part of a file with a **Range** header (RFC 9110, section 14). The notation used below:
 
 | Symbol | Meaning | Type |
 |---|---|---|
@@ -62,7 +44,7 @@ HTTP lets a client ask for part of a file with a **Range** header (RFC 9110, sec
 | `Range: bytes=s-` | "send me the bytes from offset $s$ to the end" | request header |
 | `Content-Range: bytes a-b/T` | "these are bytes $a$ to $b$ inclusive of a $T$-byte file" | response header |
 
-The answer decides what to do with the partial file:
+The server's answer decides what the partial file means, and there are five cases to distinguish:
 
 | Status | Meaning | What fetch does |
 |---|---|---|
@@ -72,42 +54,41 @@ The answer decides what to do with the partial file:
 | `416 Range Not Satisfiable`, `Content-Range: bytes */T` with $T = s$ | there is nothing after byte $s$: the part is whole | stop and verify |
 | `416` with $T \ne s$ | the part is longer than the file (it changed upstream) | delete the part, retry from 0 |
 
-The body is written to the `.part` file **as it arrives**, chunk by chunk, so a connection cut at byte 280,000,000 leaves 280,000,000 bytes on disk for the next attempt. Read until `Content-Length` bytes have arrived; an empty read before that means the connection was cut, which is retryable. The download is complete when $s = T$; only then is `.part` renamed to `<name>`. A rename within one directory is atomic, so `<name>` exists only when it is whole.
+The body is written to the `.part` file *as it arrives*, chunk by chunk, so a connection cut at byte 280,000,000 leaves 280,000,000 bytes on disk for the next attempt. Fetch reads until `Content-Length` bytes have arrived; an empty read before that means the connection was cut, which is retryable. The download is complete when $s = T$, and only then is `.part` renamed to `<name>`. A rename within one directory is atomic, so `<name>` exists only when it is whole.
 
-### 2.3 Checksums and quarantine
+## Checksums and quarantine
 
-SHA-256 maps any byte string to a 32-byte digest, written as 64 hex digits; two different files with the same digest have never been found. The config pins the reviewed digest. After the download, hash the file and compare:
+A complete file is not yet a trusted file. SHA-256 maps any byte string to a 32-byte digest, written as 64 hex digits, and no two different files with the same digest have ever been found. The config pins the digest you reviewed. After the download, fetch hashes the file and compares.
 
-- **Match**: the bytes are the reviewed ones. Split them into raw parts.
-- **Mismatch**: the server is serving something else (a new version, a corrupted mirror, an attacker). Move the file to `quarantine/<id>/` for a human, record the status `"quarantined"` in the manifest, write nothing to `raw/` or the ledger, and **do not retry**: the next download will hash the same way. The run continues with the other sources; the manifest's `ok` is false, and the CLI exits 65 (non-retryable).
+On a **match**, the bytes are the reviewed ones, and fetch splits them into raw parts. On a **mismatch**, the server is serving something else: a new version, a corrupted mirror, or an attacker. Fetch moves the file to `quarantine/<id>/` for a human, records the status `"quarantined"` in the manifest, writes nothing to `raw/` or the ledger, and *does not retry*, because the next download will hash the same way. The run continues with the other sources; the manifest's `ok` is false, and the CLI exits 65 (non-retryable).
 
-Some servers send their own checksum header (the fixture server sends `X-Content-Sha256`). It is not evidence: it comes from the same place as the bytes. Hashing is CPU work, so it runs in a thread (`await asyncio.to_thread(sha256_file, path)`) where it does not stall the event loop.
+Some servers send their own checksum header (the test fixture server sends `X-Content-Sha256`). It is not evidence: it comes from the same place as the bytes. Hashing is CPU work, so it runs in a thread (`await asyncio.to_thread(sha256_file, path)`) where it does not stall the event loop.
 
-### 2.4 Retries, timeouts, and what an error means
+## Retries, timeouts, and what an error means
 
-`fetch` reuses `lang.08`'s policy. Retryable: HTTP 5xx and 429, a cut body, a refused or reset connection, no byte for `timeout` seconds. Not retryable: other 4xx (`404`, `403`), a malformed response, a source file that is not UTF-8 text or valid JSON Lines. After a retryable failure of attempt $n$ wait $b \cdot 2^{n-1}$ seconds through the injected `sleep` (here $b$ is `base_delay`, default 0.5 s), for at most `attempts` attempts. The timeout bounds the wait for **each read**, not the whole download: a healthy 300 MB download can take minutes, a server that sends nothing for 30 s is dead.
+Quarantine is one kind of failure; the network produces many others, and the important question about each is whether trying again can help. Fetch reuses the policy from [Python asyncio](../../programming-languages/02-language-and-tool-primers/08-python-asyncio.md). HTTP 5xx and 429, a cut body, a refused or reset connection, and no byte for `timeout` seconds are all retryable. Other 4xx statuses (`404`, `403`), a malformed response, and a source file that is not UTF-8 text or valid JSON Lines are not.
 
-A source that fails for good raises `FetchError(source_id, message, retryable)`. The subprocess activity contract turns `retryable=True` into exit 75 (the durable engine retries the activity later) and `retryable=False` into exit 65 (it does not). Redirects (`301`, `302`, `303`, `307`, `308` with a `Location` header) are followed up to 5 times; dataset hosts answer file URLs with a redirect to a CDN, and the ledger keeps the configured URL.
+After a retryable failure of attempt $n$, fetch waits $b \cdot 2^{n-1}$ seconds through the injected `sleep` (here $b$ is `base_delay`, default 0.5 s), for at most `attempts` attempts. The timeout bounds the wait for *each read*, not the whole download: a healthy 300 MB download can take minutes, but a server that sends nothing for 30 s is dead.
 
-### 2.5 Concurrency, order, and idempotence
+A source that fails for good raises `FetchError(source_id, message, retryable)`. The [subprocess activity contract](../../../../course/contracts/spec/subprocess-activity.md) turns `retryable=True` into exit 75 (the durable engine retries the activity later) and `retryable=False` into exit 65 (it does not). Redirects (`301`, `302`, `303`, `307`, `308` with a `Location` header) are followed up to 5 times, because dataset hosts answer file URLs with a redirect to a CDN; the ledger keeps the configured URL.
 
-Downloads run in an `asyncio.TaskGroup`, each inside one shared `asyncio.Semaphore(concurrency)`, exactly as in `lang.08`. When one source fails for good, the task group cancels the others; their `.part` files stay on disk for the next run. Three rules keep reruns cheap and outputs comparable:
+## Concurrency, order, and idempotence
 
-- **Cached**: a source is skipped, with no request at all, when `LEDGER.jsonl` has a row with its id **and its pinned sha256** and that row's raw directory exists. A new pinned sha256 for the same id is a new version and is fetched into a new dated directory.
-- **Atomic raw parts**: parts are written into `raw/<id>/<yyyymmdd>.tmp/` and the directory is renamed into place last, so a crash never leaves a half-written raw directory that looks complete.
-- **Deterministic ledger**: rows are appended once the downloads end, **in the order of the config**, not in the order downloads finished, and also when another source failed (in a `finally:`), so a finished source is never fetched twice. The manifest lists entries in input order too.
+One source at a time would be correct but slow. Downloads run in an `asyncio.TaskGroup`, each inside one shared `asyncio.Semaphore(concurrency)`, exactly as in the asyncio primer. When one source fails for good, the task group cancels the others, and their `.part` files stay on disk for the next run. Three rules keep reruns cheap and outputs comparable.
 
-The license is captured here, at fetch time, because this is the only moment the bytes, the URL, the license you reviewed, and the time are all in one place. `ledger_row(f)` writes every field of the schema: `source_id`, `url`, `license_spdx`, `retrieved_at` (UTC, `YYYY-MM-DDTHH:MM:SSZ`), `sha256` of the bytes, `n_docs`, `allowed_uses`, `pii_policy` (default `scrub`, `ethics.02`), and, because nothing is filtered yet, `filters_applied = []`, `kept = n_docs`, `dropped = 0`, `notes = ""`. Time comes from an injected `clock` (`clock.now()` in Unix seconds), so a test or a replay can fix it.
+First, a source is **cached**, skipped with no request at all, when `LEDGER.jsonl` has a row with its id *and its pinned sha256* and that row's raw directory exists. A new pinned sha256 for the same id is a new version and is fetched into a new dated directory. Second, **raw parts are written atomically**: they go into `raw/<id>/<yyyymmdd>.tmp/` and the directory is renamed into place last, so a crash never leaves a half-written raw directory that looks complete. Third, **the ledger is deterministic**: rows are appended once the downloads end, *in the order of the config*, not in the order downloads finished, and they are appended also when another source failed (in a `finally:`), so a finished source is never fetched twice. The manifest lists entries in input order too.
 
-## 3. Worked example by hand
+The license is captured here, at fetch time, because this is the only moment when the bytes, the URL, the license you reviewed, and the time are all in one place. `ledger_row(f)` writes every field of the schema: `source_id`, `url`, `license_spdx`, `retrieved_at` (UTC, `YYYY-MM-DDTHH:MM:SSZ`), `sha256` of the bytes, `n_docs`, `allowed_uses`, `pii_policy` (default `scrub`, as set out in [Privacy and PII policy](../../responsible-ai/02-privacy-and-pii/01-privacy-and-pii-policy.md)), and, because nothing is filtered yet, `filters_applied = []`, `kept = n_docs`, `dropped = 0`, `notes = ""`. Time comes from an injected `clock` (`clock.now()` in Unix seconds), so a test or a replay can fix it.
 
-One source, `tiny`, license `CC-BY-4.0`, format `jsonl`, two documents in 54 bytes:
+## Working it by hand
+
+Now trace one source through a cut and a resume. The source is `tiny`, license `CC-BY-4.0`, format `jsonl`, two documents in 54 bytes:
 
 ```text
 {"text": "Tom has a red ball."}\n{"text": "Mia naps."}\n
 ```
 
-Its sha256 is `e9d5b783f9fbf6ec94f8144919e20e8fea345376df3ad331cc01df785a7bd42b`, pinned in the config. The clock reads 1767225600, which is 2026-01-01T00:00:00Z. The server cuts the first response after 20 bytes.
+Its sha256 is `e9d5b783f9fbf6ec94f8144919e20e8fea345376df3ad331cc01df785a7bd42b`, pinned in the config. The clock reads 1767225600, which is 2026-01-01T00:00:00Z. The server cuts the first response after 20 bytes. The timeline:
 
 | Step | Request | Response | On disk |
 |---|---|---|---|
@@ -117,15 +98,17 @@ Its sha256 is `e9d5b783f9fbf6ec94f8144919e20e8fea345376df3ad331cc01df785a7bd42b`
 | 4 | | | sha256 of the 54 bytes equals the pinned digest |
 | 5 | | | `raw/tiny/20260101/part-00000.jsonl.zst` holds 2 lines, `url` ending `#1` and `#2` |
 
-`fetch` returns one `Fetched` with status `fetched`, 2 requests, 54 bytes, `n_docs = 2`, and `LEDGER.jsonl` gains:
+`fetch` returns one `Fetched` with status `fetched`, 2 requests, 54 bytes, and `n_docs = 2`, and `LEDGER.jsonl` gains this row:
 
 ```json
 {"source_id":"tiny","url":"http://127.0.0.1:8765/tiny.jsonl","license_spdx":"CC-BY-4.0","retrieved_at":"2026-01-01T00:00:00Z","sha256":"e9d5b783f9fbf6ec94f8144919e20e8fea345376df3ad331cc01df785a7bd42b","n_docs":2,"allowed_uses":["train","eval"],"pii_policy":"scrub","filters_applied":[],"kept":2,"dropped":0,"notes":""}
 ```
 
-Run `fetch` again: the ledger has `tiny` with that sha256 and `raw/tiny/20260101/` exists, so the source is `cached`, the server sees no request, and the ledger is unchanged. Had the config pinned `e9d5...` while the server sent different bytes, step 4 would move the file to `quarantine/tiny/tiny.jsonl` and stop there.
+Run `fetch` again. The ledger has `tiny` with that sha256 and `raw/tiny/20260101/` exists, so the source is `cached`, the server sees no request, and the ledger is unchanged. Had the config pinned `e9d5...` while the server sent different bytes, step 4 would have moved the file to `quarantine/tiny/tiny.jsonl` and stopped there.
 
-## 4. The interface
+## Designing the interface
+
+The public surface is small: three frozen dataclasses, one exception, three helpers, and the async driver.
 
 ```python
 @dataclass(frozen=True)
@@ -144,54 +127,25 @@ async def fetch(srcs, dest, *, concurrency=8, attempts=4, timeout=30.0, base_del
                 part_docs=100_000, clock=None, sleep=asyncio.sleep) -> Manifest: ...
 ```
 
-The full contract, word by word, is [`course/contracts/py/corpus/fetch.pyi`](../../../../course/contracts/py/corpus/fetch.pyi). The solution uses `asyncio.open_connection` for HTTP (with `ssl=ssl.create_default_context()` for `https://`), `hashlib` for SHA-256, and `zstandard.ZstdCompressor(level=3)` for the parts. The solution's CLI ([`corpus/__main__.py`](../../../../course/solutions/entry/python/corpus/__main__.py)) runs fetch as the first stage of `corpus run --config C` (stop after it with `--until fetch`): it parses the TOML config, calls `sources_from_config` and `asyncio.run(fetch(...))`, and exits 0, 65 (a config error, a quarantined source, or `FetchError` with `retryable=False`), or 75 (`FetchError` with `retryable=True`).
+The full contract, word by word, is [`fetch.pyi`](../../../../course/contracts/py/corpus/fetch.pyi). The solution uses `asyncio.open_connection` for HTTP (with `ssl=ssl.create_default_context()` for `https://`), `hashlib` for SHA-256, and `zstandard.ZstdCompressor(level=3)` for the parts. Besides the public names, [`fetch.py`](../../../../course/solutions/python/corpus/fetch.py) has four private helpers: `_open` (HTTP/1.1 over asyncio streams), `_attempt` (one resumable GET), `_one` (one source end to end), and `_write_parts`.
 
-### What a correct solution must handle
+The solution's CLI, [`corpus/__main__.py`](../../../../course/solutions/entry/python/corpus/__main__.py), runs fetch as the first stage of `corpus run --config C` (stop after it with `--until fetch`). It parses the TOML config, calls `sources_from_config` and `asyncio.run(fetch(...))`, and exits 0, 65 (a config error, a quarantined source, or `FetchError` with `retryable=False`), or 75 (`FetchError` with `retryable=True`).
 
-None of these cases needs the real network: a local fixture server that can cut, lie, redirect, and stall is enough.
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| The hand example: resume after a cut | unit | the section 3 timeline: `Range: bytes=20-`, 2 requests, 54 bytes, the raw lines, the exact ledger row | every byte is pinned |
-| Raw parts are zstd JSON lines | conformance | the parts decoded with `zstandard` itself: magic bytes, key order, compact JSON, UTF-8 | data.02 and any auditor read them with stock tools |
-| Ledger rows validate against the schema | conformance | every row against `formats/ledger.schema.json`; UTC with `Z` | data.08 and dur.12 read these rows |
-| `ledger_row` is a pure function of `Fetched` | unit | `ledger_row` maps each field | the row's shape lives in one place |
-| A server that ignores Range restarts the file | fault | a 200 to a Range request restarts the file | a good source is not quarantined for a server quirk |
-| Cut bodies resume until whole | fault | 3 cuts, 4 attempts, ranges 500, 1000, 1500 | long downloads survive flaky networks |
-| A checksum mismatch is quarantined, not retried | fault | 1 request, file in `quarantine/`, no raw parts, no ledger row, `ok` false | changed bytes never reach the corpus |
-| The server's checksum header is not trusted | fault | a lying `X-Content-Sha256` header changes nothing | only the pinned digest counts |
-| A rerun downloads nothing | fault | second run: no requests, `cached`, ledger byte-identical | `CorpusBuild` reruns cost nothing |
-| A new pinned checksum fetches again | boundary | a new pinned sha256 fetches into a new dated directory | versions are tracked, not overwritten |
-| A whole partial file gets 416 and is kept | fault | a complete `.part` plus `416` is verified, not failed | crash between last byte and rename |
-| A verified download left by a crash is not downloaded again | fault | a complete download with no raw parts is converted without a request | crash between verify and split |
-| 5xx is retried with exponential backoff | unit | 503, 503, 200: waits `[0.5, 1.0]` | backoff spares a struggling mirror |
-| A 404 is not retried | boundary | 1 request, `FetchError.retryable` false | the workflow does not retry a wrong URL |
-| Exhausted retries raise a retryable error | boundary | 3 attempts, waits `[0.1, 0.2]`, `retryable` true | the workflow retries later |
-| A silent server times out | fault | a server silent for 1 s with `timeout=0.1` fails, retryable | a dead mirror cannot hang the pipeline |
-| Concurrency is bounded | unit | 8 sources, `concurrency=3`: exactly 3 in flight | politeness and throughput |
-| Ledger rows follow the input order | property | rows in config order although the first source finishes last | the corpus build's output hash is deterministic |
-| A failure keeps the rows of finished sources | fault | a 404 still leaves the finished source's row | no download is wasted |
-| Redirects are followed | unit | 302 to a CDN path; the ledger keeps the configured URL | real dataset hosts redirect |
-| Text sources split on blank lines | unit | blocks, blank lines of spaces, start lines | `text` sources such as books |
-| JSONL errors name the line | boundary | bad lines raise `ValueError` naming the line; `FetchError` not retryable | data errors are reported, not retried |
-| Parts hold at most `part_docs` documents | boundary | 5 docs with `part_docs=2`: 3 parts, read in order | later stages read bounded files |
-| `sources_from_config` fills defaults and rejects bad entries | unit | schema defaults; duplicate ids and malformed digests rejected | the config fails before any download |
-
-## 5. The solution, step by step
-
-### 5.1 From first principles
+Before the code, here is the chain of reasoning that produces it. Each step follows from a requirement.
 
 1. **The output must be a function of the config, not of the network's mood.** So every byte that reaches `raw/` must be the pinned bytes: verify with SHA-256 against the config's digest, and treat anything else as a different file (quarantine, never retry, never trust a header from the same server).
-2. **A cut must not cost the bytes already received.** So the body is written to `.part` chunk by chunk as it arrives, and the next attempt asks for `Range: bytes=<size>-`. The server's answer decides what the part file means (the table of section 2.2): append on a matching 206, restart on 200 or a mismatched 206, accept on a 416 whose total equals the size.
+2. **A cut must not cost the bytes already received.** So the body is written to `.part` chunk by chunk as it arrives, and the next attempt asks for `Range: bytes=<size>-`. The server's answer decides what the part file means: append on a matching 206, restart on 200 or a mismatched 206, accept on a 416 whose total equals the size.
 3. **"Complete" must be observable and atomic.** A download is complete when its size equals the total; only then is `.part` renamed. Raw parts go into a `.tmp` directory renamed into place last. A crash at any point leaves either a resumable `.part`, a verified file not yet split, or a complete raw directory; each has a recovery path, and nothing looks complete that is not.
 4. **An error must say whether retrying can help,** because the workflow engine above will act on it. Transport failures, 5xx, 429, and timeouts are `_Retry`; other 4xx, malformed responses, and bad data are `ValueError`. At the source level they become `FetchError(retryable=True/False)`, which the CLI maps to exit 75 or 65.
 5. **Timeouts bound silence, not total time.** Each connect, header read, and body read has its own `wait_for(timeout)`, so a slow but steady 300 MB download survives and a silent server does not.
 6. **Reruns must be free.** The ledger already records what was fetched under which digest, so a source with a matching row and an existing raw directory is skipped before any request. Rows are written in config order in a `finally:`, so they are deterministic and survive another source's failure.
 7. **Concurrency must be bounded** (politeness, file descriptors): one semaphore around each source's work inside a task group, which also cancels the rest on a hard failure, leaving their `.part` files for the next run.
 
-### 5.2 The code, annotated
+### One attempt
 
-One attempt. `_attempt` is the Range table of section 2.2 in code. The offset comes from the part file itself, so there is no separate state to get out of sync.
+`_attempt` is the Range table in code. Notice that the offset comes from the part file itself, so there is no separate state to get out of sync.
 
 ```python
 async def _attempt(url: str, part: Path, timeout: float) -> tuple[int, int | None]:
@@ -251,9 +205,11 @@ async def _attempt(url: str, part: Path, timeout: float) -> tuple[int, int | Non
         writer.close()
 ```
 
-`_open` speaks just enough HTTP/1.1: a GET with `Connection: close` and `Accept-Encoding: identity` (so byte offsets are offsets into the file, not into a compressed stream), the status line and headers each read under `wait_for(timeout)`, and up to `MAX_REDIRECTS = 5` redirects followed with `urljoin`. A connection closed before a status line is `_Retry`; a malformed one is `ValueError`.
+`_open` speaks just enough HTTP/1.1. It sends a GET with `Connection: close` and `Accept-Encoding: identity` (so byte offsets are offsets into the file, not into a compressed stream), reads the status line and headers each under `wait_for(timeout)`, and follows up to `MAX_REDIRECTS = 5` redirects with `urljoin`. A connection closed before a status line is `_Retry`; a malformed one is `ValueError`.
 
-One source. `_one` checks the ledger, recovers a verified download left by a crash, retries attempts with backoff, verifies, and either quarantines or writes parts.
+### One source
+
+`_one` wraps attempts into the life of a source. It checks the ledger, recovers a verified download left by a crash, retries attempts with backoff, verifies, and either quarantines or writes parts.
 
 ```python
 async def _one(src, dest, ledger, *, attempts, timeout, base_delay, part_docs, clock, sleep) -> Fetched:
@@ -306,7 +262,9 @@ async def _one(src, dest, ledger, *, attempts, timeout, base_delay, part_docs, c
     return Fetched(src, "fetched", str(raw), got, size, n_docs, retrieved_at, requests)
 ```
 
-Raw parts. Documents are compact JSON with the contract's key order (`url`, `fetched_at`, `license_spdx`, `text`); each `url` carries `#<line>` back into the checksummed file. Everything goes into a `.tmp` sibling that replaces the final directory last.
+### Raw parts
+
+Documents are compact JSON with the contract's key order (`url`, `fetched_at`, `license_spdx`, `text`), and each `url` carries `#<line>` back into the checksummed file. Everything goes into a `.tmp` sibling that replaces the final directory last.
 
 ```python
 def _write_parts(src, data, raw_dir, retrieved_at, part_docs) -> int:
@@ -332,7 +290,9 @@ def _write_parts(src, data, raw_dir, retrieved_at, part_docs) -> int:
     return n
 ```
 
-The driver. One semaphore, one task group, results keyed by id, and the ledger written in a `finally:` in config order. The first underlying exception is re-raised so the caller sees a plain `FetchError`, not an exception group.
+### The driver
+
+The driver is one semaphore, one task group, results keyed by id, and the ledger written in a `finally:` in config order. The first underlying exception is re-raised so the caller sees a plain `FetchError`, not an exception group.
 
 ```python
 async def fetch(srcs, dest, *, concurrency=8, attempts=4, timeout=30.0, base_delay=0.5,
@@ -373,89 +333,128 @@ async def fetch(srcs, dest, *, concurrency=8, attempts=4, timeout=30.0, base_del
     return Manifest(tuple(results[s.id] for s in srcs))
 ```
 
-`ledger_row` is a pure mapping from `Fetched` to the schema's fields (nothing filtered yet: `filters_applied = []`, `kept = n_docs`, `dropped = 0`), and `split_documents` implements the `jsonl` and `text` rules of section 2.1, raising `ValueError` with the line number for bad data. Full solution: [`fetch.py`](../../../../course/solutions/python/corpus/fetch.py).
+`ledger_row` is a pure mapping from `Fetched` to the schema's fields (nothing filtered yet: `filters_applied = []`, `kept = n_docs`, `dropped = 0`), and `split_documents` implements the `jsonl` and `text` rules described at the start of the section, raising `ValueError` with the line number for bad data. The full solution is [`fetch.py`](../../../../course/solutions/python/corpus/fetch.py).
 
-### 5.3 Why this solution
+### Why this design
 
-- **Cost.** Network-bound: each source is downloaded at most once across any number of runs and cuts, plus one SHA-256 pass (in a thread) and one compression pass. Memory: the body streams in 64 KiB chunks, but `_write_parts` reads the verified file whole (`done.read_bytes()`), which is fine for the corpus sizes here and would be the first thing to stream for multi-gigabyte sources.
-- **Against `urllib`/`requests` in threads.** They work, but the course's async policy (`lang.08`) wants one event loop with a semaphore and per-read timeouts; a hand-written minimal HTTP/1.1 client over `asyncio.open_connection` keeps the dependency list to `zstandard` and makes every status and header decision visible.
-- **Against `aiohttp` or `httpx`.** Production-grade and preferable for a real crawler (chunked encoding, keep-alive, HTTP/2), but a dependency the contract does not allow, and they would hide exactly the Range and status logic this chapter is about.
-- **Against trusting `ETag` or a server checksum header.** Those come from the same server as the bytes; only a digest reviewed out of band proves the bytes are the reviewed ones.
-- **Against writing ledger rows as downloads finish.** Simpler, but the ledger's line order (and the corpus build's output hash) would depend on network timing.
-- **Tradeoffs accepted.** Chunked transfer coding is refused rather than implemented (static dataset files are served with a length). Parquet sources are rejected here and left to `data.06`. A quarantined source makes `ok` false but does not stop the other sources, so one bad mirror does not waste a whole run.
+The cost is network-bound: each source is downloaded at most once across any number of runs and cuts, plus one SHA-256 pass (in a thread) and one compression pass. The body streams in 64 KiB chunks, but `_write_parts` reads the verified file whole (`done.read_bytes()`). That is fine for the corpus sizes here and would be the first thing to stream for multi-gigabyte sources.
 
-### 5.4 Explain it back
+You could use `urllib` or `requests` in threads. They work, but the asyncio policy this book follows wants one event loop with a semaphore and per-read timeouts, and a hand-written minimal HTTP/1.1 client over `asyncio.open_connection` keeps the dependency list to `zstandard` and makes every status and header decision visible. `aiohttp` or `httpx` are production-grade and preferable for a real crawler (chunked encoding, keep-alive, HTTP/2), but they are a dependency the contract does not allow, and they would hide exactly the Range and status logic this section is about. Trusting `ETag` or a server checksum header is tempting, but those come from the same server as the bytes; only a digest reviewed out of band proves the bytes are the reviewed ones. Writing ledger rows as downloads finish is simpler, but the ledger's line order (and the corpus build's output hash) would then depend on network timing.
 
-**A Range request gets a `200`. Why does the solution truncate the part file instead of appending?**
+Three tradeoffs are accepted deliberately. Chunked transfer coding is refused rather than implemented, since static dataset files are served with a length. Parquet sources are rejected here and left to [Parquet shards and the manifest](06-parquet-shards-and-manifest.md). And a quarantined source makes `ok` false but does not stop the other sources, so one bad mirror does not waste a whole run.
 
-<details><summary>Answer</summary>
+## What a correct fetch must handle
 
-A `200` means the server ignored the range and is sending the whole file from byte 0. Appending would produce prefix plus whole file, whose SHA-256 cannot match, so a perfectly good source would be quarantined. Opening with `"wb"` and resetting `offset` to 0 makes the part file hold exactly what the server is sending.
+None of these cases needs the real network: a local fixture server that can cut, lie, redirect, and stall is enough. The table lists each case, what is checked, and why it matters downstream.
 
-</details>
-
-**Why is a checksum mismatch quarantined and not retried, when a cut body is retried?**
-
-<details><summary>Answer</summary>
-
-A cut is a transport failure: the next attempt can get the remaining bytes. A mismatch on a complete file means the server is serving different bytes (a new version, a corrupt mirror, an attacker); downloading again would hash the same way. Retrying wastes bandwidth and, worse, invites the workflow to retry forever. Quarantine hands the file to a human and keeps it out of `raw/` and the ledger.
-
-</details>
-
-**Why is the ledger written in a `finally:` block, in config order?**
-
-<details><summary>Answer</summary>
-
-In a `finally:` so that when one source fails for good, the sources that already finished still get their rows and are `cached` on the next run instead of being downloaded again. In config order so the ledger's content is a function of the config, not of which download happened to finish first; the corpus build hashes its outputs and that hash must be reproducible.
-
-</details>
-
-**Why does the timeout wrap each read rather than the whole download?**
-
-<details><summary>Answer</summary>
-
-The failure to detect is a dead or stalled server, which shows up as no bytes for a while. A whole-download timeout would have to be long enough for the largest healthy file (minutes), so it would let a dead server hang the run for that long, or kill healthy large downloads if set shorter. A per-read timeout of 30 s catches silence quickly and never limits a steady transfer.
-
-</details>
-
-**A crash happens after `os.replace(part, done)` but before the raw directory is renamed into place. What does the next run do?**
-
-<details><summary>Answer</summary>
-
-There is no ledger row yet (rows are written at the end), so the source is not cached. `_one` finds `downloads/<id>/<name>` as a file, hashes it, sees the pinned digest, and skips the download entirely (zero requests), then writes the parts again into a fresh `.tmp` directory (removing any leftover) and renames it into place.
-
-</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
+| Case | Checks | Why it matters |
 |---|---|---|
-| 1. Retrying a cut download without a Range header, appending to the part | prefix plus whole file: a checksum mismatch and a good source quarantined | `_attempt` sends `Range: bytes=<part size>-` whenever the part is non-empty |
-| 2. Appending a `200` reply to the partial file | the same corrupt file whenever a server ignores ranges | a `200` opens the part with `"wb"` and resets the offset to 0 |
-| 3. Retrying after a checksum mismatch | the same wrong bytes downloaded again and again | verification happens after the retry loop; a mismatch moves the file to `quarantine/` and returns |
-| 4. Verifying against the server's checksum header | a swapped or changed file passes; a good file fails against a lying header | `_one` compares only with `src.sha256` and never reads checksum headers |
-| 5. Retrying every HTTP error | a 404 costs `attempts` requests and the workflow retries it forever | only 5xx, 429, and transport failures are `_Retry`; other statuses are `ValueError`, so `FetchError(retryable=False)` at once |
-| 6. Not consulting the ledger before downloading | every crash recovery downloads the whole corpus again | `_one` returns `cached` for a row with the id, the pinned digest, and an existing raw directory |
-| 7. Appending ledger rows as downloads finish | a different ledger, and a different output hash, on every run | rows are built from `results` in the order of `srcs` |
-| 8. No semaphore around the downloads | every source at once: throttled by the mirror, out of file descriptors | each task runs `_one` inside `async with sem` |
-| 9. No timeout on reads, or one timeout for the whole download | a silent server hangs the run; a large healthy download is killed | every connect, header line, and body read has its own `wait_for(timeout)` |
-| 10. Writing the ledger only when every source succeeded | finished sources are fetched again after any failure | the ledger is written in the `finally:` block |
-| 11. Local time in `retrieved_at` | rows that fail the schema pattern; dates that depend on the machine's time zone | `_rfc3339` formats in UTC with a trailing `Z` |
+| The hand example: resume after a cut | the timeline above: `Range: bytes=20-`, 2 requests, 54 bytes, the raw lines, the exact ledger row | every byte is pinned |
+| Raw parts are zstd JSON lines | parts decoded with `zstandard` itself: magic bytes, key order, compact JSON, UTF-8 | extraction and any auditor read them with stock tools |
+| Ledger rows validate against the schema | every row against `formats/ledger.schema.json`; UTC with `Z` | ledger verification and model release read these rows |
+| `ledger_row` is a pure function of `Fetched` | `ledger_row` maps each field | the row's shape lives in one place |
+| A server that ignores Range restarts the file | a 200 to a Range request restarts the file | a good source is not quarantined for a server quirk |
+| Cut bodies resume until whole | 3 cuts, 4 attempts, ranges 500, 1000, 1500 | long downloads survive flaky networks |
+| A checksum mismatch is quarantined, not retried | 1 request, file in `quarantine/`, no raw parts, no ledger row, `ok` false | changed bytes never reach the corpus |
+| The server's checksum header is not trusted | a lying `X-Content-Sha256` header changes nothing | only the pinned digest counts |
+| A rerun downloads nothing | second run: no requests, `cached`, ledger byte-identical | `CorpusBuild` reruns cost nothing |
+| A new pinned checksum fetches again | a new pinned sha256 fetches into a new dated directory | versions are tracked, not overwritten |
+| A whole partial file gets 416 and is kept | a complete `.part` plus `416` is verified, not failed | crash between last byte and rename |
+| A verified download left by a crash is not downloaded again | a complete download with no raw parts is converted without a request | crash between verify and split |
+| 5xx is retried with exponential backoff | 503, 503, 200: waits `[0.5, 1.0]` | backoff spares a struggling mirror |
+| A 404 is not retried | 1 request, `FetchError.retryable` false | the workflow does not retry a wrong URL |
+| Exhausted retries raise a retryable error | 3 attempts, waits `[0.1, 0.2]`, `retryable` true | the workflow retries later |
+| A silent server times out | silent for 1 s with `timeout=0.1` fails, retryable | a dead mirror cannot hang the pipeline |
+| Concurrency is bounded | 8 sources, `concurrency=3`: exactly 3 in flight | politeness and throughput |
+| Ledger rows follow the input order | rows in config order although the first source finishes last | the build's output hash is deterministic |
+| A failure keeps the rows of finished sources | a 404 still leaves the finished source's row | no download is wasted |
+| Redirects are followed | 302 to a CDN path; the ledger keeps the configured URL | real dataset hosts redirect |
+| Text sources split on blank lines | blocks, blank lines of spaces, start lines | `text` sources such as books |
+| JSONL errors name the line | bad lines raise `ValueError` naming the line; `FetchError` not retryable | data errors are reported, not retried |
+| Parts hold at most `part_docs` documents | 5 docs with `part_docs=2`: 3 parts, read in order | later stages read bounded files |
+| `sources_from_config` fills defaults and rejects bad entries | schema defaults; duplicate ids and malformed digests rejected | the config fails before any download |
 
-## 7. Where it's used next
+## What can go wrong
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Forward | `data.02` | `extract(manifest)` reads each source's raw parts with `read_raw` and numbers the documents `<source_id>:<k>` |
-| Forward | `data.08` | verifies every ledger row against the schema and the license allowlist (`ethics.01`) before a shard may be used |
-| Forward | `data.09` | the `CorpusBuild` workflow runs `{corpus} run --stage fetch` as a subprocess activity; exit 75 retries it, exit 65 fails it |
-| Back | `lang.08` | the semaphore, task group, per-attempt timeout, and backoff, unchanged |
+Most fetch bugs corrupt the file rather than crash, which makes them expensive. The commonest is retrying a cut download without a Range header while appending to the part: you get prefix plus whole file, a checksum mismatch, and a good source quarantined. `_attempt` avoids it by sending `Range: bytes=<part size>-` whenever the part is non-empty. Its twin is appending a `200` reply to the partial file, which produces the same corrupt file whenever a server ignores ranges; a `200` therefore opens the part with `"wb"` and resets the offset to 0.
 
-## Going further
+> **Warning:** Never retry after a checksum mismatch, and never verify against the server's own checksum header. Retrying downloads the same wrong bytes again and again; trusting the header lets a swapped file pass and fails a good file against a lying header. In the solution, verification happens after the retry loop, a mismatch moves the file to `quarantine/` and returns, and `_one` compares only with `src.sha256`.
 
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `fetch` | `huggingface_hub.hf_hub_download` | resume, ETag-based caching, symlinked snapshots per revision, parallel chunked downloads | `huggingface_hub/file_download.py` |
-| `fetch` | `aria2`, `curl --continue-at -` | many connections per file, mirror lists, rate limits | aria2 manual, "Segmented download" |
-| raw parts + ledger | datatrove `JsonlWriter` and readers; Dolma's source metadata | sharded writers, per-document provenance at web scale | `datatrove/pipeline/writers/jsonl.py` |
-| the ledger | the Data Provenance Initiative's provenance cards | license and lineage per dataset, aggregated across collections | Longpre et al. 2023 |
+Retrying every HTTP error is the next trap: a 404 then costs `attempts` requests and the workflow retries it forever. Only 5xx, 429, and transport failures are `_Retry`; other statuses are `ValueError`, so the result is `FetchError(retryable=False)` at once.
+
+Several pitfalls cost reruns rather than correctness. Not consulting the ledger before downloading means every crash recovery downloads the whole corpus again; `_one` returns `cached` for a row with the id, the pinned digest, and an existing raw directory. Writing the ledger only when every source succeeded means finished sources are fetched again after any failure; the `finally:` block prevents that. Appending ledger rows as downloads finish gives a different ledger, and a different output hash, on every run; rows are built from `results` in the order of `srcs`.
+
+The remaining three are about resources and time. With no semaphore around the downloads, every source starts at once and you are throttled by the mirror or run out of file descriptors; each task runs `_one` inside `async with sem`. With no timeout on reads, a silent server hangs the run, and with one timeout for the whole download a large healthy download is killed; every connect, header line, and body read has its own `wait_for(timeout)`. And local time in `retrieved_at` produces rows that fail the schema pattern and dates that depend on the machine's time zone; `_rfc3339` formats in UTC with a trailing `Z`.
+
+## Where this leads
+
+Every later stage reads what fetch wrote. [Extract, normalize, and quality filters](02-extract-normalize-and-quality-filters.md) calls `extract(manifest)`, which reads each source's raw parts with `read_raw` and numbers the documents `<source_id>:<k>`. [Ledger verification and the datasheet](08-ledger-and-datasheet.md) verifies every ledger row against the schema and the license allowlist from [Data licensing and the ledger](../../responsible-ai/01-data-licensing/01-data-licensing-and-the-ledger.md) before a shard may be used. And [CorpusBuild as a durable workflow](09-corpusbuild-as-a-durable-workflow.md) runs `{corpus} run --stage fetch` as a subprocess activity, where exit 75 retries it and exit 65 fails it. Looking back, the semaphore, task group, per-attempt timeout, and backoff are unchanged from [Python asyncio](../../programming-languages/02-language-and-tool-primers/08-python-asyncio.md).
+
+### Further reading
+
+- RFC 9110, sections 14 (Range requests) and 15.3.7 / 15.5.17 (206, 416).
+- Penedo et al., *The FineWeb Datasets* (2024), section 3: how a web-scale corpus is collected.
+- Gebru et al., *Datasheets for Datasets* (2021), "Collection process".
+- `huggingface_hub.hf_hub_download` (`huggingface_hub/file_download.py`): the production equivalent of `fetch`, adding resume, ETag-based caching, symlinked snapshots per revision, and parallel chunked downloads.
+- `aria2` (manual, "Segmented download") and `curl --continue-at -`: many connections per file, mirror lists, rate limits.
+- datatrove's `JsonlWriter` and readers (`datatrove/pipeline/writers/jsonl.py`) and Dolma's source metadata: sharded writers and per-document provenance at web scale.
+- Longpre et al. (2023), the Data Provenance Initiative's provenance cards: license and lineage per dataset, aggregated across collections.
+
+## Key terms
+
+- **Range request**: an HTTP request with `Range: bytes=s-` asking for the bytes from offset $s$ to the end of a file.
+- **Part file**: `<name>.part`, a download in progress whose size is the resume offset.
+- **Pinned checksum**: the sha256 recorded in the config after review; the only digest fetch trusts.
+- **Quarantine**: the directory where a complete download with the wrong digest is moved for a human, never reaching `raw/` or the ledger.
+- **Retryable error**: a failure that a later attempt can fix (5xx, 429, cut, timeout); mapped to exit 75.
+- **Ledger row**: one JSON record per fetched source with its URL, license, digest, time, and document count.
+
+## Summary
+
+- A cut download resumes with `Range: bytes=<size>-`: a `206` continues the file, a `200` means the server ignored the range and the file starts over, a `416` means the partial file is already whole.
+- The checksum pinned in the config is the only one to trust. A mismatch is quarantined, not retried, and never reaches the corpus.
+- The license is captured at fetch time, one ledger row per source, tied to the sha256 of the exact bytes.
+- A rerun downloads nothing the ledger already records, so a crashed or retried pipeline costs nothing twice.
+- Errors say whether a retry can help: `FetchError.retryable` maps to exit 75 or 65 under the subprocess activity contract.
+
+## Review questions
+
+1. A Range request gets a `200`. Why does the solution truncate the part file instead of appending?
+
+   <details><summary>Answer</summary>
+
+   A `200` means the server ignored the range and is sending the whole file from byte 0. Appending would produce prefix plus whole file, whose SHA-256 cannot match, so a perfectly good source would be quarantined. Opening with `"wb"` and resetting `offset` to 0 makes the part file hold exactly what the server is sending.
+
+   </details>
+
+2. Why is a checksum mismatch quarantined and not retried, when a cut body is retried?
+
+   <details><summary>Answer</summary>
+
+   A cut is a transport failure: the next attempt can get the remaining bytes. A mismatch on a complete file means the server is serving different bytes (a new version, a corrupt mirror, an attacker); downloading again would hash the same way. Retrying wastes bandwidth and, worse, invites the workflow to retry forever. Quarantine hands the file to a human and keeps it out of `raw/` and the ledger.
+
+   </details>
+
+3. Why is the ledger written in a `finally:` block, in config order?
+
+   <details><summary>Answer</summary>
+
+   In a `finally:` so that when one source fails for good, the sources that already finished still get their rows and are `cached` on the next run instead of being downloaded again. In config order so the ledger's content is a function of the config, not of which download happened to finish first; the corpus build hashes its outputs and that hash must be reproducible.
+
+   </details>
+
+4. Why does the timeout wrap each read rather than the whole download?
+
+   <details><summary>Answer</summary>
+
+   The failure to detect is a dead or stalled server, which shows up as no bytes for a while. A whole-download timeout would have to be long enough for the largest healthy file (minutes), so it would let a dead server hang the run for that long, or kill healthy large downloads if set shorter. A per-read timeout of 30 s catches silence quickly and never limits a steady transfer.
+
+   </details>
+
+5. A crash happens after `os.replace(part, done)` but before the raw directory is renamed into place. What does the next run do?
+
+   <details><summary>Answer</summary>
+
+   There is no ledger row yet (rows are written at the end), so the source is not cached. `_one` finds `downloads/<id>/<name>` as a file, hashes it, sees the pinned digest, and skips the download entirely (zero requests), then writes the parts again into a fresh `.tmp` directory (removing any leftover) and renames it into place.
+
+   </details>

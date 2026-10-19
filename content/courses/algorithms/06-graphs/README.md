@@ -1,30 +1,24 @@
-# 06-graphs
+# Graphs
 
-## Summary
-- Contains: `clone-graph.js`, `course-schedule.js`, `number-of-islands.js`, `pacific-atlantic-water-flow.ts`.
-- Graph traversal and topological reasoning problems in JS/TS.
+Graph problems boil down to two questions: **how do I traverse, and what do I track?** Breadth-first search gives shortest paths in unweighted graphs. Depth-first search explores connected components and detects cycles. Most "hard" graph problems turn out to be BFS or DFS with clever state encoding: the nodes are board positions or words, the edges are moves or one-letter changes, and the visited set records more than a node id.
 
-## Key takeaways
-- DFS/BFS patterns recur across connectivity and reachability tasks.
-- Cycle detection/topo order is central to scheduling constraints.
+This chapter builds the traversal toolkit first (BFS for shortest paths, DFS for flood fill), then turns to dependencies with topological sort and cycle detection, weighted shortest paths with Dijkstra's algorithm, dynamic connectivity with union-find, and multi-source BFS. It closes with a comparison of graph representations and five solutions in JavaScript, TypeScript, and C.
 
-## How to run
-- JS files are solution functions (run with Node + a driver or an online judge).
-- The TS file can be run with `ts-node` or compiled with `tsc` and run with Node.
+> **Learning objectives**
+> - Find shortest paths in unweighted graphs with BFS and count connected regions with DFS flood fill.
+> - Order a DAG with Kahn's algorithm and detect cycles in directed and undirected graphs.
+> - Compute weighted shortest paths with Dijkstra's algorithm and explain its stale-entry check.
+> - Implement union-find with path compression and union by rank.
+> - Choose a graph representation by density and by the operations you need.
 
----
+## Before you begin
 
-# Graph Patterns
+You should know queues, stacks, and recursion, and be comfortable with the tree traversals in [Trees](../05-trees/README.md), since a tree is a graph without cycles. [Graphs, DAGs, and topological sort](../../mathematics-for-computing/06-discrete-math-2/01-graphs-dags-and-topological-sort.md) in *Mathematics for Computing* covers the definitions and proofs. Dijkstra's algorithm uses a priority queue; [the binary heap for top-k](../16-systems-data-structures/04-binary-heap-top-k.md) builds one.
 
-## Core Insight
+## BFS for shortest unweighted paths
 
-Graph problems boil down to: **how do I traverse, and what do I track?** BFS gives shortest unweighted paths. DFS explores connected components and detects cycles. Most "hard" graph problems are just BFS/DFS with clever state encoding.
+To find the minimum number of steps, moves, or transformations, explore outward in rings with a queue. Mark a node visited when you enqueue it, not when you dequeue it, or the same node is queued many times:
 
-## Pattern 1: BFS — Shortest Path (Unweighted)
-
-**When to use**: Find minimum steps/moves/transformations.
-
-**Template**:
 ```python
 from collections import deque
 def bfs(start, target):
@@ -41,13 +35,12 @@ def bfs(start, target):
     return -1
 ```
 
-**Interview problems**: Shortest Path in Binary Matrix, Word Ladder, Rotting Oranges, Open the Lock
+Shortest Path in Binary Matrix, Word Ladder, Rotting Oranges, and Open the Lock are BFS problems in disguise.
 
-## Pattern 2: DFS — Connected Components & Flood Fill
+## DFS for connected components and flood fill
 
-**When to use**: Count islands, connected regions, or fill/mark regions.
+To count islands or connected regions, or to fill or mark a region, start a DFS from every unvisited cell and let it mark everything it reaches. Each start is one component:
 
-**Template**:
 ```python
 def dfs(r, c):
     if r < 0 or r >= rows or c < 0 or c >= cols:
@@ -66,13 +59,12 @@ for r in range(rows):
             count += 1
 ```
 
-**Interview problems**: Number of Islands, Flood Fill, Surrounded Regions, Pacific Atlantic Water Flow
+Marking the grid in place doubles as the visited set. Number of Islands, Flood Fill, Surrounded Regions, and Pacific Atlantic Water Flow are the standard problems.
 
-## Pattern 3: Topological Sort (DAG Processing)
+## Topological sort
 
-**When to use**: Dependencies, prerequisites, build order — any DAG where you process nodes in dependency order.
+Dependencies, prerequisites, and build orders are all directed acyclic graphs that must be processed in dependency order. Kahn's algorithm counts each node's incoming edges, starts from the nodes with none, and releases a node once all its prerequisites have been processed. If some nodes are never released, the graph has a cycle:
 
-**Template (Kahn's — BFS)**:
 ```python
 from collections import deque
 indegree = {u: 0 for u in graph}
@@ -92,13 +84,16 @@ if len(order) != len(graph):
     return "cycle detected"
 ```
 
-**Interview problems**: Course Schedule, Course Schedule II, Alien Dictionary, Task Scheduler
+Course Schedule, Course Schedule II, Alien Dictionary, and Task Scheduler use it.
 
-## Pattern 4: Dijkstra — Weighted Shortest Path
+## Cycle detection
 
-**When to use**: Weighted graph, non-negative edge weights.
+Cycles can also be found directly with DFS, and the method depends on whether edges have a direction. In a directed graph, track three states per node: unvisited, in progress, and visited. An edge back to an in-progress node is a back edge, and a back edge means a cycle. In an undirected graph, every edge looks like it leads back, so the rule is different: reaching a neighbor that is already visited and is not the node you came from means a cycle. Course Schedule and the Detect Cycle problems for directed and undirected graphs exercise both.
 
-**Template**:
+## Dijkstra's algorithm for weighted shortest paths
+
+With non-negative edge weights, BFS's rings become a priority queue ordered by distance. Each pop settles the closest unsettled node. Because a node can be pushed several times with improving distances, skip any popped entry whose distance is stale:
+
 ```python
 import heapq
 def dijkstra(graph, start):
@@ -116,13 +111,12 @@ def dijkstra(graph, start):
     return dist
 ```
 
-**Interview problems**: Network Delay Time, Cheapest Flights Within K Stops, Path with Minimum Effort, Swim in Rising Water
+Network Delay Time, Cheapest Flights Within K Stops, Path With Minimum Effort, and Swim in Rising Water are the standard problems. Negative weights break the algorithm, because a settled node could later be reached more cheaply.
 
-## Pattern 5: Union-Find (Disjoint Set Union)
+## Union-find
 
-**When to use**: Dynamic connectivity — "are these two nodes connected?" with merge operations.
+For dynamic connectivity ("are these two nodes connected?" as edges keep arriving), a disjoint-set structure answers each query in nearly constant amortized time. Path compression flattens the trees during `find`, and union by rank keeps them shallow:
 
-**Template**:
 ```python
 parent = list(range(n))
 rank = [0] * n
@@ -142,40 +136,40 @@ def union(x, y):
     return True
 ```
 
-**Interview problems**: Number of Connected Components, Redundant Connection, Accounts Merge, Smallest String With Swaps
+`union` returning `False` means the two nodes were already connected, which is exactly how Redundant Connection finds the extra edge. Number of Connected Components in an Undirected Graph, Accounts Merge, and Smallest String With Swaps also use it.
 
-## Pattern 6: Cycle Detection
+## Multi-source BFS
 
-**DFS (directed graph)**: Track three states: unvisited, in-progress, visited. A back edge to an in-progress node = cycle.
+When there are several starting points at once (every rotten orange, every gate), initialize the queue with all of them and then run a standard BFS. The distances that come out are distances to the nearest source. Rotting Oranges, 01 Matrix, Walls and Gates, and Pacific Atlantic Water Flow (which starts from every cell on each ocean's border) use this pattern.
 
-**DFS (undirected graph)**: If you visit a neighbor that's already visited and isn't the parent, there's a cycle.
+## Representing a graph
 
-**Interview problems**: Course Schedule, Detect Cycle in Directed/Undirected Graph
+How you store the graph decides what is cheap. The four common choices:
 
-## Pattern 7: Multi-Source BFS
+| Format | Best for | Space |
+|--------|----------|-------|
+| adjacency list | sparse graphs (most interviews) | $O(V + E)$ |
+| adjacency matrix | dense graphs, quick edge lookup | $O(V^2)$ |
+| edge list | union-find problems | $O(E)$ |
+| implicit graph | grid and matrix problems | $O(1)$ extra |
 
-**When to use**: Multiple starting points simultaneously (rotting oranges, walls and gates).
+Interviewers favor different variants. As a rough guide:
 
-**Template**: Initialize queue with ALL sources, then standard BFS.
-
-**Interview problems**: Rotting Oranges, 01 Matrix, Walls and Gates, Pacific Atlantic Water Flow
-
-## Company Targeting
-
-| Company | Favorite Variant | Difficulty |
+| Company | Favorite variant | Difficulty |
 |---------|-----------------|------------|
 | Google | Dijkstra variants, topological sort | Hard |
-| Meta | BFS/DFS on grids, clone graph | Medium |
-| Amazon | Course schedule (topo sort) | Medium |
-| Anthropic | Graph as distributed system model | Hard |
-| NVIDIA | Parallel BFS, graph partitioning | Hard |
-| Palantir | Entity relationship graphs | Medium-Hard |
+| Meta | BFS and DFS on grids, clone graph | Medium |
+| Amazon | course schedule (topological sort) | Medium |
+| Anthropic | graphs as distributed-system models | Hard |
+| NVIDIA | parallel BFS, graph partitioning | Hard |
+| Palantir | entity relationship graphs | Medium-Hard |
 
-## Graph Representation Cheat Sheet
+## In this chapter
 
-| Format | Best For | Space |
-|--------|----------|-------|
-| Adjacency List | Sparse graphs (most interviews) | O(V + E) |
-| Adjacency Matrix | Dense graphs, quick edge lookup | O(V²) |
-| Edge List | Union-Find problems | O(E) |
-| Implicit Graph | Grid/matrix problems | O(1) extra |
+The JavaScript files are solution functions; run them with Node and a small driver, or in an online judge. The TypeScript code can be run with `ts-node`, or compiled with `tsc` and run with Node.
+
+- [Number of Islands](number-of-islands.js): DFS flood fill on a grid of `"1"` and `"0"` cells. Each unvisited land cell starts a DFS that sinks its whole island to `"0"`, so the number of starts is the number of islands. The function is written with TypeScript type annotations, so run it through `ts-node` or `tsc`.
+- [Clone Graph](clone-graph.js): a DFS that copies each node once, keeping a map from value to clone so that cycles and shared neighbors point at the same copy instead of recursing forever.
+- [Course Schedule](course-schedule.js): Kahn's algorithm. It builds an adjacency map from each prerequisite to the courses it unlocks and an in-degree count per course, processes courses with no remaining prerequisites, and reports that all courses can be finished only if every course with prerequisites is eventually released.
+- [Pacific Atlantic Water Flow](pacific-atlantic-water-flow.ts): reverses the direction of flow and runs multi-source DFS uphill from each ocean's border cells, one visited set per ocean. A cell that ends up in both sets can drain to both oceans.
+- [Charles and the Corgi Conundrum](charles-and-the-corgi-conundrum.c): a graph problem stated in C, left for you to implement. Each corgi's "social reach" is $1$ plus the degree of each of its friends, and the program prints the average over all corgis per test case to three decimals. In the sample, the path $1 - 2 - 3$ gives every corgi a reach of $3$, so the output is `Pond #1: 3.000`. Summing over all corgis, each vertex $v$ contributes its degree once per neighbor, so the total is $n + \sum_v \deg(v)^2$, computable from an array of degrees in $O(n + m)$.
