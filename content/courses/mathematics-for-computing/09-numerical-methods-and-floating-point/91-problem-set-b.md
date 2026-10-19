@@ -4,7 +4,7 @@ Inference code is full of numbers that should agree but were computed differentl
 
 The set has five parts: condition numbers (q1 to q6), sum and dot error bounds (q7 to q12), fixed-point and Newton convergence (q13 to q17), polynomial approximation (q18 to q23), and low-precision arithmetic (q24 to q28). Three of the problems, q6, q12, and q17, are short proofs. q14 to q17 prepare [Fixed-point iteration and fast inverse square root in C](05-fixed-point-iteration-and-rsqrt.md), and q18 to q20 prepare [Polynomial approximation and range reduction: expf in C](06-polynomial-approximation-and-expf.md); reading the set beside those sections and the two above works well.
 
-It assumes the representation and rounding of [Problem set A](90-problem-set-a.md) and Newton's method from [Newton's method](../01-calculus-1/02-newtons-method.md). No code is needed. Work each problem before opening its answer; each answer gives the final value, the derivation, and the common wrong answer with the reason it is wrong.
+It assumes the representation and rounding of [Problem set A](90-problem-set-a.md) and Newton's method from [Newton's Method](../01-calculus-1/02-newtons-method.md). No code is needed. Work each problem before opening its answer; each answer gives the final value, the derivation, and the common wrong answer with the reason it is wrong.
 
 > **Learning objectives**
 > - Compute relative and matrix condition numbers and use them to bound how much a problem amplifies input errors.

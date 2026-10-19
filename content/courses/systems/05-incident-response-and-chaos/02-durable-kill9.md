@@ -249,7 +249,7 @@ Two of these pitfalls hide the incident, one destroys data, and two let a wrong 
 
 ## Where this leads
 
-This drill landed on the StatefulSet, WAL claim, and worker Deployment of [Durable and worker images and charts](../../infrastructure/01-containers-kubernetes/06-durable-and-worker-charts.md), and its diagnosis read the dashboard of [Observability for the control plane](../04-observability/05-control-plane-observability.md). [A poison task lands in the dead-letter queue](03-poison-task.md) uses the second alert of the same rules file, for a fault that does not heal itself, and [Drill: event log disk full](11-eventlog-disk-full.md) puts the same log under a full disk instead of a kill.
+This drill landed on the StatefulSet, WAL claim, and worker Deployment of [Durable and worker images and charts](../../infrastructure/01-containers-kubernetes/06-durable-and-worker-charts.md), and its diagnosis read the dashboard of [Observability for the control plane](../04-observability/05-control-plane-observability.md). [A poison task lands in the dead-letter queue](03-poison-task.md) uses the second alert of the same rules file, for a fault that does not heal itself, and [The event log disk fills up](11-eventlog-disk-full.md) puts the same log under a full disk instead of a kill.
 
 ### Further reading
 

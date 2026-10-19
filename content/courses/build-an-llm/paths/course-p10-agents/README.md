@@ -16,23 +16,23 @@ This pass needs [Pass 9](../course-p09-capstone-training/README.md): the served 
 
 ## In this pass
 
-1. [Types, OpenAI-compatible provider, retry wrapper](../../../ai-platform-engineering/13-agent-sdk/01-types-and-provider.md). Afterwards you can explain the agent SDK's types, the OpenAI-compatible provider, and which errors the retry wrapper retries.
-2. [Tools, registry, JSON Schema argument validation](../../../ai-platform-engineering/13-agent-sdk/02-tools-and-schemas.md). Afterwards you can explain how tools register and how arguments are validated against JSON Schema.
-3. [Agent loop](../../../ai-platform-engineering/13-agent-sdk/03-agent-loop.md). Afterwards you can trace the agent loop from model call to tool execution and explain when it stops.
-4. [Tool gate, SQL safety gate, prompt-injection suite](../../../ai-platform-engineering/13-agent-sdk/04-tool-gate-and-injection.md). Afterwards you can explain how the tool gate and SQL safety gate block unsafe calls and what the prompt-injection suite tests.
-5. [Durable agent runs (AgentRun)](../../../ai-platform-engineering/13-agent-sdk/05-durable-agent-runs.md). Afterwards you can explain how AgentRun makes an agent run durable and replayable.
-6. [RAG ingest: crawler with SSRF allowlist, chunker, embedder, store](../../../ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md). Afterwards you can explain how RAG ingest crawls behind an SSRF allowlist, chunks, embeds, and stores documents.
-7. [Retrieval: BM25, flat and IVF vectors, RRF, MMR](../../../ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md). Afterwards you can explain how BM25, flat and IVF vector search, RRF, and MMR retrieve and rerank.
-8. [Context assembly, citations, search_docs tool](../../../ai-platform-engineering/07-retrieval-and-rag/08-context-assembly.md). Afterwards you can explain how context assembly fits retrieved chunks into budget, attaches citations, and exposes search_docs.
+1. [Types, an OpenAI-compatible provider, and a retry wrapper](../../../ai-platform-engineering/13-agent-sdk/01-types-and-provider.md). Afterwards you can explain the agent SDK's types, the OpenAI-compatible provider, and which errors the retry wrapper retries.
+2. [Tools, a registry, and JSON Schema argument validation](../../../ai-platform-engineering/13-agent-sdk/02-tools-and-schemas.md). Afterwards you can explain how tools register and how arguments are validated against JSON Schema.
+3. [The agent loop](../../../ai-platform-engineering/13-agent-sdk/03-agent-loop.md). Afterwards you can trace the agent loop from model call to tool execution and explain when it stops.
+4. [The tool gate, the SQL safety gate, and the prompt-injection suite](../../../ai-platform-engineering/13-agent-sdk/04-tool-gate-and-injection.md). Afterwards you can explain how the tool gate and SQL safety gate block unsafe calls and what the prompt-injection suite tests.
+5. [Durable agent runs](../../../ai-platform-engineering/13-agent-sdk/05-durable-agent-runs.md). Afterwards you can explain how AgentRun makes an agent run durable and replayable.
+6. [RAG Ingest: Crawler, Chunker, Embedder, and Store](../../../ai-platform-engineering/07-retrieval-and-rag/06-rag-ingest.md). Afterwards you can explain how RAG ingest crawls behind an SSRF allowlist, chunks, embeds, and stores documents.
+7. [Retrieval: BM25, Flat and IVF Vectors, RRF, and MMR](../../../ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md). Afterwards you can explain how BM25, flat and IVF vector search, RRF, and MMR retrieve and rerank.
+8. [Context Assembly, Citations, and the search_docs Tool](../../../ai-platform-engineering/07-retrieval-and-rag/08-context-assembly.md). Afterwards you can explain how context assembly fits retrieved chunks into budget, attaches citations, and exposes search_docs.
 9. [Eval runner](../../../ai-platform-engineering/09-llm-evaluation/09-eval-runner.md). Afterwards you can explain how the eval runner executes a suite and records results.
 10. [Agent evaluation scorers](../../../ai-platform-engineering/09-llm-evaluation/10-scorers.md). Afterwards you can explain what each agent evaluation scorer measures.
 11. [LLM judge with position control](../../../ai-platform-engineering/09-llm-evaluation/11-llm-judge.md). Afterwards you can explain how the LLM judge controls for position bias.
 12. [Paired A/B experiments](../../../ai-platform-engineering/09-llm-evaluation/12-ab-experiments.md). Afterwards you can explain how a paired A/B experiment estimates a difference with a confidence interval.
 13. [Usage policy at the gateway](../../../responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md). Afterwards you can explain the usage policy and why it is enforced at the gateway.
 14. [Usage policy enforcement](../../../ai-platform-engineering/12-gateway/08-usage-policy-enforcement.md). Afterwards you can explain how the gateway enforces the usage policy and returns 451.
-15. [Agent image and chart](../../../infrastructure/01-containers-kubernetes/07-agent-image-and-chart.md). Afterwards you can explain how the agent image and chart are built and deployed.
+15. [The agent image and chart](../../../infrastructure/01-containers-kubernetes/07-agent-image-and-chart.md). Afterwards you can explain how the agent image and chart are built and deployed.
 16. [Agent evals as tests](../../../software-craftsmanship/03-testing-mentality/23-agent-evals-as-tests.md). Afterwards you can explain how agent evals are written as tests and what they assert.
-17. [What the system does after Pass 10](milestone.md). Afterwards you can explain how the durable agent answers with citations and passes evals, policy checks, and prompt-injection cases.
+17. [What the System Does After Pass 10](milestone.md). Afterwards you can explain how the durable agent answers with citations and passes evals, policy checks, and prompt-injection cases.
 
 ## Going deeper: post-training
 

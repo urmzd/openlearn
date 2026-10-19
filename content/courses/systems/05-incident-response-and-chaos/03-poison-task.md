@@ -188,7 +188,7 @@ Each of these pitfalls either repeats the incident or hides it:
 
 ## Where this leads
 
-The fault was shipped to and rolled back on the worker Deployment of [Durable and worker images and charts](../../infrastructure/01-containers-kubernetes/06-durable-and-worker-charts.md), and the alert read the dead-letter panel and scrapes of [Observability for the control plane](../04-observability/05-control-plane-observability.md). [Drill: runaway agent](10-runaway-agent.md) has the same pause, fix, resume shape, with an agent stopped by a budget and resumed after a grant. [Drill: data incident](08-data-incident.md) traces the other kind of bad input through the ledger.
+The fault was shipped to and rolled back on the worker Deployment of [Durable and worker images and charts](../../infrastructure/01-containers-kubernetes/06-durable-and-worker-charts.md), and the alert read the dead-letter panel and scrapes of [Observability for the control plane](../04-observability/05-control-plane-observability.md). [A runaway agent](10-runaway-agent.md) has the same pause, fix, resume shape, with an agent stopped by a budget and resumed after a grant. [A data incident](08-data-incident.md) traces the other kind of bad input through the ledger.
 
 ### Further reading
 

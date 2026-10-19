@@ -2,9 +2,9 @@
 
 A model trained on contexts of $L$ tokens has learned what every pair's angle $p\,\theta_i$ looks like for $p < L$. Feed it position $2L$ and the slow pairs, which never completed a turn during training, sit at angles it has never seen: its attention degrades and perplexity climbs past the training length.
 
-Real checkpoints ship a fix in `config.json`. Llama 3.1 has `"rope_scaling": {"rope_type": "llama3", "factor": 8.0, ...}`, and Qwen2.5 uses `yarn`. The loader in [Llama-family model, HF config, weight loading, downloader](09-llama-family-model.md) must build exactly the frequencies Hugging Face builds from those fields (its `tiny-llama-yarn` and `tiny-llama-3` fixture models test this), and the [TinyStories capstone](../capstones/01-tinystories.md) measures what extension buys at twice the training context. This section computes those frequencies for every scaling rule, and, as an optional final part, builds ALiBi, a position scheme that uses no rotation at all.
+Real checkpoints ship a fix in `config.json`. Llama 3.1 has `"rope_scaling": {"rope_type": "llama3", "factor": 8.0, ...}`, and Qwen2.5 uses `yarn`. The loader in [The Llama-Family Model: Config, Weight Loading, and Download](09-llama-family-model.md) must build exactly the frequencies Hugging Face builds from those fields (its `tiny-llama-yarn` and `tiny-llama-3` fixture models test this), and the [TinyStories capstone](../capstones/01-tinystories.md) measures what extension buys at twice the training context. This section computes those frequencies for every scaling rule, and, as an optional final part, builds ALiBi, a position scheme that uses no rotation at all.
 
-You should have [Rotary Position Embeddings](03-rope.md) fresh, since everything here is about what its frequencies do. The default ladder `rope_inv_freq` and the ALiBi slopes `alibi_slopes` come from [Sequences, geometric series, frequency ladders](../../mathematics-for-computing/00-precalculus/03-sequences-and-frequency-ladders.md) in *Mathematics for Computing*. The reference solution is [`ctxext.py`](../../../../course/solutions/python/tinyllm/modern/ctxext.py), with `rope_inv_freq_scaled`, `_yarn_ramp`, and the optional `alibi_bias`, against the contract [`course/contracts/py/tinyllm/modern/ctxext.pyi`](../../../../course/contracts/py/tinyllm/modern/ctxext.pyi).
+You should have [Rotary Position Embeddings](03-rope.md) fresh, since everything here is about what its frequencies do. The default ladder `rope_inv_freq` and the ALiBi slopes `alibi_slopes` come from [Sequences, geometric series, and frequency ladders](../../mathematics-for-computing/00-precalculus/03-sequences-and-frequency-ladders.md) in *Mathematics for Computing*. The reference solution is [`ctxext.py`](../../../../course/solutions/python/tinyllm/modern/ctxext.py), with `rope_inv_freq_scaled`, `_yarn_ramp`, and the optional `alibi_bias`, against the contract [`course/contracts/py/tinyllm/modern/ctxext.pyi`](../../../../course/contracts/py/tinyllm/modern/ctxext.pyi).
 
 > **Learning objectives**
 > - Explain why only the slow RoPE pairs break past the trained context, and why every fix changes frequencies rather than the rotation.
@@ -233,7 +233,7 @@ The pitfalls and how the solution avoids each:
 
 ## Where this leads
 
-In [Llama-family model, HF config, weight loading, downloader](09-llama-family-model.md), `LlamaConfig.rope_scaling` becomes a `RopeSpec` through `rope_inv_freq_scaled`, on the way to SmolLM2-135M logits that match Hugging Face. The [TinyStories capstone](../capstones/01-tinystories.md) runs the long-context evaluation: bits per byte at twice the training context, with and without `rope_scaling = yarn`.
+In [The Llama-Family Model: Config, Weight Loading, and Download](09-llama-family-model.md), `LlamaConfig.rope_scaling` becomes a `RopeSpec` through `rope_inv_freq_scaled`, on the way to SmolLM2-135M logits that match Hugging Face. The [TinyStories capstone](../capstones/01-tinystories.md) runs the long-context evaluation: bits per byte at twice the training context, with and without `rope_scaling = yarn`.
 
 ### Further reading
 

@@ -88,7 +88,7 @@ dbt also makes testing routine. Built-in tests (`unique`, `not_null`, `accepted_
 
 Why did this matter so much? Because it brought version control, modularity, testing, and CI/CD to analytics SQL, which until then had lived in ad hoc scripts. That shift is the foundation of the analytics engineering role.
 
-The [Streamflow dbt project](dbt/README.md) implements exactly this staging, intermediate, and marts chain over the Spark-produced silver table, with built-in tests (`not_null`, `unique`, `accepted_values`), a source freshness check, and a custom singular test. Trace it end to end: `source('silver','orders')` feeds `stg_orders`, which feeds `int_orders_enriched`, which feeds `daily_revenue`. Then run `dbt build` against DuckDB, with zero infrastructure, and `dbt docs serve` to browse the lineage graph.
+The [The Streamflow dbt Project](dbt/README.md) implements exactly this staging, intermediate, and marts chain over the Spark-produced silver table, with built-in tests (`not_null`, `unique`, `accepted_values`), a source freshness check, and a custom singular test. Trace it end to end: `source('silver','orders')` feeds `stg_orders`, which feeds `int_orders_enriched`, which feeds `daily_revenue`. Then run `dbt build` against DuckDB, with zero infrastructure, and `dbt docs serve` to browse the lineage graph.
 
 ## Data modeling for consumption
 

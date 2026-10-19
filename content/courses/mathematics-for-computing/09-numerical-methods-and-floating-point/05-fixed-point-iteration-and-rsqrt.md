@@ -2,9 +2,9 @@
 
 Every layer of a Llama-family model normalizes its activations with RMSNorm, introduced in [Pre-LN and RMSNorm](../../build-an-llm/p07-modern-block/01-pre-ln-rmsnorm.md) in *Build Your Own LLM System*: $y_i = x_i \, w_i / \sqrt{\frac1d \sum_j x_j^2 + \epsilon}$. In Python that is one `np.sqrt` per row. When the same normalization moves into C as `tl_rmsnorm_f32` in [Elementwise kernels in C](../../build-an-llm/p09-kernels/09-elementwise-kernels.md), the Rust engine calls it once per row, per layer, per token. The C library's `1.0f / sqrtf(s)` would work, but it is two of the slowest float instructions in a hot loop, it is a black box, and it breaks the rule that every kernel in these books is something you can derive and test against its Python version.
 
-The derivation already exists. `rsqrt_newton` in [Newton's method](../01-calculus-1/02-newtons-method.md) is Newton's method for $1/\sqrt{x}$ without a division. This optional section turns it into a C function whose contract is stated in ulps, and proves the contract on every float32 input that matters. Along the way you will see Newton's method as a special case of fixed-point iteration, understand why the famous `0x5F3759DF` constant works, and learn why a third step in double precision is what turns a 73-ulp approximation into a nearly correctly rounded one.
+The derivation already exists. `rsqrt_newton` in [Newton's Method](../01-calculus-1/02-newtons-method.md) is Newton's method for $1/\sqrt{x}$ without a division. This optional section turns it into a C function whose contract is stated in ulps, and proves the contract on every float32 input that matters. Along the way you will see Newton's method as a special case of fixed-point iteration, understand why the famous `0x5F3759DF` constant works, and learn why a third step in double precision is what turns a 73-ulp approximation into a nearly correctly rounded one.
 
-You need the iteration from [Newton's method](../01-calculus-1/02-newtons-method.md) and the float32 bit patterns and subnormals of [IEEE 754 anatomy, ulps, and round to nearest even](01-ieee-754.md). The solution, [`rsqrt.c`](../../../../course/solutions/c/src/numerics/rsqrt.c), is a standalone C file built under ASan and UBSan; Python and C do not call into each other, and the numerical contract holds without any Python at run time. The interface lives in [`numerics.h`](../../../../course/contracts/c/include/tinyllm/numerics.h), under the rules of [`c/ABI.md`](../../../../course/contracts/c/ABI.md).
+You need the iteration from [Newton's Method](../01-calculus-1/02-newtons-method.md) and the float32 bit patterns and subnormals of [IEEE 754 anatomy, ulps, and round to nearest even](01-ieee-754.md). The solution, [`rsqrt.c`](../../../../course/solutions/c/src/numerics/rsqrt.c), is a standalone C file built under ASan and UBSan; Python and C do not call into each other, and the numerical contract holds without any Python at run time. The interface lives in [`numerics.h`](../../../../course/contracts/c/include/tinyllm/numerics.h), under the rules of [`c/ABI.md`](../../../../course/contracts/c/ABI.md).
 
 > **Learning objectives**
 > - Explain the difference between linear and quadratic convergence of a fixed-point iteration in terms of $g'(r)$.
@@ -28,7 +28,7 @@ You need the iteration from [Newton's method](../01-calculus-1/02-newtons-method
 
 ## Fixed-point iteration
 
-A **fixed point** of a map $g$ is a value $r$ with $g(r) = r$. **Fixed-point iteration** starts from a guess $y_0$ and repeats $y_{n+1} = g(y_n)$. If $g$ is differentiable near $r$, a Taylor expansion (see [Taylor series, remainder bounds, range reduction](../02-calculus-2/01-taylor-series.md)) gives
+A **fixed point** of a map $g$ is a value $r$ with $g(r) = r$. **Fixed-point iteration** starts from a guess $y_0$ and repeats $y_{n+1} = g(y_n)$. If $g$ is differentiable near $r$, a Taylor expansion (see [Taylor series, remainder bounds, and range reduction](../02-calculus-2/01-taylor-series.md)) gives
 
 $$y_{n+1} - r = g(y_n) - g(r) = g'(r)(y_n - r) + \tfrac12 g''(\xi)(y_n - r)^2.$$
 

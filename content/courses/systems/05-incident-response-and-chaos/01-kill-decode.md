@@ -216,7 +216,7 @@ Each of these pitfalls either hides the incident or makes it worse:
 
 ## Where this leads
 
-This drill exercised the alert and drill profile of [SLOs and multi-window burn-rate alerts](../04-observability/03-slos-and-burn-rate-alerts.md) and the dashboard of [Dashboards as code for the serving path](../04-observability/04-dashboards-as-code.md), where the diagnosis started. The same capacity reasoning returns in [Drill: noisy neighbor](09-noisy-neighbor.md), where one tenant floods the gateway, and the same load and SLO checks frame [Drill: KV v2 migration](04-kv-v2-migration.md), a rolling KV format migration.
+This drill exercised the alert and drill profile of [SLOs and multi-window burn-rate alerts](../04-observability/03-slos-and-burn-rate-alerts.md) and the dashboard of [Dashboards as code for the serving path](../04-observability/04-dashboards-as-code.md), where the diagnosis started. The same capacity reasoning returns in [A noisy neighbor](09-noisy-neighbor.md), where one tenant floods the gateway, and the same load and SLO checks frame [The KV format v2 migration](04-kv-v2-migration.md), a rolling KV format migration.
 
 ### Further reading
 

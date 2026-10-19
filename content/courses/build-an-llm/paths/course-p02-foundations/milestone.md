@@ -14,7 +14,7 @@ Each piece earns its place. Gradcheck is the only independent evidence that ever
 
 The solution's `tinyllm` entry point, [`__main__.py`](../../../../../course/solutions/entry/python/tinyllm/__main__.py), adds four Pass 2 verbs, specified under "Verbs of later passes" in [`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md). Every verb keeps the rules of that page: exit 2 on a usage error, and the last stdout line is one JSON object.
 
-The first runs every gradient check. It calls `F.gradcheck_all()` from [The op library and gradcheck_all](../../p00-foundations/02-op-library-and-gradcheck.md), which applies the method of [Partial derivatives, gradients, gradcheck](../../../mathematics-for-computing/04-calculus-3/01-gradients-and-gradcheck.md) in float64, and exits 0 only when every check passes:
+The first runs every gradient check. It calls `F.gradcheck_all()` from [The op library and gradcheck_all](../../p00-foundations/02-op-library-and-gradcheck.md), which applies the method of [Partial derivatives, gradients, and gradcheck](../../../mathematics-for-computing/04-calculus-3/01-gradients-and-gradcheck.md) in float64, and exits 0 only when every check passes:
 
 ```text
 {tinyllm} gradcheck --suite all

@@ -350,7 +350,7 @@ The production equivalents show where each piece goes next:
 | Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `Transformer` | torch `nn.Transformer`, fairseq `TransformerModel` | fused attention, `norm_first`, incremental state caching | `torch/nn/modules/transformer.py`; `fairseq/models/transformer/` |
-| post-LN vs pre-LN | DeepNorm, Sandwich-LN, RMSNorm pre-norm | train 1000-layer post-LN; modern LLMs use pre-RMSNorm (see [Pre-LN, RMSNorm](../p07-modern-block/01-pre-ln-rmsnorm.md)) | Wang et al., "DeepNet" (2022) |
+| post-LN vs pre-LN | DeepNorm, Sandwich-LN, RMSNorm pre-norm | train 1000-layer post-LN; modern LLMs use pre-RMSNorm (see [Pre-LN and RMSNorm](../p07-modern-block/01-pre-ln-rmsnorm.md)) | Wang et al., "DeepNet" (2022) |
 | `noam_rate` | linear warmup + cosine, WSD | the schedules LLM training uses (see [Learning-rate schedules](../../mathematics-for-computing/10-optimization/04-schedules-and-gradient-clipping.md) and the capstone) | HF `get_cosine_schedule_with_warmup` |
 | `decode_step` recomputing the prefix | the KV cache | $O(T)$ instead of $O(T^2)$ work per token | [KV cache and generate](../p08-inference/02-kv-cache-and-generate.md); HF `past_key_values` |
 

@@ -151,7 +151,7 @@ The next five problems compute means and variances of the standard discrete dist
 
 <details><summary>Answer</summary>
 
-**(a) $p(1 - p)$. (b) $np(1 - p)$.** (a) $X^2 = X$ for a 0/1 variable, so $E[X^2] = p$ and $\operatorname{Var}(X) = p - p^2 = p(1-p)$. Common mistakes: $p$ (the mean) and $p^2$ (the squared mean). (b) $Y = X_1 + \cdots + X_n$ with independent $X_i$, and variances of independent sums add: $n p(1-p)$. A common mistake is $n^2 p(1 - p)$, which is $\operatorname{Var}(nX_1)$: one trial scaled by $n$, perfectly correlated, not $n$ independent trials. The difference is why the standard error of an accuracy shrinks like $1/\sqrt n$ ([LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md), and the evaluation harness of [LM evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md)).
+**(a) $p(1 - p)$. (b) $np(1 - p)$.** (a) $X^2 = X$ for a 0/1 variable, so $E[X^2] = p$ and $\operatorname{Var}(X) = p - p^2 = p(1-p)$. Common mistakes: $p$ (the mean) and $p^2$ (the squared mean). (b) $Y = X_1 + \cdots + X_n$ with independent $X_i$, and variances of independent sums add: $n p(1-p)$. A common mistake is $n^2 p(1 - p)$, which is $\operatorname{Var}(nX_1)$: one trial scaled by $n$, perfectly correlated, not $n$ independent trials. The difference is why the standard error of an accuracy shrinks like $1/\sqrt n$ ([LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md), and the evaluation harness of [The evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md)).
 
 </details>
 

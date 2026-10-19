@@ -1,6 +1,6 @@
 # A performance regression bisect
 
-A performance regression can consume headroom gradually and evade functional tests: every test still passes, but TTFT p95 is 15% worse than last month, and nobody can say which of two hundred commits did it. This drill practices a controlled bisect that narrows the change while preserving a stable workload. It is the operational side of [Perf regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md) in *Software Craftsmanship*.
+A performance regression can consume headroom gradually and evade functional tests: every test still passes, but TTFT p95 is 15% worse than last month, and nobody can say which of two hundred commits did it. This drill practices a controlled bisect that narrows the change while preserving a stable workload. It is the operational side of [Performance regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md) in *Software Craftsmanship*.
 
 A performance regression is a measurement problem first. Unless the machine class, model, request mix, warm-up, and sample count are the same, noise looks like a regression. The drill follows [A breaking dependency upgrade](06-dependency-upgrade.md), which tried to stop regressions at the gate; this one finds the ones that got through.
 
@@ -97,7 +97,7 @@ The three classic mistakes all let noise make the decision:
 
 ## Where this leads
 
-The technique this runbook relies on is [Perf regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md), and the saved load profile comes from the load generator of [An open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md) in *Build Your Own LLM System*. The next drill, [A data incident](08-data-incident.md), leaves code changes behind and traces bad data instead. To compare this inject with the adjacent drills and reuse the same containment and verification fields, see the [chapter opening](README.md).
+The technique this runbook relies on is [Performance regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md), and the saved load profile comes from the load generator of [An open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md) in *Build Your Own LLM System*. The next drill, [A data incident](08-data-incident.md), leaves code changes behind and traces bad data instead. To compare this inject with the adjacent drills and reuse the same containment and verification fields, see the [chapter opening](README.md).
 
 ## Key terms
 

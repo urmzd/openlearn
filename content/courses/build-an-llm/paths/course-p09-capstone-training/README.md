@@ -20,10 +20,10 @@ This pass needs [Pass 8](../course-p08-durable/README.md), whose TrainRun workfl
 2. [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](../../p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md). Afterwards you can explain how mixed precision with loss scaling, gradient accumulation, and activation checkpointing train like fp32 in less memory.
 3. [Datasheet and model card](../../../responsible-ai/03-model-and-data-cards/01-datasheet-and-model-card.md). Afterwards you can explain what the datasheet and model card report and why each section is there.
 4. [Bias and safety evals](../../../responsible-ai/04-bias-and-safety-evals/01-bias-and-safety-evals.md). Afterwards you can explain what the bias and safety evals measure and how their results are reported.
-5. [ModelRelease: gates, canary, PromQL burn check, rollback](../../../ai-platform-engineering/05-durable-orchestration-and-workers/12-model-release.md). Afterwards you can explain how ModelRelease gates a model, runs a canary, checks the PromQL burn rate, and rolls back.
+5. [ModelRelease: gates, canary, burn check, and rollback](../../../ai-platform-engineering/05-durable-orchestration-and-workers/12-model-release.md). Afterwards you can explain how ModelRelease gates a model, runs a canary, checks the PromQL burn rate, and rolls back.
 6. [Model evals as tests](../../../software-craftsmanship/03-testing-mentality/08-model-evals-as-tests.md). Afterwards you can explain how model evals are written as tests with thresholds and confidence intervals.
 7. [Capstone: TinyStories, owned end to end](../../capstones/01-tinystories.md). Afterwards you can explain how the TinyStories model is trained, evaluated, released, and served end to end.
-8. [What the system does after Pass 9](milestone.md). Afterwards you can explain how the TinyStories model is trained with mixed precision, evaluated, released through ModelRelease, and served.
+8. [What the System Does After Pass 9](milestone.md). Afterwards you can explain how the TinyStories model is trained with mixed precision, evaluated, released through ModelRelease, and served.
 
 ## Going deeper
 

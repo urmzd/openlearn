@@ -244,7 +244,7 @@ Three smaller slips are worth naming. Using the raw scalars as mix weights gives
 
 ## Where this leads
 
-This section composed the [LSTM](02-lstm.md) (one per layer per direction), `reverse_padded` from the [bidirectional RNN](04-bidirectional-rnn.md), `cross_entropy` with `ignore_index` from [Losses with a fused backward](../p00-foundations/03-losses-with-fused-backward.md), and the module system's `Embedding`, `Linear`, and `ModuleList`. Ahead, [BERT encoder and MLM masking](../p06-objectives/02-bert-masked-lm.md) replaces two one-directional LMs with one masked LM that reads both sides at every layer, and the probe can be pointed at every checkpoint of the [model zoo](../p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md), layer by layer, for part of speech and position.
+This section composed the [LSTM](02-lstm.md) (one per layer per direction), `reverse_padded` from the [bidirectional RNN](04-bidirectional-rnn.md), `cross_entropy` with `ignore_index` from [Losses with a fused backward](../p00-foundations/03-losses-with-fused-backward.md), and the module system's `Embedding`, `Linear`, and `ModuleList`. Ahead, [BERT: the bidirectional encoder and masked language modeling](../p06-objectives/02-bert-masked-lm.md) replaces two one-directional LMs with one masked LM that reads both sides at every layer, and the probe can be pointed at every checkpoint of the [model zoo](../p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md), layer by layer, for part of speech and position.
 
 Production equivalents:
 

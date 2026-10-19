@@ -12,7 +12,7 @@ The sections build on each other. Supervised fine-tuning teaches the response fo
 
 ## Before you begin
 
-You should have a trained model from the [TinyStories capstone](../capstones/01-tinystories.md), and be comfortable with the cross-entropy of [Losses with a fused backward](../p00-foundations/03-losses-with-fused-backward.md), the adapters of [LoRA with PiSSA init and merge](../p06-objectives/06-lora-pissa-and-merge.md), and the sampling of [Sampling and logit processors](../p08-inference/01-sampling-and-logit-processors.md). From *Mathematics for Computing*, the chapter uses the KL divergence of [Entropy, cross-entropy, KL, JS, and the k3 estimator](../../mathematics-for-computing/11-information-theory/01-entropy-cross-entropy-and-kl.md).
+You should have a trained model from the [TinyStories capstone](../capstones/01-tinystories.md), and be comfortable with the cross-entropy of [Losses with a fused backward](../p00-foundations/03-losses-with-fused-backward.md), the adapters of [LoRA: low-rank adaptation with PiSSA initialization and merging](../p06-objectives/06-lora-pissa-and-merge.md), and the sampling of [Sampling and logit processors](../p08-inference/01-sampling-and-logit-processors.md). From *Mathematics for Computing*, the chapter uses the KL divergence of [Entropy, cross-entropy, KL, JS, and the k3 estimator](../../mathematics-for-computing/11-information-theory/01-entropy-cross-entropy-and-kl.md).
 
 ## In this chapter
 

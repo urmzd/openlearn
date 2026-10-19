@@ -259,7 +259,7 @@ The full list:
 
 ## Where this leads
 
-[The Llama-family model](09-llama-family-model.md) builds MoE layers from `tl_num_experts`, `tl_top_k_experts`, and `first_k_dense_replace`, so the decoder loads and matches Hugging Face MoE checkpoints. The [TinyStories capstone](../capstones/01-tinystories.md) compares MoE against dense at equal active parameters, using the `active` count from [Counting: params, FLOPs, KV bytes, memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md).
+[The Llama-family model](09-llama-family-model.md) builds MoE layers from `tl_num_experts`, `tl_top_k_experts`, and `first_k_dense_replace`, so the decoder loads and matches Hugging Face MoE checkpoints. The [TinyStories capstone](../capstones/01-tinystories.md) compares MoE against dense at equal active parameters, using the `active` count from [Counting: parameters, FLOPs, KV bytes, and memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md).
 
 ### Further reading
 
