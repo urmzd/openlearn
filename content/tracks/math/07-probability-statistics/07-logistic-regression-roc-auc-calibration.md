@@ -1,42 +1,33 @@
-<!-- ol:module M07.7 -->
 # Logistic regression (IRLS), ROC-AUC, calibration (ECE)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M07.7` · build · Python · Pass 5 · 3 to 4 h |
-| **You build** | `python/tinyllm/prob/metrics.py`: `logistic_regression_fit`, `logistic_predict_proba`, `roc_curve`, `roc_auc`, `reliability_bins`, `ece`, `fit_temperature` |
+| **Module** | `M07.7` · build · Python · Pass 5 · 1.5 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/prob/metrics.py`](../../../../course/solutions/python/tinyllm/prob/metrics.py): `logistic_regression_fit`, `logistic_predict_proba`, `roc_curve`, `roc_auc`, `reliability_bins`, `ece`, `fit_temperature` |
 | **Contract** | [`course/contracts/py/tinyllm/prob/metrics.pyi`](../../../../course/contracts/py/tinyllm/prob/metrics.pyi) · the head it fits: [`formats/linear-head.schema.json`](../../../../course/contracts/formats/linear-head.schema.json) |
-| **Tests** | `course/tests/M07.7/test_metrics.py` (what they check: section 4), golden values from scipy 1.17.1 in `course/fixtures/M07.7/scipy_golden.json` |
 | **Needs** | [`M03.2` LU](../03-linear-algebra/02-gaussian-elimination-and-lu.md) (`lu`, `lu_solve`: one solve per Newton step) · [`M01.4` trapezoid](../01-calculus-1/04-definite-integrals-trapezoid-simpson.md) (the area under the ROC curve) · [`M01.2` Newton's method](../01-calculus-1/02-newtons-method.md) (`newton`: the temperature's root) · reading: [`M07.5` hypothesis tests](05-hypothesis-tests.md) |
-| **Used by** | later: `L6.5` fits the usage-policy linear head and reports its AUC and ECE (D33) · `L3.5` scores probes · `ethics.04` puts both numbers in the safety report |
-| **Milestone** | `MS-P5` (the Pass 5 gate) |
+| **Used by** | later: `L6.5` fits the usage-policy linear head and reports its AUC and ECE (D33) · `L3.5` scores probes · `ethics.04` puts both numbers in the safety report; part of the Pass 5 evaluation layer |
 | **Optional depth** | Hastie, Tibshirani, Friedman, *The Elements of Statistical Learning* (free), section 4.4 (logistic regression and IRLS); Fawcett, "An introduction to ROC analysis" (2006); Guo, Pleiss, Sun, Weinberger, "On Calibration of Modern Neural Networks" (2017) |
 
 ## Key Takeaways
 
-- **Logistic regression** models $P(y = 1 \mid x) = \sigma(w \cdot x)$; its loss is convex, so the minimum is where the gradient $X^\top(p - y) + \lambda w$ vanishes (`test_fit_is_a_stationary_point`).
-- **Newton's method** on that loss is IRLS: each step is one linear solve with the Hessian $X^\top S X + \lambda I$, $S = \operatorname{diag}(p(1-p))$, and the digits double per step (`test_hand_example_newton_step`, `test_newton_converges_quadratically`).
-- The **ROC curve** sweeps every threshold; its area, the **AUC**, is the probability a random positive outscores a random negative, ties counting half (`test_hand_example_roc_auc`, `test_auc_is_mann_whitney`).
-- **Calibration** asks whether "0.8" means right 80% of the time; the **ECE** is the count-weighted gap between confidence and accuracy over bins (`test_hand_example_ece`, `test_ece_calibrated_vs_overconfident`).
+- **Logistic regression** models $P(y = 1 \mid x) = \sigma(w \cdot x)$; its loss is convex, so the minimum is where the gradient $X^\top(p - y) + \lambda w$ vanishes.
+- **Newton's method** on that loss is IRLS: each step is one linear solve with the Hessian $X^\top S X + \lambda I$, $S = \operatorname{diag}(p(1-p))$, and the digits double per step.
+- The **ROC curve** sweeps every threshold; its area, the **AUC**, is the probability a random positive outscores a random negative, ties counting half.
+- **Calibration** asks whether "0.8" means right 80% of the time; the **ECE** is the count-weighted gap between confidence and accuracy over bins.
 - A ranking metric and a calibration metric answer different questions: sharpening probabilities leaves the AUC unchanged and wrecks the ECE.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M07.7              # stubs metrics.py into your repo
-ol tests M07.7              # read the test catalog first: rung R0, you write no tests here
-ol check M07.7              # exit code is the verdict
-ol check M07.7 --ref-deps   # only if you skipped M03.2 or M01.4
-ol diff  M07.7              # after passing: your code against the reference
-```
+Sections 1 and 2 derive logistic regression and its Newton (IRLS) fit, the ROC curve and AUC, the ECE, and temperature scaling from first principles, and section 3 works each by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Pass 5 gives your system its first classifiers. `L6.5` puts a classification head on BERT and ELECTRA, and the gateway's usage policy (D33) is a linear head over your engine's embeddings: a dot product and a sigmoid that Go evaluates on every request. That head has to be fitted, and gradient descent with a learning rate to tune is the wrong tool for a convex problem with a few hundred weights: Newton's method solves it in five or six steps, each step a linear system you already know how to solve (`M03.2`). Once fitted, the head needs two numbers before anyone trusts it. Does it rank unsafe requests above safe ones (AUC)? And when it says 0.9, is it right 90% of the time, so a threshold of 0.9 means what the operator thinks (ECE)? This module builds the fitter and both metrics.
+Pass 5 gives the system its first classifiers. `L6.5` puts a classification head on BERT and ELECTRA, and the gateway's usage policy (D33) is a linear head over the engine's embeddings: a dot product and a sigmoid that Go evaluates on every request. That head has to be fitted, and gradient descent with a learning rate to tune is the wrong tool for a convex problem with a few hundred weights: Newton's method solves it in five or six steps, each step a linear system solved by `M03.2`'s LU. Once fitted, the head needs two numbers before anyone trusts it. Does it rank unsafe requests above safe ones (AUC)? And when it says 0.9, is it right 90% of the time, so a threshold of 0.9 means what the operator thinks (ECE)? This module builds the fitter and both metrics.
 
 ## 2. Principles
 
@@ -65,7 +56,7 @@ The derivative of the bracket with respect to $z_i$ is just $p_i - y_i$ (because
 
 ### 2.2 Fitting by Newton's method
 
-`M01.2` found a root of $f$ by $x \leftarrow x - f(x)/f'(x)$. Minimizing $L$ is finding a root of its gradient, so the step is $w \leftarrow w - H^{-1} g$: solve $H \delta = g$ (one `lu` and one `lu_solve`) and subtract. Expanding $w - H^{-1}g$ shows each step is a weighted least-squares solve with weights $p_i(1 - p_i)$ that change every iteration, hence **iteratively reweighted least squares**. Near the optimum Newton converges **quadratically**: the error is roughly squared each step, so $10^{-2}$ becomes $10^{-4}$, then $10^{-8}$, then rounding. Five or six steps from $w = 0$ are typical; the reference stops once a step is below $10^{-12}$ relative. Without a penalty and with perfectly separable data there is no finite minimum (the weights grow forever), which is one reason the head is always fitted with $\lambda > 0$.
+`M01.2` found a root of $f$ by $x \leftarrow x - f(x)/f'(x)$. Minimizing $L$ is finding a root of its gradient, so the step is $w \leftarrow w - H^{-1} g$: solve $H \delta = g$ (one `lu` and one `lu_solve`) and subtract. Expanding $w - H^{-1}g$ shows each step is a weighted least-squares solve with weights $p_i(1 - p_i)$ that change every iteration, hence **iteratively reweighted least squares**. Near the optimum Newton converges **quadratically**: the error is roughly squared each step, so $10^{-2}$ becomes $10^{-4}$, then $10^{-8}$, then rounding. Five or six steps from $w = 0$ are typical; the solution stops once a step is below $10^{-12}$ relative. Without a penalty and with perfectly separable data there is no finite minimum (the weights grow forever), which is one reason the head is always fitted with $\lambda > 0$.
 
 The sigmoid needs care: $e^{-z}$ overflows for $z < -709$ and $e^{z}/(1 + e^{z})$ is $\infty/\infty$ for $z > 709$. Computing $e^{-|z|}$, which is at most 1, and choosing the formula by the sign of $z$ is exact everywhere.
 
@@ -87,7 +78,7 @@ A classifier is **calibrated** if, among the predictions made with confidence $c
 
 $$\text{ECE} = \sum_{b} \frac{n_b}{n}\,\lvert \text{acc}_b - \text{conf}_b \rvert .$$
 
-For a binary probability $p$ the prediction is 1 when $p \ge 0.5$ and the confidence is $\max(p, 1 - p)$; with class probabilities, the top class and its probability (the "top-label" ECE of Guo et al.). Even a perfectly calibrated classifier has an ECE of a few hundredths from sampling noise in each bin, which is why the test compares calibrated against overconfident rather than against 0.
+For a binary probability $p$ the prediction is 1 when $p \ge 0.5$ and the confidence is $\max(p, 1 - p)$; with class probabilities, the top class and its probability (the "top-label" ECE of Guo et al.). Even a perfectly calibrated classifier has an ECE of a few hundredths from sampling noise in each bin, which is why a sensible check compares calibrated against overconfident rather than against 0.
 
 ### 2.7 Temperature scaling
 
@@ -117,9 +108,9 @@ The optimum satisfies $g = 0$: $2(1 - \sigma(w)) = w$, so $w^\star = 0.6748\ldot
 
 The area is $\frac12 \cdot \frac13 + \frac12 \cdot 1 = \frac23$. Check by pairs: positive 0.9 beats both negatives, 0.6 beats only 0.3, 0.4 beats only 0.3: 4 of 6 pairs.
 
-**ECE.** Probabilities $(0.9, 0.8, 0.3, 0.6)$, labels $(1, 0, 0, 1)$, $B = 5$. Predictions $(1, 1, 0, 1)$, confidences $(0.9, 0.8, 0.7, 0.6)$, correct $(\text{yes}, \text{no}, \text{yes}, \text{yes})$. Bin indices $\lceil 5c \rceil - 1$: $4, 3, 3, 2$. Bin 4: conf 0.9, acc 1, gap 0.1; bin 3: conf 0.75, acc 0.5, gap 0.25; bin 2: conf 0.6, acc 1, gap 0.4. ECE $= \frac14 (0.1) + \frac24 (0.25) + \frac14 (0.4) = 0.25$. These three examples are the first three tests.
+**ECE.** Probabilities $(0.9, 0.8, 0.3, 0.6)$, labels $(1, 0, 0, 1)$, $B = 5$. Predictions $(1, 1, 0, 1)$, confidences $(0.9, 0.8, 0.7, 0.6)$, correct $(\text{yes}, \text{no}, \text{yes}, \text{yes})$. Bin indices $\lceil 5c \rceil - 1$: $4, 3, 3, 2$. Bin 4: conf 0.9, acc 1, gap 0.1; bin 3: conf 0.75, acc 0.5, gap 0.25; bin 2: conf 0.6, acc 1, gap 0.4. ECE $= \frac14 (0.1) + \frac24 (0.25) + \frac14 (0.4) = 0.25$. These three examples are the first three cases in section 4.
 
-**Temperature.** Three items with logits $(0, 1)$, labels $(1, 1, 0)$. Here $\mathbb{E}_p[z] = \sigma(\beta)$, so $\ell'(\beta) = \sigma(\beta) - \frac23$: the calibrated confidence is the observed $\frac23$, $\beta = \ln 2$, and $T = 1/\ln 2 = 1.4427$. With logits $(0, 2)$ the same confidence needs $2\beta = \ln 2$, so $T$ doubles. This is `test_hand_example_temperature`.
+**Temperature.** Three items with logits $(0, 1)$, labels $(1, 1, 0)$. Here $\mathbb{E}_p[z] = \sigma(\beta)$, so $\ell'(\beta) = \sigma(\beta) - \frac23$: the calibrated confidence is the observed $\frac23$, $\beta = \ln 2$, and $T = 1/\ln 2 = 1.4427$. With logits $(0, 2)$ the same confidence needs $2\beta = \ln 2$, so $T$ doubles.
 
 ## 4. The interface
 
