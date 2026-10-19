@@ -338,11 +338,11 @@ A tie expresses no preference, and the rate asks how often the model prefers the
 
 </details>
 
-**5. With the length-only score $s(x) = -\text{len}(x)/10$, the gender gap is 0.1 with a degenerate interval. Why is the interval a single point, and what does that tell you about real gaps?**
+**5. With the length-only score $s(x) = -\text{len}(x)/10$, the gender gap is 0.1 and its bootstrap interval lies above zero. What does that tell you about the gap a real model shows?**
 
 <details><summary>Answer</summary>
 
-Every template gives the same four differences $(0.1, 0.1, 0, 0.2)$, so the 32 differences take only those values in fixed proportions, and every bootstrap resample's mean is close to 0.1; with 8 copies of each pair the interval is narrow. More importantly, a score that knows nothing about gender produced a "male preference": a gap measures every difference between the terms, length and frequency included, so a real model's gap must be interpreted against such controls before it is called bias.
+A score that knows nothing about gender produced a "male preference" with an interval excluding zero, purely because "she", "the girl" and "the woman" are longer than their pairs. A gap measures every difference between the terms, length and frequency included, and the interval only says the difference is not noise, not what caused it. A real model's gap must be compared with such controls (equal-length pairs, neutral templates) before it is called a learned association, which is exactly what the reference model card does with its 1.5-nat gender gap.
 
 </details>
 

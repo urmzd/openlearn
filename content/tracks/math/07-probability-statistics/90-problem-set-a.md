@@ -1,17 +1,14 @@
-<!-- ol:module S-M07a -->
 # Probability problem set, part a: axioms, Bayes, random variables, Box-Muller
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `S-M07a` · solve · none · Pass 2 · 4 to 5 h |
-| **You build** | answers in `solve/S-M07a.toml` (29 checked by SymPy) and 1 proof in `solve/S-M07a/q6.md` (self-graded against its rubric) |
+| **Module** | `S-M07a` · solve · none · Pass 2 · 3 to 4 h |
+| **Solution** | a worked answer after every problem in section 4: 29 exact answers (counting lettered parts) and 1 proof (q6; the model proof is also in [`course/solutions/solve/S-M07a/`](../../../../course/solutions/solve/S-M07a/)) |
 | **Contract** | none: a pen and paper set |
-| **Tests** | `course/solve/S-M07a/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M07a/problems.md` and in section 4 |
 | **Needs** | `S-M05` (counting, sets). Reading: the [Probability and Statistics topic](README.md), probability and random variable sections, and the Gaussian integral of `S-M02` |
 | **Used by** | no call site (a solve set). Do it before `M07.0` (random variables, the normal, and Box-Muller over PCG32) and `M07.3` (variance propagation for initialization); later parts `S-M07b` to `S-M07d` follow `M07.1`, `M07.4`, and `M07.5` |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
 | **Optional depth** | Blitzstein and Hwang, *Introduction to Probability* (free), ch. 1 to 5; Box and Muller, "A Note on the Generation of Random Normal Deviates" (1958) |
 
 ## Key Takeaways
@@ -22,19 +19,15 @@
 - An inverse CDF turns one uniform into any distribution, and its comparison is strict: $u < c$, so a $u$ landing exactly on a boundary goes to the next id (q10, q13).
 - Box-Muller turns two uniforms into two independent standard normals, cosine first, sine as the spare (q15).
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start S-M07a             # writes solve/S-M07a.toml and the proof file
-ol check S-M07a             # SymPy checks the answers, then asks the proof rubric (y/n)
-ol check S-M07a --regrade   # ask the rubric again after you change the proof
-```
+Sections 1 to 3 review the ideas and work two examples by hand. Section 4 is the problem set: every problem is followed by a collapsed worked answer with the final result, the derivation, and the common wrong answers and why they are wrong. Try each problem before opening its answer.
 
 ---
 
 ## 1. Why now
 
-Every random number in your system will come from one generator, PCG32 (`M06.3`), and from Pass 2 on it feeds weight initialization, dropout, data shuffling, and sampling. `M07.0` turns its uniforms into normals with Box-Muller, and `M07.3` chooses initialization scales so that activations neither explode nor vanish through 20 layers, which is an argument about variances. The sampler you write in `L8.1` walks a cumulative distribution with a strict comparison that must agree bit for bit with your Rust port. Your gateway's usage-policy classifier (`gw.08`) will report a precision you can only interpret with Bayes' rule. This set gives you the vocabulary for all of it: the axioms, conditional probability, Bayes, discrete and continuous random variables, their moments, and the normal distribution.
+Every random number in the system comes from one generator, PCG32 (`M06.3`), and from Pass 2 on it feeds weight initialization, dropout, data shuffling, and sampling. `M07.0` turns its uniforms into normals with Box-Muller, and `M07.3` chooses initialization scales so that activations neither explode nor vanish through 20 layers, which is an argument about variances. The sampler of `L8.1` walks a cumulative distribution with a strict comparison that must agree bit for bit with the Rust port. The gateway's usage-policy classifier (`gw.08`) reports a precision that can only be interpreted with Bayes' rule. This set builds the vocabulary for all of it: the axioms, conditional probability, Bayes, discrete and continuous random variables, their moments, and the normal distribution.
 
 ## 2. Principles
 
@@ -79,19 +72,19 @@ A language model's next-token distribution is a categorical over the vocabulary.
 
 ### 2.4 Continuous random variables
 
-A **continuous** $X$ has a density $f_X \ge 0$ with $\int f_X = 1$, and $P(a \le X \le b) = \int_a^b f_X(x)\,dx$; its **CDF** is $F_X(x) = \int_{-\infty}^x f_X$. Expectation becomes an integral, $E[g(X)] = \int g(x) f_X(x)\,dx$, with the same linearity and variance rules. The **uniform** on $[0, 1]$ has $f = 1$ there. The **exponential** with rate $\lambda$ has $F(x) = 1 - e^{-\lambda x}$ for $x \ge 0$. **Inverse-CDF sampling** sets $X = F^{-1}(U)$: then $P(X \le x) = P(U \le F(x)) = F(x)$, so one uniform becomes a draw from any distribution whose CDF you can invert.
+A **continuous** $X$ has a density $f_X \ge 0$ with $\int f_X = 1$, and $P(a \le X \le b) = \int_a^b f_X(x)\,dx$; its **CDF** is $F_X(x) = \int_{-\infty}^x f_X$. Expectation becomes an integral, $E[g(X)] = \int g(x) f_X(x)\,dx$, with the same linearity and variance rules. The **uniform** on $[0, 1]$ has $f = 1$ there. The **exponential** with rate $\lambda$ has $F(x) = 1 - e^{-\lambda x}$ for $x \ge 0$. **Inverse-CDF sampling** sets $X = F^{-1}(U)$: then $P(X \le x) = P(U \le F(x)) = F(x)$, so one uniform becomes a draw from any distribution whose CDF can be inverted.
 
 The **standard normal** $Z$ has density $\varphi(z) = e^{-z^2/2}/\sqrt{2\pi}$, mean 0, and variance 1; the constant comes from the Gaussian integral (q16). $X = \mu + \sigma Z$ is normal with mean $\mu$ and variance $\sigma^2$. Its CDF has no closed form, so inverse-CDF sampling is awkward; **Box-Muller** sidesteps it. For two independent standard normals, the squared radius $R^2 = Z_0^2 + Z_1^2$ is exponential with rate $1/2$ and the angle is uniform on $[0, 2\pi)$, independent of it. Reversing that: draw $u_1, u_2$, set $r = \sqrt{-2 \ln(1 - u_1)}$ (inverse-CDF sampling of the exponential, with $1 - u_1 > 0$ so the log is finite) and $\theta = 2\pi u_2$, and return $z_0 = r\cos\theta$ and $z_1 = r \sin\theta$. `spec/pcg32.md` fixes the order: $z_0$ is returned, $z_1$ is kept as the spare for the next call.
 
 ## 3. Worked example by hand
 
-This is a sibling of q3 and q15, not one of the graded problems.
+These are siblings of q3 and q15, not problems of the set.
 
 **Bayes.** A spam filter catches 80% of spam and wrongly flags 2% of good mail, and 10% of mail is spam. What fraction of flagged mail is spam?
 
-Take 1000 messages: 100 spam, 900 good. Flagged spam: $0.8 \cdot 100 = 80$. Flagged good: $0.02 \cdot 900 = 18$. Flagged in total: $98$. So $P(\text{spam} \mid \text{flag}) = 80/98 = 40/49 \approx 0.816$. The same through the formula: $P(\text{flag}) = 0.8 \cdot 0.1 + 0.02 \cdot 0.9 = 0.098$, and $P(\text{spam} \mid \text{flag}) = 0.08 / 0.098 = 40/49$. In `solve/` this is `answer = "40/49"`; `answer = "0.08/0.098"` fails as inexact.
+Take 1000 messages: 100 spam, 900 good. Flagged spam: $0.8 \cdot 100 = 80$. Flagged good: $0.02 \cdot 900 = 18$. Flagged in total: $98$. So $P(\text{spam} \mid \text{flag}) = 80/98 = 40/49 \approx 0.816$. The same through the formula: $P(\text{flag}) = 0.8 \cdot 0.1 + 0.02 \cdot 0.9 = 0.098$, and $P(\text{spam} \mid \text{flag}) = 0.08 / 0.098 = 40/49$.
 
-**Box-Muller.** Take $1 - u_1 = e^{-1/2}$ and $u_2 = 1/4$. Then $r = \sqrt{-2 \cdot (-1/2)} = 1$ and $\theta = 2\pi/4 = \pi/2$, so $z_0 = \cos(\pi/2) = 0$ and the spare is $z_1 = \sin(\pi/2) = 1$. Check the bookkeeping that `M07.0` tests: two uniforms in, two normals out, $z_0$ first.
+**Box-Muller.** Take $1 - u_1 = e^{-1/2}$ and $u_2 = 1/4$. Then $r = \sqrt{-2 \cdot (-1/2)} = 1$ and $\theta = 2\pi/4 = \pi/2$, so $z_0 = \cos(\pi/2) = 0$ and the spare is $z_1 = \sin(\pi/2) = 1$. The bookkeeping `M07.0` relies on: two uniforms in, two normals out, $z_0$ first.
 
 ## 4. The problem set
 
