@@ -1,41 +1,33 @@
-# 07-dynamic-programming
+# Dynamic programming
 
-## Summary
-- Contains: `change-coin.js`, `climbing-stairs.js`, `decode-ways.js`, `house-robber.js`, `lcs.js`,
-  `maximum-product-subarray.js`, `maximum-subarray.js`, `rob-houses-pt-2.js`, `unique-paths.js`,
-  `word-break.js`, plus examples in Python and C (`example-1.py`, `example-2.py`, `example-3.py`,
-  `example-4.py`, `example-5.c`, `example-6.py`, `example-8.c`).
-- Mixed-language DP practice covering 1D/2D state and sequence problems.
+Dynamic programming is recursion plus memoization: **don't solve the same subproblem twice.** A naive recursion for Fibonacci, edit distance, or knapsack recomputes the same subproblems an exponential number of times; storing each answer the first time it is computed makes the whole computation polynomial. The idea is simple. The hard part is identifying the **state** (what defines a subproblem) and the **transition** (how subproblems relate). If you can write the recurrence, you can write the DP.
 
-## Key takeaways
-- Define state clearly, then decide between top-down memoization or bottom-up tables.
-- Space can often be reduced by reusing previous rows or rolling arrays.
+This is the longest chapter in the book because DP is less one pattern than a family of them, distinguished by the shape of the state. It moves from one-dimensional state over a sequence, through grids and pairs of sequences, to knapsack, intervals, state machines, bitmasks, and trees. Each pattern comes with a template; the chapter then gives a five-step method for approaching any DP problem and walks through seventeen solutions in JavaScript, Python, and C.
 
-## How to run
-- JS files are solution functions (run with Node + a driver or an online judge).
-- Python/C examples are standalone; run with `python3 <file>` or compile with `cc <file> -o <bin>`.
+> **Learning objectives**
+> - Define the state and transition of a DP problem and identify its base cases and evaluation order.
+> - Choose between top-down memoization and bottom-up tables, and reduce space with rolling arrays.
+> - Apply the linear, grid, two-sequence, knapsack, interval, state-machine, bitmask, and tree DP templates.
+> - Explain why 0/1 knapsack iterates capacity backwards and unbounded knapsack forwards.
+> - Reconstruct an optimal solution, not just its value, from a DP table.
 
----
+## Before you begin
 
-# Dynamic Programming Patterns
+You should be comfortable with recursion, as in [Recursion and divide-and-conquer](../11-recursion-divide-conquer/README.md), and with tree traversal from [Trees](../05-trees/README.md) for the last pattern. Some examples read graph structure, covered in [Graphs](../06-graphs/README.md), and one uses probabilities; [Probability and statistics](../../mathematics-for-computing/07-probability-statistics/README.md) in *Mathematics for Computing* covers the background.
 
-## Core Insight
+## Linear DP
 
-DP = **recursion + memoization** = "don't solve the same subproblem twice." The hard part is identifying the **state** (what defines a subproblem) and the **transition** (how subproblems relate). If you can write the recurrence, you can write the DP.
+When the answer at position $i$ depends on the answers at a few earlier positions in a sequence, the state is one index:
 
-## Pattern 1: Linear DP (1D State)
-
-**When to use**: Answer depends on previous element(s) in a sequence.
-
-**Template**:
 ```
 dp[i] = best answer using elements 0..i
 dp[i] = max(dp[i-1] + something, dp[i-2] + something_else, ...)
 ```
 
-**Interview problems**: Climbing Stairs, House Robber, Maximum Subarray (Kadane), Decode Ways, Coin Change, Word Break
+Climbing Stairs, House Robber, Maximum Subarray, Decode Ways, Coin Change, and Word Break are all linear DPs. Because each step usually looks back only one or two positions, the table can often be replaced by a few variables.
 
-**Kadane's (Maximum Subarray) — the most important 1D DP**:
+The most important one-dimensional DP is Kadane's algorithm for the maximum subarray. The state is the best sum of a subarray *ending here*: either extend the previous one or start fresh at the current element.
+
 ```python
 max_ending_here = max_so_far = nums[0]
 for x in nums[1:]:
@@ -43,23 +35,21 @@ for x in nums[1:]:
     max_so_far = max(max_so_far, max_ending_here)
 ```
 
-## Pattern 2: Grid DP (2D State, Spatial)
+## Grid DP
 
-**When to use**: Problems on a matrix, moving right/down.
+On a matrix where you move right or down, the state is a cell and the transition comes from the cells above and to the left:
 
-**Template**:
 ```
 dp[i][j] = best answer reaching cell (i, j)
 dp[i][j] = min(dp[i-1][j], dp[i][j-1]) + grid[i][j]
 ```
 
-**Interview problems**: Unique Paths, Minimum Path Sum, Maximal Square, Dungeon Game
+Unique Paths, Minimum Path Sum, Maximal Square, and Dungeon Game are grid DPs. Since each row depends only on the previous one, a single row of storage is enough.
 
-## Pattern 3: Two-Sequence DP
+## Two-sequence DP
 
-**When to use**: Two strings/arrays, find some relationship between them.
+When the problem relates two strings or arrays, the state is a pair of prefixes:
 
-**Template**:
 ```
 dp[i][j] = answer for first[0..i-1] and second[0..j-1]
 # Transitions usually involve:
@@ -68,9 +58,8 @@ dp[i][j] = answer for first[0..i-1] and second[0..j-1]
 #   skip second: dp[i][j-1] + something
 ```
 
-**Interview problems**: Longest Common Subsequence, Edit Distance, Regular Expression Matching, Wildcard Matching, Interleaving String
+Longest Common Subsequence, Edit Distance, Regular Expression Matching, Wildcard Matching, and Interleaving String all take this form. Edit distance is the quintessential two-dimensional DP: each cell is the cheapest of a deletion, an insertion, or a replacement (free when the characters match).
 
-**Edit Distance — the quintessential 2D DP**:
 ```python
 dp[i][j] = min(
     dp[i-1][j] + 1,        # delete
@@ -79,32 +68,28 @@ dp[i][j] = min(
 )
 ```
 
-## Pattern 4: Knapsack Variants
+## Knapsack variants
 
-**When to use**: Select items with constraints (weight, capacity) to optimize value.
+To select items under a constraint such as weight or capacity while maximizing value, the state is the items considered so far and the capacity left. In the 0/1 knapsack, each item is used at most once, so each cell either skips item $i$ or takes it from the previous row:
 
-**0/1 Knapsack**:
 ```
 dp[i][w] = max value using items 0..i with capacity w
 dp[i][w] = max(dp[i-1][w], dp[i-1][w - weight[i]] + value[i])
 ```
 
-Space optimization: single row, iterate capacity **backwards**.
+To save space, keep a single row and iterate capacity **backwards**, so that `dp[w - weight]` still holds the previous row's value when you read it. In the unbounded knapsack, items can be reused, so you want the current row's value, and you iterate capacity **forwards**:
 
-**Unbounded Knapsack**:
 ```
 dp[w] = max value with capacity w (items reusable)
 for each item: dp[w] = max(dp[w], dp[w - weight] + value)
 ```
-Iterate capacity **forwards**.
 
-**Interview problems**: 0/1 Knapsack, Coin Change (unbounded), Partition Equal Subset Sum, Target Sum
+0/1 Knapsack, Coin Change (unbounded), Partition Equal Subset Sum, and Target Sum are knapsack problems.
 
-## Pattern 5: Interval DP
+## Interval DP
 
-**When to use**: Optimal strategy over a contiguous range [i, j], where you try all split points.
+When the optimal strategy is over a contiguous range $[i, j]$ and you must try every split point, fill the table by increasing interval length so that both halves of every split are already solved:
 
-**Template**:
 ```
 for length in range(2, n+1):
     for i in range(n - length + 1):
@@ -113,13 +98,12 @@ for length in range(2, n+1):
             dp[i][j] = min(dp[i][j], dp[i][k] + dp[k+1][j] + cost(i, j))
 ```
 
-**Interview problems**: Matrix Chain Multiplication, Burst Balloons, Minimum Cost Tree From Leaf Values, Optimal BST
+The three nested loops make this $O(n^3)$. Matrix Chain Multiplication, Burst Balloons, Minimum Cost Tree From Leaf Values, and the optimal binary search tree are interval DPs.
 
-## Pattern 6: State Machine DP
+## State-machine DP
 
-**When to use**: Multiple states at each position (holding stock, cooldown, etc.).
+Some problems have several states at each position: holding a stock, having just sold, resting during a cooldown. Keep one value per state and update them together from the previous position's values:
 
-**Template (Buy/Sell Stock with Cooldown)**:
 ```
 held = -prices[0]    # holding a stock
 sold = 0             # just sold
@@ -128,13 +112,12 @@ for price in prices[1:]:
     held, sold, rest = max(held, rest - price), held + price, max(rest, sold)
 ```
 
-**Interview problems**: Best Time to Buy and Sell Stock (I-IV), With Cooldown, With Transaction Fee
+The simultaneous assignment matters: every new value must be computed from the old ones. This template solves Best Time to Buy and Sell Stock with Cooldown, and the same idea covers Best Time to Buy and Sell Stock I through IV and With Transaction Fee.
 
-## Pattern 7: Bitmask DP
+## Bitmask DP
 
-**When to use**: n ≤ 20 items, need to track which subset has been used.
+When there are at most about 20 items and the state must record which subset has been used, encode the subset as the bits of an integer:
 
-**Template**:
 ```
 dp[mask] = best answer using the subset of items encoded in mask
 for mask in range(1 << n):
@@ -143,13 +126,12 @@ for mask in range(1 << n):
             dp[mask] = min(dp[mask], dp[mask ^ (1 << i)] + cost(i, mask))
 ```
 
-**Interview problems**: Travelling Salesman, Shortest Superstring, Can I Win, Partition to K Equal Sum Subsets
+There are $2^n$ masks, which is why $n$ must be small. The Travelling Salesman Problem, Find the Shortest Superstring, Can I Win, and Partition to K Equal Sum Subsets are bitmask DPs. [Math and bit manipulation](../10-math-bit/README.md) covers the bit operations.
 
-## Pattern 8: DP on Trees
+## DP on trees
 
-**When to use**: Optimization problem on a tree structure.
+Finally, for optimization over a tree, each node returns a small tuple of answers for its subtree, typically one for "this node included" and one for "excluded":
 
-**Template**:
 ```python
 def dp(node):
     if not node: return base
@@ -160,23 +142,52 @@ def dp(node):
     return (include_node, exclude_node)
 ```
 
-**Interview problems**: House Robber III, Binary Tree Maximum Path Sum, Binary Tree Cameras
+House Robber III, Binary Tree Maximum Path Sum, and Binary Tree Cameras use this pattern, which [Trees](../05-trees/README.md) introduced.
 
-## Company Targeting
+## How to approach any DP problem
 
-| Company | Favorite Variant | Difficulty |
+Whatever the pattern, the same five steps get you from a problem statement to code:
+
+1. **Define the state.** What information do I need to make the optimal decision?
+2. **Write the recurrence.** How does `dp[current]` relate to `dp[smaller]`?
+3. **Identify the base cases.** What is the answer for the smallest subproblems?
+4. **Determine the order.** Top-down with memoization, or bottom-up? If bottom-up, which dimensions iterate first?
+5. **Optimize space.** Can I drop a dimension? Two dimensions often become one by reusing the previous row or a rolling array.
+
+Interviewers favor different variants. As a rough guide:
+
+| Company | Favorite variant | Difficulty |
 |---------|-----------------|------------|
-| Google | Interval DP, bitmask DP | Hard |
-| Meta | Linear DP, 2-sequence DP | Medium-Hard |
-| Amazon | Knapsack, coin change | Medium |
+| Google | interval DP, bitmask DP | Hard |
+| Meta | linear DP, two-sequence DP | Medium-Hard |
+| Amazon | knapsack, coin change | Medium |
 | Two Sigma | DP-heavy algorithmic rounds | Hard |
-| Citadel | Complex state machine DP | Hard |
-| Jane Street | Probability DP, game theory DP | Hard |
+| Citadel | complex state-machine DP | Hard |
+| Jane Street | probability DP, game-theory DP | Hard |
 
-## How to Approach Any DP Problem
+## In this chapter
 
-1. **Define the state**: What information do I need to make the optimal decision?
-2. **Write the recurrence**: How does dp[current] relate to dp[smaller]?
-3. **Identify base cases**: What's the answer for the smallest subproblems?
-4. **Determine order**: Bottom-up? Which dimensions iterate first?
-5. **Optimize space**: Can I drop a dimension? (Often 2D → 1D)
+The JavaScript files are solution functions; run them with Node and a small driver, or in an online judge. The Python and C examples are standalone programs: run them with `python3 <file>`, or compile with `cc <file> -o <bin>` and run the binary.
+
+The JavaScript solutions, in roughly increasing difficulty:
+
+- [Climbing Stairs](climbing-stairs.js): the Fibonacci recurrence $f(n) = f(n-1) + f(n-2)$, kept in two rolling variables after the base cases $1$ and $2$.
+- [House Robber](house-robber.js): take-or-skip, where each house either adds its value to the best total two houses back or is skipped. Written as a tail recursion that carries the last two totals.
+- [House Robber II](rob-houses-pt-2.js): the houses form a circle, so the first and last cannot both be robbed. It runs the linear solution twice, once without the last house and once without the first, and takes the larger.
+- [Coin Change](change-coin.js): unbounded knapsack, bottom-up. `dp[a]` is the fewest coins making amount `a`, initialized to the impossible value `amount + 1`, and the answer is `-1` if it is never improved.
+- [Unique Paths](unique-paths.js): grid DP in a single row; each cell accumulates the paths from the cell to its left and the one above.
+- [Decode Ways](decode-ways.js): partition DP over a digit string. A nonzero digit continues every decoding so far, and a valid two-digit code (10 to 26) adds the decodings from two positions back.
+- [Word Break](word-break.js): top-down partition DP with a memo by start index, trying only prefixes up to the longest dictionary word.
+- [Maximum Subarray](maximum-subarray.js): Kadane's algorithm.
+- [Maximum Product Subarray](maximum-product-subarray.js): Kadane's idea extended to products by tracking both the running maximum and the running minimum, since multiplying by a negative number swaps them.
+- [Longest Common Subsequence](lcs.js): two-string DP using two alternating rows, so space is linear in the length of one string.
+
+The Python and C worked examples:
+
+- [0/1 knapsack with squashing](example-1.py): extends the binary knapsack with a third choice per item, packing it "squashed" at half its volume (rounded up) for half its profit, and reconstructs the chosen items from the table. Its docstring argues correctness from the standard knapsack: the extension only adds choices, so the profit can never be worse.
+- [Edit distance and global alignment](example-2.py): fills the edit-distance table and recovers an alignment of the two strings by tracing back through change, insert, and delete moves, printing gaps as `-`.
+- [Kadane's algorithm](example-3.py): the maximum subarray in Python, with a short correctness argument in its docstring.
+- [DP on a graph](example-4.py): the longest monochromatic path, computed with a DFS whose memo records, for each node, the longest path of its color through its neighbors.
+- [Optimal binary search tree](example-5.c): interval DP in C over key access frequencies, keeping a cost table and a root table; `main` runs it on the frequencies `{5, 3, 4, 1, 1, 2, 1}`.
+- [Probabilistic transitions](example-6.py): a DP over probabilities. Starting from town `A` and riding a fixed sequence of bus companies, each of which goes to one of its destinations uniformly at random, it computes the probability of ending in each town by pushing probability mass forward one trip at a time.
+- [Sequence alignment with reconstruction](example-8.c): alignment in C in $O(mn)$ time, recovering the aligned strings by keeping pointers to shared character nodes rather than copying strings. The comments explain how restricting the table to cells with $|i - j| \le k$ gives $O((m+n)k)$. Given no input it aligns `AGATACATCA` with `GATTAGATACAT`.

@@ -1,73 +1,60 @@
 # Direct preference optimization and IPO
 
-## Overview
+[Supervised fine-tuning](01-supervised-fine-tuning.md) teaches a model the form of a response, but it does not encode which of two valid responses a user prefers. Paired comparisons (a chosen and a rejected completion for the same prompt) carry exactly that signal. The classical way to use them, RLHF, fits a separate reward model and then runs reinforcement learning against it. Direct preference optimization (DPO) shows that, for the KL-regularized objective RLHF optimizes, you can skip both and train the policy on the pairs with a single classification-style loss.
 
-| | |
-|---|---|
-| **Module** | `L12.2` · optional build · Python · Pass 10 |
-| **Solution** | [`dpo.py`](../../../../course/solutions/python/tinyllm/post/dpo.py): `dpo_loss`, `ipo_loss` |
-| **Contract** | [`dpo.pyi`](../../../../course/contracts/py/tinyllm/post/dpo.pyi) |
-| **Needs** | `S-M10b` KL-regularized objective, `M11.1` KL |
-| **Used by** | `C2` post-trained capstone |
-| **Optional depth** | IPO and odds-ratio preference optimization |
+This section derives DPO from that objective, computes it by hand, and implements it together with its variant IPO, which changes the shape of the loss to bound how far the policy moves. The derivation uses the KL divergence of [Entropy, cross-entropy, KL, JS, and the k3 estimator](../../mathematics-for-computing/11-information-theory/01-entropy-cross-entropy-and-kl.md) and the closed-form optimum of the KL-regularized objective worked in [Optimization problem set, part b](../../mathematics-for-computing/10-optimization/91-problem-set-b.md), both in *Mathematics for Computing*. The solution is [`dpo.py`](../../../../course/solutions/python/tinyllm/post/dpo.py) (`dpo_loss`, `ipo_loss`), and the contract is [`dpo.pyi`](../../../../course/contracts/py/tinyllm/post/dpo.pyi).
 
-## Key Takeaways
+> **Learning objectives**
+> - Derive the DPO loss from the KL-regularized reward objective and the Bradley-Terry preference model.
+> - Explain why the partition function cancels and why the reference policy must appear in the loss.
+> - Compute DPO and IPO losses by hand and implement them stably.
+> - Contrast DPO's unbounded push on the margin with IPO's fixed target.
 
-- DPO optimizes preference odds relative to a frozen reference policy.
-- The reference term prevents unbounded movement away from the SFT policy.
-- IPO changes the loss shape and is not just a different learning rate.
+## The objective
 
-## How to read this chapter
+Write $\pi$ for the trainable policy, $\pi_{\text{ref}}$ for the frozen reference policy (the SFT model), $\beta$ for the preference strength, which doubles as the KL scale, and $\sigma$ for the logistic sigmoid. For a chosen completion $y^+$ and a rejected completion $y^-$ of the same prompt $x$, define
 
-Sections 1 to 3 state the objective and compute it by hand. Section 4 fixes the interface. Section 5 derives DPO from the KL-regularized reward objective, walks through `dpo.py`, and explains why each line is written that way. Try to predict each step of the solution before reading it.
+$$\Delta_\pi = \log \pi(y^+ \mid x) - \log \pi(y^- \mid x), \qquad \Delta_{\text{ref}} = \log \pi_{\text{ref}}(y^+ \mid x) - \log \pi_{\text{ref}}(y^- \mid x).$$
 
-## 1. Why now
+The DPO loss for one pair is
 
-SFT teaches response form, but does not encode which of two valid responses a user prefers. Paired responses provide a direct training signal without fitting a separate reward model.
+$$\mathcal{L}_{\text{DPO}} = -\log \sigma\big(\beta(\Delta_\pi - \Delta_{\text{ref}})\big).$$
 
-## 2. Principles
+The reference policy is fixed. When the policy equals the reference, the margin is zero and the per-pair loss is $\log 2$. The loss falls only as the policy prefers the chosen answer more than the reference already did.
 
-For chosen and rejected completions, define `Δπ = log π(y+|x) - log π(y-|x)` and `Δref` similarly. DPO loss is `-log σ(β(Δπ-Δref))`. The reference policy is fixed. At policy equal to reference, the margin is zero and the per-pair loss is `log 2`.
+## Where the loss comes from
 
-| Symbol | Meaning |
-|---|---|
-| `π` | trainable policy |
-| `πref` | frozen reference policy |
-| `β` | preference strength / KL scale |
-| `σ` | logistic sigmoid |
+The loss is not a guess; it falls out of the objective DPO replaces in four steps.
 
-## 3. Worked example by hand
+Start from RLHF, which maximizes $\mathbb{E}[r(x, y)] - \beta\, \mathrm{KL}(\pi \,\|\, \pi_{\text{ref}})$. Its optimum has a closed form:
 
-With `Δπ = 1.2`, `Δref = 0.2`, and `β = 0.1`, the scaled margin is 0.1, so the loss is `-log σ(0.1) = log(1 + e^-0.1) ≈ 0.6444`. If both policies are equal, both deltas match and the loss is `log 2 ≈ 0.6931`.
+$$\pi^*(y \mid x) = \frac{\pi_{\text{ref}}(y \mid x)\, e^{r(x, y)/\beta}}{Z(x)}.$$
 
-IPO on the same pair uses the unscaled margin `z = Δπ - Δref = 1.0` and the target `1/(2β) = 5`, so the loss is `(1 - 5)^2 = 16`.
+Invert it. Solving for the reward gives $r(x, y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_{\text{ref}}(y \mid x)} + \beta \log Z(x)$: the reward is a log-ratio against the reference, plus a term that depends only on the prompt.
 
-## 4. The interface
+Now use a pairwise preference model. Bradley-Terry says $P(y^+ \succ y^-) = \sigma\big(r(x, y^+) - r(x, y^-)\big)$. In the difference, $\beta \log Z(x)$ cancels, and that is the whole trick: no partition function, no reward model.
 
-`dpo_loss(policy_chosen, policy_rejected, reference_chosen, reference_rejected, beta=0.1)` and `ipo_loss(...)` with the same arguments take completion log probabilities (summed over each completion's tokens), one entry per pair, and return the mean loss over pairs as a `float`. The reference log probabilities are inputs, computed once by the frozen reference model; the reference weights are never updated.
+What is left is the margin, $r^+ - r^- = \beta\big((\log \pi(y^+) - \log \pi(y^-)) - (\log \pi_{\text{ref}}(y^+) - \log \pi_{\text{ref}}(y^-))\big) = \beta(\Delta_\pi - \Delta_{\text{ref}})$. Maximizing the log-likelihood of the observed preferences is minimizing $-\log \sigma(\beta(\Delta_\pi - \Delta_{\text{ref}}))$.
 
-### What a correct solution must handle
+## IPO: same margin, different shape
 
-| Case | Why it exists | Expected result |
-|---|---|---|
-| the hand DPO loss | Pins the DPO objective to the worked calculation | Loss near `0.6444` |
-| policy equal to reference | Verifies reference correction | Equal policies produce `log(2)` |
-| the IPO variant | Checks the alternate IPO objective | `16.0` for the worked pair |
+DPO's loss keeps decreasing as the margin grows, so on deterministic preferences it pushes the margin toward infinity. IPO keeps the margin $z = \Delta_\pi - \Delta_{\text{ref}}$ but regresses it to a finite target $1/(2\beta)$ with a squared loss, $(z - 1/(2\beta))^2$, which bounds how far the policy moves from the reference. So IPO is a different loss shape, not just a different learning rate.
 
-## 5. The solution, step by step
+## Working it by hand
 
-### From first principles
+With $\Delta_\pi = 1.2$, $\Delta_{\text{ref}} = 0.2$, and $\beta = 0.1$, the scaled margin is 0.1, so the DPO loss is $-\log \sigma(0.1) = \log(1 + e^{-0.1}) \approx 0.6444$. If the two policies are equal, both deltas match and the loss is $\log 2 \approx 0.6931$.
 
-1. **Start from the objective DPO replaces.** RLHF maximizes `E[r(x, y)] - β KL(π || πref)`. Its optimum has a closed form (the `S-M10b` derivation): `π*(y|x) = πref(y|x) exp(r(x, y)/β) / Z(x)`.
-2. **Invert it.** Solving for the reward gives `r(x, y) = β log(π*(y|x)/πref(y|x)) + β log Z(x)`. The reward is a log-ratio against the reference, plus a term that depends only on the prompt.
-3. **Use a pairwise preference model.** Bradley-Terry says `P(y+ beats y-) = σ(r(x, y+) - r(x, y-))`. In the difference, `β log Z(x)` cancels, which is the whole trick: no partition function, no reward model.
-4. **What is left is the margin.** `r+ - r- = β((log π(y+) - log π(y-)) - (log πref(y+) - log πref(y-))) = β(Δπ - Δref)`. Maximizing the log-likelihood of the observed preferences is minimizing `-log σ(β(Δπ - Δref))`.
-5. **Compute it stably.** `-log σ(z) = log(1 + e^-z)`, which overflows for large negative `z` if written literally. `logaddexp(0, -z)` computes the same value without overflow.
-6. **IPO keeps the margin but changes the shape.** DPO's loss keeps decreasing as the margin grows, so on deterministic preferences it pushes the margin toward infinity. IPO regresses the margin to a finite target `1/(2β)` with a squared loss, which bounds how far the policy moves from the reference.
+IPO on the same pair uses the unscaled margin $z = \Delta_\pi - \Delta_{\text{ref}} = 1.0$ and the target $1/(2\beta) = 5$, so the loss is $(1 - 5)^2 = 16$.
 
-### The code, annotated
+## Designing the API
 
-The shared margin. Shapes must match because each entry is one pair; broadcasting a scalar reference against a batch would silently give every pair the same reference:
+`dpo_loss(policy_chosen, policy_rejected, reference_chosen, reference_rejected, beta=0.1)` and `ipo_loss(...)`, with the same arguments, take completion log probabilities (summed over each completion's tokens), one entry per pair, and return the mean loss over pairs as a `float`. The reference log probabilities are inputs, computed once by the frozen reference model; the reference weights are never updated.
+
+## Building it step by step
+
+Two implementation concerns remain once the derivation is done. The first is stability: $-\log \sigma(z) = \log(1 + e^{-z})$ overflows for large negative $z$ if written literally, while `logaddexp(0, -z)` computes the same value without overflow. The second is alignment: each array entry is one pair, so all four arrays must have the same shape.
+
+The shared margin checks shapes, because broadcasting a scalar reference against a batch would silently give every pair the same reference:
 
 ```python
 def _margin(pc, pr, rc, rr):
@@ -78,7 +65,7 @@ def _margin(pc, pr, rc, rr):
     return (pc - pr) - (rc - rr)
 ```
 
-DPO scales the margin by β and applies the logistic loss:
+DPO scales the margin by $\beta$ and applies the logistic loss:
 
 ```python
 def dpo_loss(policy_chosen, policy_rejected, reference_chosen, reference_rejected, beta=0.1):
@@ -89,7 +76,7 @@ def dpo_loss(policy_chosen, policy_rejected, reference_chosen, reference_rejecte
     return float(np.mean(np.logaddexp(0.0, -z)))
 ```
 
-IPO uses the unscaled margin and a squared distance to `1/(2β)`:
+IPO uses the unscaled margin and a squared distance to $1/(2\beta)$:
 
 ```python
 def ipo_loss(policy_chosen, policy_rejected, reference_chosen, reference_rejected, beta=0.1):
@@ -99,67 +86,77 @@ def ipo_loss(policy_chosen, policy_rejected, reference_chosen, reference_rejecte
     return float(np.mean((z - 1.0 / (2.0 * beta)) ** 2))
 ```
 
-Full solution: [`dpo.py`](../../../../course/solutions/python/tinyllm/post/dpo.py)
+The full solution is [`dpo.py`](../../../../course/solutions/python/tinyllm/post/dpo.py).
 
-### Why this solution
+### Why this design
 
-- **Cost.** Both losses are $O(\text{pairs})$ once the four log probabilities are known. The expensive part is the forward passes: two through the policy, and two through the reference, which can be computed once per dataset and cached because the reference is frozen.
-- **DPO versus a reward model plus PPO.** The reward model and the RL loop are replaced by one classification-style loss. The price is that DPO only learns from the pairs it is given; it cannot explore.
-- **`logaddexp` versus `-log(sigmoid(z))`.** The literal form rounds `sigmoid(z)` to 0 for large negative `z` and returns `inf`. `logaddexp` is exact over the whole range.
-- **IPO versus DPO.** IPO trades DPO's unbounded push for a fixed target margin. With `β = 0.1` the target is 5 nats, a concrete bound on how much more the policy prefers the chosen answer than the reference does.
+Both losses are $O(\text{pairs})$ once the four log probabilities are known. The expensive part is the forward passes: two through the policy, and two through the reference, which can be computed once per dataset and cached because the reference is frozen.
 
-### Explain it back
+Compared with a reward model plus PPO, DPO replaces the reward model and the RL loop with one classification-style loss. The price is that DPO only learns from the pairs it is given; it cannot explore. Within the implementation, `logaddexp` beats the literal `-log(sigmoid(z))`, which rounds `sigmoid(z)` to 0 for large negative $z$ and returns `inf`; `logaddexp` is exact over the whole range. And IPO trades DPO's unbounded push for a fixed target margin: with $\beta = 0.1$ the target is 5 nats, a concrete bound on how much more the policy prefers the chosen answer than the reference does.
 
-**Why does the loss equal `log 2` when the policy equals the reference?**
+## What can go wrong
 
-<details><summary>Answer</summary>
+Three checks pin the implementation: the worked DPO loss must come out near 0.6444; a policy equal to the reference must give $\log 2$, which verifies the reference correction; and the IPO variant must give 16.0 on the worked pair.
 
-Then `Δπ = Δref`, the margin is 0, and `-log σ(0) = -log(1/2) = log 2`. The loss starts there and falls only as the policy prefers the chosen answer *more than the reference does*.
+The two classic bugs both live in the margin. Reversing chosen and rejected flips the sign of every update and trains the model toward the rejected answers; the solution subtracts rejected from chosen for both models in one place, `_margin`. Omitting the reference log probabilities removes the tie to the SFT model; the reference difference is part of `_margin`, shared by DPO and IPO.
 
-</details>
+> **Warning:** Without the reference terms the loss becomes $-\log \sigma(\beta \Delta_\pi)$, which rewards any increase in the chosen-over-rejected log ratio, including the part the SFT model already had. Nothing then keeps the policy near the reference.
 
-**Why does `log Z(x)` not appear anywhere in the code?**
+## Where this leads
 
-<details><summary>Answer</summary>
+The [post-trained capstone](../capstones/02-post-trained.md) applies DPO to preference pairs after supervised fine-tuning. The next section, [Group relative policy optimization with verifiable rewards](03-grpo-with-verifiable-rewards.md), takes the other route: when answers can be checked automatically, it trains on sampled rollouts instead of fixed pairs. Production preference pipelines add handling of annotator disagreement and pair provenance, and online preference evaluation adds position controls and outcome measures beyond training loss (see the TRL preference trainers).
 
-It depends only on the prompt, so it is the same for the chosen and the rejected completion and cancels in the reward difference that Bradley-Terry uses.
+### Further reading
 
-</details>
+- Rafailov et al., *Direct Preference Optimization: Your Language Model Is Secretly a Reward Model* (2023).
+- Azar et al., *A General Theoretical Paradigm to Understand Learning from Human Preferences* (IPO, 2023), and odds-ratio preference optimization (ORPO).
+- Hugging Face TRL, the DPO trainer documentation.
 
-**What happens if you drop the reference terms?**
+## Key terms
 
-<details><summary>Answer</summary>
+- **reference policy**: the frozen model (usually the SFT checkpoint) against which the policy's log-ratios are measured.
+- **preference margin**: $\Delta_\pi - \Delta_{\text{ref}}$, how much more the policy prefers the chosen completion than the reference does.
+- **Bradley-Terry model**: $P(y^+ \succ y^-) = \sigma(r^+ - r^-)$, a pairwise preference probability from scalar rewards.
+- **DPO**: minimizing $-\log \sigma(\beta \cdot \text{margin})$ over preference pairs, equivalent to fitting the KL-regularized reward objective.
+- **IPO**: regressing the margin to the target $1/(2\beta)$ with a squared loss.
 
-The loss becomes `-log σ(β Δπ)`, which rewards any increase in the chosen-over-rejected log ratio, including the part the SFT model already had. Nothing ties the policy to the reference, so it can drift arbitrarily far; the worked example's loss would also change from 0.6444 to `-log σ(0.12) ≈ 0.6349`.
+## Summary
 
-</details>
+- DPO optimizes preference odds relative to a frozen reference policy, with no reward model and no RL loop.
+- The prompt-only term $\beta \log Z(x)$ cancels in the pairwise difference, which is why the loss needs only four log probabilities.
+- The reference term prevents unbounded movement away from the SFT policy; at policy equal to reference the loss is $\log 2$.
+- IPO changes the loss shape, regressing the margin to $1/(2\beta)$, and is not just a different learning rate.
 
-**Why is IPO's margin not multiplied by β?**
+## Review questions
 
-<details><summary>Answer</summary>
+1. Why does the loss equal $\log 2$ when the policy equals the reference?
 
-β enters through the target `1/(2β)` instead. Larger β means a smaller target margin, so a stronger tie to the reference, matching β's role as the KL weight in DPO.
+   <details><summary>Answer</summary>
 
-</details>
+   Then $\Delta_\pi = \Delta_{\text{ref}}$, the margin is 0, and $-\log \sigma(0) = -\log(1/2) = \log 2$. The loss starts there and falls only as the policy prefers the chosen answer *more than the reference does*.
 
-## 6. Pitfalls
+   </details>
 
-| Pitfall | How the solution avoids it |
-|---|---|
-| Reversing chosen and rejected | `_margin` subtracts rejected from chosen for both models in one place |
-| Omitting reference log probabilities | the reference difference is part of `_margin`, shared by DPO and IPO |
+2. Why does $\log Z(x)$ not appear anywhere in the code?
 
-## 7. Where it's used next
+   <details><summary>Answer</summary>
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `M11.1` | Defines the KL term that regularizes policy movement. |
-| Back | `S-M10b` | Derives how KL regularization leads to reference-adjusted preference odds. |
-| Forward | `C2` | Applies DPO to preference pairs after `L12.1` SFT. |
+   It depends only on the prompt, so it is the same for the chosen and the rejected completion and cancels in the reward difference that Bradley-Terry uses.
 
-## Going further
+   </details>
 
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| paired preference objective | preference optimization pipelines | Annotator disagreement and pair provenance | Rafailov et al., Direct Preference Optimization |
-| held-out preference check | online preference evaluation | Position controls and outcome measures beyond training loss | TRL preference trainer |
+3. What happens if you drop the reference terms?
+
+   <details><summary>Answer</summary>
+
+   The loss becomes $-\log \sigma(\beta \Delta_\pi)$, which rewards any increase in the chosen-over-rejected log ratio, including the part the SFT model already had. Nothing ties the policy to the reference, so it can drift arbitrarily far; the worked example's loss would also change from 0.6444 to $-\log \sigma(0.12) \approx 0.6349$.
+
+   </details>
+
+4. Why is IPO's margin not multiplied by $\beta$?
+
+   <details><summary>Answer</summary>
+
+   $\beta$ enters through the target $1/(2\beta)$ instead. Larger $\beta$ means a smaller target margin, so a stronger tie to the reference, matching $\beta$'s role as the KL weight in DPO.
+
+   </details>
