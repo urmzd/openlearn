@@ -1,12 +1,18 @@
-# C++ 01: `Vector<T>`
+# Vector
 
-**Concepts:** templates, move semantics, manual object lifetime
-**Difficulty:** ⭐⭐⭐
+`std::vector` is the container you use most in C++ and the one whose implementation teaches the most about the language. Underneath its friendly interface are the rules that make C++ hard: allocation is not construction, an object exists only once its constructor returns, a move can throw, and a moved-from object must still be usable. This section builds a `std::vector` work-alike, `Vector<T>`, that obeys all of them.
 
-A `std::vector` work-alike. The whole solution is the header
-[`vector.hpp`](vector.hpp); [`main.cpp`](main.cpp) is the test suite.
+The C [dynamic array](../../c/01-dynamic-array/README.md) solved growth, overflow, and allocation failure for `int`, where an element is just bytes. Here elements are objects with constructors and destructors, so every slot is either raw storage or a live `T`, and the code must always know which. By the end you will be able to explain why `new T[n]` is wrong for a vector, why marking a move constructor `noexcept` makes vectors of that type faster, and how copy-and-swap gives the strong exception guarantee. The whole solution is the header [`vector.hpp`](vector.hpp); [`main.cpp`](main.cpp) is the test suite.
 
-## The problem
+> **Learning objectives**
+> - Separate raw storage from object lifetime using `operator new`, `std::construct_at`, `std::destroy_at`, and `operator delete`.
+> - Keep the invariant that exactly the first `size_` slots hold live objects, even when a constructor throws.
+> - Implement growth with `std::move_if_noexcept` so a throwing move cannot lose elements.
+> - Implement the rule of five, including copy-and-swap assignment and a move that leaves a valid empty source.
+
+## The interface
+
+The members to implement are:
 
 | Member | Does |
 |--------|------|
@@ -17,87 +23,52 @@ A `std::vector` work-alike. The whole solution is the header
 | `clear()` | Destroy all elements, keep the capacity |
 | The rule of five | Copy/move construct, copy/move assign, destructor |
 
-Plus `size`, `capacity`, `empty`, `operator[]`, a bounds-checked `at`, `front`,
-`back`, `data`, `swap`, and pointer iterators. The constraints that make it
-hard: `T` need not be default-constructible, spare capacity must hold no
-objects, every constructed object is destroyed exactly once, and growth must
-not lose elements even when `T`'s move constructor can throw.
+On top of these come `size`, `capacity`, `empty`, `operator[]`, a bounds-checked `at`, `front`, `back`, `data`, `swap`, and pointer iterators. The constraints are what make it hard: `T` need not be default-constructible, spare capacity must hold no objects, every constructed object is destroyed exactly once, and growth must not lose elements even when `T`'s move constructor can throw.
 
-## Build and run
-
-From this directory:
+To build and run the tests from this directory:
 
 ```bash
 c++ -std=c++20 -Wall -Wextra -O2 main.cpp -o vector && ./vector
 # ok  cpp/01-vector  189 checks passed
 ```
 
-GCC prints one `-Wpragmas` warning for a Clang-only warning name in the
-self-assignment test; it is harmless. Add `-g -fsanitize=address,undefined` to
-check that nothing is destroyed twice or leaked.
+GCC prints one `-Wpragmas` warning for a Clang-only warning name in the self-assignment test; it is harmless. Add `-g -fsanitize=address,undefined` to check that nothing is destroyed twice or leaked.
 
-## What to notice
+The tests count objects, not values. A `Tracked` type records every construction, destruction, copy, and move, which is how a test can assert that a move copied *nothing* and that a copy really copied ten elements. Most vector bugs are invisible to value-based assertions and obvious to lifetime-based ones.
 
-**Allocation and construction are two different things, and this is the whole
-exercise.** A vector holds `capacity` worth of *raw storage* and constructs
-objects only in the first `size` slots. Reach for `new T[n]` and you have
-default-constructed every spare slot: `Vector<T>` then requires `T` to be
-default-constructible, wastes work, and destroys objects nobody created.
-`test_spare_capacity_holds_no_objects` is what catches it, and a `Vector<int>`
-never could.
+## Allocation is not construction
 
-**Increment `size_` *after* the constructor returns, not before.** If `T`'s
-constructor throws, that element never existed, and a size already bumped means
-`clear()` and the destructor will run a destructor on raw memory.
+This distinction is the whole exercise. A vector holds `capacity` worth of *raw storage* and constructs objects only in the first `size` slots. Reach for `new T[n]` and you have default-constructed every spare slot: `Vector<T>` then requires `T` to be default-constructible, wastes work, and destroys objects nobody created. `test_spare_capacity_holds_no_objects` is what catches it, and a `Vector<int>` never could.
 
-**`std::move_if_noexcept` in `reserve` is not a micro-optimisation.** If `T`'s
-move constructor can throw, moving elements into the new buffer can fail
-halfway, with the originals already moved-from and no way back. Copying instead
-keeps the source intact until the new buffer is complete. This is precisely why
-marking a move constructor `noexcept` makes vectors of that type measurably
-faster: without it, every reallocation silently degrades to copying.
+The same reasoning fixes the order of two lines. Increment `size_` *after* the constructor returns, not before. If `T`'s constructor throws, that element never existed, and a size already bumped means `clear()` and the destructor will run a destructor on raw memory.
 
-**Copy-and-swap gets self-assignment and exception safety in one move.** The
-naive copy assignment destroys the contents and then copies from the source,
-which on `v = v` reads objects it has already destroyed. Building the copy
-first means the operation either fully succeeds or leaves `*this` untouched.
+## Growing when moves can throw
 
-**A moved-from object must be valid, not merely destructible.** The standard
-requires "valid but unspecified", and the test pushes onto a moved-from vector
-to prove it. Leaving stale pointers in the source and relying on nobody
-touching it works right up until someone reuses the variable.
+`std::move_if_noexcept` in `reserve` is not a micro-optimisation. If `T`'s move constructor can throw, moving elements into the new buffer can fail halfway, with the originals already moved-from and no way back. Copying instead keeps the source intact until the new buffer is complete. This is precisely why marking a move constructor `noexcept` makes vectors of that type measurably faster: without it, every reallocation silently degrades to copying.
 
-**The tests count objects, not values.** `Tracked` records every construction,
-destruction, copy, and move, which is how a test can assert that a move copied
-*nothing* and that a copy really copied ten elements. Most vector bugs are
-invisible to value-based assertions and obvious to lifetime-based ones.
+## Copying, moving, and assignment
 
-## The solution, step by step
+Copy-and-swap gets self-assignment and exception safety in one move. The naive copy assignment destroys the contents and then copies from the source, which on `v = v` reads objects it has already destroyed. Building the copy first means the operation either fully succeeds or leaves `*this` untouched.
 
-### From first principles
+A moved-from object must be valid, not merely destructible. The standard requires "valid but unspecified", and the test pushes onto a moved-from vector to prove it. Leaving stale pointers in the source and relying on nobody touching it works right up until someone reuses the variable.
 
-1. **Three numbers describe the state.** `data_` points at raw storage for
-   `cap_` objects, of which the first `size_` are alive. The invariant every
-   member keeps: slots `[0, size_)` hold constructed `T`s, slots
-   `[size_, cap_)` hold nothing.
-2. **So storage and objects need separate tools.** `operator new(bytes, align)`
-   gets raw memory and constructs nothing; `std::construct_at` builds one object
-   in a slot; `std::destroy_at` ends one; `operator delete` frees raw memory.
-   Using `new T[n]` would merge the first two and break the invariant.
-3. **Count an object only once it exists.** Construct, *then* `++size_`. If the
-   constructor throws, `size_` still describes exactly the live objects, and the
-   destructor cleans up correctly.
-4. **Growth must not lose anything.** Build the new buffer completely before
-   touching the old one. If `T`'s move can throw, use copies
-   (`move_if_noexcept`), so a failure leaves the old buffer fully intact; then
-   destroy the partial new buffer and rethrow.
-5. **Doubling makes `push_back` amortised O(1)**, for the same reason as in
-   [C 01](../../c/01-dynamic-array/).
-6. **Ownership of the buffer is unique.** A copy must build its own buffer
-   (deep copy). A move just steals the three numbers and leaves the source as an
-   empty vector, so it allocates nothing and cannot throw.
+## Deriving the design
 
-### The code, annotated
+Six observations build the class.
+
+Three numbers describe the state. `data_` points at raw storage for `cap_` objects, of which the first `size_` are alive. The invariant every member keeps is that slots `[0, size_)` hold constructed `T`s and slots `[size_, cap_)` hold nothing.
+
+So storage and objects need separate tools. `operator new(bytes, align)` gets raw memory and constructs nothing; `std::construct_at` builds one object in a slot; `std::destroy_at` ends one; `operator delete` frees raw memory. Using `new T[n]` would merge the first two and break the invariant.
+
+Count an object only once it exists. Construct, *then* `++size_`. If the constructor throws, `size_` still describes exactly the live objects, and the destructor cleans up correctly.
+
+Growth must not lose anything. Build the new buffer completely before touching the old one. If `T`'s move can throw, use copies (`move_if_noexcept`), so a failure leaves the old buffer fully intact; then destroy the partial new buffer and rethrow.
+
+Doubling makes `push_back` amortised O(1), for the same reason as in the C [dynamic array](../../c/01-dynamic-array/README.md).
+
+Ownership of the buffer is unique. A copy must build its own buffer (a deep copy). A move just steals the three numbers and leaves the source as an empty vector, so it allocates nothing and cannot throw.
+
+## Building it step by step
 
 `reserve` is where every hard rule meets:
 
@@ -206,35 +177,59 @@ Vector& operator=(const Vector& other) {
 Move assignment (not quoted) is the destructor's two steps followed by the move
 constructor's steal, guarded by `this != &other`.
 
-Full solution: [`vector.hpp`](vector.hpp).
+The full solution is in [`vector.hpp`](vector.hpp).
 
-### Why this solution
+## Why this design
 
-- **Cost.** `push_back`/`emplace_back` amortised O(1), `operator[]` O(1),
-  `reserve` O(size), copy O(size), move O(1) and `noexcept`.
-- **Raw storage versus `new T[n]`.** `new T[n]` is shorter and wrong: it
-  constructs objects in spare slots, requires a default constructor, and cannot
-  destroy elements individually.
-- **Versus `std::allocator<T>`.** Using an allocator object is what
-  `std::vector` does and what makes custom allocators possible
-  ([C++ 10](../10-pool-allocator/)). Calling `operator new` directly keeps the
-  lifetime rules visible without the allocator-traits machinery.
-- **Copy-and-swap versus element-wise assignment.** Reusing existing elements
-  with `=` can avoid reallocation, which is why `std::vector` does it, but it
-  gives only the basic exception guarantee. Copy-and-swap always allocates and
-  gives the strong guarantee.
-- **Known limitations.** Two gaps a production vector closes:
-  - `v.push_back(v[0])` when `size_ == cap_` is undefined behaviour here:
-    `grow()` destroys the old buffer before `construct_at` reads the argument,
-    which still refers into it. `std::vector` constructs the new element in the
-    new buffer before releasing the old one.
-  - If a copy throws inside the copy constructor (or the `(n, value)` and
-    initializer-list constructors), the elements already built and the buffer
-    leak, because a constructor that did not finish never runs `~Vector`.
-    Delegating to `Vector()` first, or wrapping the loop in `try`/`catch`, makes
-    the object complete so cleanup happens.
+`push_back` and `emplace_back` are amortised O(1), `operator[]` is O(1), `reserve` and copy are O(size), and move is O(1) and `noexcept`.
 
-### Explain it back
+Raw storage beats `new T[n]`, which is shorter and wrong: it constructs objects in spare slots, requires a default constructor, and cannot destroy elements individually.
+
+Calling `operator new` directly is chosen over `std::allocator<T>`. Using an allocator object is what `std::vector` does and what makes custom allocators possible, as the [memory pool allocator](../10-pool-allocator/README.md) section shows. Calling `operator new` directly keeps the lifetime rules visible without the allocator-traits machinery.
+
+Copy-and-swap is chosen over element-wise assignment. Reusing existing elements with `=` can avoid reallocation, which is why `std::vector` does it, but it gives only the basic exception guarantee. Copy-and-swap always allocates and gives the strong guarantee.
+
+## What can go wrong
+
+The bugs the design prevents are summarised here.
+
+| Mistake | Consequence |
+|---------|-------------|
+| `new T[n]` for the buffer | Spare slots hold default-constructed objects; `T` must be default-constructible |
+| `++size_` before the constructor | A throwing constructor leaves a raw slot that the destructor will "destroy" |
+| `std::move` instead of `move_if_noexcept` in `reserve` | A throwing move loses elements with no way back |
+| Destroying old elements before the new buffer is complete | Nothing to fall back to if a later construction throws |
+| Naive copy assignment | `v = v` reads objects it already destroyed |
+| A move that leaves the source's pointers in place | Two owners; a double free |
+
+This implementation also has two known limitations that a production vector closes.
+
+> **Warning:** `v.push_back(v[0])` when `size_ == cap_` is undefined behaviour here. `grow()` destroys the old buffer before `construct_at` reads the argument, which still refers into it. `std::vector` constructs the new element in the new buffer before releasing the old one.
+
+The second limitation is in the constructors. If a copy throws inside the copy constructor (or the `(n, value)` and initializer-list constructors), the elements already built and the buffer leak, because a constructor that did not finish never runs `~Vector`. Delegating to `Vector()` first, or wrapping the loop in `try`/`catch`, makes the object complete so cleanup happens.
+
+## Where this leads
+
+Two extensions are worth doing. Add `insert` and `erase` in the middle, which force you to think about iterator invalidation and about shifting a range of objects using move-assignment rather than construction. Then add an `Allocator` template parameter and discover why `std::vector`'s real signature is so much more complicated than this one; the [memory pool allocator](../10-pool-allocator/README.md) is a good allocator to plug in. The move-only ownership ideas carry straight into the next section, [UniquePtr](../02-unique-ptr/README.md).
+
+## Key terms
+
+- **Raw storage**: allocated memory in which no object has yet been constructed.
+- **`std::construct_at` / `std::destroy_at`**: start and end the lifetime of one object at a given address.
+- **Strong exception guarantee**: if an operation throws, the object is left exactly as it was before.
+- **`std::move_if_noexcept`**: yields an rvalue if the move constructor cannot throw (or the type is not copyable), and a const lvalue otherwise.
+- **Copy-and-swap**: implementing assignment by copying into a temporary and swapping, so failure cannot damage the target.
+- **Rule of five**: a type that manages a resource defines (or deletes) the copy and move constructors, copy and move assignment, and destructor together.
+
+## Summary
+
+- Slots `[0, size_)` hold live objects and `[size_, cap_)` hold raw storage; separate tools allocate memory and construct objects.
+- `size_` is incremented only after a constructor returns, so a throw never leaves an uncounted or overcounted slot.
+- `reserve` builds the new buffer completely, moving only if moves are `noexcept`, before destroying the old one.
+- Copy is a deep copy, move steals the buffer and leaves a valid empty source, and assignment uses copy-and-swap.
+- Self-referencing `push_back` on a full vector and throwing copies in constructors are known gaps.
+
+## Review questions
 
 1. Why is `++size_` after `construct_at` and not before?
 
@@ -292,11 +287,3 @@ Full solution: [`vector.hpp`](vector.hpp).
    argument), then relocate the old elements and free the old buffer.
 
    </details>
-
-## Extending it
-
-Add `insert` and `erase` in the middle, which force you to think about
-iterator invalidation and about shifting a range of objects using
-move-assignment rather than construction. Then add an `Allocator` template
-parameter and discover why `std::vector`'s real signature is so much more
-complicated than this one.

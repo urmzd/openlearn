@@ -4,7 +4,7 @@ This index uses Diátaxis to help readers choose a document by the task they nee
 
 | Type | Reader goal | Start here |
 |---|---|---|
-| Tutorial | Build a local serving stack from an empty checkout | [Local quickstart](../../../README.md#quickstart) |
+| Tutorial | Build a local serving stack from an empty checkout | [Local quickstart](../../../README.md#quick-start) |
 | How-to | Recover a failing engine | [Engine crashloop runbook](runbooks/engine-crashloop.md) |
 | How-to | Respond to a TTFT budget burn | [TTFT budget runbook](runbooks/TTFTBudgetBurnFast.md) |
 | How-to | Operate durable queues | [Dead letter runbook](runbooks/DurableDeadLetters.md) |
