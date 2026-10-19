@@ -1,35 +1,18 @@
 # Inner products, projections, cosine similarity, and top-k
 
-## Overview
+[word2vec skip-gram with negative sampling, and the PPMI-SVD baseline](../../build-an-llm/p02-statistical-lm/03-word2vec-and-ppmi-svd.md) in *Build Your Own LLM System* turns every word into a vector, and from then on every question about words becomes a question about angles. Which words are closest to "king"? Which word completes "man is to king as woman is to ?" How well do the model's similarities agree with human ratings? All of these are cosine similarities and a sorted list of the best $k$.
 
-| | |
-|---|---|
-| **Module** | `M03.6` · build · Python · Pass 3 · about 1 to 2 h reading |
-| **Solution** | [`inner.py`](../../../../course/solutions/python/tinyllm/linalg/inner.py): `normalize(x)`, `cosine_sim(a, b)` (each norm clamped on its own), `project(x, v)` (onto the line through $v$), and `topk_cosine(query, matrix, k)` (exact top-$k$ rows by cosine, ties to the lowest index) |
-| **Contract** | [`course/contracts/py/tinyllm/linalg/inner.pyi`](../../../../course/contracts/py/tinyllm/linalg/inner.pyi) |
-| **Needs** | nothing to call. Reading: `M03.1` (the dot product is the inner loop of matmul), `S-M03a` |
-| **Used by** | later `L2.3` word analogies and nearest neighbours, `L6.7` the zoo's word-similarity task; `ag.07` re-implements it in Go for vector retrieval |
-| **Optional depth** | Strang, *Introduction to Linear Algebra*, sections 1.2 and 4.2; Mikolov, Yih, and Zweig, "Linguistic regularities in continuous space word representations" (2013) |
+Each of them is easy to get subtly wrong. A version that ranks by raw dot product quietly prefers frequent words, because their vectors are longer. One that divides by a zero norm fills the table with NaN. One that breaks ties by whatever order the sort happens to leave makes two runs disagree. The same search later runs over document embeddings in [Retrieval: BM25, flat and IVF vectors, RRF, MMR](../../ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md) in *AI Platform Engineering*, re-implemented in Go. This section pins the definitions down once.
 
-## Key Takeaways
+Nothing needs to be built first. It helps to remember from [Vectors, matrices, row-major layout, and matmul](01-vectors-matrices-and-matmul.md) that the dot product is the inner loop of matmul, and the [linear algebra problem set, part a](90-problem-set-a.md) is useful practice. The solution is [`inner.py`](../../../../course/solutions/python/tinyllm/linalg/inner.py), with contract [`inner.pyi`](../../../../course/contracts/py/tinyllm/linalg/inner.pyi): `normalize(x)`, `cosine_sim(a, b)` with each norm clamped on its own, `project(x, v)` onto the line through $v$, and `topk_cosine(query, matrix, k)`, the exact top-$k$ rows by cosine with ties to the lowest index.
 
-- The inner product $a \cdot b = \lVert a \rVert \lVert b \rVert \cos\theta$ mixes length and angle; dividing out both lengths leaves the angle alone, which is what "similar meaning" should measure.
-- Ranking by raw dot product lets long vectors win; ranking by cosine does not.
-- Clamp each norm separately with $\varepsilon$: a zero vector gives 0, not NaN, and two tiny parallel vectors still give 1.
-- The projection onto $v$ divides by $v \cdot v$, not by $\lVert v \rVert$, and leaves a residual orthogonal to $v$.
-- Exact top-$k$ breaks ties toward the lowest index, so every run and every language returns the same list.
+> **Learning objectives**
+> - Derive $a \cdot b = \lVert a \rVert \lVert b \rVert \cos\theta$ and explain why cosine, not the raw dot product, measures similarity of direction.
+> - Clamp norms so that zero vectors give 0 and tiny parallel vectors still give 1.
+> - Project a vector onto a line, and show the residual is orthogonal and the result independent of the line vector's length.
+> - Implement exact top-$k$ search that is reproducible across runs and languages.
 
-## How to read this chapter
-
-Sections 1 to 3 build inner products, cosine similarity, projection, and exact top-$k$ from first principles and work them by hand. Section 4 fixes the interface and the cases a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
-
----
-
-## 1. Why now
-
-`L2.3` turns every word into a vector, and then every question about words becomes a question about angles: which words are closest to "king", which word completes "man is to king as woman is to ?", how well the model's similarities agree with human ratings. All of these are cosine similarities and a sorted list of the best $k$. A version that ranks by raw dot product quietly prefers frequent words (their vectors are longer); one that divides by a zero norm fills the table with NaN; one that breaks ties by whatever order the sort happens to leave makes two runs disagree. The same search later runs over document embeddings in the agent's retrieval (`ag.07`, in Go). This chapter pins the definitions down once.
-
-## 2. Principles
+## Notation
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -44,17 +27,17 @@ Sections 1 to 3 build inner products, cosine similarity, projection, and exact t
 | $q$ | a query vector, or a batch of them | `float64[d]` or `[q, d]` |
 | $k$ | how many results to return | `int` |
 
-### 2.1 Inner products and angles
+## Inner products and angles
 
 The inner product of two vectors is $a \cdot b = \sum_i a_i b_i$, and $a \cdot a = \lVert a \rVert^2$. Expanding $\lVert a - b \rVert^2 = \lVert a \rVert^2 - 2\,a \cdot b + \lVert b \rVert^2$ and comparing with the law of cosines for the triangle with sides $a$, $b$, $a - b$ gives
 
 $$a \cdot b = \lVert a \rVert \, \lVert b \rVert \cos\theta .$$
 
-So the inner product is positive when the vectors point the same way, zero when they are perpendicular (**orthogonal**), and negative when they point apart. The **Cauchy-Schwarz inequality** $\lvert a \cdot b \rvert \le \lVert a \rVert \lVert b \rVert$ (problem 3 of [S-M03b](91-problem-set-b.md) proves it) is what makes $\cos\theta$ a number in $[-1, 1]$.
+So the inner product is positive when the vectors point the same way, zero when they are perpendicular (**orthogonal**), and negative when they point apart. It mixes length and angle. The **Cauchy-Schwarz inequality** $\lvert a \cdot b \rvert \le \lVert a \rVert \lVert b \rVert$ (problem 3 of the [linear algebra problem set, part b](91-problem-set-b.md) proves it) is what makes $\cos\theta$ a number in $[-1, 1]$.
 
-### 2.2 Cosine similarity and normalization
+## Cosine similarity and normalization
 
-**Cosine similarity** divides out both lengths:
+If "similar meaning" is about direction, you want to remove length from the picture. **Cosine similarity** divides out both lengths:
 
 $$\cos(a, b) = \frac{a \cdot b}{\lVert a \rVert \, \lVert b \rVert} .$$
 
@@ -62,34 +45,37 @@ It depends only on directions: scaling $a$ or $b$ by a positive number leaves it
 
 In code, vectors lie along an `axis` (the last by default) and the other axes broadcast: `cosine_sim(A, b)` with $A$ of shape $[7, 5]$ and $b$ of shape $[5]$ returns 7 similarities. The reduced axis is dropped.
 
-### 2.3 Zero and tiny vectors
+## Zero and tiny vectors
 
-A zero vector has no direction, and $0 / 0$ is NaN. The contract follows PyTorch's `cosine_similarity` and clamps **each norm separately**:
+The formula breaks at one point. A zero vector has no direction, and $0 / 0$ is NaN. The contract follows PyTorch's `cosine_similarity` and clamps **each norm separately**:
 
 $$\cos(a, b) = \frac{a \cdot b}{\max(\lVert a \rVert, \varepsilon)\,\max(\lVert b \rVert, \varepsilon)}, \qquad \varepsilon = 10^{-8} .$$
 
-A zero vector then has similarity 0 with everything. Clamping the product instead, $\max(\lVert a \rVert \lVert b \rVert, \varepsilon)$, looks equivalent and is not: two parallel vectors of length $10^{-5}$ have a product of norms $10^{-10} < \varepsilon$, so the product clamp returns $10^{-10}/10^{-8} = 0.01$ for what is plainly the same direction, while separate clamps leave both norms alone and return 1. `normalize` uses the same rule with $\varepsilon = 10^{-12}$, so it maps the zero vector to itself.
+A zero vector then has similarity 0 with everything. Clamping the product instead, $\max(\lVert a \rVert \lVert b \rVert, \varepsilon)$, looks equivalent and is not. Two parallel vectors of length $10^{-5}$ have a product of norms $10^{-10} < \varepsilon$, so the product clamp returns $10^{-10}/10^{-8} = 0.01$ for what is plainly the same direction, while separate clamps leave both norms alone and return 1. `normalize` uses the same rule with $\varepsilon = 10^{-12}$, so it maps the zero vector to itself.
 
-### 2.4 Projection onto a line
+## Projection onto a line
 
-The point on the line through $v \ne 0$ closest to $x$ is
+Cosine tells you how aligned two vectors are; projection tells you how much of one lies along the other. The point on the line through $v \ne 0$ closest to $x$ is
 
 $$\operatorname{proj}_v x = \frac{x \cdot v}{v \cdot v}\, v .$$
 
-To see it, write $x = c\,v + r$ and ask that the residual $r$ be orthogonal to $v$: $0 = r \cdot v = x \cdot v - c\,(v \cdot v)$, so $c = (x \cdot v)/(v \cdot v)$. By Pythagoras, any other point $c' v$ on the line is farther: $\lVert x - c'v \rVert^2 = \lVert r \rVert^2 + (c - c')^2 \lVert v \rVert^2$. Three consequences a correct implementation must show: projecting twice changes nothing; the residual $x - \operatorname{proj}_v x$ is orthogonal to $v$; and the result does not depend on the length of $v$, because $v$ appears once on top and twice below. That last point is where the common bug lives: dividing by $\lVert v \rVert$ instead of $v \cdot v$ is correct only for unit $v$. The zero vector spans no line, so projecting onto it raises. `M03.5`'s least squares is the same idea with a whole column space in place of a line.
+To see it, write $x = c\,v + r$ and ask that the residual $r$ be orthogonal to $v$: $0 = r \cdot v = x \cdot v - c\,(v \cdot v)$, so $c = (x \cdot v)/(v \cdot v)$. By Pythagoras, any other point $c' v$ on the line is farther: $\lVert x - c'v \rVert^2 = \lVert r \rVert^2 + (c - c')^2 \lVert v \rVert^2$.
 
-### 2.5 Exact top-$k$
+Three consequences follow, and a correct implementation must show all of them: projecting twice changes nothing; the residual $x - \operatorname{proj}_v x$ is orthogonal to $v$; and the result does not depend on the length of $v$, because $v$ appears once on top and twice below. That last point is where the common bug lives: dividing by $\lVert v \rVert$ instead of $v \cdot v$ is correct only for unit $v$. The zero vector spans no line, so projecting onto it raises. The least squares of [SVD, Eckart-Young low rank, and least squares](05-svd-low-rank-and-least-squares.md) is the same idea with a whole column space in place of a line.
 
-Given a query $q$ and candidate rows $M_1, \dots, M_n$, `topk_cosine` returns the indices of the $k$ rows with the largest $\cos(q, M_i)$, in descending order of score, with the scores. Two rules make it reproducible:
+## Exact top-k
 
-- **Ties go to the lowest index** (the same rule as greedy sampling, D11). Duplicate rows, and rows that are positive multiples of each other, score exactly the same. A stable sort on $-\text{score}$ keeps tied rows in index order; sorting ascending and reversing puts the highest index first instead.
-- **Identical rows get bitwise identical scores.** The solution computes each query's scores through `cosine_sim` itself, an elementwise product summed along each row; a BLAS matrix product can round equal rows differently in different blocks, which would break ties at random.
+Given a query $q$ and candidate rows $M_1, \dots, M_n$, `topk_cosine` returns the indices of the $k$ rows with the largest $\cos(q, M_i)$, in descending order of score, together with the scores. Two rules make it reproducible.
 
-This is "exact" (brute force) search: it scores every row, $O(nd)$ per query, which is what `L2.3` and `L6.7` need for vocabularies of tens of thousands of words. Approximate indexes (IVF, HNSW) trade exactness for speed and arrive with `ag.07`.
+First, **ties go to the lowest index**, the same rule greedy sampling uses. Duplicate rows, and rows that are positive multiples of each other, score exactly the same. A stable sort on $-\text{score}$ keeps tied rows in index order; sorting ascending and reversing puts the highest index first instead.
 
-## 3. Worked example by hand
+Second, **identical rows get bitwise identical scores**. The solution computes each query's scores through `cosine_sim` itself, an elementwise product summed along each row. A BLAS matrix product can round equal rows differently in different blocks, which would break ties at random.
 
-$a = (3, 4)$ and $b = (4, 3)$.
+This is "exact" (brute force) search: it scores every row, $O(nd)$ per query, which is what word-vector work and the evaluation zoo need for vocabularies of tens of thousands of words. Approximate indexes (IVF, HNSW) trade exactness for speed and arrive with the retrieval chapter of *AI Platform Engineering*.
+
+## Working it by hand
+
+Take $a = (3, 4)$ and $b = (4, 3)$. Every quantity from the section follows in a line:
 
 | Quantity | Value |
 |---|---|
@@ -100,7 +86,7 @@ $a = (3, 4)$ and $b = (4, 3)$.
 | $\operatorname{proj}_b a = \frac{24}{25} (4, 3)$ | $(3.84, 2.88)$ |
 | residual $a - \operatorname{proj}_b a$ | $(-0.84, 1.12)$; check: $-0.84 \cdot 4 + 1.12 \cdot 3 = -3.36 + 3.36 = 0$ |
 
-**Top 3 for the query $q = (3, 4)$** among the rows
+Now find the top 3 for the query $q = (3, 4)$ among five rows:
 
 | Row | Vector | $q \cdot M_i$ | $\lVert M_i \rVert$ | cosine |
 |---|---|---|---|---|
@@ -110,9 +96,9 @@ $a = (3, 4)$ and $b = (4, 3)$.
 | 3 | $(10, 0)$ | 30 | 10 | $30/50 = 0.6$ |
 | 4 | $(0, 2)$ | 8 | 2 | $8/10 = 0.8$ |
 
-By cosine the top 3 are rows $1, 0, 4$ with scores $1, 0.96, 0.8$. By raw dot product they would be rows $1, 3, 0$: the long vector $(10, 0)$, which points $53°$ away from $q$, would beat $(0, 2)$, only $37°$ away.
+By cosine the top 3 are rows $1, 0, 4$ with scores $1, 0.96, 0.8$. By raw dot product they would be rows $1, 3, 0$: the long vector $(10, 0)$, which points $53°$ away from $q$, would beat $(0, 2)$, only $37°$ away. Ranking by raw dot product lets long vectors win; ranking by cosine does not.
 
-## 4. The interface
+## Designing the API
 
 ```python
 def normalize(x: ArrayLike, axis: int = -1, eps: float = 1e-12) -> NDArray: ...
@@ -122,34 +108,13 @@ def topk_cosine(query: ArrayLike, matrix: ArrayLike, k: int) -> tuple[NDArray, N
     """(indices int64, scores float64), [k] or [q, k], descending, ties to the lowest index."""
 ```
 
-### What a correct solution must handle
+Every function reduces along one `axis` and broadcasts over the rest, and every function that takes two vectors checks that their lengths agree along that axis, because anything else would broadcast silently into a wrong answer. `topk_cosine` accepts a single query of shape `[d]`, returning shape `[k]`, or a batch `[q, d]`, returning `[q, k]`; it requires $1 \le k \le n$.
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| Hand example, cosine and projection | unit | section 3's cosine, projection, residual, and unit vector | pins the definitions |
-| Hand example, top 3 | unit | rows $1, 0, 4$ with scores $1, 0.96, 0.8$ | cosine, not dot product, ranks the neighbours of `L2.3` |
-| Batches and `axis` | differential | a $[7, 5]$ batch against one vector, along the last axis and along axis 0 | the zoo scores whole vocabularies at once |
-| Cosine properties | property | symmetric, scale invariant, sign flips, in $[-1, 1]$, $\cos(a, a) = 1$ | the angle and nothing else |
-| Zero and tiny vectors | boundary | zero vector gives 0 (and `normalize` keeps it 0); parallel vectors of norm $10^{-5}$ give 1 | the per-norm clamp |
-| Normalization | property | unit rows, rescaling recovers $x$, `axis` respected | vector indexes store unit rows |
-| Projection properties | property | $P^2 = P$, residual orthogonal to $v$, independent of $v$'s length | divide by $v \cdot v$ |
-| Bad projection inputs | boundary | projecting onto 0 and mismatched lengths raise | no NaN, no silent broadcast |
-| Top-$k$ against a full sort | differential | 6 queries against 200 rows of mixed lengths: indices and scores equal | exact top-$k$ |
-| Ties | boundary | duplicate and rescaled rows come back in index order | reproducible across runs and languages |
-| Bad $k$ | boundary | $k = 0$, $k > n$, and a wrong query length raise; $k = n$ returns every row | caller bugs fail early |
+## Building it step by step
 
-## 5. The solution, step by step
+Because every function reduces along one axis of vectors and broadcasts over the rest, the solution needs one helper: a norm along `axis` with `keepdims=True`, so the result divides back into the input without reshaping. Cosine is $a \cdot b$ divided by both norms, each clamped separately to avoid $0/0$ while still scoring tiny parallel vectors as 1. `normalize` is the same division with one vector, clamped at $10^{-12}$, so the zero vector maps to itself. Projection needs $c = (x \cdot v)/(v \cdot v)$; dividing by $v \cdot v$, not $\lVert v \rVert$, is forced by the derivation, and a zero $v$ raises.
 
-### From first principles
-
-1. Every function reduces along one axis of vectors and broadcasts over the rest (2.2). So the solution needs one helper, a norm along `axis` with `keepdims=True`, so the result divides back into the input without reshaping.
-2. Cosine is $a \cdot b$ divided by both norms; to avoid $0/0$ and still score tiny parallel vectors as 1, each norm is clamped separately (2.3).
-3. `normalize` is the same division with one vector, clamped at $10^{-12}$, so the zero vector maps to itself.
-4. Projection needs $c = (x \cdot v)/(v \cdot v)$ (2.4). Dividing by $v \cdot v$, not $\lVert v \rVert$, is forced by the derivation; a zero $v$ has no line to project onto, so it raises.
-5. Exact top-$k$ is "score every row, sort descending, keep $k$" (2.5). Reproducibility forces two more choices: the scores of equal rows must be bitwise equal (compute them elementwise, one query at a time, through `cosine_sim`), and the sort must be stable on $-\text{score}$ so ties keep index order.
-6. A single query of shape `[d]` returns shape `[k]`; a batch `[q, d]` returns `[q, k]`. Treating a single query as a batch of one and stripping the axis at the end keeps one code path.
-
-### The code, annotated
+Exact top-$k$ is "score every row, sort descending, keep $k$". Reproducibility forces two more choices: the scores of equal rows must be bitwise equal, so they are computed elementwise, one query at a time, through `cosine_sim`; and the sort must be stable on $-\text{score}$ so ties keep index order. Treating a single query as a batch of one and stripping the axis at the end keeps one code path.
 
 The two helpers:
 
@@ -186,7 +151,7 @@ def cosine_sim(a, b, axis=-1, eps=1e-8):
     return np.squeeze(np.sum(x * y, axis=axis, keepdims=True) / (nx * ny), axis=axis)
 ```
 
-Projection, which divides by $v \cdot v$ and refuses the zero direction. On the worked example, $x \cdot v = 24$, $v \cdot v = 25$, and the result is $0.96\,(4, 3) = (3.84, 2.88)$:
+Projection divides by $v \cdot v$ and refuses the zero direction. On the worked example, $x \cdot v = 24$, $v \cdot v = 25$, and the result is $0.96\,(4, 3) = (3.84, 2.88)$:
 
 ```python
 def project(x, v, axis=-1):
@@ -200,7 +165,7 @@ def project(x, v, axis=-1):
     return np.sum(xv * vv, axis=axis, keepdims=True) / vdotv * vv
 ```
 
-Top-$k$, after validating shapes and $1 \le k \le n$:
+Top-$k$ comes after validating shapes and $1 \le k \le n$:
 
 ```python
     Q = q[None, :] if q.ndim == 1 else q        # one code path for [d] and [q, d]
@@ -214,19 +179,63 @@ Top-$k$, after validating shapes and $1 \le k \le n$:
     return (idx[0], top[0]) if q.ndim == 1 else (idx, top)
 ```
 
-For the worked query the scores are $(0.96, 1, -1, 0.6, 0.8)$; sorting $-\text{score}$ gives rows $1, 0, 4, 3, 2$, and the first three are returned.
+For the worked query the scores are $(0.96, 1, -1, 0.6, 0.8)$; sorting $-\text{score}$ gives rows $1, 0, 4, 3, 2$, and the first three are returned. The full solution is [`inner.py`](../../../../course/solutions/python/tinyllm/linalg/inner.py).
 
-Full solution: [`inner.py`](../../../../course/solutions/python/tinyllm/linalg/inner.py).
+### Why this design
 
-### Why this solution
+`cosine_sim`, `normalize`, and `project` are $O(d)$ per vector. `topk_cosine` is $O(nd)$ to score and $O(n \log n)$ to sort, per query, with an $[n, d]$ temporary per query rather than a $[q, n, d]$ one for the whole batch.
 
-- **Cost.** `cosine_sim`, `normalize`, and `project` are $O(d)$ per vector. `topk_cosine` is $O(nd)$ to score and $O(n \log n)$ to sort, per query, with an $[n, d]$ temporary per query rather than a $[q, n, d]$ one for the whole batch.
-- **Why not `Q @ M.T` for the scores.** It is faster, but BLAS may round identical rows differently depending on how it blocks the product, which turns exact ties into random order. Tie stability across runs and across the Go port matters more here than speed.
-- **Why not `argpartition`.** It is $O(n)$ instead of $O(n \log n)$, but it does not preserve the order of equal elements, so the lowest-index tie rule would need a second pass. A full stable sort is simpler and fast enough for vocabularies of tens of thousands.
-- **Why sort $-\text{score}$ rather than sort ascending and reverse.** Reversing a stable ascending sort puts tied rows in *descending* index order.
-- **Tradeoff accepted.** Brute force scales linearly in $n$; approximate indexes (section "Going further") are the answer when that becomes too slow.
+Three faster-looking alternatives were rejected. `Q @ M.T` for the scores is faster, but BLAS may round identical rows differently depending on how it blocks the product, which turns exact ties into random order; tie stability across runs and across the Go port matters more here than speed. `argpartition` is $O(n)$ instead of $O(n \log n)$, but it does not preserve the order of equal elements, so the lowest-index tie rule would need a second pass; a full stable sort is simpler and fast enough for vocabularies of tens of thousands. And sorting ascending then reversing puts tied rows in *descending* index order, which is why the solution sorts $-\text{score}$. The tradeoff accepted is that brute force scales linearly in $n$; approximate indexes, listed under further reading, are the answer when that becomes too slow.
 
-### Explain it back
+## What can go wrong
+
+A correct solution passes checks at each layer. The hand example must reproduce the cosine, projection, residual, and unit vector, and the top 3 must be rows $1, 0, 4$ with scores $1, 0.96, 0.8$, since cosine, not dot product, ranks word-vector neighbours. A $[7, 5]$ batch against one vector must work along the last axis and along axis 0, because the evaluation zoo scores whole vocabularies at once. Cosine must be symmetric, scale invariant, flip sign under negation, stay in $[-1, 1]$, and satisfy $\cos(a, a) = 1$: the angle and nothing else. A zero vector must give 0 (and `normalize` must keep it 0), while parallel vectors of norm $10^{-5}$ give 1. Normalized rows must have unit length, rescaling must recover $x$, and `axis` must be respected, since vector indexes store unit rows.
+
+Projection must satisfy $P^2 = P$, give a residual orthogonal to $v$, and not depend on $v$'s length; projecting onto 0 and mismatched lengths must raise rather than produce NaN or broadcast silently. Top-$k$ must match a full sort on 6 queries against 200 rows of mixed lengths, indices and scores both. Duplicate and rescaled rows must come back in index order, so results are reproducible across runs and languages. And $k = 0$, $k > n$, and a wrong query length must raise, while $k = n$ returns every row.
+
+The mistakes that cause these failures:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| ranking by the raw dot product | frequent words (long vectors) are everyone's nearest neighbour | scores with `cosine_sim`, which divides by both norms |
+| ties broken toward the highest index (sort ascending, then reverse) | two equal candidates come back in the other order; the Go port disagrees | stable sort on `-scores` |
+| clamping the product of the norms | tiny but parallel vectors score 0.01 instead of 1 | clamps `nx` and `ny` separately |
+| projecting with $\lVert v \rVert$ in the denominator | correct only for unit $v$; the residual is not orthogonal | divides by `vdotv` |
+| no clamp at all | NaN for any zero vector, and NaN sorts unpredictably | `np.maximum(norm, eps)` on every norm |
+| projecting onto the zero vector | NaN instead of an error | raises when `vdotv == 0` |
+| returning the top-$k$ in ascending order | the worst match first | sorts $-\text{score}$, so the best match is first |
+| summing over the last axis whatever `axis` says | wrong results for column-stored vectors | passes `axis` to every sum, norm, and squeeze |
+
+## Where this leads
+
+In *Build Your Own LLM System*, `analogy` in [word2vec skip-gram with negative sampling, and the PPMI-SVD baseline](../../build-an-llm/p02-statistical-lm/03-word2vec-and-ppmi-svd.md) ranks $b - a + c$ against the vocabulary with `topk_cosine` and uses it for nearest-neighbour checks of the embeddings, and the word-similarity task in [LM evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) correlates `cosine_sim` with human ratings (Spearman). In *AI Platform Engineering*, the Go retriever of [Retrieval: BM25, flat and IVF vectors, RRF, MMR](../../ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md) re-implements cosine and exact top-$k$ with the same tie rule; it is a port, not a call site. With this section the chapter's tools are complete, and the [problem sets](90-problem-set-a.md) give you practice with all of them.
+
+### Further reading
+
+- `torch.nn.functional.cosine_similarity` (`torch/nn/functional.py`, `aten/src/ATen/native/Distance.cpp`): the same per-norm clamp, batched on GPU.
+- FAISS `IndexFlatIP` over normalized rows (`faiss/IndexFlat.cpp`): exact search with SIMD and BLAS inner products and a heap per query.
+- FAISS IVF and HNSW indexes (`faiss/IndexIVF.cpp`, `faiss/IndexHNSW.cpp`): sublinear search with a recall knob (`nprobe`, `efSearch`).
+- pgvector's `<=>` cosine distance (`pgvector/src/vector.c`): the same search inside Postgres, with IVFFlat and HNSW indexes.
+- Strang, *Introduction to Linear Algebra*, sections 1.2 and 4.2; Mikolov, Yih, and Zweig, "Linguistic regularities in continuous space word representations" (2013).
+
+## Key terms
+
+- **Inner product**: $a \cdot b = \sum_i a_i b_i = \lVert a \rVert \lVert b \rVert \cos\theta$.
+- **Orthogonal**: having inner product zero.
+- **Cosine similarity**: the inner product divided by both lengths; depends only on direction.
+- **Normalization**: dividing a vector by its length to get a unit vector.
+- **Orthogonal projection**: $\operatorname{proj}_v x = \frac{x \cdot v}{v \cdot v} v$, the closest point to $x$ on the line through $v$.
+- **Exact top-$k$**: scoring every candidate and returning the $k$ best, ties to the lowest index.
+
+## Summary
+
+- The inner product $a \cdot b = \lVert a \rVert \lVert b \rVert \cos\theta$ mixes length and angle; dividing out both lengths leaves the angle alone, which is what "similar meaning" should measure.
+- Ranking by raw dot product lets long vectors win; ranking by cosine does not.
+- Clamp each norm separately with $\varepsilon$: a zero vector gives 0, not NaN, and two tiny parallel vectors still give 1.
+- The projection onto $v$ divides by $v \cdot v$, not by $\lVert v \rVert$, and leaves a residual orthogonal to $v$.
+- Exact top-$k$ breaks ties toward the lowest index, so every run and every language returns the same list.
+
+## Review questions
 
 1. Why does `cosine_sim` clamp $\lVert a\rVert$ and $\lVert b\rVert$ separately instead of clamping their product?
 
@@ -259,34 +268,3 @@ Full solution: [`inner.py`](../../../../course/solutions/python/tinyllm/linalg/i
    So that identical rows get bitwise identical scores. Elementwise products summed along each row round the same way for equal rows; a blocked BLAS product may not, and then the stable sort would order "tied" rows by rounding noise.
 
    </details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. ranking by the raw dot product | frequent words (long vectors) are everyone's nearest neighbour | scores with `cosine_sim`, which divides by both norms |
-| 2. ties broken toward the highest index (sort ascending, then reverse) | two equal candidates come back in the other order; the Go port disagrees | stable sort on `-scores`; see step 5 |
-| 3. clamping the product of the norms | tiny but parallel vectors score 0.01 instead of 1 | clamps `nx` and `ny` separately; see step 2 |
-| 4. projecting with $\lVert v \rVert$ in the denominator | correct only for unit $v$; the residual is not orthogonal | divides by `vdotv`; see step 4 |
-| 5. no clamp at all | NaN for any zero vector, and NaN sorts unpredictably | `np.maximum(norm, eps)` on every norm |
-| projecting onto the zero vector | NaN instead of an error | raises when `vdotv == 0` |
-| returning the top-$k$ in ascending order | the worst match first | sorts $-\text{score}$, so the best match is first |
-| summing over the last axis whatever `axis` says | wrong results for column-stored vectors | passes `axis` to every sum, norm, and squeeze |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `M03.1` | the dot product is the inner loop of matmul; a row-major $[n, d]$ matrix keeps each candidate contiguous (reading) |
-| Forward | `L2.3` | `analogy` ranks $b - a + c$ against the vocabulary with `topk_cosine`; nearest-neighbour checks of the embeddings |
-| Forward | `L6.7` | the zoo's word-similarity task correlates `cosine_sim` with human ratings (Spearman) |
-| Forward | `ag.07` | the Go retriever re-implements cosine and exact top-$k$ with the same tie rule (not a call site) |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `cosine_sim` | `torch.nn.functional.cosine_similarity` | the same per-norm clamp, batched on GPU | `torch/nn/functional.py`, `aten/src/ATen/native/Distance.cpp` |
-| `topk_cosine` (exact) | FAISS `IndexFlatIP` over normalized rows | SIMD and BLAS inner products, a heap per query | `faiss/IndexFlat.cpp` |
-| exact search | FAISS IVF and HNSW indexes | sublinear search with a recall knob (`nprobe`, `efSearch`) | `faiss/IndexIVF.cpp`, `faiss/IndexHNSW.cpp` |
-| `normalize` + dot | pgvector's `<=>` cosine distance | the same search inside Postgres, with IVFFlat and HNSW indexes | `pgvector/src/vector.c` |
