@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.24.0 (2026-10-19)
+
+### Breaking
+
+- give every chapter one home book (#43) ([3df52b2](https://github.com/urmzd/openlearn/commit/3df52b247f0b034f9ba566d86af3222813e5de52))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.23.0...v0.24.0)
+
+
 ## 0.23.0 (2026-10-19)
 
 ### Breaking
