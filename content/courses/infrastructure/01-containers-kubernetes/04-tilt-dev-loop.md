@@ -237,7 +237,7 @@ The full solution is [`Tiltfile`](../../../../course/solutions/entry/deploy/Tilt
 - **A full rebuild for the engine over a synced binary.** A host-built Rust binary would link the host's glibc and C library; on macOS it would not even be a Linux binary. The image build is slower but always correct.
 - **The production charts over dev manifests.** A separate dev YAML would drift; using `helm()` means a chart bug shows up in the loop first.
 - **A `fail()` guard over `allow_k8s_contexts` alone.** `allow_k8s_contexts` only suppresses a warning for listed contexts; it does not stop a deploy to a context Tilt considers local or one you click through. `fail()` stops everything.
-- **Tradeoff accepted:** the dev gateway image differs from the production one (no digest pin, no `HEALTHCHECK`, no labels). [CI for your repo](05-ci-for-your-repo.md) still builds and tests the production image.
+- **Tradeoff accepted:** the dev gateway image differs from the production one (no digest pin, no `HEALTHCHECK`, no labels). [CI for the platform repo](05-ci-for-your-repo.md) still builds and tests the production image.
 
 ## What can go wrong
 
@@ -253,7 +253,7 @@ Most Tilt failures are quiet: the dashboard is green and the cluster is wrong. T
 
 ## Where this leads
 
-The loop deploys the charts of [Helm charts and the observability stack](03-helm-charts-and-observability-stack.md) into the cluster of [kind cluster, local registry, and port mappings](02-kind-cluster-and-local-registry.md), with the Dockerfiles of [the tracer deploy](00-tracer-deploy.md) and [Dockerfiles for the gateway and the engine](01-dockerfiles-for-gateway-and-engine.md). Next, [CI for your repo](05-ci-for-your-repo.md) runs `tilt ci -f deploy/Tiltfile` in its kind job, and the deployment it produces is the production platform. The durable and worker charts of [Durable and worker images and charts](06-durable-and-worker-charts.md) join the graph, durable first, and every later chart does the same. The monitors and collector of [Metrics and log correlation](../../systems/04-observability/02-metrics-and-log-correlation.md) in *Systems and Architecture* can be applied from the same Tiltfile.
+The loop deploys the charts of [Helm charts and the observability stack](03-helm-charts-and-observability-stack.md) into the cluster of [kind cluster, local registry, and port mappings](02-kind-cluster-and-local-registry.md), with the Dockerfiles of [the tracer deploy](00-tracer-deploy.md) and [Dockerfiles for the gateway and the engine](01-dockerfiles-for-gateway-and-engine.md). Next, [CI for the platform repo](05-ci-for-your-repo.md) runs `tilt ci -f deploy/Tiltfile` in its kind job, and the deployment it produces is the production platform. The durable and worker charts of [Durable and worker images and charts](06-durable-and-worker-charts.md) join the graph, durable first, and every later chart does the same. The monitors and collector of [Metrics and log correlation](../../systems/04-observability/02-metrics-and-log-correlation.md) in *Systems and Architecture* can be applied from the same Tiltfile.
 
 The local pieces have production cousins:
 

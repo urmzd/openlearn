@@ -1,86 +1,61 @@
-# Calculus 1 problem set: limits, derivatives, rates, optimization, integrals, L'Hôpital
+# Calculus 1 Problem Set
 
-## Overview
+This problem set works through the pen-and-paper side of Calculus 1 that the code in this chapter depends on. [Derivatives and finite differences](01-derivatives-and-finite-differences.md) approximates derivatives by stopping a limit early, [Activation functions and their derivatives](03-activation-functions.md) writes the derivative of every activation, and [Gradients and gradcheck](../04-calculus-3/01-gradients-and-gradcheck.md) turns those into `gradcheck`, the test that guards every backward pass in the autograd engine of *Build Your Own LLM System*. All of it assumes you can differentiate a formula by hand and know what a limit is, because a derivative is a limit and a finite difference is that limit stopped early. Training picks the weights that minimize a loss, which is optimization; the learning-rate schedules of [Learning-rate schedules and gradient clipping](../10-optimization/04-schedules-and-gradient-clipping.md) and the area under an ROC curve in [Logistic regression, ROC-AUC, and calibration](../07-probability-statistics/07-logistic-regression-roc-auc-calibration.md) are integrals.
 
-| | |
-|---|---|
-| **Module** | `S-M01` · solve · none · Pass 2 · 6 to 8 h |
-| **Solution** | worked answers to all 57 problems in section 4: 54 exact answers with derivations and common wrong answers, and 3 written proofs (q10, q25, q57) |
-| **Contract** | none: a pen and paper set |
-| **Needs** | no module. Reading: `S-M00` (functions, exponentials, logarithms) and the [Calculus 1 topic](README.md), sections 1 to 5 |
-| **Used by** | no call site (a solve set). Take it after `M01.1` (finite differences), `M01.2` (Newton's method), and `M01.3` (activation derivatives) in Pass 2; `M01.4` and `S-M02` build on the integrals |
-| **Optional depth** | OpenStax, *Calculus Volume 1* (free), ch. 2 to 5; 3Blue1Brown, *Essence of Calculus*, episodes 1 to 9 |
+The set has 57 problems in six groups: limits, derivative rules and the chain rule, implicit differentiation and related rates, optimization, integration and the fundamental theorem, and L'Hôpital's rule. Fifty-four have exact answers, and three (Problems 10, 25, and 57) ask for a written proof. It is best taken after the first three sections of this chapter; [Definite integrals: trapezoid and Simpson](04-definite-integrals-trapezoid-simpson.md) and the [Calculus 2 problem set](../02-calculus-2/90-problem-set.md) build on its integrals. The background it assumes, functions, exponentials, and logarithms, is covered in the [precalculus solve set](../00-precalculus/00-solve-set.md).
 
-## Key Takeaways
+Each problem is followed by a collapsed worked answer: the result, the derivation, and, where there is one, the most common wrong answer and why it is wrong. Attempt each problem before opening its answer; the wrong answers are as instructive as the right ones.
 
-- A limit describes what $f(x)$ approaches, not $f(a)$ itself; $0/0$ and $\infty - \infty$ are signals to rewrite, never answers (q1, q8).
-- The product, quotient, and chain rules compute every derivative the autograd needs; the sigmoid, softplus, tanh, and SiLU derivatives are four lines each (q13 to q15, q21).
-- An optimum of a smooth function sits where $f' = 0$ or on the boundary, and you still have to check which candidate wins (q36, q38).
-- The fundamental theorem turns integrals into antiderivatives and makes $\frac{d}{dx}\int_a^{u(x)} f = f(u(x))\,u'(x)$ (q46, q47).
-- L'Hôpital's rule turns $0/0$ and $\infty/\infty$ into a limit of derivatives, and only applies when that limit exists (q57).
+> **Learning objectives**
+> - Evaluate limits by rewriting indeterminate forms rather than substituting into them.
+> - Differentiate any formula the autograd needs with the product, quotient, and chain rules, including the sigmoid, softplus, tanh, and SiLU.
+> - Solve implicit-differentiation, related-rates, and optimization problems, checking every candidate.
+> - Evaluate definite integrals with the fundamental theorem, including derivatives of integrals with variable limits.
+> - Apply L'Hôpital's rule correctly and recognize when its hypothesis fails.
 
-## How to read this chapter
+## The rules you will use
 
-Section 2 reviews the rules the problems use, and section 3 works two sibling problems by hand. Section 4 lists all 57 problems, each followed by a collapsed worked answer: the result, the derivation, and the most common wrong answer with the reason it is wrong. Attempt each problem before opening its answer; the wrong answers are as instructive as the right ones.
-
----
-
-## 1. Why now
-
-In Pass 2 the system learns to learn. `M01.1` approximates derivatives with finite differences, `M01.3` writes the derivative of every activation function, and `M04.1` turns those into `gradcheck`, the test that guards every backward pass in `L0`. All of it assumes the reader can differentiate a formula by hand and know what a limit is, because a derivative is a limit and a finite difference is that limit stopped early. Training picks the weights that minimize a loss, which is optimization; the learning-rate schedules of `M10.4` and the area under an ROC curve (`M07.7`) are integrals. This set works through the pen and paper side of Calculus 1 that the code depends on.
-
-## 2. Principles
-
-| Symbol | Meaning | Type / shape |
-|---|---|---|
-| $\lim_{x \to a} f(x) = L$ | $f(x)$ gets arbitrarily close to $L$ as $x \ne a$ gets close to $a$ | real |
-| $\varepsilon, \delta$ | positive tolerances in the definition of a limit | positive reals |
-| $f'(x)$, $\frac{df}{dx}$ | the derivative, $\lim_{h \to 0} \frac{f(x + h) - f(x)}{h}$ | function |
-| $f''(x)$ | the second derivative, the derivative of $f'$ | function |
-| $\sigma(z)$ | the sigmoid, $1/(1 + e^{-z})$ | function |
-| $F$ | an antiderivative of $f$: $F' = f$ | function |
-| $\int_a^b f(x)\,dx$ | the definite integral, the signed area under $f$ from $a$ to $b$ | real |
-| $t$ | time, in related-rate problems | real |
-
-### 2.1 Limits
-
-$\lim_{x \to a} f(x) = L$ means: for every $\varepsilon > 0$ there is a $\delta > 0$ such that $0 < |x - a| < \delta$ implies $|f(x) - L| < \varepsilon$. The value $f(a)$ plays no part, which is why $\frac{x^2 - 4}{x - 2}$ has a limit at 2 even though it is undefined there: for $x \ne 2$ it equals $x + 2$. Limits add, multiply, and divide (when the denominator's limit is not 0). Three standard limits do most of the work: $\frac{\sin u}{u} \to 1$ as $u \to 0$, $(1 + \frac{a}{x})^x \to e^a$ as $x \to \infty$, and for rational functions at infinity, only the highest powers matter. A **one-sided** limit restricts $x$ to one side of $a$. Forms like $0/0$, $\infty/\infty$, $\infty - \infty$, $0 \cdot \infty$, $1^\infty$, and $0^0$ are **indeterminate**: they say the problem needs rewriting (factor, multiply by a conjugate, take logarithms), not what the answer is.
-
-### 2.2 Derivative rules
-
-The derivative is the limit of the difference quotient. From that definition follow the rules you use instead of it: linearity; the **power rule** $\frac{d}{dx} x^n = n x^{n-1}$ for a constant $n$; $\frac{d}{dx} e^x = e^x$, $\frac{d}{dx} \ln x = \frac{1}{x}$, $\frac{d}{dx} \sin x = \cos x$, $\frac{d}{dx} \cos x = -\sin x$; the **product rule** $(fg)' = f'g + fg'$; the **quotient rule** $(f/g)' = (f'g - fg')/g^2$; and the **chain rule**, $\frac{d}{dx} f(g(x)) = f'(g(x))\, g'(x)$: the outer derivative evaluated at the inner function, times the inner derivative. The chain rule is the whole of backpropagation (`M08.1` to `M08.3`). A variable exponent, as in $x^x$, needs $x^x = e^{x \ln x}$ first; the power rule does not apply.
-
-### 2.3 Implicit differentiation and related rates
-
-When $y$ is defined by an equation such as $x^2 + y^2 = 25$, differentiate both sides with respect to $x$, treating $y$ as a function of $x$ (so $\frac{d}{dx} y^2 = 2y\,y'$), and solve for $y'$. **Related rates** apply the same idea with time: if two quantities are tied by an equation and both change with $t$, differentiating the equation in $t$ ties their rates.
-
-### 2.4 Optimization
-
-At an interior minimum or maximum of a differentiable $f$, $f'(x) = 0$; such points are **critical points**. A global optimum on an interval is a critical point or an endpoint (or a limit at an open end), so list the candidates and compare their values. The second derivative classifies a critical point: $f'' > 0$ is a local minimum, $f'' < 0$ a local maximum. Gradient descent (`M10.1`) finds the same points numerically when solving $f' = 0$ by hand is impossible.
-
-### 2.5 Integrals and the fundamental theorem
-
-The definite integral $\int_a^b f(x)\,dx$ is the limit of **Riemann sums** $\sum_i f(x_i)\,\Delta x$ over finer and finer partitions. The **fundamental theorem of calculus** (FTC) connects it to derivatives in two ways: if $F' = f$ then $\int_a^b f = F(b) - F(a)$; and $\frac{d}{dx} \int_a^x f(t)\,dt = f(x)$ for continuous $f$. With a variable upper limit $u(x)$, the chain rule adds a factor: $\frac{d}{dx} \int_a^{u(x)} f(t)\,dt = f(u(x))\,u'(x)$. The **average value** of $f$ on $[a, b]$ is $\frac{1}{b - a}\int_a^b f$.
-
-### 2.6 L'Hôpital's rule
-
-If $f(x) \to 0$ and $g(x) \to 0$ (or both $\to \pm\infty$) as $x \to a$, and $\lim f'(x)/g'(x)$ **exists**, then $\lim f(x)/g(x)$ equals it. It may need several applications ($\frac{e^x - 1 - x}{x^2}$ takes two). Products $0 \cdot \infty$ become quotients, and powers $0^0$ or $1^\infty$ become products after taking the logarithm. When the limit of $f'/g'$ does not exist, the rule says nothing, and the original limit may still exist (q57).
-
-## 3. Worked example by hand
-
-This is a sibling of q13 and q38, not one of the problems of section 4.
-
-**A chain rule derivative.** Differentiate $f(x) = \ln(1 + e^{-x})$. Outer function $\ln u$ with derivative $1/u$; inner $u = 1 + e^{-x}$ with derivative $-e^{-x}$ (chain rule again, inner $-x$). So $f'(x) = \frac{-e^{-x}}{1 + e^{-x}}$. Multiply top and bottom by $e^{x}$: $f'(x) = \frac{-1}{e^x + 1} = -\sigma(-x)$. This is the derivative of the binary cross-entropy for a positive label, written in terms of the logit. Both $\frac{-e^{-x}}{1 + e^{-x}}$ and $\frac{-1}{e^x + 1}$ are the same answer written two ways; $\frac{1}{1 + e^{-x}}$, the sigmoid itself, is not (it has the wrong sign and the wrong argument).
-
-**An optimization.** Maximize $g(s) = s(10 - 2s)^2$ for $0 \le s \le 5$ (an open box from a $10 \times 10$ sheet). $g'(s) = (10 - 2s)^2 + s \cdot 2(10 - 2s)(-2) = (10 - 2s)(10 - 2s - 4s) = (10 - 2s)(10 - 6s)$. The critical points are $s = 5$ (a zero-volume box) and $s = 5/3$. Compare candidates: $g(0) = 0$, $g(5) = 0$, $g(5/3) = \frac{5}{3} \cdot \left(\frac{20}{3}\right)^2 = \frac{2000}{27}$. The maximizer is $s = 5/3$.
-
-## 4. The problem set, with worked answers
-
-Each problem is followed by a collapsed answer: the result, the derivation, and, where there is one, the most common wrong answer and why it is wrong. Numbers are exact ($e^2$, $2/\pi$, $\sqrt 7/2$, not decimals), and an expression answer may take any equivalent form. The tag after each problem says what kind of answer it wants.
+This review collects the definitions and rules the problems rely on, in the order the problems use them.
 
 ### Limits
 
-**q1.** $\displaystyle\lim_{x \to 2} \frac{x^2 - 4}{x - 2}$. `[number]`
+$\lim_{x \to a} f(x) = L$ means that $f(x)$ gets arbitrarily close to $L$ as $x \ne a$ gets close to $a$. Precisely: for every $\varepsilon > 0$ there is a $\delta > 0$ such that $0 < |x - a| < \delta$ implies $|f(x) - L| < \varepsilon$. The value $f(a)$ plays no part, which is why $\frac{x^2 - 4}{x - 2}$ has a limit at 2 even though it is undefined there: for $x \ne 2$ it equals $x + 2$. Limits add, multiply, and divide (when the denominator's limit is not 0).
+
+Three standard limits do most of the work: $\frac{\sin u}{u} \to 1$ as $u \to 0$, $(1 + \frac{a}{x})^x \to e^a$ as $x \to \infty$, and, for rational functions at infinity, only the highest powers matter. A **one-sided** limit restricts $x$ to one side of $a$. Forms like $0/0$, $\infty/\infty$, $\infty - \infty$, $0 \cdot \infty$, $1^\infty$, and $0^0$ are **indeterminate**: they say the problem needs rewriting (factor, multiply by a conjugate, take logarithms), not what the answer is.
+
+### Derivative rules
+
+The derivative $f'(x) = \frac{df}{dx}$ is the limit of the difference quotient, $\lim_{h \to 0} \frac{f(x + h) - f(x)}{h}$, and the second derivative $f''$ is the derivative of $f'$. From that definition follow the rules you use instead of it: linearity; the **power rule** $\frac{d}{dx} x^n = n x^{n-1}$ for a constant $n$; $\frac{d}{dx} e^x = e^x$, $\frac{d}{dx} \ln x = \frac{1}{x}$, $\frac{d}{dx} \sin x = \cos x$, $\frac{d}{dx} \cos x = -\sin x$; the **product rule** $(fg)' = f'g + fg'$; the **quotient rule** $(f/g)' = (f'g - fg')/g^2$; and the **chain rule**, $\frac{d}{dx} f(g(x)) = f'(g(x))\, g'(x)$: the outer derivative evaluated at the inner function, times the inner derivative. The chain rule is the whole of backpropagation, as the chapter [Matrix calculus and autodiff](../08-matrix-calculus-and-autodiff/README.md) shows from [Dual numbers and forward-mode autodiff](../08-matrix-calculus-and-autodiff/01-dual-numbers-forward-mode.md) through [Matrix differentials and VJPs](../08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md). A variable exponent, as in $x^x$, needs $x^x = e^{x \ln x}$ first; the power rule does not apply. Several problems use the sigmoid, $\sigma(z) = 1/(1 + e^{-z})$.
+
+### Implicit differentiation and related rates
+
+When $y$ is defined by an equation such as $x^2 + y^2 = 25$, differentiate both sides with respect to $x$, treating $y$ as a function of $x$ (so $\frac{d}{dx} y^2 = 2y\,y'$), and solve for $y'$. **Related rates** apply the same idea with time $t$: if two quantities are tied by an equation and both change with $t$, differentiating the equation in $t$ ties their rates.
+
+### Optimization
+
+At an interior minimum or maximum of a differentiable $f$, $f'(x) = 0$; such points are **critical points**. A global optimum on an interval is a critical point or an endpoint (or a limit at an open end), so list the candidates and compare their values. The second derivative classifies a critical point: $f'' > 0$ is a local minimum, $f'' < 0$ a local maximum. Gradient descent, in [Gradient descent and line search](../10-optimization/01-gradient-descent-and-line-search.md), finds the same points numerically when solving $f' = 0$ by hand is impossible.
+
+### Integrals and the fundamental theorem
+
+The definite integral $\int_a^b f(x)\,dx$, the signed area under $f$ from $a$ to $b$, is the limit of **Riemann sums** $\sum_i f(x_i)\,\Delta x$ over finer and finer partitions. The **fundamental theorem of calculus** (FTC) connects it to derivatives in two ways: if $F$ is an antiderivative of $f$ ($F' = f$), then $\int_a^b f = F(b) - F(a)$; and $\frac{d}{dx} \int_a^x f(t)\,dt = f(x)$ for continuous $f$. With a variable upper limit $u(x)$, the chain rule adds a factor: $\frac{d}{dx} \int_a^{u(x)} f(t)\,dt = f(u(x))\,u'(x)$. The **average value** of $f$ on $[a, b]$ is $\frac{1}{b - a}\int_a^b f$.
+
+### L'Hôpital's rule
+
+If $f(x) \to 0$ and $g(x) \to 0$ (or both $\to \pm\infty$) as $x \to a$, and $\lim f'(x)/g'(x)$ **exists**, then $\lim f(x)/g(x)$ equals it. It may need several applications ($\frac{e^x - 1 - x}{x^2}$ takes two). Products $0 \cdot \infty$ become quotients, and powers $0^0$ or $1^\infty$ become products after taking the logarithm. When the limit of $f'/g'$ does not exist, the rule says nothing, and the original limit may still exist (Problem 57).
+
+## Two worked examples
+
+Before the problems, here are two siblings of Problems 13 and 38, worked in full. They are not part of the set.
+
+**A chain rule derivative.** Differentiate $f(x) = \ln(1 + e^{-x})$. The outer function is $\ln u$ with derivative $1/u$; the inner is $u = 1 + e^{-x}$ with derivative $-e^{-x}$ (the chain rule again, with inner function $-x$). So $f'(x) = \frac{-e^{-x}}{1 + e^{-x}}$. Multiply top and bottom by $e^{x}$: $f'(x) = \frac{-1}{e^x + 1} = -\sigma(-x)$. This is the derivative of the binary cross-entropy for a positive label, written in terms of the logit. Both $\frac{-e^{-x}}{1 + e^{-x}}$ and $\frac{-1}{e^x + 1}$ are the same answer written two ways; $\frac{1}{1 + e^{-x}}$, the sigmoid itself, is not (it has the wrong sign and the wrong argument).
+
+**An optimization.** Maximize $g(s) = s(10 - 2s)^2$ for $0 \le s \le 5$, the volume of an open box folded from a $10 \times 10$ sheet. $g'(s) = (10 - 2s)^2 + s \cdot 2(10 - 2s)(-2) = (10 - 2s)(10 - 2s - 4s) = (10 - 2s)(10 - 6s)$. The critical points are $s = 5$ (a zero-volume box) and $s = 5/3$. Compare candidates: $g(0) = 0$, $g(5) = 0$, $g(5/3) = \frac{5}{3} \cdot \left(\frac{20}{3}\right)^2 = \frac{2000}{27}$. The maximizer is $s = 5/3$.
+
+Now the problems. Numbers are exact ($e^2$, $2/\pi$, $\sqrt 7/2$, not decimals), and an expression answer may take any equivalent form. The tag after each problem says what kind of answer it wants.
+
+## Problems on limits
+
+**Problem 1.** $\displaystyle\lim_{x \to 2} \frac{x^2 - 4}{x - 2}$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -88,7 +63,7 @@ Each problem is followed by a collapsed answer: the result, the derivation, and,
 
 </details>
 
-**q2.** $\displaystyle\lim_{x \to 0} \frac{\sin 3x}{x}$. `[number]`
+**Problem 2.** $\displaystyle\lim_{x \to 0} \frac{\sin 3x}{x}$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -96,7 +71,7 @@ Each problem is followed by a collapsed answer: the result, the derivation, and,
 
 </details>
 
-**q3.** $\displaystyle\lim_{x \to \infty} \frac{3x^2 + 2x}{5x^2 - 1}$. `[number]`
+**Problem 3.** $\displaystyle\lim_{x \to \infty} \frac{3x^2 + 2x}{5x^2 - 1}$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -104,15 +79,15 @@ Each problem is followed by a collapsed answer: the result, the derivation, and,
 
 </details>
 
-**q4.** $\displaystyle\lim_{h \to 0} \frac{(1 + h)^3 - 1}{h}$. (Which derivative is this?) `[number]`
+**Problem 4.** $\displaystyle\lim_{h \to 0} \frac{(1 + h)^3 - 1}{h}$. (Which derivative is this?) `[number]`
 
 <details><summary>Answer</summary>
 
-**3.** It is the difference quotient of $f(x) = x^3$ at $x = 1$, so the limit is $f'(1) = 3 \cdot 1^2 = 3$. Directly: $(1 + h)^3 - 1 = 3h + 3h^2 + h^3$, and dividing by $h$ gives $3 + 3h + h^2 \to 3$. `M01.1`'s finite differences approximate exactly this limit with a fixed $h$. A common mistake is 1.
+**3.** It is the difference quotient of $f(x) = x^3$ at $x = 1$, so the limit is $f'(1) = 3 \cdot 1^2 = 3$. Directly: $(1 + h)^3 - 1 = 3h + 3h^2 + h^3$, and dividing by $h$ gives $3 + 3h + h^2 \to 3$. The finite differences of [Derivatives and finite differences](01-derivatives-and-finite-differences.md) approximate exactly this limit with a fixed $h$. A common mistake is 1.
 
 </details>
 
-**q5.** $\displaystyle\lim_{x \to 0} \frac{1 - \cos x}{x^2}$. `[number]`
+**Problem 5.** $\displaystyle\lim_{x \to 0} \frac{1 - \cos x}{x^2}$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -120,7 +95,7 @@ Each problem is followed by a collapsed answer: the result, the derivation, and,
 
 </details>
 
-**q6.** $\displaystyle\lim_{x \to \infty} \left(1 + \frac{2}{x}\right)^{x}$. `[number]`
+**Problem 6.** $\displaystyle\lim_{x \to \infty} \left(1 + \frac{2}{x}\right)^{x}$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -128,7 +103,7 @@ Each problem is followed by a collapsed answer: the result, the derivation, and,
 
 </details>
 
-**q7.** $\displaystyle\lim_{x \to 0^+} x \ln x$. `[number]`
+**Problem 7.** $\displaystyle\lim_{x \to 0^+} x \ln x$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -136,7 +111,7 @@ Each problem is followed by a collapsed answer: the result, the derivation, and,
 
 </details>
 
-**q8.** $\displaystyle\lim_{x \to \infty} \left(\sqrt{x^2 + x} - x\right)$. `[number]`
+**Problem 8.** $\displaystyle\lim_{x \to \infty} \left(\sqrt{x^2 + x} - x\right)$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -144,7 +119,7 @@ Each problem is followed by a collapsed answer: the result, the derivation, and,
 
 </details>
 
-**q9.** $\displaystyle\lim_{x \to 0^-} \frac{|x|}{x}$ (from the left). `[number]`
+**Problem 9.** $\displaystyle\lim_{x \to 0^-} \frac{|x|}{x}$ (from the left). `[number]`
 
 <details><summary>Answer</summary>
 
@@ -152,7 +127,7 @@ Each problem is followed by a collapsed answer: the result, the derivation, and,
 
 </details>
 
-**q10.** Prove from the definition that $\displaystyle\lim_{x \to 3} (2x + 1) = 7$: for every $\varepsilon > 0$, give a $\delta > 0$ such that $0 < |x - 3| < \delta$ implies $|(2x + 1) - 7| < \varepsilon$. `[proof]`
+**Problem 10.** Prove from the definition that $\displaystyle\lim_{x \to 3} (2x + 1) = 7$: for every $\varepsilon > 0$, give a $\delta > 0$ such that $0 < |x - 3| < \delta$ implies $|(2x + 1) - 7| < \varepsilon$. `[proof]`
 
 <details><summary>Answer</summary>
 
@@ -162,9 +137,9 @@ A complete proof states the goal, rewrites the distance as $2|x - 3|$, names $\d
 
 </details>
 
-### Derivative rules and the chain rule
+## Problems on derivative rules and the chain rule
 
-**q11.** $\dfrac{d}{dx}\, x^3 \sin x$. `[expr in x]`
+**Problem 11.** $\dfrac{d}{dx}\, x^3 \sin x$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -172,7 +147,7 @@ A complete proof states the goal, rewrites the distance as $2|x - 3|$, names $\d
 
 </details>
 
-**q12.** $\dfrac{d}{dx}\, \dfrac{e^x}{1 + x^2}$. `[expr in x]`
+**Problem 12.** $\dfrac{d}{dx}\, \dfrac{e^x}{1 + x^2}$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -180,15 +155,15 @@ A complete proof states the goal, rewrites the distance as $2|x - 3|$, names $\d
 
 </details>
 
-**q13.** The sigmoid is $\sigma(z) = \dfrac{1}{1 + e^{-z}}$. Give $\sigma'(z)$. `[expr in z]`
+**Problem 13.** The sigmoid is $\sigma(z) = \dfrac{1}{1 + e^{-z}}$. Give $\sigma'(z)$. `[expr in z]`
 
 <details><summary>Answer</summary>
 
-**$\dfrac{e^{-z}}{(1 + e^{-z})^2}$**, equal to $\sigma(z)(1 - \sigma(z))$. Chain rule on $(1 + e^{-z})^{-1}$: the outer derivative is $-(1 + e^{-z})^{-2}$, the inner derivative is $-e^{-z}$, and the two minus signs cancel. This is the sigmoid backward of `L0.2` and `M01.3`. Common mistakes: a leading minus sign (the inner derivative's sign lost), and $\sigma(z)$ itself.
+**$\dfrac{e^{-z}}{(1 + e^{-z})^2}$**, equal to $\sigma(z)(1 - \sigma(z))$. Chain rule on $(1 + e^{-z})^{-1}$: the outer derivative is $-(1 + e^{-z})^{-2}$, the inner derivative is $-e^{-z}$, and the two minus signs cancel. This is the sigmoid backward of [The op library and gradcheck_all](../../build-an-llm/p00-foundations/02-op-library-and-gradcheck.md) and [Activation functions and their derivatives](03-activation-functions.md). Common mistakes: a leading minus sign (the inner derivative's sign lost), and $\sigma(z)$ itself.
 
 </details>
 
-**q14.** Softplus is $s(x) = \ln(1 + e^x)$. Give $s'(x)$. `[expr in x]`
+**Problem 14.** Softplus is $s(x) = \ln(1 + e^x)$. Give $s'(x)$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -196,7 +171,7 @@ A complete proof states the goal, rewrites the distance as $2|x - 3|$, names $\d
 
 </details>
 
-**q15.** $\tanh x = \dfrac{e^x - e^{-x}}{e^x + e^{-x}}$. Give $\dfrac{d}{dx} \tanh x$ in terms of exponentials. `[expr in x]`
+**Problem 15.** $\tanh x = \dfrac{e^x - e^{-x}}{e^x + e^{-x}}$. Give $\dfrac{d}{dx} \tanh x$ in terms of exponentials. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -205,7 +180,7 @@ $\tanh' x = \frac{(e^x + e^{-x})^2 - (e^x - e^{-x})^2}{(e^x + e^{-x})^2}$. The d
 
 </details>
 
-**q16.** $\dfrac{d}{dx}\, \sin(x^2)$. `[expr in x]`
+**Problem 16.** $\dfrac{d}{dx}\, \sin(x^2)$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -213,7 +188,7 @@ $\tanh' x = \frac{(e^x + e^{-x})^2 - (e^x - e^{-x})^2}{(e^x + e^{-x})^2}$. The d
 
 </details>
 
-**q17.** $\dfrac{d}{dx}\, \sqrt{1 + x^4}$. `[expr in x]`
+**Problem 17.** $\dfrac{d}{dx}\, \sqrt{1 + x^4}$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -221,7 +196,7 @@ $\tanh' x = \frac{(e^x + e^{-x})^2 - (e^x - e^{-x})^2}{(e^x + e^{-x})^2}$. The d
 
 </details>
 
-**q18.** $\dfrac{d}{dx}\, \ln(\cos x)$ for $|x| < \pi/2$. `[expr in x]`
+**Problem 18.** $\dfrac{d}{dx}\, \ln(\cos x)$ for $|x| < \pi/2$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -229,7 +204,7 @@ $\tanh' x = \frac{(e^x + e^{-x})^2 - (e^x - e^{-x})^2}{(e^x + e^{-x})^2}$. The d
 
 </details>
 
-**q19.** $\dfrac{d}{dx}\, x^x$ for $x > 0$. (Write $x^x = e^{x \ln x}$.) `[expr in x]`
+**Problem 19.** $\dfrac{d}{dx}\, x^x$ for $x > 0$. (Write $x^x = e^{x \ln x}$.) `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -237,23 +212,23 @@ $\tanh' x = \frac{(e^x + e^{-x})^2 - (e^x - e^{-x})^2}{(e^x + e^{-x})^2}$. The d
 
 </details>
 
-**q20.** $\dfrac{d}{dx}\, e^{-x^2/2}$, the shape of the normal density. `[expr in x]`
+**Problem 20.** $\dfrac{d}{dx}\, e^{-x^2/2}$, the shape of the normal density. `[expr in x]`
 
 <details><summary>Answer</summary>
 
-**$-x\, e^{-x^2/2}$.** Chain rule: $e^{u}$ with $u = -x^2/2$ and $u' = -x$. This is the $\varphi' = -x\varphi$ that Gaussian integrals in `S-M02` use. Common mistakes: $e^{-x^2/2}$ (no inner derivative) and $-\frac{x^2}{2} e^{-x^2/2}$ (the exponent multiplied in instead of its derivative).
+**$-x\, e^{-x^2/2}$.** Chain rule: $e^{u}$ with $u = -x^2/2$ and $u' = -x$. This is the $\varphi' = -x\varphi$ that the Gaussian integrals of the [Calculus 2 problem set](../02-calculus-2/90-problem-set.md) use. Common mistakes: $e^{-x^2/2}$ (no inner derivative) and $-\frac{x^2}{2} e^{-x^2/2}$ (the exponent multiplied in instead of its derivative).
 
 </details>
 
-**q21.** SiLU (swish) is $\operatorname{silu}(x) = \dfrac{x}{1 + e^{-x}} = x\,\sigma(x)$. Give its derivative. `[expr in x]`
+**Problem 21.** SiLU (swish) is $\operatorname{silu}(x) = \dfrac{x}{1 + e^{-x}} = x\,\sigma(x)$. Give its derivative. `[expr in x]`
 
 <details><summary>Answer</summary>
 
-**$\dfrac{1}{1 + e^{-x}} + \dfrac{x\, e^{-x}}{(1 + e^{-x})^2}$**, that is $\sigma(x) + x\,\sigma(x)(1 - \sigma(x))$. Product rule on $x \cdot \sigma(x)$, using q13 for $\sigma'$. This is the backward of SwiGLU's gate (`L7.2`). A common mistake is to keep only the second term, $x\sigma'(x)$, forgetting that $x$ itself also changes.
+**$\dfrac{1}{1 + e^{-x}} + \dfrac{x\, e^{-x}}{(1 + e^{-x})^2}$**, that is $\sigma(x) + x\,\sigma(x)(1 - \sigma(x))$. Product rule on $x \cdot \sigma(x)$, using Problem 13 for $\sigma'$. This is the backward of SwiGLU's gate in [Gated MLPs: SwiGLU and GeGLU](../../build-an-llm/p07-modern-block/02-gated-mlps.md). A common mistake is to keep only the second term, $x\sigma'(x)$, forgetting that $x$ itself also changes.
 
 </details>
 
-**q22.** $\dfrac{d^2}{dx^2}\, x e^{-x}$. `[expr in x]`
+**Problem 22.** $\dfrac{d^2}{dx^2}\, x e^{-x}$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -261,7 +236,7 @@ $\tanh' x = \frac{(e^x + e^{-x})^2 - (e^x - e^{-x})^2}{(e^x + e^{-x})^2}$. The d
 
 </details>
 
-**q23.** $f(x) = (x^2 + 1)^5$. Give $f'(1)$. `[number]`
+**Problem 23.** $f(x) = (x^2 + 1)^5$. Give $f'(1)$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -269,7 +244,7 @@ $\tanh' x = \frac{(e^x + e^{-x})^2 - (e^x - e^{-x})^2}{(e^x + e^{-x})^2}$. The d
 
 </details>
 
-**q24.** $\dfrac{d}{dx}\, \log_2 x$ for $x > 0$. `[expr in x]`
+**Problem 24.** $\dfrac{d}{dx}\, \log_2 x$ for $x > 0$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -277,7 +252,7 @@ $\tanh' x = \frac{(e^x + e^{-x})^2 - (e^x - e^{-x})^2}{(e^x + e^{-x})^2}$. The d
 
 </details>
 
-**q25.** Prove from the limit definition $f'(x) = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}$ that the derivative of $f(x) = x^2$ is $2x$. `[proof]`
+**Problem 25.** Prove from the limit definition $f'(x) = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}$ that the derivative of $f(x) = x^2$ is $2x$. `[proof]`
 
 <details><summary>Answer</summary>
 
@@ -285,13 +260,13 @@ $\tanh' x = \frac{(e^x + e^{-x})^2 - (e^x - e^{-x})^2}{(e^x + e^{-x})^2}$. The d
 $$\frac{(x + h)^2 - x^2}{h} = \frac{x^2 + 2xh + h^2 - x^2}{h} = \frac{h(2x + h)}{h} = 2x + h .$$
 Cancelling $h$ is allowed because the limit as $h \to 0$ only looks at $h \ne 0$, so the difference quotient equals $2x + h$ at every point the limit uses. $2x + h$ is a polynomial in $h$, hence continuous, so $\lim_{h \to 0} (2x + h) = 2x$. Therefore $f'(x) = 2x$, for every real $x$.
 
-The step most often skipped is the justification for cancelling $h$: it is exactly the fact that a limit ignores the point itself (section 2.1).
+The step most often skipped is the justification for cancelling $h$: it is exactly the fact that a limit ignores the point itself (see the review of limits above).
 
 </details>
 
-### Implicit differentiation and related rates
+## Problems on implicit differentiation and related rates
 
-**q26.** The circle $x^2 + y^2 = 25$ passes through $(3, 4)$. Give the slope $dy/dx$ there. `[number]`
+**Problem 26.** The circle $x^2 + y^2 = 25$ passes through $(3, 4)$. Give the slope $dy/dx$ there. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -299,7 +274,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q27.** $x y + y^3 = 2$ defines $y$ implicitly near $(1, 1)$. Give $dy/dx$ as a formula in $x$ and $y$. `[expr in x, y]`
+**Problem 27.** $x y + y^3 = 2$ defines $y$ implicitly near $(1, 1)$. Give $dy/dx$ as a formula in $x$ and $y$. `[expr in x, y]`
 
 <details><summary>Answer</summary>
 
@@ -307,7 +282,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q28.** A circle's radius grows at 2 cm/s. How fast (in cm²/s) does its area grow when the radius is 5 cm? `[number]`
+**Problem 28.** A circle's radius grows at 2 cm/s. How fast (in cm²/s) does its area grow when the radius is 5 cm? `[number]`
 
 <details><summary>Answer</summary>
 
@@ -315,7 +290,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q29.** A 10 m ladder leans on a wall. Its foot slides away from the wall at 1 m/s. When the foot is 6 m from the wall, give the rate (m/s) at which the top moves; a falling top has a negative rate. `[number]`
+**Problem 29.** A 10 m ladder leans on a wall. Its foot slides away from the wall at 1 m/s. When the foot is 6 m from the wall, give the rate (m/s) at which the top moves; a falling top has a negative rate. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -323,7 +298,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q30.** A sphere's volume grows at 100 cm³/s. Give $dr/dt$ (cm/s) when the radius is 5 cm. `[number]`
+**Problem 30.** A sphere's volume grows at 100 cm³/s. Give $dr/dt$ (cm/s) when the radius is 5 cm. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -331,7 +306,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q31.** $e^y = x$ for $x > 0$. Differentiate implicitly and give $dy/dx$ as a formula in $x$ alone. `[expr in x]`
+**Problem 31.** $e^y = x$ for $x > 0$. Differentiate implicitly and give $dy/dx$ as a formula in $x$ alone. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -339,17 +314,17 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-### Optimization
+## Problems on optimization
 
-**q32.** $f(x) = x^2 - 6x + 11$. Give the $x$ that minimizes $f$. `[number]`
+**Problem 32.** $f(x) = x^2 - 6x + 11$. Give the $x$ that minimizes $f$. `[number]`
 
 <details><summary>Answer</summary>
 
-**3.** $f'(x) = 2x - 6 = 0$ at $x = 3$, and $f'' = 2 > 0$ makes it a minimum. Gradient descent (`M10.1`) finds the same point numerically. A common mistake is $-3$, a sign slip solving $2x - 6 = 0$.
+**3.** $f'(x) = 2x - 6 = 0$ at $x = 3$, and $f'' = 2 > 0$ makes it a minimum. Gradient descent, in [Gradient descent and line search](../10-optimization/01-gradient-descent-and-line-search.md), finds the same point numerically. A common mistake is $-3$, a sign slip solving $2x - 6 = 0$.
 
 </details>
 
-**q33.** Give the minimum value of the $f$ of q32. `[number]`
+**Problem 33.** Give the minimum value of the $f$ of Problem 32. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -357,7 +332,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q34.** A rectangle has perimeter 20. Give its largest possible area. `[number]`
+**Problem 34.** A rectangle has perimeter 20. Give its largest possible area. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -365,7 +340,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q35.** Give the set of critical points of $f(x) = x^3 - 3x$. `[set]`
+**Problem 35.** Give the set of critical points of $f(x) = x^3 - 3x$. `[set]`
 
 <details><summary>Answer</summary>
 
@@ -373,7 +348,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q36.** Give the maximum of $f(x) = x e^{-x}$ over $x \ge 0$. `[number]`
+**Problem 36.** Give the maximum of $f(x) = x e^{-x}$ over $x \ge 0$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -381,7 +356,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q37.** Give the $c$ that minimizes $L(c) = (c - 1)^2 + (c - 2)^2 + (c - 6)^2$, a one-parameter least-squares fit. `[number]`
+**Problem 37.** Give the $c$ that minimizes $L(c) = (c - 1)^2 + (c - 2)^2 + (c - 6)^2$, a one-parameter least-squares fit. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -389,15 +364,15 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q38.** An open box is folded from a $12 \times 12$ sheet by cutting a square of side $s$ from each corner. Give the $s$ that maximizes the volume. `[number]`
+**Problem 38.** An open box is folded from a $12 \times 12$ sheet by cutting a square of side $s$ from each corner. Give the $s$ that maximizes the volume. `[number]`
 
 <details><summary>Answer</summary>
 
-**2.** $V(s) = s(12 - 2s)^2$ on $0 \le s \le 6$. As in section 3, $V'(s) = (12 - 2s)(12 - 6s)$, zero at $s = 6$ and $s = 2$. Candidates: $V(0) = V(6) = 0$ and $V(2) = 2 \cdot 8^2 = 128$, so $s = 2$. Common mistakes: 6, the other root of $V' = 0$, a box of zero volume, and 3.
+**2.** $V(s) = s(12 - 2s)^2$ on $0 \le s \le 6$. As in the worked box example, $V'(s) = (12 - 2s)(12 - 6s)$, zero at $s = 6$ and $s = 2$. Candidates: $V(0) = V(6) = 0$ and $V(2) = 2 \cdot 8^2 = 128$, so $s = 2$. Common mistakes: 6, the other root of $V' = 0$, a box of zero volume, and 3.
 
 </details>
 
-**q39.** Give the shortest distance from the point $(0, 2)$ to the parabola $y = x^2$. `[number]`
+**Problem 39.** Give the shortest distance from the point $(0, 2)$ to the parabola $y = x^2$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -405,9 +380,9 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-### Integration and the fundamental theorem
+## Problems on integration and the fundamental theorem
 
-**q40.** $\displaystyle\int_0^1 x^2\, dx$. `[number]`
+**Problem 40.** $\displaystyle\int_0^1 x^2\, dx$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -415,7 +390,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q41.** $\displaystyle\int_0^\pi \sin x\, dx$. `[number]`
+**Problem 41.** $\displaystyle\int_0^\pi \sin x\, dx$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -423,7 +398,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q42.** $\displaystyle\int_1^e \frac{1}{x}\, dx$. `[number]`
+**Problem 42.** $\displaystyle\int_1^e \frac{1}{x}\, dx$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -431,7 +406,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q43.** $\displaystyle\int_0^2 (3x^2 - 2x + 1)\, dx$. `[number]`
+**Problem 43.** $\displaystyle\int_0^2 (3x^2 - 2x + 1)\, dx$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -439,15 +414,15 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q44.** Give the antiderivative $F$ of $2x\cos(x^2)$ with $F(0) = 0$. `[expr in x]`
+**Problem 44.** Give the antiderivative $F$ of $2x\cos(x^2)$ with $F(0) = 0$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
-**$\sin(x^2)$.** The integrand is the chain rule result of q16 run backwards: $\frac{d}{dx}\sin(x^2) = 2x\cos(x^2)$, and $\sin(0) = 0$ fixes the constant at 0. Common mistakes: $2x \sin(x^2)$ (keeping the inner factor) and $\sin(x^2) + 1$ (the wrong constant, with $F(0) = 1$).
+**$\sin(x^2)$.** The integrand is the chain rule result of Problem 16 run backwards: $\frac{d}{dx}\sin(x^2) = 2x\cos(x^2)$, and $\sin(0) = 0$ fixes the constant at 0. Common mistakes: $2x \sin(x^2)$ (keeping the inner factor) and $\sin(x^2) + 1$ (the wrong constant, with $F(0) = 1$).
 
 </details>
 
-**q45.** $\displaystyle\int_0^1 e^{2x}\, dx$. `[number]`
+**Problem 45.** $\displaystyle\int_0^1 e^{2x}\, dx$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -455,7 +430,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q46.** $\dfrac{d}{dx} \displaystyle\int_0^x \sqrt{1 + t^3}\, dt$ for $x \ge 0$. `[expr in x]`
+**Problem 46.** $\dfrac{d}{dx} \displaystyle\int_0^x \sqrt{1 + t^3}\, dt$ for $x \ge 0$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -463,7 +438,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q47.** $\dfrac{d}{dx} \displaystyle\int_0^{x^2} \cos t\, dt$. `[expr in x]`
+**Problem 47.** $\dfrac{d}{dx} \displaystyle\int_0^{x^2} \cos t\, dt$. `[expr in x]`
 
 <details><summary>Answer</summary>
 
@@ -471,15 +446,15 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q48.** Give the average value of $\sin x$ over $[0, \pi]$. `[number]`
+**Problem 48.** Give the average value of $\sin x$ over $[0, \pi]$. `[number]`
 
 <details><summary>Answer</summary>
 
-**$2/\pi$.** Average value $= \frac{1}{\pi - 0}\int_0^\pi \sin x\,dx = \frac{2}{\pi}$, using q41. Common mistakes: 2 (the integral, not divided by the length $\pi$) and 0.
+**$2/\pi$.** Average value $= \frac{1}{\pi - 0}\int_0^\pi \sin x\,dx = \frac{2}{\pi}$, using Problem 41. Common mistakes: 2 (the integral, not divided by the length $\pi$) and 0.
 
 </details>
 
-**q49.** Give the area between $y = x$ and $y = x^2$ for $0 \le x \le 1$. `[number]`
+**Problem 49.** Give the area between $y = x$ and $y = x^2$ for $0 \le x \le 1$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -487,7 +462,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q50.** $\displaystyle\int_0^1 \frac{1}{1 + x}\, dx$. `[number]`
+**Problem 50.** $\displaystyle\int_0^1 \frac{1}{1 + x}\, dx$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -495,17 +470,17 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q51.** Give the left Riemann sum of $f(x) = x$ on $[0, 1]$ with $n = 4$ equal pieces. `[number]`
+**Problem 51.** Give the left Riemann sum of $f(x) = x$ on $[0, 1]$ with $n = 4$ equal pieces. `[number]`
 
 <details><summary>Answer</summary>
 
-**3/8.** Width $\frac14$, left endpoints $0, \frac14, \frac12, \frac34$: $\frac14\left(0 + \frac14 + \frac12 + \frac34\right) = \frac14 \cdot \frac32 = \frac38$. Common mistakes: $\frac58$ (the right sum, endpoints $\frac14, \ldots, 1$) and $\frac12$ (the exact integral). The trapezoid rule of `M01.4` averages the two sums, $\frac12(\frac38 + \frac58) = \frac12$, exact on this line.
+**3/8.** Width $\frac14$, left endpoints $0, \frac14, \frac12, \frac34$: $\frac14\left(0 + \frac14 + \frac12 + \frac34\right) = \frac14 \cdot \frac32 = \frac38$. Common mistakes: $\frac58$ (the right sum, endpoints $\frac14, \ldots, 1$) and $\frac12$ (the exact integral). The trapezoid rule of [Definite integrals: trapezoid and Simpson](04-definite-integrals-trapezoid-simpson.md) averages the two sums, $\frac12(\frac38 + \frac58) = \frac12$, exact on this line.
 
 </details>
 
-### L'Hôpital's rule
+## Problems on L'Hôpital's rule
 
-**q52.** $\displaystyle\lim_{x \to 0} \frac{e^x - 1 - x}{x^2}$. `[number]`
+**Problem 52.** $\displaystyle\lim_{x \to 0} \frac{e^x - 1 - x}{x^2}$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -513,7 +488,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q53.** $\displaystyle\lim_{x \to \infty} x^2 e^{-x}$. `[number]`
+**Problem 53.** $\displaystyle\lim_{x \to \infty} x^2 e^{-x}$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -521,7 +496,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q54.** $\displaystyle\lim_{x \to 0} \frac{\sin x - x}{x^3}$. `[number]`
+**Problem 54.** $\displaystyle\lim_{x \to 0} \frac{\sin x - x}{x^3}$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -529,15 +504,15 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q55.** $\displaystyle\lim_{x \to 0^+} x^x$. `[number]`
+**Problem 55.** $\displaystyle\lim_{x \to 0^+} x^x$. `[number]`
 
 <details><summary>Answer</summary>
 
-**1.** A $0^0$ form: take the logarithm. $\ln x^x = x \ln x \to 0$ (q7), so $x^x = e^{x \ln x} \to e^0 = 1$. A common mistake is 0, reading $0^0$ as 0.
+**1.** A $0^0$ form: take the logarithm. $\ln x^x = x \ln x \to 0$ (Problem 7), so $x^x = e^{x \ln x} \to e^0 = 1$. A common mistake is 0, reading $0^0$ as 0.
 
 </details>
 
-**q56.** $\displaystyle\lim_{x \to 1} \frac{\ln x}{x - 1}$. `[number]`
+**Problem 56.** $\displaystyle\lim_{x \to 1} \frac{\ln x}{x - 1}$. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -545,7 +520,7 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-**q57.** Show that $\displaystyle\lim_{x \to \infty} \frac{x + \sin x}{x} = 1$, and explain why L'Hôpital's rule cannot be used to get it. `[proof]`
+**Problem 57.** Show that $\displaystyle\lim_{x \to \infty} \frac{x + \sin x}{x} = 1$, and explain why L'Hôpital's rule cannot be used to get it. `[proof]`
 
 <details><summary>Answer</summary>
 
@@ -555,25 +530,46 @@ The step most often skipped is the justification for cancelling $h$: it is exact
 
 </details>
 
-## 5. Pitfalls
+## Common mistakes
+
+The worked answers keep returning to the same handful of errors. This table collects them with the problems where each one appears:
 
 | Pitfall | Symptom | How the worked answers avoid it |
 |---|---|---|
-| Substituting into a $0/0$ form instead of simplifying first | a removable singularity "evaluated" as 0 or undefined | factor or multiply by the conjugate first (q1, q8) |
-| Treating $1^\infty$ as 1 | compound growth and $e$ disappear | take the logarithm and find the limit of the exponent (q6) |
-| Differentiating a product factor by factor | $\frac{d}{dx} x^3 \sin x$ given as $3x^2 \cos x$ | the product rule, both terms (q11, q21) |
-| Forgetting the inner derivative of the chain rule | backward passes off by the inner Jacobian; gradcheck fails | every chain rule answer writes the inner derivative explicitly (q13, q16, q23, q45, q47) |
-| Using the power rule on a variable exponent | $x^x$ differentiated as $x \cdot x^{x-1}$ | rewrite as $e^{x \ln x}$ first (q19) |
-| Reporting the argmax instead of the max, or keeping a degenerate critical point | the wrong number answered, or a zero-volume box chosen | list every candidate with its value and compare (q36, q38) |
-| Dropping the sign of a related rate | a falling ladder reported as rising | keep the sign from $\dot y = -x\dot x/y$ (q29) |
-| Applying L'Hôpital once too few times, or where $f'/g'$ has no limit | a wrong finite limit, or no answer to a limit that exists | re-check the form after each application (q52); check that $\lim f'/g'$ exists before using it (q57) |
-## 6. Where it's used next
+| Substituting into a $0/0$ form instead of simplifying first | a removable singularity "evaluated" as 0 or undefined | factor or multiply by the conjugate first (Problems 1, 8) |
+| Treating $1^\infty$ as 1 | compound growth and $e$ disappear | take the logarithm and find the limit of the exponent (Problem 6) |
+| Differentiating a product factor by factor | $\frac{d}{dx} x^3 \sin x$ given as $3x^2 \cos x$ | the product rule, both terms (Problems 11, 21) |
+| Forgetting the inner derivative of the chain rule | backward passes off by the inner Jacobian; gradcheck fails | every chain rule answer writes the inner derivative explicitly (Problems 13, 16, 23, 45, 47) |
+| Using the power rule on a variable exponent | $x^x$ differentiated as $x \cdot x^{x-1}$ | rewrite as $e^{x \ln x}$ first (Problem 19) |
+| Reporting the argmax instead of the max, or keeping a degenerate critical point | the wrong number answered, or a zero-volume box chosen | list every candidate with its value and compare (Problems 36, 38) |
+| Dropping the sign of a related rate | a falling ladder reported as rising | keep the sign from $\dot y = -x\dot x/y$ (Problem 29) |
+| Applying L'Hôpital once too few times, or where $f'/g'$ has no limit | a wrong finite limit, or no answer to a limit that exists | re-check the form after each application (Problem 52); check that $\lim f'/g'$ exists before using it (Problem 57) |
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `S-M00` | functions, exponentials, logarithms, and the trigonometry these problems differentiate |
-| Forward | `M01.1` | finite differences approximate the limit of q4; the step size trades truncation against rounding |
-| Forward | `M01.3` | the activation derivatives of q13 to q15 and q21, in code, checked against torch |
-| Forward | `M04.1` | gradcheck compares an analytic derivative (the rules) with a numerical one (the limits) |
-| Forward | `M10.1` | gradient descent finds the critical points of q32 to q39 numerically |
-| Forward | `S-M02` | integration techniques, improper integrals, series, and ODEs |
+> **Warning:** The forgotten inner derivative is the mistake that matters most in code. On paper it costs a point; in a backward pass it produces a gradient that is wrong by a factor and still trains, until gradcheck catches it.
+
+## Where this leads
+
+These problems feed directly into code. The limit of Problem 4 is what the finite differences of [Derivatives and finite differences](01-derivatives-and-finite-differences.md) approximate, trading truncation against rounding in the choice of step. The activation derivatives of Problems 13 to 15 and 21 appear in code, checked against PyTorch, in [Activation functions and their derivatives](03-activation-functions.md). [Gradients and gradcheck](../04-calculus-3/01-gradients-and-gradcheck.md) compares an analytic derivative (the rules) with a numerical one (the limits). [Gradient descent and line search](../10-optimization/01-gradient-descent-and-line-search.md) finds the critical points of Problems 32 to 39 numerically. The [Calculus 2 problem set](../02-calculus-2/90-problem-set.md) continues with integration techniques, improper integrals, series, and differential equations.
+
+### Further reading
+
+- OpenStax, *Calculus Volume 1* (free), chapters 2 to 5.
+- 3Blue1Brown, *Essence of Calculus*, episodes 1 to 9.
+
+## Key terms
+
+- **limit**: the value $L$ that $f(x)$ approaches as $x \ne a$ approaches $a$, defined by $\varepsilon$ and $\delta$.
+- **indeterminate form**: an expression such as $0/0$ or $1^\infty$ that signals a limit must be rewritten.
+- **chain rule**: $\frac{d}{dx} f(g(x)) = f'(g(x))\, g'(x)$.
+- **critical point**: a point where $f'(x) = 0$, a candidate for an interior optimum.
+- **related rates**: rates of change tied together by differentiating a constraint in time.
+- **fundamental theorem of calculus**: $\int_a^b f = F(b) - F(a)$ for $F' = f$, and $\frac{d}{dx}\int_a^x f = f(x)$.
+- **L'Hôpital's rule**: for $0/0$ or $\infty/\infty$ forms, $\lim f/g = \lim f'/g'$ when the latter exists.
+
+## Summary
+
+- A limit describes what $f(x)$ approaches, not $f(a)$ itself; $0/0$ and $\infty - \infty$ are signals to rewrite, never answers (Problems 1, 8).
+- The product, quotient, and chain rules compute every derivative the autograd needs; the sigmoid, softplus, tanh, and SiLU derivatives are four lines each (Problems 13 to 15, 21).
+- An optimum of a smooth function sits where $f' = 0$ or on the boundary, and you still have to check which candidate wins (Problems 36, 38).
+- The fundamental theorem turns integrals into antiderivatives and makes $\frac{d}{dx}\int_a^{u(x)} f = f(u(x))\,u'(x)$ (Problems 46, 47).
+- L'Hôpital's rule turns $0/0$ and $\infty/\infty$ into a limit of derivatives, and applies only when that limit exists (Problem 57).
