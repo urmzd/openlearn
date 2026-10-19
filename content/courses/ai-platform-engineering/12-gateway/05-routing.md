@@ -1,39 +1,25 @@
-# Worker registry, routing, cascades, failover, disaggregated orchestration
+# Routing, cascades, and failover
 
-## Overview
+Until now the gateway has had one upstream, written in its configuration. A real deployment has several engines: two decode workers and a prefill worker in the disaggregated layout of [Disaggregated prefill/decode, KV transfer, heartbeat client](../../build-an-llm/p10-serving/06-disaggregated-prefill-decode.md) (in *Build Your Own LLM System*), a small and a large model, and soon a canary of a new model version ([ModelRelease: gates, canary, PromQL burn check, rollback](../05-durable-orchestration-and-workers/12-model-release.md)). Engines come and go: a pod is rescheduled, a node is drained, a worker crashes mid-stream (the drill in [A decode worker dies mid-stream](../../systems/05-incident-response-and-chaos/01-kill-decode.md), in *Systems and Architecture*).
 
-| | |
-|---|---|
-| **Module** | `gw.05` · build · Go · Pass 7 · 6 to 8 h |
-| **Solution** | [`registry.go`](../../../../course/solutions/go/gateway/route/registry.go): `Registry` (the `tl.control.v1` heartbeat server, eviction, drain) · [`route.go`](../../../../course/solutions/go/gateway/route/route.go): `Router`, the policies, `PickBackend`, `PrefixKey`, `ParseAcceptIf`, `LogprobsOf`, `CascadeCurve` · [`handler.go`](../../../../course/solutions/go/gateway/route/handler.go): `Middleware` (the route stage), `Proxy` (failover, cascades, disaggregated prefill and decode), `EngineTokenizer` · [`admin.go`](../../../../course/solutions/go/gateway/route/admin.go): `WorkersHandler`, `RoutesHandler`, `DrainHandler` |
-| **Contract** | [`course/contracts/proto/tl/control/v1/control.proto`](../../../../course/contracts/proto/tl/control/v1/control.proto) (served) · [`engine.proto`](../../../../course/contracts/proto/tl/engine/v1/engine.proto) and [`kv.proto`](../../../../course/contracts/proto/tl/kv/v1/kv.proto) (called) · `Route`, `Worker`, and the routes and drain rules of [`admin.v1.yaml`](../../../../course/contracts/openapi/admin.v1.yaml) · `[gateway]` `route_policy`, `affinity_load_factor`, `heartbeat_miss_limit`, `routes` in [`runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json) |
-| **Needs** | [`ds.09` consistent hash ring](../../algorithms/16-systems-data-structures/09-consistent-hash-ring.md) · [`gw.01` server skeleton](01-server-skeleton.md) · [`gw.02` API keys](../08-authorization-and-access-control/01-api-keys-and-scopes.md) (the debug scope) · [`gw.04` streaming proxy](04-sse-streaming-proxy.md) (`Forward` and the commitment boundary) · `L10.6` (the Rust engine's Prefill and Release gRPC endpoints) · reading: `S-M07d` [queueing and balls into bins](../../mathematics-for-computing/07-probability-statistics/93-problem-set-d.md), [model routing and cascades](../11-model-routing-and-cascades/) |
-| **Used by** | `gw.08` (its policy reads `route.InferenceRequest`); `gw.07`'s `gateway.Deps` and `gateway.Admin` (the `Router` slot, the workers, routes, and drain handlers, the cache revision); the gateway's composition root passes `route.Proxy` and serves the gRPC registry; `load.01`, `ops.01`, and `dur.12`'s canary reach it over HTTP · with `gw.04` and `gw.07` it turns the one-upstream proxy into a gateway over a fleet |
-| **Optional depth** | Chen et al., *FrugalGPT* (2023, cascades); Zhong et al., *DistServe* (OSDI 2024) and Patel et al., *Splitwise* (ISCA 2024) on disaggregated prefill and decode; Mitzenmacher, *The Power of Two Choices in Randomized Load Balancing* (2001) |
+The gateway therefore needs to know who is alive, pick a worker per request in a way that keeps prefix caches warm without overloading anyone, move away from a dead worker before the client notices, and never stitch two workers' tokens into one answer. This section builds that router. Together with [the SSE streaming proxy](04-sse-streaming-proxy.md) and [the usage ledger](07-usage-ledger-and-admin-api.md), it turns the one-upstream proxy into a gateway over a fleet.
 
-## Key Takeaways
+It builds on several earlier pieces: [Consistent hash ring with bounded loads](../../algorithms/16-systems-data-structures/09-consistent-hash-ring.md) in *Algorithm Mastery*; [the server skeleton](01-server-skeleton.md); [API keys and scopes](../08-authorization-and-access-control/01-api-keys-and-scopes.md), for the `debug` scope; the streaming proxy's `Forward` and its commitment boundary; and the Rust engine's Prefill and Release gRPC endpoints from the disaggregated serving section. Useful background reading is the queueing and balls-into-bins problems in [Solve set: hypothesis tests, regression, queueing and Little's law, balls into bins](../../mathematics-for-computing/07-probability-statistics/93-problem-set-d.md) (in *Mathematics for Computing*) and the [Model routing and cascades](../11-model-routing-and-cascades/README.md) chapter.
 
-- Engines announce themselves with a heartbeat every 2 s; a worker that misses `heartbeat_miss_limit` (3) in a row is evicted at exactly $3 \times 2$ s after its last one.
-- Three policies pick among the routable workers of a model: `least_outstanding` (fewest in flight plus queued), `weighted` (smooth weighted round robin by KV capacity), and `affinity` (`ds.09`'s ring with bounded loads on the first prompt block, so shared prefixes hit a warm cache until that worker is over its fair share).
-- Before the first byte, a worker that is down or answers 503 is excluded and the request routed again; after it, nothing is retried or spliced.
-- A cascade asks the small model first and keeps its answer only when its mean token logprob passes `accept_if`; sweeping the threshold trades cost for accuracy, and the curve on fixture data is reproduced exactly.
-- Disaggregated serving runs `Prefill` on a prefill worker that pushes the prompt's KV to a decode worker, then streams from the decode worker with `X-TL-KV-Handle`; with one seed for both, the output equals a unified engine's.
+The solution is four files: [`registry.go`](../../../../course/solutions/go/gateway/route/registry.go) (`Registry`, the `tl.control.v1` heartbeat server, eviction, drain); [`route.go`](../../../../course/solutions/go/gateway/route/route.go) (`Router`, the policies, `PickBackend`, `PrefixKey`, `ParseAcceptIf`, `LogprobsOf`, `CascadeCurve`); [`handler.go`](../../../../course/solutions/go/gateway/route/handler.go) (`Middleware`, the route stage; `Proxy`, with failover, cascades, and disaggregated prefill and decode; `EngineTokenizer`); and [`admin.go`](../../../../course/solutions/go/gateway/route/admin.go) (`WorkersHandler`, `RoutesHandler`, `DrainHandler`). The package uses the generated gRPC code in `contracts/go/gen` (module `openlearn.urmzd.com/tl/contracts`) and `google.golang.org/grpc`. The gateway's composition root serves `controlv1.RegisterWorkerRegistryServer(grpcServer, registry)` on `registry_listen`, puts `route.Middleware(router)` in the chain's `Router` slot and `route.Proxy(router, route.Options{})` in its `Proxy` slot, and uses `router.Ready` as `Deps.Ready`.
 
-## How to read this chapter
+The contracts are [`course/contracts/proto/tl/control/v1/control.proto`](../../../../course/contracts/proto/tl/control/v1/control.proto) (served), [`engine.proto`](../../../../course/contracts/proto/tl/engine/v1/engine.proto) and [`kv.proto`](../../../../course/contracts/proto/tl/kv/v1/kv.proto) (called), `Route`, `Worker`, and the routes and drain rules of [`admin.v1.yaml`](../../../../course/contracts/openapi/admin.v1.yaml), and the `[gateway]` keys `route_policy`, `affinity_load_factor`, `heartbeat_miss_limit`, and `routes` in [`runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json).
 
-Sections 1 to 3 build routing from first principles and work one routing sequence by hand. Section 4 fixes the interface. Section 5 walks through the solution, file by file, and explains why each choice is the right one; try to predict each step before reading it. The package uses the generated gRPC code in `contracts/go/gen` (module `openlearn.urmzd.com/tl/contracts`) and `google.golang.org/grpc`. The gateway's composition root serves `controlv1.RegisterWorkerRegistryServer(grpcServer, registry)` on `registry_listen`, puts `route.Middleware(router)` in the chain's `Router` slot and `route.Proxy(router, route.Options{})` in its `Proxy` slot, and uses `router.Ready` as `Deps.Ready`.
+> **Learning objectives**
+> - Decide liveness from heartbeats with an exact eviction rule, and explain why the gateway's clock is the one that counts.
+> - Compare `least_outstanding`, `weighted`, and `affinity` routing, and trace each by hand.
+> - Route a canary split deterministically from the request id, and separate "unknown model" (404) from "no capacity" (503).
+> - Fail over before the first byte, and only then.
+> - Evaluate a cascade's cost and accuracy across thresholds, and orchestrate disaggregated prefill and decode so its output equals a unified engine's.
 
----
+## The registry
 
-## 1. Why now
-
-Until now the gateway has one upstream, written in its configuration. In Pass 7 there are several engines: two decode workers and a prefill worker in the disaggregated layout of `L10.6`, a small and a large model, and soon a canary of a new model version (`dur.12`). Engines come and go: a pod is rescheduled, a node is drained, a worker crashes mid-stream (drill `ops.01`). The gateway needs to know who is alive, pick a worker per request in a way that keeps prefix caches warm without overloading anyone, move away from a dead worker before the client notices, and never stitch two workers' tokens into one answer. This module is that router.
-
-## 2. Principles
-
-### 2.1 The registry
-
-Each engine sends `tl.control.v1.WorkerRegistry/Heartbeat(WorkerStatus)` every 2 s: its id, addresses (HTTP, the `EngineControl` gRPC port, the KV port of a decode worker), role (`unified`, `prefill`, `decode`), model, queue depth, running sequences, free and total KV blocks, and whether it is draining. The registry stores the latest status and the time it arrived (from the gateway's `Clock`).
+Routing starts with knowing who exists. Each engine sends `tl.control.v1.WorkerRegistry/Heartbeat(WorkerStatus)` every 2 s: its id, addresses (HTTP, the `EngineControl` gRPC port, the KV port of a decode worker), role (`unified`, `prefill`, `decode`), model, queue depth, running sequences, free and total KV blocks, and whether it is draining. The registry stores the latest status and the time it arrived, taken from the gateway's `Clock`. Three quantities decide liveness:
 
 | Symbol | Meaning | Value |
 |---|---|---|
@@ -43,37 +29,41 @@ Each engine sends `tl.control.v1.WorkerRegistry/Heartbeat(WorkerStatus)` every 2
 
 A worker is **live** while $\mathit{now} - t_\ell < kT$ and is evicted (removed) once $\mathit{now} - t_\ell \ge kT$: at 5.999 s after its last heartbeat it is still there, at 6 s it is gone. A worker is **routable** when it is live, not reporting `draining`, and its model is not being drained by the admin API (`POST /admin/v1/models/{model}:drain`, which also sets `drain: true` in that worker's next `HeartbeatAck`).
 
-### 2.2 Load and the policies
+## Load and the policies
 
-Every policy picks among the routable workers of the right model and role. A worker's **load** is the gateway's own in-flight count for it plus the engine's reported queue depth: in flight reacts at once, the queue depth catches load from other gateways and requests that are waiting rather than running.
+Every policy picks among the routable workers of the right model and role. To do that it needs a notion of how busy a worker is. A worker's **load** is the gateway's own in-flight count for it plus the engine's reported queue depth. In-flight reacts at once; the queue depth catches load from other gateways and requests that are waiting rather than running. With load defined, the three policies are:
 
 | Policy | Picks | Good at |
 |---|---|---|
 | `least_outstanding` | the minimum load, ties to the smallest id | equalizing queues when requests differ in size |
 | `weighted` | smooth weighted round robin with weight = KV capacity (`kv_total_blocks`): add each worker's weight to its counter, pick the largest counter, subtract the total from it | spreading in proportion to capacity without runs |
-| `affinity` | `ds.09` `GetBounded` on the prefix key, with load as above and $c$ = `affinity_load_factor` | prefix cache hits, with a cap on hot prefixes |
+| `affinity` | the hash ring's `GetBounded` on the prefix key, with load as above and $c$ = `affinity_load_factor` | prefix cache hits, with a cap on hot prefixes |
 
 Smooth weighted round robin with weights 1 (`small`) and 3 (`big`) gives `big, big, small, big`, repeating: the same 1:3 split as a weighted random choice, but deterministic and interleaved.
 
-### 2.3 Affinity and the prefix key
+## Affinity and the prefix key
 
-The engine's prefix cache (`L8.4`, `L10.4`) hashes the prompt in KV blocks of 16 tokens; two requests share cached KV only if they share whole leading blocks. The gateway has no tokenizer, so it uses the leading **64 bytes** of the rendered prompt, about one block of 16 tokens at about 4 bytes per token: the completions `prompt`, or the chat messages written as `role\ncontent\n` in order. Requests that open with the same system prompt share their key, land on the same worker (reason `affinity`), and hit its cache. When that worker's load reaches $\lceil c \cdot (m+1)/n \rceil$, bounded loads move the next one clockwise (reason `load`). With 4 workers, $c = 1.25$, and 3 requests in flight on the owner (none elsewhere), the cap is $\lceil 1.25 \cdot 4 / 4 \rceil = 2$, so the owner is skipped.
+The affinity policy needs a key that predicts which worker has useful cache. The engine's prefix cache ([Radix prefix cache](../../build-an-llm/p08-inference/04-radix-prefix-cache.md), [Block manager with prefix cache](../../build-an-llm/p10-serving/04-block-manager-and-prefix-cache.md)) hashes the prompt in KV blocks of 16 tokens; two requests share cached KV only if they share whole leading blocks. The gateway has no tokenizer, so it uses the leading **64 bytes** of the rendered prompt, about one block of 16 tokens at about 4 bytes per token. The rendered prompt is the completions `prompt`, or the chat messages written as `role\ncontent\n` in order.
 
-### 2.4 Routes, canaries, and model ids
+Requests that open with the same system prompt share their key, land on the same worker (reason `affinity`), and hit its cache. When that worker's load reaches $\lceil c \cdot (m+1)/n \rceil$, bounded loads move the next one clockwise (reason `load`). With 4 workers, $c = 1.25$, and 3 requests in flight on the owner (none elsewhere), the cap is $\lceil 1.25 \cdot 4 / 4 \rceil = 2$, so the owner is skipped.
 
-The route table (`[[gateway.routes]]`, or `PUT /admin/v1/routes`) maps a **public** model id and its aliases to what serves it:
+## Routes, canaries, and model ids
 
-- `backends`: a weighted split over **served** model ids (a canary: `smol-v3` 0.9, `smol-v4` 0.1). The draw is $u = \mathrm{Hash64}(\text{request id}) / 2^{64}$ scaled to the total weight (`ds.09`'s hash, top 53 bits), so one request id always lands on the same backend and the split is exact in expectation.
-- `cascade`: a list of steps (2.6).
-- `targets`: `["unified"]` (default) or `["disaggregated"]` (2.7).
+So far the client's `model` has named the workers directly. The route table (`[[gateway.routes]]`, or `PUT /admin/v1/routes`) adds a layer: it maps a **public** model id and its aliases to what serves it, through three fields.
 
-A model with no route is its own route. The engine knows only its served id, so the request body's `model` is rewritten per attempt (`withFields`), leaving every other field as the client sent it. Unknown everywhere (no route, no worker) is **404** `model_not_found`; known but with no routable worker is **503** `no_capacity`. The route table uses optimistic concurrency on the admin API: `GET` returns an `ETag`; a `PUT` needs `If-Match` with it (428 `if_match_required` without, 412 `etag_mismatch` when stale), replaces the whole table, and increases the epoch sent in heartbeat acks.
+`backends` is a weighted split over **served** model ids, which is how a canary works (`smol-v3` 0.9, `smol-v4` 0.1). The draw is $u = \mathrm{Hash64}(\text{request id}) / 2^{64}$ scaled to the total weight (the hash ring's hash, top 53 bits), so one request id always lands on the same backend and the split is exact in expectation. `cascade` is a list of steps, described below. `targets` is `["unified"]` (the default) or `["disaggregated"]`, also described below.
 
-### 2.5 Failover before the first byte
+A model with no route is its own route. The engine knows only its served id, so the request body's `model` is rewritten per attempt (`withFields`), leaving every other field as the client sent it. A model unknown everywhere (no route, no worker) is **404** `model_not_found`; a model that is known but has no routable worker is **503** `no_capacity`.
 
-`Proxy` sends an attempt with `gw.04`'s `Forward` and `Retry503` set. If the attempt fails **uncommitted** (refused, reset, or a 503 from a draining or full engine), the worker is added to the request's exclusions and `Route` is asked again; at most 3 workers are tried, then the client gets 503 `no_capacity`. If it fails **committed**, `gw.04` has already sent an SSE error event and the request ends there. A worker that just died is also evicted 6 s later by the registry; failover covers the requests in between.
+The route table uses optimistic concurrency on the admin API. `GET` returns an `ETag`; a `PUT` needs `If-Match` with it (428 `if_match_required` without, 412 `etag_mismatch` when stale), replaces the whole table, and increases the epoch sent in heartbeat acks.
 
-### 2.6 Cascades
+## Failover before the first byte
+
+A routing decision can turn out wrong: the chosen worker may have just died. `Proxy` sends each attempt with the streaming proxy's `Forward`, with `Retry503` set. If the attempt fails **uncommitted** (refused, reset, or a 503 from a draining or full engine), the worker is added to the request's exclusions and `Route` is asked again. At most 3 workers are tried; after that the client gets 503 `no_capacity`. If the attempt fails **committed**, the streaming proxy has already sent an SSE error event and the request ends there. A worker that just died is also evicted 6 s later by the registry; failover covers the requests in between.
+
+## Cascades
+
+A cascade spends less by asking a small model first. Name the quantities:
 
 | Symbol | Meaning |
 |---|---|
@@ -82,7 +72,9 @@ A model with no route is its own route. The engine knows only its served id, so 
 | $\tau$ | the threshold in `accept_if`, for example `mean_logprob > -1.2` |
 | $s$ | cost of a small call relative to a large one |
 
-For a non-streamed request, each step except the last asks its model (with `logprobs` forced on) and keeps the answer when `accept_if` holds; otherwise it escalates. An answer with no tokens is never accepted. A streamed request goes straight to the last step: once a stream starts it cannot be taken back. Over an evaluation set, a threshold gives three numbers: the fraction escalated $e(\tau)$, the cost $s + e(\tau)$ (every prompt pays the small call, escalated ones also the large), and the accuracy. On the fixture's 200 prompts with $s = 0.1$:
+For a non-streamed request, each step except the last asks its model (with `logprobs` forced on) and keeps the answer when `accept_if` holds; otherwise it escalates. An answer with no tokens is never accepted. A streamed request goes straight to the last step, because once a stream starts it cannot be taken back.
+
+Over an evaluation set, each threshold gives three numbers: the fraction escalated $e(\tau)$, the cost $s + e(\tau)$ (every prompt pays the small call, escalated ones also the large), and the accuracy. On the fixture's 200 prompts with $s = 0.1$, a sweep gives:
 
 | $\tau$ | escalated | cost | accuracy |
 |---|---|---|---|
@@ -92,29 +84,29 @@ For a non-streamed request, each step except the last asks its model (with `logp
 | $-0.5$ | 0.820 | 0.920 | 0.935 |
 | $0.0$ | 1.000 | 1.100 | 0.935 |
 
-At $\tau = -0.5$ the cascade matches always-large accuracy (0.935) at 92% of its cost; always-large costs 1.0 and the full sweep shows where the knee is for a given pair of models.
+At $\tau = -0.5$ the cascade matches always-large accuracy (0.935) at 92% of its cost. Always-large costs 1.0, and the full sweep shows where the knee is for a given pair of models.
 
-### 2.7 Disaggregated prefill and decode
+## Disaggregated prefill and decode
 
-Prefill (processing the prompt) is compute-bound; decode (one token at a time) is memory-bound. Running them on different workers lets each be sized for its job (`L10.6`). For a route with `targets = ["disaggregated"]` the gateway picks a decode worker D (by the policy) and a prefill worker P (least loaded), then:
+The last routing target splits one request across two workers. Prefill (processing the prompt) is compute-bound; decode (one token at a time) is memory-bound. Running them on different workers lets each be sized for its job. For a route with `targets = ["disaggregated"]` the gateway picks a decode worker D (by the policy) and a prefill worker P (least loaded), then:
 
 1. Tokenizes the prompt (`Tokenizer`; the reference `EngineTokenizer` asks P's `POST /v1/tokenize`).
-2. Fixes the seed: if the client sent none, the gateway draws one and puts it in both the `Prefill` request and the body sent to D. P samples the first token from its PCG32 stream; D must continue the **same** stream (`rng_draws_consumed` tells it how far), so without a shared seed a sampled disaggregated stream would differ from a unified one.
-3. Calls `EngineControl/Prefill` on P with the prompt ids, the sampling parameters (every field, with the contract's defaults for omitted ones: proto3 has no "unset"), and `decode_target` = **D's KV address**. P runs prefill, pushes the prompt's KV blocks to D over `tl.kv.v1`, and returns a `KvHandle`.
-4. Sends the request to D's HTTP surface with `X-TL-KV-Handle: <handle_id>`; D resumes from the pushed KV, emits the first token, and continues. The stream passes through `gw.04` like any other.
+2. Fixes the seed. If the client sent none, the gateway draws one and puts it in both the `Prefill` request and the body sent to D. P samples the first token from its PCG32 stream; D must continue the **same** stream (`rng_draws_consumed` tells it how far), so without a shared seed a sampled disaggregated stream would differ from a unified one.
+3. Calls `EngineControl/Prefill` on P with the prompt ids, the sampling parameters (every field, with the contract's defaults for omitted ones, since proto3 has no "unset"), and `decode_target` set to **D's KV address**. P runs prefill, pushes the prompt's KV blocks to D over `tl.kv.v1`, and returns a `KvHandle`.
+4. Sends the request to D's HTTP surface with `X-TL-KV-Handle: <handle_id>`. D resumes from the pushed KV, emits the first token, and continues. The stream passes through the streaming proxy like any other.
 5. If that stream does not finish, calls `KvTransferService/Release(handle)` on D, so the pushed blocks return to D's pool instead of waiting for a timeout.
 
-## 3. Worked example by hand
+## Working it by hand
 
-Three unified workers of `smol` heartbeat at $t_0$ with queue depths `a = 2`, `b = 0`, `c = 1`; the policy is `least_outstanding`.
+A short sequence exercises both load and liveness. Three unified workers of `smol` heartbeat at $t_0$ with queue depths `a = 2`, `b = 0`, `c = 1`, and the policy is `least_outstanding`.
 
-1. Request `r1`: loads are $2, 0, 1$ (nothing in flight yet): **b**.
-2. Two requests are now in flight on `b`: loads $2, 2, 1$: request `r2` goes to **c**.
+1. Request `r1`: loads are $2, 0, 1$ (nothing in flight yet), so it goes to **b**.
+2. Two requests are now in flight on `b`: loads $2, 2, 1$, so request `r2` goes to **c**.
 3. `a` heartbeats again at $t_0 + 2$ s and $t_0 + 4$ s; `b` and `c` send nothing more.
 4. At $t_0 + 5.999$ s, `b` and `c` have missed fewer than 3 heartbeats ($5.999 < 6$): all three are listed.
-5. At $t_0 + 6$ s, $6 - 0 \ge 3 \times 2$: `b` and `c` are evicted; `a`'s last heartbeat was 2 s ago. Request `r3` goes to **a**.
+5. At $t_0 + 6$ s, $6 - 0 \ge 3 \times 2$: `b` and `c` are evicted, while `a`'s last heartbeat was 2 s ago. Request `r3` goes to **a**.
 
-## 4. The interface
+## The interface
 
 ```go
 package route // import "tinyllm/gateway/route"
@@ -146,46 +138,23 @@ func RoutesHandler(rt *Router) http.Handler                // GET, PUT /admin/v1
 func DrainHandler(reg *Registry) http.Handler              // POST /admin/v1/models/{model}:drain
 ```
 
-`Route` takes the cascade step and returns `Target`; the cascade's `Accept` is parsed from the route's `accept_if` strings rather than given as a Go function, because routes arrive through the admin API as JSON. `X-TL-Route` carries the chosen worker id only for keys with the `debug` scope.
+`Route` takes the cascade step and returns a `Target`. The cascade's `Accept` is parsed from the route's `accept_if` strings rather than given as a Go function, because routes arrive through the admin API as JSON. `X-TL-Route` carries the chosen worker id only for keys with the `debug` scope.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | What must hold | Why it matters downstream |
-|---|---|---|---|
-| the hand example (section 3) | unit | picks b, then c, eviction exactly at 6 s, then a | the definition of load and liveness |
-| heartbeats over real gRPC | conformance | a heartbeat makes a worker routable; drain sets `drain` in the ack and removes it; a worker reporting draining is not routable | `L10.6`'s heartbeat client talks to this |
-| unknown model, dead model | unit | unknown model 404 `model_not_found`; routed but down 503 `no_capacity`; `Ready` fails with no worker | conformance `route.model`; `/readyz` |
-| affinity | unit, property | 20 requests sharing a system prompt land on one worker (`affinity`), 40 distinct prefixes spread over at least 3 of 4 workers, an overloaded owner is skipped (`load`) | warm prefix caches without hot spots |
-| weighted by capacity | unit | capacities 1 and 3 give `big, big, small, big` twice | proportional and interleaved |
-| canary split | statistical | 0.1 of 10000 request ids within 4 sd; one id, one backend; no backends means the route's model | `dur.12`'s canary weight |
-| aliases and served ids | unit | an alias reaches the engine as the served model id | engines answer only their own id |
-| failover before the first byte | fault | a refused worker and a 503 worker are each tried once and the request completes on the next | conformance and drill `ops.01` |
-| a worker that dies after one token | fault | the client gets that token and an SSE error event; no other worker is called | no repeated or spliced tokens |
-| `X-TL-Route` | unit | only for the `debug` scope | internal topology stays internal |
-| `GET /v1/models` | unit | lists route and worker models; an unknown id is 404 | conformance `schema.models` on the gateway |
-| the prefix key | unit | the rendered chat prefix; 64 bytes at most | the affinity key |
-| `accept_if` parsing | boundary | `mean_logprob` and `min_logprob` with `>` and `>=`; empty answers rejected; malformed rules refused | cascade rules from the admin API |
-| a cascade | unit | a confident small answer is kept (large never called, logprobs requested); an unsure one escalated; a streamed request goes to the last step | cost savings without wrong answers |
-| the cascade curve | conformance, golden | the sweep over the recorded 200-prompt set reproduces escalation, cost, and accuracy at all 13 thresholds | the cost and quality curve in 2.6 |
-| disaggregated equals unified | differential | the disaggregated stream equals the unified one; prompt ids, defaults, `decode_target` = D's KV address; a generated seed reaches D | `L10.6`'s disaggregated serving |
-| D dies mid-stream | fault | `Release` is called with the handle and nothing stays held | KV blocks do not leak |
-| the routing admin API | unit, conformance | workers with the epoch; routes 428, 412, 400 for a bad cascade, 200 with a new ETag; drain 404 and 202 | `gw.07` mounts these handlers |
-
-## 5. The solution, step by step
-
-### 5.1 From first principles
+Seven observations shape the router:
 
 1. **Liveness has to be decided by the gateway's clock, not by the worker.** A dead worker sends nothing, so the only evidence is absence. The registry stores the arrival time of each heartbeat and calls a worker live while $\mathit{now} - t_\ell < kT$. The strict `<` is the whole off-by-one: at exactly $kT$ the worker has missed $k$ heartbeats and is gone.
-2. **Eviction can be lazy.** Nobody needs a dead worker removed at the instant it dies; they need it absent from the next routing decision. So `Snapshot` evicts while it reads, and no background timer is needed (and tests can drive the clock).
-3. **Load must combine what the gateway knows now with what the engine reported.** In-flight counts move the instant a request is sent; queue depth is up to 2 s stale but sees other gateways' traffic. Their sum is the load every policy uses (section 3, step 1: loads $2, 0, 1$ come from queue depth alone).
+2. **Eviction can be lazy.** Nobody needs a dead worker removed at the instant it dies; they need it absent from the next routing decision. So `Snapshot` evicts while it reads, no background timer is needed, and tests can drive the clock.
+3. **Load must combine what the gateway knows now with what the engine reported.** In-flight counts move the instant a request is sent; queue depth is up to 2 s stale but sees other gateways' traffic. Their sum is the load every policy uses. (In the hand example, step 1's loads of $2, 0, 1$ come from queue depth alone.)
 4. **Determinism is a feature.** Ties go to the smallest id (candidates are sorted), the weighted policy is a deterministic round robin, and the canary draw is a hash of the request id. The same inputs route the same way, so a retried request id lands on the same canary backend and a routing decision can be explained after the fact.
-5. **Retrying is safe only while nothing was sent.** This is `gw.04`'s commitment boundary; routing adds the loop: exclude the failed worker, ask `Route` again, at most `MaxAttempts` times.
-6. **A cascade can only judge a complete answer.** It needs the small model's logprobs over the whole answer before deciding, so its answer is captured, not streamed; a streamed request skips straight to the last step.
-7. **Disaggregation is two calls that must agree.** P samples the first token and D continues; for the result to equal a unified engine, both must use the same seed and the same sampling parameters, and P must push KV to the address D's KV service listens on. If D's stream fails, nobody else will free the pushed blocks, so the gateway calls `Release`.
+5. **Retrying is safe only while nothing was sent.** This is the streaming proxy's commitment boundary; routing adds the loop: exclude the failed worker, ask `Route` again, at most `MaxAttempts` times.
+6. **A cascade can only judge a complete answer.** It needs the small model's logprobs over the whole answer before deciding, so that answer is captured, not streamed; a streamed request skips straight to the last step.
+7. **Disaggregation is two calls that must agree.** P samples the first token and D continues. For the result to equal a unified engine's, both must use the same seed and the same sampling parameters, and P must push KV to the address D's KV service listens on. If D's stream fails, nobody else will free the pushed blocks, so the gateway calls `Release`.
 
-### 5.2 The code, annotated
+### The registry
 
-**The registry** (`registry.go`). A heartbeat overwrites the worker's record and stamps it with the gateway's clock (step 1); the ack carries the drain request back:
+In `registry.go`, a heartbeat overwrites the worker's record and stamps it with the gateway's clock (step 1), and the ack carries the drain request back:
 
 ```go
 func (r *Registry) Heartbeat(ctx context.Context, s *controlv1.WorkerStatus) (*controlv1.HeartbeatAck, error) {
@@ -219,7 +188,9 @@ func (r *Registry) Snapshot() []Worker {
 
 `Routable` filters a snapshot further: not `Draining` (the worker's own report) and not a model drained through the admin API.
 
-**Choosing a backend and a worker** (`route.go`). The canary draw maps the request id to $[0, 1)$ with the ring's hash and walks the cumulative weights:
+### Choosing a backend and a worker
+
+In `route.go`, the canary draw maps the request id to $[0, 1)$ with the ring's hash and walks the cumulative weights:
 
 ```go
 func Unit(s string) float64 {
@@ -285,9 +256,9 @@ func (rt *Router) pick(cands []Worker, key []byte) (Worker, string) {
 }
 ```
 
-Trace the weighted case with `small` = 1, `big` = 3 (total 4). Counters start at 0. Round 1: $(1, 3)$, pick big, $(1, -1)$. Round 2: $(2, 2)$, tie, the first in id order with the larger counter stays, so big again (`big` sorts before `small`), $(2, -2)$. Round 3: $(3, 1)$, pick small, $(-1, 1)$. Round 4: $(0, 4)$, pick big, $(0, 0)$: back to the start, giving `big, big, small, big`.
+Trace the weighted case with `small` = 1 and `big` = 3 (total 4). Counters start at 0. Round 1: $(1, 3)$, pick big, leaving $(1, -1)$. Round 2: $(2, 2)$, a tie; the first in id order with the larger counter stays, so big again (`big` sorts before `small`), leaving $(2, -2)$. Round 3: $(3, 1)$, pick small, leaving $(-1, 1)$. Round 4: $(0, 4)$, pick big, leaving $(0, 0)$: back to the start, giving `big, big, small, big`.
 
-`Route` puts it together: resolve the route, pick the served model (canary or cascade step), separate 404 from 503, then pick:
+`Route` puts it together: resolve the route, pick the served model (canary or cascade step), separate 404 from 503, then pick a worker:
 
 ```go
 func (rt *Router) Route(ctx context.Context, req *InferenceRequest, ex Exclusions, step int) (Target, error) {
@@ -320,7 +291,9 @@ func (rt *Router) Route(ctx context.Context, req *InferenceRequest, ex Exclusion
 }
 ```
 
-**Failover** (`handler.go`). `attempts` is step 5 as a loop. The first attempt uses the target the route stage already picked; later ones route again with the failed workers excluded:
+### Failover
+
+In `handler.go`, `attempts` is step 5 as a loop. The first attempt uses the target the route stage already picked; later ones route again with the failed workers excluded:
 
 ```go
 for attempt := 0; attempt < p.o.MaxAttempts; attempt++ {
@@ -351,7 +324,7 @@ if r.Context().Err() == nil {
 }
 ```
 
-`once` sends one attempt. It counts the worker as in flight for exactly the attempt's duration, sets `Retry503` so a draining engine's 503 comes back unwritten, and rewrites only `model` in the body (`withFields` decodes to `map[string]json.RawMessage`, so every other field passes through byte for byte):
+`once` sends one attempt. It counts the worker as in flight for exactly the attempt's duration, sets `Retry503` so a draining engine's 503 comes back unwritten, and rewrites only `model` in the body. (`withFields` decodes to `map[string]json.RawMessage`, so every other field passes through byte for byte.)
 
 ```go
 att := proxy.Outbound{Method: rd.out.method, Path: rd.out.path, RawQuery: rd.out.rawQuery, Header: rd.out.header.Clone()}
@@ -365,7 +338,9 @@ if t.Prefill == nil {
 }
 ```
 
-The disaggregated branch of `once` is step 7:
+### The disaggregated branch
+
+The rest of `once` is step 7:
 
 ```go
 seed := uint64(0)
@@ -402,7 +377,9 @@ return err
 
 `sampling` starts from `Temperature: 1, TopP: 1, RepetitionPenalty: 1` and overrides only fields the client sent, because proto3 cannot express "unset": a zero temperature would mean greedy decoding, not "default".
 
-**Cascades.** `ParseAcceptIf` turns `"mean_logprob > -1.2"` into a function; the returned closure starts with `len(lp) > 0 &&`, so an empty answer (whose mean would be NaN) is never accepted. `cascade` runs every step but the last with `logprobs` forced on, into a `capture` writer, and writes the first accepted answer:
+### Cascades
+
+`ParseAcceptIf` turns `"mean_logprob > -1.2"` into a function. The returned closure starts with `len(lp) > 0 &&`, so an empty answer (whose mean would be NaN) is never accepted. `cascade` runs every step but the last with `logprobs` forced on, into a `capture` writer, and writes the first accepted answer:
 
 ```go
 for step := 0; step < len(steps)-1; step++ {
@@ -426,68 +403,140 @@ for step := 0; step < len(steps)-1; step++ {
 // ... route to the last step; false: the caller's attempts() sends it with failover
 ```
 
-`CascadeCurve` is the same decision offline: every prompt pays `smallCost`, an escalated prompt also pays 1, and accuracy counts the answer actually kept. At $\tau = -0.5$ it gives 0.82 escalated, cost $0.1 + 0.82 = 0.92$, accuracy 0.935, the row in 2.6.
+`CascadeCurve` is the same decision offline: every prompt pays `smallCost`, an escalated prompt also pays 1, and accuracy counts the answer actually kept. At $\tau = -0.5$ it gives 0.82 escalated, cost $0.1 + 0.82 = 0.92$, and accuracy 0.935, the row in the sweep above.
 
-**The admin routes** (`admin.go`). `RoutesHandler` serializes `PUT`s with a mutex so the `If-Match` check and the replacement are atomic, and the ETag is the epoch (`"routes-<n>"`), which `SetRoutes` increments on every replacement. Without the mutex, two operators holding the same ETag could both pass the check.
+### The admin routes
 
-Full solution: [`registry.go`](../../../../course/solutions/go/gateway/route/registry.go), [`route.go`](../../../../course/solutions/go/gateway/route/route.go), [`handler.go`](../../../../course/solutions/go/gateway/route/handler.go), [`admin.go`](../../../../course/solutions/go/gateway/route/admin.go).
+In `admin.go`, `RoutesHandler` serializes `PUT`s with a mutex so the `If-Match` check and the replacement are atomic, and the ETag is the epoch (`"routes-<n>"`), which `SetRoutes` increments on every replacement. Without the mutex, two operators holding the same ETag could both pass the check.
 
-### 5.3 Why this solution
+The full solution is in [`registry.go`](../../../../course/solutions/go/gateway/route/registry.go), [`route.go`](../../../../course/solutions/go/gateway/route/route.go), [`handler.go`](../../../../course/solutions/go/gateway/route/handler.go), and [`admin.go`](../../../../course/solutions/go/gateway/route/admin.go).
 
-- **Cost per decision.** `Routable` copies and sorts the worker list ($O(n \log n)$ for $n$ workers, a handful to a few hundred), and every policy is $O(n)$ or, for affinity, a ring lookup ($O(\log(160n))$) plus bounded-load probing. The ring is rebuilt only when the candidate set changes. All of this is microseconds next to a model call.
-- **Push heartbeats rather than polling health endpoints.** Engines already know their queue and KV state; pushing them every 2 s gives the router load information for free, and absence is a liveness signal. A poller would need its own timeouts and would still be stale.
-- **Load = in flight + queue**, rather than either alone. In flight alone misses work from other gateways and long engine queues (pitfall 3); queue depth alone reacts only every 2 s, so a burst would all go to the worker that looked idle at the last heartbeat.
-- **Consistent hashing with bounded loads** rather than plain hashing or least-loaded for affinity: plain hashing makes one hot system prompt a hot spot; least-loaded scatters a shared prefix over every worker and loses the cache. Bounded loads keep both properties, with $c$ as the dial.
-- **Smooth weighted round robin** rather than weighted random: the same proportions, but no runs, and reproducible.
-- **Hashing the request id for the canary** rather than a random draw: the split is exact in expectation, retries of the same request stay on one version, and a support ticket's request id tells you which version served it.
-- **Tradeoffs accepted:** eviction is lazy, so a dead worker is still in memory until the next read (harmless); failover tries at most 3 workers, bounding the added latency of a widespread outage; the cascade adds the small model's full latency to every escalated request, which is why streams skip it.
+### Why this design
 
-### 5.4 Explain it back
+Each decision is cheap. `Routable` copies and sorts the worker list ($O(n \log n)$ for $n$ workers, a handful to a few hundred), and every policy is $O(n)$ or, for affinity, a ring lookup ($O(\log(160n))$) plus bounded-load probing. The ring is rebuilt only when the candidate set changes. All of this is microseconds next to a model call.
 
-1. Why is liveness `now - last < k*T` and not `<=`, and why is it measured with the gateway's clock?
-   <details><summary>Answer</summary>At exactly $kT$ after the last heartbeat the worker has missed $k$ in a row, which is the eviction rule; `<=` keeps a dead worker routable for one more instant (or, with a coarse clock, one more interval). The gateway's clock is used because a dead or skewed worker cannot be trusted to timestamp its own heartbeats.</details>
-2. In the weighted trace, why does round 2 pick `big` on a 2:2 tie, and what would happen if ties went to the last candidate?
-   <details><summary>Answer</summary>The scan replaces `best` only on a strictly larger counter, so the first candidate in id order with the maximum wins, which is `big`. With ties to the last, round 2 picks `small`, and the sequence becomes `big, small, big, big`: still 1:3 over four requests, but a different order, so any recorded expectation of the order (and reproducibility across gateways) depends on the tie rule being fixed.</details>
-3. Why does `attempts` stop on `r.Context().Err() != nil` even when the error is uncommitted?
-   <details><summary>Answer</summary>A cancelled client context makes every upstream call fail before the first byte. Retrying would route the dead request to other workers for nobody, and writing a 503 would go to a closed connection.</details>
-4. What goes wrong in disaggregated mode if the client sent no seed and the gateway does not generate one?
-   <details><summary>Answer</summary>P samples the first token from its PCG32 stream with one seed, and D, seeded differently, continues from a different stream. The output is a valid sample but not the one a unified engine would produce for the same request, so the disaggregated stream no longer equals the unified one and results are not reproducible.</details>
-5. Why does `sampling` default temperature to 1 instead of using the zero value of a missing JSON field?
-   <details><summary>Answer</summary>proto3 has no field presence, so the engine cannot tell "unset" from 0. Temperature 0 means greedy decoding, so sending the zero value would silently change the request's meaning; the gateway fills in the contract's defaults instead.</details>
+Push heartbeats beat polling health endpoints. Engines already know their queue and KV state; pushing it every 2 s gives the router load information for free, and absence is a liveness signal. A poller would need its own timeouts and would still be stale.
 
-## 6. Pitfalls
+Load is in-flight plus queue, rather than either alone. In-flight alone misses work from other gateways and long engine queues; queue depth alone reacts only every 2 s, so a burst would all go to the worker that looked idle at the last heartbeat.
+
+For affinity, consistent hashing with bounded loads beats both plain hashing and least-loaded. Plain hashing makes one hot system prompt a hot spot; least-loaded scatters a shared prefix over every worker and loses the cache. Bounded loads keep both properties, with $c$ as the dial.
+
+Smooth weighted round robin beats weighted random: the same proportions, but no runs, and reproducible. And hashing the request id for the canary beats a random draw: the split is exact in expectation, retries of the same request stay on one version, and a support ticket's request id tells you which version served it.
+
+> **Note:** Three tradeoffs are accepted. Eviction is lazy, so a dead worker stays in memory until the next read, which is harmless. Failover tries at most 3 workers, bounding the added latency of a widespread outage. And the cascade adds the small model's full latency to every escalated request, which is why streams skip it.
+
+## What can go wrong
+
+The tests cover these cases, each tied to something that depends on it:
+
+| Case | Kind of check | What must hold | Why it matters downstream |
+|---|---|---|---|
+| the hand example | unit | picks b, then c, eviction exactly at 6 s, then a | the definition of load and liveness |
+| heartbeats over real gRPC | conformance | a heartbeat makes a worker routable; drain sets `drain` in the ack and removes it; a worker reporting draining is not routable | the engine's heartbeat client talks to this |
+| unknown model, dead model | unit | unknown model 404 `model_not_found`; routed but down 503 `no_capacity`; `Ready` fails with no worker | conformance `route.model`; `/readyz` |
+| affinity | unit, property | 20 requests sharing a system prompt land on one worker (`affinity`), 40 distinct prefixes spread over at least 3 of 4 workers, an overloaded owner is skipped (`load`) | warm prefix caches without hot spots |
+| weighted by capacity | unit | capacities 1 and 3 give `big, big, small, big` twice | proportional and interleaved |
+| canary split | statistical | 0.1 of 10000 request ids within 4 sd; one id, one backend; no backends means the route's model | the model release's canary weight |
+| aliases and served ids | unit | an alias reaches the engine as the served model id | engines answer only their own id |
+| failover before the first byte | fault | a refused worker and a 503 worker are each tried once and the request completes on the next | conformance and the kill-decode drill |
+| a worker that dies after one token | fault | the client gets that token and an SSE error event; no other worker is called | no repeated or spliced tokens |
+| `X-TL-Route` | unit | only for the `debug` scope | internal topology stays internal |
+| `GET /v1/models` | unit | lists route and worker models; an unknown id is 404 | conformance `schema.models` on the gateway |
+| the prefix key | unit | the rendered chat prefix; 64 bytes at most | the affinity key |
+| `accept_if` parsing | boundary | `mean_logprob` and `min_logprob` with `>` and `>=`; empty answers rejected; malformed rules refused | cascade rules from the admin API |
+| a cascade | unit | a confident small answer is kept (large never called, logprobs requested); an unsure one escalated; a streamed request goes to the last step | cost savings without wrong answers |
+| the cascade curve | conformance, golden | the sweep over the recorded 200-prompt set reproduces escalation, cost, and accuracy at all 13 thresholds | the cost and quality curve above |
+| disaggregated equals unified | differential | the disaggregated stream equals the unified one; prompt ids, defaults, `decode_target` = D's KV address; a generated seed reaches D | disaggregated serving in the engine |
+| D dies mid-stream | fault | `Release` is called with the handle and nothing stays held | KV blocks do not leak |
+| the routing admin API | unit, conformance | workers with the epoch; routes 428, 412, 400 for a bad cascade, 200 with a new ETag; drain 404 and 202 | the usage ledger's admin API mounts these handlers |
+
+These are the mistakes that most often break a router, with the symptom each produces:
 
 | Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. eviction and draining off by one: `<=` on the deadline, draining workers still routable | a dead worker gets traffic for one more interval; a rollout keeps sending to the pod it drains | `live` uses strict `<`; `Routable` drops `Draining` workers and drained models |
-| 2. retrying after the first byte | the client reads "The cat The cat sat": tokens repeated or spliced | `attempts` returns on a committed `UpstreamError` |
-| 3. load from in-flight counts only | a worker with a long engine queue keeps receiving work | `load` is in flight plus `QueueDepth` |
-| 4. affinity without bounded loads | one hot system prompt saturates one worker while others idle | `GetBounded` with $c$ = `affinity_load_factor`; the reason becomes `load` |
-| 5. failover that relays a 503, or retries the same worker | clients see 503s while healthy workers sit idle | `Retry503` on every attempt; the failed worker joins `excl` |
-| 6. disaggregation details: `decode_target` set to D's HTTP address, no shared seed, no `Release` on failure | prefill cannot push KV; sampled outputs differ from unified; D's pool leaks blocks | `DecodeTarget: t.Worker.KVAddress`, a generated seed sent to both, `Release` on any decode error |
-| 7. canary and model ids: weights ignored, the public id sent upstream, an unknown model answered 503 | the canary gets half the traffic; engines answer 404; clients retry a typo forever | `PickBackend` walks cumulative weights; `withFields` sets the served `model`; `Route` returns `ErrModelNotFound` when neither table nor workers know it |
-| 8. cascade mistakes: accepting everything, cascading a stream, accepting an empty answer, a cost that forgets the small call | quality drops silently; streams stall; the curve understates cost | `accept_if` parsed per step; streams start at the last step; `len(lp) > 0` in the closure; `CascadeCurve` adds `smallCost` for every prompt |
-| 9. `X-TL-Route` for every key | worker ids leak to every client | `note` sets it only when the principal has the `debug` scope, and deletes it otherwise |
-| 10. `PUT /admin/v1/routes` without the `If-Match` check | two operators' edits overwrite each other silently | 428 without `If-Match`, 412 when stale, the check and the swap under one mutex |
+| eviction and draining off by one: `<=` on the deadline, draining workers still routable | a dead worker gets traffic for one more interval; a rollout keeps sending to the pod it drains | `live` uses strict `<`; `Routable` drops `Draining` workers and drained models |
+| retrying after the first byte | the client reads "The cat The cat sat": tokens repeated or spliced | `attempts` returns on a committed `UpstreamError` |
+| load from in-flight counts only | a worker with a long engine queue keeps receiving work | `load` is in flight plus `QueueDepth` |
+| affinity without bounded loads | one hot system prompt saturates one worker while others idle | `GetBounded` with $c$ = `affinity_load_factor`; the reason becomes `load` |
+| failover that relays a 503, or retries the same worker | clients see 503s while healthy workers sit idle | `Retry503` on every attempt; the failed worker joins `excl` |
+| disaggregation details: `decode_target` set to D's HTTP address, no shared seed, no `Release` on failure | prefill cannot push KV; sampled outputs differ from unified; D's pool leaks blocks | `DecodeTarget: t.Worker.KVAddress`, a generated seed sent to both, `Release` on any decode error |
+| canary and model ids: weights ignored, the public id sent upstream, an unknown model answered 503 | the canary gets half the traffic; engines answer 404; clients retry a typo forever | `PickBackend` walks cumulative weights; `withFields` sets the served `model`; `Route` returns `ErrModelNotFound` when neither table nor workers know it |
+| cascade mistakes: accepting everything, cascading a stream, accepting an empty answer, a cost that forgets the small call | quality drops silently; streams stall; the curve understates cost | `accept_if` parsed per step; streams start at the last step; `len(lp) > 0` in the closure; `CascadeCurve` adds `smallCost` for every prompt |
+| `X-TL-Route` for every key | worker ids leak to every client | `note` sets it only when the principal has the `debug` scope, and deletes it otherwise |
+| `PUT /admin/v1/routes` without the `If-Match` check | two operators' edits overwrite each other silently | 428 without `If-Match`, 412 when stale, the check and the swap under one mutex |
 
-## 7. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `ds.09` | `GetBounded` is the affinity policy; `Hash64` draws the canary backend |
-| Back | `gw.01` | the `Router` and `Proxy` slots, the `Exchange` (worker id, route attributes), `Deps.Ready` |
-| Back | `gw.02` | the `debug` scope gates `X-TL-Route` |
-| Back | `gw.04` | every attempt goes through `Forward`; only uncommitted failures are retried |
-| Back | `L10.6` | Prefill and Release gRPC endpoints implement disaggregated decode routing |
-| Forward | `gw.07` | `gateway.Admin` builds `WorkersHandler`, `RoutesHandler`, and `DrainHandler`; `gateway.Deps` puts `Middleware` in the chain and keys the cache by `ETag(epoch)` |
-| Forward | `gw.08` | the usage policy matches on the parsed `route.InferenceRequest` (model, prompt) |
-| Forward | `load.01`, `ops.01`, `dur.12` | the load generator, the kill-decode drill, and the canary release exercise routing over HTTP |
+The router draws on five earlier pieces. The [consistent hash ring](../../algorithms/16-systems-data-structures/09-consistent-hash-ring.md) supplies `GetBounded` for the affinity policy and `Hash64` for the canary draw. [The server skeleton](01-server-skeleton.md) supplies the `Router` and `Proxy` slots, the `Exchange` (worker id, route attributes), and `Deps.Ready`. [API keys and scopes](../08-authorization-and-access-control/01-api-keys-and-scopes.md) supplies the `debug` scope that gates `X-TL-Route`. [The SSE streaming proxy](04-sse-streaming-proxy.md) sends every attempt through `Forward`, and only its uncommitted failures are retried. And [disaggregated serving](../../build-an-llm/p10-serving/06-disaggregated-prefill-decode.md) implements the Prefill and Release gRPC endpoints that disaggregated routing calls.
 
-## Going further
+Looking ahead, [The usage ledger and admin API](07-usage-ledger-and-admin-api.md) builds `WorkersHandler`, `RoutesHandler`, and `DrainHandler` into `gateway.Admin`, puts `Middleware` in the chain through `gateway.Deps`, and keys the cache by `ETag(epoch)`. [Usage policy enforcement](08-usage-policy-enforcement.md) matches on the parsed `route.InferenceRequest` (model, prompt). And three later pieces exercise routing over HTTP: the [open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md), the [kill-decode drill](../../systems/05-incident-response-and-chaos/01-kill-decode.md), and the [model release](../05-durable-orchestration-and-workers/12-model-release.md) canary.
 
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| affinity on a prefix key | llm-d and KServe KV-cache-aware schedulers, SGLang router | scoring workers by the KV blocks they actually hold, not by a hash | [llm-d](https://github.com/llm-d/llm-d) (free), [SGLang router](https://github.com/sgl-project/sglang) (free) |
-| backends and failover | saige `provider/router` | immutable model configurations, sticky selection for prompt-cache affinity, failover only before commitment | saige `provider/router` |
-| cascades | FrugalGPT, RouteLLM | learned routers that predict which model a prompt needs | [RouteLLM](https://github.com/lm-sys/RouteLLM) (free) |
-| disaggregated orchestration | vLLM disaggregated prefill, Dynamo, Mooncake | KV transfer over RDMA, a global KV pool, prefill scheduling across nodes | [NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo) (free), [Mooncake](https://github.com/kvcache-ai/Mooncake) (free) |
+### Further reading
+
+- Affinity in production: llm-d and KServe KV-cache-aware schedulers and the SGLang router score workers by the KV blocks they actually hold, not by a hash. See [llm-d](https://github.com/llm-d/llm-d) (free) and the [SGLang router](https://github.com/sgl-project/sglang) (free).
+- Backends and failover in production: saige `provider/router`, with immutable model configurations, sticky selection for prompt-cache affinity, and failover only before commitment.
+- Cascades: Chen et al., *FrugalGPT* (2023), and [RouteLLM](https://github.com/lm-sys/RouteLLM) (free), learned routers that predict which model a prompt needs.
+- Disaggregated orchestration: Zhong et al., *DistServe* (OSDI 2024), and Patel et al., *Splitwise* (ISCA 2024); in production, vLLM disaggregated prefill, [NVIDIA Dynamo](https://github.com/ai-dynamo/dynamo) (free), and [Mooncake](https://github.com/kvcache-ai/Mooncake) (free), with KV transfer over RDMA, a global KV pool, and prefill scheduling across nodes.
+- Mitzenmacher, *The Power of Two Choices in Randomized Load Balancing* (2001).
+
+## Key terms
+
+- **heartbeat**: a periodic status message from a worker; its absence is the liveness signal.
+- **live / routable**: a worker whose last heartbeat is within $kT$ / a live worker that is not draining and whose model is not drained.
+- **load**: the gateway's in-flight count for a worker plus the worker's reported queue depth.
+- **smooth weighted round robin**: a deterministic, interleaved selection in proportion to weights.
+- **bounded loads**: a consistent-hashing variant that skips a key's owner once its load exceeds $\lceil c \cdot (m+1)/n \rceil$.
+- **canary split**: a weighted division of one public model's traffic across served model versions.
+- **cascade**: asking a cheaper model first and escalating when its confidence (`accept_if`) fails.
+- **disaggregated serving**: prefill on one worker, decode on another, connected by a KV transfer.
+- **KV handle**: the id under which a decode worker holds KV blocks pushed by a prefill worker.
+
+## Summary
+
+- Engines announce themselves with a heartbeat every 2 s; a worker that misses `heartbeat_miss_limit` (3) in a row is evicted at exactly $3 \times 2$ s after its last one.
+- Three policies pick among the routable workers of a model: `least_outstanding` (fewest in flight plus queued), `weighted` (smooth weighted round robin by KV capacity), and `affinity` (the hash ring with bounded loads on the first prompt block, so shared prefixes hit a warm cache until that worker is over its fair share).
+- Before the first byte, a worker that is down or answers 503 is excluded and the request routed again; after it, nothing is retried or spliced.
+- A cascade asks the small model first and keeps its answer only when its mean token logprob passes `accept_if`; sweeping the threshold trades cost for accuracy, and the curve on fixture data is reproduced exactly.
+- Disaggregated serving runs `Prefill` on a prefill worker that pushes the prompt's KV to a decode worker, then streams from the decode worker with `X-TL-KV-Handle`; with one seed for both, the output equals a unified engine's.
+
+## Review questions
+
+1. Why is liveness `now - last < k*T` and not `<=`, and why is it measured with the gateway's clock?
+
+   <details><summary>Answer</summary>
+
+   At exactly $kT$ after the last heartbeat the worker has missed $k$ in a row, which is the eviction rule; `<=` keeps a dead worker routable for one more instant (or, with a coarse clock, one more interval). The gateway's clock is used because a dead or skewed worker cannot be trusted to timestamp its own heartbeats.
+
+   </details>
+
+2. In the weighted trace, why does round 2 pick `big` on a 2:2 tie, and what would happen if ties went to the last candidate?
+
+   <details><summary>Answer</summary>
+
+   The scan replaces `best` only on a strictly larger counter, so the first candidate in id order with the maximum wins, which is `big`. With ties to the last, round 2 picks `small`, and the sequence becomes `big, small, big, big`: still 1:3 over four requests, but a different order, so any recorded expectation of the order (and reproducibility across gateways) depends on the tie rule being fixed.
+
+   </details>
+
+3. Why does `attempts` stop on `r.Context().Err() != nil` even when the error is uncommitted?
+
+   <details><summary>Answer</summary>
+
+   A cancelled client context makes every upstream call fail before the first byte. Retrying would route the dead request to other workers for nobody, and writing a 503 would go to a closed connection.
+
+   </details>
+
+4. What goes wrong in disaggregated mode if the client sent no seed and the gateway does not generate one?
+
+   <details><summary>Answer</summary>
+
+   P samples the first token from its PCG32 stream with one seed, and D, seeded differently, continues from a different stream. The output is a valid sample but not the one a unified engine would produce for the same request, so the disaggregated stream no longer equals the unified one and results are not reproducible.
+
+   </details>
+
+5. Why does `sampling` default temperature to 1 instead of using the zero value of a missing JSON field?
+
+   <details><summary>Answer</summary>
+
+   proto3 has no field presence, so the engine cannot tell "unset" from 0. Temperature 0 means greedy decoding, so sending the zero value would silently change the request's meaning; the gateway fills in the contract's defaults instead.
+
+   </details>

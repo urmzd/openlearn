@@ -12,9 +12,9 @@ The run starts from the first capstone's released checkpoint and uses the method
 
 ## Comparing before and after
 
-The core of the capstone is one comparison: the same held-out examples scored by the C1 base and by the post-trained candidate. For each example $i$, the score difference is $d_i = \text{score}_{\text{after},i} - \text{score}_{\text{before},i}$. You report the mean difference $\bar d$ over the $n$ held-out examples together with a paired confidence interval. Pairing preserves prompt difficulty: a hard prompt is hard for both models, and the difference cancels it.
+The core of the capstone is one comparison: the same held-out examples scored by the base model from the first capstone and by the post-trained candidate. For each example $i$, the score difference is $d_i = \text{score}_{\text{after},i} - \text{score}_{\text{before},i}$. You report the mean difference $\bar d$ over the $n$ held-out examples together with a paired confidence interval. Pairing preserves prompt difficulty: a hard prompt is hard for both models, and the difference cancels it.
 
-Two further rules keep the comparison honest. Do not claim a general safety improvement from a small, task-specific dataset; the data can support at most a claim about the behavior it measured. And keep a frozen copy of C1, recording the dataset revision, tokenizer, template, seed, optimizer, and objective, so the comparison can be rerun against the exact base.
+Two further rules keep the comparison honest. Do not claim a general safety improvement from a small, task-specific dataset; the data can support at most a claim about the behavior it measured. And keep a frozen copy of the base model, recording the dataset revision, tokenizer, template, seed, optimizer, and objective, so the comparison can be rerun against the exact base.
 
 ## Working a paired test by hand
 
@@ -37,7 +37,7 @@ The exact two-sided p-value is $2/8 = 0.25$. No three differences can ever do be
 
 ## What the run produces
 
-The recipe is fixed: train from C1 using SFT, then DPO or GRPO, with distillation as a documented alternate. Evaluate both the reward and any language-model regression, compare with a paired bootstrap or permutation test, and publish an artifact manifest. The model card records intended uses, limitations, data provenance, the evaluation setup, and the licenses of any third-party teacher or model. At the smoke tier the check is only that the paths and the manifest's fields are present and consistent; the full run must show a statistical gain.
+The recipe is fixed: train from the first capstone's checkpoint using SFT, then DPO or GRPO, with distillation as a documented alternate. Evaluate both the reward and any language-model regression, compare with a paired bootstrap or permutation test, and publish an artifact manifest. The model card records intended uses, limitations, data provenance, the evaluation setup, and the licenses of any third-party teacher or model. At the smoke tier the check is only that the paths and the manifest's fields are present and consistent; the full run must show a statistical gain.
 
 A correct solution must handle four cases, each for a reason worth stating.
 
@@ -54,7 +54,7 @@ The reference is a provenance smoke tier: [`artifacts/c2/run.json`](../../../../
 
 ### The reasoning from first principles
 
-1. **The comparison must be paired.** Prompts differ in difficulty far more than the two models differ, so the unit of comparison is one prompt scored by both the C1 base and the candidate; $d_i$ removes the prompt's difficulty.
+1. **The comparison must be paired.** Prompts differ in difficulty far more than the two models differ, so the unit of comparison is one prompt scored by both the base and the candidate; $d_i$ removes the prompt's difficulty.
 2. **The held-out set is fixed before training,** or it becomes another thing that was tuned. So the manifest names its source and split, and names the base it is paired with.
 3. **Two statistics answer two questions.** The bootstrap CI of $\bar d$ says how large the gain plausibly is; the paired permutation test says whether a gain of this size could come from chance. A claim needs the CI to exclude zero and $p < 0.05$.
 4. **Provenance makes the run reproducible.** The base checkpoint, data revision, tokenizer, chat template, seed, optimizer, precision, and objective are each something that, if changed silently, changes the result.
@@ -89,7 +89,7 @@ The reference is a provenance smoke tier: [`artifacts/c2/run.json`](../../../../
 }
 ```
 
-Read it against the principles. `base_checkpoint` and `heldout.paired_with` name the same C1 model, so the comparison is paired against the real base, not a different snapshot. `training_data.split` is `"train"` and `heldout.split` is `"heldout"`, two different files, so the held-out reward is never measured on training pairs. The tokenizer is C1's own `tokenizer.json`, so the candidate encodes text exactly as the base did. The evaluation block fixes the method before any number exists. And because this smoke artifact has no trained weights, both claims are `false`: the manifest says what was measured, not what was hoped.
+Read it against the principles. `base_checkpoint` and `heldout.paired_with` name the same first-capstone model (`artifacts/c1/model`), so the comparison is paired against the real base, not a different snapshot. `training_data.split` is `"train"` and `heldout.split` is `"heldout"`, two different files, so the held-out reward is never measured on training pairs. The tokenizer is the base model's own `tokenizer.json`, so the candidate encodes text exactly as the base did. The evaluation block fixes the method before any number exists. And because this smoke artifact has no trained weights, both claims are `false`: the manifest says what was measured, not what was hoped.
 
 ### The model card
 
@@ -138,13 +138,13 @@ Evaluating on training pairs measures memorization, not improvement. The manifes
 
 Reporting only the best seed turns noise into a result. The manifest records the seed, and a full run reports every seed's result.
 
-Omitting base-model provenance makes the paired difference meaningless. `base_checkpoint`, `heldout.paired_with`, and the tokenizer all point at the C1 model, and the card names the base.
+Omitting base-model provenance makes the paired difference meaningless. `base_checkpoint`, `heldout.paired_with`, and the tokenizer all point at the first capstone's model, and the card names the base.
 
 > **Warning:** A gain on a small task-specific held-out set is not a general safety improvement. Keep `general_safety_improvement` set to `false` unless the evidence was designed to test exactly that claim.
 
 ## Where this leads
 
-This capstone sits at the end of a chain: the [first capstone](01-tinystories.md) provides the pretrained checkpoint and baseline evaluation, [supervised fine-tuning](../p12-post-training/01-supervised-fine-tuning.md) converts demonstrations into an SFT checkpoint, [DPO](../p12-post-training/02-direct-preference-optimization.md) applies preference-pair optimization, [GRPO](../p12-post-training/03-grpo-with-verifiable-rewards.md) applies verifiable-reward optimization, and [distillation](../p12-post-training/04-distillation.md) provides an alternate recipe. Nothing downstream depends on it. It belongs alongside the [agents stage](../paths/course-p10-agents/milestone.md) of the course path, which is complete without it, and its end-to-end result is a held-out reward improvement over the C1 base. For extra depth, try the distillation recipe, or compare all three adaptation methods on the same held-out set.
+This capstone sits at the end of a chain: the [first capstone](01-tinystories.md) provides the pretrained checkpoint and baseline evaluation, [supervised fine-tuning](../p12-post-training/01-supervised-fine-tuning.md) converts demonstrations into an SFT checkpoint, [DPO](../p12-post-training/02-direct-preference-optimization.md) applies preference-pair optimization, [GRPO](../p12-post-training/03-grpo-with-verifiable-rewards.md) applies verifiable-reward optimization, and [distillation](../p12-post-training/04-distillation.md) provides an alternate recipe. Nothing downstream depends on it. It belongs alongside the [agents stage](../paths/course-p10-agents/milestone.md) of the course path, which is complete without it, and its end-to-end result is a held-out reward improvement over the first capstone's base model. For extra depth, try the distillation recipe, or compare all three adaptation methods on the same held-out set.
 
 Larger alignment programs add red-team review, multiple annotator cohorts, data governance, and staged deployment. Those processes are required before treating an offline score as a product benefit.
 
@@ -158,7 +158,7 @@ Larger alignment programs add red-team review, multiple annotator cohorts, data 
 
 ## Summary
 
-- Post-training starts from the C1 checkpoint and keeps a frozen, reproducible base reference.
+- Post-training starts from the first capstone's checkpoint and keeps a frozen, reproducible base reference.
 - The held-out suite is fixed before training, paired with the base, and reports uncertainty with a bootstrap CI and a permutation p-value.
 - With $n$ pairs the smallest two-sided permutation p-value is $2/2^n$, so three examples can never reach $p < 0.05$; six is the minimum.
 - The model card distinguishes measured outcomes from intended behavior, and the manifest records claims as booleans that must match the evidence.

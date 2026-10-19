@@ -1,89 +1,39 @@
 # Agent SDK
 
-## Overview
+A language model can only emit text that names a tool and its arguments. Everything that turns that text into action, and everything that keeps the action safe, is ordinary program code: a client that decodes the model's stream, a registry that validates arguments, a loop that dispatches calls under limits, a gate that decides which calls may run at all, and a journal that lets a run survive a crash. This chapter builds that code in Go, as a small agent SDK, against the gateway and engine from earlier chapters. A frontier provider works through the same `Provider` interface.
 
-- **Primary references**: Anthropic, [*Building effective agents*](https://www.anthropic.com/engineering/building-effective-agents) (free); OpenAI, [function calling guide](https://platform.openai.com/docs/guides/function-calling) (free); [JSON Schema](https://json-schema.org/) (free)
-- **Supplementary**: Yao et al., [*ReAct*](https://arxiv.org/abs/2210.03629) (free); Greshake et al., [*Not what you've signed up for: indirect prompt injection*](https://arxiv.org/abs/2302.12173) (free); OWASP, [Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) (free); [case study 02, grounded SQL agent](../../case-studies/02-grounded-sql-agent/)
-- **Prerequisites**: the [Go primer](../../programming-languages/02-language-and-tool-primers/06-go.md), [Streaming & SSE](../03-streaming-sse/), the engine's tool calls (`L10.9`), and the durable engine ([Durable Orchestration & Workers](../05-durable-orchestration-and-workers/))
-- **Estimated time**: 2 weeks in course Pass 10
+The guiding idea is short: **the model proposes; the program disposes.** The SDK decides whether a call runs, with what limits, and what happens when it fails halfway, and it makes each of those decisions as typed, testable code. The chapter's arc follows a single request from the bottom up. Providers stream deltas, not messages, so the first section reassembles text and tool-call fragments and shows that a retry is safe only before the first content delta. Tools are an attack surface, so the next two sections validate arguments against a JSON Schema and wrap the agent loop (call the model, run the calls, append the results, repeat until it answers or a limit stops it) with iteration caps, bounded parallelism, and budgets. The fourth section adds a deterministic gate that allows, denies, or holds each call for approval, so that text from a retrieved document or a tool result never authorizes a write. The last section makes long runs durable: every model and tool call is a recorded step, so a killed worker resumes without calling the model or the tool twice.
 
-## Key Takeaways
+> **Learning objectives**
+> - Decode a streamed chat completion into typed deltas, reassemble interleaved tool calls, and retry only where it is safe.
+> - Validate model-written tool arguments against a JSON Schema subset and turn every failure into a message the model can read.
+> - Build an agent loop with an iteration cap, bounded parallel dispatch in call order, and budgets checked before the spend.
+> - Gate tool calls with a default-deny policy, an egress allowlist, taint, a lexer-based SQL classifier, and approval markers, and test it against a prompt-injection suite.
+> - Make agent runs durable with a step journal, and explain why an unrecorded write must be reconciled by a human.
 
-- **An agent is a loop**: call the model with messages and tool definitions, execute the tool calls it returns, append the results, and repeat until it answers or a limit stops it. Everything else is policy around that loop.
-- **Providers stream deltas, not messages.** Text and tool-call arguments arrive as fragments that must be reassembled, and a retry is safe only before the first content delta.
-- **Tools are an attack surface.** Arguments are validated against a JSON Schema, a gate decides allow, deny, or needs-approval before dispatch, and text that came from a retrieved document or a tool result never authorizes a write.
-- **Long agent runs need durability.** Each model call and tool call is a recorded step, so a killed worker resumes without calling the model or the tool twice.
+## Before you begin
 
-## How to Study
+You should be comfortable with Go; the [Go primer](../../programming-languages/02-language-and-tool-primers/06-go.md) in *Programming Languages* covers goroutines, channels, context, and `net/http`. The provider decodes server-sent events, so read [Streaming and SSE](../03-streaming-sse/README.md) and the gateway's [SSE streaming proxy](../12-gateway/04-sse-streaming-proxy.md) first. The model on the other end emits tool calls as described in [Tool calls and constrained JSON decoding in the engine](../../build-an-llm/p10-serving/09-tool-calls-and-constrained-decoding.md) in *Build an LLM*. Durable runs reuse the ideas of [Durable Orchestration and Workers](../05-durable-orchestration-and-workers/README.md). The SQL gate is a Go port of the safety gate in the [Grounded SQL Agent case study](../../case-studies/02-grounded-sql-agent/); porting it yourself before reading the gate section is a good exercise. Reading Anthropic's *Building effective agents* and then the ReAct paper (both listed below) gives useful background for the loop.
 
-Read *Building effective agents* first, then the ReAct paper. Port the safety gate of [case study 02](../../case-studies/02-grounded-sql-agent/) to Go before `ag.04`. In the course, the SDK is built in Pass 10 against the learner's own gateway and engine (SmolLM2-135M-Instruct with tool calls), with a frontier provider usable through the same `Provider` interface.
+## In this chapter
 
----
+1. [Types, an OpenAI-compatible provider, and a retry wrapper](01-types-and-provider.md): the message, tool-call, and delta types; an SSE reader and chunk decoder that reassemble tool calls by index; and a retry wrapper that retries only before the first content delta.
+2. [Tools, a registry, and JSON Schema argument validation](02-tools-and-schemas.md): a tool registry that validates every call against a small, exact JSON Schema subset and returns every failure, including panics, as a readable tool message.
+3. [The agent loop](03-agent-loop.md): the loop that connects provider and registry, with an iteration cap, bounded parallel calls returned in order, budgets, the gate and approval seam, named steps, and tracing spans.
+4. [The tool gate, the SQL safety gate, and the prompt-injection suite](04-tool-gate-and-injection.md): a deterministic default-deny policy with egress checks, taint, a lexer-based SQL classifier, approval markers, and twelve injection conversations it must withstand.
+5. [Durable agent runs](05-durable-agent-runs.md): an fsynced step journal that replays completed steps, re-runs unfinished reads, and stops on unfinished writes until a human reconciles them.
 
-# Concepts & Techniques
+The agent system continues in two other chapters of this book: retrieval (the `search_docs` tool, ingest, and context assembly) in [Retrieval and RAG](../07-retrieval-and-rag/README.md), and agent evaluation in [LLM Evaluation](../09-llm-evaluation/README.md). Together with this chapter they complete the agent milestone described in [the Pass 10 milestone](../../build-an-llm/paths/course-p10-agents/milestone.md) of *Build an LLM*.
 
-## Core Insight
+## How this chapter connects
 
-The model proposes; the program disposes. A language model can only emit text that names a tool and its arguments; the SDK decides whether that call runs, with what limits, and what happens when it fails halfway. Designing the SDK means designing those decisions as typed, testable code: a provider interface, a tool registry, a gate, a step runner, and a loop with budgets.
+The [gateway](../12-gateway/README.md) is the provider endpoint, with its keys, limits, and usage policy, and [Usage policy](../../responsible-ai/05-usage-policy/README.md) in *Responsible AI* covers what the gateway refuses before a request ever reaches the agent. [Retrieval and RAG](../07-retrieval-and-rag/README.md) supplies `search_docs`, the agent's retrieval tool, and [LLM Evaluation](../09-llm-evaluation/README.md) runs the loop as the subject of its agent suites. [Durable Orchestration and Workers](../05-durable-orchestration-and-workers/README.md) is the engine the durable run is designed to move onto. In industry, Anthropic and OpenAI build their tool-use APIs and agent SDKs on the same loop, and Temporal runs durable agent workflows in which every model and tool call is a recorded activity.
 
-## 1. Types and providers
+## Further reading
 
-**Key ideas**:
-- **Messages, tool calls, tool definitions, deltas** as Go types, and a `Provider` with `ChatStream` returning a channel of deltas (`ag.01`).
-- **One provider for every backend**: the learner's gateway and a frontier API speak the same OpenAI-compatible subset.
-
-## 2. Tools and the loop
-
-**Key ideas**:
-- **`Tool`** has a `Definition` (name, description, JSON Schema) and `Execute`; invalid arguments return a tool error to the model, never a panic (`ag.02`).
-- **The loop** (`ag.03`) bounds iterations, parallel tools (preserving result order), and spend, and stops before dispatch when a budget would break.
-
-## 3. Gates and prompt injection
-
-**Key ideas**:
-- **`Gate.Check`** returns `Allow`, `Deny{Reason}`, or `NeedApproval{Marker}` (`ag.04`); the deterministic SQL gate from case study 02 rejects every statement in the BLOCKED corpus.
-- **Injection suite**: instructions planted in retrieved chunks and tool results never trigger a gated or write tool without approval.
-
-## 4. Durable runs
-
-**Key ideas**:
-- **`AgentRun`** (`ag.05`) runs each step through a `StepRunner` on the learner's durable engine; a write tool with an unknown outcome yields `ErrIndeterminate` and waits for a reconcile signal instead of guessing.
-
-## Course modules
-
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `ag.01` | Types, OpenAI-compatible provider, retry wrapper | build | 10 |
-| `ag.02` | Tools, registry, JSON Schema argument validation | build | 10 |
-| `ag.03` | Agent loop | build | 10 |
-| `ag.04` | Tool gate and deterministic SQL safety gate (case study 02 ported) | build | 10 |
-| `ag.05` | Durable agent runs (`AgentRun`) | build | 10 |
-
-Retrieval (`ag.06` to `ag.08`) lives in [Retrieval & RAG](../07-retrieval-and-rag/) and evaluation (`ag.09` to `ag.12`) in [LLM Evaluation](../09-llm-evaluation/); together they complete the agent system of [Pass 10](../../../courses/build-an-llm/paths/course-p10-agents/milestone.md).
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `ag.01` | [Types, OpenAI-compatible provider, retry wrapper](01-types-and-provider.md) | build | 10 |
-| 2 | `ag.02` | [Tools, registry, JSON Schema argument validation](02-tools-and-schemas.md) | build | 10 |
-| 3 | `ag.03` | [Agent loop](03-agent-loop.md) | build | 10 |
-| 4 | `ag.04` | [Tool gate, SQL safety gate, prompt-injection suite](04-tool-gate-and-injection.md) | build | 10 |
-| 5 | `ag.05` | [Durable agent runs (AgentRun)](05-durable-agent-runs.md) | build | 10 |
-
-## Connections to Other Tracks
-
-| Track | Connection |
-|---|---|
-| [Retrieval & RAG](../07-retrieval-and-rag/) | `search_docs`, the agent's retrieval tool |
-| [LLM Evaluation](../09-llm-evaluation/) | agent suites run the loop as their subject |
-| [Gateway](../12-gateway/) | the provider endpoint, keys, limits, and usage policy |
-| [Durable Orchestration & Workers](../05-durable-orchestration-and-workers/) | the engine behind `AgentRun` |
-| [Usage policy](../../responsible-ai/05-usage-policy/) | what the gateway refuses before a request reaches the agent |
-
-## Company Relevance
-
-| Company | Practice |
-|---|---|
-| Anthropic, OpenAI | tool use APIs and agent SDKs built on the same loop |
-| Temporal | durable agent workflows where every model and tool call is a recorded activity |
+- Anthropic, [*Building effective agents*](https://www.anthropic.com/engineering/building-effective-agents) (free).
+- OpenAI, [function calling guide](https://platform.openai.com/docs/guides/function-calling) (free).
+- [JSON Schema](https://json-schema.org/) (free).
+- Yao et al., [*ReAct*](https://arxiv.org/abs/2210.03629) (free).
+- Greshake et al., [*Not what you've signed up for: indirect prompt injection*](https://arxiv.org/abs/2302.12173) (free).
+- OWASP, [Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) (free).

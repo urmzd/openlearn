@@ -1,37 +1,21 @@
-# Task queue: visibility timeout, fenced leases, retries to DLQ, long poll
+# The task queue
 
-## Overview
+[The workflow service](02-workflow-service.md) records what must happen; something has to hand that work to workers and survive the workers dying. A plain channel or an in-memory list loses the task when the process holding it dies, and "remove it when a worker takes it" loses it when the worker dies. This section builds the queue between them: at-least-once delivery that survives both the server and the workers, with fencing that lets a slow worker be replaced without two workers both writing a result, and a dead-letter queue so that one poison task cannot burn every worker forever. The drill [A poison task lands in the dead-letter queue](../../systems/05-incident-response-and-chaos/03-poison-task.md) in *Systems* exercises exactly that last property.
 
-| | |
-|---|---|
-| **Module** | `dur.03` · build · Go · Pass 8 · 4 to 6 h |
-| **Solution** | [`go/durable/queue/queue.go`](../../../../course/solutions/go/durable/queue/queue.go): `Open`, `Enqueue`, `Poll`, `Check`, `Heartbeat`, `Complete`, `Fail`, `DLQ`, `Redrive`, `Depth`; model property tests in [`queue_learner_test.go`](../../../../course/solutions/learner-tests/dur.03/go/durable/queue/queue_learner_test.go) |
-| **Contract** | the Go API is section 4 of this chapter; the transitions it persists are the `TaskTransition` kinds of [`durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto) |
-| **Needs** | `dur.01` the log; reading: [Messaging and queueing](../../infrastructure/02-messaging-and-queueing/), [case study 03, exactly-once event API](../../case-studies/03-exactly-once-event-api/) |
-| **Used by** | `dur.02` enqueues every workflow task · `dur.04` leases every workflow and activity task |
-| **Optional depth** | the Amazon SQS visibility timeout and dead-letter queue docs; Kleppmann, *How to do distributed locking* (2016), on fencing tokens |
+The key shift in thinking is that a worker never *takes* a task. It **leases** it until a deadline. A worker that dies simply never answers, and the task becomes visible again at the deadline as the next attempt. Everything else in the section (fencing tokens, retries, the dead-letter queue, the long poll) follows from taking that idea seriously.
 
-## Key Takeaways
+The queue persists its transitions in [the append-only event log](01-event-log.md), though the same code also runs with no log at all (memory only); the logic is identical. Background on queues in general is in [Messaging and queueing](../../infrastructure/02-messaging-and-queueing/) in *Infrastructure*, and the [exactly-once event API](../../case-studies/03-exactly-once-event-api/) case study shows the idempotency side of the story. The Go API is given later in this section; the transitions it persists are the `TaskTransition` kinds of [`durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto). The full solution is [`go/durable/queue/queue.go`](../../../../course/solutions/go/durable/queue/queue.go) (`Open`, `Enqueue`, `Poll`, `Check`, `Heartbeat`, `Complete`, `Fail`, `DLQ`, `Redrive`, `Depth`), with model property tests in [`queue_learner_test.go`](../../../../course/solutions/learner-tests/dur.03/go/durable/queue/queue_learner_test.go).
 
-- A worker does not take a task, it **leases** it until a deadline; a worker that dies simply never answers, and the task becomes visible again at the deadline as the next attempt.
-- Every lease carries a **fencing token** larger than all before it; only the newest token, before its deadline, may complete, fail, or heartbeat, so a worker presumed dead cannot overwrite the live one.
-- Failures retry after a delay; the attempt that reaches `MaxAttempts` parks the task in the dead-letter queue, from where an operator redrives it.
-- A long poll is a wakeup, not a sleep loop: it returns the instant a task is enqueued or a retry comes due.
-- Every transition is a log record first: after a crash, `Open` rebuilds every lease, retry, and dead letter, and new tokens keep growing.
+> **Learning objectives**
+> - Explain leases and the visibility timeout, and why expiry needs neither a background sweeper nor a log record.
+> - Use fencing tokens to stop a presumed-dead worker from overwriting the live attempt.
+> - Decide a failure's disposition (retry, dead-letter, drop) from the attempt number, and redrive dead letters.
+> - Build a long poll that wakes immediately on change without spinning or missing a wakeup.
+> - Explain why at-least-once delivery plus idempotent effects gives exactly-once effects.
 
-## How to read this chapter
+## Leases and the visibility timeout
 
-Sections 1 to 3 build the queue from first principles and work a full timeline by hand. Section 4 fixes the interface. Section 5 walks through the solution (persist and apply, lazy expiry, `Poll`, fencing, `Fail`), explains why each choice is the right one, and shows the model property tests. The solution works with `Options.Log` nil (memory only) or over the `dur.01` log; the logic is the same. Try to predict each step before reading it.
-
----
-
-## 1. Why now
-
-The durable server (`dur.02`) records what must happen; something has to hand that work to workers and survive the workers dying. A plain channel or an in-memory list loses the task when the process holding it dies, and "remove it when a worker takes it" loses it when the worker dies. This module is the queue between them: at-least-once delivery that survives both the server and the workers, with the fencing that lets a slow worker be replaced without two workers both writing a result, and a dead-letter queue so one poison task cannot burn every worker forever (drill `ops.03`).
-
-## 2. Principles
-
-### 2.1 Leases and the visibility timeout
+Here is the notation the section uses:
 
 | Symbol | Meaning |
 |---|---|
@@ -42,39 +26,47 @@ The durable server (`dur.02`) records what must happen; something has to hand th
 | $a$ | the attempt number of a delivery, 1 for the first |
 | $M$ | `MaxAttempts`: deliveries before the dead-letter queue (per task, else the default, 5) |
 
-`Poll` picks a visible task, marks it leased with deadline $d = t + V$, and returns a lease. The task stays in the queue, invisible to other pollers, until one of: `Complete` (it leaves), `Fail` (it is retried, dead-lettered, or dropped), or $t \ge d$ (the lease **expires**: the worker is presumed dead). An expired lease turns the task visible again at $d$, and the next delivery is attempt $a + 1$. Nothing needs to watch the clock for this: whoever next looks at the queue (a poll, a depth, a DLQ listing) treats any lease with $t \ge d$ as expired. That is also why an expiry needs no log record: the lease record already says when it ends.
+`Poll` picks a visible task, marks it leased with deadline $d = t + V$, and returns a lease. The task stays in the queue, invisible to other pollers, until one of three things happens: `Complete` (it leaves), `Fail` (it is retried, dead-lettered, or dropped), or $t \ge d$ (the lease **expires**, and the worker is presumed dead). An expired lease turns the task visible again at $d$, and the next delivery is attempt $a + 1$.
 
-**Heartbeats.** A long task keeps its lease by calling `Heartbeat`, which moves $d$ to $t + V$ and stores small **details** (a checkpoint path). If the worker dies anyway, the next attempt's lease carries those details, so it can resume instead of starting over.
+Nothing needs to watch the clock for this. Whoever next looks at the queue (a poll, a depth, a DLQ listing) treats any lease with $t \ge d$ as expired. That is also why an expiry needs no log record: the lease record already says when it ends.
 
-### 2.2 Fencing tokens
+A long task keeps its lease by calling `Heartbeat`, which moves $d$ to $t + V$ and stores small **details**, such as a checkpoint path. If the worker dies anyway, the next attempt's lease carries those details, so it can resume instead of starting over.
 
-Each delivery gets a token $k$ strictly larger than every token handed out before, over all queues, and after a restart too (recovery restores the counter from the lease records). A lease is **live** while it is the task's current lease ($k$ matches) and $t < d$. `Check`, `Heartbeat`, `Complete`, and `Fail` refuse anything else with `ErrLeaseLost` and change nothing. Without fencing, a worker that paused for 40 s (garbage collection, a slow disk) comes back after its task was redelivered and completes it a second time, with a stale result.
+## Fencing tokens
 
-### 2.3 Retries and the dead-letter queue
+Expiry presumes the worker is dead, but presumption is not knowledge. A worker that paused for 40 s (garbage collection, a slow disk) comes back after its task was redelivered and, without protection, completes it a second time with a stale result. Fencing tokens are the protection.
 
-`Fail(lease, TaskError)` decides by the attempt number:
+Each delivery gets a token $k$ strictly larger than every token handed out before, over all queues, and after a restart too (recovery restores the counter from the lease records). A lease is **live** while it is the task's current lease ($k$ matches) and $t < d$. `Check`, `Heartbeat`, `Complete`, and `Fail` refuse anything else with `ErrLeaseLost` and change nothing.
+
+## Retries and the dead-letter queue
+
+When a worker does answer with a failure, `Fail(lease, TaskError)` decides what happens by the attempt number:
 
 | Case | Disposition | What happens |
 |---|---|---|
 | `NonRetryable` | `Dropped` | the task leaves the queue now (the server records a terminal failure) |
 | $a \ge M$ | `DeadLettered` | parked in the DLQ with $a$ and the last error |
-| otherwise | `Retrying` | visible again at $t$ + `RetryAfter` (the backoff of `dur.05`) |
+| otherwise | `Retrying` | visible again at $t$ + `RetryAfter` (the backoff computed in [activities](05-activities.md)) |
 
-An expired lease of the last attempt ($a \ge M$) dead-letters the task too: a task that crashes its worker every time (a poison task) ends in the DLQ instead of looping. `Redrive` moves dead letters back, visible now with the attempt count reset, after the operator fixed the cause.
+An expired lease of the last attempt ($a \ge M$) dead-letters the task too. That matters because a poison task usually crashes its worker rather than reporting failure; with this rule it ends in the DLQ instead of looping. `Redrive` moves dead letters back, visible now with the attempt count reset, once the operator has fixed the cause.
 
-### 2.4 Order and the long poll
+## Order and the long poll
 
-Among visible tasks, `Poll` takes the one that became visible first, ties in enqueue order, so a retried task waits its turn and old work is not starved. With nothing visible, `Poll` waits up to `wait` for the earliest of: an enqueue (or redrive, or retry) waking it, the next retry's visible time, the next lease deadline, or its own end, then returns `ErrNoTask`. The wakeup is a channel that is closed and replaced on every change (a broadcast), and the timed waits go through the injected `Clock` so tests control time exactly.
+Among visible tasks, `Poll` takes the one that became visible first, with ties broken by enqueue order, so a retried task waits its turn and old work is not starved.
 
-### 2.5 Durability and idempotent enqueue
+With nothing visible, `Poll` waits up to `wait` for the earliest of: an enqueue (or redrive, or retry) waking it, the next retry's visible time, the next lease deadline, or its own end; at the end it returns `ErrNoTask`. The wakeup is a channel that is closed and replaced on every change (a broadcast), and the timed waits go through the injected `Clock`, so tests control time exactly.
 
-Each transition is appended to stream `queue/<name>` of the log as a small JSON record (`enq`, `lease`, `hb`, `retry`, `dead`, `redrive`, `ack`, `drop`) **before** memory changes; if the append fails, nothing changes. `Open` replays the records to rebuild every queue. `Enqueue` of a task id the queue still holds (visible, leased, or dead) is a no-op: the server re-enqueues every pending task after a crash, and this is what keeps that from doubling work. Once a task is acknowledged its id is free again.
+## Durability and idempotent enqueue
 
-**Exactly-once effects.** The queue delivers at least once; the effect happens once only if it is idempotent: keyed by the task, so a second delivery finds the effect already applied. That is the property the exactly-once-under-chaos case checks, and the job of the idempotency keys of `dur.05`.
+Each transition is appended to stream `queue/<name>` of the log as a small JSON record (`enq`, `lease`, `hb`, `retry`, `dead`, `redrive`, `ack`, `drop`) **before** memory changes; if the append fails, nothing changes. `Open` replays the records to rebuild every queue.
 
-## 3. Worked example by hand
+`Enqueue` of a task id the queue still holds (visible, leased, or dead) is a no-op. The server re-enqueues every pending task after a crash, and this rule is what keeps that from doubling work. Once a task is acknowledged, its id is free again.
 
-Queue `data`, $V = 30$ s, $M = 3$, fake clock at $t = 0$. Tasks `a` and `b` are enqueued.
+The queue delivers at least once. The effect happens exactly once only if it is idempotent: keyed by the task, so that a second delivery finds the effect already applied. That is the property the exactly-once-under-chaos test checks, and it is the job of the idempotency keys in [activities](05-activities.md).
+
+## Working it by hand
+
+Take queue `data` with $V = 30$ s, $M = 3$, and a fake clock at $t = 0$. Tasks `a` and `b` are enqueued. The table traces every call, its result, and why:
 
 | $t$ (s) | Call | Result | Why |
 |---|---|---|---|
@@ -90,7 +82,11 @@ Queue `data`, $V = 30$ s, $M = 3$, fake clock at $t = 0$. Tasks `a` and `b` are 
 | 75 | `DLQ` | `a`, 3 attempts, at 75 | |
 | 75 | `Redrive` then `Poll` | `a`, attempt 1, token 5, deadline 105 | fresh attempt count |
 
-## 4. The interface
+Every rule in the section shows up somewhere in that timeline: FIFO order, a delayed retry, expiry as failure detection, fencing, the poison-task path to the DLQ, and a redrive with a fresh count.
+
+## Designing the API
+
+The interface follows directly:
 
 ```go
 package queue // import "tinyllm/durable/queue"
@@ -136,44 +132,21 @@ func (q *Queue) Depth(name string) (visible, leased, dead int)
 
 A fake clock that implements `Now` and `After` satisfies `Clock`, which is how the timeline above is reproduced exactly. A lease is identified by `Queue`, `Task.ID`, and `Token`; the server rebuilds one from a task token with exactly those three fields.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| hand timeline | unit | section 3, row for row | the definition the server relies on |
-| duplicate enqueue is a no-op | unit, boundary | an id held as visible, leased, or dead is not reset; after an ack it is free | recovery re-enqueues everything pending |
-| FIFO among visible | unit | delivered in visible order, ties by enqueue | retries do not jump the line |
-| stale token: lease lost | unit, fault | expired or superseded leases are refused by every call; the live one is undisturbed | a slow worker cannot overwrite the live attempt |
-| heartbeat extends the lease | unit | the deadline moves to now + V; details reach the next attempt | long activities, resume from checkpoint |
-| poison task to DLQ after max attempts | unit, fault | dispositions in order; DLQ with attempts and last error; per-task `MaxAttempts` | drill `ops.03` |
-| non-retryable dropped | unit | a non-retryable failure leaves the queue at once | bad input is not retried |
-| redrive | unit | one id, all, an unknown id changes nothing, attempts restart | `wf dlq redrive` |
-| long poll wakes on enqueue | unit | a waiting poll returns on enqueue without the clock moving | workers react at once |
-| long poll wakes on retry due | unit | a waiting poll returns when a retry becomes due | the same, for retries |
-| long poll times out | boundary | `ErrNoTask` at the end of the wait | the server's 30 s empty answer |
-| crashed worker: task reappears | fault, boundary | hidden until exactly V, attempt 2 at V | a SIGKILLed worker |
-| recovery from the log | fault | visible, leased, retrying, and dead tasks rebuilt; a live lease survives; tokens never repeat | a server crash |
-| log failure changes nothing | fault | an append that fails (quota) leaves memory unchanged | memory never runs ahead of the log |
-| concurrent pollers, one lease each | property | 8 pollers, 200 tasks, 200 distinct leases and tokens | many workers |
-| exactly-once effects under chaos | fault, property | a seeded schedule of deaths and late answers; each task acked once, each effect key applied once | at-least-once plus idempotence |
-
-The model property tests state these as properties: under any schedule of polls, failures, expiries, and late completions, a task is acknowledged at most once and only by its newest lease; tokens strictly increase, across a reopen too; nothing is delivered before it is visible; a task with $M$ failures ends in the DLQ with $M$ attempts.
-
-## 5. The solution, step by step
-
-### From first principles
+The reasoning chain behind the implementation runs as follows. Try to predict each step.
 
 1. **A worker can die at any instant, silently.** So a task cannot be removed when it is handed out; it must stay in the queue, owned for a bounded time. That is a lease with a deadline, and expiry is the failure detector.
-2. **Expiry needs no actor.** A lease's deadline is recorded when it is granted, so whether it has expired is a pure function of the clock. Every operation that looks at a queue first applies that function (`expire`); no background sweeper, no extra log record.
-3. **A presumed-dead worker may not be dead.** After its lease expires and the task is redelivered, the old worker may still answer. To make that harmless, each delivery gets a strictly increasing token and every mutating call must present the current one before its deadline: a fencing token. Strictly increasing across restarts means recovery must restore the counter.
+2. **Expiry needs no actor.** A lease's deadline is recorded when it is granted, so whether it has expired is a pure function of the clock. Every operation that looks at a queue first applies that function (`expire`): no background sweeper, no extra log record.
+3. **A presumed-dead worker may not be dead.** After its lease expires and the task is redelivered, the old worker may still answer. To make that harmless, each delivery gets a strictly increasing token, and every mutating call must present the current one before its deadline: a fencing token. Strictly increasing across restarts means recovery must restore the counter.
 4. **Failures need a bound.** A task that fails every time would otherwise loop forever. Counting deliveries and parking the task at $M$ attempts gives the dead-letter queue; the same rule applies to an expired last lease, because a poison task usually kills its worker rather than reporting failure.
-5. **Waiting must be event-driven.** A long poll that sleeps and rechecks either wastes CPU or adds latency. A per-queue broadcast channel (closed and replaced on every change) plus a timed wait for the next known due time (a retry becoming visible, a lease expiring) gives an immediate wakeup with no spinning.
+5. **Waiting must be event-driven.** A long poll that sleeps and rechecks either wastes CPU or adds latency. A per-queue broadcast channel (closed and replaced on every change), plus a timed wait for the next known due time (a retry becoming visible, a lease expiring), gives an immediate wakeup with no spinning.
 6. **Memory follows the log.** Every transition is appended first and applied second, through one `apply` used by both live calls and recovery, so a failed append changes nothing and a restart rebuilds the same queues.
 7. **Recovery re-enqueues, so enqueue must be idempotent.** An id the queue still holds in any state is a no-op; after an ack the id is free again.
 
-### The code, annotated
+### The item and the transition record
 
-**The item and the transition record** ([`queue.go`](../../../../course/solutions/go/durable/queue/queue.go)).
+In [`queue.go`](../../../../course/solutions/go/durable/queue/queue.go), each task is an `item`, each queue a `named` set of items with its wakeup channel, and each persisted change a `transition`:
 
 ```go
 type item struct {
@@ -206,7 +179,9 @@ type transition struct {
 
 Every time in a record is an absolute millisecond timestamp, not a duration, so replay at a later wall-clock time reproduces the same deadlines.
 
-**Persist, then apply.**
+### Persist, then apply
+
+All changes flow through two functions. `persist` appends first; `apply` changes memory, and is also what recovery calls:
 
 ```go
 func (q *Queue) persist(ctx context.Context, name string, tr transition) error {
@@ -249,7 +224,9 @@ func (q *Queue) apply(name string, tr transition) {
 }
 ```
 
-**Lazy expiry.**
+### Lazy expiry
+
+Expiry is a pure function of the clock, evaluated whenever someone looks:
 
 ```go
 func (q *Queue) expire(n *named, now time.Time) {
@@ -268,7 +245,9 @@ func (q *Queue) expire(n *named, now time.Time) {
 
 Because expiry is derived from the recorded deadline, the same leases expire the same way before and after a restart, which is why it needs no record.
 
-**Poll: pick, lease, or wait.**
+### Poll: pick, lease, or wait
+
+`Poll` is the busiest function. It expires leases, picks the best visible task while tracking the next instant something could change, leases the task if there is one, and otherwise waits:
 
 ```go
 func (q *Queue) Poll(ctx context.Context, name, worker string, wait time.Duration) (Lease, error) {
@@ -330,7 +309,9 @@ func (q *Queue) Poll(ctx context.Context, name, worker string, wait time.Duratio
 
 Taking `wake` before unlocking is the detail that prevents a lost wakeup: a notify after the unlock closes the very channel this poller is about to wait on.
 
-**Fencing.** One predicate guards every mutating call.
+### Fencing
+
+One predicate guards every mutating call:
 
 ```go
 func (q *Queue) live(l Lease) (*named, *item, error) {
@@ -349,7 +330,9 @@ func (q *Queue) live(l Lease) (*named, *item, error) {
 
 `Check`, `Heartbeat`, `Complete`, and `Fail` all call `live` first, so an expired or superseded lease changes nothing. At exactly the deadline the lease is already lost, matching `expire`, so there is no instant at which two workers both own a task.
 
-**Fail: drop, dead-letter, or retry.**
+### Fail: drop, dead-letter, or retry
+
+After `live` passes, `Fail` implements the disposition table:
 
 ```go
 switch {
@@ -363,13 +346,13 @@ default:
 }
 ```
 
-`Heartbeat` persists an `hb` record with `UntilMs = now + V` and a copy of the details; the details survive into the next lease because `leaseOf` copies `it.details`. `Enqueue` returns nil without a record when the id is already present. `Redrive` validates every id before moving any (so an unknown id moves nothing), then persists one `redrive` per id. `DLQ` sorts by `seq` so listing order is enqueue order regardless of map iteration.
+The remaining calls are short. `Heartbeat` persists an `hb` record with `UntilMs = now + V` and a copy of the details; the details survive into the next lease because `leaseOf` copies `it.details`. `Enqueue` returns nil without a record when the id is already present. `Redrive` validates every id before moving any (so an unknown id moves nothing), then persists one `redrive` per id. `DLQ` sorts by `seq`, so listing order is enqueue order regardless of map iteration.
 
-Full solution: [`queue.go`](../../../../course/solutions/go/durable/queue/queue.go).
+The full solution is in [`queue.go`](../../../../course/solutions/go/durable/queue/queue.go).
 
-### The model property tests
+### Testing it as properties
 
-This module's solution includes a test suite in [`queue_learner_test.go`](../../../../course/solutions/learner-tests/dur.03/go/durable/queue/queue_learner_test.go), on a fake clock. The fencing test shows the shape: let a lease reach its deadline, check that every call with the old token is refused, and that none of them disturbed the live one.
+The solution includes a test suite in [`queue_learner_test.go`](../../../../course/solutions/learner-tests/dur.03/go/durable/queue/queue_learner_test.go), on a fake clock. The fencing test shows the shape: let a lease reach its deadline, check that every call with the old token is refused, and check that none of them disturbed the live one.
 
 ```go
 old := poll(t, q, "q")
@@ -383,17 +366,93 @@ if err := q.Complete(ctx, cur); err != nil { /* ... */ }
 if err := q.Complete(ctx, cur); !errors.Is(err, queue.ErrLeaseLost) { /* a second ack must fail */ }
 ```
 
-The suite's chaos test drives a seeded schedule of worker deaths and late answers and asserts each task is acknowledged once and each effect key applied once: at-least-once delivery plus idempotent effects.
+The suite's chaos test drives a seeded schedule of worker deaths and late answers and asserts that each task is acknowledged once and each effect key applied once: at-least-once delivery plus idempotent effects.
 
-### Why this solution
+Stated as properties, the tests say: under any schedule of polls, failures, expiries, and late completions, a task is acknowledged at most once and only by its newest lease; tokens strictly increase, across a reopen too; nothing is delivered before it is visible; and a task with $M$ failures ends in the DLQ with $M$ attempts.
 
-- **Cost.** `Poll` and `expire` scan the queue's items: O(n) per poll. That is simple and correct for course-sized queues; a production queue keeps a min-heap by `visibleAt` and another by deadline to make both O(log n). Every transition is one log append.
-- **Lazy expiry over timers.** One timer per lease would need cancelling on every heartbeat and ack and rebuilding after recovery. Deriving expiry from the recorded deadline is the same answer with no moving parts.
+### Why this design
+
+- **Cost.** `Poll` and `expire` scan the queue's items: O(n) per poll. That is simple and correct for queues of this size; a production queue keeps a min-heap by `visibleAt` and another by deadline to make both O(log n). Every transition is one log append.
+- **Lazy expiry over timers.** One timer per lease would need cancelling on every heartbeat and ack, and rebuilding after recovery. Deriving expiry from the recorded deadline gives the same answer with no moving parts.
 - **Global token counter.** One counter over all queues is simpler than per-task counters and still strictly increasing per task, which is all fencing needs.
 - **Visibility timeout over explicit liveness.** The queue never needs to know whether a worker is alive; a missing answer is indistinguishable from a dead worker, and the lease treats them the same.
-- **Accepted tradeoff.** Delivery is at least once. A task can be executed twice (a worker that finished but died before acknowledging), so effects must be idempotent; fencing only guarantees that the second execution's late answer cannot overwrite the first's.
+- **Accepted tradeoff.** Delivery is at least once. A task can be executed twice (by a worker that finished but died before acknowledging), so effects must be idempotent; fencing only guarantees that the second execution's late answer cannot overwrite the first's.
 
-### Explain it back
+## What a correct queue must handle
+
+The test suite covers these cases; the last column says what in the rest of the engine depends on each:
+
+| Case | Kind of check | Checks | Why it matters downstream |
+|---|---|---|---|
+| hand timeline | unit | the worked timeline, row for row | the definition the server relies on |
+| duplicate enqueue is a no-op | unit, boundary | an id held as visible, leased, or dead is not reset; after an ack it is free | recovery re-enqueues everything pending |
+| FIFO among visible | unit | delivered in visible order, ties by enqueue | retries do not jump the line |
+| stale token: lease lost | unit, fault | expired or superseded leases are refused by every call; the live one is undisturbed | a slow worker cannot overwrite the live attempt |
+| heartbeat extends the lease | unit | the deadline moves to now + V; details reach the next attempt | long activities, resume from checkpoint |
+| poison task to DLQ after max attempts | unit, fault | dispositions in order; DLQ with attempts and last error; per-task `MaxAttempts` | the poison-task drill |
+| non-retryable dropped | unit | a non-retryable failure leaves the queue at once | bad input is not retried |
+| redrive | unit | one id, all, an unknown id changes nothing, attempts restart | `wf dlq redrive` |
+| long poll wakes on enqueue | unit | a waiting poll returns on enqueue without the clock moving | workers react at once |
+| long poll wakes on retry due | unit | a waiting poll returns when a retry becomes due | the same, for retries |
+| long poll times out | boundary | `ErrNoTask` at the end of the wait | the server's 30 s empty answer |
+| crashed worker: task reappears | fault, boundary | hidden until exactly V, attempt 2 at V | a SIGKILLed worker |
+| recovery from the log | fault | visible, leased, retrying, and dead tasks rebuilt; a live lease survives; tokens never repeat | a server crash |
+| log failure changes nothing | fault | an append that fails (quota) leaves memory unchanged | memory never runs ahead of the log |
+| concurrent pollers, one lease each | property | 8 pollers, 200 tasks, 200 distinct leases and tokens | many workers |
+| exactly-once effects under chaos | fault, property | a seeded schedule of deaths and late answers; each task acked once, each effect key applied once | at-least-once plus idempotence |
+
+## What can go wrong
+
+Queue bugs tend to show up as duplicated work, starved work, or a worker pool burning CPU while tasks wait.
+
+> **Warning:** A lease that is still live at its deadline instant means that at exactly $V$ the old and the new worker both own the task. `live` and `expire` both use `now.Before(deadline)`, so at the deadline the lease is gone.
+
+Fencing can be broken in several ways: not comparing the token, letting an expired lease still act, giving every lease the same token, or restarting the counter after a crash. Any of them lets a stale worker complete, fail, or heartbeat a task someone else owns. `live` compares the token and the deadline, `Poll` increments `q.tokens`, and `apply` restores the maximum on recovery.
+
+The attempt count invites off-by-one errors and missed paths: one extra attempt, an expired last attempt redelivered forever, a non-retryable failure retried, or a redrive that keeps the old count. Poison tasks loop, and redriven tasks dead-letter at once. The solution uses `attempt >= maxAttempts` in both `Fail` and `expire`, checks `NonRetryable` first, and has `redrive` reset `attempt` to 0.
+
+A retry that becomes visible at once, ignoring its delay, hammers a failing dependency; a `retry` record sets `visibleAt = now + RetryAfter`. A heartbeat that does not extend the lease, or loses its details, gets long tasks redelivered while running and makes resumes start over; `Heartbeat` persists `UntilMs = now + V` and the details, and `leaseOf` carries them.
+
+Order and wakeups fail in four related ways: newest first, no broadcast on change, no wake for a retry coming due, and spinning at the end of the wait. The symptoms are starvation, workers idling while tasks wait, and a CPU at 100%. The solution orders by oldest `visibleAt` then `seq`, calls `notify` on every `apply`, waits with a timer until `next`, and returns `ErrNoTask` once `now >= end`.
+
+Finally, a duplicate enqueue that replaces the task, or an ack that does not remove it, lets recovery reset a running task and brings finished tasks back; `Enqueue` returns early for a held id, and `ack` deletes the item. And changing memory before the record is durable leaves the queue and its log disagreeing after a restart; `persist` appends before `apply`.
+
+## Where this leads
+
+Every transition lives in stream `queue/<name>` of [the event log](01-event-log.md), and `Open` replays it. From here, [the workflow service](02-workflow-service.md) enqueues `<run>/wt/<id>` on `wf:<queue>` for each `WorkflowTaskScheduled`, and its recovery re-enqueues everything pending. [The task protocol and workers](04-task-protocol-and-workers.md) uses `Poll` for its `Poll*Task` leases, `Check` to fence completions, and `Complete` to acknowledge. [Activities](05-activities.md) calls `Fail` with the jittered backoff, uses `Heartbeat`, and puts `DLQ` and `Redrive` behind `wf dlq`.
+
+Production queues add more:
+
+- **Partitioned matching.** Instead of one queue per name in one process, the Temporal matching service partitions task queues over hosts, with forwarding between partitions. See `temporalio/temporal`: `service/matching`.
+- **Sticky task queues.** Instead of sending every task through the queue, a workflow's next task goes to the worker that has its state cached, so history is not replayed each time. See Temporal "Sticky Execution".
+- **Rate limits.** Instead of unbounded polling, task-queue rate limits cap tasks per second per queue to protect downstream systems. See Temporal `TaskQueueActivitiesPerSecond`.
+- **Eager activity dispatch.** Instead of a poll for every activity, an activity scheduled by a workflow task is returned in the completion response itself. See Temporal "Eager Activity Execution".
+
+### Further reading
+
+- The Amazon SQS documentation on the visibility timeout and dead-letter queues.
+- Martin Kleppmann, *How to do distributed locking* (2016), on fencing tokens.
+
+## Key terms
+
+- **Lease**: temporary ownership of a task by one worker, until a deadline.
+- **Visibility timeout**: the lease length $V$; a leased task is invisible to other pollers until it expires.
+- **Fencing token**: a strictly increasing number per delivery; only the current token, before its deadline, may act on the task.
+- **Heartbeat**: a call that extends a live lease and records small progress details.
+- **Dead-letter queue (DLQ)**: where a task is parked after $M$ attempts, to be redriven by an operator.
+- **Poison task**: a task that fails or crashes its worker on every attempt.
+- **Long poll**: a poll that waits for work and returns as soon as some arrives.
+- **At-least-once delivery**: a guarantee that every task is delivered, possibly more than once.
+
+## Summary
+
+- A worker does not take a task, it **leases** it until a deadline; a worker that dies simply never answers, and the task becomes visible again at the deadline as the next attempt.
+- Every lease carries a **fencing token** larger than all before it; only the newest token, before its deadline, may complete, fail, or heartbeat, so a worker presumed dead cannot overwrite the live one.
+- Failures retry after a delay; the attempt that reaches `MaxAttempts` parks the task in the dead-letter queue, from where an operator redrives it.
+- A long poll is a wakeup, not a sleep loop: it returns the instant a task is enqueued or a retry comes due.
+- Every transition is a log record first: after a crash, `Open` rebuilds every lease, retry, and dead letter, and new tokens keep growing.
+
+## Review questions
 
 1. In the worked example, why is `Complete(a, token 3)` at $t = 45$ refused when the worker holding token 3 may have finished its work?
 
@@ -434,34 +493,3 @@ The suite's chaos test drives a seeded schedule of worker deaths and late answer
    If it released the lock first, an `Enqueue` could notify (close and replace the channel) in between, and the poller would then wait on the new channel and miss that enqueue until its timeout.
 
    </details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. a lease still live at its deadline instant | at exactly $V$ the old and the new worker both own the task | `live` and `expire` both use `now.Before(deadline)`: at the deadline the lease is gone |
-| 2. no fencing: the token is not compared, an expired lease may still act, every lease gets the same token, or the counter restarts after a crash | a stale worker completes, fails, or heartbeats a task someone else owns | `live` compares the token and the deadline; `Poll` increments `q.tokens`; `apply` restores the maximum on recovery |
-| 3. the attempt count: one extra attempt, an expired last attempt redelivered forever, a non-retryable failure retried, a redrive that keeps the old count | poison tasks loop; redriven tasks dead-letter at once | `attempt >= maxAttempts` in both `Fail` and `expire`; `NonRetryable` drops first; `redrive` resets `attempt` to 0 |
-| 4. a retry visible at once, ignoring its delay | a failing dependency is hammered | a `retry` record sets `visibleAt = now + RetryAfter` |
-| 5. a heartbeat that does not extend the lease, or loses its details | long tasks are redelivered while running; resumes start over | `Heartbeat` persists `UntilMs = now + V` and the details; `leaseOf` carries them |
-| 6. order and wakeups: newest first, no broadcast on change, no wake for a retry coming due, spinning at the end of the wait | starvation; workers idle while tasks wait; a CPU at 100% | oldest `visibleAt` then `seq`; `notify` on every `apply`; a timed wait to `next`; `ErrNoTask` once `now >= end` |
-| 7. a duplicate enqueue that replaces the task, or an ack that does not remove it | recovery resets a running task; finished tasks come back | `Enqueue` returns early for a held id; `ack` deletes the item |
-| 8. changing memory before the record is durable | after a restart the queue and its log disagree | `persist` appends before `apply` |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `dur.01` | stream `queue/<name>` holds every transition; `Open` replays it |
-| Forward | `dur.02` | each `WorkflowTaskScheduled` enqueues `<run>/wt/<id>` on `wf:<queue>`; recovery re-enqueues everything pending |
-| Forward | `dur.04` | `Poll*Task` leases, `Check` fences completions, `Complete` acknowledges |
-| Forward | `dur.05` | `Fail` with the jittered backoff; `Heartbeat`; `DLQ` and `Redrive` behind `wf dlq` |
-
-## Going further
-
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| one queue per name, in one process | Temporal matching service | task queues partitioned over hosts, with forwarding between partitions | `temporalio/temporal`: `service/matching` |
-| every task through the queue | sticky task queues | a workflow's next task goes to the worker that has its state cached, so history is not replayed each time | Temporal "Sticky Execution" |
-| unbounded polling | task-queue rate limits | caps tasks per second per queue to protect downstream systems | Temporal `TaskQueueActivitiesPerSecond` |
-| poll for every activity | eager activity dispatch | an activity scheduled by a workflow task is returned in the completion response itself | Temporal "Eager Activity Execution" |
