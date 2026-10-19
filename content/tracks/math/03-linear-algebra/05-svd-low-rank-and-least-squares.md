@@ -391,7 +391,7 @@ Full solution: [`svd.py`](../../../../course/solutions/python/tinyllm/linalg/svd
 | Forward | `L7.6` | `mha_to_mla` compresses the key and value projections to a rank-$r$ latent |
 | Forward | `C1` | the scaling-law fit is `lstsq` on $\log$ loss against $\log$ parameters |
 | Forward | `M10.6` | Muon's Newton-Schulz iteration approximates $UV^\top$, checked against this SVD |
-| Forward | `M09.3` | uses the SVD and low-rank approximation of this module |
+| Forward | `M09.3` | the tolerance budget reads condition numbers $\sigma_1/\sigma_k$ from `svd` |
 
 ## Going further
 

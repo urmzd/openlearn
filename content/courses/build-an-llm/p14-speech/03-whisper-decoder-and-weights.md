@@ -211,7 +211,7 @@ Full solution: [`hf_whisper.py`](../../../../course/solutions/python/tinyllm/io/
 
 ### Why this solution
 
-- **Cost.** With a cache, decoding token $o$ costs $O(o\,d)$ per layer for self-attention and $O(A\,d)$ for cross-attention, instead of $O(o^2 d)$ for recomputing the prefix. Cross keys and values cost $O(L\,A\,d^2)$ once per window rather than once per token; for whisper-tiny that is 1500 positions times 4 layers saved on every step.
+- **Cost.** With a cache, decoding token $o$ costs $O(o\,d)$ per layer for self-attention and $O(A\,d)$ for cross-attention, instead of $O(o^2 d)$ for recomputing the prefix. Cross keys and values cost $O(L\,A\,d^2)$ once per window rather than once per token; for whisper-tiny that avoids two $1500 \times 384 \times 384$ projections per layer on every step.
 - **Alternatives.** Recomputing cross keys and values per step is correct but repeats the most expensive projection hundreds of times per window. Loading leniently (`strict=False`, ignoring `proj_out.weight`) accepts fine-tuned checkpoints with an untied head and silently gives them the wrong output layer. Trusting the stored position table without checking it would accept a checkpoint from a different architecture.
 - **Tradeoffs accepted.** The tied-output requirement rejects some community fine-tunes; that is deliberate, since this model has no slot for a separate head. The loader converts everything to float32, doubling memory for float16 checkpoints.
 

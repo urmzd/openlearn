@@ -1,4 +1,3 @@
-<!-- ol:module dep.02 -->
 # kind cluster + local registry + port mappings
 
 ## Overview
@@ -6,12 +5,10 @@
 | | |
 |---|---|
 | **Module** | `dep.02` · practice · ops · Pass 7 · 2 to 3 h |
-| **You build** | `deploy/kind/cluster.yaml` recreated for Pass 7 (six NodePort mappings, the registry hosts directory), `deploy/kind/up.sh` (registry container, cluster, node wiring), `deploy/kind/local-registry-hosting.yaml` |
-| **Contract** | none of its own: the ports of DESIGN 2.13 and [`helm/observability.md`](../../../../course/contracts/helm/observability.md); section 4 is the checked layout |
-| **Tests** | `course/tests/dep.02/` (`check` runs `artifacts.py`; what each test checks: section 4) |
-| **Needs** | `dep.01` the images you push; reading: `dep.00` the tracer cluster, [Containers, Kubernetes & Workloads](README.md) |
-| **Used by** | `dep.03` installs the charts on this cluster from this registry |
-| **Milestone** | MS-prod |
+| **Solution** | [`deploy/kind/cluster.yaml`](../../../../course/solutions/entry/deploy/kind/cluster.yaml) recreated for Pass 7 (six NodePort mappings, the registry hosts directory), [`deploy/kind/up.sh`](../../../../course/solutions/entry/deploy/kind/up.sh) (registry container, cluster, node wiring), [`deploy/kind/local-registry-hosting.yaml`](../../../../course/solutions/entry/deploy/kind/local-registry-hosting.yaml) |
+| **Contract** | none of its own: the fixed NodePorts of section 2.1 and [`helm/observability.md`](../../../../course/contracts/helm/observability.md); section 4 is the required layout |
+| **Needs** | `dep.01` the images to push; reading: `dep.00` the tracer cluster, [Containers, Kubernetes & Workloads](README.md) |
+| **Used by** | `dep.03` installs the charts on this cluster from this registry. Part of the Pass 7 production platform |
 | **Optional depth** | [kind: local registry](https://kind.sigs.k8s.io/docs/user/local-registry/) (free); [kind: configuration, extra port mappings](https://kind.sigs.k8s.io/docs/user/configuration/#extra-port-mappings) (free); [containerd registry host configuration](https://github.com/containerd/containerd/blob/main/docs/hosts.md) (free); [KEP-1755, communicating a local registry](https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry) (free) |
 
 ## Key Takeaways
@@ -22,17 +19,17 @@
 - Inside a node, `localhost` is the node: containerd finds the registry through **`/etc/containerd/certs.d/localhost:5001/hosts.toml`**, which points at the `kind-registry` container on the `kind` network.
 - One script, `up.sh`, makes the cluster identical every time it is recreated.
 
-## How to work this chapter
+## How to read this chapter
+
+Sections 1 to 3 explain why the cluster is recreated, how a kind node reaches a registry on your machine, and follow one push and one request by hand. Section 4 fixes the three files. Section 5 walks through the solution's cluster file and `up.sh` and explains why each step is there. Try to predict each step of the script before reading it.
+
+The solution's sequence, from the repo root:
 
 ```bash
-ol start dep.02                        # records the start; there are no stubs
-ol tests dep.02                        # read the test catalog first
 kind delete cluster --name forge       # the Pass 1 cluster's port mappings cannot change
 deploy/kind/up.sh                      # registry, cluster, node wiring, ConfigMap
 docker tag forge-gateway:0.2.0 localhost:5001/forge-gateway:0.2.0
 docker push localhost:5001/forge-gateway:0.2.0
-ol check dep.02                        # exit code is the verdict
-OL_SMOKE=1 ol check dep.02             # without a cluster: the static tier only
 ```
 
 ---
@@ -80,45 +77,169 @@ Push the gateway image and follow the bytes:
 4. The layers come from the registry container's port 5000, plain HTTP: allowed because `hosts.toml` names an `http://` host.
 5. The pod starts. Then `curl http://127.0.0.1:30080/healthz` from your machine reaches the node container's port 30080 through the mapping `127.0.0.1:30080 -> 30080`, then the NodePort Service, then the pod.
 
-Without step 3's file the pull fails with `ErrImagePull: dial tcp 127.0.0.1:5001: connect: connection refused` (the node's own localhost). Without the mapping of step 5, `curl` gets `connection refused` even though `kubectl get svc` shows the NodePort. `test_image_pushed_to_the_registry_runs` and `test_cluster_maps_every_platform_port` check exactly these two links.
+Without step 3's file the pull fails with `ErrImagePull: dial tcp 127.0.0.1:5001: connect: connection refused` (the node's own localhost). Without the mapping of step 5, `curl` gets `connection refused` even though `kubectl get svc` shows the NodePort. These are the two links a correct setup must get right.
 
-## 4. The artifact and its check
+## 4. The artifact and what it must do
 
 | Path | Holds |
 |---|---|
 | `deploy/kind/cluster.yaml` | `name: <system>`; `containerdConfigPatches` with `config_path = "/etc/containerd/certs.d"`; on the control-plane node, the six `extraPortMappings` of 2.1 with `listenAddress: "127.0.0.1"`; `extraMounts` of `./artifacts` at `/artifacts` |
 | `deploy/kind/up.sh` | executable, from the repo root: start `kind-registry` (a pinned `registry` release, `127.0.0.1:5001:5000`) if it is not running; refuse if the cluster exists; `kind create cluster --config deploy/kind/cluster.yaml`; write `hosts.toml` on every node; `docker network connect kind kind-registry`; apply the ConfigMap |
 | `deploy/kind/local-registry-hosting.yaml` | ConfigMap `kube-public/local-registry-hosting`, `data.localRegistryHosting.v1` with `host: "localhost:5001"` |
-| `system.toml` `[deploy]` | unchanged from `dep.00`: `kube_context = "kind-<system>"`, `namespace = "<system>"` |
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | What must hold | Why it matters downstream |
 |---|---|---|---|
-| `test_layout_present` | unit | the three files | |
-| `test_cluster_maps_every_platform_port` | unit | name, six mappings on 127.0.0.1, `/artifacts` mount | MS-prod, obs, and drills reach the cluster on these ports |
-| `test_containerd_reads_registry_hosts` | unit | the `config_path` patch | pulls from `localhost:5001` |
-| `test_registry_hosting_configmap` | unit | name, namespace, `host: "localhost:5001"` | `dep.04` Tilt finds the registry |
-| `test_up_script` | unit | executable, `bash -n`, each step of the table above, a pinned registry image | the same cluster every time |
-| `test_system_toml_deploy_section` | unit | `kube_context`, `namespace` | the drill safety gate |
-| `test_nodes_ready` | conformance | every node Ready | |
-| `test_node_publishes_the_ports` | conformance | the node container publishes all six ports | the running cluster is the new one |
-| `test_registry_runs_on_the_kind_network` | conformance | `kind-registry` running, 5001 on 127.0.0.1, on network `kind` | |
-| `test_registry_hosting_configmap_applied` | conformance | the ConfigMap is in the cluster | |
-| `test_image_pushed_to_the_registry_runs` | conformance | push an image to `localhost:5001`, a pod with it runs | images are pullable without `kind load` |
+| layout present | static | the three files | |
+| every platform port mapped | static | name, six mappings on 127.0.0.1, `/artifacts` mount | the observability stack, drills, and a host worker reach the cluster on these ports |
+| containerd reads registry hosts | static | the `config_path` patch | pulls from `localhost:5001` |
+| registry hosting ConfigMap | static | name, namespace, `host: "localhost:5001"` | `dep.04` Tilt finds the registry |
+| `up.sh` | static | executable, `bash -n` clean, each step of the table above, a pinned registry image | the same cluster every time |
+| nodes ready | cluster | every node Ready | |
+| node publishes the ports | cluster | the node container publishes all six ports | the running cluster is the new one |
+| registry on the kind network | cluster | `kind-registry` running, 5001 on 127.0.0.1, on network `kind` | |
+| ConfigMap applied | cluster | the ConfigMap is in the cluster | |
+| a pushed image runs | cluster | push an image to `localhost:5001`, a pod with it runs | images are pullable without `kind load` |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **Docker publishes a container's ports only at creation.** A kind node is a container, so every NodePort the rest of the course needs must be listed before `kind create cluster`. Pass 7 and 8 need six; so the cluster is recreated once with all six.
+2. **Exposure is a choice of interface.** Publishing on `0.0.0.0` exposes the gateway and Grafana to the local network; `listenAddress: "127.0.0.1"` on every mapping keeps them on your machine.
+3. **A pull happens inside the node, where `localhost` is the node.** So the name in the chart (`localhost:5001/...`, which works for `docker push` on your machine) must be translated on the node. containerd's per-host directory does that, which requires (a) containerd to read the directory (`config_path`), (b) a `hosts.toml` per node, and (c) the registry to be reachable from the node by name (the `kind` network).
+4. **Recreation must give the same cluster.** Any order-dependent manual step will be forgotten on the next recreate, so the steps live in one script that refuses to run against an existing cluster (it could not change the ports anyway) and pins the registry image.
+5. **Tools should not guess the registry.** KEP-1755's ConfigMap is the standard place to advertise it; Tilt reads it.
+
+### 5.2 The cluster file
+
+```yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: forge
+# containerd looks for per-registry settings in /etc/containerd/certs.d;
+# up.sh writes certs.d/localhost:5001/hosts.toml so that pulls of
+# localhost:5001/<image> reach the kind-registry container.
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"
+nodes:
+  - role: control-plane
+    # Port mappings are fixed when the node container is created: adding one
+    # means deleting and recreating the cluster. 127.0.0.1 only: nothing is
+    # exposed to your LAN.
+    extraPortMappings:
+      - containerPort: 30080   # gateway NodePort
+        hostPort: 30080
+        listenAddress: "127.0.0.1"
+      - containerPort: 30686   # Jaeger query NodePort (Pass 1)
+        hostPort: 30686
+        listenAddress: "127.0.0.1"
+      - containerPort: 30090   # Prometheus
+        hostPort: 30090
+        listenAddress: "127.0.0.1"
+      - containerPort: 30300   # Grafana
+        hostPort: 30300
+        listenAddress: "127.0.0.1"
+      - containerPort: 30320   # Tempo query API
+        hostPort: 30320
+        listenAddress: "127.0.0.1"
+      - containerPort: 30733   # durable gRPC, for a worker on the host (Pass 8)
+        hostPort: 30733
+        listenAddress: "127.0.0.1"
+    # ./artifacts on your machine is /artifacts on the node.
+    extraMounts:
+      - hostPath: ./artifacts
+        containerPath: /artifacts
+        readOnly: true
+```
+
+`containerPort` equals `hostPort` everywhere so a port number means the same thing on both sides; a mismatch is a classic source of "it works in the cluster but not from my machine". `config_path` replaces the older inline `registry.mirrors` table, which current containerd ignores (pitfall 5).
+
+Full solution: [`cluster.yaml`](../../../../course/solutions/entry/deploy/kind/cluster.yaml).
+
+### 5.3 `up.sh`
+
+```bash
+set -euo pipefail                     # any failed step stops the script
+cd "$(dirname "$0")/../.."            # the repo root, wherever it is run from:
+                                      # extraMounts' ./artifacts is relative to it
+name="$(awk '/^name:/ {print $2; exit}' deploy/kind/cluster.yaml)"   # one source of truth
+reg_name=kind-registry
+reg_port=5001                         # not 5000: macOS AirPlay listens there
+reg_image="registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"
+
+# Refuse, do not patch: an existing node's port mappings cannot change.
+if kind get clusters 2>/dev/null | grep -qx "$name"; then
+  echo "cluster $name exists; its port mappings cannot change. Delete it first: kind delete cluster --name $name" >&2
+  exit 1
+fi
+
+# 1. The registry container, reachable from the host at 127.0.0.1:5001.
+#    Kept across clusters (--restart=always), so pushed images survive a recreate.
+if [ "$(docker inspect -f '{{.State.Running}}' "$reg_name" 2>/dev/null || true)" != "true" ]; then
+  docker run -d --restart=always -p "127.0.0.1:${reg_port}:5000" --network bridge --name "$reg_name" "$reg_image"
+fi
+
+# 2. The cluster. artifacts/ must exist, or the hostPath mount has nothing to mount.
+mkdir -p artifacts
+kind create cluster --config deploy/kind/cluster.yaml
+
+# 3. Every node resolves localhost:5001 to the registry container.
+for node in $(kind get nodes --name "$name"); do
+  docker exec "$node" mkdir -p "/etc/containerd/certs.d/localhost:${reg_port}"
+  printf '[host."http://%s:5000"]\n' "$reg_name" |
+    docker exec -i "$node" cp /dev/stdin "/etc/containerd/certs.d/localhost:${reg_port}/hosts.toml"
+done
+
+# 4. The registry joins the cluster's network, so nodes reach it by name.
+#    Idempotent: connect only if it is not already on "kind".
+if [ "$(docker inspect -f '{{json .NetworkSettings.Networks.kind}}' "$reg_name")" = "null" ]; then
+  docker network connect kind "$reg_name"
+fi
+
+# 5. Advertise it (KEP-1755), then wait until the cluster can schedule.
+kubectl --context "kind-$name" apply -f deploy/kind/local-registry-hosting.yaml
+kubectl --context "kind-$name" wait --for=condition=Ready nodes --all --timeout=120s
+echo "kind-$name is up; push images to localhost:${reg_port}/"
+```
+
+Every `kubectl` names `--context "kind-$name"` explicitly, so the script cannot apply the ConfigMap to whatever cluster your shell happens to point at. The `hosts.toml` is written per node after creation because the node filesystem does not exist before; containerd reads `config_path` directories at pull time, so no restart is needed. Steps 1 and 4 check before acting, so a rerun after a failed creation is safe.
+
+Full solution: [`up.sh`](../../../../course/solutions/entry/deploy/kind/up.sh), [`local-registry-hosting.yaml`](../../../../course/solutions/entry/deploy/kind/local-registry-hosting.yaml).
+
+### 5.4 Why this solution
+
+- **A registry over `kind load`.** `kind load` copies whole images into every node on every change and does not exist outside kind; a registry transfers only new layers and is how every real cluster works.
+- **`hosts.toml` over a registry name like `kind-registry:5000` in the charts.** Charts would then hold a name that works only inside the cluster, and `docker push` from your machine would need a different name. With the translation, one name works on both sides.
+- **A script over a README of commands.** The order matters (the registry before the network connect, the cluster before `hosts.toml`), and a script also makes the refusal and the pins enforceable.
+- **Tradeoff accepted:** the registry is plain HTTP without authentication, acceptable only because it listens on 127.0.0.1 and the `kind` network.
+
+### 5.5 Explain it back
+
+1. Why can `up.sh` not simply add the Prometheus mapping to the existing Pass 1 cluster?
+   <details><summary>Answer</summary>Docker fixes a container's published ports when it creates the container, and a kind node is a container. The only way to add a mapping is a new node, which means recreating the cluster; the script refuses rather than pretend otherwise.</details>
+2. A pod shows `ErrImagePull ... dial tcp 127.0.0.1:5001: connect: connection refused`. What is missing, and why that address?
+   <details><summary>Answer</summary>The node's <code>hosts.toml</code> (or the <code>config_path</code> patch). Without it containerd takes <code>localhost:5001</code> literally, and localhost inside the node container is the node itself, where nothing listens on 5001.</details>
+3. Why is the registry started with `--restart=always` and kept outside the cluster?
+   <details><summary>Answer</summary>So that it survives <code>kind delete cluster</code> and a Docker restart: images pushed before a recreate are still there afterwards, which is part of what makes recreating the cluster cheap.</details>
+4. Why does the script `cd` to the repo root before anything else?
+   <details><summary>Answer</summary><code>extraMounts</code> uses the relative path <code>./artifacts</code>, which kind resolves against the current directory. Run from elsewhere, the node would mount an empty or wrong directory and the engine would find no model.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. editing `cluster.yaml` without recreating the cluster | `curl 127.0.0.1:30090` is refused although Prometheus runs | `test_node_publishes_the_ports` |
-| 2. no `listenAddress` | the gateway and Grafana answer to every machine on your Wi-Fi | `test_cluster_maps_every_platform_port` |
-| 3. `image: localhost:5001/...` without `hosts.toml` on the nodes | `ErrImagePull ... 127.0.0.1:5001: connection refused` | `test_image_pushed_to_the_registry_runs` |
-| 4. the registry not on the `kind` network | `ErrImagePull ... lookup kind-registry: no such host` | `test_registry_runs_on_the_kind_network` |
-| 5. the old `registry.mirrors` table | ignored by containerd 2 on current kind node images; pulls fail | `test_containerd_reads_registry_hosts` |
-| 6. `registry:latest` | the registry changes under you on the next recreate | `test_up_script` |
+| 1. editing `cluster.yaml` without recreating the cluster | `curl 127.0.0.1:30090` is refused although Prometheus runs | `up.sh` refuses an existing cluster; delete and rerun (5.3) |
+| 2. no `listenAddress` | the gateway and Grafana answer to every machine on your Wi-Fi | `listenAddress: "127.0.0.1"` on every mapping (5.2) |
+| 3. `image: localhost:5001/...` without `hosts.toml` on the nodes | `ErrImagePull ... 127.0.0.1:5001: connection refused` | step 3 of `up.sh` writes `hosts.toml` on every node (5.3) |
+| 4. the registry not on the `kind` network | `ErrImagePull ... lookup kind-registry: no such host` | step 4 of `up.sh`, `docker network connect kind` (5.3) |
+| 5. the old `registry.mirrors` table | ignored by containerd 2 on current kind node images; pulls fail | `config_path` and per-host directories (5.2) |
+| 6. `registry:latest` | the registry changes under you on the next recreate | `registry:2.8.3@sha256:...` pinned in `up.sh` (5.3) |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|

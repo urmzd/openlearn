@@ -75,7 +75,7 @@ Emptying a slot would break the invariant (a lookup for an entry behind the hole
 
 ## 3. Worked example by hand
 
-Use the tests' `Id` hasher, whose hash is the key itself, and 8 slots, so the home of a key is its top 3 bits. Insert four keys: A (home 2), B (home 2), C (home 3), D (home 2).
+Use an identity hasher `Id`, whose hash is the key itself, and 8 slots, so the home of a key is its top 3 bits. Insert four keys: A (home 2), B (home 2), C (home 3), D (home 2).
 
 | Step | Carried entry and displacement | Slots 2, 3, 4, 5 after the step |
 |---|---|---|
@@ -389,11 +389,11 @@ That entry is already at its home. Moving it back would put it before its home, 
 
 </details>
 
-**Why does `entry` call `reserve(1)` before returning a vacant entry rather than inside `VacantEntry::insert`?**
+**Why does each bucket store the full 64-bit hash, when the key alone determines it?**
 
 <details><summary>Answer</summary>
 
-Either works for the insert itself, but reserving up front means `entry` has already done every mutation that can move entries before the caller holds the view, and the insert then only runs the Robin Hood carry. It also keeps "an insert never grows under a live reference" true by construction.
+Two reasons. A lookup compares `b.hash == hash` before the key, which rejects almost every non-matching resident with one integer compare instead of a byte-string compare. And `reserve` re-places every entry from `home(b.hash)` without hashing any key again, which matters for byte-string keys and for slow hashers like SipHash.
 
 </details>
 

@@ -1,42 +1,33 @@
-<!-- ol:module M01.2 -->
 # Newton's method
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M01.2` · build · Python · Pass 2 · 2 to 3 h |
-| **You build** | `python/tinyllm/num/newton.py`: `newton` (roots of a scalar function, with a convergence report) and `rsqrt_newton` (the division-free iteration for $1/\sqrt{x}$) |
+| **Module** | `M01.2` · build · Python · Pass 2 · 1 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/num/newton.py`](../../../../course/solutions/python/tinyllm/num/newton.py): `newton` (roots of a scalar function, with a convergence report) and `rsqrt_newton` (the division-free iteration for $1/\sqrt{x}$) |
 | **Contract** | [`course/contracts/py/tinyllm/num/newton.pyi`](../../../../course/contracts/py/tinyllm/num/newton.pyi) |
-| **Tests** | `course/tests/M01.2/test_newton.py` (what they check: section 4) |
-| **Needs** | `M01.1` `central_diff`, the slope Newton uses when you pass no derivative (or `--ref-deps`) |
-| **Used by** | `M07.7`'s `fit_temperature` (temperature scaling) solves for $1/T$ with `newton` · optional `M09.5` ports `rsqrt_newton` to C as the reciprocal square root inside `L9.6`'s RMSNorm kernel and checks it against your Python · optional `M10.6` uses Newton-Schulz iterations for Muon (section 6) |
-| **Milestone** | `MS-P2` (the Pass 2 gate) |
+| **Needs** | `M01.1` `central_diff`, the slope Newton uses when no derivative is passed |
+| **Used by** | `M07.7`'s `fit_temperature` (temperature scaling) solves for $1/T$ with `newton` · optional `M09.5` ports `rsqrt_newton` to C as the reciprocal square root inside `L9.6`'s RMSNorm kernel and checks it against this Python · optional `M10.6` uses Newton-Schulz iterations for Muon (section 6) |
 | **Optional depth** | OpenStax, *Calculus Volume 1* (free), section 4.9 (Newton's method); Sauer, *Numerical Analysis*, sections 1.4 and 1.5 (convergence order, when Newton fails); Lomont, "Fast inverse square root" (2003) for the magic constant |
 
 ## Key Takeaways
 
-- **Newton's method** replaces $f$ by its tangent line at $x_n$ and jumps to the tangent's zero: $x_{n+1} = x_n - f(x_n)/f'(x_n)$ (`test_hand_example`).
-- Near a simple root it converges **quadratically**: $e_{n+1} \approx C e_n^2$ with $C = |f''/(2f')|$ at the root, so the number of correct digits doubles every step (`test_digits_double_per_step`).
-- It is only **locally** convergent: it can cycle, diverge, or hit a flat tangent. A correct implementation reports each of these instead of returning a wrong number (`test_cycle_raises_after_max_iter`, `test_divergence_raises`, `test_zero_derivative_raises`).
-- The stopping test must be **relative**, $|x_{n+1} - x_n| \le \mathrm{tol} \cdot \max(1, |x_{n+1}|)$, because floats near a large root are far apart (`test_relative_tolerance_for_large_roots`).
-- Applied to $g(y) = 1/y^2 - x$, Newton computes $1/\sqrt{x}$ with only multiplications, $y \leftarrow y(\frac{3}{2} - \frac{1}{2} x y^2)$; two steps from a 3.5 percent guess reach float32 accuracy (`test_rsqrt_error_squares_each_step`).
+- **Newton's method** replaces $f$ by its tangent line at $x_n$ and jumps to the tangent's zero: $x_{n+1} = x_n - f(x_n)/f'(x_n)$.
+- Near a simple root it converges **quadratically**: $e_{n+1} \approx C e_n^2$ with $C = |f''/(2f')|$ at the root, so the number of correct digits doubles every step.
+- It is only **locally** convergent: it can cycle, diverge, or hit a flat tangent. A correct implementation reports each of these instead of returning a wrong number.
+- The stopping test must be **relative**, $|x_{n+1} - x_n| \le \mathrm{tol} \cdot \max(1, |x_{n+1}|)$, because floats near a large root are far apart.
+- Applied to $g(y) = 1/y^2 - x$, Newton computes $1/\sqrt{x}$ with only multiplications, $y \leftarrow y(\frac{3}{2} - \frac{1}{2} x y^2)$; two steps from a 3.5 percent guess reach float32 accuracy.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M01.2              # stubs python/tinyllm/num/newton.py into your repo
-ol tests M01.2              # read the test catalog first: rung R0, you write no tests here
-ol check M01.2              # exit code is the verdict
-ol check M01.2 --ref-deps   # only if your M01.1 is not passing yet
-ol diff  M01.2              # after passing: your code against the reference
-```
+Sections 1 and 2 derive Newton's step, its quadratic convergence, its failure modes, and the division-free iteration for $1/\sqrt{x}$ from first principles. Section 3 works both by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Every transformer you build normalizes its activations, and from `L7.1` on the normalization is RMSNorm: divide a vector by $\sqrt{\text{mean of squares}}$. In Pass 6 your C kernel (`L9.6`) computes it for every token of every layer, and a division plus a square root per element is the slow way. Hardware and libraries compute $1/\sqrt{x}$ directly, by a cheap guess refined with Newton's method, and `M09.5` does the same in C. This module teaches the method on paper and in Python, where you can see the digits double, so that the C port has a trusted reference: your own Python, step for step. The general `newton` you write here is also the first algorithm in the course that can fail in ways a test must catch: a flat tangent, a cycle, a runaway. You build it to say so.
+Every transformer in the course normalizes its activations, and from `L7.1` on the normalization is RMSNorm: divide a vector by $\sqrt{\text{mean of squares}}$. In Pass 6 the C kernel (`L9.6`) computes it for every token of every layer, and a division plus a square root per element is the slow way. Hardware and libraries compute $1/\sqrt{x}$ directly, by a cheap guess refined with Newton's method, and `M09.5` does the same in C. This module teaches the method on paper and in Python, where you can see the digits double, so that the C port has a trusted reference: this Python, step for step. The general `newton` here is also the first algorithm in the course that can fail in ways a caller must hear about: a flat tangent, a cycle, a runaway. The solution is built to say so.
 
 ## 2. Principles
 
@@ -77,11 +68,11 @@ Divide by $f'(x_n)$ and use the definition of $x_{n+1}$: $x_{n+1} - x^\star = \f
 
 $$e_{n+1} = \frac{f''(\xi)}{2 f'(x_n)}\, e_n^2 \approx C\, e_n^2, \qquad C = \left|\frac{f''(x^\star)}{2 f'(x^\star)}\right| .$$
 
-The new error is proportional to the **square** of the old one. If $|e_n| = 10^{-3}$ and $C \approx 1$, then $|e_{n+1}| \approx 10^{-6}$ and $|e_{n+2}| \approx 10^{-12}$: the number of correct digits doubles each step. For $x^2 - 2$, $C = \frac{2}{2 \cdot 2\sqrt{2}} = \frac{1}{2\sqrt 2} \approx 0.354$, and the ratio $e_{n+1}/e_n^2$ approaches exactly that (`test_digits_double_per_step`).
+The new error is proportional to the **square** of the old one. If $|e_n| = 10^{-3}$ and $C \approx 1$, then $|e_{n+1}| \approx 10^{-6}$ and $|e_{n+2}| \approx 10^{-12}$: the number of correct digits doubles each step. For $x^2 - 2$, $C = \frac{2}{2 \cdot 2\sqrt{2}} = \frac{1}{2\sqrt 2} \approx 0.354$, and the ratio $e_{n+1}/e_n^2$ approaches exactly that.
 
 The proof needs $f'(x_n) \neq 0$ and $x_n$ already close to the root. Far from it nothing is promised. $f(x) = x^3 - 2x + 2$ started at 0 jumps to 1 and back to 0 forever. $f(x) = \sqrt[3]{x}$ has its tangent at $x$ cross zero at $-2x$, so every step doubles the distance. A method that is only **locally convergent** must be given an iteration budget, `max_iter`, and must report when it runs out.
 
-**The derivative must move with the iterate.** Computing $f'(x_0)$ once and reusing it (the "chord method") still converges, but only linearly: the error shrinks by a constant factor $|1 - f'(x^\star)/f'(x_0)|$ per step, and if that factor exceeds 1 it diverges. When you pass no derivative, `newton` calls `central_diff` at each $x_n$; its relative error near $10^{-10}$ keeps the convergence effectively quadratic.
+**The derivative must move with the iterate.** Computing $f'(x_0)$ once and reusing it (the "chord method") still converges, but only linearly: the error shrinks by a constant factor $|1 - f'(x^\star)/f'(x_0)|$ per step, and if that factor exceeds 1 it diverges. When no derivative is passed, `newton` calls `central_diff` at each $x_n$; its relative error near $10^{-10}$ keeps the convergence effectively quadratic.
 
 **Stopping.** Stop when the step is negligible relative to the iterate, $|x_{n+1} - x_n| \le \mathrm{tol} \cdot \max(1, |x_{n+1}|)$. An absolute test fails for large roots: floats near 12649 are $1.8 \times 10^{-12}$ apart, so near $\sqrt{1.6 \times 10^8}$ the last steps hop between two neighbouring floats and an absolute $10^{-12}$ is never met. The $\max(1, \cdot)$ keeps the test absolute near zero, where a relative one would demand impossible precision. And if $f(x_n)$ is exactly 0, $x_n$ is a root and no step is needed.
 
@@ -110,7 +101,7 @@ so the relative error squares (times $\frac{3}{2}$) each step. A good first gues
 | 4 | 1.41421356237469 | $\frac{665857}{470832}$ | $1.6 \times 10^{-12}$ | 0.354 |
 | 5 | 1.4142135623730951 | | below one float spacing | |
 
-The correct digits go 0, 1, 2, 5, 11, 16. Update 5 moves by $1.6 \times 10^{-12}$, more than $\mathrm{tol} \cdot |x| = 1.4 \times 10^{-12}$, so the method takes update 6, which moves by one unit in the last place, and stops: `newton` returns $(x_6, 6)$. `test_hand_example` checks the fractions, the count, and the five points where $f$ was evaluated.
+The correct digits go 0, 1, 2, 5, 11, 16. Update 5 moves by $1.6 \times 10^{-12}$, more than $\mathrm{tol} \cdot |x| = 1.4 \times 10^{-12}$, so the method takes update 6, which moves by one unit in the last place, and stops: `newton` returns $(x_6, 6)$, having evaluated $f$ at the six points $x_0, \ldots, x_5$.
 
 **$1/\sqrt{4} = 0.5$ from $y_0 = 0.4$** ($\delta_0 = -0.2$):
 
@@ -118,7 +109,7 @@ $$y_1 = 0.4 \left(1.5 - 0.5 \cdot 4 \cdot 0.16\right) = 0.4 \cdot 1.18 = 0.472, 
 
 $$y_2 = 0.472 \left(1.5 - 2 \cdot 0.222784\right) = 0.472 \cdot 1.054432 = 0.497691904, \qquad \delta_2 = -0.0046 .$$
 
-Check with the error formula: $-\frac{3}{2}(0.2)^2 - \frac{1}{2}(-0.2)^3 = -0.06 + 0.004 = -0.056$. These are `test_rsqrt_hand_example`.
+Check with the error formula: $-\frac{3}{2}(0.2)^2 - \frac{1}{2}(-0.2)^3 = -0.06 + 0.004 = -0.056$.
 
 ## 4. The interface
 
@@ -169,17 +160,17 @@ def rsqrt_newton(x: ArrayLike, y0: ArrayLike, iters: int) -> NDArray: ...
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M01.1` | `newton(f, None, x0)` calls `central_diff` at every iterate |
-| Forward | `M09.5` | the same $y(\frac{3}{2} - \frac{1}{2}xy^2)$ in C, float32, from the bit-trick guess; its differential test compares against your `rsqrt_newton` (Pass 6) |
+| Forward | `M09.5` | the same $y(\frac{3}{2} - \frac{1}{2}xy^2)$ in C, float32, from the bit-trick guess; its differential test compares against `rsqrt_newton` (Pass 6) |
 | Forward | `L9.6` | `tl_rmsnorm_f32` multiplies by that reciprocal square root for every token |
 | Forward | `M10.6` | optional: Muon orthogonalizes momentum with Newton-Schulz, Newton's method for a matrix function |
 | Forward | `M09.3` | convergence order and error propagation, generalized |
 | Forward | `M07.7` | `fit_temperature` calls `newton(g, dg, 0.0)` on the derivative of the NLL in $1/T$, with the variance of the logits as `dg` |
 
-`M07.7` is the registered call site; `M09.5` is an optional C side quest and `M10.6` is not authored yet.
+`M07.7` is the main call site; `M09.5` is an optional C side quest and `M10.6` is not authored yet.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `rsqrt_newton` with the bit trick | x86 `rsqrtps` / ARM `frsqrte` plus one Newton step; CUDA `rsqrtf` | a hardware table lookup for the first 12 bits, then the same refinement | Intel intrinsics guide `_mm_rsqrt_ps`; ggml's `ggml_vec_*` RMSNorm paths |
 | `newton` | SciPy `scipy.optimize.newton`, `brentq` | secant and Halley variants; Brent's method brackets the root so it can never diverge | `scipy/optimize/_zeros_py.py` |
