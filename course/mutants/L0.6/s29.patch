@@ -1,8 +1,0 @@
---- a/python/tinyllm/io/tokens.py
-+++ b/python/tinyllm/io/tokens.py
-@@ -117,5 +117,4 @@
-             raise ValueError(f"cursor shard {shard} is not one of the {len(self.ids)} shards")
-         if not 0 <= offset <= self.ids[shard].size:
-             raise ValueError(f"cursor offset {offset} is outside shard {shard} ({self.ids[shard].size} tokens)")
--        self.rng.set_state(tuple(cursor["rng"]))
-         self.shard, self.offset = shard, offset

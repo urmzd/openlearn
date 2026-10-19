@@ -1,5 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	go/agent/eval/experiment/experiment.go	semantic	pitfall-1	48	y	(hidden until pass)	paired delta subtracts experiment from base
-s02	go/agent/eval/experiment/experiment.go	semantic	pitfall-2	67	y	(hidden until pass)	one-arm scorer errors are counted as zero-valued pairs
-s03	go/agent/eval/experiment/experiment.go	semantic	pitfall-3	96	y	(hidden until pass)	confidence interval bounds are reversed
-s04	go/workflows/eval_suite.go	semantic	pitfall-4	131	y	(hidden until pass)	durable suite drops its A/B settings

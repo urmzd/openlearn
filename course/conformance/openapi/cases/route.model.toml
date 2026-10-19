@@ -1,5 +1,0 @@
-id       = "route.model"
-title    = "model routes to an upstream serving it; an unknown model is a 404 model_not_found"
-versions = ["v1", "v2"]
-tiers    = ["gateway"]
-check    = "route_model"

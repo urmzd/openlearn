@@ -1,8 +1,0 @@
---- a/python/tinyllm/seq2seq/luong.py
-+++ b/python/tinyllm/seq2seq/luong.py
-@@ -104,4 +104,4 @@
-                 f"query and context must both be [B, {self.d}], got {query.shape} and {context.shape}"
-             )
-         # Luong's order: the context first, then the decoder state.
--        return F.tanh(self.combine(F.concat([context, query], axis=-1)))
-+        return F.tanh(self.combine(F.concat([query, context], axis=-1)))

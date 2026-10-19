@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/kv_transfer.rs
-+++ b/rust/crates/tl-engine/src/kv_transfer.rs
-@@ -143 +143 @@
--        self.n_layers as usize * 2 * self.n_kv_heads as usize * self.block_tokens as usize * self.head_dim as usize * 2
-+        self.n_layers as usize * 2 * self.n_kv_heads as usize * self.block_tokens as usize * self.head_dim as usize

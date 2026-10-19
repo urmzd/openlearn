@@ -1,1 +1,0 @@
-{"type": "object", "properties": {"answer": {"enum": ["yes", "no", "maybe"]}, "confident": {"type": "boolean"}, "tags": {"type": "array", "items": {"enum": ["a", "b", "c"]}, "maxItems": 3}}, "required": ["answer"]}

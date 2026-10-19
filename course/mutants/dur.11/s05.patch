@@ -1,5 +1,0 @@
---- a/go/workflows/train_run.go
-+++ b/go/workflows/train_run.go
-@@ -134,1 +134,1 @@
--		seg, err := withField(in.Spec, "steps", until)
-+		seg, err := withField(in.Spec, "steps", spec.Steps)

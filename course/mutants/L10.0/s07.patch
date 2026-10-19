@@ -1,5 +1,0 @@
---- a/rust/crates/tl-serve/src/http.rs
-+++ b/rust/crates/tl-serve/src/http.rs
-@@ -53 +53 @@
--        self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v.as_str())
-+        self.headers.iter().find(|(k, _)| k == name).map(|(_, v)| v.as_str())

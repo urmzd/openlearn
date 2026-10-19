@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/heartbeat.rs
-+++ b/rust/crates/tl-engine/src/heartbeat.rs
-@@ -48 +48 @@
--        c.heartbeat(status).await.map(|r| r.into_inner()).map_err(|s| format!("{:?}: {}", s.code(), s.message()))
-+        c.heartbeat(status).await.map(|_| HeartbeatAck::default()).map_err(|s| format!("{:?}: {}", s.code(), s.message()))

@@ -1,9 +1,0 @@
---- a/go/workflows/eval_suite.go
-+++ b/go/workflows/eval_suite.go
-@@ -120,5 +120,5 @@
- // applyAdvancedSpecOptions adds the judge and A/B options to a durable
- // suite's per-suite subprocess request.
- func applyAdvancedSpecOptions(spec *evalSpec, in EvalSuiteInput) {
--	spec.Scorers, spec.Judge, spec.AB, spec.Thresholds = in.Scorers, in.Judge, in.AB, in.Thresholds
-+	spec.Scorers, spec.Judge, spec.AB, spec.Thresholds = in.Scorers, in.Judge, nil, in.Thresholds
- }

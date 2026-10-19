@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/docs/c4/context.d2" ]; then echo "craft.09: missing docs/c4/context.d2" >&2; missing=1; fi
-if [ ! -e "$root/docs/c4/containers.d2" ]; then echo "craft.09: missing docs/c4/containers.d2" >&2; missing=1; fi
-if [ ! -e "$root/docs/c4/components-engine.d2" ]; then echo "craft.09: missing docs/c4/components-engine.d2" >&2; missing=1; fi
-exit "$missing"

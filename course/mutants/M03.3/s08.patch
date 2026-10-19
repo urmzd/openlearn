@@ -1,8 +1,0 @@
---- a/python/tinyllm/linalg/qr.py
-+++ b/python/tinyllm/linalg/qr.py
-@@ -63,4 +63,4 @@
-     # for a wide matrix factor its transpose and transpose back.
-     Q, _ = qr_householder(G.T if rows < cols else G)
-     W = Q.T if rows < cols else Q
--    return gain * W
-+    return gain * gain * W

@@ -1,8 +1,0 @@
---- a/python/tinyllm/demo/scale.py
-+++ b/python/tinyllm/demo/scale.py
-@@ -3,4 +3,4 @@
- 
- def scale(xs: list[float], k: float) -> list[float]:
-     """Return a new list [k * x for x in xs]; the input is left unchanged."""
--    return [k * x for x in xs]
-+    return [k + x for x in xs]

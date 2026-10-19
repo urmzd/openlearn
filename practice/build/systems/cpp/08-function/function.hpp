@@ -57,7 +57,6 @@ class Function<R(Args...)> {
                 std::is_invocable_r_v<R, std::decay_t<F>&, Args...>>>
   Function(F&& f) {
     using Callable = std::decay_t<F>;
-    // SOLUTION-BEGIN
     // Inline only if it fits AND relocating it cannot throw. A callable whose
     // move can throw must live on the heap, because moving the Function would
     // otherwise have to move the callable, and a throw partway through leaves
@@ -74,14 +73,12 @@ class Function<R(Args...)> {
     } else {
       heap_ = new Callable(std::forward<F>(f));
     }
-    // SOLUTION-END
   }
 
   Function(const Function&) = delete;  // see the README: copying needs a fourth op
   Function& operator=(const Function&) = delete;
 
   Function(Function&& other) noexcept {
-    // SOLUTION-BEGIN
     if (other.vtable_) {
       vtable_ = other.vtable_;
       if (vtable_->inline_storage) {
@@ -96,11 +93,9 @@ class Function<R(Args...)> {
       }
       other.vtable_ = nullptr;
     }
-    // SOLUTION-END
   }
 
   Function& operator=(Function&& other) noexcept {
-    // SOLUTION-BEGIN
     if (this != &other) {
       reset();
       if (other.vtable_) {
@@ -116,7 +111,6 @@ class Function<R(Args...)> {
       }
     }
     return *this;
-    // SOLUTION-END
   }
 
   Function& operator=(std::nullptr_t) noexcept {
@@ -128,13 +122,11 @@ class Function<R(Args...)> {
 
   // Call it. Throws if empty, matching std::bad_function_call.
   R operator()(Args... args) const {
-    // SOLUTION-BEGIN
     if (!vtable_) throw std::bad_function_call();
     void* self = vtable_->inline_storage
                      ? const_cast<void*>(static_cast<const void*>(&buffer_))
                      : heap_;
     return vtable_->invoke(self, std::forward<Args>(args)...);
-    // SOLUTION-END
   }
 
   explicit operator bool() const noexcept { return vtable_ != nullptr; }

@@ -1,9 +1,0 @@
---- a/python/tinyllm/vision/tiling.py
-+++ b/python/tinyllm/vision/tiling.py
-@@ -231,5 +231,5 @@
-             return base + 1
-         th, tw = select_best_resolution((h, w), cfg.pinpoints)
-         uh, uw = unpad_shape((h, w), (th // cfg.tile * side, tw // cfg.tile * side))
--        return base + uh * uw + uh
-+        return base + uh * uw + uw
-     raise ValueError(f"image_token_count: unknown kind {cfg.kind!r}")

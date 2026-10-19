@@ -1,9 +1,0 @@
---- a/c/src/kernels/paged_attn.c	2026-10-09 12:00:00
-+++ b/c/src/kernels/paged_attn.c	2026-10-09 12:00:00
-@@ -149,5 +149,5 @@
-         rows(&a, 0, B * H, 0);
-         return TL_OK;
-     }
--    return tl_parallel_for(tp, B * H, 1, rows, &a);
-+    return tl_parallel_for(tp, B * H - 1, 1, rows, &a);
- }

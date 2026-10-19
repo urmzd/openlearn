@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/spec.rs
-+++ b/rust/crates/tl-engine/src/spec.rs
-@@ -233 +233 @@
--    Ok((sample_dense(&residual(p, q), u_resample), false))
-+    Ok((sample_dense(p, u_resample), false))

@@ -1,9 +1,0 @@
---- a/c/src/numerics/expf.c
-+++ b/c/src/numerics/expf.c
-@@ -71,5 +71,5 @@
- }
- 
- void tl_exp_f32(const float *x, float *y, int64_t n) {
--    for (int64_t i = 0; i < n; i++) y[i] = tl_expf(x[i]);
-+    for (int64_t i = 0; i < n - 1; i++) y[i] = tl_expf(x[i]);
- }

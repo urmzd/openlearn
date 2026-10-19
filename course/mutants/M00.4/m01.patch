@@ -1,8 +1,0 @@
---- a/python/tinyllm/num/poly.py
-+++ b/python/tinyllm/num/poly.py
-@@ -50,4 +50,4 @@
-         return (0.0, 0.0)
-     # One root is q / a; Vieta (x1 x2 = c / a) gives the other as c / q.
-     r1, r2 = q / a, c / q
--    return (r1, r2) if r1 <= r2 else (r2, r1)
-+    return (r1, r2) if r1 >= r2 else (r2, r1)

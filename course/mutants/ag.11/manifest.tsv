@@ -1,4 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	go/agent/eval/judge/judge.go	semantic	pitfall-1	40	y	(hidden until pass)	judge output errors become a zero score
-s02	go/agent/eval/judge/judge.go	semantic	pitfall-2	64	y	(hidden until pass)	pairwise comparison keeps the original first-position choice
-s03	go/agent/eval/judge/judge.go	semantic	pitfall-3	89	y	(hidden until pass)	judge is sampled on every case

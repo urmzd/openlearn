@@ -9,15 +9,12 @@
 #include <stdlib.h>
 
 void vec_init(Vec *v) {
-  /* SOLUTION-BEGIN */
   v->data = NULL;
   v->len = 0;
   v->cap = 0;
-  /* SOLUTION-END */
 }
 
 int vec_reserve(Vec *v, size_t n) {
-  /* SOLUTION-BEGIN */
   if (n <= v->cap) return 0;
 
   /* Double, but never less than the caller asked for, and start at 4 rather
@@ -40,36 +37,27 @@ int vec_reserve(Vec *v, size_t n) {
   v->data = grown;
   v->cap = cap;
   return 0;
-  /* SOLUTION-END */
 }
 
 int vec_push(Vec *v, int x) {
-  /* SOLUTION-BEGIN */
   if (v->len == v->cap && vec_reserve(v, v->len + 1) != 0) return -1;
   v->data[v->len++] = x;
   return 0;
-  /* SOLUTION-END */
 }
 
 int vec_pop(Vec *v, int *out) {
-  /* SOLUTION-BEGIN */
   if (v->len == 0) return -1;
   *out = v->data[--v->len];
   return 0;
-  /* SOLUTION-END */
 }
 
 int vec_get(const Vec *v, size_t i) {
-  /* SOLUTION-BEGIN */
   return v->data[i];
-  /* SOLUTION-END */
 }
 
 void vec_free(Vec *v) {
-  /* SOLUTION-BEGIN */
   free(v->data);
   v->data = NULL;
   v->len = 0;
   v->cap = 0;
-  /* SOLUTION-END */
 }

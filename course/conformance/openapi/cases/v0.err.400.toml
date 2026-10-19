@@ -1,8 +1,0 @@
-id       = "v0.err.400"
-title    = "An out-of-range parameter is a 400 in the error shape"
-versions = ["v0"]
-tiers    = ["engine", "gateway"]
-check    = "error_400"
-
-[params]
-override = { temperature = -1 }

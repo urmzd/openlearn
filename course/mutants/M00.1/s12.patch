@@ -1,8 +1,0 @@
---- a/python/tinyllm/num/units.py
-+++ b/python/tinyllm/num/units.py
-@@ -49,4 +49,4 @@
-     if math.isnan(nll) or nll < 0:
-         raise ValueError(f"a summed negative log-likelihood is >= 0, got {nll}")
-     # Total nats -> total bits, then shared by every byte of the text.
--    return nll / (int(n_bytes) * LN2)
-+    return nll / LN2

@@ -1,6 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	go/gateway/limit/limit.go	seeded	correctness	224	y	sweep forgives a key's debt	a key charged an overrun (level below 0) is dropped after IdleTTL and comes back full: two idle minutes refill only two capacities
-s02	go/gateway/limit/limit.go	seeded	concurrency	230	y	Len reads the map without the lock	len(map) concurrent with Reserve's map writes is a data race (go test -race); a map length is not an atomic word in the Go memory model
-s03	go/gateway/limit/limit.go	seeded	correctness	221	n	sweep ignores open reservations	a request still streaming after IdleTTL loses its key; its Settle finds no key and the overrun charge is dropped
-s04	go/gateway/limit/limit.go	seeded	correctness	395	y	Retry-After rounds to nearest	a 1.2 s wait says Retry-After 1; the contract rounds up (at least 1), so a client that obeys it is rejected again
-s05	go/gateway/limit/limit.go	seeded	performance	188	n	sweep runs on every call after the 256th	calls >= sweepEvery stays true: from call 256 on every Reserve walks every key under the global lock, O(keys) per request

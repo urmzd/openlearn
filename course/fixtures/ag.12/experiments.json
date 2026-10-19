@@ -1,1 +1,0 @@
-{"schema_version":1,"description":"Synthetic paired outcomes for deterministic experiment examples","cases":[{"id":"case-a","base":0,"experiment":1},{"id":"case-b","base":1,"experiment":1},{"id":"case-c","base":0,"experiment":0}]}

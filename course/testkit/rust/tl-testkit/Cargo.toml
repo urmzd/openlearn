@@ -1,9 +1,0 @@
-[package]
-name = "tl-testkit"
-version = "0.1.0"
-edition = "2021"
-publish = false
-description = "The Rust half of the course fault and determinism kit (course/DESIGN.md 4.4): failpoints and a fake clock. Std only."
-
-[lib]
-path = "src/lib.rs"

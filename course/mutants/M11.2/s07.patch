@@ -1,9 +1,0 @@
---- a/python/tinyllm/info/ppl.py
-+++ b/python/tinyllm/info/ppl.py
-@@ -96,5 +96,5 @@
-             "nll_mean": float(mean),
-             "ppl": perplexity(total, self.n_tokens),
-             "bits_per_token": float(mean / math.log(2.0)),
--            "bpb": bits_per_byte(total, self.n_bytes) if self.n_bytes > 0 else math.nan,
-+            "bpb": bits_per_byte(total, self.n_tokens) if self.n_bytes > 0 else math.nan,
-         }

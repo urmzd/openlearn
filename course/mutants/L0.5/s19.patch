@@ -1,8 +1,0 @@
---- a/python/tinyllm/lm/bigram.py
-+++ b/python/tinyllm/lm/bigram.py
-@@ -172,4 +172,4 @@
-         return F.embedding(self.weight, ids)
- 
-     def to_lm(self) -> BigramLM:
--        return BigramLM(self.weight.data.astype(np.float32, copy=True))
-+        return BigramLM(self.weight.data.astype(np.float32, copy=False))

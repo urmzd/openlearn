@@ -1,5 +1,0 @@
-{"case_id": "docsqa-001", "input": "Which hash names a KV block?", "ground_truth": {"answer": "chained FNV-1a 64", "chunks": ["docs/kv-cache.md#2"]}, "tags": ["rag"], "scorer_args": {"regex": {"pattern": "FNV-1a"}}}
-{"case_id": "docsqa-002", "input": "What does a 429 from the gateway carry?", "ground_truth": {"answer": "Retry-After", "chunks": ["docs/gateway.md#2"]}, "tags": ["rag"], "scorer_args": {"regex": {"pattern": "Retry-After"}}}
-{"case_id": "chat-003", "input": {"messages": [{"role": "system", "content": "Answer in one word."}, {"role": "user", "content": "Is temperature zero greedy?"}]}, "ground_truth": "yes", "tags": ["chat"], "scorer_args": {}}
-{"case_id": "tool-004", "input": "How many requests did acme make today?", "ground_truth": {"tool": "query_usage"}, "tags": ["tools"], "scorer_args": {"tool_called": {"name": "query_usage"}}}
-{"case_id": "plain-005", "input": "Say hello.", "tags": [], "scorer_args": {}}

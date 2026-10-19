@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/forward.rs
-+++ b/rust/crates/tl-engine/src/forward.rs
-@@ -195 +195 @@
--        let m = silu_mul(&g, &u, device)?; let dn = project(&lw.down, &m, n, device)?; add_assign(&mut x, &dn)?;
-+        let m = silu_mul(&u, &g, device)?; let dn = project(&lw.down, &m, n, device)?; add_assign(&mut x, &dn)?;

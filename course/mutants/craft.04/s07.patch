@@ -1,8 +1,0 @@
---- a/primers/craft.04/textops.py
-+++ b/primers/craft.04/textops.py
-@@ -108,4 +108,4 @@
- 
-     def decode(self, ids: Sequence[int]) -> str:
-         """decode_bytes, then UTF-8 with replacement."""
--        return self.decode_bytes(ids).decode("utf-8", errors="replace")
-+        return self.decode_bytes(ids).decode("utf-8", errors="ignore")

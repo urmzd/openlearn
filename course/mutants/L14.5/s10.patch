@@ -1,8 +1,0 @@
---- a/python/tinyllm/eval/mm.py
-+++ b/python/tinyllm/eval/mm.py
-@@ -171,4 +171,4 @@
- ) -> tuple[float, float, float]:
-     a = np.asarray(per_item)
-     idx = np.arange(len(a), dtype=np.float64)
--    return _bootstrap(idx, lambda ix: float(stat(a[ix.astype(np.int64)])), n, alpha, PCG32(seed))
-+    return _bootstrap(idx, lambda ix: float(stat(a)), n, alpha, PCG32(seed))

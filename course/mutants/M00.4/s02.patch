@@ -1,9 +1,0 @@
---- a/python/tinyllm/num/poly.py
-+++ b/python/tinyllm/num/poly.py
-@@ -49,5 +49,5 @@
-     if q == 0.0:  # b == 0 and disc == 0, so c == 0: the double root 0
-         return (0.0, 0.0)
-     # One root is q / a; Vieta (x1 x2 = c / a) gives the other as c / q.
--    r1, r2 = q / a, c / q
-+    r1, r2 = (-b - math.sqrt(disc)) / (2 * a), (-b + math.sqrt(disc)) / (2 * a)
-     return (r1, r2) if r1 <= r2 else (r2, r1)

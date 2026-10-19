@@ -1,9 +1,0 @@
---- a/python/tinyllm/num/fp.py
-+++ b/python/tinyllm/num/fp.py
-@@ -116,5 +116,5 @@
-     mag = np.where(e16 == 0, np.ldexp(m16.astype(np.float64), -24),
-                    np.ldexp((m16 + 1024).astype(np.float64), e16 - 25))
-     mag = np.where(e16 == 0x1F, np.where(m16 != 0, np.nan, np.inf), mag)
--    out = np.where((h >> 15) == 1, -mag, mag)
-+    out = mag
-     return out.astype(np.float32)

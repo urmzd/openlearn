@@ -1,6 +1,0 @@
-id       = "priority.internal"
-title    = "X-TL-Priority from a client is stripped; the gateway sets it from the key's tier"
-versions = ["v1", "v2"]
-tiers    = ["gateway"]
-upstream = "fake"
-check    = "priority_internal"

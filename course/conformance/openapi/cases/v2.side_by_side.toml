@@ -1,5 +1,0 @@
-id       = "v2.side_by_side"
-title    = "Every operation the v2 contract probes (v1 paths and v2 paths) answers per its schema"
-versions = ["v2"]
-tiers    = ["engine", "gateway"]
-check    = "contract_paths"

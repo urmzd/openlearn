@@ -1,2 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	python/tinyllm/demo/scale.py	semantic	pitfall-1	6	y	scales the caller's list in place	in-place loop

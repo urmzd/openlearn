@@ -1,9 +1,0 @@
---- a/go/gateway/policy/policy.go
-+++ b/go/gateway/policy/policy.go
-@@ -200,5 +200,5 @@
- 			head, ok := p.Heads[rule.Classifier.Head]
- 			if !ok || p.Embedder == nil {
--				return Decision{}, ErrEmbeddingUnavailable
-+				return Decision{Allow: true}, nil
- 			}
- 			emb, err := p.Embedder.Embed(ctx, head.EmbeddingModel, text)

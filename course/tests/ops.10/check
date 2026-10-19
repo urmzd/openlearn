@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/docs/runbooks/RunawayAgent.md" ]; then echo "ops.10: missing docs/runbooks/RunawayAgent.md" >&2; missing=1; fi
-exit "$missing"

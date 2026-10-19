@@ -26,7 +26,6 @@ size_t map_hash(const char *key) {
  * deliberate: a table whose slots are mostly tombstones needs its tombstones
  * purged, not a bigger array. */
 static int map_resize(Map *m, size_t want) {
-  /* SOLUTION-BEGIN */
   size_t cap = 8;
   while (cap < want) {
     if (cap > SIZE_MAX / 2) return -1;
@@ -50,13 +49,11 @@ static int map_resize(Map *m, size_t want) {
   m->cap = cap;
   m->used = m->len; /* tombstones are gone */
   return 0;
-  /* SOLUTION-END */
 }
 
 /* Index of `key` if present, or of the first slot it could be inserted into.
  * Returns 1 when found, 0 when not, and writes the index either way. */
 static int map_probe(const Map *m, const char *key, size_t *idx) {
-  /* SOLUTION-BEGIN */
   size_t mask = m->cap - 1;
   size_t i = map_hash(key) & mask;
   size_t first_tomb = SIZE_MAX;
@@ -82,20 +79,16 @@ static int map_probe(const Map *m, const char *key, size_t *idx) {
   /* Table is entirely full or entirely tombstoned. */
   *idx = (first_tomb == SIZE_MAX) ? 0 : first_tomb;
   return 0;
-  /* SOLUTION-END */
 }
 
 void map_init(Map *m) {
-  /* SOLUTION-BEGIN */
   m->slots = NULL;
   m->cap = 0;
   m->len = 0;
   m->used = 0;
-  /* SOLUTION-END */
 }
 
 int map_put(Map *m, const char *key, int value) {
-  /* SOLUTION-BEGIN */
   /* Resize when the table is 3/4 used, counting tombstones. Using `used`
    * rather than `len` is what stops a delete-heavy workload from degrading into
    * a linear scan: tombstones still cost probe steps even though they hold
@@ -124,21 +117,17 @@ int map_put(Map *m, const char *key, int value) {
   m->slots[i].state = SLOT_FULL;
   m->len++;
   return 0;
-  /* SOLUTION-END */
 }
 
 int map_get(const Map *m, const char *key, int *out) {
-  /* SOLUTION-BEGIN */
   if (m->cap == 0) return -1;
   size_t i;
   if (!map_probe(m, key, &i)) return -1;
   *out = m->slots[i].value;
   return 0;
-  /* SOLUTION-END */
 }
 
 int map_del(Map *m, const char *key) {
-  /* SOLUTION-BEGIN */
   if (m->cap == 0) return -1;
   size_t i;
   if (!map_probe(m, key, &i)) return -1;
@@ -151,19 +140,14 @@ int map_del(Map *m, const char *key) {
   m->slots[i].state = SLOT_TOMB;
   m->len--;
   return 0;
-  /* SOLUTION-END */
 }
 
 size_t map_len(const Map *m) {
-  /* SOLUTION-BEGIN */
   return m->len;
-  /* SOLUTION-END */
 }
 
 void map_free(Map *m) {
-  /* SOLUTION-BEGIN */
   for (size_t i = 0; i < m->cap; i++) free(m->slots[i].key);
   free(m->slots);
   map_init(m);
-  /* SOLUTION-END */
 }

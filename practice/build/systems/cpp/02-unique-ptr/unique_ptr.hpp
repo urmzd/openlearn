@@ -45,16 +45,13 @@ class UniquePtr {
   UniquePtr& operator=(const UniquePtr&) = delete;
 
   UniquePtr(UniquePtr&& other) noexcept {
-    // SOLUTION-BEGIN
     // release() leaves the source holding nullptr, which is what makes this a
     // transfer rather than a share. Forgetting it is a double free.
     ptr_ = other.release();
     del_ = std::move(other.del_);
-    // SOLUTION-END
   }
 
   UniquePtr& operator=(UniquePtr&& other) noexcept {
-    // SOLUTION-BEGIN
     if (this != &other) {
       // reset() first: whatever we currently own has to be destroyed, or
       // assigning over a live pointer leaks it.
@@ -62,7 +59,6 @@ class UniquePtr {
       del_ = std::move(other.del_);
     }
     return *this;
-    // SOLUTION-END
   }
 
   UniquePtr& operator=(std::nullptr_t) noexcept {
@@ -71,11 +67,9 @@ class UniquePtr {
   }
 
   ~UniquePtr() {
-    // SOLUTION-BEGIN
     // The only place deletion happens. Because destructors run during stack
     // unwinding, this is also what makes the type exception-safe for free.
     if (ptr_) del_(ptr_);
-    // SOLUTION-END
   }
 
   // ---- observers --------------------------------------------------------
@@ -96,30 +90,24 @@ class UniquePtr {
   // Give up ownership WITHOUT deleting, returning the raw pointer. The caller
   // becomes responsible for it.
   pointer release() noexcept {
-    // SOLUTION-BEGIN
     pointer old = ptr_;
     ptr_ = nullptr;
     return old;
-    // SOLUTION-END
   }
 
   // Destroy what is owned and adopt `p`.
   void reset(pointer p = nullptr) noexcept {
-    // SOLUTION-BEGIN
     // Swap first, delete second. Deleting before overwriting ptr_ means that
     // if ~T() reaches back into this UniquePtr, it sees a dangling pointer.
     // Self-reset (p == ptr_) is also handled correctly this way.
     pointer old = ptr_;
     ptr_ = p;
     if (old && old != p) del_(old);
-    // SOLUTION-END
   }
 
   void swap(UniquePtr& other) noexcept {
-    // SOLUTION-BEGIN
     std::swap(ptr_, other.ptr_);
     std::swap(del_, other.del_);
-    // SOLUTION-END
   }
 
  private:

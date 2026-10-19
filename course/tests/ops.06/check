@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/docs/runbooks/DependencyUpgrade.md" ]; then echo "ops.06: missing docs/runbooks/DependencyUpgrade.md" >&2; missing=1; fi
-exit "$missing"

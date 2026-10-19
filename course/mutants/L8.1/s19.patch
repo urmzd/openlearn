@@ -1,8 +1,0 @@
---- a/python/tinyllm/infer/sample.py
-+++ b/python/tinyllm/infer/sample.py
-@@ -196,4 +196,4 @@
- def sampled_entropy(
-     logits: ArrayLike, p: SamplingParams, history: Sequence[int] = (), prompt: Sequence[int] = ()
- ) -> float:
--    return float(entropy(sampling_distribution(logits, p, history, prompt)))
-+    return float(entropy(sampling_distribution(logits, SamplingParams(temperature=p.temperature or 1.0), history, prompt)))

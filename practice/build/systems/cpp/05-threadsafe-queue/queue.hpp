@@ -29,7 +29,6 @@ class BlockingQueue {
   // Block until there is room, then enqueue. Returns false if the queue was
   // closed while waiting.
   bool push(T value) {
-    // SOLUTION-BEGIN
     std::unique_lock lock(mutex_);
 
     // The predicate form of wait is the same as `while (!pred) wait(lock);`
@@ -49,25 +48,21 @@ class BlockingQueue {
     lock.unlock();
     not_empty_.notify_one();
     return true;
-    // SOLUTION-END
   }
 
   // Enqueue only if there is room right now. Never blocks.
   bool try_push(T value) {
-    // SOLUTION-BEGIN
     std::unique_lock lock(mutex_);
     if (closed_ || q_.size() >= cap_) return false;
     q_.push(std::move(value));
     lock.unlock();
     not_empty_.notify_one();
     return true;
-    // SOLUTION-END
   }
 
   // Block until an element is available. Returns nullopt once the queue is
   // both closed and drained, which is how consumers learn to stop.
   std::optional<T> pop() {
-    // SOLUTION-BEGIN
     std::unique_lock lock(mutex_);
     not_empty_.wait(lock, [this] { return !q_.empty() || closed_; });
 
@@ -81,12 +76,10 @@ class BlockingQueue {
     lock.unlock();
     not_full_.notify_one();
     return value;
-    // SOLUTION-END
   }
 
   // Take an element only if one is available right now.
   std::optional<T> try_pop() {
-    // SOLUTION-BEGIN
     std::unique_lock lock(mutex_);
     if (q_.empty()) return std::nullopt;
     T value = std::move(q_.front());
@@ -94,13 +87,11 @@ class BlockingQueue {
     lock.unlock();
     not_full_.notify_one();
     return value;
-    // SOLUTION-END
   }
 
   // Wake every waiter and refuse further pushes. Elements already queued are
   // still delivered.
   void close() {
-    // SOLUTION-BEGIN
     {
       std::lock_guard lock(mutex_);
       closed_ = true;
@@ -110,7 +101,6 @@ class BlockingQueue {
     // join on them deadlocks.
     not_empty_.notify_all();
     not_full_.notify_all();
-    // SOLUTION-END
   }
 
   bool closed() const {

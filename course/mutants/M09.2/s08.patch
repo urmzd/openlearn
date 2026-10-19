@@ -1,9 +1,0 @@
---- a/python/tinyllm/num/stable.py
-+++ b/python/tinyllm/num/stable.py
-@@ -81,6 +81,4 @@
-         h = lo + n // 2
-         return rec(lo, h) + rec(h, hi)
- 
--    if a.size == 0:
--        return 0.0
-     return float(rec(0, a.size))

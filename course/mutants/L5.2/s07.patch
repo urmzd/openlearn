@@ -1,8 +1,0 @@
---- a/python/tinyllm/xfmr/masks.py
-+++ b/python/tinyllm/xfmr/masks.py
-@@ -85,4 +85,4 @@
-     # -inf, not a large negative number: exp(-inf) is exactly 0, and a row
-     # with every key blocked stays all -inf, which the stable softmax maps
-     # to zeros instead of a uniform average over forbidden keys.
--    return np.where(m, dt.type(0.0), dt.type(-np.inf)).astype(dt)
-+    return np.where(m, dt.type(-np.inf), dt.type(0.0)).astype(dt)

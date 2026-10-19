@@ -1,9 +1,0 @@
---- a/c/src/ds/vec.c
-+++ b/c/src/ds/vec.c
-@@ -87,6 +87,4 @@
-     if (v == NULL) return;
-     tl_free(v->data);
-     v->data = NULL;
--    v->len = 0;
--    v->cap = 0;
- }

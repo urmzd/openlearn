@@ -22,4 +22,4 @@ pnpm preview --host 127.0.0.1
 
 The production preview enables service workers and installability on localhost. Development mode leaves service workers disabled. Select one course with `OPENLEARN_COURSE=mathematics pnpm build`, or omit the variable to publish the catalogue. Set `OPENLEARN_SITE_URL` to the deployment's public URL.
 
-See the [PWA guide](../../docs/pwa.md) for offline behavior, browser storage, installation, and testing. See [course publication](../../docs/courses.md) for source packs and PDF generation. Code execution and verified grading remain in the local practice CLI.
+See the [PWA guide](../../docs/pwa.md) for offline behavior, browser storage, installation, and testing. See [course publication](../../docs/courses.md) for source packs and PDF generation.

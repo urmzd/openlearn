@@ -1,2 +1,0 @@
-#!/bin/sh
-echo "kind v0.0.0-fake go1.22 darwin/arm64"

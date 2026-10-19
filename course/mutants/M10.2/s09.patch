@@ -1,8 +1,0 @@
---- a/python/tinyllm/optim/sgd.py
-+++ b/python/tinyllm/optim/sgd.py
-@@ -112,4 +112,4 @@
-         self.momentum = float(group["momentum"])
-         self.nesterov = bool(group["nesterov"])
-         self.weight_decay = float(group["weight_decay"])
--        self.buffers = buffers
-+        self.buffers = {}

@@ -1,3 +1,0 @@
-# contracts/py/tinyllm/demo/scale.pyi (fixture M90.1, upgraded by M90.3 behind this contract)
-# chapter: chapters/m90-1-scale.md
-def scale(xs: list[float], k: float) -> list[float]: ...

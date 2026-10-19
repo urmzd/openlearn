@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/docs/runbooks/EventlogDiskFull.md" ]; then echo "ops.11: missing docs/runbooks/EventlogDiskFull.md" >&2; missing=1; fi
-exit "$missing"

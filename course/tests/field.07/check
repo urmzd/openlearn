@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/docs/engagement/handoff.md" ]; then echo "field.07: missing docs/engagement/handoff.md" >&2; missing=1; fi
-exit "$missing"

@@ -1,5 +1,0 @@
---- a/go/gateway/server/chain.go
-+++ b/go/gateway/server/chain.go
-@@ -358 +358 @@
--			if strings.HasPrefix(strings.ToLower(k), "x-tl-") && !strings.EqualFold(k, "X-TL-API-Version") {
-+			if false && strings.HasPrefix(strings.ToLower(k), "x-tl-") && !strings.EqualFold(k, "X-TL-API-Version") {

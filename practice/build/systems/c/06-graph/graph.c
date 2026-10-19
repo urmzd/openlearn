@@ -5,7 +5,6 @@
 #include <stdlib.h>
 
 int graph_init(Graph *g, size_t n) {
-  /* SOLUTION-BEGIN */
   g->n = n;
   g->adj = NULL;
   if (n == 0) return 0;
@@ -15,11 +14,9 @@ int graph_init(Graph *g, size_t n) {
   g->adj = calloc(n, sizeof(AdjList));
   if (!g->adj) return -1;
   return 0;
-  /* SOLUTION-END */
 }
 
 int graph_add_edge(Graph *g, size_t from, size_t to) {
-  /* SOLUTION-BEGIN */
   if (from >= g->n || to >= g->n) return -1;
 
   AdjList *a = &g->adj[from];
@@ -33,27 +30,21 @@ int graph_add_edge(Graph *g, size_t from, size_t to) {
   }
   a->to[a->len++] = to;
   return 0;
-  /* SOLUTION-END */
 }
 
 size_t graph_degree(const Graph *g, size_t v) {
-  /* SOLUTION-BEGIN */
   if (v >= g->n) return 0;
   return g->adj[v].len;
-  /* SOLUTION-END */
 }
 
 void graph_free(Graph *g) {
-  /* SOLUTION-BEGIN */
   for (size_t i = 0; i < g->n; i++) free(g->adj[i].to);
   free(g->adj);
   g->adj = NULL;
   g->n = 0;
-  /* SOLUTION-END */
 }
 
 int graph_bfs(const Graph *g, size_t src, size_t *dist) {
-  /* SOLUTION-BEGIN */
   if (src >= g->n) return -1;
 
   for (size_t i = 0; i < g->n; i++) dist[i] = GRAPH_UNREACHABLE;
@@ -86,11 +77,9 @@ int graph_bfs(const Graph *g, size_t src, size_t *dist) {
 
   free(queue);
   return 0;
-  /* SOLUTION-END */
 }
 
 int graph_dfs(const Graph *g, size_t src, size_t *order, size_t *count) {
-  /* SOLUTION-BEGIN */
   *count = 0;
   if (src >= g->n) return -1;
 
@@ -128,11 +117,9 @@ int graph_dfs(const Graph *g, size_t src, size_t *order, size_t *count) {
   free(stack);
   free(seen);
   return 0;
-  /* SOLUTION-END */
 }
 
 int graph_toposort(const Graph *g, size_t *order) {
-  /* SOLUTION-BEGIN */
   if (g->n == 0) return 0;
 
   size_t *indeg = calloc(g->n, sizeof(size_t));
@@ -168,5 +155,4 @@ int graph_toposort(const Graph *g, size_t *order) {
   /* Kahn's algorithm gives cycle detection for nothing: a vertex inside a
    * cycle never reaches in-degree zero, so it is never emitted. */
   return emitted == g->n ? 0 : -1;
-  /* SOLUTION-END */
 }

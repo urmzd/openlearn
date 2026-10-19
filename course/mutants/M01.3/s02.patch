@@ -1,8 +1,0 @@
---- a/python/tinyllm/num/activations.py
-+++ b/python/tinyllm/num/activations.py
-@@ -130,4 +130,4 @@
- def dsilu(x: ArrayLike) -> NDArray:
-     x = _arr(x)
-     # d/dx [x s(x)] = s(x) + x s(x) (1 - s(x)) = s(x) (1 + x s(-x))
--    return sigmoid(x) * (x.dtype.type(1) + x * sigmoid(-x))
-+    return sigmoid(x)

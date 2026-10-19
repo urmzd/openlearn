@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-# Artifact check for obs.00 (DESIGN 6.4, H15): runs in the learner repo.
-# The tests and why each exists are in artifacts.py (`ol tests obs.00`);
-# _otlpsink.py is the OTLP/HTTP receiver they export to.
-exec python3 "$(dirname "$0")/artifacts.py" "$@"

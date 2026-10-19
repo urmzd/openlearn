@@ -1,5 +1,0 @@
-id       = "chat.usage"
-title    = "usage counts the templated prompt (your tokenizer's count when the CLI can tell)"
-versions = ["v1", "v2"]
-tiers    = ["engine"]
-check    = "chat_usage"

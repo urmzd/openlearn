@@ -1,5 +1,0 @@
---- a/python/tinyllm/post/grpo.py
-+++ b/python/tinyllm/post/grpo.py
-@@ -20 +20 @@
--    objective = np.minimum(ratio * adv, np.clip(ratio, 1.0 - clip, 1.0 + clip) * adv)
-+    objective = ratio * adv

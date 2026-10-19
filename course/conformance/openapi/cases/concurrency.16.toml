@@ -1,8 +1,0 @@
-id       = "concurrency.16"
-title    = "16 parallel streams complete and equal the serial runs at temperature 0"
-versions = ["v1", "v2"]
-tiers    = ["engine"]
-check    = "concurrency"
-
-[params]
-n = 16

@@ -1,8 +1,0 @@
---- a/python/tinyllm/obj/t5.py
-+++ b/python/tinyllm/obj/t5.py
-@@ -157,4 +157,4 @@
-         k = np.arange(k_len, dtype=np.int64)[None, :]
-         buckets = t5_relative_bucket(k - q, self.bidirectional, self.num_buckets, self.max_distance)
-         bias = self.relative_attention_bias(buckets)  # [q, k, heads]
--        return F.permute(bias, (2, 0, 1))
-+        return F.permute(bias, (2, 1, 0))

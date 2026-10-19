@@ -1,9 +1,0 @@
-id       = "v0.completions.greedy_stable"
-title    = "temperature 0 gives the same text on two calls"
-versions = ["v0"]
-tiers    = ["engine", "gateway"]
-check    = "greedy_stable"
-
-[params]
-prompt     = "The cat"
-max_tokens = 16

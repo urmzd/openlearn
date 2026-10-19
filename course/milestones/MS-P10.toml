@@ -1,7 +1,0 @@
-# MS-P10: the Pass 10 gate (DESIGN 5.7 and 7.4).
-id       = "MS-P10"
-title    = "Agents, usage policy, durable runs, and agent deployment"
-requires = ["ag.01", "ag.02", "ag.03", "ag.04", "ag.05", "ag.06", "ag.07", "ag.08", "ag.09", "ag.10", "ag.11", "ag.12", "ethics.05", "gw.08", "dep.07", "craft.23", "S-M10b"]
-includes = ["MS-agent"]
-pass     = 10
-ci       = "pr"

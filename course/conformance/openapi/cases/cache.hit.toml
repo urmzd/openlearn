@@ -1,5 +1,0 @@
-id       = "cache.hit"
-title    = "An identical temperature 0 request gets X-TL-Cache: hit"
-versions = ["v1", "v2"]
-tiers    = ["gateway"]
-check    = "cache_hit"

@@ -1,7 +1,0 @@
---- a/rust/crates/tl-engine/src/sample.rs
-+++ b/rust/crates/tl-engine/src/sample.rs
-@@ -57,2 +57,2 @@
--        let a = (self.next_u32() >> 5) as u64;
--        let b = (self.next_u32() >> 6) as u64;
-+        let a = (self.next_u32() >> 6) as u64;
-+        let b = (self.next_u32() >> 5) as u64;

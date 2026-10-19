@@ -1,9 +1,0 @@
-id       = "v0.completions.schema"
-title    = "A non-streaming completion matches the contract's response schema"
-versions = ["v0"]
-tiers    = ["engine", "gateway"]
-smoke    = true
-check    = "completion_schema"
-
-[params]
-prompt = "Once upon a time"

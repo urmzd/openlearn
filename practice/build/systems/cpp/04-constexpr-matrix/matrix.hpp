@@ -54,37 +54,29 @@ class Matrix {
   static constexpr Matrix identity()
     requires(Rows == Cols)
   {
-    // SOLUTION-BEGIN
     Matrix m{};
     for (std::size_t i = 0; i < Rows; ++i) m(i, i) = T{1};
     return m;
-    // SOLUTION-END
   }
 
   // ---- arithmetic -------------------------------------------------------
 
   constexpr Matrix operator+(const Matrix& rhs) const {
-    // SOLUTION-BEGIN
     Matrix out{};
     for (std::size_t i = 0; i < Rows * Cols; ++i) out.data_[i] = data_[i] + rhs.data_[i];
     return out;
-    // SOLUTION-END
   }
 
   constexpr Matrix operator-(const Matrix& rhs) const {
-    // SOLUTION-BEGIN
     Matrix out{};
     for (std::size_t i = 0; i < Rows * Cols; ++i) out.data_[i] = data_[i] - rhs.data_[i];
     return out;
-    // SOLUTION-END
   }
 
   constexpr Matrix operator*(const T& scalar) const {
-    // SOLUTION-BEGIN
     Matrix out{};
     for (std::size_t i = 0; i < Rows * Cols; ++i) out.data_[i] = data_[i] * scalar;
     return out;
-    // SOLUTION-END
   }
 
   // Matrix product. The inner dimension must agree, and it is checked by the
@@ -93,7 +85,6 @@ class Matrix {
   template <std::size_t OtherCols>
   constexpr Matrix<T, Rows, OtherCols> operator*(
       const Matrix<T, Cols, OtherCols>& rhs) const {
-    // SOLUTION-BEGIN
     Matrix<T, Rows, OtherCols> out{};
     for (std::size_t i = 0; i < Rows; ++i) {
       for (std::size_t j = 0; j < OtherCols; ++j) {
@@ -103,38 +94,31 @@ class Matrix {
       }
     }
     return out;
-    // SOLUTION-END
   }
 
   // Transpose returns a DIFFERENT type: Rows and Cols are swapped. This is
   // what makes dimension-as-type worth the trouble.
   constexpr Matrix<T, Cols, Rows> transpose() const {
-    // SOLUTION-BEGIN
     Matrix<T, Cols, Rows> out{};
     for (std::size_t i = 0; i < Rows; ++i) {
       for (std::size_t j = 0; j < Cols; ++j) out(j, i) = (*this)(i, j);
     }
     return out;
-    // SOLUTION-END
   }
 
   constexpr T trace() const
     requires(Rows == Cols)
   {
-    // SOLUTION-BEGIN
     T sum{};
     for (std::size_t i = 0; i < Rows; ++i) sum = sum + (*this)(i, i);
     return sum;
-    // SOLUTION-END
   }
 
   constexpr bool operator==(const Matrix& rhs) const {
-    // SOLUTION-BEGIN
     for (std::size_t i = 0; i < Rows * Cols; ++i) {
       if (!(data_[i] == rhs.data_[i])) return false;
     }
     return true;
-    // SOLUTION-END
   }
 
  private:
@@ -150,7 +134,6 @@ class Matrix {
 // time. O(log n) multiplications rather than n.
 template <typename T, std::size_t N>
 constexpr Matrix<T, N, N> matrix_pow(const Matrix<T, N, N>& m, std::size_t exp) {
-  // SOLUTION-BEGIN
   Matrix<T, N, N> result = Matrix<T, N, N>::identity();
   Matrix<T, N, N> base = m;
   while (exp > 0) {
@@ -159,5 +142,4 @@ constexpr Matrix<T, N, N> matrix_pow(const Matrix<T, N, N>& m, std::size_t exp) 
     exp /= 2;
   }
   return result;
-  // SOLUTION-END
 }

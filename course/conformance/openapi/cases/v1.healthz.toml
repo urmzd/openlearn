@@ -1,6 +1,0 @@
-id       = "v1.healthz"
-title    = "GET /healthz answers 200 on the health port"
-versions = ["v1", "v2"]
-tiers    = ["engine", "gateway"]
-smoke    = true
-check    = "healthz"

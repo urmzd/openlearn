@@ -1,5 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	rust/crates/tl-serve/src/api_version.rs	semantic	pitfall-1	22	y	(hidden until pass)	explicit v2 requests silently use the deployment default
-s02	rust/crates/tl-serve/src/api_version.rs	semantic	pitfall-2	23	y	(hidden until pass)	v1 continues after its declared sunset
-s03	rust/crates/tl-serve/src/api_version.rs	semantic	pitfall-3	39	y	(hidden until pass)	v2 responses retain ambiguous v1 capacity error codes
-s04	go/gateway/server/apiversion.go	semantic	pitfall-4	27	y	(hidden until pass)	gateway records every request as the default version

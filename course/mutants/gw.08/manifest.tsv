@@ -1,6 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	go/gateway/policy/policy.go	semantic	pitfall-1	252	y	(hidden until pass)	max_tokens cap comparison is reversed
-s02	go/gateway/policy/policy.go	semantic	pitfall-2	194	y	(hidden until pass)	rule evaluation returns the last match instead of first
-s03	go/gateway/policy/policy.go	semantic	pitfall-3	289	y	(hidden until pass)	classifier uses raw logits rather than normalized probabilities
-s04	go/gateway/policy/policy.go	semantic	pitfall-4	200	y	(hidden until pass)	missing classifier head defaults to allow
-s05	go/gateway/policy/policy.go	semantic	pitfall-5	321	y	(hidden until pass)	PII redaction is disabled in audit examples

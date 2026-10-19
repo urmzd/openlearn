@@ -39,7 +39,6 @@ class Vector {
   // ---- the rule of five -------------------------------------------------
 
   Vector(const Vector& other) {
-    // SOLUTION-BEGIN
     reserve(other.size_);
     for (size_type i = 0; i < other.size_; ++i) {
       // Construct in place from the source element. Assigning would require
@@ -47,11 +46,9 @@ class Vector {
       std::construct_at(data_ + i, other.data_[i]);
       ++size_;  // bump per element, so a throwing copy destroys only what exists
     }
-    // SOLUTION-END
   }
 
   Vector(Vector&& other) noexcept {
-    // SOLUTION-BEGIN
     // Steal the buffer and leave the source empty but valid. Note there is no
     // allocation here at all, which is the entire point of a move.
     data_ = other.data_;
@@ -60,11 +57,9 @@ class Vector {
     other.data_ = nullptr;
     other.size_ = 0;
     other.cap_ = 0;
-    // SOLUTION-END
   }
 
   Vector& operator=(const Vector& other) {
-    // SOLUTION-BEGIN
     // Copy-and-swap. Self-assignment falls out for free, and the assignment
     // either fully succeeds or leaves *this untouched, because the copy is
     // built before anything of ours is destroyed.
@@ -73,11 +68,9 @@ class Vector {
       swap(tmp);
     }
     return *this;
-    // SOLUTION-END
   }
 
   Vector& operator=(Vector&& other) noexcept {
-    // SOLUTION-BEGIN
     if (this != &other) {
       clear();
       operator delete(static_cast<void*>(data_), std::align_val_t{alignof(T)});
@@ -89,15 +82,12 @@ class Vector {
       other.cap_ = 0;
     }
     return *this;
-    // SOLUTION-END
   }
 
   ~Vector() {
-    // SOLUTION-BEGIN
     clear();  // destroy the live objects...
     operator delete(static_cast<void*>(data_), std::align_val_t{alignof(T)});
     // ...then release the raw storage. Two steps, because they are two things.
-    // SOLUTION-END
   }
 
   // ---- capacity ---------------------------------------------------------
@@ -107,7 +97,6 @@ class Vector {
   bool empty() const noexcept { return size_ == 0; }
 
   void reserve(size_type n) {
-    // SOLUTION-BEGIN
     if (n <= cap_) return;  // reserve never shrinks
 
     // Allocate raw storage. operator new, not new[]: new[] would construct n
@@ -137,7 +126,6 @@ class Vector {
 
     data_ = fresh;
     cap_ = n;
-    // SOLUTION-END
   }
 
   // ---- modifiers --------------------------------------------------------
@@ -147,38 +135,30 @@ class Vector {
 
   template <typename... Args>
   T& emplace_back(Args&&... args) {
-    // SOLUTION-BEGIN
     if (size_ == cap_) grow();
     std::construct_at(data_ + size_, std::forward<Args>(args)...);
     // Increment only AFTER the constructor returns. If it throws, this element
     // never existed and must not be destroyed by clear() or the destructor.
     ++size_;
     return data_[size_ - 1];
-    // SOLUTION-END
   }
 
   void pop_back() {
-    // SOLUTION-BEGIN
     // Destroy the object but keep the capacity: the slot goes back to being
     // raw storage, not to holding a stale T.
     --size_;
     std::destroy_at(data_ + size_);
-    // SOLUTION-END
   }
 
   void clear() noexcept {
-    // SOLUTION-BEGIN
     for (size_type i = 0; i < size_; ++i) std::destroy_at(data_ + i);
     size_ = 0;
-    // SOLUTION-END
   }
 
   void swap(Vector& other) noexcept {
-    // SOLUTION-BEGIN
     std::swap(data_, other.data_);
     std::swap(size_, other.size_);
     std::swap(cap_, other.cap_);
-    // SOLUTION-END
   }
 
   // ---- access -----------------------------------------------------------

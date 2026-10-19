@@ -1,3 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-m001	rust/crates/tl-demo/src/acc.rs	auto	statement	10	n	the compensation term is dropped	c = 0.0
-m002	rust/crates/tl-demo/src/acc.rs	auto	return_value	13	n	the return value is doubled	s * 2.0

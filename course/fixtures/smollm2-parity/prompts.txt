@@ -1,8 +1,0 @@
-The capital of France is
-Once upon a time, there was a
-The three primary colors are
-Water boils at
-def fibonacci(n):
-The largest planet in our solar system is
-To make a cup of tea, first
-Photosynthesis is the process by which

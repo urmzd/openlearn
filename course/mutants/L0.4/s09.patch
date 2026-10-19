@@ -1,8 +1,0 @@
---- a/python/tinyllm/nn/module.py
-+++ b/python/tinyllm/nn/module.py
-@@ -108,4 +108,4 @@
-             arrays[name] = a
-         for name, a in arrays.items():
-             # In place: the optimizer holds these Tensors and their arrays.
--            own[name].data[...] = a.astype(own[name].data.dtype, copy=False)
-+            own[name].data = a.astype(own[name].data.dtype)

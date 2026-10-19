@@ -45,7 +45,6 @@ template <Graph G>
 auto bfs(const G& g, typename G::vertex_type src)
     -> std::unordered_map<typename G::vertex_type, std::size_t> {
   using V = typename G::vertex_type;
-  // SOLUTION-BEGIN
   std::unordered_map<V, std::size_t> dist;
   std::queue<V> frontier;
 
@@ -62,7 +61,6 @@ auto bfs(const G& g, typename G::vertex_type src)
     }
   }
   return dist;
-  // SOLUTION-END
 }
 
 // Vertices in first-visit order, iteratively so that a long path cannot
@@ -71,7 +69,6 @@ template <Graph G>
 auto dfs_order(const G& g, typename G::vertex_type src)
     -> std::vector<typename G::vertex_type> {
   using V = typename G::vertex_type;
-  // SOLUTION-BEGIN
   std::vector<V> order;
   std::unordered_set<V> seen;
   std::vector<V> stack{src};
@@ -91,7 +88,6 @@ auto dfs_order(const G& g, typename G::vertex_type src)
     }
   }
   return order;
-  // SOLUTION-END
 }
 
 // A path from src to dst, or nullopt when unreachable.
@@ -99,7 +95,6 @@ template <Graph G>
 auto shortest_path(const G& g, typename G::vertex_type src, typename G::vertex_type dst)
     -> std::optional<std::vector<typename G::vertex_type>> {
   using V = typename G::vertex_type;
-  // SOLUTION-BEGIN
   if (src == dst) return std::vector<V>{src};
 
   std::unordered_map<V, V> parent;
@@ -128,7 +123,6 @@ auto shortest_path(const G& g, typename G::vertex_type src, typename G::vertex_t
     }
   }
   return std::nullopt;
-  // SOLUTION-END
 }
 
 // Dijkstra, available only for graphs that also report weights. The constraint
@@ -138,7 +132,6 @@ template <WeightedGraph G>
 auto shortest_distances(const G& g, typename G::vertex_type src)
     -> std::unordered_map<typename G::vertex_type, double> {
   using V = typename G::vertex_type;
-  // SOLUTION-BEGIN
   using Entry = std::pair<double, V>;
   std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> pq;
   std::unordered_map<V, double> dist;
@@ -165,5 +158,4 @@ auto shortest_distances(const G& g, typename G::vertex_type src)
     }
   }
   return dist;
-  // SOLUTION-END
 }

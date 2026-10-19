@@ -1,8 +1,0 @@
---- a/python/tinyllm/nn/init.py
-+++ b/python/tinyllm/nn/init.py
-@@ -123,4 +123,4 @@
-         raise ValueError(f"base_std must be >= 0, got {base_std}")
-     if n_layers < 1:
-         raise ValueError(f"n_layers must be >= 1, got {n_layers}")
--    return base_std / math.sqrt(2.0 * n_layers)
-+    return base_std * math.sqrt(2.0 * n_layers)

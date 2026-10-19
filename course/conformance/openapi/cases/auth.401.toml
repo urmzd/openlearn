@@ -1,6 +1,0 @@
-id       = "auth.401"
-title    = "A missing or unknown key is a 401 invalid_api_key"
-versions = ["v1", "v2"]
-tiers    = ["gateway"]
-smoke    = true
-check    = "auth_401_chat"

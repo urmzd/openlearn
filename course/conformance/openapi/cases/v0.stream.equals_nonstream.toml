@@ -1,8 +1,0 @@
-id       = "v0.stream.equals_nonstream"
-title    = "Concatenated stream text equals the non-stream text at temperature 0"
-versions = ["v0"]
-tiers    = ["engine", "gateway"]
-check    = "stream_equals_nonstream"
-
-[params]
-max_tokens = 12

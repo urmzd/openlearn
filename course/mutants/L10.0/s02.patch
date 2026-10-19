@@ -1,6 +1,0 @@
---- a/rust/crates/tl-serve/src/http.rs
-+++ b/rust/crates/tl-serve/src/http.rs
-@@ -581,2 +581 @@
--        let start = prev as usize * VOCAB;
--        Ok(self.weight[start..start + VOCAB].to_vec())
-+        Ok((0..VOCAB).map(|next| self.weight[next * VOCAB + prev as usize]).collect())

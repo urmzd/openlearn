@@ -248,7 +248,7 @@ function stageTable(pathDir) {
 			.join('<br />');
 		rows.push(`| ${stage} | **${title}**<br />${links} | ${done.replace(/\|/g, '\\|')} |`);
 	}
-	return `\n\n## Stages\n\nGenerated from \`path.tsv\`. Track progress locally with \`practice/bin/ol learn\`.\n\n${rows.join('\n')}\n`;
+	return `\n\n## Stages\n\nGenerated from \`path.tsv\`.\n\n${rows.join('\n')}\n`;
 }
 
 // ---------- main ----------

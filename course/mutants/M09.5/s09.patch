@@ -1,9 +1,0 @@
---- a/c/src/numerics/rsqrt.c
-+++ b/c/src/numerics/rsqrt.c
-@@ -84,5 +84,5 @@
- void tl_rsqrt_f32(const float *x, float *y, int64_t n) {
-     /* One read and one write per index, in order, so y == x (exact
-      * aliasing) is safe. */
--    for (int64_t i = 0; i < n; i++) y[i] = tl_rsqrtf(x[i]);
-+    for (int64_t i = 0; i <= n; i++) y[i] = tl_rsqrtf(x[i]);
- }

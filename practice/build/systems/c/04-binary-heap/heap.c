@@ -23,21 +23,18 @@ static int flip(int x) { return (int)(-(long long)x - 1); }
 
 /* Move items[i] up until its parent is no larger than it. */
 static void sift_up(HeapItem *items, size_t i) {
-  /* SOLUTION-BEGIN */
   while (i > 0) {
     size_t p = parent_of(i);
     if (items[p].priority <= items[i].priority) break;
     swap_items(&items[p], &items[i]);
     i = p;
   }
-  /* SOLUTION-END */
 }
 
 /* Move items[i] down until both children are at least as large as it. `n` is
  * the size of the region being treated as a heap, which is not always the
  * whole array: heap_sort shrinks it as it goes. */
 static void sift_down(HeapItem *items, size_t n, size_t i) {
-  /* SOLUTION-BEGIN */
   for (;;) {
     size_t l = left_of(i);
     if (l >= n) break; /* no children: i is a leaf */
@@ -53,7 +50,6 @@ static void sift_down(HeapItem *items, size_t n, size_t i) {
     swap_items(&items[i], &items[smallest]);
     i = smallest;
   }
-  /* SOLUTION-END */
 }
 
 static int heap_reserve(Heap *h, size_t n) {
@@ -72,26 +68,21 @@ static int heap_reserve(Heap *h, size_t n) {
 }
 
 void heap_init(Heap *h) {
-  /* SOLUTION-BEGIN */
   h->items = NULL;
   h->len = 0;
   h->cap = 0;
-  /* SOLUTION-END */
 }
 
 int heap_push(Heap *h, int priority, int payload) {
-  /* SOLUTION-BEGIN */
   if (heap_reserve(h, h->len + 1) != 0) return -1;
   h->items[h->len].priority = priority;
   h->items[h->len].payload = payload;
   h->len++;
   sift_up(h->items, h->len - 1);
   return 0;
-  /* SOLUTION-END */
 }
 
 int heap_pop(Heap *h, HeapItem *out) {
-  /* SOLUTION-BEGIN */
   if (h->len == 0) return -1;
   *out = h->items[0];
 
@@ -101,25 +92,19 @@ int heap_pop(Heap *h, HeapItem *out) {
   h->len--;
   sift_down(h->items, h->len, 0);
   return 0;
-  /* SOLUTION-END */
 }
 
 int heap_peek(const Heap *h, HeapItem *out) {
-  /* SOLUTION-BEGIN */
   if (h->len == 0) return -1;
   *out = h->items[0];
   return 0;
-  /* SOLUTION-END */
 }
 
 size_t heap_len(const Heap *h) {
-  /* SOLUTION-BEGIN */
   return h->len;
-  /* SOLUTION-END */
 }
 
 int heap_build(Heap *h, const HeapItem *items, size_t n) {
-  /* SOLUTION-BEGIN */
   if (heap_reserve(h, n) != 0) return -1;
   for (size_t i = 0; i < n; i++) h->items[i] = items[i];
   h->len = n;
@@ -130,18 +115,14 @@ int heap_build(Heap *h, const HeapItem *items, size_t n) {
   if (n < 2) return 0;
   for (size_t i = n / 2; i-- > 0;) sift_down(h->items, n, i);
   return 0;
-  /* SOLUTION-END */
 }
 
 void heap_free(Heap *h) {
-  /* SOLUTION-BEGIN */
   free(h->items);
   heap_init(h);
-  /* SOLUTION-END */
 }
 
 void heap_sort(HeapItem *items, size_t n) {
-  /* SOLUTION-BEGIN */
   if (n < 2) return;
 
   /* Sorting ascending in place wants a MAX-heap: you repeatedly move the
@@ -165,5 +146,4 @@ void heap_sort(HeapItem *items, size_t n) {
   }
 
   for (size_t i = 0; i < n; i++) items[i].priority = flip(items[i].priority);
-  /* SOLUTION-END */
 }

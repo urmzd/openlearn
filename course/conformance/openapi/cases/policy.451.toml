@@ -1,6 +1,0 @@
-id       = "policy.451"
-title    = "A red-team prompt from the fixture set is blocked with 451"
-versions = ["v1", "v2"]
-tiers    = ["gateway"]
-requires = ["gw.08"]
-check    = "policy_451"

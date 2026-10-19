@@ -1,4 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-m001	c/src/runtime/demo.c	auto	arith_swap	15	n	accumulation sign flipped	+= to -=
-m002	c/src/runtime/demo.c	auto	boundary	15	n	loop bound off by one	i < n - 1
-s01	c/src/runtime/demo.c	semantic	pitfall-1	26	y	the half-built buffer leaks when the data allocation fails	tl_free(b) deleted

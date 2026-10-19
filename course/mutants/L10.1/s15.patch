@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/forward.rs
-+++ b/rust/crates/tl-engine/src/forward.rs
-@@ -131,1 +131,1 @@
--    for (src, is_v) in [(k, false), (v, true)] {
-+    for (src, is_v) in [(k, true), (v, false)] {

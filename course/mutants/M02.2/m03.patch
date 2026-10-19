@@ -1,9 +1,0 @@
---- a/python/tinyllm/num/ema.py
-+++ b/python/tinyllm/num/ema.py
-@@ -78,5 +78,5 @@
-         # The weights of m_t add up to (1 - b)(1 + b + ... + b^(t-1)) = 1 - b^t.
-         # geometric_sum (M00.3) gets that total right even for b near 1, where
-         # 1 - b**t subtracts two nearly equal numbers.
--        out = self._m / geometric_sum(1.0 - self.beta, self.beta, self._t)
-+        out = self._m / geometric_sum(1.0, self.beta, self._t)
-         return out.copy() if isinstance(out, np.ndarray) else float(out)

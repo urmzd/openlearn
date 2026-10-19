@@ -1,5 +1,0 @@
---- a/python/tinyllm/post/distill.py
-+++ b/python/tinyllm/post/distill.py
-@@ -18 +18 @@
--    p = np.exp(log_t)
-+    p = np.exp(log_s)

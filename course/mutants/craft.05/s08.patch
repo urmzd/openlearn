@@ -1,9 +1,0 @@
---- a/primers/craft.05/kernels.py
-+++ b/primers/craft.05/kernels.py
-@@ -108,5 +108,5 @@
-     gS = P * (gP - np.sum(P * gP, axis=-1, keepdims=True))
-     scale = 1.0 / np.sqrt(q.shape[-1])
-     gq = gS @ k * scale
--    gk = np.swapaxes(gS, -1, -2) @ q * scale
-+    gk = gS @ q * scale
-     return gq, gk, gv

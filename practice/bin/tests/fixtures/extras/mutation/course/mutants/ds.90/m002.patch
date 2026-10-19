@@ -1,9 +1,0 @@
---- a/rust/crates/tl-demo/src/acc.rs
-+++ b/rust/crates/tl-demo/src/acc.rs
-@@ -10,5 +10,5 @@
-         c = (t - s) - y;
-         s = t;
-     }
--    s
-+    s * 2.0
- }

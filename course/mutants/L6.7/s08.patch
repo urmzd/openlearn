@@ -1,8 +1,0 @@
---- a/python/tinyllm/eval/lm.py
-+++ b/python/tinyllm/eval/lm.py
-@@ -140,4 +140,4 @@
-     if a.per_item.shape != b.per_item.shape:
-         raise ValueError(f"paired comparison needs the same items: {a.per_item.shape} vs {b.per_item.shape}")
-     r = rng if rng is not None else PCG32(0).substream("sample")
--    return paired_permutation_test(a.per_item, b.per_item, n_perm, r)  # M07.5
-+    return paired_permutation_test(a.per_item, b.per_item[::-1], n_perm, r)  # M07.5

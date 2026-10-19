@@ -1,3 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	python/tinyllm/post/dpo.py	semantic	pitfall-1	10	y	(hidden until pass)	reverse the chosen/rejected margin
-s02	python/tinyllm/post/dpo.py	semantic	pitfall-2	10	y	omit the frozen reference margin

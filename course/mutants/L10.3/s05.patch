@@ -1,9 +1,0 @@
---- a/rust/crates/tl-engine/src/chunk.rs
-+++ b/rust/crates/tl-engine/src/chunk.rs
-@@ -69,5 +69,5 @@
- /// time with nothing else in the batch: (start, len) pairs.
- pub fn split(n: usize, chunk: usize) -> Vec<(usize, usize)> {
-     let c = chunk.max(1);
--    (0..n).step_by(c).map(|s| (s, c.min(n - s))).collect()
-+    (0..n).step_by(c).map(|s| (s, c)).collect()
- }

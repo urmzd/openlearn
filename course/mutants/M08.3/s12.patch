@@ -1,8 +1,0 @@
---- a/python/tinyllm/autograd/vjp.py
-+++ b/python/tinyllm/autograd/vjp.py
-@@ -99,5 +99,4 @@
-     grad = softmax(z, axis=-1)
-     rows = np.nonzero(valid)
-     grad[rows + (t[valid],)] -= 1.0
--    grad[~valid] = 0.0
-     return grad / n

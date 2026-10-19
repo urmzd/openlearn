@@ -1,8 +1,0 @@
---- a/python/tinyllm/num/integrate.py
-+++ b/python/tinyllm/num/integrate.py
-@@ -85,4 +85,4 @@
-     # even inner nodes are shared by two parabolas.
-     odd = np.sum(fx[1:-1:2])
-     even = np.sum(fx[2:-1:2])
--    return float(h / 3.0 * (fx[0] + 4.0 * odd + 2.0 * even + fx[-1]))
-+    return float(h / 3.0 * (fx[0] + 2.0 * odd + 4.0 * even + fx[-1]))

@@ -1,5 +1,0 @@
-{"id":"heldout-01","prompt":"Write a one sentence story about a lantern.","reference":"A lantern glowed beside the quiet road.","reward_rule":"format-and-keyword"}
-{"id":"heldout-02","prompt":"Return the sum of 2 and 3 as JSON.","reference":"{\"answer\":5}","reward_rule":"valid-json-and-exact-value"}
-{"id":"heldout-03","prompt":"Name the color in: the small red kite.","reference":"red","reward_rule":"exact-match"}
-{"id":"heldout-04","prompt":"Reply with exactly three words about rain.","reference":"Rain taps softly.","reward_rule":"three-word-format"}
-{"id":"heldout-05","prompt":"Return the product of 3 and 4 as JSON.","reference":"{\"answer\":12}","reward_rule":"valid-json-and-exact-value"}

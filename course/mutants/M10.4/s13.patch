@@ -1,8 +1,0 @@
---- a/python/tinyllm/optim/schedule.py
-+++ b/python/tinyllm/optim/schedule.py
-@@ -70,4 +70,4 @@
-     if coef < 1.0:
-         for g in grads:
-             g *= coef
--    return total
-+    return min(total, max_norm)

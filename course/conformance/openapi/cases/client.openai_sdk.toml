@@ -1,5 +1,0 @@
-id       = "client.openai_sdk"
-title    = "The official openai Python client completes a chat and a stream"
-versions = ["v1", "v2"]
-tiers    = ["engine", "gateway"]
-check    = "openai_sdk"

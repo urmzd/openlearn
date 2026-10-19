@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/rust/crates/tl-serve/src/openai.rs" ]; then echo "craft.14: missing rust/crates/tl-serve/src/openai.rs" >&2; missing=1; fi
-if [ ! -d "$root/go/gateway/server" ] || ! find "$root/go/gateway/server" -type f -print -quit | grep -q .; then echo "craft.14: missing go/gateway/server/" >&2; missing=1; fi
-if [ ! -d "$root/go/gateway/ledger" ] || ! find "$root/go/gateway/ledger" -type f -print -quit | grep -q .; then echo "craft.14: missing go/gateway/ledger/" >&2; missing=1; fi
-exit "$missing"

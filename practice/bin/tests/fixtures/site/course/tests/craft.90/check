@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-# Artifact check for the fixture practice module craft.90: docs/demo.md
-# exists in the learner repo and starts with a title.
-set -euo pipefail
-test -f docs/demo.md || { echo "docs/demo.md is missing"; exit 1; }
-head -1 docs/demo.md | grep -q '^# ' || { echo "docs/demo.md must start with a '# ' title"; exit 1; }
-echo "docs/demo.md ok"

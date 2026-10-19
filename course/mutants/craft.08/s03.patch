@@ -1,7 +1,0 @@
---- a/go/gateway/limit/limit.go
-+++ b/go/gateway/limit/limit.go
-@@ -220,3 +220,3 @@
- 	for k, st := range l.keys {
--		if st.open > 0 || now.Sub(st.seen) < IdleTTL {
-+		if now.Sub(st.seen) < IdleTTL {
- 			continue

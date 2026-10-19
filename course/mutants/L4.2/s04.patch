@@ -1,9 +1,0 @@
---- a/python/tinyllm/seq2seq/additive.py
-+++ b/python/tinyllm/seq2seq/additive.py
-@@ -94,5 +94,5 @@
-         # Mask BEFORE the softmax: a masked score of -inf has weight exactly 0
-         # and the rest still sum to 1.
-         a = F.softmax(e, axis=-1)
--        ctx = F.matmul(F.reshape(a, (B, 1, S)), keys)  # [B, 1, Dk]
-+        ctx = F.matmul(F.reshape(a, (B, 1, S)), keys.detach())  # [B, 1, Dk]
-         return F.reshape(ctx, (B, self.d_key)), a

@@ -1,9 +1,0 @@
---- a/python/tinyllm/train/recompute.py
-+++ b/python/tinyllm/train/recompute.py
-@@ -91,5 +91,5 @@
-             x = _segment(seg)(x)  # the last segment keeps its activations: no rerun
-         else:
-             params = [p for m in seg for p in m.parameters()]
--            x = checkpoint(_segment(seg), x, params=params, rngs=rngs)
-+            x = checkpoint(_segment(seg), x, rngs=rngs)
-     return x

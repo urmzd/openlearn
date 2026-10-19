@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/spec.rs
-+++ b/rust/crates/tl-engine/src/spec.rs
-@@ -189 +189 @@
--    let r: Vec<f64> = p.iter().zip(q).map(|(&a, &b)| (a - b).max(0.0)).collect();
-+    let r: Vec<f64> = p.iter().zip(q).map(|(&a, &b)| (a - b).abs()).collect();

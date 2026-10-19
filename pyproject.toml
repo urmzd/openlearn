@@ -1,7 +1,7 @@
 [project]
 name = "openlearn"
 version = "0.22.0"
-description = "Free curriculum for mathematics and algorithm mastery"
+description = "A free manual for mathematics, algorithms, and engineering: worked solutions explained from first principles"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,15 +16,11 @@ dev = [
 ]
 
 [tool.ruff]
-# Course reference units are stubbed by marker and patched by committed
-# mutants (course/DESIGN.md 5.2, 5.6): their bytes are pinned, so the
-# formatter leaves them alone. The harness fixture course is pinned the same way,
-# and course/contracts is pinned by its content hash in contracts/VERSION.
+# The worked solutions keep their original layout so chapters can quote them
+# line for line.
 extend-exclude = [
-    "course/ref",
+    "course/solutions",
     "course/contracts",
-    "course/mutants",
-    "practice/bin/tests/fixtures",
 ]
 
 [tool.ruff.lint]

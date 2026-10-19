@@ -1,5 +1,0 @@
---- a/rust/crates/tl-serve/src/http.rs
-+++ b/rust/crates/tl-serve/src/http.rs
-@@ -1132 +1132 @@
--    write_head(w, status, "application/json", Some(body.len()), extra)?;
-+    write_head(w, status, "application/json", Some(body.chars().count()), extra)?;

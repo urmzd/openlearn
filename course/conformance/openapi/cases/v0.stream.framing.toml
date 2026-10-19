@@ -1,9 +1,0 @@
-id       = "v0.stream.framing"
-title    = "SSE is `data: <json>` blocks ending in `data: [DONE]`, as text/event-stream"
-versions = ["v0"]
-tiers    = ["engine", "gateway"]
-smoke    = true
-check    = "stream_framing"
-
-[params]
-max_tokens = 8

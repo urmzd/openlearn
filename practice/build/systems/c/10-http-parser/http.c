@@ -28,16 +28,13 @@ static int copy_bounded(char *dst, size_t cap, const char *src, size_t len) {
 }
 
 void http_init(HttpParser *p) {
-  /* SOLUTION-BEGIN */
   memset(p, 0, sizeof *p);
   p->state = ST_REQUEST_LINE;
   p->content_length = -1;
-  /* SOLUTION-END */
 }
 
 /* Parse one complete request line, without its terminator. */
 static int parse_request_line(HttpParser *p, const char *s, size_t len) {
-  /* SOLUTION-BEGIN */
   /* METHOD SP PATH SP HTTP/1.N */
   const char *sp1 = memchr(s, ' ', len);
   if (!sp1) return 0;
@@ -62,12 +59,10 @@ static int parse_request_line(HttpParser *p, const char *s, size_t len) {
   if (!copy_bounded(p->path, sizeof p->path, rest, path_len)) return 0;
   p->version_minor = ver[7] - '0';
   return 1;
-  /* SOLUTION-END */
 }
 
 /* Parse one header line, without its terminator. */
 static int parse_header_line(HttpParser *p, const char *s, size_t len) {
-  /* SOLUTION-BEGIN */
   const char *colon = memchr(s, ':', len);
   if (!colon) return 0;
 
@@ -108,12 +103,10 @@ static int parse_header_line(HttpParser *p, const char *s, size_t len) {
     p->content_length = n;
   }
   return 1;
-  /* SOLUTION-END */
 }
 
 /* Hand one complete line (terminator already stripped) to the right parser. */
 static int handle_line(HttpParser *p, const char *s, size_t len) {
-  /* SOLUTION-BEGIN */
   if (p->state == ST_REQUEST_LINE) {
     /* Leading blank lines before the request line are tolerated, as RFC 9112
      * recommends for robustness against stray CRLFs from old clients. */
@@ -128,11 +121,9 @@ static int handle_line(HttpParser *p, const char *s, size_t len) {
     return 1;
   }
   return parse_header_line(p, s, len);
-  /* SOLUTION-END */
 }
 
 HttpStatus http_feed(HttpParser *p, const char *data, size_t len, size_t *consumed) {
-  /* SOLUTION-BEGIN */
   size_t i = 0;
   *consumed = 0;
 
@@ -179,14 +170,11 @@ HttpStatus http_feed(HttpParser *p, const char *data, size_t len, size_t *consum
    * exactly what makes the next call able to resume. */
   *consumed = len;
   return HTTP_INCOMPLETE;
-  /* SOLUTION-END */
 }
 
 const char *http_header(const HttpParser *p, const char *name) {
-  /* SOLUTION-BEGIN */
   for (size_t i = 0; i < p->header_count; i++) {
     if (ci_equal(p->headers[i].name, name)) return p->headers[i].value;
   }
   return NULL;
-  /* SOLUTION-END */
 }

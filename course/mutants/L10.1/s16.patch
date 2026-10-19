@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/forward.rs
-+++ b/rust/crates/tl-engine/src/forward.rs
-@@ -200,1 +200,1 @@
--    let normed = rms_norm(&last, &w.norm, rows, d, cfg.rms_norm_eps, device)?;
-+    let normed = last.clone();

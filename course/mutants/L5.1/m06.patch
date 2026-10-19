@@ -1,8 +1,0 @@
---- a/python/tinyllm/xfmr/sdpa.py
-+++ b/python/tinyllm/xfmr/sdpa.py
-@@ -150,4 +150,4 @@
-     res = from_op(
-         out.astype(qt.dtype), [qt, kt, vt], vjp, op="scaled_dot_product_attention"
-     )
--    return res, Tensor(p, dtype=p.dtype)
-+    return res, Tensor(p, requires_grad=True, dtype=p.dtype)

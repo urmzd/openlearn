@@ -1,9 +1,0 @@
---- a/go/gateway/policy/policy.go
-+++ b/go/gateway/policy/policy.go
-@@ -255,5 +255,5 @@
- 		return false
- 	}
--	if m.MaxTokens != nil && maxTokens <= *m.MaxTokens {
-+	if m.MaxTokens != nil && maxTokens >= *m.MaxTokens {
- 		return false
- 	}

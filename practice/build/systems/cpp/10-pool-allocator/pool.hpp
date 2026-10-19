@@ -34,7 +34,6 @@ class Pool {
   ~Pool() { release(); }
 
   void* allocate() {
-    // SOLUTION-BEGIN
     if (!free_list_) grow();
 
     // Pop the head. The free list is INTRUSIVE: the "next" pointer lives in
@@ -44,18 +43,15 @@ class Pool {
     free_list_ = *reinterpret_cast<void**>(block);
     ++live_;
     return block;
-    // SOLUTION-END
   }
 
   void deallocate(void* p) noexcept {
-    // SOLUTION-BEGIN
     if (!p) return;
     // Push onto the head. No searching, no coalescing, no size lookup:
     // every block is interchangeable, which is the whole point.
     *reinterpret_cast<void**>(p) = free_list_;
     free_list_ = p;
     --live_;
-    // SOLUTION-END
   }
 
   // Return every chunk to the system. Any outstanding pointer dangles
@@ -80,7 +76,6 @@ class Pool {
   }
 
   void grow() {
-    // SOLUTION-BEGIN
     std::size_t bytes = block_size_ * blocks_per_chunk_;
     void* chunk = ::operator new(bytes, std::align_val_t{block_align_});
     chunks_.push_back(chunk);
@@ -94,7 +89,6 @@ class Pool {
       *reinterpret_cast<void**>(block) = free_list_;
       free_list_ = block;
     }
-    // SOLUTION-END
   }
 
   void* free_list_ = nullptr;
@@ -126,24 +120,20 @@ class PoolAllocator {
   PoolAllocator(const PoolAllocator<U>& other) noexcept : pool_(other.pool()) {}
 
   T* allocate(std::size_t n) {
-    // SOLUTION-BEGIN
     // A pool serves exactly one size. Anything else falls back to the global
     // allocator rather than silently handing back a block that is too small.
     if (n != 1 || sizeof(T) > pool_->block_size()) {
       return static_cast<T*>(::operator new(n * sizeof(T), std::align_val_t{alignof(T)}));
     }
     return static_cast<T*>(pool_->allocate());
-    // SOLUTION-END
   }
 
   void deallocate(T* p, std::size_t n) noexcept {
-    // SOLUTION-BEGIN
     if (n != 1 || sizeof(T) > pool_->block_size()) {
       ::operator delete(static_cast<void*>(p), std::align_val_t{alignof(T)});
       return;
     }
     pool_->deallocate(p);
-    // SOLUTION-END
   }
 
   Pool* pool() const noexcept { return pool_; }

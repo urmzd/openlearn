@@ -1,9 +1,0 @@
---- a/go/workflows/saga.go
-+++ b/go/workflows/saga.go
-@@ -74,5 +74,5 @@
- 	if err := s.Compensate(rt); err != nil {
- 		return errors.Join(cause, err)
- 	}
--	return cause
-+	return nil
- }

@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/kv.rs
-+++ b/rust/crates/tl-engine/src/kv.rs
-@@ -75 +75 @@
--        if cfg.n_blocks == 0 || cfg.block_tokens == 0 || cfg.n_layers == 0 || cfg.n_kv_heads == 0 || cfg.head_dim == 0 {
-+        if cfg.block_tokens == 0 || cfg.n_layers == 0 || cfg.n_kv_heads == 0 || cfg.head_dim == 0 {

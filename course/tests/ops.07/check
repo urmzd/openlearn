@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/docs/runbooks/PerformanceRegression.md" ]; then echo "ops.07: missing docs/runbooks/PerformanceRegression.md" >&2; missing=1; fi
-exit "$missing"

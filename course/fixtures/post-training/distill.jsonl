@@ -1,3 +1,0 @@
-{"id":"distill-01","prefix":"Once upon a time","teacher_tokens":[111,110,99,101],"student_seed":0}
-{"id":"distill-02","prefix":"The little bird","teacher_tokens":[102,108,101,119],"student_seed":1}
-{"id":"distill-03","prefix":"At the edge of","teacher_tokens":[116,104,101,32],"student_seed":2}
