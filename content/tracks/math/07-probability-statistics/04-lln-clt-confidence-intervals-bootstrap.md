@@ -373,7 +373,7 @@ Every replicate is the same resample, so all $\theta^*_b$ are equal and the inte
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `t_ppf`, `normal_ppf` | scipy's `stdtrit` and `ndtri` (Cephes) | rational approximations plus Newton steps, $O(1)$ for any $\nu$ | `scipy/special/cephes/stdtr.c`, `ndtri.c` |
 | `bootstrap_ci` (percentile) | `scipy.stats.bootstrap` (BCa) | bias-corrected and accelerated intervals, vectorized resampling | `scipy/stats/_resampling.py` |

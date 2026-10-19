@@ -354,7 +354,7 @@ The distribution is the same but the schedule from a given seed is not: `load.01
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `gumbel_max` | vLLM's sampler | the exponential race: `probs / Exp(1)` then argmax, the same theorem without logs, batched on GPU | `vllm/v1/sample/ops/topk_topp_sampler.py` (`random_sample`) |
 | `sample_categorical` | numpy `Generator.choice(p=...)` | a cumulative sum and a binary search (`searchsorted`) per batch of uniforms | `numpy/random/_generator.pyx` |

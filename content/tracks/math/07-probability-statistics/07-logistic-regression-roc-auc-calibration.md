@@ -380,7 +380,7 @@ $\ell''(\beta)$ is the mean variance of the logits under the softmax. At $\beta 
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `logistic_regression_fit` | `sklearn.linear_model.LogisticRegression` | L-BFGS and Newton-CG solvers that never form $H$, L1 penalties, multinomial fits | `sklearn/linear_model/_logistic.py` |
 | IRLS | `statsmodels` GLM | the same IRLS for every exponential family, with standard errors from $H^{-1}$ | `statsmodels/genmod/generalized_linear_model.py` |

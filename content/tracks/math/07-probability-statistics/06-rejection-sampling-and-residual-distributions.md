@@ -284,7 +284,7 @@ A loose envelope only costs time: each try accepts with probability $1/m$, so th
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `speculative_step` | vLLM `RejectionSampler` | batched acceptance over a whole draft tree on the GPU, recovered tokens from the residual | `vllm/v1/sample/rejection_sampler.py` |
 | `residual_distribution` | Hugging Face assisted generation | the same residual for model drafts (`_speculative_sampling`) | `transformers/generation/utils.py` |

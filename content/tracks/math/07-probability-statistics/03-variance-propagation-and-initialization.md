@@ -306,9 +306,9 @@ Each block adds two outputs to the stream, attention and MLP, so there are $2L$ 
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
-| `xavier_*`, `kaiming_normal` | `torch.nn.init` | in-place initializers, `trunc_normal_`, `orthogonal_` (your `M03.3`), `kaiming_uniform_` with `a = sqrt(5)` (torch's `Linear` default) | `torch/nn/init.py` |
+| `xavier_*`, `kaiming_normal` | `torch.nn.init` | in-place initializers, `trunc_normal_`, `orthogonal_` (`M03.3`), `kaiming_uniform_` with `a = sqrt(5)` (torch's `Linear` default) | `torch/nn/init.py` |
 | `scaled_residual_std` | GPT-NeoX, Megatron `scaled_init_method_normal` | the same $1/\sqrt{2L}$ rule, applied by parameter name | `megatron/core/utils.py` |
 | a fixed $0.02$ base std | muP (maximal update parametrization) | width-dependent init and learning rates so hyperparameters transfer from small to large models | Yang et al., "Tensor Programs V" (2022) |
 | variance analysis at initialization | signal propagation theory | mean-field analysis of depth and the edge of chaos; Fixup and T-Fixup train without normalization | Schoenholz et al., "Deep Information Propagation" (2017) |

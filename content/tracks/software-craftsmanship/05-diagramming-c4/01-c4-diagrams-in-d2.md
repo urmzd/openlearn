@@ -74,12 +74,15 @@ platform: TinyLLM platform {
 }
 provider: External model or data provider
 
-client -> platform.gateway: HTTPS / OpenAI subset      # the public API
-operator -> platform.gateway: HTTPS / admin API        # a second actor, a second API
+# the public API
+client -> platform.gateway: HTTPS / OpenAI subset
+# a second actor, a second API
+operator -> platform.gateway: HTTPS / admin API
 operator -> platform.durable: gRPC / workflow operations
 platform.gateway -> platform.engine: HTTP inference, gRPC control
 # ... engine and durable to artifacts (files); gateway, engine, durable to telemetry (OTLP)
-platform.gateway -> provider: HTTPS provider adapter    # the one outbound dependency
+# the one outbound dependency
+platform.gateway -> provider: HTTPS provider adapter
 ```
 
 The two actors are distinguished because they use different APIs (`openai-subset` versus `admin`), and the provider is outside the boundary because the platform does not own it. The platform box is shown with its five major parts rather than as a single opaque box: a deliberate compromise, so the actors' arrows land on the part they actually talk to. The parts carry no technology labels here; those belong to the container view.
@@ -101,11 +104,14 @@ subgraph tinyllm: TinyLLM platform {
 provider: Model provider
 
 client -> gateway: HTTPS
- gateway -> engine: HTTP inference\n gRPC control          # two protocols: data plane and control plane
+# two protocols: data plane and control plane
+ gateway -> engine: HTTP inference\n gRPC control
 worker -> durable: gRPC
 corpus -> durable: gRPC workflow client
-worker -> corpus: subprocess + files                      # the Go-to-Python boundary is a process
-engine -> storage: safetensors, tokenizer, KV envelopes   # file formats are interfaces too
+# the Go-to-Python boundary is a process
+worker -> corpus: subprocess + files
+# file formats are interfaces too
+engine -> storage: safetensors, tokenizer, KV envelopes
 corpus -> storage: corpus shards, tokens, checkpoints
  durable -> storage: WAL and snapshots
  gateway -> collector: OTLP

@@ -311,7 +311,7 @@ $D = n_1/(n_1 + 2n_2)$ is 0 when $n_1 = 0$ (or $0/0$ when $n_2 = 0$ too). A zero
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `absolute_discount`, `ney_discount` | KenLM | modified Kneser-Ney with three discounts per order estimated from count-of-counts, on disk-backed sorted n-gram streams | `lm/builder/adjust_counts.cc` (discounts from the count of counts) |
 | `laplace` | scikit-learn `MultinomialNB` | the same add-alpha estimate per class, as its `alpha` parameter | `sklearn/naive_bayes.py` |

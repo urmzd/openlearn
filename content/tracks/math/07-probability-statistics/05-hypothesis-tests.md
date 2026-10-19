@@ -332,7 +332,7 @@ For $n$ in the hundreds, $\binom{n}{i}$ overflows float64 and $2^{-n}$ underflow
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `permutation_test` | `scipy.stats.permutation_test` | vectorized batches, exact enumeration when it is small enough, one- and two-sided alternatives | `scipy/stats/_resampling.py` |
 | `mcnemar` | `statsmodels.stats.contingency_tables.mcnemar` | the same two variants, plus Cochran's Q for more than two classifiers | `statsmodels/stats/contingency_tables.py` |

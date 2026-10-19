@@ -115,7 +115,8 @@ The runbook path is the one the alert's `runbook` annotation links to (`obs.03`)
 ### 5.1 From first principles
 
 1. **The page is a TTFT burn, so the question is "why are first tokens late?"** Late first tokens with almost no errors mean requests are waiting, not failing. Waiting means demand exceeds capacity somewhere (section 2.1).
-2. **Find the lost capacity.** A pod that is seconds old or `READY 0/1`, or a `Killing` event, names the replica that went away. Its peers now carry $\lambda$ alone; with $ho > 1$ their queues must grow.
+2. **Find the lost capacity.** A pod that is seconds old or `READY 0/1`, or a `Killing` event, names the replica that went away. Its peers now carry $\lambda$ alone; with $
+ho > 1$ their queues must grow.
 3. **Confirm with the queue, not the latency.** Queue depth rising on the survivors with unchanged load distinguishes lost capacity from a slow model or a bad release.
 4. **Check that the gateway is doing its part** (section 2.2): failover lines before the first byte, `upstream_failed` error events after it, and no spliced or truncated streams. One `trace_id` from a failed line shows which engine the request reached.
 5. **Rule out the other common cause**, a release: a new decode revision at the start of the burn points at the rollout instead.
@@ -214,7 +215,8 @@ Full postmortem: [`2026-10-09-kill-decode.md`](../../../../course/solutions/docs
 ### 5.6 Why this solution
 
 - **Waiting is the mitigation** because Kubernetes already does the right thing; the responder's value is confirming it and adding capacity if $t_r$ is too long. Every manual action during an incident carries its own risk, so the runbook makes "watch `rollout status`" an explicit step rather than a non-action.
-- **Three replicas, not a faster replacement alone.** With $\mu = 12$ and $\lambda = 20$, two survivors give $ho = 0.83$: within threshold. Cutting $t_r$ shortens the burn but does not remove it; headroom removes it.
+- **Three replicas, not a faster replacement alone.** With $\mu = 12$ and $\lambda = 20$, two survivors give $
+ho = 0.83$: within threshold. Cutting $t_r$ shortens the burn but does not remove it; headroom removes it.
 - **Error after the first byte, never splice.** A truncated or spliced stream looks like a correct answer and is wrong; an explicit error is honest and lets the client retry.
 
 ### 5.7 Explain it back
@@ -222,7 +224,7 @@ Full postmortem: [`2026-10-09-kill-decode.md`](../../../../course/solutions/docs
 1. Why does this incident burn the TTFT budget but not the availability budget?
    <details><summary>Answer</summary>Failover before the first byte turns would-be failures into slower successes, and the streams that broke after the first byte had already returned 200. Almost every request is a 200; many are late. The 5xx SLI cannot see either effect.</details>
 2. Why would the same incident not page under the prod profile?
-   <details><summary>Answer</summary>The fast alert needs $e(1h) > 0.144$. A third of requests slow for 160 s gives $e(1h) pprox 0.33 \cdot 160 / 3600 pprox 0.015$, an order of magnitude short. The drill profile's 5-minute long window can be dominated by a 2-minute event.</details>
+   <details><summary>Answer</summary>The fast alert needs $e(1h) > 0.144$. A third of requests slow for 160 s gives $e(1h) \approx 0.33 \cdot 160 / 3600 \approx 0.015$, an order of magnitude short. The drill profile's 5-minute long window can be dominated by a 2-minute event.</details>
 3. Why must the gateway not continue a broken stream on the other decode replica?
    <details><summary>Answer</summary>The other replica does not hold this sequence's KV cache, so the tokens it generates come from a different state. The client would receive text that reads plausibly and is wrong, with no signal that anything happened.</details>
 4. Why is "the pod is Running" not the end of the incident?

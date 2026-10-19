@@ -4,21 +4,34 @@
 **Difficulty:** ⭐⭐⭐⭐
 
 An HTTP/1.1 request-header parser that accepts input in arbitrary chunks. This
-is the exercise where "just split on `\r\n`" stops working, because the split
-you were given may land in the middle of a header name.
+is the exercise where "just split on `\r\n`" stops working, because the chunk
+you were given may end in the middle of a header name.
 
-## The contract
+## The problem
 
-`http.h` declares it, `main.c` tests it, you write `http.c`.
+[`http.h`](http.h) declares the interface, [`http.c`](http.c) is the solution,
+and [`main.c`](main.c) is the test suite.
 
 | Function | Does |
 |----------|------|
 | `http_init(p)` | Reset for a new request |
-| `http_feed(p, data, len, &consumed)` | Feed bytes; `INCOMPLETE`, `DONE`, or `ERROR` |
-| `http_header(p, name)` | Case-insensitive lookup |
+| `http_feed(p, data, len, &consumed)` | Feed bytes; `HTTP_INCOMPLETE`, `HTTP_DONE`, or `HTTP_ERROR` |
+| `http_header(p, name)` | Case-insensitive lookup, `NULL` when absent |
 
-Fixed-size buffers throughout, no allocation. `consumed` must stop at the end of
-the header block so the caller can find the body.
+Constraints: fixed-size buffers throughout (method 16 bytes, path 512, header
+name 64, value 256, at most 32 headers, lines up to 2048 bytes), no allocation.
+`consumed` must stop at the end of the header block so the caller can find the
+body. Over-long input is an error, never truncated. Once in error, the parser
+stays in error.
+
+## Build and run
+
+From this directory:
+
+```bash
+cc -std=c11 -Wall -Wextra -O2 main.c http.c -o http && ./http
+# ok  c/10-http-parser  695 checks passed
+```
 
 ## What to notice
 
@@ -26,7 +39,7 @@ the header block so the caller can find the body.
 network felt like: 3 bytes, then 1400, then 12. There is no relationship between
 those boundaries and the message's. So the parser cannot hold a pointer into the
 caller's buffer across calls, and must carry enough state to resume mid-line.
-`test_every_possible_split` feeds the same request at every one of its ~90 split
+`test_every_possible_split` feeds the same request at every one of its split
 points and then one byte at a time, which is the test that fails for anything
 built around `strtok` or a single pass over a complete buffer.
 
@@ -48,9 +61,9 @@ A body length the parser and the server disagree about is precisely the
 smuggling primitive above. Validate that the field is digits and nothing else.
 
 **Accept bare LF while the spec says CRLF.** Robustness against real clients
-requires it, and stripping at most one trailing `\r` costs one line. Note that
-this is a place where being liberal is *safe*, because both readings produce the
-same message. Contrast with `Foo : bar`, where being liberal changes what the
+requires it, and stripping at most one trailing `\r` costs one line. This is a
+place where being liberal is *safe*, because both readings produce the same
+message. Contrast with `Foo : bar`, where being liberal changes what the
 message means, and is therefore not safe. The distinction is the entire art of
 the robustness principle, and the reason it has fallen out of favour.
 
@@ -58,6 +71,259 @@ the robustness principle, and the reason it has fallen out of favour.
 resynchronisation point: you cannot know where the next valid line starts, and
 guessing lets an attacker choose. The connection is finished. The tests check
 that feeding more bytes after an error still reports an error.
+
+## The solution, step by step
+
+### From first principles
+
+1. **The unit of meaning is a line.** The request line and each header line end
+   at `\n`; the header block ends at an empty line. So the parser's job splits
+   in two: assemble lines from arbitrary chunks, then interpret complete lines.
+2. **Assembling lines across calls needs a private buffer.** The caller's buffer
+   is gone after `http_feed` returns, so bytes of an unfinished line are copied
+   into `p->line`. The next call appends to it. That buffer, its length, and a
+   state are all the parser has to remember.
+3. **Three meaningful states.** Before the request line, among headers, done.
+   Plus an error state that every path can fall into and none can leave.
+4. **Byte-at-a-time is the simplest correct loop.** Each byte is either `\n`
+   (a line is complete: interpret it) or something to append. Then every split
+   of the input produces exactly the same sequence of complete lines, which is
+   the property the every-split test checks.
+5. **Every field has a fixed buffer, so every copy is checked.** A copy that
+   does not fit is an error. Truncation would produce a different request than
+   the client sent.
+6. **Parse exactly what is allowed and reject the rest.** The version must be
+   exactly `HTTP/1.N`; no space before a header's colon; `Content-Length` must be
+   all digits and must not conflict with an earlier one. Anything ambiguous is
+   rejected, because ambiguity between parsers is the attack.
+7. **Stop at the blank line.** Whatever follows is body, and belongs to the
+   caller, so `consumed` points just past the blank line's `\n`.
+
+### The code, annotated
+
+The bounded copy every field goes through:
+
+```c
+/* Copy and terminate, or report that it did not fit. Never truncates. */
+static int copy_bounded(char *dst, size_t cap, const char *src, size_t len) {
+  if (len >= cap) return 0;   /* >= : one byte is needed for the NUL */
+  memcpy(dst, src, len);
+  dst[len] = '\0';
+  return 1;
+}
+```
+
+The feed loop, which is the incremental part:
+
+```c
+HttpStatus http_feed(HttpParser *p, const char *data, size_t len, size_t *consumed) {
+  size_t i = 0;
+  *consumed = 0;
+
+  /* Sticky terminal states. */
+  if (p->state == ST_ERROR) return HTTP_ERROR;
+  if (p->state == ST_DONE) return HTTP_DONE;
+
+  for (; i < len; i++) {
+    char c = data[i];
+
+    if (c == '\n') {
+      /* A line is complete. Strip one trailing CR, so CRLF and bare LF both
+       * work and both mean the same thing. */
+      size_t n = p->line_len;
+      if (n > 0 && p->line[n - 1] == '\r') n--;
+
+      if (!handle_line(p, p->line, n)) {
+        p->state = ST_ERROR;
+        *consumed = i + 1;
+        return HTTP_ERROR;
+      }
+      p->line_len = 0;
+
+      if (p->state == ST_DONE) {
+        /* Consume the terminator and no more: the rest is body. */
+        *consumed = i + 1;
+        return HTTP_DONE;
+      }
+      continue;
+    }
+
+    /* Refuse an over-long line rather than truncating it. */
+    if (p->line_len >= sizeof p->line) {
+      p->state = ST_ERROR;
+      *consumed = i;
+      return HTTP_ERROR;
+    }
+    p->line[p->line_len++] = c;
+  }
+
+  /* Out of input mid-line: the partial line stays in p->line, which is what
+   * lets the next call resume. */
+  *consumed = len;
+  return HTTP_INCOMPLETE;
+}
+```
+
+Dispatching a complete line by state:
+
+```c
+static int handle_line(HttpParser *p, const char *s, size_t len) {
+  if (p->state == ST_REQUEST_LINE) {
+    /* Blank lines before the request line are tolerated (RFC 9112 suggests
+     * it, for stray CRLFs left by old clients). */
+    if (len == 0) return 1;
+    if (!parse_request_line(p, s, len)) return 0;
+    p->state = ST_HEADERS;
+    return 1;
+  }
+
+  if (len == 0) {          /* the blank line that ends the headers */
+    p->state = ST_DONE;
+    return 1;
+  }
+  return parse_header_line(p, s, len);
+}
+```
+
+The request line is split on the first two spaces with `memchr`, which works
+on a length-delimited buffer and never runs past it:
+
+```c
+  /* METHOD SP PATH SP HTTP/1.N, each part non-empty */
+  const char *sp1 = memchr(s, ' ', len);
+  /* ... method = s[0..sp1), path = up to the second space ... */
+
+  /* Exactly "HTTP/1.N". Anything else is rejected rather than guessed at. */
+  if (ver_len != 8 || memcmp(ver, "HTTP/1.", 7) != 0) return 0;
+  if (ver[7] < '0' || ver[7] > '9') return 0;
+
+  if (!copy_bounded(p->method, sizeof p->method, s, method_len)) return 0;
+  if (!copy_bounded(p->path, sizeof p->path, rest, path_len)) return 0;
+  p->version_minor = ver[7] - '0';
+```
+
+Header lines, where the smuggling defences live:
+
+```c
+  const char *colon = memchr(s, ':', len);
+  if (!colon) return 0;                    /* no colon: not a header */
+
+  size_t name_len = (size_t)(colon - s);
+  if (name_len == 0) return 0;             /* empty name */
+
+  /* No whitespace between name and colon: "Foo : bar" accepted by one
+   * parser and rejected by another is how smuggling gets through. */
+  if (s[name_len - 1] == ' ' || s[name_len - 1] == '\t') return 0;
+
+  /* ... strip optional whitespace around the value ... */
+
+  if (p->header_count >= HTTP_MAX_HEADERS) return 0;   /* refuse, never drop */
+  HttpHeader *h = &p->headers[p->header_count];
+  if (!copy_bounded(h->name, sizeof h->name, s, name_len)) return 0;
+  if (!copy_bounded(h->value, sizeof h->value, val, val_len)) return 0;
+  p->header_count++;
+
+  if (ci_equal(h->name, "Content-Length")) {
+    /* Digits only: strtol would accept "12abc", "+5", or "-5". */
+    if (h->value[0] == '\0') return 0;
+    long n = 0;
+    for (const char *c = h->value; *c; c++) {
+      if (*c < '0' || *c > '9') return 0;
+      if (n > (long)((1L << 40) / 10)) return 0;   /* absurdly large: refuse */
+      n = n * 10 + (*c - '0');
+    }
+    /* A second, different Content-Length is a conflict, not an update. */
+    if (p->content_length >= 0 && p->content_length != n) return 0;
+    p->content_length = n;
+  }
+```
+
+The guard refuses a value once it passes `2^40 / 10` before the next digit, so
+`n` never exceeds about `2^40` and `n * 10 + digit` stays far below `LONG_MAX`
+where `long` is 64 bits (Linux, macOS). On a platform with a 32-bit `long`
+(64-bit Windows) `1L << 40` would itself be undefined; a portable version would
+compute in `long long` or compare against `LONG_MAX / 10`. An identical repeated
+`Content-Length` is accepted, a different one is an error.
+
+Full solution: [`http.c`](http.c).
+
+### Why this solution
+
+- **Cost.** O(1) work per input byte: each byte is appended to the line buffer
+  once and scanned a constant number of times when its line completes. Memory is
+  the fixed `HttpParser` struct, about 13 KB, with no allocation.
+- **Copying lines versus pointing into the caller's buffer.** Zero-copy parsers
+  (such as picohttpparser) are faster but require the caller to keep the whole
+  header block contiguous and re-feed it. Copying into `p->line` is what makes
+  arbitrary chunking work with no cooperation from the caller.
+- **Line-level versus character-level state machine.** A full character-level
+  machine (method, space, path, ...) avoids the line buffer, but is many more
+  states and much harder to read. Since the header block is bounded anyway, the
+  line buffer costs nothing that matters.
+- **Strict versus lenient.** Lenient parsing accepts more clients, but every
+  leniency that changes meaning is a disagreement an attacker can use. The
+  solution is lenient only where both readings agree (CRLF versus LF, leading
+  blank lines, whitespace around values).
+- **Accepted trade.** No obsolete line folding, no chunked encoding, no limits
+  configurable at runtime; this is a header parser, not a full HTTP stack.
+
+### Explain it back
+
+1. Why does `test_every_possible_split` pass for this parser by construction?
+
+   <details><summary>Answer</summary>
+
+   The loop handles one byte at a time and keeps its only cross-call state
+   (`state`, `line`, `line_len`) in the parser. Whatever the chunk boundaries,
+   the same bytes are appended in the same order and lines complete at the same
+   `\n`s, so `handle_line` sees an identical sequence of lines.
+
+   </details>
+
+2. Why does `copy_bounded` fail on `len >= cap` rather than `len > cap`?
+
+   <details><summary>Answer</summary>
+
+   The destination needs room for the bytes plus a terminating NUL, so a string
+   of `cap` bytes does not fit in a `cap`-byte buffer. `len == cap` must fail
+   too.
+
+   </details>
+
+3. Why is `"Foo : bar"` rejected but `"Foo:   bar  "` accepted?
+
+   <details><summary>Answer</summary>
+
+   Whitespace around the value is optional in the grammar and both parsers in a
+   chain will strip it, so accepting it changes nothing. Whitespace before the
+   colon is not allowed; some parsers would read the name as `"Foo "` and some as
+   `"Foo"`, and that disagreement is a request-smuggling vector, so the only safe
+   answer is to refuse.
+
+   </details>
+
+4. After `HTTP_DONE`, what does `consumed` tell the caller, and why does the loop
+   return immediately instead of continuing?
+
+   <details><summary>Answer</summary>
+
+   It is the index just past the blank line's `\n`, so `data + consumed` is the
+   first byte of the body. Continuing would treat body bytes as header text and
+   could mis-parse or reject a valid request.
+
+   </details>
+
+5. Why reject two different `Content-Length` values instead of taking the last
+   one?
+
+   <details><summary>Answer</summary>
+
+   A proxy that takes the first and a backend that takes the last would disagree
+   about where the body ends, and the leftover bytes would be read as a second,
+   attacker-chosen request. Refusing the conflict removes the disagreement. Two
+   identical values carry no ambiguity, so they are accepted.
+
+   </details>
 
 ## Extending it
 

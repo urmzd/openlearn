@@ -26,7 +26,7 @@ Sections 1 and 2 build expectation, variance, and Box-Muller from first principl
 
 ## 1. Why now
 
-Your system now has a reproducible generator (`M06.3`) that produces uniform numbers in $[0, 1)$. Neural networks are not initialized with uniform numbers: almost every weight in this course, from the first `Linear` layer (`L0.4`) to the Llama blocks (`L7.9`), starts as a draw from a **normal distribution** with a carefully chosen spread, and the next module that needs one is `M03.3`, whose orthogonal initializer is the QR factorization of a Gaussian matrix. Choosing the spread is a variance calculation (`M07.3`): too large and activations explode through 20 layers, too small and they vanish. This module defines random variables, expectation, and variance from the beginning, and turns your uniforms into normals with Box-Muller, in exactly the order the Rust and Go ports will use, so that one seed means the same weights everywhere.
+The system now has a reproducible generator (`M06.3`) that produces uniform numbers in $[0, 1)$. Neural networks are not initialized with uniform numbers: almost every weight in this course, from the first `Linear` layer (`L0.4`) to the Llama blocks (`L7.9`), starts as a draw from a **normal distribution** with a carefully chosen spread, and the next module that needs one is `M03.3`, whose orthogonal initializer is the QR factorization of a Gaussian matrix. Choosing the spread is a variance calculation (`M07.3`): too large and activations explode through 20 layers, too small and they vanish. This module defines random variables, expectation, and variance from the beginning, and turns its uniforms into normals with Box-Muller, in exactly the order the Rust and Go ports will use, so that one seed means the same weights everywhere.
 
 ## 2. Principles
 
@@ -280,7 +280,7 @@ A table that does not sum to 1 is almost always a bug upstream (raw counts passe
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | Box-Muller | the Ziggurat algorithm (numpy's `standard_normal`, Rust `rand_distr`) | almost always one uniform and one table lookup per normal, no `log`, `sin`, or `cos` | numpy `numpy/random/src/distributions/distributions.c`, `random_standard_normal` |
 | Box-Muller | the Marsaglia polar method | rejection inside the unit disc replaces $\sin$ and $\cos$ | Marsaglia and Bray (1964) |
