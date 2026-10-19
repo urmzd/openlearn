@@ -1,6 +1,6 @@
 // expr.hpp - expression templates: lazy evaluation with no runtime cost.
 //
-// You write the marked regions. main.cpp tests them.
+// The reference implementation. main.cpp tests it.
 //
 // The problem being solved: with ordinary operator overloading,
 //

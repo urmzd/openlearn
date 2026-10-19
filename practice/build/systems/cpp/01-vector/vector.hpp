@@ -1,6 +1,6 @@
 // vector.hpp - a std::vector work-alike.
 //
-// You write the marked regions. main.cpp tests them.
+// The reference implementation. main.cpp tests it.
 //
 // The reason this is exercise 01 and not a warm-up: a correct Vector has to
 // separate ALLOCATION from CONSTRUCTION. std::vector holds capacity worth of

@@ -1,6 +1,6 @@
 /* intern.h - a string interning table.
  *
- * Given to you. Implement intern.c against it; main.c tests it.
+ * The interface. intern.c implements it and main.c tests it.
  *
  * Interning means: the table owns exactly one copy of each distinct string,
  * and hands back the same pointer every time you ask for it. Two interned

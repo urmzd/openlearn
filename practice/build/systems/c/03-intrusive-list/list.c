@@ -1,4 +1,4 @@
-/* list.c - the part you write. */
+/* list.c - the reference implementation of the list operations. */
 #include "list.h"
 
 void list_init(ListNode *head) {

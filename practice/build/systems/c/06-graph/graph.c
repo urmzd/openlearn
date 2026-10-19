@@ -1,4 +1,4 @@
-/* graph.c - the part you write. */
+/* graph.c - the reference implementation of the graph and its traversals. */
 #include "graph.h"
 
 #include <stdint.h>

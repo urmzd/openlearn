@@ -1,6 +1,6 @@
 /* pool.h - a fixed-size thread pool with a bounded work queue.
  *
- * Given to you. Implement pool.c against it; main.c tests it.
+ * The interface. pool.c implements it and main.c tests it.
  *
  * Determinism note: the ORDER in which tasks run is genuinely
  * nondeterministic, and nothing here asserts on it. What is deterministic, and

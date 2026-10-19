@@ -1,6 +1,6 @@
 /* graph.h - a directed graph stored as adjacency lists.
  *
- * Given to you. Implement graph.c against it; main.c tests it.
+ * The interface. graph.c implements it and main.c tests it.
  *
  * Each vertex owns a growable array of outgoing edges. Undirected graphs are
  * built by adding both directions, which the tests do explicitly.

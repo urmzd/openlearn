@@ -1,12 +1,12 @@
 // generator.hpp - a lazy sequence built on C++20 coroutines.
 //
-// You write the marked regions. main.cpp tests them.
+// The reference implementation. main.cpp tests it.
 //
 // C++20 coroutines are unusual: the language provides no coroutine TYPE at
 // all. It provides a protocol. Write a function containing co_yield, and the
 // compiler looks at the declared return type, finds its nested promise_type,
-// and calls the members below at fixed points. Supplying those members is what
-// this exercise is.
+// and calls the members below at fixed points. Supplying those members is all
+// this file does.
 //
 // The transformation the compiler performs, roughly:
 //

@@ -1,4 +1,4 @@
-/* pool.c - the part you write. */
+/* pool.c - the reference implementation of the pool. */
 #include "pool.h"
 
 #include <pthread.h>

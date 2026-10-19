@@ -1,11 +1,11 @@
-/* map.c - the part you write. */
+/* map.c - the reference implementation of the hash map. */
 #include "map.h"
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Given: a decent general-purpose string hash. Not cryptographic, and not
+/* A decent general-purpose string hash. Not cryptographic, and not
  * collision-resistant against an adversary who knows the seed, which is
  * exactly how hash-flooding denial of service works. */
 size_t map_hash(const char *key) {

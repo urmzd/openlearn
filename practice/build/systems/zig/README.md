@@ -1,10 +1,9 @@
 # Zig Practice
 
 > **Optional language.** Zig is not one of the languages this
-> curriculum targets, so these exercises have no reference implementations
-> yet and are excluded from `ol verify build` and from CI. They are kept
-> because the exercises are worth doing, and every `ol` command works on
-> them by name.
+> curriculum targets, so these exercises have no worked solutions
+> yet and nothing here is built in CI. They are kept because the briefs
+> are worth reading as design problems.
 >
 > Toolchain: `brew install zig`. On a chezmoi-managed machine it comes from the
 > `install_alt_langs` flag, which is off by default.
@@ -43,21 +42,16 @@ Master comptime, explicit allocation, and zero-hidden-control-flow.
 - [Zig News](https://zig.news/) -- community articles
 - Andrew Kelley's talks -- design philosophy
 
-## Practising these
+## How this page is organised
 
-```bash
-practice/bin/ol list  build zig          # which of these have references yet
-practice/bin/ol start build zig 01       # clone it stubbed into .scratchpad/
-practice/bin/ol check build zig 01       # run it; exit code is the verdict
-practice/bin/ol diff  build zig 01       # your attempt against the reference
-```
-
-Exercises are ordered by concept, not by difficulty, so pick by the stars rather
-than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../../README.md) for how the
-harness works.
+The table below is an index of exercise briefs: what to build, the concepts it
+exercises, and how hard it is. Exercises are ordered by concept, not by
+difficulty. Where a row names a course version (for example `ds.02`), that
+module's chapter walks through a full solution of the same problem.
 
 ## Exercises
+
+Worked solutions for these exercises are not written yet.
 
 | # | Exercise | Concepts | Difficulty |
 |---|----------|----------|------------|

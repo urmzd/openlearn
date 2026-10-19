@@ -1,6 +1,6 @@
 /* arena.h - a bump allocator.
  *
- * Given to you. Implement arena.c against it; main.c tests it.
+ * The interface. arena.c implements it and main.c tests it.
  *
  * An arena hands out memory by moving a pointer forward and frees everything
  * at once. There is no per-allocation free, which is the entire point: you

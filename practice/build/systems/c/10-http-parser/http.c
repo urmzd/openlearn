@@ -1,4 +1,4 @@
-/* http.c - the part you write. */
+/* http.c - the reference implementation of the parser. */
 #include "http.h"
 
 #include <stdlib.h>

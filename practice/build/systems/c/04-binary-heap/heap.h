@@ -1,6 +1,6 @@
 /* heap.h - an array-backed binary min-heap.
  *
- * Given to you. Implement heap.c against it; main.c tests it.
+ * The interface. heap.c implements it and main.c tests it.
  *
  * The whole data structure is one array. A tree shape is implied by the
  * indices, which is why a heap has no pointers, no allocation per element, and
@@ -44,7 +44,7 @@ void heap_free(Heap *h);
 
 /* Sort `items` ascending by priority, using a heap. In place, O(n log n), no
  * allocation. Ties may end up in any order: heapsort is not stable, and
- * finding out why is part of the exercise. */
+ * the README explains why. */
 void heap_sort(HeapItem *items, size_t n);
 
 #endif /* HEAP_H */

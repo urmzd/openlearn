@@ -1,6 +1,6 @@
 // graph.hpp - graph algorithms written against a concept, not a class.
 //
-// You write the marked regions. main.cpp tests them.
+// The reference implementation. main.cpp tests it.
 //
 // The point is not the graph. It is that `bfs` here works on ANY type
 // satisfying the Graph concept: an adjacency list, a grid where neighbours are

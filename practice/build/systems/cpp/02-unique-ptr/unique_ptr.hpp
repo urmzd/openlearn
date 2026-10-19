@@ -1,6 +1,6 @@
 // unique_ptr.hpp - a std::unique_ptr work-alike.
 //
-// You write the marked regions. main.cpp tests them.
+// The reference implementation. main.cpp tests it.
 //
 // The exercise is ownership expressed in the type system: exactly one
 // UniquePtr owns a given pointer, the compiler refuses to let you copy it, and

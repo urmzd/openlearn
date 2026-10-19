@@ -1,12 +1,11 @@
 # Java Practice
 
 > **Optional language.** Java is not one of the languages this
-> curriculum targets, so these exercises have no reference implementations
-> yet and are excluded from `ol verify build` and from CI. They are kept
-> because the exercises are worth doing, and every `ol` command works on
-> them by name.
+> curriculum targets, so these exercises have no worked solutions
+> yet and nothing here is built in CI. They are kept because the briefs
+> are worth reading as design problems.
 >
-> Toolchain: `mise, with a `.mise.toml` pin`. On a chezmoi-managed machine it comes from the
+> Toolchain: `mise`, with a `.mise.toml` pin. On a chezmoi-managed machine it comes from the
 > `install_alt_langs` flag, which is off by default.
 >
 > macOS ships `/usr/bin/java` as a stub that exists and only prints "Unable to locate a Java Runtime", so check with `javac -version`, not `command -v javac`.
@@ -43,21 +42,16 @@ Master JVM internals, generics, concurrency, and modern Java features.
 - *Effective Java* (Bloch, 3rd ed.) -- essential patterns
 - *Java Concurrency in Practice* (Goetz) -- concurrency bible
 
-## Practising these
+## How this page is organised
 
-```bash
-practice/bin/ol list  build java          # which of these have references yet
-practice/bin/ol start build java 01       # clone it stubbed into .scratchpad/
-practice/bin/ol check build java 01       # run it; exit code is the verdict
-practice/bin/ol diff  build java 01       # your attempt against the reference
-```
-
-Exercises are ordered by concept, not by difficulty, so pick by the stars rather
-than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../../README.md) for how the
-harness works.
+The table below is an index of exercise briefs: what to build, the concepts it
+exercises, and how hard it is. Exercises are ordered by concept, not by
+difficulty. Where a row names a course version (for example `ds.02`), that
+module's chapter walks through a full solution of the same problem.
 
 ## Exercises
+
+Worked solutions for these exercises are not written yet.
 
 | # | Exercise | Concepts | Difficulty |
 |---|----------|----------|------------|

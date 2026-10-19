@@ -1,7 +1,6 @@
 /* list.h - an intrusive doubly-linked list, in the style the Linux kernel uses.
  *
- * Given to you, including the macros. Implement list.c against it; main.c
- * tests it.
+ * The interface. list.c implements it and main.c tests it.
  *
  * "Intrusive" means the list node lives INSIDE your struct, rather than the
  * list allocating a wrapper node that points at your struct:

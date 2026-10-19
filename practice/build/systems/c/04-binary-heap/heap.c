@@ -1,4 +1,4 @@
-/* heap.c - the part you write. */
+/* heap.c - the reference implementation of the heap. */
 #include "heap.h"
 
 #include <stdint.h>

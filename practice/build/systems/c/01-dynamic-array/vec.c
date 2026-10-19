@@ -1,7 +1,6 @@
-/* vec.c - the part you write.
- *
- * Everything between SOLUTION-BEGIN and SOLUTION-END is stripped out when
- * `ol start build c 01` clones this into your scratchpad.
+/* vec.c - the reference implementation of the growable int array declared in
+ * vec.h: geometric growth through realloc, with the old buffer kept intact
+ * whenever an allocation fails.
  */
 #include "vec.h"
 

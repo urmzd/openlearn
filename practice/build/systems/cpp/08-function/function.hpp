@@ -1,6 +1,6 @@
 // function.hpp - a std::function clone: type erasure plus a small buffer.
 //
-// You write the marked regions. main.cpp tests them.
+// The reference implementation. main.cpp tests it.
 //
 // Two ideas, and they are independent:
 //

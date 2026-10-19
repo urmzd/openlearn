@@ -1,40 +1,32 @@
-<!-- ol:module M07.4 -->
 # LLN, CLT, confidence intervals, bootstrap
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M07.4` · build · Python · Pass 4 · 4 to 5 h |
-| **You build** | `python/tinyllm/prob/stats.py`: `normal_cdf`, `normal_ppf`, `t_cdf`, `t_ppf`, `standard_error`, `mean_ci`, `wilson_interval`, `quantile`, `bootstrap_ci` |
+| **Module** | `M07.4` · build · Python · Pass 4 · 2 to 2.5 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/prob/stats.py`](../../../../course/solutions/python/tinyllm/prob/stats.py): `normal_cdf`, `normal_ppf`, `t_cdf`, `t_ppf`, `standard_error`, `mean_ci`, `wilson_interval`, `quantile`, `bootstrap_ci` |
 | **Contract** | [`course/contracts/py/tinyllm/prob/stats.pyi`](../../../../course/contracts/py/tinyllm/prob/stats.pyi) · the generator behind `rng`: [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md) |
-| **Tests** | `course/tests/M07.4/` (what they check: section 4), golden values from scipy 1.17.1 in `course/fixtures/M07.4/scipy_golden.json` |
 | **Needs** | no code from earlier modules · reading: [`M07.1`](01-categorical-sampling.md) one uniform per draw, [`M07.0`](00-random-variables-and-the-normal.md) expectation, variance, the normal, [`S-M07b`](91-problem-set-b.md) the variance of a sum |
-| **Used by** | later: `L4.5` sequence metrics with bootstrap CIs · `L6.7` every evaluation metric carries a CI · `L8.5` quantization verdicts · `L10.7` · `ag.12` re-implements the bootstrap in Go · `M07.5` hypothesis tests build on it · later: `L12.3`, `ethics.04` · `L14.5` WER, VQA, and caption intervals |
-| **Milestone** | `MS-P4` (sequence models; the pass gate runs `ol check` on every math module of the pass) |
+| **Used by** | later: `L4.5` sequence metrics with bootstrap CIs · `L6.7` every evaluation metric carries a CI · `L8.5` quantization verdicts · `L10.7` · `ag.12` re-implements the bootstrap in Go · `M07.5` hypothesis tests build on it · later: `L12.3`, `ethics.04` · `L14.5` WER, VQA, and caption intervals · from Pass 4 (sequence models) on, every reported metric carries one of these intervals |
 | **Optional depth** | Wasserman, *All of Statistics*, ch. 5 to 8 (convergence, the bootstrap); Efron and Tibshirani, *An Introduction to the Bootstrap* (1993), ch. 13; Brown, Cai, DasGupta, "Interval Estimation for a Binomial Proportion" (2001) |
 
 ## Key Takeaways
 
-- The law of large numbers says a sample mean converges to the true mean; the central limit theorem says the error is close to normal with standard deviation $\sigma/\sqrt{n}$, so quadrupling the data halves the error bar (`test_standard_error_shrinks_like_root_n`, `test_mean_ci_coverage_skewed_data_by_clt`).
-- When $\sigma$ is estimated from the same $n$ values, the right quantile is Student's $t$ with $n - 1$ degrees of freedom, not the normal one; at $n = 10$ the normal quantile covers only about 92% instead of 95% (`test_hand_example_mean_ci`, `test_mean_ci_coverage_normal_small_n`).
-- For a proportion near 0 or 1 the Wilson interval stays honest where the textbook $\hat p \pm z\sqrt{\hat p(1-\hat p)/n}$ collapses to a point (`test_hand_example_wilson`, `test_wilson_matches_scipy`).
-- The percentile bootstrap gives an interval for any statistic, BLEU or a median included, by resampling the data; with one uniform per index it is reproducible across languages (`test_bootstrap_matches_independent_resampling`, `test_bootstrap_draws_and_determinism`).
+- The law of large numbers says a sample mean converges to the true mean; the central limit theorem says the error is close to normal with standard deviation $\sigma/\sqrt{n}$, so quadrupling the data halves the error bar.
+- When $\sigma$ is estimated from the same $n$ values, the right quantile is Student's $t$ with $n - 1$ degrees of freedom, not the normal one; at $n = 10$ the normal quantile covers only about 92% instead of 95%.
+- For a proportion near 0 or 1 the Wilson interval stays honest where the textbook $\hat p \pm z\sqrt{\hat p(1-\hat p)/n}$ collapses to a point.
+- The percentile bootstrap gives an interval for any statistic, BLEU or a median included, by resampling the data; with one uniform per index it is reproducible across languages.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M07.4              # stubs stats.py into your repo
-ol tests M07.4              # read the test catalog first
-ol check M07.4              # exit code is the verdict
-ol diff  M07.4              # after passing: your code against the reference
-```
+Sections 1 and 2 build the law of large numbers, the CLT, the $t$ and Wilson intervals, and the bootstrap from first principles, and section 3 works the intervals by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Pass 4 is the first time you compare models. Your LSTM language model (`L3.6`) will report a bits-per-character number, your seq2seq model (`L4.1`) a BLEU score (`L4.5`), and the question is never "what is the number" but "is model A better than model B, or did I get a lucky test set". A BLEU of 21.3 against 20.8 on 200 sentences means nothing until you know how much BLEU moves when you draw another 200 sentences. From here on every metric the course prints (`L4.5`, `L6.7`, the quantization verdicts of `L8.5`) carries a 95% interval, and the comparison tests of `M07.5` build on the same machinery. This module gives you that interval three ways: from a formula for means, from a formula for proportions, and by resampling for everything else.
+Pass 4 is the first time the course compares models. The LSTM language model (`L3.6`) reports a bits-per-character number, the seq2seq model (`L4.1`) a BLEU score (`L4.5`), and the question is never "what is the number" but "is model A better than model B, or did I get a lucky test set". A BLEU of 21.3 against 20.8 on 200 sentences means nothing until you know how much BLEU moves when you draw another 200 sentences. From here on every metric the course prints (`L4.5`, `L6.7`, the quantization verdicts of `L8.5`) carries a 95% interval, and the comparison tests of `M07.5` build on the same machinery. This module gives that interval three ways: from a formula for means, from a formula for proportions, and by resampling for everything else.
 
 ## 2. Principles
 
@@ -51,7 +43,7 @@ Pass 4 is the first time you compare models. Your LSTM language model (`L3.6`) w
 | $k, n, \hat p = k/n$ | successes, trials, observed proportion | integers, real |
 | $B$, $\theta^*_b$ | number of bootstrap resamples, the statistic on resample $b$ | integer, reals |
 
-**The law of large numbers.** By linearity $E[\bar X_n] = \mu$, and because independent variances add, $\operatorname{Var}(\bar X_n) = n\sigma^2/n^2 = \sigma^2/n$ (`S-M07b` q3 with all covariances 0). Chebyshev's inequality then gives $P(|\bar X_n - \mu| \ge \varepsilon) \le \sigma^2/(n\varepsilon^2) \to 0$: the mean of more data is closer to the truth (you prove this in `S-M07c` q5). It also gives the rate: the typical error is $\sigma/\sqrt{n}$, so four times the eval set halves the error, it does not quarter it.
+**The law of large numbers.** By linearity $E[\bar X_n] = \mu$, and because independent variances add, $\operatorname{Var}(\bar X_n) = n\sigma^2/n^2 = \sigma^2/n$ (`S-M07b` q3 with all covariances 0). Chebyshev's inequality then gives $P(|\bar X_n - \mu| \ge \varepsilon) \le \sigma^2/(n\varepsilon^2) \to 0$: the mean of more data is closer to the truth (proved in [`S-M07c`](92-problem-set-c.md) q5). It also gives the rate: the typical error is $\sigma/\sqrt{n}$, so four times the eval set halves the error, it does not quarter it.
 
 **The central limit theorem.** Whatever the distribution of each $X_i$ (finite variance is all it needs), the standardized mean $\sqrt{n}(\bar X_n - \mu)/\sigma$ tends to the standard normal $\mathcal{N}(0, 1)$. So $P(|\bar X_n - \mu| \le z\,\sigma/\sqrt{n}) \approx 2\Phi(z) - 1$, and choosing $z = \Phi^{-1}(1 - \alpha/2)$ (1.96 for 95%) turns that into an interval: $\bar X_n \pm z\,\sigma/\sqrt{n}$ covers $\mu$ in about $1 - \alpha$ of repeated samples. Per-example eval scores are never normal (0/1 accuracy, skewed losses), and the interval still works once $n$ is in the hundreds: that is the CLT.
 
@@ -92,7 +84,7 @@ With the normal 1.959964 instead, the interval would be $[3.246955, 6.753045]$, 
 
 **A Wilson interval.** $k = 0$, $n = 10$, $z = 1.959964$, $z^2 = 3.841459$: $1 + z^2/n = 1.384146$, center $= (0 + 0.192073)/1.384146 = 0.138766$, half-width $= 1.959964 \times \sqrt{0 + 3.841459/400}/1.384146 = 0.138766$. The interval is $[0, 0.277533]$; the Wald interval is $[0, 0]$.
 
-These are `test_hand_example_mean_ci` and `test_hand_example_wilson`.
+These are the first two cases in section 4.
 
 ## 4. The interface
 

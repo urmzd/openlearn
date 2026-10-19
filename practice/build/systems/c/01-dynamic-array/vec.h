@@ -1,6 +1,6 @@
 /* vec.h - a growable array of int.
  *
- * This header is given to you. Implement vec.c against it; main.c tests it.
+ * The interface. vec.c implements it and main.c tests it.
  */
 #ifndef VEC_H
 #define VEC_H

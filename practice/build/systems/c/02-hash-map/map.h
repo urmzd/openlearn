@@ -1,6 +1,6 @@
 /* map.h - a string-keyed hash map with open addressing.
  *
- * Given to you. Implement map.c against it; main.c tests it.
+ * The interface. map.c implements it and main.c tests it.
  *
  * The map owns copies of the keys you give it, so callers may free or reuse
  * their own buffers immediately after a put.
@@ -43,7 +43,7 @@ size_t map_len(const Map *m);
 /* Free the slots and every key the map owns, and return to the zero state. */
 void map_free(Map *m);
 
-/* FNV-1a over a NUL-terminated string. Given to you so that the tests can
+/* FNV-1a over a NUL-terminated string. Public so that the tests can
  * reason about collisions deliberately rather than accidentally. */
 size_t map_hash(const char *key);
 

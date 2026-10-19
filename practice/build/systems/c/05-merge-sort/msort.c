@@ -1,4 +1,4 @@
-/* msort.c - the part you write. */
+/* msort.c - the reference implementation of both merge sorts. */
 #include "msort.h"
 
 #include <stdlib.h>

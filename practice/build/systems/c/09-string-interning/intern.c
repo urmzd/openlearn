@@ -1,4 +1,4 @@
-/* intern.c - the part you write. */
+/* intern.c - the reference implementation of the interning table. */
 #include "intern.h"
 
 #include <stdint.h>

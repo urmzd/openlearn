@@ -1,4 +1,4 @@
-/* arena.c - the part you write. */
+/* arena.c - the reference implementation of the arena. */
 #include "arena.h"
 
 #include <stdint.h>

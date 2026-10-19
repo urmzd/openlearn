@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Threads need -pthread on Linux; the harness's default C++ line does not pass
-# it. Built into a temp dir so nothing lands next to the source.
+# Builds and runs the tests. Threads need -pthread on Linux, so this exercise
+# ships its own compile line. Built into a temp dir so nothing lands next to the source.
 set -euo pipefail
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT

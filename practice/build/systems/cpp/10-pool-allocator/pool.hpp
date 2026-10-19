@@ -1,7 +1,7 @@
 // pool.hpp - a fixed-size-block pool allocator, plus the std::allocator
 // adaptor that lets standard containers use it.
 //
-// You write the marked regions. main.cpp tests them.
+// The reference implementation. main.cpp tests it.
 //
 // A general allocator has to handle any size, which means searching, splitting,
 // coalescing, and per-block headers. A pool handles exactly one size, which

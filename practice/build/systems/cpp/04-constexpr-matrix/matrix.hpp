@@ -1,6 +1,6 @@
 // matrix.hpp - a fixed-size matrix whose arithmetic runs at compile time.
 //
-// You write the marked regions. main.cpp tests them, mostly with
+// The reference implementation. main.cpp tests it, mostly with
 // static_assert, which means a wrong implementation fails to BUILD rather
 // than failing at runtime.
 //

@@ -1,6 +1,6 @@
 /* msort.h - merge sort over an array of records.
  *
- * Given to you. Implement msort.c against it; main.c tests it.
+ * The interface. msort.c implements it and main.c tests it.
  *
  * Records carry a key and a tag. The tag is never compared, so it is what the
  * tests use to prove stability: equal keys must come out in their original
@@ -20,7 +20,7 @@ typedef struct {
  *
  * Allocates one scratch buffer of n records, once, for the whole sort. A
  * version that allocates inside the recursion is O(n log n) allocations and
- * will fail this exercise's intent even though it produces the right answer.
+ * defeats the purpose even though it produces the right answer.
  *
  * Returns 0 on success, -1 if the single scratch allocation fails. */
 int msort(Record *a, size_t n);

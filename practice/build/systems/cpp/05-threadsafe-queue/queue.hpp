@@ -1,6 +1,6 @@
 // queue.hpp - a bounded, blocking, thread-safe queue.
 //
-// You write the marked regions. main.cpp tests them.
+// The reference implementation. main.cpp tests it.
 //
 // This is the C++ counterpart to the C thread pool, and the interesting
 // difference is that RAII does the lock management. There is no path through

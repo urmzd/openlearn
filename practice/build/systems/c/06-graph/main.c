@@ -1,4 +1,5 @@
-/* main.c - the tests. Given to you; do not edit them to make them pass. */
+/* main.c - the test suite for the reference implementation. Exits 0 when every
+ * check holds. */
 #include "graph.h"
 
 #include <stdio.h>
