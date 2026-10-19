@@ -13,7 +13,7 @@ This chapter starts with the intrinsic side, because the training loss is the fi
 
 ## Before you begin
 
-You should be comfortable with entropy, KL divergence, and cross-entropy from [Information Theory](../../mathematics-for-computing/11-information-theory/) in *Mathematics for Computing*, and with the training loss from [Deep Learning](../../machine-learning/02-deep-learning/) in *Machine Learning*. The RAG metrics assume you know what a retrieval pipeline does, from [Retrieval and RAG](../07-retrieval-and-rag/). The agent sections use the agent SDK from [the agent SDK chapter](../13-agent-sdk/README.md) and the durable `EvalSuite` workflow from [Durable orchestration and workers](../05-durable-orchestration-and-workers/README.md).
+You should be comfortable with entropy, KL divergence, and cross-entropy from [Information Theory](../../mathematics-for-computing/11-information-theory/) in *Mathematics for Computing*, and with the training loss from [Deep Learning](../../machine-learning/02-deep-learning/) in *Machine Learning and AI*. The RAG metrics assume you know what a retrieval pipeline does, from [Retrieval and RAG](../07-retrieval-and-rag/). The agent sections use the agent SDK from [the agent SDK chapter](../13-agent-sdk/README.md) and the durable `EvalSuite` workflow from [Durable orchestration and workers](../05-durable-orchestration-and-workers/README.md).
 
 ## Cross-entropy: the loss that is an eval
 

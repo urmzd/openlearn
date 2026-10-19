@@ -263,7 +263,7 @@ Several of these mistakes still produce a valid bijection, just not GPT-2's, whi
 
 The functions, inverses, and pigeonhole problems in [this chapter's problem set](90-problem-set.md) are the pen-and-paper side of this section. In *Build Your Own LLM System*, the byte map is used throughout the tokenizer and decoding code:
 
-- [Tokenizer protocol, char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md): every byte-level tokenizer decodes ids through `decode_chars`.
+- [The tokenizer protocol and the char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md): every byte-level tokenizer decodes ids through `decode_chars`.
 - [Byte-level BPE](../../build-an-llm/p01-tokenizers/02-byte-level-bpe.md): pre-tokenized text is encoded to UTF-8, mapped with `encode_bytes`, merged, and looked up in `vocab.json`; the Hugging Face loader reads `Ġ`-keys with `unicode_to_bytes`.
 - [Rust fast BPE](../../build-an-llm/p01-tokenizers/05-rust-fast-bpe.md): `tl-tok` rebuilds the same table from the same rule (a reimplementation, not a call) and is tested id for id against byte-level BPE.
 - [Constrained decoding](../../build-an-llm/p08-inference/07-constrained-decoding.md) undoes the byte map with `unicode_to_bytes` to recover each token's bytes before walking them through a DFA.

@@ -1,39 +1,19 @@
 # Rust: ownership, traits, Result, cargo workspaces, std TCP
 
-## Overview
+By the time a system can compute a bigram's logits and has a checkpoint on disk, nothing can reach it over a network yet. No process listens on a port, so a gateway has nothing to forward to and a cluster has nothing to run. The next step in *Build Your Own LLM System*, [Your first endpoint](../../build-an-llm/p10-serving/00-your-first-endpoint.md), writes that process: an inference engine in **Rust** that accepts TCP connections, reads requests, and runs the model for every token. It uses only Rust's standard library, so every byte on the wire is visible in its own code.
 
-| | |
-|---|---|
-| **Module** | `lang.04` · practice · Rust · Pass 1 · 2 to 3 h reading |
-| **Solution** | A Cargo workspace ([`Cargo.toml`](../../../../course/solutions/primers/lang.04/Cargo.toml)) with the library [`lineproto/src/lib.rs`](../../../../course/solutions/primers/lang.04/lineproto/src/lib.rs) (`Command`, `ProtoError`, `parse`, `byte_len`, `respond`, `reply`) and the binary [`echo/src/main.rs`](../../../../course/solutions/primers/lang.04/echo/src/main.rs) (`main`, `parse_port`, `serve`: a line-protocol server on `std::net`, one thread per connection) |
-| **Contract** | none: the protocol table and the signatures in section 4 are the contract |
-| **Needs** | `lang.02` (processes, exit codes, signals); `lang.03` is useful background for comparing byte strings |
-| **Used by** | no call site (a primer): `L10.0` applies the Rust server and workspace patterns, then `ds.05` and `L1.5` |
-| **Optional depth** | [The Rust Programming Language](https://doc.rust-lang.org/book/) (free), ch. 4 (ownership), 6 (enums), 9 (errors), 10 (traits), 14 (workspaces), 16 (threads), 21 (a multithreaded web server); [Rust by Example](https://doc.rust-lang.org/rust-by-example/) (free); [std::net](https://doc.rust-lang.org/std/net/) docs (free) |
+This section builds the same skeleton with a trivial protocol: a server that reads lines from many clients at once and answers each line. When you reach the engine, the only new ideas will be HTTP, the model, and tracing. The solution is a Cargo workspace ([`Cargo.toml`](../../../../course/solutions/primers/lang.04/Cargo.toml)) with the library [`lineproto/src/lib.rs`](../../../../course/solutions/primers/lang.04/lineproto/src/lib.rs) (`Command`, `ProtoError`, `parse`, `byte_len`, `respond`, `reply`) and the binary [`echo/src/main.rs`](../../../../course/solutions/primers/lang.04/echo/src/main.rs) (`main`, `parse_port`, `serve`: a line-protocol server on `std::net`, one thread per connection). The protocol table and signatures below are the whole contract. To run it: `cd primers/lang.04 && cargo test && cargo run -p echo -- --port 7878`.
 
-## Key Takeaways
+Rust is introduced here by comparison with the earlier primers: [Python and numpy](01-python-and-numpy.md), [Shell, git, make, and processes](02-shell-git-make.md) for processes, exit codes, and signals, and [C](03-c.md), which is useful background for comparing byte strings and ownership. Every term is defined before it is used.
 
-- Every value has exactly one **owner**; assigning or passing it **moves** it, and references **borrow** it without taking ownership. The compiler checks these rules, which is how Rust frees memory without a garbage collector and without use-after-free: the server moves each socket into its own thread.
-- Failure is a value: a function that can fail returns `Result<T, E>`, and `?` passes the error up. `unwrap()` turns an error into a crash; a server answers errors instead.
-- A **trait** is a set of methods a type promises. `Display` gives an error its text, `Read`/`Write`/`BufRead` are what make a socket, a file, and a byte slice interchangeable.
-- A Rust `str` is valid UTF-8; `.len()` counts its bytes and `.chars().count()` counts Unicode scalar values. NUL is ordinary string content.
-- TCP is a **byte stream**, not a message stream: one `read` can hold half a line or three lines. A buffered reader that splits on `\n` is the fix.
+> **Learning objectives**
+> - Organize Rust code as a Cargo workspace with a pure library and a thin binary.
+> - Apply ownership, moves, and borrowing, and explain why they rule out use-after-free and data races at compile time.
+> - Model failure with `Result`, enums, and `Display`, and propagate it with `?` instead of panicking.
+> - Distinguish UTF-8 byte length from Unicode scalar count in Rust strings.
+> - Write a TCP line server that frames a byte stream with `BufReader::read_until` and serves each connection on its own thread.
 
-## How to read this chapter
-
-Section 2 introduces Rust by comparison with Python and C: Cargo workspaces, ownership, enums, `Result`, traits, UTF-8 strings, TCP, and threads. Section 3 replays a client session by hand and traces one request through the library. Section 4 fixes the protocol, the signatures, and the cases a correct solution must handle. Section 5 walks through the library and the server and explains why each piece is written the way it is. Try to write each function before reading it. To run the solution: `cd primers/lang.04 && cargo test && cargo run -p echo -- --port 7878`.
-
----
-
-## 1. Why now
-
-The system can compute a bigram's logits in C and call that C from Python (`rt.01`, `M03.1`, `L0.0`), and it has a checkpoint on disk. Nothing can reach it over a network: no process listens on a port, so the Go gateway (`gw.00`) has nothing to forward to and the cluster (`dep.00`) nothing to run. The next module, `L10.0`, writes that process: an inference engine in **Rust** that accepts TCP connections, reads requests, and calls the C `tl_matmul_f32` for every token. It uses only Rust's standard library, so every byte on the wire is visible in its own code. This primer builds the same skeleton with a trivial protocol: a server that reads lines from many clients at once and answers each line, plus one call into C. In `L10.0` the only new ideas are HTTP, the model, and tracing.
-
-## 2. Principles
-
-The earlier primers covered Python (`lang.01`), shell (`lang.02`), and C (`lang.03`). Rust is introduced by comparison with those. Every term is defined before it is used.
-
-### 2.1 Cargo: packages, crates, targets, workspaces
+## Cargo: packages, crates, targets, workspaces
 
 **Cargo** is Rust's build tool and package manager. A **package** is a directory with a `Cargo.toml` manifest naming it, its version, its Rust **edition** (the language revision, `2021` here), and its dependencies. A package holds one or more **crates**: a crate is one compilation unit, either a **library** (`src/lib.rs`, used by other crates) or a **binary** (`src/main.rs`, which has a `fn main` and becomes an executable). Each crate is a **target** of its package.
 
@@ -44,6 +24,8 @@ A **workspace** is a directory whose `Cargo.toml` has a `[workspace]` table list
 lineproto = { path = "../lineproto" }
 ```
 
+These are the commands you run at the workspace root:
+
 | Command (at the workspace root) | What it does |
 |---|---|
 | `cargo build` | compiles every member into `target/debug/` (`--release` optimizes, into `target/release/`) |
@@ -52,11 +34,11 @@ lineproto = { path = "../lineproto" }
 | `cargo clippy` | lints for likely mistakes (optional, recommended) |
 | `cargo fmt` | formats every file in the one standard style |
 
-`--offline` tells Cargo not to touch the network; this primer has no dependencies outside the standard library (`std`), so it never needs to. The split into a library and a binary is deliberate: the library has no I/O, so its rules are testable with plain function calls, and the binary only moves bytes between a socket and the library. `L10.0` uses the same split (`tl-serve` is a library plus a `main.rs`), and the system's `rust/Cargo.toml` is a workspace with two members.
+`--offline` tells Cargo not to touch the network; this primer has no dependencies outside the standard library (`std`), so it never needs to. The split into a library and a binary is deliberate: the library has no I/O, so its rules are testable with plain function calls, and the binary only moves bytes between a socket and the library. The engine uses the same split (`tl-serve` is a library plus a `main.rs`), and the system's `rust/Cargo.toml` is a workspace with two members.
 
-### 2.2 Ownership, moves, and borrowing
+## Ownership, moves, and borrowing
 
-C makes the programmer free every allocation (`lang.03`); Python frees it when nothing refers to it any more, at run time. Rust decides at **compile time**, with three rules:
+The build tool settles how code is organized; ownership settles how memory is managed. C makes the programmer free every allocation; Python frees it when nothing refers to it any more, at run time. Rust decides at **compile time**, with three rules:
 
 1. Every value has exactly one **owner**, a variable.
 2. When the owner goes out of scope, the value is **dropped**: its memory (and any socket or file it holds) is released.
@@ -68,9 +50,9 @@ let t = s;                      // moved: t owns the buffer now
 println!("{s}");                // compile error: borrow of moved value `s`
 ```
 
-To use a value without taking it, you **borrow** it with a **reference**: `&s` is a shared (read-only) reference, `&mut s` an exclusive (read-write) one. At any moment a value has either any number of shared references or exactly one exclusive reference, never both, and no reference may outlive the value. Those two rules rule out use-after-free and data races before the program runs.
+To use a value without taking it, you **borrow** it with a **reference**: `&s` is a shared (read-only) reference, `&mut s` an exclusive (read-write) one. At any moment a value has either any number of shared references or exactly one exclusive reference, never both, and no reference may outlive the value. Those two rules rule out use-after-free and data races before the program runs, which is how Rust frees memory without a garbage collector. The server below relies on this when it moves each socket into its own thread.
 
-Two pairs of types follow from this:
+Two pairs of types follow from these rules:
 
 | Owned (you can keep it, grow it, move it) | Borrowed view (a pointer and a length) | Holds |
 |---|---|---|
@@ -81,7 +63,7 @@ A function that only reads text takes `&str`; a value that must outlive the line
 
 Types with no heap data, such as integers and `bool`, are **Copy**: assigning duplicates them and the old variable stays usable.
 
-### 2.3 Structs, enums, and `match`
+## Structs, enums, and match
 
 A **struct** groups named fields. An **enum** is a value that is exactly one of several **variants**, and a variant may carry data:
 
@@ -93,15 +75,17 @@ enum Command { Ping, Echo(String), Len(String), Quit }
 
 `#[derive(Debug, Clone, PartialEq, Eq)]` above a type asks the compiler to write the code for printing it with `{:?}`, copying it with `.clone()`, and comparing it with `==`.
 
-### 2.4 Errors as values: `Result` and `?`
+## Errors as values: Result and ?
 
-C reports failure through a return code that the caller may ignore (`lang.03`); Python raises an exception that unwinds the stack. Rust returns it: a function that can fail returns `Result<T, E>`, which is `Ok(value)` or `Err(error)`, and the caller cannot reach the value without deciding what to do with the error.
+`Result` deserves its own treatment, because it is how Rust replaces both C's return codes and Python's exceptions. C reports failure through a return code that the caller may ignore; Python raises an exception that unwinds the stack. Rust returns it: a function that can fail returns `Result<T, E>`, which is `Ok(value)` or `Err(error)`, and the caller cannot reach the value without deciding what to do with the error.
 
 ```rust
 fn parse(line: &str) -> Result<Command, ProtoError> {
     // return Ok(command) or Err(error), depending on the request
 }
 ```
+
+A handful of tools make working with `Result` concise:
 
 | Tool | Meaning |
 |---|---|
@@ -110,9 +94,9 @@ fn parse(line: &str) -> Result<Command, ProtoError> {
 | `.and_then(f)` | if `Ok(v)`, run `f(v)`, which itself returns a `Result` (chains fallible steps) |
 | `.unwrap()`, `.expect("why")` | take the `Ok` value or **panic** |
 
-A **panic** stops the current thread with a message. It is for bugs (a state the code proves impossible), never for bad input: a client that sends garbage must get an error reply, and a panic in a server thread drops that client's connection with no answer.
+A **panic** stops the current thread with a message. It is for bugs (a state the code proves impossible), never for bad input: a client that sends garbage must get an error reply, and a panic in a server thread drops that client's connection with no answer. `unwrap()` turns an error into a crash; a server answers errors instead.
 
-### 2.5 Traits
+## Traits
 
 A **trait** names methods that a type promises to have. A type **implements** a trait with an `impl` block:
 
@@ -124,7 +108,7 @@ impl fmt::Display for ProtoError {
 
 Now `format!("ERR {e}")` works for a `ProtoError`, because `{}` formats any `Display` value. `impl std::error::Error for ProtoError {}` marks it as an error type other code can handle generically.
 
-Traits are also how one function works on many types. The standard I/O traits:
+Traits are also how one function works on many types. The standard I/O traits are what make a socket, a file, and a byte slice interchangeable:
 
 | Trait | Promise | Implemented by |
 |---|---|---|
@@ -134,9 +118,9 @@ Traits are also how one function works on many types. The standard I/O traits:
 
 A function written as `fn f<R: BufRead>(r: &mut R)` is **generic**: it works for any type `R` that implements `BufRead`, a socket in the server and a byte slice in a test.
 
-### 2.6 Strings, bytes, and UTF-8
+## Strings, bytes, and UTF-8
 
-A Rust `str` is valid UTF-8. Its `.len()` is the number of bytes in that encoding; `.chars().count()` is the number of Unicode scalar values. These differ when a character needs more than one UTF-8 byte: `"héllo"` has six bytes and five scalar values. A Rust string can also contain a NUL byte; it is ordinary content because the string carries an explicit length rather than ending at a sentinel.
+A Rust `str` is valid UTF-8. Its `.len()` is the number of bytes in that encoding; `.chars().count()` is the number of Unicode scalar values. These differ when a character needs more than one UTF-8 byte: `"héllo"` has six bytes and five scalar values. A Rust string can also contain a NUL byte; it is ordinary content because the string carries an explicit length rather than ending at a sentinel, as a C string does.
 
 ```rust
 let text = "héllo";
@@ -145,11 +129,11 @@ assert_eq!(text.chars().count(), 5);   // Unicode scalar values
 assert_eq!("a\0b".len(), 3);            // NUL is included
 ```
 
-The `LEN` command makes this distinction observable over the wire. Since its line parser has already validated UTF-8, `.len()` gives the byte count needed by byte-oriented protocols without unsafe code or a foreign-library call.
+The protocol's `LEN` command makes this distinction observable over the wire. Since its line parser has already validated UTF-8, `.len()` gives the byte count needed by byte-oriented protocols without unsafe code or a foreign-library call.
 
-### 2.7 TCP with `std::net`
+## TCP with std::net
 
-**TCP** gives two programs a reliable, ordered, two-way stream of bytes. A **server** opens a **listening socket** on an address and a **port** (a 16-bit number naming the service on that machine); `127.0.0.1` is this machine only, `0.0.0.0` every network interface (what a container needs). Port 0 asks the operating system for any free port, which is how tests avoid collisions; `listener.local_addr()` then tells you which one you got.
+With the language pieces in place, the network comes next. **TCP** gives two programs a reliable, ordered, two-way stream of bytes. A **server** opens a **listening socket** on an address and a **port** (a 16-bit number naming the service on that machine); `127.0.0.1` is this machine only, `0.0.0.0` every network interface (what a container needs). Port 0 asks the operating system for any free port, which is how tests avoid collisions; `listener.local_addr()` then tells you which one you got.
 
 ```rust
 let listener = TcpListener::bind(("127.0.0.1", port))?;
@@ -158,11 +142,11 @@ for conn in listener.incoming() {      // blocks until a client connects
 }
 ```
 
-A `TcpStream` implements `Read` and `Write`. The key fact: **TCP preserves bytes, not writes**. A client that writes `"PING\n"` and then `"ECHO a\n"` may have both arrive in one `read`, or `"PI"` in one read and `"NG\n"` in the next. A line protocol must therefore buffer: `BufReader::new(stream)` reads large chunks into memory and `read_until(b'\n', &mut line)` hands back exactly one line, however it arrived. `stream.try_clone()` gives a second handle on the same socket, so one handle can sit inside the `BufReader` while the other writes replies.
+A `TcpStream` implements `Read` and `Write`. The key fact: **TCP preserves bytes, not writes**. It is a byte stream, not a message stream. A client that writes `"PING\n"` and then `"ECHO a\n"` may have both arrive in one `read`, or `"PI"` in one read and `"NG\n"` in the next. A line protocol must therefore buffer: `BufReader::new(stream)` reads large chunks into memory and `read_until(b'\n', &mut line)` hands back exactly one line, however it arrived. `stream.try_clone()` gives a second handle on the same socket, so one handle can sit inside the `BufReader` while the other writes replies.
 
 `read_until` returns `Ok(0)` when the client closed its side of the connection (end of stream); a line that ends without `\n` means the client left mid-line.
 
-### 2.8 Threads
+## Threads
 
 A server that handles one connection at a time stops serving everyone while one client is slow. The simplest fix is one **thread** per connection:
 
@@ -172,9 +156,9 @@ thread::spawn(move || {
 });
 ```
 
-`thread::spawn` runs a **closure** (an anonymous function) on a new operating-system thread. `move` makes the closure take ownership of what it uses, here `stream`, so the new thread owns the socket and the accept loop keeps no reference to it: the compiler would reject sharing it by accident. When `serve` returns, `stream` is dropped and the socket closes. Threads cost memory (a stack each), which is fine for a primer and for the tracer engine; `lang.09` and `L10.5` replace them with **async** tasks.
+`thread::spawn` runs a **closure** (an anonymous function) on a new operating-system thread. `move` makes the closure take ownership of what it uses, here `stream`, so the new thread owns the socket and the accept loop keeps no reference to it: the compiler would reject sharing it by accident. When `serve` returns, `stream` is dropped and the socket closes. Threads cost memory (a stack each), which is fine for a primer and for the tracer engine; [Async Rust and tokio](09-async-rust-and-tokio.md) and the [OpenAI-compatible server on tokio](../../build-an-llm/p10-serving/05-openai-server-on-tokio.md) replace them with **async** tasks.
 
-### 2.9 Tests
+## Tests
 
 A function marked `#[test]` is a test; it passes if it returns without panicking. `assert_eq!(a, b)` panics with both values when they differ. Unit tests live next to the code in a module compiled only for testing:
 
@@ -189,9 +173,9 @@ mod tests {
 
 `cargo test` runs them.
 
-## 3. Worked example by hand
+## Working it by hand
 
-The session below exercises ping, echo, `LEN`, pipelining, errors, and `QUIT`. Client bytes are on the left, server bytes on the right; `\n` is the byte `0x0a`.
+Before reading the protocol formally, replay a session. It exercises ping, echo, `LEN`, pipelining, errors, and `QUIT`. Client bytes are on the left, server bytes on the right; `\n` is the byte `0x0a`.
 
 | Client sends | Server answers | Why |
 |---|---|---|
@@ -202,7 +186,7 @@ The session below exercises ping, echo, `LEN`, pipelining, errors, and `QUIT`. C
 | `JUMP high\n` | `ERR unknown command JUMP\n` | the connection stays open |
 | `QUIT\n` | `BYE\n`, then the server closes | the only request that ends the connection |
 
-`LEN héllo` by hand, through `reply(line)`:
+Now trace `LEN héllo` by hand, through `reply(line)`:
 
 1. The line's bytes are `4c 45 4e 20 68 c3 a9 6c 6c 6f 0a`. `é` is the code point U+00E9, which UTF-8 writes as two bytes, `c3 a9`.
 2. `std::str::from_utf8` accepts them: `Ok("LEN héllo\n")`.
@@ -214,7 +198,9 @@ The session below exercises ping, echo, `LEN`, pipelining, errors, and `QUIT`. C
 
 Try it with the solution's server running (`cargo run -p echo -- --port 7878`) and `nc 127.0.0.1 7878` in another terminal; type the lines. `printf 'PING\nECHO a\nLEN abc\n' | nc 127.0.0.1 7878` sends three lines in one write.
 
-## 4. The interface
+## The protocol and the interface
+
+The workspace has this layout:
 
 ```text
 primers/lang.04/
@@ -225,7 +211,7 @@ primers/lang.04/
   echo/src/main.rs        the server: std::net, one thread per connection
 ```
 
-The protocol. One request is one line ending in `\n`; a `\r` right before the `\n` is part of the line ending. The command word is everything before the first space (the whole line if there is none); the text is everything after it. Commands are case-sensitive.
+One request is one line ending in `\n`; a `\r` right before the `\n` is part of the line ending. The command word is everything before the first space (the whole line if there is none); the text is everything after it. Commands are case-sensitive. The full protocol is:
 
 | Request | Reply | Connection |
 |---|---|---|
@@ -238,7 +224,7 @@ The protocol. One request is one line ending in `\n`; a `\r` right before the `\
 | any other word `W` | `ERR unknown command W` | stays open |
 | `LEN a\0b` | `3` (NUL is ordinary string content) | stays open |
 
-The library's interface, in `lineproto/src/lib.rs`:
+The library's interface, in `lineproto/src/lib.rs`, is:
 
 ```rust
 pub enum Command { Ping, Echo(String), Len(String), Quit }
@@ -252,42 +238,22 @@ pub fn respond(cmd: &Command) -> String;                      // reply text, no 
 pub fn reply(line: &[u8]) -> (String, bool);                  // the whole protocol: (reply, close?)
 ```
 
-The binary, `echo/src/main.rs`: `echo --port <n>` binds `127.0.0.1:<n>` (no flag: 7878; port 0: any free port), prints exactly `listening on 127.0.0.1:<port>` as its first stdout line (a script that started it with port 0 reads the port from it), then serves every connection on its own thread: read a line, write `reply(line)` and `\n`, close after `QUIT` or when the client leaves. A bad `--port` exits 2 with a message on stderr.
+The binary, `echo/src/main.rs`, behaves as follows. `echo --port <n>` binds `127.0.0.1:<n>` (no flag: 7878; port 0: any free port) and prints exactly `listening on 127.0.0.1:<port>` as its first stdout line, so a script that started it with port 0 can read the port from it. It then serves every connection on its own thread: read a line, write `reply(line)` and `\n`, close after `QUIT` or when the client leaves. A bad `--port` exits 2 with a message on stderr.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| the workspace builds | conformance | the workspace builds a library and an `echo` binary, std only, offline | the system's `rust/` is a workspace of the same shape (`L10.0`) |
-| the unit tests pass | unit | the library's `#[test]` functions pass | CI runs `cargo test` from Pass 1 on |
-| ping, pong | unit | section 3's first exchange | one request in, one reply out |
-| echo returns the text byte for byte | unit | text after the first space, spaces and non-ASCII kept | a server never edits the payload it relays |
-| CRLF line endings are accepted | boundary | `PING\r\n` is `PING` | HTTP lines end in `\r\n` (`lang.05`) |
-| `LEN` counts UTF-8 bytes | unit | `LEN héllo` is 6 bytes, not 5 scalar values | byte protocols count encoded bytes |
-| `LEN` counts NUL as a byte | boundary | `LEN a\0b` is 3; the connection remains usable | Rust strings carry NUL as content |
-| errors are replies, not crashes | boundary | unknown command, empty line, invalid UTF-8, lower case | bad input gets an answer, never a dead thread |
-| `QUIT` says `BYE` and closes | unit | `BYE`, then end of stream | the server, not the client, ends some exchanges |
-| several lines in one packet | boundary | three lines in one write get three replies | TCP is a byte stream |
-| a line split across packets | boundary | one line in three writes gets one reply | same, the other direction |
-| two clients at once | fault | a stalled client does not block another | the engine serves many clients (`L10.0`) |
-| a client vanishing mid-line leaves the server up | fault | an abrupt disconnect ends only that connection | clients die all the time |
+Eight observations shape the solution. Try to write each function before reading it.
 
-## 5. The solution, step by step
-
-### 5.1 From first principles
-
-1. The protocol rules are pure functions of one line's bytes, so they belong in a library with no I/O, testable with plain calls (2.1). The binary only moves bytes between a socket and that library.
-2. A line from a socket is bytes, and only valid UTF-8 can become a `&str` (2.2). So the first step of handling a line is `from_utf8`, and a failure is a protocol error, not a crash.
+1. The protocol rules are pure functions of one line's bytes, so they belong in a library with no I/O, testable with plain calls. The binary only moves bytes between a socket and that library.
+2. A line from a socket is bytes, and only valid UTF-8 can become a `&str`. So the first step of handling a line is `from_utf8`, and a failure is a protocol error, not a crash.
 3. Every way a request can be wrong is a value of one enum, `ProtoError`. Its `Display` impl is the error text, so the reply `ERR <reason>` is one `format!` and cannot drift from the variants.
 4. The text of `ECHO` must come back byte for byte, so the line is split once, at the first space, and the rest is not touched.
-5. `LEN` counts encoded bytes, which is exactly what `str::len` returns (2.6); no counting code is needed.
+5. `LEN` counts encoded bytes, which is exactly what `str::len` returns; no counting code is needed.
 6. Whether to close after a reply depends on the command, so the top-level function returns the reply and a flag together; the server never inspects the command itself.
-7. TCP delivers a byte stream (2.7), so the server buffers and reads up to each `\n`. A final fragment without `\n` means the client left mid-line, and there is nothing to answer.
-8. One thread per connection keeps a slow client from blocking others (2.8); `move` gives each thread sole ownership of its socket, so the compiler rules out two threads sharing one by accident.
+7. TCP delivers a byte stream, so the server buffers and reads up to each `\n`. A final fragment without `\n` means the client left mid-line, and there is nothing to answer.
+8. One thread per connection keeps a slow client from blocking others; `move` gives each thread sole ownership of its socket, so the compiler rules out two threads sharing one by accident.
 
-### 5.2 The code, annotated
-
-**The types.**
+### The types
 
 ```rust
 /// A parsed request. `Echo` and `Len` own their text (a `String`), so a
@@ -313,7 +279,7 @@ impl std::error::Error for ProtoError {}
 
 `PartialEq` is derived so `reply` can ask `cmd == Command::Quit`, and unit tests can compare results with `assert_eq!`.
 
-**Parsing.**
+### Parsing
 
 ```rust
 pub fn parse(line: &str) -> Result<Command, ProtoError> {
@@ -327,16 +293,16 @@ pub fn parse(line: &str) -> Result<Command, ProtoError> {
     match word {                           // case-sensitive: "ping" is unknown
         "PING" => Ok(Command::Ping),
         "QUIT" => Ok(Command::Quit),
-        "ECHO" => Ok(Command::Echo(text.to_string())),   // owned copy (2.2)
+        "ECHO" => Ok(Command::Echo(text.to_string())),   // owned copy
         "LEN" => Ok(Command::Len(text.to_string())),
         _ => Err(ProtoError::Unknown(word.to_string())),
     }
 }
 ```
 
-The order of the two `strip_suffix` calls is what makes `\r\n` work: stripping `\r` first would find `\n` at the end and do nothing. Each `strip_suffix` returns `Option<&str>`, a view into the same line, so no copying happens until `to_string`. Section 3's `ECHO  two  spaces` splits into `"ECHO"` and `" two  spaces"`, keeping the leading space. `PING extra` parses as `Ping`: the text is ignored for commands that take none.
+The order of the two `strip_suffix` calls is what makes `\r\n` work: stripping `\r` first would find `\n` at the end and do nothing. Each `strip_suffix` returns `Option<&str>`, a view into the same line, so no copying happens until `to_string`. The session's `ECHO  two  spaces` splits into `"ECHO"` and `" two  spaces"`, keeping the leading space. `PING extra` parses as `Ping`: the text is ignored for commands that take none.
 
-**Responding.**
+### Responding
 
 ```rust
 pub fn byte_len(text: &str) -> usize {
@@ -355,7 +321,7 @@ pub fn respond(cmd: &Command) -> String {
 
 `respond` borrows the command (`&Command`), so it cannot consume it and the caller can still compare it with `Quit` afterwards.
 
-**The whole protocol for one line.**
+### The whole protocol for one line
 
 ```rust
 pub fn reply(line: &[u8]) -> (String, bool) {
@@ -372,7 +338,7 @@ pub fn reply(line: &[u8]) -> (String, bool) {
 
 The chain reads as the rule: decode, then parse, then answer, with the first failure skipping the rest. Trace `LEN héllo\n`: `from_utf8` gives `Ok("LEN héllo\n")`, `parse` gives `Ok(Len("héllo"))`, `map` gives `("6", false)`. For `JUMP high\n`, `parse` returns `Err(Unknown("JUMP"))`, `map` is skipped, and the reply is `ERR unknown command JUMP`.
 
-**The server: startup.**
+### The server: startup
 
 ```rust
 fn main() {
@@ -402,7 +368,7 @@ fn parse_port(args: &[String]) -> Result<u16, String> {
 
 `u16` is the type of a port, so `--port 70000` fails to parse and exits 2 instead of wrapping. The flush matters because a script reading the first line through a pipe would otherwise wait for a buffer that never fills.
 
-**The server: one thread per connection.**
+### The server: one thread per connection
 
 ```rust
     for conn in listener.incoming() {
@@ -421,7 +387,7 @@ fn parse_port(args: &[String]) -> Result<u16, String> {
     }
 ```
 
-**The server: reading lines.**
+### The server: reading lines
 
 ```rust
 fn serve(stream: TcpStream) -> io::Result<()> {
@@ -448,59 +414,23 @@ fn serve(stream: TcpStream) -> io::Result<()> {
 
 `read_until` reads into `Vec<u8>`, not `String`, because the bytes are not yet known to be UTF-8; `reply` decides that. Three pipelined lines in one packet sit in the `BufReader`'s buffer and come out one per call; a line split across three packets is assembled by `read_until` before it returns. A client that resets the connection makes a read or write return `Err`, which `?` passes up to the thread, which logs it and ends; the accept loop never sees it.
 
-Full solution: [`lib.rs`](../../../../course/solutions/primers/lang.04/lineproto/src/lib.rs), [`main.rs`](../../../../course/solutions/primers/lang.04/echo/src/main.rs).
+The full solution is in [`lib.rs`](../../../../course/solutions/primers/lang.04/lineproto/src/lib.rs) and [`main.rs`](../../../../course/solutions/primers/lang.04/echo/src/main.rs).
 
-### 5.3 Why this solution
+### Why this design
 
-- **Cost.** Each line is handled in time linear in its length; each connection costs one OS thread (a stack of a few MB of address space, mostly untouched) and one buffer.
-- **Library plus binary** rather than one `main.rs`: the rules are tested with `reply(b"...")` in microseconds, and the binary is small enough to read in one sitting. `L10.0` uses the same split.
-- **`BufReader::read_until`** rather than one `read` per request: TCP has no message boundaries, so anything else is wrong under pipelining or slow networks.
-- **A thread per connection** rather than async: no runtime and no dependency, at the cost of scaling to hundreds rather than tens of thousands of connections. `lang.09` makes the async trade.
-- **Tradeoff accepted:** no limit on line length. A client that sends gigabytes without a newline grows `line` without bound; a production server caps it (for example with `take` on the reader) and answers an error.
+In cost, each line is handled in time linear in its length; each connection costs one OS thread (a stack of a few MB of address space, mostly untouched) and one buffer.
 
-### 5.4 Explain it back
+A library plus a binary, rather than one `main.rs`, means the rules are tested with `reply(b"...")` in microseconds, and the binary is small enough to read in one sitting; the engine uses the same split. `BufReader::read_until`, rather than one `read` per request, is required because TCP has no message boundaries, so anything else is wrong under pipelining or slow networks. A thread per connection, rather than async, needs no runtime and no dependency, at the cost of scaling to hundreds rather than tens of thousands of connections; [Async Rust and tokio](09-async-rust-and-tokio.md) makes the async trade.
 
-**Why does `reply` take `&[u8]` rather than `&str`?**
+One tradeoff is accepted deliberately: there is no limit on line length. A client that sends gigabytes without a newline grows `line` without bound; a production server caps it (for example with `take` on the reader) and answers an error.
 
-<details><summary>Answer</summary>
+## What can go wrong
 
-The bytes come straight from a socket and may not be UTF-8. Taking bytes lets `reply` own the decision and answer `ERR invalid utf-8` instead of making every caller decode first, or worse, unwrap.
+A correct solution passes a specific set of checks. The workspace must build a library and an `echo` binary, std only, offline, because the system's `rust/` is a workspace of the same shape, and the library's `#[test]` functions must pass, since CI runs `cargo test` from then on. The first exchange must give `PONG`. `ECHO` must return the text after the first space byte for byte, spaces and non-ASCII kept, because a server never edits the payload it relays. `PING\r\n` must parse as `PING`, because HTTP lines end in `\r\n`, as the next section shows. `LEN héllo` must answer 6 bytes, not 5 scalar values, and `LEN a\0b` must answer 3 with the connection still usable.
 
-</details>
+Errors must be replies, not crashes: an unknown command, an empty line, invalid UTF-8, and a lower-case command all get an answer, never a dead thread. `QUIT` must say `BYE` and then end the stream. On the network side, three lines in one write must get three replies, one line split across three writes must get one reply, a stalled client must not block another, and a client vanishing mid-line must end only its own connection, because clients die all the time.
 
-**What does `serve` do with the bytes `PI` followed by a closed connection?**
-
-<details><summary>Answer</summary>
-
-`read_until` returns 2 with no trailing `\n`, so `serve` returns `Ok(())` without replying. The client left mid-line; there is nobody to answer and no complete request to answer.
-
-</details>
-
-**Why is `stream` moved into the thread instead of borrowed?**
-
-<details><summary>Answer</summary>
-
-The thread may outlive the loop iteration that accepted the connection. A borrow would have to outlive the stack variable it points at, which the compiler rejects. Moving gives the thread ownership, so the socket lives exactly as long as the thread needs it and closes when `serve` returns.
-
-</details>
-
-**Why strip `\n` before `\r`?**
-
-<details><summary>Answer</summary>
-
-The line ends with `\r\n`. The last character is `\n`, so `strip_suffix('\r')` first would find nothing to strip; stripping `\n` exposes the `\r`, which the second call then removes.
-
-</details>
-
-**`LEN héllo` answers 6. What would `text.chars().count()` answer, and why is that wrong here?**
-
-<details><summary>Answer</summary>
-
-5, the number of Unicode scalar values. The protocol defines `LEN` as the UTF-8 byte length, the quantity byte-oriented protocols need (a `Content-Length`, a buffer size), and `é` is two bytes.
-
-</details>
-
-## 6. Pitfalls
+The pitfalls that break these checks are these:
 
 | Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
@@ -512,21 +442,78 @@ The line ends with `\r\n`. The last character is `\n`, so `strip_suffix('\r')` f
 | Counting Unicode scalar values for `LEN` (`chars().count()`) | `LEN héllo` answers 5 instead of 6 bytes | `byte_len` is `text.len()` |
 | Printing the port before binding, or not printing `listening on ...` first | a script cannot find the server's port | `main` binds first, then prints `listening on {addr}` from `local_addr()` and flushes |
 
-## 7. Where it's used next
+> **Warning:** TCP preserves bytes, not writes. Any line protocol that treats one `read` as one message works on localhost in testing and fails under real network timing.
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `lang.03` | compare C byte buffers with Rust's length-carrying strings |
-| Back | `lang.02` | processes, exit codes (`echo` exits 2 on a bad flag) |
-| Forward | `L10.0` | the engine is this server grown up: `TcpListener`, a thread per connection, a `BufRead` parser, and candle-based inference |
-| Forward | `lang.05` | the same server shape, speaking HTTP/1.1, JSON, and SSE instead of lines |
-| Forward | `ds.05` | traits and generics (`Hash`, `Eq`, `BuildHasher`) in the Robin Hood map |
-| Forward | `L1.5` | a Rust tokenizer crate whose Python parity is checked with shared fixtures |
+## Where this leads
 
-## Going further
+The engine in [Your first endpoint](../../build-an-llm/p10-serving/00-your-first-endpoint.md) is this server grown up: `TcpListener`, a thread per connection, a `BufRead` parser, and candle-based inference. The next section, [HTTP/1.1, JSON, and Server-Sent Events](05-http-and-sse.md), keeps the same server shape but speaks HTTP/1.1, JSON, and SSE instead of lines. In *Algorithms*, the [Robin Hood hash map](../../algorithms/16-systems-data-structures/05-robin-hood-hash-map.md) uses traits and generics (`Hash`, `Eq`, `BuildHasher`), and in *Build Your Own LLM System*, the [Rust fast BPE tokenizer](../../build-an-llm/p01-tokenizers/05-rust-fast-bpe.md) is a Rust crate whose Python parity is checked with shared fixtures.
 
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| a thread per connection | async runtimes ([tokio](https://tokio.rs/)) | thousands of connections on a few threads, cancellation, timeouts | `lang.09`; the Book, ch. 17 |
-| `BufReader::read_until` line framing | [tokio-util codecs](https://docs.rs/tokio-util/latest/tokio_util/codec/) | reusable framers (lines, length prefixes) over async streams | `LinesCodec` |
-| `cargo test` | [cargo-nextest](https://nexte.st/), [Miri](https://github.com/rust-lang/miri) | faster parallel runs; an interpreter that catches undefined behavior in `unsafe` code | nightly `cargo miri test` |
+### Further reading
+
+- [The Rust Programming Language](https://doc.rust-lang.org/book/) (free): chapters 4 (ownership), 6 (enums), 9 (errors), 10 (traits), 14 (workspaces), 16 (threads), 17 (async), and 21 (a multithreaded web server).
+- [Rust by Example](https://doc.rust-lang.org/rust-by-example/) (free).
+- The [std::net](https://doc.rust-lang.org/std/net/) documentation (free).
+- [tokio](https://tokio.rs/): an async runtime for thousands of connections on a few threads, with cancellation and timeouts.
+- [tokio-util codecs](https://docs.rs/tokio-util/latest/tokio_util/codec/), especially `LinesCodec`: reusable framers (lines, length prefixes) over async streams.
+- [cargo-nextest](https://nexte.st/) for faster parallel test runs, and [Miri](https://github.com/rust-lang/miri) (nightly `cargo miri test`), an interpreter that catches undefined behavior in `unsafe` code.
+
+## Key terms
+
+- **crate**: one Rust compilation unit, either a library or a binary.
+- **workspace**: a set of Cargo packages sharing one `Cargo.lock` and one `target/` directory.
+- **owner**: the single variable responsible for a value; when it goes out of scope, the value is dropped.
+- **move**: transfer of ownership by assignment or by passing a value, after which the old variable is unusable.
+- **borrow**: use of a value through a shared (`&`) or exclusive (`&mut`) reference without taking ownership.
+- **`Result`**: the enum `Ok(T)` or `Err(E)` that a fallible function returns.
+- **trait**: a named set of methods a type promises to implement.
+- **panic**: an abort of the current thread, meant for bugs rather than bad input.
+
+## Summary
+
+- Every value has exactly one owner; assigning or passing it moves it, and references borrow it. The compiler checks these rules, so Rust frees memory without a garbage collector and without use-after-free.
+- Failure is a value: a fallible function returns `Result<T, E>`, and `?` passes the error up. A server answers errors instead of unwrapping them.
+- Traits are promised method sets: `Display` gives an error its text, and `Read`, `Write`, and `BufRead` make a socket, a file, and a byte slice interchangeable.
+- A Rust `str` is valid UTF-8; `.len()` counts bytes, `.chars().count()` counts scalar values, and NUL is ordinary content.
+- TCP is a byte stream: one `read` can hold half a line or three lines, so a buffered reader that splits on `\n` is the fix.
+
+## Review questions
+
+1. Why does `reply` take `&[u8]` rather than `&str`?
+
+   <details><summary>Answer</summary>
+
+   The bytes come straight from a socket and may not be UTF-8. Taking bytes lets `reply` own the decision and answer `ERR invalid utf-8` instead of making every caller decode first, or worse, unwrap.
+
+   </details>
+
+2. What does `serve` do with the bytes `PI` followed by a closed connection?
+
+   <details><summary>Answer</summary>
+
+   `read_until` returns 2 with no trailing `\n`, so `serve` returns `Ok(())` without replying. The client left mid-line; there is nobody to answer and no complete request to answer.
+
+   </details>
+
+3. Why is `stream` moved into the thread instead of borrowed?
+
+   <details><summary>Answer</summary>
+
+   The thread may outlive the loop iteration that accepted the connection. A borrow would have to outlive the stack variable it points at, which the compiler rejects. Moving gives the thread ownership, so the socket lives exactly as long as the thread needs it and closes when `serve` returns.
+
+   </details>
+
+4. Why strip `\n` before `\r`?
+
+   <details><summary>Answer</summary>
+
+   The line ends with `\r\n`. The last character is `\n`, so `strip_suffix('\r')` first would find nothing to strip; stripping `\n` exposes the `\r`, which the second call then removes.
+
+   </details>
+
+5. `LEN héllo` answers 6. What would `text.chars().count()` answer, and why is that wrong here?
+
+   <details><summary>Answer</summary>
+
+   5, the number of Unicode scalar values. The protocol defines `LEN` as the UTF-8 byte length, the quantity byte-oriented protocols need (a `Content-Length`, a buffer size), and `é` is two bytes.
+
+   </details>

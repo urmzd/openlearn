@@ -4,7 +4,7 @@ A benchmark run **for a customer** is not the same thing as a benchmark run for 
 
 A customer benchmark answers one question: **at their traffic shape, how much load meets their SLO, and at what cost?** Anything else is a demo. This chapter shows how to answer that question honestly. You will agree the question in writing, build the workload from the customer's logs, pick the right load model, keep the runs clean, measure from where the customer's users are, compare fairly against the incumbent provider, and write a report that leads with curves and goodput under the SLO rather than a single headline number.
 
-The load-testing math and tools are developed in [Serving & Load section 8](../../machine-learning/04-llm-systems/serving-and-load/#8-load-testing-methodology) in *Machine Learning*; this chapter is about running that method with and for a customer. In practice an FDE usually leads, an SE runs pre-sales smoke tests, and the performance team reviews anything that will be quoted in a contract.
+The load-testing math and tools are developed in [Serving & Load section 8](../../machine-learning/04-llm-systems/serving-and-load/#8-load-testing-methodology) in *Machine Learning and AI*; this chapter is about running that method with and for a customer. In practice an FDE usually leads, an SE runs pre-sales smoke tests, and the performance team reviews anything that will be quoted in a contract.
 
 > **Learning objectives**
 > - Write the benchmark question as one signed-off sentence that names the SLO, the comparison, and what is out of scope.
@@ -219,7 +219,7 @@ point: $<z> per 1M tokens. Compared with <incumbent>: <result, with caveats>.>
 
 ## Where this leads
 
-The method behind every run, open versus closed loop, goodput, and warmup, comes from [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/). Poisson arrivals and tail percentiles are the subject of [Probability & Statistics](../../mathematics-for-computing/07-probability-statistics/) in *Mathematics for Computing*. Why client TTFT differs from server TTFT, including buffering proxies, is explained in [Streaming & SSE](../../ai-platform-engineering/03-streaming-sse/) in *AI Platform Engineering*, and the server-side metrics you report next to client results come from [Observability](../../systems/04-observability/) in *Systems*.
+The method behind every run, open versus closed loop, goodput, and warmup, comes from [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/). Poisson arrivals and tail percentiles are the subject of [Probability & Statistics](../../mathematics-for-computing/07-probability-statistics/) in *Mathematics for Computing*. Why client TTFT differs from server TTFT, including buffering proxies, is explained in [Streaming & SSE](../../ai-platform-engineering/03-streaming-sse/) in *AI Platform Engineering*, and the server-side metrics you report next to client results come from [Observability](../../systems/04-observability/) in *Systems and Architecture*.
 
 This work shows up across the industry at an advanced level. Fireworks AI, Together AI, and Baseten run head-to-head benchmarks against a customer's incumbent during evaluation. NVIDIA maintains AIPerf, GenAI-Perf, and the MLPerf Inference methodology, and the vLLM and SGLang maintainers design `bench serve` and `bench_serving`. Any enterprise buying inference will eventually ask for a benchmark report it can audit.
 

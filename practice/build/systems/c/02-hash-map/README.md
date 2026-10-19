@@ -1,17 +1,18 @@
-# C 02: Hash map (open addressing)
+# Hash map with open addressing
 
-**Concepts:** hash functions, linear probing, tombstones, load factor
-**Difficulty:** ⭐⭐⭐
+A hash map is the data structure behind almost every lookup a program does, and the version you get in a textbook (an array of linked lists) is not the version fast systems use. This section builds a string-keyed hash map that stores entries in one flat array and resolves collisions by walking to the next free slot, rather than by chaining to a linked list. That one change makes lookups cache-friendly and deletion surprisingly subtle.
 
-A string-keyed hash map that stores entries in one flat array and resolves
-collisions by walking to the next free slot, rather than by chaining to a linked
-list. `map_hash` is public so that the tests can construct collisions on
-purpose.
+The subtlety is the core of the section. You will see why an open-addressed map cannot simply clear a deleted slot, why the fix (a tombstone) forces the load factor to count the dead, and why a fast, ordinary hash function is a security vulnerability when keys come from an attacker. The map built here is the worked baseline that [A Swiss table](../../../../../content/courses/algorithms/16-systems-data-structures/02-swiss-table.md) in *Algorithms* improves on, so it is worth getting every invariant straight before you read that one. It assumes the growth and overflow habits from the [dynamic array](../01-dynamic-array/README.md).
 
-## The problem
+> **Learning objectives**
+> - Implement linear probing over a power-of-two table and explain why a lookup may stop at the first empty slot.
+> - Explain why deletion must write a tombstone, and why the resize threshold must count tombstones.
+> - Size a rebuild from the live count so that a tombstone-heavy table is reclaimed rather than grown.
+> - Describe hash flooding and why a keyed hash, not a better mixing constant, is the fix.
 
-[`map.h`](map.h) declares the interface, [`map.c`](map.c) is the solution, and
-[`main.c`](main.c) is the test suite.
+## The interface
+
+[`map.h`](map.h) declares the interface, [`map.c`](map.c) is the solution, and [`main.c`](main.c) is the test suite. `map_hash` is public so that the tests can construct collisions on purpose.
 
 | Function | Does |
 |----------|------|
@@ -22,83 +23,46 @@ purpose.
 | `map_len(m)` | Live entries, not counting tombstones |
 | `map_free(m)` | Release the table and every key it owns |
 
-The map owns its keys. Callers must be free to reuse or free their own buffer
-the instant `map_put` returns. The header fixes the representation: each `Slot`
-is `EMPTY`, `FULL`, or `TOMB`, and the `Map` tracks `cap` (a power of two),
-`len` (live entries), and `used` (live entries plus tombstones).
+The map owns its keys: callers must be free to reuse or free their own buffer the instant `map_put` returns. The header also fixes the representation. Each `Slot` is `EMPTY`, `FULL`, or `TOMB`, and the `Map` tracks `cap` (a power of two), `len` (live entries), and `used` (live entries plus tombstones).
 
-## Build and run
-
-From this directory:
+To build and run the tests from this directory:
 
 ```bash
 cc -std=c11 -Wall -Wextra -O2 main.c map.c -o map && ./map
 # ok  c/02-hash-map  50031 checks passed
 ```
 
-Add `-g -fsanitize=address,undefined` to check for leaks and out-of-bounds
-access as well.
+Add `-g -fsanitize=address,undefined` to check for leaks and out-of-bounds access as well.
 
-## What to notice
+## Why deletion is the hard part
 
-**Deletion is the hard part, and it is not obvious why.** In a chained map you
-unlink a node and you are done. In an open-addressed map, entries that collided
-with the deleted one were placed *after* it in the probe run, and a lookup stops
-at the first empty slot. Clear a slot to empty and you have not deleted one
-entry, you have made every entry behind it unreachable while it still sits in
-the table taking space. So deletion writes a tombstone: a slot that says "keep
-probing, but you may insert here."
+In a chained map you unlink a node and you are done. In an open-addressed map, entries that collided with the deleted one were placed *after* it in the probe run, and a lookup stops at the first empty slot. Clear a slot to empty and you have not deleted one entry; you have made every entry behind it unreachable while it still sits in the table taking space. So deletion writes a tombstone: a slot that says "keep probing, but you may insert here."
 
-**Which means the load factor has to count tombstones.** A tombstone costs a
-probe step forever but holds nothing, so a table that resizes on live-entry
-count alone will fill with tombstones under a delete-heavy workload and decay
-to a linear scan while reporting a low load factor. That is what the churn test
-(`test_churn_does_not_explode`) measures. Growing on live-plus-tombstones is
-what reclaims them, because rehashing simply drops them.
+That in turn means the load factor has to count tombstones. A tombstone costs a probe step forever but holds nothing, so a table that resizes on live-entry count alone will fill with tombstones under a delete-heavy workload and decay to a linear scan while reporting a low load factor. That is what the churn test (`test_churn_does_not_explode`) measures. Growing on live-plus-tombstones is what reclaims them, because rehashing simply drops them.
 
-**Power-of-two capacity buys a mask instead of a modulo.** `h & (cap - 1)`
-replaces `h % cap`, which matters because integer division is one of the
-slowest instructions you can put in a hot loop. The cost is that you now depend
-entirely on the hash's low bits being well mixed, which is why a weak hash hurts
-a power-of-two table far more than a prime-modulo one.
+## Power-of-two tables and the hash they need
 
-**The hash is not adversary-resistant, and that is a vulnerability.** FNV-1a is
-fine against accidental collisions and useless against a caller who chooses
-keys to collide on purpose. Feed attacker-controlled strings into this map and
-every insert lands in one bucket, turning an O(1) endpoint into O(n) per
-request. This is hash-flooding, it was a real CVE class across most web
-frameworks in 2011, and the fix is a per-process random seed (SipHash), not a
-better mixing constant.
+A power-of-two capacity buys a mask instead of a modulo. `h & (cap - 1)` replaces `h % cap`, which matters because integer division is one of the slowest instructions you can put in a hot loop. The cost is that you now depend entirely on the hash's low bits being well mixed, which is why a weak hash hurts a power-of-two table far more than a prime-modulo one.
 
-## The solution, step by step
+The hash used here, FNV-1a, is not adversary-resistant, and that is a vulnerability. It is fine against accidental collisions and useless against a caller who chooses keys to collide on purpose. Feed attacker-controlled strings into this map and every insert lands in one bucket, turning an O(1) endpoint into O(n) per request. This is hash flooding; it was a real CVE class across most web frameworks in 2011, and the fix is a per-process random seed (SipHash), not a better mixing constant.
 
-### From first principles
+## Deriving the design
 
-1. **One flat array, so a lookup touches contiguous memory.** Each key hashes to
-   a home slot `h & (cap - 1)`. If that slot holds another key, step to the next
-   slot (linear probing) until the key or an empty slot appears.
-2. **A lookup may stop at an empty slot because insertion never skips one.** An
-   insert places a key in the first free slot of its probe run, so a key can
-   never sit behind an empty slot on its own run. That invariant is what makes
-   "stop at empty" correct.
-3. **Deletion must preserve that invariant.** Turning a deleted slot back into
-   `EMPTY` would create a gap in the middle of other keys' runs. So deletion
-   writes `TOMB`: lookups treat it as occupied (keep probing), inserts treat it
-   as free (reuse it).
-4. **Tombstones cost probe steps, so they count toward the load.** The table
-   tracks `used = live + tombstones` and resizes when `used` reaches 3/4 of the
-   capacity. With linear probing, expected probe lengths stay short below that
-   load and explode as it approaches 1.
-5. **Resizing is a rebuild, sized from the live count.** Rehashing reinserts only
-   `FULL` slots, which drops every tombstone. Sizing from `len` rather than
-   doubling `cap` means a table full of tombstones is rebuilt at the same size
-   instead of growing forever.
-6. **The map owns its keys.** `map_put` copies the key on first insert; an
-   overwrite keeps the existing copy; delete and free release it. Rehashing moves
-   the `char *` between slots without copying, so each key is allocated exactly
-   once.
+The design follows from six observations.
 
-### The code, annotated
+Use one flat array, so a lookup touches contiguous memory. Each key hashes to a home slot `h & (cap - 1)`. If that slot holds another key, step to the next slot (linear probing) until the key or an empty slot appears.
+
+A lookup may stop at an empty slot because insertion never skips one. An insert places a key in the first free slot of its probe run, so a key can never sit behind an empty slot on its own run. That invariant is what makes "stop at empty" correct.
+
+Deletion must preserve that invariant. Turning a deleted slot back into `EMPTY` would create a gap in the middle of other keys' runs. So deletion writes `TOMB`: lookups treat it as occupied (keep probing), inserts treat it as free (reuse it).
+
+Tombstones cost probe steps, so they count toward the load. The table tracks `used = live + tombstones` and resizes when `used` reaches 3/4 of the capacity. With linear probing, expected probe lengths stay short below that load and explode as it approaches 1.
+
+Resizing is a rebuild, sized from the live count. Rehashing reinserts only `FULL` slots, which drops every tombstone. Sizing from `len` rather than doubling `cap` means a table full of tombstones is rebuilt at the same size instead of growing forever.
+
+Finally, the map owns its keys. `map_put` copies the key on first insert; an overwrite keeps the existing copy; delete and free release it. Rehashing moves the `char *` between slots without copying, so each key is allocated exactly once.
+
+## Building it step by step
 
 The probe is shared by `put`, `get`, and `del`. It returns whether the key was
 found, and either way writes the slot to use:
@@ -219,29 +183,57 @@ int map_del(Map *m, const char *key) {
 }
 ```
 
-Full solution: [`map.c`](map.c).
+The full solution is in [`map.c`](map.c).
 
-### Why this solution
+## Why this design
 
-- **Cost.** `put`, `get`, `del`: O(1) expected while the load (counting
-  tombstones) stays below 3/4, O(n) worst case when keys collide. A resize is
-  O(cap) and happens after a number of inserts proportional to `cap`, so it is
-  O(1) amortised. Space is `cap` slots plus one allocation per key.
-- **Versus chaining.** Chaining makes deletion trivial but costs a heap node per
-  entry and a pointer chase per probe. Open addressing keeps probes in one cache
-  line or two, which is why it wins in practice despite the tombstone logic.
-- **Linear probing versus quadratic or double hashing.** Linear probing clusters,
-  but its probes are sequential memory reads, which is cheaper than the extra
-  cache misses that more scattered probing incurs. With a good hash and a 3/4
-  load cap, clustering stays tolerable.
-- **Tombstones versus backward-shift deletion.** Linear probing allows deleting
-  without tombstones by shifting later entries of the run back. That avoids
-  tombstone build-up but makes deletion O(run length) and harder to get right.
-  Tombstones plus "count them in the load" are simpler and correct.
-- **Accepted trade.** FNV-1a has no seed, so the map is open to hash flooding.
-  A production map exposed to untrusted keys needs a keyed hash such as SipHash.
+Every operation (`put`, `get`, `del`) is O(1) expected while the load, counting tombstones, stays below 3/4, and O(n) in the worst case when keys collide. A resize is O(cap) and happens after a number of inserts proportional to `cap`, so it is O(1) amortised. Space is `cap` slots plus one allocation per key.
 
-### Explain it back
+Compared with chaining, open addressing gives up trivial deletion to win on memory traffic. Chaining costs a heap node per entry and a pointer chase per probe; open addressing keeps probes in one cache line or two, which is why it wins in practice despite the tombstone logic.
+
+Among open-addressing schemes, linear probing clusters, but its probes are sequential memory reads, which is cheaper than the extra cache misses that quadratic probing or double hashing incur. With a good hash and a 3/4 load cap, clustering stays tolerable.
+
+Linear probing also allows deleting without tombstones, by shifting later entries of the run back (backward-shift deletion). That avoids tombstone build-up but makes deletion O(run length) and harder to get right. Tombstones plus "count them in the load" are simpler and correct.
+
+One trade is accepted knowingly: FNV-1a has no seed, so the map is open to hash flooding. A production map exposed to untrusted keys needs a keyed hash such as SipHash.
+
+## What can go wrong
+
+The bugs this design avoids are all ways of breaking the probe-run invariant or miscounting the load.
+
+| Mistake | Consequence |
+|---------|-------------|
+| Deleting by writing `EMPTY` | Keys later in the same run become unreachable but still occupy slots and own their keys |
+| Resizing on `len` instead of `used` | Under churn the table fills with tombstones, every miss scans the whole table |
+| Growing to `cap * 2` on every resize | A tombstone-heavy table grows without bound while holding few entries |
+| Incrementing `used` when reusing a tombstone | The load is overcounted and the table resizes too early |
+| Probing before deciding to resize | The index points into the old table, which the resize frees |
+| Storing the caller's key pointer | The caller frees or reuses its buffer and the map holds garbage |
+
+> **Warning:** `calloc` in `map_resize` is load-bearing. The empty state is `0` in the enum, so zeroed memory is a valid table of empty slots. If you reorder the enum or switch to `malloc`, every slot starts in an arbitrary state.
+
+## Where this leads
+
+The natural next step is Robin Hood probing, where an insert that has travelled further than the entry it finds steals the slot and displaces it. It flattens the variance of probe lengths dramatically, which is the property you actually care about: the worst lookup, not the average one. Rust's `std::collections::HashMap` used it for years before switching to SwissTable. Both are worked in full in the [Systems data structures](../../../../../content/courses/algorithms/16-systems-data-structures/) chapter of *Algorithms*: [A Swiss table](../../../../../content/courses/algorithms/16-systems-data-structures/02-swiss-table.md) builds directly on this exercise, and [A Robin Hood hash map](../../../../../content/courses/algorithms/16-systems-data-structures/05-robin-hood-hash-map.md) implements the backward-shift alternative. Within this chapter, [string interning](../09-string-interning/README.md) builds a linear-probing table of the same kind, one that never deletes, to give strings stable addresses.
+
+## Key terms
+
+- **Open addressing**: storing every entry in the table array itself and resolving collisions by probing other slots.
+- **Linear probing**: on collision, trying the next slot, then the next, wrapping at the end.
+- **Probe run**: the contiguous sequence of occupied slots a lookup walks from a key's home slot.
+- **Tombstone**: a marker left by deletion that lookups skip over and inserts may reuse.
+- **Load factor**: the fraction of slots that are not empty; here it counts tombstones as well as live entries.
+- **Hash flooding**: a denial-of-service attack that sends keys chosen to collide, turning O(1) operations into O(n).
+
+## Summary
+
+- Entries live in one power-of-two array, and the home slot is `hash & (cap - 1)`.
+- Lookups stop at the first empty slot, which is correct because inserts never skip one.
+- Deletion writes a tombstone so probe runs stay unbroken, and tombstones count toward the 3/4 resize threshold.
+- A resize reinserts only live entries and is sized from `len`, so tombstones are reclaimed without unbounded growth.
+- The map copies keys on insert and moves them on rehash; an unseeded hash leaves it open to hash flooding.
+
+## Review questions
 
 1. Why can't `map_del` set the slot to `SLOT_EMPTY`?
 
@@ -295,13 +287,3 @@ Full solution: [`map.c`](map.c).
    point at the wrong slot, or past the end of a smaller table.
 
    </details>
-
-## Extending it
-
-Try Robin Hood probing, where an insert that has travelled further than the
-entry it finds steals the slot and displaces it. It flattens the variance of
-probe lengths dramatically, which is the property you actually care about: the
-worst lookup, not the average one. Rust's `std::collections::HashMap` used it
-for years before switching to SwissTable. The course module `ds.02` builds a
-Swiss table on top of this exercise (it is the worked baseline); its chapter
-lives in [Systems Data Structures](../../../../../content/courses/algorithms/16-systems-data-structures/).

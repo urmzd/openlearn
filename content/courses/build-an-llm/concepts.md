@@ -1,6 +1,6 @@
 # Concepts and techniques
 
-This overview gives you the whole of *Build an LLM* in one sitting: the single idea the book is organized around, what the thinnest working system contains, how the later parts upgrade it, and where the book connects to the rest of the library. Read it after the [book's front matter](README.md) and alongside [the system the solutions build](paths/course/SYSTEM.md), which is the component-and-contract map of the same story.
+This overview gives you the whole of *Build Your Own LLM System* in one sitting: the single idea the book is organized around, what the thinnest working system contains, how the later parts upgrade it, and where the book connects to the rest of the library. Read it after the [book's front matter](README.md) and alongside [the system the solutions build](paths/course/SYSTEM.md), which is the component-and-contract map of the same story.
 
 ## The core insight
 
@@ -53,7 +53,7 @@ Because the system is built in passes that interleave these parts with chapters 
 
 ## Connections to other books
 
-The model stack in this book meets several other books at specific sections. In *Mathematics for Computing*, [vectors, matrices, and matmul](../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md) is the matrix multiply every logit goes through. In *AI Platform Engineering*, the [tracer gateway](../ai-platform-engineering/12-gateway/00-streaming-proxy.md) is the front door to the engine. In *Infrastructure*, the [tracer deploy](../infrastructure/01-containers-kubernetes/00-tracer-deploy.md) builds the images and charts the engine runs in. And [LLM systems and inference](../machine-learning/04-llm-systems/README.md) in *Machine Learning* describes the production systems this spine rebuilds in miniature.
+The model stack in this book meets several other books at specific sections. In *Mathematics for Computing*, [vectors, matrices, and matmul](../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md) is the matrix multiply every logit goes through. In *AI Platform Engineering*, the [tracer gateway](../ai-platform-engineering/12-gateway/00-streaming-proxy.md) is the front door to the engine. In *Infrastructure*, the [tracer deploy](../infrastructure/01-containers-kubernetes/00-tracer-deploy.md) builds the images and charts the engine runs in. And [LLM systems and inference](../machine-learning/04-llm-systems/README.md) in *Machine Learning and AI* describes the production systems this spine rebuilds in miniature.
 
 ## The same ideas in industry
 

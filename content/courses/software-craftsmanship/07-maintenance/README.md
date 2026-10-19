@@ -1,66 +1,34 @@
 # Maintenance
 
-## Overview
+Most engineering time is spent changing systems that already work. A system that cannot change safely is already failing slowly, so maintenance is a skill in its own right, with its own techniques: versioned formats, dual-read migrations, dependency hygiene, and bisection. This chapter applies them to the running system, after its first stable release.
 
-- **Primary references**: *Software Engineering at Google*, ch. 21 [Dependency Management](https://abseil.io/resources/swe-book/html/ch21.html) and ch. 22 [Large-Scale Changes](https://abseil.io/resources/swe-book/html/ch22.html) (free); Feathers, *Working Effectively with Legacy Code*
-- **Supplementary**: [`git bisect`](https://git-scm.com/docs/git-bisect) documentation (free); Kleppmann, *Designing Data-Intensive Applications*, ch. 4 (encoding and evolution); [Protocol Buffers: updating a message type](https://protobuf.dev/programming-guides/proto3/#updating) (free)
-- **Prerequisites**: [Releases and Deprecation](../06-releases-and-deprecation/), [The Testing Mentality](../03-testing-mentality/), and a running system from course Passes 1 to 10
-- **Estimated time**: 2 weeks in course Pass 11 (four modules, each paired with a drill)
+Every migration here follows the same shape. Make the change additive, prove both sides work with tests, roll out behind a switch, and remove the old path only when telemetry shows nobody uses it. Concretely, an interface changes in phases: add the new version, read both, write the new, migrate the data, stop reading the old, and remove it. Each phase is deployable and reversible.
 
-## Key Takeaways
+The first two sections are interface migrations carried out under the deprecation policy of the previous chapter. The KV cache format moves from f16 to fp8 E4M3 blocks with per-(layer, head) scales, with readers upgraded before writers and mixed versions negotiated during rollout. The public API moves from v1 to v2 under the [`openai-subset.v2`](../../../../course/contracts/openapi/openai-subset.v2.yaml) contract, served alongside v1 with `Deprecation` and `Sunset` headers. The last two sections deal with change you did not write and change you did not notice. A dependency upgrade is reviewed like any other change: pin it, read the changelog, run the full suite, and roll it out, checked against the allowlist in `allowed-deps.toml`. And a performance regression is found by search rather than by staring: a benchmark with a threshold plus `git bisect run` finds the commit in $\log_2 n$ steps.
 
-- **Most engineering time is spent changing systems that already work.** Maintenance is a skill with techniques: versioned formats, dual-read migrations, dependency hygiene, and bisection.
-- **Change an interface in phases**: add the new version, read both, write the new, migrate data, stop reading the old, remove it. Each phase is deployable and reversible.
-- **A dependency upgrade is a change you did not write**: pin, read the changelog, run the full suite, and roll out like any other change.
-- **Regressions are found by search, not by staring**: a benchmark with a threshold plus `git bisect run` finds the commit in $\log_2 n$ steps.
+Each section has a matching incident drill in [Incident Response and Chaos](../../systems/05-incident-response-and-chaos/), in *Systems and Architecture*, which rehearses the same procedure on the cluster under pressure.
 
-## How to Study
+> **Learning objectives**
+> - Migrate a binary format and an HTTP API in reversible phases, with readers or both versions live before the switch.
+> - Validate untrusted input completely before use and make offline conversions atomic and one-way.
+> - Review a dependency upgrade by its effects, with the merge rule, owner, and rollback fixed in advance.
+> - Bisect a performance regression with a consistent oracle and confirm the result.
 
-Read the two SWE at Google chapters and DDIA chapter 4, then practice `git bisect run` on a small repo with a planted regression. In the course, each module is paired with an incident drill on your cluster: the KV v2 and API v2 migrations are build modules graded by tests, the upgrade and the bisect are practices graded by their artifacts.
+## Before you begin
 
----
+You need [Releases and Deprecation](../06-releases-and-deprecation/), whose policy each migration follows, and [The Testing Mentality](../03-testing-mentality/), especially the benchmarks and perf gates. The migrations change parts of the running system built in *Build Your Own LLM System*: the KV block pool from [Inference](../../build-an-llm/p08-inference/) and the serving stack from [Serving](../../build-an-llm/p10-serving/). The fp8 encoding behind KV v2 is explained in [FP8 and microscaling formats](../../mathematics-for-computing/09-numerical-methods-and-floating-point/04-fp8-and-microscaling-formats.md) in *Mathematics for Computing*. A useful exercise before the last section is to practise `git bisect run` on a small repository with a planted regression.
 
-# Concepts & Techniques
+## In this chapter
 
-## Core Insight
+1. [Interface migration: KV format v1 to v2](01-kv-format-v1-to-v2.md): a reader for both formats, per-slab fp8 scales worked by hand, complete validation with checked arithmetic, and an atomic one-way converter.
+2. [Interface migration: API v1 to v2](02-api-v1-to-v2.md): header-based version selection in the engine and the gateway, deprecation headers, a hard sunset, and per-version metering.
+3. [Dependency upgrades](03-dependency-upgrades.md): a model review of an OpenTelemetry family upgrade, built on evidence from the resolved graph, tests, vulnerability scans, and paired benchmarks.
+4. [Performance regression bisect](04-performance-regression-bisect.md): a reproduction envelope, a predeclared regression rule, and a `git bisect run` gate that respects the skip and abort exit codes.
 
-A system that cannot change safely is already failing slowly. Every migration in this topic follows the same shape: make the change additive, prove both sides work with tests, roll out behind a switch, and remove the old path only when telemetry shows nobody uses it.
+## Further reading
 
-## 1. Interface migrations
-
-**Key ideas**:
-- **KV format v1 to v2** (`craft.13`, build): fp8 E4M3 KV blocks with per-(layer, head) scales, mixed-version negotiation during rollout, drill `ops.04`.
-- **API v1 to v2** (`craft.14`, build): the [`openai-subset.v2`](../../../../course/contracts/openapi/openai-subset.v2.yaml) contract, served alongside v1 under the deprecation policy, drill `ops.05`.
-
-## 2. Dependencies and regressions
-
-**Key ideas**:
-- **Dependency upgrades** (`craft.15`): lockfiles, changelog review, the allowlist in `allowed-deps.toml`, drill `ops.06`.
-- **Perf regression bisect** (`craft.16`): a benchmark gate, `git bisect run`, and a fix with a regression test, drill `ops.07`.
-
-## Course modules
-
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `craft.13` | Interface migration: KV format v1 to v2 | build | 11 |
-| `craft.14` | Interface migration: API v1 to v2 | build | 11 |
-| `craft.15` | Dependency upgrades | practice | 11 |
-| `craft.16` | Perf regression bisect | practice | 11 |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `craft.13` | [Interface migration: KV format v1 to v2](01-kv-format-v1-to-v2.md) | build | 11 |
-| 2 | `craft.14` | [Interface migration: API v1 to v2](02-api-v1-to-v2.md) | build | 11 |
-| 3 | `craft.15` | [Dependency upgrades](03-dependency-upgrades.md) | practice | 11 |
-| 4 | `craft.16` | [Perf regression bisect](04-performance-regression-bisect.md) | practice | 11 |
-
-## Connections to Other Tracks
-
-| Track | Connection |
-|---|---|
-| [Releases and Deprecation](../06-releases-and-deprecation/) | the policy each migration follows |
-| [Incident Response and Chaos](../../systems/05-incident-response-and-chaos/) | the drills `ops.04` to `ops.07` |
-| [tinyllm Part 8](../../../courses/build-an-llm/p08-inference/) | the KV block pool whose format changes |
-| [Numerical Methods and Floating Point](../../mathematics-for-computing/09-numerical-methods-and-floating-point/) | fp8 encoding (`M09.4`) behind KV v2 |
+- *Software Engineering at Google*, ch. 21, [Dependency Management](https://abseil.io/resources/swe-book/html/ch21.html), and ch. 22, [Large-Scale Changes](https://abseil.io/resources/swe-book/html/ch22.html) (free).
+- Michael Feathers, *Working Effectively with Legacy Code*.
+- Martin Kleppmann, *Designing Data-Intensive Applications*, ch. 4, on encoding and evolution.
+- [`git bisect`](https://git-scm.com/docs/git-bisect) documentation (free).
+- [Protocol Buffers: updating a message type](https://protobuf.dev/programming-guides/proto3/#updating) (free).

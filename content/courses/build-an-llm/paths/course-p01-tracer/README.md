@@ -31,6 +31,6 @@ The sections build the system from the model outward, then deploy and observe it
 10. [One trace](../../../systems/04-observability/00-one-trace.md). Afterwards you can explain how trace context propagates so one request shows as one trace across gateway and engine in Jaeger.
 11. [First drill](../../../systems/05-incident-response-and-chaos/00-first-drill.md). Afterwards you can diagnose the engine crashloop from its symptoms, explain the fix, and explain what its runbook says.
 12. [First ADR](../../../diagramming/02-documentation-writing/01-architecture-decision-records.md). Afterwards you can explain why ADR-0001 has the languages meet at process and file boundaries.
-13. [What the system does after Pass 1](milestone.md). Afterwards you can explain how every layer runs end to end, starting with the CLI training and sampling the bigram from a clean shell.
+13. [What the System Does After Pass 1](milestone.md). Afterwards you can explain how every layer runs end to end, starting with the CLI training and sampling the bigram from a clean shell.
 
 The engine serves exactly the checkpoint the `tinyllm` CLI wrote, so by the end of the pass [every layer exists and runs end to end](milestone.md). The stages are also in this pass's manifest, [`path.tsv`](path.tsv). [Pass 2](../course-p02-foundations/README.md) keeps the engine and replaces how its model is trained.

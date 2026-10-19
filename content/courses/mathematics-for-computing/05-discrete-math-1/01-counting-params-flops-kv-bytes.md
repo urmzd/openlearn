@@ -1,10 +1,10 @@
 # Counting: parameters, FLOPs, KV bytes, and memory plans
 
-In *Build Your Own LLM System*, [the modern-block chapter](../../build-an-llm/p07-modern-block/) swaps the 2017 transformer for a Llama-family model and, at the end, loads SmolLM2-135M from Hugging Face ([Llama-family model, HF config, weight loading, downloader](../../build-an-llm/p07-modern-block/09-llama-family-model.md)). Before loading 270 MB of weights, three questions need numbers, not guesses.
+In *Build Your Own LLM System*, [the modern-block chapter](../../build-an-llm/p07-modern-block/) swaps the 2017 transformer for a Llama-family model and, at the end, loads SmolLM2-135M from Hugging Face ([The Llama-Family Model: Config, Weight Loading, and Download](../../build-an-llm/p07-modern-block/09-llama-family-model.md)). Before loading 270 MB of weights, three questions need numbers, not guesses.
 
 Does the model have the same parameters as theirs? The `{tinyllm} info` command must report exactly what Hugging Face's `num_parameters()` reports, and a missing norm or a double-counted tied head is off by thousands or by 28 million. How many bytes of KV cache does one generated token cost? The Rust serving engine admits requests by exactly this number ([Continuous batching scheduler with priority and preemption](../../build-an-llm/p10-serving/02-continuous-batching.md)). Will a training run fit in a laptop's memory? The [TinyStories capstone](../../build-an-llm/capstones/01-tinystories.md) picks its model size from that answer. This section answers all three by counting.
 
-No code from earlier sections is needed. You will use powers and logs for orders of magnitude from [Exponents, logs, change of base, units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md), and the product and sum rules, which [this chapter's problem set](90-problem-set.md) practices on paper. The solution is [`accounting.py`](../../../../course/solutions/python/tinyllm/accounting.py), with `ModelConfig`, `param_count`, `flops_per_token`, `kv_bytes_per_token`, and `memory_plan`; the typed interface is [`course/contracts/py/tinyllm/accounting.pyi`](../../../../course/contracts/py/tinyllm/accounting.pyi).
+No code from earlier sections is needed. You will use powers and logs for orders of magnitude from [Exponents, logarithms, and units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md), and the product and sum rules, which [this chapter's problem set](90-problem-set.md) practices on paper. The solution is [`accounting.py`](../../../../course/solutions/python/tinyllm/accounting.py), with `ModelConfig`, `param_count`, `flops_per_token`, `kv_bytes_per_token`, and `memory_plan`; the typed interface is [`course/contracts/py/tinyllm/accounting.pyi`](../../../../course/contracts/py/tinyllm/accounting.pyi).
 
 > **Learning objectives**
 > - Count a decoder's parameters per component from its config, exactly matching Hugging Face for dense, GQA, MoE, and MLA models.
@@ -42,7 +42,7 @@ The token embedding is a $V \times d$ table. The lm_head maps the final hidden s
 
 ## One block
 
-A Llama block is RMSNorm, attention, RMSNorm, MLP, built in *Build Your Own LLM System* from [Pre-LN, RMSNorm](../../build-an-llm/p07-modern-block/01-pre-ln-rmsnorm.md) through [MQA/GQA attention](../../build-an-llm/p07-modern-block/05-gqa-attention.md). Each part has a closed-form count.
+A Llama block is RMSNorm, attention, RMSNorm, MLP, built in *Build Your Own LLM System* from [Pre-LN and RMSNorm](../../build-an-llm/p07-modern-block/01-pre-ln-rmsnorm.md) through [MQA/GQA attention](../../build-an-llm/p07-modern-block/05-gqa-attention.md). Each part has a closed-form count.
 
 **Attention.** $q$ is $H d_h \times d$, $k$ and $v$ are $H_{kv} d_h \times d$ each, and the output projection is $d \times H d_h$, for a total of $2 d H d_h + 2 d H_{kv} d_h$. Qwen-style biases add $H d_h + 2 H_{kv} d_h$. MHA is the case $H_{kv} = H$; GQA shares each kv head among $H / H_{kv}$ query heads.
 
@@ -331,11 +331,11 @@ Every pitfall here produces a plausible number, which is what makes them dangero
 
 ## Where this leads
 
-This section draws on powers of ten and logs for reading counts like $6.7 \times 10^9$ ([Exponents, logs, change of base, units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md)) and on the product and sum rules practiced in [this chapter's problem set](90-problem-set.md). Its functions are used throughout *Build Your Own LLM System*:
+This section draws on powers of ten and logs for reading counts like $6.7 \times 10^9$ ([Exponents, logarithms, and units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md)) and on the product and sum rules practiced in [this chapter's problem set](90-problem-set.md). Its functions are used throughout *Build Your Own LLM System*:
 
-- In [MQA/GQA attention with cache hook, window, learned sinks](../../build-an-llm/p07-modern-block/05-gqa-attention.md), the bytes the attention layer hands its cache must equal `kv_bytes_per_token`.
+- In [Grouped-Query Attention with a Cache Hook, Windows, and Sinks](../../build-an-llm/p07-modern-block/05-gqa-attention.md), the bytes the attention layer hands its cache must equal `kv_bytes_per_token`.
 - In [Multi-head latent attention](../../build-an-llm/p07-modern-block/06-multi-head-latent-attention.md), the MLA latent cache must cost exactly `kv_bytes_per_token` with `attn="mla"`.
-- In [Llama-family model, HF config, weight loading, downloader](../../build-an-llm/p07-modern-block/09-llama-family-model.md), `{tinyllm} info` reports `param_count`.
+- In [The Llama-Family Model: Config, Weight Loading, and Download](../../build-an-llm/p07-modern-block/09-llama-family-model.md), `{tinyllm} info` reports `param_count`.
 - In [Continuous batching scheduler with priority and preemption](../../build-an-llm/p10-serving/02-continuous-batching.md), the Rust engine admits a request when its KV bytes fit.
 - In [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](../../build-an-llm/p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md), mixed precision, accumulation, and recomputation trade the terms of `memory_plan`.
 - In [Capstone: TinyStories, owned end to end](../../build-an-llm/capstones/01-tinystories.md), the model size is chosen from `flops_per_token` and `memory_plan`.

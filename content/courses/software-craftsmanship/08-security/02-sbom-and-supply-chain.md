@@ -1,46 +1,37 @@
 # SBOM and supply chain
 
-## Overview
+Every deployment of the system is built from far more code than the team wrote. The Rust engine and the Go gateway each pull in direct dependencies, those pull in transitive ones, and the container image adds a base layer on top. When a vulnerability advisory lands, the question responders need answered is blunt: which of the artifacts running right now contain the affected version? A software bill of materials (SBOM) and a dependency policy are what let you answer that question in minutes and prove what was shipped.
 
-| | |
-|---|---|
-| **Module** | `craft.18` · practice · docs · Pass 11 · 1 h reading |
-| **Solution** | Model SBOMs: [`engine.spdx.json`](../../../../course/solutions/docs/sbom/engine.spdx.json) and [`gateway.spdx.json`](../../../../course/solutions/docs/sbom/gateway.spdx.json), SPDX 2.3 documents with packages and dependency relationships |
-| **Contract** | [`course/contracts/allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml), the dependency policy each inventory is compared against |
-| **Needs** | none |
-| **Used by** | no code call site; this is an independent artifact. It expands the model-files and release-pipeline row of the [threat model](01-threat-model-stride.md). |
+This section expands one row of the [threat model](01-threat-model-stride.md): the model-files and release-pipeline row, where provenance and digests are named as controls. It needs nothing beyond that. The model answers are two SPDX 2.3 documents in the solutions tree, [`engine.spdx.json`](../../../../course/solutions/docs/sbom/engine.spdx.json) and [`gateway.spdx.json`](../../../../course/solutions/docs/sbom/gateway.spdx.json), each listing packages and dependency relationships. The policy they are compared against is the contract [`course/contracts/allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml). Like the threat model, these are standalone artifacts with no code call site.
 
-## Key Takeaways
+Before reading the model documents, try listing the fields you would need during a CVE response. Then check your list against what the SBOMs actually record, and against what they deliberately leave blank.
 
-- An SBOM describes one built artifact, identified by its image digest, and is generated from that artifact's resolved dependency graph.
-- Each package has a unique SPDX id, and every dependency relationship points at a package in the same document.
-- The dependency policy (`allowed-deps.toml`) is the source of truth for what may be used; the SBOM is the record of what was used, and the review compares the two.
+> **Learning objectives**
+> - Explain why an SBOM describes one built artifact, identified by its image digest, rather than a source manifest or a commit.
+> - Read an SPDX 2.3 document: header, packages, purls, and relationships.
+> - Check an SBOM for unique ids and connected relationships, and say why each property matters to a responder.
+> - Use `NOASSERTION` correctly and identify which missing fields a release SBOM must fill.
+> - Compare an SBOM against a dependency policy and decide what counts as a finding.
 
-## How to read this chapter
+## Inventory follows the artifact
 
-Sections 1 to 3 explain why each image needs an inventory and how it is produced. Section 4 lists what a valid SBOM must satisfy. Section 5 walks through the model SBOMs field by field, explains which fields the model leaves as `NOASSERTION` and why a release SBOM must fill them, and shows the comparison against the policy. Try to list the fields you would need during a CVE response before reading the model.
+When a vulnerability is announced, source manifests cannot tell you whether you are exposed, because they state requirements, not results. Only the resolved graph of the built artifact can. So an SBOM is per artifact, generated from that artifact's resolved dependency graph and tied to its image digest. The working rules follow directly: generate inventories from the exact image digest; pin base images and dependencies; record licenses and provenance; define a review path for exceptions; and regenerate an SPDX document for each released image, retaining the image digest with the CI run.
 
----
+"Contains" is a graph question, because a package can arrive transitively. An SBOM therefore records packages **and** the edges between them, rooted at the artifact. Those edges must resolve: a relationship to an id that is not in the document is a hole in the graph exactly where a responder needs to walk. Package ids are unique, and every edge target exists in the document.
 
-## 1. Why now
+Not every fact is known when an SBOM is written. A license may not have been reviewed yet; the build may not record a download location. Writing a guess is worse than writing nothing, and writing nothing is ambiguous. SPDX's `NOASSERTION` value resolves this: it says explicitly that this document makes no claim about the field.
 
-A deployment is built from many direct and transitive packages. An SBOM and dependency policy help responders identify exposure and prove what was shipped.
+Finally, inventory and policy are different things. The policy, [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml), says what **may** be used. It is maintained by people and is the source of truth; it is not a generated artifact. The SBOM says what **was** used and is generated by the build. Comparing the two is the review.
 
-## 2. Principles
+## A CVE response by hand
 
-Generate inventories from the exact image digest. Pin base images and dependencies, record licenses and provenance, and define a review path for exceptions. [`course/contracts/allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml) is the source policy; it is not a generated artifact. Regenerate an SPDX document for each released image and retain the image digest with the CI run.
+The workflow is short: build each service image, capture its digest, generate an SPDX or CycloneDX SBOM, and compare every dependency with the allowlist. Investigate unpinned transitive dependencies and known vulnerabilities before signing off.
 
-## 3. Worked example
+Here is what that buys you during an incident. An advisory names `google.golang.org/grpc` below some fixed version. The responder opens the gateway SBOM for the running digest, finds the package row with `SPDXRef-Package-Grpc`, reads its `versionInfo`, and follows the `DEPENDS_ON` relationship from `SPDXRef-Package-Gateway` to confirm the gateway pulls it in. The engine SBOM has no gRPC package row, so the engine is not exposed through this package. The answer comes from two files in minutes, without rebuilding anything.
 
-Build each service image, capture its digest, generate an SPDX or CycloneDX SBOM, and compare every dependency with the allowlist. Investigate unpinned transitive dependencies and known vulnerabilities before signing off.
+## What a valid SBOM must satisfy
 
-A CVE response, by hand: an advisory names `google.golang.org/grpc` below some fixed version. The responder opens the gateway SBOM for the running digest, finds the package row with `SPDXRef-Package-Grpc`, reads its `versionInfo`, and follows the `DEPENDS_ON` relationship from `SPDXRef-Package-Gateway` to confirm the gateway pulls it in. The engine SBOM has no gRPC package row, so the engine is not exposed through this package. The answer comes from two files in minutes, without rebuilding anything.
-
-## 4. The artifact
-
-The artifacts are `docs/sbom/engine.spdx.json` and `docs/sbom/gateway.spdx.json`.
-
-### What a valid SBOM must satisfy
+The artifacts are `docs/sbom/engine.spdx.json` and `docs/sbom/gateway.spdx.json`. A valid pair, together with its policy, must pass the checks in the following table.
 
 | Case | Checks | Why it matters downstream |
 |---|---|---|
@@ -50,19 +41,13 @@ The artifacts are `docs/sbom/engine.spdx.json` and `docs/sbom/gateway.spdx.json`
 | relationships are connected | Every non-`DESCRIBES` relationship points at a package in the document. | No dangling edges; the graph is walkable from the root. |
 | the policy has a section per component | `allowed-deps.toml` has `[rust.tl-engine]` and `[go.tinyllm]`. | Each inventory has a policy to be compared against. |
 
-## 5. The solution, step by step
+## Reading the model SBOMs
 
-### 5.1 From first principles
+With the rules in place, you can read the model documents field by field and see each rule at work.
 
-1. When a vulnerability is announced, the question is "which running artifacts contain the affected version?". Source manifests cannot answer it, because they state requirements; only the resolved graph of the built artifact can. So an SBOM is per artifact, tied to its digest.
-2. "Contains" is a graph question: a package can arrive transitively. So the SBOM records packages **and** the edges between them, rooted at the artifact.
-3. Edges must resolve. A relationship to an id that is not in the document is a hole in the graph exactly where a responder needs to walk. So ids are unique and every edge target exists.
-4. Not every fact is known when an SBOM is written (a license not yet reviewed, a download location the build does not record). Writing a guess is worse than writing nothing, and writing nothing is ambiguous; SPDX's `NOASSERTION` says explicitly "this document makes no claim".
-5. Inventory and policy are different things. The policy says what **may** be used and is maintained by people; the SBOM says what **was** used and is generated by the build. Comparing them is the review.
+### The document header
 
-### 5.2 The model SBOMs, annotated
-
-**Document header** (engine):
+The engine document opens like this:
 
 ```jsonc
 {
@@ -78,9 +63,11 @@ The artifacts are `docs/sbom/engine.spdx.json` and `docs/sbom/gateway.spdx.json`
   },
 ```
 
-`dataLicense` must be `CC0-1.0` in SPDX 2.3 (the SBOM's own metadata is public domain). `documentNamespace` is a unique URI per document so two SBOMs never collide in a database; the model uses the reserved `.invalid` domain because it is an example. `creators` and `created` say who generated it and when, which is how a responder knows whether it matches the deployed build. The comment is step 1: the real document must come from the image digest and the lockfile.
+`dataLicense` must be `CC0-1.0` in SPDX 2.3: the SBOM's own metadata is public domain. `documentNamespace` is a unique URI per document so that two SBOMs never collide in a database; the model uses the reserved `.invalid` domain because it is an example. `creators` and `created` say who generated the document and when, which is how a responder knows whether it matches the deployed build. The comment restates the first rule: the real document must come from the image digest and the lockfile.
 
-**The root package and a dependency** (engine):
+### The root package and a dependency
+
+Next come the packages, starting with the root:
 
 ```jsonc
     {
@@ -102,9 +89,11 @@ The artifacts are `docs/sbom/engine.spdx.json` and `docs/sbom/gateway.spdx.json`
     },
 ```
 
-The root is marked `primaryPackagePurpose: APPLICATION`. Each dependency carries a **purl** (package URL), the identifier vulnerability databases match on. `filesAnalyzed: false` says the document does not list individual files, which is normal for a dependency inventory. The license fields are `NOASSERTION` (step 4): the model makes no license claim it has not checked.
+The root is marked `primaryPackagePurpose: APPLICATION`. Each dependency carries a **purl** (package URL), the identifier that vulnerability databases match on. `filesAnalyzed: false` says the document does not list individual files, which is normal for a dependency inventory. The license fields are `NOASSERTION`: the model makes no license claim it has not checked.
 
-**A versioned dependency** (gateway):
+### A versioned dependency
+
+The gateway document shows the complete form of a package row:
 
 ```jsonc
     {
@@ -117,9 +106,11 @@ The root is marked `primaryPackagePurpose: APPLICATION`. Each dependency carries
     },
 ```
 
-This is the complete form: `versionInfo` and a versioned purl. The odd-looking `%21burnt%21sushi` is the Go module proxy's case encoding (`!b` for `B`) percent-encoded inside the purl. The engine model's package rows omit `versionInfo` and use unversioned purls (`pkg:cargo/anyhow`): that is the gap its comment points at. Without versions, section 3's CVE question cannot be answered, so a release SBOM generated from `Cargo.lock` must include them.
+Here you have both `versionInfo` and a versioned purl. The odd-looking `%21burnt%21sushi` is the Go module proxy's case encoding (`!b` for `B`), percent-encoded inside the purl. Compare the engine model: its package rows omit `versionInfo` and use unversioned purls such as `pkg:cargo/anyhow`. That is the gap its creation comment points at. Without versions, the CVE question from the walk-through cannot be answered for the engine, so a release SBOM generated from `Cargo.lock` must include them.
 
-**The relationships** (engine):
+### The relationships
+
+The engine's relationships array is short:
 
 ```json
   "relationships": [
@@ -129,73 +120,81 @@ This is the complete form: `versionInfo` and a versioned purl. The odd-looking `
   ]
 ```
 
-`DESCRIBES` names the root: the document is about the engine. `DEPENDS_ON` edges go from the root to each dependency (step 2). Every target id is one of the three package ids (step 3). A full SBOM would also have edges between dependencies (serde_json depends on serde, and so on), which a generator produces from the lockfile.
+`DESCRIBES` names the root: the document is about the engine. `DEPENDS_ON` edges go from the root to each dependency, recording the graph. Every target id is one of the three package ids, so the graph is connected. A full SBOM would also have edges between dependencies (serde_json depends on serde, and so on), which a generator produces from the lockfile.
 
-**The comparison with the policy** (step 5). The engine's direct dependencies `anyhow` and `serde_json` both appear under `[rust.tl-engine]` in [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml) (`anyhow = "1"`, `serde_json = "1"`). The gateway's `github.com/BurntSushi/toml` and `google.golang.org/grpc` appear under `[go.tinyllm]` with major `v1`, and the SBOM's `1.6.0` satisfies it. A package in an SBOM that has no row in its component's policy section is a finding: either the policy is extended through review, or the dependency is removed.
+### Comparing against the policy
 
-Full model answers: [`engine.spdx.json`](../../../../course/solutions/docs/sbom/engine.spdx.json), [`gateway.spdx.json`](../../../../course/solutions/docs/sbom/gateway.spdx.json).
+The last step is the review itself. The engine's direct dependencies `anyhow` and `serde_json` both appear under `[rust.tl-engine]` in [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml) (`anyhow = "1"`, `serde_json = "1"`). The gateway's `github.com/BurntSushi/toml` and `google.golang.org/grpc` appear under `[go.tinyllm]` with major `v1`, and the SBOM's `1.6.0` satisfies it. A package in an SBOM that has no row in its component's policy section is a finding: either the policy is extended through review, or the dependency is removed.
 
-### 5.3 Why this approach
+The full model answers are [`engine.spdx.json`](../../../../course/solutions/docs/sbom/engine.spdx.json) and [`gateway.spdx.json`](../../../../course/solutions/docs/sbom/gateway.spdx.json).
 
-- **Generated from the built artifact** rather than written from the manifest: the manifest is a requirement; transitive resolution, vendored code, and the base image only show up in what was built.
-- **SPDX** rather than an ad-hoc JSON list: scanners, license tools, and registries already read it, and its relationship model answers graph questions. CycloneDX would serve equally well; the point is a standard format.
-- **`NOASSERTION` over guesses:** a wrong license or location in an SBOM is worse than an honest gap, because downstream tools will trust it.
-- **Tradeoff accepted:** an SBOM is only as fresh as its last build. It must be regenerated and stored with every released digest, which is a release-pipeline step to maintain.
+### Why this design
 
-### 5.4 Explain it back
+Generating the SBOM from the built artifact, rather than writing it from the manifest, is the decisive choice: the manifest is a requirement, and transitive resolution, vendored code, and the base image show up only in what was built. SPDX beats an ad-hoc JSON list because scanners, license tools, and registries already read it, and its relationship model answers graph questions; CycloneDX would serve equally well, since the point is a standard format. `NOASSERTION` beats guessing because a wrong license or location is worse than an honest gap when downstream tools will trust it. The tradeoff you accept is freshness: an SBOM is only as current as its last build, so it must be regenerated and stored with every released digest, which is a release-pipeline step someone has to maintain.
 
-**Why is the SBOM tied to an image digest and not to a git commit?**
+## What can go wrong
 
-<details><summary>Answer</summary>
+The most damaging mistake is writing the SBOM from the manifest instead of the artifact. Transitive and base-image packages go missing, and a CVE response gives the wrong answer; the model guards against this with a creation comment that requires regeneration from the image digest and resolved lockfile. A close second is colliding package ids or dangling relationships, which leave a graph that cannot be walked from the root; in the model each package has a unique `SPDXRef-Package-*` id and every `DEPENDS_ON` target is in `packages`.
 
-The same commit can build different images (a different base image, a different resolution of a loose requirement, a different toolchain). The digest identifies exactly what runs, and the SBOM must describe exactly that.
+> **Warning:** Never fill in metadata you have not verified. Guessed license or location fields are wrong in exactly the places downstream tools trust them. Use `NOASSERTION` for anything unknown.
 
-</details>
+The last pitfall is missing versions, which makes advisories impossible to match. The gateway model shows the complete form, with `versionInfo` and a versioned purl, and the engine model flags the gap for release automation to close.
 
-**Why does a dangling relationship matter?**
+## Where this leads
 
-<details><summary>Answer</summary>
+This section supplies evidence for the release-pipeline row of the [threat model](01-threat-model-stride.md), where provenance and digests are listed as controls. It also connects to [Dependency upgrades](../07-maintenance/03-dependency-upgrades.md): an upgrade changes the resolved graph, so every upgrade produces a new SBOM to review against the policy.
 
-A responder walks edges from the root to find whether a vulnerable package is reachable. An edge to an id that is not in the document breaks that walk, and the answer becomes "unknown" exactly where it is needed.
+### Further reading
 
-</details>
+- [SPDX 2.3 specification](https://spdx.github.io/spdx-spec/v2.3/): required document and package fields, and the relationship types.
+- [SLSA](https://slsa.dev/): build provenance, meaning who built the artifact, from what, and how to verify it.
+- [package-url specification](https://github.com/package-url/purl-spec): how purls identify packages across ecosystems.
 
-**The engine model has no `versionInfo`. Which question can it not answer?**
+## Key terms
 
-<details><summary>Answer</summary>
+- **SBOM**: a software bill of materials, an inventory of the packages in one built artifact and the dependency edges between them.
+- **SPDX**: a standard SBOM format; version 2.3 is used here.
+- **purl**: a package URL, the cross-ecosystem identifier vulnerability databases match on.
+- **`NOASSERTION`**: the SPDX value meaning the document makes no claim about a field.
+- **Dependency policy**: the human-maintained list of what may be used (`allowed-deps.toml`), against which each SBOM is reviewed.
 
-"Is the running engine affected by an advisory for versions below X?" It shows that `anyhow` is present but not which version, so the responder would have to rebuild or inspect the image. A release SBOM generated from `Cargo.lock` includes versions and versioned purls.
+## Summary
 
-</details>
+- An SBOM describes one built artifact, identified by its image digest, and is generated from that artifact's resolved dependency graph.
+- Each package has a unique SPDX id, and every dependency relationship points at a package in the same document.
+- Unknown facts are recorded as `NOASSERTION`, never guessed; versions and versioned purls are required for advisory matching.
+- The dependency policy is the source of truth for what may be used; the SBOM is the record of what was used, and the review compares the two.
 
-**Why is `allowed-deps.toml` not generated from the SBOM?**
+## Review questions
 
-<details><summary>Answer</summary>
+1. Why is the SBOM tied to an image digest and not to a git commit?
 
-Then the policy would allow whatever happened to be used, and the comparison would always pass. The policy is a human decision about what may be used; the SBOM is a machine record of what was used. Keeping them separate is what makes the comparison a review.
+   <details><summary>Answer</summary>
 
-</details>
+   The same commit can build different images (a different base image, a different resolution of a loose requirement, a different toolchain). The digest identifies exactly what runs, and the SBOM must describe exactly that.
 
-## 6. Pitfalls
+   </details>
 
-| # | Pitfall | Symptom | How the solution avoids it |
-|---|---|---|---|
-| 1 | The SBOM is written from the manifest, not from the artifact | Transitive and base-image packages are missing; a CVE response gives the wrong answer. | The creation comment requires regeneration from the image digest and resolved lockfile. |
-| 2 | Package ids collide or relationships dangle | The graph cannot be walked from the root. | Each package has a unique `SPDXRef-Package-*` id and every `DEPENDS_ON` target is in `packages`. |
-| 3 | Guessed metadata | License or location fields that downstream tools trust are wrong. | Unknown fields are `NOASSERTION`. |
-| 4 | Missing versions | Advisories cannot be matched. | The gateway model shows the complete form (`versionInfo` and a versioned purl); the engine model flags the gap for release automation. |
+2. Why does a dangling relationship matter?
 
-## 7. Where it's used next
+   <details><summary>Answer</summary>
 
-| Direction | Module | Connection |
-|---|---|---|
-| Back | [`craft.17`](01-threat-model-stride.md) | The threat model's release-pipeline row: provenance and digests are controls this SBOM provides evidence for. |
-| Related | [`craft.15`](../07-maintenance/03-dependency-upgrades.md) | An upgrade changes the resolved graph, so it produces a new SBOM to review. |
+   A responder walks edges from the root to find whether a vulnerable package is reachable. An edge to an id that is not in the document breaks that walk, and the answer becomes "unknown" exactly where it is needed.
 
-## Going further
+   </details>
 
-| Resource | What to inspect |
-|---|---|
-| [SPDX 2.3 specification](https://spdx.github.io/spdx-spec/v2.3/) | Required document and package fields, and the relationship types. |
-| [SLSA](https://slsa.dev/) | Build provenance: who built the artifact, from what, and how to verify it. |
-| [package-url specification](https://github.com/package-url/purl-spec) | How purls identify packages across ecosystems. |
+3. The engine model has no `versionInfo`. Which question can it not answer?
+
+   <details><summary>Answer</summary>
+
+   "Is the running engine affected by an advisory for versions below X?" It shows that `anyhow` is present but not which version, so the responder would have to rebuild or inspect the image. A release SBOM generated from `Cargo.lock` includes versions and versioned purls.
+
+   </details>
+
+4. Why is `allowed-deps.toml` not generated from the SBOM?
+
+   <details><summary>Answer</summary>
+
+   Then the policy would allow whatever happened to be used, and the comparison would always pass. The policy is a human decision about what may be used; the SBOM is a machine record of what was used. Keeping them separate is what makes the comparison a review.
+
+   </details>

@@ -27,6 +27,6 @@ With the tools installed, read these sections in order:
 2. [Python and numpy](../../../programming-languages/02-language-and-tool-primers/01-python-and-numpy.md). Afterwards you can predict a broadcast's shape and explain how a count is vectorized.
 3. [Shell, git, make, processes](../../../programming-languages/02-language-and-tool-primers/02-shell-git-make.md). Afterwards you can explain why a script exits 143 on SIGTERM and why make rebuilds only what changed.
 4. [Your repo and CI gate](../../../software-craftsmanship/05-code-review-and-ci/01-your-repo-and-ci-gate.md). Afterwards you can explain how the repo's CI lints commit messages, runs native tests, and runs the test suite on every push.
-5. [What the system does after Pass 0](milestone.md). Afterwards you can explain why every later pass depends on a green CI and conventional commits.
+5. [What the System Does After Pass 0](milestone.md). Afterwards you can explain why every later pass depends on a green CI and conventional commits.
 
 The pass ends with [what the system does after Pass 0](milestone.md): every commit is a conventional commit and CI is green on it. The stages and their "done when" statements are also in this pass's manifest, [`path.tsv`](path.tsv). The next pass, [the tracer](../course-p01-tracer/README.md), puts the first code through that gate.

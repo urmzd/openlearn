@@ -236,14 +236,14 @@ The common mistakes map onto those checks. Each has a recognisable symptom and a
 
 ## Where this leads
 
-The next consumer is [Scalar reverse mode: the Value graph](../08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md), whose `backward` walks `toposort(loss, parents)`. In *Build Your Own LLM System*, [Tensor, broadcasting backward, and no_grad](../../build-an-llm/p00-foundations/01-tensor-and-broadcasting-backward.md) does the same over tensors, accumulating gradients in this order, and [Constrained decoding: regex to DFA to token masks, JSON-schema subset](../../build-an-llm/p08-inference/07-constrained-decoding.md) treats regex and JSON-schema automata as graphs whose reachability and cycles come from this traversal. Within this chapter, [Trees and tries, longest-prefix match](02-trees-and-tries-longest-prefix-match.md) turns to trees, the simplest DAGs.
+The next consumer is [Scalar reverse mode: the Value graph](../08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md), whose `backward` walks `toposort(loss, parents)`. In *Build Your Own LLM System*, [Tensor, broadcasting backward, and no_grad](../../build-an-llm/p00-foundations/01-tensor-and-broadcasting-backward.md) does the same over tensors, accumulating gradients in this order, and [Constrained decoding: from regex to token masks](../../build-an-llm/p08-inference/07-constrained-decoding.md) treats regex and JSON-schema automata as graphs whose reachability and cycles come from this traversal. Within this chapter, [Trees and tries, longest-prefix match](02-trees-and-tries-longest-prefix-match.md) turns to trees, the simplest DAGs.
 
 The same ideas run in production systems, usually with more machinery around them:
 
 - The PyTorch autograd engine counts each node's dependencies first, then runs a ready queue (Kahn's algorithm) across devices and threads; see `compute_dependencies` in `torch/csrc/autograd/engine.cpp`.
 - In JAX, a traced program (a jaxpr) is already a topologically ordered list, so the transpose simply walks it backwards; see `backward_pass` in `jax/_src/interpreters/ad.py`.
 - Python's `graphlib.TopologicalSorter` (CPython `Lib/graphlib.py`) implements Kahn's algorithm with incremental `get_ready`/`done` for parallel schedulers, and includes a cycle check.
-- Workflow engines (Airflow, Temporal child workflows) use the same order to schedule jobs whose inputs are other jobs' outputs; see the chapter on durable orchestration in *AI Platform Engineering*, starting at [Append-only segmented event log](../../ai-platform-engineering/05-durable-orchestration-and-workers/01-event-log.md).
+- Workflow engines (Airflow, Temporal child workflows) use the same order to schedule jobs whose inputs are other jobs' outputs; see the chapter on durable orchestration in *AI Platform Engineering*, starting at [The append-only event log](../../ai-platform-engineering/05-durable-orchestration-and-workers/01-event-log.md).
 
 ### Further reading
 

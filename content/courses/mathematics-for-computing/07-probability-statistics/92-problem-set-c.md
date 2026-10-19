@@ -168,7 +168,7 @@ The interval-specific pitfalls are about procedure. The Wald interval at $k = 0$
 
 ## Where this leads
 
-The variance of a sum with covariances is Problem 3 of [problem set B](91-problem-set-b.md), and [LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md) implements `mean_ci`, `wilson_interval`, `quantile`, and `bootstrap_ci`, which are Problems 6, 7, and 8 in code. [Problem set D](93-problem-set-d.md) reads the same sampling distributions as p-values. In *Build Your Own LLM System*, [LM evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) reports every metric with its interval, together with what the interval does and does not claim, and [Sequence metrics: exact match, BLEU, chrF](../../build-an-llm/p04-attention-origins/05-sequence-metrics.md) bootstraps intervals over sentences for BLEU.
+The variance of a sum with covariances is Problem 3 of [problem set B](91-problem-set-b.md), and [LLN, CLT, confidence intervals, bootstrap](04-lln-clt-confidence-intervals-bootstrap.md) implements `mean_ci`, `wilson_interval`, `quantile`, and `bootstrap_ci`, which are Problems 6, 7, and 8 in code. [Problem set D](93-problem-set-d.md) reads the same sampling distributions as p-values. In *Build Your Own LLM System*, [The evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) reports every metric with its interval, together with what the interval does and does not claim, and [Sequence metrics: exact match, BLEU, chrF](../../build-an-llm/p04-attention-origins/05-sequence-metrics.md) bootstraps intervals over sentences for BLEU.
 
 ### Further reading
 

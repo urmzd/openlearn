@@ -1,73 +1,48 @@
 # Software Architecture
 
-## Overview
+Software architecture is the set of decisions that are expensive to change. Good architects minimize the number of irreversible decisions and make the reversible ones easy to change. Every architecture pattern trades one quality attribute for another, so patterns are tools, not religions: each has specific strengths and specific failure modes, and the important skill is choosing the right pattern for the problem rather than applying the fanciest one.
 
-- **Primary reference**: *Software Architecture Patterns* by Mark Richards (O'Reilly, recommended)
-- **Supplementary**: [The Architecture of Open Source Applications](https://aosabook.org/) (free), Martin Fowler's [blog](https://martinfowler.com/) (free)
-- **Prerequisites**: Professional development experience
-- **Estimated time**: 2-3 weeks at 8-10 hrs/week
+This chapter walks through five classic patterns, each with when to use it, when not to, and the anti-pattern it tends to decay into: layered, event-driven, microkernel, microservices, and space-based. It then covers the two habits that make pattern choice defensible: recording decisions in architecture decision records so future engineers understand why and not just what, and analysing quality attributes, because performance, scalability, and availability drive architecture choices far more than features do. The chapter is self-contained; the [System Design](../01-system-design/README.md) chapter puts these ideas to work in full design reviews.
 
-## Key Takeaways
+> **Learning objectives**
+> - Describe the layered, event-driven, microkernel, microservices, and space-based patterns and the problem each solves.
+> - State when each pattern should not be used and recognize its characteristic anti-pattern.
+> - Write an architecture decision record with status, context, decision, and consequences.
+> - Analyse a decision as a trade between quality attributes and align it with business priorities.
 
-- Architecture patterns are tools, not religions -- each has specific strengths and failure modes
-- The most important skill is choosing the right pattern for the problem, not applying the fanciest one
-- Document decisions with ADRs so future engineers understand why, not just what
-- Quality attributes (performance, scalability, availability) drive architecture choices, not features
+## Before you begin
 
----
+You need professional development experience: the patterns make most sense once you have maintained a codebase that outgrew its first structure. No other chapter is required.
 
-# Concepts & Techniques
+## Layered architecture
 
-## Core Insight
+The layered pattern stacks presentation, business logic, persistence, and the database, and each layer calls only the layer directly below it. Closed layers enforce that separation strictly; open layers allow a request to bypass them. It suits CRUD applications and small-to-medium teams, and it is a sound choice when time-to-market matters more than scalability. It is a poor fit for high-performance systems, where the layers of indirection cost too much, and for microservices, where it reintroduces monolith coupling. Its characteristic anti-pattern is the **sinkhole**: requests that pass through layers adding no value at all.
 
-Software architecture is the set of decisions that are expensive to change. Good architects minimize the number of irreversible decisions and make the reversible ones easy to change. Every pattern trades one quality attribute for another.
+## Event-driven architecture
 
-## 1. Layered Architecture
+Event-driven systems are asynchronous and highly decoupled, and they come in two topologies. In the **mediator topology**, a central mediator orchestrates event processing. In the **broker topology**, there is no central mediator, and events flow through channels from component to component. The pattern suits complex workflows, systems that must react to events in real time, and systems whose components evolve independently. Avoid it for simple CRUD, when you need synchronous request-response, and when event ordering is critical and hard to guarantee.
 
-**Key ideas**: Presentation → Business → Persistence → Database. Each layer only calls the layer directly below it. Closed layers enforce separation; open layers allow bypassing.
+## Microkernel architecture
 
-**When to use**: CRUD applications, small-to-medium teams, when time-to-market matters more than scalability.
+A microkernel system has a minimal, stable core and plug-in modules that supply features and extensions. A registry tracks the available plug-ins; the core provides services and the plug-ins extend behavior. This is the shape of product-based applications such as IDEs and browsers, of systems with optional features, and of anything where third-party extensibility matters. It is the wrong tool for a pure microservices problem, which is different in kind, and for plug-ins that need to communicate with each other, where an event-driven design fits better.
 
-**When NOT to use**: High-performance systems (too many layers of indirection), microservices (monolith coupling).
+## Microservices architecture
 
-**Anti-pattern**: "Sinkhole" -- requests pass through layers that add no value.
+Microservices are independently deployable services, each owning its data. Bounded contexts from domain-driven design define the service boundaries. An API gateway provides external access, service discovery (DNS, Consul) lets services find each other, and workflows across services are coordinated either by orchestration, an explicit workflow, or by choreography, where services react to each other's events.
 
-## 2. Event-Driven Architecture
+The pattern pays off for large teams, independent deployment cadences, polyglot stacks, and services with genuinely different scaling needs. It does not pay off for small teams (fewer than about 10 engineers), for early-stage products whose domain boundaries are not yet known, or when a modular monolith would suffice.
 
-**Key ideas**: **Mediator topology** -- central mediator orchestrates event processing. **Broker topology** -- no central mediator; events flow through channels. Asynchronous, highly decoupled.
+> **Warning:** Beware the **distributed monolith**. Microservices that must be deployed together are a monolith with network calls: all of the coupling, plus all of the latency and partial failure.
 
-**When to use**: Complex workflows, systems that need to react to events in real-time, when components evolve independently.
+## Space-based architecture
 
-**When NOT to use**: Simple CRUD, when you need synchronous request-response, when event ordering is critical and hard to guarantee.
+Space-based systems are built from processing units, each holding business logic and an in-memory data grid. Virtualized middleware handles messaging, data replication, and request routing. There is no central database in the request path under load; data is replicated across the processing units instead. The pattern suits variable, spiky load such as ticket sales and flash sales, where horizontal scaling must be nearly instantaneous. It is a poor fit for systems that need strong consistency, and overkill for small-scale applications.
 
-## 3. Microkernel Architecture
+## Architecture decision records
 
-**Key ideas**: Core system (minimal, stable) + plug-in modules (features, extensions). Registry tracks available plug-ins. Core provides services; plug-ins extend behavior.
+Decisions are forgotten, context is lost, and new engineers do not know why things are the way they are. An **architecture decision record** (ADR) is a lightweight decision log that fixes this, one short document per decision:
 
-**When to use**: Product-based applications (IDEs, browsers), systems with optional features, when third-party extensibility matters.
-
-**When NOT to use**: Pure microservices (different problem), when plug-ins need to communicate with each other (use event-driven instead).
-
-## 4. Microservices Architecture
-
-**Key ideas**: Independently deployable services, each owning its data. Bounded contexts from DDD define service boundaries. API gateway for external access. Service discovery (DNS, Consul). Orchestration (explicit workflow) vs choreography (event-driven).
-
-**When to use**: Large teams, independent deployment cadences, polyglot tech stacks, when services have genuinely different scaling needs.
-
-**When NOT to use**: Small teams (< 10 engineers), early-stage products (you don't know your domain boundaries yet), when a modular monolith would suffice. **The distributed monolith anti-pattern** -- microservices that must be deployed together are a monolith with network calls.
-
-## 5. Space-Based Architecture
-
-**Key ideas**: Processing units contain business logic + in-memory data grid. Virtualized middleware handles messaging, data replication, request routing. No central database under load; data is replicated across processing units.
-
-**When to use**: Variable, spiky load (ticket sales, flash sales); when horizontal scaling needs to be nearly instantaneous.
-
-**When NOT to use**: Systems that need strong consistency, small-scale applications (overkill).
-
-## 6. Architecture Decision Records (ADRs)
-
-**Format**:
-```
+```text
 # ADR-NNN: [Title]
 Status: [Proposed | Accepted | Deprecated | Superseded by ADR-XXX]
 Context: [What is the problem?]
@@ -75,22 +50,32 @@ Decision: [What did we decide?]
 Consequences: [What are the trade-offs?]
 ```
 
-**Why**: decisions are forgotten, context is lost, new engineers don't know why things are the way they are. ADRs are a lightweight decision log.
+The consequences line is the one that matters most later, because it records what the decision gave up. [Architecture decision records](../../diagramming/02-documentation-writing/01-architecture-decision-records.md) in *Diagramming and Documentation* treats the practice in depth.
 
-## 7. Quality Attributes & Trade-off Analysis
+## Quality attributes and tradeoff analysis
 
-**Key attributes**: Performance (latency, throughput), Scalability (handles growth), Availability (uptime), Fault tolerance (handles failure), Security, Maintainability, Testability.
+The attributes that drive architecture are performance (latency and throughput), scalability (handling growth), availability (uptime), fault tolerance (handling failure), security, maintainability, and testability. Every architecture decision trades one of them for another. Microservices improve deployability but hurt consistency. Caching improves performance but also hurts consistency. The architect's job is to make these tradeoffs explicit and align them with business priorities, which is exactly what the "what the choice gives up" line of a design review asks for.
 
-**Trade-off analysis**: every architecture decision trades one attribute for another. Microservices improve deployability but hurt consistency. Caching improves performance but hurts consistency. The architect's job is to make these trade-offs explicit and aligned with business priorities.
+How large companies have resolved these trades is instructive, because each choice follows from a constraint. The following table summarizes a few.
 
----
-
-## Company Relevance
-
-| Company | Architecture Style | Why |
-|---------|-------------------|-----|
+| Company | Architecture style | Why |
+|---|---|---|
 | Google | Monorepo + large services | Scale, consistency, shared infrastructure |
 | Amazon | Microservices (pioneered it) | Two-pizza teams, independent deployment |
 | Netflix | Microservices + event-driven | Resilience, independent scaling |
-| Stripe | Modular monolith → services | Deliberate extraction as boundaries clarify |
+| Stripe | Modular monolith, then services | Deliberate extraction as boundaries clarify |
 | Anthropic | Service-oriented, GPU-aware | Inference serving has unique constraints |
+
+## Summary
+
+- Architecture is the set of decisions that are expensive to change; minimize the irreversible ones.
+- Each pattern (layered, event-driven, microkernel, microservices, space-based) has a problem it fits and a failure mode it decays into.
+- Microservices that must be deployed together are a distributed monolith.
+- ADRs record why a decision was made, including what it gave up.
+- Quality attributes, not features, drive architecture; every decision trades one attribute for another.
+
+## Further reading
+
+- Mark Richards, *Software Architecture Patterns* (O'Reilly).
+- [The Architecture of Open Source Applications](https://aosabook.org/) (free).
+- Martin Fowler's [blog](https://martinfowler.com/) (free).

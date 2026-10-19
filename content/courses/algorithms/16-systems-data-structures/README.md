@@ -33,13 +33,13 @@ The sections are numbered by where they sit in the C runtime, but two of them ar
 8. [A Bloom filter](08-bloom-filter.md). $m = -n \ln p / (\ln 2)^2$ bits and $k = (m/n) \ln 2$ hashes, double hashing from FNV-1a and SplitMix64, and a portable byte format shared with the corpus pipeline's exact-dedup screen.
 9. [A consistent hash ring with bounded loads](09-consistent-hash-ring.md). A Go ring with virtual nodes where no replica takes more than $\lceil c \cdot \text{avg} \rceil$ keys; it drives the gateway's affinity routing.
 
-The engine flag `--prefix-cache=hash|radix` gives both the Swiss table (hash index in C) and the radix tree (in Rust) a production call site, and [Block manager with prefix cache](../../build-an-llm/p10-serving/04-block-manager-and-prefix-cache.md) in *Build an LLM* benchmarks one against the other.
+The engine flag `--prefix-cache=hash|radix` gives both the Swiss table (hash index in C) and the radix tree (in Rust) a production call site, and [Block manager with prefix cache](../../build-an-llm/p10-serving/04-block-manager-and-prefix-cache.md) in *Build Your Own LLM System* benchmarks one against the other.
 
 ## Connections to other books
 
 These structures are used throughout the other books:
 
-- The KV block pool and the prefix cache in [Inference](../../build-an-llm/p08-inference/) in *Build an LLM* use the growable array, the Swiss table, the LRU, and the radix tree.
+- The KV block pool and the prefix cache in [Inference](../../build-an-llm/p08-inference/) in *Build Your Own LLM System* use the growable array, the Swiss table, the LRU, and the radix tree.
 - The [Gateway](../../ai-platform-engineering/12-gateway/) chapter of *AI Platform Engineering* uses the bounded-load ring for affinity routing.
 - The [Corpus Pipeline](../../data-engineering/05-corpus-pipeline/) chapter of *Data Engineering* uses the Bloom screen in exact dedup.
 

@@ -1,67 +1,58 @@
-# Scala Practice
+# Scala
 
-> **Optional language.** Scala is not one of the languages this
-> curriculum targets, so these exercises have no worked solutions
-> yet and nothing here is built in CI. They are kept because the briefs
-> are worth reading as design problems.
->
-> Toolchain: `brew install scala-cli`. On a chezmoi-managed machine it comes from the
-> `install_alt_langs` flag, which is off by default.
->
-> `scala-cli` runs a bare directory of sources and manages its own JVM, so no build definition is needed.
+Scala is the place to practise functional programming with a type system strong enough to encode real constraints. On the JVM it inherits garbage collection and a vast library ecosystem; on top of that it adds immutable case classes, exhaustive pattern matching, higher-kinded types, and (in Scala 3) given instances for type-class derivation. The exercises in this chapter use those features for what they are good at: making illegal states unrepresentable, composing effects, and deriving code at compile time.
 
+> **Note:** Scala is an optional language here. None of the core books target it, so these exercises have no worked solutions yet and nothing in this chapter is built in CI. The briefs are kept because they are worth reading as design problems. To get a toolchain, run `brew install scala-cli`; on a chezmoi-managed machine it comes from the `install_alt_langs` flag, which is off by default. `scala-cli` runs a bare directory of sources and manages its own JVM, so no build definition is needed.
 
-Master functional programming, the type system, and pattern matching on the JVM.
+> **Learning objectives**
+> - Describe Scala's type system (variance, higher-kinded and path-dependent types) and its value-based approach to errors.
+> - Model data as algebraic data types with sealed traits and case classes, and process it with exhaustive pattern matching.
+> - Compose effectful computations with for-comprehensions, and explain what `flatMap` must satisfy for that to work.
+> - Reason through the design of each exercise brief before writing code.
 
-## Language Essentials
+## Before you begin
 
-| Concept | Details |
-|---------|---------|
-| **Memory Model** | JVM GC, value classes, case classes (immutable by default) |
-| **Type System** | Strong static, higher-kinded types, variance, path-dependent types |
-| **Error Handling** | `Option`, `Either`, `Try`, `Future` recovery, no checked exceptions |
-| **Concurrency** | `Future`/`Promise`, Akka actors, cats-effect IO, ZIO |
-| **Build** | `sbt`, `scala-cli`, Mill |
-| **Standard** | Scala 3 (Dotty) |
+You should be able to write and run a small Scala 3 program and be comfortable with recursion and immutable data. The harder briefs (free monads, an effect system) assume you have used `map` and `flatMap` on `Option` or `Future` and want to know what is underneath.
 
-## Key Idioms
+## The language in brief
 
-- **Case classes** for immutable data
-- **Pattern matching** with exhaustiveness checking
-- **For-comprehensions** for monadic composition
-- **Implicits / given instances** (Scala 3) for type-class derivation
-- **Sealed traits** for algebraic data types
-- **Extension methods** (Scala 3) over implicit classes
-- **Opaque types** for zero-cost newtype wrappers
+Scala runs on the JVM, so memory is garbage collected. Case classes are immutable by default, and value classes let a wrapper type cost nothing at run time.
 
-## Reference Documentation
+The type system is strong and static, with declaration-site variance (`+A`, `-A`), higher-kinded types (types that take type constructors, such as `F[_]`), and path-dependent types (types that belong to a particular value). It is expressive enough to encode a state machine in types, which is what the phantom-types brief asks you to do.
 
-- [Scala 3 Book](https://docs.scala-lang.org/scala3/book/introduction.html) -- free, official
-- [Scala Standard Library](https://www.scala-lang.org/api/current/) -- API docs
-- *Functional Programming in Scala* (Chiusano & Bjarnason) -- the red book
-- [Scala Exercises](https://www.scala-exercises.org/) -- free interactive
-- [Typelevel ecosystem](https://typelevel.org/) -- cats, fs2, http4s
+Errors are values: `Option` for absence, `Either` for a failure with a reason, `Try` for wrapping code that throws, and recovery combinators on `Future`. There are no checked exceptions. Concurrency comes from `Future` and `Promise` in the standard library and from ecosystems built on top: Akka actors, cats-effect `IO`, and ZIO. Builds use sbt, `scala-cli`, or Mill. The exercises target Scala 3.
 
-## How this page is organised
+## Idioms to practise
 
-The table below is an index of exercise briefs: what to build, the concepts it
-exercises, and how hard it is. Exercises are ordered by concept, not by
-difficulty. Where a row names a course version (for example `ds.02`), that
-module's chapter walks through a full solution of the same problem.
+- **Case classes** for immutable data.
+- **Pattern matching** with exhaustiveness checking, so the compiler warns about a missed case.
+- **For-comprehensions** for monadic composition.
+- **Given instances** (Scala 3's replacement for implicits) for type-class derivation.
+- **Sealed traits** for algebraic data types.
+- **Extension methods** (Scala 3) instead of implicit classes.
+- **Opaque types** for zero-cost newtype wrappers.
 
-## Exercises
+## In this chapter
 
-Worked solutions for these exercises are not written yet.
+The briefs are listed below, ordered by concept rather than by difficulty, so choose by the difficulty rating (1 is easiest, 5 hardest) rather than by number.
 
-| # | Exercise | Concepts | Difficulty |
-|---|----------|----------|------------|
-| 01 | Immutable red-black tree | Case classes, pattern matching, recursion | ⭐⭐⭐ |
-| 02 | Monad implementation | Higher-kinded types, `flatMap`, for-comprehension | ⭐⭐⭐⭐ |
-| 03 | Actor system (simplified) | Message passing, mailboxes, supervision | ⭐⭐⭐⭐ |
-| 04 | Type-safe builder (phantom types) | Phantom types, type-level state machine | ⭐⭐⭐⭐ |
-| 05 | Streaming CSV parser | `Iterator`, lazy evaluation, `fs2`-style | ⭐⭐⭐ |
-| 06 | JSON codec (automatic derivation) | Given instances, `Mirror`, compile-time derivation | ⭐⭐⭐⭐⭐ |
-| 07 | Parallel collection processor | `Future`, `ExecutionContext`, `Par` | ⭐⭐⭐ |
-| 08 | Free monad interpreter | GADTs, natural transformations, Church encoding | ⭐⭐⭐⭐⭐ |
-| 09 | Property-based test framework | Generators, shrinking, `given` Arbitrary | ⭐⭐⭐⭐ |
-| 10 | Effect system (mini-ZIO) | Trampolining, fibers, error channels | ⭐⭐⭐⭐⭐ |
+| # | Exercise | Concepts | Difficulty (1-5) |
+|---|----------|----------|------------------|
+| 01 | Immutable red-black tree | Case classes, pattern matching, recursion | 3 |
+| 02 | Monad implementation | Higher-kinded types, `flatMap`, for-comprehension | 4 |
+| 03 | Actor system (simplified) | Message passing, mailboxes, supervision | 4 |
+| 04 | Type-safe builder (phantom types) | Phantom types, type-level state machine | 4 |
+| 05 | Streaming CSV parser | `Iterator`, lazy evaluation, `fs2`-style | 3 |
+| 06 | JSON codec (automatic derivation) | Given instances, `Mirror`, compile-time derivation | 5 |
+| 07 | Parallel collection processor | `Future`, `ExecutionContext`, `Par` | 3 |
+| 08 | Free monad interpreter | GADTs, natural transformations, Church encoding | 5 |
+| 09 | Property-based test framework | Generators, shrinking, `given` Arbitrary | 4 |
+| 10 | Effect system (mini-ZIO) | Trampolining, fibers, error channels | 5 |
+
+## Further reading
+
+- [Scala 3 Book](https://docs.scala-lang.org/scala3/book/introduction.html): free and official.
+- [Scala Standard Library](https://www.scala-lang.org/api/current/): the API documentation.
+- *Functional Programming in Scala* by Chiusano and Bjarnason: "the red book".
+- [Scala Exercises](https://www.scala-exercises.org/): free and interactive.
+- [Typelevel ecosystem](https://typelevel.org/): cats, fs2, and http4s.

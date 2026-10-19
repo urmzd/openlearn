@@ -158,7 +158,7 @@ Three pitfalls account for most failed reviews of an architecture artifact. The 
 
 ## Where this leads
 
-The boundary rule every arrow follows comes from [Architecture decision records](../02-documentation-writing/01-architecture-decision-records.md), where ADR 0001 is written and annotated. The diagrams are also an input to [Design review: the whole system](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems*, which uses them to verify the system's contracts and evidence.
+The boundary rule every arrow follows comes from [Architecture decision records](../02-documentation-writing/01-architecture-decision-records.md), where ADR 0001 is written and annotated. The diagrams are also an input to [Design review: the whole system](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems and Architecture*, which uses them to verify the system's contracts and evidence.
 
 Further reading:
 

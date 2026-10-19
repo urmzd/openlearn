@@ -260,7 +260,7 @@ The remaining pitfalls are in the data handling. Taking one sample per bucket ig
 
 ## Where this leads
 
-This section reads the load generator's `Report`, its histograms, and `rng.Stream` for the shuffles. No later section builds on it as code; instead, the `{loadgen} compare` entry point is used directly. The optional perf-gate job of [CI for the platform repo](../../infrastructure/01-containers-kubernetes/05-ci-for-your-repo.md) runs it on main against the last good run, and the [performance regression bisect drill](../../systems/05-incident-response-and-chaos/07-performance-regression.md) in *Systems* uses it with `git bisect run` to find the commit that caused a slowdown.
+This section reads the load generator's `Report`, its histograms, and `rng.Stream` for the shuffles. No later section builds on it as code; instead, the `{loadgen} compare` entry point is used directly. The optional perf-gate job of [CI for the platform repo](../../infrastructure/01-containers-kubernetes/05-ci-for-your-repo.md) runs it on main against the last good run, and the [performance regression bisect drill](../../systems/05-incident-response-and-chaos/07-performance-regression.md) in *Systems and Architecture* uses it with `git bisect run` to find the commit that caused a slowdown.
 
 Production systems take the idea further. Bencher and Conbench provide continuous benchmarking with history and change-point detection, instead of one permutation test per metric. Go's `benchstat` applies Mann-Whitney U across repeated runs, with confidence intervals. And change-point detection (E-divisive, as at MongoDB) replaces a fixed budget between two runs with finding when a series shifted.
 

@@ -88,7 +88,7 @@ dbt also makes testing routine. Built-in tests (`unique`, `not_null`, `accepted_
 
 Why did this matter so much? Because it brought version control, modularity, testing, and CI/CD to analytics SQL, which until then had lived in ad hoc scripts. That shift is the foundation of the analytics engineering role.
 
-The [Streamflow dbt project](dbt/README.md) implements exactly this staging, intermediate, and marts chain over the Spark-produced silver table, with built-in tests (`not_null`, `unique`, `accepted_values`), a source freshness check, and a custom singular test. Trace it end to end: `source('silver','orders')` feeds `stg_orders`, which feeds `int_orders_enriched`, which feeds `daily_revenue`. Then run `dbt build` against DuckDB, with zero infrastructure, and `dbt docs serve` to browse the lineage graph.
+The [The Streamflow dbt Project](dbt/README.md) implements exactly this staging, intermediate, and marts chain over the Spark-produced silver table, with built-in tests (`not_null`, `unique`, `accepted_values`), a source freshness check, and a custom singular test. Trace it end to end: `source('silver','orders')` feeds `stg_orders`, which feeds `int_orders_enriched`, which feeds `daily_revenue`. Then run `dbt build` against DuckDB, with zero infrastructure, and `dbt docs serve` to browse the lineage graph.
 
 ## Data modeling for consumption
 
@@ -118,7 +118,7 @@ A **data contract** is an explicit agreement on schema and SLA between a produce
 
 ## Data observability
 
-The last discipline applies the ideas of [Observability](../../systems/04-observability/) in *Systems* to data. Data observability watches five pillars: freshness, volume, schema, distribution, and lineage. Its workflow is detect, triage, resolve: alert on an anomaly, trace through lineage to its root cause, then fix it and backfill.
+The last discipline applies the ideas of [Observability](../../systems/04-observability/) in *Systems and Architecture* to data. Data observability watches five pillars: freshness, volume, schema, distribution, and lineage. Its workflow is detect, triage, resolve: alert on an anomaly, trace through lineage to its root cause, then fix it and backfill.
 
 Mature teams set SLAs and SLOs for data, such as "the orders table is fresh within 1 hour, 99% of days," and treat data products like services.
 
@@ -137,7 +137,7 @@ Everything in this chapter adds up to a short list of properties every pipeline 
 
 ## Where this leads
 
-The concepts here connect across the library. Task and asset dependency ordering is topological sort from [Graphs](../../algorithms/06-graphs/) in *Algorithms*. Data observability, SLOs, and alerting come from [Observability](../../systems/04-observability/) in *Systems*. The CI/CD, testing, and version-control practices that dbt brings to analytics are the subject of [*Software Craftsmanship*](../../software-craftsmanship/). Idempotency and retries were introduced in [Foundations](../01-foundations/). Feature freshness and lineage for trustworthy training and serving data reappear in [LLM Systems](../../machine-learning/04-llm-systems/). The next chapter, [Corpus Pipeline](../05-corpus-pipeline/), applies all of this to building a training corpus, ending with the pipeline as a durable workflow.
+The concepts here connect across the library. Task and asset dependency ordering is topological sort from [Graphs](../../algorithms/06-graphs/) in *Algorithms*. Data observability, SLOs, and alerting come from [Observability](../../systems/04-observability/) in *Systems and Architecture*. The CI/CD, testing, and version-control practices that dbt brings to analytics are the subject of [*Software Craftsmanship*](../../software-craftsmanship/). Idempotency and retries were introduced in [Foundations](../01-foundations/). Feature freshness and lineage for trustworthy training and serving data reappear in [LLM Systems](../../machine-learning/04-llm-systems/). The next chapter, [Corpus Pipeline](../05-corpus-pipeline/), applies all of this to building a training corpus, ending with the pipeline as a durable workflow.
 
 In industry, dbt Labs builds dbt and its semantic layer and coined analytics engineering. Airflow was created at Airbnb, which also built the Minerva metrics platform for data quality and consistent metrics. Netflix runs orchestration and data observability at scale. Databricks offers Unity Catalog, lineage, and Delta Live Tables. Palantir focuses on data integration, lineage, and governance.
 

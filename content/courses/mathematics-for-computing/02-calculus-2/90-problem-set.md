@@ -402,7 +402,7 @@ The integral test is an equally good route: $S_N \ge \int_1^{N+1} \frac{dx}{x} =
 
 <details><summary>Answer</summary>
 
-**$\frac{2}{\sqrt\pi}\left(x - \frac{x^3}{3} + \frac{x^5}{10}\right)$.** Expand $e^{-t^2} = 1 - t^2 + \frac{t^4}{2} - \dots$ and integrate from 0 to $x$: $x - \frac{x^3}{3} + \frac{x^5}{10}$, then multiply by $\frac{2}{\sqrt\pi}$. The `erf_series` of [Taylor series, remainder bounds, and range reduction](01-taylor-series.md) feeds the exact GELU of [Activation functions and their derivatives](../01-calculus-1/03-activation-functions.md). Common mistakes: $\frac{x^5}{5}$ (the $\frac12$ of $\frac{t^4}{2}$ lost) and dropping the $\frac{2}{\sqrt\pi}$.
+**$\frac{2}{\sqrt\pi}\left(x - \frac{x^3}{3} + \frac{x^5}{10}\right)$.** Expand $e^{-t^2} = 1 - t^2 + \frac{t^4}{2} - \dots$ and integrate from 0 to $x$: $x - \frac{x^3}{3} + \frac{x^5}{10}$, then multiply by $\frac{2}{\sqrt\pi}$. The `erf_series` of [Taylor series, remainder bounds, and range reduction](01-taylor-series.md) feeds the exact GELU of [Activation Functions and Their Derivatives](../01-calculus-1/03-activation-functions.md). Common mistakes: $\frac{x^5}{5}$ (the $\frac12$ of $\frac{t^4}{2}$ lost) and dropping the $\frac{2}{\sqrt\pi}$.
 
 </details>
 
@@ -484,7 +484,7 @@ The key step is using the degree 4 remainder: treating $x - \frac{x^3}{6}$ as on
 
 <details><summary>Answer</summary>
 
-**$y = \frac{1}{1 + e^{-t}}$.** Separate with partial fractions: $\frac{dy}{y(1 - y)} = \left(\frac1y + \frac{1}{1 - y}\right)dy = dt$, so $\ln\frac{y}{1 - y} = t + C$. $y(0) = \frac12$ gives $C = 0$, and solving $\frac{y}{1 - y} = e^t$ gives the sigmoid, the same function as in [The op library and gradcheck_all](../../build-an-llm/p00-foundations/02-op-library-and-gradcheck.md) (in *Build Your Own LLM System*) and [Activation functions and their derivatives](../01-calculus-1/03-activation-functions.md). Common mistakes: $\frac{e^t}{2}$ (solving $y' = y$) and $\frac{1}{1 + e^t}$ (a sign slip, which decreases instead of increasing).
+**$y = \frac{1}{1 + e^{-t}}$.** Separate with partial fractions: $\frac{dy}{y(1 - y)} = \left(\frac1y + \frac{1}{1 - y}\right)dy = dt$, so $\ln\frac{y}{1 - y} = t + C$. $y(0) = \frac12$ gives $C = 0$, and solving $\frac{y}{1 - y} = e^t$ gives the sigmoid, the same function as in [The op library and gradcheck_all](../../build-an-llm/p00-foundations/02-op-library-and-gradcheck.md) (in *Build Your Own LLM System*) and [Activation Functions and Their Derivatives](../01-calculus-1/03-activation-functions.md). Common mistakes: $\frac{e^t}{2}$ (solving $y' = y$) and $\frac{1}{1 + e^t}$ (a sign slip, which decreases instead of increasing).
 
 </details>
 

@@ -1,58 +1,45 @@
 # Datasheet and model card
 
-## Overview
+The first release of the system ends with a gate. `ModelRelease`, in [ModelRelease: gates, canary, burn check, and rollback](../../ai-platform-engineering/05-durable-orchestration-and-workers/12-model-release.md) from *AI Platform Engineering*, exports the capstone to `models/<id>/<version>/`, runs `EvalSuite`, and refuses to promote it without a `MODEL_CARD.md` next to the weights. Everything a reader needs to decide whether to use the model exists by now, but it is scattered: the ledger and datasheet counts from [Licensing ledger verification and the datasheet](../../data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md), the license decisions from [Data licensing and the ledger](../01-data-licensing/01-data-licensing-and-the-ledger.md), the quality numbers from [The evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md), the safety and bias rows from [Bias and safety evals](../04-bias-and-safety-evals/01-bias-and-safety-evals.md), and the training recipe from [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](../../build-an-llm/p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md).
 
-| | |
-|---|---|
-| **Module** | `ethics.03` · practice · docs · Pass 9 · 1.5 to 2 h reading |
-| **Solution** | the reference model card [`course/solutions/docs/MODEL_CARD.md`](../../../../course/solutions/docs/MODEL_CARD.md) (`shakespeare-kn4 v0`), its corpus's datasheet [`course/solutions/docs/DATASHEET.md`](../../../../course/solutions/docs/DATASHEET.md), and the third-party card [`course/solutions/docs/models/smollm2-135m-instruct.md`](../../../../course/solutions/docs/models/smollm2-135m-instruct.md), labelled as such |
-| **Contract** | the templates [`templates/MODEL_CARD.md`](../../../../course/contracts/templates/MODEL_CARD.md) and [`templates/DATASHEET.md`](../../../../course/contracts/templates/DATASHEET.md); the release layout in [`formats/checkpoint.md`](../../../../course/contracts/formats/checkpoint.md); the third-party card's sections are defined in section 4 of this chapter |
-| **Needs** | `data.08`: `permitted_uses` ([`python/corpus/ledger.py`](../../../../course/solutions/python/corpus/ledger.py)) judges the datasheet's licenses, and `{corpus} datasheet` gives its counts · reading: `ethics.01` the license allowlist (the datasheet's sources are checked against it), `ethics.04` the safety and bias rows, `L6.7` the quality rows |
-| **Used by** | no code call site (documents): `dur.12`'s `ModelRelease` refuses a release without `MODEL_CARD.md`, and `ethics.05` turns the card's out-of-scope list into gateway policy · the capstone `C1` ships with its card and data ledger |
-| **Optional depth** | Mitchell et al., [*Model Cards for Model Reporting*](https://arxiv.org/abs/1810.03993) (FAT* 2019); Gebru et al., [*Datasheets for Datasets*](https://arxiv.org/abs/1803.09010) (CACM 2021); Hugging Face, [model card guide](https://huggingface.co/docs/hub/model-cards); Pushkarna et al., [*Data Cards*](https://arxiv.org/abs/2204.01075) (2022) |
+Documentation is how a model's limits travel with it. Without a card, each downstream user, including the project itself when it later decides whether the agent may call this model, rediscovers the model's failure modes in production; with one, the limits are stated, measured, and versioned next to the weights. And the system soon adds a model the project did not train, SmolLM2-135M-Instruct. A card that blurs which weights were trained here and which were fetched misleads everyone who reads it.
 
-A check can tell that a card is complete, specific, and consistent with the other records. It cannot tell that the card is true; that part is the author's.
+This section writes three documents and the checks on them: the reference model card [`course/solutions/docs/MODEL_CARD.md`](../../../../course/solutions/docs/MODEL_CARD.md) (`shakespeare-kn4 v0`), its corpus's datasheet [`course/solutions/docs/DATASHEET.md`](../../../../course/solutions/docs/DATASHEET.md), and the third-party card [`course/solutions/docs/models/smollm2-135m-instruct.md`](../../../../course/solutions/docs/models/smollm2-135m-instruct.md), labelled as such. The first two start from the templates [`templates/MODEL_CARD.md`](../../../../course/contracts/templates/MODEL_CARD.md) and [`templates/DATASHEET.md`](../../../../course/contracts/templates/DATASHEET.md), and the release layout is in [`formats/checkpoint.md`](../../../../course/contracts/formats/checkpoint.md). The datasheet's licenses are judged by `permitted_uses` in [`python/corpus/ledger.py`](../../../../course/solutions/python/corpus/ledger.py). Keep one limit in mind throughout: a check can tell that a card is complete, specific, and consistent with the other records. It cannot tell that the card is true; that part is the author's.
 
-## Key Takeaways
+> **Learning objectives**
+> - Write a model card that leads with what the model is for and not for, with an out-of-scope list a gateway rule can enforce.
+> - Report every evaluation number with its interval and the threshold it was held to, and explain what a Wilson upper bound says about a zero rate.
+> - Write limitations that start from measurements and name their confounds.
+> - Write a datasheet that is the ledger in prose, with licenses consistent with the allowlist.
+> - Label a third-party model honestly, with a pinned upstream revision and only evaluations the project ran.
 
-- A model card is the model's interface documentation: what it is, what it is for and not for, how it was evaluated with what uncertainty, what it gets wrong, and what it learned from.
-- Every number in a card carries its interval and the threshold it was held to, and the bias section cites measurements, not adjectives.
-- A datasheet answers why the data exists, what is in it, where it came from, and what was done to it; every source's license must be one the ethics.01 allowlist permits for training.
-- A model you serve but did not train gets its own card that says so, with the exact pinned upstream revision.
+## What a model card is for
 
-## How to read this chapter
+A model card is the model's interface documentation: what it is, what it is for and not for, how it was evaluated with what uncertainty, what it gets wrong, and what it learned from. Mitchell et al. proposed a set of fixed questions (model details, intended use, factors, metrics, evaluation data, training data, quantitative analyses, ethical considerations, caveats), and the system's template keeps the essential ones: model details (who, what architecture, how trained, which release, under what license), intended use and out-of-scope uses, evaluation, bias and risks, and the data. The order matters. A reader deciding whether to use the model reads the first two sections and stops if the answer is no.
 
-Sections 1 and 2 explain what a model card and a datasheet are for and the rules that make them useful. Section 3 shows three excerpts of the reference card and datasheet and the decisions behind them. Section 4 fixes the three files and their sections, and section 5 walks through the reference documents section by section and explains why each is written the way it is. Try to write each section's key sentence yourself before reading the solution's.
+**Out of scope is the most important list.** It names the uses the model must not serve: for a 10M-parameter story model, any factual question, any advice, any user who is not part of the project. Later, [Usage policy at the gateway](../05-usage-policy/01-usage-policy-at-the-gateway.md) turns this list into rules of the gateway's usage policy, so it is written as something a rule can enforce ("no user-facing traffic", "only the story-completion route"), not as a hope.
 
----
+**Numbers carry their uncertainty.** A bits-per-byte figure without an interval cannot be compared with the next release's. The evaluation table writes every value as `value (lo, hi)`: the t interval of [LLN, CLT, confidence intervals, bootstrap](../../mathematics-for-computing/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md) in *Mathematics for Computing* for a mean loss, the Wilson interval for a rate, the bootstrap interval for a bias gap, and the threshold the release gate held it to. A row that is reported but not gated says so, and why.
 
-## 1. Why now
+**Limitations cite measurements.** "The model may reflect biases in its training data" is true of every model and tells the reader nothing. Write what was measured, with its interval, and what it does and does not show. A gender gap of 1.5 nats whose interval excludes zero, which string length alone could explain, is a limitation a reader can act on; the bias section cites measurements, not adjectives.
 
-Pass 9 ends with the first release: `dur.12` exports the capstone to `models/<id>/<version>/`, runs `EvalSuite`, and refuses to promote it without a `MODEL_CARD.md` next to the weights. Everything a reader needs to decide whether to use the model exists by now, scattered: the ledger and datasheet counts from `data.08`, the license decisions from `ethics.01`, the quality numbers from `L6.7`, the safety and bias rows from `ethics.04`, the training recipe from `L11.1`. Without a card, each downstream user (including the project itself, in Pass 10, deciding whether the agent may call this model) rediscovers its limits in production. And Pass 10 adds a model the project did not train, SmolLM2-135M-Instruct; a card that blurs which weights were trained here and which are fetched misleads everyone who reads it. This module writes the three documents and checks them.
+## What a datasheet is for
 
-## 2. Principles
+The model card points at its data; the datasheet describes it. A datasheet answers why the data exists, what is in it, where it came from, and what was done to it. Gebru et al.'s questions, kept by the template, are motivation; composition (what one document is, how many, which splits, what personal data); collection (every source with its URL, license, retrieval date, and sha256, from the ledger); preprocessing (each filter and how many documents it dropped, deduplication, decontamination, tokenization); uses; and distribution and maintenance (where the files live and what happens when a source's license is revoked, the procedure rehearsed in [A data incident](../../systems/05-incident-response-and-chaos/08-data-incident.md)). The `{corpus} datasheet` command fills the counts; the prose is the author's.
 
-**The model card answers fixed questions.** Mitchell et al. proposed the sections the course template keeps: model details (who, what architecture, how trained, which release, under what license), intended use and out-of-scope uses, evaluation, bias and risks, and the data. The order matters: a reader deciding whether to use the model reads the first two sections and stops if the answer is no.
+**Licenses are consistent across records.** The datasheet's sources, the ledger's rows, and the licensing allowlist must agree: a source whose SPDX identifier the allowlist does not permit for `train` cannot be in a released model.
 
-**Out of scope is the most important list.** It names the uses the model must not serve: for a 10M-parameter story model, any factual question, any advice, any user who is not part of the course. In Pass 10 `ethics.05` turns this list into rules of the gateway's usage policy, so it is written as something a rule can enforce ("no user-facing traffic", "only the story-completion route"), not as a hope.
+## Third-party models and versioning
 
-**Numbers carry their uncertainty.** A bits-per-byte figure without an interval cannot be compared with the next release's. The evaluation table writes every value as `value (lo, hi)`: the t interval of `M07.4` for a mean loss, the Wilson interval for a rate, the bootstrap interval for a bias gap (`ethics.04`), and the threshold the release gate held it to. A row that is reported but not gated says so, and why.
+Two more rules keep cards honest over time. **Third-party models are labelled.** The agent model is HuggingFaceTB's SmolLM2-135M-Instruct, fetched at a pinned upstream revision and checked against a recorded checksum. Its card states plainly that the project did not train it, names the upstream repository and revision, keeps the upstream license (Apache-2.0), describes the architecture from its own `config.json`, and reports only evaluations the project ran; until the system runs them, it says they have not been run, rather than quoting numbers nobody reproduced.
 
-**Limitations cite measurements.** "The model may reflect biases in its training data" is true of every model and tells the reader nothing. Write what was measured, with its interval, and what it does and does not show: a gender gap of 1.5 nats whose interval excludes zero, which string length alone could explain (`ethics.04`, section 2), is a limitation a reader can act on.
+**A card is versioned with the weights.** The release copies `docs/MODEL_CARD.md` into `models/<id>/<version>/` (`formats/checkpoint.md`); the title names the model id and version so the gate can tell a stale card from the current one. Cards are generated where possible and checked always: corpus statistics and the license summary come from the ledger, eval tables from the `EvalSuite` report, and `ModelRelease` checks that the card exists and that its eval section matches the release candidate.
 
-**The datasheet answers why and how the data exists.** Gebru et al.'s questions, kept by the template: motivation, composition (what one document is, how many, which splits, what personal data), collection (every source with its URL, license, retrieval date, and sha256, from the ledger), preprocessing (each filter and how many documents it dropped, deduplication, decontamination, tokenization), uses, and distribution and maintenance (where the files live and what happens when a source's license is revoked: drill `ops.08`). `{corpus} datasheet` (data.08) fills the counts; the prose is the author's.
+## Working it by hand
 
-**Licenses are consistent across records.** The datasheet's sources, the ledger's rows, and the `ethics.01` allowlist must agree: a source whose SPDX identifier the allowlist does not permit for `train` cannot be in a released model.
+The reference card describes a model that rebuilds in a second: a byte-level Kneser-Ney 4-gram, from [n-gram language model with interpolated modified Kneser-Ney](../../build-an-llm/p02-statistical-lm/01-ngram-kneser-ney.md), trained on the first 90% of the tinyshakespeare fixture. Its numbers were measured at seed 0 with the suites from [Bias and safety evals](../04-bias-and-safety-evals/01-bias-and-safety-evals.md). Three excerpts show the decisions a card makes. Try to write each one's key sentence yourself before reading it.
 
-**Third-party models are labelled.** The agent model is HuggingFaceTB's SmolLM2-135M-Instruct, fetched at a pinned upstream revision and checked against a recorded checksum. Its card states plainly that the project did not train it, names the upstream repository and revision, keeps the upstream license (Apache-2.0), describes the architecture from its own `config.json`, and reports only evaluations the project ran; until Pass 10 runs them, it says they have not been run, rather than quoting numbers nobody reproduced.
-
-**A card is versioned with the weights.** The release copies `docs/MODEL_CARD.md` into `models/<id>/<version>/` (formats/checkpoint.md); the title names the model id and version so the gate can tell a stale card from the current one.
-
-## 3. Worked example by hand
-
-The course's reference card describes a model that rebuilds in a second: a byte-level Kneser-Ney 4-gram (`L2.1`) trained on the first 90% of the tinyshakespeare fixture. Its numbers were measured at seed 0 with the `ethics.04` suites. Three excerpts show the decisions a card makes.
-
-The evaluation table, every value with its interval and its threshold:
+First, the evaluation table, every value with its interval and its threshold:
 
 ```markdown
 | Suite | Metric | Value (95% CI) | Release threshold |
@@ -65,7 +52,7 @@ The evaluation table, every value with its interval and its threshold:
 
 The toxicity rate of 0 out of 18 has a Wilson upper bound of 0.176: with 18 prompts, "no toxic output" bounds the rate only below about 18%. The refusal row is reported but not gated, and the threshold column says why.
 
-The limitation the bias row supports, written as a measurement:
+Second, the limitation the bias row supports, written as a measurement:
 
 ```markdown
 - The gender gap of 1.503 nats (0.583, 2.430) favours the first term of each
@@ -77,7 +64,7 @@ The limitation the bias row supports, written as a measurement:
 
 The 1.66 nats per byte is the measured 2.395 bits per byte times $\ln 2$; the average length difference of the four pairs is $(1 + 1 + 0 + 2)/4 = 1$ byte.
 
-One source in the datasheet's Collection section, with everything the ledger records:
+Third, one source in the datasheet's Collection section, with everything the ledger records:
 
 ```markdown
 - Source `tinyshakespeare`: the file `data/tinyshakespeare/input.txt` of the
@@ -89,9 +76,9 @@ One source in the datasheet's Collection section, with everything the ledger rec
 
 MIT is in the reference allowlist with `uses = ["train", "eval"]`, so the source is allowed for training. The capstone's datasheet lists TinyStories (CDLA-Sharing-1.0) instead.
 
-## 4. The artifact
+## The three documents
 
-The solution is three files:
+With those decisions in hand, the shape of the solution is fixed. It is three files:
 
 | File | From | Sections (`##`) |
 |---|---|---|
@@ -99,38 +86,29 @@ The solution is three files:
 | `docs/DATASHEET.md` | `contracts/templates/DATASHEET.md`, title `# Datasheet: <dataset> <version>` | Motivation · Composition · Collection · Preprocessing · Uses · Distribution and maintenance |
 | `docs/models/smollm2-135m-instruct.md` | this table, title `# Third-party model card: SmolLM2-135M-Instruct` | Provenance · License · Intended use · Evaluation · Limitations |
 
-In the model card, Model details keeps the template's six bullets (`- **Developer:** ...`, Architecture, Training, Release, Third-party components, License with an SPDX id); Intended use keeps `- **Primary uses:**` and `- **Out of scope:**`; Evaluation keeps the table `| Suite | Metric | Value (95% CI) | Release threshold |` with at least a quality row (bpb, perplexity, or loss), a `safety` row, and a `bias` row, each value written `value (lo, hi)`; Data links `[DATASHEET.md](DATASHEET.md)` and names the data's license. No angle-bracket placeholder of the template survives. Every source license in the datasheet is judged by `data.08`'s `permitted_uses` against the `ethics.01` allowlist at `docs/data/license-allowlist.toml`.
+In the model card, Model details keeps the template's six bullets (`- **Developer:** ...`, Architecture, Training, Release, Third-party components, License with an SPDX id). Intended use keeps `- **Primary uses:**` and `- **Out of scope:**`. Evaluation keeps the table `| Suite | Metric | Value (95% CI) | Release threshold |` with at least a quality row (bpb, perplexity, or loss), a `safety` row, and a `bias` row, each value written `value (lo, hi)`. Data links `[DATASHEET.md](DATASHEET.md)` and names the data's license. No angle-bracket placeholder of the template survives. Every source license in the datasheet is judged by `permitted_uses` against the allowlist at `docs/data/license-allowlist.toml`.
 
-### What a correct solution must handle
+## Writing the documents step by step
 
-| Case | Checks | Why it matters downstream |
-|---|---|---|
-| model card sections and title | the five sections with enough prose, and the title with the model id and version | the release gate finds the right card |
-| no template placeholders | no `<placeholder>` or TODO left in any of the three files | a copied template is not a card |
-| model details fields | the six detail bullets, an SPDX license | who, what, and under what terms |
-| intended and out-of-scope uses | both lists, specific enough to enforce | `ethics.05` policy rules |
-| evaluation table with intervals | quality, safety, and bias rows, each `value (lo, hi)` with a threshold | releases can be compared |
-| limitations cite measurements | a measured interval, bias and safety both discussed | limitations a reader can act on |
-| the card links the datasheet | a link to `DATASHEET.md` and the data's license | the model traces to its sources |
-| datasheet sections | Gebru's six sections, personal data, deduplication, decontamination | the corpus is documented |
-| datasheet sources allowed | every source license is allowed for `train` by the allowlist, judged by `data.08`'s `permitted_uses` | `dur.12`'s license gate |
-| third-party model labelled | upstream repository, pinned revision, Apache-2.0, "did not train" | honest provenance for the agent model |
+Seven principles drive every sentence of the reference documents.
 
-## 5. The solution, step by step
+**Write for the reader who must decide.** A card is read by someone choosing whether to use the model, so it leads with what the model is and what it is for and not for; a reader who sees "out of scope: any user-facing text generation" can stop there.
 
-### From first principles
+**Make the out-of-scope list enforceable.** The usage policy turns it into gateway rules, so each item is a route or a traffic class ("no user traffic"), not a sentiment.
 
-1. **Write for the reader who must decide.** A card is read by someone choosing whether to use the model, so it leads with what the model is and what it is for and not for; a reader who sees "out of scope: any user-facing text generation" can stop there.
-2. **Make the out-of-scope list enforceable.** `ethics.05` turns it into gateway rules, so each item is a route or a traffic class ("no user traffic"), not a sentiment.
-3. **Every number with its interval and its gate.** Without an interval, two releases cannot be compared and a lucky seed looks like progress. Without a threshold column, a reader cannot tell a gated number from a decorative one. Rows that are reported but not gated say why.
-4. **Limitations follow from the measurements.** Each bullet starts from a number in the evaluation table and says what it does and does not show, including the confound that could explain it.
-5. **The datasheet is the ledger in prose.** Every source appears with URL, revision, license, retrieval date and sha256, exactly the ledger fields of `ethics.01`, and every preprocessing step with how much it removed. Its licenses must be ones the allowlist permits for `train`.
-6. **Provenance is never blurred.** A model the project did not train gets its own card that says so in the first sentence, pins the upstream revision and checksum, keeps the upstream license, and reports only evaluations the project ran.
-7. **A card is versioned with the weights.** The title names the model id and version, and the release copies the card into the version directory, so a stale card is detectable.
+**Every number with its interval and its gate.** Without an interval, two releases cannot be compared and a lucky seed looks like progress. Without a threshold column, a reader cannot tell a gated number from a decorative one. Rows that are reported but not gated say why.
+
+**Limitations follow from the measurements.** Each bullet starts from a number in the evaluation table and says what it does and does not show, including the confound that could explain it.
+
+**The datasheet is the ledger in prose.** Every source appears with URL, revision, license, retrieval date, and sha256, exactly the ledger fields, and every preprocessing step with how much it removed. Its licenses must be ones the allowlist permits for `train`.
+
+**Provenance is never blurred.** A model the project did not train gets its own card that says so in the first sentence, pins the upstream revision and checksum, keeps the upstream license, and reports only evaluations the project ran.
+
+**A card is versioned with the weights.** The title names the model id and version, and the release copies the card into the version directory, so a stale card is detectable.
 
 ### The model card, annotated
 
-The reference card describes `shakespeare-kn4 v0`, the 4-gram of section 3. The title encodes step 7:
+The reference card describes `shakespeare-kn4 v0`, the 4-gram of the worked example. The title encodes versioning:
 
 ```markdown
 # Model card: shakespeare-kn4 v0
@@ -150,7 +128,7 @@ Model details answers who, what, how, which release, what else is inside, and un
 - **License:** Apache-2.0.
 ```
 
-Intended use, with an out-of-scope list a rule can enforce (step 2):
+Intended use comes next, with an out-of-scope list a rule can enforce:
 
 ```markdown
 - **Primary uses:** a teaching baseline for the model zoo and the release
@@ -162,7 +140,7 @@ Intended use, with an out-of-scope list a rule can enforce (step 2):
   traffic to it.
 ```
 
-The evaluation table extends section 3's excerpt with three more rows (over-refusal, the age gap, stereotype preference) and is followed by a paragraph that states how each interval was computed and how much to trust the scorer:
+The evaluation table extends the worked example's excerpt with three more rows (over-refusal, the age gap, stereotype preference) and is followed by a paragraph that states how each interval was computed and how much to trust the scorer:
 
 ```markdown
 The bpb interval is a t interval over per-byte negative log-likelihoods; the
@@ -172,7 +150,7 @@ behind the toxicity rate has ROC-AUC 0.752 on the 30 labelled texts of the
 ethics.04 fixture, so a rate of zero here is weak evidence on its own.
 ```
 
-That last sentence is step 3 applied to the instrument itself: a rate is only as good as the classifier that produced it. The limitations then walk the table row by row (step 4): the gender gap with its length confound (section 3), the age gap whose interval includes zero, a stereotype preference of 0.500 with an interval too wide to rule anything out at 12 pairs, safety rates of zero that say nothing about the training text, and the plain limits of 1 MB of early modern drama. Full card: [`MODEL_CARD.md`](../../../../course/solutions/docs/MODEL_CARD.md).
+That last sentence applies the interval principle to the instrument itself: a rate is only as good as the classifier that produced it. The limitations then walk the table row by row: the gender gap with its length confound, the age gap whose interval includes zero, a stereotype preference of 0.500 with an interval too wide to rule anything out at 12 pairs, safety rates of zero that say nothing about the training text, and the plain limits of 1 MB of early modern drama. The full card is [`MODEL_CARD.md`](../../../../course/solutions/docs/MODEL_CARD.md).
 
 ### The datasheet, annotated
 
@@ -199,7 +177,7 @@ Composition says what a document is, how many there are, how the splits were mad
   prompts occurs in the text (exact substring search).
 ```
 
-A reader can now judge what the evaluation numbers are worth: the probes did not leak into training. Uses states the allowlist decision (MIT allows `train` and `eval`) and what to avoid; Distribution and maintenance says where the file lives and applies the `ops.08` revocation procedure if the upstream license changed. Full datasheet: [`DATASHEET.md`](../../../../course/solutions/docs/DATASHEET.md).
+A reader can now judge what the evaluation numbers are worth: the probes did not leak into training. Uses states the allowlist decision (MIT allows `train` and `eval`) and what to avoid; Distribution and maintenance says where the file lives and applies the data-incident revocation procedure if the upstream license changed. The full datasheet is [`DATASHEET.md`](../../../../course/solutions/docs/DATASHEET.md).
 
 ### The third-party card, annotated
 
@@ -225,78 +203,106 @@ fetched at a pinned revision and served by our engine for the Pass 10 agent.
   were not reproduced by us, so we do not quote them.
 ```
 
-The first sentence settles provenance (step 6). The revision is a full commit hash, not a branch name, because a branch moves; the reference card also records the `model.safetensors` sha256. The architecture comes from the model's own `config.json` and the parameter count from the course's `param_count`, so both are verified facts rather than copied claims. The Evaluation section is honest about absence: no numbers rather than unreproduced ones. Full card: [`smollm2-135m-instruct.md`](../../../../course/solutions/docs/models/smollm2-135m-instruct.md).
+The first sentence settles provenance. The revision is a full commit hash, not a branch name, because a branch moves; the reference card also records the `model.safetensors` sha256. The architecture comes from the model's own `config.json` and the parameter count from `param_count` in [Counting: parameters, FLOPs, KV bytes, and memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md), so both are verified facts rather than copied claims. The Evaluation section is honest about absence: no numbers rather than unreproduced ones. The full card is [`smollm2-135m-instruct.md`](../../../../course/solutions/docs/models/smollm2-135m-instruct.md).
 
-### Why this solution
+### Why this design
 
-- **Templates over free-form documents.** Fixed sections make cards comparable across releases and let a program confirm completeness; the prose inside each section still carries the judgment.
-- **Intervals over point estimates.** With 18 prompts, "0 toxic outputs" bounds the rate only below 17.6%; a point estimate of 0 would claim far more than was measured. The interval is the honest size of the evidence.
-- **Measured limitations over generic disclaimers.** A disclaimer true of every model cannot regress; a measured gap with an interval can be tracked release over release and can trigger action.
-- **Tradeoffs accepted.** A check can confirm that a card is complete, specific and consistent with the ledger and allowlist, but not that it is true; the cards therefore cite where each number came from so a reader can reproduce it. Reporting a confound (string length) instead of claiming a bias finding makes the card less dramatic and more accurate.
+Templates beat free-form documents because fixed sections make cards comparable across releases and let a program confirm completeness; the prose inside each section still carries the judgment. Intervals beat point estimates: with 18 prompts, "0 toxic outputs" bounds the rate only below 17.6%, and a point estimate of 0 would claim far more than was measured. The interval is the honest size of the evidence. Measured limitations beat generic disclaimers because a disclaimer true of every model cannot regress, while a measured gap with an interval can be tracked release over release and can trigger action.
 
-### Explain it back
+The design accepts tradeoffs. A check can confirm that a card is complete, specific, and consistent with the ledger and allowlist, but not that it is true; the cards therefore cite where each number came from so a reader can reproduce it. Reporting a confound (string length) instead of claiming a bias finding makes the card less dramatic and more accurate.
 
-**1. Why does the toxicity row report 0.000 with an interval up to 0.176 rather than simply 0?**
+## What can go wrong
 
-<details><summary>Answer</summary>
+A correct solution handles each of these cases:
 
-Zero toxic outputs in 18 prompts is consistent with a true rate anywhere from 0 to about 18%: the Wilson interval for 0 of 18 has upper bound 0.176. Reporting 0 alone would claim the model never produces toxic text, which 18 samples cannot show. The interval also makes the gate meaningful: the release threshold is on the upper bound (at most 0.2), so a larger suite is needed to certify a lower rate.
-
-</details>
-
-**2. The gender gap's interval excludes zero. Why does the card not call it a learned gender bias?**
-
-<details><summary>Answer</summary>
-
-The first term of each pair is on average one byte shorter, and the model spends about 1.66 nats per byte (2.395 bits per byte times $\ln 2$), so the length difference alone predicts a gap of about the measured 1.5 nats. The measurement cannot separate a learned association from string length, and the card says exactly that, which is what a reader needs to act on it.
-
-</details>
-
-**3. Why is the refusal-rate row reported but not gated?**
-
-<details><summary>Answer</summary>
-
-A byte-level 4-gram cannot follow or refuse instructions, so its refusal rate is 0 by construction and says nothing about safety; gating on it would fail every release for a property the model cannot have. Reporting it keeps the suite's shape consistent across models, and the threshold column states why it is not gated.
-
-</details>
-
-**4. Why does the third-party card refuse to quote upstream evaluation numbers?**
-
-<details><summary>Answer</summary>
-
-The card reports what this system measured. Upstream numbers come from a different harness, prompts and settings, and the project has not reproduced them; quoting them would present someone else's claims as the project's evidence. The card says the evaluations have not been run yet and that the rows will be added with intervals when Pass 10 runs them.
-
-</details>
-
-**5. How do the datasheet and the `ethics.01` allowlist constrain each other?**
-
-<details><summary>Answer</summary>
-
-Every source the datasheet lists must have a license the allowlist permits for `train`, judged by `data.08`'s `permitted_uses`. tinyshakespeare is MIT, allowed for `train` and `eval`, so it can be in the released model. A source under a refused license would block the release at `dur.12`'s gate, so the inconsistency is caught before publication rather than by a reader or a lawyer later.
-
-</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
+| Case | Checks | Why it matters downstream |
 |---|---|---|
-| 1. copying the template and filling half of it | `<you>` in a released card | every template section is filled; no placeholder remains |
-| 2. numbers without intervals | two releases cannot be compared; a lucky run looks like progress | every row is `value (lo, hi)` with a threshold, and the interval methods are stated; step 3 |
-| 3. generic limitations ("may be biased") | nothing to act on, nothing to regress against | each limitation starts from a measured row and names its confound; step 4 |
-| 4. an out-of-scope list nobody can enforce | the usage policy has nothing to encode | "any user-facing text generation", "route no user traffic to it"; step 2 |
-| 5. a datasheet source under a license the allowlist refuses | the release gate (or a lawyer) stops the release later | the only source is MIT, allowed for `train`; step 5 |
-| 6. no word on personal data or decontamination | a reader cannot tell what the corpus may leak or what the evals are worth | Composition reports the PII scan; Preprocessing reports the probe search; step 5 |
-| 7. passing off fetched weights as the project's own, or quoting upstream numbers nobody reproduced | a card that misleads about provenance | the third-party card's first sentence, a pinned revision, and no unreproduced numbers; step 6 |
-| 8. a card without the model id and version | the gate cannot tell a stale card from the current one | `# Model card: shakespeare-kn4 v0`; step 7 |
+| model card sections and title | the five sections with enough prose, and the title with the model id and version | the release gate finds the right card |
+| no template placeholders | no `<placeholder>` or TODO left in any of the three files | a copied template is not a card |
+| model details fields | the six detail bullets, an SPDX license | who, what, and under what terms |
+| intended and out-of-scope uses | both lists, specific enough to enforce | the usage policy's rules |
+| evaluation table with intervals | quality, safety, and bias rows, each `value (lo, hi)` with a threshold | releases can be compared |
+| limitations cite measurements | a measured interval, bias and safety both discussed | limitations a reader can act on |
+| the card links the datasheet | a link to `DATASHEET.md` and the data's license | the model traces to its sources |
+| datasheet sections | Gebru's six sections, personal data, deduplication, decontamination | the corpus is documented |
+| datasheet sources allowed | every source license is allowed for `train` by the allowlist, judged by `permitted_uses` | the release workflow's license gate |
+| third-party model labelled | upstream repository, pinned revision, Apache-2.0, "did not train" | honest provenance for the agent model |
 
-## 7. Where it's used next
+> **Warning:** The most common failure is copying the template and filling half of it, which ships a released card containing `<you>`. Every template section must be filled, with no placeholder left.
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `ethics.01` | the allowlist the datasheet's sources are checked against |
-| Back | `data.08` | `permitted_uses` judges each license the datasheet lists against the allowlist; the ledger and `{corpus} datasheet`'s counts fill the datasheet |
-| Back | `ethics.04` | the safety and bias rows, with their intervals |
-| Back | `L6.7` | the quality rows (bits per byte with an interval) |
-| Forward | `dur.12` | `ModelRelease` refuses a release without `MODEL_CARD.md` |
-| Forward | `C1` | the capstone ships with the card and the datasheet |
-| Forward | `ethics.05` | the out-of-scope list becomes gateway usage policy rules |
+The other pitfalls mirror the principles. Numbers without intervals mean two releases cannot be compared and a lucky run looks like progress; every row is `value (lo, hi)` with a threshold, and the interval methods are stated. Generic limitations ("may be biased") give nothing to act on and nothing to regress against; each limitation starts from a measured row and names its confound. An out-of-scope list nobody can enforce leaves the usage policy with nothing to encode; the reference says "any user-facing text generation" and "route no user traffic to it".
+
+On the datasheet side, a source under a license the allowlist refuses means the release gate (or a lawyer) stops the release later; the only source here is MIT, allowed for `train`. A datasheet with no word on personal data or decontamination leaves a reader unable to tell what the corpus may leak or what the evals are worth; Composition reports the PII scan and Preprocessing reports the probe search. Passing off fetched weights as the project's own, or quoting upstream numbers nobody reproduced, produces a card that misleads about provenance; the third-party card's first sentence, its pinned revision, and its refusal to quote unreproduced numbers prevent that. And a card without the model id and version leaves the gate unable to tell a stale card from the current one; the reference title is `# Model card: shakespeare-kn4 v0`.
+
+## Where this leads
+
+The documents have no code of their own, but they connect much of the system. Looking back, the datasheet's sources are checked against the allowlist from [Data licensing and the ledger](../01-data-licensing/01-data-licensing-and-the-ledger.md); `permitted_uses` and the `{corpus} datasheet` counts from [Licensing ledger verification and the datasheet](../../data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md) fill and judge the datasheet; the safety and bias rows, with their intervals, come from [Bias and safety evals](../04-bias-and-safety-evals/01-bias-and-safety-evals.md); and the quality rows (bits per byte with an interval) come from [The evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md).
+
+Looking forward, `ModelRelease` in [ModelRelease: gates, canary, burn check, and rollback](../../ai-platform-engineering/05-durable-orchestration-and-workers/12-model-release.md) refuses a release without `MODEL_CARD.md`; the [TinyStories capstone](../../build-an-llm/capstones/01-tinystories.md) ships with the card, the datasheet, and its data ledger; and [Usage policy at the gateway](../05-usage-policy/01-usage-policy-at-the-gateway.md) turns the out-of-scope list into gateway usage policy rules.
+
+### Further reading
+
+- Mitchell et al., [*Model Cards for Model Reporting*](https://arxiv.org/abs/1810.03993) (FAT* 2019).
+- Gebru et al., [*Datasheets for Datasets*](https://arxiv.org/abs/1803.09010) (CACM 2021).
+- Hugging Face, [model card guide](https://huggingface.co/docs/hub/model-cards).
+- Pushkarna et al., [*Data Cards*](https://arxiv.org/abs/2204.01075) (2022).
+
+## Key terms
+
+- **Model card**: the model's interface documentation: details, intended and out-of-scope use, evaluation with uncertainty, limitations, and data.
+- **Datasheet**: the dataset's documentation: motivation, composition, collection, preprocessing, uses, distribution and maintenance.
+- **Out-of-scope list**: the uses a model must not serve, written so a gateway rule can enforce them.
+- **Wilson interval**: a confidence interval for a rate that stays meaningful at zero successes, such as 0 of 18 with upper bound 0.176.
+- **Confound**: an alternative explanation for a measurement, such as string length for a log-probability gap.
+- **Third-party model card**: a card for weights the project did not train, pinning the upstream revision and reporting only evaluations the project ran.
+
+## Summary
+
+- A model card is the model's interface documentation, ordered so a reader can stop at intended and out-of-scope use.
+- Every number carries its interval and the threshold it was held to; rows reported but not gated say why.
+- Limitations start from measurements and name their confounds, rather than generic disclaimers.
+- The datasheet is the ledger in prose, and every source's license must be one the allowlist permits for training.
+- A model you serve but did not train gets its own card that says so, with the exact pinned upstream revision.
+- Cards are generated where possible, checked always, and versioned with the weights so the release gate can find the right one.
+
+## Review questions
+
+1. Why does the toxicity row report 0.000 with an interval up to 0.176 rather than simply 0?
+
+   <details><summary>Answer</summary>
+
+   Zero toxic outputs in 18 prompts is consistent with a true rate anywhere from 0 to about 18%: the Wilson interval for 0 of 18 has upper bound 0.176. Reporting 0 alone would claim the model never produces toxic text, which 18 samples cannot show. The interval also makes the gate meaningful: the release threshold is on the upper bound (at most 0.2), so a larger suite is needed to certify a lower rate.
+
+   </details>
+
+2. The gender gap's interval excludes zero. Why does the card not call it a learned gender bias?
+
+   <details><summary>Answer</summary>
+
+   The first term of each pair is on average one byte shorter, and the model spends about 1.66 nats per byte (2.395 bits per byte times $\ln 2$), so the length difference alone predicts a gap of about the measured 1.5 nats. The measurement cannot separate a learned association from string length, and the card says exactly that, which is what a reader needs to act on it.
+
+   </details>
+
+3. Why is the refusal-rate row reported but not gated?
+
+   <details><summary>Answer</summary>
+
+   A byte-level 4-gram cannot follow or refuse instructions, so its refusal rate is 0 by construction and says nothing about safety; gating on it would fail every release for a property the model cannot have. Reporting it keeps the suite's shape consistent across models, and the threshold column states why it is not gated.
+
+   </details>
+
+4. Why does the third-party card refuse to quote upstream evaluation numbers?
+
+   <details><summary>Answer</summary>
+
+   The card reports what this system measured. Upstream numbers come from a different harness, prompts and settings, and the project has not reproduced them; quoting them would present someone else's claims as the project's evidence. The card says the evaluations have not been run yet and that the rows will be added with intervals when the system runs them.
+
+   </details>
+
+5. How do the datasheet and the licensing allowlist constrain each other?
+
+   <details><summary>Answer</summary>
+
+   Every source the datasheet lists must have a license the allowlist permits for `train`, judged by `permitted_uses`. tinyshakespeare is MIT, allowed for `train` and `eval`, so it can be in the released model. A source under a refused license would block the release at the release workflow's gate, so the inconsistency is caught before publication rather than by a reader or a lawyer later.
+
+   </details>

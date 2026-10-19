@@ -1,44 +1,24 @@
 # Dependency upgrades
 
-## Overview
+A dependency upgrade is a change you did not write. It can alter APIs, performance, and security properties all at once, and because you cannot review its diff line by line, the usual tools of review do not apply. What you can do is make the upgrade deliberate: isolate it so any regression has one cause, measure its effects against evidence you agreed on in advance, and keep a reversible path back. That turns "bump and hope" into an ordinary change that rolls out like any other.
 
-| | |
-|---|---|
-| **Module** | `craft.15` · practice · docs · Pass 11 · 1 h reading |
-| **Solution** | Model review: [`dependency-upgrades.md`](../../../../course/solutions/docs/maintenance/dependency-upgrades.md), an upgrade review of the gateway's OpenTelemetry family |
-| **Contract** | [`course/contracts/allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml), the version requirements each component may use |
-| **Needs** | none |
-| **Used by** | no code call site; this is an independent artifact. The [`ops.06`](../../systems/05-incident-response-and-chaos/06-dependency-upgrade.md) drill exercises the same procedure under pressure. |
+This section works through a model upgrade review, [`dependency-upgrades.md`](../../../../course/solutions/docs/maintenance/dependency-upgrades.md), for the gateway's OpenTelemetry family. The version requirements each component may use are fixed by the contract [`course/contracts/allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml). The section has no prerequisites, and the same procedure is exercised under pressure in [A breaking dependency upgrade](../../systems/05-incident-response-and-chaos/06-dependency-upgrade.md) in *Systems and Architecture*. Before reading the model answer, write down what you would check.
 
-## Key Takeaways
+> **Learning objectives**
+> - Scope an upgrade to one compatibility family and say why.
+> - Tie each claim in an upgrade review to evidence from the candidate: the resolved graph, test and scan output, and paired benchmark runs.
+> - Write a merge rule, an owner, and a rollback action before any measurement is taken.
+> - Explain why a semver range or a successful compile is not evidence of compatibility.
 
-- Tie each claim in an upgrade review to evidence from the candidate itself: the resolved graph, test and scan output, and paired benchmark runs.
-- State the owner, the merge threshold, and the rollback action before the upgrade ships.
-- Record unresolved results as `pending`; a successful compile is not evidence of compatibility.
+## Upgrading deliberately
 
-## How to read this chapter
+The principles come first. Read the release notes and compatibility ranges before changing a major version. Upgrade one dependency family at a time, pin the resolved graph, and run the behavior, race, security, and performance checks relevant to how the dependency is used.
 
-Sections 1 to 3 explain why an upgrade needs a written review and outline the procedure. Section 4 lists what a complete review must contain. Section 5 walks through the model review section by section and explains why each piece is there. Try to write down what you would check before reading the model answer.
+For a breaking Go or Rust library update, that procedure looks like this. First make a minimal branch that builds against the new API. Then run the contract suites, and compare benchmark distributions against the recorded baseline. Throughout, keep the prior lockfile available.
 
----
+## What a complete review contains
 
-## 1. Why now
-
-Dependency changes can alter APIs, performance, and security properties at once. A deliberate upgrade isolates the cause and leaves a reversible path.
-
-## 2. Principles
-
-Read release notes and compatibility ranges before changing a major version. Upgrade one dependency family at a time, pin the resolved graph, and run behavior, race, security, and performance checks relevant to its use.
-
-## 3. Worked example
-
-For a breaking Go or Rust library update, first make a minimal branch that builds against the new API, then run contract suites and compare benchmark distributions to the recorded baseline. Keep the prior lockfile available.
-
-## 4. The artifact
-
-The artifact is `docs/maintenance/dependency-upgrades.md`, one review per upgrade family.
-
-### What a correct review must contain
+The artifact is `docs/maintenance/dependency-upgrades.md`, with one review per upgrade family. A complete review states each of the following:
 
 | Element | What it states | Why it matters downstream |
 |---|---|---|
@@ -49,28 +29,30 @@ The artifact is `docs/maintenance/dependency-upgrades.md`, one review per upgrad
 | Performance evidence | A fixed workload, paired runs, median and p95 against the same host. | Regressions hide in tails and in noise. |
 | Decision rule, owner, rollback | The threshold set in advance, who decides, and the exact recovery step. | Two reviewers reach the same decision from the same numbers. |
 
-## 5. The solution, step by step
+## Building the review step by step
 
-### 5.1 From first principles
+Six observations explain the shape of that table.
 
-1. An upgrade is a change to code you did not write, so you cannot review its diff line by line. You can only review its **effects**: what it resolves to, whether the system's own tests and contracts still hold, whether it is known-vulnerable, and whether it is slower.
+1. An upgrade is a change to code you did not write, so you cannot review its diff line by line. You can only review its **effects**: what it resolves to, whether the system's own tests and contracts still hold, whether it is known to be vulnerable, and whether it is slower.
 2. Effects are only attributable if one thing changes at a time. So the unit of review is one **compatibility family**: packages that must move together (an SDK and its exporters) move together, and nothing else moves with them.
 3. Version requirements (`"v1"`, `">=1.30"`) admit many resolutions. The thing that ships is the lockfile, so the review records the lockfile diff and reads its transitive changes.
 4. A threshold chosen after seeing the numbers can be bent to fit them. So the merge rule (tests pass, no unapproved vulnerability, p95 regression below a bound) is written before the measurements.
-5. Something will eventually go wrong after merge. The recovery that is fastest and least surprising is to redeploy the previous immutable artifact, not to edit dependencies in production. The review names that artifact and who acts.
+5. Something will eventually go wrong after merge. The fastest and least surprising recovery is to redeploy the previous immutable artifact, not to edit dependencies in production. So the review names that artifact and who acts.
 6. A template that looks filled in is dangerous. Anything not yet measured stays visibly `pending`.
 
-### 5.2 The model review, annotated
+### Change, owner, and scope
 
-**Change, owner, scope.**
+The model review opens with the change and its boundaries:
 
 > **Change:** `go.opentelemetry.io/otel` and the matching SDK/exporter family, from 1.43.x to 1.44.0. The change is reviewed as one compatibility family because mixing SDK and exporter minors can fail at runtime even when Go resolves the graph.
 >
 > **Owner:** Gateway maintainers. **Reviewer:** release engineering. **Scope:** gateway telemetry only. The engine's Rust dependency graph is unchanged.
 
-Step 2 in practice: the OpenTelemetry Go modules are versioned separately but tested together, so upgrading only `otel` while leaving `sdk` behind can compile and still fail at run time. Stating that the Rust graph is unchanged bounds what reviewers must look at. In [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml) the family appears under `[go.tinyllm]` as `go.opentelemetry.io/otel`, `/sdk`, `/trace`, `/sdk/metric`, and the exporters, all at major `v1` except the Prometheus exporter at `v0`; a minor bump stays inside the policy, which is why this review is about evidence rather than a policy exception.
+This is the second observation in practice. The OpenTelemetry Go modules are versioned separately but tested together, so upgrading only `otel` while leaving `sdk` behind can compile and still fail at run time. Stating that the Rust graph is unchanged bounds what reviewers must look at. In [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml) the family appears under `[go.tinyllm]` as `go.opentelemetry.io/otel`, `/sdk`, `/trace`, `/sdk/metric`, and the exporters, all at major `v1` except the Prometheus exporter at `v0`. A minor bump stays inside the policy, which is why this review is about evidence rather than a policy exception.
 
-**Evidence before merge.**
+### Evidence before merge
+
+The heart of the review is the evidence table:
 
 | Evidence | Result recorded for this change |
 |---|---|
@@ -80,94 +62,73 @@ Step 2 in practice: the OpenTelemetry Go modules are versioned separately but te
 | Performance | Fixed gateway request fixture, warm-up 200 requests, 5 runs of 2,000 requests. Compare median and p95 against the same host and config. |
 | Rollout | Deploy one canary replica; check export failures and gateway p95 for 15 minutes before widening. |
 
-Each row answers one way the upgrade could hurt:
+Each row answers one way the upgrade could hurt. The *resolved graph* row answers "what actually changed" (the third observation): `go list -m all` prints the full module graph after resolution, which shows transitive bumps that `go.mod` alone hides. The *API compatibility* row names the observable things a telemetry upgrade can silently change: span names and resource attributes, which dashboards and alerts key on, and exporter shutdown, where a changed flush can drop the last spans of a terminating pod.
 
-- *Resolved graph* answers "what actually changed" (step 3). `go list -m all` prints the full module graph after resolution, which shows transitive bumps that `go.mod` alone hides.
-- *API compatibility* names the observable things a telemetry upgrade can silently change: span names and resource attributes (dashboards and alerts key on them) and exporter shutdown (a changed flush can drop the last spans of a terminating pod).
-- *Security* uses `govulncheck`, which reports only vulnerabilities in code paths the program can reach, so a clean result is meaningful. An exception has an expiry so it cannot become permanent by neglect.
-- *Performance* fixes the workload and the host, warms up (the first requests pay for connection setup and caches), and repeats: five runs give a distribution, so one noisy run cannot decide.
-- *Rollout* limits blast radius: one canary replica receives a fraction of traffic, and the two signals watched are exactly the ones this change could move.
+The *security* row uses `govulncheck`, which reports only vulnerabilities in code paths the program can reach, so a clean result is meaningful; and an exception has an expiry so it cannot become permanent by neglect. The *performance* row fixes the workload and the host, warms up (the first requests pay for connection setup and caches), and repeats: five runs give a distribution, so one noisy run cannot decide. Finally, the *rollout* row limits the blast radius. One canary replica receives a fraction of the traffic, and the two signals watched are exactly the ones this change could move.
 
-**The policy sentence.**
+### The policy sentence
 
 > This review does not treat a semver range as proof of the resolved version. Attach command output or CI run links for the actual candidate before approval.
 
-This is step 3 stated as a rule. The contract says `"v1"`; the lockfile says which v1.
+This is the third observation stated as a rule. The contract says `"v1"`; the lockfile says which v1.
 
-**Decision and recovery.**
+### Decision and recovery
 
 > Merge only when unit/contract tests pass, no unapproved vulnerability remains, and gateway p95 regresses by less than 5% across the five paired runs. [...] If export errors rise or p95 exceeds the threshold, stop rollout and redeploy the prior immutable image digest with its prior `go.mod` and `go.sum`; do not attempt a live downgrade of only one module. Re-run the same fixture after rollback and record the result.
 
-Three conditions, all checkable, set in advance (step 4). Rollback is by image digest (step 5): the digest identifies exactly the bytes that were running before, including the old dependency graph. Downgrading one module in place would create a third, never-tested combination. Re-running the fixture after rollback confirms the regression really came from the upgrade.
+There are three conditions, all checkable, set in advance (the fourth observation). Rollback is by image digest (the fifth): the digest identifies exactly the bytes that were running before, including the old dependency graph. Downgrading one module in place would create a third, never-tested combination. Re-running the fixture after rollback confirms that the regression really came from the upgrade.
 
-**Open evidence.**
+### Open evidence
 
 > Unknown results remain `pending`; they are not inferred from a successful compile.
 
-Step 6. The review is a record of facts about one candidate; a field without a fact says so.
+This is the sixth observation. The review is a record of facts about one candidate, and a field without a fact says so. The full model answer is [`dependency-upgrades.md`](../../../../course/solutions/docs/maintenance/dependency-upgrades.md).
 
-Full model answer: [`dependency-upgrades.md`](../../../../course/solutions/docs/maintenance/dependency-upgrades.md).
+### Why this design
 
-### 5.3 Why this review
+The review covers **one family at a time** rather than a monthly "bump everything". When a batch regresses, nobody can say which package did it, and the rollback reverts fixes along with the regression. It uses **paired runs on one host** rather than a comparison against last month's dashboard, because host, kernel, and neighbouring load all change, and the comparison would measure them instead of the upgrade. And it judges **p95 with a 5% bound** rather than the mean, because telemetry overhead tends to show up as occasional slow exports, which move the tail long before the mean.
 
-- **One family per review** rather than a monthly "bump everything": when the batch regresses, nobody can say which package did it, and the rollback reverts fixes along with the regression.
-- **Paired runs on one host** rather than comparing against last month's dashboard: host, kernel, and neighbouring load change, and the comparison would measure them.
-- **p95 with a 5% bound** rather than the mean: telemetry overhead tends to show up as occasional slow exports, which move the tail long before the mean.
-- **Tradeoff accepted:** the review costs an hour of benchmark time per family, and small, frequent upgrades are slower to land than a batch. In exchange each one is attributable and reversible.
+The tradeoff is accepted knowingly. The review costs an hour of benchmark time per family, and small, frequent upgrades are slower to land than a batch. In exchange, each one is attributable and reversible.
 
-### 5.4 Explain it back
+## What can go wrong
 
-**Why is the SDK upgraded together with `otel`, but the Rust graph is left alone?**
+Four pitfalls recur. A review that names a decision without the evidence that supports it cannot be verified against the repository or the system; here every row of the evidence table names a command or a run to attach, and approval requires the attachments. A review that omits the failure or rollback case passes on the happy path while leaving an operator with no safe response under failure; "Decision and recovery" names the trigger (export errors, p95), the action (redeploy the prior digest), and the follow-up rerun. If the owner, threshold, or scope is implicit, two reviewers can reach different release or risk decisions from the same evidence; the model states owner, reviewer, and scope at the top, and the merge rule is three explicit conditions.
 
-<details><summary>Answer</summary>
+> **Warning:** Trusting the version requirement lets a transitive bump ship unreviewed. The resolved-graph row and the "a semver range is not proof" rule exist to prevent exactly that.
 
-The OpenTelemetry Go modules form one compatibility family: mismatched minors can fail at run time. The Rust engine shares no code with them, so changing it in the same review would add a second cause for any regression.
+## Where this leads
 
-</details>
+A major upgrade that changes an interface deserves an [architecture decision record](../../diagramming/02-documentation-writing/01-architecture-decision-records.md), described in *Diagramming and Documentation*, as well as a review. The procedure is put under pressure in [A breaking dependency upgrade](../../systems/05-incident-response-and-chaos/06-dependency-upgrade.md), where a lockfile leaves the policy and this procedure finds and reverts it.
 
-**`go build` succeeds on the candidate. Which rows of the evidence table does that fill in?**
+### Further reading
 
-<details><summary>Answer</summary>
+- [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml): the requirement each component declares; compare it with a lockfile to see what was resolved.
+- Go vulnerability management (the `govulncheck` documentation): how reachability analysis decides which findings apply.
+- *Software Engineering at Google*, ch. 21, [Dependency Management](https://abseil.io/resources/swe-book/html/ch21.html) (free).
 
-None. A build proves the API still type-checks. It says nothing about behavior (span names, shutdown), known vulnerabilities, or latency, which is why those rows stay `pending` until their own evidence is attached.
+## Key terms
 
-</details>
+- **Compatibility family**: a set of packages that must be upgraded together, such as an SDK and its exporters.
+- **Resolved graph**: the exact versions a build uses after resolution, recorded in the lockfile, as opposed to the version requirements.
+- **`govulncheck`**: Go's vulnerability scanner, which reports only vulnerabilities reachable from the program's code.
+- **Paired runs**: repeated benchmark runs of baseline and candidate on the same host and configuration, compared as distributions.
+- **Rollback by digest**: recovering by redeploying the previous immutable image, identified by its content digest.
 
-**Why roll back by image digest instead of reverting `go.mod` and rebuilding?**
+## Summary
 
-<details><summary>Answer</summary>
+- A dependency upgrade is a change you did not write, so review its effects: resolved graph, tests and contracts, vulnerabilities, and performance.
+- Upgrade one compatibility family at a time so any regression has a single cause.
+- A semver range is a requirement, not proof; the lockfile is what ships.
+- Fix the merge threshold, owner, and rollback before measuring, and roll back by the prior image digest.
+- Unmeasured results stay `pending`; a successful compile is not evidence of compatibility.
 
-A rebuild resolves and compiles again and may not reproduce the old bytes (a different toolchain or a different transitive resolution). The prior digest is exactly what ran successfully before. It is also faster in an incident.
+## Review questions
 
-</details>
-
-**Why does the threshold come before the measurement?**
-
-<details><summary>Answer</summary>
-
-With the numbers in hand, it is tempting to pick a bound just above what was measured. A threshold fixed in advance makes the decision mechanical and lets a second reviewer reach the same conclusion.
-
-</details>
-
-## 6. Pitfalls
-
-| # | Pitfall | Symptom | How the solution avoids it |
-|---|---|---|---|
-| 1 | The review names a decision without the evidence that supports it | Reviewers cannot verify the claim against the repository or system. | Every row of the evidence table names a command or a run to attach, and approval requires the attachments. |
-| 2 | The failure or rollback case is omitted | The happy path passes while an operator has no safe response under failure. | "Decision and recovery" names the trigger (export errors, p95), the action (redeploy prior digest), and the follow-up rerun. |
-| 3 | The owner, threshold, or scope is implicit | Two reviewers can reach different release or risk decisions from the same evidence. | Owner, reviewer, and scope are stated at the top; the merge rule is three explicit conditions. |
-| 4 | Trusting the version requirement | A transitive bump ships unreviewed. | The resolved graph row and the "semver range is not proof" rule. |
-
-## 7. Where it's used next
-
-| Direction | Module | Connection |
-|---|---|---|
-| Back | [`craft.02`](../../diagramming/02-documentation-writing/01-architecture-decision-records.md) | A major upgrade that changes an interface is worth an ADR as well as a review. |
-| Forward | [`ops.06`](../../systems/05-incident-response-and-chaos/06-dependency-upgrade.md) | The dependency upgrade drill, where a lockfile leaves the policy and this procedure finds and reverts it. |
-
-## Going further
-
-| Resource | What to inspect |
-|---|---|
-| [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml) | The requirement each component declares; compare with a lockfile to see what was resolved. |
-| Go vulnerability management (`govulncheck` documentation) | How reachability analysis decides which findings apply. |
+1. Why is the SDK upgraded together with `otel`, but the Rust graph is left alone?
+   <details><summary>Answer</summary>The OpenTelemetry Go modules form one compatibility family: mismatched minors can fail at run time. The Rust engine shares no code with them, so changing it in the same review would add a second cause for any regression.</details>
+2. `go build` succeeds on the candidate. Which rows of the evidence table does that fill in?
+   <details><summary>Answer</summary>None. A build proves the API still type-checks. It says nothing about behavior (span names, shutdown), known vulnerabilities, or latency, which is why those rows stay `pending` until their own evidence is attached.</details>
+3. Why roll back by image digest instead of reverting `go.mod` and rebuilding?
+   <details><summary>Answer</summary>A rebuild resolves and compiles again and may not reproduce the old bytes (a different toolchain or a different transitive resolution). The prior digest is exactly what ran successfully before. It is also faster in an incident.</details>
+4. Why does the threshold come before the measurement?
+   <details><summary>Answer</summary>With the numbers in hand, it is tempting to pick a bound just above what was measured. A threshold fixed in advance makes the decision mechanical and lets a second reviewer reach the same conclusion.</details>

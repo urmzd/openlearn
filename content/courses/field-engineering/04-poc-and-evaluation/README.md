@@ -96,7 +96,7 @@ Keep **inputs identical** on both sides: the same eval cases, the same system pr
 
 Measure the **quantization delta**. If the candidate configuration is FP8 or lower, run BF16 on the same cases once, so the cost of quantization is measured rather than guessed.
 
-Adapt the prompt **before fine-tuning**. Do one round of prompt changes first, and fine-tune only if prompt changes plateau (see [Training & Post-Training](../../machine-learning/07-training-and-post-training/) in *Machine Learning*).
+Adapt the prompt **before fine-tuning**. Do one round of prompt changes first, and fine-tune only if prompt changes plateau (see [Training & Post-Training](../../machine-learning/07-training-and-post-training/) in *Machine Learning and AI*).
 
 Watch for **judge bias**. An LLM judge from the incumbent's model family may prefer the incumbent's style, so spot-check the judge's verdicts against a human sample.
 

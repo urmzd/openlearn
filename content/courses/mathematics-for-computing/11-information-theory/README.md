@@ -16,7 +16,7 @@ The chapter moves from definitions to measurement to association. It opens with 
 
 ## Before you begin
 
-You need discrete probability: distributions, expectation, conditioning, and Bayes' rule, as covered in [Probability & Statistics](../07-probability-statistics/README.md). The implementation sections use the stable `log_softmax` and compensated sums of [Stable numerics: logsumexp, softmax, compensated sums](../09-numerical-methods-and-floating-point/02-stable-numerics.md), the units of information from [Exponents, logs, change of base, units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md), and, for PPMI word vectors, the SVD of [Linear Algebra](../03-linear-algebra/README.md).
+You need discrete probability: distributions, expectation, conditioning, and Bayes' rule, as covered in [Probability and Statistics](../07-probability-statistics/README.md). The implementation sections use the stable `log_softmax` and compensated sums of [Stable numerics: logsumexp, softmax, and compensated sums](../09-numerical-methods-and-floating-point/02-stable-numerics.md), the units of information from [Exponents, logarithms, and units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md), and, for PPMI word vectors, the SVD of [Linear Algebra](../03-linear-algebra/README.md).
 
 ## In this chapter
 

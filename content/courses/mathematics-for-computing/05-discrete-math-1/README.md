@@ -13,7 +13,7 @@ This chapter starts where the rest of the book needs it most. Its problem set bu
 
 ## Before you begin
 
-The chapter needs no earlier mathematics beyond high-school algebra. For the counting section, powers of ten and logarithms from [Exponents, logs, change of base, units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md) help with reading counts like $6.7 \times 10^9$. The problem set comes last in the list below by file order, but it is designed to be worked first.
+The chapter needs no earlier mathematics beyond high-school algebra. For the counting section, powers of ten and logarithms from [Exponents, logarithms, and units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md) help with reading counts like $6.7 \times 10^9$. The problem set comes last in the list below by file order, but it is designed to be worked first.
 
 ## In this chapter
 

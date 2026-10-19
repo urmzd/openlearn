@@ -1,64 +1,37 @@
 # Security
 
-## Overview
+Security is a property of the whole system, so it has to be reviewed against the whole system's diagram. By this chapter the system is complete: a public gateway, a serving engine, stores for keys, usage, and models, an operator control plane, and an agent that reaches external tools. Each piece was built with its own tests, but no test of a single component tells you where an attacker can act on the whole. This chapter turns the architecture into a list of threats, ties each threat to a control and a test, and makes the shipped artifacts accountable through supply-chain records.
 
-- **Primary references**: Shostack, *Threat Modeling: Designing for Security* (Wiley); OWASP, [Threat Modeling Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html) (free)
-- **Supplementary**: [SLSA](https://slsa.dev/) (free); [CycloneDX](https://cyclonedx.org/) and [SPDX](https://spdx.dev/) SBOM specs (free); [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/) (free); OWASP, [Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/) (free)
-- **Prerequisites**: [Diagramming & the C4 Model](../../diagramming/01-diagramming-c4/) (the data-flow diagram the threat model is built on), the full system from course Passes 1 to 10
-- **Estimated time**: 1 to 2 weeks in course Pass 11
+The chapter is organized around the four questions every threat model asks: what are we building, what can go wrong, what are we going to do about it, and did we do a good job? The first section answers the first two by drawing a data-flow diagram from the system's C4 container view and applying STRIDE (spoofing, tampering, repudiation, information disclosure, denial of service, elevation of privilege) to every trust boundary, including the path where retrieved text reaches a tool call. The second and third sections take rows of that model and answer the last two questions in depth. One treats the supply chain as part of the system: an SBOM per artifact, plus provenance for builds, records what was shipped so the next CVE can be traced to the artifacts it affects. The other reviews where secrets live (`TL_API_KEY`, the HMAC pepper) and how scopes and tenants are checked in the gateway.
 
-## Key Takeaways
+Every section produces a document rather than code, and each has a model answer in the solutions tree; the threat model is [`docs/THREAT_MODEL.md`](../../../../course/solutions/docs/THREAT_MODEL.md).
 
-- **Threat modeling asks four questions**: what are we building, what can go wrong, what are we going to do about it, and did we do a good job.
-- **STRIDE per element of a data-flow diagram** (spoofing, tampering, repudiation, information disclosure, denial of service, elevation of privilege) makes "what can go wrong" systematic.
-- **Trust boundaries are where checks belong**: every boundary in the system's interface matrix, including retrieved text reaching a tool call, gets a named control and a test.
-- **Supply chain is part of the system**: an SBOM per artifact and provenance for builds record what was shipped, so the next CVE can be traced to the artifacts it affects.
+> **Learning objectives**
+> - Build a data-flow diagram with trust boundaries from a C4 container view and threat-model it with STRIDE.
+> - Write threat rows that name a control, evidence, residual risk, and an owner, and say when the model must be revisited.
+> - Read and validate an SPDX SBOM and compare it against a dependency policy during a CVE response.
+> - Review an authorization design as a matrix of principals, actions, and resources, and inventory every secret with its logging and rotation rules.
+> - Define the findings that block a release and the evidence a release must attach.
 
-## How to Study
+## Before you begin
 
-Read the OWASP cheat sheet, then Shostack part I. Sketch the system's data-flow diagram from its C4 container view before reading further, then compare it with the solution's. In the solution, `craft.17` is the threat model [`docs/THREAT_MODEL.md`](../../../../course/solutions/docs/THREAT_MODEL.md) with every trust boundary of the system, `craft.18` adds SBOMs and build provenance, and `craft.19` reviews secrets handling and authorization paths.
+The threat model is drawn from the container view in [Diagramming with the C4 Model](../../diagramming/01-diagramming-c4/README.md) in *Diagramming and Documentation*, so read that chapter first if you have not. The chapter also assumes you know the system it reviews end to end, in particular the gateway's API keys, scopes, and tenants from [Authorization and Access Control](../../ai-platform-engineering/08-authorization-and-access-control/README.md) in *AI Platform Engineering*. A good warm-up is to read the OWASP Threat Modeling Cheat Sheet, then sketch your own data-flow diagram of the system before reading the first section, and compare it with the model's afterwards.
 
----
+## In this chapter
 
-# Concepts & Techniques
+1. [Threat modeling with STRIDE](01-threat-model-stride.md): draw the data-flow diagram, find its four trust boundaries, and build a STRIDE table in which every threat has a control, evidence, residual risk, and owner.
+2. [SBOM and supply chain](02-sbom-and-supply-chain.md): read SPDX 2.3 inventories for the engine and gateway, see why they must be generated from the image digest, and compare them against the dependency policy.
+3. [Secrets and authorization review](03-secrets-and-authorization-review.md): build the authorization matrix and secret inventory, check them against the gateway's `auth.go`, and set the release-blocking findings.
 
-## Core Insight
+## Related chapters
 
-Security is a property of the whole system, so it is reviewed against the whole system's diagram. The threat model turns the architecture into a list of threats, each tied to a control and a test, and the supply-chain records make the shipped artifacts accountable.
+Two chapters of *Responsible AI* pick up where this one stops. [Usage Policy](../../responsible-ai/05-usage-policy/README.md) covers abuse cases and their enforcement, and [Professional Responsibility](../../responsible-ai/06-professional-responsibility/README.md) covers disclosure when a threat becomes a vulnerability.
 
-## 1. Threat modeling the system
+## Further reading
 
-**Key ideas**:
-- **DFD**: processes, data stores, external entities, data flows, trust boundaries; built from the system's C4 container view.
-- **STRIDE per element** with a control and an owner per threat, including the RAG-to-tools path (`craft.17`).
-
-## 2. Supply chain, secrets, and authorization
-
-**Key ideas**:
-- **SBOM and provenance** for every image and binary (`craft.18`).
-- **Secrets and authz review** (`craft.19`): where keys live (`TL_API_KEY`, HMAC peppers), how scopes and tenants are checked in the gateway (`gw.02`).
-
-## Course modules
-
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `craft.17` | Threat model (STRIDE on the system's DFD) | practice | 11 |
-| `craft.18` | SBOM and supply chain | practice | 11 |
-| `craft.19` | Secrets and authz review | practice | 11 |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `craft.17` | [Threat model (STRIDE on your DFD)](01-threat-model-stride.md) | practice | 11 |
-| 2 | `craft.18` | [SBOM and supply chain](02-sbom-and-supply-chain.md) | practice | 11 |
-| 3 | `craft.19` | [Secrets and authorization review](03-secrets-and-authorization-review.md) | practice | 11 |
-
-## Connections to Other Tracks
-
-| Track | Connection |
-|---|---|
-| [Diagramming & the C4 Model](../../diagramming/01-diagramming-c4/) | the diagrams the threat model starts from |
-| [Authorization & Access Control](../../ai-platform-engineering/08-authorization-and-access-control/) | API keys, scopes, and tenants |
-| [Usage Policy](../../responsible-ai/05-usage-policy/) | abuse cases and their enforcement |
-| [Professional Responsibility](../../responsible-ai/06-professional-responsibility/) | disclosure when a threat becomes a vulnerability |
+- Adam Shostack, *Threat Modeling: Designing for Security* (Wiley).
+- OWASP, [Threat Modeling Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html).
+- [SLSA](https://slsa.dev/), for build provenance.
+- The [CycloneDX](https://cyclonedx.org/) and [SPDX](https://spdx.dev/) SBOM specifications.
+- [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/).
+- OWASP, [Top 10 for LLM Applications](https://genai.owasp.org/llm-top-10/).

@@ -13,7 +13,7 @@ This chapter is about those two questions, portability and realtime, and about t
 
 ## Before you begin
 
-This chapter assumes you know how models are served and parallelized from [Training and Frameworks](../01-training-and-frameworks/), and the KV cache and quantization from [LLM Systems and Inference](../../machine-learning/04-llm-systems/) in *Machine Learning*, including its [inference frameworks deep-dive](../../machine-learning/04-llm-systems/frameworks/). The architecture discussion builds on attention and RNNs from [Neural Architectures](../../machine-learning/06-neural-architectures/). Streaming output uses the path from [Streaming and SSE](../03-streaming-sse/).
+This chapter assumes you know how models are served and parallelized from [Training and Frameworks](../01-training-and-frameworks/), and the KV cache and quantization from [LLM Systems and Inference](../../machine-learning/04-llm-systems/) in *Machine Learning and AI*, including its [inference frameworks deep-dive](../../machine-learning/04-llm-systems/frameworks/). The architecture discussion builds on attention and RNNs from [Neural Architectures](../../machine-learning/06-neural-architectures/). Streaming output uses the path from [Streaming and SSE](../03-streaming-sse/).
 
 ## The deployment spectrum
 

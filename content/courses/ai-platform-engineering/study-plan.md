@@ -2,7 +2,7 @@
 
 This plan paces the book over roughly 25 to 35 weeks at eight to ten hours a week. It is a suggestion, not a schedule to keep: the chapters form a graph, and the [front matter](README.md) offers shorter reading paths if you have a specific goal. Whatever pace you choose, read with one question in mind: for every tool a chapter names, what pattern is it an instance of? That pattern is the part that transfers.
 
-Before you start, make sure you are comfortable with [Deep Learning](../machine-learning/02-deep-learning/README.md) and [LLM Systems and Inference](../machine-learning/04-llm-systems/README.md) from *Machine Learning*, [System Design](../systems/01-system-design/README.md) from *Systems*, and the foundations of *Data Engineering* ([its front matter](../data-engineering/README.md)), especially OLTP versus OLAP and replication. [Coding and Design Patterns](06-coding-and-design-patterns/README.md) can be read first as vocabulary if you like; the other chapters are written in its terms.
+Before you start, make sure you are comfortable with [Deep Learning](../machine-learning/02-deep-learning/README.md) and [LLM Systems and Inference](../machine-learning/04-llm-systems/README.md) from *Machine Learning and AI*, [System Design](../systems/01-system-design/README.md) from *Systems and Architecture*, and the foundations of *Data Engineering* ([its front matter](../data-engineering/README.md)), especially OLTP versus OLAP and replication. [Coding and Design Patterns](06-coding-and-design-patterns/README.md) can be read first as vocabulary if you like; the other chapters are written in its terms.
 
 ## Training and frameworks (about six weeks)
 
@@ -38,7 +38,7 @@ In [Edge, Realtime and On-Device Inference](10-edge-realtime-inference/README.md
 
 ## The gateway and the agent SDK
 
-The last two chapters are build chapters that sit on top of the engine from *Build an LLM*. Read [Gateway](12-gateway/README.md) once you have the streaming chapter behind you, and then [Agent SDK](13-agent-sdk/README.md), which uses the gateway as its model endpoint and the durable-orchestration chapter's ideas for its durable runs. Budget about two weeks for each if you work through the solution code.
+The last two chapters are build chapters that sit on top of the engine from *Build Your Own LLM System*. Read [Gateway](12-gateway/README.md) once you have the streaming chapter behind you, and then [Agent SDK](13-agent-sdk/README.md), which uses the gateway as its model endpoint and the durable-orchestration chapter's ideas for its durable runs. Budget about two weeks for each if you work through the solution code.
 
 ## Going deeper
 

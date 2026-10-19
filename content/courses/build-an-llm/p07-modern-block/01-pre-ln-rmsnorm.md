@@ -53,7 +53,7 @@ With the norm defined, the remaining question is where it goes. Post-LN (2017) c
 
 $$x + F(\operatorname{norm}(x)).$$
 
-The stream $x$ is never normalized; only the branch input is. The derivative of the step with respect to $x$ is $I + \frac{\partial F(\operatorname{norm}(x))}{\partial x}$, so the gradient always has a clean identity path from the loss to the embedding. Xiong et al. show this is why Pre-LN trains at full learning rate without warmup. The price is that the stream grows with depth, so a Pre-LN model applies one more RMSNorm after the last block, before the lm_head, as you will see in [Llama-family model, HF config, weight loading, downloader](09-llama-family-model.md).
+The stream $x$ is never normalized; only the branch input is. The derivative of the step with respect to $x$ is $I + \frac{\partial F(\operatorname{norm}(x))}{\partial x}$, so the gradient always has a clean identity path from the loss to the embedding. Xiong et al. show this is why Pre-LN trains at full learning rate without warmup. The price is that the stream grows with depth, so a Pre-LN model applies one more RMSNorm after the last block, before the lm_head, as you will see in [The Llama-Family Model: Config, Weight Loading, and Download](09-llama-family-model.md).
 
 ## Working it by hand
 
@@ -157,7 +157,7 @@ The other mistakes each have a recognizable symptom, summarized here:
 
 ## Where this leads
 
-The norm you just wrote appears all over the rest of the book. In [Multi-head latent attention](06-multi-head-latent-attention.md), `q_a_layernorm` and `kv_a_layernorm` normalize MLA's query and key-value latents. In [Llama-family model, HF config, weight loading, downloader](09-llama-family-model.md), it becomes the `input_layernorm`, `post_attention_layernorm`, and final `norm` of every Llama model, where SmolLM2-135M's logits must match Hugging Face. Later, the C kernel `tl_rmsnorm_f32` in [Elementwise kernels in C](../p09-kernels/09-elementwise-kernels.md) must match this implementation to float32 tolerance, and the Rust forward in [Candle model runner](../p10-serving/01-model-runner-and-sampler.md) calls that C norm.
+The norm you just wrote appears all over the rest of the book. In [Multi-head latent attention](06-multi-head-latent-attention.md), `q_a_layernorm` and `kv_a_layernorm` normalize MLA's query and key-value latents. In [The Llama-Family Model: Config, Weight Loading, and Download](09-llama-family-model.md), it becomes the `input_layernorm`, `post_attention_layernorm`, and final `norm` of every Llama model, where SmolLM2-135M's logits must match Hugging Face. Later, the C kernel `tl_rmsnorm_f32` in [Elementwise kernels in C](../p09-kernels/09-elementwise-kernels.md) must match this implementation to float32 tolerance, and the Rust forward in [Candle model runner](../p10-serving/01-model-runner-and-sampler.md) calls that C norm.
 
 ### Further reading
 

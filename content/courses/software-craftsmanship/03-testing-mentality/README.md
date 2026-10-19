@@ -1,36 +1,23 @@
 # The Testing Mentality
 
-## Overview
+A test is a **falsifiable claim plus a cheap experiment that tries to break it**. The testing mentality generalizes that beyond unit tests: a type signature tests a claim about shapes; a code review tests a claim about readability; an alert tests a claim about health; a canary tests a claim about a release; an ADR's "Consequences" section tests a claim about the future. Engineers with the mentality reflexively ask, *"what would prove this wrong, and how cheaply can I find out?"*, and they ask it about their own beliefs first. Testing is a mentality, not a phase: it is the habit of treating every claim about code, infrastructure, docs, data, or a teammate's assumption as a hypothesis you can cheaply falsify.
 
-- **Primary references**:
-  - [*SWE at Google* -- Testing chapters (11-14)](https://abseil.io/resources/swe-book) -- free, testing at scale
-  - [Google Testing Blog / Testing on the Toilet](https://testing.googleblog.com/) -- free, one-page lessons
-- **Supplementary**: [Hypothesis docs](https://hypothesis.readthedocs.io/) (property-based testing), [Principles of Chaos Engineering](https://principlesofchaos.org/) (free), Martin Fowler on [Contract Tests](https://martinfowler.com/bliki/ContractTest.html) (free), [*Foundations of Software Testing* notes]
-- **Prerequisites**: [Software Engineering at Google](../02-swe-at-google/) (the testing chapters), [Documentation & Technical Writing](../../diagramming/02-documentation-writing/) (tests are executable documentation)
-- **Estimated time**: 1 week at 4-6 hrs/week
+This chapter opens with the ideas that shape any test strategy (the pyramid, testing behavior rather than implementation, fakes over mocks, and testing in production) and then turns into a ladder of practice sections, one per kind of test. Each section takes a piece of the real system the other books build, not toy code, shows a reference test suite for it, and explains why each test is there and which faults it kills. Throughout, a suite is judged by **mutation testing**: which planted faults it catches. The ladder starts with unit tests and mutation scoring, adds property-based tests, oracles, benchmarks, deeper mutation analysis, and contract tests, and ends with resilience tests and evals for models and agents, where the oracle is a statistic rather than an exact value.
 
-## Key Takeaways
+> **Learning objectives**
+> - Shape a test strategy by cost with the test pyramid, and recognize the ice-cream-cone anti-pattern.
+> - Write tests that assert behavior through the contract, and prefer fakes to mocks.
+> - Judge any test suite by the planted faults it catches, and argue each surviving mutant.
+> - Choose the right kind of test (property, oracle, benchmark, contract, resilience, eval) for a given claim.
+> - Treat production monitoring, canaries, and chaos experiments as tests run against the real system.
 
-- **Testing is a mentality, not a phase.** It's the habit of treating every claim -- about code, infra, docs, data, or a teammate's assumption -- as a hypothesis you can cheaply falsify.
-- **The goal is confidence per unit cost.** Many fast, isolated tests; few slow, broad ones. Shape the pyramid, not an ice-cream cone.
-- **Test behavior, not implementation.** A test that breaks when you refactor (without changing behavior) is a liability, not an asset.
-- **In production, testing continues** -- monitoring, canaries, and chaos experiments are tests you run against the real system.
+## Before you begin
 
-## How to Study
+This chapter builds on [Software Engineering at Google](../02-swe-at-google/README.md), whose testing chapters are the source of the pyramid, fakes-first, and Hyrum's Law, and on [Documentation and technical writing](../../diagramming/02-documentation-writing/README.md) in *Diagramming and Documentation*, because tests are executable documentation. The practice sections use Python, Go, and C; the primers in *Programming Languages* cover what you need. Each section names its own prerequisites from *Build Your Own LLM System*, *AI Platform Engineering*, and *Mathematics for Computing*.
 
-- Read four *Testing on the Toilet* posts; each is a 5-minute mental model.
-- Take one function with example-based tests and add a property-based test. Watch it find an edge case you didn't think of.
-- For a system you run: write the *failure hypothesis* you're most afraid of, then design the smallest experiment that would confirm or refute it.
+## Shape your confidence by cost: the test pyramid
 
----
-
-# Concepts & Techniques
-
-## Core Insight
-
-A test is a **falsifiable claim plus a cheap experiment that tries to break it**. The "testing mentality" generalizes that beyond unit tests: a type signature tests a claim about shapes; a code review tests a claim about readability; an alert tests a claim about health; a canary tests a claim about a release; an ADR's "Consequences" section tests a claim about the future. Engineers with the mentality reflexively ask, *"what would prove this wrong, and how cheaply can I find out?"* -- and they ask it about their own beliefs first.
-
-## 1. The test pyramid (shape your confidence by cost)
+The goal of a test suite is confidence per unit cost. That argues for many fast, isolated tests and few slow, broad ones:
 
 ```mermaid
 graph TD
@@ -43,15 +30,13 @@ graph TD
     style E2E fill:#85bbf0,color:#000
 ```
 
-- **Small (unit)** -- no I/O, no clock, no network; milliseconds; run on every save. Most of your tests.
-- **Medium (integration)** -- real dependencies via fakes or [Testcontainers](https://testcontainers.com/) (a real Kafka/Postgres in Docker); seconds.
-- **Large (E2E)** -- the whole system; minutes; flaky by nature, so keep few and treat flakes as bugs.
+Small (unit) tests have no I/O, no clock, and no network; they take milliseconds, run on every save, and should be most of your tests. Medium (integration) tests use real dependencies through fakes or [Testcontainers](https://testcontainers.com/) (a real Kafka or Postgres in Docker) and take seconds. Large (end-to-end) tests exercise the whole system; they take minutes and are flaky by nature, so keep few of them and treat flakes as bugs.
 
-**Anti-pattern -- the ice-cream cone:** mostly E2E tests, few unit tests. Slow, flaky, and they tell you *something* broke without telling you *what*. Invert it.
+The anti-pattern is the **ice-cream cone**: mostly end-to-end tests, few unit tests. Such a suite is slow and flaky, and it tells you *something* broke without telling you *what*. Invert it.
 
-## 2. Test behavior, not implementation
+## Test behavior, not implementation
 
-The single highest-leverage rule. A good test states *what the code promises*, so it survives refactoring and fails only on real regressions.
+The single highest-leverage rule is that a good test states *what the code promises*, so it survives refactoring and fails only on real regressions. A test that breaks when you refactor without changing behavior is a liability, not an asset:
 
 ```python
 # BAD -- couples to implementation. Refactoring the cache breaks this test
@@ -68,7 +53,9 @@ def test_duplicate_message_processed_once():
 
 This is **Hyrum's Law** turned to your advantage: depend only on the contract you intend to keep.
 
-## 3. Test doubles: fakes > mocks
+## Test doubles: fakes over mocks
+
+The three common doubles differ in how much they couple a test to the implementation:
 
 | Double | What it is | Google's stance |
 |--------|-----------|-----------------|
@@ -78,32 +65,23 @@ This is **Hyrum's Law** turned to your advantage: depend only on the contract yo
 
 Mock-heavy suites are the most common reason a test breaks during a no-op refactor. Reach for a fake first.
 
-## 4. Beyond example-based tests
+## Beyond example-based tests
 
-- **Property-based testing** -- assert *invariants* over generated inputs (`Hypothesis`, `proptest`, `QuickCheck`). E.g. "encode then decode returns the original," "the consumer never skips an offset." Finds the edge cases you'd never enumerate by hand.
-- **Fuzzing** -- feed random/adversarial bytes to parsers and decoders; the bug class behind a huge share of CVEs. `cargo fuzz`, `go test -fuzz`, libFuzzer.
-- **Golden / snapshot tests** -- pin a complex output (a rendered diagram, an API response) and diff future runs. Cheap regression net for serializers and generators.
-- **Contract tests** -- the producer and consumer of an API each test against a shared contract, so a breaking change is caught in CI rather than in production (Pact, schema registries for Kafka).
+Examples are only the start. **Property-based testing** asserts invariants over generated inputs (Hypothesis, proptest, QuickCheck): "encode then decode returns the original," "the consumer never skips an offset." It finds the edge cases you would never enumerate by hand, and invariants are properties of the algorithm, which ties it to *Algorithms*. **Fuzzing** feeds random or adversarial bytes to parsers and decoders; it targets the bug class behind a huge share of CVEs (`cargo fuzz`, `go test -fuzz`, libFuzzer). **Golden or snapshot tests** pin a complex output (a rendered diagram, an API response) and diff future runs, a cheap regression net for serializers and generators. **Contract tests** have the producer and consumer of an API each test against a shared contract, so a breaking change is caught in CI rather than in production (Pact, schema registries for Kafka).
 
-## 5. Testing things that aren't application code
+## Testing things that aren't application code
 
-The mentality applies everywhere knowledge can be wrong:
+The mentality applies everywhere knowledge can be wrong. For infrastructure, run `terraform plan` in CI, validate manifests with `kubeconform` or `kubeval`, and write policy tests (OPA/Conftest) for rules such as "no container runs as root"; a misconfigured manifest is a bug, and validating YAML before it reaches the cluster is the subject of [Containers, Kubernetes and workloads](../../infrastructure/01-containers-kubernetes/README.md) in *Infrastructure*. For data, write pipeline tests with [Great Expectations](https://greatexpectations.io/) or dbt tests ("no nulls in `order_id`," "row count within 3σ of yesterday"); bad data is a production incident, and dbt tests gate the pipeline in [Orchestration and modeling](../../data-engineering/04-orchestration-modeling/README.md) in *Data Engineering*. For documentation, run the code samples, as [Documentation and technical writing](../../diagramming/02-documentation-writing/README.md) recommends; an example that doesn't compile is a failing test. For diagrams, run `d2 *.d2` in CI so the build fails if a diagram no longer compiles ([Diagramming and the C4 model](../../diagramming/01-diagramming-c4/README.md)).
 
-- **Infrastructure** -- `terraform plan` in CI, `kubeconform`/`kubeval` to validate manifests, policy tests (OPA/Conftest) for "no container runs as root." A misconfigured manifest is a bug.
-- **Data** -- pipeline tests with [Great Expectations](https://greatexpectations.io/) / dbt tests: "no nulls in `order_id`," "row count within 3σ of yesterday." Bad data is a production incident.
-- **Documentation** -- run the code samples ([Documentation & Technical Writing](../../diagramming/02-documentation-writing/)). An example that doesn't compile is a failing test.
-- **Diagrams** -- `d2 *.d2` in CI fails if a diagram no longer compiles ([Diagramming & the C4 Model](../../diagramming/01-diagramming-c4/)).
+## Testing in production, because you already are
 
-## 6. Testing in production (because you already are)
+You cannot fully reproduce production, so test *against* it deliberately rather than pretending staging is enough. A **canary or progressive rollout** ships to 1% of traffic, watches the metrics, then ramps: a controlled experiment on the real system. **Synthetic monitoring** has a bot continuously exercise the critical path, so the first to know is you, not the customer. **Chaos engineering** injects failure (kill a pod, add latency, partition the network) to test the hypothesis "the system tolerates this"; start with a small blast radius and a defined steady-state metric. **SLOs and error budgets** make reliability a testable claim, and burning the error budget is the test failing in slow motion (see [Observability](../../systems/04-observability/README.md) in *Systems and Architecture*, which shows how you test in production through telemetry).
 
-You cannot fully reproduce production, so test *against* it deliberately rather than pretending staging is enough:
+The practice is widespread in industry. Google runs presubmit testing at scale and teaches it one page at a time in Testing on the Toilet; Netflix invented chaos engineering with Chaos Monkey; Amazon relies on operational readiness reviews and canary deploys; and AI labs such as Anthropic run rigorous evals and safety tests to falsify claims about models before shipping. At Staff+ levels you set a team's testing bar, and the mentality matters more than any coverage percentage.
 
-- **Canary / progressive rollout** -- ship to 1% of traffic, watch the metrics, then ramp. A controlled experiment on the real system.
-- **Synthetic monitoring** -- a bot continuously exercises the critical path; the first to know is you, not the customer.
-- **Chaos engineering** -- inject failure (kill a pod, add latency, partition the network) to test the hypothesis "the system tolerates this." Start with a small blast radius and a defined steady-state metric.
-- **SLOs and error budgets** -- the SLO is a *testable claim* about reliability; burning the error budget is the test failing in slow motion (see [Observability](../../systems/04-observability/)).
+## Choosing a technique
 
-## Technique Catalog
+The techniques map onto situations as follows:
 
 | Technique | When to apply |
 |-----------|---------------|
@@ -118,52 +96,27 @@ You cannot fully reproduce production, so test *against* it deliberately rather 
 | Canary + synthetic monitoring | Every production release |
 | Chaos experiments | Systems claiming resilience -- prove it |
 
-## The course testing ladder
+To practice the mentality on your own work, read a few *Testing on the Toilet* posts (each is a five-minute mental model), take one function with example-based tests and add a property-based test to watch it find an edge case you didn't think of, and, for a system you run, write down the failure hypothesis you are most afraid of and design the smallest experiment that would confirm or refute it.
 
-In the course this topic hosts the testing ladder: one practice module per kind of test, each placed in the pass where the system first needs that kind of test. A test suite is judged by mutation testing (which planted faults it catches), so each chapter shows a reference suite for a piece of the real system, not toy code, and explains why each test is there and which faults it kills.
+## In this chapter
 
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `craft.03` | TDD, unit tests, and judging a suite by mutation: includes the mutation-testing primer (what a mutant is, killed vs survived, how the score and required semantic mutants work) | practice | 2 |
-| `craft.04` | Property-based tests (R4) with Hypothesis, proptest, `rapid`, and `ol_prop.h` | practice | 3 |
-| `craft.07` | Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors | practice | 4 |
-| `craft.05` | Oracles, golden and differential tests, gradcheck as a test (R5) | practice | 5 |
-| `craft.06` | Benchmarks and perf gates (R7) | practice | 6 |
-| `craft.20` | Contract tests (R6): consumer-driven tests for gateway to engine | practice | 7 |
-| `craft.21` | Resilience tests (R10) | practice | 8 |
-| `craft.22` | Model evals as tests (R8) | practice | 9 |
-| `craft.23` | Agent evals as tests (R9) | practice | 10 |
+The practice sections form a ladder, each placed where the system first needs that kind of test:
 
-## Chapters
+1. [TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md) introduces test-first development and the mutation-testing primer (what a mutant is, killed versus survived, how the score and required semantic mutants work) on a failpoint kata the training CLI uses.
+2. [Property-based tests with Hypothesis, proptest, rapid, and ol_prop.h](02-property-based-tests.md) states laws (roundtrip, idempotence, model, fixpoint, metamorphic) for a normalizer and a mini BPE, and shows why roundtrip alone misses faults.
+3. [Oracles, golden and differential tests, gradcheck as a test](03-oracles-golden-and-gradcheck.md) tests hand-written backward passes with three oracles and shows why a shape check is not one.
+4. [Benchmarks and perf gates](04-benchmarks-and-perf-gates.md) measures C kernels with a minimum estimator and builds a gate that compares base and head on the same machine.
+5. [Mutation testing in depth](05-mutation-testing-in-depth.md) triages ten survivors of the sequence-metrics suite into equivalent and killable, and writes new semantic mutants from pitfalls.
+6. [Contract tests](06-contract-tests.md) writes a consumer-driven pact for the gateway's client of the engine, with a two-sided mock and static provider verification.
+7. [Resilience tests](07-resilience-tests.md) crashes a durable task queue at its worst moments with a fake disk and a manual clock, and checks durability, exclusivity, and exactly-once effects.
+8. [Model evals as tests](08-model-evals-as-tests.md) turns held-out bits per byte and a seeded quality score into a regression test with a margin and an exact sign-flip test.
+9. [Agent evals as tests](23-agent-evals-as-tests.md) designs a repeatable agent eval suite with disjoint splits, per-property scorers, and paired confidence intervals.
 
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `craft.03` | [TDD, unit tests, and how your tests are graded](01-tdd-unit-tests-and-mutation-grading.md) | practice | 2 |
-| 2 | `craft.04` | [Property-based tests (R4) with Hypothesis, proptest, rapid, and ol_prop.h](02-property-based-tests.md) | practice | 3 |
-| 3 | `craft.05` | [Oracles, golden and differential tests, gradcheck as a test (R5)](03-oracles-golden-and-gradcheck.md) | practice | 5 |
-| 4 | `craft.06` | [Benchmarks and perf gates (R7)](04-benchmarks-and-perf-gates.md) | practice | 6 |
-| 5 | `craft.07` | [Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors](05-mutation-testing-in-depth.md) | practice | 4 |
-| 6 | `craft.20` | [Contract tests (R6): consumer-driven tests for gateway to engine](06-contract-tests.md) | practice | 7 |
-| 7 | `craft.21` | [Resilience tests (R10)](07-resilience-tests.md) | practice | 8 |
-| 8 | `craft.22` | [Model evals as tests (R8)](08-model-evals-as-tests.md) | practice | 9 |
-| 9 | `craft.23` | [Agent evals as tests (R9)](23-agent-evals-as-tests.md) | practice | 10 |
+## Further reading
 
-## Connections to Other Tracks
-
-| Concept | Connected Track | How |
-|---------|-----------------|-----|
-| Test pyramid, fakes, Hyrum's Law | [Software Engineering at Google](../02-swe-at-google/) | Google's testing chapters are the source |
-| Property-based & fuzz testing | [Algorithms](../../algorithms/) | Invariants are properties of the algorithm |
-| Canary, SLOs, chaos | [Observability](../../systems/04-observability/) | You test in prod through telemetry |
-| Data quality tests | [Orchestration & Modeling](../../data-engineering/04-orchestration-modeling/) | dbt tests gate the pipeline |
-| Manifest/policy tests | [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/) | Validate YAML before it reaches the cluster |
-
-## Company Relevance
-
-| Company | How This Appears | Focus |
-|---------|-----------------|-------|
-| Google | Testing on the Toilet, fakes-first, presubmit testing | Testing at scale |
-| Netflix | Invented chaos engineering (Chaos Monkey) | Resilience by experiment |
-| Amazon | Operational readiness reviews, canary deploys | Test in prod safely |
-| Anthropic | Rigorous evals + safety testing of models and systems | Falsify before shipping |
-| Any Staff+ role | You set the team's testing bar and quality culture | Mentality, not coverage % |
+- [*Software Engineering at Google*, testing chapters (11-14)](https://abseil.io/resources/swe-book): testing at scale.
+- [Google Testing Blog / Testing on the Toilet](https://testing.googleblog.com/): one-page lessons.
+- [Hypothesis documentation](https://hypothesis.readthedocs.io/): property-based testing.
+- [Principles of Chaos Engineering](https://principlesofchaos.org/).
+- Martin Fowler, [Contract Tests](https://martinfowler.com/bliki/ContractTest.html).
+- *Foundations of Software Testing* notes.

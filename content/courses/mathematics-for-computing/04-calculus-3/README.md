@@ -13,7 +13,7 @@ This chapter has two parts. Its two build sections turn partial derivatives and 
 
 ## Before you begin
 
-You should be comfortable with one-variable derivatives and finite differences from [Calculus 1](../01-calculus-1/), especially [Derivative as a limit, finite differences, step-size choice](../01-calculus-1/01-derivatives-and-finite-differences.md), whose `central_diff` the first section calls; with Taylor series from [Calculus 2](../02-calculus-2/); and with matrices, row-major layout, and matrix products from [Linear Algebra](../03-linear-algebra/), especially [Vectors, matrices, row-major layout, and matmul](../03-linear-algebra/01-vectors-matrices-and-matmul.md).
+You should be comfortable with one-variable derivatives and finite differences from [Calculus 1](../01-calculus-1/), especially [Derivatives and Finite Differences](../01-calculus-1/01-derivatives-and-finite-differences.md), whose `central_diff` the first section calls; with Taylor series from [Calculus 2](../02-calculus-2/); and with matrices, row-major layout, and matrix products from [Linear Algebra](../03-linear-algebra/), especially [Vectors, matrices, row-major layout, and matmul](../03-linear-algebra/01-vectors-matrices-and-matmul.md).
 
 ## In this chapter
 

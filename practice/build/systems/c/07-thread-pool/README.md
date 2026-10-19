@@ -1,15 +1,19 @@
-# C 07: Thread pool
+# Thread pool
 
-**Concepts:** pthreads, condition variables, bounded work queue
-**Difficulty:** ⭐⭐⭐⭐
+Creating a thread per task is simple and slow: thread creation costs tens of microseconds, and ten thousand simultaneous threads exhaust memory long before they finish. A thread pool fixes both by starting a fixed set of worker threads once and feeding them tasks through a queue. This section builds one with pthreads: a bounded queue that pushes back on the producer when it is full, workers that sleep on condition variables when it is empty, a `pool_wait` that knows the difference between "nothing queued" and "nothing running", and a clean shutdown that finishes everything it accepted.
 
-A fixed set of worker threads pulling from a bounded queue, with backpressure on
-the producer and a clean shutdown that finishes what it accepted.
+Concurrent code is where "it passed the tests" means least. Every rule in this section (wait in a loop, run the task outside the lock, broadcast on shutdown) describes a bug that works on a lightly loaded laptop and fails in production. You should be comfortable with mutexes and condition variables as concepts; the code shows exactly how to use them. The same design, extended with a `parallel_for` over index ranges, is [Thread pool and tl_parallel_for](../../../../../content/courses/build-an-llm/p09-kernels/03-thread-pool-and-parallel-for.md) in *Build Your Own LLM System*.
 
-## The problem
+> **Learning objectives**
+> - Guard a pool's shared state with one mutex and use one condition variable per reason to sleep.
+> - Explain why every condition-variable wait must re-test its predicate in a `while` loop.
+> - Track in-flight work so that `pool_wait` cannot return while a task is still running.
+> - Shut a pool down without deadlock and without dropping accepted work.
+> - Explain backpressure and why a bounded queue turns overload into a slowdown instead of a crash.
 
-[`pool.h`](pool.h) declares the interface, [`pool.c`](pool.c) is the solution,
-and [`main.c`](main.c) is the test suite.
+## The interface
+
+[`pool.h`](pool.h) declares the interface, [`pool.c`](pool.c) is the solution, and [`main.c`](main.c) is the test suite.
 
 | Function | Does |
 |----------|------|
@@ -19,16 +23,9 @@ and [`main.c`](main.c) is the test suite.
 | `pool_destroy(p)` | Stop accepting, drain the backlog, join, free |
 | `pool_completed(p)` | Tasks finished so far |
 
-The order tasks run in is genuinely nondeterministic and nothing asserts on it.
-What is deterministic, and what the tests check, is that every submitted task
-runs *exactly once*. Most tests give each task its own slot to write, so a lost
-or duplicated run is visible with no locking in the test itself. The whole suite
-runs three times, because a race that appears one run in ten is still a bug.
+The order tasks run in is genuinely nondeterministic and nothing asserts on it. What is deterministic, and what the tests check, is that every submitted task runs *exactly once*. Most tests give each task its own slot to write, so a lost or duplicated run is visible with no locking in the test itself. The whole suite runs three times, because a race that appears one run in ten is still a bug.
 
-## Build and run
-
-This exercise needs `-pthread`, so it ships a [`run.sh`](run.sh) that builds
-into a temporary directory and runs the tests:
+This exercise needs `-pthread`, so it ships a [`run.sh`](run.sh) that builds into a temporary directory and runs the tests:
 
 ```bash
 ./run.sh
@@ -41,77 +38,47 @@ Or by hand, from this directory:
 cc -std=c11 -Wall -Wextra -O2 -pthread main.c pool.c -o pool && ./pool
 ```
 
-Passing once means little for concurrent code. ThreadSanitizer finds data races
-the tests cannot:
+Passing once means little for concurrent code. ThreadSanitizer finds data races the tests cannot:
 
 ```bash
 cc -std=c11 -Wall -Wextra -pthread -fsanitize=thread -O1 main.c pool.c -o pool && ./pool
 ```
 
-## What to notice
+## Condition variables and the lock
 
-**Wait in a `while`, never an `if`.** `pthread_cond_wait` can return without the
-condition holding: spuriously, or because several workers were woken for one
-signal and only the first to reacquire the lock got the task. Re-testing the
-predicate after waking is not defensive programming, it is the required usage,
-and an `if` here produces a pool that works until it is loaded.
+Wait in a `while`, never an `if`. `pthread_cond_wait` can return without the condition holding: spuriously, or because several workers were woken for one signal and only the first to reacquire the lock got the task. Re-testing the predicate after waking is not defensive programming; it is the required usage, and an `if` here produces a pool that works until it is loaded.
 
-**Run the task outside the lock.** Holding the mutex while calling `t.fn(t.arg)`
-serialises every worker down to one, which is the most common way to write a
-thread pool that is slower than a plain loop and still passes all its tests. The
-lock protects the queue, not the work.
+Run the task outside the lock. Holding the mutex while calling `t.fn(t.arg)` serialises every worker down to one, which is the most common way to write a thread pool that is slower than a plain loop and still passes all its tests. The lock protects the queue, not the work.
 
-**`pool_wait` has to account for in-flight tasks, not just an empty queue.** A
-task that has been dequeued is no longer counted by the queue and has not
-finished either. That is what the `active` counter is for, and why the idle
-signal fires only when `count == 0 && active == 0`.
-`test_wait_covers_in_flight_work` uses tasks slow enough that a queue-only wait
-returns early and sees an incomplete total.
+## Knowing when the pool is quiet
 
-**Broadcast on shutdown, do not signal.** Every worker is parked on `not_empty`,
-and every one of them must wake to notice the shutdown flag and exit. A signal
-wakes exactly one, leaving the rest blocked forever and `pthread_join` hanging.
-This is the classic thread-pool deadlock and it only shows up with more than one
-worker.
+`pool_wait` has to account for in-flight tasks, not just an empty queue. A task that has been dequeued is no longer counted by the queue and has not finished either. That is what the `active` counter is for, and why the idle signal fires only when `count == 0 && active == 0`. `test_wait_covers_in_flight_work` uses tasks slow enough that a queue-only wait returns early and sees an incomplete total.
 
-**Shutdown means "no new work", not "abandon the backlog".** A `pool_submit`
-that returned 0 is a promise the task will run. `pool_destroy` must therefore
-drain the queue before workers exit, which is why the worker's exit test is
-`count == 0 && shutting_down` rather than `shutting_down` alone.
+## Shutting down and pushing back
 
-**The bounded queue is a design choice with a name.** Blocking the producer when
-the queue is full is backpressure: the system slows the source rather than
-growing an unbounded backlog until memory runs out. An unbounded queue makes
-`submit` never block and turns a sustained overload into an OOM kill instead of
-a slowdown.
+Broadcast on shutdown; do not signal. Every worker is parked on `not_empty`, and every one of them must wake to notice the shutdown flag and exit. A signal wakes exactly one, leaving the rest blocked forever and `pthread_join` hanging. This is the classic thread-pool deadlock, and it only shows up with more than one worker.
 
-## The solution, step by step
+Shutdown means "no new work", not "abandon the backlog". A `pool_submit` that returned 0 is a promise the task will run. `pool_destroy` must therefore drain the queue before workers exit, which is why the worker's exit test is `count == 0 && shutting_down` rather than `shutting_down` alone.
 
-### From first principles
+The bounded queue is a design choice with a name. Blocking the producer when the queue is full is backpressure: the system slows the source rather than growing an unbounded backlog until memory runs out. An unbounded queue makes `submit` never block and turns a sustained overload into an OOM kill instead of a slowdown.
 
-1. **Shared state needs one lock.** The queue (a ring buffer with `head`, `tail`,
-   `count`), the `active` and `completed` counters, and the `shutting_down` flag
-   are all read and written by several threads. One mutex guards all of them, so
-   every invariant between them is checked atomically.
-2. **Each reason to sleep gets its own condition variable.** Workers sleep until
-   the queue is non-empty (`not_empty`), producers until it is non-full
-   (`not_full`), and `pool_wait` until the pool is quiet (`idle`). Separate
-   variables mean a wake-up goes to a thread that cares about it.
-3. **Every wait re-tests its predicate in a loop.** A condition variable is only
-   a hint that something changed. The predicate, read under the lock, is the
-   truth.
-4. **A ring buffer gives O(1) enqueue and dequeue in fixed memory.** `tail`
-   advances on push, `head` on pop, both modulo `cap`; `count` disambiguates
-   full from empty.
-5. **"Quiet" is a property of two numbers.** A task in the queue and a task being
-   run both count as unfinished. `active` is incremented under the lock in the
-   same critical section that dequeues, so there is no instant when a task is in
-   neither count.
-6. **Shutdown is a flag plus a broadcast.** Set `shutting_down` under the lock,
-   wake *every* sleeper, and let each one decide from the predicate: a worker
-   exits only when the queue is also empty, a producer gives up with -1.
+## Deriving the design
 
-### The code, annotated
+Six observations fix the structure.
+
+Shared state needs one lock. The queue (a ring buffer with `head`, `tail`, `count`), the `active` and `completed` counters, and the `shutting_down` flag are all read and written by several threads. One mutex guards all of them, so every invariant between them is checked atomically.
+
+Each reason to sleep gets its own condition variable. Workers sleep until the queue is non-empty (`not_empty`), producers until it is non-full (`not_full`), and `pool_wait` until the pool is quiet (`idle`). Separate variables mean a wake-up goes to a thread that cares about it.
+
+Every wait re-tests its predicate in a loop. A condition variable is only a hint that something changed. The predicate, read under the lock, is the truth.
+
+A ring buffer gives O(1) enqueue and dequeue in fixed memory. `tail` advances on push, `head` on pop, both modulo `cap`; `count` disambiguates full from empty.
+
+"Quiet" is a property of two numbers. A task in the queue and a task being run both count as unfinished. `active` is incremented under the lock in the same critical section that dequeues, so there is no instant when a task is in neither count.
+
+Shutdown is a flag plus a broadcast. Set `shutting_down` under the lock, wake *every* sleeper, and let each one decide from the predicate: a worker exits only when the queue is also empty, and a producer gives up with -1.
+
+## Building it step by step
 
 The worker loop is the heart of the pool:
 
@@ -226,27 +193,59 @@ lock and condition variables, and starts the workers. If some `pthread_create`
 calls fail it keeps the workers that did start (`n_threads = i`), and only if
 none started does it tear everything down and return `NULL`.
 
-Full solution: [`pool.c`](pool.c).
+The full solution is in [`pool.c`](pool.c).
 
-### Why this solution
+## Why this design
 
-- **Cost.** Submit and dequeue are O(1) under one lock. Memory is fixed at
-  `cap` task slots plus `n` threads, whatever the submission rate.
-- **One queue, one lock.** Simple and correct, and fine for coarse tasks. For
-  very short tasks the shared lock becomes the bottleneck, because every worker
-  contends on it for every task; work-stealing deques (see below) fix that.
-- **Bounded versus unbounded queue.** Unbounded makes `submit` never block, which
-  is convenient until a fast producer outruns the workers and memory runs out.
-  Bounded turns overload into a slowdown of the producer.
-- **Three condition variables versus one.** One shared variable would need
-  `broadcast` everywhere (any wake might be for anyone), waking threads that then
-  go back to sleep. Separate variables let `signal` wake exactly the right kind
-  of thread.
-- **Accepted trade.** `pool_destroy` blocks until the whole backlog has run.
-  A pool that needed fast cancellation would drop queued tasks and say so in its
-  contract.
+Submit and dequeue are O(1) under one lock. Memory is fixed at `cap` task slots plus `n` threads, whatever the submission rate.
 
-### Explain it back
+One queue with one lock is simple and correct, and fine for coarse tasks. For very short tasks the shared lock becomes the bottleneck, because every worker contends on it for every task; work-stealing deques, described at the end of this section, fix that.
+
+A bounded queue is chosen over an unbounded one. Unbounded makes `submit` never block, which is convenient until a fast producer outruns the workers and memory runs out. Bounded turns overload into a slowdown of the producer.
+
+Three condition variables are chosen over one. One shared variable would need `broadcast` everywhere (any wake might be for anyone), waking threads that then go back to sleep. Separate variables let `signal` wake exactly the right kind of thread.
+
+The accepted trade is that `pool_destroy` blocks until the whole backlog has run. A pool that needed fast cancellation would drop queued tasks and say so in its contract.
+
+## What can go wrong
+
+Every one of these bugs passes a single-threaded or lightly loaded test.
+
+| Mistake | Consequence |
+|---------|-------------|
+| `if` instead of `while` around `pthread_cond_wait` | A woken worker dequeues from an empty queue under load |
+| Running the task while holding the lock | The pool has one effective worker |
+| Waiting only for an empty queue | `pool_wait` returns while dequeued tasks are still running |
+| Incrementing `active` after releasing the lock | A window in which a task is counted nowhere |
+| `signal` instead of `broadcast` on shutdown | Only one worker exits; `pthread_join` hangs |
+| Exiting workers on `shutting_down` alone | Accepted tasks in the queue are silently dropped |
+| Not testing `shutting_down` in `pool_submit`'s wait | A producer blocked on a full queue never returns |
+| Running `t.fn` from the queue slot instead of a copy | The slot is overwritten by the next `submit` after unlocking |
+
+> **Tip:** Run concurrent tests many times and under ThreadSanitizer. A race that fails one run in ten passes most CI runs and is still a bug.
+
+## Where this leads
+
+The next step is work stealing: give each worker its own deque and let idle workers steal from the back of a busy one's. Go's scheduler, Rayon, and Java's `ForkJoinPool` all do this, and the reason is contention: one shared queue means every worker touches the same cache line on every task, which stops scaling long before the cores run out. In *Build Your Own LLM System*, [Thread pool and tl_parallel_for](../../../../../content/courses/build-an-llm/p09-kernels/03-thread-pool-and-parallel-for.md) uses a pool like this one to parallelise kernel loops.
+
+## Key terms
+
+- **Thread pool**: a fixed set of long-lived worker threads that execute tasks taken from a shared queue.
+- **Condition variable**: a primitive that lets a thread sleep until another thread signals that shared state may have changed.
+- **Spurious wake-up**: a return from a condition-variable wait with no corresponding signal, or after another thread consumed the change.
+- **Predicate loop**: re-testing the awaited condition under the lock after every wake-up.
+- **Backpressure**: slowing the producer when the consumer cannot keep up, here by blocking `submit` on a full queue.
+- **Ring buffer**: a fixed array used as a FIFO queue with head and tail indices that wrap.
+
+## Summary
+
+- One mutex guards the ring-buffer queue, the counters, and the shutdown flag; three condition variables separate the three reasons to sleep.
+- Every wait re-tests its predicate in a `while` loop, and tasks run with the lock released.
+- `active` is incremented in the same critical section as the dequeue, so `pool_wait` waits for `count == 0 && active == 0`.
+- Shutdown sets a flag and broadcasts to every sleeper; workers drain the queue before exiting, and blocked producers return -1.
+- A bounded queue gives backpressure: overload slows the producer instead of exhausting memory.
+
+## Review questions
 
 1. Why is `active` incremented in the same critical section that dequeues,
    rather than when the task starts running?
@@ -303,11 +302,3 @@ Full solution: [`pool.c`](pool.c).
    task must be copied into a local before unlocking.
 
    </details>
-
-## Extending it
-
-Give each worker its own deque and let idle workers steal from the back of a
-busy one's. Work stealing is what Go's scheduler, Rayon, and Java's
-`ForkJoinPool` all do, and the reason is contention: one shared queue means every
-worker touches the same cache line on every task, which stops scaling long
-before the cores run out.

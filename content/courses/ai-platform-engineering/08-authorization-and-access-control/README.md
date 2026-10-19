@@ -15,7 +15,7 @@ The chapter has two halves. The first surveys the models on that complexity ladd
 
 ## Before you begin
 
-The secure-RAG discussion assumes [Retrieval & RAG](../07-retrieval-and-rag/), which explains why retrieval must be permission-aware. The architecture assumes some [System Design](../../systems/01-system-design/) from *Systems*, and the ReBAC material assumes graph reachability from [Graphs](../../algorithms/06-graphs/) in *Algorithms*. For the formal-languages side (the Chomsky hierarchy and pushdown automata), see [Discrete Math 2](../../mathematics-for-computing/06-discrete-math-2/) in *Mathematics for Computing* or [Sipser](https://math.mit.edu/~sipser/book.html). The two build sections plug into the gateway, so the [server skeleton](../12-gateway/01-server-skeleton.md) is a prerequisite for them.
+The secure-RAG discussion assumes [Retrieval & RAG](../07-retrieval-and-rag/), which explains why retrieval must be permission-aware. The architecture assumes some [System Design](../../systems/01-system-design/) from *Systems and Architecture*, and the ReBAC material assumes graph reachability from [Graphs](../../algorithms/06-graphs/) in *Algorithms*. For the formal-languages side (the Chomsky hierarchy and pushdown automata), see [Discrete Math 2](../../mathematics-for-computing/06-discrete-math-2/) in *Mathematics for Computing* or [Sipser](https://math.mit.edu/~sipser/book.html). The two build sections plug into the gateway, so the [server skeleton](../12-gateway/01-server-skeleton.md) is a prerequisite for them.
 
 ## The vocabulary
 

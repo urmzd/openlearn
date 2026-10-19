@@ -1,39 +1,22 @@
-# Resilience tests (R10)
+# Resilience tests
 
-## Overview
+The durable engine of *AI Platform Engineering* makes three promises that no unit test has ever checked. An acknowledged event survives a crash ([The append-only event log](../../ai-platform-engineering/05-durable-orchestration-and-workers/01-event-log.md)). A task has one owner at a time ([Task queue: visibility timeout, fenced leases](../../ai-platform-engineering/05-durable-orchestration-and-workers/03-task-queue.md)). And an activity's effect happens once however often it is retried ([Activities: retries, backoff, idempotency keys](../../ai-platform-engineering/05-durable-orchestration-and-workers/05-activities.md) and [Subprocess activity runner](../../ai-platform-engineering/05-durable-orchestration-and-workers/09-subprocess-activities.md)). Unit tests run the happy path in one process that never dies, so a log that forgets to fsync, a worker that forgets to renew its lease, or an activity keyed by its attempt number passes all of them. These bugs appear only when a machine dies at the wrong instant, which in production is "eventually, at 3 a.m., during the biggest training run."
 
-| | |
-|---|---|
-| **Module** | `craft.21` · practice · Go · Pass 8 · 2 to 3 h reading |
-| **Solution** | [`taskq.go`](../../../../course/solutions/primers/craft.21/taskq.go) (a kata: a durable task queue and its worker, the log, leases, and idempotent effects of the durable engine in one file: `Open`, `Queue.write`, `Lease`, `Renew`, `Complete`, `Worker.RunOne`) and [`resilience_test.go`](../../../../course/solutions/primers/craft.21/resilience_test.go) (the **resilience tests**, package `craft21_test`, including the seeded kill loop `TestKillLoopExactlyOnce`) |
-| **Contract** | none of its own: the kata's API is in its file, and the tests use a small fault kit, package `craft21/faults` (`CrashFS`, `Clock`, `Effects`; section 4) |
-| **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how a test suite is judged by planted faults · [`craft.04`](02-property-based-tests.md) properties · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · [`lang.06`](../../programming-languages/02-language-and-tool-primers/06-go.md) Go `testing` · [`dur.09`](../../ai-platform-engineering/05-durable-orchestration-and-workers/09-subprocess-activities.md) subprocess activities; the engine pieces the kata models: the event log (`dur.01`), fenced leases (`dur.03`), idempotent activities (`dur.05`) |
-| **Used by** | no call site (a practice): the durable engine (`dur.*`) and drill (`ops.*`) chapters use resilience tests from here on; the durable pass's kill loop over the real server and worker is the system-scale version of these tests |
-| **Optional depth** | Kyle Kingsbury, [Jepsen analyses](https://jepsen.io/analyses) (free); Pillai et al., ["All File Systems Are Not Created Equal"](https://www.usenix.org/conference/osdi14/technical-sessions/presentation/pillai) (OSDI 2014, free); Martin Kleppmann, ["How to do distributed locking"](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html) (fencing tokens, free); FoundationDB, ["Testing Distributed Systems w/ Deterministic Simulation"](https://www.youtube.com/watch?v=4fFDFbi3toc) (free) |
+The [durable orchestration chapter](../../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) ends by killing the real server and worker 500 times. This section shows the small, deterministic version of that test first, on a kata small enough to hold in your head, judged by whether it catches the faults that matter. It states the promises a durable queue makes, replays one crash by hand, then walks through the queue's write path, replay, leases, and worker, and finally the tests that kill it. Before each test, predict which planted fault it is meant to catch.
 
-## Key Takeaways
+You should know how a test suite is judged by planted faults ([TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md)), properties ([Property-based tests](02-property-based-tests.md)), and reading survivors ([Mutation testing in depth](05-mutation-testing-in-depth.md)), plus Go's `testing` package from [Go: packages, interfaces, goroutines](../../programming-languages/02-language-and-tool-primers/06-go.md). The kata models the engine pieces linked above: the event log, fenced leases, and idempotent activities.
 
-- A **resilience test** kills the system at its worst moment and checks a **promise**, not a return value: effects exactly once, nothing acknowledged lost, one owner per task.
-- A SIGKILL loses nothing a `write` returned. To catch a missing **fsync** the test must lose the page cache: the fault kit's `CrashFS.Crash()` keeps only synced bytes.
-- Time is an input. With a **manual clock** a test can hold a lease for 90 s, pause a worker past its lease, and expire it, in microseconds and the same way every run.
-- **Exactly once** is "at least once delivery" plus an **idempotency key that is the same on every attempt**. The test that proves it must crash between the effect and the acknowledgement.
-- The suite is judged by mutation testing: it fails on at least 90% of 12 planted faults, and on all three resilience faults: the idempotency key ignored, the lease not renewed, fsync skipped.
+The solution is [`taskq.go`](../../../../course/solutions/primers/craft.21/taskq.go), a kata that packs a durable task queue and its worker (the log, leases, and idempotent effects of the durable engine) into one file (`Open`, `Queue.write`, `Lease`, `Renew`, `Complete`, `Worker.RunOne`), and [`resilience_test.go`](../../../../course/solutions/primers/craft.21/resilience_test.go), the **resilience tests** in package `craft21_test`, including the seeded kill loop `TestKillLoopExactlyOnce`. There is no separate contract: the kata's API is in its file, and the tests use a small fault kit, package `craft21/faults` (`CrashFS`, `Clock`, `Effects`). The tests run with `go test ./...` in a module (`craft21`) that holds the kata, the tests, and the fault kit.
 
-## How to read this chapter
+> **Learning objectives**
+> - State durability, exclusivity, exactly-once effect, and idempotent submission as checkable invariants.
+> - Explain why a SIGKILL-only test cannot catch a missing fsync, and model a power loss instead.
+> - Use leases with renewal and fencing tokens to keep one owner per task, and test them with a manual clock.
+> - Write a seeded kill loop that explores crash points deterministically and checks every promise at the end.
 
-Sections 1 to 3 state the promises a durable queue makes and replay one crash by hand. Section 4 fixes the kata's API and the fault kit. Section 5 walks through the solution: the queue's write path, replay, leases and the worker, then the tests that kill it, with why each line is there. Before each test, predict which planted fault it is meant to catch. The tests run with `go test ./...` in a module (`craft21`) that holds the kata, the tests, and the fault kit.
+## Promises, not return values
 
----
-
-## 1. Why now
-
-The durable engine now makes three promises that no unit test has ever checked: an acknowledged event survives a crash (`dur.01`), a task has one owner at a time (`dur.03`), and an activity's effect happens once however often it is retried (`dur.05`, `dur.09`). Unit tests run the happy path in one process that never dies, so a log that forgets to fsync, a worker that forgets to renew its lease, or an activity keyed by its attempt number passes all of them. These bugs appear only when a machine dies at the wrong instant, which in production is "eventually, at 3 a.m., during the biggest training run". The durable pass ends by killing the real server and worker 500 times; this module shows the small, deterministic version of that test first, on a kata small enough to hold in your head, judged by whether it catches the faults that matter.
-
-## 2. Principles
-
-### 2.1 Promises, not return values
-
-A resilience test is a loop: put the system in a state, inject a fault, let it recover, check an invariant. The invariants are the system's promises, stated so a test can check them after the fact:
+A **resilience test** kills the system at its worst moment and checks a **promise**, not a return value. It is a loop: put the system in a state, inject a fault, let it recover, check an invariant. The invariants are the system's promises, stated so a test can check them after the fact:
 
 | Promise | Checked as | The kata's mechanism |
 |---|---|---|
@@ -42,9 +25,11 @@ A resilience test is a loop: put the system in a state, inject a fault, let it r
 | **exactly-once effect** | the external system's applied keys equal the task ids, with deliveries counted separately | the effect is keyed by the task id, the same on every attempt |
 | **idempotent submission** | enqueueing an id twice is one task | `Enqueue` of an existing id is a no-op |
 
-Delivery is **at least once**: a worker can die after applying an effect and before completing, and the retry applies it again. That is unavoidable (the Two Generals problem), so the effect must be **idempotent**: the external system deduplicates by key. The fault kit's `Effects` does exactly that, and counts deliveries, so a test sees both the state (`Keys`) and the retries (`Deliveries`).
+Delivery is **at least once**: a worker can die after applying an effect and before completing, and the retry applies it again. That is unavoidable (the Two Generals problem), so the effect must be **idempotent**: the external system deduplicates by key. Exactly once is therefore "at least once delivery" plus an idempotency key that is the same on every attempt. The fault kit's `Effects` deduplicates exactly that way, and counts deliveries, so a test sees both the state (`Keys`) and the retries (`Deliveries`).
 
-### 2.2 Crashes: what survives and what does not
+## Crashes: what survives and what does not
+
+Not every crash loses the same things, and the difference decides what a test must simulate:
 
 | Fault | What is lost | What a test needs |
 |---|---|---|
@@ -53,20 +38,25 @@ Delivery is **at least once**: a worker can die after applying an effect and bef
 | a crash during a write | the end of that write: a **torn** record | `CrashFS.CrashTorn(n)` keeps `n` bytes of the unsynced tail |
 | a full disk | nothing yet; the write fails | `CrashFS.FailWrites(err)` |
 
+A SIGKILL loses nothing a `write` returned, so to catch a missing **fsync** the test must lose the page cache, which is what `CrashFS.Crash()` does by keeping only synced bytes.
+
 Two rules follow. First, **sync before acknowledging**, and update memory only after the sync succeeded: a queue that changes memory first serves a completion that vanishes on restart. Second, **replay must survive a torn tail**: the last line may be half a record. Its call never returned, so it is safe to ignore; but the next append lands right after it, so `Open` must **seal** the fragment with a newline, or the first record acknowledged after the restart is glued to garbage and lost on the next replay.
 
-### 2.3 Leases, renewals, and fencing tokens
+## Leases, renewals, and fencing tokens
 
-A **lease** is ownership with a deadline: worker `w` may work on task `t` until `now + TTL`. If `w` dies, the task comes back after the deadline. Two things go wrong:
+A **lease** is ownership with a deadline: worker `w` may work on task `t` until `now + TTL`. If `w` dies, the task comes back after the deadline. Two things go wrong with that simple scheme.
 
-- A task that takes longer than the TTL loses its lease mid-run and a second worker starts it too. The worker must **renew** (heartbeat) while it works, every `TTL/3` in the kata, so two missed renewals still leave time.
-- A worker that was paused (GC, a stopped VM, a partition) wakes up after its lease expired and someone else owns the task. It must not finish: every lease carries a **fencing token**, a number that grows with every delivery, and `Renew` and `Complete` with a stale token are `ErrLeaseLost`. When a renewal fails, the worker cancels its work and does not apply the effect.
+A task that takes longer than the TTL loses its lease mid-run and a second worker starts it too. The worker must therefore **renew** (heartbeat) while it works, every `TTL/3` in the kata, so two missed renewals still leave time.
 
-### 2.4 Deterministic fault injection
+A worker that was paused (by GC, a stopped VM, or a partition) wakes up after its lease expired, when someone else owns the task. It must not finish. Every lease carries a **fencing token**, a number that grows with every delivery, and `Renew` and `Complete` with a stale token return `ErrLeaseLost`. When a renewal fails, the worker cancels its work and does not apply the effect.
 
-The kata takes its disk (`FS`) and its time (`Clock`) as interfaces, so a test owns both. With the fault kit's `Clock`, time moves only on `Advance`, and `BlockUntil(n)` waits until the code under test is actually waiting, so a test never sleeps and never races. With `CrashFS`, a "crash" is one call at an exact point. The test is the same on every run, which is what makes a failure a bug report instead of a flake. A **kill loop** then explores many crash points with a seeded generator: each round picks where to die (before the effect, after it, after `Complete`), crashes the disk, reopens the queue, expires the leases, and continues until no task is pending; at the end the promises of 2.1 must hold.
+## Deterministic fault injection
 
-### 2.5 How a resilience suite is judged
+Time is an input. The kata takes its disk (`FS`) and its time (`Clock`) as interfaces, so a test owns both. With the fault kit's `Clock`, time moves only on `Advance`, and `BlockUntil(n)` waits until the code under test is actually waiting, so a test never sleeps and never races. A test can hold a lease for 90 s, pause a worker past its lease, and expire it, in microseconds and the same way every run. With `CrashFS`, a "crash" is one call at an exact point.
+
+Because the test is the same on every run, a failure is a bug report instead of a flake. A **kill loop** then explores many crash points with a seeded generator. Each round picks where to die (before the effect, after it, after `Complete`), crashes the disk, reopens the queue, expires the leases, and continues until no task is pending. At the end, every promise must hold.
+
+## How a resilience suite is judged
 
 The tests run against a correct kata (they must pass, twice, so they are not flaky), then against 12 copies of it, each with one planted fault. A fault the tests make fail is **killed**. A good suite scores at least 0.90 and kills every **required** fault. Three of them are the resilience faults:
 
@@ -76,11 +66,11 @@ The tests run against a correct kata (they must pass, twice, so they are not fla
 | lease not renewed | a long task is handed to a second worker mid-run | hold a task for 3 x TTL, try to lease it from another worker |
 | fsync skipped | acknowledged records live only in the page cache | `Crash()`, reopen, check acknowledged state |
 
-The other nine are the pitfalls of section 6.
+The other nine are the pitfalls listed in [What can go wrong](#what-can-go-wrong).
 
-## 3. Worked example by hand
+## Working one crash by hand
 
-Clock at $t_0$ = 1760000000 s (Unix), TTL 30 s, empty disk.
+Start with the clock at $t_0$ = 1760000000 s (Unix), a TTL of 30 s, and an empty disk, and follow the log through one power loss:
 
 | Step | Action | Durable log after it |
 |---|---|---|
@@ -94,11 +84,11 @@ Clock at $t_0$ = 1760000000 s (Unix), TTL 30 s, empty disk.
 | 8 | `w2` completes `t1` with token 2, then runs `t2` | `done t1`, `lease t2`, `done t2` |
 | 9 | `w1` wakes up and calls `Complete` with token 1 | `ErrLeaseLost`: fenced |
 
-Every promise holds: applied keys are exactly `{t1, t2}`, `t1` was delivered twice and applied once, the zombie's completion was refused. With the idempotency key changed to `t1#<token>`, step 7 applies a second key `t1#2` and `AssertExactlyOnce` fails: that is the first resilience fault, and the kill loop in section 5 is this table run 200 times with seeded crash points.
+Every promise holds: applied keys are exactly `{t1, t2}`, `t1` was delivered twice and applied once, and the zombie's completion was refused. Change the idempotency key to `t1#<token>`, and step 7 applies a second key `t1#2`, so `AssertExactlyOnce` fails. That is the first resilience fault, and the kill loop shown later is this table run 200 times with seeded crash points.
 
-## 4. The artifacts
+## The kata and the fault kit
 
-`primers/craft.21/resilience_test.go` is in package `craft21_test` (black box: only the kata's exported API and `craft21/faults`). It crashes the disk, moves time past a lease, restarts the queue with `craft21.Open`, and asserts on effects. It covers each promise of 2.1 with at least one test, and has one kill loop (2.4).
+`primers/craft.21/resilience_test.go` is in package `craft21_test`, so it is black box: it uses only the kata's exported API and `craft21/faults`. It crashes the disk, moves time past a lease, restarts the queue with `craft21.Open`, and asserts on effects. It covers each promise with at least one test and has one kill loop. The APIs it works with:
 
 ```go
 // primers/craft.21/taskq.go (the kata)
@@ -118,13 +108,11 @@ clk := faults.NewClock(t0)  // Now, After, Advance(d), BlockUntil(n)
 fx := faults.NewEffects()   // Apply(key, v), Deliveries(key), Keys(), FailNext(key, n), AssertExactlyOnce(t, keys)
 ```
 
-### What a correct solution must handle
-
-The kata itself must pass these cases; the resilience tests in section 5 check the same promises in their own words.
+The kata itself must pass the following cases; the resilience tests check the same promises in their own words.
 
 | Case | Kind of check | Why it matters downstream |
 |---|---|---|
-| section 3, line by line: crash before `Complete`, redelivery, a fenced zombie | fault | the whole contract in one scenario |
+| the hand-worked crash, line by line: crash before `Complete`, redelivery, a fenced zombie | fault | the whole contract in one scenario |
 | a duplicate enqueue is one task, even after it is done | unit | retried submissions from the gateway must not rerun work |
 | acknowledged enqueues and completions replay after `Crash()` | fault | durability: the fsync rule |
 | a torn record is ignored and sealed; the next record survives the next crash | fault | a crash mid-write must not brick or corrupt the log |
@@ -136,19 +124,19 @@ The kata itself must pass these cases; the resilience tests in section 5 check t
 | crash between effect and completion: delivered twice, applied once | fault | exactly-once effects |
 | the tests pass on a correct kata twice in a row, and fail on at least 90% of 12 planted faults, every resilience fault included | fault | a resilience test that passes on a log that loses writes protects nothing |
 
-## 5. The solution, step by step
+## Building the queue step by step
 
-### 5.1 From first principles
+Seven facts force the design.
 
 1. **"Acknowledged" must mean "on disk".** A caller that got `nil` will act on it, so the record must be synced before the call returns. And memory must change only after the sync succeeded, or a failed write leaves memory claiming something the disk does not have. This forces one function, `write`, that marshals, appends, syncs, and only then calls `apply`.
-2. **State is a fold over the log.** If every change is a record and `apply` is the only thing that changes state, then `Open` is just "apply every record", and replay after a crash gives exactly the acknowledged state. This forces `apply` to be the same code for live writes and replay.
+2. **State is a fold over the log.** If every change is a record and `apply` is the only thing that changes state, then `Open` is just "apply every record," and replay after a crash gives exactly the acknowledged state. This forces `apply` to be the same code for live writes and replay.
 3. **A crash can cut the last write.** Its call never returned, so dropping it is correct. But the file position is after the fragment, so the next append would be glued to it; `Open` must write a newline to seal it. Skipping undecodable lines in the middle (sealed fragments from earlier crashes) keeps later records.
 4. **Ownership needs a deadline and a version.** The deadline returns a dead worker's task; the version (fencing token) refuses a worker that only *looks* dead. One global counter, `q.token`, incremented per delivery and recovered from the log by `apply`, gives a strictly increasing token across restarts.
 5. **A long task must prove it is alive.** Renewing every `TTL/3` means two missed renewals still leave a third of the TTL. A failed renewal is the signal to stop: cancel the work's context and return without applying.
 6. **Delivery is at least once; the effect must not be.** The only key that is the same on every attempt is the task id; any attempt-specific key (token, attempt, worker) turns retries into duplicates.
 7. **Tests must own time and the disk.** A `Clock` interface and an `FS` interface make every fault one deterministic call; nothing in the tests sleeps except a safety timeout.
 
-### 5.2 The write path and replay
+### The write path and replay
 
 ```go
 // write appends r to the log and syncs it; only then is r applied.
@@ -169,6 +157,8 @@ func (q *Queue) write(r record) error {
 ```
 
 Every public mutation (`Enqueue`, `Lease`, `Renew`, `Complete`) goes through `write` under `q.mu`, so there is one place where the fsync rule and the "memory after disk" rule hold. Skipping `Sync` is the third resilience fault: nothing visible changes until `Crash()`. Calling `apply` before `Write` is pitfall 5.
+
+Replay reads the log line by line:
 
 ```go
 func Open(fs FS, clock Clock) (*Queue, error) {
@@ -207,7 +197,9 @@ func Open(fs FS, clock Clock) (*Queue, error) {
 }
 ```
 
-There are two different "bad line" cases and the code treats them differently on purpose: a final fragment with no newline (this crash's torn write) is dropped and sealed; a complete line that does not decode (an earlier crash's fragment, already sealed) is skipped. Refusing to open on either would turn every power cut into an outage.
+There are two different "bad line" cases, and the code treats them differently on purpose. A final fragment with no newline (this crash's torn write) is dropped and sealed; a complete line that does not decode (an earlier crash's fragment, already sealed) is skipped. Refusing to open on either would turn every power cut into an outage.
+
+`apply` is the fold that both paths share:
 
 ```go
 func (q *Queue) apply(r record) {
@@ -236,9 +228,9 @@ func (q *Queue) apply(r record) {
 }
 ```
 
-Deadlines are stored as absolute Unix nanoseconds, not "TTL remaining", so a restart does not hand a dead worker a fresh 30 s.
+Deadlines are stored as absolute Unix nanoseconds, not "TTL remaining," so a restart does not hand a dead worker a fresh 30 s.
 
-### 5.3 Leases, fencing, and the worker
+### Leases, fencing, and the worker
 
 ```go
 func (q *Queue) Lease(worker string, ttl time.Duration) (Lease, error) {
@@ -279,6 +271,8 @@ func (q *Queue) Complete(l Lease, result string) error {
 ```
 
 `now.Before(t.deadline)` makes the lease live on $[\text{start}, \text{deadline})$: at the deadline exactly, another worker may lease, and the old owner may no longer renew. Both sides use the same comparison, so there is no instant when two workers both hold it. `Complete` does not check the deadline: a worker whose lease expired but which nobody has re-leased still holds the current token, and letting it finish is harmless and saves a redelivery.
+
+The worker runs the work under a heartbeat:
 
 ```go
 func (w *Worker) RunOne(ctx context.Context) (bool, error) {
@@ -331,11 +325,11 @@ func (w *Worker) RunOne(ctx context.Context) (bool, error) {
 }
 ```
 
-The ordering is the design: work, then check ownership, then apply, then complete. Apply before complete is what makes a crash between them a duplicate *delivery* rather than a lost effect; the task-id key is what makes that duplicate harmless. Waiting on `renewed` before reading `lost` closes the race where a renewal fails just as the work returns. Full kata: [`taskq.go`](../../../../course/solutions/primers/craft.21/taskq.go).
+The ordering is the design: work, then check ownership, then apply, then complete. Apply before complete is what makes a crash between them a duplicate *delivery* rather than a lost effect, and the task-id key is what makes that duplicate harmless. Waiting on `renewed` before reading `lost` closes the race where a renewal fails just as the work returns. The full kata is [`taskq.go`](../../../../course/solutions/primers/craft.21/taskq.go).
 
-### 5.4 The tests
+## Building the tests
 
-The kill loop is the strongest test: it is the hand example of section 3 explored over 200 seeded rounds.
+The kill loop is the strongest test: it is the hand-worked crash explored over 200 seeded rounds.
 
 ```go
 // lcg is a tiny seeded generator: the kill points are the same on every run.
@@ -381,9 +375,9 @@ func TestKillLoopExactlyOnce(t *testing.T) {
 }
 ```
 
-This one test kills all three resilience faults: a per-attempt key fails `AssertExactlyOnce`; skipped fsync loses enqueues, leases, or completions on the first `Crash()`, so tasks vanish before their effect is applied (and `AssertExactlyOnce` misses their keys) or results vanish; and the final crash-and-reopen checks completions specifically.
+This one test kills all three resilience faults. A per-attempt key fails `AssertExactlyOnce`. A skipped fsync loses enqueues, leases, or completions on the first `Crash()`, so tasks vanish before their effect is applied (and `AssertExactlyOnce` misses their keys) or results vanish. And the final crash-and-reopen checks completions specifically.
 
-The focused tests each pin one promise at its boundary:
+The focused tests each pin one promise at its boundary. Exclusivity comes first:
 
 ```go
 func TestOneOwnerAtATime(t *testing.T) {
@@ -404,6 +398,8 @@ func TestOneOwnerAtATime(t *testing.T) {
 
 The two nanosecond steps pin `Before` against `<=` in both directions, which is how a deadline off by one fails.
 
+Renewal is tested with a task that outlives its lease:
+
 ```go
 func TestLongTaskIsNotStolen(t *testing.T) {
 	// ... a worker whose Work blocks on a gate, started in a goroutine
@@ -422,38 +418,31 @@ func TestLongTaskIsNotStolen(t *testing.T) {
 }
 ```
 
-Six thirds of a TTL is 60 s of work under a 30 s lease: without renewal, the thief gets it on the third step. `BlockUntil(1)` is what removes the race: advancing the clock before the heartbeat has called `After` would skip a renewal.
+Six thirds of a TTL is 60 s of work under a 30 s lease: without renewal, the thief gets it on the third step. `BlockUntil(1)` is what removes the race, because advancing the clock before the heartbeat has called `After` would skip a renewal.
 
-`TestPausedWorkerStops` advances `3 * lease` in one step: the heartbeat's renewal now fails, the work is cancelled, and `RunOne` must return `ErrLeaseLost` with zero deliveries. `TestTornWriteKeepsTheRest` writes an unsynced record, `CrashTorn(7)` keeps 7 bytes of it, then checks that the record enqueued *after* reopening survives another crash (the sealing newline). `TestDiskFullLeavesStateAlone` makes `Complete` fail with `ENOSPC` and checks `Result` is still not done. `TestEnqueueTwiceIsOneTask` re-enqueues a done task and checks it is not delivered again. Full tests: [`resilience_test.go`](../../../../course/solutions/primers/craft.21/resilience_test.go).
+The remaining tests are shorter. `TestPausedWorkerStops` advances `3 * lease` in one step: the heartbeat's renewal now fails, the work is cancelled, and `RunOne` must return `ErrLeaseLost` with zero deliveries. `TestTornWriteKeepsTheRest` writes an unsynced record, keeps 7 bytes of it with `CrashTorn(7)`, then checks that the record enqueued *after* reopening survives another crash (the sealing newline). `TestDiskFullLeavesStateAlone` makes `Complete` fail with `ENOSPC` and checks `Result` is still not done. `TestEnqueueTwiceIsOneTask` re-enqueues a done task and checks it is not delivered again. The full tests are in [`resilience_test.go`](../../../../course/solutions/primers/craft.21/resilience_test.go).
 
-### 5.5 Why this solution
+## Why this design
 
-- **Cost.** Each mutation is one fsync; a lease is $O(n)$ in the number of tasks (a scan in enqueue order), fine for a kata and replaced by an index in the real engine. Replay is $O(\text{log length})$; the real engine snapshots to bound it.
-- **A log of records versus rewriting a state file.** Rewriting a whole state file per change needs write-temp, fsync, rename, fsync-directory to be crash-safe; appending one line and syncing is one durable step, and a torn tail is easy to detect.
-- **Fencing tokens versus only deadlines.** Deadlines alone assume clocks and pauses are bounded; a paused process breaks that. The token makes correctness independent of timing: a stale owner is refused however late it wakes.
-- **A fake disk and clock versus real processes and sleeps.** Real SIGKILL cannot lose the page cache, so it cannot catch the fsync fault; real sleeps make the suite slow and flaky. The fakes make every crash point exact and every run identical, at the cost of trusting that the fake models the real file system's guarantees (ALICE and CrashMonkey test that assumption).
-- **The task id as idempotency key versus a stored "applied" flag.** A flag in the queue's log would need a write between the effect and the flag, which is the same crash window again. Deduplicating in the external system is the only place where the effect and the check are atomic.
+The costs are modest. Each mutation is one fsync; a lease is $O(n)$ in the number of tasks (a scan in enqueue order), fine for a kata and replaced by an index in the real engine. Replay is $O(\text{log length})$, and the real engine snapshots to bound it.
 
-### 5.6 Explain it back
+A log of records beats rewriting a state file. Rewriting a whole state file per change needs write-temp, fsync, rename, fsync-directory to be crash-safe; appending one line and syncing is one durable step, and a torn tail is easy to detect.
 
-1. Why does `write` call `apply` after `Sync`, and which test fails if it is before?
-   <details><summary>Answer</summary>If memory changes first and the write or sync fails, the queue serves state the disk does not have; after a restart it disappears. `TestDiskFullLeavesStateAlone` (a failed `Complete` must leave `Result` not done) catches it, and the kill loop can too.</details>
-2. Why must `Open` write a newline after a torn tail, rather than just ignoring it?
-   <details><summary>Answer</summary>The file position is after the fragment. Without a newline, the next record is appended to the same line, the combined line fails to decode on the next replay, and an acknowledged record is lost. `TestTornWriteKeepsTheRest` checks exactly that record.</details>
-3. Why would a SIGKILL-only suite miss the fsync fault?
-   <details><summary>Answer</summary>The page cache belongs to the kernel and survives the process. Bytes written but not synced are still read back after a SIGKILL, so the queue looks durable. Only losing unsynced bytes (`CrashFS.Crash()`, or power loss) exposes it.</details>
-4. What goes wrong if the effect's key is `fmt.Sprintf("%s#%d", l.Task, l.Token)`?
-   <details><summary>Answer</summary>Every redelivery has a new token, so a crash after the effect and before `Complete` applies the effect again under a new key. The external system cannot deduplicate it; `AssertExactlyOnce` sees `t1#1` and `t1#2`.</details>
-5. Why does `RunOne` wait for the heartbeat goroutine to exit before checking `lost`?
-   <details><summary>Answer</summary>A renewal could fail just as the work returns. Without the wait, `RunOne` might read `lost == false`, apply the effect, and then the heartbeat marks the lease lost: a worker that no longer owns the task applied its effect. Closing `stop` and receiving on `renewed` makes `lost` final before the decision.</details>
+Fencing tokens beat deadlines alone. Deadlines alone assume clocks and pauses are bounded, and a paused process breaks that. The token makes correctness independent of timing: a stale owner is refused however late it wakes.
 
-## 6. Pitfalls
+A fake disk and clock beat real processes and sleeps. A real SIGKILL cannot lose the page cache, so it cannot catch the fsync fault, and real sleeps make the suite slow and flaky. The fakes make every crash point exact and every run identical, at the cost of trusting that the fake models the real file system's guarantees (ALICE and CrashMonkey test that assumption).
+
+The task id as idempotency key beats a stored "applied" flag. A flag in the queue's log would need a write between the effect and the flag, which is the same crash window again. Deduplicating in the external system is the only place where the effect and the check are atomic.
+
+## What can go wrong
+
+Each pitfall below is either a planted fault or a testing mistake that lets one survive:
 
 | Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. no fencing on `Complete` or `Renew` | a paused worker overwrites the current owner's result | both compare `t.token != l.Token` first (5.3) |
+| 1. no fencing on `Complete` or `Renew` | a paused worker overwrites the current owner's result | both compare `t.token != l.Token` first |
 | 2. lease deadlines checked wrong | an expired task is never redelivered, or a live one is delivered twice | one comparison, `now.Before(t.deadline)`, in `Lease` and `Renew`; pinned to the nanosecond by `TestOneOwnerAtATime` |
-| 3. torn tails | the queue refuses to start, or loses the first record after a restart | `Open` drops and seals the fragment, and skips undecodable lines (5.2) |
+| 3. torn tails | the queue refuses to start, or loses the first record after a restart | `Open` drops and seals the fragment, and skips undecodable lines |
 | 4. enqueue not idempotent | a retried submission runs a done task again | `Enqueue` returns early for a known id; `apply` ignores a second `enq` |
 | 5. memory updated before the disk | a completion served from memory vanishes on restart | `write` calls `apply` only after `Sync` succeeds |
 | 6. a lost lease does not stop the work | two workers apply the same task's effect | a failed renewal cancels `wctx`, and `RunOne` returns before `Apply` |
@@ -463,20 +452,62 @@ Six thirds of a TTL is 60 s of work under a 30 s lease: without renewal, the thi
 | 10. testing crashes with SIGKILL alone | the fsync fault survives the suite: the page cache outlives the process | the tests use `CrashFS.Crash()`, which keeps only synced bytes |
 | 11. real sleeps in resilience tests | flaky timing, slow suites, a check that fails "only sometimes" | a manual `Clock` and `BlockUntil`; the only real timer is a 5 s safety timeout |
 
-## 7. Where it's used next
+> **Warning:** The test that proves exactly-once effects must crash between the effect and the acknowledgement. A suite that only crashes before the effect or after the completion will pass with a per-attempt idempotency key.
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `craft.07` | reading survivors: a surviving resilience fault names the promise the suite never checked |
-| Back | `dur.09` | the kata's worker is the shape of a subprocess activity: lease, heartbeat, idempotent outputs |
-| Forward | the durable pass | the same promises checked by a kill loop over the real `{durable}` and `{worker}` with 500 activities |
-| Forward | `ops.02`, `ops.03` | drills `durable-kill9` and `poison-task` check these promises on kind |
+## Where this leads
 
-## Going further
+This section reused survivor reading from [Mutation testing in depth](05-mutation-testing-in-depth.md): a surviving resilience fault names the promise the suite never checked. Its worker has the shape of a [subprocess activity](../../ai-platform-engineering/05-durable-orchestration-and-workers/09-subprocess-activities.md): lease, heartbeat, idempotent outputs. Going forward, the [durable orchestration chapter](../../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) checks the same promises with a kill loop over the real durable server and worker with 500 activities, and the drills [The durable server is SIGKILLed in a loop](../../systems/05-incident-response-and-chaos/02-durable-kill9.md) and [A poison task lands in the dead-letter queue](../../systems/05-incident-response-and-chaos/03-poison-task.md) in *Systems and Architecture* check them on a kind cluster. The [incident-response chapter](../../systems/05-incident-response-and-chaos/README.md) uses resilience tests throughout.
 
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `CrashFS` | ALICE, CrashMonkey | record every syscall and replay every crash state the file system allows, reordering included | Pillai et al., OSDI 2014 |
-| the kill loop | deterministic simulation (FoundationDB, TigerBeetle VOPR) | the whole cluster in one thread with a seeded scheduler: every interleaving is reproducible from a seed | FoundationDB "Simulation" docs |
-| `Effects` checks | Jepsen and Elle | a history checker that proves linearizability or serializability over a recorded run | jepsen.io, `elle` |
-| fencing tokens | Chubby sequencers, etcd lease revisions | the storage service checks the token, not the client | Burrows, "The Chubby lock service" |
+Each piece has a production equivalent:
+
+- `CrashFS` corresponds to ALICE and CrashMonkey, which record every syscall and replay every crash state the file system allows, reordering included (Pillai et al., OSDI 2014).
+- The kill loop corresponds to deterministic simulation (FoundationDB, TigerBeetle VOPR): the whole cluster in one thread with a seeded scheduler, so every interleaving is reproducible from a seed (FoundationDB "Simulation" docs).
+- The `Effects` checks correspond to Jepsen and Elle, a history checker that proves linearizability or serializability over a recorded run (jepsen.io, `elle`).
+- Fencing tokens correspond to Chubby sequencers and etcd lease revisions, where the storage service checks the token, not the client (Burrows, "The Chubby lock service").
+
+### Further reading
+
+- Kyle Kingsbury, [Jepsen analyses](https://jepsen.io/analyses).
+- Pillai et al., ["All File Systems Are Not Created Equal"](https://www.usenix.org/conference/osdi14/technical-sessions/presentation/pillai) (OSDI 2014).
+- Martin Kleppmann, ["How to do distributed locking"](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html) (fencing tokens).
+- FoundationDB, ["Testing Distributed Systems w/ Deterministic Simulation"](https://www.youtube.com/watch?v=4fFDFbi3toc).
+
+## Key terms
+
+- **Resilience test**: a test that injects a fault at a chosen moment and checks a promise of the system afterwards.
+- **Durability**: a call that returned success is on disk and survives a crash.
+- **Torn write**: a record cut short by a crash in the middle of writing it.
+- **Lease**: ownership of a task with a deadline.
+- **Fencing token**: a number that grows with every delivery, used to refuse stale owners.
+- **Idempotency key**: a key, the same on every attempt, by which the external system deduplicates an effect.
+- **Kill loop**: a seeded loop that crashes the system at many points and checks every promise at the end.
+
+## Summary
+
+- A resilience test kills the system at its worst moment and checks a promise, not a return value: effects exactly once, nothing acknowledged lost, one owner per task.
+- A SIGKILL loses nothing a `write` returned; to catch a missing fsync the test must lose the page cache, which `CrashFS.Crash()` does by keeping only synced bytes.
+- Time is an input: with a manual clock a test can hold a lease for 90 s, pause a worker past its lease, and expire it, in microseconds and the same way every run.
+- Exactly once is at-least-once delivery plus an idempotency key that is the same on every attempt; the proving test must crash between the effect and the acknowledgement.
+- The suite fails on at least 90% of 12 planted faults, and on all three resilience faults: the idempotency key ignored, the lease not renewed, fsync skipped.
+
+## Review questions
+
+1. Why does `write` call `apply` after `Sync`, and which test fails if it is before?
+
+   <details><summary>Answer</summary>If memory changes first and the write or sync fails, the queue serves state the disk does not have; after a restart it disappears. `TestDiskFullLeavesStateAlone` (a failed `Complete` must leave `Result` not done) catches it, and the kill loop can too.</details>
+
+2. Why must `Open` write a newline after a torn tail, rather than just ignoring it?
+
+   <details><summary>Answer</summary>The file position is after the fragment. Without a newline, the next record is appended to the same line, the combined line fails to decode on the next replay, and an acknowledged record is lost. `TestTornWriteKeepsTheRest` checks exactly that record.</details>
+
+3. Why would a SIGKILL-only suite miss the fsync fault?
+
+   <details><summary>Answer</summary>The page cache belongs to the kernel and survives the process. Bytes written but not synced are still read back after a SIGKILL, so the queue looks durable. Only losing unsynced bytes (`CrashFS.Crash()`, or power loss) exposes it.</details>
+
+4. What goes wrong if the effect's key is `fmt.Sprintf("%s#%d", l.Task, l.Token)`?
+
+   <details><summary>Answer</summary>Every redelivery has a new token, so a crash after the effect and before `Complete` applies the effect again under a new key. The external system cannot deduplicate it; `AssertExactlyOnce` sees `t1#1` and `t1#2`.</details>
+
+5. Why does `RunOne` wait for the heartbeat goroutine to exit before checking `lost`?
+
+   <details><summary>Answer</summary>A renewal could fail just as the work returns. Without the wait, `RunOne` might read `lost == false`, apply the effect, and then the heartbeat marks the lease lost: a worker that no longer owns the task applied its effect. Closing `stop` and receiving on `renewed` makes `lost` final before the decision.</details>

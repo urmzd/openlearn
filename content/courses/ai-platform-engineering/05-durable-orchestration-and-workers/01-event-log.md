@@ -96,7 +96,7 @@ The failpoint `dur/log/after-write-before-fsync` (passed in as `Options.Failpoin
 
 Two more rules complete the design. The first is about concurrent writers. `Append(stream, expected, evs...)` fails with `ErrVersionConflict` unless the stream is at version `expected` (0 for a new stream); `Any` (−1) skips the check. Picture two server goroutines that both read version $v$ and both try to append as $v+1$: one wins, and the other gets the conflict and rereads. No locks are held between the read and the append.
 
-The second is about disk space. `MaxBytes` (`[durable].wal_max_bytes`) caps the total size of all segments. An append that would pass it fails with `ErrQuota` and writes nothing; the server maps it to gRPC `RESOURCE_EXHAUSTED`. Reads keep working, and raising the cap and restarting resumes writes, which is exactly what the drill [Event log disk full](../../systems/05-incident-response-and-chaos/11-eventlog-disk-full.md) in *Systems* exercises.
+The second is about disk space. `MaxBytes` (`[durable].wal_max_bytes`) caps the total size of all segments. An append that would pass it fails with `ErrQuota` and writes nothing; the server maps it to gRPC `RESOURCE_EXHAUSTED`. Reads keep working, and raising the cap and restarting resumes writes, which is exactly what the drill [Event log disk full](../../systems/05-incident-response-and-chaos/11-eventlog-disk-full.md) in *Systems and Architecture* exercises.
 
 ## Working it by hand
 

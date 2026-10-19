@@ -1,6 +1,6 @@
 # Study plan
 
-*Build an LLM* is long, and it is best read the way the system is built: in passes, each ending with the whole system running end to end. This plan paces those passes at roughly 10 to 12 hours a week, which puts the core of the book, passes 1 to 11, at about 60 weeks part-time and the whole route, setup included, at about 67. Treat the week counts as a guide to proportion, not a schedule. The [course path](paths/course/README.md) lists the sections to read in each pass and what you should be able to explain afterwards, and each pass's milestone page describes what the system does once the pass is complete and why each piece is needed. Before starting, read [the system the solutions build](paths/course/SYSTEM.md).
+*Build Your Own LLM System* is long, and it is best read the way the system is built: in passes, each ending with the whole system running end to end. This plan paces those passes at roughly 10 to 12 hours a week, which puts the core of the book, passes 1 to 11, at about 60 weeks part-time and the whole route, setup included, at about 67. Treat the week counts as a guide to proportion, not a schedule. The [course path](paths/course/README.md) lists the sections to read in each pass and what you should be able to explain afterwards, and each pass's milestone page describes what the system does once the pass is complete and why each piece is needed. Before starting, read [the system the solutions build](paths/course/SYSTEM.md).
 
 ## How to read each section
 

@@ -17,7 +17,7 @@ This pass needs [Pass 3](../course-p03-tokens-and-data/README.md): its story cor
 ## In this pass
 
 1. [LLN, CLT, confidence intervals, bootstrap](../../../mathematics-for-computing/07-probability-statistics/04-lln-clt-confidence-intervals-bootstrap.md). Afterwards you can explain why a sample mean concentrates and how a bootstrap interval is computed.
-2. [Solve set: LLN/CLT, confidence intervals](../../../mathematics-for-computing/07-probability-statistics/92-problem-set-c.md). Afterwards you can work every problem in the set and explain each answer.
+2. [Probability problem set, part c: limit theorems and confidence intervals](../../../mathematics-for-computing/07-probability-statistics/92-problem-set-c.md). Afterwards you can work every problem in the set and explain each answer.
 3. [Vanilla RNN with manual BPTT and truncation](../../p03-recurrent/01-vanilla-rnn-manual-bptt.md). Afterwards you can derive backpropagation through time for a vanilla RNN and explain what truncation trades away.
 4. [LSTM (torch gate order)](../../p03-recurrent/02-lstm.md). Afterwards you can explain each LSTM gate in torch's order and why the cell state eases vanishing gradients.
 5. [GRU (torch gate order)](../../p03-recurrent/03-gru.md). Afterwards you can explain how the GRU merges the LSTM's gates and how torch orders them.
@@ -29,7 +29,7 @@ This pass needs [Pass 3](../course-p03-tokens-and-data/README.md): its story cor
 11. [Beam search, generic over a step function](../../p04-attention-origins/04-beam-search.md). Afterwards you can explain how beam search over a generic step function ranks and prunes hypotheses.
 12. [Sequence metrics: exact match, BLEU, chrF](../../p04-attention-origins/05-sequence-metrics.md). Afterwards you can compute exact match, BLEU and chrF by hand on a small example.
 13. [Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors](../../../software-craftsmanship/03-testing-mentality/05-mutation-testing-in-depth.md). Afterwards you can explain equivalent and semantic mutants and what a surviving mutant says about a test suite.
-14. [What the system does after Pass 4](milestone.md). Afterwards you can explain why the LSTM beats the RNN and the NPLM, and why attention closes the long-date gap that beam search alone cannot.
+14. [What the System Does After Pass 4](milestone.md). Afterwards you can explain why the LSTM beats the RNN and the NPLM, and why attention closes the long-date gap that beam search alone cannot.
 
 ## Going deeper
 

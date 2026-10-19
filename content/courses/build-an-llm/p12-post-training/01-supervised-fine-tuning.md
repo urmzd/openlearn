@@ -2,7 +2,7 @@
 
 The [TinyStories capstone](../capstones/01-tinystories.md) gives you a pretrained model that continues text well but has never seen a conversation. Supervised fine-tuning (SFT) on demonstrations teaches it a response format and task behavior. The work is less about the optimizer, which is the same causal cross-entropy you already have, than about three pieces of plumbing that are easy to get subtly wrong: rendering each conversation into exactly the bytes the serving engine will send, deciding which tokens the model is trained to predict, and packing many short examples into one row without letting them see each other.
 
-This section builds those three functions. It uses the cross-entropy of [Losses with a fused backward](../p00-foundations/03-losses-with-fused-backward.md), typically trains the LoRA adapters of [LoRA with PiSSA init and merge](../p06-objectives/06-lora-pissa-and-merge.md), and must agree with the chat template served by [tl-serve: OpenAI-compatible HTTP + SSE on tokio/hyper](../p10-serving/05-openai-server-on-tokio.md). The solution is [`sft.py`](../../../../course/solutions/python/tinyllm/post/sft.py) (`render_chat`, `assistant_loss_mask`, `pack`), and the contract is [`sft.pyi`](../../../../course/contracts/py/tinyllm/post/sft.pyi).
+This section builds those three functions. It uses the cross-entropy of [Losses with a fused backward](../p00-foundations/03-losses-with-fused-backward.md), typically trains the LoRA adapters of [LoRA: low-rank adaptation with PiSSA initialization and merging](../p06-objectives/06-lora-pissa-and-merge.md), and must agree with the chat template served by [tl-serve: OpenAI-compatible HTTP + SSE on tokio/hyper](../p10-serving/05-openai-server-on-tokio.md). The solution is [`sft.py`](../../../../course/solutions/python/tinyllm/post/sft.py) (`render_chat`, `assistant_loss_mask`, `pack`), and the contract is [`sft.pyi`](../../../../course/contracts/py/tinyllm/post/sft.pyi).
 
 > **Learning objectives**
 > - Render a conversation with the serving tokenizer's canonical chat template.
@@ -121,7 +121,7 @@ The common bugs are the mirror images of those checks. Training on user tokens h
 
 The SFT checkpoint is the starting point for the rest of this chapter: [Direct preference optimization and IPO](02-direct-preference-optimization.md) uses it as the reference policy, and the [post-trained capstone](../capstones/02-post-trained.md) runs SFT, then preference optimization, RL, and distillation on the TinyStories model while preserving the serving chat contract.
 
-In production, Hugging Face TRL's SFT trainer adds length bucketing and packing for higher device utilization, with careful document masks. Dataset mixtures and loss weighting change which tokens define the training distribution; see the [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) chapter of *Machine Learning*.
+In production, Hugging Face TRL's SFT trainer adds length bucketing and packing for higher device utilization, with careful document masks. Dataset mixtures and loss weighting change which tokens define the training distribution; see the [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) chapter of *Machine Learning and AI*.
 
 ### Further reading
 

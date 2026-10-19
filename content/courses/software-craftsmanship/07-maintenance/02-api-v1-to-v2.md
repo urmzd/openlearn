@@ -1,42 +1,28 @@
 # Interface migration: API v1 to v2
 
-## Overview
+The KV format migration changed an interface between components you own. The API migration changes one your users depend on. API v2 changes client-visible behavior while v1 clients remain in service, so for a while the gateway and the engine must serve both contracts on the same paths, route each request to the right one deliberately, and meter the two separately so operators can see the migration progress. Only when the measurements say v1 is unused, under the [Deprecation policy](../06-releases-and-deprecation/02-deprecation-policy.md), can it be withdrawn.
 
-| | |
-|---|---|
-| **Module** | `craft.14` · build · rust, go · Pass 11 · 1 h reading |
-| **Solution** | Engine: [`api_version.rs`](../../../../course/solutions/rust/crates/tl-serve/src/api_version.rs) (`ApiVersion`, `VersionError`, `select`, `response_headers`, `error_code`, `cached_tokens`) and the serve loop [`server.rs`](../../../../course/solutions/rust/crates/tl-serve/src/server.rs), taken over from `L10.9` (`api_config`, `versioned`, `usage`, `version_headers`, `version_error`): every API request selects its version before dispatch, every response echoes it, v2 answers carry `cached_tokens` and the v2 error codes, and a configured window (`[ext.api]` in runtime.toml) adds `Deprecation` and `Sunset`. Gateway: [`apiversion.go`](../../../../course/solutions/go/gateway/server/apiversion.go) (`VersionedAPI`, `APIVersionConfig`), wired in [`compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go) |
-| **Contract** | [`course/contracts/openapi/openai-subset.v2.yaml`](../../../../course/contracts/openapi/openai-subset.v2.yaml) ("Versions side by side", the `X-TL-API-Version`, `Deprecation`, and `Sunset` headers, and the error code enum) |
-| **Needs** | [`craft.12`](../06-releases-and-deprecation/02-deprecation-policy.md) · [`L10.9`](../../../courses/build-an-llm/p10-serving/09-tool-calls-and-constrained-decoding.md) the serve loop taken over · [`L10.6`](../../../courses/build-an-llm/p10-serving/06-disaggregated-prefill-decode.md) registry and engine control |
-| **Used by** | [`ops.05`](../../systems/05-incident-response-and-chaos/05-api-v2-migration.md), the API v2 migration drill |
+The design reduces to three rules. The request header chooses v1 or v2, and when there is no header a configured default applies. During the overlap, v1 replies include `Deprecation` and `Sunset` headers, and every reply echoes its selected version. After the sunset, v1 returns 410, and per-version grouping in the usage ledger shows which clients remain. This section traces one request through version selection, then builds the selection logic in the engine and the gateway.
 
-## Key Takeaways
+The engine side takes over the serve loop from [Tool calls and constrained decoding](../../build-an-llm/p10-serving/09-tool-calls-and-constrained-decoding.md) in *Build Your Own LLM System*, and keeps the registry and engine control from [Disaggregated prefill and decode](../../build-an-llm/p10-serving/06-disaggregated-prefill-decode.md). Its solution is [`api_version.rs`](../../../../course/solutions/rust/crates/tl-serve/src/api_version.rs) (`ApiVersion`, `VersionError`, `select`, `response_headers`, `error_code`, `cached_tokens`) plus the serve loop [`server.rs`](../../../../course/solutions/rust/crates/tl-serve/src/server.rs) (`api_config`, `versioned`, `usage`, `version_headers`, `version_error`). Every API request selects its version before dispatch, every response echoes it, v2 answers carry `cached_tokens` and the v2 error codes, and a configured window (`[ext.api]` in runtime.toml) adds `Deprecation` and `Sunset`. The gateway side is [`apiversion.go`](../../../../course/solutions/go/gateway/server/apiversion.go) (`VersionedAPI`, `APIVersionConfig`), wired in [`compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go). The contract is [`course/contracts/openapi/openai-subset.v2.yaml`](../../../../course/contracts/openapi/openai-subset.v2.yaml): its "Versions side by side" section, the `X-TL-API-Version`, `Deprecation`, and `Sunset` headers, and the error code enum. The migration is rehearsed in [The API v2 migration](../../systems/05-incident-response-and-chaos/05-api-v2-migration.md). Try to predict each step of the solution before you read it.
 
-- The request header chooses v1 or v2; absent a header, a configured default applies.
-- During the overlap, v1 replies include Deprecation and Sunset and every reply echoes its selected version.
-- After sunset v1 returns 410, and per-version ledger grouping shows remaining clients.
+> **Learning objectives**
+> - Explain why the API version is selected by a request header, not by path or by payload contents.
+> - Trace a request through version selection, including the default, an unknown version, and the sunset.
+> - Implement `Deprecation`, `Sunset`, and version-echo headers, and version-specific error codes and usage fields, at the edges of version-agnostic handlers.
+> - Place the gateway's version middleware correctly relative to authentication, rate limits, caching, and metering.
 
-## How to read this chapter
+## Two contracts on the same paths
 
-Sections 1 to 3 explain why two API versions must run side by side and trace one request through version selection. Section 4 lists the cases a correct implementation must handle, in the engine and in the gateway. Section 5 walks through the solution: the pure selection function, the headers and error mapping, where the serve loop calls them, and the gateway middleware. Try to predict each step of the solution before reading it.
+Keep the v1 and v2 contracts explicit. Validate each request against the selected version, preserve error semantics, and never infer a client's version from payload fields that can be ambiguous. Then plan the rollout: introduce v2 while v1 remains the default for existing clients, send a canary cohort to v2 with the header, compare request errors, streaming behavior, and usage totals, then expand. Retain a switch back to v1 (the default) until all consumers have migrated.
 
----
+## Tracing a request by hand
 
-## 1. Why now
+Follow one request through each case. The worked request sends `X-TL-API-Version: 2` while the configured default remains `1`. The reply echoes `X-TL-API-Version: 2`, carries `usage.prompt_tokens_details.cached_tokens`, and has no `Deprecation` header, because it is not on a deprecated path.
 
-API v2 changes client-visible behavior while v1 clients remain in service. The gateway and engine must route versions deliberately and meter them separately so operators can see migration progress.
+The same request without the header gets the default, v1. It echoes `1`, has no `cached_tokens`, and, once a window is configured, carries `Deprecation: @<deprecated_at>` and `Sunset: <HTTP date>`. A request with `X-TL-API-Version: 3` gets 400 `unsupported_api_version` and never reaches a handler. And after the sunset instant, the header-less request gets 410 `api_version_sunset`.
 
-## 2. Principles
-
-Keep v1 and v2 contracts explicit. Validate requests against the selected version, preserve error semantics, and never infer a client version from payload fields that can be ambiguous.
-
-## 3. Worked example
-
-The worked request sends `X-TL-API-Version: 2` while the configured default remains `1`; the reply echoes `X-TL-API-Version: 2`, carries `usage.prompt_tokens_details.cached_tokens`, and has no `Deprecation` header (it is not on a deprecated path). The same request without the header gets the default, v1: it echoes `1`, has no `cached_tokens`, and, once a window is configured, carries `Deprecation: @<deprecated_at>` and `Sunset: <HTTP date>`. A request with `X-TL-API-Version: 3` gets 400 `unsupported_api_version` and never reaches a handler. After the sunset instant, the header-less request gets 410 `api_version_sunset`.
-
-In operation: introduce v2 routes while v1 remains default for existing clients, send a canary cohort to v2 with the header, compare request errors, streaming behavior, and usage totals, then expand. Retain a switch back to v1 (the default) until all consumers migrate.
-
-## 4. The interface and cases
+## The interface
 
 The engine's selection core is four pure functions:
 
@@ -47,7 +33,7 @@ pub fn error_code(v: ApiVersion, code: &str) -> &str;
 pub fn cached_tokens(v: ApiVersion, reported: Option<u32>) -> Option<u32>;
 ```
 
-The gateway's is one middleware, `VersionedAPI(cfg APIVersionConfig, next http.Handler) http.Handler`. Configuration in runtime.toml:
+The gateway's is one middleware, `VersionedAPI(cfg APIVersionConfig, next http.Handler) http.Handler`. Both read their window from runtime.toml:
 
 ```toml
 [ext.api]
@@ -56,37 +42,20 @@ deprecated_at = 1767225600 # Unix seconds; set together with sunset or not at al
 sunset = 1775001600        # must come after deprecated_at
 ```
 
-### What a correct solution must handle
+The upgraded server must not lose what the engine already did. It preserves registration from [Disaggregated prefill and decode](../../build-an-llm/p10-serving/06-disaggregated-prefill-decode.md): a nonempty `engine.gateway_registry` starts heartbeats every two seconds. It advertises the actual bound ports using `engine.advertise_host` (default `127.0.0.1`), including EngineControl for unified engines. It reads load for each heartbeat, and a registry outage does not stop serving. A drain acknowledgement enters the same bounded shutdown path as SIGTERM.
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| the hand example: explicit v2 is echoed (gateway) | unit | The worked explicit v2 request gets a response marked v2. | Confirms the header-selected contract end to end. |
-| an explicit version overrides the default | unit | A request header overrides the configured default. | Allows controlled migration cohorts. |
-| an unknown version is rejected before dispatch | boundary | Unknown versions fail before backend work starts. | Avoids ambiguous execution under an unsupported contract. |
-| the version is echoed and v1 is marked deprecated | unit | Responses identify the selected version and mark v1 deprecated. | Clients and operators can observe migration state. |
-| v1 carries sunset headers during the window (gateway) | unit | v1 replies carry the deprecation window headers. | Gives consumers a concrete removal date. |
-| the meter sees the API version (gateway) | integration | The middleware passes the selected API version to the downstream meter grouping map. | Operators can separate v1 and v2 usage during the migration. |
-| v1 sunset is a hard boundary | boundary | v1 is rejected after sunset. | Prevents indefinite compatibility promises. |
-| sunset and unsupported errors keep the public error shape (gateway) | boundary | Sunset and unsupported-version errors retain the public error shape. | Existing clients can handle failure consistently. |
-| v2 error names are specific, v1 codes are stable | unit | v2 errors are specific while v1 codes remain stable. | Preserves compatibility through the overlap period. |
-| cached-token usage only in v2 | unit | Exposes cached-token usage only in v2 responses. | Preserves the versioned response contract. |
-| the engine serves v1 and v2 side by side | conformance | The engine echoes the selected version, marks v1 and v2 `/v1/completions` deprecated during the window, adds `cached_tokens` to v2 usage, refuses an unknown version, and answers a sunset v1 with 410. | The OpenAPI v2 conformance run and the ops.05 drill run against this serve loop. |
-| the engine still registers and obeys a registry drain | conformance | A real registry receives the running engine's identity, reachable ports and KV capacity, then drains it. | Migration must preserve worker discovery and administrative shutdown. |
+## Building it step by step
 
-The upgraded server preserves L10.6 registration: a nonempty `engine.gateway_registry` starts heartbeats every two seconds. It advertises the actual bound ports using `engine.advertise_host` (default `127.0.0.1`), including EngineControl for unified engines. It reads load for each heartbeat; a registry outage does not stop serving. A drain acknowledgement enters the same bounded shutdown path as SIGTERM.
+Six observations shape the solution; the code comments refer to them by number.
 
-## 5. The solution, step by step
-
-### 5.1 From first principles
-
-1. Two contracts share the same paths, so something outside the payload must say which one applies. A payload field cannot: the same JSON is valid under both. So the version is a request header, `X-TL-API-Version`, and its absence means a server-chosen default.
+1. Two contracts share the same paths, so something outside the payload must say which one applies. A payload field cannot, because the same JSON is valid under both. So the version is a request header, `X-TL-API-Version`, and its absence means a server-chosen default.
 2. Operators move the default, not clients. Keeping the default in configuration lets one deployment flip from "v1 unless asked" to "v2 unless asked" and back, which is the rollback switch.
 3. Any value other than `"1"` or `"2"` is a client bug or a future version this server does not know. Serving it as either version would be a guess, so it is a 400 before any handler runs.
 4. A deprecation is a promise with a date. While the window is open, every v1 answer carries `Deprecation` (RFC 9745, `@<unix seconds>`) and `Sunset` (RFC 8594, an HTTP date), so clients and their logs see the deadline. After the sunset instant, v1 is refused with 410 Gone, which tells the client the resource existed and was withdrawn.
 5. The client must be able to see which contract it got, and the meter must be able to count it. So every response echoes the selected version, and the gateway rewrites the request header to the selected value before metering.
 6. Version-specific response differences (the `cached_tokens` field, new error codes) are applied at the edges, in small functions of `(version, value)`, so the handlers stay version-agnostic and v1 answers are byte-for-byte what they were.
 
-### 5.2 The code, annotated
+### The code, annotated
 
 **Selection.** One pure function decides everything the request needs before dispatch.
 
@@ -252,81 +221,82 @@ func VersionedAPI(cfg APIVersionConfig, next http.Handler) http.Handler {
 
 Full solution: [`api_version.rs`](../../../../course/solutions/rust/crates/tl-serve/src/api_version.rs), [`server.rs`](../../../../course/solutions/rust/crates/tl-serve/src/server.rs), [`apiversion.go`](../../../../course/solutions/go/gateway/server/apiversion.go).
 
-### 5.3 Why this solution
+### Why this design
 
-- **Cost** is a header lookup and a comparison per request.
-- **Header, not path** (`/v2/chat/completions`): path versioning would duplicate every route and every client's base URL, and the contract keeps the OpenAI-compatible `/v1/...` paths that existing SDKs hard-code. A header lets one deployment serve both on the same routes.
-- **Header, not content sniffing**: inferring v2 from the presence of a v2-only field makes the same v1-valid payload ambiguous, and a v1 client would silently switch contract the day it added an optional field.
-- **Both layers select.** The gateway selects for metering, caching, and early refusal; the engine selects again because it is also reachable directly and must honour the same contract (the conformance run targets the engine alone).
-- **Tradeoff accepted:** v2 reports `cached_tokens: 0` from the serve loop, which is honest about what this layer can see but under-reports prefix-cache hits until the engine reports them per request.
+The cost is a header lookup and a comparison per request. The interesting choices are about where the version lives.
 
-### 5.4 Explain it back
+**A header, not a path** such as `/v2/chat/completions`. Path versioning would duplicate every route and every client's base URL, and the contract keeps the OpenAI-compatible `/v1/...` paths that existing SDKs hard-code. A header lets one deployment serve both versions on the same routes.
 
-**Why does `select` apply the sunset check after resolving the default, rather than only to explicit `"1"` headers?**
+**A header, not content sniffing.** Inferring v2 from the presence of a v2-only field makes the same v1-valid payload ambiguous, and a v1 client would silently switch contract the day it added an optional field.
 
-<details><summary>Answer</summary>
+**Both layers select.** The gateway selects for metering, caching, and early refusal. The engine selects again because it is also reachable directly and must honour the same contract; the conformance run targets the engine alone.
 
-Most v1 traffic sends no header at all. If the default were still v1 at sunset and only explicit headers were refused, the withdrawn contract would keep serving everyone who never opted in. Checking the resolved version makes the sunset real; flipping the default to `"2"` before the sunset moves header-less clients over cleanly.
+One tradeoff is accepted: v2 reports `cached_tokens: 0` from the serve loop. That is honest about what this layer can see, but it under-reports prefix-cache hits until the engine reports them per request.
 
-</details>
+## What can go wrong
 
-**Why 410 after sunset, and 400 for an unknown version?**
+A correct solution handles each of these cases, in the engine and in the gateway:
 
-<details><summary>Answer</summary>
-
-410 Gone says "this existed and was deliberately withdrawn", which is the truth for v1 and tells the client to migrate rather than retry. 400 says the request is malformed for this server: version 3 was never served, so there is nothing to have withdrawn.
-
-</details>
-
-**Why does the gateway overwrite `r.Header` with the selected version before calling `next`?**
-
-<details><summary>Answer</summary>
-
-A header-less request was served as the default version, but its header is empty. The meter downstream reads the header; without the rewrite, all default traffic would be grouped as "no version" and operators could not tell how many v1 clients remain.
-
-</details>
-
-**Why is the engine's v2 code for its 429 `queue_full` and not `requests_limit_exceeded`?**
-
-<details><summary>Answer</summary>
-
-v2 names errors by cause. The engine has no per-key rate limits; its only 429 is its own admission queue being full. `requests_limit_exceeded` is the gateway's per-key budget, which `error_code` maps for the gateway's errors. Giving each its own name lets clients decide whether waiting or slowing down helps.
-
-</details>
-
-**What would break if v1 responses gained `cached_tokens` too?**
-
-<details><summary>Answer</summary>
-
-Probably nothing for lenient clients, but v1 is a frozen contract: strict clients and recorded golden responses would see a changed body, and the migration would no longer be "v1 answers are exactly what they were". New fields belong to the new version.
-
-</details>
-
-## 6. Pitfalls
-
-| # | Pitfall | Symptom | How the solution avoids it |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| 1 | Inferring a version from request contents when the header is absent | The same payload can dispatch under different contracts. | `select` reads only the header and the configured default, and rejects any other header value with `Unsupported` before dispatch. |
-| 2 | Returning v1 success after its sunset | Clients continue depending on a contract the service has withdrawn. | `select` (engine) and `VersionedAPI` (gateway) return 410 `api_version_sunset` once `now >= sunset`, for explicit and default v1 alike. |
-| 3 | Combining usage across v1 and v2 | Operators cannot tell whether old clients remain. | `VersionedAPI` sets the request header to the resolved version before the meter runs. |
-| 4 | A half-configured window | `Deprecation: @0` or a sunset before deprecation reaches clients. | `api_config` refuses to start unless both instants are set together and sunset is later. |
+| the hand example: explicit v2 is echoed (gateway) | unit | The worked explicit v2 request gets a response marked v2. | Confirms the header-selected contract end to end. |
+| an explicit version overrides the default | unit | A request header overrides the configured default. | Allows controlled migration cohorts. |
+| an unknown version is rejected before dispatch | boundary | Unknown versions fail before backend work starts. | Avoids ambiguous execution under an unsupported contract. |
+| the version is echoed and v1 is marked deprecated | unit | Responses identify the selected version and mark v1 deprecated. | Clients and operators can observe migration state. |
+| v1 carries sunset headers during the window (gateway) | unit | v1 replies carry the deprecation window headers. | Gives consumers a concrete removal date. |
+| the meter sees the API version (gateway) | integration | The middleware passes the selected API version to the downstream meter grouping map. | Operators can separate v1 and v2 usage during the migration. |
+| v1 sunset is a hard boundary | boundary | v1 is rejected after sunset. | Prevents indefinite compatibility promises. |
+| sunset and unsupported errors keep the public error shape (gateway) | boundary | Sunset and unsupported-version errors retain the public error shape. | Existing clients can handle failure consistently. |
+| v2 error names are specific, v1 codes are stable | unit | v2 errors are specific while v1 codes remain stable. | Preserves compatibility through the overlap period. |
+| cached-token usage only in v2 | unit | Exposes cached-token usage only in v2 responses. | Preserves the versioned response contract. |
+| the engine serves v1 and v2 side by side | conformance | The engine echoes the selected version, marks v1 and v2 `/v1/completions` deprecated during the window, adds `cached_tokens` to v2 usage, refuses an unknown version, and answers a sunset v1 with 410. | The OpenAPI v2 conformance run and the migration drill run against this serve loop. |
+| the engine still registers and obeys a registry drain | conformance | A real registry receives the running engine's identity, reachable ports and KV capacity, then drains it. | Migration must preserve worker discovery and administrative shutdown. |
 
-## 7. Where it's used next
+> **Warning:** Inferring a version from request contents when the header is absent lets the same payload dispatch under different contracts. `select` reads only the header and the configured default, and rejects any other header value with `Unsupported` before dispatch.
 
-| Direction | Module | Connection |
-|---|---|---|
-| Back | [`craft.12`](../06-releases-and-deprecation/02-deprecation-policy.md) | The deprecation policy that sets the window and the sunset date. |
-| Back | [`craft.02`](../../diagramming/02-documentation-writing/01-architecture-decision-records.md) | An ADR records why versions are selected by header. |
-| Back | [`course/contracts/openapi/openai-subset.v2.yaml`](../../../../course/contracts/openapi/openai-subset.v2.yaml) | The v2 contract: headers, `cached_tokens`, and the error code enum. |
-| Back | [`gw.07`](../../ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md) | The usage ledger whose `api_version` column the meter fills. |
-| Back | [`L10.6`](../../../courses/build-an-llm/p10-serving/06-disaggregated-prefill-decode.md) | Registry heartbeats and EngineControl stay live while the HTTP interface changes. |
-| Back | [`L10.9`](../../../courses/build-an-llm/p10-serving/09-tool-calls-and-constrained-decoding.md) | The serve loop taken over: version selection runs before its routes, and its usage and error documents take the selected version. |
-| Back | [`L10.5`](../../../courses/build-an-llm/p10-serving/05-openai-server-on-tokio.md) | The OpenAI-compatible server the routes come from. |
-| Forward | [`ops.05`](../../systems/05-incident-response-and-chaos/05-api-v2-migration.md) | The migration drill run against this serve loop and gateway. |
+Returning a v1 success after its sunset lets clients keep depending on a contract the service has withdrawn. `select` in the engine and `VersionedAPI` in the gateway both return 410 `api_version_sunset` once `now >= sunset`, for explicit and default v1 alike.
 
-## Going further
+Combining usage across v1 and v2 leaves operators unable to tell whether old clients remain. `VersionedAPI` sets the request header to the resolved version before the meter runs.
 
-| Resource | What to inspect |
-|---|---|
-| RFC 9745 (Deprecation header) and RFC 8594 (Sunset header) | The exact syntax `version_headers` and `VersionedAPI` emit, and how clients are expected to react. |
-| [`openai-subset.v2.yaml`](../../../../course/contracts/openapi/openai-subset.v2.yaml), "Versions side by side" | The rules the selection function encodes, stated as contract. |
+A half-configured window sends `Deprecation: @0`, or a sunset before the deprecation, to clients. `api_config` refuses to start unless both instants are set together and the sunset is later.
+
+## Where this leads
+
+This migration follows the [Deprecation policy](../06-releases-and-deprecation/02-deprecation-policy.md), which sets the window and the sunset date, and an [architecture decision record](../../diagramming/02-documentation-writing/01-architecture-decision-records.md) records why versions are selected by header. The v2 contract, [`openai-subset.v2.yaml`](../../../../course/contracts/openapi/openai-subset.v2.yaml), defines the headers, `cached_tokens`, and the error code enum. On the gateway side, [The usage ledger and admin API](../../ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md) in *AI Platform Engineering* provides the ledger whose `api_version` column the meter fills. On the engine side, [Disaggregated prefill and decode](../../build-an-llm/p10-serving/06-disaggregated-prefill-decode.md) supplies the registry heartbeats and EngineControl that stay live while the HTTP interface changes; [Tool calls and constrained decoding](../../build-an-llm/p10-serving/09-tool-calls-and-constrained-decoding.md) supplies the serve loop taken over here, whose usage and error documents now take the selected version; and [the OpenAI-compatible server on tokio](../../build-an-llm/p10-serving/05-openai-server-on-tokio.md) is where the routes come from.
+
+Next, [The API v2 migration](../../systems/05-incident-response-and-chaos/05-api-v2-migration.md) runs the migration against this serve loop and gateway.
+
+### Further reading
+
+- RFC 9745 (the `Deprecation` header) and RFC 8594 (the `Sunset` header): the exact syntax `version_headers` and `VersionedAPI` emit, and how clients are expected to react.
+- The "Versions side by side" section of [`openai-subset.v2.yaml`](../../../../course/contracts/openapi/openai-subset.v2.yaml): the rules the selection function encodes, stated as contract.
+
+## Key terms
+
+- **`X-TL-API-Version`**: the request header that selects the API contract; the response echoes the selected value.
+- **Default version**: the operator-configured version used when the header is absent, and the rollback switch for the migration.
+- **`Deprecation` header**: RFC 9745, `@<unix seconds>`, announcing that the response's contract is deprecated.
+- **`Sunset` header**: RFC 8594, an HTTP date after which the contract will be withdrawn.
+- **410 Gone**: the status for a withdrawn contract, as opposed to 400 for a version that was never served.
+- **Content sniffing**: inferring a version from payload fields, which is ambiguous when the same payload is valid under both contracts.
+
+## Summary
+
+- The request header chooses v1 or v2; absent a header, a configured default applies, and moving the default is the rollback switch.
+- Unknown versions are a 400 before dispatch; after the sunset, v1 is a 410 whether chosen explicitly or by default.
+- During the overlap, v1 replies include `Deprecation` and `Sunset`, and every reply echoes its selected version.
+- Version differences live in small edge functions, so handlers stay version-agnostic and v1 answers are unchanged.
+- The gateway rewrites the header to the resolved version before metering, so per-version ledger grouping shows remaining clients.
+
+## Review questions
+
+1. Why does `select` apply the sunset check after resolving the default, rather than only to explicit `"1"` headers?
+   <details><summary>Answer</summary>Most v1 traffic sends no header at all. If the default were still v1 at sunset and only explicit headers were refused, the withdrawn contract would keep serving everyone who never opted in. Checking the resolved version makes the sunset real; flipping the default to `"2"` before the sunset moves header-less clients over cleanly.</details>
+2. Why 410 after sunset, and 400 for an unknown version?
+   <details><summary>Answer</summary>410 Gone says "this existed and was deliberately withdrawn", which is the truth for v1 and tells the client to migrate rather than retry. 400 says the request is malformed for this server: version 3 was never served, so there is nothing to have withdrawn.</details>
+3. Why does the gateway overwrite `r.Header` with the selected version before calling `next`?
+   <details><summary>Answer</summary>A header-less request was served as the default version, but its header is empty. The meter downstream reads the header; without the rewrite, all default traffic would be grouped as "no version" and operators could not tell how many v1 clients remain.</details>
+4. Why is the engine's v2 code for its 429 `queue_full` and not `requests_limit_exceeded`?
+   <details><summary>Answer</summary>v2 names errors by cause. The engine has no per-key rate limits; its only 429 is its own admission queue being full. `requests_limit_exceeded` is the gateway's per-key budget, which `error_code` maps for the gateway's errors. Giving each its own name lets clients decide whether waiting or slowing down helps.</details>
+5. What would break if v1 responses gained `cached_tokens` too?
+   <details><summary>Answer</summary>Probably nothing for lenient clients, but v1 is a frozen contract: strict clients and recorded golden responses would see a changed body, and the migration would no longer be "v1 answers are exactly what they were". New fields belong to the new version.</details>

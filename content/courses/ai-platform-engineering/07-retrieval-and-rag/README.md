@@ -13,7 +13,7 @@ The pipeline always has the same shape: ingest, chunk, encode, index, retrieve, 
 
 ## Before you begin
 
-This chapter assumes the encoders and embeddings of [Training & Frameworks](../01-training-and-frameworks/) and the vector stores, caches, and knowledge graphs of [Distributed Data & Caching](../04-distributed-data-and-caching/). The three build sections plug into the agent of the [Agent SDK](../13-agent-sdk/) chapter, so its [provider](../13-agent-sdk/01-types-and-provider.md) and [tools](../13-agent-sdk/02-tools-and-schemas.md) sections are worth reading first. Background on transformers comes from [Neural Architectures](../../machine-learning/06-neural-architectures/) and [Deep Learning](../../machine-learning/02-deep-learning/) in *Machine Learning*.
+This chapter assumes the encoders and embeddings of [Training & Frameworks](../01-training-and-frameworks/) and the vector stores, caches, and knowledge graphs of [Distributed Data & Caching](../04-distributed-data-and-caching/). The three build sections plug into the agent of the [Agent SDK](../13-agent-sdk/) chapter, so its [provider](../13-agent-sdk/01-types-and-provider.md) and [tools](../13-agent-sdk/02-tools-and-schemas.md) sections are worth reading first. Background on transformers comes from [Neural Architectures](../../machine-learning/06-neural-architectures/) and [Deep Learning](../../machine-learning/02-deep-learning/) in *Machine Learning and AI*.
 
 ## The RAG pipeline
 
