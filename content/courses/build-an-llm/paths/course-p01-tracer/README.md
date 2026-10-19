@@ -1,11 +1,36 @@
-# Course Pass 1: The Tracer
+# Pass 1: The Tracer
 
-A thin system through every layer, before any layer is deep. The pass introduces Python, Rust, HTTP and SSE, Go, and containers as they are needed. The solution has a Python matmul and a byte-level bigram fitted by counting, a Rust engine that streams completions from that checkpoint, a Go gateway that checks a key and streams without buffering, images and Helm charts on kind, one trace across gateway and engine in Jaeger, a first incident drill with its runbook, and a first architecture decision record. C remains optional depth later in the course.
+The tracer is a thin system through every layer of the final one, built before any layer is deep. Its model is a byte-level bigram fitted by counting, which is about as simple as a language model can be. But that bigram is written to a real checkpoint, served by a real Rust engine that streams completions over HTTP, fronted by a Go gateway that checks an API key and streams without buffering, packaged as images and Helm charts on a local kind cluster, and observed as one trace across the gateway and the engine in Jaeger. The pass also runs a first incident drill with its runbook and writes a first architecture decision record.
 
-**Part of**: [the course](../course/). About 5 weeks at 10 to 12 hours a week. **Needs**: [Pass 0](../course-p00-setup/).
+Building every layer thinly first is what makes the rest of the course safe. Each later pass deepens one layer behind a contract this pass fixes, and because the whole system already runs end to end, a change that breaks a seam shows up immediately. The pass introduces Python, Rust, HTTP and SSE, Go, and containers as they are needed. C remains optional depth later in the course.
 
-**After this pass**: [what the system does](milestone.md): every layer exists and runs end to end.
+> **Learning objectives**
+> - Explain how a count-based bigram reaches the maximum-likelihood NLL and how it is written to safetensors.
+> - Trace an HTTP request and an SSE stream through a hand-written Rust server and a Go streaming proxy.
+> - Explain how the system is deployed on kind behind Helm charts and NodePorts.
+> - Explain how trace context propagates so one request shows as one trace.
+> - Diagnose the engine crashloop drill and explain the decision recorded in ADR-0001.
 
-The stages, their chapters, and what "done" means for each are in [`path.tsv`](path.tsv). The engine serves the checkpoint the `tinyllm` CLI wrote.
+## Before you begin
 
-Stages 8 to 11 run on a local kind cluster. Everything before stage 8 runs as local processes.
+This pass needs [Pass 0](../course-p00-setup/README.md): a working toolchain and a repository whose CI gate is green. Stages 1 to 7 run as local processes; stages 8 to 11 run on a local kind cluster.
+
+## In this pass
+
+The sections build the system from the model outward, then deploy and observe it:
+
+1. [Matmul in Python](../../../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md). Afterwards you can explain how the triple-loop Python matmul indexes rows and columns and why it matches numpy on the golden cases.
+2. [Byte bigram](../../p00-foundations/00-byte-bigram.md). Afterwards you can explain why the count-based bigram reaches the maximum-likelihood NLL and how it is written to a safetensors file.
+3. [Rust](../../../programming-languages/02-language-and-tool-primers/04-rust.md). Afterwards you can explain how the Rust echo server serves two clients at once and who owns each connection.
+4. [HTTP and SSE](../../../programming-languages/02-language-and-tool-primers/05-http-and-sse.md). Afterwards you can trace how an HTTP request is parsed and how an SSE stream is framed by hand.
+5. [Your first endpoint](../../p10-serving/00-your-first-endpoint.md). Afterwards you can trace how the Rust server loads the checkpoint, streams SSE completions, and exports its span.
+6. [Go](../../../programming-languages/02-language-and-tool-primers/06-go.md). Afterwards you can explain how the Go streaming proxy propagates a deadline through its context.
+7. [Your gateway](../../../ai-platform-engineering/12-gateway/00-streaming-proxy.md). Afterwards you can explain why the Go gateway rejects bad keys before proxying and how it streams without buffering.
+8. [Containers and Kubernetes](../../../programming-languages/02-language-and-tool-primers/07-containers-and-kubernetes.md). Afterwards you can explain how the image runs on kind behind a Helm chart and a NodePort.
+9. [Images, kind, and Helm](../../../infrastructure/01-containers-kubernetes/00-tracer-deploy.md). Afterwards you can trace how helm install brings up the gateway and the engine on kind and how a curl reaches the engine through the gateway.
+10. [One trace](../../../systems/04-observability/00-one-trace.md). Afterwards you can explain how trace context propagates so one request shows as one trace across gateway and engine in Jaeger.
+11. [First drill](../../../systems/05-incident-response-and-chaos/00-first-drill.md). Afterwards you can diagnose the engine crashloop from its symptoms, explain the fix, and explain what its runbook says.
+12. [First ADR](../../../diagramming/02-documentation-writing/01-architecture-decision-records.md). Afterwards you can explain why ADR-0001 has the languages meet at process and file boundaries.
+13. [What the system does after Pass 1](milestone.md). Afterwards you can explain how every layer runs end to end, starting with the CLI training and sampling the bigram from a clean shell.
+
+The engine serves exactly the checkpoint the `tinyllm` CLI wrote, so by the end of the pass [every layer exists and runs end to end](milestone.md). The stages are also in this pass's manifest, [`path.tsv`](path.tsv). [Pass 2](../course-p02-foundations/README.md) keeps the engine and replaces how its model is trained.

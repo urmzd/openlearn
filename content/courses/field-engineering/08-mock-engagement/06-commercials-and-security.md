@@ -1,41 +1,36 @@
-# Commercials and security review
+# Answering the security questionnaire
 
-## Overview
+Commercial and security reviews decide whether a customer can adopt the platform at all. The customer's security reviewer and procurement team will read every answer you give, and some of those answers will end up in a contract or in front of an auditor. That makes the questionnaire a different kind of document from the ones before it: each answer is a claim someone may check, so each must be traceable to a control or a current artifact.
 
-| | |
-|---|---|
-| **Module** | `field.06` · practice · docs · Pass 11 · about 30 min reading |
-| **Solution** | model answer: [`docs/engagement/security-questionnaire.md`](../../../../course/solutions/docs/engagement/security-questionnaire.md) (the commercial and security questionnaire for Northstar Commerce) |
-| **Needs** | none |
-| **Used by** | no code call site; the handoff (`field.07`) relies on its incident and access answers |
+This section answers the commercial and security questionnaire for Northstar Commerce, following [Commercials and Security](../06-commercials-and-security/README.md) from earlier in this book. The evidence comes from artifacts built elsewhere in the library: the [STRIDE threat model](../../software-craftsmanship/08-security/01-threat-model-stride.md) and the [SBOM and supply-chain](../../software-craftsmanship/08-security/02-sbom-and-supply-chain.md) work in *Software Craftsmanship*, and the [usage policy at the gateway](../../responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md) in *Responsible AI*. The data flow being reviewed is the one in [Planning the staged migration](05-migration-plan.md). The model answer is [`docs/engagement/security-questionnaire.md`](../../../../course/solutions/docs/engagement/security-questionnaire.md). Try answering the questions yourself before reading the walkthrough.
 
-## Key Takeaways
+> **Learning objectives**
+> - Answer each security question from a named control or artifact, or say there is none yet.
+> - Keep implemented controls apart from configuration still to be done for this customer.
+> - Give every open answer an owner, and mark the document's status.
+> - Refuse to state a price or saving until its volume and service assumptions are agreed.
 
-- Tie each answer to the exact control or artifact behind it, and say when there is none yet.
-- State the owner, success condition, and recovery action before declaring the work complete.
-- Record unresolved assumptions so the next review can test them.
+## Answers bounded by evidence
 
-## How to read this chapter
+Answer only what the evidence supports. Distinguish implemented controls from planned work. State subprocessors, data flows, retention, access, incident notification, and exceptions plainly. Each of those rules follows from what a security answer is.
 
-Sections 1 to 3 set out why security and commercial answers must be traceable and which artifacts they come from. Section 4 lists what a correct questionnaire must contain. Section 5 walks through the model answer for Northstar Commerce and explains how each answer was phrased and why. Try answering the questions yourself before reading section 5.
+A security answer is a claim someone may audit, so every answer must point at a control or artifact (the threat model, an SBOM, a runbook, an access policy) or say there is none yet.
 
----
+The course platform is not the customer's production deployment. Answers that describe what the platform does must not imply what Northstar's environment will do; where configuration remains, the answer says so and names who will do it.
 
-## 1. Why now
+Every gap needs an owner. The third column of the questionnaire is "Status / owner", because each answer that is not final will be closed by a specific person.
 
-Commercial and security reviews shape whether a customer can adopt the platform. Answers should be traceable to controls and current artifacts.
+Commercial numbers are outputs of assumptions. A price or saving is only meaningful with the volume, retention, support hours, footprint, and service levels it assumes, and until those are agreed the right answer is "no estimate approved".
 
-## 2. Principles
+Finally, the document has a status. It is an internal draft until security and the commercial sponsor approve it, and it says what remains before external delivery.
 
-Answer only what evidence supports. Distinguish implemented controls from planned work. State subprocessors, data flows, retention, access, incident notification, and exceptions plainly.
+## Where the answers come from
 
-## 3. Worked example
+The worked approach is to use the threat model, the image SBOMs, and the usage policy to answer how prompts are protected, how dependencies are tracked, how access is scoped, and how incidents are escalated, linking each answer to its evidence and an owner.
 
-Use the threat model, image SBOMs, and usage policy to answer how prompts are protected, dependencies tracked, access scoped, and incidents escalated. Link each answer to evidence and owner.
+## What the questionnaire must contain
 
-## 4. The artifact
-
-### What a correct solution must handle
+A correct questionnaire covers these cases:
 
 | Case | What must hold | Why it matters downstream |
 |---|---|---|
@@ -48,19 +43,9 @@ Use the threat model, image SBOMs, and usage policy to answer how prompts are pr
 | Commercial assumptions | no price or savings without stated volume and service assumptions; who owns which part | no number escapes without its inputs |
 | Status and open items | a draft until approved, with a numbered list of what must happen before external use | the document is not mistaken for a certification |
 
-## 5. The solution, step by step
+## Reading the model answer
 
-### 5.1 From first principles
-
-1. **A security answer is a claim someone may audit**, so every answer must point at a control or artifact (the threat model, an SBOM, a runbook, an access policy) or say there is none yet.
-2. **The course platform is not the customer's production deployment.** Answers that describe what the platform does must not imply what Northstar's environment will do; where configuration remains, the answer says so and names who will do it.
-3. **Every gap needs an owner.** The third column of the questionnaire is "Status / owner", because each answer that is not final will be closed by a specific person.
-4. **Commercial numbers are outputs of assumptions.** A price or saving is only meaningful with the volume, retention, support hours, footprint, and service levels it assumes; until those are agreed, the right answer is "no estimate approved".
-5. **The document has a status.** It is an internal draft until security and the commercial sponsor approve it, and it says what remains before external delivery.
-
-### 5.2 The model answer, annotated
-
-The full questionnaire is [`docs/engagement/security-questionnaire.md`](../../../../course/solutions/docs/engagement/security-questionnaire.md). Selected rows, and the pattern each shows:
+The full questionnaire is [`docs/engagement/security-questionnaire.md`](../../../../course/solutions/docs/engagement/security-questionnaire.md). Four of its rows show the patterns the rest follow:
 
 | Question | Evidence-based answer | Status / owner |
 |---|---|---|
@@ -69,25 +54,53 @@ The full questionnaire is [`docs/engagement/security-questionnaire.md`](../../..
 | How are dependencies tracked? | The course requires dependency allowlists and image SBOM evidence. The production image inventory and vulnerability review must be attached to the release record. | Alex attaches generated SBOM; security signs exceptions |
 | Which subprocessors are involved? | None are assumed by this local POC. The production hosting, telemetry, and model asset sources require a current inventory. | Procurement/security to validate before contracting |
 
-- The **storage** row refuses to answer beyond the evidence: "no claim about production residency can be made".
-- The **access** row states what is implemented (scoped API keys, role-based access) and, separately, what must still be configured and verified.
-- The **dependency** row points at artifacts (allowlists, SBOMs) and names who attaches them and who signs exceptions.
-- The **subprocessor** row avoids the common trap of answering "none" for a system whose production hosting is not yet decided.
+The storage row refuses to answer beyond the evidence: "no claim about production residency can be made". The access row states what is implemented (scoped API keys, role-based access) and, separately, what must still be configured and verified. The dependency row points at artifacts (allowlists, SBOMs) and names who attaches them and who signs exceptions. The subprocessor row avoids the common trap of answering "none" for a system whose production hosting is not yet decided.
 
-The other rows follow the same pattern: data processed (redacted, approved sample only; exact fields to confirm), secrets (in the approved secret manager, never in source, logs, fixtures, or tickets; rotation owners to name), incidents (the runbook covers detection, containment, rollback, evidence, escalation; notification timing and contacts to agree in the contract).
+The other rows follow the same pattern. Data processed: the redacted, approved sample only, with the exact fields to confirm. Secrets: in the approved secret manager, never in source, logs, fixtures, or tickets, with rotation owners to name. Incidents: the runbook covers detection, containment, rollback, evidence, and escalation, with notification timing and contacts to agree in the contract.
 
-**Commercial assumptions.** "No price or savings estimate is approved." Any proposal must state request volume, retained data, support hours, deployment footprint, and service level assumptions; the customer owns procurement terms and the service level, the engineering team only the technical estimates and their evidence.
+The commercial assumptions section opens with "No price or savings estimate is approved." Any proposal must state request volume, retained data, support hours, deployment footprint, and service level assumptions. The customer owns the procurement terms and the service level; the engineering team owns only the technical estimates and their evidence.
 
-**Open items before external delivery**, numbered: confirm data classes, geography, and retention; attach the production threat model, per-image SBOM, dependency exceptions, and access review; confirm escalation contacts and notification terms; have procurement validate hosting and subprocessor statements. The closing line: "Until those approvals, this document is an internal draft, not a security certification."
+The questionnaire ends with numbered open items before external delivery: confirm data classes, geography, and retention; attach the production threat model, per-image SBOM, dependency exceptions, and access review; confirm escalation contacts and notification terms; and have procurement validate the hosting and subprocessor statements. The closing line is: "Until those approvals, this document is an internal draft, not a security certification."
 
-### 5.3 Why this answer
+## Why this shape and not another
 
-- **Answering every question "yes"** is what a questionnaire seems to invite and what gets a vendor removed at audit. Answers bounded by evidence survive scrutiny.
-- **Leaving unanswerable questions blank** looks like evasion; stating what is not yet known, and who will answer it, shows a process.
-- **Including a price to move the deal forward** would commit the team to numbers whose inputs (volume, retention, service level) nobody has agreed, and which belong to the customer's procurement.
-- **Tradeoff accepted.** The questionnaire is less reassuring to read than a list of confident answers; it is far more useful to the customer's security reviewer.
+Answering every question "yes" is what a questionnaire seems to invite, and it is what gets a vendor removed at audit; answers bounded by evidence survive scrutiny. Leaving unanswerable questions blank looks like evasion, whereas stating what is not yet known, and who will answer it, shows a process. Including a price to move the deal forward would commit the team to numbers whose inputs (volume, retention, service level) nobody has agreed, and which belong to the customer's procurement.
 
-### 5.4 Explain it back
+The tradeoff accepted is that the questionnaire is less reassuring to read than a list of confident answers. It is far more useful to the customer's security reviewer.
+
+## What can go wrong
+
+> **Warning:** An answer without its evidence cannot be audited. Each answer here names its control or artifact: an SBOM, a runbook, the access model.
+
+> **Warning:** An assumption written as a fact lets the engagement promise security the system has not demonstrated. Implemented controls and remaining configuration are stated separately, and there is no residency or price claim without evidence.
+
+> **Warning:** Without owners and a decision gate, open answers never close. The questionnaire has a "Status / owner" column, numbered open items, and named approvers for the security and commercial statements.
+
+## Where this leads
+
+This review answers questions about the data flow and rollback from [Planning the staged migration](05-migration-plan.md), drawing on the [STRIDE threat model](../../software-craftsmanship/08-security/01-threat-model-stride.md) for the data and access answers, the [SBOM and supply-chain](../../software-craftsmanship/08-security/02-sbom-and-supply-chain.md) work for the dependency answer, and the [usage policy at the gateway](../../responsible-ai/05-usage-policy/01-usage-policy-at-the-gateway.md) for the data-handling answers. Next, [Handing off operations](07-escalation-and-handoff.md) relies on its incident and access answers.
+
+Further reading:
+
+- The [chapter opening](README.md), to see how the evidence and open decisions travel into each later customer-facing artifact.
+
+## Key terms
+
+- **Evidence-based answer**: an answer that names the control or artifact it rests on, or states that none exists yet.
+- **Implemented vs planned**: the distinction between a control in place and configuration still to be done.
+- **SBOM**: a software bill of materials, the inventory of components in an image.
+- **Subprocessor**: a third party that processes customer data on the vendor's behalf.
+- **Data residency**: where data is stored and processed, often a contractual requirement.
+
+## Summary
+
+- Every security answer points at a control or artifact, or says there is none yet.
+- Keep what the platform does apart from what the customer's production deployment will do.
+- Give every open answer an owner, and list the open items before external delivery.
+- No price or saving without agreed volume, retention, footprint, and service assumptions.
+- The questionnaire is an internal draft, not a certification, until it is approved.
+
+## Review questions
 
 1. Why does the storage answer say no claim about production residency can be made?
    <details><summary>Answer</summary>The only evidence is the course configuration, which is not Northstar's production deployment, and the POC location is not yet approved. Any residency claim would be unsupported and could become a contractual misstatement.</details>
@@ -97,27 +110,3 @@ The other rows follow the same pattern: data processed (redacted, approved sampl
    <details><summary>Answer</summary>The question is about the system the customer will adopt. Production hosting, telemetry, and model sources may all involve third parties; the right answer is that none are assumed by the POC and production needs an inventory.</details>
 4. Why does the document call itself "not a security certification"?
    <details><summary>Answer</summary>It is a draft prepared by the engineering team. Only the customer's security reviewer can approve its technical statements, and only after the open items are closed.</details>
-
-## 6. Pitfalls
-
-| # | Pitfall | Symptom | How the solution avoids it |
-|---|---|---|---|
-| 1 | The deliverable records a conclusion without its customer evidence | Another engineer cannot reproduce the sizing or recommendation. | each answer names its control or artifact (SBOM, runbook, access model) |
-| 2 | An assumption is written as a measured fact | The engagement plan can promise capacity or security the system has not demonstrated. | implemented controls and remaining configuration are stated separately; no residency or price claim without evidence |
-| 3 | The next owner and decision gate are missing | Work stalls at handoff even when the technical work is complete. | a "Status / owner" column, numbered open items, and approvers for security and commercial statements |
-
-## 7. Where it's used next
-
-| Direction | Module | Connection |
-|---|---|---|
-| Back | `field.05` | the data flow and rollback this review answers questions about |
-| Back | `craft.17` | the threat model behind the data and access answers |
-| Back | `craft.18` | the SBOMs behind the dependency answer |
-| Back | `ethics.05` | the usage policy behind the data-handling answers |
-| Forward | `field.07` | the handoff relies on the incident and access answers |
-
-## Going further
-
-| Resource | What to inspect |
-|---|---|
-| [Mock engagement sequence](README.md) | Carry the evidence and open decisions into the next customer-facing artifact in the sequence. |

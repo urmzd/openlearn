@@ -1,48 +1,28 @@
-# Messaging & Distributed Queueing
+# Messaging and Distributed Queueing
 
-## Overview
+Most services start life synchronous: a request arrives, the handler does the work, and the response goes back on the same connection. That works until the work is slow, bursty, or unreliable, and then the caller is stuck waiting on whatever is slowest downstream. Asynchronous messaging breaks that coupling. It separates *receiving* a request from *doing* it: a producer drops a message into a broker and walks away, and a pool of workers consumes at its own pace. That one indirection is behind most of the event-driven architectures you will meet in practice.
 
-- **Primary references**:
-  - [Apache Kafka documentation](https://kafka.apache.org/documentation/) (free) -- the Design, Implementation, and Replication sections
-  - [The Log: What every software engineer should know](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying-abstraction) by Jay Kreps (free) -- why a log subsumes queues and pub-sub
-  - *Designing Data-Intensive Applications* (Kleppmann) Ch 11 "Stream Processing" -- recommended
-- **Supplementary**:
-  - [Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/) -- Competing Consumers, Publish-Subscribe, Dead Letter Channel
-  - [The Raft paper: *In Search of an Understandable Consensus Algorithm*](https://raft.github.io/raft.pdf) (free) -- the consensus behind KRaft and Redpanda
-  - [ZooKeeper: Wait-free coordination for Internet-scale systems](https://www.usenix.org/legacy/event/atc10/tech/full_papers/Hunt.pdf) (free) -- ZAB and the coordinator Kafka shed
-  - [KIP-500](https://cwiki.apache.org/confluence/display/KAFKA/KIP-500%3A+Replace+ZooKeeper+with+a+Self-Managed+Metadata+Quorum) (KRaft), [KIP-405](https://cwiki.apache.org/confluence/display/KAFKA/KIP-405%3A+Kafka+Tiered+Storage) (tiered storage), [KIP-932](https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka) (share groups) (all free)
-- **Prerequisites**: [System Design](../../systems/01-system-design/)
-- **Estimated time**: 1-2 weeks at 8-10 hrs/week
+This chapter is about the dynamics of that indirection. It begins with the deepest dividing line in the space, the difference between a queue that deletes messages on acknowledgement and a log that retains and replays them, and then works outward: who controls the pace of delivery (push, pull, or long-poll), how one stream can feed both a worker pool and many independent subscribers, where the crash window sits that makes "exactly-once" so slippery, and the two formulas (Little's Law and backpressure as an integral) that explain most queueing intuition. It closes with the question every broker cluster must answer, who owns the metadata, and the three answers the industry has given: ZooKeeper, KRaft, and Redpanda.
 
-## Key Takeaways
+The running example is **Streamflow**, the event-driven order platform that threads through this book. Its API produces to an `orders` topic; worker pools and analytics jobs consume from it. The containers you scheduled in [Containers, Kubernetes, and Workloads](../01-containers-kubernetes/README.md) are the consumers you will reason about here.
 
-- **Async messaging decouples *receiving* a request from *doing* it.** A producer drops a message; a worker pool consumes at its own pace. That single move buys elasticity, resilience, and load-leveling.
-- **A queue deletes on ack; a log retains and replays.** Kafka is a partitioned, replicated *log* where consumers own their offset -- the broker is dumb. This is the deepest dividing line in the whole space.
-- **Pull gives backpressure for free.** A pull consumer (`poll()`) never receives more than it asked for; the surplus stays in the log as lag. A push broker can overwhelm a slow consumer unless you bolt on prefetch limits.
-- **Consumer groups give you both classic patterns at once**: competing consumers *within* a group, publish-subscribe *across* groups.
-- **"Exactly-once" is mostly idempotency.** The default is at-least-once; the math says the crash window between work and commit is unavoidable, so design handlers to tolerate duplicates.
-- **Someone has to own the metadata.** ZooKeeper (ZAB) did it externally; KRaft (Raft) folds it into Kafka itself; Redpanda runs Raft per partition with no JVM and no coordinator at all.
+> **Learning objectives**
+> - Explain the difference between a delete-on-ack queue and a retained, replayable log, and choose between them for a given workload.
+> - Explain why pull-based consumption gives backpressure for free, and what push brokers must add to match it.
+> - Show how Kafka consumer groups provide both competing consumers and publish-subscribe at once.
+> - Locate the crash window behind at-least-once delivery and design handlers that tolerate duplicates through idempotency.
+> - Use Little's Law and the lag integral to reason about in-flight messages, latency, and sustainable throughput.
+> - Compare ZooKeeper (ZAB), Kafka KRaft (Raft), and Redpanda (Raft per partition) as answers to cluster coordination.
 
-## How to Study
+## Before you begin
 
-- Run [`code/backpressure_demo.py`](code/backpressure_demo.py) (`python3`, no deps) and [`code/backpressure-demo.go`](code/backpressure-demo.go) (`go run`). Watch the push model drop messages while the pull model converts the surplus into lag -- nothing lost.
-- Run [`code/raft_election.go`](code/raft_election.go) (`go run`) and trace terms and votes. Confirm a minority partition can never elect a leader. This is the KRaft controller quorum in miniature.
-- Stand up a single-broker [Redpanda](https://redpanda.com/) (no ZooKeeper, Kafka-API compatible) and a vanilla [Kafka in KRaft mode](https://kafka.apache.org/documentation/#kraft). Produce 1000 messages to `orders`; start a second consumer *group* and replay from offset 0 -- prove fan-out and retention.
-- For the operational side of consuming (rebalancing, DLQs, sizing the pool), continue to [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/).
+You should be comfortable with the replication, quorum, and consensus vocabulary from [System Design](../../systems/01-system-design/README.md) in *Systems and Architecture*. Knowing how a workload is deployed and scaled on Kubernetes, from [Containers, Kubernetes, and Workloads](../01-containers-kubernetes/README.md), helps when lag-based autoscaling comes up.
 
----
+The chapter ships three small programs you can run while you read. [`code/backpressure_demo.py`](code/backpressure_demo.py) (plain `python3`, no dependencies) and its Go twin [`code/backpressure-demo.go`](code/backpressure-demo.go) (`go run`) simulate a push and a pull consumer side by side: watch the push model drop messages while the pull model converts the surplus into lag, with nothing lost. [`code/raft_election.go`](code/raft_election.go) (`go run`) runs a Raft leader election; trace the terms and votes and confirm that a minority partition can never elect a leader. That is the KRaft controller quorum in miniature. If you want hands-on time with a real broker, stand up a single-broker [Redpanda](https://redpanda.com/) (no ZooKeeper, Kafka-API compatible) and a vanilla [Kafka in KRaft mode](https://kafka.apache.org/documentation/#kraft), produce 1000 messages to `orders`, then start a second consumer *group* and replay from offset 0. You will have proved fan-out and retention for yourself.
 
-# Concepts & Techniques
+## Why decouple at all
 
-## Core Insight
-
-Asynchronous messaging decouples *receiving* a request from *doing* it. A producer appends a message to a log or queue and walks away; a pool of workers consumes at its own pace. That one indirection buys three properties at once:
-
-- **Elasticity** -- scale producers and consumers independently; add workers to drain faster.
-- **Resilience** -- a worker crash doesn't lose the message; it stays in the broker until durably processed.
-- **Load-leveling** -- a traffic spike becomes a *longer queue*, not a meltdown. The broker absorbs the burst; the workers catch up.
-
-Every design decision below -- queue vs log, push vs pull, competing vs fan-out, the delivery semantics -- is a different answer to "how does a message get from a producer to the worker that handles it, and what happens when something fails along the way?"
+A producer appends a message to a log or queue and moves on; a pool of workers consumes at its own pace. That buys three properties at once. The first is **elasticity**: you scale producers and consumers independently, and adding workers drains the backlog faster. The second is **resilience**: a worker crash does not lose the message, because it stays in the broker until it has been durably processed. The third is **load-leveling**: a traffic spike becomes a *longer queue* rather than a meltdown. The broker absorbs the burst, and the workers catch up.
 
 ```mermaid
 graph LR
@@ -53,18 +33,17 @@ graph LR
     B -.->|spike absorbed as backlog| LAG["lag = log-end − committed offset"]
 ```
 
-## 1. Queue vs log: delete-on-ack vs retained-and-replayable
+Every design decision in the rest of the chapter (queue versus log, push versus pull, competing versus fan-out, the delivery semantics) is a different answer to one question: how does a message get from a producer to the worker that handles it, and what happens when something fails along the way?
 
-The classic message **queue** (RabbitMQ, Amazon SQS, JMS) and the **log** (Kafka, Redpanda, Pulsar) sit at opposite ends of one axis: *who remembers what has been consumed.*
+## Queue versus log
 
-- **Classic queue -- delete on ack.** The broker holds each message until a consumer acknowledges it, then *deletes* it. The broker tracks per-message state (in-flight, acked, redelivered). Once gone, a message cannot be re-read. Great for task distribution; terrible for "let three independent systems each read the same stream."
-- **Log -- retained and replayable.** Kafka keeps every message for a **retention window** (time or size), *regardless of who has read it*. A partition is an ordered, append-only sequence; each message gets a monotonic **offset**. The broker is dumb: it does not track per-consumer progress. Instead **each consumer group records its own committed offset** ("I've processed up to offset N").
+The classic message **queue** (RabbitMQ, Amazon SQS, JMS) and the **log** (Kafka, Redpanda, Pulsar) sit at opposite ends of one axis: who remembers what has been consumed.
 
-The consequences cascade:
+A classic queue deletes on acknowledgement. The broker holds each message until a consumer acknowledges it, then deletes it, and along the way it tracks per-message state: in flight, acknowledged, redelivered. Once a message is gone, nobody can read it again. That is ideal for distributing tasks and poor for letting three independent systems each read the same stream.
 
-- **Replay** -- a new consumer group resets to offset 0 and reprocesses history. Impossible in a delete-on-read queue.
-- **Multiple independent readers** -- N groups read the same partition at N different positions, free of charge.
-- **The broker scales trivially** -- it appends and serves byte ranges; it does not maintain a per-message acked/unacked set.
+A log retains and replays. Kafka keeps every message for a **retention window**, bounded by time or size, regardless of who has read it. A partition is an ordered, append-only sequence, and each message gets a monotonic **offset**. The broker is deliberately dumb: it does not track per-consumer progress. Instead, **each consumer group records its own committed offset**, which amounts to saying "I have processed up to offset N."
+
+The consequences cascade from that single choice. A new consumer group can reset to offset 0 and **replay** history, which is impossible in a delete-on-read queue. Any number of groups can read the same partition at different positions for free, so **multiple independent readers** come at no extra cost. And the broker **scales trivially**, because it only appends and serves byte ranges; it never maintains a per-message set of acknowledged and unacknowledged messages. The table below lines up the differences.
 
 | Dimension | Classic queue (SQS, RabbitMQ) | Log (Kafka, Redpanda) |
 |-----------|-------------------------------|------------------------|
@@ -74,17 +53,19 @@ The consequences cascade:
 | Multiple readers of same data | Needs fan-out copies | Native (one group per reader) |
 | Ordering | Per-queue, weak (SQS FIFO is the exception) | Strict per-partition |
 
-This is also the **data-engineering** view of Kafka -- the *replayable log* is what makes Kappa architecture possible. See [Batch & Streaming](../../data-engineering/03-batch-streaming/) for log compaction, watermarks, and stream processing built on top; we keep the messaging-dynamics frame here and don't duplicate it.
+The replayable log is also what makes the Kappa architecture possible, which is the data-engineering view of the same Kafka. Log compaction, watermarks, and the stream processing built on top are covered in [Batch and Streaming Processing](../../data-engineering/03-batch-streaming/README.md) in *Data Engineering*; this chapter keeps to the messaging dynamics and does not repeat that material.
 
-## 2. Push vs pull (and long-polling): why pull gives free backpressure
+## Push, pull, and long-polling
 
-Who controls the *pace* of delivery?
+Once you know where messages live, the next question is who controls the pace at which they are delivered.
 
-- **Push** (RabbitMQ, SQS via callbacks, webhooks): the broker sends messages to the consumer as they arrive. Fast when the consumer keeps up; **dangerous when it doesn't** -- the broker can outrun a slow consumer. You defend with **prefetch / credit limits** (RabbitMQ `prefetch_count`, the consumer says "send me at most K unacked").
-- **Pull** (Kafka): the consumer calls `poll()` and asks for the next batch *when it is ready*. It never receives more than it requested.
-- **Long-polling** (SQS `ReceiveMessage` with `WaitTimeSeconds`): pull-with-waiting. The consumer asks, and the broker *holds the request open* until a message appears or the timeout fires. It is technically pull, but operationally it behaves like a responsive push work-queue: low latency without busy-spinning.
+With **push** (RabbitMQ, SQS via callbacks, webhooks), the broker sends messages to the consumer as they arrive. That is fast when the consumer keeps up and dangerous when it does not, because the broker can outrun a slow consumer. The defense is a **prefetch or credit limit**: with RabbitMQ's `prefetch_count`, for example, the consumer says "send me at most K unacknowledged messages."
 
-**Why pull gives backpressure for free.** Backpressure is the system telling a fast producer "slow down, the consumers are behind." With pull, this is automatic and requires no protocol: a slow worker simply calls `poll()` less often, so it pulls fewer messages, so its **consumer lag** (log-end offset − committed offset) grows. Nothing is pushed onto it; nothing overflows; nothing is dropped. The lag *is* the backpressure signal, and it is exactly what your autoscaler watches (KEDA on lag -- [Containers, Kubernetes & Workloads](../01-containers-kubernetes/)). With push you must *build* backpressure (prefetch windows, flow-control credits) or risk a consumer being buried.
+With **pull** (Kafka), the consumer calls `poll()` and asks for the next batch when it is ready. It never receives more than it requested.
+
+**Long-polling** (SQS `ReceiveMessage` with `WaitTimeSeconds`) is pull with waiting. The consumer asks, and the broker holds the request open until a message appears or the timeout fires. Technically it is pull, but operationally it behaves like a responsive push work queue: low latency without busy-spinning.
+
+The important property is that pull gives you **backpressure for free**. Backpressure is the system telling a fast producer "slow down, the consumers are behind." With pull, this happens without any protocol at all. A slow worker simply calls `poll()` less often, so it pulls fewer messages, so its **consumer lag** (log-end offset minus committed offset) grows. Nothing is pushed onto it, nothing overflows, and nothing is dropped. The lag *is* the backpressure signal, and it is exactly what your autoscaler watches when KEDA scales a consumer group on lag, as described in [Containers, Kubernetes, and Workloads](../01-containers-kubernetes/README.md). With push you must *build* backpressure out of prefetch windows or flow-control credits, or risk burying a consumer. Here is how the three models compare.
 
 | | **Pull (Kafka)** | **Push (RabbitMQ, webhooks)** | **Long-poll (SQS)** |
 |--|------------------|-------------------------------|---------------------|
@@ -95,19 +76,13 @@ Who controls the *pace* of delivery?
 | Ordering | Per-partition | Usually none | None (FIFO queues excepted) |
 | Best for | High-throughput streams, replay, many readers | Per-message ack, simple work queues | Decoupled work queues at AWS |
 
-Run [`code/backpressure_demo.py`](code/backpressure_demo.py) / [`code/backpressure-demo.go`](code/backpressure-demo.go) to see the push model drop the surplus while the pull model retains it as lag.
+Run [`code/backpressure_demo.py`](code/backpressure_demo.py) or [`code/backpressure-demo.go`](code/backpressure-demo.go) to see this happen: the push model drops the surplus while the pull model retains it as lag.
 
-## 3. Competing consumers vs publish-subscribe
+## Competing consumers and publish-subscribe
 
-Two foundational distribution patterns (Enterprise Integration Patterns):
+Pace is one dimension; fan-out is another. *Enterprise Integration Patterns* names two foundational ways to distribute messages. With **competing consumers** (a work queue), each message goes to exactly one worker in a pool, and adding workers spreads the load. This is how you scale processing. With **publish-subscribe** (fan-out), each message goes to every subscriber. This is how independent systems react to the same event: one service takes the payment, one sends the email, one updates analytics.
 
-- **Competing consumers (work queue)** -- each message goes to *exactly one* worker in a pool. Adding workers spreads the load. This is how you *scale processing*.
-- **Publish-subscribe (fan-out)** -- each message goes to *every* subscriber. This is how *independent systems* react to the same event (one pays, one emails, one updates analytics).
-
-Kafka does **both at once** through **consumer groups**:
-
-- *Within* one group, partitions are divided among members -- **competing consumers**. Each partition is owned by exactly one consumer in the group, so each message is handled once by the group.
-- *Across* groups, every group sees every message -- **publish-subscribe**. The `order-workers` group and an independent `analytics` group both read all of `orders`, at their own offsets.
+Kafka does both at once through **consumer groups**. Within one group, partitions are divided among the members, which gives you competing consumers: each partition is owned by exactly one consumer in the group, so the group handles each message once. Across groups, every group sees every message, which gives you publish-subscribe. In Streamflow, the `order-workers` group and an independent `analytics` group both read all of `orders`, each at its own offsets.
 
 ```mermaid
 graph LR
@@ -124,15 +99,17 @@ graph LR
     P0-->A0; P1-->A0; P2-->A0; P3-->A0
 ```
 
-(The *operational* corollary -- a 5th worker in `order-workers` sits idle because there is no partition left to own -- lives in [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/), where partition count = parallelism ceiling.)
+There is an operational corollary you should see coming: a fifth worker in `order-workers` would sit idle, because there is no partition left for it to own. Partition count is the parallelism ceiling. That limit, together with rebalancing and pool sizing, is worked through in the [partitioned consumers](../../ai-platform-engineering/05-durable-orchestration-and-workers/README.md#partitioned-consumers) part of [Durable Orchestration and Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) in *AI Platform Engineering*, with real Kafka consumers in its [Kafka consumers side quest](../../ai-platform-engineering/05-durable-orchestration-and-workers/side-quests/kafka-consumers/). When you partition, key messages by entity (per order, per user) whenever per-entity ordering matters, since ordering is guaranteed only within a partition.
 
-## 4. Delivery semantics: where the crash window is
+## Delivery semantics and the crash window
 
-Let the worker's job be: (1) `poll` a message at offset *n*, (2) do durable work *W*, (3) `commit` offset *n*. The semantics depend entirely on the *order* of (2) and (3) and *where a crash lands*.
+Now consider what happens when a worker fails. Let the worker's job be three steps: (1) `poll` a message at offset $n$, (2) do durable work $W$, and (3) `commit` offset $n$. The delivery semantics depend entirely on the order of steps 2 and 3 and on where a crash lands.
 
-- **At-most-once** -- commit *before* work: `poll → commit → W`. If the crash lands after commit but before *W* completes, the message is *lost* (offset already advanced, work never durably done). No duplicates, possible loss. Rarely acceptable.
-- **At-least-once** -- commit *after* work: `poll → W → commit` (the default, correct choice). The **crash window** is the interval between *W* finishing and *commit* landing. A crash there leaves the offset un-advanced, so the message is **redelivered** → **duplicate**. No loss, possible duplicates.
-- **"Exactly-once"** -- Kafka transactions plus the idempotent producer give exactly-once *within Kafka-to-Kafka* processing (consume → transform → produce, atomically tied to the offset commit). But the instant your handler touches an *external* system (a payment gateway, an email send), that external effect is outside the transaction and you are back to at-least-once.
+**At-most-once** commits before the work: `poll → commit → W`. If the crash lands after the commit but before $W$ completes, the message is lost, because the offset has already advanced and the work was never durably done. You get no duplicates but possible loss, which is rarely acceptable.
+
+**At-least-once** commits after the work: `poll → W → commit`. This is the default and the correct choice. Its **crash window** is the interval between $W$ finishing and the commit landing. A crash there leaves the offset un-advanced, so the message is **redelivered**, and you get a **duplicate**. You get no loss but possible duplicates.
+
+**"Exactly-once"** is the most misunderstood of the three. Kafka transactions plus the idempotent producer do give exactly-once *within Kafka-to-Kafka processing*: consume, transform, and produce, atomically tied to the offset commit. But the instant your handler touches an external system, such as a payment gateway or an email send, that external effect is outside the transaction and you are back to at-least-once.
 
 ```mermaid
 sequenceDiagram
@@ -145,53 +122,53 @@ sequenceDiagram
     W->>K: commit offset n
 ```
 
-**The real fix is idempotency**: make applying the same message twice equal applying it once (dedupe on a natural key, conditional writes, `SETNX` on an idempotency key). The *operational* mechanics -- the idempotency key, the transactional outbox, DLQs, retry topics -- are handled in [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/). Here you only need the conceptual frame: **assume at-least-once everywhere; the duplicate is not a bug, it is the contract.**
+The real fix is **idempotency**: make applying the same message twice equal applying it once, by deduplicating on a natural key, using conditional writes, or doing a `SETNX` on an idempotency key. The operational mechanics (the idempotency key, the transactional outbox, dead-letter queues, retry topics) are covered in [Durable Orchestration and Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/README.md). Here you need only the conceptual frame.
 
-## 5. The math: Little's Law and backpressure as an integral
+> **Warning:** Assume at-least-once delivery everywhere. The duplicate is not a bug; it is the contract. A handler that is not idempotent will eventually double-charge, double-send, or double-count.
 
-Two formulas explain almost all queueing intuition.
+## The math: Little's Law and backpressure as an integral
+
+With the mechanics in place, two formulas explain almost all queueing intuition.
 
 **Little's Law** relates the three quantities you actually measure:
 
 $$ L = \lambda W $$
 
-where **L** is the average number of in-flight (un-acked / un-committed) messages, **λ** is the arrival rate, and **W** is the average time a message spends in the system (latency). It holds for *any* stable system regardless of arrival distribution or service discipline. Read it three ways:
+Here $L$ is the average number of in-flight (unacknowledged or uncommitted) messages, $\lambda$ is the arrival rate, and $W$ is the average time a message spends in the system, its latency. The law holds for *any* stable system, regardless of arrival distribution or service discipline, and you can read it three ways. Fix the throughput $\lambda$ and halve the latency $W$, and you halve the in-flight count $L$, so fewer messages sit parked in memory unacknowledged. Observe $L$ and $\lambda$, and you can infer $W = L / \lambda$ without timing anything. And if a worker pool of $c$ consumers each holds up to $p$ in-flight messages, then $L \le c \cdot p$, so the maximum sustainable arrival rate is $\lambda \le c \cdot p / W$.
 
-- Fix throughput λ; halve latency W → halve in-flight count L (fewer messages parked in memory / un-acked).
-- Observe L and λ; infer W = L / λ without timing anything.
-- A worker pool of *c* consumers each holding up to *p* in-flight messages caps L ≤ *c·p*; so the max sustainable arrival rate is λ ≤ *c·p / W*.
-
-**Backpressure as an integral.** Queue depth (consumer lag) is the running area between the arrival and service curves:
+**Backpressure as an integral** describes how the backlog evolves. Queue depth (consumer lag) is the running area between the arrival and service curves:
 
 $$ \text{lag}(t) = \int_0^t \big(\lambda(s) - \mu(s)\big)\, ds $$
 
-where **μ** is the service rate (how fast the pool drains). When λ > μ, lag *accumulates*; when μ > λ, it *drains*. A spike is a temporary λ > μ that integrates into a lag hump and pays back down later -- this is load-leveling made quantitative. A pull consumer guarantees μ is set by the consumer, so lag can only grow as fast as the *real* shortfall; nothing is forced on a worker beyond μ. [`code/backpressure_demo.py`](code/backpressure_demo.py) computes exactly this integral as the running backlog.
+Here $\mu$ is the service rate, how fast the pool drains. When $\lambda > \mu$, lag accumulates; when $\mu > \lambda$, it drains. A spike is a temporary $\lambda > \mu$ that integrates into a hump of lag and pays back down later. That is load-leveling made quantitative. A pull consumer guarantees that $\mu$ is set by the consumer, so lag can grow only as fast as the real shortfall, and nothing is forced on a worker beyond $\mu$. [`code/backpressure_demo.py`](code/backpressure_demo.py) computes exactly this integral as its running backlog.
 
-## 6. Coordination & metadata: ZooKeeper vs KRaft vs Redpanda
+## Coordination and metadata: ZooKeeper, KRaft, and Redpanda
 
-A cluster of brokers needs a single, agreed-upon answer to "who is the controller, which broker leads partition *p*, what is the current ISR (in-sync replica set)?" That metadata must be **linearizable** -- everyone must agree, and it must survive node failure. This is a consensus problem.
+Everything so far assumed the broker cluster agrees on its own shape. It has to: a cluster of brokers needs a single, agreed answer to "who is the controller, which broker leads partition $p$, and what is the current ISR (in-sync replica set)?" That metadata must be **linearizable**, meaning everyone agrees on it, and it must survive node failure. This is a consensus problem, and the industry has answered it three ways.
 
-**ZooKeeper (ZAB atomic broadcast).** Classic Kafka stored cluster metadata in an *external* ZooKeeper ensemble. ZooKeeper runs **ZAB (ZooKeeper Atomic Broadcast)** -- a primary-backup protocol: one leader sequences all writes and atomically broadcasts them to followers; a quorum must ack before commit. Kafka's controller watched ZooKeeper znodes and propagated changes to brokers. It works, but: a *second distributed system to operate*, metadata changes bottlenecked through watches, and partition-count scaling limited by how fast metadata could propagate (tens of thousands of partitions before pain).
+### ZooKeeper and ZAB
 
-**Kafka KRaft (Raft-based controller quorum).** [KIP-500](https://cwiki.apache.org/confluence/display/KAFKA/KIP-500%3A+Replace+ZooKeeper+with+a+Self-Managed+Metadata+Quorum) replaced ZooKeeper with **KRaft**: a dedicated quorum of controller nodes that run **Raft** and store all cluster metadata in an internal `__cluster_metadata` log. The Raft leader is the active controller; metadata is just another replicated log that brokers *tail* (pull!) to learn the current state.
+Classic Kafka stored cluster metadata in an *external* ZooKeeper ensemble. ZooKeeper runs **ZAB (ZooKeeper Atomic Broadcast)**, a primary-backup protocol in which one leader sequences all writes and atomically broadcasts them to followers, and a quorum must acknowledge before a write commits. Kafka's controller watched ZooKeeper znodes and propagated changes to the brokers. It works, but it has costs: a second distributed system to operate, metadata changes bottlenecked through watches, and partition counts limited by how fast metadata could propagate (tens of thousands of partitions before it became painful).
 
-- **Controller election** is Raft leader election: candidates bump a **term**, request votes, and a **majority quorum** elects exactly one leader per term (run [`code/raft_election.go`](code/raft_election.go) to see this).
-- **Metadata propagation** becomes log replication -- brokers replay the metadata log instead of reacting to ZK watches, so failover is faster and recovery is just "catch up the log."
-- **Why removing ZK matters**: one system to run instead of two; metadata as a log scales to *millions* of partitions; faster controller failover; simpler operations and a smaller failure surface. **ZooKeeper removal completed in Apache Kafka 4.0** -- KRaft is now the only mode.
+### Kafka KRaft
 
-**Redpanda (C++, thread-per-core, Raft per partition).** A clean-room, Kafka-API-compatible rewrite that takes the consensus idea further:
+[KIP-500](https://cwiki.apache.org/confluence/display/KAFKA/KIP-500%3A+Replace+ZooKeeper+with+a+Self-Managed+Metadata+Quorum) replaced ZooKeeper with **KRaft**: a dedicated quorum of controller nodes that run **Raft** and store all cluster metadata in an internal `__cluster_metadata` log. The Raft leader is the active controller, and metadata becomes just another replicated log that brokers *tail* (pull, again) to learn the current state.
 
-- **No JVM, no ZooKeeper, no separate coordinator.** Written in C++ on the [Seastar](https://seastar.io/) framework with a **thread-per-core (shard-per-core)** model -- each CPU core owns a slice of partitions and its own memory, avoiding lock contention and GC pauses.
-- **Raft per partition.** Instead of one external coordinator, *every partition* is its own Raft group managing its own replication and leader. Consensus is embedded everywhere rather than centralized.
-- The result is lower tail latency and a single binary -- the strongest contrast to the JVM+ZooKeeper lineage.
+Controller election is Raft leader election. Candidates bump a **term**, request votes, and a **majority quorum** elects exactly one leader per term; [`code/raft_election.go`](code/raft_election.go) lets you watch this happen. Metadata propagation becomes log replication: brokers replay the metadata log instead of reacting to ZooKeeper watches, so failover is faster and recovery is simply "catch up the log."
 
-**Frontier and contrasting architectures:**
+Removing ZooKeeper matters for four reasons. You run one system instead of two. Metadata as a log scales to *millions* of partitions. Controller failover is faster. And operations are simpler, with a smaller failure surface. ZooKeeper removal was completed in Apache Kafka 4.0, so KRaft is now the only mode.
 
-- **KIP-932 share groups ("queues for Kafka")** -- adds *queue-like* competing-consumer semantics with per-message acknowledgement *on top of* the log, decoupling consumer count from partition count. This directly attacks the "partition = parallelism ceiling" limit from the worker side.
-- **KIP-405 tiered storage** -- offloads cold log segments to object storage (S3) while hot data stays on local disk, making effectively-infinite retention cheap and decoupling storage from broker disk.
-- **Apache Pulsar (the contrasting architecture)** -- separates *serving* (stateless brokers) from *storage* ([Apache BookKeeper](https://bookkeeper.apache.org/) segment store). Brokers hold no data, so they scale and rebalance independently of storage; segments stripe across bookies. It also offers native queue *and* stream semantics. The architectural opposite of Kafka's broker-owns-its-partitions model, and worth knowing as the counterexample.
+### Redpanda
 
-## Technique Catalog
+Redpanda is a clean-room, Kafka-API-compatible rewrite that takes the consensus idea further. It has no JVM, no ZooKeeper, and no separate coordinator. It is written in C++ on the [Seastar](https://seastar.io/) framework with a **thread-per-core (shard-per-core)** model: each CPU core owns a slice of partitions and its own memory, which avoids lock contention and garbage-collection pauses. And instead of one coordinator, it runs **Raft per partition**: every partition is its own Raft group managing its own replication and leader, so consensus is embedded everywhere rather than centralized. The result is lower tail latency and a single binary, the strongest contrast to the JVM-plus-ZooKeeper lineage.
+
+### The frontier and the counterexample
+
+Three further developments are worth knowing. **KIP-932 share groups**, "queues for Kafka," add queue-like competing-consumer semantics with per-message acknowledgement *on top of* the log, decoupling consumer count from partition count. That directly attacks the partition-equals-parallelism ceiling from the worker side. **KIP-405 tiered storage** offloads cold log segments to object storage such as S3 while hot data stays on local disk, which makes effectively infinite retention cheap and decouples storage from broker disk. And **Apache Pulsar** is the contrasting architecture. It separates *serving* (stateless brokers) from *storage* (the [Apache BookKeeper](https://bookkeeper.apache.org/) segment store). Brokers hold no data, so they scale and rebalance independently of storage, and segments stripe across bookies. Pulsar also offers native queue *and* stream semantics. It is the architectural opposite of Kafka's broker-owns-its-partitions model, and worth knowing as the counterexample.
+
+## Choosing a technique
+
+The chapter's ideas reduce to a set of choices, each with a situation where it is the right one. The table collects them for quick reference.
 
 | Technique | When to apply |
 |-----------|---------------|
@@ -209,23 +186,53 @@ A cluster of brokers needs a single, agreed-upon answer to "who is the controlle
 | Share groups (KIP-932) | Queue semantics + parallelism beyond partition count |
 | Pulsar (broker/storage split) | Independent scaling of serving vs storage |
 
-## Connections to Other Tracks
+## Where this leads
 
-| Concept | Connected Track | How |
-|---------|-----------------|-----|
-| The replayable log, stream processing | [Batch & Streaming](../../data-engineering/03-batch-streaming/) | The data-engineering view of the same Kafka (watermarks, compaction, Kappa) |
-| Consuming, rebalancing, DLQs, sizing | [Distributed Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/) | The operational worker side of these dynamics |
-| Lag-based autoscaling | [Containers, Kubernetes & Workloads](../01-containers-kubernetes/) | KEDA scales a consumer group on lag |
-| Raft, ZAB, quorums, linearizability | [System Design](../../systems/01-system-design/) | Consensus and replicated-state-machine fundamentals |
-| Delivery semantics as invariants | [The Testing Mentality](../../software-craftsmanship/03-testing-mentality/) | "Exactly-once is idempotency" is a property to test |
+The consuming side of these dynamics (rebalancing, dead-letter queues, sizing the pool) continues in [Durable Orchestration and Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) in *AI Platform Engineering*. The data-engineering view of the same Kafka, with watermarks, compaction, and Kappa, is in [Batch and Streaming Processing](../../data-engineering/03-batch-streaming/README.md). Lag-based autoscaling with KEDA lives in [Containers, Kubernetes, and Workloads](../01-containers-kubernetes/README.md). The consensus and replicated-state-machine fundamentals behind Raft, ZAB, quorums, and linearizability are in [System Design](../../systems/01-system-design/README.md). And "exactly-once is idempotency" is a property you can test, which [The Testing Mentality](../../software-craftsmanship/03-testing-mentality/README.md) in *Software Craftsmanship* teaches you to do. The [Apache stack](../05-apache-stack/README.md) chapter later in this book places Kafka and Pulsar on the wider map.
 
-## Company Relevance
+These ideas show up across the industry. LinkedIn created Kafka and runs it at trillions of messages per day, which is where the log as a unifying abstraction came from. Confluent, the company built around Kafka, drove KRaft and tiered storage. Redpanda Data builds the Kafka-API-compatible C++ engine with thread-per-core and Raft per partition. Amazon offers SQS and SNS (queue plus pub-sub) and MSK (managed Kafka). StreamNative and Yahoo are behind Apache Pulsar and its BookKeeper-backed broker/storage split. For almost any backend or data role, async messaging behind a log is the default architecture, so queue versus log, push versus pull, and delivery semantics are core vocabulary.
 
-| Company | How This Appears | Focus |
-|---------|------------------|-------|
-| LinkedIn | Created Kafka; runs it at trillions of messages/day | The log as a unifying abstraction |
-| Confluent | The company built around Kafka; drove KRaft and tiered storage | Log internals, exactly-once, KRaft |
-| Redpanda Data | Kafka-API-compatible C++ engine, no JVM/ZooKeeper | Thread-per-core, Raft per partition |
-| Amazon | SQS/SNS (queue + pub-sub), MSK (managed Kafka) | Push/long-poll work queues at scale |
-| StreamNative / Yahoo | Apache Pulsar (BookKeeper-backed) | Broker/storage separation, unified queue+stream |
-| Any backend/data role | Async messaging behind a log is the default architecture | Queue-vs-log, push-vs-pull, delivery semantics |
+### Further reading
+
+- [Apache Kafka documentation](https://kafka.apache.org/documentation/): the Design, Implementation, and Replication sections.
+- [The Log: What every software engineer should know about real-time data's unifying abstraction](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying-abstraction) by Jay Kreps: why a log subsumes queues and pub-sub.
+- *Designing Data-Intensive Applications* (Kleppmann), Chapter 11, "Stream Processing."
+- [Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/): Competing Consumers, Publish-Subscribe, Dead Letter Channel.
+- [*In Search of an Understandable Consensus Algorithm*](https://raft.github.io/raft.pdf): the Raft paper, the consensus behind KRaft and Redpanda.
+- [ZooKeeper: Wait-free coordination for Internet-scale systems](https://www.usenix.org/legacy/event/atc10/tech/full_papers/Hunt.pdf): ZAB and the coordinator Kafka shed.
+- [KIP-500](https://cwiki.apache.org/confluence/display/KAFKA/KIP-500%3A+Replace+ZooKeeper+with+a+Self-Managed+Metadata+Quorum) (KRaft), [KIP-405](https://cwiki.apache.org/confluence/display/KAFKA/KIP-405%3A+Kafka+Tiered+Storage) (tiered storage), and [KIP-932](https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka) (share groups).
+
+## Key terms
+
+- **Log**: an append-only, ordered sequence of messages retained for a window regardless of who has read it.
+- **Offset**: the monotonic position of a message within a partition; consumers record the offset they have processed up to.
+- **Consumer group**: a set of consumers that divide a topic's partitions among themselves; different groups each see every message.
+- **Consumer lag**: log-end offset minus committed offset; the backlog a group still has to process.
+- **Backpressure**: the signal that tells a fast producer the consumers are behind; free under pull, built from prefetch limits under push.
+- **At-least-once delivery**: committing after the work, so a crash between work and commit causes a redelivered duplicate but never a loss.
+- **Idempotency**: the property that applying the same message twice has the same effect as applying it once.
+- **KRaft**: Kafka's Raft-based controller quorum that stores cluster metadata in an internal log and replaced ZooKeeper.
+
+## Summary
+
+- A queue deletes on acknowledgement; a log retains and replays, and its consumers own their offsets. That is the deepest dividing line in messaging.
+- Pull consumption gives backpressure for free: surplus stays in the log as lag, and lag is the signal autoscalers watch.
+- Consumer groups give competing consumers within a group and publish-subscribe across groups, with partition count as the parallelism ceiling.
+- "Exactly-once" is mostly idempotency; the crash window between work and commit makes at-least-once the honest default.
+- Little's Law ($L = \lambda W$) and the lag integral turn queueing intuition into numbers.
+- Someone must own the metadata: ZooKeeper did it externally with ZAB, KRaft folds it into Kafka with Raft, and Redpanda runs Raft per partition with no coordinator at all.
+
+## Review questions
+
+1. Why can a Kafka topic serve both a worker pool and an independent analytics job reading the same messages, when a classic SQS queue cannot do this without copies?
+   <details><summary>Answer</summary>The log retains messages for a retention window regardless of who has read them, and each consumer group tracks its own committed offset. Two groups simply read the same partitions at different positions. A classic queue deletes a message once it is acknowledged, so a second reader would need its own fan-out copy.</details>
+2. A slow pull consumer and a slow push consumer each receive a burst three times larger than they can process. What happens to each?
+   <details><summary>Answer</summary>The pull consumer calls <code>poll()</code> less often, so the surplus stays in the log and shows up as growing consumer lag; nothing is dropped. The push consumer is sent messages faster than it can handle them; without prefetch or credit limits it is overwhelmed and messages can be dropped or pile up in its memory.</details>
+3. A worker polls a message, charges a card, and then commits the offset. Where is the crash window and what is the consequence?
+   <details><summary>Answer</summary>Between the charge completing and the commit landing. A crash there leaves the offset uncommitted, so the message is redelivered and the card can be charged twice. Kafka transactions do not help because the payment gateway is outside the transaction; the fix is an idempotency key the charge path deduplicates on.</details>
+4. A pool of 8 consumers each holds at most 50 in-flight messages, and average processing latency is 0.2 seconds. What is the maximum sustainable arrival rate?
+   <details><summary>Answer</summary>By Little's Law, $L \le c \cdot p = 8 \cdot 50 = 400$, so $\lambda \le c \cdot p / W = 400 / 0.2 = 2000$ messages per second.</details>
+5. Why does a sixth consumer in a group reading a five-partition topic do nothing?
+   <details><summary>Answer</summary>Within a group each partition is owned by exactly one consumer. With five partitions there are only five owners; the sixth consumer has no partition to own and sits idle. Partition count is the parallelism ceiling (KIP-932 share groups aim to lift it).</details>
+6. What did Kafka gain by replacing ZooKeeper with KRaft, and how does Redpanda go further?
+   <details><summary>Answer</summary>KRaft removes a second distributed system, stores metadata as a Raft-replicated log that brokers tail, scales to millions of partitions, and fails over faster. Redpanda drops the JVM and any central coordinator entirely, running a Raft group per partition on a thread-per-core C++ runtime for lower tail latency.</details>

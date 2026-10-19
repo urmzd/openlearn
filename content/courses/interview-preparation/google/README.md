@@ -1,10 +1,23 @@
-# Google Software Engineer Interview Guide
+# Google
 
-Comprehensive preparation for Google SWE roles, with emphasis on full-stack AI/ML infrastructure.
+Google's software engineering interview is the template many other companies copied: several rounds of algorithmic coding on a plain editor, one open-ended system design round, and a behavioral round built around "Googleyness". What makes it hard is not any single trick but the combination of breadth and scale. Problems are drawn from a wide range of topics, you are expected to write correct code without an IDE, and every answer is eventually tested against the follow-up "how does this work with a billion rows?"
 
-## Interview Process Overview
+This chapter prepares you for Google SWE roles with an emphasis on full-stack AI and ML infrastructure. It covers the process and compensation, the themes interviewers assess, the coding rounds with three patterns worth mastering, the system design round with four common prompts and the latency numbers you should know, the Googleyness and leadership round, and the Google-specific AI infrastructure that comes up for ML-focused roles.
 
-Timeline: **4-8 weeks** (notoriously variable), **5-7 rounds**
+> **Learning objectives**
+> - Describe the Google interview loop, including hiring committee and team matching.
+> - Write BFS with extra search state, a constrained sliding window, and a top-K autocomplete trie without an IDE.
+> - Structure a system design answer in six steps and apply it to search, video serving, recommendation, and model serving.
+> - Quote the core latency numbers and use them in estimates.
+> - Answer behavioral questions in STAR form with the intellectual humility Google values.
+
+## Before you begin
+
+The algorithm patterns here assume comfort with graphs, hashing, and heaps. For the distributed systems vocabulary behind the design round, read [Distributed systems](../shared-concepts/distributed-systems.md); for the ML-flavoured designs, read [Full-stack AI](../shared-concepts/full-stack-ai.md) and [ML infrastructure](../shared-concepts/ml-infrastructure.md). The [Google DeepMind](../deepmind/README.md) chapter builds on this one for research-heavy roles.
+
+## The interview process
+
+The process takes four to eight weeks, a range that is notoriously variable, and has five to seven rounds:
 
 | Round | Format | Duration | Focus |
 |-------|--------|----------|-------|
@@ -16,33 +29,19 @@ Timeline: **4-8 weeks** (notoriously variable), **5-7 rounds**
 | Onsite 4 | Behavioral (Googleyness & Leadership) | 45 min | Culture, collaboration, ambiguity |
 | Onsite 5 (optional) | Coding or Design | 45 min | Tiebreaker round |
 
-After interviews: **Hiring Committee review** (1-3 weeks), then **Team Matching** (1-4 weeks). Total timeline can stretch significantly.
+The interviews are not the end. A hiring committee reviews your packet, which takes one to three weeks, and then team matching takes another one to four weeks, so the total timeline can stretch significantly.
 
-## Compensation (L5 Senior, US)
+At L5 (senior) in the US, base salary is about $180-220K, equity is $200-400K per year in GSUs vesting over four years, and the bonus is 15-30% of base. Total compensation is around $400-650K at L5 and $600K-1M or more at L6 (staff).
 
-- **Base**: $180-220K
-- **Equity**: $200-400K/yr (GSUs, vest over 4 years)
-- **Bonus**: $15-30% of base
-- **Total Comp**: ~$400-650K (L5), ~$600K-1M+ (L6 Staff)
+## What Google looks for
 
-## Key Themes
+Five themes shape the loop. Scale is the lens: every solution is evaluated at Google scale, billions of users and petabytes of data, and "how does this work with 1B rows?" is always the follow-up. Coding fluency matters: Google wants clean, compilable code in 20-25 minutes, and wants to see you think in code rather than pseudocode. System design is open-ended, with no single right answer; what is assessed is structured thinking, trade-off analysis, and the ability to go deep when probed. Googleyness is real, meaning interviewers evaluate how you handle ambiguity, disagree respectfully, and navigate without authority. And AI and ML are increasingly central, since Google is an AI-first company; expect ML-flavoured system design such as recommendation systems, search ranking, and model serving.
 
-1. **Scale is the lens** -- Every solution is evaluated at Google scale (billions of users, petabytes of data). "How does this work with 1B rows?" is always the follow-up.
-2. **Coding fluency matters** -- Clean, compilable code in 20-25 minutes. They want to see you think in code, not pseudocode.
-3. **System design is open-ended** -- No single right answer. They want structured thinking, trade-off analysis, and the ability to go deep when probed.
-4. **Googleyness is real** -- They evaluate how you handle ambiguity, disagree respectfully, and navigate without authority.
-5. **AI/ML is increasingly central** -- Google is an AI-first company. Expect ML-flavored system design (recommendation systems, search ranking, model serving).
+## Coding rounds
 
-## Coding Rounds (2-3 rounds)
+There are two or three coding rounds. Each 45-minute session has one or two problems, written in Google Docs or a simple shared editor with no autocomplete and no way to run code. The interviewer expects you to write correct code, not pseudocode, and follow-ups are common: optimise it, handle edge cases, extend it.
 
-### What to Expect
-
-- 1-2 problems per 45-minute session
-- Google Docs or a simple shared editor (no autocomplete, no running code)
-- Interviewer expects you to **write correct code**, not pseudocode
-- Follow-ups are common: optimize, handle edge cases, extend
-
-### Frequency Distribution of Topics
+Topics appear with roughly this frequency, and most have a direct analogue in AI and ML work:
 
 | Topic | Frequency | AI/ML Relevance |
 |-------|-----------|-----------------|
@@ -57,9 +56,11 @@ After interviews: **Hiring Committee review** (1-3 weeks), then **Team Matching*
 | Union-Find | Medium | Clustering, connected components |
 | Concurrency | Medium-High (for infra) | Model serving, request handling |
 
-### Patterns to Master
+Three patterns are worth mastering in detail, because they generalise to many of the reported problems.
 
-#### Graph BFS/DFS with State
+### Graph search with extra state
+
+Many grid and graph problems become simple BFS once you realise that the node is not just a position but a position plus some resource. Here the state is `(row, col, obstacles_remaining)`: you may walk through at most `max_obstacles` blocked cells, and the visited set must include the remaining budget, because reaching the same cell with more budget left is a genuinely different state.
 
 ```python
 from collections import deque
@@ -85,7 +86,11 @@ def shortest_path_with_constraints(grid, start, end, max_obstacles):
     return -1
 ```
 
-#### Sliding Window for Streaming
+Because BFS explores in order of distance, the first time it pops the target it has found the shortest path. The state space is at most `rows * cols * (max_obstacles + 1)`, which bounds both time and memory.
+
+### Sliding window over a stream
+
+The sliding window pattern processes a sequence in one pass by maintaining a running aggregate over a window. In this variant you want the maximum sum of a size-`k` subarray whose elements are all at most `max_val`. An element over the limit cannot be in any valid window, so the window resets just past it.
 
 ```python
 def max_sum_subarray_with_constraint(nums, k, max_val):
@@ -108,7 +113,11 @@ def max_sum_subarray_with_constraint(nums, k, max_val):
     return max_sum if max_sum != float('-inf') else -1
 ```
 
-#### Trie for Autocomplete/Prefix Search
+Each element is added once and removed at most once, so the whole pass is $O(n)$. The function returns `-1` when no valid window exists.
+
+### A trie for autocomplete
+
+The third pattern trades memory for query speed. A trie stores words character by character, and this one also stores, at every node, the top ten results for that prefix. Insertion does a little extra work at each node; autocomplete then just walks the prefix and reads the precomputed list.
 
 ```python
 class TrieNode:
@@ -140,34 +149,28 @@ class AutocompleteTrie:
         return [word for _, word in node.top_results[:k]]
 ```
 
-### Common Google Problems (Reported)
+A query costs $O(|\text{prefix}| + k)$ regardless of how many words share the prefix, which is the property a real autocomplete service needs. Be ready to discuss the cost: memory grows with the number of nodes times ten, and updating a word's score means touching every node on its path.
 
-- **Minimum window substring** -- Sliding window + frequency map
-- **Word ladder** -- BFS on word graph
-- **Course schedule** -- Topological sort (cycle detection in DAG)
-- **Median of two sorted arrays** -- Binary search, O(log(m+n))
-- **Design a rate limiter** -- Sliding window counter or token bucket
-- **Serialize/deserialize binary tree** -- BFS or preorder with null markers
-- **LRU Cache** -- DLL + hashmap (same as Anthropic)
-- **Merge K sorted lists** -- Min-heap
-- **Trapping rain water** -- Two-pointer or stack
-- **Number of islands** -- BFS/DFS flood fill
+### Problems reported from Google interviews
 
-## System Design Round
+These problems are reported often, each with the technique that cracks it:
 
-### Approach (Google-Specific)
+- **Minimum window substring**: sliding window with a frequency map.
+- **Word ladder**: BFS on the word graph.
+- **Course schedule**: topological sort, which is cycle detection in a directed graph.
+- **Median of two sorted arrays**: binary search in $O(\log(m+n))$.
+- **Design a rate limiter**: sliding-window counter or token bucket.
+- **Serialize and deserialize a binary tree**: BFS or preorder with null markers.
+- **LRU cache**: doubly linked list plus hash map, the same problem asked at [Anthropic](../anthropic/README.md).
+- **Merge K sorted lists**: a min-heap.
+- **Trapping rain water**: two pointers or a stack.
+- **Number of islands**: BFS or DFS flood fill.
 
-Google interviewers want to see:
-1. **Requirements gathering** -- Functional and non-functional, with numbers
-2. **API design** -- RESTful endpoints or RPC definitions
-3. **High-level architecture** -- Draw the boxes and arrows
-4. **Data model** -- Schema design, storage choices
-5. **Deep dive** -- Interviewer picks 1-2 areas to probe
-6. **Scale and reliability** -- How does it handle 10x traffic? What fails?
+## The system design round
 
-### Common Google System Design Topics
+Google interviewers want to see a particular arc. Start by gathering requirements, functional and non-functional, with numbers. Then design the API, as RESTful endpoints or RPC definitions. Draw the high-level architecture, the boxes and arrows, and the data model, with schema design and storage choices. The interviewer will then pick one or two areas for a deep dive. Finish on scale and reliability: how the design handles 10x traffic and what fails. Four prompts are common.
 
-#### Design Google Search
+### Google Search
 
 ```
 [Query] --> [Web Server] --> [Query Parser]
@@ -181,21 +184,15 @@ Google interviewers want to see:
                           [Result Aggregation] --> [Response]
 ```
 
-Key points:
-- **Inverted index** sharded by document ID or term
-- **PageRank** precomputed offline, used as a ranking signal
-- **Query understanding**: spelling correction, query expansion, entity recognition
-- **Freshness**: real-time index for recent content, batch index for historical
-- **Caching**: Multi-tier (CDN, query cache, result cache)
+The core is an inverted index sharded either by document ID or by term. PageRank is precomputed offline and used as one ranking signal. Before the index is queried, query understanding applies spelling correction, query expansion, and entity recognition. Freshness comes from running a real-time index for recent content beside a batch index for historical content, and caching is multi-tier: CDN, query cache, and result cache.
 
-#### Design YouTube / Video Serving
+### YouTube and video serving
 
-- **Upload pipeline**: Transcoding to multiple resolutions, adaptive bitrate (HLS/DASH)
-- **CDN**: Edge caching, hot content replication
-- **Recommendation**: Collaborative filtering + deep learning (Two-Tower model)
-- **Storage**: Blob storage for videos, metadata in Bigtable/Spanner
+For video, the upload pipeline transcodes each video to multiple resolutions for adaptive bitrate streaming (HLS or DASH). A CDN provides edge caching and replicates hot content. Recommendation combines collaborative filtering with deep learning, typically a two-tower model. Videos live in blob storage and metadata in Bigtable or Spanner.
 
-#### Design a Recommendation System (AI-Flavored)
+### A recommendation system
+
+The AI-flavoured version of the design round is a recommender:
 
 ```
 [User Action Stream] --> [Feature Store] --> [Candidate Generation]
@@ -207,23 +204,15 @@ Key points:
                                               [Results]
 ```
 
-- **Candidate generation**: Approximate nearest neighbors (ANN), collaborative filtering
-- **Ranking**: Deep neural network (DNN) with user/item features
-- **Feature store**: Real-time features (last 10 actions) + batch features (user profile)
-- **Serving**: Pre-compute embeddings, serve with vector DB (ScaNN)
-- **Freshness**: Balance between exploitation (show known-good) and exploration (discover new)
+Candidate generation narrows millions of items to hundreds with approximate nearest neighbours (ANN) and collaborative filtering. A deep neural network then ranks those candidates using user and item features. The feature store serves both real-time features, such as the last ten actions, and batch features, such as the user profile. Embeddings are precomputed and served from a vector index (ScaNN at Google). Freshness is a balance between exploitation, showing known-good items, and exploration, discovering new ones.
 
-#### Design a Model Serving Platform
+### A model serving platform
 
-Highly relevant for AI-focused roles:
+For AI-focused roles this prompt is highly relevant. A model registry provides version control for models and supports A/B testing. The serving infrastructure handles GPU allocation, batching, and auto-scaling. Feature serving provides low-latency feature retrieval for online inference. Monitoring covers model drift detection and prediction quality tracking. Deployment is canaried: a gradual rollout with automated rollback.
 
-- **Model registry**: Version control for models, A/B testing support
-- **Serving infrastructure**: GPU allocation, batching, auto-scaling
-- **Feature serving**: Low-latency feature retrieval for online inference
-- **Monitoring**: Model drift detection, prediction quality tracking
-- **Canary deployment**: Gradual rollout with automated rollback
+### Numbers to know
 
-### Numbers to Know
+Estimates in the design round rest on a handful of latency and throughput figures:
 
 | Resource | Capacity |
 |----------|----------|
@@ -235,9 +224,9 @@ Highly relevant for AI-focused roles:
 | Bigtable write | ~5 ms |
 | Spanner global write | ~10-100 ms |
 
-## Googleyness & Leadership (Behavioral)
+## Googleyness and leadership
 
-### Core Attributes
+The behavioral round scores four attributes:
 
 | Attribute | What They're Assessing |
 |-----------|----------------------|
@@ -246,55 +235,34 @@ Highly relevant for AI-focused roles:
 | Role-Related Knowledge | Technical depth appropriate for level |
 | General Cognitive Ability | Problem-solving, learning ability |
 
-### Common Questions
+Common questions include "Tell me about a time you had to work with incomplete information.", "Describe a situation where you disagreed with your team's approach.", "Tell me about a time you had to influence a decision without having authority.", "Describe a project that failed. What did you learn?", and "Tell me about a time you helped someone else grow."
 
-- "Tell me about a time you had to work with incomplete information."
-- "Describe a situation where you disagreed with your team's approach."
-- "Tell me about a time you had to influence a decision without having authority."
-- "Describe a project that failed. What did you learn?"
-- "Tell me about a time you helped someone else grow."
+Answer in the STAR shape. Give the situation in one or two sentences of context, then the task, your specific responsibility. Spend most of the answer on the action: what you did, specifically, as distinct from the team. End with the result, quantified, and what you learned. Above all, Google values intellectual humility. Do not oversell; acknowledge mistakes and what you would do differently.
 
-### STAR Framework (Adapted for Google)
+## AI and ML preparation
 
-- **Situation**: Brief context (1-2 sentences)
-- **Task**: What was your specific responsibility?
-- **Action**: What did YOU do? (Be specific about your individual contribution)
-- **Result**: Quantifiable outcome + what you learned
+For full-stack AI roles, also prepare the Google stack around ML: TensorFlow Serving and Vertex AI for the model deployment pipeline, MapReduce and Dataflow for large-scale data processing, Bigtable and Spanner for ML features and metadata, Pub/Sub for event streaming into real-time features, and Kubernetes (GKE) for orchestrating model serving.
 
-**Key**: Google values **intellectual humility**. Don't oversell. Acknowledge mistakes and what you'd do differently.
+Know Google's own AI infrastructure as well. TPUs are Google's custom ML accelerators, and you should know the TPU-versus-GPU trade-offs. Pathways is Google's next-generation ML infrastructure for multi-task models. Gemini is its multimodal model, worth understanding at a high level. Vertex AI is the managed ML platform covering training, serving, and monitoring.
 
-## AI/ML-Specific Preparation
+## Preparing
 
-For full-stack AI roles at Google, also prepare:
+Work 150-200 LeetCode problems, focused on medium and hard, since Google draws from a wide range. Practise writing real code in Google Docs, without an IDE, until you are comfortable without autocomplete, and time yourself: 20 minutes per medium problem, 25 per hard. Practise system design with a friend on a whiteboard or shared document. Do at least three to five mock interviews before your onsite, through Pramp, interviewing.io, or peers. And read the Google engineering blog to understand the company's infrastructure philosophy.
 
-- **TensorFlow Serving / Vertex AI**: Model deployment pipeline
-- **MapReduce / Dataflow**: Large-scale data processing
-- **Bigtable / Spanner**: Storage for ML features and metadata
-- **Pub/Sub**: Event streaming for real-time ML features
-- **Kubernetes (GKE)**: Container orchestration for model serving
+## Summary
 
-### Google-Specific AI Infrastructure
+- The loop is five to seven rounds, followed by hiring committee and team matching, which can add weeks.
+- Coding is judged on correct, compilable code written without an IDE, followed by optimisation and extension.
+- Model the search state explicitly, keep windows $O(n)$, and precompute where queries must be fast.
+- System design follows requirements, API, architecture, data model, deep dive, and scale; back estimates with real latency numbers.
+- Googleyness rewards comfort with ambiguity, influence without authority, and intellectual humility.
 
-- **TPUs**: Google's custom ML accelerators. Know TPU vs GPU trade-offs.
-- **Pathways**: Google's next-gen ML infrastructure for multi-task models
-- **Gemini**: Multimodal model architecture (understand at a high level)
-- **Vertex AI**: Managed ML platform (training, serving, monitoring)
+## Further reading
 
-## Preparation Tips
-
-1. **Leetcode**: 150-200 problems, focus on medium/hard. Google draws from a wide range.
-2. **Write real code**: Practice in Google Docs (no IDE). Get comfortable without autocomplete.
-3. **Time yourself**: 20 minutes per medium problem, 25 minutes per hard.
-4. **System design**: Practice with a friend. Draw on a whiteboard or shared doc.
-5. **Mock interviews**: At least 3-5 before your onsite. Pramp, interviewing.io, or peers.
-6. **Read Google engineering blog**: Understand their infrastructure philosophy.
-
-## Sources
-
-- [How 12 Top Tech Companies Interview Software Engineers - Exponent](https://www.tryexponent.com/blog/how-top-tech-companies-interview-software-engineers)
-- [The Reality of Tech Interviews in 2025 - Pragmatic Engineer](https://newsletter.pragmaticengineer.com/p/the-reality-of-tech-interviews)
-- [Google SWE Interview - IGotAnOffer](https://igotanoffer.com/blogs/tech/google-software-engineer-interview)
+- [How 12 Top Tech Companies Interview Software Engineers (Exponent)](https://www.tryexponent.com/blog/how-top-tech-companies-interview-software-engineers)
+- [The Reality of Tech Interviews in 2025 (Pragmatic Engineer)](https://newsletter.pragmaticengineer.com/p/the-reality-of-tech-interviews)
+- [Google SWE Interview (IGotAnOffer)](https://igotanoffer.com/blogs/tech/google-software-engineer-interview)
 - [Google Engineering Blog](https://blog.research.google/)
-- [Glassdoor - Google SWE Interview Questions](https://www.glassdoor.com/Interview/Google-Software-Engineer-Interview-Questions-EI_IE9079.0,6_KO7,24.htm)
-- [levels.fyi - Google Compensation Data](https://www.levels.fyi/companies/google/salaries/software-engineer)
-- r/cscareerquestions, r/ExperiencedDevs (Reddit community reports)
+- [Glassdoor: Google SWE Interview Questions](https://www.glassdoor.com/Interview/Google-Software-Engineer-Interview-Questions-EI_IE9079.0,6_KO7,24.htm)
+- [levels.fyi: Google Compensation Data](https://www.levels.fyi/companies/google/salaries/software-engineer)
+- Community reports on r/cscareerquestions and r/ExperiencedDevs.

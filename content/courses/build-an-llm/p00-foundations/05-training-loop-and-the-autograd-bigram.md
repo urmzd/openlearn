@@ -267,7 +267,7 @@ class BigramLogits(Module):
 
 Zeros are safe here because the problem is convex: there is no symmetry to break, unlike a hidden layer, where identical rows would receive identical gradients forever.
 
-The CLI's `train bigram --method autograd` drives this module with full-batch AdamW at learning rate 0.5 and no weight decay, using `cross_entropy` on `model(x)` for every `(byte, next byte)` pair; see `train_bigram_full_batch` in [`cli_train.py`](../../../../course/solutions/entry/python/tinyllm/cli_train.py).
+The CLI's `train bigram --method autograd` drives `BigramLogits` with full-batch AdamW at learning rate 0.5 and no weight decay, using `cross_entropy` on `model(x)` for every `(byte, next byte)` pair; see `train_bigram_full_batch` in [`cli_train.py`](../../../../course/solutions/entry/python/tinyllm/cli_train.py).
 
 ### Sampling like the engine
 

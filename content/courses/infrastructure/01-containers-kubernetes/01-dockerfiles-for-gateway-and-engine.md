@@ -1,29 +1,21 @@
 # Dockerfiles for the gateway and the engine
 
-## Overview
+The images from [the tracer deploy](00-tracer-deploy.md) were good enough for a tracer: they built, ran as non-root, and streamed. From here on they become the thing that runs the serving platform, rebuilt by CI on every commit ([CI for your repo](05-ci-for-your-repo.md)), pulled by the cluster from a registry ([kind cluster, local registry, and port mappings](02-kind-cluster-and-local-registry.md)), and rolled out by Helm ([Helm charts and the observability stack](03-helm-charts-and-observability-stack.md)). Under that load, three things break quietly.
 
-| | |
-|---|---|
-| **Module** | `dep.01` · practice · ops · Pass 7 · 3 to 5 h |
-| **Solution** | [`engine.Dockerfile`](../../../../course/solutions/entry/deploy/docker/engine.Dockerfile) and [`gateway.Dockerfile`](../../../../course/solutions/entry/deploy/docker/gateway.Dockerfile), hardened: bases pinned by digest, a `HEALTHCHECK`, OCI labels from build args, a static gateway binary; [`.dockerignore`](../../../../course/solutions/entry/.dockerignore) that keeps secrets out of the context |
-| **Contract** | none of its own: the images run the roles of [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) on the fixed ports 8000, 8080, and 9464; section 4 is the required layout |
-| **Needs** | `dep.00` the tracer images, `gw.07` the gateway with its pure-Go SQLite ledger; reading: [Containers, Kubernetes & Workloads](README.md), `L10.5` the engine's HTTP server |
-| **Used by** | `dep.02` loads these images into the kind registry · `dep.03` runs them from the Helm charts. Part of the Pass 7 production platform |
-| **Optional depth** | [Dockerfile reference: HEALTHCHECK](https://docs.docker.com/reference/dockerfile/#healthcheck) (free); [OCI image annotations](https://github.com/opencontainers/image-spec/blob/main/annotations.md) (free); [Docker build best practices](https://docs.docker.com/build/building/best-practices/) (free) |
+First, `FROM golang:1.24-alpine` builds a different image next month, so a build that passed CI is not the build you shipped. Second, when a Pod misbehaves, nothing in the image says which commit it came from. Third, the gateway now carries a SQLite usage ledger, built in [Usage ledger, metering, and admin API](../../ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md) in *AI Platform Engineering*. Built with cgo, its binary would need a C library at run time that the small base does not have. This section hardens both Dockerfiles against all three problems and adds a health signal that Docker itself can read.
 
-## Key Takeaways
+It assumes the tracer images and the stage, layer, context, numeric-user, and exec-form rules from [the tracer deploy](00-tracer-deploy.md) and from [Containers and Kubernetes](../../programming-languages/02-language-and-tool-primers/07-containers-and-kubernetes.md) in *Programming Languages*. Background on the engine's HTTP server is in [tl-serve: an OpenAI-compatible server on tokio](../../build-an-llm/p10-serving/05-openai-server-on-tokio.md) in *Build Your Own LLM System*. There is no new contract: the images run the roles of [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) on the fixed ports 8000, 8080, and 9464.
 
-- A **tag moves, a digest does not**: `golang:1.25-alpine` is re-pushed with every patch release, `golang:1.25-alpine@sha256:...` names exactly one image. Pin every base by digest and keep the tag for readers.
-- A **HEALTHCHECK** gives Docker its own view of whether the server works, not just whether the process runs; write it in exec form with a tool the base image actually has.
-- **OCI labels** (`org.opencontainers.image.title`, `source`, `version`, `revision`) let anyone trace an image back to the commit that built it; `version` and `revision` come from build args so CI fills them.
-- Every `ENV` and `ARG` value is **in the image history** for anyone who pulls it: secrets come from a Kubernetes Secret at run time, never from the build.
-- The runtime stage ships **one binary on a small base**; a size budget of about twice the minimal image catches a compiler or a build cache shipped by mistake.
+> **Learning objectives**
+> - Pin every base image by digest while keeping the tag readable, and explain why a tag alone is not reproducible.
+> - Write an exec-form `HEALTHCHECK` that uses only tools the base image ships, and compute its worst-case detection time.
+> - Stamp images with OCI labels from build args, declared in the right stage.
+> - Explain everything a pulled image leaks, and keep secrets out of layers, `ENV`, and history.
+> - Build a static Go binary and size-check a runtime image against a budget.
 
-## How to read this chapter
+## The commands you will use
 
-Sections 1 to 3 derive what a production image needs beyond the tracer image and work the gateway's runtime stage by hand. Section 4 fixes the artifacts and what a correct pair of images must do. Section 5 walks through both solution Dockerfiles and explains each hardening line. Try to predict each line before reading it.
-
-These commands, from the repo root, find a digest to pin, build both images with their build args, and show what anyone who pulls an image can read:
+These commands, run from the repo root, find a digest to pin, build both images with their build args, and show what anyone who pulls an image can read:
 
 ```bash
 docker buildx imagetools inspect golang:1.25-alpine --format '{{json .Manifest.Digest}}'   # the digest to pin
@@ -35,27 +27,23 @@ docker image inspect forge-gateway:0.2.0 --format '{{json .Config.Labels}} {{jso
 docker history --no-trunc forge-gateway:0.2.0  # what anyone who pulls it can read
 ```
 
----
+The rest of the section explains what each of those outputs should show and why.
 
-## 1. Why now
+## Reproducible bases: tags and digests
 
-The images of `dep.00` were good enough for a tracer: they built, ran as non-root, and streamed. Pass 7 makes them the thing that runs the serving platform for the rest of the course, rebuilt by CI on every commit (`dep.05`), pulled by the cluster from a registry (`dep.02`), and rolled out by Helm (`dep.03`). Three things now break quietly. `FROM golang:1.24-alpine` builds a different image next month, so a build that passed CI is not the build you shipped. When a pod misbehaves, nothing in the image says which commit it came from. And the gateway now carries a SQLite ledger (`gw.07`): built with cgo, its binary would need a C library at run time that the small base does not have. This module hardens both Dockerfiles against all three and adds the health signal Docker itself can read.
+An image reference `name:tag` is a **mutable pointer**. The registry maps the tag to a manifest, and the publisher moves it whenever they push; Docker's official images re-push `golang:1.25-alpine` for every Go patch release and every Alpine security fix. An image's **digest** is the SHA-256 of its manifest (for a multi-architecture image, of its index), so `name@sha256:<64 hex>` can only ever mean one image. A tag moves; a digest does not.
 
-## 2. Principles
+Write both: `FROM golang:1.25-alpine@sha256:1ae0...b59 AS build`. Docker ignores the tag when a digest is present, but the tag tells a reader which release the digest is. Moving to a new base is then a one-line change in a commit, reviewed and tested like any other dependency upgrade, as [Dependency upgrades](../../software-craftsmanship/07-maintenance/03-dependency-upgrades.md) in *Software Craftsmanship* describes.
 
-`lang.07` and `dep.00` covered stages, layers, the build context, numeric users, and exec form. This section adds only what production images need on top.
+## One static binary
 
-### 2.1 Reproducible bases: tags and digests
+Pinning fixes the inputs. The next question is whether the output can run on the small base you chose. The gateway is Go. With `CGO_ENABLED=0` the linker produces a binary that needs no C library, so it runs on `alpine`, `distroless/static`, or even `scratch`. That is why the usage ledger uses `modernc.org/sqlite` (SQLite translated to Go) instead of `mattn/go-sqlite3` (a cgo binding): with cgo the binary would link the build stage's libc and fail at start-up on a different one. The Rust Candle engine is built without C bindings and uses `debian:bookworm-slim` for its runtime, because Rust links glibc dynamically.
 
-An image reference `name:tag` is a **mutable pointer**: the registry maps the tag to a manifest, and the publisher moves it whenever they push (Docker's official images re-push `golang:1.25-alpine` for every Go patch release and every Alpine security fix). An image's **digest** is the SHA-256 of its manifest (for a multi-architecture image, of its index), so `name@sha256:<64 hex>` can only ever mean one image. Write both: `FROM golang:1.25-alpine@sha256:1ae0...b59 AS build`. Docker ignores the tag when a digest is present; the tag tells a reader which release the digest is. Moving to a new base is then a one-line change in a commit, reviewed and tested like any other dependency upgrade (`craft.15`).
+## HEALTHCHECK
 
-### 2.2 One static binary
+A running process is not the same as a working server. `HEALTHCHECK [--interval=D] [--timeout=D] [--start-period=D] [--retries=N] CMD ["exe", "arg", ...]` makes Docker run the command inside the container every interval. Exit 0 is healthy, anything else is a failure, and `retries` consecutive failures mark the container `unhealthy`, which shows up in `docker ps`, `docker inspect .State.Health`, and compose's `depends_on: condition: service_healthy`. Kubernetes ignores it and uses the chart's probes instead, so the image and the chart must agree on the endpoint: `GET /healthz` on the health port 9464.
 
-The gateway is Go. With `CGO_ENABLED=0` the linker produces a binary that needs no C library, so it runs on `alpine`, `distroless/static`, or even `scratch`. That is why `gw.07` uses `modernc.org/sqlite` (SQLite translated to Go) instead of `mattn/go-sqlite3` (a cgo binding): with cgo the binary would link the build stage's libc and fail at start-up on a different one. The Rust Candle engine is built without C bindings and uses `debian:bookworm-slim` for its runtime.
-
-### 2.3 HEALTHCHECK
-
-`HEALTHCHECK [--interval=D] [--timeout=D] [--start-period=D] [--retries=N] CMD ["exe", "arg", ...]` makes Docker run the command inside the container every interval. Exit 0 is healthy, anything else is a failure, and `retries` consecutive failures mark the container `unhealthy` (`docker ps`, `docker inspect .State.Health`, compose's `depends_on: condition: service_healthy`). Kubernetes ignores it and uses the chart's probes (`dep.03`), so the image and the chart must agree on the endpoint: `GET /healthz` on the health port 9464.
+The timing parameters for the two images are:
 
 | Symbol | Meaning | Gateway | Engine |
 |---|---|---|---|
@@ -64,11 +52,11 @@ The gateway is Go. With `CGO_ENABLED=0` the linker produces a binary that needs 
 | $r$ | retries before `unhealthy` | 3 | 3 |
 | $T_{\text{detect}}$ | worst-case time to `unhealthy` after a hang, about $s + r \cdot i$ at start, $r \cdot i$ later | 30 s | 30 s |
 
-The command runs in the container, so it can only use what the image has. `alpine` has busybox `wget`; `debian:bookworm-slim` has neither `curl` nor `wget`, but it has `bash`, whose `/dev/tcp/<host>/<port>` redirection opens a TCP connection: write a request, read the status line, grep for 200. Exec form (`CMD [...]`) avoids `/bin/sh`, which a minimal base may not have.
+The command runs in the container, so it can only use what the image has. `alpine` has busybox `wget`. `debian:bookworm-slim` has neither `curl` nor `wget`, but it has `bash`, whose `/dev/tcp/<host>/<port>` redirection opens a TCP connection: write a request, read the status line, grep for 200. Exec form (`CMD [...]`) avoids `/bin/sh`, which a minimal base may not have.
 
-### 2.4 OCI labels and build args
+## OCI labels and build args
 
-`LABEL key="value"` writes into the image config. The OCI image spec reserves `org.opencontainers.image.*` keys; four make an image traceable:
+A health signal tells you whether an image works; labels tell you where it came from. `LABEL key="value"` writes into the image config. The OCI image spec reserves `org.opencontainers.image.*` keys, and four of them make an image traceable back to the commit that built it:
 
 | Label | Value |
 |---|---|
@@ -77,15 +65,17 @@ The command runs in the container, so it can only use what the image has. `alpin
 | `org.opencontainers.image.version` | the release, from `--build-arg VERSION=0.2.0` |
 | `org.opencontainers.image.revision` | the commit, from `--build-arg REVISION=$(git rev-parse HEAD)` |
 
-An `ARG` is scoped to the stage it is declared in: an `ARG` before the first `FROM` is visible only to `FROM` lines, so declare `ARG VERSION` and `ARG REVISION` again inside the final stage before the `LABEL` that uses them.
+`version` and `revision` come from build args so that CI can fill them. There is one trap: an `ARG` is scoped to the stage it is declared in, and an `ARG` before the first `FROM` is visible only to `FROM` lines. So you declare `ARG VERSION` and `ARG REVISION` again inside the final stage, before the `LABEL` that uses them.
 
-### 2.5 What an image leaks
+## What an image leaks
 
-Everything in an image is readable by everyone who can pull it: every file in every layer (a file deleted in a later layer is still in the earlier one), every `ENV`, and every build instruction with its arguments (`docker history --no-trunc`). So a secret passed as `--build-arg API_KEY=...`, set with `ENV`, or copied in and deleted later, has shipped. Secrets reach the container at run time from a Kubernetes `Secret` (`dep.00`, `dep.03`); the build never sees them. The context filter matters too: `.dockerignore` keeps `.env`, `*.pem`, and `.git` out, so no `COPY` can sweep them into a layer.
+Labels are metadata you want everyone to read. The flip side is that everything else in an image is readable too, by everyone who can pull it: every file in every layer (a file deleted in a later layer is still in the earlier one), every `ENV`, and every build instruction with its arguments (`docker history --no-trunc`). A secret passed as `--build-arg API_KEY=...`, set with `ENV`, or copied in and deleted later, has shipped.
 
-## 3. Worked example by hand
+So secrets reach the container at run time from a Kubernetes `Secret`, as in [the tracer deploy](00-tracer-deploy.md) and [Helm charts and the observability stack](03-helm-charts-and-observability-stack.md); the build never sees them. The context filter matters too: `.dockerignore` keeps `.env`, `*.pem`, and `.git` out, so no `COPY` can sweep them into a layer.
 
-The gateway's runtime stage, line by line:
+## Working the gateway's runtime stage by hand
+
+With the principles in place, read the gateway's runtime stage line by line:
 
 ```dockerfile
 FROM alpine:3.19@sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1
@@ -103,55 +93,47 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
 ENTRYPOINT ["/usr/local/bin/gateway"]
 ```
 
-Built with `--build-arg VERSION=0.2.0 --build-arg REVISION=4f1c...`:
+Suppose you build it with `--build-arg VERSION=0.2.0 --build-arg REVISION=4f1c...`.
 
 1. `FROM` resolves the digest, not the tag: the same bytes as every earlier build.
-2. The labels expand to `version=0.2.0` and `revision=4f1c...`; without the `ARG` lines in this stage they would be empty.
+2. The labels expand to `version=0.2.0` and `revision=4f1c...`. Without the `ARG` lines in this stage they would be empty.
 3. The gateway starts at $t = 0$. Checks run at 10 s, 20 s, 30 s; until $s = 5$ s a failure would not count. `wget` exits 0 as soon as `/healthz` answers 200, so `docker inspect -f '{{.State.Health.Status}}'` turns from `starting` to `healthy` at the first check, at 10 s.
 4. If the gateway later deadlocks with the process alive, three checks fail, each after its 3 s timeout, and the state is `unhealthy` about $3 \times 10 = 30$ s after the hang.
-5. Size: alpine's filesystem is about 7.8 MiB and the static gateway binary about 14 MiB, so `docker export` of a container is about 22 MiB. A budget of twice that, 43.8 MiB, leaves room for growth. A single-stage build on `golang:1.25-alpine` would export more than 300 MiB and fail.
+5. Size: alpine's filesystem is about 7.8 MiB and the static gateway binary about 14 MiB, so `docker export` of a container is about 22 MiB. A budget of twice that, 43.8 MiB, leaves room for growth. A single-stage build on `golang:1.25-alpine` would export more than 300 MiB and fail the budget.
 
-A correct image must satisfy exactly these lines and numbers (section 4).
+The runtime stage ships one binary on a small base, and a size budget of about twice the minimal image is what catches a compiler or a build cache shipped by mistake. A correct image must satisfy exactly these lines and numbers.
 
-## 4. The artifact and what it must do
+## The files and what they must do
+
+Three files carry the work:
 
 | Path | Holds |
 |---|---|
 | `deploy/docker/engine.Dockerfile` | build stage pinned by digest (Rust, make), runtime stage `debian:bookworm-slim@sha256:...`; `ARG VERSION`, `ARG REVISION`, the four labels, numeric `USER`, `EXPOSE 8000 9464`, a `HEALTHCHECK` on `/healthz` port 9464 (bash `/dev/tcp`), exec-form `ENTRYPOINT` |
 | `deploy/docker/gateway.Dockerfile` | build stage pinned by digest with `CGO_ENABLED=0 go build`, runtime stage `alpine@sha256:...` with the same labels, `USER`, `EXPOSE 8080 9464`, a `HEALTHCHECK` with `wget` |
-| `.dockerignore` | build outputs and local state (dep.00) plus `.env`, `.git`, and `*.pem` |
+| `.dockerignore` | build outputs and local state (from the tracer deploy) plus `.env`, `.git`, and `*.pem` |
 
-A correct pair of images is proven in two steps: the static properties of the Dockerfiles, then a build with `--build-arg VERSION=... --build-arg REVISION=<HEAD>` and a run the way the charts run them: the engine on a model trained by `{tinyllm} train bigram` (as in `dep.00`), the gateway with a probe key, both with `--health-interval 1s`.
+You prove a correct pair of images in two steps. First check the static properties of the Dockerfiles; then build with `--build-arg VERSION=... --build-arg REVISION=<HEAD>` and run the images the way the charts run them: the engine on a model trained by `{tinyllm} train bigram` (as in the tracer deploy), the gateway with a probe key, both with `--health-interval 1s`.
 
 ### What a correct solution must handle
 
-| Case | Kind of check | What must hold | Why it matters downstream |
-|---|---|---|---|
-| layout present | static | the two Dockerfiles and `.dockerignore` | `dep.03` and CI build these files |
-| dep.00's image rules still hold | static | stages, numeric user, exec form, ports | the charts' probes and `runAsNonRoot` |
-| bases pinned by digest | static | every external `FROM` has `@sha256:<64 hex>` | reproducible builds; `craft.18` SBOMs |
-| health check in exec form | static | one `HEALTHCHECK`, exec form, `--interval`, `--timeout`, `/healthz` on 9464 | Docker sees a hung server |
-| OCI labels declared | static | title, source, version, revision; `ARG VERSION` and `ARG REVISION` in the final stage | traceable images |
-| gateway builds a static binary | static | `CGO_ENABLED=0 go build` | the SQLite ledger runs on alpine |
-| no secrets in Dockerfiles or context | static | no secret-looking `ENV`/`ARG` values or key material; `.env`, `.git`, `*.pem` ignored | nothing secret in a layer |
-| images build | docker | both images build with the build args | |
-| images carry the labels | docker | labels present; version and revision equal the build args | |
-| images run as numeric non-root | boundary | the image config's user is a numeric uid other than 0 | `runAsNonRoot` |
-| no secrets in history or env | docker | `docker history --no-trunc` and the config's `Env` hold no secret | a pulled image leaks nothing |
-| images fit the size budget | boundary | `docker export` bytes at most about twice the minimal image | no toolchain in the runtime stage |
-| containers report healthy and stream | conformance | both containers turn `healthy`, then a completion streams engine to gateway | the health command works in its base; packaging broke nothing |
+The static checks come first. The two Dockerfiles and `.dockerignore` must be present, because the Helm charts and CI build exactly these files. The tracer's image rules must still hold (stages, numeric user, exec form, ports), because the charts' probes and `runAsNonRoot` depend on them. Every external `FROM` must carry `@sha256:<64 hex>`, which makes builds reproducible and lets the SBOMs of [SBOM and supply chain](../../software-craftsmanship/08-security/02-sbom-and-supply-chain.md) name the bases. There must be one `HEALTHCHECK`, in exec form, with `--interval`, `--timeout`, and `/healthz` on 9464, so Docker sees a hung server. The labels (title, source, version, revision) must be declared, with `ARG VERSION` and `ARG REVISION` in the final stage. The gateway must build with `CGO_ENABLED=0 go build`, so the SQLite ledger runs on alpine. And there must be no secret-looking `ENV` or `ARG` values or key material, with `.env`, `.git`, and `*.pem` ignored, so nothing secret ends up in a layer.
 
-## 5. The solution, step by step
+Then the Docker checks. Both images must build with the build args and carry the labels, with version and revision equal to the build args. The image config's user must be a numeric uid other than 0, for `runAsNonRoot`. `docker history --no-trunc` and the config's `Env` must hold no secret, so a pulled image leaks nothing. The `docker export` size must be at most about twice the minimal image, proving no toolchain sits in the runtime stage. Finally, both containers must turn `healthy` and then stream a completion from engine to gateway, which proves the health command works in its base and that packaging broke nothing.
 
-### 5.1 From first principles
+## Building it step by step
 
-1. **A build must be repeatable from its commit.** The only input a Dockerfile does not pin by itself is the base image, and a tag is a mutable pointer (2.1). So every `FROM` carries a digest; the tag stays as documentation.
-2. **The runtime stage must run with what it has.** The gateway's base has no libc that matches a cgo build, so the gateway binary must be static: `CGO_ENABLED=0`, which in turn requires the pure-Go SQLite driver of `gw.07`. The engine links glibc, so its runtime base is the same Debian release as its builder.
+### Reasoning from first principles
+
+Five requirements drive the hardening.
+
+1. **A build must be repeatable from its commit.** The only input a Dockerfile does not pin by itself is the base image, and a tag is a mutable pointer. So every `FROM` carries a digest; the tag stays as documentation.
+2. **The runtime stage must run with what it has.** The gateway's base has no libc that matches a cgo build, so the gateway binary must be static: `CGO_ENABLED=0`, which in turn requires the pure-Go SQLite driver of the usage ledger. The engine links glibc, so its runtime base is the same Debian release as its builder.
 3. **Docker needs its own health signal.** A process that is alive but hung looks fine to `docker ps`. A `HEALTHCHECK` asking the same `/healthz` the chart probes gives Docker and Kubernetes one definition of healthy. It must use a tool the base has: busybox `wget` on alpine, bash's `/dev/tcp` on Debian slim.
-4. **An image must name its source.** Labels are the only metadata that travels with the image to every registry and node; `version` and `revision` vary per build, so they come from `ARG`, re-declared in the final stage because `ARG` is stage-scoped.
-5. **Nothing secret may enter the build.** History, `ENV`, and every layer are public to whoever pulls (2.5). So the Dockerfiles have no secret `ARG`/`ENV`, and `.dockerignore` keeps `.env`, `*.pem`, and `.git` out of the context.
+4. **An image must name its source.** Labels are the only metadata that travels with the image to every registry and node. `version` and `revision` vary per build, so they come from `ARG`, re-declared in the final stage because `ARG` is stage-scoped.
+5. **Nothing secret may enter the build.** History, `ENV`, and every layer are public to whoever pulls. So the Dockerfiles have no secret `ARG` or `ENV`, and `.dockerignore` keeps `.env`, `*.pem`, and `.git` out of the context.
 
-### 5.2 The gateway image
+### The gateway image
 
 ```dockerfile
 # Base images pinned by digest: a tag can be re-pushed, a digest cannot.
@@ -191,11 +173,9 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
 ENTRYPOINT ["/usr/local/bin/gateway"]
 ```
 
-`-trimpath` removes local file system paths from the binary (they would otherwise leak your build directory and make two builds differ), and `-s -w` drops the symbol table and DWARF debug data, which the server never needs at run time and which make up a large share of an unstripped Go binary. The ARG defaults are deliberate: a label of `unknown` is honest, an empty one looks like a bug.
+`-trimpath` removes local file system paths from the binary; they would otherwise leak your build directory and make two builds differ. `-s -w` drops the symbol table and DWARF debug data, which the server never needs at run time and which make up a large share of an unstripped Go binary. The `ARG` defaults are deliberate: a label of `unknown` is honest, while an empty one looks like a bug. The full solution is [`gateway.Dockerfile`](../../../../course/solutions/entry/deploy/docker/gateway.Dockerfile).
 
-Full solution: [`gateway.Dockerfile`](../../../../course/solutions/entry/deploy/docker/gateway.Dockerfile).
-
-### 5.3 The engine image
+### The engine image
 
 ```dockerfile
 FROM rust:1.88-slim-bookworm@sha256:38bc5a86d998772d4aec2348656ed21438d20fcdce2795b56ca434cf21430d89 AS build
@@ -230,23 +210,77 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
 ENTRYPOINT ["/usr/local/bin/tl-serve"]
 ```
 
-The health command is exec form (`["bash", "-c", ...]`), so Docker runs bash directly rather than through `/bin/sh -c`; bash is needed anyway for `/dev/tcp`, which is a bash feature, not a device. HTTP/1.0 makes the server close the connection after one response, so `head -n 1` never waits on a kept-alive socket.
+The health command is exec form (`["bash", "-c", ...]`), so Docker runs bash directly rather than through `/bin/sh -c`. Bash is needed anyway for `/dev/tcp`, which is a bash feature, not a device. HTTP/1.0 makes the server close the connection after one response, so `head -n 1` never waits on a kept-alive socket. The full solution is [`engine.Dockerfile`](../../../../course/solutions/entry/deploy/docker/engine.Dockerfile).
 
-Full solution: [`engine.Dockerfile`](../../../../course/solutions/entry/deploy/docker/engine.Dockerfile).
+### The context filter
 
-### 5.4 The context filter
+The `.dockerignore` from the tracer deploy already lists `.git`, `.env`, and `*.pem` next to the build outputs, so no `COPY` can sweep a key, a credentials file, or the whole git history (which may contain an old secret) into a layer. The full solution is [`.dockerignore`](../../../../course/solutions/entry/.dockerignore).
 
-The `.dockerignore` of `dep.00` already lists `.git`, `.env`, and `*.pem` next to the build outputs, so no `COPY` can sweep a key, a credentials file, or the whole git history (which may contain an old secret) into a layer. Full solution: [`.dockerignore`](../../../../course/solutions/entry/.dockerignore).
+### Why this design
 
-### 5.5 Why this solution
-
-- **Digest pins over tag pins or `latest`.** Only a digest makes "the image CI tested" and "the image we shipped" the same bytes. The cost is manual bumps, which Renovate or Dependabot automate (Going further).
+- **Digest pins over tag pins or `latest`.** Only a digest makes "the image CI tested" and "the image we shipped" the same bytes. The cost is manual bumps, which Renovate or Dependabot automate.
 - **alpine over `scratch` or distroless for the gateway.** `scratch` would work for a static binary but leaves nothing to run a `HEALTHCHECK` with and no CA certificates; distroless has no `wget`. alpine costs about 8 MiB and gives busybox. The tradeoff is a slightly larger attack surface.
 - **Debian slim over alpine for the engine.** Rust binaries link glibc by default; running on musl would mean a different target and different performance characteristics for the numeric code.
 - **bash `/dev/tcp` over installing curl.** Installing curl adds a package layer and its CVEs to every engine image for the sake of one health check.
-- **Labels from build args over hard-coded values.** The Dockerfile stays the same for every release; CI supplies the variable part (`dep.05`).
+- **Labels from build args over hard-coded values.** The Dockerfile stays the same for every release; CI supplies the variable part.
 
-### 5.6 Explain it back
+## What can go wrong
+
+Each of these mistakes produces an image that builds and often even runs, which is why they survive review:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| `FROM golang:1.25-alpine` without a digest | a rebuild of an old commit produces a different image | every `FROM` carries `@sha256:...` |
+| `HEALTHCHECK CMD curl ...` on a base without curl | the container is `unhealthy` forever while serving fine | busybox `wget` on alpine, bash `/dev/tcp` on Debian slim |
+| one stage, or `COPY --from=build /src` instead of the binary | a 300 MiB to 2 GiB image with the compiler and build cache | `COPY --from=build` copies only the binary |
+| `ARG API_KEY` or `ENV TL_GATEWAY_PEPPER=...` | the secret is in `docker history` for everyone who pulls | no secret `ARG` or `ENV`; secrets arrive at run time from a Kubernetes Secret |
+| `ARG VERSION` only before the first `FROM` | the version label is empty | `ARG VERSION` and `ARG REVISION` re-declared in the final stage |
+| a cgo SQLite driver, or `go build` without `CGO_ENABLED=0` | the gateway exits at start on alpine: the binary wants the build stage's libc | `CGO_ENABLED=0` with the pure-Go SQLite driver |
+| `HEALTHCHECK CMD wget ...` in shell form | needs `/bin/sh`; on a distroless base the check cannot even start | both checks are exec form `CMD [...]` |
+
+> **Warning:** Deleting a secret in a later layer does not remove it. The bytes remain in the layer that added them, and anyone who pulls the image can extract that layer.
+
+## Where this leads
+
+These Dockerfiles harden the tracer images from [the tracer deploy](00-tracer-deploy.md), and the static gateway is possible only because of the pure-Go SQLite ledger from [Usage ledger, metering, and admin API](../../ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md). Next, [kind cluster, local registry, and port mappings](02-kind-cluster-and-local-registry.md) tags these images into the local registry `localhost:5001` that kind pulls from. [Helm charts and the observability stack](03-helm-charts-and-observability-stack.md) runs them, with probes that ask the same `/healthz`. [CI for your repo](05-ci-for-your-repo.md) builds them with `VERSION` and `REVISION`, and [SBOM and supply chain](../../software-craftsmanship/08-security/02-sbom-and-supply-chain.md) in *Software Craftsmanship* lists the pinned bases in SBOMs.
+
+Each piece here has a production equivalent worth knowing:
+
+| Your piece | Production equivalent | What it adds |
+|---|---|---|
+| pinned digests by hand | Renovate, Dependabot | automated pull requests that bump digests and tags |
+| alpine plus one binary | distroless, Chainguard images | no shell or package manager at all; fewer CVEs |
+| OCI labels | SLSA provenance, cosign signatures | signed, verifiable statements of how and from what an image was built |
+
+### Further reading
+
+- [Dockerfile reference: HEALTHCHECK](https://docs.docker.com/reference/dockerfile/#healthcheck)
+- [OCI image annotations](https://github.com/opencontainers/image-spec/blob/main/annotations.md)
+- [Docker build best practices](https://docs.docker.com/build/building/best-practices/)
+- [Renovate Docker support](https://docs.renovatebot.com/docker/)
+- [distroless](https://github.com/GoogleContainerTools/distroless)
+- [SLSA](https://slsa.dev/)
+- [Sigstore cosign](https://docs.sigstore.dev/cosign/signing/overview/)
+
+## Key terms
+
+- **tag**: a mutable, human-readable pointer from a name to an image manifest, moved by the publisher.
+- **digest**: the SHA-256 of an image's manifest (or index), naming exactly one image.
+- **HEALTHCHECK**: a Dockerfile instruction that makes Docker run a command in the container periodically and mark it `healthy` or `unhealthy`.
+- **start period**: the initial window during which health-check failures do not count.
+- **OCI labels**: `org.opencontainers.image.*` keys in the image config that record title, source, version, and revision.
+- **stage-scoped `ARG`**: a build argument visible only in the stage where it is declared.
+- **static binary**: an executable that needs no C library at run time, produced by Go with `CGO_ENABLED=0`.
+
+## Summary
+
+- A tag moves, a digest does not: pin every base by digest and keep the tag for readers.
+- A `HEALTHCHECK` gives Docker its own view of whether the server works, not just whether the process runs; write it in exec form with a tool the base image actually has.
+- OCI labels (`title`, `source`, `version`, `revision`) let anyone trace an image to the commit that built it; `version` and `revision` come from build args, re-declared in the final stage, so CI fills them.
+- Every `ENV`, `ARG`, and layer is in the image for anyone who pulls it: secrets come from a Kubernetes Secret at run time, never from the build.
+- The runtime stage ships one binary on a small base; a size budget of about twice the minimal image catches a compiler or build cache shipped by mistake.
+
+## Review questions
 
 1. Docker ignores the tag when a digest is present. Why keep the tag at all?
    <details><summary>Answer</summary>For readers and tools: a reviewer can see that the bump goes from Go 1.24 to 1.25, and Renovate uses the tag to find the newer digest. The digest is what makes the build reproducible; the tag is what makes it reviewable.</details>
@@ -258,33 +292,3 @@ The `.dockerignore` of `dep.00` already lists `.git`, `.env`, and `*.pem` next t
    <details><summary>Answer</summary>The engine loads a model before <code>/healthz</code> answers, and failures during the start period do not count towards <code>unhealthy</code>. The gateway has nothing to load, so a short start period detects a broken gateway sooner.</details>
 5. A teammate deletes a `.env` file in a later `RUN rm .env` after `COPY . .`. Is the image clean?
    <details><summary>Answer</summary>No. The file is still in the layer created by <code>COPY</code>; the later layer only hides it. The fix is to keep it out of the context (<code>.dockerignore</code>), so it never enters any layer.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. `FROM golang:1.25-alpine` without a digest | a rebuild of an old commit produces a different image | every `FROM` carries `@sha256:...` (5.2, 5.3) |
-| 2. `HEALTHCHECK CMD curl ...` on a base without curl | the container is `unhealthy` forever while serving fine | busybox `wget` on alpine, bash `/dev/tcp` on Debian slim (5.2, 5.3) |
-| 3. one stage, or `COPY --from=build /src` instead of the binary | a 300 MiB to 2 GiB image with the compiler and build cache | `COPY --from=build` copies only the binary (5.2) |
-| 4. `ARG API_KEY` or `ENV TL_GATEWAY_PEPPER=...` | the secret is in `docker history` for everyone who pulls | no secret `ARG` or `ENV`; secrets arrive at run time from a Kubernetes Secret (5.1, step 5) |
-| 5. `ARG VERSION` only before the first `FROM` | the version label is empty | `ARG VERSION` and `ARG REVISION` re-declared in the final stage (5.2) |
-| 6. a cgo SQLite driver, or `go build` without `CGO_ENABLED=0` | the gateway exits at start on alpine: the binary wants the build stage's libc | `CGO_ENABLED=0` with the pure-Go SQLite driver (5.2) |
-| 7. `HEALTHCHECK CMD wget ...` in shell form | needs `/bin/sh`; on a distroless base the check cannot even start | both checks are exec form `CMD [...]` (5.2, 5.3) |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `dep.00` | the tracer images these Dockerfiles harden |
-| Back | `gw.07` | the pure-Go SQLite ledger that makes a static gateway possible |
-| Forward | `dep.02` | tags these images into the local registry `localhost:5001` that kind pulls from |
-| Forward | `dep.03` | the charts run them; their probes ask the same `/healthz` |
-| Forward | `dep.05`, `craft.18` | CI builds them with `VERSION` and `REVISION`; SBOMs list the pinned bases |
-
-## Going further
-
-| Your piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| pinned digests by hand | Renovate, Dependabot | automated pull requests that bump digests and tags | [Renovate Docker support](https://docs.renovatebot.com/docker/) (free) |
-| alpine plus one binary | distroless, Chainguard images | no shell or package manager at all; fewer CVEs | [distroless](https://github.com/GoogleContainerTools/distroless) (free) |
-| OCI labels | SLSA provenance, cosign signatures | signed, verifiable statements of how and from what an image was built | [SLSA](https://slsa.dev/) (free), [Sigstore cosign](https://docs.sigstore.dev/cosign/signing/overview/) (free) |
