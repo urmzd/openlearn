@@ -1,41 +1,26 @@
 # Professional responsibility and disclosure
 
-## Overview
+A production system affects people through data choices, model behavior, access controls, and incident decisions. By this point in the book you have built the records that describe those effects: a licensing ledger, a privacy policy, a model card with intervals, safety and bias evals, and a usage policy enforced at the gateway. Professional responsibility is the part that remains: making those effects legible to users and decision makers, and standing behind what your documents claim.
 
-| | |
-|---|---|
-| **Module** | `ethics.06` · proof · docs · Pass 11 · 1 to 2 h |
-| **Solution** | a model answer for `docs/responsibility/reflection.md` in section 5: a written review of one consequential claim, with its evidence, and the design-review checklist answered line by line |
-| **Needs** | none |
-| **Used by** | no code call site; this is an independent artifact |
+This section asks you to review one consequential claim the way a careful engineer would before it goes out the door. It needs nothing beyond what you have already built, and nothing in the system calls it; it is an independent artifact, a written reflection at `docs/responsibility/reflection.md`. A model answer is given in full below, with the reasoning behind each paragraph. Try writing the review yourself before you read it.
 
-## Key Takeaways
+> **Learning objectives**
+> - Review a claim by the conclusion its audience will draw, not only by whether it is literally true.
+> - Separate what was measured from what was assumed, and size the evidence with an interval.
+> - Combine wording with a product control that makes a claim's limits enforceable.
+> - Tie each claim to the exact platform evidence that produces it, and turn every unresolved point into a note with an owner, a next step, and a done condition.
 
-- Tie each claim to the exact platform evidence that produces it.
-- State the owner, success condition, and recovery action before declaring the work complete.
-- Record unresolved assumptions so the next review can test them.
+## What responsibility asks
 
-## How to read this chapter
+The principles are short. Disclose capabilities and limits in language suited to the audience. Correct material errors promptly. Protect confidential information, distinguish measured results from assumptions, and escalate harm through a named channel. Before declaring the work complete, state the owner, the success condition, and the recovery action, and record unresolved assumptions so the next review can test them.
 
-Sections 1 to 3 state what professional responsibility asks of an engineer shipping this system and set up a worked review of one claim. Section 4 fixes what the reflection must contain. Section 5 is a model answer, with the reasoning behind each paragraph. Try writing the review of section 3 yourself before reading the model answer.
+## Choosing a claim to review
 
----
+The exercise is concrete. Choose one consequential claim from the model card or a customer evaluation. Explain what evidence supports it, what is unknown, who could be harmed if it is overstated, and what wording or product control reduces that risk.
 
-## 1. Why now
+The model answer takes the safety claim of the reference model card ([`MODEL_CARD.md`](../../../../course/solutions/docs/MODEL_CARD.md), written in [Datasheet and model card](../03-model-and-data-cards/01-datasheet-and-model-card.md)): the row "toxicity-rate over 18 prompts: 0.000 (0.000, 0.176)". It is a good choice because it is easy to overstate. "The model produced no toxic output" is true and sounds like "the model is safe", which the evidence does not support.
 
-A production system affects people through data choices, model behavior, access controls, and incident decisions. Professional responsibility includes making those effects legible to users and decision makers.
-
-## 2. Principles
-
-Disclose capabilities and limits in language suited to the audience. Correct material errors promptly. Protect confidential information, distinguish measured results from assumptions, and escalate harm through a named channel.
-
-## 3. Worked example
-
-Choose one consequential claim from the model card or customer evaluation. Explain what evidence supports it, what is unknown, who could be harmed if it is overstated, and what wording or product control reduces that risk.
-
-The model answer below takes the safety claim of the reference model card ([`MODEL_CARD.md`](../../../../course/solutions/docs/MODEL_CARD.md), `ethics.03`): the row "toxicity-rate over 18 prompts: 0.000 (0.000, 0.176)". It is a good choice because it is easy to overstate: "the model produced no toxic output" is true and sounds like "the model is safe", which the evidence does not support.
-
-## 4. Claim and checklist
+## The reflection and its checklist
 
 `docs/responsibility/reflection.md` is the worked reflection or design review. It answers each line of the design-review checklist below with evidence from the completed system; each line that cannot be answered "yes" becomes a review note with an owner and next step.
 
@@ -48,20 +33,25 @@ The model answer below takes the safety claim of the reference model card ([`MOD
 - Rollout and rollback are described, including data and contract migrations.
 - Open questions are listed with an owner.
 
-## 5. The solution, step by step
+## Reasoning through the review
 
-### From first principles
+Six steps take you from the raw claim to a decision.
 
-1. **Start from the claim as a reader will hear it.** A disclosure is judged by what its audience concludes, not by whether each word is true. "0 toxic outputs" will be heard as "safe".
-2. **Separate what was measured from what was assumed.** The measurement is a rate on a fixed prompt set with a specific scorer; the assumptions are that the prompts represent real use and the scorer detects real toxicity. Each assumption needs its own evidence or its own caveat.
-3. **Size the evidence.** With $n = 18$ and $k = 0$, the Wilson upper bound is $z^2/(n + z^2) = 3.8415/21.8415 \approx 0.176$: the data are consistent with a true rate up to about 18%. The scorer's own ROC-AUC on labelled text is 0.752, so a miss is plausible.
-4. **Name who is harmed by overstatement.** Users routed to the model, operators who rely on the card to decide routing, and anyone who repeats the claim downstream.
-5. **Reduce the risk with wording and with a control.** Wording alone can be ignored; a product control (the usage policy routes no user traffic to the model) makes the claim's limits enforceable. Both are needed.
-6. **Close the loop.** Every unresolved point gets an owner, a next step, and a condition that would change the decision.
+**Start from the claim as a reader will hear it.** A disclosure is judged by what its audience concludes, not by whether each word is true. "0 toxic outputs" will be heard as "safe".
 
-### The model answer
+**Separate what was measured from what was assumed.** The measurement is a rate on a fixed prompt set with a specific scorer; the assumptions are that the prompts represent real use and the scorer detects real toxicity. Each assumption needs its own evidence or its own caveat.
 
-The text below is a complete `docs/responsibility/reflection.md`. Comments in brackets explain why each paragraph is there; they are not part of the document.
+**Size the evidence.** With $n = 18$ and $k = 0$, the Wilson upper bound is $z^2/(n + z^2) = 3.8415/21.8415 \approx 0.176$: the data are consistent with a true rate up to about 18%. The scorer's own ROC-AUC on labelled text is 0.752, so a miss is plausible.
+
+**Name who is harmed by overstatement.** Users routed to the model, operators who rely on the card to decide routing, and anyone who repeats the claim downstream.
+
+**Reduce the risk with wording and with a control.** Wording alone can be ignored; a product control (the usage policy routes no user traffic to the model) makes the claim's limits enforceable. Both are needed.
+
+**Close the loop.** Every unresolved point gets an owner, a next step, and a condition that would change the decision.
+
+## The model answer
+
+The text below is a complete `docs/responsibility/reflection.md`. The commentary after it explains why each part is there.
 
 ```markdown
 # Reflection: the safety row of shakespeare-kn4 v0
@@ -154,64 +144,66 @@ named in docs/USAGE_POLICY.md.
 
 ### Why this answer works
 
-- **The claim is reviewed as heard, not as written.** Option A is true and still misleading; the review exists to catch exactly that.
-- **Every number has a source.** The interval comes from the eval row, the AUC from the scorer row, the routing control from the usage policy; a reader can check each one.
-- **Measured and assumed are separate sections.** That is the distinction the principles ask for, and it is what tells the next reviewer which assumptions to test.
-- **A "no" on the checklist becomes work, not a shrug.** Rollback of a published claim (a correction) was missing; the review turns it into note R1 with an owner and a done condition.
-- **Tradeoffs accepted.** The review does not demand more evaluation now, because the routing control already prevents the harm and a larger suite would only matter for a use the model is not for. It records the condition (a proposal for user traffic) under which that changes.
+The claim is reviewed as heard, not as written. Option A is true and still misleading; the review exists to catch exactly that. Every number has a source: the interval comes from the eval row in [Bias and safety evals](../04-bias-and-safety-evals/01-bias-and-safety-evals.md), the AUC from the scorer row, the routing control from [Usage policy at the gateway](../05-usage-policy/01-usage-policy-at-the-gateway.md); a reader can check each one. Measured and assumed are separate sections, which is the distinction the principles ask for, and it is what tells the next reviewer which assumptions to test.
 
-### Explain it back
+A "no" on the checklist becomes work, not a shrug. Rollback of a published claim (a correction) was missing; the review turns it into note R1 with an owner and a done condition. And the review accepts a tradeoff on purpose: it does not demand more evaluation now, because the routing control already prevents the harm and a larger suite would only matter for a use the model is not for. It records the condition (a proposal for user traffic) under which that changes.
 
-**1. Why is reporting "0 toxic outputs" without the interval a disclosure failure, even though it is true?**
+## What can go wrong
 
-<details><summary>Answer</summary>
+Three pitfalls make a review like this one useless, and the model answer guards against each. The first is treating version selection or a document claim as implicit, so a reader or client cannot determine which contract or evidence applies; the review names the model and version, the exact row, and the schemas it follows. The second is skipping the failure path, so the successful example works but malformed input or rollback breaks the system; the review includes a failure-mode table with detection and degradation, and a correction procedure as R1.
 
-Readers will conclude the model is safe. With 18 prompts, zero events is consistent with a true rate up to about 18% (the Wilson upper bound), and the scorer itself is a weak classifier (ROC-AUC 0.752 on labelled text), so some toxic outputs may have gone undetected. A disclosure is responsible when the conclusion a reader draws matches the evidence, not merely when each sentence is literally true.
+> **Warning:** Omitting a named owner and recovery condition leaves an artifact that cannot guide an operator when conditions change. Every note and question in the model answer has an owner and a done or revisit condition.
 
-</details>
+## Where this leads
 
-**2. Why does the model answer insist on a product control in addition to better wording?**
+This review relies on the usage policy of [Usage policy at the gateway](../05-usage-policy/01-usage-policy-at-the-gateway.md) as its control; that policy's rule ids appear in the failure table. The same checklist, applied to a technical change instead of a disclosure, is the design-review practice of [Secrets and authorization review](../../software-craftsmanship/08-security/03-secrets-and-authorization-review.md) in *Software Craftsmanship*. When you defend this review, use the current [system contracts](../../../../course/contracts/) and system boundaries as evidence, and go back to the [reference model card](../../../../course/solutions/docs/MODEL_CARD.md) for the claims a review like this one examines.
 
-<details><summary>Answer</summary>
+## Key terms
 
-Wording can be ignored, misread, or stripped when a number is copied. A control (the usage policy denying user traffic to the model, by rule id) makes the limit hold regardless of who reads the card, and produces evidence (deny counts by rule) that the limit is being exercised.
+- **Disclosure**: telling users and decision makers what a system can and cannot do, in language suited to the audience.
+- **Overstatement**: a claim whose literal words are true but whose likely reading exceeds the evidence.
+- **Product control**: an enforced mechanism, such as a usage-policy rule, that makes a claim's limits hold regardless of who reads the documentation.
+- **Review note**: an unresolved checklist item recorded with an owner, a next step, and a done condition.
+- **Escalation channel**: the named route through which observed harm is reported.
 
-</details>
+## Summary
 
-**3. How many prompts would make "0 of n" bound the rate below 2.5%, and why does the review not require them now?**
+- Review a claim by what its audience will conclude; a true sentence can still mislead.
+- Tie each claim to the exact platform evidence that produces it, and keep measured results separate from assumptions.
+- Size the evidence: 0 of 18 bounds the rate only below about 18%, and the scorer's own quality limits what the rate means.
+- Pair honest wording with a product control, so the limit is enforced rather than advisory.
+- State the owner, success condition, and recovery action before declaring the work complete, and record unresolved assumptions so the next review can test them.
 
-<details><summary>Answer</summary>
+## Review questions
 
-At $k = 0$ the Wilson upper bound is $z^2/(n + z^2)$; setting it to 0.025 gives $n \approx 3.84/0.025 - 3.84 \approx 150$. The review does not require it now because the model is not for user traffic and the routing control already prevents the harm; it records the condition (a proposal for user traffic) under which the question must be revisited, with an owner.
+1. Why is reporting "0 toxic outputs" without the interval a disclosure failure, even though it is true?
 
-</details>
+   <details><summary>Answer</summary>
 
-**4. What turns a checklist "no" into something useful?**
+   Readers will conclude the model is safe. With 18 prompts, zero events is consistent with a true rate up to about 18% (the Wilson upper bound), and the scorer itself is a weak classifier (ROC-AUC 0.752 on labelled text), so some toxic outputs may have gone undetected. A disclosure is responsible when the conclusion a reader draws matches the evidence, not merely when each sentence is literally true.
 
-<details><summary>Answer</summary>
+   </details>
 
-An owner, a concrete next step, and a done condition. "Rollback partly" on its own is a complaint; R1 says who adds a corrections procedure, where, and how anyone can tell it is finished.
+2. Why does the model answer insist on a product control in addition to better wording?
 
-</details>
+   <details><summary>Answer</summary>
 
-## 6. Pitfalls
+   Wording can be ignored, misread, or stripped when a number is copied. A control (the usage policy denying user traffic to the model, by rule id) makes the limit hold regardless of who reads the card, and produces evidence (deny counts by rule) that the limit is being exercised.
 
-| # | Pitfall | Symptom | How the solution avoids it |
-|---|---|---|---|
-| 1 | Treating version selection or a document claim as implicit | A reader or client cannot determine which contract or evidence applies. | the review names the model and version, the exact row, and the schemas it follows |
-| 2 | Skipping the failure path | The successful example works, but malformed input or rollback breaks the system. | a failure-mode table with detection and degradation, and a correction procedure as R1 |
-| 3 | Omitting a named owner and recovery condition | The artifact cannot guide an operator when conditions change. | every note and question has an owner and a done or revisit condition |
+   </details>
 
-## 7. Where it's used next
+3. How many prompts would make "0 of n" bound the rate below 2.5%, and why does the review not require them now?
 
-| Direction | Module | Connection |
-|---|---|---|
-| Back | `ethics.05` | The usage policy is the control the review relies on; its rule ids appear in the failure table. |
-| Back | `craft.19` | Design-review practice: the same checklist, applied to a technical change instead of a disclosure. |
+   <details><summary>Answer</summary>
 
-## Going further
+   At $k = 0$ the Wilson upper bound is $z^2/(n + z^2)$; setting it to 0.025 gives $n \approx 3.84/0.025 - 3.84 \approx 150$. The review does not require it now because the model is not for user traffic and the routing control already prevents the harm; it records the condition (a proposal for user traffic) under which the question must be revisited, with an owner.
 
-| Resource | What to inspect |
-|---|---|
-| [Course contracts](../../../../course/contracts/) | Use the current contracts and system boundaries as evidence when defending this review. |
-| [Reference model card](../../../../course/solutions/docs/MODEL_CARD.md) | The claims a review like this one examines. |
+   </details>
+
+4. What turns a checklist "no" into something useful?
+
+   <details><summary>Answer</summary>
+
+   An owner, a concrete next step, and a done condition. "Rollback partly" on its own is a complaint; R1 says who adds a corrections procedure, where, and how anyone can tell it is finished.
+
+   </details>

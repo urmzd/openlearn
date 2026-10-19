@@ -213,7 +213,7 @@ The tests write to every byte of every allocation, then read them all back. Chec
 
 ## Where this leads
 
-Two extensions are worth trying. Add `arena_realloc` that grows in place when the block is the most recent allocation and copies otherwise, which is the trick that makes a growable array inside an arena cheap. Then make `arena_reset` poison the reclaimed bytes under a debug flag, so use-after-reset shows up immediately instead of reading plausible stale data. *Build Your Own LLM System* uses an arena with marks for per-step scratch memory in [C runtime support and an arena allocator with marks](../../../../../content/courses/build-an-llm/p09-kernels/02-arena-allocator-with-marks.md), and the [string interning](../09-string-interning/README.md) section that follows stores its strings in exactly this kind of append-only memory.
+Two extensions are worth trying. Add `arena_realloc` that grows in place when the block is the most recent allocation and copies otherwise, which is the trick that makes a growable array inside an arena cheap. Then make `arena_reset` poison the reclaimed bytes under a debug flag, so use-after-reset shows up immediately instead of reading plausible stale data. *Build Your Own LLM System* uses an arena with marks for per-step scratch memory in [C runtime support and an arena allocator with marks](../../../../../content/courses/build-an-llm/p09-kernels/02-arena-allocator-with-marks.md), and the [string interning](../09-string-interning/README.md) section that follows shows where an arena is the natural home for data that is never freed individually.
 
 ## Key terms
 

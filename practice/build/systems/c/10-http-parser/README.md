@@ -1,16 +1,19 @@
-# C 10: HTTP request parser
+# HTTP request parser
 
-**Concepts:** state machine, buffer management, incremental input
-**Difficulty:** ⭐⭐⭐⭐
+Every server starts by parsing bytes off a socket, and this is where "just split on `\r\n`" stops working. A socket hands you whatever the network felt like delivering, so the chunk you were given may end in the middle of a header name. This section builds an HTTP/1.1 request-header parser that accepts input in arbitrary chunks, carries just enough state to resume mid-line, and allocates nothing.
 
-An HTTP/1.1 request-header parser that accepts input in arbitrary chunks. This
-is the exercise where "just split on `\r\n`" stops working, because the chunk
-you were given may end in the middle of a header name.
+It is also a section about security. An HTTP parser that is generous about what it accepts is a parser that disagrees with some other parser in the chain, and every such disagreement is a way to smuggle a second request inside the first. You will see why over-long input must be refused rather than truncated, why `strtol` is the wrong tool for `Content-Length`, and how to tell a leniency that is safe from one that is not. The wire format itself is explained in [HTTP/1.1, JSON, and Server-Sent Events from the wire up](../../../../../content/courses/programming-languages/02-language-and-tool-primers/05-http-and-sse.md) in *Programming Languages*; the bounded-copy and overflow habits come from the earlier sections of this chapter.
 
-## The problem
+> **Learning objectives**
+> - Parse a line-oriented protocol incrementally, so that every split of the input produces the same result.
+> - Bound every field with a fixed buffer and refuse, never truncate, input that does not fit.
+> - Identify parser-differential ambiguities (whitespace before a colon, conflicting `Content-Length`) and reject them.
+> - Validate a numeric header without `strtol` and without integer overflow.
+> - Report exactly where the header block ends so the caller can find the body.
 
-[`http.h`](http.h) declares the interface, [`http.c`](http.c) is the solution,
-and [`main.c`](main.c) is the test suite.
+## The interface
+
+[`http.h`](http.h) declares the interface, [`http.c`](http.c) is the solution, and [`main.c`](main.c) is the test suite.
 
 | Function | Does |
 |----------|------|
@@ -18,88 +21,50 @@ and [`main.c`](main.c) is the test suite.
 | `http_feed(p, data, len, &consumed)` | Feed bytes; `HTTP_INCOMPLETE`, `HTTP_DONE`, or `HTTP_ERROR` |
 | `http_header(p, name)` | Case-insensitive lookup, `NULL` when absent |
 
-Constraints: fixed-size buffers throughout (method 16 bytes, path 512, header
-name 64, value 256, at most 32 headers, lines up to 2048 bytes), no allocation.
-`consumed` must stop at the end of the header block so the caller can find the
-body. Over-long input is an error, never truncated. Once in error, the parser
-stays in error.
+The constraints are strict. Buffers are fixed-size throughout (method 16 bytes, path 512, header name 64, value 256, at most 32 headers, lines up to 2048 bytes), and nothing is allocated. `consumed` must stop at the end of the header block so the caller can find the body. Over-long input is an error, never truncated. And once in error, the parser stays in error.
 
-## Build and run
-
-From this directory:
+To build and run the tests from this directory:
 
 ```bash
 cc -std=c11 -Wall -Wextra -O2 main.c http.c -o http && ./http
 # ok  c/10-http-parser  695 checks passed
 ```
 
-## What to notice
+## Incremental input
 
-**Incremental parsing is the whole exercise.** A socket hands you whatever the
-network felt like: 3 bytes, then 1400, then 12. There is no relationship between
-those boundaries and the message's. So the parser cannot hold a pointer into the
-caller's buffer across calls, and must carry enough state to resume mid-line.
-`test_every_possible_split` feeds the same request at every one of its split
-points and then one byte at a time, which is the test that fails for anything
-built around `strtok` or a single pass over a complete buffer.
+Incremental parsing is the whole exercise. A socket hands you 3 bytes, then 1400, then 12, with no relationship between those boundaries and the message's. So the parser cannot hold a pointer into the caller's buffer across calls, and must carry enough state to resume mid-line. `test_every_possible_split` feeds the same request at every one of its split points and then one byte at a time, which is the test that fails for anything built around `strtok` or a single pass over a complete buffer.
 
-**Refuse over-long input, never truncate it.** Truncating a 3,000-byte path into
-a 512-byte buffer does not produce an error, it produces a *different request*
-that the application then trusts. That is a security bug, not a robustness one,
-and the same reasoning applies to header names, values, and the header count.
+## Strictness as a security property
 
-**Strictness here is a security property, not pedantry.** Every rejected case in
-`test_malformed_requests_are_rejected` is a real parser-differential class. When
-a proxy and a backend disagree about whether `Foo : bar` is a header, or about
-which of two `Content-Length` values wins, an attacker can hide a second request
-inside the first. That is request smuggling, and the defence is that a parser
-which is unsure must refuse rather than guess.
+Refuse over-long input; never truncate it. Truncating a 3,000-byte path into a 512-byte buffer does not produce an error; it produces a *different request* that the application then trusts. That is a security bug, not a robustness one, and the same reasoning applies to header names, values, and the header count.
 
-**`strtol` is the wrong tool for `Content-Length`.** It accepts `"12abc"`,
-`"+5"`, leading whitespace, and negatives, and reports success for all of them.
-A body length the parser and the server disagree about is precisely the
-smuggling primitive above. Validate that the field is digits and nothing else.
+Strictness here is a security property, not pedantry. Every rejected case in `test_malformed_requests_are_rejected` is a real parser-differential class. When a proxy and a backend disagree about whether `Foo : bar` is a header, or about which of two `Content-Length` values wins, an attacker can hide a second request inside the first. That is request smuggling, and the defence is that a parser which is unsure must refuse rather than guess.
 
-**Accept bare LF while the spec says CRLF.** Robustness against real clients
-requires it, and stripping at most one trailing `\r` costs one line. This is a
-place where being liberal is *safe*, because both readings produce the same
-message. Contrast with `Foo : bar`, where being liberal changes what the
-message means, and is therefore not safe. The distinction is the entire art of
-the robustness principle, and the reason it has fallen out of favour.
+`strtol` is the wrong tool for `Content-Length`. It accepts `"12abc"`, `"+5"`, leading whitespace, and negatives, and reports success for all of them. A body length the parser and the server disagree about is precisely the smuggling primitive above. Validate that the field is digits and nothing else.
 
-**The error state has to be sticky.** Once a request is malformed, there is no
-resynchronisation point: you cannot know where the next valid line starts, and
-guessing lets an attacker choose. The connection is finished. The tests check
-that feeding more bytes after an error still reports an error.
+Some leniency is still right. The parser accepts a bare LF where the spec says CRLF. Robustness against real clients requires it, and stripping at most one trailing `\r` costs one line. This is a place where being liberal is *safe*, because both readings produce the same message. Contrast `Foo : bar`, where being liberal changes what the message means, and is therefore not safe. That distinction is the entire art of the robustness principle, and the reason it has fallen out of favour.
 
-## The solution, step by step
+Finally, the error state has to be sticky. Once a request is malformed, there is no resynchronisation point: you cannot know where the next valid line starts, and guessing lets an attacker choose. The connection is finished. The tests check that feeding more bytes after an error still reports an error.
 
-### From first principles
+## Deriving the design
 
-1. **The unit of meaning is a line.** The request line and each header line end
-   at `\n`; the header block ends at an empty line. So the parser's job splits
-   in two: assemble lines from arbitrary chunks, then interpret complete lines.
-2. **Assembling lines across calls needs a private buffer.** The caller's buffer
-   is gone after `http_feed` returns, so bytes of an unfinished line are copied
-   into `p->line`. The next call appends to it. That buffer, its length, and a
-   state are all the parser has to remember.
-3. **Three meaningful states.** Before the request line, among headers, done.
-   Plus an error state that every path can fall into and none can leave.
-4. **Byte-at-a-time is the simplest correct loop.** Each byte is either `\n`
-   (a line is complete: interpret it) or something to append. Then every split
-   of the input produces exactly the same sequence of complete lines, which is
-   the property the every-split test checks.
-5. **Every field has a fixed buffer, so every copy is checked.** A copy that
-   does not fit is an error. Truncation would produce a different request than
-   the client sent.
-6. **Parse exactly what is allowed and reject the rest.** The version must be
-   exactly `HTTP/1.N`; no space before a header's colon; `Content-Length` must be
-   all digits and must not conflict with an earlier one. Anything ambiguous is
-   rejected, because ambiguity between parsers is the attack.
-7. **Stop at the blank line.** Whatever follows is body, and belongs to the
-   caller, so `consumed` points just past the blank line's `\n`.
+Seven observations take you from the protocol to the code.
 
-### The code, annotated
+The unit of meaning is a line. The request line and each header line end at `\n`; the header block ends at an empty line. So the parser's job splits in two: assemble lines from arbitrary chunks, then interpret complete lines.
+
+Assembling lines across calls needs a private buffer. The caller's buffer is gone after `http_feed` returns, so bytes of an unfinished line are copied into `p->line`, and the next call appends to it. That buffer, its length, and a state are all the parser has to remember.
+
+There are three meaningful states: before the request line, among headers, and done. There is also an error state that every path can fall into and none can leave.
+
+Byte-at-a-time is the simplest correct loop. Each byte is either `\n` (a line is complete: interpret it) or something to append. Then every split of the input produces exactly the same sequence of complete lines, which is the property the every-split test checks.
+
+Every field has a fixed buffer, so every copy is checked. A copy that does not fit is an error, because truncation would produce a different request than the client sent.
+
+Parse exactly what is allowed and reject the rest. The version must be exactly `HTTP/1.N`; there must be no space before a header's colon; `Content-Length` must be all digits and must not conflict with an earlier one. Anything ambiguous is rejected, because ambiguity between parsers is the attack.
+
+Stop at the blank line. Whatever follows is body, and belongs to the caller, so `consumed` points just past the blank line's `\n`.
+
+## Building it step by step
 
 The bounded copy every field goes through:
 
@@ -245,29 +210,58 @@ where `long` is 64 bits (Linux, macOS). On a platform with a 32-bit `long`
 compute in `long long` or compare against `LONG_MAX / 10`. An identical repeated
 `Content-Length` is accepted, a different one is an error.
 
-Full solution: [`http.c`](http.c).
+The full solution is in [`http.c`](http.c).
 
-### Why this solution
+## Why this design
 
-- **Cost.** O(1) work per input byte: each byte is appended to the line buffer
-  once and scanned a constant number of times when its line completes. Memory is
-  the fixed `HttpParser` struct, about 13 KB, with no allocation.
-- **Copying lines versus pointing into the caller's buffer.** Zero-copy parsers
-  (such as picohttpparser) are faster but require the caller to keep the whole
-  header block contiguous and re-feed it. Copying into `p->line` is what makes
-  arbitrary chunking work with no cooperation from the caller.
-- **Line-level versus character-level state machine.** A full character-level
-  machine (method, space, path, ...) avoids the line buffer, but is many more
-  states and much harder to read. Since the header block is bounded anyway, the
-  line buffer costs nothing that matters.
-- **Strict versus lenient.** Lenient parsing accepts more clients, but every
-  leniency that changes meaning is a disagreement an attacker can use. The
-  solution is lenient only where both readings agree (CRLF versus LF, leading
-  blank lines, whitespace around values).
-- **Accepted trade.** No obsolete line folding, no chunked encoding, no limits
-  configurable at runtime; this is a header parser, not a full HTTP stack.
+The parser does O(1) work per input byte: each byte is appended to the line buffer once and scanned a constant number of times when its line completes. Memory is the fixed `HttpParser` struct, about 13 KB, with no allocation.
 
-### Explain it back
+Copying lines is chosen over pointing into the caller's buffer. Zero-copy parsers (such as picohttpparser) are faster but require the caller to keep the whole header block contiguous and re-feed it. Copying into `p->line` is what makes arbitrary chunking work with no cooperation from the caller.
+
+A line-level state machine is chosen over a character-level one. A full character-level machine (method, space, path, ...) avoids the line buffer, but has many more states and is much harder to read. Since the header block is bounded anyway, the line buffer costs nothing that matters.
+
+Strict is chosen over lenient. Lenient parsing accepts more clients, but every leniency that changes meaning is a disagreement an attacker can use. The solution is lenient only where both readings agree: CRLF versus LF, leading blank lines, and whitespace around values.
+
+The accepted trade is scope: there is no obsolete line folding, no chunked encoding, and no limits configurable at run time. This is a header parser, not a full HTTP stack.
+
+## What can go wrong
+
+The rejected inputs are the point of the exercise, so it is worth seeing them together.
+
+| Input or mistake | Why it is refused or wrong |
+|------------------|----------------------------|
+| A field longer than its buffer | Truncation would create a different request; refused instead |
+| `Foo : bar` | Parsers disagree on the name; a smuggling vector |
+| Two different `Content-Length` values | Proxy and backend may pick different ones; refused (identical repeats are accepted) |
+| `Content-Length: 12abc`, `+5`, `-5` | Not digits only; `strtol` would accept them |
+| A version other than exactly `HTTP/1.N` | Rejected rather than guessed at |
+| More than 32 headers | Refused, never silently dropped |
+| More bytes after an error | Still an error: there is no safe resynchronisation point |
+| Holding pointers into the caller's buffer | They are invalid after `http_feed` returns |
+
+> **Warning:** The `Content-Length` overflow guard uses `1L << 40`, which is correct where `long` is 64 bits (Linux, macOS). On a platform with a 32-bit `long`, such as 64-bit Windows, the shift is itself undefined. A portable version would compute in `long long` or compare against `LONG_MAX / 10`.
+
+## Where this leads
+
+The next layer is chunked transfer encoding, a second state machine layered on the first and where a great many CVEs live, particularly around the interaction between `Transfer-Encoding` and `Content-Length` when both are present. The correct behaviour is to reject the request outright, and working out why is more instructive than any amount of reading about it. The streaming side of HTTP, Server-Sent Events, is covered in [HTTP/1.1, JSON, and Server-Sent Events from the wire up](../../../../../content/courses/programming-languages/02-language-and-tool-primers/05-http-and-sse.md).
+
+## Key terms
+
+- **Incremental parser**: a parser that accepts input in arbitrary chunks and resumes where the previous chunk ended.
+- **Request smuggling**: an attack that exploits two parsers disagreeing about message boundaries to hide one request inside another.
+- **Parser differential**: any input that two conforming-looking parsers interpret differently.
+- **Sticky error state**: an error that, once entered, every later call reports, because the stream cannot be safely resynchronised.
+- **Robustness principle**: "be liberal in what you accept"; safe only where every reading produces the same message.
+
+## Summary
+
+- The parser assembles lines byte by byte into a private buffer, so any split of the input yields the same lines.
+- Every field is copied with a bounded copy that fails rather than truncates.
+- Ambiguous input (space before a colon, conflicting or non-digit `Content-Length`, a malformed version) is rejected, because ambiguity is the smuggling vector.
+- Leniency is allowed only where both readings agree: bare LF, leading blank lines, whitespace around values.
+- `consumed` stops just past the blank line so the caller can find the body, and errors are sticky.
+
+## Review questions
 
 1. Why does `test_every_possible_split` pass for this parser by construction?
 
@@ -324,11 +318,3 @@ Full solution: [`http.c`](http.c).
    identical values carry no ambiguity, so they are accepted.
 
    </details>
-
-## Extending it
-
-Add chunked transfer encoding, which is a second state machine layered on the
-first and where a great many CVEs live, particularly around the interaction
-between `Transfer-Encoding` and `Content-Length` when both are present. The
-correct behaviour is to reject the request outright, and working out why is more
-instructive than any amount of reading about it.
