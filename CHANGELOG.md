@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.23.0 (2026-10-19)
+
+### Breaking
+
+- turn the course into a solutions manual and remove the CLI (#42) ([5d29653](https://github.com/urmzd/openlearn/commit/5d2965374af23f8fe936b19f0ee511ff509d07de))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.22.0...v0.23.0)
+
+
 ## 0.22.0 (2026-10-18)
 
 ### Features
