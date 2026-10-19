@@ -22,13 +22,11 @@ What it takes to train the capstone on a laptop, and what changes on a cluster. 
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L11.1` | [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](01-mixed-precision-accumulation-and-checkpointing.md) | build | 9 |
 | 2 | `L11.2` | [Collectives over processes: ring all-reduce](02-collectives-over-processes.md) | side | 9 |
 | 3 | `L11.3` | [Data parallelism and ZeRO stages 1 to 3](03-ddp-and-zero.md) | side | 9 |
-<!-- /ol:chapters -->
 
 ## Going further
 

@@ -71,7 +71,6 @@ Milestone `MS-corpus` closes the pipeline: shards, manifest, ledger, and `.bin` 
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `data.01` | [Async fetch with resume, checksums, license capture](01-async-fetch-resume-checksums.md) | build | 3 |
@@ -83,7 +82,6 @@ Milestone `MS-corpus` closes the pipeline: shards, manifest, ledger, and `.bin` 
 | 7 | `data.07` | [Tokenize and pack to llm.c .bin](07-tokenize-and-pack.md) | build | 3 |
 | 8 | `data.08` | [Licensing ledger verification and the datasheet](08-ledger-and-datasheet.md) | build | 3 |
 | 9 | `data.09` | [Pipeline as a durable workflow CorpusBuild](09-corpusbuild-as-a-durable-workflow.md) | build | 8 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

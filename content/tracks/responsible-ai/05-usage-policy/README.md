@@ -48,11 +48,9 @@ Its enforcement is the build module `gw.08` (usage policy enforcement, Pass 10),
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ethics.05` | [Usage policy at the gateway](01-usage-policy-at-the-gateway.md) | practice | 10 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

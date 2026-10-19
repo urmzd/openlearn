@@ -31,8 +31,8 @@ DTYPE = np.float32
 
 
 def fixture(name: str) -> Path:
-    """A craft.22 fixture under TINYLLM_FIXTURES (ol check sets it)."""
-    return Path(os.environ.get("TINYLLM_FIXTURES", "course/fixtures")) / "craft.22" / name
+    """A craft.22 fixture under TINYLLM_FIXTURES (defaults to course/solutions/fixtures)."""
+    return Path(os.environ.get("TINYLLM_FIXTURES", "course/solutions/fixtures")) / "craft.22" / name
 
 
 class TinyLM:

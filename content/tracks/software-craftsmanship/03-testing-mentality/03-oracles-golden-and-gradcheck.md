@@ -333,4 +333,4 @@ The kata mirrors how a fused kernel works: storing $P$ costs $T_q \times T_k$ me
 | the gradcheck | `torch.autograd.gradcheck`, `gradgradcheck` | complex inputs, fast mode (a random projection instead of every element), second derivatives | `torch/autograd/gradcheck.py` |
 | golden files | PyTorch OpInfo | one description per op drives forward, backward, dtype, and device tests | `torch/testing/_internal/common_methods_invocations.py` |
 | differential tests | FlashAttention's tests | the fused kernel against a float64 reference, tolerance set from the reference's own float32 error | `flash-attention/tests/test_flash_attn.py` |
-| tolerances | `torch.testing.assert_close` | per-dtype defaults, like the course's `_lib.close` | PyTorch testing docs |
+| tolerances | `torch.testing.assert_close` | per-dtype default tolerances | PyTorch testing docs |

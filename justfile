@@ -114,6 +114,11 @@ run-practice-solutions:
     if [ -x "$d/run.sh" ]; then (cd "$d" && ./run.sh); \
     else cc -std=c11 -Wall -O2 -pthread "$d"*.c -o /tmp/ol-solution && /tmp/ol-solution; fi; \
   done
+  for d in practice/build/systems/cpp/*/; do \
+    echo "--- $d"; \
+    if [ -x "$d/run.sh" ]; then (cd "$d" && ./run.sh); \
+    else c++ -std=c++20 -Wall -O2 -pthread "$d"main.cpp -o /tmp/ol-solution && /tmp/ol-solution; fi; \
+  done
 
 # Course catalogue checks: manifests resolve and relative links exist.
 course-lint:

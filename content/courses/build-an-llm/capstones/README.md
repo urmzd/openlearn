@@ -19,16 +19,14 @@ The capstones run the whole system you built on one goal. C1 trains a roughly 10
 | `C1` | Capstone: TinyStories, owned end to end | capstone | 9 |
 | `C2` | Capstone: the post-trained instruction follower (optional) | capstone | 10, optional |
 
-Chapter files: `01-tinystories.md` (C1) and `02-post-trained.md` (C2), per course/DESIGN.md 3.3.
+Chapter files: `01-tinystories.md` (C1) and `02-post-trained.md` (C2),.
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `C1` | [Capstone: TinyStories, owned end to end](01-tinystories.md) | practice | 9 |
 | 2 | `C2` | [Capstone 2: post-trained TinyStories model](02-post-trained.md) | practice | 10 |
-<!-- /ol:chapters -->
 
 ## Going further
 

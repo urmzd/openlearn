@@ -128,12 +128,10 @@ The rule: **ADRs are immutable.** You don't edit ADR-009 when you change your mi
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `craft.02` | [Architecture decision records](01-architecture-decision-records.md) | practice | 1 |
 | 2 | `craft.10` | [Runbooks and Diataxis docs](02-runbooks-and-diataxis.md) | practice | 11 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

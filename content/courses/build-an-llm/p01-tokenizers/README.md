@@ -26,7 +26,6 @@ From bytes to subwords. The tracer's byte tokenizer (256 ids, no training) gives
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L1.1` | [Tokenizer protocol, char tokenizer](01-tokenizer-protocol-and-char.md) | build | 3 |
@@ -35,7 +34,6 @@ From bytes to subwords. The tracer's byte tokenizer (256 ids, no training) gives
 | 4 | `L1.4` | [Unigram LM tokenizer (EM, Viterbi, subword sampling)](04-unigram-lm.md) | build | 3 |
 | 5 | `L1.5` | [Rust fast BPE (tl-tok), byte tokenizer, streaming decoder](05-rust-fast-bpe.md) | build | 3 |
 | 6 | `L1.6` | [Tokenizer metrics](06-tokenizer-metrics.md) | build | 3 |
-<!-- /ol:chapters -->
 
 ## Going further
 

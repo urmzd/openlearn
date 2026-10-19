@@ -6,7 +6,6 @@ The Rust engine: an OpenAI-compatible HTTP server that streams completions from 
 
 **Before you start**: the [Rust](../../../tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md) and [HTTP and SSE](../../../tracks/software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md) primers; the API contract [`openai-subset.v0.yaml`](../../../../course/contracts/openapi/openai-subset.v0.yaml) and the engine role in [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md).
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L10.0` | [Your first endpoint: a std-only Rust HTTP/1.1 + SSE server](00-your-first-endpoint.md) | build | 1 |
@@ -21,4 +20,3 @@ The Rust engine: an OpenAI-compatible HTTP server that streams completions from 
 | 10 | `L10.9` | [Tool calls and constrained JSON decoding in the engine](09-tool-calls-and-constrained-decoding.md) | build | 7 |
 | 11 | `load.01` | [Open-loop load generator, log-linear histogram, Go PCG32 port](10-load-generator.md) | build | 7 |
 | 12 | `load.02` | [Run comparison and regression gate](11-run-comparison-and-regression-gate.md) | side | 7 |
-<!-- /ol:chapters -->

@@ -66,7 +66,6 @@ A gradient is a linear map, and a program is a composition of small differentiab
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M08.1` | [Dual numbers and forward-mode autodiff](01-dual-numbers-forward-mode.md) | build | 2 |
@@ -74,7 +73,6 @@ A gradient is a linear map, and a program is a composition of small differentiab
 | 3 | `M08.3` | [Matrix differentials, the trace trick, and closed-form VJPs](03-matrix-differentials-and-vjps.md) | build | 2 |
 | 4 | `M08.4` | [Hessian-vector products and the recompute-versus-memory schedule](04-hessian-vector-products-and-recompute.md) | build | 9 |
 | 5 | `S-M08` | [Matrix calculus problem set: differentials, trace trick, VJPs, SDPA Jacobian](90-problem-set.md) | solve | 2 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

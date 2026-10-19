@@ -24,7 +24,6 @@ Attention is all you need, built from its parts. Scaled dot-product attention wi
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L5.1` | [Scaled dot-product attention (forward and backward)](01-scaled-dot-product-attention.md) | build | 5 |
@@ -32,7 +31,6 @@ Attention is all you need, built from its parts. Scaled dot-product attention wi
 | 3 | `L5.3` | [Multi-head attention](03-multi-head-attention.md) | build | 5 |
 | 4 | `L5.4` | [Positional encodings: sinusoidal, learned](04-positional-encodings.md) | build | 5 |
 | 5 | `L5.5` | [Encoder-decoder Transformer: post-LN and pre-LN, Noam, label smoothing](05-encoder-decoder-transformer.md) | build | 5 |
-<!-- /ol:chapters -->
 
 ## Going further
 

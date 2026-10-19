@@ -30,7 +30,6 @@ The ALiBi part of `L7.4` is optional (course decision D31).
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L7.1` | [Pre-LN, RMSNorm](01-pre-ln-rmsnorm.md) | build | 5 |
@@ -42,7 +41,6 @@ The ALiBi part of `L7.4` is optional (course decision D31).
 | 7 | `L7.7` | [Sliding window, StreamingLLM sinks, learned sinks](07-sliding-window-and-sinks.md) | build | 5 |
 | 8 | `L7.8` | [Mixture of Experts: routing, sorted dispatch, Switch aux loss, aux-free bias](08-mixture-of-experts.md) | build | 5 |
 | 9 | `L7.9` | [Llama-family model, HF config, weight loading, downloader](09-llama-family-model.md) | build | 5 |
-<!-- /ol:chapters -->
 
 ## Going further
 

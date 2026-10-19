@@ -2,7 +2,7 @@
 
 Three oracles, none of them the code under test:
   golden        torch's forward values and autograd gradients in
-                course/fixtures/craft.05/oracles.npz (TINYLLM_FIXTURES)
+                course/solutions/fixtures/craft.05/oracles.npz (TINYLLM_FIXTURES)
   gradcheck     central differences in float64 of sum(f(x) * g), for a
                 random upstream g, against every hand-written backward
   differential  the causal mask equals running each query on its prefix

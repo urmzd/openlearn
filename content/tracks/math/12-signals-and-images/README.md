@@ -100,7 +100,6 @@ This topic is new in Pass 12 (the multimodal pass): no earlier topic owns sampli
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M12.1` | [Convolution as a linear map](01-convolution-as-a-linear-map.md) | build | 12 |
@@ -110,7 +109,6 @@ This topic is new in Pass 12 (the multimodal pass): no earlier topic owns sampli
 | 5 | `M12.5` | [Sampling, Nyquist, windows, and the STFT](05-sampling-windows-and-stft.md) | build | 12 |
 | 6 | `M12.6` | [Mel scale and filterbanks](06-mel-scale-and-filterbanks.md) | build | 12 |
 | 7 | `S-M12` | [Signals and images problem set: convolution, sampling, Fourier, mel, contrastive losses, and WER](90-problem-set.md) | solve | 12 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

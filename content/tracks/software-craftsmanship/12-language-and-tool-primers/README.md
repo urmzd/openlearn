@@ -39,7 +39,6 @@ Just enough of each language and tool to build the course system, each placed im
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `lang.01` | [Python and numpy: arrays, dtypes, broadcasting, views vs copies, uv projects](01-python-and-numpy.md) | practice | 0 |
@@ -53,4 +52,3 @@ Just enough of each language and tool to build the course system, each placed im
 | 9 | `lang.09` | [Async Rust and tokio: futures, tasks, channels, cancellation, hyper](09-async-rust-and-tokio.md) | practice | 7 |
 | 10 | `lang.10` | [Protocol Buffers and gRPC: schema evolution, unary and streaming RPCs, stubs](10-protocol-buffers-and-grpc.md) | practice | 7 |
 | 11 | `lang.11` | [SQL and SQLite: schema, transactions, WAL mode, indexes, aggregates](11-sql-and-sqlite.md) | practice | 7 |
-<!-- /ol:chapters -->

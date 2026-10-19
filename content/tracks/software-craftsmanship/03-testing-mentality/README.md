@@ -136,7 +136,6 @@ In the course this topic hosts the testing ladder: one practice module per rung,
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `craft.03` | [TDD, unit tests, and how your tests are graded](01-tdd-unit-tests-and-mutation-grading.md) | practice | 2 |
@@ -148,7 +147,6 @@ In the course this topic hosts the testing ladder: one practice module per rung,
 | 7 | `craft.21` | [Resilience tests (R10)](07-resilience-tests.md) | practice | 8 |
 | 8 | `craft.22` | [Model evals as tests (R8)](08-model-evals-as-tests.md) | practice | 9 |
 | 9 | `craft.23` | [Agent evals as tests (R9)](23-agent-evals-as-tests.md) | practice | 10 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

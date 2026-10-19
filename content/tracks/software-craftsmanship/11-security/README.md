@@ -48,13 +48,11 @@ Security is a property of the whole system, so it is reviewed against the whole 
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `craft.17` | [Threat model (STRIDE on your DFD)](01-threat-model-stride.md) | practice | 11 |
 | 2 | `craft.18` | [SBOM and supply chain](02-sbom-and-supply-chain.md) | practice | 11 |
 | 3 | `craft.19` | [Secrets and authorization review](03-secrets-and-authorization-review.md) | practice | 11 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

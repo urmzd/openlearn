@@ -261,7 +261,6 @@ randomized algorithms and hashing to machine learning, A/B testing, and queueing
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M07.0` | [Random variables, expectation, variance, and normal draws by Box-Muller](00-random-variables-and-the-normal.md) | build | 2 |
@@ -276,4 +275,3 @@ randomized algorithms and hashing to machine learning, A/B testing, and queueing
 | 10 | `S-M07b` | [Solve set: joint and covariance, MLE](91-problem-set-b.md) | solve | 3 |
 | 11 | `S-M07c` | [Solve set: LLN/CLT, confidence intervals](92-problem-set-c.md) | solve | 4 |
 | 12 | `S-M07d` | [Solve set: hypothesis tests, regression, queueing and Little's law, balls into bins](93-problem-set-d.md) | solve | 5 |
-<!-- /ol:chapters -->

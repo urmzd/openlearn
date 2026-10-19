@@ -200,11 +200,9 @@ In the course you draw your own system the way this topic draws Streamflow: cont
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `craft.09` | [C4 diagrams in D2](01-c4-diagrams-in-d2.md) | practice | 11 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

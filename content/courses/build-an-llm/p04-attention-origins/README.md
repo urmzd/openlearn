@@ -24,7 +24,6 @@ Where attention came from: sequence-to-sequence translation. An encoder-decoder 
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L4.1` | [Encoder-decoder with teacher forcing](01-encoder-decoder-teacher-forcing.md) | build | 4 |
@@ -32,7 +31,6 @@ Where attention came from: sequence-to-sequence translation. An encoder-decoder 
 | 3 | `L4.3` | [Luong attention and input feeding](03-luong-attention-input-feeding.md) | build | 4 |
 | 4 | `L4.4` | [Beam search, generic over a step function](04-beam-search.md) | build | 4 |
 | 5 | `L4.5` | [Sequence metrics: exact match, BLEU, chrF](05-sequence-metrics.md) | build | 4 |
-<!-- /ol:chapters -->
 
 ## Going further
 

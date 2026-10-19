@@ -14,7 +14,6 @@ The harness compiles the declared C units into standalone test executables;
 `SANITIZE=1` enables ASan and UBSan. The rules are in
 [`c/ABI.md`](../../../../course/contracts/c/ABI.md).
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `rt.02` | [C runtime support and arena allocator with marks (optional)](02-arena-allocator-with-marks.md) | side | 6 |
@@ -25,4 +24,3 @@ The harness compiles the declared C units into standalone test executables;
 | 6 | `L9.4` | [Paged attention for decode in C](07-paged-attention-decode.md) | side | 6 |
 | 7 | `L9.5` | [Fused int4 and int8 dequantize-matmul in C](08-fused-quantized-matmul.md) | side | 6 |
 | 8 | `L9.6` | [Elementwise kernels in C: RMSNorm, RoPE, SiLU-mul, embedding, add, argmax](09-elementwise-kernels.md) | side | 6 |
-<!-- /ol:chapters -->

@@ -6,7 +6,6 @@ The model side of the tracer and, from Pass 2, the autograd engine every later m
 
 **Before you start**: [Python and NumPy](../../../tracks/software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md) and [matrix multiplication in Python](../../../tracks/math/03-linear-algebra/01-vectors-matrices-and-matmul.md).
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L0.0` | [Byte bigram: counts, logits, safetensors v0](00-byte-bigram.md) | build | 1 |
@@ -16,4 +15,3 @@ The model side of the tracer and, from Pass 2, the autograd engine every later m
 | 5 | `L0.4` | [Module system and basic layers](04-module-system-and-layers.md) | build | 2 |
 | 6 | `L0.5` | [Training loop and the autograd bigram](05-training-loop-and-the-autograd-bigram.md) | build | 2 |
 | 7 | `L0.6` | [Safetensors for every dtype, atomic checkpoints, and the token stream](06-safetensors-checkpoints-and-token-streams.md) | build | 2 |
-<!-- /ol:chapters -->

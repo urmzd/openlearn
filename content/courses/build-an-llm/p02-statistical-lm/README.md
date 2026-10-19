@@ -22,13 +22,11 @@ The language models before deep learning and the first neural one. An n-gram mod
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L2.1` | [n-gram language model with interpolated modified Kneser-Ney](01-ngram-kneser-ney.md) | build | 3 |
 | 2 | `L2.2` | [Bengio's neural probabilistic language model](02-bengio-nplm.md) | build | 3 |
 | 3 | `L2.3` | [word2vec skip-gram with negative sampling, and the PPMI-SVD baseline](03-word2vec-and-ppmi-svd.md) | build | 3 |
-<!-- /ol:chapters -->
 
 ## Going further
 

@@ -49,14 +49,12 @@ A system that cannot change safely is already failing slowly. Every migration in
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `craft.13` | [Interface migration: KV format v1 to v2](01-kv-format-v1-to-v2.md) | build | 11 |
 | 2 | `craft.14` | [Interface migration: API v1 to v2](02-api-v1-to-v2.md) | build | 11 |
 | 3 | `craft.15` | [Dependency upgrades](03-dependency-upgrades.md) | practice | 11 |
 | 4 | `craft.16` | [Perf regression bisect](04-performance-regression-bisect.md) | practice | 11 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 
