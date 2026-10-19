@@ -3,7 +3,7 @@
 #
 #     from tinyllm.autograd import functional as F
 #
-# (DESIGN 4.3 writes it `tinyllm.F`; `tinyllm` is a namespace package with no
+# (Written `F` in prose; `tinyllm` is a namespace package with no
 # __init__.py, so the module is imported by its path.)
 #
 # Every op takes Tensors (L0.1); an ndarray or a number where a Tensor is
@@ -97,4 +97,4 @@ def gradcheck_all(rtol: float = 1e-5) -> dict[str, GradcheckReport]:
     forward-mode derivatives (tinyllm.autograd.dual.derivative, M08.1); a
     disagreement above 1e-9 makes their report not ok. Ops are looked up
     in this module when it runs, so a replaced op is the one checked.
-    Keys are the op names; `{tinyllm} gradcheck --suite all` (MS-L0) prints them."""
+    Keys are the op names; `{tinyllm} gradcheck --suite all` prints them."""

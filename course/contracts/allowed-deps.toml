@@ -1,11 +1,11 @@
 # contracts/allowed-deps.toml: the third-party packages each component may
-# use. Learner units and reference units alike; anything else
-# in a library unit fails the contract pre-check (craft.18 audits it).
-# Entry points (CLI mains, servers, deploy files, D16) may add their own.
+# use. It applies to every library unit; a library unit that imports
+# anything else breaks the contract (craft.18 audits it). Entry points (CLI
+# mains, servers, deploy files) may add their own.
 #
 # Values are version requirements in each ecosystem's syntax: Cargo caret
 # requirements, Go module major versions, PEP 440 specifiers. Exact versions
-# live in the learner's lock files (Cargo.lock, go.sum, uv.lock); a lock that
+# live in the system's lock files (Cargo.lock, go.sum, uv.lock); a lock that
 # leaves a requirement here is a dependency upgrade (craft.15, drill ops.06).
 # The versions below were current on crates.io, proxy.golang.org, and PyPI
 # when contract 0.2.0 was written; the protobuf and gRPC rows are the ones
@@ -25,8 +25,8 @@ pyarrow = ">=18"
 zstandard = ">=0.23"
 
 [python.tests]
-# Course tests use only the stdlib, numpy, and the frozen helpers (D35);
-# the learner's own tests may also use these.
+# Test suites use only the stdlib, numpy, pytest, and the shared test
+# helpers.
 pytest = ">=8"
 hypothesis = ">=6"
 
@@ -82,7 +82,7 @@ tonic = "0.14"
 tonic-prost = "0.14"
 
 [go.tinyllm]
-# module tinyllm (learner) and openlearn.urmzd.com/tl/contracts
+# module tinyllm (the system) and openlearn.urmzd.com/tl/contracts
 "google.golang.org/grpc" = "v1"
 "google.golang.org/protobuf" = "v1"
 "github.com/BurntSushi/toml" = "v1"

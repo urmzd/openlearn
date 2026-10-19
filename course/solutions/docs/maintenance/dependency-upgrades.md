@@ -22,4 +22,4 @@ Merge only when unit/contract tests pass, no unapproved vulnerability remains, a
 
 ## Open evidence
 
-This repository example is a review template, not a claim that an upgrade has been deployed. The learner replaces the candidate range, resolved graph, CI links, image digest, and measurements with evidence from the change under review. Unknown results remain `pending`; they are not inferred from a successful compile.
+This repository example is a review template, not a claim that an upgrade has been deployed. The maintainer replaces the candidate range, resolved graph, CI links, image digest, and measurements with evidence from the change under review. Unknown results remain `pending`; they are not inferred from a successful compile.

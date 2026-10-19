@@ -1,7 +1,7 @@
 # runtime.toml template for the engine service (L10.5). The
-# harness fills the listen keys with allocated ports and passes the file as
-# {config}. The model is L7.9's committed tiny-llama-2l, the model MS-L10
-# grades in PR CI ([build] copies it to artifacts/models/tiny). It is served under the name "tracer", the model id the
+# launcher fills the listen keys with allocated ports and passes the file as
+# {config}. The model is L7.9's committed tiny-llama-2l, the model the
+# serving tests load in PR CI ([build] copies it to artifacts/models/tiny). It is served under the name "tracer", the model id the
 # Pass 1 requests and the conformance client send ([endpoints].model).
 [engine]
 model_dir = "artifacts/models/tiny"

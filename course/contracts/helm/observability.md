@@ -3,7 +3,7 @@
 
 <!-- modules: dep.00 (Jaeger, Pass 1), dep.02 and dep.03 (Pass 7 stack), dep.06 (KEDA), obs.01 to obs.05 -->
 
-The learner deploys upstream charts for tracing, metrics, and dashboards and pins them in `deploy/observability/Chart.lock`. These versions are the ones the course tests against; a newer version is a dependency upgrade (craft.15, drill ops.06), never a silent drift. Versions were taken from each project's official Helm repository index, choosing the newest release published at least two weeks before contract 0.2.0 (2026-10-09).
+The system deploys upstream charts for tracing, metrics, and dashboards and pins them in `deploy/observability/Chart.lock`. These versions are the ones the course tests against; a newer version is a dependency upgrade (craft.15, drill ops.06), never a silent drift. Versions were taken from each project's official Helm repository index, choosing the newest release published at least two weeks before contract 0.2.0 (2026-10-09).
 
 | Chart | Repository | Version | App version | From |
 |---|---|---|---|---|
@@ -26,7 +26,7 @@ The learner deploys upstream charts for tracing, metrics, and dashboards and pin
 
 ## The PrometheusRule selector
 
-kube-prometheus-stack's Prometheus loads only the `PrometheusRule` objects that match its rule selector. The course leaves the chart's default (`prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues: true`), which selects rules labelled with the stack's release name. So every rule file the learner renders from `slo.yaml` ([`otel/slo.schema.json`](../otel/slo.schema.json)) is a `PrometheusRule` with:
+kube-prometheus-stack's Prometheus loads only the `PrometheusRule` objects that match its rule selector. The course leaves the chart's default (`prometheus.prometheusSpec.ruleSelectorNilUsesHelmValues: true`), which selects rules labelled with the stack's release name. So every rule file the system renders from `slo.yaml` ([`otel/slo.schema.json`](../otel/slo.schema.json)) is a `PrometheusRule` with:
 
 ```yaml
 metadata:

@@ -3,7 +3,7 @@
 <!-- modules: dur.09 (Go runner go/activities/subprocess.go; Python helper python/tinyllm/io/activity.py and telemetry.py), data.09, dur.11, dur.12, C1
      conformance: activity/ (a fake Python script drives the runner) -->
 
-Python never speaks gRPC to the platform (D9). A Go worker runs Python work as a **subprocess activity**: it execs one of the learner's Python entries with a spec file and a progress file, watches it, and turns its exit code into the activity's result. This page is the whole interface between the two.
+Python never speaks gRPC to the platform (D9). A Go worker runs Python work as a **subprocess activity**: it execs one of the system's Python entries with a spec file and a progress file, watches it, and turns its exit code into the activity's result. This page is the whole interface between the two.
 
 ## Invocation
 
@@ -12,7 +12,7 @@ Python never speaks gRPC to the platform (D9). A Go worker runs Python work as a
 {corpus}  <verb> --spec <dir>/spec.json --progress <dir>/progress.jsonl
 ```
 
-`{tinyllm}` and `{corpus}` are the learner's entries from `system.toml` (spec/cli-roles.md). `<dir>` is the activity's work directory (below); paths in the spec and in progress events are relative to `/artifacts` (`TL_ARTIFACTS`).
+`{tinyllm}` and `{corpus}` are the system's Python entries from `system.toml` (spec/cli-roles.md). `<dir>` is the activity's work directory (below); paths in the spec and in progress events are relative to `/artifacts` (`TL_ARTIFACTS`).
 
 | Entry, verb | `spec.json` validates against | Produces |
 |---|---|---|

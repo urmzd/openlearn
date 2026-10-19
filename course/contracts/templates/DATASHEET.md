@@ -35,4 +35,4 @@ Following Gebru et al., "Datasheets for Datasets".
   derived shards, retrain decision).>
 
 <!-- contracts/templates/DATASHEET.md (data.08, ethics.01): `{corpus}
-     datasheet` fills the counts; the prose is yours. Copy to DATASHEET.md. -->
+     datasheet` fills the counts; the prose is written by hand. Copy to DATASHEET.md. -->

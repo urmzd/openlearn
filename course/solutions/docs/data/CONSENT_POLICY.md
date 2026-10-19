@@ -11,7 +11,7 @@ embedding must never be repurposed as an identity database or lookup key.
 
 ## Source terms
 local:evals/asr-recorded/predictions.json is authored synthetic CC0 data.
-No Common Voice files are distributed. A learner using that optional source
+No Common Voice files are distributed. Anyone using that optional source
 must record its dataset terms, consent, attribution, and redistribution limits
 before processing it. This fixture does not authorize that use.
 

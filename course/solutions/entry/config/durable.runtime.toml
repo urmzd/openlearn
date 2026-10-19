@@ -1,5 +1,5 @@
 # runtime.toml template for the durable service (dur.02). The
-# harness fills [durable].grpc_listen and health_listen with allocated ports
+# launcher fills [durable].grpc_listen and health_listen with allocated ports
 # and passes the file as {config}; the WAL lives in the run's state directory.
 [durable]
 wal_dir = "{data}/wal"

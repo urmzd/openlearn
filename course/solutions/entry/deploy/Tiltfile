@@ -74,7 +74,8 @@ docker_build_with_restart(
 
 # -- the charts ----------------------------------------------------------------
 # `tilt up` runs one unified engine (fast to start). The production topology
-# MS-prod checks is one engine release per role:
+# (what the platform pipeline's kind-e2e job deploys) is one engine release
+# per role:
 #   tilt up -f deploy/Tiltfile -- --topology=disaggregated
 config.define_string('topology')
 TOPOLOGY = config.parse().get('topology', 'unified')

@@ -55,4 +55,4 @@ The layouts are fixed so that a C test can write a struct's bytes into a fixture
 
 ## Building
 
-The learner's `c/Makefile` may produce `c/build/libtinyllm.a` for local experiments; `SANITIZE=1` adds `-fsanitize=address,undefined`. The harness compiles its own objects for each module's C test binary: an ASan and UBSan build with the counting allocator, and a ThreadSanitizer build for modules whose tests declare `sanitize = ["thread"]`. Results reach other languages only as fixture files and process output.
+The system's `c/Makefile` may produce `c/build/libtinyllm.a` for local experiments; `SANITIZE=1` adds `-fsanitize=address,undefined`. Each module's C test binary is compiled from its own objects: an ASan and UBSan build with the counting allocator, and a ThreadSanitizer build for modules whose tests declare `sanitize = ["thread"]`. Results reach other languages only as fixture files and process output.

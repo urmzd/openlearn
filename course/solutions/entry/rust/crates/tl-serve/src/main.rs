@@ -1,12 +1,11 @@
-//! tl-serve: the engine's entry point (reference, course CI only).
+//! tl-serve: the engine's entry point.
 //!
 //!   tl-serve --model-dir <dir> --port <n> --health-port <n>     the tracer (L10.0, API v0)
 //!   tl-serve --config <runtime.toml>                            API v1 (L10.5)
 //!                                                               (spec/cli-roles.md)
 //!
-//! Entry points are learner territory: this file is never
-//! overlaid into a learner's checks. `ol verify course --e2e` copies it into
-//! the assembled reference learner so the milestones have an engine to start.
+//! An entry point: wiring only (flags, config, listeners); the engine's logic
+//! lives in the library crates.
 
 use std::net::TcpListener;
 use std::path::PathBuf;

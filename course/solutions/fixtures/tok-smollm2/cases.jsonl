@@ -1,0 +1,300 @@
+{"text": "", "ids": [], "decoded": ""}
+{"text": " ", "ids": [216], "decoded": " "}
+{"text": "Hello world", "ids": [19556, 905], "decoded": "Hello world"}
+{"text": "Hello, world!", "ids": [19556, 28, 905, 17], "decoded": "Hello, world!"}
+{"text": "The quick brown fox jumps over the lazy dog.", "ids": [504, 2365, 6354, 16438, 27003, 690, 260, 23790, 2767, 30], "decoded": "The quick brown fox jumps over the lazy dog."}
+{"text": "don't stop: it's what we'll do, they're sure, I've seen, I'm in, he'd go", "ids": [12420, 982, 2853, 42, 357, 506, 732, 392, 3060, 536, 28, 502, 2316, 2090, 28, 339, 3543, 2269, 28, 339, 5248, 281, 28, 384, 6737, 685], "decoded": "don't stop: it's what we'll do, they're sure, I've seen, I'm in, he'd go"}
+{"text": "DON'T SHOUT: IT'S LOUD, WE'LL SEE", "ids": [52, 2154, 23, 68, 334, 21953, 42, 9627, 23, 67, 16887, 11911, 28, 26587, 23, 16421, 334, 8405], "decoded": "DON'T SHOUT: IT'S LOUD, WE'LL SEE"}
+{"text": "she said ’twas fine and it’s ok", "ids": [6691, 1137, 16107, 10372, 292, 4979, 284, 357, 417, 99, 10907], "decoded": "she said ’twas fine and it’s ok"}
+{"text": "'s 't 're 've 'm 'll 'd", "ids": [506, 637, 100, 637, 257, 637, 307, 637, 93, 637, 764, 637, 84], "decoded": "'s 't 're 've 'm 'll 'd"}
+{"text": "rock 'n' roll", "ids": [12701, 637, 94, 23, 5089], "decoded": "rock 'n' roll"}
+{"text": "  leading spaces", "ids": [216, 2899, 5600], "decoded": "  leading spaces"}
+{"text": "trailing spaces   ", "ids": [4861, 4966, 5600, 333], "decoded": "trailing spaces   "}
+{"text": "two  spaces   three    four", "ids": [11355, 216, 5600, 256, 1296, 333, 1876], "decoded": "two  spaces   three    four"}
+{"text": "tab\tseparated\tvalues", "ids": [15999, 197, 19509, 483, 197, 6347], "decoded": "tab\tseparated\tvalues"}
+{"text": "line one\nline two\n\nline four\r\nline five", "ids": [1311, 582, 198, 1311, 827, 198, 198, 1311, 1876, 201, 198, 1311, 2531], "decoded": "line one\nline two\n\nline four\r\nline five"}
+{"text": " \n \n ", "ids": [3717, 3717, 216], "decoded": " \n \n "}
+{"text": "\n\n\n", "ids": [16506], "decoded": "\n\n\n"}
+{"text": "non breaking space and ideographic　space", "ids": [9033, 15442, 11194, 15442, 11602, 284, 1290, 4551, 12109, 218, 11602], "decoded": "non breaking space and ideographic　space"}
+{"text": "line separator and paragraph separator", "ids": [1311, 321, 118, 19509, 1508, 284, 8510, 321, 119, 19509, 1508], "decoded": "line separator and paragraph separator"}
+{"text": "zero​width space", "ids": [13723, 321, 229, 6930, 1898], "decoded": "zero​width space"}
+{"text": "12345 67890", "ids": [33, 34, 35, 36, 37, 216, 38, 39, 40, 41, 32], "decoded": "12345 67890"}
+{"text": "3.14159 2.71828 1,000,000 1e-9 0x1F", "ids": [35, 30, 33, 36, 33, 37, 41, 216, 34, 30, 39, 33, 40, 34, 40, 216, 33, 28, 32, 32, 32, 28, 32, 32, 32, 216, 33, 85, 29, 41, 216, 32, 104, 33, 54], "decoded": "3.14159 2.71828 1,000,000 1e-9 0x1F"}
+{"text": "2024-03-15 06:30:00", "ids": [34, 32, 34, 36, 29, 32, 35, 29, 33, 37, 216, 32, 38, 42, 35, 32, 42, 32, 32], "decoded": "2024-03-15 06:30:00"}
+{"text": "fractions ½ ¾ and superscripts x² y³", "ids": [86, 28592, 216, 16738, 216, 43124, 284, 25199, 4818, 99, 1792, 19133, 329, 39050], "decoded": "fractions ½ ¾ and superscripts x² y³"}
+{"text": "Arabic-Indic digits ٣٤٥ and roman Ⅻ", "ids": [44970, 29, 5080, 286, 18638, 216, 164, 113, 164, 114, 164, 115, 284, 41800, 216, 173, 223, 121], "decoded": "Arabic-Indic digits ٣٤٥ and roman Ⅻ"}
+{"text": "$19.99 + 5% = ?", "ids": [20, 33, 41, 30, 41, 41, 1232, 216, 37, 21, 446, 9148], "decoded": "$19.99 + 5% = ?"}
+{"text": "café naïve résumé façade", "ids": [83, 1939, 2756, 15486, 46494, 412, 2756, 5422, 2756, 40852], "decoded": "café naïve résumé façade"}
+{"text": "café decomposed", "ids": [83, 9980, 151, 219, 48304], "decoded": "café decomposed"}
+{"text": "Straße über Größe", "ids": [48513, 34878, 85, 5549, 137, 593, 9171, 7466, 34878, 85], "decoded": "Straße über Größe"}
+{"text": "İstanbul İIıi", "ids": [143, 125, 28683, 24488, 125, 57, 20335, 89], "decoded": "İstanbul İIıi"}
+{"text": "ΣΑΣ σας", "ids": [153, 113, 153, 235, 153, 113, 32437, 8998, 18624], "decoded": "ΣΑΣ σας"}
+{"text": "日本語のテキスト", "ids": [23274, 115, 40993, 179, 120, 248, 26453, 11100, 224, 10391, 251, 10391, 134, 11100, 226], "decoded": "日本語のテキスト"}
+{"text": "中文文本测试", "ids": [28589, 29184, 29184, 40993, 43222, 229, 16313, 239], "decoded": "中文文本测试"}
+{"text": "한국어 텍스트", "ids": [33085, 246, 181, 130, 251, 183, 240, 129, 48138, 223, 231, 183, 228, 114, 184, 228, 133], "decoded": "한국어 텍스트"}
+{"text": "مرحبا بالعالم", "ids": [21706, 20602, 44626, 31462, 10805, 45726, 22208, 34966, 22208, 21706], "decoded": "مرحبا بالعالم"}
+{"text": "שלום עולם", "ids": [38229, 31838, 23970, 162, 247, 12960, 112, 23970, 31838, 162, 247], "decoded": "שלום עולם"}
+{"text": "नमस्ते दुनिया", "ids": [30658, 35090, 38770, 16525, 26293, 30581, 12335, 116, 42990, 30658, 27011, 32932, 18075], "decoded": "नमस्ते दुनिया"}
+{"text": "สวัสดีครับ", "ids": [10283, 120, 10283, 117, 10283, 126, 10283, 120, 10283, 238, 10283, 130, 10283, 222, 44701, 10283, 126, 10283, 244], "decoded": "สวัสดีครับ"}
+{"text": "emoji 🙂🚀🌊", "ids": [391, 33777, 47526, 10813, 244, 218, 10813, 230, 228], "decoded": "emoji 🙂🚀🌊"}
+{"text": "family 👨‍👩‍👧 and skin 👍🏽", "ids": [16703, 15107, 235, 118, 321, 231, 10813, 235, 119, 321, 231, 10813, 235, 117, 284, 2574, 15107, 235, 231, 10813, 233, 138], "decoded": "family 👨‍👩‍👧 and skin 👍🏽"}
+{"text": "flags 🇨🇦🇯🇵 keycap 1️⃣", "ids": [20477, 15107, 225, 118, 10813, 225, 116, 10813, 225, 124, 10813, 225, 130, 1646, 4600, 216, 33, 31752, 173, 221, 113], "decoded": "flags 🇨🇦🇯🇵 keycap 1️⃣"}
+{"text": "def f(x):\n    return x ** 2  # square\n", "ids": [1604, 275, 24, 104, 727, 472, 1003, 1792, 1903, 216, 34, 216, 907, 5222, 198], "decoded": "def f(x):\n    return x ** 2  # square\n"}
+{"text": "if (a != b && c <= d) { return a->b[0]; }", "ids": [342, 365, 81, 6541, 278, 1456, 22, 265, 10204, 287, 25, 1662, 1003, 253, 22690, 82, 75, 32, 26695, 4029], "decoded": "if (a != b && c <= d) { return a->b[0]; }"}
+{"text": "https://example.com/path?q=1&r=two#frag", "ids": [4687, 1742, 7434, 30, 824, 31, 1537, 47, 97, 45, 33, 22, 98, 45, 11355, 19, 28082], "decoded": "https://example.com/path?q=1&r=two#frag"}
+{"text": "user.name+tag@example.org", "ids": [4093, 30, 1245, 27, 9204, 48, 7434, 30, 2295], "decoded": "user.name+tag@example.org"}
+{"text": "!!! ??? ... --- *** ### @@@", "ids": [29646, 9148, 16693, 4563, 21749, 33117, 20749, 3394, 41407], "decoded": "!!! ??? ... --- *** ### @@@"}
+{"text": "...and then?!", "ids": [2026, 397, 965, 17593], "decoded": "...and then?!"}
+{"text": "\"quoted\" and (parenthesized) [bracketed] {braced}", "ids": [18, 385, 5036, 18, 284, 365, 5667, 852, 1005, 25, 933, 6838, 936, 11166, 77, 1662, 6838, 766, 109], "decoded": "\"quoted\" and (parenthesized) [bracketed] {braced}"}
+{"text": "<|endoftext|>", "ids": [0], "decoded": "<|endoftext|>"}
+{"text": "before<|endoftext|>after", "ids": [17985, 0, 9110], "decoded": "before<|endoftext|>after"}
+{"text": "<|im_start|>user\nHi there<|im_end|>\n<|im_start|>assistant\n", "ids": [1, 4093, 198, 26843, 665, 2, 198, 1, 520, 9531, 198], "decoded": "<|im_start|>user\nHi there<|im_end|>\n<|im_start|>assistant\n"}
+{"text": "<|im_start|> partial <|im", "ids": [1, 9908, 2067, 108, 306], "decoded": "<|im_start|> partial <|im"}
+{"text": "a [MASK] b [CLS] c [SEP] d [mask]", "ids": [81, 933, 61, 34260, 77, 278, 933, 7430, 67, 77, 265, 933, 6493, 64, 77, 287, 933, 8836, 77], "decoded": "a [MASK] b [CLS] c [SEP] d [mask]"}
+{"text": "the <unk> token and <s> </s>", "ids": [1195, 2067, 5131, 46, 9624, 284, 2067, 99, 46, 22577, 99, 46], "decoded": "the <unk> token and <s> </s>"}
+{"text": "control \u0000 \u0004 \u001c \u001f   chars", "ids": [11656, 216, 190, 216, 216, 213, 216, 215, 216, 217, 3351, 223, 42040], "decoded": "control \u0000  \u001c \u001f   chars"}
+{"text": "replacement � char", "ids": [9630, 358, 216, 24211, 1336], "decoded": "replacement � char"}
+{"text": "PneumonoultramicroscopicsilicovolcanoconiosisPneumonoultramicroscopicsilicovolcanoconiosisPneumonoultramicroscopicsilicovolcanoconiosis", "ids": [64, 10304, 258, 12715, 814, 1936, 1513, 371, 747, 37502, 21369, 4055, 406, 16842, 2469, 64, 10304, 258, 12715, 814, 1936, 1513, 371, 747, 37502, 21369, 4055, 406, 16842, 2469, 64, 10304, 258, 12715, 814, 1936, 1513, 371, 747, 37502, 21369, 4055, 406, 16842, 2469], "decoded": "PneumonoultramicroscopicsilicovolcanoconiosisPneumonoultramicroscopicsilicovolcanoconiosisPneumonoultramicroscopicsilicovolcanoconiosis"}
+{"text": "𝕏𝕖𝕝𝕝𝕠 math letters", "ids": [23159, 239, 233, 23159, 239, 240, 23159, 239, 247, 23159, 239, 247, 23159, 239, 250, 4119, 5073], "decoded": "𝕏𝕖𝕝𝕝𝕠 math letters"}
+{"text": "ABCÅÅÅ", "ids": [35542, 142, 223, 13993, 121, 49, 151, 228], "decoded": "ABCÅÅÅ"}
+{"text": "Unicode ⅠⅡⅢ ①② 〇", "ids": [3706, 15817, 216, 173, 223, 250, 173, 223, 111, 173, 223, 112, 216, 173, 235, 250, 173, 235, 111, 216, 12109, 225], "decoded": "Unicode ⅠⅡⅢ ①② 〇"}
+{"text": ": Mia1,000count", "ids": [42, 21230, 33, 28, 32, 32, 32, 4639], "decoded": ": Mia1,000count"}
+{"text": "y<unk>naïve:", "ids": [105, 44, 5131, 46, 3546, 46494, 42], "decoded": "y<unk>naïve:"}
+{"text": "counting:zy", "ids": [4639, 274, 42, 5346], "decoded": "counting:zy"}
+{"text": " \n½1naïve!", "ids": [3717, 16738, 33, 3546, 46494, 17], "decoded": " \n½1naïve!"}
+{"text": ";[MASK] ofüber:...’s", "ids": [43, 75, 61, 34260, 77, 282, 7170, 593, 42, 2026, 417, 99], "decoded": ";[MASK] ofüber:...’s"}
+{"text": "('m한국über\r\n<unk>½日本", "ids": [1305, 93, 33085, 246, 181, 130, 251, 7170, 593, 201, 198, 44, 5131, 46, 16738, 23274, 115, 40993], "decoded": "('m한국über\r\n<unk>½日本"}
+{"text": "Ⅻ½'m@!!counted #", "ids": [173, 223, 121, 16738, 5248, 48, 10095, 4639, 277, 907], "decoded": "Ⅻ½'m@!!counted #"}
+{"text": "(naïve!<|endoftext|>counting-", "ids": [24, 3546, 46494, 17, 0, 4639, 274, 29], "decoded": "(naïve!<|endoftext|>counting-"}
+{"text": "counting!!", "ids": [4639, 274, 10095], "decoded": "counting!!"}
+{"text": "!", "ids": [17], "decoded": "!"}
+{"text": "caféz%’s andcafé²", "ids": [83, 1939, 2756, 106, 21, 417, 99, 284, 83, 1939, 2756, 19133], "decoded": "caféz%’s andcafé²"}
+{"text": "count　snake_caseab've 2024", "ids": [4639, 12109, 218, 48284, 79, 7544, 369, 3543, 216, 34, 32, 34, 36], "decoded": "count　snake_caseab've 2024"}
+{"text": "the", "ids": [1195], "decoded": "the"}
+{"text": "1,000überz lighthouse’s0🇨🇦", "ids": [33, 28, 32, 32, 32, 7170, 593, 106, 33059, 417, 99, 32, 10813, 225, 118, 10813, 225, 116], "decoded": "1,000überz lighthouse’s0🇨🇦"}
+{"text": " boats<|im_start|>", "ids": [13768, 1], "decoded": " boats<|im_start|>"}
+{"text": "한국?\t", "ids": [33085, 246, 181, 130, 251, 47, 197], "decoded": "한국?\t"}
+{"text": " of was,camelCase11", "ids": [282, 436, 28, 12744, 299, 10802, 33, 33], "decoded": " of was,camelCase11"}
+{"text": "٣'S    2024", "ids": [164, 113, 23, 67, 289, 34, 32, 34, 36], "decoded": "٣'S    2024"}
+{"text": "ynaïve日本  @...Hello", "ids": [38341, 46494, 23274, 115, 40993, 216, 3394, 2026, 19556], "decoded": "ynaïve日本  @...Hello"}
+{"text": " Mia to", "ids": [21230, 288], "decoded": " Mia to"}
+{"text": "한국@'vecamelCase3.14z", "ids": [33085, 246, 181, 130, 251, 48, 23, 307, 12744, 299, 10802, 35, 30, 33, 36, 106], "decoded": "한국@'vecamelCase3.14z"}
+{"text": "'t", "ids": [982], "decoded": "'t"}
+{"text": "Ⅻ👍🏽)", "ids": [173, 223, 121, 10813, 235, 231, 10813, 233, 138, 25], "decoded": "Ⅻ👍🏽)"}
+{"text": "'m%👍🏽über \né boatsthe", "ids": [5248, 21, 10813, 235, 231, 10813, 233, 138, 7170, 593, 216, 198, 85, 151, 219, 9741, 302, 255], "decoded": "'m%👍🏽über \né boatsthe"}
+{"text": "1y", "ids": [33, 105], "decoded": "1y"}
+{"text": "abc\t#", "ids": [25276, 197, 19], "decoded": "abc\t#"}
+{"text": ")👍🏽@ and? in'", "ids": [25, 10813, 235, 231, 10813, 233, 138, 48, 284, 47, 281, 23], "decoded": ")👍🏽@ and? in'"}
+{"text": "\tİ of lighthouse#y#👍🏽", "ids": [197, 143, 125, 282, 33059, 19, 105, 19, 10813, 235, 231, 10813, 233, 138], "decoded": "\tİ of lighthouse#y#👍🏽"}
+{"text": ")[MASK]", "ids": [12993, 61, 34260, 77], "decoded": ")[MASK]"}
+{"text": "'m½café🙂're", "ids": [5248, 16738, 83, 1939, 2756, 10813, 38887, 23, 257], "decoded": "'m½café🙂're"}
+{"text": "   日本,", "ids": [256, 17097, 241, 115, 40993, 28], "decoded": "   日本,"}
+{"text": "\r\n½z%'ve🙂countedthe", "ids": [2738, 16738, 106, 21, 23, 307, 10813, 38887, 4639, 277, 1195], "decoded": "\r\n½z%'ve🙂countedthe"}
+{"text": ".Ⅻ👨‍👩", "ids": [30, 173, 223, 121, 10813, 235, 118, 321, 231, 10813, 235, 119], "decoded": ".Ⅻ👨‍👩"}
+{"text": "?'re ofHello\"'s", "ids": [27285, 257, 282, 19556, 17242, 99], "decoded": "?'re ofHello\"'s"}
+{"text": "日本?1 \n   and\n", "ids": [23274, 115, 40993, 47, 33, 3717, 256, 284, 198], "decoded": "日本?1 \n   and\n"}
+{"text": "  ", "ids": [256], "decoded": "  "}
+{"text": "count", "ids": [4639], "decoded": "count"}
+{"text": "zΣcount\n world<|endoftext|>  robot", "ids": [106, 153, 113, 4639, 198, 905, 0, 216, 8085], "decoded": "zΣcount\n world<|endoftext|>  robot"}
+{"text": "'t '0日本!", "ids": [982, 15442, 23, 32, 23274, 115, 40993, 17], "decoded": "'t '0日本!"}
+{"text": "½ boats", "ids": [16738, 13768], "decoded": "½ boats"}
+{"text": "İ's'S42", "ids": [143, 125, 506, 23, 67, 36, 34], "decoded": "İ's'S42"}
+{"text": "\n Pipsnake_case: lighthouse👍🏽 ", "ids": [198, 377, 2259, 94, 575, 79, 7544, 42, 33059, 10813, 235, 231, 10813, 233, 138, 216], "decoded": "\n Pipsnake_case: lighthouse👍🏽 "}
+{"text": " 🙂countingcafé", "ids": [47526, 4639, 274, 83, 1939, 2756], "decoded": " 🙂countingcafé"}
+{"text": " Pip", "ids": [26621], "decoded": " Pip"}
+{"text": "ab　　:Σ're", "ids": [369, 12109, 218, 12109, 218, 42, 153, 113, 2316], "decoded": "ab　　:Σ're"}
+{"text": "👍🏽 lighthouse@ in...'t²-", "ids": [10813, 235, 231, 10813, 233, 138, 33059, 48, 281, 2026, 23, 100, 19133, 29], "decoded": "👍🏽 lighthouse@ in...'t²-"}
+{"text": "'mनमस्ते中文 Pip\n\n", "ids": [5248, 30658, 35090, 38770, 16525, 26293, 30581, 28589, 29184, 26621, 1116], "decoded": "'mनमस्ते中文 Pip\n\n"}
+{"text": " of한국@🙂🙂x 🇨🇦", "ids": [282, 33085, 246, 181, 130, 251, 48, 10813, 38887, 10813, 38887, 104, 15107, 225, 118, 10813, 225, 116], "decoded": " of한국@🙂🙂x 🇨🇦"}
+{"text": "1", "ids": [33], "decoded": "1"}
+{"text": " 2024", "ids": [216, 34, 32, 34, 36], "decoded": " 2024"}
+{"text": "👨‍👩 Pip tox $", "ids": [10813, 235, 118, 321, 231, 10813, 235, 119, 26621, 4397, 15442, 20], "decoded": "👨‍👩 Pip tox $"}
+{"text": "\n...", "ids": [198, 2026], "decoded": "\n..."}
+{"text": " robot42\té and🇨🇦", "ids": [8085, 36, 34, 197, 85, 151, 219, 284, 10813, 225, 118, 10813, 225, 116], "decoded": " robot42\té and🇨🇦"}
+{"text": " Pip<|endoftext|>.", "ids": [26621, 0, 30], "decoded": " Pip<|endoftext|>."}
+{"text": "; world \n[MASK]²", "ids": [43, 905, 216, 198, 75, 61, 34260, 77, 19133], "decoded": "; world \n[MASK]²"}
+{"text": "<|im_start|>", "ids": [1], "decoded": "<|im_start|>"}
+{"text": "naïve?", "ids": [3546, 46494, 47], "decoded": "naïve?"}
+{"text": "the:überⅫनमस्ते", "ids": [1195, 42, 7170, 593, 173, 223, 121, 30658, 35090, 38770, 16525, 26293, 30581], "decoded": "the:überⅫनमस्ते"}
+{"text": "'s\r\nनमस्ते'", "ids": [506, 201, 198, 30658, 35090, 38770, 16525, 26293, 30581, 23], "decoded": "'s\r\nनमस्ते'"}
+{"text": "(", "ids": [24], "decoded": "("}
+{"text": "नमस्तेनमस्ते%...--½ a", "ids": [30658, 35090, 38770, 16525, 26293, 30581, 30658, 35090, 38770, 16525, 26293, 30581, 21, 2026, 423, 16738, 253], "decoded": "नमस्तेनमस्ते%...--½ a"}
+{"text": "(  world", "ids": [24, 216, 905], "decoded": "(  world"}
+{"text": "　 toİ robot", "ids": [12109, 218, 288, 143, 125, 8085], "decoded": "　 toİ robot"}
+{"text": "é1,000z theΣthe", "ids": [85, 151, 219, 33, 28, 32, 32, 32, 106, 260, 153, 113, 1195], "decoded": "é1,000z theΣthe"}
+{"text": "über", "ids": [7170, 593], "decoded": "über"}
+{"text": ".٣", "ids": [30, 164, 113], "decoded": ".٣"}
+{"text": "한국snake_case　 in[MASK]", "ids": [33085, 246, 181, 130, 251, 48284, 79, 7544, 12109, 218, 281, 75, 61, 34260, 77], "decoded": "한국snake_case　 in[MASK]"}
+{"text": "中文- lighthouse($)", "ids": [28589, 29184, 29, 33059, 24, 20, 25], "decoded": "中文- lighthouse($)"}
+{"text": " was   --½ a ", "ids": [436, 256, 3009, 16738, 253, 216], "decoded": " was   --½ a "}
+{"text": " boats", "ids": [13768], "decoded": " boats"}
+{"text": " lighthouse[MASK].0   ", "ids": [33059, 75, 61, 34260, 2880, 32, 333], "decoded": " lighthouse[MASK].0   "}
+{"text": "'ve中文--WORLD)3.14Σ٣", "ids": [3543, 28589, 29184, 423, 42815, 16284, 25, 35, 30, 33, 36, 153, 113, 164, 113], "decoded": "'ve中文--WORLD)3.14Σ٣"}
+{"text": "🙂Hello[MASK]²", "ids": [10813, 38887, 19556, 75, 61, 34260, 77, 19133], "decoded": "🙂Hello[MASK]²"}
+{"text": "snake_case<|endoftext|>", "ids": [48284, 79, 7544, 0], "decoded": "snake_case<|endoftext|>"}
+{"text": "counting?'S of", "ids": [4639, 274, 27285, 67, 282], "decoded": "counting?'S of"}
+{"text": "'ll[MASK] Pip is.", "ids": [3060, 75, 61, 34260, 77, 26621, 314, 30], "decoded": "'ll[MASK] Pip is."}
+{"text": " is\r\n", "ids": [314, 2738], "decoded": " is\r\n"}
+{"text": "!!counted", "ids": [10095, 4639, 277], "decoded": "!!counted"}
+{"text": "?$'ve", "ids": [47, 20, 23, 307], "decoded": "?$'ve"}
+{"text": "👨‍👩٣", "ids": [10813, 235, 118, 321, 231, 10813, 235, 119, 164, 113], "decoded": "👨‍👩٣"}
+{"text": " a", "ids": [253], "decoded": " a"}
+{"text": "snake_case of🙂countingHello  ", "ids": [48284, 79, 7544, 282, 10813, 38887, 4639, 274, 19556, 256], "decoded": "snake_case of🙂countingHello  "}
+{"text": "👍🏽ab", "ids": [10813, 235, 231, 10813, 233, 138, 369], "decoded": "👍🏽ab"}
+{"text": "naïveⅫ...(:y", "ids": [3546, 46494, 173, 223, 121, 2026, 24, 42, 105], "decoded": "naïveⅫ...(:y"}
+{"text": "42’s", "ids": [36, 34, 417, 99], "decoded": "42’s"}
+{"text": "!!'t'm 2024counted world! world", "ids": [10095, 23, 100, 5248, 216, 34, 32, 34, 36, 4639, 277, 905, 17, 905], "decoded": "!!'t'm 2024counted world! world"}
+{"text": ",\n\n0", "ids": [28, 1116, 32], "decoded": ",\n\n0"}
+{"text": " to   ?-'re", "ids": [288, 256, 9148, 42086, 257], "decoded": " to   ?-'re"}
+{"text": "x👨‍👩y3.14한국1", "ids": [104, 10813, 235, 118, 321, 231, 10813, 235, 119, 105, 35, 30, 33, 36, 33085, 246, 181, 130, 251, 33], "decoded": "x👨‍👩y3.14한국1"}
+{"text": "'m Pip🇨🇦<|endoftext|>x", "ids": [5248, 26621, 10813, 225, 118, 10813, 225, 116, 0, 104], "decoded": "'m Pip🇨🇦<|endoftext|>x"}
+{"text": "’scafé٣ \ncafé! robot1,000", "ids": [417, 1513, 1939, 2756, 164, 113, 216, 198, 83, 1939, 2756, 17, 8085, 33, 28, 32, 32, 32], "decoded": "’scafé٣ \ncafé! robot1,000"}
+{"text": "!snake_case#\t", "ids": [17, 48284, 79, 7544, 19, 197], "decoded": "!snake_case#\t"}
+{"text": "snake_case 한국", "ids": [48284, 79, 7544, 15442, 33085, 246, 181, 130, 251], "decoded": "snake_case 한국"}
+{"text": " is$@abc", "ids": [314, 20, 48, 25276], "decoded": " is$@abc"}
+{"text": "'t٣z<|endoftext|>", "ids": [982, 164, 113, 106, 0], "decoded": "'t٣z<|endoftext|>"}
+{"text": "é1<unk>'--　WORLD日本", "ids": [85, 151, 219, 33, 44, 5131, 21007, 423, 12109, 218, 42815, 16284, 23274, 115, 40993], "decoded": "é1<unk>'--　WORLD日本"}
+{"text": "x", "ids": [104], "decoded": "x"}
+{"text": "(!🙂é", "ids": [24, 17, 10813, 38887, 85, 151, 219], "decoded": "(!🙂é"}
+{"text": "'re!\n\n", "ids": [2316, 17, 1116], "decoded": "'re!\n\n"}
+{"text": "café toé", "ids": [83, 1939, 2756, 19976, 151, 219], "decoded": "café toé"}
+{"text": "ab lighthouse<|im_start|>?--   ", "ids": [369, 33059, 1, 47, 423, 333], "decoded": "ab lighthouse<|im_start|>?--   "}
+{"text": "WORLD1", "ids": [42815, 16284, 33], "decoded": "WORLD1"}
+{"text": ",Σ", "ids": [28, 153, 113], "decoded": ",Σ"}
+{"text": "🙂 robot", "ids": [10813, 38887, 8085], "decoded": "🙂 robot"}
+{"text": "!!)@ robot 2024", "ids": [10095, 25, 48, 8085, 216, 34, 32, 34, 36], "decoded": "!!)@ robot 2024"}
+{"text": "👍🏽", "ids": [10813, 235, 231, 10813, 233, 138], "decoded": "👍🏽"}
+{"text": "'m't", "ids": [5248, 982], "decoded": "'m't"}
+{"text": " is  'll’s \n²(counting", "ids": [314, 216, 637, 764, 417, 99, 3717, 19133, 24, 4639, 274], "decoded": " is  'll’s \n²(counting"}
+{"text": "naïve", "ids": [3546, 46494], "decoded": "naïve"}
+{"text": "   PipcamelCase aWORLD", "ids": [15442, 216, 26621, 12744, 299, 10802, 253, 42815, 16284], "decoded": "   PipcamelCase aWORLD"}
+{"text": "the z", "ids": [1195, 15442, 106], "decoded": "the z"}
+{"text": "1,000İ in0٣²", "ids": [33, 28, 32, 32, 32, 143, 125, 281, 32, 164, 113, 19133], "decoded": "1,000İ in0٣²"}
+{"text": "’s", "ids": [417, 99], "decoded": "’s"}
+{"text": " the was", "ids": [260, 436], "decoded": " the was"}
+{"text": "'s", "ids": [506], "decoded": "'s"}
+{"text": "42 andabc're", "ids": [36, 34, 284, 25276, 2316], "decoded": "42 andabc're"}
+{"text": "- robot<unk>überمر?'", "ids": [29, 8085, 44, 5131, 46, 7170, 593, 21706, 20602, 27285], "decoded": "- robot<unk>überمر?'"}
+{"text": "İ)\"über🙂", "ids": [143, 125, 19432, 7170, 593, 10813, 38887], "decoded": "İ)\"über🙂"}
+{"text": "42 wasabc. lighthouse'reüber and", "ids": [36, 34, 436, 25276, 30, 33059, 2316, 7170, 593, 284], "decoded": "42 wasabc. lighthouse'reüber and"}
+{"text": "éनमस्ते'S\r\nWORLD<|endoftext|> robot", "ids": [85, 151, 219, 30658, 35090, 38770, 16525, 26293, 30581, 23, 67, 201, 198, 42815, 16284, 0, 8085], "decoded": "éनमस्ते'S\r\nWORLD<|endoftext|> robot"}
+{"text": "ynaïve in robot's%", "ids": [38341, 46494, 281, 8085, 506, 21], "decoded": "ynaïve in robot's%"}
+{"text": " roboty", "ids": [8085, 105], "decoded": " roboty"}
+{"text": "camelCasecafé🙂(ab and\n", "ids": [12744, 299, 10802, 83, 1939, 2756, 10813, 38887, 24, 369, 284, 198], "decoded": "camelCasecafé🙂(ab and\n"}
+{"text": "\n is", "ids": [198, 314], "decoded": "\n is"}
+{"text": "'tsnake_case was'll", "ids": [982, 48284, 79, 7544, 436, 3060], "decoded": "'tsnake_case was'll"}
+{"text": " world中文नमस्ते", "ids": [905, 28589, 29184, 30658, 35090, 38770, 16525, 26293, 30581], "decoded": " world中文नमस्ते"}
+{"text": "\n\n Pip", "ids": [1116, 26621], "decoded": "\n\n Pip"}
+{"text": "naïve and# Pip日本½½", "ids": [3546, 46494, 284, 19, 26621, 23274, 115, 40993, 16738, 16738], "decoded": "naïve and# Pip日本½½"}
+{"text": "🇨🇦", "ids": [10813, 225, 118, 10813, 225, 116], "decoded": "🇨🇦"}
+{"text": " 2024naïve", "ids": [216, 34, 32, 34, 36, 3546, 46494], "decoded": " 2024naïve"}
+{"text": " world\r\n;counting'S,", "ids": [905, 201, 198, 43, 4639, 274, 23, 67, 28], "decoded": " world\r\n;counting'S,"}
+{"text": "Hello$\n", "ids": [19556, 20, 198], "decoded": "Hello$\n"}
+{"text": "नमस्तेWORLD\"한국\n", "ids": [30658, 35090, 38770, 16525, 26293, 30581, 42815, 16284, 18, 33085, 246, 181, 130, 251, 198], "decoded": "नमस्तेWORLD\"한국\n"}
+{"text": " of", "ids": [282], "decoded": " of"}
+{"text": "👍🏽'll the lighthouse½ world", "ids": [10813, 235, 231, 10813, 233, 138, 23, 764, 260, 33059, 16738, 905], "decoded": "👍🏽'll the lighthouse½ world"}
+{"text": "🙂<|im_start|> of　", "ids": [10813, 38887, 1, 282, 12109, 218], "decoded": "🙂<|im_start|> of　"}
+{"text": " ofz\r\né", "ids": [282, 106, 201, 198, 85, 151, 219], "decoded": " ofz\r\né"}
+{"text": " a'Sysnake_case한국", "ids": [253, 23, 67, 672, 94, 575, 79, 7544, 33085, 246, 181, 130, 251], "decoded": " a'Sysnake_case한국"}
+{"text": "%.\"", "ids": [21, 1270], "decoded": "%.\""}
+{"text": " is(naïveé0٣@--", "ids": [314, 24, 3546, 46494, 85, 151, 219, 32, 164, 113, 48, 423], "decoded": " is(naïveé0٣@--"}
+{"text": "counted[MASK]--नमस्ते", "ids": [4639, 277, 75, 61, 34260, 77, 423, 30658, 35090, 38770, 16525, 26293, 30581], "decoded": "counted[MASK]--नमस्ते"}
+{"text": "'ve world🙂WORLD<|endoftext|>", "ids": [3543, 905, 10813, 38887, 42815, 16284, 0], "decoded": "'ve world🙂WORLD<|endoftext|>"}
+{"text": "'s...नमस्ते world to", "ids": [506, 2026, 30658, 35090, 38770, 16525, 26293, 30581, 905, 288], "decoded": "'s...नमस्ते world to"}
+{"text": "'S'llz", "ids": [23, 67, 3060, 106], "decoded": "'S'llz"}
+{"text": "ab", "ids": [369], "decoded": "ab"}
+{"text": "　\t", "ids": [12109, 218, 197], "decoded": "　\t"}
+{"text": "% is²é%1Ⅻمر", "ids": [21, 314, 19133, 85, 151, 219, 21, 33, 173, 223, 121, 21706, 20602], "decoded": "% is²é%1Ⅻمر"}
+{"text": "　 issnake_case", "ids": [12109, 218, 1309, 94, 575, 79, 7544], "decoded": "　 issnake_case"}
+{"text": ")", "ids": [25], "decoded": ")"}
+{"text": "count'tनमस्ते", "ids": [4639, 982, 30658, 35090, 38770, 16525, 26293, 30581], "decoded": "count'tनमस्ते"}
+{"text": "abc'd;3.14 lighthouse", "ids": [25276, 6737, 43, 35, 30, 33, 36, 33059], "decoded": "abc'd;3.14 lighthouse"}
+{"text": "नमस्ते%Ⅻ, iscounting", "ids": [30658, 35090, 38770, 16525, 26293, 30581, 21, 173, 223, 121, 28, 314, 4639, 274], "decoded": "नमस्ते%Ⅻ, iscounting"}
+{"text": ")'ve Pip- \n a!\t", "ids": [28392, 307, 26621, 29, 3717, 253, 17, 197], "decoded": ")'ve Pip- \n a!\t"}
+{"text": " Pip...中文countz of", "ids": [26621, 2026, 28589, 29184, 4639, 106, 282], "decoded": " Pip...中文countz of"}
+{"text": " the a? boats. ", "ids": [260, 253, 47, 13768, 30, 15442], "decoded": " the a? boats. "}
+{"text": " \n", "ids": [3717], "decoded": " \n"}
+{"text": "3.14👨‍👩.\t@", "ids": [35, 30, 33, 36, 10813, 235, 118, 321, 231, 10813, 235, 119, 30, 197, 48], "decoded": "3.14👨‍👩.\t@"}
+{"text": "<|im_start|>İ1,000 the#x", "ids": [1, 143, 125, 33, 28, 32, 32, 32, 260, 19, 104], "decoded": "<|im_start|>İ1,000 the#x"}
+{"text": "🙂1🇨🇦", "ids": [10813, 38887, 33, 10813, 225, 118, 10813, 225, 116], "decoded": "🙂1🇨🇦"}
+{"text": "Helloé", "ids": [56, 478, 3592, 151, 219], "decoded": "Helloé"}
+{"text": "½-", "ids": [16738, 29], "decoded": "½-"}
+{"text": "#", "ids": [19], "decoded": "#"}
+{"text": "theनमस्ते;<|im_start|>'llΣThecounting", "ids": [1195, 30658, 35090, 38770, 16525, 26293, 30581, 43, 1, 3060, 153, 113, 504, 4639, 274], "decoded": "theनमस्ते;<|im_start|>'llΣThecounting"}
+{"text": "WORLD, Mia in robot is", "ids": [42815, 16284, 28, 21230, 281, 8085, 314], "decoded": "WORLD, Mia in robot is"}
+{"text": "👨‍👩<unk>\t\nthe... Mia", "ids": [10813, 235, 118, 321, 231, 10813, 235, 119, 44, 5131, 46, 197, 198, 1195, 2026, 21230], "decoded": "👨‍👩<unk>\t\nthe... Mia"}
+{"text": " $0", "ids": [1885, 32], "decoded": " $0"}
+{"text": "42\n\n中文[MASK]", "ids": [36, 34, 198, 198, 28589, 29184, 75, 61, 34260, 77], "decoded": "42\n\n中文[MASK]"}
+{"text": "日本 aΣcounting'", "ids": [23274, 115, 40993, 253, 153, 113, 4639, 274, 23], "decoded": "日本 aΣcounting'"}
+{"text": "@é-\"🇨🇦WORLD lighthouse boats", "ids": [48, 85, 151, 219, 29, 18, 10813, 225, 118, 10813, 225, 116, 42815, 16284, 33059, 13768], "decoded": "@é-\"🇨🇦WORLD lighthouse boats"}
+{"text": ")the robot...", "ids": [25, 1195, 8085, 2026], "decoded": ")the robot..."}
+{"text": "x boats", "ids": [104, 13768], "decoded": "x boats"}
+{"text": " robot?They  a. lighthouse", "ids": [8085, 47, 4948, 216, 253, 30, 33059], "decoded": " robot?They  a. lighthouse"}
+{"text": "\r\nİWORLD$x<|endoftext|>?counting", "ids": [201, 198, 143, 125, 42815, 16284, 20, 104, 0, 47, 4639, 274], "decoded": "\r\nİWORLD$x<|endoftext|>?counting"}
+{"text": "'vex$ ", "ids": [3543, 104, 20, 216], "decoded": "'vex$ "}
+{"text": " Pip　...", "ids": [26621, 12109, 218, 2026], "decoded": " Pip　..."}
+{"text": "<unk>Ⅻ \n Pip", "ids": [44, 5131, 46, 173, 223, 121, 3717, 26621], "decoded": "<unk>Ⅻ \n Pip"}
+{"text": "中文?👍🏽$1,000-abccount", "ids": [28589, 29184, 47, 10813, 235, 231, 10813, 233, 138, 20, 33, 28, 32, 32, 32, 29, 369, 509, 598], "decoded": "中文?👍🏽$1,000-abccount"}
+{"text": "'d'lly;)½ 中文", "ids": [6737, 3060, 105, 43, 25, 16738, 216, 28589, 29184], "decoded": "'d'lly;)½ 中文"}
+{"text": " 한국[MASK]z:%", "ids": [216, 33085, 246, 181, 130, 251, 75, 61, 34260, 77, 106, 17151], "decoded": " 한국[MASK]z:%"}
+{"text": "0 the#the👨‍👩", "ids": [32, 260, 19, 1195, 10813, 235, 118, 321, 231, 10813, 235, 119], "decoded": "0 the#the👨‍👩"}
+{"text": "naïve0", "ids": [3546, 46494, 32], "decoded": "naïve0"}
+{"text": "ⅫabΣ# was  'll\r\n", "ids": [173, 223, 121, 369, 153, 113, 19, 436, 216, 637, 764, 2738], "decoded": "ⅫabΣ# was  'll\r\n"}
+{"text": "%[MASK]👍🏽,", "ids": [21, 75, 61, 34260, 77, 10813, 235, 231, 10813, 233, 138, 28], "decoded": "%[MASK]👍🏽,"}
+{"text": "naïve٣", "ids": [3546, 46494, 164, 113], "decoded": "naïve٣"}
+{"text": "'t%", "ids": [982, 21], "decoded": "'t%"}
+{"text": "\n\r\n Mia", "ids": [198, 2738, 21230], "decoded": "\n\r\n Mia"}
+{"text": "TheΣ was?snake_case", "ids": [504, 153, 113, 436, 47, 48284, 79, 7544], "decoded": "TheΣ was?snake_case"}
+{"text": "　snake_case1'll½abc", "ids": [12109, 218, 48284, 79, 7544, 33, 3060, 16738, 25276], "decoded": "　snake_case1'll½abc"}
+{"text": " to$", "ids": [288, 20], "decoded": " to$"}
+{"text": "  was👍🏽--\"", "ids": [15442, 436, 10813, 235, 231, 10813, 233, 138, 423, 18], "decoded": "  was👍🏽--\""}
+{"text": "'ve'SHello$countedabc", "ids": [3543, 23, 12802, 11222, 20, 4639, 277, 25276], "decoded": "'ve'SHello$countedabc"}
+{"text": "<|endoftext|><|endoftext|> 2024camelCase", "ids": [0, 0, 216, 34, 32, 34, 36, 12744, 299, 10802], "decoded": "<|endoftext|><|endoftext|> 2024camelCase"}
+{"text": "%(überé", "ids": [21644, 7170, 82, 518, 151, 219], "decoded": "%(überé"}
+{"text": "! \n", "ids": [17, 3717], "decoded": "! \n"}
+{"text": "...", "ids": [2026], "decoded": "..."}
+{"text": "'re're", "ids": [2316, 2316], "decoded": "'re're"}
+{"text": "'t of", "ids": [982, 282], "decoded": "'t of"}
+{"text": "3.14　abnaïvex,", "ids": [35, 30, 33, 36, 12109, 218, 369, 3546, 46494, 104, 28], "decoded": "3.14　abnaïvex,"}
+{"text": "3.14abc1,000:Ⅻ0", "ids": [35, 30, 33, 36, 25276, 33, 28, 32, 32, 32, 42, 173, 223, 121, 32], "decoded": "3.14abc1,000:Ⅻ0"}
+{"text": "👍🏽café robot", "ids": [10813, 235, 231, 10813, 233, 138, 83, 1939, 2756, 8085], "decoded": "👍🏽café robot"}
+{"text": "مر$ to\t🇨🇦", "ids": [21706, 20602, 20, 288, 197, 10813, 225, 118, 10813, 225, 116], "decoded": "مر$ to\t🇨🇦"}
+{"text": "٣-- wasⅫ", "ids": [164, 113, 423, 436, 173, 223, 121], "decoded": "٣-- wasⅫ"}
+{"text": "<|im_start|> Pip'", "ids": [1, 26621, 23], "decoded": "<|im_start|> Pip'"}
+{"text": "🇨🇦'٣", "ids": [10813, 225, 118, 10813, 225, 116, 23, 164, 113], "decoded": "🇨🇦'٣"}
+{"text": "'t?#-Ⅻ boats lighthouse", "ids": [982, 47, 19, 29, 173, 223, 121, 13768, 33059], "decoded": "'t?#-Ⅻ boats lighthouse"}
+{"text": "1,000x'S<|im_start|>[MASK]", "ids": [33, 28, 32, 32, 32, 104, 23, 67, 1, 75, 61, 34260, 77], "decoded": "1,000x'S<|im_start|>[MASK]"}
+{"text": "über٣²'", "ids": [7170, 593, 164, 113, 19133, 23], "decoded": "über٣²'"}
+{"text": "\"\ncount", "ids": [18, 198, 4639], "decoded": "\"\ncount"}
+{"text": "the world\r\n@٣)🇨🇦z", "ids": [1195, 905, 201, 198, 48, 164, 113, 25, 10813, 225, 118, 10813, 225, 116, 106], "decoded": "the world\r\n@٣)🇨🇦z"}
+{"text": " Miaé...'llΣThe", "ids": [372, 20853, 151, 219, 2026, 23, 764, 153, 113, 504], "decoded": " Miaé...'llΣThe"}
+{"text": " lighthouse", "ids": [33059], "decoded": " lighthouse"}
+{"text": " 2024%'The👨‍👩½'dx", "ids": [216, 34, 32, 34, 36, 21, 23, 504, 10813, 235, 118, 321, 231, 10813, 235, 119, 16738, 6737, 104], "decoded": " 2024%'The👨‍👩½'dx"}
+{"text": " 'reΣ3.14", "ids": [637, 257, 153, 113, 35, 30, 33, 36], "decoded": " 'reΣ3.14"}
+{"text": "    of PipThecounting", "ids": [333, 282, 26621, 504, 4639, 274], "decoded": "    of PipThecounting"}
+{"text": "'ve( Pip", "ids": [3543, 24, 26621], "decoded": "'ve( Pip"}
+{"text": "0مر:　'll", "ids": [32, 21706, 20602, 42, 12109, 218, 3060], "decoded": "0مر:　'll"}
+{"text": "　مر boatsThe👨‍👩 2024", "ids": [12109, 218, 21706, 20602, 13768, 504, 10813, 235, 118, 321, 231, 10813, 235, 119, 216, 34, 32, 34, 36], "decoded": "　مر boatsThe👨‍👩 2024"}
+{"text": "count--WORLD²$ the''m", "ids": [4639, 423, 42815, 16284, 19133, 20, 260, 3816, 93], "decoded": "count--WORLD²$ the''m"}
+{"text": ".", "ids": [30], "decoded": "."}
+{"text": "  '(;    was[MASK]\n\n", "ids": [216, 41830, 43, 333, 436, 75, 61, 34260, 77, 1116], "decoded": "  '(;    was[MASK]\n\n"}
+{"text": " in日本counted # boats[MASK]  ", "ids": [281, 23274, 115, 40993, 4639, 277, 15442, 19, 13768, 75, 61, 34260, 77, 256], "decoded": " in日本counted # boats[MASK]  "}
+{"text": "  ;한국'S", "ids": [216, 8544, 33085, 246, 181, 130, 251, 23, 67], "decoded": "  ;한국'S"}
+{"text": "İ🙂", "ids": [143, 125, 10813, 38887], "decoded": "İ🙂"}
+{"text": "\t", "ids": [197], "decoded": "\t"}
+{"text": " world!!counting'll", "ids": [905, 10095, 4639, 274, 3060], "decoded": " world!!counting'll"}
+{"text": "naïve robotabc日本'reHelloüber was", "ids": [3546, 46494, 8085, 25276, 23274, 115, 40993, 2316, 19556, 7170, 593, 436], "decoded": "naïve robotabc日本'reHelloüber was"}
+{"text": " and--한국中文42ab the't", "ids": [284, 423, 33085, 246, 181, 130, 251, 28589, 29184, 36, 34, 369, 260, 982], "decoded": " and--한국中文42ab the't"}
+{"text": "über#;日本<unk>snake_case", "ids": [7170, 593, 19, 43, 23274, 115, 40993, 44, 5131, 46, 48284, 79, 7544], "decoded": "über#;日本<unk>snake_case"}
+{"text": "The#!مر", "ids": [504, 15352, 21706, 20602], "decoded": "The#!مر"}
+{"text": "'ve('d;(", "ids": [3543, 1305, 84, 43, 24], "decoded": "'ve('d;("}
+{"text": "1,000$<|endoftext|>the 2024 to", "ids": [33, 28, 32, 32, 32, 20, 0, 1195, 216, 34, 32, 34, 36, 288], "decoded": "1,000$<|endoftext|>the 2024 to"}
+{"text": "½'dcounted🇨🇦 Pipüber", "ids": [16738, 6737, 4639, 277, 10813, 225, 118, 10813, 225, 116, 26621, 7170, 593], "decoded": "½'dcounted🇨🇦 Pipüber"}
+{"text": "👍🏽--\t", "ids": [10813, 235, 231, 10813, 233, 138, 423, 197], "decoded": "👍🏽--\t"}
+{"text": "-<|im_start|>٣", "ids": [29, 1, 164, 113], "decoded": "-<|im_start|>٣"}
+{"text": "?  0?(#", "ids": [47, 256, 32, 47, 24, 19], "decoded": "?  0?(#"}
+{"text": " 2024٣ robot andcounté'd", "ids": [216, 34, 32, 34, 36, 164, 113, 8085, 284, 4639, 85, 151, 219, 23, 84], "decoded": " 2024٣ robot andcounté'd"}
+{"text": "\n\n in the", "ids": [1116, 281, 260], "decoded": "\n\n in the"}
+{"text": "İ a and Mia  <|endoftext|>ab--", "ids": [143, 125, 253, 284, 21230, 256, 0, 369, 423], "decoded": "İ a and Mia  <|endoftext|>ab--"}
+{"text": "Ⅻabcountingمر;#", "ids": [173, 223, 121, 369, 4639, 274, 21706, 20602, 43, 19], "decoded": "Ⅻabcountingمر;#"}
+{"text": "<|endoftext|>1,000---", "ids": [0, 33, 28, 32, 32, 32, 5583], "decoded": "<|endoftext|>1,000---"}

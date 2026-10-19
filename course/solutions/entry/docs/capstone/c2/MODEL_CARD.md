@@ -2,7 +2,7 @@
 
 ## Model details
 
-- **Developer:** TinyLLM course reference learner.
+- **Developer:** the course maintainers, as the reference solution for C2.
 - **Base checkpoint:** `artifacts/c1/model`.
 - **Training objective:** SFT, as recorded in `artifacts/c2/run.json`.
 - **Dataset revision:** `post-training-fixtures-v1`; the manifest records the training and held-out fixture paths, seed, tokenizer, template, and optimizer.

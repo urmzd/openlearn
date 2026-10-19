@@ -1,5 +1,5 @@
 # runtime.toml template for the agent worker (ag.05, dep.07).
-# The harness fills [agent].health_listen and passes the file as {config}.
+# The launcher fills [agent].health_listen and passes the file as {config}.
 # The worker polls the agent queue of the durable service; AgentRun journals
 # live under [paths].artifacts/agent-runs ({data}, fresh per run). PR CI has
 # no model to serve, so the provider is the faketool rules file; set

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system.toml",
-  "description": "The learner's harness manifest, as the JSON value of the parsed TOML. It tells ol how to build the system, which argv runs each role of spec/cli-roles.md, which local services a milestone starts, and where the deployed system lives. String values may hold runner placeholders such as {port}, {config}, or {engine.port}.",
+  "description": "The system manifest (system.toml), as the JSON value of the parsed TOML. It says how to build the system, which argv runs each role of spec/cli-roles.md, which local services a local run starts, and where the deployed system lives. String values may hold runner placeholders such as {port}, {config}, or {engine.port}.",
   "type": "object",
   "required": [
     "system"
@@ -26,13 +26,13 @@
           "$ref": "#/$defs/semver"
         },
         "course_version": {
-          "description": "The contracts/VERSION semver the learner built against.",
+          "description": "The contracts/VERSION semver the system was built against.",
           "$ref": "#/$defs/semver"
         }
       }
     },
     "build": {
-      "description": "Run in order before any service starts; a failure aborts the milestone.",
+      "description": "Run in order before any service starts; a failure aborts the run.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -79,7 +79,7 @@
       }
     },
     "services": {
-      "description": "Local processes the milestone runner starts, keyed by instance name. Ports are allocated per run.",
+      "description": "Local processes a local run starts, keyed by instance name. Ports are allocated per run.",
       "type": "object",
       "additionalProperties": {
         "$ref": "#/$defs/service"
@@ -107,7 +107,7 @@
       }
     },
     "ci": {
-      "description": "MS-P0 ci-status, used when the repo has no GitHub remote.",
+      "description": "The local CI command (for example scripts/ci-local.sh), used when the repo has no GitHub remote.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -117,7 +117,7 @@
       }
     },
     "deploy": {
-      "description": "The deployed system, for kind milestone steps and drills only.",
+      "description": "The deployed system, for end-to-end checks and game days on kind.",
       "type": "object",
       "additionalProperties": false,
       "properties": {

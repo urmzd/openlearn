@@ -2,7 +2,7 @@
 
 Drill `ops.03`. Blameless: this document is about the system and the
 process, not about who typed the command. A model postmortem: the times and
-counts show the shape of this incident; yours come from your dashboard,
+counts show the shape of this incident; a real incident's come from the dashboard,
 `{ctl} wf dlq list`, and `{ctl} wf describe`.
 
 ## Summary

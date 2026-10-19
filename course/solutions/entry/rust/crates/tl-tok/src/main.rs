@@ -1,10 +1,10 @@
-//! The `tl-tok` role (spec/cli-roles.md, Pass 3; course/milestones/MS-L1.toml
-//! fixes the flags and the final lines).
+//! The `tl-tok` role (spec/cli-roles.md, Pass 3), with its flags and final
+//! lines.
 //!
 //!     tl-tok encode --tokenizer <tokenizer.json> --in <texts.jsonl>
 //!     tl-tok bench  --tokenizer <tokenizer.json> --in <texts.jsonl> [--threads T] [--repeat R]
 //!
-//! Entry-point territory (D16): this file is yours. It is glue over L1.5
+//! An entry point: glue over L1.5
 //! (`ByteBpe::from_hf_json`, `encode`, `encode_batch`). Input texts are JSON
 //! lines with a "text" key in a .jsonl file, or one text per line otherwise. The last stdout line is one JSON object; exit 2
 //! on a usage error, 1 on any other failure.

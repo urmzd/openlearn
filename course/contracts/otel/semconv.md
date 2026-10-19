@@ -22,7 +22,7 @@ One request is one trace, from the client through the gateway, the engines, and 
 | Pass 1 tracer engine (L10.0 to L10.6) | hand-written OTLP/HTTP JSON, one `POST /v1/traces` per request, to `:4318` |
 | every Go and Rust service | the metrics of `metrics.yaml` on its health port, Prometheus text format, at `/metrics`, scraped by Prometheus (never also pushed, so no series is duplicated; helm/observability.md) |
 
-**Resource attributes:** `service.name` = `<system>-<component>` (`<system>-gateway`, `<system>-engine`, `<system>-durable`, `<system>-worker`, `<system>-agent`, `<system>-python`), `service.namespace` = `<system>`, `service.version` = the learner's `[system].version`, and for engines `tl.engine.role`.
+**Resource attributes:** `service.name` = `<system>-<component>` (`<system>-gateway`, `<system>-engine`, `<system>-durable`, `<system>-worker`, `<system>-agent`, `<system>-python`), `service.namespace` = `<system>`, `service.version` = the system's `[system].version`, and for engines `tl.engine.role`.
 
 ## Spans
 

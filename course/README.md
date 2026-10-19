@@ -13,6 +13,8 @@ This directory holds the complete reference system that the [Build Your Own LLM 
 | [`solutions/learner-tests/`](solutions/learner-tests/) | Model test suites for the modules about testing |
 | [`solutions/history/`](solutions/history/) | Earlier versions of units that a later module rewrote, so a chapter can show the version it teaches |
 | [`solutions/primers/`](solutions/primers/) | Solutions to the language and tool primers |
+| [`solutions/testkit/`](solutions/testkit/) | The fault and determinism kit (fake clock, failpoints, kill loop, chaos proxy, OTLP sink) the model test suites import |
+| [`solutions/fixtures/`](solutions/fixtures/) | Small data files the solution tests read through `TINYLLM_FIXTURES` |
 | [`contracts/`](contracts/) | The interfaces every component implements: Python stubs, Rust traits, Go interfaces, C headers, `.proto`, OpenAPI, and file-format specs |
 
 ## How to use it

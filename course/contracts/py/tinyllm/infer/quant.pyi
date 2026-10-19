@@ -146,5 +146,5 @@ def quant_ppl(
     """The perplexity cost of a scheme: L6.7's eval_ppl(model, ids, ctx_len,
     stride) before and after quantize_model(scheme, skip) of a deep copy
     (`model` itself is left unquantized): {"ppl", "ppl_quant", "delta" =
-    ppl_quant - ppl, "ratio" = ppl_quant / ppl}, the numbers MS-L8's
-    budgets read. ValueError as eval_ppl and quantize_model raise it."""
+    ppl_quant - ppl, "ratio" = ppl_quant / ppl}, the numbers the
+    quantization budgets compare. ValueError as eval_ppl and quantize_model raise it."""
