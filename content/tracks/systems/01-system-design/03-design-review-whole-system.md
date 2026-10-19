@@ -45,7 +45,7 @@ Follow a customer request from a cited agent answer through gateway policy, engi
 
 | Step | What happens | What stops it |
 |---|---|---|
-| preflight | the model card and the data ledger are checked | a missing card or a ledger row without its licence fields; non-retryable |
+| preflight | the model card and the data ledger are checked | an empty model card, or a ledger row that forbids training (no `train` in `allowed_uses`, or revoked); non-retryable |
 | export | the checkpoint becomes `models/<id>/<version>` | export failure |
 | evaluate | EvalSuite runs the release's suites, then each gate (suite, task, metric, `>=` or `<=`, value) is applied | any gate failing |
 | approve | waits for a human `approve` signal, with an optional timeout | `reject`, or the timeout |
@@ -117,7 +117,7 @@ Write `docs/reviews/whole-system.md` as the design review of the whole system. A
    </details>
 2. Why is ModelRelease's preflight non-retryable?
    <details><summary>Answer</summary>
-   It checks documents (the model card, the data ledger). A missing card or an unlicensed source will be just as missing on the next attempt; retrying would only delay the failure. It needs a human to fix the input.
+   It checks documents (the model card, the data ledger). An empty card or a source not allowed for training will be just as wrong on the next attempt; retrying would only delay the failure. It needs a human to fix the input.
    </details>
 3. Why is "the old route is restored automatically" safe to rely on after a crash in the middle of the canary?
    <details><summary>Answer</summary>

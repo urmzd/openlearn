@@ -1,47 +1,37 @@
-<!-- ol:module lang.04 -->
 # Rust: ownership, traits, Result, cargo workspaces, std TCP
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `lang.04` · practice · Rust · Pass 1 · 5 to 7 h |
-| **You build** | `primers/lang.04/`: a Cargo workspace with a library `lineproto` (parse one request line, answer it, compare UTF-8 byte and character lengths) and a binary `echo` (a line-protocol server on `std::net`, one thread per connection) |
+| **Module** | `lang.04` · practice · Rust · Pass 1 · 2 to 3 h reading |
+| **Solution** | A Cargo workspace ([`Cargo.toml`](../../../../course/solutions/primers/lang.04/Cargo.toml)) with the library [`lineproto/src/lib.rs`](../../../../course/solutions/primers/lang.04/lineproto/src/lib.rs) (`Command`, `ProtoError`, `parse`, `byte_len`, `respond`, `reply`) and the binary [`echo/src/main.rs`](../../../../course/solutions/primers/lang.04/echo/src/main.rs) (`main`, `parse_port`, `serve`: a line-protocol server on `std::net`, one thread per connection) |
 | **Contract** | none: the protocol table and the signatures in section 4 are the contract |
-| **Tests** | `course/tests/lang.04/check` builds your workspace, runs your own `cargo test`, then runs `test_lang04_echo.py` against your server over real TCP (what each test checks: section 4) |
 | **Needs** | `lang.02` (processes, exit codes, signals); `lang.03` is useful background for comparing byte strings |
 | **Used by** | no call site (a primer): `L10.0` applies the Rust server and workspace patterns, then `ds.05` and `L1.5` |
-| **Milestone** | `MS-P1` |
 | **Optional depth** | [The Rust Programming Language](https://doc.rust-lang.org/book/) (free), ch. 4 (ownership), 6 (enums), 9 (errors), 10 (traits), 14 (workspaces), 16 (threads), 21 (a multithreaded web server); [Rust by Example](https://doc.rust-lang.org/rust-by-example/) (free); [std::net](https://doc.rust-lang.org/std/net/) docs (free) |
 
 ## Key Takeaways
 
-- Every value has exactly one **owner**; assigning or passing it **moves** it, and references **borrow** it without taking ownership. The compiler checks these rules, which is how Rust frees memory without a garbage collector and without use-after-free (`test_two_clients_at_once` moves each socket into its own thread).
-- Failure is a value: a function that can fail returns `Result<T, E>`, and `?` passes the error up. `unwrap()` turns an error into a crash; a server answers errors instead (`test_errors_are_replies_not_crashes`).
-- A **trait** is a set of methods a type promises. `Display` gives your error its text, `Read`/`Write`/`BufRead` are what make a socket, a file, and a byte slice interchangeable.
-- A Rust `str` is valid UTF-8; `.len()` counts its bytes and `.chars().count()` counts Unicode scalar values. NUL is ordinary string content (`test_len_counts_nul_as_a_byte`).
-- TCP is a **byte stream**, not a message stream: one `read` can hold half a line or three lines. A buffered reader that splits on `\n` is the fix (`test_several_lines_in_one_packet`, `test_a_line_split_across_packets`).
+- Every value has exactly one **owner**; assigning or passing it **moves** it, and references **borrow** it without taking ownership. The compiler checks these rules, which is how Rust frees memory without a garbage collector and without use-after-free: the server moves each socket into its own thread.
+- Failure is a value: a function that can fail returns `Result<T, E>`, and `?` passes the error up. `unwrap()` turns an error into a crash; a server answers errors instead.
+- A **trait** is a set of methods a type promises. `Display` gives an error its text, `Read`/`Write`/`BufRead` are what make a socket, a file, and a byte slice interchangeable.
+- A Rust `str` is valid UTF-8; `.len()` counts its bytes and `.chars().count()` counts Unicode scalar values. NUL is ordinary string content.
+- TCP is a **byte stream**, not a message stream: one `read` can hold half a line or three lines. A buffered reader that splits on `\n` is the fix.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start lang.04          # records that you started; the exercise lives in primers/lang.04/
-ol tests lang.04          # read the test catalog first
-ol check lang.04          # first run writes the starter workspace (stubs), then checks it
-cd primers/lang.04 && cargo test && cargo run -p echo -- --port 7878   # your own loop
-```
-
-The first `ol check lang.04` writes the starter files that are missing into `primers/lang.04/`: the three `Cargo.toml` files as given, and `lineproto/src/lib.rs` and `echo/src/main.rs` with every function body replaced by `todo!("lang.04")`. The starter compiles and fails. `ol check` never overwrites a file, so delete one to get its starter back. Build products go to `.ol/build/lang.04/` in your repo, which `ol course init` gitignored.
+Section 2 introduces Rust by comparison with Python and C: Cargo workspaces, ownership, enums, `Result`, traits, UTF-8 strings, TCP, and threads. Section 3 replays a client session by hand and traces one request through the library. Section 4 fixes the protocol, the signatures, and the cases a correct solution must handle. Section 5 walks through the library and the server and explains why each piece is written the way it is. Try to write each function before reading it. To run the solution: `cd primers/lang.04 && cargo test && cargo run -p echo -- --port 7878`.
 
 ---
 
 ## 1. Why now
 
-Your system can compute a bigram's logits in C and call that C from Python (`rt.01`, `M03.1`, `L0.0`), and it has a checkpoint on disk. Nothing can reach it over a network: no process listens on a port, so the gateway you will write in Go (`gw.00`) has nothing to forward to and the cluster (`dep.00`) nothing to run. The next module, `L10.0`, writes that process: an inference engine in **Rust** that accepts TCP connections, reads requests, and calls your C `tl_matmul_f32` for every token. It uses only Rust's standard library, so every byte on the wire is yours. This primer builds the same skeleton with a trivial protocol: a server that reads lines from many clients at once and answers each line, plus one call into C. In `L10.0` the only new ideas are HTTP, the model, and tracing.
+The system can compute a bigram's logits in C and call that C from Python (`rt.01`, `M03.1`, `L0.0`), and it has a checkpoint on disk. Nothing can reach it over a network: no process listens on a port, so the Go gateway (`gw.00`) has nothing to forward to and the cluster (`dep.00`) nothing to run. The next module, `L10.0`, writes that process: an inference engine in **Rust** that accepts TCP connections, reads requests, and calls the C `tl_matmul_f32` for every token. It uses only Rust's standard library, so every byte on the wire is visible in its own code. This primer builds the same skeleton with a trivial protocol: a server that reads lines from many clients at once and answers each line, plus one call into C. In `L10.0` the only new ideas are HTTP, the model, and tracing.
 
 ## 2. Principles
 
-You have written Python (`lang.01`), shell (`lang.02`), and C (`lang.03`). Rust is introduced by comparison with those. Every term is defined before it is used.
+The earlier primers covered Python (`lang.01`), shell (`lang.02`), and C (`lang.03`). Rust is introduced by comparison with those. Every term is defined before it is used.
 
 ### 2.1 Cargo: packages, crates, targets, workspaces
 
@@ -58,15 +48,15 @@ lineproto = { path = "../lineproto" }
 |---|---|
 | `cargo build` | compiles every member into `target/debug/` (`--release` optimizes, into `target/release/`) |
 | `cargo test` | compiles every crate with its `#[test]` functions and runs them |
-| `cargo run -p echo -- --port 7878` | builds and runs the binary of package `echo`; arguments after `--` go to your program |
+| `cargo run -p echo -- --port 7878` | builds and runs the binary of package `echo`; arguments after `--` go to the program |
 | `cargo clippy` | lints for likely mistakes (optional, recommended) |
 | `cargo fmt` | formats every file in the one standard style |
 
-`--offline` tells Cargo not to touch the network; this primer has no dependencies outside the standard library (`std`), so it never needs to. The split into a library and a binary is deliberate: the library has no I/O, so its rules are testable with plain function calls, and the binary only moves bytes between a socket and the library. `L10.0` uses the same split (`tl-serve` is a library plus your `main.rs`), and your `rust/Cargo.toml` is a workspace with two members.
+`--offline` tells Cargo not to touch the network; this primer has no dependencies outside the standard library (`std`), so it never needs to. The split into a library and a binary is deliberate: the library has no I/O, so its rules are testable with plain function calls, and the binary only moves bytes between a socket and the library. `L10.0` uses the same split (`tl-serve` is a library plus a `main.rs`), and the system's `rust/Cargo.toml` is a workspace with two members.
 
 ### 2.2 Ownership, moves, and borrowing
 
-C makes you free every allocation yourself (`lang.03`); Python frees it when nothing refers to it any more, at run time. Rust decides at **compile time**, with three rules:
+C makes the programmer free every allocation (`lang.03`); Python frees it when nothing refers to it any more, at run time. Rust decides at **compile time**, with three rules:
 
 1. Every value has exactly one **owner**, a variable.
 2. When the owner goes out of scope, the value is **dropped**: its memory (and any socket or file it holds) is released.
@@ -197,11 +187,11 @@ mod tests {
 }
 ```
 
-`cargo test` runs them, and `ol check lang.04` runs your `cargo test` as one of its checks.
+`cargo test` runs them.
 
 ## 3. Worked example by hand
 
-The session below is what `test_ping_pong`, `test_echo_returns_the_text_byte_for_byte`, `test_len_counts_utf8_bytes`, `test_several_lines_in_one_packet`, and `test_quit_says_bye_and_closes` replay. Client bytes are on the left, server bytes on the right; `\n` is the byte `0x0a`.
+The session below exercises ping, echo, `LEN`, pipelining, errors, and `QUIT`. Client bytes are on the left, server bytes on the right; `\n` is the byte `0x0a`.
 
 | Client sends | Server answers | Why |
 |---|---|---|
@@ -222,9 +212,9 @@ The session below is what `test_ping_pong`, `test_echo_returns_the_text_byte_for
 
 `"héllo".chars().count()` is 5 Unicode scalar values; `.len()` is 6 bytes. An interior NUL is counted too: `LEN a\0b` replies `3`.
 
-Try it with your server running (`cargo run -p echo -- --port 7878`) and `nc 127.0.0.1 7878` in another terminal; type the lines. `printf 'PING\nECHO a\nLEN abc\n' | nc 127.0.0.1 7878` sends three lines in one write.
+Try it with the solution's server running (`cargo run -p echo -- --port 7878`) and `nc 127.0.0.1 7878` in another terminal; type the lines. `printf 'PING\nECHO a\nLEN abc\n' | nc 127.0.0.1 7878` sends three lines in one write.
 
-## 4. The artifact and its check
+## 4. The interface
 
 ```text
 primers/lang.04/
@@ -262,52 +252,54 @@ pub fn respond(cmd: &Command) -> String;                      // reply text, no 
 pub fn reply(line: &[u8]) -> (String, bool);                  // the whole protocol: (reply, close?)
 ```
 
-The binary, `echo/src/main.rs`: `echo --port <n>` binds `127.0.0.1:<n>` (no flag: 7878; port 0: any free port), prints exactly `listening on 127.0.0.1:<port>` as its first stdout line (the check reads the port from it), then serves every connection on its own thread: read a line, write `reply(line)` and `\n`, close after `QUIT` or when the client leaves. A bad `--port` exits 2 with a message on stderr.
+The binary, `echo/src/main.rs`: `echo --port <n>` binds `127.0.0.1:<n>` (no flag: 7878; port 0: any free port), prints exactly `listening on 127.0.0.1:<port>` as its first stdout line (a script that started it with port 0 reads the port from it), then serves every connection on its own thread: read a line, write `reply(line)` and `\n`, close after `QUIT` or when the client leaves. A bad `--port` exits 2 with a message on stderr.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_workspace_builds` | conformance | the workspace builds a library and an `echo` binary, std only, offline | `rust/` in your repo is a workspace of the same shape (`L10.0`) |
-| `test_your_cargo_tests_pass` | unit | your own `#[test]` functions pass | your CI runs `cargo test` from Pass 1 on |
-| `test_ping_pong` | unit | section 3's first exchange | one request in, one reply out |
-| `test_echo_returns_the_text_byte_for_byte` | unit | text after the first space, spaces and non-ASCII kept | a server never edits the payload it relays |
-| `test_crlf_line_endings_are_accepted` | boundary | `PING\r\n` is `PING` | HTTP lines end in `\r\n` (`lang.05`) |
-| `test_len_counts_utf8_bytes` | unit | `LEN héllo` is 6 bytes, not 5 scalar values | byte protocols count encoded bytes |
-| `test_len_counts_nul_as_a_byte` | boundary | `LEN a\0b` is 3; the connection remains usable | Rust strings carry NUL as content |
-| `test_errors_are_replies_not_crashes` | boundary | unknown command, empty line, invalid UTF-8, lower case | bad input gets an answer, never a dead thread |
-| `test_quit_says_bye_and_closes` | unit | `BYE`, then end of stream | the server, not the client, ends some exchanges |
-| `test_several_lines_in_one_packet` | boundary | three lines in one write get three replies | TCP is a byte stream |
-| `test_a_line_split_across_packets` | boundary | one line in three writes gets one reply | same, the other direction |
-| `test_two_clients_at_once` | fault | a stalled client does not block another | the engine serves many clients (`L10.0`) |
-| `test_a_client_vanishing_mid_line_leaves_the_server_up` | fault | an abrupt disconnect ends only that connection | clients die all the time |
+| the workspace builds | conformance | the workspace builds a library and an `echo` binary, std only, offline | the system's `rust/` is a workspace of the same shape (`L10.0`) |
+| the unit tests pass | unit | the library's `#[test]` functions pass | CI runs `cargo test` from Pass 1 on |
+| ping, pong | unit | section 3's first exchange | one request in, one reply out |
+| echo returns the text byte for byte | unit | text after the first space, spaces and non-ASCII kept | a server never edits the payload it relays |
+| CRLF line endings are accepted | boundary | `PING\r\n` is `PING` | HTTP lines end in `\r\n` (`lang.05`) |
+| `LEN` counts UTF-8 bytes | unit | `LEN héllo` is 6 bytes, not 5 scalar values | byte protocols count encoded bytes |
+| `LEN` counts NUL as a byte | boundary | `LEN a\0b` is 3; the connection remains usable | Rust strings carry NUL as content |
+| errors are replies, not crashes | boundary | unknown command, empty line, invalid UTF-8, lower case | bad input gets an answer, never a dead thread |
+| `QUIT` says `BYE` and closes | unit | `BYE`, then end of stream | the server, not the client, ends some exchanges |
+| several lines in one packet | boundary | three lines in one write get three replies | TCP is a byte stream |
+| a line split across packets | boundary | one line in three writes gets one reply | same, the other direction |
+| two clients at once | fault | a stalled client does not block another | the engine serves many clients (`L10.0`) |
+| a client vanishing mid-line leaves the server up | fault | an abrupt disconnect ends only that connection | clients die all the time |
 
-## 5. Pitfalls
+@@SOLUTION@@
 
-| Pitfall | Symptom | Caught by |
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Reading with one `stream.read(&mut buf)` and treating the result as one line | three pipelined requests get one reply; a slow client's half line gets `ERR unknown command PI` | `test_several_lines_in_one_packet`, `test_a_line_split_across_packets` |
-| Serving connections in the accept loop instead of a thread each | the second client hangs until the first one leaves | `test_two_clients_at_once` |
-| Leaving the `\r` on the line | `nc` and `telnet` users get `ERR unknown command PING` | `test_crlf_line_endings_are_accepted` |
-| `.unwrap()` on `from_utf8`, `parse`, or a socket read | one bad line kills that client's thread; the client sees the connection drop with no reply | `test_errors_are_replies_not_crashes`, `test_a_client_vanishing_mid_line_leaves_the_server_up` |
-| Splitting the text on whitespace (`split_whitespace`) | `ECHO  two  spaces` comes back as `two spaces` | `test_echo_returns_the_text_byte_for_byte` |
-| Counting Unicode scalar values for `LEN` (`chars().count()`) | `LEN héllo` answers 5 instead of 6 bytes | `test_len_counts_utf8_bytes` |
-| Printing the port before binding, or not printing `listening on ...` first | the check cannot find your server and every server test errors | `test_ping_pong` |
+| Reading with one `stream.read(&mut buf)` and treating the result as one line | three pipelined requests get one reply; a slow client's half line gets `ERR unknown command PI` | `serve` wraps the socket in a `BufReader` and reads with `read_until(b'\n', ...)` |
+| Serving connections in the accept loop instead of a thread each | the second client hangs until the first one leaves | `thread::spawn(move \|\| serve(stream))` per accepted connection |
+| Leaving the `\r` on the line | `nc` and `telnet` users get `ERR unknown command PING` | `parse` strips `\n`, then `\r` |
+| `.unwrap()` on `from_utf8`, `parse`, or a socket read | one bad line kills that client's thread; the client sees the connection drop with no reply | `reply` turns every `ProtoError` into `ERR ...`; `serve` returns errors with `?` to its thread, which logs them |
+| Splitting the text on whitespace (`split_whitespace`) | `ECHO  two  spaces` comes back as `two spaces` | `split_once(' ')` splits at the first space only |
+| Counting Unicode scalar values for `LEN` (`chars().count()`) | `LEN héllo` answers 5 instead of 6 bytes | `byte_len` is `text.len()` |
+| Printing the port before binding, or not printing `listening on ...` first | a script cannot find the server's port | `main` binds first, then prints `listening on {addr}` from `local_addr()` and flushes |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `lang.03` | compare C byte buffers with Rust's length-carrying strings |
-| Back | `lang.02` | processes, exit codes (your `echo` exits 2 on a bad flag) |
-| Forward | `L10.0` | your engine is this server grown up: `TcpListener`, a thread per connection, a `BufRead` parser, and candle-based inference |
+| Back | `lang.02` | processes, exit codes (`echo` exits 2 on a bad flag) |
+| Forward | `L10.0` | the engine is this server grown up: `TcpListener`, a thread per connection, a `BufRead` parser, and candle-based inference |
 | Forward | `lang.05` | the same server shape, speaking HTTP/1.1, JSON, and SSE instead of lines |
-| Forward | `ds.05` | traits and generics (`Hash`, `Eq`, `BuildHasher`) in your Robin Hood map |
+| Forward | `ds.05` | traits and generics (`Hash`, `Eq`, `BuildHasher`) in the Robin Hood map |
 | Forward | `L1.5` | a Rust tokenizer crate whose Python parity is checked with shared fixtures |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | a thread per connection | async runtimes ([tokio](https://tokio.rs/)) | thousands of connections on a few threads, cancellation, timeouts | `lang.09`; the Book, ch. 17 |
 | `BufReader::read_until` line framing | [tokio-util codecs](https://docs.rs/tokio-util/latest/tokio_util/codec/) | reusable framers (lines, length prefixes) over async streams | `LinesCodec` |
