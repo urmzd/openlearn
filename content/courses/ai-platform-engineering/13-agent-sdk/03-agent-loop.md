@@ -1,37 +1,21 @@
-# Agent loop
+# The agent loop
 
-## Overview
+There is now a model client ([Types, an OpenAI-compatible provider, and a retry wrapper](01-types-and-provider.md)) and a tool registry ([Tools, a registry, and JSON Schema argument validation](02-tools-and-schemas.md)), and no program that connects them. Without one, "the agent" is a person copying tool calls into a shell. An agent is a **loop**: call the model with the messages and tool definitions, run the calls it returns, append the results, and repeat until it answers without a call.
 
-| | |
-|---|---|
-| **Module** | `ag.03` · build · Go · Pass 10 · 4 h |
-| **Solution** | [`loop.go`](../../../../course/solutions/go/agent/loop/loop.go): `New`, the options (`WithMaxIter`, `WithMaxParallelTools`, `WithBudget`, `WithGate`, `WithStepRunner`, `WithTracer`, `WithApprovals`), `Agent.Invoke`, `Stream` (`Events`, `Result`, `Transcript`, `Usage`), `ErrMaxIter`, `BudgetError`, `ApprovalError`; the internals `run`, `callModel`, `callTool` |
-| **Contract** | the agent spans of [`course/contracts/otel/semconv.md`](../../../../course/contracts/otel/semconv.md) (`agent.run`, `agent.llm_call`, `agent.tool <name>`); the Go API is section 4 |
-| **Needs** | [`ag.01`](01-types-and-provider.md) (`Provider`, `Accumulator`, the `Gate` and `StepRunner` seams), [`ag.02`](02-tools-and-schemas.md) (`Registry`) · reading: tracing in Go (`obs.01`) |
-| **Used by** | `ag.04` the prompt-injection suite drives this loop with the gate · `ag.05` runs it durably · `ag.09` evaluates it as a subject · the agent track's end-to-end run is this loop over the gateway |
-| **Optional depth** | Anthropic, [*Building effective agents*](https://www.anthropic.com/engineering/building-effective-agents) (free); Yao et al., [*ReAct*](https://arxiv.org/abs/2210.03629) (free) |
+The loop is short, which is the danger. The obvious version runs forever when the model keeps calling tools, runs ten slow calls one after another, spends past its budget before checking it, and has no place to put a safety gate or a durable journal. This section writes the loop once, with those places built in: an iteration cap, bounded parallel dispatch with ordered results, budgets checked before the spend, a gate with human approval, named steps for durability, and tracing spans.
 
-## Key Takeaways
+Besides the two previous sections, you will want tracing in Go from [Tracing for the serving path](../../systems/04-observability/01-tracing-for-the-serving-path.md) in *Systems*; the loop takes any OpenTelemetry tracer, so that is background reading rather than a code dependency. The spans follow the agent spans of [`course/contracts/otel/semconv.md`](../../../../course/contracts/otel/semconv.md) (`agent.run`, `agent.llm_call`, `agent.tool <name>`). The full solution is [`loop.go`](../../../../course/solutions/go/agent/loop/loop.go): `New`, the options (`WithMaxIter`, `WithMaxParallelTools`, `WithBudget`, `WithGate`, `WithStepRunner`, `WithTracer`, `WithApprovals`), `Agent.Invoke`, `Stream` (`Events`, `Result`, `Transcript`, `Usage`), `ErrMaxIter`, `BudgetError`, `ApprovalError`, and the internals `run`, `callModel`, and `callTool`.
 
-- An agent is a **loop**: call the model with the messages and tool definitions, run the calls it returns, append the results, repeat until it answers without a call.
-- Every limit is checked **before** the work it limits: the iteration cap before a model call, the tool-call and token budgets before dispatch.
-- Calls of one turn run **in parallel up to a bound**, and their results go back **in call order**.
-- The gate decides before dispatch: denied calls never run and the model reads why; calls that need approval end the run with a marker, and a resumed run dispatches them **without asking the model again**.
-- Every model and tool call is a **named step** through a `StepRunner`, which is what makes the loop durable in `ag.05`.
+> **Learning objectives**
+> - Write the loop's recurrence over messages and trace a two-iteration run by hand, including usage and events.
+> - Explain why every limit is checked before the work it limits.
+> - Run a turn's tool calls in parallel up to a bound and return their results in call order.
+> - Describe how the gate's verdicts, taint, and approval markers change what the loop does, and how a resumed run avoids asking the model again.
+> - Explain why every model and tool call is a named step.
 
-## How to read this chapter
+## The loop as a recurrence
 
-Sections 1 to 3 build the loop from first principles and run one conversation by hand. Section 4 fixes the interface. Section 5 walks through the solution in `loop.go` and explains why each choice is the right one; try to predict each step before reading it.
-
----
-
-## 1. Why now
-
-There is now a model client (`ag.01`) and a tool registry (`ag.02`), and no program that connects them. Without one, "the agent" is a person copying tool calls into a shell. The loop is short, which is the danger: the obvious version runs forever when the model keeps calling tools, runs ten slow calls one after another, spends past its budget before checking it, and has no place to put a safety gate or a durable journal. The solution writes the loop once, with those places built in.
-
-## 2. Principles
-
-### 2.1 The loop
+Name the pieces of state first:
 
 | Symbol | Meaning |
 |---|---|
@@ -40,25 +24,27 @@ There is now a model client (`ag.01`) and a tool registry (`ag.02`), and no prog
 | $C_t$ | the tool calls in $a_t$, in the order the model wrote them |
 | $r_{t,i}$ | the tool message answering call $i$ of $C_t$ |
 
+Each iteration appends the assistant turn and one tool message per call:
+
 $$M_t = M_{t-1} \,\Vert\, a_t \,\Vert\, r_{t,0} \,\Vert\, \dots \,\Vert\, r_{t,|C_t|-1}$$
 
-and the run ends at the first $t$ with $C_t$ empty: $a_t$ is the answer. `Config.System` is the first message unless the input already starts with a system message (a resumed transcript has one).
+The run ends at the first $t$ with $C_t$ empty, and $a_t$ is the answer. `Config.System` is the first message unless the input already starts with a system message, as a resumed transcript does. Everything else in this section is about the conditions under which an iteration is allowed to happen and how its calls are dispatched.
 
-### 2.2 The iteration cap
+## The iteration cap
 
 Each iteration is one model call. `WithMaxIter(n)` (default 8) allows $n$ model calls per run; before call $n+1$ the run ends with `ErrMaxIter` and the last assistant message. A model stuck calling the same tool cannot burn money forever.
 
-### 2.3 Parallel calls, ordered results
+## Parallel calls, ordered results
 
-A model may return several calls in one turn ("weather in Paris" and "weather in Lyon"). They are independent, so they run concurrently, at most `WithMaxParallelTools(k)` (default 4) at once: a semaphore of $k$ slots, each call waits for a slot. Results are written to slot $i$ of a result array and appended in index order, whatever order the calls finish in. The model matches results to calls by id, but providers also check that the tool messages follow the assistant message in its call order.
+A model may return several calls in one turn ("weather in Paris" and "weather in Lyon"). They are independent, so they run concurrently, at most `WithMaxParallelTools(k)` (default 4) at once: a semaphore of $k$ slots, where each call waits for a slot. Results are written to slot $i$ of a result array and appended in index order, whatever order the calls finish in. The model matches results to calls by id, but providers also check that the tool messages follow the assistant message in its call order, so ordering is not optional.
 
-### 2.4 Budgets
+## Budgets
 
-`WithBudget(Budget{MaxTokens, MaxToolCalls})` caps one run. A budget is a promise about spend, so it is checked before the spend: the tool-call budget before dispatching a turn (three calls against a budget of two run none of them), the token budget after each model call returns its usage (a reply that took the run past the budget dispatches nothing) and before the next model call. Usage is summed over every model call.
+`WithBudget(Budget{MaxTokens, MaxToolCalls})` caps one run. A budget is a promise about spend, so it is checked before the spend. The tool-call budget is checked before dispatching a turn: three calls against a budget of two run none of them. The token budget is checked after each model call returns its usage (a reply that took the run past the budget dispatches nothing) and again before the next model call. Usage is summed over every model call. The general rule is that every limit is checked **before** the work it limits.
 
-### 2.5 The gate and approvals
+## The gate and approvals
 
-Before dispatching a turn, the loop asks the gate (`ag.04`) about every call, attaching `CallContext{Tainted, Iter}`. **Tainted** becomes true once any tool message is in the context: tool output is data from outside the program (a web page, a retrieved chunk, a database row), and data can contain instructions an attacker wrote. The verdicts:
+Before dispatching a turn, the loop asks the gate ([Tool gate, SQL safety gate, and prompt-injection suite](04-tool-gate-and-injection.md)) about every call, attaching `CallContext{Tainted, Iter}`. **Tainted** becomes true once any tool message is in the context. Tool output is data from outside the program (a web page, a retrieved chunk, a database row), and data can contain instructions an attacker wrote. The loop acts on each verdict as follows:
 
 | Verdict | Loop does |
 |---|---|
@@ -66,19 +52,17 @@ Before dispatching a turn, the loop asks the gate (`ag.04`) about every call, at
 | `Deny{Reason}` | does not run it; its tool message is `error: denied by policy: <reason>` |
 | `NeedApproval{Marker}` | runs nothing of this turn; the run ends with `*ApprovalError` listing the pending calls and markers |
 
-The transcript then ends with the assistant message that proposed the calls. Invoking again with that transcript and `WithApprovals(marker)` sees an unanswered assistant message, skips the model call, and dispatches the calls (an approved marker turns `NeedApproval` into `Allow`). The model is not asked again, so it cannot propose a different call in place of the approved one.
+After an approval stop, the transcript ends with the assistant message that proposed the calls. Invoking again with that transcript and `WithApprovals(marker)` sees an unanswered assistant message, skips the model call, and dispatches the calls (an approved marker turns `NeedApproval` into `Allow`). The model is not asked again, so it cannot propose a different call in place of the approved one.
 
-### 2.6 Steps
+## Steps and spans
 
-Every model call runs as step `llm/<iter>` and every tool call as `tool/<iter>/<i>/<name>` through the `StepRunner` (`types.Direct` by default). A tool that fails is a `Result` with `IsError`, which the model reads. A step that could not run at all (the runner failed: in `ag.05`, a journal that refuses to replay a write whose outcome it never recorded) ends the run with that error; showing it to the model as `error: ...` would let the run go on as if the write had failed.
+Every model call runs as step `llm/<iter>` and every tool call as `tool/<iter>/<i>/<name>` through the `StepRunner` (`types.Direct` by default). Naming every side effect is what makes the loop durable in [Durable agent runs](05-durable-agent-runs.md). A tool that fails is a `Result` with `IsError`, which the model reads. A step that could not run at all is different: when the runner itself fails (in the durable runner, a journal that refuses to replay a write whose outcome it never recorded), the run ends with that error. Showing it to the model as `error: ...` would let the run go on as if the write had failed.
 
-### 2.7 Spans
+The loop also emits spans per `otel/semconv.md`: `agent.run` (INTERNAL, with `gen_ai.agent.name` and `tl.agent.iterations`), one `agent.llm_call` (CLIENT, with `gen_ai.request.model`, `gen_ai.usage.input_tokens`, and `gen_ai.usage.output_tokens`) per model call, and one `agent.tool <name>` (INTERNAL, with `gen_ai.tool.name` and `tl.tool.outcome` set to `ok`, `error`, `denied`, or `needs_approval`) per call. The loop takes an OpenTelemetry `trace.Tracer`; the composition root passes the one that `go/otelx` sets up.
 
-Per `otel/semconv.md`: `agent.run` (INTERNAL, `gen_ai.agent.name`, `tl.agent.iterations`), one `agent.llm_call` (CLIENT, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`) per model call, and one `agent.tool <name>` (INTERNAL, `gen_ai.tool.name`, `tl.tool.outcome` = `ok`, `error`, `denied`, or `needs_approval`) per call. The loop takes an OpenTelemetry `trace.Tracer`; the composition root passes the one `go/otelx` sets up (`obs.01`).
+## Running a conversation by hand
 
-## 3. Worked example by hand
-
-Input: one user message, "What is the weather in Paris?". The tool `get_weather` answers "sunny, 21 C".
+Take one user message, "What is the weather in Paris?", and a tool `get_weather` that answers "sunny, 21 C". The run goes like this:
 
 | Step | Messages before | Model returns | Loop does | Usage so far |
 |---|---|---|---|---|
@@ -86,9 +70,11 @@ Input: one user message, "What is the weather in Paris?". The tool `get_weather`
 | | user, assistant(call_1), tool(call_1: "sunny, 21 C") | | | |
 | `llm/2` | the three above | "It is sunny.", 20 in, 4 out | no calls: the answer | 30 / 9 |
 
-Two model calls, one tool run, a transcript of four messages (user, assistant with the call, the tool message answering `call_1`, the answer), and usage 30 in, 9 out. The events, in order: usage of call 1, the tool call, its result, the three streamed text pieces "It ", "is ", "sunny.", usage of call 2, done.
+That is two model calls and one tool run, producing a transcript of four messages (user, assistant with the call, the tool message answering `call_1`, and the answer) and usage of 30 in, 9 out. The events, in order, are: usage of call 1, the tool call, its result, the three streamed text pieces "It ", "is ", "sunny.", usage of call 2, and done.
 
-## 4. The interface
+## Designing the API
+
+The package exposes a constructor with options and a `Stream` handle:
 
 ```go
 package loop // import "tinyllm/agent/loop"
@@ -116,28 +102,11 @@ type BudgetError struct { Resource string; Used, Limit int }
 type ApprovalError struct{ Pending []Pending } // Pending{Call, Marker, Reason}
 ```
 
-Allowed imports: the standard library, `go.opentelemetry.io/otel` (`attribute`, `codes`, `trace`, `trace/noop`), and the `ag.01` and `ag.02` packages. `Result` must not block on unread events: a caller that only wants the answer never reads `Events`.
+The allowed imports are the standard library, `go.opentelemetry.io/otel` (`attribute`, `codes`, `trace`, `trace/noop`), and the `types`, `provider`, and `tool` packages from the previous two sections. One rule shapes the `Stream`: `Result` must not block on unread events, because a caller that only wants the answer never reads `Events`.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | What must hold | Why it matters downstream |
-|---|---|---|---|
-| the hand example (section 3) | unit | the answer, 2 model calls, 1 tool run, usage 30/9, the transcript, what the second call saw, the event order | the loop is pinned down |
-| the system prompt | unit | added once, and not to a transcript that already has one | resumed runs do not stack instructions |
-| `WithMaxIter(3)` with a model that never stops | boundary | 3 model calls, 3 tool runs, `ErrMaxIter` with the last message | a looping model is stopped |
-| 6 calls with bound 2 | unit | exactly 2 in flight; finished in reverse, returned in order | throughput without breaking the call order |
-| budgets | boundary | 3 calls against 2: none run; 110 tokens against 100: no dispatch | spend is checked before it happens |
-| gate verdicts | unit | deny, approval, resume without a model call, tainted only after tool output | `ag.04` plugs in here |
-| step names | unit | names and kinds; a replaying runner reproduces the run with no calls | `ag.05` keys its journal by these names |
-| a step runner error | fault | ends the run, nothing appended | an unknown write outcome is never papered over |
-| spans | unit | `agent.run`, two `agent.llm_call` with tokens, `agent.tool` outcomes ok, error, denied | operators read runs from traces |
-| a provider error | fault | ends the run, no tool runs | no silent empty answers |
-| 2000 unread events | regression | `Result` without reading `Events` does not block | callers that want only the answer |
-| the fake tool-calling model end to end | conformance | over the real provider: call, tool, answer | the PR stand-in for a real model |
-
-## 5. The solution, step by step
-
-### 5.1 From first principles
+Here is the reasoning chain; try to predict each step before reading it.
 
 1. **The loop's state is the message list.** Everything the model knows is in $M_t$, so the loop only appends: the assistant turn, then one tool message per call. Because the transcript is the state, a run can be resumed by passing the transcript back in.
 2. **A limit protects only if it is checked before the work.** The iteration cap is checked before each model call; the token budget before each model call and again after a reply that asks for tools; the tool-call budget before dispatching a turn. A check after the work only reports the overspend.
@@ -145,12 +114,12 @@ Allowed imports: the standard library, `go.opentelemetry.io/otel` (`attribute`, 
 4. **The gate sees every call before any runs.** If any call of a turn needs approval, none of that turn runs: a partially executed turn could not be resumed cleanly.
 5. **Resuming means "the last message is an assistant turn with unanswered calls".** That shape cannot occur in the middle of a normal run (results are always appended), so it identifies a resume without extra state, and the loop skips the model call so the approved calls are exactly the ones a human saw.
 6. **Taint is monotone.** Once any tool output is in the context, it stays there, so `tainted` only ever goes from false to true, and a resumed transcript with tool messages starts tainted.
-7. **Every side effect is a named step.** Model calls and tool calls go through `StepRunner.RunStep` with deterministic names and JSON results, which is all `ag.05` needs to record and replay a run.
+7. **Every side effect is a named step.** Model calls and tool calls go through `StepRunner.RunStep` with deterministic names and JSON results, which is all the durable runner needs to record and replay a run.
 8. **Delivery of events must never block the run.** Events are optional; `Result` closes a `discard` channel so `emit` stops waiting.
 
-### 5.2 The code, annotated
+### Setup
 
-**Setup** in `run`: the system prompt goes first unless the input already has one, and the iteration count and taint are recomputed from the input, so a resumed transcript continues where it left off:
+In `run`, the system prompt goes first unless the input already has one, and the iteration count and taint are recomputed from the input, so a resumed transcript continues where it left off:
 
 ```go
 msgs := append([]types.Message(nil), input...) // never mutate the caller's slice
@@ -168,7 +137,9 @@ for _, m := range msgs {
 }
 ```
 
-**The model call and its limits**, steps 2 and 5:
+### The model call and its limits
+
+Steps 2 and 5 meet at the top of each iteration:
 
 ```go
 for {
@@ -211,7 +182,9 @@ for {
 
 `finish` stores the transcript and the span's iteration count for every exit, so `Transcript` always ends with the assistant turn that proposed any pending calls.
 
-**The gate**, step 4. Every call is checked with the current `CallContext`; a gate error is treated as a deny; an approved marker turns `NeedApproval` into `Allow`:
+### The gate
+
+Step 4 checks every call with the current `CallContext`. A gate error is treated as a deny, and an approved marker turns `NeedApproval` into `Allow`:
 
 ```go
 gctx := types.WithCallContext(ctx, types.CallContext{Tainted: tainted, Iter: iter})
@@ -234,7 +207,9 @@ if len(pending) > 0 {
 }
 ```
 
-**Dispatch**, step 3. Denied calls get their result directly; the rest run in goroutines behind a semaphore:
+### Dispatch
+
+Step 3 is the concurrent part. Denied calls get their result directly; the rest run in goroutines behind a semaphore:
 
 ```go
 results := make([]tool.Result, len(calls)) // slot i answers call i
@@ -274,7 +249,9 @@ if err := ctx.Err(); err != nil {
 
 Each goroutine writes only its own slot, so the arrays need no lock; `wg.Wait()` is the synchronization point that makes the writes visible.
 
-**Steps**, step 7. `callModel` wraps the provider call in `RunStep(ctx, types.LLMStep(iter), types.StepLLM, ...)`; inside, it folds the stream with an `Accumulator`, forwards each `TextDelta` as an `EventText`, and returns the message and usage as JSON. `callTool` does the same for `Registry.Call` under `types.ToolStep(iter, i, c.Name)`. Two things make replay work:
+### Steps
+
+For step 7, `callModel` wraps the provider call in `RunStep(ctx, types.LLMStep(iter), types.StepLLM, ...)`. Inside, it folds the stream with an `Accumulator`, forwards each `TextDelta` as an `EventText`, and returns the message and usage as JSON. `callTool` does the same for `Registry.Call` under `types.ToolStep(iter, i, c.Name)`. Two details make replay work. First, the result is re-stamped with the call's identity and its outcome is recorded:
 
 ```go
 res.CallID, res.Name = c.ID, c.Name // a recorded result answers this call
@@ -285,9 +262,11 @@ if res.IsError {
 }
 ```
 
-and the step name includes the call index `i`, so two calls of the same tool in one turn get two journal entries.
+Second, the step name includes the call index `i`, so two calls of the same tool in one turn get two journal entries.
 
-**Optional events**, step 8:
+### Optional events
+
+Step 8 keeps a slow or absent reader from stalling the run:
 
 ```go
 func (s *Stream) emit(ctx context.Context, e Event) {
@@ -305,19 +284,66 @@ func (s *Stream) Result() (types.Message, error) {
 }
 ```
 
-Full solution: [`loop.go`](../../../../course/solutions/go/agent/loop/loop.go).
+The full solution is [`loop.go`](../../../../course/solutions/go/agent/loop/loop.go).
 
-### 5.3 Why this solution
+### Why this design
 
-- **Cost.** Per iteration: one model call plus the turn's tool calls, wall time about the slowest $\lceil |C_t|/k \rceil$ batches of tools. Memory is the transcript. The loop's own work (gate checks, appends) is negligible next to the model.
-- **The transcript as the only state** rather than a separate run object: resume, approval, and durability (`ag.05`) all fall out of "pass the transcript back in", and there is nothing else to persist.
-- **Bounded parallelism** rather than sequential or unbounded: sequential calls make a turn as slow as the sum of its tools; unbounded calls let one turn of ten slow tools overload a backend. A semaphore gives both a speedup and a ceiling.
-- **Approval ends the run** rather than blocking inside it: a human may answer in minutes or days, and a blocked goroutine holding a connection is the wrong place to wait. The run returns `ApprovalError` with markers; the caller persists the transcript and invokes again.
-- **Tradeoffs accepted:** a token budget can be exceeded by at most one model reply (the loop cannot know a reply's size in advance), but it never dispatches tools after that; denied calls still count against the tool-call budget, since the model proposed them.
+Per iteration, the cost is one model call plus the turn's tool calls, with wall time about the slowest $\lceil |C_t|/k \rceil$ batches of tools. Memory is the transcript. The loop's own work (gate checks, appends) is negligible next to the model.
 
-### 5.4 Explain it back
+Keeping the transcript as the only state, rather than a separate run object, is the decision everything else leans on: resume, approval, and durability all fall out of "pass the transcript back in," and there is nothing else to persist. Bounded parallelism beats both alternatives. Sequential calls make a turn as slow as the sum of its tools, and unbounded calls let one turn of ten slow tools overload a backend; a semaphore gives both a speedup and a ceiling. Approval ends the run rather than blocking inside it, because a human may answer in minutes or days, and a blocked goroutine holding a connection is the wrong place to wait. The run returns `ApprovalError` with markers; the caller persists the transcript and invokes again.
 
-1. In section 3, why does the second model call see three messages while the transcript ends with four?
+Two tradeoffs are accepted. A token budget can be exceeded by at most one model reply, since the loop cannot know a reply's size in advance, but it never dispatches tools after that. And denied calls still count against the tool-call budget, since the model proposed them.
+
+## What can go wrong
+
+A correct loop passes a specific set of checks. The hand example must yield the answer, two model calls, one tool run, usage 30/9, the four-message transcript, the three messages the second call saw, and the event order above. The system prompt is added once, and not to a transcript that already has one, so resumed runs do not stack instructions. `WithMaxIter(3)` with a model that never stops makes three model calls and three tool runs and ends in `ErrMaxIter` with the last message. Six calls with a bound of 2 have exactly two in flight; finished in reverse, they are returned in order. Three calls against a tool-call budget of 2 run none, and 110 tokens against a budget of 100 dispatch nothing. Deny, approval, resume without a model call, and taint only after tool output all behave as described, which is where the gate plugs in. Step names and kinds are right, and a replaying runner reproduces the run with no calls, since the durable runner keys its journal by these names. A step-runner error ends the run with nothing appended, so an unknown write outcome is never papered over. The spans include `agent.run`, two `agent.llm_call` spans with tokens, and `agent.tool` outcomes ok, error, and denied. A provider error ends the run with no tool runs, so there are no silent empty answers. With 2000 unread events, `Result` still does not block. And over the real provider, the fake tool-calling model goes through call, tool, and answer end to end.
+
+The mistakes behind failures of those checks:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| the cap checked after the call | one model call more than configured | `iter >= a.maxIter` is checked before `callModel` |
+| unbounded parallel calls, results appended as they finish | ten slow tools at once overload a backend; results misordered | a semaphore of `maxPar` slots; results by index, appended after `wg.Wait()` |
+| budgets checked after the spend, usage overwritten instead of summed | tools run past the budget; the budget never trips | token and tool-call checks before dispatch; `s.usage.In +=` |
+| verdicts ignored, approvals looked up by the wrong key, a resumed run asking the model again | denied tools run; approved calls stay pending or are replaced | denied calls never reach `callTool`; `approved[v.Marker]`; the resume branch skips `callModel` |
+| the context never marked tainted | a gate cannot tell a clean request from one after a poisoned document | `tainted = true` after every turn's results, and from any tool message in the input |
+| the system prompt added twice, the proposing assistant turn dropped | stacked instructions; tool messages with no call to answer | the system prompt only when the first message is not a system message; the reply is appended before any check |
+| tool step names without the call index, every outcome recorded as ok | two calls of one tool share a journal entry; failures invisible in traces | `ToolStep(iter, i, name)`; `tl.tool.outcome` set from `IsError` |
+| errors swallowed | a dead model gives an empty "answer"; a refused replay is shown to the model | provider and step errors return through `finish` with the error |
+
+> **Warning:** If a resumed run calls the model again instead of dispatching the pending calls, the model may propose something different from what the human approved. The resume branch exists precisely to prevent that.
+
+## Where this leads
+
+This loop is the agent the rest of the book runs. [The tool gate](04-tool-gate-and-injection.md)'s prompt-injection suite drives it with the policy gate. [Durable agent runs](05-durable-agent-runs.md) passes its journal as the `StepRunner` and resumes from the recorded input. The [eval runner](../09-llm-evaluation/09-eval-runner.md)'s `AgentSubject` runs the loop on every case of a suite and reads its events. The agent track's end-to-end run is this loop over the gateway.
+
+Production frameworks build further. Saige's `agent` (`agent/agent.go`, `agent/tree/compact.go`) keeps a conversation tree with branching and compaction, sub-agents as call and return, and handoff. Saige's tool policy (`agent/tool_policy.go`) separates policies for disclosure, execution, context, results, and routing. Saige's shared `Budget` (`agent/budget`) reserves request, token, and cost capacity under one lock and settles it once. The loop itself is an instance of patterns like ReAct and plan-and-execute, which interleave reasoning traces with actions or plan before acting.
+
+### Further reading
+
+- Anthropic, [*Building effective agents*](https://www.anthropic.com/engineering/building-effective-agents) (free).
+- Yao et al., [*ReAct*](https://arxiv.org/abs/2210.03629) (free).
+
+## Key terms
+
+- **agent loop**: repeated model calls, each followed by running the tool calls it returned and appending their results, until a reply has no calls.
+- **iteration cap**: the maximum number of model calls in one run, checked before each call.
+- **budget**: a per-run limit on tokens and tool calls, checked before the spend.
+- **taint**: the flag, monotone within a run, that says tool output (outside data) is in the context.
+- **approval marker**: the gate's identifier for a call needing human approval; passing it to `WithApprovals` turns that verdict into `Allow`.
+- **step**: a named, recorded unit of side effect (`llm/<iter>`, `tool/<iter>/<i>/<name>`) run through a `StepRunner`.
+
+## Summary
+
+- The transcript is the loop's only state; each iteration appends the assistant turn and one tool message per call.
+- Every limit (iteration cap, token budget, tool-call budget) is checked before the work it limits.
+- A turn's calls run in parallel behind a semaphore, and their results are appended in call order.
+- The gate decides before dispatch; denied calls never run, and an approval stop ends the run so a resumed run dispatches exactly the approved calls without asking the model again.
+- Every model and tool call is a named step, which is what makes the loop durable.
+
+## Review questions
+
+1. In the hand example, why does the second model call see three messages while the transcript ends with four?
    <details><summary>Answer</summary>The second call is made with $M_1$ = user, assistant(call_1), tool(call_1). Its reply, "It is sunny.", is appended afterwards, making four messages. The model never sees its own reply; it sees the tool's result answering its call.</details>
 2. Why does the loop check `iter >= maxIter` before the model call instead of counting after it?
    <details><summary>Answer</summary>A check after the call would allow call number `maxIter + 1` to happen and only then stop. The cap is a promise about how many model calls a run may make, so it must gate the call itself.</details>
@@ -326,38 +352,4 @@ Full solution: [`loop.go`](../../../../course/solutions/go/agent/loop/loop.go).
 4. How does a resumed run know not to call the model again, without a flag?
    <details><summary>Answer</summary>The transcript ends with an assistant message that has tool calls and no tool messages after it. A normal run always appends the results right after the proposing turn, so that shape occurs only when a run stopped for approval. The loop uses that message as the reply and dispatches its calls.</details>
 5. Why does a `StepRunner` error end the run instead of becoming an `error:` tool message?
-   <details><summary>Answer</summary>A tool error means the tool ran and failed; the model can react. A step error means the step could not run or its outcome is unknown (in `ag.05`, a write whose result was never recorded). Telling the model "error" would let it proceed as if the write had failed when it may have succeeded.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. the cap checked after the call | one model call more than configured | `iter >= a.maxIter` is checked before `callModel` |
-| 2. unbounded parallel calls, results appended as they finish | ten slow tools at once overload a backend; results misordered | a semaphore of `maxPar` slots; results by index, appended after `wg.Wait()` |
-| 3. budgets checked after the spend, usage overwritten instead of summed | tools run past the budget; the budget never trips | token and tool-call checks before dispatch; `s.usage.In +=` |
-| 4. verdicts ignored, approvals looked up by the wrong key, a resumed run asking the model again | denied tools run; approved calls stay pending or are replaced | denied calls never reach `callTool`; `approved[v.Marker]`; the resume branch skips `callModel` |
-| 5. the context never marked tainted | a gate cannot tell a clean request from one after a poisoned document | `tainted = true` after every turn's results, and from any tool message in the input |
-| 6. the system prompt added twice, the proposing assistant turn dropped | stacked instructions; tool messages with no call to answer | the system prompt only when the first message is not a system message; the reply is appended before any check |
-| 7. tool step names without the call index, every outcome recorded as ok | two calls of one tool share a journal entry; failures invisible in traces | `ToolStep(iter, i, name)`; `tl.tool.outcome` set from `IsError` |
-| 8. errors swallowed | a dead model gives an empty "answer"; a refused replay is shown to the model | provider and step errors return through `finish` with the error |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `ag.01` | the provider, the accumulator, the gate and step seams |
-| Back | `ag.02` | `Definitions` for every model call, `Call` for every tool call |
-| Forward | `ag.04` | the prompt-injection suite runs this loop with the policy gate |
-| Forward | `ag.05` | `AgentRun` passes its journal as the `StepRunner` and resumes from the recorded input |
-| Forward | `ag.09` | `AgentSubject` runs the loop on every case of a suite and reads its events |
-
-`obs.01` is reading because the loop takes any `trace.Tracer`.
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| the loop | saige `agent` | a conversation tree with branching and compaction, sub-agents as call and return, handoff | saige `agent/agent.go`, `agent/tree/compact.go` |
-| `WithGate` | saige tool policy | separate policies for disclosure, execution, context, results, routing | saige `agent/tool_policy.go` |
-| `WithBudget` | saige shared `Budget` | request, token, and cost capacity reserved under one lock and settled once | saige `agent/budget` |
-| the pattern | ReAct, plan-and-execute | reasoning traces interleaved with actions; planning before acting | Yao et al., [*ReAct*](https://arxiv.org/abs/2210.03629) (free) |
+   <details><summary>Answer</summary>A tool error means the tool ran and failed; the model can react. A step error means the step could not run or its outcome is unknown (in the durable runner, a write whose result was never recorded). Telling the model "error" would let it proceed as if the write had failed when it may have succeeded.</details>

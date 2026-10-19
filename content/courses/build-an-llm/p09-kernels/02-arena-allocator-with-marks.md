@@ -1,35 +1,25 @@
-# C runtime support and arena allocator with marks (optional)
+# C runtime support and an arena allocator with marks
 
-## Overview
+The kernels in this chapter need memory that is neither an input nor an output. FlashAttention keeps tiles of scores and running maxima; online softmax keeps partial sums; a quantized matmul may unpack a group of weights before using it. Calling `malloc` and `free` for every tile would add allocator overhead to each kernel call and, worse, a new place where the call can fail halfway through. This section builds the small piece of infrastructure that removes both problems: a C support layer with fixed status values, a thread-local error message, and replaceable allocation hooks, and on top of it an **arena** that reserves blocks once, bumps an offset for each request, and rewinds when a kernel finishes.
 
-| | |
-|---|---|
-| **Module** | `rt.02` · side · C · Pass 6 |
-| **Solution** | [`abi.c`](../../../../course/solutions/c/src/runtime/abi.c): status, error, and allocator helpers; [`arena.c`](../../../../course/solutions/c/src/runtime/arena.c): `tl_arena_create`, `tl_arena_alloc`, `tl_arena_mark_get`, `tl_arena_reset_to`, `tl_arena_stats_get`, `tl_arena_destroy` |
-| **Contract** | [`tinyllm/abi.h`](../../../../course/contracts/c/include/tinyllm/abi.h) · [`tinyllm/arena.h`](../../../../course/contracts/c/include/tinyllm/arena.h) · rules: [`c/ABI.md`](../../../../course/contracts/c/ABI.md) |
-| **Needs** | `lang.03` for C pointers, `size_t`, and compiling a standalone test binary |
-| **Used by** | `L9.1`, `L9.2`, `L9.3`, `L9.4`, `L9.5`, `ds.01`, `ds.02`, `ds.04`, `rt.03`, `rt.04`: optional C exercises share runtime helpers through standalone C test binaries; together they form the optional C module group of the kernels pass |
-| **Optional depth** | Hanson, *Fast allocation and deallocation of memory based on object lifetimes* (1990); Bonwick, *The Slab Allocator* (USENIX 1994); the `tcmalloc` and `jemalloc` design notes |
+Everything in this chapter is optional. None of these C interfaces is loaded by Python or linked into the Rust engine; each C unit compiles into its own standalone test program, and Rust and Python talk to C only through checked-in files and process protocols. The rules every C unit follows are in [`c/ABI.md`](../../../../course/contracts/c/ABI.md), and the headers you implement against are [`tinyllm/abi.h`](../../../../course/contracts/c/include/tinyllm/abi.h) and [`tinyllm/arena.h`](../../../../course/contracts/c/include/tinyllm/arena.h). The reference solutions are [`abi.c`](../../../../course/solutions/c/src/runtime/abi.c) (status, error, and allocator helpers) and [`arena.c`](../../../../course/solutions/c/src/runtime/arena.c) (`tl_arena_create`, `tl_arena_alloc`, `tl_arena_mark_get`, `tl_arena_reset_to`, `tl_arena_stats_get`, `tl_arena_destroy`).
 
-## Key Takeaways
+This section assumes you are comfortable with C pointers, `size_t`, and compiling a standalone test binary, as covered in [C: memory, pointers, structs, headers, and the C11 toolchain](../../programming-languages/02-language-and-tool-primers/03-c.md) in *Programming Languages*. The allocator hook is what makes the arena testable: installing a counting hook with `tl_set_allocator` shows exactly when the arena calls it and lets any single call be made to fail, and you will lean on that throughout.
 
-- **An arena allocates by bumping an offset** and frees everything after a point at once by rewinding it: allocation is an add and a compare, and nothing is freed piece by piece.
-- **Alignment is padding computed from the address**, not from the offset: each pointer is a multiple of its requested power of two, up to 4096.
-- **Marks nest like a stack**: rewinding releases exactly what came after the mark, across blocks, and a mark from the future is refused.
-- **Blocks are kept, not freed, on rewind**, so after warmup a mark, allocate, rewind step never calls the allocator hook: it cannot fail and costs no `malloc`.
-- **Every hook failure leaves the arena unchanged and leak-free**, whichever allocation is the one that fails.
+> **Learning objectives**
+> - Implement a bump allocator whose fast path is one mask, one add, and two compares.
+> - Compute alignment padding from the address rather than the offset, for any power of two up to 4096.
+> - Implement nested marks that rewind across blocks, keep `bytes_used` exact, and refuse a mark from the future.
+> - Explain why keeping blocks on rewind makes a warmed-up step call the allocator zero times.
+> - Order the fallible steps of an allocation so that any hook failure leaves the arena unchanged and leak-free.
 
-## How to read this chapter
+## The support layer
 
-Sections 1 to 3 build the support layer and the arena from first principles and work one block's allocations, a mark, and a rewind by hand. Section 4 fixes the interface. Section 5 walks through the solution, the support layer first and then the arena's three allocation cases, and explains why each choice is the right one. The allocator hook is what makes the arena testable: installing a counting hook with `tl_set_allocator` shows exactly when the arena calls it and lets any single call be made to fail. The helper API stays inside C processes; Rust and Python use process and file protocols.
+Before the arena there is a thin layer every C unit in this book reports through, and its contracts are deliberately simple. `tl_status_str` returns a stable name for each known status value and `TL_UNKNOWN` for any other integer. `tl_set_last_error` copies a message, truncating it if needed, into a thread-local slot. `tl_alloc` rejects a zero size and any alignment that is not a power of two before it calls the installed hook, and `tl_free(NULL)` does nothing. Together these make standalone C failures observable (a test can read the message) and make allocator behavior countable (a test can install a hook that counts or fails).
 
----
+## Bump allocation
 
-## 1. Why now
-
-Part 9's optional C kernels need scratch memory that is not an input or an output: FlashAttention (`L9.3`) keeps tiles of scores and running maxima, and online softmax (`L9.2`) keeps partial sums. `malloc` and `free` for every tile would add allocator overhead and another failure point in each kernel call. This module begins with a small C support layer: fixed status values, a thread-local error message, and replaceable allocation hooks. The arena then uses those hooks to reserve blocks once, bump an offset for each request, and rewind when a kernel finishes. None of these C interfaces is loaded by Python or linked into the Rust engine.
-
-## 2. Principles
+The arena itself needs a few quantities, which the rest of the section refers to by these names:
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -41,37 +31,37 @@ Part 9's optional C kernels need scratch memory that is not an input or an outpu
 | $\mathrm{pad}(p, a)$ | bytes from address $p$ up to the next multiple of $a$: $(a - (p \bmod a)) \bmod a$ | `size_t` |
 | $U$ | `bytes_used`: allocated bytes including padding | `size_t` |
 
-The shared C support functions have simple contracts too. `tl_status_str` returns a stable name for known values and `TL_UNKNOWN` for any other integer. `tl_set_last_error` copies and truncates a message into a thread-local slot. `tl_alloc` rejects zero sizes and non-power-of-two alignments before calling the installed hook; `tl_free(NULL)` does nothing. These helpers make standalone C failures observable and make allocator behavior countable in tests.
-
-### 2.1 Bump allocation
-
 An arena owns a list of blocks obtained from the hook. Within the current block, an allocation of $n$ bytes aligned to $a$ is
 
 $$p = \mathrm{base}_b + o + \mathrm{pad}(\mathrm{base}_b + o,\ a), \qquad o \leftarrow o + \mathrm{pad} + n,$$
 
-provided $o + \mathrm{pad} + n$ is at most the block's size. That is the whole fast path: one remainder (a mask, since $a$ is a power of two: $p \bmod a = p \mathbin{\&} (a - 1)$), one add, one compare. When the request does not fit, the arena moves to the next block (2.4). A request larger than $B$ gets a block of its own, rounded up to a multiple of 64.
+provided $o + \mathrm{pad} + n$ is at most the block's size. That is the whole fast path: one remainder (a mask, since $a$ is a power of two: $p \bmod a = p \mathbin{\&} (a - 1)$), one add, one compare. When the request does not fit, the arena moves to the next block, as described below. A request larger than $B$ gets a block of its own, rounded up to a multiple of 64.
 
-### 2.2 Alignment comes from the address
+## Alignment comes from the address
 
-SIMD loads want their address to be a multiple of 16, 32, or 64 bytes, and a cache line is 64. The padding must therefore be computed from the **address** $\mathrm{base}_b + o$, not from the offset $o$: an offset of 0 is a multiple of everything, but the block itself might start at an address that is only a multiple of 16. Blocks are requested from the hook with alignment $\max(64, a)$, so a new block's first byte is aligned for any request that caused it.
+SIMD loads want their address to be a multiple of 16, 32, or 64 bytes, and a cache line is 64. The padding must therefore be computed from the **address** $\mathrm{base}_b + o$, not from the offset $o$. An offset of 0 is a multiple of everything, but the block itself might start at an address that is only a multiple of 16. To make a fresh block always usable, the arena requests blocks from the hook with alignment $\max(64, a)$, so a new block's first byte is aligned for whatever request caused it to be created.
 
-### 2.3 Marks and rewinding
+## Marks and rewinding
 
-A **mark** is a copy of the position $(b, o)$. `tl_arena_reset_to(mark)` sets the position back to it: every allocation made after the mark is released at once, and the ones before it stay valid. Positions are ordered lexicographically (first by block, then by offset), and marks must nest like a stack: a kernel takes a mark, calls a helper that takes its own mark and rewinds to it, then rewinds to its own. Rewinding to a mark that is **later** than the current position would declare memory free that was handed out after the mark was taken and later rewound past; the contract ignores such a mark and sets the error slot.
+Allocation is only half of the arena; the other half is releasing memory in bulk. A **mark** is a copy of the position $(b, o)$. `tl_arena_reset_to(mark)` sets the position back to it: every allocation made after the mark is released at once, and the ones before it stay valid.
 
-`bytes_used` must return exactly to its value at the mark. Track $U$ as "bytes used in all blocks before the current one" plus $o$, and record, for each block the arena moves past, the offset it reached there. On rewind to $(b', o')$ recompute the first term as the sum over blocks before $b'$.
+Positions are ordered lexicographically, first by block and then by offset, and marks must nest like a stack: a kernel takes a mark, calls a helper that takes its own mark and rewinds to it, then rewinds to its own. Rewinding to a mark that is **later** than the current position would declare free some memory that was handed out after the mark was taken and then rewound past. That is how the same bytes get handed out twice, so the contract ignores such a mark and sets the error slot.
 
-### 2.4 Keep the blocks
+`bytes_used` must return exactly to its value at the mark. The way to get that is to track $U$ as "bytes used in all blocks before the current one" plus $o$, and to record, for each block the arena moves past, the offset it had reached there. On a rewind to $(b', o')$ you recompute the first term as the sum over blocks before $b'$.
 
-On rewind the blocks after the mark stay in the list: they are free, and the next allocations reuse them. When the current block is full, the arena looks among the later blocks for one large enough (they are all free, because marks nest, so their order can be changed: the one found is swapped into the next position), and only if none fits does it ask the hook for a new one, inserted at the next position. After the first step of an engine has grown the list to its working size, every later step allocates without touching the hook. `high_water` records the largest $U$ ever reached, which is how the engine sizes its arena; `bytes_reserved` is the sum of block sizes.
+## Keep the blocks
 
-### 2.5 Failure leaves no trace
+On rewind the blocks after the mark stay in the list. They are free, and the next allocations reuse them. When the current block is full, the arena looks among the later blocks for one large enough. Because marks nest, all of those blocks are free, so their order can be changed: the one found is swapped into the next position. Only if none fits does the arena ask the hook for a new block, inserted at the next position.
 
-Two things can fail: the hook returning NULL for a new block, and the hook returning NULL for a larger block list. Check both **before** changing any field, so a failed `tl_arena_alloc` returns NULL with the error slot set and leaves the arena exactly as it was. `tl_arena_destroy` frees every block, the list, and the arena through the hook.
+The payoff is the steady state. After the first step of an engine has grown the list to its working size, every later step allocates without touching the hook. Two statistics make this measurable: `high_water` records the largest $U$ ever reached, which is how the engine sizes its arena, and `bytes_reserved` is the sum of block sizes.
 
-## 3. Worked example by hand
+## Failure leaves no trace
 
-A 256-byte block whose first byte is at an address that is a multiple of 64 (the hook was asked for that).
+Two things can fail during an allocation: the hook returning NULL for a new block, and the hook returning NULL for a larger block list. The arena checks both **before** changing any field, so a failed `tl_arena_alloc` returns NULL with the error slot set and leaves the arena exactly as it was. `tl_arena_destroy` frees every block, the list, and the arena itself through the hook.
+
+## Working it by hand
+
+The rules are easier to trust once you have pushed numbers through them. Take a 256-byte block whose first byte is at an address that is a multiple of 64 (the hook was asked for that), and run this sequence:
 
 | Call | Padding | Returned offset | Position after | $U$ |
 |---|---|---|---|---|
@@ -82,9 +72,13 @@ A 256-byte block whose first byte is at an address that is a multiple of 64 (the
 | `reset_to(mark)` | | | (0, 68) | 68 |
 | `alloc(100, 8)` | 4 | 72, the same address as before | (0, 172) | 172 |
 
-`high_water` is 172 after the rewind too, `n_blocks` is 1 and `bytes_reserved` 256. A fifth allocation of 100 bytes would need offset 172 + 100 = 272 > 256, so it would go to a second block. Checking the offsets relative to the first pointer and the differences in $U$ (58, then 104) makes the example independent of where the hook put the block. The boundary of the fit test: two 64-byte requests fill a 128-byte block exactly, with no second block.
+After the rewind `high_water` is still 172, `n_blocks` is 1, and `bytes_reserved` is 256. A fifth allocation of 100 bytes would need offset 172 + 100 = 272 > 256, so it would go to a second block.
 
-## 4. The interface
+Notice that the example checks offsets relative to the first pointer and differences in $U$ (58, then 104), which makes it independent of where the hook actually put the block. The boundary of the fit test is worth one more check: two 64-byte requests fill a 128-byte block exactly, with no second block.
+
+## The interface
+
+With the behavior pinned down, the header is short:
 
 ```c
 typedef struct tl_arena tl_arena;
@@ -98,45 +92,21 @@ void          tl_arena_stats_get(const tl_arena *a, tl_arena_stats *out);
 void          tl_arena_destroy(tl_arena *a);                         /* NULL is a no-op */
 ```
 
-The arena is not thread-safe: one arena per thread (L9.3 gives each worker of the rt.03 pool its own).
+The arena is not thread-safe. The rule is one arena per thread: [FlashAttention forward in C](06-flash-attention-forward.md) gives each worker of the [thread pool](03-thread-pool-and-parallel-for.md) its own.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| The hand example | unit, smoke | section 3: offsets 0, 64, 72; $U$ +58 and +104; rewind restores $U$; same address again; one 256-byte block | the definition is pinned by numbers you can check by hand |
-| Every power-of-two alignment | unit | pointers for alignments 1 to 4096 after odd-sized requests; 0 means 64 | SIMD loads in L9 kernels |
-| Bad requests change nothing | boundary | $n = 0$, alignment 3, alignment 8192: NULL with a message, arena unchanged; `create` with NULL out | defined behavior at the boundary |
-| Nested marks | unit | inner and outer rewinds across three blocks restore the same addresses | a kernel calling a helper that uses scratch too |
-| A later mark is ignored | boundary | rewinding to a mark from after the current position changes nothing and sets the slot | no double hand-out of the same bytes |
-| Blocks are kept and reused | unit | after a rewind two 100-byte requests reuse the same two blocks: no new hook call | the steady state of an engine step |
-| An exact fit uses the last byte | boundary | 64 + 64 bytes fill a 128-byte block | no wasted blocks |
-| An oversized request gets its own block | boundary | 1000 bytes in an arena of 128-byte blocks: aligned, writable (ASan), separate | a long prompt's attention tile |
-| Random operations against a model | property | 300 seeded runs of allocations, marks, rewinds: aligned, disjoint, unchanged contents; $U$ exact at marks; `high_water` the running maximum | everything above, combined |
-| Zero hook calls after warmup | fault | after 3 warmup steps every hook call fails; 1000 more steps still succeed | the "zero malloc per step" claim, counted |
-| Hook failure leaves the arena usable | fault | the n-th hook call fails, for every n from 0 to 39: TL_ENOMEM or NULL, unchanged stats, no leak | every constructor's failure path |
-| The ABI version matches the header | unit | the support version equals the header constant | each C test binary compiles against the same interface |
-| Status names, known and unknown | unit, boundary | all declared names and negative/future values | logs remain safe for invalid enum values |
-| The error slot copies and truncates | boundary | caller storage can disappear; long messages stop at the buffer bound | errors do not retain invalid pointers or overflow |
-| Allocation goes through the hook, aligned | unit | custom hooks count calls; returned addresses satisfy requested alignment | arenas and containers use the configured allocator |
-| Installing a hook: reset, half a hook, a stack-local struct | boundary | reset, invalid hooks, and stack-local hook structs | no stale function pointers or partial hooks |
-| Bad sizes and alignments, hook failure, `tl_free(NULL)` | boundary, fault | invalid inputs, failed hook, and null free | defined failure paths for every C module |
+Start from the lifetime of the memory, because everything else follows from it. A kernel's tiles live exactly as long as the call, and a helper's tiles live inside that. Freeing individually is therefore wasted work: everything after a point is released together. That is a bump pointer plus a saved position, which is to say a mark.
 
-## 5. The solution, step by step
+The position must name a block, not just an offset, because scratch can outgrow one block. Hence $(b, o)$, ordered lexicographically, with a mark being a copy of it. Alignment must be computed from the address, as you saw above, and blocks are requested at alignment at least 64 so that a fresh block satisfies any request that triggered it; in the middle of a block the padding is $\mathrm{pad}(\mathrm{base}_b + o, a)$.
 
-### From first principles
+The steady state must make no hook call. So rewinding keeps blocks; a full block moves on to the next one already in the list when it fits; and only when none fits is a new block created. Because marks nest, blocks after the current one are all free, so the one that fits can be swapped into place. `bytes_used` must be exact at every mark, which needs the offset each earlier block reached, not its size, so the arena keeps `used` per block and `used_before` for the blocks before the current one. And every failure must leave the arena unchanged, which means doing every fallible step (growing the list, getting the new block) before writing any field.
 
-1. **Kernel scratch has a stack lifetime.** A kernel's tiles live exactly as long as the call; a helper's tiles live inside that. So freeing individually is wasted work: everything after a point is released together. That is a bump pointer plus a saved position (a mark).
-2. **The position must name a block, not just an offset**, because scratch can outgrow one block. Hence $(b, o)$, ordered lexicographically, and a mark is a copy of it.
-3. **Alignment must be computed from the address** (section 2.2). Blocks are requested at alignment at least 64 so that a fresh block satisfies any request that triggered it; in the middle of a block the padding is $\mathrm{pad}(\mathrm{base}_b + o, a)$.
-4. **The steady state must make no hook call.** So rewinding keeps blocks; a full block moves to the next one already in the list when it fits; only when none fits is a new block created. Because marks nest, blocks after the current one are all free, so the one that fits can be swapped into place.
-5. **`bytes_used` must be exact at every mark**, which needs the offset each earlier block reached, not its size. Keep `used` per block and `used_before` for the blocks before the current one.
-6. **Every failure must leave the arena unchanged**: do every fallible step (growing the list, the new block) before writing any field.
-7. **The support layer is the contract every C unit reports through**: a stable status name for any integer, a thread-local copied error message, and an allocator hook that is copied when installed and validated on every call.
+Finally, the support layer is the contract every C unit reports through: a stable status name for any integer, a thread-local copied error message, and an allocator hook that is copied when installed and validated on every call. The code starts there.
 
-### The code, annotated
+### The support layer in code
 
-The support layer first. The error slot is thread-local and copies with truncation, because the caller's message buffer may die right after the call:
+The error slot is thread-local and copies with truncation, because the caller's message buffer may die right after the call:
 
 ```c
 static _Thread_local char err_slot[TL_LAST_ERROR_CAP];
@@ -150,7 +120,7 @@ void tl_set_last_error(const char *msg) {
 }
 ```
 
-`tl_status_str` is a `switch` with a `default` of `"TL_UNKNOWN"`, not an array indexed by the status: the value comes from the caller and may be negative or from a newer ABI. The hook is a struct copied on install, so a stack-local `tl_allocator` is safe, and a half-filled hook is refused:
+`tl_status_str` is a `switch` with a `default` of `"TL_UNKNOWN"`, not an array indexed by the status, because the value comes from the caller and may be negative or from a newer ABI. The hook is a struct copied on install, so a stack-local `tl_allocator` is safe, and a half-filled hook is refused:
 
 ```c
 static tl_allocator hook = {default_alloc, default_free, NULL};
@@ -182,7 +152,9 @@ void *tl_alloc(size_t n, size_t align) {
 
 The default hook rounds the alignment up to `sizeof(void *)` and the size up to a multiple of the alignment, as C11's `aligned_alloc` requires.
 
-The arena's state is exactly the quantities of section 2:
+### The arena's state
+
+The arena's state is exactly the quantities introduced earlier:
 
 ```c
 typedef struct {
@@ -207,9 +179,11 @@ static size_t pad_for(const unsigned char *p, size_t align) {
 }
 ```
 
-`tl_arena_create` allocates only the struct; the first block comes with the first allocation, so an unused arena costs nothing.
+`tl_arena_create` allocates only the struct. The first block comes with the first allocation, so an unused arena costs nothing.
 
-`tl_arena_alloc` in its three cases, after validating $n > 0$ and the alignment (0 becomes 64; a non-power of two or anything above 4096 is refused):
+### Allocation in three cases
+
+`tl_arena_alloc` first validates $n > 0$ and the alignment (0 becomes 64; a non-power of two or anything above 4096 is refused). Then it tries three cases in order: the current block, a later free block that fits, and a new block from the hook.
 
 ```c
 /* 1. The current block. */
@@ -264,7 +238,9 @@ a->off = pad + n;
 return b->base + pad;
 ```
 
-`grow_list` doubles the block list (starting at 8) into a fresh allocation and only then frees the old one, so a failure there leaves the list as it was. On the worked example, `alloc(4, 64)` at offset 10 of a 64-aligned block pads by $\mathrm{pad}(10, 64) = 54$ and returns offset 64; `bytes_used` grows by $54 + 4 = 58$.
+`grow_list` doubles the block list (starting at 8) into a fresh allocation and only then frees the old one, so a failure there leaves the list as it was. You can replay the worked example against this code: `alloc(4, 64)` at offset 10 of a 64-aligned block pads by $\mathrm{pad}(10, 64) = 54$ and returns offset 64, and `bytes_used` grows by $54 + 4 = 58$.
+
+### Rewinding
 
 Rewinding checks that the mark is not later than the position, then restores the position and recomputes `used_before` from the recorded per-block offsets:
 
@@ -290,19 +266,83 @@ void tl_arena_reset_to(tl_arena *a, tl_arena_mark m) {
 }
 ```
 
-`tl_arena_stats_get` reports `used_before + off`, the sum of block sizes, `high_water`, and the block count; `tl_arena_destroy` frees every block, the list, and the struct through the hook.
+`tl_arena_stats_get` reports `used_before + off`, the sum of block sizes, `high_water`, and the block count; `tl_arena_destroy` frees every block, the list, and the struct through the hook. The full solution is in [`arena.c`](../../../../course/solutions/c/src/runtime/arena.c) and [`abi.c`](../../../../course/solutions/c/src/runtime/abi.c).
 
-Full solution: [`arena.c`](../../../../course/solutions/c/src/runtime/arena.c) and [`abi.c`](../../../../course/solutions/c/src/runtime/abi.c).
+### Why this design
 
-### Why this solution
+The fast path costs a mask, an add, and two compares. Moving to a reused block scans the later blocks, which is $O(\text{blocks})$ but only a handful. A rewind is $O(\text{blocks before the mark})$ to recompute `used_before`; storing a running prefix sum would make it $O(1)$ at the cost of more bookkeeping, and with so few blocks it is not worth it.
 
-- **Cost.** The fast path is a mask, an add, and two compares. Moving to a reused block scans the later blocks, $O(\text{blocks})$, which is a handful. A rewind is $O(\text{blocks before the mark})$ to recompute `used_before`; storing a running prefix sum would make it $O(1)$ at the cost of more bookkeeping, and the block count is small.
-- **Against `malloc` per tile.** It costs a lock or a thread cache lookup per call, can fail in the middle of a kernel, and fragments. The arena has one possible failure point per growth and none after warmup.
-- **Against one huge preallocated block.** It needs the peak known in advance. The arena grows to the peak once and `high_water` reports it, so the engine can size a single block next time.
-- **Against freeing blocks on rewind.** It returns memory sooner, but every step would pay `malloc` and could fail; keeping them is what makes "zero hook calls after warmup" true.
-- **Tradeoff accepted.** Memory is held at the high-water mark until destroy, and the arena is single-threaded (one per worker).
+Compare the alternatives. A `malloc` per tile costs a lock or a thread-cache lookup per call, can fail in the middle of a kernel, and fragments the heap; the arena has one possible failure point per growth and none after warmup. One huge preallocated block needs the peak known in advance, whereas the arena grows to the peak once and `high_water` reports it, so the engine can size a single block next time. Freeing blocks on rewind returns memory sooner, but every step would pay `malloc` and could fail; keeping them is precisely what makes "zero hook calls after warmup" true. The tradeoff you accept is that memory is held at the high-water mark until destroy, and that the arena is single-threaded, one per worker.
 
-### Explain it back
+## What can go wrong
+
+A correct implementation has to survive a fairly long list of cases, from the hand example through fault injection. Each one exists because something downstream depends on it:
+
+| Case | Kind of check | Checks | Why it matters downstream |
+|---|---|---|---|
+| The hand example | unit, smoke | offsets 0, 64, 72; $U$ +58 and +104; rewind restores $U$; same address again; one 256-byte block | the definition is pinned by numbers you can check by hand |
+| Every power-of-two alignment | unit | pointers for alignments 1 to 4096 after odd-sized requests; 0 means 64 | SIMD loads in the kernels of this chapter |
+| Bad requests change nothing | boundary | $n = 0$, alignment 3, alignment 8192: NULL with a message, arena unchanged; `create` with NULL out | defined behavior at the boundary |
+| Nested marks | unit | inner and outer rewinds across three blocks restore the same addresses | a kernel calling a helper that uses scratch too |
+| A later mark is ignored | boundary | rewinding to a mark from after the current position changes nothing and sets the slot | no double hand-out of the same bytes |
+| Blocks are kept and reused | unit | after a rewind two 100-byte requests reuse the same two blocks: no new hook call | the steady state of an engine step |
+| An exact fit uses the last byte | boundary | 64 + 64 bytes fill a 128-byte block | no wasted blocks |
+| An oversized request gets its own block | boundary | 1000 bytes in an arena of 128-byte blocks: aligned, writable (ASan), separate | a long prompt's attention tile |
+| Random operations against a model | property | 300 seeded runs of allocations, marks, rewinds: aligned, disjoint, unchanged contents; $U$ exact at marks; `high_water` the running maximum | everything above, combined |
+| Zero hook calls after warmup | fault | after 3 warmup steps every hook call fails; 1000 more steps still succeed | the "zero malloc per step" claim, counted |
+| Hook failure leaves the arena usable | fault | the n-th hook call fails, for every n from 0 to 39: TL_ENOMEM or NULL, unchanged stats, no leak | every constructor's failure path |
+| The ABI version matches the header | unit | the support version equals the header constant | each C test binary compiles against the same interface |
+| Status names, known and unknown | unit, boundary | all declared names and negative/future values | logs remain safe for invalid enum values |
+| The error slot copies and truncates | boundary | caller storage can disappear; long messages stop at the buffer bound | errors do not retain invalid pointers or overflow |
+| Allocation goes through the hook, aligned | unit | custom hooks count calls; returned addresses satisfy requested alignment | arenas and containers use the configured allocator |
+| Installing a hook: reset, half a hook, a stack-local struct | boundary | reset, invalid hooks, and stack-local hook structs | no stale function pointers or partial hooks |
+| Bad sizes and alignments, hook failure, `tl_free(NULL)` | boundary, fault | invalid inputs, failed hook, and null free | defined failure paths for every C unit |
+
+The mistakes people actually make cluster around a few ideas, and each has a one-line defense in the solution.
+
+Leaving padding out of `bytes_used` makes $U$ too small, so `high_water` under-sizes the engine's arena; the solution writes `off += pad + n`. Aligning the offset instead of the address produces misaligned pointers whenever a block starts off a 64-byte boundary; the solution calls `pad_for(b->base + a->off, align)`. Rewinding only the offset, not the block, sends allocations after a cross-block rewind into the wrong block; the solution restores `cur` and recomputes `used_before`.
+
+> **Warning:** Accepting a mark that is later than the current position hands the same bytes out twice. Compare the mark lexicographically with the position and ignore a later one.
+
+Freeing blocks on rewind, or never reusing them, puts a hook call in every step: `malloc` cost and a failure point per kernel call. Rewind keeps every block, and the second allocation case reuses a later block that fits. Squeezing an oversized request into a normal block is a heap overflow that ASan will report; a request above `block_bytes` gets a block of its own size, rounded to 64. Changing fields before the hook call succeeds means a failed allocation corrupts the arena or leaks the block list; `grow_list` and the block allocation both happen before any field is written. And an off-by-one in the fit test allocates a new block for a request that fits exactly; `n <= size - off - pad` accepts the exact fit.
+
+## Where this leads
+
+Every other optional C exercise uses this support layer. [FlashAttention forward in C](06-flash-attention-forward.md) is the most direct user: `tl_flash_attn_fwd_f32` takes a `tl_arena *scratch` for its query and key tiles and running maxima, rewound per call. [Cache-blocked matmul](04-tiled-batch-invariant-matmul.md), [softmax](05-softmax-three-pass-and-online.md), [paged attention](07-paged-attention-decode.md), and [fused quantized matmul](08-fused-quantized-matmul.md) use the shared error and allocator helpers in their standalone test binaries. Outside this chapter, the [thread pool](03-thread-pool-and-parallel-for.md), the [paged KV block pool](../p08-inference/08-paged-kv-block-pool.md), and the C data structures in *Algorithm Mastery* ([growable array](../../algorithms/16-systems-data-structures/01-growable-array.md), [Swiss table](../../algorithms/16-systems-data-structures/02-swiss-table.md), [binary heap top-k](../../algorithms/16-systems-data-structures/04-binary-heap-top-k.md)) reuse the same helpers. None of them is linked into Python or Rust.
+
+Production systems take each piece of this design further:
+
+| This piece | Production equivalent | What it adds | Where to look |
+|---|---|---|---|
+| arena with marks | ggml's `ggml_context` and `ggml_gallocr` | a graph allocator that plans tensor lifetimes ahead and reuses memory between tensors that are never live together | `ggml/src/ggml-alloc.c` |
+| per-thread arenas | jemalloc arenas, tcmalloc per-CPU caches | many arenas chosen by thread or CPU, size classes, returning memory to the OS | jemalloc `doc/jemalloc.xml.in`; tcmalloc `docs/design.md` |
+| rewind-per-step | PyTorch's CUDA caching allocator | keeps freed blocks per stream and size bucket for reuse across iterations | `c10/cuda/CUDACachingAllocator.cpp` |
+| `high_water` | vLLM's memory profiling before KV allocation | runs a dummy forward pass, measures the peak, and gives the rest to the KV cache | vLLM `worker/` (`determine_num_available_blocks`) |
+
+### Further reading
+
+- Hanson, *Fast allocation and deallocation of memory based on object lifetimes* (1990).
+- Bonwick, *The Slab Allocator* (USENIX 1994).
+- The `tcmalloc` and `jemalloc` design notes.
+
+## Key terms
+
+- **arena**: an allocator that hands out memory by bumping an offset through owned blocks and releases everything after a point at once.
+- **bump allocation**: allocating by advancing an offset past padding and the request, with no per-allocation bookkeeping.
+- **mark**: a saved arena position $(b, o)$ that a later rewind returns to.
+- **alignment padding**: the bytes $\mathrm{pad}(p, a)$ needed to move address $p$ up to a multiple of $a$.
+- **high-water mark**: the largest `bytes_used` the arena has ever reached, used to size it.
+- **allocator hook**: the replaceable `alloc`/`free` pair through which all C memory requests go, which tests can count or make fail.
+
+## Summary
+
+- An arena allocates by bumping an offset and frees everything after a point at once by rewinding it: allocation is an add and a compare, and nothing is freed piece by piece.
+- Alignment is padding computed from the address, not from the offset: each pointer is a multiple of its requested power of two, up to 4096.
+- Marks nest like a stack: rewinding releases exactly what came after the mark, across blocks, and a mark from the future is refused.
+- Blocks are kept, not freed, on rewind, so after warmup a mark, allocate, rewind step never calls the allocator hook: it cannot fail and costs no `malloc`.
+- Every hook failure leaves the arena unchanged and leak-free, whichever allocation is the one that fails.
+
+## Review questions
 
 1. Why does `pad_for` take the address `base + off` instead of `off`?
    <details><summary>Answer</summary>Alignment is a property of the address the caller loads from. An offset of 0 is a multiple of every alignment, but a block's base may be only 64-aligned; a 4096-aligned request at offset 0 of such a block would be misaligned.</details>
@@ -314,34 +354,5 @@ Full solution: [`arena.c`](../../../../course/solutions/c/src/runtime/arena.c) a
    <details><summary>Answer</summary>If the hook then failed, the position would point at a block that does not exist (or the wrong one), so later allocations or rewinds would corrupt memory. All fallible calls happen first so a failure changes nothing.</details>
 5. Why does `tl_set_allocator` copy the struct instead of storing the pointer?
    <details><summary>Answer</summary>Callers often build the hook as a stack local in a test or setup function. Storing its address would leave a dangling pointer once that function returns.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. padding left out of `bytes_used` | $U$ too small, `high_water` under-sizes the engine's arena | `off += pad + n` |
-| 2. aligning the offset, not the address | misaligned pointers whenever a block starts off a 64-byte boundary | `pad_for(b->base + a->off, align)` |
-| 3. rewinding only the offset, not the block | allocations after a cross-block rewind land in the wrong block | restores `cur` and recomputes `used_before` |
-| 4. accepting a later mark | bytes handed out twice | compares the mark lexicographically with the position and ignores a later one |
-| 5. freeing blocks on rewind, or never reusing them | a hook call every step: `malloc` cost and a failure point per kernel call | rewind keeps every block; case 2 reuses a later block that fits |
-| 6. an oversized request squeezed into a normal block | a heap overflow (ASan) | a request above `block_bytes` gets a block of its own size, rounded to 64 |
-| 7. changing fields before the hook call succeeds | a failed alloc corrupts the arena or leaks the block list | `grow_list` and the block allocation both happen before any field is written |
-| 8. an off-by-one in the fit test | a new block for a request that fits exactly | `n <= size - off - pad` accepts an exact fit |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `lang.03` | C types, pointers, and compilation fundamentals |
-| Forward | `L9.3` | `tl_flash_attn_fwd_f32` takes a `tl_arena *scratch`: query and key tiles, running maxima, rewound per call |
-| Forward | `L9.1`, `L9.2`, `L9.4`, `L9.5` | Optional C exercises use the shared error and allocator helpers in standalone C test binaries |
-| Forward | `ds.01`, `ds.02`, `ds.04`, `rt.03`, `rt.04` | Optional C exercises reuse the standalone runtime helpers; none are linked into Python or Rust |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| arena with marks | ggml's `ggml_context` and `ggml_gallocr` | a graph allocator that plans tensor lifetimes ahead and reuses memory between tensors that are never live together | `ggml/src/ggml-alloc.c` |
-| per-thread arenas | jemalloc arenas, tcmalloc per-CPU caches | many arenas chosen by thread or CPU, size classes, returning memory to the OS | jemalloc `doc/jemalloc.xml.in`; tcmalloc `docs/design.md` |
-| rewind-per-step | PyTorch's CUDA caching allocator | keeps freed blocks per stream and size bucket for reuse across iterations | `c10/cuda/CUDACachingAllocator.cpp` |
-| `high_water` | vLLM's memory profiling before KV allocation | runs a dummy forward pass, measures the peak, and gives the rest to the KV cache | vLLM `worker/` (`determine_num_available_blocks`) |
+6. In the worked example, why does the second `alloc(100, 8)` after the rewind return the same address as the first?
+   <details><summary>Answer</summary>The rewind restored the position to (0, 68), the same position the first `alloc(100, 8)` started from, and the block was kept. The padding $\mathrm{pad}(68, 8) = 4$ is the same, so the returned offset is 72 again and no hook call is made.</details>
