@@ -1,25 +1,25 @@
-# Pass 8 milestones
+# What the system does after Pass 8
 
 **Pass result**: data pipeline and training run as workflows (CorpusBuild, TrainRun, EvalSuite) on their durable engine; durable and worker charts with KEDA; control-plane traces.
 
-The path includes the milestone stages below. Run each component milestone after its modules pass, then run the pass gate. The component gates run before the pass gate, which also reruns the smoke steps of earlier passes.
+Each capability below is built from the listed modules. The sections that follow give the commands the finished solution runs, what each one produces, and why each piece is needed. Everything from earlier passes keeps working.
 
-| Gate | Specification | What it covers |
-|---|---|---|
-| `MS-durable` | [`MS-durable.toml`](../../../../../course/milestones/MS-durable.toml) | Your durable engine runs workflows to completion through your CLI, locally and on kind. Requires `dur.01`, `dur.02`, `dur.03`, `dur.04`, `dur.05`, `dur.06`, `dur.07`, `dur.08`, `dur.09`, `data.09`, `dur.11`, `dep.06`, `obs.05`, `craft.21`, `ops.02`, `ops.03`. |
-| `MS-P8` | [`MS-P8.toml`](../../../../../course/milestones/MS-P8.toml) | Durable workflows: data and training runs survive worker failures |
-| `MS-durable-ha` | [`MS-durable-ha.toml`](../../../../../course/milestones/MS-durable-ha.toml) | Your durable log survives leader kills and partitions on three Raft replicas. Requires `dur.10`, `MS-durable`, `ops.12`. |
+| What the system does | Built from |
+|---|---|
+| The durable engine runs workflows to completion through the CLI, locally and on kind. | `dur.01`, `dur.02`, `dur.03`, `dur.04`, `dur.05`, `dur.06`, `dur.07`, `dur.08`, `dur.09`, `data.09`, `dur.11`, `dep.06`, `obs.05`, `craft.21`, `ops.02`, `ops.03` |
+| Durable workflows: data and training runs survive worker failures | - |
+| The durable log survives leader kills and partitions on three Raft replicas. | `dur.10`, `MS-durable`, `ops.12` |
 
 
-## Component gate details
+## Details
 
-## MS-durable: Your durable engine runs workflows to completion through your CLI, locally and on kind
+## The durable engine runs workflows to completion through the CLI, locally and on kind
 
 "MS-durable", 5.7 catalog). MS-P8 includes it. Page:
 content/courses/build-an-llm/paths/course-p08-durable/milestone.md (owned by the pass gate's author).
 
-Your durable server, your worker, and the Python activities it execs run
-workflows to completion through your own CLI: a start is idempotent, the
+The durable server, the worker, and the Python activities it execs run
+workflows to completion through its own CLI: a start is idempotent, the
 history is recorded, CorpusBuild produces the same corpus as the direct
 `{corpus} run` of MS-corpus, and a short TrainRun finishes. On kind the
 durable StatefulSet and the KEDA-scaled workers (dep.06) carry a queue
@@ -31,7 +31,7 @@ The design's kill loop (500 tl.test.Append activities with SIGKILLs of
 testkit `effects` sink, then CorpusBuild and TrainRun under kills with
 outputs equal to uninterrupted runs) uses the runner's `chaos` and `sink`
 step keys and the `effects` matcher (DESIGN 5.7). Section 4 runs all
-three: CorpusBuild under kills of both services, 500 appends of your
+three: CorpusBuild under kills of both services, 500 appends of the
 worker's tl.test.Batch under kills of both, exactly once in the sink, and
 TrainRun under kills of the worker, with the steps and final loss of the
 uninterrupted run. The same invariants are checked one level down by the
@@ -40,7 +40,7 @@ task, stale lease), dur.04 and dur.05 (KillLoop over a worker with the
 effects sink), dur.06 (kill the server mid-workflow and replay), dur.09
 (SIGKILL a worker mid-activity, resume from the checkpoint).
 
-This file fixes the Pass 8 verbs of your `ctl` role (spec/cli-roles.md,
+The solution defines the Pass 8 verbs of the `ctl` role ([`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md),
 "Verbs of later passes"). Every verb keeps the rules of that page: exit 2
 on a usage error, exit 1 on an RPC error with its gRPC code and message on
 stderr, the last stdout line is one JSON object. `--durable <host:port>`
@@ -90,7 +90,7 @@ CONTINUED_AS_NEW.
       the run directory's final.json, the same after a retry that resumed
       from the final checkpoint.
 
-Your system.toml must declare:
+The system.toml must declare:
   [entry].durable, [entry].worker, [entry].ctl
   [services.durable]  health = "http://127.0.0.1:{health_port}/healthz"; its
                       config template puts the WAL under {data}
@@ -99,7 +99,7 @@ Your system.toml must declare:
                       queue `data` for CorpusBuild, and an artifacts root
                       of {data} (the subprocess contract's /artifacts), so
                       the files land in {worker.data}
-  specs/tiny.json     your TrainRun spec: a few hundred thousand parameters,
+  specs/tiny.json     the TrainRun spec: a few hundred thousand parameters,
                       20 steps, its data the tokens CorpusBuild wrote
                       (paths relative to the artifacts root:
                       "tokens/bytes/small/train-00000.bin")
@@ -108,23 +108,18 @@ Your system.toml must declare:
                       "deploy/<system>-worker" (dep.06); the durable NodePort
                       is 30733 (dep.02)
 
-`ol milestone MS-durable --smoke` runs the local steps with the
-services started by the runner. The full run (nightly kind job, or your own
-cluster) adds the `ci = "kind"` steps; without a cluster they are skipped
-and the verdict is `incomplete`.
-
-## MS-P8: Durable workflows: data and training runs survive worker failures
+## Durable workflows: data and training runs survive worker failures
 
 MS-durable covers durable workflows, corpus and training activities, charts,
 observability, and the required drills. The optional high-availability
 milestone MS-durable-ha is intentionally not a pass-gate dependency.
 Earlier pass-gate smoke steps rerun through the spiral invariant.
 
-## MS-durable-ha: Your durable log survives leader kills and partitions on three Raft replicas
+## The durable log survives leader kills and partitions on three Raft replicas
 
 "MS-durable-ha", 5.7 catalog). Not part of the MS-P8 gate.
 
-Your durable server with `--replicas 3` (three nodes of your dur.10 Raft,
+The durable server with `--replicas 3` (three nodes of the dur.10 Raft,
 talking tl.raft.v1) carries the durable kill loop: workflows run while the
 leader is killed and partitioned away, every acknowledged append survives,
 and the client history is linearizable.
@@ -136,20 +131,18 @@ loop needs the runner to SIGKILL a named service, cut links between
 services (testkit chaosproxy), record the history, and check it. None of
 that exists yet (DEVIATIONS B103-05), so this file holds:
   - the steps that run now: dur.10's course tests carry the same checks
-    against your raft package in-process (a seeded simulation with
+    against the raft package in-process (a seeded simulation with
     partitions, drops, reordering, crash-restarts, and a linearizability
     check over the client history; a leader kill with 20 acknowledged
-    appends), and on kind your StatefulSet runs three Ready replicas that
+    appends), and on kind the StatefulSet runs three Ready replicas that
     complete a workflow through the NodePort;
   - the proposed kill-loop steps, commented at the end, as the target of
     the harness change.
 
-Your system.toml, besides MS-durable's: on kind, the durable chart renders
+The system.toml, besides MS-durable's: on kind, the durable chart renders
 replicas: 3 with [durable].raft.enabled, raft.id from the pod ordinal, and
 the peers `<system>-durable-<i>.<system>-durable-headless:7234` (dep.06's
 headless Service). A follower answers a client RPC with UNAVAILABLE and the
-trailer `tl-raft-leader` (proto/tl/raft/v1/raft.proto); your `ctl` retries
+trailer `tl-raft-leader` (proto/tl/raft/v1/raft.proto); the `ctl` retries
 against the leader it names, so `--durable 127.0.0.1:30733` reaches
 whichever pod the NodePort picks.
-
-Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.

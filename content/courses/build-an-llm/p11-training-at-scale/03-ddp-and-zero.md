@@ -210,6 +210,8 @@ def gather(self) -> None:
 
 Full solution: [`zero.py`](../../../../course/solutions/python/tinyllm/dist/zero.py)
 
+A model test suite for this unit: [`test_l11_3_mine.py`](../../../../course/solutions/learner-tests/L11.3/python/tests/l11-3-zero/test_l11_3_mine.py)
+
 ### Why this solution
 
 - **Cost.** DDP and stages 1 and 2 move one all-reduce's worth of bytes per step, $2(p-1)n\beta/p$ per rank. Stage 3 adds one all-gather, $(p-1)n\beta/p$. Memory per rank falls from $(2 + K)n$ values to about $(2 + K)n/p$ at stage 3.

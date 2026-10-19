@@ -4,6 +4,6 @@ about 10M model trained on TinyStories (mixed precision, accumulation, resume) w
 
 **Part of**: [the course](../course/). **Needs**: [Pass 8](../course-p08-durable/).
 
-**Gate**: [MS-P9 = MS-L11 + MS-C1](milestone.md).
+**After this pass**: [what the system does](milestone.md): a model of about 10M parameters trained, ablated, evaluated, released, and served.
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p09-p09-capstone-training` to see progress.
+Stages, chapter links, and what "done" means for each are in [`path.tsv`](path.tsv).

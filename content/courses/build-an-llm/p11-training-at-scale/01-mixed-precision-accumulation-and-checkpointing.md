@@ -295,6 +295,8 @@ for i, (a, b) in enumerate(zip(starts, ends)):
 
 Full solution: [`precision.py`](../../../../course/solutions/python/tinyllm/train/precision.py) · [`recompute.py`](../../../../course/solutions/python/tinyllm/train/recompute.py)
 
+A model test suite for this unit: [`test_l11_1_mine.py`](../../../../course/solutions/learner-tests/L11.1/python/tests/l11-1-precision/test_l11_1_mine.py)
+
 ### Why this solution
 
 - **Cost.** Autocast adds three elementwise roundings per matmul, $O(\text{size})$ next to the matmul's $O(MNK)$. Accumulation costs nothing extra in compute and divides activation memory by $k$. Checkpointing with segments $s_j$ runs every checkpointed layer forward twice (about one extra forward pass, a third more compute) and keeps the activations of one segment plus the segment inputs, as `M08.4` counted.

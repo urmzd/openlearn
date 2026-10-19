@@ -287,7 +287,7 @@ Full solution: [`matmul.c`](../../../../course/solutions/c/src/kernels/matmul.c)
 
 ### Why this solution
 
-- **Cost.** $2MNK$ FLOPs as before, plus $KN$ copies to pack $B$ once per k-block and strip, and $MK$ copies to pack $A$ once per k-block and strip, small next to $MNK$ for large matrices. Measured against `M03.1`'s loop at $512^3$, the solution is about 19 times faster (about 50 GFLOP/s on one Apple M-series core); Apple's Accelerate (`cblas_sgemm`, on the AMX units) is several times faster again.
+- **Cost.** $2MNK$ FLOPs as before, plus $KN$ copies per call to pack $B$ and $MK$ copies per strip to pack $A$, small next to $MNK$ for large matrices. Measured against `M03.1`'s loop at $512^3$, the solution is about 19 times faster (about 50 GFLOP/s on one Apple M-series core); Apple's Accelerate (`cblas_sgemm`, on the AMX units) is several times faster again.
 - **Against a GEMV fast path for $M = 1$.** It would avoid the 3/4 wasted rows of a $4 \times 16$ tile during decode, but sums $K$ in a different grouping, so decode and prefill disagree in the last bit and greedy decoding can flip tokens on near-ties. Here invariance wins; `L9.5` gives decode its own quantized kernel.
 - **Against split-K threading.** It parallelises small-$N$ products better but adds partial sums in completion order, which changes bits with timing. Column strips never split a sum.
 - **Against hand-written intrinsics or assembly.** They would be faster per core but tie the kernel to one ISA; constant-bound C loops vectorise well on both NEON and AVX2 and keep the arithmetic auditable.

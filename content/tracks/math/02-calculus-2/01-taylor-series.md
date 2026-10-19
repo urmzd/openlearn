@@ -1,42 +1,33 @@
-<!-- ol:module M02.1 -->
 # Taylor series, remainder bounds, range reduction
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M02.1` · build · Python · Pass 2 · 3 to 4 h |
-| **You build** | `python/tinyllm/num/taylor.py`: `exp_taylor_coeffs`, `exp_range_reduced` (exp as $2^k$ times a polynomial), `erf_series` (erf from a series with no cancellation) |
+| **Module** | `M02.1` · build · Python · Pass 2 · 1.5 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/num/taylor.py`](../../../../course/solutions/python/tinyllm/num/taylor.py): `exp_taylor_coeffs`, `exp_range_reduced` (exp as $2^k$ times a polynomial), `erf_series` (erf from a series with no cancellation) |
 | **Contract** | [`course/contracts/py/tinyllm/num/taylor.pyi`](../../../../course/contracts/py/tinyllm/num/taylor.pyi) |
-| **Tests** | `course/tests/M02.1/test_taylor.py` (what they check: section 4) |
-| **Needs** | `M00.4` `horner`, which evaluates the polynomial (or `--ref-deps`). Reading: `M01.1` (derivatives and their error terms) |
+| **Needs** | `M00.4` `horner`, which evaluates the polynomial. Reading: `M01.1` (derivatives and their error terms) |
 | **Used by** | `M01.3` computes the exact GELU with `erf_series` · later `M09.6` ports `exp_range_reduced` to C as `tl_expf` for softmax and SiLU kernels, and `M08.1`'s `dual_erf` uses the same series |
-| **Milestone** | `MS-P2` (the Pass 2 gate) |
 | **Optional depth** | OpenStax, *Calculus Volume 2* (free), sections 6.3 and 6.4 (Taylor and Maclaurin series, the remainder); Muller, *Elementary Functions: Algorithms and Implementation*, ch. 11 (range reduction, Cody and Waite); Abramowitz and Stegun 7.1.6 (the erf series used here) |
 
 ## Key Takeaways
 
-- The **Taylor polynomial** of degree $n$ matches $f$ and its first $n$ derivatives at a point; for $e^x$ at 0 its coefficients are $1/i!$ (`test_coefficients_are_inverse_factorials`).
-- The **Lagrange remainder** bounds the error exactly: $|e^r - p_n(r)| \le e^{\max(r, 0)} |r|^{n+1}/(n+1)!$, tiny when $|r|$ is small and useless when it is not (`test_lagrange_bound_holds`).
-- **Range reduction** makes $|r|$ small for every input: $e^x = 2^k e^r$ with $k = \operatorname{round}(x/\ln 2)$ and $|r| \le \frac{\ln 2}{2}$; degree 6 is then float32-accurate (`test_hand_example`, `test_degree_six_is_float32_accurate`).
-- Subtracting $k \ln 2$ in **two parts** (Cody and Waite) keeps $r$ exact to the last bit even for $k = 1000$ (`test_full_precision_across_the_range`).
-- A series can be correct and still useless in floating point: the textbook alternating series for erf cancels catastrophically at $x = 5$; the series with all terms of one sign does not (`test_erf_no_cancellation_at_x_5`).
+- The **Taylor polynomial** of degree $n$ matches $f$ and its first $n$ derivatives at a point; for $e^x$ at 0 its coefficients are $1/i!$.
+- The **Lagrange remainder** bounds the error exactly: $|e^r - p_n(r)| \le e^{\max(r, 0)} |r|^{n+1}/(n+1)!$, tiny when $|r|$ is small and useless when it is not.
+- **Range reduction** makes $|r|$ small for every input: $e^x = 2^k e^r$ with $k = \operatorname{round}(x/\ln 2)$ and $|r| \le \frac{\ln 2}{2}$; degree 6 is then float32-accurate.
+- Subtracting $k \ln 2$ in **two parts** (Cody and Waite) keeps $r$ exact to the last bit even for $k = 1000$.
+- A series can be correct and still useless in floating point: the textbook alternating series for erf cancels catastrophically at $x = 5$; the series with all terms of one sign does not.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M02.1              # stubs python/tinyllm/num/taylor.py into your repo
-ol tests M02.1              # read the test catalog first: rung R0, you write no tests here
-ol check M02.1              # exit code is the verdict
-ol check M02.1 --ref-deps   # only if your M00.4 is not passing yet
-ol diff  M02.1              # after passing: your code against the reference
-```
+Sections 1 and 2 derive Taylor polynomials, the Lagrange remainder, range reduction for $e^x$, and a cancellation-free series for erf from first principles. Section 3 works both by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-A CPU can add and multiply; it cannot compute $e^x$. Until now numpy has done it for you, and from Pass 6 on your C kernels must do it themselves: softmax (`L9.2`) exponentiates every logit, SiLU (`L9.6`) every activation. The way every math library computes $e^x$ is a polynomial on a small interval plus an exact rescaling, and the polynomial comes from the Taylor series, with an error bound that tells you which degree is enough. The same tools give erf, which your exact GELU (`M01.3`) needs next. This module builds both in Python, where you can watch the error bound hold point by point, so that `M09.6` has a trusted reference to port.
+A CPU can add and multiply; it cannot compute $e^x$. Until now numpy has done it, and from Pass 6 on the C kernels must do it themselves: softmax (`L9.2`) exponentiates every logit, SiLU (`L9.6`) every activation. The way every math library computes $e^x$ is a polynomial on a small interval plus an exact rescaling, and the polynomial comes from the Taylor series, with an error bound that tells you which degree is enough. The same tools give erf, which the exact GELU (`M01.3`) needs next. This module builds both in Python, where you can watch the error bound hold point by point, so that `M09.6` has a trusted reference to port.
 
 ## 2. Principles
 
@@ -70,7 +61,7 @@ You do not know $\xi$, but you can bound $|f^{(n+1)}|$ between $a$ and $x$, and 
 
 $$\frac{|e^r - p_n(r)|}{e^r} = \frac{e^{\xi - r}\,|r|^{n+1}}{(n+1)!} \le e^{|r| - r}\,\frac{|r|^{n+1}}{(n+1)!} .$$
 
-(If $r > 0$ then $\xi \le r$ and $e^{\xi - r} \le 1$; if $r < 0$ then $\xi \le 0$ and $e^{\xi - r} \le e^{-r} = e^{|r|}$.) `test_lagrange_bound_holds` checks this inequality at 4001 points for every degree from 1 to 12. The bound shrinks factorially in $n$ but grows like $|r|^{n+1}$: at $r = 0.35$ degree 6 gives $1.2 \times 10^{-7}$; at $r = 10$ degree 6 gives 2000. A Taylor polynomial is only good near its center.
+(If $r > 0$ then $\xi \le r$ and $e^{\xi - r} \le 1$; if $r < 0$ then $\xi \le 0$ and $e^{\xi - r} \le e^{-r} = e^{|r|}$.) The solution satisfies this inequality at every point and every degree, which makes it the natural property to check it against. The bound shrinks factorially in $n$ but grows like $|r|^{n+1}$: at $r = 0.35$ degree 6 gives $1.2 \times 10^{-7}$; at $r = 10$ degree 6 gives 2000. A Taylor polynomial is only good near its center.
 
 ### 2.3 Range reduction
 
@@ -94,7 +85,7 @@ which converges for every $x$ but alternates in sign. At $x = 5$ its largest ter
 
 $$\operatorname{erf}(x) = \frac{2}{\sqrt\pi}\, e^{-x^2} \sum_{n \ge 0} t_n, \qquad t_n = \frac{2^n x^{2n+1}}{1 \cdot 3 \cdot 5 \cdots (2n+1)}, \qquad \frac{t_{n+1}}{t_n} = \frac{2x^2}{2n+3} .$$
 
-Every term has the sign of $x$, so nothing cancels, and each term comes from the previous one by one multiplication. **The tail bound**: once the ratio $\rho = \frac{2x^2}{2N+3}$ is below 1, the ratios keep falling, so the omitted terms are at most a geometric series, $\sum_{n \ge N} t_n \le \frac{t_N}{1 - \rho}$ (`M02.2` sums geometric series). `test_erf_tail_bound_holds` checks it.
+Every term has the sign of $x$, so nothing cancels, and each term comes from the previous one by one multiplication. **The tail bound**: once the ratio $\rho = \frac{2x^2}{2N+3}$ is below 1, the ratios keep falling, so the omitted terms are at most a geometric series, $\sum_{n \ge N} t_n \le \frac{t_N}{1 - \rho}$ (`M02.2` sums geometric series).
 
 **Cutoff.** For $|x| \ge 6$, $1 - \operatorname{erf}(x) < 2.2 \times 10^{-17}$, below half the gap between 1 and the float before it, so erf rounds to exactly $\pm 1$. The series would need hundreds of terms there, and near $|x| = 27$ its partial sums overflow while $e^{-x^2}$ underflows to 0, giving $0 \cdot \infty = $ nan. So `erf_series` returns $\operatorname{sign}(x)$ for $|x| \ge 6$. With 120 or more terms the result is within $3 \times 10^{-15}$ of erf everywhere.
 
@@ -106,9 +97,9 @@ $$p_3(r) = 1 + r + \frac{r^2}{2} + \frac{r^3}{6} = 1 + 0.3068528 + 0.0470793 + 0
 
 $$2^1 \cdot p_3(r) = 2.7174952 \quad \text{vs.} \quad e = 2.7182818 .$$
 
-The relative error is $2.9 \times 10^{-4}$, and the Lagrange bound (here $r > 0$, so the factor is 1) is $r^4/4! = 0.0088658/24 = 3.7 \times 10^{-4}$: the bound holds with little room to spare. Horner's rule evaluates the same polynomial as $1 + r(1 + r(\frac12 + r \cdot \frac16))$. This is `test_hand_example`.
+The relative error is $2.9 \times 10^{-4}$, and the Lagrange bound (here $r > 0$, so the factor is 1) is $r^4/4! = 0.0088658/24 = 3.7 \times 10^{-4}$: the bound holds with little room to spare. Horner's rule evaluates the same polynomial as $1 + r(1 + r(\frac12 + r \cdot \frac16))$.
 
-**$\operatorname{erf}(0.5)$ with three terms.** $x^2 = 0.25$, ratio $2x^2 = 0.5$ over $2n + 1$: $t_0 = 0.5$, $t_1 = 0.5 \cdot 0.5/3 = 0.0833333$, $t_2 = 0.0833333 \cdot 0.5/5 = 0.0083333$, sum $0.5916667$. Prefactor $\frac{2}{\sqrt\pi} e^{-0.25} = 1.1283792 \times 0.7788008 = 0.8787826$. Result $0.8787826 \times 0.5916667 = 0.5199464$, against $\operatorname{erf}(0.5) = 0.5204999$. The next term $t_3 = 0.000595$ times the prefactor is $0.000523$, and the tail bound $t_3/(1 - 0.5/9)$ times the prefactor, $0.000554$, covers the actual gap of $0.000553$. This is `test_erf_hand_example`.
+**$\operatorname{erf}(0.5)$ with three terms.** $x^2 = 0.25$, ratio $2x^2 = 0.5$ over $2n + 1$: $t_0 = 0.5$, $t_1 = 0.5 \cdot 0.5/3 = 0.0833333$, $t_2 = 0.0833333 \cdot 0.5/5 = 0.0083333$, sum $0.5916667$. Prefactor $\frac{2}{\sqrt\pi} e^{-0.25} = 1.1283792 \times 0.7788008 = 0.8787826$. Result $0.8787826 \times 0.5916667 = 0.5199464$, against $\operatorname{erf}(0.5) = 0.5204999$. The next term $t_3 = 0.000595$ times the prefactor is $0.000523$, and the tail bound $t_3/(1 - 0.5/9)$ times the prefactor, $0.000554$, covers the actual gap of $0.000553$.
 
 ## 4. The interface
 
@@ -161,11 +152,11 @@ All arithmetic is float64 and results have the shape of `x`. `exp_range_reduced`
 | Forward | `M01.3` | `gelu_erf` and `dgelu_erf` compute $\Phi(x)$ with `erf_series(x / sqrt(2), 160)` |
 | Forward | `M08.1` | `dual_erf` differentiates erf in forward mode |
 | Forward | `M09.2` | stable softmax and logsumexp: why $e^x$ overflows at 709.78 |
-| Forward | `M09.6` | `tl_expf` in C: the same reduction and a degree-6 polynomial in float32, checked against your Python |
+| Forward | `M09.6` | `tl_expf` in C: the same reduction and a degree-6 polynomial in float32, checked against this Python |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `exp_range_reduced` | glibc `exp` and `expf` | a 128-entry table ($e^{j/128}$) so $r$ is even smaller and the polynomial shorter; correctly rounded in most cases | glibc `sysdeps/ieee754/dbl-64/e_exp.c`, `sysdeps/ieee754/flt-32/e_expf.c` |
 | Taylor coefficients | minimax polynomials (Remez algorithm) | the polynomial with the smallest maximum error on the interval, not the best at one point: one or two degrees fewer for the same accuracy | Sollya; `M09.6` |

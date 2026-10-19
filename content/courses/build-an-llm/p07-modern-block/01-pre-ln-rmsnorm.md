@@ -1,41 +1,32 @@
-<!-- ol:module L7.1 -->
 # Pre-LN, RMSNorm
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L7.1` · build · Python · Pass 5 · 2 to 3 h, plus your graded tests (rung R5) |
-| **You build** | `python/tinyllm/modern/norm.py`: `RMSNorm` and `pre_norm_residual`; and your own oracle tests in `python/tests/l7-1-norm/` |
+| **Module** | `L7.1` · build · Python · Pass 5 · 45 min reading |
+| **Solution** | [`python/tinyllm/modern/norm.py`](../../../../course/solutions/python/tinyllm/modern/norm.py): `RMSNorm` and `pre_norm_residual`; model oracle tests in [`learner-tests/L7.1/.../test_norm.py`](../../../../course/solutions/learner-tests/L7.1/python/tests/l7-1-norm/test_norm.py) |
 | **Contract** | [`course/contracts/py/tinyllm/modern/norm.pyi`](../../../../course/contracts/py/tinyllm/modern/norm.pyi) |
-| **Tests** | `course/tests/L7.1/test_norm.py` (what they check: section 4), golden values from transformers 5.19.0 `LlamaRMSNorm` and `GemmaRMSNorm` in `course/fixtures/L7.1/rmsnorm_hf.npz` (`course/oracle/L7.1/rmsnorm_hf.py`); your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
-| **Needs** | `L0.4` `Module` (and `Linear` in the tests) · `L0.2` `F.mean`, `F.sum` · `L0.1` `Tensor` and its `**` · reading: `M08.3` (the VJP of a norm by hand), `M09.2` (why a tiny denominator needs an eps) (or `--ref-deps`) |
-| **Used by** | `L7.6` the norms of MLA's query and key-value latents · `L7.9` every norm of a Llama model · later: `L9.6` the C `tl_rmsnorm_f32` parity, `L10.1` the Rust forward |
-| **Milestone** | `MS-L7` (SmolLM2-135M logits match Hugging Face) |
+| **Needs** | `L0.4` `Module` · `L0.2` `F.mean`, `F.sum` · `L0.1` `Tensor` and its `**` · reading: `M08.3` (the VJP of a norm by hand), `M09.2` (why a tiny denominator needs an eps) |
+| **Used by** | `L7.6` the norms of MLA's query and key-value latents · `L7.9` every norm of a Llama model, where SmolLM2-135M's logits must match Hugging Face · later: `L9.6` the C `tl_rmsnorm_f32` parity, `L10.1` the Rust forward |
 | **Optional depth** | Zhang and Sennrich, "Root Mean Square Layer Normalization" (2019); Xiong et al., "On Layer Normalization in the Transformer Architecture" (2020), sections 3 and 4 |
 
 ## Key Takeaways
 
-- RMSNorm divides each vector by its root mean square and multiplies by a learned gain; it subtracts no mean and has no bias (`test_hand_example`, `test_no_mean_is_subtracted`).
-- The eps goes **inside** the square root, and the difference shows on small activations (`test_eps_inside_the_root`).
-- Gemma stores the gain minus one: `offset = 1` reproduces it (`test_golden_hf_gemma_offset`).
-- Pre-LN normalizes only the branch input, so the residual stream is an identity path in value and in gradient (`test_pre_norm_residual_identity_path`).
+- RMSNorm divides each vector by its root mean square and multiplies by a learned gain; it subtracts no mean and has no bias.
+- The eps goes **inside** the square root, and the difference shows on small activations.
+- Gemma stores the gain minus one: `offset = 1` reproduces it.
+- Pre-LN normalizes only the branch input, so the residual stream is an identity path in value and in gradient.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L7.1              # stubs norm.py; prints your test path and rung (R5)
-ol tests L7.1              # the course tests
-# write your oracle tests in python/tests/l7-1-norm/, then:
-ol check L7.1              # course tests and the mutation grade of your tests
-ol diff  L7.1              # after passing: your code against the reference
-```
+Sections 1 to 3 derive RMSNorm and the Pre-LN step and normalize one vector by hand. Section 4 fixes the interface. Section 5 walks through the solution line by line and explains why each choice is right. Try to predict each step before reading it.
 
 ---
 
 ## 1. Why now
 
-Your 2017 transformer (`L5.5`) puts a LayerNorm after each residual add, and the MS-L5 run showed what that costs: without a learning-rate warmup the post-LN model diverged. Every model you load from here on (SmolLM2, Llama, Mistral, Qwen) makes two changes to that block. The norm moves in front of each sublayer (Pre-LN), and LayerNorm becomes RMSNorm. Part 7 rebuilds the block piece by piece toward SmolLM2-135M, which has 61 RMSNorms; if one of them differs from Hugging Face's by where an eps sits, the logits at MS-L7 drift past the 1e-3 tolerance. This module builds the norm and the residual step exactly.
+The 2017 transformer (`L5.5`) puts a LayerNorm after each residual add, and the Part 5 LayerNorm demo showed what that costs: without a learning-rate warmup the post-LN model diverged. Every model loaded from here on (SmolLM2, Llama, Mistral, Qwen) makes two changes to that block. The norm moves in front of each sublayer (Pre-LN), and LayerNorm becomes RMSNorm. Part 7 rebuilds the block piece by piece toward SmolLM2-135M, which has 61 RMSNorms; if one of them differs from Hugging Face's by where an eps sits, SmolLM2's logits drift past the 1e-3 tolerance against Hugging Face. This module gets the norm and the residual step exactly right.
 
 ## 2. Principles
 
@@ -79,7 +70,7 @@ $d = 4$, $\epsilon = 0$, $x = (3, 4, 0, 0)$.
 3. $x / \operatorname{rms}(x) = (1.2, 1.6, 0, 0)$. Check: the mean of the squares is $(1.44 + 2.56) / 4 = 1$.
 4. Gain $w = (1, 0.5, 2, 2)$: $y = (1.2, 0.8, 0, 0)$.
 
-LayerNorm on the same $x$ would first subtract the mean 1.75 and give a different vector. This is `test_hand_example`.
+LayerNorm on the same $x$ would first subtract the mean 1.75 and give a different vector.
 
 ## 4. The interface
 
@@ -90,42 +81,110 @@ class RMSNorm(Module):
 def pre_norm_residual(x: Tensor, norm: Module, sublayer) -> Tensor: ...              # x + sublayer(norm(x))
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example` | unit | section 3, with and without the gain | you and the test agree on the formula |
-| `test_golden_hf_llama` | golden | output and gradients against `LlamaRMSNorm` | SmolLM2's norms in `L7.9` |
-| `test_golden_hf_gemma_offset` | golden | `offset = 1` against `GemmaRMSNorm` | Gemma-style checkpoints |
-| `test_eps_inside_the_root` | golden | inputs of size 1e-3 where eps dominates | tiny activations in deep layers |
-| `test_gradcheck_x_and_gain` | gradcheck | float64 central differences, both offsets | everything before the norm learns through it |
-| `test_unit_rms_and_scale_invariance` | property | unit RMS output, scale invariance | the sublayer sees directions |
-| `test_no_mean_is_subtracted` | boundary | a constant vector stays constant | RMSNorm is not LayerNorm |
-| `test_parameter_names_and_init` | unit | one parameter `weight`, float32, ones or zeros | the safetensors key of every norm |
-| `test_pre_norm_residual_identity_path` | property | a zero branch gives exactly $x$ and gradient 1 | deep stacks train |
-| `test_pre_norm_residual_adds_the_branch` | unit | $x + F(\operatorname{norm}(x))$, branch bounded | the Llama block in `L7.9` |
-| `test_normalizes_each_vector_on_its_own` | property | per-token statistics over the last axis | no leakage across positions |
-| `test_validation` | boundary | wrong width, zero width, negative eps | wiring bugs fail loudly |
+| the hand-worked vector | unit | section 3, with and without the gain | everyone agrees on the formula |
+| agreement with Hugging Face Llama | golden | output and gradients against transformers' `LlamaRMSNorm` | SmolLM2's norms in `L7.9` |
+| Gemma's offset | golden | `offset = 1` against `GemmaRMSNorm` | Gemma-style checkpoints |
+| eps inside the root | golden | inputs of size 1e-3 where eps dominates | tiny activations in deep layers |
+| gradients of $x$ and the gain | gradcheck | float64 central differences, both offsets | everything before the norm learns through it |
+| unit RMS and scale invariance | property | unit RMS output, scale invariance | the sublayer sees directions |
+| no mean is subtracted | boundary | a constant vector stays constant | RMSNorm is not LayerNorm |
+| parameter name and init | unit | one parameter `weight`, float32, ones or zeros | the safetensors key of every norm |
+| the Pre-LN identity path | property | a zero branch gives exactly $x$ and gradient 1 | deep stacks train |
+| the Pre-LN step adds the branch | unit | $x + F(\operatorname{norm}(x))$, branch bounded | the Llama block in `L7.9` |
+| each vector normalized on its own | property | per-token statistics over the last axis | no leakage across positions |
+| bad arguments | boundary | wrong width, zero width, negative eps | wiring bugs fail loudly |
 
-### Your graded tests (rung R5)
+A model test suite whose oracle is the formula in numpy float64, `x / sqrt(mean(x**2, -1) + eps) * (offset + w)`, is in [`test_norm.py`](../../../../course/solutions/learner-tests/L7.1/python/tests/l7-1-norm/test_norm.py).
 
-Your oracle is the formula in numpy float64: `x / sqrt(mean(x**2, -1) + eps) * (offset + w)`. Compare `forward` with it for both offsets and for inputs scaled by 1e-3, check the gradients of $x$ and the gain with your own central differences, the initial gain, and the Pre-LN step against `x + W @ oracle(x)` for a `Linear` sublayer. Import only `tinyllm.modern.norm`, `tinyllm.nn.layers`, `tinyllm.autograd.tensor`, and `tinyllm.autograd.functional`. `ol check L7.1` requires 0.80 with every pitfall fault killed.
+## 5. The solution, step by step
 
-## 5. Pitfalls
+### 5.1 From first principles
 
-| Pitfall | Symptom | Caught by |
+1. The sublayer should see a vector on a fixed scale whatever the depth. Dividing by a per-vector size statistic does that; the root mean square is the cheapest one that makes the output scale-invariant (section 2.1).
+2. The statistic must be over the last axis only, one per token, so tokens never influence each other's normalization.
+3. A zero vector has RMS 0, so the denominator needs an $\epsilon$. Placing it inside the root, $\sqrt{\operatorname{mean}(x^2) + \epsilon}$, is the convention every Llama-family checkpoint was trained with; placing it outside changes the output on small activations.
+4. A learned per-feature gain restores scale where the model needs it. Storing $w$ or $w - 1$ is a checkpoint convention, so `offset` reproduces both, and the init follows: ones for Llama, zeros for Gemma, so that a fresh norm is the plain normalization in both cases.
+5. The backward needs no hand derivation if the forward is composed from differentiable ops (`x * x`, `F.mean`, `** -0.5`, products); the gain must be used as a Tensor so it receives its gradient.
+6. Pre-LN is then one line: normalize only the branch input and add the branch to the untouched stream.
+
+### 5.2 The code, annotated
+
+```python
+class RMSNorm(Module):
+    def __init__(self, d: int, eps: float = 1e-6, offset: float = 0.0) -> None:
+        super().__init__()
+        # ... d a positive integer (bools refused); eps >= 0 ...
+        self.d = int(d)
+        self.eps = float(eps)
+        self.offset = float(offset)
+        # Llama starts the gain at 1; Gemma stores gain - 1 and starts it at 0.
+        init = np.ones(self.d) if self.offset == 0.0 else np.zeros(self.d)
+        # Named `weight`: the safetensors key HF uses for every norm.
+        self.weight = Tensor(init.astype(np.float32), requires_grad=True)
+
+    def forward(self, x: Tensor) -> Tensor:
+        if x.shape[-1] != self.d:
+            raise ValueError(f"RMSNorm({self.d}) got last axis {x.shape[-1]}")
+        # eps goes inside the root: sqrt(mean(x^2) + eps), as Llama and T5.
+        ms = F.mean(x * x, axis=-1, keepdims=True)   # one statistic per token; keepdims to broadcast
+        y = x * (ms + self.eps) ** -0.5               # multiply by rsqrt rather than divide by sqrt
+        # offset + w as a Tensor op, so the gradient still reaches self.weight.
+        gain = self.weight + self.offset if self.offset != 0.0 else self.weight
+        return y * gain
+```
+
+On the worked example: `x * x` is $(9, 16, 0, 0)$, `ms` is 6.25, `(ms + 0) ** -0.5` is 0.4, `y` is $(1.2, 1.6, 0, 0)$, and the gain $(1, 0.5, 2, 2)$ gives $(1.2, 0.8, 0, 0)$. The mean is used, not the sum: the sum would give $\sqrt{25} = 5$ and outputs $\sqrt d = 2$ times too small.
+
+```python
+def pre_norm_residual(x, norm, sublayer):
+    # The residual stream x is never normalized: only the branch sees norm(x).
+    return x + sublayer(norm(x))
+```
+
+With a branch that outputs zeros, this returns $x$ exactly and the gradient with respect to $x$ is exactly 1, the identity path of section 2.4.
+
+Full solution: [`norm.py`](../../../../course/solutions/python/tinyllm/modern/norm.py).
+
+### 5.3 Why this solution
+
+- **Cost.** $O(d)$ per token: one square, one mean, one rsqrt, two multiplies. LayerNorm needs a second pass for the mean and a bias; RMSNorm drops both, which matters in a fused kernel where memory traffic dominates.
+- **Composed from autograd ops** rather than a hand-written VJP: correctness of the backward is inherited from `L0.2`, at the cost of a few temporary arrays. `M08.3` derives the same gradient by hand for the C and Rust ports.
+- **One class with `offset`** rather than separate Llama and Gemma norms: the formulas differ by a constant added to the gain.
+- **Pre-LN as a function**, not a module: it has no parameters; the norm and the sublayer own theirs.
+- **Tradeoff accepted.** Pre-LN lets the stream grow with depth, so models need a final norm before the head (`L7.9`).
+
+### 5.4 Explain it back
+
+1. Why must $\epsilon$ be inside the square root to match Hugging Face?
+   <details><summary>Answer</summary>The checkpoints were trained with $x / \sqrt{\operatorname{mean}(x^2) + \epsilon}$. For activations whose mean square is comparable to $\epsilon$ (around $10^{-6}$), $\sqrt{m + \epsilon}$ and $\sqrt m + \epsilon$ differ by a large relative amount, so outputs drift by percents and the logits fail a 1e-3 parity check.</details>
+2. Why does a Gemma norm start its weight at zeros while a Llama norm starts at ones?
+   <details><summary>Answer</summary>Gemma computes the gain as $1 + w$. A zero init makes the gain 1, the same starting function as Llama's $w = 1$. Initializing Gemma's weight to ones would double every output.</details>
+3. Why is the gain written as `self.weight + self.offset` and not built from `self.weight.data`?
+   <details><summary>Answer</summary>Using `.data` would produce a constant array with no link to the parameter, so the gain would never receive a gradient and never train. Adding a Python float to the Tensor is an op that passes the gradient through unchanged.</details>
+4. What does a constant vector $(c, c, c, c)$ become, and why does that distinguish RMSNorm from LayerNorm?
+   <details><summary>Answer</summary>RMSNorm gives $(1, 1, 1, 1) \odot w$ (for $c > 0$, with $\epsilon$ small): its RMS is $|c|$. LayerNorm subtracts the mean first and gives zeros. RMSNorm keeps the direction, including any constant component.</details>
+5. Why does Pre-LN train without warmup while Post-LN does not?
+   <details><summary>Answer</summary>In Pre-LN the step's Jacobian is $I + \partial F(\operatorname{norm}(x))/\partial x$, so the gradient reaches every layer through an identity path. In Post-LN it passes through a norm at every layer, which at initialization makes the last layers' gradients large and early updates unstable.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. eps outside the root: $x / (\sqrt{\operatorname{mean}(x^2)} + \epsilon)$ | small activations come out several percent off | `test_eps_inside_the_root` (mutant `s01`) |
-| 2. subtracting the mean (LayerNorm statistics) | a constant vector becomes zeros | `test_no_mean_is_subtracted`, `test_hand_example` (mutant `s02`) |
-| 3. ignoring Gemma's offset | a fresh Gemma norm outputs zeros | `test_golden_hf_gemma_offset` (mutant `s03`) |
-| 4. post-LN inside `pre_norm_residual` | the stream is normalized; the identity path is gone | `test_pre_norm_residual_identity_path` (mutant `s04`) |
-| statistic over the wrong axis | tokens are normalized by each other | `test_normalizes_each_vector_on_its_own` (mutant `s05`) |
-| gain initialized the wrong way | a fresh Llama norm outputs zeros | `test_parameter_names_and_init` (mutant `s06`) |
-| sum of squares instead of the mean | outputs $\sqrt{d}$ times too small | `test_hand_example` (mutant `s07`) |
-| normalizing the stream, then adding the branch | the identity path carries $\operatorname{norm}(x)$ | `test_pre_norm_residual_adds_the_branch` (mutant `s08`) |
-| the gain as a constant (`.data`) | the gain never trains | `test_golden_hf_llama`, `test_gradcheck_x_and_gain` (mutant `s09`) |
+| 1. eps outside the root: $x / (\sqrt{\operatorname{mean}(x^2)} + \epsilon)$ | small activations come out several percent off | `(ms + self.eps) ** -0.5` |
+| 2. subtracting the mean (LayerNorm statistics) | a constant vector becomes zeros | no mean is computed; only `mean(x * x)` |
+| 3. ignoring Gemma's offset | a fresh Gemma norm outputs zeros | `gain = self.weight + self.offset` when `offset != 0` |
+| 4. post-LN inside `pre_norm_residual` | the stream is normalized; the identity path is gone | returns `x + sublayer(norm(x))`, never `norm(x + ...)` |
+| statistic over the wrong axis | tokens are normalized by each other | `axis=-1, keepdims=True` |
+| gain initialized the wrong way | a fresh Llama norm outputs zeros | ones when `offset == 0`, zeros otherwise |
+| sum of squares instead of the mean | outputs $\sqrt{d}$ times too small | `F.mean`, not `F.sum` |
+| normalizing the stream, then adding the branch | the identity path carries $\operatorname{norm}(x)$ | the stream term is the raw `x` |
+| the gain as a constant (`.data`) | the gain never trains | the gain is the parameter Tensor itself |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -140,7 +199,7 @@ Your oracle is the formula in numpy float64: `x / sqrt(mean(x**2, -1) + eps) * (
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `RMSNorm` | HF `LlamaRMSNorm` | upcasts bf16 input to float32 for the statistic, casts back before the gain | `transformers/models/llama/modeling_llama.py` |
 | `RMSNorm` | fused RMSNorm kernels (Apex, Liger, vLLM) | one pass over memory, fused with the residual add | vLLM `csrc/layernorm_kernels.cu` (`fused_add_rms_norm`) |

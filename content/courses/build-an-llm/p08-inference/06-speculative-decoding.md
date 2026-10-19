@@ -264,7 +264,7 @@ Full solution: [`spec.py`](../../../../course/solutions/python/tinyllm/infer/spe
 ### Why this solution
 
 - **Cost.** One target pass per round over $\lvert\text{pending}\rvert + m$ tokens, plus the draft's cost: none for prompt lookup ($O(L \cdot n_{\max})$ list comparisons), $k$ table lookups for the n-gram, $k$ small-model steps for `ModelDraft`. Expected tokens per pass $\frac{1 - \alpha^{k+1}}{1 - \alpha}$ (section 2.4).
-- **Against accepting a draft when it is "likely enough".** Any threshold rule changes the distribution. The rejection-and-residual rule is the unique simple rule that keeps $p$ exactly for any $q$, which is why the tests can enumerate outcomes and compare fractions.
+- **Against accepting a draft when it is "likely enough".** Any threshold rule changes the distribution. The rejection-and-residual rule keeps $p$ exactly for any $q$ (section 2.2), which is why enumerating outcomes gives exactly $p$ as fractions.
 - **Against re-running the target on the kept prefix.** Truncating the cache and feeding only the extra token reuses every kept position's keys and values; recomputing would spend the pass the method saved.
 - **Against a separate generator for the draft.** One stream in program order is reproducible by the Rust port draw for draw; two streams would need a second seed and an agreed interleaving anyway.
 - **Tradeoff accepted.** Drafts are a single path (no tree), so one early rejection discards the rest of the round. Tree speculation (Going further) verifies several paths in one pass at the cost of tree-masked attention.
@@ -304,7 +304,7 @@ Full solution: [`spec.py`](../../../../course/solutions/python/tinyllm/infer/spe
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M07.6` | `speculative_step` is the sampled verification of one position |
-| Back | `L8.2` | `KVCache.truncate` is the rollback; `cache_dims` sizes the cache; `Generation` is the result; `generate` is the reference the tests compare with |
+| Back | `L8.2` | `KVCache.truncate` is the rollback; `cache_dims` sizes the cache; `Generation` is the result; `generate` is the reference speculation must reproduce |
 | Back | `L2.1` | `NGramDraft` drafts from an `NGramLM`'s `logprobs` |
 | Back | `L8.1` | `sample` (greedy and bonus draws), `sampling_distribution` (the $p_i$), `token_logprobs`, `request_rng` |
 | Back | `M11.1` | total variation and why $\alpha = 1 - \mathrm{TV}(p, q)$ (reading) |

@@ -1,44 +1,35 @@
-<!-- ol:module L1.4 -->
 # Unigram LM tokenizer (EM, Viterbi, subword sampling)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L1.4` · build · Python · Pass 3 · 6 to 8 h |
-| **You build** | `python/tinyllm/tok/unigram.py`: `metaspace` and `UnigramTokenizer` (`viterbi`, `encode`, `sample_encode`, `log_likelihood`, `em_step`, `train`, `decode`, `save`, `load`, `from_hf_json`) |
+| **Module** | `L1.4` · build · Python · Pass 3 · 3 to 4 h |
+| **Solution** | [`unigram.py`](../../../../course/solutions/python/tinyllm/tok/unigram.py): `metaspace` and `UnigramTokenizer` (`viterbi`, `encode`, `sample_encode`, `log_likelihood`, `em_step`, `train`, `decode`, `save`, `load`, `from_hf_json`) · model tests: [`test_unigram.py`](../../../../course/solutions/learner-tests/L1.4/python/tests/l1-4-unigram/test_unigram.py) |
 | **Contract** | [`course/contracts/py/tinyllm/tok/unigram.pyi`](../../../../course/contracts/py/tinyllm/tok/unigram.pyi) · format: [`tokenizer.md`](../../../../course/contracts/formats/tokenizer.md) (Unigram in the `tokenizer.json` subset) |
-| **Tests** | `course/tests/L1.4/` (what they check: section 4) · your own tests in `python/tests/l1-4-unigram/`, rung R2, graded by mutation (threshold 0.60) |
-| **Needs** | `L1.1` the protocol and `check_ids` · `M06.2` `Trie.prefixes` builds the lattice · `M07.2` `mle` scores the seed pieces · reading: `M11.1` (log-likelihood and cross-entropy), `M06.3` (the PCG32 that `sample_encode` draws from; the course tests pass the frozen one), `S-M07b` q8 and q9 (one EM step and the MLE by hand) (or `--ref-deps`) |
-| **Used by** | `L1.6` measures a Unigram tokenizer loaded with `from_hf_json` · later: `C1` compares BPE and Unigram at 4096 tokens on the same sample |
-| **Milestone** | `MS-L1` |
+| **Needs** | `L1.1` the protocol and `check_ids` · `M06.2` `Trie.prefixes` builds the lattice · `M07.2` `mle` scores the seed pieces · reading: `M11.1` (log-likelihood and cross-entropy), `M06.3` (the PCG32 that `sample_encode` draws from), `S-M07b` q8 and q9 (one EM step and the MLE by hand) |
+| **Used by** | `L1.6` measures a Unigram tokenizer loaded with `from_hf_json` · later: `C1` compares BPE and Unigram at 4096 tokens on the same sample · part of the Pass 3 tokenizer layer, with `L1.1` to `L1.3` and `L1.6` |
 | **Optional depth** | Kudo, *Subword Regularization* (2018), sections 3 and 4; Kudo and Richardson, *SentencePiece* (2018); Dempster, Laird, and Rubin, *Maximum Likelihood from Incomplete Data via the EM Algorithm* (1977) |
 
 ## Key Takeaways
 
-- A Unigram tokenizer is a probability for each piece; a segmentation's probability is the product of its pieces', and encoding picks the most probable segmentation by Viterbi over a lattice (`test_hand_example_viterbi`).
-- The likelihood of a word sums over all its segmentations, so training is EM: expected piece counts by forward-backward, then count over total, and the log-likelihood never goes down (`test_hand_example_em_step`, `test_em_step_never_decreases_likelihood`).
-- Unlike BPE, Unigram can sample segmentations with probability proportional to $P(s)^\alpha$, which `C1` uses as subword regularization (`test_sample_matches_posterior`).
-- Every rule that decides ties and unknowns is part of the contract: the earliest-starting last piece wins a Viterbi tie, an unknown character scores the minimum minus 10, and adjacent unknowns fuse (`test_viterbi_tie_rule`, `test_unknown_character_penalty`, `test_unknown_characters_fuse`).
-- With those rules exact, your tokenizer loads Hugging Face and sentencepiece models unchanged and reproduces their ids (`test_hf_unigram_ids_match_oracle`, `test_spm_unigram_ids_match_sentencepiece`).
+- A Unigram tokenizer is a probability for each piece; a segmentation's probability is the product of its pieces', and encoding picks the most probable segmentation by Viterbi over a lattice.
+- The likelihood of a word sums over all its segmentations, so training is EM: expected piece counts by forward-backward, then count over total, and the log-likelihood never goes down.
+- Unlike BPE, Unigram can sample segmentations with probability proportional to $P(s)^\alpha$, which `C1` uses as subword regularization.
+- Every rule that decides ties and unknowns is part of the contract: the earliest-starting last piece wins a Viterbi tie, an unknown character scores the minimum minus 10, and adjacent unknowns fuse.
+- With those rules exact, the tokenizer loads Hugging Face and sentencepiece models unchanged and reproduces their ids.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L1.4              # stubs unigram.py into your repo
-ol tests L1.4              # read the test catalog first
-ol check L1.4              # exit code is the verdict; then grades your tests by mutation
-ol check L1.4 --ref-deps   # only if your L1.1, M06.2, or M07.2 is not passing yet
-ol diff  L1.4              # after passing: your code against the reference
-```
+Sections 1 to 3 build the Unigram model, Viterbi, EM, and sampling from first principles and work them by hand on one small vocabulary. Section 4 fixes the interface and lists what a correct solution must handle. Section 5 walks through `unigram.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
-Do `S-M07b` q8 and q9 first: they are one EM step and the count MLE on paper, the two halves of `em_step`.
+`S-M07b` q8 and q9 are good preparation: they are one EM step and the count MLE on paper, the two halves of `em_step`.
 
 ---
 
 ## 1. Why now
 
-`L1.2` gave you byte-level BPE, the tokenizer of GPT-2 and SmolLM2, and it has one answer for every word: the merges decide. The capstone (`C1`) has to choose a tokenizer for its own model, and the decision is an ablation: BPE against the other widely used family at the same vocabulary size, on the same sample, compared by the metrics of `L1.6` and by bits per byte after a short training run. That family is the Unigram language model of SentencePiece (T5, ALBERT, XLNet, and many multilingual models). It is a probabilistic model, so it can do what BPE cannot: score a segmentation, and sample a different segmentation of the same text on every pass, a regularizer for small models. Without this module the ablation has only one arm.
+`L1.2` built byte-level BPE, the tokenizer of GPT-2 and SmolLM2, and it has one answer for every word: the merges decide. The capstone (`C1`) has to choose a tokenizer for its own model, and the decision is an ablation: BPE against the other widely used family at the same vocabulary size, on the same sample, compared by the metrics of `L1.6` and by bits per byte after a short training run. That family is the Unigram language model of SentencePiece (T5, ALBERT, XLNet, and many multilingual models). It is a probabilistic model, so it can do what BPE cannot: score a segmentation, and sample a different segmentation of the same text on every pass, a regularizer for small models. Without this module the ablation has only one arm.
 
 ## 2. Principles
 
@@ -113,7 +104,7 @@ The M-step divides by the total, so the new $P(\texttt{▁a}) = 32.0/95.4 \appro
 
 **Metaspace.** `"a  b"` is `["▁a", "▁", "▁b"]`, `" x"` and `"▁x"` are both `["▁x"]`, and `""` is `[]`.
 
-These are the first cases in section 4: `test_hand_example_viterbi`, `test_hand_example_likelihood`, `test_hand_example_em_step`, and `test_hand_example_metaspace`.
+These are the first cases a correct solution must reproduce (section 4).
 
 ## 4. The interface
 
@@ -135,7 +126,7 @@ class UnigramTokenizer(Tokenizer):
     def from_hf_json(cls, tokenizer_json: str) -> "UnigramTokenizer"
 ```
 
-`special_ids` are the `<unk>` piece plus `specials`; typed in the raw text, they match as written (leftmost longest) and are one id each. `sample_encode` takes any object with `uniform() -> float`; the course tests pass the frozen PCG32 of `course/tests/_lib`, and your own `M06.3` PCG32 fits the same slot. `save` writes a `tokenizer.json` with the `Unigram` model and the Metaspace pre-tokenizer and decoder (`prepend_scheme` `"always"`); `from_hf_json` refuses byte fallback, a normalizer, or another Metaspace scheme.
+`special_ids` are the `<unk>` piece plus `specials`; typed in the raw text, they match as written (leftmost longest) and are one id each. `sample_encode` takes any object with `uniform() -> float`: the `M06.3` PCG32, or a stub that replays fixed numbers. `save` writes a `tokenizer.json` with the `Unigram` model and the Metaspace pre-tokenizer and decoder (`prepend_scheme` `"always"`); `from_hf_json` refuses byte fallback, a normalizer, or another Metaspace scheme.
 
 ### What the tests check
 

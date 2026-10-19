@@ -219,6 +219,8 @@ finally:
 
 Full solution: [`comm.py`](../../../../course/solutions/python/tinyllm/dist/comm.py)
 
+A model test suite for this unit: [`test_l11_2_mine.py`](../../../../course/solutions/learner-tests/L11.2/python/tests/l11-2-comm/test_l11_2_mine.py)
+
 ### Why this solution
 
 - **Cost.** All-reduce takes $2(p-1)$ steps and sends $2(p-1)n\beta/p$ bytes per rank; the bandwidth term is optimal. The latency term grows with $p$, which is why production libraries switch to trees for small messages.

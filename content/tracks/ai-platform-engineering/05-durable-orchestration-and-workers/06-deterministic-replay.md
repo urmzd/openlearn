@@ -1,4 +1,3 @@
-<!-- ol:module dur.06 -->
 # Deterministic replay workflows, ContinueAsNew, history paging, payload limits
 
 ## Overview
@@ -6,32 +5,23 @@
 | | |
 |---|---|
 | **Module** | `dur.06` · build · Go · Pass 8 · 6 to 8 h |
-| **You build** | `go/durable/workflow/workflow.go`: `ExecuteActivity`, `Sleep`, `Now`, `SideEffect`, `GetVersion`, `ContinueAsNew`, `ContinueAsNewSuggested`; `go/durable/workflow/replay.go`: the replay engine, `Registry`, `ReplayHistory`, `LoadHistory`, `ReplayHistoryFromFile`; `go/durable/server/continue.go`: the `record_marker` and `continue_as_new` commands |
-| **Contract** | the Go SDK surface of DESIGN 2.7, the `Command` and history messages of [`durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto); the package API is section 4 |
-| **Tests** | `course/tests/go/dur_06/` (what they check: section 4); recorded runs of the course test workflows in `course/fixtures/dur/histories/` |
+| **Solution** | [`go/durable/workflow/workflow.go`](../../../../course/solutions/go/durable/workflow/workflow.go): `ExecuteActivity`, `Sleep`, `Now`, `SideEffect`, `GetVersion`, `ContinueAsNew`, `ContinueAsNewSuggested`; [`go/durable/workflow/replay.go`](../../../../course/solutions/go/durable/workflow/replay.go): the replay engine, `Registry`, `ReplayHistory`, `LoadHistory`, `ReplayHistoryFromFile`; [`go/durable/server/continue.go`](../../../../course/solutions/go/durable/server/continue.go): the `record_marker` and `continue_as_new` commands |
+| **Contract** | the Go SDK surface in section 4, the `Command` and history messages of [`durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto); the package API is section 4 |
 | **Needs** | `dur.05` activities and their failures (and through it the whole server) |
 | **Used by** | `dur.07` timers and `dur.08` signal/cancel handling extend this workflow SDK |
-| **Milestone** | MS-durable |
 | **Optional depth** | the Temporal docs on deterministic constraints and versioning; Fateev and Abbas, *Temporal: durable execution* talks; Hellerstein et al. on deterministic replay |
 
 ## Key Takeaways
 
-- A workflow never runs once from start to finish. Every workflow task re-runs it from the start against the history: past results come from events, and each command it issues must match the event recorded for it (`TestReplayHandExample`).
-- Determinism is the price: no wall clock (`workflow.Now`), no randomness (`SideEffect`), no goroutines or I/O. A code change that reorders commands is caught as `ErrNondeterminism`, never silently continued (`TestNondeterminismDetected`, `TestReorderFailpointNondeterministic`).
-- `GetVersion` lets a deploy change code under runs already in flight: old histories replay the old path, new runs take the new one (`TestGetVersionMigration`).
-- A long workflow bounds its history with `ContinueAsNew` when the server suggests it, at 10,000 events or 32 MiB (`TestContinueAsNewKeepsHistoryBounded`).
-- Kill the server in the middle of a run: the worker replays and the result equals an uninterrupted run's (`TestKillServerMidWorkflowSameResult`).
+- A workflow never runs once from start to finish. Every workflow task re-runs it from the start against the history: past results come from events, and each command it issues must match the event recorded for it.
+- Determinism is the price: no wall clock (`workflow.Now`), no randomness (`SideEffect`), no goroutines or I/O. A code change that reorders commands is caught as `ErrNondeterminism`, never silently continued.
+- `GetVersion` lets a deploy change code under runs already in flight: old histories replay the old path, new runs take the new one.
+- A long workflow bounds its history with `ContinueAsNew` when the server suggests it, at 10,000 events or 32 MiB.
+- Kill the server in the middle of a run: the worker replays and the result equals an uninterrupted run's.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start dur.06
-ol tests dur.06
-ol check dur.06          # needs dur.05 (or --ref-deps)
-ol diff  dur.06
-```
-
-Build the coroutine first (start, block, step) with a workflow that only calls `ExecuteActivity`; pass `TestReplayHandExample`; then the matcher and `ErrNondeterminism`; then markers; then ContinueAsNew.
+Sections 1 to 3 derive replay from first principles and replay one history by hand. Section 4 fixes the interface. Section 5 walks through the solution in the order it is built: the coroutine, command matching, the replay loop, the SDK calls (`ExecuteActivity`, `SideEffect`, `GetVersion`), and the server's ContinueAsNew, explaining why each choice is the right one. Try to predict each step before reading it.
 
 ---
 
@@ -115,7 +105,7 @@ A workflow that loops (train for 10 epochs, evaluate every 500 steps for a week)
 
 ### 2.5 Testing workflows by replay
 
-The course test workflows (`Sequence`, `Parallel`, `SideEffects`, `Versioned`, `Reorder`, `Clock`, `Counter`) were run once against the reference and their histories recorded in `course/fixtures/dur/histories/`. Your engine must replay them all with the same results. For your own workflows the recipe is the same in two steps: run once through your server and worker, fetch the history, and replay it with `ReplayHistory`; any change that breaks determinism then fails a test instead of a production run.
+A set of small test workflows (`Sequence`, `Parallel`, `SideEffects`, `Versioned`, `Reorder`, `Clock`, `Counter`) is run once through the server and worker, and each history is saved as a JSON file (`HistoryFile`). A correct engine replays every one with the same result. The recipe for any workflow is the same two steps: run it once, fetch the history, and replay it with `ReplayHistory` (or `ReplayHistoryFromFile`); any code change that breaks determinism then fails a test instead of a production run.
 
 ## 3. Worked example by hand
 
@@ -140,7 +130,7 @@ Handling the task whose history ends at 15:
 2. **Past task 2** ($s_2 = 9$): deliver events 3 to 8; event 7 resolves activity "1" with `"S1"`. Run: `Get` returns `"S1"`; the code calls `ExecuteActivity("Upper", "s2")`, sequence 2, and blocks. Command `"2"` matches event 11.
 3. **Current task** ($s_* = 15$): deliver events 9 to 14; event 13 resolves "2" with `"S2"`. Run: the code returns `["S1","S2"]`. The new command is `CompleteWorkflow{["S1","S2"]}`.
 
-Handling the earlier tasks (history up to 3, then up to 9) gives `ScheduleActivity{"1"}` and then `ScheduleActivity{"2"}`: the same function, more history. This is `TestReplayHandExample`.
+Handling the earlier tasks (history up to 3, then up to 9) gives `ScheduleActivity{"1"}` and then `ScheduleActivity{"2"}`: the same function, more history.
 
 ## 4. The interface
 
@@ -180,38 +170,354 @@ func ReplayHistoryFromFile(r *Registry, path string) ([]byte, error)
 // go/durable/server/continue.go: registers "record_marker" and "continue_as_new" with the dur.04 command table
 ```
 
-`Registry` is the `worker.WorkflowHandler` of `dur.04`: `worker.New(conn, worker.Options{Workflows: reg, ...})`. Workflows are Go only; Python implements activities (DESIGN 2.8).
+`Registry` is the `worker.WorkflowHandler` of `dur.04`: `worker.New(conn, worker.Options{Workflows: reg, ...})`. Workflows are Go only; Python implements activities.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `TestReplayHandExample` | unit | section 3: the three tasks issue `"1"`, `"2"`, then complete with `["S1","S2"]` | the definition of replay |
-| `TestRecordedHistoriesReplay` | conformance, golden | every recorded course test run replays with its recorded result (continued runs end in ContinueAsNew) | the SDK conformance suite |
-| `TestNondeterminismDetected` | unit, fault | another activity type, fewer commands, an extra command: `ErrNondeterminism`, replayed and live | code changes cannot corrupt runs |
-| `TestReorderFailpointNondeterministic` | fault | `dur/workflow/reorder` flips the order: the same `ErrNondeterminism` three times; passes without it | the failpoint of the catalog |
-| `TestSideEffectNotReexecuted` | unit | replay returns recorded values and never calls the function; a first run calls it once | random ids stay stable |
-| `TestGetVersionMigration` | unit, regression | old history on the old path, new history on the new path, a new run records `{use-b, 1}` | safe deploys of dur.11 and dur.12 |
-| `TestNowComesFromHistory` | unit | `Now` equals the `WorkflowTaskStarted` times, on replay too | no wall clock in workflows |
-| `TestRecordThenReplayOwnRun` | unit | a run through your server and worker replays to the same result | how you test your own workflows |
-| `TestKillServerMidWorkflowSameResult` | fault | the server dies mid-run; the result equals an uninterrupted run and the history replays | MS-durable's replay determinism |
-| `TestContinueAsNewKeepsHistoryBounded` | fault, boundary | 12,000 steps continue as new past 10,000 events; each run under 20,000; pages over 1 MiB fetched | `TrainRun`, `AgentRun` |
-| `TestServerCommandLimits` | boundary | marker and continue-as-new payloads over 2 MiB refused; the next run keeps type and queue | payload limits (2.7) |
+| hand example replay | unit | section 3: the three tasks issue `"1"`, `"2"`, then complete with `["S1","S2"]` | the definition of replay |
+| recorded histories replay | conformance, golden | every recorded test run replays with its recorded result (continued runs end in ContinueAsNew) | the SDK conformance suite |
+| nondeterminism detected | unit, fault | another activity type, fewer commands, an extra command: `ErrNondeterminism`, replayed and live | code changes cannot corrupt runs |
+| reorder failpoint is nondeterministic | fault | `dur/workflow/reorder` flips the order: the same `ErrNondeterminism` three times; passes without it | the failpoint of the catalog |
+| side effect not re-executed | unit | replay returns recorded values and never calls the function; a first run calls it once | random ids stay stable |
+| `GetVersion` migration | unit, regression | old history on the old path, new history on the new path, a new run records `{use-b, 1}` | safe deploys of dur.11 and dur.12 |
+| `Now` comes from history | unit | `Now` equals the `WorkflowTaskStarted` times, on replay too | no wall clock in workflows |
+| record, then replay a live run | unit | a run through the server and worker replays to the same result | how any workflow is tested |
+| kill the server mid-workflow: same result | fault | the server dies mid-run; the result equals an uninterrupted run and the history replays | the durable engine's replay determinism |
+| ContinueAsNew keeps history bounded | fault, boundary | 12,000 steps continue as new past 10,000 events; each run under 20,000; pages over 1 MiB fetched | `TrainRun`, `AgentRun` |
+| server command limits | boundary | marker and continue-as-new payloads over 2 MiB refused; the next run keeps type and queue | payload limits (2.7) |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **The workflow's state is its local variables and its position in the code, and neither survives a crash.** The only durable thing is history. So the SDK must reconstruct both from history, and the only general way to reconstruct the state of arbitrary code is to run it again.
+2. **Running it again must take the same path.** That requires the code to be a deterministic function of its input and of the results it receives. Every source of difference (clock, randomness, map order, concurrency, I/O) must either be banned or routed through history.
+3. **Results must arrive at the same points they did originally.** A workflow task saw the history up to its `WorkflowTaskStarted`, not more. So replaying past task $j$ delivers exactly the events before $s_j$, then runs the code until it blocks: it then stands exactly where it stood when task $j$ ran.
+4. **What the code did at each past task is recorded: the command events after that task's `WorkflowTaskCompleted`.** Comparing the commands the replay issues against them, in order, both proves determinism and detects any code change that would alter the past. A mismatch must stop the task, not be patched over.
+5. **Determinism needs a scheduler, not threads.** If the workflow ran freely alongside the engine, the interleaving of deliveries and code would depend on timing. A coroutine (one side runs while the other waits on a channel) makes the order a function of the code and the history only.
+6. **Ids must be a function of the code path.** If activity ids came from a random generator or the clock, replay would issue different ids. A sequence counter incremented per command gives "1", "2", ... in the same order every time.
+7. **Escape hatches follow from 2.** `Now` reads the current task's started time from history; `SideEffect` runs once and records its value as a marker; `GetVersion` records which code path a run took so later code can respect it. ContinueAsNew bounds history by starting over with carried state.
+
+### The code, annotated
+
+**The coroutine** ([`replay.go`](../../../../course/solutions/go/durable/workflow/replay.go)). The engine and the workflow goroutine hand control back and forth over two unbuffered channels.
+
+```go
+func (e *env) start(wf Workflow) {
+	e.resume, e.yield, e.killed = make(chan struct{}), make(chan struct{}), make(chan struct{})
+	go func() {
+		defer func() {
+			r := recover()
+			if e.dead {
+				return // killed: nobody waits for this goroutine
+			}
+			if r != nil {
+				// ErrNondeterminism from consume arrives here as a panic.
+				if err, ok := r.(error); ok {
+					e.failure = err
+				} else {
+					e.failure = fmt.Errorf("workflow panic: %v", r)
+				}
+			}
+			e.done = true
+			e.yield <- struct{}{} // final hand-back
+		}()
+		select { // do not run a single line until the engine says so
+		case <-e.resume:
+		case <-e.killed:
+			e.dead = true
+			return
+		}
+		e.result, e.err = wf(Context{e}, e.input)
+	}()
+}
+
+// Called by the workflow when it must wait (an unresolved future).
+func (e *env) block() {
+	e.yield <- struct{}{} // give control to the engine
+	select {
+	case <-e.resume:
+	case <-e.killed:
+		e.dead = true
+		runtime.Goexit() // unwind the workflow's stack; deferred recover sees e.dead
+	}
+}
+```
+
+`step` resumes the workflow and waits for it to yield. When the workflow has returned, `step` issues its final command once: `ContinueAsNew` if the error is a `continueAsNewError`, `FailWorkflow` for any other error, else `CompleteWorkflow` with the result.
+
+**Commands: new or matched.** Every SDK call that has an effect goes through `emit`.
+
+```go
+func (e *env) emit(c *durablev1.Command) {
+	if e.replaying {
+		e.consume(c) // a past task: must match what history recorded
+		return
+	}
+	e.commands = append(e.commands, c) // the current task: new, sent to the server
+}
+
+func (e *env) consume(c *durablev1.Command) *durablev1.HistoryEvent {
+	ev := e.peek()
+	if ev == nil {
+		panic(nondeterminism("the workflow issued %s, but the history has no further command for this task", commandKind(c)))
+	}
+	if !matches(c, ev) {
+		panic(nondeterminism("the workflow issued %s, but the history has %s at event %d", commandKind(c), eventKind(ev), ev.GetEventId()))
+	}
+	e.expIdx++
+	return ev
+}
+
+func matches(c *durablev1.Command, ev *durablev1.HistoryEvent) bool {
+	switch x := c.GetCmd().(type) {
+	case *durablev1.Command_ScheduleActivity:
+		a := ev.GetActScheduled()
+		// Both id and type: same position but a different activity is a code change.
+		return a != nil && a.GetActivityId() == x.ScheduleActivity.GetActivityId() && a.GetActivityType() == x.ScheduleActivity.GetActivityType()
+	case *durablev1.Command_RecordMarker:
+		return ev.GetMarker() != nil && ev.GetMarker().GetMarkerName() == x.RecordMarker.GetMarkerName()
+	case *durablev1.Command_Complete:
+		return ev.GetCompleted() != nil
+	// ... start_timer by timer id, fail, continue_as_new, and the dur.07/dur.08 cancel commands
+	}
+	return false
+}
+```
+
+Panicking from `consume` unwinds the workflow out of whatever SDK call it was in; the coroutine's `recover` turns it into `e.failure`, and `step` returns it. The workflow cannot catch and ignore it.
+
+**Delivering results.** `deliver` resolves futures by the ids in events: `act_scheduled` maps the scheduled event id to the activity id, so a later `act_completed{scheduled 5}` resolves future `"a:1"`. Failures, timeouts, and cancellations resolve the future with an `*ActivityError`; `timer_fired` resolves `"t:<id>"`; other kinds go to `eventHooks`, which `dur.08` fills.
+
+**The replay loop.**
+
+```go
+func (e *env) replay(wf Workflow, h []*durablev1.HistoryEvent, current int64) ([]*durablev1.Command, error) {
+	// ... h[0] must be started; e.input is its input
+	sizes := make([]int64, len(h)+1) // prefix sums: bytes of h[:i]
+	// ...
+	at := func(started int64) {
+		ev := h[started-1]
+		e.now = time.UnixMilli(ev.GetTsUnixMs()).UTC()                        // Now() for this task
+		e.suggested = started > suggestEvents || sizes[started] > suggestBytes // the server's rule, as of this task
+	}
+	e.start(wf)
+	defer e.kill()
+	next := 0
+	deliverBefore := func(id int64) {
+		for next < len(h) && h[next].GetEventId() < id { // strictly before s_j: what that task saw
+			e.deliver(h[next])
+			next++
+		}
+	}
+	for i, ev := range h {
+		c := ev.GetWtCompleted()
+		if c == nil {
+			continue
+		}
+		// Past task j: rewind the world to its WorkflowTaskStarted...
+		deliverBefore(c.GetStartedEventId())
+		at(c.GetStartedEventId())
+		// ...and expect exactly the command events written in the same batch.
+		e.replaying, e.expIdx, e.expected = true, 0, nil
+		for j := i + 1; j < len(h) && isCommandEvent(h[j]); j++ {
+			e.expected = append(e.expected, h[j])
+		}
+		if err := e.step(); err != nil {
+			return nil, err
+		}
+		if e.expIdx != len(e.expected) { // the code issued fewer commands than history has
+			ev := e.expected[e.expIdx]
+			return nil, nondeterminism("the history has %s at event %d, which the workflow no longer issues", eventKind(ev), ev.GetEventId())
+		}
+	}
+	e.replaying, e.expected = false, nil
+	if current == 0 { // ReplayHistory of a closed run: the code must have finished
+		// ...
+	}
+	deliverBefore(current) // the current task
+	at(current)
+	if err := e.step(); err != nil {
+		return nil, err
+	}
+	return e.commands, nil
+}
+```
+
+Both directions of mismatch are covered: an extra or different command panics in `consume`; a missing one leaves `expIdx` short. `HandleWorkflowTask` finds the *last* `WorkflowTaskStarted` in the history as `current` (a redelivered task has several), and builds a fresh `env` per task, so nothing leaks between tasks.
+
+**The SDK calls** ([`workflow.go`](../../../../course/solutions/go/durable/workflow/workflow.go)).
+
+```go
+func ExecuteActivity[O any](ctx Context, name string, in any, o ActivityOptions) Future[O] {
+	e := ctx.e
+	f := &future{}
+	input, err := encode(in) // []byte as is, anything else JSON
+	// ... an encoding error resolves the future with it, issuing no command
+	e.seq++
+	id := strconv.Itoa(e.seq) // deterministic id: the command's position in the run
+	e.futures["a:"+id] = f
+	e.activityTypes[id] = name
+	e.emit(&durablev1.Command{Cmd: &durablev1.Command_ScheduleActivity{ScheduleActivity: &durablev1.ScheduleActivity{
+		ActivityId: id, ActivityType: name, Input: input, Options: o.proto(),
+	}}})
+	return typedFuture[O]{f}
+}
+
+func (f *future) get(ctx Context) ([]byte, error) {
+	for !f.ready {
+		ctx.e.block() // yield until a delivered event resolves this future
+	}
+	return f.value, f.err
+}
+```
+
+```go
+func SideEffect[T any](ctx Context, f func() T) T {
+	e := ctx.e
+	var out T
+	if e.replaying {
+		// Never call f on replay: take the recorded value.
+		ev := e.consume(&durablev1.Command{Cmd: &durablev1.Command_RecordMarker{RecordMarker: &durablev1.RecordMarker{MarkerName: "SideEffect"}}})
+		if err := json.Unmarshal(ev.GetMarker().GetDetails(), &out); err != nil {
+			panic(nondeterminism("SideEffect marker at event %d does not decode: %v", ev.GetEventId(), err))
+		}
+		return out
+	}
+	out = f() // the only call, ever
+	details, err := json.Marshal(out)
+	// ...
+	e.emit(&durablev1.Command{Cmd: &durablev1.Command_RecordMarker{RecordMarker: &durablev1.RecordMarker{MarkerName: "SideEffect", Details: details}}})
+	return out
+}
+
+func GetVersion(ctx Context, changeID string, min, max int) int {
+	e := ctx.e
+	if v, ok := e.versions[changeID]; ok {
+		return v // stable for the rest of the run
+	}
+	v := max // a first execution takes the newest path...
+	if e.replaying {
+		v = min // ...a history without the marker here predates the change
+		if ev := e.peek(); ev != nil && ev.GetMarker().GetMarkerName() == "Version" {
+			var vm versionMarker
+			if json.Unmarshal(ev.GetMarker().GetDetails(), &vm) == nil && vm.ChangeID == changeID {
+				e.expIdx++ // consume the marker only when it is ours
+				v = vm.Version
+			}
+		}
+	} else {
+		details, _ := json.Marshal(versionMarker{ChangeID: changeID, Version: max})
+		e.emit(/* RecordMarker{"Version", details} */)
+	}
+	// ... panic with ErrNondeterminism if v is outside [min, max]
+	e.versions[changeID] = v
+	return v
+}
+```
+
+`GetVersion` peeks rather than calling `consume`, because a missing marker is a legitimate answer (old history) and not a mismatch. `Now` returns `e.now` and `ContinueAsNewSuggested` returns `e.suggested`, both set by `at` from history. `ContinueAsNew` just returns a sentinel error that `step` turns into the command.
+
+**The server side** ([`continue.go`](../../../../course/solutions/go/durable/server/continue.go)) registers two commands in `dur.04`'s table.
+
+```go
+func continueAsNew(s *Server, b *batch, completed int64, c *durablev1.Command) error {
+	can := c.GetContinueAsNew()
+	if len(can.GetInput()) > MaxPayloadBytes {
+		return status.Errorf(codes.InvalidArgument, /* ... */)
+	}
+	r := b.r
+	ev := &durablev1.WorkflowExecutionContinuedAsNew{
+		NewRunId: s.o.NewRunID(), Input: can.GetInput(),
+		WorkflowType: can.GetWorkflowType(), TaskQueue: can.GetTaskQueue(),
+	}
+	// Default to the current run's type and queue, or the next run is one no worker polls.
+	if ev.WorkflowType == "" {
+		ev.WorkflowType = r.wfType
+	}
+	if ev.TaskQueue == "" {
+		ev.TaskQueue = r.taskQueue
+	}
+	s.add(b, &durablev1.HistoryEvent{Attrs: &durablev1.HistoryEvent_Continued{Continued: ev}})
+	// Start the next run only after this batch is durable; recovery (dur.02)
+	// starts it if the server dies in between, using the recorded new run id.
+	b.after = append(b.after, func(ctx context.Context) error {
+		_, err := s.startRun(ctx, r.workflowID, ev.GetNewRunId(), continuedStart(r, ev))
+		return err
+	})
+	return nil
+}
+```
+
+`recordMarker` requires a name, caps details at 2 MiB, and appends `MarkerRecorded` with the completed event id.
+
+Full solution: [`workflow.go`](../../../../course/solutions/go/durable/workflow/workflow.go), [`replay.go`](../../../../course/solutions/go/durable/workflow/replay.go), [`continue.go`](../../../../course/solutions/go/durable/server/continue.go).
+
+### Why this solution
+
+- **Cost.** Each workflow task replays the whole history: O(history) time per task, O(history squared) over a run's life. ContinueAsNew bounds the history, and sticky caches (Going further) remove the replay in production. The coroutine costs one goroutine and two channel handoffs per block.
+- **Replay over snapshotting state.** Serialising a Go function's stack and locals is not possible in general; replaying deterministic code is. The price is the determinism rules, which the matcher enforces rather than trusting.
+- **Strict matching over best effort.** A replay that continued after a mismatch would run new code on a history made by old code, producing decisions nobody wrote. Failing the task leaves the run stuck but correct, and fixable with `GetVersion`.
+- **Sequence ids over named ids.** Users never have to invent ids, and a reorder of two activities is detected as a type mismatch at the first position.
+
+### Explain it back
+
+1. In the worked example, why does replay deliver only events 1 and 2 before running past task 1, not everything up to event 4?
+
+   <details><summary>Answer</summary>
+
+   Past task 1 started at event 3, so it saw the history before 3. Delivering later events (for example a result) would let the code take a path the original task could not have taken, and its commands would not match $C_1$.
+
+   </details>
+
+2. A developer swaps the order of `Upper("s1")` and `Lower("s2")` in a deployed workflow. What happens to a run that already completed task 1?
+
+   <details><summary>Answer</summary>
+
+   On its next task, replaying past task 1 issues `ScheduleActivity{"1", Lower}`, but the history has `act_scheduled{"1", Upper}`. `matches` compares types, so `consume` panics with `ErrNondeterminism`, the worker does not complete the task, and the run stays stuck until the change is guarded with `GetVersion`.
+
+   </details>
+
+3. Why does `SideEffect` call `f` only when not replaying, while `ExecuteActivity` issues its command either way?
+
+   <details><summary>Answer</summary>
+
+   Both issue (or match) a command either way. The difference is the value: an activity's result arrives later from history, so the call itself has no value to compute. A side effect's value is produced locally, so on replay it must come from the recorded marker; calling `f` again would produce a different random id and fork the workflow's state.
+
+   </details>
+
+4. Why does `GetVersion` return `min` when replaying a history that has no `Version` marker at that point?
+
+   <details><summary>Answer</summary>
+
+   The run started before the change was deployed, so the old code ran there and issued the old commands. Taking the old path keeps replay matching that history. New runs, which are not replaying, record `max` and take the new path.
+
+   </details>
+
+5. Why does `ContinueAsNewSuggested` recompute the threshold from history instead of reading the server's `continue_as_new_suggested` flag?
+
+   <details><summary>Answer</summary>
+
+   The flag describes the current task only. A past task replayed later must see the value it saw at the time, or the code would branch differently on replay. Recomputing from the prefix of history up to each task's `WorkflowTaskStarted` gives the same answer every time.
+
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. replay plumbing: dropping a delivered result, collecting a task's commands from the wrong place, completing with the wrong value, taking the first `WorkflowTaskStarted` as current | the workflow sees empty results, every past task looks nondeterministic, or old commands are issued again | `TestReplayHandExample`, `TestRecordThenReplayOwnRun`, `TestKillServerMidWorkflowSameResult` (mutants `s02`, `s04`, `s07`, `s14`) |
-| 2. matching too loosely (id without type, any completion) | a changed workflow continues silently on a history it did not make | `TestReorderFailpointNondeterministic`, `TestNondeterminismDetected` (mutants `s03`, `s09`) |
-| 3. ids that do not advance with each command | two activities share an id; results go to the wrong future | `TestReplayHandExample` (mutant `s01`) |
-| 4. calling a side effect again on replay | a new random id on every replay forks the workflow's state | `TestSideEffectNotReexecuted` (mutant `s05`) |
-| 5. versioning: the new path for old histories, the wrong version recorded, the marker not consumed | every in-flight run breaks at the next deploy | `TestGetVersionMigration` (mutants `s06`, `s11`, `s12`) |
-| 6. ContinueAsNew treated as a failure, suggested too late, or the next run without its type and queue | long workflows fail, hit the history cap, or start a run no worker polls | `TestContinueAsNewKeepsHistoryBounded`, `TestServerCommandLimits` (mutants `s10`, `s15`, `s16`) |
-| 7. reading the wall clock | each replay sees a different time and takes a different branch | `TestNowComesFromHistory` (mutant `s13`) |
-| 8. no payload limits on markers or continue-as-new inputs | messages over 4 MiB, histories that cannot be served | `TestServerCommandLimits` (mutants `s17`, `s18`) |
+| 1. replay plumbing: dropping a delivered result, collecting a task's commands from the wrong place, completing with the wrong value, taking the first `WorkflowTaskStarted` as current | the workflow sees empty results, every past task looks nondeterministic, or old commands are issued again | `deliver` resolves by scheduled id; `expected` is the command events after each `wt_completed`; `HandleWorkflowTask` takes the last `wt_started` |
+| 2. matching too loosely (id without type, any completion) | a changed workflow continues silently on a history it did not make | `matches` compares id and type, and each final command only against its own event kind |
+| 3. ids that do not advance with each command | two activities share an id; results go to the wrong future | `e.seq++` before every activity and timer id |
+| 4. calling a side effect again on replay | a new random id on every replay forks the workflow's state | `SideEffect` reads the marker when `e.replaying` and never calls `f` |
+| 5. versioning: the new path for old histories, the wrong version recorded, the marker not consumed | every in-flight run breaks at the next deploy | `min` without a marker, `max` recorded on a first run, `expIdx++` when the marker is consumed |
+| 6. ContinueAsNew treated as a failure, suggested too late, or the next run without its type and queue | long workflows fail, hit the history cap, or start a run no worker polls | `continueAsNewError` becomes a `ContinueAsNew` command; `at` recomputes the suggestion; the server defaults type and queue |
+| 7. reading the wall clock | each replay sees a different time and takes a different branch | `Now` returns the current task's `WorkflowTaskStarted` time |
+| 8. no payload limits on markers or continue-as-new inputs | messages over 4 MiB, histories that cannot be served | `recordMarker` and `continueAsNew` refuse payloads over `MaxPayloadBytes` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
