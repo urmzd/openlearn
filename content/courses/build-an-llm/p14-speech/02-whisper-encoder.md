@@ -167,7 +167,7 @@ def forward(self, mel):
     if frames != 2 * cfg.n_audio_ctx:            # only 2A frames fill the A-row table
         raise ValueError(...)
     x = F.gelu(self.conv1(x))                    # [N, d, 2A], k=3 pad=1
-    x = F.gelu(self.conv2(x))  # [N, d, A]       # k=3 stride=2 pad=1
+    x = F.gelu(self.conv2(x))  # [N, d, A]; k=3 stride=2 pad=1
     x = F.transpose(x, 1, 2) + self.positions  # [N, A, d]
     for layer in self.layers:
         x = layer(x)

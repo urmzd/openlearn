@@ -124,7 +124,7 @@ tl_status tl_matmul_q8_f32(const float *x, const int8_t *wq, const float *scales
 | pooled equals serial | property | 4 threads vs serial, $N = 37$ | threads never change bits |
 | bytes packed by numpy | unit | numpy packs section 3's bytes; the kernel returns $[-47.5, 10.25]$ | the layout from Python |
 
-On one decode step ($M = 1$, $N = K = 2048$, group 32) the reference int4 kernel runs about 3.9 times faster than the float32 matmul of `L9.1`; a correct but slow implementation would still be correct, but 2 times is the floor that makes the kernel worth having.
+On one decode step ($M = 1$, $N = K = 2048$, group 32) the reference int4 kernel runs about 3.9 times faster than the float32 matmul of `L9.1`; a slower kernel can still be correct, but about 2 times is the least speedup that makes it worth having.
 
 ## 5. The solution, step by step
 
