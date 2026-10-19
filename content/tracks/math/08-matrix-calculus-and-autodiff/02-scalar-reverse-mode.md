@@ -1,41 +1,32 @@
-<!-- ol:module M08.2 -->
 # Scalar reverse mode: the Value graph
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M08.2` · build · Python · Pass 2 · 2 to 3 h |
-| **You build** | `python/tinyllm/autograd/scalar.py`: `Value` (`+ - * / **`, `exp`, `log`, `tanh`, `relu`, `backward`) |
+| **Module** | `M08.2` · build · Python · Pass 2 · about 1 to 1.5 h reading |
+| **Solution** | [`scalar.py`](../../../../course/solutions/python/tinyllm/autograd/scalar.py): `Value` (`+ - * / **`, `exp`, `log`, `tanh`, `relu`, `backward`) |
 | **Contract** | [`course/contracts/py/tinyllm/autograd/scalar.pyi`](../../../../course/contracts/py/tinyllm/autograd/scalar.pyi) |
-| **Tests** | `course/tests/M08.2/` (what they check: section 4) |
-| **Needs** | `M06.1` iterative topological sort (`toposort`) · `M08.1` dual numbers (the tests compare) · `M04.2` numeric VJP (or `--ref-deps`) |
-| **Used by** | `L0.1` (the scalarized oracle for broadcasting backward in your Tensor engine) |
-| **Milestone** | `MS-P2` (Pass 2 gate: every math module of the pass checks green, then your autograd bigram trains) |
+| **Needs** | `M06.1` iterative topological sort (`toposort`, [`graph.py`](../../../../course/solutions/python/tinyllm/autograd/graph.py)) · `M08.1` dual numbers (forward mode must agree) · `M04.2` numeric VJP |
+| **Used by** | `L0.1` (the scalarized oracle for broadcasting backward in the Tensor engine, on the way to the Pass 2 result: a bigram trained by the course's own autograd) |
 | **Optional depth** | Karpathy, [micrograd](https://github.com/karpathy/micrograd) and the lecture "The spelled-out intro to neural networks and backpropagation"; Baydin et al., [*Automatic Differentiation in Machine Learning: a Survey*](https://www.jmlr.org/papers/v18/17-468.html), section 3.2 |
 
 ## Key Takeaways
 
-- Reverse mode records the computation as a graph, then walks it once from the output, pushing $\bar v = \partial L / \partial v$ into each node's inputs by the chain rule (`test_hand_example`).
-- A node used several times receives several contributions, so gradients are accumulated with `+=`, never assigned (`test_reused_node_accumulates`).
-- The walk must visit each node once, after every consumer has added to it: reverse topological order, which `M06.1`'s iterative `toposort` provides without recursion (`test_diamond_visits_each_node_once`, `test_deep_chain_no_recursion_error`).
-- One backward pass gives the gradient with respect to every input, and it agrees with forward mode on every input (`test_matches_dual`, `test_gradcheck_each_op`).
+- Reverse mode records the computation as a graph, then walks it once from the output, pushing $\bar v = \partial L / \partial v$ into each node's inputs by the chain rule.
+- A node used several times receives several contributions, so gradients are accumulated with `+=`, never assigned.
+- The walk must visit each node once, after every consumer has added to it: reverse topological order, which `M06.1`'s iterative `toposort` provides without recursion.
+- One backward pass gives the gradient with respect to every input, and it agrees with forward mode on every input.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M08.2              # stubs scalar.py into your repo, contract alongside
-ol tests M08.2              # read the test catalog first: rung R0, you write no tests here
-ol check M08.2              # exit code is the verdict
-ol check M08.2 --ref-deps   # only if your M06.1, M08.1, or M04.2 is not passing yet
-ol diff  M08.2              # after passing: your code against the reference
-```
+Sections 1 to 3 build reverse mode from the chain rule and work one graph by hand. Section 4 fixes the interface and the cases a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Your bigram has $256 \times 256 = 65536$ weights and one loss. Forward mode (`M08.1`) would need 65536 passes to get the gradient, one per weight; `L0.5` trains it for thousands of steps. Reverse mode gets all 65536 partial derivatives from one forward pass and one backward pass, and that is the engine `L0.1` builds over numpy tensors. Tensors add broadcasting, shapes, and in-place buffers, which hide the mechanics. This module builds the same engine one scalar at a time, where every node is a number you can print, and `L0.1` then uses it as an oracle: a tensor op's gradient must equal the gradient of the same computation spelled out in scalar `Value`s.
+The Pass 2 bigram has $256 \times 256 = 65536$ weights and one loss. Forward mode (`M08.1`) would need 65536 passes to get the gradient, one per weight; `L0.5` trains it for thousands of steps. Reverse mode gets all 65536 partial derivatives from one forward pass and one backward pass, and that is the engine `L0.1` builds over numpy tensors. Tensors add broadcasting, shapes, and in-place buffers, which hide the mechanics. This module builds the same engine one scalar at a time, where every node is a number that can be printed, and `L0.1` then uses it as an oracle: a tensor op's gradient must equal the gradient of the same computation spelled out in scalar `Value`s.
 
 ## 2. Principles
 
@@ -98,7 +89,7 @@ $L = (ab + c)\,a$ at $a = 2$, $b = -3$, $c = 10$.
 
 Result: $\bar a = 4 - 6 = -2$, $\bar b = 4$, $\bar c = 2$. By hand, $L = a^2 b + ac$, so $\partial L/\partial a = 2ab + c = -12 + 10 = -2$, $\partial L/\partial b = a^2 = 4$, $\partial L/\partial c = a = 2$. The two paths into $a$ (through $L$ directly and through $d$) add up; with `=` instead of `+=`, $\bar a$ would end as $-6$ or $4$ depending on the order.
 
-These numbers are the first case in section 4, `test_hand_example`.
+These numbers are the first case in section 4.
 
 ## 4. The interface
 
@@ -114,49 +105,243 @@ class Value:
 
 `backward` calls `toposort(self, lambda v: v._prev)` from `tinyllm.autograd.graph` (`M06.1`): each reachable node once, every node before the nodes it was computed from. `Value ** Value` is a `TypeError`.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example` | unit | the section 3 forward and backward tables | you and the test agree on the walk |
-| `test_gradcheck_each_op` | gradcheck | every operation against the frozen central differences at three points | each local rule is right |
-| `test_matches_dual` | differential | one expression using every operation, both partials, against `M08.1` at 25 points | forward and reverse mode agree |
-| `test_vjp_matches_numeric_vjp` | differential | $u^\top J$ for a map $\mathbb{R}^3 \to \mathbb{R}^3$ against `M04.2`'s `vjp_numeric` | reverse mode is a VJP |
-| `test_reused_node_accumulates` | unit | $x + x$, $x \cdot x$, $x \cdot x + x$ | weights shared across positions |
-| `test_diamond_visits_each_node_once` | unit | $3e^x + 4e^x$ gives $7e^x$ | shared subexpressions everywhere |
-| `test_deep_chain_no_recursion_error` | boundary | a 50000-node chain | unrolled recurrences (`L3.1`) |
-| `test_relu_gradient_at_zero` | boundary | gradient 0 at exactly 0 | agreement with PyTorch at kinks |
-| `test_constants_on_either_side` | unit | $2x$, $x2$, $2 + x$, $1 - x$, $x - 1$, $6/x$, $x/2$, $-x$ | numbers mixed into expressions |
-| `test_pow_needs_a_constant_exponent` | boundary | `Value ** Value` is a `TypeError` | no silently wrong rule |
-| `test_backward_twice_accumulates` | unit | a second call doubles the leaf gradient | why training zeroes gradients |
+| Hand example | unit | the section 3 forward and backward tables | pins the walk |
+| Each op against central differences | gradcheck | every operation against frozen central differences at three points | each local rule is right |
+| Agreement with dual numbers | differential | one expression using every operation, both partials, against `M08.1` at 25 points | forward and reverse mode agree |
+| VJP against numeric VJP | differential | $u^\top J$ for a map $\mathbb{R}^3 \to \mathbb{R}^3$ against `M04.2`'s `vjp_numeric` | reverse mode is a VJP |
+| Reused node | unit | $x + x$, $x \cdot x$, $x \cdot x + x$ | weights shared across positions |
+| Diamond | unit | $3e^x + 4e^x$ gives $7e^x$ | shared subexpressions everywhere |
+| Deep chain | boundary | a 50000-node chain | unrolled recurrences (`L3.1`) |
+| ReLU at zero | boundary | gradient 0 at exactly 0 | agreement with PyTorch at kinks |
+| Constants on either side | unit | $2x$, $x2$, $2 + x$, $1 - x$, $x - 1$, $6/x$, $x/2$, $-x$ | numbers mixed into expressions |
+| Power needs a constant exponent | boundary | `Value ** Value` is a `TypeError` | no silently wrong rule |
+| Backward twice | unit | a second call doubles the leaf gradient | why training zeroes gradients |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. The chain rule pushed backward (section 2) needs, at each node, its inputs and its local derivatives. A node is created by an operation, so the operation is the one place that knows both: each operator method builds the output `Value`, records its inputs in `_prev`, and attaches a closure `_backward` that adds $\bar y\,\partial y/\partial x_j$ into each input.
+2. Because a node can have several consumers, its adjoint is a sum. So every closure uses `+=` on its inputs' `grad`, and `grad` starts at 0.
+3. A node may push only once its adjoint is complete, which forces the order: every node before the nodes it was computed from. `M06.1`'s `toposort(root, parents)` returns that order with each node once, iteratively.
+4. The seed is $\bar L = 1$, set (not added) on the output before the walk.
+5. Subtraction, division, and negation are compositions of `+`, `*`, and `**`, so they get their gradients from those rules and need no closures of their own. Numbers become constant leaves via `_lift`, and reflected methods keep the operand order.
+6. The closure for $e^x$ and $\tanh x$ reuses the forward output; `relu` passes the gradient only where the input is strictly positive.
+
+### The code, annotated
+
+The node and the two basic rules:
+
+```python
+class Value:
+    def __init__(self, data, _children=(), _op=""):
+        self.data = float(data)
+        self.grad = 0.0                 # adjoints are sums: start at 0
+        self._prev = tuple(_children)   # the inputs this node was computed from
+        self._op = _op                  # for printing the graph only
+        self._backward = _noop          # leaves have nothing to push
+
+    def __add__(self, other):
+        o = _lift(other)
+        out = Value(self.data + o.data, (self, o), "+")
+
+        def _backward():
+            # d(x1 + x2)/dx_j = 1; += because self may be used elsewhere too
+            self.grad += out.grad
+            o.grad += out.grad
+
+        out._backward = _backward
+        return out
+
+    def __mul__(self, other):
+        o = _lift(other)
+        out = Value(self.data * o.data, (self, o), "*")
+
+        def _backward():
+            # each factor gets the OTHER factor's value; for x * x both lines
+            # hit the same node and add 2x, as they should
+            self.grad += o.data * out.grad
+            o.grad += self.data * out.grad
+
+        out._backward = _backward
+        return out
+```
+
+The closure captures `self`, `o`, and `out`, so it reads `out.grad` at the time it runs, after the walk has completed it, not at the time it was created.
+
+Everything else is built from those, or has a one-input rule:
+
+```python
+    def __radd__(self, other):          # 2 + x: addition commutes
+        return self + other
+
+    def __sub__(self, other):           # a - b = a + (-1) b
+        return self + (-_lift(other))
+
+    def __rsub__(self, other):          # 1 - x: the number stays on the left
+        return _lift(other) + (-self)
+
+    def __truediv__(self, other):       # a / b = a * b^-1
+        return self * _lift(other) ** -1
+
+    def __rtruediv__(self, other):      # 6 / x = 6 * x^-1
+        return _lift(other) * self**-1
+
+    def __neg__(self):
+        return self * -1.0
+
+    def __pow__(self, k):
+        # a Value exponent would need the x^y rule (with log x); refuse it
+        # rather than apply k x^(k-1) with the wrong meaning
+        if isinstance(k, Value) or not isinstance(k, (int, float)):
+            raise TypeError("Value ** k needs a constant int or float k")
+        out = Value(self.data**k, (self,), f"**{k}")
+
+        def _backward():
+            self.grad += k * self.data ** (k - 1) * out.grad
+
+        out._backward = _backward
+        return out
+
+    def exp(self):
+        out = Value(math.exp(self.data), (self,), "exp")
+
+        def _backward():
+            self.grad += out.data * out.grad   # (e^x)' = e^x: reuse the output
+
+        out._backward = _backward
+        return out
+
+    def log(self):
+        out = Value(math.log(self.data), (self,), "log")
+
+        def _backward():
+            self.grad += out.grad / self.data
+
+        out._backward = _backward
+        return out
+
+    def tanh(self):
+        t = math.tanh(self.data)
+        out = Value(t, (self,), "tanh")
+
+        def _backward():
+            self.grad += (1.0 - t * t) * out.grad  # 1 - y^2, y the OUTPUT
+
+        out._backward = _backward
+        return out
+
+    def relu(self):
+        out = Value(self.data if self.data > 0 else 0.0, (self,), "relu")
+
+        def _backward():
+            # strict >: gradient 0 at exactly 0, as in PyTorch
+            self.grad += (1.0 if self.data > 0 else 0.0) * out.grad
+
+        out._backward = _backward
+        return out
+```
+
+And the walk:
+
+```python
+    def backward(self):
+        # root first, every node before the nodes it was computed from,
+        # each reachable node once; iterative, so deep chains are fine
+        order = toposort(self, lambda v: v._prev)
+        self.grad = 1.0                 # seed: set, not +=
+        for v in order:
+            v._backward()               # v.grad is complete when v is reached
+
+
+def _lift(x):
+    """A Value as is; a number as a constant leaf."""
+    return x if isinstance(x, Value) else Value(x)
+```
+
+On the worked example, `toposort` returns $L, e, d$ and then the leaves (in some order, all after the nodes that consume them). $L$'s closure adds 2 to $\bar e$ and 4 to $\bar a$; $e$'s adds 2 to $\bar d$ and $\bar c$; $d$'s adds $-6$ to $\bar a$ and 4 to $\bar b$. Leaves run `_noop`. $\bar a = 4 - 6 = -2$.
+
+Full solution: [`scalar.py`](../../../../course/solutions/python/tinyllm/autograd/scalar.py); the walk order comes from [`graph.py`](../../../../course/solutions/python/tinyllm/autograd/graph.py).
+
+### Why this solution
+
+- **Cost.** Forward: one node per operation. Backward: one topological sort, $O(\text{nodes} + \text{edges})$, then one closure call per node, each $O(\text{inputs})$. So the whole gradient costs a small constant times the forward pass, independent of the number of inputs. Memory is one `Value` per intermediate, which is why scalar autograd is an oracle, not an engine: a $576 \times 576$ matmul on one vector would be a third of a million nodes.
+- **Why closures instead of a table of op rules.** The closure captures exactly the values the rule needs (`t` for tanh, `out` for exp) at the time they are computed. A table keyed by `_op` would have to re-derive them from `_prev` and could not reuse the forward output.
+- **Why a precomputed order, not a ready queue.** PyTorch counts each node's pending consumers and runs a node when its count hits zero. That handles graphs that are freed as they go, and multiple devices. For a scalar oracle, one `toposort` gives the same order with less machinery, and reuses `M06.1`.
+- **Why composite subtraction and division.** Fewer rules means fewer places to get a sign wrong. The cost is a few extra nodes per operation, irrelevant for an oracle.
+- **Tradeoff accepted.** `backward` accumulates across calls instead of zeroing first. That matches PyTorch and makes gradient accumulation across micro-batches possible; the price is that a training loop must clear gradients itself.
+
+### Explain it back
+
+1. In $x \cdot x$, `__mul__`'s closure runs `self.grad += o.data * out.grad` and `o.grad += self.data * out.grad` with `self is o`. What is the result, and why is it right?
+
+   <details><summary>Answer</summary>
+
+   Both lines add $x\,\bar y$ to the same node, giving $2x\,\bar y$, the derivative of $x^2$. With `=` instead of `+=`, the second line would overwrite the first and give $x\,\bar y$.
+
+   </details>
+
+2. Why must the walk visit nodes in reverse topological order rather than, say, depth-first from the output pushing as it goes?
+
+   <details><summary>Answer</summary>
+
+   A node's adjoint is a sum over its consumers. Pushing from a node before all its consumers have added to it pushes a partial sum. A depth-first walk that pushes on every visit would also run a shared node's closure once per path, so in the diamond $3e^x + 4e^x$ the inputs would get multiples of the right gradient.
+
+   </details>
+
+3. Why does `tanh` capture `t` and use $1 - t^2$, rather than recomputing from `self.data`?
+
+   <details><summary>Answer</summary>
+
+   $\tanh'(x) = 1 - \tanh^2 x$ is a function of the output. Using $1 - x^2$ with the input is a different, wrong function (correct only at 0). Capturing `t` also avoids recomputing $\tanh$.
+
+   </details>
+
+4. Why is the seed `self.grad = 1.0` and not `self.grad += 1.0`?
+
+   <details><summary>Answer</summary>
+
+   $\partial L/\partial L = 1$ by definition, and the root has no consumers that could contribute to it, so the seed is a definition, not a contribution. With `+=`, a second call would find the 1 left by the first call and start the walk from 2. (Intermediate nodes also still hold their first-call adjoints, so a second call on the same graph re-pushes them; that is why training builds a fresh graph and clears gradients each step.)
+
+   </details>
+
+5. Why does `Value ** Value` raise instead of using the power rule?
+
+   <details><summary>Answer</summary>
+
+   The rule $k x^{k-1}$ treats the exponent as a constant. With a `Value` exponent, the gradient with respect to the exponent ($x^y \ln x$) would be silently missing. Raising makes the unsupported case loud.
+
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. `x.grad = ...` instead of `+=` | a node used twice keeps only its last contribution | `test_reused_node_accumulates` (mutant `s01`) |
-| 2. walking inputs first, or walking every path | partial or repeated pushes; shared nodes get wrong multiples | `test_diamond_visits_each_node_once` (mutants `s03`, `s13`) |
-| 3. a recursive topological sort inside `backward` | `RecursionError` on a deep chain | `test_deep_chain_no_recursion_error` (mutant `s05`) |
-| 4. giving each factor its own value in the product rule | $\bar a$ is wrong in the worked example | `test_hand_example` (mutant `s02`) |
-| 5. $\tanh'$ from the input ($1 - x^2$) instead of the output ($1 - y^2$) | wrong slopes away from 0 | `test_gradcheck_each_op` (mutant `s06`) |
-| 6. `>=` in relu's backward | gradient 1 at the kink, unlike PyTorch | `test_relu_gradient_at_zero` (mutant `s07`) |
-| 7. a reflected method that reverses the operands | $1 - x$ has slope $+1$ | `test_constants_on_either_side` (mutants `s11`, `s12`) |
-| 8. adding to the seed instead of setting it | the second backward starts from 2 | `test_backward_twice_accumulates` (mutant `s04`) |
+| 1. `x.grad = ...` instead of `+=` | a node used twice keeps only its last contribution | every closure adds into `grad` |
+| 2. walking inputs first, or walking every path | partial or repeated pushes; shared nodes get wrong multiples | `toposort` gives each node once, consumers first |
+| 3. a recursive topological sort inside `backward` | `RecursionError` on a deep chain | `M06.1`'s `toposort` uses an explicit stack |
+| 4. giving each factor its own value in the product rule | $\bar a$ is wrong in the worked example | `self.grad += o.data * out.grad`: each factor gets the other's value |
+| 5. $\tanh'$ from the input ($1 - x^2$) instead of the output ($1 - y^2$) | wrong slopes away from 0 | captures the output `t` and uses $1 - t^2$ |
+| 6. `>=` in relu's backward | gradient 1 at the kink, unlike PyTorch | strict `self.data > 0` |
+| 7. a reflected method that reverses the operands | $1 - x$ has slope $+1$ | `__rsub__` builds `_lift(other) + (-self)` |
+| 8. adding to the seed instead of setting it | the second backward starts from 2 | `self.grad = 1.0` before the walk |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M06.1` | `toposort(root, parents)`: the order of the walk, without recursion |
-| Back | `M08.1` | `Dual` computes the same derivatives forward; the tests compare |
+| Back | `M08.1` | `Dual` computes the same derivatives forward; the two must agree |
 | Back | `M04.2` | `vjp_numeric` approximates the same $u^\top J$ by central differences |
-| Forward | `L0.1` | your Tensor engine's broadcasting backward is checked against the same computation spelled out in `Value`s |
-
-If you skip this module, `ol check L0.1` stops with `L0.1 needs M08.2`: build it, or rerun with `--ref-deps`.
+| Forward | `L0.1` | the Tensor engine's broadcasting backward is checked against the same computation spelled out in `Value`s |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `Value` | micrograd | the same engine plus a tiny neural-network library on top | `micrograd/engine.py` |
 | `backward` | PyTorch's autograd engine | dependency counting and a ready queue instead of a precomputed order, multithreaded per device, retained or freed graphs | `torch/csrc/autograd/engine.cpp` |

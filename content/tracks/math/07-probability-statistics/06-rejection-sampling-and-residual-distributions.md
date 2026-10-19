@@ -1,41 +1,32 @@
-<!-- ol:module M07.6 -->
 # Rejection sampling and residual distributions
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M07.6` · build · Python · Pass 6 · 2 to 3 h |
-| **You build** | `python/tinyllm/prob/rejection.py`: `rejection_accept`, `acceptance_probability`, `residual_distribution`, `speculative_step`, `rejection_sample` |
+| **Module** | `M07.6` · build · Python · Pass 6 · 1 to 1.5 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/prob/rejection.py`](../../../../course/solutions/python/tinyllm/prob/rejection.py): `rejection_accept`, `acceptance_probability`, `residual_distribution`, `speculative_step`, `rejection_sample` |
 | **Contract** | [`course/contracts/py/tinyllm/prob/rejection.pyi`](../../../../course/contracts/py/tinyllm/prob/rejection.pyi) · the draw order: [`spec/sampling.md`](../../../../course/contracts/spec/sampling.md) (draw accounting) |
-| **Tests** | `course/tests/M07.6/` (what they check: section 4) |
-| **Needs** | `M07.1` (`sample_categorical`, the inverse CDF, and `UniformSource`) · reading: `M07.0` random variables, `M06.3` PCG32 (your uniforms) |
-| **Used by** | `L8.6` speculative decoding verifies every draft token with `speculative_step`, and `L10.8` ports it to Rust |
-| **Milestone** | `MS-P6` (Pass 6 gate: every math module of the pass checks green) |
+| **Needs** | `M07.1` (`sample_categorical`, the inverse CDF, and `UniformSource`; [`sampling.py`](../../../../course/solutions/python/tinyllm/prob/sampling.py)) · reading: `M07.0` random variables, `M06.3` PCG32 (the uniforms) |
+| **Used by** | `L8.6` speculative decoding verifies every draft token with `speculative_step`, and `L10.8` ports it to Rust; one of the Pass 6 math modules |
 | **Optional depth** | Devroye, *Non-Uniform Random Variate Generation* (1986), ch. 2.3; Leviathan, Kalman, and Matias, "Fast Inference from Transformers via Speculative Decoding" (2023), appendix A.1; Chen et al., "Accelerating Large Language Model Decoding with Speculative Sampling" (2023) |
 
 ## Key Takeaways
 
-- Keeping a draft $x \sim q$ with probability $\min(1, p_x/q_x)$ keeps exactly $\min(p_x, q_x)$ of every token's mass; the total kept is $\sum_x \min(p_x, q_x) = 1 - \mathrm{TV}(p, q)$ (`test_acceptance_rate_matches_acceptance_probability`).
-- What rejection removes is exactly the residual $\max(0, p - q)$, so resampling from its normalized form restores $p$ token for token: the output of `speculative_step` is distributed as $p$ for every $q$ (`test_speculative_output_is_exactly_p`).
-- "Accept when $u < r$" with $u$ uniform on $[0, 1)$ has probability exactly $\min(1, r)$; "$u \le r$" counts one extra point and accepts tokens $p$ never produces (`test_accept_is_strict`).
-- Von Neumann's sampler accepts a proposal with probability $p_x / (m q_x)$; each try succeeds with probability $1/m$, so the cost is a geometric number of tries with mean $m$ (`test_rejection_sample_tries_are_geometric`).
+- Keeping a draft $x \sim q$ with probability $\min(1, p_x/q_x)$ keeps exactly $\min(p_x, q_x)$ of every token's mass; the total kept is $\sum_x \min(p_x, q_x) = 1 - \mathrm{TV}(p, q)$.
+- What rejection removes is exactly the residual $\max(0, p - q)$, so resampling from its normalized form restores $p$ token for token: the output of `speculative_step` is distributed as $p$ for every $q$.
+- "Accept when $u < r$" with $u$ uniform on $[0, 1)$ has probability exactly $\min(1, r)$; "$u \le r$" counts one extra point and accepts tokens $p$ never produces.
+- Von Neumann's sampler accepts a proposal with probability $p_x / (m q_x)$; each try succeeds with probability $1/m$, so the cost is a geometric number of tries with mean $m$.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M07.6              # stubs rejection.py into your repo
-ol tests M07.6              # read the test catalog first: rung R0, you write no tests here
-ol check M07.6              # exit code is the verdict
-ol check M07.6 --ref-deps   # only if you skipped M07.1
-ol diff  M07.6              # after passing: your code against the reference
-```
+Sections 1 and 2 derive von Neumann's sampler, the acceptance test, and the residual distribution, and prove that speculative decoding samples exactly $p$. Section 3 works the theorem by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Your sampler (`L8.1`) emits one token per forward pass of the model, and each forward pass reads every weight once. In Part 8 you will make decoding faster without changing what it says: a cheap draft (an n-gram table, a prompt lookup, a small model) proposes several tokens, and the target model checks all of them in one forward pass (`L8.6`). Greedy decoding only needs "did the draft guess the argmax". Sampled decoding needs more: the accepted text must be distributed exactly as if the target had sampled it alone, or the speedup silently changes the model's output distribution, which no eval would attribute to the cache. This module is the piece of probability that makes that exact: an acceptance test and a residual distribution, proved by enumeration before `L8.6` builds on them.
+The sampler (`L8.1`) emits one token per forward pass of the model, and each forward pass reads every weight once. Part 8 makes decoding faster without changing what it says: a cheap draft (an n-gram table, a prompt lookup, a small model) proposes several tokens, and the target model checks all of them in one forward pass (`L8.6`). Greedy decoding only needs "did the draft guess the argmax". Sampled decoding needs more: the accepted text must be distributed exactly as if the target had sampled it alone, or the speedup silently changes the model's output distribution, which no eval would attribute to the cache. This module is the piece of probability that makes that exact: an acceptance test and a residual distribution, proved by enumeration before `L8.6` builds on them.
 
 ## 2. Principles
 
@@ -54,7 +45,7 @@ Your sampler (`L8.1`) emits one token per forward pass of the model, and each fo
 
 ### 2.1 Von Neumann's rejection sampler
 
-You can sample $q$ cheaply but want samples of $p$. If $p_i \le m\, q_i$ for every $i$, repeat: draw $x \sim q$, draw $u$, and accept $x$ when $u < p_x / (m\, q_x)$. On one try,
+Suppose $q$ is cheap to sample but samples of $p$ are wanted. If $p_i \le m\, q_i$ for every $i$, repeat: draw $x \sim q$, draw $u$, and accept $x$ when $u < p_x / (m\, q_x)$. On one try,
 
 $$P(\text{propose } x \text{ and accept}) = q_x \cdot \frac{p_x}{m\, q_x} = \frac{p_x}{m}, \qquad P(\text{accept}) = \sum_x \frac{p_x}{m} = \frac{1}{m}.$$
 
@@ -102,7 +93,7 @@ The acceptance probability is $\alpha = \tfrac14 + \tfrac14 = \tfrac12$; the res
 - id 2: never proposed, residual: $\tfrac12 \cdot \tfrac12 = \tfrac14$.
 - id 3: proposed a quarter of the time and always rejected: 0.
 
-That is $p$. One concrete draw: the draft proposes $x = 1$, $u = 0.75 \ge r_1 = 0.5$ rejects it, and $u' = 0.75$ walks the residual's CDF $[0.5, 0.5, 1.0, 1.0]$ to id 2. With $u = 0.25$ instead, id 1 is kept and $u'$ is not looked at. These are the first cases in section 4: `test_hand_example`, `test_hand_example_output_is_p`, and `test_speculative_accepts_without_resampling`.
+That is $p$. One concrete draw: the draft proposes $x = 1$, $u = 0.75 \ge r_1 = 0.5$ rejects it, and $u' = 0.75$ walks the residual's CDF $[0.5, 0.5, 1.0, 1.0]$ to id 2. With $u = 0.25$ instead, id 1 is kept and $u'$ is not looked at. These are the first cases in section 4.
 
 ## 4. The interface
 
@@ -115,7 +106,7 @@ def speculative_step(p, q, x: int, u_accept: float, u_resample: float) -> tuple[
 def rejection_sample(p, q, m: float, rng: UniformSource, max_tries: int = 10000) -> tuple[int, int]
 ```
 
-`speculative_step` resamples with your `M07.1` `sample_categorical`. `rejection_sample` draws exactly two uniforms per try, proposal first. The contract has every error rule.
+`speculative_step` resamples with `M07.1`'s `sample_categorical`. `rejection_sample` draws exactly two uniforms per try, proposal first. The contract has every error rule.
 
 ### What the tests check
 

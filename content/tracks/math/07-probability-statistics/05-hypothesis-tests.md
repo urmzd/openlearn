@@ -115,47 +115,209 @@ def holm_adjust(pvalues: ArrayLike) -> NDArray: ...
 
 The draw order is part of the contract, because `load.02` re-implements the two-sample test in Go and must reproduce these p-values from the same seed: the paired test draws one uniform per pair per permutation ($u < 0.5$ flips); the two-sample test restarts from the identity order each permutation and runs Fisher-Yates from the end with $j = \min(\lfloor u(i+1) \rfloor, i)$. A permuted statistic counts as "at least as extreme" when it is at least $t_{\text{obs}}(1 - 10^{-9})$, so rounding never splits a tie.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_paired_enumeration` | unit, smoke | section 3: $(1 + 2)/(1 + 8) = 1/3$ over the eight patterns | you and the tests agree on the statistic and the add-one rule |
-| `test_hand_example_mcnemar` | unit, smoke | $9/128$ exact, $\operatorname{erfc}(1.25)$ approximate | classifier comparisons in `L6.7` |
-| `test_hand_example_holm` | unit, smoke | all four rejected, adjusted $(0.03, 0.04, 0.04, 0.02)$ | the zoo's comparison table |
-| `test_paired_matches_exact_scipy` | golden | Monte Carlo within 4.5 standard errors of scipy's exact enumeration | the estimate converges to the right number |
-| `test_two_sample_matches_exact_scipy` | golden | the same for 6 + 6, 7 + 5, 8 + 8 splits | latency and eval comparisons |
-| `test_replay_pins_the_draw_order` | golden | exact p-values for fixed seeds | `load.02` in Go reproduces them |
-| `test_mcnemar_matches_scipy` | golden | `binomtest` and the chi-square, up to 360 pairs | exact arithmetic, no overflow |
-| `test_holm_matches_reference` | golden | adjusted p and rejections on five families | ties, 0 and 1, a single test |
-| `test_paired_type_one_rate` | statistical | $P(p \le 0.1) = 0.1$ under $H_0$ over 300 datasets | false alarms at the promised rate |
-| `test_two_sample_type_one_rate` | statistical | the same with groups of 6 and 9 | the shuffle really mixes the groups |
-| `test_tests_have_power` | statistical | real shifts are detected at 0.05 | a test that never rejects is useless |
-| `test_draw_counts` | unit | $B n$ and $B(N - 1)$ uniforms | one stream in every language |
-| `test_fisher_yates_order` | unit | $u \to 1$ is the identity, $u = 0$ deals $(5, 1 \mid 2, 3)$ | the shuffle of section 2.4 |
-| `test_two_sided` | property | swapping A and B, or negating the statistic, leaves $p$ unchanged | "different", not "better" |
-| `test_add_one_and_degenerate_data` | boundary | $p > 0$ always; no differences give $p = 1$ | no "p = 0" in a report |
-| `test_rounding_never_splits_a_tie` | boundary | $d = (-0.7, 0.2, 0.7, 0.1)$ counts 12 of 16 ties | decimal scores tie in exact arithmetic |
-| `test_holm_steps_down_and_stops` | property | stops at the first failure; equality rejects; superset of Bonferroni | section 2.6 |
-| `test_holm_adjust_is_monotone_and_capped` | property | adjusted p sorted like raw p, at most 1 | a table column you can trust |
-| `test_mcnemar_edges` | boundary | no disagreements or a tie give 1; symmetric | small eval sets |
-| `test_rejects_bad_arguments` | boundary | bad lengths, NaN, `n_perm < 1`, bad counts, p outside $[0, 1]$ raise | bugs surface at the call |
+| paired test by hand | unit | section 3: $(1 + 2)/(1 + 8) = 1/3$ over the eight patterns | everyone agrees on the statistic and the add-one rule |
+| McNemar by hand | unit | $9/128$ exact, $\operatorname{erfc}(1.25)$ approximate | classifier comparisons in `L6.7` |
+| Holm by hand | unit | all four rejected, adjusted $(0.03, 0.04, 0.04, 0.02)$ | the zoo's comparison table |
+| paired against exact enumeration | golden | Monte Carlo within 4.5 standard errors of scipy's exact enumeration | the estimate converges to the right number |
+| two-sample against exact enumeration | golden | the same for 6 + 6, 7 + 5, 8 + 8 splits | latency and eval comparisons |
+| replay of fixed seeds | golden | exact p-values for fixed seeds | `load.02` in Go reproduces them |
+| McNemar against scipy | golden | `binomtest` and the chi-square, up to 360 pairs | exact arithmetic, no overflow |
+| Holm against a reference | golden | adjusted p and rejections on five families | ties, 0 and 1, a single test |
+| paired type-I rate | statistical | $P(p \le 0.1) = 0.1$ under $H_0$ over 300 datasets | false alarms at the promised rate |
+| two-sample type-I rate | statistical | the same with groups of 6 and 9 | the shuffle really mixes the groups |
+| power | statistical | real shifts are detected at 0.05 | a test that never rejects is useless |
+| draw counts | unit | $B n$ and $B(N - 1)$ uniforms | one stream in every language |
+| Fisher-Yates order | unit | $u \to 1$ is the identity, $u = 0$ deals $(5, 1 \mid 2, 3)$ | the shuffle of section 2.4 |
+| two-sidedness | property | swapping A and B, or negating the statistic, leaves $p$ unchanged | "different", not "better" |
+| add-one and degenerate data | boundary | $p > 0$ always; no differences give $p = 1$ | no "p = 0" in a report |
+| rounding never splits a tie | boundary | $d = (-0.7, 0.2, 0.7, 0.1)$ counts 12 of 16 ties | decimal scores tie in exact arithmetic |
+| Holm steps down and stops | property | stops at the first failure; equality rejects; superset of Bonferroni | section 2.6 |
+| Holm adjustment is monotone and capped | property | adjusted p sorted like raw p, at most 1 | a trustworthy table column |
+| McNemar edges | boundary | no disagreements or a tie give 1; symmetric | small eval sets |
+| bad arguments | boundary | bad lengths, NaN, `n_perm < 1`, bad counts, p outside $[0, 1]$ raise | bugs surface at the call |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **A permutation test is "count how often the null world is as extreme".** Section 2.3: compute $t_{\text{obs}}$ once, draw $B$ relabellings the null says are harmless, count those with $T \ge t_{\text{obs}}$, return $(1 + \text{count})/(1 + B)$. Everything else is which relabelling and which $T$.
+2. **Two-sided means a magnitude.** $T = |\cdot|$ on both the observed and the permuted statistic, so swapping A and B (or negating the statistic) cannot change $p$.
+3. **Ties need a relative bar.** Scores like 0.7 and 0.2 tie in exact arithmetic but their float sums can differ by an ulp depending on the order of addition. Comparing against $t_{\text{obs}}(1 - 10^{-9})$ counts those ties as "at least as extreme", which is what the exact test does.
+4. **Paired relabelling is a sign flip per pair, one uniform each.** $u < 0.5$ flips; $B n$ uniforms in all, in pair order, so the stream is fixed.
+5. **Two-sample relabelling is a fresh Fisher-Yates shuffle each time.** Start from the identity, for $i = N-1$ down to 1 pick $j = \min(\lfloor u(i+1) \rfloor, i)$, swap; then the first $n_a$ are group A. $N - 1$ uniforms per permutation. Restarting from the identity is what makes the permutation a function of its own $N - 1$ uniforms only.
+6. **McNemar exact is a binomial tail in integers.** $p = \min(1, 2\sum_{i \le k}\binom{n}{i}/2^n)$, with Python's exact integers until one final division, so $n$ in the hundreds neither overflows nor underflows. The approximation applies Edwards' $-1$ and clamps at 0 so a tie gives $\chi^2 = 0$, $p = 1$.
+7. **Holm sorts, compares with a relaxing bar, and stops.** Reject the $k$-th smallest while $p_{(k)} \le \alpha/(m - k)$; break at the first failure. The adjusted p-values are the running maximum of $\min(1, (m-k)p_{(k)})$, written back to input positions.
+
+### The code, annotated
+
+```python
+TIE_RTOL = 1e-9
+
+
+def paired_permutation_test(a, b, n_perm: int, rng) -> float:
+    x, y = _vector(a, "a"), _vector(b, "b")          # non-empty, 1-D, finite
+    if x.shape != y.shape:
+        raise ValueError(f"a and b must pair up, got lengths {x.size} and {y.size}")
+    n_perm = _n_perm(n_perm)                         # an integer >= 1
+    d = x - y
+    t_obs = abs(float(np.sum(d)))                    # two-sided: a magnitude
+    bar = t_obs * (1.0 - TIE_RTOL)                   # ties a rounding error below still count
+    count = 0
+    for _ in range(n_perm):
+        # Under H0 the two scores of a pair could have come from either model:
+        # each difference keeps or flips its sign with probability 1/2.
+        s = np.array([-1.0 if rng.uniform() < 0.5 else 1.0 for _ in range(d.size)])
+        if abs(float(np.sum(s * d))) >= bar:
+            count += 1
+    return (1 + count) / (1 + n_perm)                # the observed labelling is one more draw
+```
+
+When all differences are 0, $t_{\text{obs}} = 0$, `bar = 0`, every permutation counts, and $p = (1 + B)/(1 + B) = 1$: no evidence, as it should be. With section 3's $d = (2, 1, 3)$, `bar` is just below 6, and the patterns $+{+}{+}$ and $-{-}{-}$ count.
+
+```python
+def permutation_test(a, b, stat, n_perm: int, rng) -> float:
+    x, y = _vector(a, "a"), _vector(b, "b")
+    n_perm = _n_perm(n_perm)
+    z = np.concatenate([x, y])                        # the pooled values
+    na, total = x.size, z.size
+    t_obs = abs(float(stat(x, y)))
+    bar = t_obs * (1.0 - TIE_RTOL)
+    count = 0
+    for _ in range(n_perm):
+        # Under H0 the group labels are arbitrary: deal the pooled values into
+        # two groups of the original sizes, uniformly over all orders.
+        idx = list(range(total))                      # restart from the identity every time
+        for i in range(total - 1, 0, -1):             # Fisher-Yates from the end
+            j = min(int(rng.uniform() * (i + 1)), i)  # j uniform on {0, ..., i}; clamp guards rounding
+            idx[i], idx[j] = idx[j], idx[i]
+        p = z[idx]
+        if abs(float(stat(p[:na], p[na:]))) >= bar:   # same sizes as the data
+            count += 1
+    return (1 + count) / (1 + n_perm)
+```
+
+`stat` is any function of the two groups; `mean_difference` (`np.mean(a) - np.mean(b)`) is the default the callers pass. The absolute value is applied here, not inside `stat`, so a caller's signed statistic still gives a two-sided test.
+
+```python
+def mcnemar(b01: int, b10: int, exact: bool = True) -> float:
+    # (integer >= 0 checks elided)
+    n = b01 + b10
+    if n == 0:
+        return 1.0                                     # no disagreements: no evidence
+    if exact:
+        # Under H0 each discordant pair is a fair coin: b01 ~ Binomial(n, 1/2).
+        # Two-sided: double the smaller tail. Integers until the one division.
+        k = min(b01, b10)
+        tail = sum(math.comb(n, i) for i in range(k + 1))
+        return min(1.0, 2 * tail / 2**n)               # cap: doubling a tie's tail exceeds 1
+    chi2 = max(abs(b01 - b10) - 1, 0) ** 2 / n         # Edwards' continuity correction, clamped
+    return math.erfc(math.sqrt(chi2 / 2.0))            # chi-square(1) survival via the normal
+```
+
+Section 3: `tail = 1 + 8 = 9`, `2 * 9 / 256 = 9/128`. The approximate branch gives $\chi^2 = 25/8$ and $\operatorname{erfc}(\sqrt{1.5625}) = \operatorname{erfc}(1.25) = 0.0771$. The identity $P(\chi^2_1 > c) = \operatorname{erfc}(\sqrt{c/2})$ holds because $\chi^2_1$ is the square of a standard normal.
+
+```python
+def holm(pvalues, alpha: float = 0.05) -> NDArray:
+    p = _pvalues(pvalues)                              # 1-D, every value in [0, 1]
+    # (alpha check elided)
+    m = p.size
+    order = np.argsort(p, kind="stable")               # stable: ties keep input order
+    reject = np.zeros(m, dtype=bool)
+    for k, i in enumerate(order):
+        # The smallest p-value faces the strictest bar alpha / m; each
+        # rejection removes one hypothesis from the family.
+        if p[i] > alpha / (m - k):
+            break                                      # step-down: nothing after a failure is rejected
+        reject[i] = True                               # equality rejects
+    return reject
+
+
+def holm_adjust(pvalues) -> NDArray:
+    p = _pvalues(pvalues)
+    m = p.size
+    order = np.argsort(p, kind="stable")
+    adj = np.empty(m, dtype=np.float64)
+    running = 0.0
+    for k, i in enumerate(order):
+        running = max(running, min(1.0, (m - k) * p[i]))   # running max keeps the order
+        adj[i] = running                                   # written back in input order
+    return adj
+```
+
+Section 3's family sorts to $(0.005, 0.01, 0.02, 0.04)$ with multipliers $4, 3, 2, 1$: $0.02, 0.03, 0.04, 0.04$, and in input order $(0.03, 0.04, 0.04, 0.02)$. `holm(p, alpha)` rejects exactly where `holm_adjust(p) <= alpha`.
+
+Full solution: [`tests.py`](../../../../course/solutions/python/tinyllm/prob/tests.py).
+
+### Why this solution
+
+- **Cost.** The paired test is $O(Bn)$ time and $B n$ uniforms; the two-sample test $O(BN)$ plus $B$ calls to `stat`, with $B(N-1)$ uniforms. Exact McNemar is $O(k)$ big-integer binomials; Holm and its adjustment are $O(m \log m)$ for the sort.
+- **Permutation over $t$-tests.** A paired $t$-test assumes roughly normal differences; per-prompt scores are 0/1, bounded, or heavy-tailed. The permutation test assumes only exchangeability under $H_0$, which is exactly what "the models are equally good" means here, and its add-one p-value has an exact type-I guarantee at any $n$.
+- **Monte Carlo over exact enumeration.** $2^n$ sign patterns or $\binom{N}{n_a}$ splits are out of reach for real eval sets; $B$ random relabellings give an unbiased estimate whose error shrinks like $1/\sqrt B$, and the add-one form remains valid for any $B$.
+- **Holm over Bonferroni.** Holm controls the same family-wise error rate and rejects a superset of what Bonferroni rejects, at the cost of a sort. Benjamini-Hochberg would control the false discovery rate instead, a weaker promise than "no false winner in the table".
+- **Tradeoffs accepted.** The scalar loops and a fixed draw order make the functions slower than vectorized numpy, in exchange for a stream that the Go port (`load.02`) reproduces draw for draw.
+
+### Explain it back
+
+**1. Why $(1 + \text{count})/(1 + B)$ and not $\text{count}/B$?**
+
+<details><summary>Answer</summary>
+
+Under $H_0$ the observed labelling is exchangeable with the $B$ random ones, so its statistic's rank among all $B + 1$ is uniform. The add-one p-value is exactly that rank's upper-tail fraction, giving $P(p \le \alpha) \le \alpha$ exactly. $\text{count}/B$ can be 0, which overstates the evidence (no true p-value is 0) and breaks the type-I promise for small $B$.
+
+</details>
+
+**2. Why compare the permuted statistic with `t_obs * (1 - 1e-9)` rather than `t_obs`?**
+
+<details><summary>Answer</summary>
+
+Decimal scores tie in exact arithmetic but not always in floating point: $-0.7 + 0.2 + 0.7 + 0.1$ and $0.7 + 0.2 - 0.7 + 0.1$ can round differently, landing an ulp below $t_{\text{obs}}$. A bare $\ge$ would miss those ties and report too small a p-value. The relative margin is far larger than rounding and far smaller than any real difference.
+
+</details>
+
+**3. Why must Fisher-Yates pick $j$ from $\{0, \ldots, i\}$ rather than from all $N$ positions?**
+
+<details><summary>Answer</summary>
+
+Picking from $\{0, \ldots, i\}$ at step $i$ gives $N!$ equally likely swap sequences, one per order. Picking from all $N$ each time gives $N^N$ sequences, and since $N^N$ is not a multiple of $N!$ for $N > 2$ they cannot map evenly onto orders: some groupings become more likely, and the test's null distribution is wrong. It also changes the uniform-to-order map the Go port reproduces.
+
+</details>
+
+**4. Why does `holm` `break` at the first failure instead of testing the rest?**
+
+<details><summary>Answer</summary>
+
+Holm's FWER proof relies on stepping down: the bar $\alpha/(m-k)$ is only justified once the $k$ smaller p-values were rejected. A later p-value can pass its looser bar after an earlier one failed (for example $(0.03, 0.04)$ with $m = 2$: $0.03 > 0.025$ fails, $0.04 \le 0.05$ would pass), and rejecting it would exceed the promised error rate.
+
+</details>
+
+**5. Why does exact McNemar sum `math.comb` integers and divide once by `2**n`?**
+
+<details><summary>Answer</summary>
+
+For $n$ in the hundreds, $\binom{n}{i}$ overflows float64 and $2^{-n}$ underflows; computing each term as a float loses the tail or produces inf/inf. Python integers are exact at any size, so the tail is exact and the single division rounds once to the nearest float.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. a one-sided comparison by accident (no $\lvert \cdot \rvert$) | $p$ near 1 when B is worse, too small when better | `test_two_sided` (mutant `s01`) |
-| 2. $\text{count}/B$ without the add-one | "p = 0.000" in a report; type-I promise broken | `test_add_one_and_degenerate_data` (mutant `s02`) |
-| 3. the naive shuffle ($j$ over the whole array) | some orders more likely than others; another stream than Go | `test_fisher_yates_order`, `test_replay_pins_the_draw_order` (mutant `s03`) |
-| 4. shuffling on from the previous permutation | still a valid test, but not the contract's stream | `test_fisher_yates_order` (mutant `s04`) |
-| 5. comparing permuted statistics with a bare $\ge$ | exact ties land an ulp below and are missed: $p$ too small | `test_rounding_never_splits_a_tie` (mutant `s05`) |
-| 6. McNemar without doubling, without the cap, or without the continuity correction | $p$ halved, above 1, or too small | `test_hand_example_mcnemar`, `test_mcnemar_edges` (mutants `s06`, `s07`, `s12`) |
-| 7. Bonferroni where Holm was meant | real improvements missed | `test_hand_example_holm` (mutant `s08`) |
-| 8. Holm that does not stop at the first failure | a later hypothesis rejected past a failed bar: FWER broken | `test_holm_steps_down_and_stops` (mutant `s09`) |
-| 9. adjusted p-values without the running maximum | a smaller raw p gets a larger adjusted one | `test_holm_adjust_is_monotone_and_capped` (mutant `s10`) |
-| 10. a relabelling that never mixes the groups | every permutation equals the data: $p = 1$, no power | `test_two_sample_type_one_rate`, `test_tests_have_power` (mutant `s11`) |
+| 1. a one-sided comparison by accident (no $\lvert \cdot \rvert$) | $p$ near 1 when B is worse, too small when better | `abs(...)` on both the observed and permuted statistic; step 2 |
+| 2. $\text{count}/B$ without the add-one | "p = 0.000" in a report; type-I promise broken | `(1 + count) / (1 + n_perm)`; step 1 |
+| 3. the naive shuffle ($j$ over the whole array) | some orders more likely than others; another stream than Go | `j = min(int(rng.uniform() * (i + 1)), i)`; step 5 |
+| 4. shuffling on from the previous permutation | still a valid test, but not the contract's stream | `idx = list(range(total))` inside the loop; step 5 |
+| 5. comparing permuted statistics with a bare $\ge$ | exact ties land an ulp below and are missed: $p$ too small | `bar = t_obs * (1.0 - TIE_RTOL)`; step 3 |
+| 6. McNemar without doubling, without the cap, or without the continuity correction | $p$ halved, above 1, or too small | `min(1.0, 2 * tail / 2**n)` and `max(abs(b01 - b10) - 1, 0)`; step 6 |
+| 7. Bonferroni where Holm was meant | real improvements missed | the bar is `alpha / (m - k)`, not `alpha / m`; step 7 |
+| 8. Holm that does not stop at the first failure | a later hypothesis rejected past a failed bar: FWER broken | `break`; step 7 |
+| 9. adjusted p-values without the running maximum | a smaller raw p gets a larger adjusted one | `running = max(running, ...)`; step 7 |
+| 10. a relabelling that never mixes the groups | every permutation equals the data: $p = 1$, no power | a full Fisher-Yates over the pooled values, then the original group sizes; step 5 |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
