@@ -1,35 +1,21 @@
-# Jacobians, multivariable chain rule, numeric JVP/VJP
+# Jacobians, the multivariable chain rule, and numeric JVP/VJP
 
-## Overview
+[The previous section](01-gradients-and-gradcheck.md) checked the gradient of a scalar loss. But an autodiff engine never handles the loss as one formula. It handles a chain of layers, each mapping arrays to arrays, and its backward pass multiplies through them one at a time. The objects being multiplied are Jacobians, or rather products with Jacobians, because the matrices themselves are far too large to form: a layer from 4096 to 4096 numbers has a Jacobian of 16 million entries per token.
 
-| | |
-|---|---|
-| **Module** | `M04.2` · build · Python · Pass 2 · about 1 to 2 h reading |
-| **Solution** | [`jacobian.py`](../../../../course/solutions/python/tinyllm/num/jacobian.py): `jacobian`, `jvp_numeric` ($Jv$), `vjp_numeric` ($u^\top J$) |
-| **Contract** | [`course/contracts/py/tinyllm/num/jacobian.pyi`](../../../../course/contracts/py/tinyllm/num/jacobian.pyi) |
-| **Needs** | `M04.1` `numerical_grad` ([`gradcheck.py`](../../../../course/solutions/python/tinyllm/num/gradcheck.py)), on which `vjp_numeric` is built. Reading: `M03.1` (matrices and their product) |
-| **Used by** | `M08.1` checks dual-number JVPs against `jvp_numeric` · `M08.2` and `M08.3` check reverse-mode VJPs against `vjp_numeric` and `jacobian` · later `L3.1` checks manual backpropagation through time |
-| **Optional depth** | OpenStax, *Calculus Volume 3* (free), section 4.5 (the chain rule for several variables); Baydin et al., "Automatic Differentiation in Machine Learning: a Survey" (2018), sections 3.1 and 3.2 (forward and reverse mode) |
+Chapter 8 of this book builds automatic differentiation three ways: [dual numbers](../08-matrix-calculus-and-autodiff/01-dual-numbers-forward-mode.md) (forward mode), [a scalar `Value` graph](../08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md) (reverse mode), and [closed-form VJPs of matrix expressions](../08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md). Each needs an independent numeric oracle for the products $Jv$ and $u^\top J$. This section defines the Jacobian and the chain rule from partial derivatives and builds those oracles.
 
-## Key Takeaways
+You will need `numerical_grad` from the previous section, on which `vjp_numeric` is built, and it helps to have [Vectors, matrices, row-major layout, and matmul](../03-linear-algebra/01-vectors-matrices-and-matmul.md) fresh for matrices and their product. The solution is [`jacobian.py`](../../../../course/solutions/python/tinyllm/num/jacobian.py), with `jacobian`, `jvp_numeric` ($Jv$), and `vjp_numeric` ($u^\top J$); the typed interface is [`course/contracts/py/tinyllm/num/jacobian.pyi`](../../../../course/contracts/py/tinyllm/num/jacobian.pyi).
 
-- For $f: \mathbb{R}^n \to \mathbb{R}^m$ the **Jacobian** $J$ is the $m \times n$ matrix of partial derivatives, $J_{ij} = \partial f_i / \partial x_j$: row $i$ is the gradient of output $i$, column $j$ is how every output moves with input $j$.
-- The **chain rule** in several variables is a matrix product, outer function on the left: $J_{g \circ f}(x) = J_g(f(x))\,J_f(x)$.
-- Autodiff never forms $J$. **Forward mode** pushes a direction through, $Jv$; **reverse mode** pulls a cotangent back, $u^\top J$, which is the gradient of the scalar $u \cdot f(x)$.
-- The two products are consistent: $u^\top(Jv) = (u^\top J)v$ for every $u$ and $v$.
-- The JVP step must scale with $v$: $h = 10^{-6}/\max|v|$, so the input moves by $10^{-6}$ whatever the size of $v$.
+> **Learning objectives**
+> - Define the Jacobian of $f: \mathbb{R}^n \to \mathbb{R}^m$, compute it by hand and numerically, and read its rows and columns.
+> - State the multivariable chain rule as a matrix product and explain the order of the factors.
+> - Compute a JVP and a VJP without forming $J$, and explain which one forward and reverse mode compute.
+> - Use the identity $u^\top(Jv) = (u^\top J)v$ as a consistency check.
+> - Explain why the JVP step must scale with the size of $v$.
 
-## How to read this chapter
+## Notation
 
-Sections 1 to 3 build the Jacobian, the chain rule, and the two products from first principles and work them by hand. Section 4 fixes the interface and the cases a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
-
----
-
-## 1. Why now
-
-`M04.1` checks the gradient of a scalar loss. But an autodiff engine never handles the loss as one formula: it handles a chain of layers, each mapping arrays to arrays, and its backward pass multiplies through them one at a time. The objects being multiplied are Jacobians, or rather products with Jacobians, because the matrices themselves are far too large to form (a layer from 4096 to 4096 numbers has a Jacobian of 16 million entries per token). The next three modules build automatic differentiation three ways: dual numbers (`M08.1`, forward mode), a scalar `Value` graph (`M08.2`, reverse mode), and closed-form VJPs of matrix expressions (`M08.3`). Each needs an independent numeric oracle for $Jv$ and $u^\top J$. This chapter defines the Jacobian and the chain rule from partial derivatives and builds those oracles.
-
-## 2. Principles
+These are the symbols the section uses, with the Python shapes they correspond to:
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -43,46 +29,55 @@ Sections 1 to 3 build the Jacobian, the chain rule, and the two products from fi
 | $u^\top J$ | the vector-Jacobian product (VJP) | shape of $x$ |
 | $\epsilon$, $h$ | finite-difference steps | `float` |
 
-### 2.1 The Jacobian
+## The Jacobian
 
-Each output $f_i$ is a scalar function of $x$, so it has a gradient (`M04.1`). Stack those gradients as rows and you get the **Jacobian**:
+Each output $f_i$ is a scalar function of $x$, so it has a gradient. Stack those gradients as rows and you get the **Jacobian**:
 
 $$J = \begin{pmatrix} \partial f_1/\partial x_1 & \cdots & \partial f_1/\partial x_n \\ \vdots & & \vdots \\ \partial f_m/\partial x_1 & \cdots & \partial f_m/\partial x_n \end{pmatrix} .$$
 
-It is the best **linear approximation** of $f$ near $x$: $f(x + \Delta) \approx f(x) + J\Delta$ for small $\Delta$, the several-variable version of the tangent line. Column $j$ is how the whole output moves per unit move of input $j$, which is also how to compute it numerically:
+It is the best **linear approximation** of $f$ near $x$: $f(x + \Delta) \approx f(x) + J\Delta$ for small $\Delta$, the several-variable version of the tangent line. Row $i$ is the gradient of output $i$. Column $j$ is how the whole output moves per unit move of input $j$, which is also how to compute it numerically:
 
 $$J_{:, j} \approx \frac{f(x + \epsilon e_j) - f(x - \epsilon e_j)}{(x_j + \epsilon) - (x_j - \epsilon)} ,$$
 
-$2n$ evaluations of $f$, dividing by the step actually taken (`M01.1`). Three examples recur. A linear map $f(x) = Ax$ has $J = A$ everywhere. An elementwise map like $\tanh$ has a diagonal Jacobian, $\operatorname{diag}(1 - \tanh^2 x)$: output $i$ depends only on input $i$. Softmax, $p_i = e^{z_i}/\sum_k e^{z_k}$, couples everything: $\partial p_i / \partial z_j = p_i(\delta_{ij} - p_j)$, so $J = \operatorname{diag}(p) - pp^\top$, symmetric with columns summing to 0 (the probabilities always add to 1). `M08.3` derives that one by hand. When $x$ or $f(x)$ is a matrix, flatten both in row-major order (`M03.1`): the derivative with respect to $X[1, 2]$ of a $2 \times 3$ input is column $1 \cdot 3 + 2 = 5$.
+which costs $2n$ evaluations of $f$ and divides by the step actually taken, as in [Derivative as a limit, finite differences, step-size choice](../01-calculus-1/01-derivatives-and-finite-differences.md).
 
-### 2.2 The chain rule
+Three examples recur throughout the book. A linear map $f(x) = Ax$ has $J = A$ everywhere. An elementwise map like $\tanh$ has a diagonal Jacobian, $\operatorname{diag}(1 - \tanh^2 x)$, because output $i$ depends only on input $i$. Softmax, $p_i = e^{z_i}/\sum_k e^{z_k}$, couples everything: $\partial p_i / \partial z_j = p_i(\delta_{ij} - p_j)$, so $J = \operatorname{diag}(p) - pp^\top$, symmetric with columns summing to 0 (the probabilities always add to 1). [Matrix differentials, the trace trick, and closed-form VJPs](../08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md) derives that one by hand.
 
-If $y = f(x)$ and $z = g(y)$, then a small change $\Delta$ in $x$ moves $y$ by about $J_f \Delta$, which moves $z$ by about $J_g (J_f \Delta)$. So
+When $x$ or $f(x)$ is a matrix, flatten both in row-major order, as in [the linear algebra chapter](../03-linear-algebra/01-vectors-matrices-and-matmul.md): the derivative with respect to $X[1, 2]$ of a $2 \times 3$ input is column $1 \cdot 3 + 2 = 5$.
+
+## The chain rule
+
+With the Jacobian in hand, composition becomes multiplication. If $y = f(x)$ and $z = g(y)$, then a small change $\Delta$ in $x$ moves $y$ by about $J_f \Delta$, which moves $z$ by about $J_g (J_f \Delta)$. So
 
 $$J_{g \circ f}(x) = J_g\bigl(f(x)\bigr)\, J_f(x) ,$$
 
-a product of a $p \times m$ and an $m \times n$ matrix, the outer function's Jacobian on the left, evaluated at the inner function's output. Entry by entry this is $\frac{\partial z_k}{\partial x_j} = \sum_i \frac{\partial z_k}{\partial y_i}\frac{\partial y_i}{\partial x_j}$: add up every path from $x_j$ to $z_k$. The one-variable chain rule is the $1 \times 1$ case. A deep network is a long composition, and its Jacobian is a long product.
+a product of a $p \times m$ and an $m \times n$ matrix, with the outer function's Jacobian on the left, evaluated at the inner function's output. Entry by entry this is $\frac{\partial z_k}{\partial x_j} = \sum_i \frac{\partial z_k}{\partial y_i}\frac{\partial y_i}{\partial x_j}$: add up every path from $x_j$ to $z_k$. The one-variable chain rule is the $1 \times 1$ case. A deep network is a long composition, and its Jacobian is a long product.
 
-### 2.3 Products without the matrix
+## Products without the matrix
 
-Forming $J$ costs $n$ forward passes and $mn$ memory. Two products avoid it:
+Forming $J$ costs $n$ forward passes and $mn$ memory. Two products avoid it.
 
-- **JVP**, $Jv$: the derivative of $t \mapsto f(x + tv)$ at $t = 0$, the rate at which the output moves when the input moves in direction $v$. One central difference computes it: $\frac{f(x + hv) - f(x - hv)}{2h}$. Forward-mode autodiff (`M08.1`) computes it exactly by carrying a tangent alongside every value. Along a chain, $J_g J_f v = J_g (J_f v)$: push $v$ through one layer at a time.
-- **VJP**, $u^\top J$: the gradient of the scalar $u \cdot f(x) = \sum_i u_i f_i(x)$, since $\frac{\partial}{\partial x_j}\sum_i u_i f_i = \sum_i u_i J_{ij}$. `vjp_numeric` computes it with `M04.1`'s `numerical_grad`. Reverse-mode autodiff (backpropagation, `M08.2`, `L0.1`) computes it exactly by pulling $u$ back one layer at a time: $u^\top J_g J_f = (u^\top J_g) J_f$. With $u = 1$ and a scalar loss, the VJP is the gradient; that is why training uses reverse mode.
+The **JVP**, $Jv$, is the derivative of $t \mapsto f(x + tv)$ at $t = 0$: the rate at which the output moves when the input moves in direction $v$. One central difference computes it, $\frac{f(x + hv) - f(x - hv)}{2h}$. Forward-mode autodiff ([Dual numbers and forward-mode autodiff](../08-matrix-calculus-and-autodiff/01-dual-numbers-forward-mode.md)) computes it exactly by carrying a tangent alongside every value. Along a chain, $J_g J_f v = J_g (J_f v)$: you push $v$ through one layer at a time.
 
-Both products describe the same $J$, so for every $u$ and $v$, $u^\top(Jv) = (u^\top J)v$: one number computed two ways, which is a good check at random $u$, $v$, $x$. Mixing them up (returning $Ju$ for a VJP) gives the right shape whenever $J$ is square and the wrong numbers unless it is symmetric.
+The **VJP**, $u^\top J$, is the gradient of the scalar $u \cdot f(x) = \sum_i u_i f_i(x)$, since $\frac{\partial}{\partial x_j}\sum_i u_i f_i = \sum_i u_i J_{ij}$. `vjp_numeric` computes it with the previous section's `numerical_grad`. Reverse-mode autodiff, which is backpropagation ([Scalar reverse mode: the Value graph](../08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md), and [Tensor, broadcasting backward, and no_grad](../../build-an-llm/p00-foundations/01-tensor-and-broadcasting-backward.md) in *Build Your Own LLM System*), computes it exactly by pulling $u$ back one layer at a time: $u^\top J_g J_f = (u^\top J_g) J_f$. With $u = 1$ and a scalar loss, the VJP is the gradient, and that is why training uses reverse mode.
 
-**Scale the JVP step to $v$.** $h$ multiplies $v$, so the input moves by $h\max|v|$. A fixed $h = 10^{-6}$ with $|v| = 10^6$ moves $x$ by 1 and measures a secant over a whole unit. Choosing $h = 10^{-6}/\max|v|$ keeps the largest coordinate's move at $10^{-6}$; then $J(cv) = c\,Jv$ to rounding, and $v = 0$ returns 0 without computing $0/0$.
+Both products describe the same $J$, so for every $u$ and $v$, $u^\top(Jv) = (u^\top J)v$: one number computed two ways, which makes a good check at random $u$, $v$, $x$. Mixing them up (returning $Ju$ for a VJP) gives the right shape whenever $J$ is square and the wrong numbers unless it is symmetric.
 
-## 3. Worked example by hand
+One practical detail matters for the JVP: **scale the step to $v$.** $h$ multiplies $v$, so the input moves by $h\max|v|$. A fixed $h = 10^{-6}$ with $|v| = 10^6$ moves $x$ by 1 and measures a secant over a whole unit. Choosing $h = 10^{-6}/\max|v|$ keeps the largest coordinate's move at $10^{-6}$; then $J(cv) = c\,Jv$ to rounding, and $v = 0$ returns 0 without computing $0/0$.
 
-$f(x, y) = (x^2 y,\; 5x + \sin y)$ at $(1, 2)$. Partial derivatives:
+## Working it by hand
+
+Take $f(x, y) = (x^2 y,\; 5x + \sin y)$ at $(1, 2)$. The partial derivatives give
 
 $$J = \begin{pmatrix} \partial_x(x^2 y) & \partial_y(x^2 y) \\ \partial_x(5x + \sin y) & \partial_y(5x + \sin y) \end{pmatrix} = \begin{pmatrix} 2xy & x^2 \\ 5 & \cos y \end{pmatrix} = \begin{pmatrix} 4 & 1 \\ 5 & -0.4161468 \end{pmatrix} .$$
 
-With $v = (1, 0)$: $Jv = (4, 5)$, the first column: moving $x$ moves the outputs at rates 4 and 5. With $u = (1, 0)$: $u^\top J = (4, 1)$, the first row: the gradient of the first output. $J$ is not symmetric, so the two differ, and a transposed Jacobian swaps them. Check the identity with $u = (1, 1)$ and $v = (0, 1)$: $Jv = (1, -0.4161468)$, $u \cdot Jv = 0.5838532$; $u^\top J = (9, 0.5838532)$, $(u^\top J) \cdot v = 0.5838532$.
+With $v = (1, 0)$, $Jv = (4, 5)$, the first column: moving $x$ moves the outputs at rates 4 and 5. With $u = (1, 0)$, $u^\top J = (4, 1)$, the first row: the gradient of the first output. $J$ is not symmetric, so the two differ, and a transposed Jacobian would swap them.
 
-## 4. The interface
+Now check the identity with $u = (1, 1)$ and $v = (0, 1)$. On one side, $Jv = (1, -0.4161468)$ and $u \cdot Jv = 0.5838532$. On the other, $u^\top J = (9, 0.5838532)$ and $(u^\top J) \cdot v = 0.5838532$. They agree.
+
+## Designing the interface
+
+Three functions cover it:
 
 ```python
 def jacobian(f, x: ArrayLike, eps: float = 1e-6) -> NDArray: ...   # [f(x).size, x.size]
@@ -92,35 +87,33 @@ def vjp_numeric(f, x: ArrayLike, u: ArrayLike) -> NDArray: ...      # u^T J, sha
 
 All arithmetic is float64 on a private copy of `x`. `jacobian` raises `ValueError` for a bad `eps` or when `f`'s output shape changes; the products raise it when `v` does not have `x`'s shape or `u` does not have `f(x)`'s.
 
-### What a correct solution must handle
+The cases a correct solution must handle, and why each matters later, are these:
 
 | Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| Hand example, $J$ | unit | section 3's $J$ | pins rows and columns |
+| Hand example, $J$ | unit | the worked example's $J$ | pins rows and columns |
 | Hand example, products | unit | $Jv = (4, 5)$ and $u^\top J = (4, 1)$ | forward and reverse mode are different products |
 | Matrix-shaped $x$ | unit | $x$ of shape $(2, 3)$ gives $J$ of shape $(4, 6)$ in row-major columns; product shapes; shape errors | backward passes return gradients in the input's shape |
-| Linear map | golden | $J_{Ax} = A$ | `M03.1`'s matmul is every layer's first step |
-| Softmax | golden | $\operatorname{diag}(p) - pp^\top$, columns sum to 0 | `M08.3` derives this VJP by hand |
-| Elementwise map | golden | $J_{\tanh} = \operatorname{diag}(1 - \tanh^2)$; its VJP is elementwise | activation backward passes (`M01.3`) |
+| Linear map | golden | $J_{Ax} = A$ | matmul is every layer's first step |
+| Softmax | golden | $\operatorname{diag}(p) - pp^\top$, columns sum to 0 | chapter 8 derives this VJP by hand |
+| Elementwise map | golden | $J_{\tanh} = \operatorname{diag}(1 - \tanh^2)$; its VJP is elementwise | activation backward passes ([Activation functions and their derivatives](../01-calculus-1/03-activation-functions.md)) |
 | Composition | differential | $J_{g \circ f} = J_g(f(x)) J_f(x)$ | the rule backpropagation applies |
 | Random $u$, $v$, $x$ | property | $Jv$, $u^\top J$, and $u^\top(Jv) = (u^\top J)v$ | forward and reverse oracles agree |
 | Tangent size | boundary | $J(10^6 v) = 10^6 Jv$, $J(10^{-6}v) = 10^{-6}Jv$, $J0 = 0$ | tangents of any size |
 | Caller's $x$ and dtype | unit | $x$ is untouched; $f$ sees float64 even for int $x$ | parameters are not perturbed in place |
 | Bad `eps`, changing shapes | boundary | `eps = 0` and an $f$ whose output shape changes raise | no ragged Jacobians |
 
-## 5. The solution, step by step
+## Building it step by step
 
-### From first principles
+The implementation follows from the principles in five steps.
 
-1. Column $j$ of $J$ is the rate of change of every output with input $j$ (2.1). So `jacobian` loops over input elements, perturbs one at a time by $\pm\epsilon$, and stores the central difference of the whole output as column $j$. Stacking columns along `axis=1` gives the $m \times n$ orientation; stacking them as rows would give $J^\top$.
+1. Column $j$ of $J$ is the rate of change of every output with input $j$. So `jacobian` loops over input elements, perturbs one at a time by $\pm\epsilon$, and stores the central difference of the whole output as column $j$. Stacking columns along `axis=1` gives the $m \times n$ orientation; stacking them as rows would give $J^\top$.
 2. Inputs of any shape are flattened row-major. The flattening must be a **view** of a private float64 copy, so that writing `flat[j]` actually changes what $f$ sees, and the caller's array is never touched. Each coordinate is restored before the next.
-3. The divisor is the step actually taken, `(x_j + eps) - (x_j - eps)`, as in `M01.1`.
-4. A JVP is the derivative of $t \mapsto f(x + tv)$ at 0 (2.3): one central difference along $v$, with $h = 10^{-6}/\max|v|$ so the input moves by $10^{-6}$ whatever $v$'s size. $v = 0$ returns 0 directly.
-5. A VJP is the gradient of the scalar $u \cdot f(x)$ (2.3), so `vjp_numeric` is one call to `numerical_grad` on that scalar: no new differencing code, and the result is already in $x$'s shape.
+3. The divisor is the step actually taken, `(x_j + eps) - (x_j - eps)`.
+4. A JVP is the derivative of $t \mapsto f(x + tv)$ at 0: one central difference along $v$, with $h = 10^{-6}/\max|v|$ so the input moves by $10^{-6}$ whatever $v$'s size. $v = 0$ returns 0 directly.
+5. A VJP is the gradient of the scalar $u \cdot f(x)$, so `vjp_numeric` is one call to `numerical_grad` on that scalar: no new differencing code, and the result is already in $x$'s shape.
 
-### The code, annotated
-
-The Jacobian, one column per input element:
+The Jacobian is built one column per input element:
 
 ```python
 def jacobian(f, x, eps=1e-6):
@@ -153,9 +146,9 @@ def jacobian(f, x, eps=1e-6):
     return np.stack(cols, axis=1)                    # columns, so J is [m, n]
 ```
 
-On the worked example, column 0 is the change in $(x^2 y, 5x + \sin y)$ when $x$ moves: $(4, 5)$. Column 1 is $(1, \cos 2)$.
+On the worked example, column 0 is the change in $(x^2 y, 5x + \sin y)$ when $x$ moves, $(4, 5)$, and column 1 is $(1, \cos 2)$.
 
-The JVP, with the step scaled to $v$:
+The JVP scales its step to $v$:
 
 ```python
 JVP_STEP = 1e-6
@@ -173,7 +166,7 @@ def jvp_numeric(f, x, v):
     return (_eval(f, xw + h * va) - _eval(f, xw - h * va)) / (2.0 * h)
 ```
 
-The VJP, as a gradient of a scalar:
+And the VJP is a gradient of a scalar:
 
 ```python
 def vjp_numeric(f, x, u):
@@ -186,19 +179,68 @@ def vjp_numeric(f, x, u):
     return numerical_grad(lambda z: float(np.sum(ua * _eval(f, z))), [xw])[0]
 ```
 
-With $u = (1, 0)$ on the worked example, the scalar is $x^2 y$ and its gradient is $(4, 1)$: the first row of $J$.
+With $u = (1, 0)$ on the worked example, the scalar is $x^2 y$ and its gradient is $(4, 1)$, the first row of $J$. The full solution is in [`jacobian.py`](../../../../course/solutions/python/tinyllm/num/jacobian.py).
 
-Full solution: [`jacobian.py`](../../../../course/solutions/python/tinyllm/num/jacobian.py).
+### Why this design
 
-### Why this solution
+On cost: `jacobian` takes $2n$ evaluations and $O(mn)$ memory. `jvp_numeric` takes 2 evaluations whatever $n$ and $m$. `vjp_numeric` takes $2n + 1$ (one to check `u`'s shape, then `numerical_grad`'s $2n$), but stores only $O(n)$.
 
-- **Cost.** `jacobian` takes $2n$ evaluations and $O(mn)$ memory. `jvp_numeric` takes 2 evaluations whatever $n$ and $m$. `vjp_numeric` takes $2n + 1$ (one to check `u`'s shape, then `numerical_grad`'s $2n$), but stores only $O(n)$.
-- **Why not compute the VJP as `u @ jacobian(f, x)`.** It gives the same numbers but stores the whole $m \times n$ matrix. Building it on `numerical_grad` also makes it the same code that `gradcheck` already trusts.
-- **Why central differences.** One-sided differences have $O(\epsilon)$ error, about $10^{-6}$, too coarse to confirm closed forms such as softmax's Jacobian.
-- **Why scale the JVP step.** The finite difference approximates the derivative only if the input moves a small distance; a fixed $h$ makes the distance proportional to $\lvert v\rvert$.
-- **Tradeoff accepted.** These are oracles, not autodiff: their accuracy is about $10^{-10}$ on well-scaled functions, which is enough to confirm exact forward- and reverse-mode results from `M08.1` to `M08.3`.
+You could compute the VJP as `u @ jacobian(f, x)`. It gives the same numbers but stores the whole $m \times n$ matrix. Building it on `numerical_grad` also makes it the same code that `gradcheck` already trusts.
 
-### Explain it back
+Central differences are needed because one-sided differences have $O(\epsilon)$ error, about $10^{-6}$, too coarse to confirm closed forms such as softmax's Jacobian. And the JVP step is scaled because a finite difference approximates the derivative only if the input moves a small distance; a fixed $h$ makes the distance proportional to $\lvert v\rvert$.
+
+The tradeoff accepted is that these are oracles, not autodiff: their accuracy is about $10^{-10}$ on well-scaled functions. That is enough to confirm the exact forward- and reverse-mode results of chapter 8.
+
+## What can go wrong
+
+Most of the bugs here produce arrays of the right shape with the wrong numbers, which is why they survive casual testing:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| the Jacobian transposed (columns stacked as rows) | $J^\top$: right shape for square $J$, wrong numbers, and a chain rule product in the wrong order | stacks columns with `axis=1` (step 1) |
+| perturbing the caller's $x$ and not restoring it | the input array changes during a check | works on `np.array(x, dtype=np.float64, copy=True)` |
+| leaving coordinate $j$ at $x_j - \epsilon$ | every later column is taken at a shifted point | sets `flat[j] = orig` after both evaluations |
+| a fixed JVP step whatever the size of $v$ | $J(10^6 v)$ is a secant over a unit step | `h = JVP_STEP / max|v|` (step 4) |
+| a VJP that computes $Ju$ instead of $u^\top J$ | the column $(4, 5)$ where the row $(4, 1)$ was wanted | differentiates the scalar $u \cdot f(x)$ (step 5) |
+| one-sided differences for the columns | errors near $10^{-6}$; softmax's closed form missed | evaluates both $x_j \pm \epsilon$ |
+| dividing the JVP by $h$ instead of $2h$ | every JVP doubled | divides by `2.0 * h` |
+| flattening $x$ through a copy | the perturbations never reach $f$: $J = 0$ | uses `xw.reshape(-1)`, a view of the copy |
+| the column difference reversed | $-J$ | computes `hi - lo` |
+| a VJP that ignores $u$ | the gradient of $\sum_i f_i$ for every $u$ | multiplies by `ua` inside the scalar |
+
+> **Warning:** `xw.flatten()` and `xw.reshape(-1)` look interchangeable, but `flatten` always copies. Perturbing a copy never reaches $f$, and the Jacobian silently comes out all zeros.
+
+## Where this leads
+
+Looking back, `vjp_numeric` is `numerical_grad(lambda z: sum(u * f(z)), [x])` from [the previous section](01-gradients-and-gradcheck.md). Looking forward, the oracles built here referee everything in chapter 8: [Dual numbers and forward-mode autodiff](../08-matrix-calculus-and-autodiff/01-dual-numbers-forward-mode.md) computes $Jv$ exactly and its tests compare against `jvp_numeric`; [Scalar reverse mode: the Value graph](../08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md) computes $u^\top J$ by backpropagation, checked against `vjp_numeric`; and [Matrix differentials, the trace trick, and closed-form VJPs](../08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md) derives closed-form VJPs of matmul, softmax, LayerNorm, RMSNorm, and cross-entropy, checked against `jacobian` and `vjp_numeric`. In *Build Your Own LLM System*, [Vanilla RNN with manual BPTT and truncation](../../build-an-llm/p03-recurrent/01-vanilla-rnn-manual-bptt.md) does manual backpropagation through time, a chain of Jacobians over time steps.
+
+### Further reading
+
+- JAX `jax.jvp` and `jax.vjp` (`jax/_src/api.py`): exact products by forward and reverse mode, composable with `jit` and `vmap`.
+- PyTorch `torch.autograd.functional.jacobian` with `vectorize=True` (`torch/autograd/functional.py`), and JAX `jacfwd` and `jacrev`: the full Jacobian from $n$ JVPs or $m$ VJPs, batched. Pick forward when $n < m$, reverse when $m < n$.
+- Reverse-mode autodiff in production does one VJP per layer, in reverse order, storing the forward values it needs; see [Tensor, broadcasting backward, and no_grad](../../build-an-llm/p00-foundations/01-tensor-and-broadcasting-backward.md) and Baydin et al. below.
+- PyTorch `gradcheck(fast_mode=True)` (`torch/autograd/gradcheck.py`) uses $u^\top(Jv) = (u^\top J)v$ to check a whole backward with one random $u$ and $v$ instead of $mn$ entries.
+- OpenStax, *Calculus Volume 3* (free), section 4.5, on the chain rule for several variables.
+- Baydin et al., "Automatic Differentiation in Machine Learning: a Survey" (2018), sections 3.1 and 3.2, on forward and reverse mode.
+
+## Key terms
+
+- **Jacobian**: the $m \times n$ matrix of partial derivatives $J_{ij} = \partial f_i / \partial x_j$ of a function $f: \mathbb{R}^n \to \mathbb{R}^m$.
+- **Tangent**: a direction $v$ in input space along which the input is moved.
+- **Cotangent**: a weighting $u$ of the outputs, pulled back through a function by a VJP.
+- **JVP (Jacobian-vector product)**: $Jv$, the rate of change of the output along $v$; what forward mode computes.
+- **VJP (vector-Jacobian product)**: $u^\top J$, the gradient of $u \cdot f(x)$; what reverse mode computes.
+- **Chain rule**: $J_{g \circ f}(x) = J_g(f(x))\,J_f(x)$.
+
+## Summary
+
+- For $f: \mathbb{R}^n \to \mathbb{R}^m$ the **Jacobian** $J$ is the $m \times n$ matrix of partial derivatives, $J_{ij} = \partial f_i / \partial x_j$: row $i$ is the gradient of output $i$, column $j$ is how every output moves with input $j$.
+- The **chain rule** in several variables is a matrix product, outer function on the left: $J_{g \circ f}(x) = J_g(f(x))\,J_f(x)$.
+- Autodiff never forms $J$. **Forward mode** pushes a direction through, $Jv$; **reverse mode** pulls a cotangent back, $u^\top J$, which is the gradient of the scalar $u \cdot f(x)$.
+- The two products are consistent: $u^\top(Jv) = (u^\top J)v$ for every $u$ and $v$.
+- The JVP step must scale with $v$: $h = 10^{-6}/\max|v|$, so the input moves by $10^{-6}$ whatever the size of $v$.
+
+## Review questions
 
 1. Why does `jacobian` stack the columns with `axis=1` and not `axis=0`?
 
@@ -239,38 +281,3 @@ Full solution: [`jacobian.py`](../../../../course/solutions/python/tinyllm/num/j
    That the forward and reverse products describe the same matrix. A VJP that returned $Ju$ or a JVP that used $J^\top$ could each look plausible, but would break the identity for generic $u$ and $v$.
 
    </details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. the Jacobian transposed (columns stacked as rows) | $J^\top$: right shape for square $J$, wrong numbers, and a chain rule product in the wrong order | stacks columns with `axis=1`; see step 1 |
-| 2. perturbing the caller's $x$ and not restoring it | the input array changes during a check | works on `np.array(x, dtype=np.float64, copy=True)` |
-| 2b. leaving coordinate $j$ at $x_j - \epsilon$ | every later column is taken at a shifted point | sets `flat[j] = orig` after both evaluations |
-| 3. a fixed JVP step whatever the size of $v$ | $J(10^6 v)$ is a secant over a unit step | `h = JVP_STEP / max|v|`; see step 4 |
-| 4. a VJP that computes $Ju$ instead of $u^\top J$ | the column $(4, 5)$ where the row $(4, 1)$ was wanted | differentiates the scalar $u \cdot f(x)$; see step 5 |
-| one-sided differences for the columns | errors near $10^{-6}$; softmax's closed form missed | evaluates both $x_j \pm \epsilon$ |
-| dividing the JVP by $h$ instead of $2h$ | every JVP doubled | divides by `2.0 * h` |
-| flattening $x$ through a copy | the perturbations never reach $f$: $J = 0$ | uses `xw.reshape(-1)`, a view of the copy |
-| the column difference reversed | $-J$ | computes `hi - lo` |
-| a VJP that ignores $u$ | the gradient of $\sum_i f_i$ for every $u$ | multiplies by `ua` inside the scalar |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `M04.1` | `vjp_numeric` is `numerical_grad(lambda z: sum(u * f(z)), [x])` |
-| Back | `M03.1` | matrices, row-major layout, and the product (reading) |
-| Forward | `M08.1` | dual numbers compute $Jv$ exactly; its tests compare them with `jvp_numeric` |
-| Forward | `M08.2` | the scalar `Value` graph computes $u^\top J$ by backpropagation, checked against `vjp_numeric` |
-| Forward | `M08.3` | closed-form VJPs of matmul, softmax, LayerNorm, RMSNorm, and cross-entropy, checked against `jacobian` and `vjp_numeric` |
-| Forward | `L3.1` | manual backpropagation through time, a chain of Jacobians over time steps |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `jvp_numeric`, `vjp_numeric` | JAX `jax.jvp`, `jax.vjp` | exact products by forward and reverse mode, composable with `jit` and `vmap` | `jax/_src/api.py` |
-| `jacobian` | PyTorch `torch.autograd.functional.jacobian` (`vectorize=True`), JAX `jacfwd` and `jacrev` | the full Jacobian from $n$ JVPs or $m$ VJPs, batched; pick forward when $n < m$, reverse when $m < n$ | `torch/autograd/functional.py` |
-| the chain rule | reverse-mode autodiff (backpropagation) | one VJP per layer, in reverse order, storing the forward values it needs | `L0.1`; Baydin et al. (2018) |
-| $u^\top(Jv) = (u^\top J)v$ | PyTorch `gradcheck(fast_mode=True)` | checks a whole backward with one random $u$ and $v$ instead of $mn$ entries | `torch/autograd/gradcheck.py` |

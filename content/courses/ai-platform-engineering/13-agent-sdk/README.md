@@ -23,7 +23,7 @@ You should be comfortable with Go; the [Go primer](../../programming-languages/0
 4. [The tool gate, the SQL safety gate, and the prompt-injection suite](04-tool-gate-and-injection.md): a deterministic default-deny policy with egress checks, taint, a lexer-based SQL classifier, approval markers, and twelve injection conversations it must withstand.
 5. [Durable agent runs](05-durable-agent-runs.md): an fsynced step journal that replays completed steps, re-runs unfinished reads, and stops on unfinished writes until a human reconciles them.
 
-The agent system continues in two other chapters of this book: retrieval (the `search_docs` tool, ingest, and context assembly) in [Retrieval and RAG](../07-retrieval-and-rag/README.md), and agent evaluation in [LLM Evaluation](../09-llm-evaluation/README.md). Together with this chapter they complete the agent milestone described in [the Pass 10 milestone](../../build-an-llm/paths/course-p10-agents/milestone.md) of *Build an LLM*.
+The agent system continues in two other chapters of this book: retrieval (the `search_docs` tool, ingest, and context assembly) in [Retrieval and RAG](../07-retrieval-and-rag/README.md), and agent evaluation in [LLM Evaluation](../09-llm-evaluation/README.md). Together with this chapter they complete the agent system described in [the agents milestone](../../build-an-llm/paths/course-p10-agents/milestone.md) of *Build an LLM*.
 
 ## How this chapter connects
 

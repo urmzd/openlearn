@@ -1,10 +1,23 @@
-# Hudson River Trading (HRT) Software Engineer Interview Guide
+# Hudson River Trading
 
-Comprehensive preparation for HRT SWE roles. HRT is one of the most technically demanding quantitative trading firms, with a tiny engineering team and an obsession with nanosecond-level performance.
+Hudson River Trading (HRT) is one of the most technically demanding quantitative trading firms in the world. It runs a tiny engineering team with an obsession with nanosecond-level performance, and it has very few software engineering openings relative to the number of applicants, which makes it one of the most selective employers anywhere. If you interview there, expect hard algorithms written in efficient C++, and a systems round in which the unit of discussion is the cache line and the network card rather than the service.
 
-## Interview Process Overview
+This chapter prepares you for HRT SWE roles. It describes the process and how HRT differs from other quant firms, then works through the C++ fluency the coding rounds expect (bit manipulation, cache-friendly loops, allocation-free parsing, a lock-free queue, compile-time computation, and Aho-Corasick string matching), and finally the low-latency systems round: the network stack, the memory hierarchy, FPGAs, and jitter.
 
-Timeline: **3-6 weeks**, **4-5 rounds**
+> **Learning objectives**
+> - Describe the HRT interview loop and how its focus differs from Jane Street, Two Sigma, and Citadel.
+> - Write and explain a lock-free single-producer single-consumer queue, including its memory orderings.
+> - Explain why loop order and data layout change performance, using the memory hierarchy's latencies.
+> - Implement Aho-Corasick multi-pattern matching and state its complexity.
+> - List the operating-system and hardware techniques that reduce jitter in a trading system.
+
+## Before you begin
+
+You need solid C++ (C++17/20, templates, move semantics, atomics, and the memory model) and data structures at competitive-programming level. The [Jane Street](../jane-street/README.md) chapter covers market making and probability, which HRT shares as a domain, and [Distributed systems](../shared-concepts/distributed-systems.md) covers the networking background.
+
+## The interview process
+
+The process takes three to six weeks across four or five rounds:
 
 | Round | Format | Duration | Focus |
 |-------|--------|----------|-------|
@@ -14,24 +27,13 @@ Timeline: **3-6 weeks**, **4-5 rounds**
 | Onsite 2 | Systems / Low-Latency | 90 min | Performance, architecture |
 | Onsite 3 | Behavioral + Technical | 45 min | Culture fit, problem-solving |
 
-HRT has **very few SWE openings** relative to applicants, making it one of the most selective employers in the world.
+HRT is consistently among the highest-paying employers globally. A junior SWE can expect about $400-600K in total compensation in the first year, and a senior SWE about $700K-2M or more. The bonus is a heavy component and is tied to firm performance.
 
-## Compensation
+## What HRT looks for
 
-- **Junior SWE**: ~$400-600K total comp (Year 1)
-- **Senior SWE**: ~$700K-2M+
-- Heavy bonus component, tied to firm performance
-- HRT is consistently among the highest-paying employers globally
+Everything at HRT follows from the fact that it competes on speed: its systems are measured in nanoseconds, not milliseconds. That is why C++ is mandatory. Almost all production code is C++, and deep C++ knowledge is non-negotiable. It is also why hardware awareness matters: you need to think about CPU caches, memory buses, network cards, and FPGAs, and HRT uses FPGAs and kernel bypass for ultra-low-latency market data processing. Finally, the team is tiny, so every hire has outsized impact and the bar is set accordingly.
 
-## Key Themes
-
-1. **Nanoseconds matter** -- HRT competes on speed. Their systems are measured in nanoseconds, not milliseconds.
-2. **C++ is mandatory** -- Almost all production code is C++. Deep C++ knowledge is non-negotiable.
-3. **Hardware awareness** -- You need to think about CPU caches, memory buses, network cards, and FPGAs.
-4. **Tiny team, huge impact** -- Small engineering team means every hire has outsized impact.
-5. **FPGA and kernel bypass** -- HRT uses FPGAs for ultra-low-latency market data processing.
-
-## What Makes HRT Different From Other Quant Firms
+It helps to see how this differs from the other quant firms covered in this book:
 
 | Aspect | HRT | Jane Street | Two Sigma | Citadel |
 |--------|-----|-------------|-----------|---------|
@@ -41,16 +43,13 @@ HRT has **very few SWE openings** relative to applicants, making it one of the m
 | Team size | Very small | Medium | Large | Large |
 | Trading style | Market making, HFT | Market making | Systematic | Multi-strategy |
 
-## Coding Rounds
+## Coding rounds
 
-### What to Expect
+C++ is required for most positions. The problems are algorithmically hard and also require an efficient implementation, so memory management, bit manipulation, and cache-friendly design matter as much as the asymptotic complexity. Some rounds include systems-level coding such as network protocols or binary parsing.
 
-- **C++ required** for most positions
-- Problems are algorithmically hard AND require efficient implementation
-- Memory management, bit manipulation, cache-friendly design matter
-- May include systems-level coding (network protocols, binary parsing)
+### The C++ you are expected to know
 
-### C++ Deep Knowledge Expected
+The listing below collects five idioms that interviewers probe. First, bit manipulation through compiler intrinsics, which compile to single hardware instructions. Second, cache-friendly iteration: C++ arrays are row-major, so iterating column by column jumps a whole row's width between accesses and misses the cache on nearly every one, while iterating row by row walks memory sequentially. Third, avoiding allocation in the hot path by parsing into a preallocated, cache-line-aligned buffer and returning `std::string_view`s into it rather than new strings. Fourth, a lock-free single-producer single-consumer (SPSC) queue. Fifth, compile-time computation with templates.
 
 ```cpp
 // 1. Bit manipulation for performance
@@ -129,7 +128,11 @@ template<> struct Fibonacci<1> { static constexpr int value = 1; };
 // Fibonacci<10>::value computed at compile time
 ```
 
-### Algorithmic Problems
+The SPSC queue is the piece you are most likely to be asked to explain line by line. Requiring `N` to be a power of two lets the index wrap with a mask, `& (N - 1)`, instead of a division. The head and tail indices are each aligned to 64 bytes so that they sit on separate cache lines; otherwise the producer and consumer would fight over one line (false sharing). Each side owns one index and only reads the other's. The producer reads its own `tail_` with relaxed ordering, since nobody else writes it, then checks fullness by acquiring `head_`. It writes the slot and only then publishes the new tail with a release store, so that a consumer which acquires that tail is guaranteed to see the written item. `pop` mirrors this exactly. One slot is always left empty, which is how the queue tells full from empty without a separate count, so its capacity is `N - 1`. Note also that `next_field` in the parser stops at the delimiter without consuming it; a real parser would advance `pos_` past it before the next call.
+
+### Algorithmic problems
+
+The algorithmic problems lean towards what trading systems actually do, such as processing billions of messages. Multi-pattern string matching is a good example. Aho-Corasick builds a trie of all the patterns, then adds failure links, computed breadth-first, that say where to continue matching when the next character does not extend the current prefix. The `build` step also fills in missing children with the failure transition, turning the trie into a full automaton, so `search` takes exactly one transition per character of text.
 
 ```cpp
 // Efficient string matching (may need to process billions of messages)
@@ -194,15 +197,15 @@ public:
 };
 ```
 
-## Systems / Low-Latency Round
+After `build`, searching costs $O(n)$ in the text length plus the number of matches reported, independent of how many patterns there are. Two simplifications are worth naming if asked: the alphabet is lowercase `a` to `z`, and each node keeps a single `output`, so when several patterns end at the same position (one a suffix of another) only one is reported. A full implementation follows an output-link chain to report them all.
 
-### What to Expect
+## The systems and low-latency round
 
-This round tests your understanding of building systems where every nanosecond counts.
+This round tests whether you understand how to build systems where every nanosecond counts. It starts with the network.
 
-### Topics
+### The network stack
 
-#### Network Stack Optimization
+A packet that goes through the kernel's network stack is slow by HRT standards. Bypassing the kernel saves roughly an order of magnitude, and handling the packet in an FPGA on the NIC saves another:
 
 ```
 Standard path:  NIC -> Kernel -> Socket -> User space  (~10-50 μs)
@@ -210,7 +213,9 @@ Kernel bypass:  NIC -> User space (DPDK/RDMA)          (~1-5 μs)
 FPGA:           NIC -> FPGA logic                       (~100-500 ns)
 ```
 
-#### Memory Hierarchy Optimization
+### The memory hierarchy
+
+Once data is in user space, the memory hierarchy dominates. These are the latencies to keep in your head:
 
 ```
 Register:    ~0.3 ns    (fastest, limited)
@@ -220,28 +225,17 @@ L3 Cache:    ~10-40 ns  (shared, 10-100 MB)
 DRAM:        ~100 ns    (GBs, main memory)
 ```
 
-**Key principle**: Data structure design should maximize L1/L2 cache hits.
+A DRAM access costs a hundred L1 hits, so the key principle is that data structure design should maximise L1 and L2 cache hits. In practice that means preferring arrays over linked lists for contiguous memory, keeping hot data small and together, avoiding pointer chasing, and using a struct-of-arrays (SoA) layout when access is column-oriented.
 
-- Prefer arrays over linked lists (contiguous memory)
-- Keep hot data small and together
-- Avoid pointer chasing
-- Use struct-of-arrays (SoA) for column-oriented access
+### FPGAs
 
-#### FPGA Concepts
+FPGAs take this one step further by processing market data in hardware before it ever reaches the CPU. They give sub-microsecond parsing and decision-making, and deterministic latency, with no jitter from OS scheduling. HRT uses them for market data feed parsing, order entry, and simple strategies.
 
-- FPGAs process market data in hardware, before it reaches the CPU
-- Sub-microsecond parsing and decision-making
-- Deterministic latency (no jitter from OS scheduling)
-- Used for market data feed parsing, order entry, simple strategies
+### Design questions
 
-### Design Questions
+Typical prompts include "Design a network packet parser that processes 10M packets/second", "Design a time-series database optimized for sequential writes and random reads", "Design a system that detects arbitrage opportunities across exchanges in < 1 microsecond", and "How would you minimize jitter in a trading system?"
 
-- "Design a network packet parser that processes 10M packets/second"
-- "Design a time-series database optimized for sequential writes and random reads"
-- "Design a system that detects arbitrage opportunities across exchanges in < 1 microsecond"
-- "How would you minimize jitter in a trading system?"
-
-#### Jitter Minimization Checklist
+The jitter question has a well-known checklist of answers, each removing a source of unpredictable delay:
 
 ```
 1. CPU isolation: isolcpus, nohz_full, rcu_nocbs
@@ -256,22 +250,26 @@ DRAM:        ~100 ns    (GBs, main memory)
 10. Disable NUMA balancing
 ```
 
-## Preparation Tips
+Be ready to say why each helps. Isolating cores and pinning threads keeps the scheduler and other work off the critical path. Locking and pre-faulting memory removes page faults, and huge pages reduce TLB misses. A fixed frequency governor removes clock ramping. Busy-polling and avoiding syscalls trade CPU for predictable latency, and disabling NUMA balancing stops the kernel from migrating pages under you.
 
-1. **C++ mastery** -- This is non-negotiable. Know C++17/20, templates, move semantics, atomics, memory model.
-2. **Low-latency systems** -- Read "Trading and Exchanges" by Larry Harris. Understand market microstructure.
-3. **Cache-friendly programming** -- Practice writing code that minimizes cache misses. Profile with `perf`.
-4. **Lock-free data structures** -- SPSC queues, lock-free stacks, hazard pointers.
-5. **Competitive programming** -- HRT recruits from CP backgrounds. Strong Codeforces rating helps.
-6. **Networking fundamentals** -- TCP vs UDP, multicast, kernel bypass (DPDK/io_uring).
-7. **Bit manipulation** -- Fast, branchless operations. Know intrinsics (`__builtin_*`).
-8. **Read HRT's blog** -- hudsonrivertrading.com/hrtbeat. They share engineering insights.
+## Preparing
 
-## Sources
+C++ mastery comes first and is non-negotiable: C++17/20, templates, move semantics, atomics, and the memory model. For the domain, read *Trading and Exchanges* by Larry Harris to understand market microstructure. Practise cache-friendly programming and profile your code with `perf`. Implement lock-free data structures: SPSC queues, lock-free stacks, and hazard pointers. HRT recruits from competitive programming, and a strong Codeforces rating helps. Brush up on networking fundamentals (TCP versus UDP, multicast, and kernel bypass with DPDK or io_uring) and on fast, branchless bit manipulation with intrinsics such as `__builtin_*`. Finally, read HRT's engineering blog, HRTbeat, where the firm shares engineering insights.
+
+## Summary
+
+- HRT competes on nanoseconds, so C++ depth and hardware awareness are prerequisites, not extras.
+- Coding rounds judge both algorithmic difficulty and implementation efficiency: allocation, layout, and bits.
+- A correct SPSC queue rests on separate cache lines, acquire/release pairs, and one empty slot to tell full from empty.
+- The memory hierarchy spans about 0.3 ns to 100 ns; design data structures for L1 and L2 hits.
+- Kernel bypass, FPGAs, and the jitter checklist are the vocabulary of the systems round.
+
+## Further reading
 
 - [HRT Engineering Blog (HRTbeat)](https://www.hudsonrivertrading.com/hrtbeat/)
 - [HRT Careers](https://www.hudsonrivertrading.com/careers/)
-- [Top Quant Trading Firms Tier List - QuantVPS](https://www.quantvps.com/blog/top-quant-trading-firms)
-- [Quant Firm Tier List - WallStreetQuants](https://www.thewallstreetquants.com/firm-list)
-- [Quant Funds Revealed - M&I](https://mergersandinquisitions.com/quant-funds/)
-- Glassdoor, Blind, r/cscareerquestions (community reports)
+- [Top Quant Trading Firms Tier List (QuantVPS)](https://www.quantvps.com/blog/top-quant-trading-firms)
+- [Quant Firm Tier List (WallStreetQuants)](https://www.thewallstreetquants.com/firm-list)
+- [Quant Funds Revealed (M&I)](https://mergersandinquisitions.com/quant-funds/)
+- Larry Harris, *Trading and Exchanges*.
+- Community reports on Glassdoor, Blind, and r/cscareerquestions.
