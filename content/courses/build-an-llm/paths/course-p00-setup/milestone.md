@@ -17,6 +17,6 @@ Without a hosted CI, the same gates run from one script, [`ci-local.sh`](../../.
 
 1. **commit-lint**: run the repository's `.githooks/commit-msg` hook on the message of HEAD, so the hook and CI enforce the same rule.
 2. **native-tests**: build and run the shell/make primer (`make -C primers/lang.02`), clean it again, and import the Python primer modules, so a broken toolchain fails here rather than in a later pass.
-3. **the test suite**: run the system's tests. (The script's third stage still calls the old course checker, which has been removed; in your own copy, replace it with the test commands of your build.)
+3. **the test suite**: run the system's tests. (The reference script's third stage still calls the removed course checker; the system's own test commands belong there.)
 
 `set -euo pipefail` makes the first failing command fail the script, which is what makes it usable as a gate.
