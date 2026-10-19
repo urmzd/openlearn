@@ -4,7 +4,7 @@ This book is about the writing that surrounds a system: the diagrams that show h
 
 ## How this book is organized
 
-[Diagramming with C4](01-diagramming-c4/README.md) introduces the C4 model's four levels of zoom (context, containers, components, code) and shows how to keep diagrams as text, so they live next to the code and change with it. Its section [C4 diagrams in D2](01-diagramming-c4/01-c4-diagrams-in-d2.md) draws the context and container views of a real LLM platform.
+[Diagramming with C4](01-diagramming-c4/README.md) introduces the C4 model's four levels of zoom (context, containers, components, code) and shows how to keep diagrams as text, so they live next to the code and change with it. Its section [C4 diagrams in D2](01-diagramming-c4/01-c4-diagrams-in-d2.md) draws the context, container, and engine-component views of a real LLM platform.
 
 [Documentation writing](02-documentation-writing/README.md) covers the two documents a team reaches for most: the [architecture decision record](02-documentation-writing/01-architecture-decision-records.md), which captures a decision, its alternatives, and its consequences, and the [runbook](02-documentation-writing/02-runbooks-and-diataxis.md), organized with the Diátaxis split between tutorials, how-to guides, reference, and explanation.
 

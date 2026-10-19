@@ -4,7 +4,7 @@ This book is a working tour of the languages and tools a modern systems engineer
 
 ## How this book is organized
 
-[Type systems](01-type-systems/README.md) is the conceptual chapter. It compares how languages use types to rule out whole classes of bugs, from dynamic checks to ownership and affine types, with small programs in several languages.
+[Type systems](01-type-systems/README.md) is the conceptual chapter. It explains what a type system guarantees (soundness as progress plus preservation), separates the four kinds of polymorphism, derives Hindley-Milner inference, and shows why variance and the way generics compile (monomorphization, erasure, dictionary passing) differ across TypeScript, Go, Rust, Haskell, and OCaml, with a small program in each.
 
 [Language and tool primers](02-language-and-tool-primers/README.md) is the practical chapter. Each section takes one language or tool and works through a small, complete program, explaining every decision: Python and NumPy, the shell, git and make, C, Rust, HTTP and server-sent events, Go, containers and Kubernetes, Python asyncio, async Rust with Tokio, Protocol Buffers and gRPC, and SQL with SQLite. Every program's full solution is in [`course/solutions/primers/`](../../../course/solutions/primers/).
 
