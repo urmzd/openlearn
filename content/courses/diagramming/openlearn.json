@@ -4,6 +4,10 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
+      "file": "content/courses/diagramming/README.md",
+      "title": "About this book"
+    },
+    {
       "file": "content/courses/diagramming/01-diagramming-c4/README.md",
       "title": "Overview"
     },

@@ -4,6 +4,10 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
+      "file": "content/courses/programming-languages/README.md",
+      "title": "About this book"
+    },
+    {
       "file": "content/courses/programming-languages/01-type-systems/README.md",
       "title": "Overview"
     },
