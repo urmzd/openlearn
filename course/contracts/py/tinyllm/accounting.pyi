@@ -47,7 +47,7 @@ class ModelConfig:
     n_experts: int = 0
     top_k: int = 0
     n_shared: int = 0
-    # beyond DESIGN 4.1's row (DEVIATIONS B74-02): what HF's MLA and MoE
+    # beyond the base config fields: what HF's MLA and MoE
     # configs need for an exact count
     q_lora_rank: int = 0
     v_head_dim: int = 0

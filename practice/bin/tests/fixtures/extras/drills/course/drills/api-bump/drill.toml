@@ -1,6 +1,0 @@
-id    = "ops.95"
-title = "The API contract moves to v2"
-
-[[inject]]
-kind = "contract-bump"
-to   = "api/v2"

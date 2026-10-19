@@ -1,0 +1,38 @@
+# Reference answers for S-M11a: the worked answers the chapter explains.
+
+[q1.a]
+answer = "1"
+[q1.b]
+answer = "log(256, 2)"
+[q1.c]
+answer = "1/2*1 + 1/4*2 + 1/4*2"
+[q2]
+answer = "log(V)"
+[q3.a]
+answer = "1/2"
+[q3.b]
+answer = "-(1/4)*log(1/4, 2) - (3/4)*log(3/4, 2)"
+[q4.a]
+answer = "3/2"
+[q4.b]
+answer = "-(3/4)*log(3/4)/log(2) - (1/4)*log(1/4)/log(2)"
+[q4.c]
+answer = "(3/4)*log(3, 2) - 1/2"
+[q5]
+proof = "S-M11a/q5.md"
+[q6.a]
+answer = "-(1/2)*log(1/4, 2) - (1/2)*log(3/4, 2)"
+[q6.b]
+answer = "(1/2)*log(2, 2) + (1/2)*log(2/3, 2)"
+[q6.c]
+answer = "(1/4)*log(1/2, 2) + (3/4)*log(3/2, 2)"
+[q6.d]
+answer = "false"
+[q7]
+answer = "log(256)"
+[q8.a]
+answer = "2 - log(2) - 1"
+[q8.b]
+answer = "true"
+[q9]
+proof = "S-M11a/q9.md"

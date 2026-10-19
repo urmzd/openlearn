@@ -1,0 +1,29 @@
+# tl-serve: the engine's HTTP front.
+#
+# This crate is the library; the binary (src/main.rs, in
+# course/solutions/entry/rust/crates/tl-serve) is the entry point. Cargo
+# finds src/main.rs on its own and names the binary `tl-serve`.
+#
+# L10.0 writes `http` (std only, API v0, the tracer). L10.5 adds the v1
+# server on tokio and hyper (`server`, `openai`, `sse`, `template`) over
+# tl-engine, with the dependencies contracts/allowed-deps.toml lists for
+# rust.tl-serve.
+[package]
+name = "tl-serve"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tl-engine = { path = "../tl-engine" }
+tl-tok = { path = "../tl-tok" }
+bytes = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+toml = "1"
+tonic = "0.14"

@@ -1,44 +1,33 @@
-<!-- ol:module L8.7 -->
 # Constrained decoding: regex to DFA to token masks, JSON-schema subset
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L8.7` · build · Python · Pass 6 · 4 to 5 h |
-| **You build** | `python/tinyllm/infer/constrain.py`: `regex_to_dfa` (parser, Thompson NFA, subset construction, minimization), `DFA`, `json_schema_to_regex`, `TokenIndex`, `Constraint`, `apply_mask`, `vocab_bytes`, `constrained_sample` |
+| **Module** | `L8.7` · build · Python · Pass 6 |
+| **Solution** | [`constrain.py`](../../../../course/solutions/python/tinyllm/infer/constrain.py): `regex_to_dfa` (parser, Thompson NFA, subset construction, minimization), `DFA`, `json_schema_to_regex`, `TokenIndex`, `Constraint`, `apply_mask`, `vocab_bytes`, `constrained_sample` |
 | **Contract** | [`course/contracts/py/tinyllm/infer/constrain.pyi`](../../../../course/contracts/py/tinyllm/infer/constrain.pyi) |
-| **Tests** | `course/tests/L8.7/test_constrain.py`, with the golden masks `course/fixtures/L8.7/masks_golden.json` (what they check: section 4) |
-| **Needs** | [`L8.1` sampling](01-sampling-and-logit-processors.md) (`sample` on masked logits), [`M05.2` the GPT-2 byte map](../../../tracks/math/05-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md) (`unicode_to_bytes`) (or `--ref-deps`). Reading: [`M06.1` graphs](../../../tracks/math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md) |
-| **Used by** | `L10.9` tool calls with constrained JSON in the Rust engine, held to the golden masks (joins `used_by` when registered) |
-| **Milestone** | `MS-L8` (step `constrained-json`: every generated document parses and validates) |
+| **Needs** | [`L8.1` sampling](01-sampling-and-logit-processors.md) (`sample` on masked logits), [`M05.2` the GPT-2 byte map](../../../tracks/math/05-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md) (`unicode_to_bytes`). Reading: [`M06.1` graphs](../../../tracks/math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md) |
+| **Used by** | `L10.9` tool calls with constrained JSON in the Rust engine, held to the same masks on recorded paths; on a real model, every generated tool-call document parses and validates |
 | **Optional depth** | Sipser, *Introduction to the Theory of Computation*, ch. 1 (finite automata, regular expressions); Thompson, *Regular Expression Search Algorithm* (CACM 1968); Willard and Louf, *Efficient Guided Generation for Large Language Models* (2023) |
 
 ## Key Takeaways
 
-- **A regular expression is a finite automaton in disguise**: Thompson's construction builds an NFA fragment per operator, and the subset construction turns it into a DFA whose state is "the set of NFA states we could be in" (`test_matches_python_re`).
-- **Minimized and numbered breadth first, the DFA is canonical**: two patterns with the same language give identical tables, which is what lets the Rust port compare against yours (`test_canonical_form`).
-- **A token is allowed when walking its bytes keeps the DFA alive**: a trie over the vocabulary shares the walk between tokens with a common prefix, and EOS is allowed exactly in accepting states (`test_masks_match_brute_force`, `test_hand_example_masks`).
-- **Every reachable state has a non-empty mask**, so constrained generation can always continue or stop, and every finished output is in the language (`test_reachable_states_never_have_an_empty_mask`, `test_constrained_generation_parses`).
-- **A JSON schema subset is a regular language**: objects with ordered properties, arrays with bounds, enums, and strings of well-formed UTF-8 become one regex, and any keyword outside the subset is refused rather than ignored (`test_json_schema_documents`, `test_json_schema_rejects_keywords_outside_the_subset`).
+- **A regular expression is a finite automaton in disguise**: Thompson's construction builds an NFA fragment per operator, and the subset construction turns it into a DFA whose state is "the set of NFA states we could be in".
+- **Minimized and numbered breadth first, the DFA is canonical**: two patterns with the same language give identical tables, which is what lets the Rust port compare tables.
+- **A token is allowed when walking its bytes keeps the DFA alive**: a trie over the vocabulary shares the walk between tokens with a common prefix, and EOS is allowed exactly in accepting states.
+- **Every reachable state has a non-empty mask**, so constrained generation can always continue or stop, and every finished output is in the language.
+- **A JSON schema subset is a regular language**: objects with ordered properties, arrays with bounds, enums, and strings of well-formed UTF-8 become one regex, and any keyword outside the subset is refused rather than ignored.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L8.7              # stubs constrain.py into your repo, contract alongside
-ol tests L8.7              # read the test catalog first
-ol check L8.7              # exit code is the verdict
-ol check L8.7 --ref-deps   # only if you skipped L8.1 or M05.2
-ol diff  L8.7              # after passing: your code against the reference
-```
-
-You also write graded tests (rung R5) in `python/tests/l8-7-constrain/`. Python's `re` is a fine oracle for matching; for masks, a brute-force walk of each token through your DFA is the definition.
+Sections 1 to 3 build the pipeline from first principles (regex to NFA to canonical DFA to token masks, and JSON schemas as regexes) and work a small DFA and its masks by hand. Section 4 fixes the interface. Section 5 walks through the solution stage by stage and explains why each choice is the right one. Python's `re` is an exact oracle for matching, and walking each token's bytes through the DFA is the definition of a mask; keep both in mind as you read.
 
 ---
 
 ## 1. Why now
 
-Part 10's agents call tools: the model must emit `{"city": "Oslo", "days": 3}` for a function whose arguments are described by a JSON schema, and your gateway hands those arguments to code that expects exactly that shape. A 135M-parameter model left alone produces almost-JSON: a missing quote, a trailing comma, `"days": "three"`. Retrying until it parses wastes passes and still fails sometimes. Constrained decoding makes invalid output impossible instead: before each sampling step, every token that would take the text outside the allowed language gets logit $-\infty$, and L8.1's sampler never draws it. The engine (L10.9) will do this in Rust, per request, at serving speed; this module builds the semantics in Python, from regex to masks, and a golden file that the Rust port must match.
+Part 10's agents call tools: the model must emit `{"city": "Oslo", "days": 3}` for a function whose arguments are described by a JSON schema, and the gateway hands those arguments to code that expects exactly that shape. A 135M-parameter model left alone produces almost-JSON: a missing quote, a trailing comma, `"days": "three"`. Retrying until it parses wastes passes and still fails sometimes. Constrained decoding makes invalid output impossible instead: before each sampling step, every token that would take the text outside the allowed language gets logit $-\infty$, and L8.1's sampler never draws it. The engine (L10.9) will do this in Rust, per request, at serving speed; this module builds the semantics in Python, from regex to masks, and fixes the masks the Rust port must match.
 
 ## 2. Principles
 
@@ -57,7 +46,7 @@ Part 10's agents call tools: the model must emit `{"city": "Oslo", "days": 3}` f
 
 A regex is parsed into a tree: byte sets (a literal, a class `[a-z]`, `.`, `\d`), concatenation, alternation `|`, and repetition (`*`, `+`, `?`, `{m,n}`). **Thompson's construction** turns each node into an NFA fragment with one entry and one exit, joined by $\varepsilon$-edges (edges that consume nothing): a byte set is two states and one labeled edge; a concatenation chains fragments; an alternation adds a new entry with $\varepsilon$-edges into each branch and a new exit they all reach; `x*` adds a loop state that can enter $x$ again or leave; `x{m,n}` is $m$ copies of $x$, then $n - m$ optional copies that may each skip to the end. The **$\varepsilon$-closure** of a set of states is everything reachable from it through $\varepsilon$-edges alone, a graph search (M06.1).
 
-The subset is Python's own (for bytes patterns): `\d` is `[0-9]`, `\w` is `[A-Za-z0-9_]`, `\s` is `[ \t\n\r\f\v]`, `.` is any byte except `\n`, and `[^...]` is the complement over all 256 bytes. Python's `re.fullmatch` on bytes is therefore an exact oracle, and the tests use it.
+The subset is Python's own (for bytes patterns): `\d` is `[0-9]`, `\w` is `[A-Za-z0-9_]`, `\s` is `[ \t\n\r\f\v]`, `.` is any byte except `\n`, and `[^...]` is the complement over all 256 bytes. Python's `re.fullmatch` on bytes is therefore an exact oracle.
 
 ### 2.2 From NFA to a canonical DFA
 
@@ -123,7 +112,7 @@ Masks for the vocabulary `c a t r d o g s ca cat dog ts x <eos> ""` (ids 0 to 14
 | 5 | 7 `s`, 13 EOS | accepting, so EOS too |
 | 6 | 13 EOS | nothing can follow |
 
-`x` is never allowed, nor the empty token. These two tables are `test_hand_example` and `test_hand_example_masks`.
+`x` is never allowed, nor the empty token.
 
 ## 4. The interface
 
@@ -139,58 +128,259 @@ def vocab_bytes(tok) -> list[bytes | None]
 def constrained_sample(logits, c: Constraint, p: SamplingParams, history, rng, prompt=()) -> tuple[int, float]
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example` | unit, smoke | section 3's DFA: 7 states, the accepting ones, every edge; `step` and `matches` | you and the test agree on the canonical form |
-| `test_hand_example_masks` | unit, smoke | section 3's masks; `next_state` for tokens, EOS, dead tokens | the mask semantics |
-| `test_matches_python_re` | golden | 10 patterns: random strings from your DFA, their prefixes, and one-byte edits get the same answer from Python's `re` | the regex subset means what Python means |
-| `test_every_state_is_live` | property | from every state an accepting state is reachable | masks never lead into a dead end |
-| `test_canonical_form` | property | five pairs of equivalent patterns give identical `trans` and `accept` | L10.9 compares tables with yours |
-| `test_unsupported_syntax_raises` | boundary | anchors, backreferences, lookarounds, lazy quantifiers, non-ASCII, bad repeats, empty language | no silent misreading |
-| `test_masks_match_brute_force` | property | every state and token: the trie mask equals walking the token's bytes | the trie is only a speedup |
-| `test_masks_match_the_golden_file` | golden | masks and completeness along recorded paths, from an oracle using derivatives, not automata | the L10.9 parity file |
-| `test_reachable_states_never_have_an_empty_mask` | property | with all bytes and EOS, every state reachable by tokens allows something | generation never gets stuck |
-| `test_constraint_lifecycle` | unit | advancing, refusing a disallowed token, EOS only when complete, nothing after EOS | engine bugs surface |
-| `test_apply_mask` | boundary | float64 copy with $-\infty$; an all-false mask and a wrong shape are errors | L8.1 never sees an all $-\infty$ row |
-| `test_greedy_takes_the_best_allowed_token` | unit | the largest allowed logit wins (ties lowest); the logprob is renormalized | greedy tool calls |
-| `test_constrained_generation_parses` | property | 40 seeded requests under a tool schema: at least 30 finish, every finished one parses and validates | the L10.9 guarantee |
-| `test_json_schema_documents` | unit | valid documents match; missing keys, wrong types, order, extra keys, trailing commas, spaces, bounds, raw control bytes do not | the schema subset's meaning |
-| `test_json_schema_rejects_keywords_outside_the_subset` | boundary | `pattern`, `maxLength`, `$ref`, `additionalProperties: true`, unknown required names, unknown types | no silently ignored constraints |
-| `test_vocab_bytes` | unit | the byte map undone; non-map strings as UTF-8; specials as `None` | masks over the real tokenizer |
+| The hand-example DFA | unit, smoke | section 3's DFA: 7 states, the accepting ones, every edge; `step` and `matches` | the canonical form is pinned by a table you can check by hand |
+| The hand-example masks | unit, smoke | section 3's masks; `next_state` for tokens, EOS, dead tokens | the mask semantics |
+| Agreement with Python's `re` | golden | 10 patterns: random strings from the DFA, their prefixes, and one-byte edits get the same answer from Python's `re` | the regex subset means what Python means |
+| Every state is live | property | from every state an accepting state is reachable | masks never lead into a dead end |
+| Canonical form | property | five pairs of equivalent patterns give identical `trans` and `accept` | L10.9 compares tables with these |
+| Unsupported syntax raises | boundary | anchors, backreferences, lookarounds, lazy quantifiers, non-ASCII, bad repeats, empty language | no silent misreading |
+| Trie masks equal brute force | property | every state and token: the trie mask equals walking the token's bytes | the trie is only a speedup |
+| Masks along recorded paths | golden | masks and completeness along recorded paths, from an independent oracle using regex derivatives, not automata | the parity data L10.9 is held to |
+| No reachable state has an empty mask | property | with all bytes and EOS, every state reachable by tokens allows something | generation never gets stuck |
+| The constraint's lifecycle | unit | advancing, refusing a disallowed token, EOS only when complete, nothing after EOS | engine bugs surface |
+| `apply_mask` | boundary | float64 copy with $-\infty$; an all-false mask and a wrong shape are errors | L8.1 never sees an all $-\infty$ row |
+| Greedy takes the best allowed token | unit | the largest allowed logit wins (ties lowest); the logprob is renormalized | greedy tool calls |
+| Constrained generation parses | property | 40 seeded requests under a tool schema: at least 30 finish, every finished one parses and validates | the L10.9 guarantee |
+| JSON schema documents | unit | valid documents match; missing keys, wrong types, order, extra keys, trailing commas, spaces, bounds, raw control bytes do not | the schema subset's meaning |
+| Keywords outside the subset are refused | boundary | `pattern`, `maxLength`, `$ref`, `additionalProperties: true`, unknown required names, unknown types | no silently ignored constraints |
+| `vocab_bytes` | unit | the byte map undone; non-map strings as UTF-8; specials as `None` | masks over the real tokenizer |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **The guarantee needed is "every finished output is in $L$, and the sampler is never stuck".** So at every step we need the set of tokens that keep the text a prefix of some string in $L$, plus EOS exactly when the text is in $L$.
+2. **"Is this a prefix of something in $L$?" is a question about a state, not about the whole text.** For a regular language a DFA answers it in $O(1)$ per byte: the state after the text is all that matters, and a state is live iff an accepting state is reachable from it. So the constraint carries one integer.
+3. **The DFA is built the classical way**: parse to a tree, Thompson NFA (each operator a fragment with one entry and one exit, easy to get right), then the subset construction. Working over byte classes instead of 256 bytes keeps the construction fast without changing the result.
+4. **Dead states must be removed before masks are computed**, otherwise a token could lead into a state that can never accept, and the sampler would be stranded there (section 2.3).
+5. **The Rust port must produce the same tables**, so the DFA must be canonical: minimise (unique up to renaming) and then number breadth first with bytes ascending (removes the renaming).
+6. **Masks are a per-state function of the vocabulary.** Computing them by walking every token is correct but repeats work; a byte trie shares prefixes and prunes at the first dead byte. Cache per state, because generation revisits few states many times.
+7. **JSON schemas in the subset compile to a regex**, so the same pipeline handles them; anything outside the subset must be refused, not ignored.
+
+### The code, annotated
+
+Byte sets are Python integers with bit $b$ set for byte $b$, so union, intersection and complement over all 256 bytes are `|`, `&`, `ALL & ~x`. The classes match Python's bytes semantics:
+
+```python
+ALL = (1 << 256) - 1                       # a byte set is an int with bit b set for byte b
+DIGIT = _range(0x30, 0x39)
+WORD = DIGIT | _range(0x41, 0x5A) | _range(0x61, 0x7A) | _bits([0x5F])   # \w includes _
+DOT = ALL & ~_bits(b"\n")                  # . is any byte except newline
+# and in bracket(): return (ALL & ~bits) if neg else bits   # [^...] over all 256 bytes
+```
+
+The parser is recursive descent (`alt` > `cat` > `repeat` > `atom`) and raises on anything outside the subset: `^` and `$` are `unexpected`, `(?=...)` and other `(?` groups except `(?:` are refused, a `?` after a quantifier is a lazy quantifier and refused, non-ASCII pattern characters must be written as `\xHH`.
+
+Thompson's construction. The repetition case is the subtle one:
+
+```python
+def build(self, node) -> tuple[int, int]:
+    """A fragment (start, end) for node: end has no outgoing edges yet."""
+    kind = node[0]
+    if kind == "set":                       # two states, one labelled edge
+        s, e = self.state(), self.state()
+        self.edges[s].append((node[1], e))
+        return s, e
+    if kind == "cat":                       # chain fragments with epsilon edges
+        s = e = self.state()
+        for child in node[1]:
+            cs, ce = self.build(child)
+            self.eps[e].append(cs)
+            e = ce
+        return s, e
+    if kind == "alt":                       # fan out from s, fan in to e
+        s, e = self.state(), self.state()
+        for child in node[1]:
+            cs, ce = self.build(child)
+            self.eps[s].append(cs)
+            self.eps[ce].append(e)
+        return s, e
+    _, child, m, n = node                   # ("rep", child, m, n)
+    s = e = self.state()
+    for _ in range(m):                      # m mandatory copies
+        cs, ce = self.build(child)
+        self.eps[e].append(cs)
+        e = ce
+    if n is None:                           # then a loop: zero or more
+        cs, ce = self.build(child)
+        loop = self.state()
+        self.eps[e].append(loop)
+        self.eps[loop].append(cs)
+        self.eps[ce].append(loop)
+        return s, loop                      # x+ is one copy then the loop: never empty
+    end = self.state()
+    self.eps[e].append(end)                 # may stop after the m copies
+    for _ in range(n - m):                  # n - m optional copies, each may stop early
+        cs, ce = self.build(child)
+        self.eps[e].append(cs)
+        self.eps[ce].append(end)
+        e = ce
+    return s, end
+```
+
+Byte classes refine the partition once per edge set, so every edge's set is a union of classes; the subset construction then loops over classes:
+
+```python
+s0 = nfa.closure([start])
+ids = {s0: 0}; sets = [s0]; moves = []
+q = deque([s0])
+while q:
+    cur = q.popleft()
+    targets = [[] for _ in classes]
+    for s in cur:                          # one edge step from any NFA state in cur
+        for cis, t in covers[s]:
+            for ci in cis:
+                targets[ci].append(t)
+    row = []
+    for tgt in targets:
+        if not tgt:
+            row.append(DEAD)               # no NFA state continues: the dead state
+            continue
+        key = frozenset(tgt)
+        if key not in closures:            # closures are memoised per target set
+            closures[key] = nfa.closure(key)
+        nxt = closures[key]
+        if nxt not in ids:                 # a new DFA state
+            ids[nxt] = len(sets); sets.append(nxt); q.append(nxt)
+        row.append(ids[nxt])
+    moves.append(row)
+acc = [final in s for s in sets]           # accepting iff the set holds the NFA's exit
+```
+
+Then liveness (a backward search from the accepting states over reversed edges; a pattern whose start is not live "matches nothing" and raises), transitions into non-live states rewritten to `DEAD`, and Moore minimisation:
+
+```python
+alive = [s for s in range(n) if live[s]]
+block = {s: int(acc[s]) for s in alive}    # two blocks: accepting or not
+while True:
+    # A state's signature: its block and the blocks it moves to on each class.
+    sig = {s: (block[s],) + tuple(block[t] if t != DEAD else -1 for t in moves[s])
+           for s in alive}
+    keys = {k: i for i, k in enumerate(sorted(set(sig.values())))}
+    nb = {s: keys[sig[s]] for s in alive}
+    if len(keys) == len(set(block.values())):   # nothing split: a fixed point
+        block = nb
+        break
+    block = nb
+```
+
+Canonical numbering walks blocks breadth first from the start block, bytes `0..255` in order, assigning the next number to each new block reached; each row is filled per byte through `byte_class[byte]`, so the stored table is the full `[S, 256]` array. On the worked example, state 0 sees `c` (0x63) before `d` (0x64), so "c" becomes 1 and "d" 2.
+
+Masks: a trie of the vocabulary's bytes, walked depth first from the state:
+
+```python
+def _build(self, state: int) -> None:
+    mask = np.zeros(self.vocab_size, dtype=bool)
+    nxt = np.full(self.vocab_size, DEAD, dtype=np.int64)
+    trans = self.dfa.trans
+    stack = [(self._root, state)]
+    while stack:
+        (children, _), s = stack.pop()
+        for b, child in children.items():
+            t = int(trans[s, b])
+            if t == DEAD:
+                continue  # every token below this byte is dead too
+            for tid in child[1]:           # tokens ending at this trie node
+                mask[tid] = True
+                nxt[tid] = t               # the state after the whole token
+            stack.append((child, t))       # keep walking longer tokens
+    if self.eos_id is not None and self.dfa.accept[state]:
+        mask[self.eos_id] = True           # EOS only where the text is complete
+        nxt[self.eos_id] = state
+    self._masks[state] = mask
+    self._next[state] = nxt
+```
+
+The trie is built in `__init__` skipping `None` (specials), empty tokens and EOS, so those never appear in a mask through the walk. `mask` and `next_state` build a state's arrays on first use and cache them; `mask` returns a copy so a caller cannot corrupt the cache.
+
+The constraint is a state plus a done flag, and refuses what the mask would not have allowed:
+
+```python
+def advance(self, token_id: int) -> None:
+    if self.done:
+        raise ValueError("the constraint is done (EOS was emitted)")
+    nxt = self.index.next_state(self.state, int(token_id))
+    if nxt == DEAD:                        # an engine bug: surface it
+        raise ValueError(f"token {token_id} is not allowed in state {self.state}")
+    if token_id == self.index.eos_id:
+        self.done = True
+    self.state = nxt
+```
+
+`constrained_sample` is three lines: `apply_mask` (a float64 copy with $-\infty$ outside the mask, refusing an all-false mask), L8.1's `sample` on it, then `advance`.
+
+The JSON object rule, built from the end:
+
+```python
+after, first = "", ""
+for m, req in reversed(members):   # m is '"key":' + the value's regex
+    # first: members i.. when nothing has been written yet
+    first = f"{m}{after}" if req else f"(?:{m}{after}|{first})"
+    # after: members i.. once something was written (each needs a comma)
+    after = f",{m}{after}" if req else f"(?:,{m})?{after}"
+return r"\{" + first + r"\}"
+```
+
+Each step copies `after` into `first` once, so the pattern grows with the square of the number of properties. Arrays: `item(?:,item){lo-1,hi-1}`, wrapped in `(?:...)?` when `minItems` is 0, and `\[\]` when `maxItems` is 0. Every schema branch calls `only(...)` with its allowed keywords and raises on any other (only `title`, `description`, `default` are ignored, since they do not constrain values).
+
+`vocab_bytes` decodes a token through the GPT-2 byte map when every character is in the map, otherwise encodes it as UTF-8, and gives specials `None`.
+
+Full solution: [`constrain.py`](../../../../course/solutions/python/tinyllm/infer/constrain.py).
+
+### Why this solution
+
+- **Cost.** The subset construction can in principle produce $2^{|N|}$ states; for the patterns here (and JSON schemas) it stays small. Per DFA state the mask costs at most the trie's size and usually much less thanks to pruning; per generation step it is a dictionary lookup once the state is cached. `advance` is $O(1)$.
+- **Against checking candidate tokens after sampling.** Sample, check, resample if invalid changes the distribution in an uncontrolled way and can loop. Masking before sampling is exactly "the model's distribution restricted to valid tokens".
+- **Against an NFA simulation at run time.** It would avoid the subset construction but cost a set of states per byte per token; a DFA is one table lookup per byte and has a canonical form to compare across languages.
+- **Against a full JSON grammar (pushdown automaton).** Nested and recursive schemas need a CFG; the regular subset covers tool-call arguments with bounded nesting, and a DFA keeps the state a single integer the Rust engine can store per request.
+- **Tradeoff accepted.** Compact JSON only (no whitespace), properties in schema order, and `{m,n}` bounded at 256. These rule out outputs the model might have liked, in exchange for a small DFA and a mask that is exact.
+
+### Explain it back
+
+1. Why does `x+` not accept the empty string in this construction, while `x*` does?
+   <details><summary>Answer</summary>`x+` is `("rep", x, 1, None)`: one mandatory copy, then the loop. The fragment's start reaches the loop only through that copy. `x*` has $m = 0$, so the start connects to the loop state directly, which is also the end.</details>
+2. Why is the liveness pass needed if the subset construction already writes `DEAD` for empty sets?
+   <details><summary>Answer</summary>A non-empty set of NFA states can still have no path to the exit. Without the pass, a mask would allow a token into such a state, and from there no token could ever complete the text. After the pass every state either accepts or has a live successor.</details>
+3. Why do `a|b` and `[ab]` give byte-identical tables?
+   <details><summary>Answer</summary>They denote the same language. The minimal DFA of a language is unique up to renaming states, and breadth-first numbering with bytes ascending fixes the names. So the tables depend on the language only.</details>
+4. In state 3 of the worked example, why is `ts` allowed though "cats" is not a word plus `t`?
+   <details><summary>Answer</summary>From "ca", `t` goes to state 5 ("cat") and `s` to state 6 ("cats"), both live. A token is allowed when its whole byte string keeps the text a prefix of some string in $L$; it may cross the boundary of what a human would call a word.</details>
+5. Why must an unknown schema keyword raise instead of being ignored?
+   <details><summary>Answer</summary>Ignoring `maxLength` or `pattern` would let the model emit values the schema forbids while every check here passes, and the tool receiving the arguments would get invalid input with no warning.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. classes that differ from Python's: `.` matching `\n`, `[^...]` complemented over ASCII only, `\w` without `_`, ranges missing their upper end | strings `re` accepts are refused, or the reverse | `test_matches_python_re` (mutants `s01`, `s02`, `s08`, `s11`) |
-| 2. no minimization | equivalent patterns give different tables; the hand example has more than 7 states | `test_canonical_form` (mutant `s03`) |
-| 3. numbering in another order | tables that do not match the Rust port's | `test_hand_example` (mutant `s04`) |
-| 4. EOS allowed everywhere, or a dead sink kept as a state | outputs stop mid-word; masks lead into a state with no way out | `test_hand_example_masks` (mutant `s05`), `test_every_state_is_live` (mutant `s12`) |
-| 5. the trie walk stopping at the first dead byte, or recording the wrong next state | allowed tokens missing; the constraint drifts from the text | `test_masks_match_brute_force` (mutants `s06`, `s14`) |
-| 6. repetition built wrong: one optional copy too few, `+` as `*` | `{2,3}` accepts only 2; `x+` accepts "" | `test_matches_python_re` (mutants `s09`, `s10`) |
-| 7. anchors read as literal characters | a pattern means something else than in Python | `test_unsupported_syntax_raises` (mutant `s13`) |
-| 8. JSON strings allowing raw control bytes or any high byte; integers with leading zeros; an exponent without digits | output that `json.loads` rejects | `test_constrained_generation_parses`, `test_json_schema_documents` (mutants `s15`, `s16`, `s23`, `s24`) |
-| 9. optional properties made required after the first member | valid tool calls without optional arguments refused | `test_json_schema_documents` (mutant `s17`) |
-| 10. `maxItems` off by one | one item too many accepted | `test_json_schema_documents` (mutant `s18`) |
-| 11. unknown schema keywords ignored | output violates the schema silently | `test_json_schema_rejects_keywords_outside_the_subset` (mutant `s25`) |
-| 12. token strings encoded as UTF-8 without undoing the byte map; specials given bytes | masks over the wrong bytes: `Ġ` is two bytes, not a space | `test_vocab_bytes` (mutants `s26`, `s27`) |
+| 1. classes that differ from Python's: `.` matching `\n`, `[^...]` complemented over ASCII only, `\w` without `_`, ranges missing their upper end | strings `re` accepts are refused, or the reverse | `DOT = ALL & ~\n`, complement against `ALL` (256 bits), `WORD` includes `0x5F`, `_range(lo, hi)` is inclusive |
+| 2. no minimization | equivalent patterns give different tables; the hand example has more than 7 states | Moore refinement until no block splits |
+| 3. numbering in another order | tables that do not match the Rust port's | breadth first from the start block, bytes ascending |
+| 4. EOS allowed everywhere, or a dead sink kept as a state | outputs stop mid-word; masks lead into a state with no way out | EOS only in accepting states; the liveness pass rewrites non-live targets to `DEAD` |
+| 5. the trie walk stopping at the first dead byte, or recording the wrong next state | allowed tokens missing; the constraint drifts from the text | skips only that byte's subtree (`continue`), records `t` after the token's last byte |
+| 6. repetition built wrong: one optional copy too few, `+` as `*` | `{2,3}` accepts only 2; `x+` accepts "" | $m$ mandatory copies, then exactly $n - m$ optional copies or one loop |
+| 7. anchors read as literal characters | a pattern means something else than in Python | `^` and `$` are parse errors |
+| 8. JSON strings allowing raw control bytes or any high byte; integers with leading zeros; an exponent without digits | output that `json.loads` rejects | `UTF8_CHAR` starts at `\x20` and lists only well-formed sequences; `0\|[1-9][0-9]*`; `[eE][+-]?[0-9]+` |
+| 9. optional properties made required after the first member | valid tool calls without optional arguments refused | the `after` form wraps each optional member in `(?:,m)?` |
+| 10. `maxItems` off by one | one item too many accepted | the tail repeats `{lo-1, hi-1}` after the first item |
+| 11. unknown schema keywords ignored | output violates the schema silently | `only(...)` raises on any keyword outside the branch's list |
+| 12. token strings encoded as UTF-8 without undoing the byte map; specials given bytes | masks over the wrong bytes: `Ġ` is two bytes, not a space | `vocab_bytes` maps through `unicode_to_bytes` and returns `None` for specials |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `L8.1` | `constrained_sample` is `sample` on masked logits; $-\infty$ is a token that cannot be drawn |
 | Back | `M05.2` | `vocab_bytes` undoes the GPT-2 byte map with `unicode_to_bytes` |
 | Back | `M06.1` | graphs, reachability, breadth-first search (reading; toposort does not apply, because automata have cycles) |
-| Forward | `L10.9` | the Rust engine's tool calls: a tool's JSON schema becomes a DFA, and the per-request masks must equal `masks_golden.json` and yours |
-
-If you skip this module, `ol check L10.9` stops with `BLOCKED ... needs L8.7`: build it, or pass `--ref-deps`.
+| Forward | `L10.9` | the Rust engine's tool calls: a tool's JSON schema becomes a DFA, and the per-request masks must equal this solution's on recorded paths |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | regex to DFA to masks | Outlines (`outlines-core`) | the index built once per (regex, tokenizer): for each state, the token to next-state map, in Rust | `outlines-core` `src/index.rs` |
 | JSON-schema subset | XGrammar, llguidance | context-free grammars (nested objects, `$ref`, recursion) with a pushdown automaton; masks computed in microseconds per token with adaptive caches | XGrammar paper (Dong et al., 2024); `guidance-ai/llguidance` |

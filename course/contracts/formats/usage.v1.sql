@@ -1,4 +1,4 @@
--- contracts/formats/usage.v1.sql: the gateway's usage ledger (DESIGN 2.9).
+-- contracts/formats/usage.v1.sql: the gateway's usage ledger.
 -- chapter: content/tracks/ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md
 -- chapter: content/tracks/software-craftsmanship/12-language-and-tool-primers/11-sql-and-sqlite.md
 -- SQLite, at [gateway].usage_db (/artifacts/gateway/usage.db), WAL mode, so

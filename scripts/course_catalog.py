@@ -177,19 +177,8 @@ def export(
     for f in all_files:
         if Path(f).suffix != ".md" and any(f.startswith(p + "/") for p in parents):
             want.add(f)
-    if "course" in trees:
-        import tomllib
-
-        for module in (root / "course/modules").glob("*.toml"):
-            chapter = tomllib.loads(module.read_text()).get("chapter")
-            if chapter:
-                resolve(root, chapter)
-                want.add(chapter)
     want.update(f for f in ["LICENSE", ".gitignore"] if (root / f).is_file())
     packed = {k: v for k, v in manifest.items() if k != "runtime"}
-    if reading_only:
-        packed.pop("practice", None)
-        packed.pop("stageCheck", None)
     dest.mkdir(parents=True)
     for f in sorted(want):
         src = resolve(root, f)

@@ -1,5 +1,0 @@
-# path	sha256	bytes	generator	oracle_versions	upstream@revision	license
-course/fixtures/M90.2/vectors.json	b0335e2a9753c74d09d1d6ef5d20d18e12995ae51c9e5732aa6554cea01433ee	87	hand	-	-	Apache-2.0
-course/fixtures/MS-M90/greedy_ab.json	0b9638622d8fd3267d15ac0d8a8e6f311f4d6bc1023b95395d650643ba9bd3bf	49	hand	-	-	Apache-2.0
-course/fixtures/MS-M90/greedy_hello.json	210520c99084f0c4675c864df1c3c40d14f197b84e7969ba760d01aba78652f3	48	hand	-	-	Apache-2.0
-course/fixtures/parity/demo.sum.json	919f33c63977418fe9c89e28e9d5087141379da29a514a9fbb3bb9799f1881c0	320	hand	-	-	Apache-2.0

@@ -1,9 +1,0 @@
---- a/python/tinyllm/tok/trie.py
-+++ b/python/tinyllm/tok/trie.py
-@@ -113,5 +113,5 @@
-             if v is not None:
-                 yield "".join(path), v
-             kids = self._children[node]
--            for c in sorted(kids, reverse=True):
-+            for c in reversed(list(kids)):
-                 stack.append((kids[c], depth + 1, c))

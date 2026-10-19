@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "train spec (specs/<name>.json)",
-  "description": "What `{tinyllm} train --spec` runs (DESIGN 2.8, 2.9; L0.6, L11.1, C1, dur.11). The spec plus the data manifest fully determine a run: two runs of the same spec on the same machine give the same losses.",
+  "description": "What `{tinyllm} train --spec` runs (L0.6, L11.1, C1, dur.11). The spec plus the data manifest fully determine a run: two runs of the same spec on the same machine give the same losses.",
   "type": "object",
   "required": [
     "name",

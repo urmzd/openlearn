@@ -1,4 +1,3 @@
-<!-- ol:module lang.09 -->
 # Async Rust and tokio: futures, tasks, channels, cancellation, hyper
 
 ## Overview
@@ -6,40 +5,37 @@
 | | |
 |---|---|
 | **Module** | `lang.09` · practice · Rust · Pass 7 · 6 to 9 h |
-| **You build** | `primers/lang.09/`: the `ticker` package, a library (an SSE producer task feeding a bounded channel, bounded admission with a semaphore, the routes on hyper, a server loop with graceful shutdown) and a `ticker` binary: `GET /health`, `GET /ticks` (an SSE stream), `POST /jobs` (two slots, else 429), `GET /stats` |
+| **Solution** | [`primers/lang.09/`](../../../../course/solutions/primers/lang.09/): the `ticker` package ([`src/lib.rs`](../../../../course/solutions/primers/lang.09/src/lib.rs): `produce`, `Admission`, `ChannelBody`, `handle`, `serve`; [`src/main.rs`](../../../../course/solutions/primers/lang.09/src/main.rs): `main`), a library (an SSE producer task feeding a bounded channel, bounded admission with a semaphore, the routes on hyper, a server loop with graceful shutdown) and a `ticker` binary: `GET /health`, `GET /ticks` (an SSE stream), `POST /jobs` (two slots, else 429), `GET /stats` |
 | **Contract** | none: the routes table and the signatures in section 4 are the contract; the crates are [tokio](https://docs.rs/tokio/1) and [hyper 1](https://docs.rs/hyper/1) |
-| **Tests** | `course/tests/lang.09/check` builds your package offline, runs your own `cargo test`, then runs `test_lang09_async.py`, which streams, disconnects, bursts, and sends SIGTERM to your server (what each test checks: section 4) |
 | **Needs** | reading: `lang.04` Rust (ownership, traits, `Result`, threads) ([primer](04-rust.md)), `lang.05` HTTP/1.1 and SSE by hand ([primer](05-http-and-sse.md)) |
 | **Used by** | no call site (a primer): `L10.5` applies it next (the engine server is this package grown up), then `lang.10` (tonic runs on tokio) |
-| **Milestone** | `MS-P7` |
 | **Optional depth** | [Asynchronous Programming in Rust](https://rust-lang.github.io/async-book/) (free); [Tokio tutorial](https://tokio.rs/tokio/tutorial) (free); [Alice Ryhl, Async: what is blocking?](https://ryhl.io/blog/async-what-is-blocking/) (free); [hyper 1.x guides](https://hyper.rs/guides/1/) (free); [withoutboats, Pin](https://without.boats/blog/pin/) (free) |
 
 ## Key Takeaways
 
-- An `async fn` returns a **future**, a value that does nothing until an executor polls it; `.await` is a point where the task may pause and its thread runs another task (`test_events_leave_as_produced`).
-- A task never blocks its thread: a sleep is `tokio::time::sleep(..).await`, and CPU-heavy work goes to its own thread (L10.5's engine) (`test_bounded_admission_answers_429`).
-- A **bounded** channel gives backpressure: `send().await` waits while the channel is full, so a slow reader slows the producer instead of growing memory (`test_slow_reader_bounds_the_producer`).
-- Dropping is cancelling: when the client goes away, hyper drops the body, the receiver goes with it, and the producer sees `send` fail or `closed()` fire (`test_disconnect_cancels_the_producer`).
-- Graceful shutdown is three steps: stop accepting, let in-flight work finish, exit 0 (`test_sigterm_drains_and_exits_zero`).
+- An `async fn` returns a **future**, a value that does nothing until an executor polls it; `.await` is a point where the task may pause and its thread runs another task.
+- A task never blocks its thread: a sleep is `tokio::time::sleep(..).await`, and CPU-heavy work goes to its own thread (L10.5's engine).
+- A **bounded** channel gives backpressure: `send().await` waits while the channel is full, so a slow reader slows the producer instead of growing memory.
+- Dropping is cancelling: when the client goes away, hyper drops the body, the receiver goes with it, and the producer sees `send` fail or `closed()` fire.
+- Graceful shutdown is three steps: stop accepting, let in-flight work finish, exit 0.
 
-## How to work this chapter
+## How to read this chapter
+
+Section 2 builds async Rust from threads up: futures, the runtime, tasks, channels, cancellation, hyper, and shutdown. Section 3 traces one stream, one disconnect, and one burst of jobs by hand. Section 4 fixes the routes and signatures, and section 5 walks through the solution and explains why each piece is written the way it is. Try to predict each function before reading it. The solution runs like this:
 
 ```bash
-ol start lang.09          # records that you started; the exercise lives in primers/lang.09/
-ol tests lang.09          # read the test catalog first
-ol check lang.09          # first run writes the starter package (stubs), then checks it
 cd primers/lang.09 && cargo test && cargo run -- --port 8080
 curl -N 'http://127.0.0.1:8080/ticks?n=5&interval_ms=500'      # one event every half second
 for i in 1 2 3; do curl -s -X POST localhost:8080/jobs -d '{"ms":2000}' & done; wait   # two 200s, one 429
 ```
 
-The first `ol check lang.09` writes the starter files that are missing into `primers/lang.09/`: `Cargo.toml` as given, and `src/lib.rs` and `src/main.rs` with every function body replaced by `todo!("lang.09")`. It never overwrites a file. Builds are offline: tokio, hyper, hyper-util, http-body-util, and bytes come from your local Cargo cache.
+The package depends on tokio, hyper, hyper-util, http-body-util, and bytes ([`Cargo.toml`](../../../../course/solutions/primers/lang.09/Cargo.toml)), and builds offline from a warm Cargo cache.
 
 ---
 
 ## 1. Why now
 
-Your tracer engine (`L10.0`) gives each connection an OS thread. That is simple and fine for a handful of clients, and it does not scale to what `L10.5` must serve: thousands of open streams, most of them idle between tokens, plus a CPU-bound engine that must never be interrupted. Every Rust network service in the course from here on (the v1 engine server, the gRPC services of `L10.6`, the client in `lang.10`) is written on **tokio**, the async runtime, and **hyper**, the HTTP library on top of it. This primer teaches the four ideas they rest on: futures, tasks, channels, and cancellation.
+The tracer engine (`L10.0`) gives each connection an OS thread. That is simple and fine for a handful of clients, and it does not scale to what `L10.5` must serve: thousands of open streams, most of them idle between tokens, plus a CPU-bound engine that must never be interrupted. Every Rust network service in the course from here on (the v1 engine server, the gRPC services of `L10.6`, the client in `lang.10`) is written on **tokio**, the async runtime, and **hyper**, the HTTP library on top of it. This primer teaches the four ideas they rest on: futures, tasks, channels, and cancellation.
 
 ## 2. Principles
 
@@ -112,13 +108,13 @@ On SIGTERM (`tokio::signal::unix::signal(SignalKind::terminate())`), a server st
 | 20 ms | sends `{"i":2}` | 1 | returns it | event 2 |
 | 30 ms | sends `data: [DONE]\n\n`, then returns (drops `tx`) | 1, closed | returns it, then `None`: body ends | `[DONE]`, then the terminal chunk |
 
-The body is exactly `data: {"i":0}\n\ndata: {"i":1}\n\ndata: {"i":2}\n\ndata: [DONE]\n\n` (`test_hand_example_ticks`). On the wire each event is one chunk: `f\r\ndata: {"i":0}\n\n\r\n` (0x0f = 15 bytes), and the stream ends with `0\r\n\r\n`.
+The body is exactly `data: {"i":0}\n\ndata: {"i":1}\n\ndata: {"i":2}\n\ndata: [DONE]\n\n`. On the wire each event is one chunk: `f\r\ndata: {"i":0}\n\n\r\n` (0x0f = 15 bytes), and the stream ends with `0\r\n\r\n`.
 
-**Disconnect.** With `n=1000`, the client reads two events and closes. hyper notices the closed socket, drops the body, which drops `rx`. The producer is sleeping in `select!`; `tx.closed()` completes, and it returns `Cancelled`: `/stats` shows `cancelled` up by one and `active` back to 0 (`test_disconnect_cancels_the_producer`).
+**Disconnect.** With `n=1000`, the client reads two events and closes. hyper notices the closed socket, drops the body, which drops `rx`. The producer is sleeping in `select!`; `tx.closed()` completes, and it returns `Cancelled`: `/stats` shows `cancelled` up by one and `active` back to 0.
 
-**Admission.** Three `POST /jobs {"ms": 600}` at once: the first two take the two permits and sleep 600 ms; the third finds no permit and gets `429` with `Retry-After: 1` in microseconds (`test_bounded_admission_answers_429`).
+**Admission.** Three `POST /jobs {"ms": 600}` at once: the first two take the two permits and sleep 600 ms; the third finds no permit and gets `429` with `Retry-After: 1` at once, without waiting for a slot.
 
-## 4. The artifact and its check
+## 4. The interface
 
 ```rust
 // primers/lang.09/src/lib.rs
@@ -145,33 +141,225 @@ pub async fn serve(listener: tokio::net::TcpListener, app: Arc<App>, shutdown: i
 
 `ticker --port 0` prints `listening on 127.0.0.1:<port>` first; SIGTERM stops accepting, waits for open requests, and exits 0.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_crate_builds` | conformance | the package builds offline with a `ticker` binary | the crates L10.5 uses |
-| `test_your_cargo_tests_pass` | unit | your own `#[tokio::test]`s pass | testing async code |
-| `test_hand_example_ticks` | unit | section 3's body, byte for byte | SSE over hyper |
-| `test_health` | unit | a plain JSON route | the handler shape |
-| `test_events_leave_as_produced` | unit | the first event arrives long before the last is produced | streaming, not buffering |
-| `test_disconnect_cancels_the_producer` | fault | a disconnect cancels the producer within 3 s | L10.5 aborts requests the same way |
-| `test_slow_reader_bounds_the_producer` | unit | a reader that reads nothing stops a 200,000-event producer | backpressure through a bounded channel |
-| `test_bounded_admission_answers_429` | fault | two slots: the third concurrent job gets 429 and `Retry-After` at once; slots come back | L10.5's 429 |
-| `test_sigterm_drains_and_exits_zero` | fault | SIGTERM during a job: the job finishes, exit 0 | rolling deploys |
+| The crate builds | conformance | the package builds offline with a `ticker` binary | the crates L10.5 uses |
+| The package's own tests pass | unit | the `#[tokio::test]`s in `lib.rs` pass | testing async code |
+| The hand example | unit | section 3's body, byte for byte | SSE over hyper |
+| Health | unit | a plain JSON route | the handler shape |
+| Events leave as produced | unit | the first event arrives long before the last is produced | streaming, not buffering |
+| A disconnect cancels the producer | fault | a disconnect cancels the producer within 3 s | L10.5 aborts requests the same way |
+| A slow reader bounds the producer | unit | a reader that reads nothing stops a 200,000-event producer | backpressure through a bounded channel |
+| Bounded admission answers 429 | fault | two slots: the third concurrent job gets 429 and `Retry-After` at once; slots come back | L10.5's 429 |
+| SIGTERM drains and exits 0 | fault | SIGTERM during a job: the job finishes, exit 0 | rolling deploys |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **A stream is a producer and a consumer at different speeds.** The producer makes events on a timer; the consumer is a socket that drains as fast as the client reads. Putting a bounded channel between them (capacity `CAPACITY = 4`) means the producer can be at most four events ahead: `send().await` pauses it when the client is slow (section 2.5).
+2. **The response body must be the channel's receiver.** Then hyper pulls each event out of the channel as soon as it exists (streaming, not buffering), and when the client disconnects, hyper drops the body, which drops the receiver, which is how the producer learns the client is gone (section 2.6).
+3. **The producer must notice a gone client even while it sleeps.** A `send` fails only when it is attempted; between events the producer is in `sleep`. So it sleeps inside `select!` against `tx.closed()`, which completes the moment the receiver is dropped.
+4. **The producer is its own task.** The handler must return the response (headers first) immediately and let the body fill later, so the producer is `tokio::spawn`ed and owns its `Sender` and an `Arc<Stats>`.
+5. **Admission must refuse, not queue.** "At most two jobs, the third gets 429" is a semaphore with two permits and a non-waiting `try_acquire`. The permit is a value: holding it is holding the slot, dropping it frees the slot on every path out, including a cancelled handler.
+6. **Never block a worker.** The job sleeps with `tokio::time::sleep(..).await`, so a sleeping job takes no thread and the 429 for the third job is answered at once.
+7. **Shutdown is a `select!` between accepting and a signal.** On the signal, the loop breaks, the listener is dropped (no new connections), and the server waits, with a bound, for the connection tasks it spawned into a `JoinSet`.
+
+### 5.2 The code, annotated
+
+**The producer.** It counts itself in `Stats`, sends `n` events plus `[DONE]`, and stops at the first sign the receiver is gone.
+
+```rust
+pub async fn produce(n: usize, interval: Duration, tx: mpsc::Sender<Bytes>, stats: Arc<Stats>) -> Outcome {
+    stats.started.fetch_add(1, Ordering::SeqCst);
+    stats.active.fetch_add(1, Ordering::SeqCst);
+    let mut outcome = Outcome::Completed;
+    for i in 0..=n {
+        // i == n is the terminal [DONE] event, so n events plus one.
+        let ev = if i == n { sse_event("[DONE]") } else { sse_event(&format!("{{\"i\":{i}}}")) };
+        // Backpressure: waits while 4 events are queued. Err means the receiver
+        // (the response body) was dropped: the client is gone.
+        if tx.send(Bytes::from(ev)).await.is_err() {
+            outcome = Outcome::Cancelled;
+            break;
+        }
+        if i < n && !interval.is_zero() {  // no sleep after the last event
+            tokio::select! {
+                _ = tokio::time::sleep(interval) => {}
+                // Completes as soon as the receiver is dropped: cancel mid-sleep.
+                _ = tx.closed() => {
+                    outcome = Outcome::Cancelled;
+                    break;
+                }
+            }
+        }
+    }
+    // One exit path, so active always goes back down and exactly one of
+    // completed/cancelled goes up.
+    stats.active.fetch_sub(1, Ordering::SeqCst);
+    match outcome {
+        Outcome::Completed => stats.completed.fetch_add(1, Ordering::SeqCst),
+        Outcome::Cancelled => stats.cancelled.fetch_add(1, Ordering::SeqCst),
+    };
+    outcome
+}
+```
+
+Returning drops `tx`; with no sender left, the receiver's next `poll_recv` returns `None`, which is the end of the body. That is section 3's last row.
+
+**The streamed body.** The whole `Body` implementation is one line, because `mpsc::Receiver::poll_recv` already has the right shape: `Ready(Some(x))`, `Ready(None)` at the end, or `Pending` with the waker registered.
+
+```rust
+pub struct ChannelBody {
+    rx: mpsc::Receiver<Bytes>,
+}
+
+impl Body for ChannelBody {
+    type Data = Bytes;
+    type Error = Infallible;
+
+    fn poll_frame(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<Frame<Bytes>, Infallible>>> {
+        // Some(bytes) -> one data frame (one chunk on the wire); None -> end of body.
+        self.rx.poll_recv(cx).map(|o| o.map(|b| Ok(Frame::data(b))))
+    }
+}
+```
+
+**Admission.** A cloneable wrapper around an `Arc<Semaphore>`; `try_acquire_owned` returns a permit that is not tied to a borrow of the semaphore, so it can be held across `.await`s in the handler.
+
+```rust
+impl Admission {
+    pub fn new(slots: usize) -> Admission {
+        Admission { sem: Arc::new(Semaphore::new(slots)) }
+    }
+
+    /// A permit (released when dropped), or `None` when every slot is taken.
+    pub fn try_admit(&self) -> Option<OwnedSemaphorePermit> {
+        Arc::clone(&self.sem).try_acquire_owned().ok()  // never waits
+    }
+}
+```
+
+**The routes.** One `match` on method and path. All responses share the boxed body type `Out`, so a `Full` JSON body and a `ChannelBody` stream can come from the same function.
+
+```rust
+pub async fn handle(app: Arc<App>, req: Request<Incoming>) -> Result<Response<Out>, Infallible> {
+    let query = req.uri().query().unwrap_or("").to_string();
+    Ok(match (req.method(), req.uri().path()) {
+        (&Method::GET, "/health") => reply(StatusCode::OK, "{\"ok\":true}".to_string()),
+        (&Method::GET, "/stats") => reply(StatusCode::OK, app.stats.to_json()),
+        (&Method::GET, "/ticks") => {
+            let n = query_param(&query, "n").and_then(|v| v.parse().ok()).unwrap_or(5usize);
+            let ms = query_param(&query, "interval_ms").and_then(|v| v.parse().ok()).unwrap_or(100u64);
+            let (tx, rx) = mpsc::channel(CAPACITY);  // bounded: the backpressure
+            tokio::spawn(produce(n, Duration::from_millis(ms), tx, Arc::clone(&app.stats)));
+            // Return now: headers go out at once, events follow as produced.
+            let mut r = Response::new(ChannelBody { rx }.boxed());
+            r.headers_mut().insert("content-type", "text/event-stream".parse().expect("static"));
+            r.headers_mut().insert("cache-control", "no-cache".parse().expect("static"));
+            r
+        }
+        (&Method::POST, "/jobs") => {
+            // Admission before reading the body: a refused job costs nothing.
+            let Some(permit) = app.jobs.try_admit() else {
+                let mut r = reply(StatusCode::TOO_MANY_REQUESTS, "{\"error\":\"busy\"}".to_string());
+                r.headers_mut().insert("retry-after", "1".parse().expect("static"));
+                return Ok(r);
+            };
+            let body = match req.into_body().collect().await {
+                Ok(b) => String::from_utf8_lossy(&b.to_bytes()).into_owned(),
+                Err(_) => String::new(),
+            };
+            let Some(ms) = json_int(&body, "ms") else {
+                return Ok(reply(StatusCode::BAD_REQUEST, "{\"error\":\"ms must be a non-negative integer\"}".to_string()));
+            };
+            tokio::time::sleep(Duration::from_millis(ms)).await;  // never thread::sleep
+            drop(permit);  // the slot is free before the reply is written
+            reply(StatusCode::OK, format!("{{\"ok\":true,\"slept_ms\":{ms}}}"))
+        }
+        _ => reply(StatusCode::NOT_FOUND, "{\"error\":\"not found\"}".to_string()),
+    })
+}
+```
+
+The early `return Ok(r)` after a bad body also drops `permit`, so the slot comes back on every path. `json_int` reads only digits after the colon, so `{"ms": -1}` is `None` and answers 400.
+
+**The server loop and shutdown.**
+
+```rust
+pub async fn serve(listener: tokio::net::TcpListener, app: Arc<App>, shutdown: impl Future<Output = ()>) {
+    let mut conns = tokio::task::JoinSet::new();  // every connection task, so we can wait for them
+    tokio::pin!(shutdown);                        // polled repeatedly by select!, so it must not move
+    loop {
+        tokio::select! {
+            _ = &mut shutdown => break,           // SIGTERM or Ctrl-C
+            acc = listener.accept() => {
+                let Ok((stream, _)) = acc else { continue };  // one bad accept is not fatal
+                let _ = stream.set_nodelay(true);             // send each small SSE chunk now
+                let app = Arc::clone(&app);
+                conns.spawn(async move {
+                    let svc = service_fn(move |req| handle(Arc::clone(&app), req));
+                    let _ = hyper::server::conn::http1::Builder::new().serve_connection(TokioIo::new(stream), svc).await;
+                });
+            }
+        }
+    }
+    drop(listener);  // step 1: stop accepting; new connections are refused
+    // Step 2: let open connections finish, but never wait forever.
+    let _ = tokio::time::timeout(Duration::from_secs(10), async { while conns.join_next().await.is_some() {} }).await;
+}   // step 3: return; main returns; exit 0
+```
+
+`main` builds a multi-thread runtime, binds `127.0.0.1:<port>`, prints `listening on ...` and flushes stdout (so a parent process reading the port is not stuck behind a buffer), and passes a `shutdown` future that completes on `SIGTERM` or Ctrl-C.
+
+Full solution: [`src/lib.rs`](../../../../course/solutions/primers/lang.09/src/lib.rs), [`src/main.rs`](../../../../course/solutions/primers/lang.09/src/main.rs).
+
+### 5.3 Why this solution
+
+- **Memory per stream is bounded** by `CAPACITY` events plus one small task, however slow the client; a thread per stream would cost a stack each, and an unbounded channel would let a stalled client grow the queue to all $n$ events (200,000 in the slow-reader case).
+- **Cancellation is free** because it is dropping: there is no flag to check, no cancel message to route. The only extra code is the `closed()` arm, which turns "noticed at the next send" into "noticed now".
+- **429 instead of a queue.** `acquire().await` would also bound concurrency, but excess jobs would wait invisibly, holding connections, and the client could not tell overload from slowness. `try_acquire` plus `Retry-After` pushes the decision back to the client, which is what L10.5's engine does under load.
+- **A hand-written shutdown** costs a `JoinSet` and a `select!`; hyper-util's graceful helper (Going further) also tells idle keep-alive connections to close. The 10 s cap trades a possibly cut long stream for a bounded shutdown, inside Kubernetes' 30 s grace period.
+- **`SeqCst` everywhere on the counters** is stronger than needed (`Relaxed` would do for independent counters), but costs nothing measurable here and removes a question.
+
+### 5.4 Explain it back
+
+1. Why does the producer need `tx.closed()` in its `select!` if `send` already fails when the client is gone?
+   <details><summary>Answer</summary>
+   `send` fails only when it is called. With `interval_ms=60000` the producer would sleep a minute after the client left before trying to send and finding out. `closed()` completes when the receiver is dropped, so `select!` cancels the sleep immediately.
+   </details>
+2. Where exactly is the backpressure, and what would `mpsc::unbounded_channel` change?
+   <details><summary>Answer</summary>
+   In `tx.send(..).await`: with 4 events queued it returns `Pending` until hyper's `poll_frame` takes one, which happens only as the socket drains. An unbounded channel never pauses, so the producer runs to the end and every unsent event sits in memory.
+   </details>
+3. Why is the job's slot released on every path out of the `/jobs` handler, including when the client disconnects mid-sleep?
+   <details><summary>Answer</summary>
+   The slot is the `OwnedSemaphorePermit` value. If the handler returns early, its local `permit` is dropped; if the client disconnects, hyper drops the handler's future at its `.await`, which drops its locals, including the permit. Dropping a permit returns it to the semaphore.
+   </details>
+4. Why does the solution `tokio::spawn` the producer instead of awaiting it in the handler?
+   <details><summary>Answer</summary>
+   The handler must return the `Response` so hyper can send headers and start polling the body. If it awaited the producer first, the producer would block on a full channel that nobody reads (the body is not being polled yet): with more than 4 events (counting `[DONE]`) it would deadlock, and with fewer the client would get everything at the end.
+   </details>
+5. After SIGTERM, what happens to a connection that is in the middle of a 600 ms job, and to a new connection attempt?
+   <details><summary>Answer</summary>
+   The loop breaks and drops the listener, so the new connection is refused. The running connection task is in the `JoinSet`; the server waits for it (up to 10 s), the job finishes and is answered, then `serve` returns and `main` exits 0.
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| `std::thread::sleep` in a handler | other requests on that worker stall; the 429 arrives late | `test_bounded_admission_answers_429` |
-| Collecting the whole stream before responding | the first event arrives with the last | `test_events_leave_as_produced` |
-| An unbounded channel for a stream | a slow client makes the producer run to the end, memory growing | `test_slow_reader_bounds_the_producer` |
-| Sleeping without watching `closed()` | a gone client's producer keeps ticking until its next send | `test_disconnect_cancels_the_producer` |
-| A semaphore `acquire().await` instead of `try_acquire` | excess jobs queue silently instead of 429 | `test_bounded_admission_answers_429` |
-| Exiting on SIGTERM without waiting for connections | in-flight requests are cut; the client sees a reset | `test_sigterm_drains_and_exits_zero` |
-| Holding a `std::sync::Mutex` guard across `.await` | the future is not `Send`, or a deadlock under load | your own tests |
+| `std::thread::sleep` in a handler | other requests on that worker stall; the 429 arrives late | `tokio::time::sleep(..).await` in `/jobs` (step 6) |
+| Collecting the whole stream before responding | the first event arrives with the last | the body is a `ChannelBody`; the producer is spawned and the response returned at once |
+| An unbounded channel for a stream | a slow client makes the producer run to the end, memory growing | `mpsc::channel(CAPACITY)` with `CAPACITY = 4` |
+| Sleeping without watching `closed()` | a gone client's producer keeps ticking until its next send | `select!` between `sleep` and `tx.closed()` |
+| A semaphore `acquire().await` instead of `try_acquire` | excess jobs queue silently instead of 429 | `try_acquire_owned` in `Admission::try_admit`, 429 with `Retry-After: 1` |
+| Exiting on SIGTERM without waiting for connections | in-flight requests are cut; the client sees a reset | `serve` drops the listener, then joins the `JoinSet` with a 10 s timeout |
+| Holding a `std::sync::Mutex` guard across `.await` | the future is not `Send`, or a deadlock under load | no mutex at all: shared state is atomics and a semaphore |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -183,7 +371,7 @@ pub async fn serve(listener: tokio::net::TcpListener, app: Arc<App>, shutdown: i
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | hyper by hand | [axum](https://github.com/tokio-rs/axum) | routing, extractors, middleware on the same hyper | `axum::Router` |
 | a semaphore per route | [tower](https://github.com/tower-rs/tower) layers | rate limits, timeouts, load shedding as composable services | `tower::limit`, `tower::load_shed` |

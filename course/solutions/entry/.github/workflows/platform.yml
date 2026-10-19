@@ -1,0 +1,167 @@
+# dep.05 reference: the platform pipeline of the system's repository.
+# craft.01's ci.yml keeps its two gates (commit-lint, native-tests); this
+# workflow adds the jobs a running platform needs:
+#
+#   lint       formatters and linters, every language
+#   unit       every native test suite
+#   images     every deploy/docker/*.Dockerfile builds, as non-root
+#   kind-e2e   a kind cluster and `tilt ci` (every resource rolls out ready)
+#   perf-gate  on main only: load.02 compares this run's load report with the
+#              last green main run's and fails on a regression
+#
+# craft.11 adds release.yml next to it.
+name: platform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# One run per branch: a new push cancels the old run instead of queueing.
+concurrency:
+  group: platform-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: the default GITHUB_TOKEN can write to the repo.
+permissions:
+  contents: read
+
+env:
+  SYSTEM: forge
+  TILT_VERSION: "0.35.1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+      - uses: dtolnay/rust-toolchain@1.88.0
+        with:
+          components: rustfmt, clippy
+      - name: python (ruff)
+        run: uvx ruff@0.13.0 check python && uvx ruff@0.13.0 format --check python
+      - name: go (gofmt, vet)
+        run: |
+          test -z "$(gofmt -l go)" || { gofmt -l go; exit 1; }
+          cd go && go vet ./...
+      - name: rust (fmt, clippy)
+        run: |
+          cargo fmt --manifest-path rust/Cargo.toml --all --check
+          cargo clippy --manifest-path rust/Cargo.toml --workspace --all-targets -- -D warnings
+
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - name: c (libtinyllm)
+        run: make -C c
+      - name: python (pytest)
+        run: uv run --project python --with pytest --with hypothesis pytest -q python/tests
+      - name: go (race detector)
+        run: cd go && go test -race -count=1 ./...
+      - name: rust
+        run: cargo test --manifest-path rust/Cargo.toml --workspace
+
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: build every image from the repo root
+        run: |
+          for part in engine gateway durable worker agent; do
+            docker build -f deploy/docker/$part.Dockerfile -t "$SYSTEM-$part:ci" .
+            user="$(docker image inspect -f '{{.Config.User}}' "$SYSTEM-$part:ci")"
+            case "${user%%:*}" in ''|0|root) echo "$part runs as root" >&2; exit 1 ;; esac
+          done
+
+  kind-e2e:
+    needs: [images, unit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+      - uses: dtolnay/rust-toolchain@1.88.0
+      # The cluster from your own config: same name, same NodePort mappings.
+      - uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: ${{ env.SYSTEM }}
+          config: deploy/kind/cluster.yaml
+      - name: install tilt (pinned release)
+        run: |
+          curl -fsSL "https://github.com/tilt-dev/tilt/releases/download/v${TILT_VERSION}/tilt.${TILT_VERSION}.linux.x86_64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin tilt
+          tilt version
+      - name: namespace and a throwaway API key
+        run: |
+          kubectl create namespace "$SYSTEM"
+          key="tl_ci_$(openssl rand -hex 12)"
+          echo "::add-mask::$key"
+          kubectl -n "$SYSTEM" create secret generic "$SYSTEM-api-key" --from-literal=api-key="$key"
+          kubectl -n "$SYSTEM" create secret generic "$SYSTEM-gateway-pepper" --from-literal=pepper="$(openssl rand -hex 32)"
+          echo "TL_API_KEY=$key" >> "$GITHUB_ENV"
+      - name: tilt ci
+        run: tilt ci -f deploy/Tiltfile --context "kind-$SYSTEM" --timeout 15m -- --topology=disaggregated
+      # An end-to-end smoke step belongs here: through the gateway's NodePort,
+      # with $TL_API_KEY, a chat completion (plain and streamed) answers 200
+      # with a well-formed body, a request without the key answers 401, and
+      # every Deployment reports all replicas ready.
+
+  perf-gate:
+    # Only on main: a pull request compares against nothing stable yet, and
+    # every main run's report becomes the next run's baseline.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [unit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read            # gh run download of the previous report
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - name: build and start the stack on the runner
+        run: |
+          make -C c
+          cargo build --release --manifest-path rust/Cargo.toml -p tl-serve
+          (cd go && go build -o bin/gateway ./cmd/gateway && go build -o bin/loadgen ./cmd/loadgen)
+          uv run --project python python python/tinyllm/__main__.py train bigram --data README.md --out artifacts/models/bigram
+          rust/target/release/tl-serve --model-dir artifacts/models/bigram --port 8001 --health-port 9465 &
+          TL_API_KEY=tl_perf_local go/bin/gateway --port 8080 --health-port 9464 --upstream http://127.0.0.1:8001 &
+          for i in $(seq 60); do curl -fsS http://127.0.0.1:9464/readyz && break; sleep 1; done
+      - name: load run (head)
+        run: TL_API_KEY=tl_perf_local go/bin/loadgen --target http://127.0.0.1:8080 --rate 10 --duration 60s --seed 1 --out head.json
+      - name: last green main report (base)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id="$(gh run list --workflow platform --branch main --status success --limit 1 --json databaseId -q '.[0].databaseId')"
+          if [ -n "$id" ] && gh run download "$id" --name perf-report --dir base; then echo "BASE=base/head.json" >> "$GITHUB_ENV"; fi
+      - name: compare (load.02)
+        run: |
+          if [ -z "${BASE:-}" ]; then echo "no baseline yet: this run's report becomes it"; exit 0; fi
+          go/bin/loadgen compare "$BASE" head.json --metric ttft_p95 --max-regress 5%
+      - uses: actions/upload-artifact@v4
+        with:
+          name: perf-report
+          path: head.json
+          retention-days: 30

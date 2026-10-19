@@ -1,32 +1,40 @@
-# Pass 6 milestones
+# What the system does after Pass 6
 
 **Pass result**: Python inference stack (sampler, KV, paged KV, quant, spec decoding, constrained decoding), plus optional standalone C exercises.
 
-The path includes the milestone stages below. Run each component milestone after its modules pass, then run the pass gate. The component gates run before the pass gate, which also reruns the smoke steps of earlier passes.
+Each capability below is built from the listed modules. The sections that follow give the commands the finished solution runs, what each one produces, and why each piece is needed. Everything from earlier passes keeps working.
 
-| Gate | Specification | What it covers |
-|---|---|---|
-| `MS-L8` | [`MS-L8.toml`](../../../../../course/milestones/MS-L8.toml) | Your Python inference stack matches no-cache output token for token. Requires `ds.07`, `L8.1`, `L8.2`, `L8.4`, `L8.5`, `L8.6`, `L8.7`, `M09.4`. |
-| `MS-P6` | [`MS-P6.toml`](../../../../../course/milestones/MS-P6.toml) | Inference: cached, quantized, speculative, and constrained decoding. Requires `M07.6`, `M09.3`, `S-M09b`, `craft.06`. |
-| `MS-L9` | [`MS-L9.toml`](../../../../../course/milestones/MS-L9.toml) | Optional C kernels, runtime utilities, and data structures. Requires `ds.01`, `ds.02`, `ds.03`, `ds.04`, `rt.02`, `rt.03`, `rt.04`, `M09.7`, `M09.5`, `M09.6`, `L9.1`, `L9.2`, `L9.3`, `L9.4`, `L9.5`, `L9.6`, `lang.03`, `craft.06`. |
+| What the system does | Built from |
+|---|---|
+| The Python inference stack matches no-cache output token for token. | `ds.07`, `L8.1`, `L8.2`, `L8.4`, `L8.5`, `L8.6`, `L8.7`, `M09.4` |
+| The numerics and testing the stack rests on: sampling statistics, floating-point error, and property tests. | `M07.6`, `M09.3`, `S-M09b`, `craft.06` |
+| Optional depth: C kernels, runtime utilities, and data structures. Nothing later depends on them. | `ds.01`, `ds.02`, `ds.03`, `ds.04`, `rt.02`, `rt.03`, `rt.04`, `M09.7`, `M09.5`, `M09.6`, `L9.1`, `L9.2`, `L9.3`, `L9.4`, `L9.5`, `L9.6`, `lang.03`, `craft.06` |
 
 
-## Component gate details
+## Details
 
-## MS-L8: Your Python inference stack matches no-cache output token for token
+## The Python inference stack matches no-cache output token for token
 
-Your Python inference stack, run through your own entry point, on the Llama
-model of MS-L7: the same greedy tokens with no cache, your contiguous cache
+The Python inference stack, run through the system's own entry point, on the Llama
+model of Pass 5: the same greedy tokens with no cache, the contiguous cache
 (L8.2, with float16 keys and values); quantized weights (L8.5, using M09.4's FP8 and
 microscaling conversions) that keep the model's predictions; speculative
 decoding (L8.6) that changes the speed and never
 the greedy output; and constrained decoding (L8.7) whose every document
-parses and validates. PR CI runs it on the committed tiny model; the
-nightly run uses SmolLM2-135M-Instruct pulled by MS-L7; the cache speedup
-is a local perf step.
+parses and validates. A tiny random two-layer model shows all of this in
+seconds; the same commands run on SmolLM2-135M-Instruct, and `bench decode`
+measures the cache speedup.
 
-This file fixes the Pass 6 inference forms of your `tinyllm` role
-(spec/cli-roles.md, "Verbs of later passes": generate with --cache and
+Why it is needed: every serving optimization must be invisible in the
+output. Comparing each one with the no-cache greedy tokens is the
+definition of "correct" that the Rust engine of Pass 7 inherits; the cache
+is what makes decoding linear instead of quadratic in length, quantization
+is what fits larger models in memory, speculation is what trades spare
+compute for latency, and constrained decoding is what lets tool calls be
+parsed reliably.
+
+The solution defines the Pass 6 inference forms of the `tinyllm` role
+([`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md), "Verbs of later passes": generate with --cache and
 --spec, eval ppl, bench decode). Every verb keeps the rules of that page:
 exit 2 on a usage error, the last stdout line is one JSON object.
 
@@ -34,7 +42,7 @@ exit 2 on a usage error, the last stdout line is one JSON object.
                 [--max-tokens N] [--greedy | --temperature T] [--seed S]
                 [--cache none|contiguous|paged] [--kv-dtype f32|f16]
                 [--spec ngram|prompt-lookup --k K] [--json-schema <file>]
-      MS-L7's generate through L8.2's generate with the chosen cache
+      Pass 5's generate through L8.2's generate with the chosen cache
       ("paged": the optional L8.3's pure-Python PagedKVCache, behind L8.2's
       cache interface; not checked here). --spec runs L8.6's
       speculative_generate with an NGramDraft fitted on the prompt's ids
@@ -59,25 +67,15 @@ exit 2 on a usage error, the last stdout line is one JSON object.
       two each). Final line: {"tokens", "tok_s_none", "tok_s_contiguous",
       "cache_speedup"}.
 
-DESIGN 4.3 step (5), "the L8.4 course tests pass from cargo test", and the
-rt.04 block pool are this milestone's `requires`: a fresh pass of L8.4 ran
-its Rust course tests with cargo, as MS-L9 treats its sanitizer step
-(DEVIATIONS B83-08). The tiny model is random, so its perplexity says
-little: the PR quantization steps bound top-1 agreement and the NLL shift;
-the nightly steps keep DESIGN 4.3's perplexity budgets on SmolLM2.
+L8.4's radix prefix cache is written in Rust (its tests run with
+`cargo test`) and no CLI verb above calls it: the Rust engine of Pass 7
+reuses it. The C paged-KV block pool (rt.04) is optional depth. The tiny model is random, so its perplexity says
+little; on it, quantization is judged by top-1 agreement with the float32
+model and the NLL shift, and on SmolLM2 by the perplexity increase.
 
-`ol milestone MS-L8 --smoke` runs the tiny-model steps (seconds).
+## Optional depth: C kernels, runtime utilities, and data structures
 
-## MS-P6: Inference: cached, quantized, speculative, and constrained decoding
-
-MS-L8 verifies the core Python inference stack. Standalone C exercises are
-optional and deliberately do not gate this pass. Earlier pass smoke steps
-rerun through the spiral invariant.
-
-## MS-L9: Optional C kernels, runtime utilities, and data structures
-
-requirement of MS-P6 or any production runtime milestone. Each required
-module's C check compiles its own test binary, and numerical parity uses the
-checked-in vectors emitted by the corresponding Python reference.
-
-Run a gate with `practice/bin/ol milestone <ID> --smoke`; omit `--smoke` for its full local and cluster steps.
+The standalone C exercises (kernels, runtime utilities, data structures)
+are optional and nothing in later passes depends on them. Each compiles its
+own test binary, and numerical parity uses vectors emitted by the
+corresponding Python solution.

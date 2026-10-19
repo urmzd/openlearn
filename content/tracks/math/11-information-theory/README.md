@@ -139,7 +139,6 @@ Huffman coding (`M11.3`, optional) has its interview-pattern version in [Greedy]
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M11.1` | [Entropy, cross-entropy, KL, JS, and the k3 estimator](01-entropy-cross-entropy-and-kl.md) | build | 2 |
@@ -147,7 +146,6 @@ Huffman coding (`M11.3`, optional) has its interview-pattern version in [Greedy]
 | 3 | `M11.4` | [Mutual information, PMI, and PPMI](04-mutual-information-pmi-ppmi.md) | build | 3 |
 | 4 | `S-M11a` | [Information theory problem set, part a: entropy, chain rules, KL and cross-entropy](90-problem-set-a.md) | solve | 2 |
 | 5 | `S-M11b` | [Information theory problem set, part b: coding and Huffman, mutual information, maximum entropy, rate-distortion](91-problem-set-b.md) | solve | 3 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

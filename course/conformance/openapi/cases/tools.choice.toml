@@ -1,6 +1,0 @@
-id       = "tools.choice"
-title    = "Tool calls: tool_choice forced and none"
-versions = ["v1", "v2"]
-tiers    = ["engine"]
-requires = ["L10.9"]
-check    = "tools_choice"

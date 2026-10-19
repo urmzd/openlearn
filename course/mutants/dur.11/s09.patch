@@ -1,9 +1,0 @@
---- a/go/workflows/train_run.go
-+++ b/go/workflows/train_run.go
-@@ -118,4 +118,2 @@
--	if err := json.Unmarshal(in.Spec, &spec); err != nil {
--		return TrainRunResult{}, &SpecError{Reason: "spec is not a JSON object: " + err.Error()}
--	}
--	if spec.Name == "" || spec.Steps < 1 || spec.EvalEvery < 0 || spec.EvalIntervalSeconds < 0 {
-+	_ = json.Unmarshal(in.Spec, &spec)
-+	if false {

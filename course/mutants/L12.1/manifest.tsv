@@ -1,3 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	python/tinyllm/post/sft.py	semantic	pitfall-1	19	y	(hidden until pass)	include user tokens in the assistant loss
-s02	python/tinyllm/post/sft.py	semantic	pitfall-2	41	y	(hidden until pass)	allow attention across packed documents

@@ -1,41 +1,33 @@
-<!-- ol:module M06.1 -->
 # Graphs, DAGs, and an iterative topological sort
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M06.1` · build · Python · Pass 2 · 2 to 3 h |
-| **You build** | `python/tinyllm/autograd/graph.py`: `toposort(root, parents)`, the order in which backward visits a computation graph |
+| **Module** | `M06.1` · build · Python · Pass 2 · about 1 h reading |
+| **Solution** | [`graph.py`](../../../../course/solutions/python/tinyllm/autograd/graph.py): `toposort(root, parents)`, the order in which backward visits a computation graph |
 | **Contract** | [`course/contracts/py/tinyllm/autograd/graph.pyi`](../../../../course/contracts/py/tinyllm/autograd/graph.pyi) |
-| **Tests** | `course/tests/M06.1/test_graph.py` (what they check: section 4) |
-| **Needs** | nothing to build first. Reading: [Discrete Math 1](../05-discrete-math-1/) (sets, relations, induction) |
+| **Needs** | no earlier module. Reading: [Discrete Math 1](../05-discrete-math-1/) (sets, relations, induction) |
 | **Used by** | `M08.2` scalar reverse-mode autodiff walks this order · later `L0.1` (`Tensor.backward`) and `L8.7` (the automata of constrained decoding) |
-| **Milestone** | `MS-P2` (the foundations gate) |
 | **Optional depth** | Cormen, Leiserson, Rivest, and Stein, *Introduction to Algorithms*, sections 20.3 and 20.4 (depth-first search, topological sort); Sedgewick and Wayne, *Algorithms*, section 4.2; Kahn, "Topological sorting of large networks" (1962) |
 
 ## Key Takeaways
 
-- A **topological order** of a directed graph lists every vertex before the vertices it points to; it exists exactly when the graph has **no directed cycle** (a DAG) (`test_cycle_raises`).
-- Backward needs every node **before its inputs**: a value's gradient is complete only after every consumer has added its share. The **reverse of a depth-first post-order** is such an order (`test_shared_input_comes_after_every_consumer`).
-- Breadth-first order and pre-order look right on small graphs and are wrong on graphs of uneven depth (`test_uneven_depth_defeats_breadth_first`).
-- One **visited mark** per node makes the walk linear in the size of the graph instead of exponential in its depth (`test_each_node_once_and_parents_called_once`).
-- The walk must be **iterative** and keyed by **identity**: a 10^5-deep chain breaks a recursive one, and tensors cannot go in a set (`test_deep_chain_no_recursion_error`, `test_nodes_with_elementwise_eq`).
+- A **topological order** of a directed graph lists every vertex before the vertices it points to; it exists exactly when the graph has **no directed cycle** (a DAG).
+- Backward needs every node **before its inputs**: a value's gradient is complete only after every consumer has added its share. The **reverse of a depth-first post-order** is such an order.
+- Breadth-first order and pre-order look right on small graphs and are wrong on graphs of uneven depth.
+- One **visited mark** per node makes the walk linear in the size of the graph instead of exponential in its depth.
+- The walk must be **iterative** and keyed by **identity**: a 10^5-deep chain breaks a recursive one, and tensors cannot go in a set.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M06.1              # stubs python/tinyllm/autograd/graph.py into your repo
-ol tests M06.1              # read the test catalog first: rung R0, you write no tests here
-ol check M06.1              # exit code is the verdict
-ol diff  M06.1              # after passing: your code against the reference
-```
+Sections 1 to 3 build graphs, topological orders, and the iterative depth-first search from first principles and run it by hand. Section 4 fixes the interface and the cases a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Pass 2 builds automatic differentiation: first on scalars (`M08.2`), then on tensors (`L0.1`). A loss is computed from the parameters through hundreds of operations, and backward has to push the derivative of the loss back through all of them to every parameter. Each operation can only pass a gradient to its inputs once its own gradient is complete, and a value used twice (a weight shared by every time step, an `x` in `x * y + x`) receives contributions from several places. Visit the nodes in the wrong order and a shared weight is updated with half its gradient: the loss goes down a little, then stalls, and nothing crashes. Visit them recursively and the first recurrent model you unroll over 1000 tokens dies with `RecursionError`. This module defines graphs and DAGs from the beginning and builds the one function that fixes the order: `toposort(root, parents)`.
+Pass 2 builds automatic differentiation: first on scalars (`M08.2`), then on tensors (`L0.1`). A loss is computed from the parameters through hundreds of operations, and backward has to push the derivative of the loss back through all of them to every parameter. Each operation can only pass a gradient to its inputs once its own gradient is complete, and a value used twice (a weight shared by every time step, an `x` in `x * y + x`) receives contributions from several places. Visit the nodes in the wrong order and a shared weight is updated with half its gradient: the loss goes down a little, then stalls, and nothing crashes. Visit them recursively and the first recurrent model you unroll over 1000 tokens dies with `RecursionError`. This module defines graphs and DAGs from the beginning and derives the one function that fixes the order: `toposort(root, parents)`.
 
 ## 2. Principles
 
@@ -124,7 +116,7 @@ The iterative DFS, one row per step (stack written bottom to top, with what each
 | 11 | `s` [] | none | pop, emit `s` | x, y, m, c, s |
 | 12 | `L` [] | none | pop, emit `L` | x, y, m, c, s, L |
 
-Reversed: **`[L, s, c, m, y, x]`**. Check every edge: `L` before `m` and `s`; `m` before `x` and `y`; `s` before `x` and `c`. This is `test_hand_example_exact_order`.
+Reversed: **`[L, s, c, m, y, x]`**. Check every edge: `L` before `m` and `s`; `m` before `x` and `y`; `s` before `x` and `c`. A correct solution must return exactly this list.
 
 Now run backward in that order with $x = 2$, $y = 3$, $c = 1$ (so $m = 6$, $s = 3$, $L = 9$), starting from $\partial L / \partial L = 1$:
 
@@ -137,7 +129,7 @@ Now run backward in that order with $x = 2$, $y = 3$, $c = 1$ (so $m = 6$, $s = 
 | `y` | 2 | |
 | `x` | 1 + 3 = **4** | |
 
-$\partial L / \partial x = y + 1 = 4$: correct. A **pre-order** (emit on entry) gives `[L, m, x, y, s, c]`: `x` is visited right after `m`, holding only 3, and passes 3 on. That is the bug `test_shared_input_comes_after_every_consumer` exists for.
+$\partial L / \partial x = y + 1 = 4$: correct. A **pre-order** (emit on entry) gives `[L, m, x, y, s, c]`: `x` is visited right after `m`, holding only 3, and passes 3 on. That is the bug a correct solution must not have.
 
 ## 4. The interface
 
@@ -151,34 +143,153 @@ def toposort(root: T, parents: Callable[[T], Iterable[T]]) -> list[T]:
 
 `M08.2` and `L0.1` call it as `toposort(loss, lambda v: v._parents)` and then walk the list, each node adding its local derivatives into its parents' gradients.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_exact_order` | unit, smoke | section 3's order exactly | bit-identical gradients across runs |
-| `test_shared_input_comes_after_every_consumer` | property | `x` after both `m` and `s` | complete gradients for shared weights |
-| `test_uneven_depth_defeats_breadth_first` | boundary | a parent that is also a grandparent comes last | breadth-first order is not enough |
-| `test_each_node_once_and_parents_called_once` | property | 12 stacked diamonds: 37 nodes, `parents` once each | linear time on deep networks |
-| `test_repeated_parent_appears_once` | boundary | `x * x` lists `x` twice, the order once | squares and self-products |
-| `test_nodes_with_elementwise_eq` | boundary | nodes whose `==` raises and whose hash is `None` | tensors as nodes in `L0.1` |
-| `test_deep_chain_no_recursion_error` | boundary | a chain of 100 001 nodes | long unrolled recurrences in `L3.1` |
-| `test_single_node` | boundary, smoke | a leaf as the root | a parameter used directly as the loss |
-| `test_cycle_raises` | boundary | `ValueError` on a reachable cycle | automata in `L8.7` |
-| `test_random_dags_valid_and_match_graphlib_on_cycles` | property, differential | 200 random DAGs valid; with a back edge added, raises exactly when the stdlib `graphlib` finds a cycle | an independent implementation agrees |
+| Hand example | unit | section 3's order exactly | bit-identical gradients across runs |
+| Shared input | property | `x` after both `m` and `s` | complete gradients for shared weights |
+| Uneven depth | boundary | a parent that is also a grandparent comes last | breadth-first order is not enough |
+| Stacked diamonds | property | 12 stacked diamonds: 37 nodes, `parents` once each | linear time on deep networks |
+| Repeated parent | boundary | `x * x` lists `x` twice, the order once | squares and self-products |
+| Unhashable nodes | boundary | nodes whose `==` raises and whose hash is `None` | tensors as nodes in `L0.1` |
+| Deep chain | boundary | a chain of 100 001 nodes | long unrolled recurrences in `L3.1` |
+| Single node | boundary | a leaf as the root | a parameter used directly as the loss |
+| Cycle | boundary | `ValueError` on a reachable cycle | automata in `L8.7` |
+| Random DAGs | property, differential | 200 random DAGs valid; with a back edge added, raises exactly when the stdlib `graphlib` finds a cycle | an independent implementation agrees |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. Backward may pass a node's gradient on only after every consumer has added its share (2.3). With edges $v \to p$ from a node to its parents, that is a topological order starting at the root: every node before each of its parents.
+2. The reverse of a depth-first post-order is such an order (2.4), it visits each node and edge once, and the gray state detects a cycle for free. Kahn's algorithm would also work, but it needs every in-degree before it can start, which is a second full pass over the graph.
+3. The graph can be $10^5$ nodes deep, so the gray path cannot live on Python's call stack (2.5). It goes on an explicit list of `(node, iterator over its parents)` pairs. Keeping the *iterator* (not the list of parents) means that when a child finishes, its consumer resumes at the next parent, exactly as a recursive call would return: the order is the same as the recursive DFS, and a node stays on the stack, gray, for exactly as long as it is on the current path.
+4. Nodes may be tensors, which are unhashable and compare elementwise (2.6), so the three colours live in a dictionary keyed by `id(node)`. White is "no entry"; only gray and black need storing.
+5. The order must be one fixed list, not any valid one (2.7). Parents are visited in the order `parents` yields them, and the post-order is reversed once at the end.
+
+### The code, annotated
+
+The state is two integer marks and a dictionary. The root starts gray, because it is on the path from the first moment:
+
+```python
+_ON_STACK = 1  # entered, some parents still being explored ("gray")
+_DONE = 2  # every parent emitted, node emitted ("black")
+
+
+def toposort(root: T, parents: Callable[[T], Iterable[T]]) -> list[T]:
+    # Keyed by id(node): tensors overload == elementwise and are unhashable,
+    # so a set of nodes would fail. Every node we key on stays alive (it sits
+    # on the stack or in `post`), so no id is ever reused during the walk.
+    # A node with no entry is white (not seen yet).
+    state: dict[int, int] = {id(root): _ON_STACK}
+    # The explicit stack replaces the call stack of a recursive DFS. Each entry
+    # holds the node and a live iterator over its parents, so `parents` is
+    # called exactly once per node, at the moment it is pushed.
+    stack: list[tuple[T, Iterator[T]]] = [(root, iter(parents(root)))]
+    post: list[T] = []
+```
+
+The loop is the three steps of section 2.5. It always works on the top of the stack, and the `for` loop resumes that node's iterator where it stopped last time:
+
+```python
+    while stack:
+        node, pending = stack[-1]
+        for p in pending:                 # continues from the last parent taken
+            s = state.get(id(p))
+            if s is None:                 # white: enter p and descend into it
+                state[id(p)] = _ON_STACK
+                stack.append((p, iter(parents(p))))
+                break                     # resume this node's iterator later
+            if s == _ON_STACK:            # gray: p is on the current path
+                raise ValueError("toposort: the graph has a cycle reachable from root")
+            # _DONE (black): p was already emitted through another path, as the
+            # shared x is at step 8 of section 3. Skip it and take the next parent.
+        else:
+            # The for loop ran out without `break`: every parent is black, so
+            # emitting the node now keeps "parents before node" in the post-order.
+            stack.pop()
+            state[id(node)] = _DONE
+            post.append(node)
+```
+
+Python's `for ... else` runs the `else` branch only when the loop ends without `break`, which here means "the iterator is exhausted". That is the moment the node turns black. Emitting it any earlier (when it is pushed) would produce the pre-order of section 3, where the shared `x` holds only part of its gradient.
+
+Finally the post-order is reversed, so that the root comes first:
+
+```python
+    post.reverse()  # node before its parents, root first
+    return post
+```
+
+On the graph of section 3 the loop performs exactly the twelve steps of the table and returns `[L, s, c, m, y, x]`. A parent that appears twice in one list (`x * x`) is entered the first time and found black the second, so it is listed once.
+
+Full solution: [`graph.py`](../../../../course/solutions/python/tinyllm/autograd/graph.py).
+
+### Why this solution
+
+- **Cost.** Every node is pushed once (only white nodes are pushed, and pushing makes them gray) and popped once. Every edge is taken from an iterator once. So the walk is $O(n + m)$ time, $O(n)$ space for the marks, the stack, and the output, and `parents` is called $n$ times. Twelve stacked diamonds have 37 nodes and $2^{12}$ root-to-leaf paths; the black mark is what keeps the cost at 37 visits.
+- **Recursive DFS** is shorter, but it fails at about 1000 nested calls, and raising `sys.setrecursionlimit` only moves the crash to the C stack, where it is a segfault instead of an exception.
+- **Kahn's algorithm** (what PyTorch's engine does) needs a first pass that counts each node's consumers, keyed by `id`, then a second pass with a ready queue. It is the right choice for a multithreaded scheduler; here it doubles the work and produces a different, though valid, order.
+- **Pushing all parents at once** (the common "iterative DFS" with a plain stack of nodes) loses the current path: a node is no longer on the stack exactly while its descendants are explored, so the gray test cannot detect cycles, and the emitted order is not a post-order without a second marker pass.
+- **Breadth-first order** is not a topological order once a node sits at two depths (a parent that is also a grandparent), and pre-order emits a shared input before all of its consumers.
+- **Tradeoff accepted.** The function returns a full list rather than yielding nodes, so it holds $O(n)$ memory at once. Backward needs the whole order anyway, because it walks it after building it.
+
+### Explain it back
+
+1. Why is a node appended to `post` in the `else` branch, and not when it is pushed?
+
+   <details><summary>Answer</summary>
+
+   The `else` branch runs when the node's iterator is exhausted, that is, when every parent is black and already in `post`. Appending there gives the post-order, in which every node comes after its parents, and reversing it puts every node before its parents. Appending on push gives the pre-order `[L, m, x, y, s, c]`, where `x` is processed before its second consumer `s` has contributed.
+
+   </details>
+
+2. A parent is found in state `_DONE`. Why is that skipped silently, while `_ON_STACK` raises?
+
+   <details><summary>Answer</summary>
+
+   A black parent was finished through another path: it is a shared input (a diamond), which is normal in a DAG. A gray parent is still on the current path from the root, so there is a path from it to the current node, and the edge back to it closes a cycle. Raising on black would reject every shared weight; skipping gray would return a silently wrong order for a cyclic graph.
+
+   </details>
+
+3. Why does the stack hold an iterator for each node instead of its list of parents and an index, or instead of pushing all parents at once?
+
+   <details><summary>Answer</summary>
+
+   An iterator remembers where the node stopped, so after a child finishes, the node resumes at its next parent, exactly like a returning recursive call. That keeps the order identical to the recursive DFS and keeps the stack equal to the current path, which the cycle test relies on. An index into a list would also work but requires materialising each parent list; pushing all parents at once loses the path entirely.
+
+   </details>
+
+4. `id()` values can be reused by Python. Why is keying on `id(node)` safe here?
+
+   <details><summary>Answer</summary>
+
+   An id is unique among objects that are alive at the same time. Every node that has an entry in `state` is referenced by the stack (while gray) or by `post` (once black), so none of them can be freed and have its id handed to a new object during the walk.
+
+   </details>
+
+5. Why does the order have to be one specific order, when any topological order makes backward correct?
+
+   <details><summary>Answer</summary>
+
+   Backward adds the consumers' contributions into a gradient in the order it visits them, and floating-point addition is not associative. A different valid order changes the last bits of the gradients, so two runs with the same seed would no longer be bit-identical (2.7).
+
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| a recursive DFS | `RecursionError` once the graph is about 1000 nodes deep | `test_deep_chain_no_recursion_error` (mutant `s01`) |
-| emitting a node when it is first entered (pre-order) | a shared input passes on a partial gradient | `test_shared_input_comes_after_every_consumer` (mutant `s02`) |
-| putting nodes in a set or using them as dict keys | `TypeError: unhashable type` on the first tensor | `test_nodes_with_elementwise_eq` (mutant `s03`) |
-| no mark for finished nodes | duplicates in the order, exponential time on diamonds | `test_each_node_once_and_parents_called_once` (mutant `s04`) |
-| breadth-first order | invalid as soon as one input sits at two depths | `test_uneven_depth_defeats_breadth_first` (mutant `s05`) |
-| treating a gray node like a black one | a cyclic automaton gets a silently wrong order | `test_cycle_raises` (mutant `s06`) |
-| visiting parents in reverse | still valid, but a different order and different gradient bits | `test_hand_example_exact_order` (mutant `s07`) |
+| a recursive DFS | `RecursionError` once the graph is about 1000 nodes deep | an explicit stack of `(node, iterator)` pairs; see step 3 |
+| emitting a node when it is first entered (pre-order) | a shared input passes on a partial gradient | appends a node only when its iterator is exhausted (the `else` branch) |
+| putting nodes in a set or using them as dict keys | `TypeError: unhashable type` on the first tensor | keys every mark by `id(node)`; see step 4 |
+| no mark for finished nodes | duplicates in the order, exponential time on diamonds | marks finished nodes `_DONE` and skips them |
+| breadth-first order | invalid as soon as one input sits at two depths | uses the depth-first post-order, never levels |
+| treating a gray node like a black one | a cyclic automaton gets a silently wrong order | raises `ValueError` on an `_ON_STACK` parent |
+| visiting parents in reverse | still valid, but a different order and different gradient bits | takes parents in the order `parents` yields them; see step 5 |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -188,13 +299,11 @@ def toposort(root: T, parents: Callable[[T], Iterable[T]]) -> list[T]:
 | Forward | `L8.7` | regex and JSON-schema automata are graphs; reachability and cycles come from this traversal |
 | Forward | `M06.2` | tries are trees, the simplest DAGs (reading) |
 
-If you skip this module, `ol check M08.2` stops with `BLOCKED ... needs M06.1`: build it, or pass `--ref-deps`.
-
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `toposort` over `parents` | PyTorch autograd engine | counts each node's dependencies first, then runs a ready queue (Kahn's algorithm) across devices and threads | `torch/csrc/autograd/engine.cpp`, `compute_dependencies` |
 | one fixed order | JAX | a traced program (a jaxpr) is already a topologically ordered list, so the transpose walks it backwards | `jax/_src/interpreters/ad.py`, `backward_pass` |
 | cycle check | Python `graphlib.TopologicalSorter` | Kahn's algorithm with incremental `get_ready`/`done` for parallel schedulers | CPython `Lib/graphlib.py` |
-| DAG of tasks | workflow engines (Airflow, Temporal child workflows) | the same order schedules jobs whose inputs are other jobs' outputs | your `dur.*` modules |
+| DAG of tasks | workflow engines (Airflow, Temporal child workflows) | the same order schedules jobs whose inputs are other jobs' outputs | the `dur.*` modules |

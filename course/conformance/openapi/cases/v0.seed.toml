@@ -1,9 +1,0 @@
-id       = "v0.seed"
-title    = "The same seed gives the same output on two calls of one engine"
-versions = ["v0"]
-tiers    = ["engine"]
-check    = "seed_stable"
-
-[params]
-temperature = 1.0
-seed        = 1234

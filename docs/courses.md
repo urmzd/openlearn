@@ -6,7 +6,7 @@ A course is a manifest plus references to canonical lessons, not a second copy o
 
 Put a course's curriculum, study plan, and unique chapters in its own directory. Put reusable lessons in `content/tracks/`, worked examples in `content/case-studies/`, and source attribution in `content/references/sources.md`. The `docs/` directory describes the platform, not its learning content.
 
-`course/` is the grading backend for Build Your Own LLM System. `practice/` provides reusable exercises and the CLI. These are implementation directories, not competing course outlines. A course opts into an exercise spec with `practice`, and declares the files needed for a runnable export in `runtime`.
+`course/` holds the reference solutions (`course/solutions/`) and interface contracts (`course/contracts/`) that the Build Your Own LLM System chapters quote and explain. `practice/` holds predict-the-output puzzles and data-structure implementations with worked answers. These are supporting directories, not competing course outlines. A course declares the solution files to ship in its portable pack with `runtime`.
 
 ## Manifest
 
@@ -21,13 +21,11 @@ The `openlearn.json` manifest defines publication for the web app, PDF, and sour
 | `tracks` | Ordered trees of reusable lessons |
 | `paths`, `featured` | Optional staged route; its stage order takes precedence over track order in the PDF |
 | `reference` | Source register, contracts, or other supporting trees |
-| `practice` | Optional exercise spec |
-| `stageCheck` | Optional command that verifies checked stages |
-| `runtime` | Repository files/trees included in runnable portable packs |
+| `runtime` | Repository files/trees (such as solution code) included in portable packs |
 
-A reading course does not need a CLI, grading implementation, or synthetic exercises. Only declare assessment capabilities that exist.
+Every course is a reading course. Chapters show the solution and explain it; nothing is graded.
 
-For a guided course, put the introduction first in `start`, followed by ordered lessons, a project, and next steps. Keep each lesson focused on a question, explain symbols when they first appear, and provide a worked example and a self-check. Mathematics Foundations is the first example. Its PDF and portable pack include the guided chapters first and the full reference library afterward.
+For a guided course, put the introduction first in `start`, followed by ordered lessons, a project, and next steps. Keep each lesson focused on a question, explain symbols when they first appear, and provide a worked example, the solution step by step, and explain-it-back questions with answers. Mathematics Foundations is the first example. Its PDF and portable pack include the guided chapters first and the full reference library afterward.
 
 The website presents one alphabetical course catalog. Inside each course, chapters follow the manifest's publication order; auxiliary references are grouped separately. It does not expose source tracks as a competing lesson catalog. A chapter used by only one course has explicit previous/next links. A shared chapter links back to the courses that teach it, so pagination cannot silently cross into another course.
 
@@ -42,9 +40,9 @@ python3 scripts/assemble_book.py --course mathematics --out /tmp/math.md
 python3 scripts/course_catalog.py export --course mathematics --zip
 ```
 
-The export writes `outputs/packs/mathematics/openlearn.json` and the selected source files beneath it. Relative paths remain intact. Links to material outside the pack become repository source links. `--reading-only` omits runtime tools. Export refuses to overwrite an existing destination; use a fresh output directory for another build.
+The export writes `outputs/packs/mathematics/openlearn.json` and the selected source files beneath it. Relative paths remain intact. Links to material outside the pack become repository source links. `--reading-only` omits the `runtime` trees. Export refuses to overwrite an existing destination; use a fresh output directory for another build.
 
-Source packs contain readable Markdown and any declared local tools. In the PWA, use Save offline to download published lessons, diagrams, and the app resources needed to read them. Local practice still requires the relevant language runtimes.
+Source packs contain readable Markdown and any declared solution code. In the PWA, use Save offline to download published lessons, diagrams, and the app resources needed to read them.
 
 ```bash
 cd apps/web

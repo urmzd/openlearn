@@ -1,5 +1,5 @@
-//! Generated gRPC types, clients, and servers of the course contracts
-//! (DESIGN 2.7). One module per proto package:
+//! Generated gRPC types, clients, and servers of the course contracts.
+//! One module per proto package:
 //!
 //! | Module | Proto | Served by |
 //! |---|---|---|
@@ -10,7 +10,7 @@
 //! | [`tl::raft::v1`] | `proto/tl/raft/v1/raft.proto` | durable replicas (dur.10, optional) |
 //!
 //! The files under `src/gen/` are generated; edit the `.proto` files and
-//! rerun `course/oracle/contracts/gen-proto.sh` instead.
+//! regenerate them with prost and tonic instead of editing them by hand.
 #![allow(clippy::all)]
 
 pub mod tl {
@@ -41,7 +41,7 @@ pub mod tl {
     }
 }
 
-/// Every message is capped at 4 MiB (DESIGN 2.7). Pass it to
+/// Every message is capped at 4 MiB. Pass it to
 /// `max_decoding_message_size` and `max_encoding_message_size` on clients and
 /// servers.
 pub const MAX_MESSAGE_BYTES: usize = 4 * 1024 * 1024;

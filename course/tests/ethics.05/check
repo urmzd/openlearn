@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-tests="$(cd "$here/.." && pwd)"
-for f in docs/USAGE_POLICY.md deploy/policy.v1.yaml; do
-  [ -f "$PWD/$f" ] || { echo "ethics.05: $f is missing" >&2; exit 1; }
-done
-export OL_REPO="$PWD" OL_COURSE_TREE="${OL_COURSE_TREE:-$(cd "$tests/.." && pwd)}" PYTHONPATH="$tests" PYTHONDONTWRITEBYTECODE=1
-exec uv run --no-project --python ">=3.11" --quiet --with pytest --with pyyaml python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

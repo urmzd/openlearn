@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/model.rs
-+++ b/rust/crates/tl-engine/src/model.rs
-@@ -306,1 +306,1 @@
--        &self.map[self.layout.data_start + t.begin..self.layout.data_start + t.end]
-+        &self.map[t.begin..t.end]

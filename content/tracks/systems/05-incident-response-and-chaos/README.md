@@ -9,16 +9,16 @@
 
 ## Key Takeaways
 
-- Incidents are learned by causing them on purpose: a drill injects a known fault into your own running system and grades how you detect, mitigate, and record it.
+- Incidents are learned by causing them on purpose: a drill injects a known fault into a running system, and each chapter walks through how it is detected, mitigated, and recorded.
 - Mitigate first (roll back, fail over, shed load), find the root cause second, write it down third.
 - A runbook is written before the incident, for the person who did not build the system; a postmortem is written after, without blame.
-- Detection moves from a person noticing (Pass 1) to burn-rate alerts (Pass 7), and `ol drill end` measures time to detect and time to mitigate from Prometheus.
+- Detection moves from a person noticing (Pass 1) to burn-rate alerts (Pass 7), and time to detect and time to mitigate can then be measured from Prometheus.
 
 ## How to Study
 
-- Do each drill when its pass reaches it, against your own kind cluster, with the time limit on.
-- Write the runbook during the drill, not after: the commands you actually typed are the Diagnosis section.
-- Read one chapter of the SRE book after each drill and compare its advice with what you did.
+- Read each drill when its pass reaches it. Each chapter states the fault, derives the diagnosis from first principles, and gives the model runbook and postmortem (under `course/solutions/docs/`).
+- Before reading a chapter's solution section, predict the diagnosis commands and their output; then compare.
+- Read one chapter of the SRE book after each drill and compare its advice with the model response.
 
 ---
 
@@ -49,7 +49,6 @@ Every system fails; what differs is how long it stays failed. Time to mitigate i
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ops.00` | [First drill: the engine crashloops](00-first-drill.md) | drill | 1 |
@@ -65,7 +64,6 @@ Every system fails; what differs is how long it stays failed. Time to mitigate i
 | 11 | `ops.10` | [Drill: runaway agent](10-runaway-agent.md) | drill | 11 |
 | 12 | `ops.11` | [Drill: event log disk full](11-eventlog-disk-full.md) | drill | 11 |
 | 13 | `ops.12` | [Drill: Raft partition (optional)](12-raft-partition.md) | drill | 11 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

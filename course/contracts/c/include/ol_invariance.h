@@ -1,5 +1,5 @@
 /* ol_invariance.h: bitwise batch and chunk invariance checks for C tests
- * (course/DESIGN.md 2.4, 5.11; L9.1 matmul, L9.2 softmax, L9.3 attention).
+ * (L9.1 matmul, L9.2 softmax, L9.3 attention).
  *
  * Frozen helper, used with ol_test.h. A batch-invariant kernel gives each
  * row the same bits alone or inside any batch at any position; a

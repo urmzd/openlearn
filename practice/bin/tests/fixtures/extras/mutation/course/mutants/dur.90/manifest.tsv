@@ -1,3 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-m001	go/ds/demo/sum.go	auto	statement	11	n	NaN values are no longer skipped	continue deleted
-m002	go/ds/demo/sum.go	auto	statement	13	n	accumulation replaced by assignment	s = x

@@ -1,8 +1,0 @@
-id       = "v0.completions.length"
-title    = "max_tokens=4 stops with finish_reason length after 4 tokens"
-versions = ["v0"]
-tiers    = ["engine", "gateway"]
-check    = "length"
-
-[params]
-max_tokens = 4

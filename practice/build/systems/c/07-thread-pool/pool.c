@@ -1,4 +1,4 @@
-/* pool.c - the part you write. */
+/* pool.c - the reference implementation of the pool. */
 #include "pool.h"
 
 #include <pthread.h>
@@ -33,7 +33,6 @@ static void *worker_main(void *arg) {
   for (;;) {
     pthread_mutex_lock(&p->lock);
 
-    /* SOLUTION-BEGIN */
     /* while, not if. A condition variable may wake spuriously, and even
      * without that, several workers can be woken for one signal and only the
      * first to reacquire the lock gets the task. Re-test the predicate. */
@@ -70,7 +69,6 @@ static void *worker_main(void *arg) {
      * queue alone would let pool_wait return while tasks are still executing. */
     if (p->count == 0 && p->active == 0) pthread_cond_broadcast(&p->idle);
     pthread_mutex_unlock(&p->lock);
-    /* SOLUTION-END */
   }
 }
 
@@ -117,7 +115,6 @@ ThreadPool *pool_new(size_t n_threads, size_t queue_cap) {
 }
 
 int pool_submit(ThreadPool *p, TaskFn fn, void *arg) {
-  /* SOLUTION-BEGIN */
   pthread_mutex_lock(&p->lock);
 
   while (p->count == p->cap && !p->shutting_down) {
@@ -136,21 +133,17 @@ int pool_submit(ThreadPool *p, TaskFn fn, void *arg) {
   pthread_cond_signal(&p->not_empty);
   pthread_mutex_unlock(&p->lock);
   return 0;
-  /* SOLUTION-END */
 }
 
 void pool_wait(ThreadPool *p) {
-  /* SOLUTION-BEGIN */
   pthread_mutex_lock(&p->lock);
   while (p->count > 0 || p->active > 0) {
     pthread_cond_wait(&p->idle, &p->lock);
   }
   pthread_mutex_unlock(&p->lock);
-  /* SOLUTION-END */
 }
 
 void pool_destroy(ThreadPool *p) {
-  /* SOLUTION-BEGIN */
   if (!p) return;
 
   pthread_mutex_lock(&p->lock);
@@ -172,7 +165,6 @@ void pool_destroy(ThreadPool *p) {
   free(p->queue);
   free(p->threads);
   free(p);
-  /* SOLUTION-END */
 }
 
 size_t pool_completed(ThreadPool *p) {

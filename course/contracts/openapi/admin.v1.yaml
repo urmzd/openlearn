@@ -1,4 +1,4 @@
-# contracts/openapi/admin.v1.yaml: the gateway's admin API (DESIGN 2.6).
+# contracts/openapi/admin.v1.yaml: the gateway's admin API .
 # chapter: content/tracks/ai-platform-engineering/12-gateway/07-usage-ledger-and-admin-api.md
 #
 # modules: gw.02 (keys), gw.05 (workers, routes, drain), gw.06 (cache purge),
@@ -7,8 +7,7 @@
 #
 # Served by the gateway on its API port under /admin/v1. Every call needs a
 # key with the `admin` scope (`Authorization: Bearer tl_<id>_<secret>`);
-# errors use the OpenAI error shape of openai-subset.v1.yaml. Conformance:
-# `ol conform admin:v1`.
+# errors use the OpenAI error shape of openai-subset.v1.yaml.
 openapi: 3.1.0
 info:
   title: tinyllm gateway admin API, v1

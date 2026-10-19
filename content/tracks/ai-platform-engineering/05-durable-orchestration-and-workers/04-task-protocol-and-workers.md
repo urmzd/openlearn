@@ -1,4 +1,3 @@
-<!-- ol:module dur.04 -->
 # Task gRPC protocol, Go worker SDK, worker pool
 
 ## Overview
@@ -6,31 +5,22 @@
 | | |
 |---|---|
 | **Module** | `dur.04` · build · Go · Pass 8 · 5 to 7 h |
-| **You build** | `go/durable/server/tasks.go`: `PollWorkflowTask`, `CompleteWorkflowTask` (and the command table), `PollActivityTask`, `CompleteActivityTask`; `go/durable/worker/worker.go`: `New`, `RegisterActivity`, `Run`, `Heartbeat`, `InfoFrom`, `ReconnectDelay` |
-| **Contract** | `tl.durable.v1.TaskService` in [`proto/tl/durable/v1/durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto); the Go SDK surface of DESIGN 2.7; the package API is section 4 |
-| **Tests** | `course/tests/go/dur_04/` (what they check: section 4) |
+| **Solution** | [`go/durable/server/tasks.go`](../../../../course/solutions/go/durable/server/tasks.go): `PollWorkflowTask`, `CompleteWorkflowTask` (and the command table), `PollActivityTask`, `CompleteActivityTask`; [`go/durable/worker/worker.go`](../../../../course/solutions/go/durable/worker/worker.go): `New`, `RegisterActivity`, `Run`, `Heartbeat`, `InfoFrom`, `ReconnectDelay` |
+| **Contract** | `tl.durable.v1.TaskService` in [`proto/tl/durable/v1/durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto); the Go SDK surface and package API are section 4 |
 | **Needs** | `dur.02` the server core, `dur.03` the queue; reading: [`obs.01` tracing](../../systems/04-observability/01-tracing-for-the-serving-path.md), [`lang.10` gRPC](../../software-craftsmanship/12-language-and-tool-primers/10-protocol-buffers-and-grpc.md), [RPC and protocols](../02-rpc-and-protocols/) |
 | **Used by** | `dur.05` activity failures, retries, and heartbeats and `dur.08` cancellation go through these task and activity handlers |
-| **Milestone** | MS-durable |
 | **Optional depth** | the Temporal worker docs (pollers, slots, graceful shutdown); Brooker, *Exponential Backoff and Jitter* (AWS Architecture Blog, 2015) |
 
 ## Key Takeaways
 
-- A workflow task is a lease on the right to decide the run's next step: polling appends `WorkflowTaskStarted`, completing appends `WorkflowTaskCompleted` and the events of the commands in one batch, and only the current task with a live lease may complete (`TestTaskProtocolHandExample`, `TestCompleteWorkflowTaskFenced`).
-- History is the truth and queue tasks are hints: a delivered task whose scheduled event is no longer pending is acknowledged and skipped (`TestStaleQueueTaskSkipped`).
-- The worker takes a pool slot **before** it polls, so it never leases work it cannot run (`TestWorkerBoundedConcurrency`).
-- Shutdown drains: polling stops at once, running activities finish and report (`TestWorkerDrainsOnCancel`); an activity that misses its heartbeat is canceled and reports nothing (`TestMissedHeartbeatCancelsActivity`).
+- A workflow task is a lease on the right to decide the run's next step: polling appends `WorkflowTaskStarted`, completing appends `WorkflowTaskCompleted` and the events of the commands in one batch, and only the current task with a live lease may complete.
+- History is the truth and queue tasks are hints: a delivered task whose scheduled event is no longer pending is acknowledged and skipped.
+- The worker takes a pool slot **before** it polls, so it never leases work it cannot run.
+- Shutdown drains: polling stops at once, running activities finish and report; an activity that misses its heartbeat is canceled and reports nothing.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start dur.04
-ol tests dur.04
-ol check dur.04          # needs dur.02 and dur.03 (or --ref-deps)
-ol diff  dur.04
-```
-
-Start with the server half (`tasks.go`) and the worked example, driving it by hand over gRPC as the tests do; then the worker.
+Sections 1 to 3 build the task protocol from first principles and trace one workflow event by event. Section 4 fixes the interface. Section 5 walks through the server half (`tasks.go`) and then the worker SDK (`worker.go`), explaining why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
@@ -95,8 +85,6 @@ Run(ctx):
 | 6 | `PollWorkflowTask` | 9 `wt_started{scheduled 8}` | history 1..9 |
 | 7 | `CompleteWorkflowTask([CompleteWorkflow{"HI"}])` | 10 `wt_completed{8, 9}`, 11 `completed{"HI"}` | the run is COMPLETED |
 
-This is `TestTaskProtocolHandExample`.
-
 ## 4. The interface
 
 ```go
@@ -135,42 +123,337 @@ func Heartbeat(ctx context.Context, details []byte) error
 func ReconnectDelay(n int, initial, max time.Duration) time.Duration
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `TestTaskProtocolHandExample` | unit | section 3, event by event, over gRPC | the protocol every worker speaks |
-| `TestCompleteWorkflowTaskFenced` | unit, fault | an expired task's token, and a second completion, are `FAILED_PRECONDITION` | two workers never both decide |
-| `TestStaleActivityLeaseDropsResult` | fault | attempt 2 after an expiry; the late attempt 1 result is refused; attempt 2's is recorded | a presumed-dead worker cannot write |
-| `TestStaleQueueTaskSkipped` | fault | a leftover task for an already-run workflow task is acknowledged and skipped | crash leftovers never rerun |
-| `TestTriggerWhileWorkflowTaskInFlight` | unit | a result during a running task schedules nothing until that task completes | one task at a time |
-| `TestFirstPageWithinOneMiB` | boundary | the first page fits 1 MiB; first page + `GetHistory` rest = the full history | 4 MiB message cap |
-| `TestActivityPayloadLimits` | boundary | oversized input, result, and workflow result refused; 2 MiB accepted | payloads by path |
-| `TestReconnectDelaySchedule` | unit | 100, 200, 400 ms ... capped at 5 s | restarts are not hammered |
-| `TestWorkerRunsWorkflowEndToEnd` | unit | handler, activities, `Info` keys, identity, result | the SDK as data.09 and dur.11 use it |
-| `TestWorkerFetchesEveryHistoryPage` | unit | a history over 1 MiB reaches the handler whole | replay needs every event |
-| `TestWorkerBoundedConcurrency` | unit, property | 2 slots: exactly 2 running and 2 leased while 4 wait | the pool bound and slot-first polling |
-| `TestWorkerDrainsOnCancel` | fault | polling stops, the running activity finishes uncanceled and reports, then `Run` returns | rolling deploys |
-| `TestMissedHeartbeatCancelsActivity` | fault | canceled at exactly the heartbeat timeout with `ErrHeartbeatTimeout`; nothing reported | no two copies write |
-| `TestWorkerReconnectsAfterServerRestart` | fault | the worker keeps working across a server restart on the same address | drill `ops.02` |
+| hand example protocol | unit | section 3, event by event, over gRPC | the protocol every worker speaks |
+| workflow task completion fenced | unit, fault | an expired task's token, and a second completion, are `FAILED_PRECONDITION` | two workers never both decide |
+| stale activity lease drops its result | fault | attempt 2 after an expiry; the late attempt 1 result is refused; attempt 2's is recorded | a presumed-dead worker cannot write |
+| stale queue task skipped | fault | a leftover task for an already-run workflow task is acknowledged and skipped | crash leftovers never rerun |
+| trigger while a workflow task is in flight | unit | a result during a running task schedules nothing until that task completes | one task at a time |
+| first page within 1 MiB | boundary | the first page fits 1 MiB; first page + `GetHistory` rest = the full history | 4 MiB message cap |
+| activity payload limits | boundary | oversized input, result, and workflow result refused; 2 MiB accepted | payloads by path |
+| reconnect delay schedule | unit | 100, 200, 400 ms ... capped at 5 s | restarts are not hammered |
+| worker runs a workflow end to end | unit | handler, activities, `Info` keys, identity, result | the SDK as data.09 and dur.11 use it |
+| worker fetches every history page | unit | a history over 1 MiB reaches the handler whole | replay needs every event |
+| worker bounded concurrency | unit, property | 2 slots: exactly 2 running and 2 leased while 4 wait | the pool bound and slot-first polling |
+| worker drains on cancel | fault | polling stops, the running activity finishes uncanceled and reports, then `Run` returns | rolling deploys |
+| missed heartbeat cancels the activity | fault | canceled at exactly the heartbeat timeout with `ErrHeartbeatTimeout`; nothing reported | no two copies write |
+| worker reconnects after a server restart | fault | the worker keeps working across a server restart on the same address | drill `ops.02` |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Deciding the next step must be exclusive.** If two workers could each complete a workflow task for the same run, the history would contain two decisions from the same state. So a workflow task is a lease (from `dur.03`) and a completion must name the exact task it was given: the pending scheduled event $S$, the latest started event $T$, and the live lease token $k$.
+2. **The token must carry everything the server needs to check that.** The server is stateless about deliveries beyond the queue and history, so the opaque `task_token` encodes queue, task id, $k$, run id, $S$, and $T$. A redelivery appends a new $T$, which makes every older token wrong by construction.
+3. **History outranks the queue.** A queue task can outlive its purpose (a crash between commit and ack, or recovery re-enqueuing). The server checks history before acting on a delivery, and acknowledges and skips any that no longer match.
+4. **Completion is atomic.** `WorkflowTaskCompleted` and all events of the commands go in one `commit`, so a crash cannot record half a decision. The lease is acknowledged only after the commit.
+5. **Activity results are fenced before anything is written.** A late result from attempt 1 after attempt 2 started must be dropped, so `Queue.Check` runs before the append. The idempotency key must be stable across attempts and across Continue-As-New, so it is built from the workflow id and activity id, not the run id.
+6. **On the worker, capacity is claimed before work.** A lease starts its clock at poll time, so a worker that polls without a free slot burns the lease while waiting. Take the slot first.
+7. **Shutdown and lease loss are different cancellations.** SIGTERM should let running activities finish and report; losing the lease should stop the activity and report nothing. Two contexts (Run's, and a separate work context) and a cancel cause express that.
+
+### The code, annotated
+
+**Starting a workflow task** ([`tasks.go`](../../../../course/solutions/go/durable/server/tasks.go)). `PollWorkflowTask` loops over `Queue.Poll` on `wf:<task_queue>` until the poll wait is used up, skipping stale deliveries.
+
+```go
+func (s *Server) startWorkflowTask(ctx context.Context, l queue.Lease, identity string) (*durablev1.WorkflowTask, error) {
+	runID, _, sched, err := parseTaskID(l.Task.ID)
+	if err != nil {
+		s.o.Queue.Complete(ctx, l) // garbage in the queue: drop it
+		return nil, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r := s.runs[runID]
+	// History is the truth: the delivery is valid only if S is still the pending task.
+	if r == nil || r.status != durablev1.WorkflowStatus_WORKFLOW_STATUS_RUNNING || r.wtScheduled != sched {
+		s.o.Queue.Complete(ctx, l) // stale: ack and let the poll loop continue
+		return nil, nil
+	}
+	b := &batch{r: r}
+	st := s.add(b, &durablev1.HistoryEvent{Attrs: &durablev1.HistoryEvent_WtStarted{
+		WtStarted: &durablev1.WorkflowTaskStarted{ScheduledEventId: sched, Identity: identity},
+	}})
+	if err := s.commit(ctx, b); err != nil { // T must exist in history before the token names it
+		return nil, err
+	}
+	page, next := firstPage(r.history)
+	return &durablev1.WorkflowTask{
+		TaskToken:  encodeToken(taskToken{Queue: l.Queue, TaskID: l.Task.ID, Lease: l.Token, RunID: r.id, Sched: sched, Started: st.GetEventId()}),
+		WorkflowId: r.workflowID, RunId: r.id, WorkflowType: r.wfType,
+		History: page, NextPageToken: next,
+		ContinueAsNewSuggested: len(r.history) > ContinueAsNewEvents || r.bytes > ContinueAsNewBytes,
+	}, nil
+}
+
+// The longest prefix within 1 MiB (always at least one event), so a task fits
+// under gRPC's 4 MiB message cap; the rest comes from GetHistory.
+func firstPage(h []*durablev1.HistoryEvent) ([]*durablev1.HistoryEvent, []byte) {
+	size := 0
+	for i, e := range h {
+		size += proto.Size(e)
+		if size > FirstPageBytes && i > 0 {
+			return h[:i:i], PageToken(int64(i + 1)) // full slice expression: the caller cannot append into history
+		}
+	}
+	return h[:len(h):len(h)], nil
+}
+```
+
+**Completing it: fence, then one batch.**
+
+```go
+func (s *Server) CompleteWorkflowTask(ctx context.Context, req *durablev1.CompleteWorkflowTaskRequest) (*durablev1.Empty, error) {
+	tok, err := decodeToken(req.GetTaskToken())
+	// ...
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r := s.runs[tok.RunID]
+	// The run's current task must be exactly (S, T): a redelivered task has a newer T.
+	if r == nil || r.status != durablev1.WorkflowStatus_WORKFLOW_STATUS_RUNNING || r.wtScheduled != tok.Sched || r.wtStarted != tok.Started {
+		return nil, status.Error(codes.FailedPrecondition, "not the run's current workflow task")
+	}
+	if err := s.o.Queue.Check(tok.lease()); err != nil { // and its lease must be live
+		return nil, status.Error(codes.FailedPrecondition, "workflow task lease lost")
+	}
+	b := &batch{r: r}
+	// Always appended, even with zero commands: this is what ends the task and
+	// lets commit schedule the next one if news arrived meanwhile (needsWT).
+	done := s.add(b, &durablev1.HistoryEvent{Attrs: &durablev1.HistoryEvent_WtCompleted{
+		WtCompleted: &durablev1.WorkflowTaskCompleted{ScheduledEventId: tok.Sched, StartedEventId: tok.Started, Identity: req.GetIdentity()},
+	}})
+	for _, c := range req.GetCommands() {
+		if closing(b.events[len(b.events)-1]) {
+			return nil, status.Error(codes.InvalidArgument, "a command after the one that ends the run")
+		}
+		h := commandHandlers[CommandKind(c)] // the table later modules extend
+		if h == nil {
+			return nil, status.Errorf(codes.Unimplemented, "command %q is not supported", CommandKind(c))
+		}
+		if err := h(s, b, done.GetEventId(), c); err != nil {
+			return nil, err // nothing committed: the batch is discarded
+		}
+	}
+	if err := s.commit(ctx, b); err != nil {
+		return nil, err
+	}
+	s.o.Queue.Complete(ctx, tok.lease()) // ack only after the decision is durable
+	return &durablev1.Empty{}, nil
+}
+```
+
+`scheduleActivity` validates the command (ids required, input at most 2 MiB, `start_to_close_ms` set, the activity id not already pending) and appends `ActivityTaskScheduled` with `WorkflowTaskCompletedEventId: completed`, the cross-reference replay uses to match commands to events (`dur.06`). Its effect in `commit` enqueues `<run>/a/<scheduled id>`.
+
+**Activity tasks: stable key, fence before append.**
+
+```go
+func (s *Server) startActivityTask(ctx context.Context, l queue.Lease) *durablev1.ActivityTask {
+	// ... resolve run and r.activities[sched]; ack and skip when not pending
+	a.attempt = int32(l.Attempt) // the attempt number comes from the queue's delivery count
+	details := l.Details
+	if details == nil {
+		details = a.lastHeartbeat
+	}
+	return &durablev1.ActivityTask{
+		// ... token (no Started: activities have no T), ids, type, input, attempt
+		IdempotencyKey:       r.workflowID + "/" + a.attrs.GetActivityId(), // same on every attempt and across runs
+		LastHeartbeatDetails: details, TraceContext: r.traceContext, LeaseToken: l.Token,
+		DeadlineUnixMs: l.Deadline.UnixMilli(), HeartbeatTimeoutMs: a.attrs.GetOptions().GetHeartbeatTimeoutMs(),
+	}
+}
+
+func (s *Server) pendingActivity(tok taskToken) (*run, *activity, error) {
+	r := s.runs[tok.RunID]
+	if r == nil || r.status != durablev1.WorkflowStatus_WORKFLOW_STATUS_RUNNING || r.activities[tok.Sched] == nil {
+		return nil, nil, status.Error(codes.FailedPrecondition, "the activity is no longer pending")
+	}
+	if err := s.o.Queue.Check(tok.lease()); err != nil {
+		return nil, nil, status.Error(codes.FailedPrecondition, "stale lease token: the activity was redelivered or timed out")
+	}
+	return r, r.activities[tok.Sched], nil
+}
+```
+
+`CompleteActivityTask` checks the result size, calls `pendingActivity` under `s.mu`, then commits `ActivityTaskStarted{attempt, lease_token}` and `ActivityTaskCompleted{started id, result}` together. Recording the start only at completion keeps history free of attempts that never finished; the attempt and lease token in it say which delivery produced the result. `act_completed` is a trigger, so `commit` adds the next `wt_scheduled` (step 5 of the worked example).
+
+**The worker's run loop** ([`worker.go`](../../../../course/solutions/go/durable/worker/worker.go)).
+
+```go
+func (w *Worker) Run(ctx context.Context) error {
+	// ...
+	// work survives ctx's cancellation; only the drain timeout cancels it.
+	work, cancelWork := context.WithCancel(context.WithoutCancel(ctx))
+	defer cancelWork()
+	var pollers, inflight sync.WaitGroup
+	slots := make(chan struct{}, w.o.MaxActivities) // a counting semaphore
+	// ... start pollActivities(ctx, work, slots, &inflight) and, if set, pollWorkflows(ctx, work)
+	<-ctx.Done()
+	pollers.Wait() // polling stops at once (polls use ctx)
+	done := make(chan struct{})
+	go func() { inflight.Wait(); close(done) }()
+	select {
+	case <-done: // every running activity finished and reported
+	case <-w.o.Clock.After(w.o.DrainTimeout):
+		cancelWork() // out of time: cancel what is left
+		<-done
+	}
+	return nil
+}
+
+func (w *Worker) pollActivities(ctx, work context.Context, slots chan struct{}, inflight *sync.WaitGroup) {
+	failures := 0
+	for {
+		select {
+		case slots <- struct{}{}: // slot first: never lease a task we cannot start
+		case <-ctx.Done():
+			return
+		}
+		t, err := w.tasks.PollActivityTask(ctx, &durablev1.PollRequest{TaskQueue: w.o.TaskQueue, Identity: w.o.Identity})
+		if err != nil {
+			<-slots
+			// ... return on ctx end; otherwise failures++ and back off ReconnectDelay(failures)
+			continue
+		}
+		failures = 0
+		if len(t.GetTaskToken()) == 0 { // an empty long poll
+			<-slots
+			continue
+		}
+		inflight.Add(1)
+		go func() {
+			defer inflight.Done()
+			defer func() { <-slots }()
+			w.runActivity(work, t) // under work, not ctx
+		}()
+	}
+}
+```
+
+**One activity attempt: watchdog, cause, report.**
+
+```go
+ctx, cancel := context.WithCancelCause(work)
+defer cancel(nil)
+beat := make(chan struct{}, 1)
+// ... inf := &Info{... IdempotencyKey, Attempt, HeartbeatDetails, Deadline ...}
+inf.heartbeat = func(details []byte) error {
+	resp, err := w.tasks.RecordHeartbeat(ctx, &durablev1.HeartbeatRequest{TaskToken: t.GetTaskToken(), LeaseToken: t.GetLeaseToken(), Details: details})
+	if status.Code(err) == codes.FailedPrecondition {
+		cancel(ErrLeaseLost) // the server gave the task away
+		return ErrLeaseLost
+	}
+	// ... cancel(ErrCancelRequested) when the server says so (dur.08)
+	select {
+	case beat <- struct{}{}: // reset the watchdog; non-blocking, one pending beat is enough
+	default:
+	}
+	return nil
+}
+if hb := time.Duration(t.GetHeartbeatTimeoutMs()) * time.Millisecond; hb > 0 {
+	go w.watchdog(ctx, cancel, beat, hb) // cancels with ErrHeartbeatTimeout after hb of silence
+}
+res, err := call(context.WithValue(ctx, infoKey{}, inf), w.poisoned(t.GetActivityId(), fn), t.GetInput())
+if cause := context.Cause(ctx); errors.Is(cause, ErrHeartbeatTimeout) || errors.Is(cause, ErrLeaseLost) {
+	return // the lease is gone: any report could overwrite the live attempt
+}
+if err != nil {
+	w.fail(work, t, failureOf(err))
+	return
+}
+w.retry(work, func(ctx context.Context) error { /* CompleteActivityTask with the lease token */ })
+```
+
+`call` recovers a panic into an error of type `Panic` with the stack. `failureOf` uses `errors.As` to find `FailureType()` and `NonRetryable()` anywhere in the wrap chain. `retry` repeats a report only while the server answers `UNAVAILABLE` (it keeps the lease across a restart), up to 20 times with backoff; any other answer, including a refusal, is final.
+
+```go
+func ReconnectDelay(n int, initial, max time.Duration) time.Duration {
+	if n < 1 {
+		return 0
+	}
+	d := initial
+	for i := 1; i < n && d < max; i++ { // stop doubling at the cap: no overflow for large n
+		d *= 2
+	}
+	if d > max {
+		d = max
+	}
+	return d // 100, 200, 400 ms ... 5 s
+}
+```
+
+The workflow poller handles one task at a time: poll, `fullHistory` (the first page plus a `GetHistory` stream from `next_page_token`), the handler, then a retried `CompleteWorkflowTask`. A handler error leaves the task to time out rather than completing with a guess, so a broken workflow is visibly stuck instead of silently wrong.
+
+Full solution: [`tasks.go`](../../../../course/solutions/go/durable/server/tasks.go), [`worker.go`](../../../../course/solutions/go/durable/worker/worker.go).
+
+### Why this solution
+
+- **Cost.** Each workflow task costs two commits (started, completed) and a history transfer. Sending the whole history every time is O(history) per task, which is why the first page is capped and why production adds sticky queues (Going further). Each activity costs one commit at completion.
+- **Fencing in two layers.** The $(S, T)$ check protects against decisions on stale history; the queue token protects against expired leases. Either alone leaves a gap: $(S, T)$ alone would accept a completion whose lease already expired but has not yet been redelivered; the token alone would not catch a task whose run state moved on.
+- **Command table over a switch.** Later modules add commands without editing this file, which keeps each module's change local.
+- **Worker-side watchdog.** The server already reassigns the task after the heartbeat timeout; the worker's own watchdog is what stops the stale copy from continuing to do work (and side effects) in the background.
+
+### Explain it back
+
+1. A worker polls a workflow task, pauses for 15 s, then completes it. What does the server answer, and which check fires?
+
+   <details><summary>Answer</summary>
+
+   The 10 s lease expired; the next poll appended a second `WorkflowTaskStarted`, so `r.wtStarted` is newer than the token's `Started`. The $(S, T)$ check fails first with `FAILED_PRECONDITION`. If no one had polled yet, `Queue.Check` would fail on the expired lease instead.
+
+   </details>
+
+2. Why is the idempotency key `"<workflow_id>/<activity_id>"` and not `"<run_id>/<activity_id>"`?
+
+   <details><summary>Answer</summary>
+
+   Continue-As-New starts a new run with a new run id but the same workflow id. A key with the run id would let a continued workflow repeat an effect that the previous run already performed; the workflow id plus activity id names the piece of work regardless of run.
+
+   </details>
+
+3. Why does `CompleteWorkflowTask` append `WorkflowTaskCompleted` even when the command list is empty?
+
+   <details><summary>Answer</summary>
+
+   It ends the current task so another can be scheduled. If an activity result arrived while the task ran, `needsWT` is set and only the batch with `wt_completed` schedules the next task; skipping it would leave the run with a task that never completes and news that is never delivered.
+
+   </details>
+
+4. Why does the activity poller take a slot before polling instead of after?
+
+   <details><summary>Answer</summary>
+
+   The lease's deadline starts at poll time. Polling without capacity holds a lease the worker cannot use; it expires while the task waits for a slot, the task is redelivered, and the expiry counts as a failed attempt toward the DLQ.
+
+   </details>
+
+5. On SIGTERM, why do running activities not see their context canceled?
+
+   <details><summary>Answer</summary>
+
+   Their context derives from `work`, built with `context.WithoutCancel(ctx)`, so canceling `Run`'s context only stops polling. Activities finish and report, which avoids redoing their work on another worker. Only the drain timeout cancels `work`.
+
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. returning a workflow task without committing its `WorkflowTaskStarted` | the token names an event that does not exist; every completion is refused | `TestTaskProtocolHandExample` (mutant `s01`) |
-| 2. completing without fencing (workflow or activity) | a worker presumed dead decides or writes over the live one | `TestCompleteWorkflowTaskFenced`, `TestStaleActivityLeaseDropsResult` (mutants `s04`, `s07`) |
-| 3. trusting a queue task over history | a stale duplicate starts a workflow task that already ran | `TestStaleQueueTaskSkipped` (mutant `s09`) |
-| 4. an idempotency key that changes (run id, activity id alone) | effects repeat after ContinueAsNew, or collide across workflows | `TestTaskProtocolHandExample`, `TestWorkerRunsWorkflowEndToEnd` (mutants `s02`, `s16`) |
-| 5. treating a completion with no commands as "nothing to do" | the workflow task never completes and news that arrived meanwhile is never delivered | `TestTriggerWhileWorkflowTaskInFlight` (mutant `s10`) |
-| 6. wrong cross-references in events (the completed id, the started event, the attempt, the identity) | replay (`dur.06`) cannot match commands; describe and audits are wrong | `TestTaskProtocolHandExample`, `TestCompleteWorkflowTaskFenced`, `TestStaleActivityLeaseDropsResult`, `TestWorkerRunsWorkflowEndToEnd` (mutants `s03`, `s05`, `s06`, `s17`) |
-| 7. sizes: a first page as big as a message, oversized payloads accepted, `next_page_token` ignored | messages over 4 MiB fail; replay runs on a truncated history | `TestFirstPageWithinOneMiB`, `TestActivityPayloadLimits`, `TestWorkerFetchesEveryHistoryPage` (mutants `s12`, `s13`, `s14`, `s18`) |
-| 8. the pool: one slot too many, or polling before taking a slot | more activities than configured; leases expire while tasks wait for a slot | `TestWorkerBoundedConcurrency` (mutants `s19`, `s20`) |
-| 9. backoff without a cap, or giving up after one failed poll | a worker waits minutes after a restart, or stops working for good | `TestReconnectDelaySchedule`, `TestWorkerReconnectsAfterServerRestart` (mutants `s15`, `s25`) |
-| 10. activities under `Run`'s context, or `Run` returning before they finish | SIGTERM aborts work mid-flight and it is redone; results are lost | `TestWorkerDrainsOnCancel` (mutants `s21`, `s22`) |
-| 11. no heartbeat watchdog, or reporting after the heartbeat timeout | a stuck attempt runs on after its task was redelivered, and both write | `TestMissedHeartbeatCancelsActivity` (mutants `s23`, `s24`) |
+| 1. returning a workflow task without committing its `WorkflowTaskStarted` | the token names an event that does not exist; every completion is refused | `startWorkflowTask` commits `WorkflowTaskStarted` before building the token |
+| 2. completing without fencing (workflow or activity) | a worker presumed dead decides or writes over the live one | the $(S, T)$ check plus `Queue.Check` before any append |
+| 3. trusting a queue task over history | a stale duplicate starts a workflow task that already ran | a delivery whose $S$ is not `r.wtScheduled` is acknowledged and skipped |
+| 4. an idempotency key that changes (run id, activity id alone) | effects repeat after ContinueAsNew, or collide across workflows | the key is `r.workflowID + "/" + activity id` |
+| 5. treating a completion with no commands as "nothing to do" | the workflow task never completes and news that arrived meanwhile is never delivered | `WorkflowTaskCompleted` is appended for every completion, so `commit` can honour `needsWT` |
+| 6. wrong cross-references in events (the completed id, the started event, the attempt, the identity) | replay (`dur.06`) cannot match commands; describe and audits are wrong | each event carries the ids from the token (`Sched`, `Started`, completed id, attempt, lease token, identity) |
+| 7. sizes: a first page as big as a message, oversized payloads accepted, `next_page_token` ignored | messages over 4 MiB fail; replay runs on a truncated history | `firstPage` caps at 1 MiB; payload checks against `MaxPayloadBytes`; `fullHistory` follows `next_page_token` |
+| 8. the pool: one slot too many, or polling before taking a slot | more activities than configured; leases expire while tasks wait for a slot | a `MaxActivities`-sized semaphore taken before `PollActivityTask` |
+| 9. backoff without a cap, or giving up after one failed poll | a worker waits minutes after a restart, or stops working for good | `ReconnectDelay` caps at `ReconnectMax`; the pollers back off and continue |
+| 10. activities under `Run`'s context, or `Run` returning before they finish | SIGTERM aborts work mid-flight and it is redone; results are lost | activities run under `work`; `Run` waits on `inflight` before returning |
+| 11. no heartbeat watchdog, or reporting after the heartbeat timeout | a stuck attempt runs on after its task was redelivered, and both write | the watchdog cancels with `ErrHeartbeatTimeout`, and `runActivity` returns without reporting |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -183,7 +466,7 @@ func ReconnectDelay(n int, initial, max time.Duration) time.Duration
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | one worker build serves every run | worker versioning (build ids) | old runs stay on the build that started them while new runs use the new one | Temporal "Worker Versioning" |
 | every activity through the server | local activities | short activities run in the workflow worker, recorded as markers, no round trip | Temporal "Local Activities" |

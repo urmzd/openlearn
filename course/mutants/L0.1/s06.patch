@@ -1,8 +1,0 @@
---- a/python/tinyllm/autograd/mode.py
-+++ b/python/tinyllm/autograd/mode.py
-@@ -29,4 +29,4 @@
-     finally:
-         # Restore the previous value, not True: no_grad blocks nest, and an
-         # exception inside the block must not leave grad mode off.
--        _local.enabled = prev
-+        _local.enabled = True

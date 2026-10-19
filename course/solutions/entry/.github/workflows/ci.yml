@@ -1,0 +1,44 @@
+# craft.01 reference CI for the system's repository. Two gates:
+# commit-lint (every new commit is a Conventional Commit) and native-tests
+# (every language's own test suite).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  commit-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # the whole history: a shallow clone holds one commit
+      - name: every new commit message is a Conventional Commit
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            commits="$(git rev-list "$HEAD")"        # first push of a branch: all of it
+          else
+            commits="$(git rev-list "$BASE..$HEAD")"
+          fi
+          for c in $commits; do
+            git log -1 --format=%B "$c" > "$RUNNER_TEMP/msg"
+            .githooks/commit-msg "$RUNNER_TEMP/msg" || { echo "in commit $c" >&2; exit 1; }
+          done
+
+  native-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      # One step per language as you start it: `uv run --project python pytest
+      # python/tests`, `make -C c test`, `cargo test --manifest-path
+      # rust/Cargo.toml`, `cd go && go test ./...`.
+      - name: C primer builds and runs
+        run: make -C primers/lang.02 && primers/lang.02/greet ci
+      - name: Python primer imports inside its uv project
+        run: cd primers/lang.01 && uv run python -c "import bigram, worksheet"

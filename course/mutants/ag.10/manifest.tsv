@@ -1,5 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	go/agent/eval/scorers/text.go	semantic	pitfall-1	56	y	(hidden until pass)	case normalization is case-sensitive
-s02	go/agent/eval/scorers/timing.go	semantic	pitfall-2	35	y	(hidden until pass)	TTFT uses the last token timestamp
-s03	go/agent/eval/scorers/retrieval.go	semantic	pitfall-3	56	y	(hidden until pass)	retrieved duplicates are counted more than once
-s04	go/agent/eval/scorers/state.go	semantic	pitfall-4	95	y	(hidden until pass)	bookkeeping timestamp changes count as a task side effect

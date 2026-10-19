@@ -1,42 +1,32 @@
-<!-- ol:module L11.3 -->
 # Data parallelism and ZeRO stages 1 to 3
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L11.3` · side · Python · Pass 9 (optional) · 4 to 5 h |
-| **You build** | `python/tinyllm/dist/zero.py`: `DDP` (`forward`, `sync_grads`), `ZeroOptimizer` (`gather`, `step`, `zero_grad`, `memory_bytes`) |
+| **Module** | `L11.3` · side · Python · Pass 9 (optional) |
+| **Solution** | [`zero.py`](../../../../course/solutions/python/tinyllm/dist/zero.py): `DDP` (`forward`, `sync_grads`), `ZeroOptimizer` (`gather`, `step`, `zero_grad`, `memory_bytes`) |
 | **Contract** | [`course/contracts/py/tinyllm/dist/zero.pyi`](../../../../course/contracts/py/tinyllm/dist/zero.pyi) |
-| **Tests** | `course/tests/L11.3/` (what they check: section 4) · your own tests in `python/tests/l11-3-zero/`, rung R5, graded by mutation (threshold 0.80, every pitfall mutant required) |
 | **Needs** | `L11.2` `Comm` and `chunk_bounds` · `L0.1` Tensor · `L0.4` Module and layers · `M10.2` SGD and `M10.3` AdamW (single-process references and wrapped optimizers) · reading: `M05.1` the memory plan, `L11.1` accumulation |
-| **Used by** | the capstone trainer's `--world 4 --zero 2` option (`C1`, joins the registry with the capstone) |
-| **Milestone** | none; this optional side module is not part of `MS-L11` |
+| **Used by** | the capstone trainer's `--world 4 --zero 2` option (`C1`) |
 | **Optional depth** | Li et al., [*PyTorch Distributed: Experiences on Accelerating Data Parallel Training*](https://arxiv.org/abs/2006.15704) (VLDB 2020); Rajbhandari et al., [*ZeRO: Memory Optimizations Toward Training Trillion Parameter Models*](https://arxiv.org/abs/1910.02054) (SC 2020); Zhao et al., [*PyTorch FSDP*](https://arxiv.org/abs/2304.11277) (VLDB 2023) |
 
 ## Key Takeaways
 
-- Data parallelism is gradient accumulation across processes: equal slices, mean losses, an averaged gradient, and every replica takes the same step (`test_ddp_matches_single_process`).
-- Replicas must start equal, so DDP broadcasts rank 0's weights before the first step (`test_ddp_broadcasts_rank0_weights`).
-- ZeRO keeps one copy of each piece of training state across the ranks instead of $p$: stage 1 the optimizer state, stage 2 also the gradients, stage 3 also the parameters, so per-rank memory falls toward $1/p$ (`test_hand_example_memory_by_stage`, `test_zero_memory_is_one_over_p`).
-- Sharding changes who stores what, never the arithmetic: an elementwise optimizer on a chunk computes exactly the single process's update for those entries (`test_hand_example_zero_step`, `test_zero_matches_single_process`).
+- Data parallelism is gradient accumulation across processes: equal slices, mean losses, an averaged gradient, and every replica takes the same step.
+- Replicas must start equal, so DDP broadcasts rank 0's weights before the first step.
+- ZeRO keeps one copy of each piece of training state across the ranks instead of $p$: stage 1 the optimizer state, stage 2 also the gradients, stage 3 also the parameters, so per-rank memory falls toward $1/p$.
+- Sharding changes who stores what, never the arithmetic: an elementwise optimizer on a chunk computes exactly the single process's update for those entries.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L11.3              # stubs zero.py into your repo
-ol tests L11.3              # read the test catalog first
-ol check L11.3              # course tests, then your tests graded by mutation
-ol mutate L11.3             # the full mutation grade of your tests
-ol check L11.3 --ref-deps   # only if your L11.2 is not passing yet
-ol diff  L11.3              # after passing: your code against the reference
-```
+Sections 1 to 3 derive data parallelism and the three ZeRO stages from first principles and work one step and its memory by hand. Section 4 fixes the interface. Section 5 walks through `zero.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-`L11.2` gave you an all-reduce. The first thing anyone builds with it is data parallelism: $p$ workers, each with a full copy of the model, each computing the gradient of its own slice of the batch, then averaging. That turns $p$ processes into one large-batch trainer, and it is exactly `L11.1`'s accumulation spread over processes. But every replica also holds a full copy of the optimizer state: for AdamW, two moments per parameter, twice the size of the model. At scale that redundancy is what runs out of memory, and ZeRO removes it in three stages. On a laptop the capstone does not need either, so this module is optional; it is how every large model you will serve was trained, and the capstone's `--world 4 --zero 2` run must match the single-process run to show you have it right.
+`L11.2` built an all-reduce. The first thing anyone builds with it is data parallelism: $p$ workers, each with a full copy of the model, each computing the gradient of its own slice of the batch, then averaging. That turns $p$ processes into one large-batch trainer, and it is exactly `L11.1`'s accumulation spread over processes. But every replica also holds a full copy of the optimizer state: for AdamW, two moments per parameter, twice the size of the model. At scale that redundancy is what runs out of memory, and ZeRO removes it in three stages. On a laptop the capstone does not need either, so this module is optional; it is how every large model you will serve was trained, and the capstone's `--world 4 --zero 2` run matches the single-process run, which is the evidence that it is right.
 
 ## 2. Principles
 
@@ -66,7 +56,7 @@ ol diff  L11.3              # after passing: your code against the reference
 | gradients | $n$ | $n$ | $n/p$ | $n/p$ |
 | optimizer (moments, master) | $Kn$ | $Kn/p$ | $Kn/p$ | $Kn/p$ |
 
-**Your emulation's bookkeeping.** `memory_bytes()` reports what the rank holds after a step: the parameters' `.data` (in stage 3 between steps, only the chunk), the `.grad` arrays plus the chunk's gradient, and every array in the wrapped optimizer's `state_dict()` plus, in stages 1 and 2, the chunk's master copy (in stage 3 the chunk is the parameter storage, counted once). Stage 1 keeps the averaged full gradients in `.grad` until `zero_grad()`, as a training loop that logs gradient norms would.
+**The emulation's bookkeeping.** `memory_bytes()` reports what the rank holds after a step: the parameters' `.data` (in stage 3 between steps, only the chunk), the `.grad` arrays plus the chunk's gradient, and every array in the wrapped optimizer's `state_dict()` plus, in stages 1 and 2, the chunk's master copy (in stage 3 the chunk is the parameter storage, counted once). Stage 1 keeps the averaged full gradients in `.grad` until `zero_grad()`, as a training loop that logs gradient norms would.
 
 ## 3. Worked example by hand
 
@@ -86,7 +76,7 @@ Every stage gives this on every rank: rank 0 computes entries 0 to 2, rank 3 ent
 | grads | 80 + 24 = 104 | 80 + 16 = 96 | 24 | 16 | 24 | 16 | 80 |
 | optimizer | 2·24 + 24 = 72 | 2·16 + 16 = 48 | 72 | 48 | 48 | 32 | 160 |
 
-Rank 0's stage 3 total is 96 bytes against 320 for one process: about $1/p$, up to the unequal chunks. These are `test_hand_example_zero_step` and `test_hand_example_memory_by_stage`.
+Rank 0's stage 3 total is 96 bytes against 320 for one process: about $1/p$, up to the unequal chunks. These are the first two cases in section 4's table.
 
 ## 4. The interface
 
@@ -106,47 +96,192 @@ class ZeroOptimizer:
 
 A ZeRO training step on each rank: `zo.gather()`, `zo.zero_grad()`, forward and `backward()` on the rank's slice, `zo.step()`. With DDP: `opt.zero_grad()`, forward and `backward()`, `ddp.sync_grads()`, `opt.step()`.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_zero_step` | unit | section 3's step, every stage, every rank | you and the test agree on the chunking |
-| `test_hand_example_memory_by_stage` | unit | section 3's byte table | the stage definitions |
-| `test_ddp_matches_single_process` | differential | 2 and 4 ranks, 5 momentum-SGD steps, $10^{-10}$, bitwise-equal gradients | DDP is just a bigger batch |
-| `test_ddp_broadcasts_rank0_weights` | unit | ranks initialized differently end equal to rank 0's run | replicas never drift |
-| `test_zero_matches_single_process` | differential | stages 1 to 3 on 2 and 4 ranks, 4 AdamW steps with decay | sharding never changes training |
-| `test_zero_memory_is_one_over_p` | property | a 44-parameter model on 4 ranks: exact shares per stage | the reason to use ZeRO |
-| `test_zero_rejects_bad_stage` | boundary | stage 0 or 4, no parameters | configuration errors surface early |
+| hand example: one ZeRO step | unit | section 3's step, every stage, every rank | the chunking is pinned to exact values |
+| hand example: memory by stage | unit | section 3's byte table | the stage definitions |
+| DDP matches one process | differential | 2 and 4 ranks, 5 momentum-SGD steps, $10^{-10}$, bitwise-equal gradients | DDP is just a bigger batch |
+| DDP broadcasts rank 0's weights | unit | ranks initialized differently end equal to rank 0's run | replicas never drift |
+| ZeRO matches one process | differential | stages 1 to 3 on 2 and 4 ranks, 4 AdamW steps with decay | sharding never changes training |
+| ZeRO memory is $1/p$ | property | a 44-parameter model on 4 ranks: exact shares per stage | the reason to use ZeRO |
+| bad stage rejected | boundary | stage 0 or 4, no parameters | configuration errors surface early |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Replicas must compute the same step.** Two things make every rank's update identical: identical starting weights, and identical gradients. The first needs one broadcast at construction; the second needs an all-reduce whose result has the same bits everywhere, which `L11.2`'s ring provides.
+2. **The gradient to apply is the mean, not the sum.** Each rank's loss is a mean over its slice, so by `L11.1`'s accumulation identity with equal slices the full-batch gradient is $\frac1p\sum_r g_r$. Summing would scale the step by $p$.
+3. **One flat bucket is simpler and as fast.** Flattening every gradient in `parameters()` order into one array means one collective per step instead of one per tensor, and the same flat order defines ZeRO's chunks. Writing results back needs the shapes and dtypes recorded once.
+4. **Sharding works because the optimizer is elementwise.** AdamW's update of entry $i$ reads only $g_i$, $m_i$, $v_i$, $w_i$. So rank $r$ can hold a flat "parameter" containing $w[c_r]$, give it the gradient $\bar g[c_r]$, and call the *unchanged* optimizer on it; the result is the single-process update for those entries.
+5. **Each stage removes one redundant copy, using the matching collective.** Stage 1 still all-reduces (every rank gets all of $\bar g$) but only uses its chunk. Stage 2 uses reduce-scatter instead, so only the chunk's sum ever arrives, and drops the full gradients. Stage 3 keeps only $w[c_r]$ between steps and all-gathers before the forward pass. Since reduce-scatter plus all-gather is an all-reduce, the traffic does not grow until stage 3's extra gather.
+
+### The code, annotated
+
+Two helpers carry the flat layout. Flattening uses zeros for a parameter without a gradient, so every rank sends arrays of the same length even if some parameter was unused:
+
+```python
+def _flat_grads(params: list) -> np.ndarray:
+    """Every parameter's gradient (zeros when None), flattened in order, float64."""
+    return np.concatenate(
+        [
+            np.zeros(p.data.size) if p.grad is None else np.asarray(p.grad, dtype=np.float64).reshape(-1)
+            for p in params
+        ]
+    )
+
+
+def _write_back(params, shapes, dtypes, flat, attr) -> None:
+    at = 0
+    for p, shape, dt in zip(params, shapes, dtypes):   # the same order as _flat_grads
+        size = int(np.prod(shape)) if shape else 1
+        piece = flat[at : at + size].reshape(shape).astype(dt)
+        if attr == "data" and p.data.shape == shape:
+            p.data[...] = piece  # in place: the arrays other code holds stay the same objects
+        else:
+            setattr(p, attr, piece)   # a gradient, or stage 3 restoring a released parameter
+        at += size
+```
+
+DDP is the three things of section 2, and nothing else:
+
+```python
+class DDP(Module):
+    def __init__(self, model: Module, comm: Comm) -> None:
+        super().__init__()
+        self.module = model
+        self._comm = comm
+        for p in model.parameters():
+            p.data[...] = comm.broadcast(p.data, 0)   # every replica starts from rank 0's weights
+
+    def forward(self, *args, **kwargs):
+        return self.module(*args, **kwargs)
+
+    def sync_grads(self) -> None:
+        ps = list(self.module.parameters())
+        mean = self._comm.all_reduce(_flat_grads(ps), op="mean")   # one bucket, averaged
+        _write_back(ps, [p.data.shape for p in ps], [p.data.dtype for p in ps], mean, "grad")
+```
+
+`ZeroOptimizer` builds its chunk once. `_Chunk` is a two-field object (`data`, `grad`) that looks enough like a parameter for `SGD` or `AdamW` to step it:
+
+```python
+n = sum(p.data.size for p in self.params)
+self.bounds = chunk_bounds(n, comm.world)          # the same bounds L11.2's collectives use
+a, b = self.bounds[comm.rank]
+full = np.concatenate([np.asarray(p.data, dtype=np.float64).reshape(-1) for p in self.params])
+self.chunk = _Chunk(full[a:b].copy())              # this rank's master copy
+self.opt = opt_cls([self.chunk], **kw)             # the unchanged optimizer, with the caller's hyperparameters
+if stage == 3:
+    self._release()                                # stage 3: drop the full parameters right away
+```
+
+The step is where the stages differ:
+
+```python
+def step(self) -> None:
+    a, b = self.bounds[self.comm.rank]
+    g = _flat_grads(self.params)
+    if self.stage == 1:
+        # all of the mean arrives; only the chunk is used. .grad keeps the full averaged gradient
+        self.chunk.grad = self.comm.all_reduce(g, op="mean")[a:b].copy()
+    else:
+        # only the chunk's sum arrives; divide by p to make it a mean
+        self.chunk.grad = self.comm.reduce_scatter(g) / self.comm.world
+        for p in self.params:
+            p.grad = None  # the full gradient is not kept: only the chunk's
+    self.opt.step()                                # elementwise: equals the single-process update here
+    if self.stage == 3:
+        self._release()                            # keep only the chunk until the next gather()
+        return
+    full = self.comm.all_gather(self.chunk.data)   # stages 1 and 2: every rank gets the new w
+    _write_back(self.params, self.shapes, self.dtypes, full, "data")
+
+def gather(self) -> None:
+    if self.stage != 3:
+        return                                     # stages 1 and 2 already hold full parameters
+    full = self.comm.all_gather(self.chunk.data)
+    _write_back(self.params, self.shapes, self.dtypes, full, "data")
+```
+
+`memory_bytes` counts exactly section 2's bookkeeping: the parameters' `.data` (plus the chunk in stage 3, where it is the storage), the `.grad` arrays plus the chunk's gradient, and the optimizer's `state_dict()` arrays plus the master chunk in stages 1 and 2.
+
+Full solution: [`zero.py`](../../../../course/solutions/python/tinyllm/dist/zero.py)
+
+A model test suite for this unit: [`test_l11_3_mine.py`](../../../../course/solutions/learner-tests/L11.3/python/tests/l11-3-zero/test_l11_3_mine.py)
+
+### Why this solution
+
+- **Cost.** DDP and stages 1 and 2 move one all-reduce's worth of bytes per step, $2(p-1)n\beta/p$ per rank. Stage 3 adds one all-gather, $(p-1)n\beta/p$. Memory per rank falls from $(2 + K)n$ values to about $(2 + K)n/p$ at stage 3.
+- **Wrapping the optimizer versus rewriting it.** Because the update is elementwise, giving the unchanged `SGD` or `AdamW` a flat chunk reuses every line of `M10.x` and guarantees the same arithmetic. A non-elementwise optimizer (one that needs a global norm, or Shampoo-style matrix statistics) would break this, and global-norm clipping needs an extra all-reduce of squared chunk norms.
+- **One bucket versus per-tensor collectives.** Per-tensor all-reduces pay the ring's $2(p-1)$-step latency once per tensor. One bucket pays it once. Production DDP uses several buckets so it can overlap communication with the rest of backward; this emulation has nothing to overlap with.
+- **Accepted tradeoff.** The flat float64 copy in `_flat_grads` briefly holds a full gradient even in stage 2. A real system reduce-scatters bucket by bucket during backward so the full gradient never exists at once.
+
+### Explain it back
+
+**Why must DDP broadcast the weights if every rank seeds the same generator?**
+
+<details><summary>Answer</summary>
+
+Nothing forces every rank to seed the same way, and any difference (a seed, a different init order) means the replicas apply identical updates to different weights and never agree. Broadcasting from rank 0 makes equality a property of the code, not of the caller.
+
+</details>
+
+**Why does sharding the optimizer give exactly the single-process update?**
+
+<details><summary>Answer</summary>
+
+AdamW and SGD update each entry from that entry's gradient and state only. Rank $r$ gives the optimizer $w[c_r]$ and $\bar g[c_r]$, so it computes the same numbers for those entries that one process would; the all-gather then assembles all entries.
+
+</details>
+
+**Why does stage 2 divide the reduce-scatter result by $p$ while stage 1 does not?**
+
+<details><summary>Answer</summary>
+
+Stage 1 calls `all_reduce(op="mean")`, which divides. `reduce_scatter` returns the sum of the chunk, so stage 2 divides by `world` itself to turn it into the mean gradient.
+
+</details>
+
+**What would go wrong if `_write_back` unflattened in a different order from `_flat_grads`?**
+
+<details><summary>Answer</summary>
+
+The sizes would line up only by accident, and values would land in the wrong tensors: one layer's gradient written into another's. Both helpers walk `self.params` in the same `parameters()` order, which is the only thing tying a flat index to a tensor entry.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. not broadcasting the initial weights | replicas with different seeds never agree | `test_ddp_broadcasts_rank0_weights` (mutant `s01`) |
-| 2. summing gradients instead of averaging | the learning rate is effectively $p$ times larger | `test_ddp_matches_single_process` (mutant `s02`) |
-| 3. synchronizing only some parameters | replicas silently drift apart | `test_ddp_matches_single_process` (mutant `s03`) |
-| 4. a rank starting from the wrong chunk | its master copy belongs to its neighbour | `test_hand_example_zero_step` (mutant `s04`) |
-| 5. reduce-scatter without dividing by $p$ | stage 2 and 3 steps on the summed gradient | `test_zero_matches_single_process` (mutant `s05`) |
-| 6. no all-gather after the update | other ranks' chunks go stale in your model | `test_hand_example_zero_step` (mutant `s06`) |
-| 7. stage 2 keeping the full gradients | no gradient memory saved | `test_hand_example_memory_by_stage` (mutant `s07`) |
-| 8. stage 3 keeping the full parameters | no parameter memory saved | `test_zero_memory_is_one_over_p` (mutant `s08`) |
-| 9. unflattening in the wrong order | parameters swapped between tensors | `test_zero_matches_single_process` (mutant `s09`) |
-| 10. dropping the optimizer's hyperparameters | the default learning rate and decay instead of yours | `test_zero_matches_single_process` (mutant `s10`) |
+| 1. not broadcasting the initial weights | replicas with different seeds never agree | `DDP.__init__` broadcasts every parameter from rank 0 |
+| 2. summing gradients instead of averaging | the learning rate is effectively $p$ times larger | `sync_grads` uses `all_reduce(op="mean")` |
+| 3. synchronizing only some parameters | replicas silently drift apart | `_flat_grads` concatenates every parameter, zeros for `None` |
+| 4. a rank starting from the wrong chunk | its master copy belongs to its neighbour | the chunk is `self.bounds[comm.rank]` |
+| 5. reduce-scatter without dividing by $p$ | stage 2 and 3 steps on the summed gradient | stages 2 and 3 divide the reduce-scatter by `world` |
+| 6. no all-gather after the update | other ranks' chunks go stale in your model | `step` all-gathers the chunks in stages 1 and 2; stage 3 gathers in `gather()` |
+| 7. stage 2 keeping the full gradients | no gradient memory saved | stages 2 and 3 set every `p.grad = None` after reducing |
+| 8. stage 3 keeping the full parameters | no parameter memory saved | stage 3 calls `_release()` after the step |
+| 9. unflattening in the wrong order | parameters swapped between tensors | `_write_back` walks the parameters in the same order `_flat_grads` did |
+| 10. dropping the optimizer's hyperparameters | the default learning rate and decay instead of the configured ones | `ZeroOptimizer` passes `**kw` to `opt_cls` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `L11.2` | `broadcast`, `all_reduce`, `reduce_scatter`, `all_gather`, and `chunk_bounds` |
 | Back | `L0.1` | parameters are Tensors; `.grad` is what gets reduced |
-| Back | `L0.4` | `DDP` is a Module wrapping yours; `parameters()` fixes the flat order |
-| Back | `M10.2` | SGD in the DDP tests |
+| Back | `L0.4` | `DDP` is a Module wrapping the model; `parameters()` fixes the flat order |
+| Back | `M10.2` | SGD in the DDP comparison |
 | Back | `M10.3` | AdamW wrapped by `ZeroOptimizer` |
 | Forward | `C1` | (optional) `--world 4 --zero 2` trains the capstone on 4 local processes and must match the single-process loss |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `DDP` | `torch.nn.parallel.DistributedDataParallel` | gradient buckets all-reduced during backward (overlapping communication with compute), unused-parameter detection | `torch/nn/parallel/distributed.py`, `torch/csrc/distributed/c10d/reducer.cpp` |
 | `ZeroOptimizer` stages 1 and 2 | DeepSpeed ZeRO | bucketed reduce-scatter during backward, CPU and NVMe offload (ZeRO-Offload, ZeRO-Infinity) | `deepspeed/runtime/zero/stage_1_and_2.py` |

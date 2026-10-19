@@ -1,20 +1,21 @@
 # Supersource
 
-> A self-paced curriculum and course publishing platform for computer science, mathematics, and engineering. Course manifests reuse canonical lessons across websites, PDFs, and downloadable source packs and an offline PWA; the LLM systems course also provides implementation contracts and grading tools.
+> A self-paced curriculum and course publishing platform for computer science, mathematics, and engineering. Chapters work each idea from first principles and walk through an annotated reference solution. Course manifests reuse canonical lessons across websites, PDFs, downloadable source packs, and an offline PWA; the LLM systems course also provides interface contracts and the full reference system.
 
 ## Docs
 
 - [README](https://github.com/urmzd/openlearn/blob/main/README.md): Installation, study, practice, and publishing
 - [Course catalogue](https://github.com/urmzd/openlearn/blob/main/content/courses/README.md): Available learning routes and study plans
 - [Course publication](https://github.com/urmzd/openlearn/blob/main/docs/courses.md): Manifest fields, exports, and independent websites
-- [LLM systems course](https://github.com/urmzd/openlearn/blob/main/content/courses/build-an-llm/README.md): Implementation sequence, interfaces, checks, and milestones
+- [LLM systems course](https://github.com/urmzd/openlearn/blob/main/content/courses/build-an-llm/README.md): Module sequence, interfaces, and solution walkthroughs
 - [Source register](https://github.com/urmzd/openlearn/blob/main/content/references/sources.md): Attribution, access terms, and validation evidence
 
 ## API / Key Files
 
 - [Catalogue manifest](https://github.com/urmzd/openlearn/blob/main/openlearn.json): Registered courses and default navigation
 - [Publication pipeline](https://github.com/urmzd/openlearn/blob/main/scripts/course_catalog.py): Source resolution, validation, and portable exports
-- [Practice guide](https://github.com/urmzd/openlearn/blob/main/practice/README.md): Exercise commands, attempts, and grading
+- [Reference solutions](https://github.com/urmzd/openlearn/tree/main/course/solutions): The LLM system the chapters explain
+- [Practice](https://github.com/urmzd/openlearn/blob/main/practice/README.md): Predict-the-output puzzles and data structures with worked answers
 
 ## Skills
 

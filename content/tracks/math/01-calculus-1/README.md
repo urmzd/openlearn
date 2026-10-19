@@ -159,7 +159,6 @@ reveals these are inverse operations -- one of the most powerful ideas in all of
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M01.1` | [Derivative as a limit, finite differences, step-size choice](01-derivatives-and-finite-differences.md) | build | 2 |
@@ -167,4 +166,3 @@ reveals these are inverse operations -- one of the most powerful ideas in all of
 | 3 | `M01.3` | [Activation functions and their derivatives](03-activation-functions.md) | build | 2 |
 | 4 | `M01.4` | [Definite integrals, trapezoid, Simpson](04-definite-integrals-trapezoid-simpson.md) | build | 5 |
 | 5 | `S-M01` | [Calculus 1 problem set: limits, derivatives, rates, optimization, integrals, L'Hôpital](90-problem-set.md) | solve | 2 |
-<!-- /ol:chapters -->

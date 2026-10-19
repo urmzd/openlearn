@@ -1,4 +1,3 @@
-<!-- ol:module lang.11 -->
 # SQL and SQLite: schema, transactions, WAL mode, indexes, aggregates
 
 ## Overview
@@ -6,39 +5,35 @@
 | | |
 |---|---|
 | **Module** | `lang.11` · practice · SQL · Pass 7 · 4 to 6 h |
-| **You build** | `primers/lang.11/`: five queries over the usage ledger (`q1_tenant_totals.sql` to `q5_ttft_p95.sql`), an index (`indexes.sql`), connection settings (`pragmas.sql`), a rollup table (`rollup.sql`), and the transaction that records one request (`record.sql`) |
-| **Contract** | the table your queries read: [`course/contracts/formats/usage.v1.sql`](../../../../course/contracts/formats/usage.v1.sql), the gateway's usage ledger |
-| **Tests** | `course/tests/lang.11/check` runs your SQL with Python's built-in `sqlite3` against the 240 fixture rows of `course/fixtures/lang.11/usage_rows.jsonl` and compares every answer with one computed in plain Python (what each test checks: section 4) |
+| **Solution** | [`primers/lang.11/`](../../../../course/solutions/primers/lang.11/): five queries over the usage ledger ([`q1_tenant_totals.sql`](../../../../course/solutions/primers/lang.11/q1_tenant_totals.sql) to [`q5_ttft_p95.sql`](../../../../course/solutions/primers/lang.11/q5_ttft_p95.sql)), an index ([`indexes.sql`](../../../../course/solutions/primers/lang.11/indexes.sql)), connection settings ([`pragmas.sql`](../../../../course/solutions/primers/lang.11/pragmas.sql)), a rollup table ([`rollup.sql`](../../../../course/solutions/primers/lang.11/rollup.sql)), and the transaction that records one request ([`record.sql`](../../../../course/solutions/primers/lang.11/record.sql)) |
+| **Contract** | the table the queries read: [`course/contracts/formats/usage.v1.sql`](../../../../course/contracts/formats/usage.v1.sql), the gateway's usage ledger |
 | **Needs** | reading: `lang.02` shell and processes ([primer](02-shell-git-make.md)) for the `sqlite3` command line |
 | **Used by** | no call site (a primer): `gw.07` applies it next, writing the same table from Go and serving these queries through `GET /admin/v1/usage` |
-| **Milestone** | MS-gateway |
 | **Optional depth** | [SQLite: SQL as understood by SQLite](https://www.sqlite.org/lang.html) (free); [SQLite: write-ahead logging](https://www.sqlite.org/wal.html) (free); [SQLite: query planning](https://www.sqlite.org/queryplanner.html) (free); [Use The Index, Luke](https://use-the-index-luke.com/) (free) |
 
 ## Key Takeaways
 
-- A table is a set of rows with typed columns; **constraints** (`PRIMARY KEY`, `CHECK`, `NOT NULL`) make the database refuse bad rows instead of storing them (`test_rollup_schema`).
-- `GROUP BY` turns rows into one row per group; `COUNT(*)` counts rows, `SUM` adds values and is **NULL over no rows**, so totals use `COALESCE(SUM(x), 0)` (`test_q1_tenant_totals_on_the_fixture`).
-- A **transaction** makes several statements one unit: either every change is committed or none is, and `ON CONFLICT DO NOTHING` plus `changes()` makes a replayed write a no-op (`test_record_is_atomic`, `test_record_replay_is_a_no_op`).
-- **WAL mode** lets readers and one writer work at once and keeps every committed transaction across a process crash; it is stored in the file, while `synchronous` and `busy_timeout` are **per connection** (`test_pragmas_set_wal_and_connection_settings`).
-- An index is a sorted copy of some columns; put **equality columns first and the range column last**, and read `EXPLAIN QUERY PLAN` to see `SEARCH` instead of `SCAN` (`test_index_serves_the_served_model_query`).
+- A table is a set of rows with typed columns; **constraints** (`PRIMARY KEY`, `CHECK`, `NOT NULL`) make the database refuse bad rows instead of storing them.
+- `GROUP BY` turns rows into one row per group; `COUNT(*)` counts rows, `SUM` adds values and is **NULL over no rows**, so totals use `COALESCE(SUM(x), 0)`.
+- A **transaction** makes several statements one unit: either every change is committed or none is, and `ON CONFLICT DO NOTHING` plus `changes()` makes a replayed write a no-op.
+- **WAL mode** lets readers and one writer work at once and keeps every committed transaction across a process crash; it is stored in the file, while `synchronous` and `busy_timeout` are **per connection**.
+- An index is a sorted copy of some columns; put **equality columns first and the range column last**, and read `EXPLAIN QUERY PLAN` to see `SEARCH` instead of `SCAN`.
 
-## How to work this chapter
+## How to read this chapter
+
+Section 2 builds the SQL needed from tables up: constraints, pragmas and the journal, aggregates, time buckets, window functions, parameters, indexes, and transactions. Section 3 answers all five queries by hand on six rows. Section 4 fixes the nine files, and section 5 walks through each one and explains why it is written that way. Try to write each query in your head before reading it. To try the solution by hand:
 
 ```bash
-ol start lang.11                         # records that you started; the exercise is primers/lang.11/
-ol tests lang.11                         # read the test catalog first
-mkdir -p primers/lang.11                 # write the nine files of section 4
-sqlite3 /tmp/u.db < contracts/formats/usage.v1.sql      # try things by hand
+sqlite3 /tmp/u.db < contracts/formats/usage.v1.sql
 sqlite3 /tmp/u.db ".param set :tenant acme" ".param set :since 0" ".param set :until 9999999999999" \
   ".read primers/lang.11/q1_tenant_totals.sql"
-ol check lang.11                         # exit code is the verdict
 ```
 
 ---
 
 ## 1. Why now
 
-In Pass 7 the gateway grows a memory. Until now it forgot every request the moment the response ended, so nobody could say how many tokens `acme` used yesterday, which key is burning through its budget, or whether the canary model is slower than the stable one. `gw.07` adds a usage ledger: one row per request in a SQLite database, written by the gateway and read through its admin API, by the agent's `query_usage` tool (`ag.04`), and by the noisy-neighbor drill (`ops.09`). Every one of those readers is a SQL query, and the ledger is only useful if its writes survive a crash and its reads are right at the edges: an empty window, a tie, a missing value. This primer teaches that SQL on the real table before you write the Go that fills it.
+In Pass 7 the gateway grows a memory. Until now it forgot every request the moment the response ended, so nobody could say how many tokens `acme` used yesterday, which key is burning through its budget, or whether the canary model is slower than the stable one. `gw.07` adds a usage ledger: one row per request in a SQLite database, written by the gateway and read through its admin API, by the agent's `query_usage` tool (`ag.04`), and by the noisy-neighbor drill (`ops.09`). Every one of those readers is a SQL query, and the ledger is only useful if its writes survive a crash and its reads are right at the edges: an empty window, a tie, a missing value. This primer teaches that SQL on the real table before `gw.07` writes the Go that fills it.
 
 ## 2. Principles
 
@@ -55,7 +50,7 @@ A **constraint** is a rule the database enforces on every write:
 | `CHECK (expr)` | `expr` must be true for every row | `cached_tokens <= prompt_tokens`, `stream IN (0, 1)` |
 | `DEFAULT v` | the value when an `INSERT` leaves the column out | `api_version DEFAULT '1'` |
 
-`CREATE TABLE IF NOT EXISTS` makes a schema file safe to apply on every start: the second time it does nothing. Your `rollup.sql` defines a second table, `usage_hourly`, with one row per tenant and hour: its primary key is the pair `(tenant, hour_ms)`, and a `CHECK (hour_ms % 3600000 = 0)` keeps every `hour_ms` on an hour boundary.
+`CREATE TABLE IF NOT EXISTS` makes a schema file safe to apply on every start: the second time it does nothing. The solution's `rollup.sql` defines a second table, `usage_hourly`, with one row per tenant and hour: its primary key is the pair `(tenant, hour_ms)`, and a `CHECK (hour_ms % 3600000 = 0)` keeps every `hour_ms` on an hour boundary.
 
 ### 2.2 Connections, pragmas, and the journal
 
@@ -113,7 +108,7 @@ So `q5_ttft_p95.sql` ranks rows that **have** a TTFT (refusals and embeddings ha
 
 ### 2.6 Parameters, never pasted values
 
-A query's values come from outside: the admin API's URL, a CLI flag. Pasting them into the SQL text is **SQL injection**: `tenant = 'x' OR '1'='1'` reads every tenant, and a quote in a real name (`o'brien` is in the fixture) breaks the query. A **named parameter** (`:tenant`) is a placeholder; the value is bound separately and is always data. Your query files take `:tenant`, `:since`, `:until`, and `:n` and nothing else. A column name cannot be a parameter, which is why `gw.07` picks `GROUP BY` columns from a fixed list.
+A query's values come from outside: the admin API's URL, a CLI flag. Pasting them into the SQL text is **SQL injection**: `tenant = 'x' OR '1'='1'` reads every tenant, and a quote in a real name (`o'brien` is in the fixture) breaks the query. A **named parameter** (`:tenant`) is a placeholder; the value is bound separately and is always data. The query files take `:tenant`, `:since`, `:until`, and `:n` and nothing else. A column name cannot be a parameter, which is why `gw.07` picks `GROUP BY` columns from a fixed list.
 
 ### 2.7 Indexes and the query plan
 
@@ -146,9 +141,9 @@ The window is `[12:00, 14:00)`, so every row is in it.
 4. **q4, acme per hour.** $12{:}05 \to 1790856000000$, the 12:00 bucket, holds r1, r2, r3: 3 requests, $30 + 10 + 0 = 40$ completion tokens. The 13:00 bucket ($1790859600000$) holds r4, r6: 2 requests, 16 tokens.
 5. **q5, p95 TTFT per model.** smol's non-NULL TTFTs are 180, 240, 200, 900, so $n = 4$ and sorted they are 180, 200, 240, 900. $k = \lfloor (95 \cdot 4 + 99)/100 \rfloor = \lfloor 479/100 \rfloor = 4$, so the p95 is $v_4 = 900$: with four samples the p95 is the maximum. tiny has no TTFT at all, so it has no row. Answer `(smol, 4, 900.0)`.
 
-`test_hand_example` runs your five queries on exactly these rows and expects these answers.
+The five queries of section 5, run on exactly these rows, give exactly these answers.
 
-## 4. The artifact and its check
+## 4. The interface
 
 Nine files in `primers/lang.11/`. Each query file holds exactly one `SELECT`, takes its values as named parameters, and returns its columns in the order given:
 
@@ -171,43 +166,216 @@ SELECT worker_id, COUNT(*) AS requests, SUM(completion_tokens) AS completion_tok
 FROM usage WHERE served_model = :served_model AND ts_ms >= :since GROUP BY worker_id
 ```
 
-The check splits `record.sql` at each line that ends a statement and runs the statements in order on one connection in autocommit mode, binding the row's columns by name.
+`record.sql` is run by splitting it at each line that ends a statement and running the statements in order on one connection in autocommit mode, binding the row's columns by name.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+The cases run the SQL with Python's built-in `sqlite3` against 240 fixture rows and compare every answer with one computed in plain Python.
+
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_files_present` | unit | the nine files exist | the check names what is missing |
-| `test_hand_example` | unit | section 3, every query | you and the check agree on each definition |
-| `test_queries_are_read_only_selects_with_named_parameters` | unit | one statement each, read-only (an authorizer refuses writes), parameters only from `:tenant :since :until :n`, no tenant or time pasted in | `gw.07` serves them from URLs; `ag.04` runs queries read-only |
-| `test_q1_tenant_totals_on_the_fixture` | unit | 4 windows x 4 tenants (one with a quote, one with no rows) | the admin API's ungrouped answer |
-| `test_q2_by_model_on_the_fixture` | unit | grouped, sorted, conditional error count | `group_by=model` |
-| `test_q3_top_keys_on_the_fixture` | boundary | ties broken by `key_id`; `n` 1, 3, 5 | a stable leaderboard |
-| `test_q4_hourly_on_the_fixture` | boundary | hour buckets; rows at exactly 11:00:00.000 and one ms before | hourly panels add up |
-| `test_q5_ttft_p95_on_the_fixture` | unit | nearest rank, NULLs excluded | the TTFT SLO of `obs.03` |
-| `test_index_serves_the_served_model_query` | unit | the plan shows `SEARCH usage USING ... (served_model=? AND ts_ms>?)`; contract indexes kept | canary dashboards stay fast |
-| `test_pragmas_set_wal_and_connection_settings` | unit | WAL seen by a second connection; NORMAL, a busy timeout, foreign keys on the first | `gw.07`'s data source name sets the same |
-| `test_rollup_schema` | unit | applying twice works; key `(tenant, hour_ms)`; duplicate and half-hour rows refused | constraints catch bad writes |
-| `test_record_rolls_up_every_row` | unit | 240 records give 240 usage rows and the right rollup; no open transaction left | the per-request write path |
-| `test_record_replay_is_a_no_op` | boundary | 25 replays change nothing | retried writes never double count |
-| `test_record_is_atomic` | fault | a failing rollup leaves no usage row behind | crash safety of a two-statement write |
+| Every file present | unit | the nine files exist | each later case names its file |
+| The hand example | unit | section 3, every query | each definition means what section 3 says |
+| Read-only selects with named parameters | unit | one statement each, read-only (an authorizer refuses writes), parameters only from `:tenant :since :until :n`, no tenant or time pasted in | `gw.07` serves them from URLs; `ag.04` runs queries read-only |
+| q1 on the fixture | unit | 4 windows x 4 tenants (one with a quote, one with no rows) | the admin API's ungrouped answer |
+| q2 on the fixture | unit | grouped, sorted, conditional error count | `group_by=model` |
+| q3 on the fixture | boundary | ties broken by `key_id`; `n` 1, 3, 5 | a stable leaderboard |
+| q4 on the fixture | boundary | hour buckets; rows at exactly 11:00:00.000 and one ms before | hourly panels add up |
+| q5 on the fixture | unit | nearest rank, NULLs excluded | the TTFT SLO of `obs.03` |
+| The index serves the served-model query | unit | the plan shows `SEARCH usage USING ... (served_model=? AND ts_ms>?)`; contract indexes kept | canary dashboards stay fast |
+| Pragmas set WAL and the connection settings | unit | WAL seen by a second connection; NORMAL, a busy timeout, foreign keys on the first | `gw.07`'s data source name sets the same |
+| The rollup schema | unit | applying twice works; key `(tenant, hour_ms)`; duplicate and half-hour rows refused | constraints catch bad writes |
+| Record rolls up every row | unit | 240 records give 240 usage rows and the right rollup; no open transaction left | the per-request write path |
+| A replayed record is a no-op | boundary | 25 replays change nothing | retried writes never double count |
+| Record is atomic | fault | a failing rollup leaves no usage row behind | crash safety of a two-statement write |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **Every query is a filter, a grouping, and an order.** Write the `WHERE` first (tenant equality plus the half-open window, section 2.4), then decide what one output row is (the `GROUP BY`), then the order the reader needs.
+2. **A total must be a number even over nothing.** q1 has no `GROUP BY`, so it always returns one row, and its `SUM`s are NULL when no row matched; `COALESCE(..., 0)` turns them into zeros. q2 to q4 group, so an empty window yields no rows and every group has at least one row: no `COALESCE` needed.
+3. **An error is either refused or failed mid-stream.** `status >= 400 OR error_code IS NOT NULL`, summed as 0/1, counts both; `IS NOT NULL` because `!= NULL` is never true.
+4. **A ranking must be deterministic.** "Top keys by tokens" needs a tie-break, so `key_id ASC` after `tokens DESC`.
+5. **A percentile is a rank, not an average.** Rank only the rows that have a TTFT, count them per model with a window, and keep the row at $k = \lceil 0.95 n \rceil$, computed in integers as `(95 * n + 99) / 100`.
+6. **An index matches the query's shape.** The canary query is `served_model = ? AND ts_ms >= ?`: one equality, one range, so the index is `(served_model, ts_ms)`.
+7. **Durability and concurrency are connection settings.** WAL is stored in the file; the other three must run on every connection, which is why they live in one file that every connection runs first.
+8. **A two-statement write must be one transaction, and idempotent.** `BEGIN IMMEDIATE` takes the write lock up front; the usage insert ignores a replayed `request_id`; the rollup upsert runs only when that insert changed a row.
+
+### 5.2 The code, annotated
+
+**q1: totals, never NULL.**
+
+```sql
+SELECT COUNT(*)                                                             AS requests,
+       COALESCE(SUM(status >= 400 OR error_code IS NOT NULL), 0)            AS errors,
+       COALESCE(SUM(prompt_tokens), 0)                                      AS prompt_tokens,
+       COALESCE(SUM(completion_tokens), 0)                                  AS completion_tokens
+FROM usage
+WHERE tenant = :tenant AND ts_ms >= :since AND ts_ms < :until;   -- half-open window
+```
+
+`COUNT(*)` is already 0 over no rows; the three `SUM`s are not, hence `COALESCE` on each. On section 3's rows for acme: `(5, 2, 40, 56)`.
+
+**q2: the same per model.** Grouped, so every output group is non-empty and `SUM` cannot be NULL.
+
+```sql
+SELECT model,
+       COUNT(*)                                        AS requests,
+       SUM(status >= 400 OR error_code IS NOT NULL)    AS errors,
+       SUM(prompt_tokens)                              AS prompt_tokens,
+       SUM(completion_tokens)                          AS completion_tokens
+FROM usage
+WHERE tenant = :tenant AND ts_ms >= :since AND ts_ms < :until
+GROUP BY model
+ORDER BY model;
+```
+
+**q3: a stable leaderboard across tenants.**
+
+```sql
+SELECT key_id, tenant, SUM(prompt_tokens + completion_tokens) AS tokens
+FROM usage
+WHERE ts_ms >= :since AND ts_ms < :until           -- all tenants: no tenant filter
+GROUP BY key_id, tenant                            -- tenant in the key so it can be selected
+ORDER BY tokens DESC, key_id ASC                   -- the tie-break makes the order total
+LIMIT :n;
+```
+
+**q4: hour buckets.** The bucket expression is computed once, named, and grouped by name.
+
+```sql
+SELECT ts_ms - ts_ms % 3600000 AS hour_ms,         -- start of the hour
+       COUNT(*)                AS requests,
+       SUM(completion_tokens)  AS completion_tokens
+FROM usage
+WHERE tenant = :tenant AND ts_ms >= :since AND ts_ms < :until
+GROUP BY hour_ms                                   -- hours with no rows simply do not appear
+ORDER BY hour_ms;
+```
+
+A row at exactly 11:00:00.000 has `ts_ms % 3600000 = 0`, so it is in the 11:00 bucket, and the half-open window counts it in `[11:00, 12:00)` only.
+
+**q5: nearest-rank p95.**
+
+```sql
+WITH ranked AS (
+    SELECT model, ttft_ms,
+           ROW_NUMBER() OVER (PARTITION BY model ORDER BY ttft_ms) AS rn,   -- 1..n per model
+           COUNT(*)     OVER (PARTITION BY model)                  AS n     -- n on every row
+    FROM usage
+    WHERE ttft_ms IS NOT NULL AND ts_ms >= :since AND ts_ms < :until      -- NULLs out BEFORE ranking
+)
+SELECT model, n, ttft_ms AS p95_ttft_ms
+FROM ranked
+WHERE rn = (95 * n + 99) / 100      -- integer division: ceil(0.95 n)
+ORDER BY model;
+```
+
+Filtering NULLs in the `WHERE` (before the window) is what makes `n` and `rn` count only real TTFTs; `COUNT(*)` here is safe because the NULL rows are already gone. A model with no TTFT at all has no rows in `ranked` and so no output row (section 3's `tiny`).
+
+**The index.**
+
+```sql
+-- equality column first, then the range column, so the served-model query
+-- searches one contiguous slice of the index.
+CREATE INDEX IF NOT EXISTS usage_served_ts ON usage (served_model, ts_ms);
+```
+
+`IF NOT EXISTS` makes the file safe to apply on every start, like the contract's own indexes, which it leaves in place.
+
+**The pragmas.**
+
+```sql
+PRAGMA journal_mode = WAL;     -- stored in the file: every later connection sees WAL
+PRAGMA synchronous = NORMAL;   -- per connection: no fsync per commit; WAL keeps commits across a process crash
+PRAGMA busy_timeout = 5000;    -- per connection: wait up to 5 s for the single writer lock
+PRAGMA foreign_keys = ON;      -- per connection: enforce REFERENCES
+```
+
+**The rollup table.** Constraints carry the invariants, so a bad write fails instead of being stored.
+
+```sql
+CREATE TABLE IF NOT EXISTS usage_hourly (
+    tenant            TEXT    NOT NULL,
+    hour_ms           INTEGER NOT NULL CHECK (hour_ms % 3600000 = 0),   -- on an hour boundary
+    requests          INTEGER NOT NULL DEFAULT 0 CHECK (requests >= 0),
+    prompt_tokens     INTEGER NOT NULL DEFAULT 0 CHECK (prompt_tokens >= 0),
+    completion_tokens INTEGER NOT NULL DEFAULT 0 CHECK (completion_tokens >= 0),
+    PRIMARY KEY (tenant, hour_ms)                                       -- one row per tenant and hour
+);
+```
+
+**Recording one request.**
+
+```sql
+BEGIN IMMEDIATE;                                   -- take the write lock now; queue on busy_timeout
+INSERT INTO usage (request_id, ts_ms, tenant, /* ...every usage column... */ trace_id)
+VALUES (:request_id, :ts_ms, :tenant, /* ...one named parameter per column... */ :trace_id)
+ON CONFLICT (request_id) DO NOTHING;               -- a replay inserts nothing
+-- changes() is the number of rows the previous statement inserted: 0 when
+-- the request id was already recorded, so a replay adds nothing.
+INSERT INTO usage_hourly (tenant, hour_ms, requests, prompt_tokens, completion_tokens)
+SELECT :tenant, :ts_ms - :ts_ms % 3600000, 1, :prompt_tokens, :completion_tokens
+WHERE changes() = 1                                -- zero rows to insert on a replay
+ON CONFLICT (tenant, hour_ms) DO UPDATE SET
+    requests          = requests + 1,              -- the existing row's value, plus this request
+    prompt_tokens     = prompt_tokens + excluded.prompt_tokens,
+    completion_tokens = completion_tokens + excluded.completion_tokens;
+COMMIT;
+```
+
+The rollup insert is `INSERT ... SELECT ... WHERE` rather than `INSERT ... VALUES` so that it can be conditional: with `changes() = 0` the `SELECT` yields no row and nothing is inserted or updated. (The `WHERE` also resolves a parsing ambiguity: SQLite requires one between `INSERT ... SELECT` and `ON CONFLICT`.) If either insert fails, `COMMIT` is never reached; the caller rolls back (or closes the connection, which rolls back), so the usage row never exists without its rollup.
+
+Full solution: the nine files in [`primers/lang.11/`](../../../../course/solutions/primers/lang.11/).
+
+### 5.3 Why this solution
+
+- **Cost.** q1, q2, and q4 filter on `tenant` and `ts_ms`, which the contract's `usage_tenant_ts` index serves as a search; q3 has only the time range, which no contract index leads with, so it scans; q5 sorts each model's TTFTs, $O(n \log n)$. The new `usage_served_ts` index turns the canary panel from a full scan into a search, at the cost of a little space and a slightly slower insert.
+- **Nearest rank versus interpolation.** `percentile_cont` interpolates between neighbours and is not in SQLite; nearest rank always returns an observed value, is exact, and is what an SLO "95% of requests under X" means.
+- **Rollup maintained in the write path** costs one extra statement per request and makes hourly panels read a handful of rows instead of aggregating the raw table. The alternative, recomputing from `usage` on every read, is simpler but grows with history.
+- **Idempotence by key** (`ON CONFLICT DO NOTHING` plus `changes()`) instead of "check, then insert": the check-then-insert version has a race between two writers and costs a read. The primary key already decides.
+- **WAL with `synchronous = NORMAL`** accepts that a power cut may lose the last few commits, in exchange for no `fsync` per request; a process crash loses nothing committed.
+
+### 5.4 Explain it back
+
+1. Why does q1 need `COALESCE` but q2 does not?
+   <details><summary>Answer</summary>
+   q1 has no `GROUP BY`, so it returns one row even when no row matches, and `SUM` over no rows is NULL. q2 groups, so an empty window gives no rows at all, and every group that exists has at least one row, where `SUM` is a number.
+   </details>
+2. Why is the NULL filter of q5 in the CTE's `WHERE` and not in the outer query?
+   <details><summary>Answer</summary>
+   Window functions run after `WHERE`. Filtering inside the CTE means `ROW_NUMBER()` and `COUNT(*)` see only real TTFTs, so $n$ and the ranks are right. Filtering outside would rank NULL rows too (NULLs sort first in SQLite), which shifts every rank and inflates $n$.
+   </details>
+3. Replay the same `record.sql` call twice. Which statements change what the second time?
+   <details><summary>Answer</summary>
+   The usage insert hits the primary key and does nothing, so `changes()` is 0. The rollup's `SELECT ... WHERE changes() = 1` yields no row, so the upsert inserts and updates nothing. Both tables are unchanged.
+   </details>
+4. Why `(served_model, ts_ms)` and not `(ts_ms, served_model)`?
+   <details><summary>Answer</summary>
+   The query fixes `served_model` by equality and bounds `ts_ms` by a range. With `served_model` first, all its rows are contiguous and sorted by time, so the plan is one seek plus a walk: `SEARCH ... (served_model=? AND ts_ms>?)`. With `ts_ms` first, only the time bound can use the index and the walk passes every model's rows in that range.
+   </details>
+5. Why does `pragmas.sql` have to be run on every connection, if WAL only needs to be set once?
+   <details><summary>Answer</summary>
+   `journal_mode = WAL` is persistent in the database file, but `synchronous`, `busy_timeout`, and `foreign_keys` belong to the connection that ran them. A pool (Go's `database/sql`) opens several connections; any one that skipped the file would run with the defaults: `FULL` sync, no busy wait (instant `SQLITE_BUSY`), and no foreign-key checks.
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. `SUM(x)` as a total | a tenant with no requests has total NULL, and the CLI prints `None` | `test_q1_tenant_totals_on_the_fixture` |
-| 2. `error_code != NULL`, or `status >= 400` alone | no errors at all, or streams that failed mid-way uncounted | `test_hand_example`, `test_q2_by_model_on_the_fixture` |
-| 3. `COUNT(*)` or `AVG` in the percentile | refusals with NULL TTFT shift the rank; an average is not a p95 | `test_q5_ttft_p95_on_the_fixture` |
-| 4. `ORDER BY tokens DESC` with no tie-break | two keys with equal totals come back in either order | `test_q3_top_keys_on_the_fixture` |
-| 5. upserting the rollup without checking `changes()` | a retried write counts the request twice | `test_record_replay_is_a_no_op` |
-| 6. two statements without `BEGIN` ... `COMMIT` | a failed rollup leaves the usage row behind | `test_record_is_atomic` |
-| 7. index `(ts_ms, served_model)` | the plan uses only the time bound and walks every model's rows | `test_index_serves_the_served_model_query` |
-| 8. `synchronous` set on one connection and assumed everywhere | the other pooled connections run with the default | `test_pragmas_set_wal_and_connection_settings` |
-| 9. `ts_ms <= :until` | a request at the boundary is in two hourly windows | `test_q4_hourly_on_the_fixture` |
-| 10. pasting a tenant into the SQL text | `o'brien` breaks the query; `x' OR '1'='1` reads everyone | `test_queries_are_read_only_selects_with_named_parameters` |
+| 1. `SUM(x)` as a total | a tenant with no requests has total NULL, and the CLI prints `None` | `COALESCE(SUM(x), 0)` in q1 |
+| 2. `error_code != NULL`, or `status >= 400` alone | no errors at all, or streams that failed mid-way uncounted | `SUM(status >= 400 OR error_code IS NOT NULL)` |
+| 3. `COUNT(*)` or `AVG` in the percentile | refusals with NULL TTFT shift the rank; an average is not a p95 | NULLs filtered before the window; the row at rank `(95 * n + 99) / 100` |
+| 4. `ORDER BY tokens DESC` with no tie-break | two keys with equal totals come back in either order | `ORDER BY tokens DESC, key_id ASC` |
+| 5. upserting the rollup without checking `changes()` | a retried write counts the request twice | `WHERE changes() = 1` on the rollup insert |
+| 6. two statements without `BEGIN` ... `COMMIT` | a failed rollup leaves the usage row behind | `BEGIN IMMEDIATE` ... `COMMIT` around both inserts |
+| 7. index `(ts_ms, served_model)` | the plan uses only the time bound and walks every model's rows | `usage_served_ts ON usage (served_model, ts_ms)` |
+| 8. `synchronous` set on one connection and assumed everywhere | the other pooled connections run with the default | every connection runs `pragmas.sql` first |
+| 9. `ts_ms <= :until` | a request at the boundary is in two hourly windows | every window is `ts_ms >= :since AND ts_ms < :until` |
+| 10. pasting a tenant into the SQL text | `o'brien` breaks the query; `x' OR '1'='1` reads everyone | only named parameters `:tenant :since :until :n` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -218,7 +386,7 @@ The check splits `record.sql` at each line that ends a statement and runs the st
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | SQLite in WAL mode | PostgreSQL, Litestream | many writers (MVCC); streaming the WAL to object storage for backups | [PostgreSQL MVCC](https://www.postgresql.org/docs/current/mvcc-intro.html) (free), [Litestream](https://litestream.io/how-it-works/) (free) |
 | the hourly rollup | ClickHouse materialized views | rollups maintained by the database on every insert | [ClickHouse materialized views](https://clickhouse.com/docs/materialized-view) (free) |

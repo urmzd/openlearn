@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/kv.rs
-+++ b/rust/crates/tl-engine/src/kv.rs
-@@ -99 +99 @@
--            let id = self.lru.pop_front().expect("capacity checked");
-+            let id = self.lru.pop_back().expect("capacity checked");

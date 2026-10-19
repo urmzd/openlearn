@@ -1,17 +1,14 @@
-<!-- ol:module dur.10 -->
 # Raft HA for the durable log (optional)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `dur.10` · side · Go · Pass 8 · 8 to 12 h (optional) |
-| **You build** | `go/durable/raft/raft.go`: a Raft node as a deterministic state machine: `New`, `Tick`, `Step`, `Propose`, `ReadMessages`, `ReadCommitted`, `Status`, with the `Storage` it saves through and the `Message` it sends |
-| **Contract** | the package API in section 4 (no Go interface file yet); the wire form [`course/contracts/proto/tl/raft/v1/raft.proto`](../../../../course/contracts/proto/tl/raft/v1/raft.proto), which your server's composition root adapts `Message` to; each entry carries one framed WAL record of [`formats/wal.md`](../../../../course/contracts/formats/wal.md) |
-| **Tests** | `course/tests/go/dur_10/`: hand-driven scenarios (every message delivered when the test says) and a seeded fault simulation with a linearizability check; section 4 lists them |
-| **Needs** | nothing you must have built: the node treats entries as bytes. Reading: `lang.06` (Go), the single-node log of `dur.01` (what gets replicated), the election demo in [`infrastructure/02-messaging-and-queueing/code/raft_election.go`](../../infrastructure/02-messaging-and-queueing/code/raft_election.go) |
-| **Used by** | no module: your `{durable} --replicas 3` entry point runs three nodes over gRPC `tl.raft.v1`, and the optional drill `ops.12` partitions its leader |
-| **Milestone** | MS-durable-ha (optional): the durable kill loop against three replicas, leader kills and partitions, a linearizable history |
+| **Module** | `dur.10` · side · Go · Pass 8 · reading time 3 to 4 h (optional) |
+| **Solution** | [`go/durable/raft/raft.go`](../../../../course/solutions/go/durable/raft/raft.go): a Raft node as a deterministic state machine: `New`, `Tick`, `Step`, `Propose`, `ReadMessages`, `ReadCommitted`, `Status`, with the `Storage` it saves through and the `Message` it sends |
+| **Contract** | the package API in section 4 (no Go interface file yet); the wire form [`course/contracts/proto/tl/raft/v1/raft.proto`](../../../../course/contracts/proto/tl/raft/v1/raft.proto), which the server's composition root adapts `Message` to; each entry carries one framed WAL record of [`formats/wal.md`](../../../../course/contracts/formats/wal.md) |
+| **Needs** | nothing built earlier: the node treats entries as bytes. Reading: `lang.06` (Go), the single-node log of `dur.01` (what gets replicated), the election demo in [`infrastructure/02-messaging-and-queueing/code/raft_election.go`](../../infrastructure/02-messaging-and-queueing/code/raft_election.go) |
+| **Used by** | no module: a `{durable} --replicas 3` entry point runs three nodes over gRPC `tl.raft.v1`, and the optional drill `ops.12` partitions its leader. The end-to-end goal is the durable kill loop against three replicas, with leader kills and partitions, producing a linearizable history. |
 | **Optional depth** | Ongaro and Ousterhout, [*In Search of an Understandable Consensus Algorithm*](https://raft.github.io/raft.pdf) (free), figure 2 is the whole protocol; Ongaro's [thesis](https://github.com/ongardie/dissertation) ch. 3 and 6 (free); Herlihy and Wing, *Linearizability* (1990); [Porcupine](https://github.com/anishathalye/porcupine) (a linearizability checker); Kleppmann, *Designing Data-Intensive Applications*, ch. 9 |
 
 ## Key Takeaways
@@ -22,16 +19,9 @@
 - Everything a node promises (its term, its vote, its log) is **saved before** the message that depends on it is sent. A node that forgets its vote in a restart can elect two leaders in one term.
 - Writing the node as a **deterministic state machine** (ticks in, messages out, no goroutines, no clock) is what makes it testable: a seed names a fault schedule, and a failing schedule replays exactly.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start dur.10         # stubs go/durable/raft/raft.go
-ol tests dur.10         # the test catalog: scenarios first, then the simulation
-ol check dur.10         # go test over the course tests; the exit code is the verdict
-ol diff  dur.10         # after passing: your code against the reference
-```
-
-Then, if you want the milestone, run three of them in your durable server (section 4, "Wiring it into the server") and `ol milestone MS-durable-ha`.
+Sections 1 to 3 build Raft from the majority-intersection fact and replay an election and figure 8 by hand. Section 4 fixes the package API and sketches how a server runs three nodes. Section 5 walks through the node's code, rule by rule, and explains why each one is needed for safety or liveness. Try to predict each step of the solution before reading it.
 
 ---
 
@@ -100,13 +90,13 @@ Why not count copies of an older entry? Figure 8 of the paper, in three nodes (s
 
 The commit index and the roles are volatile: after a restart a node is a follower with commit 0, and committed entries come out of `ReadCommitted` again from index 1, so the applier must tolerate a replay. A write that fails stops the node: it may already have promised something it cannot remember.
 
-### 2.7 Linearizability: what the tests demand of the whole
+### 2.7 Linearizability: what the whole system must provide
 
 Clients see a history of operations, each with an **invocation** and a **response** time. The history is **linearizable** (Herlihy and Wing) if every operation can be given one point in time between its invocation and its response such that, in the order of those points, each result is what the sequential object would return. For an append-only log whose appends return their position, the $k$-th point must be the append that returned position $k$, so the order is forced and the check is one pass: walk the appends by position, putting each point as early as its invocation and the previous point allow, and fail if a point falls after its response. General checkers (Wing and Gong's search, Porcupine) explore orders when results do not force one.
 
 ## 3. Worked example by hand
 
-Three nodes, empty logs, $H = 3$, timeouts fixed at 10, 15, and 20 ticks (the tests fix them so the run is the same every time). Every node ticks once per row.
+Three nodes, empty logs, $H = 3$, timeouts fixed at 10, 15, and 20 ticks (fixed through `Config.Timeout` so the run is the same every time). Every node ticks once per row.
 
 | Tick or event | What happens | State after |
 |---|---|---|
@@ -170,65 +160,376 @@ func (n *Node) Status() Status
 
 The node never blocks, sleeps, or spawns: `Tick`, `Step`, and `Propose` change state and queue messages; the caller drains them. A proposal is acknowledged when an entry with **its index and its term** comes out of `ReadCommitted`; a different entry at that index means it was lost in a leader change and may be retried.
 
-**Wiring it into the server** (your entry point, D16; not graded by `ol check`). With `--replicas 3` your durable server runs one `Node`, ticks it from a `time.Ticker` (for example 10 ms ticks, $E = 15$, $H = 5$), serves `tl.raft.v1.Raft` on `[durable].raft` (`:7234` in Kubernetes) by turning each RPC into a `Step` and each queued `Message` into an outgoing RPC, implements `Storage` on its data directory (`HardState` in a small file replaced by rename, entries in their own segment files), and applies committed entries in order into its `dur.01` log, skipping a record whose WAL seq it already holds. Every client RPC of `tl.durable.v1` that appends first goes through `Propose` and waits for its index and term to commit; on a follower it fails with `UNAVAILABLE` and the trailer `tl-raft-leader: <host:port>` from `NotLeaderError.Leader`.
+**Wiring it into the server** (the durable server's entry point, D16; not part of this package). With `--replicas 3` the durable server runs one `Node`, ticks it from a `time.Ticker` (for example 10 ms ticks, $E = 15$, $H = 5$), serves `tl.raft.v1.Raft` on `[durable].raft` (`:7234` in Kubernetes) by turning each RPC into a `Step` and each queued `Message` into an outgoing RPC, implements `Storage` on its data directory (`HardState` in a small file replaced by rename, entries in their own segment files), and applies committed entries in order into its `dur.01` log, skipping a record whose WAL seq it already holds. Every client RPC of `tl.durable.v1` that appends first goes through `Propose` and waits for its index and term to commit; on a follower it fails with `UNAVAILABLE` and the trailer `tl-raft-leader: <host:port>` from `NotLeaderError.Leader`.
 
-### What the tests check
+### What a correct solution must handle
 
-The scenarios deliver every message by hand, so each is a paper exercise; the simulation draws its faults from the course's frozen PCG32, so a failing seed replays exactly.
+Most cases deliver every message by hand, so each is a paper exercise; the fault simulation draws its faults from the frozen PCG32 of [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md), so a failing seed replays exactly.
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | What must hold | Why it matters downstream |
 |---|---|---|---|
-| `TestHandExampleElectionAndFirstCommit` | unit | section 3, message by message: the campaign, the saved vote, the no-op, commit 1, then `x` at index 2 and the followers' commit from the next heartbeat | the shape every later test builds on |
-| `TestVoteRequiresUpToDateLog` | boundary | the five orders of (last term, last index) in section 2.2 | a leader never lacks a committed entry |
-| `TestOneVotePerTermSurvivesRestart` | fault | one vote per term, saved before the reply, remembered across a restart; the same candidate may ask again | two leaders in one term are impossible |
-| `TestMajorityOfThreeNeedsTwo` | boundary | an isolated node stays a candidate; an isolated leader commits nothing | a partitioned minority acknowledges nothing |
-| `TestCandidateStepsDownForSameTermLeader` | unit | a candidate that lost term 1 follows the term-1 leader at its first AppendEntries and never disrupts it | elections settle instead of cascading |
-| `TestHigherTermReplyMakesLeaderStepDown` | unit | a reply from term 7 turns a leader into a follower of term 7 with no leader, saved | a deposed leader stops at once |
-| `TestStableLeaderNoSpuriousElections` | unit | 400 quiet ticks keep one term and one leader | heartbeats and timer resets work; no election storm |
-| `TestAppendConsistencyCheckAndHint` | unit | refusal hints: past the end, last index + 1; inside a conflicting term, its first index | repairs take one round trip per term |
-| `TestAppendReplacesOnlyTheConflictingSuffix` | unit | entries before the conflict stay; the leader's replace the rest, in memory and in `Storage` | followers converge to the leader's log |
-| `TestStaleShortAppendDoesNotTruncate` | fault | a reordered old AppendEntries truncates nothing and reports match 2 | reordering never loses counted entries |
-| `TestFollowerCommitStopsAtVerifiedEntries` | unit | commit = min(leader commit, last entry this message verified) | a follower never applies an entry it has not matched |
-| `TestLaggingFollowerIsRepaired` | unit | a follower with a divergent term-2 suffix ends with the leader's exact log and commit | the log matching property in practice |
-| `TestFigure8OldTermEntryNotCommittedByCounting` | unit | section 3's figure 8: commit stays 0 with $(2, t_2)$ on a majority, becomes 3 when the term-4 no-op is | the one subtle safety rule |
-| `TestNewLeaderCommitsEarlierTermsThroughItsNoop` | fault | a new leader commits a crashed leader's entries with no client write | workflows blocked on those records resume |
-| `TestProposeOnFollowerReturnsNotLeader` | unit | `*NotLeaderError` naming the leader, wrapping `ErrNotLeader`; empty data refused | the server can redirect clients |
-| `TestStorageFailureSendsNothing` | fault | a failed vote save sends no RequestVote and stops the node | no promise the node cannot keep |
-| `TestPCG32MatchesSpec` | golden | the simulation's generator is `spec/pcg32.md`'s | a seed names one fault schedule |
-| `TestSimulatedFaultsKeepSafetyAndLinearizability` | fault, property | 40 seeds of drops, delays, reordering, partitions (the leader included), and crash-restarts: one leader per term, no index applied twice differently, recovery after the heal, every acknowledged append at its acknowledged position, a linearizable history | the HA promise as a whole |
-| `TestLeaderKillAckedAppendsSurvive` | fault | 20 acknowledged appends, the leader killed: the new leader has all 20 in order; the old one restarts and catches up | `MS-durable-ha`'s kill loop, in miniature |
-| `TestLinearizabilityCheckerRejectsStaleOrder` | unit | the checker rejects a real-time violation and a gap, and accepts overlapping ops in either order | the checker itself is checked |
+| the hand example: election and first commit | unit | section 3, message by message: the campaign, the saved vote, the no-op, commit 1, then `x` at index 2 and the followers' commit from the next heartbeat | the shape every later case builds on |
+| a vote requires an up-to-date log | boundary | the five orders of (last term, last index) in section 2.2 | a leader never lacks a committed entry |
+| one vote per term, across a restart | fault | one vote per term, saved before the reply, remembered across a restart; the same candidate may ask again | two leaders in one term are impossible |
+| a majority of three needs two | boundary | an isolated node stays a candidate; an isolated leader commits nothing | a partitioned minority acknowledges nothing |
+| a candidate steps down for a same-term leader | unit | a candidate that lost term 1 follows the term-1 leader at its first AppendEntries and never disrupts it | elections settle instead of cascading |
+| a higher-term reply deposes a leader | unit | a reply from term 7 turns a leader into a follower of term 7 with no leader, saved | a deposed leader stops at once |
+| a stable leader, no spurious elections | unit | 400 quiet ticks keep one term and one leader | heartbeats and timer resets work; no election storm |
+| the consistency check and its hint | unit | refusal hints: past the end, last index + 1; inside a conflicting term, its first index | repairs take one round trip per term |
+| only the conflicting suffix is replaced | unit | entries before the conflict stay; the leader's replace the rest, in memory and in `Storage` | followers converge to the leader's log |
+| a stale short append does not truncate | fault | a reordered old AppendEntries truncates nothing and reports match 2 | reordering never loses counted entries |
+| follower commit stops at verified entries | unit | commit = min(leader commit, last entry this message verified) | a follower never applies an entry it has not matched |
+| a lagging follower is repaired | unit | a follower with a divergent term-2 suffix ends with the leader's exact log and commit | the log matching property in practice |
+| figure 8: no commit by counting an old term | unit | section 3's figure 8: commit stays 0 with $(2, t_2)$ on a majority, becomes 3 when the term-4 no-op is | the one subtle safety rule |
+| a new leader commits earlier terms through its no-op | fault | a new leader commits a crashed leader's entries with no client write | workflows blocked on those records resume |
+| `Propose` on a follower | unit | `*NotLeaderError` naming the leader, wrapping `ErrNotLeader`; empty data refused | the server can redirect clients |
+| a storage failure sends nothing | fault | a failed vote save sends no RequestVote and stops the node | no promise the node cannot keep |
+| the simulation's generator | golden | the simulation's generator is `spec/pcg32.md`'s | a seed names one fault schedule |
+| simulated faults keep safety and linearizability | fault, property | 40 seeds of drops, delays, reordering, partitions (the leader included), and crash-restarts: one leader per term, no index applied twice differently, recovery after the heal, every acknowledged append at its acknowledged position, a linearizable history | the HA promise as a whole |
+| acknowledged appends survive a leader kill | fault | 20 acknowledged appends, the leader killed: the new leader has all 20 in order; the old one restarts and catches up | the three-replica kill loop, in miniature |
+| the linearizability checker itself | unit | the checker rejects a real-time violation and a gap, and accepts overlapping ops in either order | the checker is checked too |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **Every decision must survive the loss of any one of three servers**, so no decision may need all three. The smallest set that still forces agreement is a majority: two majorities of $N$ always share a member ($q + q > N$). Quorum is therefore `count > N/2`, never `count >= N/2`.
+2. **Agreement on a sequence is easiest with one writer.** So one node per term is the leader, and "at most one leader per term" follows from "at most one vote per voter per term" plus majority intersection. The vote must be saved before it is announced, or a restart can vote twice.
+3. **The leader's log must contain every committed entry.** A committed entry is on a majority; a winner needs a majority of votes; the two share a voter. If each voter refuses candidates with less up-to-date logs, the winner holds every committed entry. "Up to date" compares last term before last index because a long log from an old term may hold entries a newer leader replaced.
+4. **Followers must converge to the leader's log without ever losing a counted entry.** Checking (prev index, prev term) before appending gives the log matching property by induction; never truncating a matching entry makes reordered old messages harmless.
+5. **Counting copies is not enough for entries of older terms** (figure 8). Only an entry of the current term on a majority makes a conflicting index unwinnable, so the commit loop stops at the first entry of an earlier term, and a new leader appends a no-op to get something of its own term committed at once.
+6. **Testability forces the shape.** If the node owns no clock, no goroutine, and no socket, every schedule of ticks and deliveries is a function call sequence. A seed then names a fault schedule, and a failure replays exactly.
+
+### 5.2 The code, annotated
+
+**State.** The node keeps the persistent triple (term, vote, log), the volatile commit and applied indexes, and leader-only maps. `log[i].Index == i+1` lets index arithmetic replace lookups:
+
+```go
+type Node struct {
+	cfg Config
+	st  Storage
+	rng *rand.Rand
+
+	term uint64
+	vote uint64
+	log  []Entry // log[i].Index == i+1
+
+	commit  uint64
+	applied uint64 // entries up to here were returned by ReadCommitted
+
+	role    Role
+	leader  uint64
+	elapsed int // ticks since the timer was last reset
+	timeout int // the current election timeout, in ticks
+
+	votes map[uint64]bool   // candidate: who granted
+	next  map[uint64]uint64 // leader: next index to send each peer
+	match map[uint64]uint64 // leader: highest index known replicated on each peer
+
+	out []Message
+	err error // sticky: a storage failure stops the node
+}
+```
+
+**Time.** `Tick` is the only clock. A leader heartbeats every $H$ ticks; anyone else campaigns when `elapsed` reaches a timeout drawn from $[E, 2E)$ at every reset:
+
+```go
+func (n *Node) Tick() error {
+	if n.err != nil {
+		return n.err
+	}
+	n.elapsed++
+	if n.role == Leader {
+		if n.elapsed >= n.cfg.HeartbeatTicks {
+			n.elapsed = 0
+			n.broadcastAppend()
+		}
+		return nil
+	}
+	if n.elapsed >= n.timeout {
+		n.campaign()
+	}
+	return n.err
+}
+
+func (n *Node) resetTimer() {
+	n.elapsed = 0
+	if n.cfg.Timeout != nil {
+		n.timeout = n.cfg.Timeout() // the hand example fixes 10, 15, 20
+	} else {
+		e := n.cfg.ElectionTicks
+		n.timeout = e + n.rng.IntN(e) // uniform [E, 2E), a PCG stream per node id
+	}
+}
+```
+
+**The term rule, applied once for every message.** `Step` handles the higher-term and lower-term cases before dispatching, so no handler has to repeat them:
+
+```go
+func (n *Node) Step(m Message) error {
+	// ...
+	if m.Term > n.term {
+		// A newer term: whatever we were, we follow it now. Only an
+		// AppendEntries names the leader of that term.
+		lead := uint64(0)
+		if m.Type == MsgApp {
+			lead = m.From
+		}
+		n.becomeFollower(m.Term, lead) // saves (term, vote 0) first
+		if n.err != nil {
+			return n.err
+		}
+	}
+	if m.Term < n.term {
+		// Stale sender: answer requests with our term so it steps down;
+		// drop stale responses.
+		switch m.Type {
+		case MsgVote:
+			n.send(Message{Type: MsgVoteResp, To: m.From, Granted: false})
+		case MsgApp:
+			n.send(Message{Type: MsgAppResp, To: m.From, Success: false})
+		}
+		return nil
+	}
+	// ... dispatch on m.Type
+}
+```
+
+`send` stamps every outgoing message with `n.term`, which is how a refusal tells a stale sender the newer term.
+
+**Campaigning and voting.** The new term and the self-vote are saved before any RequestVote is queued; a grant is saved before its reply:
+
+```go
+func (n *Node) campaign() {
+	n.role = Candidate
+	n.term++
+	n.vote = n.cfg.ID
+	n.leader = 0
+	if !n.saveHardState() {
+		return // nothing queued: no promise we cannot keep
+	}
+	n.resetTimer()
+	n.votes = map[uint64]bool{n.cfg.ID: true}
+	if n.quorum(len(n.votes)) { // a one-node cluster
+		n.becomeLeader()
+		return
+	}
+	for _, p := range n.cfg.Peers {
+		if p != n.cfg.ID {
+			n.send(Message{Type: MsgVote, To: p, LastLogIndex: n.lastIndex(), LastLogTerm: n.lastTerm()})
+		}
+	}
+}
+
+func (n *Node) handleVote(m Message) {
+	canVote := n.vote == 0 || n.vote == m.From // a retry from the same candidate is fine
+	upToDate := m.LastLogTerm > n.lastTerm() ||
+		(m.LastLogTerm == n.lastTerm() && m.LastLogIndex >= n.lastIndex())
+	grant := canVote && upToDate
+	if grant {
+		n.vote = m.From
+		if !n.saveHardState() {
+			return
+		}
+		n.resetTimer() // granting a vote defers our own candidacy
+	}
+	n.send(Message{Type: MsgVoteResp, To: m.From, Granted: grant})
+}
+
+func (n *Node) quorum(count int) bool {
+	return count > len(n.cfg.Peers)/2 // 2 of 3, 3 of 5
+}
+```
+
+**Becoming leader.** `next` starts optimistic (just past the leader's log), `match` pessimistic (0), and the no-op of the new term is appended and sent at once:
+
+```go
+func (n *Node) becomeLeader() {
+	n.role = Leader
+	n.leader = n.cfg.ID
+	n.elapsed = 0
+	n.votes = nil
+	n.next = map[uint64]uint64{}
+	n.match = map[uint64]uint64{}
+	for _, p := range n.cfg.Peers {
+		n.next[p] = n.lastIndex() + 1
+		n.match[p] = 0
+	}
+	if !n.appendLocal(Entry{Index: n.lastIndex() + 1, Term: n.term}) { // empty Data: the no-op
+		return
+	}
+	n.broadcastAppend()
+	n.maybeCommit()
+}
+```
+
+**The follower side of AppendEntries.** Same term means the sender is this term's one leader, so a candidate steps down here. Then the consistency check, the hint, the careful append, and the verified commit:
+
+```go
+func (n *Node) handleAppend(m Message) {
+	if n.role != Follower || n.leader != m.From {
+		n.becomeFollower(m.Term, m.From)
+		// ...
+	}
+	n.resetTimer()
+	reply := Message{Type: MsgAppResp, To: m.From}
+	if m.PrevLogIndex > n.lastIndex() {
+		reply.ConflictIndex = n.lastIndex() + 1 // "my log ends before your prev"
+		n.send(reply)
+		return
+	}
+	if t := n.termAt(m.PrevLogIndex); t != m.PrevLogTerm {
+		// Skip the whole conflicting term in one round trip.
+		first := m.PrevLogIndex
+		for first > 1 && n.termAt(first-1) == t {
+			first--
+		}
+		reply.ConflictIndex = first
+		n.send(reply)
+		return
+	}
+	// Entries we already hold with the same term stay: this message may be an
+	// old, shorter copy, and truncating would drop entries the leader counted.
+	for i, e := range m.Entries {
+		if e.Index <= n.lastIndex() && n.termAt(e.Index) == e.Term {
+			continue
+		}
+		rest := cloneEntries(m.Entries[i:])
+		if err := n.st.Append(rest); err != nil { // saved before the success reply
+			n.fail(err)
+			return
+		}
+		n.log = append(n.log[:e.Index-1], rest...) // drop the conflicting suffix, append
+		break
+	}
+	lastNew := m.PrevLogIndex + uint64(len(m.Entries))
+	if c := min(m.Commit, lastNew); c > n.commit { // only what this message verified
+		n.commit = c
+	}
+	reply.Success = true
+	reply.MatchIndex = lastNew
+	n.send(reply)
+}
+```
+
+In figure 8, step 2: node 2's log ends at 1, prev is 2, so the first branch answers `ConflictIndex = 2`. Note that `MatchIndex` is `lastNew`, not `lastIndex()`: a follower may hold more entries than this message verified, and those may still be wrong.
+
+**The leader side.** Success raises `match`; refusal lowers `next` to the hint but never below `match + 1` (a delayed refusal must not undo known progress):
+
+```go
+func (n *Node) handleAppendResp(m Message) {
+	if n.role != Leader {
+		return
+	}
+	p := m.From
+	if m.Success {
+		if m.MatchIndex > n.match[p] { // replies can arrive out of order
+			n.match[p] = m.MatchIndex
+		}
+		if n.next[p] < n.match[p]+1 {
+			n.next[p] = n.match[p] + 1
+		}
+		n.maybeCommit()
+		if n.next[p] <= n.lastIndex() {
+			n.sendAppend(p) // keep streaming without waiting for a heartbeat
+		}
+		return
+	}
+	next := n.next[p] - 1
+	if m.ConflictIndex >= 1 && m.ConflictIndex < next {
+		next = m.ConflictIndex
+	}
+	n.next[p] = max(next, n.match[p]+1, 1)
+	n.sendAppend(p)
+}
+```
+
+**The commit rule.** Walk down from the last index; stop at the first entry not of the current term. Earlier-term entries commit only because an index above them does:
+
+```go
+func (n *Node) maybeCommit() {
+	for idx := n.lastIndex(); idx > n.commit; idx-- {
+		if n.termAt(idx) != n.term {
+			break // figure 8: never commit an older term by counting
+		}
+		count := 0
+		for _, p := range n.cfg.Peers {
+			if p == n.cfg.ID || n.match[p] >= idx { // the leader holds its own log
+				count++
+			}
+		}
+		if n.quorum(count) {
+			n.commit = idx // everything below commits with it
+			return
+		}
+	}
+}
+```
+
+Counting the leader unconditionally is safe because `appendLocal` saved every leader entry before it reached the log.
+
+**Storage failure.** A failed write is sticky and discards the queue, because queued messages may already depend on the write:
+
+```go
+func (n *Node) fail(err error) {
+	n.err = fmt.Errorf("raft: node %d storage: %w", n.cfg.ID, err)
+	n.out = nil
+}
+```
+
+`Propose` refuses empty data (reserved for the no-op) and returns `*NotLeaderError{Leader: n.leader}` off the leader; `ReadCommitted` returns `log[applied:commit]` and advances `applied`. Full solution: [`raft.go`](../../../../course/solutions/go/durable/raft/raft.go).
+
+### 5.3 Why this solution
+
+- **Cost.** Each `Step` is $O(1)$ except the append path, which is $O(k)$ in the entries carried (at most `MaxEntries`, 64), and `maybeCommit`, which is $O(N \cdot \Delta)$ for $\Delta$ uncommitted entries. With $N = 3$ that is negligible. The log is in memory and grows forever (see Going further: snapshots).
+- **A state machine over goroutines and timers.** A goroutine per peer with real timers is the obvious first design, and it makes every bug a flaky test. With ticks and an outbox, the simulation can drop, delay, reorder, partition, and crash under one seed, and replay a failure step by step.
+- **The conflict hint over one-step backoff.** Backing `next` off by one entry costs a round trip per divergent entry; skipping the whole conflicting term costs one per term. etcd uses a similar hint.
+- **The no-op over waiting.** Without it, a new leader cannot commit its predecessor's entries until a client writes, so workflows blocked on those records stall indefinitely on a quiet system.
+- **Accepted tradeoffs.** No pre-vote, so a node rejoining after a partition with a higher term deposes a healthy leader; no snapshots; reads must go through the log to be linearizable.
+
+### 5.4 Explain it back
+
+1. Why does `handleVote` compare last terms before last indexes?
+   <details><summary>Answer</summary>A log can be long because it holds many entries from an old term that a later leader has already replaced elsewhere. The last term says how recent the log's leader was; only between logs whose last entries share a term does length mean "has more of the same history".</details>
+2. In figure 8, index 2 of term 2 is on two of three nodes. Why must `maybeCommit` still refuse it?
+   <details><summary>Answer</summary>Node 3 holds $(2, t_3)$ with last term 3, which beats node 2's last term 2, so node 3 can still win an election with node 2's vote and overwrite index 2 on both. Once the term-4 no-op at index 3 is on a majority, any candidate lacking it has last term at most 3 and loses to that majority, so index 2 is safe.</details>
+3. Why does the follower set `MatchIndex = PrevLogIndex + len(Entries)` instead of its own last index?
+   <details><summary>Answer</summary>The message only proves agreement up to its last entry. Beyond it the follower may hold a stale suffix from an older term; reporting it as matched would let the leader count entries that are not its own.</details>
+4. What goes wrong if `campaign` sends RequestVote before `saveHardState` succeeds?
+   <details><summary>Answer</summary>The node might crash after the messages leave but before the vote is on disk. On restart it has forgotten that it voted for itself in that term and can grant its vote to another candidate in the same term, so two candidates can each collect a majority: two leaders in one term.</details>
+5. Why is it fine that commit resets to 0 after a restart?
+   <details><summary>Answer</summary>Commit is derivable: the leader recomputes it from `match`, and followers learn it from the next AppendEntries. The cost is that `ReadCommitted` replays entries from index 1, which the applier tolerates by skipping WAL records it already holds.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. Voting without the up-to-date check, or comparing indexes only | a leader without committed entries overwrites them | `TestVoteRequiresUpToDateLog`, `TestSimulatedFaultsKeepSafetyAndLinearizability` (mutants `s01`, `s02`) |
-| 2. Voting twice in a term, or forgetting the vote in a restart | two leaders in one term | `TestOneVotePerTermSurvivesRestart` (mutants `s03`, `s04`) |
-| 3. Truncating on every AppendEntries | a reordered old message deletes entries the leader counted | `TestStaleShortAppendDoesNotTruncate` (mutant `s05`) |
-| 4. Following the leader's commit past what this message verified | a follower applies its own stale entries | `TestFollowerCommitStopsAtVerifiedEntries` (mutant `s06`) |
-| 5. Committing an old term's entry by counting copies | figure 8: an acknowledged write disappears after two leader changes | `TestFigure8OldTermEntryNotCommittedByCounting` (mutant `s07`) |
-| 6. Quorum as `N/2` instead of `N/2 + 1` | an isolated node elects itself and acknowledges alone | `TestMajorityOfThreeNeedsTwo` (mutant `s08`) |
-| 7. Ignoring a higher term in a reply | a deposed leader keeps sending in a dead term | `TestHigherTermReplyMakesLeaderStepDown` (mutant `s09`) |
-| 8. No heartbeats, or no timer reset on AppendEntries | an election every timeout; writes stall | `TestStableLeaderNoSpuriousElections` (mutants `s10`, `s15`) |
-| 9. `next` that never backs off, or backs off one entry at a time with a useless hint | a lagging follower is never repaired, or slowly | `TestLaggingFollowerIsRepaired`, `TestAppendConsistencyCheckAndHint` (mutants `s11`, `s18`) |
-| 10. Accepting proposals on a follower | a client is acknowledged for a write no leader has | `TestProposeOnFollowerReturnsNotLeader` (mutant `s13`) |
-| 11. Sending after a failed write, or acknowledging unsaved entries | a restart forgets a vote or an acknowledged entry | `TestStorageFailureSendsNothing`, `TestLeaderKillAckedAppendsSurvive` (mutants `s14`, `s16`) |
-| 12. No no-op at the start of a term | a crashed leader's entries stay uncommitted until the next write | `TestNewLeaderCommitsEarlierTermsThroughItsNoop` (mutant `s17`) |
-| 13. A candidate that ignores a same-term leader | it times out again and drags everyone into a new term | `TestCandidateStepsDownForSameTermLeader` (mutant `s12`) |
+| 1. Voting without the up-to-date check, or comparing indexes only | a leader without committed entries overwrites them | `handleVote` requires a later last term, or an equal one and a last index at least ours |
+| 2. Voting twice in a term, or forgetting the vote in a restart | two leaders in one term | `canVote` allows only no vote or the same candidate; the grant is saved before the reply |
+| 3. Truncating on every AppendEntries | a reordered old message deletes entries the leader counted | `handleAppend` skips entries it holds with the same term and truncates only at the first conflict |
+| 4. Following the leader's commit past what this message verified | a follower applies its own stale entries | commit is `min(m.Commit, PrevLogIndex + len(Entries))` |
+| 5. Committing an old term's entry by counting copies | figure 8: an acknowledged write disappears after two leader changes | `maybeCommit` stops at the first entry not of the current term |
+| 6. Quorum as `N/2` instead of `N/2 + 1` | an isolated node elects itself and acknowledges alone | `quorum` is `count > N/2` |
+| 7. Ignoring a higher term in a reply | a deposed leader keeps sending in a dead term | `Step` applies the higher-term rule to every message type before dispatch |
+| 8. No heartbeats, or no timer reset on AppendEntries | an election every timeout; writes stall | `Tick` heartbeats every $H$; `handleAppend` calls `resetTimer` |
+| 9. `next` that never backs off, or backs off one entry at a time with a useless hint | a lagging follower is never repaired, or slowly | the follower returns a per-term hint; the leader moves `next` to it, clamped at `match + 1` |
+| 10. Accepting proposals on a follower | a client is acknowledged for a write no leader has | `Propose` returns `*NotLeaderError` unless `role == Leader` |
+| 11. Sending after a failed write, or acknowledging unsaved entries | a restart forgets a vote or an acknowledged entry | every save precedes the dependent `send`; `fail` makes the error sticky and empties the outbox |
+| 12. No no-op at the start of a term | a crashed leader's entries stay uncommitted until the next write | `becomeLeader` appends an empty-data entry of the new term |
+| 13. A candidate that ignores a same-term leader | it times out again and drags everyone into a new term | `handleAppend` calls `becomeFollower` when the role is not follower or the leader differs |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `dur.01` | the log whose records the entries carry; your server applies committed entries into it |
+| Back | `dur.01` | the log whose records the entries carry; the server applies committed entries into it |
 | Back | `lang.06` | Go, interfaces, and `testing` |
-| Forward | MS-durable-ha | the durable kill loop against `{durable} --replicas 3` with leader kills and partitions, and a linearizability check over the history |
-| Forward | `ops.12` | the optional drill that partitions your leader on kind |
+| Forward | `{durable} --replicas 3` | the durable kill loop against `{durable} --replicas 3` with leader kills and partitions, and a linearizability check over the history |
+| Forward | `ops.12` | the optional drill that partitions the leader on kind |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | a ticked state machine with `ReadMessages` | etcd/raft's `Ready` and `Advance` | batching, pipelining, flow control | [etcd-io/raft](https://github.com/etcd-io/raft) |
 | elections that can disrupt a leader | pre-vote and check-quorum | a rejoining node cannot depose a healthy leader | thesis, section 9.6 |

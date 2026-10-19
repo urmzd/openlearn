@@ -1,4 +1,3 @@
-<!-- ol:module dep.06 -->
 # Durable and worker images and charts: WAL PVC, StatefulSet, KEDA autoscaling of workers
 
 ## Overview
@@ -6,12 +5,10 @@
 | | |
 |---|---|
 | **Module** | `dep.06` · practice · ops · Pass 8 · 4 to 6 h |
-| **You build** | `deploy/docker/durable.Dockerfile` and `deploy/docker/worker.Dockerfile`; the charts `deploy/helm/<system>-durable` (a StatefulSet whose WAL is on a PersistentVolumeClaim, with the WAL quota rendered into `runtime.toml`) and `deploy/helm/<system>-worker` (a Deployment that drains before it is killed, writes `/artifacts`, and is scaled by a KEDA `ScaledObject`); `deploy/keda` pinning KEDA |
+| **Solution** | [`durable.Dockerfile`](../../../../course/solutions/entry/deploy/docker/durable.Dockerfile) and [`worker.Dockerfile`](../../../../course/solutions/entry/deploy/docker/worker.Dockerfile); the charts [`forge-durable`](../../../../course/solutions/entry/deploy/helm/forge-durable/values.yaml) (a StatefulSet whose WAL is on a PersistentVolumeClaim, with the WAL quota rendered into `runtime.toml`) and [`forge-worker`](../../../../course/solutions/entry/deploy/helm/forge-worker/values.yaml) (a Deployment that drains before it is killed, writes `/artifacts`, and is scaled by a KEDA `ScaledObject`); [`deploy/keda`](../../../../course/solutions/entry/deploy/keda/Chart.yaml) pinning KEDA |
 | **Contract** | [`course/contracts/helm/durable.values.schema.json`](../../../../course/contracts/helm/durable.values.schema.json), [`course/contracts/helm/worker.values.schema.json`](../../../../course/contracts/helm/worker.values.schema.json), the KEDA pin in [`course/contracts/helm/observability.md`](../../../../course/contracts/helm/observability.md), the gauge `tl.durable.task_queue.depth` in [`course/contracts/otel/metrics.yaml`](../../../../course/contracts/otel/metrics.yaml), and `[durable]`/`[worker]` of [`course/contracts/config/runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json) |
-| **Tests** | `course/tests/dep.06/` (`check` runs `artifacts.py`: static, docker, and cluster tiers; section 4) |
-| **Needs** | `dep.03` (the chart policy and the stack these charts join, with the images of `dep.01` and the cluster of `dep.02`), `dur.09` (the Python units the worker image carries); your durable server (`dur.02`) and worker (`dur.04`) entry points, which the images build |
-| **Used by** | `dep.07` extends the worker chart for agent workers; MS-durable deploys these charts on kind, `obs.05` traces and scrapes them, and drills `durable-kill9`, `poison-task`, and `eventlog-disk-full` run against them |
-| **Milestone** | MS-durable (its kind steps install these charts) |
+| **Needs** | `dep.03` (the chart policy and the stack these charts join, with the images of `dep.01` and the cluster of `dep.02`), `dur.09` (the Python units the worker image carries); the durable server (`dur.02`) and worker (`dur.04`) entry points, which the images build |
+| **Used by** | `dep.07` extends the worker chart for agent workers; the Pass 8 durable platform runs on these charts on kind (its kill loop runs against them), `obs.05` traces and scrapes them, and drills `durable-kill9`, `poison-task`, and `eventlog-disk-full` run against them |
 | **Optional depth** | [Kubernetes: StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) (free); [KEDA: Prometheus scaler](https://keda.sh/docs/2.21/scalers/prometheus/) (free); [Kubernetes: pod termination](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination) (free) |
 
 ## Key Takeaways
@@ -22,31 +19,30 @@
 - **KEDA** scales workers on **queue depth**, not CPU, through a `ScaledObject` that owns the replica count: the Deployment sets none, and no second HPA competes.
 - The worker image is two worlds: a static Go binary copied into a **Python** base that can import the units its activities exec.
 
-## How to work this chapter
+## How to read this chapter
+
+Sections 1 to 3 derive what a stateful server, a queue-driven worker, and long activities demand from Kubernetes, and work the quota, a burst, and a rollout by hand. Section 4 fixes the files. Section 5 walks through the solution's images, the durable StatefulSet, the worker Deployment, and the KEDA `ScaledObject`, and explains each choice. Try to predict each object before reading it.
+
+The solution is installed from the repo root:
 
 ```bash
-ol start dep.06                       # records the start; there are no stubs
-ol tests dep.06                       # read the test catalog first
-# write the Dockerfiles, both charts, and deploy/keda (section 4), then:
 helm dependency update deploy/keda    # writes deploy/keda/Chart.lock
-OL_SMOKE=1 ol check dep.06            # static and docker tiers, no cluster
 helm upgrade --install keda deploy/keda -n keda --create-namespace
 helm upgrade --install forge-durable deploy/helm/forge-durable -n forge
 helm upgrade --install forge-worker deploy/helm/forge-worker -n forge
-ol check dep.06                       # every tier, against kind-<system>
 ```
 
 ---
 
 ## 1. Why now
 
-Pass 8 gave you a durable server and workers that survive kills on your laptop. On kind they need three things your Pass 7 charts never had to think about. The server **has state**: a Deployment pod writes its WAL to the container filesystem, and the first reschedule erases every workflow. The worker's **load is a queue**, not requests: a corpus build enqueues 200 shard tasks in a second, the CPU of two idle workers says nothing about it, and a fixed replica count either wastes the cluster or leaves the queue growing. And the worker's work is **long**: a training step runs for minutes inside a Python child, so the way Kubernetes stops a pod (SIGTERM, then SIGKILL 30 s later) decides whether a rollout loses a checkpoint. This module packages both components so they keep the promises of `dur.01` to `dur.09` when Kubernetes, not you, decides when pods start and stop.
+Pass 8 built a durable server and workers that survive kills on your laptop. On kind they need three things the Pass 7 charts never had to think about. The server **has state**: a Deployment pod writes its WAL to the container filesystem, and the first reschedule erases every workflow. The worker's **load is a queue**, not requests: a corpus build enqueues 200 shard tasks in a second, the CPU of two idle workers says nothing about it, and a fixed replica count either wastes the cluster or leaves the queue growing. And the worker's work is **long**: a training step runs for minutes inside a Python child, so the way Kubernetes stops a pod (SIGTERM, then SIGKILL 30 s later) decides whether a rollout loses a checkpoint. This module packages both components so they keep the promises of `dur.01` to `dur.09` when Kubernetes, not a person at a terminal, decides when pods start and stop.
 
 ## 2. Principles
 
 ### 2.1 Two images, one rule set
 
-Both Dockerfiles keep the `dep.01` rules: multi-stage, every base pinned by **digest**, a numeric non-root `USER`, an exec-form `ENTRYPOINT` (the process is PID 1 and receives SIGTERM, which the worker needs to drain), a `HEALTHCHECK` in exec form on the health port 9464, and the OCI labels. The durable image is a static Go binary on alpine, like the gateway. The worker image is different: its runtime stage is a **Python** base (glibc, so numpy and pyarrow install as wheels) that also carries the static Go worker and your `python/` tree, because the worker execs `{tinyllm} train` and `{corpus} run --stage` as subprocess activities (`dur.09`).
+Both Dockerfiles keep the `dep.01` rules: multi-stage, every base pinned by **digest**, a numeric non-root `USER`, an exec-form `ENTRYPOINT` (the process is PID 1 and receives SIGTERM, which the worker needs to drain), a `HEALTHCHECK` in exec form on the health port 9464, and the OCI labels. The durable image is a static Go binary on alpine, like the gateway. The worker image is different: its runtime stage is a **Python** base (glibc, so numpy and pyarrow install as wheels) that also carries the static Go worker and the `python/` tree, because the worker execs `{tinyllm} train` and `{corpus} run --stage` as subprocess activities (`dur.09`).
 
 ### 2.2 The values contract and the policy
 
@@ -66,13 +62,13 @@ One Helm detail bites here: Helm reads YAML numbers as float64, so `toToml` writ
 
 ### 2.4 The worker: drain time and a writable artifact root
 
-Kubernetes stops a pod by sending SIGTERM to PID 1 and, after `terminationGracePeriodSeconds` (default 30), SIGKILL. Your worker on SIGTERM stops polling and lets in-flight activities finish for up to 30 s (`dur.04`), and the subprocess runner gives a Python child 30 s between SIGTERM and SIGKILL to checkpoint (`dur.09`). Both must fit: the grace period is at least 60 s (the reference uses 75). The worker writes checkpoints, shards, and `DONE.json` under `/artifacts`, so it mounts that hostPath **read-write** (the engine mounts it read-only), while its root filesystem stays read-only with an `emptyDir` at `/tmp`.
+Kubernetes stops a pod by sending SIGTERM to PID 1 and, after `terminationGracePeriodSeconds` (default 30), SIGKILL. The worker on SIGTERM stops polling and lets in-flight activities finish for up to 30 s (`dur.04`), and the subprocess runner gives a Python child 30 s between SIGTERM and SIGKILL to checkpoint (`dur.09`). Both must fit: the grace period is at least 60 s (the solution uses 75). The worker writes checkpoints, shards, and `DONE.json` under `/artifacts`, so it mounts that hostPath **read-write** (the engine mounts it read-only), while its root filesystem stays read-only with an `emptyDir` at `/tmp`.
 
 ### 2.5 KEDA: scaling on queue depth
 
 KEDA is an operator that turns a `ScaledObject` into a HorizontalPodAutoscaler fed by an external metric. Here the metric is the durable server's gauge `tl_durable_task_queue_depth{queue, kind}`, scraped by Prometheus, and the rule is: replicas $= \lceil \text{depth} / \text{threshold} \rceil$, clamped to `[minReplicaCount, maxReplicaCount]`.
 
-| Symbol | Meaning | Reference value |
+| Symbol | Meaning | Solution value |
 |---|---|---|
 | $d$ | pending activity tasks on the worker's queue | from Prometheus |
 | $t$ | threshold: pending tasks one worker should absorb | 4 |
@@ -82,7 +78,7 @@ The `ScaledObject` owns the count, so the Deployment sets no `replicas` (a `helm
 
 ## 3. Worked example by hand
 
-The reference values: claim `2Gi`, `walMaxBytes: 1073741824`, worker threshold 4, replicas 1 to 6, grace 75 s.
+The solution's values: claim `2Gi`, `walMaxBytes: 1073741824`, worker threshold 4, replicas 1 to 6, grace 75 s.
 
 **The quota.** $2\,\text{Gi} = 2 \times 2^{30} = 2147483648$ bytes; the quota is $2^{30} = 1073741824$, half of it, which leaves room to raise the quota during an incident (drill `eventlog-disk-full`) without resizing the claim. `helm template` must render `wal_max_bytes = 1073741824` (an integer), and with `--set walMaxBytes=123456789`, `wal_max_bytes = 123456789`.
 
@@ -90,9 +86,9 @@ The reference values: claim `2Gi`, `walMaxBytes: 1073741824`, worker threshold 4
 
 **A rollout.** `helm upgrade` of the worker during a training activity: the old pod gets SIGTERM at $t = 0$, stops polling, the runner SIGTERMs the Python child, which checkpoints at its next step (say $t = 8$ s) and exits 130; the activity is reported retryable (`WorkerShutdown`), the pod exits at $t \approx 9$ s, far inside 75 s, and the new pod resumes from the checkpoint.
 
-These are `test_wal_quota_is_rendered`, `test_keda_scales_on_queue_depth`, and `test_worker_drains_before_it_is_killed`; the burst itself runs on kind in MS-durable.
+These three numbers are what a correct pair of charts must get right; the burst itself is what the Pass 8 platform does on kind.
 
-## 4. The artifact and its check
+## 4. The artifact and what it must do
 
 | File | What it holds |
 |---|---|
@@ -102,53 +98,285 @@ These are `test_wal_quota_is_rendered`, `test_keda_scales_on_queue_depth`, and `
 | `deploy/helm/<system>-worker/` | `values.schema.json`, Deployment, ConfigMap, PDB, `ScaledObject` |
 | `deploy/keda/` | `Chart.yaml` with the pinned `keda` dependency, `Chart.lock`, `values.yaml` |
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks |
+| Case | Kind of check | What must hold |
 |---|---|---|
-| `test_layout_present` | unit | every file above exists |
-| `test_dockerfiles_follow_the_image_rules` | unit | dep.01 rules, digest pins, exec-form HEALTHCHECK, labels; the worker image carries `python/` and builds `./cmd/worker` |
-| `test_values_schemas_are_the_contract` | conformance | both schemas equal the contracts |
-| `test_charts_lint` | conformance | `helm lint` of both charts |
-| `test_schema_rejects_unsafe_values` | boundary | eight unsafe values each fail `helm template` |
-| `test_policy_over_rendered_charts` | unit | probes, resources, non-root, pinned images, PDBs, no literal secrets |
-| `test_durable_is_a_statefulset_with_a_wal_volume` | unit | one-replica StatefulSet, a claim template mounted where `wal_dir` points, `fsGroup` |
-| `test_wal_quota_is_rendered` | unit | section 3's quota as an integer, following `--set`, below the claim size |
-| `test_durable_service_ports` | unit | NodePort 30733 for gRPC 7233, port 9464 |
-| `test_worker_drains_before_it_is_killed` | boundary | grace period at least 60 s |
-| `test_worker_writes_artifacts` | unit | `/artifacts` read-write, not an emptyDir; read-only root filesystem |
-| `test_keda_scales_on_queue_depth` | unit | the ScaledObject's target, bounds, query, and threshold; no `replicas`, no HPA |
-| `test_keda_is_pinned` | conformance | `deploy/keda` Chart.yaml and Chart.lock match the pin |
-| `test_images_build` | unit | both images build from your entry points |
-| `test_images_run_as_numeric_non_root` | unit | image `USER` numeric and not 0 |
-| `test_worker_image_has_the_python_units` | unit | the worker image imports numpy and `tinyllm.io.activity` |
-| `test_keda_installed` | conformance | KEDA's CRD and release on kind |
-| `test_server_side_dry_run` | conformance | both charts pass `kubectl apply --dry-run=server` |
-| `test_releases_ready` | conformance | durable ready with a bound WAL claim, worker available, KEDA's HPA exists |
+| layout present | static | every file above exists |
+| Dockerfiles follow the image rules | static | dep.01 rules, digest pins, exec-form HEALTHCHECK, labels; the worker image carries `python/` and builds `./cmd/worker` |
+| values schemas are the contract | conformance | both schemas equal the contracts |
+| charts lint | conformance | `helm lint` of both charts |
+| schema rejects unsafe values | boundary | each unsafe value of 2.2 fails `helm template` |
+| policy over rendered charts | static | probes, resources, non-root, pinned images, PDBs, no literal secrets |
+| durable is a StatefulSet with a WAL volume | static | one-replica StatefulSet, a claim template mounted where `wal_dir` points, `fsGroup` |
+| WAL quota rendered | static | section 3's quota as an integer, following `--set`, below the claim size |
+| durable Service ports | static | NodePort 30733 for gRPC 7233, port 9464 |
+| worker drains before it is killed | boundary | grace period at least 60 s |
+| worker writes artifacts | static | `/artifacts` read-write, not an emptyDir; read-only root filesystem |
+| KEDA scales on queue depth | static | the ScaledObject's target, bounds, query, and threshold; no `replicas`, no HPA |
+| KEDA pinned | conformance | `deploy/keda` Chart.yaml and Chart.lock match the pin |
+| images build | docker | both images build from the system's entry points |
+| images run as numeric non-root | docker | image `USER` numeric and not 0 |
+| worker image has the Python units | docker | the worker image imports numpy and `tinyllm.io.activity` |
+| KEDA installed | cluster | KEDA's CRD and release on kind |
+| server-side dry run | cluster | both charts pass `kubectl apply --dry-run=server` |
+| releases ready | cluster | durable ready with a bound WAL claim, worker available, KEDA's HPA exists |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **State needs an identity that outlives the pod.** The WAL must be found again by the replacement pod. A StatefulSet gives a stable pod name and a claim per pod from `volumeClaimTemplates` that is never deleted with the pod; a Deployment with a PVC would also keep the data, but its rollout would run an old and a new pod at once against one WAL.
+2. **One writer per WAL.** So `replicas: 1` (the schema enforces it until Raft), `podManagementPolicy: OrderedReady`, and a PDB of `maxUnavailable: 1` so a drain can still move it.
+3. **The real quota is in the application.** kind's local-path volumes ignore their size, so the only enforced limit is the server's `wal_max_bytes`. It must be below the claim size (so the disk never fills first) and rendered as an integer (the schema says so, and Helm's numbers are floats).
+4. **Stopping must fit inside the grace period.** A worker drains for up to 30 s and a Python child checkpoints in up to 30 s after its own SIGTERM; the pod's grace period must exceed their sum. 75 s gives 15 s of margin.
+5. **Load is queue depth, not CPU.** Pending tasks are the demand; CPU measures only what is already running. So the scaler reads `tl_durable_task_queue_depth`, and replicas follow $\lceil d/t \rceil$.
+6. **One controller per number.** If KEDA owns the replica count, the Deployment must not set one, or every `helm upgrade` resets it.
+7. **The worker image must contain what its activities exec.** Activities run `{tinyllm}` and `{corpus}` as subprocesses, so the runtime base is Python with the pinned wheels, and the static Go worker is copied in.
+
+### 5.2 The images
+
+The durable image is the gateway image of `dep.01` with a different binary and one addition:
+
+```dockerfile
+COPY --from=build /out/durable /usr/local/bin/durable
+# The WAL lives on the StatefulSet's volume at /var/lib/durable; the
+# directory exists and belongs to the runtime user even without a volume.
+RUN mkdir -p /var/lib/durable && chown 10001:10001 /var/lib/durable
+USER 10001:10001
+# 7233: tl.durable.v1 gRPC; 7234: Raft (dur.10); 9464: /healthz, /readyz, /metrics.
+EXPOSE 7233 7234 9464
+```
+
+The worker image's runtime stage is where the two worlds meet:
+
+```dockerfile
+# The runtime is Python (glibc, for numpy and pyarrow wheels); the Go worker
+# is a static binary copied in.
+FROM python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+ARG VERSION=0.0.0-dev
+ARG REVISION=unknown
+# ... OCI labels as in dep.01
+# Python dependencies first (they change least), pinned; no pip cache in the layer.
+RUN pip install --no-cache-dir "numpy==2.3.3" "pyarrow==21.0.0" "zstandard==0.25.0"
+WORKDIR /app
+# The units the activities exec ({tinyllm}, {corpus}).
+COPY python/ /app/python/
+COPY --from=build /out/worker /usr/local/bin/worker
+USER 10001:10001
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+EXPOSE 9464
+# No wget or curl in python-slim, but there is Python.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:9464/healthz', timeout=2).status == 200 else 1)"]
+ENTRYPOINT ["/usr/local/bin/worker"]
+```
+
+`PYTHONDONTWRITEBYTECODE=1` matters because the root filesystem will be read-only; `PYTHONUNBUFFERED=1` makes child output reach the logs line by line, so a crash does not swallow its last message. glibc (Debian) rather than alpine (musl) is what lets numpy and pyarrow install from wheels instead of compiling.
+
+Full solution: [`durable.Dockerfile`](../../../../course/solutions/entry/deploy/docker/durable.Dockerfile), [`worker.Dockerfile`](../../../../course/solutions/entry/deploy/docker/worker.Dockerfile).
+
+### 5.3 The durable StatefulSet
+
+```yaml
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  serviceName: {{ .Release.Name }}-headless     # stable DNS for each pod (Raft, later)
+  replicas: {{ .Values.replicaCount }}          # the schema allows 1 until dur.10
+  # The WAL has one writer: never run the old and the new pod at once.
+  podManagementPolicy: OrderedReady
+  template:
+    metadata:
+      annotations:
+        checksum/runtime: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      # SIGTERM: stop accepting, fsync, exit; the WAL's torn tail is
+      # truncated on the next start anyway (dur.01).
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        {{- with .Values.securityContext.runAsGroup }}
+        runAsGroup: {{ . }}
+        # The volume is mounted group-writable for this gid, so a non-root
+        # server can write its WAL.
+        fsGroup: {{ . }}
+        {{- end }}
+      containers:
+        - name: durable
+          args: ["--config", "/etc/tinyllm/runtime.toml"]
+          # ... OTel env, ports grpc/raft/health, probes (/readyz: WAL replayed)
+          volumeMounts:
+            - name: wal
+              mountPath: /var/lib/durable
+            - name: runtime
+              mountPath: /etc/tinyllm
+              readOnly: true
+  volumeClaimTemplates:          # one claim per pod: wal-forge-durable-0
+    - metadata:
+        name: wal
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}   # 2Gi
+```
+
+The readiness probe asks `/readyz`, which answers only once the WAL is replayed and gRPC is listening, so workers are never routed to a server still recovering. With one replica, a rolling update is necessarily stop-then-start: the claim is `ReadWriteOnce`, and a second pod could not mount it anyway.
+
+### 5.4 The runtime config and the integer cast
+
+```yaml
+{{- /* runtime.toml: Helm reads YAML numbers as floats, and toToml would
+       write 5.0 where runtime.schema.json wants an integer, so every
+       integer key is cast with int64. */ -}}
+{{- define "durable.runtime" -}}
+{{- $r := default dict (.Values.runtime).durable -}}
+{{- $d := dict "grpc_listen" (printf ":%d" (int .Values.service.grpcPort)) "health_listen" (printf ":%d" (int .Values.service.healthPort)) "wal_dir" "/var/lib/durable/wal" "wal_max_bytes" (int64 .Values.walMaxBytes) -}}
+{{- range $k := list "visibility_timeout_ms" "dlq_after_attempts" "long_poll_ms" -}}
+{{- if hasKey $r $k }}{{ $_ := set $d $k (int64 (get $r $k)) }}{{ end -}}
+{{- end -}}
+{{- toToml (dict "durable" $d "otel" (dict "endpoint" $.Values.otel.endpoint)) -}}
+{{- end -}}
+```
+
+The keys the chart must control (`grpc_listen`, `wal_dir` inside the mount, `wal_max_bytes`) are always built from values; optional integer keys are copied from `runtime.durable` only if present, each through `int64`. `wal_dir` is a subdirectory of the mount, so the mount point itself (which may contain `lost+found` on some volumes) is never the WAL directory. With the default `walMaxBytes: 1073741824`, the ConfigMap holds `wal_max_bytes = 1073741824`, as in section 3.
+
+The Service is a NodePort for gRPC (7233 to 30733) plus the health port, and a second, headless Service (`clusterIP: None`) is the StatefulSet's `serviceName`.
+
+Full solution: [`statefulset.yaml`](../../../../course/solutions/entry/deploy/helm/forge-durable/templates/statefulset.yaml), [`_helpers.tpl`](../../../../course/solutions/entry/deploy/helm/forge-durable/templates/_helpers.tpl), [`service.yaml`](../../../../course/solutions/entry/deploy/helm/forge-durable/templates/service.yaml), [`values.yaml`](../../../../course/solutions/entry/deploy/helm/forge-durable/values.yaml).
+
+### 5.5 The worker Deployment
+
+```yaml
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}       # only when KEDA does not own the count
+  {{- end }}
+  template:
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds | default 75 }}
+      containers:
+        - name: worker
+          args: ["--config", "/etc/tinyllm/runtime.toml"]
+          env:
+            - name: TL_ARTIFACTS
+              value: {{ .Values.artifacts.mountPath | quote }}
+            # ... TL_CORPUS_ENTRY, OTel env
+            # Python writes nothing next to its sources: the root filesystem is read-only.
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: HOME
+              value: /tmp                    # libraries that cache under ~ write to the emptyDir
+          volumeMounts:
+            - name: artifacts
+              mountPath: {{ .Values.artifacts.mountPath }}   # no readOnly: the worker writes outputs
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem | default true }}
+      volumes:
+        - name: artifacts
+          hostPath:
+            path: {{ .Values.artifacts.hostPath }}
+            type: Directory
+        - name: tmp
+          emptyDir: {}
+```
+
+```yaml
+# values.yaml (excerpt)
+# A worker stops polling on SIGTERM and lets in-flight activities finish
+# (dur.04 drain, 30 s), and a Python child gets 30 s between SIGTERM and
+# SIGKILL to checkpoint (dur.09): the pod needs both before Kubernetes kills it.
+terminationGracePeriodSeconds: 75
+```
+
+The writable surface is exactly two paths: `/artifacts` (outputs that must survive) and `/tmp` (scratch that must not). Everything else is read-only, so a bug that writes elsewhere fails loudly instead of filling the node.
+
+Full solution: [`forge-worker/templates/deployment.yaml`](../../../../course/solutions/entry/deploy/helm/forge-worker/templates/deployment.yaml), [`values.yaml`](../../../../course/solutions/entry/deploy/helm/forge-worker/values.yaml).
+
+### 5.6 The ScaledObject and KEDA's pin
+
+```yaml
+{{- if .Values.autoscaling.enabled }}
+# KEDA owns the replica count: it creates and drives an HPA for this
+# Deployment from the Prometheus query below.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}
+  minReplicaCount: {{ .Values.autoscaling.minReplicas | default 1 }}   # r_min
+  maxReplicaCount: {{ .Values.autoscaling.maxReplicas | default 6 }}   # r_max
+  pollingInterval: 15
+  # Scale down slowly: a worker removed mid-activity is drained (75 s) and
+  # its task redelivered, which costs more than an idle pod.
+  cooldownPeriod: 120
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: {{ .Values.autoscaling.prometheusAddress | quote }}
+        # d: pending activity tasks on this worker's queue
+        query: sum(tl_durable_task_queue_depth{queue={{ .Values.autoscaling.queue | default "data" | quote }},kind="activity"})
+        threshold: {{ .Values.autoscaling.targetDepth | default 4 | quote }}            # t
+{{- end }}
+```
+
+`sum(...)` collapses the gauge to one number even if several series match. The threshold is quoted because KEDA's trigger metadata is a map of strings. `kind="activity"` excludes workflow tasks, which are short and do not need more workers. KEDA itself is an umbrella chart, `deploy/keda`, with one dependency pinned to `keda` 2.21.0 (`contracts/helm/observability.md`) and a `Chart.lock`; it must be installed before the first `ScaledObject`, whose CRD it provides. In the dev loop (`dep.04`) the worker is installed with `autoscaling.enabled=false` and a fixed count.
+
+Full solution: [`scaledobject.yaml`](../../../../course/solutions/entry/deploy/helm/forge-worker/templates/scaledobject.yaml), [`keda/Chart.yaml`](../../../../course/solutions/entry/deploy/keda/Chart.yaml).
+
+### 5.7 Why this solution
+
+- **StatefulSet over a Deployment with a PVC.** Both keep the data; only the StatefulSet guarantees one pod per identity and gives the stable names Raft will need. The cost is slower, ordered rollouts, which a single writer requires anyway.
+- **An application quota over relying on volume size.** On kind the volume size is advisory; even on a real CSI driver, failing appends with `RESOURCE_EXHAUSTED` at a known quota is safer than discovering `ENOSPC` mid-write.
+- **KEDA on queue depth over an HPA on CPU.** CPU lags demand and is near zero for a worker waiting on I/O; queue depth is the demand itself. The cost is a dependency on Prometheus being up: if it is not, KEDA holds the last count.
+- **A long grace period over a preStop hook.** A preStop sleep would delay SIGTERM, not make the drain happen; the worker already drains on SIGTERM, so it needs time, not a hook.
+- **Tradeoff accepted:** a single durable replica is a single point of failure; the WAL makes it crash-safe, not highly available. `dur.10`'s Raft lifts the `replicaCount` limit.
+
+### 5.8 Explain it back
+
+1. Why is `fsGroup` needed for the durable server but not for the engine?
+   <details><summary>Answer</summary>The durable server writes to a freshly provisioned volume, which belongs to root; <code>fsGroup</code> makes it group-writable for gid 10001. The engine only reads <code>/artifacts</code> and writes nothing.</details>
+2. A teammate removes the `int64` casts. What fails, and where?
+   <details><summary>Answer</summary>Helm parses <code>1073741824</code> as a float64, so <code>toToml</code> writes <code>wal_max_bytes = 1.073741824e+09</code>. The server validates its config against <code>runtime.schema.json</code>, which requires an integer, and refuses to start: CrashLoopBackOff after a successful install.</details>
+3. With $t = 4$, $r_{\min} = 1$, $r_{\max} = 6$, the queue holds 30 tasks. How many workers run, and what happens to the backlog?
+   <details><summary>Answer</summary>$\lceil 30/4 \rceil = 8$, clamped to 6. Six workers run and the queue drains more slowly than one worker per four tasks; the clamp is a cost ceiling, chosen deliberately.</details>
+4. Why does the Deployment omit `replicas` when autoscaling is enabled?
+   <details><summary>Answer</summary>KEDA's HPA writes the replica count. If the chart also set it, every <code>helm upgrade</code> would reset the count to the chart's value, fighting the autoscaler and causing a burst of scale-downs and scale-ups.</details>
+5. Why is the worker's grace period 75 s and not 60 s?
+   <details><summary>Answer</summary>60 s is exactly the sum of the two inner budgets (a 30 s drain and a 30 s checkpoint window). Any delay between them, such as process start-up, signal delivery, or the final report to the server, would push past it. 75 s leaves margin so SIGKILL never arrives while a checkpoint is being written.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. the server as a Deployment with an emptyDir | every workflow vanishes on the first reschedule | `test_durable_is_a_statefulset_with_a_wal_volume` |
-| 2. no `fsGroup` | the non-root server cannot open its WAL on a fresh volume: CrashLoopBackOff | `test_durable_is_a_statefulset_with_a_wal_volume` |
-| 3. `toToml` of a float quota | the server rejects `wal_max_bytes = 1.073741824e+09` at start | `test_wal_quota_is_rendered` |
-| 4. quota above the volume size | the disk fills before `RESOURCE_EXHAUSTED` trips; the WAL tears | `test_wal_quota_is_rendered` |
-| 5. the default 30 s grace on workers | every rollout and scale-down kills training between checkpoints | `test_worker_drains_before_it_is_killed` |
-| 6. `/artifacts` read-only in the worker | every subprocess activity fails writing its first output | `test_worker_writes_artifacts` |
-| 7. `replicas` set beside a ScaledObject, or a second HPA | each `helm upgrade` resets the count; two controllers flap | `test_keda_scales_on_queue_depth` |
-| 8. scaling on CPU | a 200-task burst waits on two idle-looking workers | `test_keda_scales_on_queue_depth` |
-| 9. `--test-clock` or `:latest` in a chart | a test seam in production; kind runs whatever it cached | `test_schema_rejects_unsafe_values` |
-| 10. a worker image without the Python units | every activity exits 1 with an ImportError, only on kind | `test_worker_image_has_the_python_units` |
+| 1. the server as a Deployment with an emptyDir | every workflow vanishes on the first reschedule | a StatefulSet with a `wal` claim template (5.3) |
+| 2. no `fsGroup` | the non-root server cannot open its WAL on a fresh volume: CrashLoopBackOff | `fsGroup` from `runAsGroup` (5.3) |
+| 3. `toToml` of a float quota | the server rejects `wal_max_bytes = 1.073741824e+09` at start | `int64` on every integer key in `durable.runtime` (5.4) |
+| 4. quota above the volume size | the disk fills before `RESOURCE_EXHAUSTED` trips; the WAL tears | `walMaxBytes` 1 GiB on a 2 GiB claim (section 3, 5.4) |
+| 5. the default 30 s grace on workers | every rollout and scale-down kills training between checkpoints | `terminationGracePeriodSeconds: 75` (5.5) |
+| 6. `/artifacts` read-only in the worker | every subprocess activity fails writing its first output | the worker mounts `/artifacts` without `readOnly` (5.5) |
+| 7. `replicas` set beside a ScaledObject, or a second HPA | each `helm upgrade` resets the count; two controllers flap | `replicas` rendered only when autoscaling is off; KEDA makes the only HPA (5.5, 5.6) |
+| 8. scaling on CPU | a 200-task burst waits on two idle-looking workers | a Prometheus trigger on `tl_durable_task_queue_depth` (5.6) |
+| 9. `--test-clock` or `:latest` in a chart | a test seam in production; kind runs whatever it cached | the contract schemas reject `testClock: true` and `latest` (2.2) |
+| 10. a worker image without the Python units | every activity exits 1 with an ImportError, only on kind | the worker image is Python-based with pinned wheels and `COPY python/` (5.2) |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `dep.03` | the chart policy, the observability stack, and the Prometheus that KEDA queries |
 | Back | `dur.09` | the worker image carries the units the subprocess runner execs |
 | Forward | `obs.05` | control-plane dashboards read the durable server's queue and DLQ gauges and the worker traces |
-| Forward | MS-durable | the kind steps install these charts and run the kill loop against them |
+| Forward | Pass 8 durable platform | installs these charts on kind and runs the kill loop against them |
 | Forward | `ops.02`, `ops.03`, `ops.11` | drills `durable-kill9`, `poison-task`, `eventlog-disk-full` target these releases |
 | Forward | `dep.07` | the agent chart follows the worker chart |
 

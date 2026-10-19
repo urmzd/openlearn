@@ -40,11 +40,9 @@ System design interviews test judgment under questioning. Defending a system you
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `iv.01` | [Defend your system](01-defend-your-system.md) | proof | 11 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

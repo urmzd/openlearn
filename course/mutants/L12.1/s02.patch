@@ -1,5 +1,0 @@
---- a/python/tinyllm/post/sft.py
-+++ b/python/tinyllm/post/sft.py
-@@ -41 +41 @@
--        ids.extend(tokens); loss.extend(mask); docs.extend([doc_id] * len(tokens))
-+        ids.extend(tokens); loss.extend(mask); docs.extend([0] * len(tokens))

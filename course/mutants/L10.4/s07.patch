@@ -1,6 +1,0 @@
---- a/rust/crates/tl-engine/src/block_manager.rs
-+++ b/rust/crates/tl-engine/src/block_manager.rs
-@@ -273,3 +272,0 @@
--                            if pool.fill(b) < bt as u32 {
--                                pool.set_fill(b, bt as u32).expect("an unregistered block of ours");
--                            }

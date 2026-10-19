@@ -1,27 +1,23 @@
-# MS-P0: Your Repo's CI Is Green
+# What the system does after Pass 0
 
-**Spec**: [`course/milestones/MS-P0.toml`](../../../../../course/milestones/MS-P0.toml). **Requires**: `lang.01`, `lang.02`, and `craft.01` each have a fresh pass of your own (`ol check <ID>`); otherwise the milestone is blocked (exit 3).
+There is no model yet. What exists is a repository whose history and CI are trustworthy, which every later pass depends on: each pass adds code in four languages, and the only way to know a change did not break an earlier layer is a CI run on every commit.
 
-## What it runs
+## What runs
 
-| Step | Smoke | Passes when |
+| Check | What it does | Why it is needed |
 |---|---|---|
-| HEAD is a conventional commit | yes | `git log -1` matches Conventional Commits (`feat: ...`, `fix(scope): ...`) |
-| your CI is green | yes | with a GitHub remote: the latest run of your CI on the default branch concluded `success` (`gh run list`); without one: every `[ci].local` command in your `system.toml` exits 0 |
+| HEAD is a conventional commit | `git log -1` matches Conventional Commits (`feat: ...`, `fix(scope): ...`), enforced by a `commit-msg` hook | release notes, changelogs, and version bumps in later passes are generated from commit types |
+| CI is green | with a GitHub remote, the latest run on the default branch concluded `success` (`gh run list`); without one, the local CI script exits 0 | a red build caught at the commit that broke it is cheap; one found three passes later is not |
 
-Both steps are smoke steps, so every later pass gate reruns them: a red CI or a non-conventional HEAD breaks MS-P1 and every gate after it.
+Both checks keep running in every later pass: a red CI or a non-conventional HEAD is a broken system, whatever else works.
 
-## Run it
+## The local CI script
 
-```bash
-practice/bin/ol milestone MS-P0          # logs in .ol/milestones/MS-P0/<timestamp>/
-```
+Without a hosted CI, the same gates run from one script, [`ci-local.sh`](../../../../../course/solutions/entry/scripts/ci-local.sh), in two stages:
 
-Without a GitHub remote, declare your local CI in `system.toml`:
+1. **commit-lint**: run the repository's `.githooks/commit-msg` hook on the message of HEAD, so the hook and CI enforce the same rule.
+2. **native-tests**: build and run the shell/make primer (`make -C primers/lang.02`), clean it again, and import the Python primer modules, so a broken toolchain fails here rather than in a later pass.
 
-```toml
-[ci]
-local = [["bash", "scripts/ci-local.sh"]]   # OL_BIN points it at practice/bin/ol
-```
+Each language's own test command (`pytest`, `cargo test`, `go test ./...`, `make test`) joins the native-tests stage as that language enters the system.
 
-`ol course ci` prints the recipe your hosted CI runs.
+`set -euo pipefail` makes the first failing command fail the script, which is what makes it usable as a gate.

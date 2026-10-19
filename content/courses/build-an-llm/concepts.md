@@ -2,20 +2,20 @@
 
 ## Overview
 
-- **Primary reference**: the [course](paths/course/) itself: every chapter here is one module you build and `ol check` grades. Read [the system map](paths/course/SYSTEM.md) first.
+- **Primary reference**: the [course](paths/course/) itself: every chapter here is one module, derived from first principles and followed by a walkthrough of its solution in [`course/solutions/`](../../../course/solutions). Read [the system map](paths/course/SYSTEM.md) first.
 - **Supplementary**: Karpathy, [*Neural Networks: Zero to Hero*](https://karpathy.ai/zero-to-hero.html) (free); Jurafsky and Martin, [*Speech and Language Processing*](https://web.stanford.edu/~jurafsky/slp3/) (free), chapters 3 (n-gram LMs) and 9 (transformers); Raschka, *Build a Large Language Model (From Scratch)*
-- **Prerequisites**: the Pass 0 primers ([Python and numpy](../../tracks/software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md), [C](../../tracks/software-craftsmanship/12-language-and-tool-primers/03-c.md)) and, just in time, the math each part names (course DESIGN 7.5)
+- **Prerequisites**: the Pass 0 primers ([Python and numpy](../../tracks/software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md), [C](../../tracks/software-craftsmanship/12-language-and-tool-primers/03-c.md)) and, just in time, the math each part names
 - **Estimated time**: the spine of course passes 1 to 11, about 60 weeks part-time; Pass 1 (the tracer) is about 5 weeks
 
 ## Key Takeaways
 
-- An LLM system is a stack of contracts: a checkpoint format between training and serving, a C ABI between Python and Rust and the kernels, an HTTP API between the engine and everything in front of it. Build each side of each contract yourself and nothing in the stack is magic.
+- An LLM system is a stack of contracts: a checkpoint format between training and serving, a C ABI between Python and Rust and the kernels, an HTTP API between the engine and everything in front of it. Understand each side of each contract and nothing in the stack is magic.
 - Start with the thinnest model that exercises every contract: a **byte-level bigram** fitted by counting, served by a real engine. Every later model (autograd bigram, RNN, transformer, the Llama family) upgrades a component behind an unchanged contract.
-- Numbers are only right if they are tested: every module ships course tests, a reference that passes them, and a stub that fails them.
+- Numbers are only right if they are checked: every chapter lists the cases a correct solution must handle, and its walkthrough shows how the solution handles each one.
 
 ## How to Study
 
-Follow the course path (`practice/bin/ol learn course`), not this directory's order: parts interleave with math, systems, and operations modules. For each chapter run `ol start <ID>`, read beats 1 to 3 before writing code, implement against the interface in beat 4, and `ol check <ID>` until green. `ol tests <ID>` explains what each test checks and why.
+Follow the [course path](paths/course/), not this directory's order: parts interleave with math, systems, and operations modules. For each chapter, read sections 1 to 3 (why, principles, the worked example) first, then the interface, then the solution walkthrough. Try to predict each step of the solution before reading it, and answer the chapter's explain-it-back questions without looking.
 
 ---
 
@@ -52,7 +52,7 @@ A language model is a function from a prefix of token ids to a distribution over
 | p07 | [The Modern Decoder Block](p07-modern-block/) | none yet (B7) | 5 |
 | p08 | [Inference](p08-inference/) | none yet (B8) | 6 |
 | p09 | [Kernels in C](p09-kernels/) | rt.01 the C ABI | 1 (tracer), 6 |
-| p10 | [Serving](p10-serving/) | L10.0 your first endpoint | 1 (tracer), 7 |
+| p10 | [Serving](p10-serving/) | L10.0 the first endpoint | 1 (tracer), 7 |
 | p11 | [Training at Scale](p11-training-at-scale/) | none yet (B11) | 9 |
 | p12 | [Post-Training (optional)](p12-post-training/) | none yet (B12) | 10 |
 | p13 | [Vision foundations](p13-vision/) | L13.1 through L13.6 | 12 |

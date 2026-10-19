@@ -1,3 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	python/tinyllm/post/grpo.py	semantic	pitfall-1	10	y	(hidden until pass)	normalize advantages across the wrong axis
-s02	python/tinyllm/post/grpo.py	semantic	pitfall-2	20	y	drop the clipped objective

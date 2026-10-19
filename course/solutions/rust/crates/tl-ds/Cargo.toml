@@ -1,0 +1,13 @@
+# tl-ds: Robin Hood map (ds.05), lazy binary heap (ds.06), Bloom filter
+# (ds.08); the radix tree (ds.07) joins later. std only (allowed-deps.toml);
+# proptest is for the tests under tests/.
+[package]
+name = "tl-ds"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dev-dependencies]
+proptest = "1"

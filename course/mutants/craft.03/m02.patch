@@ -1,8 +1,0 @@
---- a/primers/craft.03/failpoints.py
-+++ b/primers/craft.03/failpoints.py
-@@ -106,4 +106,4 @@
- 
-     def count(self, name: str) -> int:
-         """How many times name has been evaluated (and counted) so far."""
--        return self.counts.get(name, 0)
-+        return self.counts.get(name, 1)

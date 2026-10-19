@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/docs/runbooks/DataIncident.md" ]; then echo "ops.08: missing docs/runbooks/DataIncident.md" >&2; missing=1; fi
-exit "$missing"

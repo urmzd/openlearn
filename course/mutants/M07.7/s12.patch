@@ -1,8 +1,0 @@
---- a/python/tinyllm/prob/metrics.py
-+++ b/python/tinyllm/prob/metrics.py
-@@ -203,4 +203,4 @@
-         raise ValueError(
-             f"no positive temperature: the NLL is smallest at 1/T = {beta}"
-         )
--    return 1.0 / beta
-+    return beta

@@ -51,10 +51,6 @@ Result = tuple[list[list[float]], list[int], float]
 # ---------------------------------------------------------------------------
 
 
-# Reattempt boundary: everything to SOLUTION-END is
-# all three k-means implementations and their helpers.
-# `ol start reattempt case-studies <id>` strips it and leaves the tests.
-# SOLUTION-BEGIN
 def _dist2(a: Point, b: Point) -> float:
     """Squared Euclidean distance.
 
@@ -326,7 +322,6 @@ def kmeans_best(
 #   3. Mini-batch   when n stops fitting the time budget, update centroids
 #                   from sampled batches instead of the full set.
 # ---------------------------------------------------------------------------
-# SOLUTION-END
 
 
 IMPLEMENTATIONS = (kmeans_slow, kmeans_average, kmeans_best)

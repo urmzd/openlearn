@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-tests="$(cd "$here/.." && pwd)"
-[ -f "$PWD/go/tests/agent-evals/suite.json" ] || { echo "craft.23: go/tests/agent-evals/suite.json is missing" >&2; exit 1; }
-export OL_REPO="$PWD" PYTHONPATH="$tests" PYTHONDONTWRITEBYTECODE=1
-exec uv run --no-project --python ">=3.11" --quiet --with pytest python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

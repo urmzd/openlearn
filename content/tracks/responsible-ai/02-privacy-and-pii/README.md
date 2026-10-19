@@ -47,12 +47,10 @@ Privacy in an ML system is a data-flow property: personal data enters through th
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ethics.02` | [Privacy and PII policy](01-privacy-and-pii-policy.md) | practice | 3 |
 | 2 | `ethics.08` | [Consent and biometric evidence in model cards](02-consent-and-biometric-evidence.md) | practice | 12 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

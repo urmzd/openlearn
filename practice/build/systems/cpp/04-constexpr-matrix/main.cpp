@@ -1,4 +1,5 @@
-// main.cpp - the tests. Given to you; do not edit them to make them pass.
+// main.cpp - the test suite for the reference implementation. Exits 0 when
+// every check holds.
 //
 // Most of these are static_assert, so a wrong implementation fails to COMPILE.
 // That is the point of the exercise: the errors arrive before the program does.

@@ -1,4 +1,4 @@
-# contracts/openapi/openai-subset.v1.yaml: the full serving surface (DESIGN 2.6).
+# contracts/openapi/openai-subset.v1.yaml: the full serving surface .
 # chapter: content/courses/build-an-llm/p10-serving/05-openai-server-on-tokio.md
 #
 # modules: L10.5 (engine tier), L10.9 (tools, response_format), gw.02 to
@@ -10,9 +10,9 @@
 # and the cache, and adds the response headers below. Paths marked
 # `x-tl-tier: engine` exist on the engine tier only.
 #
-# Conformance (`ol conform openapi:v1 --target engine|gateway`) validates
-# every response body against the schema declared here for its path, status,
-# and content type. SSE chunks validate against the `x-tl-chunk` schema of
+# A conforming server (engine or gateway tier) returns, for every path,
+# status, and content type, a response body that validates against the
+# schema declared here. SSE chunks validate against the `x-tl-chunk` schema of
 # the 200 `text/event-stream` content.
 openapi: 3.1.0
 info:

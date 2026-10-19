@@ -1,0 +1,118 @@
+# Reference answers for S-M04: the worked answers the chapter explains.
+
+[q1]
+answer = "12"
+[q2]
+answer = "[-3, 6, -3]"
+[q3]
+answer = "pi/4"
+[q4]
+answer = "7"
+[q5]
+answer = "2*x + 2*y + 2*z = 2"
+[q6]
+answer = "6/sqrt(3)"
+[q7]
+answer = "sqrt(3)/2"
+[q8]
+answer = "true"
+[q9]
+answer = "2*x*y + y*cos(x*y)"
+[q10]
+answer = "x^2 + x*cos(x*y)"
+[q11]
+answer = "[8, 7]"
+[q12]
+answer = "[2*a, 2*b, 2*c]"
+[q13]
+answer = "[3, -2]"
+[q14]
+answer = "6*x^2*y"
+[q15]
+answer = "[1/(1 + exp(y - x)), 1/(1 + exp(x - y))]"
+[q16]
+answer = "[-1, -2]"
+[q17]
+answer = "2"
+[q18]
+answer = "2*x*(w*x - y)"
+[q19]
+answer = "0"
+[q20]
+answer = "5*t^4"
+[q21]
+answer = "2*x"
+[q22]
+answer = "-2*y"
+[q23]
+answer = "-1/2"
+[q24]
+answer = "2*r"
+[q25]
+answer = "[[1, 1], [2, 1]]"
+[q26]
+answer = "r"
+[q27]
+answer = "-36"
+[q28]
+answer = "[4, 6]"
+[q29]
+answer = "14/5"
+[q30]
+answer = "sqrt(13)"
+[q31]
+answer = "[-sqrt(5)/5, -2*sqrt(5)/5]"
+[q32]
+answer = "1"
+[q33]
+answer = "[-1/sqrt(2), -1/sqrt(2)]"
+[q34]
+proof  = "S-M04/q34.md"
+[q35]
+answer = "[[2, 3], [3, 4]]"
+[q36]
+answer = "[[6, 0], [0, 6]]"
+[q37]
+answer = "saddle"
+[q38]
+answer = "minimum"
+[q39]
+answer = "[1, -2]"
+[q40]
+answer = "minimum"
+[q41]
+answer = "false"
+[q42]
+answer = "100"
+[q43]
+answer = "1"
+[q44]
+answer = "1/2"
+[q45]
+answer = "pi"
+[q46]
+answer = "pi"
+[q47]
+answer = "1/3"
+[q48]
+answer = "pi/2"
+[q49]
+answer = "1"
+[q50]
+answer = "2"
+[q51]
+answer = "sqrt(2)"
+[q52]
+answer = "1/2"
+[q53]
+answer = "25"
+[q54]
+answer = "1/3"
+[q55]
+answer = "1"
+[q56]
+answer = "12"
+[q57]
+answer = "[1, 2, 2]"
+[q58]
+proof  = "S-M04/q58.md"

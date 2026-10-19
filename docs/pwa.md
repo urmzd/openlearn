@@ -22,9 +22,9 @@ A content-derived revision identifies each published app edition. A new service 
 
 Downloading an updated course never replaces the previous saved copy with a partial download. A failed network request, hash mismatch, cancellation, or storage limit leaves the previous edition available. Remove old downloads when you no longer need them.
 
-## Code exercises
+## Solutions
 
-Browsers cannot execute this project's native Python, Rust, Go, and C toolchains. Use `practice/bin/ol` for exercises, verified module checks, milestones, and course exports. The PWA handles the reading and study workflow. AI-generated timed desktop sessions and native MCP integration are no longer part of the app.
+The PWA handles the reading and study workflow. Solutions are shown and explained in the chapters, so nothing needs to run in the browser. Use `scripts/course_catalog.py` for course exports. AI-generated timed desktop sessions and native MCP integration are no longer part of the app.
 
 ## Development
 

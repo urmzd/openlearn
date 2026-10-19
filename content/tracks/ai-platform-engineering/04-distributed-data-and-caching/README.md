@@ -173,8 +173,6 @@ These outlive every product in this topic:
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `gw.06` | [Response cache: LRU + TTL, singleflight, tenant-scoped keys](01-response-cache.md) | build | 7 |
-<!-- /ol:chapters -->

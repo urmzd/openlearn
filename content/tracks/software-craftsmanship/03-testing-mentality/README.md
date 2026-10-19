@@ -120,11 +120,11 @@ You cannot fully reproduce production, so test *against* it deliberately rather 
 
 ## The course testing ladder
 
-In the course this topic hosts the testing ladder: one practice module per rung, each placed in the pass where your system first needs that kind of test. Your own tests are graded by mutation testing (what they catch, course principle P10), so each rung is practised on the system you are building, not on toy code.
+In the course this topic hosts the testing ladder: one practice module per kind of test, each placed in the pass where the system first needs that kind of test. A test suite is judged by mutation testing (which planted faults it catches), so each chapter shows a reference suite for a piece of the real system, not toy code, and explains why each test is there and which faults it kills.
 
 | Module | Topic | Kind | Pass |
 |---|---|---|---|
-| `craft.03` | TDD, unit tests, and how you are graded (rungs R0 to R3): includes the mutation-testing primer (what a mutant is, killed vs survived, how the score and required semantic mutants work) before the first mutation grade | practice | 2 |
+| `craft.03` | TDD, unit tests, and judging a suite by mutation: includes the mutation-testing primer (what a mutant is, killed vs survived, how the score and required semantic mutants work) | practice | 2 |
 | `craft.04` | Property-based tests (R4) with Hypothesis, proptest, `rapid`, and `ol_prop.h` | practice | 3 |
 | `craft.07` | Mutation testing in depth: equivalent mutants, semantic mutants from pitfalls, reading survivors | practice | 4 |
 | `craft.05` | Oracles, golden and differential tests, gradcheck as a test (R5) | practice | 5 |
@@ -136,7 +136,6 @@ In the course this topic hosts the testing ladder: one practice module per rung,
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `craft.03` | [TDD, unit tests, and how your tests are graded](01-tdd-unit-tests-and-mutation-grading.md) | practice | 2 |
@@ -148,7 +147,6 @@ In the course this topic hosts the testing ladder: one practice module per rung,
 | 7 | `craft.21` | [Resilience tests (R10)](07-resilience-tests.md) | practice | 8 |
 | 8 | `craft.22` | [Model evals as tests (R8)](08-model-evals-as-tests.md) | practice | 9 |
 | 9 | `craft.23` | [Agent evals as tests (R9)](23-agent-evals-as-tests.md) | practice | 10 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

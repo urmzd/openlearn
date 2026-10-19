@@ -4,28 +4,29 @@ Just enough of each language and tool to build the course system, each placed im
 
 ## Overview
 
-- **What a primer is**: a `practice` module (`lang.01` to `lang.11`): one chapter plus small exercises in your course repo's `primers/<id>/`, checked by `ol check <id>`. The exercises are not part of the system; they are the smallest artifacts that exercise the ideas the next module relies on.
+- **What a primer is**: a `practice` module (`lang.01` to `lang.11`): one chapter plus a small worked solution in [`course/solutions/primers/<id>/`](../../../../course/solutions/primers/), walked through line by line in the chapter. The exercises are not part of the system; they are the smallest artifacts that exercise the ideas the next module relies on.
 - **Prerequisites**: none for `lang.01`; each later primer names its own.
 - **Estimated time**: 2 to 4 hours per primer.
 
 ## Key Takeaways
 
-- Every primer ends in a checked artifact, so "I read about it" becomes "my code passes".
+- Every primer ends in a complete, annotated solution, so "I read about it" becomes "I can explain why each line is there".
 - Each primer teaches only what its first call site needs, and its last section names that call site.
-- Primers have no code call site of their own: later modules list them under `reading`, so they never block an `ol check`. The pass gates (MS-P0, MS-P1) require them.
+- Primers have no code call site of their own: later modules list them under `reading`, and the first module that uses each idea is named in the primer's last section.
 
 ## How to Study
 
-- Read the chapter's sections 1 and 2 before you open an editor; do section 3 on paper.
-- `ol tests <id>` before writing code: each test says why it exists.
-- When a test fails, its `WHY:` line names the pitfall from section 5.
+- Read the chapter's sections 1 and 2 first; do section 3 on paper.
+- Before reading the solution walkthrough, predict each step from the principles; then compare.
+- Answer the "Explain it back" questions without looking, then check the answers.
+- Each pitfall in the table names what the solution does to avoid it: find that line in the quoted code.
 
 ## Primer plan
 
 | ID | Primer | First use | Pass |
 |---|---|---|---|
 | lang.01 | Python and numpy: arrays, dtypes, broadcasting, views vs copies, `uv` projects | L0.0, rt.01 loader, L0.1 | P0 |
-| lang.02 | Shell, git, make, processes: exit codes, signals, environment, pipes | craft.01, every `ol` verdict | P0 |
+| lang.02 | Shell, git, make, processes: exit codes, signals, environment, pipes | craft.01, every script that reads an exit code | P0 |
 | lang.03 | C: memory, pointers, structs, the C11 toolchain, sanitizers, headers and linkage | rt.01, M03.1 | P1 |
 | lang.04 | Rust: ownership, traits, `Result`, cargo workspaces, std TCP | L10.0, ds.05, L1.5 | P1 |
 | lang.05 | HTTP/1.1, JSON, and Server-Sent Events from the wire up | L10.0, gw.00 | P1 |
@@ -38,7 +39,6 @@ Just enough of each language and tool to build the course system, each placed im
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `lang.01` | [Python and numpy: arrays, dtypes, broadcasting, views vs copies, uv projects](01-python-and-numpy.md) | practice | 0 |
@@ -52,4 +52,3 @@ Just enough of each language and tool to build the course system, each placed im
 | 9 | `lang.09` | [Async Rust and tokio: futures, tasks, channels, cancellation, hyper](09-async-rust-and-tokio.md) | practice | 7 |
 | 10 | `lang.10` | [Protocol Buffers and gRPC: schema evolution, unary and streaming RPCs, stubs](10-protocol-buffers-and-grpc.md) | practice | 7 |
 | 11 | `lang.11` | [SQL and SQLite: schema, transactions, WAL mode, indexes, aggregates](11-sql-and-sqlite.md) | practice | 7 |
-<!-- /ol:chapters -->

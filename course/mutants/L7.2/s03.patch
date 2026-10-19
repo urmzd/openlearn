@@ -1,8 +1,0 @@
---- a/python/tinyllm/modern/mlp.py
-+++ b/python/tinyllm/modern/mlp.py
-@@ -56,4 +56,4 @@
-             raise ValueError(f"ffn_dim_multiplier must be positive, got {ffn_dim_multiplier!r}")
-         h = int(ffn_dim_multiplier * h)
-     # Round UP to a multiple: hardware-friendly matmul widths.
--    return multiple_of * ((h + multiple_of - 1) // multiple_of)
-+    return multiple_of * (h // multiple_of)

@@ -1,9 +1,0 @@
---- a/python/tinyllm/io/safetensors.py
-+++ b/python/tinyllm/io/safetensors.py
-@@ -270,5 +270,5 @@
-         else:
-             arr = raw.astype(np.dtype(_STORE[dt]).newbyteorder("="))  # native order, a writable copy
-         # order="C" keeps a scalar's shape () (ascontiguousarray would make it (1,)).
--        tensors[name] = np.array(arr, order="C", copy=True).reshape(shape)
-+        tensors[name] = np.frombuffer(np.array(arr, order="C").tobytes(), dtype=arr.dtype).reshape(shape)
-     return tensors, meta

@@ -1,8 +1,0 @@
---- a/python/tinyllm/infer/constrain.py
-+++ b/python/tinyllm/infer/constrain.py
-@@ -685,5 +685,4 @@
- ) -> tuple[int, float]:
-     masked = apply_mask(logits, c.mask())
-     tok, lp = sample(masked, p, history, rng, prompt)
--    c.advance(tok)
-     return tok, lp

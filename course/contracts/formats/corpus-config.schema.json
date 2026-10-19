@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "corpus config (specs/corpus/<dataset>.toml)",
-  "description": "The parsed TOML that fixes one CorpusBuild (DESIGN 2.9; data.01 to data.07, data.09): sources, filter thresholds, dedup parameters, protected sets for decontamination, sharding, and the tokenizer. Its sha256 (of the file bytes) is the manifest's config_sha256 and part of every activity's idempotency key.",
+  "description": "The parsed TOML that fixes one CorpusBuild (data.01 to data.07, data.09): sources, filter thresholds, dedup parameters, protected sets for decontamination, sharding, and the tokenizer. Its sha256 (of the file bytes) is the manifest's config_sha256 and part of every activity's idempotency key.",
   "type": "object",
   "required": [
     "dataset",

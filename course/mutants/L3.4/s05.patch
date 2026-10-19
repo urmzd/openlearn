@@ -1,9 +1,0 @@
---- a/python/tinyllm/rnn/bi.py
-+++ b/python/tinyllm/rnn/bi.py
-@@ -54,5 +54,5 @@
-     if not isinstance(x, Tensor):
-         x = Tensor(np.asarray(x))
-     out_f, _ = fwd(x, lengths=lengths)
--    out_r, _ = bwd(reverse_padded(x, lengths), lengths=lengths)
-+    out_r, _ = bwd(reverse_padded(x, lengths))
-     return F.concat([out_f, reverse_padded(out_r, lengths)], axis=-1)

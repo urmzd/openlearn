@@ -1,47 +1,39 @@
-<!-- ol:module M09.7 -->
 # Low-precision conversions in standalone C (optional)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M09.7` · side · C · Pass 6 · 2 to 3 h |
-| **You build** | `c/src/numerics/lowp.c`: float32 conversions to and from E4M3, E5M2, bfloat16, and binary16 |
+| **Module** | `M09.7` · side · C · Pass 6 · 1 to 2 h reading |
+| **Solution** | [`course/solutions/c/src/numerics/lowp.c`](../../../../course/solutions/c/src/numerics/lowp.c): `tl_f32_to_e4m3`, `tl_e4m3_to_f32`, `tl_f32_to_e5m2`, `tl_e5m2_to_f32`, `tl_f32_to_bf16`, `tl_bf16_to_f32`, `tl_f32_to_f16`, `tl_f16_to_f32`, and the shared helpers `rne_code` and `decode_mag` |
 | **Contract** | [`tinyllm/numerics.h`](../../../../course/contracts/c/include/tinyllm/numerics.h) |
-| **Tests** | `course/tests/M09.7/test_lowp.c`, compiled into a standalone sanitized C test binary |
 | **Needs** | `M09.4` for the Python value and rounding rules |
 | **Used by** | Optional C modules `L9.4` and `L9.5`, through their C headers only |
-| **Milestone** | `MS-L9`, the optional C module group |
 | **Optional depth** | Compare the OCP FP8 rules with IEEE binary16's infinity and NaN encodings |
 
 ## Key Takeaways
 
-- Encoding a value means rounding its significand in units of the destination format's quantum; `hand_example` checks the exact E4M3 code for 0.3.
-- E4M3 finite overflow saturates, while E5M2 reserves infinity and NaN codes; `fp8_saturation_and_specials` catches mixing these policies.
-- Ties to even depend on the low bit of the retained significand, not the sign; `fp8_ties_to_even` checks both sides of that decision.
-- Every finite encoding should decode and re-encode to the same bits; exhaustive fixed point tests cover both FP8 formats, bfloat16, and binary16.
+- Encoding a value means rounding its significand in units of the destination format's quantum; for E4M3, 0.3 encodes to `0x2A`.
+- E4M3 finite overflow saturates, while E5M2 reserves infinity and NaN codes; one shared overflow branch would give one of them the wrong policy.
+- Ties to even depend on the low bit of the retained significand, not the sign.
+- Every finite encoding decodes and re-encodes to the same bits, in both FP8 formats, bfloat16, and binary16.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M09.7
-ol tests M09.7
-ol check M09.7
-ol diff M09.7
-```
+Sections 1 to 3 state the rounding rule in integer terms and work the E4M3 code of 0.3 by hand. Section 4 fixes the interface. Section 5 walks through `lowp.c`: one integer rounding routine shared by four formats, one decoder, and a thin per-format wrapper for the special values. The solution is a standalone C file built under sanitizers; it does not call Python.
 
 ---
 
 ## 1. Why now
 
-The Python implementation in `M09.4` describes how values map to compact formats. The optional C kernels in `L9.4` and `L9.5` need the same conversions when reading half precision cache values and quantization scales. This exercise keeps those C routines independently testable. It uses ordinary C calls inside one process; data used for cross-language comparison is stored in fixture files.
+The Python implementation in `M09.4` describes how values map to compact formats. The optional C kernels in `L9.4` and `L9.5` need the same conversions when reading half precision cache values and quantization scales. This module keeps those C routines independent: ordinary C calls inside one process, with bit patterns that agree with the Python version on every code.
 
 ## 2. Principles
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
 | $M$ | Number of retained fraction bits | integer: 3 for E4M3, 2 for E5M2, 7 for bfloat16, 10 for binary16 |
-| $B$ | Exponent bias | integer: 7 for E4M3, 15 for E5M2 and binary16 |
+| $B$ | Exponent bias | integer: 7 for E4M3, 15 for E5M2 and binary16, 127 for bfloat16 |
 | $e_{min}$ | Smallest normal exponent, $1-B$ | integer |
 | $q_e$ | Exponent of the spacing between adjacent representable values | integer: $\max(\lfloor\log_2 v\rfloor,e_{min})-M$ |
 
@@ -55,48 +47,198 @@ Special values are format rules applied around that rounding core. In this cours
 
 ## 3. Worked example by hand
 
-For E4M3, $M=3$, $B=7$, and $e_{min}=-6$. The float32 value 0.3 lies between $2^{-2}=0.25$ and $2^{-1}=0.5$, so its binade exponent is $-2$. Thus $q_e=-2-3=-5$ and one destination step is $2^{-5}=0.03125$. Dividing gives $0.3 / 0.03125 = 9.6$, which rounds to 10. The retained significand is 10, or binary `1010`. The low 3 bits are the fraction, `010`; the carry into the exponent makes the final code `0x2A`, whose decoded value is 0.3125. `hand_example` checks both the code and decoded value.
+For E4M3, $M=3$, $B=7$, and $e_{min}=-6$. The float32 value 0.3 lies between $2^{-2}=0.25$ and $2^{-1}=0.5$, so its binade exponent is $-2$. Thus $q_e=-2-3=-5$ and one destination step is $2^{-5}=0.03125$. Dividing gives $0.3 / 0.03125 = 9.6$, which rounds to 10. The retained significand is 10, or binary `1010`. The low 3 bits are the fraction, `010`; the carry into the exponent makes the final code `0x2A`, whose decoded value is 0.3125.
+
+The same computation in integers, as the solution does it: `0.3f` has bits `0x3E99999A`, exponent field 125 and fraction `0x19999A`, so $s = $ `0x99999A` (with the implicit bit) and $e_2 = 125 - 150 = -25$. $s$ has 24 bits, so $\lfloor\log_2 v\rfloor = -25 + 23 = -2$ and $q_e = -5$. The shift is $q_e - e_2 = 20$: $n = s \gg 20 = 9$, the 20 discarded bits are `0x9999A`, more than half (`0x80000`), so $n = 10$. The code is $((q_e + M + B - 1) \ll M) + n = (4 \ll 3) + 10 = 42 = $ `0x2A`.
 
 ## 4. The interface
 
-The header declares scalar encode and decode functions. Encoders receive one `float` and return the exact stored bit pattern in an unsigned integer. Decoders receive that integer and return a float. Array conversion functions apply the scalar rule element by element, with input and output lengths supplied by the caller. No function allocates memory or retains a pointer.
+```c
+/* tinyllm/numerics.h, low-precision section */
+uint8_t  tl_f32_to_e4m3(float x);    float tl_e4m3_to_f32(uint8_t b);
+uint8_t  tl_f32_to_e5m2(float x);    float tl_e5m2_to_f32(uint8_t b);
+uint16_t tl_f32_to_bf16(float x);    float tl_bf16_to_f32(uint16_t b);
+uint16_t tl_f32_to_f16(float x);     float tl_f16_to_f32(uint16_t b);
+```
 
-### What the tests check
+Encoders receive one `float` and return the exact stored bit pattern in an unsigned integer. Decoders receive that integer and return a float, exactly, for every code. No function allocates memory, retains a pointer, or touches the error slot. The header's edge rules: E4M3 saturates $\lvert x\rvert > 448$ and $\pm\infty$ to $\pm 448$ and gives `0x7F` for NaN; E5M2 saturates finite overflow to $\pm 57344$, keeps $\pm\infty$, and gives `0x7F` for NaN; bfloat16 and binary16 overflow to $\pm\infty$ and give the quiet NaNs `0x7FC0` and `0x7E00`.
 
-| Test | KIND | Checks | Why it matters |
+### What a correct solution must handle
+
+| Case | Kind of check | Checks | Why it matters |
 |---|---|---|---|
-| `hand_example` | unit | E4M3 code `0x2A` and decoded value 0.3125 for 0.3 | Locks the section 3 arithmetic to the interface |
-| `fp8_saturation_and_specials` | boundary | E4M3 saturation, E5M2 infinity and NaN behavior | A shared overflow branch gives one format the wrong policy |
-| `fp8_tiny_and_signed_zero` | boundary | subnormal ties and signed zero | Small values otherwise disappear or lose their sign |
-| `fp8_every_code_is_a_fixed_point` | exhaustive | finite E4M3 and E5M2 codes survive decode then encode | Finds errors across exponent transitions |
-| `fp8_ties_to_even` | boundary | midpoint values choose the even code | Truncation and ties-away-from-zero both fail |
-| `bf16_hand_values` | unit | representative bfloat16 values and tie behavior | The high-half shortcut still needs correct rounding |
-| `bf16_every_code_round_trips` | exhaustive | all bfloat16 codes preserve finite values and specials | Checks the full 16-bit format |
-| `f16_hand_values` | unit | binary16 normal and subnormal examples | Subnormal scaling differs from normal scaling |
-| `f16_every_code_round_trips` | exhaustive | all finite binary16 codes are fixed points | Exercises all exponent and fraction combinations |
+| the hand-worked value | unit | E4M3 code `0x2A` and decoded value 0.3125 for 0.3 | Locks the section 3 arithmetic to the interface |
+| FP8 saturation and specials | boundary | E4M3 saturation, E5M2 infinity and NaN behavior | A shared overflow branch gives one format the wrong policy |
+| FP8 tiny values and signed zero | boundary | subnormal ties and signed zero | Small values otherwise disappear or lose their sign |
+| every FP8 code is a fixed point | exhaustive | finite E4M3 and E5M2 codes survive decode then encode | Finds errors across exponent transitions |
+| FP8 ties to even | boundary | midpoint values choose the even code | Truncation and ties-away-from-zero both fail |
+| bfloat16 hand values | unit | representative bfloat16 values and tie behavior | The high-half shortcut still needs correct rounding |
+| every bfloat16 code round-trips | exhaustive | all bfloat16 codes preserve finite values and specials | Checks the full 16-bit format |
+| binary16 hand values | unit | binary16 normal and subnormal examples | Subnormal scaling differs from normal scaling |
+| every binary16 code round-trips | exhaustive | all finite binary16 codes are fixed points | Exercises all exponent and fraction combinations |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Work on the integer significand.** A finite float32 magnitude is exactly $s \cdot 2^{e_2}$ with $s < 2^{24}$: $s = $ `frac | 0x800000` and $e_2 = \text{exp} - 150$ for normals, $s = $ `frac` and $e_2 = -149$ for float32 subnormals. Everything after this is integer arithmetic, which is exact.
+2. **Find the destination quantum.** $\lfloor\log_2 v\rfloor$ is $e_2$ plus the bit length of $s$ minus one; clamp it below at $e_{min}$ and subtract $M$ to get $q_e$ (section 2).
+3. **Round by a shift with round-half-even.** $v / 2^{q_e} = s \cdot 2^{e_2 - q_e}$, a right shift of $s$ by $q_e - e_2$. Compare the bits shifted out with half: more rounds up, equal rounds up only if the kept integer is odd.
+4. **Let addition build the code.** $((q_e + M + B - 1) \ll M) + n$ is the same formula as `M09.4`'s Python: a subnormal has field 0 and code $n$, a carry from $2^{M+1} - 1$ to $2^{M+1}$ moves into the exponent field.
+5. **Apply each format's specials around the core.** NaN, infinity, sign, and overflow differ between formats, so each wrapper extracts the sign and absolute bits, answers NaN and infinity first, calls the shared rounder, then clamps or overflows by its own rule.
+6. **Decode exactly.** `ldexpf` of a small integer by a power of two is exact for every code of these formats, normal or subnormal.
+
+### The code, annotated
+
+```c
+/* Rounded magnitude code of the finite, non-negative float32 with bits
+ * `abs` in a format with M fraction bits and bias B. Never overflows a
+ * uint32 for M <= 10 and B <= 127. */
+static uint32_t rne_code(uint32_t abs, int M, int B) {
+    uint32_t exp = abs >> 23, frac = abs & 0x7FFFFFu;
+    uint32_t s;
+    int e2;
+    if (exp == 0) {
+        if (frac == 0) return 0; /* +0 */
+        s = frac;                /* subnormal float32: 0.frac * 2^-126 */
+        e2 = -149;
+    } else {
+        s = frac | 0x800000u; /* normal: 1.frac * 2^(exp - 127) */
+        e2 = (int)exp - 150;
+    }
+    int bits = 0; /* bit length of s */
+    for (uint32_t t = s; t != 0; t >>= 1) bits++;
+    int floorlog2 = e2 + bits - 1;
+    int emin = 1 - B;
+    int qe = (floorlog2 > emin ? floorlog2 : emin) - M;
+    int shift = qe - e2; /* > 0: the target has fewer fraction bits */
+    uint32_t n;
+    if (shift > 24) {
+        n = 0; /* v < 2^(qe - 1), half a quantum: rounds to 0 */
+    } else {
+        uint32_t half = 1u << (shift - 1);
+        uint32_t rem = s & ((half << 1) - 1u);         /* the bits shifted out */
+        n = s >> shift;
+        if (rem > half || (rem == half && (n & 1u))) n++; /* ties to even */
+    }
+    if (n == 0) return 0;
+    return ((uint32_t)(qe + M + B - 1) << M) + n;     /* carries into the exponent */
+}
+```
+
+The shift is always positive because every destination has fewer than 23 fraction bits (and bfloat16's $e_{min} = -126$ equals float32's). The `shift > 24` branch is both a correctness and a safety rule: $s < 2^{24}$, so a shift of 25 or more leaves less than half a quantum, which rounds to 0, and it also keeps `1u << (shift - 1)` from reaching an undefined shift of 32 or more. For E4M3 the boundary case is $\lvert x\rvert = 2^{-10}$, exactly half the smallest subnormal $2^{-9}$: here $n = 0$, `rem == half`, $n$ is even, so the result is 0, the header's "$\lvert x\rvert \le 2^{-10}$ gives $\pm 0$".
+
+```c
+static float decode_mag(uint32_t code, int M, int B) {
+    uint32_t ef = code >> M, mant = code & ((1u << M) - 1u);
+    if (ef == 0) return ldexpf((float)mant, 1 - B - M);                  /* subnormal */
+    return ldexpf((float)((1u << M) + mant), (int)ef - B - M);           /* implicit 1 */
+}
+
+uint8_t tl_f32_to_e4m3(float x) {
+    uint32_t u = f32_bits(x), sign = (u >> 24) & 0x80u, abs = u & 0x7FFFFFFFu;
+    if (abs > 0x7F800000u) return 0x7F; /* NaN */
+    if (abs == 0x7F800000u) return (uint8_t)(sign | 0x7Eu); /* inf saturates */
+    uint32_t c = rne_code(abs, 3, 7);
+    if (c > 0x7Eu) c = 0x7Eu; /* above 448: saturate (0x7F is NaN) */
+    return (uint8_t)(sign | c);
+}
+
+uint8_t tl_f32_to_e5m2(float x) {
+    uint32_t u = f32_bits(x), sign = (u >> 24) & 0x80u, abs = u & 0x7FFFFFFFu;
+    if (abs > 0x7F800000u) return 0x7F; /* NaN */
+    if (abs == 0x7F800000u) return (uint8_t)(sign | 0x7Cu); /* inf stays inf */
+    uint32_t c = rne_code(abs, 2, 15);
+    if (c > 0x7Bu) c = 0x7Bu; /* finite overflow saturates to 57344 */
+    return (uint8_t)(sign | c);
+}
+```
+
+The wrappers share a shape. The sign is taken from bit 31 and moved to the destination's top bit, so `-0.0f` (bits `0x80000000`) becomes `0x80` through `rne_code`'s $+0$ path: the sign survives because it never went through the arithmetic. NaN and infinity are recognized by comparing the absolute bits with `0x7F800000` before rounding, since `rne_code` assumes a finite input. The clamp after rounding is the per-format overflow policy: both FP8 formats saturate, to `0x7E` (448) and `0x7B` (57344), which keeps a rounding carry from ever producing E4M3's NaN `0x7F` or E5M2's infinity `0x7C`.
+
+```c
+uint16_t tl_f32_to_bf16(float x) {
+    uint32_t u = f32_bits(x), sign = (u >> 16) & 0x8000u, abs = u & 0x7FFFFFFFu;
+    if (abs > 0x7F800000u) return 0x7FC0; /* NaN: quiet, sign dropped */
+    if (abs == 0x7F800000u) return (uint16_t)(sign | 0x7F80u);
+    uint32_t c = rne_code(abs, 7, 127);
+    if (c > 0x7F80u) c = 0x7F80u; /* overflow to inf */
+    return (uint16_t)(sign | c);
+}
+
+float tl_bf16_to_f32(uint16_t b) {
+    uint32_t u = (uint32_t)b << 16; /* bf16 is the top half of a float32 */
+    float x;
+    memcpy(&x, &u, sizeof x);
+    return x;
+}
+```
+
+bfloat16 has float32's exponent, so with $M = 7$, $B = 127$ the shared rounder is exactly "round the top 16 bits, the low 16 decide": the shift is always 16. Overflow goes to infinity (`0x7F80`), the IEEE rule, rather than saturating. Decoding is a 16-bit shift because bf16 *is* the top half of a float32. `tl_f32_to_f16` and `tl_f16_to_f32` are the same pattern with $M = 10$, $B = 15$, infinity `0x7C00`, and NaN `0x7E00`; the E4M3 and E5M2 decoders check their NaN and infinity codes, then call `decode_mag` on the low 7 bits and apply the sign.
+
+Full solution: [`lowp.c`](../../../../course/solutions/c/src/numerics/lowp.c).
+
+### Why this solution
+
+- **One rounder for four formats.** Writing each conversion separately quadruples the places a tie or a subnormal can be wrong. Parameterizing by $(M, B)$ makes the formats differ only where the contract says they differ: the special values and the overflow policy.
+- **Integer arithmetic over float tricks.** Adding and subtracting a magic constant (`x + 0x1.8p23f`-style rounding) or converting through `double` would also round, but each depends on the floating-point environment and FMA contraction. The integer shift-and-compare is exact, sanitizer-clean, and identical on every platform.
+- **Bits over values, unlike `M09.4`.** The Python twin works on float64 values with `frexp`, `ldexp`, and `rint`; C has no vectorized `rint` to the format, and bit manipulation avoids any intermediate rounding. Both compute the same $q_e$, $n$, and code formula, which is why they agree on every input.
+- **Cost.** Each encode is a bit-length loop of at most 24 iterations, a shift, and a compare; a production version would use `__builtin_clz` for the bit length. The tradeoff accepted is a few cycles for portability, since these conversions are not on the hottest path of the optional kernels.
+
+### Explain it back
+
+**1. Why does `rne_code` compare the discarded bits with `half` and then test `n & 1`?**
+
+<details><summary>Answer</summary>
+
+Round to nearest needs to know whether the discarded part is below, at, or above half a quantum. Above half rounds up, below rounds down. Exactly half is a tie, and ties-to-even rounds up only when the kept integer $n$ is odd, so the result's last bit is 0. The sign plays no part: the magnitude is rounded and the sign reattached.
+
+</details>
+
+**2. How does a rounding carry move into the exponent field without special code?**
+
+<details><summary>Answer</summary>
+
+The code is $((q_e + M + B - 1) \ll M) + n$, where a normal $n$ lies in $[2^M, 2^{M+1})$ and includes the implicit bit. If rounding takes $n$ to $2^{M+1}$, the addition adds $2 \cdot 2^M$, which is one more in the exponent field and a zero fraction: exactly the next binade's first value.
+
+</details>
+
+**3. Why is the `shift > 24` branch needed?**
+
+<details><summary>Answer</summary>
+
+$s < 2^{24}$, so with a shift of 25 or more the value is below half a quantum and must round to 0. Without the branch, `1u << (shift - 1)` could shift by 32 or more for tiny inputs in formats with a small $e_{min}$, which is undefined behavior in C and would trip UBSan.
+
+</details>
+
+**4. Why do E4M3 and E5M2 clamp to different codes, and why after rounding?**
+
+<details><summary>Answer</summary>
+
+E4M3 has no infinity and uses `0x7F` for NaN, so its largest finite code is `0x7E` (448). E5M2 keeps IEEE infinity at `0x7C`, so its largest finite code is `0x7B` (57344). Clamping after rounding catches both a large input and a value just below the limit that rounds up past it; clamping the input first would miss the second case.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Always incrementing on a half-way remainder | Alternating midpoint values round away from even | `fp8_ties_to_even` |
-| Applying E5M2 infinity rules to E4M3 | Large finite values become infinity instead of 448 | `fp8_saturation_and_specials` |
-| Using the normal quantum below $e_{min}$ | Smallest subnormal codes decode at the wrong scale | `fp8_tiny_and_signed_zero`, `f16_every_code_round_trips` |
-| Dropping the sign before handling zero | `-0.0` returns as positive zero | `fp8_tiny_and_signed_zero` |
+| Always incrementing on a half-way remainder | Alternating midpoint values round away from even | `rne_code` increments on a tie only when `n & 1`; step 3 |
+| Applying E5M2 infinity rules to E4M3 | Large finite values become infinity instead of 448 | each format has its own wrapper and clamp (`0x7E` vs `0x7B`); step 5 |
+| Using the normal quantum below $e_{min}$ | Smallest subnormal codes decode at the wrong scale | `qe` clamps at $e_{min}$ and `decode_mag` drops the implicit 1 when `ef == 0`; steps 2 and 6 |
+| Dropping the sign before handling zero | `-0.0` returns as positive zero | the sign bit is extracted first and ORed back after rounding; step 5 |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `M09.4` | Defines the Python-side format rules and produces comparison vectors |
+| Back | `M09.4` | Defines the Python-side format rules with the same code formula |
 | Forward | `L9.4` | Decodes half precision values stored in the optional paged-attention C exercise |
 | Forward | `L9.5` | Decodes half precision quantization scales in the optional fused matmul C exercise |
 
-Skipping this exercise leaves the C modules that use these conversion routines without their declared prerequisite. The optional milestone remains separate from the production engine milestones.
-
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This solution | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `lowp.c` | Device conversion instructions | Hardware support can round or flush subnormals differently | OCP FP8 and IEEE 754 specifications |
-| exhaustive format tests | Compiler and device conformance suites | Runs the same vectors on additional architectures | Add a standalone C target and compare output files |
+| exhaustive format checks | Compiler and device conformance suites | Runs the same vectors on additional architectures | Add a standalone C target and compare output files |

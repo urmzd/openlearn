@@ -109,5 +109,4 @@ def image_token_count(h: int, w: int, cfg: TilingConfig, detail: Literal["low", 
     'auto'/'high' the unpadded tile grid's cells and one newline per row of
     it; 'low' adds one newline. single: image_seq_len. Wrapper tokens (the
     fake token, row tags, the global tag, newlines in the text) are not
-    counted: their token count depends on the tokenizer (DEVIATIONS
-    B14L-05). ValueError for h or w < 1."""
+    counted: their token count depends on the tokenizer. ValueError for h or w < 1."""

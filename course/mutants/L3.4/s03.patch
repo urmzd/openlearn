@@ -1,8 +1,0 @@
---- a/python/tinyllm/rnn/bi.py
-+++ b/python/tinyllm/rnn/bi.py
-@@ -55,4 +55,4 @@
-         x = Tensor(np.asarray(x))
-     out_f, _ = fwd(x, lengths=lengths)
-     out_r, _ = bwd(reverse_padded(x, lengths), lengths=lengths)
--    return F.concat([out_f, reverse_padded(out_r, lengths)], axis=-1)
-+    return F.concat([reverse_padded(out_r, lengths), out_f], axis=-1)

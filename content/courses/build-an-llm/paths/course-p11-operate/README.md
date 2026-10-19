@@ -4,6 +4,6 @@ v1.0.0: migrations (KV v2, API v2 as build modules), upgrades, bisect, chaos, se
 
 **Part of**: [the course](../course/). **Needs**: [Pass 10](../course-p10-agents/).
 
-**Gate**: [MS-P11 (includes MS-ops)](milestone.md).
+**After this pass**: [what the system does](milestone.md): v1.0.0 operated: migrations, upgrades, bisect, chaos, security, docs, reviews, and a mock engagement.
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p11-p11-operate` to see progress.
+Stages, chapter links, and what "done" means for each are in [`path.tsv`](path.tsv).

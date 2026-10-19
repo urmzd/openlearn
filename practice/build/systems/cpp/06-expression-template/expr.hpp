@@ -1,6 +1,6 @@
 // expr.hpp - expression templates: lazy evaluation with no runtime cost.
 //
-// You write the marked regions. main.cpp tests them.
+// The reference implementation. main.cpp tests it.
 //
 // The problem being solved: with ordinary operator overloading,
 //
@@ -91,21 +91,17 @@ class Vec : public Expr<Vec> {
   // loop over the whole tree, no temporaries.
   template <typename E>
   Vec(const Expr<E>& e) {
-    // SOLUTION-BEGIN
     const E& expr = e.self();
     data_.resize(expr.size());
     for (std::size_t i = 0; i < data_.size(); ++i) data_[i] = expr[i];
-    // SOLUTION-END
   }
 
   template <typename E>
   Vec& operator=(const Expr<E>& e) {
-    // SOLUTION-BEGIN
     const E& expr = e.self();
     data_.resize(expr.size());
     for (std::size_t i = 0; i < data_.size(); ++i) data_[i] = expr[i];
     return *this;
-    // SOLUTION-END
   }
 
   double operator[](std::size_t i) const { return data_[i]; }
@@ -141,21 +137,17 @@ class BinaryExpr : public Expr<BinaryExpr<L, R, Op>> {
   BinaryExpr(const L& l, const R& r) : l_(l), r_(r) {}
 
   double operator[](std::size_t i) const {
-    // SOLUTION-BEGIN
     // The recursion happens here, at compile time. For (a+b)*c this expands
     // into a[i] + b[i] then times c[i], all inlined into one expression with
     // no function calls and no intermediate storage.
     return Op::apply(l_[i], r_[i]);
-    // SOLUTION-END
   }
 
   std::size_t size() const {
-    // SOLUTION-BEGIN
     // A Scalar reports 0, so the length comes from whichever operand is a
     // real array. Taking the left operand's size unconditionally breaks
     // `2.0 * v`.
     return l_.size() != 0 ? l_.size() : r_.size();
-    // SOLUTION-END
   }
 
  private:

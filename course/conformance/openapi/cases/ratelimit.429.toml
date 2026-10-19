@@ -1,8 +1,0 @@
-id       = "ratelimit.429"
-title    = "A burst over the limit gets 429 with Retry-After and x-ratelimit-* headers"
-versions = ["v1", "v2"]
-tiers    = ["gateway"]
-check    = "ratelimit_429"
-
-[params]
-burst = 64

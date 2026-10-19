@@ -1,0 +1,38 @@
+# Reference answers for S-M10b: the worked answers the chapter explains.
+
+[q1]
+answer = "[1, 1]"
+[q2]
+answer = "-2"
+[q3]
+answer = "1"
+[q4]
+answer = "2"
+[q5]
+answer = "0"
+[q6]
+answer = "true"
+[q7]
+answer = "1"
+[q8]
+answer = "4"
+[q9]
+answer = "0"
+[q10]
+answer = "false"
+[q11]
+answer = "1"
+[q12]
+answer = "lam - lam^2/4"
+[q13]
+answer = "1"
+[q14]
+answer = "true"
+[q15]
+answer = "[E/(1 + E), 1/(1 + E)]"
+[q16]
+answer = "1"
+[q17]
+answer = "log(2)"
+[q18]
+proof  = "S-M10b/q18.md"

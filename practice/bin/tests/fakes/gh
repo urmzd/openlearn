@@ -1,4 +1,0 @@
-#!/bin/sh
-# fake gh: `gh run list ...` prints $FAKE_GH_JSON
-echo "$@" >> "${FAKE_GH_LOG:-/dev/null}"
-printf '%s\n' "${FAKE_GH_JSON:-[]}"

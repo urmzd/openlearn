@@ -1,46 +1,35 @@
-<!-- ol:module L0.5 -->
 # Training loop and the autograd bigram
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L0.5` · build · Python · Pass 2 · 4 to 6 h |
-| **You build** | `python/tinyllm/train/loop.py`: `DataLoader`, `train_step`, `evaluate`; and you take over `python/tinyllm/lm/bigram.py` from `L0.0`: `BigramLogits` (the table as a trainable `Module`) and `BigramLM.sample` on PCG32 |
+| **Module** | `L0.5` · build · Python · Pass 2 · 2 to 3 h |
+| **Solution** | [`loop.py`](../../../../course/solutions/python/tinyllm/train/loop.py): `DataLoader`, `train_step`, `evaluate` · [`bigram.py`](../../../../course/solutions/python/tinyllm/lm/bigram.py), taken over from `L0.0` (its earlier version is [`history/L0.0/`](../../../../course/solutions/history/L0.0/)): `BigramLogits` (the table as a trainable `Module`), `to_lm`, and `BigramLM.sample` on PCG32 · the `train` verbs in [`cli_train.py`](../../../../course/solutions/entry/python/tinyllm/cli_train.py) |
 | **Contract** | [`course/contracts/py/tinyllm/train/loop.pyi`](../../../../course/contracts/py/tinyllm/train/loop.pyi) · [`course/contracts/py/tinyllm/lm/bigram.pyi`](../../../../course/contracts/py/tinyllm/lm/bigram.pyi) |
-| **Tests** | `course/tests/L0.5/` (what they check: section 4); `L0.0`'s tests keep running against `bigram.py` as your regression suite |
-| **Needs** | `L0.1` `no_grad` · `L0.2` `F.embedding` · `L0.3` the losses the tests train with · `L0.4` `Module`, `Linear` · `M06.3` PCG32 · `M10.2` SGD · `M10.3` AdamW · `M10.4` `clip_grad_norm_` · `M02.2` `EMA` (the smoothed loss) · `rt.01` and `M03.1` (`BigramLM.logits` still runs your C matmul) · reading: `L0.0` (or `--ref-deps`) |
-| **Used by** | `L10.0` your engine serves the table this module trains (inherited from `L0.0` with `bigram.py`) · `L0.6` runs `L0.0`'s suite, `bigram.py` included, as its regression · later: `L2.2`, `L3.6`, `L6.1`, and the capstone train with this loop · later: `L5.5`, `L6.7` |
-| **Milestone** | `MS-L0` (step 2: the autograd bigram reaches the count MLE; step 3: the digits MLP) |
+| **Needs** | `L0.1` `no_grad` · `L0.2` `F.embedding` · `L0.3` the losses the loop trains with · `L0.4` `Module`, `Linear` · `M06.3` PCG32 · `M10.2` SGD · `M10.3` AdamW · `M10.4` `clip_grad_norm_` · `M02.2` `EMA` (the smoothed loss) · `rt.01` and `M03.1` (the C matmul of Pass 1) · reading: `L0.0` |
+| **Used by** | `L10.0` the engine serves the table this module trains (inherited from `L0.0` with `bigram.py`) · `L0.6` keeps `L0.0`'s behaviour of `bigram.py` as its regression · later: `L2.2`, `L3.6`, `L6.1`, and the capstone train with this loop · later: `L5.5`, `L6.7`. Together with `L0.6`, this module closes Part 0 end to end: the autograd bigram reaches the count MLE, and the digits MLP trains through the loader |
 | **Optional depth** | Karpathy, "A Recipe for Training Neural Networks" (2019, free); Goodfellow, Bengio, Courville, *Deep Learning*, ch. 8 |
 
 ## Key Takeaways
 
-- One training step is zero the gradients, compute the loss, refuse a non-finite loss, backpropagate, clip, update: in that order, every time (`test_hand_example_train_step`, `test_zero_grad_every_step`, `test_nonfinite_loss_stops_before_the_update`).
-- Data order comes from the seeded PCG32 through the spec's Fisher-Yates shuffle, a fresh permutation each epoch, so two runs with one seed are bitwise identical (`test_dataloader_shuffle_is_the_spec_permutation`, `test_same_seed_bitwise_identical`).
-- Evaluation weights every batch by its rows, runs in eval mode under `no_grad`, and always hands the model back in the mode it found it (`test_evaluate_weights_by_rows_and_restores_mode`, `test_evaluate_restores_mode_after_an_error`).
-- The bigram is a convex problem whose minimum is the unsmoothed count model; your autograd reaches its NLL within $10^{-3}$ nats (`test_autograd_bigram_reaches_the_count_mle`).
-- `sample` now draws exactly as your Rust engine does, so a seed gives the same text in Python and Rust (`test_sample_draws_like_the_engine`).
+- One training step is zero the gradients, compute the loss, refuse a non-finite loss, backpropagate, clip, update: in that order, every time.
+- Data order comes from the seeded PCG32 through the spec's Fisher-Yates shuffle, a fresh permutation each epoch, so two runs with one seed are bitwise identical.
+- Evaluation weights every batch by its rows, runs in eval mode under `no_grad`, and always hands the model back in the mode it found it.
+- The bigram is a convex problem whose minimum is the unsmoothed count model; the autograd-trained table reaches its NLL within $10^{-3}$ nats.
+- `sample` now draws exactly as the Rust engine does, so a seed gives the same text in Python and Rust.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L0.5              # stubs loop.py; bigram.py is yours already: ol start prints its contract diff
-ol tests L0.5              # read the test catalog first: rung R0
-ol check L0.5              # also reruns L0.0's smoke tests against your bigram.py
-ol check L0.5 --ref-deps   # only if a dependency is not passing yet
-ol diff  L0.5              # after passing: your code against the reference
-```
+Sections 1 to 3 build the training step and the bigram's optimum from first principles and work both by hand. Section 4 fixes the interface and lists what a correct solution must handle. Section 5 walks through `loop.py` and the new parts of `bigram.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
-`ol start` never overwrites your `bigram.py`. It prints what the contract adds (`BigramLogits`, the PCG32 sampler): edit your Pass 1 file in place.
-
-Your CLI gains two verbs, fixed by `course/milestones/MS-L0.toml`: `train bigram --method autograd --data F --out DIR` (full-batch training of `BigramLogits` on every byte pair of `F`, then the same model directory as Pass 1, from `to_lm()`) and `train mlp --data digits.npz --hidden 64 --epochs 30 --ckpt DIR` (a two-layer ReLU MLP on the UCI digits through `DataLoader` and `train_step`; standardize each pixel with the training set's mean and standard deviation). `--method counts` stays the Pass 1 verb.
+The solution's command-line entry point, [`cli_train.py`](../../../../course/solutions/entry/python/tinyllm/cli_train.py), uses this module for two verbs: `train bigram --method autograd --data F --out DIR` (full-batch AdamW on every byte pair of `F`, then the same model directory as Pass 1, from the trained table) and `train mlp --data digits.npz --hidden 64 --epochs 30 --ckpt DIR` (a two-layer ReLU MLP on the UCI digits through `DataLoader`, with each pixel standardized by the training set's mean and standard deviation). `--method counts` stays the Pass 1 verb.
 
 ---
 
 ## 1. Why now
 
-`L0.1` to `L0.4` give you every piece of a training run and no run. The digits MLP of `MS-L0` needs batches drawn in a reproducible order, a step that does the five things of a step in the right order, and an evaluation that does not train. And the tracer model your engine has served since Pass 1 is still a table of counts: it cannot be improved, only recounted. This module writes the loop every later model trains with, then retrains the tracer's own table with it. If the loop is right, gradient descent finds the count model again (the bigram problem has one minimum, and the counts are it), which makes the bigram the most precise end-to-end test of your autograd you will ever have: the answer is known to many digits.
+`L0.1` to `L0.4` give you every piece of a training run and no run. The digits MLP that closes Part 0 needs batches drawn in a reproducible order, a step that does the five things of a step in the right order, and an evaluation that does not train. And the tracer model the engine has served since Pass 1 is still a table of counts: it cannot be improved, only recounted. This module writes the loop every later model trains with, then retrains the tracer's own table with it. If the loop is right, gradient descent finds the count model again (the bigram problem has one minimum, and the counts are it), which makes the bigram the most precise end-to-end test of the autograd there is: the answer is known to many digits.
 
 ## 2. Principles
 
@@ -77,9 +66,9 @@ Your CLI gains two verbs, fixed by `course/milestones/MS-L0.toml`: `train bigram
 
 $$\mathcal{L}(W) = \frac{1}{N}\sum_{i,j} C_{ij}\,\big(\log\textstyle\sum_k e^{W_{ik}} - W_{ij}\big),$$
 
-a sum over rows of convex functions (log-sum-exp is convex, $-W_{ij}$ is linear). Setting the gradient of row $i$ to zero gives $R_i\,\mathrm{softmax}(W_i) = C_i$, so at the minimum $\mathrm{softmax}(W_i)_j = C_{ij}/R_i$: the **unsmoothed** count model. Its NLL, $-\frac{1}{N}\sum_{ij} C_{ij}\log(C_{ij}/R_i)$, is the floor no bigram can beat on that text. Pass 1's add-one model sits slightly above it; your trained table must get within $10^{-3}$ nats of the floor, never below it. Pairs that never occur push their logits toward $-\infty$ forever, so the loss approaches the floor without reaching it; AdamW (`M10.3`) with a large learning rate gets there in a few hundred full-batch steps.
+a sum over rows of convex functions (log-sum-exp is convex, $-W_{ij}$ is linear). Setting the gradient of row $i$ to zero gives $R_i\,\mathrm{softmax}(W_i) = C_i$, so at the minimum $\mathrm{softmax}(W_i)_j = C_{ij}/R_i$: the **unsmoothed** count model. Its NLL, $-\frac{1}{N}\sum_{ij} C_{ij}\log(C_{ij}/R_i)$, is the floor no bigram can beat on that text. Pass 1's add-one model sits slightly above it; the trained table gets within $10^{-3}$ nats of the floor, never below it. Pairs that never occur push their logits toward $-\infty$ forever, so the loss approaches the floor without reaching it; AdamW (`M10.3`) with a large learning rate gets there in a few hundred full-batch steps.
 
-**Sampling like the engine.** `BigramLM.sample` keeps its signature and switches its generator: one `PCG32(seed)` (stream 54) per call, one `uniform()` per token, and the Rust engine's draw (`L10.0`): weights $w_j = e^{z_j - \max z}$ of $z = \text{row}/\tau$ in float64, summed in id order, and the first $j$ whose running sum exceeds $u \cdot \sum_j w_j$. Same arithmetic, same order, same generator: `generate --seed S` and the engine's completion with seed `S` give the same ids. `to_lm()` turns the trained module into a `BigramLM` holding a float32 **copy** of the table, the object your CLI saves as `bigram.weight`.
+**Sampling like the engine.** `BigramLM.sample` keeps its signature and switches its generator: one `PCG32(seed)` (stream 54) per call, one `uniform()` per token, and the Rust engine's draw (`L10.0`): weights $w_j = e^{z_j - \max z}$ of $z = \text{row}/\tau$ in float64, summed in id order, and the first $j$ whose running sum exceeds $u \cdot \sum_j w_j$. Same arithmetic, same order, same generator: `generate --seed S` and the engine's completion with seed `S` give the same ids. `to_lm()` turns the trained module into a `BigramLM` holding a float32 **copy** of the table, the object the CLI saves as `bigram.weight`.
 
 ## 3. Worked example by hand
 
@@ -97,7 +86,7 @@ a sum over rows of convex functions (log-sum-exp is convex, $-W_{ij}$ is linear)
 2. Row `a` makes three predictions (the next tokens are `b`, `c`, `b`). Each contributes $p - e_{\text{next}}$, and the mean divides by 6: $\big(3 \cdot [\tfrac13, \tfrac13, \tfrac13] - [0, 2, 1]\big)/6 = [\tfrac16, -\tfrac16, 0]$. Descent raises $W_{ab}$ and lowers $W_{aa}$; $W_{ac}$ is already right on average.
 3. The floor: row `a` goes to $b$ twice and $c$ once ($2/3$, $1/3$), row `b` to $a$ and $b$ once each, row `c` to $a$ always. The NLL is $\frac{1}{6}\big(2\ln\tfrac32 + \ln 3 + 2\ln 2 + 0\big) = \frac{3\ln 3}{6} = 0.5493$, below the add-one model's $0.8351$ of `L0.0`.
 
-These are `test_hand_example_train_step`, `test_zero_grad_every_step`, `test_clip_reports_the_norm_and_clips`, and `test_hand_example_bigram_gradient`.
+These numbers are the first cases a correct solution must reproduce.
 
 ## 4. The interface
 
@@ -115,54 +104,273 @@ class BigramLogits(Module):
     def __init__(self, vocab: int = 256); def forward(self, ids) -> Tensor; def to_lm(self) -> BigramLM
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_train_step` | unit | section 3: loss 1, gradients $-3$ and $-2$, then $w = 2.3$, $b = 0.2$ | you and the test agree on a step |
-| `test_zero_grad_every_step` | unit | the second step uses $-0.9$ and $-0.7$ alone | gradients accumulate (`L0.1`) |
-| `test_clip_reports_the_norm_and_clips` | unit | `grad_norm` is $\sqrt{13}$, the update uses clipped gradients | long runs stay stable (`M10.4`) |
-| `test_nonfinite_loss_stops_before_the_update` | boundary | a `nan` loss raises and no weight moves | one bad batch cannot poison the run |
-| `test_loss_fn_extras_and_shape` | boundary | `(loss, metrics)` pairs are reported; a vector loss is an error | accuracy beside the loss |
-| `test_loss_ema_is_the_debiased_average` | unit | with $\beta = 0.9$ the losses 1 and 0.145 report `loss_ema` 1.0 and 0.55; a `nan` loss never reaches the EMA | the smoothed curve every later training log plots (`M02.2`) |
-| `test_dataloader_batches_in_order` | unit | in-order batches, `drop_last`, `len` | evaluation sees every row once |
-| `test_dataloader_shuffle_is_the_spec_permutation` | property | the order is the spec's Fisher-Yates, new each epoch | the Go and Rust ports shuffle the same way |
-| `test_dataloader_rejects_bad_input` | boundary | unequal lengths, shuffle without a generator | silent mispairing |
-| `test_evaluate_weights_by_rows_and_restores_mode` | unit | a 2-row batch counts 2 rows; eval mode, `no_grad`, mode restored | honest validation numbers (`L6.7`) |
-| `test_evaluate_restores_mode_after_an_error` | boundary | an exception still restores training mode | dropout cannot stay off |
-| `test_learns_xor` | learning | a 2-8-1 tanh MLP solves XOR and reaches the reference loss bar | every piece of `L0.1` to `L0.5` on one path |
-| `test_learns_two_moons` | learning | minibatch AdamW with clipping reaches the bar and 95% accuracy | a real minibatch run |
-| `test_same_seed_bitwise_identical` | property | same seed, identical weights and metrics; another seed differs | resuming (`L0.6`) and regression tests |
-| `test_hand_example_bigram_gradient` | unit | section 3: NLL $\ln 3$, row `a`'s gradient $[1/6, -1/6, 0]$ | the bigram trains the right rows |
-| `test_forward_is_a_row_gather` | unit | logits are table rows for 1-D and `[B, T]` ids; bad ids fail | the trainer feeds token windows |
-| `test_autograd_bigram_reaches_the_count_mle` | property | within $10^{-3}$ nats of the floor, never below | `MS-L0` step 2 in miniature |
-| `test_to_lm_serves_the_same_table` | unit | `to_lm()` gives the same logits through your C matmul, as a copy | the engine serves what you trained |
-| `test_sample_draws_like_the_engine` | unit | ids equal the engine's PCG32 draw at three temperatures | Python and Rust agree on a seed |
+| the hand-worked step | unit | section 3: loss 1, gradients $-3$ and $-2$, then $w = 2.3$, $b = 0.2$ | everyone agrees on what a step is |
+| zero_grad every step | unit | the second step uses $-0.9$ and $-0.7$ alone | gradients accumulate (`L0.1`) |
+| clipping reports the norm | unit | `grad_norm` is $\sqrt{13}$, the update uses clipped gradients | long runs stay stable (`M10.4`) |
+| a non-finite loss stops before the update | boundary | a `nan` loss raises and no weight moves | one bad batch cannot poison the run |
+| loss_fn extras and shape | boundary | `(loss, metrics)` pairs are reported; a vector loss is an error | accuracy beside the loss |
+| loss_ema is the debiased average | unit | with $\beta = 0.9$ the losses 1 and 0.145 report `loss_ema` 1.0 and 0.55; a `nan` loss never reaches the EMA | the smoothed curve every later training log plots (`M02.2`) |
+| in-order batches | unit | in-order batches, `drop_last`, `len` | evaluation sees every row once |
+| the shuffle is the spec's permutation | property | the order is the spec's Fisher-Yates, new each epoch | the Go and Rust ports shuffle the same way |
+| bad loader input | boundary | unequal lengths, shuffle without a generator | silent mispairing |
+| evaluation weights by rows and restores the mode | unit | a 2-row batch counts 2 rows; eval mode, `no_grad`, mode restored | honest validation numbers (`L6.7`) |
+| evaluation restores the mode after an error | boundary | an exception still restores training mode | dropout cannot stay off |
+| learns XOR | learning | a 2-8-1 tanh MLP solves XOR | every piece of `L0.1` to `L0.5` on one path |
+| learns two moons | learning | minibatch AdamW with clipping reaches 95% accuracy | a real minibatch run |
+| same seed, bitwise identical | property | same seed, identical weights and metrics; another seed differs | resuming (`L0.6`) and regression tests |
+| the bigram's hand-worked gradient | unit | section 3: NLL $\ln 3$, row `a`'s gradient $[1/6, -1/6, 0]$ | the bigram trains the right rows |
+| forward is a row gather | unit | logits are table rows for 1-D and `[B, T]` ids; bad ids fail | the trainer feeds token windows |
+| the autograd bigram reaches the count MLE | property | within $10^{-3}$ nats of the floor, never below | the Part 0 end-to-end run in miniature |
+| `to_lm` serves the same table | unit | `to_lm()` gives the same logits through `BigramLM.logits`, as a copy | the engine serves what was trained |
+| sampling draws like the engine | unit | ids equal the engine's PCG32 draw at three temperatures | Python and Rust agree on a seed |
 
-The two learning tests compare against bars in `course/fixtures/ref-thresholds.tsv`: the reference's mean plus three standard deviations over five seeds.
+The two learning cases are judged against a loss bar: the solution's own mean over five seeds plus three standard deviations, so a correct but differently ordered implementation still passes and a broken one does not.
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **A step must use this batch's gradient and nothing else.** `backward` adds into `.grad` (`L0.1`), so the step zeroes first. Putting `zero_grad` at the start rather than the end also covers the first step after construction or after a failed batch.
+2. **A step must never write a non-finite update.** The only cheap place to check is the loss value, before `backward` and `opt.step`. A `nan` loss gives `nan` gradients, and one `opt.step` with them destroys every weight. So: compute the loss, test it, raise if needed, and only then backpropagate.
+3. **Clipping sits between backward and step**, because it rescales gradients that exist only after backward and must be applied before the optimizer reads them. The useful number to report is the norm before clipping: after clipping it is always at most $c$ and tells you nothing.
+4. **Reproducibility comes from one generator and one algorithm.** If the permutation is drawn from PCG32 with the spec's Fisher-Yates, the Go and Rust ports shuffle identically, and drawing it when each epoch starts makes epoch 2 differ from epoch 1 while the whole run stays a function of the seed.
+5. **Evaluation must not train and must not leak state.** Eval mode turns dropout off; `no_grad` builds no graph. Whatever happens inside, the mode must be restored, which forces a `try`/`finally`. Averages are over rows, so a short last batch is weighted by its size.
+6. **The bigram's optimum is known.** Section 2 showed the loss is convex with the unsmoothed counts as its minimizer, with NLL $0.5493$ on `abbacab`. A table starting at zeros (NLL $\ln 3 = 1.0986$) and trained by the loop must approach that floor from above. That makes the bigram a precise check of every piece of autograd in between.
+7. **Sampling must be the engine's arithmetic, not just its distribution.** Two correct samplers with different summation orders or different generators give different ids for one seed. Copying the engine's exact recipe (one `PCG32(seed)`, one `uniform()` per token, float64 weights summed in id order) is the only way to make a seed mean one text in both languages.
+
+### The code, annotated
+
+**The loader.** All validation happens in the constructor, so a bad loader fails where it is built, not at the first batch.
+
+```python
+class DataLoader:
+    def __init__(self, arrays, batch_size, shuffle, rng, drop_last=True) -> None:
+        if not arrays:
+            raise ValueError("DataLoader needs at least one array")
+        self.arrays = {k: np.asarray(v) for k, v in arrays.items()}
+        lengths = {len(v) for v in self.arrays.values()}
+        if len(lengths) != 1:
+            # Unequal lengths would silently pair inputs with the wrong labels.
+            raise ValueError(f"arrays have different lengths: {sorted(lengths)}")
+        if batch_size < 1:
+            raise ValueError(f"batch_size must be >= 1, got {batch_size}")
+        if shuffle and rng is None:
+            raise ValueError("shuffle needs an rng (a PCG32)")   # no hidden unseeded order
+        self.n = lengths.pop()
+        # ... store batch_size, shuffle, rng, drop_last
+
+    def __iter__(self):
+        order = list(range(self.n))
+        if self.shuffle:
+            # Drawn when the epoch starts: each epoch advances the generator,
+            # so epoch 2 differs from epoch 1 and a seeded run repeats exactly.
+            self.rng.shuffle(order)          # spec/pcg32.md Fisher-Yates (M06.3)
+        idx = np.asarray(order, dtype=np.int64)
+        b = self.batch_size
+        stop = (self.n // b) * b if self.drop_last else self.n
+        for i in range(0, stop, b):
+            rows = idx[i : i + b]
+            yield {k: v[rows] for k, v in self.arrays.items()}   # same rows from every array
+
+    def __len__(self) -> int:
+        return self.n // self.batch_size if self.drop_last else math.ceil(self.n / self.batch_size)
+```
+
+Because `__iter__` is a generator, the shuffle runs when a `for` loop starts, which is exactly "when each epoch starts".
+
+**The loss contract.** One helper normalizes what `loss_fn` may return, used by both the step and evaluation.
+
+```python
+def _split(out: Any) -> tuple[Tensor, dict[str, float]]:
+    """loss_fn's result as (loss, extra metrics)."""
+    loss, extra = (out[0], dict(out[1])) if isinstance(out, tuple) else (out, {})
+    if not isinstance(loss, Tensor):
+        raise TypeError(f"loss_fn must return a Tensor (or a (Tensor, dict) pair), got {type(loss).__name__}")
+    if loss.data.size != 1:
+        # backward() on a vector would need an upstream gradient nobody chose.
+        raise ValueError(f"the loss must have one element, got shape {loss.shape}")
+    return loss, {k: float(v) for k, v in extra.items()}
+```
+
+**The step.** The order of the lines is the content: zero, loss, finite check, backward, clip, step, report.
+
+```python
+def train_step(model, batch, loss_fn, opt, clip=None, ema=None) -> dict[str, float]:
+    # Zero first: gradients accumulate across backward calls (L0.1).
+    opt.zero_grad()
+    loss, extra = _split(loss_fn(model, batch))
+    value = float(np.asarray(loss.data).reshape(()))
+    if not math.isfinite(value):
+        # Stop before the update: one nan step would poison every weight.
+        raise FloatingPointError(f"the loss is {value}; no parameter was updated")
+    loss.backward()
+    stats = {"loss": value}
+    if clip is not None:
+        # clip_grad_norm_ returns the norm *before* rescaling: the diagnostic.
+        stats["grad_norm"] = float(clip_grad_norm_(model.parameters(), clip))
+    opt.step()
+    stats.update(extra)
+    if ema is not None:
+        # One step's loss is noisy; the curve to read is its EMA (M02.2),
+        # debiased so the first steps are not pulled toward m_0 = 0.
+        ema.update(value)          # never reached by a nan: we raised above
+        stats["loss_ema"] = float(ema.value_debiased())
+    return stats
+```
+
+On section 3's example: `value` is 1, backward fills $-3$ and $-2$, and with `clip=1` the reported norm is $\sqrt{13} = 3.606$ while SGD sees $-3/3.606$ and $-2/3.606$. For the EMA case, with $\beta = 0.9$: after loss 1 the raw average is $0.1$ and the debiased one $0.1/(1 - 0.9) = 1.0$; after $0.145$ it is $(0.09 + 0.0145)/(1 - 0.81) = 0.55$.
+
+**Evaluation.** The `finally` is the reason this function is longer than a loop.
+
+```python
+def evaluate(model, loader, loss_fn) -> dict[str, float]:
+    was_training = model.training
+    model.eval()                                   # dropout off, everywhere (L0.4)
+    sums: dict[str, float] = {}
+    n = 0
+    try:
+        with no_grad():                            # no graph, no stored activations
+            for batch in loader:
+                loss, extra = _split(loss_fn(model, batch))
+                rows = len(next(iter(batch.values())))
+                # Weight by rows: a smaller last batch must count less.
+                for k, v in {"loss": float(np.asarray(loss.data).reshape(())), **extra}.items():
+                    sums[k] = sums.get(k, 0.0) + v * rows
+                n += rows
+    finally:
+        model.train(was_training)                  # restored on success and on error
+    if n == 0:
+        raise ValueError("evaluate: the loader produced no batches")
+    out = {k: v / n for k, v in sums.items()}
+    out["n"] = float(n)
+    return out
+```
+
+It restores `was_training`, not `True`: evaluating a model that was already in eval mode must leave it there.
+
+**The bigram as a Module.** One parameter, zeros, and a gather.
+
+```python
+class BigramLogits(Module):
+    def __init__(self, vocab: int = 256) -> None:
+        super().__init__()
+        if vocab < 1:
+            raise ValueError(f"vocab must be >= 1, got {vocab}")
+        # Zeros: every next token starts equally likely (NLL ln V), and no
+        # random init is needed for a convex problem.
+        self.weight = Tensor(np.zeros((vocab, vocab)), requires_grad=True)
+
+    def forward(self, ids: ArrayLike) -> Tensor:
+        # A row gather is the one-hot matmul without the zeros: same logits,
+        # and backward adds each position's gradient into its row. Any shape
+        # of ids: the trainer feeds [B, T] windows. F.embedding checks them.
+        return F.embedding(self.weight, ids)
+
+    def to_lm(self) -> BigramLM:
+        # A float32 copy: training can continue without changing the served model.
+        return BigramLM(self.weight.data.astype(np.float32, copy=True))
+```
+
+Zeros are safe here because the problem is convex: there is no symmetry to break, unlike a hidden layer, where identical rows would receive identical gradients forever.
+
+The CLI's `train bigram --method autograd` drives this module with full-batch AdamW at learning rate 0.5 and no weight decay, using `cross_entropy` on `model(x)` for every `(byte, next byte)` pair; see `train_bigram_full_batch` in [`cli_train.py`](../../../../course/solutions/entry/python/tinyllm/cli_train.py).
+
+**Sampling like the engine.** The sampler keeps `L0.0`'s signature; what changed is the generator and the draw.
+
+```python
+    def sample(self, prefix: list[int], n: int, temperature: float, seed: int) -> list[int]:
+        # ... validate prefix (non-empty), n >= 0, temperature >= 0
+        cur = int(_as_ids(prefix, v)[-1])
+        # One generator per call, stream 54: the tracer engine's PCG32(seed, 54).
+        rng = PCG32(seed)
+        out: list[int] = []
+        for _ in range(n):
+            row = self.logits([cur])[0].astype(np.float64)
+            if temperature == 0:
+                nxt = int(np.argmax(row))  # first maximum: ties go to the lowest id
+            else:
+                nxt = _draw(row, float(temperature), rng.uniform())   # one uniform per token
+            out.append(nxt)
+            cur = nxt
+        return out
+
+
+def _draw(row: NDArray, temperature: float, u: float) -> int:
+    """The tracer engine's draw (L10.0): weights exp(z - max z) of z = row /
+    temperature in f64, summed in id order, NaN never picked; the first id
+    whose running sum exceeds u * total."""
+    z = [float(x) / temperature for x in row]
+    finite = [x for x in z if not math.isnan(x)]
+    m = max(finite) if finite else -math.inf
+    w = [0.0 if math.isnan(x) or m == -math.inf else math.exp(x - m) for x in z]
+    total = 0.0
+    for wi in w:                 # a plain left-to-right sum, as the Rust loop does
+        total += wi
+    target = u * total
+    cum, last = 0.0, 0
+    for i, wi in enumerate(w):
+        if wi > 0.0:
+            cum += wi
+            last = i
+            if cum > target:
+                return i
+    return last                  # rounding left target unreached: the last live id
+```
+
+The explicit Python loops are deliberate: `np.sum` uses pairwise summation, which can round differently from the engine's sequential sum and move the chosen id at a boundary.
+
+Full solution: [`loop.py`](../../../../course/solutions/python/tinyllm/train/loop.py) · [`bigram.py`](../../../../course/solutions/python/tinyllm/lm/bigram.py) (also `BigramLM` from `L0.0`: `fit_counts`, `logits`, `nll`).
+
+### Why this solution
+
+- **Cost.** One step is one forward, one backward, and $O(|\theta|)$ for clipping and the update; the loop adds nothing asymptotic. The loader's shuffle is $O(n)$ per epoch and fancy indexing copies one batch at a time, so memory stays at the dataset plus one batch. The bigram's forward is a gather, $O(BT \cdot V)$, instead of the one-hot matmul's $O(BT \cdot V^2)$.
+- **Alternatives.** Shuffling by `argsort` of uniforms is a correct random permutation but not the spec's, so the ports would disagree. Checking for `nan` after `opt.step` detects the problem one step too late. Averaging batch means in `evaluate` is simpler and biased whenever the last batch is short. Sampling with `np.random.choice` gives the right distribution and the wrong ids.
+- **Accepted tradeoffs.** The step has no gradient accumulation, mixed precision, or schedule; later modules add those around it rather than inside it. `grad_norm` is reported only when clipping is on, because computing a global norm costs a pass over every gradient.
+
+### Explain it back
+
+1. Why does `train_step` call `opt.zero_grad()` at the start instead of after `opt.step()`?
+   <details><summary>Answer</summary>
+   Between two normal steps either placement works. Zeroing at the start makes the step independent of whatever ran before it: a freshly built model, a gradient check or a manual `backward` in a notebook, or a previous step whose `opt.step` raised after `backward`. The step's contract becomes "the update uses this batch's gradient", with no assumption about the caller.
+   </details>
+2. Why is the finiteness check on the loss value and not on the gradients?
+   <details><summary>Answer</summary>
+   A non-finite loss is the first observable symptom and is one number, so it is checked before any work is done. Checking gradients would need a pass over every parameter and still has to happen before `opt.step`. Raising before `backward` also keeps `nan` out of the EMA and the moment buffers.
+   </details>
+3. In `evaluate`, why restore `was_training` in a `finally` instead of calling `model.train()` at the end?
+   <details><summary>Answer</summary>
+   An exception in any batch would skip a trailing `model.train()`, leaving a training run with dropout silently off. And `model.train()` would wrongly switch on a model that was in eval mode before the call. Restoring the saved flag in `finally` is right in both cases.
+   </details>
+4. Why can `BigramLogits` start from zeros when an MLP cannot?
+   <details><summary>Answer</summary>
+   The bigram loss is convex in $W$ with a unique optimum (the counts' softmax), so any start reaches it, and zeros give the honest NLL $\ln V$. In an MLP, hidden units with identical weights get identical gradients and stay identical; random init is what breaks that symmetry.
+   </details>
+5. What breaks if `sample` created a new `PCG32(seed)` for every token?
+   <details><summary>Answer</summary>
+   Every token would use the same first `uniform()` $u$, so the sampler would repeat the same quantile of each row's distribution, and it would no longer match the engine, which draws a fresh $u$ per token from one generator. A seed would mean different text in Python and Rust.
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. no `zero_grad` at the start of the step | the loss falls, then oscillates: every step adds all earlier gradients | `test_zero_grad_every_step` (mutant `s01`) |
-| 2. evaluation that averages batches, leaves dropout on, or restores the mode only on success | validation loss biased by the last batch; noisy evaluations; training after a failed eval with dropout off | `test_evaluate_weights_by_rows_and_restores_mode` (mutants `s10`, `s12`, `s14`), `test_evaluate_restores_mode_after_an_error` (mutant `s13`) |
-| 3. shuffling by sorting uniforms, or one permutation for every epoch | runs are not reproducible across languages, or every epoch sees the same order | `test_dataloader_shuffle_is_the_spec_permutation` (mutants `s07`, `s08`) |
-| 4. checking the loss for `nan` after the update | the run is already lost when the error is raised | `test_nonfinite_loss_stops_before_the_update` (mutant `s05`) |
-| 5. a new generator for every token, or a stream other than the engine's | Python and Rust disagree on the same seed; repeated draws of the same $u$ | `test_sample_draws_like_the_engine` (mutants `s20`, `s21`) |
+| 1. no `zero_grad` at the start of the step | the loss falls, then oscillates: every step adds all earlier gradients | `opt.zero_grad()` is the first line of `train_step` |
+| 2. evaluation that averages batches, leaves dropout on, or restores the mode only on success | validation loss biased by the last batch; noisy evaluations; training after a failed eval with dropout off | sums `v * rows` and divides by total rows; `model.eval()` then `model.train(was_training)` in `finally` |
+| 3. shuffling by sorting uniforms, or one permutation for every epoch | runs are not reproducible across languages, or every epoch sees the same order | `rng.shuffle(order)` (the spec's Fisher-Yates) inside `__iter__`, once per epoch |
+| 4. checking the loss for `nan` after the update | the run is already lost when the error is raised | `math.isfinite(value)` is tested before `backward` and `opt.step` |
+| 5. a new generator for every token, or a stream other than the engine's | Python and Rust disagree on the same seed; repeated draws of the same $u$ | one `PCG32(seed)` (stream 54) per call, one `uniform()` per token, the engine's `_draw` |
 
-## 6. Where it's used next
-| Forward | `L2.2` | Registered call site uses this module. |
-| Forward | `L3.6` | Registered call site uses this module. |
-| Forward | `L5.5` | Registered call site uses this module. |
-| Forward | `L6.1` | Registered call site uses this module. |
-| Forward | `L6.7` | Registered call site uses this module. |
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `L0.1` | `evaluate` runs under `no_grad`; the loss is a `Tensor` |
 | Back | `L0.2` | `BigramLogits.forward` is `F.embedding` |
-| Back | `L0.3` | the tests (and your CLI) train on `cross_entropy`, `mse`, `bce_with_logits` |
+| Back | `L0.3` | the loop is exercised with, and the CLI trains on, `cross_entropy`, `mse`, `bce_with_logits` |
 | Back | `L0.4` | `BigramLogits` is a `Module`; the tests train `Linear` stacks |
 | Back | `M06.3` | `PCG32`: the loader's shuffle and the sampler's draws |
 | Back | `M10.2` | `SGD` steps the hand example |
@@ -170,15 +378,20 @@ The two learning tests compare against bars in `course/fixtures/ref-thresholds.t
 | Back | `M10.4` | `clip_grad_norm_` in `train_step` |
 | Back | `M02.2` | `EMA.update` and `value_debiased` give `train_step`'s `loss_ema` |
 | Back | Python reference | This model has no native library boundary. |
-| Back | `M03.1` | `tl_matmul_f32` computes `BigramLM.logits` |
-| Forward | `L10.0` | your Rust engine serves the table `to_lm()` produces, unchanged (`tl_arch = bigram`) |
-| Forward | `L0.6` | takes over `safetensors.py`; its regression run of `L0.0`'s suite exercises your `bigram.py` too |
+| Back | `M03.1` | `tl_matmul_f32` is the C matmul of Pass 1; the solution's `BigramLM.logits` reads the same rows with a NumPy gather |
+| Forward | `L10.0` | the Rust engine serves the table `to_lm()` produces, unchanged (`tl_arch = bigram`) |
+| Forward | `L0.6` | takes over `safetensors.py`; and keeps `bigram.py`'s `L0.0` behaviour as its regression |
+| Forward | `L2.2` | the NPLM trains through `DataLoader` and `train_step` |
+| Forward | `L3.6` | the RNN LM trains through `train_step` |
+| Forward | `L5.5` | the transformer trains through `DataLoader` and `train_step` |
+| Forward | `L6.1` | GPT pre-training calls `train_step` each step |
+| Forward | `L6.7` | the model zoo loads the bigram as a `BigramLM` and scores it with the others |
 
-Later passes (`L2.2`, `L3.6`, `L6.1`, the capstone) call `train_step` and `evaluate` as they are. If you skip this module, `ol milestone MS-L0` cannot train either model.
+Later passes (`L2.2`, `L3.6`, `L6.1`, the capstone) call `train_step` and `evaluate` as they are.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `DataLoader` | `torch.utils.data.DataLoader` | worker processes, pinned memory, samplers, a `generator` argument for seeded shuffles | `torch/utils/data/dataloader.py` |
 | `train_step` | HF `Trainer.training_step`, Lightning `LightningModule` | mixed precision, gradient accumulation, distributed reduction, callbacks | `transformers/trainer.py` |

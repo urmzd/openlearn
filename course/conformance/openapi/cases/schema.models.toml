@@ -1,6 +1,0 @@
-id       = "schema.models"
-title    = "/v1/models lists the served model"
-versions = ["v1", "v2"]
-tiers    = ["engine", "gateway"]
-smoke    = true
-check    = "models_list"

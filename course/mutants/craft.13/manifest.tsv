@@ -1,4 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	rust/crates/tl-kv-format/src/lib.rs	semantic	pitfall-1	49	y	(hidden until pass)	checksum is skipped before block decoding
-s02	rust/crates/tl-kv-format/src/lib.rs	semantic	pitfall-2	53	y	(hidden until pass)	every slab decodes with the first slab scale
-s03	rust/crates/tl-kv-format/src/lib.rs	semantic	pitfall-3	63	y	(hidden until pass)	partial tail positions are serialized instead of zero-filled

@@ -1,5 +1,0 @@
---- a/python/tinyllm/post/dpo.py
-+++ b/python/tinyllm/post/dpo.py
-@@ -10 +10 @@
--    return (pc - pr) - (rc - rr)
-+    return (pr - pc) - (rc - rr)

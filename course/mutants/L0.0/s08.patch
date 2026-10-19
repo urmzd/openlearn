@@ -1,8 +1,0 @@
---- a/python/tinyllm/lm/bigram.py
-+++ b/python/tinyllm/lm/bigram.py
-@@ -121,4 +121,4 @@
-                 nxt = min(int(np.searchsorted(cdf, u, side="right")), v - 1)
-             out.append(nxt)
-             cur = nxt
--        return out
-+        return list(prefix) + out

@@ -1,9 +1,0 @@
---- a/python/tinyllm/linalg/matmul.py
-+++ b/python/tinyllm/linalg/matmul.py
-@@ -51,5 +51,5 @@
-                 rhs = bb[j, q] if trans_b else bb[q, j]
-                 acc = np.float32(acc + np.float32(aa[i, q] * rhs))
-             prior = np.float32(0.0) if be == 0 else np.float32(be * cc[i, j])
--            cc[i, j] = np.float32(al * acc + prior)
-+            cc[i, j] = np.float32(al * acc)
-     return cc

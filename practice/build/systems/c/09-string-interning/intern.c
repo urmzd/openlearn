@@ -1,4 +1,4 @@
-/* intern.c - the part you write. */
+/* intern.c - the reference implementation of the interning table. */
 #include "intern.h"
 
 #include <stdint.h>
@@ -40,7 +40,6 @@ static int entry_matches(const Entry *e, size_t hash, const char *s, size_t len)
 
 /* Grow and rehash. */
 static int table_grow(InternTable *t) {
-  /* SOLUTION-BEGIN */
   size_t cap = t->cap ? t->cap * 2 : 16;
   Entry **slots = calloc(cap, sizeof(Entry *));
   if (!slots) return -1;
@@ -61,14 +60,12 @@ static int table_grow(InternTable *t) {
   t->slots = slots;
   t->cap = cap;
   return 0;
-  /* SOLUTION-END */
 }
 
 /* Index of a matching entry, or of the first free slot for it. Returns 1 when
  * found. Assumes cap > 0. */
 static int table_probe(const InternTable *t, size_t hash, const char *s,
                        size_t len, size_t *idx) {
-  /* SOLUTION-BEGIN */
   size_t mask = t->cap - 1;
   size_t i = hash & mask;
   while (t->slots[i]) {
@@ -80,18 +77,14 @@ static int table_probe(const InternTable *t, size_t hash, const char *s,
   }
   *idx = i;
   return 0;
-  /* SOLUTION-END */
 }
 
 InternTable *intern_new(void) {
-  /* SOLUTION-BEGIN */
   InternTable *t = calloc(1, sizeof *t);
   return t; /* slots stay NULL until the first intern */
-  /* SOLUTION-END */
 }
 
 const Interned *intern_n(InternTable *t, const char *s, size_t len) {
-  /* SOLUTION-BEGIN */
   if (t->cap == 0 && table_grow(t) != 0) return NULL;
 
   size_t hash = hash_bytes(s, len);
@@ -121,36 +114,27 @@ const Interned *intern_n(InternTable *t, const char *s, size_t len) {
   t->slots[i] = e;
   t->len++;
   return &e->pub;
-  /* SOLUTION-END */
 }
 
 const Interned *intern(InternTable *t, const char *s) {
-  /* SOLUTION-BEGIN */
   return intern_n(t, s, strlen(s));
-  /* SOLUTION-END */
 }
 
 const Interned *intern_find(const InternTable *t, const char *s) {
-  /* SOLUTION-BEGIN */
   if (t->cap == 0) return NULL;
   size_t len = strlen(s);
   size_t i;
   if (!table_probe(t, hash_bytes(s, len), s, len, &i)) return NULL;
   return &t->slots[i]->pub;
-  /* SOLUTION-END */
 }
 
 size_t intern_count(const InternTable *t) {
-  /* SOLUTION-BEGIN */
   return t->len;
-  /* SOLUTION-END */
 }
 
 void intern_free(InternTable *t) {
-  /* SOLUTION-BEGIN */
   if (!t) return;
   for (size_t i = 0; i < t->cap; i++) free(t->slots[i]);
   free(t->slots);
   free(t);
-  /* SOLUTION-END */
 }

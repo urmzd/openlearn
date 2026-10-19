@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/forward.rs
-+++ b/rust/crates/tl-engine/src/forward.rs
-@@ -171 +171 @@
--        for (i,&t) in s.tokens.iter().enumerate() { if t as usize >= cfg.vocab_size { return Err(format!("forward: token id {t} outside vocab {}", cfg.vocab_size)); } ids.push(t); positions.push(s.start + i); }
-+        for (i,&t) in s.tokens.iter().enumerate() { if false && (t as usize >= cfg.vocab_size) { return Err(format!("forward: token id {t} outside vocab {}", cfg.vocab_size)); } ids.push(t); positions.push(s.start + i); }

@@ -1,0 +1,64 @@
+# Validated by values.schema.json (a copy of contracts/helm/durable.values.schema.json).
+replicaCount: 1          # 3 only with Raft (dur.10)
+
+image:
+  repository: forge-durable   # localhost:5001/forge-durable with dep.02's registry
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort           # a host-side training worker reaches it on 30733
+  grpcPort: 7233
+  nodePort: 30733
+  raftPort: 7234
+  healthPort: 9464
+
+# The WAL volume: one PersistentVolumeClaim per pod from volumeClaimTemplates.
+# kind's local-path provisioner does not enforce the size, so walMaxBytes is
+# the quota that actually holds (ops.11).
+persistence:
+  enabled: true
+  size: 2Gi
+walMaxBytes: 1073741824    # 1 GiB, half the volume: room to raise it during an incident
+
+probes:
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    path: /readyz          # WAL replayed and the gRPC port listening
+    periodSeconds: 2
+
+pdb:
+  enabled: true
+  maxUnavailable: 1        # one replica: a drain may take it (the WAL is on the PVC)
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+otel:
+  endpoint: http://otel-collector.observability:4317
+
+env: []
+
+testClock: false
+
+# Extra runtime.toml keys under [durable] (grpc_listen, wal_dir, and
+# wal_max_bytes are always rendered from the values above).
+runtime:
+  durable:
+    visibility_timeout_ms: 30000
+    dlq_after_attempts: 5

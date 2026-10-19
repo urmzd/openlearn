@@ -1,8 +1,0 @@
---- a/python/tinyllm/sig/fft.py
-+++ b/python/tinyllm/sig/fft.py
-@@ -172,5 +172,4 @@
-     # scipy's unnormalized DCT-II: y[k] = 2 Re(exp(-i pi k / 2n) V[k]).
-     y = 2.0 * (vf * np.exp(-1j * np.pi * k / (2 * n))).real
-     scale = np.full(n, np.sqrt(1.0 / (2 * n)))
--    scale[0] = np.sqrt(1.0 / (4 * n))  # norm='ortho' makes the DCT matrix orthogonal
-     return np.moveaxis(y * scale, -1, axis)

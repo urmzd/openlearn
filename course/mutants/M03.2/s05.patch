@@ -1,9 +1,0 @@
---- a/python/tinyllm/linalg/lu.py
-+++ b/python/tinyllm/linalg/lu.py
-@@ -70,5 +70,5 @@
-     # Back substitution, U x = y, from the last row up.
-     x = y
-     for i in range(n - 1, -1, -1):
--        x[i] = (x[i] - U[i, i + 1 :] @ x[i + 1 :]) / d[i]
-+        x[i] = x[i] - U[i, i + 1 :] @ x[i + 1 :]
-     return x

@@ -1,4 +1,3 @@
-<!-- ol:module M12.3 -->
 # Resampling and interpolation
 
 ## Overview
@@ -6,37 +5,29 @@
 | | |
 |---|---|
 | **Module** | `M12.3` · build · Python · Pass 12 · 4 to 5 h |
-| **You build** | `python/tinyllm/sig/resample.py`: `kernel_weights` (nearest, bilinear, bicubic, Lanczos3, with antialias), `resize` (Pillow's fixed-point passes bit for bit, or a float mode), `resize_planar_f32` (`F.interpolate` semantics for position tables), and `resample_audio` (torchaudio's windowed-sinc resampler) |
+| **Solution** | [`python/tinyllm/sig/resample.py`](../../../../course/solutions/python/tinyllm/sig/resample.py): `kernel_weights` (nearest, bilinear, bicubic, Lanczos3, with antialias), `resize` (Pillow's fixed-point passes bit for bit, or a float mode), `resize_planar_f32` (`F.interpolate` semantics for position tables), and `resample_audio` (torchaudio's windowed-sinc resampler) |
 | **Contract** | [`course/contracts/py/tinyllm/sig/resample.pyi`](../../../../course/contracts/py/tinyllm/sig/resample.pyi) |
-| **Tests** | `course/tests/M12.3/test_resample.py` (what they check: section 4), golden values from `course/oracle/M12.3/resize_pil.py` (Pillow 12.3, torchvision 0.29, `F.interpolate`) and `course/oracle/M12.3/resample_torchaudio.py` (torchaudio 2.11) in `course/fixtures/M12.3/` |
-| **Needs** | `M12.1` `conv1d_direct` (or `--ref-deps`). Reading: `M12.2` (uint8 HWC images), `M02.1` (series and the sinc), `M12.5` (aliasing, as a concept) |
-| **Used by** | later `L13.6` (`resize` in every image processor) · `L13.3` (`interpolate_pos_embed` through `resize_planar_f32`) · `L14.1` (`resample_audio` to 16 kHz) · `data.10` (hash thumbnails); they join the registry with B14's L13, L14, and data groups · later: `L13.4` |
-| **Milestone** | `MS-P12` (the multimodal gate) |
+| **Needs** | `M12.1` `conv1d_direct`. Reading: `M12.2` (uint8 HWC images), `M02.1` (series and the sinc), `M12.5` (aliasing, as a concept) |
+| **Used by** | later `L13.6` (`resize` in every image processor) · `L13.3` (`interpolate_pos_embed` through `resize_planar_f32`) · `L14.1` (`resample_audio` to 16 kHz) · `data.10` (hash thumbnails) · `L13.4` (tiling). Part of Pass 12, which teaches the system to see and hear |
 | **Optional depth** | Keys, "Cubic convolution interpolation for digital image processing" (1981); Smith, *Digital Audio Resampling Home Page* (free, the bandlimited interpolation derivation); Pillow `src/libImaging/Resample.c` |
 
 ## Key Takeaways
 
-- Resampling is interpolation (a kernel turns samples back into a continuous signal) followed by sampling on the new grid; every output is a weighted sum of a few inputs, with weights that sum to 1 (`test_weights_sum_to_one`).
-- Shrinking without first removing detail the new grid cannot hold aliases; antialiasing stretches the kernel by the scale factor, which low-pass filters in the same pass (`test_hand_example_bilinear_antialias`, `test_antialias_prevents_aliasing`).
-- Pillow runs separable passes, horizontal then vertical, in 22-bit fixed point and rounds to uint8 between them; matching it bit for bit means copying all three choices (`test_pil_mode_is_pillow_bit_for_bit`).
-- `F.interpolate` is a different convention (sample at $(o + 0.5)\,\text{in}/\text{out} - 0.5$, clamp at the edge, bicubic $a = -0.75$), and it is the one HF position tables are resized with (`test_planar_matches_interpolate`).
-- Audio resampling is the same idea in 1-D: a bank of windowed-sinc low-pass filters applied as one strided conv (`test_resample_audio_matches_torchaudio`, `test_band_limited_round_trip`).
+- Resampling is interpolation (a kernel turns samples back into a continuous signal) followed by sampling on the new grid; every output is a weighted sum of a few inputs, with weights that sum to 1.
+- Shrinking without first removing detail the new grid cannot hold aliases; antialiasing stretches the kernel by the scale factor, which low-pass filters in the same pass.
+- Pillow runs separable passes, horizontal then vertical, in 22-bit fixed point and rounds to uint8 between them; matching it bit for bit means copying all three choices.
+- `F.interpolate` is a different convention (sample at $(o + 0.5)\,\text{in}/\text{out} - 0.5$, clamp at the edge, bicubic $a = -0.75$), and it is the one HF position tables are resized with.
+- Audio resampling is the same idea in 1-D: a bank of windowed-sinc low-pass filters applied as one strided conv.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M12.3              # stubs python/tinyllm/sig/resample.py into your repo
-ol tests M12.3              # read the test catalog first: rung R0, you write no tests here
-ol check M12.3              # exit code is the verdict
-ol check M12.3 --ref-deps   # only if your M12.1 is not passing yet
-ol diff  M12.3              # after passing: your code against the reference
-```
+Sections 1 to 3 build resampling from interpolation kernels, footprint weights, antialiasing, Pillow's fixed-point passes, `F.interpolate`'s convention and the polyphase sinc resampler, and work one shrink by hand. Section 4 fixes the interface and lists what a correct implementation must handle. Section 5 walks through the solution, [`resample.py`](../../../../course/solutions/python/tinyllm/sig/resample.py), and explains why each rounding and offset is there. Try to predict each step before reading it.
 
 ---
 
 ## 1. Why now
 
-Every image a vision model sees is resized first: CLIP wants 224 by 224, SigLIP 384, Idefics3 splits large images into 512-pixel tiles. The checkpoints were trained on images resized by Pillow, so `L13.6` must reproduce Pillow's output, and the preprocessing parity rule (DESIGN D48) allows at most one unit in the last place. A naive bilinear resize that samples at pixel corners, or shrinks without antialiasing, produces images that look fine and shift model outputs measurably. Audio has the same problem in time: Whisper hears 16 kHz, recordings arrive at 44.1 or 48 kHz, and `L14.1` must bring them down without folding high frequencies into the speech band.
+Every image a vision model sees is resized first: CLIP wants 224 by 224, SigLIP 384, Idefics3 splits large images into 512-pixel tiles. The checkpoints were trained on images resized by Pillow, so `L13.6` must reproduce Pillow's output, and the preprocessing parity rule allows at most one unit in the last place. A naive bilinear resize that samples at pixel corners, or shrinks without antialiasing, produces images that look fine and shift model outputs measurably. Audio has the same problem in time: Whisper hears 16 kHz, recordings arrive at 44.1 or 48 kHz, and `L14.1` must bring them down without folding high frequencies into the speech band.
 
 ## 2. Principles
 
@@ -86,7 +77,7 @@ Shrink the row $(10, 20, 30, 40)$ to 2 pixels with bilinear antialiasing. $\text
 
 Output 0: $c_0 = 0.5 \cdot 2 = 1.0$; taps from $\operatorname{int}(1 - 2 + 0.5) \to 0$ to $\operatorname{int}(1 + 2 + 0.5) = 3$, so pixels 0, 1, 2 at kernel arguments $(j - 1 + 0.5)/2 = -0.25, 0.25, 0.75$. The triangle gives $0.75, 0.75, 0.25$, sum $1.75$, so the weights are $3/7, 3/7, 1/7$: the window was cut at the left border and renormalized. Output 1 mirrors it: pixels 1, 2, 3 with $1/7, 3/7, 3/7$.
 
-In float, output 0 is $(3 \cdot 10 + 3 \cdot 20 + 30)/7 = 17.14$ and output 1 is $(20 + 90 + 120)/7 = 32.86$. Pillow's fixed point: $3/7 \cdot 2^{22} = 1797558.86 \to 1797559$ and $1/7 \cdot 2^{22} = 599186.29 \to 599186$; output 0 accumulates $2^{21} + 10 \cdot 1797559 + 20 \cdot 1797559 + 30 \cdot 599186 = 73999502$, and $73999502 \gg 22 = 17$. Output 1 gives 33. So the row becomes $(17, 33)$. Without antialiasing the support stays 1: output 0 has taps at $\pm 0.5$, weights $0.5, 0.5$, and simply averages pixels 0 and 1. This is `test_hand_example_bilinear_antialias`.
+In float, output 0 is $(3 \cdot 10 + 3 \cdot 20 + 30)/7 = 17.14$ and output 1 is $(20 + 90 + 120)/7 = 32.86$. Pillow's fixed point: $3/7 \cdot 2^{22} = 1797558.86 \to 1797559$ and $1/7 \cdot 2^{22} = 599186.29 \to 599186$; output 0 accumulates $2^{21} + 10 \cdot 1797559 + 20 \cdot 1797559 + 30 \cdot 599186 = 73999502$, and $73999502 \gg 22 = 17$. Output 1 gives 33. So the row becomes $(17, 33)$. Without antialiasing the support stays 1: output 0 has taps at $\pm 0.5$, weights $0.5, 0.5$, and simply averages pixels 0 and 1.
 
 ## 4. The interface
 
@@ -97,45 +88,255 @@ def resize_planar_f32(x_chw, size, kernel, align_corners=False, antialias=False)
 def resample_audio(x, sr_in, sr_out, lowpass_filter_width=6, rolloff=0.99) -> NDArray: ...
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_bilinear_antialias` | unit, smoke | section 3's weights $3/7, 3/7, 1/7$ and Pillow's $(17, 33)$; the non-antialiased weights | the definitions |
-| `test_pil_mode_is_pillow_bit_for_bit` | golden | six images, four sizes, four kernels: every pixel equal to Pillow 12.3 | `L13.6` preprocessing parity (stricter than its 1-LSB budget) |
-| `test_float_mode_matches_torchvision` | golden | float bilinear and bicubic within $10^{-4}$ of torchvision's antialiased resize | float pipelines |
-| `test_planar_matches_interpolate` | golden | seven `F.interpolate` cases incl. the ViT position table, `align_corners`, and antialias, within $10^{-5}$ | `L13.3`'s `interpolate_pos_embed` |
-| `test_resample_audio_matches_torchaudio` | golden | 44.1k, 48k, 22.05k, 8k to 16k, a wide filter, stereo, within $10^{-5}$ | `L14.1`'s 16 kHz input |
-| `test_weights_sum_to_one` | property | every row of every kernel sums to 1; a flat image stays flat | no brightness change at the border |
-| `test_identity_at_equal_size` | property | same-size resize and same-rate resampling are exact copies | no accidental blur |
-| `test_band_limited_round_trip` | property | 16k to 48k and back stays within $2 \cdot 10^{-3}$ | the filters keep the band |
-| `test_antialias_prevents_aliasing` | property | a checkerboard shrunk by 3 aliases to black and white without antialias, stays gray with it | why the stretch exists |
-| `test_rejects_bad_arguments` | boundary | unknown kernel or mode, empty output, float pixels in 'pil' mode, Lanczos in interpolate mode, bad rates | caller bugs fail early |
+| the hand-example antialiased bilinear | unit | section 3's weights $3/7, 3/7, 1/7$ and Pillow's $(17, 33)$; the non-antialiased weights | the definitions |
+| Pillow mode is Pillow bit for bit | golden | six images, four sizes, four kernels: every pixel equal to Pillow 12.3 | `L13.6` preprocessing parity (stricter than its 1-LSB budget) |
+| float mode matches torchvision | golden | float bilinear and bicubic within $10^{-4}$ of torchvision's antialiased resize | float pipelines |
+| planar mode matches `F.interpolate` | golden | seven `F.interpolate` cases incl. the ViT position table, `align_corners`, and antialias, within $10^{-5}$ | `L13.3`'s `interpolate_pos_embed` |
+| audio matches torchaudio | golden | 44.1k, 48k, 22.05k, 8k to 16k, a wide filter, stereo, within $10^{-5}$ | `L14.1`'s 16 kHz input |
+| weights sum to one | property | every row of every kernel sums to 1; a flat image stays flat | no brightness change at the border |
+| identity at equal size | property | same-size resize and same-rate resampling are exact copies | no accidental blur |
+| band-limited round trip | property | 16k to 48k and back stays within $2 \cdot 10^{-3}$ | the filters keep the band |
+| antialiasing prevents aliasing | property | a checkerboard shrunk by 3 aliases to black and white without antialias, stays gray with it | why the stretch exists |
+| bad arguments are rejected | boundary | unknown kernel or mode, empty output, float pixels in 'pil' mode, Lanczos in interpolate mode, bad rates | caller bugs fail early |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **Every 1-D resampler is a sparse matrix, stored by rows.** Each output is a weighted sum of a short run of consecutive inputs. So one axis of a resize is fully described by, for each output, a start index and a short vector of weights. `kernel_weights` returns exactly that pair, `(start [out], weights [out, taps])`, and one helper applies it along any axis. Everything else is choosing the weights.
+2. **The weights come from the geometry of section 2.2.** Output $x$ is centered at $(x + 0.5)\,\text{scale}$; input $j$ is centered at $j + 0.5$, so the kernel argument is $(j + 0.5 - c_x)/f_s$. The taps are the inputs within $a_k f_s$ of the center, clipped to the image, and the weights are divided by their own sum so they total 1 even where the window was clipped.
+3. **Antialiasing is one number, $f_s$.** Stretching the kernel by $f_s = \max(\text{scale}, 1)$ widens the support and the argument scaling together. With `antialias=False`, $f_s = 1$ and the same code gives the plain interpolating kernel.
+4. **Pillow equality means reproducing Pillow's arithmetic, not its math.** The weights are the same real numbers, but Pillow converts them to 22-bit fixed point with round-half-away-from-zero, accumulates integers starting from half a unit ($2^{21}$), shifts, clips, and stores uint8 after each pass, horizontal first. Each of those is a separate source of one-level differences, so the solution copies all of them.
+5. **`F.interpolate` is a different family of weights, not a variant of these.** It maps to source coordinate $(o + 0.5)\,\text{in}/\text{out} - 0.5$, uses a fixed 2 or 4 taps from the floor of that coordinate, and clamps indices to the edge rather than renormalizing. That needs its own tap function and an apply that clamps, but the same "start plus weights" representation.
+6. **Audio resampling is a polyphase filter bank, which is a strided conv.** With $\text{orig}$ input and $\text{new}$ output samples per period, output phase $j$ always uses the same filter, shifted by $\text{orig}$ inputs per period. So $\text{new}$ filters stacked as output channels and applied with stride $\text{orig}$ (`M12.1`'s `conv1d_direct`) compute every output; interleaving the channels restores time order.
+
+### 5.2 The code, annotated
+
+In the quotes below, argument validation is elided as `...`; the bodies are as in the solution.
+
+The kernels, evaluated at offsets measured in input pixels:
+
+```python
+def _filter(kernel: str, x: NDArray, cubic_a: float) -> NDArray:
+    if kernel == "bilinear":
+        ax = np.abs(x)
+        return np.where(ax < 1.0, 1.0 - ax, 0.0)              # the triangle
+    if kernel == "bicubic":
+        a = cubic_a
+        ax = np.abs(x)
+        near = ((a + 2.0) * ax - (a + 3.0)) * ax * ax + 1.0     # Keys, |x| < 1 (Horner form)
+        far = (((ax - 5.0) * ax + 8.0) * ax - 4.0) * a          # Keys, 1 <= |x| < 2
+        return np.where(ax < 1.0, near, np.where(ax < 2.0, far, 0.0))
+    if kernel == "lanczos3":
+        # sinc(x) sinc(x / 3) on [-3, 3), half open as in Pillow.
+        return np.where((x >= -3.0) & (x < 3.0), np.sinc(x) * np.sinc(x / 3.0), 0.0)
+    raise ValueError(f"unknown kernel {kernel!r}")
+```
+
+`np.sinc` is the normalized $\sin(\pi x)/(\pi x)$, so Lanczos3 is 1 at 0 and 0 at every other integer, as interpolation requires.
+
+The weight table, one row per output:
+
+```python
+def kernel_weights(in_size, out_size, kernel, antialias=True, cubic_a=-0.5):
+    # ... sizes >= 1; "nearest" returns Pillow's accumulated index with weight 1 ...
+    scale = in_size / out_size
+    # Antialias: when shrinking, stretch the kernel by the scale so it also
+    # low-passes everything finer than the output grid can hold.
+    fscale = max(scale, 1.0) if antialias else 1.0
+    support = _SUPPORT[kernel] * fscale                 # 1, 2 or 3 input pixels, stretched
+    taps = int(math.ceil(support)) * 2 + 1              # enough columns for any window
+    start = np.empty(out_size, dtype=np.int64)
+    weights = np.zeros((out_size, taps))
+    for xx in range(out_size):
+        center = (xx + 0.5) * scale                     # pixel centers, not corners
+        lo = max(int(center - support + 0.5), 0)        # +0.5: Pillow's rounding of the range
+        hi = min(int(center + support + 0.5), in_size)
+        # Argument: distance from input center (j + 0.5) to output center, unstretched.
+        k = _filter(
+            kernel, (np.arange(lo, hi) - center + 0.5) * (1.0 / fscale), cubic_a
+        )
+        total = k.sum()
+        # Taps past the border are dropped and the rest renormalized, so a
+        # flat image stays flat right up to the edge.
+        weights[xx, : hi - lo] = k / total if total != 0.0 else k
+        start[xx] = lo
+    return start, weights
+```
+
+In section 3's example, output 0 has `center = 1.0`, `support = 2`, `lo = int(-0.5) = 0` (truncation toward zero, then the `max`), `hi = int(3.5) = 3`, and kernel arguments $(-0.5, 0.5, 1.5) \cdot \tfrac12$: weights $3/7, 3/7, 1/7$.
+
+Applying a table along one axis: one gather and multiply-add per tap column.
+
+```python
+def _apply_axis(x, start, weights, axis):
+    """sum_t x[start + t] * weights[:, t] along `axis` (taps past the end weigh 0)."""
+    xm = np.moveaxis(x, axis, -1)
+    n = xm.shape[-1]
+    out = np.zeros(
+        xm.shape[:-1] + (len(start),), dtype=np.result_type(xm.dtype, weights.dtype)
+    )
+    for t in range(weights.shape[1]):
+        # Unused tap columns have weight 0, so clamping their index is harmless.
+        idx = np.minimum(start + t, n - 1)
+        out += xm[..., idx] * weights[:, t]
+    return np.moveaxis(out, -1, axis)
+```
+
+The result dtype follows the inputs, so the same function runs in int64 for Pillow's fixed point and in float64 for the float mode.
+
+One Pillow pass, in fixed point:
+
+```python
+def _pil_pass(img, out_size, axis, kernel, antialias, cubic_a):
+    start, w = kernel_weights(img.shape[axis], out_size, kernel, antialias, cubic_a)
+    if kernel == "nearest":
+        return np.take(img, start, axis=axis)
+    # Coefficients to fixed point, rounding half away from zero.
+    kk = np.trunc(w * (1 << PRECISION_BITS) + np.where(w < 0, -0.5, 0.5)).astype(
+        np.int64
+    )
+    # Integer accumulation, starting at half a unit so the shift rounds.
+    acc = _apply_axis(img.astype(np.int64), start, kk, axis) + (
+        1 << (PRECISION_BITS - 1)
+    )
+    # Bicubic and Lanczos have negative lobes, so the sum can leave [0, 255].
+    return np.clip(acc >> PRECISION_BITS, 0, 255).astype(np.uint8)
+```
+
+`PRECISION_BITS = 22` is Pillow's choice for 8-bit images: $32 - 8 - 2$, that is 8 bits for the pixel value and 2 bits of headroom for overshoot from negative lobes, inside a 32-bit accumulator. Negative weights round away from zero too, which is why there is a `np.where` and not just `+ 0.5`.
+
+The two passes, in Pillow's order:
+
+```python
+    if mode == "pil":
+        # ... uint8 required ...
+        y = a
+        # Horizontal first, then vertical, rounding to uint8 in between; a pass
+        # whose size does not change is skipped, as Pillow does.
+        if out_w != a.shape[1]:
+            y = _pil_pass(y, out_w, 1, kernel, antialias, cubic_a)
+        if out_h != a.shape[0]:
+            y = _pil_pass(y, out_h, 0, kernel, antialias, cubic_a)
+        return y.copy() if y is a else y         # same size: still a fresh array
+```
+
+The float mode runs the same two passes on float64 with the unrounded weights, which is torchvision's antialiased resize.
+
+For `F.interpolate`, the bilinear taps are the floor of the source coordinate and the next pixel:
+
+```python
+    else:
+        src = (o + 0.5) * (in_size / out_size) - 0.5   # half-pixel convention
+    if kernel == "bilinear":
+        src = np.maximum(src, 0.0)  # linear clamps the source; cubic does not
+        i0 = np.floor(src).astype(np.int64)
+        lam = src - i0
+        return i0, np.stack([1.0 - lam, lam], axis=1)
+```
+
+Bicubic takes the four neighbours `i0 - 1 .. i0 + 2` with $a = -0.75$, and `_apply_axis_clamped` reads `np.clip(start + t, 0, n - 1)`, so a tap off the edge reads the edge pixel (no renormalization). With `antialias=True`, `resize_planar_f32` instead uses `kernel_weights` in float, as PyTorch's antialiased path does.
+
+Audio: the polyphase sinc bank, then one strided conv.
+
+```python
+def _sinc_kernel(orig, new, width_taps, rolloff):
+    base = min(orig, new) * rolloff  # the cutoff, in units of the lower rate
+    width = math.ceil(width_taps * orig / base)          # filter half-length, in input samples
+    idx = np.arange(-width, width + orig, dtype=np.float64)[None, :] / orig
+    # Row j: input offsets relative to output phase j's instant, j/new periods in.
+    t = (np.arange(0, -new, -1, dtype=np.float64)[:, None] / new + idx) * base
+    t = np.clip(t, -width_taps, width_taps)              # +-width_taps zero crossings
+    window = np.cos(t * math.pi / width_taps / 2) ** 2  # Hann over the clipped support
+    t = t * math.pi
+    safe = np.where(t == 0.0, 1.0, t)
+    k = np.where(t == 0.0, 1.0, np.sin(safe) / safe)    # sinc, with sinc(0) = 1
+    return k * window * (base / orig), width             # unit DC gain at the lower rate
+
+
+def resample_audio(x, sr_in, sr_out, lowpass_filter_width=6, rolloff=0.99):
+    # ... validate rates, filter, and shape ...
+    if sr_in == sr_out:
+        return a.copy()
+    g = math.gcd(sr_in, sr_out)
+    orig, new = sr_in // g, sr_out // g                  # 44100 -> 16000: 441 -> 160
+    kern, width = _sinc_kernel(orig, new, lowpass_filter_width, rolloff)
+    wav = a.reshape(-1, a.shape[-1])                     # mono or [channels, T]
+    length = wav.shape[-1]
+    # Pad both sides so every filter is centered on its output instant.
+    padded = np.pad(wav, ((0, 0), (width, width + orig)))
+    # One strided conv1d: phase j of the output block is kernel row j.
+    # The result is [B, new, blocks]; interleave the phases back into time.
+    y = conv1d_direct(padded[:, None, :], kern[:, None, :], None, stride=orig)
+    y = y.transpose(0, 2, 1).reshape(wav.shape[0], -1)
+    target = math.ceil(new * length / orig)
+    y = y[:, :target]                                    # drop the tail the padding added
+    return y[0] if a.ndim == 1 else y
+```
+
+The `transpose(0, 2, 1)` turns `[B, phase, block]` into `[B, block, phase]`, so after the reshape the samples are in time order: block 0 phase 0, block 0 phase 1, and so on.
+
+Full solution: [`resample.py`](../../../../course/solutions/python/tinyllm/sig/resample.py).
+
+### 5.3 Why this solution
+
+- **Cost.** A separable resize costs $O(\text{taps})$ per output pixel per pass, about $2 a_k f_s$: cheap when enlarging, and growing with the shrink factor when antialiasing, which is the price of not aliasing. The audio resampler costs $O(\text{taps})$ per output sample with taps $\approx 2 \cdot \text{width} + \text{orig}$, and a period of $\text{orig}$ inputs is reused for every block.
+- **Why separable passes.** A 2-D kernel window would cost $\text{taps}^2$ per pixel instead of $2 \cdot \text{taps}$. Every kernel here is a product of 1-D kernels, so separability is exact in real arithmetic; it is the rounding between passes that makes the order matter, which is why Pillow's order is copied.
+- **Why reproduce Pillow's integer path instead of matching in float.** The checkpoints were trained on Pillow's uint8 output. A float resize rounded once at the end differs from Pillow by one level on some pixels, enough to fail an exact comparison and to shift model outputs slightly. Fixed point with the same rounding is the only way to be bit-exact.
+- **Why a polyphase conv for audio rather than an FFT resampler.** FFT resampling assumes a periodic signal and smears the end into the start; the windowed-sinc bank is local, streams naturally, and is torchaudio's default, so Whisper's training audio was resampled this way.
+- **Tradeoffs accepted.** Python loops over outputs in `kernel_weights` and over taps in `_apply_axis`: the weight table is computed once per size pair, and the per-tap loop is vectorized over every row, so neither dominates at image sizes.
+
+### 5.4 Explain it back
+
+1. Why is the kernel argument $(j - c_x + 0.5)/f_s$ and not $(j - c_x)/f_s$?
+   <details><summary>Answer</summary>
+   Input pixel $j$ covers $[j, j + 1)$ and is centered at $j + 0.5$, while $c_x$ is already a center in the same continuous coordinates. The distance between the two centers is $j + 0.5 - c_x$. Dropping the $0.5$ measures from pixel corners and shifts the image by half a pixel.
+   </details>
+2. What does dividing by `total`, the sum of the kept taps, buy at the border?
+   <details><summary>Answer</summary>
+   Near the border part of the window falls outside the image and its taps are dropped. Without renormalizing, the remaining weights sum to less than 1 and edge pixels get darker (or brighter, for kernels with negative lobes). Dividing by the kept sum makes every row sum to 1, so a flat image stays flat up to the edge.
+   </details>
+3. Why does `_pil_pass` clip to $[0, 255]$, when a weighted average of pixels should stay in range?
+   <details><summary>Answer</summary>
+   Bicubic and Lanczos weights are partly negative, so the output is not a convex combination: next to a sharp edge it overshoots (ringing) below 0 or above 255. Pillow clips, and so must any bit-exact reproduction.
+   </details>
+4. Why does the audio path need $\text{new}$ different filters instead of one?
+   <details><summary>Answer</summary>
+   Within one period of $\text{orig}$ input samples there are $\text{new}$ output instants, each at a different fractional offset from the input grid. A sinc centered at a different offset is a different set of tap values. After one period the pattern repeats, so $\text{new}$ filters cover every output, applied with stride $\text{orig}$.
+   </details>
+5. What would padding the signal only on the right do to the resampled audio?
+   <details><summary>Answer</summary>
+   Each filter is centered `width` samples into its window. Without `width` zeros on the left, output $k$'s window would start at its own instant, so the filter's center would land `width` input samples later: the output is delayed by `width` samples, and a round trip no longer returns the original.
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. never stretching the kernel when shrinking | aliasing; moire on fine textures | `test_antialias_prevents_aliasing`, `test_pil_mode_is_pillow_bit_for_bit` (mutant `s01`) |
-| 2. dividing by the kernel's area instead of the kept taps | edges darken or brighten | `test_weights_sum_to_one`, `test_hand_example_bilinear_antialias` (mutant `s02`) |
-| 3. vertical pass before horizontal | one-level differences on many pixels | `test_pil_mode_is_pillow_bit_for_bit` (mutant `s03`) |
-| 4. PyTorch's $a = -0.75$ in Pillow mode | bicubic pixels slightly sharper than Pillow | `test_pil_mode_is_pillow_bit_for_bit` (mutant `s04`) |
-| 5. sampling at pixel corners, $c_x = x \cdot \text{scale}$ | the image shifts by half a pixel | `test_hand_example_bilinear_antialias`, `test_float_mode_matches_torchvision` (mutant `s05`) |
-| 6. truncating fixed-point weights instead of rounding | rare one-level differences | `test_pil_mode_is_pillow_bit_for_bit` (mutant `s06`) |
-| 7. not centering the audio filters (padding only on the right) | resampled audio delayed by `width` samples | `test_resample_audio_matches_torchaudio`, `test_band_limited_round_trip` (mutant `s07`) |
-| 8. Pillow's $a = -0.5$ in `F.interpolate` mode | position tables differ from HF | `test_planar_matches_interpolate` (mutant `s08`) |
-| dropping the $+0.5$ in the tap range | the last tap of each window missing | `test_pil_mode_is_pillow_bit_for_bit` (mutant `m01`) |
-| accepting an output size of 0 | empty weights instead of an error | `test_identity_at_equal_size` (mutant `m02`) |
-| accepting float pixels in 'pil' mode | silent truncation | `test_rejects_bad_arguments` (mutant `m03`) |
+| 1. never stretching the kernel when shrinking | aliasing; moire on fine textures | `fscale = max(scale, 1.0)` widens the support and scales the argument; see step 3 |
+| 2. dividing by the kernel's area instead of the kept taps | edges darken or brighten | divides by `k.sum()` over the taps inside the image |
+| 3. vertical pass before horizontal | one-level differences on many pixels | `resize` runs the width pass, then the height pass |
+| 4. PyTorch's $a = -0.75$ in Pillow mode | bicubic pixels slightly sharper than Pillow | `cubic_a` defaults to $-0.5$ for `resize` |
+| 5. sampling at pixel corners, $c_x = x \cdot \text{scale}$ | the image shifts by half a pixel | `center = (xx + 0.5) * scale` and the `+ 0.5` in the kernel argument |
+| 6. truncating fixed-point weights instead of rounding | rare one-level differences | `np.trunc(w * 2**22 ± 0.5)`, half away from zero |
+| 7. not centering the audio filters (padding only on the right) | resampled audio delayed by `width` samples | pads `width` on the left and `width + orig` on the right |
+| 8. Pillow's $a = -0.5$ in `F.interpolate` mode | position tables differ from HF | `_torch_axis` hard-codes $a = -0.75$ |
+| 9. dropping the $+0.5$ in the tap range | the last tap of each window missing | `int(center ± support + 0.5)` for `lo` and `hi` |
+| 10. accepting an output size of 0 | empty weights instead of an error | `kernel_weights` and `resize` reject sizes below 1 |
+| 11. accepting float pixels in 'pil' mode | silent truncation | Pillow mode requires `uint8` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M12.1` | `resample_audio` is one strided `conv1d_direct` over the zero-padded signal |
 | Back | `M12.2` | images are uint8 HWC (reading) |
 | Back | `M02.1` | the sinc and its series (reading) |
-| Forward | `L13.6` | `resize` in every image processor, checked against Pillow (with B14's L13 group) |
+| Forward | `L13.6` | `resize` in every image processor, checked against Pillow |
 | Forward | `L13.3` | `interpolate_pos_embed` resizes position tables with `resize_planar_f32` |
 | Forward | `L14.1` | `resample_audio` brings every clip to 16 kHz |
 | Forward | `data.10` | thumbnails for perceptual hashes |
@@ -144,7 +345,7 @@ def resample_audio(x, sr_in, sr_out, lowpass_filter_width=6, rolloff=0.99) -> ND
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `resize` (pil mode) | Pillow `ImagingResample` | SIMD fixed-point passes, `reducing_gap` (a fast box reduce before the filter) | `src/libImaging/Resample.c` |
 | `resize` (float mode) | `torch._C._nn._upsample_bicubic2d_aa` | the same weights vectorized on CPU and CUDA | `aten/src/ATen/native/UpSample.h` |

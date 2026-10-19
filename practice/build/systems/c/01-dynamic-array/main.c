@@ -1,7 +1,6 @@
-/* main.c - the tests. Given to you; do not edit them to make them pass.
+/* main.c - the test suite for the reference implementation.
  *
- * Exits 0 when everything holds, nonzero on the first failure. That is the
- * whole contract `ol check` relies on.
+ * Exits 0 when everything holds, nonzero on the first failure.
  */
 #include "vec.h"
 

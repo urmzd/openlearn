@@ -1,5 +1,0 @@
---- a/python/tinyllm/post/sft.py
-+++ b/python/tinyllm/post/sft.py
-@@ -19 +19 @@
--        mask = [False] * len(ids)
-+        mask = [True] * len(ids)

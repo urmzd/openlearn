@@ -10,7 +10,6 @@ including the signals prerequisites and speech modules.
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L13.1` | [Conv layers and pooling on autograd](01-conv-layers-and-pooling.md) | build | 12 |
@@ -19,4 +18,3 @@ including the signals prerequisites and speech modules.
 | 4 | `L13.4` | [Dynamic resolution and tiling](04-dynamic-resolution-and-tiling.md) | build | 12 |
 | 5 | `L13.5` | [Contrastive image-text: CLIP and SigLIP](05-contrastive-image-text.md) | build | 12 |
 | 6 | `L13.6` | [Image preprocessing to the specification](06-image-preprocessing.md) | build | 12 |
-<!-- /ol:chapters -->

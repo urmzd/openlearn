@@ -1,7 +1,0 @@
-{
-  "cases": [
-    {"name": "model-deny", "model": "experimental-unsafe", "tenant": "paid", "max_tokens": 8, "decision": "deny", "rule_id": "restricted-model"},
-    {"name": "token-cap", "model": "smol-135m-instruct", "tenant": "free", "max_tokens": 2048, "decision": "deny", "rule_id": "free-token-cap"},
-    {"name": "unmatched-allow", "model": "smol-135m-instruct", "tenant": "paid", "max_tokens": 8, "decision": "allow", "rule_id": ""}
-  ]
-}

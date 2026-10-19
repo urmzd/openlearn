@@ -1,42 +1,33 @@
-<!-- ol:module L4.5 -->
 # Sequence metrics: exact match, BLEU, chrF
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L4.5` · build · Python · Pass 4 · 2 to 3 h, plus your graded tests (rung R5) |
-| **You build** | `python/tinyllm/eval/seqmetrics.py`: `exact_match`, `tokenize_13a`, `bleu_stats`, `bleu_from_stats`, `corpus_bleu`, `chrf_stats`, `chrf_from_stats`, `chrf`, `sentence_stats`, `score_from_stats`, `metric_ci`; and your own tests in `python/tests/l4-5-seqmetrics/` |
+| **Module** | `L4.5` · build · Python · Pass 4 · 1.5 to 2 h reading |
+| **Solution** | [`python/tinyllm/eval/seqmetrics.py`](../../../../course/solutions/python/tinyllm/eval/seqmetrics.py): `exact_match`, `tokenize_13a`, `bleu_stats`, `bleu_from_stats`, `corpus_bleu`, `chrf_stats`, `chrf_from_stats`, `chrf`, `sentence_stats`, `score_from_stats`, `metric_ci`; model oracle tests in [`test_seqmetrics.py`](../../../../course/solutions/learner-tests/L4.5/python/tests/l4-5-seqmetrics/test_seqmetrics.py) |
 | **Contract** | [`course/contracts/py/tinyllm/eval/seqmetrics.pyi`](../../../../course/contracts/py/tinyllm/eval/seqmetrics.pyi) |
-| **Tests** | `course/tests/L4.5/` (what they check: section 4), golden values from sacreBLEU 2.5.1 in `course/fixtures/L4.5/sacrebleu_golden.json`; your tests are graded by mutation, threshold 0.80 with every semantic fault required |
-| **Needs** | `M07.4` `bootstrap_ci` (the interval every score carries) (or `--ref-deps`) |
-| **Used by** | later: `L6.7` scores the model zoo's `seq2seq` and `transformer` rows with these functions; `ag.10` re-implements them in Go; the `translate` verb of your CLI reports them in `MS-L4` · `L14.5` caption BLEU-4 and chrF |
-| **Milestone** | `MS-L4` |
+| **Needs** | `M07.4` `bootstrap_ci` (the interval every score carries) |
+| **Used by** | later: `L6.7` scores the model zoo's `seq2seq` and `transformer` rows with these functions; `ag.10` re-implements them in Go; the `translate` verb of the `{tinyllm}` CLI reports them · `L14.5` caption BLEU-4 and chrF |
 | **Optional depth** | Papineni et al., "BLEU: a Method for Automatic Evaluation of Machine Translation" (ACL 2002); Popovic, "chrF: character n-gram F-score for automatic MT evaluation" (WMT 2015); Post, "A Call for Clarity in Reporting BLEU Scores" (WMT 2018); Koehn, "Statistical Significance Tests for Machine Translation Evaluation" (EMNLP 2004) |
 
 ## Key Takeaways
 
-- BLEU counts word n-grams of orders 1 to 4 that the hypothesis shares with a reference, **clipped** by the reference counts, takes the geometric mean of the four precisions, and multiplies by a brevity penalty measured against the reference **closest** in length (`test_hand_example_bleu`, `test_clipping`, `test_closest_reference_length`).
-- A corpus score pools sufficient statistics over sentences; it is not the mean of sentence scores (`test_corpus_pools_statistics`). Pooling is also what makes a bootstrap over sentences cheap.
-- chrF counts character n-grams with white space removed, averages precision and recall over orders 1 to 6, and weights recall by $\beta^2 = 4$; it forgives "cats" for "cat" where BLEU sees a miss (`test_hand_example_chrf`, `test_chrf_ignores_white_space_and_forgives_inflection`).
-- The tokenizer, the smoothing, the case rule, and the reference layout are part of the metric: change one and the number is no longer comparable. Matching sacreBLEU's defaults exactly makes yours comparable with published scores (`test_bleu_matches_sacrebleu`, `test_chrf_matches_sacrebleu`).
-- A score without an interval is a guess: `metric_ci` resamples sentences with `M07.4`'s bootstrap and reproduces an independent sacreBLEU run seed for seed (`test_metric_ci_matches_independent_bootstrap`).
+- BLEU counts word n-grams of orders 1 to 4 that the hypothesis shares with a reference, **clipped** by the reference counts, takes the geometric mean of the four precisions, and multiplies by a brevity penalty measured against the reference **closest** in length.
+- A corpus score pools sufficient statistics over sentences; it is not the mean of sentence scores. Pooling is also what makes a bootstrap over sentences cheap.
+- chrF counts character n-grams with white space removed, averages precision and recall over orders 1 to 6, and weights recall by $\beta^2 = 4$; it forgives "cats" for "cat" where BLEU sees a miss.
+- The tokenizer, the smoothing, the case rule, and the reference layout are part of the metric: change one and the number is no longer comparable. Matching sacreBLEU's defaults exactly makes the solution's numbers comparable with published scores.
+- A score without an interval is a guess: `metric_ci` resamples sentences with `M07.4`'s bootstrap and reproduces an independent sacreBLEU run seed for seed.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L4.5              # stubs seqmetrics.py; prints your test path and rung (R5)
-ol tests L4.5              # the course tests
-# compute the section 3 numbers by hand, write them as tests in python/tests/l4-5-seqmetrics/, then:
-ol check L4.5              # course tests and the mutation grade of your tests
-ol mutate L4.5             # the full grade, cached by your test files' hash
-```
+Sections 1 to 3 build exact match, BLEU and chrF from their definitions and work each by hand. Section 4 fixes the interface and what a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Your seq2seq models of `L4.1` to `L4.4` now write dates, and soon translations and stories. The training loss says how surprised a model is by the reference, not whether what it **generates** is right: beam search can produce a fluent output the loss never saw. So the system needs metrics over generated text. The simplest, exact match, is the `MS-L4` bar (a date is right or wrong). For free text, the field reports BLEU and chrF, and reports them in one exact configuration: sacreBLEU's. Two "BLEU" implementations that differ in tokenization or smoothing disagree by several points on the same output, which is larger than most of the improvements papers claim. This module builds all three metrics from their sufficient statistics, matches sacreBLEU to twelve digits, and attaches the bootstrap interval from `M07.4`, so every number the `L6.7` evaluation harness prints later is both comparable and honest about its noise.
+The seq2seq models of `L4.1` to `L4.4` now write dates, and soon translations and stories. The training loss says how surprised a model is by the reference, not whether what it **generates** is right: beam search can produce a fluent output the loss never saw. So the system needs metrics over generated text. The simplest, exact match, is the bar for the dates task (a date is right or wrong). For free text, the field reports BLEU and chrF, and reports them in one exact configuration: sacreBLEU's. Two "BLEU" implementations that differ in tokenization or smoothing disagree by several points on the same output, which is larger than most of the improvements papers claim. This module builds all three metrics from their sufficient statistics, matches sacreBLEU to twelve digits, and attaches the bootstrap interval from `M07.4`, so every number the `L6.7` evaluation harness prints later is both comparable and honest about its noise.
 
 ## 2. Principles
 
@@ -75,7 +66,7 @@ With several references, a sentence keeps the statistics of the reference with t
 
 ### 2.4 Corpus statistics and intervals
 
-Both metrics are functions of **sums** of per-sentence statistics, so a corpus score is computed once from the column sums. The mean of sentence BLEUs is a different, worse-behaved number (`test_corpus_pools_statistics`: 31.26 pooled against 36.96 averaged). Pooling also makes the bootstrap cheap: `sentence_stats` gives an $N \times S$ matrix, and `metric_ci` calls `M07.4`'s `bootstrap_ci` on the indices $0..N-1$ with the statistic "sum the resampled rows, then score". Each resample keeps a hypothesis with its own references. One surprise the tests pin: smoothing is not scale-invariant, so a sentence counted twice in a resample can score differently from the sentence alone (its zero-order precision becomes $1/(2 \cdot 2t_n)$).
+Both metrics are functions of **sums** of per-sentence statistics, so a corpus score is computed once from the column sums. The mean of sentence BLEUs is a different, worse-behaved number (on a two-sentence corpus: 31.26 pooled against 36.96 averaged). Pooling also makes the bootstrap cheap: `sentence_stats` gives an $N \times S$ matrix, and `metric_ci` calls `M07.4`'s `bootstrap_ci` on the indices $0..N-1$ with the statistic "sum the resampled rows, then score". Each resample keeps a hypothesis with its own references. One surprise the tests pin: smoothing is not scale-invariant, so a sentence counted twice in a resample can score differently from the sentence alone (its zero-order precision becomes $1/(2 \cdot 2t_n)$).
 
 ### 2.5 Exact match
 
@@ -108,7 +99,7 @@ $\bar P = 1$, $\bar R = (3/4 + 2/3 + 1/2)/3 = 23/36$, and $\mathrm{chrF} = 100 \
 
 **Exact match.** Hypotheses "2021-05-03", " 2021-05-04\n", "2021-5-3" against "2021-05-03", "2021-05-04", "2021-05-03": the first matches, the second matches after stripping, the third does not (`5` is not `05`). EM $= 2/3$.
 
-These are the first three tests of section 4.
+A correct solution reproduces all three numbers exactly.
 
 ## 4. The interface
 
@@ -129,65 +120,239 @@ def metric_ci(metric, hyps, refs, n_boot=1000, alpha=0.05, rng=None) -> tuple[fl
 
 `refs[i]` is the **list** of references of `hyps[i]` (sacreBLEU's own API takes reference streams, the transpose). A bare string there is a `TypeError`.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_bleu` | unit | the section 3 BLEU statistics and 37.991784 | you and the tests agree on the definition |
-| `test_hand_example_chrf` | unit | the section 3 chrF statistics and $100 \cdot 115/167$ | the same for chrF |
-| `test_hand_example_exact_match` | unit | 2/3, with the strip | the `MS-L4` bar |
-| `test_clipping` | boundary | "the the the the" matches one unigram | repetition never pays |
-| `test_closest_reference_length` | boundary | closest, ties to the shorter, longer when closer | the brevity penalty with several references |
-| `test_brevity_penalty` | unit | $e^{1 - r/c}$ when short, nothing when long | dropping hard words is not rewarded |
-| `test_smoothing_and_zero_orders` | boundary | "exp" smoothing values; no match and no 4-gram give 0 | short outputs of the dates task |
-| `test_corpus_pools_statistics` | property | pooled sums, not the mean of sentence scores | the corpus number `L6.7` reports |
-| `test_references_are_per_hypothesis` | boundary | per-hypothesis layout; variable counts; a bare string fails | the zoo passes one reference per row |
-| `test_tokenize_13a_matches_sacrebleu` | golden | 15 lines through 13a | comparable token counts |
-| `test_bleu_matches_sacrebleu` | golden | statistics and score on 26 corpora, both tokenizers | comparable with published BLEU |
-| `test_case_counts` | unit | case-sensitive by default | no silent inflation |
-| `test_chrf_matches_sacrebleu` | golden | statistics and score on 16 corpora | comparable with published chrF |
-| `test_chrf_ignores_white_space_and_forgives_inflection` | unit | white space removed; "cats" vs "cat" | why chrF sits beside BLEU |
-| `test_chrf_beta_weights_recall` | unit | $\beta^2$, and $\beta$ is a parameter | recall-weighted F |
-| `test_chrf_uses_the_best_reference` | unit | the best reference, not an average or the last | several references per sentence |
-| `test_exact_match_is_strict_inside` | boundary | case and inner spaces count | a date is right or wrong |
-| `test_metric_ci_matches_independent_bootstrap` | golden | 6 intervals equal an independent sacreBLEU bootstrap | every `L6.7` number carries this CI |
-| `test_metric_ci_brackets_the_score` | property | reproducible, in range, degenerate when every pair matches | resampling keeps pairs together |
-| `test_validation` | boundary | mismatched lengths, empty corpus, unknown names, missing rng | a silent 0 hides a broken pipeline |
+| hand example: BLEU | unit | the section 3 BLEU statistics and 37.991784 | pins down the definition |
+| hand example: chrF | unit | the section 3 chrF statistics and $100 \cdot 115/167$ | the same for chrF |
+| hand example exact match | unit | 2/3, with the strip | the dates-task bar |
+| clipping | boundary | "the the the the" matches one unigram | repetition never pays |
+| closest reference length | boundary | closest, ties to the shorter, longer when closer | the brevity penalty with several references |
+| brevity penalty | unit | $e^{1 - r/c}$ when short, nothing when long | dropping hard words is not rewarded |
+| smoothing and zero orders | boundary | "exp" smoothing values; no match and no 4-gram give 0 | short outputs of the dates task |
+| corpus pools statistics | property | pooled sums, not the mean of sentence scores | the corpus number `L6.7` reports |
+| references are per hypothesis | boundary | per-hypothesis layout; variable counts; a bare string fails | the zoo passes one reference per row |
+| 13a tokenizer matches sacreBLEU | golden | 15 lines through 13a | comparable token counts |
+| BLEU matches sacreBLEU | golden | statistics and score on 26 corpora, both tokenizers | comparable with published BLEU |
+| case counts | unit | case-sensitive by default | no silent inflation |
+| chrF matches sacreBLEU | golden | statistics and score on 16 corpora | comparable with published chrF |
+| chrF ignores white space and forgives inflection | unit | white space removed; "cats" vs "cat" | why chrF sits beside BLEU |
+| chrF $\beta$ weights recall | unit | $\beta^2$, and $\beta$ is a parameter | recall-weighted F |
+| chrF uses the best reference | unit | the best reference, not an average or the last | several references per sentence |
+| exact match is strict inside | boundary | case and inner spaces count | a date is right or wrong |
+| `metric_ci` matches an independent bootstrap | golden | 6 intervals equal an independent sacreBLEU bootstrap | every `L6.7` number carries this CI |
+| `metric_ci` brackets the score | property | reproducible, in range, degenerate when every pair matches | resampling keeps pairs together |
+| validation | boundary | mismatched lengths, empty corpus, unknown names, missing rng | a silent 0 hides a broken pipeline |
 
-### Your graded tests (rung R5)
+### The oracle tests
 
-At rung R5 you write oracle tests: numbers you computed by hand from the definitions, never numbers your code printed. Cover at least: the section 3 examples; a clipping case; a closest-reference case where the closest is the **longer** reference; the brevity penalty both ways; a smoothed zero order; pooled statistics against a mean; the per-hypothesis layout; 13a keeping `3.14` whole; case; a chrF order that needs $n = 6$; white space in chrF; the best reference; exact match with a strip and with case; and an interval on a two-sentence corpus where you can list every resample by hand. Your tests run against the course's reference with one planted fault at a time: at least 0.80 of the faults, and every semantic one (one per pitfall below), must fail them.
+The model suite [`test_seqmetrics.py`](../../../../course/solutions/learner-tests/L4.5/python/tests/l4-5-seqmetrics/test_seqmetrics.py) uses oracle values: numbers computed by hand from the definitions, never numbers the code printed. It covers the section 3 examples; a clipping case; a closest-reference case where the closest is the **longer** reference; the brevity penalty both ways; a smoothed zero order; pooled statistics against a mean; the per-hypothesis layout; 13a keeping `3.14` whole; case; a chrF order that needs $n = 6$; white space in chrF; the best reference; exact match with a strip and with case; and an interval on a two-sentence corpus where every resample can be listed by hand. Each pitfall in section 6 makes at least one of these tests fail.
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Corpus metrics must be functions of summed statistics.** BLEU's definition (Papineni et al.) is a corpus-level ratio of counts, not an average of sentence scores. So the unit of computation is a fixed-length vector of counts per sentence: ten for BLEU ($[c, r, m_{1..4}, t_{1..4}]$), $3n$ for chrF. A corpus score is "sum the vectors, then score once", and the bootstrap reuses exactly that.
+2. **Clipping needs, per n-gram, the maximum count over references.** A hypothesis n-gram may be credited at most as many times as it appears in any one reference, so the references are merged by taking the per-gram maximum, not the sum.
+3. **The brevity penalty needs one reference length.** Precision alone rewards short output; the penalty compares $c$ with the reference length closest to $c$, ties to the shorter, as sacreBLEU does. In the BLEU worked example $c = r = 6$, so BP = 1.
+4. **Zero precisions must be smoothed in a specific way to be comparable.** sacreBLEU's "exp" smoothing halves the stand-in each time another zero order appears; in the worked example the single zero 4-gram order becomes $1/(2 \cdot 3)$, giving $100 \cdot (1/48)^{1/4} = 37.991784$. An order with no n-grams at all ends the loop and stays at $\log 0$.
+5. **The tokenizer is part of the metric.** To be comparable with published BLEU, `13a` is reproduced regex for regex, including its digit exceptions.
+6. **chrF is the same pattern on characters.** White space is removed, per-order counts are clipped, $P$ and $R$ are averaged over the orders that exist, and a single $F_\beta$ is taken from the averages (not an average of per-order Fs). With several references, the one with the best sentence chrF is kept.
+7. **Intervals resample sentences, keeping pairs together.** Each row of `sentence_stats` belongs to one hypothesis with its references; resampling row indices and rescoring gives the bootstrap distribution of the *same* metric that is reported.
+
+### The code, annotated
+
+The tokenizer is four regexes over a padded line, then a white-space split and rejoin:
+
+```python
+_13A = [
+    # symbols and punctuation: { | } ~ [ \ ] ^ _ ` space ! " # $ % & ( ) * + : ; < = > ? @ /
+    (re.compile(r"([\{-\~\[-\` -\&\(-\+\:-\@\/])"), r" \1 "),
+    # period and comma unless preceded by a digit
+    (re.compile(r"([^0-9])([\.,])"), r"\1 \2 "),
+    # period and comma unless followed by a digit
+    (re.compile(r"([\.,])([^0-9])"), r" \1 \2"),
+    # dash when preceded by a digit
+    (re.compile(r"([0-9])(-)"), r"\1 \2 "),
+]
+
+def tokenize_13a(line):
+    line = line.replace("<skipped>", "").replace("-\n", "").replace("\n", " ")
+    if "&" in line:
+        line = line.replace("&quot;", '"').replace("&amp;", "&")
+        line = line.replace("&lt;", "<").replace("&gt;", ">")
+    line = f" {line} "                     # so the "not a digit" rules see a neighbour at the ends
+    for pattern, repl in _13A:
+        line = pattern.sub(repl, line)
+    return " ".join(line.split())
+```
+
+`3.14` survives because both period rules need a non-digit on one side; `10-12` splits because the dash follows a digit.
+
+BLEU statistics for one sentence:
+
+```python
+def bleu_stats(hyp, refs, tokenize="13a"):
+    refs = _ref_list(refs)                 # a bare str raises TypeError
+    max_ref = Counter()
+    ref_lens = []
+    for r in refs:
+        toks = _tokens(r, tokenize)        # rstrip, then 13a or plain split
+        ref_lens.append(len(toks))
+        for g, c in _word_ngrams(toks).items():
+            if c > max_ref[g]:
+                max_ref[g] = c             # per-gram MAX over references (step 2)
+    htoks = _tokens(hyp, tokenize)
+    correct = [0] * MAX_ORDER
+    total = [0] * MAX_ORDER
+    for g, c in _word_ngrams(htoks).items():
+        total[len(g) - 1] += c
+        correct[len(g) - 1] += min(c, max_ref[g])   # clipping
+    return [len(htoks), _closest_ref_len(len(htoks), ref_lens)] + correct + total
+```
+
+For "the cat sat on the mat" against "the cat is on the mat" this returns $[6, 6, 5, 3, 1, 0, 6, 5, 4, 3]$, the row of section 3. `_closest_ref_len` scans references keeping the smallest $|c - r|$ and, on equal distance, the shorter $r$.
+
+Scoring the statistics, in sacreBLEU's arithmetic (logs of percentages, so the result is already in 0..100):
+
+```python
+def bleu_from_stats(stats):
+    # ... (exactly 10 numbers)
+    sys_len, ref_len = stats[0], stats[1]
+    correct, total = stats[2 : 2 + MAX_ORDER], stats[2 + MAX_ORDER :]
+    if not any(correct):
+        return 0.0                                   # nothing matched at all
+    bp = 1.0
+    if sys_len < ref_len:                            # only short output is penalized
+        bp = math.exp(1.0 - ref_len / sys_len) if sys_len > 0 else 0.0
+    logs = [LOG_ZERO] * MAX_ORDER                    # sacreBLEU's log(0)
+    smooth = 1.0
+    for n in range(MAX_ORDER):
+        if total[n] == 0:
+            break                                    # no n-grams of this order: stays log 0
+        if correct[n] == 0:
+            smooth *= 2.0                            # j-th zero order -> 1 / (2^j t_n)
+            logs[n] = math.log(100.0 / (smooth * total[n]))
+        else:
+            logs[n] = math.log(100.0 * correct[n] / total[n])
+    return bp * math.exp(sum(logs) / MAX_ORDER)      # geometric mean, times BP
+```
+
+`corpus_bleu` sums `bleu_stats` over sentences element by element and calls `bleu_from_stats` once.
+
+chrF statistics and score:
+
+```python
+def _char_ngrams(line, n):
+    """Character n-gram counts of orders 1..n, white space removed."""
+    s = "".join(line.split())
+    return [Counter(s[i : i + k] for i in range(len(s) - k + 1)) for k in range(1, n + 1)]
+
+def chrf_stats(hyp, refs, n=CHRF_N, beta=CHRF_BETA):
+    # ... (n, beta checks; refs as a list)
+    hyp_grams = _char_ngrams(hyp, n)
+    best, best_f = None, -1.0
+    for r in refs:
+        stats = []
+        for h, g in zip(hyp_grams, _char_ngrams(r, n)):
+            match = sum(min(c, g[x]) for x, c in h.items() if x in g)   # clipped matches
+            # sacreBLEU's rule: the hypothesis count is 0 when the reference has no k-gram.
+            stats += [sum(h.values()) if g else 0, sum(g.values()), match]
+        f = chrf_from_stats(stats, n, beta)
+        if f > best_f:                     # strict: the first reference wins a tie
+            best, best_f = stats, f
+    return best
+
+def chrf_from_stats(stats, n=CHRF_N, beta=CHRF_BETA):
+    # ... (checks)
+    factor = beta**2
+    prec = rec = 0.0
+    orders = 0
+    for k in range(n):
+        n_hyp, n_ref, n_match = stats[3 * k : 3 * k + 3]
+        if n_hyp > 0 and n_ref > 0:        # only orders both sides have
+            prec += n_match / n_hyp
+            rec += n_match / n_ref
+            orders += 1
+    if orders == 0:
+        return 0.0
+    prec, rec = prec / orders, rec / orders  # average P and R first ...
+    if prec + rec == 0:
+        return 0.0
+    return 100.0 * (1 + factor) * prec * rec / (factor * prec + rec)   # ... then one F_beta
+```
+
+For "cat" against "cats", orders 1 to 3 contribute and $\bar R = 23/36$, so the score is $100 \cdot 5 \cdot 23/36 / (4 + 23/36) = 100 \cdot 115/167$.
+
+Exact match is `h.strip() == r.strip()` averaged. The interval wraps all three metrics in one shape:
+
+```python
+def metric_ci(metric, hyps, refs, n_boot=1000, alpha=0.05, rng=None):
+    if rng is None:
+        raise ValueError("metric_ci needs an rng (a PCG32): the interval must be reproducible")
+    rows = sentence_stats(metric, hyps, refs)      # [N, S]: 1, 10 or 18 columns
+
+    def stat(idx):
+        picked = rows[np.asarray(idx, dtype=np.int64)]   # a resample of whole sentences
+        return score_from_stats(metric, picked.sum(axis=0), len(picked))
+
+    # M07.4 resamples the indices 0..N-1; the statistic re-pools and rescores.
+    point, lo, hi = bootstrap_ci(np.arange(len(rows), dtype=np.float64), stat, n_boot, alpha, rng)
+    return float(point), float(lo), float(hi)
+```
+
+Full solution: [`seqmetrics.py`](../../../../course/solutions/python/tinyllm/eval/seqmetrics.py).
+
+### Why this solution
+
+- **Cost.** BLEU statistics are $O(L)$ per sentence for $L$ tokens (four orders), chrF $O(n C)$ for $C$ characters. The bootstrap costs $O(B \cdot N S)$ for $B$ resamples, because each resample only sums precomputed rows; recomputing n-grams per resample would cost $O(B \cdot \text{corpus size})$.
+- **Why match sacreBLEU instead of a "cleaner" BLEU?** Any change in tokenization, smoothing or case moves scores by more than typical improvements (Post 2018). Matching the de facto standard makes every number comparable; the cost is reproducing quirks such as `LOG_ZERO` and the `break` on empty orders.
+- **Why sufficient statistics rather than a direct corpus function?** The same rows give the corpus score, any sub-corpus score and every bootstrap resample. A direct function would have to be rerun on raw text each time.
+- **Why exact match strips only the ends?** It is a strict metric by design; a trailing newline from a decoder is a formatting artifact, while case and inner spacing change the meaning of a date.
+- **Tradeoff.** Smoothing is not scale-invariant (section 2.4), so a resample that duplicates a sentence can score differently from the sentence alone. The solution accepts this to stay identical to sacreBLEU's bootstrap.
+
+### Explain it back
+
+1. Why is the corpus BLEU of two sentences not the mean of their sentence BLEUs?
+   <details><summary>Answer</summary>BLEU is a geometric mean of pooled precisions times a pooled brevity penalty, a nonlinear function of summed counts. Averaging sentence scores applies the nonlinearity per sentence, which weights short sentences and smoothed zeros very differently (31.26 pooled against 36.96 averaged on the example corpus).</details>
+2. With two references, why is the clip the maximum count in one reference and not the sum over references?
+   <details><summary>Answer</summary>Each reference is a complete valid output. A word that appears once in each of two references is still correct only once in a single sentence; summing would let a hypothesis repeat it and be credited twice.</details>
+3. In the worked example, where does the $1/6$ for the 4-gram precision come from?
+   <details><summary>Answer</summary>No 4-gram matched, so exp smoothing applies: it is the first zero order, so `smooth` becomes 2 and the stand-in precision is $1/(2 \cdot t_4) = 1/(2 \cdot 3)$.</details>
+4. Why does chrF average $P$ and $R$ over orders before forming $F_\beta$?
+   <details><summary>Answer</summary>That is chrF's definition in sacreBLEU. Averaging per-order F scores is a different metric and gives different numbers, so it would not be comparable with published chrF.</details>
+5. Why does `metric_ci` resample row indices rather than resampling hypotheses and references separately?
+   <details><summary>Answer</summary>A hypothesis is only meaningful against its own references. Resampling rows keeps each pair together, and summing the picked rows before scoring makes the interval describe the same pooled metric that is reported.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. Counting n-gram matches without clipping | "the the the the" scores like "the cat" | `test_clipping` (mutant `s01`) |
-| 2. Brevity penalty against the shortest reference, or applied to long hypotheses too | scores drop for outputs of the right length | `test_closest_reference_length` (mutant `s02`), `test_brevity_penalty` (mutant `s03`) |
-| 3. Corpus BLEU as the mean of sentence BLEUs | 36.96 instead of 31.26 on two sentences | `test_corpus_pools_statistics` (mutant `s04`) |
-| 4. The wrong reference layout: a bare string, or sacreBLEU's streams | each character becomes a reference; pairs scored against the wrong sentence | `test_references_are_per_hypothesis` (mutants `s05`, `s06`) |
-| 5. Arithmetic mean of precisions, or no smoothing | scores far too high, or 0 for any output missing one 4-gram | `test_hand_example_bleu` (mutant `s07`), `test_smoothing_and_zero_orders` (mutant `s08`) |
-| 6. A different tokenizer or case rule | `3.14` split in three; "The" matches "the" | `test_tokenize_13a_matches_sacrebleu` (mutant `s09`), `test_case_counts` (mutant `s10`) |
-| 7. chrF with white space kept, $\beta$ not squared, per-order F averaged, or orders 1 to $n-1$ | chrF off by several points | `test_chrf_ignores_white_space_and_forgives_inflection` (mutant `s11`), `test_chrf_beta_weights_recall` (mutant `s12`), `test_hand_example_chrf` (mutant `s13`), `test_chrf_matches_sacrebleu` (mutant `s15`) |
-| 8. chrF keeping the last reference instead of the best | a bad extra reference lowers the score | `test_chrf_uses_the_best_reference` (mutant `s14`) |
-| 9. Exact match that ignores case, or does not strip | "Paris" equals "paris"; a trailing newline is an error | `test_exact_match_is_strict_inside` (mutants `s16`, `s17`) |
-| 10. A bootstrap that averages sentence scores | an interval for a different metric than the one reported | `test_metric_ci_matches_independent_bootstrap` (mutant `s18`) |
+| 1. Counting n-gram matches without clipping | "the the the the" scores like "the cat" | `min(c, max_ref[g])` in `bleu_stats` |
+| 2. Brevity penalty against the shortest reference, or applied to long hypotheses too | scores drop for outputs of the right length | `_closest_ref_len` (ties to the shorter); BP only `if sys_len < ref_len` |
+| 3. Corpus BLEU as the mean of sentence BLEUs | 36.96 instead of 31.26 on two sentences | `corpus_bleu` sums the ten statistics, then scores once |
+| 4. The wrong reference layout: a bare string, or sacreBLEU's streams | each character becomes a reference; pairs scored against the wrong sentence | `_ref_list` rejects a bare `str`; `refs[i]` is the list for `hyps[i]` |
+| 5. Arithmetic mean of precisions, or no smoothing | scores far too high, or 0 for any output missing one 4-gram | mean of `logs` (geometric mean); `smooth *= 2.0` for each zero order |
+| 6. A different tokenizer or case rule | `3.14` split in three; "The" matches "the" | the four `_13A` regexes exactly as sacreBLEU; no lowercasing |
+| 7. chrF with white space kept, $\beta$ not squared, per-order F averaged, or orders 1 to $n-1$ | chrF off by several points | `"".join(line.split())`; `factor = beta**2`; average $P$ and $R$ first, then one F; `range(1, n + 1)` |
+| 8. chrF keeping the last reference instead of the best | a bad extra reference lowers the score | `chrf_stats` keeps the stats with the highest sentence chrF, `>` so the first wins ties |
+| 9. Exact match that ignores case, or does not strip | "Paris" equals "paris"; a trailing newline is an error | `h.strip() == r.strip()`, nothing more |
+| 10. A bootstrap that averages sentence scores | an interval for a different metric than the one reported | `stat` sums resampled rows and calls `score_from_stats` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M07.4` | `bootstrap_ci` and the percentile rule behind `metric_ci` |
 | Forward | `L6.7` | the model zoo's EM and chrF columns, each with its interval (`run_task`) |
 | Forward | `ag.10` | re-implements exact match in Go for the agent eval scorers |
-| Forward | `craft.07` | your L4.5 suite meets its survivors: equivalent mutants and the ones it missed |
+| Forward | `craft.07` | uses the L4.5 test suite as its example of surviving faults: equivalent ones and missed ones |
 | Forward | `L14.5` | caption BLEU-4 and chrF through `corpus_bleu` and `chrf` |
-
-If you skip this module, the `translate` verb of `MS-L4` has nothing to report, and `ol check L6.7` needs `--ref-deps`.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `corpus_bleu`, `chrf` | [sacreBLEU](https://github.com/mjpost/sacrebleu) | signatures that name every setting, other tokenizers (`intl`, `zh`, `ja-mecab`), chrF++ word n-grams, TER | `sacrebleu/metrics/bleu.py`, `chrf.py` |
 | `metric_ci` | sacreBLEU paired bootstrap and approximate randomization | significance of the DIFFERENCE between two systems on the same sentences | `sacrebleu/significance.py` |

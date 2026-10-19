@@ -1,8 +1,0 @@
---- a/python/tinyllm/rnn/manual.py
-+++ b/python/tinyllm/rnn/manual.py
-@@ -152,4 +152,4 @@
-     for t in range(T - 1, 0, -1):
-         g = (g * (1.0 - h[t] * h[t])) @ Whh.T
-         norms[t - 1] = np.linalg.norm(g)
--    return norms, float(spectral_radius(Whh))
-+    return norms, float(np.linalg.norm(Whh, 2))

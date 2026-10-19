@@ -1,0 +1,54 @@
+# Reference answers for S-M10a: the worked answers the chapter explains.
+
+[q1.a]
+answer = "true"
+[q1.b]
+answer = "false"
+[q1.c]
+answer = "true"
+[q2.a]
+answer = "10"
+[q2.b]
+answer = "1"
+[q2.c]
+answer = "10/1"
+[q3]
+answer = "[0, oo)"
+[q4]
+proof = "S-M10a/q4.md"
+[q5.a]
+answer = "(0, 2/10)"
+[q5.b]
+answer = "2/(10 + 1)"
+[q5.c]
+answer = "(10 - 1)/(10 + 1)"
+[q5.d]
+answer = "1 - 1/10"
+[q6]
+answer = "132"
+[q7]
+answer = "(1/2)^3"
+[q8]
+answer = "1/2"
+[q9]
+answer = "4*9/(2*10)"
+[q10.a]
+answer = "g/(1 - beta)"
+[q10.b]
+answer = "1/(1 - 9/10)"
+[q11.a]
+answer = "r^2 - (1 + beta - eta*h)*r + beta"
+[q11.b]
+answer = "sqrt(81/100)"
+[q12]
+answer = "(9/11)^2"
+[q13]
+answer = "1 + 1/2 + 1/4"
+[q14]
+answer = "g - g*beta1^t"
+[q15]
+answer = "1/100"
+[q16]
+answer = "1 - 1/100 - 1/10"
+[q17]
+proof = "S-M10a/q17.md"

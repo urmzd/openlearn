@@ -1,0 +1,58 @@
+# Reference answers for S-M06a: the worked answers the chapter explains.
+
+[q1.a]
+answer = "2"
+[q1.b]
+answer = "2"
+[q2.a]
+answer = "true"
+[q2.b]
+answer = "false"
+[q3]
+answer = "2 + 3"
+[q4]
+answer = "[0, 0, 2, 1, 2]"
+[q5]
+answer = "2"
+[q6]
+answer = "false"
+[q7.a]
+answer = "[[0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0]]"
+[q7.b]
+answer = "[[0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]"
+[q8]
+answer = "a"
+[q9]
+answer = "10^5"
+[q10.a]
+answer = "2"
+[q10.b]
+answer = "3"
+[q11]
+answer = "4"
+[q12]
+answer = "1"
+[q13]
+answer = "2^31 + 2^30"
+[q14]
+answer = "12638187200555641996"
+[q15.a]
+answer = "12/16"
+[q15.b]
+answer = "1 + 3/4"
+[q16]
+answer = "1"
+[q17]
+answer = "binomial(n, 2)/m"
+[q18]
+proof = "S-M06a/q18.md"
+[q19]
+proof = "S-M06a/q19.md"
+[q20]
+proof = "S-M06a/q20.md"
+[q21]
+proof = "S-M06a/q21.md"
+[q22]
+proof = "S-M06a/q22.md"
+[q23]
+answer = "false"

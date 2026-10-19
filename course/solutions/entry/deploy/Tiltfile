@@ -1,0 +1,105 @@
+# deploy/Tiltfile: the inner dev loop on kind (dep.04 reference).
+#
+#   tilt up -f deploy/Tiltfile      edit, save, see it running in seconds
+#   tilt ci -f deploy/Tiltfile      the same graph once, exit 0 when all ready (CI)
+#
+# Paths are relative to this file (deploy/). The graph:
+#   gateway-compile (local go build) -> forge-gateway image (live update)
+#   forge-engine image (full rebuild) -> forge-engine -> forge-gateway
+#   forge-durable, forge-worker images (full rebuild) -> forge-durable -> forge-worker
+load('ext://restart_process', 'docker_build_with_restart')
+
+SYSTEM = 'forge'
+CONTEXT = 'kind-' + SYSTEM
+
+# Never deploy anywhere but your own kind cluster: a wrong current context
+# would otherwise get your dev images and charts.
+if k8s_context() != CONTEXT:
+    fail('deploy/Tiltfile deploys only to %s; current context is %s (kubectl config use-context %s)' % (CONTEXT, k8s_context(), CONTEXT))
+allow_k8s_contexts(CONTEXT)
+
+# tilt ci gives up on a resource that never becomes ready after this long,
+# instead of the default 30 minutes.
+ci_settings(timeout='15m')
+
+# -- engine (Rust): rebuild the image ------------------------------------------
+# A Rust change needs the toolchain and a relink, so there is no live update:
+# the image rebuilds (cargo's layer cache keeps that to the changed crates)
+# and the pod is replaced. The image name matches the chart's image.repository,
+# which is how Tilt knows to deploy the image it just built.
+docker_build(
+    SYSTEM + '-engine',
+    '..',
+    dockerfile='docker/engine.Dockerfile',
+    only=['contracts', 'c', 'rust'],
+    ignore=['rust/target', 'c/build'],
+)
+
+# -- durable and worker (dep.06): plain image rebuilds ---------------------------
+# The durable server and the worker change far less often than the gateway, so
+# they rebuild their dep.06 images from the repo root on a Go change.
+docker_build(
+    SYSTEM + '-durable',
+    '..',
+    dockerfile='docker/durable.Dockerfile',
+    only=['contracts', 'go'],
+    ignore=['go/bin'],
+)
+docker_build(
+    SYSTEM + '-worker',
+    '..',
+    dockerfile='docker/worker.Dockerfile',
+    only=['contracts', 'go', 'python'],
+    ignore=['go/bin', 'python/.venv'],
+)
+
+# -- gateway (Go): compile on the host, sync the binary, restart in place --------
+# Cross-compile for the kind node (linux, no cgo), then copy the one file
+# into the running container and restart the process: seconds, not a rebuild.
+local_resource(
+    'gateway-compile',
+    'cd ../go && CGO_ENABLED=0 GOOS=linux go build -o ../deploy/tilt/build/gateway ./cmd/gateway',
+    deps=['../go', '../contracts/go'],
+    ignore=['../go/bin'],
+    labels=['build'],
+)
+docker_build_with_restart(
+    SYSTEM + '-gateway',
+    'tilt',
+    dockerfile='tilt/gateway.dev.Dockerfile',
+    entrypoint=['/usr/local/bin/gateway'],
+    only=['build/gateway'],
+    live_update=[sync('tilt/build/gateway', '/usr/local/bin/gateway')],
+)
+
+# -- the charts ----------------------------------------------------------------
+# `tilt up` runs one unified engine (fast to start). The production topology
+# (what the platform pipeline's kind-e2e job deploys) is one engine release
+# per role:
+#   tilt up -f deploy/Tiltfile -- --topology=disaggregated
+config.define_string('topology')
+TOPOLOGY = config.parse().get('topology', 'unified')
+if TOPOLOGY == 'disaggregated':
+    k8s_yaml(helm('helm/%s-engine' % SYSTEM, name=SYSTEM + '-engine-prefill', namespace=SYSTEM, set=['role=prefill']))
+    k8s_yaml(helm('helm/%s-engine' % SYSTEM, name=SYSTEM + '-engine-decode', namespace=SYSTEM, set=['role=decode', 'replicaCount=2']))
+    ENGINES = [SYSTEM + '-engine-prefill', SYSTEM + '-engine-decode']
+else:
+    k8s_yaml(helm('helm/%s-engine' % SYSTEM, name=SYSTEM + '-engine', namespace=SYSTEM))
+    ENGINES = [SYSTEM + '-engine']
+k8s_yaml(helm('helm/%s-gateway' % SYSTEM, name=SYSTEM + '-gateway', namespace=SYSTEM))
+# The durable server and its workers (dep.06). KEDA is not part of the dev
+# loop, so the workers run at their fixed replicaCount instead.
+k8s_yaml(helm('helm/%s-durable' % SYSTEM, name=SYSTEM + '-durable', namespace=SYSTEM))
+k8s_yaml(helm('helm/%s-worker' % SYSTEM, name=SYSTEM + '-worker', namespace=SYSTEM, set=['autoscaling.enabled=false']))
+
+# -- the resource graph ---------------------------------------------------------
+# The gateway's readiness waits on the engines; starting it first only
+# produces a crash loop of 503s. Its image needs the compiled binary first.
+for e in ENGINES:
+    k8s_resource(e, labels=['serving'])
+k8s_resource(SYSTEM + '-gateway', resource_deps=ENGINES + ['gateway-compile'],
+             port_forwards=['8080:8080'], labels=['serving'])
+# The workers poll the durable server: started first, they only back off and
+# report not ready.
+k8s_resource(SYSTEM + '-durable', labels=['durable'])
+k8s_resource(SYSTEM + '-worker', resource_deps=[SYSTEM + '-durable'], labels=['durable'])

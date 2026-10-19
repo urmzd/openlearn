@@ -1,3 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	python/tinyllm/post/distill.py	semantic	pitfall-1	18	y	(hidden until pass)	swap teacher and student in forward KL
-s02	python/tinyllm/post/distill.py	semantic	pitfall-2	26	y	(hidden until pass)	swap teacher and student in reverse KL

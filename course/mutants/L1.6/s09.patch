@@ -1,8 +1,0 @@
---- a/python/tinyllm/tok/metrics.py
-+++ b/python/tinyllm/tok/metrics.py
-@@ -64,4 +64,4 @@
-             fallback += cache[i]
-     if total == 0:
-         raise ValueError("byte_fallback_rate needs texts that encode to at least one token")
--    return fallback / total
-+    return fallback / len(texts)

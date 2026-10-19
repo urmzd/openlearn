@@ -1,8 +1,0 @@
---- a/python/tinyllm/info/pmi.py
-+++ b/python/tinyllm/info/pmi.py
-@@ -65,4 +65,4 @@
- 
- 
- def ppmi(cooc: ArrayLike, cds_alpha: float = 0.75) -> NDArray:
--    return np.maximum(pmi_matrix(cooc, cds_alpha), 0.0)
-+    return np.abs(pmi_matrix(cooc, cds_alpha))

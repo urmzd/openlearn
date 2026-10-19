@@ -2,7 +2,7 @@
 
 One architecture, many objectives. GPT's causal language modeling (with GPT-2 weight loading), BERT's masked LM, ELECTRA's replaced-token detection, and T5's span corruption (optional); fine-tuning heads for sequences, tokens, and rewards, with the linear-head export the gateway's usage policy uses; LoRA with PiSSA initialization; and the evaluation harness behind the model-zoo table every architecture in the course reports to.
 
-**Course passes**: 5 (L6.1 to L6.7, milestone MS-L6, part of gate MS-P5)
+**Course passes**: L6.1 to L6.7 belong to [Pass 5](../paths/course-p05-transformer/milestone.md)
 
 **Before you start**: the just-in-time math `M01.4`, `M07.5`, `M07.7` and the solve part `S-M07d`; the transformer of [Part 5](../p05-transformer-2017/).
 
@@ -26,7 +26,6 @@ One architecture, many objectives. GPT's causal language modeling (with GPT-2 we
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L6.1` | [GPT decoder-only, causal LM loss, GPT-2 weight loading](01-gpt-decoder-only.md) | build | 5 |
@@ -36,7 +35,6 @@ One architecture, many objectives. GPT's causal language modeling (with GPT-2 we
 | 5 | `L6.5` | [Fine-tuning heads and the linear-head export](05-fine-tuning-heads-and-the-linear-head-export.md) | build | 5 |
 | 6 | `L6.6` | [LoRA with PiSSA init and merge](06-lora-pissa-and-merge.md) | build | 5 |
 | 7 | `L6.7` | [LM evaluation harness and the model zoo](07-lm-evaluation-harness-and-the-model-zoo.md) | build | 5 |
-<!-- /ol:chapters -->
 
 ## Going further
 

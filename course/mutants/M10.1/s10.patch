@@ -1,8 +1,0 @@
---- a/python/tinyllm/optim/gd.py
-+++ b/python/tinyllm/optim/gd.py
-@@ -66,4 +66,4 @@
-         if f(x + alpha * d) <= fx + c * alpha * slope:
-             return alpha
-         alpha *= rho
--    raise RuntimeError(f"no step satisfies the Armijo condition after {MAX_REDUCTIONS} reductions")
-+    return alpha

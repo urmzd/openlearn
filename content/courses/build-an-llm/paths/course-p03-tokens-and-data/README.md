@@ -4,6 +4,6 @@ corpus pipeline v1 with ledger and decontamination, BPE, WordPiece, and Unigram 
 
 **Part of**: [the course](../course/). **Needs**: [Pass 2](../course-p02-foundations/).
 
-**Gate**: [MS-P3 = MS-L1 + MS-corpus + MS-L2](milestone.md).
+**After this pass**: [what the system does](milestone.md): a deterministic corpus pipeline, tokenizers that match GPT-2 and SmolLM2 exactly in Python and Rust, and n-gram and neural language models scored through the CLI.
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p03-p03-tokens-and-data` to see progress.
+Stages, chapter links, and what "done" means for each are in [`path.tsv`](path.tsv).

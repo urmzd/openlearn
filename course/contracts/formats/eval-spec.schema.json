@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "eval spec (specs/<name>.json)",
-  "description": "What `{tinyllm} eval --spec` and the EvalSuite workflow run (DESIGN 2.9; L6.7, ag.09 to ag.12, dur.11): suites, subjects, an optional judge, and an optional A/B pairing.",
+  "description": "What `{tinyllm} eval --spec` and the EvalSuite workflow run (L6.7, ag.09 to ag.12, dur.11): suites, subjects, an optional judge, and an optional A/B pairing.",
   "type": "object",
   "required": [
     "name",

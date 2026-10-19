@@ -1,9 +1,0 @@
---- a/go/gateway/policy/policy.go
-+++ b/go/gateway/policy/policy.go
-@@ -300,5 +300,5 @@
- 	if norm > 0 {
- 		for i, v := range embedding {
--			x[i] = v / norm
-+			x[i] = v
- 		}
- 	}

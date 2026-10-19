@@ -1,11 +1,10 @@
-/* msort.c - the part you write. */
+/* msort.c - the reference implementation of both merge sorts. */
 #include "msort.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 void msort_merge(Record *a, size_t left, size_t n, Record *scratch) {
-  /* SOLUTION-BEGIN */
   size_t i = 0;      /* cursor into the left run,  a[0..left)  */
   size_t j = left;   /* cursor into the right run, a[left..n)  */
   size_t k = 0;      /* cursor into scratch                    */
@@ -27,13 +26,11 @@ void msort_merge(Record *a, size_t left, size_t n, Record *scratch) {
   while (j < n) scratch[k++] = a[j++];
 
   memcpy(a, scratch, n * sizeof(Record));
-  /* SOLUTION-END */
 }
 
 /* Sort a[0..n) using `scratch`, which is guaranteed to hold at least n
  * records. */
 static void msort_rec(Record *a, size_t n, Record *scratch) {
-  /* SOLUTION-BEGIN */
   if (n < 2) return;
 
   /* Halving with n/2 rather than (n+1)/2 keeps both halves non-empty for every
@@ -48,11 +45,9 @@ static void msort_rec(Record *a, size_t n, Record *scratch) {
   if (a[mid - 1].key <= a[mid].key) return;
 
   msort_merge(a, mid, n, scratch);
-  /* SOLUTION-END */
 }
 
 int msort(Record *a, size_t n) {
-  /* SOLUTION-BEGIN */
   if (n < 2) return 0;
 
   /* One allocation for the entire sort. Allocating inside the recursion would
@@ -64,7 +59,6 @@ int msort(Record *a, size_t n) {
   msort_rec(a, n, scratch);
   free(scratch);
   return 0;
-  /* SOLUTION-END */
 }
 
 /* ------------------------------------------------------------------------- */
@@ -113,7 +107,6 @@ static size_t upper_bound(const Record *a, size_t lo, size_t hi, int key) {
 
 /* Merge the sorted runs a[lo..mid) and a[mid..hi) in place. */
 static void merge_inplace(Record *a, size_t lo, size_t mid, size_t hi) {
-  /* SOLUTION-BEGIN */
   if (lo >= mid || mid >= hi) return;
   if (a[mid - 1].key <= a[mid].key) return; /* already ordered */
 
@@ -144,15 +137,12 @@ static void merge_inplace(Record *a, size_t lo, size_t mid, size_t hi) {
 
   merge_inplace(a, lo, l1, new_mid);
   merge_inplace(a, new_mid, l2, hi);
-  /* SOLUTION-END */
 }
 
 void msort_inplace(Record *a, size_t n) {
-  /* SOLUTION-BEGIN */
   if (n < 2) return;
   size_t mid = n / 2;
   msort_inplace(a, mid);
   msort_inplace(a + mid, n - mid);
   merge_inplace(a, 0, mid, n);
-  /* SOLUTION-END */
 }

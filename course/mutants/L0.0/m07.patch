@@ -1,8 +1,0 @@
---- a/python/tinyllm/io/safetensors.py
-+++ b/python/tinyllm/io/safetensors.py
-@@ -111,4 +111,4 @@
-     for begin, end, name, shape in entries:
-         arr = np.frombuffer(buf, dtype="<f4", count=(end - begin) // 4, offset=base + begin)
-         tensors[name] = arr.astype(np.float32).reshape(shape)
--    return tensors, dict(meta)
-+    return tensors, {}

@@ -1,0 +1,16 @@
+# python/pyproject.toml: the uv project of the Python side of the system. The
+# tests run in this project's environment, so every package a unit imports
+# must be listed here.
+#
+# Dependencies are the contracts/allowed-deps.toml entries the course units
+# use so far: numpy (tinyllm, corpus), zstandard (corpus raw documents,
+# formats/corpus-shard.md; data.01), and pyarrow (corpus Parquet shards;
+# data.06), and Pillow (L13.6 container decoding only).
+[project]
+name = "tinyllm-course"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["numpy>=2", "pyarrow>=18", "zstandard>=0.23", "pillow>=11"]
+
+[tool.uv]
+package = false

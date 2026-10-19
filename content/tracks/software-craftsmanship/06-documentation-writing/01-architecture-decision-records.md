@@ -1,42 +1,33 @@
-<!-- ol:module craft.02 -->
 # Architecture decision records
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `craft.02` · practice · docs · Pass 1 · 1 to 2 h |
-| **You build** | `docs/adr/0001-<slug>.md`: ADR-0001, the record of where your four languages meet and why |
-| **Contract** | the ADR template in section 4 (file name, title line, five sections) |
-| **Tests** | `course/tests/craft.02/` (what they check: section 4) |
-| **Needs** | nothing to call; you write about what you built in [`M03.1`](../../math/03-linear-algebra/01-vectors-matrices-and-matmul.md) · [`L10.0`](../../../courses/build-an-llm/p10-serving/00-your-first-endpoint.md) · [`gw.00`](../../ai-platform-engineering/12-gateway/00-streaming-proxy.md), committed with the habits of [`craft.01`](../08-code-review-and-ci/01-your-repo-and-ci-gate.md) |
-| **Used by** | no call site: a practice artifact. Every later ADR (craft.13, craft.14, ops.04) follows this format |
-| **Milestone** | [MS-P1](../../../courses/build-an-llm/paths/course-p01-tracer/milestone.md) |
+| **Module** | `craft.02` · practice · docs · Pass 1 · 1 h reading |
+| **Solution** | [`docs/adr/0001-languages-meet-at-process-and-file-boundaries.md`](../../../../course/solutions/docs/adr/0001-languages-meet-at-process-and-file-boundaries.md): ADR-0001, the record of where the four languages meet and why |
+| **Contract** | the ADR template in section 4 (file name, title line, five sections), also at [`course/contracts/templates/ADR.md`](../../../../course/contracts/templates/ADR.md) |
+| **Needs** | nothing to call; the record is about what was built in [`M03.1`](../../math/03-linear-algebra/01-vectors-matrices-and-matmul.md) · [`L10.0`](../../../courses/build-an-llm/p10-serving/00-your-first-endpoint.md) · [`gw.00`](../../ai-platform-engineering/12-gateway/00-streaming-proxy.md), committed with the habits of [`craft.01`](../08-code-review-and-ci/01-your-repo-and-ci-gate.md) |
+| **Used by** | no call site: a practice artifact. Every later ADR (craft.13, craft.14, ops.04) follows this format, and ADR-0001 is part of [what the system does after Pass 1](../../../courses/build-an-llm/paths/course-p01-tracer/milestone.md) |
 | **Optional depth** | Michael Nygard, [*Documenting Architecture Decisions*](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) (2011, free); [adr.github.io](https://adr.github.io/) (free); *Software Engineering at Google*, ch. 10 [Documentation](https://abseil.io/resources/swe-book/html/ch10.html) (free) |
 
 ## Key Takeaways
 
-- An ADR records **one** decision: the forces at the time, what was chosen, what it costs, and what was rejected. The tests check all five parts are there.
+- An ADR records **one** decision: the forces at the time, what was chosen, what it costs, and what was rejected. All five parts must be there.
 - ADRs are **append-only**. You never rewrite an accepted record; a new ADR supersedes it, and the old one points forward.
 - The status and its date say whether the decision still binds and what its authors could have known.
 - A decision with no rejected alternative and no listed cost is not a decision record. It is a description.
-- ADR-0001 records the decision your whole system rests on: languages meet through process and file boundaries.
+- ADR-0001 records the decision the whole system rests on: languages meet through process and file boundaries.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start craft.02           # nothing to stub: this module's artifact is a document
-ol tests craft.02           # read the twelve checks first
-$EDITOR docs/adr/0001-<slug>.md
-ol check craft.02           # exit code is the verdict
-git add docs/adr && git commit -m "docs(adr): record where the languages meet"
-```
+Sections 1 to 3 explain what a decision record is for and build one (ADR-0002, the byte tokenizer) step by step. Section 4 fixes the template and the rules a record must satisfy. Section 5 walks through the solution, ADR-0001, section by section: why each sentence is there, and where a reviewer would tighten it. Before reading it, write down the forces and the alternatives you would list yourself.
 
 ---
 
 ## 1. Why now
 
-Your tracer crosses language boundaries through files and processes. Python writes a safetensors checkpoint and tokenizer data; the Rust engine reads them and streams tokens over HTTP and SSE (`L10.0`). Your Go gateway checks a key and proxies that stream (`gw.00`). Each choice was made for a reason that is in your head today and in nobody's head in six months. In Pass 7 you will add gRPC between components, and someone (you, or a reviewer) will ask why the gateway still talks to the engine over HTTP. Without a record, that question gets answered by re-arguing it from scratch, or by changing it and rediscovering the cost. This module writes the record now, while the reasons are fresh, as ADR-0001.
+The tracer crosses language boundaries through files and processes. Python writes a safetensors checkpoint and tokenizer data; the Rust engine reads them and streams tokens over HTTP and SSE (`L10.0`). The Go gateway checks a key and proxies that stream (`gw.00`). Each choice was made for a reason that is in someone's head today and in nobody's head in six months. In Pass 7 you will add gRPC between components, and someone (an author, or a reviewer) will ask why the gateway still talks to the engine over HTTP. Without a record, that question gets answered by re-arguing it from scratch, or by changing it and rediscovering the cost. The record is written now, while the reasons are fresh, as ADR-0001.
 
 ## 2. Principles
 
@@ -64,7 +55,7 @@ Your tracer crosses language boundaries through files and processes. Python writ
 
 ## 3. Worked example by hand
 
-Here is a complete record for a different decision your tracer already made: the byte tokenizer. Read it once, then follow how each section was produced.
+Here is a complete record for a different decision the tracer already made: the byte tokenizer. Read it once, then follow how each section was produced.
 
 ```markdown
 # ADR-0002: The tracer tokenizer is raw UTF-8 bytes
@@ -113,13 +104,13 @@ How it was written, step by step:
 5. **Consequences: count both columns.** Two goods and two bads. The second bad (incomplete UTF-8 while streaming) is the one most likely to bite later; it is why `formats/tokenizer.md` has an incremental decoding rule.
 6. **Alternatives: each with one reason.** Two rejected options, each in one row.
 
-Check it against section 4: file `0002-the-tracer-tokenizer-is-raw-utf-8-bytes.md` (number, kebab slug); title `# ADR-0002: ...` matches; five sections in order; status known and dated; Context has 52 words (at least 25 needed); Consequences lists 4 items; Alternatives has 2 rows (the header row does not count); no placeholders. Saved next to an ADR-0001, it passes all twelve checks. Alone, it fails the four that need an ADR-0001 to exist (the file, the numbering from 0001, the Accepted status of 0001, and its topic). Your ADR-0001 is the same shape, about a different decision.
+Check it against section 4: file `0002-the-tracer-tokenizer-is-raw-utf-8-bytes.md` (number, kebab slug); title `# ADR-0002: ...` matches; five sections in order; status known and dated; Context has 52 words (at least 25 needed); Consequences lists 4 items; Alternatives has 2 rows (the header row does not count); no placeholders. Saved next to an ADR-0001, it satisfies every rule. Alone, it breaks the four that need an ADR-0001 to exist (the file, the numbering from 0001, the Accepted status of 0001, and its topic). ADR-0001 is the same shape, about a different decision.
 
-## 4. The artifact and its check
+## 4. The artifact
 
-**Path.** `docs/adr/0001-<slug>.md` in your repo, for example `docs/adr/0001-languages-meet-at-process-and-file-boundaries.md`. Commit it with a conventional commit (`docs(adr): ...`, craft.01).
+**Path.** `docs/adr/0001-<slug>.md`, here `docs/adr/0001-languages-meet-at-process-and-file-boundaries.md`, committed with a conventional commit (`docs(adr): ...`, craft.01).
 
-**Template.** Copy this (your repo also has it at `contracts/templates/ADR.md`), then replace every `<...>`:
+**Template.** From [`course/contracts/templates/ADR.md`](../../../../course/contracts/templates/ADR.md), with every `<...>` replaced:
 
 ```markdown
 # ADR-0001: <the decision, as a short claim>
@@ -150,67 +141,142 @@ recognize it in the code>.
 | <option> | <reason> |
 ```
 
-**What ADR-0001 must decide.** How the four languages of your system meet. Write down what you built and why: in process (Python and Rust calling your C kernels), and between processes (the gateway and the engine). Name the alternatives you could have used for each boundary and why you did not.
+**What ADR-0001 must decide.** How the four languages of the system meet: which boundaries are files, which are processes, and whether any language is linked into another's process. It names the alternatives for each boundary and why they were not chosen.
 
-**Run the check.**
+### What a correct solution must handle
 
-```bash
-ol check craft.02
+| Case | Kind of check | Why it matters downstream |
+|---|---|---|
+| `docs/adr/0001-<kebab-slug>.md` exists; every file in `docs/adr/` is named `NNNN-<slug>.md` | unit | later ADRs and readers find records by number |
+| numbers run 0001, 0002, ... with no duplicate and no gap | boundary | "ADR-0003" names one decision forever (pitfall 3) |
+| the first line is `# ADR-NNNN: <title>` with the file's own number | unit | the title and the file name never drift apart |
+| exactly one each of Status, Context, Decision, Consequences, Alternatives considered, in that order | unit | every record reads the same way |
+| the status line starts with a known status and carries a real `(YYYY-MM-DD)` date | boundary | a reader can tell if the decision still binds (pitfall 4) |
+| `Superseded by ADR-NNNN` names an ADR that exists and has a larger number | boundary | the trail of reasons stays connected (pitfall 1) |
+| ADR-0001 is Accepted (or Superseded by a later ADR) | unit | the system already runs on it |
+| no `<text with spaces>` placeholder and no TODO, TBD, FIXME, or XXX outside code | boundary | a copied template is not a record (pitfall 5) |
+| Context has at least 25 words, Decision 8, Consequences 10, Alternatives 6 | boundary | a one-line context explains nothing later (pitfall 2) |
+| Consequences lists at least two items (bullets or table rows) | unit | costs are recorded next to benefits (pitfall 2) |
+| Alternatives considered lists at least one option | unit | nothing rejected means nothing decided |
+| ADR-0001 names the boundaries themselves: the file formats and the wire protocols | unit | ADR-0001 is the record of the boundaries every later module builds on |
+
+The section 3 example satisfies all of these when saved as ADR-0002 next to an ADR-0001. Each rule is narrow on purpose: a renamed file, a gap in numbers, a drifted title, swapped sections, an undated status, a dangling supersede, a Proposed ADR-0001, a leftover placeholder, a one-line context, a single consequence, no alternatives, or a different topic each breaks exactly one row.
+
+## 5. The solution, step by step
+
+### 5.1 From first principles
+
+1. **What decision is ADR-0001 about?** The one every module depends on and that is most expensive to reverse: how Python (training), Rust (serving), Go (gateway, durable), and C (optional kernels) exchange data. Reversing it would change every contract.
+2. **What are the forces?** Four runtimes with their own memory models and failure modes; the need for byte-exact reproducibility between them (the same weights, the same token ids); independent build, test, and restart of each service. These forces are what the Context must state.
+3. **What do the forces imply?** If runtimes must not share memory or failure, they cannot be linked into one process; they must meet where neither owns the other's memory: a file (safetensors, `tokenizer.json`, fixtures) or a network protocol (HTTP/JSON, SSE, gRPC). That is the Decision.
+4. **What does it cost?** Every boundary now needs a versioned schema and parity fixtures, and a call is a serialization plus a network hop. Those are the Consequences to state plainly.
+5. **What else was plausible?** In-process bindings (PyO3, cgo, a C ABI) and making the C kernels the engine's backend. Each has a reason to reject it that follows from step 2. Those are the Alternatives.
+
+### 5.2 The record, annotated
+
+```markdown
+# ADR-0001: Languages meet at process and file boundaries
 ```
 
-prints one line per check and exits 0 only when all pass. A failure prints what to change and the check's WHY.
+The title is a claim someone could dispute ("we should use PyO3"), not a topic ("Language interop"). The slug in the file name is the same claim in kebab case.
 
-### What the tests check
+```markdown
+## Status
 
-| Test | KIND | Checks | Why it matters downstream |
+Accepted (2026-10-09)
+```
+
+Accepted, because the Pass 1 system already runs on it; dated, so a reader knows it predates gRPC (Pass 7) and the v2 API (Pass 11).
+
+```markdown
+## Context
+
+Python trains models, Rust serves them, Go fronts the engine, and optional C exercises explore kernels. The programs need reproducible data exchange without coupling their memory layouts or runtimes.
+```
+
+Two sentences, both forces: who does what, and the constraint (reproducible exchange, no coupled memory or runtimes). It does not say "files" or "HTTP" yet: a reader should be able to predict the decision from the context, not read it there. A reviewer could ask for one more fact here, the independent restart requirement, which the Decision mentions but the Context does not motivate.
+
+```markdown
+## Decision
+
+Python writes weights as safetensors and tokenizers as `tokenizer.json`. Shared fixture files establish parity between Python, Rust, Go, and standalone C exercises. Go and Rust communicate through HTTP/JSON, Server-Sent Events, and internal gRPC. Each service can be built, tested, and restarted independently.
+
+The Rust engine uses `candle-core` and `candle-nn` for tensors. It implements its own model layers. Optional C kernels run in their own test binaries and do not become an engine backend.
+```
+
+The decision is stated by boundary, which is what a reader needs to recognize it in the code: the two file formats, the fixture-based parity rule, the three protocols between Go and Rust. The second paragraph closes the two in-process doors explicitly: Rust's tensors come from a Rust library (no C ABI), and C stays in its own binaries. The template asks for "We will ..."; this record states the decision in the present tense instead, which reads as a description of the current system. Rewriting the first sentence as "We will exchange data between languages only through files and network protocols:" followed by the details would make it unmistakably one decision.
+
+```markdown
+## Consequences
+
+- File formats need versioned schemas and parity fixtures.
+- HTTP and gRPC make service boundaries observable and independently testable.
+- Optional C modules teach layout and numerical behavior without changing core pass gates.
+- Each language owns its memory and errors within its process.
+```
+
+Four effects, one per bullet. The first is the cost: every format must be versioned and every language checked against fixtures, which is why `course/contracts/formats/` exists. The other three are benefits. A reviewer would ask for the second cost to be stated too: each cross-service call pays serialization and a network hop, which is acceptable for token streaming but is the reason an in-process kernel call is not possible from Python. Labeling bullets "Good:" and "Bad:" as the template suggests makes the balance visible at a glance.
+
+```markdown
+## Alternatives considered
+
+| Option | Why we did not choose it |
+|---|---|
+| In-process language bindings | They would couple ownership and failure behavior across runtimes. |
+| A C backend for the Rust engine | It would make optional C exercises a core serving dependency. |
+```
+
+Each rejection traces to a force: bindings break "no coupled runtimes" (a panic in one language crashes the other's process, and ownership crosses the boundary); a C backend breaks "optional C" (a core service would depend on an optional module).
+
+### 5.3 Why this solution
+
+- **The decision itself.** Process and file boundaries trade per-call speed for isolation: each service can be tested against fixtures alone, restarted alone, and observed at its boundary. For a system whose hot loop (matmul, attention) lives inside one language (Rust), the boundaries are crossed per request or per checkpoint, not per operation, so the cost is small.
+- **One record for the whole boundary rule, not one per pair.** The forces are the same for every pair of languages; splitting would repeat the context and make superseding one pair ambiguous. Pitfall 6 (several decisions in one record) does not apply: there is one rule, applied everywhere.
+- **Short sections.** The record is read when someone proposes bindings or a shared library; two sentences of context and four consequences are enough to answer "why not?" in a minute.
+
+### 5.4 Explain it back
+
+1. Why does the Context not mention safetensors or HTTP?
+   <details><summary>Answer</summary>The Context states the forces; the Decision states the choice. If the Context already names the answer, a reader cannot tell whether the forces justify it or were written to fit it.</details>
+2. Pass 7 adds gRPC between gateway and engine. Does that need a superseding ADR?
+   <details><summary>Answer</summary>No: gRPC is a process boundary, so it follows ADR-0001, and the record already lists internal gRPC. A new ADR is needed only if the rule changes, for example linking Rust into the Go gateway.</details>
+3. Which force rejects in-process bindings, and what concrete failure would they cause?
+   <details><summary>Answer</summary>"Without coupling memory layouts or runtimes." With bindings, a panic or segfault in one language takes down the other's process, and memory ownership crosses the boundary, so a bug in one runtime corrupts the other.</details>
+4. What would you change to make the Consequences match the template's intent?
+   <details><summary>Answer</summary>Mark each bullet Good or Bad and add the unstated cost: serialization and a network hop per cross-service call, and no fast in-process path from Python to Rust or C.</details>
+
+## 6. Pitfalls
+
+| # | Pitfall | Symptom | How the solution avoids it |
 |---|---|---|---|
-| `test_adr_0001_exists_with_a_slug` | unit | `docs/adr/0001-<kebab-slug>.md` exists; every file in `docs/adr/` is named `NNNN-<slug>.md` | `ol milestone MS-P1` and later ADRs find records by number |
-| `test_numbers_are_unique_and_have_no_gaps` | boundary | numbers run 0001, 0002, ... with no duplicate and no gap | "ADR-0003" names one decision forever (pitfall 3) |
-| `test_title_line_matches_the_file_number` | unit | the first line is `# ADR-NNNN: <title>` with the file's own number | the title and the file name never drift apart |
-| `test_sections_appear_in_template_order` | unit | exactly one each of Status, Context, Decision, Consequences, Alternatives considered, in that order | every record reads the same way |
-| `test_status_is_known_and_dated` | boundary | the status line starts with a known status and carries a real `(YYYY-MM-DD)` date | a reader can tell if the decision still binds (pitfall 4) |
-| `test_superseded_points_at_a_later_adr` | boundary | `Superseded by ADR-NNNN` names an ADR that exists and has a larger number | the trail of reasons stays connected (pitfall 1) |
-| `test_adr_0001_is_accepted` | unit | ADR-0001 is Accepted (or Superseded by a later ADR) | your system already runs on it |
-| `test_no_template_placeholders_left` | boundary | no `<text with spaces>` placeholder and no TODO, TBD, FIXME, or XXX outside code | a copied template is not a record (pitfall 5) |
-| `test_every_section_has_substance` | boundary | Context has at least 25 words, Decision 8, Consequences 10, Alternatives 6 | a one-line context explains nothing later (pitfall 2) |
-| `test_consequences_name_more_than_one_effect` | unit | Consequences lists at least two items (bullets or table rows) | costs are recorded next to benefits (pitfall 2) |
-| `test_alternatives_name_a_rejected_option` | unit | Alternatives considered lists at least one option | nothing rejected means nothing decided |
-| `test_adr_0001_records_the_language_boundaries` | unit | ADR-0001 mentions the ABI and HTTP | ADR-0001 is the record of the boundaries every later module builds on |
+| 1 | Editing an accepted ADR when you change your mind | the record no longer says what was known when you decided; reviews argue about history | the record is dated and Accepted; a change of rule would be a new ADR that supersedes it |
+| 2 | Context of one line, consequences of one benefit | a reader cannot tell whether the decision still holds when the forces change | two forces in the Context, four consequences including the schema-and-fixtures cost |
+| 3 | Renumbering records, or reusing a number after deleting a draft | links such as "see ADR-0003" now point at a different decision | numbers 0001 to 0003 in `docs/adr/`, none reused |
+| 4 | Status without a date, or a status word outside the lifecycle ("Done", "Final") | nobody can order decisions or tell which one is current | `Accepted (2026-10-09)` |
+| 5 | Leaving template text in place | the file looks finished in a listing and says nothing | every placeholder replaced |
+| 6 | One ADR for several decisions ("Architecture overview") | superseding one part forces rewriting the rest | one rule (process and file boundaries) applied to every pair of languages |
 
-The section 3 example is the first case: saved as ADR-0002 next to an ADR-0001, it passes all twelve. Each check is also proven against a planted fault in a reference ADR (renamed file, a gap in numbers, a drifted title, swapped sections, an undated status, a dangling supersede, a Proposed ADR-0001, a leftover placeholder, a one-line context, a single consequence, no alternatives, a different topic): each fault fails exactly the check named for it.
-
-## 5. Pitfalls
-
-| # | Pitfall | Symptom | Caught by |
-|---|---|---|---|
-| 1 | Editing an accepted ADR when you change your mind | the record no longer says what was known when you decided; reviews argue about history | `test_superseded_points_at_a_later_adr` (write a new ADR and supersede) |
-| 2 | Context of one line, consequences of one benefit | a reader cannot tell whether the decision still holds when the forces change | `test_every_section_has_substance`, `test_consequences_name_more_than_one_effect` |
-| 3 | Renumbering records, or reusing a number after deleting a draft | links such as "see ADR-0003" now point at a different decision | `test_numbers_are_unique_and_have_no_gaps` |
-| 4 | Status without a date, or a status word outside the lifecycle ("Done", "Final") | nobody can order decisions or tell which one is current | `test_status_is_known_and_dated` |
-| 5 | Leaving template text in place | the file looks finished in a listing and says nothing | `test_no_template_placeholders_left` |
-| 6 | One ADR for several decisions ("Architecture overview") | superseding one part forces rewriting the rest | review: one "We will" per record |
-
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M03.1` | Python matrix operations used in the tracer's model |
 | Back | `L10.0` | the engine's HTTP and SSE surface, the between-process boundary |
 | Back | `gw.00` | the gateway, the other side of that boundary |
-| Back | `craft.01` | commit the record with a conventional commit; CI keeps `ol check --all --ci` green |
+| Back | `craft.01` | commit the record with a conventional commit; CI checks the docs with everything else |
 | Forward | `ops.00` | its runbook is a how-to guide, the document type an ADR is not |
 | Forward | `craft.13` | the KV format v1 to v2 migration supersedes a format decision with a new ADR |
 | Forward | `craft.14` | the API v1 to v2 migration records its deprecation policy as an ADR |
-| Forward | `ops.04` | the KV v2 rollout drill requires an ADR before it passes |
+| Forward | `ops.04` | the KV v2 rollout drill requires an ADR before it is done |
 | Forward | `craft.09` | the C4 diagrams show the boundaries ADR-0001 explains |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `docs/adr/NNNN-*.md` | MADR (Markdown Any Decision Records) | decision drivers, per-option pros and cons, a template ecosystem | [adr.github.io/madr](https://adr.github.io/madr/) (free) |
 | the five-section template | Rust RFCs, Python PEPs, Kubernetes KEPs | public review periods, champions, staged acceptance | `rust-lang/rfcs`, `python/peps`, `kubernetes/enhancements` |
-| `ol check craft.02` | adr-tools, Log4brains | CLI to create and supersede records; a rendered, searchable decision log | `npryce/adr-tools`, `thomvaill/log4brains` |
+| the rules of section 4 | adr-tools, Log4brains | CLI to create and supersede records; a rendered, searchable decision log | `npryce/adr-tools`, `thomvaill/log4brains` |
 | ADR-0001 | design docs at Google | the design thinking before the decision; the ADR keeps the outcome | *Software Engineering at Google*, ch. 10 (free) |
 
 ## Company Relevance

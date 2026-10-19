@@ -2,7 +2,7 @@
 
 Sequence models with state. A vanilla RNN with backpropagation through time written by hand, then the LSTM and GRU in torch's gate order (so weights load from torch checkpoints), bidirectional RNNs with length-aware reversal, and an RNN language model trained with stateful truncated BPTT. ELMo's bidirectional LM and scalar mix is optional.
 
-**Course passes**: 4 (L3.1 to L3.6, milestone MS-L3, part of gate MS-P4)
+**Course passes**: L3.1 to L3.6 belong to [Pass 4](../paths/course-p04-sequence-models/milestone.md)
 
 **Before you start**: the matrix-calculus VJPs ([M08.3](../../../tracks/math/08-matrix-calculus-and-autodiff/)) and gradient clipping ([M10.4](../../../tracks/math/10-optimization/)); the autograd engine of [Part 0](../p00-foundations/).
 
@@ -27,7 +27,6 @@ The worked example for `L3.2` is `lstm_cell.c` from [Neural Architectures](../..
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L3.1` | [Vanilla RNN with manual BPTT and truncation](01-vanilla-rnn-manual-bptt.md) | build | 4 |
@@ -36,7 +35,6 @@ The worked example for `L3.2` is `lstm_cell.c` from [Neural Architectures](../..
 | 4 | `L3.4` | [Bidirectional RNN with length-aware reversal](04-bidirectional-rnn.md) | build | 4 |
 | 5 | `L3.5` | [ELMo: biLM, ScalarMix, linear probes](05-elmo-bilm-scalarmix-probes.md) | side | 4 |
 | 6 | `L3.6` | [RNN language model with stateful TBPTT](06-rnn-language-model-stateful-tbptt.md) | build | 4 |
-<!-- /ol:chapters -->
 
 ## Going further
 

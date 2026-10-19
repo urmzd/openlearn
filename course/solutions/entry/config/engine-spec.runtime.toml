@@ -1,0 +1,10 @@
+# runtime.toml template for the engine-spec service (Pass 10): the engine
+# template with request-local prompt-lookup speculation on (L10.8). The same
+# model under the same id, so the conformance suite runs unchanged.
+[engine]
+model_dir = "artifacts/models/tiny"
+model_id  = "tracer"
+
+[engine.speculative]
+draft = "prompt_lookup"
+k     = 4

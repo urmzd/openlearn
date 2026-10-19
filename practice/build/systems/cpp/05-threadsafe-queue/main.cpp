@@ -1,4 +1,5 @@
-// main.cpp - the tests. Given to you; do not edit them to make them pass.
+// main.cpp - the test suite for the reference implementation. Exits 0 when
+// every check holds.
 //
 // Nothing asserts on the ORDER items are consumed across threads: that is
 // genuinely nondeterministic. What is deterministic is that every produced

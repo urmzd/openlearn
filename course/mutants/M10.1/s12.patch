@@ -1,9 +1,0 @@
---- a/python/tinyllm/optim/gd.py
-+++ b/python/tinyllm/optim/gd.py
-@@ -65,5 +65,5 @@
-         # Written so that a nan f(x + alpha d) fails the test and shrinks alpha.
-         if f(x + alpha * d) <= fx + c * alpha * slope:
-             return alpha
--        alpha *= rho
-+        alpha = alpha0 * rho
-     raise RuntimeError(f"no step satisfies the Armijo condition after {MAX_REDUCTIONS} reductions")

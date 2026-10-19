@@ -1,8 +1,0 @@
---- a/python/tinyllm/autograd/vjp.py
-+++ b/python/tinyllm/autograd/vjp.py
-@@ -100,4 +100,4 @@
-     rows = np.nonzero(valid)
-     grad[rows + (t[valid],)] -= 1.0
-     grad[~valid] = 0.0
--    return grad / n
-+    return grad / t.size

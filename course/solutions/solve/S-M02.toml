@@ -1,0 +1,106 @@
+# Reference answers for S-M02: the worked answers the chapter explains.
+
+[q1]
+answer = "1"
+[q2]
+answer = "1"
+[q3]
+answer = "(pi - 2)/2"
+[q4]
+answer = "log(sqrt(2))"
+[q5]
+answer = "pi/4"
+[q6]
+answer = "(log(2) - log(4) + log(3))/2"
+[q7]
+answer = "x^2*exp(x) - 2*x*exp(x) + 2*exp(x) - 2"
+[q8]
+answer = "1/3"
+[q9]
+answer = "pi"
+[q10]
+answer = "1/2"
+[q11]
+answer = "pi/6"
+[q12]
+proof  = "S-M02/q12.md"
+[q13]
+answer = "1"
+[q14]
+answer = "1/2"
+[q15]
+answer = "2"
+[q16]
+answer = "sqrt(pi)"
+[q17]
+answer = "1/2"
+[q18]
+proof  = "S-M02/q18.md"
+[q19]
+answer = "true"
+[q20]
+answer = "false"
+[q21]
+answer = "3"
+[q22]
+answer = "1"
+[q23]
+answer = "2"
+[q24]
+answer = "true"
+[q25]
+answer = "true"
+[q26]
+answer = "log(2)"
+[q27]
+answer = "1"
+[q28]
+answer = "[-1, 1)"
+[q29]
+answer = "(1, oo)"
+[q30]
+proof  = "S-M02/q30.md"
+[q31]
+answer = "x^3/6 + x^2/2 + x + 1"
+[q32]
+answer = "x - x^2/2 + x^3/3"
+[q33]
+answer = "1/120"
+[q34]
+answer = "1 - x^2/2 + x^4/24"
+[q35]
+answer = "exp(1/2)/384"
+[q36]
+answer = "9"
+[q37]
+answer = "1 + x + x^2 + x^3"
+[q38]
+answer = "5 - log(128)"
+[q39]
+answer = "2*x/sqrt(pi) - 2*x^3/(3*sqrt(pi)) + x^5/(5*sqrt(pi))"
+[q40]
+proof  = "S-M02/q40.md"
+[q41]
+answer = "3/2"
+[q42]
+answer = "pi/2"
+[q43]
+answer = "(13*sqrt(13) - 8)/27"
+[q44]
+answer = "pi"
+[q45]
+answer = "x^2 + y^2 - 2*y = 0"
+[q46]
+answer = "3*pi/2"
+[q47]
+answer = "3*exp(-2*t)"
+[q48]
+answer = "exp(t)/(1 + exp(t))"
+[q49]
+answer = "t - 1 + exp(-t)"
+[q50]
+answer = "log(2)/10"
+[q51]
+answer = "9/4"
+[q52]
+answer = "2*log(2)"

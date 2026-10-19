@@ -1,0 +1,44 @@
+# The cluster (dep.00, recreated by dep.02 for the Pass 7 platform). From the
+# repo root: deploy/kind/up.sh (it runs `kind create cluster --config
+# deploy/kind/cluster.yaml` and wires the local registry).
+# kind resolves a relative hostPath against the directory you run it from.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: forge
+# containerd looks for per-registry settings in /etc/containerd/certs.d;
+# up.sh writes certs.d/localhost:5001/hosts.toml so that pulls of
+# localhost:5001/<image> reach the kind-registry container.
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"
+nodes:
+  - role: control-plane
+    # Port mappings are fixed when the node container is created: adding one
+    # means deleting and recreating the cluster (dep.02 does that once, for
+    # all of the Pass 7 ports). 127.0.0.1 only: nothing is exposed to your LAN.
+    extraPortMappings:
+      - containerPort: 30080   # gateway NodePort
+        hostPort: 30080
+        listenAddress: "127.0.0.1"
+      - containerPort: 30686   # Jaeger query NodePort (Pass 1)
+        hostPort: 30686
+        listenAddress: "127.0.0.1"
+      - containerPort: 30090   # Prometheus
+        hostPort: 30090
+        listenAddress: "127.0.0.1"
+      - containerPort: 30300   # Grafana
+        hostPort: 30300
+        listenAddress: "127.0.0.1"
+      - containerPort: 30320   # Tempo query API
+        hostPort: 30320
+        listenAddress: "127.0.0.1"
+      - containerPort: 30733   # durable gRPC, for a worker on the host (Pass 8)
+        hostPort: 30733
+        listenAddress: "127.0.0.1"
+    # ./artifacts on your machine is /artifacts on the node; pods mount it
+    # with a hostPath volume.
+    extraMounts:
+      - hostPath: ./artifacts
+        containerPath: /artifacts
+        readOnly: true

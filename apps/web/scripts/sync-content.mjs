@@ -32,8 +32,8 @@ const selected = process.env.OPENLEARN_COURSE;
 const courseArgs = ['scripts/course_catalog.py', 'index', ...(selected ? ['--course', selected] : [])];
 const publications = JSON.parse(execFileSync('python3', courseArgs, { cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }));
 const manifest = selected ? publications[0].manifest : JSON.parse(fs.readFileSync(path.join(ROOT, 'openlearn.json'), 'utf8'));
-// Of course/, only the contracts are published (course/DESIGN.md 5.16): the
-// reference system, course tests, and design notes never reach the site.
+// Of course/, only the contracts are published as pages. Chapters quote the
+// solution code they explain, and links into course/solutions/ resolve to GitHub.
 const SKIP = /^(apps\/|packs\/|\.github\/|skills\/|archive\/|course\/(?!contracts\/)|CHANGELOG\.md|CODE_OF_CONDUCT\.md|SECURITY\.md)|\/tests\/fixtures\//;
 const IMAGE = /\.(svg|png|jpe?g|gif|webp)$/i;
 
@@ -248,7 +248,7 @@ function stageTable(pathDir) {
 			.join('<br />');
 		rows.push(`| ${stage} | **${title}**<br />${links} | ${done.replace(/\|/g, '\\|')} |`);
 	}
-	return `\n\n## Stages\n\nGenerated from \`path.tsv\`. Track progress locally with \`practice/bin/ol learn\`.\n\n${rows.join('\n')}\n`;
+	return `\n\n## Stages\n\nGenerated from \`path.tsv\`.\n\n${rows.join('\n')}\n`;
 }
 
 // ---------- main ----------

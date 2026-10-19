@@ -1,6 +1,6 @@
-/* ol_test.h: the single-header C test kit for course and learner tests.
+/* ol_test.h: the single-header C test kit used by the solution's C tests.
  *
- * Frozen helper (course/DESIGN.md D35, 5.9). Usage:
+ * Frozen helper. Usage:
  *
  *   #include "tinyllm.h"      // optional; enables the counting allocator
  *   #include "ol_test.h"
@@ -19,7 +19,7 @@
  * the comma-separated names in $OL_ONLY), prints one line per case, and
  * returns the exit code: 0 when every case passed and at least one ran.
  *
- * Counting allocator: built with -DOL_COUNTING_ALLOC=1 (ol check does this)
+ * Counting allocator: built with -DOL_COUNTING_ALLOC=1 (the C test build sets it)
  * and with tinyllm/abi.h included first, OL_RUN_ALL installs an allocator
  * through tl_set_allocator that counts live blocks, and fails any case that
  * returns with more blocks live than it started with. This is the leak check

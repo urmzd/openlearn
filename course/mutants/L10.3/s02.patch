@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/chunk.rs
-+++ b/rust/crates/tl-engine/src/chunk.rs
-@@ -33 +33 @@
--        remaining.min(self.chunk.max(1)).min(budget)
-+        remaining.min(budget)

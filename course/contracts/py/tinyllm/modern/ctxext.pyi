@@ -31,7 +31,7 @@
 # sequence length. The attention_scaling multiplies cos and sin (L7.3), so
 # YaRN's attention logits grow by attention_scaling^2.
 #
-# ALiBi (Press et al. 2022; optional part, DESIGN D31): no rotation at all,
+# ALiBi (Press et al. 2022; optional part): no rotation at all,
 # a bias added to the scores that falls linearly with distance, one slope
 # per head (M00.3's alibi_slopes).
 from typing import Literal

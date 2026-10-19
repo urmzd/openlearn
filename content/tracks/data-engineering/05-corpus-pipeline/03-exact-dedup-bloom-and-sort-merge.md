@@ -1,4 +1,3 @@
-<!-- ol:module data.03 -->
 # Exact dedup: paragraph hashes, Bloom screen, sort-merge confirm
 
 ## Overview
@@ -6,32 +5,25 @@
 | | |
 |---|---|
 | **Module** | `data.03` · build · Python · Pass 3 · 3 to 4 h |
-| **You build** | `python/corpus/dedup.py`: `paragraphs`, `paragraph_hash`, `bloom_rate`, `exact_dedup` (a stage), `STATS_KEYS` |
+| **Solution** | [`python/corpus/dedup.py`](../../../../course/solutions/python/corpus/dedup.py): `paragraphs`, `paragraph_hash`, `bloom_rate`, `exact_dedup` (a stage), `STATS_KEYS` |
 | **Contract** | [`course/contracts/py/corpus/dedup.pyi`](../../../../course/contracts/py/corpus/dedup.pyi) · the Bloom sizing and hash rules: [`formats/bloom.md`](../../../../course/contracts/formats/bloom.md) |
-| **Tests** | `course/tests/data.03/` (what they check: section 4); fixtures `course/fixtures/data.03/` (200 documents with planted duplicates) |
 | **Needs** | `data.02` `Doc` and `compose` · `M06.3` FNV-1a and SplitMix64 · reading: `S-M06b` (false-positive rate, optimal $k$) |
 | **Used by** | near dedup (`data.04`) runs on what this stage keeps; it joins the registry with its batch |
-| **Milestone** | `MS-corpus` |
 | **Optional depth** | Lee et al., *Deduplicating Training Data Makes Language Models Better* (2022, free); Wenzek et al., *CCNet* (2019), section 3.1 (paragraph-level dedup, free); Broder and Mitzenmacher, "Network Applications of Bloom Filters: A Survey" (2004, free); Kirsch and Mitzenmacher, "Less Hashing, Same Performance" (2006, free) |
 
 ## Key Takeaways
 
-- Exact dedup keeps the **first** occurrence of every paragraph, in input order, and removes the later ones; a document that loses every paragraph is dropped (`test_hand_example_three_documents`, `test_fixture_duplicate_counts`).
-- A Bloom filter answers "definitely new" or "maybe seen" in about 10 bytes per item, a tenth of what a set of hashes costs. Its "maybe" is only a candidate (`test_zero_false_drops_with_a_tiny_filter`).
-- A sort-merge over the candidates' exact hashes confirms which are real repeats, so no unique paragraph is ever dropped, whatever the filter size (`test_random_corpora_match_the_set_oracle`).
-- The filter is sized from the corpus config's `bloom_bytes_per_item`: $p = e^{-8B(\ln 2)^2}$ and $m \approx 8BN$ bits for $N$ paragraphs (`test_bloom_is_sized_from_bytes_per_item`).
-- Dedup must read its whole input before it can emit anything; it spools to disk, not to memory, and cleans up after itself (`test_the_spool_is_removed`).
+- Exact dedup keeps the **first** occurrence of every paragraph, in input order, and removes the later ones; a document that loses every paragraph is dropped.
+- A Bloom filter answers "definitely new" or "maybe seen" in about 10 bytes per item, a tenth of what a set of hashes costs. Its "maybe" is only a candidate.
+- A sort-merge over the candidates' exact hashes confirms which are real repeats, so no unique paragraph is ever dropped, whatever the filter size.
+- The filter is sized from the corpus config's `bloom_bytes_per_item`: $p = e^{-8B(\ln 2)^2}$ and $m \approx 8BN$ bits for $N$ paragraphs.
+- Dedup must read its whole input before it can emit anything; it spools to disk, not to memory, and cleans up after itself.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start data.03              # stubs python/corpus/dedup.py
-ol tests data.03              # read the test catalog first
-ol check data.03              # needs data.02 and M06.3 passing (or --ref-deps)
-ol diff  data.03              # after passing: your code against the reference
-```
+Sections 1 to 3 build exact dedup from first principles (paragraph hashes, the Bloom screen, the sort-merge confirm) and run all four passes by hand. Section 4 fixes the interface and lists the cases a correct solution must handle. Section 5 walks through `dedup.py` and explains why each choice is the right one. Try to predict each pass of the solution before reading it.
 
-The Python Bloom screen uses the hash functions from `M06.3` and follows the shared bit-sizing rules. The standalone Rust Bloom module has its own tests and does not cross into this stage.
+The Python Bloom screen uses the hash functions from `M06.3` and follows the shared bit-sizing rules in [`formats/bloom.md`](../../../../course/contracts/formats/bloom.md). The standalone Rust Bloom module is a separate unit and does not cross into this stage.
 
 ---
 
@@ -129,36 +121,178 @@ def exact_dedup(docs: Iterable[Doc], bloom_bytes_per_item: float = 10, *,
 
 In a pipeline, bind the options: `compose(build_filters(cfg["filters"]), functools.partial(exact_dedup, bloom_bytes_per_item=cfg["dedup"]["bloom_bytes_per_item"]))`. The private Python filter is sized for `max(N, 1)` at `bloom_rate(B)`. Use `insert` and `contains`; its `m` is the bit count reported in stats.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | What must hold | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_three_documents` | unit | the section 3 example: A unchanged, B as P3, C dropped, the counts | you and the test agree on "first occurrence" |
-| `test_fixture_duplicate_counts` | conformance | 200 documents with planted copies: paragraph, repeat, and dropped counts and the sha256 of every kept text, all fixed by the generator | the counts in the manifest and the datasheet |
-| `test_zero_false_drops_with_a_tiny_filter` | property | at $B = 0.25$ (over 50 false positives) the output equals the set oracle, and candidates = repeated digests + false positives | a Bloom positive never drops a unique paragraph |
-| `test_random_corpora_match_the_set_oracle` | property | 40 seeded corpora at $B$ = 0.1, 1, 10: equal to the set oracle | correctness does not depend on the filter size |
-| `test_paragraph_split_rules` | unit | blank lines with spaces or tabs, single line breaks, stripping, empty pieces | what counts as a repeat |
-| `test_a_repeat_inside_one_document_is_removed` | boundary | a repeated footer inside one document goes, the document stays | repeats are positional, not per document |
-| `test_untouched_documents_keep_their_exact_text` | unit | a document with no repeats comes back equal, line breaks and meta included | dedup changes only what it dedups |
-| `test_bloom_is_sized_from_bytes_per_item` | unit | `bloom_rate` values; $m = \lceil -N \ln p / (\ln 2)^2 \rceil$ within 1 of $8BN$ on the fixture | the memory knob of the config means what it says |
-| `test_stats_name_every_key` | unit | every `STATS_KEYS` entry, also for an empty input | the manifest and datasheet fields |
-| `test_the_spool_is_removed` | unit | no spool left after a full read or an early `close()` | the spool is a full copy of the corpus |
-| `test_exact_dedup_is_a_stage` | unit | composes with `functools.partial`; partial documents joined by `\n\n` | the pipeline wiring of `CorpusBuild` |
+| The hand example | unit | the section 3 example: A unchanged, B as P3, C dropped, the counts | "first occurrence" means exactly this |
+| A corpus with planted copies | conformance | 200 documents: paragraph, repeat, and dropped counts and the sha256 of every kept text, all fixed by the generator | the counts in the manifest and the datasheet |
+| A tiny filter | property | at $B = 0.25$ (over 50 false positives) the output equals a plain set-based dedup, and candidates = repeated digests + false positives | a Bloom positive never drops a unique paragraph |
+| Random corpora at several sizes | property | 40 seeded corpora at $B$ = 0.1, 1, 10 equal the set-based dedup | correctness does not depend on the filter size |
+| Paragraph splitting | unit | blank lines with spaces or tabs, single line breaks, stripping, empty pieces | what counts as a repeat |
+| A repeat inside one document | boundary | a repeated footer inside one document goes, the document stays | repeats are positional, not per document |
+| Untouched documents | unit | a document with no repeats comes back equal, line breaks and meta included | dedup changes only what it dedups |
+| Filter sizing | unit | `bloom_rate` values; $m = \lceil -N \ln p / (\ln 2)^2 \rceil$ within 1 of $8BN$ | the memory knob of the config means what it says |
+| Stats | unit | every `STATS_KEYS` entry, also for an empty input | the manifest and datasheet fields |
+| Spool cleanup | unit | no spool left after a full read or an early `close()` | the spool is a full copy of the corpus |
+| Use as a stage | unit | composes with `functools.partial`; partial documents joined by `\n\n` | the pipeline wiring of `CorpusBuild` |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **"Keep the first occurrence" is a property of input order**, so the algorithm must see occurrences in order and identify each by position $(i, j)$: document index, paragraph index. Keeping the first makes the result stable when sources are appended later.
+2. **Comparing text means storing text; comparing digests does not.** SHA-256 turns each paragraph into 32 bytes with collisions at $2^{-256}$, so "equal digest" can stand for "equal paragraph".
+3. **A set of digests is exact but costs about 90 bytes each in Python.** A Bloom filter costs $B$ bytes each and never forgets an insert (no false negatives), so every true repeat is caught at its second occurrence. Its only error is the other direction: it may call a new paragraph "seen".
+4. **So a Bloom hit can only nominate, never decide.** The candidates are a superset of the repeated digests. A second, exact pass over just the candidates removes the false positives; because candidates are few (repeats plus about $pN$), that pass is cheap.
+5. **Exact confirmation needs equal digests together.** Sorting the occurrences $(h, i, j)$ makes runs of equal $h$ adjacent and, inside a run, puts them in input order. A run of length 1 is a false positive; in a longer run, everything after the first element is a repeat. Sorting also scales to an external sort when the list outgrows memory.
+6. **The algorithm reads the input four times but the stage gets a one-shot iterator.** So the first pass spools it to disk, and memory holds only the filter, the candidates, and their occurrences. The spool is a corpus-sized copy, so it lives in a `TemporaryDirectory` that the generator's `with` block removes on exhaustion or `close()`.
+7. **Size the filter by what it holds: paragraphs, not documents.** The first pass counts $N$, and `bloom_rate(B)` turns the config's byte budget into the target $p$.
+
+### 5.2 The code, annotated
+
+Paragraphs, digests, and the sizing rule ([`dedup.py`](../../../../course/solutions/python/corpus/dedup.py)):
+
+```python
+_BLANK = re.compile(r"\n[ \t]*\n")   # a blank line may hold spaces or tabs
+
+def paragraphs(text: str) -> list[str]:
+    return [p.strip() for p in _BLANK.split(text) if p.strip()]   # empty pieces skipped
+
+def paragraph_hash(p: str) -> bytes:
+    return hashlib.sha256(p.encode("utf-8")).digest()
+
+def bloom_rate(bloom_bytes_per_item: float) -> float:
+    if not bloom_bytes_per_item > 0:
+        raise ValueError("bloom_bytes_per_item must be positive")
+    # m/n = 8B bits per item at the optimal k gives p = exp(-(m/n)(ln 2)^2)
+    return math.exp(-8.0 * bloom_bytes_per_item * math.log(2) ** 2)
+```
+
+The private filter follows `formats/bloom.md`: $m$ from $N$ and $p$, $k$ rounded from $(m/N)\ln 2$, and double hashing with FNV-1a and SplitMix64 from `M06.3`:
+
+```python
+class _Bloom:
+    def __init__(self, n: int, rate: float) -> None:
+        if n < 1 or not 0 < rate < 1:
+            raise ValueError("Bloom needs n >= 1 and 0 < rate < 1")
+        self.m = math.ceil(-n * math.log(rate) / math.log(2) ** 2)
+        self.k = max(1, math.floor(self.m / n * math.log(2) + 0.5))   # round half up
+        self.bits = bytearray((self.m + 7) // 8)
+
+    def _positions(self, item: bytes):
+        h1 = fnv1a64(item)
+        h2 = splitmix64(h1) | 1          # odd step: the k positions do not collapse onto a short cycle
+        for i in range(self.k):
+            yield ((h1 + i * h2) & ((1 << 64) - 1)) % self.m   # Kirsch-Mitzenmacher, mod 2^64 then mod m
+```
+
+The stage itself: spool, screen, confirm, emit. The whole body sits inside the `TemporaryDirectory` block, so the spool goes away however the generator ends.
+
+```python
+def exact_dedup(docs, bloom_bytes_per_item=10, *, spool_dir=None, stats=None):
+    rate = bloom_rate(bloom_bytes_per_item)            # fails fast on B <= 0, before reading input
+    with tempfile.TemporaryDirectory(prefix="dedup-", dir=spool_dir) as td:
+        spool = Path(td) / "spool.jsonl"
+        n_docs = n_paras = 0
+        with spool.open("w", encoding="utf-8") as fh:
+            for doc in docs:                           # pass 1: the only read of the real input
+                fh.write(_doc_line(doc) + "\n")
+                n_docs += 1
+                n_paras += len(paragraphs(doc.text))   # N counts paragraphs, not documents
+
+        # Screen: one Bloom filter sized for every paragraph of the input.
+        bloom = _Bloom(max(n_paras, 1), rate)          # max(.., 1): an empty input still gets a filter
+        candidates: set[bytes] = set()
+        for doc in _read_spool(spool):
+            for p in paragraphs(doc.text):
+                h = paragraph_hash(p)
+                if bloom.contains(h):
+                    candidates.add(h)                  # maybe seen: nominate, do not drop
+                else:
+                    bloom.insert(h)
+
+        # Confirm: sort-merge the occurrences of candidate hashes.
+        occ: list[tuple[bytes, int, int]] = []
+        for i, doc in enumerate(_read_spool(spool)):
+            for j, p in enumerate(paragraphs(doc.text)):
+                h = paragraph_hash(p)
+                if h in candidates:
+                    occ.append((h, i, j))
+        occ.sort()                                     # equal h adjacent; within h, input order
+        drop: set[tuple[int, int]] = set()
+        false_pos = 0
+        k = 0
+        while k < len(occ):
+            end = k
+            while end + 1 < len(occ) and occ[end + 1][0] == occ[k][0]:
+                end += 1                               # [k, end] is one run of equal digests
+            if end == k:
+                false_pos += 1  # the filter said "seen", but this hash occurs once
+            for _, i, j in occ[k + 1 : end + 1]:
+                drop.add((i, j))  # every occurrence after the first
+            k = end + 1
+
+        # Emit, in input order.
+        dropped_docs = out_docs = 0
+        for i, doc in enumerate(_read_spool(spool)):
+            paras = paragraphs(doc.text)
+            keep = [p for j, p in enumerate(paras) if (i, j) not in drop]
+            if not keep:
+                dropped_docs += 1
+                continue
+            out_docs += 1
+            if len(keep) == len(paras):
+                yield doc                              # untouched: exact original text, not a rebuild
+            else:
+                yield dataclasses.replace(doc, text="\n\n".join(keep))
+        if stats is not None:
+            stats.update(docs_in=n_docs, paragraphs=n_paras, bloom_bits=bloom.m,
+                         candidates=len(candidates), false_positives=false_pos,
+                         duplicate_paragraphs=len(drop), docs_dropped=dropped_docs,
+                         docs_out=out_docs)            # filled only once the output is exhausted
+```
+
+(In the solution file the `bloom = _Bloom(...)` line is indented one level deeper, so it runs just before the spool file is closed; the behaviour is the same.)
+
+Full solution: [`dedup.py`](../../../../course/solutions/python/corpus/dedup.py).
+
+### 5.3 Why this solution
+
+- **Cost.** Four linear passes over the spool, each hashing every paragraph: $O(T)$ for $T$ bytes of text. Memory is $8BN$ bits for the filter plus $O(R + pN)$ for the candidates and their occurrences, where $R$ is the number of repeated digests; the sort is $O(C \log C)$ in the number of candidate occurrences $C$. Disk holds one copy of the corpus.
+- **A plain set** is simpler and exact, but 90 bytes per paragraph, nine times the default filter. At a billion paragraphs that is the difference between 10 GB and 90 GB.
+- **Trusting the Bloom filter** (drop every hit) saves the confirm pass but silently deletes unique paragraphs at rate $p$; at a small $B$ that is a third of what the filter has seen. The confirm pass makes correctness independent of $B$, so $B$ is purely a memory/time knob.
+- **A dict of counts for the confirm** would also work while candidates fit in memory, but sort-merge has the same answer and a direct path to an external sort when they do not.
+- **The barrier is the accepted cost.** "First occurrence" cannot be decided until every earlier paragraph has been seen, and dropping a later one needs to know there was an earlier one, so some pass must see everything before emitting. Spooling to disk keeps that barrier out of memory.
+
+### 5.4 Explain it back
+
+1. Why can a Bloom filter be used to find repeats without ever dropping a unique paragraph?
+   <details><summary>Answer</summary>Because the filter is used only to nominate candidates. It has no false negatives, so every real repeat is nominated; its false positives are filtered out by the exact sort-merge, where a unique paragraph forms a run of length 1 and is kept.</details>
+2. Why is the filter sized from the paragraph count of the first pass and not from the document count?
+   <details><summary>Answer</summary>The filter holds paragraphs. Sizing it for documents gives an $m$ several times too small for the $N$ actually inserted, and the false-positive rate grows exponentially as $m/N$ falls ($p = e^{-(m/N)(\ln 2)^2}$). Correctness survives, but candidates and confirm cost balloon.</details>
+3. Why does `occ.sort()` order occurrences correctly within a run, and why does that matter?
+   <details><summary>Answer</summary>Tuples sort by digest, then by document index, then by paragraph index, so within one digest the occurrences are in input order. The first element of each run is therefore the first occurrence, which is the one to keep.</details>
+4. Why does the emit pass yield the original `doc` when nothing was removed, rather than `"\n\n".join(paras)`?
+   <details><summary>Answer</summary>Rebuilding from paragraphs would strip each paragraph and rewrite every blank line (a run of several, or one holding spaces or tabs) as exactly `\n\n`, changing documents dedup did not touch. Later stages (and the hashes in the manifest) would then disagree with the filter stage's output for no reason.</details>
+5. What happens to the spool if a consumer stops reading after the first document?
+   <details><summary>Answer</summary>Closing the generator raises `GeneratorExit` at the `yield`, which unwinds the `with tempfile.TemporaryDirectory(...)` block and deletes the directory. A corpus-sized copy is never left behind.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. Keeping the last occurrence instead of the first | the output depends on what came later; reruns with appended sources rewrite earlier documents | `test_hand_example_three_documents` (mutant `s01`) |
-| 2. Hashing whole documents | copies with a new title or footer survive; repeat counts far too low | `test_fixture_duplicate_counts` (mutant `s03`) |
-| 3. Dropping every Bloom positive without confirming | with a small filter, unique paragraphs vanish; nothing reports it | `test_zero_false_drops_with_a_tiny_filter` (mutant `s04`) |
-| 4. Merging occurrences without sorting them | equal digests are not adjacent; repeats look unique and survive | `test_fixture_duplicate_counts` (mutant `s05`) |
-| 5. Splitting paragraphs only on `\n\n` | a blank line holding a space hides a paragraph boundary; repeats stick to their neighbours | `test_paragraph_split_rules` (mutant `s07`) |
-| 6. Rebuilding every document from its paragraphs | untouched documents change (line breaks collapse); later hashes no longer match the filter stage's output | `test_untouched_documents_keep_their_exact_text` (mutant `s09`) |
-| 7. Sizing the filter by documents, not paragraphs | a filter several times too small; the false-positive rate is far above the budget | `test_bloom_is_sized_from_bytes_per_item` (mutant `s10`) |
-| 8. A spool that outlives the stage | every run leaves a full copy of the corpus in the temp directory | `test_the_spool_is_removed` (mutant `s13`) |
+| 1. Keeping the last occurrence instead of the first | the output depends on what came later; reruns with appended sources rewrite earlier documents | drops `occ[k + 1 : end + 1]`, keeping the first element of each sorted run |
+| 2. Hashing whole documents | copies with a new title or footer survive; repeat counts far too low | hashes each paragraph from `paragraphs(doc.text)` |
+| 3. Dropping every Bloom positive without confirming | with a small filter, unique paragraphs vanish; nothing reports it | a Bloom hit only adds to `candidates`; the sort-merge decides |
+| 4. Merging occurrences without sorting them | equal digests are not adjacent; repeats look unique and survive | `occ.sort()` before the merge |
+| 5. Splitting paragraphs only on `\n\n` | a blank line holding a space hides a paragraph boundary; repeats stick to their neighbours | splits on `\n[ \t]*\n` |
+| 6. Rebuilding every document from its paragraphs | untouched documents change (line breaks collapse); later hashes no longer match the filter stage's output | yields the original `doc` when `len(keep) == len(paras)` |
+| 7. Sizing the filter by documents, not paragraphs | a filter several times too small; the false-positive rate is far above the budget | `_Bloom(max(n_paras, 1), rate)` |
+| 8. A spool that outlives the stage | every run leaves a full copy of the corpus in the temp directory | the whole stage body runs inside `tempfile.TemporaryDirectory` |
 
-## 6. Where it's used next
+## 7. Where it's used next
+
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -167,11 +301,11 @@ In a pipeline, bind the options: `compose(build_filters(cfg["filters"]), functoo
 | Forward | `data.04` | near dedup (MinHash, LSH) runs on what this stage keeps, so exact copies never reach the more expensive pass |
 | Forward | `data.06` | the manifest's `dedup.exact_dropped` comes from these stats |
 
-If you skip this module, the near-dedup stage has to remove exact copies itself, at MinHash cost.
+Without this stage, the near-dedup stage would have to remove exact copies itself, at MinHash cost.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `exact_dedup` | Lee et al.'s suffix-array dedup; datatrove's exact-substring stages (`datatrove/pipeline/dedup/exact_substrings.py`) | repeated substrings of any length (50 tokens and up), across the whole corpus | `google-research/deduplicate-text-datasets` |
 | paragraph hashes | CCNet's paragraph dedup; Dolma's `bff` (a Bloom filter deduplicator) | sharded hash sets over Common Crawl snapshots; a Rust Bloom filter over billions of paragraphs | `allenai/bff` |

@@ -1,38 +1,27 @@
-<!-- ol:module rt.04 -->
 # Paged KV block pool (format v1, optional C)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `rt.04` · side · C · Pass 6 · 6 to 8 h |
-| **You build** | `c/src/runtime/kv_pool.c`: the pool (`tl_kv_pool_create`, `_destroy`, `_cfg`, `tl_kv_alloc`, `tl_kv_ref`, `tl_kv_unref`, `tl_kv_cow`, `tl_kv_set_fill`, `tl_kv_fill`, `tl_kv_block_ptr`, `tl_kv_block_bytes`, `tl_kv_stats_get`), the prefix index (`tl_kv_block_hash`, `tl_kv_register`, `tl_kv_lookup`), and the wire format (`tl_kv_export_bytes`, `tl_kv_export`, `tl_kv_import`, `tl_crc32c`) |
+| **Module** | `rt.04` · side · C · Pass 6 |
+| **Solution** | [`kv_pool.c`](../../../../course/solutions/c/src/runtime/kv_pool.c): the pool (`tl_kv_pool_create`, `_destroy`, `_cfg`, `tl_kv_alloc`, `tl_kv_ref`, `tl_kv_unref`, `tl_kv_cow`, `tl_kv_set_fill`, `tl_kv_fill`, `tl_kv_block_ptr`, `tl_kv_block_bytes`, `tl_kv_stats_get`), the prefix index (`tl_kv_block_hash`, `tl_kv_register`, `tl_kv_lookup`), and the wire format (`tl_kv_export_bytes`, `tl_kv_export`, `tl_kv_import`, `tl_crc32c`) |
 | **Contract** | [`tinyllm/kv_pool.h`](../../../../course/contracts/c/include/tinyllm/kv_pool.h); the hash and the bytes in [`formats/kv-block.md`](../../../../course/contracts/formats/kv-block.md); rules in [`c/ABI.md`](../../../../course/contracts/c/ABI.md) |
-| **Tests** | `course/tests/rt.04/test_kv_pool.c`, 20 tests under ASan and UBSan with the counting allocator (what they check: section 4) · your own tests in `c/tests/rt04-kv-pool/`, rung R3, graded by mutation (threshold 0.70) · parity suite `ol parity kv.wire.v1` |
 | **Needs** | `rt.02` (C allocation and error support) · `ds.01` [`tl_vec`](../../../tracks/algorithms/16-systems-data-structures/01-growable-array.md) (the free list) · `ds.02` [the Swiss table](../../../tracks/algorithms/16-systems-data-structures/02-swiss-table.md) (the prefix index) · `ds.03` [the intrusive LRU](../../../tracks/algorithms/16-systems-data-structures/03-intrusive-list-and-lru.md) (cached blocks) · reading: `M06.3` [FNV-1a](../../../tracks/math/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) and [`L8.2`'s contiguous cache](README.md) |
-| **Used by** | `L9.4` uses the pool in its standalone C paged-attention exercise; cross-language comparisons use fixture files. |
-| **Milestone** | `MS-L9`, the optional standalone C module group |
+| **Used by** | `L9.4` uses the pool in its standalone C paged-attention exercise; cross-language comparisons use fixture files. Part of the optional standalone C module group of the kernels pass. |
 | **Optional depth** | Kwon et al., [*Efficient Memory Management for LLM Serving with PagedAttention*](https://arxiv.org/abs/2309.06180) (SOSP 2023), sections 4.1 to 4.4 |
 
 ## Key Takeaways
 
-- The KV cache becomes fixed-size blocks in one slab; a sequence is a list of block ids, so memory is reserved a block at a time and never fragments (`alloc_is_all_or_nothing`).
-- A block is in exactly one of three states, free, used, or cached, and `free + used + cached == n_blocks` after every call (`random_ops_keep_the_invariants`).
-- A full block is named by a chained FNV-1a hash of its parent's hash and its token ids, so equal hashes mean equal prefixes; only full blocks are hashed, registered, or deduplicated (`hand_example_block_hash_chain`, `only_full_blocks_are_registered`).
-- Shared blocks are copied only when someone writes: refcount 1 writes in place, refcount above 1 copies (`cow_copies_only_when_shared`).
-- The export envelope is a pure function of the blocks' contents, checksummed with CRC-32C, so one flipped bit is refused and two implementations produce the same bytes (`hand_example_export_envelope`, `every_bit_flip_is_eformat`).
+- The KV cache becomes fixed-size blocks in one slab; a sequence is a list of block ids, so memory is reserved a block at a time and never fragments.
+- A block is in exactly one of three states, free, used, or cached, and `free + used + cached == n_blocks` after every call.
+- A full block is named by a chained FNV-1a hash of its parent's hash and its token ids, so equal hashes mean equal prefixes; only full blocks are hashed, registered, or deduplicated.
+- Shared blocks are copied only when someone writes: refcount 1 writes in place, refcount above 1 copies.
+- The export envelope is a pure function of the blocks' contents, checksummed with CRC-32C, so one flipped bit is refused and two implementations produce the same bytes.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start rt.04              # stubs c/src/runtime/kv_pool.c
-ol tests rt.04              # read the test catalog first
-ol check rt.04              # exit code is the verdict; then grades your tests by mutation
-ol parity kv.wire.v1        # your export bytes against the golden envelopes
-ol diff  rt.04              # after passing: your code against the reference
-```
-
-Write it in three passes, each green before the next: (1) create, alloc, ref, unref, cow, block_ptr, stats, with no hashing at all; (2) `tl_crc32c`, `tl_kv_block_hash`, register, lookup, and the LRU of cached blocks; (3) export and import against the 60-byte worked envelope.
+Sections 1 to 3 build the pool from first principles (blocks and their three states, copy on write, the chained hash, the export envelope) and work the hashes, a 60-byte envelope, and a fork by hand. Section 4 fixes the interface. Section 5 walks through the solution in three layers, each complete before the next: the pool itself (create, alloc, ref, unref, cow, block_ptr, stats), then hashing, the prefix index and the LRU, then export and import. Try to predict each step before reading it.
 
 ---
 
@@ -86,7 +75,7 @@ with a result of 0 replaced by 1, because 0 means "no hash" (the partial tail). 
 
 The example of `formats/kv-block.md`: $B = 2$, $L = H = 1$, $D = 2$, one sequence with tokens 1 2 3 4 5.
 
-**Hashes.** Block 0 hashes the 12 bytes `00 00 00 00 00 00 00 00 01 00 00 00 02 00 00 00`: $h_0 =$ `0xA91AB0C1027B9366`. Block 1 hashes $h_0$'s 8 bytes, least significant first (`66 93 7b 02 c1 b0 1a a9`), then `03 00 00 00 04 00 00 00`: $h_1 =$ `0x03DF829571605C60`. Token 5 is a partial block: no hash. This is `hand_example_block_hash_chain`.
+**Hashes.** Block 0 hashes the 16 bytes `00 00 00 00 00 00 00 00 01 00 00 00 02 00 00 00`: $h_0 =$ `0xA91AB0C1027B9366`. Block 1 hashes $h_0$'s 8 bytes, least significant first (`66 93 7b 02 c1 b0 1a a9`), then `03 00 00 00 04 00 00 00`: $h_1 =$ `0x03DF829571605C60`. Token 5 is a partial block: no hash.
 
 **One block on the wire.** Block 0 holds K = `[[1, 2], [3, 4]]` and V = `[[0.5, -1], [0, 0.25]]` (rows are positions). In f16, 1.0 is `0x3C00` (sign 0, exponent 15 = bias, mantissa 0), stored least significant byte first as `00 3c`. $P = 1 \cdot 2 \cdot 1 \cdot 2 \cdot 2 \cdot 2 = 16$, so the envelope is $28 + 12 + 16 + 4 = 60$ bytes:
 
@@ -98,8 +87,6 @@ The example of `formats/kv-block.md`: $B = 2$, $L = H = 1$, $D = 2$, one sequenc
 00 38 00 bc 00 00 00 34                             V: 0.5 -1.0 0.0 0.25
 1c 54 0b 4f                                         crc32c 0x4F0B541C
 ```
-
-This is `hand_example_export_envelope`, byte for byte.
 
 **States through a fork.** A pool of 3 blocks: alloc 2 for the sequence (free 1, used 2), register block 0 under $h_0$, fork (both blocks at ref 2), the child writes position 3 into block 1: `tl_kv_cow` copies it (free 0, used 3). The parent finishes: block 0 drops to ref 1, block 1 (its own now) to 0 and, unregistered, back to free. The child finishes: block 0 reaches ref 0 and, registered, becomes cached (free 2, used 0, cached 1). A new prompt starting with 1 2 looks up $h_0$ and gets block 0 back without recomputing it.
 
@@ -128,75 +115,289 @@ uint32_t  tl_crc32c(const void *data, size_t n, uint32_t crc);
 
 Two choices the header leaves open are fixed here: export refuses a block with fill 0 (`TL_EINVAL`), because reader rule 5 would refuse the envelope; and the free list is a `tl_vec` of ids reserved for $N$ at create, popped by reading the last id and shortening `len`, so pushing a freed id never reallocates.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `hand_example_block_hash_chain` | unit, golden | $h_0$, $h_1$ of section 3; the same tokens under another parent hash differently | L10.4 and L10.6 find each other's blocks only through these values |
-| `hand_example_export_envelope` | unit, golden | the 60-byte envelope of section 3, nothing written past it | the PushKv payload and the parity golden |
-| `crc32c_check_value_and_continuation` | unit | `crc32c("123456789") = 0xE3069283`; continuing from a previous result | the envelope trailer and the gRPC chunk checksum |
-| `alloc_is_all_or_nothing` | unit, boundary | asking for more than free + cached takes nothing | admission by free blocks (L10.2) |
-| `unref_frees_or_caches` | unit | ref 0 caches a registered block, frees others; the three counts add up | prefix reuse without leaking memory |
-| `double_unref_is_einval_and_changes_nothing` | fault | a second unref and a bad id are `TL_EINVAL`; ref on a free block sets the error slot | one block on the free list twice is shared memory nobody knows about |
-| `lookup_revives_a_cached_block_and_misses_quietly` | unit | a hit returns the block used again; a miss is `TL_ENOTFOUND` with the error slot unchanged; the contents are intact | prefix hits for every new prompt |
-| `eviction_takes_the_least_recently_used` | unit | a hit moves a cached block to the newest end; two allocations evict the two oldest; `evictions` counts | the cache keeps the prefixes in use |
-| `a_revived_block_is_never_evicted` | unit | after a lookup hit, the next allocation reclaims another cached block | a running request's prefix stays put |
-| `cow_copies_only_when_shared` | unit | ref 1 writes in place; ref 2 copies contents and fill; the original is unchanged | forks for beam search and parallel sampling |
-| `cow_in_a_full_pool_is_efull` | boundary | a copy that cannot allocate changes nothing | preemption instead of corruption |
-| `only_full_blocks_are_registered` | unit, boundary | partial, hash 0, and unheld blocks refused; a duplicate hash is `TL_EBUSY`; a registered block is immutable | a partial block's hash would name contents that still change |
-| `block_ptr_layout` | unit, boundary | every (block, layer, K/V) slab distinct and exactly $H B D$ f16 long; out of range gives NULL | L9.4 and L8.3 index slabs `[H][B][D]` |
-| `export_zeroes_past_the_fill_and_reports_its_size` | unit, boundary | stale data past the fill exported as zeros; a short buffer gets `TL_EFULL` and the size needed | envelopes compare byte for byte |
-| `export_import_roundtrip` | unit | export, import into another pool, export again: same bytes; full blocks arrive registered, the tail does not | disaggregated prefill and decode (L10.6) |
-| `import_keeps_the_first_holder_of_a_hash` | unit | an imported block whose hash is held stays a private copy | KV-transfer dedup |
-| `every_bit_flip_is_eformat` | fault | all 480 single-bit flips of the worked envelope are refused; nothing allocated | a corrupted transfer never decodes |
-| `import_reader_rules` | boundary | version 2, a wrong dtype, bad `n_tokens`, a hashed partial block (each with a valid CRC) are `TL_EFORMAT`; another shape is `TL_ESHAPE` | format v2 arrives only through craft.13 |
-| `create_rules_and_alloc_failure` | boundary, fault | format 2 and other dtypes `TL_EUNSUPPORTED`; zero dimensions `TL_EINVAL`; every failing allocation of create `TL_ENOMEM` with no leak | the engine starts or fails cleanly |
-| `random_ops_keep_the_invariants` | property | 40 seeded runs of alloc, ref, unref, cow, register, lookup, export, and import against a model of the refcounts; held blocks keep their contents | the three promises under any interleaving |
+| The hand-example hash chain | unit, golden | $h_0$, $h_1$ of section 3; the same tokens under another parent hash differently | L10.4 and L10.6 find each other's blocks only through these values |
+| The hand-example envelope | unit, golden | the 60-byte envelope of section 3, nothing written past it | the PushKv payload, compared byte for byte across implementations |
+| CRC-32C check value and continuation | unit | `crc32c("123456789") = 0xE3069283`; continuing from a previous result | the envelope trailer and the gRPC chunk checksum |
+| Alloc is all or nothing | unit, boundary | asking for more than free + cached takes nothing | admission by free blocks (L10.2) |
+| Unref frees or caches | unit | ref 0 caches a registered block, frees others; the three counts add up | prefix reuse without leaking memory |
+| A double unref changes nothing | fault | a second unref and a bad id are `TL_EINVAL`; ref on a free block sets the error slot | one block on the free list twice is shared memory nobody knows about |
+| Lookup revives, and misses quietly | unit | a hit returns the block used again; a miss is `TL_ENOTFOUND` with the error slot unchanged; the contents are intact | prefix hits for every new prompt |
+| Eviction takes the least recently used | unit | a hit moves a cached block to the newest end; two allocations evict the two oldest; `evictions` counts | the cache keeps the prefixes in use |
+| A revived block is never evicted | unit | after a lookup hit, the next allocation reclaims another cached block | a running request's prefix stays put |
+| CoW copies only when shared | unit | ref 1 writes in place; ref 2 copies contents and fill; the original is unchanged | forks for beam search and parallel sampling |
+| CoW in a full pool | boundary | a copy that cannot allocate changes nothing | preemption instead of corruption |
+| Only full blocks are registered | unit, boundary | partial, hash 0, and unheld blocks refused; a duplicate hash is `TL_EBUSY`; a registered block is immutable | a partial block's hash would name contents that still change |
+| The `block_ptr` layout | unit, boundary | every (block, layer, K/V) slab distinct and exactly $H B D$ f16 long; out of range gives NULL | L9.4 and L8.3 index slabs `[H][B][D]` |
+| Export zeroes past the fill and reports its size | unit, boundary | stale data past the fill exported as zeros; a short buffer gets `TL_EFULL` and the size needed | envelopes compare byte for byte |
+| Export, import, export | unit | export, import into another pool, export again: same bytes; full blocks arrive registered, the tail does not | disaggregated prefill and decode (L10.6) |
+| Import keeps the first holder of a hash | unit | an imported block whose hash is held stays a private copy | KV-transfer dedup |
+| Every bit flip is refused | fault | all 480 single-bit flips of the worked envelope are refused; nothing allocated | a corrupted transfer never decodes |
+| Import reader rules | boundary | version 2, a wrong dtype, bad `n_tokens`, a hashed partial block (each with a valid CRC) are `TL_EFORMAT`; another shape is `TL_ESHAPE` | format v2 arrives only through craft.13 |
+| Create rules and allocation failure | boundary, fault | format 2 and other dtypes `TL_EUNSUPPORTED`; zero dimensions `TL_EINVAL`; every failing allocation of create `TL_ENOMEM` with no leak (under a counting allocator) | the engine starts or fails cleanly |
+| Random operations keep the invariants | property | 40 seeded runs of alloc, ref, unref, cow, register, lookup, export, and import against a model of the refcounts; held blocks keep their contents | the three promises under any interleaving |
 
-**Your tests (rung R3).** First write C files under `c/tests/rt04-kv-pool/` and run `ol tdd red rt.04` against your stub; then implement until `ol tdd green rt.04`. Name them `hash_chain_by_hand`, `alloc_all_or_nothing`, `unref_caches_registered_blocks`, `double_unref_refused`, `lookup_hit_is_not_evicted`, `cow_copies_shared_blocks`, `partial_blocks_not_registered`, `roundtrip_and_bit_flip`. The planted bug "a revived block stays on the eviction list" (`s11`) is required; overall 70%.
+Cases worth stating in your own words: the hash chain by hand; alloc all or nothing; unref caches registered blocks; a double unref is refused; a lookup hit is not evicted; CoW copies shared blocks; partial blocks are not registered; round trip and a bit flip. The subtlest is a lookup hit that leaves the revived block on the eviction list.
 
-**Parity.** `ol parity kv.wire.v1` feeds six sequences (the worked example, partial tails, several layers and heads) through a driver that builds the blocks with your pool and compares `tl_kv_export` with envelopes written by an independent Python transcription of `formats/kv-block.md`; the Rust writer of `L10.6` joins the same suite.
+## 5. The solution, step by step
 
-## 5. Pitfalls
+### From first principles
 
-| Pitfall | Symptom | Caught by |
+1. **Memory must not fragment and must not grow at run time.** So the pool takes one slab of $N \cdot P$ bytes at create, and a sequence owns block ids, not memory. Allocation is popping an id; nothing calls `tl_alloc` after create.
+2. **Sharing needs a count of holders.** A block reachable from several sequences (a fork, a prefix hit) can only be reclaimed when the last holder lets go: a refcount per block, and the three states of section 2.1 follow from "ref is zero or not" crossed with "registered or not".
+3. **Reuse needs a name for a block's contents that two engines agree on.** The name must cover the whole prefix, otherwise two prompts that differ early would collide later: chain the parent's hash into each block's hash. Only full blocks are named, because a partial block's contents still change.
+4. **Cached blocks are reclaimable, so reclaim the least useful first.** Keeping them on an intrusive LRU list makes "touch", "remove", and "pop oldest" $O(1)$ without allocating.
+5. **Admission must be all or nothing.** The scheduler asks for the blocks a request needs; taking some and failing would leak them. Check `free + cached >= n` before taking anything.
+6. **Writes into shared blocks must not be visible to the other holders**: copy on write at ref above 1, in place at ref 1.
+7. **The wire format must be a pure function of the data.** Zero every position past the fill (stale bytes from an earlier owner would differ between engines), checksum everything, and validate every field before allocating, so a bad envelope changes nothing.
+
+### The code, annotated
+
+Each block's record holds its state and an embedded LRU node; the pool holds the counts that make `free + used + cached == n_blocks` cheap to report:
+
+```c
+typedef struct {
+    uint32_t ref;        /* holders; 0 for free and cached blocks */
+    uint32_t fill;       /* token positions holding data, 0..block_tokens */
+    uint64_t hash;       /* registered hash; 0 when not registered */
+    tl_list_node lru;    /* linked into pool->lru while cached */
+    uint32_t id;
+} kv_block;
+
+struct tl_kv_pool {
+    tl_kv_cfg cfg;
+    size_t elem, row_bytes, slab_bytes, block_bytes;  /* 2; D*2; H*B*row; L*2*slab */
+    unsigned char *data;   /* the one slab */
+    kv_block *blocks;
+    tl_vec free_ids;       /* ids of free blocks (uint32_t); the last is taken first */
+    uint32_t n_used, n_cached, evictions;
+    tl_map *index;         /* hash -> id of every registered block */
+    tl_lru lru;            /* cached blocks, oldest first */
+};
+```
+
+Create reserves everything up front (the free list for $N$ ids, the index for $N$ keys) and pushes ids in reverse so they come out `0, 1, 2, ...`; any failing allocation frees what was taken and returns `TL_ENOMEM`. Format 2 and dtypes other than f16 are `TL_EUNSUPPORTED`; zero dimensions and a size that overflows are `TL_EINVAL`.
+
+The chained hash, step 3. FNV-1a 64 from the offset basis, over the parent's 8 bytes then each token's 4, all little-endian:
+
+```c
+uint64_t tl_kv_block_hash(uint64_t parent, const uint32_t *toks, uint32_t n) {
+    // ... NULL check ...
+    unsigned char b[8];
+    put_u64(b, parent);                                        /* le64(h_{i-1}) */
+    uint64_t h = kv_fnv1a64(b, 8, UINT64_C(0xCBF29CE484222325)); /* offset basis, not 0 */
+    for (uint32_t i = 0; i < n; i++) {
+        put_u32(b, toks[i]);                                   /* 4 bytes per id */
+        h = kv_fnv1a64(b, 4, h);                               /* continue the same hash */
+    }
+    return h == 0 ? 1 : h; /* 0 means "no hash" (the partial tail block) */
+}
+```
+
+Writing bytes explicitly (`put_u64`, `put_u32`) rather than hashing the integers' memory makes the result independent of the host's byte order, which is what lets the Rust engine compute the same $h_0 =$ `0xA91AB0C1027B9366`.
+
+Allocation, steps 4 and 5:
+
+```c
+tl_status tl_kv_alloc(tl_kv_pool *p, uint32_t n, uint32_t *ids) {
+    // ... NULL checks ...
+    if ((uint64_t)p->free_ids.len + p->n_cached < n) { /* all or nothing */
+        tl_set_last_error("tl_kv_alloc: not enough free or cached blocks");
+        return TL_EFULL;
+    }
+    for (uint32_t i = 0; i < n; i++) {
+        kv_block *b;
+        if (p->free_ids.len > 0) { /* pop: read the last id, shorten len */
+            b = &p->blocks[((const uint32_t *)p->free_ids.data)[p->free_ids.len - 1]];
+            p->free_ids.len--;
+        } else { /* reclaim the least recently used cached block */
+            tl_list_node *old = tl_lru_pop_oldest(&p->lru);
+            b = TL_CONTAINER_OF(old, kv_block, lru);
+            uncache(p, b); /* already unlinked; drop it from the index */
+            p->evictions++;
+        }
+        b->ref = 1;
+        b->fill = 0;
+        p->n_used++;
+        ids[i] = b->id;
+    }
+    return TL_OK;
+}
+```
+
+Free blocks are taken before cached ones because a cached block may still produce a prefix hit. `uncache` removes the block from the LRU (a no-op after `pop_oldest`), deletes its hash from the index, and clears `hash`, so a reclaimed block can never be found by an old lookup.
+
+Reference counting, step 2. `used_block` returns NULL for an id out of range or at ref 0, which makes a double unref and a `ref` on a free block errors that change nothing:
+
+```c
+tl_status tl_kv_unref(tl_kv_pool *p, uint32_t id) {
+    kv_block *b = used_block(p, id, "tl_kv_unref: id out of range or refcount already 0 (double unref)");
+    if (b == NULL) return TL_EINVAL;     /* never below zero */
+    if (--b->ref > 0) return TL_OK;
+    p->n_used--;
+    if (b->hash != 0) { /* registered: keep the contents for a later lookup */
+        tl_lru_touch(&p->lru, &b->lru);  /* newest end of the LRU */
+        p->n_cached++;
+    } else {
+        b->fill = 0;
+        tl_vec_push(&p->free_ids, &id); /* never grows: cap is n_blocks */
+    }
+    return TL_OK;
+}
+
+tl_status tl_kv_lookup(tl_kv_pool *p, uint64_t hash, uint32_t *id) {
+    // ... NULL checks ...
+    uint64_t v;
+    if (hash == 0 || !tl_map_get(p->index, hash, &v)) return TL_ENOTFOUND; /* a miss is not an error */
+    kv_block *b = &p->blocks[v];
+    if (b->ref == 0) { /* cached: back to used */
+        tl_lru_remove(&p->lru, &b->lru);  /* or the next alloc could evict it */
+        p->n_cached--;
+        p->n_used++;
+    }
+    b->ref++;
+    *id = (uint32_t)v;
+    return TL_OK;
+}
+```
+
+A miss returns before touching the error slot: it is the normal answer for a new prompt, and overwriting the slot would destroy the caller's last real error message.
+
+Copy on write, step 6:
+
+```c
+tl_status tl_kv_cow(tl_kv_pool *p, uint32_t id, uint32_t *out) {
+    kv_block *b = used_block(p, id, "tl_kv_cow: block is not in use");
+    // ... NULL checks ...
+    if (b->ref == 1) { /* the only holder may write in place */
+        *out = id;
+        return TL_OK;
+    }
+    uint32_t nid;
+    tl_status st = tl_kv_alloc(p, 1, &nid);
+    if (st != TL_OK) return st;          /* a full pool: nothing changed */
+    memcpy(p->data + (size_t)nid * p->block_bytes, p->data + (size_t)id * p->block_bytes, p->block_bytes);
+    p->blocks[nid].fill = b->fill;
+    b->ref--; /* still >= 1: the other holders keep the original */
+    *out = nid;
+    return TL_OK;
+}
+```
+
+Registration refuses a hash of 0, a block that is not full, and a block already registered under another hash; a hash another block holds is `TL_EBUSY` (the first holder stays reachable). `tl_kv_set_fill` refuses a registered block, so a named block is immutable.
+
+The slab layout is arithmetic, `[n_layers][2][n_kv_heads][block_tokens][head_dim]`:
+
+```c
+size_t off = (size_t)id * p->block_bytes + ((size_t)layer * 2 + (is_v ? 1 : 0)) * p->slab_bytes;
+```
+
+Export, step 7. The header is written field by field little-endian, then per block the hash, the fill, and the payload with positions past the fill as zeros, then the CRC-32C of everything before it:
+
+```c
+for (uint32_t i = 0; i < n; i++) {
+    const kv_block *b = &p->blocks[ids[i]];
+    put_u64(o + at, b->hash);           /* 0 if unregistered */
+    put_u32(o + at + 8, b->fill);       /* n_tokens */
+    at += 12;
+    const unsigned char *src = p->data + (size_t)ids[i] * p->block_bytes;
+    size_t rows = (size_t)p->cfg.n_layers * 2 * p->cfg.n_kv_heads; /* (layer, K/V, head) */
+    for (size_t r = 0; r < rows; r++)
+        for (uint32_t t = 0; t < B; t++) {
+            const unsigned char *s = src + (r * B + t) * p->row_bytes;
+            for (uint32_t d = 0; d < D; d++) {
+                uint16_t v;
+                memcpy(&v, s + (size_t)d * 2, 2);     /* in memory: host-order f16 bits */
+                put_u16(o + at, t < b->fill ? v : 0); /* past the fill: zero bytes */
+                at += 2;
+            }
+        }
+}
+put_u32(o + at, tl_crc32c(o, at, 0));   /* header and every block */
+```
+
+Before writing, export checks every block is in use and has a non-zero fill, and sets `*written` to the size needed before returning `TL_EFULL` for a short buffer, so a caller can size its buffer with one failed call (or `tl_kv_export_bytes`).
+
+The CRC is the bitwise reflected form; `~crc` on entry and exit makes a fresh checksum start at `0xFFFFFFFF` and lets a caller continue from a previous result:
+
+```c
+uint32_t tl_crc32c(const void *data, size_t n, uint32_t crc) {
+    const unsigned char *p = (const unsigned char *)data;
+    uint32_t c = ~crc; /* a fresh checksum starts from 0xFFFFFFFF */
+    for (size_t i = 0; i < n; i++) {
+        c ^= p[i];
+        for (int k = 0; k < 8; k++) c = (c >> 1) ^ (0x82F63B78u & (0u - (c & 1u)));  /* branch-free */
+    }
+    return ~c;
+}
+```
+
+Import validates in the order that keeps every check meaningful: length and magic; version and dtype (`TL_EFORMAT`); total length against the header's $n$ and dimensions (with overflow guards); the CRC; then the pool's shape (`TL_ESHAPE`); then every record's `n_tokens` in $1..B$ and "hashed implies full", all before `tl_kv_alloc`. Only then does it allocate, copy each payload, set the fill, and register a full block whose hash is not already held (otherwise it stays a private copy). If registering fails it unrefs every block it took.
+
+Full solution: [`kv_pool.c`](../../../../course/solutions/c/src/runtime/kv_pool.c); contract: [`kv_pool.h`](../../../../course/contracts/c/include/tinyllm/kv_pool.h).
+
+### Why this solution
+
+- **Cost.** `alloc`, `ref`, `unref`, `lookup`, and `register` are $O(1)$ amortised per block (stack pop, refcount, one hash-map operation, one list operation). `cow` is one block copy, $O(P)$. Export and import are $O(nP)$ plus one CRC pass; the bitwise CRC is about 8 operations per bit, fine for a reference and replaceable by a table or the SSE4.2 `crc32` instruction without changing a byte.
+- **Against `malloc` per sequence.** Contiguous per-sequence buffers waste `max_len - len` positions each and cannot share prefixes; per-block `malloc` fragments and makes allocation fallible at run time. One slab plus ids has neither problem.
+- **Against freeing registered blocks at ref 0.** It is simpler, but no prefix would ever be reused across requests; the cached state is what makes a shared system prompt free after the first request.
+- **Against hashing token blocks independently.** Without the chain, two prompts that differ in block 0 but agree in block 1 would share block 1, whose keys were computed under different attention context.
+- **Tradeoff accepted.** Eviction is per block, LRU, with no notion of which prefix a block belongs to; `L8.4`'s radix tree adds that structure. The pool is not thread-safe; the engine serialises access per step.
+
+### Explain it back
+
+1. Why does `tl_kv_alloc` check `free + cached >= n` before taking any block?
+   <details><summary>Answer</summary>Taking blocks one at a time and failing halfway would leave some blocks marked used with nobody holding them. The upfront check makes the call all or nothing, so a refused admission changes nothing.</details>
+2. What goes wrong if `tl_kv_lookup` revives a cached block without unlinking it from the LRU?
+   <details><summary>Answer</summary>It is still at its place on the eviction list, so the next allocation that runs out of free blocks can pop it, unregister it, and hand it to another request while the request that looked it up is reading it.</details>
+3. Why is the tail block's hash 0, and why is a computed hash of 0 replaced by 1?
+   <details><summary>Answer</summary>A partial block's contents still grow, so it must never be found by a lookup; 0 is reserved for "not named". A real hash that happened to be 0 would then be indistinguishable from "no hash", so it is mapped to 1.</details>
+4. Why must export zero the positions past the fill?
+   <details><summary>Answer</summary>Those bytes are whatever the block's previous owner left there. Two engines exporting the same logical block would write different bytes and different CRCs, so envelopes could not be compared byte for byte or deduplicated.</details>
+5. Why does import check the CRC before the shape?
+   <details><summary>Answer</summary>A corrupted envelope should be reported as corrupted (`TL_EFORMAT`), not as a mismatch with the pool. Checking the CRC first ensures `TL_ESHAPE` means "a valid envelope for other dimensions", which is a configuration error the caller can act on.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Hashing a block without its parent | two prompts that differ early share later blocks | `hand_example_block_hash_chain` (mutant `s01`) |
-| Hashing token ids with the wrong width | hashes differ from the Rust engine's | `hand_example_block_hash_chain` (mutant `s02`) |
-| Starting FNV from 0 instead of the offset basis | every hash differs from the format's | `hand_example_block_hash_chain` (mutant `m01`) |
-| Header fields out of order | another engine reads a nonsense shape | `hand_example_export_envelope` (mutant `s03`) |
-| Exporting hash 0 for registered blocks | the receiver cannot deduplicate | `hand_example_export_envelope`, `export_import_roundtrip` (mutant `s04`) |
-| Checksumming only the payload | header corruption passes | `hand_example_export_envelope` (mutant `s05`) |
-| CRC without the initial inversion | the check value is wrong, envelopes disagree | `crc32c_check_value_and_continuation` (mutant `s06`) |
-| Taking blocks one at a time and failing halfway | blocks leak on every refused admission | `alloc_is_all_or_nothing` (mutant `s07`) |
-| Freeing registered blocks at ref 0 | no prefix is ever reused | `unref_frees_or_caches` (mutant `s08`) |
-| Letting a refcount go below zero | a block handed to two sequences | `double_unref_is_einval_and_changes_nothing` (mutant `s09`) |
-| `tl_kv_ref` reviving a block nobody holds | a free block counts as used and leaks | `double_unref_is_einval_and_changes_nothing` (mutant `s10`) |
-| Forgetting to unlink a revived block from the LRU | the next allocation evicts a block a request is reading | `a_revived_block_is_never_evicted` (mutant `s11`) |
-| Setting the error slot on a miss | the caller's earlier error message is lost | `lookup_revives_a_cached_block_and_misses_quietly` (mutant `s12`) |
-| Evicting the newest cached block | the hot system prompt is recomputed | `eviction_takes_the_least_recently_used` (mutant `s13`) |
-| Not counting evictions | `/metrics` shows no pressure | `eviction_takes_the_least_recently_used` (mutant `s14`) |
-| Copy on write keeping the writer's reference | the original never returns to the pool | `cow_copies_only_when_shared` (mutant `s15`) |
-| Writing a shared block in place | the parent sees the child's tokens | `cow_copies_only_when_shared`, `cow_in_a_full_pool_is_efull` (mutant `s16`) |
-| Registering a partial block | a prefix hit returns half-written KV | `only_full_blocks_are_registered` (mutant `s17`) |
-| A duplicate hash replacing the first holder | the first block stays cached but unreachable | `only_full_blocks_are_registered` (mutant `s18`) |
-| K and V sharing one slab | every V overwrites a K | `block_ptr_layout` (mutant `s19`) |
-| Exporting stale data past the fill | two engines write different bytes for the same block | `export_zeroes_past_the_fill_and_reports_its_size` (mutant `s20`) |
-| Not reporting the size needed | the caller cannot size its buffer | `export_zeroes_past_the_fill_and_reports_its_size` (mutant `s21`) |
-| Import dropping the fill | the decode engine sees empty blocks | `export_import_roundtrip` (mutant `s22`) |
-| Import never registering | transferred prefixes are never hit again | `export_import_roundtrip` (mutant `s23`) |
-| Import fighting the first holder of a hash | a valid envelope fails with `TL_EBUSY` | `import_keeps_the_first_holder_of_a_hash` (mutant `s24`) |
-| Skipping the CRC | corrupted KV decodes | `every_bit_flip_is_eformat` (mutant `s25`) |
-| Reading any version | a v2 envelope's fp8 bytes read as f16 | `import_reader_rules` (mutant `s27`) |
-| Ignoring the receiving pool's shape | a payload laid out for other dimensions is copied in | `import_reader_rules` (mutant `s28`) |
-| Accepting format 2 before its migration | a pool that cannot read what it was asked to hold | `create_rules_and_alloc_failure` (mutant `s29`) |
-| Leaking on a failed create | the counting allocator reports live blocks | `create_rules_and_alloc_failure` (mutant `s30`) |
-| Envelope version field 0 | every reader refuses it | `hand_example_export_envelope` (mutant `m02`) |
-| Losing a freed id | the pool shrinks by one block per request | `random_ops_keep_the_invariants` (mutant `m03`) |
+| Hashing a block without its parent | two prompts that differ early share later blocks | the parent's 8 bytes are hashed first |
+| Hashing token ids with the wrong width | hashes differ from the Rust engine's | `put_u32` per token: 4 little-endian bytes |
+| Starting FNV from 0 instead of the offset basis | every hash differs from the format's | starts from `0xCBF29CE484222325` |
+| Header fields out of order | another engine reads a nonsense shape | writes each field at its fixed offset |
+| Exporting hash 0 for registered blocks | the receiver cannot deduplicate | writes `b->hash` for every block |
+| Checksumming only the payload | header corruption passes | CRC over `o[0..at)`, header included |
+| CRC without the initial inversion | the check value is wrong, envelopes disagree | `~crc` on entry and on exit |
+| Taking blocks one at a time and failing halfway | blocks leak on every refused admission | checks `free + cached >= n` before taking any |
+| Freeing registered blocks at ref 0 | no prefix is ever reused | `unref` caches a block with a non-zero hash |
+| Letting a refcount go below zero | a block handed to two sequences | `used_block` refuses ref 0 with `TL_EINVAL` |
+| `tl_kv_ref` reviving a block nobody holds | a free block counts as used and leaks | `ref` goes through `used_block` too; only `lookup` revives |
+| Forgetting to unlink a revived block from the LRU | the next allocation evicts a block a request is reading | `lookup` calls `tl_lru_remove` on a cached block |
+| Setting the error slot on a miss | the caller's earlier error message is lost | a miss returns `TL_ENOTFOUND` without `tl_set_last_error` |
+| Evicting the newest cached block | the hot system prompt is recomputed | `tl_lru_pop_oldest`; `unref` touches to the newest end |
+| Not counting evictions | `/metrics` shows no pressure | `evictions++` on every reclaim |
+| Copy on write keeping the writer's reference | the original never returns to the pool | `b->ref--` after the copy |
+| Writing a shared block in place | the parent sees the child's tokens | copies whenever `ref > 1` |
+| Registering a partial block | a prefix hit returns half-written KV | `register` requires `fill == block_tokens` |
+| A duplicate hash replacing the first holder | the first block stays cached but unreachable | returns `TL_EBUSY` when the index already holds the hash |
+| K and V sharing one slab | every V overwrites a K | offset `(layer * 2 + is_v) * slab_bytes` |
+| Exporting stale data past the fill | two engines write different bytes for the same block | writes 0 for `t >= fill` |
+| Not reporting the size needed | the caller cannot size its buffer | sets `*written = need` before `TL_EFULL` |
+| Import dropping the fill | the decode engine sees empty blocks | sets `fill` from each record |
+| Import never registering | transferred prefixes are never hit again | registers each full block with a hash |
+| Import fighting the first holder of a hash | a valid envelope fails with `TL_EBUSY` | skips registration when the hash is held |
+| Skipping the CRC | corrupted KV decodes | compares the trailer before allocating |
+| Reading any version | a v2 envelope's fp8 bytes read as f16 | accepts version 1 with dtype f16 only |
+| Ignoring the receiving pool's shape | a payload laid out for other dimensions is copied in | `TL_ESHAPE` when any dimension differs |
+| Accepting format 2 before its migration | a pool that cannot read what it was asked to hold | create returns `TL_EUNSUPPORTED` |
+| Leaking on a failed create | live allocations after a failed create | frees every partial allocation before `TL_ENOMEM` |
+| Envelope version field 0 | every reader refuses it | writes `TL_KV_FORMAT_V1` |
+| Losing a freed id | the pool shrinks by one block per request | `unref` pushes every freed id; the free list never reallocates |
 
-## 6. Where it's used next
-| Forward | `L10.1` | Registered call site uses this module. |
-| Forward | `L10.8` | Registered call site uses this module. |
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -210,11 +411,9 @@ Two choices the header leaves open are fixed here: export refuses a block with f
 | Forward | `L10.4` | the engine's block manager with `--prefix-cache=hash` uses register and lookup |
 | Forward | `L10.6` | prefill and decode engines move blocks as export envelopes |
 
-If you skip this module, `ol check L8.3` stops with `needs rt.04: build it, or pass --ref-deps`.
-
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | block pool with refcounts and CoW | vLLM's `BlockPool` and `KVCacheManager` | block hashes with extra keys (LoRA, multimodal), per-request block tables on the GPU | [`vllm/v1/core/block_pool.py`](https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/block_pool.py) |
 | chained block hash | vLLM's `hash_block_tokens` | the same parent-chained hash, in Python over tuples | [`vllm/v1/core/kv_cache_utils.py`](https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/kv_cache_utils.py) |

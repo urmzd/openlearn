@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/CHANGELOG.md" ]; then echo "craft.11: missing CHANGELOG.md" >&2; missing=1; fi
-if [ ! -e "$root/.github/workflows/release.yml" ]; then echo "craft.11: missing .github/workflows/release.yml" >&2; missing=1; fi
-if [ ! -e "$root/docs/releases/v1.0.0.md" ]; then echo "craft.11: missing docs/releases/v1.0.0.md" >&2; missing=1; fi
-exit "$missing"

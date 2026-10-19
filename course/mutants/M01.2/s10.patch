@@ -1,9 +1,0 @@
---- a/python/tinyllm/num/newton.py
-+++ b/python/tinyllm/num/newton.py
-@@ -67,5 +67,5 @@
-     half, three_halves = dt.type(0.5), dt.type(1.5)
-     hx = half * xa
-     for _ in range(int(iters)):
--        y = y * (three_halves - hx * y * y)
-+        y = y * (three_halves - hx * y)
-     return y

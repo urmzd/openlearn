@@ -1,9 +1,0 @@
---- a/go/durable/activity/activity.go
-+++ b/go/durable/activity/activity.go
-@@ -118,5 +118,5 @@
- 	if u >= 1 {
- 		u = math.Nextafter(1, 0)
- 	}
--	return time.Duration(u * float64(d))
-+	return d + time.Duration(u*float64(d))
- }

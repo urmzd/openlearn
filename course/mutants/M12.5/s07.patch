@@ -1,8 +1,0 @@
---- a/python/tinyllm/sig/stft.py
-+++ b/python/tinyllm/sig/stft.py
-@@ -126,4 +126,4 @@
- def power(S: NDArray) -> NDArray:
-     s = np.asarray(S)
-     # |z|^2 = re^2 + im^2, with no square root to undo.
--    return s.real * s.real + s.imag * s.imag
-+    return np.sqrt(s.real * s.real + s.imag * s.imag)

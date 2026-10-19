@@ -1,5 +1,0 @@
-id       = "chat.stream.equals_nonstream"
-title    = "Concatenated deltas equal the non-stream content at temperature 0"
-versions = ["v1", "v2"]
-tiers    = ["engine"]
-check    = "chat_stream_equals_nonstream"

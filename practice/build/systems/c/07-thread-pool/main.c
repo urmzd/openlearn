@@ -1,4 +1,4 @@
-/* main.c - the tests. Given to you; do not edit them to make them pass.
+/* main.c - the test suite for the reference implementation.
  *
  * Nothing here asserts on the ORDER tasks run in: that is genuinely
  * nondeterministic and asserting on it would produce a flaky exercise. What is

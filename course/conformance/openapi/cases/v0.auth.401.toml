@@ -1,6 +1,0 @@
-id       = "v0.auth.401"
-title    = "A request without a key is a 401 invalid_api_key from the gateway"
-versions = ["v0"]
-tiers    = ["gateway"]
-smoke    = true
-check    = "auth_401"

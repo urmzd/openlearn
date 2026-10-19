@@ -1,5 +1,0 @@
-id       = "chat.stop"
-title    = "A stop sequence is excluded, also across token boundaries, with finish_reason stop"
-versions = ["v1", "v2"]
-tiers    = ["engine"]
-check    = "chat_stop"

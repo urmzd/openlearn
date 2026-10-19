@@ -1,0 +1,62 @@
+# Reference answers for S-M07a: the worked answers the chapter explains.
+
+[q1.a]
+answer = "1/2 + 2/5 - 1/5"
+[q1.b]
+answer = "(1/5)/(2/5)"
+[q1.c]
+answer = "true"
+[q2.a]
+answer = "6/36"
+[q2.b]
+answer = "1 - (5/6)^2"
+[q2.c]
+answer = "2/11"
+[q3.a]
+answer = "9/10*1/100 + 1/20*99/100"
+[q3.b]
+answer = "(9/1000)/(117/2000)"
+[q4]
+answer = "(255/256)*(254/256)"
+[q5.a]
+answer = "1/2*1/2 + 1/2*3/4"
+[q5.b]
+answer = "3/5"
+[q6]
+proof = "S-M07a/q6.md"
+[q7.a]
+answer = "7/2"
+[q7.b]
+answer = "91/6"
+[q7.c]
+answer = "91/6 - 49/4"
+[q8.a]
+answer = "p - p^2"
+[q8.b]
+answer = "n*p - n*p^2"
+[q9]
+answer = "1/p"
+[q10.a]
+answer = "2"
+[q10.b]
+answer = "2"
+[q10.c]
+answer = "2"
+[q11]
+answer = "E^(-lam)"
+[q12.a]
+answer = "1/2"
+[q12.b]
+answer = "1/3 - 1/4"
+[q13.a]
+answer = "-log(1 - u)/lam"
+[q13.b]
+answer = "1/lam"
+[q14]
+answer = "a^2"
+[q15.a]
+answer = "2*cos(pi/6)"
+[q15.b]
+answer = "2*sin(pi/6)"
+[q16]
+answer = "sqrt(2)*sqrt(pi)"

@@ -206,7 +206,6 @@ and inner products let us measure angles and distances, enabling projection and 
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M03.1` | [Vectors, matrices, row-major layout, and matmul in Python](01-vectors-matrices-and-matmul.md) | build | 1 |
@@ -217,4 +216,3 @@ and inner products let us measure angles and distances, enabling projection and 
 | 6 | `M03.6` | [Inner products, projections, cosine similarity, and top-k](06-inner-products-projections-cosine-and-top-k.md) | build | 3 |
 | 7 | `S-M03a` | [Linear algebra problem set, part a: elimination, LU, bases, rank, determinants, eigenvalues, QR](90-problem-set-a.md) | solve | 2 |
 | 8 | `S-M03b` | [Linear algebra problem set, part b: inner products, SVD and low rank, matmul accounting and the roofline](91-problem-set-b.md) | solve | 3 |
-<!-- /ol:chapters -->

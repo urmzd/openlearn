@@ -1,8 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	primers/craft.22/tinymodel.py	semantic	pitfall-1	51	y	the RoPE base is wrong	theta 10000 / 20 = 500
-s02	primers/craft.22/tinymodel.py	semantic	pitfall-1	111	y	one layer's output is dropped	the last layer never runs
-s03	primers/craft.22/tinymodel.py	semantic	pitfall-1	45	y	the tokenizer is one merge short	the rank-0 merge is never applied
-s04	primers/craft.22/tinymodel.py	semantic	pitfall-2	141	n	decoding reads the logits of the previous position	[-2] for [-1] in sample
-s05	primers/craft.22/tinymodel.py	semantic	pitfall-1	118	n	attention scores are not scaled by 1/sqrt(d)	divide by 1
-s06	primers/craft.22/tinymodel.py	semantic	pitfall-1	110	n	the causal mask shows the next token	triu(.., 2)
-s07	primers/craft.22/tinymodel.py	semantic	pitfall-3	124	n	the final norm loses its gain	bpb improves, samples get worse

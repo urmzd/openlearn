@@ -1,42 +1,33 @@
-<!-- ol:module L13.1 -->
 # Conv layers and pooling on autograd
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L13.1` · build · Python · Pass 12 · 4 to 6 h |
-| **You build** | `python/tinyllm/vision/conv.py`: `Conv2d` and `Conv1d` (stride, padding, dilation, groups; im2col forward, col2im backward), `max_pool2d`, `avg_pool2d`, `LeNet5` |
+| **Module** | `L13.1` · build · Python · Pass 12 |
+| **Solution** | [`conv.py`](../../../../course/solutions/python/tinyllm/vision/conv.py): `Conv2d` and `Conv1d` (stride, padding, dilation, groups; im2col forward, col2im backward), `max_pool2d`, `avg_pool2d`, `LeNet5` |
 | **Contract** | [`course/contracts/py/tinyllm/vision/conv.pyi`](../../../../course/contracts/py/tinyllm/vision/conv.pyi) |
-| **Tests** | `course/tests/L13.1/test_conv_layers.py` (what they check: section 4), golden values from `course/oracle/L13.1/conv_layers_torch.py` (`torch.nn.Conv2d`, `Conv1d`, `F.max_pool2d`, `F.avg_pool2d`, forward and autograd backward in float64) in `course/fixtures/L13.1/conv_layers_torch.npz`; digits from `course/oracle/L13.1/digits_synth.py` in `course/fixtures/digits/digits.npz` |
-| **Needs** | `M12.1` `im2col`, `col2im`, `conv_out_size` · `L0.1` `Tensor`, `from_op` · `L0.2` `reshape`, `relu` · `L0.4` `Module`, `Linear` · `M07.3` `normal_init` · `M06.3` `PCG32` (or `--ref-deps`). Reading: `L0.3` cross-entropy, `M10.3` Adam, and the plain-loop LeNet in [`ml/06-neural-architectures/code/lenet.rs`](../../../tracks/ml/06-neural-architectures/code/lenet.rs) |
-| **Used by** | `L13.3` (`PatchEmbed` is a `Conv2d` whose kernel equals its stride) · later `L14.2` (the Whisper stem is two `Conv1d` layers) |
-| **Milestone** | `MS-L13` step 1 (LeNet learns: `test_acc` at or above the calibrated threshold in 400 steps) |
+| **Needs** | `M12.1` `im2col`, `col2im`, `conv_out_size` · `L0.1` `Tensor`, `from_op` · `L0.2` `reshape`, `relu` · `L0.4` `Module`, `Linear` · `M07.3` `normal_init` · `M06.3` `PCG32`. Reading: `L0.3` cross-entropy, `M10.3` Adam, and the plain-loop LeNet in [`ml/06-neural-architectures/code/lenet.rs`](../../../tracks/ml/06-neural-architectures/code/lenet.rs) |
+| **Used by** | `L13.3` (`PatchEmbed` is a `Conv2d` whose kernel equals its stride) · later `L14.2` (the Whisper stem is two `Conv1d` layers). LeNet-5 learning digits is the first end-to-end evidence for the vision part that these layers train |
 | **Optional depth** | LeCun, Bottou, Bengio, Haffner, "Gradient-based learning applied to document recognition" (1998), section II; Chellapilla, Puri, Simard, "High performance convolutional neural networks for document processing" (2006), the im2col paper; Dumoulin and Visin, "A guide to convolution arithmetic for deep learning" (2016, free) |
 
 ## Key Takeaways
 
-- A conv layer is one matmul per group on im2col's columns, so its backward pass is three short formulas: $dW = \sum_n G_n C_n^\top$, $dx_n = \text{col2im}(W^\top G_n)$, $db = \sum G$ (`test_conv2d_matches_torch`, `test_gradcheck_conv2d`).
-- `Conv1d` is `Conv2d` on an image one row tall; stride, padding, and dilation apply to the time axis only (`test_conv1d_matches_torch`, `test_gradcheck_conv1d`).
-- Max pooling's backward routes each output's gradient to its window's maximum; a tie goes to the lowest flat index, and overlapping windows add (`test_hand_example_pooling`, `test_max_pool_ties_route_to_lowest_index`).
-- Average pooling's backward spreads $g/k^2$ over the window (`test_pooling_matches_torch`).
-- The layers learn together: LeNet-5 on 8 x 8 digits reaches about 0.97 held-out accuracy in 400 Adam steps (`test_lenet_learns_digits`).
+- A conv layer is one matmul per group on im2col's columns, so its backward pass is three short formulas: $dW = \sum_n G_n C_n^\top$, $dx_n = \text{col2im}(W^\top G_n)$, $db = \sum G$.
+- `Conv1d` is `Conv2d` on an image one row tall; stride, padding, and dilation apply to the time axis only.
+- Max pooling's backward routes each output's gradient to its window's maximum; a tie goes to the lowest flat index, and overlapping windows add.
+- Average pooling's backward spreads $g/k^2$ over the window.
+- The layers learn together: LeNet-5 on 8 x 8 digits reaches about 0.97 held-out accuracy in 400 Adam steps.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L13.1              # stubs python/tinyllm/vision/conv.py into your repo
-ol tests L13.1              # read the test catalog first: rung R0, you write no tests here
-ol check L13.1              # exit code is the verdict
-ol check L13.1 --ref-deps   # only if one of your Needs modules is not passing yet
-ol diff  L13.1              # after passing: your code against the reference
-```
+Section 1 says why the system needs these layers now. Section 2 derives the forward and backward passes of every layer from first principles, and section 3 works pooling by hand. Section 4 fixes the interface. Section 5 walks through `conv.py` and explains why each line is written the way it is. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-`M12.1` proved that a convolution is a matrix and gave you `im2col` and its adjoint `col2im`, but only as numpy functions: nothing in the system can train a kernel yet. The autograd engine from Part 0 has `Linear` and no layer that shares weights across positions, so a model that reads an image must flatten it and learn every pixel position separately. This module turns the two functions into layers with hand-written backward passes on `L0.1`'s `Tensor`. Everything visual or audible in Pass 12 starts here: a ViT's patch embedding (`L13.3`) is a `Conv2d` whose kernel equals its stride, and Whisper's stem (`L14.2`) is two `Conv1d` layers. A wrong backward pass here passes every shape check and shows up weeks later as a vision tower that does not learn, so the gradients are proven three ways: against PyTorch, against central differences, and by training LeNet-5.
+`M12.1` proved that a convolution is a matrix and built `im2col` and its adjoint `col2im`, but only as numpy functions: nothing in the system can train a kernel yet. The autograd engine from Part 0 has `Linear` and no layer that shares weights across positions, so a model that reads an image must flatten it and learn every pixel position separately. This module turns the two functions into layers with hand-written backward passes on `L0.1`'s `Tensor`. Everything visual or audible in Pass 12 starts here: a ViT's patch embedding (`L13.3`) is a `Conv2d` whose kernel equals its stride, and Whisper's stem (`L14.2`) is two `Conv1d` layers. A wrong backward pass here passes every shape check and shows up weeks later as a vision tower that does not learn, so the gradients are proven three ways: against PyTorch, against central differences, and by training LeNet-5.
 
 ## 2. Principles
 
@@ -96,7 +87,7 @@ $$X = \begin{pmatrix} 1 & 4 & 2 & 2 \\ 3 & 2 & 0 & 1 \\ 0 & 3 & 5 & 1 \\ 1 & 2 &
 | bottom-left | 0, 3, 1, 2 | 3 at $(2, 1)$ | $6/4 = 1.5$ |
 | bottom-right | 5, 1, 4, 1 | 5 at $(2, 2)$ | $11/4 = 2.75$ |
 
-So max pooling gives $\begin{pmatrix} 4 & 2 \\ 3 & 5 \end{pmatrix}$ and average pooling $\begin{pmatrix} 2.5 & 1.25 \\ 1.5 & 2.75 \end{pmatrix}$. Backpropagate $L = \sum y$ (every $g = 1$). Max: ones at $(0,1)$, $(0,2)$, $(2,1)$, $(2,2)$ and zeros elsewhere; pixel $(0, 3)$ gets nothing although it also holds a 2. Average: $1/4$ at every pixel. These are the numbers in `test_hand_example_pooling`, checked exactly.
+So max pooling gives $\begin{pmatrix} 4 & 2 \\ 3 & 5 \end{pmatrix}$ and average pooling $\begin{pmatrix} 2.5 & 1.25 \\ 1.5 & 2.75 \end{pmatrix}$. Backpropagate $L = \sum y$ (every $g = 1$). Max: ones at $(0,1)$, $(0,2)$, $(2,1)$, $(2,2)$ and zeros elsewhere; pixel $(0, 3)$ gets nothing although it also holds a 2. Average: $1/4$ at every pixel. These are the exact numbers a correct solution must produce (the first case in section 4's table).
 
 ## 4. The interface
 
@@ -116,38 +107,225 @@ class LeNet5(Module):                       # conv1, conv2, fc1, fc2, fc3
 
 For `Conv2d`, `k`, `stride`, `pad`, and `dilation` are an int or a (row, column) pair; for `Conv1d` they are ints. `rng=None` means `PCG32(0).substream("init")`. Each layer is a single autograd node built with `from_op`. Everything invalid raises `ValueError`: a size, stride, or dilation below 1, negative padding, groups that do not divide both channel counts, an input of the wrong rank or channel count, a kernel or window larger than the (padded) input, `in_hw` not a multiple of 4.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_pooling` | unit, smoke | section 3's maxima, means, and both gradients, exactly | you and the test agree on the tie rule |
-| `test_conv2d_matches_torch` | golden | forward, $dx$, $dW$, $db$ within $10^{-10}$ of torch on three layers: LeNet's (5 x 5, pad 2), a grouped, strided, dilated one, and a patch embedding (kernel 4, stride 4) | `L13.3` and `L13.7` load pretrained conv weights |
-| `test_conv1d_matches_torch` | golden | the same for the two Whisper stem shapes (k 3 pad 1; k 3 stride 2 pad 1) | `L14.2`'s stem halves the frames |
-| `test_pooling_matches_torch` | golden | max and average, forward and $dx$ within $10^{-12}$, including k 3 stride 2 (overlap) and integer inputs full of ties | gradients add where windows overlap |
-| `test_gradcheck_conv2d` | gradcheck | the hand-written vjp for $x$, $W$, $b$ against frozen central differences, with unequal strides, padding, dilation, and 2 groups | the backward is correct beyond the fixture cases |
-| `test_gradcheck_conv1d` | gradcheck | gradients reach $x$, $W$, $b$ through the reshapes (stride 2, pad 1) | training Whisper's stem |
-| `test_max_pool_ties_route_to_lowest_index` | property | on a constant image each window's gradient lands on its top-left pixel | deterministic gradients |
-| `test_layers_shapes_init_and_dtype` | unit | names (`weight`, `bias`), KCRS shape with $C/\gamma$ channels, std near $1/\sqrt{f}$, `bias=False`, float32 in gives float32 out | checkpoints load by name and shape |
-| `test_lenet_is_the_composition` | unit | the ten parameter names in order, `fc1` of width 64 (144 for 12 x 12), and the forward equal to the layers composed by hand | a torch LeNet checkpoint loads |
-| `test_rejects_bad_arguments` | boundary | every `ValueError` listed above | wrong layouts fail at the line that is wrong |
-| `test_lenet_learns_digits` | learning | 400 Adam steps (the test's own frozen copy), held-out accuracy at or above the calibrated threshold | `MS-L13` step 1 |
+| hand example: pooling | unit, smoke | section 3's maxima, means, and both gradients, exactly | the tie rule is pinned |
+| Conv2d matches torch | golden | forward, $dx$, $dW$, $db$ within $10^{-10}$ of torch on three layers: LeNet's (5 x 5, pad 2), a grouped, strided, dilated one, and a patch embedding (kernel 4, stride 4) | `L13.3` and `L13.7` load pretrained conv weights |
+| Conv1d matches torch | golden | the same for the two Whisper stem shapes (k 3 pad 1; k 3 stride 2 pad 1) | `L14.2`'s stem halves the frames |
+| pooling matches torch | golden | max and average, forward and $dx$ within $10^{-12}$, including k 3 stride 2 (overlap) and integer inputs full of ties | gradients add where windows overlap |
+| gradient check, Conv2d | gradcheck | the hand-written vjp for $x$, $W$, $b$ against central differences, with unequal strides, padding, dilation, and 2 groups | the backward is correct beyond the fixture cases |
+| gradient check, Conv1d | gradcheck | gradients reach $x$, $W$, $b$ through the reshapes (stride 2, pad 1) | training Whisper's stem |
+| max-pool ties route to the lowest index | property | on a constant image each window's gradient lands on its top-left pixel | deterministic gradients |
+| shapes, init, and dtype | unit | names (`weight`, `bias`), KCRS shape with $C/\gamma$ channels, std near $1/\sqrt{f}$, `bias=False`, float32 in gives float32 out | checkpoints load by name and shape |
+| LeNet is the composition | unit | the ten parameter names in order, `fc1` of width 64 (144 for 12 x 12), and the forward equal to the layers composed by hand | a torch LeNet checkpoint loads |
+| bad arguments rejected | boundary | every `ValueError` listed above | wrong layouts fail at the line that is wrong |
+| LeNet learns digits | learning | 400 Adam steps, held-out accuracy about 0.97 | the layers learn together |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Reuse the proven matrix.** `M12.1` showed $Y_n = \bar W C_n$ with $C_n = \text{im2col}(x_n)$, and that col2im is im2col's adjoint. So a conv layer needs no new indexing code: one call to `im2col` forward, one matmul per group, and the three formulas of section 2.1 backward.
+2. **One autograd node, not many.** Building the conv out of `Tensor` ops (gathers, matmuls) would record thousands of nodes and be slow. A single `from_op` node with a hand-written VJP records one, and the VJP is exactly the derivation of section 2.1.
+3. **Groups are slices, not a different algorithm.** Because im2col's rows are ordered $(c, r, s)$, group $g$'s input rows and output channels are contiguous ranges. The forward and the VJP loop over groups and apply the one-group formulas to those slices.
+4. **Conv1d should not be a second implementation.** A sequence is an image one row tall, so `Conv1d` reshapes and calls the 2-D op with stride, padding, and dilation 1, 0, 1 on the row axis; `L0.2`'s reshape carries the gradient.
+5. **Pooling is im2col with one channel.** Folding channels into the batch makes each column one window of $k^2$ taps. The forward is a reduction over the column; the backward writes into the column and col2im adds the overlaps.
+6. **Compute in float64, return the input's dtype.** Matching torch within $10^{-10}$ needs float64 accumulation; casting back keeps a float32 model float32.
+
+### The code, annotated
+
+The conv op. The forward builds the columns once and keeps them for the backward (they are $dW$'s right-hand factor):
+
+```python
+def _conv2d_op(x, w, b, stride, pad, dilation, groups) -> Tensor:
+    xd, wd = x.data, w.data
+    n, c, h, wid = xd.shape
+    kout, cg, r, s = wd.shape                       # cg = C / groups input channels per group
+    # ... raise if c != cg * groups
+    p = conv_out_size(h, r, stride[0], pad[0], dilation[0])
+    q = conv_out_size(wid, s, stride[1], pad[1], dilation[1])
+    kg = kout // groups                              # output channels per group
+    dt = xd.dtype
+    cols = im2col(xd, r, s, stride, pad, dilation)  # [N, C*R*S, P*Q], rows ordered (c, r, s)
+    crs = cg * r * s                                 # rows owned by one group
+    wflat = wd.reshape(kout, crs).astype(np.float64) # W-bar, one row per output channel
+    y = np.empty((n, kout, p * q))
+    for g in range(groups):                          # Y_g = W_g C_g: block-diagonal W, one block per group
+        y[:, g * kg : (g + 1) * kg] = np.einsum(
+            "kj,njl->nkl", wflat[g * kg : (g + 1) * kg], cols[:, g * crs : (g + 1) * crs]
+        )
+    if b is not None:
+        y += b.data.astype(np.float64)[None, :, None] # b 1^T, broadcast over positions
+    out = y.reshape(n, kout, p, q).astype(dt)
+```
+
+The VJP is section 2.1's three formulas, per group:
+
+```python
+    def vjp(gout):
+        gy = gout.reshape(n, kout, p * q).astype(np.float64)   # G_n
+        dcols = np.empty_like(cols)
+        dw = np.empty((kout, crs))
+        for g in range(groups):
+            gg = gy[:, g * kg : (g + 1) * kg]          # this group's output gradient
+            cg_ = cols[:, g * crs : (g + 1) * crs]     # this group's columns
+            dw[g * kg : (g + 1) * kg] = np.einsum("nkl,njl->kj", gg, cg_)        # sum_n G_n C_n^T
+            dcols[:, g * crs : (g + 1) * crs] = np.einsum(
+                "kj,nkl->njl", wflat[g * kg : (g + 1) * kg], gg                  # W^T G_n
+            )
+        dx = col2im(dcols, xd.shape, r, s, stride, pad, dilation)  # the adjoint: sums overlapping windows
+        grads = [dx.astype(dt), dw.reshape(wd.shape).astype(wd.dtype)]
+        if b is not None:
+            grads.append(gy.sum(axis=(0, 2)).astype(b.data.dtype))  # over the batch and every position
+        return tuple(grads)
+
+    parents = (x, w) if b is None else (x, w, b)
+    return from_op(out, parents, vjp, "conv2d")
+```
+
+`Conv2d.__init__` validates every argument and initializes with the group's fan-in:
+
+```python
+fan_in = (c_in // groups) * kh * kw                 # one group's channels: what one output actually sums
+self.weight = Tensor(
+    normal_init((c_out, c_in // groups, kh, kw), 1.0 / math.sqrt(fan_in), r),
+    requires_grad=True,
+)
+self.bias = Tensor(np.zeros(c_out), requires_grad=True) if bias else None
+```
+
+`Conv1d.forward` is the reshape of section 2.2:
+
+```python
+n, c, length = x.shape
+x4 = F.reshape(x, (n, c, 1, length))                # an image one row tall
+k_out, cg, k = self.weight.shape
+w4 = F.reshape(self.weight, (k_out, cg, 1, k))
+# row axis: stride 1, padding 0 (padding it would add rows of zeros), dilation 1
+y = _conv2d_op(x4, w4, self.bias, (1, self.stride), (0, self.pad), (1, self.dilation), self.groups)
+return F.reshape(y, (n, k_out, y.shape[3]))
+```
+
+Pooling shares `_pool_cols`, which defaults the stride to the window size and folds channels into the batch:
+
+```python
+s = k if stride is None else stride                 # non-overlapping windows by default
+# ...
+cols = im2col(x.data.reshape(n * c, 1, h, w), k, k, (s, s))   # [N*C, k*k, P*Q]
+```
+
+Max pooling keeps the argmax for the backward:
+
+```python
+def max_pool2d(x, k, stride=None):
+    cols, s, p, q = _pool_cols(x, k, stride, "max_pool2d")
+    n, c, h, w = x.shape
+    # argmax returns the first maximum: the lowest (r, s) in the window,
+    # which is the lowest flat index of x
+    arg = np.argmax(cols, axis=1)                   # [N*C, P*Q]
+    y = np.take_along_axis(cols, arg[:, None, :], axis=1)[:, 0]
+    out = y.reshape(n, c, p, q).astype(x.data.dtype)
+
+    def vjp(g):
+        dcols = np.zeros_like(cols)                 # zero at every tap that was not the max
+        np.put_along_axis(dcols, arg[:, None, :], g.reshape(n * c, 1, p * q).astype(np.float64), axis=1)
+        dx = col2im(dcols, (n * c, 1, h, w), k, k, (s, s))    # overlapping windows add
+        return (dx.reshape(n, c, h, w).astype(x.data.dtype),)
+
+    return from_op(out, (x,), vjp, "max_pool2d")
+```
+
+Average pooling's backward spreads $g/k^2$ to every tap:
+
+```python
+def vjp(g):
+    gg = g.reshape(n * c, 1, p * q).astype(np.float64) / (k * k)
+    dcols = np.broadcast_to(gg, cols.shape).copy()  # copy: col2im needs a writable, real array
+    dx = col2im(dcols, (n * c, 1, h, w), k, k, (s, s))
+    return (dx.reshape(n, c, h, w).astype(x.data.dtype),)
+```
+
+`LeNet5` is the composition of section 2.4, with every layer drawing from the same `rng` in registration order, and a flatten that keeps NCHW's $(c, h, w)$ order:
+
+```python
+def forward(self, x):
+    h = max_pool2d(F.relu(self.conv1(x)), 2)
+    h = max_pool2d(F.relu(self.conv2(h)), 2)
+    h = F.reshape(h, (h.shape[0], -1))  # (c, h, w) order, as torch.flatten
+    h = F.relu(self.fc1(h))
+    h = F.relu(self.fc2(h))
+    return self.fc3(h)
+```
+
+Full solution: [`conv.py`](../../../../course/solutions/python/tinyllm/vision/conv.py)
+
+### Why this solution
+
+- **Cost.** The forward and backward are each $O(N \cdot K \cdot (C/\gamma) R S \cdot PQ)$ multiply-adds, the same as a direct convolution, done as dense matmuls. The price is memory: the columns hold every input pixel up to $RS$ times ($CRS \cdot PQ$ per image), and they are kept until the backward pass.
+- **im2col versus direct loops.** Six nested loops over $(n, k, c, r, s, l)$ in Python would be orders of magnitude slower and need their own backward indexing. im2col turns the whole layer into `einsum` calls and reuses an adjoint already proven in `M12.1`.
+- **A hand-written VJP versus composing autograd ops.** Composition would be correct but would record a node per gather and keep many intermediates. One node keeps exactly `cols` and the weights.
+- **Deterministic ties.** Any subgradient is mathematically valid at a tie; fixing the first index matches PyTorch, so golden comparisons and checkpoints behave identically, and repeated runs give the same gradients.
+
+### Explain it back
+
+**Why is $\partial L/\partial x_n = \text{col2im}(\bar W^\top G_n)$ and not $\text{im2col}$ of something?**
+
+<details><summary>Answer</summary>
+
+The forward reads $x$ through im2col, a linear map. The gradient through a linear map is its adjoint applied to the upstream gradient, and col2im is im2col's adjoint (`M12.1`). Concretely, col2im adds every copy of a pixel back together, which is the chain rule for a pixel that fed several outputs.
+
+</details>
+
+**Why does `Conv1d` pass padding `(0, self.pad)` and not `(self.pad, self.pad)`?**
+
+<details><summary>Answer</summary>
+
+The row axis has height 1 and a kernel of height 1. Padding it by $p$ would produce $1 + 2p$ output rows, all but one reading only zeros, and the final reshape to `[N, K, Lout]` would fail or mix rows into time steps.
+
+</details>
+
+**In section 3, why does pixel $(0, 3)$ get no gradient even though it equals the window's maximum?**
+
+<details><summary>Answer</summary>
+
+The window's taps are $2, 2, 0, 1$ in row-major order; `np.argmax` returns the first maximum, tap 0, which is pixel $(0, 2)$. The VJP writes $g$ only at the argmax, so $(0, 3)$ gets zero. Any split would be a valid subgradient, but only one choice matches PyTorch.
+
+</details>
+
+**Why is the fan-in $(C/\gamma) R S$ and not $C R S$?**
+
+<details><summary>Answer</summary>
+
+Each output of a grouped conv sums only its own group's $C/\gamma$ input channels. Its variance is $(C/\gamma) R S \sigma^2 \mathbb{E}[x^2]$, so $\sigma = 1/\sqrt{(C/\gamma) R S}$ keeps the scale. Using $C R S$ would start a grouped layer $\sqrt{\gamma}$ times too small.
+
+</details>
+
+**Why does the max-pool VJP not need the input values, only `arg`?**
+
+<details><summary>Answer</summary>
+
+Near a point with a unique maximum the output is a copy of one input, so the Jacobian is a selection matrix determined entirely by which tap won. Keeping the argmax indices is enough to route each gradient.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. max-pool ties routed to the last maximum | gradients differ from torch on flat or integer images | `test_hand_example_pooling`, `test_pooling_matches_torch`, `test_max_pool_ties_route_to_lowest_index` (mutant `s01`) |
-| 2. every group reading the first group's columns | grouped convs compute on the wrong channels | `test_conv2d_matches_torch`, `test_gradcheck_conv2d` (mutant `s02`) |
-| 3. the bias gradient summed over one image, not the batch | biases learn from a fraction of the signal | `test_conv2d_matches_torch`, `test_conv1d_matches_torch`, both gradchecks (mutant `s03`) |
-| 4. average-pool backward divided by $k$, not $k^2$ | gradients $k$ times too large | `test_hand_example_pooling`, `test_pooling_matches_torch` (mutant `s04`) |
-| 5. `Conv1d` padding the dummy row axis too | extra output rows of zeros; the final reshape fails or is wrong | `test_conv1d_matches_torch`, `test_gradcheck_conv1d` (mutant `s05`) |
-| 6. LeNet flattening in $(h, w, c)$ order | trains, but a torch checkpoint no longer loads | `test_lenet_is_the_composition` (mutant `s06`) |
-| 7. fan-in counting every input channel, not one group | grouped layers start $\sqrt{\gamma}$ too small | `test_layers_shapes_init_and_dtype` (mutant `s07`) |
-| pooling stride defaulting to 1 | outputs nearly as large as the input | `test_hand_example_pooling`, `test_pooling_matches_torch` (mutant `m01`) |
-| $dx$ built from the first group's weights only | inputs of later groups get the wrong gradient | `test_conv2d_matches_torch`, `test_gradcheck_conv2d` (mutant `m02`) |
-| not checking that groups divide `c_out` | a weight whose groups have unequal sizes | `test_rejects_bad_arguments` (mutant `m03`) |
+| 1. max-pool ties routed to the last maximum | gradients differ from torch on flat or integer images | `np.argmax` returns the first maximum in row-major window order |
+| 2. every group reading the first group's columns | grouped convs compute on the wrong channels | the loop slices `cols[:, g * crs : (g + 1) * crs]` per group |
+| 3. the bias gradient summed over one image, not the batch | biases learn from a fraction of the signal | `gy.sum(axis=(0, 2))` sums batch and positions |
+| 4. average-pool backward divided by $k$, not $k^2$ | gradients $k$ times too large | the vjp divides by `k * k` |
+| 5. `Conv1d` padding the dummy row axis too | extra output rows of zeros; the final reshape fails or is wrong | `Conv1d.forward` passes padding `(0, self.pad)` |
+| 6. LeNet flattening in $(h, w, c)$ order | trains, but a torch checkpoint no longer loads | `F.reshape(h, (N, -1))` on NCHW keeps $(c, h, w)$ order |
+| 7. fan-in counting every input channel, not one group | grouped layers start $\sqrt{\gamma}$ too small | `fan_in = (c_in // groups) * kh * kw` |
+| 8. pooling stride defaulting to 1 | outputs nearly as large as the input | `_pool_cols` uses `s = k` when `stride is None` |
+| 9. $dx$ built from the first group's weights only | inputs of later groups get the wrong gradient | `dcols` uses `wflat[g * kg : (g + 1) * kg]` for group `g` |
+| 10. not checking that groups divide `c_out` | a weight whose groups have unequal sizes | the constructors raise unless `groups` divides both channel counts |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -159,11 +337,11 @@ For `Conv2d`, `k`, `stride`, `pad`, and `dilation` are an int or a (row, column)
 | Back | `L0.3`, `M10.3` | cross-entropy and Adam train LeNet (reading) |
 | Forward | `L13.3` | `PatchEmbed` is `Conv2d(3, d, p, stride=p)`: non-overlapping windows, one token per patch |
 | Forward | `L14.2` | `Conv1d(n_mels, d, 3, pad=1)` then `Conv1d(d, d, 3, stride=2, pad=1)` |
-| Forward | `L13.7` | pretrained vision towers load their patch-embedding weights into `Conv2d` (with B14's VLM group) |
+| Forward | `L13.7` | pretrained vision towers load their patch-embedding weights into `Conv2d` |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `Conv2d` | `torch.nn.Conv2d` on cuDNN | algorithm selection per shape (im2col + GEMM, Winograd, FFT), channels-last memory format | `torch/nn/modules/conv.py`, cuDNN `cudnnConvolutionForward` |
 | `Conv2d` on CPU | oneDNN, XNNPACK | direct convs with JIT-generated kernels; im2col's $k^2$ memory blow-up avoided | `oneapi-src/oneDNN` |

@@ -1,0 +1,66 @@
+# Reference answers for S-M09b: the worked answers the chapter explains.
+
+[q1]
+answer = "1001"
+[q2]
+answer = "50"
+[q3]
+answer = "10/(1/10)"
+[q4]
+answer = "sqrt(45)/sqrt(5)"
+[q5]
+answer = "1000*10^-6"
+[q6]
+proof  = "S-M09b/q6.md"
+[q7]
+answer = "3*2^-24/(1 - 3*2^-24)"
+[q8]
+answer = "4096*2^-24"
+[q9]
+answer = "(12 + 1)*2^-24"
+[q10]
+answer = "2^8"
+[q11]
+answer = "sqrt(4096)*2^-24"
+[q12]
+proof  = "S-M09b/q12.md"
+[q13]
+answer = "sin(0.7390851332151607)"
+[q14]
+answer = "(2/5)*(3 - 4*(2/5)^2)/2"
+[q15]
+answer = "(3*(1/16)^2 - (1/16)^3)/2"
+[q16.a]
+answer = "2"
+[q16.b]
+answer = "1/2"
+[q17]
+proof  = "S-M09b/q17.md"
+[q18]
+answer = "10 - 14*log(2)"
+[q19]
+answer = "log(2)/2"
+[q20]
+answer = "7"
+[q21]
+answer = "7"
+[q22]
+answer = "{-sqrt(3)/2, 0, sqrt(3)/2}"
+[q23]
+answer = "1/4"
+[q24.a]
+answer = "11/2"
+[q24.b]
+answer = "0*128 + 9*8 + 3"
+[q25.a]
+answer = "(1 + 3/4)*2^15"
+[q25.b]
+answer = "2^(1 - 7)*2^-3"
+[q26]
+answer = "2^-4"
+[q27.a]
+answer = "2^(3 - 2)"
+[q27.b]
+answer = "6*2"
+[q28]
+answer = "b"

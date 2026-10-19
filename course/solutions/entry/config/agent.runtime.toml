@@ -1,0 +1,18 @@
+# runtime.toml template for the agent worker (ag.05, dep.07).
+# The launcher fills [agent].health_listen and passes the file as {config}.
+# The worker polls the agent queue of the durable service; AgentRun journals
+# live under [paths].artifacts/agent-runs ({data}, fresh per run). PR CI has
+# no model to serve, so the provider is the faketool rules file; set
+# [agent].base_url (the gateway, http://127.0.0.1:{gateway.port}/v1) and
+# model for a real one.
+[paths]
+artifacts = "{data}"
+
+[agent]
+durable    = "127.0.0.1:{durable.grpc_port}"
+task_queue = "agent"
+model      = "smol-135m-instruct"
+rag_index  = "course-docs"
+
+[ext]
+faketool_rules = "config/agent.faketool.json"

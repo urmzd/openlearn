@@ -1,15 +1,15 @@
-# Pass 1: the tracer (DESIGN 7.4). Stage check column: DESIGN 5.15.
-# stage	title	files	done when	check
-1	Matmul in Python	content/tracks/math/03-linear-algebra/01-vectors-matrices-and-matmul.md	Your Python matmul matches numpy on the golden cases.	module:M03.1
-2	Byte bigram	content/courses/build-an-llm/p00-foundations/00-byte-bigram.md	Your bigram reaches the count-MLE NLL and writes a safetensors file.	module:L0.0
-3	Rust	content/tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md	Your Rust echo server handles two clients.	module:lang.04
-4	HTTP and SSE	content/tracks/software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md	You parse an HTTP request and emit an SSE stream by hand.	module:lang.05
-5	Your first endpoint	content/courses/build-an-llm/p10-serving/00-your-first-endpoint.md	Your Rust server streams SSE completions from your checkpoint and exports its span.	module:L10.0
-6	Go	content/tracks/software-craftsmanship/12-language-and-tool-primers/06-go.md	Your streaming proxy honors a deadline.	module:lang.06
-7	Your gateway	content/tracks/ai-platform-engineering/12-gateway/00-streaming-proxy.md	Your Go gateway rejects bad keys and streams without buffering.	module:gw.00
-8	Containers and Kubernetes	content/tracks/software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md	Your image runs on kind behind a Helm chart and a NodePort.	module:lang.07
-9	Images, kind, and Helm	content/tracks/infrastructure/01-containers-kubernetes/00-tracer-deploy.md	helm install brings both up on kind and curl through the gateway works.	module:dep.00
-10	One trace	content/tracks/systems/04-observability/00-one-trace.md	One request shows as one trace across gateway and engine in Jaeger.	module:obs.00
-11	First drill	content/tracks/systems/05-incident-response-and-chaos/00-first-drill.md	You fixed engine-crashloop and wrote its runbook.	drill:ops.00
-12	First ADR	content/tracks/software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md	ADR-0001 records why languages meet at process and file boundaries.	module:craft.02
-13	Milestone	content/courses/build-an-llm/paths/course-p01-tracer/milestone.md	Every layer is yours and runs end to end, starting with your CLI training and sampling from a clean shell.	milestone:MS-P1
+# Pass 1: the tracer.
+# stage	title	files	done when
+1	Matmul in Python	content/tracks/math/03-linear-algebra/01-vectors-matrices-and-matmul.md	You can explain how the triple-loop Python matmul indexes rows and columns and why it matches numpy on the golden cases.
+2	Byte bigram	content/courses/build-an-llm/p00-foundations/00-byte-bigram.md	You can explain why the count-based bigram reaches the maximum-likelihood NLL and how it is written to a safetensors file.
+3	Rust	content/tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md	You can explain how the Rust echo server serves two clients at once and who owns each connection.
+4	HTTP and SSE	content/tracks/software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md	You can trace how an HTTP request is parsed and how an SSE stream is framed by hand.
+5	Your first endpoint	content/courses/build-an-llm/p10-serving/00-your-first-endpoint.md	You can trace how the Rust server loads the checkpoint, streams SSE completions, and exports its span.
+6	Go	content/tracks/software-craftsmanship/12-language-and-tool-primers/06-go.md	You can explain how the Go streaming proxy propagates a deadline through its context.
+7	Your gateway	content/tracks/ai-platform-engineering/12-gateway/00-streaming-proxy.md	You can explain why the Go gateway rejects bad keys before proxying and how it streams without buffering.
+8	Containers and Kubernetes	content/tracks/software-craftsmanship/12-language-and-tool-primers/07-containers-and-kubernetes.md	You can explain how the image runs on kind behind a Helm chart and a NodePort.
+9	Images, kind, and Helm	content/tracks/infrastructure/01-containers-kubernetes/00-tracer-deploy.md	You can trace how helm install brings up the gateway and the engine on kind and how a curl reaches the engine through the gateway.
+10	One trace	content/tracks/systems/04-observability/00-one-trace.md	You can explain how trace context propagates so one request shows as one trace across gateway and engine in Jaeger.
+11	First drill	content/tracks/systems/05-incident-response-and-chaos/00-first-drill.md	You can diagnose the engine crashloop from its symptoms, explain the fix, and explain what its runbook says.
+12	First ADR	content/tracks/software-craftsmanship/06-documentation-writing/01-architecture-decision-records.md	You can explain why ADR-0001 has the languages meet at process and file boundaries.
+13	What the system does after Pass 1	content/courses/build-an-llm/paths/course-p01-tracer/milestone.md	You can explain how every layer runs end to end, starting with the CLI training and sampling the bigram from a clean shell.

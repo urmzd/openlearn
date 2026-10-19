@@ -1,8 +1,0 @@
---- a/python/tinyllm/modern/norm.py
-+++ b/python/tinyllm/modern/norm.py
-@@ -46,4 +46,4 @@
- 
- def pre_norm_residual(x: Tensor, norm: Module, sublayer: Callable[[Tensor], Tensor]) -> Tensor:
-     # The residual stream x is never normalized: only the branch sees norm(x).
--    return x + sublayer(norm(x))
-+    return norm(x + sublayer(x))

@@ -1,4 +1,4 @@
-# contracts/otel/metrics.yaml: every metric instrument of the system (DESIGN 2.11, D18).
+# contracts/otel/metrics.yaml: every metric instrument of the system.
 # chapter: content/courses/build-an-llm/p10-serving/07-serving-metrics-and-tracing.md
 #
 # modules: L10.7 (engine), gw.01 to gw.07 (gateway), dur.03 and dur.04

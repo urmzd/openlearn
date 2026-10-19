@@ -17,7 +17,7 @@
       "const": "tl.eval-results.v1"
     },
     "suite": {
-      "description": "zoo, quality, bias, safety, or a learner suite name.",
+      "description": "zoo, quality, bias, safety, or a custom suite name.",
       "type": "string",
       "pattern": "^[a-z][a-z0-9_.-]*$"
     },

@@ -5,7 +5,7 @@
 - **Primary references**: [RFC 9110 HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110) (free), [W3C Trace Context](https://www.w3.org/TR/trace-context/) (free), [OpenAI API reference](https://platform.openai.com/docs/api-reference) (free)
 - **Supplementary**: [Envoy AI Gateway](https://aigateway.envoyproxy.io/) (free), [LiteLLM proxy](https://docs.litellm.ai/docs/simple_proxy) (free), [`net/http/httputil.ReverseProxy`](https://pkg.go.dev/net/http/httputil#ReverseProxy) (free)
 - **Prerequisites**: [Streaming & SSE](../03-streaming-sse/), the Go primer [`lang.06`](../../software-craftsmanship/12-language-and-tool-primers/06-go.md), the engine's API (`L10.0`)
-- **Estimated time**: Pass 1 for the tracer (`gw.00`, 3 to 4 h); the full gateway arrives in Pass 7
+- **Estimated time**: Pass 1 for the tracer (`gw.00`); the full gateway arrives in Pass 7
 
 ## Key Takeaways
 
@@ -15,7 +15,7 @@
 
 ## How to Study
 
-Work the chapters in order with `ol start <ID>`, `ol check <ID>`. The tracer chapter (`gw.00`) is in Pass 1; the server skeleton, streaming observer, routing, and the rest follow in Pass 7, each upgrading the same `go/gateway/` packages behind the same OpenAI-compatible surface.
+Read the chapters in order. Each one builds the idea from first principles, then walks through the solution in [`course/solutions/go/gateway/`](../../../../course/solutions/go/gateway/) and explains why it is written that way. The tracer chapter (`gw.00`) is in Pass 1; the server skeleton, streaming observer, routing, and the rest follow in Pass 7, each extending the same `go/gateway/` packages behind the same OpenAI-compatible surface.
 
 ---
 
@@ -44,7 +44,6 @@ An LLM gateway is a reverse proxy whose payload is a stream. Every feature it ga
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `gw.00` | [Tracer gateway: static API-key check, SSE pass-through without buffering, traceparent and X-Request-Id propagation](00-streaming-proxy.md) | build | 1 |
@@ -53,4 +52,3 @@ An LLM gateway is a reverse proxy whose payload is a stream. Every feature it ga
 | 4 | `gw.05` | [Worker registry, routing, cascades, failover, disaggregated orchestration](05-routing.md) | build | 7 |
 | 5 | `gw.07` | [Usage ledger, metering, admin API](07-usage-ledger-and-admin-api.md) | build | 7 |
 | 6 | `gw.08` | [Usage policy enforcement](08-usage-policy-enforcement.md) | build | 10 |
-<!-- /ol:chapters -->

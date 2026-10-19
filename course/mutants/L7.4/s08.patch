@@ -1,8 +1,0 @@
---- a/python/tinyllm/modern/ctxext.py
-+++ b/python/tinyllm/modern/ctxext.py
-@@ -87,4 +87,4 @@
-     i = np.arange(Tq)[:, None] + (Tk - Tq)  # absolute index of each query
-     j = np.arange(Tk)[None, :]
-     dist = (i - j).astype(np.float64)
--    return (-slopes[:, None, None] * dist[None]).astype(np.float32)
-+    return (slopes[:, None, None] * dist[None]).astype(np.float32)

@@ -1,9 +1,0 @@
---- a/python/tinyllm/num/series.py
-+++ b/python/tinyllm/num/series.py
-@@ -79,5 +79,5 @@
-     # The extra n - p heads take every other slope of the 2p-head ladder,
-     # starting from the first, so they fall between the existing ones.
-     start2 = 2.0 ** (-8.0 / (2 * p))
--    extra = geometric(start2, start2, 2 * p)[0::2][: n - p]
-+    extra = geometric(start2, start2, 2 * p)[: n - p]
-     return np.concatenate([slopes, extra])

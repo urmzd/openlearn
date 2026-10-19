@@ -59,11 +59,10 @@ The model proposes; the program disposes. A language model can only emit text th
 | `ag.04` | Tool gate and deterministic SQL safety gate (case study 02 ported) | build | 10 |
 | `ag.05` | Durable agent runs (`AgentRun`) | build | 10 |
 
-Retrieval (`ag.06` to `ag.08`) lives in [Retrieval & RAG](../07-retrieval-and-rag/) and evaluation (`ag.09` to `ag.12`) in [LLM Evaluation](../09-llm-evaluation/); together they close milestone `MS-agent`.
+Retrieval (`ag.06` to `ag.08`) lives in [Retrieval & RAG](../07-retrieval-and-rag/) and evaluation (`ag.09` to `ag.12`) in [LLM Evaluation](../09-llm-evaluation/); together they complete the agent system of [Pass 10](../../../courses/build-an-llm/paths/course-p10-agents/milestone.md).
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `ag.01` | [Types, OpenAI-compatible provider, retry wrapper](01-types-and-provider.md) | build | 10 |
@@ -71,7 +70,6 @@ Retrieval (`ag.06` to `ag.08`) lives in [Retrieval & RAG](../07-retrieval-and-ra
 | 3 | `ag.03` | [Agent loop](03-agent-loop.md) | build | 10 |
 | 4 | `ag.04` | [Tool gate, SQL safety gate, prompt-injection suite](04-tool-gate-and-injection.md) | build | 10 |
 | 5 | `ag.05` | [Durable agent runs (AgentRun)](05-durable-agent-runs.md) | build | 10 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

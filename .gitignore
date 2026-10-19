@@ -19,6 +19,5 @@ __pycache__/
 .puppeteer.json
 mermaid-filter.err
 
-# Compiled binaries from the exercise sources (course/DESIGN.md 8.2 deleted
-# the ones that had been committed).
+# Compiled binaries from the exercise sources.
 a.out

@@ -1,6 +1,0 @@
-id       = "chat.stream.framing"
-title    = "data: <json> blocks; the first delta has the role; final data: [DONE]; text/event-stream"
-versions = ["v1", "v2"]
-tiers    = ["engine"]
-smoke    = true
-check    = "chat_stream_framing"

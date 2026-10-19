@@ -1,0 +1,34 @@
+# tl-engine: the inference engine library. L8.4 creates the
+# crate with the radix prefix cache (src/prefix.rs) over tl-ds's radix tree
+# (ds.07). L10.1 adds the model runner on Candle, the
+# safetensors reader (memmap2, serde_json), and the sampler; L10.2 to L10.5
+# add the scheduler, chunked prefill, the block manager, and the engine
+# loop, each one more `pub mod` line in src/lib.rs. Dependencies are those
+# contracts/allowed-deps.toml lists for rust.tl-engine.
+[package]
+name = "tl-engine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tl-ds = { path = "../tl-ds" }
+anyhow = "1"
+candle-core = "=0.10.2"
+candle-nn = "=0.10.2"
+memmap2 = "0.9"
+serde_json = "1"
+tl-proto = { path = "../../../../contracts/rust/tl-proto" }
+tokio = { version = "1", features = ["full"] }
+tonic = "0.14"
+prost = "0.14"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+candle-metal-kernels = "=0.10.2"
+candle-core = { version = "=0.10.2", features = ["metal"] }
+candle-nn = { version = "=0.10.2", features = ["metal"] }
+
+[dev-dependencies]
+proptest = "1"

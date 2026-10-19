@@ -106,10 +106,6 @@ class SafetyResult:
     sql: str  # the (possibly row-capped) SQL that is cleared to run
 
 
-# Reattempt boundary: everything to SOLUTION-END is
-# the SQL scanner, statement splitter, and classifier.
-# `ol start reattempt case-studies <id>` strips it and leaves the tests.
-# SOLUTION-BEGIN
 def _scan(sql: str) -> tuple[str, str]:
     """One pass. Returns ``(cleaned, masked)``, always of equal length.
 
@@ -272,8 +268,6 @@ def classify(sql: str, max_rows: int = DEFAULT_MAX_ROWS) -> SafetyResult:
 # connection stay underneath. An agent may ADD judgment; it never becomes the
 # only thing between a prompt and the database.
 # ---------------------------------------------------------------------------
-
-# SOLUTION-END
 
 
 @runtime_checkable

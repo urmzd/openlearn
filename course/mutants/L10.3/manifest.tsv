@@ -1,6 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	rust/crates/tl-engine/src/chunk.rs	semantic	pitfall-1	34	y	a chunk ignores the step's token budget	chunk_len not capped by budget
-s02	rust/crates/tl-engine/src/chunk.rs	semantic	pitfall-2	34	y	prompts are not split into chunks	chunk_len not capped by chunk
-s03	rust/crates/tl-engine/src/chunk.rs	semantic	pitfall-3	60	y	a middle chunk's logits are sampled	every chunk row sampled
-s04	rust/crates/tl-engine/src/chunk.rs	semantic	pitfall-4	56	y	a decode token is placed one position late	decode start n instead of n - 1
-s05	rust/crates/tl-engine/src/chunk.rs	semantic	boundary	72	n	the last chunk runs past the prompt	split ignores the tail length

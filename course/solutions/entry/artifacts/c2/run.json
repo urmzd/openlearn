@@ -1,0 +1,36 @@
+{
+  "format": "tinyllm-post-training-run-v1",
+  "run_id": "c2-reference-smoke",
+  "base_checkpoint": "artifacts/c1/model",
+  "candidate_model": "artifacts/c2/model",
+  "dataset_revision": "post-training-fixtures-v1",
+  "training_data": {
+    "revision": "post-training-fixtures-v1",
+    "source": "post-training-fixtures-v1/distill.jsonl (synthetic SFT pairs; not included)",
+    "split": "train"
+  },
+  "heldout": {
+    "source": "post-training-fixtures-v1/heldout.jsonl (held-out prompts; not included)",
+    "split": "heldout",
+    "paired_with": "artifacts/c1/model"
+  },
+  "objective": "sft",
+  "seed": 0,
+  "tokenizer": "artifacts/c1/model/tokenizer.json",
+  "chat_template": "tinystories-chat-v1",
+  "optimizer": "adamw",
+  "precision": "f32",
+  "evaluation": {
+    "metric": "paired_reward_delta",
+    "confidence_interval": "paired bootstrap, 95%",
+    "significance_test": "paired permutation, two-sided"
+  },
+  "claims": {
+    "measured_heldout_improvement": false,
+    "general_safety_improvement": false
+  },
+  "limitations": [
+    "This reference smoke manifest records provenance only; it does not include trained weights or claim a measured reward gain.",
+    "The course fixture is too small to support general claims about language quality or safety."
+  ]
+}

@@ -32,21 +32,16 @@ Master the type system, generics, mapped types, and runtime safety patterns.
 - *Programming TypeScript* (Cherny) -- comprehensive
 - *Effective TypeScript* (Vanderkam, 2nd ed.) -- 83 practical items
 
-## Practising these
+## How this page is organised
 
-```bash
-practice/bin/ol list  build typescript          # which of these have references yet
-practice/bin/ol start build typescript 01       # clone it stubbed into .scratchpad/
-practice/bin/ol check build typescript 01       # run it; exit code is the verdict
-practice/bin/ol diff  build typescript 01       # your attempt against the reference
-```
-
-Exercises are ordered by concept, not by difficulty, so pick by the stars rather
-than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../../README.md) for how the
-harness works.
+The table below is an index of exercise briefs: what to build, the concepts it
+exercises, and how hard it is. Exercises are ordered by concept, not by
+difficulty. Where a row names a course version (for example `ds.02`), that
+module's chapter walks through a full solution of the same problem.
 
 ## Exercises
+
+Worked solutions for these exercises are not written yet.
 
 | # | Exercise | Concepts | Difficulty |
 |---|----------|----------|------------|

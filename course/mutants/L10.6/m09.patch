@@ -1,7 +1,0 @@
---- a/rust/crates/tl-engine/src/kv_transfer.rs
-+++ b/rust/crates/tl-engine/src/kv_transfer.rs
-@@ -445,3 +445 @@
--        if let Some(ids) = self.claim(handle_id) {
--            self.release_ids(&ids);
--        }
-+        let _ = self.claim(handle_id);

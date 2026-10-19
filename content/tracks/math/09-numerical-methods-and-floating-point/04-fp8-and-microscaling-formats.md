@@ -1,4 +1,3 @@
-<!-- ol:module M09.4 -->
 # FP8 E4M3/E5M2, MXFP4/MXFP8 with E8M0 scales
 
 ## Overview
@@ -6,18 +5,20 @@
 | | |
 |---|---|
 | **Module** | `M09.4` · build · Python · Pass 6 |
-| **You build** | `python/tinyllm/num/lowp.py`: FP8 E4M3/E5M2 conversion, FP4 E2M1 values, block scales, and MX quantize/dequantize |
-| **Contract** | [`course/contracts/py/tinyllm/num/lowp.pyi`](../../../../course/contracts/py/tinyllm/num/lowp.pyi); expected bytes are in `course/fixtures/M09.4/lowp_golden.npz` |
-| **Tests** | `course/tests/M09.4/test_lowp.py`: exact code tables, tie behavior, saturation, signed zero, block layouts, and round trips |
+| **Solution** | [`course/solutions/python/tinyllm/num/lowp.py`](../../../../course/solutions/python/tinyllm/num/lowp.py): FP8 E4M3/E5M2 conversion (`f32_to_fp8_bits`, `fp8_bits_to_f32`, `quantize_fp8`, `dequantize_fp8`, `fp8_scale`), FP4 E2M1 values (`f32_to_e2m1_bits`, `e2m1_bits_to_f32`), block scales (`e8m0_scale_code`, `e8m0_to_f32`), and MX quantize/dequantize (`mx_quantize`, `mx_dequantize`) |
+| **Contract** | [`course/contracts/py/tinyllm/num/lowp.pyi`](../../../../course/contracts/py/tinyllm/num/lowp.pyi) |
 | **Needs** | `M09.1` for IEEE-754 bit layouts; `S-M09a` for rounding by hand |
 | **Used by** | `L8.5` quantizes weights; `L10.1` converts Rust model weights; `craft.13` stores fp8 KV data |
-| **Milestone** | `MS-L8` |
+
+## How to read this chapter
+
+Sections 1 to 3 define the formats and work a scalar tie and an MX block by hand. Section 4 lists what a correct conversion must get right. Section 5 walks through the solution: one rounding routine that serves every format, a decoder, and the edge rules layered on top. Try to predict each edge rule from the contract before reading the code.
 
 ## 1. Why now
 
-Float32 weights and activations move four bytes per value. FP8 stores each value in one byte; MX formats group values into blocks and share a scale, while FP4 stores four bits per value. These formats reduce memory traffic, but every conversion has edge cases: ties, tiny magnitudes, signed zero, infinities, NaNs, and values beyond the finite range. This module writes the conversions from the format definitions and tests the resulting bit patterns against checked-in vectors.
+Float32 weights and activations move four bytes per value. FP8 stores each value in one byte; MX formats group values into blocks and share a scale, while FP4 stores four bits per value. These formats reduce memory traffic, but every conversion has edge cases: ties, tiny magnitudes, signed zero, infinities, NaNs, and values beyond the finite range. This module writes the conversions from the format definitions and checks the resulting bit patterns exactly.
 
-An optional standalone C conversion exercise lives in `M09.7`. It consumes the same fixture files and does not load this Python code.
+An optional standalone C conversion exercise lives in `M09.7`. It produces the same bit patterns and does not load this Python code.
 
 ## 2. Principles
 
@@ -29,41 +30,205 @@ An IEEE-like binary format uses a sign bit, an exponent field, and a fraction fi
 
 Subnormals omit the implicit leading one and use the minimum exponent. E4M3 uses four exponent bits and three fraction bits, giving more precision near one than E5M2. E5M2 uses two fraction bits and therefore covers a wider range. The project defines saturation and special-value behavior explicitly, so callers do not depend on a library default.
 
+| Format | Exponent bits, bias | Fraction bits | Max finite | Specials |
+|---|---|---|---|---|
+| E4M3 (E4M3FN) | 4, 7 | 3 | 448 (`0x7E`) | no infinity; `0x7F` is NaN; overflow and $\pm\infty$ saturate |
+| E5M2 | 5, 15 | 2 | 57344 (`0x7B`) | `0x7C` is $+\infty$, `0x7D` to `0x7F` NaN; finite overflow saturates |
+| FP4 E2M1 | 2, 1 | 1 | 6 (`0x7`) | none: values $0, 0.5, 1, 1.5, 2, 3, 4, 6$ |
+| E8M0 (scale) | 8, 127 | 0 | $2^{127}$ | `0xFF` is NaN; no zero, no sign |
+
 Rounding is round-to-nearest, ties-to-even. A tie at `2.5` selects `2`; a tie at `3.5` selects `4`. FP8 encode/decode uses exact powers of two to map between values and codes. Microscaling formats apply one E8M0 power-of-two scale to a fixed-size block, then encode each scaled value in FP8 or E2M1.
 
 ## 3. Worked example
 
-In E4M3, `1.0625` lies halfway between adjacent representable values `1.0` and `1.125`. Their final significand bits are even and odd respectively, so ties-to-even encodes `1.0`. A value just above the midpoint encodes `1.125`. The test `test_ties_go_to_even` checks both sides of these boundaries as well as the exact midpoint.
+In E4M3, `1.0625` lies halfway between adjacent representable values `1.0` and `1.125`. Their final significand bits are even and odd respectively, so ties-to-even encodes `1.0` (code `0x38`). A value just above the midpoint, such as `1.07`, encodes `1.125` (`0x39`). The next midpoint, `1.1875`, lies between `1.125` (odd) and `1.25` (even) and so rounds *up* to `0x3A`: ties-to-even is not "ties down".
 
-For an MX block, first find the largest absolute element. Choose the shared power-of-two scale that moves that maximum into the element format's top range, then divide each value by the scale and round once into the element format. Decoding multiplies each value by the same scale. The fixture's block example lets the tests check the scale code and every packed element independently.
+For an MX block, first find the largest absolute element. Choose the shared power-of-two scale that moves that maximum into the element format's top binade, then divide each value by the scale and round once into the element format. Decoding multiplies each value by the same scale.
 
-## 4. What the tests establish
+Take the FP4 block $[0.3, -1.7, 5.0, 0.04]$. The largest magnitude is 5, $\lfloor\log_2 5\rfloor = 2$, and FP4's largest normal is $6 = 1.5 \cdot 2^2$, so $e_{\max} = 2$ and the scale is $X = 2^{2 - 2} = 1$ (E8M0 code $0 + 127 = 127$). Each element then rounds to the FP4 grid $\{0, 0.5, 1, 1.5, 2, 3, 4, 6\}$: $0.3 \to 0.5$, $-1.7 \to -1.5$, $5.0$ is a tie between 4 (code 6, even) and 6 (code 7, odd) and goes to 4, and $0.04 \to 0$. The codes are `[1, 11, 6, 0]` (11 is code 3 with the sign bit `0x8`), the scale `[127]`, and the decoded block is $[0.5, -1.5, 4, 0]$.
 
-| Test | Why it matters |
+## 4. What a correct solution must handle
+
+| Case | Why it matters |
 |---|---|
-| `test_hand_example` and `test_hand_example_mx` | Pin scalar and block calculations to hand-worked values. |
-| `test_decode_every_code_golden` and `test_encode_golden` | Check the full 8-bit code space against stable expected values. |
-| `test_saturation_and_specials` | Defines behavior for overflow, infinities, and NaNs. |
-| `test_tiny_values_and_signed_zero` | Protects underflow and sign preservation at zero. |
-| `test_encode_inverts_decode` | Every finite code remains stable through decode then encode. |
-| `test_rounding_is_nearest_and_monotone` and `test_ties_go_to_even` | Catches incorrect midpoint handling and non-monotone encoders. |
-| `test_scaled_quantization_roundtrip` and `test_quantize_rounds_once` | Ensures scaling does not introduce an extra rounding step. |
-| `test_fp4_values_and_ties`, `test_e8m0_scale_code`, `test_mx_golden`, `test_mx_block_law`, `test_mx_shapes_and_errors` | Check element codes, scale choices, block layout, and input validation. |
+| the hand-worked scalar tie and MX block | Pin scalar and block calculations to the values of section 3. |
+| decoding every 8-bit code, and encoding known values | Check the full 8-bit code space against stable expected bit patterns. |
+| saturation and special values | Defines behavior for overflow, infinities, and NaNs. |
+| tiny values and signed zero | Protects underflow and sign preservation at zero. |
+| encode inverts decode | Every finite code remains stable through decode then encode. |
+| rounding is nearest and monotone; ties go to even | Catches incorrect midpoint handling and non-monotone encoders. |
+| scaled quantization round-trips and rounds once | Ensures scaling does not introduce an extra rounding step. |
+| FP4 values and ties, E8M0 scale codes, the MX block law, MX shapes and errors | Check element codes, scale choices, block layout, and input validation. |
 
-Start with `ol start M09.4`, inspect the catalog with `ol tests M09.4`, then run `ol check M09.4`. The file fixture makes results reproducible without optional dependencies at runtime.
+## 5. The solution, step by step
 
-## 5. Pitfalls
+### From first principles
 
-| Pitfall | Symptom | Caught by |
+1. **A format is a grid of quanta per binade.** In the binade $[2^E, 2^{E+1})$ a format with $M$ fraction bits holds the multiples of $2^{E - M}$. Below the smallest normal, $2^{1-B}$, the spacing stops shrinking: subnormals are multiples of $2^{1 - B - M}$. So for a magnitude $a$ the quantum exponent is $q_e = \max(\lfloor\log_2 a\rfloor, 1 - B) - M$.
+2. **Rounding is then one integer rounding.** $a / 2^{q_e}$ is exact in float64 (a power-of-two scale), and rounding it to an integer $n$ with ties to even is exactly IEEE rounding into the format. One routine serves E4M3, E5M2, and E2M1; only $(M, B)$ differ.
+3. **The code falls out of $n$ and $q_e$.** The biased exponent field is $q_e + M + B - 1$ (one less than the field when $n$ already includes the implicit bit), and the code is $((q_e + M + B - 1) \ll M) + n$. When rounding carries $n$ from $2^{M+1} - 1$ to $2^{M+1}$, the addition carries into the exponent field by itself; for subnormals the same formula gives field 0 and $n < 2^M$, or field 1 when a subnormal rounds up to the smallest normal.
+4. **Edge rules are separate from rounding.** Saturation, infinity, NaN, and the sign are applied after the magnitude code is known, as a few `where`s. That keeps the rounding path free of special cases.
+5. **Decoding is exact.** A code splits into exponent field and mantissa; field 0 is $m \cdot 2^{1 - B - M}$, otherwise $(2^M + m)\,2^{e - B - M}$. Both are exact in float32 for every code.
+6. **Scaling must not round twice.** `quantize_fp8` divides by the scale in float64 and rounds once to FP8; a float32 intermediate would round first and can land on the other side of a midpoint.
+7. **The MX scale is a power of two chosen from the block maximum.** $X = 2^{\lfloor\log_2 \text{amax}\rfloor - e_{\max}}$ puts the largest element in the element format's top binade. Because $X$ is a power of two, $x / X$ is exact, so the element rounding is the only rounding.
+
+### The code, annotated
+
+```python
+# name: (fraction bits M, bias B, largest finite magnitude code)
+_FMT = {"e4m3": (3, 7, 0x7E), "e5m2": (2, 15, 0x7B), "fp4_e2m1": (1, 1, 0x7)}
+_MAX = {"e4m3": 448.0, "e5m2": 57344.0, "fp4_e2m1": 6.0}
+_EMAX = {"fp4_e2m1": 2, "fp8_e4m3": 8}      # 6 = 1.5 * 2^2, 448 = 1.75 * 2^8
+
+
+def _round_codes(a: NDArray, fmt: str) -> NDArray:
+    """int64 magnitude codes of the finite float64 magnitudes a >= 0, rounded
+    to nearest even, before any overflow handling (may exceed the max code)."""
+    M, B, _ = _FMT[fmt]
+    _, e = np.frexp(a)  # a = f * 2^e with f in [0.5, 1): floor(log2 a) = e - 1
+    qe = np.maximum(e.astype(np.int64) - 1, 1 - B) - M   # step 1: the quantum
+    n = np.rint(np.ldexp(a, -qe)).astype(np.int64)       # exact scale, then ties to even
+    code = ((qe + M + B - 1) << M) + n                   # step 3: carries into the exponent
+    return np.where(n == 0, 0, code)                     # underflow to zero is code 0
+```
+
+This is the whole of the rounding logic for three formats. `frexp` gives $\lfloor\log_2 a\rfloor$ exactly, with no `log2` rounding near powers of two; `ldexp` scales without rounding; numpy's `rint` rounds half to even. Trace $1.1875$ in E4M3: $e = 1$, so $q_e = \max(0, -6) - 3 = -3$; $1.1875 \cdot 8 = 9.5$ rounds to 10; the code is $((-3 + 3 + 7 - 1) \ll 3) + 10 = 48 + 10 = 58 = $ `0x3A`. For $a = 0$, `frexp` gives $e = 0$, $n = 0$, and the `where` returns code 0.
+
+```python
+def _decode(mag: NDArray, fmt: str) -> NDArray:
+    """float64 values of magnitude codes (no specials)."""
+    M, B, _ = _FMT[fmt]
+    mag = mag.astype(np.int64)
+    ef, mant = mag >> M, mag & ((1 << M) - 1)
+    sub = np.ldexp(mant.astype(np.float64), 1 - B - M)                       # no implicit 1
+    nor = np.ldexp(((1 << M) + mant).astype(np.float64), (ef - B - M).astype(np.int64))
+    return np.where(ef == 0, sub, nor)
+
+
+def _encode_fp8(v: NDArray, fmt: str) -> NDArray:
+    """uint8 codes of float64 values v (any shape), with the edge rules."""
+    _check_fp8(fmt)
+    v = np.asarray(v, dtype=np.float64)
+    nan, inf = np.isnan(v), np.isinf(v)
+    a = np.where(nan | inf, 0.0, np.abs(v))             # keep specials out of the rounding
+    code = np.minimum(_round_codes(a, fmt), _FMT[fmt][2])  # saturate finite overflow
+    if fmt == "e4m3":
+        code = np.where(inf, 0x7E, code)  # no infinity: saturate
+    else:
+        code = np.where(inf, 0x7C, code)  # e5m2 keeps IEEE infinity
+    sign = np.where(np.signbit(v), 0x80, 0)              # signbit, so -0.0 keeps its sign
+    return np.where(nan, 0x7F, code | sign).astype(np.uint8)
+```
+
+The order of operations is the design: specials are masked to 0 before rounding (so `frexp` never sees them), the rounded magnitude is clamped to the largest finite code (`0x7E` or `0x7B`, so overflow can never produce E4M3's NaN code `0x7F` or E5M2's infinity by accident), then infinities, sign, and NaN are set. `np.signbit` is used rather than `v < 0` because $-0.0 < 0$ is false and the sign of zero must survive.
+
+```python
+def fp8_bits_to_f32(codes: ArrayLike, fmt: str) -> NDArray:
+    # ... fmt check; codes must lie in 0..255 ...
+    c = c.astype(np.int64)
+    mag = c & 0x7F
+    v = _decode(mag, fmt)
+    if fmt == "e4m3":
+        v = np.where(mag == 0x7F, np.nan, v)                  # the only NaN magnitude
+    else:
+        v = np.where(mag == 0x7C, np.inf, np.where(mag > 0x7C, np.nan, v))
+    return np.where(c & 0x80, -v, v).astype(np.float32)      # -0.0 for 0x80
+
+
+def quantize_fp8(x: ArrayLike, fmt: str, scale: float) -> NDArray:
+    _check_scale(scale)
+    return _encode_fp8(np.asarray(x, dtype=np.float64) / scale, fmt)   # one rounding
+
+
+def dequantize_fp8(q: ArrayLike, fmt: str, scale: float) -> NDArray:
+    _check_scale(scale)
+    return (fp8_bits_to_f32(q, fmt).astype(np.float64) * scale).astype(np.float32)
+```
+
+`f32_to_fp8_bits` is `_encode_fp8` of the input converted to float32 first (the contract says the input *is* a float32), while `quantize_fp8` forms $x / \text{scale}$ in float64 and rounds once (step 6). `fp8_scale(amax, fmt)` is `amax / fp8_max(fmt)`, or 1 for an all-zero tensor.
+
+```python
+def e8m0_scale_code(amax: float, elem: str) -> int:
+    _check_elem(elem)
+    # ... amax must be finite and >= 0 ...
+    a = 1.0 if amax == 0 else amax            # an all-zero block gets scale 2^-emax
+    e = math.frexp(a)[1] - 1  # floor(log2 a), exact
+    return int(min(max(e - _EMAX[elem] + 127, 0), 254))   # 255 is NaN, never produced
+
+
+def mx_quantize(x, block=32, elem="fp4_e2m1") -> tuple[NDArray, NDArray]:
+    fmt = _check_elem(elem)
+    v = np.asarray(x, dtype=np.float64)
+    if not np.isfinite(v).all():
+        raise ValueError("mx_quantize needs finite values")
+    blk = _blocks(v, block)                    # [..., n / block, block]; raises if not divisible
+    amax = np.max(np.abs(blk), axis=-1)        # the maximum, not an average
+    scales = np.vectorize(lambda a: e8m0_scale_code(float(a), elem), otypes=[np.int64])(amax)
+    q = np.ldexp(blk, (127 - scales)[..., None])  # x / X, exact: X is a power of two
+    if fmt == "fp4_e2m1":
+        codes = f32_to_e2m1_bits(q)            # rounds once, saturates at 6
+    else:
+        codes = _encode_fp8(q, "e4m3")
+    return codes.reshape(v.shape), scales.astype(np.uint8)
+```
+
+`mx_dequantize` reverses it: view the codes as blocks, check that the scales have one entry per block, decode the elements, and multiply by `e8m0_to_f32(scales)` in float64 before one rounding to float32. In the hand example, `amax = 5`, `frexp(5)` gives exponent 3, so $e = 2$ and the code is $2 - 2 + 127 = 127$; `ldexp(blk, 0)` leaves the block unchanged, and `f32_to_e2m1_bits` produces `[1, 11, 6, 0]`.
+
+Full solution: [`lowp.py`](../../../../course/solutions/python/tinyllm/num/lowp.py).
+
+### Why this solution
+
+- **Values, not bits.** The C twin (`M09.7`) works on float32 bit fields; this file works on float64 values, where scaling by $2^{-q_e}$ and `rint` are exact. That makes one generic routine correct for three formats, and it is vectorized over any array shape. The cost is $O(n)$ with a few array passes.
+- **Generic rounding over a lookup table.** For 256 codes, a sorted table of decoded values and a nearest search would also work, but tie handling needs care at every midpoint and the table must be rebuilt per format. The arithmetic route makes ties-to-even a property of `rint`.
+- **Saturation over overflow to infinity.** E4M3 has no infinity, and for quantized weights an outlier that becomes NaN or infinity poisons every dot product it enters; clamping to the largest finite value bounds the damage. E5M2 keeps IEEE infinity for inputs that already are infinite.
+- **The OCP MX scale rule.** $\lfloor\log_2\text{amax}\rfloor - e_{\max}$ is what the OCP Microscaling spec defines, so codes interoperate. Its accepted cost: the block maximum can land above the element format's largest value (amax $= 7$ in FP4 gives $X = 1$, and 7 saturates to 6), and, as in the hand example, the maximum itself can lose precision. A scale that always fits the maximum would need a non-power-of-two scale or one more exponent step, losing a bit of resolution for every other element.
+
+### Explain it back
+
+**1. Why does one function, `_round_codes`, round correctly into E4M3, E5M2, and E2M1?**
+
+<details><summary>Answer</summary>
+
+Each format is determined by $(M, B)$: the quantum in the binade of $a$ is $2^{q_e}$ with $q_e = \max(\lfloor\log_2 a\rfloor, 1 - B) - M$. Dividing by a power of two is exact in float64 and `rint` rounds to the nearest integer with ties to even, which is IEEE rounding onto that grid. The code formula then carries into the exponent field when the rounded mantissa overflows, so no format needs its own branch.
+
+</details>
+
+**2. Why is the rounded code clamped to `0x7E` before the NaN and infinity rules are applied in E4M3?**
+
+<details><summary>Answer</summary>
+
+A finite value above 448 rounds to a code of `0x7F` or more, and `0x7F` is E4M3's NaN. Clamping first turns any finite overflow into 448, the contract's saturation rule; the later `where`s then set infinities to `0x7E` and NaN to `0x7F` explicitly, so NaN can only come from a NaN input.
+
+</details>
+
+**3. What goes wrong if `quantize_fp8` converts `x / scale` to float32 before encoding?**
+
+<details><summary>Answer</summary>
+
+It rounds twice. The float32 rounding can move a value that is just above an FP8 midpoint onto the midpoint itself (or across it), and the second rounding then picks the even neighbour instead of the nearer one. Forming the quotient in float64 and rounding once into FP8 gives the correctly rounded code.
+
+</details>
+
+**4. Why is the MX scale a power of two, and why chosen from the block maximum?**
+
+<details><summary>Answer</summary>
+
+A power of two makes $x / X$ exact, so the only error is the element rounding, and E8M0 can store it in 8 bits. The maximum fixes the range: choosing from an average lets the largest element exceed the element format and saturate, which on weights is the outlier that matters most.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Rounding half away from zero | Exact midpoints choose the wrong code. | `test_ties_go_to_even` |
-| Treating subnormals like normalized values | Tiny values jump to zero or the minimum normal. | `test_tiny_values_and_signed_zero` |
-| Producing infinity on finite overflow | Codes disagree with the course's saturation rule. | `test_saturation_and_specials` |
-| Applying the block scale after rounding | Quantized values differ by one code near boundaries. | `test_quantize_rounds_once` |
-| Choosing scale from an average instead of the maximum magnitude | A large block member clips unexpectedly. | `test_mx_block_law` |
-| Accepting malformed block shapes | Values are silently dropped or grouped incorrectly. | `test_mx_shapes_and_errors` |
+| Rounding half away from zero | Exact midpoints choose the wrong code. | `np.rint` rounds half to even on the scaled integer; step 2 |
+| Treating subnormals like normalized values | Tiny values jump to zero or the minimum normal. | `qe` is floored at $1 - B - M$ and `_decode` drops the implicit 1 for field 0; steps 1 and 5 |
+| Producing infinity on finite overflow | Codes disagree with the course's saturation rule. | `np.minimum(..., max_code)` before the special rules; step 4 |
+| Applying the block scale after rounding | Quantized values differ by one code near boundaries. | divides by the scale first (exact `ldexp` for MX, float64 for FP8), then rounds once; steps 6 and 7 |
+| Choosing scale from an average instead of the maximum magnitude | A large block member clips unexpectedly. | `amax = np.max(np.abs(blk), axis=-1)`; step 7 |
+| Accepting malformed block shapes | Values are silently dropped or grouped incorrectly. | `_blocks` raises unless the last axis is a multiple of `block`; `mx_dequantize` checks the scale shape |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -71,11 +236,11 @@ Start with `ol start M09.4`, inspect the catalog with `ol tests M09.4`, then run
 | Forward | `L8.5` | Quantizes model weights for lower-bandwidth inference. |
 | Forward | `L10.1` | Converts quantized model weights in the Rust engine. |
 | Forward | `craft.13` | Stores fp8 KV values and relies on the defined saturation and decoding rules. |
-| Optional parallel | `M09.7` | Implements selected conversions in standalone C against the shared golden files. |
+| Optional parallel | `M09.7` | Implements selected conversions in standalone C with the same bit-exact results. |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This solution | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | FP8 E4M3/E5M2 | accelerator matrix formats | trades exponent range against significand precision | IEEE 754 and vendor format guides |
-| microscaling | block-scaled MX formats | compact values share a power-of-two scale per block | `course/fixtures/M09.4/lowp_golden.npz` |
+| microscaling | block-scaled MX formats | compact values share a power-of-two scale per block | OCP Microscaling Formats (MX) v1.0 specification |

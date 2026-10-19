@@ -1,41 +1,33 @@
-<!-- ol:module L5.4 -->
 # Positional encodings: sinusoidal, learned
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L5.4` · build · Python · Pass 5 · 2 h, plus your graded tests (rung R5) |
-| **You build** | `python/tinyllm/xfmr/pos.py`: `sinusoidal_freqs`, `sinusoidal_pe`, `shift_pe`, `SinusoidalPE`, `LearnedPE`; and your own oracle tests in `python/tests/l5-4-pos/` |
+| **Module** | `L5.4` · build · Python · Pass 5 · 1 h reading |
+| **Solution** | [`python/tinyllm/xfmr/pos.py`](../../../../course/solutions/python/tinyllm/xfmr/pos.py): `sinusoidal_freqs`, `sinusoidal_pe`, `shift_pe`, `SinusoidalPE`, `LearnedPE`; model oracle tests in [`learner-tests/L5.4/.../test_pos.py`](../../../../course/solutions/learner-tests/L5.4/python/tests/l5-4-pos/test_pos.py) |
 | **Contract** | [`course/contracts/py/tinyllm/xfmr/pos.pyi`](../../../../course/contracts/py/tinyllm/xfmr/pos.pyi) |
-| **Tests** | `course/tests/L5.4/test_pos.py` (what they check: section 4); the oracle is mpmath at 50 digits; your tests are graded by mutation, threshold 0.80 with every pitfall fault required |
-| **Needs** | `M00.2` `rotate_pairs` · `M00.3` `geometric` · `M07.3` `normal_init` · `M06.3` `PCG32` · `L0.1` `Tensor` · `L0.2` `embedding` · `L0.4` `Module` (or `--ref-deps`) |
-| **Used by** | `L5.5` the transformer's sinusoidal positions · `L6.1` GPT-2's learned `wpe` · `L6.2` BERT's learned position embeddings  · `L14.3` Whisper decoding |
-| **Milestone** | `MS-L5` (the addition model reads digit positions) |
+| **Needs** | `M00.2` `rotate_pairs` · `M00.3` `geometric` · `M07.3` `normal_init` · `M06.3` `PCG32` · `L0.1` `Tensor` · `L0.2` `embedding` · `L0.4` `Module` |
+| **Used by** | `L5.5` the transformer's sinusoidal positions (this is how the Part 5 addition model reads digit positions) · `L6.1` GPT-2's learned `wpe` · `L6.2` BERT's learned position embeddings · `L14.3` Whisper decoding |
 | **Optional depth** | Vaswani et al. (2017), section 3.5; Kazemnejad, "Transformer Architecture: The Positional Encoding" (2019); Su et al., "RoFormer" (2021), for where the rotation goes next |
 
 ## Key Takeaways
 
-- Attention sees its keys as a set, so position must be added to the input: $x_p = e(\text{token}_p) + \text{PE}(p)$ (`test_sinusoidal_module_has_no_parameters`).
-- Pair $i$ of $\text{PE}(p)$ is the point $(\sin p\,\omega_i, \cos p\,\omega_i)$ with $\omega_i = 10000^{-2i/d}$, a geometric ladder from 1 radian per position down to about $10^{-4}$ (`test_hand_example_table`, `test_golden_mpmath`).
-- Moving $k$ positions is a fixed rotation of every pair, the same for every $p$ (`test_shift_is_a_fixed_rotation`), so $\text{PE}(p) \cdot \text{PE}(p + k)$ depends only on $k$ (`test_dot_product_depends_only_on_the_offset`).
-- Angles must be computed in float64: at $p = 10^4$ a float32 angle is already off in the fourth decimal (`test_golden_mpmath`).
-- A learned table is just an embedding indexed by position: it adds rows `offset ..` and only those rows get gradient (`test_learned_pe_adds_rows_and_gets_their_gradient`).
+- Attention sees its keys as a set, so position must be added to the input: $x_p = e(\text{token}_p) + \text{PE}(p)$.
+- Pair $i$ of $\text{PE}(p)$ is the point $(\sin p\,\omega_i, \cos p\,\omega_i)$ with $\omega_i = 10000^{-2i/d}$, a geometric ladder from 1 radian per position down to about $10^{-4}$.
+- Moving $k$ positions is a fixed rotation of every pair, the same for every $p$, so $\text{PE}(p) \cdot \text{PE}(p + k)$ depends only on $k$.
+- Angles must be computed in float64: at $p = 10^4$ a float32 angle is already off in the fourth decimal.
+- A learned table is just an embedding indexed by position: it adds rows `offset ..` and only those rows get gradient.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L5.4              # stubs pos.py; prints your test path and rung (R5)
-ol tests L5.4              # the course tests
-ol check L5.4              # course tests and the mutation grade of your tests
-ol diff  L5.4              # after passing: your code against the reference
-```
+Sections 1 to 3 build both encodings from first principles and work the sinusoidal table and its shift by hand. Section 4 fixes the interface and lists what a correct solution must handle. Section 5 walks through the solution function by function and explains why each choice is the right one. Try to predict each step before reading it.
 
 ---
 
 ## 1. Why now
 
-Your multi-head attention (`L5.3`) gives the same output for "321+654" and "123+456" shuffled into any order of keys: permuting the keys changes nothing (`L5.3`'s `test_cross_attention_reads_keys_from_x_kv` proves it). For addition that is fatal, because which digit is the ones digit is all a matter of position. The RNNs of Parts 3 and 4 knew order for free, by reading one token at a time; the transformer reads all tokens at once and has to be told. This module builds the two ways the course uses: the fixed sinusoidal table of the 2017 transformer (`L5.5`), whose shift property is the seed of RoPE in Part 7, and the learned table of GPT-2 (`L6.1`) and BERT (`L6.2`).
+Multi-head attention (`L5.3`) gives the same output for "321+654" and "123+456" shuffled into any order of keys: permuting the keys changes nothing. For addition that is fatal, because which digit is the ones digit is all a matter of position. The RNNs of Parts 3 and 4 knew order for free, by reading one token at a time; the transformer reads all tokens at once and has to be told. This module gives the two ways the course uses: the fixed sinusoidal table of the 2017 transformer (`L5.5`), whose shift property is the seed of RoPE in Part 7, and the learned table of GPT-2 (`L6.1`) and BERT (`L6.2`).
 
 ## 2. Principles
 
@@ -83,7 +75,7 @@ $d = 4$, $b = 10000$: $\omega = (10000^0, 10000^{-1/2}) = (1, 0.01)$.
 | 1 | 0.841471 | 0.540302 | 0.010000 | 0.999950 |
 | 2 | 0.909297 | -0.416147 | 0.019999 | 0.999800 |
 
-Shift check, pair 0, $k = 1$: $R(-1)$ applied to $(\sin 1, \cos 1) = (0.841471, 0.540302)$ gives $(0.841471 \cos 1 + 0.540302 \sin 1,\; -0.841471 \sin 1 + 0.540302 \cos 1) = (0.454649 + 0.454649,\; -0.708073 + 0.291927) = (0.909297, -0.416147)$, the $p = 2$ row. These are `test_hand_example_table` and `test_hand_example_shift`.
+Shift check, pair 0, $k = 1$: $R(-1)$ applied to $(\sin 1, \cos 1) = (0.841471, 0.540302)$ gives $(0.841471 \cos 1 + 0.540302 \sin 1,\; -0.841471 \sin 1 + 0.540302 \cos 1) = (0.454649 + 0.454649,\; -0.708073 + 0.291927) = (0.909297, -0.416147)$, the $p = 2$ row.
 
 ## 4. The interface
 
@@ -95,42 +87,172 @@ class SinusoidalPE(Module):   # no parameters; forward(x, offset=0) = x + table[
 class LearnedPE(Module):      # weight [max_len, d]; positions(T, offset); forward(x, offset=0)
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_table` | unit | section 3: frequencies (1, 0.01) and the three rows | you and the test agree on layout and ladder |
-| `test_hand_example_shift` | unit | turning PE(1) by $-\omega$ gives PE(2) | the rotation's sign |
-| `test_golden_mpmath` | golden | the table at positions up to 65535 for two settings against 50-digit mpmath | long contexts keep exact positions |
-| `test_shift_is_a_fixed_rotation` | property | one $R(k)$ for every $p$, negative $k$ too | the relative-position property RoPE builds on |
-| `test_dot_product_depends_only_on_the_offset` | property | $\text{PE}(p)\cdot\text{PE}(p+k) = \sum_i \cos k\omega_i$ | similarity by distance |
-| `test_every_pair_is_on_the_unit_circle` | property | each pair has norm 1 | the signal does not grow with $p$ |
-| `test_offset_continues_the_table` | property | `offset` gives the tail of a longer table; the module honours it | incremental decoding (`L8.2`) |
-| `test_sinusoidal_module_has_no_parameters` | unit | empty state_dict; gradient passes through to $x$ | nothing to train or checkpoint |
-| `test_learned_pe_adds_rows_and_gets_their_gradient` | unit | rows `offset..` added; only those get gradient | GPT-2's and BERT's tables train |
-| `test_learned_pe_init` | statistical | seeded $\mathcal{N}(0, \text{std}^2)$, default 0.02 | the same init in every language |
-| `test_validation` | boundary | odd $d$, base $\le 1$, positions past the table | no silent wrap-around |
+| the hand-worked table | unit | section 3: frequencies (1, 0.01) and the three rows | everyone agrees on layout and ladder |
+| the hand-worked shift | unit | turning PE(1) by $-\omega$ gives PE(2) | the rotation's sign |
+| long positions against high precision | golden | the table at positions up to 65535 for two settings against 50-digit mpmath | long contexts keep exact positions |
+| a shift is one fixed rotation | property | one $R(k)$ for every $p$, negative $k$ too | the relative-position property RoPE builds on |
+| dot products depend only on the offset | property | $\text{PE}(p)\cdot\text{PE}(p+k) = \sum_i \cos k\omega_i$ | similarity by distance |
+| every pair on the unit circle | property | each pair has norm 1 | the signal does not grow with $p$ |
+| `offset` continues the table | property | `offset` gives the tail of a longer table; the module honours it | incremental decoding (`L8.2`) |
+| the sinusoidal module has no parameters | unit | empty state_dict; gradient passes through to $x$ | nothing to train or checkpoint |
+| learned rows are added and get gradient | unit | rows `offset..` added; only those get gradient | GPT-2's and BERT's tables train |
+| learned init | statistical | seeded $\mathcal{N}(0, \text{std}^2)$, default 0.02 | the same init in every language |
+| bad arguments | boundary | odd $d$, base $\le 1$, positions past the table | no silent wrap-around |
 
-### Your graded tests (rung R5)
+A model test suite that uses the formula itself as the oracle (Python's `math` in float64, including positions $p \ge 10^4$) is in [`test_pos.py`](../../../../course/solutions/learner-tests/L5.4/python/tests/l5-4-pos/test_pos.py).
 
-Your oracle is the formula itself: compute $\sin(p / b^{2i/d})$ and $\cos(\cdot)$ with Python's `math` in float64 for a few positions, including large ones ($p \ge 10^4$), and compare with `sinusoidal_pe`. Test the shift law, the offset, and the learned table's rows and gradient. `ol check L5.4` requires 0.80 with the pitfall faults killed.
+## 5. The solution, step by step
 
-## 5. Pitfalls
+### 5.1 From first principles
 
-| Pitfall | Symptom | Caught by |
+1. Attention is permutation equivariant (`L5.3`), so order must enter through the input. The cheapest place is to add a vector that depends only on the position: $x_p = e(\text{token}_p) + \text{PE}(p)$. Adding (not concatenating) keeps the width $d$ that every later layer already expects.
+2. The vector should stay bounded however long the sequence is, so raw $p$ is out. Points on a unit circle, $(\sin p\omega, \cos p\omega)$, are bounded and distinct for nearby $p$ as long as $\omega$ is small enough not to wrap.
+3. One circle cannot separate both neighbours and distant positions: a fast $\omega$ wraps, a slow one barely moves. So use $d/2$ circles at a geometric ladder of speeds, $\omega_i = b^{-2i/d}$, from 1 down to $b^{-1}$ (for $d = 4$: $1$ and $0.01$, the worked example). Geometric spacing gives every scale of distance the same number of pairs.
+4. The pair is laid out as sin at column $2i$ and cos at column $2i+1$, which is exactly the pair layout `rotate_pairs` (`M00.2`) uses. That choice makes the shift law a single call.
+5. Angle addition (section 2.2) turns "move $k$ positions" into "rotate pair $i$ by $-k\omega_i$", independent of $p$. So `shift_pe` needs no position, only $k$ and the ladder.
+6. The angle $p\omega_i$ is large for large $p$, and float32 loses about $p \times 6 \times 10^{-8}$ radians. So the table is computed in float64 and rounded once, at the end.
+7. The fixed table is data, not a parameter: storing it as a plain array keeps it out of the gradient and the state_dict. The learned table is the opposite: a parameter read through `embedding`, so that only the rows used get gradient.
+8. Both modules take `offset` so the same module serves training (offset 0) and cached decoding, where a new token sits at position `offset`.
+
+### 5.2 The code, annotated
+
+The ladder is `M00.3`'s geometric sequence, with the validation that keeps the table meaningful:
+
+```python
+def _check_d(d: int) -> None:
+    # Pairs need an even width; an odd last column would have no partner.
+    if not isinstance(d, (int, np.integer)) or d < 2 or d % 2:
+        raise ValueError(f"d must be a positive even integer, got {d}")
+
+
+def sinusoidal_freqs(d: int, base: float = 10000.0) -> NDArray:
+    _check_d(d)
+    # base <= 1 would make the ladder flat or increasing: no slow pairs.
+    if not (np.isfinite(base) and base > 1.0):
+        raise ValueError(f"base must be finite and > 1, got {base}")
+    # omega_i = base^(-2i/d): first term 1, ratio base^(-2/d) (M00.3).
+    return geometric(1.0, float(base) ** (-2.0 / d), d // 2)
+```
+
+The ratio is $b^{-2/d}$, not $b^{-1/d}$: with $d/2$ terms the last one is $b^{-2(d/2-1)/d} \approx b^{-1}$, so the slowest pair repeats every $2\pi b$ positions.
+
+The table is an outer product of positions and frequencies, then sin and cos written into interleaved columns:
+
+```python
+def sinusoidal_pe(T: int, d: int, base: float = 10000.0, offset: int = 0) -> NDArray:
+    if T < 0 or offset < 0:
+        raise ValueError(f"T and offset must be non-negative, got {T}, {offset}")
+    w = sinusoidal_freqs(d, base)
+    # Angles in float64: at p = 10^4 a float32 angle is off by about 5e-4 rad.
+    # Positions start at `offset` (0 in training), counted from 0, not 1.
+    ang = np.arange(offset, offset + T, dtype=np.float64)[:, None] * w[None, :]
+    pe = np.empty((T, d), dtype=np.float64)
+    pe[:, 0::2] = np.sin(ang)  # PE(p, 2i)
+    pe[:, 1::2] = np.cos(ang)  # PE(p, 2i + 1)
+    return pe.astype(np.float32)   # round once, after the trig
+```
+
+The shift is one call, because the layout matches `rotate_pairs`:
+
+```python
+def shift_pe(pe: ArrayLike, k: float, d: int, base: float = 10000.0) -> NDArray:
+    x = np.asarray(pe)
+    if x.shape[-1] != d:
+        raise ValueError(f"pe has width {x.shape[-1]}, expected d = {d}")
+    # The pair (sin a, cos a) turned by -k*omega is (sin(a + k omega),
+    # cos(a + k omega)): a rotation (M00.2) that depends on k, not on p.
+    return rotate_pairs(x, -float(k) * sinusoidal_freqs(d, base))
+```
+
+`rotate_pairs(x, θ)` maps a pair $(e, o)$ to $(e\cos\theta - o\sin\theta,\; e\sin\theta + o\cos\theta)$. With $e = \sin a$, $o = \cos a$ and $\theta = -k\omega$ the first entry is $\sin a\cos k\omega + \cos a \sin k\omega = \sin(a + k\omega)$: the minus sign is what moves forward in position. Each pair gets its own angle $k\omega_i$; one shared angle would scramble the slow pairs.
+
+The fixed module precomputes `max_len` rows once and slices:
+
+```python
+class SinusoidalPE(Module):
+    def __init__(self, max_len: int, d: int, base: float = 10000.0) -> None:
+        super().__init__()
+        # ...
+        # A constant, not a parameter: no gradient, not in the state_dict.
+        self.table = sinusoidal_pe(max_len, d, base)
+
+    def forward(self, x: Tensor, offset: int = 0) -> Tensor:
+        T = x.shape[-2]
+        # ... width check ...
+        if offset < 0 or offset + T > self.max_len:
+            # Refuse instead of wrapping: a wrapped slice would silently reuse rows.
+            raise ValueError(...)
+        # Tensor + ndarray: the gradient flows to x and nowhere else.
+        return x + self.table[offset : offset + T].astype(x.dtype)
+```
+
+The learned module is an embedding table indexed by position:
+
+```python
+class LearnedPE(Module):
+    def __init__(self, max_len: int, d: int, std: float = 0.02, rng: Any = None) -> None:
+        super().__init__()
+        # ...
+        r = rng if rng is not None else PCG32(0).substream("init")
+        self.max_len, self.d = max_len, d
+        # N(0, std^2) from the seeded stream (M07.3): the same init in every language.
+        self.weight = Tensor(normal_init((max_len, d), std, r), requires_grad=True)
+
+    def positions(self, T: int, offset: int = 0) -> Tensor:
+        # ... range check against max_len ...
+        # Rows offset .. offset+T-1 of the table, with their gradient.
+        return F.embedding(self.weight, np.arange(offset, offset + T))
+
+    def forward(self, x: Tensor, offset: int = 0) -> Tensor:
+        # ... width check ...
+        return x + self.positions(x.shape[-2], offset)
+```
+
+`F.embedding` is a gather whose backward scatters into exactly the rows read, so rows past the sequence length stay at their initial values. `positions` is public because GPT-2 and BERT (`L6.1`, `L6.2`) want the position rows on their own.
+
+Full solution: [`pos.py`](../../../../course/solutions/python/tinyllm/xfmr/pos.py).
+
+### 5.3 Why this solution
+
+- **Cost.** Building the table is $O(\text{max\_len} \cdot d)$ once; each forward is a slice and an add, $O(Td)$. The learned table costs $L \cdot d$ parameters and its gradient touches only $T$ rows.
+- **Interleaved vs. half layout.** fairseq and some HF code put all sines first, then all cosines. That is equally valid but needs a different rotation helper; interleaving matches the paper and `M00.2`, so the shift law reuses existing code.
+- **Precompute vs. compute on the fly.** Computing rows per call would allow unbounded positions, but costs trig on every step; a fixed `max_len` matches the learned table's contract and makes "past the table" a clear error.
+- **float64 then float32.** Computing in float32 is faster but wrong at long positions (section 2.1); the cost of float64 is paid once.
+- **Tradeoff accepted.** Neither encoding extrapolates past `max_len`. The rotation property is the seed of RoPE (`L7.3`), which removes that limit for relative distances.
+
+### 5.4 Explain it back
+
+1. Why must the ratio of the ladder be $b^{-2/d}$ and not $b^{-1/d}$?
+   <details><summary>Answer</summary>There are $d/2$ frequencies. With ratio $b^{-2/d}$ the last is about $b^{-1}$, so the slowest pair has period $2\pi b$. With $b^{-1/d}$ the ladder stops at about $b^{-1/2}$, the slowest period is only $2\pi\sqrt b \approx 630$ positions, and far positions alias.</details>
+2. Why is the shift a rotation by $-k\omega_i$ rather than $+k\omega_i$?
+   <details><summary>Answer</summary>The pair is stored as (sin, cos), not (cos, sin). `rotate_pairs` with angle $\theta$ sends $(\sin a, \cos a)$ to $(\sin(a - \theta), \cos(a - \theta))$, so moving forward by $k\omega$ needs $\theta = -k\omega$.</details>
+3. Why is `SinusoidalPE.table` a plain array and not a `Tensor` with `requires_grad`?
+   <details><summary>Answer</summary>It is a fixed function of position. As a parameter it would be updated by the optimizer (no longer sinusoidal, so the shift law breaks) and saved in every checkpoint for no reason.</details>
+4. What goes wrong in cached decoding if `offset` is ignored?
+   <details><summary>Answer</summary>Each new token is fed alone, so $T = 1$, and without `offset` it always gets row 0. Every generated token then looks like the first token of the sequence.</details>
+5. Why does `LearnedPE` read its rows through `F.embedding` instead of slicing `weight.data`?
+   <details><summary>Answer</summary>Slicing the raw array would give a constant with no path back to `weight`, so the table would never learn. `embedding` records the gather and scatters the gradient into the rows used.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. sin and cos concatenated (or swapped) instead of interleaved | the shift law fails; checkpoints from other code disagree | `test_hand_example_table`, `test_golden_mpmath` (mutants `s01`, `s03`) |
-| 2. exponent $i/d$ instead of $2i/d$ | the ladder ends at $b^{-1/2}$: far positions alias | `test_golden_mpmath` (mutant `s02`) |
-| 3. angles in float32 | rows past a few thousand off in the 4th decimal | `test_golden_mpmath` (mutant `s07`) |
-| 4. the shift turned the wrong way, or by the same angle for every pair | `shift_pe` goes back in position, or scrambles pairs | `test_hand_example_shift`, `test_shift_is_a_fixed_rotation` (mutants `s04`, `s06`) |
-| 5. positions counted from 1 | every row one late; HF and torch disagree | `test_hand_example_table` (mutant `s05`) |
-| 6. `offset` ignored | incremental decoding gives every new token position 0 | `test_offset_continues_the_table`, `test_learned_pe_adds_rows_and_gets_their_gradient` (mutants `s08`, `s10`) |
-| 7. the fixed table registered as a parameter | it trains and lands in the checkpoint | `test_sinusoidal_module_has_no_parameters` (mutant `s09`) |
-| 8. learned rows read as constants | `wpe` never learns | `test_learned_pe_adds_rows_and_gets_their_gradient` (mutant `s11`) |
-| `std` ignored by the learned table | every table starts at 0.02 | `test_learned_pe_init` (mutant `s12`) |
-| an odd width accepted | the last feature has no partner | `test_validation` (mutant `s13`) |
+| 1. sin and cos concatenated (or swapped) instead of interleaved | the shift law fails; checkpoints from other code disagree | writes `pe[:, 0::2] = sin`, `pe[:, 1::2] = cos`; see 5.2 |
+| 2. exponent $i/d$ instead of $2i/d$ | the ladder ends at $b^{-1/2}$: far positions alias | ratio `base ** (-2.0 / d)` over `d // 2` terms |
+| 3. angles in float32 | rows past a few thousand off in the 4th decimal | angles built from a float64 `arange`, cast to float32 only at the end |
+| 4. the shift turned the wrong way, or by the same angle for every pair | `shift_pe` goes back in position, or scrambles pairs | passes the per-pair vector `-k * omega` to `rotate_pairs` |
+| 5. positions counted from 1 | every row one late; HF and torch disagree | `np.arange(offset, offset + T)` starts at 0 when `offset = 0` |
+| 6. `offset` ignored | incremental decoding gives every new token position 0 | both modules slice rows `offset .. offset + T - 1` |
+| 7. the fixed table registered as a parameter | it trains and lands in the checkpoint | `self.table` is a plain ndarray |
+| 8. learned rows read as constants | `wpe` never learns | rows gathered with `F.embedding(self.weight, ...)` |
+| `std` ignored by the learned table | every table starts at 0.02 | `normal_init((max_len, d), std, r)` uses the argument |
+| an odd width accepted | the last feature has no partner | `_check_d` rejects odd or tiny `d` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -149,7 +271,7 @@ Your oracle is the formula itself: compute $\sin(p / b^{2i/d})$ and $\cos(\cdot)
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `sinusoidal_pe` | fairseq `SinusoidalPositionalEmbedding` | the half layout (all sin, then all cos) and a padding offset | `fairseq/modules/sinusoidal_positional_embedding.py` |
 | `shift_pe` | RoPE | the rotation applied inside attention, so scores depend on $p - q$ only | `L7.3`; Su et al. 2021 |

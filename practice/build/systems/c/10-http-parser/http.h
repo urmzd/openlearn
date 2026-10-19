@@ -1,6 +1,6 @@
 /* http.h - an incremental HTTP/1.1 request parser.
  *
- * Given to you. Implement http.c against it; main.c tests it.
+ * The interface. http.c implements it and main.c tests it.
  *
  * "Incremental" is the whole exercise. Bytes arrive from a socket in whatever
  * chunks the network felt like, with no relationship to message boundaries, so

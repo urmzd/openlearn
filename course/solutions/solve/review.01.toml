@@ -1,0 +1,20 @@
+# Reference answers for review.01: the worked answers the chapter explains.
+
+[q1]
+answer = "2*30*3*64*2"
+[q2.a]
+answer = "2048*16*23040"
+[q2.b]
+answer = "2048/(512/16)"
+[q3]
+answer = "4*(0.5 + 31*0.06)"
+[q4]
+answer = "5/1000*30*24*60"
+[q5]
+answer = "(144/10)/720"
+[q6]
+answer = "30*24/(144/10)"
+[q7]
+proof = "review.01/q7.md"
+[q8]
+proof = "review.01/q8.md"

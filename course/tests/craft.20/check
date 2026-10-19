@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-# ol-export: course-tree (grades against the course's reference katas, never exported)
-# Artifact check for craft.20 (DESIGN 4.6, rung R6; H15: `ol check craft.20`
-# runs this in your repo and its exit code is the verdict). The tests and why
-# each exists are in artifacts.py (`ol tests craft.20`); every Go run is its
-# own process group with a timeout, one at a time.
-command -v go >/dev/null || { echo "craft.20: go is not installed (ol doctor)" >&2; exit 5; }
-exec python3 "$(dirname "$0")/artifacts.py" "$@"

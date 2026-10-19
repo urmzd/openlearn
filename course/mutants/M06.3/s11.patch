@@ -1,8 +1,0 @@
---- a/python/tinyllm/num/rng.py
-+++ b/python/tinyllm/num/rng.py
-@@ -124,4 +124,4 @@
-         raise ValueError(f"universal_hash: need 0 <= b < p, got b={b}, p={p}")
-     if m < 1:
-         raise ValueError(f"universal_hash: need m >= 1, got m={m}")
--    return ((a * x + b) % p) % m
-+    return ((a * x + b) % m) % p

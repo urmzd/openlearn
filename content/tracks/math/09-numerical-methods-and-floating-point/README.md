@@ -69,7 +69,6 @@ Real numbers do not fit in 32 bits, so every computation is an approximation, an
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `M09.1` | [IEEE 754 anatomy, ulp, round to nearest even, and bf16 and fp16 emulation](01-ieee-754.md) | build | 2 |
@@ -81,7 +80,6 @@ Real numbers do not fit in 32 bits, so every computation is an approximation, an
 | 7 | `M09.7` | [Low-precision conversions in standalone C (optional)](07-low-precision-c-conversions.md) | side | 6 |
 | 8 | `S-M09a` | [Floating point problem set, part a: representation, rounding, cancellation](90-problem-set-a.md) | solve | 2 |
 | 9 | `S-M09b` | [Floating point problem set, part b: condition numbers, error bounds, Newton, polynomial approximation, low precision](91-problem-set-b.md) | solve | 6 |
-<!-- /ol:chapters -->
 
 ## Connections to Other Tracks
 

@@ -1,9 +1,0 @@
-id       = "chat.nonstream.greedy"
-title    = "temperature 0 output is stable across 2 calls"
-versions = ["v1", "v2"]
-tiers    = ["engine"]
-check    = "chat_greedy_stable"
-
-[params]
-prompt     = "The cat"
-max_tokens = 16

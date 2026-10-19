@@ -1,38 +1,29 @@
-<!-- ol:module L0.0 -->
 # Byte bigram: counts, logits, safetensors v0
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L0.0` · build · Python · Pass 1 · 3 to 4 h |
-| **You build** | `python/tinyllm/lm/bigram.py`: `BigramLM` (`fit_counts`, `logits`, `nll`, `sample`); `python/tinyllm/io/safetensors.py`: `save_safetensors`, `load_safetensors` (F32 only) |
+| **Module** | `L0.0` · build · Python · Pass 1 · about 2 h reading |
+| **Solution** | [`bigram.py`](../../../../course/solutions/history/L0.0/python/tinyllm/lm/bigram.py): `BigramLM` (`fit_counts`, `logits`, `nll`, `sample`); [`safetensors.py`](../../../../course/solutions/history/L0.0/python/tinyllm/io/safetensors.py): `save_safetensors`, `load_safetensors` (F32 only); CLI glue in [`entry/python/tinyllm/__main__.py`](../../../../course/solutions/entry/python/tinyllm/__main__.py). These are the Pass 1 versions; `L0.5` and `L0.6` later take the files over, and their versions live at [`python/tinyllm/lm/bigram.py`](../../../../course/solutions/python/tinyllm/lm/bigram.py) and [`python/tinyllm/io/safetensors.py`](../../../../course/solutions/python/tinyllm/io/safetensors.py). |
 | **Contract** | [`course/contracts/py/tinyllm/lm/bigram.pyi`](../../../../course/contracts/py/tinyllm/lm/bigram.pyi) · [`course/contracts/py/tinyllm/io/safetensors.pyi`](../../../../course/contracts/py/tinyllm/io/safetensors.pyi) · formats: [`safetensors.md`](../../../../course/contracts/formats/safetensors.md), [`tokenizer.md`](../../../../course/contracts/formats/tokenizer.md) · CLI verbs: [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) |
-| **Tests** | `course/tests/L0.0/` (what they check: section 4) |
 | **Needs** | reading: `M03.1` Python matmul and `lang.01` Python and NumPy |
-| **Used by** | `L10.0` your Rust engine serves this checkpoint · later: `L0.5` retrains it with autograd, `L0.6` adds every dtype |
-| **Milestone** | `MS-P1` (the tracer: every layer is yours and runs end to end) |
+| **Used by** | `L10.0` the Rust engine serves this checkpoint, which completes the tracer: every layer of the system runs end to end on this model · later: `L0.5` retrains it with autograd, `L0.6` adds every dtype |
 | **Optional depth** | Jurafsky and Martin, *Speech and Language Processing* (3rd ed. draft), ch. 3 "N-gram Language Models" |
 
 ## Key Takeaways
 
-- A bigram language model is one table: row $i$ is the distribution of the next byte after byte $i$, and add-alpha smoothing makes every row a proper distribution with no zeros (`test_rows_sum_to_one`).
-- The negative log-likelihood of the count model is a closed form in the counts, and it is the number every later model in this course must beat (`test_hand_example_nll`, `test_nll_matches_counts`).
-- Indexing the table by token ids picks its rows exactly, so NumPy returns the model's logits bit for bit (`test_logits_are_weight_rows`).
-- Sampling is temperature, softmax, one uniform draw, and an inverse CDF; a seed makes it repeatable (`test_sample_is_seeded`, `test_sample_frequencies_match_model`).
-- Your safetensors file is byte-identical to the reference library's, so your Rust engine (and anyone else's reader) loads it (`test_matches_library_bytes`).
+- A bigram language model is one table: row $i$ is the distribution of the next byte after byte $i$, and add-alpha smoothing makes every row a proper distribution with no zeros.
+- The negative log-likelihood of the count model is a closed form in the counts, and it is the number every later model in this course must beat.
+- Indexing the table by token ids picks its rows exactly, so NumPy returns the model's logits bit for bit.
+- Sampling is temperature, softmax, one uniform draw, and an inverse CDF; a seed makes it repeatable.
+- The solution's safetensors file is byte-identical to the reference library's, so the Rust engine (and anyone else's reader) loads it.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L0.0              # stubs bigram.py and safetensors.py into your repo
-ol tests L0.0              # read the test catalog first: rung R0, you write no tests here
-ol check L0.0              # exit code is the verdict
-ol check L0.0 --ref-deps   # only if a Python prerequisite is not passing yet
-ol diff  L0.0              # after passing: your code against the reference
-```
+Sections 1 to 3 build the idea from first principles and work it by hand on a seven-letter text. Section 4 fixes the interface and lists what a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one; try to predict each step before reading it. Sections 6 and 7 cover the mistakes the solution avoids and where the code goes next.
 
-You also write the first verbs of your own CLI, `python/tinyllm/__main__.py` (it is yours: the course ships no CLI). [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) fixes what `MS-P1` will run:
+**The CLI around the library.** The two library units are wrapped by the system's own `tinyllm` CLI, [`entry/python/tinyllm/__main__.py`](../../../../course/solutions/entry/python/tinyllm/__main__.py). [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) fixes its Pass 1 verbs:
 
 | Verb | What it does with this module |
 |---|---|
@@ -42,7 +33,7 @@ You also write the first verbs of your own CLI, `python/tinyllm/__main__.py` (it
 
 `config.json` for the tracer is exactly `{"tl_arch": "bigram", "tl_tokenizer": "bytes", "vocab_size": 256, "tl_format": 1}`.
 
-**The Python project.** `python/` is a uv project that is not an installed package, and the CLI runs as a script from the repo root. Three files set it up (`ol start` writes none of them; they are yours):
+**The Python project.** `python/` is a uv project that is not an installed package, and the CLI runs as a script from the repo root. The Pass 1 setup is three small files (the solution's [`pyproject.toml`](../../../../course/solutions/entry/python/pyproject.toml) has grown later dependencies):
 
 ```toml
 # python/pyproject.toml
@@ -67,25 +58,18 @@ if __package__ in (None, ""):  # run as a script: put python/ on the path
 from tinyllm.lm.bigram import BigramLM  # noqa: E402
 ```
 
-Then declare the role in `system.toml` and try it:
-
-```toml
-[entry]
-tinyllm = ["uv", "run", "--project", "python", "python", "python/tinyllm/__main__.py"]
-```
+Using it:
 
 ```bash
 uv run --project python python python/tinyllm/__main__.py train bigram --data some.txt --out artifacts/bigram
 uv run --project python python python/tinyllm/__main__.py generate --model artifacts/bigram --prompt Once --greedy
 ```
 
-`ol check L0.0` grades the two library units only; the CLI is an entry point (D16), which `MS-P1` runs.
-
 ---
 
 ## 1. Why now
 
-The Rust engine you write next (`L10.0`) needs a model directory to serve, the Go gateway (`gw.00`) needs that engine behind it, and the cluster (`dep.00`) needs both. Today `{tinyllm} train bigram` does not exist and there is no checkpoint on disk, so every layer above Python has nothing to load. This module builds the smallest real language model, computes logits with a NumPy row gather, and writes the file format every later model uses. From here on, the tracer bullet has a payload.
+The Rust engine of the next module (`L10.0`) needs a model directory to serve, the Go gateway (`gw.00`) needs that engine behind it, and the cluster (`dep.00`) needs both. Without this module `{tinyllm} train bigram` does not exist and there is no checkpoint on disk, so every layer above Python has nothing to load. This module builds the smallest real language model, computes logits with a NumPy row gather, and writes the file format every later model uses. From here on, the tracer bullet has a payload.
 
 ## 2. Principles
 
@@ -124,13 +108,13 @@ Each row still sums to one, because $\sum_j (C_{ij} + \alpha) = R_i + \alpha V$:
 
 $$\mathrm{NLL} = -\frac{1}{T-1} \sum_{t=1}^{T-1} \ln P(x_{t+1} \mid x_t).$$
 
-There are $T - 1$ predictions, because the first token has no context. The unit is **nats per token** (natural log). Lower is better; a model that knows nothing (uniform over 256 bytes) scores $\ln 256 \approx 5.545$. For the count model the sum regroups by pair: $\mathrm{NLL} = -\frac{1}{T-1} \sum_{i,j} C_{ij} \ln P(j \mid i)$, a closed form your autograd bigram in `L0.5` must reach by gradient descent.
+There are $T - 1$ predictions, because the first token has no context. The unit is **nats per token** (natural log). Lower is better; a model that knows nothing (uniform over 256 bytes) scores $\ln 256 \approx 5.545$. For the count model the sum regroups by pair: $\mathrm{NLL} = -\frac{1}{T-1} \sum_{i,j} C_{ij} \ln P(j \mid i)$, a closed form the autograd bigram in `L0.5` must reach by gradient descent.
 
 **Logits by row gather.** A one-hot vector $e_i$ has a 1 at position $i$ and 0 elsewhere. Multiplying it by the table selects row $i$: $(e_i W)_j = \sum_k [k = i] W_{kj} = W_{ij}$. NumPy expresses the same operation directly as `weight[ids]`, producing the $T \times V$ logits without constructing a $T \times V$ one-hot matrix or doing $T \cdot V \cdot V$ multiply-adds. `L10.0` computes the same row selection in Rust.
 
 **Temperature.** To sample, divide the logits by $\tau$ before softmax: $p = \mathrm{softmax}(z / \tau)$. With log-probabilities $z = \ln q$ this gives $p_j \propto q_j^{1/\tau}$. At $\tau = 1$ you sample the model as is; $\tau < 1$ sharpens it (at $\tau = 0.5$, $p \propto q^2$); $\tau > 1$ flattens it. $\tau = 0$ is defined as **greedy**: take the largest logit, and on a tie the lowest id (decision D11, so every implementation agrees).
 
-**Sampling by inverse CDF.** To draw $j$ with probability $p_j$, build the running sum $F_j = p_0 + \dots + p_j$ (so $F_{V-1} = 1$), draw one uniform $u \in [0, 1)$, and return the smallest $j$ with $F_j > u$. The interval of $u$ values that lands on $j$ is $[F_{j-1}, F_j)$, whose length is exactly $p_j$. One draw per token, from a generator you created once with a seed, makes the same seed give the same text. The tracer may use `numpy.random.default_rng(seed)`; `L0.5` switches to your own PCG32 (`M06.3`) so Python and Rust agree.
+**Sampling by inverse CDF.** To draw $j$ with probability $p_j$, build the running sum $F_j = p_0 + \dots + p_j$ (so $F_{V-1} = 1$), draw one uniform $u \in [0, 1)$, and return the smallest $j$ with $F_j > u$. The interval of $u$ values that lands on $j$ is $[F_{j-1}, F_j)$, whose length is exactly $p_j$. One draw per token, from a generator created once with a seed, makes the same seed give the same text. The tracer may use `numpy.random.default_rng(seed)`; `L0.5` switches to the course's own PCG32 (`M06.3`) so Python and Rust agree.
 
 **The file.** A safetensors file is an 8-byte little-endian length $N$, then $N$ bytes of JSON describing each tensor (dtype, shape, byte offsets), padded with spaces to a multiple of 8, then the raw tensor bytes back to back, little-endian and row-major. The full rules, including the order a canonical writer uses so its bytes match the reference library, are in [`safetensors.md`](../../../../course/contracts/formats/safetensors.md). The tracer checkpoint holds one tensor, `bigram.weight`, F32 `[256, 256]`.
 
@@ -181,7 +165,7 @@ Sum: $3 \ln 2 + 2 \ln 2.5 + \ln 3 = 2.0794 + 1.8326 + 1.0986 = 5.0106$. Divided 
 
 **The file.** The format page works out a 120-byte file by hand: one tensor `w = [[1, 2], [3, 4]]` with metadata `{"format": "tinyllm"}`. Its header is 93 bytes of JSON, padded with 3 spaces to $N = 96$; the file is $8 + 96 + 16 = 120$ bytes, ending in `00 00 80 3f 00 00 00 40 00 00 40 40 00 00 80 40` (1.0, 2.0, 3.0, 4.0 as little-endian float32).
 
-These numbers are the first cases in section 4: `test_hand_example_probabilities`, `test_hand_example_nll`, `test_greedy_ties_go_to_lowest_id`, and `test_worked_example_bytes`.
+These numbers are the first cases in section 4 (hand-example probabilities and NLL, greedy ties, worked-example bytes), and section 5 traces them through the code.
 
 ## 4. The interface
 
@@ -202,75 +186,366 @@ def save_safetensors(path: str, tensors: dict[str, NDArray], meta: dict[str, str
 def load_safetensors(path: str) -> tuple[dict[str, NDArray], dict[str, str]]
 ```
 
-The contracts carry the exact rules: which errors are `ValueError`, that `sample` returns only the new ids, and that an empty `meta` omits `__metadata__`. For input ids $i_0, \dots, i_{T-1}$, `logits` is the row gather `weight[ids]`, with output shape $T 	imes V$.
+The contracts carry the exact rules: which errors are `ValueError`, that `sample` returns only the new ids, and that an empty `meta` omits `__metadata__`. For input ids $i_0, \dots, i_{T-1}$, `logits` is the row gather `weight[ids]`, with output shape $T \times V$.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_probabilities` | unit | the section 3 table, from `weight` and from `logits` | you and the test agree on the definition |
-| `test_hand_example_nll` | unit | $\mathrm{NLL} = 0.8351$ on `abbacab` | the number `train bigram` prints |
-| `test_counts_direction` | boundary | text `ab`: $P(b \mid a) = 2/3$, row `b` uniform | a transposed table predicts the past |
-| `test_rows_sum_to_one` | property | every row of a 256-byte model sums to 1, unseen bytes included | `L10.0` samples from any row |
-| `test_nll_matches_counts` | differential | NLL equals the closed form recomputed by loops | the target `L0.5` must reach |
-| `test_nll_normalizes_logits` | unit | rows `[0, 0]` and `[5, 5]` give $\ln 2$ | `L0.5`'s trained logits are not normalized |
-| `test_alpha_must_be_positive` | boundary | $\alpha \le 0$ is a `ValueError` | no `-inf` or `nan` in a checkpoint |
-| `test_rejects_out_of_range_ids` | boundary | ids `-1` and `V` are a `ValueError` | numpy would wrap `-1` silently |
-| `test_rejects_non_integer_or_2d_ids` | boundary | float ids and a 2-D batch are a `ValueError` | `2.7` is not a byte |
-| `test_weight_is_checked_not_converted` | boundary | a float64, non-square, 1-D, `inf`, or `nan` weight is a `ValueError`; `vocab_size` before a table is a `RuntimeError` | a bad checkpoint fails at load, not inside the matmul |
-| `test_logits_are_weight_rows` | differential | `logits(ids) == weight[ids]` bit for bit, float32 `[T, V]` | the forward pass `L10.0` reproduces |
-| `test_greedy_ties_go_to_lowest_id` | unit | greedy from `a` is `[1, 0, 1, 0]` | the tie rule every engine shares (D11) |
-| `test_temperature_zero_is_greedy` | unit | $\tau = 0$ ignores the seed | `generate --greedy` |
-| `test_sample_returns_only_new_ids` | unit | `n` new ids, no prefix; `n = 0` is `[]` | `generate` prints generated ids only |
-| `test_sample_is_seeded` | property | same seed, same ids; seeds differ | milestones replay a run |
-| `test_sample_frequencies_match_model` | statistical | 6000 transitions fit the table (chi-square, $p > 10^{-3}$) | the sampler draws the model, not something near it |
-| `test_temperature_sharpens` | statistical | at $\tau = 0.5$ transitions fit $q^2$ renormalized | temperature divides |
-| `test_sample_rejects_bad_args` | boundary | empty prefix, $\tau < 0$, $n < 0$ are `ValueError` | bytes have no start token |
-| `test_worked_example_bytes` | unit | the 120-byte file of section 3 | header length, padding, byte order |
-| `test_matches_library_bytes` | golden | six files byte-identical to the pinned `safetensors` library | any reader, including your engine, loads your checkpoint |
-| `test_bytes_are_little_endian_row_major` | boundary | a transposed view and a `>f4` array write row-major little-endian bytes | arrays in memory are not always in file order |
-| `test_save_rejects_non_f32` | boundary | float64, int64, and bool arrays are not silently reinterpreted; L0.6-supported dtypes stay valid | unsupported arrays fail before writing |
-| `test_load_reads_library_files` | golden | every library file loads to the exact inputs | `generate` loads the checkpoint |
-| `test_roundtrip` | property | `load(save(x)) == x`, writable float32 | checkpoints survive a round trip |
-| `test_load_rejects_bad_files` | boundary | gap, trailing bytes, wrong element size, short file, duplicate key, unknown F64, malformed supported F16, a JSON array header, a non-string `__metadata__` value | a reader never trusts the header |
-| `test_load_caps_the_header_length` | boundary | an otherwise valid file with $N = 100{,}000{,}001$ | a corrupt length cannot make the reader parse gigabytes |
+| hand-example probabilities | unit | the section 3 table, from `weight` and from `logits` | the code and the math agree on the definition |
+| hand-example NLL | unit | $\mathrm{NLL} = 0.8351$ on `abbacab` | the number `train bigram` prints |
+| count direction | boundary | text `ab`: $P(b \mid a) = 2/3$, row `b` uniform | a transposed table predicts the past |
+| rows sum to one | property | every row of a 256-byte model sums to 1, unseen bytes included | `L10.0` samples from any row |
+| NLL matches the counts | differential | NLL equals the closed form recomputed by loops | the target `L0.5` must reach |
+| NLL normalizes logits | unit | rows `[0, 0]` and `[5, 5]` give $\ln 2$ | `L0.5`'s trained logits are not normalized |
+| alpha must be positive | boundary | $\alpha \le 0$ is a `ValueError` | no `-inf` or `nan` in a checkpoint |
+| out-of-range ids | boundary | ids `-1` and `V` are a `ValueError` | numpy would wrap `-1` silently |
+| non-integer or 2-D ids | boundary | float ids and a 2-D batch are a `ValueError` | `2.7` is not a byte |
+| weight is checked, not converted | boundary | a float64, non-square, 1-D, `inf`, or `nan` weight is a `ValueError`; `vocab_size` before a table is a `RuntimeError` | a bad checkpoint fails at load, not inside the forward pass |
+| logits are weight rows | differential | `logits(ids) == weight[ids]` bit for bit, float32 `[T, V]` | the forward pass `L10.0` reproduces |
+| greedy ties go to the lowest id | unit | greedy from `a` is `[1, 0, 1, 0]` | the tie rule every engine shares (D11) |
+| temperature zero is greedy | unit | $\tau = 0$ ignores the seed | `generate --greedy` |
+| sample returns only new ids | unit | `n` new ids, no prefix; `n = 0` is `[]` | `generate` prints generated ids only |
+| sampling is seeded | property | same seed, same ids; seeds differ | a run can be replayed exactly |
+| sample frequencies match the model | statistical | 6000 transitions fit the table (chi-square, $p > 10^{-3}$) | the sampler draws the model, not something near it |
+| temperature sharpens | statistical | at $\tau = 0.5$ transitions fit $q^2$ renormalized | temperature divides |
+| bad sample arguments | boundary | empty prefix, $\tau < 0$, $n < 0$ are `ValueError` | bytes have no start token |
+| worked-example bytes | unit | the 120-byte file of section 3 | header length, padding, byte order |
+| matches the library's bytes | golden | six files byte-identical to the pinned `safetensors` library | any reader, including the Rust engine, loads the checkpoint |
+| little-endian, row-major bytes | boundary | a transposed view and a `>f4` array write row-major little-endian bytes | arrays in memory are not always in file order |
+| save rejects non-F32 | boundary | float64, int64, and bool arrays are rejected, not silently reinterpreted | unsupported arrays fail before writing |
+| load reads library files | golden | every library file loads to the exact inputs | `generate` loads the checkpoint |
+| round trip | property | `load(save(x)) == x`, writable float32 | checkpoints survive a round trip |
+| load rejects bad files | boundary | gap, trailing bytes, wrong element size, short file, duplicate key, unknown dtype, a JSON array header, a non-string `__metadata__` value | a reader never trusts the header |
+| load caps the header length | boundary | an otherwise valid file with $N = 100{,}000{,}001$ | a corrupt length cannot make the reader parse gigabytes |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **The model is a table, and the row is the context.** The bigram assumption says the next-token distribution depends only on the current token, so there are exactly $V$ distributions to store, one per context. Storing them as the rows of a $V \times V$ matrix means "the distribution after $i$" is `weight[i]`, a contiguous row. Everything downstream (the gather in `logits`, the Rust engine's row lookup) follows from putting the context on the row axis.
+2. **Fitting is counting.** The maximum-likelihood table is the normalized count matrix, so `fit_counts` needs no optimizer: count each pair $(x_t, x_{t+1})$ into $C_{x_t, x_{t+1}}$, which is a scatter-add at index pairs `(ids[:-1], ids[1:])`.
+3. **Smoothing fixes the zeros, and the denominator falls out of a row sum.** Add $\alpha$ to every cell and divide by the row total. Summing the smoothed row gives $R_i + \alpha V$ automatically, so the code never writes the denominator by hand and cannot get it wrong. For `a` in the worked example, $(0+1) + (2+1) + (1+1) = 6 = 3 + 1 \cdot 3$.
+4. **Store logits in float32, compute in float64.** The checkpoint format and the engine use F32, but counts can exceed $2^{24}$ (where float32 stops representing every integer) and logs of small probabilities lose digits. So the arithmetic runs in float64 and only the final $\ln P$ is cast to float32.
+5. **The forward pass is a gather.** Since $e_i W = W_i$, the logits for a sequence are `weight[ids]`: $O(TV)$ copies instead of an $O(TV^2)$ matmul with a one-hot matrix.
+6. **NLL must not assume normalized rows.** The count model's rows are already log-probabilities, but `L0.5` will store trained logits that are not. So `nll` applies a stable log-softmax to each row before reading off $-\ln P(x_{t+1} \mid x_t)$. On the count model this changes nothing; on `[5, 5]` it turns $-5$ into the correct $\ln 2$.
+7. **Sampling is one generator, one draw per token, and an inverse CDF.** Create the generator once from the seed, so the sequence of uniforms $u_1, u_2, \dots$ is fixed by the seed and each step consumes a fresh one. Divide by $\tau$, softmax, cumulative-sum, and return the smallest $j$ with $F_j > u$. Greedy ($\tau = 0$) is a separate branch, because dividing by zero is undefined and greedy must ignore the seed.
+8. **Validate at the boundary.** Every id passes through one helper that rejects non-integers, wrong ranks, and values outside $[0, V)$, because NumPy would otherwise wrap `-1` to the last row silently. Every weight is checked at construction, so a bad checkpoint fails when it loads.
+9. **The file is canonical, and the reader trusts nothing.** The writer chooses the one byte layout the reference library produces (sorted names, compact JSON, space padding, little-endian row-major data). The reader checks each rule of the format in order before it touches tensor bytes.
+
+### The code, annotated
+
+**Id validation.** One helper guards every entry point, so no public method can index the table with a bad id.
+
+```python
+def _as_ids(ids: ArrayLike, vocab_size: int) -> NDArray[np.int64]:
+    """ids as a 1-D int64 array, every value checked against [0, vocab_size)."""
+    a = np.asarray(ids)
+    if a.ndim != 1:                       # a 2-D batch is not a sequence
+        raise ValueError(f"ids must be 1-D, got shape {a.shape}")
+    if a.size == 0:                       # np.asarray([]) is float64; an empty
+        return a.astype(np.int64)         # sequence is still a valid sequence
+    if not np.issubdtype(a.dtype, np.integer):   # 2.7 is not a byte
+        raise ValueError(f"ids must be integers, got dtype {a.dtype}")
+    a = a.astype(np.int64)
+    lo, hi = int(a.min()), int(a.max())   # two reductions check every value
+    if lo < 0 or hi >= vocab_size:        # -1 would silently mean "last row"
+        raise ValueError(f"ids must lie in [0, {vocab_size}), got min {lo} and max {hi}")
+    return a
+```
+
+The empty case comes before the dtype check because `np.asarray([])` has dtype float64, and an empty prefix list must not be reported as "not integers".
+
+**Construction.** A weight passed in (from a checkpoint) is checked, never converted.
+
+```python
+def __init__(self, weight: ArrayLike | None = None) -> None:
+    self.weight = None
+    if weight is not None:
+        w = np.asarray(weight)
+        if w.dtype != np.float32:         # converting float64 would hide a wrong writer
+            raise ValueError(f"weight must be float32, got {w.dtype}")
+        if w.ndim != 2 or w.shape[0] != w.shape[1] or w.shape[0] == 0:
+            raise ValueError(f"weight must be a non-empty square matrix, got shape {w.shape}")
+        if not np.isfinite(w).all():      # -inf from alpha = 0, or nan, poisons sampling
+            raise ValueError("weight must be finite (weights must be finite)")
+        self.weight = np.ascontiguousarray(w)   # rows are contiguous for the gather
+```
+
+**Fitting.** Steps 2 to 4 in five lines.
+
+```python
+def fit_counts(self, ids: ArrayLike, vocab_size: int, alpha: float = 1.0) -> None:
+    if not alpha > 0:                     # also rejects nan: nan > 0 is False
+        raise ValueError(f"alpha must be > 0 (alpha = 0 gives log 0 = -inf for unseen pairs), got {alpha}")
+    if vocab_size < 1:
+        raise ValueError(f"vocab_size must be >= 1, got {vocab_size}")
+    a = _as_ids(ids, vocab_size)
+    counts = np.zeros((vocab_size, vocab_size), dtype=np.float64)
+    # Row = the token we are at, column = the token that follows it.
+    # np.add.at is unbuffered: a pair that occurs twice is counted twice.
+    np.add.at(counts, (a[:-1], a[1:]), 1.0)
+    smoothed = counts + alpha
+    # The row sum is R_i + alpha * V, so every row sums to exactly 1.
+    probs = smoothed / smoothed.sum(axis=1, keepdims=True)
+    self.weight = np.log(probs).astype(np.float32)   # logits, stored as F32
+```
+
+`np.add.at` is the essential call. The tempting `counts[a[:-1], a[1:]] += 1` is buffered: NumPy reads all the old values, adds one, and writes back, so a pair that appears twice (`ab` in the worked example) ends up counted once. The guard is written `not alpha > 0` rather than `alpha <= 0` so that a `nan` alpha is rejected as well.
+
+**Logits and NLL.**
+
+```python
+def logits(self, ids: ArrayLike) -> NDArray:
+    v = self.vocab_size                   # RuntimeError if there is no table yet
+    a = _as_ids(ids, v)
+    return self.weight[a]                 # row gather: [T, V] float32, bit-exact
+
+def nll(self, ids: ArrayLike) -> float:
+    a = _as_ids(ids, self.vocab_size)
+    if a.size < 2:                        # T - 1 = 0 predictions: the mean is undefined
+        raise ValueError("nll needs at least two ids: one context and one prediction")
+    z = self.logits(a[:-1]).astype(np.float64)    # contexts only: x_1 .. x_{T-1}
+    z = z - z.max(axis=1, keepdims=True)          # stable: largest exponent is e^0
+    logp = z - np.log(np.exp(z).sum(axis=1, keepdims=True))   # log-softmax per row
+    # Score the token that follows each context, then average over T - 1.
+    return float(-logp[np.arange(a.size - 1), a[1:]].mean())
+```
+
+The rows come from `a[:-1]` (contexts) and the scored columns from `a[1:]` (targets). Swapping either one gives a number that no longer depends on what follows each token. On the worked example the six selected entries are exactly the six $-\ln P$ values of section 3, and their mean is $0.8351$.
+
+**Sampling.**
+
+```python
+def sample(self, prefix: list[int], n: int, temperature: float, seed: int) -> list[int]:
+    v = self.vocab_size
+    if len(prefix) == 0:                  # bytes have no start token to condition on
+        raise ValueError("prefix must hold at least one id: the byte tokenizer has no start token")
+    if n < 0:
+        raise ValueError(f"n must be >= 0, got {n}")
+    if not temperature >= 0:              # rejects negatives and nan
+        raise ValueError(f"temperature must be >= 0, got {temperature}")
+    cur = int(_as_ids(prefix, v)[-1])     # a bigram only needs the last id
+    rng = np.random.default_rng(seed)     # ONE generator for the whole call
+    out: list[int] = []
+    for _ in range(n):
+        row = self.logits([cur])[0].astype(np.float64)
+        if temperature == 0:
+            nxt = int(np.argmax(row))     # first maximum: ties go to the lowest id
+        else:
+            z = row / temperature         # divide: tau < 1 sharpens
+            p = np.exp(z - z.max())
+            cdf = np.cumsum(p / p.sum())
+            u = rng.random()              # a fresh uniform in [0, 1) per token
+            # smallest j with F_j > u; the min() guards a cdf that ends at 0.9999999
+            nxt = min(int(np.searchsorted(cdf, u, side="right")), v - 1)
+        out.append(nxt)
+        cur = nxt
+    return out                            # new ids only, never the prefix
+```
+
+`searchsorted(cdf, u, side="right")` returns the first index whose value is strictly greater than `u`, which is the definition in section 2. With `side="left"`, a $u$ that lands exactly on a boundary $F_j$ would pick $j$ instead of $j + 1$. The clamp matters because floating-point cumulative sums can end slightly below 1; a $u$ above the last entry would otherwise return $V$, an id that does not exist. On row `a`, $F = (0.1667, 0.6667, 1)$, so $u = 0.50$ gives index 1, `b`, as in section 3.
+
+Full solution: [`bigram.py`](../../../../course/solutions/history/L0.0/python/tinyllm/lm/bigram.py).
+
+**Writing safetensors.**
+
+```python
+def save_safetensors(path: str, tensors: dict[str, NDArray], meta: dict[str, str]) -> None:
+    for k, v in meta.items():
+        if not isinstance(k, str) or not isinstance(v, str):
+            raise ValueError(f"metadata must map str to str, got {k!r}: {v!r}")
+    header: dict = {}
+    if meta:                              # empty meta: no __metadata__ key at all, not {}
+        header["__metadata__"] = {k: meta[k] for k in sorted(meta, key=lambda s: s.encode("utf-8"))}
+    blobs: list[bytes] = []
+    offset = 0
+    # One dtype in v0, so the canonical order is simply by name, as UTF-8 bytes.
+    for name in sorted(tensors, key=lambda s: s.encode("utf-8")):
+        if not isinstance(name, str) or name == "__metadata__":
+            raise ValueError(f"bad tensor name {name!r}")
+        arr = np.asarray(tensors[name])
+        if arr.dtype.kind != "f" or arr.dtype.itemsize != 4:   # F32 only, either byte order
+            raise ValueError(f"tensor {name!r}: dtype {arr.dtype} is not F32 (contract v0 writes F32 only)")
+        # Little-endian, row-major, whatever the array's byte order or memory layout.
+        data = arr.astype("<f4", copy=False).tobytes(order="C")
+        header[name] = {"dtype": "F32", "shape": [int(d) for d in arr.shape],
+                        "data_offsets": [offset, offset + len(data)]}
+        offset += len(data)               # tensors are packed back to back, no gaps
+        blobs.append(data)
+    # Compact separators and raw UTF-8 (no \u escapes): the library's exact bytes.
+    text = json.dumps(header, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    text += b" " * (-len(text) % 8)       # pad with spaces; 0 bytes when already aligned
+    with open(path, "wb") as f:
+        f.write(len(text).to_bytes(8, "little"))
+        f.write(text)
+        for data in blobs:
+            f.write(data)
+```
+
+Every canonical choice is there because a byte-for-byte match is the strongest interoperability guarantee: if the bytes are the library's, every reader that accepts the library's files accepts these. `-len(text) % 8` is the number of bytes up to the next multiple of 8, and it is 0 when the header is already aligned (the worked example: $-93 \bmod 8 = 3$). `astype("<f4", copy=False)` fixes a big-endian array, and `tobytes(order="C")` writes a transposed view in row order, not memory order.
+
+**Reading safetensors.** The reader enforces the format's rules in the order they become checkable.
+
+```python
+def load_safetensors(path: str) -> tuple[dict[str, NDArray], dict[str, str]]:
+    with open(path, "rb") as f:
+        buf = f.read()
+    # Rule 1: the length prefix and the header fit in the file.
+    if len(buf) < 8:
+        raise ValueError(f"{path}: {len(buf)} bytes is too short for the 8-byte header length")
+    n = int.from_bytes(buf[:8], "little")
+    if n > MAX_HEADER or 8 + n > len(buf):   # MAX_HEADER = 100_000_000: no gigabyte parses
+        raise ValueError(f"{path}: header length {n} does not fit in a {len(buf)}-byte file")
+    # Rule 2: UTF-8 JSON object, no duplicate keys.
+    try:
+        header = json.loads(buf[8:8 + n].decode("utf-8"), object_pairs_hook=_no_duplicates)
+    except UnicodeDecodeError as e:
+        raise ValueError(f"{path}: header is not UTF-8: {e}") from None
+    except json.JSONDecodeError as e:
+        raise ValueError(f"{path}: header is not JSON: {e}") from None
+    if not isinstance(header, dict):
+        raise ValueError(f"{path}: header must be a JSON object")
+    # Rule 3: metadata maps strings to strings.
+    meta = header.pop("__metadata__", {})
+    # ...
+    # Rule 4: known dtype (v0: F32 only), non-negative integer dims, sizes agree.
+    entries = []
+    for name, e in header.items():
+        # ... exactly the keys dtype, shape, data_offsets; dtype == "F32";
+        # ... shape a list of ints >= 0; offsets two ints with 0 <= begin <= end
+        if offs[1] - offs[0] != math.prod(shape) * 4:     # 4 bytes per F32 element
+            raise ValueError(f"{path}: tensor {name!r}: {offs[1] - offs[0]} bytes for shape {shape}")
+        entries.append((offs[0], offs[1], name, shape))
+    # Rule 5: sorted by begin, the tensors tile the data buffer exactly.
+    entries.sort()
+    pos = 0
+    for begin, end, name, _ in entries:
+        if begin != pos:                  # a gap or an overlap
+            raise ValueError(f"{path}: tensor {name!r} begins at {begin}, expected {pos} (gap or overlap)")
+        pos = end
+    if 8 + n + pos != len(buf):           # trailing bytes are an error too
+        raise ValueError(f"{path}: the data buffer holds {len(buf) - 8 - n} bytes, the tensors cover {pos}")
+    base = 8 + n
+    tensors = {}
+    for begin, end, name, shape in entries:
+        arr = np.frombuffer(buf, dtype="<f4", count=(end - begin) // 4, offset=base + begin)
+        # astype copies (frombuffer views are read-only) and gives native float32;
+        # reshape keeps a scalar's shape [] as ()
+        tensors[name] = arr.astype(np.float32).reshape(shape)
+    return tensors, dict(meta)
+```
+
+`_no_duplicates` is a `json` object hook that raises on a repeated key, because Python's default is last-one-wins and two readers could then disagree about the same file. `type(d) is int` (in the elided shape check) rejects `true`, which `isinstance(True, int)` would accept.
+
+Full solution: [`safetensors.py`](../../../../course/solutions/history/L0.0/python/tinyllm/io/safetensors.py).
+
+**The CLI verb.** `train bigram` is glue, and it shows the whole pipeline in one place:
+
+```python
+ids = np.frombuffer(Path(a.data).read_bytes(), dtype=np.uint8).astype(np.int64)  # bytes are ids
+if ids.size < 2:
+    raise ValueError(f"{a.data}: need at least two bytes to count a bigram")
+model = BigramLM()
+model.fit_counts(ids, VOCAB, alpha=a.alpha)
+# ... mkdir
+save_safetensors(
+    str(out / "model.safetensors"),
+    {TENSOR: np.asarray(model.weight, dtype=np.float32)},   # TENSOR = "bigram.weight"
+    {"format": "tinyllm"},
+)
+(out / "config.json").write_text(json.dumps(CONFIG) + "\n")
+# ...
+return {"out": str(out), "tokens": int(ids.size), "nll": model.nll(ids)}
+```
+
+Full file: [`entry/python/tinyllm/__main__.py`](../../../../course/solutions/entry/python/tinyllm/__main__.py).
+
+### Why this solution
+
+- **Cost.** `fit_counts` is $O(T + V^2)$ time and $O(V^2)$ memory (65,536 cells for bytes). `logits` is $O(TV)$, a copy of $T$ rows. `nll` is $O(TV)$. `sample` is $O(nV)$: each step does a softmax and a cumulative sum over one row. The checkpoint is $8 + N + 4V^2 \approx 262$ KB.
+- **Counting over gradient descent.** The count table is the exact maximum-likelihood solution, computed in one pass. Gradient descent (which `L0.5` uses on purpose, to test autograd) reaches the same NLL only approximately and needs a learning rate and many steps.
+- **A gather over a one-hot matmul.** The matmul is the textbook form, and it is how the math reads, but it allocates a $T \times V$ matrix and does $TV^2$ multiply-adds to copy $T$ rows. The gather is exact, and it is what production engines call an embedding lookup.
+- **Inverse CDF over `rng.choice`.** `rng.choice(V, p=p)` would also sample correctly, but its internal algorithm is NumPy's to change, and the Rust engine must reproduce the solution draw for draw once `L0.5` moves to PCG32. An explicit "one uniform, smallest $j$ with $F_j > u$" rule is portable to any language.
+- **A strict, canonical file over "whatever `json.dumps` gives".** A looser writer would produce files the reference library still reads, but byte-identity is what lets a hash or a golden file check the checkpoint. A strict reader costs a few comparisons and turns a corrupt download into an error message instead of a model that loads garbage.
+- **Tradeoffs accepted.** v0 reads the whole file into memory and copies each tensor; memory-mapping and every other dtype are deferred to `L0.6`. The sampler uses NumPy's generator, which only Python can reproduce; `L0.5` replaces it with PCG32.
+
+### Explain it back
+
+1. Why is the smoothing denominator $R_i + \alpha V$ and not $R_i + \alpha$, and where does the code compute it?
+
+   <details><summary>Answer</summary>
+
+   Smoothing adds $\alpha$ to each of the $V$ cells of a row, so the row total grows by $\alpha V$; dividing by $R_i + \alpha$ would leave rows summing to more than 1. The code never writes the formula: `smoothed.sum(axis=1, keepdims=True)` sums the already-smoothed row, which is $R_i + \alpha V$ by construction.
+
+   </details>
+
+2. What goes wrong if `fit_counts` uses `counts[a[:-1], a[1:]] += 1` instead of `np.add.at`?
+
+   <details><summary>Answer</summary>
+
+   Fancy-index assignment is buffered: every index pair reads the original value, adds one, and writes back, so a pair that occurs $k$ times is counted once. In `abbacab` the pair `ab` occurs twice, so $C_{ab}$ would come out as 1 instead of 2 and the hand table would be wrong. `np.add.at` applies each addition in turn.
+
+   </details>
+
+3. The count model's rows are already log-probabilities. Why does `nll` apply log-softmax anyway?
+
+   <details><summary>Answer</summary>
+
+   Because the interface is "a table of logits", not "a table of log-probabilities". `L0.5` stores trained logits whose rows do not sum to 1 after `exp`; reading them directly as $\ln P$ would give a wrong NLL. Normalizing costs $O(TV)$ and is a no-op (up to rounding) on the count model, so it is always correct.
+
+   </details>
+
+4. What breaks if the sampler creates `default_rng(seed)` inside the loop instead of once?
+
+   <details><summary>Answer</summary>
+
+   The output is still repeatable, but every step draws the same first uniform $u$. Every token is then the same quantile of its row, so the samples no longer follow the model's distribution: a chi-square test over many transitions fails even though each individual draw looks plausible.
+
+   </details>
+
+5. Why does the writer sort names by their UTF-8 bytes, and pad with spaces rather than zeros?
+
+   <details><summary>Answer</summary>
+
+   Both choices reproduce the reference library's bytes exactly ([`safetensors.md`](../../../../course/contracts/formats/safetensors.md) gives the canonical rules). For a Python `str`, UTF-8 byte order happens to equal code-point order, but stating the rule in bytes makes it unambiguous across languages: a UTF-16 based sort (Java, JavaScript) orders some characters above U+FFFF differently. Spaces keep the header valid JSON (trailing whitespace is allowed), while zero bytes are not valid JSON and a strict parser rejects them.
+
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. no smoothing ($\alpha = 0$) | `-inf` logits for unseen pairs; a row of `nan` for a byte never seen as a context; `0 * -inf = nan` inside the matmul | `test_alpha_must_be_positive` (mutant `m01`) |
-| 2. counting `C[next, cur]` | the model predicts the previous byte; the hand table comes out transposed | `test_counts_direction` (mutant `s02`) |
-| 3. trusting ids | `-1` silently counts into the last row (numpy wraps negative indexes) | `test_rejects_out_of_range_ids` (mutant `s03`) |
-| 4. reading logits as log-probabilities in `nll` | correct for the count model, wrong the day `L0.5` stores trained logits | `test_nll_normalizes_logits` (mutant `s10`) |
-| 5. a one-hot matrix multiply in `logits` | allocates an unnecessary $T 	imes V$ array instead of gathering rows | `test_logits_are_weight_rows` |
-| 6. seeding a new generator at every step | still repeatable, but every step draws the same $u$, so the text follows one quantile of each row | `test_sample_frequencies_match_model` (mutant `s09`) |
-| 7. writing the array's memory as is | a transposed view writes columns; a big-endian array writes swapped bytes | `test_bytes_are_little_endian_row_major` (mutants `s15`, `s16`) |
-| 8. a reader that trusts the header | reads past a gap or ignores trailing bytes, so a corrupt checkpoint loads | `test_load_rejects_bad_files` (mutants `s20`, `s21`) |
-| 9. smoothing denominator $R_i + \alpha$ | rows sum to more than 1 | `test_rows_sum_to_one` (mutant `s01`) |
-| 10. multiplying by the temperature | $\tau = 0.5$ flattens instead of sharpening | `test_temperature_sharpens` (mutant `s05`) |
-| 11. `np.argmax` on a reversed row, or `>=` in a manual loop | greedy ties go to the highest id, and engines disagree | `test_greedy_ties_go_to_lowest_id` (mutant `s07`) |
-| 12. scoring the context token in `nll` | an NLL that does not depend on what follows | `test_hand_example_nll` (mutant `s06`) |
-| 13. insertion order, zero padding, padding when already aligned, `{}` for empty metadata, `\u` escapes | bytes differ from the library's, so a strict reader or a hash check rejects the file | `test_matches_library_bytes` (mutants `s12`, `s13`, `s17`, `s18`), `test_worked_example_bytes` (mutant `s14`) |
-| 14. converting a loaded tensor with `np.ascontiguousarray` | a scalar tensor (shape `[]`) comes back with shape `(1,)`: `ascontiguousarray` returns at least 1-D; use `np.asarray(x, dtype=np.float32, order="C")` (`lang.01` pitfall 6) | `test_roundtrip`, `test_load_reads_library_files` |
+| 1. no smoothing ($\alpha = 0$) | `-inf` logits for unseen pairs; a row of `nan` for a byte never seen as a context; `0 * -inf = nan` inside a matmul | `fit_counts` rejects `not alpha > 0`, and the constructor rejects non-finite weights |
+| 2. counting `C[next, cur]` | the model predicts the previous byte; the hand table comes out transposed | `np.add.at(counts, (a[:-1], a[1:]), 1.0)`: contexts index rows |
+| 3. trusting ids | `-1` silently counts into the last row (numpy wraps negative indexes) | every entry point goes through `_as_ids`, which checks the range |
+| 4. reading logits as log-probabilities in `nll` | correct for the count model, wrong the day `L0.5` stores trained logits | `nll` applies a stable log-softmax first; see step 6 |
+| 5. a one-hot matrix multiply in `logits` | allocates an unnecessary $T \times V$ array instead of gathering rows | `logits` returns `self.weight[a]` |
+| 6. seeding a new generator at every step | still repeatable, but every step draws the same $u$, so the text follows one quantile of each row | one `default_rng(seed)` before the loop |
+| 7. writing the array's memory as is | a transposed view writes columns; a big-endian array writes swapped bytes | `astype("<f4", copy=False).tobytes(order="C")` |
+| 8. a reader that trusts the header | reads past a gap or ignores trailing bytes, so a corrupt checkpoint loads | rule 5: sorted entries must tile the buffer exactly, with no trailing bytes |
+| 9. smoothing denominator $R_i + \alpha$ | rows sum to more than 1 | the denominator is the row sum of the smoothed counts |
+| 10. multiplying by the temperature | $\tau = 0.5$ flattens instead of sharpening | `z = row / temperature` |
+| 11. `np.argmax` on a reversed row, or `>=` in a manual loop | greedy ties go to the highest id, and engines disagree | plain `np.argmax(row)`, which returns the first maximum |
+| 12. scoring the context token in `nll` | an NLL that does not depend on what follows | rows from `a[:-1]`, scored columns from `a[1:]` |
+| 13. insertion order, zero padding, padding when already aligned, `{}` for empty metadata, `\u` escapes | bytes differ from the library's, so a strict reader or a hash check rejects the file | sorted names, `-len(text) % 8` spaces, `__metadata__` only when non-empty, `ensure_ascii=False` |
+| 14. converting a loaded tensor with `np.ascontiguousarray` | a scalar tensor (shape `[]`) comes back with shape `(1,)`: `ascontiguousarray` returns at least 1-D (`lang.01` pitfall 6) | the loader uses `astype(np.float32).reshape(shape)`, which keeps shape `()` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M03.1` | its Python reference defines matrix multiplication; L0.0 uses NumPy row indexing for logits |
 | Back | `lang.01` | numpy arrays, dtypes, `np.add.at`, and broadcasting (the vectorized bigram count) |
-| Forward | `L10.0` | your Rust engine reads `bigram.weight` from this file (`tl_arch = bigram`, `tl_tokenizer = bytes`) and computes the same logits by indexing `bigram.weight` with token ids |
-| Forward | `L0.5` | takes over `bigram.py`: trains the same table with your autograd until it reaches the count model's NLL within $10^{-3}$, and samples with your PCG32 |
+| Forward | `L10.0` | the Rust engine reads `bigram.weight` from this file (`tl_arch = bigram`, `tl_tokenizer = bytes`) and computes the same logits by indexing `bigram.weight` with token ids |
+| Forward | `L0.5` | takes over `bigram.py`: trains the same table with autograd until it reaches the count model's NLL within $10^{-3}$, and samples with PCG32 |
 | Forward | `L0.6` | takes over `safetensors.py`: every dtype, atomic checkpoints, the token-stream reader |
-
-If you skip this module, `ol check L10.0` stops with `L10.0 needs L0.0`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | add-alpha bigram | KenLM n-gram models | 5-gram contexts, modified Kneser-Ney smoothing, backoff, compact tries | KenLM `lm/builder/` |
-| one-hot matmul for logits | embedding lookup | a row gather instead of a matmul: `ggml_get_rows` in llama.cpp, `torch.nn.Embedding` | `ggml/src/ggml.c` |
+| row gather for logits | embedding lookup | the same gather: `ggml_get_rows` in llama.cpp, `torch.nn.Embedding` | `ggml/src/ggml.c` |
 | `sample` | vLLM and SGLang samplers | top-k, top-p, min-p, penalties, batched on GPU with per-request seeds | vLLM `v1/sample/sampler.py` |
-| `save_safetensors` | Hugging Face `safetensors` | every dtype, memory-mapped zero-copy loading, the Rust core your engine mirrors | `safetensors/src/tensor.rs` |
+| `save_safetensors` | Hugging Face `safetensors` | every dtype, memory-mapped zero-copy loading, the Rust core the engine mirrors | `safetensors/src/tensor.rs` |

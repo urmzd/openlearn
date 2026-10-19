@@ -1,9 +1,0 @@
-id       = "auth.403"
-title    = "A valid key without the chat scope is a 403"
-versions = ["v1", "v2"]
-tiers    = ["gateway"]
-check    = "auth_403"
-
-[params]
-key_env = "TL_API_KEY_NOSCOPE"
-type    = "permission_error"

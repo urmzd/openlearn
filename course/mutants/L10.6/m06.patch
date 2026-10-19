@@ -1,5 +1,0 @@
---- a/rust/crates/tl-engine/src/kv_transfer.rs
-+++ b/rust/crates/tl-engine/src/kv_transfer.rs
-@@ -341 +341 @@
--        if kv_format != KV_FORMAT {
-+        if kv_format > 2 {

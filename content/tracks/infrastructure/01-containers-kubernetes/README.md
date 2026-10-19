@@ -157,7 +157,6 @@ See the annotated manifests: [`deployment.yaml`](manifests/deployment.yaml), [`h
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `dep.00` | [Tracer deploy: engine and gateway images, kind cluster, two Helm charts, Jaeger all-in-one](00-tracer-deploy.md) | practice | 1 |
@@ -168,4 +167,3 @@ See the annotated manifests: [`deployment.yaml`](manifests/deployment.yaml), [`h
 | 6 | `dep.05` | [CI for the learner repo](05-ci-for-your-repo.md) | practice | 7 |
 | 7 | `dep.06` | [Durable and worker images and charts: WAL PVC, StatefulSet, KEDA autoscaling of workers](06-durable-and-worker-charts.md) | practice | 8 |
 | 8 | `dep.07` | [Agent image and chart](07-agent-image-and-chart.md) | practice | 10 |
-<!-- /ol:chapters -->

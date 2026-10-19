@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "runtime.toml",
-  "description": "Service runtime configuration (DESIGN 2.12), as the JSON value of the parsed TOML. One file, mounted as a ConfigMap in Kubernetes; locally the milestone runner fills one copy per service instance from the learner's [services.*].config template with allocated ports (2.16). Each service reads its own section plus [paths] and [otel]. Every scalar key can be overridden by the environment variable TL_<SECTION>__<KEY> (both upper-cased, a double underscore between them; for example TL_ENGINE__KV_BLOCKS=4096 or TL_DURABLE__WAL_MAX_BYTES); an override is parsed as the key's type (integers, numbers, true/false, strings as-is), and arrays and tables are not overridable. Precedence: environment, then file, then the defaults here. Allowed parsers: Python tomllib, Rust toml, Go github.com/BurntSushi/toml. Unknown keys are errors, except under [ext], which is the learner's own.",
+  "description": "Service runtime configuration, as the JSON value of the parsed TOML. One file, mounted as a ConfigMap in Kubernetes; locally the launcher fills one copy per service instance from the system manifest's [services.*].config template with allocated ports. Each service reads its own section plus [paths] and [otel]. Every scalar key can be overridden by the environment variable TL_<SECTION>__<KEY> (both upper-cased, a double underscore between them; for example TL_ENGINE__KV_BLOCKS=4096 or TL_DURABLE__WAL_MAX_BYTES); an override is parsed as the key's type (integers, numbers, true/false, strings as-is), and arrays and tables are not overridable. Precedence: environment, then file, then the defaults here. Allowed parsers: Python tomllib, Rust toml, Go github.com/BurntSushi/toml. Unknown keys are errors, except under [ext], which is the system's own.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -371,7 +371,7 @@
         },
         "python": {
           "type": "string",
-          "description": "The command prefix for Python entries, split on spaces (DESIGN 2.12 example)."
+          "description": "The command prefix for Python entries, split on spaces."
         },
         "max_concurrent_activities": {
           "type": "integer",
@@ -432,7 +432,7 @@
     },
     "ext": {
       "type": "object",
-      "description": "Free-form: the learner's own keys."
+      "description": "Free-form: the system's own keys."
     }
   },
   "$defs": {

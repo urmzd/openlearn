@@ -1,5 +1,0 @@
---- a/rust/crates/tl-serve/src/http.rs
-+++ b/rust/crates/tl-serve/src/http.rs
-@@ -1141 +1141 @@
--    format!("data: {payload}\n\n")
-+    format!("data: {payload}\n")

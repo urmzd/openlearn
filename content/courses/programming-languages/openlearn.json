@@ -32,7 +32,6 @@
       "title": "Sources"
     }
   ],
-  "practice": "practice/exercises.json",
   "runtime": [
     "practice",
     "content/tracks/algorithms",

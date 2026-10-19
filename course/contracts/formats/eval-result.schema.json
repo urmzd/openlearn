@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "eval results (evals/<suite>/<run_id>/results.jsonl row and summary.json)",
-  "description": "Rows are one line of results.jsonl: one case run against one subject. The summary (summary.json) holds means with 95% bootstrap CIs and, for A/B, the paired delta (DESIGN 2.9; ag.09, ag.12). A scorer that errored has a null score and an entry in errors; it is excluded from the means and counted.",
+  "description": "Rows are one line of results.jsonl: one case run against one subject. The summary (summary.json) holds means with 95% bootstrap CIs and, for A/B, the paired delta (ag.09, ag.12). A scorer that errored has a null score and an entry in errors; it is excluded from the means and counted.",
   "$ref": "#/$defs/row",
   "$defs": {
     "row": {

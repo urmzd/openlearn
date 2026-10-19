@@ -1,0 +1,235 @@
+{
+ "format": "tl.capstone-report.v1",
+ "tier": "smoke",
+ "spec": "specs/c1/smoke.json",
+ "data": {
+  "corpus": "course synthetic template stories (see LEDGER.jsonl)",
+  "train_docs": 130,
+  "val_docs": 32
+ },
+ "tokenizer": {
+  "kind": "bpe",
+  "vocab_size": 512,
+  "sample_bytes": 65840
+ },
+ "model": {
+  "config": {
+   "tl_arch": "llama",
+   "tl_tokenizer": "file",
+   "vocab_size": 512,
+   "hidden_size": 128,
+   "intermediate_size": 344,
+   "num_hidden_layers": 4,
+   "num_attention_heads": 4,
+   "num_key_value_heads": 2,
+   "max_position_embeddings": 128,
+   "rms_norm_eps": 1e-05,
+   "rope_theta": 10000.0,
+   "tie_word_embeddings": true,
+   "tl_format": 1
+  },
+  "params": 791680
+ },
+ "train": {
+  "steps": 200,
+  "tokens": 409600,
+  "final_train_loss": 0.7978189766407013,
+  "wall_s": 7.4,
+  "seed": 0,
+  "precision": "fp32",
+  "micro_batch": 16,
+  "accum": 1
+ },
+ "eval": {
+  "val_bpb": 0.500221,
+  "ci95": [
+   0.448999,
+   0.597273
+  ],
+  "n": 32,
+  "val_loss": 0.993277
+ },
+ "ablations": [
+  {
+   "id": "tokenizer",
+   "question": "BPE or Unigram at vocab 512, same sample, same model",
+   "metric": "bpb",
+   "unit": "held-out document",
+   "n": 32,
+   "seed": 0,
+   "a": {
+    "name": "bpe",
+    "config": {
+     "tokenizer": "bpe",
+     "vocab_size": 512
+    },
+    "value": 0.500221
+   },
+   "b": {
+    "name": "unigram",
+    "config": {
+     "tokenizer": "unigram",
+     "vocab_size": 512
+    },
+    "value": 0.524719
+   },
+   "mean_diff": 0.03208,
+   "ci95": [
+    0.013603,
+    0.058961
+   ],
+   "winner": "a"
+  },
+  {
+   "id": "attention",
+   "question": "GQA or MLA at equal KV bytes per token",
+   "metric": "bpb",
+   "unit": "held-out document",
+   "n": 32,
+   "seed": 0,
+   "a": {
+    "name": "gqa",
+    "config": {
+     "tl_arch": "llama",
+     "tl_tokenizer": "file",
+     "vocab_size": 512,
+     "hidden_size": 128,
+     "intermediate_size": 344,
+     "num_hidden_layers": 4,
+     "num_attention_heads": 4,
+     "num_key_value_heads": 2,
+     "max_position_embeddings": 128,
+     "rms_norm_eps": 1e-05,
+     "rope_theta": 10000.0,
+     "tie_word_embeddings": true,
+     "tl_format": 1
+    },
+    "value": 0.500221
+   },
+   "b": {
+    "name": "mla",
+    "config": {
+     "tl_arch": "llama",
+     "tl_tokenizer": "file",
+     "vocab_size": 512,
+     "hidden_size": 128,
+     "intermediate_size": 344,
+     "num_hidden_layers": 4,
+     "num_attention_heads": 4,
+     "num_key_value_heads": 2,
+     "max_position_embeddings": 128,
+     "rms_norm_eps": 1e-05,
+     "rope_theta": 10000.0,
+     "tie_word_embeddings": true,
+     "tl_format": 1,
+     "tl_attention": "mla",
+     "tl_mla_rank": 112,
+     "qk_rope_head_dim": 16,
+     "qk_nope_head_dim": 32,
+     "v_head_dim": 32
+    },
+    "value": 0.499284
+   },
+   "mean_diff": -0.011246,
+   "ci95": [
+    -0.042154,
+    0.00765
+   ],
+   "winner": "tie",
+   "kv_bytes_per_token": {
+    "a": 1024,
+    "b": 1024
+   }
+  },
+  {
+   "id": "mlp",
+   "question": "dense SwiGLU or a top-1 MoE of 4 experts at equal active parameters",
+   "metric": "bpb",
+   "unit": "held-out document",
+   "n": 32,
+   "seed": 0,
+   "a": {
+    "name": "dense",
+    "config": {
+     "tl_arch": "llama",
+     "tl_tokenizer": "file",
+     "vocab_size": 512,
+     "hidden_size": 128,
+     "intermediate_size": 344,
+     "num_hidden_layers": 4,
+     "num_attention_heads": 4,
+     "num_key_value_heads": 2,
+     "max_position_embeddings": 128,
+     "rms_norm_eps": 1e-05,
+     "rope_theta": 10000.0,
+     "tie_word_embeddings": true,
+     "tl_format": 1
+    },
+    "value": 0.500221
+   },
+   "b": {
+    "name": "moe",
+    "config": {
+     "tl_arch": "llama",
+     "tl_tokenizer": "file",
+     "vocab_size": 512,
+     "hidden_size": 128,
+     "intermediate_size": 344,
+     "num_hidden_layers": 4,
+     "num_attention_heads": 4,
+     "num_key_value_heads": 2,
+     "max_position_embeddings": 128,
+     "rms_norm_eps": 1e-05,
+     "rope_theta": 10000.0,
+     "tie_word_embeddings": true,
+     "tl_format": 1,
+     "tl_num_experts": 4,
+     "tl_top_k_experts": 1,
+     "moe_intermediate_size": 344,
+     "norm_topk_prob": false
+    },
+    "value": 0.507261
+   },
+   "mean_diff": 0.012939,
+   "ci95": [
+    -0.000203,
+    0.032735
+   ],
+   "winner": "tie",
+   "active_params": {
+    "a": 791680,
+    "b": 793728
+   }
+  }
+ ],
+ "scaling": {
+  "law": "bpb = a * params^-alpha",
+  "points": [
+   {
+    "params": 123712,
+    "bpb": 0.50393
+   },
+   {
+    "params": 353952,
+    "bpb": 0.504022
+   },
+   {
+    "params": 791680,
+    "bpb": 0.500221
+   }
+  ],
+  "fit": {
+   "a": 0.527387,
+   "alpha": 0.003773
+  }
+ },
+ "long_context": null,
+ "zoo": "docs/capstone/c1/zoo.json",
+ "samples": "docs/capstone/c1/samples.jsonl",
+ "release": "specs/c1/release.json",
+ "generator": "C1 smoke-tier capstone script (not included)",
+ "versions": {
+  "torch": "2.14.1",
+  "numpy": "2.2.6"
+ }
+}

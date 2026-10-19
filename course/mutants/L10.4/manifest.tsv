@@ -1,9 +1,0 @@
-# mid	unit	tier	operator	line	required	public	private
-s01	rust/crates/tl-engine/src/block_manager.rs	semantic	pitfall-1	150	y	a block hash forgets its prefix	lookup chain does not advance the parent
-s02	rust/crates/tl-engine/src/block_manager.rs	semantic	pitfall-2	138	y	a match may cover the last prompt token	usable = len / bt
-s03	rust/crates/tl-engine/src/block_manager.rs	semantic	pitfall-3	270	y	shared radix blocks keep the request's reference	matched blocks never given back
-s04	rust/crates/tl-engine/src/block_manager.rs	semantic	pitfall-4	214	y	a failed allocation keeps its cache hits	refs of matched blocks not dropped on NoCapacity
-s05	rust/crates/tl-engine/src/block_manager.rs	semantic	pitfall-5	122	y	cached radix blocks are never reclaimed	take() never evicts
-s06	rust/crates/tl-engine/src/block_manager.rs	semantic	statement-deletion	169	n	hits are not counted	hit_tokens never increases
-s07	rust/crates/tl-engine/src/block_manager.rs	semantic	pitfall-6	245	y	hash mode never caches anything	full blocks registered without their fill
-s08	rust/crates/tl-engine/src/block_manager.rs	semantic	boundary	223	n	a decode slot may have no block	append_slot rounds down

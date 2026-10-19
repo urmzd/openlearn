@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-# Artifact check for lang.07 (DESIGN 6.4, H15): runs in the learner repo.
-# The tests and why each exists are in artifacts.py (`ol tests lang.07`).
-exec python3 "$(dirname "$0")/artifacts.py" "$@"

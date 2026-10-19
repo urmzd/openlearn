@@ -4,6 +4,6 @@ async Rust, gRPC, and SQL primers; candle-based Rust engine (continuous batching
 
 **Part of**: [the course](../course/). **Needs**: [Pass 6](../course-p06-inference-and-kernels/).
 
-**Gate**: [MS-P7 = MS-L10 + MS-gateway + MS-prod](milestone.md).
+**After this pass**: [what the system does](milestone.md): the Rust engine, the production gateway, and the serving platform with its charts, observability, and SLOs.
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p07-p07-serving-platform` to see progress.
+Stages, chapter links, and what "done" means for each are in [`path.tsv`](path.tsv).

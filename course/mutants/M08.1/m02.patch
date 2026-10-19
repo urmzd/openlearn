@@ -1,8 +1,0 @@
---- a/python/tinyllm/autograd/dual.py
-+++ b/python/tinyllm/autograd/dual.py
-@@ -146,4 +146,4 @@
-         y = np.asarray(out, dtype=np.float64)
-         return y, np.zeros_like(y)
-     y = np.asarray(out.val, dtype=np.float64)
--    return y, np.broadcast_to(np.asarray(out.eps, dtype=np.float64), y.shape).copy()
-+    return y, np.broadcast_to(va, y.shape).copy() if va.shape == y.shape else np.zeros_like(y)

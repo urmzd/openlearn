@@ -1,5 +1,0 @@
---- a/python/tinyllm/post/grpo.py
-+++ b/python/tinyllm/post/grpo.py
-@@ -10 +10 @@
--    return (r - r.mean()) / (r.std() + eps)
-+    return (r - r.min()) / (r.std() + eps)

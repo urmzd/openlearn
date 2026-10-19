@@ -1,0 +1,98 @@
+# Reference answers for S-M03a: the worked answers the chapter explains.
+
+[q1]
+answer = "[-4, 4.5]"
+[q2]
+answer = "[1, 2, 3]"
+[q3]
+answer = "[[1, 2, 0], [0, 0, 1]]"
+[q4]
+answer = "[[1, 0], [2, 1]]"
+[q5]
+answer = "[[2, 1], [0, 3]]"
+[q6]
+answer = "[[1, 0], [1/3, 1]]"
+[q7]
+answer = "[[3, 4], [0, 2/3]]"
+[q8]
+answer = "0"
+[q9]
+answer = "{1}"
+[q10]
+proof  = "S-M03a/q10.md"
+[q11]
+answer = "true"
+[q12]
+answer = "false"
+[q13]
+answer = "2"
+[q14]
+answer = "[[2, 4, 6]]"
+[q15]
+answer = "[[1, -1, 0], [0, 1, -1]]"
+[q16]
+answer = "[4, -1]"
+[q17]
+answer = "3"
+[q18]
+answer = "{-2, 2}"
+[q19]
+answer = "2"
+[q20]
+proof  = "S-M03a/q20.md"
+[q21]
+answer = "[[0, -1], [1, 0]]"
+[q22]
+answer = "[[1, 1], [2, 0], [0, 1]]"
+[q23]
+answer = "2"
+[q24]
+answer = "1"
+[q25]
+answer = "3"
+[q26]
+answer = "false"
+[q27]
+answer = "[[0, 2], [1, 0]]"
+[q28]
+proof  = "S-M03a/q28.md"
+[q29]
+answer = "1"
+[q30]
+answer = "24"
+[q31]
+answer = "-3"
+[q32]
+answer = "40"
+[q33]
+answer = "1/4"
+[q34]
+answer = "5"
+[q35]
+answer = "{2, 3}"
+[q36]
+answer = "{1, 3}"
+[q37]
+answer = "[5, 5]"
+[q38]
+answer = "(t - 1)*(t - 4) - 6"
+[q39]
+answer = "{I, -I}"
+[q40]
+answer = "10"
+[q41]
+answer = "[3^10, 3^10]"
+[q42]
+answer = "9/10"
+[q43]
+answer = "1/3"
+[q44]
+proof  = "S-M03a/q44.md"
+[q45]
+answer = "[2, 2, 2]"
+[q46]
+answer = "[[sqrt(2)/2, sqrt(6)/6], [sqrt(2)/2, -sqrt(6)/6], [0, sqrt(6)/3]]"
+[q47]
+answer = "[[sqrt(2), sqrt(2)/2], [0, sqrt(3/2)]]"
+[q48]
+answer = "11/14"

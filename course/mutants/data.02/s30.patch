@@ -1,9 +1,0 @@
---- a/python/corpus/stage.py
-+++ b/python/corpus/stage.py
-@@ -62,6 +62,5 @@
-                 meta={
-                     "url": rec["url"],
-                     "fetched_at": rec["fetched_at"],
--                    "license_spdx": rec["license_spdx"],
-                 },
-             )

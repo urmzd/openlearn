@@ -7,10 +7,10 @@
 # requires `Authorization: Bearer <key>` and answers 401 without it. Both
 # tiers serve the same paths and bodies.
 #
-# Conformance (`ol conform openapi:v0[:engine|:gateway]`) validates every
-# response body against the schema declared here for its path, status, and
-# content type. SSE chunks validate against the `x-tl-chunk` schema of the 200
-# `text/event-stream` content.
+# A conforming server returns, for every path, status, and content type, a
+# response body that validates against the schema declared here. SSE chunks
+# validate against the `x-tl-chunk` schema of the 200 `text/event-stream`
+# content.
 openapi: 3.1.0
 info:
   title: tinyllm OpenAI subset, v0 (tracer)

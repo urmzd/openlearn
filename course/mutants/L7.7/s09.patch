@@ -1,8 +1,0 @@
---- a/python/tinyllm/modern/window.py
-+++ b/python/tinyllm/modern/window.py
-@@ -140,4 +140,4 @@
-     if not hasattr(cache, "seq_len"):
-         raise ValueError(f"{type(cache).__name__} has no seq_len(layer): cannot place the chunk's queries")
-     s = int(cache.seq_len(layer))
--    return sink_window_mask(T, s + T, window, n_sink, s)
-+    return sink_window_mask(T, s + T, window, n_sink)

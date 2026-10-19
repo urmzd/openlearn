@@ -2,7 +2,7 @@
 
 Attention is all you need, built from its parts. Scaled dot-product attention with its backward pass, the masks (causal, padding, sliding window, additive), multi-head attention, sinusoidal and learned positions, and the full encoder-decoder transformer with both LayerNorm placements and the Noam schedule.
 
-**Course passes**: 5 (L5.1 to L5.5, milestone MS-L5, part of gate MS-P5)
+**Course passes**: L5.1 to L5.5 belong to [Pass 5](../paths/course-p05-transformer/milestone.md)
 
 **Before you start**: the solve parts `S-M05` (logic) and `S-M08` (VJP derivations); rotations and frequency ladders from [Precalculus](../../../tracks/math/00-precalculus/); attention from [Part 4](../p04-attention-origins/).
 
@@ -24,7 +24,6 @@ Attention is all you need, built from its parts. Scaled dot-product attention wi
 
 ## Chapters
 
-<!-- ol:chapters -->
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|
 | 1 | `L5.1` | [Scaled dot-product attention (forward and backward)](01-scaled-dot-product-attention.md) | build | 5 |
@@ -32,7 +31,6 @@ Attention is all you need, built from its parts. Scaled dot-product attention wi
 | 3 | `L5.3` | [Multi-head attention](03-multi-head-attention.md) | build | 5 |
 | 4 | `L5.4` | [Positional encodings: sinusoidal, learned](04-positional-encodings.md) | build | 5 |
 | 5 | `L5.5` | [Encoder-decoder Transformer: post-LN and pre-LN, Noam, label smoothing](05-encoder-decoder-transformer.md) | build | 5 |
-<!-- /ol:chapters -->
 
 ## Going further
 

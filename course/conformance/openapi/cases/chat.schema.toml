@@ -1,6 +1,0 @@
-id       = "chat.schema"
-title    = "A non-streaming chat completion matches the contract's response schema"
-versions = ["v1", "v2"]
-tiers    = ["engine", "gateway"]
-smoke    = true
-check    = "chat_schema"

@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">Supersource</h1>
   <p align="center">
-    Free, self-paced learning across technology, mathematics, and engineering, for people from all backgrounds. Read online, practise, or take a course offline.
+    Free, self-paced learning across technology, mathematics, and engineering, for people from all backgrounds. A manual of worked solutions, explained from first principles. Read online or take a course offline.
     <br /><br />
     <a href="https://github.com/urmzd/openlearn/releases/latest">Download</a>
     &middot;
@@ -38,73 +38,53 @@ Captured with [teasr](https://github.com/urmzd/teasr). Rebuild the website, then
 
 ## Features
 
+- **A manual, not a homework set:** every chapter builds an idea from first principles, works it by hand, then walks through the solution step by step and explains why each choice is the right one.
 - **Course catalogue:** 18 learning routes across mathematics, algorithms, ML, systems, data engineering, infrastructure, and related subjects.
-- **Build Your Own LLM System:** implement tokenizers, attention, KV caches, inference, serving, and operations against readable interfaces and tests.
-- **Practice:** predict program output, build implementations, and reattempt solved problems. Keep your work in a private local scratchpad.
+- **Build Your Own LLM System:** follow a complete LLM platform (tokenizers, attention, KV caches, kernels, inference, serving, and operations) through annotated reference solutions in [`course/solutions/`](course/solutions/).
+- **Explain it back:** each chapter ends its walkthrough with questions about *why* the solution works, with answers, so you can check that you could defend the design to someone else.
+- **Worked problem sets:** mathematics problem sets show every answer with its derivation and the common wrong answers.
 - **Read anywhere:** browse shared lessons on the web, download course PDFs, or install the PWA and save courses for offline reading.
 - **Publish from one source:** use a course manifest to select the same Markdown lessons for its website, PDF, and downloadable pack.
 
-Courses state their assessment boundaries. Suggested reading and projects do not imply automated grading.
+## Why a manual
+
+Code is increasingly written by tools rather than by hand. What still matters is knowing what the optimal solution is and being able to explain why: which invariant it protects, which alternative it rejects, and what breaks if a line changes. The chapters are written for that. They show the solution instead of asking you to retype it, and spend their effort on the reasoning that produced it.
 
 ## Installation
 
 Read the [website](https://openlearn.urmzd.com) without installing anything. Download PDFs and source packs from [releases](https://github.com/urmzd/openlearn/releases/latest). Install the web app from your browser. Choose Save offline on a course to download its lessons and diagrams.
 
-### Prerequisites
-
-For local study and publishing:
-
-| Requirement | Used for |
-|---|---|
-| Git | Clone the repository and track learner work |
-| Python 3.11+ | List, validate, and export courses |
-| uv | Run the LLM course grader and Python exercises |
-| Course-specific language toolchains | Compile and run the exercises you choose |
+To read the sources locally or publish a course:
 
 ```bash
 git clone https://github.com/urmzd/openlearn.git
 cd openlearn
 ```
 
-Run `practice/bin/ol doctor` before starting the LLM course. Browser reading progress and notes stay on your device; verified code checks run through the CLI.
+| Requirement | Used for |
+|---|---|
+| Git | Clone the repository |
+| Python 3.11+ | List, validate, and export courses |
+| Pandoc and XeLaTeX | Build course PDFs (optional) |
+| Node.js 24 and pnpm | Serve the website locally (optional) |
 
 ## Quick Start
-
-From the checkout, list the available courses:
-
-```bash
-python3 scripts/course_catalog.py list
-```
 
 | Start here | What to expect |
 |---|---|
 | [Technology Foundations](content/courses/computer-science/README.md) | Explore programming, mathematics, systems, data, AI, and other areas of technology at your own pace |
-| [Build Your Own LLM System](content/courses/build-an-llm/README.md) | A staged implementation course with module checks and runnable milestones |
+| [Build Your Own LLM System](content/courses/build-an-llm/README.md) | One LLM platform, end to end, explained module by module through its reference solution |
 | [Course catalogue](content/courses/README.md) | Subject-specific study plans and other learning routes |
+| [Practice](practice/README.md) | Predict-the-output puzzles and data-structure implementations, each with a worked answer |
 
-For the LLM course, inspect the learning path and your toolchain:
-
-```bash
-practice/bin/ol learn course
-practice/bin/ol doctor
-```
-
-Follow the [course overview](content/courses/build-an-llm/README.md) to create your learner repository and begin implementing modules.
+Every chapter follows the same shape: why the idea matters now, the principles, a worked example by hand, the interface, **the solution step by step**, pitfalls, and where the idea is used next. Try to predict each step of a solution before you read it.
 
 ## Usage
 
-### Practise
+### List and export a course
 
 ```bash
-practice/bin/ol list
-practice/bin/ol score
-```
-
-Choose an exercise from the list, then follow the [practice guide](practice/README.md) to start and check an attempt. Attempts live in the gitignored `.scratchpad/` directory.
-
-### Export a course
-
-```bash
+python3 scripts/course_catalog.py list
 python3 scripts/course_catalog.py validate
 python3 scripts/course_catalog.py export --course mathematics --zip
 ```
@@ -137,16 +117,15 @@ Omit `OPENLEARN_COURSE` to serve the full catalogue.
 
 | Setting | Purpose |
 |---|---|
-| Course `openlearn.json` | Reading order, shared lessons, references, and available practice |
+| Course `openlearn.json` | Reading order, shared lessons, and references |
 | `OPENLEARN_COURSE` | Select one course for a website build or development server |
 | `OPENLEARN_SITE_URL` | Set the public URL for an independent course deployment |
-| `OL_COURSE_HOME` | Choose where the LLM course stores your learner repository |
 
-See [course authoring and publication](docs/courses.md) for manifest fields and the [practice guide](practice/README.md) for CLI configuration.
+See [course authoring and publication](docs/courses.md) for manifest fields.
 
 ## Architecture
 
-A course references canonical lessons through its manifest. The web app, PDF builder, and pack exporter use the same publication inventory. The installable PWA saves courses, reading progress, bookmarks, and notes on your device. Code exercises and verified LLM course checks use the local CLI.
+A course references canonical lessons through its manifest. The web app, PDF builder, and pack exporter use the same publication inventory. The installable PWA saves courses, reading progress, bookmarks, and notes on your device. Reference solutions live in [`course/solutions/`](course/solutions/) (LLM system) and [`practice/build/`](practice/build/) (data structures); chapters quote and explain them.
 
 Read the [course publication guide](docs/courses.md) and [PWA guide](docs/pwa.md) for implementation details. Consult the [source register](content/references/sources.md) for attribution, resource access, and validation evidence.
 

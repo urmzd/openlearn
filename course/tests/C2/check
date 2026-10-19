@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-tests="$(cd "$here/.." && pwd)"
-[ -f "$PWD/artifacts/c2/run.json" ] || { echo "C2: artifacts/c2/run.json is missing" >&2; exit 1; }
-[ -f "$PWD/docs/capstone/c2/MODEL_CARD.md" ] || { echo "C2: docs/capstone/c2/MODEL_CARD.md is missing" >&2; exit 1; }
-export OL_REPO="$PWD" PYTHONPATH="$tests" PYTHONDONTWRITEBYTECODE=1
-exec uv run --no-project --python ">=3.11" --quiet --with pytest python -m pytest -q -p no:cacheprovider --rootdir="$tests" --confcutdir="$tests" "$here"

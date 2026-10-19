@@ -39,6 +39,9 @@ jobs:
       - name: Check rendered diagrams are current
         run: scripts/check_diagrams.sh
 
+      - name: Check relative Markdown links
+        run: python3 scripts/check_links.py
+
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -52,9 +55,6 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --group dev
-
-      - name: Install memory measurement dependency
-        run: sudo apt-get install -y time
 
       - name: Run tests
         run: uv run pytest || echo "No tests found, skipping"
@@ -72,53 +72,6 @@ jobs:
             echo "--- $file"
             (cd "$(dirname "$file")" && uv run --no-project python "$(basename "$file")" >/dev/null)
           done
-
-  predict:
-    name: Predict Harness
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
-        with:
-          go-version-file: practice/predict/go/go.mod
-          # No third-party dependencies, so there is no go.sum to key a cache on.
-          cache: false
-
-      - uses: actions/setup-node@v6
-        with:
-          # Node 22.18+ strips TypeScript types natively; the snippets have no
-          # build step and no bundler.
-          node-version: 24
-
-      - uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install
-
-      # Rust comes preinstalled on the runner image; the snippets need edition
-      # 2024 (Rust 1.85+), which every current image satisfies.
-      - name: Show toolchain versions
-        run: go version && rustc --version && node --version && uv --version
-
-      # The memory probe needs GNU time to avoid charging the Python
-      # launcher's inherited RSS to small native snippets on Linux.
-      - name: Install memory measurement dependency
-        run: sudo apt-get install -y time
-
-      - name: Verify memory measurement
-        run: python3 -m unittest discover -s practice/bin -p 'test_measure.py'
-
-      # Every snippet must build, exit zero, print something, and print the
-      # same thing three runs in a row. Nondeterministic output cannot be
-      # predicted, so it fails the build.
-      - name: Verify snippets are runnable and deterministic
-        run: practice/bin/ol verify predict
-
-      # Wall time and peak RSS against the ceilings in budgets.tsv. This
-      # catches a snippet that regressed into doing real work, not slow CI.
-      - name: Assert cost budgets
-        run: practice/bin/ol bench --assert
 
   pwa:
     name: Learning PWA
@@ -146,44 +99,6 @@ jobs:
         run: pnpm build
       - name: Verify catalogue PWA
         run: node --test tests/build.test.mjs
-
-  build-exercises:
-    name: Build Exercises
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
-        with:
-          go-version: "1.22"
-          cache: false
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install
-
-      # Every build exercise's reference implementation must pass its own
-      # assertions, and must carry solution markers so `ol start` can stub it.
-      # A reference that does not hold up is not a reference.
-      #
-      # Bare `verify build` covers the core languages only. zig, scala and java
-      # are optional here and are skipped with a message when their toolchain is
-      # absent, so there is no JVM or Zig setup step to maintain. Running them
-      # in CI would mean installing toolchains for languages this curriculum
-      # does not target.
-      - name: Verify reference implementations
-        run: practice/bin/ol verify build
-
-      - name: Verify paths
-        # Every stage a content/courses/build-an-llm/paths/*/path.tsv names must exist and every @include
-        # must resolve without a cycle, so ol learn and the per-path PDFs never
-        # point at a moved or renamed chapter.
-        run: practice/bin/ol learn --verify
 
   book:
     name: Book PDF
@@ -252,128 +167,3 @@ jobs:
             outputs/openlearn-*.zip
             outputs/build-manifest*.json
           if-no-files-found: error
-
-  # ---- course (course/DESIGN.md 5.14) ----------------------------------------
-  # The course harness and its reference system. Every job runs the harness
-  # through practice/bin/ol exactly as a maintainer does locally.
-
-  harness-unit:
-    name: Course harness self-tests and lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install
-
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
-        with:
-          go-version: stable
-          cache: false
-
-      - name: Multimodal reference integration
-        env:
-          OL_REPO: ${{ runner.temp }}/mm-evidence
-          TINYLLM_FIXTURES: ${{ github.workspace }}/course/fixtures
-          PYTHONPATH: ${{ github.workspace }}/course/ref/python:${{ github.workspace }}/course/tests
-          OPENBLAS_NUM_THREADS: "1"
-          OMP_NUM_THREADS: "1"
-          VECLIB_MAXIMUM_THREADS: "1"
-        run: |
-          mkdir -p "$OL_REPO"
-          cp -R course/ref/docs course/ref/primers course/ref/entry/evals "$OL_REPO/"
-          uv run --project course/harness --quiet pytest -q -p no:cacheprovider \
-            course/tests/L13.1 course/tests/L13.2 course/tests/L13.3 \
-            course/tests/L13.4 course/tests/L13.5 course/tests/L13.6 \
-            course/tests/L14.1 course/tests/L14.2 course/tests/L14.3 \
-            course/tests/L14.4 course/tests/L14.5 course/tests/ethics.08 \
-            course/tests/integration/test_asr_corpus_cli.py
-
-      - name: Verify speech decoding against every mutant
-        env:
-          OL_VERIFY_MUTANT_SAMPLE: "0"
-        run: practice/bin/ol verify course L14.4
-
-      - name: Harness self-tests
-        run: uv run --project course/harness --quiet pytest -q -p no:cacheprovider course/harness/tests practice/bin/tests
-
-      - name: Chapter, registry, and link lint
-        run: practice/bin/ol lint && practice/bin/ol lint --links
-
-      - name: Paths
-        run: practice/bin/ol learn --verify
-
-  # The changed modules (checks 1 to 14) and their dependents' smoke tests,
-  # split into shards so a PR that touches many modules still fits; the
-  # global checks run in shard 0. An ordinary PR leaves most shards empty.
-  course-verify-changed:
-    name: Course verify (changed modules, shard ${{ matrix.shard }})
-    runs-on: ubuntu-latest
-    # Cold reference-system assembly plus the full shard can exceed 25 minutes.
-    timeout-minutes: 35
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-    # A PR checks 4 mutants per module (rotated per commit); the nightly run
-    # checks every mutant and the learner-test thresholds.
-    env:
-      OL_VERIFY_MUTANT_SAMPLE: "4"
-      OL_MUTATION_CACHE: ${{ github.workspace }}/.scratchpad/ci-mutation/mutation.json
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          # --changed diffs against origin/main.
-          fetch-depth: 0
-
-      - uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install
-
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0; newer archives return 404
-        with:
-          go-version: stable
-          cache: false
-
-      - uses: azure/setup-helm@v4
-
-      - name: Toolchain
-        run: practice/bin/ol doctor && cargo --version && helm version --short
-
-      # Kill results are keyed by content, so any earlier run's file is safe.
-      - name: Restore the mutation cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ github.workspace }}/.scratchpad/ci-mutation
-          key: ol-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}
-          restore-keys: |
-            ol-mutation-verify-${{ matrix.shard }}-
-            ol-mutation-
-
-      - name: Verify cache coalescing against every mutant
-        if: matrix.shard == 3
-        env:
-          OL_VERIFY_MUTANT_SAMPLE: "0"
-        run: practice/bin/ol verify course gw.06
-
-      - name: Verify checkpoint recovery against every mutant
-        if: matrix.shard == 11
-        env:
-          OL_VERIFY_MUTANT_SAMPLE: "0"
-        run: practice/bin/ol verify course dur.09
-
-      - name: Verify changed modules
-        run: |
-          mkdir -p "$(dirname "$OL_MUTATION_CACHE")"
-          practice/bin/ol verify course --changed origin/main --shard ${{ matrix.shard }}/16
-
-      - name: Save the mutation cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ github.workspace }}/.scratchpad/ci-mutation
-          key: ol-mutation-verify-${{ matrix.shard }}-${{ github.run_id }}

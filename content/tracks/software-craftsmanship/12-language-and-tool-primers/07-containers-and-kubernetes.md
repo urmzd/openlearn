@@ -1,4 +1,3 @@
-<!-- ol:module lang.07 -->
 # Containers and Kubernetes: images, layers, Pods, Deployments, Services, Helm, kind
 
 ## Overview
@@ -6,35 +5,30 @@
 | | |
 |---|---|
 | **Module** | `lang.07` · practice · ops · Pass 1 · 6 to 8 h |
-| **You build** | `primers/lang.07/`: a tiny Go server, its `Dockerfile`, a Helm chart, and a kind cluster config, deployed and reached through a NodePort |
+| **Solution** | [`primers/lang.07/`](../../../../course/solutions/primers/lang.07/): a tiny Go server [`main.go`](../../../../course/solutions/primers/lang.07/main.go) (`main`: `/healthz`, `/`, `signal.NotifyContext` plus `Shutdown`), its [`Dockerfile`](../../../../course/solutions/primers/lang.07/Dockerfile), a Helm chart [`chart/`](../../../../course/solutions/primers/lang.07/chart/) (one Deployment, one NodePort Service), and a kind cluster config [`kind.yaml`](../../../../course/solutions/primers/lang.07/kind.yaml), deployed and reached through a NodePort |
 | **Contract** | none: the layout and rules in section 4 are the contract |
-| **Tests** | `course/tests/lang.07/` (`check` runs `artifacts.py`; what each test checks: section 4) |
 | **Needs** | `lang.06` Go (reading), [`infrastructure/01-containers-kubernetes`](../../infrastructure/01-containers-kubernetes/README.md) (reading) |
-| **Used by** | `dep.00` tracer deploy (the same skills, applied to your engine and gateway) |
-| **Milestone** | MS-P1 |
+| **Used by** | `dep.00` tracer deploy (the same skills, applied to the engine and gateway, so that by the end of Pass 1 the whole tracer runs on a cluster) |
 | **Optional depth** | [Kubernetes documentation](https://kubernetes.io/docs/concepts/) (free), [Docker build docs](https://docs.docker.com/build/) (free), [OCI image spec](https://github.com/opencontainers/image-spec) (free), [Helm docs](https://helm.sh/docs/) (free), [kind docs](https://kind.sigs.k8s.io/) (free) |
 
 ## Key Takeaways
 
 - An **image** is a stack of content-addressed filesystem layers plus a config (entrypoint, user, ports, env). A **container** is an ordinary Linux process started from that config, with its own view of the filesystem, processes, and network.
-- A **multi-stage build** compiles in a fat stage and copies one binary into a small runtime stage that runs as a **numeric non-root user**. The tests prove the user and the exit code.
+- A **multi-stage build** compiles in a fat stage and copies one binary into a small runtime stage that runs as a **numeric non-root user**. The image config records the user; `docker stop` shows the exit code.
 - Your server is **PID 1** in its container. It must handle `SIGTERM` itself and exit `0`, or every `docker stop` and every rollout kills it after the grace period.
 - Kubernetes is a set of **controllers** that drive actual state toward the objects you declare. A **Deployment** keeps N **Pods** running; a **Service** finds them by label and gives them one stable address; a **NodePort** opens that address on every node.
 - **Helm** renders templates plus values into those objects. **kind** runs a whole cluster as Docker containers, which is why a NodePort needs a port mapping fixed when the cluster is created.
 
-## How to work this chapter
+## How to read this chapter
+
+Sections 1 and 2 build containers and Kubernetes up from processes and namespaces. Section 3 works a different image and chart by hand, including the rollout arithmetic. Section 4 fixes the layout and rules, and section 5 walks through the solution file by file and explains why each line is there. Try to predict each file before reading it. The solution is used like this, from the repo root:
 
 ```bash
-ol start lang.07                 # records the start; there are no stubs: you write every file
-ol tests lang.07                 # read the test catalog first
-# write primers/lang.07/{main.go,go.mod,Dockerfile,kind.yaml,chart/}  (section 4)
 docker build -t hello:0.1.0 primers/lang.07
 kind create cluster --config primers/lang.07/kind.yaml
 kind load docker-image hello:0.1.0 --name lang07
 helm install hello primers/lang.07/chart --kube-context kind-lang07
 curl -s http://127.0.0.1:31007/
-ol check lang.07                 # exit code is the verdict
-OL_SMOKE=1 ol check lang.07      # without a cluster: everything except the cluster tier
 kind delete cluster --name lang07   # when you are done; dep.00 makes its own cluster
 ```
 
@@ -42,11 +36,11 @@ kind delete cluster --name lang07   # when you are done; dep.00 makes its own cl
 
 ## 1. Why now
 
-At this point in Pass 1 your system runs as processes on your laptop: a Rust engine you start with `cargo run`, a Go gateway you start with `go run`, both reading files from paths that exist only on your machine. MS-P1 asks for more: the same two programs must run on a Kubernetes cluster, reachable from outside it, restartable by a controller, and observable. None of that is possible until each program is an image with a known entrypoint, user, and port, and until you can describe "run one of these, keep it healthy, and give it an address" as data the cluster understands. This primer teaches exactly those pieces on a server small enough that nothing else can go wrong. In `dep.00` you apply them, unchanged, to your engine and gateway.
+At this point in Pass 1 the system runs as processes on your laptop: a Rust engine you start with `cargo run`, a Go gateway you start with `go run`, both reading files from paths that exist only on your machine. The end of Pass 1 asks for more: the same two programs must run on a Kubernetes cluster, reachable from outside it, restartable by a controller, and observable. None of that is possible until each program is an image with a known entrypoint, user, and port, and until you can describe "run one of these, keep it healthy, and give it an address" as data the cluster understands. This primer teaches exactly those pieces on a server small enough that nothing else can go wrong. In `dep.00` they are applied, unchanged, to the engine and gateway.
 
 ## 2. Principles
 
-Every term is defined before it is used. Read this section once straight through; section 4 tells you what to build.
+Every term is defined before it is used. Read this section once straight through; section 4 fixes what the solution must contain.
 
 ### 2.1 A process, isolated
 
@@ -156,7 +150,7 @@ Writing the same Deployment by hand for every environment does not scale. **Helm
 | `helm upgrade --install NAME CHART` | the same, or update an existing release (a new **revision**) |
 | `helm uninstall NAME` | delete the release's objects |
 
-A chart is a function from values to manifests. `helm template` is how you test that function without a cluster, and it is what the course tests do.
+A chart is a function from values to manifests. `helm template` is how you test that function without a cluster.
 
 ### 2.7 kind: a cluster made of containers
 
@@ -168,7 +162,7 @@ A chart is a function from values to manifests. `helm template` is how you test 
 
 ## 3. Worked example by hand
 
-A different program, so the exercise stays yours: a static page served by BusyBox `httpd`, which is in the official `busybox` image. Everything below can be checked with a pencil before you run it, and every number was then checked by running it.
+A different program, so the solution in section 5 is not given away: a static page served by BusyBox `httpd`, which is in the official `busybox` image. Everything below can be checked with a pencil before you run it, and every number was then checked by running it.
 
 **The Dockerfile**, next to a 114-byte `index.html`:
 
@@ -194,7 +188,7 @@ docker stop -t 5 p                      # takes 5 s
 docker inspect -f '{{.State.ExitCode}}' p   # 137
 ```
 
-The request path: `127.0.0.1:8081` on the host, Docker's forward into the container's network namespace, port 8080, `httpd`. The stop is the lesson. The exec-form `ENTRYPOINT` makes `httpd` pid 1, but BusyBox `httpd` installs no `SIGTERM` handler, and the kernel ignores an unhandled `SIGTERM` sent to pid 1 (section 2.4). So `docker stop` waits the whole 5 s grace period, sends `SIGKILL`, and the exit code is 128 + 9 = 137. Your Go server in section 4 must stop in well under the grace period and exit `0`, and `test_container_exits_zero_on_sigterm` measures exactly that.
+The request path: `127.0.0.1:8081` on the host, Docker's forward into the container's network namespace, port 8080, `httpd`. The stop is the lesson. The exec-form `ENTRYPOINT` makes `httpd` pid 1, but BusyBox `httpd` installs no `SIGTERM` handler, and the kernel ignores an unhandled `SIGTERM` sent to pid 1 (section 2.4). So `docker stop` waits the whole 5 s grace period, sends `SIGKILL`, and the exit code is 128 + 9 = 137. The Go server of section 5 must stop in well under the grace period and exit `0`; `docker stop -t 5` followed by `docker inspect` measures exactly that.
 
 **The Kubernetes objects**, written as a chart with `values.yaml` holding `replicas: 4` and `nodePort: 31008`. Render `templates/deployment.yaml` by hand with `helm install page ./chart`:
 
@@ -226,7 +220,7 @@ If step 3 has no ready endpoint (the image was never loaded, the selector is wro
 
 ## 4. The interface
 
-The exercise lives in your repo at `primers/lang.07/` and is not part of your system. The check runs from your repo root.
+The exercise lives at `primers/lang.07/` and is not part of the system. Paths are relative to the repo root.
 
 | Path | Requirement |
 |---|---|
@@ -236,46 +230,248 @@ The exercise lives in your repo at `primers/lang.07/` and is not part of your sy
 | `primers/lang.07/chart/` | `helm lint` clean; renders exactly one Deployment and one Service. Service: `type: NodePort`, `nodePort: 31007`, selector matching the Pod labels, `targetPort` resolving to container port 8080. Container: readiness `httpGet` on `/healthz`, `resources.limits`, `runAsNonRoot: true`, a pinned image tag, `imagePullPolicy` not `Always`. The value `greeting` sets the env var `GREETING` |
 | on kind | release installed on context `kind-lang07`; the Service has ready endpoints; `http://127.0.0.1:31007/` answers from one of its Pods |
 
-### What the tests check
+### What a correct solution must handle
 
-`ol check lang.07` runs `course/tests/lang.07/check` in your repo. Tests run in order, in three tiers.
+The cases come in three tiers: static checks of the files, checks of the built image and a running container, and a cluster tier on `kind-lang07`.
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_files_present` | unit | the files of the table above exist | every later test names its file |
-| `test_dockerfile_multi_stage_pinned_non_root` | unit | the Dockerfile rules, statically | `dep.00` applies them to the engine and gateway images |
-| `test_kind_config_maps_the_nodeport` | unit | `name: lang07` and the 31007 mapping | `dep.00` maps 30080 and 30686 the same way |
-| `test_chart_lints` | conformance | `helm lint` exits 0 | template errors surface before a cluster sees them |
-| `test_chart_renders_deployment_and_nodeport_service` | unit | one Deployment, one NodePort Service, selector and `targetPort` consistent | a mismatch serves nothing |
-| `test_pod_spec_is_production_shaped` | unit | probe, limits, `runAsNonRoot`, pinned tag, pull policy | the chart policy `dep.03` enforces |
-| `test_values_reach_the_pod` | unit | `--set greeting=ol-probe-lang07` reaches `GREETING` | charts are functions of values |
-| `test_image_builds` | unit | `docker build` of `primers/lang.07` | a clean-context build is what CI does |
-| `test_image_user_is_numeric_non_root` | boundary | the image config's `User` | what the kubelet verifies |
-| `test_container_serves_health_and_greeting` | unit | `/healthz`, then `/` returns the env greeting and the container hostname | configuration through the environment |
-| `test_container_exits_zero_on_sigterm` | fault | `docker stop -t 5` ends with exit 0 well inside 5 s | rollouts and drills in `ops.00` |
-| `test_service_has_ready_endpoints_on_kind` | conformance | ready endpoints behind the 31007 Service on `kind-lang07` | the image was loaded and the probe passes |
-| `test_nodeport_answers_from_a_pod` | conformance | `GET http://127.0.0.1:31007/` names a running Pod | the full path of section 3 |
+| Every file present | unit | the files of the table above exist | every later case names its file |
+| Dockerfile multi-stage, pinned, non-root | unit | the Dockerfile rules, statically | `dep.00` applies them to the engine and gateway images |
+| kind config maps the NodePort | unit | `name: lang07` and the 31007 mapping | `dep.00` maps 30080 and 30686 the same way |
+| Chart lints | conformance | `helm lint` exits 0 | template errors surface before a cluster sees them |
+| Chart renders a Deployment and a NodePort Service | unit | one Deployment, one NodePort Service, selector and `targetPort` consistent | a mismatch serves nothing |
+| Pod spec is production-shaped | unit | probe, limits, `runAsNonRoot`, pinned tag, pull policy | the chart policy `dep.03` enforces |
+| Values reach the Pod | unit | `--set greeting=...` reaches `GREETING` | charts are functions of values |
+| Image builds | unit | `docker build` of `primers/lang.07` | a clean-context build is what CI does |
+| Image user is numeric, non-root | boundary | the image config's `User` | what the kubelet verifies |
+| Container serves health and greeting | unit | `/healthz`, then `/` returns the env greeting and the container hostname | configuration through the environment |
+| Container exits 0 on `SIGTERM` | fault | `docker stop -t 5` ends with exit 0 well inside 5 s | rollouts and drills in `ops.00` |
+| Service has ready endpoints on kind | conformance | ready endpoints behind the 31007 Service on `kind-lang07` | the image was loaded and the probe passes |
+| NodePort answers from a Pod | conformance | `GET http://127.0.0.1:31007/` names a running Pod | the full path of section 3 |
 
-The last two form the **cluster tier**. Without the context `kind-lang07` they fail and say so; `OL_SMOKE=1 ol check lang.07` skips them with the reason and checks everything else (the summary line ends `(smoke: cluster tier skipped)`).
+The last two need a running cluster with the context `kind-lang07`; everything else runs with Docker and Helm alone.
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **The program must be configurable without a rebuild.** The image is built once and run in many places, so everything that differs per place (greeting, port) comes from the environment, with defaults. The pod name is not configuration at all: it is the hostname the uts namespace gives the container, which is also the Pod name on Kubernetes.
+2. **The program is pid 1, so it owns `SIGTERM`.** Section 2.4: an unhandled `SIGTERM` to pid 1 is ignored, and Go's default handler exits `2` without draining. So the server must catch `SIGTERM`, stop accepting, finish what is in flight, and return from `main` normally (exit `0`), all well inside the grace period.
+3. **What ships is only the binary.** The compiler is needed to build, not to run, so two stages: compile with `golang`, copy one static binary (`CGO_ENABLED=0`, so it needs no libc from the build stage) into a small runtime stage. Every `FROM` is pinned to a tag so the build does not change under you.
+4. **The user must be provably non-root.** The kubelet can only compare a number with 0, so `USER 10001:10001`, and port 8080 (above 1023) so that user may bind it.
+5. **The entrypoint must not put a shell between the kernel and the server.** Exec form makes the binary pid 1 and lets it receive `args:`.
+6. **The cluster objects must agree with each other.** One set of labels, defined once, is used for the Deployment's selector, the Pod template, and the Service's selector; the container names its port `http`, and both the probe and the Service's `targetPort` refer to that name. Nothing can drift because nothing is written twice.
+7. **kind needs two things decided up front.** The image has to be in the node's store and never pulled (`IfNotPresent` with a pinned tag), and the NodePort has to be mapped to the host when the cluster is created.
+
+### 5.2 The code, annotated
+
+**The server.** Configuration from the environment with defaults, then the two routes.
+
+```go
+func main() {
+	greeting := os.Getenv("GREETING") // twelve-factor: set per environment, never baked in
+	if greeting == "" {
+		greeting = "hello"
+	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	pod, _ := os.Hostname() // the uts namespace: the container id prefix, or the Pod name
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok\n")) // checks the process only: safe for liveness too
+	})
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"greeting": greeting, "pod": pod})
+	})
+	// ...
+```
+
+`GET /{$}` (Go 1.22 patterns) matches exactly `/`, not every path, so a typo in a URL is a 404 instead of a greeting. The hostname is read once at start: it cannot change for the life of the container.
+
+**Shutdown.** This is the part that decides the exit code.
+
+```go
+	srv := &http.Server{Addr: ":" + port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	// ctx is cancelled on SIGTERM (docker stop, a rollout) or Ctrl-C.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)
+	defer stop()
+
+	errc := make(chan error, 1)
+	go func() { errc <- srv.ListenAndServe() }()
+	log.Printf("listening on :%s", port)
+
+	select {
+	case err := <-errc:
+		log.Fatal(err) // could not bind: exit non-zero, the controller will restart us
+	case <-ctx.Done(): // SIGTERM: fall through to the drain
+	}
+	// Stop accepting, wait for in-flight requests, but never longer than 5 s:
+	// well inside docker's 10 s and Kubernetes' 30 s grace periods.
+	shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdown); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal(err)
+	}
+	// main returns: exit code 0
+}
+```
+
+`signal.NotifyContext` replaces Go's default `SIGTERM` behaviour (exit `2`) with a cancelled context. `ListenAndServe` runs in a goroutine so `main` can wait on either a bind error or the signal. `Shutdown` closes the listeners first, so no new connection is accepted, then waits for active ones. `ReadHeaderTimeout` stops a slow client from holding a connection open forever, which would also hold up the drain.
+
+**The Dockerfile.**
+
+```dockerfile
+# Stage 1: compile with the full Go toolchain (about 250 MB, never shipped).
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+# go.mod first: this layer stays cached until the module file changes.
+COPY go.mod ./
+COPY *.go ./
+# Static binary (no cgo, so no libc dependency on the build stage); -trimpath and
+# -s -w strip local paths and symbols, so the binary is smaller and reproducible.
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/hello .
+
+# Stage 2: the runtime is a small base plus one static binary.
+FROM alpine:3.19
+COPY --from=build /out/hello /usr/local/bin/hello
+# A numeric uid, so Kubernetes `runAsNonRoot` can prove it is not root.
+USER 10001:10001
+EXPOSE 8080
+# Exec form: hello is PID 1 and receives SIGTERM directly.
+ENTRYPOINT ["/usr/local/bin/hello"]
+```
+
+The build context is `primers/lang.07`, and [`.dockerignore`](../../../../course/solutions/primers/lang.07/.dockerignore) leaves out `chart/`, `kind.yaml`, and Markdown, so editing the chart does not invalidate the `COPY` cache or ship into the build context.
+
+**The kind cluster.** The mapping must exist at creation (section 2.7), and binds only to loopback.
+
+```yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: lang07                   # context kind-lang07
+nodes:
+  - role: control-plane
+    extraPortMappings:         # host 127.0.0.1:31007 -> node container :31007
+      - containerPort: 31007
+        hostPort: 31007
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+```
+
+**The chart.** The labels are defined once in `_helpers.tpl` and included everywhere a selector or label appears:
+
+```yaml
+{{- define "hello.labels" -}}
+app.kubernetes.io/name: hello
+app.kubernetes.io/instance: {{ .Release.Name }}  # two releases never select each other's Pods
+{{- end -}}
+```
+
+The Deployment's container (the part that carries the policy):
+
+```yaml
+    spec:
+      securityContext:
+        runAsNonRoot: true                       # kubelet refuses uid 0; works because USER is numeric
+      containers:
+        - name: hello
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"   # hello:0.1.0, pinned
+          imagePullPolicy: {{ .Values.image.pullPolicy }}                   # IfNotPresent: use kind's copy
+          env:
+            - name: GREETING
+              value: {{ .Values.greeting | quote }}   # quote: a value like "yes" stays a string
+          ports:
+            - name: http                         # the name the probe and the Service use
+              containerPort: 8080
+          readinessProbe:                        # out of the endpoints while it fails
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 2
+          livenessProbe:                         # restarted only if the process itself is stuck
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}   # requests and limits from values
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true         # the server writes nothing to disk
+```
+
+And the Service, which selects the same labels and targets the port by name:
+
+```yaml
+spec:
+  type: NodePort
+  selector:
+    {{- include "hello.labels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}           # 80, the in-cluster port
+      targetPort: http                           # resolves to containerPort 8080
+      nodePort: {{ .Values.service.nodePort }}   # 31007, the one kind.yaml maps
+```
+
+[`values.yaml`](../../../../course/solutions/primers/lang.07/chart/values.yaml) sets `replicas: 2` (section 3: with $R = 2$ a rollout never drops below two ready Pods), the pinned tag `"0.1.0"` with `pullPolicy: IfNotPresent`, and small requests and limits (`10m`/`16Mi`, capped at `100m`/`32Mi`).
+
+Full solution: [`main.go`](../../../../course/solutions/primers/lang.07/main.go), [`Dockerfile`](../../../../course/solutions/primers/lang.07/Dockerfile), [`kind.yaml`](../../../../course/solutions/primers/lang.07/kind.yaml), [`chart/`](../../../../course/solutions/primers/lang.07/chart/).
+
+### 5.3 Why this solution
+
+- **Image size and attack surface.** The runtime image is Alpine (a few MB) plus a stripped static binary, instead of a 300 MB toolchain image. `scratch` or distroless would be smaller still (see Going further); Alpine keeps a shell for `kubectl exec` while learning.
+- **Graceful shutdown costs a dozen lines.** The alternative, relying on the runtime's default, exits `2` mid-request on every rollout. A `tini`-style init process would forward signals but not drain HTTP requests; only the server knows what "in flight" means.
+- **Port by name, labels by include.** Writing `targetPort: 8080` and copying the labels three times works until one copy changes. Using one source for each makes the Service-to-Pod link impossible to break by editing one file.
+- **NodePort on kind** is the smallest way to reach a Service from the laptop. It costs a fixed port mapping at cluster creation; an Ingress would need a controller installed first.
+- **Accepted tradeoff:** the same `/healthz` serves readiness and liveness. That is right here because the server has no dependency; once it has one (the gateway and the engine in `dep.00`), readiness checks the dependency and liveness must not.
+
+### 5.4 Explain it back
+
+1. Why does the server exit `0` on `SIGTERM`, and what would `docker stop` report without `signal.NotifyContext`?
+   <details><summary>Answer</summary>
+   `NotifyContext` turns `SIGTERM` into a cancelled context; `main` then calls `Shutdown` and returns normally, which is exit `0`. Without it, Go's runtime handles `SIGTERM` itself and exits with code `2`, without finishing the requests in flight. (A pid 1 with no handler at all, like BusyBox `httpd` in section 3, is not terminated by `SIGTERM` and is killed at the end of the grace period with `137`.)
+   </details>
+2. Why `USER 10001:10001` and not `USER app` with an `adduser` line?
+   <details><summary>Answer</summary>
+   `runAsNonRoot: true` makes the kubelet verify the uid before starting the container, and it can only compare a number with 0. A user name would need `/etc/passwd` from inside the image, which the kubelet does not read, so the Pod fails with `CreateContainerConfigError`.
+   </details>
+3. What happens if `values.yaml` sets the tag to `latest` and you remove `pullPolicy`?
+   <details><summary>Answer</summary>
+   With tag `latest` the default policy is `Always`, so the kubelet ignores the image `kind load` put in the node's store and tries a registry that has no `hello` image: `ErrImagePull`, then `ImagePullBackOff`. A pinned tag with `IfNotPresent` uses the loaded copy.
+   </details>
+4. Why does the Service say `targetPort: http` rather than `8080`, and why do all selectors come from `hello.labels`?
+   <details><summary>Answer</summary>
+   Both remove a second copy of a fact. If the container port changes, the named port follows it; if a label changes, the Deployment selector, the Pod labels, and the Service selector change together. A mismatch in either would leave the Service with no endpoints: connections accepted and then reset.
+   </details>
+5. Why must `extraPortMappings` be in `kind.yaml` before `kind create cluster`, when the NodePort itself is created later by Helm?
+   <details><summary>Answer</summary>
+   The NodePort opens port 31007 on the node, and the node is a Docker container. The laptop reaches it only through a Docker port mapping on that container, and Docker fixes port mappings when a container is created. The Service can come later; the mapping cannot.
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. One stage, or `FROM golang` without a tag | a 300 MB image with a compiler in it; builds that change under you when `latest` moves | `test_dockerfile_multi_stage_pinned_non_root` |
-| 2. No `SIGTERM` handler, or a shell-form `ENTRYPOINT` | without a handler Go exits `2` mid-request; a shell left as pid 1 makes `docker stop` take the full grace period and exit `137`; shell form also drops the `args:` a chart passes | `test_container_exits_zero_on_sigterm`, `test_dockerfile_multi_stage_pinned_non_root` |
-| 3. `USER app` (a name) or no `USER` | the Pod never starts: `CreateContainerConfigError: image has non-numeric user` (or it runs as root) | `test_image_user_is_numeric_non_root`, `test_dockerfile_multi_stage_pinned_non_root` |
-| 4. `image: hello:latest` or `imagePullPolicy: Always` on kind | `ErrImagePull`, `ImagePullBackOff`: the node tries a registry that has no such image | `test_pod_spec_is_production_shaped` |
-| 5. NodePort mapping missing from `kind.yaml`, or added after `kind create cluster` | `curl: (7) Failed to connect to 127.0.0.1 port 31007` while `kubectl get pods` looks healthy | `test_kind_config_maps_the_nodeport`, `test_nodeport_answers_from_a_pod` |
-| 6. Service selector or `targetPort` that does not match the Pod | `curl: (52) Empty reply` or a reset; the Service has no endpoints | `test_chart_renders_deployment_and_nodeport_service` |
-| 7. Forgot `kind load docker-image` after a rebuild | old code keeps running (same tag), or `ErrImagePull` on a new tag | `test_service_has_ready_endpoints_on_kind` |
-| 8. A liveness probe that calls a dependency | every replica restarts when the dependency blips | review only: the exercise has no dependency; in dep.00 the gateway's readiness, never its liveness, depends on the engine |
+| 1. One stage, or `FROM golang` without a tag | a 300 MB image with a compiler in it; builds that change under you when `latest` moves | two stages, `golang:1.24-alpine` and `alpine:3.19`, both pinned |
+| 2. No `SIGTERM` handler, or a shell-form `ENTRYPOINT` | without a handler Go exits `2` mid-request; a shell left as pid 1 makes `docker stop` take the full grace period and exit `137`; shell form also drops the `args:` a chart passes | `signal.NotifyContext` plus `Shutdown` with a 5 s cap; exec-form `ENTRYPOINT` (step 2 and 5) |
+| 3. `USER app` (a name) or no `USER` | the Pod never starts: `CreateContainerConfigError: image has non-numeric user` (or it runs as root) | `USER 10001:10001` in the final stage |
+| 4. `image: hello:latest` or `imagePullPolicy: Always` on kind | `ErrImagePull`, `ImagePullBackOff`: the node tries a registry that has no such image | tag `"0.1.0"` and `pullPolicy: IfNotPresent` in `values.yaml` |
+| 5. NodePort mapping missing from `kind.yaml`, or added after `kind create cluster` | `curl: (7) Failed to connect to 127.0.0.1 port 31007` while `kubectl get pods` looks healthy | `extraPortMappings` for 31007 in `kind.yaml`, used at creation |
+| 6. Service selector or `targetPort` that does not match the Pod | `curl: (52) Empty reply` or a reset; the Service has no endpoints | one `hello.labels` helper for every selector; `targetPort: http` by name |
+| 7. Forgot `kind load docker-image` after a rebuild | old code keeps running (same tag), or `ErrImagePull` on a new tag | the usage sequence loads after every build; bump the tag when the code changes |
+| 8. A liveness probe that calls a dependency | every replica restarts when the dependency blips | `/healthz` checks only the process; in dep.00 the gateway's readiness, never its liveness, depends on the engine |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `lang.06` | the Go server you containerize here |
+| Back | `lang.06` | the Go server containerized here |
 | Back | `lang.02` | processes, exit codes, and signals (`SIGTERM`, `SIGKILL`) |
 | Forward | `dep.00` | engine and gateway images, two Helm charts, a kind cluster with NodePorts 30080 and 30686 |
 | Forward | `obs.00` | Jaeger runs as one more Deployment and Service on the same cluster |
@@ -284,7 +480,7 @@ The last two form the **cluster tier**. Without the context `kind-lang07` they f
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `docker build` | BuildKit with cache mounts and `docker buildx` | parallel stages, `--mount=type=cache` for module caches, multi-arch images | [BuildKit docs](https://docs.docker.com/build/buildkit/) |
 | `alpine` runtime stage | distroless or `scratch` | no shell or package manager at all; smaller attack surface | [distroless](https://github.com/GoogleContainerTools/distroless) |

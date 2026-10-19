@@ -1,7 +1,0 @@
---- a/go/gateway/limit/limit.go
-+++ b/go/gateway/limit/limit.go
-@@ -187,3 +187,3 @@
- 	l.calls++
--	if l.calls%sweepEvery == 0 {
-+	if l.calls >= sweepEvery {
- 		l.sweep(now)

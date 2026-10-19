@@ -1,0 +1,392 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "values.yaml of the worker chart",
+  "description": "<system>-worker (dep.06, dur.04, dur.09). The image carries the Go worker and the Python environment; KEDA scales it on tl.durable.task_queue.depth. The rendered chart (`helm template`) must meet the deployment policy of dep.03, dep.06, and dep.07: probes, resource requests and limits, non-root, no image tag latest, a PodDisruptionBudget, and secrets only through Secret references (this schema rejects literal secret values). Copy this file into the chart as values.schema.json; Helm then validates every install. Draft-07, because that is what Helm validates.",
+  "type": "object",
+  "required": [
+    "image",
+    "resources",
+    "securityContext",
+    "probes",
+    "pdb",
+    "taskQueues",
+    "durableAddress",
+    "autoscaling"
+  ],
+  "properties": {
+    "image": {
+      "$ref": "#/definitions/image"
+    },
+    "resources": {
+      "$ref": "#/definitions/resources"
+    },
+    "securityContext": {
+      "$ref": "#/definitions/securityContext"
+    },
+    "probes": {
+      "$ref": "#/definitions/probes"
+    },
+    "pdb": {
+      "$ref": "#/definitions/pdb"
+    },
+    "env": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/envVar"
+      }
+    },
+    "artifacts": {
+      "$ref": "#/definitions/artifacts"
+    },
+    "otel": {
+      "$ref": "#/definitions/otel"
+    },
+    "runtime": {
+      "$ref": "#/definitions/runtime"
+    },
+    "nodeSelector": {
+      "type": "object"
+    },
+    "tolerations": {
+      "type": "array"
+    },
+    "podAnnotations": {
+      "type": "object"
+    },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 2
+    },
+    "taskQueues": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "durableAddress": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9.-]+:[0-9]{1,5}$"
+    },
+    "autoscaling": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "queue": {
+          "type": "string"
+        },
+        "targetDepth": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "prometheusAddress": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "image": {
+      "type": "object",
+      "required": [
+        "repository",
+        "tag"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$",
+          "not": {
+            "enum": [
+              "latest",
+              ""
+            ]
+          },
+          "description": "Never latest (dep.03 policy)."
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "pullPolicy": {
+          "enum": [
+            "IfNotPresent",
+            "Always",
+            "Never"
+          ]
+        }
+      }
+    },
+    "quantity": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?(m|Ki|Mi|Gi|Ti|k|M|G|T)?$"
+        },
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      ]
+    },
+    "resources": {
+      "type": "object",
+      "required": [
+        "requests",
+        "limits"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "required": [
+            "cpu",
+            "memory"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/quantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/quantity"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "required": [
+            "cpu",
+            "memory"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/quantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/quantity"
+            }
+          }
+        }
+      }
+    },
+    "securityContext": {
+      "type": "object",
+      "required": [
+        "runAsNonRoot",
+        "runAsUser",
+        "allowPrivilegeEscalation"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "runAsNonRoot": {
+          "const": true
+        },
+        "runAsUser": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runAsGroup": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "readOnlyRootFilesystem": {
+          "type": "boolean"
+        },
+        "allowPrivilegeEscalation": {
+          "const": false
+        }
+      }
+    },
+    "pdb": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "maxUnavailable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "maxUnavailable": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9]+%$"
+            }
+          ]
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "required": [
+        "path"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "probes": {
+      "type": "object",
+      "required": [
+        "liveness",
+        "readiness"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "liveness": {
+          "$ref": "#/definitions/probe"
+        },
+        "readiness": {
+          "$ref": "#/definitions/probe"
+        },
+        "startup": {
+          "$ref": "#/definitions/probe"
+        }
+      }
+    },
+    "secretRef": {
+      "type": "object",
+      "required": [
+        "name",
+        "key"
+      ],
+      "additionalProperties": false,
+      "description": "A reference to a key of a Kubernetes Secret. Literal secret values are never accepted.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "envVar": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "value": {
+          "type": "string"
+        },
+        "valueFrom": {
+          "type": "object",
+          "required": [
+            "secretKeyRef"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "secretKeyRef": {
+              "$ref": "#/definitions/secretRef"
+            }
+          }
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "valueFrom"
+          ]
+        },
+        {
+          "properties": {
+            "name": {
+              "not": {
+                "pattern": "(?i)(KEY|SECRET|PEPPER|TOKEN|PASSWORD|CREDENTIAL)"
+              }
+            }
+          }
+        }
+      ],
+      "description": "A variable whose name looks secret (KEY, SECRET, PEPPER, TOKEN, PASSWORD, CREDENTIAL) must come from a Secret."
+    },
+    "artifacts": {
+      "type": "object",
+      "required": [
+        "hostPath"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "hostPath": {
+          "type": "string",
+          "pattern": "^/",
+          "default": "/artifacts"
+        },
+        "mountPath": {
+          "type": "string",
+          "pattern": "^/",
+          "default": "/artifacts"
+        }
+      }
+    },
+    "otel": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "endpoint": {
+          "type": "string"
+        },
+        "serviceName": {
+          "type": "string"
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "description": "The runtime.toml content as a map, rendered into the ConfigMap with toToml; validated by contracts/config/runtime.schema.json at test time."
+    }
+  }
+}

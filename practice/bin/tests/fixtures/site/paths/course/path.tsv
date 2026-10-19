@@ -1,7 +1,0 @@
-# stage	title	files	done when	check
-0	The demo system	chapters/m90-1-scale.md	You can name every demo component.
-1	Scale	chapters/m90-1-scale.md	Your scale passes its tests.	module:M90.1
-2	Demo ABI	chapters/rt-90-abi.md	Your ABI unit passes.	module:rt.90
-3	Demo sum	chapters/rt-91-demo-sum.md	Your C sum passes.	module:rt.91
-4	Normalize	chapters/m90-2-norm.md	Your normalizer passes.	module:M90.2
-5	All Python	chapters/m90-3-scale-finite.md	Both Python modules pass.	all:M90.1,M90.2

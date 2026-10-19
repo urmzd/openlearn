@@ -1,0 +1,7 @@
+# The uv project of the lang.01 primer, made with:
+#   uv init --bare primers/lang.01 && uv add --project primers/lang.01 numpy
+[project]
+name = "lang01"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["numpy>=2.0"]

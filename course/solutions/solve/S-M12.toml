@@ -1,0 +1,146 @@
+# Reference answers for S-M12: the worked answers the chapter explains.
+
+[q1.a]
+answer = "floor((224 + 2*3 - 7)/2) + 1"
+[q1.b]
+answer = "floor((112 + 2 - 3)/2) + 1"
+[q1.c]
+answer = "floor((3000 + 2 - 3)/2) + 1"
+[q1.d]
+answer = "32 - 4*(3 - 1)"
+[q2.a]
+answer = "d*(k - 1) + 1"
+[q2.b]
+answer = "(k - 1)/2"
+[q3.a]
+answer = "1 + 3*(3 - 1)"
+[q3.b]
+answer = "3 + (3 - 1)*2"
+[q4.a]
+answer = "[1 - 3, 2 - 4]"
+[q4.b]
+answer = "[3 - 1, 4 - 2]"
+[q5.a]
+answer = "[[1, 0, -1, 0], [0, 1, 0, -1]]"
+[q5.b]
+answer = "[1, 1, -1, -1]"
+[q5.c]
+answer = "true"
+[q6.a]
+answer = "[1 + 2, 2 + 3, 3 + 4]"
+[q6.b]
+answer = "4"
+[q7]
+proof = "S-M12/q7.md"
+[q8.a]
+answer = "128*64*9 + 128"
+[q8.b]
+answer = "64*9 + 64"
+[q8.c]
+answer = "128*64*9*56*56"
+[q9.a]
+answer = "(224/16)^2"
+[q9.b]
+answer = "768*3*16*16 + 768"
+[q9.c]
+answer = "196 + 1"
+[q10.a]
+answer = "[3*4*5*4, 4*5*4, 5*4, 4]"
+[q10.b]
+answer = "[4*5*3*4, 4, 5*3*4, 3*4]"
+[q10.c]
+answer = "240 + 2*4 + 3*60 + 4*12"
+[q10.d]
+answer = "3*14*14"
+[q11.a]
+answer = "16000/2"
+[q11.b]
+answer = "10000 - 7000"
+[q11.c]
+answer = "16000 - 12000"
+[q11.d]
+answer = "Abs(25000 - 2*16000)"
+[q12.a]
+answer = "1/(4/3 - 1)"
+[q12.b]
+answer = "false"
+[q12.c]
+answer = "1/(2*4)"
+[q12.d]
+answer = "b"
+[q13.a]
+answer = "(3/2)*(1/8) - (5/2)*(1/4) + 1"
+[q13.b]
+answer = "(-1/2)*((27/8) - 5*(9/4) + 8*(3/2) - 4)"
+[q13.c]
+answer = "(-3/4)*((27/8) - 5*(9/4) + 8*(3/2) - 4)"
+[q14.a]
+answer = "1*1000/250"
+[q14.b]
+answer = "2*4 + 1"
+[q14.c]
+answer = "3*2"
+[q15.a]
+answer = "[1, 1, 1, 1]"
+[q15.b]
+answer = "[4, 0, 0, 0]"
+[q15.c]
+answer = "[1, -I, -1, I]"
+[q15.d]
+answer = "2 + I"
+[q16.a]
+answer = "4*(1 + 4 + 0 + 1)"
+[q16.b]
+answer = "[1, 3, 2, 0]"
+[q16.c]
+answer = "300 + 100 - 1"
+[q16.d]
+answer = "true"
+[q17.a]
+answer = "4"
+[q17.b]
+answer = "400^2"
+[q17.c]
+answer = "512*10"
+[q17.d]
+answer = "false"
+[q18.a]
+answer = "1 + 480000/160"
+[q18.b]
+answer = "16000/400"
+[q18.c]
+answer = "400/2 + 1"
+[q18.d]
+answer = "4*(3/8)"
+[q18.e]
+answer = "1000*400/16000"
+[q18.f]
+answer = "[0, 1/2, 1, 1/2]"
+[q19.a]
+answer = "1000/(200/3)"
+[q19.b]
+answer = "15 + 27"
+[q19.c]
+answer = "2595*log(2, 10)"
+[q19.d]
+answer = "10*log(1000, 10)"
+[q19.e]
+answer = "((1 - 8) + 4)/4"
+[q19.f]
+answer = "(-10 + 4)/4"
+[q20.a]
+answer = "-log(exp(2)/(exp(2) + 3))"
+[q20.b]
+answer = "log(N)"
+[q20.c]
+answer = "log(1024) - 2"
+[q20.d]
+answer = "-10*(1/2)"
+[q21]
+proof = "S-M12/q21.md"
+[q22]
+proof = "S-M12/q22.md"
+[q23]
+answer = "2/1"
+[q24]
+proof = "S-M12/q24.md"

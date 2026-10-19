@@ -1,8 +1,0 @@
---- a/python/tinyllm/num/jacobian.py
-+++ b/python/tinyllm/num/jacobian.py
-@@ -84,4 +84,4 @@
-     if ua.shape != fx.shape:
-         raise ValueError(f"u has shape {ua.shape}, f(x) has {fx.shape}")
-     # u^T J is the gradient of the scalar u . f(x): one gradient, not m rows.
--    return numerical_grad(lambda z: float(np.sum(ua * _eval(f, z))), [xw])[0]
-+    return numerical_grad(lambda z: float(np.sum(_eval(f, z))), [xw])[0]

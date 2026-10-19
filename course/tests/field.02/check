@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-root="$PWD"
-missing=0
-if [ ! -e "$root/docs/engagement/qualification.md" ]; then echo "field.02: missing docs/engagement/qualification.md" >&2; missing=1; fi
-exit "$missing"

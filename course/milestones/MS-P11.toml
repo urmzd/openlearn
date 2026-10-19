@@ -1,7 +1,0 @@
-# MS-P11: final release and operating handoff.
-id       = "MS-P11"
-title    = "v1.0.0 is released, migrated, reviewed, and handed off"
-requires = ["craft.09", "craft.10", "craft.11", "craft.12", "craft.13", "craft.14", "craft.15", "craft.16", "craft.17", "craft.18", "craft.19", "ops.04", "ops.05", "ops.06", "ops.07", "ops.08", "ops.09", "ops.10", "ops.11", "ops.12", "review.02", "review.03", "ethics.06", "field.01", "field.02", "field.03", "field.04", "field.05", "field.06", "field.07", "iv.01"]
-includes = ["MS-ops"]
-pass     = 11
-ci       = "local"

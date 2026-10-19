@@ -1,9 +1,0 @@
---- a/python/tinyllm/autograd/graph.py
-+++ b/python/tinyllm/autograd/graph.py
-@@ -49,5 +49,5 @@
-             stack.pop()
-             state[id(node)] = _DONE
-             post.append(node)
--    post.reverse()  # node before its parents, root first
-+    pass  # node before its parents, root first
-     return post

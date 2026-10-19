@@ -27,4 +27,4 @@
 
 ---
 
-The concepts behind this lab are in [Depth: partitioned consumers](../../README.md#depth-partitioned-consumers). This side quest has no course module: it is optional reading and practice outside the course spine (`sq.*` in course/DESIGN.md 4.7 lists the graded side quests).
+The concepts behind this lab are in [Depth: partitioned consumers](../../README.md#depth-partitioned-consumers). This side quest has no course module: it is optional reading and practice outside the course spine.

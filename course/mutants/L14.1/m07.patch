@@ -1,8 +1,0 @@
---- a/python/tinyllm/speech/frontend.py
-+++ b/python/tinyllm/speech/frontend.py
-@@ -92,4 +92,4 @@
-     p = power(spec)[:, :-1]
-     fb = mel_filterbank(cfg.sampling_rate, cfg.n_fft, cfg.feature_size)
-     # The clip at max - 8 sees only the kept frames.
--    return log_mel_whisper(p, fb).astype(np.float32)
-+    return log_mel_whisper(p, fb)

@@ -1,5 +1,0 @@
-id       = "chat.seed"
-title    = "The same seed gives the same output across two calls of one engine"
-versions = ["v1", "v2"]
-tiers    = ["engine"]
-check    = "chat_seed"

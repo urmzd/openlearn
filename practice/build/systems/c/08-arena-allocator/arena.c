@@ -1,4 +1,4 @@
-/* arena.c - the part you write. */
+/* arena.c - the reference implementation of the arena. */
 #include "arena.h"
 
 #include <stdint.h>
@@ -47,15 +47,12 @@ static int arena_grow(Arena *a, size_t need) {
 }
 
 void arena_init(Arena *a, size_t block_size) {
-  /* SOLUTION-BEGIN */
   a->head = NULL;
   a->block_size = block_size ? block_size : ARENA_DEFAULT_BLOCK;
   a->used_total = 0;
-  /* SOLUTION-END */
 }
 
 void *arena_alloc_aligned(Arena *a, size_t size, size_t align) {
-  /* SOLUTION-BEGIN */
   if (!is_power_of_two(align)) return NULL;
 
   /* Try the current block, then a fresh one. The loop runs at most twice:
@@ -94,17 +91,13 @@ void *arena_alloc_aligned(Arena *a, size_t size, size_t align) {
     }
   }
   return NULL;
-  /* SOLUTION-END */
 }
 
 void *arena_alloc(Arena *a, size_t size) {
-  /* SOLUTION-BEGIN */
   return arena_alloc_aligned(a, size, _Alignof(max_align_t));
-  /* SOLUTION-END */
 }
 
 char *arena_strdup(Arena *a, const char *s) {
-  /* SOLUTION-BEGIN */
   size_t n = strlen(s) + 1;
   /* Strings need no alignment beyond 1, and asking for more would waste up to
    * 15 bytes per string in an arena full of them. */
@@ -112,20 +105,16 @@ char *arena_strdup(Arena *a, const char *s) {
   if (!p) return NULL;
   memcpy(p, s, n);
   return p;
-  /* SOLUTION-END */
 }
 
 ArenaMark arena_mark(const Arena *a) {
-  /* SOLUTION-BEGIN */
   ArenaMark m;
   m.block = a->head;
   m.used = a->head ? a->head->used : 0;
   return m;
-  /* SOLUTION-END */
 }
 
 void arena_reset_to(Arena *a, ArenaMark mark) {
-  /* SOLUTION-BEGIN */
   /* Drop every block newer than the marked one. They are freed rather than
    * kept, because keeping them would need a free list and the whole appeal of
    * this allocator is that it has almost no bookkeeping. */
@@ -135,11 +124,9 @@ void arena_reset_to(Arena *a, ArenaMark mark) {
     free(dead);
   }
   if (a->head) a->head->used = mark.used;
-  /* SOLUTION-END */
 }
 
 void arena_reset(Arena *a) {
-  /* SOLUTION-BEGIN */
   /* Keep the first block and drop the rest: the common pattern is reset-then-
    * refill, and holding one block means the refill usually needs no malloc.
    * Freeing everything would give the caller a fresh malloc on every cycle. */
@@ -150,24 +137,19 @@ void arena_reset(Arena *a) {
   }
   if (a->head) a->head->used = 0;
   a->used_total = 0;
-  /* SOLUTION-END */
 }
 
 void arena_free(Arena *a) {
-  /* SOLUTION-BEGIN */
   while (a->head) {
     Block *dead = a->head;
     a->head = dead->prev;
     free(dead);
   }
   a->used_total = 0;
-  /* SOLUTION-END */
 }
 
 size_t arena_block_count(const Arena *a) {
-  /* SOLUTION-BEGIN */
   size_t n = 0;
   for (const Block *b = a->head; b; b = b->prev) n++;
   return n;
-  /* SOLUTION-END */
 }

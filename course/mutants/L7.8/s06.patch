@@ -1,9 +1,0 @@
---- a/python/tinyllm/modern/moe.py
-+++ b/python/tinyllm/modern/moe.py
-@@ -165,5 +165,5 @@
-             raise ValueError(f"expert_load must be [E] = [{self.n_experts}], got {load.shape}")
-         # Overloaded experts (load above the mean) get a lower bias, so the
-         # router picks them less next step; underloaded ones a higher bias.
--        step = self.bias_update_rate * np.sign(load.mean() - load)
-+        step = self.bias_update_rate * np.sign(load - load.mean())
-         self.e_score_correction_bias = (self.e_score_correction_bias + step).astype(np.float32)
