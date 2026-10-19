@@ -28,7 +28,7 @@ flowchart LR
   EN -- "OTLP/HTTP JSON" --> J
 ```
 
-Notice that Python and Rust exchange data only through files: safetensors checkpoints, `tokenizer.json`, and shared fixtures. No language boundary in the system uses FFI. [ADR-0001](../../../../../course/solutions/docs/adr/0001-languages-meet-at-process-and-file-boundaries.md) records why: a file or a process boundary can be tested from either side on its own, and either side can be rewritten without touching the other.
+Notice that Python and Rust exchange data only through files: safetensors checkpoints, `tokenizer.json`, and shared fixtures. No language boundary in the system uses FFI. [ADR-0001](../../../../../course/solutions/docs/adr/0001-languages-meet-at-process-and-file-boundaries.md) records why: in-process bindings would couple memory ownership and failure behavior across runtimes, while files with versioned schemas and parity fixtures let each language own its memory and errors and let each service be built, tested, and restarted on its own.
 
 ## The contracts
 

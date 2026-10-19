@@ -1,78 +1,53 @@
-# Authorization & Access Control
+# Authorization and Access Control
 
-## Overview
+Authorization answers one question: **can *subject* do *action* on *resource*, in *context*?** Every model you will meet in this chapter (RBAC, ABAC, ReBAC, NGAC) is a different way to compute that boolean. The question looks simple, but it is really a *language-recognition* problem: given a request, decide whether it is in the set of permitted requests. How hard that is depends entirely on the **structure** of your permissions.
 
-- **Primary references**: [NIST RBAC model](https://csrc.nist.gov/projects/role-based-access-control) (free), [NIST ABAC — SP 800-162](https://csrc.nist.gov/pubs/sp/800/162/final) (free), [NIST NGAC (Next Generation Access Control)](https://csrc.nist.gov/projects/policy-machine) (free), [Google Zanzibar paper](https://research.google/pubs/pub48190/) (free)
-- **Supplementary**: [Open Policy Agent (OPA/Rego)](https://www.openpolicyagent.org/docs/latest/) (free), [OpenFGA](https://openfga.dev/docs) (free), [Casbin](https://casbin.org/docs/overview), [Oso](https://www.osohq.com/docs), [SpiceDB](https://authzed.com/docs); a formal-languages refresher (Chomsky hierarchy, pushdown automata) — [Sipser](https://math.mit.edu/~sipser/book.html) or the [Discrete Math 2](../../mathematics-for-computing/06-discrete-math-2/) track
-- **Prerequisites**: [Retrieval & RAG](../07-retrieval-and-rag/) (why retrieval must be permission-aware), [System Design](../../systems/01-system-design/), graph reachability ([Algorithms — Graphs](../../algorithms/06-graphs/))
-- **Estimated time**: 2-3 weeks at 8-10 hrs/week
+If permissions are flat (this role, these actions), recognizing them is a finite lookup: a regular language, decidable by a DFA. The moment permissions become *recursive* (groups contain groups, folders contain folders, roles inherit roles, delegation chains), you can no longer decide membership with finite state. You need a stack to track how deep you have descended, which is the jump from a finite automaton to a **pushdown automaton**. That is why real authorization systems are graph-traversal engines, not permission tables, and recognizing it saves you from the classic mistake of bolting recursion onto a model that cannot express it.
 
-## Key Takeaways
+The chapter has two halves. The first surveys the models on that complexity ladder, the architecture that separates deciding from enforcing, and the place where authorization meets retrieval: secure RAG. The second builds the gateway's own access control in Go: per-client API keys with scopes, model allowlists, and tenants, and then per-key rate limits that keep one tenant from starving the rest.
 
-- **Authorization answers one question: "can *subject* do *action* on *resource* (in *context*)?"** Every model — RBAC, ABAC, ReBAC, NGAC — is a different way to compute that boolean.
-- **The models sit on a complexity ladder.** Flat RBAC is nearly a lookup table; nested groups and resource hierarchies need *recursion*; rich conditions need a *policy language*. Match the model to the structure of your permissions, not to fashion.
-- **Recursion is why naive authz breaks** — "members of groups that own folders containing this doc." Evaluating nested/transitive relationships is a graph-reachability (stack-driven, pushdown-style) computation, not a finite-state check. Pulling that idea out is the deepest pattern here.
-- **Separate policy from enforcement.** A **Policy Decision Point** (PDP) decides; a **Policy Enforcement Point** (PEP) enforces. Externalizing authz (OPA, Zanzibar-style services) keeps it consistent, auditable, and testable.
-- **Authorization is part of retrieval, not a wrapper around it.** In RAG you must filter to what the user may see *during* retrieval — "secure RAG." Post-hoc filtering leaks existence and ranking signal.
+> **Learning objectives**
+> - Distinguish authentication from authorization and name the PEP, PDP, PAP, and PIP roles.
+> - Compare RBAC, ABAC, ReBAC, and NGAC, and place each on the complexity ladder from lookup to graph reachability.
+> - Explain why recursive permissions need a relationship graph and how a Zanzibar-style `check` works.
+> - Design permission-aware retrieval that filters during the search, not after it.
+> - Build API-key authentication, scope and allowlist authorization, and RPM/TPM rate limiting for an LLM gateway.
 
-## How to Study
+## Before you begin
 
-- Model the same app three ways: RBAC (roles→permissions), ABAC (attribute rules), and ReBAC (a relationship graph). Note which questions each makes easy and which it makes painful.
-- Implement a tiny relationship-graph checker (à la Zanzibar): `check(user, relation, object)` via graph traversal. Add nested groups and watch it become a reachability problem.
-- Write one policy in OPA/Rego and the *same* policy as ReBAC tuples — feel the declarative vs relational trade-off.
-- Wire permission filters into the [RAG retriever](../07-retrieval-and-rag/) so a query can only return authorized chunks.
+The secure-RAG discussion assumes [Retrieval & RAG](../07-retrieval-and-rag/), which explains why retrieval must be permission-aware. The architecture assumes some [System Design](../../systems/01-system-design/) from *Systems*, and the ReBAC material assumes graph reachability from [Graphs](../../algorithms/06-graphs/) in *Algorithms*. For the formal-languages side (the Chomsky hierarchy and pushdown automata), see [Discrete Math 2](../../mathematics-for-computing/06-discrete-math-2/) in *Mathematics for Computing* or [Sipser](https://math.mit.edu/~sipser/book.html). The two build sections plug into the gateway, so the [server skeleton](../12-gateway/01-server-skeleton.md) is a prerequisite for them.
 
----
+## The vocabulary
 
-# Concepts & Techniques
+Start by separating two words that are constantly confused. **Authentication** ("authn") is *who are you*: identity. **Authorization** ("authz") is *what may you do*. This chapter is about authz, though its first build section does both, and the difference shows up directly as the difference between an HTTP 401 and a 403.
 
-## Core Insight
+A request has a **subject** or **principal** (a user or a service), an **action** (read, write), a **resource** or **object** (a doc, a row, an endpoint), and a **context** (time, IP, device). The standard XACML architecture splits the machinery into four roles: the **Policy Enforcement Point** (PEP) intercepts requests and enforces decisions; the **Policy Decision Point** (PDP) evaluates policy; the **Policy Administration Point** (PAP) manages policy; and the **Policy Information Point** (PIP) supplies attributes. The key idea is to **separate deciding from enforcing**. Two principles apply everywhere: **least privilege** (grant the minimum) and **deny by default** (the absence of a grant is a denial).
 
-Authorization looks like a boolean function but is really a *language-recognition* problem: given a request, decide whether it's in the set of permitted requests. How hard that is depends entirely on the **structure** of your permissions. If permissions are flat (this role → these actions), recognizing them is a finite lookup — a regular language, a DFA. The moment permissions become *recursive* — groups contain groups, folders contain folders, roles inherit roles, delegation chains — you can no longer decide membership with finite state; you need a stack to track how deep you've descended. That is the jump from a finite automaton to a **pushdown automaton**, and it's why real authorization systems are graph-traversal engines, not permission tables. Recognizing this saves you from the classic mistake: bolting recursion onto a model that can't express it.
+## RBAC: permissions through roles
 
-## 1. The Vocabulary
+In **role-based access control**, users are assigned **roles** and roles carry **permissions**: user, then role, then permission. Add **role hierarchies**, where a senior role inherits a junior one, and you have NIST RBAC. It is simple, auditable, and matches org charts, which is why it is the industry default.
 
-- **Authentication** ("authn") — *who are you* (identity). **Authorization** ("authz") — *what may you do*. This topic is authz; they're constantly confused.
-- **Subject / principal** (user, service), **action** (read, write), **resource / object** (doc, row, endpoint), **context** (time, IP, device).
-- **PEP / PDP / PAP / PIP**: Enforcement Point (intercepts and enforces), Decision Point (evaluates policy), Administration Point (manages policy), Information Point (supplies attributes). The standard XACML split — **separate deciding from enforcing**.
-- **Principle of least privilege** and **deny-by-default**: grant the minimum; absence of a grant is a denial.
+Its limit is **role explosion**. When you need per-resource or conditional access ("editors, but only for their own team's docs in business hours"), you end up minting a role per combination. Through the complexity lens, *flat* RBAC is essentially a finite lookup, a regular language. *Hierarchical* RBAC introduces inheritance, recursion up the role tree, and quietly steps up the ladder.
 
-## 2. RBAC — Role-Based Access Control
+## ABAC: permissions through rules over attributes
 
-**Permissions through roles**
+**Attribute-based access control** evaluates **policies over attributes** of the subject, resource, action, and context, for example `allow if subject.dept == resource.dept and context.time in hours and resource.clearance <= subject.clearance`. It is expressive, fine-grained, and context-aware, and it avoids role explosion because one rule covers many cases.
 
-- **Model**: users are assigned **roles**; roles carry **permissions**. `user → role → permission`. Add **role hierarchies** (senior inherits junior) and you have NIST RBAC.
-- **Strength**: simple, auditable, matches org charts; the industry default.
-- **Limits**: **role explosion** when you need per-resource or conditional access ("editors, but only for their own team's docs in business hours") — you end up minting a role per combination.
-- **Complexity lens**: *flat* RBAC is essentially a finite lookup (regular). *Hierarchical* RBAC introduces inheritance — recursion up the role tree — and quietly steps up the ladder.
+The price is auditability. Answering "who can access X?" requires evaluating the rules over all attributes, and you need a trustworthy attribute source, the PIP. XACML is the classic instance; modern policy engines such as **OPA/Rego**, Cedar, and Casbin are the current ones. A policy *language* is essentially how you express an ABAC decision function.
 
-## 3. ABAC — Attribute-Based Access Control
+## ReBAC and Zanzibar: permissions through a graph
 
-**Permissions through rules over attributes**
+**Relationship-based access control** stores **relationship tuples** of the form `(object, relation, subject)`, such as `(doc:1, viewer, group:eng#member)`, and answers `check(user, relation, object)` by **traversing the relationship graph**. This is Google's **Zanzibar**, the model behind Drive, YouTube, and Cloud, with open-source implementations in OpenFGA and SpiceDB. It naturally expresses **nesting and inheritance**: groups of groups, folders of folders, "a viewer of the parent folder is a viewer of the child." That is exactly the recursive structure RBAC and ABAC struggle with.
 
-- **Model**: decisions are **policies evaluated over attributes** of subject, resource, action, and context: `allow if subject.dept == resource.dept and context.time in hours and resource.clearance <= subject.clearance`.
-- **Strength**: expressive, fine-grained, context-aware; no role explosion — one rule covers many cases.
-- **Limits**: harder to *audit* ("who can access X?" requires evaluating rules over all attributes), and you need a trustworthy attribute source (PIP).
-- **Instance**: XACML (the classic), and modern policy engines like **OPA/Rego**, Cedar, Casbin — a policy *language* is essentially how you express an ABAC decision function.
+Here the pushdown insight becomes concrete. `check()` is **graph reachability**: a traversal that descends through nested groups and resource hierarchies, using a stack or frontier to remember where it is. You are recognizing membership in a recursively defined set, a context-free, pushdown-style computation, not a finite table lookup. It connects directly to [graph BFS and DFS](../../algorithms/06-graphs/). At scale, Zanzibar adds consistency tokens ("zookies") and caching so that a globally distributed authorization graph stays correct and fast, which is itself a [distributed data and caching](../04-distributed-data-and-caching/) problem.
 
-## 4. ReBAC & Zanzibar — Relationship-Based Access Control
+## NGAC: NIST's unifying policy graph
 
-**Permissions through a graph of relationships**
+NIST's **Next Generation Access Control** (the "Policy Machine") represents users, objects, and attributes as nodes in a **directed policy graph** with assignment and association edges. A decision asks whether a privilege is **derivable by traversing** that graph under the policy. It matters because it is general: RBAC and ABAC are special cases of NGAC. It unifies attributes (like ABAC) and relationship evaluation (like ReBAC) under one formalism, and like ReBAC its evaluation is graph reachability over a recursively structured policy, pushdown-style again. Reach for it when you need both attribute conditions *and* relationship inheritance, with formal, analyzable semantics.
 
-- **Model**: store **relationship tuples** — `(object, relation, subject)`, e.g. `(doc:1, viewer, group:eng#member)` — and answer `check(user, relation, object)` by **traversing the relationship graph**. This is Google **Zanzibar** (the model behind Drive/YouTube/Cloud), and OSS implementations OpenFGA / SpiceDB.
-- **Strength**: naturally expresses **nesting and inheritance** — groups of groups, folders of folders, "viewer of the parent folder is a viewer of the child." Exactly the recursive structure RBAC/ABAC struggle with.
-- **The pushdown insight made concrete**: `check()` is **graph reachability** — a traversal that descends through nested groups and resource hierarchies, using a stack/frontier to remember where it is. You're recognizing membership in a recursively-defined set: a context-free, pushdown-style computation, not a finite table lookup. (Connects directly to [graph BFS/DFS](../../algorithms/06-graphs/).)
-- **At scale**: Zanzibar adds consistency tokens ("zookies") and caching so a globally-distributed authz graph stays correct and fast — itself a [distributed data + caching](../04-distributed-data-and-caching/) problem.
+## The complexity ladder
 
-## 5. NGAC — Next Generation Access Control
-
-**Permissions through a policy graph (NIST's unifying model)**
-
-- **Model**: NIST NGAC (the "Policy Machine") represents users, objects, and attributes as nodes in a **directed policy graph** with assignment and association edges; a decision is whether a privilege is **derivable by traversing** that graph under the policy.
-- **Why it matters**: it's a *general* model — RBAC and ABAC are special cases of NGAC. It unifies attributes (like ABAC) and relationship/graph evaluation (like ReBAC) under one formalism, and like ReBAC its evaluation is graph reachability over a recursively-structured policy — again, pushdown-style, not finite-state.
-- **Use**: when you need both attribute conditions *and* relationship inheritance with formal, analyzable semantics.
-
-## 6. The Complexity Ladder (the unifying pattern)
+The four models line up by the structure of the permissions they handle:
 
 | Model | Permission structure | Computation | Recognizes |
 |-------|----------------------|-------------|------------|
@@ -81,29 +56,23 @@ Authorization looks like a boolean function but is really a *language-recognitio
 | **ABAC** | rules over attributes | Evaluate a decision function | Depends on the language |
 | **ReBAC / NGAC** | recursive relationship/policy graph | **Graph reachability (stack-driven)** | Context-free / **pushdown** |
 
-**The lesson**: pick the model whose native shape matches your permissions. If you're adding "nested" or "inherited" or "transitive" to an RBAC system, you've outgrown finite state — move to a relationship/graph model instead of nesting hacks. This is the same "match the structure to the computation" instinct as choosing a [data engine by access pattern](../04-distributed-data-and-caching/).
+The lesson is to pick the model whose native shape matches your permissions, not the one in fashion. If you find yourself adding "nested", "inherited", or "transitive" to an RBAC system, you have outgrown finite state; move to a relationship or graph model instead of piling up nesting hacks. It is the same "match the structure to the computation" instinct as choosing a [data engine by access pattern](../04-distributed-data-and-caching/).
 
-## 7. Separating Policy from Enforcement
+## Separating policy from enforcement
 
-- **Externalized authz**: run a **PDP** as a library or service (OPA sidecar, OpenFGA/SpiceDB service); apps call it at the **PEP**. One source of truth, testable policies, central audit — instead of `if user.role == "admin"` scattered across the codebase.
-- **Policy as code**: version, review, and *test* policies like any other code (a fixed point with [Software Craftsmanship](../../software-craftsmanship/) and docs-as-code).
-- **Decision logging**: log every allow/deny with its reason for audit and debugging — the authz analogue of [observability](../../systems/04-observability/).
+Whatever the model, keep the decision in one place. **Externalized authorization** runs a PDP as a library or service (an OPA sidecar, an OpenFGA or SpiceDB service), and applications call it at their PEPs. That gives one source of truth, testable policies, and a central audit, instead of `if user.role == "admin"` scattered across the codebase. **Policy as code** means policies are versioned, reviewed, and *tested* like any other code, in the spirit of [Software Craftsmanship](../../software-craftsmanship/). And **decision logging** records every allow and deny with its reason, for audit and debugging: the authorization analogue of [observability](../../systems/04-observability/).
 
-## 8. Secure RAG — Authorization Applied to Retrieval
+## Secure RAG: authorization applied to retrieval
 
-**Where this topic meets [Retrieval & RAG](../07-retrieval-and-rag/)**
+This is where the chapter meets [Retrieval & RAG](../07-retrieval-and-rag/). The requirement is that a user may retrieve, and be grounded on, only content they are authorized to see. An LLM that quotes a document the user cannot access is a data breach, not a hallucination. Authorization is therefore part of retrieval, not a wrapper around it.
 
-- **The requirement**: a user must only retrieve and be grounded on content they're authorized to see. An LLM that quotes a doc the user can't access is a data breach, not a hallucination.
-- **The pattern — filter at retrieval time**:
-  - Attach **ACLs / permission labels** to every chunk's metadata at ingestion ([chunking](../07-retrieval-and-rag/)).
-  - At query time, resolve the user's permissions (RBAC/ABAC/ReBAC check) and **pre-filter or constrain** the vector/BM25 search to authorized chunks.
-  - Prefer **pre-filtering** (or a permission-aware index): post-filtering after ranking leaks *existence* and skews results, and naive post-filtering can starve the top-k.
-- **Multi-tenancy**: tenant id is the coarsest permission filter — partition or namespace the index so one tenant can never retrieve another's data (ties to [sharding](../04-distributed-data-and-caching/)).
-- **Tools/agents**: an agent's tools must enforce authz too — the agent acting "on behalf of" a user inherits that user's permissions, not the service's.
+The pattern is to filter at retrieval time. Attach **ACLs or permission labels** to every chunk's metadata at ingestion. At query time, resolve the user's permissions with an RBAC, ABAC, or ReBAC check and **pre-filter or constrain** the vector and BM25 searches to authorized chunks. Prefer pre-filtering, or a permission-aware index: post-filtering after ranking leaks *existence* and ranking signal and skews results, and naive post-filtering can starve the top $k$, the same "filter before the cut" rule the [retrieval](../07-retrieval-and-rag/07-retrieval.md) section enforces with its `keep` predicate.
 
----
+**Multi-tenancy** is the coarsest permission filter: partition or namespace the index so one tenant can never retrieve another's data (compare [sharding](../04-distributed-data-and-caching/)). Isolate by tenant before you rank. And **tools and agents** must enforce authorization too: an agent acting on behalf of a user inherits that user's permissions, not the service's.
 
-## Decision Cheat Sheet
+## Choosing a model
+
+The survey reduces to a lookup from situation to approach:
 
 | Situation | Reach for |
 |-----------|-----------|
@@ -115,39 +84,22 @@ Authorization looks like a boolean function but is really a *language-recognitio
 | RAG over private/multi-tenant data | Permission-filter at retrieval (secure RAG) |
 | "Why can this user see X?" | Decision logging + an auditable model |
 
-## Patterns Worth Internalizing
+Industry practice follows the same map. Google runs ReBAC at planetary scale with Zanzibar (Drive, YouTube, Cloud IAM). Auth0 and Okta combine RBAC with fine-grained ReBAC in FGA and OpenFGA. AWS evaluates ABAC policies in IAM and in Cedar and Verified Permissions. Airbnb and Carta use policy-as-code authorization with OPA/Rego and Oso. Glean and other enterprise AI products depend on permission-aware retrieval for secure RAG over corporate data. And NIST's NGAC Policy Machine is the standard's unifying policy-graph model.
 
-- **Authz is recognizing whether a request is in the permitted set** — and the *structure* of permissions sets the complexity. Flat = lookup; recursive = graph reachability (pushdown).
-- **Don't nest hacks onto a finite model** — when permissions become recursive (groups-of-groups, hierarchies), move to a relationship/policy graph.
-- **Separate the decision from the enforcement** — one PDP, many PEPs; policy as code, deny by default, least privilege.
-- **Authorize *inside* retrieval, not around it** — filter to authorized data during the search, or you leak.
-- **Tenant id is your first and coarsest filter** — isolate before you rank.
+To try the ideas yourself, model one application three ways (RBAC roles to permissions, ABAC attribute rules, ReBAC relationship graph) and note which questions each makes easy and which it makes painful. Implement a tiny Zanzibar-style `check(user, relation, object)` by graph traversal, then add nested groups and watch it become a reachability problem. Write one policy in OPA/Rego and the same policy as ReBAC tuples to feel the declarative versus relational trade-off. And wire permission filters into the [RAG retriever](../07-retrieval-and-rag/07-retrieval.md) so a query can return only authorized chunks.
 
-## Connections to Other Tracks
+## In this chapter
 
-| Concept | Connected Track | Application |
-|---------|-----------------|-------------|
-| Pushdown automata, Chomsky hierarchy, regular vs context-free | [Discrete Math 2](../../mathematics-for-computing/06-discrete-math-2/) | Why recursion needs a stack |
-| Graph reachability, BFS/DFS | [Algorithms — Graphs](../../algorithms/06-graphs/) | How ReBAC/NGAC checks evaluate |
-| Permission-filtered retrieval | [Retrieval & RAG](../07-retrieval-and-rag/) | Secure RAG |
-| Distributed graph, consistency tokens, caching | [Distributed Data & Caching](../04-distributed-data-and-caching/) | Zanzibar at scale |
-| Multi-tenancy, partitioning | [Distributed Data & Caching](../04-distributed-data-and-caching/) | Tenant isolation |
-| Policy as code, testing, review | [Software Craftsmanship](../../software-craftsmanship/) | Versioned, tested policies |
+The build sections apply the simplest rung of the ladder, done carefully, to the LLM gateway. The route-to-scope table and per-key model allowlist are flat lookups, which is exactly right for their structure, and the tenant is the coarse isolation boundary that later stages, such as the response cache, rely on.
 
-## How Companies Apply These Patterns
+1. [API Keys, Scopes, Model Allowlists, and Tenants](01-api-keys-and-scopes.md) replaces the tracer's shared static key with per-client `tl_<id>_<secret>` keys stored as peppered HMACs, a short-TTL lookup cache that still honors revocation, and a pure authorization table that answers 403 for scope and allowlist failures.
+2. [Rate Limiting: RPM Token Buckets and TPM Reserve/Settle](02-rate-limiting.md) gives each key a requests-per-minute and a tokens-per-minute budget, reserving an estimated token cost before a request runs and settling the actual usage afterwards, with exact `Retry-After` and `x-ratelimit-*` headers.
 
-| Company | The pattern they lean on | Instance |
-|---------|--------------------------|----------|
-| Google | ReBAC at planetary scale | Zanzibar (Drive/YouTube/Cloud IAM) |
-| Auth0 / Okta | RBAC + fine-grained ReBAC | FGA, OpenFGA |
-| AWS | ABAC policy evaluation | IAM policies, Cedar / Verified Permissions |
-| Airbnb / Carta | Policy-as-code authorization | OPA/Rego, Oso |
-| Glean / enterprise AI | Permission-aware retrieval | Secure RAG over corporate data |
-| NIST (standard) | Unifying policy-graph model | NGAC / Policy Machine |
+## Further reading
 
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `gw.02` | [AuthN (API keys) and AuthZ (scopes, model allowlist, tenants)](01-api-keys-and-scopes.md) | build | 7 |
-| 2 | `gw.03` | [Rate limiting: RPM token bucket + TPM reserve/settle](02-rate-limiting.md) | build | 7 |
+- NIST, [Role-Based Access Control](https://csrc.nist.gov/projects/role-based-access-control) (free).
+- NIST, [SP 800-162, Attribute Based Access Control](https://csrc.nist.gov/pubs/sp/800/162/final) (free).
+- NIST, [Next Generation Access Control (Policy Machine)](https://csrc.nist.gov/projects/policy-machine) (free).
+- Pang et al., [Zanzibar: Google's Consistent, Global Authorization System](https://research.google/pubs/pub48190/) (free).
+- [Open Policy Agent (OPA/Rego)](https://www.openpolicyagent.org/docs/latest/) (free) and [OpenFGA](https://openfga.dev/docs) (free).
+- [Casbin](https://casbin.org/docs/overview), [Oso](https://www.osohq.com/docs), and [SpiceDB](https://authzed.com/docs).
