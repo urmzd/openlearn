@@ -23,7 +23,7 @@
 # schema declared here. SSE chunks validate against the `x-tl-chunk` schema of
 # the 200 `text/event-stream` content. A v2 client sends
 # `X-TL-API-Version: 2` on every request. Each operation's `x-tl-probe` is a
-# sample request whose answer must validate under v2.
+# sample request and the status a v2 server must answer it with.
 openapi: 3.1.0
 info:
   title: tinyllm OpenAI subset, v2

@@ -113,7 +113,7 @@ Every "no" or "not yet" has an owner who will close it, and the data row says "a
 |---|---|---|
 | Back | `field.01` | the discovery findings and open questions this record qualifies |
 | Back | `M05.1` | the capacity arithmetic behind the KV estimate |
-| Back | `load.01` | the load reports the estimate must be validated against |
+| Back | `load.01` | the load generator whose reports the estimate must be validated against |
 | Forward | `field.03` | the performance engagement tests this estimate |
 
 ## Going further

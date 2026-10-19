@@ -111,8 +111,8 @@ Cost per resolved case and reviewer time are reported separately, with no saving
 | Direction | Module | Connection |
 |---|---|---|
 | Back | `field.03` | the latency and reliability protocol the POC reuses |
-| Back | `L6.7` | the evaluation practice behind the scoring |
-| Back | `ag.09` | the evaluation practice behind the refusal and escalation cases |
+| Back | `L6.7` | the evaluation harness behind repeatable, frozen-revision scoring |
+| Back | `ag.09` | the eval runner that executes the frozen set and reports per-case results |
 | Forward | `field.05` | a passed POC is the migration plan's first precondition |
 
 ## Going further

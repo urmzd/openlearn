@@ -8,8 +8,9 @@
 # tiers serve the same paths and bodies.
 #
 # A conforming server returns, for every path, status, and content type, a
-# response body that validates against the schema declared here. SSE chunks validate against the `x-tl-chunk` schema of the 200
-# `text/event-stream` content.
+# response body that validates against the schema declared here. SSE chunks
+# validate against the `x-tl-chunk` schema of the 200 `text/event-stream`
+# content.
 openapi: 3.1.0
 info:
   title: tinyllm OpenAI subset, v0 (tracer)

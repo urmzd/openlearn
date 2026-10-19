@@ -125,8 +125,8 @@ This sentence protects the engagement: the platform's own measurements are evide
 
 | Direction | Module | Connection |
 |---|---|---|
-| Back | `craft.09` | a prerequisite whose contract or evidence the record relies on |
-| Back | `review.03` | a prerequisite whose contract or evidence the record relies on |
+| Back | `craft.09` | the C4 diagrams used to show the customer the platform's boundaries |
+| Back | `review.03` | the whole-system design review whose questions discovery reuses |
 | Forward | `field.02` | qualification starts from these findings and open questions |
 
 ## Going further

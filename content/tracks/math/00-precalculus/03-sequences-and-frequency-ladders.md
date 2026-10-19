@@ -324,9 +324,9 @@ The ladder would end at about $b^{-1/2}$ instead of $1/b$: for $b = 10^5$ the sl
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Forward | `L5.4` | Registered call site uses this module. |
 | Back | `M00.1` | powers, $e$, and `log1p`/`expm1` (reading) |
 | Back | `lang.01` | numpy `arange` and `power` (reading) |
+| Forward | `L5.4` | a call site of this module |
 | Forward | `L7.3` | `rope_inv_freq(d_rot, rope_theta)` builds RoPE's angles, `positions * inv_freq` |
 | Forward | `L7.4` | ALiBi biases from `alibi_slopes`; YaRN and NTK scaling bend the same ladder per frequency |
 | Forward | `M02.2` | the EMA's weights, `geometric(1 - beta, beta, t)`, and its bias correction, `geometric_sum(1 - beta, beta, t)` |

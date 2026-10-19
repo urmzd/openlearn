@@ -2,9 +2,8 @@
 # chapter: content/tracks/math/04-calculus-3/01-gradients-and-gradcheck.md
 #
 # Numerical gradients of a scalar function of several arrays, and the check
-# that compares them with an analytic gradient. Course tests never call this
-# module to decide another module's verdict (D35): they use the frozen
-# course/tests/_lib/gradcheck.py. Your own tests (L0.2 on) may.
+# that compares them with an analytic gradient. Later modules (L0.2 on) use
+# it in their tests to check hand-written backward passes.
 from dataclasses import dataclass
 from typing import Callable
 

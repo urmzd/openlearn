@@ -111,8 +111,8 @@ Each gate tests what the previous stage can reveal: shadow tests plumbing, the c
 | Direction | Module | Connection |
 |---|---|---|
 | Back | `field.04` | the passed POC that is the first precondition |
-| Back | `craft.13` | the compatibility and versioning practice behind the API window |
-| Back | `craft.14` | the migration practice behind the KV format procedure |
+| Back | `craft.13` | the KV format v1 to v2 migration and its hash verification |
+| Back | `craft.14` | the API v1 to v2 rollout and its compatibility window |
 | Forward | `field.06` | the security review answers questions about this data flow |
 | Forward | `field.07` | the handoff hands over this rollback path |
 

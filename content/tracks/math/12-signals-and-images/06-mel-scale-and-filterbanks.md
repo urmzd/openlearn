@@ -81,36 +81,183 @@ def power_to_db(p, ref=1.0, amin=1e-10, top_db=80.0) -> NDArray: ...
 def log_mel_whisper(power_spec, filters) -> NDArray: ...
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_mel_scale` | unit, smoke | section 3's mel values on both scales | the scale itself |
-| `test_hand_example_decibels` | unit, smoke | section 3's decibels with and without `top_db` and with a ref | the dB conventions |
-| `test_whisper_filterbanks_match_librosa` | golden | 80 and 128 bands at 16 kHz, $n_\text{fft} = 400$, within $10^{-12}$ of float64 librosa and $10^{-7}$ of the float32 filters Whisper ships | `L14.1`'s features |
-| `test_other_filterbanks_and_scales_match_librosa` | golden | an HTK bank without normalization, a band-limited bank, both scale conversions, the default fmax | edges and scales |
-| `test_power_to_db_matches_librosa` | golden | `power_to_db` with defaults and with ref, amin, no top_db | decibel parity |
-| `test_triangles_have_the_declared_edges` | property | every row is the triangle formula on the mel-spaced edges; zero outside | the definition |
-| `test_slaney_rows_have_unit_area` | property | on a fine grid each normalized row integrates to 1 | why the normalization exists |
-| `test_whisper_log_mel_scaling` | unit | section 3's matrix, silence at $-1.5$, range at most 2 units | Whisper's feature scaling |
-| `test_rejects_bad_arguments` | boundary | amin 0, negative top_db, complex input, empty band, unknown norm or scale, mismatched shapes; input untouched | caller bugs fail early |
+| the hand-worked mel values | unit | section 3's mel values on both scales | the scale itself |
+| the hand-worked decibels | unit | section 3's decibels with and without `top_db` and with a ref | the dB conventions |
+| Whisper's filterbanks against librosa | golden | 80 and 128 bands at 16 kHz, $n_\text{fft} = 400$, within $10^{-12}$ of float64 librosa and $10^{-7}$ of the float32 filters Whisper ships | `L14.1`'s features |
+| other banks and scales against librosa | golden | an HTK bank without normalization, a band-limited bank, both scale conversions, the default fmax | edges and scales |
+| `power_to_db` against librosa | golden | `power_to_db` with defaults and with ref, amin, no top_db | decibel parity |
+| triangles on the declared edges | property | every row is the triangle formula on the mel-spaced edges; zero outside | the definition |
+| unit area under Slaney normalization | property | on a fine grid each normalized row integrates to 1 | why the normalization exists |
+| Whisper's log-mel scaling | unit | section 3's matrix, silence at $-1.5$, range at most 2 units | Whisper's feature scaling |
+| bad arguments | boundary | amin 0, negative top_db, complex input, empty band, unknown norm or scale, mismatched shapes; input untouched | caller bugs fail early |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Two scales, one interface.** The scale is a choice of function $m(f)$ and its inverse (section 2.1). Everything else (edges, triangles, normalization) is written once in terms of `hz_to_mel` and `mel_to_hz`, so switching between Slaney and HTK changes only those two functions.
+2. **The Slaney scale is piecewise, so compute both pieces and select.** Below 1000 Hz, $m = f/(200/3)$; above, $m = 15 + \ln(f/1000)/(\ln 6.4/27)$. The two pieces meet at exactly 15 mel, so the scale is continuous. Vectorised code evaluates both on the whole array and picks with `np.where`; the log piece is meaningless (and warns) at $f = 0$, so its warnings are silenced: those values are discarded anyway.
+3. **Edges equally spaced in mel, then mapped back to Hz.** $n_\text{mels}$ triangles need $n_\text{mels} + 2$ edges (each triangle uses three consecutive edges, and neighbours share two). `np.linspace` in mel space followed by `mel_to_hz` gives them (section 2.2).
+4. **Sample the triangles at the rfft bin centers.** The filterbank is applied to an rfft power spectrum, so the columns are bins $k = 0, \dots, n_\text{fft}/2$ at $f_k = k\,\text{sr}/n_\text{fft}$. Each row is $\max(0, \min(\text{rising}, \text{falling}))$: the rising ramp $(f - e_i)/(e_{i+1} - e_i)$ is below 1 left of the peak, the falling ramp right of it, and the minimum of the two is the triangle.
+5. **Normalize to unit area.** A triangle of height 1 and base $e_{i+2} - e_i$ has area $(e_{i+2} - e_i)/2$, so multiplying row $i$ by $2/(e_{i+2} - e_i)$ gives area 1. Without it, a 1000 Hz wide band at the top sums ten times as many bins as a 100 Hz band at the bottom.
+6. **Decibels: floor, log, subtract the reference, clip relative to the maximum.** $10\log_{10}$ because the input is power. The floor `amin` goes on before the log; `ref` is floored the same way and subtracted in the log domain; `top_db` clips against the maximum of the result, not against 0 dB, so a quiet recording keeps its own 80 dB of range (section 2.3).
+7. **Whisper's log-mel is the same shape with its own constants.** Pool with $MP$, then $\log_{10}$ with a $10^{-10}$ floor, clip to the maximum minus 8, then $(L + 4)/4$ (section 2.4). The clip uses the maximum over the whole input array, which is the whole 30 s clip in `L14.1`.
+8. **Validate before computing.** Every bad argument the contract names (non-positive sizes, an empty band, unknown `norm` or `scale`, `amin <= 0`, negative `top_db`, complex input, mismatched shapes) raises `ValueError` up front, because each would otherwise produce NaNs or $-\infty$ silently.
+
+### The code, annotated
+
+```python
+_F_SP = 200.0 / 3.0  # Slaney: 200/3 Hz per mel below the break
+_MIN_LOG_HZ = 1000.0  # the break between the linear and the log part
+_MIN_LOG_MEL = _MIN_LOG_HZ / _F_SP  # = 15 mel
+_LOGSTEP = math.log(6.4) / 27.0  # 27 mel per factor 6.4 above the break
+
+
+def hz_to_mel(f: NDArray, scale: Literal["slaney", "htk"] = "slaney") -> NDArray:
+    f = np.asarray(f, dtype=np.float64)
+    if scale == "htk":
+        return 2595.0 * np.log10(1.0 + f / 700.0)  # one smooth formula
+    if scale != "slaney":
+        raise ValueError(f"hz_to_mel: scale is 'slaney' or 'htk', got {scale!r}")
+    lin = f / _F_SP
+    # log(0) at f = 0 would warn; that element takes the linear branch anyway.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        log = _MIN_LOG_MEL + np.log(f / _MIN_LOG_HZ) / _LOGSTEP
+    return np.where(f >= _MIN_LOG_HZ, log, lin)  # both pieces give 15 at 1000 Hz
+```
+
+The constants are librosa's, named the way librosa names them, so that the derived edges agree to $10^{-12}$. `_MIN_LOG_MEL` is computed rather than written as `15.0` so that the two pieces meet exactly in floating point. `mel_to_hz` is the same function inverted piece by piece: $f = (200/3)\,m$ below 15 mel and $f = 1000\,e^{\text{\_LOGSTEP}\,(m - 15)}$ above, with overflow warnings silenced for the same reason. Trace the hand example: `hz_to_mel(6400)` is $15 + \ln 6.4 \cdot 27/\ln 6.4 = 42$.
+
+```python
+def mel_filterbank(sr, n_fft, n_mels, fmin=0.0, fmax=None, scale="slaney", norm="slaney"):
+    # ... validation: positive sizes, 0 <= fmin < fmax, norm in ("slaney", None)
+    # Bin k sits at k sr / n_fft Hz (numpy's rfftfreq, written its way).
+    fft_hz = np.arange(n_fft // 2 + 1) * (1.0 / (n_fft * (1.0 / sr)))
+    # n_mels + 2 edges equally spaced in mel: band i rises from edge i to its
+    # peak at edge i + 1 and falls to zero at edge i + 2.
+    edges = mel_to_hz(
+        np.linspace(hz_to_mel(fmin, scale), hz_to_mel(fmax, scale), n_mels + 2), scale
+    )
+    fdiff = np.diff(edges)                        # fdiff[i] = e_{i+1} - e_i
+    ramps = edges[:, None] - fft_hz[None, :]      # ramps[j, k] = e_j - f_k
+    w = np.empty((n_mels, fft_hz.size))
+    for i in range(n_mels):
+        lower = -ramps[i] / fdiff[i]              # (f_k - e_i) / (e_{i+1} - e_i): rising side
+        upper = ramps[i + 2] / fdiff[i + 1]       # (e_{i+2} - f_k) / (e_{i+2} - e_{i+1}): falling side
+        w[i] = np.maximum(0.0, np.minimum(lower, upper))  # the triangle, zero outside
+    if norm == "slaney":
+        # Divide each triangle by half its width in Hz: unit area, so a wide
+        # high band does not collect more energy just for being wide.
+        w *= (2.0 / (edges[2 : n_mels + 2] - edges[:n_mels]))[:, None]
+    return w
+```
+
+Two details are there for bit-level parity, not for the math. The bin frequencies are written as `k * (1 / (n_fft * (1 / sr)))`, the exact expression `np.fft.rfftfreq` evaluates, instead of the algebraically equal `k * sr / n_fft`; the two round differently in the last bit, and the golden check against librosa is at $10^{-12}$. And the triangle is built from the `ramps` matrix and `fdiff` the way librosa builds it, so the same subtractions happen in the same order. The validation `0 <= fmin < fmax` matters: with `fmin == fmax` every edge is equal, `fdiff` is 0, and every row is NaN. For Whisper the call is `mel_filterbank(16000, 400, 80)`: 201 columns, 82 edges from 0 to 8000 Hz.
+
+```python
+def power_to_db(p, ref=1.0, amin=1e-10, top_db=80.0):
+    s = np.asarray(p)
+    if np.iscomplexobj(s):                        # a complex STFT, not a power: refuse
+        raise ValueError("power_to_db: take power(S) of a complex spectrum first")
+    # ... amin > 0 and top_db >= 0 checked here
+    s = s.astype(np.float64)                      # a copy: the input is untouched
+    # Floor at amin before the log: 10 log10(0) would be -inf.
+    db = 10.0 * log_base(np.maximum(amin, s), 10.0)
+    db = db - 10.0 * log_base(np.maximum(amin, abs(ref)), 10.0)  # 10 log10(p / ref)
+    if top_db is not None and db.size:
+        db = np.maximum(db, db.max() - top_db)    # clip against the maximum, not 0 dB
+    return db
+```
+
+Trace the hand example: $(1, 10, 10^{-12})$ floors to $(1, 10, 10^{-10})$, gives $(0, 10, -100)$ dB, and the clip at $\max - 80 = -70$ gives $(0, 10, -70)$. The `db.size` guard keeps `max()` from raising on an empty array.
+
+```python
+def log_mel_whisper(power_spec: NDArray, filters: NDArray) -> NDArray:
+    spec = np.asarray(power_spec, dtype=np.float64)
+    fb = np.asarray(filters, dtype=np.float64)    # Whisper ships float32 filters; compute in float64
+    if spec.ndim != 2 or fb.ndim != 2 or fb.shape[1] != spec.shape[0]:
+        raise ValueError(...)                     # filters [M, F] and power [F, T]
+    mel = fb @ spec                               # [M, T]: each band a weighted sum of bins
+    log_spec = log_base(np.maximum(mel, 1e-10), 10.0)    # log10, floor at -100 dB
+    # Keep 8 units (80 dB) below the loudest value, then map to about [-1, 1].
+    log_spec = np.maximum(log_spec, log_spec.max() - 8.0)
+    return (log_spec + 4.0) / 4.0
+```
+
+On section 3's matrix with an identity filterbank: $\log_{10}$ gives $\begin{pmatrix} -10 & 2 \\ 0 & 4 \end{pmatrix}$, the clip at $4 - 8 = -4$ lifts the $-10$, and $(L + 4)/4$ gives $\begin{pmatrix} 0 & 1.5 \\ 1 & 2 \end{pmatrix}$. After the clip the range is at most 8 units, so after dividing by 4 the features span at most 2 units.
+
+Full solution: [`mel.py`](../../../../course/solutions/python/tinyllm/sig/mel.py).
+
+### Why this solution
+
+- **Cost.** Building the filterbank is $O(n_\text{mels} \cdot n_\text{fft})$ once (80 by 201 for Whisper); it is a constant matrix, computed once and reused. Applying it is one matrix product, $O(n_\text{mels} \cdot n_\text{fft}/2 \cdot T)$, the dominant cost of the frontend after the FFT. The logs and the clip are $O(n_\text{mels} T)$.
+- **A dense matrix over a sparse one.** Each row has only a handful of nonzeros, so a sparse matrix would save multiplies. At 80 by 201 the dense product is already fast, matches what Whisper and HF do, and keeps the code a plain `@`.
+- **Recompute rather than load `mel_filters.npz`.** Loading the file Whisper ships would be simpler, but the point of this module is to know where the numbers come from, and the computed float64 bank lets the golden check confirm them to $10^{-7}$ against the shipped float32 values. `L15.1` later commits the filter file for the Rust engine, proven against these numbers.
+- **Floors instead of adding an epsilon.** $\log(p + \epsilon)$ would shift every value slightly; $\log(\max(p, \text{amin}))$ changes only values below the floor, which is what librosa and Whisper do, so parity requires it.
+- **Tradeoffs accepted.** The clip against the clip-wide maximum means a frame's features depend on the loudest moment anywhere in the input; that is Whisper's convention and the encoder was trained on it, so the solution keeps it rather than clipping per frame.
+
+### Explain it back
+
+**1. Why are there $n_\text{mels} + 2$ edges and not $n_\text{mels}$ or $n_\text{mels} + 1$?**
+
+<details><summary>Answer</summary>
+
+Triangle $i$ needs three edges: start $e_i$, peak $e_{i+1}$, end $e_{i+2}$. Consecutive triangles share two of them (the peak of one is the start of the next), so $n_\text{mels}$ triangles need $n_\text{mels} + 2$ points: the first triangle starts at $f_\text{min}$ and the last ends at $f_\text{max}$.
+
+</details>
+
+**2. Why is the Slaney normalization factor $2/(e_{i+2} - e_i)$ and not $1/(e_{i+2} - e_i)$?**
+
+<details><summary>Answer</summary>
+
+The goal is unit area. A triangle of height 1 over a base of $e_{i+2} - e_i$ Hz has area half the base times the height, $(e_{i+2} - e_i)/2$. Dividing by that area means multiplying by $2/(e_{i+2} - e_i)$. Dividing by the full base would give every filter area $1/2$, which is a constant factor off librosa and Whisper.
+
+</details>
+
+**3. `power_to_db` clips at `db.max() - top_db`. What goes wrong if it clips at `-top_db` instead?**
+
+<details><summary>Answer</summary>
+
+Clipping at $-\text{top\_db}$ assumes the loudest value is 0 dB. A quiet recording whose maximum is, say, $-60$ dB would keep only 20 dB of range below its own maximum, and everything quieter would be flattened to $-80$. Clipping relative to the maximum keeps the same 80 dB of dynamic range whatever the overall level.
+
+</details>
+
+**4. Why does a silent input give Whisper features of exactly $-1.5$?**
+
+<details><summary>Answer</summary>
+
+Silence means $MP = 0$ everywhere, so the floor gives $\log_{10} 10^{-10} = -10$ in every cell. The maximum is also $-10$, so the clip at $-18$ changes nothing, and $(-10 + 4)/4 = -1.5$.
+
+</details>
+
+**5. Why does the code write the bin frequencies as `k * (1 / (n_fft * (1 / sr)))` instead of `k * sr / n_fft`?**
+
+<details><summary>Answer</summary>
+
+They are equal in exact arithmetic but round differently in float64. That is the expression `np.fft.rfftfreq` evaluates, which librosa uses, so the solution reproduces librosa's bin frequencies bit for bit, and the filterbank agrees with librosa to $10^{-12}$ instead of only to the last few bits.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. the Slaney scale linear everywhere | high bands far too narrow | `test_hand_example_mel_scale`, `test_whisper_filterbanks_match_librosa` (mutant `s01`) |
-| 2. skipping the Slaney normalization | high bands dominate every feature | `test_slaney_rows_have_unit_area`, `test_whisper_filterbanks_match_librosa` (mutant `s02`) |
-| 3. edges equally spaced in Hz | a linear filterbank, not a mel one | `test_triangles_have_the_declared_edges`, `test_whisper_filterbanks_match_librosa` (mutant `s03`) |
-| 4. $20 \log_{10}$ on a power | every dB value doubled | `test_hand_example_decibels`, `test_power_to_db_matches_librosa` (mutant `s04`) |
-| 5. clipping `top_db` against 0 dB instead of the maximum | quiet recordings clipped flat | `test_hand_example_decibels`, `test_power_to_db_matches_librosa` (mutant `s05`) |
-| 6. the natural log in Whisper's features | features scaled by $\ln 10$ | `test_whisper_log_mel_scaling` (mutant `s06`) |
-| 7. Whisper's range as 80 instead of 8 | the clip never happens | `test_whisper_log_mel_scaling` (mutant `s07`) |
-| accepting amin = 0 | $\log 0 = -\infty$ in the output | `test_rejects_bad_arguments` (mutant `m01`) |
-| accepting fmin = fmax | a filterbank of NaNs | `test_rejects_bad_arguments` (mutant `m02`) |
-| accepting a negative top_db | every value clipped above the maximum | `test_rejects_bad_arguments` (mutant `m03`) |
+| 1. the Slaney scale linear everywhere | high bands far too narrow | `hz_to_mel` selects the log piece for $f \ge 1000$ Hz; step 2 |
+| 2. skipping the Slaney normalization | high bands dominate every feature | rows scaled by $2/(e_{i+2} - e_i)$ when `norm="slaney"`; step 5 |
+| 3. edges equally spaced in Hz | a linear filterbank, not a mel one | `np.linspace` in mel, then `mel_to_hz`; step 3 |
+| 4. $20 \log_{10}$ on a power | every dB value doubled | `10.0 * log_base(..., 10.0)`; step 6 |
+| 5. clipping `top_db` against 0 dB instead of the maximum | quiet recordings clipped flat | `np.maximum(db, db.max() - top_db)`; step 6 |
+| 6. the natural log in Whisper's features | features scaled by $\ln 10$ | `log_base(..., 10.0)` in `log_mel_whisper`; step 7 |
+| 7. Whisper's range as 80 instead of 8 | the clip never happens | `log_spec.max() - 8.0`: 8 units of $\log_{10}$ are 80 dB; step 7 |
+| accepting amin = 0 | $\log 0 = -\infty$ in the output | `amin <= 0` raises; step 8 |
+| accepting fmin = fmax | a filterbank of NaNs | `0 <= fmin < fmax` is required; step 8 |
+| accepting a negative top_db | every value clipped above the maximum | `top_db < 0` raises; step 8 |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -122,7 +269,7 @@ def log_mel_whisper(power_spec, filters) -> NDArray: ...
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `mel_filterbank` | `librosa.filters.mel` | the same filters, cached; `norm` as any $L^p$ norm | `librosa/filters.py` |
 | `log_mel_whisper` | HF `WhisperFeatureExtractor` | the full frontend in numpy or torch, batched, with padding to 30 s | `transformers/models/whisper/feature_extraction_whisper.py` |

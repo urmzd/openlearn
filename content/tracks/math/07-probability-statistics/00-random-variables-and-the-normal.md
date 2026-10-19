@@ -134,7 +134,7 @@ def normal(rng, n: int) -> NDArray: ...          # float64 [n]; u1, u2 per pair;
 
 ### From first principles
 
-1. **A distribution is a validated table.** Section 2.1: values and probabilities must be 1-D, the same non-zero length, finite, with $p_i \ge 0$ and $\sum p_i = 1$. Anything else (raw counts, a negative entry) is not a random variable, so both `expectation` and `variance` share one validator that raises instead of averaging. The sum test needs a tolerance ($10^{-9}$) because probabilities computed in floating point rarely sum to exactly 1.
+1. **A distribution is a validated table.** Section 2.1: values and probabilities must be 1-D, the same non-zero length, finite, with $p_i \ge 0$ and $\sum p_i = 1$. Anything else (raw counts, a negative entry) is not a random variable, so both `expectation` and `variance` share one validator that raises instead of averaging. The sum test needs a tolerance ($10^{-9}$) because probabilities computed in floating point need not sum to exactly 1.
 2. **The expectation is a dot product.** $E[X] = \sum_i p_i x_i = x \cdot p$. Weighting by $p$ (not dividing by $k$) is what makes it right for non-uniform tables.
 3. **The variance centres first, then squares.** Section 2.3: $E[X^2] - E[X]^2$ cancels catastrophically near $10^{18}$. Computing $\mu$ once, then $d = x - \mu$ and $\sum_i p_i d_i^2$, keeps every term small and non-negative, so $10^9 + \{0, 1\}$ gives exactly $\tfrac14$ and no variance can come out negative.
 4. **Box-Muller samples the polar form.** Section 2.5: $r = \sqrt{-2\ln V}$ with $V$ in $(0, 1]$ and $\theta = 2\pi u_2$. Taking $V = 1 - u_1$ maps the generator's $[0, 1)$ onto $(0, 1]$, so $u_1 = 0$ gives $r = 0$ instead of $\infty$.
@@ -154,7 +154,8 @@ def _table(values: ArrayLike, probs: ArrayLike) -> tuple[NDArray, NDArray]:
         raise ValueError("values must be finite")
     if np.any(p < 0) or not np.all(np.isfinite(p)):
         raise ValueError("probs must be finite and >= 0")
-    # A tolerance, not ==: 0.1 + 0.2 + 0.7 is not exactly 1.0 in float64.
+    # A tolerance, not ==: probabilities computed in float64 (a softmax, a
+    # normalized count) are only accurate to rounding.
     if abs(float(p.sum()) - 1.0) > 1e-9:
         raise ValueError(f"probs must sum to 1, got {float(p.sum())!r}")
     return x, p
