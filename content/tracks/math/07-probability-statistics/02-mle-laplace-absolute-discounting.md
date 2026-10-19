@@ -114,43 +114,191 @@ def ney_discount(counts: Mapping[K, int]) -> float                              
 
 Counts are finite non-negative numbers: integers from counting (numpy integers are fine) or floats from EM; NaN, infinity, bools, and strings are a `ValueError`. `laplace` returns the keys of `counts` only; the contract states the probability of every other word. `absolute_discount` returns every key of `backoff`.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_mle` | unit | 1/2, 1/3, 1/6, 0 | you and the test agree on the definition |
-| `test_hand_example_laplace` | unit | 4/11, 3/11, 2/11, 1/11, and 1/11 for `e` | the denominator counts the whole vocabulary |
-| `test_hand_example_absolute_discount` | unit | 7/15, 3/10, 2/15, 1/20, 1/20 | the formula `L2.1` builds on |
-| `test_hand_example_ney_discount` | unit | $D = 1/3$ | the starting discount of `L2.1` |
-| `test_hand_example_log_likelihood` | unit | $-6.0684$ for the MLE, $-7.3382$ for Laplace | smoothing costs training likelihood |
-| `test_mle_maximizes_the_likelihood` | property | random competitors and small perturbations score lower | the defining property |
-| `test_mle_sums_to_one_and_zero_counts_get_zero` | property | a distribution; zeros stay 0 | no NaN, no missing key |
-| `test_laplace_full_distribution_sums_to_one` | property | keys plus the unseen words sum to 1 for three $\alpha$ | the whole vocabulary is normalized |
-| `test_laplace_limits` | unit | tiny $\alpha$ is the MLE, huge $\alpha$ and no data are uniform | $\alpha$ interpolates |
-| `test_absolute_discount_sums_to_one` | property | random counts with zeros, random backoffs, four $d$ | $\lambda = dT/N$ exactly |
-| `test_absolute_discount_zero_counts_are_clamped` | boundary | a zero-count key gets only $\lambda b_k$ | no negative probability |
-| `test_absolute_discount_with_no_data_is_the_backoff` | boundary | $N = 0$ returns a copy of $b$ | an unseen context in `L2.1` |
-| `test_absolute_discount_d_one_removes_singletons` | boundary | $d = 1$ | the edge of the allowed range |
-| `test_rejects_bad_arguments` | boundary | negative, NaN, infinite, bool, or string counts; no data; bad $\alpha$, $d$, $V$, or backoff | upstream counting bugs fail here |
-| `test_fractional_counts_from_em` | unit | the MLE of expected counts; $\lambda = \sum_k \min(c_k, d)/N$ when a count is below $d$ | EM in `L1.4` produces fractions |
-| `test_ney_discount_cases` | unit | all singletons give 1; no singletons raise | $D \in (0, 1]$ |
-| `test_log_likelihood_zero_terms_and_impossible_data` | boundary | $0 \ln 0 = 0$; an observed outcome with $q = 0$ gives $-\infty$ | infinite perplexity in `M11.2` |
+| MLE by hand | unit | 1/2, 1/3, 1/6, 0 | everyone agrees on the definition |
+| Laplace by hand | unit | 4/11, 3/11, 2/11, 1/11, and 1/11 for `e` | the denominator counts the whole vocabulary |
+| absolute discounting by hand | unit | 7/15, 3/10, 2/15, 1/20, 1/20 | the formula `L2.1` builds on |
+| Ney's discount by hand | unit | $D = 1/3$ | the starting discount of `L2.1` |
+| log-likelihood by hand | unit | $-6.0684$ for the MLE, $-7.3382$ for Laplace | smoothing costs training likelihood |
+| the MLE maximizes the likelihood | property | random competitors and small perturbations score lower | the defining property |
+| the MLE is a distribution | property | sums to 1; zeros stay 0 | no NaN, no missing key |
+| Laplace over the whole vocabulary | property | keys plus the unseen words sum to 1 for three $\alpha$ | the whole vocabulary is normalized |
+| Laplace limits | unit | tiny $\alpha$ is the MLE, huge $\alpha$ and no data are uniform | $\alpha$ interpolates |
+| absolute discounting sums to 1 | property | random counts with zeros, random backoffs, four $d$ | $\lambda$ is exactly the freed mass |
+| zero-count keys | boundary | a zero-count key gets only $\lambda b_k$ | no negative probability |
+| no data | boundary | $N = 0$ returns a copy of $b$ | an unseen context in `L2.1` |
+| $d = 1$ | boundary | singletons get only backoff mass | the edge of the allowed range |
+| bad arguments | boundary | negative, NaN, infinite, bool, or string counts; no data; bad $\alpha$, $d$, $V$, or backoff | upstream counting bugs fail here |
+| fractional counts from EM | unit | the MLE of expected counts; $\lambda = \sum_k \min(c_k, d)/N$ when a count is below $d$ | EM in `L1.4` produces fractions |
+| Ney's discount edge cases | unit | all singletons give 1; no singletons raise | $D \in (0, 1]$ |
+| zero terms and impossible data | boundary | $0 \ln 0 = 0$; an observed outcome with $q = 0$ gives $-\infty$ | infinite perplexity in `M11.2` |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Counts are numbers, checked once.** Every function starts from `counts`, so one validator rejects what is not a finite non-negative real (bools are `int` subclasses in Python and are rejected explicitly) and returns $N$, summed with `math.fsum` so fractional EM counts do not drift.
+2. **The MLE is $c_k / N$, and needs $N > 0$.** Section 2's KL argument proves the frequency is optimal; with $N = 0$ it is $0/0$, so the function raises instead of returning NaNs.
+3. **The log-likelihood skips zero counts before looking up $q$.** $0 \ln 0 = 0$ by convention, and a zero-count key need not even be in `probs`. For $c_k > 0$, a missing or zero $q_k$ makes the data impossible: return $-\infty$ immediately.
+4. **Laplace divides by $N + \alpha\lvert V \rvert$.** One pseudo-count per word of the vocabulary, not per key, so the keys plus the unseen words sum to 1. The function returns only the keys; every other word's probability is $\alpha/(N + \alpha\lvert V \rvert)$ by the same formula.
+5. **Absolute discounting: clamp, charge exactly what was taken, spread it by $b$.** Each key loses $\min(c_k, d)$; $\lambda$ is the sum of those losses over $N$; every word of the backoff vocabulary gets $\max(c_k - d, 0)/N + \lambda b_k$. The output ranges over `backoff`'s keys because that is the vocabulary the smoothed distribution covers, so every counted key must be in it.
+6. **No data means the backoff, as a fresh dict.** With $N = 0$ nothing was freed and nothing was seen; the answer is $b$. Returning a copy matters because `L2.1` may edit one context's distribution.
+7. **Ney's $D = n_1/(n_1 + 2n_2)$ needs a singleton.** With $n_1 = 0$ the discount would be 0 (no smoothing) or $0/0$; raise.
+
+### The code, annotated
+
+```python
+def _check_counts(counts: Mapping[Hashable, float]) -> float:
+    for k, c in counts.items():
+        # bool is a subclass of int: True would silently count as 1.
+        if isinstance(c, bool) or not isinstance(c, numbers.Real):
+            raise ValueError(f"count of {k!r} must be a number, got {c!r}")
+        if not math.isfinite(c) or c < 0:
+            raise ValueError(f"count of {k!r} must be finite and >= 0, got {c}")
+    return math.fsum(float(c) for c in counts.values())   # N, exactly rounded
+
+
+def mle(counts: Mapping[Hashable, float]) -> dict:
+    n = _check_counts(counts)
+    if n == 0:
+        raise ValueError("mle needs at least one observation (N = 0 gives 0 / 0)")
+    return {k: float(c) / n for k, c in counts.items()}   # divide by N, not by the number of keys
+
+
+def log_likelihood(counts, probs) -> float:
+    _check_counts(counts)
+    terms = []
+    for k, c in counts.items():
+        if c == 0:
+            continue  # 0 * log 0 = 0: an unseen outcome costs nothing (and need not be in probs)
+        q = float(probs.get(k, 0.0))
+        if q <= 0.0:
+            return -math.inf          # an observed outcome the model calls impossible
+        terms.append(float(c) * math.log(q))
+    return math.fsum(terms)
+```
+
+`numbers.Real` accepts Python ints, floats, and numpy integer and float scalars, which is what counting code produces.
+
+```python
+def laplace(counts, vocab_size: int, alpha: float = 1.0) -> dict:
+    if not alpha > 0:                 # also rejects NaN
+        raise ValueError(f"alpha must be > 0, got {alpha!r}")
+    if len(counts) > vocab_size:      # more keys than words: the vocabulary is wrong
+        raise ValueError(f"{len(counts)} keys do not fit a vocabulary of {vocab_size}")
+    n = _check_counts(counts)
+    # The denominator adds alpha once per outcome of the vocabulary, seen or not.
+    denom = n + alpha * vocab_size
+    return {k: (float(c) + alpha) / denom for k, c in counts.items()}
+```
+
+On section 3, `denom` is $6 + 1 \cdot 5 = 11$ and the keys get $4, 3, 2, 1$ elevenths; `e`, not a key, has $1/11$ by the same formula, and the five sum to 1.
+
+```python
+def absolute_discount(counts, d: float, backoff) -> dict:
+    if not 0.0 < d <= 1.0:
+        raise ValueError(f"d must lie in (0, 1], got {d!r}")
+    total_b = math.fsum(float(v) for v in backoff.values())
+    if abs(total_b - 1.0) > 1e-9:
+        raise ValueError(f"backoff must sum to 1, got {total_b!r}")
+    missing = [k for k in counts if k not in backoff]
+    if missing:                       # a counted word outside the output vocabulary would lose its mass
+        raise ValueError(f"{missing[0]!r} is counted but not in the backoff vocabulary")
+    n = _check_counts(counts)
+    if n == 0:
+        return {k: float(v) for k, v in backoff.items()}   # a copy, never the caller's dict
+    # Exactly the mass the discount removed: d from each seen count, or the
+    # whole count when it is smaller than d (fractional EM counts). For
+    # integer counts this is d * T / N with T the number of seen keys.
+    lam = math.fsum(min(float(c), d) for c in counts.values()) / n
+    return {
+        k: max(float(counts.get(k, 0)) - d, 0.0) / n + lam * float(b)   # clamp: a zero count stays >= 0
+        for k, b in backoff.items()
+    }
+```
+
+Section 3 again: $\min(c_k, \tfrac12)$ is $\tfrac12, \tfrac12, \tfrac12, 0$, so $\lambda = 1.5/6 = \tfrac14$; `d` (count 0) gets $\max(-\tfrac12, 0)/6 + \tfrac14 \cdot \tfrac15 = \tfrac1{20}$. A zero-count key contributes $\min(0, d) = 0$ to $\lambda$, so counting $T$ only over seen keys falls out of the formula without a separate test.
+
+```python
+def ney_discount(counts) -> float:
+    _check_counts(counts)
+    n1 = sum(1 for c in counts.values() if c == 1)   # words seen once
+    n2 = sum(1 for c in counts.values() if c == 2)   # words seen twice
+    if n1 == 0:
+        raise ValueError("no outcome was seen exactly once: Ney's discount would be 0")
+    return n1 / (n1 + 2 * n2)                        # in (0, 1] once n1 > 0
+```
+
+Full solution: [`mle.py`](../../../../course/solutions/python/tinyllm/prob/mle.py).
+
+### Why this solution
+
+- **Cost.** Every function is $O(\lvert \text{keys} \rvert)$ (and `absolute_discount` $O(\lvert V_b \rvert)$ over the backoff), one or two passes, with `fsum` adding a small constant factor for exact summation.
+- **$\lambda = \sum \min(c_k, d)/N$ over $dT/N$.** The textbook $dT/N$ is the same for integer counts and wrong for EM's fractional counts: a count of 0.3 would be charged 0.5, and the distribution would sum to more than 1. The general form costs nothing extra.
+- **Sparse output for Laplace.** Returning a dict over the whole vocabulary would cost $O(\lvert V \rvert)$ per call, and `L2.1` calls this for millions of contexts. Returning the keys and stating the formula for the rest keeps it proportional to what was seen.
+- **Alternatives.** Good-Turing re-estimates each count from $n_{r+1}/n_r$ and is noisy for large $r$; add-alpha is simple but hands too much mass to a large vocabulary (section 2). Absolute discounting with a backoff is the base of Kneser-Ney, the best classical n-gram smoother, which is why `L2.1` builds on it.
+- **Tradeoffs accepted.** The backoff check uses a $10^{-9}$ tolerance and the count checks are strict, so a slightly unnormalized backoff from a long float computation is accepted but a negative count never is.
+
+### Explain it back
+
+**1. Why is the Laplace denominator $N + \alpha\lvert V \rvert$ and not $N + \alpha \cdot (\text{number of keys})$?**
+
+<details><summary>Answer</summary>
+
+Every word of the vocabulary receives a pseudo-count, including words that are not keys of `counts` at all. Summing $c_k + \alpha$ over all of $V$ gives $N + \alpha\lvert V \rvert$. With only the keys in the denominator, the keys alone sum to 1 and the unseen words' $\alpha/(\cdot)$ comes on top, for a total above 1 (1.1 in section 3).
+
+</details>
+
+**2. Why does `absolute_discount` clamp with `max(c - d, 0)` when $d \le 1$ and counts are integers?**
+
+<details><summary>Answer</summary>
+
+Keys can have count 0 (they were listed but not seen), and `counts.get(k, 0)` returns 0 for every backoff word not counted. Without the clamp each of those would get $-d/N + \lambda b_k$, which can be negative ($-1/12 + 1/20$ in section 3). The clamp says an unseen word loses nothing because it had nothing.
+
+</details>
+
+**3. Why does `log_likelihood` `continue` on `c == 0` before reading `probs`?**
+
+<details><summary>Answer</summary>
+
+$0 \cdot \ln q = 0$ for any $q$, including $q = 0$ (by the $0 \ln 0 = 0$ convention). Reading first would either compute $0 \cdot (-\infty) = \text{NaN}$ or return $-\infty$ for data that is perfectly possible, and a zero-count key may be absent from `probs` entirely.
+
+</details>
+
+**4. With $N = 0$, why return a copy of the backoff rather than `backoff` itself?**
+
+<details><summary>Answer</summary>
+
+The answer is mathematically $b$, but `L2.1` stores one distribution per context and may adjust it later. Returning the shared lower-order dict would let an edit to one unseen context change the backoff for every context.
+
+</details>
+
+**5. Why does `ney_discount` raise when no word was seen exactly once?**
+
+<details><summary>Answer</summary>
+
+$D = n_1/(n_1 + 2n_2)$ is 0 when $n_1 = 0$ (or $0/0$ when $n_2 = 0$ too). A zero discount frees no mass, so unseen words would get probability 0, the problem smoothing exists to solve. Raising tells the caller that this count-of-counts gives no usable estimate.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. dividing by the number of distinct words instead of $N$ | "probabilities" that sum to $N / \lvert \mathrm{keys} \rvert$ | `test_hand_example_mle` (mutant `s01`) |
-| 2. Laplace denominator $N + \alpha \cdot$ (number of keys) | the keys alone sum to 1, so the unseen words' mass is extra: the total is above 1 | `test_laplace_full_distribution_sums_to_one` (mutant `s02`) |
-| 3. counting $T$ over every key, zero counts included | more mass handed to the backoff than was freed | `test_hand_example_absolute_discount` (mutant `s04`) |
-| 4. no clamp at 0 | a key counted zero times gets a negative probability | `test_absolute_discount_zero_counts_are_clamped` (mutant `s06`) |
-| 5. scoring zero-count terms, or indexing a missing probability | $0 \ln 0$ turns into $-\infty$ or a `KeyError` | `test_log_likelihood_zero_terms_and_impossible_data` (mutants `s09`, `s10`) |
-| 6. $\lambda = dT/N$ with fractional counts | a count of 0.3 is charged 0.5, so the result sums to more than 1 | `test_fractional_counts_from_em` (mutant `s05`) |
-| 7. returning the caller's backoff dict when $N = 0$ | `L2.1` edits one context's distribution and corrupts the shared lower order | `test_absolute_discount_with_no_data_is_the_backoff` (mutant `s07`) |
-| 8. Ney's $D = n_1 / (n_1 + n_2)$ | a discount that is too large | `test_hand_example_ney_discount` (mutant `s08`) |
-| 9. accepting NaN or infinite counts, or estimating from no data | NaN probabilities, or a `ZeroDivisionError` | `test_rejects_bad_arguments` (mutants `s11`, `s12`) |
+| 1. dividing by the number of distinct words instead of $N$ | "probabilities" that sum to $N / \lvert \mathrm{keys} \rvert$ | `float(c) / n` with `n` from `_check_counts`; step 2 |
+| 2. Laplace denominator $N + \alpha \cdot$ (number of keys) | the keys alone sum to 1, so the unseen words' mass is extra: the total is above 1 | `denom = n + alpha * vocab_size`; step 4 |
+| 3. counting $T$ over every key, zero counts included | more mass handed to the backoff than was freed | $\lambda$ sums `min(c, d)`, which is 0 for a zero count; step 5 |
+| 4. no clamp at 0 | a key counted zero times gets a negative probability | `max(... - d, 0.0)`; step 5 |
+| 5. scoring zero-count terms, or indexing a missing probability | $0 \ln 0$ turns into $-\infty$ or a `KeyError` | `continue` on `c == 0`, then `probs.get(k, 0.0)`; step 3 |
+| 6. $\lambda = dT/N$ with fractional counts | a count of 0.3 is charged 0.5, so the result sums to more than 1 | charges `min(c, d)`; step 5 |
+| 7. returning the caller's backoff dict when $N = 0$ | `L2.1` edits one context's distribution and corrupts the shared lower order | builds a new dict; step 6 |
+| 8. Ney's $D = n_1 / (n_1 + n_2)$ | a discount that is too large | `n1 / (n1 + 2 * n2)`; step 7 |
+| 9. accepting NaN or infinite counts, or estimating from no data | NaN probabilities, or a `ZeroDivisionError` | `_check_counts` rejects them; `mle` raises on $N = 0$; steps 1 and 2 |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -160,8 +308,6 @@ Counts are finite non-negative numbers: integers from counting (numpy integers a
 | Forward | `L2.1` | interpolated Kneser-Ney is `absolute_discount` per context with `ney_discount`-style $D_1, D_2, D_{3+}$ and a continuation-count backoff |
 | Forward | `M11.4` | PMI divides joint and marginal MLEs from co-occurrence counts |
 | Forward | `M11.2` | $-\ell(q)/N$ is the NLL per token whose exponential is perplexity |
-
-If you skip this module, `ol check L1.4` stops with `L1.4 needs M07.2`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 
