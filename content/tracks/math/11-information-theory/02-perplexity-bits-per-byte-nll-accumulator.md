@@ -1,4 +1,3 @@
-<!-- ol:module M11.2 -->
 # Perplexity, bits per byte, NLL accumulator
 
 ## Overview
@@ -6,36 +5,28 @@
 | | |
 |---|---|
 | **Module** | `M11.2` · build · Python · Pass 3 · 2 to 3 h |
-| **You build** | `python/tinyllm/info/ppl.py`: `perplexity`, `NLLAccumulator` (`add`, `merge`, `result`) |
+| **Solution** | [`python/tinyllm/info/ppl.py`](../../../../course/solutions/python/tinyllm/info/ppl.py): `perplexity`, `NLLAccumulator` (`add`, `merge`, `result`) |
 | **Contract** | [`course/contracts/py/tinyllm/info/ppl.pyi`](../../../../course/contracts/py/tinyllm/info/ppl.pyi) |
-| **Tests** | `course/tests/M11.2/` (what they check: section 4) |
-| **Needs** | `M00.1` `bits_per_byte` (`tinyllm/num/units.py`) · reading: `M11.1` cross-entropy, `M09.2` compensated sums (or `--ref-deps`) |
+| **Needs** | `M00.1` `bits_per_byte` (`tinyllm/num/units.py`) · reading: `M11.1` cross-entropy, `M09.2` compensated sums |
 | **Used by** | `L1.6` tokenizer metrics · later: `L2.1`, `L2.2`, `L3.6` model perplexities, `L6.7` the model-zoo bpb table, `L8.5` quantization budgets, `C1` |
-| **Milestone** | `MS-P3` (tokens and data) |
 | **Optional depth** | Cover and Thomas, *Elements of Information Theory* (2nd ed.), ch. 2 and 5; Gao et al., "The Pile" (2020), section 4 (bits per byte); Higham, *Accuracy and Stability of Numerical Algorithms*, ch. 4 |
 
 ## Key Takeaways
 
-- Perplexity is $e$ to the mean NLL per token: the geometric mean of $1/q$, so a model that is uniform over $k$ choices scores exactly $k$ (`test_hand_example_sentence`, `test_perplexity_of_a_uniform_model_is_k`).
-- Bits per byte divides the same total by the text's UTF-8 length instead of its token count, which makes it the one number that compares models with different tokenizers (`test_bits_per_byte_compares_tokenizers`).
-- A corpus mean is the total over all tokens divided by the token count, never the average of batch means, and padding is selected out, not multiplied by zero (`test_hand_example_two_batches_with_padding`, `test_masked_positions_are_ignored_whatever_they_hold`).
-- Summing each batch exactly and carrying the rounding error across batches makes any split of the corpus give the same answer to float64 rounding (`test_streaming_equals_one_batch`, `test_compensated_sum_across_many_adds`).
+- Perplexity is $e$ to the mean NLL per token: the geometric mean of $1/q$, so a model that is uniform over $k$ choices scores exactly $k$.
+- Bits per byte divides the same total by the text's UTF-8 length instead of its token count, which makes it the one number that compares models with different tokenizers.
+- A corpus mean is the total over all tokens divided by the token count, never the average of batch means, and padding is selected out, not multiplied by zero.
+- Summing each batch exactly and carrying the rounding error across batches makes any split of the corpus give the same answer to float64 rounding.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M11.2              # stubs ppl.py into your repo
-ol tests M11.2              # read the test catalog first
-ol check M11.2              # exit code is the verdict
-ol check M11.2 --ref-deps   # only if your M00.1 is not passing yet
-ol diff  M11.2              # after passing: your code against the reference
-```
+Sections 1 to 3 derive perplexity and bits per byte from the total NLL, show why batched evaluation needs totals, masks and compensated sums, and work every number by hand. Section 4 fixes the interface and lists what a correct implementation must handle. Section 5 walks through the solution, [`ppl.py`](../../../../course/solutions/python/tinyllm/info/ppl.py), and explains why each line is there. Try to predict each step before reading it.
 
 ---
 
 ## 1. Why now
 
-Your tracer bigram reports one number, `nll`: the mean negative log-likelihood of one text, in nats per token. Pass 3 breaks that number in two ways. First, tokenizers arrive: the byte tokenizer, BPE with 4096 merges (`L1.2`), Unigram (`L1.4`). A BPE model and a byte model scoring the same text report nats per *their* token, and a BPE token is three or four bytes, so their perplexities are not comparable; `L1.6`'s tokenizer metrics and the `C1` ablation need a per-byte number. Second, evaluation stops fitting in one call: the zoo (`L6.7`) scores $10^7$ tokens in padded batches, possibly on several workers. Averaging batch means, counting padding, or letting float rounding drift all change the reported number while every individual line of code looks right. This module turns per-token losses into perplexity and bits per byte, correctly, one batch at a time.
+The tracer bigram reports one number, `nll`: the mean negative log-likelihood of one text, in nats per token. Pass 3 breaks that number in two ways. First, tokenizers arrive: the byte tokenizer, BPE with 4096 merges (`L1.2`), Unigram (`L1.4`). A BPE model and a byte model scoring the same text report nats per *their* token, and a BPE token is three or four bytes, so their perplexities are not comparable; `L1.6`'s tokenizer metrics and the `C1` ablation need a per-byte number. Second, evaluation stops fitting in one call: the zoo (`L6.7`) scores $10^7$ tokens in padded batches, possibly on several workers. Averaging batch means, counting padding, or letting float rounding drift all change the reported number while every individual line of code looks right. This module turns per-token losses into perplexity and bits per byte, correctly, one batch at a time.
 
 ## 2. Principles
 
@@ -96,7 +87,7 @@ Score `the cat sat.` as four BPE tokens with the model probabilities below. The 
 
 **Compensation.** Start at $s = 1$, $c = 0$ and add $10^{-16}$ ten times. Plain addition: $1 + 10^{-16}$ rounds to 1 every time, so the total stays 1. Neumaier: each step $t = 1$, $c \mathrel{+}= (1 - 1) + 10^{-16}$, so after ten steps $c = 10^{-15}$ and $s + c = 1.000000000000001$, the right answer.
 
-These numbers are the first cases in section 4: `test_hand_example_sentence` and `test_hand_example_two_batches_with_padding`.
+These numbers are the first two cases in section 4.
 
 ## 4. The interface
 
@@ -111,43 +102,189 @@ class NLLAccumulator:
     # {"nll_sum", "n_tokens", "n_bytes", "nll_mean", "ppl", "bits_per_token", "bpb"}
 ```
 
-Call `bits_per_byte` from your `M00.1` for `bpb`; with no bytes added, `bpb` is NaN. A counted NaN or negative loss is a `ValueError`; a counted $+\infty$ is allowed and makes `ppl` infinite.
+The solution calls `bits_per_byte` from `M00.1` for `bpb`; with no bytes added, `bpb` is NaN. A counted NaN or negative loss is a `ValueError`; a counted $+\infty$ is allowed and makes `ppl` infinite.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_sentence` | unit | $7 \ln 2$, 1.75 bits per token, $\mathrm{PPL} = 3.3636$, bpb 0.5833 | you and the test agree on every definition |
-| `test_hand_example_two_batches_with_padding` | unit | two batches with a NaN pad give the one-batch numbers | the mean of means is wrong |
-| `test_perplexity_of_a_uniform_model_is_k` | property | $\mathrm{PPL} = k$ for uniform-$k$ losses, up to $k = 50\,257$ | perplexity as a number of choices |
-| `test_perplexity_overflow_is_inf` | boundary | 800 nats per token and an infinite total give $\infty$ | untrained models in the zoo |
-| `test_perplexity_rejects_bad_arguments` | boundary | zero tokens, a negative or NaN total | sign bugs upstream |
-| `test_masked_positions_are_ignored_whatever_they_hold` | boundary | NaN, $\infty$, and negative values in masked slots; 0/1 masks | padded batches in `L6.7` |
-| `test_rejects_bad_batches` | boundary | mask shape, counted NaN or negative, negative bytes; a counted $\infty$ is allowed | caller bugs fail loudly |
-| `test_result_needs_tokens_and_bpb_needs_bytes` | boundary | no tokens raises; no bytes gives NaN bpb | a table shows "missing", not "perfect" |
-| `test_streaming_equals_one_batch` | property | random splits in reverse order match one batch to $10^{-13}$ | the number does not depend on batch size |
-| `test_compensated_sum_across_many_adds` | boundary | $1 + 10^5 \times 10^{-15}$ to within 2 ulps | drift over $10^7$ tokens |
-| `test_float32_batches_are_widened` | boundary | $10^5$ float32 losses summed to $10^{-15}$ | losses arrive as float32 |
-| `test_merge_equals_a_single_accumulator` | property | merged shards equal one accumulator, low bits included; `other` unchanged | sharded evaluation in `dur.11` |
-| `test_bits_per_byte_compares_tokenizers` | unit | the byte model has lower perplexity and higher bpb | `L1.6`, the `C1` tokenizer ablation |
-| `test_golden_cases` | golden | three long cases against 50-digit totals from `course/oracle/M11.2` | independent of float64 rounding |
+| the hand-example sentence | unit | $7 \ln 2$, 1.75 bits per token, $\mathrm{PPL} = 3.3636$, bpb 0.5833 | everyone agrees on every definition |
+| two batches with padding | unit | two batches with a NaN pad give the one-batch numbers | the mean of means is wrong |
+| a uniform model has perplexity $k$ | property | $\mathrm{PPL} = k$ for uniform-$k$ losses, up to $k = 50\,257$ | perplexity as a number of choices |
+| perplexity overflow | boundary | 800 nats per token and an infinite total give $\infty$ | untrained models in the zoo |
+| bad `perplexity` arguments | boundary | zero tokens, a negative or NaN total are rejected | sign bugs upstream |
+| masked positions hold anything | boundary | NaN, $\infty$, and negative values in masked slots; 0/1 masks | padded batches in `L6.7` |
+| bad batches | boundary | mask shape, counted NaN or negative, negative bytes are rejected; a counted $\infty$ is allowed | caller bugs fail loudly |
+| empty totals | boundary | no tokens raises; no bytes gives NaN bpb | a table shows "missing", not "perfect" |
+| streaming equals one batch | property | random splits in reverse order match one batch to $10^{-13}$ | the number does not depend on batch size |
+| compensated sum over many adds | boundary | $1 + 10^5 \times 10^{-15}$ to within 2 ulps | drift over $10^7$ tokens |
+| float32 batches are widened | boundary | $10^5$ float32 losses summed to $10^{-15}$ | losses arrive as float32 |
+| merge equals one accumulator | property | merged shards equal one accumulator, low bits included; `other` unchanged | sharded evaluation in `dur.11` |
+| bits per byte compares tokenizers | unit | the byte model has lower perplexity and higher bpb | `L1.6`, the `C1` tokenizer ablation |
+| long golden cases | golden | three long cases against totals computed to 50 digits | independent of float64 rounding |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **Every reported number is a function of three totals.** Mean NLL, perplexity, bits per token and bits per byte are all computed from $S$, $n$ and $B$. So the state of an evaluation is exactly those three numbers, and `result()` derives everything else at the end. A running mean is not a valid state: it cannot be combined correctly with a batch of a different size.
+2. **Totals combine by addition, so batches and shards combine by addition.** `add` adds one batch's contribution and `merge` adds another accumulator's. Any split of the corpus gives the same totals, which is the property that makes a number reported from batched or sharded evaluation trustworthy.
+3. **Only real tokens enter the totals.** A mask decides which slots are real, and the safe way to apply it is selection, `x[keep]`, because the values in pad slots are arbitrary (NaN, $\infty$) and arithmetic with them, even times 0, can poison the sum. $n$ is then the number of selected entries.
+4. **The sum must not depend on how it was split.** In floating point, addition is not associative, so step 2 holds exactly only if rounding is controlled. Two levels: `math.fsum` makes each batch's total the correctly rounded exact sum, and Neumaier's compensated addition carries the rounding error of adding batch totals into a second float. With both, the result matches one big exact sum to within a couple of ulps, whatever the split and order.
+5. **Bad input should fail where it enters, and $\infty$ is not bad input.** A counted NaN or negative loss means a bug upstream (a loss computed against the wrong target, a sign error), so `add` raises. A counted $+\infty$ is a legitimate result: the model gave a real token probability 0. It must flow through to `ppl = inf`, which means the compensated sum needs an infinity path, since $\infty - \infty$ in the compensation step would be NaN.
+6. **Perplexity is $e^{S/n}$, computed so it cannot crash a report.** `math.exp` raises on overflow; an untrained model's mean can exceed 709.78 nats, so overflow returns $\infty$.
+
+### 5.2 The code, annotated
+
+```python
+def perplexity(nll_sum: float, n_tokens: int) -> float:
+    if n_tokens < 1:
+        raise ValueError(
+            f"perplexity needs at least one token, got n_tokens = {n_tokens}"
+        )
+    # NaN fails "nll_sum < 0" silently, so it needs its own test.
+    if math.isnan(nll_sum) or nll_sum < 0:
+        raise ValueError(
+            f"nll_sum must be a non-negative number of nats, got {nll_sum!r}"
+        )
+    try:
+        return math.exp(nll_sum / n_tokens)   # an infinite total gives exp(inf) = inf
+    except OverflowError:  # a mean above ln(DBL_MAX) = 709.78 nats
+        return math.inf
+```
+
+The state is the three totals of step 1, with $S$ split into a sum and its compensation:
+
+```python
+class NLLAccumulator:
+    def __init__(self) -> None:
+        self._sum = 0.0  # Neumaier: the total is _sum + _comp
+        self._comp = 0.0
+        self.n_tokens = 0
+        self.n_bytes = 0
+
+    def _accumulate(self, x: float) -> None:
+        """Neumaier's compensated add of one float into the running total."""
+        # Once anything is infinite the total is infinite; skip the error term,
+        # where inf - inf would produce nan.
+        if math.isinf(x) or math.isinf(self._sum):
+            self._sum += x
+            return
+        t = self._sum + x
+        # Subtract the larger operand from t first: that difference is exact,
+        # so the bracket is exactly the part of the smaller operand t lost.
+        if abs(self._sum) >= abs(x):
+            self._comp += (self._sum - t) + x  # the low bits of x that t lost
+        else:
+            self._comp += (x - t) + self._sum
+        self._sum = t
+```
+
+The branch on magnitudes is what distinguishes Neumaier from Kahan: Kahan's version assumes the running sum is the larger operand, and loses the correction when a single batch total is larger than everything summed so far (for example, the first big batch after a few tiny ones).
+
+```python
+    def add(
+        self, nll: ArrayLike, mask: ArrayLike | None = None, n_bytes: int = 0
+    ) -> None:
+        x = np.asarray(nll, dtype=np.float64)       # widen float32 losses before summing
+        if mask is None:
+            keep = np.ones(x.shape, dtype=bool)
+        else:
+            keep = np.asarray(mask)
+            if keep.shape != x.shape:               # no broadcasting: a wrong mask is a bug
+                raise ValueError(
+                    f"mask shape {keep.shape} differs from nll shape {x.shape}"
+                )
+            keep = keep.astype(bool)                # accepts 0/1 integer masks
+        if n_bytes < 0:
+            raise ValueError(f"n_bytes must be >= 0, got {n_bytes}")
+        # Select, never multiply: padding may hold NaN, and NaN * 0 is NaN.
+        vals = x[keep]
+        # Validate only what is counted: garbage in pad slots is expected.
+        if np.isnan(vals).any() or (vals < 0).any():
+            raise ValueError("a counted NLL is negative or NaN")
+        self._accumulate(math.fsum(vals.tolist()))  # exact within the batch
+        self.n_tokens += int(vals.size)             # real tokens, not slots
+        self.n_bytes += int(n_bytes)
+```
+
+Validation happens before any state changes, so a rejected batch leaves the accumulator exactly as it was.
+
+```python
+    def merge(self, other: NLLAccumulator) -> None:
+        # Add the other side's sum and then its compensation: dropping
+        # other._comp would throw away the low bits it carefully kept.
+        self._accumulate(other._sum)
+        self._accumulate(other._comp)
+        self.n_tokens += other.n_tokens
+        self.n_bytes += other.n_bytes             # other is read, never modified
+
+    def result(self) -> dict[str, float]:
+        if self.n_tokens == 0:
+            raise ValueError("no tokens were counted")
+        # The compensation is meaningless next to an infinite sum (and could be nan).
+        total = self._sum + self._comp if math.isfinite(self._sum) else self._sum
+        mean = total / self.n_tokens
+        return {
+            "nll_sum": float(total),
+            "n_tokens": float(self.n_tokens),
+            "n_bytes": float(self.n_bytes),
+            "nll_mean": float(mean),
+            "ppl": perplexity(total, self.n_tokens),
+            "bits_per_token": float(mean / math.log(2.0)),
+            # Same total, divided by bytes: M00.1's S / (B ln 2). No bytes: NaN, not 0.
+            "bpb": bits_per_byte(total, self.n_bytes) if self.n_bytes > 0 else math.nan,
+        }
+```
+
+Full solution: [`ppl.py`](../../../../course/solutions/python/tinyllm/info/ppl.py).
+
+### 5.3 Why this solution
+
+- **Cost.** `add` is $O(k)$ for a batch of $k$ slots: one selection, one validation pass, and `fsum`, which is linear with a small constant (Shewchuk's partials list stays short for same-sign values). The state is four numbers, so `merge` is $O(1)$, and sharded evaluation costs nothing extra to combine.
+- **Why both `fsum` and Neumaier.** `fsum` alone across the whole corpus would require holding every loss, or every partial, for the whole run. Neumaier alone inside a batch would work but is a Python loop over $10^5$ elements. Exact per batch plus compensated across batches gets near-exact totals with constant state.
+- **Why not `np.sum`.** NumPy uses pairwise summation, which is good (error $O(\log k)$ ulps) but still depends on the batch shape, so the same corpus split differently gives different last digits. The goal here is a number that does not depend on batching.
+- **Why not a running mean** with the update $\bar\ell \mathrel{+}= (x - \bar\ell)/n$. It is numerically fine but cannot be merged across shards without also carrying $n$, at which point it is the totals again, with extra rounding.
+- **Why raise on NaN rather than skip it.** Skipping would silently report a perplexity over fewer tokens than the caller thinks were scored. Raising puts the bug next to its cause.
+- **Tradeoff accepted.** `vals.tolist()` copies the batch into Python floats for `fsum`, which is slower than a vectorized sum. Evaluation is dominated by the model's forward pass, so exactness wins.
+
+### 5.4 Explain it back
+
+1. Two batches have means 2 and 1 nats with 1 and 3 tokens. What is the corpus mean, and what does the mean of means report?
+   <details><summary>Answer</summary>
+   The corpus mean is $(2 \cdot 1 + 1 \cdot 3)/4 = 1.25$ nats. The mean of means is $(2 + 1)/2 = 1.5$, because it gives the one-token batch the same weight as the three-token batch. Only totals give the right answer, which is why the accumulator stores $S$ and $n$.
+   </details>
+2. Why does `add` select with `x[keep]` instead of computing `(x * keep).sum()` and `keep.sum()`?
+   <details><summary>Answer</summary>
+   Pad slots can hold NaN or $\infty$, and $\mathrm{NaN} \cdot 0$ and $\infty \cdot 0$ are both NaN, so one pad slot would make the total NaN. Selection never reads those values into arithmetic. It also makes the validation apply only to counted slots.
+   </details>
+3. Why does `_accumulate` take a separate path when either operand is infinite?
+   <details><summary>Answer</summary>
+   With $x = \infty$, $t = \infty$ and the correction $(x - t) + s$ is $\infty - \infty = \mathrm{NaN}$, which would then turn the reported total into NaN. An infinite total is a legitimate result (a counted token with probability 0), so the code just adds and skips the error term; `result` likewise ignores the compensation when the sum is infinite.
+   </details>
+4. A byte model and a BPE model report per-token perplexities 1.62 and 3.36 on the same text. Which predicts the text better, and how does the accumulator tell?
+   <details><summary>Answer</summary>
+   Per-token perplexity cannot tell, because the tokens are different sizes. The accumulator also tracks $B$, the UTF-8 bytes covered, and reports $\mathrm{bpb} = S/(B \ln 2)$. In the section 3 example the BPE model has 0.583 bpb and the byte model 0.7, so the BPE model is better.
+   </details>
+5. What goes wrong if `merge` adds only `other._sum`?
+   <details><summary>Answer</summary>
+   The other shard's compensation holds the low bits its own additions lost. Dropping it makes a sharded run differ from a single run in the last digits, which is exactly the batch-dependence the design exists to remove.
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. averaging batch means | the reported loss changes with the batch size and the last batch's length | `test_hand_example_two_batches_with_padding` (mutant `s01`) |
-| 2. multiplying by the mask | NaN in a pad slot turns the total into NaN; pad slots are counted as tokens | `test_masked_positions_are_ignored_whatever_they_hold` (mutants `s02`, `s03`) |
-| 3. plain float64 addition across batches | $10^{-15}$-sized contributions vanish into a large total; the result depends on order | `test_compensated_sum_across_many_adds` (mutant `s04`) |
-| 4. summing float32 losses in float32 | seven digits of a $10^5$-token batch lost | `test_float32_batches_are_widened` (mutant `s05`) |
-| 5. `math.exp` of a huge mean | `OverflowError` in the middle of a zoo report | `test_perplexity_overflow_is_inf` (mutant `s06`) |
-| 6. bits per byte divided by tokens, or left in nats | a bpb that is really bits per token, or off by $\ln 2$ | `test_hand_example_sentence` (mutants `s07`, `s08`) |
-| 7. a merge that drops the other side's compensation or bytes | sharded and single runs disagree in the last digits, or bpb is wrong after merging | `test_merge_equals_a_single_accumulator` (mutants `s09`, `s10`) |
-| 8. accepting a counted NaN, or reporting on zero tokens | NaN or a `ZeroDivisionError` reaches the report | `test_rejects_bad_batches`, `test_result_needs_tokens_and_bpb_needs_bytes` (mutants `s11`, `s12`) |
+| 1. averaging batch means | the reported loss changes with the batch size and the last batch's length | stores totals $S$, $n$, $B$ and divides only in `result()`; see step 1 |
+| 2. multiplying by the mask | NaN in a pad slot turns the total into NaN; pad slots are counted as tokens | selects with `x[keep]` and counts `vals.size`; see step 3 |
+| 3. plain float64 addition across batches | $10^{-15}$-sized contributions vanish into a large total; the result depends on order | Neumaier's compensated add in `_accumulate` |
+| 4. summing float32 losses in float32 | seven digits of a $10^5$-token batch lost | `np.asarray(nll, dtype=np.float64)`, then `math.fsum` |
+| 5. `math.exp` of a huge mean | `OverflowError` in the middle of a zoo report | `perplexity` catches `OverflowError` and returns `math.inf` |
+| 6. bits per byte divided by tokens, or left in nats | a bpb that is really bits per token, or off by $\ln 2$ | passes the nats total and the byte count to `M00.1`'s `bits_per_byte` |
+| 7. a merge that drops the other side's compensation or bytes | sharded and single runs disagree in the last digits, or bpb is wrong after merging | `merge` accumulates `other._sum` and `other._comp` and adds both counts |
+| 8. accepting a counted NaN, or reporting on zero tokens | NaN or a `ZeroDivisionError` reaches the report | `add` validates the selected values; `result` raises on zero tokens |
 
-## 6. Where it's used next
-| Forward | `L2.1` | Registered call site uses this module. |
-| Forward | `L2.2` | Registered call site uses this module. |
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -159,11 +296,9 @@ Call `bits_per_byte` from your `M00.1` for `bpb`; with no bytes added, `bpb` is 
 | Forward | `L6.7` | the model zoo scores every family with one accumulator per model and prints bpb |
 | Forward | `L8.5`, `C1` | quantization is allowed a fixed bpb increase; the capstone's training curve and ablations are in bpb |
 
-If you skip this module, `ol check L1.6` stops with `L1.6 needs M11.2`: build it, or rerun with `--ref-deps`.
-
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `result()["bpb"]` | EleutherAI lm-evaluation-harness | `bits_per_byte`, `byte_perplexity`, and `word_perplexity` aggregations over documents, weighted by length | `lm_eval/api/metrics.py` |
 | `perplexity` over a corpus | llama.cpp `perplexity` | strided windows that score only the second half of each context, so every token has enough history | `tools/perplexity/perplexity.cpp` |
