@@ -29,7 +29,7 @@ The engineering practices, principles, and culture that separate senior/staff en
 - Read one chapter per day from each book: they complement each other.
 - After each chapter, identify one thing you can apply to your current project.
 - The Pragmatic Programmer is best read cover-to-cover; SWE at Google can be read selectively.
-- Topics 03, 05, 06, and 08 to 12 also host course modules (`craft.*`, `lang.*`): work those chapters in course order with `ol start <ID>` and `ol check <ID>`, against your own system.
+- Topics 03, 05, 06, and 08 to 12 also host course modules (`craft.*`, `lang.*`): read those chapters in course order; each walks through its solution in [`course/solutions/`](../../../course/solutions/) and explains why it is built that way.
 
 ## Prerequisite Graph
 

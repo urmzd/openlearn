@@ -64,7 +64,7 @@ The artifacts are `docs/sbom/engine.spdx.json` and `docs/sbom/gateway.spdx.json`
 
 **Document header** (engine):
 
-```json
+```jsonc
 {
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
@@ -82,7 +82,7 @@ The artifacts are `docs/sbom/engine.spdx.json` and `docs/sbom/gateway.spdx.json`
 
 **The root package and a dependency** (engine):
 
-```json
+```jsonc
     {
       "name": "tinyllm-engine",
       "SPDXID": "SPDXRef-Package-Engine",
@@ -106,7 +106,7 @@ The root is marked `primaryPackagePurpose: APPLICATION`. Each dependency carries
 
 **A versioned dependency** (gateway):
 
-```json
+```jsonc
     {
       "name": "github.com/BurntSushi/toml",
       "SPDXID": "SPDXRef-Package-Toml",

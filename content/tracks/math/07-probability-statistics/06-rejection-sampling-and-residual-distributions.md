@@ -108,44 +108,172 @@ def rejection_sample(p, q, m: float, rng: UniformSource, max_tries: int = 10000)
 
 `speculative_step` resamples with `M07.1`'s `sample_categorical`. `rejection_sample` draws exactly two uniforms per try, proposal first. The contract has every error rule.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example` | unit | section 3's ratios, $\alpha = 1/2$, residual $[1/2, 0, 1/2, 0]$ | you and the test agree on the definitions |
-| `test_hand_example_output_is_p` | statistical | section 3's output distribution, enumerated exactly | the theorem on numbers you can check by hand |
-| `test_accept_is_strict` | boundary | $u = r$ rejects, $p_x = 0$ never accepts | discrete uniforms make $\le$ wrong |
-| `test_accept_always_when_target_dominates` | boundary | $r \ge 1$ accepts every $u < 1$ | under-proposed tokens are always kept |
-| `test_accept_rejects_bad_arguments` | boundary | $q_x = 0$, $u \notin [0, 1)$, $p_x < 0$ raise | a silent answer biases the output |
-| `test_acceptance_rate_matches_acceptance_probability` | statistical | enumerated acceptance $= \sum \min(p, q)$ | `L8.6` reports it as its acceptance rate |
-| `test_residual_is_a_distribution` | property | non-negative, sums to 1, $Z = 1 - \alpha$ | `sample_categorical` demands a distribution |
-| `test_residual_when_p_equals_q` | boundary | $p = q$ gives a copy of $p$ | no 0/0, no aliasing of the caller's array |
-| `test_residual_disjoint_supports_is_p` | boundary | $\alpha = 0$ gives residual $p$ | a useless draft is slow, not wrong |
-| `test_residual_sum_is_ascending` | unit | the normalizer is a left-to-right loop | bit parity with the Rust port (`L10.8`) |
-| `test_shapes_and_distributions_are_checked` | boundary | mismatched shapes and non-distributions raise | vocabularies of draft and target must match |
-| `test_speculative_output_is_exactly_p` | statistical | output distribution $= p$ exactly, random $p, q$ in eighths | the theorem `L8.6` relies on |
-| `test_speculative_chi_square` | statistical | 20000 seeded draws match $p$ (chi-square) | the same law on arbitrary distributions |
-| `test_speculative_accepts_without_resampling` | unit | an accepted draft ignores $u'$ | the draw order is part of the parity contract |
-| `test_speculative_rejects_bad_drafts` | boundary | $x$ outside the vocabulary or $q_x = 0$ raise | draft and proposal disagreeing is a bug |
-| `test_rejection_sample_first_try_enumerated` | statistical | one try accepts $x$ with probability $p_x/m$, exactly | the von Neumann law |
-| `test_rejection_sample_tries_are_geometric` | statistical | mean tries $= m$ within 4 standard errors | the cost of a loose envelope |
-| `test_rejection_sample_draw_order` | unit | proposal uniform first, then acceptance; two per try | reproducible across languages |
-| `test_rejection_sample_checks_the_envelope` | boundary | $p_x > m q_x$, $m < 1$, and no acceptance in `max_tries` raise | a wrong envelope silently biases |
+| the hand example | unit | section 3's ratios, $\alpha = 1/2$, residual $[1/2, 0, 1/2, 0]$ | everyone agrees on the definitions |
+| the hand example's output is $p$ | statistical | section 3's output distribution, enumerated exactly | the theorem on numbers checkable by hand |
+| strict acceptance | boundary | $u = r$ rejects, $p_x = 0$ never accepts | discrete uniforms make $\le$ wrong |
+| target dominates | boundary | $r \ge 1$ accepts every $u < 1$ | under-proposed tokens are always kept |
+| bad acceptance arguments | boundary | $q_x = 0$, $u \notin [0, 1)$, $p_x < 0$ raise | a silent answer biases the output |
+| acceptance rate | statistical | enumerated acceptance $= \sum \min(p, q)$ | `L8.6` reports it as its acceptance rate |
+| the residual is a distribution | property | non-negative, sums to 1, $Z = 1 - \alpha$ | `sample_categorical` demands a distribution |
+| $p = q$ | boundary | gives a copy of $p$ | no 0/0, no aliasing of the caller's array |
+| disjoint supports | boundary | $\alpha = 0$ gives residual $p$ | a useless draft is slow, not wrong |
+| ascending sums | unit | the normalizer is a left-to-right loop | bit parity with the Rust port (`L10.8`) |
+| shapes and distributions | boundary | mismatched shapes and non-distributions raise | vocabularies of draft and target must match |
+| speculative output is exactly $p$ | statistical | output distribution $= p$ exactly, random $p, q$ in eighths | the theorem `L8.6` relies on |
+| speculative chi-square | statistical | 20000 seeded draws match $p$ (chi-square) | the same law on arbitrary distributions |
+| accepted drafts ignore $u'$ | unit | an accepted draft does not look at $u'$ | the draw order is part of the parity contract |
+| bad drafts | boundary | $x$ outside the vocabulary or $q_x = 0$ raise | draft and proposal disagreeing is a bug |
+| von Neumann's first try | statistical | one try accepts $x$ with probability $p_x/m$, exactly | the von Neumann law |
+| geometric tries | statistical | mean tries $= m$ within 4 standard errors | the cost of a loose envelope |
+| von Neumann draw order | unit | proposal uniform first, then acceptance; two per try | reproducible across languages |
+| the envelope | boundary | $p_x > m q_x$, $m < 1$, and no acceptance in `max_tries` raise | a wrong envelope silently biases |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Both inputs are distributions over one vocabulary.** Every function starts by checking $p$ and $q$ with `M07.1`'s rules (1-D, finite, non-negative, summing to 1) and that their shapes match: a draft over a different vocabulary is a bug, not a case to handle.
+2. **Acceptance is one strict comparison.** Section 2.2: `u < p_x / q_x` has probability exactly $\min(1, r)$ for $u$ on the discrete grid in $[0, 1)$. No explicit `min` is needed, because $u < 1 \le r$ already accepts. $q_x = 0$ means the draft proposed a token it gave probability 0, so raise rather than divide.
+3. **The acceptance probability and the residual's normalizer are left-to-right sums.** Section 2.5: a plain loop over ascending ids, so the Rust port gets the same last bit and the residual's CDF has the same boundaries.
+4. **The residual is $\max(0, p - q)/Z$, or $p$ when $Z = 0$.** Section 2.3. $Z = 0$ happens exactly when $p \le q$ everywhere, which for two distributions means $p = q$; then nothing is ever rejected, and returning a copy of $p$ keeps the function total without aliasing the caller's array.
+5. **One speculative step: accept, or one draw from the residual.** Section 2.4: if the acceptance test passes, return $x$ without reading $u'$; otherwise `sample_categorical(residual, u')`. That draw order is part of the parity contract with `L8.6` and `L10.8`.
+6. **Von Neumann needs a checked envelope and two uniforms per try.** Section 2.1: check $m \ge 1$ and $p \le mq$ everywhere first, then loop: propose with one uniform, accept with another when $u < p_x/(m q_x)$, return the token and the number of tries. A bounded loop turns a pathological envelope into an error rather than a hang.
+
+### The code, annotated
+
+```python
+def rejection_accept(p_x: float, q_x: float, u: float) -> bool:
+    _check_u(u, "u")                                   # u in [0, 1)
+    if not q_x > 0.0:
+        raise ValueError(f"q_x must be > 0 (q proposed this token), got {q_x!r}")
+    if not p_x >= 0.0:
+        raise ValueError(f"p_x must be >= 0, got {p_x!r}")
+    # P(u < r) = min(1, r) for u uniform on [0, 1): strict, so p_x = 0 (r = 0)
+    # never accepts and r >= 1 always does.
+    return u < p_x / q_x
+
+
+def acceptance_probability(p: ArrayLike, q: ArrayLike) -> float:
+    a, b = _pair(p, q)                                 # two checked distributions, same shape
+    s = 0.0
+    for pi, qi in zip(a.tolist(), b.tolist()):         # ascending ids, left to right
+        s += min(pi, qi)                               # the kept mass of token i
+    return s                                           # = 1 - TV(p, q)
+```
+
+On section 3, the per-token kept masses are $\tfrac14, \tfrac14, 0, 0$, so $\alpha = \tfrac12$.
+
+```python
+def residual_distribution(p: ArrayLike, q: ArrayLike) -> NDArray:
+    a, b = _pair(p, q)
+    r = np.maximum(a - b, 0.0)                         # what acceptance left missing from p
+    z = 0.0
+    for v in r.tolist():                               # not np.sum: pairwise summation differs in the last bit
+        z += v
+    if z <= 0.0:
+        # p == q: nothing is ever rejected, but the result must stay a distribution.
+        return a.copy()
+    return r / z
+
+
+def speculative_step(p, q, x: int, u_accept: float, u_resample: float) -> tuple[int, bool]:
+    a, b = _pair(p, q)
+    if not 0 <= x < a.size:
+        raise ValueError(f"draft token {x} outside [0, {a.size})")
+    _check_u(u_resample, "u_resample")                 # validated even when not used
+    if rejection_accept(float(a[x]), float(b[x]), u_accept):
+        return int(x), True                            # accepted: u_resample is not read
+    return sample_categorical(residual_distribution(a, b), u_resample), False
+```
+
+Section 3's draw: $x = 1$, $u = 0.75 \ge 0.5$ rejects; the residual is $[\tfrac12, 0, \tfrac12, 0]$ with running sums $0.5, 0.5, 1.0, 1.0$, and $u' = 0.75$ first falls below $1.0$ at id 2. With $u = 0.25 < 0.5$ the function returns `(1, True)`. If the disjoint-support case $\alpha = 0$ occurs, $r = p$ and $Z = 1$, so the residual is $p$ itself: a useless draft is always rejected and the output is still a draw of $p$.
+
+```python
+def rejection_sample(p, q, m: float, rng, max_tries: int = 10000) -> tuple[int, int]:
+    a, b = _pair(p, q)
+    if not m >= 1.0:                                   # an envelope below 1 cannot cover p
+        raise ValueError(f"the envelope m must be >= 1, got {m!r}")
+    if (a > m * b).any():                              # p_x > m q_x: x would be under-sampled
+        i = int(np.flatnonzero(a > m * b)[0])
+        raise ValueError(f"m = {m} is not an envelope: p[{i}] = {a[i]} > m q[{i}] = {m * b[i]}")
+    for tries in range(1, max_tries + 1):
+        x = sample_categorical(b, rng.uniform())       # proposal uniform first
+        if rng.uniform() < a[x] / (m * b[x]):          # then the acceptance uniform; b[x] > 0 here
+            return x, tries
+    raise RuntimeError(f"no acceptance in {max_tries} tries")
+```
+
+`sample_categorical` never returns an id with $q_x = 0$ (`M07.1`'s strict comparison), so the division is safe; and the envelope check guarantees that any id with $p_x > 0$ has $q_x > 0$.
+
+Full solution: [`rejection.py`](../../../../course/solutions/python/tinyllm/prob/rejection.py).
+
+### Why this solution
+
+- **Cost.** `rejection_accept` is $O(1)$; `acceptance_probability` and `residual_distribution` are $O(n)$; `speculative_step` is $O(n)$ (validation, the residual, and an inverse-CDF draw) and is only computed in full on rejection. `rejection_sample` costs $O(n)$ checks plus a geometric number of tries with mean $m$, each $O(n)$ for the inverse CDF.
+- **Residual over retry.** A retry loop (von Neumann) would also be exact, but each retry in speculative decoding would need another target forward pass; the residual produces a token from the pass already done, so every verified position yields exactly one token.
+- **Loops over `np.sum`.** numpy's pairwise sum is more accurate for long arrays, but it is not what the Rust port computes. The sums here are of at most a vocabulary of non-negative terms, where left-to-right error is tiny, and bit parity matters more.
+- **Tradeoffs accepted.** Validating $p$ and $q$ on every call costs $O(n)$ per step; for a 50 000-token vocabulary that is small next to a forward pass, and it turns a draft/target vocabulary mismatch into an immediate error.
+
+### Explain it back
+
+**1. Why is the residual $\max(0, p - q)$ and not $\max(0, q - p)$ or $\lvert p - q\rvert$?**
+
+<details><summary>Answer</summary>
+
+After acceptance each token has $\min(p_t, q_t)$ of its target mass; what is missing is $p_t - \min(p_t, q_t) = \max(0, p_t - q_t)$, the tokens the draft under-proposed. $\max(0, q - p)$ would resample the tokens the draft over-proposed, which already have more than enough, and $\lvert p - q \rvert$ mixes both; neither adds up to $p$.
+
+</details>
+
+**2. Why does `rejection_accept` need no `min(1, ...)`?**
+
+<details><summary>Answer</summary>
+
+$u$ is always below 1, so when $r \ge 1$ the test `u < r` is always true: the acceptance probability is already $\min(1, r)$. Writing an explicit cap is harmless, but "capping" by inverting the ratio when it exceeds 1 would turn the always-accept case into a partial one and drop under-proposed tokens.
+
+</details>
+
+**3. On acceptance, why must `speculative_step` return without using $u'$?**
+
+<details><summary>Answer</summary>
+
+Correctness: the theorem's accept branch outputs $x$ itself, contributing $\min(p_x, q_x)$; letting $u'$ change the result there would replace accepted tokens with residual draws and break that term. Parity: the contract says $u'$ matters only on rejection, so `L8.6` and the Rust engine (`L10.8`) agree on every decision for the same uniforms.
+
+</details>
+
+**4. Why does `residual_distribution` return `a.copy()` when $Z = 0$ and not `a`?**
+
+<details><summary>Answer</summary>
+
+$Z = 0$ means $p = q$, so the residual is never sampled, but the function must still return a valid distribution and $p$ is the natural choice. Returning the caller's array would let a later in-place edit of the result (a mask, a temperature) silently change the target distribution itself.
+
+</details>
+
+**5. In von Neumann's sampler, what does a loose envelope (large $m$) cost, and what does a too-small one break?**
+
+<details><summary>Answer</summary>
+
+A loose envelope only costs time: each try accepts with probability $1/m$, so the mean number of tries is $m$. A too-small one breaks correctness: for an $x$ with $p_x > m q_x$ the acceptance ratio exceeds 1 and is effectively capped, so $x$ is drawn with probability below $p_x$ and the others are over-sampled. That is why the function checks the envelope before drawing.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. accepting on $u \le r$ | a token with $p_x = 0$ is accepted when $u = 0$ | `test_accept_is_strict` (mutant `s01`) |
-| 2. the ratio upside down, or "capped" by inverting it | over-proposed tokens kept, under-proposed ones dropped | `test_accept_always_when_target_dominates` (mutants `s02`, `s12`) |
-| 3. residual $\max(0, q - p)$ or $\lvert p - q\rvert$ | resamples the tokens the draft over-proposed | `test_residual_is_a_distribution` (mutants `s03`, `s05`) |
-| 4. forgetting to normalize the residual | `sample_categorical` rejects it, or the CDF ends below 1 | `test_residual_is_a_distribution` (mutant `s04`) |
-| 5. on rejection, resampling from $p$, from $q$, or returning the draft | output no longer $p$: accepted tokens counted twice | `test_speculative_output_is_exactly_p` (mutants `s06`, `s07`, `s13`) |
-| 6. $p = q$ handled as 0/0, or returning the caller's array | NaN, or a later in-place edit corrupts the target | `test_residual_when_p_equals_q` (mutants `s08`, `s14`) |
-| 7. von Neumann without $m$, or without checking it | the accepted tokens follow $\min(p, q)$-ish weights, not $p$ | `test_rejection_sample_first_try_enumerated` (mutant `s15`), `test_rejection_sample_checks_the_envelope` (mutant `s19`) |
-| 8. summing with numpy's pairwise `np.sum` | last-bit differences against the Rust port | `test_residual_sum_is_ascending` (mutant `s09`) |
+| 1. accepting on $u \le r$ | a token with $p_x = 0$ is accepted when $u = 0$ | `return u < p_x / q_x`; step 2 |
+| 2. the ratio upside down, or "capped" by inverting it | over-proposed tokens kept, under-proposed ones dropped | the ratio is `p_x / q_x`, and $u < 1$ does the capping; step 2 |
+| 3. residual $\max(0, q - p)$ or $\lvert p - q\rvert$ | resamples the tokens the draft over-proposed | `np.maximum(a - b, 0.0)`; step 4 |
+| 4. forgetting to normalize the residual | `sample_categorical` rejects it, or the CDF ends below 1 | `r / z`; step 4 |
+| 5. on rejection, resampling from $p$, from $q$, or returning the draft | output no longer $p$: accepted tokens counted twice | samples `residual_distribution(a, b)` on rejection; step 5 |
+| 6. $p = q$ handled as 0/0, or returning the caller's array | NaN, or a later in-place edit corrupts the target | `if z <= 0.0: return a.copy()`; step 4 |
+| 7. von Neumann without $m$, or without checking it | the accepted tokens follow $\min(p, q)$-ish weights, not $p$ | accepts on `a[x] / (m * b[x])` after checking `m >= 1` and `a <= m * b`; step 6 |
+| 8. summing with numpy's pairwise `np.sum` | last-bit differences against the Rust port | explicit left-to-right loops; step 3 |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -153,8 +281,6 @@ def rejection_sample(p, q, m: float, rng: UniformSource, max_tries: int = 10000)
 | Back | `M07.0` | uniform random variables and independence, behind every probability above |
 | Forward | `L8.6` | speculative decoding: one `speculative_step` per draft position, `acceptance_probability` as the reported acceptance rate |
 | Forward | `L10.8` | the Rust engine's speculative decoding, held to the same accept and reject decisions |
-
-If you skip this module, `L8.6` cannot check: `ol check L8.6` stops with `L8.6 needs M07.6`, and `--ref-deps` substitutes the reference.
 
 ## Going further
 

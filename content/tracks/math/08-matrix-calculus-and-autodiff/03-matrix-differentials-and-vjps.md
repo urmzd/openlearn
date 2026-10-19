@@ -308,7 +308,7 @@ Full solution: [`vjp.py`](../../../../course/solutions/python/tinyllm/autograd/v
 
 ### Explain it back
 
-1. Why does `matmul_vjp` call `unbroadcast` on `dB` even though `X^T G` already has two axes?
+1. `B` is a `[k, n]` weight and `A` a `[T, m, k]` batch. Why does `matmul_vjp` still need `unbroadcast` on `dB`?
 
    <details><summary>Answer</summary>
 
