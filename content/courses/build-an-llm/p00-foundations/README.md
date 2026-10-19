@@ -1,17 +1,26 @@
-# Part 0: Foundations
+# Foundations
 
-The model side of the tracer and, from Pass 2, the autograd engine every later model trains with. Pass 1 has one chapter: a byte-level bigram fitted by counting, whose logits use NumPy matmul and whose weights you write as a safetensors checkpoint the Rust engine serves. Pass 2 retrains the same bigram with your autograd (L0.5 takes over `bigram.py`) behind the same checkpoint contract.
+Every model in this book, from a bigram to a Llama-family decoder, rests on the same small stack of machinery: a way to represent a model's weights, a way to compute gradients through any expression, a library of differentiable operations and losses, a way to organize parameters into named layers, a loop that trains them, and file formats that save the result so other programs can load it. This chapter builds that stack from scratch in Python and NumPy.
 
-**Course passes**: L0.0 belongs to [Pass 1](../paths/course-p01-tracer/milestone.md); L0.1 to L0.6 belong to [Pass 2](../paths/course-p02-foundations/milestone.md)
+The chapter opens with the smallest real language model: a byte-level bigram fitted by counting, whose logits come from a NumPy row gather and whose weights are written as a safetensors checkpoint that the Rust engine serves. That one model gives every other layer of the system something to carry. The rest of the chapter then builds an autograd engine and retrains the same bigram with it, behind the same checkpoint format. Because the bigram's optimum is known exactly (it is the count model), gradient descent finding it again is the most precise end-to-end test of the autograd there is. The chapter closes with every dtype the book needs, crash-safe checkpoints, and a memory-mapped token stream that resumes bit for bit.
 
-**Before you start**: [Python and NumPy](../../programming-languages/02-language-and-tool-primers/01-python-and-numpy.md) and [matrix multiplication in Python](../../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md).
+> **Learning objectives**
+> - Fit, evaluate, and sample a byte-level bigram language model, and write it as a safetensors file byte-identical to the reference library's.
+> - Build reverse-mode autograd on NumPy arrays, including broadcasting, repeated indices, and `no_grad`.
+> - Implement and gradient-check a library of differentiable ops and fused losses, with stable numerics and correct padding rules.
+> - Organize parameters into modules whose names match PyTorch's, and save and load them in place.
+> - Write a reproducible training loop, crash-safe checkpoints, and a token stream that resumes exactly.
 
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `L0.0` | [Byte bigram: counts, logits, safetensors v0](00-byte-bigram.md) | build | 1 |
-| 2 | `L0.1` | [Tensor, broadcasting backward, and no_grad](01-tensor-and-broadcasting-backward.md) | build | 2 |
-| 3 | `L0.2` | [The op library and gradcheck_all](02-op-library-and-gradcheck.md) | build | 2 |
-| 4 | `L0.3` | [Losses with a fused backward](03-losses-with-fused-backward.md) | build | 2 |
-| 5 | `L0.4` | [Module system and basic layers](04-module-system-and-layers.md) | build | 2 |
-| 6 | `L0.5` | [Training loop and the autograd bigram](05-training-loop-and-the-autograd-bigram.md) | build | 2 |
-| 7 | `L0.6` | [Safetensors for every dtype, atomic checkpoints, and the token stream](06-safetensors-checkpoints-and-token-streams.md) | build | 2 |
+## Before you begin
+
+You should be comfortable with [Python and NumPy](../../programming-languages/02-language-and-tool-primers/01-python-and-numpy.md) from *Programming Languages* (arrays, dtypes, broadcasting, views versus copies, uv projects) and with [Vectors, matrices, row-major layout, and matmul in Python](../../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md) from *Mathematics for Computing*. The autograd sections also draw on [Scalar reverse mode: the Value graph](../../mathematics-for-computing/08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md) and [Matrix differentials, the trace trick, and closed-form VJPs](../../mathematics-for-computing/08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md), and the training loop on the optimizers of [Adam and AdamW](../../mathematics-for-computing/10-optimization/03-adam-and-adamw.md). Each section names the exact pieces it uses as it goes.
+
+## In this chapter
+
+1. [Byte bigram: counts, logits, safetensors v0](00-byte-bigram.md). The smallest real language model: a smoothed count table, its negative log-likelihood, temperature sampling by inverse CDF, and a canonical safetensors writer and strict reader.
+2. [Tensor, broadcasting backward, and no_grad](01-tensor-and-broadcasting-backward.md). Reverse-mode autograd on arrays: one VJP per op, reverse topological order, why broadcasting and repeated indices mean summed gradients, and a grad mode that nests and survives exceptions.
+3. [The op library and gradcheck_all](02-op-library-and-gradcheck.md). Activations, reductions, shape and selection ops, the stable softmax family, and inverted dropout, each with one closed-form VJP, plus a gradient checker strong enough to fail.
+4. [Losses with a fused backward](03-losses-with-fused-backward.md). Cross-entropy as one graph node with gradient $p - q$, `ignore_index` and label smoothing done right, and stable MSE and binary cross-entropy, with a test suite that pins them down.
+5. [Module system and basic layers](04-module-system-and-layers.md). Parameter registration by assignment, PyTorch-compatible names, all-or-nothing in-place loading, and `Linear`, `Embedding`, `LayerNorm`, `Dropout`, and the containers.
+6. [Training loop and the autograd bigram](05-training-loop-and-the-autograd-bigram.md). A seeded data loader, a training step in the right order, honest evaluation, and the bigram retrained by gradient descent to the count model's NLL, sampling exactly as the Rust engine does.
+7. [Safetensors for every dtype, atomic checkpoints, and the token stream](06-safetensors-checkpoints-and-token-streams.md). BF16 and F8_E4M3 with round to nearest even, a checkpoint protocol that survives a crash at any instant, and llm.c token shards read through a memory map with an exact cursor.

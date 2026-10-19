@@ -1,86 +1,49 @@
-# AI Platform Engineering (25-35 weeks)
+# A reading plan for AI Platform Engineering
 
-~8-10 hours per week. **Patterns-first**: the goal is to internalize the fundamental patterns (like math, everything downstream is derivative) and treat each trendy tool as an instance. Requires [Deep Learning](../machine-learning/02-deep-learning) and [LLM Systems](../machine-learning/04-llm-systems), plus [System Design](../systems/01-system-design) and [Data Engineering](../data-engineering) foundations (OLTP vs OLAP, replication). Tip: [Coding & Design Patterns](06-coding-and-design-patterns) can be read first as vocabulary.
+This plan paces the book over roughly 25 to 35 weeks at eight to ten hours a week. It is a suggestion, not a schedule to keep: the chapters form a graph, and the [front matter](README.md) offers shorter reading paths if you have a specific goal. Whatever pace you choose, read with one question in mind: for every tool a chapter names, what pattern is it an instance of? That pattern is the part that transfers.
 
-### Weeks 1-6: Training & Frameworks
+Before you start, make sure you are comfortable with [Deep Learning](../machine-learning/02-deep-learning/README.md) and [LLM Systems and Inference](../machine-learning/04-llm-systems/README.md) from *Machine Learning*, [System Design](../systems/01-system-design/README.md) from *Systems*, and the foundations of *Data Engineering* ([its front matter](../data-engineering/README.md)), especially OLTP versus OLAP and replication. [Coding and Design Patterns](06-coding-and-design-patterns/README.md) can be read first as vocabulary if you like; the other chapters are written in its terms.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 1 | PyTorch deep-dive: eager, autograd, `nn.Module`, `torch.compile` | PyTorch docs |
-| 2 | JAX: `jit`/`grad`/`vmap`/`pmap`, Flax/Optax, PyTorch vs JAX | JAX docs |
-| 3 | Distributed training I: data parallel (DDP), all-reduce, mixed precision | PyTorch DDP + Ultra-Scale Playbook |
-| 4 | Distributed training II: FSDP/ZeRO, tensor/pipeline/expert parallelism, Megatron/DeepSpeed | FSDP tutorial + DeepSpeed docs |
-| 5 | Embedding models: contrastive fine-tuning, hosting (TEI), vector stores | Sentence-Transformers + pgvector |
-| 6 | Small language models: distillation, LoRA/QLoRA (PEFT), quantize, serve with vLLM | HF PEFT + vLLM docs |
+## Training and frameworks (about six weeks)
 
-### Weeks 7-9: RPC & Protocols
+Spend the first six weeks in [Training and Frameworks](01-training-and-frameworks/README.md). Begin with a PyTorch deep dive (eager execution, autograd, `nn.Module`, `torch.compile`), then JAX (`jit`, `grad`, `vmap`, `pmap`, Flax and Optax) and a comparison of the two. The next two weeks are distributed training: first data parallelism with DDP, all-reduce, and mixed precision, then FSDP and ZeRO with tensor, pipeline, and expert parallelism as in Megatron and DeepSpeed. Finish with embedding models (contrastive fine-tuning, hosting with TEI, vector stores) and small language models (distillation, LoRA and QLoRA with PEFT, quantization, and serving with vLLM). The framework documentation, the Ultra-Scale Playbook, the FSDP tutorial, DeepSpeed's docs, Sentence-Transformers, pgvector, and HF PEFT are good companions.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 7 | RPC model, partial failure, serialization formats (JSON/Protobuf/Avro/Thrift) | DDIA Ch 4 + protobuf.dev |
-| 8 | gRPC: HTTP/2, the four call types, streaming, interceptors, gateways | gRPC docs |
-| 9 | Schema evolution, choosing the protocol per boundary, Arrow Flight | Avro spec + gRPC docs |
+## RPC, protocols, and streaming (about five weeks)
 
-### Weeks 10-11: Streaming & SSE
+[RPC and Protocols](02-rpc-and-protocols/README.md) takes about three weeks: the RPC model, partial failure, and serialization formats (JSON, Protobuf, Avro, Thrift), with chapter 4 of *Designing Data-Intensive Applications* alongside; then gRPC over HTTP/2 with its four call types, streaming, interceptors, and gateways; then schema evolution, choosing a protocol per boundary, and Arrow Flight. Follow it with two weeks of [Streaming and SSE](03-streaming-sse/README.md): the SSE protocol and `EventSource`, how SSE compares with WebSockets, long-polling, and gRPC streaming, and then end-to-end token streaming with cancellation, backpressure, proxies, and scaling.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 10 | SSE protocol, `EventSource`, SSE vs WebSockets vs long-polling vs gRPC streaming | MDN SSE + HTML spec |
-| 11 | End-to-end token streaming, cancellation/backpressure, proxies and scaling | OpenAI streaming + vLLM docs |
+## Distributed data and caching (about four weeks)
 
-### Weeks 12-15: Distributed Data & Caching
+[Distributed Data and Caching](04-distributed-data-and-caching/README.md) opens with OLTP versus OLAP and sharding by hash, range, and consistent hashing, along with hot shards and rebalancing (chapters 5 and 6 of *Designing Data-Intensive Applications*, plus Citus and Vitess). The second week covers in-memory stores and the caching patterns (cache-aside, write-through, write-back) and invalidation, with the Redis docs and *Scaling Memcache at Facebook*. The third covers caching failure modes (stampedes, herds, penetration) and Cassandra's LSM trees, ring, and quorums. The last week turns to knowledge graphs (Neo4j, Apache AGE on Postgres) and bitemporal data.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 12 | OLTP vs OLAP, sharding (hash/range/consistent hashing), hot shards, rebalancing | DDIA Ch 5-6 + Citus/Vitess |
-| 13 | In-memory stores & caching patterns (cache-aside/through/back), invalidation | Redis docs + Scaling Memcache |
-| 14 | Caching failure modes (stampede, herd, penetration); Cassandra (LSM, ring, quorum) | Redis + Cassandra docs |
-| 15 | Knowledge graphs (Neo4j, Apache AGE on Postgres), bitemporal/temporal data | AGE + Neo4j docs |
+## Orchestration and patterns (about three weeks)
 
-### Weeks 16-18: Durable Orchestration, Workers & Patterns
+Read [Durable Orchestration and Workers](05-durable-orchestration-and-workers/README.md) over two weeks: first durable execution and checkpointing, event-sourced replay, and the worker pattern; then reliability patterns (idempotency, sagas and compensation, the outbox) together with distributed observability and profiling, using the Temporal and DBOS docs, OpenTelemetry, and Brendan Gregg's work. Use the third week for [Coding and Design Patterns](06-coding-and-design-patterns/README.md) if you have not read it yet: decorator, facade, closures, currying, and composition.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 16 | Durable execution & checkpointing, event-sourced replay, the worker pattern | Temporal + DBOS docs |
-| 17 | Reliability patterns (idempotency, saga/compensation, outbox); distributed observability + profiling | Temporal docs + OpenTelemetry + Gregg |
-| 18 | Coding & design patterns: decorator, facade, closures, currying, composition | Refactoring Guru + Mostly Adequate Guide |
+## Retrieval, authorization, and evaluation (about seven weeks)
 
-### Weeks 19-25: Retrieval, Authorization & Evaluation
+[Retrieval and RAG](07-retrieval-and-rag/README.md) deserves four weeks. Start with encoders (bi- versus cross-encoders), embedding retrieval, and approximate nearest neighbors with HNSW; then chunking (fixed, recursive, semantic, parent-child) and metadata; then lexical retrieval (bag of words, TF-IDF, BM25), hybrid fusion with RRF, and reranking; and finally multimodal handling (document, section, variant), GraphRAG, and production retrieval.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 19 | Encoders (bi- vs cross-encoder), embedding retrieval, ANN/HNSW | RAG paper + HNSW + sbert |
-| 20 | Chunking patterns (fixed/recursive/semantic, parent-child), metadata | saige RAG + pgvector |
-| 21 | Lexical retrieval (BM25, bag-of-words, TF-IDF); hybrid fusion (RRF) + reranking | BM25 review + RRF paper |
-| 22 | Multimodal handling (Document→Section→Variant), GraphRAG, production retrieval | GraphRAG + saige |
-| 23 | Authorization: RBAC/ABAC/ReBAC/NGAC, the pushdown complexity ladder, Zanzibar | NIST + Zanzibar + OpenFGA |
-| 24 | Secure RAG (permission-filtered retrieval, multi-tenancy); PDP/PEP, policy-as-code | NIST ABAC + OPA |
-| 25 | LLM evaluation: cross-entropy, perplexity, **bits-per-byte**; benchmarks & contamination | MacKay + HELM + The Pile |
+Spend two weeks on [Authorization and Access Control](08-authorization-and-access-control/README.md): RBAC, ABAC, ReBAC, and NGAC, the pushdown complexity ladder, and Zanzibar with OpenFGA; then secure RAG with permission-filtered retrieval and multi-tenancy, PDP and PEP, and policy as code with OPA.
 
-### Weeks 26-28: Edge, Realtime & On-Device Inference
+Close this stretch with a week of [LLM Evaluation](09-llm-evaluation/README.md) on cross-entropy, perplexity, and bits per byte, and on benchmarks and contamination, reading MacKay, HELM, and The Pile.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 26 | The deployment spectrum; **llama.cpp + GGUF** end-to-end (convert → quantize → `llama-server`); Ollama; MLX/ExecuTorch on-device | llama.cpp + GGUF + Ollama |
-| 27 | Realtime/streaming encoders: offline vs causal/chunked; speech (Whisper offline, Conformer/RNN-T streaming); real-time factor | Whisper + Conformer papers |
-| 28 | Efficiency architectures (the Mistral clinic): sliding-window attention, GQA, Mixtral MoE, Codestral Mamba/SSM, Voxtral | Mistral 7B + Mixtral + Mamba papers |
+## Edge, realtime, and on-device inference (about three weeks)
 
-### Weeks 29-30: Model Routing & Cascades
+In [Edge, Realtime and On-Device Inference](10-edge-realtime-inference/README.md), first walk the deployment spectrum and run llama.cpp with GGUF end to end (convert, quantize, `llama-server`), along with Ollama and on-device runtimes such as MLX and ExecuTorch. Next, study realtime and streaming encoders: offline versus causal and chunked, speech with Whisper offline and Conformer or RNN-T streaming, and the real-time factor. Finish with the efficiency architectures in the Mistral clinic: sliding-window attention, GQA, Mixtral's mixture of experts, Codestral Mamba's state-space model, and Voxtral.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 29 | The three routing decisions; router families (rules, predictive, cascade, verifier-gated, session-level); oracle vs deployed router; model recall | RouteLLM + FrugalGPT + LLMRouterBench |
-| 30 | Cache-aware switching, escalation policy (category, verifier, confidence), token-basis economics, the SFT/DPO/RFT ladder, evaluating a router, System One decision models, specialised models in the pool | FireRouter docs + RFT docs + TypeSafe docs |
+## Model routing and cascades (about two weeks)
 
-### Optional deep dive (weeks 31-35)
+[Model Routing and Cascades](11-model-routing-and-cascades/README.md) takes two weeks. The first covers the three routing decisions, the router families (rules, predictive, cascade, verifier-gated, session-level), the gap between the oracle and a deployed router, and model recall, with RouteLLM, FrugalGPT, and LLMRouterBench. The second covers cache-aware switching, escalation policy (category, verifier, confidence), token-basis economics, the SFT, DPO, and RFT ladder, evaluating a router, System One decision models, and specialized models in the pool.
 
-LLM-as-judge & Elo arenas, RAG metrics (faithfulness, context precision/recall, NDCG/MRR), agent metrics (TTFT/TTLT, tool success), and building a composable `Scorer` eval harness gated in CI. References: Ragas, Chatbot Arena, lm-evaluation-harness, saige `eval/`.
+## The gateway and the agent SDK
 
-### Daily Routine (AI Platform Engineering)
+The last two chapters are build chapters that sit on top of the engine from *Build an LLM*. Read [Gateway](12-gateway/README.md) once you have the streaming chapter behind you, and then [Agent SDK](13-agent-sdk/README.md), which uses the gateway as its model endpoint and the durable-orchestration chapter's ideas for its durable runs. Budget about two weeks for each if you work through the solution code.
 
-1. **Name the pattern, then the tool** — for every tool, ask "what pattern is this an instance of?" That's the transferable knowledge.
-2. **Build, don't just read** — train it, shard it, cache it, stream it, orchestrate it, retrieve it, authorize it, score it.
-3. **Measure** — GPU memory, tokens/sec, bytes-on-wire, TTFT, cache hit rate, retrieval recall, bits-per-byte; numbers beat intuition.
-4. **Break it on purpose** — kill a worker mid-workflow, expire a hot cache key, reuse a Protobuf tag, leak a doc past an ACL; learn the failure modes.
+## Going deeper
 
----
+If you have time left (weeks 31 to 35 in a long plan), return to [LLM Evaluation](09-llm-evaluation/README.md) for the optional depth: LLM-as-judge and Elo arenas, RAG metrics (faithfulness, context precision and recall, NDCG, MRR), agent metrics (time to first and last token, tool success), and a composable `Scorer` evaluation harness gated in CI. Ragas, Chatbot Arena, lm-evaluation-harness, and saige's `eval/` are the references.
+
+## How to read each week
+
+Four habits make the reading stick. Name the pattern before the tool. Build rather than only read: train it, shard it, cache it, stream it, orchestrate it, retrieve it, authorize it, score it. Measure (GPU memory, tokens per second, bytes on the wire, time to first token, cache hit rate, retrieval recall, bits per byte), because numbers beat intuition. And break things on purpose: kill a worker in the middle of a workflow, expire a hot cache key, reuse a Protobuf tag, leak a document past an ACL, and learn the failure modes firsthand.
