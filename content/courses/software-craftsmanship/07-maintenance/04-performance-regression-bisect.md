@@ -1,45 +1,32 @@
-# Perf regression bisect
+# Performance regression bisect
 
-## Overview
+A latency regression costs users and capacity, and it rarely announces which change caused it. Somewhere between last week's release and today's, time to first token got 20% worse, and there are a hundred commits in between. Staring at diffs will not find it. Regressions are found by search: a benchmark with a threshold, plus `git bisect run`, finds the first bad commit in $\log_2 n$ steps and turns "it got slower" into one reproducible change.
 
-| | |
-|---|---|
-| **Module** | `craft.16` · practice · docs · Pass 11 · 1 h reading |
-| **Solution** | Model record: [`perf-bisect.md`](../../../../course/solutions/docs/maintenance/perf-bisect.md), a TTFT regression bisect with its reproduction envelope, decision rule, and procedure |
-| **Needs** | [`craft.06`](../03-testing-mentality/04-benchmarks-and-perf-gates.md) (benchmarks and performance gates) |
-| **Used by** | no code call site; this is an independent artifact. The [`ops.07`](../../systems/05-incident-response-and-chaos/07-performance-regression.md) drill runs the same procedure on an injected regression. |
+The catch is that a bisect is only as good as its oracle. If the benchmark is noisy, bisection converges confidently on a random commit. So most of this section is about making the measurement trustworthy: fixing the workload, host, configuration, and sampling, and writing the regression rule down before looking at any commit. The model record is [`perf-bisect.md`](../../../../course/solutions/docs/maintenance/perf-bisect.md), a TTFT regression bisect with its reproduction envelope, decision rule, and procedure.
 
-## Key Takeaways
+This section builds on [Benchmarks and perf gates](../03-testing-mentality/04-benchmarks-and-perf-gates.md), whose measurement discipline the gate script reuses. The same procedure is run on an injected regression in [A performance regression bisect](../../systems/05-incident-response-and-chaos/07-performance-regression.md) in *Systems and Architecture*. Try writing the regression rule yourself before you read the model's.
 
-- A bisect is only as good as its oracle: fix the workload, host, configuration, and sampling, and write the regression rule before looking at commits.
-- Verify that the base is good and the head is bad under that rule before bisecting; then confirm the first bad commit with repeated runs.
-- The record names the owner, the rollback, and the approval threshold, and keeps raw results.
+> **Learning objectives**
+> - Define a reproduction envelope that makes a benchmark a consistent oracle for bisection.
+> - Write a regression rule with a relative and an absolute bound, fixed before measuring any commit.
+> - Verify the endpoints, run `git bisect run` with a gate script that uses the exit-code protocol correctly, and confirm the result.
+> - Estimate the cost of a bisect and record the rollback, owner, and approval threshold.
 
-## How to read this chapter
+## What makes a bisect trustworthy
 
-Sections 1 to 3 explain why a bisect turns "it got slower" into one commit and sketch the procedure. Section 4 lists what a complete bisect record must contain. Section 5 walks through the model record, works its numbers, and explains the exit-code protocol `git bisect run` depends on. Try to write the regression rule yourself before reading the model's.
+The principles are short. Use a stable workload, a fixed machine and configuration, a warm-up, repeated samples, and a threshold chosen before inspecting commits. Validate both endpoints before trusting any midpoint result.
 
----
+Here is the procedure in outline. Reproduce a 20% TTFT regression with the saved request fixture. Run the same benchmark at the base and at the head, then use `git bisect run` with a script that exits nonzero only when the median exceeds the agreed bound. Finally, re-run the identified commit.
 
-## 1. Why now
+## Working the numbers
 
-A latency regression costs users and capacity. A bisect turns "it got slower" into a reproducible change range.
+With the model record's numbers, the base median is 41 ms and the head median is 50 ms. The increase is $50 - 41 = 9$ ms, and $9/41 = 22.0\%$. The rule is "at least 15% slower **and** more than 3 ms", so the head is bad on both counts.
 
-## 2. Principles
+Now the cost. If 128 commits separate base and head, bisection needs $\lceil \log_2 128 \rceil = 7$ tested revisions. At 7 runs each plus warm-up, that is the cost to budget, and it is the reason every run must be trustworthy: a wrong verdict at any one of the seven steps sends the rest of the search into the wrong half.
 
-Use a stable workload, fixed machine and configuration, warm-up, repeated samples, and a threshold chosen before inspecting commits. Validate both endpoints before trusting the midpoint result.
+## What a complete record contains
 
-## 3. Worked example
-
-Reproduce a 20% TTFT regression with the saved request fixture. Run the same benchmark at the base and head, then use `git bisect run` with a script that exits nonzero only when the median exceeds the agreed bound. Re-run the identified commit.
-
-With the model record's numbers: base median 41 ms, head median 50 ms. The increase is $50 - 41 = 9$ ms and $9/41 = 22.0\%$. The rule is "at least 15% slower **and** more than 3 ms", so head is bad on both counts. If 128 commits separate base and head, bisection needs $\lceil \log_2 128 \rceil = 7$ tested revisions; at 7 runs each plus warm-up, that is the cost to budget, and the reason every run must be trustworthy.
-
-## 4. The artifact
-
-The artifact is `docs/maintenance/perf-bisect.md`.
-
-### What a correct record must contain
+The artifact is `docs/maintenance/perf-bisect.md`. A complete bisect record states each of these:
 
 | Element | What it states | Why it matters downstream |
 |---|---|---|
@@ -49,21 +36,19 @@ The artifact is `docs/maintenance/perf-bisect.md`.
 | Procedure | Endpoint check, `git bisect run` with a gate script, confirmation runs. | The search is mechanical and repeatable. |
 | Rollback, owner, approval | The recovery, who owns it, and what closes the issue. | The finding leads to an action, not just a commit hash. |
 
-## 5. The solution, step by step
+## Building the bisect step by step
 
-### 5.1 From first principles
+Seven observations explain the record.
 
-1. Bisection finds the first bad commit in $O(\log n)$ tests, but only if the test is a **consistent oracle**: every commit before the culprit says "good", every commit from it on says "bad". A noisy benchmark breaks that assumption and bisection then converges confidently on a random commit.
-2. Noise comes from the environment (host, neighbours, thermal state), the input (workload), the state (cold caches, JIT, connection setup), and sampling. Each source gets a control: pinned host class with no concurrent jobs, a fixed fixture, warm-up rounds, and repeated runs summarised by the median.
+1. Bisection finds the first bad commit in $O(\log n)$ tests, but only if the test is a **consistent oracle**: every commit before the culprit says "good", and every commit from it on says "bad". A noisy benchmark breaks that assumption, and bisection then converges confidently on a random commit.
+2. Noise comes from the environment (host, neighbours, thermal state), the input (workload), the state (cold caches, JIT, connection setup), and sampling. Each source gets a control: a pinned host class with no concurrent jobs, a fixed fixture, warm-up rounds, and repeated runs summarised by the median.
 3. A relative bound alone flags tiny absolute changes on fast paths (10% of 2 ms is noise); an absolute bound alone ignores scale. Requiring both means the change is large in proportion and in milliseconds.
 4. The bound is written down before any commit is measured, so the oracle cannot be tuned to blame a suspect.
-5. If the endpoints do not reproduce (base not good or head not bad under the rule), there is nothing to bisect. Checking them first costs two measurements and can save the whole search.
-6. Some revisions cannot be measured (they do not build, or the runner fails). Calling them good or bad would corrupt the search; they must be skipped or the bisect aborted.
+5. If the endpoints do not reproduce (base not good, or head not bad, under the rule), there is nothing to bisect. Checking them first costs two measurements and can save the whole search.
+6. Some revisions cannot be measured: they do not build, or the runner fails. Calling them good or bad would corrupt the search, so they must be skipped or the bisect aborted.
 7. The final answer is confirmed by measuring the first bad commit and its neighbours again, since a single noisy midpoint can still mislead.
 
-### 5.2 The model record, annotated
-
-**Reproduction envelope.**
+### The reproduction envelope
 
 | Field | Fixed value for this example |
 |---|---|
@@ -74,9 +59,9 @@ The artifact is `docs/maintenance/perf-bisect.md`.
 | Sampling | 2 warm-up rounds, then 7 runs; compare medians and p95, retain raw JSON |
 | Regression rule | candidate median is at least 15% slower and the increase exceeds 3 ms |
 
-Each row is a control from step 2. The output cap matters for TTFT less than for total latency, but it keeps runs the same length so the host's state is comparable between them. Model and tokenizer are pinned by digest because a different model would change TTFT for reasons that have nothing to do with the code. Seven runs give a median that one outlier cannot move. The rule is step 3: relative **and** absolute.
+Each row is a control from the second observation. The output cap matters less for TTFT than for total latency, but it keeps runs the same length, so the host's state is comparable between them. The model and tokenizer are pinned by digest because a different model would change TTFT for reasons that have nothing to do with the code. Seven runs give a median that one outlier cannot move. And the rule is the third observation: relative **and** absolute.
 
-**Endpoint results.**
+### Endpoint results
 
 | Revision | Median TTFT | p95 TTFT | Raw result |
 |---|---:|---:|---|
@@ -85,9 +70,9 @@ Each row is a control from step 2. The output cap matters for TTFT less than for
 
 > The median increase is 22.0%, or 9 ms, so the candidate crosses both predeclared regression limits. The p95 moves in the same direction. The check is not accepted if the baseline itself fails to reproduce within 5% over three repetitions.
 
-The p95 rises by $12/55 \approx 22\%$ too, so the regression is a shift of the whole distribution, not a few slow outliers. The last sentence is step 5 applied to the baseline: if base itself varies by more than 5%, the 15% rule is too close to the noise to be trusted. The record says the measurements are hypothetical and must be replaced with raw output from the same host, which keeps a template from being mistaken for a finding.
+The p95 rises by $12/55 \approx 22\%$ too, so the regression is a shift of the whole distribution, not a few slow outliers. The last sentence applies the fifth observation to the baseline: if the base itself varies by more than 5%, the 15% rule is too close to the noise to be trusted. The record also says its measurements are hypothetical and must be replaced with raw output from the same host, which keeps a template from being mistaken for a finding.
 
-**Procedure.**
+### The procedure
 
 > 1. Pin the workload, model, host class, and runner configuration before inspecting commits.
 > 2. Verify `base` is good and `head` is bad using the regression rule above.
@@ -95,7 +80,7 @@ The p95 rises by $12/55 \approx 22\%$ too, so the regression is a shift of the w
 > 4. Repeat the first bad revision and both neighbors with seven runs. A single noisy midpoint is not a finding.
 > 5. Attach raw results, the bisect log, and the identified commit to the issue. The owner proposes a fix or documents why the change is intentional.
 
-Step 3's "distinct infrastructure error" is where `git bisect run`'s exit-code protocol matters (step 6). Git reads the script's exit status as: `0` good; `125` skip this revision (it cannot be tested, for example it does not build); any other code from 1 to 127 bad; anything else (128 and above, or a signal) aborts the bisect. So a gate script should exit `125` for "this revision cannot be measured" and a code of 128 or more for "the runner itself is broken, stop". The shape of such a gate, with the benchmark command left to the project:
+The "distinct infrastructure error" in step 3 is where the exit-code protocol of `git bisect run` matters (the sixth observation). Git reads the script's exit status as follows: `0` is good; `125` means skip this revision because it cannot be tested, for example because it does not build; any other code from 1 to 127 is bad; and anything else (128 and above, or a signal) aborts the bisect. So a gate script should exit `125` for "this revision cannot be measured" and a code of 128 or more for "the runner itself is broken, stop". Here is the shape of such a gate, with the benchmark command left to the project:
 
 ```bash
 #!/usr/bin/env bash
@@ -112,78 +97,65 @@ awk -v m="$median_ms" -v b="$BASE_MEDIAN_MS" \
 exit 0
 ```
 
-`build` and `measure` stand for the project's build step and for "two warm-up rounds, seven runs, print the median". Under `set -e` a failing `measure` would exit 1 and be counted as **bad**, which is why the script handles each failure explicitly instead.
+`build` and `measure` stand for the project's build step and for "two warm-up rounds, seven runs, print the median". Under `set -e`, a failing `measure` would exit 1 and be counted as **bad**, which is why the script handles each failure explicitly instead.
 
-Step 4 of the procedure is step 7 above: the first bad revision and its two neighbours are measured again with seven runs. If the "first bad" commit and its parent are within noise of each other, the search went wrong somewhere and the log shows where.
+Step 4 of the procedure is the seventh observation: the first bad revision and its two neighbours are measured again with seven runs. If the "first bad" commit and its parent are within noise of each other, the search went wrong somewhere, and the log shows where.
 
-**Rollback, owner, approval.**
+### Rollback, owner, and approval
 
 > **Rollback:** revert the identified change or pin the prior image digest if the regression is already deployed. Keep the workload and raw results with the incident. **Owner:** serving performance on-call. **Approval threshold:** reviewer confirms endpoint reproducibility and the final rerun is below both limits.
 
-Two recoveries for two situations: a revert when the regression is caught before release, a pinned digest when it is already serving. Closing requires a rerun below **both** limits, the same rule used to open the issue.
+There are two recoveries for two situations: a revert when the regression is caught before release, and a pinned digest when it is already serving. Closing the issue requires a rerun below **both** limits, the same rule that opened it. The full model answer is [`perf-bisect.md`](../../../../course/solutions/docs/maintenance/perf-bisect.md).
 
-Full model answer: [`perf-bisect.md`](../../../../course/solutions/docs/maintenance/perf-bisect.md).
+### Why this design
 
-### 5.3 Why this procedure
+The cost is $\lceil \log_2 n \rceil$ measurements of 9 rounds each, plus 2 endpoint checks and 3 confirmation measurements. Linear search would cost $n$; for a 128-commit range that is 128 measurements against about 12.
 
-- **Cost** is $\lceil \log_2 n \rceil$ measurements of 9 rounds each, plus 2 endpoint checks and 3 confirmation measurements. Linear search would cost $n$; for a 128-commit range that is 128 against about 12.
-- **Medians over means:** one slow run from a noisy neighbour moves a mean of seven noticeably and a median not at all.
-- **Automated `git bisect run`** rather than marking by hand: a human marking revisions after glancing at numbers applies the rule inconsistently and may skip the confirmation step.
-- **Tradeoff accepted:** the strict envelope means a regression that only appears under a different workload or host will not be found by this bisect. The record names its workload so that limitation is visible.
+The record uses **medians rather than means**, because one slow run from a noisy neighbour moves a mean of seven noticeably and a median not at all. It **automates the search with `git bisect run`** rather than marking revisions by hand, because a human marking revisions after glancing at numbers applies the rule inconsistently and may skip the confirmation step.
 
-### 5.4 Explain it back
+One tradeoff is accepted. The strict envelope means a regression that appears only under a different workload or host will not be found by this bisect. The record names its workload so that the limitation is visible.
 
-**Why must base be verified good and head verified bad before bisecting?**
+## What can go wrong
 
-<details><summary>Answer</summary>
+Four pitfalls recur. A record that names a commit without the evidence that supports it cannot be verified against the repository or the system; the model attaches raw JSON for both endpoints, the bisect log, and the confirmation runs to the issue. A record that omits the failure or rollback case leaves an operator with no safe response; the model gives a revert for undeployed changes and a pinned prior digest for deployed ones. If the owner, threshold, or scope is implicit, two reviewers can reach different decisions from the same evidence; the model puts the regression rule in the envelope table before any commit is measured, and names the owner and the approval threshold.
 
-Bisection assumes the property flips from good to bad somewhere in the range. If base is already bad under the rule (or head is not bad), the search still returns a commit, but it is meaningless. Two endpoint measurements check the assumption.
+> **Warning:** Treating an untestable revision as bad makes the search converge on a build break, not the regression. The gate distinguishes skip (125) and abort (128 or more) from bad.
 
-</details>
+## Where this leads
 
-**What happens if the gate script exits 1 when a revision fails to build?**
+The measurement discipline here comes from [Benchmarks and perf gates](../03-testing-mentality/04-benchmarks-and-perf-gates.md), which shows how a budget file and a gate turn a benchmark into a pass/fail decision. Next, [A performance regression bisect](../../systems/05-incident-response-and-chaos/07-performance-regression.md) runs this procedure to find an injected slowdown.
 
-<details><summary>Answer</summary>
+### Further reading
 
-Git counts the revision as bad. If the unbuildable commit lies before the real culprit, bisection blames it (or something near it) instead. Exiting 125 tells git to skip that revision and choose another.
+- `git help bisect`, section "Bisect run": the exit-code protocol of 0, 125, 1 to 127, and the abort range.
+- The [`git bisect`](https://git-scm.com/docs/git-bisect) documentation online (free).
 
-</details>
+## Key terms
 
-**Why require both "at least 15%" and "more than 3 ms"?**
+- **Bisection**: binary search over a commit range for the first commit at which a property changes, taking $\lceil \log_2 n \rceil$ tests.
+- **Consistent oracle**: a test that says "good" for every commit before the culprit and "bad" for every commit from it on.
+- **Reproduction envelope**: the fixed metric, workload, host, configuration, and sampling under which every revision is measured.
+- **Regression rule**: a predeclared threshold, here a relative and an absolute bound, that decides good or bad.
+- **`git bisect run` exit codes**: 0 good, 125 skip, 1 to 127 (other than 125) bad, 128 or more abort.
 
-<details><summary>Answer</summary>
+## Summary
 
-A relative bound alone would flag a 0.5 ms change on a 3 ms path, which is within run-to-run noise. An absolute bound alone would treat 4 ms as significant on a 2 s path. Both together flag changes that are large in proportion and in real time.
+- Regressions are found by search, not by staring: a gated benchmark plus `git bisect run` finds the commit in $\log_2 n$ steps.
+- A bisect is only as good as its oracle: fix the workload, host, configuration, and sampling, and write the rule before looking at commits.
+- Require both a relative and an absolute bound, so the change is large in proportion and in milliseconds.
+- Verify that the base is good and the head is bad before bisecting, then confirm the first bad commit and its neighbours with repeated runs.
+- Skip untestable revisions with 125 and abort on runner failure; never count them as bad.
+- The record names the owner, the rollback, and the approval threshold, and keeps the raw results.
 
-</details>
+## Review questions
 
-**The bisect names commit X. X and its parent measure 49 ms and 47 ms. Is X the culprit?**
-
-<details><summary>Answer</summary>
-
-Not on this evidence. A 2 ms step is below the 3 ms bound, so the oracle should not have separated them. Either the regression accumulated over several commits, or a noisy measurement misled the search. The confirmation step exists to catch this; widen the confirmation to more neighbours and rerun.
-
-</details>
-
-## 6. Pitfalls
-
-| # | Pitfall | Symptom | How the solution avoids it |
-|---|---|---|---|
-| 1 | The record names a commit without the evidence that supports it | Reviewers cannot verify the claim against the repository or system. | Raw JSON for both endpoints, the bisect log, and the confirmation runs are attached to the issue. |
-| 2 | The failure or rollback case is omitted | The happy path passes while an operator has no safe response under failure. | The record gives a revert for undeployed changes and a pinned prior digest for deployed ones. |
-| 3 | The owner, threshold, or scope is implicit | Two reviewers can reach different release or risk decisions from the same evidence. | The regression rule is in the envelope table before any commit is measured; owner and approval threshold are named. |
-| 4 | Treating an untestable revision as bad | The search converges on a build break, not the regression. | The gate distinguishes skip (125) and abort (128 or more) from bad. |
-
-## 7. Where it's used next
-
-| Direction | Module | Connection |
-|---|---|---|
-| Back | [`craft.06`](../03-testing-mentality/04-benchmarks-and-perf-gates.md) | Benchmarks with budgets: the measurement discipline the gate script reuses. |
-| Forward | [`ops.07`](../../systems/05-incident-response-and-chaos/07-performance-regression.md) | The performance regression drill, where this procedure finds an injected slowdown. |
-
-## Going further
-
-| Resource | What to inspect |
-|---|---|
-| `git help bisect`, section "Bisect run" | The exit-code protocol: 0, 125, 1 to 127, and the abort range. |
-| [Benchmarks and perf gates](../03-testing-mentality/04-benchmarks-and-perf-gates.md) | How a budget file and a gate turn a benchmark into a pass/fail decision. |
+1. Why must base be verified good and head verified bad before bisecting?
+   <details><summary>Answer</summary>Bisection assumes the property flips from good to bad somewhere in the range. If base is already bad under the rule (or head is not bad), the search still returns a commit, but it is meaningless. Two endpoint measurements check the assumption.</details>
+2. What happens if the gate script exits 1 when a revision fails to build?
+   <details><summary>Answer</summary>Git counts the revision as bad. If the unbuildable commit lies before the real culprit, bisection blames it (or something near it) instead. Exiting 125 tells git to skip that revision and choose another.</details>
+3. Why require both "at least 15%" and "more than 3 ms"?
+   <details><summary>Answer</summary>A relative bound alone would flag a 0.5 ms change on a 3 ms path, which is within run-to-run noise. An absolute bound alone would treat 4 ms as significant on a 2 s path. Both together flag changes that are large in proportion and in real time.</details>
+4. The bisect names commit X. X and its parent measure 49 ms and 47 ms. Is X the culprit?
+   <details><summary>Answer</summary>Not on this evidence. A 2 ms step is below the 3 ms bound, so the oracle should not have separated them. Either the regression accumulated over several commits, or a noisy measurement misled the search. The confirmation step exists to catch this; widen the confirmation to more neighbours and rerun.</details>
+5. How many measurements does the bisect of a 128-commit range cost, end to end?
+   <details><summary>Answer</summary>Seven bisection measurements ($\lceil \log_2 128 \rceil = 7$), plus 2 endpoint checks and 3 confirmation measurements: about 12, each of 9 rounds (2 warm-up and 7 runs). A linear search would need 128.</details>

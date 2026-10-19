@@ -1,39 +1,28 @@
-# Drill: data incident
+# A data incident
 
-## Overview
+Every drill so far has had a symptom a dashboard could see: a crashloop, a TTFT burn, a dead letter, a latency shift. A data incident can corrupt training or evaluation while every service stays green. Jobs complete, endpoints respond, and the model quietly learns from a source it was never allowed to use, or from a shard whose content changed after it was recorded. The only way to find what was affected is provenance: the ledger and manifests built in [Licensing ledger verification and the datasheet](../../data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md) in *Data Engineering*.
 
-| | |
-|---|---|
-| **Module** | `ops.08` · drill · ops, docs · Pass 11 · 1 to 2 h |
-| **Solution** | the model runbook `docs/runbooks/DataIncident.md`, written out with its reasoning in section 5 |
-| **Needs** | none |
-| **Used by** | no code call site: a drill, one of the Pass 11 operations drills |
+This drill follows [A performance regression bisect](07-performance-regression.md), and the shape of its response is different. Where the bisect searched history for a cause, a data incident starts from a known bad source and traces forward to everything built from it. And because the damage spreads every time a downstream job runs, containment comes before investigation.
 
-## Key Takeaways
+The section states the principles and the drill scenario, lists what a correct runbook must cover, and derives the procedure, ending with the model runbook `docs/runbooks/DataIncident.md`. Try to write the procedure yourself before you read the solution.
 
-- A data incident can corrupt training or evaluation while every service stays green; the ledger and manifests are the only way to find what was affected.
-- **Quarantine first**: stop downstream jobs from publishing derived artifacts until the scope is known; preserve the ledger and manifests as evidence.
-- Trace forward from the bad source (ledger row, by `source_id` and `sha256`) to shards, token streams, checkpoints, and evaluations, then rebuild from the last verified snapshot.
+> **Learning objectives**
+> - Explain why a data incident is invisible to health metrics and what detects it instead.
+> - Quarantine a corpus before scoping, and preserve the ledger and manifests as evidence.
+> - Trace a bad source forward from its ledger row to shards, token streams, checkpoints, evaluations, and releases.
+> - Recover by rebuilding from the last verified snapshot rather than patching shards in place.
 
-## How to read this chapter
+## Principles
 
-This chapter is a worked drill. Sections 1 to 3 state the risk, the principles, and the drill scenario. Section 4 lists what a correct runbook must cover. Section 5 derives the procedure from first principles, gives the model runbook, and explains why each step is the right one. Try to write the procedure yourself from sections 2 and 3 before reading section 5.
+Quarantine suspect inputs, preserve the ledger and manifests, and stop downstream jobs from publishing derived artifacts until scope is known. Then trace forward from the bad source (its ledger row, by `source_id` and `sha256`) to shards, token streams, checkpoints, and evaluations, and rebuild from the last verified snapshot.
 
----
-
-## 1. Why now
-
-A data incident can corrupt training or evaluation while leaving services green. Provenance and hashes help determine what was affected.
-
-## 2. Principles
-
-Quarantine suspect inputs, preserve the ledger and manifests, and stop downstream jobs from publishing derived artifacts until scope is known.
-
-## 3. Worked example
+## The drill scenario
 
 A fixture source violates its license or a shard hash changes. Trace its ledger row to token streams, checkpoints, and evaluations. Rebuild from the last verified source snapshot.
 
-## 4. What a correct runbook must cover
+## What a correct runbook must cover
+
+A runbook for a data incident is complete when it answers five questions:
 
 | Case | What the runbook must contain | Why it matters |
 |---|---|---|
@@ -43,19 +32,23 @@ A fixture source violates its license or a shard hash changes. Trace its ledger 
 | Recovery | remove or fix the source, rebuild from the last verified snapshot, re-run `ledger verify` | a clean, verified corpus |
 | Verification | `ledger verify` passes; affected models retrained or withdrawn; release gate re-checked | done means verified |
 
-## 5. The solution, step by step
+## Deriving the procedure
 
-### 5.1 From first principles
+### Reasoning from first principles
 
-1. **Why do services stay green?** Bad data does not crash anything; it changes what a model learns or how it is scored. So detection comes from provenance checks (license allowlist, hash mismatch), not from health metrics.
-2. **Contain before investigating.** Every job that reads the corpus can spread the problem into checkpoints and published models. Pausing releases and training is cheap and reversible; publishing is not.
-3. **The ledger is the map.** Each row records a source's `url`, `license_spdx`, `sha256`, `n_docs`, `allowed_uses`, and what was kept. A changed hash or a license not on the allowlist (verification fails with exit 65) names the source; manifests then map it to shards and the runs that consumed them.
-4. **Rebuild, do not patch.** The last verified snapshot is known good; rebuilding from it and re-verifying is deterministic, while editing shards in place cannot be verified.
-5. **Release gates enforce it.** A model release refuses a model trained on a source whose `allowed_uses` lacks `train`, so the ledger fix also blocks the bad model from shipping.
+Why do services stay green? Bad data does not crash anything; it changes what a model learns or how it is scored. So detection comes from provenance checks (license allowlist, hash mismatch), not from health metrics.
 
-### 5.2 The model runbook
+Contain before investigating. Every job that reads the corpus can spread the problem into checkpoints and published models. Pausing releases and training is cheap and reversible; publishing is not.
 
-`docs/runbooks/DataIncident.md`:
+The ledger is the map. Each row records a source's `url`, `license_spdx`, `sha256`, `n_docs`, `allowed_uses`, and what was kept. A changed hash or a license not on the allowlist (verification fails with exit 65) names the source; manifests then map it to shards and the runs that consumed them.
+
+Rebuild, do not patch. The last verified snapshot is known good; rebuilding from it and re-verifying is deterministic, while editing shards in place cannot be verified.
+
+Release gates enforce it. A model release refuses a model trained on a source whose `allowed_uses` lacks `train`, so the ledger fix also blocks the bad model from shipping.
+
+### The model runbook
+
+The procedure written out as `docs/runbooks/DataIncident.md`:
 
 ````markdown
 # Runbook: data incident
@@ -91,13 +84,42 @@ affected evaluations.
 incident record lists every affected artifact and its disposition.
 ````
 
-### 5.3 Why this solution
+### Why this solution
 
-- **Containment first** limits the blast radius to what already exists.
-- **Provenance over inspection**: tracing by hash and manifest is exact; reading data to guess what is affected is not.
-- **Why not delete the bad documents from the shards?** The result has no verified lineage; a rebuild from a verified snapshot does.
+Containment first limits the blast radius to what already exists. Provenance beats inspection: tracing by hash and manifest is exact, while reading data to guess what is affected is not. And deleting the bad documents from the shards, the obvious shortcut, produces a corpus with no verified lineage; a rebuild from a verified snapshot has one.
 
-### 5.4 Explain it back
+## What can go wrong
+
+Three mistakes let the incident spread or leave it half-fixed:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| Investigating before containing | a release ships a model trained on the bad source | releases and training pause first |
+| Patching shards in place | a corpus with no verified lineage | rebuild from the last verified snapshot and run `ledger verify` |
+| Scoping only the corpus, not its consumers | checkpoints and evaluations built on bad data stay in use | the scope step traces to checkpoints, evaluations, and releases |
+
+> **Warning:** A model published on bad data cannot be recalled from every consumer. Pause releases before you start scoping.
+
+## Where this leads
+
+The ledger and verification this runbook relies on come from [Licensing ledger verification and the datasheet](../../data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md), and the drill follows [A performance regression bisect](07-performance-regression.md). The next drill, [A noisy neighbor](09-noisy-neighbor.md), returns to the serving path, where one tenant's load hurts everyone else. To compare this inject with the adjacent drills and reuse the same containment and verification fields, see the [chapter opening](README.md).
+
+## Key terms
+
+- **Data incident**: bad or disallowed input that corrupts training or evaluation without any service failing.
+- **Ledger row**: the provenance record of one source: `url`, `license_spdx`, `sha256`, `n_docs`, `allowed_uses`, and what was kept.
+- **Quarantine**: pausing releases and training that consume a suspect corpus until its scope is known.
+- **Forward trace**: following a bad source through manifests to the shards, token streams, checkpoints, evaluations, and releases built from it.
+- **Verified snapshot**: the last corpus state that passed `ledger verify`, used as the base for a rebuild.
+
+## Summary
+
+- A data incident can corrupt training or evaluation while every service stays green; provenance checks, not health metrics, detect it.
+- Quarantine first: pause downstream releases and training, and preserve the ledger and manifests as evidence.
+- Trace forward from the bad source's ledger row by `source_id` and `sha256` to everything built from it.
+- Rebuild from the last verified snapshot and re-run `ledger verify`; release gates then block any model trained on a disallowed source.
+
+## Review questions
 
 1. Why can a data incident go unnoticed by every dashboard?
    <details><summary>Answer</summary>Nothing fails: jobs complete and services respond. Only provenance checks (hashes, license allowlist) see that the input changed.</details>
@@ -105,24 +127,3 @@ incident record lists every affected artifact and its disposition.
    <details><summary>Answer</summary>A published model built on bad data cannot be unpublished from every consumer; pausing is reversible and cheap.</details>
 3. What in the ledger row identifies a silently changed source?
    <details><summary>Answer</summary>Its `sha256`: a re-fetched source whose content hash differs from the recorded one has changed, whatever its URL says.</details>
-
-## 6. Pitfalls
-
-| # | Pitfall | Symptom | How the solution avoids it |
-|---|---|---|---|
-| 1 | Investigating before containing | a release ships a model trained on the bad source | releases and training pause first |
-| 2 | Patching shards in place | a corpus with no verified lineage | rebuild from the last verified snapshot and run `ledger verify` |
-| 3 | Scoping only the corpus, not its consumers | checkpoints and evaluations built on bad data stay in use | the scope step traces to checkpoints, evaluations, and releases |
-
-## 7. Where it's used next
-
-| Direction | Module | Connection |
-|---|---|---|
-| Back | `ops.07` | A prerequisite: the contract or evidence this runbook relies on. |
-| Back | `data.08` | A prerequisite: the contract or evidence this runbook relies on. |
-
-## Going further
-
-| Resource | What to inspect |
-|---|---|
-| [Incident drill catalog](README.md) | Compare this inject with the adjacent failure drills and use the same containment and verification fields. |

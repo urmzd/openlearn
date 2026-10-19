@@ -1,15 +1,18 @@
-# C 05: Merge sort
+# Merge sort, buffered and in place
 
-**Concepts:** pointer arithmetic, recursion, stability, rotation
-**Difficulty:** ⭐⭐
+Merge sort is the sort you reach for when equal elements must keep their order: sort a table by date, then stably by customer, and each customer's rows stay in date order. This section builds it twice. The first version is the practical one: a stable merge sort that allocates one scratch buffer for the whole sort and recurses with pointer arithmetic over a single array. The second is the answer to the interview question "can you merge sort without extra space?": a genuinely in-place variant that replaces the buffer with rotations, and pays a log factor for it.
 
-A stable merge sort with one scratch allocation for the whole sort, and then the
-genuinely in-place variant that uses rotations instead of a buffer.
+Both versions turn on details that are one character long. A `<=` instead of a `<` is the difference between stable and unstable. A subtraction instead of a comparison is an overflow. A `lower_bound` instead of an `upper_bound` silently breaks stability in the rotating merge. By the end you will be able to say exactly why each choice is the right one. The section contrasts with the unstable, O(1)-space heapsort from the [binary heap](../04-binary-heap/README.md).
 
-## The problem
+> **Learning objectives**
+> - Implement a stable linear-time merge and explain which comparison makes it stable.
+> - Structure a merge sort so it allocates scratch exactly once and fails before moving any element.
+> - Rotate an array segment in place with three reversals.
+> - Implement the rotation-based in-place merge, choose the right binary search on each side for stability, and derive its O(n log² n) cost.
 
-[`msort.h`](msort.h) declares the interface, [`msort.c`](msort.c) is the
-solution, and [`main.c`](main.c) is the test suite.
+## The interface
+
+[`msort.h`](msort.h) declares the interface, [`msort.c`](msort.c) is the solution, and [`main.c`](main.c) is the test suite.
 
 | Function | Does | Space |
 |----------|------|-------|
@@ -17,91 +20,46 @@ solution, and [`main.c`](main.c) is the test suite.
 | `msort_merge(a, left, n, scratch)` | Merge two adjacent sorted runs | Caller's scratch |
 | `msort_inplace(a, n)` | Stable sort with no buffer at all | O(1) heap, at O(n log²n) time |
 
-Records carry a `key` and a `tag`. The tag is never compared, so it is how the
-tests detect an unstable sort: tags start in input order, so equal keys that come
-out with descending tags prove elements were reordered.
+Records carry a `key` and a `tag`. The tag is never compared, so it is how the tests detect an unstable sort: tags start in input order, so equal keys that come out with descending tags prove elements were reordered.
 
-## Build and run
-
-From this directory:
+To build and run the tests from this directory:
 
 ```bash
 cc -std=c11 -Wall -Wextra -O2 main.c msort.c -o msort && ./msort
 # ok  c/05-merge-sort  26111 checks passed
 ```
 
-## What to notice
+## Stability, allocation, and the free shortcut
 
-**Stability is one character.** In the merge loop, `a[i].key <= a[j].key` takes
-from the left run on a tie and `<` takes from the right. Both produce a
-correctly sorted array. Only one of them is stable, and the difference is
-invisible until you sort records by one field having already sorted by another,
-at which point the first sort's work is silently destroyed. This is why
-`std::sort` and `std::stable_sort` are different functions.
+Stability is one character. In the merge loop, `a[i].key <= a[j].key` takes from the left run on a tie and `<` takes from the right. Both produce a correctly sorted array. Only one of them is stable, and the difference is invisible until you sort records by one field having already sorted by another, at which point the first sort's work is silently destroyed. This is why `std::sort` and `std::stable_sort` are different functions.
 
-**One allocation, not O(n) of them.** Allocating scratch inside the recursion is
-correct and slow: `malloc` then dominates the runtime, and a failure partway
-through leaves the array half-permuted with no way to report which half.
-Allocating once up front means the sort either starts or does not.
+The buffered version makes one allocation, not O(n) of them. Allocating scratch inside the recursion is correct and slow: `malloc` then dominates the run time, and a failure partway through leaves the array half-permuted with no way to report which half. Allocating once up front means the sort either starts or does not.
 
-**The `a[mid-1] <= a[mid]` check is nearly free and sometimes everything.** One
-comparison per merge, and on already-sorted input the entire sort collapses to
-a linear number of comparisons. Real data is very often nearly sorted, which is
-the observation Timsort is built on.
+The `a[mid-1] <= a[mid]` check is nearly free and sometimes everything. It costs one comparison per merge, and on already-sorted input the entire sort collapses to a linear number of comparisons. Real data is very often nearly sorted, which is the observation Timsort is built on.
 
-**Comparison by subtraction is a bug waiting for the right input.** Writing
-`a[i].key - a[j].key < 0` overflows when the keys straddle zero at the extremes,
-and the sign flips. `test_extreme_keys` uses `INT_MIN` and `INT_MAX` for exactly
-this reason. Compare with `<`, never with subtraction.
+## Merging without a buffer
 
-**"In-place merge sort" usually means rotation, and it costs a log factor.** The
-buffer is what makes merging linear. Remove it and the standard approach is:
-split the larger run in half, binary search for where that midpoint belongs in
-the other run, rotate the block between them, and recurse. Rotation is three
-reversals and no extra memory. The result is O(n log²n), meaningfully slower in
-practice, and the honest answer to "can you merge sort without extra space."
+The buffer is what makes merging linear. Remove it and "in-place merge sort" usually means rotation, and it costs a log factor. The standard approach is to split the larger run in half, binary search for where that midpoint belongs in the other run, rotate the block between them, and recurse. Rotation is three reversals and no extra memory. The result is O(n log² n), meaningfully slower in practice, and the honest answer to "can you merge sort without extra space."
 
-**Stability in the rotating merge depends on which binary search you use, and
-the two cases need different ones.** When you split the *left* run, the pivot
-element came from the left, so equal keys on the right must stay after it:
-`lower_bound`. When you split the *right* run, the pivot came from the right, so
-equal keys on the left must come before it: `upper_bound`. Using the same bound
-in both branches sorts correctly and is unstable, and it only shows on input
-with duplicates spanning the seam. That is why
-`test_stability_under_heavy_duplication` uses a key range of five over four
-thousand elements.
+Stability in the rotating merge depends on which binary search you use, and the two cases need different ones. When you split the *left* run, the pivot element came from the left, so equal keys on the right must stay after it: `lower_bound`. When you split the *right* run, the pivot came from the right, so equal keys on the left must come before it: `upper_bound`. Using the same bound in both branches sorts correctly and is unstable, and it only shows on input with duplicates spanning the seam. That is why `test_stability_under_heavy_duplication` uses a key range of five over four thousand elements.
 
-## The solution, step by step
+## Deriving the design
 
-### From first principles
+Six observations lead from a merge to both sorts.
 
-1. **Two sorted runs merge in linear time.** Compare the heads, take the smaller,
-   advance. Each step places one element, so merging `n` elements takes at most
-   `n - 1` comparisons. Writing into a separate buffer is what keeps it linear:
-   no element has to be shifted.
-2. **Divide and conquer turns merging into sorting.** Split in half, sort each
-   half recursively, merge. The recursion has `log2 n` levels and each level
-   merges `n` elements in total, so the sort is O(n log n).
-3. **Every merge at every level can share one buffer.** A merge of `n` elements
-   needs `n` scratch slots and nothing survives in scratch after the merge
-   copies back. So one `n`-element buffer, allocated before the recursion,
-   serves all of them, and allocation failure is reported before any element
-   moves.
-4. **Stability is decided at ties.** An element of the left run was before every
-   element of the right run in the input. Taking the left one on equal keys
-   (`<=`) keeps that order; that is the whole of stability.
-5. **Without a buffer, merge by rotation.** Rotating `[A B]` into `[B A]` is three
-   reversals and O(1) memory. Split the larger run at its midpoint, find the
-   matching cut in the other run by binary search, rotate the middle block so
-   both pieces left of the cut are smaller than both right of it, then merge the
-   two halves recursively. Each rotation is linear, the recursion is
-   logarithmic deep per merge, giving O(n log n) per merge and O(n log²n)
-   overall.
-6. **The binary search must respect stability.** The cut must keep equal keys
-   on the side they came from, which fixes `lower_bound` when the pivot is from
-   the left run and `upper_bound` when it is from the right.
+Two sorted runs merge in linear time. Compare the heads, take the smaller, advance. Each step places one element, so merging $n$ elements takes at most $n - 1$ comparisons. Writing into a separate buffer is what keeps it linear: no element has to be shifted.
 
-### The code, annotated
+Divide and conquer turns merging into sorting. Split in half, sort each half recursively, merge. The recursion has $\log_2 n$ levels and each level merges $n$ elements in total, so the sort is O(n log n).
+
+Every merge at every level can share one buffer. A merge of $n$ elements needs $n$ scratch slots, and nothing survives in scratch after the merge copies back. So one $n$-element buffer, allocated before the recursion, serves all of them, and allocation failure is reported before any element moves.
+
+Stability is decided at ties. An element of the left run was before every element of the right run in the input. Taking the left one on equal keys (`<=`) keeps that order; that is the whole of stability.
+
+Without a buffer, merge by rotation. Rotating `[A B]` into `[B A]` is three reversals and O(1) memory. Split the larger run at its midpoint, find the matching cut in the other run by binary search, rotate the middle block so both pieces left of the cut are smaller than both right of it, then merge the two halves recursively. Each rotation is linear and the recursion is logarithmically deep per merge, giving O(n log n) per merge and O(n log² n) overall.
+
+Finally, the binary search must respect stability. The cut must keep equal keys on the side they came from, which fixes `lower_bound` when the pivot is from the left run and `upper_bound` when it is from the right.
+
+## Building it step by step
 
 The buffered merge. Note that the cursors are indices into one array, since the
 two runs are adjacent:
@@ -224,29 +182,55 @@ in `[new_mid, hi)`, so the two recursive merges are independent. Splitting the
 *larger* run guarantees each recursive merge gets at most three quarters of the
 elements, which bounds the depth.
 
-Full solution: [`msort.c`](msort.c).
+The full solution is in [`msort.c`](msort.c).
 
-### Why this solution
+## Why this design
 
-- **Cost.** `msort`: O(n log n) time, O(n) scratch, O(log n) stack, best case
-  O(n) comparisons on sorted input thanks to the skip. `msort_inplace`:
-  O(n log²n) time, no heap memory, O(log n) stack (the sort's recursion plus
-  one merge's recursion, each logarithmic).
-- **Versus quicksort.** Quicksort is in place and usually faster, but it is not
-  stable and is O(n²) on adversarial input without care. Merge sort guarantees
-  O(n log n) and stability, which is why it backs `std::stable_sort` and
-  Python's `sorted`.
-- **Versus heapsort** ([C 04](../04-binary-heap/)). Also O(1) space with a
-  guaranteed O(n log n), but unstable. The rotating merge is the price of having
-  both stability and no buffer.
-- **Top-down versus bottom-up.** Bottom-up merge sort (merge runs of 1, 2, 4,
-  ...) has no recursion at all. Top-down is easier to read and its depth is only
-  `log2 n`, so stack depth is not a concern here.
-- **Accepted trade.** `msort` copies the merged run back with `memcpy` every
-  time. Alternating the roles of `a` and `scratch` between levels would save
-  that copy, at the cost of noticeably more intricate code.
+`msort` takes O(n log n) time, O(n) scratch, and O(log n) stack, with a best case of O(n) comparisons on sorted input thanks to the skip. `msort_inplace` takes O(n log² n) time, no heap memory, and O(log n) stack (the sort's recursion plus one merge's recursion, each logarithmic).
 
-### Explain it back
+Quicksort is in place and usually faster, but it is not stable and is O(n²) on adversarial input without care. Merge sort guarantees O(n log n) and stability, which is why it backs `std::stable_sort` and Python's `sorted`. Heapsort, from the [binary heap](../04-binary-heap/README.md) section, is also O(1) space with a guaranteed O(n log n), but unstable. The rotating merge is the price of having both stability and no buffer.
+
+This is the top-down form. Bottom-up merge sort (merge runs of 1, 2, 4, ...) has no recursion at all, but top-down is easier to read and its depth is only $\log_2 n$, so stack depth is not a concern here.
+
+One trade is accepted for clarity: `msort` copies the merged run back with `memcpy` every time. Alternating the roles of `a` and `scratch` between levels would save that copy, at the cost of noticeably more intricate code.
+
+## What can go wrong
+
+Comparison by subtraction is a bug waiting for the right input. Writing `a[i].key - a[j].key < 0` overflows when the keys straddle zero at the extremes, and the sign flips. `test_extreme_keys` uses `INT_MIN` and `INT_MAX` for exactly this reason.
+
+> **Warning:** Compare with `<`, never with subtraction. `a - b` on `int` is undefined on overflow, and for `INT_MIN` and `INT_MAX` it does overflow.
+
+The other hazards are collected here.
+
+| Mistake | Consequence |
+|---------|-------------|
+| `<` instead of `<=` in the merge | Sorted, but equal keys come out reversed: unstable |
+| Allocating scratch inside the recursion | `malloc` dominates; failure leaves the array half-permuted |
+| Same binary search in both branches of the rotating merge | Sorted but unstable when duplicates span the seam |
+| Splitting the smaller run in the rotating merge | Recursion depth can become linear |
+| `lo < hi - 1` on `size_t` | `hi - 1` wraps when `hi` is 0 and the loop runs off the array |
+
+## Where this leads
+
+The natural next step is a bottom-up merge sort with no recursion at all, which is what you want when stack depth is a real constraint. After that comes run detection: scan for already-ordered runs, reverse the descending ones, and merge only what is left. That is most of Timsort, and it turns nearly-sorted input from O(n log n) into something close to O(n).
+
+## Key terms
+
+- **Stable sort**: a sort that keeps elements with equal keys in their input order.
+- **Run**: a contiguous, already-sorted segment of the array.
+- **Merge**: combining two sorted runs into one sorted run in linear time.
+- **Rotation**: cyclically shifting a segment so `[A B]` becomes `[B A]`, done in place with three reversals.
+- **`lower_bound` / `upper_bound`**: binary searches for the first position not less than, or the first position greater than, a key.
+
+## Summary
+
+- The merge takes from the left run on ties (`<=`), and that single character is the whole of stability.
+- `msort` allocates one scratch buffer before recursing, so it either fails cleanly or completes.
+- Skipping the merge when `a[mid-1] <= a[mid]` makes sorted input cost a linear number of comparisons.
+- The in-place variant merges by rotation and binary search, costs O(n log² n), and stays stable only with `lower_bound` on the left split and `upper_bound` on the right.
+- Always compare keys with `<`; subtraction overflows at the extremes.
+
+## Review questions
 
 1. If the merge used `<` instead of `<=`, would the output still be sorted? What
    would change?
@@ -302,11 +286,3 @@ Full solution: [`msort.c`](msort.c).
    one sub-merge and make the depth linear.
 
    </details>
-
-## Extending it
-
-The natural next step is a bottom-up merge sort with no recursion at all, which
-is what you want when stack depth is a real constraint. After that, run
-detection: scan for already-ordered runs, reverse the descending ones, and merge
-only what is left. That is most of Timsort, and it turns nearly-sorted input
-from O(n log n) into something close to O(n).

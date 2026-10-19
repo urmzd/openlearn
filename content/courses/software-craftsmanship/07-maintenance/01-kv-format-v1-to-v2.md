@@ -4,7 +4,7 @@ Most engineering time is spent changing systems that already work, and the harde
 
 This section builds the pieces that make the migration safe: a reader that accepts both versions, a writer that can emit either, and a one-way offline converter from v1 files to v2. Along the way it works one block through the conversion by hand, so you can see exactly what fp8 costs. The solution is the `tl-kv-format` crate: [`lib.rs`](../../../../course/solutions/rust/crates/tl-kv-format/src/lib.rs) provides `decode`, `encode`, `upgrade_v1`, `Envelope`, `Block`, `Shape`, and `Error`; [`main.rs`](../../../../course/solutions/rust/crates/tl-kv-format/src/main.rs) is the offline converter `kv-migrate`; and [`Cargo.toml`](../../../../course/solutions/rust/crates/tl-kv-format/Cargo.toml) is the manifest. The byte layout is fixed by the contract [`course/contracts/formats/kv-block.md`](../../../../course/contracts/formats/kv-block.md), in its sections "Export envelope", "Payload, format v2", and "Reader rules".
 
-The migration follows the [Deprecation policy](../06-releases-and-deprecation/02-deprecation-policy.md) from the previous chapter, which sets the rollback window during which v1 must stay readable, and it is rehearsed in [Drill: KV v2 migration](../../systems/05-incident-response-and-chaos/04-kv-v2-migration.md) in *Systems and Architecture*. Try to predict each step of the solution before you read it.
+The migration follows the [Deprecation policy](../06-releases-and-deprecation/02-deprecation-policy.md) from the previous chapter, which sets the rollback window during which v1 must stay readable, and it is rehearsed in [The KV format v2 migration](../../systems/05-incident-response-and-chaos/04-kv-v2-migration.md) in *Systems and Architecture*. Try to predict each step of the solution before you read it.
 
 > **Learning objectives**
 > - Explain why a format migration ships readers before writers and keeps the old format readable through the rollback window.
@@ -296,7 +296,7 @@ Re-converting an already quantized v2 block adds loss without an explicit error.
 
 This migration rests on several earlier pieces. The [Deprecation policy](../06-releases-and-deprecation/02-deprecation-policy.md) sets the rollback window during which v1 must stay readable. An [architecture decision record](../../diagramming/02-documentation-writing/01-architecture-decision-records.md), as described in *Diagramming and Documentation*, records why the format changes and the rollout order (readers first). The contract [`course/contracts/formats/kv-block.md`](../../../../course/contracts/formats/kv-block.md) fixes the byte layout, the scale rule, and the reader rules this converter implements. And [Disaggregated prefill and decode](../../build-an-llm/p10-serving/06-disaggregated-prefill-decode.md) in *Build Your Own LLM System* is the KV transfer path that carries these envelopes between engines.
 
-Next comes the drill. In [Drill: KV v2 migration](../../systems/05-incident-response-and-chaos/04-kv-v2-migration.md), a v1-only reader meets a v2 writer, and the rollout order decides whether that is a clean refusal or an outage.
+Next comes the drill. In [The KV format v2 migration](../../systems/05-incident-response-and-chaos/04-kv-v2-migration.md), a v1-only reader meets a v2 writer, and the rollout order decides whether that is a clean refusal or an outage.
 
 ### Further reading
 

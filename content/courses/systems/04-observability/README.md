@@ -1,86 +1,37 @@
 # Observability
 
-## Overview
+Monitoring tells you *when* something is wrong. Observability tells you *why*. In a distributed system you cannot predict every failure mode in advance, so the useful property is not a wall of pre-built alerts but the ability to understand the system's internal state from its external outputs: to ask arbitrary new questions, and debug problems you have never seen before, without deploying new code. This chapter builds that ability for a real system, the tracer and then the production serving platform, one signal at a time.
 
-- **Primary reference**: *Observability Engineering* by Charity Majors, Liz Fong-Jones, George Miranda (O'Reilly, recommended)
-- **Supplementary**: [Google SRE Book](https://sre.google/sre-book/) (free), DORA metrics
-- **Prerequisites**: Production experience, [Cloud Native](../03-cloud-native/)
-- **Estimated time**: 2-3 weeks at 8-10 hrs/week
+The arc is from one request to the whole fleet. It starts with a single trace that crosses the gateway and the engine, written by hand so that every id and timestamp is visible. It then generalizes tracing into a small kit every Go service shares, adds metrics and logs that join to traces by id, turns those metrics into SLOs and burn-rate alerts, and puts the answers on dashboards kept as code. It ends by applying the same rules to the durable control plane, where the last hop is a short-lived Python process. By the end, an on-call engineer paged at night can go from the alert to the dashboard to the one slow request's trace and logs in a few minutes, which is exactly what the drills of the next chapter test.
 
-## Key Takeaways
+> **Learning objectives**
+> - Explain the difference between monitoring and observability, and why high-cardinality, high-dimensionality structured events matter.
+> - Propagate W3C trace context across HTTP, gRPC, durable workflows, and subprocesses, so one request or one training run is one trace.
+> - Serve contract metrics with bounded cardinality, scrape them with Prometheus, and correlate logs with traces by id.
+> - Define SLOs, compute error budgets and burn rates, and write multi-window burn-rate alerts that page when they should and only then.
+> - Keep dashboards as code that answer an incident's first questions, including latency heatmaps that reveal a second mode.
 
-- Observability is NOT monitoring -- it's the ability to ask arbitrary questions about your system without deploying new code
-- The three pillars (logs, metrics, traces) are necessary but not sufficient; structured events are the key
-- SLOs are contracts with your users; error budgets turn reliability into an engineering resource
-- Observability is a cultural practice, not just a tooling choice
+## Before you begin
 
----
+This chapter assumes some production experience and the material of [Cloud Native](../03-cloud-native/README.md): containers, Kubernetes, and Helm. The sections instrument a system built elsewhere, so it helps to have read [Tracer deploy](../../infrastructure/01-containers-kubernetes/00-tracer-deploy.md) in *Infrastructure*, [The tracer gateway](../../ai-platform-engineering/12-gateway/00-streaming-proxy.md) in *AI Platform Engineering*, and [Your first endpoint](../../build-an-llm/p10-serving/00-your-first-endpoint.md) in *Build Your Own LLM System*. The primary reference is *Observability Engineering* by Charity Majors, Liz Fong-Jones, and George Miranda (O'Reilly); the free [Google SRE Book](https://sre.google/sre-book/) is the supplementary one.
 
-# Concepts & Techniques
+## Core ideas
 
-## Core Insight
+**Observability versus monitoring.** The three pillars, logs (events), metrics (aggregated numbers), and traces (request flow across services), are necessary but not sufficient. Two properties decide whether you can debug something new. *High cardinality* means many unique values, such as user ids and request ids; metrics cannot afford them, but events can. *High dimensionality* means many attributes per event, and structured events with rich context are what make ad-hoc queries possible. Observability is structured events plus ad-hoc queries; the ability to ask "what is different about the slow requests?" is the differentiator.
 
-Monitoring tells you WHEN something is wrong. Observability tells you WHY. In complex distributed systems, you can't predict all failure modes. Observability is the ability to understand internal system state from external outputs -- to debug novel problems you've never seen before.
+**Instrumentation.** OpenTelemetry is the vendor-neutral standard for traces, metrics, and logs: an SDK, a collector, and exporters. A span is a unit of work with a start time, duration, and attributes, and nested spans form traces. Context propagation carries the trace id across service boundaries in headers (W3C Trace Context). Instrument service boundaries, database calls, external API calls, queue publish and consume, and significant business logic. The practical rule is to instrument at the boundaries first and add internal instrumentation only when debugging requires it.
 
-## 1. Observability vs Monitoring
+**Debugging with observability.** The core analysis loop is: notice a symptom, form a hypothesis, query to test it, then refine or pivot. Given slow requests, ask which dimensions differ from fast ones (perhaps all the slow ones hit shard 7). Heatmaps show the latency distribution over time and reveal bimodal distributions that a p99 line hides. Monitoring cannot alert on failure modes you never anticipated, the unknown unknowns; observability lets you explore them.
 
-**Key ideas**:
-- **Three pillars**: logs (events), metrics (aggregated numbers), traces (request flow across services). Necessary but insufficient.
-- **High cardinality**: many unique values (user IDs, request IDs). Metrics can't handle high cardinality; events can.
-- **High dimensionality**: many attributes per event. Structured events with rich context enable ad-hoc querying.
-- **Observability = structured events + ad-hoc queries**: the ability to BubbleUp (find what's different about slow requests) is the differentiator.
+**SLOs and reliability.** An SLI (service level indicator) is a measured quantity, such as the fraction of requests under 200 ms. An SLO (objective) is the target for it, such as 99.9%. An SLA (agreement) is an SLO with business consequences: refunds or credits. The error budget is $100\% - \text{SLO}$; at 99.9% it is 0.1%, or about 8.7 hours a year. Burn-rate alerts fire when the budget is being consumed too fast, not when a single request fails. An error-budget policy says what happens when the budget is exhausted, typically a deployment freeze and a focus on reliability, which makes reliability a first-class engineering concern.
 
-## 2. Instrumentation
+**Observability in practice.** Every deploy should be observed, and canary analysis compares the new version's metrics with the baseline. Staging environments lie, so teams test in production with dark launches, feature flags, and traffic mirroring. Progressive delivery moves from canary to a percentage rollout to full rollout, with automatic rollback on SLO violation. Chaos engineering deliberately injects failures (Chaos Monkey, Litmus) to verify resilience, and is only safe with good observability already in place.
 
-**Key ideas**:
-- **OpenTelemetry**: vendor-neutral standard for traces, metrics, logs. SDK + collector + exporters.
-- **Spans**: units of work with start time, duration, attributes. Nested spans form traces.
-- **Context propagation**: trace ID flows across service boundaries via headers (W3C Trace Context).
-- **What to instrument**: service boundaries, database calls, external API calls, queue publish/consume, significant business logic.
+**Organization and culture.** Observability is a cultural practice, not just a tooling choice. Blameless postmortems focus on systems and processes rather than individuals: what can we change so this class of failure cannot happen again? Incident response uses structured roles (incident commander, communications lead, subject-matter experts) and is practised in game days. Observability-driven development instruments first and builds features second: if you cannot observe it, you cannot operate it. On-call needs a fair rotation, clear escalation paths, and runbooks, and alert fatigue is its enemy.
 
-**Practical rule**: instrument at the boundaries first; add internal instrumentation only when debugging requires it.
+The practices above come with characteristic anti-patterns:
 
-## 3. Debugging with Observability
-
-**Key ideas**:
-- **Core analysis loop**: notice a symptom → form hypothesis → query to test → refine or pivot
-- **BubbleUp**: given slow requests, what dimensions differ from fast requests? (e.g., all slow requests hit shard 7)
-- **Heatmaps**: visualize latency distribution over time; reveal bimodal distributions that p99 metrics hide
-- **Unknown-unknowns**: you didn't know this failure mode existed. Monitoring can't alert on what you haven't anticipated; observability lets you explore.
-
-## 4. SLOs & Reliability
-
-**Key definitions**:
-- **SLI**: Service Level Indicator -- a measured metric (e.g., % of requests < 200ms)
-- **SLO**: Service Level Objective -- target for the SLI (e.g., 99.9% of requests < 200ms)
-- **SLA**: Service Level Agreement -- SLO with business consequences (refunds, credits)
-- **Error budget**: 100% - SLO = budget for unreliability. If SLO is 99.9%, you have 0.1% error budget (8.7 hours/year)
-
-**Key ideas**:
-- **Burn rate alerts**: alert when error budget is being consumed too fast, not when a single request fails
-- **Error budget policy**: when budget is exhausted, freeze deployments and focus on reliability. This makes reliability a first-class engineering concern.
-
-## 5. Observability in Practice
-
-**Key ideas**:
-- **Deploy and observe**: every deploy should be observed. Canary analysis compares new version metrics against baseline.
-- **Testing in production**: dark launches, feature flags, traffic mirroring. Staging environments lie.
-- **Progressive delivery**: canary → percentage rollout → full rollout, with automatic rollback on SLO violation.
-- **Chaos engineering**: deliberately inject failures (Chaos Monkey, Litmus) to verify resilience. Only do this with good observability in place.
-
-## 6. Organization & Culture
-
-**Key ideas**:
-- **Blameless postmortems**: focus on systems and processes, not individuals. "What can we change so this class of failure can't happen again?"
-- **Incident response**: structured roles (incident commander, communications lead, subject matter experts). Practice with game days.
-- **Observability-driven development**: instrument first, then build features. If you can't observe it, you can't operate it.
-- **On-call**: fair rotation, clear escalation paths, runbooks. Alert fatigue is the enemy of effective on-call.
-
----
-
-## Technique Catalog
-
-| Practice | When to Use | Anti-pattern |
+| Practice | When to use | Anti-pattern |
 |----------|-------------|-------------|
 | Structured events | Always; replace unstructured logs | Unstructured log grep as primary debugging |
 | SLOs | Every user-facing service | Alerting on every error instead of budget burn |
@@ -89,7 +40,7 @@ Monitoring tells you WHEN something is wrong. Observability tells you WHY. In co
 | Error budgets | Balancing reliability and velocity | "Always be more reliable" (no budget = no shipping) |
 | Blameless postmortems | Every significant incident | Blame individuals, skip action items |
 
-## Company Relevance
+Different organizations emphasize different parts of this picture:
 
 | Company | Approach | Focus |
 |---------|----------|-------|
@@ -99,13 +50,17 @@ Monitoring tells you WHEN something is wrong. Observability tells you WHY. In co
 | Amazon | Well-Architected Framework, COE (Correction of Errors) | Operational excellence |
 | Honeycomb | Observability 2.0 (structured events, BubbleUp) | Debugging novel problems |
 
-## Chapters
+## In this chapter
 
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `obs.00` | [One trace: gateway to engine in Jaeger (tracer)](00-one-trace.md) | practice | 1 |
-| 2 | `obs.01` | [Tracing for the serving path](01-tracing-for-the-serving-path.md) | build | 7 |
-| 3 | `obs.02` | [Metrics and log correlation](02-metrics-and-log-correlation.md) | practice | 7 |
-| 4 | `obs.03` | [SLOs and multi-window burn-rate alerts](03-slos-and-burn-rate-alerts.md) | practice | 7 |
-| 5 | `obs.04` | [Dashboards as code for the serving path](04-dashboards-as-code.md) | practice | 7 |
-| 6 | `obs.05` | [Observability for the control plane: workflow and activity spans, queue and DLQ panels](05-control-plane-observability.md) | practice | 8 |
+1. [One trace from gateway to engine](00-one-trace.md): spans, `traceparent` propagation, and OTLP/HTTP JSON, built by hand into a gateway exporter that can never slow a request, with the result checked in Jaeger.
+2. [Tracing for the serving path](01-tracing-for-the-serving-path.md): the `go/otelx` kit that every Go service shares, with HTTP and gRPC propagation, CLIENT spans that cover streamed bodies, `ParentBased` sampling, and batch export.
+3. [Metrics and log correlation](02-metrics-and-log-correlation.md): contract histograms with exact bounds, capped labels, PodMonitors, the OpenTelemetry Collector, and JSON logs that grep by trace id.
+4. [SLOs and multi-window burn-rate alerts](03-slos-and-burn-rate-alerts.md): error budgets, burn rates, two-window alerts in prod and drill profiles, rendered from one SLO file and tested with `promtool`.
+5. [Dashboards as code for the serving path](04-dashboards-as-code.md): a portable Grafana dashboard with one row per incident question, and heatmaps that show what a p95 line hides.
+6. [Observability for the control plane](05-control-plane-observability.md): one trace from the CLI to a Python training step, and a queue dashboard for depth, dead letters, redeliveries, and schedule-to-start latency.
+
+## Further reading
+
+- Charity Majors, Liz Fong-Jones, and George Miranda, *Observability Engineering* (O'Reilly)
+- [Google SRE Book](https://sre.google/sre-book/) (free) and *The Site Reliability Workbook* (free online)
+- DORA metrics, for measuring delivery performance alongside reliability

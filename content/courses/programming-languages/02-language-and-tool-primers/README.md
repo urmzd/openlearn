@@ -1,54 +1,31 @@
 # Language and Tool Primers
 
-Just enough of each language and tool to build the course system, each placed immediately before the first module that needs it (design decision D38). A learner starting from high-school algebra meets Python, the shell, C, Rust, HTTP, Go, containers, and Kubernetes in the first two passes; these primers are where each one is introduced from first principles.
+Building a whole LLM system from high-school algebra means meeting a lot of languages and tools quickly: Python and numpy, the shell, C, Rust, HTTP, Go, containers and Kubernetes, and later asyncio, async Rust, gRPC, and SQL. This chapter introduces each one from first principles, with just enough depth for the first place the other books rely on it. Each section is placed immediately before that first use, so you can read it when you need it rather than all at once.
 
-## Overview
+Every section follows the same arc. It builds the ideas up from the machine (a process, a socket, a byte on the wire), works a small example by hand, fixes a precise interface, and then walks through a complete, annotated solution, explaining why each line is there. The exercises are not part of the system; they are the smallest artifacts that exercise the ideas the next chapter needs. The full solution code for each lives in [`course/solutions/primers/`](../../../../course/solutions/primers/), so "I read about it" becomes "I can explain every line". Each section ends by naming the place in the other books where its ideas are used next.
 
-- **What a primer is**: a `practice` module (`lang.01` to `lang.11`): one chapter plus a small worked solution in [`course/solutions/primers/<id>/`](../../../../course/solutions/primers/), walked through line by line in the chapter. The exercises are not part of the system; they are the smallest artifacts that exercise the ideas the next module relies on.
-- **Prerequisites**: none for `lang.01`; each later primer names its own.
-- **Estimated time**: 2 to 4 hours per primer.
+> **Learning objectives**
+> - Read and write idiomatic code in Python, C, Rust, and Go at the level the system's components need, and explain the tradeoffs each language makes.
+> - Drive processes, git, and make from the shell, and reason about exit codes, signals, and the environment.
+> - Speak HTTP/1.1, Server-Sent Events, Protocol Buffers, and gRPC at the byte level.
+> - Package a service as a container image and run it on Kubernetes with Helm and kind.
+> - Write concurrent network code with asyncio and tokio: bounded concurrency, backpressure, cancellation, and graceful shutdown.
+> - Query and write a SQLite database correctly at the edges: empty windows, NULLs, ties, replays, and crashes.
 
-## Key Takeaways
+## Before you begin
 
-- Every primer ends in a complete, annotated solution, so "I read about it" becomes "I can explain why each line is there".
-- Each primer teaches only what its first call site needs, and its last section names that call site.
-- Primers have no code call site of their own: later modules list them under `reading`, and the first module that uses each idea is named in the primer's last section.
+The first section, on Python and numpy, assumes nothing beyond basic algebra and a terminal. Each later section names the earlier ones it builds on in its opening paragraphs; most lean on one or two predecessors, for example the asyncio section on the HTTP section, and the gRPC section on Go, Rust, and async Rust. The type-theoretic background for the languages here is in [Type Systems and Polymorphism](../01-type-systems/README.md), the previous chapter of this book, but you do not need it to start.
 
-## How to Study
+## In this chapter
 
-- Read the chapter's sections 1 and 2 first; do section 3 on paper.
-- Before reading the solution walkthrough, predict each step from the principles; then compare.
-- Answer the "Explain it back" questions without looking, then check the answers.
-- Each pitfall in the table names what the solution does to avoid it: find that line in the quoted code.
-
-## Primer plan
-
-| ID | Primer | First use | Pass |
-|---|---|---|---|
-| lang.01 | Python and numpy: arrays, dtypes, broadcasting, views vs copies, `uv` projects | L0.0, rt.01 loader, L0.1 | P0 |
-| lang.02 | Shell, git, make, processes: exit codes, signals, environment, pipes | craft.01, every script that reads an exit code | P0 |
-| lang.03 | C: memory, pointers, structs, the C11 toolchain, sanitizers, headers and linkage | rt.01, M03.1 | P1 |
-| lang.04 | Rust: ownership, traits, `Result`, cargo workspaces, std TCP | L10.0, ds.05, L1.5 | P1 |
-| lang.05 | HTTP/1.1, JSON, and Server-Sent Events from the wire up | L10.0, gw.00 | P1 |
-| lang.06 | Go: packages, interfaces, goroutines, channels, `context`, `net/http`, `testing` | gw.00, dur.01, load.01 | P1 |
-| lang.07 | Containers and Kubernetes: images, layers, Pods, Deployments, Services, Helm, kind | dep.00 | P1 |
-| lang.08 | Python asyncio: event loop, tasks, cancellation, bounded concurrency | data.01 | P3 |
-| lang.09 | Async Rust and tokio: futures, tasks, channels, cancellation, hyper | L10.5 | P7 |
-| lang.10 | Protocol Buffers and gRPC: schema evolution, unary and streaming RPCs | L10.6, dur.01, dur.04 | P7 |
-| lang.11 | SQL and SQLite: schema, transactions, WAL mode, indexes, aggregates | gw.07 | P7 |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `lang.01` | [Python and numpy: arrays, dtypes, broadcasting, views vs copies, uv projects](01-python-and-numpy.md) | practice | 0 |
-| 2 | `lang.02` | [Shell, git, make, processes: exit codes, signals, environment, pipes](02-shell-git-make.md) | practice | 0 |
-| 3 | `lang.03` | [C: memory, pointers, structs, headers, and the C11 toolchain](03-c.md) | practice | 1 |
-| 4 | `lang.04` | [Rust: ownership, traits, Result, cargo workspaces, std TCP](04-rust.md) | practice | 1 |
-| 5 | `lang.05` | [HTTP/1.1, JSON, and Server-Sent Events from the wire up](05-http-and-sse.md) | practice | 1 |
-| 6 | `lang.06` | [Go: packages, interfaces, goroutines, channels, context, net/http, testing](06-go.md) | practice | 1 |
-| 7 | `lang.07` | [Containers and Kubernetes: images, layers, Pods, Deployments, Services, Helm, kind](07-containers-and-kubernetes.md) | practice | 1 |
-| 8 | `lang.08` | [Python asyncio: event loop, tasks, cancellation, bounded concurrency](08-python-asyncio.md) | practice | 3 |
-| 9 | `lang.09` | [Async Rust and tokio: futures, tasks, channels, cancellation, hyper](09-async-rust-and-tokio.md) | practice | 7 |
-| 10 | `lang.10` | [Protocol Buffers and gRPC: schema evolution, unary and streaming RPCs, stubs](10-protocol-buffers-and-grpc.md) | practice | 7 |
-| 11 | `lang.11` | [SQL and SQLite: schema, transactions, WAL mode, indexes, aggregates](11-sql-and-sqlite.md) | practice | 7 |
+1. [Python and numpy: arrays, dtypes, broadcasting, views vs copies, uv projects](01-python-and-numpy.md). Arrays, dtypes, broadcasting, and the difference between a view and a copy, in a `uv` project; first used by the byte bigram model in [Byte bigram: counts, logits, safetensors v0](../../build-an-llm/p00-foundations/00-byte-bigram.md) in *Build Your Own LLM System*.
+2. [Shell, git, make, processes: exit codes, signals, environment, pipes](02-shell-git-make.md). How processes start, communicate, and end, and the git and make workflow every later script relies on; first used by [The repository and its CI gate](../../software-craftsmanship/05-code-review-and-ci/01-your-repo-and-ci-gate.md) in *Software Craftsmanship*.
+3. [C: memory, pointers, structs, headers, and the C11 toolchain](03-c.md). Memory, pointers, and structs, with sanitizers, headers, and linkage; the foundation for the C runtime and for [Vectors, matrices, row-major layout, and matmul](../../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md) in *Mathematics for Computing*.
+4. [Rust: ownership, traits, Result, cargo workspaces, std TCP](04-rust.md). Ownership, traits, error handling with `Result`, cargo workspaces, and a TCP server from the standard library; first used by [Your first endpoint](../../build-an-llm/p10-serving/00-your-first-endpoint.md).
+5. [HTTP/1.1, JSON, and Server-Sent Events from the wire up](05-http-and-sse.md). Requests, responses, JSON, and SSE streaming, written and parsed by hand; used by the first endpoint and by the [tracer gateway](../../ai-platform-engineering/12-gateway/00-streaming-proxy.md) in *AI Platform Engineering*.
+6. [Go: packages, interfaces, goroutines, channels, context, net/http, testing](06-go.md). Go's packages, interfaces, goroutines, channels, `context`, `net/http`, and `testing`; the language of the gateway, the durable engine, and the load generator.
+7. [Containers and Kubernetes: images, layers, Pods, Deployments, Services, Helm, kind](07-containers-and-kubernetes.md). Images as layers plus config, containers as isolated processes, and Deployments and Services on a kind cluster through a Helm chart; applied in [Tracer deploy](../../infrastructure/01-containers-kubernetes/00-tracer-deploy.md) in *Infrastructure*.
+8. [Python asyncio: event loop, tasks, cancellation, bounded concurrency](08-python-asyncio.md). A downloader with retries, exponential backoff, per-attempt timeouts, a semaphore, and a task group; the basis of the corpus fetcher in *Data Engineering*.
+9. [Async Rust and tokio: futures, tasks, channels, cancellation, hyper](09-async-rust-and-tokio.md). Futures, the tokio runtime, bounded channels for backpressure, cancellation by dropping, and graceful shutdown in a hyper server; grown into the OpenAI-compatible engine server.
+10. [Protocol Buffers and gRPC: schema evolution, unary and streaming RPCs, stubs](10-protocol-buffers-and-grpc.md). The protobuf wire format by hand, safe schema evolution, and a client-streaming KV transfer service in Go and Rust.
+11. [SQL and SQLite: schema, transactions, WAL mode, indexes, aggregates](11-sql-and-sqlite.md). Five queries over the gateway's usage ledger, an index, WAL and connection pragmas, and an atomic, idempotent write path.
