@@ -1,6 +1,6 @@
 # AI Platform Engineering (25-35 weeks)
 
-~8-10 hours per week. **Patterns-first**: the goal is to internalize the fundamental patterns (like math, everything downstream is derivative) and treat each trendy tool as an instance. Requires [Deep Learning](../../tracks/ml/02-deep-learning) and [LLM Systems](../../tracks/ml/04-llm-systems), plus [System Design](../../tracks/systems/01-system-design) and [Data Engineering](../../tracks/data-engineering) foundations (OLTP vs OLAP, replication). Tip: [Coding & Design Patterns](../../tracks/ai-platform-engineering/06-coding-and-design-patterns) can be read first as vocabulary.
+~8-10 hours per week. **Patterns-first**: the goal is to internalize the fundamental patterns (like math, everything downstream is derivative) and treat each trendy tool as an instance. Requires [Deep Learning](../machine-learning/02-deep-learning) and [LLM Systems](../machine-learning/04-llm-systems), plus [System Design](../systems/01-system-design) and [Data Engineering](../data-engineering) foundations (OLTP vs OLAP, replication). Tip: [Coding & Design Patterns](06-coding-and-design-patterns) can be read first as vocabulary.
 
 ### Weeks 1-6: Training & Frameworks
 

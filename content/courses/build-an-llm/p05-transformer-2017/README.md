@@ -4,7 +4,7 @@ Attention is all you need, built from its parts. Scaled dot-product attention wi
 
 **Course passes**: L5.1 to L5.5 belong to [Pass 5](../paths/course-p05-transformer/milestone.md)
 
-**Before you start**: the solve parts `S-M05` (logic) and `S-M08` (VJP derivations); rotations and frequency ladders from [Precalculus](../../../tracks/math/00-precalculus/); attention from [Part 4](../p04-attention-origins/).
+**Before you start**: the solve parts `S-M05` (logic) and `S-M08` (VJP derivations); rotations and frequency ladders from [Precalculus](../../mathematics-for-computing/00-precalculus/); attention from [Part 4](../p04-attention-origins/).
 
 ## Key ideas
 

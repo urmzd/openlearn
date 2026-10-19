@@ -4,13 +4,13 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/field-engineering/README.md",
+      "file": "content/courses/field-engineering/README.md",
       "title": "Overview"
     }
   ],
   "tracks": [
     {
-      "dir": "content/tracks/field-engineering",
+      "dir": "content/courses/field-engineering",
       "title": "Field Engineering"
     }
   ],

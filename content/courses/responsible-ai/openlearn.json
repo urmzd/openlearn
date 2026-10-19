@@ -4,13 +4,13 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/responsible-ai/README.md",
+      "file": "content/courses/responsible-ai/README.md",
       "title": "Overview"
     }
   ],
   "tracks": [
     {
-      "dir": "content/tracks/responsible-ai",
+      "dir": "content/courses/responsible-ai",
       "title": "Responsible AI"
     }
   ],

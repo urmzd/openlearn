@@ -41,4 +41,4 @@ Attendance can exceed its expected value. A different audience, season, location
 
 Before moving on, explain the difference between “expected attendance is 15” and “attendance will be 15.”
 
-Next: [Plan a community event](05-community-event.md). Further study: [probability and statistics](../../tracks/math/07-probability-statistics/).
+Next: [Plan a community event](05-community-event.md). Further study: [probability and statistics](../mathematics-for-computing/07-probability-statistics/).

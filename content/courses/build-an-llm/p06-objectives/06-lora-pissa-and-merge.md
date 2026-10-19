@@ -7,7 +7,7 @@
 | **Module** | `L6.6` · build · Python · Pass 5 · 1.5 h reading |
 | **Solution** | [`python/tinyllm/obj/lora.py`](../../../../course/solutions/python/tinyllm/obj/lora.py): `LoRALinear`, `inject_lora`, `merge_lora`, `lora_state_dict`, `load_lora_state_dict`, `trainable_fraction`; model oracle tests in [`learner-tests/L6.6/.../test_lora.py`](../../../../course/solutions/learner-tests/L6.6/python/tests/l6-6-lora/test_lora.py) |
 | **Contract** | [`course/contracts/py/tinyllm/obj/lora.pyi`](../../../../course/contracts/py/tinyllm/obj/lora.pyi) |
-| **Needs** | `L0.1` Tensor · `L0.2` ops · `L0.4` `Linear`, `Dropout`, `Module` · [`M03.5` SVD and `low_rank`](../../../tracks/math/03-linear-algebra/05-svd-low-rank-and-least-squares.md) |
+| **Needs** | `L0.1` Tensor · `L0.2` ops · `L0.4` `Linear`, `Dropout`, `Module` · [`M03.5` SVD and `low_rank`](../../mathematics-for-computing/03-linear-algebra/05-svd-low-rank-and-least-squares.md) |
 | **Used by** | `L6.5` `lora_classifier` (the Part 6 LoRA fine-tune at $r = 8$, with under 5% of the parameters trainable) · later: `L12.1` SFT, `sq.multi-lora` |
 | **Optional depth** | Hu et al., "LoRA: Low-Rank Adaptation of Large Language Models" (2021), sections 4 and 7; Meng, Wang, and Zhang, "PiSSA: Principal Singular Values and Singular Vectors Adaptation" (2024), sections 3 and 4; Aghajanyan et al., "Intrinsic Dimensionality Explains the Effectiveness of Language Model Fine-Tuning" (2020) |
 

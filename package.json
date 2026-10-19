@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "type": "module",
   "description": "Free curriculum for mathematics and algorithm mastery",
-  "main": "content/tracks/algorithms/04-linked-lists/add-two-numbers.js",
+  "main": "content/courses/algorithms/04-linked-lists/add-two-numbers.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

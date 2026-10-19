@@ -4,7 +4,7 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/systems/README.md",
+      "file": "content/courses/systems/README.md",
       "title": "Overview"
     },
     {
@@ -14,7 +14,7 @@
   ],
   "tracks": [
     {
-      "dir": "content/tracks/systems",
+      "dir": "content/courses/systems",
       "title": "Systems & Architecture"
     }
   ],

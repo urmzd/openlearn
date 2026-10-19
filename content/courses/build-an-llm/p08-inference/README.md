@@ -4,7 +4,7 @@ Generating text fast and exactly. The sampler and logit processors in the course
 
 **Course passes**: rt.04 and L8.1 to L8.7 belong to [Pass 6](../paths/course-p06-inference-and-kernels/milestone.md)
 
-**Before you start**: the just-in-time math `M07.6`, `M09.3`, `M09.4` and the solve part `S-M09b`; the C structures `ds.01` to `ds.03` and the radix tree `ds.07` in [Systems Data Structures](../../../tracks/algorithms/16-systems-data-structures/); the Llama-family model of [Part 7](../p07-modern-block/).
+**Before you start**: the just-in-time math `M07.6`, `M09.3`, `M09.4` and the solve part `S-M09b`; the C structures `ds.01` to `ds.03` and the radix tree `ds.07` in [Systems Data Structures](../../algorithms/16-systems-data-structures/); the Llama-family model of [Part 7](../p07-modern-block/).
 
 ## Key ideas
 

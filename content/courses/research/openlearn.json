@@ -4,32 +4,11 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/math/README.md",
-      "title": "Overview"
-    },
-    {
       "file": "content/courses/research/study-plan.md",
-      "title": "Study plan"
+      "title": "Reading guide"
     }
   ],
-  "tracks": [
-    {
-      "dir": "content/tracks/math",
-      "title": "Mathematics Foundations"
-    },
-    {
-      "dir": "content/tracks/ml",
-      "title": "Machine Learning & AI"
-    },
-    {
-      "dir": "content/tracks/systems",
-      "title": "Systems & Architecture"
-    },
-    {
-      "dir": "content/tracks/responsible-ai",
-      "title": "Responsible AI"
-    }
-  ],
+  "tracks": [],
   "reference": [
     {
       "dir": "content/references",

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/ema.pyi (M02.2)
-# chapter: content/tracks/math/02-calculus-2/02-series-and-the-ema.md
+# chapter: content/courses/mathematics-for-computing/02-calculus-2/02-series-and-the-ema.md
 #
 # The exponential moving average m_t = beta m_{t-1} + (1 - beta) x_t, m_0 = 0,
 # is the weighted sum sum_{i=1}^{t} (1 - beta) beta**(t - i) x_i: a truncated

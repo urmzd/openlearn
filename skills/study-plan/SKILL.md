@@ -19,15 +19,15 @@ Create personalized study plans that adapt to the user's goals, experience, and 
    - What's your current level? (beginner, intermediate, advanced in each area)
    - How many hours per week can you dedicate?
    - Which languages do you want to practice in?
-   - Any specific companies you're targeting? (reference content/interviews/ guides)
+   - Any specific companies you're targeting? (reference content/courses/interview-preparation/ guides)
    - Timeline? (weeks until deadline)
 3. Read the relevant curriculum READMEs to understand available content:
    - `README.md` — overall structure
    - `content/courses/README.md` — existing structured plans
-   - `content/tracks/algorithms/README.md` — algorithm topics
-   - `content/tracks/math/README.md` — math foundations
+   - `content/courses/algorithms/README.md` — algorithm topics
+   - `content/courses/mathematics-for-computing/README.md` — math foundations
    - `practice/README.md` — polyglot practice track
-   - `content/interviews/README.md` — company guides
+   - `content/courses/interview-preparation/README.md` — company guides
 4. Generate a week-by-week plan
 
 ## Plan Types
@@ -38,7 +38,7 @@ Optimized for technical interviews:
 - Week 3: System design + company-specific patterns
 - Week 4+: Mock interviews, weak-area drilling, secondary language practice
 - Daily: 1 algorithm problem + 1 language-specific exercise from practice/
-- Include company-specific guidance from content/interviews/{company}/
+- Include company-specific guidance from content/courses/interview-preparation/{company}/
 
 ### language-mastery [languages...]
 Deep fluency in target languages:
@@ -111,10 +111,10 @@ Generate plans as a structured weekly schedule:
 ## Cross-References
 
 Reference specific content from the curriculum:
-- Algorithm patterns → `content/tracks/algorithms/{topic}/README.md`
+- Algorithm patterns → `content/courses/algorithms/{topic}/README.md`
 - Practice exercises → `practice/build/{tier}/{lang}/README.md`
-- Interview prep → `content/interviews/{company}/README.md`
+- Interview prep → `content/courses/interview-preparation/{company}/README.md`
 - Study routines → `content/courses/README.md` (daily routine sections)
-- Math prerequisites → `content/tracks/math/README.md`
-- Competitive programming → `content/tracks/competitive-programming/README.md`
-- Worked builds → `content/case-studies/{study-dir}/README.md` (each has a runnable implementation)
+- Math prerequisites → `content/courses/mathematics-for-computing/README.md`
+- Competitive programming → `content/courses/competitive-programming/README.md`
+- Worked builds → `content/courses/case-studies/{study-dir}/README.md` (each has a runnable implementation)

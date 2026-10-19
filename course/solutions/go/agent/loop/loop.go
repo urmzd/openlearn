@@ -8,7 +8,7 @@
 // every model and tool call goes through (types.StepRunner, made durable by
 // ag.05).
 //
-// Chapter: content/tracks/ai-platform-engineering/13-agent-sdk/03-agent-loop.md.
+// Chapter: content/courses/ai-platform-engineering/13-agent-sdk/03-agent-loop.md.
 // Spans: course/contracts/otel/semconv.md (agent.run, agent.llm_call,
 // agent.tool <name>).
 package loop

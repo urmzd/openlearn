@@ -7,7 +7,7 @@
 | **Module** | `L8.7` · build · Python · Pass 6 |
 | **Solution** | [`constrain.py`](../../../../course/solutions/python/tinyllm/infer/constrain.py): `regex_to_dfa` (parser, Thompson NFA, subset construction, minimization), `DFA`, `json_schema_to_regex`, `TokenIndex`, `Constraint`, `apply_mask`, `vocab_bytes`, `constrained_sample` |
 | **Contract** | [`course/contracts/py/tinyllm/infer/constrain.pyi`](../../../../course/contracts/py/tinyllm/infer/constrain.pyi) |
-| **Needs** | [`L8.1` sampling](01-sampling-and-logit-processors.md) (`sample` on masked logits), [`M05.2` the GPT-2 byte map](../../../tracks/math/05-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md) (`unicode_to_bytes`). Reading: [`M06.1` graphs](../../../tracks/math/06-discrete-math-2/01-graphs-dags-and-topological-sort.md) |
+| **Needs** | [`L8.1` sampling](01-sampling-and-logit-processors.md) (`sample` on masked logits), [`M05.2` the GPT-2 byte map](../../mathematics-for-computing/05-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md) (`unicode_to_bytes`). Reading: [`M06.1` graphs](../../mathematics-for-computing/06-discrete-math-2/01-graphs-dags-and-topological-sort.md) |
 | **Used by** | `L10.9` tool calls with constrained JSON in the Rust engine, held to the same masks on recorded paths; on a real model, every generated tool-call document parses and validates |
 | **Optional depth** | Sipser, *Introduction to the Theory of Computation*, ch. 1 (finite automata, regular expressions); Thompson, *Regular Expression Search Algorithm* (CACM 1968); Willard and Louf, *Efficient Guided Generation for Large Language Models* (2023) |
 

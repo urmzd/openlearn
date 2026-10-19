@@ -18,7 +18,7 @@ Layout under `dest` (the corpus directory, /artifacts/corpus):
     LEDGER.jsonl
 
 Standard library plus zstandard (contracts/allowed-deps.toml, [python.corpus]).
-Chapter: content/tracks/data-engineering/05-corpus-pipeline/01-async-fetch-resume-checksums.md.
+Chapter: content/courses/data-engineering/05-corpus-pipeline/01-async-fetch-resume-checksums.md.
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@
 // can make the model propose a call, but only this code decides whether the
 // call runs.
 //
-// Chapter: content/tracks/ai-platform-engineering/13-agent-sdk/04-tool-gate-and-injection.md.
+// Chapter: content/courses/ai-platform-engineering/13-agent-sdk/04-tool-gate-and-injection.md.
 package gate
 
 import (

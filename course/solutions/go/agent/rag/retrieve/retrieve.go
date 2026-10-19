@@ -8,7 +8,7 @@
 // interface its embedder satisfies, so this package never imports the
 // ingest packages and the index files are the only contract between them.
 //
-// Chapter: content/tracks/ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md.
+// Chapter: content/courses/ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md.
 package retrieve
 
 import (

@@ -1,5 +1,5 @@
 // contracts/proto/tl/kv/v1/kv.proto: KV block transfer from a prefill worker
-// chapter: content/tracks/software-craftsmanship/12-language-and-tool-primers/10-protocol-buffers-and-grpc.md
+// chapter: content/courses/programming-languages/02-language-and-tool-primers/10-protocol-buffers-and-grpc.md
 // chapter: content/courses/build-an-llm/p10-serving/06-disaggregated-prefill-decode.md
 // to a decode worker, deduplicated by content hash. Served
 // by decode workers on :50052 in Kubernetes ({kv_port} locally).

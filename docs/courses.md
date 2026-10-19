@@ -1,10 +1,10 @@
 # Course sources and publication
 
-A course is a manifest plus references to canonical lessons, not a second copy of a subject directory. Every manifest lives at `content/courses/<id>/openlearn.json`. Its paths are relative to the repository root. The root `openlearn.json` lists the available manifests.
+Each course is a book. It owns its chapters: every chapter lives in exactly one course directory, and other books cross-reference it rather than include it. Every manifest lives at `content/courses/<id>/openlearn.json`. Its paths are relative to the repository root. The root `openlearn.json` lists the available manifests.
 
 ## Ownership
 
-Put a course's curriculum, study plan, and unique chapters in its own directory. Put reusable lessons in `content/tracks/`, worked examples in `content/case-studies/`, and source attribution in `content/references/sources.md`. The `docs/` directory describes the platform, not its learning content.
+Put a book's front matter (`README.md`, `study-plan.md`) and its chapters in `content/courses/<id>/`, one directory per chapter, one file per section. A chapter that another book needs stays where it is and is linked, not copied or listed in the other manifest. Reading guides (`computer-science`, `research`) own no chapters; they recommend an order across books. Source attribution lives in `content/references/sources.md`, the one appendix every book shares. The `docs/` directory describes the platform, not its learning content.
 
 `course/` holds the reference solutions (`course/solutions/`) and interface contracts (`course/contracts/`) that the Build Your Own LLM System chapters quote and explain. `practice/` holds predict-the-output puzzles and data-structure implementations with worked answers. These are supporting directories, not competing course outlines. A course declares the solution files to ship in its portable pack with `runtime`.
 

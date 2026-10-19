@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/info/pmi.pyi (M11.4): mutual information and PMI, in nats
-# chapter: content/tracks/math/11-information-theory/04-mutual-information-pmi-ppmi.md
+# chapter: content/courses/mathematics-for-computing/11-information-theory/04-mutual-information-pmi-ppmi.md
 #
 # A co-occurrence table cooc[w, c] counts how often word w was seen with
 # context c (any non-negative numbers: counts, or weighted counts). With

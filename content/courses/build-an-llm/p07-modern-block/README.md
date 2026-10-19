@@ -4,7 +4,7 @@ What changed between 2017 and a Llama-family model. Pre-LN with RMSNorm, gated M
 
 **Course passes**: L7.1 to L7.9 belong to [Pass 5](../paths/course-p05-transformer/milestone.md)
 
-**Before you start**: the just-in-time math `M05.1` (parameter and FLOP counting); [Part 5](../p05-transformer-2017/) and [Part 6](../p06-objectives/); rotations from [Precalculus](../../../tracks/math/00-precalculus/).
+**Before you start**: the just-in-time math `M05.1` (parameter and FLOP counting); [Part 5](../p05-transformer-2017/) and [Part 6](../p06-objectives/); rotations from [Precalculus](../../mathematics-for-computing/00-precalculus/).
 
 ## Key ideas
 

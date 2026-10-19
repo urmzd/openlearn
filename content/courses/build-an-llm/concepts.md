@@ -4,7 +4,7 @@
 
 - **Primary reference**: the [course](paths/course/) itself: every chapter here is one module, derived from first principles and followed by a walkthrough of its solution in [`course/solutions/`](../../../course/solutions). Read [the system map](paths/course/SYSTEM.md) first.
 - **Supplementary**: Karpathy, [*Neural Networks: Zero to Hero*](https://karpathy.ai/zero-to-hero.html) (free); Jurafsky and Martin, [*Speech and Language Processing*](https://web.stanford.edu/~jurafsky/slp3/) (free), chapters 3 (n-gram LMs) and 9 (transformers); Raschka, *Build a Large Language Model (From Scratch)*
-- **Prerequisites**: the Pass 0 primers ([Python and numpy](../../tracks/software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md), [C](../../tracks/software-craftsmanship/12-language-and-tool-primers/03-c.md)) and, just in time, the math each part names
+- **Prerequisites**: the Pass 0 primers ([Python and numpy](../programming-languages/02-language-and-tool-primers/01-python-and-numpy.md), [C](../programming-languages/02-language-and-tool-primers/03-c.md)) and, just in time, the math each part names
 - **Estimated time**: the spine of course passes 1 to 11, about 60 weeks part-time; Pass 1 (the tracer) is about 5 weeks
 
 ## Key Takeaways
@@ -65,10 +65,10 @@ Each part README lists its planned modules; chapters arrive with their authoring
 
 | Track | Connection |
 |---|---|
-| [Linear Algebra](../../tracks/math/03-linear-algebra/) | M03.1, the naive matmul in C every logit goes through |
-| [Gateway](../../tracks/ai-platform-engineering/12-gateway/) | gw.00, the front door to the engine |
-| [Containers and Kubernetes](../../tracks/infrastructure/01-containers-kubernetes/) | dep.00, the images and charts the engine runs in |
-| [LLM Systems & Inference](../../tracks/ml/04-llm-systems/) | the production systems this spine rebuilds in miniature |
+| [Linear Algebra](../mathematics-for-computing/03-linear-algebra/) | M03.1, the naive matmul in C every logit goes through |
+| [Gateway](../ai-platform-engineering/12-gateway/) | gw.00, the front door to the engine |
+| [Containers and Kubernetes](../infrastructure/01-containers-kubernetes/) | dep.00, the images and charts the engine runs in |
+| [LLM Systems & Inference](../machine-learning/04-llm-systems/) | the production systems this spine rebuilds in miniature |
 
 ## Company Relevance
 

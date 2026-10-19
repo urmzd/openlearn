@@ -181,4 +181,4 @@ A mask that is one token shorter or longer than the ids would shift every target
 | Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `pack` | length bucketing and packing in TRL | Higher device utilization, with careful document masks | Hugging Face TRL SFT trainer |
-| assistant mask | dataset mixture and loss weighting | Changes which tokens define the training distribution | `content/tracks/ml/07-training-and-post-training` |
+| assistant mask | dataset mixture and loss weighting | Changes which tokens define the training distribution | `content/courses/machine-learning/07-training-and-post-training` |

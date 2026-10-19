@@ -1,0 +1,24 @@
+{
+  "id": "mathematics-for-computing",
+  "title": "Mathematics for Computing",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/courses/mathematics-for-computing/README.md",
+      "title": "About this book"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/courses/mathematics-for-computing",
+      "title": "Mathematics for Computing"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ],
+  "tagline": "Precalculus through calculus, linear algebra, probability, numerics, optimization, and information theory, with the code each idea becomes."
+}

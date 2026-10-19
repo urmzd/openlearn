@@ -7,7 +7,7 @@
 | **Module** | `L8.4` · build · Rust · Pass 6 |
 | **Solution** | [`prefix.rs`](../../../../course/solutions/rust/crates/tl-engine/src/prefix.rs): `RadixCache` (`new`, `block_size`, `match_prefix`, `insert`, `lock`, `unlock`, `evict`, `cached_tokens`, `cached_blocks`, `evictable_blocks`, `stats`, `hit_rate`, `tree`), `PrefixMatch`, `Inserted`, `PrefixStats`, `BlockId` · the crate root [`lib.rs`](../../../../course/solutions/rust/crates/tl-engine/src/lib.rs) (`pub mod prefix;`), over the radix tree [`radix.rs`](../../../../course/solutions/rust/crates/tl-ds/src/radix.rs) (`ds.07`) |
 | **Contract** | the interface in section 4 (no Rust trait file) |
-| **Needs** | `ds.07` [the radix tree](../../../tracks/algorithms/16-systems-data-structures/07-radix-tree.md) · reading: `M06.2` [tries and longest-prefix match](../../../tracks/math/06-discrete-math-2/02-trees-and-tries-longest-prefix-match.md) |
+| **Needs** | `ds.07` [the radix tree](../../algorithms/16-systems-data-structures/07-radix-tree.md) · reading: `M06.2` [tries and longest-prefix match](../../mathematics-for-computing/06-discrete-math-2/02-trees-and-tries-longest-prefix-match.md) |
 | **Used by** | later: `L10.4` (the block manager's `--prefix-cache=radix`), `gw.05` (routes on the hit metrics over gRPC) |
 | **Optional depth** | Zheng et al., [*SGLang: Efficient Execution of Structured Language Model Programs*](https://arxiv.org/abs/2312.07104), section 3 (RadixAttention) |
 

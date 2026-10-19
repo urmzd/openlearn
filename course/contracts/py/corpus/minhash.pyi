@@ -1,6 +1,6 @@
 # contracts/py/corpus/minhash.pyi (data.04): near-duplicate detection and
 # decontamination
-# chapter: content/tracks/data-engineering/05-corpus-pipeline/04-near-dedup-minhash-lsh.md
+# chapter: content/courses/data-engineering/05-corpus-pipeline/04-near-dedup-minhash-lsh.md
 #
 # Shingles. words(text) is re.findall(r"\w+", text.lower()): Unicode word
 # runs, lower-cased. A k-shingle is k consecutive words joined by one space.

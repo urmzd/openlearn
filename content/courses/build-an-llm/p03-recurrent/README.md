@@ -4,7 +4,7 @@ Sequence models with state. A vanilla RNN with backpropagation through time writ
 
 **Course passes**: L3.1 to L3.6 belong to [Pass 4](../paths/course-p04-sequence-models/milestone.md)
 
-**Before you start**: the matrix-calculus VJPs ([M08.3](../../../tracks/math/08-matrix-calculus-and-autodiff/)) and gradient clipping ([M10.4](../../../tracks/math/10-optimization/)); the autograd engine of [Part 0](../p00-foundations/).
+**Before you start**: the matrix-calculus VJPs ([M08.3](../../mathematics-for-computing/08-matrix-calculus-and-autodiff/)) and gradient clipping ([M10.4](../../mathematics-for-computing/10-optimization/)); the autograd engine of [Part 0](../p00-foundations/).
 
 ## Key ideas
 
@@ -23,7 +23,7 @@ Sequence models with state. A vanilla RNN with backpropagation through time writ
 | `L3.5` | ELMo: biLM, ScalarMix, linear probes | build | 4, optional |
 | `L3.6` | RNN language model with stateful TBPTT | build | 4 |
 
-The worked example for `L3.2` is `lstm_cell.c` from [Neural Architectures](../../../tracks/ml/06-neural-architectures/), whose RNN and LSTM sections these chapters absorb.
+The worked example for `L3.2` is `lstm_cell.c` from [Neural Architectures](../../machine-learning/06-neural-architectures/), whose RNN and LSTM sections these chapters absorb.
 
 ## Chapters
 

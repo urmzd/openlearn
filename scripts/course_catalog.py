@@ -104,8 +104,12 @@ def stages(
     return rows
 
 
+# Appendices every book may include; everything else belongs to exactly one book.
+SHARED_APPENDICES = ("content/references/",)
+
+
 def publication(manifest: dict, root: Path = ROOT) -> dict:
-    """Ordered, deduplicated sources. Reused lessons appear once in each book."""
+    """Ordered, deduplicated sources for one book."""
     sections = [
         {"title": item["title"], "files": [item["file"]]}
         for item in manifest.get("start", [])
@@ -236,8 +240,18 @@ def main() -> int:
         elif args.command == "index":
             print(json.dumps([publication(m, root) for m in manifests]))
         elif args.command == "validate":
+            owners: dict[str, str] = {}
             for m in manifests:
                 p = publication(m, root)
+                for doc in p["documents"]:
+                    if doc.startswith(SHARED_APPENDICES):
+                        continue
+                    other = owners.setdefault(doc, m["id"])
+                    if other != m["id"]:
+                        raise ValueError(
+                            f"{doc} is published by both {other} and {m['id']}: "
+                            "a chapter belongs to one book; link it from the other"
+                        )
                 print(f"ok   {m['id']}: {len(p['documents'])} source documents")
         else:
             for m in manifests:

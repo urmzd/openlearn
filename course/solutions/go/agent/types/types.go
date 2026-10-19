@@ -8,7 +8,7 @@
 // belong to the package that consumes them, and every consumer of these two
 // is downstream of types.
 //
-// Chapter: content/tracks/ai-platform-engineering/13-agent-sdk/01-types-and-provider.md.
+// Chapter: content/courses/ai-platform-engineering/13-agent-sdk/01-types-and-provider.md.
 // Wire contract: course/contracts/openapi/openai-subset.v1.yaml (chat
 // completions with tools, streaming).
 package types

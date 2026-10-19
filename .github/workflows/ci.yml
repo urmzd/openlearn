@@ -68,7 +68,7 @@ jobs:
       - name: Verify case-study implementations
         run: |
           set -euo pipefail
-          for file in content/case-studies/*/*.py; do
+          for file in content/courses/case-studies/*/*.py; do
             echo "--- $file"
             (cd "$(dirname "$file")" && uv run --no-project python "$(basename "$file")" >/dev/null)
           done

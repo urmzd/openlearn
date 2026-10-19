@@ -37,4 +37,4 @@ A 10 percent increase multiplies the current size by 1.1, so $S(m)=100(1.1)^m$. 
 
 Before moving on, explain why doubling and adding two are different operations.
 
-Next: [Vectors and constraints](03-vectors-and-constraints.md). Further study: [exponents and logarithms](../../tracks/math/00-precalculus/01-exponents-logs-and-units-of-information.md) and [calculus](../../tracks/math/01-calculus-1/).
+Next: [Vectors and constraints](03-vectors-and-constraints.md). Further study: [exponents and logarithms](../mathematics-for-computing/00-precalculus/01-exponents-logs-and-units-of-information.md) and [calculus](../mathematics-for-computing/01-calculus-1/).

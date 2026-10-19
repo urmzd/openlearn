@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/prob/mle.pyi (M07.2)
-# chapter: content/tracks/math/07-probability-statistics/02-mle-laplace-absolute-discounting.md
+# chapter: content/courses/mathematics-for-computing/07-probability-statistics/02-mle-laplace-absolute-discounting.md
 #
 # Estimating a categorical distribution from counts. counts maps an outcome
 # (a word, an n-gram, a subword) to how often it was seen. A count is a

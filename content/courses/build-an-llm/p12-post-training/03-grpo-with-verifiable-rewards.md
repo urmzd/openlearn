@@ -9,7 +9,7 @@
 | **Contract** | [`grpo.pyi`](../../../../course/contracts/py/tinyllm/post/grpo.pyi) |
 | **Needs** | `M11.1` KL, `M07.4` uncertainty, `L8.1` sampling, `L10.5` engine API |
 | **Used by** | `C2` post-trained capstone |
-| **Optional depth** | Policy gradients and PPO in `content/tracks/ml/03-reinforcement-learning` |
+| **Optional depth** | Policy gradients and PPO in `content/courses/machine-learning/03-reinforcement-learning` |
 
 ## Key Takeaways
 
@@ -168,4 +168,4 @@ A large log-ratio would overflow `exp` to `inf`, and `inf * 0` advantage is NaN.
 | Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | grouped rollout objective | asynchronous rollout pools | More throughput and explicit rollout revisions | DeepSeekMath GRPO paper |
-| verifiable reward | calibrated reward and tool execution | Validation against reward hacking and distribution shift | `content/tracks/ml/03-reinforcement-learning` |
+| verifiable reward | calibrated reward and tool execution | Validation against reward hacking and distribution shift | `content/courses/machine-learning/03-reinforcement-learning` |

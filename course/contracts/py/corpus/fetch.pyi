@@ -1,5 +1,5 @@
 # contracts/py/corpus/fetch.pyi (data.01): async fetch with resume, checksums, license capture
-# chapter: content/tracks/data-engineering/05-corpus-pipeline/01-async-fetch-resume-checksums.md
+# chapter: content/courses/data-engineering/05-corpus-pipeline/01-async-fetch-resume-checksums.md
 #
 # Input: the `sources` of a corpus config (formats/corpus-config.schema.json).
 # Output under `dest` (the corpus directory, /artifacts/corpus):
