@@ -1,4 +1,3 @@
-<!-- ol:module gw.06 -->
 # Response cache: LRU + TTL, singleflight, tenant-scoped keys
 
 ## Overview
@@ -6,33 +5,23 @@
 | | |
 |---|---|
 | **Module** | `gw.06` · build · Go · Pass 7 · 4 h |
-| **You build** | `go/gateway/cache/cache.go`: `LRU` (`New`, `Get`, `Put`, `Len`, `Purge`), `Canonicalize`, `KeyOf`, `Middleware` (the cache stage with singleflight and stream replay), `PurgeHandler` |
+| **Solution** | [`go/gateway/cache/cache.go`](../../../../course/solutions/go/gateway/cache/cache.go): `LRU` (`New`, `Get`, `Put`, `Len`, `Purge`), `Canonicalize`, `KeyOf`, `Middleware` (the cache stage with singleflight and stream replay), `PurgeHandler` |
 | **Contract** | `X-TL-Cache: hit\|miss` on cacheable requests in [`course/contracts/openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml) · `POST /admin/v1/cache:purge` in [`course/contracts/openapi/admin.v1.yaml`](../../../../course/contracts/openapi/admin.v1.yaml) · `[gateway]` `cache_entries`, `cache_ttl_s` in [`course/contracts/config/runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json) |
-| **Tests** | `course/tests/go/gw_06/` (what they check: section 4); the singleflight test runs under the race detector |
 | **Needs** | [`gw.01` server skeleton](../12-gateway/01-server-skeleton.md) (the chain, the `Exchange`) · [`gw.02` API keys](../08-authorization-and-access-control/01-api-keys-and-scopes.md) (the tenant) · reading: this topic's [README](README.md), the [practice drill go/02](../../../../practice/build/cloud/go/README.md) |
-| **Used by** | `gw.07`'s `gateway.Deps` (the `Cache` slot, `Rev` from the route epoch) and `gateway.Admin` (`PurgeHandler`) |
-| **Milestone** | MS-gateway |
+| **Used by** | `gw.07`'s `gateway.Deps` (the `Cache` slot, `Rev` from the route epoch) and `gateway.Admin` (`PurgeHandler`); part of the full gateway |
 | **Optional depth** | the Go team's `golang.org/x/sync/singleflight` source (free); Megiddo and Modha, *ARC: A Self-Tuning, Low Overhead Replacement Cache* (FAST 2003) |
 
 ## Key Takeaways
 
-- Only deterministic requests are cached: `temperature` 0, or a fixed `seed`. Anything sampled without a seed would replay one random answer as if it were the only one (`TestNotCacheableHasNoHeader`).
-- The key is a hash of the **tenant**, the **configuration revision**, and the **canonical** request: field order, number spelling, explicit defaults, and the `user` field do not change it; the model, the limits, the messages, and `stream` do (`TestHandExample`, `TestCanonicalDistinctions`).
-- An LRU of at most `cache_entries` with a TTL per entry: an entry lives exactly $[t_{\text{put}}, t_{\text{put}} + \mathit{ttl})$, and a hit makes it the most recently used (`TestLRUEvictionOrder`, `TestTTLExpiry`).
-- **Singleflight**: 100 identical requests arriving together make one upstream call; the others wait for it and are answered from its result (`TestSingleflightOneUpstreamCall`).
-- Only whole 200 answers are stored, and a stored stream is replayed byte for byte with its `Content-Type` (`TestStreamReplayByteExact`, `TestErrorsAndCutStreamsNotCached`).
+- Only deterministic requests are cached: `temperature` 0, or a fixed `seed`. Anything sampled without a seed would replay one random answer as if it were the only one.
+- The key is a hash of the **tenant**, the **configuration revision**, and the **canonical** request: field order, number spelling, explicit defaults, and the `user` field do not change it; the model, the limits, the messages, and `stream` do.
+- An LRU of at most `cache_entries` with a TTL per entry: an entry lives exactly $[t_{\text{put}}, t_{\text{put}} + \mathit{ttl})$, and a hit makes it the most recently used.
+- **Singleflight**: 100 identical requests arriving together make one upstream call; the others wait for it and are answered from its result.
+- Only whole 200 answers are stored, and a stored stream is replayed byte for byte with its `Content-Type`.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start gw.06          # writes go/gateway/cache/cache.go with stub bodies
-ol tests gw.06          # read the test catalog first
-ol check gw.06          # runs the course tests with -race
-ol check gw.06 --ref-deps   # only if your gw.01 or gw.02 is not passing yet
-ol diff  gw.06          # after passing: your code against the reference
-```
-
-Then plug `cache.Middleware(cache.New(cfg.Gateway.CacheEntries, clock), cache.Options{TTL: ..., Rev: routeEpoch})` into the `Cache` slot of your composition root.
+Sections 1 to 3 build the cache from first principles and work the canonical key by hand. Section 4 fixes the interface. Section 5 walks through [`cache.go`](../../../../course/solutions/go/gateway/cache/cache.go) function by function and explains why each choice is the right one. The gateway's composition root (`gw.07`) plugs it in as `cache.Middleware(cache.New(cfg.Gateway.CacheEntries, clock), cache.Options{TTL: ..., Rev: routeEpoch})` in the `Cache` slot. Try to predict each step of the solution before reading it.
 
 ---
 
@@ -71,7 +60,7 @@ $$\mathit{key} = \mathrm{SHA256}(\mathit{tenant} \,\|\, 0 \,\|\, \mathit{rev} \,
 
 The **tenant** (from `gw.02`'s `Principal`) makes the cache private per tenant: two keys of one company share answers, two companies never do, even for byte-equal requests (the prompt may contain their data; so may the answer). The **revision** (`Options.Rev`, for example the route table's epoch from `gw.05`) changes when a route points a public model at a new version, so answers from the old model become unreachable at once instead of lingering for the TTL. Requests without a principal (no authn stage) are not cached at all.
 
-The selected API version also partitions responses: v2 includes usage fields that v1 omits. The middleware adds a version suffix to the revision for v2. An absent version and explicit v1 share the original partition; v2 gets its own cached answer and singleflight group (`TestAPIVersionIsolation`). Select the version before the cache so a configured v2 default reaches the same partition as an explicit v2 header.
+The selected API version also partitions responses: v2 includes usage fields that v1 omits. The middleware adds a version suffix to the revision for v2. An absent version and explicit v1 share the original partition; v2 gets its own cached answer and singleflight group. Select the version before the cache so a configured v2 default reaches the same partition as an explicit v2 header.
 
 ### 2.4 Singleflight
 
@@ -99,7 +88,7 @@ Canonicalize A: fill the defaults it omits (`top_p` 1, `top_k` 0, `min_p` 0, `re
 {"frequency_penalty":0,"logprobs":null,"messages":[{"content":"hi","role":"user"}],"min_p":0,"model":"smol","n":1,"presence_penalty":0,"repetition_penalty":1,"stop":null,"stream":false,"temperature":0,"top_k":0,"top_p":1}
 ```
 
-(inside each message the keys are sorted too). `temperature` is 0, so both are cacheable, and with the same tenant and revision they share one key: A is a miss that reaches the engine, B is a hit. The same body at `temperature` 0.7 is not cacheable; at 0.7 with `"seed": 42` it is. This is `TestHandExample`.
+(inside each message the keys are sorted too). `temperature` is 0, so both are cacheable, and with the same tenant and revision they share one key: A is a miss that reaches the engine, B is a hit. The same body at `temperature` 0.7 is not cacheable; at 0.7 with `"seed": 42` it is.
 
 ## 4. The interface
 
@@ -126,40 +115,40 @@ func PurgeHandler(c *LRU) http.Handler                // POST /admin/v1/cache:pu
 
 Use only the standard library. The stage caches `POST /v1/chat/completions` and `POST /v1/completions`; embeddings and everything else pass through.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `TestHandExample` | unit | section 3: both bodies give the exact canonical JSON and one key; 0.7 without seed is not cacheable, with seed it is; no temperature means 1 | you and the tests agree on equality |
-| `TestCanonicalDistinctions` | unit | model, `max_tokens`, message text, and `stream` each change the canonical form; a non-object is an error | different questions never share an answer |
-| `TestKeyOfTenantAndRevision` | unit | same tenant shares across keys; another tenant or revision does not | privacy and freshness |
-| `TestLRUEvictionOrder` | unit | capacity 2: put a, b; get a; put c evicts b | the hot set survives |
-| `TestTTLExpiry` | fault | hit at 9.999 s, miss at exactly 10 s, entry removed | bounded staleness |
-| `TestPurge` | unit | purge one model, then everything | `POST /admin/v1/cache:purge` |
-| `TestHitAfterMiss` | unit | miss then hit with the same body and content type, one upstream call | conformance case `cache.hit` |
-| `TestSingleflightOneUpstreamCall` | fault | 100 concurrent identical requests: one upstream call, 100 identical bodies | no stampede after an expiry |
-| `TestTenantIsolation` | fault | another tenant's identical request is a miss that reaches the upstream | no cross-tenant leaks |
-| `TestAPIVersionIsolation` | regression | v1 and v2 each populate one cache entry; implicit and explicit v1 share | no replay across incompatible response schemas |
-| `TestStreamReplayByteExact` | unit | a cached stream replays the same SSE bytes with `text/event-stream` | streaming clients cannot tell |
-| `TestErrorsAndCutStreamsNotCached` | fault | a 503 and a stream without `[DONE]` are not stored | failures are not replayed for 5 minutes |
-| `TestNotCacheableHasNoHeader` | unit | a sampled request: no header, every call upstream | sampling stays random |
-| `TestPurgeHandler` | unit, conformance | `{"purged": n}` with and without a model | `gw.07` mounts it |
+| hand example | unit | section 3: both bodies give the exact canonical JSON and one key; 0.7 without seed is not cacheable, with seed it is; no temperature means 1 | every implementation agrees on equality |
+| canonical distinctions | unit | model, `max_tokens`, message text, and `stream` each change the canonical form; a non-object is an error | different questions never share an answer |
+| key scoped by tenant and revision | unit | same tenant shares across keys; another tenant or revision does not | privacy and freshness |
+| LRU eviction order | unit | capacity 2: put a, b; get a; put c evicts b | the hot set survives |
+| TTL expiry | fault | hit at 9.999 s, miss at exactly 10 s, entry removed | bounded staleness |
+| purge | unit | purge one model, then everything | `POST /admin/v1/cache:purge` |
+| hit after miss | unit | miss then hit with the same body and content type, one upstream call | conformance case `cache.hit` |
+| singleflight: one upstream call | fault | 100 concurrent identical requests: one upstream call, 100 identical bodies | no stampede after an expiry |
+| tenant isolation | fault | another tenant's identical request is a miss that reaches the upstream | no cross-tenant leaks |
+| API version isolation | regression | v1 and v2 each populate one cache entry; implicit and explicit v1 share | no replay across incompatible response schemas |
+| byte-exact stream replay | unit | a cached stream replays the same SSE bytes with `text/event-stream` | streaming clients cannot tell |
+| errors and cut streams not cached | fault | a 503 and a stream without `[DONE]` are not stored | failures are not replayed for 5 minutes |
+| sampled request has no header | unit | a sampled request: no header, every call upstream | sampling stays random |
+| purge handler | unit, conformance | `{"purged": n}` with and without a model | `gw.07` mounts it |
 
-## 5. Pitfalls
+## 6. Pitfalls
 
-| Pitfall | Symptom | Caught by |
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. a key without the tenant, or without the revision | tenant B reads tenant A's answer; after a model rollout the old model's answers keep coming | `TestTenantIsolation`, `TestKeyOfTenantAndRevision` (mutants `s01`, `s11`) |
-| 2. hashing the raw body, skipping defaults, keeping `user`, or dropping `stream` | equal questions miss; a streamed request receives a JSON body | `TestHandExample`, `TestCanonicalDistinctions`, `TestHitAfterMiss` (mutants `s02`, `s03`, `s10`, `s13`, `s15`) |
-| 3. caching failures | one engine outage is replayed to everyone for 5 minutes; a cut stream becomes the answer | `TestErrorsAndCutStreamsNotCached` (mutants `s08`, `s09`) |
-| 4. caching sampled requests | every "write me a poem" gets the same poem | `TestNotCacheableHasNoHeader`, `TestHandExample` (mutant `s04`) |
-| 5. `now > expires` instead of `now >= expires` | entries live one tick past their TTL | `TestTTLExpiry` (mutant `s05`) |
-| 6. a `Get` that does not refresh recency | the most used entry is the first evicted (FIFO, not LRU) | `TestLRUEvictionOrder` (mutant `s06`) |
-| 7. no singleflight, or no second check under the lock | an expiring popular entry sends a burst of identical prefills to the engines | `TestSingleflightOneUpstreamCall` (mutant `s07`) |
-| 8. replaying without `Content-Type` | SSE clients do not parse the replayed stream | `TestStreamReplayByteExact`, `TestHitAfterMiss` (mutant `s12`) |
-| 9. a purge that ignores its model | purging one model empties the cache | `TestPurge`, `TestPurgeHandler` (mutant `s14`) |
+| 1. a key without the tenant, or without the revision | tenant B reads tenant A's answer; after a model rollout the old model's answers keep coming | `KeyOf` hashes tenant and revision before the body; see step 5 |
+| 2. hashing the raw body, skipping defaults, keeping `user`, or dropping `stream` | equal questions miss; a streamed request receives a JSON body | `Canonicalize` fills `defaults`, deletes `ignored`, keeps `stream`, re-encodes; see step 4 |
+| 3. caching failures | one engine outage is replayed to everyone for 5 minutes; a cut stream becomes the answer | stores only `status == 200`, under the size cap, and `complete`; see step 7 |
+| 4. caching sampled requests | every "write me a poem" gets the same poem | `temp == 0 || seeded` gates caching; otherwise `next` runs with no header |
+| 5. `now > expires` instead of `now >= expires` | entries live one tick past their TTL | `Get` treats `!Now().Before(expires)` as expired; see step 3 |
+| 6. a `Get` that does not refresh recency | the most used entry is the first evicted (FIFO, not LRU) | `Get` calls `MoveToFront` on a hit |
+| 7. no singleflight, or no second check under the lock | an expiring popular entry sends a burst of identical prefills to the engines | the `inflight` table plus a second `Get` under `mu`; see step 6 |
+| 8. replaying without `Content-Type` | SSE clients do not parse the replayed stream | `Entry` stores `ContentType` and `replay` sets it |
+| 9. a purge that ignores its model | purging one model empties the cache | `Purge` removes only `it.e.Model == model` unless model is empty |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|

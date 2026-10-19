@@ -1,4 +1,3 @@
-<!-- ol:module gw.05 -->
 # Worker registry, routing, cascades, failover, disaggregated orchestration
 
 ## Overview
@@ -6,39 +5,29 @@
 | | |
 |---|---|
 | **Module** | `gw.05` · build · Go · Pass 7 · 6 to 8 h |
-| **You build** | `go/gateway/route/registry.go`: `Registry` (the `tl.control.v1` heartbeat server, eviction, drain) · `route.go`: `Router`, the policies, `PickBackend`, `PrefixKey`, `ParseAcceptIf`, `LogprobsOf`, `CascadeCurve` · `handler.go`: `Middleware` (the route stage), `Proxy` (failover, cascades, disaggregated prefill and decode), `EngineTokenizer` · `admin.go`: `WorkersHandler`, `RoutesHandler`, `DrainHandler` |
+| **Solution** | [`registry.go`](../../../../course/solutions/go/gateway/route/registry.go): `Registry` (the `tl.control.v1` heartbeat server, eviction, drain) · [`route.go`](../../../../course/solutions/go/gateway/route/route.go): `Router`, the policies, `PickBackend`, `PrefixKey`, `ParseAcceptIf`, `LogprobsOf`, `CascadeCurve` · [`handler.go`](../../../../course/solutions/go/gateway/route/handler.go): `Middleware` (the route stage), `Proxy` (failover, cascades, disaggregated prefill and decode), `EngineTokenizer` · [`admin.go`](../../../../course/solutions/go/gateway/route/admin.go): `WorkersHandler`, `RoutesHandler`, `DrainHandler` |
 | **Contract** | [`course/contracts/proto/tl/control/v1/control.proto`](../../../../course/contracts/proto/tl/control/v1/control.proto) (served) · [`engine.proto`](../../../../course/contracts/proto/tl/engine/v1/engine.proto) and [`kv.proto`](../../../../course/contracts/proto/tl/kv/v1/kv.proto) (called) · `Route`, `Worker`, and the routes and drain rules of [`admin.v1.yaml`](../../../../course/contracts/openapi/admin.v1.yaml) · `[gateway]` `route_policy`, `affinity_load_factor`, `heartbeat_miss_limit`, `routes` in [`runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json) |
-| **Tests** | `course/tests/go/gw_05/` (what they check: section 4) |
 | **Needs** | [`ds.09` consistent hash ring](../../algorithms/16-systems-data-structures/09-consistent-hash-ring.md) · [`gw.01` server skeleton](01-server-skeleton.md) · [`gw.02` API keys](../08-authorization-and-access-control/01-api-keys-and-scopes.md) (the debug scope) · [`gw.04` streaming proxy](04-sse-streaming-proxy.md) (`Forward` and the commitment boundary) · `L10.6` (the Rust engine's Prefill and Release gRPC endpoints) · reading: `S-M07d` [queueing and balls into bins](../../math/07-probability-statistics/93-problem-set-d.md), [model routing and cascades](../11-model-routing-and-cascades/) |
-| **Used by** | `gw.08` (its policy reads `route.InferenceRequest`); `gw.07`'s `gateway.Deps` and `gateway.Admin` (the `Router` slot, the workers, routes, and drain handlers, the cache revision); your composition root passes `route.Proxy` and serves the gRPC registry; `load.01`, `ops.01`, and `dur.12`'s canary reach it over HTTP |
-| **Milestone** | MS-gateway |
+| **Used by** | `gw.08` (its policy reads `route.InferenceRequest`); `gw.07`'s `gateway.Deps` and `gateway.Admin` (the `Router` slot, the workers, routes, and drain handlers, the cache revision); the gateway's composition root passes `route.Proxy` and serves the gRPC registry; `load.01`, `ops.01`, and `dur.12`'s canary reach it over HTTP · with `gw.04` and `gw.07` it turns the one-upstream proxy into a gateway over a fleet |
 | **Optional depth** | Chen et al., *FrugalGPT* (2023, cascades); Zhong et al., *DistServe* (OSDI 2024) and Patel et al., *Splitwise* (ISCA 2024) on disaggregated prefill and decode; Mitzenmacher, *The Power of Two Choices in Randomized Load Balancing* (2001) |
 
 ## Key Takeaways
 
-- Engines announce themselves with a heartbeat every 2 s; a worker that misses `heartbeat_miss_limit` (3) in a row is evicted at exactly $3 \times 2$ s after its last one (`TestHandExample`).
-- Three policies pick among the routable workers of a model: `least_outstanding` (fewest in flight plus queued), `weighted` (smooth weighted round robin by KV capacity), and `affinity` (`ds.09`'s ring with bounded loads on the first prompt block, so shared prefixes hit a warm cache until that worker is over its fair share) (`TestAffinityKeepsPrefixTogether`).
-- Before the first byte, a worker that is down or answers 503 is excluded and the request routed again; after it, nothing is retried or spliced (`TestFailoverBeforeFirstByte`, `TestNoSpliceAfterFirstByte`).
-- A cascade asks the small model first and keeps its answer only when its mean token logprob passes `accept_if`; sweeping the threshold trades cost for accuracy, and the curve on fixture data is reproduced exactly (`TestCascadeAcceptsOrEscalates`, `TestCascadeCurveMatchesFixture`).
-- Disaggregated serving runs `Prefill` on a prefill worker that pushes the prompt's KV to a decode worker, then streams from the decode worker with `X-TL-KV-Handle`; with one seed for both, the output equals a unified engine's (`TestDisaggregatedEqualsUnified`).
+- Engines announce themselves with a heartbeat every 2 s; a worker that misses `heartbeat_miss_limit` (3) in a row is evicted at exactly $3 \times 2$ s after its last one.
+- Three policies pick among the routable workers of a model: `least_outstanding` (fewest in flight plus queued), `weighted` (smooth weighted round robin by KV capacity), and `affinity` (`ds.09`'s ring with bounded loads on the first prompt block, so shared prefixes hit a warm cache until that worker is over its fair share).
+- Before the first byte, a worker that is down or answers 503 is excluded and the request routed again; after it, nothing is retried or spliced.
+- A cascade asks the small model first and keeps its answer only when its mean token logprob passes `accept_if`; sweeping the threshold trades cost for accuracy, and the curve on fixture data is reproduced exactly.
+- Disaggregated serving runs `Prefill` on a prefill worker that pushes the prompt's KV to a decode worker, then streams from the decode worker with `X-TL-KV-Handle`; with one seed for both, the output equals a unified engine's.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start gw.05          # writes go/gateway/route/{registry,route,handler,admin}.go with stub bodies
-ol tests gw.05          # read the test catalog first
-ol check gw.05          # exit code is the verdict
-ol check gw.05 --ref-deps   # only if ds.09, gw.01, gw.02, or gw.04 is not passing yet
-ol diff  gw.05          # after passing: your code against the reference
-```
-
-The package uses the generated gRPC code in `contracts/go/gen` (module `openlearn.urmzd.com/tl/contracts`) and `google.golang.org/grpc`. Build in workspace mode, the way the course overlay does: run `go work init ./go ./contracts/go` once at your repo root (your `go.mod` keeps its `replace` for the contracts and needs no `require` for them), and `go -C go get google.golang.org/grpc@v1.83.1` if your `go.mod` predates this module. In your composition root: serve `controlv1.RegisterWorkerRegistryServer(grpcServer, registry)` on `registry_listen`, put `route.Middleware(router)` in the `Router` slot and `route.Proxy(router, route.Options{})` in the `Proxy` slot, and `router.Ready` in `Deps.Ready`.
+Sections 1 to 3 build routing from first principles and work one routing sequence by hand. Section 4 fixes the interface. Section 5 walks through the solution, file by file, and explains why each choice is the right one; try to predict each step before reading it. The package uses the generated gRPC code in `contracts/go/gen` (module `openlearn.urmzd.com/tl/contracts`) and `google.golang.org/grpc`. The gateway's composition root serves `controlv1.RegisterWorkerRegistryServer(grpcServer, registry)` on `registry_listen`, puts `route.Middleware(router)` in the chain's `Router` slot and `route.Proxy(router, route.Options{})` in its `Proxy` slot, and uses `router.Ready` as `Deps.Ready`.
 
 ---
 
 ## 1. Why now
 
-Until now your gateway has one upstream, written in its configuration. In Pass 7 you run several engines: two decode workers and a prefill worker in the disaggregated layout of `L10.6`, a small and a large model, and soon a canary of a new model version (`dur.12`). Engines come and go: a pod is rescheduled, a node is drained, a worker crashes mid-stream (drill `ops.01`). The gateway needs to know who is alive, pick a worker per request in a way that keeps prefix caches warm without overloading anyone, move away from a dead worker before the client notices, and never stitch two workers' tokens into one answer. This module is that router.
+Until now the gateway has one upstream, written in its configuration. In Pass 7 there are several engines: two decode workers and a prefill worker in the disaggregated layout of `L10.6`, a small and a large model, and soon a canary of a new model version (`dur.12`). Engines come and go: a pod is rescheduled, a node is drained, a worker crashes mid-stream (drill `ops.01`). The gateway needs to know who is alive, pick a worker per request in a way that keeps prefix caches warm without overloading anyone, move away from a dead worker before the client notices, and never stitch two workers' tokens into one answer. This module is that router.
 
 ## 2. Principles
 
@@ -103,7 +92,7 @@ For a non-streamed request, each step except the last asks its model (with `logp
 | $-0.5$ | 0.820 | 0.920 | 0.935 |
 | $0.0$ | 1.000 | 1.100 | 0.935 |
 
-At $\tau = -0.5$ the cascade matches always-large accuracy (0.935) at 92% of its cost; always-large costs 1.0 and the full sweep shows where the knee is for your models.
+At $\tau = -0.5$ the cascade matches always-large accuracy (0.935) at 92% of its cost; always-large costs 1.0 and the full sweep shows where the knee is for a given pair of models.
 
 ### 2.7 Disaggregated prefill and decode
 
@@ -124,8 +113,6 @@ Three unified workers of `smol` heartbeat at $t_0$ with queue depths `a = 2`, `b
 3. `a` heartbeats again at $t_0 + 2$ s and $t_0 + 4$ s; `b` and `c` send nothing more.
 4. At $t_0 + 5.999$ s, `b` and `c` have missed fewer than 3 heartbeats ($5.999 < 6$): all three are listed.
 5. At $t_0 + 6$ s, $6 - 0 \ge 3 \times 2$: `b` and `c` are evicted; `a`'s last heartbeat was 2 s ago. Request `r3` goes to **a**.
-
-This is `TestHandExample`.
 
 ## 4. The interface
 
@@ -159,7 +146,7 @@ func RoutesHandler(rt *Router) http.Handler                // GET, PUT /admin/v1
 func DrainHandler(reg *Registry) http.Handler              // POST /admin/v1/models/{model}:drain
 ```
 
-`Route` takes the cascade step and returns `Target`, as sketched in the catalog; the cascade's `Accept` is parsed from the route's `accept_if` strings rather than given as a Go function, because routes arrive through the admin API as JSON (DEVIATIONS B93-06). `X-TL-Route` carries the chosen worker id only for keys with the `debug` scope.
+`Route` takes the cascade step and returns `Target`; the cascade's `Accept` is parsed from the route's `accept_if` strings rather than given as a Go function, because routes arrive through the admin API as JSON. `X-TL-Route` carries the chosen worker id only for keys with the `debug` scope.
 
 ### What the tests check
 
@@ -214,7 +201,7 @@ func DrainHandler(reg *Registry) http.Handler              // POST /admin/v1/mod
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | affinity on a prefix key | llm-d and KServe KV-cache-aware schedulers, SGLang router | scoring workers by the KV blocks they actually hold, not by a hash | [llm-d](https://github.com/llm-d/llm-d) (free), [SGLang router](https://github.com/sgl-project/sglang) (free) |
 | backends and failover | saige `provider/router` | immutable model configurations, sticky selection for prompt-cache affinity, failover only before commitment | saige `provider/router` |

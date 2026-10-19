@@ -1,41 +1,33 @@
-<!-- ol:module M00.4 -->
 # Polynomials, Horner, stable quadratic roots
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M00.4` · build · Python · Pass 2 · 2 to 3 h |
-| **You build** | `python/tinyllm/num/poly.py`: `horner`, `quadratic_roots` |
+| **Module** | `M00.4` · build · Python · Pass 2 · 1 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/num/poly.py`](../../../../course/solutions/python/tinyllm/num/poly.py): `horner`, `quadratic_roots` |
 | **Contract** | [`course/contracts/py/tinyllm/num/poly.pyi`](../../../../course/contracts/py/tinyllm/num/poly.pyi) |
-| **Tests** | `course/tests/M00.4/test_poly.py` (what they check: section 4) |
 | **Needs** | nothing to call. Reading: `M00.1` (exponents), `lang.01` (numpy arrays) |
 | **Used by** | `M02.1` evaluates its range-reduced Taylor polynomial for $e^x$ with `horner` · later `M09.6` ports that code to C as `tl_expf` |
-| **Milestone** | `MS-P2` (the Pass 2 gate) |
 | **Optional depth** | OpenStax, *College Algebra 2e* (free), ch. 5 (polynomial functions); Higham, *Accuracy and Stability of Numerical Algorithms*, ch. 5 (Horner's error bound); Press et al., *Numerical Recipes*, section 5.6 (quadratic and cubic equations) |
 
 ## Key Takeaways
 
-- A polynomial is its list of **coefficients**; in this course they are stored in **ascending** order of power, so `coeffs[k]` multiplies $x^k$ (`test_coefficients_are_ascending`).
-- **Horner's rule** evaluates a degree-$n$ polynomial with $n$ multiplications and $n$ additions by nesting, $c_0 + x(c_1 + x(c_2 + \cdots))$, and its error is bounded by $\gamma_{2n}\sum_k |c_k||x|^k$ (`test_hand_example_horner`, `test_horner_within_error_bound`).
-- On integer coefficients and points it is **exact** as long as every partial result stays below $2^{53}$ (`test_horner_exact_on_integer_polynomials`).
-- The textbook quadratic formula **cancels** when $b^2 \gg 4ac$: the small root comes out with few or no correct digits. Computing $q = -(b + \operatorname{sign}(b)\sqrt{b^2 - 4ac})/2$ and the roots $q/a$ and $c/q$ never subtracts nearly equal numbers (`test_hand_example_roots`, `test_roots_golden_cancellation`).
-- Two edge cases break naive code: $\operatorname{sign}(0)$ must count as $+1$, and $b^2$ overflows for $|b| \approx 10^{200}$ unless the coefficients are scaled first (`test_b_zero`, `test_huge_b_does_not_overflow`).
+- A polynomial is its list of **coefficients**; in this course they are stored in **ascending** order of power, so `coeffs[k]` multiplies $x^k$.
+- **Horner's rule** evaluates a degree-$n$ polynomial with $n$ multiplications and $n$ additions by nesting, $c_0 + x(c_1 + x(c_2 + \cdots))$, and its error is bounded by $\gamma_{2n}\sum_k |c_k||x|^k$.
+- On integer coefficients and points it is **exact** as long as every partial result stays below $2^{53}$.
+- The textbook quadratic formula **cancels** when $b^2 \gg 4ac$: the small root comes out with few or no correct digits. Computing $q = -(b + \operatorname{sign}(b)\sqrt{b^2 - 4ac})/2$ and the roots $q/a$ and $c/q$ never subtracts nearly equal numbers.
+- Two edge cases break naive code: $\operatorname{sign}(0)$ must count as $+1$, and $b^2$ overflows for $|b| \approx 10^{200}$ unless the coefficients are scaled first.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M00.4              # stubs python/tinyllm/num/poly.py into your repo
-ol tests M00.4              # read the test catalog first: rung R0, you write no tests here
-ol check M00.4              # exit code is the verdict
-ol diff  M00.4              # after passing: your code against the reference
-```
+Sections 1 and 2 build Horner's rule and the stable quadratic formula from first principles, including why the school formula fails in floating point. Section 3 works both by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Every activation function and softmax in your models calls $e^x$, and so far numpy has computed it for you. In Pass 6 your C kernels (`L9.2` softmax, `L9.6` SiLU) need their own `tl_expf`, and `M09.6` builds it the way every math library does: reduce $x$ to a small range, then evaluate a **polynomial** that approximates $e^x$ there. `M02.1` first derives those polynomials (Taylor series) and evaluates them in Python. Both evaluate with Horner's rule, the subject of this module, and both depend on how evaluation order changes the rounding error. The second half of the module is the smallest example of the course's numerical theme: a formula that is correct on paper and wrong in floating point. The quadratic formula you learned in school loses the small root of $x^2 - 10^8 x + 1$ entirely, and a two-line rewrite fixes it.
+Every activation function and softmax in the models calls $e^x$, and so far numpy has computed it for you. In Pass 6 the C kernels (`L9.2` softmax, `L9.6` SiLU) need their own `tl_expf`, and `M09.6` builds it the way every math library does: reduce $x$ to a small range, then evaluate a **polynomial** that approximates $e^x$ there. `M02.1` first derives those polynomials (Taylor series) and evaluates them in Python. Both evaluate with Horner's rule, the subject of this module, and both depend on how evaluation order changes the rounding error. The second half of the module is the smallest example of the course's numerical theme: a formula that is correct on paper and wrong in floating point. The quadratic formula you learned in school loses the small root of $x^2 - 10^8 x + 1$ entirely, and a two-line rewrite fixes it.
 
 ## 2. Principles
 
@@ -80,7 +72,7 @@ Each step rounds twice, once for the multiplication and once for the addition, e
 
 $$|\hat p(x) - p(x)| \le \gamma_{2n} \sum_{k=0}^n |c_k|\,|x|^k, \qquad \gamma_{2n} = \frac{2nu}{1 - 2nu} \approx 2nu .$$
 
-The right side is the size of the largest terms, not of the result. When terms of opposite sign nearly cancel, near a root, the *relative* error of $\hat p$ can be large: that comes from the polynomial being ill-conditioned there, and no evaluation order fixes it. When all the inputs are integers and every partial result `acc` stays below $2^{53}$, no step rounds at all and Horner is **exact**; the tests check both facts.
+The right side is the size of the largest terms, not of the result. When terms of opposite sign nearly cancel, near a root, the *relative* error of $\hat p$ can be large: that comes from the polynomial being ill-conditioned there, and no evaluation order fixes it. When all the inputs are integers and every partial result `acc` stays below $2^{53}$, no step rounds at all and Horner is **exact**.
 
 ### 2.4 The quadratic formula
 
@@ -110,7 +102,7 @@ where the second root comes from Vieta: $x_1 x_2 = c/a$ and $x_1 = q/a$ give $x_
 | 2 | 1 | $3 \cdot 2 + 2$ | 8 |
 | 3 | 0 | $8 \cdot 2 + 1$ | **17** |
 
-Check: $1 + 4 + 12 = 17$. Two multiplications, two additions. At $x = 0, 1, -1$ the values are $1, 6, 2$: `test_hand_example_horner`.
+Check: $1 + 4 + 12 = 17$. Two multiplications, two additions. At $x = 0, 1, -1$ the values are $1, 6, 2$.
 
 **A friendly quadratic.** $x^2 - 5x + 6$: $D = 25 - 24 = 1$, $b = -5 < 0$ so $\operatorname{sign}(b) = -1$, $q = -\tfrac12(-5 - 1) = 3$. Roots $q/a = 3$ and $c/q = 6/3 = 2$, sorted $(2, 3)$; Vieta: $2 + 3 = 5 = -b/a$, $2 \cdot 3 = 6 = c/a$.
 
@@ -119,8 +111,6 @@ Check: $1 + 4 + 12 = 17$. Two multiplications, two additions. At $x = 0, 1, -1$ 
 - $\sqrt{10^{16} - 4} = 10^8 \sqrt{1 - 4 \cdot 10^{-16}} \approx 10^8 - 2 \cdot 10^{-8}$. Near $10^8$ consecutive float64 values are $1.49 \times 10^{-8}$ apart, so it rounds to $10^8 - 1.49 \times 10^{-8}$.
 - Textbook small root: $(10^8 - (10^8 - 1.49 \times 10^{-8}))/2 = 7.45 \times 10^{-9}$. The true value is $1.00 \times 10^{-8}$: **25% wrong**, with every digit lost to the subtraction.
 - Stable: $q = -\tfrac12(-10^8 - (10^8 - 1.49 \times 10^{-8})) = 10^8$ to 16 digits, so $x = q/a = 10^8$ and $x = c/q = 1/10^8 = 10^{-8}$, correct to the last digit.
-
-Both quadratics are `test_hand_example_roots`.
 
 ## 4. The interface
 
@@ -174,9 +164,9 @@ def quadratic_roots(a: float, b: float, c: float) -> tuple[float, float]: ...   
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `horner` | Cephes `polevl` and `p1evl` | the Horner loop behind many C math libraries, with descending coefficients and an implicit leading 1 | Cephes `polevl.c` |
 | `horner` in an `expf` | musl and glibc `expf` | a short polynomial after range reduction, evaluated with Estrin-style pairing for instruction-level parallelism | musl `src/math/expf.c` |
-| `horner` over arrays | `numpy.polynomial.polynomial.polyval` | ascending coefficients like yours, plus fitting, roots, and Chebyshev bases | numpy `numpy/polynomial/` |
+| `horner` over arrays | `numpy.polynomial.polynomial.polyval` | ascending coefficients like the solution's, plus fitting, roots, and Chebyshev bases | numpy `numpy/polynomial/` |
 | `quadratic_roots` | *Numerical Recipes* section 5.6; Kahan's notes on the discriminant | the same $q$ trick, and an extra-precise $b^2 - 4ac$ for nearly double roots | Kahan, "On the Cost of Floating-Point Computation Without Extra-Precise Arithmetic" (2004) |

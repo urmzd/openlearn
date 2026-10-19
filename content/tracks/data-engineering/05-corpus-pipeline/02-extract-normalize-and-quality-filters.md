@@ -1,4 +1,3 @@
-<!-- ol:module data.02 -->
 # Extract, normalize, quality filters (generator stages)
 
 ## Overview
@@ -6,30 +5,23 @@
 | | |
 |---|---|
 | **Module** | `data.02` · build · Python · Pass 3 · 4 to 6 h |
-| **You build** | `python/corpus/stage.py`: `Doc`, `Stage`, `compose`, `extract`; `python/corpus/filter.py`: `normalize_text`, `normalize_unicode`, `length_filter`, `identify_lang`, `lang_filter`, `gopher_reasons`, `gopher_rules`, `dup_ngram_char_frac`, `repetition_filter`, `ppl_filter`, `build_filters` |
+| **Solution** | [`python/corpus/stage.py`](../../../../course/solutions/python/corpus/stage.py): `Doc`, `Stage`, `compose`, `extract`; [`python/corpus/filter.py`](../../../../course/solutions/python/corpus/filter.py): `normalize_text`, `normalize_unicode`, `length_filter`, `identify_lang`, `lang_filter`, `gopher_reasons`, `gopher_rules`, `dup_ngram_char_frac`, `repetition_filter`, `ppl_filter`, `build_filters` |
 | **Contract** | [`course/contracts/py/corpus/stage.pyi`](../../../../course/contracts/py/corpus/stage.pyi) · [`course/contracts/py/corpus/filter.pyi`](../../../../course/contracts/py/corpus/filter.pyi) · config: the `filters` table of [`corpus-config.schema.json`](../../../../course/contracts/formats/corpus-config.schema.json) |
-| **Tests** | `course/tests/data.02/` (what they check: section 4); fixtures `course/fixtures/data.02/` (200 golden documents) |
-| **Needs** | `data.01` `read_raw` and the fetch `Manifest` (or `--ref-deps`) · reading: `lang.08` |
-| **Used by** | `data.03` exact dedup consumes your stages' output and builds on `Doc` and `compose` · `data.04` near dedup, `data.05` PII scrub, and `data.06` sharding are stages of the same type, and C1 plugs the `L2.1` n-gram model into `ppl_filter` |
-| **Milestone** | `MS-corpus` |
+| **Needs** | `data.01` `read_raw` and the fetch `Manifest` · reading: `lang.08` |
+| **Used by** | `data.03` exact dedup consumes these stages' output and builds on `Doc` and `compose` · `data.04` near dedup, `data.05` PII scrub, and `data.06` sharding are stages of the same type, and C1 plugs the `L2.1` n-gram model into `ppl_filter` |
 | **Optional depth** | Rae et al., *Scaling Language Models: Methods, Analysis & Insights from Training Gopher* (2021), appendix A.1 (the quality rules, free); Penedo et al., *The FineWeb Datasets* (2024), section 3; Unicode Standard Annex #15, *Unicode Normalization Forms* (free); David Beazley, "Generator Tricks for Systems Programmers" (free) |
 
 ## Key Takeaways
 
-- A stage is a function from an iterator of documents to an iterator of documents. Written as a generator, a whole pipeline holds one document at a time, whatever the corpus size (`test_stages_are_lazy`, `test_pipeline_memory_stays_flat`).
-- Normalization is NFC (not NFKC), one line-ending convention, no control characters, and it is **idempotent**: normalizing twice changes nothing (`test_normalize_rules_one_by_one`, `test_normalize_is_idempotent`).
-- Language identification by stop-word share is a vote: each stop word votes for every language that lists it, and the winner's share of the votes is the confidence (`test_hand_example_normalize_and_identify`, `test_identify_lang_hand_labelled`).
-- The Gopher rules are seven cheap statistics with published thresholds; each one catches a different kind of junk, and every boundary is inclusive (`test_gopher_rules_hand_labelled`, `test_gopher_boundaries_are_the_papers`).
-- The configured pipeline is checked end to end on 200 documents whose fate was decided when they were written, byte for byte (`test_golden_200_documents`).
+- A stage is a function from an iterator of documents to an iterator of documents. Written as a generator, a whole pipeline holds one document at a time, whatever the corpus size.
+- Normalization is NFC (not NFKC), one line-ending convention, no control characters, and it is **idempotent**: normalizing twice changes nothing.
+- Language identification by stop-word share is a vote: each stop word votes for every language that lists it, and the winner's share of the votes is the confidence.
+- The Gopher rules are seven cheap statistics with published thresholds; each one catches a different kind of junk, and every boundary is inclusive.
+- The configured pipeline is deterministic end to end: on a corpus of documents whose fate was decided when they were written, the kept ids, their order, and every output byte are fixed.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start data.02              # stubs python/corpus/stage.py and filter.py
-ol tests data.02              # read the test catalog first
-ol check data.02              # needs data.01 passing (or --ref-deps)
-ol diff  data.02              # after passing: your code against the reference
-```
+Sections 1 to 3 build the stage abstraction and each filter from first principles and work every statistic by hand. Section 4 fixes the interface and lists the cases a correct solution must handle. Section 5 walks through the solution in `stage.py` and `filter.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
@@ -71,7 +63,7 @@ The same visible text has many byte encodings. `normalize_text` maps them to one
 | 5 | runs of 3 or more `\n` become 2 | one blank line separates paragraphs (data.03 splits on it) |
 | 6 | strip white space at both ends | |
 
-NFKC would also rewrite "compatibility" characters: the ligature `ﬁ` becomes `fi`, `²` becomes `2`, full-width `Ａ` becomes `A`. That changes what the text says, so this pipeline uses NFC and leaves the tokenizer to see what was written. Removing only category Cc keeps format characters (Cf) such as the zero-width joiner U+200D, which holds multi-person emoji together. The order matters for the law the tests check, **idempotence** (`normalize_text(normalize_text(s)) == normalize_text(s)`): if NFC ran before step 2, deleting a BOM between `a` and a combining accent would leave an uncomposed `a` plus accent that a second pass would compose. A document that normalizes to the empty string is dropped by `normalize_unicode`.
+NFKC would also rewrite "compatibility" characters: the ligature `ﬁ` becomes `fi`, `²` becomes `2`, full-width `Ａ` becomes `A`. That changes what the text says, so this pipeline uses NFC and leaves the tokenizer to see what was written. Removing only category Cc keeps format characters (Cf) such as the zero-width joiner U+200D, which holds multi-person emoji together. The order matters for the law every rerun relies on, **idempotence** (`normalize_text(normalize_text(s)) == normalize_text(s)`): if NFC ran before step 2, deleting a BOM between `a` and a combining accent would leave an uncomposed `a` plus accent that a second pass would compose. A document that normalizes to the empty string is dropped by `normalize_unicode`.
 
 ### 2.3 Language identification by stop-word share
 
@@ -186,69 +178,286 @@ def build_filters(filters: Mapping[str, Any], lm: Any = None) -> Stage: ...
 
 `STOPWORDS`, `GOPHER_STOPWORDS`, `GOPHER_RULES`, `BULLETS`, and `ELLIPSES` are module constants with the values of section 2. Standard library only (`re`, `unicodedata`, `collections`, `dataclasses`); `extract` reads through `corpus.fetch.read_raw`.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | What must hold | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_normalize_and_identify` | unit | the section 3 normalization and `("en", 5/7)` | you and the test agree on both definitions |
-| `test_normalize_rules_one_by_one` | unit | one hand-labelled case per rule of 2.2, including NFC not NFKC and a kept ZWJ | each rule is what the corpus will look like |
-| `test_normalize_is_idempotent` | property | 500 seeded random strings over the rules' special characters | reruns and re-normalized text never drift |
-| `test_normalize_unicode_drops_empty_and_keeps_identity` | unit | an empty-after-normalization document is dropped; id and meta kept | no empty rows in shards |
-| `test_length_filter_bounds_are_inclusive` | boundary | `min_chars` and `max_chars` both pass | the config's numbers mean what they say |
-| `test_identify_lang_hand_labelled` | unit | English, German, French, Dutch, digits, one stop word | the `lang` column of the shards |
-| `test_identify_lang_ties_go_to_the_first_code` | boundary | "de de" is `("es", 0.25)` | the answer never depends on dict order |
-| `test_identify_lang_uses_the_stopword_table` | property | confidence is $k/(k + j)$ for your own table | the formula, separate from the word lists |
-| `test_lang_filter_threshold_is_inclusive_and_records_meta` | boundary | $c =$ `min_conf` is kept; meta set on a new document, input untouched | stages share documents safely |
-| `test_gopher_rules_hand_labelled` | unit | one text failing exactly each rule, a clean story, punctuated words, the empty text | each rule catches its own junk |
-| `test_gopher_boundaries_are_the_papers` | boundary | 50 words, ratio 0.1, 30% ellipsis lines, 90% bullets all pass | real text at every boundary survives |
-| `test_gopher_stopwords_count_occurrences_after_stripping_punctuation` | boundary | "The," and "(the)" count; one occurrence is not enough | prose with punctuation passes |
-| `test_gopher_rules_reject_unknown_thresholds_when_built` | boundary | `min_word=10` raises when the stage is built | config typos fail early |
-| `test_dup_ngram_hand_example` | unit | the section 3 value $18/22$ and edge cases | the repetition statistic itself |
-| `test_repetition_filter_keeps_the_boundary` | boundary | $f_n =$ `max_frac` is kept; `n = 0` rejected | the threshold is inclusive |
-| `test_ppl_filter_takes_any_perplexity_object` | unit | a fake model; equal to `max_ppl` kept; `meta["ppl"]` set | C1 plugs in the L2.1 model |
-| `test_compose_runs_left_to_right` | unit | `compose(a, b)` is b after a; `compose()` is the identity | normalization runs before counting |
-| `test_stages_are_lazy` | property | 50 documents taken from an endless source pull exactly 50 | no stage collects its input |
-| `test_pipeline_memory_stays_flat` | property | 2,000 documents through the whole pipeline peak under 0.5 MB of allocations | the pipeline fits an activity's memory limit |
-| `test_golden_200_documents` | conformance | 200 generated documents: kept ids, order, `lang`, and the sha256 of every output text | the configured pipeline, byte for byte |
-| `test_build_filters_validates_the_table` | boundary | unknown key, unknown Gopher name, `ppl` without a model; `ppl` with a model | reviewed config, early errors |
-| `test_gopher_rule_names_are_the_contract` | unit | `GOPHER_RULES` names and order | the config and the datasheet use these names |
-| `test_extract_numbers_documents_per_source_across_parts` | unit | ids `a:0` to `a:2` across two parts, then `b:0`; meta from the raw line | stable ids for every later stage |
-| `test_extract_skips_quarantined_sources` | boundary | a quarantined entry contributes nothing, even with parts on disk | bytes that failed their checksum never enter |
+| The hand example | unit | the section 3 normalization and `("en", 5/7)` | both definitions are exactly the ones above |
+| Each normalization rule alone | unit | one hand-labelled case per rule of 2.2, including NFC not NFKC and a kept ZWJ | each rule is what the corpus will look like |
+| Normalizing twice | property | 500 seeded random strings over the rules' special characters normalize to a fixed point | reruns and re-normalized text never drift |
+| A document empty after normalization | unit | it is dropped; other documents keep their id and meta | no empty rows in shards |
+| Length bounds | boundary | `min_chars` and `max_chars` both pass | the config's numbers mean what they say |
+| Hand-labelled languages | unit | English, German, French, Dutch, digits only, a single stop word | the `lang` column of the shards |
+| Tied languages | boundary | "de de" is `("es", 0.25)` | the answer never depends on dict order |
+| The confidence formula | property | confidence is $k/(k + j)$ for any stop-word table | the formula, separate from the word lists |
+| Language threshold and meta | boundary | $c =$ `min_conf` is kept; meta set on a new document, input untouched | stages share documents safely |
+| One text per Gopher rule | unit | a text failing exactly each rule, a clean story, punctuated words, the empty text | each rule catches its own junk |
+| The paper's boundaries | boundary | 50 words, ratio 0.1, 30% ellipsis lines, 90% bullets all pass | real text at every boundary survives |
+| Punctuated stop words | boundary | "The," and "(the)" count; one occurrence is not enough | prose with punctuation passes |
+| A misspelled threshold | boundary | `min_word=10` raises when the stage is built | config typos fail early |
+| Repetition hand example | unit | the section 3 value $18/22$ and edge cases | the repetition statistic itself |
+| Repetition boundary | boundary | $f_n =$ `max_frac` is kept; `n = 0` rejected | the threshold is inclusive |
+| Any perplexity object | unit | a fake model works; equal to `max_ppl` kept; `meta["ppl"]` set | C1 plugs in the L2.1 model |
+| Composition order | unit | `compose(a, b)` is b after a; `compose()` is the identity | normalization runs before counting |
+| Laziness | property | 50 documents taken from an endless source pull exactly 50 | no stage collects its input |
+| Flat memory | property | 2,000 documents through the whole pipeline peak under 0.5 MB of allocations | the pipeline fits an activity's memory limit |
+| A golden corpus of 200 documents | conformance | kept ids, order, `lang`, and the sha256 of every output text | the configured pipeline, byte for byte |
+| Validating the config table | boundary | unknown key, unknown Gopher name, `ppl` without a model raise; `ppl` with a model works | reviewed config, early errors |
+| Rule names | unit | `GOPHER_RULES` names and order | the config and the datasheet use these names |
+| Extract numbering | unit | ids `a:0` to `a:2` across two parts, then `b:0`; meta from the raw line | stable ids for every later stage |
+| Quarantined sources | boundary | a quarantined entry contributes nothing, even with parts on disk | bytes that failed their checksum never enter |
 
-The golden corpus (`course/oracle/data.02/golden_corpus.py`) has 125 documents to keep, 15 of them noisy copies of good stories (CRLF, NFD accents, a BOM, controls, trailing blanks) whose expected output is the clean story, and 75 to drop, each built to fail one named rule by a wide margin: 5 empty, 5 too short in characters, 15 in German, French, Spanish, or Dutch, 12 under 50 words, 8 hashtag-heavy, 8 bullet lists, 7 trailing off in ellipses, 7 a third numbers, and 8 repeating one sentence six times.
+The golden corpus has 125 documents to keep, 15 of them noisy copies of good stories (CRLF, NFD accents, a BOM, controls, trailing blanks) whose expected output is the clean story, and 75 to drop, each built to fail one named rule by a wide margin: 5 empty, 5 too short in characters, 15 in German, French, Spanish, or Dutch, 12 under 50 words, 8 hashtag-heavy, 8 bullet lists, 7 trailing off in ellipses, 7 a third numbers, and 8 repeating one sentence six times.
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **The corpus does not fit in memory, so no stage may hold it.** The only shape that guarantees this is "pull one, decide, emit": an iterator in, an iterator out. A Python generator is exactly that, so every stage is a generator and the pipeline is function composition.
+2. **Stages share documents, so documents must be values.** A stage cannot know whether an upstream caller still holds the `Doc` it was handed. Making `Doc` frozen and building new ones with `dataclasses.replace` turns "who else sees this mutation?" into a question that never comes up.
+3. **Every later statistic counts characters, so normalization runs first, and it must be a fixed point.** If normalizing twice could change the text, a rerun or a second pipeline over already-clean shards would drift. Idempotence forces the order of section 2.2: delete before composing, because a deletion can bring a base letter and its combining mark together (the BOM case), and NFC must see the final neighbours.
+4. **A language vote must not depend on iteration order.** Ties are broken by the code, so `min` over `(-hits, code)` gives the most hits and, among equals, the alphabetically first code, whatever order the dict happens to have.
+5. **A threshold in a config is a promise about a boundary.** Every comparison is inclusive on the "keep" side (`<=` a maximum, `>=` a minimum), so the number written in the config is the last value that passes, which is how the paper states them.
+6. **A config typo must fail before any document flows.** The Gopher stage checks threshold names when it is built, against the keyword defaults of `gopher_reasons` itself, so the list of valid names cannot drift from the function.
+7. **Repetition is about coverage, not counts.** A repeated trigram makes every occurrence suspicious, the first included, so the statistic marks every word inside any occurrence of a duplicated n-gram and weighs it by its length (section 3 gives $18/22$).
+
+### 5.2 The code, annotated
+
+The document type and composition ([`stage.py`](../../../../course/solutions/python/corpus/stage.py)):
+
+```python
+@dataclass(frozen=True, slots=True)
+class Doc:
+    id: str  # "<source_id>:<k>", k the 0-based position in the source's raw files
+    source_id: str
+    text: str
+    meta: Mapping[str, Any] = field(default_factory=dict)  # a fresh dict per Doc, never shared
+
+
+Stage = Callable[[Iterator[Doc]], Iterator[Doc]]
+
+
+def compose(*stages: Stage) -> Stage:
+    def run(docs: Iterator[Doc]) -> Iterator[Doc]:
+        out: Iterator[Doc] = iter(docs)   # accept any iterable, hand stages an iterator
+        for s in stages:
+            out = s(out)                  # wraps generators; nothing runs yet
+        return out                        # compose() returns iter(docs): the identity
+
+    return run
+```
+
+`compose` only builds a chain of generator objects. No document moves until the caller iterates the result, and then each `next()` pulls one document through every stage.
+
+`extract` numbers documents per source and skips quarantined sources by status, never by looking at the disk:
+
+```python
+def extract(manifest: Manifest) -> Iterator[Doc]:
+    for entry in manifest.entries:
+        if entry.status == "quarantined":   # bytes that failed their checksum never enter
+            continue
+        sid = entry.source.id
+        for k, rec in enumerate(read_raw(entry.raw_dir)):   # k restarts at 0 per source, runs across parts
+            yield Doc(
+                id=f"{sid}:{k}",
+                source_id=sid,
+                text=rec["text"],
+                meta={"url": rec["url"], "fetched_at": rec["fetched_at"],
+                      "license_spdx": rec["license_spdx"]},
+            )
+```
+
+Normalization ([`filter.py`](../../../../course/solutions/python/corpus/filter.py)), in the order idempotence requires:
+
+```python
+def normalize_text(text: str) -> str:
+    text = text.replace("\r\n", "\n").replace("\r", "\n")   # CRLF first, so it is not two newlines
+    text = "".join(
+        c
+        for c in text
+        # keep LF and TAB; drop BOM and every Cc control. Cf (e.g. ZWJ U+200D) survives.
+        if c in "\n\t" or (c != "﻿" and unicodedata.category(c) != "Cc")
+    )
+    text = unicodedata.normalize("NFC", text)   # after deletion: neighbours are final
+    text = "\n".join(line.rstrip(" \t") for line in text.split("\n"))
+    text = re.sub(r"\n{3,}", "\n\n", text)      # one blank line between paragraphs
+    return text.strip()
+
+
+def normalize_unicode(docs: Iterator[Doc]) -> Iterator[Doc]:
+    for doc in docs:
+        text = normalize_text(doc.text)
+        if text:   # empty after normalization: dropped
+            # reuse the same object when nothing changed; otherwise a new Doc
+            yield doc if text == doc.text else dataclasses.replace(doc, text=text)
+```
+
+Language identification is a vote; `min` with a compound key makes ties deterministic:
+
+```python
+_WORD = re.compile(r"[^\W\d_]+")   # word characters minus digits and underscore: letters only
+
+def identify_lang(text: str) -> tuple[str, float]:
+    words = _WORD.findall(text.lower())
+    hits = {lang: 0 for lang in STOPWORDS}
+    for w in words:
+        for lang, sw in STOPWORDS.items():
+            if w in sw:
+                hits[lang] += 1          # a shared word ("in", "a", "de") votes for every language listing it
+    total = sum(hits.values())
+    if total < 2:
+        return "und", 0.0                # too little evidence to vote
+    best = min(hits, key=lambda lang: (-hits[lang], lang))   # most hits, then first code
+    return best, hits[best] / total
+
+
+def lang_filter(min_conf: float = 0.65, langs: Sequence[str] = ("en",)) -> Stage:
+    keep = frozenset(langs)
+
+    def stage(docs: Iterator[Doc]) -> Iterator[Doc]:
+        for doc in docs:
+            lang, conf = identify_lang(doc.text)
+            if lang in keep and conf >= min_conf:      # inclusive
+                yield _with_meta(doc, lang=lang, lang_conf=conf)   # new Doc, new meta dict
+
+    return stage
+```
+
+`_with_meta` is `dataclasses.replace(doc, meta={**doc.meta, **kv})`: a copy of the mapping, never an assignment into the old one.
+
+The Gopher rules collect every failure in contract order, so the datasheet can count drops per rule:
+
+```python
+def gopher_reasons(text: str, *, min_words: int = 50, ...) -> list[str]:
+    words = text.split()
+    n = len(words)
+    failed: list[str] = []
+    if not min_words <= n <= max_words:
+        failed.append("words")
+    mean = sum(len(w) for w in words) / n if n else 0.0
+    if not n or not min_mean_word_len <= mean <= max_mean_word_len:
+        failed.append("mean_word_len")
+    if n:   # ratios per word are undefined for an empty text
+        hashes = text.count("#") / n
+        dots = (text.count("...") + text.count("…")) / n
+        if hashes > max_symbol_ratio or dots > max_symbol_ratio:
+            failed.append("symbol_ratio")
+    lines = [x.strip() for x in text.split("\n") if x.strip()]   # non-blank lines, stripped both ends
+    if lines:
+        if sum(x.startswith(BULLETS) for x in lines) / len(lines) > max_bullet_lines:
+            failed.append("bullet_lines")
+        if sum(x.endswith(ELLIPSES) for x in lines) / len(lines) > max_ellipsis_lines:
+            failed.append("ellipsis_lines")
+    # "holds at least one letter", not w.isalpha(): "cat," is a word
+    if not n or sum(any(c.isalpha() for c in w) for w in words) / n < min_alpha_words:
+        failed.append("alpha_words")
+    # occurrences, after lowercasing and stripping surrounding punctuation: "The," counts
+    stops = sum(w.lower().strip("\"'.,;:!?()[]{}") in GOPHER_STOPWORDS for w in words)
+    if stops < min_stopwords:
+        failed.append("stopwords")
+    return failed
+
+
+def gopher_rules(**thresholds: float) -> Stage:
+    known = set(gopher_reasons.__kwdefaults__)   # the valid names come from the function itself
+    bad = sorted(set(thresholds) - known)
+    if bad:
+        raise ValueError(f"unknown Gopher threshold(s) {bad}; known: {sorted(known)}")   # at build time
+    def stage(docs: Iterator[Doc]) -> Iterator[Doc]:
+        for doc in docs:
+            if not gopher_reasons(doc.text, **thresholds):
+                yield doc
+    return stage
+```
+
+Repetition marks coverage with one boolean per word:
+
+```python
+def dup_ngram_char_frac(text: str, n: int) -> float:
+    words = text.split()
+    if len(words) < n or n < 1:
+        return 0.0
+    grams = [tuple(words[i : i + n]) for i in range(len(words) - n + 1)]
+    counts = Counter(grams)
+    covered = [False] * len(words)
+    for i, g in enumerate(grams):
+        if counts[g] >= 2:                 # every occurrence, the first included
+            for j in range(i, i + n):
+                covered[j] = True          # overlapping occurrences do not double-count
+    total = sum(len(w) for w in words)     # characters without spaces
+    return sum(len(w) for w, c in zip(words, covered) if c) / total
+```
+
+`repetition_filter` rejects `n < 1` when built and keeps documents with $f_n \le$ `max_frac`; `ppl_filter` keeps `lm.perplexity(text) <= max_ppl` and records `meta["ppl"]` through `_with_meta`. `build_filters` validates the table's keys, applies the schema defaults, and appends `ppl_filter` only when `ppl.max_ppl` is present, raising if no `lm` was passed:
+
+```python
+    stages: list[Stage] = [
+        normalize_unicode,                                   # first: everything after counts clean text
+        length_filter(int(filters.get("min_chars", 50)), int(filters.get("max_chars", 100_000))),
+        lang_filter(float(filters.get("lang_min_conf", 0.65)), tuple(filters.get("langs", ("en",)))),
+        gopher_rules(**dict(filters.get("gopher", {}))),     # raises here on a misspelled name
+        repetition_filter(int(rep.get("n", 3)), float(rep.get("max_frac", 0.3))),
+    ]
+    # ...
+    return compose(*stages)
+```
+
+The cheap filters come before the expensive ones: a length check is $O(1)$, language and Gopher are one pass, and perplexity (a model call) only sees what survived.
+
+Full solution: [`stage.py`](../../../../course/solutions/python/corpus/stage.py), [`filter.py`](../../../../course/solutions/python/corpus/filter.py).
+
+### 5.3 Why this solution
+
+- **Cost.** Every stage is linear in the document's length: normalization is a few passes over the string, `identify_lang` is $O(N \cdot 7)$ set lookups, Gopher is a handful of passes, and `dup_ngram_char_frac` is $O(L \cdot n)$ time and space for one document. Memory across the corpus is $O(1)$ documents, which is what lets the pipeline run inside a durable activity with a memory limit.
+- **Generators over batch lists.** A list-based pipeline (`docs = [d for d in docs if ...]`) is simpler to debug but holds the whole corpus at every stage, and never returns on an endless source. Batching (read 1,000, filter, emit) bounds memory but reads ahead, so taking 50 documents pulls 1,000. Generators give exact pull-through.
+- **Stop-word votes over a trained classifier.** fastText's `lid.176` is far more accurate, but it is a 126 MB model and a dependency. For a corpus whose sources are already chosen to be English, a table of 25 words per language catches the stray foreign document, has no dependency, and is explainable from a table you can read. The cost is a less calibrated confidence on short texts.
+- **NFC over NFKC.** NFKC would merge more duplicates, but it rewrites meaning (`x²` becomes `x2`). Losing a few near-duplicates is cheaper than teaching the model text nobody wrote.
+- **Reasons as a list over a boolean.** `gopher_reasons` returns every failed rule, not just "bad", so a later datasheet can report drops per rule and a reviewer can see why a document left.
+
+### 5.4 Explain it back
+
+1. Why must `normalize_text` remove control characters and the BOM *before* applying NFC?
+   <details><summary>Answer</summary>Because deleting a character can make a base letter and a combining mark neighbours. If NFC ran first, `a`, BOM, U+0301 would stay uncomposed (the BOM separates them); deleting the BOM afterwards leaves `a` + U+0301, which a second pass would compose into `á`. Then `normalize_text` is not idempotent. Deleting first lets NFC see the final sequence once.</details>
+2. Why does `identify_lang` use `min(hits, key=lambda lang: (-hits[lang], lang))` and not `max(hits, key=hits.get)`?
+   <details><summary>Answer</summary>`max` returns the first maximal key in iteration order, so a tie would depend on the dict's insertion order. The compound key sorts by most hits and then by code, so ties always go to the alphabetically first code ("de de" is `es`, which lists "de" and sorts before `fr`, `nl`, `pt`).</details>
+3. What goes wrong if `lang_filter` writes `doc.meta["lang"] = lang` instead of yielding `_with_meta(doc, ...)`?
+   <details><summary>Answer</summary>`Doc` is frozen but its `meta` mapping is an ordinary dict, so the assignment succeeds and mutates a mapping another holder may still be using: an upstream stage, a test, or a tee of the stream. The bug is invisible until two consumers disagree. Building a new mapping keeps every `Doc` a value.</details>
+4. Why does `gopher_rules` validate threshold names against `gopher_reasons.__kwdefaults__` at build time?
+   <details><summary>Answer</summary>A misspelled key (`min_word`) would otherwise either raise a `TypeError` on the first document, deep inside a running workflow, or, if the function swallowed extra keywords, silently use the default. Checking at build time fails the config review, and taking the names from the function's own defaults means the check can never disagree with the code.</details>
+5. In `dup_ngram_char_frac`, why is the first occurrence of a repeated trigram counted as covered?
+   <details><summary>Answer</summary>The statistic measures how much of the text is made of repeated material. A sentence written twice is all repetition; counting only the second copy would report half of it and let spam that repeats a sentence twice pass a 0.3 threshold it should fail.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. NFKC instead of NFC | ligatures, superscripts, and full-width text silently rewritten | `test_normalize_rules_one_by_one` (mutant `s01`) |
-| 2. Removing every invisible character (category Cf too) | emoji sequences joined by U+200D fall apart | `test_normalize_rules_one_by_one` (mutant `s03`) |
-| 3. Composing (NFC) before removing controls | normalizing twice gives a different text | `test_normalize_is_idempotent` (mutant `s05`) |
-| 4. `conf > min_conf` | documents exactly at the threshold dropped | `test_lang_filter_threshold_is_inclusive_and_records_meta` (mutant `s09`) |
-| 5. `doc.meta["lang"] = ...` on the incoming document | an upstream holder of the document sees meta it never set | `test_lang_filter_threshold_is_inclusive_and_records_meta` (mutant `s10`) |
-| 6. `w.isalpha()` for "contains a letter" | every punctuated word ("cat,") counts as non-alphabetic; ordinary prose fails | `test_gopher_rules_hand_labelled` (mutant `s14`) |
-| 7. Comparing stop words without lowercasing and stripping punctuation | "The," does not count; short clean documents fail `stopwords` | `test_gopher_stopwords_count_occurrences_after_stripping_punctuation` (mutant `s19`) |
-| 8. Ignoring unknown threshold names | a typo in the config silently uses the default | `test_gopher_rules_reject_unknown_thresholds_when_built` (mutant `s20`) |
-| 9. A stage that reads its input in batches, or calls `list()` | memory grows with the corpus; on an endless stream it never returns | `test_stages_are_lazy` (mutant `s26`) |
-| 10. A stage that keeps every document it has seen | the activity runs out of memory halfway through the corpus | `test_pipeline_memory_stays_flat` (mutant `s32`) |
-| 11. Counting only the repeats after the first occurrence | repetition is underestimated by half; spam passes | `test_dup_ngram_hand_example` (mutant `s21`) |
+| 1. NFKC instead of NFC | ligatures, superscripts, and full-width text silently rewritten | `unicodedata.normalize("NFC", ...)`; see 5.2 |
+| 2. Removing every invisible character (category Cf too) | emoji sequences joined by U+200D fall apart | removes only category Cc (plus U+FEFF) |
+| 3. Composing (NFC) before removing controls | normalizing twice gives a different text | deletes first, composes after; see 5.1 step 3 |
+| 4. `conf > min_conf` | documents exactly at the threshold dropped | `conf >= min_conf`: every keep-side comparison is inclusive |
+| 5. `doc.meta["lang"] = ...` on the incoming document | an upstream holder of the document sees meta it never set | `_with_meta` builds a new `Doc` with a new mapping |
+| 6. `w.isalpha()` for "contains a letter" | every punctuated word ("cat,") counts as non-alphabetic; ordinary prose fails | `any(c.isalpha() for c in w)` |
+| 7. Comparing stop words without lowercasing and stripping punctuation | "The," does not count; short clean documents fail `stopwords` | `w.lower().strip("\"'.,;:!?()[]{}")` before the lookup |
+| 8. Ignoring unknown threshold names | a typo in the config silently uses the default | `gopher_rules` checks names against `gopher_reasons.__kwdefaults__` when built |
+| 9. A stage that reads its input in batches, or calls `list()` | memory grows with the corpus; on an endless stream it never returns | every stage is a generator that pulls one document at a time |
+| 10. A stage that keeps every document it has seen | the activity runs out of memory halfway through the corpus | no stage keeps state across documents |
+| 11. Counting only the repeats after the first occurrence | repetition is underestimated by half; spam passes | every occurrence with `counts[g] >= 2` marks its words covered |
 
-## 6. Where it's used next
+## 7. Where it's used next
+
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `data.01` | `extract` reads the raw parts through `read_raw` and skips quarantined sources from the fetch `Manifest` |
-| Forward | `data.03` | `exact_dedup` is a stage over your `Doc`s, run after the filters |
+| Forward | `data.03` | `exact_dedup` is a stage over these `Doc`s, run after the filters |
 | Forward | `data.04` | near dedup (MinHash, LSH) is a stage over the same `Doc`s, composed after exact dedup |
 | Forward | `data.05` | the PII scrub is a stage that returns new `Doc`s with redaction counts in `meta` |
 | Forward | `data.06` | the shard writer consumes the final `Doc` stream and writes `meta["lang"]` into the `lang` column |
 | Forward | `C1` | `ppl_filter` with the `L2.1` n-gram model trained on clean text |
 
-If you skip this module, `ol check data.03` stops with `data.03 needs data.02`: build it, or rerun with `--ref-deps`.
-
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `Stage`, `compose` | datatrove `PipelineStep` and executors | the same iterator-in, iterator-out steps, sharded across processes and Slurm tasks, with per-step stats | `datatrove/pipeline/base.py` |
 | `gopher_rules` | datatrove `GopherQualityFilter`; FineWeb's custom filters | the full Gopher set plus FineWeb's line-level rules (lines ending in punctuation, short-line ratio) | `datatrove/pipeline/filters/gopher_quality_filter.py` |

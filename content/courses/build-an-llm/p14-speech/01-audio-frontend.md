@@ -1,41 +1,32 @@
-<!-- ol:module L14.1 -->
 # Audio frontend: WAV parsing and Whisper's log-mel
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L14.1` · build · Python · Pass 12 · 4 to 6 h |
-| **You build** | `python/tinyllm/io/wav.py`: `read_wav` (RIFF chunks, PCM s16 and s24, IEEE f32, `WAVE_FORMAT_EXTENSIBLE`, mono or stereo) and `write_wav`; `python/tinyllm/speech/frontend.py`: `FeatureConfig`, `to_mono_16k`, `pad_or_trim`, `whisper_log_mel` |
+| **Module** | `L14.1` · build · Python · Pass 12 · 2 to 3 h |
+| **Solution** | [`wav.py`](../../../../course/solutions/python/tinyllm/io/wav.py): `read_wav` (RIFF chunks, PCM s16 and s24, IEEE f32, `WAVE_FORMAT_EXTENSIBLE`, mono or stereo) and `write_wav`; [`frontend.py`](../../../../course/solutions/python/tinyllm/speech/frontend.py): `FeatureConfig`, `to_mono_16k`, `pad_or_trim`, `whisper_log_mel` |
 | **Contract** | [`course/contracts/py/tinyllm/io/wav.pyi`](../../../../course/contracts/py/tinyllm/io/wav.pyi), [`course/contracts/py/tinyllm/speech/frontend.pyi`](../../../../course/contracts/py/tinyllm/speech/frontend.pyi) |
-| **Tests** | `course/tests/L14.1/test_frontend.py` (what they check: section 4), fixtures from `course/oracle/L14.1/frontend_hf.py` (scipy 1.17, transformers 5.19) in `course/fixtures/L14.1/` |
-| **Needs** | `M12.3` `resample_audio` · `M12.5` `hann`, `stft`, `power` · `M12.6` `mel_filterbank`, `log_mel_whisper` (or `--ref-deps`). Catalog prereq `lang.12` (RIFF from the bytes up) is not registered yet; section 2.1 covers what you need |
-| **Used by** | `ethics.08`; `L14.3`; `L14.2` (the encoder eats these features) · later `data.11` (audio corpus) and `L15.1` (the Rust port in the engine); `L14.4` |
-| **Milestone** | `MS-L14` step 1 (log-mel within $10^{-4}$ of HF on the fixture clips) |
+| **Needs** | `M12.3` `resample_audio` · `M12.5` `hann`, `stft`, `power` · `M12.6` `mel_filterbank`, `log_mel_whisper`. Catalog prereq `lang.12` (RIFF from the bytes up) is not registered yet; section 2.1 covers what you need |
+| **Used by** | `ethics.08`; `L14.3`; `L14.2` (the encoder eats these features) · later `data.11` (audio corpus) and `L15.1` (the Rust port in the engine); `L14.4`. This is the first step of the speech path: log-mel features within $10^{-4}$ of HF on real clips |
 | **Optional depth** | Microsoft, "Multimedia Programming Interface and Data Specifications 1.0" (1991), the RIFF and WAVE chapters; Microsoft, `WAVEFORMATEXTENSIBLE` documentation; Radford et al., "Robust speech recognition via large-scale weak supervision" (2022), section 2.2 |
 
 ## Key Takeaways
 
-- A WAV file is a RIFF list of chunks; you need only `fmt ` and `data`, but you must skip every other chunk correctly, including its pad byte when the size is odd (`test_reads_fixture_wavs_like_scipy`).
-- Every size field is checked against the bytes actually present, so a truncated or hostile file fails with a `ValueError` instead of returning garbage (`test_rejects_broken_files`).
-- Whisper's input is a fixed recipe: mono, 16 kHz, exactly 30 s, a power STFT with a periodic Hann(400) at hop 160, the last of 3001 frames dropped, Slaney mel, $\log_{10}$, an 8-unit clip, $(L+4)/4$ (`test_log_mel_matches_hf_feature_extractor`).
-- The clip is measured from the loudest value of the kept frames only, so the order "drop, then clip" matters (`test_clip_uses_the_kept_frames_only`).
+- A WAV file is a RIFF list of chunks; you need only `fmt ` and `data`, but you must skip every other chunk correctly, including its pad byte when the size is odd.
+- Every size field is checked against the bytes actually present, so a truncated or hostile file fails with a `ValueError` instead of returning garbage.
+- Whisper's input is a fixed recipe: mono, 16 kHz, exactly 30 s, a power STFT with a periodic Hann(400) at hop 160, the last of 3001 frames dropped, Slaney mel, $\log_{10}$, an 8-unit clip, $(L+4)/4$.
+- The clip is measured from the loudest value of the kept frames only, so the order "drop, then clip" matters.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L14.1              # stubs wav.py and frontend.py into your repo
-ol tests L14.1              # read the test catalog first: rung R0, you write no tests here
-ol check L14.1              # exit code is the verdict
-ol check L14.1 --ref-deps   # only if your M12.3, M12.5, or M12.6 is not passing yet
-ol diff  L14.1              # after passing: your code against the reference
-```
+Sections 1 to 3 build the WAV format and Whisper's feature recipe from first principles and work both by hand. Section 4 fixes the interface and the cases a correct implementation must handle. Section 5 walks through the solution, the parser first and then the frontend, and explains why each line is there. Try to predict each check before reading it.
 
 ---
 
 ## 1. Why now
 
-Pass 12 teaches the system to hear. `M12.5` and `M12.6` built the math of a spectrogram and a mel filterbank; this module turns real files into the exact picture Whisper was trained on. Two things make it a module of its own. First, audio arrives as bytes from untrusted clients (the gateway's `/v1/audio/transcriptions`, D47: WAV only), so the parser is a security boundary as much as a decoder. Second, the encoder (`L14.2`) was trained on Hugging Face's `WhisperFeatureExtractor` output, and a frontend that differs by more than about $10^{-4}$ (a symmetric window, one frame too many, the clip taken over the wrong frames) quietly degrades every transcript. The engine's Rust port (`L15.1`) is later proven against the fixtures this module's oracle writes.
+Pass 12 teaches the system to hear. `M12.5` and `M12.6` built the math of a spectrogram and a mel filterbank; this module turns real files into the exact picture Whisper was trained on. Two things make it a module of its own. First, audio arrives as bytes from untrusted clients (the gateway's `/v1/audio/transcriptions`, D47: WAV only), so the parser is a security boundary as much as a decoder. Second, the encoder (`L14.2`) was trained on Hugging Face's `WhisperFeatureExtractor` output, and a frontend that differs by more than about $10^{-4}$ (a symmetric window, one frame too many, the clip taken over the wrong frames) quietly degrades every transcript. The engine's Rust port (`L15.1`) is later proven against the same Hugging Face reference outputs.
 
 ## 2. Principles
 
@@ -77,9 +68,9 @@ A two-frame stereo s16 file, byte by byte (52 bytes):
 | 36 | `data` `08 00 00 00` | 8 bytes of frames |
 | 44 | `00 40` `FF FF` `00 80` `FF 7F` | frame 0: L = 16384, R = -1; frame 1: L = -32768, R = 32767 |
 
-Divided by $2^{15}$ and de-interleaved into `[channels, frames]`: left $= (0.5, -1)$, right $= (-1/32768,\ 32767/32768)$. This is `test_hand_example_wav_header`.
+Divided by $2^{15}$ and de-interleaved into `[channels, frames]`: left $= (0.5, -1)$, right $= (-1/32768,\ 32767/32768)$.
 
-Silence: a 30 s window of zeros has $P = 0$, so $M P = 0$, every $L$ is $\log_{10} 10^{-10} = -10$, the maximum is $-10$, the clip at $-18$ changes nothing, and every feature is $(-10 + 4)/4 = -1.5$. The window has $1 + 480000/160 = 3001$ STFT frames, 3000 kept (`test_silence_gives_the_floor_everywhere`).
+Silence: a 30 s window of zeros has $P = 0$, so $M P = 0$, every $L$ is $\log_{10} 10^{-10} = -10$, the maximum is $-10$, the clip at $-18$ changes nothing, and every feature is $(-10 + 4)/4 = -1.5$. The window has $1 + 480000/160 = 3001$ STFT frames, 3000 kept.
 
 ## 4. The interface
 
@@ -97,48 +88,213 @@ def pad_or_trim(x: NDArray, n_samples: int = 480000) -> NDArray: ...
 def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray: ... # float32 [n_mels, len(x) // hop]
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_wav_header` | unit, smoke | section 3's 52-byte file: fields, scale, de-interleaving | the byte layout |
-| `test_reads_fixture_wavs_like_scipy` | golden | s24, f32 with fact, odd LIST and junk chunks, extensible with trailing bytes: equal to `scipy.io.wavfile` | every encoding D47 accepts |
-| `test_rejects_broken_files` | fault | truncated data, a 4 GiB RIFF size, a RIFF size 2 bytes too long, missing or late fmt, unsupported encodings, 3 channels, bad rates, bad block_align or byte_rate, partial frames | the parser as a security boundary |
-| `test_write_wav_round_trip` | property | 44-byte header, round half to even, clipping, exact read back | fixtures and tests that write audio |
-| `test_log_mel_matches_hf_feature_extractor` | golden | six LibriSpeech clips, 80 and 128 mels, within $10^{-4}$ of HF | the encoder's input (`L14.2`), MS-L14 step 1 |
-| `test_silence_gives_the_floor_everywhere` | property | section 3: 3000 frames of $-1.5$ | the floor and the frame count |
-| `test_clip_uses_the_kept_frames_only` | unit | the clip after dropping the last frame, on a burst at the end | the order of the recipe |
-| `test_to_mono_averages_channels_then_resamples` | property | channel mean, `M12.3`'s resampler, a copy at 16 kHz | stereo and 22.05 kHz uploads |
-| `test_pad_or_trim` | unit | zeros at the end, trimming, no aliasing of the input | fixed-length windows |
-| `test_feature_config_from_hf` | unit | HF config keys, unknown keys ignored, another processor refused | 128-mel checkpoints |
-| `test_rejects_bad_frontend_arguments` | boundary | 2-D input, fewer than 201 samples | caller bugs fail early |
+| Section 3's 52-byte file | unit, smoke | fields, scale, de-interleaving | the byte layout |
+| Files that `scipy.io.wavfile` reads | golden | s24, f32 with fact, odd LIST and junk chunks, extensible with trailing bytes: equal to `scipy.io.wavfile` | every encoding D47 accepts |
+| Broken and hostile files | fault | truncated data, a 4 GiB RIFF size, a RIFF size 2 bytes too long, missing or late fmt, unsupported encodings, 3 channels, bad rates, bad block_align or byte_rate, partial frames | the parser as a security boundary |
+| `write_wav` round trip | property | 44-byte header, round half to even, clipping, exact read back | fixtures and tests that write audio |
+| Log-mel against HF `WhisperFeatureExtractor` | golden | six LibriSpeech clips, 80 and 128 mels, within $10^{-4}$ of HF | the encoder's input (`L14.2`) |
+| Silence | property | section 3: 3000 frames of $-1.5$ | the floor and the frame count |
+| A loud burst in the dropped last frame | unit | the clip after dropping the last frame | the order of the recipe |
+| Stereo and other rates | property | channel mean, `M12.3`'s resampler, a copy at 16 kHz | stereo and 22.05 kHz uploads |
+| `pad_or_trim` | unit | zeros at the end, trimming, no aliasing of the input | fixed-length windows |
+| `FeatureConfig.from_hf` | unit | HF config keys, unknown keys ignored, another processor refused | 128-mel checkpoints |
+| Bad frontend arguments | boundary | 2-D input, fewer than 201 samples | caller bugs fail early |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **The file is a list of sized chunks.** Section 2.1 says the only structure is `id, size, payload, pad`. So the parser is a loop with one cursor `pos`, advanced by `8 + size + (size & 1)`; it never needs to understand chunks other than `fmt ` and `data`.
+2. **Every size is a claim to verify.** The RIFF size bounds the walk (`end = 8 + riff_size`, which must not exceed the buffer), and each chunk must fit inside `end`. With those two checks, no slice can run past the buffer and no size can cause a large allocation, since every array is a view of bytes already present.
+3. **`fmt ` must be self-consistent.** `block_align` and `byte_rate` are redundant with `channels`, `bits` and `sr`; a mismatch means a broken writer, and the data length must be a whole number of frames. For the extensible form the real code is the first two bytes of the GUID at offset 24 of the payload (16 bytes of base fields, 2 of `cbSize`, 2 of valid bits, 4 of channel mask).
+4. **Scaling is a power of two.** Signed $b$-bit integers lie in $[-2^{b-1}, 2^{b-1})$, so dividing by $2^{b-1}$ maps them to $[-1, 1)$ exactly; in section 3, `00 80` is $-32768 \to -1$.
+5. **Interleaved means frame-major.** The flat sample array reshapes to `[frames, channels]`, and a transpose gives `[channels, frames]`.
+6. **The frontend is a fixed pipeline whose pieces already exist.** M12.3, M12.5 and M12.6 provide the resampler, STFT and Whisper log-mel. What this module adds is the exact order: mean of channels, resample, pad or trim to $N$, periodic Hann, drop the last frame, mel, then the clip over the kept frames only.
+
+### The code, annotated
+
+**The chunk walk.** Two bounds make the loop safe; the pad byte keeps it aligned.
+
+```python
+(riff_size,) = struct.unpack_from("<I", b, 4)
+end = 8 + riff_size
+if end > len(b):                       # the RIFF size itself may lie
+    raise ValueError(...)
+pos = 12
+fmt = None
+pcm = None
+while pos + 8 <= end:                  # room for another chunk header
+    cid = b[pos : pos + 4]
+    (size,) = struct.unpack_from("<I", b, pos + 4)
+    body = pos + 8
+    if body + size > end:              # a chunk may not run past the RIFF end
+        raise ValueError(...)
+    if cid == b"fmt ":
+        fmt = _parse_fmt(b[body : body + size])
+    elif cid == b"data":
+        if fmt is None:                # cannot decode frames without a format
+            raise ValueError("read_wav: data chunk before the fmt chunk")
+        pcm = b[body : body + size]
+        break                          # trailing chunks are irrelevant
+    # Chunks are word-aligned: an odd size is followed by one pad byte.
+    pos = body + size + (size & 1)
+```
+
+**The format chunk.** Every combination the solution cannot decode is refused by name, and the redundant fields are cross-checked.
+
+```python
+tag, channels, sr, byte_rate, block, bits = struct.unpack_from("<HHIIHH", f, 0)
+if tag == _EXTENSIBLE:
+    if len(f) < 40:
+        raise ValueError("read_wav: WAVE_FORMAT_EXTENSIBLE needs a 40-byte fmt chunk")
+    (tag,) = struct.unpack_from("<H", f, 24)  # first two bytes of the GUID
+if tag == _PCM and bits == 16:
+    kind = "s16"
+elif tag == _PCM and bits == 24:
+    kind = "s24"
+elif tag == _FLOAT and bits == 32:
+    kind = "f32"
+else:
+    raise ValueError(...)
+if channels not in (1, 2):                    # 3+ channels have no agreed downmix here
+    raise ValueError(...)
+if not 1 <= sr <= _MAX_SR:                    # 384000 Hz is the inclusive maximum
+    raise ValueError(...)
+if block != channels * bits // 8 or byte_rate != sr * block:
+    raise ValueError(...)
+```
+
+**Decoding samples.** s24 has no NumPy dtype, so the three little-endian bytes are assembled into an int32 and sign-extended by hand.
+
+```python
+if len(pcm) % block:                          # partial frame: truncated or corrupt
+    raise ValueError(...)
+frames = len(pcm) // block
+if kind == "s16":
+    x = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / np.float32(32768.0)
+elif kind == "s24":
+    u = np.frombuffer(pcm, dtype=np.uint8).reshape(-1, 3).astype(np.int32)
+    v = u[:, 0] | (u[:, 1] << 8) | (u[:, 2] << 16)
+    v = np.where(v >= 1 << 23, v - (1 << 24), v)  # sign-extend 24 bits
+    x = v.astype(np.float32) / np.float32(8388608.0)
+else:
+    x = np.frombuffer(pcm, dtype="<f4").astype(np.float32)
+# Interleaved L R L R ... -> [channels, frames].
+samples = np.ascontiguousarray(x.reshape(frames, channels).T)
+```
+
+**Writing.** `write_wav` is the inverse for mono s16, used by fixtures and tests. It multiplies by 32768 (the same scale the reader divides by), rounds half to even with `np.round`, and clips to the int16 range so $+1.0$ saturates at 32767 instead of wrapping to $-32768$:
+
+```python
+q = np.clip(np.round(x * 32768.0), -32768, 32767).astype("<i2")
+pcm = q.tobytes()
+header = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVE"   # 4 + 24 + 8 + data
+fmt = b"fmt " + struct.pack("<IHHIIHH", 16, _PCM, 1, int(sr), int(sr) * 2, 2, 16)
+return header + fmt + b"data" + struct.pack("<I", len(pcm)) + pcm
+```
+
+Full solution: [`wav.py`](../../../../course/solutions/python/tinyllm/io/wav.py).
+
+**The frontend.** Each function is a few lines because the signal processing lives in M12.x; what matters is the order and the edge behaviour.
+
+```python
+def to_mono_16k(w: Wav, cfg: FeatureConfig) -> NDArray:
+    x = np.asarray(w.samples, dtype=np.float64)
+    mono = x.mean(axis=0) if x.ndim == 2 else x.copy()   # mean, not the left channel
+    if w.sr == cfg.sampling_rate:
+        return mono
+    return resample_audio(mono, w.sr, cfg.sampling_rate)  # band-limited (M12.3)
+
+def pad_or_trim(x: NDArray, n_samples: int = 480000) -> NDArray:
+    a = np.asarray(x, dtype=np.float64)
+    # ... reject non-1-D input and n_samples < 1
+    if a.size >= n_samples:
+        return a[:n_samples].copy()                       # a copy: never alias the caller
+    return np.concatenate([a, np.zeros(n_samples - a.size)])  # zeros at the end only
+
+def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray:
+    a = np.asarray(x, dtype=np.float64)
+    # ... reject non-1-D input and fewer than n_fft // 2 + 1 samples
+    spec = stft(a, cfg.n_fft, cfg.hop_length, hann(cfg.n_fft, periodic=True))
+    # 1 + n // hop frames; Whisper keeps n // hop of them (3001 -> 3000).
+    p = power(spec)[:, :-1]
+    fb = mel_filterbank(cfg.sampling_rate, cfg.n_fft, cfg.feature_size)
+    # The clip at max - 8 sees only the kept frames.
+    return log_mel_whisper(p, fb).astype(np.float32)
+```
+
+The minimum length $n_\text{fft}/2 + 1 = 201$ comes from reflect padding: reflecting 200 samples needs at least 201 to reflect from. `log_mel_whisper` (M12.6) computes `log10(max(fb @ p, 1e-10))`, clips at `max - 8` and maps through `(L + 4) / 4`; because `p` has already lost its last column, the maximum is taken over the kept frames. `FeatureConfig.from_hf` reads only the fields it knows, ignores the rest, and refuses any `feature_extractor_type` other than `WhisperFeatureExtractor`.
+
+Full solution: [`frontend.py`](../../../../course/solutions/python/tinyllm/speech/frontend.py).
+
+### Why this solution
+
+- **Cost.** Parsing is $O(\text{bytes})$ with no copy beyond the float conversion. The log-mel costs one STFT, $O(T \cdot n_\text{fft} \log n_\text{fft})$ for $T = 3000$ frames, plus an $n_\text{mels} \times 201 \times T$ matrix product.
+- **Alternatives.** `scipy.io.wavfile` or `soundfile` would parse more formats, but the gateway accepts uploads from untrusted clients, and a parser of under a hundred lines with every bound visible is easier to audit and to port to Rust (`L15.1`) with identical rules. Calling HF's `WhisperFeatureExtractor` directly would add a large dependency at inference time and hide the recipe the Rust port must match.
+- **Tradeoffs accepted.** Only s16, s24 and f32, mono or stereo, are accepted (D47); 8-bit, 32-bit integer, RF64 and multichannel files fail with a clear error. Trailing chunks after `data` are ignored.
+
+### Explain it back
+
+<details><summary>Why is the next chunk at <code>body + size + (size &amp; 1)</code>?</summary>
+
+RIFF chunks are word-aligned. After an odd-sized payload the writer inserts one pad byte that is not counted in `size`. Without `(size & 1)` the cursor lands one byte early and reads garbage as the next chunk id.
+
+</details>
+
+<details><summary>Why are both <code>end &gt; len(b)</code> and <code>body + size &gt; end</code> needed?</summary>
+
+The first rejects a RIFF header that claims more bytes than the file holds (a truncated upload). The second rejects a chunk that claims more bytes than its container. Together they guarantee every slice is inside the buffer, so a lying size can neither read out of bounds nor silently return half a clip.
+
+</details>
+
+<details><summary>Why divide s16 by 32768 rather than 32767?</summary>
+
+The int16 range is $[-32768, 32767]$. Dividing by $2^{15}$ maps it to $[-1, 1)$ exactly and matches scipy and HF; dividing by 32767 makes $-32768$ map below $-1$ and shifts every sample by a tiny factor, which breaks bit-exact round trips with `write_wav`.
+
+</details>
+
+<details><summary>What changes if the clip is computed before dropping the last frame?</summary>
+
+The floor is `max - 8` over the frames used. If the dropped 3001st frame holds the loudest value (a burst at the very end), the floor is set by a frame the encoder never sees, so quiet kept frames are clipped higher than HF clips them.
+
+</details>
+
+<details><summary>Why average channels instead of taking the left one?</summary>
+
+Mono is meant to keep all the content. A speaker panned to the right channel would be silent in the left; the mean keeps both, at the cost of halving the amplitude of a one-sided source, which the log scale and normalization absorb.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. 24-bit samples not sign-extended | negative samples become large positive ones | `test_reads_fixture_wavs_like_scipy` (mutant `s01`) |
-| 2. the pad byte after an odd chunk ignored | the next chunk id is read one byte early: "no data chunk" | `test_reads_fixture_wavs_like_scipy` (mutant `s02`) |
-| 3. the extensible subformat read from the wrong offset | valid 24-bit files rejected | `test_reads_fixture_wavs_like_scipy` (mutant `s03`) |
-| 4. interleaved frames reshaped as planar | left and right mixed sample by sample | `test_hand_example_wav_header` (mutant `s04`) |
-| 5. dividing s16 by 32767 | full scale slightly above 1, every sample off | `test_hand_example_wav_header` (mutant `s05`) |
-| 6. keeping the 3001st frame | features are 3001 wide; the encoder's positions overflow | `test_log_mel_matches_hf_feature_extractor`, `test_silence_gives_the_floor_everywhere` (mutant `s06`) |
-| 7. dropping the first frame instead of the last | every feature shifted by 10 ms | `test_log_mel_matches_hf_feature_extractor` (mutant `s07`) |
-| 8. a symmetric Hann window | features off by about $10^{-3}$ | `test_log_mel_matches_hf_feature_extractor` (mutant `s08`) |
-| 9. clipping before dropping the last frame | quiet frames clipped to the wrong floor | `test_clip_uses_the_kept_frames_only` (mutant `s09`) |
-| 10. the left channel instead of the mean | a right-panned speaker disappears | `test_to_mono_averages_channels_then_resamples` (mutant `s10`) |
-| 11. padding at the front | speech starts late in the window; timestamps shift | `test_pad_or_trim` (mutant `s11`) |
-| 12. not checking a chunk size against the file | a truncated upload returns half a clip | `test_rejects_broken_files` (mutant `s12`) |
-| 13. `write_wav` scaling by 32767 | round trips drift by one step | `test_write_wav_round_trip` (mutant `s13`) |
-| accepting 384000 Hz as out of range | the top supported rate rejected | `test_rejects_broken_files` (mutant `m01`) |
-| accepting 3 channels | a surround file averaged as if stereo | `test_rejects_broken_files` (mutant `m02`) |
-| a RIFF size a few bytes long accepted | trailing chunk read past the buffer | `test_rejects_broken_files` (mutant `m03`) |
-| clipping to 32768 | +1.0 wraps to -1.0 in int16 | `test_write_wav_round_trip` (mutant `m04`) |
-| accepting `n_samples = 0` | empty windows | `test_pad_or_trim` (mutant `m05`) |
-| refusing Whisper's own config | every HF checkpoint rejected | `test_feature_config_from_hf` (mutant `m06`) |
-| returning float64 features | twice the memory per window; the engine's f32 parity drifts | `test_log_mel_matches_hf_feature_extractor` (mutant `m07`) |
+| 1. 24-bit samples not sign-extended | negative samples become large positive ones | `np.where(v >= 1 << 23, v - (1 << 24), v)` after assembling the bytes |
+| 2. the pad byte after an odd chunk ignored | the next chunk id is read one byte early: "no data chunk" | the cursor advances by `size + (size & 1)` |
+| 3. the extensible subformat read from the wrong offset | valid 24-bit files rejected | reads the GUID's first two bytes at payload offset 24 |
+| 4. interleaved frames reshaped as planar | left and right mixed sample by sample | `reshape(frames, channels).T` |
+| 5. dividing s16 by 32767 | full scale slightly above 1, every sample off | divides by $2^{15}$ and s24 by $2^{23}$ |
+| 6. keeping the 3001st frame | features are 3001 wide; the encoder's positions overflow | `power(spec)[:, :-1]` |
+| 7. dropping the first frame instead of the last | every feature shifted by 10 ms | slices off the last column, not the first |
+| 8. a symmetric Hann window | features off by about $10^{-3}$ | `hann(cfg.n_fft, periodic=True)` |
+| 9. clipping before dropping the last frame | quiet frames clipped to the wrong floor | drops the frame first, then calls `log_mel_whisper` |
+| 10. the left channel instead of the mean | a right-panned speaker disappears | `x.mean(axis=0)` |
+| 11. padding at the front | speech starts late in the window; timestamps shift | `pad_or_trim` appends zeros after the signal |
+| 12. not checking a chunk size against the file | a truncated upload returns half a clip | `body + size > end` and `end > len(b)` both raise |
+| 13. `write_wav` scaling by 32767 | round trips drift by one step | scales by 32768, the reader's inverse |
+| rejecting 384000 Hz as out of range | the top supported rate rejected | the bound is inclusive: `1 <= sr <= _MAX_SR` |
+| accepting 3 channels | a surround file averaged as if stereo | `channels not in (1, 2)` raises |
+| a RIFF size a few bytes too long accepted | trailing chunk read past the buffer | `8 + riff_size` must not exceed `len(b)` |
+| clipping to 32768 | +1.0 wraps to -1.0 in int16 | clips to `[-32768, 32767]` before the cast |
+| accepting `n_samples = 0` | empty windows | `pad_or_trim` requires `n_samples >= 1` |
+| refusing Whisper's own config | every HF checkpoint rejected | `from_hf` accepts a missing type or `WhisperFeatureExtractor` |
+| returning float64 features | twice the memory per window; the engine's f32 parity drifts | casts the result with `.astype(np.float32)` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -147,16 +303,14 @@ def whisper_log_mel(x: NDArray, cfg: FeatureConfig) -> NDArray: ... # float32 [n
 | Back | `M12.6` | `mel_filterbank(16000, 400, n_mels)` and `log_mel_whisper` give the features |
 | Forward | `L14.2` | the encoder's conv stem reads `[n_mels, 3000]` from here |
 | Forward | `data.11` | the audio corpus pipeline parses and normalizes clips with `read_wav` and `to_mono_16k` (with B14's data group) |
-| Forward | `L15.1` | the engine re-implements this frontend in Rust and is checked against these fixtures within $10^{-4}$ |
-
+| Forward | `L15.1` | the engine re-implements this frontend in Rust and is checked against the same reference outputs within $10^{-4}$ |
 | Forward | `L14.3` | `Whisper.encode_wav` consumes the WAV parser, resampler and log-mel frontend. |
-
 | Forward | `L14.4` | Whisper decoding consumes this implementation. |
 | Forward | `ethics.08` | Decode consent-bound WAV evidence before computing generated WER. |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `read_wav` | `soundfile` (libsndfile), `scipy.io.wavfile` | dozens of containers and codecs, RF64 for files over 4 GiB | `scipy/io/wavfile.py` |
 | `whisper_log_mel` | HF `WhisperFeatureExtractor` | batching, attention masks, a torch path on GPU | `transformers/models/whisper/feature_extraction_whisper.py` |

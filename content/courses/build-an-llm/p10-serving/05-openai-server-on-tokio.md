@@ -1,37 +1,29 @@
-<!-- ol:module L10.5 -->
 # tl-serve: OpenAI-compatible HTTP + SSE on tokio/hyper
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L10.5` · build · Rust · Pass 7 · 16 to 24 h |
-| **You build** | `rust/crates/tl-engine/src/engine.rs`: `Engine`, the step loop over runner, scheduler, block manager, and per-request samplers · `rust/crates/tl-serve/src/server.rs`: the v1 server on tokio and hyper (runtime.toml, the engine thread, bounded admission, abort on disconnect, drain on SIGTERM, health, readiness, `/metrics`) · `openai.rs` (validation and the response and chunk documents) · `sse.rs` (SSE framing, incremental UTF-8, stop strings) · `template.rs` (the chat-template Jinja subset) · the module lines of your `L10.0` crate root `tl-serve/src/lib.rs` · your entry point's `--config` form |
+| **Module** | `L10.5` · build · Rust · Pass 7 · 8 to 12 h reading |
+| **Solution** | [`tl-engine/src/engine.rs`](../../../../course/solutions/rust/crates/tl-engine/src/engine.rs): `Engine`, the step loop over runner, scheduler, block manager, and per-request samplers · [`tl-serve/src/server.rs`](../../../../course/solutions/history/L10.5/rust/crates/tl-serve/src/server.rs) (as of this module; [later version](../../../../course/solutions/rust/crates/tl-serve/src/server.rs)): `ServeConfig`, `spawn`, `run`, the engine thread `engine_loop`, `generate`, `stream_task`, bounded admission, abort on disconnect, drain on SIGTERM, health, readiness, `/metrics` · [`openai.rs`](../../../../course/solutions/rust/crates/tl-serve/src/openai.rs): `ApiError`, `parse_chat`, `parse_completion`, the response and chunk documents · [`sse.rs`](../../../../course/solutions/rust/crates/tl-serve/src/sse.rs): `event`, `TextStream` (incremental UTF-8, stop strings) · [`template.rs`](../../../../course/solutions/rust/crates/tl-serve/src/template.rs): `Template`, the chat-template Jinja subset · the entry point's `--config` form in [`main.rs`](../../../../course/solutions/entry/rust/crates/tl-serve/src/main.rs) |
 | **Contract** | HTTP: [`openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml) (engine tier) · the `engine` role, config form: [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) · `[engine]`: [`config/runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json) · chat templates: [`formats/generation-config.schema.json`](../../../../course/contracts/formats/generation-config.schema.json) · metric names: [`otel/metrics.yaml`](../../../../course/contracts/otel/metrics.yaml) |
-| **Tests** | `course/tests/rust/l10_5.rs`, 19 tests (what they check: section 4); conformance `ol conform openapi:v1 --target engine` from `MS-L10`, including the official `openai` Python client |
-| **Needs** | `L10.1` runner and sampler ([chapter](01-model-runner-and-sampler.md)) · `L10.2` scheduler ([chapter](02-continuous-batching.md)) · `L10.3` chunked prefill ([chapter](03-chunked-prefill.md)) · `L10.4` block manager ([chapter](04-block-manager-and-prefix-cache.md)) · `L10.8` speculative decoding ([chapter](08-speculative-decoding-in-the-engine.md)) · `L1.5` tl-tok: the byte tokenizer and tokenizer.json BPE ([chapter](../p01-tokenizers/05-rust-fast-bpe.md)) · reading: `lang.09` async Rust and tokio ([primer](../../../tracks/software-craftsmanship/12-language-and-tool-primers/09-async-rust-and-tokio.md)), `lang.05` HTTP and SSE, `L10.0` the tracer server, `L8.2` generate and the detokenizer · or `--ref-deps` |
-| **Used by** | `L10.6` (disaggregation), `L10.7` (metrics and tracing), and `L10.9` (tool calls) build on this server, and `gw.04`, `ag.01`, `load.01`, and `L12.3` reach it over HTTP |
-| **Milestone** | `MS-L10` (`ol conform openapi:v1 --target engine` 100%) |
+| **Needs** | `L10.1` runner and sampler ([chapter](01-model-runner-and-sampler.md)) · `L10.2` scheduler ([chapter](02-continuous-batching.md)) · `L10.3` chunked prefill ([chapter](03-chunked-prefill.md)) · `L10.4` block manager ([chapter](04-block-manager-and-prefix-cache.md)) · `L10.8` speculative decoding ([chapter](08-speculative-decoding-in-the-engine.md)) · `L1.5` tl-tok: the byte tokenizer and tokenizer.json BPE ([chapter](../p01-tokenizers/05-rust-fast-bpe.md)) · reading: `lang.09` async Rust and tokio ([primer](../../../tracks/software-craftsmanship/12-language-and-tool-primers/09-async-rust-and-tokio.md)), `lang.05` HTTP and SSE, `L10.0` the tracer server, `L8.2` generate and the detokenizer |
+| **Used by** | `L10.6` (disaggregation), `L10.7` (metrics and tracing), and `L10.9` (tool calls) build on this server, and `gw.04`, `ag.01`, `load.01`, and `L12.3` reach it over HTTP. This is the v1 engine that the OpenAI conformance cases, and the official `openai` Python client, run against |
 | **Optional depth** | [OpenAI API reference: chat completions and streaming](https://platform.openai.com/docs/api-reference/chat) (free); [hyper 1.x guide](https://hyper.rs/guides/1/) (free); [Tokio tutorial: channels, select](https://tokio.rs/tokio/tutorial) (free); [Jinja template designer docs](https://jinja.palletsprojects.com/en/stable/templates/) (free); [vLLM's OpenAI server](https://github.com/vllm-project/vllm/tree/main/vllm/entrypoints/openai) (free) |
 
 ## Key Takeaways
 
-- The model runs on one OS thread and HTTP on tokio tasks; they meet in channels: a bounded admission queue in, one event channel per request out (`concurrent_streams_equal_serial`).
-- A chat request is rendered through the model's own chat template, with the generation prompt, before tokenization, and `usage.prompt_tokens` counts that rendered prompt (`hand_example_chat_completion`, `usage_counts_the_templated_prompt`).
-- Streaming is `data: <json>\n\n` events: the role first, text as it becomes valid UTF-8 and safe from a stop string, `finish_reason` on the last content chunk, the usage chunk when asked, then `[DONE]` (`stream_framing_role_first_then_done`, `text_stream_holds_back_stop_prefixes`).
-- Every error has the v1 shape, and the status says what kind: 400 bad value, 422 unsupported value, 404 unknown model, 429 full queue with `Retry-After` (`errors_use_the_openai_shape`, `full_queue_answers_429_with_retry_after`).
-- A client that leaves frees its KV blocks within one step, and SIGTERM drains: `/readyz` turns 503, in-flight streams finish, then exit 0 (`disconnect_frees_blocks_within_a_step`, `drain_finishes_in_flight_and_refuses_new`).
+- The model runs on one OS thread and HTTP on tokio tasks; they meet in channels: a bounded admission queue in, one event channel per request out, so eight concurrent streams give the same answers as eight serial ones.
+- A chat request is rendered through the model's own chat template, with the generation prompt, before tokenization, and `usage.prompt_tokens` counts that rendered prompt.
+- Streaming is `data: <json>\n\n` events: the role first, text as it becomes valid UTF-8 and safe from a stop string, `finish_reason` on the last content chunk, the usage chunk when asked, then `[DONE]`.
+- Every error has the v1 shape, and the status says what kind: 400 bad value, 422 unsupported value, 404 unknown model, 429 full queue with `Retry-After`.
+- A client that leaves frees its KV blocks within one step, and SIGTERM drains: `/readyz` turns 503, in-flight streams finish, then exit 0.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L10.5               # stubs engine.rs, server.rs, openai.rs, sse.rs, template.rs
-ol tests L10.5
-ol check L10.5
-ol conform openapi:v1 --target engine     # once your entry point serves --config (MS-L10 runs it)
-```
+Sections 1 to 3 explain why the engine needs an HTTP front end, the principles that shape it (one compute thread, bounded admission, templates, streaming, errors, draining), and work one request by hand. Section 4 fixes the interface. Section 5 walks through the solution, from the engine step to the SSE task, and explains why each choice is the right one. Try to predict each step before reading it.
 
-Add to your `tl-serve/Cargo.toml` what the course manifest lists: `tl-engine` and `tl-tok` by path, `tokio` (full), `hyper` (server, http1), `hyper-util` (tokio), `http-body-util`, `bytes`, `serde_json`, `toml` (`contracts/allowed-deps.toml`). Add `pub mod engine;` to `tl-engine/src/lib.rs` and `pub mod openai; pub mod server; pub mod sse; pub mod template;` to `tl-serve/src/lib.rs`. Your `http.rs` (the tracer) stays as it is: `--model-dir --port --health-port` keeps serving API v0, and `--config <runtime.toml>` now starts `server::run`:
+The solution adds `pub mod engine;` to `tl-engine/src/lib.rs` and `pub mod openai; pub mod server; pub mod sse; pub mod template;` to `tl-serve/src/lib.rs`. `tl-serve` depends on `tl-engine` and `tl-tok` by path, `tokio` (full), `hyper` (server, http1), `hyper-util` (tokio), `http-body-util`, `bytes`, `serde_json`, and `toml` (the allowed list is [`allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml)). The tracer `http.rs` stays as it is: `--model-dir --port --health-port` keeps serving API v0, and `--config <runtime.toml>` starts `server::run`:
 
 ```toml
 # runtime.toml

@@ -1,44 +1,33 @@
-<!-- ol:module L8.4 -->
 # Radix prefix cache (block-granular, LRU leaf eviction, locks)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L8.4` · build · Rust · Pass 6 · 3 to 4 h |
-| **You build** | `rust/crates/tl-engine/src/prefix.rs`: `RadixCache` (`new`, `block_size`, `match_prefix`, `insert`, `lock`, `unlock`, `evict`, `cached_tokens`, `cached_blocks`, `evictable_blocks`, `stats`, `hit_rate`, `tree`), `PrefixMatch`, `Inserted`, `PrefixStats`, `BlockId` · the crate root `rust/crates/tl-engine/src/lib.rs` (`pub mod prefix;`) and its `Cargo.toml` (a path dependency on `tl-ds`) |
-| **Contract** | the interface in section 4 (no Rust trait file yet; the tests pin it) |
-| **Tests** | `course/tests/rust/l8_4.rs`, 8 tests (what they check: section 4) · fixture `course/fixtures/L8.4/radix_trace.txt` · your own tests in `rust/crates/tl-engine/tests/l84_prefix.rs`, rung R4, graded by mutation (threshold 0.80) |
+| **Module** | `L8.4` · build · Rust · Pass 6 |
+| **Solution** | [`prefix.rs`](../../../../course/solutions/rust/crates/tl-engine/src/prefix.rs): `RadixCache` (`new`, `block_size`, `match_prefix`, `insert`, `lock`, `unlock`, `evict`, `cached_tokens`, `cached_blocks`, `evictable_blocks`, `stats`, `hit_rate`, `tree`), `PrefixMatch`, `Inserted`, `PrefixStats`, `BlockId` · the crate root [`lib.rs`](../../../../course/solutions/rust/crates/tl-engine/src/lib.rs) (`pub mod prefix;`), over the radix tree [`radix.rs`](../../../../course/solutions/rust/crates/tl-ds/src/radix.rs) (`ds.07`) |
+| **Contract** | the interface in section 4 (no Rust trait file) |
 | **Needs** | `ds.07` [the radix tree](../../../tracks/algorithms/16-systems-data-structures/07-radix-tree.md) · reading: `M06.2` [tries and longest-prefix match](../../../tracks/math/06-discrete-math-2/02-trees-and-tries-longest-prefix-match.md) |
 | **Used by** | later: `L10.4` (the block manager's `--prefix-cache=radix`), `gw.05` (routes on the hit metrics over gRPC) |
-| **Milestone** | `MS-L8` (step 5: these tests pass from `cargo test`) |
 | **Optional depth** | Zheng et al., [*SGLang: Efficient Execution of Structured Language Model Programs*](https://arxiv.org/abs/2312.07104), section 3 (RadixAttention) |
 
 ## Key Takeaways
 
-- A prefix cache maps the token prefix of a new prompt to KV blocks already computed; block granularity means only whole blocks are matched or stored (`hand_example_shared_system_prompt`, `insert_takes_exactly_the_full_blocks`).
-- A match never covers the last prompt token: prefill must run on at least one token to produce the first output's logits (`the_last_prompt_token_is_never_covered`).
-- Two requests can compute the same prefix at once; the cache keeps the first one's blocks and hands the other's back for the caller to free (`a_prefix_computed_twice_is_kept_once`).
-- A running request locks the node its match ended at, which pins the whole prefix; eviction frees the least recently used unlocked leaves (`a_locked_prefix_survives_eviction`, `eviction_frees_the_least_recently_used_first`).
-- Every block id is in exactly one place, the free list, a running request, or the cache, under any interleaving (`blocks_are_conserved_and_locked_prefixes_stay`).
+- A prefix cache maps the token prefix of a new prompt to KV blocks already computed; block granularity means only whole blocks are matched or stored.
+- A match never covers the last prompt token: prefill must run on at least one token to produce the first output's logits.
+- Two requests can compute the same prefix at once; the cache keeps the first one's blocks and hands the other's back for the caller to free.
+- A running request locks the node its match ended at, which pins the whole prefix; eviction frees the least recently used unlocked leaves.
+- Every block id is in exactly one place, the free list, a running request, or the cache, under any interleaving.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L8.4               # stubs prefix.rs and the tl-engine crate root; writes Cargo.toml if absent
-ol tests L8.4               # read the test catalog first
-ol check L8.4               # exit code is the verdict; then grades your tests by mutation
-ol check L8.4 --ref-deps    # only if ds.07 is not passing yet
-ol diff  L8.4               # after passing: your code against the reference
-```
-
-Add `crates/tl-engine` to your workspace `rust/Cargo.toml` if `ol start` did not. The whole module is about 120 lines over `ds.07`: the arithmetic of section 2, the duplicates, and the counters.
+Sections 1 to 3 build the rules from first principles and work them by hand. Section 4 fixes the interface. Section 5 walks through the solution, about 120 lines over `ds.07`'s tree, and explains why each choice is the right one. Try to predict each step before reading it.
 
 ---
 
 ## 1. Why now
 
-`rt.04` can name a full KV block by its chained hash and find it again, block by block. An engine admitting a request wants more: the longest cached prefix of the prompt in one walk, eviction that respects which prefixes are hot, and a guarantee that the blocks a running request reads are never reclaimed under it. Your radix tree (`ds.07`) does exactly that at any granularity. This module fixes the rules a serving engine needs on top of it, so that `L10.4`'s block manager can choose between the hash index of `rt.04` (`--prefix-cache=hash`) and this tree (`--prefix-cache=radix`) and measure both.
+`rt.04` can name a full KV block by its chained hash and find it again, block by block. An engine admitting a request wants more: the longest cached prefix of the prompt in one walk, eviction that respects which prefixes are hot, and a guarantee that the blocks a running request reads are never reclaimed under it. The radix tree of `ds.07` does exactly that at any granularity. This module fixes the rules a serving engine needs on top of it, so that `L10.4`'s block manager can choose between the hash index of `rt.04` (`--prefix-cache=hash`) and this tree (`--prefix-cache=radix`) and measure both.
 
 ## 2. Principles
 
@@ -71,7 +60,7 @@ $B = 2$. Request A ran prompt `1 2 3 4 5`: blocks 10 (tokens 1 2) and 11 (tokens
 | 3 | C: `match_prefix([1,2,3,4])` | 2 tokens, blocks `[10]` | $u = \lfloor 3/2 \rfloor \cdot 2 = 2$: C prefills tokens 3 and 4 |
 | 4 | `match_prefix([7,7,7])` | 0 tokens | a miss |
 
-After the three lookups: query tokens $6 + 4 + 3 = 13$, hit tokens $4 + 2 + 0 = 6$, hit rate $6/13$. This is `hand_example_shared_system_prompt`.
+After the three lookups: query tokens $6 + 4 + 3 = 13$, hit tokens $4 + 2 + 0 = 6$, hit rate $6/13$.
 
 ## 4. The interface
 
@@ -100,41 +89,184 @@ impl RadixCache {
 }
 ```
 
-The design sketch (DESIGN 4.3) had `insert` return a `NodeId`; it returns `Inserted` so the duplicates have an owner. When nothing matched, `PrefixMatch.node` is `ROOT`, and locking it does nothing.
+An earlier design sketch had `insert` return a `NodeId`; it returns `Inserted` so the duplicates have an owner. When nothing matched, `PrefixMatch.node` is `ROOT`, and locking it does nothing.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
-|---|---|---|---|
-| `hand_example_shared_system_prompt` | unit | section 3: matches 4, 2, and 0 tokens; the counters and hit rate | you and the tests agree on the rules |
-| `the_last_prompt_token_is_never_covered` | boundary | prompts of 0 to 7 tokens over 6 cached tokens match 0, 0, 0, 2, 2, 4, 4, 6 | prefill always has a token to run |
-| `insert_takes_exactly_the_full_blocks` | boundary | a partial block among the blocks panics | a growing block is never shared |
-| `a_prefix_computed_twice_is_kept_once` | unit | a racing request's blocks come back as duplicates; the cached ids themselves do not | the block manager frees the duplicates |
-| `a_locked_prefix_survives_eviction` | unit | eviction frees only unlocked blocks until the request unlocks; the counts follow | running requests keep their KV |
-| `eviction_frees_the_least_recently_used_first` | unit | three prompts, one re-used: the other two go first, oldest first | hot prompts stay cached |
-| `golden_reference_trace` | golden | 300 operations of a recorded workload replayed against an independent Python model: every match, duplicate, eviction order, and cached count | your cache and the oracle agree on every rule at once |
-| `blocks_are_conserved_and_locked_prefixes_stay` | property | 3,000 seeded engine steps over 64 block ids: each id in exactly one place, no locked block evicted, longest prefix found right after an insert, all 64 back at the end | the accounting L10.4 builds on |
-
-**Your tests (rung R4).** Write `rust/crates/tl-engine/tests/l84_prefix.rs` (an integration test: `use tl_engine::prefix::...` only), with properties in prose turned into code (`proptest` is available as a dev-dependency): "a fully cached prompt matches all but its last block", "inserting what a match returned hands nothing back", "a locked prefix is never evicted", "blocks in equal blocks out". The planted bugs "a fully cached prompt is matched whole" (`s01`) and "lock pins nothing" (`s07`) are required; overall 80%.
-
-## 5. Pitfalls
-
-| Pitfall | Symptom | Caught by |
+| Case | Checks | Why it matters downstream |
 |---|---|---|
-| Matching a fully cached prompt whole | prefill has no token to run; the first output has no logits | `the_last_prompt_token_is_never_covered`, `hand_example_shared_system_prompt` (mutant `s01`) |
-| Returning only the last node's blocks | a prefix spanning several nodes loses its first blocks | `a_prefix_computed_twice_is_kept_once`, `golden_reference_trace` (mutant `s02`) |
-| Counting the searched length as a hit | the hit rate the gateway routes on is inflated | `hand_example_shared_system_prompt` (mutant `s03`) |
-| Accepting a block for the partial tail | a block whose contents still grow becomes shared | `insert_takes_exactly_the_full_blocks` (mutant `s04`) |
-| Handing back the cached ids themselves | the caller frees blocks the cache still holds | `a_prefix_computed_twice_is_kept_once`, `golden_reference_trace` (mutant `s05`) |
-| Inserting the tokens of the partial tail | the tree asserts, or caches a half-written block | `hand_example_shared_system_prompt`, `golden_reference_trace` (mutant `s06`) |
-| A lock that pins nothing | a running request's blocks are evicted and reused | `a_locked_prefix_survives_eviction`, `blocks_are_conserved_and_locked_prefixes_stay` (mutant `s07`) |
-| An unlock that releases nothing | the cache fills with pinned blocks and admission stalls | `a_locked_prefix_survives_eviction` (mutant `s08`) |
-| Truncating an evicted leaf's blocks to the request | the rest of the leaf's blocks leak | `eviction_frees_the_least_recently_used_first`, `a_locked_prefix_survives_eviction` (mutant `s09`) |
-| Counting locked blocks as evictable | the scheduler admits a request that cannot get blocks | `a_locked_prefix_survives_eviction` (mutant `s10`) |
-| Not counting evicted blocks | `/metrics` shows no pressure | `a_locked_prefix_survives_eviction` (mutant `m01`) |
-| Reporting cached tokens in blocks | every capacity log is off by a factor of $B$ | `hand_example_shared_system_prompt`, `golden_reference_trace` (mutant `m02`) |
+| The hand example (shared system prompt) | section 3: matches 4, 2, and 0 tokens; the counters and hit rate | the rules are pinned by numbers you can check by hand |
+| The last prompt token is never covered | prompts of 0 to 7 tokens over 6 cached tokens match 0, 0, 0, 2, 2, 4, 4, 6 | prefill always has a token to run |
+| Insert takes exactly the full blocks | a partial block among the blocks panics | a growing block is never shared |
+| A prefix computed twice is kept once | a racing request's blocks come back as duplicates; the cached ids themselves do not | the block manager frees the duplicates |
+| A locked prefix survives eviction | eviction frees only unlocked blocks until the request unlocks; the counts follow | running requests keep their KV |
+| Eviction frees the least recently used first | three prompts, one re-used: the other two go first, oldest first | hot prompts stay cached |
+| A recorded 300-operation workload | every match, duplicate, eviction order, and cached count agrees with an independent Python model | every rule holds at once |
+| Block conservation under 3,000 seeded engine steps over 64 block ids | each id in exactly one place, no locked block evicted, longest prefix found right after an insert, all 64 back at the end | the accounting L10.4 builds on |
 
-## 6. Where it's used next
+Useful properties to keep in mind (and to test, if you write tests for a variant): a fully cached prompt matches all but its last block; inserting what a match returned hands nothing back; a locked prefix is never evicted; blocks in equal blocks out.
+
+## 5. The solution, step by step
+
+### From first principles
+
+1. **What is cached is a mapping from token prefixes to block ids, not KV data.** The KV tensors live in the pool (`L10.1`); the block manager moves references. So the value type is `BlockId = u32`, and the cache never allocates or frees memory itself: every id that leaves it (as a duplicate or an eviction) is returned to the caller.
+2. **Prefix lookup over shared prefixes is exactly what a radix tree does.** A trie over token ids would cost one node per token; compressing chains into labelled edges (the radix tree) makes a 2,000-token system prompt one node. `ds.07` already provides the tree with an LRU list of leaves and lock counts.
+3. **Blocks are the unit of reuse, so the tree's granule is $B$.** A KV block is filled $B$ tokens at a time; a half-filled block is still being written. Setting the tree's granule to $B$ forces every match length, split point, and stored label to a multiple of $B$, and stores exactly one value (a block id) per granule.
+4. **Prefill needs at least one token, so cap the search at $u = \lfloor (n-1)/B \rfloor \cdot B$.** Truncating the query (rather than the result) means the tree itself never returns more; the hit counter then counts what was really reused. Step 3 of the worked example: $n = 4$ gives $u = 2$.
+5. **Duplicates come from races, and must be identified by comparing ids.** The tree hands back the caller's values for the part already stored. Those are not all duplicates: a caller that matched first passes the cached ids themselves. Only ids that differ from what the tree keeps are the caller's own redundant blocks.
+6. **Locks belong to the path, not the leaf.** A request reads every block from the root down to its match node, so locking must pin the ancestors too. The tree's `lock` already walks up; the cache delegates.
+7. **Eviction must be whole leaves, LRU first.** Removing an interior node would orphan its children's prefixes, and a prefix's KV is only useful together with everything before it. Leaves are the only nodes whose removal keeps every remaining path valid.
+
+### The code, annotated
+
+`match_prefix` truncates first, then gathers the blocks of every node on the path:
+
+```rust
+pub fn match_prefix(&mut self, tokens: &[u32]) -> PrefixMatch {
+    let b = self.block_size;
+    // Step 4: never cover the last token. saturating_sub makes n = 0 safe
+    // (usable = 0), and integer division rounds down to a whole block.
+    let usable = tokens.len().saturating_sub(1) / b * b;
+    // The tree marks the path as just used (LRU) and splits an edge if the
+    // match ends inside it, so the last node ends exactly at `matched`.
+    let (matched, path) = self.tree.match_prefix(&tokens[..usable]);
+    let mut blocks = Vec::with_capacity(matched / b);
+    // A prefix can span several nodes: concatenate every node's blocks in
+    // root-to-leaf order, not just the last one's.
+    for &id in &path {
+        blocks.extend_from_slice(self.tree.values(id));
+    }
+    self.stats.lookups += 1;
+    self.stats.query_tokens += tokens.len() as u64; // the whole prompt
+    self.stats.hit_tokens += matched as u64;        // what was really found
+    PrefixMatch {
+        matched_tokens: matched,
+        blocks,
+        // The node to lock; ROOT on a miss, and locking ROOT is a no-op.
+        node: path.last().copied().unwrap_or(ROOT),
+    }
+}
+```
+
+`insert` stores only full blocks and works out which handed-back ids are true duplicates:
+
+```rust
+pub fn insert(&mut self, tokens: &[u32], blocks: &[BlockId]) -> Inserted {
+    let b = self.block_size;
+    let full = tokens.len() / b;
+    // One id per full block, no more: a block for the partial tail would
+    // become shared while its contents still grow.
+    assert_eq!(blocks.len(), full, /* ... */);
+    let before = self.tree.len();
+    // Insert only the tokens of full blocks; the tail stays the request's.
+    let (node, handed_back) = self.tree.insert(&tokens[..full * b], blocks.to_vec());
+    // tree.len() counts stored values (blocks); the difference is what is new.
+    self.stats.inserted_blocks += (self.tree.len() - before) as u64;
+    // Collect the ids the tree keeps along the path to `node`, root first.
+    let mut kept = Vec::with_capacity(handed_back.len());
+    let mut cur = Some(node);
+    let mut path = Vec::new();
+    while let Some(id) = cur {
+        if id == ROOT { break; }
+        path.push(id);
+        cur = self.tree.parent(id);
+    }
+    for &id in path.iter().rev() {
+        kept.extend_from_slice(self.tree.values(id));
+    }
+    // Step 5: a handed-back id equal to the kept one is the cache's own block
+    // (the caller matched first); only different ids are the caller's to free.
+    let duplicates = handed_back
+        .iter()
+        .zip(kept.iter())
+        .filter(|(a, k)| a != k)
+        .map(|(a, _)| *a)
+        .collect();
+    Inserted { node, duplicates }
+}
+```
+
+The handed-back values are the prefix of `blocks` that covered already-stored positions, so zipping them against the first `handed_back.len()` kept ids lines them up position by position.
+
+Locks, eviction, and the counters are thin wrappers that add accounting:
+
+```rust
+pub fn lock(&mut self, node: NodeId) { self.tree.lock(node); }     // pins node + ancestors
+pub fn unlock(&mut self, node: NodeId) { self.tree.unlock(node); } // releases one lock
+
+pub fn evict(&mut self, n_blocks: usize) -> Vec<BlockId> {
+    let mut out = Vec::new();
+    // The tree removes whole LRU unlocked leaves until at least n_blocks
+    // values are gone; every value of a removed leaf comes back, never a
+    // truncated subset (the rest would leak).
+    self.tree.evict(n_blocks, |blk| out.push(blk));
+    self.stats.evicted_blocks += out.len() as u64;
+    out
+}
+
+pub fn cached_tokens(&self) -> usize {
+    self.tree.len() * self.block_size // len() is in blocks; report tokens
+}
+
+pub fn evictable_blocks(&self) -> usize {
+    // Walk every node; count blocks of nodes nobody locks. A lock pins the
+    // ancestors too, so a locked leaf makes its whole path unevictable.
+    let mut n = 0;
+    let mut stack = self.tree.children(ROOT);
+    while let Some(id) = stack.pop() {
+        if self.tree.lock_count(id) == 0 {
+            n += self.tree.values(id).len();
+        }
+        stack.extend(self.tree.children(id));
+    }
+    n
+}
+```
+
+Underneath, the tree's `lock` increments the count on the node and every ancestor and refreshes their place on the LRU list, so a locked node is never at its head; `evict` repeatedly takes the list head, unlinks it from its parent, hands every value to the callback, and re-checks the parent, which may now be a childless leaf and go next.
+
+Full solution: [`prefix.rs`](../../../../course/solutions/rust/crates/tl-engine/src/prefix.rs); the tree it delegates to: [`radix.rs`](../../../../course/solutions/rust/crates/tl-ds/src/radix.rs).
+
+### Why this solution
+
+- **Cost.** `match_prefix` and `insert` are $O(n)$ in the prompt length (one edge comparison per token, child lookup by the first granule in a hash map), plus $O(\text{depth})$ for the parent walk in `insert`. `evict` is $O(1)$ per leaf removed thanks to the tree's LRU list. `evictable_blocks` is $O(\text{nodes})$; it is called by the scheduler at admission, not per token.
+- **Against a hash per block (`rt.04`).** A chained hash per block finds a prefix in $n/B$ lookups and needs no tree, but it has no notion of "leaf", so LRU eviction can drop a block in the middle of a hot prefix, and pinning a prefix means pinning every block. The tree gets structure-aware eviction and one-node locks. `L10.4` keeps both so the tradeoff can be measured.
+- **Against token granularity.** A granule of 1 would match longer prefixes, but a match ending inside a block cannot reuse that block's KV without copying it; the extra precision buys nothing the engine can use.
+- **Against storing KV in the cache.** Keeping only ids makes the cache cheap to copy, test, and replay against an independent model, and keeps one owner (the pool) for memory.
+- **Tradeoff accepted.** Up to $B$ tokens of a fully cached prompt are recomputed (the last-token rule plus rounding). With $B = 16$ that is at most 16 tokens of prefill, against a correctness requirement that cannot be avoided.
+
+### Explain it back
+
+1. Why is the query truncated to $\lfloor (n-1)/B \rfloor \cdot B$ before the walk, rather than trimming the match afterwards?
+   <details><summary>Answer</summary>Truncating first means the tree only ever sees the usable part, so it never splits an edge or refreshes LRU stamps for tokens the request will not reuse, and the hit counter counts exactly the reused tokens. Trimming afterwards would also need to drop blocks from the result and pick a different node to lock.</details>
+2. A caller matched 4 tokens, prefilled the rest, and inserts the whole sequence with the matched ids in the first two slots. Why does nothing come back in `duplicates`?
+   <details><summary>Answer</summary>The tree hands back the caller's ids for the already-stored positions, which are the cached ids themselves. The filter keeps only ids that differ from the kept ones, so none survive. Returning them would make the caller free blocks the cache still holds.</details>
+3. Why does `lock` pin the ancestors and not only the node?
+   <details><summary>Answer</summary>The request reads every block from the root to its match node. If an ancestor could be evicted, its blocks would return to the pool and be overwritten while the request still attends over them. Since eviction only takes leaves, pinning the path also stops a parent from becoming an evictable leaf.</details>
+4. Why does `evict` free whole leaves even if that exceeds `n_blocks`?
+   <details><summary>Answer</summary>A leaf's blocks are a contiguous continuation of its parent's prefix. Removing only some of them would need a split and leave a shorter leaf; returning only some ids while removing the node would leak the rest. Over-freeing by part of a leaf is harmless; the block manager just has more free blocks.</details>
+5. Why is `query_tokens` incremented by the full prompt length and not by $u$?
+   <details><summary>Answer</summary>The hit rate the gateway routes on is "what fraction of prompt tokens did we not have to compute". The denominator is the work requested, the whole prompt; using $u$ would inflate the rate.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| Matching a fully cached prompt whole | prefill has no token to run; the first output has no logits | truncates the query to $u$ before the walk |
+| Returning only the last node's blocks | a prefix spanning several nodes loses its first blocks | concatenates the blocks of every node on the path |
+| Counting the searched length as a hit | the hit rate the gateway routes on is inflated | adds `matched`, the tree's result, to `hit_tokens` |
+| Accepting a block for the partial tail | a block whose contents still grow becomes shared | asserts `blocks.len() == tokens.len() / B` |
+| Handing back the cached ids themselves | the caller frees blocks the cache still holds | filters handed-back ids against the kept ids |
+| Inserting the tokens of the partial tail | the tree asserts, or caches a half-written block | inserts `tokens[..full * b]` only |
+| A lock that pins nothing | a running request's blocks are evicted and reused | delegates to the tree's `lock`, which pins the node and its ancestors |
+| An unlock that releases nothing | the cache fills with pinned blocks and admission stalls | delegates to the tree's `unlock`, which walks the same path |
+| Truncating an evicted leaf's blocks to the request | the rest of the leaf's blocks leak | collects every value the tree's `evict` hands to the callback |
+| Counting locked blocks as evictable | the scheduler admits a request that cannot get blocks | `evictable_blocks` skips nodes with a nonzero lock count |
+| Not counting evicted blocks | `/metrics` shows no pressure | adds `out.len()` to `evicted_blocks` |
+| Reporting cached tokens in blocks | every capacity log is off by a factor of $B$ | multiplies `tree.len()` by `block_size` |
+
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -145,7 +277,7 @@ The design sketch (DESIGN 4.3) had `insert` return a `NodeId`; it returns `Inser
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `RadixCache` | SGLang `RadixCache` | page-granular matching (`page_size`), a priority heap for eviction, host-memory offload tiers (`HiRadixCache`) | [`python/sglang/srt/mem_cache/radix_cache.py`](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/mem_cache/radix_cache.py) |
 | hash-or-radix choice | vLLM automatic prefix caching | hash-per-block lookups instead of a tree, with the same "full blocks only" rule | [`vllm/v1/core/kv_cache_manager.py`](https://github.com/vllm-project/vllm/blob/main/vllm/v1/core/kv_cache_manager.py) |
