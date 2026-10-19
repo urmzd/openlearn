@@ -1,37 +1,23 @@
-# ModelRelease: gates, canary, PromQL burn check, rollback
+# ModelRelease: gates, canary, burn check, and rollback
 
-## Overview
+Your capstone model exists as a checkpoint under `runs/`, and your gateway serves whatever the route table says. Between the two there is only you, typing: copy the files, hope the model card is current, edit the route by hand, watch a dashboard, and undo it if something looks wrong. Every one of those steps fails in a known way. A model trained on a source whose license forbids training ships because nobody re-read the ledger. A route edit erases a colleague's cascade because you `PUT` a table you read an hour ago. The canary runs for ten minutes, your laptop sleeps, and nobody checks the error budget.
 
-| | |
-|---|---|
-| **Module** | `dur.12` · build · Go · Pass 9 · reading time 2 to 3 h |
-| **Solution** | [`go/workflows/model_release.go`](../../../../course/solutions/go/workflows/model_release.go): `ModelRelease`, `ReleaseSpec` (`Validate`, `ExportSpec`, `EvalInput`), `CheckGates`, `ModelCardProblems`, `LedgerProblems`, and two activities, `Preflight` (`release.preflight`) and `ReadResults` (`release.results`); [`go/activities/routes.go`](../../../../course/solutions/go/activities/routes.go): the admin route client `Routes` (`Get`, `Put`, `Snapshot`, `Ready`, `Canary`, `Promote`, `Restore`, `BackendsOf`, `CanaryBackends`, `SameBackends`); [`go/activities/promql.go`](../../../../course/solutions/go/activities/promql.go): `Prom.Query`, `Decode`, `ParseSample` |
-| **Contract** | the Go API of section 4, speaking [`openapi/admin.v1.yaml`](../../../../course/contracts/openapi/admin.v1.yaml) (routes and workers), [`formats/export-spec.schema.json`](../../../../course/contracts/formats/export-spec.schema.json), [`formats/eval-results.schema.json`](../../../../course/contracts/formats/eval-results.schema.json), [`formats/ledger.schema.json`](../../../../course/contracts/formats/ledger.schema.json), and [`templates/MODEL_CARD.md`](../../../../course/contracts/templates/MODEL_CARD.md) |
-| **Needs** | [`dur.08`](08-signals-cancellation-and-sagas.md) the workflow `Runtime` seam and `Saga` · [`dur.11`](11-trainrun-and-evalsuite.md) `EvalSuite`, run as the evaluation step; reading: [`dur.09`](09-subprocess-activities.md) (export and eval run as subprocess activities) · `data.08` the data ledger · `gw.05` and `gw.07` the admin route API · `obs.03` burn-rate alerts |
-| **Used by** | `C1` (the capstone ships through `ModelRelease`: a release of [`specs/c1/release.json`](../../../../course/solutions/entry/specs/c1/release.json) promotes or rolls back the capstone model, and C1 runs `Validate` and `Preflight` on it); later `ops.08` (the retrain decision after a data incident) |
-| **Optional depth** | Beyer et al., [*The Site Reliability Workbook*](https://sre.google/workbook/alerting-on-slos/), ch. 5 "Alerting on SLOs" (burn rates, free); [Prometheus HTTP API](https://prometheus.io/docs/prometheus/latest/querying/api/) (free); [Argo Rollouts analysis](https://argo-rollouts.readthedocs.io/en/stable/features/analysis/) and [Flagger](https://docs.flagger.app/) (canary analysis, free); RFC 9110 section 13.1.1 (`If-Match`) |
+The durable engine built in this chapter already survives crashes and keeps timers and signals. This last section turns the release itself into a workflow on it: gated, approved, canaried, measured, and reversible. You will derive the release steps, the gates, the canary arithmetic, and the burn check, work one release by hand, and then read the workflow, the route client, and the PromQL query that implement it.
 
-## Key Takeaways
+The workflow runs on the `Runtime` seam and uses the `Saga` from [Signals, cancellation, and sagas](08-signals-cancellation-and-sagas.md), and its evaluation step is `EvalSuite` from [Platform workflows: TrainRun and EvalSuite](11-trainrun-and-evalsuite.md). Export and eval run as [subprocess activities](09-subprocess-activities.md). It also reads the data ledger of [Licensing ledger verification and the datasheet](../../data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md) in *Data Engineering*, speaks the admin route API of [Worker registry, routing, cascades, failover](../12-gateway/05-routing.md) and [Usage ledger, metering, admin API](../12-gateway/07-usage-ledger-and-admin-api.md), and uses the burn-rate expressions of [SLOs and multi-window burn-rate alerts](../../systems/04-observability/03-slos-and-burn-rate-alerts.md) in *Systems & Architecture*. The reference implementation is [`go/workflows/model_release.go`](../../../../course/solutions/go/workflows/model_release.go) (`ModelRelease`, `ReleaseSpec` with `Validate`, `ExportSpec`, `EvalInput`, plus `CheckGates`, `ModelCardProblems`, `LedgerProblems`, and two activities, `Preflight` as `release.preflight` and `ReadResults` as `release.results`), [`go/activities/routes.go`](../../../../course/solutions/go/activities/routes.go) (the admin route client `Routes`: `Get`, `Put`, `Snapshot`, `Ready`, `Canary`, `Promote`, `Restore`, `BackendsOf`, `CanaryBackends`, `SameBackends`), and [`go/activities/promql.go`](../../../../course/solutions/go/activities/promql.go) (`Prom.Query`, `Decode`, `ParseSample`). Its contract is the Go API below, speaking [`openapi/admin.v1.yaml`](../../../../course/contracts/openapi/admin.v1.yaml) (routes and workers), [`formats/export-spec.schema.json`](../../../../course/contracts/formats/export-spec.schema.json), [`formats/eval-results.schema.json`](../../../../course/contracts/formats/eval-results.schema.json), [`formats/ledger.schema.json`](../../../../course/contracts/formats/ledger.schema.json), and [`templates/MODEL_CARD.md`](../../../../course/contracts/templates/MODEL_CARD.md).
 
-- A release is a **durable workflow**, not a script: every step is an activity or a timer recorded in history, so a worker that dies mid-canary resumes where it was, and the 10-minute bake does not start over.
-- **Gates fail closed and early.** The model card and the data ledger are checked before the export; a missing eval row fails its gate; a burn query that returns nothing, NaN, or an error rolls back.
-- **No traffic moves before a human approves**, and a release nobody approves expires on the durable clock instead of holding a worker forever. Once traffic has moved, every way out but a promotion (a burn, a cancel, a failed step) **puts the snapshot back** through a saga compensation.
-- Route changes are **read-modify-write with `If-Match`** on one route: on 412 read again and redo the change, and send every other route back byte for byte.
-- Every activity is **idempotent by desired state**: a retried canary finds its weight in place and does nothing, because activities run at least once.
+> **Learning objectives**
+> - Lay out a release as a deterministic workflow of activities, timers, and signals, and explain why even reading the model card must be an activity.
+> - Write gates that fail closed and early: model card, ledger, and eval rows.
+> - Compute canary weights and change one route of a shared table safely with `If-Match` read-modify-write.
+> - Compute a burn rate from a PromQL answer and decide promote or roll back, treating no data as failure.
+> - Undo traffic changes on every exit but promotion with a saga, and make every activity idempotent by desired state.
 
-## How to read this chapter
+## How a release is wired
 
-Sections 1 to 3 derive the release steps, the gates, the canary arithmetic, and the burn check, and work one release by hand. Section 4 fixes the Go API. Section 5 walks through the workflow, the route client, and the PromQL query, and explains why each choice is the right one. Try to predict each step of the solution before reading it.
+The worker's composition root registers the workflow as `ModelRelease` through the same `workflow.Context`-to-`Runtime` adapter as `TrainRun`, and registers the activities under the `Act*` names: `Preflight`, `ReadResults`, the subprocess runner for `export` and `eval`, and the methods of one `activities.Routes` and one `activities.Prom`. The package comment of `model_release.go` shows the registration. The system's CLI starts a release with `{ctl} release --spec <file>`, and an operator approves it by sending the `approve` signal through the durable server's `SignalWorkflow` RPC from a gRPC client. `{ctl} wf describe` and `{ctl} wf history` show where the run is waiting.
 
-The worker's composition root registers the workflow as `ModelRelease` through the same `workflow.Context`-to-`Runtime` adapter as `TrainRun` (`dur.08`), and the activities under the `Act*` names: `Preflight`, `ReadResults`, the subprocess runner of `dur.09` for `export` and `eval`, and the methods of one `activities.Routes` and one `activities.Prom` (the package comment of `model_release.go` shows the registration). The system's CLI starts a release with `{ctl} release --spec <file>` and an operator approves it by sending the `approve` signal through the durable server's `SignalWorkflow` RPC from a gRPC client (`dur.08`); `{ctl} wf describe` and `{ctl} wf history` show where the run is waiting.
-
----
-
-## 1. Why now
-
-Your capstone model exists as a checkpoint under `runs/`, and your gateway serves whatever the route table says. Between the two there is only you, typing: copy the files, hope the model card is current, edit the route by hand, watch a dashboard, and undo it if something looks wrong. Every one of those steps fails in a known way. A model trained on a source whose license forbids training ships because nobody re-read the ledger. A route edit erases a colleague's cascade because you `PUT` a table you read an hour ago. The canary runs for ten minutes, your laptop sleeps, and nobody checks the error budget. The durable engine (Pass 8) already survives crashes and keeps timers and signals; this module turns the release itself into a workflow on it: gated, approved, canaried, measured, and reversible.
-
-## 2. Principles
+The quantities that the canary and burn check use are these:
 
 | Symbol | Meaning | Type |
 |---|---|---|
@@ -43,13 +29,17 @@ Your capstone model exists as a checkpoint under `runs/`, and your gateway serve
 | $w$ | the canary's share of the route's traffic, $0 < w < 1$ | `float64` |
 | $T$ | the bake time (`canary_wait_s`) | duration |
 
-### 2.1 The release is a workflow
+## The release is a workflow
 
-`ModelRelease` is deterministic Go that decides; activities do. The workflow may branch only on its input and on what its `Env` recorded: activity results, timer firings, signals, and `Env.Now()`. It never reads a file, the wall clock, or the network itself, because on a restart the durable server replays the history through the same code, and any other input could take a different path (`ErrNondeterminism`). That is why the model card check is an activity (`release.preflight`) and not an `os.ReadFile` in the workflow.
+A release spans minutes to days and must survive any crash, so it is a workflow: every effect is an activity, every wait a durable timer or signal. A worker that dies mid-canary resumes where it was, and the 10-minute bake does not start over.
 
-The workflow is a function of `dur.08`'s `Runtime`, the SDK calls it needs (`ExecuteActivity`, `Sleep`, `Now`, `AwaitSignal`, `Detached`), like `TrainRun` and `EvalSuite`. The worker adapts its `workflow.Context` to it once for all of them, and a fake `Runtime` that records a history, crashes and cancels on cue, and replays is enough to exercise every path.
+`ModelRelease` is deterministic Go that decides; activities do. The workflow may branch only on its input and on what its runtime recorded: activity results, timer firings, signals, and `Now()`. It never reads a file, the wall clock, or the network itself, because on a restart the durable server replays the history through the same code, and any other input could take a different path (`ErrNondeterminism`). That is why the model card check is an activity (`release.preflight`) and not an `os.ReadFile` in the workflow.
 
-### 2.2 The steps
+Like `TrainRun` and `EvalSuite`, the workflow is a function of the `Runtime`, the SDK calls it needs (`ExecuteActivity`, `Sleep`, `Now`, `AwaitSignal`, `Detached`). The worker adapts its `workflow.Context` to it once for all of them, and a fake `Runtime` that records a history, crashes and cancels on cue, and replays is enough to exercise every path.
+
+## The steps
+
+The release has nine steps, each with a single way of being carried out and a single way of failing.
 
 | # | Step | How | Fails as |
 |---|---|---|---|
@@ -63,57 +53,65 @@ The workflow is a function of `dur.08`'s `Runtime`, the SDK calls it needs (`Exe
 | 8 | burn check | `promql.query` at `Now()` | no data or error: roll back |
 | 9 | promote or restore | `routes.promote`, or the saga's `routes.restore` | outcome `promoted` or `rolled_back` |
 
-Every step carries a fixed activity id (`release-preflight`, `release-export`, `eval-release-<suite>`, `release-results`, `routes-snapshot`, `routes-canary`, `promql-burn`, `routes-promote`, `routes-restore`), so its idempotency key `<workflow_id>/<id>` is the same on every replay and retry.
+Every step carries a fixed activity id (`release-preflight`, `release-export`, `eval-release-<suite>`, `release-results`, `routes-snapshot`, `routes-canary`, `promql-burn`, `routes-promote`, `routes-restore`), so its idempotency key `<workflow_id>/<id>` is the same on every replay and retry, and adding a step does not shift the others.
 
-Gates first because they are cheap and permanent: a forbidden license does not become allowed on retry, so a gate failure is non-retryable and the workflow fails before exporting gigabytes. The eval runs on the exported directory, not on the checkpoint: the export may quantize (`quant: int4-g32`), and the artifact you serve is the one you must measure.
+Gates go first because they are cheap and permanent. A forbidden license does not become allowed on retry, so a gate failure is non-retryable and the workflow fails before exporting gigabytes. The spec itself is validated before any activity at all. And the eval runs on the exported directory, not on the checkpoint: the export may quantize (`quant: int4-g32`), and the artifact you serve is the one you must measure.
 
-### 2.3 The gates
+## The gates
+
+All three gates fail closed.
 
 - **Model card.** `MODEL_CARD.md` exists, has the five sections of `templates/MODEL_CARD.md`, and holds no template placeholder (`<model_id>`, `<you>`) outside HTML comments. A `<` followed by a digit or a space (`p < 0.05`) is prose, not a placeholder.
-- **Ledger.** Every line of `LEDGER.jsonl` is a ledger row whose `allowed_uses` includes `train` and that is not `revoked`; an empty ledger fails (a model trained on undocumented data cannot ship).
-- **Eval rows.** Each gate names `(suite, task, metric, op, value)`. It looks for the released model's row in that suite's report and passes when `value op threshold` holds, with `op` either `>=` or `<=` (inclusive). No row, a row whose status is not `ok`, or a row with a null value fails: a suite that did not run proves nothing.
+- **Ledger.** Every line of `LEDGER.jsonl` is a ledger row whose `allowed_uses` includes `train` and that is not `revoked`. An empty ledger fails, because a model trained on undocumented data cannot ship.
+- **Eval rows.** Each gate names `(suite, task, metric, op, value)`. It looks for the released model's row in that suite's report and passes when `value op threshold` holds, with `op` either `>=` or `<=` (inclusive). No row, a row whose status is not `ok`, or a row with a null value fails: a suite that did not run proves nothing. Gates read rows for the released subject only.
 
-### 2.4 Approval
+## Approval
 
-A signal can arrive before the workflow waits for it (your operator approves while the eval still runs); the SDK buffers it (`dur.08`). The wait has a timeout on the durable clock; when it passes, the release ends as `expired` with no traffic moved.
+Once the gates pass, a human decides before traffic moves, and silence is a "no". `AwaitSignal` with a timeout on the durable clock yields `approve`, `reject`, or `expired`. A signal can arrive before the workflow waits for it (your operator approves while the eval still runs), and the SDK buffers it. When the timeout passes, the release ends as `expired` with no traffic moved, instead of holding a worker forever.
 
-### 2.5 The canary and optimistic concurrency
+## The canary and optimistic concurrency
 
-A route either has no `backends` (all traffic to the model of its own name) or a list of `{served_model, weight}` summing to 1. The canary gives the new model the share $w$ and scales every other backend by $1 - w$. The gateway replaces the whole table on `PUT` and guards it with an ETag: `GET` returns the table and `ETag: "routes-7"`; `PUT` with `If-Match: "routes-7"` succeeds and returns `"routes-8"`; a `PUT` with a stale ETag is `412`. So every change is:
+After approval, traffic moves, and the route table is shared with humans and other releases. A route either has no `backends` (all traffic goes to the model of its own name) or a list of `{served_model, weight}` summing to 1. The canary gives the new model the share $w$ and scales every other backend by $1 - w$.
 
-1. `GET` the table; keep every route as the raw JSON the gateway sent.
+The gateway replaces the whole table on `PUT` and guards it with an ETag: `GET` returns the table and `ETag: "routes-7"`; a `PUT` with `If-Match: "routes-7"` succeeds and returns `"routes-8"`; a `PUT` with a stale ETag is `412`. A whole-table `PUT` is safe only as an optimistic read-modify-write on one route, so every change follows three steps:
+
+1. `GET` the table, and keep every route as the raw JSON the gateway sent.
 2. Change one route's `backends` (or replace it, for a restore).
 3. `PUT` the table with `If-Match`. On `412`, start again at 1 (at most `MaxConflicts` times).
 
-Before the canary, `Ready` checks that a live, non-draining worker reports the new served model (`<model_id>-<version>`): routing a share to a model nobody serves fails that share of requests. Until one appears the canary returns a retryable `ErrNoWorkers`, and the activity's retries wait.
+Before the canary, `Ready` checks that a live, non-draining worker reports the new served model (`<model_id>-<version>`), because routing a share to a model nobody serves fails that share of requests. Until one appears, the canary returns a retryable `ErrNoWorkers`, and the activity's retries wait.
 
-### 2.6 Cancellation and the saga
+## Cancellation and the saga
 
-Right after the snapshot, the workflow registers one compensation with a `dur.08` `Saga`: "restore the route to the snapshot". If the run is canceled during the bake, or the canary or promotion fails for good, `saga.Fail` runs the compensation on `rt.Detached()` (so the cancel cannot interrupt the undo) and returns the original error, which still matches `ErrCanceled`. A burn above the ceiling runs the same compensation and ends as `rolled_back`. A cancel before the snapshot (during the approval wait) has nothing to undo.
+Every way out after traffic moves must undo it. That needs the state from before the change, recorded in history, and an undo that cannot itself be cancelled. Right after the snapshot, the workflow registers one compensation with a `Saga`: "restore the route to the snapshot". If the run is cancelled during the bake, or the canary or promotion fails for good, `saga.Fail` runs the compensation on `rt.Detached()` (so the cancel cannot interrupt the undo) and returns the original error, which still matches `ErrCanceled`. A burn above the ceiling runs the same compensation and ends as `rolled_back`. A cancel before the snapshot, during the approval wait, has nothing to undo. The compensation is registered before the canary runs, so a canary that fails half-way is undone too.
 
-### 2.7 Idempotent activities
+## Idempotent activities
 
 An activity runs **at least once**: the worker can die after the `PUT` and before the server records the completion, and then the activity runs again. Each route activity therefore compares the table with the state it wants and does nothing when it is already there. Restoring needs the state from **before** the canary, so the workflow snapshots the route as its own recorded activity first; the snapshot is in history, and a replay restores exactly that.
 
-### 2.8 The burn check
+## The burn check
 
-The error budget over a 30-day SLO period of 720 h is $b$ of all requests. A burn rate $B = 1$ spends it exactly in 30 days; $B = 14.4$ for one hour spends $14.4 \cdot 1 / 720 = 2\%$ of it, the page threshold of the SRE Workbook. The release asks Prometheus once, at the end of the bake, for $B_W$ of the **canary's** traffic (an expression that aggregates to one number), evaluated at `Env.Now()` so that a retried query asks the same question. It promotes when $B_W \le B_{\max}$ and rolls back otherwise. An empty vector (no canary request matched) and `NaN` ($0/0$) are **no data**; no data, and a query that failed for good, roll back: the canary did not prove itself.
+The last decision is whether the canary is healthy, and it must fail closed and be reproducible. The error budget over a 30-day SLO period of 720 h is $b$ of all requests. A burn rate $B = 1$ spends it exactly in 30 days; $B = 14.4$ for one hour spends $14.4 \cdot 1 / 720 = 2\%$ of it, the page threshold of the SRE Workbook.
 
-## 3. Worked example by hand
+The release asks Prometheus once, at the end of the bake, for $B_W$ of the **canary's** traffic (an expression that aggregates to one number), evaluated at `Now()` so that a retried query asks the same question. It promotes when $B_W \le B_{\max}$ and rolls back otherwise. An empty vector (no canary request matched) and `NaN` ($0/0$) are **no data**. No data, and a query that failed for good, roll back: the canary did not prove itself.
+
+## Working it by hand
 
 The route `tinystories` serves `tinystories-10m-v1` with weight 1. You release `v2` with $w = 0.1$, $T = 600$ s, $o = 0.99$, $B_{\max} = 14.4$; the approval arrives; the workflow clock reads $t_0$ = 2026-10-09 12:00:00 UTC (Unix 1791547200).
 
-**Canary weights.** Other backends total $r = 1$. `v1` gets $1 / r \cdot (1 - 0.1) = 0.9$, `v2` gets $0.1$; sum $1$. (With an even split `a` 0.5, `b` 0.5: each gets $0.5 / 1 \cdot 0.9 = 0.45$, and `v2` 0.1.) The gateway had ETag `"routes-7"`; the canary `PUT` sends `If-Match: "routes-7"` and the table becomes `"routes-8"`.
+**Canary weights.** The other backends total $r = 1$. `v1` gets $1 / r \cdot (1 - 0.1) = 0.9$, `v2` gets $0.1$, and the sum is $1$. (With an even split, `a` 0.5 and `b` 0.5, each gets $0.5 / 1 \cdot 0.9 = 0.45$, and `v2` 0.1.) The gateway had ETag `"routes-7"`; the canary `PUT` sends `If-Match: "routes-7"`, and the table becomes `"routes-8"`.
 
 **Bake.** The timer fires at $t_0 + 600$ s, so the query carries `time=1791547800.000`.
 
-**Burn, healthy.** In the last 5 minutes the canary answered 1,000 requests with 8 errors: $e = 8 / 1000 = 0.008$, $B = 0.008 / 0.01 = 0.8 \le 14.4$. Promote: `backends = [{tinystories-10m-v2, 1}]`, ETag `"routes-9"`. Two `PUT`s in all.
+**Burn, healthy.** In the last 5 minutes the canary answered 1,000 requests with 8 errors: $e = 8 / 1000 = 0.008$, $B = 0.008 / 0.01 = 0.8 \le 14.4$. Promote: `backends = [{tinystories-10m-v2, 1}]`, ETag `"routes-9"`. That is two `PUT`s in all.
 
-**Burn, too fast.** 1,000 requests with 205 errors: $e = 0.205$, $B = 20.5 > 14.4$. Restore the snapshot: the route is again exactly `{"model":"tinystories","aliases":["ts"],"backends":[{"served_model":"tinystories-10m-v1","weight":1}],"x-owner":"ml-team"}`, and the cascade route `smart` never changed.
+**Burn, too fast.** 1,000 requests with 205 errors: $e = 0.205$, $B = 20.5 > 14.4$. Restore the snapshot. The route is again exactly `{"model":"tinystories","aliases":["ts"],"backends":[{"served_model":"tinystories-10m-v1","weight":1}],"x-owner":"ml-team"}`, and the cascade route `smart` never changed.
 
-**A crash.** The worker dies right after the canary `PUT`; another picks the run up 2 minutes later, replays steps 1 to 6 from history, and runs the canary activity again: the table already says `v2` 0.1, so no `PUT`. The timer starts at $t_0 + 2$ min. A second worker dies with the timer pending and comes back 2 minutes later; the timer keeps its deadline $t_0 + 2$ min $+ 600$ s, so the query is at Unix 1791547920.
+**A crash.** The worker dies right after the canary `PUT`; another picks the run up 2 minutes later, replays steps 1 to 6 from history, and runs the canary activity again. The table already says `v2` 0.1, so there is no `PUT`. The timer starts at $t_0 + 2$ min. A second worker dies with the timer pending and comes back 2 minutes later; the timer keeps its deadline $t_0 + 2$ min $+ 600$ s, so the query is at Unix 1791547920.
 
-## 4. The interface
+## Designing the API
+
+Listing 1 collects the Go API of the workflow, the route client, and the PromQL client.
 
 ```go
 // go/workflows/model_release.go (Runtime, StepOptions, StepFailure, Saga: dur.08; EvalSuite: dur.11)
@@ -145,9 +143,9 @@ func Decode(body []byte) (Sample, error)
 func ParseSample(pair []json.RawMessage) (float64, bool, error)       // (value, isNaN, err)
 ```
 
-An error that a retry cannot fix implements `NonRetryable() bool` returning true: `*GateError` and `activities.Permanent` (a route that does not exist, a weight outside $(0, 1)$, a table the gateway rejects with 400, a query Prometheus rejects). The worker's composition root maps it to `Failure.non_retryable`. Transport errors, `ErrStale` after `MaxConflicts`, `ErrNoWorkers`, and a 5xx from Prometheus are retryable.
+An error that a retry cannot fix implements `NonRetryable() bool` returning true: `*GateError`, and `activities.Permanent` (a route that does not exist, a weight outside $(0, 1)$, a table the gateway rejects with 400, a query Prometheus rejects). The worker's composition root maps it to `Failure.non_retryable`. Transport errors, `ErrStale` after `MaxConflicts`, `ErrNoWorkers`, and a 5xx from Prometheus are retryable.
 
-A release spec ([`specs/c1/release.json`](../../../../course/solutions/entry/specs/c1/release.json) in the capstone):
+A release spec looks like Listing 2, which is [`specs/c1/release.json`](../../../../course/solutions/entry/specs/c1/release.json) from the capstone.
 
 ```json
 {"model_id": "tinystories-10m", "version": "v2", "from": "runs/c1/ckpt",
@@ -159,59 +157,11 @@ A release spec ([`specs/c1/release.json`](../../../../course/solutions/entry/spe
  "burn": {"query": "sum(rate(...{model=\"tinystories-10m-v2\",http_response_status_code=~\"5..\"}[5m])) / sum(rate(...{model=\"tinystories-10m-v2\"}[5m])) / (1 - 0.99)", "max": 14.4}}
 ```
 
-### What a correct solution must handle
+## Building it step by step
 
-The workflow cases run `ModelRelease` under a fake `Runtime` that keeps a history, crashes and cancels on cue, and replays from the top after every crash, re-executing only activities whose completion was not recorded. The clock is virtual. Its `eval` activity writes one `tl.eval-results.v1` report per suite, which `ReadResults` reads.
+### The workflow, gates first
 
-| Case | Kind of check | What must hold | Why it matters downstream |
-|---|---|---|---|
-| the hand example promotes | unit | section 3: the step order and activity ids, 0.9/0.1 during the bake, the query at $t_0 + 600$ s, promotion, two `PUT`s, the eval runs on the exported directory | the reference behaviour of a release |
-| a fast burn rolls back to the snapshot | fault | burn 20.5: the route is restored to its snapshot, the other route untouched | a bad model leaves no trace in routing |
-| a burn at the ceiling promotes | boundary | burn equal to the ceiling promotes | the ceiling is inclusive |
-| no data fails closed | fault | an empty vector and NaN roll back | a canary with no traffic proves nothing |
-| a failed burn query fails closed | fault | a rejected query rolls back after one try | a broken check is not a pass |
-| an unlicensed source fails before export | fault | an eval-only source fails the gate once, before export | licenses are checked before any work |
-| a revoked source fails | fault | a revoked source fails the gate | the `ops.08` data incident blocks releases |
-| the model card gate | fault | missing card, missing section, leftover placeholder; `p < 0.05` is fine | ethics.03's card is a real gate |
-| a missing eval row fails the gate | fault | no safety row: the eval gate refuses; no signal consumed, no `PUT` | ethics.04's rows must exist to pass |
-| gate directions | boundary | `<=` and `>=` inclusive; another model's row ignored | lower-is-better and higher-is-better metrics |
-| reject stops before traffic | unit | `reject` ends the release with no route access | humans can stop a release |
-| the approval times out | unit | no answer: `expired` after exactly `approve_timeout_s` on the durable clock | nothing waits forever |
-| a worker killed mid-canary | fault | crash after the canary `PUT` and during the timer: one canary `PUT`, the timer keeps its deadline | releases survive worker loss |
-| cancel restores the route | fault | a cancel in the approval wait touches nothing; a cancel in the bake restores the snapshot and never queries | an operator can stop a release safely |
-| replay is deterministic | regression | replaying a finished history with no live activities gives the same result | the workflow obeys the replay rules |
-| the spec is validated first | boundary | weight 1, an empty query, op `>`: refused before any activity | a bad spec moves nothing |
-| the hand example's canary weights | unit | 1 to 0.9/0.1; 0.5/0.5 to 0.45/0.45/0.1; re-weighting a canary | the gateway's sum-to-1 rule |
-| an implicit backend is the route's model | boundary | a route without `backends` keeps 0.75 for its own model | the old model keeps its traffic |
-| `PUT` carries the ETag | conformance | one `PUT` with `If-Match: "routes-7"` | admin.v1 optimistic concurrency |
-| a stale ETag rereads and keeps the other change | fault | a concurrent edit: 412, reread, both changes survive | operators and releases can overlap |
-| other routes are untouched | regression | the cascade route is byte-identical; unknown fields kept | a release cannot erase routing it did not own |
-| the canary is idempotent | property | a second canary changes nothing | at-least-once activities |
-| the canary waits for a serving worker | fault | no live worker (or a draining one): retryable `ErrNoWorkers`, no `PUT` | no traffic to a model nobody serves |
-| unknown route and bad input are permanent | boundary | unknown route, weight 1, a 400 table: non-retryable | fail fast on what retries cannot fix |
-| promote and restore | unit | promote to weight 1; restore exactly and idempotently; another route's snapshot refused | the two ends of a release |
-| the hand example's burn rate | unit | section 3's query: value 20.5, `query` and `time` sent | the measurement the decision rests on |
-| scalar and infinity | unit | a scalar result; `+Inf` is a value, not no data | `scalar(...)` expressions; all-error canaries |
-| no series and NaN are no data | boundary | empty vector and NaN are no data | fail closed (pitfall 11) |
-| several series are refused | boundary | two series or a matrix: permanent `ErrQuery` | an unaggregated query checks a random pod |
-| error status is permanent, server errors retry | fault | `bad_data` is permanent; a 503 is retryable | one Prometheus blip must not roll back |
-
-## 5. The solution, step by step
-
-### 5.1 From first principles
-
-1. **A release spans minutes to days and must survive any crash**, so it is a workflow: every effect is an activity, every wait a durable timer or signal. Replay then demands determinism: the workflow may branch only on its input and recorded results, so even reading the model card is an activity.
-2. **Cheap, permanent checks go first.** A forbidden license or an unfilled model card does not change on retry, so they are checked before the export, as non-retryable `GateError`s. Validation of the spec itself happens before any activity.
-3. **Measure what ships.** The export may quantize, so the evaluation subject is the exported directory, and gates read rows for that subject only. A missing row proves nothing, so it fails the gate.
-4. **A human decides before traffic moves, and silence is a "no".** `AwaitSignal` with a timeout on the durable clock gives `approve`, `reject`, or `expired`.
-5. **Every way out after traffic moves must undo it.** That needs the state from before the change, recorded in history (`routes.snapshot`), and an undo that cannot itself be cancelled (`saga.Fail` on `rt.Detached()`). The compensation is registered before the canary runs, so a canary that fails half-way is undone too.
-6. **The route table is shared with humans and other releases.** A whole-table `PUT` is only safe as an optimistic read-modify-write on one route with `If-Match`, returning every other route exactly as read.
-7. **Activities run at least once.** Each route activity computes its desired state and does nothing when the gateway already has it, so a retry after an unrecorded `PUT` is harmless.
-8. **The burn check must fail closed and be reproducible.** One instant query at `rt.Now()` (recorded, so a retry asks about the same window); no data, NaN, or a failed query means roll back.
-
-### 5.2 The code, annotated
-
-**The workflow, gates first.** Each step uses a fixed activity id from `releaseOpts`, so idempotency keys do not shift when a step is added:
+Each step uses a fixed activity id from `releaseOpts`, so idempotency keys do not shift when a step is added (Listing 3).
 
 ```go
 func ModelRelease(rt Runtime, spec ReleaseSpec) (ReleaseResult, error) {
@@ -240,7 +190,9 @@ func ModelRelease(rt Runtime, spec ReleaseSpec) (ReleaseResult, error) {
 	// ... any !g.OK: return &GateError{Gate: "eval", ...}
 ```
 
-**The eval gate.** A gate starts as failed ("no row") and only a matching `ok` row with a value can make it pass. Both comparisons are inclusive:
+### The eval gate
+
+A gate starts as failed ("no row"), and only a matching `ok` row with a value can make it pass. Both comparisons are inclusive (Listing 4).
 
 ```go
 func CheckGates(gates []Gate, reports []EvalReport, subject string) []GateResult {
@@ -276,7 +228,9 @@ func CheckGates(gates []Gate, reports []EvalReport, subject string) []GateResult
 }
 ```
 
-**The preflight gates.** The placeholder pattern requires a letter after `<`, which is what lets `p < 0.05` through; HTML comments are stripped first because the template keeps its instructions in them. The ledger requires `train` in `allowed_uses`, no `revoked`, and at least one row:
+### The preflight gates
+
+The placeholder pattern requires a letter after `<`, which is what lets `p < 0.05` through; HTML comments are stripped first because the template keeps its instructions in them. The ledger requires `train` in `allowed_uses`, no `revoked`, and at least one row (Listing 5).
 
 ```go
 var placeholder = regexp.MustCompile(`<[A-Za-z][^<>\n]*>`) // "<model_id>", not "< 0.05"
@@ -302,9 +256,11 @@ func LedgerProblems(ledger []byte) []string {
 }
 ```
 
-`Preflight` turns a problem into `*GateError` (non-retryable: the same file gives the same answer) but returns a read error as is (retryable: a mount may come back).
+`Preflight` turns a problem into a `*GateError` (non-retryable: the same file gives the same answer) but returns a read error as is (retryable: a mount may come back).
 
-**Approval, then the canary under a saga.** The snapshot is its own recorded activity, the restore is registered before the canary runs, and every failure from here goes through `saga.Fail`:
+### Approval, then the canary under a saga
+
+The snapshot is its own recorded activity, the restore is registered before the canary runs, and every failure from here on goes through `saga.Fail` (Listing 6).
 
 ```go
 	// 4. A human approves (or rejects) before any traffic moves.
@@ -338,7 +294,9 @@ func LedgerProblems(ledger []byte) []string {
 	}
 ```
 
-**Bake, measure, decide.** The query time is `rt.Now()`, recorded in history. A cancel during the query still compensates; every other non-healthy result rolls back:
+### Bake, measure, decide
+
+The query time is `rt.Now()`, recorded in history. A cancel during the query still compensates, and every other non-healthy result rolls back (Listing 7).
 
 ```go
 	if err := rt.Sleep(time.Duration(spec.CanaryWaitS) * time.Second); err != nil {
@@ -373,9 +331,11 @@ func LedgerProblems(ledger []byte) []string {
 	return res, nil
 ```
 
-Full solution: [`model_release.go`](../../../../course/solutions/go/workflows/model_release.go).
+The full workflow is [`model_release.go`](../../../../course/solutions/go/workflows/model_release.go).
 
-**Canary weights.** The new model gets $w$; every other backend keeps its proportion of the rest, scaled by $1 - w$. Rounding to $10^{-9}$ keeps `0.9` from printing as `0.9000000000000001`:
+### Canary weights
+
+The new model gets $w$, and every other backend keeps its proportion of the rest, scaled by $1 - w$. Rounding to $10^{-9}$ keeps `0.9` from printing as `0.9000000000000001` (Listing 8).
 
 ```go
 func CanaryBackends(current []Backend, served string, w float64) []Backend {
@@ -402,7 +362,9 @@ func CanaryBackends(current []Backend, served string, w float64) []Backend {
 
 `BackendsOf` reads a route without `backends` as one backend named by the route's own `model` with weight 1, so the old model keeps its $1 - w$.
 
-**The read-modify-write loop.** The table is kept as raw JSON per route; only the target route is decoded, changed, and re-encoded:
+### The read-modify-write loop
+
+The table is kept as raw JSON per route; only the target route is decoded, changed, and re-encoded (Listing 9).
 
 ```go
 func (r Routes) update(ctx context.Context, model string, fn func(route map[string]any) (bool, error)) (RouteResult, error) {
@@ -431,7 +393,9 @@ func (r Routes) update(ctx context.Context, model string, fn func(route map[stri
 
 `marshalPlain` exists because `encoding/json` escapes `>` as `>` even inside a `json.RawMessage`, which would rewrite a cascade route's `"accept_if": "mean_logprob >= -1.5"` on every `PUT`.
 
-**The idempotent canary.** Weight is validated first (permanent), readiness second (retryable), and the closure returns "unchanged" when the canary is already in place:
+### The idempotent canary
+
+Weight is validated first (permanent), readiness second (retryable), and the closure returns "unchanged" when the canary is already in place (Listing 10).
 
 ```go
 func (r Routes) Canary(ctx context.Context, in CanaryInput) (RouteResult, error) {
@@ -457,9 +421,11 @@ func (r Routes) Canary(ctx context.Context, in CanaryInput) (RouteResult, error)
 }
 ```
 
-`Restore` replaces every key of the route with the snapshot's (not a merge), and refuses a snapshot of another route. Full solution: [`routes.go`](../../../../course/solutions/go/activities/routes.go).
+`Restore` replaces every key of the route with the snapshot's (not a merge), and refuses a snapshot of another route. The full client is [`routes.go`](../../../../course/solutions/go/activities/routes.go).
 
-**The PromQL answer.** Prometheus encodes sample values as strings so that `NaN` and `+Inf` survive JSON. NaN is no data; `+Inf` is a real (very bad) value, never no data:
+### The PromQL answer
+
+Prometheus encodes sample values as strings so that `NaN` and `+Inf` survive JSON. NaN is no data; `+Inf` is a real (very bad) value, never no data (Listing 11).
 
 ```go
 func ParseSample(pair []json.RawMessage) (float64, bool, error) {
@@ -493,17 +459,101 @@ func Decode(body []byte) (Sample, error) {
 }
 ```
 
-`Query` sends `time` as Unix seconds with millisecond precision, returns a 5xx as a plain (retryable) error, and wraps any `Decode` error in `Permanent`: asking again gives the same answer. Full solution: [`promql.go`](../../../../course/solutions/go/activities/promql.go).
+`Query` sends `time` as Unix seconds with millisecond precision, returns a 5xx as a plain (retryable) error, and wraps any `Decode` error in `Permanent`, because asking again gives the same answer. The full client is [`promql.go`](../../../../course/solutions/go/activities/promql.go).
 
-### 5.3 Why this solution
+### Why this design
 
-- **Cost.** A release is a constant number of activities plus one per suite; the route update is $O(R)$ in the number of routes per attempt, with at most `MaxConflicts` rereads. The bake costs nothing while it waits: it is a timer in history, not a held worker.
-- **A workflow over a script or a CI job.** A script loses its place when the machine sleeps, and a CI job cannot wait a day for approval or restore a route after being killed. The workflow gets both from the engine.
-- **One burn query at the end over continuous analysis.** Argo Rollouts and Flagger sample metrics repeatedly and abort early; one query is simpler to reason about and replay, at the price of exposing $w$ of traffic for the full bake even when the canary is failing from the first minute.
-- **Optimistic concurrency over a lock.** A lock on the route table would need its own lease and expiry, and a crashed release would block operators. `If-Match` costs nothing until two writers actually collide.
-- **Accepted tradeoffs.** A single canary step (no 1%, 5%, 25% ramp); the burn check compares against an absolute ceiling, not against a baseline running at the same time (see Kayenta in Going further).
+A release is a constant number of activities plus one per suite. The route update is $O(R)$ in the number of routes per attempt, with at most `MaxConflicts` rereads. The bake costs nothing while it waits: it is a timer in history, not a held worker.
 
-### 5.4 Explain it back
+A workflow beats a script or a CI job because a script loses its place when the machine sleeps, and a CI job cannot wait a day for approval or restore a route after being killed; the workflow gets both from the engine. One burn query at the end is a deliberate simplification of the continuous analysis that Argo Rollouts and Flagger do, sampling metrics repeatedly and aborting early. One query is simpler to reason about and replay, at the price of exposing $w$ of traffic for the full bake even when the canary is failing from the first minute. Optimistic concurrency beats a lock because a lock on the route table would need its own lease and expiry, and a crashed release would block operators; `If-Match` costs nothing until two writers actually collide.
+
+Two tradeoffs are accepted: a single canary step, with no 1%, 5%, 25% ramp; and a burn check against an absolute ceiling rather than a baseline running at the same time (Kayenta, mentioned at the end, does the latter).
+
+## What can go wrong
+
+The workflow cases run `ModelRelease` under a fake `Runtime` that keeps a history, crashes and cancels on cue, and replays from the top after every crash, re-executing only activities whose completion was not recorded. The clock is virtual. Its `eval` activity writes one `tl.eval-results.v1` report per suite, which `ReadResults` reads. These are the cases a correct solution must handle:
+
+| Case | Kind of check | What must hold | Why it matters downstream |
+|---|---|---|---|
+| the worked example promotes | unit | the step order and activity ids, 0.9/0.1 during the bake, the query at $t_0 + 600$ s, promotion, two `PUT`s, the eval runs on the exported directory | the reference behaviour of a release |
+| a fast burn rolls back to the snapshot | fault | burn 20.5: the route is restored to its snapshot, the other route untouched | a bad model leaves no trace in routing |
+| a burn at the ceiling promotes | boundary | burn equal to the ceiling promotes | the ceiling is inclusive |
+| no data fails closed | fault | an empty vector and NaN roll back | a canary with no traffic proves nothing |
+| a failed burn query fails closed | fault | a rejected query rolls back after one try | a broken check is not a pass |
+| an unlicensed source fails before export | fault | an eval-only source fails the gate once, before export | licenses are checked before any work |
+| a revoked source fails | fault | a revoked source fails the gate | the data-incident drill blocks releases |
+| the model card gate | fault | missing card, missing section, leftover placeholder; `p < 0.05` is fine | the model card is a real gate |
+| a missing eval row fails the gate | fault | no safety row: the eval gate refuses; no signal consumed, no `PUT` | safety-eval rows must exist to pass |
+| gate directions | boundary | `<=` and `>=` inclusive; another model's row ignored | lower-is-better and higher-is-better metrics |
+| reject stops before traffic | unit | `reject` ends the release with no route access | humans can stop a release |
+| the approval times out | unit | no answer: `expired` after exactly `approve_timeout_s` on the durable clock | nothing waits forever |
+| a worker killed mid-canary | fault | crash after the canary `PUT` and during the timer: one canary `PUT`, the timer keeps its deadline | releases survive worker loss |
+| cancel restores the route | fault | a cancel in the approval wait touches nothing; a cancel in the bake restores the snapshot and never queries | an operator can stop a release safely |
+| replay is deterministic | regression | replaying a finished history with no live activities gives the same result | the workflow obeys the replay rules |
+| the spec is validated first | boundary | weight 1, an empty query, op `>`: refused before any activity | a bad spec moves nothing |
+| the worked example's canary weights | unit | 1 to 0.9/0.1; 0.5/0.5 to 0.45/0.45/0.1; re-weighting a canary | the gateway's sum-to-1 rule |
+| an implicit backend is the route's model | boundary | a route without `backends` keeps 0.75 for its own model | the old model keeps its traffic |
+| `PUT` carries the ETag | conformance | one `PUT` with `If-Match: "routes-7"` | admin.v1 optimistic concurrency |
+| a stale ETag rereads and keeps the other change | fault | a concurrent edit: 412, reread, both changes survive | operators and releases can overlap |
+| other routes are untouched | regression | the cascade route is byte-identical; unknown fields kept | a release cannot erase routing it did not own |
+| the canary is idempotent | property | a second canary changes nothing | at-least-once activities |
+| the canary waits for a serving worker | fault | no live worker (or a draining one): retryable `ErrNoWorkers`, no `PUT` | no traffic to a model nobody serves |
+| unknown route and bad input are permanent | boundary | unknown route, weight 1, a 400 table: non-retryable | fail fast on what retries cannot fix |
+| promote and restore | unit | promote to weight 1; restore exactly and idempotently; another route's snapshot refused | the two ends of a release |
+| the worked example's burn rate | unit | the example's query: value 20.5, `query` and `time` sent | the measurement the decision rests on |
+| scalar and infinity | unit | a scalar result; `+Inf` is a value, not no data | `scalar(...)` expressions; all-error canaries |
+| no series and NaN are no data | boundary | empty vector and NaN are no data | fail closed |
+| several series are refused | boundary | two series or a matrix: permanent `ErrQuery` | an unaggregated query checks a random pod |
+| error status is permanent, server errors retry | fault | `bad_data` is permanent; a 503 is retryable | one Prometheus blip must not roll back |
+
+The gate mistakes all let a bad model through. Computing gate results but not enforcing them lets a model that failed its safety suite take traffic; any `!g.OK` returns a `GateError{eval}` before the approval wait. Writing `>=` as `>` refuses a model exactly at its threshold, so `CheckGates` compares with `>=` and `<=`. A ledger check that reads `eval` as enough, or skips `revoked`, ships a non-commercial or revoked source; `LedgerProblems` requires `train` in `allowed_uses` and flags `revoked`. A template copied but never filled passes with `<model_id>` in a published model card unless `ModelCardProblems` finds `<letter...>` placeholders outside HTML comments. A gate failure returned as a plain error is retried three times and then reported as an outage; `Preflight` returns `*GateError`, and `gateFrom` keeps it a gate refusal. Evaluating the checkpoint rather than the exported model ships the int4 export unmeasured; `EvalInput(res.ModelDir)` names the exported directory.
+
+> **Warning:** A gate with no row must fail. If the safety suite crashed and its gate passes by default, the release goes out unchecked. Each `GateResult` starts as failed with "no row for this gate".
+
+Approval and rollback mistakes leave traffic in the wrong place. Missing the reject, the timeout, or the wait itself lets a rejected model ship, a release wait forever, or traffic move unapproved; `AwaitSignal` with a timeout comes before the snapshot, and `reject` and `""` end the run. Taking the snapshot after the canary, a rollback branch that never restores, or a restore that merges all leave the canary's backends in place on rollback; the snapshot comes first, the restore is registered in the saga, and `Restore` replaces every key. A cancel that does not compensate leaves 10% of traffic on an unapproved model, which is why `Sleep` and query cancels go through `saga.Fail`. A canary weight of 1 is a full cutover with no way back but a rollback, so `Validate` and `Canary` require $0 < w < 1$.
+
+The burn check has its own set. With no bake, or a query at no fixed time, the burn is measured before the canary served anything, or a retry measures another window; use `rt.Sleep(canary_wait_s)`, then `QueryInput{At: rt.Now()}`. A strict ceiling rolls back a canary exactly at the budget line; use `v <= spec.Burn.Max`. Using the first of several series reads one random pod, so `Decode` refuses more than one. Refusing scalars breaks `scalar(...)` queries, and treating a 503 as permanent lets one overload roll back a good model; `Decode` accepts `scalar`, and `Query` returns a 5xx as retryable.
+
+> **Warning:** No data, or a failed query, read as healthy promotes a canary that served nothing or that Prometheus could not see. `healthy` starts false, and only a real value at or below the ceiling sets it.
+
+The route client mistakes corrupt the shared table. A `PUT` without `If-Match`, or giving up on 412, earns a 428 on every change, or lets a concurrent edit kill the release; `Put` always sends `If-Match`, and `update` rereads on `ErrStale`. Rebuilding the table instead of returning it as read turns `>=` into `>=` and can make other routes vanish; routes are kept as `json.RawMessage` and only the target is re-encoded, with `marshalPlain`. A canary that is not idempotent turns 0.9/0.1 into 0.81/0.09/0.1 on a retry; `Canary` returns unchanged when the weight is already in place. Weights that are not rescaled make the gateway reject the table (the sum is not 1), and a missing `backends` read as none takes the old model's share away; `CanaryBackends` scales by $1 - w$, and `BackendsOf` defaults to the route's model. Without a check that a worker serves the new model, 10% of requests fail with no backend, so `Canary` calls `Ready` and returns retryable `ErrNoWorkers`. Permanent errors returned as retryable make an unknown route or a bad expression retry for minutes; use `Permanent{...}` for unknown routes, bad weights, 400 tables, and decode errors.
+
+Finally, the replay rules. Leaving activity ids to the runtime's counter means an added step renumbers every later idempotency key, so `releaseOpts` gives every step a fixed id. And `time.Now()`, `rand`, or map order in the workflow makes replay diverge after a restart (`ErrNondeterminism`); the workflow reads only `rt.Now()`, recorded results, and its input.
+
+## Where this leads
+
+This section closes the chapter by combining most of it: the `Runtime` the workflow runs on and the `Saga` that undoes the canary ([Signals, cancellation, and sagas](08-signals-cancellation-and-sagas.md)); `EvalSuite` as the evaluation step ([TrainRun and EvalSuite](11-trainrun-and-evalsuite.md)); and `export` and `eval` as [subprocess activities](09-subprocess-activities.md). From other parts of the platform it uses the ledger the preflight gate reads ([Licensing ledger verification and the datasheet](../../data-engineering/05-corpus-pipeline/08-ledger-and-datasheet.md)), the admin route and worker API of the gateway ([routing](../12-gateway/05-routing.md), [admin API](../12-gateway/07-usage-ledger-and-admin-api.md)), and the burn-rate expressions and thresholds of the SLO rules ([SLOs and multi-window burn-rate alerts](../../systems/04-observability/03-slos-and-burn-rate-alerts.md)). The model card and safety rows it gates on come from [Datasheet and model card](../../responsible-ai/03-model-and-data-cards/01-datasheet-and-model-card.md) and [Bias and safety evals](../../responsible-ai/04-bias-and-safety-evals/01-bias-and-safety-evals.md) in *Responsible AI*.
+
+Going forward, the [TinyStories capstone](../../build-an-llm/capstones/01-tinystories.md) ships through `ModelRelease`: a release of `specs/c1/release.json` promotes or rolls back the capstone model, and the capstone runs `Validate` and `Preflight` on it. Later, [Drill: data incident](../../systems/05-incident-response-and-chaos/08-data-incident.md) revokes a source and expects the next release to fail its ledger gate, which is where the retrain decision begins.
+
+Production systems extend each piece. Argo Rollouts and Flagger (`argo-rollouts/rollout/canary.go`, Flagger `pkg/controller/scheduler.go`) add progressive steps (1%, 5%, 25%, ...), several metric analyses per step, automatic abort, and traffic mirroring. Kayenta in Spinnaker (`kayenta-judge`) replaces the absolute burn ceiling with statistical canary analysis: the canary is compared with a baseline started at the same time, Mann-Whitney per metric. The Temporal Go SDK (`go.temporal.io/sdk/workflow`) is the production form of `Runtime`, with `workflow.Context`, `workflow.NewSelector` over signals and timers, and versioning with `GetVersion`. The MLflow model registry and Vertex AI Model Registry extend the gates with stage transitions under approval and lineage to data and runs (MLflow `model_registry` docs). And Envoy AI Gateway and Gateway API `HTTPRoute` weights (`backendRefs[].weight`) make weighted backends Kubernetes objects, where the API server's `resourceVersion` plays the role of the ETag.
+
+### Further reading
+
+- Betsy Beyer et al., [*The Site Reliability Workbook*](https://sre.google/workbook/alerting-on-slos/), chapter 5, "Alerting on SLOs" (burn rates).
+- [Prometheus HTTP API](https://prometheus.io/docs/prometheus/latest/querying/api/).
+- [Argo Rollouts analysis](https://argo-rollouts.readthedocs.io/en/stable/features/analysis/) and [Flagger](https://docs.flagger.app/) (canary analysis).
+- RFC 9110, section 13.1.1 (`If-Match`).
+
+## Key terms
+
+- **Gate**: a check that must pass before a release proceeds; here the model card, the ledger, and eval rows, all failing closed.
+- **Canary**: a new model given a small share $w$ of a route's traffic while the rest stays on the old backends.
+- **Bake**: the durable wait $T$ during which the canary serves traffic before it is measured.
+- **Burn rate**: $B_W = e_W / b$, how many times faster than allowed the error budget is being spent.
+- **Fail closed**: treating missing evidence (no row, no data, a failed query) as a failure.
+- **ETag and `If-Match`**: a version tag on the route table and the request header that makes a `PUT` succeed only if the table has not changed.
+- **Idempotent by desired state**: an activity that compares the current state with the one it wants and does nothing when they match.
+
+## Summary
+
+- A release is a durable workflow, not a script: every step is an activity or a timer recorded in history, so a worker that dies mid-canary resumes where it was, and the 10-minute bake does not start over.
+- Gates fail closed and early. The model card and the data ledger are checked before the export; a missing eval row fails its gate; a burn query that returns nothing, NaN, or an error rolls back.
+- No traffic moves before a human approves, and a release nobody approves expires on the durable clock instead of holding a worker forever. Once traffic has moved, every way out but a promotion (a burn, a cancel, a failed step) puts the snapshot back through a saga compensation.
+- Route changes are read-modify-write with `If-Match` on one route: on 412, read again and redo the change, and send every other route back byte for byte.
+- Every activity is idempotent by desired state: a retried canary finds its weight in place and does nothing, because activities run at least once.
+
+## Review questions
 
 1. Why is the compensation registered *before* the canary activity runs, not after it succeeds?
    <details><summary>Answer</summary>The canary activity may `PUT` the new table and then fail (or the worker may die before the completion is recorded and the retries run out). Traffic has then moved even though the activity "failed". With the restore already registered, `saga.Fail` puts the snapshot back; restoring an unchanged route is a no-op, so registering early costs nothing.</details>
@@ -515,55 +565,5 @@ func Decode(body []byte) (Sample, error) {
    <details><summary>Answer</summary>`Canary` reads the table, sees `tinystories-10m-v2` already at weight 0.1, and returns `Changed: false` without a `PUT`. And even if the weight differed, `CanaryBackends` excludes the served model from `rest` and replaces it, so re-applying never compounds.</details>
 5. Why is a gate failure a `*GateError` that implements `NonRetryable()`, rather than a plain error?
    <details><summary>Answer</summary>A plain error would be retried by the SDK, and a forbidden license or a failing eval row gives the same answer every time. The release would burn its attempts and then be reported as an outage instead of as a refusal.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. gate results computed but not enforced | a model that failed its safety suite takes traffic | any `!g.OK` returns a `GateError{eval}` before the approval wait |
-| 2. a gate with no row passes | the safety suite crashed and the release went out | each `GateResult` starts as failed with "no row for this gate" |
-| 3. `>=` written as `>` | a model exactly at its threshold is refused | `CheckGates` compares with `>=` and `<=` |
-| 4. the ledger check reads `eval` as enough, or skips `revoked` | a non-commercial or revoked source ships | `LedgerProblems` requires `train` in `allowed_uses` and flags `revoked` |
-| 5. a template copied but never filled passes | `<model_id>` in a published model card | `ModelCardProblems` finds `<letter...>` placeholders outside HTML comments |
-| 6. a gate failure returned as a plain error | the gate is retried three times, then reported as an outage | `Preflight` returns `*GateError`; `gateFrom` keeps it a gate refusal |
-| 7. evaluating the checkpoint, not the exported model | the int4 export ships unmeasured | `EvalInput(res.ModelDir)` names the exported directory |
-| 8. reject, timeout, or the wait itself missing | a rejected model ships; a release waits forever; traffic moves unapproved | `AwaitSignal` with a timeout before the snapshot; `reject` and `""` end the run |
-| 9. the snapshot taken after the canary, a rollback branch that never restores, or a restore that merges | rollback keeps the canary's backends | snapshot first, restore registered in the saga, `Restore` replaces every key |
-| 10. no bake, or a query at no fixed time | the burn is measured before the canary served anything; a retry measures another window | `rt.Sleep(canary_wait_s)`, then `QueryInput{At: rt.Now()}` |
-| 11. no data or a failed query read as healthy | a canary that served nothing, or that Prometheus could not see, is promoted | `healthy` starts false and only a real value at or below the ceiling sets it |
-| 12. a strict ceiling | a canary exactly at the budget line rolls back | `v <= spec.Burn.Max` |
-| 13. `PUT` without `If-Match`, or giving up on 412 | 428 on every change; a concurrent edit kills the release | `Put` always sends `If-Match`; `update` rereads on `ErrStale` |
-| 14. the table rebuilt instead of returned as read | `>=` comes back as `>=`; other routes vanish | routes kept as `json.RawMessage`; only the target is re-encoded, with `marshalPlain` |
-| 15. a canary that is not idempotent | a retried activity makes 0.9/0.1 into 0.81/0.09/0.1 | `Canary` returns unchanged when the weight is already in place |
-| 16. weights not rescaled, or a missing `backends` read as none | the gateway rejects the table (sum not 1); the old model loses its share | `CanaryBackends` scales by $1 - w$; `BackendsOf` defaults to the route's model |
-| 17. no check that a worker serves the new model | 10% of requests fail with no backend | `Canary` calls `Ready` and returns retryable `ErrNoWorkers` |
-| 18. permanent errors returned as retryable | an unknown route or a bad expression retries for minutes | `Permanent{...}` for unknown routes, bad weights, 400 tables, and decode errors |
-| 19. the first of several series used | the check reads one random pod | `Decode` refuses more than one series |
-| 20. scalars refused, or a 503 treated as permanent | `scalar(...)` queries fail; one overload rolls back a good model | `Decode` accepts `scalar`; `Query` returns a 5xx as retryable |
-| 21. a canary weight of 1 accepted | the "canary" is a full cutover with no way back but a rollback | `Validate` and `Canary` require $0 < w < 1$ |
-| 22. a cancel that does not compensate | a canceled release leaves 10% of traffic on an unapproved model | `Sleep` and query cancels go through `saga.Fail` |
-| 23. activity ids left to the runtime's counter | an added step renumbers every later idempotency key | `releaseOpts` gives every step a fixed id |
-| 24. `time.Now()`, `rand`, or map order in the workflow | replay diverges after a restart (`ErrNondeterminism`) | the workflow reads only `rt.Now()`, recorded results, and its input |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `dur.08` | the `Runtime` the workflow runs on, and the `Saga` that undoes the canary |
-| Back | `dur.11` | `EvalSuite` is the evaluation step |
-| Back | `dur.09` | `export` and `eval` are subprocess activities run by the `dur.09` runner |
-| Back | `data.08` | the ledger the preflight gate reads |
-| Back | `gw.05`, `gw.07` | the admin route and worker API this client speaks |
-| Back | `obs.03` | the burn-rate expressions and thresholds of the SLO rules |
-| Forward | `C1` | the capstone model is released through this workflow; C1 runs `Validate` and `Preflight` on its release |
-| Forward | `ops.08` | the data-incident drill revokes a source and expects the next release to fail its ledger gate |
-
-## Going further
-
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `ModelRelease` | Argo Rollouts, Flagger | progressive steps (1%, 5%, 25%, ...), several metric analyses per step, automatic abort, traffic mirroring | `argo-rollouts/rollout/canary.go`, Flagger `pkg/controller/scheduler.go` |
-| the burn check | Kayenta (Spinnaker) | statistical canary analysis: the canary compared with a baseline started at the same time, Mann-Whitney per metric | `kayenta-judge` |
-| `Runtime` | Temporal Go SDK | `workflow.Context`, `workflow.NewSelector` over signals and timers, versioning with `GetVersion` | `go.temporal.io/sdk/workflow` |
-| gates | MLflow model registry, Vertex AI Model Registry | stage transitions with approval, lineage to data and runs | MLflow `model_registry` docs |
-| `Routes` | Envoy AI Gateway, Gateway API `HTTPRoute` weights | weighted backends as Kubernetes objects; the API server's `resourceVersion` is the ETag | Gateway API `backendRefs[].weight` |
+6. Why is the model card check an activity rather than a file read inside the workflow?
+   <details><summary>Answer</summary>The workflow is replayed after every restart and may branch only on its input and recorded results. A direct file read could return something different on replay and send the workflow down another path (`ErrNondeterminism`); as an activity, its result is recorded once in history.</details>

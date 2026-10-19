@@ -1,30 +1,37 @@
-# Side quest: Kafka consumer groups
+# Kafka consumer groups
 
-## Overview
+This side quest is a hands-on lab for the other common worker shape, a pool of consumers reading a partitioned log. A worker is a process that pulls work and does it; this lab is about the *operations*: how many workers run in parallel, what happens on failure, and how you size and scale the pool. The concepts are explained in [Partitioned consumers](../../README.md#partitioned-consumers) in this chapter's opening, and the messaging *dynamics* behind them (queue versus log, push versus pull, delivery semantics) are in [Messaging & Distributed Queueing](../../../../infrastructure/02-messaging-and-queueing/README.md) in *Infrastructure*. The lab also uses KEDA, SIGTERM handling, and graceful shutdown from [Containers, Kubernetes & Workloads](../../../../infrastructure/01-containers-kubernetes/README.md). It is optional and sits outside the main line of the book.
 
-- **Primary references**:
-  - [Apache Kafka documentation](https://kafka.apache.org/documentation/) (free) -- especially the Consumer and Consumer Group Protocol sections
-  - [Confluent: Consumer group protocol](https://developer.confluent.io/courses/architecture/consumer-group-protocol/) (free) -- rebalancing in depth
-  - *Designing Data-Intensive Applications* (Kleppmann) Ch 11 "Stream Processing" -- recommended
-- **Supplementary**: [Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/) (Competing Consumers, Dead Letter Channel, Idempotent Receiver), [KIP-429 Incremental Cooperative Rebalancing](https://cwiki.apache.org/confluence/display/KAFKA/KIP-429%3A+Kafka+Consumer+Incremental+Rebalance+Protocol) (free), [microservices.io: Transactional Outbox](https://microservices.io/patterns/data/transactional-outbox.html) (free)
-- **Prerequisites**: [Messaging & Distributed Queueing](../../../../infrastructure/02-messaging-and-queueing/) (the conceptual frame this topic operates), [Containers, Kubernetes & Workloads](../../../../infrastructure/01-containers-kubernetes/) (KEDA, SIGTERM, graceful shutdown)
-- **Estimated time**: 1-2 weeks at 8-10 hrs/week
+> **Learning objectives**
+> - Show that partition count is the parallelism ceiling: within one consumer group a partition is owned by exactly one consumer, so a fifth worker on a four-partition topic sits idle.
+> - Observe rebalancing, and explain why eager reassignment stalls the whole group and why a slow handler that misses `max.poll.interval.ms` triggers a false rebalance and reprocessing.
+> - Make redelivery safe with idempotency keys, the transactional outbox, and commit-after-durable-work.
+> - Use lag as the master signal for alerting and KEDA scaling, and explain why at the partition cap you add partitions, not pods.
 
-## Key Takeaways
+## The code
 
-- **A worker is a process that pulls work and does it.** This topic is the *operations*: how many run in parallel, what happens on failure, how you size and scale the pool. (For the messaging *dynamics* -- queue vs log, push vs pull, delivery semantics -- see [Messaging & Distributed Queueing](../../../../infrastructure/02-messaging-and-queueing/).)
-- **Partition count is the parallelism ceiling.** Within one consumer group a partition is owned by exactly one consumer, so a 5th worker on a 4-partition topic sits idle.
-- **Rebalancing is what bites you.** Eager (stop-the-world) reassignment stalls the whole group; a slow handler that misses `max.poll.interval.ms` triggers a false rebalance and reprocessing.
-- **At-least-once means design for duplicates.** Idempotency keys, the transactional outbox, and commit-after-durable-work are the operational tools that make redelivery safe.
-- **Lag is the master signal.** It drives KEDA scaling and your alerts; at the partition cap, you add partitions, not pods.
+The directory holds the same consumer in three languages: [`consumer-go.go`](consumer-go.go), [`consumer-rust.rs`](consumer-rust.rs), and [`consumer-python.py`](consumer-python.py). Each implements one pattern: at-least-once consumption with an idempotency guard, cooperative rebalancing, explicit offset commits after the handler returns, and a clean leave from the group on SIGTERM. Read them side by side; the differences are only in each client library's API. The diagram [`kafka-consumption.svg`](kafka-consumption.svg) (source [`kafka-consumption.d2`](kafka-consumption.d2)) shows the partition-to-consumer topology.
 
-## How to Study
+## The lab
 
-- Run a local Kafka or [Redpanda](https://redpanda.com/) via Docker. Produce 1000 messages to `orders`, start consumers one at a time, and watch partitions rebalance.
-- Add a consumer beyond the partition count and confirm it sits idle: the topology diagram in [Depth: partitioned consumers](../../README.md#depth-partitioned-consumers), made real.
-- Read [`consumer-go.go`](consumer-go.go), [`consumer-rust.rs`](consumer-rust.rs), and [`consumer-python.py`](consumer-python.py) -- the same at-least-once + idempotent + clean-shutdown pattern in three languages.
-- Kill a worker mid-batch (don't let it commit) and confirm the message is redelivered to another member. Then add an idempotency guard and confirm the duplicate is absorbed.
+Run a local Kafka or [Redpanda](https://redpanda.com/) via Docker. Produce 1000 messages to an `orders` topic, then start consumers one at a time and watch the partitions rebalance across them as each joins.
 
----
+Next, add one consumer more than the partition count and confirm that it sits idle. This is the topology diagram from [Partitioned consumers](../../README.md#partitioned-consumers), made real: no partition is left for the extra member to own, so adding it buys nothing.
 
-The concepts behind this lab are in [Depth: partitioned consumers](../../README.md#depth-partitioned-consumers). This side quest has no course module: it is optional reading and practice outside the course spine.
+Finally, test redelivery. Kill a worker mid-batch, before it commits, and confirm that its messages are redelivered to another member of the group. Then add an idempotency guard and confirm the duplicate is absorbed: the second delivery sees the key already claimed, skips the work, and lets the offset advance.
+
+## Summary
+
+- Partition count is the parallelism ceiling; workers beyond it sit idle.
+- Rebalancing is what bites you: use cooperative rebalancing, keep handlers inside `max.poll.interval.ms`, and leave the group cleanly on SIGTERM.
+- At-least-once means designing for duplicates: idempotency keys, the transactional outbox, and committing only after durable work.
+- Lag drives scaling and alerts; at the partition cap, add partitions, not pods.
+
+## Further reading
+
+- [Apache Kafka documentation](https://kafka.apache.org/documentation/), especially the Consumer and Consumer Group Protocol sections.
+- Confluent, [Consumer group protocol](https://developer.confluent.io/courses/architecture/consumer-group-protocol/), for rebalancing in depth.
+- Martin Kleppmann, *Designing Data-Intensive Applications*, chapter 11, "Stream Processing".
+- [Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/): Competing Consumers, Dead Letter Channel, Idempotent Receiver.
+- [KIP-429: Incremental Cooperative Rebalancing](https://cwiki.apache.org/confluence/display/KAFKA/KIP-429%3A+Kafka+Consumer+Incremental+Rebalance+Protocol).
+- microservices.io, [Transactional Outbox](https://microservices.io/patterns/data/transactional-outbox.html).

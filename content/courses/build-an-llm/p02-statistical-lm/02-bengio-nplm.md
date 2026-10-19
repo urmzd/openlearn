@@ -1,41 +1,26 @@
 # Bengio's neural probabilistic language model
 
-## Overview
+The [Kneser-Ney model](01-ngram-kneser-ney.md) is the best a count table can do, and it hits a wall that smoothing cannot move. To a count table, "the cat ran to the park" and "the dog ran to the park" are unrelated strings: everything learned about one tells it nothing about the other, so it needs to see every word in every context. More context makes this exponentially worse. A byte 8-gram has $256^8 \approx 1.8 \times 10^{19}$ possible histories, and almost all the ones you meet at test time were never counted.
 
-| | |
-|---|---|
-| **Module** | `L2.2` · build · Python · Pass 3 |
-| **Solution** | [`nplm.py`](../../../../course/solutions/python/tinyllm/lm/nplm.py): `windows`, `NPLM(vocab, context, d_emb, d_hidden, direct, rng)` with `forward`, `nll`, `perplexity`, `generate`; `train_nplm`; `save_nplm` and `load_nplm` (the model directory) · the CLI verbs `lm train nplm`, `eval`, `generate` in [`cli_lm.py`](../../../../course/solutions/entry/python/tinyllm/cli_lm.py) · model tests [`test_nplm.py`](../../../../course/solutions/learner-tests/L2.2/python/tests/l2-2-nplm/test_nplm.py) |
-| **Contract** | [`course/contracts/py/tinyllm/lm/nplm.pyi`](../../../../course/contracts/py/tinyllm/lm/nplm.pyi) |
-| **Needs** | `L0.1` `Tensor`, `no_grad` · `L0.2` `F.reshape`, `F.tanh`, `F.embedding` · `L0.3` `cross_entropy` · `L0.4` `Module`, `Embedding`, `Linear` · `L0.5` `DataLoader`, `train_step` · `L0.6` `save_safetensors`, `load_safetensors`, `open_tokens` · `M10.2` `SGD` · `M11.2` `NLLAccumulator` · `M06.3` `PCG32`. Reading: `L2.1` (the count model this one beats), `L0.0` |
-| **Used by** | later `L6.7`: the model zoo loads the NPLM directory and reports its bits per byte · end to end: `tinyllm lm train nplm`, then `tinyllm eval`, reaches a perplexity below the bigram's and the 4-gram's; `tinyllm generate` twice with one seed gives one story |
-| **Optional depth** | Bengio, Ducharme, Vincent, and Jauvin, "A Neural Probabilistic Language Model" (JMLR 2003), sections 1 to 3; Goodfellow, Bengio, Courville, *Deep Learning*, section 12.4; Jurafsky and Martin, *Speech and Language Processing*, 3rd ed., ch. 7 |
+Bengio's 2003 answer is the idea every later model in this book keeps: give each token a learned vector, and let a network predict from the vectors of the window. Tokens that appear in similar windows get similar vectors, so the model generalizes across them. It is also the first model in the book trained with your own autograd and training loop on real text, and on the story corpus it beats the 4-gram (perplexity about 1.54 against 1.87) and the count bigram (8.52) by a wide margin.
 
-## Key Takeaways
+You will derive the model from the failure of count tables, pin down every detail that changes numbers (window order, the init stream, sampling), run the forward pass and the first gradient by hand, and then walk through the solution line by line. The section builds on the whole of Part 0: [Tensor, broadcasting backward, and no_grad](../p00-foundations/01-tensor-and-broadcasting-backward.md), [The op library and gradcheck_all](../p00-foundations/02-op-library-and-gradcheck.md) (`F.reshape`, `F.tanh`, `F.embedding`), [Losses with a fused backward](../p00-foundations/03-losses-with-fused-backward.md) (`cross_entropy`), [Module system and basic layers](../p00-foundations/04-module-system-and-layers.md) (`Module`, `Embedding`, `Linear`), [Training loop and the autograd bigram](../p00-foundations/05-training-loop-and-the-autograd-bigram.md) (`DataLoader`, `train_step`), and [Safetensors for every dtype, atomic checkpoints, and the token stream](../p00-foundations/06-safetensors-checkpoints-and-token-streams.md) (`save_safetensors`, `load_safetensors`, `open_tokens`). From *Mathematics for Computing* it uses [the Optimizer protocol and SGD](../../mathematics-for-computing/10-optimization/02-optimizer-protocol-and-sgd.md), [the NLL accumulator](../../mathematics-for-computing/11-information-theory/02-perplexity-bits-per-byte-nll-accumulator.md), and [PCG32](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md).
 
-- An NPLM replaces the count table with a learned embedding per token and a small network over a fixed window, so a window never seen in training still gets a sensible prediction from the windows it resembles.
-- The window is concatenated **oldest first** and the embedding lookup is an autograd op: the order is part of the parameter layout, and a lookup that bypasses the graph leaves the table untrained.
-- The whole model is ordinary layers, so the forward is one line of math and backward is free; torch, given the same weights, computes the same logits, loss, and gradients.
-- Training is exactly the L0.5 loop with one SGD across epochs, and every random choice comes from one PCG32 per purpose, so a seed reproduces the run bit for bit.
-- The model directory (config plus F32 safetensors) is what the CLI writes, `generate` reads, and the zoo loads.
+The reference solution is [`nplm.py`](../../../../course/solutions/python/tinyllm/lm/nplm.py): `windows`, `NPLM(vocab, context, d_emb, d_hidden, direct, rng)` with `forward`, `nll`, `perplexity`, and `generate`, plus `train_nplm`, `save_nplm`, and `load_nplm` for the model directory. Its contract is [`nplm.pyi`](../../../../course/contracts/py/tinyllm/lm/nplm.pyi) and its tests are [`test_nplm.py`](../../../../course/solutions/learner-tests/L2.2/python/tests/l2-2-nplm/test_nplm.py). The CLI in [`cli_lm.py`](../../../../course/solutions/entry/python/tinyllm/cli_lm.py) exposes the model as three verbs: `lm train nplm` trains and writes the model directory, `eval` scores a token file, and `generate` reads an `nplm` directory and samples from it.
 
-## How to read this chapter
+> **Learning objectives**
+> - Explain how shared embeddings let a neural LM generalize to windows never seen in training, and why parameter count becomes linear rather than exponential in the context length.
+> - Compute the NPLM forward pass, loss, and output-bias gradient by hand, including the direct path.
+> - Implement the model from existing layers so that the embedding table is trained, the window is concatenated oldest first, and a seed reproduces the run bit for bit.
+> - Score, generate from, save, and reload the model in a way that matches torch, the n-gram baseline, and other engines.
 
-Sections 1 and 2 derive the model from the failure of count tables and fix every detail that changes numbers (window order, init stream, sampling). Section 3 runs the forward and the first gradient by hand. Section 4 fixes the interface. Section 5 walks through the solution and explains why each line is written the way it is. Try to predict each step of the solution before reading it.
+## Notation
 
-The solution's CLI exposes the model as three verbs: `lm train nplm` trains and writes the model directory, `eval` scores a token file, and `generate` reads an `nplm` directory and samples from it.
-
----
-
-## 1. Why now
-
-The Kneser-Ney model (`L2.1`) is the best a count table can do, and it hits a wall that smoothing cannot move. To a count table, "the cat ran to the park" and "the dog ran to the park" are unrelated strings: everything learned about one tells it nothing about the other, so it needs to see every word in every context. More context makes this exponentially worse: a byte 8-gram has $256^8 \approx 1.8 \times 10^{19}$ possible histories, and almost all the ones you meet at test time were never counted. Bengio's 2003 answer is the idea every later model in this course keeps: give each token a learned vector, and let a network predict from the vectors of the window. Tokens that appear in similar windows get similar vectors, so the model generalizes across them. It is also the first model the course trains with its own autograd (`L0.1` to `L0.4`) and training loop (`L0.5`) on real text, and on the Pass 3 story corpus it beats the 4-gram (perplexity about 1.54 against 1.87) and the count bigram (8.52) by a wide margin.
-
-## 2. Principles
+The symbols below are used throughout the section.
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
-| $V$ | vocabulary size; tokens are ids $0 \dots V-1$ (256 bytes in the Pass 3 corpus) | `int` |
+| $V$ | vocabulary size; tokens are ids $0 \dots V-1$ (256 bytes in the story corpus) | `int` |
 | $n$ | the order: the model sees the $n - 1$ previous tokens | `int` |
 | $c = n - 1$ | the window (`context`) | `int` |
 | $m$ | embedding size (`d_emb`) | `int` |
@@ -49,57 +34,69 @@ The Kneser-Ney model (`L2.1`) is the best a count table can do, and it hits a wa
 | $y$ | logits | `float32[B, V]` |
 | $p = \mathrm{softmax}(y)$ | the predicted distribution of the next token | `float32[B, V]` |
 | $\mathcal{L}$ | mean cross-entropy over the batch, in nats | scalar |
-| $\eta$, $\mu$ | SGD learning rate and momentum (`M10.2`) | `float` |
+| $\eta$, $\mu$ | SGD learning rate and momentum | `float` |
 
-### 2.1 From counts to vectors
+## From counts to vectors
 
-An n-gram model estimates $P(w_t \mid w_{t-c} \dots w_{t-1})$ with one free number per (history, token) pair: a table with $V^{c} \times V$ entries, nearly all of them estimated from zero data. A neural model shares parameters across histories. Each token gets one vector $C[w] \in \mathbb{R}^m$, used in every window where the token appears, and one function maps a window of vectors to a distribution. The parameter count is now $V m + (\text{network})$, linear in $V$ and in $c$, instead of exponential in $c$. If "cat" and "dog" end up with nearby vectors (because they appear in similar windows), then every window containing one is also evidence about windows containing the other.
+An n-gram model estimates $P(w_t \mid w_{t-c} \dots w_{t-1})$ with one free number per (history, token) pair: a table with $V^{c} \times V$ entries, nearly all of them estimated from zero data. A neural model shares parameters across histories instead. Each token gets one vector $C[w] \in \mathbb{R}^m$, used in every window where the token appears, and one function maps a window of vectors to a distribution. The parameter count is now $V m + (\text{network})$, linear in $V$ and in $c$, instead of exponential in $c$. If "cat" and "dog" end up with nearby vectors (because they appear in similar windows), then every window containing one is also evidence about windows containing the other.
 
-### 2.2 The architecture
+That leaves the question of which function to use.
+
+## The architecture
 
 Bengio et al. write the model as one equation:
 
 $$x = [C[w_{t-c}]; \dots; C[w_{t-1}]], \qquad y = b + W x + U \tanh(d + H x), \qquad p = \mathrm{softmax}(y).$$
 
-Read it from the inside out. Look up the $c$ rows of $C$ for the window and concatenate them, oldest first, into one vector of length $c m$; that is exactly a row-major reshape of the `[B, c, m]` lookup to `[B, c m]`. Apply one hidden layer with a $\tanh$ nonlinearity. Map the hidden vector to $V$ logits. The paper also adds $W x$, a **direct** linear path from the embeddings to the logits: a log-linear model in parallel with the hidden layer, which the paper found speeds up training. In the course's layers: `emb = Embedding(V, m)`, `hidden = Linear(c m, h)`, `out = Linear(h, V)`, and `direct = Linear(c m, V, bias=False)`. Those attribute names, in that order, are the state-dict keys and so the safetensors keys of the model directory.
+Read it from the inside out. Look up the $c$ rows of $C$ for the window and concatenate them, oldest first, into one vector of length $c m$; that is exactly a row-major reshape of the `[B, c, m]` lookup to `[B, c m]`. Apply one hidden layer with a $\tanh$ nonlinearity. Map the hidden vector to $V$ logits. The paper also adds $W x$, a **direct** linear path from the embeddings to the logits: a log-linear model in parallel with the hidden layer, which the paper found speeds up training.
+
+In the book's layers this is `emb = Embedding(V, m)`, `hidden = Linear(c m, h)`, `out = Linear(h, V)`, and `direct = Linear(c m, V, bias=False)`. Those attribute names, in that order, are the state-dict keys and so the safetensors keys of the model directory.
 
 The order of the concatenation is part of the model. Position $j$ of the window always multiplies the same columns $H[:, jm:(j+1)m]$, so the network learns what the token two back means differently from the token one back. Concatenating newest first is not wrong in itself, but it is a different parameter layout: weights trained one way are garbage read the other way, and a checkpoint is no longer interchangeable with anyone else's.
 
-### 2.3 Training
+## Training
 
-The loss is the mean cross-entropy (`L0.3`) of each window's logits against the next token. Its gradient at the logits is $p - \mathrm{onehot}(\text{target})$ per row, divided by $B$; everything below the logits is the chain rule through `Linear`, `tanh`, the reshape, and the embedding lookup, which the autograd already does. The one place a gradient can silently vanish is the lookup: `F.embedding` is an op whose backward adds each row's gradient into the rows it read (a token used twice in a window gets both). Reading `emb.weight.data[ids]` with numpy instead gives the same forward numbers and a constant: $C$ never learns.
+The loss is the mean cross-entropy of each window's logits against the next token. Its gradient at the logits is $p - \mathrm{onehot}(\text{target})$ per row, divided by $B$; everything below the logits is the chain rule through `Linear`, `tanh`, the reshape, and the embedding lookup, which the autograd already does.
 
-`train_nplm` is the `L0.5` loop with nothing new. The windows of the whole sequence become arrays `x` (`int64[N, c]`) and `y` (`int64[N]`); a `DataLoader` shuffles them with the given PCG32 (a new permutation each epoch) in batches of $B$, dropping the last partial batch; one `SGD` (`M10.2`) is created before the first step, so its momentum buffers carry across epochs; and each step is `train_step` with the given `clip`. It runs for exactly `steps` steps, wrapping into new epochs as needed.
+The one place a gradient can silently vanish is the lookup. `F.embedding` is an op whose backward adds each row's gradient into the rows it read (a token used twice in a window gets both). Reading `emb.weight.data[ids]` with numpy instead gives the same forward numbers and a constant: $C$ never learns.
 
-### 2.4 Scoring
+`train_nplm` is the [Part 0 training loop](../p00-foundations/05-training-loop-and-the-autograd-bigram.md) with nothing new. The windows of the whole sequence become arrays `x` (`int64[N, c]`) and `y` (`int64[N]`). A `DataLoader` shuffles them with the given PCG32 (a new permutation each epoch) in batches of $B$, dropping the last partial batch. One `SGD` is created before the first step, so its momentum buffers carry across epochs, and each step is `train_step` with the given `clip`. It runs for exactly `steps` steps, wrapping into new epochs as needed.
 
-`nll(ids)` scores every token that has a full window: positions $c \dots \text{len} - 1$. Each value is $\mathrm{logsumexp}(y) - y_{\text{target}}$ in float64, from float32 logits, computed under `no_grad` in batches (batching changes nothing but rounding). `perplexity` is $\exp$ of the mean, summed with `M11.2`'s `NLLAccumulator`; with byte tokens, bits per byte is the mean divided by $\ln 2$. The first $c$ tokens of a file are not scored: an n-gram model predicts them from `<s>`, the NPLM has no start symbol, so on the Pass 3 validation file the NPLM scores 14 667 tokens where the 4-gram scores 14 675. Over that many tokens the difference does not move the comparison.
+## Scoring
 
-### 2.5 Generation and the model directory
+`nll(ids)` scores every token that has a full window: positions $c \dots \text{len} - 1$. Each value is $\mathrm{logsumexp}(y) - y_{\text{target}}$ in float64, from float32 logits, computed under `no_grad` in batches (batching changes nothing but rounding). `perplexity` is $\exp$ of the mean, summed with `NLLAccumulator`; with byte tokens, bits per byte is the mean divided by $\ln 2$.
 
-`generate(prefix, n, temperature, seed)` repeats: take the last $c$ ids, compute the logits, choose the next id, append it. At temperature 0 it is the first maximum (ties to the lowest id, D11). Otherwise it draws exactly as `L0.5`'s `BigramLM.sample`: one `PCG32(seed)` (stream 54) per call, one `uniform()` per token, weights $e^{z_j - \max z}$ of $z = y / T$ in float64 summed in id order, and the first id whose running sum exceeds $u \cdot \sum$. A prompt shorter than the window is an error; a longer prompt conditions only on its end.
+The first $c$ tokens of a file are not scored. An n-gram model predicts them from `<s>`, but the NPLM has no start symbol, so on the story corpus's validation file the NPLM scores 14 667 tokens where the 4-gram scores 14 675. Over that many tokens the difference does not move the comparison.
 
-`save_nplm(model, dir)` writes `config.json` (`tl_arch = "nplm"`, the sizes as `tl_context`, `tl_d_emb`, `hidden_size`, `tl_direct`) and `model.safetensors` (the state dict as F32, metadata `{"format": "tinyllm", "tl_arch": "nplm"}`) with `L0.6`'s writer; `load_nplm` rebuilds the model from the config and loads the tensors strictly.
+## Generation and the model directory
 
-## 3. Worked example by hand
+`generate(prefix, n, temperature, seed)` repeats a simple loop: take the last $c$ ids, compute the logits, choose the next id, append it. At temperature 0 the choice is the first maximum (ties go to the lowest id, the book-wide tie rule recorded as decision D11). Otherwise it draws exactly as `BigramLM.sample` from Part 0 does: one `PCG32(seed)` (stream 54) per call, one `uniform()` per token, weights $e^{z_j - \max z}$ of $z = y / T$ in float64 summed in id order, and the first id whose running sum exceeds $u \cdot \sum$. A prompt shorter than the window is an error; a longer prompt conditions only on its end.
 
-$V = 3$ tokens `a`, `b`, `c` (ids 0, 1, 2), a window of $c = 2$, embedding size $m = 1$, one hidden unit $h = 1$, with the direct path:
+`save_nplm(model, dir)` writes `config.json` (`tl_arch = "nplm"`, the sizes as `tl_context`, `tl_d_emb`, `hidden_size`, `tl_direct`) and `model.safetensors` (the state dict as F32, metadata `{"format": "tinyllm", "tl_arch": "nplm"}`) with the Part 0 safetensors writer. `load_nplm` rebuilds the model from the config and loads the tensors strictly.
+
+## Working it by hand
+
+Take $V = 3$ tokens `a`, `b`, `c` (ids 0, 1, 2), a window of $c = 2$, embedding size $m = 1$, and one hidden unit $h = 1$, with the direct path:
 
 $$C = \begin{pmatrix} 1 \\ 0 \\ -1 \end{pmatrix}, \quad H = \begin{pmatrix} 0.5 & -0.5 \end{pmatrix}, \quad d = 0, \quad U = \begin{pmatrix} 1 \\ 0 \\ -1 \end{pmatrix}, \quad b = \begin{pmatrix} 0 \\ 0.5 \\ 0 \end{pmatrix}, \quad W = \begin{pmatrix} 1 & 0 \\ 0 & 0 \\ 0 & 1 \end{pmatrix}.$$
 
-**Windows.** The sequence 5 6 7 8 with $c = 2$ gives the windows (5, 6) with target 7 and (6, 7) with target 8; the first two tokens are never targets.
+Start with the windows. The sequence 5 6 7 8 with $c = 2$ gives the windows (5, 6) with target 7 and (6, 7) with target 8; the first two tokens are never targets.
 
-**Forward for the window (a, c).** Oldest first: $x = (C[a], C[c]) = (1, -1)$. Hidden: $H x + d = 0.5 \cdot 1 - 0.5 \cdot (-1) = 1$, so the hidden activation is $\tanh 1 = 0.761594$. Direct path: $W x = (1, 0, -1)$. Output path: $U \tanh 1 = (0.761594, 0, -0.761594)$. Logits:
+Now run the forward for the window (a, c). Oldest first, $x = (C[a], C[c]) = (1, -1)$. The hidden pre-activation is $H x + d = 0.5 \cdot 1 - 0.5 \cdot (-1) = 1$, so the hidden activation is $\tanh 1 = 0.761594$. The direct path gives $W x = (1, 0, -1)$ and the output path gives $U \tanh 1 = (0.761594, 0, -0.761594)$. The logits are
 
 $$y = b + W x + U \tanh 1 = (1.761594,\ 0.5,\ -1.761594).$$
 
 The reversed window (c, a) has $x = (-1, 1)$, hidden pre-activation $-1$, and logits $(-1.761594, 0.5, 1.761594)$: the mirror image. The order matters. Without the direct path only $b + U \tanh 1 = (0.761594, 0.5, -0.761594)$ remains.
 
-**Probabilities and loss.** $e^{y} = (5.821711, 1.648721, 0.171771)$, sum $7.642203$, so $p = (0.761784, 0.215739, 0.022477)$. With target `a` the loss is $-\ln 0.761784 = 0.272092$ nats.
+Next, probabilities and loss. $e^{y} = (5.821711, 1.648721, 0.171771)$ with sum $7.642203$, so $p = (0.761784, 0.215739, 0.022477)$. With target `a` the loss is $-\ln 0.761784 = 0.272092$ nats.
 
-**Gradient at the output bias.** $\partial \mathcal{L} / \partial y = p - \mathrm{onehot}(a) = (-0.238216, 0.215739, 0.022477)$, and since $y = b + \dots$, that is exactly the gradient of $b$. Going one layer down, the hidden unit receives $\sum_v (p_v - \mathrm{onehot}_v) U_v = -0.238216 - 0.022477 = -0.260692$, times $1 - \tanh^2 1 = 0.419974$ gives $-0.109484$ at the pre-activation; from there $H$, and through both paths $C[a]$ and $C[c]$, receive their shares. $C[b]$ was not in the window: its gradient is exactly 0.
+Finally, the gradient at the output bias. $\partial \mathcal{L} / \partial y = p - \mathrm{onehot}(a) = (-0.238216, 0.215739, 0.022477)$, and since $y = b + \dots$, that is exactly the gradient of $b$. One layer down, the hidden unit receives $\sum_v (p_v - \mathrm{onehot}_v) U_v = -0.238216 - 0.022477 = -0.260692$; times $1 - \tanh^2 1 = 0.419974$ that gives $-0.109484$ at the pre-activation. From there $H$, and through both paths $C[a]$ and $C[c]$, receive their shares. $C[b]$ was not in the window, so its gradient is exactly 0.
 
-## 4. The interface
+The tests pin this example directly: an `NPLM(3, 2, 1, 1)` loaded with these weights must give logits $(1 + \tanh 1, 0.5, -1 - \tanh 1)$ for the window `[[0, 2]]`.
+
+## Designing the API
+
+The public surface is one helper that turns a token sequence into training windows, the model class, a training function, and a pair of directory functions.
 
 ```python
 def windows(ids: ArrayLike, context: int) -> tuple[NDArray, NDArray]: ...   # ([N, c], [N]), N = len - c
@@ -118,44 +115,17 @@ def save_nplm(model: NPLM, dir: str, tokenizer: str = "bytes") -> None: ...
 def load_nplm(dir: str) -> NPLM: ...
 ```
 
-### What a correct solution must handle
+`forward` returns logits, not probabilities. `train_nplm` returns one loss per optimizer step, and `steps` counts steps, not epochs.
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| Windows of the hand example | unit, smoke | (5, 6) -> 7 and (6, 7) -> 8; `context` 1 too | every training example and every scored token comes from here |
-| Forward of the hand example | unit, smoke | section 3's logits and the mirrored window; the model without the direct path | the parameter layout every checkpoint shares |
-| The gradient reaches the bias | unit | loss $0.272092$, $\partial b = p - \mathrm{onehot}$, $C[b]$ untouched | the loss is right before any training |
-| Golden against torch | golden | logits, loss, and every parameter's gradient against torch, with and without the direct path; ids repeat in and across windows | torch is the oracle for every later model (`L3`, `L5`) |
-| Gradcheck every parameter | gradcheck | frozen central differences in float64 for all six parameters | a table cut out of the graph never learns |
-| State-dict names and shapes | unit | keys and shapes in registration order, F32, `direct.weight` only with the direct path | the zoo (`L6.7`) loads by these names |
-| Init draws from one generator | unit | layers drawn from one rng in order; two default models equal; no repeated draws across layers | a seed fixes the whole model |
-| NLL matches cross-entropy per window | unit | per-token NLL in float64, batch size changes only rounding, mean = the loss, perplexity = exp(mean) | `eval` and the zoo's bits per byte |
-| Seeded and greedy generation | unit | the contract's draw rebuilt with PCG32; same seed, same ids; greedy is the step-by-step argmax | generating twice with one seed gives one text |
-| Greedy ties go to the lowest id | boundary | an all-zero model decodes greedily to id 0 every step | the D11 tie rule every engine shares |
-| Generation uses the last window | boundary | a long prompt conditions on its end | prompts are longer than the window |
-| `train_nplm` is the L0.5 loop | differential | 10 steps over 4-batch epochs with momentum and weight decay: equal bit for bit to the loop rebuilt from `L0.5` and `M10.2` | the training is reproducible from a seed |
-| `train_nplm` runs exactly `steps` | boundary | data of exactly one batch: 3 steps are 3 epochs | `steps` counts optimizer steps, not epochs |
-| `train_nplm` passes the clip | unit | with clip 0.5 the run equals the rebuilt loop with the same clip | long runs survive one bad batch |
-| The NPLM learns the corpus | learning | 300 steps on 50 000 bytes reach the reference's validation perplexity (mean + 3 sd over 5 seeds), below the bigram's 8.52 | the model actually learns |
-| Save and load round trip | unit | `config.json` exactly, F32 tensors with the metadata, identical logits after reload, with and without the direct path | `generate` and the zoo load what `lm train nplm` wrote |
-| Input validation | boundary | sizes below 1, wrong window width, ids outside $0 \dots V-1$, short prompts, too few windows, bad tokenizer, wrong `tl_arch` | caller bugs fail at the call |
+## Building it step by step
 
-The model tests in [`test_nplm.py`](../../../../course/solutions/learner-tests/L2.2/python/tests/l2-2-nplm/test_nplm.py) pin the hand example directly: an `NPLM(3, 2, 1, 1)` loaded with section 3's weights must give logits $(1 + \tanh 1, 0.5, -1 - \tanh 1)$ for the window `[[0, 2]]`, and they add the windows of a short sequence, gradients on every parameter including the table, a finite-difference check of the embedding gradient, `nll` against `cross_entropy`, greedy ties and the last-window rule, `train_nplm` against the rebuilt loop across an epoch boundary, and a save and load round trip.
+The design follows from six requirements. First, parameters must be shared across histories: a count table has one free number per (history, token), and to generalize the same parameters must serve many histories, so each token gets one vector reused in every window and one function maps any window of vectors to a distribution. Second, the simplest function that can tell positions apart is a linear map of the concatenated vectors, where position $j$ always multiplies the same block of columns; that fixes both the concatenation (oldest first, as a row-major reshape of `[B, c, m]`) and the meaning of every weight column. Third, one `tanh` layer gives the model capacity beyond log-linear, and the direct path $W x$ keeps a log-linear model alongside. Both are `Linear` layers, so the model is a composition of ops the autograd already differentiates.
 
-## 5. The solution, step by step
+Fourth, the lookup must be in the graph. The table is a parameter like any other, and its gradient arrives only if the lookup is an op with a backward (`Embedding` calls `F.embedding`). Fifth, reproducibility is a design constraint: a seed must fix the whole model and run, which means one generator shared by all layers in registration order, one loader rng shuffling every epoch, one optimizer for the whole run (so momentum carries across epochs), and one sampler generator per `generate` call. Sixth, scoring is exact and comparable: NLL per scored token in float64 from float32 logits, summed with `NLLAccumulator`, so `eval` and the zoo report numbers comparable with the n-gram model.
 
-### 5.1 From first principles
+### Windows
 
-1. **Share parameters across histories.** A count table has one free number per (history, token); to generalise, the same parameters must serve many histories. So each token gets one vector, reused in every window, and one function maps any window of vectors to a distribution.
-2. **The simplest function that can tell positions apart** is a linear map of the concatenated vectors: position $j$ always multiplies the same block of columns. That fixes both the concatenation (oldest first, as a row-major reshape of `[B, c, m]`) and the meaning of every weight column.
-3. **A nonlinearity, plus a shortcut.** One `tanh` layer gives the model capacity beyond log-linear; the direct path $W x$ keeps a log-linear model alongside, which the paper found speeds training. Both are `Linear` layers, so the model is a composition of ops the autograd already differentiates.
-4. **The lookup must be in the graph.** The table is a parameter like any other; its gradient arrives only if the lookup is an op with a backward (`Embedding` calls `F.embedding`). Everything else follows from the chain rule.
-5. **Reproducibility is a design constraint.** A seed must fix the whole model and run: one generator shared by all layers in registration order, one loader rng shuffling every epoch, one optimizer for the whole run (momentum carries across epochs), and one sampler generator per `generate` call.
-6. **Scoring is exact and comparable.** NLL per scored token in float64 from float32 logits, summed with `NLLAccumulator`, so `eval` and the zoo report numbers comparable with `L2.1`.
-
-### 5.2 The code, annotated
-
-**Windows.** Row $i$ of the context matrix is `ids[i : i + c]` and its target is `ids[i + c]`, so the first $c$ tokens are never targets.
+Row $i$ of the context matrix is `ids[i : i + c]` and its target is `ids[i + c]`, so the first $c$ tokens are never targets.
 
 ```python
 def windows(ids: ArrayLike, context: int) -> tuple[NDArray, NDArray]:
@@ -168,9 +138,11 @@ def windows(ids: ArrayLike, context: int) -> tuple[NDArray, NDArray]:
     return ctx, a[context:].copy()          # target of row i is ids[i + context]
 ```
 
-`sliding_window_view` has `a.size - context + 1` rows; the last one has no target, so `[:n]` drops it. On 5 6 7 8 with $c = 2$: rows (5, 6), (6, 7) and targets 7, 8.
+`sliding_window_view` has `a.size - context + 1` rows; the last one has no target, so `[:n]` drops it. On 5 6 7 8 with $c = 2$ this gives rows (5, 6), (6, 7) and targets 7, 8.
 
-**Construction.** The layers are registered in the order of the state dict (`emb`, `hidden`, `out`, `direct`), and all draw from one generator.
+### Construction
+
+The layers are registered in the order of the state dict (`emb`, `hidden`, `out`, `direct`), and all draw from one generator.
 
 ```python
 # ONE generator for every layer, in registration order: passing None to
@@ -186,7 +158,9 @@ self.direct = (
 )
 ```
 
-**Forward.** Bengio's equation, one op per term.
+### Forward
+
+The forward is Bengio's equation, one op per term.
 
 ```python
 def forward(self, ctx_ids: ArrayLike) -> Tensor:
@@ -202,9 +176,11 @@ def forward(self, ctx_ids: ArrayLike) -> Tensor:
     return y                                  # logits; softmax lives in the loss
 ```
 
-Returning logits, not probabilities, lets `cross_entropy` and `nll` use a stable logsumexp. On section 3's window (a, c): `e` is `[[[1], [-1]]]`, `x` is `[[1, -1]]`, and `y` is $(1.761594, 0.5, -1.761594)$.
+Returning logits, not probabilities, lets `cross_entropy` and `nll` use a stable logsumexp. On the hand example's window (a, c), `e` is `[[[1], [-1]]]`, `x` is `[[1, -1]]`, and `y` is $(1.761594, 0.5, -1.761594)$.
 
-**Scoring.** Each scored token costs $\mathrm{logsumexp}(z) - z_{\text{target}}$, computed with the max subtracted so `exp` cannot overflow.
+### Scoring
+
+Each scored token costs $\mathrm{logsumexp}(z) - z_{\text{target}}$, computed with the max subtracted so `exp` cannot overflow.
 
 ```python
 def nll(self, ids: ArrayLike, batch_size: int = 1024) -> NDArray:
@@ -226,7 +202,9 @@ def perplexity(self, ids: ArrayLike) -> float:
     return float(acc.result()["ppl"])                      # exp(mean), not the mean
 ```
 
-**Training.** Nothing new: the `L0.5` loop. The loader and optimizer are built once, before the loop, so each pass over `loader` is a fresh permutation from the same rng and the momentum buffers persist.
+### Training
+
+Training is nothing new: the Part 0 loop. The loader and optimizer are built once, before the loop, so each pass over `loader` is a fresh permutation from the same rng and the momentum buffers persist.
 
 ```python
 def train_nplm(model, ids, steps, batch_size, lr, rng,
@@ -247,9 +225,11 @@ def train_nplm(model, ids, steps, batch_size, lr, rng,
     return losses
 ```
 
-`_window_loss` is `cross_entropy(model(batch["x"]), batch["y"])`. The `tgt.size < batch_size` check matters: with `drop_last=True` such data yields no batch, and `while` would spin forever.
+`_window_loss` is `cross_entropy(model(batch["x"]), batch["y"])`. The `tgt.size < batch_size` check matters: with `drop_last=True` such data yields no batch, and the `while` would spin forever.
 
-**Generation.** The window is always the last $c$ ids of the growing history; one `PCG32(seed)` per call.
+### Generation
+
+The window is always the last $c$ ids of the growing history, with one `PCG32(seed)` per call.
 
 ```python
 rng = PCG32(seed)  # one generator per call, stream 54 (L0.5's sampler)
@@ -286,72 +266,92 @@ def _draw(row: NDArray, temperature: float, u: float) -> int:
 
 Summing in a Python loop rather than `np.sum` fixes the summation order (numpy uses pairwise summation), so the draw matches every other engine bit for bit.
 
-**The directory.** `save_nplm` writes `config.json` (`tl_arch`, `tl_tokenizer`, `vocab_size`, `tl_format`, `tl_context`, `tl_d_emb`, `hidden_size`, `tl_direct`) and the state dict as F32 safetensors; `load_nplm` checks `tl_arch`, rebuilds the model from the config, and calls `load_state_dict(tensors, strict=True)`, so a missing or extra tensor (`direct.weight`) is an error, not a silently ignored key.
+### The directory
 
-Full solution: [`nplm.py`](../../../../course/solutions/python/tinyllm/lm/nplm.py).
+`save_nplm` writes `config.json` (`tl_arch`, `tl_tokenizer`, `vocab_size`, `tl_format`, `tl_context`, `tl_d_emb`, `hidden_size`, `tl_direct`) and the state dict as F32 safetensors. `load_nplm` checks `tl_arch`, rebuilds the model from the config, and calls `load_state_dict(tensors, strict=True)`, so a missing or extra tensor (`direct.weight`) is an error, not a silently ignored key.
 
-### 5.3 Why this solution
+The full solution is [`nplm.py`](../../../../course/solutions/python/tinyllm/lm/nplm.py).
 
-- **Complexity.** Per batch of $B$ windows, the forward costs $O(B(c m h + h V + c m V))$: the output layers dominate when $V$ is large, which is why later models replace the full softmax (see Going further). Parameters: $V m + h c m + h + V h + V + V c m$.
-- **Why concatenate instead of averaging the window?** Averaging (a bag of words) loses position: "dog bites man" and "man bites dog" would get the same prediction. Concatenation keeps one block of weights per position at the cost of parameters linear in $c$.
-- **Why logits out of `forward`?** Softmax followed by `log` loses precision for small probabilities; the losses compute logsumexp from logits directly. It also lets `generate` apply temperature to logits.
-- **Why one generator for all layers?** Re-seeding per layer makes layers of the same shape start identical or correlated, and makes the model depend on how many layers share a default. One stream in registration order is the simplest rule that makes "seed fixes the model" true.
-- **Why rebuild nothing in training?** Reusing `DataLoader`, `train_step`, and `SGD` means the only new code is the model; the differential case against the `L0.5` loop then pins training bit for bit.
-- **Tradeoffs accepted.** A fixed window cannot use context beyond $c$ tokens, and the first $c$ tokens of a file are never scored; the recurrent models of part 3 remove the first limit.
+### Why this design
 
-### 5.4 Explain it back
+Per batch of $B$ windows, the forward costs $O(B(c m h + h V + c m V))$. The output layers dominate when $V$ is large, which is why later models replace the full softmax (see the production table at the end). The parameter count is $V m + h c m + h + V h + V + V c m$.
+
+Concatenation rather than averaging the window is what keeps position. Averaging (a bag of words) would give "dog bites man" and "man bites dog" the same prediction; concatenation keeps one block of weights per position at the cost of parameters linear in $c$. Returning logits out of `forward` avoids the precision loss of softmax followed by `log` for small probabilities, since the losses compute logsumexp from logits directly, and it lets `generate` apply temperature to logits.
+
+One generator for all layers is the simplest rule that makes "a seed fixes the model" true. Re-seeding per layer makes layers of the same shape start identical or correlated, and makes the model depend on how many layers share a default. Reusing `DataLoader`, `train_step`, and `SGD` means the only new code is the model, and a differential test against the Part 0 loop then pins training bit for bit. The tradeoffs accepted are that a fixed window cannot use context beyond $c$ tokens and the first $c$ tokens of a file are never scored; the recurrent models of Part 3 remove the first limit.
+
+## What can go wrong
+
+The tests cover the hand example and a set of properties that later chapters rely on. The windows of the hand example must be (5, 6) -> 7 and (6, 7) -> 8, with `context` 1 checked too, because every training example and every scored token comes from here. The forward must reproduce the hand logits, the mirrored window, and the model without the direct path, which pins the parameter layout every checkpoint shares. The loss must be $0.272092$ with $\partial b = p - \mathrm{onehot}$ and $C[b]$ untouched.
+
+Against torch as the oracle (as it is for the recurrent models and the transformer later), logits, loss, and every parameter's gradient must match, with and without the direct path, with ids repeating within and across windows. A frozen central-difference gradcheck in float64 covers all six parameters, because a table cut out of the graph never learns. The state dict must have its keys and shapes in registration order, F32, with `direct.weight` only when the direct path exists, since [the model zoo](../p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) loads by these names. Layers must draw from one rng in order, two default models must be equal, and no draws may repeat across layers.
+
+Scoring must give per-token NLL in float64 where batch size changes only rounding, the mean equals the loss, and perplexity is exp(mean). Seeded generation is rebuilt from the contract's draw with PCG32: same seed, same ids; greedy is the step-by-step argmax; an all-zero model decodes greedily to id 0 every step; and a long prompt conditions on its end. `train_nplm` must equal, bit for bit, the Part 0 loop rebuilt with SGD over 10 steps across 4-batch epochs with momentum and weight decay; must run exactly `steps` (data of exactly one batch: 3 steps are 3 epochs); and must pass `clip` through (with clip 0.5 the run equals the rebuilt loop with the same clip). The model must actually learn: 300 steps on 50 000 bytes reach the reference's validation perplexity (mean + 3 sd over 5 seeds), below the bigram's 8.52. A save and load round trip must reproduce `config.json` exactly, F32 tensors with the metadata, and identical logits after reload. Sizes below 1, a wrong window width, ids outside $0 \dots V-1$, short prompts, too few windows, a bad tokenizer, and a wrong `tl_arch` all fail at the call.
+
+The bugs behind these checks are listed below with their symptoms and the line that prevents each.
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| the window's rows read from `emb.weight.data` instead of through `F.embedding` | the forward is right, the table gets no gradient and never learns (and numpy reads id -1 as the last row) | `forward` calls `self.emb(ids)`, the autograd op |
+| the window concatenated newest first | another parameter layout: torch's weights and every saved checkpoint read wrong | `windows` is oldest first and `F.reshape` keeps that order |
+| the direct path registered but never added to the logits | the parameter exists, saves, and loads, and has no effect | `y = y + self.direct(x)` when the path exists |
+| `rng=None` passed on to every layer | each layer restarts the default stream: correlated initial weights | resolves one `r` and passes it to every layer |
+| targets shifted by one (predicting the last window token) | a copy task: training loss collapses, nothing is learned about the next token | targets are `a[context:]`, one past each window |
+| generation conditioned on the first ids of the prompt | every step sees the same window: the text loops on the prompt's start | the window is `hist[-self.context:]` |
+| a new `SGD` every epoch | the momentum buffers reset at each epoch boundary | one `SGD` before the `while` loop |
+| training stops at the end of the first epoch | fewer steps than asked, silently | `while len(losses) < steps` wraps into new epochs |
+| the direct matrix not saved | the reloaded model cannot load strictly | `save_nplm` writes the whole `state_dict()` |
+| greedy ties broken toward the highest id | a different text from every other engine | `np.argmax` returns the first maximum |
+| `clip` not passed to `train_step` | long runs blow up on one bad batch | `train_step(..., clip=clip)` |
+| perplexity returned as the mean NLL | a number in nats reported as a perplexity | `NLLAccumulator(...)["ppl"]`, the exponential of the mean |
+
+> **Warning:** The embedding bug is the dangerous one, because nothing looks wrong. The forward numbers are correct and the loss still falls (the other layers learn), but the table stays at its initialization. A gradcheck on `emb.weight` catches it immediately.
+
+## Where this leads
+
+End to end, `tinyllm lm train nplm` followed by `tinyllm eval` reaches a perplexity below the bigram's and the 4-gram's, and `tinyllm generate` run twice with one seed gives one story. [The model zoo](../p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) loads the NPLM directory and reports its bits per byte next to KN-4 and the transformers. [The RNN language model](../p03-recurrent/06-rnn-language-model-stateful-tbptt.md) replaces the fixed window with a state, and its bits per byte must beat this model's on the same file. The next section, [word2vec skip-gram with negative sampling, and the PPMI-SVD baseline](03-word2vec-and-ppmi-svd.md), learns the embedding table on its own, without a language model around it.
+
+Each piece has a production descendant:
+
+| This piece | Production equivalent | What it adds | Where to look |
+|---|---|---|---|
+| a full softmax over $V$ | hierarchical softmax (Morin and Bengio 2005), adaptive softmax (Grave et al. 2017) | the output layer costs $O(\log V)$ or a few clusters instead of $O(V)$ per token | `torch.nn.AdaptiveLogSoftmaxWithLoss` (`torch/nn/modules/adaptive.py`) |
+| fixed window of $c$ tokens | recurrent and attention models | unbounded context with a state, or every earlier token at once | [the RNN LM](../p03-recurrent/06-rnn-language-model-stateful-tbptt.md) and [scaled dot-product attention](../p05-transformer-2017/01-scaled-dot-product-attention.md) in this book |
+| embedding table trained with the model | word2vec and GloVe ([next section](03-word2vec-and-ppmi-svd.md)), then tied input and output embeddings (Press and Wolf 2017) | the table pretrained on more text, or shared with the output layer to halve the parameters | `transformers` `tie_word_embeddings` |
+| the direct path $W x$ | residual connections (He et al. 2016) | an identity-like shortcut around the nonlinearity, now in every transformer block | [the encoder-decoder Transformer](../p05-transformer-2017/05-encoder-decoder-transformer.md) in this book |
+| CPU numpy, one process | the paper's parallel training on 40 CPUs | data-parallel and parameter-parallel SGD over the output layer | Bengio et al. (2003), section 3 |
+
+### Further reading
+
+- Bengio, Ducharme, Vincent, and Jauvin, "A Neural Probabilistic Language Model" (JMLR 2003), sections 1 to 3.
+- Goodfellow, Bengio, and Courville, *Deep Learning*, section 12.4.
+- Jurafsky and Martin, [*Speech and Language Processing*](https://web.stanford.edu/~jurafsky/slp3/), 3rd ed., chapter 7.
+
+## Key terms
+
+- **embedding table**: the matrix $C$ whose row $C[w]$ is the learned vector for token $w$, shared across every window.
+- **window**: the fixed $c$ previous tokens the model conditions on, concatenated oldest first.
+- **direct path**: the optional linear map $W x$ from the embeddings straight to the logits, in parallel with the hidden layer.
+- **logits**: the unnormalized scores $y$ whose softmax is the next-token distribution.
+- **registration order**: the order layers are created in a `Module`, which fixes both the state-dict keys and the order of random initialization draws.
+
+## Summary
+
+- An NPLM replaces the count table with a learned embedding per token and a small network over a fixed window, so a window never seen in training still gets a sensible prediction from the windows it resembles.
+- The window is concatenated **oldest first** and the embedding lookup is an autograd op: the order is part of the parameter layout, and a lookup that bypasses the graph leaves the table untrained.
+- The whole model is ordinary layers, so the forward is one line of math and backward is free; torch, given the same weights, computes the same logits, loss, and gradients.
+- Training is exactly the Part 0 loop with one SGD across epochs, and every random choice comes from one PCG32 per purpose, so a seed reproduces the run bit for bit.
+- The model directory (config plus F32 safetensors) is what the CLI writes, `generate` reads, and the zoo loads.
+
+## Review questions
 
 1. Why does the reshape of `[B, c, m]` to `[B, c m]` give "oldest first"?
    <details><summary>Answer</summary>`windows` puts the oldest token in column 0 of each row, `Embedding` keeps that order along axis 1, and a row-major reshape lays axis 1 out before axis 2, so $x = [C[w_{t-c}], \dots, C[w_{t-1}]]$. Column block $j$ of $H$ and $W$ therefore always sees the token $c - j$ positions back.</details>
 2. What goes wrong if the lookup reads `emb.weight.data[ids]` with numpy?
    <details><summary>Answer</summary>The forward gives the same numbers, but the result is a constant with no link to `emb.weight`, so the table receives no gradient and stays at its initialisation. Numpy would also silently read id $-1$ as the last row instead of raising.</details>
 3. Why is the SGD optimizer created once, outside the epoch loop?
-   <details><summary>Answer</summary>With momentum, the optimizer holds a velocity buffer per parameter. A new optimizer per epoch resets the buffers at every epoch boundary, so the run differs from the `L0.5` loop and from any reference trained with the same seed.</details>
-4. Section 3's window (a, c) has loss 0.272092 for target `a`. What is the gradient of the output bias `out.bias`, and why does $C[b]$ get none?
+   <details><summary>Answer</summary>With momentum, the optimizer holds a velocity buffer per parameter. A new optimizer per epoch resets the buffers at every epoch boundary, so the run differs from the Part 0 loop and from any reference trained with the same seed.</details>
+4. The hand example's window (a, c) has loss 0.272092 for target `a`. What is the gradient of the output bias `out.bias`, and why does $C[b]$ get none?
    <details><summary>Answer</summary>$\partial \mathcal{L}/\partial b = p - \mathrm{onehot}(a) = (-0.238216, 0.215739, 0.022477)$, because $y = b + \dots$ and the softmax cross-entropy gradient at the logits is $p - \mathrm{onehot}$. $C[b]$ is not read by this window, and the embedding backward only adds into the rows it read.</details>
 5. Why does `_draw` sum the weights in a Python loop instead of calling `np.sum`?
    <details><summary>Answer</summary>Floating-point addition is not associative. `np.sum` uses pairwise summation, so its total can differ in the last bits from a left-to-right sum. Summing in id order matches the contract and the Rust engine, so the same seed draws the same id everywhere.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. the window's rows read from `emb.weight.data` instead of through `F.embedding` | the forward is right, the table gets no gradient and never learns (and numpy reads id -1 as the last row) | `forward` calls `self.emb(ids)`, the autograd op |
-| 2. the window concatenated newest first | another parameter layout: torch's weights and every saved checkpoint read wrong | `windows` is oldest first and `F.reshape` keeps that order |
-| 3. the direct path registered but never added to the logits | the parameter exists, saves, and loads, and has no effect | `y = y + self.direct(x)` when the path exists |
-| 4. `rng=None` passed on to every layer | each layer restarts the default stream: correlated initial weights | resolves one `r` and passes it to every layer |
-| 5. targets shifted by one (predicting the last window token) | a copy task: training loss collapses, nothing is learned about the next token | targets are `a[context:]`, one past each window |
-| 6. generation conditioned on the first ids of the prompt | every step sees the same window: the text loops on the prompt's start | the window is `hist[-self.context:]` |
-| a new `SGD` every epoch | the momentum buffers reset at each epoch boundary | one `SGD` before the `while` loop |
-| training stops at the end of the first epoch | fewer steps than asked, silently | `while len(losses) < steps` wraps into new epochs |
-| the direct matrix not saved | the reloaded model cannot load strictly | `save_nplm` writes the whole `state_dict()` |
-| greedy ties broken toward the highest id | a different text from every other engine (D11) | `np.argmax` returns the first maximum |
-| `clip` not passed to `train_step` | long runs blow up on one bad batch | `train_step(..., clip=clip)` |
-| perplexity returned as the mean NLL | a number in nats reported as a perplexity | `NLLAccumulator(...)["ppl"]`, the exponential of the mean |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `L0.1` | `Tensor` carries the gradients; `no_grad` for scoring and generation |
-| Back | `L0.2` | `F.embedding` (the lookup with a backward), `F.reshape`, `F.tanh` |
-| Back | `L0.3` | `cross_entropy` is the training loss |
-| Back | `L0.4` | `Module`, `Embedding`, `Linear`: the layers and their state-dict names |
-| Back | `L0.5` | `DataLoader` and `train_step` are the whole training loop |
-| Back | `L0.6` | `save_safetensors`, `load_safetensors` for the model directory; `open_tokens` reads the corpus |
-| Back | `M10.2` | `SGD` with momentum and weight decay |
-| Back | `M11.2` | `NLLAccumulator` for perplexity and bits per byte |
-| Back | `M06.3` | `PCG32`: the default init stream and the sampler |
-| Back | `L2.1` | the count model this one is compared with (reading) |
-| Forward | `L6.7` | the zoo loads the NPLM directory and reports its bits per byte next to KN-4 and the transformers |
-| Forward | `L3.6` | the recurrent LM replaces the fixed window with a state, and its bits per byte must beat this model's on the same file |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| a full softmax over $V$ | hierarchical softmax (Morin and Bengio 2005), adaptive softmax (Grave et al. 2017) | the output layer costs $O(\log V)$ or a few clusters instead of $O(V)$ per token | `torch.nn.AdaptiveLogSoftmaxWithLoss` (`torch/nn/modules/adaptive.py`) |
-| fixed window of $c$ tokens | recurrent and attention models | unbounded context with a state, or every earlier token at once | `L3.6` (RNN LM) and `L5.1` (attention) in this course |
-| embedding table trained with the model | word2vec and GloVe (`L2.3`), then tied input and output embeddings (Press and Wolf 2017) | the table pretrained on more text, or shared with the output layer to halve the parameters | `transformers` `tie_word_embeddings` |
-| the direct path $W x$ | residual connections (He et al. 2016) | an identity-like shortcut around the nonlinearity, now in every transformer block | `L5.5` in this course |
-| CPU numpy, one process | the paper's parallel training on 40 CPUs | data-parallel and parameter-parallel SGD over the output layer | Bengio et al. (2003), section 3 |

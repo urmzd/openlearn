@@ -1,107 +1,73 @@
 # Whisper decoding and long-form transcription
 
-## Overview
+After [the previous section](03-whisper-decoder-and-weights.md), the encoder and decoder can score any prefix. That is not yet a transcript. Turning scores into text requires a series of decisions: which language is spoken, whether a window is silence, where timestamps go, which search to run, and where to continue in a recording longer than 30 seconds. Model logits do not define any of this. Control tokens, timestamp constraints and search do, and together they make up the transcription policy this section builds. When you finish, the speech path is complete: a WAV file goes in, timestamped segments come out.
 
-| | |
-|---|---|
-| **Module** | `L14.4` · build · Python · Pass 12 · 3 to 4 h |
-| **Solution** | [`decode.py`](../../../../course/solutions/python/tinyllm/speech/decode.py): `WhisperLogitsSource`, `sot_sequence`, `language_probs`, `apply_timestamp_rules`, `DecodeOptions`, `decode_window`, `decode_with_fallback`, `transcribe`; [`tokenizer.py`](../../../../course/solutions/python/tinyllm/speech/tokenizer.py): `WhisperTokenizer`; [`trace.py`](../../../../course/solutions/python/tinyllm/speech/trace.py): `RecordedLogits`; CLI entry point [`cli_speech.py`](../../../../course/solutions/entry/python/tinyllm/cli_speech.py) |
-| **Contract** | [`decode.pyi`](../../../../course/contracts/py/tinyllm/speech/decode.pyi), [`tokenizer.pyi`](../../../../course/contracts/py/tinyllm/speech/tokenizer.pyi), [`trace.pyi`](../../../../course/contracts/py/tinyllm/speech/trace.pyi); [ASR decoding policy](../../../../course/contracts/spec/asr-decoding.md) |
-| **Needs** | `L14.3`, `L14.1`, `L1.2`, `M05.2`, `M06.3`. Reading: `L8.1`, `L4.4` |
-| **Used by** | `ethics.08` generated transcript evidence. This module completes the speech path: a WAV file in, timestamped segments out |
-| **Optional depth** | Compare beam cache reuse with branch recomputation without changing token decisions. |
+The design choice that shapes everything is a seam between model and policy. The policy needs only one operation, "next-token logits for this complete prefix", and the solution exposes that same operation for a real Whisper window and for a recording of logits. That separation makes Python/Rust parity possible without repeatedly downloading weights or running an encoder: both languages can replay the same recorded trace through the same policy.
 
-## Key Takeaways
+This section uses byte BPE and checkpoint tokenizer loading from [Byte-level BPE](../p01-tokenizers/02-byte-level-bpe.md), the complete reversible byte alphabet from [Injective, surjective, bijective; the GPT-2 byte map](../../mathematics-for-computing/05-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md) and repeatable PCG32 sampling from [Modular arithmetic, hashing, and PCG32 in Python](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) in *Mathematics for Computing*, and WAV conversion and full-recording log-mel features from [the audio frontend](01-audio-frontend.md). It helps to have read [Sampling and logit processors](../p08-inference/01-sampling-and-logit-processors.md) for temperature and categorical sampling and [Beam search, generic over a step function](../p04-attention-origins/04-beam-search.md) for the beam-search reasoning. The solution is [`decode.py`](../../../../course/solutions/python/tinyllm/speech/decode.py) (`WhisperLogitsSource`, `sot_sequence`, `language_probs`, `apply_timestamp_rules`, `DecodeOptions`, `decode_window`, `decode_with_fallback`, `transcribe`), [`tokenizer.py`](../../../../course/solutions/python/tinyllm/speech/tokenizer.py) (`WhisperTokenizer`), [`trace.py`](../../../../course/solutions/python/tinyllm/speech/trace.py) (`RecordedLogits`), and the CLI entry point [`cli_speech.py`](../../../../course/solutions/entry/python/tinyllm/cli_speech.py). The contracts are [`decode.pyi`](../../../../course/contracts/py/tinyllm/speech/decode.pyi), [`tokenizer.pyi`](../../../../course/contracts/py/tinyllm/speech/tokenizer.pyi) and [`trace.pyi`](../../../../course/contracts/py/tinyllm/speech/trace.pyi), and the normative [ASR decoding policy](../../../../course/contracts/spec/asr-decoding.md) defines every mask and the NPZ playback layout.
 
-- Model logits do not define transcription policy: control tokens, timestamp constraints and search do.
-- Keep probability scores before temperature scaling for fallback decisions.
-- A completed timestamp boundary controls long-form seeking; an incomplete tail must be revisited.
+> **Learning objectives**
+> - Build Whisper's control prompt explicitly and detect language by renormalizing over language tokens.
+> - Implement a logits source that behaves as a pure function of the prefix while reusing KV state across beam branches.
+> - Apply the timestamp state machine, including the rule that compares total timestamp mass with the best text token.
+> - Run greedy, beam and sampled search, scoring with untempered log probabilities, and decide when to fall back or skip silence.
+> - Seek through a long recording by completed segment boundaries and explain why an incomplete tail is revisited.
 
-## How to read this chapter
+## The tokenizer and the control prompt
 
-Sections 1 to 3 state the decoding policy and work a prompt, a timestamp sequence and a score by hand. Section 4 lists what a correct implementation must handle. Section 5 walks through the solution in the order the data flows: the logits source, the control prompt, timestamp masking, search, fallback and long-form seeking. Try to predict each rule's effect before reading the code.
+The tokenizer is loaded as byte BPE from the checkpoint, and control tokens are identified by spelling. One spelling difference matters: Hugging Face calls the no-speech token `nocaptions`, and the OpenAI tokenizer also supports `nospeech`. The loader requires all 256 bytes and a contiguous suffix of 1501 timestamp tokens, spaced 20 ms apart, so timestamp arithmetic and byte preservation cannot silently degrade.
 
-## 1. Why now
+Automatic post-processing templates in the tokenizer files are ignored. Instead the policy constructs the SOT, language, task and optional no-timestamps controls explicitly for each request. Language detection restricts the row after SOT to the language ids and renormalizes their probabilities, so a dominant text logit cannot dilute the language distribution.
 
-The encoder and decoder can score any prefix. Turning those scores into a transcript requires decisions about language, silence, timestamps, search and where to continue in a recording. The solution exposes the same policy to a real Whisper window and a recording of logits. This separation makes Python/Rust parity possible without repeatedly downloading weights or running an encoder.
+## A logits source as a function of the prefix
 
-## 2. Principles
+The policy treats a logits source as a function of the complete prefix. Repeated queries return independent rows. Extending the same prefix appends only new self-KV; rewinding, or switching to another beam branch, truncates self-KV to the shared prefix. On an exact rewind, the final token is recomputed to recover its logits. Cross-KV is constant for an audio window. And if a decoder layer fails after another layer has appended state, the source resets before accepting another request.
 
-Load byte BPE from the checkpoint and identify controls by spelling. HF calls the no-speech token `nocaptions`; the OpenAI tokenizer also supports the spelling `nospeech`. Require all 256 bytes and a contiguous suffix of 1501 timestamp tokens, spaced 20 ms apart. Ignore automatic post-processing templates: construct SOT, language, task and optional no-timestamps controls explicitly. Detect language by restricting the SOT row to language ids and renormalizing their probabilities.
+## The timestamp state machine
 
-Treat a logits source as a function of the complete prefix. Repeated queries return independent rows. Extending the same prefix appends only new self-KV; rewinding or switching a beam branch truncates self-KV to the shared prefix. Recompute the final token on an exact rewind to recover its logits. Cross-KV is constant for an audio window. If a decoder layer fails after another appended state, reset before accepting another request.
+Timestamp filtering is a state machine over the generated tokens. The first generated token is a timestamp, bounded by a maximum initial time. A start timestamp must be followed by text or EOT; an end timestamp must be followed by another start or EOT. End times advance strictly, while a new start may equal the preceding end, which is how adjacent segments share a boundary.
 
-Timestamp filtering is a state machine. The first generated token is a bounded timestamp. A start timestamp must be followed by text or EOT; an end timestamp must be followed by another start or EOT. End times advance strictly, while a new start may equal the preceding end. After these masks, force a timestamp when the sum of timestamp probabilities exceeds the best individual text probability. Compare probabilities after subtracting a common logit maximum to avoid overflow.
+After these masks comes one more rule: force a timestamp when the sum of timestamp probabilities exceeds the best individual text probability. When the model is confident a segment has ended but unsure exactly when, its mass spreads over many neighbouring timestamps, each below the best text token but together dominant. Comparing argmaxes would miss that. The probabilities are compared after subtracting a common logit maximum, which avoids overflow without changing the comparison.
 
-For greedy search choose the largest filtered logit, with smallest-id tie breaking. For beam search retain the best cumulative-log-probability live candidates and collect completed paths until the patience budget is met. Rank completed paths by score divided by generated length excluding EOT. Sampling divides logits by temperature before drawing from the course PCG32 stream, but accumulates untempered log probabilities. Report average log probability with the EOT position included in the denominator. This distinction matters when deciding whether a hot sample actually improved confidence.
+## Search and scoring
 
-Fallback retries the configured temperatures for excessive compression ratio or low average log probability. High no-speech probability combined with low confidence instead stops retries and skips the window. High-confidence text overrides a no-speech score. Compute log-mel features once for the padded recording, encode once per sought window, and reuse cross-KV for every retry. Split completed segments at adjacent timestamps. Revisit an incomplete tail from the last completed endpoint. Clamp endpoints to the recording, omit empty segments, and always advance seek. Clear prior-text conditioning after temperatures above 0.5 or when conditioning is disabled.
+For greedy search, choose the largest filtered logit, breaking ties toward the smallest id. For beam search, retain the best live candidates by cumulative log probability and collect completed paths until the patience budget is met; completed paths are ranked by score divided by generated length excluding EOT. Sampling divides logits by temperature before drawing from the book's PCG32 stream, but accumulates untempered log probabilities. The reported average log probability includes the EOT position in its denominator.
 
-## 3. Worked example
+The temperature distinction matters when deciding whether a hot sample actually improved confidence. A tempered distribution is flatter, so its log probabilities are not comparable across temperatures; untempered scores measure how plausible the model finds the text, whichever temperature drew it.
 
-With SOT 6, French 4, translate 8 and no-timestamps 9, a French translation prompt is `[6, 4, 8, 9]`. An English transcription with timestamps uses `[6, 3, 7]`. The tokenizer is not mutated by either request.
+## Fallback, silence, and long-form seeking
 
-Let the timestamp vocabulary begin at 100. A generated sequence `[100, 7, 102, 102, 8]` has a completed segment ending at 40 ms and an incomplete next segment. Emit the text represented by token 7 over `[0, 0.04]`, and seek forward four 10 ms mel frames. The next window receives the completed segment's tokens as previous context. It must decode token 8 again from new audio context rather than count the unfinished tail as a completed transcript.
+Fallback retries the configured temperatures when the compression ratio is too high (repetition) or the average log probability too low. High no-speech probability combined with low confidence is a different failure: it stops retries and skips the window, because retrying silence only hallucinates. High-confidence text overrides a no-speech score.
 
-For a scored two-token transcript followed by EOT, cumulative log probability `-1.5` gives average log probability `-0.5`. Candidate ranking divides by two, giving `-0.75`. A temperature of 0.6 changes sampling probabilities, not either denominator. A high-temperature result clears context before the next window so repetition does not propagate.
+For long recordings, compute log-mel features once for the padded recording, encode once per sought window, and reuse cross-KV for every retry. Split completed segments at adjacent timestamps. Revisit an incomplete tail from the last completed endpoint. Clamp endpoints to the recording, omit empty segments, and always advance the seek. Clear prior-text conditioning after temperatures above 0.5, or whenever conditioning is disabled.
 
-## 4. The interface
+## Working it by hand
 
-The public contracts specify source ownership, tokenizer geometry, decoding options and segment fields. The normative policy document defines every mask and the NPZ playback layout. The solution is layered: tokenizer and source adapter first, then timestamp filtering and single-window search, then fallback and long-form seeking. Recorded sources must fail on missing prefixes instead of inventing logits.
+Take SOT 6, French 4, translate 8 and no-timestamps 9. A French translation prompt without timestamps is `[6, 4, 8, 9]`; an English transcription with timestamps uses `[6, 3, 7]` (English 3, transcribe 7). Neither request mutates the tokenizer.
 
-### What a correct solution must handle
+Let the timestamp vocabulary begin at 100. The generated sequence `[100, 7, 102, 102, 8]` has a completed segment ending at 40 ms and an incomplete next segment. Emit the text represented by token 7 over `[0, 0.04]`, and seek forward four 10 ms mel frames. The next window receives the completed segment's tokens as previous context. It must decode token 8 again from new audio context, rather than count the unfinished tail as part of a completed transcript.
 
-| Case | Kind of check | Why it matters |
-|---|---|---|
-| Start controls for different languages and tasks | boundary | Language selection must not silently reuse a tokenizer's old task. |
-| Initial timestamp bound with a dominant text logit | boundary | Text cannot precede the initial timestamp, even with a dominant logit. |
-| Timestamp pairs and progress | boundary | Endpoints advance, but adjacent segments may share a boundary. |
-| Diffuse timestamp mass vs one strong text token | property | Comparing argmaxes misses a diffuse but dominant timestamp mass. |
-| No legal timestamp left | boundary | An all-masked row must not turn into NaNs and an arbitrary token. |
-| Language detection with a dominant text logit | property | Detection renormalizes among language tokens, not the vocabulary. |
-| Shared-prefix reuse in beam search | property | Beam branches retain causal prefix KV instead of rescoring history. |
-| Cached source: extend, repeat, rewind, switch branch | property | Beam branches cannot inherit another branch's self-attention state. |
-| Greedy vs beam size one, with control suppression | property | Beam size one must not explore a different path than greedy. |
-| Beam explores a lower first token | golden | Choosing only the locally largest logit is not beam search. |
-| Reproducible sampling and untempered scores | property | Temperature changes draws, not the average-logprob fallback statistic. |
-| Prompt context and generation limit | boundary | Previous text conditions the model but never appears as new output. |
-| Invalid search options | boundary | Malformed requests must not mutate decoder state. |
-| Fallback on quality vs probable silence | boundary | Silence must not trigger six expensive retries and hallucinated text. |
-| Long-form seek to the last complete boundary | golden | Incomplete trailing speech must be retried from its prior boundary. |
-| Hot context reset and final-segment bounds | boundary | Fallback hallucinations must not condition subsequent windows. |
-| Silence skipping vs confident speech | boundary | High no-speech probability alone cannot veto confident transcription. |
-| Zero timestamp or truncated decode | boundary | A zero-duration or truncated decode must always advance the window. |
-| Real model, one encoder call per window | property | The long-form path must actually connect audio features and Whisper. |
-| OpenAI long-form policy reference | golden | Seek, fallback, silence and context decisions match the pinned OpenAI transcription function. |
-| OpenAI timestamp and search reference | golden | Internal consistency cannot detect a shared search-policy mistake. |
-| Tokenizer loader bytes and controls | property | Template controls must not be appended to ordinary transcript tokens. |
-| Missing timestamp or byte token | boundary | Timestamp arithmetic and byte preservation cannot silently degrade. |
-| English-only checkpoints and suppression defaults | boundary | English checkpoints still contain language tokens but must not use them. |
-| CLI features vs HF | golden | Both mel-band configurations match independent HF features for all six WAV clips. |
-| CLI teacher-forced logits vs HF | golden | The speech CLI preserves full teacher-forced HF logits and rejects malformed prompts. |
-| CLI on a real WAV and a real model | property | Tokenizer, WAV frontend, model loading and search must work together. |
-| Sparse traces: seek and prefix identity | boundary | Same-prefix logits from a different audio window are not reusable. |
-| Bad sparse recordings | boundary | Broken traces must not be repaired into plausible model outputs. |
-| Dense rows and duplicate prefixes | property | Dense and sparse storage share the same unambiguous prefix contract. |
-| Recorded search traces via the CLI | golden | Greedy, beam-5, compression fallback, hot context reset, partial-tail seeks and prompt conditioning must match independent recorded traces. |
-| Replaying sparse logits without weights | golden | The parity CLI must invoke the real decoding policy without a model. |
-| Real tokenizers vs pinned HF tokenizers | golden | Exact token ids and decoded text match pinned HF tokenizers on real checkpoint merges. |
+For a scored two-token transcript followed by EOT, cumulative log probability `-1.5` gives average log probability `-0.5`, since the denominator counts EOT. Candidate ranking divides by two, the generated length excluding EOT, giving `-0.75`. A temperature of 0.6 changes the sampling probabilities, not either denominator. A high-temperature result clears context before the next window so repetition does not propagate.
 
-## 5. The solution, step by step
+## The shape of the solution
 
-### From first principles
+The public contracts specify source ownership, tokenizer geometry, decoding options and segment fields. The solution is layered in the order the data flows: tokenizer and source adapter first, then timestamp filtering and single-window search, then fallback and long-form seeking. Recorded sources must fail on missing prefixes instead of inventing logits.
 
-1. **Separate the model from the policy.** Everything in this module needs only one operation: "next-token logits for this complete prefix". Making that a protocol (`LogitsSource.step(prefix)`) lets the same policy run against a real Whisper window or a recorded trace (`RecordedLogits`), which is what makes Python/Rust parity testable without weights.
+The reasoning behind each layer:
+
+1. **Separate the model from the policy.** Everything here needs only "next-token logits for this complete prefix". Making that a protocol (`LogitsSource.step(prefix)`) lets the same policy run against a real Whisper window or a recorded trace (`RecordedLogits`), which is what makes Python/Rust parity testable without weights.
 2. **A source must behave as if it were stateless.** Beam search asks for prefixes in any order. Causal attention means the KV state for a prefix depends only on that prefix, so the adapter can keep one cache, truncate it to the longest common prefix with the previous request, and append the rest. On an exact rewind it keeps one token fewer, because the logits row is produced by the last token's forward pass.
 3. **Controls are built, not inferred.** The prompt is `[sot, language, task]` plus `no_timestamps` when timestamps are off, with optional previous text in front after `sot_prev`. Building it per request avoids hidden state on the tokenizer.
-4. **Timestamps are a grammar.** Generated tokens must form `t text... t t text... t` with nondecreasing times; the mask at each step depends only on the last two generated tokens and the last timestamp. Section 2 also requires that the total probability of all legal timestamps beats the single best text token before text is allowed, which needs a numerically safe comparison: subtracting the row maximum leaves the ratio unchanged.
+4. **Timestamps are a grammar.** Generated tokens must form `t text... t t text... t` with nondecreasing times, and the mask at each step depends only on the last two generated tokens and the last timestamp. The mass rule needs a numerically safe comparison: subtracting the row maximum leaves the ratio unchanged.
 5. **Score with untempered probabilities.** Temperature is a sampling device. Fallback compares `avg_logprob` against a threshold that must mean the same thing at every temperature, so the score accumulates $\log p$ from the untempered row.
-6. **Fallback and silence are different failures.** Repetition (high gzip compression ratio) and low confidence call for a hotter retry. Probable silence (high no-speech probability *and* low confidence) calls for skipping, since retries only hallucinate.
-7. **Seeking follows completed segments.** A window's output is trusted up to the last pair of adjacent timestamps. If the output ends mid-segment, the next window starts at that last completed endpoint; otherwise it advances a full window. Every step advances at least one frame so the loop terminates.
+6. **Fallback and silence are different failures.** Repetition (a high gzip compression ratio) and low confidence call for a hotter retry. Probable silence (high no-speech probability *and* low confidence) calls for skipping, since retries only hallucinate.
+7. **Seeking follows completed segments.** A window's output is trusted up to the last pair of adjacent timestamps. If the output ends mid-segment, the next window starts at that last completed endpoint; otherwise it advances a full window. Every step advances at least one frame, so the loop terminates.
 
-### The code, annotated
+## Building it step by step
 
-**The logits source.** One audio window, one bounded cache, any prefix.
+### The logits source
+
+One audio window, one bounded cache, any prefix.
 
 ```python
 def step(self, prefix):
@@ -135,7 +101,9 @@ def step(self, prefix):
 
 The cross keys and values (`self.xkv`) are computed once by `model.encode` for the window and reused by every step, every beam branch and every fallback temperature.
 
-**The control prompt.** Built per request, never stored on the tokenizer.
+### The control prompt
+
+Built per request, never stored on the tokenizer.
 
 ```python
 def sot_sequence(tok, language, task, timestamps):
@@ -153,9 +121,11 @@ def sot_sequence(tok, language, task, timestamps):
     return result
 ```
 
-With section 3's ids this gives `[6, 4, 8, 9]` for French translation without timestamps. Language detection (`language_probs`) asks for the row after `[sot]` alone, keeps only the language-token entries, and normalizes those with a max-shifted softmax, so a dominant text logit cannot dilute the language distribution.
+With the hand example's ids this gives `[6, 4, 8, 9]` for French translation without timestamps. Language detection (`language_probs`) asks for the row after `[sot]` alone, keeps only the language-token entries, and normalizes those with a max-shifted softmax.
 
-**Timestamp rules.** The state machine reads the last two generated tokens.
+### Timestamp rules
+
+The state machine reads the last two generated tokens.
 
 ```python
 row[tok.no_timestamps] = -np.inf
@@ -186,9 +156,11 @@ if time_mass > text_mass:
     row[:begin] = -np.inf
 ```
 
-Before these rules, `_filtered_logits` masks control tokens (`sot`, `sot_prev`, `sot_lm`, `transcribe`, `translate`, `no_speech`), the configured suppress list (`-1` expands to the tokenizer's non-speech symbols), and, at the first position only, blank and EOT.
+Before these rules, `_filtered_logits` masks the control tokens (`sot`, `sot_prev`, `sot_lm`, `transcribe`, `translate`, `no_speech`), the configured suppress list (`-1` expands to the tokenizer's non-speech symbols), and, at the first position only, blank and EOT.
 
-**Search.** Greedy and sampling share one loop; beam search keeps the best `beam` live candidates per step and collects finished ones until `round(beam * patience)` are done.
+### Search
+
+Greedy and sampling share one loop; beam search keeps the best `beam` live candidates per step and collects finished ones until `round(beam * patience)` are done.
 
 ```python
 for token in order:                     # top beam+1 of each live candidate
@@ -233,9 +205,11 @@ ratio = len(encoded) / len(zlib.compress(encoded))     # repetition detector
 # ... avg_logprob = score / (len(ids) + 1): EOT counted in the denominator
 ```
 
-In section 3's example, `-1.5` over two tokens plus EOT gives an average of `-0.5`, and the ranking key is `-1.5 / 2 = -0.75`.
+In the hand example, `-1.5` over two tokens plus EOT gives an average of `-0.5`, and the ranking key is `-1.5 / 2 = -0.75`.
 
-**Fallback.** Retry only for quality failures; stop immediately on probable silence.
+### Fallback
+
+Retry only for quality failures, and stop immediately on probable silence.
 
 ```python
 for temperature in opts.temperatures:
@@ -248,7 +222,9 @@ for temperature in opts.temperatures:
 return result
 ```
 
-**Long form.** Seek is in 10 ms mel frames. Each iteration builds one source (one encoder call), detects the language if needed, decodes with fallback, then either skips silence or emits completed segments and advances.
+### Long form
+
+Seek is measured in 10 ms mel frames. Each iteration builds one source (one encoder call), detects the language if needed, decodes with fallback, then either skips silence or emits completed segments and advances.
 
 ```python
 while seek * 0.01 < duration:
@@ -270,77 +246,137 @@ while seek * 0.01 < duration:
     seek += max(1, round(advance / 0.01))           # always make progress
 ```
 
-`_window_segments` cuts at each pair of adjacent timestamps. If the output does not end with a closing timestamp, `advance` is the last completed endpoint, so in section 3 the tail token 8 is decoded again from the next window, which starts 4 frames later. Segment times are clamped to the remaining audio, and empty segments are dropped. `transcribe` computes log-mel features once for the whole padded recording, because Whisper's clip at `max - 8` would differ if each window were normalized on its own, and slices one `3000`-frame window per seek.
+`_window_segments` cuts at each pair of adjacent timestamps. If the output does not end with a closing timestamp, `advance` is the last completed endpoint, so in the hand example the tail token 8 is decoded again from the next window, which starts 4 frames later. Segment times are clamped to the remaining audio, and empty segments are dropped. `transcribe` computes log-mel features once for the whole padded recording, because Whisper's clip at `max - 8` would differ if each window were normalized on its own, and then slices one 3000-frame window per seek.
 
-Full solutions: [`decode.py`](../../../../course/solutions/python/tinyllm/speech/decode.py), [`tokenizer.py`](../../../../course/solutions/python/tinyllm/speech/tokenizer.py) (control ids by spelling, 1501 contiguous timestamps at the vocabulary end, all 256 bytes, no executed post-processing templates), [`trace.py`](../../../../course/solutions/python/tinyllm/speech/trace.py) (strict NPZ playback keyed by seek and full prefix).
+The full solutions are [`decode.py`](../../../../course/solutions/python/tinyllm/speech/decode.py), [`tokenizer.py`](../../../../course/solutions/python/tinyllm/speech/tokenizer.py) (control ids by spelling, 1501 contiguous timestamps at the vocabulary end, all 256 bytes, no executed post-processing templates) and [`trace.py`](../../../../course/solutions/python/tinyllm/speech/trace.py) (strict NPZ playback keyed by seek and full prefix).
 
-### Why this solution
+### Why this design
 
-- **Cost.** Per window: one encoder pass, then per generated token $O(o\,d)$ self-attention against the cache and $O(A\,d)$ cross-attention per layer. Beam search multiplies the token steps by the beam size; prefix truncation means switching between branches recomputes only the tokens after their common prefix, not the history. Fallback can multiply the cost by up to six temperatures, which is why probable silence short-circuits it.
-- **Alternatives.** Running the policy inside the model (as HF's `generate` does) would tie Python/Rust parity to identical floating-point model outputs; the seam lets both languages replay the same recorded logits. Comparing the best timestamp logit to the best text logit is simpler but misses a diffuse timestamp distribution. Normalizing features per window is simpler but changes quiet windows and therefore the reference timestamp decisions.
-- **Tradeoffs accepted.** Inputs over 30 minutes are refused. The policy follows OpenAI's reference transcription function, including its heuristics (gzip ratio, temperature ladder); these are not guarantees of speech accuracy.
+Per window, the cost is one encoder pass, then per generated token $O(o\,d)$ self-attention against the cache and $O(A\,d)$ cross-attention per layer. Beam search multiplies the token steps by the beam size; prefix truncation means that switching between branches recomputes only the tokens after their common prefix, not the history. Fallback can multiply the cost by up to six temperatures, which is why probable silence short-circuits it.
 
-### Explain it back
+Running the policy inside the model, as Hugging Face's `generate` does, would tie Python/Rust parity to identical floating-point model outputs; the seam lets both languages replay the same recorded logits. Comparing the best timestamp logit to the best text logit is simpler but misses a diffuse timestamp distribution. Normalizing features per window is simpler too, but it changes quiet windows and therefore the reference timestamp decisions.
 
-<details><summary>Why does an exact rewind truncate the cache to <code>len(prefix) - 1</code> rather than to <code>len(prefix)</code>?</summary>
+Inputs over 30 minutes are refused. The policy follows OpenAI's reference transcription function, including its heuristics (gzip ratio, temperature ladder); these are not guarantees of speech accuracy.
 
-The cache stores keys and values, not logits. The logits for a prefix come from the forward pass of its last token, so that token must be run again; all earlier positions are reusable because causal attention makes them independent of what follows.
+## What a correct implementation must handle
 
-</details>
+The test suite is large because each rule has a failure that looks plausible. The cases, and the failure each one guards against:
 
-<details><summary>Why compare total timestamp probability with the single best text probability?</summary>
+| Case | Why it matters |
+|---|---|
+| Start controls for different languages and tasks | Language selection must not silently reuse a tokenizer's old task. |
+| Initial timestamp bound with a dominant text logit | Text cannot precede the initial timestamp, even with a dominant logit. |
+| Timestamp pairs and progress | Endpoints advance, but adjacent segments may share a boundary. |
+| Diffuse timestamp mass vs one strong text token | Comparing argmaxes misses a diffuse but dominant timestamp mass. |
+| No legal timestamp left | An all-masked row must not turn into NaNs and an arbitrary token. |
+| Language detection with a dominant text logit | Detection renormalizes among language tokens, not the vocabulary. |
+| Shared-prefix reuse in beam search | Beam branches retain causal prefix KV instead of rescoring history. |
+| Cached source: extend, repeat, rewind, switch branch | Beam branches cannot inherit another branch's self-attention state. |
+| Greedy vs beam size one, with control suppression | Beam size one must not explore a different path than greedy. |
+| Beam explores a lower first token | Choosing only the locally largest logit is not beam search. |
+| Reproducible sampling and untempered scores | Temperature changes draws, not the average-logprob fallback statistic. |
+| Prompt context and generation limit | Previous text conditions the model but never appears as new output. |
+| Invalid search options | Malformed requests must not mutate decoder state. |
+| Fallback on quality vs probable silence | Silence must not trigger six expensive retries and hallucinated text. |
+| Long-form seek to the last complete boundary | Incomplete trailing speech must be retried from its prior boundary. |
+| Hot context reset and final-segment bounds | Fallback hallucinations must not condition subsequent windows. |
+| Silence skipping vs confident speech | High no-speech probability alone cannot veto confident transcription. |
+| Zero timestamp or truncated decode | A zero-duration or truncated decode must always advance the window. |
+| Real model, one encoder call per window | The long-form path must actually connect audio features and Whisper. |
+| OpenAI long-form policy reference | Seek, fallback, silence and context decisions match the pinned OpenAI transcription function. |
+| OpenAI timestamp and search reference | Internal consistency cannot detect a shared search-policy mistake. |
+| Tokenizer loader bytes and controls | Template controls must not be appended to ordinary transcript tokens. |
+| Missing timestamp or byte token | Timestamp arithmetic and byte preservation cannot silently degrade. |
+| English-only checkpoints and suppression defaults | English checkpoints still contain language tokens but must not use them. |
+| CLI features vs HF | Both mel-band configurations match independent HF features for all six WAV clips. |
+| CLI teacher-forced logits vs HF | The speech CLI preserves full teacher-forced HF logits and rejects malformed prompts. |
+| CLI on a real WAV and a real model | Tokenizer, WAV frontend, model loading and search must work together. |
+| Sparse traces: seek and prefix identity | Same-prefix logits from a different audio window are not reusable. |
+| Bad sparse recordings | Broken traces must not be repaired into plausible model outputs. |
+| Dense rows and duplicate prefixes | Dense and sparse storage share the same unambiguous prefix contract. |
+| Recorded search traces via the CLI | Greedy, beam-5, compression fallback, hot context reset, partial-tail seeks and prompt conditioning must match independent recorded traces. |
+| Replaying sparse logits without weights | The parity CLI must invoke the real decoding policy without a model. |
+| Real tokenizers vs pinned HF tokenizers | Exact token ids and decoded text match pinned HF tokenizers on real checkpoint merges. |
 
-When the model is confident a segment has ended but unsure exactly when, its mass spreads over many neighbouring timestamps. Each one may be below the best text token while together they dominate; forcing a timestamp then follows the model's actual belief.
+## Debugging a transcript
 
-</details>
+When a transcript differs from the reference, start with a tiny scripted source. Log prefixes, selected ids, cumulative scores and seek frames, not raw user audio. The symptom usually points at the layer. A mismatch in beam-one output points to control masking or termination. A mismatch only after a branch switch points to stale self-KV. Repetition after a hot retry points to a prompt reset error. A stalled seek often means an endpoint was interpreted as an absolute token id rather than a timestamp offset.
 
-<details><summary>Why accumulate untempered log probabilities when sampling at temperature 0.8?</summary>
+> **Note:** The solution's policy matches a pinned copy of OpenAI's transcription function on timestamp masks, greedy and beam search, and long-form window policy, and real-checkpoint tokenizer parity is checked against pinned Hugging Face tokenizers. Real-model runs connect WAV decoding, feature extraction, weights, tokenizer and CLI. None of this establishes production speech accuracy; real-checkpoint speech accuracy remains integration validation work.
 
-Fallback compares `avg_logprob` with a fixed threshold. A tempered distribution is flatter, so its log probabilities are not comparable across temperatures. Untempered scores measure how plausible the model finds the text, whichever temperature drew it.
-
-</details>
-
-<details><summary>What goes wrong if long-form seeking always advances by a full window?</summary>
-
-A segment cut off by the window edge would be emitted half-finished or lost, and the next window would start after it. Seeking to the last completed boundary lets the next window see the whole utterance.
-
-</details>
-
-<details><summary>Why clear the conditioning history after a temperature above 0.5?</summary>
-
-A hot retry is more likely to contain hallucinated or repetitive text. Feeding it as previous context would push the next window to continue the hallucination, so the history is reset.
-
-</details>
-
-## 6. Pitfalls
-
-When a transcript differs from the reference, start with a tiny scripted source. Log prefixes, selected ids, cumulative scores and seek frames, not raw user audio. A mismatch in beam-one output points to control masking or termination. A mismatch only after a branch switch points to stale self-KV. Repetition after a hot retry points to a prompt reset error. A stalled seek often means an endpoint was interpreted as an absolute token id rather than a timestamp offset.
-
-The solution's policy matches a pinned copy of OpenAI's transcription function on timestamp masks, greedy/beam search and long-form window policy. Real-model runs connect WAV decoding, feature extraction, weights, tokenizer and CLI. These do not establish production speech accuracy. Real-checkpoint tokenizer parity is checked against pinned HF tokenizers. Real-checkpoint speech accuracy remains integration validation work.
-
-The solution's entry point ([`cli_speech.py`](../../../../course/solutions/entry/python/tinyllm/cli_speech.py)) exposes both paths: a real model on a WAV file, and replay of recorded logits through the same policy without weights.
+The entry point, [`cli_speech.py`](../../../../course/solutions/entry/python/tinyllm/cli_speech.py), exposes both paths: a real model on a WAV file, and replay of recorded logits through the same policy without weights.
 
 ```bash
 python -m tinyllm transcribe --model models/whisper-tiny --audio sample.wav --language en --greedy --out segments.json
 python -m tinyllm transcribe --logits-trace traces.npz --opts opts.json
 ```
 
-## 7. Where it's used next
+## Where this leads
 
-| Direction | Module | Connection |
-|---|---|---|
-| Back | `L14.3` | Whisper logits and cross/self attention caches. |
-| Back | `L14.1` | WAV conversion and full-recording log-mel features. |
-| Back | `L1.2` | Byte BPE and checkpoint tokenizer loading. |
-| Back | `M05.2` | Complete reversible byte alphabet. |
-| Back | `M06.3` | Repeatable PCG32 sampling. |
-| Back | `L8.1` | Temperature and categorical sampling. |
-| Back | `L4.4` | Beam-search reasoning. |
-| Forward | `ethics.08` | Generate consent-bound transcripts and compute WER/CER evidence. |
+This section completes the speech path. The next section, [Multimodal eval metrics](05-multimodal-eval-metrics.md), scores the transcripts it produces. In *Responsible AI*, [Consent and biometric evidence in model cards](../../responsible-ai/02-privacy-and-pii/02-consent-and-biometric-evidence.md) uses it to generate consent-bound transcripts and compute WER and CER evidence.
 
-## Going further
+### Further reading
 
-| Resource | Exercise |
-|---|---|
-| [Decoding policy](../../../../course/contracts/spec/asr-decoding.md) | Construct a sparse trace that fails if an incomplete tail is skipped. |
-| [Whisper implementation](https://github.com/openai/whisper) | Compare a recorded trace with OpenAI's `transcribe` function and explain any difference in seek decisions. |
+- The [ASR decoding policy](../../../../course/contracts/spec/asr-decoding.md). As an exercise, construct a sparse trace that fails if an incomplete tail is skipped.
+- [OpenAI's Whisper implementation](https://github.com/openai/whisper). Compare a recorded trace with its `transcribe` function and explain any difference in seek decisions.
+- Compare beam cache reuse with branch recomputation without changing token decisions.
+
+## Key terms
+
+- **control prompt**: the explicit `[sot, language, task]` sequence, plus `no_timestamps` when timestamps are off, that tells Whisper what to do.
+- **logits source**: anything that returns next-token logits for a complete prefix; a real model window or a recorded trace.
+- **timestamp mass rule**: forcing a timestamp when the summed probability of legal timestamps exceeds the best single text token.
+- **temperature fallback**: retrying a window at hotter temperatures when output is repetitive or low-confidence.
+- **seek**: the position in the recording, in 10 ms mel frames, where the next window starts.
+
+## Summary
+
+- Model logits do not define transcription policy; control tokens, timestamp constraints and search do.
+- The logits source behaves as a pure function of the prefix, truncating its cache to the shared prefix and recomputing the last token on an exact rewind.
+- Scores use untempered probabilities, so fallback thresholds mean the same thing at every temperature.
+- Repetition and low confidence trigger a hotter retry; probable silence skips the window instead.
+- A completed timestamp boundary controls long-form seeking, and an incomplete tail is revisited from the last completed endpoint.
+
+## Review questions
+
+1. Why does an exact rewind truncate the cache to `len(prefix) - 1` rather than to `len(prefix)`?
+   <details><summary>Answer</summary>
+
+   The cache stores keys and values, not logits. The logits for a prefix come from the forward pass of its last token, so that token must be run again; all earlier positions are reusable because causal attention makes them independent of what follows.
+
+   </details>
+
+2. Why compare total timestamp probability with the single best text probability?
+   <details><summary>Answer</summary>
+
+   When the model is confident a segment has ended but unsure exactly when, its mass spreads over many neighbouring timestamps. Each one may be below the best text token while together they dominate; forcing a timestamp then follows the model's actual belief.
+
+   </details>
+
+3. Why accumulate untempered log probabilities when sampling at temperature 0.8?
+   <details><summary>Answer</summary>
+
+   Fallback compares `avg_logprob` with a fixed threshold. A tempered distribution is flatter, so its log probabilities are not comparable across temperatures. Untempered scores measure how plausible the model finds the text, whichever temperature drew it.
+
+   </details>
+
+4. What goes wrong if long-form seeking always advances by a full window?
+   <details><summary>Answer</summary>
+
+   A segment cut off by the window edge would be emitted half-finished or lost, and the next window would start after it. Seeking to the last completed boundary lets the next window see the whole utterance.
+
+   </details>
+
+5. Why clear the conditioning history after a temperature above 0.5?
+   <details><summary>Answer</summary>
+
+   A hot retry is more likely to contain hallucinated or repetitive text. Feeding it as previous context would push the next window to continue the hallucination, so the history is reset.
+
+   </details>
+
+6. For the sequence `[100, 7, 102, 102, 8]` with timestamps starting at 100, what is emitted and how far does the seek advance?
+   <details><summary>Answer</summary>
+
+   Token 7 is emitted over `[0, 0.04]`, the completed segment. Token 8 begins an unfinished segment, so the seek advances only four 10 ms frames, to the last completed endpoint, and token 8 is decoded again from the next window.
+
+   </details>

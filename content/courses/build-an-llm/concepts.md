@@ -1,79 +1,72 @@
-# tinyllm: Build an LLM from Scratch
+# Concepts and techniques
 
-## Overview
+This overview gives you the whole of *Build an LLM* in one sitting: the single idea the book is organized around, what the thinnest working system contains, how the later parts upgrade it, and where the book connects to the rest of the library. Read it after the [book's front matter](README.md) and alongside [the system the solutions build](paths/course/SYSTEM.md), which is the component-and-contract map of the same story.
 
-- **Primary reference**: the [course](paths/course/) itself: every chapter here is one module, derived from first principles and followed by a walkthrough of its solution in [`course/solutions/`](../../../course/solutions). Read [the system map](paths/course/SYSTEM.md) first.
-- **Supplementary**: Karpathy, [*Neural Networks: Zero to Hero*](https://karpathy.ai/zero-to-hero.html) (free); Jurafsky and Martin, [*Speech and Language Processing*](https://web.stanford.edu/~jurafsky/slp3/) (free), chapters 3 (n-gram LMs) and 9 (transformers); Raschka, *Build a Large Language Model (From Scratch)*
-- **Prerequisites**: the Pass 0 primers ([Python and numpy](../programming-languages/02-language-and-tool-primers/01-python-and-numpy.md), [C](../programming-languages/02-language-and-tool-primers/03-c.md)) and, just in time, the math each part names
-- **Estimated time**: the spine of course passes 1 to 11, about 60 weeks part-time; Pass 1 (the tracer) is about 5 weeks
-
-## Key Takeaways
-
-- An LLM system is a stack of contracts: a checkpoint format between training and serving, a C ABI between Python and Rust and the kernels, an HTTP API between the engine and everything in front of it. Understand each side of each contract and nothing in the stack is magic.
-- Start with the thinnest model that exercises every contract: a **byte-level bigram** fitted by counting, served by a real engine. Every later model (autograd bigram, RNN, transformer, the Llama family) upgrades a component behind an unchanged contract.
-- Numbers are only right if they are checked: every chapter lists the cases a correct solution must handle, and its walkthrough shows how the solution handles each one.
-
-## How to Study
-
-Follow the [course path](paths/course/), not this directory's order: parts interleave with math, systems, and operations modules. For each chapter, read sections 1 to 3 (why, principles, the worked example) first, then the interface, then the solution walkthrough. Try to predict each step of the solution before reading it, and answer the chapter's explain-it-back questions without looking.
-
----
-
-# Concepts & Techniques
-
-## Core Insight
+## The core insight
 
 A language model is a function from a prefix of token ids to a distribution over the next id. Everything else in the stack is plumbing that makes that function cheap to train, cheap to run, and safe to expose, and each piece of plumbing has a contract you can test in isolation.
 
-## 1. The tracer (Pass 1)
+That framing explains the book's method. An LLM system is a stack of contracts: a checkpoint format between training and serving, file formats between Python and Rust, an HTTP API between the engine and everything in front of it. If you understand both sides of each contract, nothing in the stack is magic. So the book starts with the thinnest model that exercises every contract and then upgrades one component at a time while the contracts stay fixed. And because numbers are only right if they are checked, every section lists the cases a correct solution must handle and shows how its solution handles each one.
 
-**Key ideas**:
-- **Byte tokenizer**: 256 ids, no training, no unknown tokens; decoding a stream must handle incomplete UTF-8.
-- **Count bigram**: $P(b \mid a) = (c_{ab} + \alpha) / (\sum_x c_{ax} + 256\alpha)$; its negative log-likelihood is the baseline every later model must beat.
-- **Logits in Python**: the bigram model computes logits in the reference implementation.
-- **Checkpoint**: Python writes `model.safetensors`; Rust Candle reads the same weights. Shared fixture files check cross-language behavior.
+## The tracer: the thinnest system that works
 
-## 2. The spine (Passes 2 to 11)
+The first turn of the spiral, the tracer, puts a real model behind a real engine with as little model as possible. Four ideas carry it.
 
-**Key ideas**:
-- **Autograd and training** (p00), **tokenizers** (p01), **statistical LMs** (p02), **recurrent networks** (p03), **attention** (p04), **the 2017 transformer** (p05), **objectives** (p06), **the modern decoder block** (p07), **inference** (p08), **C kernels** (p09), **serving in Rust** (p10), **training at scale** (p11), and an optional **post-training** part (p12).
+The **byte tokenizer** has 256 ids, needs no training, and has no unknown tokens. Its one subtlety is on the way out: decoding a stream of bytes must handle incomplete UTF-8, because a multi-byte character can be split across two generated tokens.
 
-## Parts
+The **count bigram** estimates the next byte from the current one by counting with add-$\alpha$ smoothing:
 
-| Part | Directory | Chapters so far | Course pass |
-|---|---|---|---|
-| p00 | [Foundations](p00-foundations/) | L0.0 byte bigram | 1 (tracer), 2 |
-| p01 | [Tokenizers](p01-tokenizers/) | none yet (B4) | 3 |
-| p02 | [Statistical LMs](p02-statistical-lm/) | none yet (B5) | 3 |
-| p03 | [Recurrent Networks](p03-recurrent/) | none yet (B6) | 4 |
-| p04 | [Attention Origins](p04-attention-origins/) | none yet (B6) | 4 |
-| p05 | [The Transformer (2017)](p05-transformer-2017/) | none yet (B7) | 5 |
-| p06 | [Objectives and Adaptation](p06-objectives/) | none yet (B7) | 5 |
-| p07 | [The Modern Decoder Block](p07-modern-block/) | none yet (B7) | 5 |
-| p08 | [Inference](p08-inference/) | none yet (B8) | 6 |
-| p09 | [Kernels in C](p09-kernels/) | rt.01 the C ABI | 1 (tracer), 6 |
-| p10 | [Serving](p10-serving/) | L10.0 the first endpoint | 1 (tracer), 7 |
-| p11 | [Training at Scale](p11-training-at-scale/) | none yet (B11) | 9 |
-| p12 | [Post-Training (optional)](p12-post-training/) | none yet (B12) | 10 |
-| p13 | [Vision foundations](p13-vision/) | L13.1 through L13.6 | 12 |
-| p14 | [Speech](p14-speech/) | L14.1 through L14.3 and L14.5 | 12 |
-| C1, C2 | [Capstones](capstones/) | none yet (B11, B12) | 9, 10 |
+$$
+P(b \mid a) = \frac{c_{ab} + \alpha}{\sum_x c_{ax} + 256\alpha}.
+$$
 
-Each part README lists its planned modules; chapters arrive with their authoring batches, and the [course path](paths/course/) lists what is available.
+Its negative log-likelihood on held-out text is the baseline every later model must beat. The reference implementation computes the bigram's logits in Python.
 
-## Connections to Other Tracks
+The **checkpoint** is the first cross-language contract. Python writes `model.safetensors`, and the Rust engine, built on Candle, reads the same weights. Shared fixture files check that both languages behave the same way.
 
-| Track | Connection |
+You build all of this in [the byte bigram](p00-foundations/00-byte-bigram.md) and serve it from [your first endpoint](p10-serving/00-your-first-endpoint.md).
+
+## The spine: upgrading one component at a time
+
+After the tracer, each part of the book replaces or extends one component behind the same contracts. In order, the parts are autograd and training ([Foundations](p00-foundations/README.md)), [tokenizers](p01-tokenizers/README.md), [statistical language models](p02-statistical-lm/README.md), [recurrent networks](p03-recurrent/README.md), [attention origins](p04-attention-origins/README.md), [the 2017 transformer](p05-transformer-2017/README.md), [objectives and adaptation](p06-objectives/README.md), [the modern decoder block](p07-modern-block/README.md), [inference](p08-inference/README.md), [optional standalone C kernels](p09-kernels/README.md), [serving in Rust](p10-serving/README.md), [training at scale](p11-training-at-scale/README.md), and an optional [post-training](p12-post-training/README.md) part. [Vision foundations](p13-vision/README.md) and [speech recognition](p14-speech/README.md) then extend the system to images and audio, and the [capstones](capstones/README.md) run it on one goal.
+
+Because the system is built in passes that interleave these parts with chapters from other books, each part belongs to one or more passes of the [course path](paths/course/README.md). The table gives the mapping.
+
+| Part | Course pass |
 |---|---|
-| [Linear Algebra](../mathematics-for-computing/03-linear-algebra/) | M03.1, the naive matmul in C every logit goes through |
-| [Gateway](../ai-platform-engineering/12-gateway/) | gw.00, the front door to the engine |
-| [Containers and Kubernetes](../infrastructure/01-containers-kubernetes/) | dep.00, the images and charts the engine runs in |
-| [LLM Systems & Inference](../machine-learning/04-llm-systems/) | the production systems this spine rebuilds in miniature |
+| [Foundations](p00-foundations/README.md) | 1 (the tracer), 2 |
+| [Tokenizers](p01-tokenizers/README.md) | 3 |
+| [Statistical language models](p02-statistical-lm/README.md) | 3 |
+| [Recurrent networks](p03-recurrent/README.md) | 4 |
+| [Attention origins](p04-attention-origins/README.md) | 4 |
+| [The transformer (2017)](p05-transformer-2017/README.md) | 5 |
+| [Objectives and adaptation](p06-objectives/README.md) | 5 |
+| [The modern decoder block](p07-modern-block/README.md) | 5 |
+| [Inference](p08-inference/README.md) | 6 |
+| [Optional standalone C kernels](p09-kernels/README.md) | 6 |
+| [Serving](p10-serving/README.md) | 1 (the tracer), 7 |
+| [Training at scale](p11-training-at-scale/README.md) | 9 |
+| [Post-training (optional)](p12-post-training/README.md) | 10 |
+| [Vision foundations](p13-vision/README.md) | 12 |
+| [Speech recognition](p14-speech/README.md) | 12 |
+| [Capstones](capstones/README.md) | 9, and 10 for the optional second |
 
-## Company Relevance
+## Connections to other books
 
-| Company | Practice |
+The model stack in this book meets several other books at specific sections. In *Mathematics for Computing*, [vectors, matrices, and matmul](../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md) is the matrix multiply every logit goes through. In *AI Platform Engineering*, the [tracer gateway](../ai-platform-engineering/12-gateway/00-streaming-proxy.md) is the front door to the engine. In *Infrastructure*, the [tracer deploy](../infrastructure/01-containers-kubernetes/00-tracer-deploy.md) builds the images and charts the engine runs in. And [LLM systems and inference](../machine-learning/04-llm-systems/README.md) in *Machine Learning* describes the production systems this spine rebuilds in miniature.
+
+## The same ideas in industry
+
+None of the design choices here are academic; each mirrors a widely used open-source system.
+
+| Project | Practice it shares with this book |
 |---|---|
 | Hugging Face | safetensors, `transformers` checkpoints, `tokenizers` |
 | llama.cpp / ggml | C kernels behind a stable ABI, served over an OpenAI-compatible HTTP API |
 | vLLM, SGLang | Python model code over custom kernels, a separate serving engine |
+
+## Further reading
+
+- Karpathy, [*Neural Networks: Zero to Hero*](https://karpathy.ai/zero-to-hero.html) (free).
+- Jurafsky and Martin, [*Speech and Language Processing*](https://web.stanford.edu/~jurafsky/slp3/) (free), chapters 3 (n-gram LMs) and 9 (transformers).
+- Raschka, *Build a Large Language Model (From Scratch)*.

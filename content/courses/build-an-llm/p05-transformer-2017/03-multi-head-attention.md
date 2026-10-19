@@ -1,35 +1,18 @@
 # Multi-head attention
 
-## Overview
+[Scaled dot-product attention](01-scaled-dot-product-attention.md) gives you one attention: every query compares itself with every key through one dot product over all $d$ features, and gets one weight vector. Take the addition task the 2017 transformer is trained on in this chapter. To write the tens digit of the sum, the decoder has to look at the tens digit of $a$ **and** the tens digit of $b$, four positions apart. A single softmax can split its mass between the two, but then it averages them into one blurred vector.
 
-| | |
-|---|---|
-| **Module** | `L5.3` · build · Python · Pass 5 · 1 to 1.5 h reading |
-| **Solution** | [`python/tinyllm/xfmr/mha.py`](../../../../course/solutions/python/tinyllm/xfmr/mha.py): `MultiHeadAttention` with `split_heads`, `merge_heads`, `head_mask`, `attend`, `forward`, `load_packed_in_proj`; model oracle tests in [`test_mha.py`](../../../../course/solutions/learner-tests/L5.3/python/tests/l5-3-mha/test_mha.py) |
-| **Contract** | [`course/contracts/py/tinyllm/xfmr/mha.pyi`](../../../../course/contracts/py/tinyllm/xfmr/mha.pyi) |
-| **Needs** | `L5.1` scaled dot-product attention · `L0.4` `Linear`, `Module` · `L0.2` `reshape`, `transpose` · `L0.1` `Tensor` · `M06.3` `PCG32` |
-| **Used by** | `L5.5` encoder and decoder layers · `L6.1` GPT blocks · `L6.2` BERT layers · later: `L13.3`, `L14.2` · in the 2017 transformer, `{tinyllm} train transformer` then `translate --beam 4` runs it in every layer |
-| **Optional depth** | Vaswani et al., "Attention Is All You Need" (2017), section 3.2.2; Michel, Levy, and Neubig, "Are Sixteen Heads Really Better than One?" (NeurIPS 2019) |
+Vaswani et al. split the model width into $H$ heads that each run their own attention with their own projections, and concatenate the results: head 0 can find $a$'s digit while head 1 finds $b$'s. Every model in this chapter and the next (the [encoder-decoder Transformer](05-encoder-decoder-transformer.md), [GPT](../p06-objectives/01-gpt-decoder-only.md), [BERT](../p06-objectives/02-bert-masked-lm.md)) calls this one module, so its layout and parameter names are fixed here once. In this section you will build the module, work a two-head example by hand, and see exactly why the split and merge must each be a reshape *and* a transpose.
 
-## Key Takeaways
+This section builds on scaled dot-product attention, on `Linear` and `Module` from [Module system and basic layers](../p00-foundations/04-module-system-and-layers.md), on `reshape` and `transpose` from [The op library and gradcheck_all](../p00-foundations/02-op-library-and-gradcheck.md), on the `Tensor` of [Tensor, broadcasting backward, and no_grad](../p00-foundations/01-tensor-and-broadcasting-backward.md), and on `PCG32` from [Modular arithmetic, hashing, and PCG32 in Python](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) in *Mathematics for Computing*. The full solution is [`python/tinyllm/xfmr/mha.py`](../../../../course/solutions/python/tinyllm/xfmr/mha.py) (`MultiHeadAttention` with `split_heads`, `merge_heads`, `head_mask`, `attend`, `forward`, `load_packed_in_proj`), its contract is [`course/contracts/py/tinyllm/xfmr/mha.pyi`](../../../../course/contracts/py/tinyllm/xfmr/mha.pyi), and the model oracle tests are in [`test_mha.py`](../../../../course/solutions/learner-tests/L5.3/python/tests/l5-3-mha/test_mha.py).
 
-- A head attends inside its own $d_{\text{head}} = d_{\text{model}} / H$ slice of the features, so one position can read two places at once; one wide head cannot.
-- Splitting is a reshape to `[B, T, H, d_head]` **and** a transpose to `[B, H, T, d_head]`; merging undoes both, in that order.
-- Each head scales by $1/\sqrt{d_{\text{head}}}$, the width it compares, not $1/\sqrt{d_{\text{model}}}$.
-- Self-attention and cross-attention are the same module: queries from `x_q`, keys and values from `x_kv`.
-- A per-sequence mask needs a head axis, or sequence $b$'s mask silently lands on head $b$.
+> **Learning objectives**
+> - Explain why $H$ heads can read several places at once where one wide head can only average.
+> - Split `[B, T, d]` into `[B, H, T, d_head]` and merge it back without mixing positions.
+> - Justify the per-head scale $1/\sqrt{d_{\text{head}}}$ and see where it comes from in the code.
+> - Use one module for self- and cross-attention, and give a per-sequence mask the head axis it needs.
 
-## How to read this chapter
-
-Sections 1 to 3 build multi-head attention from first principles and work a two-head example by hand. Section 4 fixes the interface and what a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
-
----
-
-## 1. Why now
-
-`L5.1` gives one attention: every query compares itself with every key through one dot product over all $d$ features, and gets one weight vector. Take the addition task the 2017 transformer is trained on: to write the tens digit of the sum, the decoder has to look at the tens digit of $a$ **and** the tens digit of $b$, four positions apart. A single softmax can split its mass between the two, but then it averages them into one blurred vector. Vaswani et al. split the model width into $H$ heads that each run their own attention with their own projections, and concatenate the results: head 0 can find $a$'s digit while head 1 finds $b$'s. Every model of Parts 5 and 6 (`L5.5`'s encoder-decoder, `L6.1`'s GPT, `L6.2`'s BERT) calls this one module, so its layout and names are fixed here once.
-
-## 2. Principles
+## The notation
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -42,37 +25,45 @@ Sections 1 to 3 build multi-head attention from first principles and work a two-
 | $Q_h, K_h, V_h$ | head $h$'s slice of the projected queries, keys, values | `[B, Tq, dh]`, `[B, Tk, dh]` |
 | $M$ | mask, True = may attend | bool, broadcasts to `[B, H, Tq, Tk]` |
 
-### 2.1 One head
+## One head
 
-One head is `L5.1` after learned projections:
+One head is scaled dot-product attention after learned projections:
 
 $$\text{head}(X_q, X_{kv}) = \operatorname{softmax}\!\Big(\frac{(X_q W_q^\top)(X_{kv} W_k^\top)^\top}{\sqrt{d}} + M\Big)\, X_{kv} W_v^\top .$$
 
-With $H = 1$ the module is exactly this followed by $W_o$, which can be checked by computing it in numpy from the module's own weights.
+With $H = 1$ the module is exactly this followed by $W_o$, which you can check by computing it in numpy from the module's own weights.
 
-### 2.2 Heads
+## Many heads
 
 With $H$ heads the projections stay $d \times d$, but their output is read in $H$ slices of width $d_h$: head $h$ owns features $h d_h$ to $(h + 1) d_h - 1$. Each head attends in its own slice, scaled by $1/\sqrt{d_h}$ because a dot product of $d_h$ terms with unit-variance entries has variance $d_h$:
 
 $$\text{head}_h = \operatorname{softmax}\!\Big(\frac{Q_h K_h^\top}{\sqrt{d_h}} + M\Big) V_h, \qquad \text{out} = [\text{head}_0 ; \dots ; \text{head}_{H-1}]\, W_o^\top .$$
 
-In code all heads run in one batched call. A projected `[B, T, d]` tensor is reshaped to `[B, T, H, d_h]` (the slices become an axis) and transposed to `[B, H, T, d_h]`, so `L5.1` sees `H` more batch rows. Merging reverses it: transpose back to `[B, T, H, d_h]`, then reshape to `[B, T, d]`. Reshaping `[B, H, T, d_h]` straight to `[B, T, d]` is legal numpy and wrong: it glues together the rows of different positions. The cost is the same as one wide head: four $d \times d$ projections and $H$ attentions of width $d_h$.
+In code all heads run in one batched call. A projected `[B, T, d]` tensor is reshaped to `[B, T, H, d_h]` (the slices become an axis) and transposed to `[B, H, T, d_h]`, so attention sees $H$ more batch rows. Merging reverses it: transpose back to `[B, T, H, d_h]`, then reshape to `[B, T, d]`.
 
-### 2.3 Masks for every head
+> **Warning:** reshaping `[B, H, T, d_h]` straight to `[B, T, d]` is legal numpy and wrong. It glues together the rows of different positions, and nothing crashes.
 
-Masks come from `L5.2` and mean "True = may attend". A causal mask is `[Tq, Tk]` and applies to every sequence and head; a padding mask is per sequence. The module accepts `[Tq, Tk]`, `[B, Tq, Tk]` (it inserts the head axis at 1), and any shape that already broadcasts to `[B, H, Tq, Tk]`, such as `[B, 1, 1, Tk]` key padding. Numpy aligns shapes from the right, so a `[B, Tq, Tk]` mask without the inserted axis broadcasts against `[B, H, Tq, Tk]` with its batch axis on the head axis: when $B = H$ nothing fails and the masks are simply wrong.
+The cost is the same as one wide head: four $d \times d$ projections and $H$ attentions of width $d_h$.
 
-### 2.4 Self- and cross-attention
+## Masks for every head
 
-`attend(x_q, x_kv, mask)` takes queries from `x_q` and **both** keys and values from `x_kv`. Self-attention passes the same tensor twice; the decoder's cross-attention (`L5.5`) passes its own states as `x_q` and the encoder's output as `x_kv`. The output has `x_q`'s length. Keys are a set: permuting the positions of `x_kv` (with its mask) leaves the output unchanged, and permuting `x_q` permutes the output rows. Position information therefore has to come from outside, which is `L5.4`'s job.
+Masks come from the [previous section](02-masks.md) and mean "True = may attend". A causal mask is `[Tq, Tk]` and applies to every sequence and head; a padding mask is per sequence. The module accepts `[Tq, Tk]`, `[B, Tq, Tk]` (it inserts the head axis at 1), and any shape that already broadcasts to `[B, H, Tq, Tk]`, such as `[B, 1, 1, Tk]` key padding.
 
-### 2.5 Dropout and torch's packed layout
+The head axis matters because numpy aligns shapes from the right. A `[B, Tq, Tk]` mask without the inserted axis broadcasts against `[B, H, Tq, Tk]` with its batch axis on the head axis. When $B = H$ nothing fails and the masks are simply wrong.
 
-Attention dropout zeroes attention weights at random during training (rate `dropout`, drawn from `PCG32(0).substream("dropout")` by `L5.1`) and is off in eval mode. torch's `nn.MultiheadAttention` keeps $W_q, W_k, W_v$ stacked in one `in_proj_weight` of shape `[3d, d]`, rows in the order q, k, v; `load_packed_in_proj` copies them into the three `Linear`s.
+## Self- and cross-attention
 
-## 3. Worked example by hand
+`attend(x_q, x_kv, mask)` takes queries from `x_q` and **both** keys and values from `x_kv`. Self-attention passes the same tensor twice; the decoder's cross-attention in the [encoder-decoder Transformer](05-encoder-decoder-transformer.md) passes its own states as `x_q` and the encoder's output as `x_kv`. The output has `x_q`'s length.
 
-$d = 4$, $H = 2$, $d_h = 2$, and every projection the identity with zero bias, so $Q = X_q$, $K = V = X_{kv}$. One query and two keys:
+Keys are a set: permuting the positions of `x_kv` (with its mask) leaves the output unchanged, and permuting `x_q` permutes the output rows. Position information therefore has to come from outside, which is the job of [positional encodings](04-positional-encodings.md).
+
+## Dropout and torch's packed layout
+
+Two practical details complete the design. Attention dropout zeroes attention weights at random during training (rate `dropout`, drawn from `PCG32(0).substream("dropout")` by scaled dot-product attention) and is off in eval mode. And torch's `nn.MultiheadAttention` keeps $W_q, W_k, W_v$ stacked in one `in_proj_weight` of shape `[3d, d]`, rows in the order q, k, v; `load_packed_in_proj` copies them into the three `Linear`s.
+
+## Working it by hand
+
+Take $d = 4$, $H = 2$, $d_h = 2$, and every projection the identity with zero bias, so $Q = X_q$ and $K = V = X_{kv}$. There is one query and two keys, split by head:
 
 | | features 0, 1 (head 0) | features 2, 3 (head 1) |
 |---|---|---|
@@ -80,15 +71,15 @@ $d = 4$, $H = 2$, $d_h = 2$, and every projection the identity with zero bias, s
 | $k_1 = (1, 0, 0, 0)$ | $(1, 0)$ | $(0, 0)$ |
 | $k_2 = (0, 1, 0, 2)$ | $(0, 1)$ | $(0, 2)$ |
 
-**Head 0.** Scores $(1, 0) / \sqrt 2 = (0.707107, 0)$; weights $\sigma(0.707107) = 0.669762$ and $0.330238$; context $0.669762 (1, 0) + 0.330238 (0, 1) = (0.669762, 0.330238)$.
+**Head 0.** The scores are $(1, 0) / \sqrt 2 = (0.707107, 0)$; the weights are $\sigma(0.707107) = 0.669762$ and $0.330238$; the context is $0.669762 (1, 0) + 0.330238 (0, 1) = (0.669762, 0.330238)$.
 
-**Head 1.** Scores $(0, 4) / \sqrt 2 = (0, 2.828427)$; weights $\sigma(-2.828427) = 0.055817$ and $0.944183$; context $0.944183 \cdot (0, 2) = (0, 1.888366)$.
+**Head 1.** The scores are $(0, 4) / \sqrt 2 = (0, 2.828427)$; the weights are $\sigma(-2.828427) = 0.055817$ and $0.944183$; the context is $0.944183 \cdot (0, 2) = (0, 1.888366)$.
 
-**Merge.** Head 0's context fills features 0 and 1, head 1's fills 2 and 3: $(0.669762, 0.330238, 0, 1.888366)$, and $W_o = I$ leaves it. A correct solution reproduces these weights and this output.
+**Merge.** Head 0's context fills features 0 and 1, head 1's fills 2 and 3: $(0.669762, 0.330238, 0, 1.888366)$, and $W_o = I$ leaves it unchanged. A correct solution reproduces these weights and this output.
 
-With **one** head of width 4 the same numbers give scores $(q \cdot k_1, q \cdot k_2) / 2 = (0.5, 2)$, weights $(0.182426, 0.817574)$ for every feature, and output $(0.182426, 0.817574, 0, 1.635149)$: head 0's preference for $k_1$ is outvoted.
+Compare **one** head of width 4 on the same numbers. The scores are $(q \cdot k_1, q \cdot k_2) / 2 = (0.5, 2)$, the weights are $(0.182426, 0.817574)$ for every feature, and the output is $(0.182426, 0.817574, 0, 1.635149)$. Head 0's preference for $k_1$ is outvoted. That is the whole argument for heads in one example.
 
-## 4. The interface
+## Designing the API
 
 ```python
 class MultiHeadAttention(Module):
@@ -101,44 +92,21 @@ class MultiHeadAttention(Module):
     def load_packed_in_proj(self, weight, bias=None) -> None  # torch's [3d, d], rows q | k | v
 ```
 
-Parameters, in `state_dict` order: `q_proj.weight`, `q_proj.bias`, `k_proj.*`, `v_proj.*`, `out_proj.*` (L0.4 `Linear`s, drawn from one `rng`).
+The parameters, in `state_dict` order, are `q_proj.weight`, `q_proj.bias`, `k_proj.*`, `v_proj.*`, `out_proj.*`: four `Linear`s drawn from one `rng`. Those names are the checkpoint keys used through the modern block.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| hand example: two heads | unit | section 3: weights per head and the merged output | pins down the layout and the scale |
-| hand example: one head mixes everything | unit | the same numbers with one head | why heads exist |
-| matches torch `nn.MultiheadAttention` | golden | torch `nn.MultiheadAttention`: output, per-head weights, every gradient, self (causal + padding) and cross (padding) | `L5.5`, `L6.1`, `L6.2` load torch-trained weights |
-| gradcheck inputs and parameters | gradcheck | both inputs and all 8 parameter tensors against frozen central differences | every model trains through this backward |
-| split and merge layout | property | head $h$ owns features $h d_h ..$; merge inverts split | positions never mix |
-| heads are independent | property | changing head 1's query rows leaves head 0's weights bitwise equal | heads are separate subspaces |
-| one head is projected attention | differential | $H = 1$ equals numpy softmax$(QK^\top/\sqrt d)V$ then $W_o$ | the definition, independently |
-| mask shapes agree | property | `[Tq, Tk]`, `[B, Tq, Tk]`, `[B, H, Tq, Tk]` masks agree, with $B = H$ | the decoder's causal-and-padding masks |
-| masked keys are never read | property | masked keys weigh exactly 0; their values cannot change the output | padding in every batch |
-| cross-attention reads keys from `x_kv` | property | output length from `x_q`; `x_kv` positions are a set | `L5.5`'s cross-attention |
-| dropout only in training | unit | eval mode equals no dropout | evaluation and decoding are deterministic |
-| parameter names shapes and init | unit | the eight names in order, seeded init, `bias=False` | checkpoint keys of Parts 5 to 7 |
-| load packed `in_proj` | unit | torch's packed rows are q, k, v | loading torch weights (`L5.5`'s golden test) |
-| validation | boundary | heads must tile $d$; shapes; bool masks | wiring bugs fail loudly |
+The reasoning chain:
 
-### The oracle tests
-
-The model suite [`test_mha.py`](../../../../course/solutions/learner-tests/L5.3/python/tests/l5-3-mha/test_mha.py) uses **oracles**: multi-head attention written again in float64 numpy from the module's own `state_dict` (project, reshape, transpose, softmax with the mask, merge, project), compared with `attend`'s output and weights for self- and cross-attention, with a per-sequence `[B, Tq, Tk]` mask where $B = H$. It adds the section 3 numbers, a split/merge check, eval-mode dropout, the packed load order, and a float64 gradient check with `tinyllm.num.gradcheck` (`M04.1`). It imports only names in `contracts/py`.
-
-## 5. The solution, step by step
-
-### From first principles
-
-1. **Several independent reads need several softmaxes.** One softmax gives one weight vector per query, so it can only average where it looks (section 1). $H$ heads give $H$ weight vectors, each over its own feature slice.
+1. **Several independent reads need several softmaxes.** One softmax gives one weight vector per query, so it can only average where it looks. $H$ heads give $H$ weight vectors, each over its own feature slice.
 2. **Keep the cost of one wide head.** Projections stay $d \times d$; their outputs are *read* as $H$ slices of width $d_h$. Head $h$ owns features $h d_h .. (h+1) d_h - 1$, so splitting is a reshape of the last axis.
-3. **Heads must become a batch axis for `L5.1`.** `L5.1` treats leading axes as independent problems, so heads go to axis 1: reshape `[B, T, d] -> [B, T, H, d_h]`, then transpose to `[B, H, T, d_h]`. Merging must undo both in reverse order; a direct reshape would glue rows of different positions.
-4. **Scale by the width compared.** Each head's dot product has $d_h$ terms, so its scale is $1/\sqrt{d_h}$. Since the last axis of the split tensors *is* $d_h$, `L5.1`'s default scale is already right; passing nothing is the correct call. In the worked example head 0's scores are $(1, 0)/\sqrt 2$.
+3. **Heads must become a batch axis.** Scaled dot-product attention treats leading axes as independent problems, so heads go to axis 1: reshape `[B, T, d] -> [B, T, H, d_h]`, then transpose to `[B, H, T, d_h]`. Merging must undo both in reverse order; a direct reshape would glue rows of different positions.
+4. **Scale by the width compared.** Each head's dot product has $d_h$ terms, so its scale is $1/\sqrt{d_h}$. Since the last axis of the split tensors *is* $d_h$, the attention function's default scale is already right; passing nothing is the correct call. In the worked example head 0's scores are $(1, 0)/\sqrt 2$.
 5. **Queries and keys may come from different sequences.** Taking `x_q` and `x_kv` separately makes one module serve self-attention (same tensor twice) and cross-attention (decoder states and encoder output).
 6. **Masks need a head axis.** A per-sequence `[B, Tq, Tk]` mask must become `[B, 1, Tq, Tk]`; otherwise right-aligned broadcasting puts the batch axis on the head axis.
 7. **Heads must be mixed.** The concatenated heads pass through $W_o$, so each output feature can combine what every head read.
 
-### The code, annotated
+### Construction
 
 Four `Linear`s in contract order (their names are the checkpoint keys), and a dedicated dropout stream:
 
@@ -158,7 +126,9 @@ class MultiHeadAttention(Module):
         self.dropout_rng = PCG32(0).substream("dropout")   # dropout draws never shift init
 ```
 
-Split and merge, each a reshape and a transpose in mirror order:
+### Split and merge
+
+Each is a reshape and a transpose, in mirror order:
 
 ```python
 def split_heads(self, x):
@@ -173,6 +143,8 @@ def merge_heads(self, x):
     # Back to [B, T, H, d_head] first: positions must not mix.
     return F.reshape(F.transpose(x, 1, 2), (B, T, self.d_model))                # [B, T, d]
 ```
+
+### The mask
 
 The mask is normalized to something that broadcasts to `[B, H, Tq, Tk]`:
 
@@ -192,9 +164,9 @@ def head_mask(self, mask, B, Tq, Tk):
     return m
 ```
 
-A `[Tq, Tk]` causal mask and a `[B, 1, 1, Tk]` padding mask (from `L5.2`'s `combine`) pass through unchanged, since they already broadcast correctly.
+A `[Tq, Tk]` causal mask and a `[B, 1, 1, Tk]` padding mask (from `combine`) pass through unchanged, since they already broadcast correctly.
 
-The whole layer:
+### The layer
 
 ```python
 def attend(self, x_q, x_kv, mask=None):
@@ -210,7 +182,9 @@ def attend(self, x_q, x_kv, mask=None):
     return self.out_proj(self.merge_heads(ctx)), w   # w: [B, H, Tq, Tk]
 ```
 
-`forward` returns only the output. Because the whole attention is `L5.1`'s single autograd node between the projections, the backward through all heads is exact and cheap.
+`forward` returns only the output. Because the whole attention is a single autograd node between the projections, the backward through all heads is exact and cheap.
+
+### Loading torch weights
 
 Loading torch's packed projection just slices rows in q, k, v order:
 
@@ -226,16 +200,71 @@ def load_packed_in_proj(self, weight, bias=None):
     self.load_state_dict(sd, strict=False)      # out_proj is loaded separately
 ```
 
-Full solution: [`mha.py`](../../../../course/solutions/python/tinyllm/xfmr/mha.py).
+The full solution is [`mha.py`](../../../../course/solutions/python/tinyllm/xfmr/mha.py).
 
-### Why this solution
+### Why this design
 
-- **Cost.** Four $d \times d$ projections, $O(B T d^2)$, plus $H$ attentions of width $d_h$, $O(B H T_q T_k d_h) = O(B T_q T_k d)$: the same as one wide head. Heads cost nothing extra in FLOPs, only in the $[B, H, T_q, T_k]$ weights kept for the backward.
-- **Why three `Linear`s and not torch's packed `in_proj`?** Separate names match the contract and later models (Llama's `q_proj`, `k_proj`, `v_proj`), and cross-attention needs keys and values projected from a different input than queries anyway. `load_packed_in_proj` bridges to torch's layout.
-- **Why reuse `L5.1` with batched heads instead of a loop over heads?** One call runs all $B \cdot H$ problems with NumPy broadcasting and one hand-written backward; a Python loop over heads would be $H$ graph nodes and $H$ times the overhead.
-- **Why let `L5.1` pick the scale?** Its default reads the last axis, which after splitting is $d_h$. Passing $1/\sqrt{d_{\text{model}}}$ explicitly would be pitfall 2.
+The cost is four $d \times d$ projections, $O(B T d^2)$, plus $H$ attentions of width $d_h$, $O(B H T_q T_k d_h) = O(B T_q T_k d)$: the same as one wide head. Heads cost nothing extra in FLOPs, only in the $[B, H, T_q, T_k]$ weights kept for the backward.
 
-### Explain it back
+Why three `Linear`s and not torch's packed `in_proj`? Separate names match the contract and later models (Llama's `q_proj`, `k_proj`, `v_proj`), and cross-attention needs keys and values projected from a different input than queries anyway. `load_packed_in_proj` bridges to torch's layout.
+
+Why reuse scaled dot-product attention with batched heads instead of a loop over heads? One call runs all $B \cdot H$ problems with NumPy broadcasting and one hand-written backward; a Python loop over heads would be $H$ graph nodes and $H$ times the overhead. And why let that function pick the scale? Its default reads the last axis, which after splitting is $d_h$. Passing $1/\sqrt{d_{\text{model}}}$ explicitly would make the softmax too flat by a factor $\sqrt H$.
+
+## What can go wrong
+
+A correct module must reproduce the two-head hand example (weights per head and the merged output, which pins down the layout and the scale) and the one-head comparison (which shows why heads exist). It must match torch's `nn.MultiheadAttention` on output, per-head weights, and every gradient, for self-attention with causal and padding masks and for cross-attention with padding; the encoder-decoder Transformer, GPT, and BERT all load torch-trained weights through this. A gradcheck covers both inputs and all 8 parameter tensors against frozen central differences, since every model trains through this backward.
+
+The properties: head $h$ owns features $h d_h ..$ and merge inverts split, so positions never mix; changing head 1's query rows leaves head 0's weights bitwise equal; with $H = 1$ the module equals numpy $\operatorname{softmax}(QK^\top/\sqrt d)V$ followed by $W_o$; `[Tq, Tk]`, `[B, Tq, Tk]`, and `[B, H, Tq, Tk]` masks agree even with $B = H$; masked keys weigh exactly 0 and their values cannot change the output; and in cross-attention the output length comes from `x_q` while `x_kv` positions behave as a set. Eval mode must equal no dropout, so evaluation and decoding are deterministic. The eight parameter names must appear in order with seeded init and `bias=False` support; torch's packed rows must load as q, k, v; and heads that do not tile $d$, bad shapes, and non-bool masks must raise.
+
+The model suite [`test_mha.py`](../../../../course/solutions/learner-tests/L5.3/python/tests/l5-3-mha/test_mha.py) uses an oracle: multi-head attention written again in float64 numpy from the module's own `state_dict` (project, reshape, transpose, softmax with the mask, merge, project), compared with `attend`'s output and weights for self- and cross-attention, with a per-sequence `[B, Tq, Tk]` mask where $B = H$. It adds the worked numbers, a split/merge check, eval-mode dropout, the packed load order, and a float64 gradient check with `tinyllm.num.gradcheck` (from [Partial derivatives, gradients, gradcheck](../../mathematics-for-computing/04-calculus-3/01-gradients-and-gradcheck.md)). It imports only names in `contracts/py`.
+
+Most of the classic bugs are silent, which is why the list is worth memorizing:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| merging (or splitting) heads with a plain reshape | positions mix; torch disagrees; nothing crashes | `split_heads` reshapes then transposes; `merge_heads` transposes then reshapes |
+| scaling by $1/\sqrt{d_{\text{model}}}$ | softmax too flat by a factor $\sqrt H$ | no explicit scale: the default $1/\sqrt{d}$ sees `d_head` as the last axis |
+| projecting keys from `x_q` | cross-attention reads the decoder, or crashes when lengths differ | `k_proj(x_kv)` and `v_proj(x_kv)` |
+| a `[B, Tq, Tk]` mask without a head axis | with $B = H$ head $b$ gets sequence $b$'s mask | `head_mask` inserts the head axis: `m[:, None, :, :]` |
+| dropout in eval mode | decoding is random, evaluation noisy | `p = self.dropout if self.training else 0.0` |
+| reading torch's packed `in_proj` as k, q, v | a loaded checkpoint attends with swapped roles | rows `[:d]`, `[d:2d]`, `[2d:]` go to q, k, v |
+| the output projection skipped | heads are never mixed; shapes still fit | `attend` returns `self.out_proj(self.merge_heads(ctx))` |
+
+## Where this leads
+
+The [encoder-decoder Transformer](05-encoder-decoder-transformer.md) uses this module three ways: encoder self-attention, decoder masked self-attention, and cross-attention. When you train it and translate with a beam of 4, it runs in every layer. [GPT](../p06-objectives/01-gpt-decoder-only.md) uses it for causal self-attention (GPT-2's `c_attn` split into q, k, v), and [BERT](../p06-objectives/02-bert-masked-lm.md) for bidirectional self-attention. [MQA/GQA attention](../p07-modern-block/05-gqa-attention.md) shares $K, V$ heads between query heads. Every block of the [vision transformer](../p13-vision/03-vision-transformer.md) and of the [Whisper encoder](../p14-speech/02-whisper-encoder.md) is `MultiHeadAttention` with no mask.
+
+The production versions differ mainly in fusion and in how many key-value heads they keep:
+
+| This piece | Production equivalent | What it adds | Where to look |
+|---|---|---|---|
+| `split_heads` / `merge_heads` | PyTorch `F.scaled_dot_product_attention` on `[B, H, T, d]` | fused kernels (FlashAttention, memory-efficient) behind one call | `torch/nn/functional.py`, `aten/src/ATen/native/transformers/` |
+| `load_packed_in_proj` | HF `GPT2Attention` c_attn, Llama's separate q/k/v | fused QKV matmul for speed, split views | `transformers/models/gpt2/modeling_gpt2.py` |
+| one K, V per head | multi-query and grouped-query attention | fewer K, V heads: a smaller KV cache | Shazeer (2019); Ainslie et al. (2023); [MQA/GQA attention](../p07-modern-block/05-gqa-attention.md) |
+| attention dropout | most modern LLMs train with 0 | dropout matters for small data, not trillions of tokens | Llama and Mistral configs |
+
+### Further reading
+
+- Vaswani et al., "Attention Is All You Need" (2017), section 3.2.2.
+- Michel, Levy, and Neubig, "Are Sixteen Heads Really Better than One?" (NeurIPS 2019).
+
+## Key terms
+
+- **head**: one attention run inside its own $d_{\text{head}} = d_{\text{model}}/H$ slice of the projected features.
+- **split heads**: reshape `[B, T, d]` to `[B, T, H, d_h]`, then transpose to `[B, H, T, d_h]`.
+- **merge heads**: transpose back to `[B, T, H, d_h]`, then reshape to `[B, T, d]`.
+- **cross-attention**: attention with queries from one sequence and keys and values from another.
+- **packed in_proj**: torch's `[3d, d]` stack of $W_q, W_k, W_v$, rows in q, k, v order.
+
+## Summary
+
+- A head attends inside its own $d_{\text{head}} = d_{\text{model}} / H$ slice of the features, so one position can read two places at once; one wide head cannot.
+- Splitting is a reshape to `[B, T, H, d_head]` **and** a transpose to `[B, H, T, d_head]`; merging undoes both, in that order.
+- Each head scales by $1/\sqrt{d_{\text{head}}}$, the width it compares, not $1/\sqrt{d_{\text{model}}}$.
+- Self-attention and cross-attention are the same module: queries from `x_q`, keys and values from `x_kv`.
+- A per-sequence mask needs a head axis, or sequence $b$'s mask silently lands on head $b$.
+
+## Review questions
 
 1. Why must `merge_heads` transpose before reshaping?
    <details><summary>Answer</summary>The context is `[B, H, T, d_h]` in memory order. Reshaping it directly to `[B, T, d]` would read head 0's rows for positions 0 and 1 as one position's features. Transposing to `[B, T, H, d_h]` first puts each position's $H$ slices next to each other, so the reshape concatenates heads, not positions.</details>
@@ -247,41 +276,3 @@ Full solution: [`mha.py`](../../../../course/solutions/python/tinyllm/xfmr/mha.p
    <details><summary>Answer</summary>NumPy aligns shapes from the right, so `[B, Tq, Tk]` against `[B, H, Tq, Tk]` matches $B$ with $H$. When $B = H$ (or $B = 1$) it broadcasts without error, and each head silently gets another sequence's mask.</details>
 5. What would break if keys were projected from `x_q`?
    <details><summary>Answer</summary>Cross-attention would attend over the decoder's own states instead of the encoder output, and when the lengths differ, the keys and values would have different lengths, so it would crash or read the wrong source.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. merging (or splitting) heads with a plain reshape | positions mix; torch disagrees; nothing crashes | `split_heads` reshapes then transposes; `merge_heads` transposes then reshapes |
-| 2. scaling by $1/\sqrt{d_{\text{model}}}$ | softmax too flat by a factor $\sqrt H$ | no explicit scale: `L5.1`'s default $1/\sqrt{d}$ sees `d_head` as the last axis |
-| 3. projecting keys from `x_q` | cross-attention reads the decoder, or crashes when lengths differ | `k_proj(x_kv)` and `v_proj(x_kv)` |
-| 4. a `[B, Tq, Tk]` mask without a head axis | with $B = H$ head $b$ gets sequence $b$'s mask | `head_mask` inserts the head axis: `m[:, None, :, :]` |
-| 5. dropout in eval mode | decoding is random, evaluation noisy | `p = self.dropout if self.training else 0.0` |
-| 6. reading torch's packed `in_proj` as k, q, v | a loaded checkpoint attends with swapped roles | rows `[:d]`, `[d:2d]`, `[2d:]` go to q, k, v |
-| the output projection skipped | heads are never mixed; shapes still fit | `attend` returns `self.out_proj(self.merge_heads(ctx))` |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `L5.1` | `scaled_dot_product_attention` runs all heads in one batched call |
-| Back | `L0.4` | `Linear` for the four projections, `Module` for registration |
-| Back | `L0.2` | `reshape` and `transpose` for split and merge |
-| Back | `L0.1` | the `Tensor` every input and parameter is |
-| Back | `M06.3` | `PCG32` for the default init and dropout streams |
-| Forward | `L5.5` | encoder self-attention, decoder masked self-attention and cross-attention |
-| Forward | `L6.1` | GPT-2's causal self-attention (c_attn split into q, k, v) |
-| Forward | `L6.2` | BERT's bidirectional self-attention |
-| Forward | `L7.5` | grouped-query attention shares $K, V$ heads between query heads |
-| Forward | `L13.3` | every vision block is `MultiHeadAttention` with no mask |
-| Forward | `L14.2` | every Whisper encoder block is `MultiHeadAttention` with no mask |
-
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `split_heads` / `merge_heads` | PyTorch `F.scaled_dot_product_attention` on `[B, H, T, d]` | fused kernels (FlashAttention, memory-efficient) behind one call | `torch/nn/functional.py`, `aten/src/ATen/native/transformers/` |
-| `load_packed_in_proj` | HF `GPT2Attention` c_attn, Llama's separate q/k/v | fused QKV matmul for speed, split views | `transformers/models/gpt2/modeling_gpt2.py` |
-| one K, V per head | multi-query and grouped-query attention | fewer K, V heads: a smaller KV cache | Shazeer (2019); Ainslie et al. (2023); `L7.5` |
-| attention dropout | most modern LLMs train with 0 | dropout matters for small data, not trillions of tokens | Llama and Mistral configs |

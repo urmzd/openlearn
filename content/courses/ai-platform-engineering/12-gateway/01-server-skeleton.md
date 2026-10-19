@@ -1,39 +1,23 @@
-# Server skeleton, composition root, go/config, graceful shutdown
+# The server skeleton
 
-## Overview
+The [tracer gateway](00-streaming-proxy.md) is one handler with everything inside it: the key check, the trace, the forward. The rest of this book adds real keys ([API keys and scopes](../08-authorization-and-access-control/01-api-keys-and-scopes.md)), rate limits ([Rate limiting](../08-authorization-and-access-control/02-rate-limiting.md)), a streaming observer ([The SSE streaming proxy](04-sse-streaming-proxy.md)), routing across engines ([Routing, cascades, and failover](05-routing.md)), a response cache ([The response cache](../04-distributed-data-and-caching/01-response-cache.md)), and a usage ledger ([The usage ledger and admin API](07-usage-ledger-and-admin-api.md)). Bolted into one function, each of them would have to know about the others, the order in which they run would be an accident of whoever edited last, and a panic in any of them would take the process down mid-stream.
 
-| | |
-|---|---|
-| **Module** | `gw.01` · build · Go · Pass 7 · 4 to 5 h |
-| **Solution** | [`go/gateway/server/chain.go`](../../../../course/solutions/go/gateway/server/chain.go): the chain in its contractual order, the `Exchange`, `WriteError`, `ParseRequest` · [`go/gateway/server/server.go`](../../../../course/solutions/go/gateway/server/server.go): `New`, `Deps`, `Config`, the health port, `Shutdown`, `Run` · [`go/config/config.go`](../../../../course/solutions/go/config/config.go): `runtime.toml` with `TL_<SECTION>__<KEY>` overrides · the composition root [`entry/go/cmd/gateway/compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go) |
-| **Contract** | [`course/contracts/config/runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json) (the file and the override rule) · the `gateway` role's `--config` form in [`course/contracts/spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) · health and error rules of [`course/contracts/openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml) |
-| **Needs** | reading: [`lang.06` Go](../../programming-languages/02-language-and-tool-primers/06-go.md), [`gw.00` the tracer gateway](00-streaming-proxy.md) |
-| **Used by** | `gw.02` authn stage · `gw.03` ratelimit stage · `gw.04` proxy stage and its observer · `gw.05` route stage · `gw.06` cache stage · `gw.07` meter stage and admin API: every one is a `server.Middleware` that reads the `Exchange` and answers errors with `WriteError` · later: `gw.08`; together they make up the full gateway |
-| **Optional depth** | Mat Ryer, *How I write HTTP services in Go after 13 years* (free, 2024); RFC 9110 section 15 (status codes); the Kubernetes docs on [pod termination](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination) (free) |
+Operations add their own pressure. When [Helm charts for the gateway and the engine](../../infrastructure/01-containers-kubernetes/03-helm-charts-and-observability-stack.md) (in *Infrastructure*) rolls the gateway on Kubernetes, the pod receives SIGTERM and has 30 s. A gateway that exits at once cuts every user's stream, and one that keeps answering `/readyz` with 200 keeps receiving new requests while it shuts down.
 
-## Key Takeaways
+This section builds the skeleton the rest plug into: an ordered chain, a shared request record, a health port that tells the truth, a drain that finishes what it started, and one configuration loader for every Go service. It assumes you can read Go ([Go: packages, interfaces, goroutines, channels, context, net/http, testing](../../programming-languages/02-language-and-tool-primers/06-go.md) in *Programming Languages*) and that you have read the tracer gateway. The solution lives in [`go/gateway/server/chain.go`](../../../../course/solutions/go/gateway/server/chain.go) (the chain in its contractual order, the `Exchange`, `WriteError`, `ParseRequest`), [`go/gateway/server/server.go`](../../../../course/solutions/go/gateway/server/server.go) (`New`, `Deps`, `Config`, the health port, `Shutdown`, `Run`), [`go/config/config.go`](../../../../course/solutions/go/config/config.go) (`runtime.toml` with `TL_<SECTION>__<KEY>` overrides), and the composition root [`entry/go/cmd/gateway/compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go), which is the `gateway --config <runtime.toml>` form of the role. `go/config` uses `github.com/BurntSushi/toml`, which is allowed in [`contracts/allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml).
 
-- The chain order is a contract: `requestid -> otel -> recover -> authn -> policy -> ratelimit -> cache -> route -> proxy -> meter`. A request is named, traced, and protected from panics before anything can reject it, authenticated before anything reads its key, and limited before the cache can answer it.
-- The server imports **none** of its stages. Each stage is plain middleware in `Deps`; the stage packages import the server for `Middleware`, the `Exchange`, and `WriteError`, and `main` wires them. That is a composition root, and it is why `gw.01` can be built before any stage exists.
-- One request-scoped `Exchange` carries what stages tell each other: the request id, the parsed body (read once, put back for the proxy), the status, the usage the proxy saw, the worker the router chose.
-- Shutdown is a sequence: `/readyz` turns 503 first, the listener closes, streams in flight run to completion until a deadline, then their contexts are cancelled.
-- Configuration has one precedence, environment over file over defaults, one separator (`__`), and no silent typos: unknown keys and bad overrides stop the process at start-up.
+The contracts are [`course/contracts/config/runtime.schema.json`](../../../../course/contracts/config/runtime.schema.json) (the file and the override rule), the `gateway` role's `--config` form in [`course/contracts/spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md), and the health and error rules of [`course/contracts/openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml).
 
-## How to read this chapter
+> **Learning objectives**
+> - State the gateway's middleware order and justify the position of every stage.
+> - Explain how a composition root lets the server be built before any of its stages exist.
+> - Use a request-scoped `Exchange` to pass data between stages, reading the body exactly once.
+> - Sequence a graceful shutdown so a Kubernetes rollout never cuts a stream or refuses a connection it routed.
+> - Load configuration with one precedence (environment over file over defaults) that rejects typos at start-up.
 
-Sections 1 to 3 derive the chain order, the shared request record, the drain sequence, and the configuration precedence from first principles and trace one request, one configuration, and one drain by hand. Section 4 fixes the interface. Section 5 walks through the solution function by function and explains why each choice is the right one; try to predict each step before reading it. `go/config` uses `github.com/BurntSushi/toml` (allowed in [`contracts/allowed-deps.toml`](../../../../course/contracts/allowed-deps.toml)); the gateway's composition root, [`entry/go/cmd/gateway/compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go), is the `gateway --config <runtime.toml>` form of the role.
+## The chain and its order
 
----
-
-## 1. Why now
-
-The tracer gateway of `gw.00` is one handler with everything inside it: the key check, the trace, the forward. Pass 7 adds real keys (`gw.02`), rate limits (`gw.03`), a streaming observer (`gw.04`), routing across engines (`gw.05`), a response cache (`gw.06`), and a usage ledger (`gw.07`). Bolted into one function, each of them would have to know about the others, the order in which they run would be an accident of whoever edited last, and a panic in any of them would take the process down mid-stream. When `dep.03` rolls the gateway on Kubernetes, the pod receives SIGTERM and has 30 s; a gateway that exits at once cuts every user's stream, and one that keeps answering `/readyz` with 200 keeps receiving new requests while it shuts down. This module builds the skeleton the rest plug into: an ordered chain, a shared request record, a health port that tells the truth, a drain that finishes what it started, and one configuration loader for every Go service.
-
-## 2. Principles
-
-### 2.1 The chain and its order
-
-A **middleware** is a function from handler to handler, `func(next http.Handler) http.Handler`: it can act before calling `next`, after it returns, or instead of calling it (rejecting the request).
+A **middleware** is a function from handler to handler, `func(next http.Handler) http.Handler`. It can act before calling `next`, after it returns, or instead of calling it (rejecting the request). Name the pieces:
 
 | Symbol | Meaning | Type |
 |---|---|---|
@@ -41,57 +25,59 @@ A **middleware** is a function from handler to handler, `func(next http.Handler)
 | $m_i$ | the $i$-th middleware, outermost first | `server.Middleware` |
 | $k$ | the number of middlewares | integer |
 
-Composing middlewares $m_1, \dots, m_k$ around $h$ gives $m_1(m_2(\cdots m_k(h)))$: $m_1$ sees the request first and the response last. This is the decorator pattern (`ai-platform-engineering/06`). The gateway's order, outermost first:
+Composing middlewares $m_1, \dots, m_k$ around $h$ gives $m_1(m_2(\cdots m_k(h)))$: $m_1$ sees the request first and the response last. This is the decorator pattern (see [Coding and design patterns](../06-coding-and-design-patterns/README.md)). The gateway's order, outermost first, is a contract, and each position has a reason:
 
-| Stage | Owner | Why here |
+| Stage | Built in | Why here |
 |---|---|---|
-| `requestid` | `gw.01` | everything after it, including error answers, can quote the id |
-| `otel` | `gw.01` (spans from `obs.01`) | the server span covers every later stage, rejections included |
-| `recover` | `gw.01` | inside `otel`, so a panic still ends the span with status 500 |
-| `authn` | `gw.02` | nothing below may act for an unknown caller |
-| `policy` | `gw.08` | a blocked prompt never spends rate limit or reaches the cache |
-| `ratelimit` | `gw.03` | before the cache, so a cache hit still counts as a request |
-| `cache` | `gw.06` | a hit skips routing and the engine entirely |
-| `route` | `gw.05` | picks the worker the proxy sends to |
-| `proxy` | `gw.00`, then `gw.04` | the handler at the end: forward and stream |
-| `meter` | `gw.07` | wraps the proxy, so it is the first to see the finished exchange |
+| `requestid` | this section | everything after it, including error answers, can quote the id |
+| `otel` | this section (spans from [Tracing for the serving path](../../systems/04-observability/01-tracing-for-the-serving-path.md)) | the server span covers every later stage, rejections included |
+| `recover` | this section | inside `otel`, so a panic still ends the span with status 500 |
+| `authn` | [API keys and scopes](../08-authorization-and-access-control/01-api-keys-and-scopes.md) | nothing below may act for an unknown caller |
+| `policy` | [Usage policy enforcement](08-usage-policy-enforcement.md) | a blocked prompt never spends rate limit or reaches the cache |
+| `ratelimit` | [Rate limiting](../08-authorization-and-access-control/02-rate-limiting.md) | before the cache, so a cache hit still counts as a request |
+| `cache` | [The response cache](../04-distributed-data-and-caching/01-response-cache.md) | a hit skips routing and the engine entirely |
+| `route` | [Routing, cascades, and failover](05-routing.md) | picks the worker the proxy sends to |
+| `proxy` | [the tracer gateway](00-streaming-proxy.md), then [the SSE streaming proxy](04-sse-streaming-proxy.md) | the handler at the end: forward and stream |
+| `meter` | [The usage ledger and admin API](07-usage-ledger-and-admin-api.md) | wraps the proxy, so it is the first to see the finished exchange |
 
-`proxy -> meter` orders when stages finish their work: the meter wraps the proxy and records after it returns. Every stage is optional except the proxy: a `nil` slot is skipped, and a missing proxy answers 503 `no_capacity`.
+Put in one line: `requestid -> otel -> recover -> authn -> policy -> ratelimit -> cache -> route -> proxy -> meter`. A request is named, traced, and protected from panics before anything can reject it, authenticated before anything reads its key, and limited before the cache can answer it. The final `proxy -> meter` orders when stages finish their work: the meter wraps the proxy and records after it returns. Every stage is optional except the proxy: a `nil` slot is skipped, and a missing proxy answers 503 `no_capacity`.
 
-**Panics.** Go's `net/http` recovers a handler panic by closing the connection, which a client sees as a network error. The `recover` stage instead answers 500 with `{"error": {..., "type": "server_error", "code": "internal_error"}}` and logs the stack with the request id, so the process keeps serving. If the response already started (a stream is half sent), the status line is gone: the stage writes nothing more. A handler that panics with `http.ErrAbortHandler` is asking for the connection to be dropped, so that one is re-panicked.
+The `recover` stage needs a closer look, because Go already has an answer to panics and it is the wrong one here. Go's `net/http` recovers a handler panic by closing the connection, which a client sees as a network error. The `recover` stage instead answers 500 with `{"error": {..., "type": "server_error", "code": "internal_error"}}` and logs the stack with the request id, so the process keeps serving. If the response already started (a stream is half sent), the status line is gone, so the stage writes nothing more. A handler that panics with `http.ErrAbortHandler` is asking for the connection to be dropped, so that one is re-panicked.
 
-### 2.2 Request id and internal headers
+## Request id and internal headers
 
-The first stage keeps a caller's `X-Request-Id` when it is printable ASCII (0x21 to 0x7E) of at most 128 bytes (the `gw.00` rule), else makes one, and sets it in three places: the response, the request (so the proxy forwards it), and the `Exchange`. It also deletes every `X-TL-*` header the client sent (except the public `X-TL-API-Version`): `X-TL-Priority` and `X-TL-KV-Handle` are set by the gateway toward engines (`gw.02`, `gw.05`); a client that could set them would jump the engine's queue or resume someone else's KV cache (the contract's `priority.internal` rule).
+The first stage keeps a caller's `X-Request-Id` when it is printable ASCII (0x21 to 0x7E) of at most 128 bytes (the tracer gateway's rule), and otherwise makes one. It sets the id in three places: the response, the request (so the proxy forwards it), and the `Exchange`.
 
-### 2.3 The Exchange
+It also deletes every `X-TL-*` header the client sent, except the public `X-TL-API-Version`. `X-TL-Priority` and `X-TL-KV-Handle` are set by the gateway toward engines (by the auth and routing stages). A client that could set them would jump the engine's queue or resume someone else's KV cache, which is what the contract's `priority.internal` rule forbids.
 
-Stages need to tell each other things without importing each other: the limiter needs the usage the proxy saw to settle; the meter needs the status, the worker, and the usage; the trace needs whatever attributes stages recorded. The `Exchange` is that record, created by `requestid` and reached from any stage with `server.ExchangeFrom(r.Context())`. Its mutable fields are behind a lock, because the proxy writes the usage from the goroutine that reads the stream.
+## The Exchange
 
-The body is read **once**. `ex.Request(r)` reads at most 4 MiB (the same cap as every gRPC message), parses the fields stages need (`model`, `stream`, the token limit with `max_completion_tokens` winning over `max_tokens`, `temperature`, `seed`), caches the result, and puts an identical reader back on `r.Body` so the proxy forwards the bytes unchanged. Unknown fields are ignored (the contract says so); a body that is not one JSON object is an error the calling stage answers with 400.
+Stages need to tell each other things without importing each other. The limiter needs the usage the proxy saw, so it can settle; the meter needs the status, the worker, and the usage; the trace needs whatever attributes stages recorded. The `Exchange` is that record. It is created by `requestid` and reached from any stage with `server.ExchangeFrom(r.Context())`. Its mutable fields are behind a lock, because the proxy writes the usage from the goroutine that reads the stream.
 
-### 2.4 Health, readiness, and draining
+The body is read **once**. `ex.Request(r)` reads at most 4 MiB (the same cap as every gRPC message), parses the fields stages need (`model`, `stream`, the token limit with `max_completion_tokens` winning over `max_tokens`, `temperature`, `seed`), caches the result, and puts an identical reader back on `r.Body` so the proxy forwards the bytes unchanged. Unknown fields are ignored, as the contract says; a body that is not one JSON object is an error that the calling stage answers with 400.
 
-The health port (`:9464` in Kubernetes, `{health_port}` locally) answers three paths:
+## Health, readiness, and draining
+
+A server that is part of a fleet has to tell the fleet the truth about itself. The health port (`:9464` in Kubernetes, `{health_port}` locally) answers three paths:
 
 | Path | Means | Answer |
 |---|---|---|
 | `/healthz` | the process is alive (restart me if not) | always 200 |
-| `/readyz` | send me traffic | 503 while draining or while `Deps.Ready` fails (`gw.05`: no routable worker), else 200 |
-| `/metrics` | Prometheus exposition | `Deps.Metrics` (`obs.01`), else 404 |
+| `/readyz` | send me traffic | 503 while draining or while `Deps.Ready` fails (for the router: no routable worker), else 200 |
+| `/metrics` | Prometheus exposition | `Deps.Metrics` (from [Tracing for the serving path](../../systems/04-observability/01-tracing-for-the-serving-path.md)), else 404 |
 
-A Kubernetes rollout sends SIGTERM, removes the pod from its Service only after the readiness probe fails, and kills the pod after `terminationGracePeriodSeconds`. Hence the order of `Shutdown(ctx)`:
+A Kubernetes rollout sends SIGTERM, removes the pod from its Service only after the readiness probe fails, and kills the pod after `terminationGracePeriodSeconds`. That fixes the order of `Shutdown(ctx)`:
 
 1. Mark draining: `/readyz` answers 503 from now on, so the load balancer stops sending new work.
-2. `http.Server.Shutdown(ctx)`: close the listener (new connections are refused), close idle connections, and wait for active requests, SSE streams included, to finish.
+2. Call `http.Server.Shutdown(ctx)`: close the listener (new connections are refused), close idle connections, and wait for active requests, SSE streams included, to finish.
 3. If `ctx` expires first, cancel the base context every request context descends from (so each handler and its upstream call to the engine stops) and close the connections; return `context.DeadlineExceeded`.
 4. Close the health server last, so probes see 503 for the whole drain.
 
 `Run(ctx, api, health)` serves until `ctx` is done, then shuts down with `drain_deadline_s`. The entry point builds that `ctx` with `signal.NotifyContext(ctx, syscall.SIGTERM, os.Interrupt)`.
 
-### 2.5 Configuration
+## Configuration
 
-Every Go service reads one `runtime.toml` (`config/runtime.schema.json`). Precedence, highest first:
+The last piece of the skeleton is shared by every Go service: they all read one `runtime.toml` (`config/runtime.schema.json`). There is exactly one precedence, highest first:
 
 | Source | Example | Wins over |
 |---|---|---|
@@ -99,11 +85,15 @@ Every Go service reads one `runtime.toml` (`config/runtime.schema.json`). Preced
 | the file | `[gateway] cache_entries = 100` | defaults |
 | schema defaults | `cache_entries` = 4096 | nothing |
 
-Keys contain single underscores (`kv_blocks`, `cache_entries`), so only the **double** underscore separates section from key: `TL_ENGINE__KV_BLOCKS` is `engine.kv_blocks`. A variable without `__` (`TL_API_KEY`, `TL_GATEWAY_PEPPER`) is not an override at all; those are secrets the services read by name. An override is parsed as its key's type (integer, number, boolean, string); tables and arrays (`engine.speculative`, `gateway.routes`) are not overridable. Unknown keys are errors everywhere except under `[ext]`, which is free-form: a typo such as `cache_entires = 5` would otherwise leave the default in force without a word. Validation (enumerations such as `route_policy`, ranges such as `key_cache_ttl_s` in 0 to 5) runs **after** the overrides, because an environment variable can be as wrong as a file.
+Keys contain single underscores (`kv_blocks`, `cache_entries`), so only the **double** underscore separates section from key: `TL_ENGINE__KV_BLOCKS` is `engine.kv_blocks`. A variable without `__` (`TL_API_KEY`, `TL_GATEWAY_PEPPER`) is not an override at all; those are secrets the services read by name. An override is parsed as its key's type (integer, number, boolean, string); tables and arrays (`engine.speculative`, `gateway.routes`) are not overridable.
 
-## 3. Worked example by hand
+Unknown keys are errors everywhere except under `[ext]`, which is free-form. Without that rule a typo such as `cache_entires = 5` would leave the default in force without a word. Validation (enumerations such as `route_policy`, ranges such as `key_cache_ttl_s` in 0 to 5) runs **after** the overrides, because an environment variable can be as wrong as a file.
 
-**The chain.** Put a recording middleware in every `Deps` slot (each logs `enter X`, calls `next`, logs `leave X`), a fake tracer that logs `enter otel` when it starts a span, and a proxy that logs `proxy`. One request produces:
+## Working it by hand
+
+Three small experiments make these rules concrete: one request through the chain, one configuration load, and one drain.
+
+For the chain, put a recording middleware in every `Deps` slot (each logs `enter X`, calls `next`, logs `leave X`), a fake tracer that logs `enter otel` when it starts a span, and a proxy that logs `proxy`. One request produces:
 
 ```
 enter otel
@@ -116,7 +106,7 @@ leave route, leave cache, leave ratelimit, leave policy, leave authn
 
 `requestid` and `recover` are the server's own and log nothing; `meter` sits directly around the proxy.
 
-**The configuration.** Defaults say `cache_entries = 4096`; the file says
+For the configuration, the defaults say `cache_entries = 4096`, and the file says
 
 ```toml
 [gateway]
@@ -125,9 +115,9 @@ cache_entries = 100
 route_policy = "least_outstanding"
 ```
 
-and the environment holds `TL_GATEWAY__CACHE_ENTRIES=50`, `TL_API_KEY=tl_x_y`, `HOME=/home/me`. Loading gives `cache_entries = 50` (environment beats file), `listen = ":8081"` (file beats default), `health_listen = ":9464"` and `key_cache_ttl_s = 5` (defaults), and ignores `TL_API_KEY` (no `__`) and `HOME`.
+while the environment holds `TL_GATEWAY__CACHE_ENTRIES=50`, `TL_API_KEY=tl_x_y`, and `HOME=/home/me`. Loading gives `cache_entries = 50` (environment beats file), `listen = ":8081"` (file beats default), and `health_listen = ":9464"` and `key_cache_ttl_s = 5` (defaults). It ignores `TL_API_KEY` (no `__`) and `HOME`.
 
-**The drain.** A client is reading an SSE stream; the gateway receives SIGTERM at $t = 0$ with `drain_deadline_s = 30`:
+For the drain, a client is reading an SSE stream, and the gateway receives SIGTERM at $t = 0$ with `drain_deadline_s = 30`. Here is what each party sees:
 
 | $t$ | Event | `/readyz` | New connection | The stream |
 |---|---|---|---|---|
@@ -137,7 +127,9 @@ and the environment holds `TL_GATEWAY__CACHE_ENTRIES=50`, `TL_API_KEY=tl_x_y`, `
 
 Had the stream still been running at 30 s, its context would have been cancelled (the engine stops generating), its connection closed, and `Shutdown` would have returned `context.DeadlineExceeded`.
 
-## 4. The interface
+## The interface
+
+The server and configuration packages expose this surface:
 
 ```go
 package server // import "tinyllm/gateway/server"
@@ -186,51 +178,25 @@ func EnvName(section, key string) string
 func (c Config) Validate() error
 ```
 
-`New` returns a `*Server` holding two `http.Server`s (the API and the health port) rather than the single `*http.Server` of the catalog sketch, because readiness and the drain belong to one object. `Deps` holds middleware rather than the domain interfaces (`Keys`, `Limiter`, ...) of the sketch: the stage packages import this one, so this one cannot name their types.
+Two choices differ from the catalog sketch. `New` returns a `*Server` holding two `http.Server`s (the API and the health port) rather than a single `*http.Server`, because readiness and the drain belong to one object. And `Deps` holds middleware rather than domain interfaces (`Keys`, `Limiter`, and so on): the stage packages import this one, so this one cannot name their types.
 
-**The composition root** ([`entry/go/cmd/gateway/compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go)) loads `config.Load(path, os.Environ())`, builds each stage (`auth.Middleware`, `limit.Middleware`, `cache.Middleware`, `route.Middleware` and `route.Proxy`, `ledger.Meter`), passes them in `Deps`, and calls `Run` with a context cancelled on SIGTERM. Before `gw.04`, `Deps.Proxy` can be the `gw.00` handler.
+The composition root, [`entry/go/cmd/gateway/compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go), loads `config.Load(path, os.Environ())`, builds each stage (`auth.Middleware`, `limit.Middleware`, `cache.Middleware`, `route.Middleware` and `route.Proxy`, `ledger.Meter`), passes them in `Deps`, and calls `Run` with a context cancelled on SIGTERM. Until the streaming proxy exists, `Deps.Proxy` can be the tracer gateway's handler.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| the chain order by hand | unit | section 3: the enter and leave trace, and `server.Order` | every later stage relies on what ran before it |
-| nil stages are skipped | boundary | only a proxy: it serves; no proxy: 503 `no_capacity` | stages land one module at a time |
-| the request id stage | unit | kept, generated, replaced (129 bytes, a space); the response, the forwarded header, and the Exchange agree | `obs.02` joins logs on it |
-| internal headers stripped | unit | client `X-TL-*` headers never reach the proxy | `priority.internal`; `gw.05`'s KV handle |
-| a panic becomes a 500 | fault | a panicking stage: 500 `internal_error` with `X-Request-Id`, the span ends with 500, the next request is fine | one bug costs one request |
-| a panic after the first byte | fault | a panic after the first byte appends nothing | streams are never corrupted |
-| span attributes | unit | span `POST /v1/chat/completions` with method, route, status, and a stage's `tl.ratelimit.decision` | `obs.01` exports this span |
-| the error shape | unit | exact bytes, with `param` and `code`, and with both null | every stage's errors parse in OpenAI clients |
-| parsing the request through the Exchange | unit | one read, body forwarded unchanged, `max_completion_tokens` wins, cached parse, non-objects and oversized bodies rejected | auth, limits, cache, and routing read the same fields |
-| readiness | unit | `/healthz` 200; `/readyz` follows `Deps.Ready`; `/metrics` | scripts and Kubernetes wait on it |
-| shutdown flips `/readyz`, then drains | fault | section 3: 503 during the drain, new connections refused, the stream finishes, `Shutdown` returns nil | `dep.03` rolls the gateway without cutting streams |
-| shutdown cuts streams at the deadline | fault | at the deadline the handler's context is cancelled and `DeadlineExceeded` returned | a stuck stream cannot block a rollout |
-| `Run` shuts down on cancel | unit | `Run` returns nil after its context is cancelled | the entry point's SIGTERM path |
-| the configuration hand example | unit | section 3 precedence, routes with an inline cascade, inline tables, `[ext]` | a generated `runtime.toml` for the full gateway |
-| configuration defaults | unit | an empty file yields the schema defaults | templates can stay short |
-| the override separator | unit | `__` only; `TL_API_KEY` and lower-case names ignored; `=` inside a value | secrets are never misread as overrides |
-| override types | unit | numbers parse; a non-integer fails naming the variable | a typo stops start-up |
-| override errors | boundary | unknown key or section, a table, an array: errors naming the variable | the same |
-| unknown keys rejected | boundary | unknown keys in the file, `[ext]` free-form | the same |
-| validation after overrides | boundary | `route_policy = "random"` from the file or the environment, `key_cache_ttl_s = 9` | enumerations hold after overrides |
-| `Load` and `FromRuntime` | unit | `Load` reads a file, `FromRuntime` turns `drain_deadline_s` into a duration | the entry point |
+The design follows from seven observations, and it is worth seeing them before the code:
 
-## 5. The solution, step by step
-
-### 5.1 From first principles
-
-1. **Stages must not know each other, so the server must not know them either.** If the server imported the auth or cache packages, every stage would depend on every other through it. Inverting the dependency (stages import `server` for `Middleware`, `Exchange`, `WriteError`; `main` wires them into `Deps`) makes the skeleton buildable before any stage exists, and makes each stage replaceable.
+1. **Stages must not know each other, so the server must not know them either.** If the server imported the auth or cache packages, every stage would depend on every other through it. Inverting the dependency (stages import `server` for `Middleware`, `Exchange`, `WriteError`; `main` wires them into `Deps`) makes the skeleton buildable before any stage exists, and makes each stage replaceable. That is what a **composition root** is.
 2. **Order is a contract, so it lives in one place.** `Handler` composes the slots innermost first, in a fixed sequence, and a `nil` slot is skipped. Nothing else decides the order.
-3. **Stages communicate through one request-scoped record.** Context values are the standard carrier; one `*Exchange` per request, created by the first stage, behind a mutex because the proxy writes from the stream goroutine.
+3. **Stages communicate through one request-scoped record.** Context values are the standard carrier: one `*Exchange` per request, created by the first stage, behind a mutex because the proxy writes from the stream goroutine.
 4. **The body is a stream that can be read once.** The first stage that needs it reads it (with a cap), parses it, caches the result, and puts identical bytes back so the proxy forwards them unchanged.
 5. **Failure handling must sit where it can still answer.** `recover` goes inside `otel` (so the span sees the 500) and outside every stage (so any stage's panic is caught). It can only write a 500 if nothing was written; the `statusWriter` records whether something was.
 6. **Shutdown is ordered by what the load balancer sees.** Readiness flips first; then the listener closes; then in-flight requests drain; at the deadline a base context that every request descends from is cancelled. The health server stays up to the end so probes keep seeing 503.
 7. **Configuration must fail loudly.** Decode over defaults, reject undecoded keys (except `[ext]`), apply environment overrides by reflection on the same struct tags, then validate. One precedence, checked in one order.
 
-### 5.2 The code, annotated
+### Composing the chain
 
-**Composing the chain.** Built from the inside out: the proxy (or a 503 handler), then meter, route, cache, ratelimit, policy, authn, and finally the server's own three stages.
+The chain is built from the inside out: the proxy (or a 503 handler), then meter, route, cache, ratelimit, policy, authn, and finally the server's own three stages.
 
 ```go
 func (s *Server) Handler() http.Handler {
@@ -242,11 +208,11 @@ func (s *Server) Handler() http.Handler {
 	}
 	// Innermost first: meter wraps the proxy, then route, cache, ratelimit.
 	for _, m := range []Middleware{s.deps.Ledger, s.deps.Router, s.deps.Cache, s.deps.Limiter} {
-		if m != nil { // stages land one module at a time
+		if m != nil { // stages land one at a time
 			h = m(h)
 		}
 	}
-	if s.deps.Policy != nil { // gw.08: after authn, before ratelimit
+	if s.deps.Policy != nil { // after authn, before ratelimit
 		h = s.deps.Policy(h)
 	}
 	if s.deps.Keys != nil {
@@ -258,9 +224,11 @@ func (s *Server) Handler() http.Handler {
 }
 ```
 
-Reading the wrapping order backwards gives the request order of section 2.1. The `gw.01` version of this file wrapped all six slots in one loop; `gw.08` split out `Policy` so its position is explicit (the original is kept at [`history/gw.01/.../chain.go`](../../../../course/solutions/history/gw.01/go/gateway/server/chain.go)).
+Reading the wrapping order backwards gives the request order of the chain table. The first version of this file wrapped all six slots in one loop; adding the policy stage split out `Policy` so its position is explicit. The original is kept at [`history/gw.01/.../chain.go`](../../../../course/solutions/history/gw.01/go/gateway/server/chain.go).
 
-**The first stage.** Strip internal headers, pick the id, set it on both sides, create the `Exchange`, and wrap the writer so the status is recorded.
+### The first stage
+
+`requestID` strips internal headers, picks the id, sets it on both sides, creates the `Exchange`, and wraps the writer so the status is recorded.
 
 ```go
 func (s *Server) requestID(next http.Handler) http.Handler {
@@ -273,7 +241,7 @@ func (s *Server) requestID(next http.Handler) http.Handler {
 			}
 		}
 		id := r.Header.Get("X-Request-Id")
-		if !validRequestID(id) { // printable ASCII, 1 to 128 bytes: the gw.00 rule
+		if !validRequestID(id) { // printable ASCII, 1 to 128 bytes: the tracer gateway's rule
 			id = newID()
 		}
 		r.Header.Set("X-Request-Id", id) // forwarded upstream by the proxy
@@ -286,7 +254,9 @@ func (s *Server) requestID(next http.Handler) http.Handler {
 
 `statusWriter` sets the `Exchange`'s status on the first `WriteHeader`, or 200 on a first `Write` without one (which is what `net/http` sends), and exposes `Unwrap` so `http.NewResponseController` can still flush through it.
 
-**Recover.** The `Exchange`'s status tells it whether the response has started.
+### Recovering from panics
+
+The `Exchange`'s status tells the recover stage whether the response has started:
 
 ```go
 func (s *Server) recoverer(next http.Handler) http.Handler {
@@ -313,7 +283,7 @@ func (s *Server) recoverer(next http.Handler) http.Handler {
 
 The `otel` stage (skipped when `Deps.Tracer` is nil) starts a span named `"<METHOD> <path>"`, and in a `defer` copies the final status and every attribute stages recorded with `ex.SetAttr` onto it before ending it.
 
-**Reading the body once.**
+### Reading the body once
 
 ```go
 func (e *Exchange) Request(r *http.Request) (*Request, error) {
@@ -342,11 +312,11 @@ func (e *Exchange) Request(r *http.Request) (*Request, error) {
 }
 ```
 
-`ParseRequest` requires the trimmed body to start with `{`, decodes only the fields stages need (unknown fields are ignored), and resolves the token limit with `max_completion_tokens` taking precedence over `max_tokens`.
+`ParseRequest` requires the trimmed body to start with `{`, decodes only the fields stages need (unknown fields are ignored), and resolves the token limit with `max_completion_tokens` taking precedence over `max_tokens`. `WriteError` encodes `param` and `code` as `*string`, so an empty argument is `null`: all four keys are always present.
 
-`WriteError` encodes `param` and `code` as `*string`, so an empty argument is `null`: all four keys are always present.
+### The servers and shutdown
 
-**Server and shutdown.** Two `http.Server`s; the API one gets a `BaseContext` the server can cancel.
+There are two `http.Server`s. The API one gets a `BaseContext` the server can cancel:
 
 ```go
 s.baseCtx, s.cancelBase = context.WithCancel(context.Background())
@@ -359,6 +329,8 @@ s.api = &http.Server{
 	BaseContext: func(net.Listener) context.Context { return s.baseCtx },
 }
 ```
+
+`Shutdown` is the four-step sequence from earlier, in code:
 
 ```go
 func (s *Server) Shutdown(ctx context.Context) error {
@@ -378,7 +350,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 `/readyz` checks `draining` first and `Deps.Ready` second; `/healthz` always answers 200, because a draining process is alive and must not be restarted. `Run` serves until its context is done, then calls `Shutdown` with a fresh context bounded by `DrainDeadline`: the parent context is already cancelled, so it cannot be the drain's deadline.
 
-**Configuration.**
+### Loading configuration
+
+`Parse` applies the three sources in reverse order of precedence, so each overwrites the last:
 
 ```go
 func Parse(data []byte, env []string) (Config, error) {
@@ -403,6 +377,8 @@ func Parse(data []byte, env []string) (Config, error) {
 }
 ```
 
+The core of `ApplyEnv` is the separator rule:
+
 ```go
 for _, kv := range vars { // sorted, so several bad variables give a deterministic error
 	name, val, found := strings.Cut(kv, "=") // first "=": values may contain "="
@@ -420,98 +396,143 @@ for _, kv := range vars { // sorted, so several bad variables give a determinist
 }
 ```
 
-Because the lookup uses the same `toml` tags as the decoder, there is no second list of keys to keep in sync. `Validate` checks the enumerations (`route_policy`, `engine.role`, `prefix_cache`) and ranges (`key_cache_ttl_s` 0 to 5, `affinity_load_factor` at least 1, `trace_sample_ratio` 0 to 1) a typed decode cannot.
+Because the lookup uses the same `toml` tags as the decoder, there is no second list of keys to keep in sync. `Validate` checks the enumerations (`route_policy`, `engine.role`, `prefix_cache`) and ranges (`key_cache_ttl_s` 0 to 5, `affinity_load_factor` at least 1, `trace_sample_ratio` 0 to 1) that a typed decode cannot.
 
-**The composition root.** [`entry/go/cmd/gateway/compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go) is the `--config` form: `config.Load(path, os.Environ())`, the stages built from the loaded `[gateway]` section, `server.New(server.FromRuntime(g), deps)`, and `Run` under `signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)`.
+### The composition root
 
-Full solution: [`chain.go`](../../../../course/solutions/go/gateway/server/chain.go), [`server.go`](../../../../course/solutions/go/gateway/server/server.go), [`config.go`](../../../../course/solutions/go/config/config.go).
+[`entry/go/cmd/gateway/compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go) is the `--config` form: `config.Load(path, os.Environ())`, the stages built from the loaded `[gateway]` section, `server.New(server.FromRuntime(g), deps)`, and `Run` under `signal.NotifyContext(context.Background(), syscall.SIGTERM, os.Interrupt)`.
 
-### 5.3 Why this solution
+The full solution is in [`chain.go`](../../../../course/solutions/go/gateway/server/chain.go), [`server.go`](../../../../course/solutions/go/gateway/server/server.go), and [`config.go`](../../../../course/solutions/go/config/config.go).
 
-- **Cost.** The chain adds a header scan, one allocation for the `Exchange`, and a few lock operations per request. The body is read at most once, with a 4 MiB cap, instead of once per stage.
-- **Why middleware slots and not interfaces like `Keys` or `Limiter`?** The server would have to name the stage packages' types, which import the server: an import cycle. Middleware is a type the server owns, so the dependency points one way.
-- **Why a shared `Exchange` and not one context value per stage?** Context values are write-once per derived context; the proxy's usage, recorded deep in the chain, must be visible to the limiter and the meter that wrapped it. A pointer to one mutable record, under a lock, is the simplest way to pass data back up.
-- **Why not let `net/http` recover panics?** It closes the connection, so a client cannot tell a crash from a network fault and gets no request id to report. Answering 500 in the contract's shape is retryable and debuggable.
-- **Why reflection for environment overrides?** A hand-written switch per key would drift from the struct. Reusing the `toml` tags makes every scalar key overridable automatically and every unknown variable an error.
-- **Tradeoff accepted:** the drain deadline is shared by all streams; a long stream started just before SIGTERM is cut at the deadline. `drain_deadline_s` must be shorter than the pod's `terminationGracePeriodSeconds`.
+### Why this design
 
-### 5.4 Explain it back
+The cost is small. The chain adds a header scan, one allocation for the `Exchange`, and a few lock operations per request, and the body is read at most once, with a 4 MiB cap, instead of once per stage.
 
-1. Why is `recover` inside `otel` and not outside it?
+Why middleware slots and not interfaces like `Keys` or `Limiter`? The server would have to name the stage packages' types, and those packages import the server: an import cycle. Middleware is a type the server owns, so the dependency points one way.
 
-<details><summary>Answer</summary>
+Why a shared `Exchange` and not one context value per stage? Context values are write-once per derived context, and the proxy's usage, recorded deep in the chain, must be visible to the limiter and the meter that wrapped it. A pointer to one mutable record, under a lock, is the simplest way to pass data back up.
 
-`otel` ends its span in a `defer` with the status from the `Exchange`. If `recover` were outside, the panic would unwind through `otel` before any 500 was written: the span would end with status 0 and the trace would not show the crash. Inside, `recover` writes the 500 first, then `otel`'s `defer` records it.
+Why not let `net/http` recover panics? It closes the connection, so a client cannot tell a crash from a network fault and gets no request id to report. Answering 500 in the contract's shape is retryable and debuggable.
 
-</details>
+Why reflection for environment overrides? A hand-written switch per key would drift from the struct. Reusing the `toml` tags makes every scalar key overridable automatically and every unknown variable an error.
 
-2. A stage reads `r.Body` directly instead of calling `ex.Request(r)`. What does the engine receive?
+> **Note:** One tradeoff is accepted. The drain deadline is shared by all streams, so a long stream started just before SIGTERM is cut at the deadline. `drain_deadline_s` must be shorter than the pod's `terminationGracePeriodSeconds`.
 
-<details><summary>Answer</summary>
+## What can go wrong
 
-An empty body: the stream has been consumed and nothing put it back. `ex.Request` exists so that the body is read once, cached, and replaced by an identical reader, which the proxy then forwards unchanged.
+The tests check the following cases. Each protects something later in the book:
 
-</details>
+| Case | Kind of check | Checks | Why it matters downstream |
+|---|---|---|---|
+| the chain order by hand | unit | the enter and leave trace above, and `server.Order` | every later stage relies on what ran before it |
+| nil stages are skipped | boundary | only a proxy: it serves; no proxy: 503 `no_capacity` | stages land one at a time |
+| the request id stage | unit | kept, generated, replaced (129 bytes, a space); the response, the forwarded header, and the Exchange agree | log correlation joins logs on it |
+| internal headers stripped | unit | client `X-TL-*` headers never reach the proxy | `priority.internal`; the router's KV handle |
+| a panic becomes a 500 | fault | a panicking stage: 500 `internal_error` with `X-Request-Id`, the span ends with 500, the next request is fine | one bug costs one request |
+| a panic after the first byte | fault | a panic after the first byte appends nothing | streams are never corrupted |
+| span attributes | unit | span `POST /v1/chat/completions` with method, route, status, and a stage's `tl.ratelimit.decision` | the tracing section exports this span |
+| the error shape | unit | exact bytes, with `param` and `code`, and with both null | every stage's errors parse in OpenAI clients |
+| parsing the request through the Exchange | unit | one read, body forwarded unchanged, `max_completion_tokens` wins, cached parse, non-objects and oversized bodies rejected | auth, limits, cache, and routing read the same fields |
+| readiness | unit | `/healthz` 200; `/readyz` follows `Deps.Ready`; `/metrics` | scripts and Kubernetes wait on it |
+| shutdown flips `/readyz`, then drains | fault | the drain above: 503 during the drain, new connections refused, the stream finishes, `Shutdown` returns nil | the Helm rollout does not cut streams |
+| shutdown cuts streams at the deadline | fault | at the deadline the handler's context is cancelled and `DeadlineExceeded` returned | a stuck stream cannot block a rollout |
+| `Run` shuts down on cancel | unit | `Run` returns nil after its context is cancelled | the entry point's SIGTERM path |
+| the configuration hand example | unit | the precedence above, routes with an inline cascade, inline tables, `[ext]` | a generated `runtime.toml` for the full gateway |
+| configuration defaults | unit | an empty file yields the schema defaults | templates can stay short |
+| the override separator | unit | `__` only; `TL_API_KEY` and lower-case names ignored; `=` inside a value | secrets are never misread as overrides |
+| override types | unit | numbers parse; a non-integer fails naming the variable | a typo stops start-up |
+| override errors | boundary | unknown key or section, a table, an array: errors naming the variable | the same |
+| unknown keys rejected | boundary | unknown keys in the file, `[ext]` free-form | the same |
+| validation after overrides | boundary | `route_policy = "random"` from the file or the environment, `key_cache_ttl_s = 9` | enumerations hold after overrides |
+| `Load` and `FromRuntime` | unit | `Load` reads a file, `FromRuntime` turns `drain_deadline_s` into a duration | the entry point |
 
-3. During a rollout, why must `/readyz` turn 503 before the listener closes, and why is the health server shut down last?
-
-<details><summary>Answer</summary>
-
-Kubernetes removes a pod from its Service only after the readiness probe fails. If the listener closed first, the load balancer would keep sending new connections that are refused. Keeping the health server up until the end means every probe during the drain sees 503, so no new traffic is routed while in-flight streams finish.
-
-</details>
-
-4. Why is `TL_API_KEY` ignored by `ApplyEnv`, while `TL_GATEWAY_CACHE_ENTRIES=5` (single underscore) is also ignored, and is that second case a problem?
-
-<details><summary>Answer</summary>
-
-Only a double underscore separates section from key, because keys themselves contain underscores. Neither variable has `__`, so neither is an override: `TL_API_KEY` is a secret read by name, which is intended. The single-underscore typo is silently ignored too; the rule trades that risk for never misreading a secret as configuration. A wrong name with `__` (`TL_GATEWAY__CACHE_ENTIRES`) is an error.
-
-</details>
-
-5. Why does `Run` create a new context for `Shutdown` instead of passing its own `ctx`?
-
-<details><summary>Answer</summary>
-
-`Run`'s `ctx` is the one that was just cancelled by SIGTERM. Passing it to `Shutdown` would make the drain's deadline already expired, so every stream would be cut at once. A fresh context bounded by `DrainDeadline` gives in-flight requests their grace period.
-
-</details>
-
-## 6. Pitfalls
+The common mistakes, their symptoms, and the line that prevents each:
 
 | Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. stages composed in the wrong order (the limiter around authn, the meter around the router) | limits keyed by nobody; usage recorded before routing | `Handler` wraps the slots in one fixed sequence, innermost first |
-| 2. `recover` outside `otel` | the span of a crashed request ends with status 0, not 500 | `h = s.recoverer(h)` comes before `h = s.otel(h)` |
-| 3. a recover that only logs | the client sees a dropped connection instead of a 500 it can retry | `recoverer` writes a 500 `internal_error` when the status is still 0 |
-| 4. forwarding client `X-TL-*` headers | any client can set its own engine priority | `requestID` deletes every `X-TL-*` header except `X-TL-API-Version` |
-| 5. setting `X-Request-Id` only on the response | engine logs cannot be joined to the client's id | the id is set on the request and the response |
-| 6. writing after the first byte, or `"param": ""` | a JSON error spliced into an SSE stream; clients that test `param == null` misread errors | `recoverer` writes only when the status is 0; `WriteError` encodes empty `param` and `code` as `null` |
-| 7. ignoring unknown keys | `cache_entires = 5` silently keeps 4096 | `Parse` turns every undecoded key outside `[ext]` into an error |
-| 8. splitting on `_`, ignoring bad overrides, letting the file beat the environment, validating before overriding | `TL_ENGINE__KV_BLOCKS` never applies; a Kubernetes env override has no effect; `TL_GATEWAY__ROUTE_POLICY=random` starts | `ApplyEnv` cuts on `__`, errors on unknown or unparsable overrides, runs after the decode, and `Validate` runs last |
-| 9. `/readyz` that ignores draining, or flips after the drain | new requests keep arriving during a rollout and get refused connections | `Shutdown` sets `draining` before closing the listener; `/readyz` checks it first |
-| 10. no cancellation at the deadline | a stuck stream holds the pod until SIGKILL, and the engine keeps generating | the API server's `BaseContext` is cancelled and its connections closed when the drain times out |
-| 11. reading the body without putting it back, or `max_tokens` over `max_completion_tokens` | the engine receives an empty body; limits reserve the wrong count | `Exchange.Request` replaces `r.Body`; `ParseRequest` checks `max_completion_tokens` first |
+| stages composed in the wrong order (the limiter around authn, the meter around the router) | limits keyed by nobody; usage recorded before routing | `Handler` wraps the slots in one fixed sequence, innermost first |
+| `recover` outside `otel` | the span of a crashed request ends with status 0, not 500 | `h = s.recoverer(h)` comes before `h = s.otel(h)` |
+| a recover that only logs | the client sees a dropped connection instead of a 500 it can retry | `recoverer` writes a 500 `internal_error` when the status is still 0 |
+| forwarding client `X-TL-*` headers | any client can set its own engine priority | `requestID` deletes every `X-TL-*` header except `X-TL-API-Version` |
+| setting `X-Request-Id` only on the response | engine logs cannot be joined to the client's id | the id is set on the request and the response |
+| writing after the first byte, or `"param": ""` | a JSON error spliced into an SSE stream; clients that test `param == null` misread errors | `recoverer` writes only when the status is 0; `WriteError` encodes empty `param` and `code` as `null` |
+| ignoring unknown keys | `cache_entires = 5` silently keeps 4096 | `Parse` turns every undecoded key outside `[ext]` into an error |
+| splitting on `_`, ignoring bad overrides, letting the file beat the environment, validating before overriding | `TL_ENGINE__KV_BLOCKS` never applies; a Kubernetes env override has no effect; `TL_GATEWAY__ROUTE_POLICY=random` starts | `ApplyEnv` cuts on `__`, errors on unknown or unparsable overrides, runs after the decode, and `Validate` runs last |
+| `/readyz` that ignores draining, or flips after the drain | new requests keep arriving during a rollout and get refused connections | `Shutdown` sets `draining` before closing the listener; `/readyz` checks it first |
+| no cancellation at the deadline | a stuck stream holds the pod until SIGKILL, and the engine keeps generating | the API server's `BaseContext` is cancelled and its connections closed when the drain times out |
+| reading the body without putting it back, or `max_tokens` over `max_completion_tokens` | the engine receives an empty body; limits reserve the wrong count | `Exchange.Request` replaces `r.Body`; `ParseRequest` checks `max_completion_tokens` first |
 
-## 7. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `lang.06` | `context`, `net/http`, goroutines, and signal handling |
-| Back | `gw.00` | the request id rule and the tracer proxy, usable in the `Proxy` slot until `gw.04` |
-| Forward | `gw.02` | `auth.Middleware` is the `Keys` slot; it parses the model with `ex.Request` and answers 401 and 403 with `WriteError` |
-| Forward | `gw.03` | `limit.Middleware` is the `Limiter` slot; it settles with the usage the proxy put on the `Exchange` |
-| Forward | `gw.04` | `proxy.Handler` is the `Proxy` slot; its observer records the first byte and the usage on the `Exchange` |
-| Forward | `gw.05` | `route.Middleware` is the `Router` slot, `route.Proxy` replaces the proxy; `Router.Ready` feeds `/readyz` |
-| Forward | `gw.06` | `cache.Middleware` is the `Cache` slot |
-| Forward | `gw.07` | `ledger.Meter` is the `Ledger` slot; the admin API answers errors with `WriteError` |
-| Forward | `gw.08` | the policy stage is the `Policy` slot, between authn and ratelimit |
+The skeleton draws on the Go primer for `context`, `net/http`, goroutines, and signal handling, and on [the tracer gateway](00-streaming-proxy.md) for the request id rule and a proxy usable in the `Proxy` slot until the streaming proxy replaces it.
 
-## Going further
+Every later stage of the gateway is a `server.Middleware` that reads the `Exchange` and answers errors with `WriteError`; together they make up the full gateway. In [API keys and scopes](../08-authorization-and-access-control/01-api-keys-and-scopes.md), `auth.Middleware` is the `Keys` slot: it parses the model with `ex.Request` and answers 401 and 403 with `WriteError`. In [Rate limiting](../08-authorization-and-access-control/02-rate-limiting.md), `limit.Middleware` is the `Limiter` slot and settles with the usage the proxy put on the `Exchange`. In [The SSE streaming proxy](04-sse-streaming-proxy.md), `proxy.Handler` is the `Proxy` slot, and its observer records the first byte and the usage on the `Exchange`. In [Routing, cascades, and failover](05-routing.md), `route.Middleware` is the `Router` slot, `route.Proxy` replaces the proxy, and `Router.Ready` feeds `/readyz`. [The response cache](../04-distributed-data-and-caching/01-response-cache.md) fills the `Cache` slot. In [The usage ledger and admin API](07-usage-ledger-and-admin-api.md), `ledger.Meter` is the `Ledger` slot and the admin API answers errors with `WriteError`. Finally, [Usage policy enforcement](08-usage-policy-enforcement.md) fills the `Policy` slot, between authn and ratelimit.
 
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| the ordered chain | Envoy HTTP filter chain | filters configured per route, async filters, per-filter stats | [Envoy HTTP filters](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/http/http_filters) (free) |
-| `Shutdown` and `/readyz` | Kubernetes `preStop` hooks, Envoy drain listeners | a sleep before draining so endpoints propagate; connection draining with GOAWAY on HTTP/2 | [Kubernetes pod lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/) (free) |
-| `go/config` | Viper, koanf | many sources, file watching and reload | [koanf](https://github.com/knadh/koanf) (free) |
-| the `Exchange` | OpenTelemetry baggage, Envoy dynamic metadata | request-scoped data across filters and processes | [Envoy dynamic metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata) (free) |
+### Further reading
+
+- Mat Ryer, *How I write HTTP services in Go after 13 years* (free, 2024).
+- RFC 9110 section 15 (status codes).
+- The ordered chain in production: [Envoy HTTP filters](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/http/http_filters) (free), with filters configured per route, async filters, and per-filter stats.
+- `Shutdown` and `/readyz` in production: Kubernetes `preStop` hooks and Envoy drain listeners, which add a sleep before draining so endpoints propagate, and connection draining with GOAWAY on HTTP/2. See [Kubernetes pod lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/) and its section on [pod termination](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination) (free).
+- `go/config` in production: Viper and [koanf](https://github.com/knadh/koanf) (free), with many sources, file watching, and reload.
+- The `Exchange` in production: OpenTelemetry baggage and [Envoy dynamic metadata](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/well_known_dynamic_metadata) (free), for request-scoped data across filters and processes.
+
+## Key terms
+
+- **middleware**: a function from handler to handler that can act before, after, or instead of the next handler.
+- **composition root**: the one place (here `main`) where independent components are constructed and wired together.
+- **Exchange**: the request-scoped, lock-protected record through which gateway stages pass data to each other.
+- **liveness (`/healthz`)**: whether the process is alive and should not be restarted.
+- **readiness (`/readyz`)**: whether the process should receive new traffic.
+- **draining**: the shutdown phase in which a server refuses new work and finishes work in flight.
+- **environment override**: a `TL_<SECTION>__<KEY>` variable that replaces one scalar configuration value.
+
+## Summary
+
+- The chain order is a contract: `requestid -> otel -> recover -> authn -> policy -> ratelimit -> cache -> route -> proxy -> meter`. A request is named, traced, and protected from panics before anything can reject it, authenticated before anything reads its key, and limited before the cache can answer it.
+- The server imports none of its stages. Each stage is plain middleware in `Deps`; the stage packages import the server for `Middleware`, the `Exchange`, and `WriteError`, and `main` wires them. That composition root is why the skeleton can be built before any stage exists.
+- One request-scoped `Exchange` carries what stages tell each other: the request id, the parsed body (read once, put back for the proxy), the status, the usage the proxy saw, and the worker the router chose.
+- Shutdown is a sequence: `/readyz` turns 503 first, the listener closes, streams in flight run to completion until a deadline, then their contexts are cancelled.
+- Configuration has one precedence (environment over file over defaults), one separator (`__`), and no silent typos: unknown keys and bad overrides stop the process at start-up.
+
+## Review questions
+
+1. Why is `recover` inside `otel` and not outside it?
+
+   <details><summary>Answer</summary>
+
+   `otel` ends its span in a `defer` with the status from the `Exchange`. If `recover` were outside, the panic would unwind through `otel` before any 500 was written: the span would end with status 0 and the trace would not show the crash. Inside, `recover` writes the 500 first, then `otel`'s `defer` records it.
+
+   </details>
+
+2. A stage reads `r.Body` directly instead of calling `ex.Request(r)`. What does the engine receive?
+
+   <details><summary>Answer</summary>
+
+   An empty body: the stream has been consumed and nothing put it back. `ex.Request` exists so that the body is read once, cached, and replaced by an identical reader, which the proxy then forwards unchanged.
+
+   </details>
+
+3. During a rollout, why must `/readyz` turn 503 before the listener closes, and why is the health server shut down last?
+
+   <details><summary>Answer</summary>
+
+   Kubernetes removes a pod from its Service only after the readiness probe fails. If the listener closed first, the load balancer would keep sending new connections that are refused. Keeping the health server up until the end means every probe during the drain sees 503, so no new traffic is routed while in-flight streams finish.
+
+   </details>
+
+4. Why is `TL_API_KEY` ignored by `ApplyEnv`, while `TL_GATEWAY_CACHE_ENTRIES=5` (single underscore) is also ignored, and is that second case a problem?
+
+   <details><summary>Answer</summary>
+
+   Only a double underscore separates section from key, because keys themselves contain underscores. Neither variable has `__`, so neither is an override: `TL_API_KEY` is a secret read by name, which is intended. The single-underscore typo is silently ignored too; the rule trades that risk for never misreading a secret as configuration. A wrong name with `__` (`TL_GATEWAY__CACHE_ENTIRES`) is an error.
+
+   </details>
+
+5. Why does `Run` create a new context for `Shutdown` instead of passing its own `ctx`?
+
+   <details><summary>Answer</summary>
+
+   `Run`'s `ctx` is the one that was just cancelled by SIGTERM. Passing it to `Shutdown` would make the drain's deadline already expired, so every stream would be cut at once. A fresh context bounded by `DrainDeadline` gives in-flight requests their grace period.
+
+   </details>

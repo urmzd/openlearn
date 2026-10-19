@@ -1,42 +1,29 @@
-# Durable timers and the test clock
+# Durable timers
 
-## Overview
+Since [deterministic replay](06-deterministic-replay.md), `workflow.Sleep(ctx, 24*time.Hour)` issues a `StartTimer` command, but nothing ever fires it. So a workflow that waits sleeps forever: `TrainRun` evaluating every hour, `ModelRelease` waiting through 30 minutes of canary traffic before promoting, `AgentRun` expiring an approval after a day. And a timer kept only in memory would vanish with the process, the same failure every other durable piece of this chapter avoids.
 
-| | |
-|---|---|
-| **Module** | `dur.07` · build · Go · Pass 8 · 3 to 4 h |
-| **Solution** | [`go/durable/timer/timer.go`](../../../../course/solutions/go/durable/timer/timer.go): the min-heap (`Heap`: `Push`, `Peek`, `Pop`, `Remove`), the timer `Service` (`Schedule`, `Cancel`, `Run`), and the `--test-clock` clock (`OffsetClock`: `Shift`, `Handler`); [`go/durable/server/timers.go`](../../../../course/solutions/go/durable/server/timers.go): the `start_timer` and `cancel_timer` commands and `FireTimer` |
-| **Contract** | `StartTimer`, `CancelTimer`, `TimerStarted`, `TimerFired`, `TimerCanceled` in [`durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto), and `POST /debug/clock` (section 2.4); the Go API is section 4 |
-| **Needs** | `dur.06` the SDK whose `workflow.Sleep` issues `StartTimer` |
-| **Used by** | `dur.08` integrates timer-backed `workflow.Sleep` with the runtime; `dur.11`, `dur.12`, and `ag.05` use it for evaluation cadence, canary wait, and approval TTL |
-| **Optional depth** | Cormen et al., *Introduction to Algorithms*, ch. 6 (heaps); Varghese and Lauck, *Hashed and Hierarchical Timing Wheels* (SOSP 1987) |
+This section makes waiting durable. By the end you can run `<system> wf start SleepDemo --for 30s`, kill and restart the server, and watch the run still wake exactly once at its deadline. The design splits cleanly in two. The durable part is a fact in history, `TimerStarted{fire_at}`; the part that actually wakes things up is an in-memory min-heap that can be rebuilt from history at any time. Exactly-once firing comes not from the heap but from a single check where history is written.
 
-## Key Takeaways
+You need the SDK from the previous section, whose `workflow.Sleep` issues `StartTimer`, and the effects-and-recovery machinery of [the workflow service](02-workflow-service.md). The heap itself is the textbook binary heap; Cormen et al. cover it in chapter 6 of *Introduction to Algorithms*. The contract is `StartTimer`, `CancelTimer`, `TimerStarted`, `TimerFired`, and `TimerCanceled` in [`durable.proto`](../../../../course/contracts/proto/tl/durable/v1/durable.proto), plus the `POST /debug/clock` endpoint described below. The full solution is [`go/durable/timer/timer.go`](../../../../course/solutions/go/durable/timer/timer.go) (the min-heap `Heap` with `Push`, `Peek`, `Pop`, `Remove`; the timer `Service` with `Schedule`, `Cancel`, `Run`; and the test clock `OffsetClock` with `Shift` and `Handler`) and [`go/durable/server/timers.go`](../../../../course/solutions/go/durable/server/timers.go) (the `start_timer` and `cancel_timer` commands and `FireTimer`).
 
-- A timer is durable because `TimerStarted{fire_at}` is in history: the server arms it when the event commits and re-arms every pending one on recovery; the in-memory service only fires what it holds.
-- Exactly once lives in `FireTimer`: it appends `TimerFired` only for a timer still pending, so a duplicate fire appends nothing.
-- The service is a binary min-heap ordered by deadline, ties in schedule order, kept in an array where the children of $i$ are $2i+1$ and $2i+2$.
-- `--test-clock` moves time forward through `POST /debug/clock`, and every timer that became due fires once, right away.
+> **Learning objectives**
+> - Explain where a timer's durability comes from, and why the in-memory timer service need not be durable.
+> - Argue that `FireTimer` appends `TimerFired` exactly once even when the service fires twice.
+> - Trace pushes and pops through a binary min-heap with sequence-number tie breaks.
+> - Implement removal from the middle of a heap, and say why it must sift both ways.
+> - Move time forward in tests with a monotonic offset clock.
 
-## How to read this chapter
+## Where durability comes from
 
-Sections 1 to 3 derive durable timers from first principles and trace the heap by hand. Section 4 fixes the interface. Section 5 walks through the heap, the timer service, the test clock, and the server's timer commands, explaining why each choice is the right one. Try to predict each step before reading it.
+The `StartTimer` command appends `TimerStarted{timer_id, duration_ms, fire_at_unix_ms}` with $\text{fire\_at} = \text{now} + \text{duration}$, computed once and stored. From then on, the history says the timer is pending until a `TimerFired` or `TimerCanceled` for it appears. The server arms the timer in the timer service when `TimerStarted` commits (an effect, in the workflow service's sense), and on recovery it re-arms every pending timer at its recorded `fire_at`. The service is not durable and does not need to be.
 
----
+When a timer is due, the service calls `FireTimer(run, timer)`. If the timer is still pending, `FireTimer` appends `TimerFired`, which is a trigger, so the batch also schedules a workflow task, and the workflow's `Sleep` returns on its next task. If the timer is not pending (already fired, canceled, or the run closed), it does nothing.
 
-## 1. Why now
+That check is the whole exactly-once argument. The service may fire twice (re-armed by a restart, or in a race), but only one `TimerFired` can ever be appended. And if the append itself fails (a full disk), the timer is armed again a second later, so it is never lost.
 
-`workflow.Sleep(ctx, 24*time.Hour)` already issues a `StartTimer` command (`dur.06`), but nothing ever fires it, so a workflow that waits (`TrainRun` evaluating every hour, `ModelRelease` waiting 30 minutes of canary traffic before promoting, `AgentRun` expiring an approval after a day) sleeps forever. And a timer kept only in memory would vanish with the process, the same failure every other durable piece avoids. This module makes waiting durable: `<system> wf start SleepDemo --for 30s`, kill and restart the server, and the run still wakes once at its deadline.
+## The min-heap
 
-## 2. Principles
-
-### 2.1 Where durability comes from
-
-The `StartTimer` command appends `TimerStarted{timer_id, duration_ms, fire_at_unix_ms}` with $\text{fire\_at} = \text{now} + \text{duration}$, computed once and stored. From then on the history says the timer is pending until a `TimerFired` or `TimerCanceled` for it appears. The server arms the timer in the timer service when `TimerStarted` commits (the effect, `dur.02`), and on recovery it re-arms every pending timer at its recorded `fire_at`. The service is not durable and does not need to be.
-
-When a timer is due the service calls `FireTimer(run, timer)`: if the timer is still pending, append `TimerFired` (a trigger: the batch also schedules a workflow task) and the workflow's `Sleep` returns on its next task. If not pending (already fired, canceled, the run closed), do nothing. That check is the whole exactly-once argument: the service may fire twice (re-armed by a restart, a race), but only one `TimerFired` can ever be appended. If the append itself fails (disk full), the timer is armed again a second later, so it is never lost.
-
-### 2.2 The min-heap
+The service needs to answer one question quickly: which timer fires next? A binary min-heap answers it. Here is the notation:
 
 | Symbol | Meaning |
 |---|---|
@@ -46,7 +33,7 @@ When a timer is due the service calls `FireTimer(run, timer)`: if the timer is s
 | $\mathrm{parent}(i) = \lfloor (i-1)/2 \rfloor$ | for $i \ge 1$ |
 | $\mathrm{children}(i) = 2i+1,\ 2i+2$ | when they exist |
 
-**Invariant:** no entry is smaller than its parent: $(t_{\mathrm{parent}(i)}, q_{\mathrm{parent}(i)}) \le (t_i, q_i)$, comparing deadlines first and sequence numbers on a tie. So $A[0]$ is the next timer to fire. Operations, each $O(\log n)$:
+The heap maintains one **invariant**: no entry is smaller than its parent, $(t_{\mathrm{parent}(i)}, q_{\mathrm{parent}(i)}) \le (t_i, q_i)$, comparing deadlines first and sequence numbers on a tie. So $A[0]$ is always the next timer to fire. Three operations, each $O(\log n)$, preserve it:
 
 | Operation | How |
 |---|---|
@@ -54,19 +41,21 @@ When a timer is due the service calls `FireTimer(run, timer)`: if the timer is s
 | `Pop()` | move $A[n-1]$ into $A[0]$, shrink, then **sift down**: while a child is smaller, swap with the smaller child |
 | `Remove(e)` | move $A[n-1]$ into $e$'s slot, shrink, then sift down and up from that slot (the moved entry may belong either way) |
 
-Each entry remembers its index, so `Remove` (needed by `Cancel` and by rescheduling) finds it in $O(1)$. The sequence number makes equal deadlines fire in the order they were scheduled, so the order is a function of the inputs, not of the heap's shape.
+Each entry remembers its index, so `Remove`, which `Cancel` and rescheduling need, finds it in $O(1)$. The sequence number makes equal deadlines fire in the order they were scheduled, so the order is a function of the inputs, not of the heap's shape.
 
-### 2.3 The service
+## The service
 
-`Schedule(key, at)` arms `key`; scheduling a key already armed **moves** it (recovery re-arms timers the service may still hold; there must never be two). `Cancel(key)` disarms it. `Run(ctx, fire)` loops: pop every entry with $t \le$ now (removing it **before** calling `fire`), call `fire` for each, then wait for the earliest of the next deadline (through the injected clock), a change (`Schedule`, `Cancel`, `Wake` close a broadcast channel), or the end of `ctx`. A timer due at exactly now fires now.
+The service wraps the heap with three calls. `Schedule(key, at)` arms `key`; scheduling a key that is already armed **moves** it, because recovery re-arms timers the service may still hold, and there must never be two. `Cancel(key)` disarms it. `Run(ctx, fire)` loops: it pops every entry with $t \le$ now (removing each **before** calling `fire`), calls `fire` for each, then waits for the earliest of the next deadline (through the injected clock), a change (`Schedule`, `Cancel`, and `Wake` close a broadcast channel), or the end of `ctx`. A timer due at exactly now fires now.
 
-### 2.4 The test clock
+## The test clock
 
-`{durable} --test-clock` runs the server on an `OffsetClock`: the wall clock plus an offset that only grows. `POST /debug/clock {"offset_ms": N}` on the health port adds $N$ ms and answers the total; `GET` reads it; a negative or malformed body is 400. After a shift every `OnShift` callback runs; the server registers the timer service's `Wake`, so timers that became due fire immediately instead of at their old wall-clock instant. The `clock-skew` drill injector uses this endpoint. Time never moves backwards, not even in a test: a backwards jump would let a lease expiry or a timer fire "before" it was armed.
+Waiting 24 hours in a test is not an option, so the server can run on a clock you control. `{durable} --test-clock` uses an `OffsetClock`: the wall clock plus an offset that only grows. `POST /debug/clock {"offset_ms": N}` on the health port adds $N$ ms and answers the total; `GET` reads it; a negative or malformed body is 400. After a shift, every `OnShift` callback runs. The server registers the timer service's `Wake`, so timers that became due fire immediately instead of at their old wall-clock instant. The `clock-skew` drill injector uses this endpoint.
 
-## 3. Worked example by hand
+Time never moves backwards, not even in a test. A backwards jump would let a lease expiry or a timer fire "before" it was armed.
 
-Push five timers, sequence numbers 1 to 5 in this order: a at 5 s, b at 3 s, c at 8 s, d at 3 s, e at 1 s.
+## Working it by hand
+
+Push five timers, with sequence numbers 1 to 5 in this order: a at 5 s, b at 3 s, c at 8 s, d at 3 s, e at 1 s. The table shows the array after each step:
 
 | Step | Array after | What happened |
 |---|---|---|
@@ -77,9 +66,11 @@ Push five timers, sequence numbers 1 to 5 in this order: a at 5 s, b at 3 s, c a
 | push e(1) | [e b c a d] | e at 4, parent d(3): swap to 1; parent b(3): swap to 0 |
 | pop | [b d c a] | e out; d moves to 0; children b(3, seq 2) and c(8): b smaller than d(3, seq 4), swap; d at 1, child a(5): stop |
 
-The remaining pops come out b, d, a, c. Through the service on a fake clock, advancing to exactly 3 s fires e, b, d (in that order) and advancing to 8 s fires a, c.
+The remaining pops come out b, d, a, c. Through the service on a fake clock, advancing to exactly 3 s fires e, b, d (in that order), and advancing to 8 s fires a, c.
 
-## 4. The interface
+## Designing the API
+
+The timer package holds the heap, the service, and the test clock; the server adds `FireTimer` and two commands:
 
 ```go
 package timer // import "tinyllm/durable/timer"
@@ -118,9 +109,9 @@ func (s *Server) FireTimer(k TimerKey)
 // registers "start_timer" and "cancel_timer" with the dur.04 command table
 ```
 
-The demo workflow `SleepDemo` reads its input as an integer duration in milliseconds, calls `workflow.Sleep`, and returns `workflow.Now(ctx).UnixMilli()` as JSON. Started with input `1000`, it completes with its fired time, which exercises the whole path from the `dur.02` workflow service through the worker and the timer service.
+The demo workflow `SleepDemo` reads its input as an integer duration in milliseconds, calls `workflow.Sleep`, and returns `workflow.Now(ctx).UnixMilli()` as JSON. Started with input `1000`, it completes with its fired time, which exercises the whole path from the workflow service through the worker and the timer service.
 
-The server's entry point wires it:
+The server's entry point wires the pieces together:
 
 ```go
 ts := timer.New[server.TimerKey](clk)
@@ -130,25 +121,9 @@ go ts.Run(ctx, srv.FireTimer)
 // and clk.Handler() mounted at /debug/clock on the health port
 ```
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| hand example heap | unit | section 3's arrays and pop order | the structure, step by step |
-| hand example service | unit | the same timers fire e, b, d at exactly 3 s and a, c at 8 s, each once | deadline order, ties in schedule order |
-| heap matches a sorted model | property | 20 seeded rounds of pushes, pops, and removals against a sorted model; the invariant after every operation | `Cancel` and reschedule remove from the middle |
-| service reschedule and cancel | unit, boundary | rescheduling moves a key; a canceled timer never fires; a past-due one fires at once | recovery re-arms timers |
-| debug clock shifts time | unit, fault | POST shifts fire due timers once, later ones wait; negative and malformed bodies are 400; GET reads the offset | the `clock-skew` drill |
-| start timer by hand | unit | `TimerStarted{fire_at = now + 30 s}`; `TimerFired` and a workflow task at exactly the deadline | `workflow.Sleep` |
-| timer commands validated | boundary | zero duration, no id, a duplicate or pending id, canceling an unknown timer; `TimerCanceled` and never fired | `dur.08` cancellation |
-| `FireTimer` is idempotent | unit, fault | duplicate and unknown fires append nothing | exactly once |
-| `FireTimer` retries when the append fails | fault | a fire whose append fails re-arms the timer | a full disk does not lose a wakeup |
-| restart with pending timers | fault | two restarts: three timers fire once each, in deadline order; fired ones are not re-armed | drill `ops.02` |
-| sleep workflow survives a restart | fault | `SleepDemo(30 s)` through the worker, a server restart in the middle, wakes once and completes | the module's demo |
-
-## 5. The solution, step by step
-
-### From first principles
+The design follows from six observations. Try to predict each.
 
 1. **A timer must survive the process, but a timer service in memory cannot.** So the durable part is the fact that a timer exists and when it fires: `TimerStarted{fire_at}` in history. The in-memory service is a cache of pending timers, rebuilt from history on recovery.
 2. **`fire_at` is computed once, at commit.** Storing the duration alone would make the deadline depend on when it was read; storing the absolute time makes every re-arm agree.
@@ -157,9 +132,9 @@ go ts.Run(ctx, srv.FireTimer)
 5. **The service needs "next deadline" fast and "remove this one" fast.** A binary min-heap gives $O(\log n)$ push and pop with $O(1)$ peek; storing each entry's index gives $O(\log n)$ removal from the middle, which `Cancel` and rescheduling need. A sequence number as tie breaker makes the firing order a function of the inputs.
 6. **Tests and drills need to move time.** A clock that is the wall clock plus a non-decreasing offset lets time jump forward without ever going backwards, and a wake callback makes the service notice at once.
 
-### The code, annotated
+### The heap
 
-**The heap** ([`timer.go`](../../../../course/solutions/go/durable/timer/timer.go)).
+The heap in [`timer.go`](../../../../course/solutions/go/durable/timer/timer.go) keeps each entry's index up to date on every swap:
 
 ```go
 func (h *Heap[K]) less(i, j int) bool {
@@ -226,9 +201,11 @@ func (h *Heap[K]) Remove(e *Entry[K]) *Entry[K] {
 }
 ```
 
-`Push` appends and sifts up; `Pop` is `Remove(items[0])`. In the worked example, pushing `d(3, seq 4)` stops below `b(3, seq 2)` only because of the sequence tie break.
+`Push` appends and sifts up, and `Pop` is `Remove(items[0])`. In the worked example, pushing `d(3, seq 4)` stops below `b(3, seq 2)` only because of the sequence tie break.
 
-**The service.**
+### The service
+
+`Schedule` moves an existing key rather than duplicating it, and `Run` pops due timers before firing them:
 
 ```go
 func (s *Service[K]) Schedule(key K, at time.Time) {
@@ -280,7 +257,9 @@ func (s *Service[K]) Run(ctx context.Context, fire func(K)) error {
 
 Calling `fire` outside the service lock matters: `FireTimer` may call `Schedule` to re-arm after a failed append, which takes the service lock again. `Cancel` removes from both the heap and `byKey`, so a canceled timer cannot fire. With no timers, `timeout` is nil and the select waits only for a wake or the end.
 
-**The test clock.**
+### The test clock
+
+`Shift` refuses to go backwards and wakes its listeners outside the lock:
 
 ```go
 func (c *OffsetClock) Shift(d time.Duration) error {
@@ -298,9 +277,11 @@ func (c *OffsetClock) Shift(d time.Duration) error {
 }
 ```
 
-`Handler` serves `/debug/clock`: POST decodes `{"offset_ms": N}` into a pointer field (so a missing field is distinguishable from 0 and refused), shifts, and answers the total; GET answers the total; a negative or malformed body is 400.
+`Handler` serves `/debug/clock`. POST decodes `{"offset_ms": N}` into a pointer field, so a missing field is distinguishable from 0 and refused; it shifts and answers the total. GET answers the total. A negative or malformed body is 400.
 
-**The server commands and `FireTimer`** ([`timers.go`](../../../../course/solutions/go/durable/server/timers.go)).
+### The server commands and `FireTimer`
+
+On the server, in [`timers.go`](../../../../course/solutions/go/durable/server/timers.go), `startTimer` validates and records the absolute deadline, and `FireTimer` holds the exactly-once check:
 
 ```go
 func startTimer(s *Server, b *batch, completed int64, c *durablev1.Command) error {
@@ -341,20 +322,88 @@ func (s *Server) FireTimer(k TimerKey) {
 }
 ```
 
-`cancelTimer` requires the timer to be pending and appends `TimerCanceled`; the commit effect calls `Timers.Cancel`, and `apply` deletes the timer from run state, so even a fire already in flight finds nothing.
+`cancelTimer` requires the timer to be pending and appends `TimerCanceled`. The commit effect calls `Timers.Cancel`, and `apply` deletes the timer from run state, so even a fire already in flight finds nothing.
 
-**Wiring.** The solution's durable entry point ([`entry/go/cmd/durable/main.go`](../../../../course/solutions/entry/go/cmd/durable/main.go)) builds the service with `timer.New` over the server's clock, passes it as `Options.Timers` to `server.Open`, runs `ts.Run(ctx, srv.FireTimer)`, and with `--test-clock` uses an `OffsetClock` for every component, registers `timers.Wake` with `OnShift`, and mounts the handler at `/debug/clock` on the health port. The worker entry point registers a `SleepDemo` workflow that reads milliseconds as JSON, calls `workflow.Sleep`, and returns `workflow.Now(ctx).UnixMilli()`.
+### Wiring
 
-Full solution: [`timer.go`](../../../../course/solutions/go/durable/timer/timer.go), [`timers.go`](../../../../course/solutions/go/durable/server/timers.go).
+The solution's durable entry point, [`entry/go/cmd/durable/main.go`](../../../../course/solutions/entry/go/cmd/durable/main.go), builds the service with `timer.New` over the server's clock, passes it as `Options.Timers` to `server.Open`, and runs `ts.Run(ctx, srv.FireTimer)`. With `--test-clock` it uses an `OffsetClock` for every component, registers `timers.Wake` with `OnShift`, and mounts the handler at `/debug/clock` on the health port. The worker entry point registers the `SleepDemo` workflow, which reads milliseconds as JSON, calls `workflow.Sleep`, and returns `workflow.Now(ctx).UnixMilli()`.
 
-### Why this solution
+The full solution is in [`timer.go`](../../../../course/solutions/go/durable/timer/timer.go) and [`timers.go`](../../../../course/solutions/go/durable/server/timers.go).
+
+### Why this design
 
 - **Cost.** Schedule, cancel, and pop are $O(\log n)$; peek is $O(1)$; memory is $O(n)$ for armed timers. Recovery re-arms all pending timers in $O(n \log n)$.
 - **Heap over a sorted slice or a timing wheel.** A sorted slice makes insert $O(n)$. A timing wheel gives $O(1)$ insert and fire but needs a tick resolution and more machinery; for thousands of timers a heap is simpler and exact to the millisecond.
 - **Exactly once at the history, not the service.** Making the service itself exactly once would require it to be durable and coordinated with history. Putting the check in `FireTimer`, under the same lock as every other run mutation, makes duplicates harmless with no extra state.
 - **Hand-written heap over `container/heap`.** The standard package would work; writing it out keeps the index bookkeeping (needed for `Remove`) explicit and generic over the key type.
 
-### Explain it back
+## What a correct implementation must handle
+
+The tests cover the heap, the service, the clock, and the server path:
+
+| Case | Kind of check | Checks | Why it matters downstream |
+|---|---|---|---|
+| hand example heap | unit | the worked arrays and pop order | the structure, step by step |
+| hand example service | unit | the same timers fire e, b, d at exactly 3 s and a, c at 8 s, each once | deadline order, ties in schedule order |
+| heap matches a sorted model | property | 20 seeded rounds of pushes, pops, and removals against a sorted model; the invariant after every operation | `Cancel` and reschedule remove from the middle |
+| service reschedule and cancel | unit, boundary | rescheduling moves a key; a canceled timer never fires; a past-due one fires at once | recovery re-arms timers |
+| debug clock shifts time | unit, fault | POST shifts fire due timers once, later ones wait; negative and malformed bodies are 400; GET reads the offset | the `clock-skew` drill |
+| start timer by hand | unit | `TimerStarted{fire_at = now + 30 s}`; `TimerFired` and a workflow task at exactly the deadline | `workflow.Sleep` |
+| timer commands validated | boundary | zero duration, no id, a duplicate or pending id, canceling an unknown timer; `TimerCanceled` and never fired | cancellation |
+| `FireTimer` is idempotent | unit, fault | duplicate and unknown fires append nothing | exactly once |
+| `FireTimer` retries when the append fails | fault | a fire whose append fails re-arms the timer | a full disk does not lose a wakeup |
+| restart with pending timers | fault | two restarts: three timers fire once each, in deadline order; fired ones are not re-armed | the [SIGKILL-loop drill](../../systems/05-incident-response-and-chaos/02-durable-kill9.md) |
+| sleep workflow survives a restart | fault | `SleepDemo(30 s)` through the worker, a server restart in the middle, wakes once and completes | the section's demo |
+
+## What can go wrong
+
+Heap bugs make timers fire out of order; service and server bugs make them fire twice, never, or late.
+
+On the heap side, ties not broken by schedule order make two timers due together fire in an order that depends on the heap's shape; `less` compares `Seq` on equal deadlines. The 1-based parent formula $i/2$ in a 0-based array, or a sift-down that looks at only one child, breaks the heap invariant so timers fire out of order; `up` uses `(i - 1) / 2`, and `down` compares both children.
+
+> **Warning:** A removal from the middle that only sifts down is wrong whenever the moved entry belonged higher up: a later timer then fires first. `Remove` sifts down and then up.
+
+In the service, scheduling an armed key twice makes a re-armed timer fire twice, and canceling only in the key map lets a canceled one still fire; `Schedule` removes an existing entry first, and `Cancel` removes from heap and map. Firing without removing, or a `FireTimer` without the pending check, makes the same timer fire forever or appends `TimerFired` twice; `Run` pops before `fire`, and `FireTimer` returns when the timer is not pending. A timer at exactly its deadline that waits for the next tick wakes late by one wait; `Run` fires when `!e.At.After(now)`.
+
+The test clock fails if a shift wakes nobody, so `/debug/clock` appears to do nothing, or if it may go backwards, so time runs backwards in a drill. `Shift` runs the `OnShift` listeners and refuses negative shifts.
+
+On the server, a deadline in the wrong unit makes a 30 s sleep last 8 hours; `FireAtUnixMs` is `fireAt.UnixMilli()`. Two pending timers with one id leave `TimerFired` unable to say which timer it was, and canceling a timer that is not pending records a cancel of nothing; `startTimer` refuses a pending or same-batch id, and `cancelTimer` requires a pending timer. Finally, dropping a timer whose `TimerFired` append failed leaves the workflow sleeping forever; `FireTimer` re-schedules the key one second later.
+
+## Where this leads
+
+Looking back, `workflow.Sleep` from [deterministic replay](06-deterministic-replay.md) issues `StartTimer` and waits for `TimerFired`, and [the workflow service](02-workflow-service.md) arms timers at commit and re-arms them on recovery; its `Options.Timers` is this service.
+
+Looking forward, [signals, cancellation, and sagas](08-signals-cancellation-and-sagas.md) exposes timer-backed sleep and cancellation through its runtime seam. Through that seam, [TrainRun and EvalSuite](11-trainrun-and-evalsuite.md) runs periodic evaluation, [ModelRelease](12-model-release.md) waits out the canary, and [durable agent runs](../13-agent-sdk/05-durable-agent-runs.md) expire approvals, all by calling `workflow.Sleep`. In the drills, the `clock-skew` injector posts to `/debug/clock`.
+
+Production timer systems scale the same ideas:
+
+- **Sharded timer queues.** Instead of one heap per server, each history shard owns its timers and fires them from persisted timer tasks. See `temporalio/temporal`: `service/history/queues`.
+- **Schedules.** Beyond `Sleep`, cron-like recurring workflows with backfill and overlap policies. See Temporal "Schedules".
+- **Hierarchical timing wheels.** Instead of a binary heap, $O(1)$ insert and fire for millions of timers. See Kafka's `TimingWheel`, and Varghese and Lauck (1987).
+- **Skip lists.** The same ordered-by-deadline idea as a sorted set backed by a skip list gives ordered iteration and range queries. See Redis sorted sets.
+
+### Further reading
+
+- Cormen, Leiserson, Rivest, and Stein, *Introduction to Algorithms*, chapter 6 (heaps).
+- George Varghese and Tony Lauck, *Hashed and Hierarchical Timing Wheels* (SOSP 1987).
+
+## Key terms
+
+- **Durable timer**: a timer whose existence and deadline are recorded in history as `TimerStarted{fire_at}`, so it survives any restart.
+- **Timer service**: the in-memory component that fires armed timers; a cache rebuilt from history, not itself durable.
+- **Binary min-heap**: an array-backed tree in which no entry is smaller than its parent, so the minimum is at index 0.
+- **Sift up / sift down**: restoring the heap invariant by swapping an entry with its parent, or with its smaller child.
+- **Tie break**: the schedule sequence number that orders timers with equal deadlines.
+- **Offset clock**: the wall clock plus a non-decreasing offset, used to move time forward in tests and drills.
+
+## Summary
+
+- A timer is durable because `TimerStarted{fire_at}` is in history: the server arms it when the event commits and re-arms every pending one on recovery; the in-memory service only fires what it holds.
+- Exactly once lives in `FireTimer`: it appends `TimerFired` only for a timer still pending, so a duplicate fire appends nothing, and a failed append re-arms the timer.
+- The service is a binary min-heap ordered by deadline, ties in schedule order, kept in an array where the children of $i$ are $2i+1$ and $2i+2$; removal from the middle sifts both ways.
+- `--test-clock` moves time forward through `POST /debug/clock`, and every timer that became due fires once, right away; time never moves backwards.
+
+## Review questions
 
 1. The server restarts with a timer pending whose `fire_at` passed during the downtime. What happens?
 
@@ -396,36 +445,10 @@ Full solution: [`timer.go`](../../../../course/solutions/go/durable/timer/timer.
 
    </details>
 
-## 6. Pitfalls
+6. Five timers are pushed in order a(5 s), b(3 s), c(8 s), d(3 s), e(1 s). In what order do they fire?
 
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. ties not broken by schedule order | two timers due together fire in an order that depends on the heap's shape | `less` compares `Seq` on equal deadlines |
-| 2. the 1-based parent formula $i/2$ in a 0-based array, or sift-down that looks at one child | the heap invariant breaks; timers fire out of order | `up` uses `(i - 1) / 2`; `down` compares both children |
-| 3. a removal from the middle that only sifts down | the moved entry belonged higher up; a later timer fires first | `Remove` sifts down and then up |
-| 4. scheduling an armed key twice, or canceling only in the key map | a re-armed timer fires twice; a canceled one still fires | `Schedule` removes an existing entry first; `Cancel` removes from heap and map |
-| 5. firing without removing, or `FireTimer` without the pending check | the same timer fires forever, or `TimerFired` is appended twice | `Run` pops before `fire`; `FireTimer` returns when the timer is not pending |
-| 6. a timer at exactly its deadline waiting for the next tick | wakeups arrive late by one wait | `Run` fires when `!e.At.After(now)` |
-| 7. a clock shift that wakes nobody, or one that may go backwards | `/debug/clock` appears to do nothing; time runs backwards in a drill | `Shift` runs the `OnShift` listeners and refuses negative shifts |
-| 8. the deadline in the wrong unit | a 30 s sleep lasts 8 hours | `FireAtUnixMs` is `fireAt.UnixMilli()` |
-| 9. two pending timers with one id, or canceling a timer that is not pending | `TimerFired` cannot say which timer it was; a cancel of nothing is recorded | `startTimer` refuses a pending or same-batch id; `cancelTimer` requires a pending timer |
-| 10. dropping a timer whose `TimerFired` append failed | the workflow sleeps forever | `FireTimer` re-schedules the key one second later |
+   <details><summary>Answer</summary>
 
-## 7. Where it's used next
+   e, b, d, a, c. The deadline orders them, and b fires before d because both are due at 3 s and b was scheduled first (sequence 2 versus 4).
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `dur.06` | `workflow.Sleep` issues `StartTimer` and waits for `TimerFired` |
-| Back | `dur.02` | commit arms, recovery re-arms; `Options.Timers` is this service |
-| Forward | `dur.08` | the Runtime seam exposes timer-backed sleep and cancellation |
-| Forward (call site in the catalog) | `dur.11`, `dur.12`, `ag.05` | periodic evaluation, the canary wait, approval expiry; they call `workflow.Sleep` through the `dur.08` runtime seam |
-| Forward | drills | the `clock-skew` injector posts to `/debug/clock` |
-
-## Going further
-
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| one heap per server | timer queues sharded by history shard | each history shard owns its timers and fires them from persisted timer tasks | `temporalio/temporal`: `service/history/queues` |
-| `Sleep` | Schedules | cron-like recurring workflows with backfill and overlap policies | Temporal "Schedules" |
-| a binary heap | hierarchical timing wheels | $O(1)$ insert and fire for millions of timers | Kafka's `TimingWheel`, Varghese and Lauck (1987) |
-| practice `go/04` sorted set | the same idea with a skip list | ordered iteration and range queries | Redis sorted sets |
+   </details>

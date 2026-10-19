@@ -1,65 +1,61 @@
-# Durable Orchestration & Workers
+# Durable Orchestration and Workers
 
-## Overview
+A request lives for milliseconds. A *process*, such as fulfilling an order, ingesting and indexing a corpus, or running a multi-day training job, lives for minutes to months, calls flaky services, and must survive the machine running it dying halfway through. The naive solution, a database state column plus cron plus retry glue, reinvents a buggy workflow engine every time. Durable execution names the pattern: persist the *progress* of a computation, its checkpoints, so the program is in effect immortal. It can crash and wake up mid-function with all its local state intact. Everything else in this chapter (workers, sagas, observability) is in service of making that illusion reliable and operable.
 
-- **Primary references**: [Temporal docs](https://docs.temporal.io/) (free), [DBOS docs](https://docs.dbos.dev/) (free)
-- **Supplementary**: [Apache Cadence](https://cadenceworkflow.io/docs/) (Temporal's open-source ancestor, free), [Temporal "what is durable execution"](https://temporal.io/blog/what-is-durable-execution), the [saga pattern](https://microservices.io/patterns/data/saga.html), [transactional outbox](https://microservices.io/patterns/data/transactional-outbox.html), [OpenTelemetry docs](https://opentelemetry.io/docs/) (distributed tracing), [Brendan Gregg's *Systems Performance*](https://www.brendangregg.com/systems-performance-2nd-edition-book.html) (profiling)
-- **Prerequisites**: [RPC & Protocols](../02-rpc-and-protocols/) (idempotency, partial failure), [Distributed Data & Caching](../04-distributed-data-and-caching/) (event sourcing), [Observability](../../systems/04-observability/)
-- **Estimated time**: 2-3 weeks at 8-10 hrs/week
+In this chapter you build such an engine yourself, in Go, with Temporal as the north star: history events and replay, task queues, `GetVersion`, Continue-As-New. Then you run the platform's own data pipeline, training runs, evaluations, and releases on it. The arc is bottom-up. The first sections build the foundation: an append-only event log, a workflow service on top of it, a task queue with fenced leases, and the protocol and SDK that let workers poll for work. The middle sections make execution durable: activities with retries and heartbeats, deterministic replay of workflow code, durable timers, and the signals, cancellation, and sagas that let the outside world steer a running workflow. The last sections put real work on the engine: a subprocess runner that lets Go workers run Python durably, an optional Raft layer that replicates the log across three servers, and the platform workflows `TrainRun`, `EvalSuite`, and `ModelRelease`.
 
-## Key Takeaways
+> **Learning objectives**
+> - Explain durable execution as checkpointing for workflows, and why recovery by replaying an event log requires deterministic workflow code.
+> - Build a durable workflow engine from an event log, a task queue, and a worker SDK, and reason about its failure modes.
+> - Make side-effecting steps safe under at-least-once delivery with idempotency keys, and undo partial work with sagas.
+> - Run Python training and evaluation as durable activities that resume from checkpoints after any kill.
+> - Release a model through a gated, approved, canaried, and reversible workflow.
+> - Operate a pool of partitioned-log consumers: sizing, rebalancing, poison messages, and lag-based scaling.
 
-- **Durable execution is checkpointing for workflows.** A long-running process persists every completed step so that, after *any* crash, deploy, or scale event, it resumes exactly where it stopped — instead of restarting or corrupting state.
-- **The worker pattern decouples "what to do" from "who does it."** A durable workflow engine is a queue of tasks + a pool of stateless workers that poll, execute, and report back. Scale by adding workers; survive failures because tasks are persisted, not in-flight memory.
-- **Recovery is replay over an event log.** Temporal/Cadence reconstruct a workflow's state by replaying its event-sourced history — the same event-sourcing pattern from the data topic, applied to *execution* instead of data.
-- **Idempotency and compensation are non-negotiable.** Retries are guaranteed, so every step must be safe to repeat; when you can't roll forward, the **saga** runs compensating actions to undo partial work.
-- **Distributed observability and profiling are how you operate this.** A workflow spanning services and hours is invisible without tracing (where is it?), metrics (how many are stuck?), and profiling (why is this step slow?).
+## Before you begin
 
-## How to Study
+This chapter assumes the idempotency and partial-failure reasoning of [RPC and Protocols](../02-rpc-and-protocols/README.md) and the event sourcing of [Distributed Data and Caching](../04-distributed-data-and-caching/README.md). The engine is written in Go, so read [the Go primer](../../programming-languages/02-language-and-tool-primers/06-go.md) in *Programming Languages* if you have not, along with [Protocol Buffers and gRPC](../../programming-languages/02-language-and-tool-primers/10-protocol-buffers-and-grpc.md). Operating long-running workflows leans on [Observability](../../systems/04-observability/README.md) in *Systems & Architecture*, and the partitioned-consumer material at the end assumes [Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/README.md) from *Infrastructure*.
 
-- Build a 3-step pipeline (download → embed → index) as a Temporal or DBOS workflow. Kill the worker mid-run; watch it resume without redoing completed steps. *That* is durable execution.
-- Make a step non-idempotent (e.g. "charge the card") and run it through a forced retry — observe the double-charge bug, then fix it with an idempotency key.
-- Add a compensation (refund) and trigger a downstream failure to see the saga unwind.
-- Instrument the workflow with OpenTelemetry traces and profile the slowest activity — find where the wall-clock time actually goes.
+## In this chapter
 
----
+1. [The append-only event log](01-event-log.md). The segmented, fsynced write-ahead log that every other piece of the engine records into; the single source of truth.
+2. [The workflow service](02-workflow-service.md). Idempotent workflow start, describe, list, and paged history over gRPC, with run state folded from the log.
+3. [The task queue](03-task-queue.md). Visibility timeouts, fenced leases, retries that end in a dead-letter queue, and long polling.
+4. [The task protocol and workers](04-task-protocol-and-workers.md). The task gRPC protocol, the Go worker SDK, and a worker pool that polls, executes, and reports back.
+5. [Activities](05-activities.md). Retries with backoff and jitter, timeouts, heartbeats, and the idempotency keys that make side effects safe to repeat.
+6. [Deterministic replay](06-deterministic-replay.md). Workflow code that rebuilds its state by replaying history, plus Continue-As-New, history paging, and payload limits.
+7. [Durable timers and the test clock](07-durable-timers.md). Timers that survive restarts and fire exactly once, and a clock you can move forward in tests.
+8. [Signals, cancellation, and sagas](08-signals-cancellation-and-sagas.md). How operators approve or cancel a running workflow, and how a saga undoes completed steps in reverse order.
+9. [Subprocess activities: the Go runner and the Python helper](09-subprocess-activities.md). The file-and-exit-code contract that lets a Go worker run Python durably, resuming from the last heartbeated checkpoint.
+10. [Raft high availability for the durable log (optional)](10-raft-ha.md). Three replicas that agree on one log, built from the majority-intersection fact; the engine is complete without it.
+11. [Platform workflows: TrainRun and EvalSuite](11-trainrun-and-evalsuite.md). Training as segments with evaluation at fixed steps, resumable bit for bit after any kill.
+12. [ModelRelease: gates, canary, burn check, and rollback](12-model-release.md). The release as a workflow: model card and ledger gates, human approval, a canary measured against the error budget, and a saga that rolls back.
 
-# Concepts & Techniques
+The chapter also has a hands-on side quest, [Kafka consumer groups](side-quests/kafka-consumers/README.md), which puts the partitioned-consumer ideas at the end of this opening into practice.
 
-## Core Insight
+## The problem: long-running, failure-prone processes
 
-A request lives for milliseconds; a *process* — fulfill an order, ingest and index a corpus, run a multi-day training job — lives for minutes to months, calls flaky services, and must survive the machine running it dying halfway through. The naive solution (a database state column + cron + retry glue) reinvents a buggy workflow engine every time. Durable execution names the pattern: persist the *progress* of a computation (its checkpoints) so the program is, in effect, immortal — it can crash and wake up mid-function with all its local state intact. Everything else here (workers, sagas, observability) is in service of making that illusion reliable and operable.
+Before building anything, it helps to see the whole landscape the chapter covers. A real workflow is multi-step, long-lived, and distributed, and any step can fail, time out, or be interrupted by a deploy. Hand-rolled orchestration scatters state across a database column, a cron job, a retry wrapper, and a dead-letter queue, so correctness lives nowhere and bugs live everywhere. The recurring needs are always the same: **retry** with backoff, **timeouts**, **idempotency**, **resume-after-crash**, **visibility**, and **rollback**. Durable execution provides all of them as a single abstraction.
 
-## 1. The Problem: Long-Running, Failure-Prone Processes
+## Durable execution and checkpointing
 
-**Key ideas**:
-- A real workflow is **multi-step, long-lived, and distributed** — and any step can fail, time out, or be interrupted by a deploy.
-- Hand-rolled orchestration scatters state across a DB column, a cron job, a retry wrapper, and a dead-letter queue — correctness lives nowhere and bugs live everywhere.
-- The recurring needs: **retry** with backoff, **timeouts**, **idempotency**, **resume-after-crash**, **visibility**, and **rollback**. Durable execution provides all of them as a single abstraction.
+The core pattern is to checkpoint every step. After each step's result is known, persist it durably *before* moving on; on recovery, read the last checkpoint and continue, never redoing completed work.
 
-## 2. Durable Execution & Checkpointing
+Temporal and Cadence implement this with an **event-sourced history and replay**. The engine records an append-only log of every event (step scheduled, step completed, timer fired). To recover, it **replays** that log through your workflow code to rebuild local variables and resume at the next unexecuted line. Your workflow looks like ordinary sequential code; the engine makes it crash-proof underneath.
 
-**The core pattern**
+That design carries one real constraint. Because recovery replays your code, workflow code must be **deterministic**: no `now()`, `random()`, or direct I/O inline. Those go through the engine, which records their results, so replay reproduces the same path.
 
-**Key ideas**:
-- **Checkpoint every step.** After each step's result is known, persist it durably *before* moving on. On recovery, read the last checkpoint and continue — never redo completed work.
-- **Event-sourced history + replay** (Temporal/Cadence): the engine records an append-only log of every event (step scheduled, step completed, timer fired). To recover, it **replays** that log through your workflow code to rebuild local variables and resume at the next unexecuted line. Your workflow looks like ordinary sequential code; the engine makes it crash-proof underneath.
-- **Determinism requirement**: because recovery replays your code, workflow code must be **deterministic** — no `now()`, `random()`, or direct I/O inline; those go through the engine (which records their results) so replay reproduces the same path. This is the one real constraint of the model.
-- **Transactional checkpointing** (DBOS): persist workflow/step state in **Postgres transactions**, so recovery is "read the last committed step and continue." Lighter-weight, leans on the database you already run.
-- **Parallel to training checkpoints**: the same idea that lets a multi-day GPU training run resume from the last saved checkpoint ([topic 01](../01-training-and-frameworks/)) — applied to arbitrary application workflows.
+DBOS takes a different route, **transactional checkpointing**: it persists workflow and step state in Postgres transactions, so recovery is "read the last committed step and continue". It is lighter-weight and leans on the database you already run. Either way, the idea is the same one that lets a multi-day GPU training run resume from its last saved checkpoint ([Training and Frameworks](../01-training-and-frameworks/README.md)), applied to arbitrary application workflows.
 
-## 3. The Worker Pattern
+## The worker pattern
 
-**Decoupling task definition from task execution**
+Durable execution decouples "what to do" from "who does it". The engine holds a durable queue of pending tasks (workflow steps and activities), and a pool of **workers** long-polls the queue, executes a task, and reports the result back: classic producer-consumer, made durable. Because all durable state lives in the engine, workers are stateless and horizontally scalable. They can crash, deploy, and autoscale freely; adding workers adds throughput, and losing workers just leaves tasks waiting in the queue.
 
-**Key ideas**:
-- **Task queue + worker pool**: the engine holds a durable queue of pending tasks (workflow steps / activities); a pool of **workers** long-polls the queue, executes a task, and reports the result back. Classic producer-consumer, made durable.
-- **Workers are stateless and horizontally scalable**: all durable state lives in the engine, so workers can crash, deploy, and autoscale freely. Add workers → more throughput; lose workers → tasks just wait in the queue.
-- **Separation of concerns**: the **workflow** orchestrates (deterministic, the "what and when"); **activities/steps** do the side-effecting work (the "how" — call an API, run a model, write a DB). Activities get automatic retries, timeouts, and heartbeats.
-- **Task routing**: route tasks to worker pools by capability (GPU workers vs CPU workers vs region) via named task queues — how you'd send embedding jobs to GPU workers and notifications to cheap CPU workers.
-- **This is the same worker pool** as a thread pool, a Celery/Sidekiq queue, or a Kubernetes Job fan-out — durable execution just persists the queue and the progress.
+The pattern also separates concerns. The **workflow** orchestrates; it is deterministic, the "what and when". **Activities** do the side-effecting work, the "how": call an API, run a model, write to a database. Activities get automatic retries, timeouts, and heartbeats. Named task queues route tasks to worker pools by capability (GPU workers, CPU workers, a region), which is how you would send embedding jobs to GPU workers and notifications to cheap CPU workers. None of this is exotic: it is the same worker pool as a thread pool, a Celery or Sidekiq queue, or a Kubernetes Job fan-out. Durable execution just persists the queue and the progress.
 
-## 4. Reliability Patterns Around Workers
+## Reliability patterns around workers
+
+Retries are guaranteed in this world, so every step must be safe to repeat, and when you cannot roll forward you must be able to undo. The standard patterns each solve one problem:
 
 | Pattern | Problem it solves |
 |---------|-------------------|
@@ -71,9 +67,11 @@ A request lives for milliseconds; a *process* — fulfill an order, ingest and i
 | **Backpressure** | Bound the queue and shed/slow producers so workers aren't overwhelmed |
 | **Poison-message / DLQ** | Quarantine a task that fails forever instead of blocking the queue |
 
-**Key idea**: at-least-once delivery is the cheap, available default; you reach *effectively-once* by making consumers **idempotent** and reconciling with **compensation**. There is no free exactly-once in a distributed system — you engineer it.
+At-least-once delivery is the cheap, available default. You reach *effectively-once* by making consumers **idempotent** and reconciling with **compensation**. There is no free exactly-once in a distributed system; you engineer it.
 
-## 5. Temporal, Cadence, and DBOS
+## Temporal, Cadence, and DBOS
+
+The production engines make different tradeoffs, summarized here:
 
 | | Temporal / Cadence | DBOS |
 |---|--------------------|------|
@@ -83,41 +81,29 @@ A request lives for milliseconds; a *process* — fulfill an order, ingest and i
 | Strength | Long-lived, complex, signal-driven workflows | Lightweight, SQL-native, fewer moving parts |
 | Lineage | Cadence (Uber, OSS) → Temporal (fork) | Postgres-first durable execution |
 
-**Key ideas**:
-- **Temporal** is the heavyweight: months-long workflows, signals, child workflows, timers, versioning, multi-language SDKs — at the cost of running a cluster (which itself needs a sharded store; see [topic 04](../04-distributed-data-and-caching/)).
-- **Cadence** is the open-source ancestor Temporal forked from; same concepts, less active.
-- **DBOS** trades some power for simplicity: if you already run Postgres, you get durable execution without a separate system.
-- **vs schedulers**: Airflow/Dagster ([Data Engineering](../../data-engineering/04-orchestration-modeling/)) run *batch DAGs on a schedule*; Temporal/DBOS run *durable arbitrary code* with fine-grained, event-driven, long-lived state. Overlapping, distinct tools.
-- **vs distributed-compute frameworks**: **[Ray](https://docs.ray.io/)** (Core actors/tasks, Ray Train, Ray Serve) is the worker-pool pattern for *in-memory distributed ML compute* — fast task/actor scheduling across a cluster, but **not durable** (lose a node mid-task and the task reruns; lose the driver and the job dies). Temporal/DBOS persist progress; Ray maximizes throughput. Common pattern: Ray for the heavy parallel compute *inside* a step, a durable engine to orchestrate the steps reliably around it.
+Temporal is the heavyweight: months-long workflows, signals, child workflows, timers, versioning, and multi-language SDKs, at the cost of running a cluster that itself needs a sharded store (see [Distributed Data and Caching](../04-distributed-data-and-caching/README.md)). Cadence is the open-source ancestor Temporal forked from, with the same concepts and less activity. DBOS trades some power for simplicity: if you already run Postgres, you get durable execution without a separate system.
 
-## 6. Distributed Observability
+Two neighbouring tool families are easy to confuse with these. Schedulers such as Airflow and Dagster ([Orchestration & Modeling](../../data-engineering/04-orchestration-modeling/README.md) in *Data Engineering*) run *batch DAGs on a schedule*, while Temporal and DBOS run *durable arbitrary code* with fine-grained, event-driven, long-lived state; the tools overlap but are distinct. And distributed-compute frameworks such as [Ray](https://docs.ray.io/) (Core actors and tasks, Ray Train, Ray Serve) apply the worker-pool pattern to *in-memory distributed ML compute*: fast task and actor scheduling across a cluster, but **not durable**. Lose a node mid-task and the task reruns; lose the driver and the job dies. Temporal and DBOS persist progress, while Ray maximizes throughput. A common pattern uses Ray for the heavy parallel compute *inside* a step and a durable engine to orchestrate the steps reliably around it.
 
-**You cannot operate what you cannot see**
+## Distributed observability
 
-**Key ideas**:
-- **The three pillars** ([Observability](../../systems/04-observability/)): **traces** (one request/workflow across services — a span tree), **metrics** (aggregate rates/latencies — RED/USE), **logs** (discrete events). A durable workflow needs all three because it spans services *and time*.
-- **Distributed tracing** (OpenTelemetry): propagate a trace/span context across every RPC and queue hop so a workflow's whole path is one connected trace — answering "where is execution #123 right now, and what's it waiting on?"
-- **Workflow-native visibility**: durable engines add their own — list running/failed workflows, inspect event history, see which step is retrying. Temporal's event log *is* an audit trail and a debugger.
-- **Correlation IDs**: thread a workflow/correlation id through logs, metrics, and traces so you can pivot between them.
+You cannot operate what you cannot see, and a workflow spanning services and hours is invisible without all three pillars of [Observability](../../systems/04-observability/README.md): **traces** (one request or workflow across services, as a span tree), **metrics** (aggregate rates and latencies, RED and USE), and **logs** (discrete events). A durable workflow needs all three because it spans services *and time*.
 
-## 7. Profiling
+Distributed tracing with OpenTelemetry propagates a trace and span context across every RPC and queue hop, so a workflow's whole path is one connected trace that answers "where is execution #123 right now, and what is it waiting on?". Durable engines add workflow-native visibility on top: list running and failed workflows, inspect event history, see which step is retrying. Temporal's event log *is* an audit trail and a debugger. Correlation ids, threaded through logs, metrics, and traces, let you pivot between them.
 
-**Measure before you optimize — at every layer**
+## Profiling
 
-**Key ideas**:
-- **Profiling vs observability**: observability tells you *which* request/step is slow; profiling tells you *why* — where the CPU cycles, allocations, or wait-time actually go inside it.
-- **CPU profiling**: sampling profilers + **flame graphs** (Brendan Gregg) — read the widest frames; that's where time goes. (`py-spy`, `pprof`, `perf`, async-profiler.)
-- **The USE method**: for every resource check **U**tilization, **S**aturation, **E**rrors — a systematic way to find the bottleneck instead of guessing.
-- **Latency vs throughput, p50 vs p99**: tail latency is where users feel pain; profile the p99 path, not the average. Workers make this concrete — a few slow activities drag the whole workflow's wall-clock.
-- **The discipline**: form a hypothesis → measure → confirm → fix → re-measure. The bottleneck is almost never where intuition first points (it's usually I/O wait, lock contention, or an N+1, not "the algorithm").
+Observability tells you *which* request or step is slow; profiling tells you *why*, where the CPU cycles, allocations, or wait time actually go inside it. Sampling CPU profilers (`py-spy`, `pprof`, `perf`, async-profiler) produce **flame graphs** in Brendan Gregg's style: read the widest frames, because that is where time goes. The **USE method** gives you a systematic way to find the bottleneck instead of guessing: for every resource, check **U**tilization, **S**aturation, and **E**rrors.
 
-## Depth: partitioned consumers
+Tail latency is where users feel pain, so profile the p99 path, not the average. Workers make this concrete: a few slow activities drag the whole workflow's wall-clock time. The discipline is to form a hypothesis, measure, confirm, fix, and re-measure. The bottleneck is almost never where intuition first points; it is usually I/O wait, lock contention, or an N+1 query, not "the algorithm".
 
-> Formerly the separate topic `infrastructure/03-distributed-workers` (merged here by the course consolidation). The durable engine above owns *workflow* state; this section is the other common worker shape: a pool of consumers reading a partitioned log (Kafka), where the partition, not the engine, decides who does what. The runnable consumers and a hands-on lab are the side quest [`side-quests/kafka-consumers/`](side-quests/kafka-consumers/). Read [Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/) first for the dynamics (queue vs log, push vs pull, delivery semantics).
+## Partitioned consumers
+
+The durable engine owns *workflow* state. The other common worker shape is a pool of consumers reading a partitioned log such as Kafka, where the partition, not an engine, decides who does what. Read [Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/README.md) first for the dynamics (queue versus log, push versus pull, delivery semantics); the runnable consumers and a hands-on lab are in the side quest [Kafka consumer groups](side-quests/kafka-consumers/README.md).
 
 ### The partition is the unit of everything
 
-A **worker** is a process that pulls work off a log and does it. Once you accept at-least-once delivery ([Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/)), the entire job becomes operational: distribute partitions across a pool, keep the group stable through joins and leaves, make handlers tolerate redelivery, contain poison messages, and size the pool to the backlog. The unifying constraint is the **partition**: it is simultaneously the unit of ordering, the unit of assignment, and the **ceiling on useful parallelism** within a group.
+A **worker** is a process that pulls work off a log and does it. Once you accept at-least-once delivery, the entire job becomes operational: distribute partitions across a pool, keep the group stable through joins and leaves, make handlers tolerate redelivery, contain poison messages, and size the pool to the backlog. The unifying constraint is the **partition**: it is simultaneously the unit of ordering, the unit of assignment, and the **ceiling on useful parallelism** within a group.
 
 ![Kafka partitions, consumer groups, and the parallelism cap](side-quests/kafka-consumers/kafka-consumption.svg)
 
@@ -133,51 +119,49 @@ graph LR
     style W4 fill:#cfcfcf,color:#444,stroke-dasharray: 4
 ```
 
-The 5th worker is **idle** -- there is no partition left to own. This is the single most important operational fact about Kafka scaling, and it is why the KEDA replica cap ([Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/)) is the partition count.
+The fifth worker is **idle**, because there is no partition left for it to own. This is the single most important operational fact about Kafka scaling, and it is why the KEDA replica cap in [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/README.md) is the partition count.
 
-### 1. Partition count = the parallelism ceiling
+### Partition count is the parallelism ceiling
 
-- Within one consumer group, **each partition is owned by exactly one consumer.** A consumer may own several partitions; a partition is never split across two consumers in the same group.
-- Therefore **useful parallelism ≤ partition count.** Workers beyond the partition count get no assignment and sit idle, burning resources for nothing.
-- Pick partition count for your *peak* worker count plus headroom. Over-partitioning costs metadata and end-to-end latency; under-partitioning permanently caps throughput.
-- **Adding partitions later breaks key→partition stability** (the hash target changes), so events for `order_id=42` can land on a different partition than before -- reordering relative to history. Forecast partitions ahead of time rather than reactively.
+Within one consumer group, **each partition is owned by exactly one consumer**. A consumer may own several partitions, but a partition is never split across two consumers in the same group. Useful parallelism is therefore at most the partition count, and workers beyond it get no assignment and sit idle, burning resources for nothing.
 
-### 2. Consumer groups & rebalancing -- the thing that bites you
+Pick the partition count for your *peak* worker count plus headroom. Over-partitioning costs metadata and end-to-end latency; under-partitioning permanently caps throughput. And forecast ahead rather than reacting, because **adding partitions later breaks key-to-partition stability**: the hash target changes, so events for `order_id=42` can land on a different partition than before, reordering them relative to history.
 
-When a consumer joins, leaves, or dies, the group **rebalances**: partitions are reassigned across surviving members. The mechanics cause real incidents.
+### Consumer groups and rebalancing
 
-- **Eager (stop-the-world) rebalancing.** The classic protocol revokes *all* partitions from *all* members, then reassigns from scratch -- consumption pauses across the entire group during the reassignment. Cheap to reason about, expensive in availability.
-- **Cooperative / incremental rebalancing** ([KIP-429](https://cwiki.apache.org/confluence/display/KAFKA/KIP-429%3A+Kafka+Consumer+Incremental+Rebalance+Protocol), `CooperativeStickyAssignor`) revokes *only* the partitions that must move and lets everyone else keep consuming. No global stall. Use it for any group where a stop-the-world pause hurts -- which is most of them. This is what [`code/consumer-go.go`](side-quests/kafka-consumers/consumer-go.go) and its siblings configure.
-- **Slow-handler false rebalances.** If you don't call `poll()` within `max.poll.interval.ms`, the broker assumes the consumer is dead and *kicks it*, triggering a rebalance and reprocessing of its partitions. A handler that occasionally takes 6 minutes on a 5-minute interval will flap the whole group. Fixes: keep handlers fast, lower `max.poll.records` so each poll batch finishes in time, or raise the interval to cover the worst case.
-- **Clean leave on SIGTERM.** On scale-down or rollout, Kubernetes sends `SIGTERM`. A worker that traps it and `Close()`s the consumer **leaves the group cleanly**, so its partitions are reassigned *immediately*. A worker that is just killed leaves the group to wait out `session.timeout.ms` before noticing it's gone -- a window of stalled partitions. This is the consumer side of graceful shutdown from [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/) (trap SIGTERM → stop new work → finish in-flight → commit → exit). All three `code/consumer-*` examples implement it.
+When a consumer joins, leaves, or dies, the group **rebalances**: partitions are reassigned across the surviving members. The mechanics cause real incidents.
 
-### 3. Idempotency & atomic state changes
+The classic **eager** (stop-the-world) protocol revokes *all* partitions from *all* members and then reassigns from scratch, so consumption pauses across the entire group during the reassignment. It is cheap to reason about and expensive in availability. **Cooperative, incremental rebalancing** ([KIP-429](https://cwiki.apache.org/confluence/display/KAFKA/KIP-429%3A+Kafka+Consumer+Incremental+Rebalance+Protocol), `CooperativeStickyAssignor`) revokes *only* the partitions that must move and lets everyone else keep consuming, with no global stall. Use it for any group where a stop-the-world pause hurts, which is most of them; it is what [`consumer-go.go`](side-quests/kafka-consumers/consumer-go.go) and its siblings configure.
 
-Because delivery is at-least-once ([Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/)), every handler must tolerate seeing the same message twice.
+> **Warning:** If a consumer does not call `poll()` within `max.poll.interval.ms`, the broker assumes it is dead and kicks it, triggering a rebalance and reprocessing of its partitions. A handler that occasionally takes 6 minutes on a 5-minute interval will flap the whole group. Keep handlers fast, lower `max.poll.records` so each poll batch finishes in time, or raise the interval to cover the worst case.
 
-- **Idempotency key (`SETNX`).** Before doing the work, claim the message's natural key: Streamflow's `order-worker` does `SETNX order_id` in Redis (with a TTL). If the key already exists, this is a redelivery -- skip the work and let the offset advance. This is the [Idempotent Receiver](https://www.enterpriseintegrationpatterns.com/IdempotentReceiver.html) pattern; the Redis dependency appears in the C4 component diagram from [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/).
-- **Transactional outbox.** The "wrote to the DB but crashed before producing the event" hole is real. Fix it by writing business state *and* the outgoing event into the *same* database transaction (an `outbox` table); a separate relay (or CDC) reads the outbox and publishes. State and event now commit atomically -- no lost or phantom events. See [microservices.io: Transactional Outbox](https://microservices.io/patterns/data/transactional-outbox.html).
-- **Commit offsets only after durable work**, and **batch commits** for throughput. Committing before the work is at-most-once (loss on crash); committing after is at-least-once (duplicate on crash, absorbed by the idempotency key). The examples set `enable.auto.commit=false` and commit explicitly after `handle()` returns.
+Scale-down needs care too. On scale-down or rollout, Kubernetes sends `SIGTERM`. A worker that traps it and `Close()`s the consumer **leaves the group cleanly**, so its partitions are reassigned *immediately*. A worker that is simply killed leaves the group waiting out `session.timeout.ms` before it notices, a window of stalled partitions. This is the consumer side of graceful shutdown from [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/README.md): trap SIGTERM, stop new work, finish in-flight work, commit, exit. All three example consumers implement it.
 
-### 4. Failure handling: retries, poison messages, and the DLQ
+### Idempotency and atomic state changes
 
-- **Retryable vs poison.** A *transient* failure (DB blip, downstream timeout) → retry with backoff; it will likely succeed. A *poison* message (malformed, references deleted data, fails a hard invariant) will **never** succeed -- retrying it forever blocks the partition behind it. Because ordering is per-partition, a stuck message is **head-of-line blocking**: everything behind it on that partition waits.
-- **Dead-letter queue (DLQ).** After N attempts, route the poison message to an `orders.DLQ` topic and move on, unblocking the partition. **Alert on DLQ depth**; a human or a repair job drains it. The DLQ edge appears in the Streamflow container diagram ([Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/)).
-- **Tiered retry topics.** Rather than blocking live traffic with in-line backoff, some designs route transient failures to staged retry topics (`orders.retry.5s`, `orders.retry.1m`, `orders.retry.10m`), each consumed by a delayed worker. Live consumption never stalls; retries escalate through the tiers; whatever survives all tiers lands in the DLQ.
-- **Bound per-message time.** One slow handler must not block the batch -- set a per-message deadline and DLQ the overrun, or you reintroduce the slow-handler rebalance from §2.
+Because delivery is at-least-once, every handler must tolerate seeing the same message twice. The first tool is an **idempotency key**. Before doing the work, claim the message's natural key: Streamflow's `order-worker` does `SETNX order_id` in Redis, with a TTL. If the key already exists, this is a redelivery, so skip the work and let the offset advance. This is the [Idempotent Receiver](https://www.enterpriseintegrationpatterns.com/IdempotentReceiver.html) pattern; the Redis dependency appears in the C4 component diagram from [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/README.md).
 
-### 5. Sizing & operating the worker pool
+The second is the **transactional outbox**. The "wrote to the database but crashed before producing the event" hole is real. Close it by writing business state *and* the outgoing event into the *same* database transaction (an `outbox` table); a separate relay, or CDC, reads the outbox and publishes. State and event now commit atomically, with no lost or phantom events ([microservices.io: Transactional Outbox](https://microservices.io/patterns/data/transactional-outbox.html)).
 
-- **Partitions = max parallelism.** (§1.) Size partition count for peak workers plus headroom; you cannot scale useful workers past it.
-- **Lag is the master signal.** Consumer **lag** = log-end offset − committed offset = "messages behind." It is the right input for both alerting and autoscaling, because it directly measures whether the pool is keeping up (unlike CPU, which a blocked-on-I/O worker leaves low while lag explodes).
-- **KEDA scales on lag.** [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/) wires a KEDA `ScaledObject` to consumer-group lag: lag rises → KEDA raises worker replicas (capped at the partition count) → the Cluster Autoscaler adds nodes if pods are Pending → new members join → a rebalance assigns them partitions → lag drains. KEDA can also scale to **zero** when idle.
-- **At the cap, add partitions, not pods.** When lag keeps rising but replicas already equal the partition count, more pods do nothing (they sit idle, §1). The lever is *more partitions* (and a one-time reshuffle of key→partition mapping). This is the cap referenced by the Kubernetes topic's scaling story.
+The third is the order of offset commits. **Commit offsets only after durable work**, and **batch commits** for throughput. Committing before the work is at-most-once (loss on crash); committing after is at-least-once (a duplicate on crash, absorbed by the idempotency key). The examples set `enable.auto.commit=false` and commit explicitly after `handle()` returns.
 
-### Technique Catalog
+### Retries, poison messages, and the dead-letter queue
+
+Failures come in two kinds. A *transient* failure (a database blip, a downstream timeout) should be retried with backoff; it will likely succeed. A *poison* message (malformed, referencing deleted data, failing a hard invariant) will **never** succeed, and retrying it forever blocks the partition behind it. Because ordering is per partition, a stuck message is **head-of-line blocking**: everything behind it on that partition waits.
+
+The **dead-letter queue** breaks the block. After N attempts, route the poison message to an `orders.DLQ` topic and move on, unblocking the partition. **Alert on DLQ depth**; a human or a repair job drains it. The DLQ edge appears in the Streamflow container diagram of [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/README.md). Rather than blocking live traffic with in-line backoff, some designs also route transient failures to **tiered retry topics** (`orders.retry.5s`, `orders.retry.1m`, `orders.retry.10m`), each consumed by a delayed worker. Live consumption never stalls, retries escalate through the tiers, and whatever survives all tiers lands in the DLQ. Finally, bound the time per message: one slow handler must not block the batch, so set a per-message deadline and dead-letter the overrun, or you reintroduce the slow-handler rebalance described above.
+
+### Sizing and operating the pool
+
+Partitions are the maximum parallelism, so size the partition count for peak workers plus headroom; you cannot scale useful workers past it. Within that limit, **lag is the master signal**. Consumer lag is the log-end offset minus the committed offset, the number of messages behind. It is the right input for both alerting and autoscaling, because it directly measures whether the pool is keeping up, unlike CPU, which a worker blocked on I/O leaves low while lag explodes.
+
+KEDA scales on lag. [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/README.md) wires a KEDA `ScaledObject` to consumer-group lag: lag rises, KEDA raises worker replicas (capped at the partition count), the Cluster Autoscaler adds nodes if pods are Pending, new members join, a rebalance assigns them partitions, and lag drains. KEDA can also scale to **zero** when idle. When lag keeps rising but replicas already equal the partition count, more pods do nothing; they sit idle. The lever then is *more partitions*, with a one-time reshuffle of the key-to-partition mapping.
+
+The techniques of this section, and when to reach for each, are collected here for reference:
 
 | Technique | When to apply |
 |-----------|---------------|
-| One consumer per partition (group sizing) | Always -- never run more workers than partitions |
+| One consumer per partition (group sizing) | Always: never run more workers than partitions |
 | Cooperative/incremental rebalancing | Any group where stop-the-world stalls hurt |
 | Tune `max.poll.records` / `max.poll.interval.ms` | When handlers are slow enough to risk false rebalances |
 | Clean leave on SIGTERM | Every worker (fast partition reassignment on scale-down) |
@@ -189,68 +173,21 @@ Because delivery is at-least-once ([Messaging & Distributed Queueing](../../infr
 | Scale on consumer lag (KEDA) | Sizing the worker pool to backlog |
 | Add partitions (not pods) at the cap | When lag rises with replicas already = partitions |
 
----
+## Patterns worth internalizing
 
-## Patterns Worth Internalizing
+A handful of ideas recur through every section that follows:
 
-- **Persist progress, then proceed** — checkpoint each step so the computation is crash-proof; recover by reading the last durable state (or replaying the log).
-- **Queue + stateless worker pool** — push all state into a durable store so workers become disposable and horizontally scalable.
-- **At-least-once + idempotency = effectively-once** — there's no free exactly-once; engineer it with keys, dedup, and compensation.
-- **Saga, not 2PC, across services** — roll forward where you can, compensate where you can't.
-- **Trace across hops, profile within them** — observability locates the slow thing; profiling explains it. Measure before optimizing, every time.
+- **Persist progress, then proceed.** Checkpoint each step so the computation is crash-proof; recover by reading the last durable state, or by replaying the log.
+- **Queue plus stateless worker pool.** Push all state into a durable store so workers become disposable and horizontally scalable.
+- **At-least-once plus idempotency equals effectively-once.** There is no free exactly-once; engineer it with keys, dedup, and compensation.
+- **Saga, not 2PC, across services.** Roll forward where you can, compensate where you can't.
+- **Trace across hops, profile within them.** Observability locates the slow thing; profiling explains it. Measure before optimizing, every time.
 
-## Course modules
+## Where this chapter connects
 
-In the course you build the durable engine this topic describes, in Go, and run your own data pipeline, training runs, evals, releases, and agent runs on it. Temporal is the north star (history events and replay, sticky task queues, `GetVersion`, Continue-As-New).
+The ideas here reach across the library. Idempotency, retries, and partial failure in [RPC and Protocols](../02-rpc-and-protocols/README.md) are why durable execution exists. Event sourcing, replay, and the log as truth in [Distributed Data and Caching](../04-distributed-data-and-caching/README.md) are how recovery reconstructs state, and the same chapter covers the sharded store Temporal needs underneath (Cassandra or Postgres). Checkpointed training pipelines in [Training and Frameworks](../01-training-and-frameworks/README.md) use the same checkpoint pattern with a different payload. Traces, metrics, logs, RED and USE, and SLOs in [Observability](../../systems/04-observability/README.md) are how you operate long-running workflows. Partitioned logs, consumer groups, and lag in [Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/README.md) are the dynamics the partitioned consumers operate, and KEDA lag scaling and SIGTERM drains in [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/README.md) are how you scale and stop the worker pool. Decorators wrapping workflows and retries in [Coding and Design Patterns](../06-coding-and-design-patterns/README.md) show how an engine's API is built.
 
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `dur.01` | Append-only segmented event log | build | 8 |
-| `dur.02` | Workflow service + idempotent start (gRPC `WorkflowService`) | build | 8 |
-| `dur.03` | Task queue: visibility timeout, fenced leases, retries to DLQ, long poll | build | 8 |
-| `dur.04` | Task gRPC protocol, Go worker SDK, worker pool | build | 8 |
-| `dur.05` | Activities: retries, backoff + jitter, timeouts, heartbeats, idempotency keys | build | 8 |
-| `dur.06` | Deterministic replay workflows, `ContinueAsNew`, history paging, payload limits (2.7) | build | 8 |
-| `dur.07` | Durable timers (own min-heap; merges practice `go/04`) | build | 8 |
-| `dur.08` | Signals, cancellation, sagas (compensation) | build | 8 |
-| `dur.09` | Subprocess activity runner (Go) and the Python activity helper (2.8) | build | 8 |
-| `dur.10` | Raft HA for the log (optional) | build | 8, optional |
-| `dur.11` | Platform workflows `TrainRun` and `EvalSuite` | build | 8 |
-| `dur.12` | `ModelRelease`: export, `EvalSuite`, license and model-card gates, approval signal, canary | build | 9 |
-
-`dur.10` (Raft HA for the event log) is optional: the engine is complete without it, and HA is an extension on top.
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `dur.01` | [Append-only segmented event log](01-event-log.md) | build | 8 |
-| 2 | `dur.02` | [Workflow service + idempotent start, describe, list, paged history](02-workflow-service.md) | build | 8 |
-| 3 | `dur.03` | [Task queue: visibility timeout, fenced leases, retries to DLQ, long poll](03-task-queue.md) | build | 8 |
-| 4 | `dur.04` | [Task gRPC protocol, Go worker SDK, worker pool](04-task-protocol-and-workers.md) | build | 8 |
-| 5 | `dur.05` | [Activities: retries, backoff + jitter, timeouts, heartbeats, idempotency keys](05-activities.md) | build | 8 |
-| 6 | `dur.06` | [Deterministic replay workflows, ContinueAsNew, history paging, payload limits](06-deterministic-replay.md) | build | 8 |
-| 7 | `dur.07` | [Durable timers and the test clock](07-durable-timers.md) | build | 8 |
-| 8 | `dur.08` | [Signals, cancellation, sagas (compensation)](08-signals-cancellation-and-sagas.md) | build | 8 |
-| 9 | `dur.09` | [Subprocess activity runner (Go) and the Python activity helper](09-subprocess-activities.md) | build | 8 |
-| 10 | `dur.10` | [Raft HA for the durable log (optional)](10-raft-ha.md) | side | 8 |
-| 11 | `dur.11` | [Platform workflows TrainRun and EvalSuite](11-trainrun-and-evalsuite.md) | build | 8 |
-| 12 | `dur.12` | [ModelRelease: gates, canary, PromQL burn check, rollback](12-model-release.md) | build | 9 |
-
-## Connections to Other Tracks
-
-| Concept | Connected Track | Application |
-|---------|-----------------|-------------|
-| Idempotency, retries, partial failure | [RPC & Protocols](../02-rpc-and-protocols/) | Why durable execution exists |
-| Event sourcing, replay, the log as truth | [Distributed Data & Caching](../04-distributed-data-and-caching/) | How recovery reconstructs state |
-| Sharded state store under the engine | [Distributed Data & Caching](../04-distributed-data-and-caching/) | Temporal needs Cassandra/Postgres |
-| Checkpointed training pipelines | [Training & Frameworks](../01-training-and-frameworks/) | Same checkpoint pattern, different payload |
-| Traces, metrics, logs, RED/USE, SLOs | [Observability](../../systems/04-observability/) | Operating long-running workflows |
-| Partitioned logs, consumer groups, lag | [Messaging & Distributed Queueing](../../infrastructure/02-messaging-and-queueing/) | The queue and log dynamics the partitioned consumers operate |
-| KEDA lag scaling, SIGTERM drains | [Containers, Kubernetes & Workloads](../../infrastructure/01-containers-kubernetes/) | Scaling and stopping the worker pool |
-| Decorators wrapping workflows/retries | [Coding & Design Patterns](../06-coding-and-design-patterns/) | How the engine's API is built |
-
-## How Companies Apply These Patterns
+Industry leans on the same patterns:
 
 | Company | The pattern they lean on | Instance |
 |---------|--------------------------|----------|
@@ -260,3 +197,14 @@ In the course you build the durable engine this topic describes, in Go, and run 
 | Datadog / Honeycomb | Distributed tracing as a product | OpenTelemetry, span-based debugging |
 | Coinbase / Snap | Temporal for critical workflows | Payment and provisioning sagas |
 | Training labs | Checkpoint/replay for long jobs | Resumable distributed training runs |
+
+If you want to feel the ideas before reading the build, a short experiment with an off-the-shelf engine is worth an afternoon. Build a three-step pipeline (download, embed, index) as a Temporal or DBOS workflow and kill the worker mid-run; it resumes without redoing completed steps, and that is durable execution. Make a step non-idempotent ("charge the card"), force a retry, and watch the double charge; then fix it with an idempotency key. Add a compensation (a refund) and trigger a downstream failure to see the saga unwind. Finally, instrument the workflow with OpenTelemetry traces and profile the slowest activity to find where the wall-clock time actually goes.
+
+## Further reading
+
+- [Temporal documentation](https://docs.temporal.io/) and [DBOS documentation](https://docs.dbos.dev/), the primary references for this chapter.
+- [Apache Cadence documentation](https://cadenceworkflow.io/docs/), Temporal's open-source ancestor.
+- Temporal, ["What is durable execution"](https://temporal.io/blog/what-is-durable-execution).
+- microservices.io, [the saga pattern](https://microservices.io/patterns/data/saga.html) and [the transactional outbox](https://microservices.io/patterns/data/transactional-outbox.html).
+- [OpenTelemetry documentation](https://opentelemetry.io/docs/), for distributed tracing.
+- Brendan Gregg, [*Systems Performance*](https://www.brendangregg.com/systems-performance-2nd-edition-book.html), for profiling.

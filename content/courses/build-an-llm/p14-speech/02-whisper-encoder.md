@@ -1,34 +1,19 @@
 # Whisper encoder: conv stem, sinusoids, pre-LN blocks
 
-## Overview
+[The audio frontend](01-audio-frontend.md) turns any WAV file into the $80 \times 3000$ picture Whisper expects. This section builds the half of Whisper that looks at that picture. The encoder runs once per 30 s window and produces 1500 vectors that every decoding step in [Whisper decoder and checkpoint weights](03-whisper-decoder-and-weights.md) and [Whisper decoding and long-form transcription](04-whisper-decoding.md) attends to.
 
-| | |
-|---|---|
-| **Module** | `L14.2` · build · Python · Pass 12 · 2 to 3 h |
-| **Solution** | [`encoder.py`](../../../../course/solutions/python/tinyllm/speech/encoder.py): `WhisperConfig` (with `from_hf`), `whisper_sinusoids`, `WhisperAttention` (no key bias), `WhisperEncoderLayer`, `WhisperEncoder` |
-| **Contract** | [`course/contracts/py/tinyllm/speech/encoder.pyi`](../../../../course/contracts/py/tinyllm/speech/encoder.pyi) |
-| **Needs** | `L13.1` `Conv1d` · `M12.1` `conv_out_size` · `L5.3` `MultiHeadAttention` · `L0.4` `Linear`, `LayerNorm`, `ModuleList`, `Module` · `L0.2` `gelu`, `transpose` · `L0.1` `Tensor` · `M06.3` `PCG32`. Reading: `L5.1` attention, `L5.4` sinusoids, `L14.1` the features it reads |
-| **Used by** | `L14.3` (Whisper composes it; tiny Whisper logits match HF within $10^{-5}$) · later `L15.6` (the Rust encoder is proven against the same reference outputs) |
-| **Optional depth** | Radford et al., "Robust speech recognition via large-scale weak supervision" (2022), section 2.2 and figure 1; Gulati et al., "Conformer" (2020), for what a speech encoder can add; Xiong et al., "On layer normalization in the transformer architecture" (2020), for pre-LN |
+Nothing in the encoder is new. The stem is a convolution from [Conv layers and pooling on autograd](../p13-vision/01-conv-layers-and-pooling.md), the blocks use [Multi-head attention](../p05-transformer-2017/03-multi-head-attention.md), LayerNorm and MLPs come from [Module system and basic layers](../p00-foundations/04-module-system-and-layers.md), and the position table is a close cousin of the one in [Positional encodings: sinusoidal, learned](../p05-transformer-2017/04-positional-encodings.md). What is new is fitting these parts to a published checkpoint exactly. Three small conventions (concatenated sinusoids, a key projection without bias, pre-LN with a final norm) decide whether 37.8 million loaded weights compute anything meaningful. Get one wrong and the model loads, runs, and transcribes nothing.
 
-## Key Takeaways
+Besides the sections above, the encoder uses `conv_out_size` from [Convolution as a linear map](../../mathematics-for-computing/12-signals-and-images/01-convolution-as-a-linear-map.md) and `PCG32` from [Modular arithmetic, hashing, and PCG32 in Python](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md), both in *Mathematics for Computing*, plus `gelu` and `transpose` from [The op library and gradcheck_all](../p00-foundations/02-op-library-and-gradcheck.md) and `Tensor` from [Tensor, broadcasting backward, and no_grad](../p00-foundations/01-tensor-and-broadcasting-backward.md). It is also worth having [Scaled dot-product attention](../p05-transformer-2017/01-scaled-dot-product-attention.md) in mind. The result is checked against Hugging Face's tiny Whisper within $10^{-5}$. The solution is [`encoder.py`](../../../../course/solutions/python/tinyllm/speech/encoder.py), which defines `WhisperConfig` (with `from_hf`), `whisper_sinusoids`, `WhisperAttention` (no key bias), `WhisperEncoderLayer` and `WhisperEncoder`; the contract is [`encoder.pyi`](../../../../course/contracts/py/tinyllm/speech/encoder.pyi).
 
-- The stem is two width-3 `Conv1d`s with GELU; the second has stride 2, so 3000 mel frames (10 ms each) become 1500 positions (20 ms each).
-- Whisper's position table concatenates all the sines and then all the cosines, with frequencies $10000^{-i/(C/2-1)}$; L5.4's table interleaves them.
-- The blocks are pre-LN with unmasked self-attention and a final LayerNorm; the key projection has no bias.
-- A float32 table at angle 1499 rad is only good to about $3 \cdot 10^{-5}$ across libraries, so model parity uses the checkpoint's stored table.
+> **Learning objectives**
+> - Derive why two width-3 `Conv1d` layers, the second with stride 2, turn 3000 mel frames into exactly 1500 positions.
+> - Compute Whisper's sinusoid table by hand and explain how it differs from the interleaved table of the original Transformer.
+> - Explain why Whisper's key projection can drop its bias while the query and value projections cannot.
+> - Describe the pre-LN block structure and why it needs a final LayerNorm.
+> - Explain why model parity uses the checkpoint's stored position table rather than a freshly computed one.
 
-## How to read this chapter
-
-Sections 1 to 3 derive the stem, the position table and the block structure and work the small cases by hand. Section 4 fixes the interface and the cases a correct encoder must handle. Section 5 walks through the solution class by class and explains why each convention is the one the checkpoint needs. Try to predict each line before reading it.
-
----
-
-## 1. Why now
-
-`L14.1` turns any WAV file into the $80 \times 3000$ picture Whisper expects. This module is the half of Whisper that looks at the picture: the encoder runs once per 30 s window and produces 1500 vectors that every decoding step (`L14.3`, `L14.4`) attends to. Nothing in it is new: a convolution from `L13.1`, attention from `L5.3`, LayerNorm and MLPs from Part 0, sinusoids like `L5.4`'s. What is new is fitting them to a published checkpoint exactly, where three small conventions (concatenated sinusoids, a key projection without bias, pre-LN with a final norm) decide whether 37.8 million loaded weights compute anything meaningful. The engine's candle encoder (`L15.6`) is later proven against the same reference outputs.
-
-## 2. Principles
+## The notation
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -38,31 +23,43 @@ Sections 1 to 3 derive the stem, the position table and the block structure and 
 | $P$ | sinusoid table | `float32[A, d]` |
 | $x_\ell$ | hidden state after block $\ell$ | `float32[N, A, d]` |
 
-### 2.1 The convolutional stem
+## The convolutional stem
 
-Speech features are local: a phone lasts tens of milliseconds. Two `Conv1d` layers with kernel 3 and padding 1 mix each frame with its neighbours before attention sees anything:
+Speech features are local: a phone lasts tens of milliseconds. So before attention sees anything, two `Conv1d` layers with kernel 3 and padding 1 mix each frame with its neighbours:
+
 $$h_1 = \text{gelu}(\text{conv}_{n_\text{mels} \to d}^{k=3, p=1}(M)), \qquad h_2 = \text{gelu}(\text{conv}_{d \to d}^{k=3, s=2, p=1}(h_1)).$$
-With `M12.1`'s output size $\lfloor (n + 2p - k)/s \rfloor + 1$, the first keeps $3000$ frames and the second gives $\lfloor 2999/2 \rfloor + 1 = 1500$. Halving the length quarters the cost of attention. GELU is the exact form $x\,\Phi(x)$.
 
-### 2.2 Sinusoidal positions, Whisper's way
+With the output size formula $\lfloor (n + 2p - k)/s \rfloor + 1$, the first convolution keeps 3000 frames and the second gives $\lfloor 2999/2 \rfloor + 1 = 1500$. Each of the 1500 positions therefore covers 20 ms instead of 10. Halving the length quarters the cost of attention, which is the whole point of the stride. The GELU is the exact form $x\,\Phi(x)$, not the tanh approximation.
 
-With $C = d$ channels and half $= C/2$, Whisper uses $\text{inc} = \ln(10000)/(\text{half} - 1)$, frequencies $\omega_i = e^{-\text{inc}\cdot i}$ for $i < \text{half}$, and
+## Sinusoidal positions, Whisper's way
+
+After the stem, a fixed position table is added once. With $C = d$ channels and half $= C/2$, Whisper uses $\text{inc} = \ln(10000)/(\text{half} - 1)$, frequencies $\omega_i = e^{-\text{inc}\cdot i}$ for $i < \text{half}$, and
+
 $$P_{p} = [\sin(p\,\omega_0), \dots, \sin(p\,\omega_{\text{half}-1}),\ \cos(p\,\omega_0), \dots, \cos(p\,\omega_{\text{half}-1})].$$
-Compared with `L5.4`: the sines and cosines are two blocks, not interleaved pairs, and the ladder ends exactly at $1/10000$ (divided by half $- 1$, not half). The table is fixed, added once after the stem, and never trained. Computed in float32, an angle near 1499 rad carries the error of one ulp of `exp`, about $3 \cdot 10^{-5}$ after the multiplication, and different libraries' float32 `exp` differ by that ulp. Checkpoints store the table they were trained with, so `L14.3`'s loader checks the stored table against `whisper_sinusoids` (within $10^{-4}$) and then uses the stored one.
 
-### 2.3 Pre-LN blocks
+Compare this with the sinusoidal table in [Positional encodings](../p05-transformer-2017/04-positional-encodings.md) and you find two differences. The sines and cosines are two blocks, not interleaved pairs. And the frequency ladder ends exactly at $1/10000$, because the step is divided by half $- 1$, not by half. The table is fixed and never trained.
 
-Each block is
+There is one numerical wrinkle. Computed in float32, an angle near 1499 rad carries the error of one ulp of `exp`, about $3 \cdot 10^{-5}$ after the multiplication, and different libraries' float32 `exp` differ by exactly that ulp. A table computed here and one computed by PyTorch can therefore disagree at the $3 \cdot 10^{-5}$ level in the last rows. Checkpoints store the table they were trained with, so the loader in [the next section](03-whisper-decoder-and-weights.md) checks the stored table against `whisper_sinusoids` (within $10^{-4}$) and then uses the stored one.
+
+## Pre-LN blocks
+
+The rest of the encoder is a stack of blocks, each
+
 $$x \leftarrow x + \text{attn}(\text{LN}_1(x)), \qquad x \leftarrow x + W_2\,\text{gelu}(W_1\,\text{LN}_2(x) + b_1) + b_2,$$
-and the encoder ends with one more LayerNorm. Attention has no mask: every position attends to all 1500. It is `L5.3`'s multi-head attention with $Q, V, O$ biases but no $K$ bias (a bias on keys adds the same amount to every score of a query, which the softmax cancels, so Whisper drops it). Parameter names follow Hugging Face (`self_attn.k_proj.weight`, `self_attn_layer_norm`, `fc1`, `fc2`, `final_layer_norm`, `layer_norm`) so a checkpoint loads by name.
 
-## 3. Worked example by hand
+and the encoder ends with one more LayerNorm. Because each branch normalizes only its own input, the residual stream itself is never normalized between blocks, and the final norm is what brings it to a sensible scale before the decoder reads it.
 
-The table for $C = 4$ channels: half $= 2$, $\text{inc} = \ln(10000)/1 = 9.2103$, $\omega = (e^0, e^{-9.2103}) = (1, 10^{-4})$. Row $p$ is $[\sin p,\ \sin(10^{-4} p),\ \cos p,\ \cos(10^{-4} p)]$, so row 1 is $[0.8415,\ 0.0001,\ 0.5403,\ 1.0000]$ and row 2 is $[0.9093,\ 0.0002,\ -0.4161,\ 1.0000]$. `L5.4`'s interleaved table for the same size would put $\cos p$ second.
+Attention has no mask: every position attends to all 1500. It is ordinary multi-head attention with $Q$, $V$ and output biases but no $K$ bias. The reason is a small piece of algebra worth remembering: a bias on keys adds the same amount to every score of a query, and the softmax cancels any constant shift, so Whisper drops it. Parameter names follow Hugging Face (`self_attn.k_proj.weight`, `self_attn_layer_norm`, `fc1`, `fc2`, `final_layer_norm`, `layer_norm`) so that a checkpoint loads by name.
 
-The stem's lengths for a 30 s window: conv 1 maps 3000 frames to $(3000 + 2 - 3)/1 + 1 = 3000$; conv 2 maps them to $\lfloor (3000 + 2 - 3)/2 \rfloor + 1 = 1500$, exactly the table's rows. A 2998-frame input would give 1499 positions and is refused, as HF refuses it (on a small model with $A = 8$: 16 frames give 8).
+## Working it by hand
 
-## 4. The interface
+Take a table for $C = 4$ channels. Then half $= 2$, $\text{inc} = \ln(10000)/1 = 9.2103$, and $\omega = (e^0, e^{-9.2103}) = (1, 10^{-4})$. Row $p$ is $[\sin p,\ \sin(10^{-4} p),\ \cos p,\ \cos(10^{-4} p)]$, so row 1 is $[0.8415,\ 0.0001,\ 0.5403,\ 1.0000]$ and row 2 is $[0.9093,\ 0.0002,\ -0.4161,\ 1.0000]$. The interleaved table of the original Transformer would put $\cos p$ second.
+
+The stem's lengths for a 30 s window: conv 1 maps 3000 frames to $(3000 + 2 - 3)/1 + 1 = 3000$, and conv 2 maps them to $\lfloor (3000 + 2 - 3)/2 \rfloor + 1 = 1500$, exactly the table's rows. A 2998-frame input would give 1499 positions and is refused, as Hugging Face refuses it. On a small test model with $A = 8$, 16 frames give 8 positions.
+
+## Designing the API
+
+The configuration defaults to whisper-tiny's sizes, and the encoder maps `[N, n_mels, 2A]` to `[N, A, d]`:
 
 ```python
 @dataclass
@@ -79,34 +76,22 @@ class WhisperEncoder(Module):
     def forward(self, mel) -> Tensor: ...             # [N, n_mels, 2A] -> [N, A, d]
 ```
 
-### What a correct solution must handle
+A correct encoder reproduces the hand table for 4 channels, and matches Hugging Face's stored tables within $10^{-6}$ for short tables and $10^{-4}$ at 1500 rows (which is why the loader keeps the stored copy). The stem must turn $2A$ frames into $A$ positions and refuse other lengths, mel counts and ranks, since only 30 s windows are valid. The full encoder must match Hugging Face's tiny Whisper on a real clip within $10^{-5}$; that is what the decoder's logits and the later Rust encoder's parity both rest on. It must also handle 128 mels and batches (a batch of two, items independent). Every parameter name and shape must match, with no `k_proj.bias`, so loading by name works. `WhisperConfig.from_hf` must read Hugging Face config keys and refuse variants that would load wrong. Two structural properties make good tests: with zeroed branches the output is `layer_norm(stem + positions)`, which pins the pre-LN structure; and the last frame must reach the first output, which shows there is no mask.
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| Section 3's 4-channel table | unit, smoke | the hand values | the layout of positions |
-| HF's stored tables | golden | $10^{-6}$ short, $10^{-4}$ at 1500 rows | why the loader keeps the stored copy |
-| Stem lengths | unit | $2A$ frames give $A$ positions; other lengths, mel counts, ranks refused | 30 s windows only |
-| Full encoder vs HF tiny Whisper | golden | a real clip within $10^{-5}$ of HF | `L14.3`'s logits, `L15.6`'s parity |
-| 128 mels and batches | golden | a batch of two, items independent | other checkpoints, batching |
-| Parameter names | unit | every name and shape; no `k_proj.bias` | loading by name |
-| `WhisperConfig.from_hf` | unit | HF config keys; unsupported variants refused | refusing what would load wrong |
-| Zeroed branches | property | leave `layer_norm(stem + positions)` | the pre-LN block structure |
-| Last frame vs first output | property | the last frame reaches the first output | no mask in the encoder |
+## Building it step by step
 
-## 5. The solution, step by step
+The reasoning chain:
 
-### From first principles
-
-1. **The checkpoint fixes the architecture.** The goal is not a good speech encoder but the exact function HF's `WhisperEncoder` computes with given weights. Every convention (layout of the table, which projections have biases, where the norms are) must match, and names must match HF's so a state dict loads by name with no mapping table.
-2. **Length is fixed by the table.** The position table has $A = 1500$ rows and is added elementwise, so the stem must output exactly $A$ positions. With section 2.1's formula, only $2A$ frames give $A$, so any other length is refused instead of padded or truncated silently.
-3. **Positions are data, not parameters.** The table is a deterministic function of $(A, d)$; computing it in the constructor is enough for random-init models, and `L14.3` swaps in the checkpoint's stored copy for parity (section 2.2).
+1. **The checkpoint fixes the architecture.** The goal is not a good speech encoder but the exact function Hugging Face's `WhisperEncoder` computes with given weights. Every convention (layout of the table, which projections have biases, where the norms are) must match, and names must match Hugging Face's so that a state dict loads by name with no mapping table.
+2. **Length is fixed by the table.** The position table has $A = 1500$ rows and is added elementwise, so the stem must output exactly $A$ positions. By the output size formula, only $2A$ frames give $A$, so any other length is refused instead of padded or truncated silently.
+3. **Positions are data, not parameters.** The table is a deterministic function of $(A, d)$. Computing it in the constructor is enough for random-init models, and the loader swaps in the checkpoint's stored copy for parity.
 4. **The key bias is redundant.** A key bias $b$ adds $q \cdot b$ to every score of query $q$, the same for all keys, and softmax is invariant to adding a constant to all its inputs. So `k_proj` has no bias, and loading must not expect one.
 5. **Pre-LN puts the norm inside the branch.** The residual stream $x$ is never normalized between blocks; each branch reads $\text{LN}(x)$ and adds its output back. That leaves the stream unnormalized at the end, which is why a final LayerNorm is needed.
 6. **The encoder hears the whole window.** Speech recognition benefits from right context, and the window is processed once, so attention takes no mask.
 
-### The code, annotated
+### The sinusoid table
 
-**The sinusoid table.** Angles are computed in float32 exactly as Whisper does; `sin` and `cos` are then evaluated in float64 and rounded once, so the only remaining error is the float32 `exp` ulp discussed in section 2.2.
+Angles are computed in float32 exactly as Whisper does; `sin` and `cos` are then evaluated in float64 and rounded once, so the only remaining error is the float32 `exp` ulp discussed above.
 
 ```python
 def whisper_sinusoids(length, channels, max_timescale=10000.0):
@@ -118,13 +103,15 @@ def whisper_sinusoids(length, channels, max_timescale=10000.0):
     inc = np.float32(math.log(max_timescale) / (half - 1))
     inv = np.exp(-inc * np.arange(half, dtype=np.float32))
     t = (np.arange(length, dtype=np.float32)[:, None] * inv[None, :]).astype(np.float64)
-    # Concatenated blocks [sin | cos], not L5.4's interleaved pairs.
+    # Concatenated blocks [sin | cos], not the original Transformer's interleaved pairs.
     return np.concatenate([np.sin(t), np.cos(t)], axis=1).astype(np.float32)
 ```
 
-For $C = 4$: `half = 2`, `inc = ln(10000)`, `inv = (1, 1e-4)`, and row 1 is `[sin 1, sin 1e-4, cos 1, cos 1e-4]`, section 3's table. `channels >= 4` is required because with `half = 1` the step divides by zero.
+For $C = 4$: `half = 2`, `inc = ln(10000)`, `inv = (1, 1e-4)`, and row 1 is `[sin 1, sin 1e-4, cos 1, cos 1e-4]`, the hand table. `channels >= 4` is required because with `half = 1` the step divides by zero.
 
-**Attention without a key bias.** Subclassing L5.3 keeps the attention math in one place; only the key projection is replaced.
+### Attention without a key bias
+
+Subclassing `MultiHeadAttention` keeps the attention math in one place; only the key projection is replaced.
 
 ```python
 class WhisperAttention(MultiHeadAttention):
@@ -135,7 +122,9 @@ class WhisperAttention(MultiHeadAttention):
         self.k_proj = Linear(d, d, bias=False, rng=r)
 ```
 
-**The block.** Two pre-LN residual branches. Attention is called as `self_attn(h, h)` with no mask: queries and keys are the same normalized sequence, and every position sees every other.
+### The block
+
+Two pre-LN residual branches. Attention is called as `self_attn(h, h)` with no mask: queries and keys are the same normalized sequence, and every position sees every other.
 
 ```python
 class WhisperEncoderLayer(Module):
@@ -154,7 +143,11 @@ class WhisperEncoderLayer(Module):
         return x + self.fc2(F.gelu(self.fc1(h)))    # exact GELU
 ```
 
-**The encoder.** Validate the shape, run the stem, add positions, run the blocks, and normalize once at the end.
+Note the naming trap: Hugging Face's `final_layer_norm` inside a layer is the MLP branch's pre-norm, not the encoder's final norm. The encoder's final norm is the top-level `layer_norm`.
+
+### The encoder
+
+Validate the shape, run the stem, add positions, run the blocks, and normalize once at the end.
 
 ```python
 def forward(self, mel):
@@ -174,80 +167,100 @@ def forward(self, mel):
     return self.layer_norm(x)                    # pre-LN needs a final norm
 ```
 
-**The config.** `WhisperConfig.from_hf` reads HF's key names (`num_mel_bins`, `max_source_positions`, `d_model`, ...) and refuses variants this code would load wrongly: a non-`whisper` `model_type`, decoder heads or FFN size different from the encoder's (the solution uses one value for both), an activation other than `gelu`, and `scale_embedding`. `validate` requires positive sizes, `d` divisible by `n_heads`, and an even `d` for the two halves of the table.
+### The config
 
-Full solution: [`encoder.py`](../../../../course/solutions/python/tinyllm/speech/encoder.py).
+`WhisperConfig.from_hf` reads Hugging Face's key names (`num_mel_bins`, `max_source_positions`, `d_model`, ...) and refuses variants this code would load wrongly: a non-`whisper` `model_type`, decoder heads or FFN size different from the encoder's (the solution uses one value for both), an activation other than `gelu`, and `scale_embedding`. `validate` requires positive sizes, `d` divisible by `n_heads`, and an even `d` for the two halves of the table. The full solution is [`encoder.py`](../../../../course/solutions/python/tinyllm/speech/encoder.py).
 
-### Why this solution
+### Why this design
 
-- **Cost.** The stem costs $O(N \cdot 2A \cdot 3 d \cdot n_\text{mels} + N \cdot A \cdot 3 d^2)$. Each block costs $O(N A^2 d)$ for attention and $O(N A d\, d_\text{ff})$ for the MLP; the stride-2 conv halves $A$ and therefore quarters the attention term.
-- **Alternatives.** Reusing L5.4's interleaved table, or giving `k_proj` a bias "for symmetry", would produce a model that loads (or nearly loads) and outputs nonsense. A name-mapping layer between the solution's names and HF's would work but is one more place to get wrong; using HF's names directly makes loading a dictionary lookup. Accepting any frame count and slicing the table would hide a misconfigured frontend.
-- **Tradeoffs accepted.** Only full 30 s windows are accepted, as in Whisper itself; shorter audio is padded by `L14.1`. Encoder and decoder share head count and FFN width, which holds for all published Whisper sizes.
+The stem costs $O(N \cdot 2A \cdot 3 d \cdot n_\text{mels} + N \cdot A \cdot 3 d^2)$. Each block costs $O(N A^2 d)$ for attention and $O(N A d\, d_\text{ff})$ for the MLP; the stride-2 convolution halves $A$ and therefore quarters the attention term.
 
-### Explain it back
+The alternatives all fail in instructive ways. Reusing the interleaved table, or giving `k_proj` a bias "for symmetry", produces a model that loads (or nearly loads) and outputs nonsense. A name-mapping layer between the solution's names and Hugging Face's would work, but it is one more place to get wrong; using Hugging Face's names directly makes loading a dictionary lookup. Accepting any frame count and slicing the table would hide a misconfigured frontend.
 
-<details><summary>Why can Whisper drop the key bias but not the query or value bias?</summary>
+Two tradeoffs are accepted. Only full 30 s windows are accepted, as in Whisper itself, and shorter audio is padded by the frontend. Encoder and decoder share head count and FFN width, which holds for all published Whisper sizes.
 
-A key bias adds $q \cdot b$ to all scores of a query equally, and softmax cancels a constant shift. A query bias adds $b_q \cdot k_j$, which differs per key, and a value bias changes the output vectors; neither cancels.
+## What can go wrong
 
-</details>
+The dangerous mistakes here are the ones that load cleanly. Interleaving sin and cos as in the original Transformer gives a model that loads fine and transcribes nothing; putting the cosines first does the same, more subtly. The solution concatenates `[np.sin(t), np.cos(t)]` with sines first, and divides the frequency step by `half - 1` so that the last frequency really is $10^{-4}$. Forgetting to add the positions at all leaves a model that cannot tell when a sound happened.
 
-<details><summary>Why does the frequency step divide by <code>half - 1</code>?</summary>
+> **Warning:** A causal mask copied from the decoder means early frames never hear later ones. The encoder calls `self_attn(h, h)` with no mask.
 
-So that the last frequency, $i = \text{half} - 1$, is exactly $e^{-\ln 10000} = 10^{-4}$. Dividing by `half` (L5.4's convention) stops one step short, and every column but the first has a different frequency from the one the checkpoint was trained with.
+The remaining mistakes, and how the solution avoids each:
 
-</details>
-
-<details><summary>What would a zero-initialized attention and MLP branch produce, and why does that test the structure?</summary>
-
-With both branches outputting zero, each block is the identity on the residual stream, so the output is `layer_norm(stem + positions)`. A post-LN block would normalize the stream at every layer and a missing final norm would leave it unnormalized, so either mistake changes this output.
-
-</details>
-
-<details><summary>Why refuse 2998 frames instead of letting the stem produce 1499 positions?</summary>
-
-The positions are added row by row from a 1500-row table, and the checkpoint was trained only on full windows. Accepting a shorter input would need a slice of the table, silently changing what each position means to the model; refusing makes a frontend bug visible.
-
-</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
+| Mistake | Symptom | Fix in the solution |
 |---|---|---|
-| 1. sin and cos interleaved as in `L5.4` | loads fine, transcribes nothing | `np.concatenate([np.sin(t), np.cos(t)], axis=1)` |
-| 2. cosines first | the same, more subtly | sines are the first block |
-| 3. the second conv without stride 2 | 3000 positions against a 1500-row table | `conv2` is `Conv1d(d, d, 3, stride=2, pad=1)` |
-| 4. tanh GELU in the stem | outputs off by about $10^{-3}$ | `F.gelu` is the exact $x\,\Phi(x)$ |
-| 5. a bias on `k_proj` | strict loading fails: an unexpected key | `WhisperAttention` replaces `k_proj` with `Linear(d, d, bias=False)` |
-| 6. post-LN blocks | normalized residual stream, wrong outputs | each branch normalizes its input, `x + branch(LN(x))` |
-| 7. no final LayerNorm | unnormalized states reach the decoder | `forward` returns `self.layer_norm(x)` |
-| 8. a causal mask copied from the decoder | early frames never hear later ones | `self_attn(h, h)` with no mask |
-| 9. positions never added | the model cannot tell when a sound happened | `transpose(x, 1, 2) + self.positions` after the stem |
-| 10. dividing the frequency step by $C/2$ | the last frequency is not $10^{-4}$ | divides by `half - 1` |
+| second conv without stride 2 | 3000 positions against a 1500-row table | `conv2` is `Conv1d(d, d, 3, stride=2, pad=1)` |
+| tanh GELU in the stem | outputs off by about $10^{-3}$ | `F.gelu` is the exact $x\,\Phi(x)$ |
+| a bias on `k_proj` | strict loading fails on an unexpected key | `Linear(d, d, bias=False)` |
+| post-LN blocks | normalized residual stream, wrong outputs | `x + branch(LN(x))` |
+| no final LayerNorm | unnormalized states reach the decoder | returns `self.layer_norm(x)` |
 | accepting zero layers | an encoder that is only a stem | `validate` requires every size $\ge 1$ |
-| accepting a shorter window | positions silently misaligned | `forward` requires exactly $2A$ frames |
+| accepting a shorter window | positions silently misaligned | requires exactly $2A$ frames |
 | accepting an odd width | sin and cos halves of unequal size | `validate` requires an even `d` |
 
-## 7. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `L13.1` | `Conv1d(n_mels, d, 3, pad=1)` and `Conv1d(d, d, 3, stride=2, pad=1)` |
-| Back | `M12.1` | `conv_out_size` for the length check |
-| Back | `L5.3` | `WhisperAttention` subclasses `MultiHeadAttention` |
-| Back | `L0.4` | `Linear`, `LayerNorm`, `ModuleList`, `Module` |
-| Back | `L0.2` | `gelu` (exact) and `transpose` |
-| Back | `L0.1` | arrays become a `Tensor` at the input |
-| Back | `M06.3` | `PCG32(0).substream("init")` when no rng is given |
-| Back | `L5.1`, `L5.4`, `L14.1` | attention, the other sinusoid layout, the features (reading) |
-| Forward | `L14.3` | `Whisper` runs the encoder once per window and hands its output to every decoder layer's cross-attention |
-| Forward | `L15.6` | the Rust encoder on candle is checked against these outputs (with B14's serving group) |
+[Whisper decoder and checkpoint weights](03-whisper-decoder-and-weights.md) composes this encoder into `Whisper`, runs it once per window, and hands its output to every decoder layer's cross-attention. Later, the engine's Rust encoder on candle is checked against these same outputs.
 
-## Going further
+Looking back, the pieces came from across the book: `Conv1d(n_mels, d, 3, pad=1)` and `Conv1d(d, d, 3, stride=2, pad=1)` from the convolution layers, `conv_out_size` for the length check, `MultiHeadAttention` as the base class, `Linear`, `LayerNorm`, `ModuleList` and `Module` from the module system, the exact `gelu` and `transpose` from the op library, `Tensor` at the input, and `PCG32(0).substream("init")` when no rng is given.
 
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `WhisperEncoder` | HF `WhisperEncoder` | SDPA and flash attention, gradient checkpointing, a conv stem in fp16 | `transformers/models/whisper/modeling_whisper.py` |
-| `WhisperEncoder` | `whisper.cpp` | the same encoder in C with quantized weights and Metal or CUDA kernels | `ggerganov/whisper.cpp`, `whisper_build_graph_encoder` |
-| the 30 s window | Distil-Whisper, `faster-whisper` | batched chunks and CTranslate2 kernels; the window itself never changes | `huggingface/distil-whisper` |
-| the stem | Conformer encoders | convolution modules inside every block, not only at the input | Gulati et al. (2020) |
+### Further reading
+
+- Radford et al., "Robust speech recognition via large-scale weak supervision" (2022), section 2.2 and figure 1.
+- Gulati et al., "Conformer" (2020), for what a speech encoder can add: convolution modules inside every block, not only at the input.
+- Xiong et al., "On layer normalization in the transformer architecture" (2020), for pre-LN.
+- Hugging Face's `WhisperEncoder` adds SDPA and flash attention, gradient checkpointing and a conv stem in fp16; see `transformers/models/whisper/modeling_whisper.py`.
+- `whisper.cpp` implements the same encoder in C with quantized weights and Metal or CUDA kernels; see `ggerganov/whisper.cpp`, `whisper_build_graph_encoder`.
+- Distil-Whisper and `faster-whisper` add batched chunks and CTranslate2 kernels; the 30 s window itself never changes. See `huggingface/distil-whisper`.
+
+## Key terms
+
+- **conv stem**: the two width-3 `Conv1d` layers with GELU that precede attention; the second's stride 2 halves the sequence length.
+- **concatenated sinusoids**: Whisper's position layout, all sines then all cosines, with frequencies $10000^{-i/(C/2-1)}$.
+- **pre-LN block**: a residual block whose branches normalize their input, `x + branch(LN(x))`, leaving the stream itself unnormalized.
+- **key bias redundancy**: a bias on keys shifts every score of a query equally, so softmax cancels it.
+
+## Summary
+
+- The stem is two width-3 `Conv1d`s with exact GELU; the second has stride 2, so 3000 mel frames (10 ms each) become 1500 positions (20 ms each).
+- Whisper's position table concatenates all the sines and then all the cosines, with frequencies $10000^{-i/(C/2-1)}$; the original Transformer's table interleaves them.
+- The blocks are pre-LN with unmasked self-attention and a final LayerNorm, and the key projection has no bias.
+- A float32 table at angle 1499 rad is only good to about $3 \cdot 10^{-5}$ across libraries, so model parity uses the checkpoint's stored table.
+- Only exactly $2A$ frames are accepted; anything else is a frontend bug made visible.
+
+## Review questions
+
+1. Why can Whisper drop the key bias but not the query or value bias?
+   <details><summary>Answer</summary>
+
+   A key bias adds $q \cdot b$ to all scores of a query equally, and softmax cancels a constant shift. A query bias adds $b_q \cdot k_j$, which differs per key, and a value bias changes the output vectors; neither cancels.
+
+   </details>
+
+2. Why does the frequency step divide by `half - 1`?
+   <details><summary>Answer</summary>
+
+   So that the last frequency, $i = \text{half} - 1$, is exactly $e^{-\ln 10000} = 10^{-4}$. Dividing by `half` (the original Transformer's convention) stops one step short, and every column but the first has a different frequency from the one the checkpoint was trained with.
+
+   </details>
+
+3. What would a zero-initialized attention and MLP branch produce, and why does that test the structure?
+   <details><summary>Answer</summary>
+
+   With both branches outputting zero, each block is the identity on the residual stream, so the output is `layer_norm(stem + positions)`. A post-LN block would normalize the stream at every layer and a missing final norm would leave it unnormalized, so either mistake changes this output.
+
+   </details>
+
+4. Why refuse 2998 frames instead of letting the stem produce 1499 positions?
+   <details><summary>Answer</summary>
+
+   The positions are added row by row from a 1500-row table, and the checkpoint was trained only on full windows. Accepting a shorter input would need a slice of the table, silently changing what each position means to the model; refusing makes a frontend bug visible.
+
+   </details>
+
+5. Compute row 2 of the 4-channel table.
+   <details><summary>Answer</summary>
+
+   With $\omega = (1, 10^{-4})$, row 2 is $[\sin 2, \sin(2 \cdot 10^{-4}), \cos 2, \cos(2 \cdot 10^{-4})] = [0.9093, 0.0002, -0.4161, 1.0000]$.
+
+   </details>

@@ -1,48 +1,36 @@
-# Part 7: The Modern Decoder Block
+# The Modern Decoder Block
 
-What changed between 2017 and a Llama-family model. Pre-LN with RMSNorm, gated MLPs (SwiGLU, GeGLU), rotary position embeddings and context extension (PI, NTK, YaRN, Llama-3 scaling), grouped-query and multi-head latent attention, sliding windows and attention sinks, mixture of experts, and the Llama-family model that loads Hugging Face configs and weights and matches SmolLM2-135M.
+Between 2017 and a Llama-family model, almost every part of the transformer block changed. The previous two chapters gave you the 2017 architecture and the objectives built on it; none of that code can load a single checkpoint published today. This chapter rebuilds the block piece by piece until it loads Hugging Face configs and weights and matches SmolLM2-135M's logits.
 
-**Course passes**: L7.1 to L7.9 belong to [Pass 5](../paths/course-p05-transformer/milestone.md)
+The arc follows the block from the inside out. You start with the two changes that make deep stacks train without warmup: moving the norm in front of each sublayer and replacing LayerNorm with RMSNorm. Next comes the gated MLP that now holds most of a block's parameters, then rotary position embeddings, which put position inside every attention layer by rotating queries and keys so a score depends only on the offset between them, and the context-extension rules (position interpolation, NTK, YaRN, Llama 3 scaling, and the optional ALiBi) that stretch a model past its training length.
 
-**Before you start**: the just-in-time math `M05.1` (parameter and FLOP counting); [Part 5](../p05-transformer-2017/) and [Part 6](../p06-objectives/); rotations from [Precalculus](../../mathematics-for-computing/00-precalculus/).
+Attention itself is next, and its theme is that KV bytes, not FLOPs, are the serving cost. Grouped-query attention shares key and value heads across query heads; multi-head latent attention compresses them into a latent and absorbs the up-projection into the query; sliding windows and attention sinks bound the cache for streams of any length. Mixture of experts then routes each token to $k$ of $E$ experts, so parameters grow without growing per-token compute, and shows that balancing the load is the hard part. The last section assembles everything into one model, loads real checkpoints by name, and downloads them with a resumable, verified downloader.
 
-## Key ideas
+> **Learning objectives**
+> - Implement RMSNorm and the Pre-LN residual step, and explain why Pre-LN trains without warmup.
+> - Build SwiGLU and GeGLU MLPs whose shapes and widths match published checkpoints.
+> - Implement RoPE in both layouts and every common context-extension rule, matching Hugging Face to long positions.
+> - Build grouped-query and multi-head latent attention with a cache hook, sliding windows, and sinks, and reason about KV bytes per token.
+> - Route tokens through a mixture of experts with sorted dispatch and both load-balancing schemes.
+> - Assemble a Llama-family model that loads Hugging Face configs and weights and matches SmolLM2-135M's logits.
 
-- **RoPE** rotates each pair of query and key dimensions by an angle proportional to position, so their dot product depends only on the relative offset.
-- **KV bytes are the serving cost**: GQA shares key and value heads across query heads; MLA compresses them into a latent and absorbs the up-projection into the query.
-- **MoE** routes each token to $k$ of $E$ experts, so parameters grow without growing per-token compute; balancing the load is the hard part.
+## Before you begin
 
-## Modules
+You should have [The Transformer (2017)](../p05-transformer-2017/README.md) and [Objectives and Adaptation](../p06-objectives/README.md) behind you, along with the `Tensor`, op library, and module system of the [foundations chapter](../p00-foundations/README.md). From *Mathematics for Computing*, [Counting: params, FLOPs, KV bytes, memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md) supplies the parameter and KV-byte counts used throughout, and the rotations and frequency ladders of [Precalculus](../../mathematics-for-computing/00-precalculus/README.md) are the mathematics behind RoPE.
 
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `L7.1` | Pre-LN, RMSNorm | build | 5 |
-| `L7.2` | Gated MLPs: SwiGLU, GeGLU | build | 5 |
-| `L7.3` | RoPE (half and interleaved layouts, partial rotary) | build | 5 |
-| `L7.4` | Context extension: PI, NTK, YaRN, Llama-3 scaling; ALiBi | build | 5 |
-| `L7.5` | MQA/GQA attention with cache hook, window, learned sinks | build | 5 |
-| `L7.6` | Multi-head latent attention (DeepSeek-V2/V3), weight absorption | build | 5 |
-| `L7.7` | Sliding window, StreamingLLM sinks, learned sinks | build | 5 |
-| `L7.8` | Mixture of Experts: routing, sorted dispatch, Switch aux loss, aux-free bias | build | 5 |
-| `L7.9` | Llama-family model, HF config, weight loading, downloader | build | 5 |
+## In this chapter
 
-The ALiBi part of `L7.4` is optional (course decision D31).
+1. [Pre-LN and RMSNorm](01-pre-ln-rmsnorm.md). Normalizing by the root mean square with eps inside the root, Gemma's stored-gain offset, and the Pre-LN residual step that gives the gradient an identity path.
+2. [Gated MLPs: SwiGLU and GeGLU](02-gated-mlps.md). Two projections, one gating the other, the activation on the gate, and why three matrices at width $\frac83 d$ explain Llama's odd hidden sizes.
+3. [Rotary Position Embeddings](03-rope.md). Rotating query and key pairs by position-proportional angles so scores depend on relative position, in the half and interleaved layouts, with partial rotary and float32 angles.
+4. [Context Extension: PI, NTK, YaRN, Llama 3 Scaling, and ALiBi](04-context-extension.md). Why slow RoPE pairs break past the trained context and how each scaling rule fixes the frequencies; ALiBi is an optional final part.
+5. [Grouped-Query Attention with a Cache Hook, Windows, and Sinks](05-gqa-attention.md). Sharing kv heads across query heads, the visibility rule for cached calls, the hook through which every KV cache plugs in, and learned sinks.
+6. [Multi-Head Latent Attention and Weight Absorption](06-multi-head-latent-attention.md). DeepSeek's low-rank latent cache, the decoupled rope key, and the absorbed decode form that never rebuilds per-head keys.
+7. [Sliding Windows and Attention Sinks](07-sliding-window-and-sinks.md). One visibility rule for windows and sink tokens, a cache that holds at most $S + W - 1$ keys, and a float64 reference attention with learned sinks.
+8. [Mixture of Experts](08-mixture-of-experts.md). Three routers, sorted dispatch with an inverse permutation, the Switch load-balancing loss, and DeepSeek-V3's aux-free bias.
+9. [The Llama-Family Model: Config, Weight Loading, and Download](09-llama-family-model.md). Assembling the block, reading every `config.json` dialect, loading strictly by name, counting SmolLM2's 134,515,008 parameters, and a resumable, verified downloader.
 
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `L7.1` | [Pre-LN, RMSNorm](01-pre-ln-rmsnorm.md) | build | 5 |
-| 2 | `L7.2` | [Gated MLPs: SwiGLU, GeGLU](02-gated-mlps.md) | build | 5 |
-| 3 | `L7.3` | [RoPE (half and interleaved layouts, partial rotary)](03-rope.md) | build | 5 |
-| 4 | `L7.4` | [Context extension: PI, NTK, YaRN, Llama-3 scaling; ALiBi (optional part)](04-context-extension.md) | build | 5 |
-| 5 | `L7.5` | [MQA/GQA attention with cache hook, window, learned sinks](05-gqa-attention.md) | build | 5 |
-| 6 | `L7.6` | [Multi-head latent attention (DeepSeek-V2/V3), weight absorption](06-multi-head-latent-attention.md) | build | 5 |
-| 7 | `L7.7` | [Sliding window, StreamingLLM sinks, learned sinks](07-sliding-window-and-sinks.md) | build | 5 |
-| 8 | `L7.8` | [Mixture of Experts: routing, sorted dispatch, Switch aux loss, aux-free bias](08-mixture-of-experts.md) | build | 5 |
-| 9 | `L7.9` | [Llama-family model, HF config, weight loading, downloader](09-llama-family-model.md) | build | 5 |
-
-## Going further
+## Further reading
 
 - Su et al., [RoFormer](https://arxiv.org/abs/2104.09864); Peng et al., [YaRN](https://arxiv.org/abs/2309.00071); Ainslie et al., [GQA](https://arxiv.org/abs/2305.13245); DeepSeek-AI, [DeepSeek-V2](https://arxiv.org/abs/2405.04434) (MLA).
 - Shazeer, [*GLU Variants Improve Transformer*](https://arxiv.org/abs/2002.05202); Fedus et al., [Switch Transformers](https://arxiv.org/abs/2101.03961); Xiao et al., [StreamingLLM](https://arxiv.org/abs/2309.17453).

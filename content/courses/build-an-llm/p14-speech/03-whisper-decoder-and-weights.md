@@ -1,81 +1,55 @@
 # Whisper decoder and checkpoint weights
 
-## Overview
+[The encoder](02-whisper-encoder.md) turns audio features into 1500 vectors, but it cannot produce a single word. Generating a transcript needs the other half of Whisper: a decoder that compares its text prefix with those vectors and predicts the next token. This section builds that decoder and the loader that fills it with a published checkpoint. With both in place, a real Whisper checkpoint produces logits that match Hugging Face's. Choosing languages, timestamps and search strategies is policy, and it waits for [Whisper decoding and long-form transcription](04-whisper-decoding.md).
 
-| | |
-|---|---|
-| **Module** | `L14.3` · build · Python · Pass 12 · 2 to 3 h |
-| **Solution** | [`decoder.py`](../../../../course/solutions/python/tinyllm/speech/decoder.py): `CrossKV`, `WhisperDecoderLayer`, `WhisperDecoder`, `Whisper` (`encode`, `encode_wav`, `new_cache`, `param_count`, `from_pretrained`); [`hf_whisper.py`](../../../../course/solutions/python/tinyllm/io/hf_whisper.py): `whisper_state_from_hf`, `read_whisper` |
-| **Contract** | [`decoder.pyi`](../../../../course/contracts/py/tinyllm/speech/decoder.pyi), [`hf_whisper.pyi`](../../../../course/contracts/py/tinyllm/io/hf_whisper.pyi) |
-| **Needs** | `L14.1`; `L14.2`, `L8.2`, `L0.6`, `L0.4`, `L0.2`, `L0.1`, `L5.1`, `L5.2`, `L5.4`, `M06.3`. Reading: `L7.9` |
-| **Used by** | `ethics.08`, `L14.4`. With this module a published Whisper checkpoint produces logits that match HF |
-| **Optional depth** | Compare token-at-a-time and chunked decoding, including a batch with different prompts. |
+Two ideas carry the section. The first is that a Whisper decoder sees two kinds of context, the growing text prefix and the fixed audio window, and each wants its own cache discipline. The second is that a checkpoint is a claim about an architecture, and the loader's job is to verify that claim strictly rather than load whatever fits.
 
-## Key Takeaways
+The decoder builds directly on [KV cache, incremental decode, incremental UTF-8 detokenizer, generate](../p08-inference/02-kv-cache-and-generate.md) for its self-attention cache and offset masks, on [Safetensors for every dtype, atomic checkpoints, and the token stream](../p00-foundations/06-safetensors-checkpoints-and-token-streams.md) for reading weights, and on [Module system and basic layers](../p00-foundations/04-module-system-and-layers.md) for registered modules, embeddings, normalization and strict state loading. Attention comes from [Scaled dot-product attention](../p05-transformer-2017/01-scaled-dot-product-attention.md), causal masks from [Masks: causal, padding, sliding window, additive](../p05-transformer-2017/02-masks.md), and learned positional embeddings from [Positional encodings](../p05-transformer-2017/04-positional-encodings.md); tensors and differentiable operations come from [Tensor, broadcasting backward, and no_grad](../p00-foundations/01-tensor-and-broadcasting-backward.md) and [The op library and gradcheck_all](../p00-foundations/02-op-library-and-gradcheck.md), and reproducible initialization from PCG32 in *Mathematics for Computing* ([Modular arithmetic, hashing, and PCG32 in Python](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md)). To download a checkpoint before calling the local loader, use the downloader from [Llama-family model, HF config, weight loading, downloader](../p07-modern-block/09-llama-family-model.md). The solution is [`decoder.py`](../../../../course/solutions/python/tinyllm/speech/decoder.py) (`CrossKV`, `WhisperDecoderLayer`, `WhisperDecoder`, and `Whisper` with `encode`, `encode_wav`, `new_cache`, `param_count`, `from_pretrained`) and [`hf_whisper.py`](../../../../course/solutions/python/tinyllm/io/hf_whisper.py) (`whisper_state_from_hf`, `read_whisper`); the contracts are the [decoder contract](../../../../course/contracts/py/tinyllm/speech/decoder.pyi) and the [loader contract](../../../../course/contracts/py/tinyllm/io/hf_whisper.pyi).
 
-- Self-attention sees only the decoder prefix; cross-attention sees the complete encoded audio window.
-- Cross keys and values are projected once per window. Self keys and values grow at each decoding step.
-- Output logits use the token embedding matrix transposed. A separate untied output weight is an invalid checkpoint.
+> **Learning objectives**
+> - Describe a Whisper decoder block: causal self-attention over the prefix, unmasked cross-attention over the audio window, and a GELU MLP, all pre-normalized.
+> - Explain why cross keys and values are projected once per window while self keys and values grow at each step.
+> - Explain why the position offset is read once before the layer loop, and why every check runs before the first cache append.
+> - Load a Hugging Face checkpoint strictly, including a tied output projection, a fixed sinusoid table, and sharded files.
 
-## How to read this chapter
+## Self-attention, cross-attention, and the tied output
 
-Sections 1 to 3 describe the decoder and the loader and trace a two-step cached decode by hand. Section 4 lists the cases a correct implementation must handle. Section 5 walks through the solution: the decoder layer, the cache discipline in `WhisperDecoder.forward`, then the strict loader. Try to predict each validation before reading it.
+At absolute decoder position $o + t$, the decoder adds the learned positional row to the token embedding. Each block then applies pre-normalized causal self-attention, pre-normalized cross-attention, and a pre-normalized GELU feed-forward network, with a residual addition after each. A final layer norm follows, and logits come from multiplying by the transpose of the token embedding matrix: $\text{LN}(x)\,E^\top$.
 
-## 1. Why now
+Self-attention sees only the decoder prefix; cross-attention sees the complete encoded audio window. That asymmetry decides the caching. Cross keys and values depend only on the audio window and the decoder layer, so you compute them once and retain one pair per layer. Self-attention keys and values depend on the prefix, so they live in a cache that grows. The cache rule that follows is the subtle one: read the common committed cache length before any layer appends, so that every layer uses the same position offset and the same causal mask. And validate every cache shape before the first append, so a rejected request cannot partially mutate the cache.
 
-L14.2 turns audio features into vectors, but cannot generate a transcript. The decoder compares its text prefix with those vectors and predicts the next token. This module supplies logits and checkpoint loading. L14.4 will supply language, timestamp and search policies.
+## Loading a checkpoint strictly
 
-## 2. Principles
+The loader removes `model.` from parameter names, verifies an optional tied output projection, and separates the encoder's frozen sinusoid table from the trainable parameters. Strict state loading then rejects missing, unexpected or wrongly shaped tensors. For sharded files, each tensor must occur in the file the index names, exactly once.
 
-At absolute decoder position `o + t`, add the learned positional row to the token embedding. Each block applies pre-normalized causal self-attention, pre-normalized cross-attention, and a pre-normalized GELU feed-forward network, with a residual addition after each operation. Apply the final layer norm, then multiply by the transpose of the token embedding matrix.
+One complication comes from how checkpoints are published. Some store the fixed sinusoid table in float16. Such a table is retained exactly, while a corrupted entry is rejected: the loader permits $5 \cdot 10^{-4}$ absolute deviation only for tables exactly representable in float16, and other tables keep the $10^{-4}$ bound.
 
-Cross keys and values depend on the audio window and the decoder layer, so compute them once and retain one pair per layer. Self-attention caches retain the prefix. Read the common committed cache length before any layer appends; every layer uses that same position offset and causal mask. Validate every cache shape before the first append so a rejected request cannot partially mutate the cache.
+## Tracing a cached decode by hand
 
-The loader removes `model.` from parameter names, verifies an optional tied output projection, and separates the encoder's frozen sinusoid table from trainable parameters. Strict state loading rejects missing, unexpected or wrongly shaped tensors. For sharded files, each tensor must occur in the file named by the index, exactly once.
+Run on a real checkpoint, the following calculation reproduces Hugging Face's logits.
 
-## 3. Worked example
+For a two-token prefix `[sot, language]`, a fresh cache has offset zero. The self-attention permission matrix is `[[True, False], [True, True]]`, and both tokens may attend to every encoded audio position. Every decoder layer appends two self-key and self-value rows, making the committed length two.
 
-The same calculation, run on a real checkpoint, reproduces HF's logits.
+The next one-token call uses positional row two and a `1 x 3` all-true self-attention mask. It reuses the unchanged cross keys and values. Its last logits must agree with recomputing all three prefix tokens in one uncached call. And if the checkpoint stores an output projection, each element must equal the corresponding token-embedding element before the redundant tensor is discarded.
 
-For a two-token prefix `[sot, language]`, a fresh cache has offset zero. The self-attention permission matrix is `[[True, False], [True, True]]`. Both tokens may attend to every encoded audio position. Every decoder layer appends two self-key and self-value rows, making the committed length two.
+## What a correct implementation must handle
 
-The next one-token call uses positional row two and a `1 x 3` all-true self-attention mask. It reuses the unchanged cross keys and values. Its last logits must agree with recomputing all three prefix tokens in one uncached call. If the checkpoint stores an output projection, each element must equal the corresponding token-embedding element before the redundant tensor is discarded.
+The tests follow from that trace. Logits must match independent Hugging Face logits within an absolute tolerance of `1e-5`, and the parameter count must include the frozen encoder position table. Cached chunked decoding must agree with one full call, with cross keys and values unchanged. Causality must hold (a changed suffix cannot affect prefix logits), and one-dimensional ids must preserve the documented output shape. Invalid token ids, ranks and positions must leave the cache untouched, and batch, layer, head and feature widths of the cross-KV and the cache must be checked before decoding. A half-precision position table must keep its rounded values while a corrupted entry fails; incompatible weight names, positions and output ties must fail explicitly. Sharded and unsharded states must agree, and shard paths must not escape the checkpoint directory. Incomplete checkpoints must not leave random parameters in the model. Finally, the WAV entry point's channel mixing, padding and mel features must produce the same cross-attention keys and logits as the explicit pipeline.
 
-## 4. The interface
+## Building it step by step
 
-### What a correct solution must handle
+The reasoning:
 
-| Case | Kind of check | Contract |
-|---|---|---|
-| Logits and parameter count vs HF | golden | Independent HF logits within absolute tolerance `1e-5`; parameter count includes the frozen encoder position table. |
-| Cached chunks vs one full call | property | Chunked and full decoding agree; cross keys and values remain unchanged. |
-| Causality and 1-D ids | property | A changed suffix cannot affect prefix logits; one-dimensional ids preserve the documented output shape. |
-| Bad tokens and positions | boundary | Invalid token ids, ranks and positions leave the cache untouched. |
-| Cross-KV and cache shapes | boundary | Batch, layer, head and feature widths are checked before decoding. |
-| Half-precision position table | boundary | Rounded fixed positions retain checkpoint values; corrupted entries fail. |
-| Untied weights and wrong sinusoids | boundary | Incompatible weight names, positions and output ties fail explicitly. |
-| Sharded checkpoints | conformance | Sharded and unsharded states agree; paths cannot escape the checkpoint directory. |
-| Missing tensors and wrong shapes | boundary | Incomplete checkpoints cannot leave random parameters in the model. |
-| WAV entry point | conformance | WAV channel mixing, padding and mel features produce the same cross-attention keys and logits as the explicit pipeline. |
-
-Published checkpoints may store the fixed sinusoid table in float16. Such a table is retained exactly, while a corrupted entry is rejected. The loader permits 5e-4 absolute deviation only for tables exactly representable in float16; other tables retain the 1e-4 bound.
-
-See the [decoder contract](../../../../course/contracts/py/tinyllm/speech/decoder.pyi) and the [loader contract](../../../../course/contracts/py/tinyllm/io/hf_whisper.pyi).
-
-## 5. The solution, step by step
-
-### From first principles
-
-1. **Two kinds of context, two caches.** Self-attention keys and values depend on the text prefix, which grows by one or more tokens per call, so they live in an append-only `KVCache` (L8.2). Cross-attention keys and values depend only on the encoder output and the layer's weights, so they are computed once per 30 s window (`CrossKV`) and passed unchanged to every call.
+1. **Two kinds of context, two caches.** Self-attention keys and values depend on the text prefix, which grows by one or more tokens per call, so they live in an append-only `KVCache`. Cross-attention keys and values depend only on the encoder output and the layer's weights, so they are computed once per 30 s window (`CrossKV`) and passed unchanged to every call.
 2. **One offset for all layers.** Position $o + t$ must mean the same token in every layer, so the offset is read once, before any layer appends. If each layer read its own length, layer 1 would see layer 0's append and use positions one chunk ahead.
-3. **Validate before mutating.** `cache.update` appends. If a check fails halfway through the layer loop, earlier layers would hold an extra chunk and the cache would be inconsistent. So every check (ids, ranks, cross-KV shapes, cache shape, capacity, equal fills) runs before the loop.
-4. **Causality comes from the mask.** For a fresh call, `causal_mask(t, o + t, q_offset=o)`; with a cache, `cache.mask(t)` builds the same `t x (o + t)` lower-triangular-with-offset matrix. In section 3's second step that is `1 x 3`, all true.
-5. **Tied output.** Whisper's logits are $\text{LN}(x)\,E^\top$ with $E$ the token embedding. A checkpoint may also store `proj_out.weight`; it is redundant, and if it differs from $E$ the checkpoint is not one this model can represent, so it is an error rather than a second weight.
+3. **Validate before mutating.** `cache.update` appends. If a check failed halfway through the layer loop, earlier layers would hold an extra chunk and the cache would be inconsistent. So every check (ids, ranks, cross-KV shapes, cache shape, capacity, equal fills) runs before the loop.
+4. **Causality comes from the mask.** For a fresh call, `causal_mask(t, o + t, q_offset=o)`; with a cache, `cache.mask(t)` builds the same `t x (o + t)` lower-triangular-with-offset matrix. In the trace's second step that is `1 x 3`, all true.
+5. **Tied output.** Whisper's logits are $\text{LN}(x)\,E^\top$ with $E$ the token embedding. A checkpoint may also store `proj_out.weight`. It is redundant, and if it differs from $E$ the checkpoint is not one this model can represent, so it is an error rather than a second weight.
 6. **Strict loading.** A missing tensor would leave a random parameter that still produces plausible-looking logits. So the loader maps every name, rejects unknown ones, and `load_state_dict(strict=True)` rejects missing or wrongly shaped ones.
 
-### The code, annotated
+### The decoder layer
 
-**The decoder layer.** Three pre-LN residual branches. Self-attention is written out (instead of calling `MultiHeadAttention.forward`) so that the new keys and values can go through the cache; cross-attention uses precomputed keys and values and no mask.
+Three pre-LN residual branches. Self-attention is written out, instead of calling `MultiHeadAttention.forward`, so that the new keys and values can go through the cache. Cross-attention uses precomputed keys and values and no mask.
 
 ```python
 def forward(self, x, xk, xv, mask, cache=None, layer=0):
@@ -96,7 +70,9 @@ def forward(self, x, xk, xv, mask, cache=None, layer=0):
     return x + self.fc2(F.gelu(self.fc1(self.final_layer_norm(x))))
 ```
 
-**Cross keys and values, once per window.** Each layer's `encoder_attn` projects the audio with its own `k_proj` (no bias, from L14.2's `WhisperAttention`) and `v_proj`. The copies detach the arrays from the autograd graph so later calls cannot alter them.
+### Cross keys and values, once per window
+
+Each layer's `encoder_attn` projects the audio with its own `k_proj` (no bias, from the encoder's `WhisperAttention`) and `v_proj`. The copies detach the arrays from the autograd graph so later calls cannot alter them.
 
 ```python
 def cross_kv(self, audio):
@@ -109,7 +85,7 @@ def cross_kv(self, audio):
     return CrossKV(keys, values)
 ```
 
-**The decoder forward: all checks, then one offset, then the loop.**
+### The decoder forward: all checks, then one offset, then the loop
 
 ```python
 ids = np.asarray(ids)
@@ -141,7 +117,9 @@ logits = F.matmul(
 return F.reshape(logits, (t, cfg.vocab)) if one else logits
 ```
 
-**The model.** `Whisper` composes L14.2's encoder with this decoder. `encode_wav` runs the L14.1 frontend with the model's mel count and window length (`2 * n_audio_ctx * hop_length` samples), so the WAV path and the explicit path produce the same features. `param_count` adds `n_audio_ctx * d` because the encoder position table is part of the published parameter count but is not a trainable `Parameter` here.
+### The model
+
+`Whisper` composes the encoder with this decoder. `encode_wav` runs the [audio frontend](01-audio-frontend.md) with the model's mel count and window length (`2 * n_audio_ctx * hop_length` samples), so the WAV path and the explicit path produce the same features. `param_count` adds `n_audio_ctx * d`, because the encoder position table is part of the published parameter count but is not a trainable `Parameter` here.
 
 ```python
 def encode_wav(self, data):
@@ -161,9 +139,11 @@ def from_pretrained(cls, dir):
     return model.eval()
 ```
 
-Full solution: [`decoder.py`](../../../../course/solutions/python/tinyllm/speech/decoder.py).
+The full model is in [`decoder.py`](../../../../course/solutions/python/tinyllm/speech/decoder.py).
 
-**Mapping HF names.** Every tensor goes to exactly one of three places: verified and dropped (`proj_out.weight`), kept aside as the fixed table, or stripped of `model.` into the state dict. Anything else is an error.
+### Mapping Hugging Face names
+
+Every tensor goes to exactly one of three places: verified and dropped (`proj_out.weight`), kept aside as the fixed table, or stripped of `model.` into the state dict. Anything else is an error.
 
 ```python
 for name, value in tensors.items():
@@ -189,7 +169,9 @@ for name, value in tensors.items():
         raise ValueError(f"unexpected Whisper tensor name: {name}")
 ```
 
-**Sharded checkpoints.** The index's `weight_map` names a file per tensor. The loader reads each named file once, refuses paths that resolve outside the checkpoint directory, and checks that every tensor is in the file the index says, exactly once, and that the index names nothing missing.
+### Sharded checkpoints
+
+The index's `weight_map` names a file per tensor. The loader reads each named file once, refuses paths that resolve outside the checkpoint directory, and checks that every tensor is in the file the index says, exactly once, and that the index names nothing missing.
 
 ```python
 root = Path(dir).resolve()
@@ -207,70 +189,80 @@ if weight_map is not None and set(tensors) != set(weight_map):
     raise ValueError("Whisper shard index names missing tensors")
 ```
 
-Full solution: [`hf_whisper.py`](../../../../course/solutions/python/tinyllm/io/hf_whisper.py).
+The full loader is in [`hf_whisper.py`](../../../../course/solutions/python/tinyllm/io/hf_whisper.py).
 
-### Why this solution
+### Why this design
 
-- **Cost.** With a cache, decoding token $o$ costs $O(o\,d)$ per layer for self-attention and $O(A\,d)$ for cross-attention, instead of $O(o^2 d)$ for recomputing the prefix. Cross keys and values cost $O(L\,A\,d^2)$ once per window rather than once per token; for whisper-tiny that avoids two $1500 \times 384 \times 384$ projections per layer on every step.
-- **Alternatives.** Recomputing cross keys and values per step is correct but repeats the most expensive projection hundreds of times per window. Loading leniently (`strict=False`, ignoring `proj_out.weight`) accepts fine-tuned checkpoints with an untied head and silently gives them the wrong output layer. Trusting the stored position table without checking it would accept a checkpoint from a different architecture.
-- **Tradeoffs accepted.** The tied-output requirement rejects some community fine-tunes; that is deliberate, since this model has no slot for a separate head. The loader converts everything to float32, doubling memory for float16 checkpoints.
+With a cache, decoding token $o$ costs $O(o\,d)$ per layer for self-attention and $O(A\,d)$ for cross-attention, instead of $O(o^2 d)$ for recomputing the prefix. Cross keys and values cost $O(L\,A\,d^2)$ once per window rather than once per token; for whisper-tiny that avoids two $1500 \times 384 \times 384$ projections per layer on every step.
 
-### Explain it back
+Recomputing cross keys and values per step is correct, but it repeats the most expensive projection hundreds of times per window. Loading leniently (`strict=False`, ignoring `proj_out.weight`) would accept fine-tuned checkpoints with an untied head and silently give them the wrong output layer. Trusting the stored position table without checking it would accept a checkpoint from a different architecture.
 
-<details><summary>Why is <code>offset</code> read once before the layer loop instead of from each layer's cache?</summary>
+Two tradeoffs are accepted. The tied-output requirement rejects some community fine-tunes; that is deliberate, since this model has no slot for a separate head. And the loader converts everything to float32, doubling memory for float16 checkpoints.
 
-Layer 0's `cache.update` appends before layer 1 runs. Reading inside the loop would give layer 1 an offset one chunk larger, so its mask and its notion of the prefix would disagree with layer 0's. One read of the committed length makes every layer use the same positions.
+## What can go wrong
 
-</details>
+Each of the classic decoder bugs produces plausible output, which is what makes them dangerous. Resetting the position offset at every incremental call makes full and cached logits disagree; the solution reads `offset = cache.seq_len()` and passes it to `embed_positions(..., offset)`. Omitting the causal mask lets future tokens change earlier predictions; the solution always passes `causal_mask` or `cache.mask(t)` to self-attention. Advancing the committed length once per layer gives later layers different positions; the solution reads the offset once before the loop and requires equal fills.
 
-<details><summary>Why must all checks happen before the first <code>cache.update</code>?</summary>
+> **Warning:** Silently loading an untied output matrix gives plausible but incorrect transcript scores. `whisper_state_from_hf` requires `proj_out.weight` to equal the token embedding exactly.
 
-The update mutates the cache. A failure after some layers appended would leave layers with different fills, which the next call rejects as inconsistent. Checking first means a rejected request leaves the cache exactly as it was.
+## Where this leads
 
-</details>
+[Whisper decoding and long-form transcription](04-whisper-decoding.md) consumes these logits, reuses the cross-KV for every step, beam and retry within a window, and turns them into timestamped segments. In *Responsible AI*, the consent and model-card evidence practice in [Consent and biometric evidence in model cards](../../responsible-ai/02-privacy-and-pii/02-consent-and-biometric-evidence.md) calls this implementation.
 
-<details><summary>Why is a different <code>proj_out.weight</code> an error instead of a weight to load?</summary>
+### Further reading
 
-The model computes logits as $\text{LN}(x)E^\top$; there is no separate output matrix to load it into. Ignoring it would produce plausible but wrong scores; failing tells the user the checkpoint is not a standard Whisper.
+- The [Whisper decoder contract](../../../../course/contracts/py/tinyllm/speech/decoder.pyi). As an exercise, derive the parameter count from it, then compare one-token and multi-token cache updates.
+- Compare token-at-a-time and chunked decoding, including a batch with different prompts.
 
-</details>
+## Key terms
 
-<details><summary>Why does <code>param_count</code> add <code>n_audio_ctx * d</code>?</summary>
+- **cross-attention**: attention whose queries come from the decoder and whose keys and values come from the encoded audio window, with no mask.
+- **`CrossKV`**: the per-layer cross keys and values, projected once per window and reused for every decoding call.
+- **committed length**: the number of prefix positions every layer's self-attention cache holds; read once per call as the position offset.
+- **tied output**: computing logits as $\text{LN}(x)\,E^\top$ with the token embedding $E$, so there is no separate output matrix.
+- **strict loading**: rejecting any missing, unexpected or wrongly shaped tensor rather than leaving parameters at random values.
 
-The encoder's sinusoid table is stored in checkpoints and counted in published sizes (about 37.8 million for tiny), but here it is a fixed array, not a trainable parameter, so `parameters()` does not include it.
+## Summary
 
-</details>
+- Self-attention sees only the decoder prefix; cross-attention sees the complete encoded audio window.
+- Cross keys and values are projected once per window; self keys and values grow at each decoding step.
+- The offset is read once before any layer appends, and every check runs before the first append, so a rejected request leaves the cache untouched.
+- Output logits use the token embedding matrix transposed; a separate untied output weight is an invalid checkpoint.
+- The loader keeps the checkpoint's own sinusoid table after verifying it, with a looser bound only for float16-representable tables.
 
-## 6. Pitfalls
+## Review questions
 
-| Mistake | Symptom | How the solution avoids it |
-|---|---|---|
-| Reset position offset at every incremental call | Full and cached logits disagree | `offset = cache.seq_len()` and `embed_positions(..., offset)` |
-| Omit the causal mask | Future tokens change earlier predictions | passes `causal_mask` or `cache.mask(t)` to self-attention |
-| Load an untied output matrix silently | Plausible but incorrect transcript scores | `whisper_state_from_hf` requires `proj_out.weight` to equal the embedding |
-| Advance the committed length once per layer | Later layers use different positions | reads the offset once before the loop and requires equal fills |
+1. Why is `offset` read once before the layer loop instead of from each layer's cache?
+   <details><summary>Answer</summary>
 
-## 7. Where it's used next
+   Layer 0's `cache.update` appends before layer 1 runs. Reading inside the loop would give layer 1 an offset one chunk larger, so its mask and its notion of the prefix would disagree with layer 0's. One read of the committed length makes every layer use the same positions.
 
-| Direction | Module | Connection |
-|---|---|---|
-| Back | `L14.2` | Encoder output and Whisper attention projections. |
-| Back | `L8.2` | Self-attention cache and offset masks. |
-| Back | `L0.6` | Safetensors reader. |
-| Back | `L0.4` | Registered modules, embeddings, normalization and strict state loading. |
-| Back | `L0.2` | Differentiable tensor operations. |
-| Back | `L0.1` | Tensor storage and shapes. |
-| Back | `L5.1` | Scaled dot-product attention. |
-| Back | `L5.2` | Causal mask construction. |
-| Back | `L5.4` | Learned positional embeddings. |
-| Back | `M06.3` | Reproducible parameter initialization. |
-| Back | `L7.9` | Download the checkpoint before calling the local loader. |
-| Back | `L14.1` | `encode_wav` decodes, mixes channels, resamples and computes model-sized log-mel features. |
-| Forward | `ethics.08` | The consent and model-card evidence practice calls this implementation. |
-| Forward | `L14.4` | Transcription policy consumes these logits and reuses cross-KV per window. |
+   </details>
 
-## Going further
+2. Why must all checks happen before the first `cache.update`?
+   <details><summary>Answer</summary>
 
-| Resource | Exercise |
-|---|---|
-| [Whisper contract](../../../../course/contracts/py/tinyllm/speech/decoder.pyi) | Derive the parameter count, then compare one-token and multi-token cache updates. |
+   The update mutates the cache. A failure after some layers appended would leave layers with different fills, which the next call rejects as inconsistent. Checking first means a rejected request leaves the cache exactly as it was.
+
+   </details>
+
+3. Why is a different `proj_out.weight` an error instead of a weight to load?
+   <details><summary>Answer</summary>
+
+   The model computes logits as $\text{LN}(x)E^\top$; there is no separate output matrix to load it into. Ignoring it would produce plausible but wrong scores; failing tells the user the checkpoint is not a standard Whisper.
+
+   </details>
+
+4. Why does `param_count` add `n_audio_ctx * d`?
+   <details><summary>Answer</summary>
+
+   The encoder's sinusoid table is stored in checkpoints and counted in published sizes (about 37.8 million for tiny), but here it is a fixed array, not a trainable parameter, so `parameters()` does not include it.
+
+   </details>
+
+5. In the hand trace, what mask does the second (one-token) call use, and which positional row?
+   <details><summary>Answer</summary>
+
+   The committed length is two, so the new token uses positional row two and a `1 x 3` all-true self-attention mask. Cross keys and values are reused unchanged.
+
+   </details>
