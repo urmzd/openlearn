@@ -130,7 +130,7 @@ When `OTEL_EXPORTER_OTLP_ENDPOINT` is set (`spec/cli-roles.md`), the engine post
 
 ## 3. Worked example by hand
 
-**The model.** The tests' `succ` model has $W_{i,(i+1) \bmod 256} = 2$ and every other entry 0: after any byte, the next byte value is the likeliest. On disk, with the metadata `{"format":"tinyllm"}`, the header text is 113 bytes, padded with 7 spaces to $N = 120$, so the data buffer starts at byte $8 + 120 = 128$. $W_{97,98}$ (after `a`, the logit of `b`) is element $256 \cdot 97 + 98 = 24930$, at data offset $4 \cdot 24930 = 99720$, file offset $128 + 99720 = 99848$, and holds the bytes `00 00 00 40` (2.0 in little-endian `f32`). Read from file offset 99720 instead and you get a different weight: that is the data-offset pitfall.
+**The model.** A small `succ` model has $W_{i,(i+1) \bmod 256} = 2$ and every other entry 0: after any byte, the next byte value is the likeliest. On disk, with the metadata `{"format":"tinyllm"}`, the header text is 113 bytes, padded with 7 spaces to $N = 120$, so the data buffer starts at byte $8 + 120 = 128$. $W_{97,98}$ (after `a`, the logit of `b`) is element $256 \cdot 97 + 98 = 24930$, at data offset $4 \cdot 24930 = 99720$, file offset $128 + 99720 = 99848$, and holds the bytes `00 00 00 40` (2.0 in little-endian `f32`). Read from file offset 99720 instead and you get a different weight: that is the data-offset pitfall.
 
 **Greedy, three tokens from `a`.** The prompt `a` is the id 97. $z = e_{97} W$ is row 97: 2 at index 98, 0 elsewhere, so the argmax is 98 (`b`). Then row 98 gives 99 (`c`), row 99 gives 100 (`d`). The answer to `{"model":"m","prompt":"a","max_tokens":3,"temperature":0}` is the text `bcd` with `finish_reason: "length"` and `usage` 1, 3, 4.
 

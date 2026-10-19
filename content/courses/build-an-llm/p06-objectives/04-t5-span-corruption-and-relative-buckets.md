@@ -1,41 +1,33 @@
-<!-- ol:module L6.4 -->
 # T5 span corruption and relative position buckets
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L6.4` · side (optional, D31) · Python · Pass 5 · 2 to 3 h |
-| **You build** | `python/tinyllm/obj/t5.py`: `noise_span_counts`, `random_spans_noise_mask`, `span_corrupt`, `t5_relative_bucket`, `T5RelativeBias` |
+| **Module** | `L6.4` · side (optional, D31) · Python · Pass 5 · 1 h reading |
+| **Solution** | [`python/tinyllm/obj/t5.py`](../../../../course/solutions/python/tinyllm/obj/t5.py): `noise_span_counts`, `random_spans_noise_mask`, `span_corrupt`, `t5_relative_bucket`, `T5RelativeBias` |
 | **Contract** | [`course/contracts/py/tinyllm/obj/t5.pyi`](../../../../course/contracts/py/tinyllm/obj/t5.pyi) |
-| **Tests** | `course/tests/L6.4/test_t5.py` (what they check: section 4); the bucket oracle is Hugging Face's own T5 code |
-| **Needs** | `L0.1` Tensor · `L0.2` `permute` · `L0.4` `Embedding` · reading: `L5.5` encoder-decoder Transformer, `M07.1` sampling, `M06.3` PCG32 (or `--ref-deps`) |
+| **Needs** | `L0.1` Tensor · `L0.2` `permute` · `L0.4` `Embedding` · reading: `L5.5` encoder-decoder Transformer, `M07.1` sampling, `M06.3` PCG32 |
 | **Used by** | no module: the side quest `sq.t5` trains an encoder-decoder with this objective |
-| **Milestone** | none (optional module) |
 | **Optional depth** | Raffel et al., "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer" (2020), sections 2.1, 3.1.3, and 3.3; Shaw, Uszkoreit, and Vaswani, "Self-Attention with Relative Position Representations" (2018) |
 
 ## Key Takeaways
 
-- Span corruption hides about 15% of the tokens in a few whole spans, one sentinel id per span; inputs plus targets hold every original token exactly once (`test_inputs_and_targets_restore_the_text`).
-- The counts are fixed by the length, the density, and the mean span (round half to even), and the mask always starts with kept tokens and ends with a span (`test_counts_and_lengths`).
-- The random choices are two Fisher-Yates shuffles with one `below` draw per swap, noise lengths first, so a seed replays the batch (`test_draws_follow_the_spec`).
-- T5 has no position embeddings: each head adds a learned bias indexed by a **bucket** of the key's offset, exact when small and logarithmic up to `max_distance` (`test_buckets_match_hf`).
-- A causal decoder folds every future offset into bucket 0 and uses all buckets for the past (`test_hand_example_buckets`, `test_relative_bias_matches_hf`).
+- Span corruption hides about 15% of the tokens in a few whole spans, one sentinel id per span; inputs plus targets hold every original token exactly once.
+- The counts are fixed by the length, the density, and the mean span (round half to even), and the mask always starts with kept tokens and ends with a span.
+- The random choices are two Fisher-Yates shuffles with one `below` draw per swap, noise lengths first, so a seed replays the batch.
+- T5 has no position embeddings: each head adds a learned bias indexed by a **bucket** of the key's offset, exact when small and logarithmic up to `max_distance`.
+- A causal decoder folds every future offset into bucket 0 and uses all buckets for the past.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L6.4              # stubs t5.py
-ol tests L6.4              # the course tests
-ol check L6.4              # exit code is the verdict
-ol diff  L6.4              # after passing: your code against the reference
-```
+Sections 1 to 3 derive span corruption and relative position buckets and work both by hand, including the exact random draws. Section 4 fixes the interface. Section 5 walks through the solution and explains why each choice is right. Try to predict each step before reading it.
 
 ---
 
 ## 1. Why now
 
-You have now met two pretraining objectives: GPT's next token (`L6.1`) and BERT's masked tokens (`L6.2`). BERT's targets are single tokens at known positions, which an encoder-decoder (`L5.5`) cannot use well: its decoder writes sequences. T5 recast pretraining as text to text: corrupt the input by dropping whole spans and ask the decoder to write them back. It also replaced absolute position embeddings with a small learned table indexed by relative distance, which generalizes past the training length. Neither piece has a call site in your system (D31), which is why this module is optional; the side quest `sq.t5` uses both to train a small T5 on your corpus.
+Two pretraining objectives are now in place: GPT's next token (`L6.1`) and BERT's masked tokens (`L6.2`). BERT's targets are single tokens at known positions, which an encoder-decoder (`L5.5`) cannot use well: its decoder writes sequences. T5 recast pretraining as text to text: corrupt the input by dropping whole spans and ask the decoder to write them back. It also replaced absolute position embeddings with a small learned table indexed by relative distance, which generalizes past the training length. Neither piece has a call site in the system (D31), which is why this module is optional; the side quest `sq.t5` uses both to train a small T5 on the course corpus.
 
 ## 2. Principles
 
@@ -65,7 +57,7 @@ Self-attention without positions is permutation-equivariant. T5 adds to head $h$
 
 $$\mathrm{bucket}(r) = \begin{cases} r & r < n/2 \\ \min\!\Big(n - 1,\ n/2 + \Big\lfloor \frac{\ln(r / (n/2))}{\ln(D / (n/2))}\,(n - n/2) \Big\rfloor\Big) & \text{otherwise} \end{cases}$$
 
-for a distance $r \ge 0$. **Bidirectional** (the encoder): $n$ is half of `num_buckets`, $r = \lvert\delta\rvert$, and keys after the query ($\delta > 0$) add $n$, so the two directions use disjoint halves. **Causal** (the decoder): $n$ is all of `num_buckets`, $r = \max(0, -\delta)$: every future key falls into bucket 0, which the causal mask hides anyway. The logarithm is computed in float32 and truncated toward zero, exactly as the Hugging Face code that T5 checkpoints were trained with; the test compares every offset in $-300..300$. The bias table is an `Embedding(num_buckets, n_heads)` named `relative_attention_bias`, and `T5RelativeBias.forward(q_len, k_len, q_offset)` returns `[n_heads, q_len, k_len]`, with `q_offset` the tokens already in a decoder's cache.
+for a distance $r \ge 0$. **Bidirectional** (the encoder): $n$ is half of `num_buckets`, $r = \lvert\delta\rvert$, and keys after the query ($\delta > 0$) add $n$, so the two directions use disjoint halves. **Causal** (the decoder): $n$ is all of `num_buckets`, $r = \max(0, -\delta)$: every future key falls into bucket 0, which the causal mask hides anyway. The logarithm is computed in float32 and truncated toward zero, exactly as the Hugging Face code that T5 checkpoints were trained with; a correct solution agrees with it at every offset in $-300..300$. The bias table is an `Embedding(num_buckets, n_heads)` named `relative_attention_bias`, and `T5RelativeBias.forward(q_len, k_len, q_offset)` returns `[n_heads, q_len, k_len]`, with `q_offset` the tokens already in a decoder's cache.
 
 ## 3. Worked example by hand
 
@@ -93,8 +85,6 @@ Layout: keep 4, noise 3, keep 2, noise 1, so tokens 4, 5, 6 and 9 are noise. Inp
 
 Causal with 32 buckets: $\delta = +5$ gives bucket 0, $\delta = -5$ gives 5.
 
-These are `test_hand_example_one_span`, `test_hand_example_two_spans_scripted_draws`, and `test_hand_example_buckets`.
-
 ## 4. The interface
 
 ```python
@@ -107,35 +97,192 @@ class T5RelativeBias(Module):
     def forward(self, q_len: int, k_len: int, q_offset: int = 0) -> Tensor: ...   # [H, q, k]
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_one_span` | unit | section 3, with and without `eos_id` | you and the test agree on the layout |
-| `test_hand_example_two_spans_scripted_draws` | unit | the six scripted draws, in order, give section 3's inputs and targets | the shuffle and the sentinel order |
-| `test_hand_example_buckets` | unit | section 3's bucket table, both directions | the bucket formula |
-| `test_inputs_and_targets_restore_the_text` | property | 40 random texts: putting spans back gives the ids | the objective loses nothing |
-| `test_counts_and_lengths` | property | $N$, $K$ (half to even), mask starts kept and ends noisy, sequence lengths | the batch shapes a trainer pads to |
-| `test_short_texts_never_make_empty_spans` | boundary | the upper clamp of $K$ on 10 and 6 tokens | no empty span or gap |
-| `test_draws_follow_the_spec` | unit | the exact `below` calls; same seed, same output | reproducible data |
-| `test_sentinels_and_validation` | boundary | sentinels count down; colliding ids, no room, bad densities, $L < 2$ raise | unambiguous targets |
-| `test_buckets_match_hf` | golden | five settings over $-300..300$ against HF's `_relative_position_bucket` | pretrained T5 tables index correctly |
-| `test_bucket_properties` | property | monotone, in range, disjoint halves, exact while small | the coarsening is a coarsening |
-| `test_relative_bias_matches_hf` | golden | HF `compute_bias`, encoder and decoder with past tokens | the bias each head adds |
-| `test_relative_bias_gradient_lands_on_buckets` | property | the gradient is a scatter-add of the upstream gradient by bucket | training the table |
+| the one-span example | unit | section 3, with and without `eos_id` | everyone agrees on the layout |
+| the two-span example with scripted draws | unit | the six scripted draws, in order, give section 3's inputs and targets | the shuffle and the sentinel order |
+| the bucket table | unit | section 3's bucket table, both directions | the bucket formula |
+| inputs and targets restore the text | property | 40 random texts: putting spans back gives the ids | the objective loses nothing |
+| counts and lengths | property | $N$, $K$ (half to even), mask starts kept and ends noisy, sequence lengths | the batch shapes a trainer pads to |
+| short texts never make empty spans | boundary | the upper clamp of $K$ on 10 and 6 tokens | no empty span or gap |
+| draws follow the spec | unit | the exact `below` calls; same seed, same output | reproducible data |
+| sentinels and validation | boundary | sentinels count down; colliding ids, no room, bad densities, $L < 2$ raise | unambiguous targets |
+| buckets match Hugging Face | golden | five settings over $-300..300$ against HF's `_relative_position_bucket` | pretrained T5 tables index correctly |
+| bucket properties | property | monotone, in range, disjoint halves, exact while small | the coarsening is a coarsening |
+| the bias matches Hugging Face | golden | HF `compute_bias`, encoder and decoder with past tokens | the bias each head adds |
+| the bias gradient lands on buckets | property | the gradient is a scatter-add of the upstream gradient by bucket | training the table |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. An encoder-decoder's decoder writes sequences, so the corruption should produce a sequence to write. Dropping whole spans and asking for them back does that, and the targets are short: about $N + K$ tokens instead of $L$.
+2. The decoder must know which hole each span came from, so each span gets its own marker: sentinel $k$ in the inputs where span $k$ was, and before span $k$ in the targets. Putting the targets back into the inputs at the sentinels recovers the text exactly, so nothing is lost.
+3. The sentinels must not collide with real ids. T5 takes them from the top of the vocabulary counting down ($S_k = V - 1 - k$), so the solution refuses any id inside the sentinel range it is about to use.
+4. "How many" is decided before "where": $N = \mathrm{round}(L\rho)$ and $K = \mathrm{round}(N/\mu)$, clamped so every span and every gap has at least one token. In the first worked example $N = 2$, $K = 1$.
+5. "Where" is two random compositions: $N$ into $K$ positive parts and $L - N$ into $K$ positive parts, interleaved keep, noise, keep, noise. A uniform composition of $m$ into $k$ positive parts is choosing $k - 1$ of the $m - 1$ cut points, which a shuffle of $m - 1$ flags does. Fixing the shuffle (Fisher-Yates from the end, one `below` per swap, noise first) makes a seed replay the batch.
+6. For positions, attention logits get a learned scalar per head that depends only on $\delta = j - i$. Exact buckets for small $|\delta|$ and logarithmic buckets for large ones spend the table where offsets are distinguishable and stop at `max_distance`, beyond which all offsets share the last bucket, so the scheme extends to any length.
+7. To load T5 checkpoints the bucket function must reproduce HF's float32 arithmetic and truncation, bucket for bucket.
+
+### 5.2 The code, annotated
+
+**Counts.**
+
+```python
+def noise_span_counts(length, noise_density, mean_noise_span):
+    # ... length >= 2, 0 < density < 1, mean span >= 1 ...
+    n_noise = int(np.round(length * noise_density))   # numpy rounds half to even: round(2.5) = 2
+    n_noise = min(max(n_noise, 1), length - 1)        # at least one noise and one kept token
+    n_spans = max(int(np.round(n_noise / mean_noise_span)), 1)
+    # Every span needs at least one token, and so does every gap before one.
+    n_spans = min(n_spans, n_noise, length - n_noise)
+    return n_noise, n_spans
+```
+
+**Random composition.**
+
+```python
+def _segment_lengths(n_items, n_segments, rng):
+    """Split n_items into n_segments positive lengths, uniformly at random."""
+    # n_items - 1 gaps, n_segments - 1 of them start a new segment; the gaps
+    # are shuffled with Fisher-Yates from the end, one rng.below per swap.
+    starts = [i < n_segments - 1 for i in range(n_items - 1)]
+    for i in range(len(starts) - 1, 0, -1):
+        j = rng.below(i + 1)
+        starts[i], starts[j] = starts[j], starts[i]
+    first = np.array([False] + starts, dtype=bool)    # item 0 always opens segment 0
+    seg = np.cumsum(first)                            # segment index of every item
+    return np.bincount(seg, minlength=n_segments).astype(np.int64)
+```
+
+Trace the two-span example: noise flags `T F F`; `below(3) = 0` swaps positions 2 and 0, `below(2) = 1` swaps 1 with itself, giving `F F T`. Prepending `False` and taking the cumulative sum gives segment ids $(0, 0, 0, 1)$, so lengths $(3, 1)$.
+
+**The mask and the corruption.**
+
+```python
+def random_spans_noise_mask(length, noise_density, mean_noise_span, rng):
+    n_noise, n_spans = noise_span_counts(length, noise_density, mean_noise_span)
+    noise = _segment_lengths(n_noise, n_spans, rng)          # noise lengths are drawn first
+    keep = _segment_lengths(length - n_noise, n_spans, rng)
+    # keep_1, noise_1, keep_2, noise_2, ...: the text starts with kept tokens
+    # and ends with a noise span.
+    mask = np.zeros(length, dtype=bool)
+    pos = 0
+    for k, x in zip(keep, noise):
+        pos += int(k)
+        mask[pos : pos + int(x)] = True
+        pos += int(x)
+    return mask
+```
+
+```python
+def span_corrupt(ids, noise_density, mean_noise_span, sentinel_start_id, rng, eos_id=None):
+    # ... 1-D integer check ...
+    mask = random_spans_noise_mask(a.size, noise_density, mean_noise_span, rng)
+    n_spans = int(np.sum(mask[1:] & ~mask[:-1]) + mask[0])   # count rising edges
+    lowest = sentinel_start_id - n_spans + 1
+    if lowest < 0:
+        raise ValueError(...)        # not enough ids below sentinel_start_id
+    if np.any((a >= lowest) & (a <= sentinel_start_id)):
+        raise ValueError(...)        # a real id inside the sentinel range: ambiguous targets
+    inputs, targets = [], []
+    k = -1
+    for t in range(a.size):
+        if mask[t]:
+            if t == 0 or not mask[t - 1]:  # a new noise span: sentinel k
+                k += 1
+                inputs.append(sentinel_start_id - k)   # counting DOWN from the top
+                targets.append(sentinel_start_id - k)
+            targets.append(int(a[t]))
+        else:
+            inputs.append(int(a[t]))
+    if eos_id is not None:
+        inputs.append(int(eos_id))
+        targets.append(int(eos_id))
+    return np.array(inputs, dtype=np.int64), np.array(targets, dtype=np.int64)
+```
+
+**Buckets.**
+
+```python
+def t5_relative_bucket(rel_pos, bidirectional, num_buckets=32, max_distance=128):
+    rel = np.asarray(rel_pos, dtype=np.int64)          # rel = key - query
+    n = int(num_buckets)
+    out = np.zeros(rel.shape, dtype=np.int64)
+    if bidirectional:
+        n //= 2
+        out += (rel > 0).astype(np.int64) * n  # keys after the query: upper half
+        rel = np.abs(rel)
+    else:
+        rel = -np.minimum(rel, 0)  # a causal decoder only sees keys at or before the query
+    max_exact = n // 2
+    # ... need max_exact >= 1 and max_distance > max_exact ...
+    is_small = rel < max_exact
+    # T5's float32 arithmetic (as torch computes it), truncated toward zero.
+    # Small offsets take the exact branch, so they are lifted to max_exact
+    # here only to keep log away from 0.
+    logr = np.log(np.maximum(rel, max_exact).astype(np.float32) / np.float32(max_exact))
+    large = max_exact + (
+        logr / np.float32(math.log(max_distance / max_exact)) * np.float32(n - max_exact)
+    ).astype(np.int64)                                 # astype truncates toward zero
+    large = np.minimum(large, n - 1)                   # everything past max_distance: last bucket
+    return out + np.where(is_small, rel, large)
+```
+
+For $\delta = -20$ (bidirectional, 32 buckets): $n = 16$, `max_exact` $= 8$, $\ln(20/8)/\ln(128/8) \times 8 = 2.64$, truncated to 2, so bucket 10, as in the table.
+
+**The bias module.**
+
+```python
+    def forward(self, q_len, k_len, q_offset=0):
+        # ... range checks ...
+        # A query at row r of this call is at absolute position q_offset + r (cached decoding).
+        q = np.arange(q_len, dtype=np.int64)[:, None] + q_offset
+        k = np.arange(k_len, dtype=np.int64)[None, :]
+        buckets = t5_relative_bucket(k - q, self.bidirectional, self.num_buckets, self.max_distance)
+        bias = self.relative_attention_bias(buckets)  # [q, k, heads], an embedding gather
+        return F.permute(bias, (2, 0, 1))             # [heads, q, k], added to the attention logits
+```
+
+Because the lookup is an `Embedding`, backward scatters the upstream gradient into the bucket rows, summing over every $(i, j)$ pair that shares a bucket.
+
+Full solution: [`t5.py`](../../../../course/solutions/python/tinyllm/obj/t5.py).
+
+### 5.3 Why this solution
+
+- **Cost.** Corruption is $O(L)$ with fewer than $L$ `below` draws (one per swap of each shuffle). The bias is $O(q \cdot k)$ bucket lookups and an $H \cdot q \cdot k$ tensor; HF computes it once in layer 0 and reuses it in every layer.
+- **Count-then-place** rather than flipping a coin per token: the number of noise tokens and spans is fixed by the length, so target lengths are predictable for padding and the mean span is exactly controlled.
+- **Composition by shuffled flags** rather than drawing $K - 1$ cut points with rejection: it is uniform, uses a fixed number of draws, and is easy to replay in another language.
+- **Float32 bucket arithmetic** rather than exact rationals: the buckets must agree with the code pretrained T5 tables were trained with, including where truncation lands.
+- **Tradeoff accepted.** All offsets past `max_distance` share one bucket, so very long-range order is coarse; RoPE and ALiBi (`L7.3`, `L7.4`) make different tradeoffs.
+
+### 5.4 Explain it back
+
+1. Why does the mask always start with kept tokens and end with a noise span?
+   <details><summary>Answer</summary>The layout interleaves $K$ keep lengths and $K$ noise lengths starting with a keep, and every length is positive. That is T5's convention; a mask starting with noise would always corrupt the first tokens.</details>
+2. Why must $K$ be clamped to $\min(N, L - N)$ and not just to at least 1?
+   <details><summary>Answer</summary>Each of the $K$ spans needs at least one noise token and each of the $K$ gaps at least one kept token. On a short text, $\mathrm{round}(N/\mu)$ can exceed $L - N$, and `_segment_lengths` would then need more positive parts than items, producing an empty gap.</details>
+3. Why do sentinels count down from `sentinel_start_id` and why does `span_corrupt` refuse ids in that range?
+   <details><summary>Answer</summary>T5's sentinels are the last vocabulary ids, `<extra_id_0>` $= V - 1$ and so on downward. If a real token had a sentinel's id, the targets could not be split back into spans unambiguously.</details>
+4. In a causal decoder, why can every future offset map to bucket 0?
+   <details><summary>Answer</summary>The causal mask removes those keys from the softmax, so their bias is never used. Folding them into one bucket frees the whole table for past offsets.</details>
+5. What does `q_offset` fix during cached decoding?
+   <details><summary>Answer</summary>With a cache, the new query is at absolute position `q_offset` while keys run from 0. Without the offset, the query would be treated as position 0 and every relative distance would be wrong.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. relative position as query minus key, or a causal decoder that gives future keys their distance | past and future swapped: pretrained biases read the wrong side | `test_relative_bias_matches_hf` (mutant `s01`), `test_buckets_match_hf` (mutant `s09`) |
-| 2. bidirectional buckets not halved | the two directions overlap; HF disagrees past offset 8 | `test_buckets_match_hf`, `test_bucket_properties` (mutant `s02`) |
-| 3. rounding half up; no upper clamp on the span count | 3 noise tokens where T5 has 2; empty spans on short texts | `test_counts_and_lengths` (mutant `s03`), `test_short_texts_never_make_empty_spans` (mutant `s10`) |
-| 4. sentinels counting up, or targets without them | ids collide with real tokens; the decoder cannot tell spans apart | `test_hand_example_two_spans_scripted_draws`, `test_sentinels_and_validation` (mutants `s04`, `s05`) |
-| 5. a text that starts with a noise span | the first tokens always corrupted, unlike T5 | `test_hand_example_one_span`, `test_counts_and_lengths` (mutant `s06`) |
-| 6. the shuffle's range or draw order changed | a seed no longer replays the batch | `test_draws_follow_the_spec` (mutants `s07`, `s08`) |
+| 1. relative position as query minus key, or a causal decoder that gives future keys their distance | past and future swapped: pretrained biases read the wrong side | `rel = k - q`; causal uses `-min(rel, 0)` |
+| 2. bidirectional buckets not halved | the two directions overlap; HF disagrees past offset 8 | `n //= 2` and keys after the query add `n` |
+| 3. rounding half up; no upper clamp on the span count | 3 noise tokens where T5 has 2; empty spans on short texts | `np.round` (half to even); `n_spans = min(n_spans, n_noise, length - n_noise)` |
+| 4. sentinels counting up, or targets without them | ids collide with real tokens; the decoder cannot tell spans apart | `sentinel_start_id - k` written to both inputs and targets |
+| 5. a text that starts with a noise span | the first tokens always corrupted, unlike T5 | the layout loop adds a keep length before every noise length |
+| 6. the shuffle's range or draw order changed | a seed no longer replays the batch | Fisher-Yates from the end with `below(i + 1)`, noise lengths drawn before keep lengths |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -143,13 +290,13 @@ class T5RelativeBias(Module):
 | Back | `L0.2` | `permute` turns the `[q, k, H]` lookup into `[H, q, k]` |
 | Back | `L0.4` | the table is an `Embedding(num_buckets, n_heads)` |
 | Back | `L5.5` | the encoder-decoder that span corruption trains (reading) |
-| Forward | `sq.t5` | a small T5 on your corpus: span corruption for pretraining, the bias inside every attention layer |
+| Forward | `sq.t5` | a small T5 on the course corpus: span corruption for pretraining, the bias inside every attention layer |
 
 No module calls this code (D31): `L6.4` is optional. It is still worth an evening: span corruption is the objective of T5, UL2, and many code models, and relative buckets are the simplest relative position scheme, a good contrast to RoPE (`L7.3`) and ALiBi (`L7.4`).
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `span_corrupt` | T5's `span_corruption` preprocessor; HF `DataCollatorForT5MLM` | packing to fixed input and target lengths, EOS handling, `expand_inputs_and_targets` to choose the raw length | `t5/data/preprocessors.py`; `transformers/examples/flax/language-modeling/run_t5_mlm_flax.py` |
 | the denoising mixture | UL2's mixture of denoisers | short spans, long spans, and prefix LM in one model, chosen by a mode token | Tay et al., "UL2: Unifying Language Learning Paradigms" (2022) |

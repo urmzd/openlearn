@@ -1,4 +1,3 @@
-<!-- ol:module L1.2 -->
 # Byte-level BPE (GPT-2 compatible): pre-tokenizer, trainer, HF loader
 
 ## Overview
@@ -6,39 +5,31 @@
 | | |
 |---|---|
 | **Module** | `L1.2` · build · Python · Pass 3 · 6 to 8 h |
-| **You build** | `python/tinyllm/tok/pretok.py`: `pretokenize_gpt2`, `split_digits`, `is_space`, `is_letter`, `is_number`; `python/tinyllm/tok/bpe.py`: `BPETokenizer` (`train`, `from_gpt2`, `from_hf_json`, `encode`, `encode_batch`, `decode`, `save`, `load`) |
+| **Solution** | [`pretok.py`](../../../../course/solutions/python/tinyllm/tok/pretok.py): `pretokenize_gpt2`, `split_digits`, `is_space`, `is_letter`, `is_number` · [`bpe.py`](../../../../course/solutions/python/tinyllm/tok/bpe.py): `BPETokenizer` (`train`, `from_gpt2`, `from_hf_json`, `encode`, `encode_batch`, `decode`, `save`, `load`) · the `tok train` and `tok encode` verbs in [`cli_tok.py`](../../../../course/solutions/entry/python/tinyllm/cli_tok.py) · model tests: [`test_bpe.py`](../../../../course/solutions/learner-tests/L1.2/python/tests/l1-2-bpe/test_bpe.py) |
 | **Contract** | [`course/contracts/py/tinyllm/tok/bpe.pyi`](../../../../course/contracts/py/tinyllm/tok/bpe.pyi) · [`course/contracts/py/tinyllm/tok/pretok.pyi`](../../../../course/contracts/py/tinyllm/tok/pretok.pyi) · formats: [`tokenizer.md`](../../../../course/contracts/formats/tokenizer.md) (the `tokenizer.json` subset), [`tokenizer-json.schema.json`](../../../../course/contracts/formats/tokenizer-json.schema.json) |
-| **Tests** | `course/tests/L1.2/` (what they check: section 4) · your own tests in `python/tests/l1-2-bpe/`, rung R2, graded by mutation (threshold 0.60) |
-| **Needs** | `L1.1` the protocol and `check_ids` · `M05.2` the byte map · `M06.2` the trie (`insert`, `longest_prefix`) that splits out added tokens (or `--ref-deps`) |
-| **Used by** | `L1.5` ports it to Rust (`tl-tok`) and is proven id for id against your Python · `L1.6` measures GPT-2 and SmolLM2 through `from_hf_json` · `data.07` tokenizes corpus files with the Rust tokenizer process · later: `L7.9` loads SmolLM2, `L8.2` detokenizes, `C1` trains a 4096-token vocabulary; `L14.4` |
-| **Milestone** | `MS-L1` (`tok train --algo bpe`, `tok encode` against the SmolLM2 oracle) |
+| **Needs** | `L1.1` the protocol and `check_ids` · `M05.2` the byte map · `M06.2` the trie (`insert`, `longest_prefix`) that splits out added tokens |
+| **Used by** | `L1.5` ports it to Rust (`tl-tok`) and is proven id for id against this Python · `L1.6` measures GPT-2 and SmolLM2 through `from_hf_json` · `data.07` tokenizes corpus files with the Rust tokenizer process · later: `L7.9` loads SmolLM2, `L8.2` detokenizes, `C1` trains a 4096-token vocabulary; `L14.4`. The finished system trains a vocabulary with `tok train --algo bpe` and encodes with SmolLM2's real file through `tok encode`, matching Hugging Face's ids |
 | **Optional depth** | Sennrich, Haddow, and Birch, *Neural Machine Translation of Rare Words with Subword Units* (2016); Radford et al., *Language Models are Unsupervised Multitask Learners* (GPT-2, 2019), section 2.2 |
 
 ## Key Takeaways
 
-- BPE training is a loop: count adjacent pairs inside pre-tokens, weighted by how often each pre-token occurs, merge the most frequent pair, and update only the counts the merge touched; ties go to the pair with the smaller ids (`test_hand_example_training`, `test_trainer_matches_hf_merges`).
-- Encoding replays the learned merges by rank, lowest rank first and leftmost on a tie, which is not the same as merging left to right (`test_merges_apply_by_rank`, `test_rank_ties_go_leftmost`).
-- Byte-level means the alphabet is the 256 bytes, so every text encodes with no unknown token, and decoding joins token bytes before UTF-8 decoding (`test_roundtrip_property`, `test_decode_joins_bytes_before_utf8`).
-- The GPT-2 pre-tokenizer regex can be written by hand over `unicodedata`, and only an exact transcription matches the real ids: Unicode White_Space is not `str.isspace` (`test_pretokenize_white_space_rules`).
-- Your loader reads GPT-2's and SmolLM2's real `tokenizer.json` unchanged and reproduces Hugging Face's ids on 300 hard strings, and refuses fields it does not implement (`test_gpt2_ids_match_oracle`, `test_smollm2_ids_match_oracle`, `test_from_hf_json_rejects_outside_subset`).
+- BPE training is a loop: count adjacent pairs inside pre-tokens, weighted by how often each pre-token occurs, merge the most frequent pair, and update only the counts the merge touched; ties go to the pair with the smaller ids.
+- Encoding replays the learned merges by rank, lowest rank first and leftmost on a tie, which is not the same as merging left to right.
+- Byte-level means the alphabet is the 256 bytes, so every text encodes with no unknown token, and decoding joins token bytes before UTF-8 decoding.
+- The GPT-2 pre-tokenizer regex can be written by hand over `unicodedata`, and only an exact transcription matches the real ids: Unicode White_Space is not `str.isspace`.
+- The loader reads GPT-2's and SmolLM2's real `tokenizer.json` unchanged and reproduces Hugging Face's ids on 300 hard strings, and refuses fields it does not implement.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L1.2              # stubs pretok.py and bpe.py into your repo
-ol tests L1.2              # read the test catalog first
-ol check L1.2              # exit code is the verdict; then grades your tests by mutation
-ol check L1.2 --ref-deps   # only if your L1.1, M05.2, or M06.2 is not passing yet
-ol diff  L1.2              # after passing: your code against the reference
-```
+Sections 1 to 3 build the pre-tokenizer, the trainer, and the rank-ordered encoder from first principles and work each by hand. Section 4 fixes the interface and lists what a correct solution must handle. Section 5 walks through `pretok.py` and `bpe.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
-Write `pretok.py` first and get `test_hand_example_pretokenize` and `test_pretokenize_white_space_rules` green: every id test downstream depends on it. Then training on the hand example, then `encode` with merges by rank, then the two loaders.
+The pre-tokenizer comes first in the walkthrough because every id downstream depends on it; then training on the hand example, then `encode` with merges by rank, then the two loaders. The solution's entry point, [`cli_tok.py`](../../../../course/solutions/entry/python/tinyllm/cli_tok.py), exposes the module as two verbs: `tok train --algo bpe --vocab V --in FILE --out DIR [--special S] [--min-freq M]` trains on the lines of `FILE` and saves `DIR/tokenizer.json`, and `tok encode --tokenizer tokenizer.json --in FILE` loads any file in the subset through `from_hf_json` and reports the ids and bytes per token.
 
 ---
 
 ## 1. Why now
 
-`L1.1` gave every tokenizer one shape, and the only trained one so far is the char tokenizer: one id per code point, so a 10M-parameter model on TinyStories spends most of its context window on spelling, and any character it never saw is `<unk>`. The byte tokenizer of the tracer never fails but costs one token per byte. Byte-level BPE sits between them: it starts from the 256 bytes (so nothing is ever unknown) and learns merges until frequent words are one token. It is also what the real models you will serve use: SmolLM2 (`L7.9`, the agents' model in `MS-agent`) ships a GPT-2-style byte-level BPE in `tokenizer.json`, and your engine cannot answer a single request until your code turns text into exactly its ids. This module builds the trainer for the capstone's own vocabulary and the loader for the real ones.
+`L1.1` gave every tokenizer one shape, and the only trained one so far is the char tokenizer: one id per code point, so a 10M-parameter model on TinyStories spends most of its context window on spelling, and any character it never saw is `<unk>`. The byte tokenizer of the tracer never fails but costs one token per byte. Byte-level BPE sits between them: it starts from the 256 bytes (so nothing is ever unknown) and learns merges until frequent words are one token. It is also what the real models the system serves use: SmolLM2 (`L7.9`, the agents' model) ships a GPT-2-style byte-level BPE in `tokenizer.json`, and the engine cannot answer a single request until the tokenizer turns text into exactly its ids. This module builds the trainer for the capstone's own vocabulary and the loader for the real ones.
 
 ## 2. Principles
 
@@ -69,7 +60,7 @@ At each position the engine tries the alternatives in order and takes the first 
 5. `\s+(?!\S)`: a run of white space not followed by a non-space. When the run is followed by a word, the engine backtracks one character, so the run gives up its last space, which then starts the next pre-token via the optional space of 2 to 4;
 6. `\s+`: the white space that 5 rejected (a single white-space character right before a word, such as a tab).
 
-`\s` is the Unicode **White_Space** property: tab, newline, U+000B to U+000D, the space, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F, U+3000. Python's `str.isspace()` also accepts U+001C to U+001F, which are not White_Space, so it gives wrong pre-tokens on text with those control characters. You write `pretokenize_gpt2` over `unicodedata.category` and this set, with no regex module; the result always joins back to the text and has no empty piece.
+`\s` is the Unicode **White_Space** property: tab, newline, U+000B to U+000D, the space, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F, U+3000. Python's `str.isspace()` also accepts U+001C to U+001F, which are not White_Space, so it gives wrong pre-tokens on text with those control characters. The solution writes `pretokenize_gpt2` over `unicodedata.category` and this set, with no regex module; the result always joins back to the text and has no empty piece.
 
 SmolLM2 declares a `Sequence` of two pre-tokenizers: first `Digits` with `individual_digits`, which makes every number code point its own piece, then the GPT-2 split on each piece. That is `split_digits`, and it is why SmolLM2 spells `2024` as four tokens.
 
@@ -82,13 +73,13 @@ SmolLM2 declares a `Sequence` of two pre-tokenizers: first `Digits` with `indivi
 3. add the token $ab$ with the next id and record the merge $(a, b)$ with the next rank;
 4. replace every non-overlapping occurrence of $a, b$ (left to right) in every pre-token that contains it, and update the counts of the neighboring pairs that changed.
 
-Ids are assigned in a fixed order: the specials first (ids 0, 1, ...), then the 256 byte symbols in code point order (so `!` is the first one, and `Ġ` is 220 when there are no specials), then one token per merge. The tie rule and this order are what the Hugging Face `BpeTrainer` does, which is how `test_trainer_matches_hf_merges` can compare your merges to its merges one for one. Recounting every pair after every merge costs a pass over the corpus per merge; the trainer keeps a max-heap of `(count, pair)` with lazy updates (pop a stale entry, push it back with its current count) and a map from each pair to the pre-tokens that contain it, so a merge costs only the pre-tokens it touches. Specials are cut out of the training texts before counting (`<|endoftext|>` between documents must never become the merges `<|`, `end`, ...).
+Ids are assigned in a fixed order: the specials first (ids 0, 1, ...), then the 256 byte symbols in code point order (so `!` is the first one, and `Ġ` is 220 when there are no specials), then one token per merge. The tie rule and this order are what the Hugging Face `BpeTrainer` does, which is why the solution's merges can be compared with its merges one for one. Recounting every pair after every merge costs a pass over the corpus per merge; the trainer keeps a max-heap of `(count, pair)` with lazy updates (pop a stale entry, push it back with its current count) and a map from each pair to the pre-tokens that contain it, so a merge costs only the pre-tokens it touches. Specials are cut out of the training texts before counting (`<|endoftext|>` between documents must never become the merges `<|`, `end`, ...).
 
 **Encoding.** Split out the added tokens first, by leftmost-longest match through the `M06.2` trie: SmolLM2's `<|im_start|>` is one id, and the regex would otherwise cut it into `<|`, `im`, `_`, `start`, `|>`. Then pre-tokenize the rest, map bytes, and inside each pre-token repeatedly merge the adjacent pair with the **lowest rank** among those present; when the lowest rank occurs twice, merge the leftmost occurrence. Stop when no adjacent pair has a rank, and look each symbol up in the vocabulary. Caching the result per pre-token makes encoding real text fast (words repeat).
 
 **Decoding.** Concatenate the bytes of every token ($\beta^{-1}$ of each symbol, or the UTF-8 of an added token's text) and decode the whole byte string as UTF-8 with replacement, once. Decoding token by token breaks every character whose bytes landed in two tokens.
 
-**Loading real files.** `from_gpt2(vocab.json, merges.txt)` reads the original GPT-2 release (merges.txt has a `#version` first line) and makes `<|endoftext|>` an added special token. `from_hf_json(tokenizer.json)` reads the subset in [`tokenizer.md`](../../../../course/contracts/formats/tokenizer.md): it honors the declared pre-tokenizer sequence and added tokens, and it raises `ValueError` naming the field for anything it does not implement (a normalizer, dropout, an unknown token, byte fallback, a template post-processor). Silently ignoring such a field would encode different ids than the model was trained on, with no error anywhere. One quirk you must reproduce: SmolLM2's vocabulary has no symbol for six control bytes (0x04 among them) and no unknown token, and Hugging Face drops such a byte, so you drop it too.
+**Loading real files.** `from_gpt2(vocab.json, merges.txt)` reads the original GPT-2 release (merges.txt has a `#version` first line) and makes `<|endoftext|>` an added special token. `from_hf_json(tokenizer.json)` reads the subset in [`tokenizer.md`](../../../../course/contracts/formats/tokenizer.md): it honors the declared pre-tokenizer sequence and added tokens, and it raises `ValueError` naming the field for anything it does not implement (a normalizer, dropout, an unknown token, byte fallback, a template post-processor). Silently ignoring such a field would encode different ids than the model was trained on, with no error anywhere. One quirk to reproduce: SmolLM2's vocabulary has no symbol for six control bytes (0x04 among them) and no unknown token, and Hugging Face drops such a byte, so the solution drops it too.
 
 ## 3. Worked example by hand
 
@@ -119,7 +110,7 @@ At step 3 two pairs tie at 1. Their ids are (79, 256) and (257, 82); compared as
 
 **Rank, not position.** With merges ranked (b, c) before (a, b), `"abc"` is `a bc`, although (a, b) is the leftmost pair. With one merge (a, a), `"aaa"` is `aa a`: both occurrences have rank 0, and the leftmost merges first.
 
-These are the first cases in section 4: `test_hand_example_training`, `test_hand_example_encode`, and `test_hand_example_pretokenize`.
+These are the first cases a correct solution must reproduce (section 4).
 
 ## 4. The interface
 
