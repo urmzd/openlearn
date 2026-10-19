@@ -86,78 +86,165 @@ Take 1000 messages: 100 spam, 900 good. Flagged spam: $0.8 \cdot 100 = 80$. Flag
 
 **Box-Muller.** Take $1 - u_1 = e^{-1/2}$ and $u_2 = 1/4$. Then $r = \sqrt{-2 \cdot (-1/2)} = 1$ and $\theta = 2\pi/4 = \pi/2$, so $z_0 = \cos(\pi/2) = 0$ and the spare is $z_1 = \sin(\pi/2) = 1$. The bookkeeping `M07.0` relies on: two uniforms in, two normals out, $z_0$ first.
 
-## 4. The problem set
+## 4. The problem set, with worked answers
 
-Write each answer in `solve/S-M07a.toml`; lettered parts are their own tables:
-
-```toml
-[q1.a]
-answer = "7/10"
-[q8.a]
-answer = "p*(1 - p)"
-[q13.a]
-answer = "-log(1 - u)/lam"
-[q6]
-proof = "S-M07a/q6.md"
-```
-
-Probabilities are exact fractions; `0.7` fails a question marked exact. Write $\lambda$ as `lam`, $e$ as `E` or `exp(1)`, and $\pi$ as `pi`.
-
-<!-- ol:problems S-M07a -->
+Probabilities are exact fractions ($7/10$, not 0.7). Lettered parts are answered separately. The tag after each problem says what kind of answer is expected: `[number]` an exact value, `[expr in ...]` a formula in the named variables, `[bool]` true or false, `[proof]` a written proof.
 
 ### Axioms, conditional probability, and Bayes
 
 **q1.** Events $A$ and $B$ have $P(A) = 1/2$, $P(B) = 2/5$, and $P(A \cap B) = 1/5$.
 (a) $P(A \cup B)$. (b) $P(A \mid B)$. `[number]` (c) Are $A$ and $B$ independent? `[bool]`
 
+<details><summary>Answer</summary>
+
+**(a) $7/10$. (b) $1/2$. (c) Yes.** (a) Inclusion-exclusion (q6): $P(A \cup B) = \frac12 + \frac25 - \frac15 = \frac{5 + 4 - 2}{10} = \frac{7}{10}$. A common mistake is $9/10$, which adds $P(A) + P(B)$ and counts the overlap twice. (b) $P(A \mid B) = P(A \cap B)/P(B) = \frac{1/5}{2/5} = \frac12$. A common mistake is $2/5$, which is $P(B \mid A) = \frac{1/5}{1/2}$: the conditioning event goes in the denominator. (c) $P(A)P(B) = \frac12 \cdot \frac25 = \frac15 = P(A \cap B)$, so they are independent; equivalently $P(A \mid B) = \frac12 = P(A)$.
+
+</details>
+
 **q2.** Roll two fair six-sided dice. (a) $P(\text{the sum is } 7)$. (b) $P(\text{at least one die shows } 6)$. (c) $P(\text{the sum is } 7 \mid \text{at least one die shows } 6)$. `[number]`
 
-**q3.** Your gateway's usage-policy classifier (`gw.08`) flags 90% of violating requests and 5% of allowed ones, and 1% of requests violate the policy. (a) What fraction of all requests is flagged? (b) Given that a request is flagged, what is the probability that it violates the policy? `[number]`
+<details><summary>Answer</summary>
+
+**(a) $1/6$. (b) $11/36$. (c) $2/11$.** The 36 ordered pairs are equally likely. (a) Six pairs sum to 7, $(1,6), (2,5), \ldots, (6,1)$: $6/36 = 1/6$. A common mistake is $1/11$, treating the 11 possible sums $2, \ldots, 12$ as equally likely; they are not (one way to make 2, six ways to make 7). (b) The complement is "no 6 on either die", $(5/6)^2 = 25/36$, so $1 - 25/36 = 11/36$. Counting directly: 6 pairs with a 6 first, 6 with a 6 second, minus $(6, 6)$ counted twice. A common mistake is $1/6 + 1/6 = 1/3$, which double-counts $(6, 6)$. (c) Conditioning shrinks the sample space to the 11 pairs with a 6; of those, $(1, 6)$ and $(6, 1)$ sum to 7: $2/11$. Common mistakes: $1/6$ ignores the condition, and $2/36$ is the joint probability $P(\text{sum } 7 \cap \text{a } 6)$, not the conditional.
+
+</details>
+
+**q3.** The gateway's usage-policy classifier (`gw.08`) flags 90% of violating requests and 5% of allowed ones, and 1% of requests violate the policy. (a) What fraction of all requests is flagged? (b) Given that a request is flagged, what is the probability that it violates the policy? `[number]`
+
+<details><summary>Answer</summary>
+
+**(a) $117/2000$. (b) $2/13$.** (a) Total probability over violate / allowed: $P(\text{flag}) = 0.9 \cdot 0.01 + 0.05 \cdot 0.99 = 0.009 + 0.0495 = 0.0585 = 117/2000$. A common mistake is $9/1000$, which counts only the true positives and forgets that 99% of traffic is allowed, so 5% of it is a much larger pool of flags. (b) Bayes: $P(\text{bad} \mid \text{flag}) = 0.009/0.0585 = 90/585 = 2/13 \approx 0.154$. In 10 000 requests: 100 violate and 90 are flagged; 9900 are allowed and 495 are flagged; of 585 flags, 90 are right. The common mistake is $9/10$, the sensitivity $P(\text{flag} \mid \text{bad})$ quoted as if it were the precision; the safety report of `ethics.04` must quote precision, which the base rate drags down.
+
+</details>
 
 **q4.** Draw 3 bytes independently and uniformly from the 256 byte values. What is the probability that all three are different? `[number]`
 
+<details><summary>Answer</summary>
+
+**$32385/32768$.** The first byte is anything; the second avoids one value, the third two: $\frac{256}{256} \cdot \frac{255}{256} \cdot \frac{254}{256} = \frac{255 \cdot 254}{65536} = \frac{64770}{65536} = \frac{32385}{32768} \approx 0.98831$. This is the birthday computation over the byte alphabet. A common mistake is $1 - 3/256$: the union bound says $P(\text{some pair equal}) \le \binom32/256 = 3/256$, which is an inequality, not the exact answer ($1 - 3/256 = 0.98828$ is slightly too small because the three pair-collision events overlap).
+
+</details>
+
 **q5.** A bag holds a fair coin and a coin that lands heads with probability $3/4$. Pick one of the two uniformly at random and flip it. (a) $P(\text{heads})$. (b) $P(\text{the biased coin was picked} \mid \text{heads})$. `[number]`
 
+<details><summary>Answer</summary>
+
+**(a) $5/8$. (b) $3/5$.** (a) Total probability: $\frac12 \cdot \frac12 + \frac12 \cdot \frac34 = \frac14 + \frac38 = \frac58$. A common mistake is $3/4$, the biased coin's rate, as if it were always picked. (b) Bayes: $\frac{P(\text{biased} \cap \text{heads})}{P(\text{heads})} = \frac{3/8}{5/8} = \frac35$. A common mistake is $3/8$, the joint probability, without dividing by $P(\text{heads})$. Heads is evidence for the biased coin, so the posterior $3/5$ rises above the prior $1/2$.
+
+</details>
+
 **q6.** From the three axioms ($P(E) \ge 0$; $P(\Omega) = 1$; $P$ of a countable union of pairwise disjoint events is the sum of their probabilities) prove $P(A \cup B) = P(A) + P(B) - P(A \cap B)$ for any events $A$ and $B$. `[proof]`
+
+<details><summary>Answer (model proof)</summary>
+
+**Claim.** For any events $A, B$, $P(A \cup B) = P(A) + P(B) - P(A \cap B)$.
+
+**Method.** Split each set into disjoint pieces and apply the third axiom. A finite union is a countable one padded with empty sets, and $P(\emptyset) = 0$ follows from additivity applied to $\emptyset = \emptyset \cup \emptyset \cup \cdots$ together with $P \ge 0$. Write $B \setminus A = B \cap A^c$.
+
+1. $A \cup B = A \cup (B \setminus A)$, and $A$ and $B \setminus A$ are disjoint (an element of $B \setminus A$ is not in $A$). By additivity, $P(A \cup B) = P(A) + P(B \setminus A)$.
+2. $B = (A \cap B) \cup (B \setminus A)$, and these two are disjoint (one lies inside $A$, the other outside it). By additivity, $P(B) = P(A \cap B) + P(B \setminus A)$, so $P(B \setminus A) = P(B) - P(A \cap B)$.
+3. Substituting step 2 into step 1: $P(A \cup B) = P(A) + P(B) - P(A \cap B)$. $\blacksquare$
+
+Every step used only set identities and the additivity axiom. A complete proof must (i) write both $A \cup B$ and $B$ as disjoint unions, (ii) apply additivity to each, (iii) eliminate $P(B \setminus A)$, and (iv) name each step. A common gap is to "subtract the overlap because it was counted twice", which is the intuition, not a proof from the axioms. Model proof also in [`course/solutions/solve/S-M07a/q6.md`](../../../../course/solutions/solve/S-M07a/q6.md).
+
+</details>
 
 ### Discrete random variables
 
 **q7.** $X$ is a fair die roll, uniform on $\{1, \dots, 6\}$. (a) $E[X]$. (b) $E[X^2]$. (c) $\operatorname{Var}(X)$. `[number]`
 
+<details><summary>Answer</summary>
+
+**(a) $7/2$. (b) $91/6$. (c) $35/12$.** (a) $(1 + \cdots + 6)/6 = 21/6 = 7/2$; a common slip is 3, which is not the midpoint of $1..6$. (b) $(1 + 4 + 9 + 16 + 25 + 36)/6 = 91/6$. A common mistake is $49/4 = (E[X])^2$: the mean of the squares is not the square of the mean. (c) $E[X^2] - E[X]^2 = \frac{91}{6} - \frac{49}{4} = \frac{182 - 147}{12} = \frac{35}{12}$, matching `M07.0`'s two-pass computation. Common mistakes: $35/2$, the sum of squared deviations $2(6.25 + 2.25 + 0.25) = 17.5$ not divided by 6; and $7/2$, that sum divided by $n - 1 = 5$, which is the *sample* variance formula, not the variance of a known distribution.
+
+</details>
+
 **q8.** (a) Give $\operatorname{Var}(X)$ for $X \sim \mathrm{Bernoulli}(p)$. `[expr in p]` (b) Give $\operatorname{Var}(Y)$ for $Y \sim \mathrm{Binomial}(n, p)$, the number of successes in $n$ independent Bernoulli($p$) trials. `[expr in n, p]`
+
+<details><summary>Answer</summary>
+
+**(a) $p(1 - p)$. (b) $np(1 - p)$.** (a) $X^2 = X$ for a 0/1 variable, so $E[X^2] = p$ and $\operatorname{Var}(X) = p - p^2 = p(1-p)$. Common mistakes: $p$ (the mean) and $p^2$ (the squared mean). (b) $Y = X_1 + \cdots + X_n$ with independent $X_i$, and variances of independent sums add: $n p(1-p)$. A common mistake is $n^2 p(1 - p)$, which is $\operatorname{Var}(nX_1)$: one trial scaled by $n$, perfectly correlated, not $n$ independent trials. The difference is why the standard error of an accuracy shrinks like $1/\sqrt n$ (`M07.4`, `L6.7`).
+
+</details>
 
 **q9.** $X$ counts independent Bernoulli($p$) trials up to and including the first success, so $X \in \{1, 2, 3, \dots\}$. Give $E[X]$. `[expr in p]`
 
+<details><summary>Answer</summary>
+
+**$1/p$.** First-step analysis: one trial is always made; with probability $1 - p$ it fails and the process starts afresh, so $E[X] = 1 + (1 - p)E[X]$, giving $pE[X] = 1$. Directly: $E[X] = \sum_{k \ge 1} k (1-p)^{k-1} p = p \cdot \frac{1}{(1 - (1-p))^2} = \frac1p$, using $\sum_{k \ge 1} k r^{k-1} = 1/(1-r)^2$. A common mistake is $(1 - p)/p$, the expected number of *failures* before the first success; it differs by the success trial itself.
+
+</details>
+
 **q10.** A sampler draws a token id from the categorical distribution $q = (1/10, 2/10, 3/10, 4/10)$ over ids $0, 1, 2, 3$. (a) Give $E[\text{id}]$. The sampler then uses the inverse CDF of `spec/sampling.md`: walk the ids in ascending order adding $q_i$ to a running total $c$, and return the first id with $u < c$. Which id does it return for (b) $u = 0.35$ and (c) $u = 0.3$ (exactly)? `[number]`
 
+<details><summary>Answer</summary>
+
+**(a) $2$. (b) $2$. (c) $2$.** (a) $0 \cdot 0.1 + 1 \cdot 0.2 + 2 \cdot 0.3 + 3 \cdot 0.4 = 0.2 + 0.6 + 1.2 = 2$. A common mistake is $3/2$, the plain mean of the ids, which ignores $q$. (b) The running totals are $0.1, 0.3, 0.6, 1.0$; $0.35 < 0.1$ and $0.35 < 0.3$ fail, $0.35 < 0.6$ holds: id 2. (c) $0.3 < 0.1$ fails and $0.3 < 0.3$ fails (strict), $0.3 < 0.6$ holds: id 2. Id 1 owns $[0.1, 0.3)$, half open, so its right end belongs to id 2. The common mistake is id 1, from $u \le c$; then a Python and a Rust sampler that disagree on the comparison return different tokens at boundaries. (In float64 the running total $0.1 + 0.2$ is $0.30000000000000004$, slightly above the double $0.3$, so a float sampler returns id 1 here; the question asks for the exact-arithmetic rule, and the spec fixes the float operations so every port rounds the same way.)
+
+</details>
+
 **q11.** $X \sim \mathrm{Poisson}(\lambda)$ has $P(X = k) = e^{-\lambda} \lambda^k / k!$. Give $P(X = 0)$. `[expr in lam]`
+
+<details><summary>Answer</summary>
+
+**$e^{-\lambda}$.** Set $k = 0$: $\lambda^0/0! = 1$. This is also the probability that an exponential waiting time with rate $\lambda$ exceeds 1, which is how Poisson arrivals (`M07.1`) and the exponential connect. A common mistake is $1 - e^{-\lambda}$, which is $P(X \ge 1)$.
+
+</details>
 
 ### Continuous random variables, the normal, and Box-Muller
 
 **q12.** $U$ is uniform on $[0, 1]$. (a) $E[U]$. (b) $\operatorname{Var}(U)$. `[number]`
 
+<details><summary>Answer</summary>
+
+**(a) $1/2$. (b) $1/12$.** (a) $\int_0^1 u\,du = 1/2$. (b) $E[U^2] = \int_0^1 u^2\,du = 1/3$, so $\operatorname{Var}(U) = 1/3 - 1/4 = 1/12$. A common mistake is $1/3$, which is $E[U^2]$ without subtracting the squared mean. Scaling gives $\operatorname{Var}\,\mathcal{U}(-a, a) = (2a)^2/12 = a^2/3$, the fact behind Xavier-uniform's bound in `M07.3`.
+
+</details>
+
 **q13.** $X \sim \mathrm{Exponential}(\lambda)$ has CDF $F(x) = 1 - e^{-\lambda x}$ for $x \ge 0$.
 (a) Give the inverse-CDF sampler: the $x$ with $F(x) = u$. `[expr in u, lam]` (b) Give $E[X]$. `[expr in lam]`
 
+<details><summary>Answer</summary>
+
+**(a) $-\ln(1 - u)/\lambda$. (b) $1/\lambda$.** (a) $1 - e^{-\lambda x} = u \Rightarrow e^{-\lambda x} = 1 - u \Rightarrow x = -\ln(1-u)/\lambda$. This is `M07.1`'s `exponential_icdf`. Common mistakes: $-\lambda\ln(1-u)$, multiplying by the rate (a higher rate must mean *shorter* waits), and $e^{-\lambda u}$, the survival function evaluated at $u$, not its inverse. (b) $E[X] = \int_0^\infty P(X > x)\,dx = \int_0^\infty e^{-\lambda x}\,dx = 1/\lambda$. A common mistake is $\lambda$: the rate is events per unit time, the mean wait is its reciprocal.
+
+</details>
+
 **q14.** $Z$ is a standard normal and $a, b$ are constants. Give $\operatorname{Var}(aZ + b)$. `[expr in a, b]`
+
+<details><summary>Answer</summary>
+
+**$a^2$.** $\operatorname{Var}(aZ + b) = E[(aZ + b - b)^2] = a^2 E[Z^2] = a^2$, since $E[aZ + b] = b$ and $\operatorname{Var}(Z) = 1$. `normal_init(std)` in `M07.3` is $\text{std} \cdot Z$, with variance $\text{std}^2$. Common mistakes: $a^2 + b$ (a shift does not spread the distribution) and $a$, which confuses the variance with the standard deviation $\lvert a \rvert$.
+
+</details>
 
 **q15.** `spec/pcg32.md` turns two uniforms into two normals by Box-Muller: $r = \sqrt{-2 \ln(1 - u_1)}$, then $z_0 = r \cos(2\pi u_2)$ is returned and $z_1 = r \sin(2\pi u_2)$ is kept as the spare. For $u_1$ with $1 - u_1 = e^{-2}$ and $u_2 = 1/12$, give (a) $z_0$ and (b) $z_1$. `[number]`
 
+<details><summary>Answer</summary>
+
+**(a) $\sqrt3$. (b) $1$.** $r = \sqrt{-2 \ln e^{-2}} = \sqrt4 = 2$ and $\theta = 2\pi/12 = \pi/6$. (a) $z_0 = 2\cos(\pi/6) = 2 \cdot \frac{\sqrt3}{2} = \sqrt3$. (b) $z_1 = 2\sin(\pi/6) = 2 \cdot \frac12 = 1$. Common mistakes for (a): $1$, from swapping sine and cosine (the spec emits the cosine first, and every port must agree); and $\sqrt3/2$, from forgetting the radius. For (b), $\sqrt3$ is the same swap.
+
+</details>
+
 **q16.** Give $\int_{-\infty}^{\infty} e^{-x^2/2}\, dx$, the constant that normalizes the standard normal density. `[number]`
 
-<!-- /ol:problems -->
+<details><summary>Answer</summary>
+
+**$\sqrt{2\pi}$.** Square the integral and switch to polar coordinates: $I^2 = \iint e^{-(x^2 + y^2)/2}\,dx\,dy = \int_0^{2\pi}\!\!\int_0^\infty e^{-r^2/2}\, r\,dr\,d\theta = 2\pi \cdot \bigl[-e^{-r^2/2}\bigr]_0^\infty = 2\pi$, so $I = \sqrt{2\pi}$. The same polar picture, run backwards, is Box-Muller (section 2.4). Common mistakes: $\sqrt\pi$, which is $\int e^{-x^2}\,dx$ (no factor $\tfrac12$ in the exponent), and $1$, which is the integral of the already normalized density.
+
+</details>
 
 ## 5. Pitfalls
 
-| Pitfall | Symptom | Caught by |
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Adding probabilities of overlapping events | $P(A \cup B) > 1$ for large events | q1 (canary 9/10), q2 (canary 1/3) |
-| Confusing $P(A \mid B)$ with $P(B \mid A)$ | a classifier's precision quoted as its recall | q3 (canary 9/10) |
-| Treating unequal outcomes as equally likely | the 11 dice sums given probability 1/11 each | q2 (canary 1/11) |
-| Variance as $E[X^2]$, or with $n - 1$ in a population formula | initialization scales off by the squared mean | q7 (canaries 49/4 and 7/2), q12 (canary 1/3) |
-| A shift changing variance | `normal_init` with a nonzero mean breaks M07.3's variance argument | q14 (canary a^2 + b) |
-| $u \le c$ instead of $u < c$ in the inverse CDF | a Python and a Rust sampler disagree at boundaries | q10 (canary 1) |
-| Swapping sine and cosine, or forgetting the radius | normals differ from `spec/pcg32.md` | q15 (canaries 1 and sqrt(3)/2) |
+| Adding probabilities of overlapping events | $P(A \cup B) > 1$ for large events | subtracts the overlap (q1a, q2b) |
+| Confusing $P(A \mid B)$ with $P(B \mid A)$ | a classifier's precision quoted as its recall | Bayes with the base rate in the numerator and $P(\text{flag})$ below (q3b, q5b) |
+| Treating unequal outcomes as equally likely | the 11 dice sums given probability 1/11 each | counts the 36 equally likely ordered pairs (q2a) |
+| Variance as $E[X^2]$, or with $n - 1$ in a population formula | initialization scales off by the squared mean | $E[X^2] - E[X]^2$ over the known distribution (q7c, q12b) |
+| A shift changing variance | `normal_init` with a nonzero mean breaks `M07.3`'s variance argument | $\operatorname{Var}(aZ + b) = a^2$ (q14) |
+| $u \le c$ instead of $u < c$ in the inverse CDF | a Python and a Rust sampler disagree at boundaries | half-open intervals: $u = 0.3$ goes to id 2 (q10c) |
+| Swapping sine and cosine, or forgetting the radius | normals differ from `spec/pcg32.md` | $z_0 = r\cos\theta$ with $r = 2$ (q15) |
 
 ## 6. Where it's used next
 

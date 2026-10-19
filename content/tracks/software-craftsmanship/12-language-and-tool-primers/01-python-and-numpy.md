@@ -27,7 +27,7 @@ Section 2 builds the picture of an array (buffer, dtype, shape, strides) and der
 
 ## 1. Why now
 
-Your system is an empty repository. In Pass 1 you train its first model, L0.0's byte bigram, and that training is nothing more than counting which byte follows which in a text file and turning the counts into probabilities. A Python loop over a 1 MB file does that count in about 0.12 s on a laptop; one numpy call does it in about 0.005 s, and the gap grows with every pass over the data. Next, rt.01 hands numpy arrays to C through a raw pointer, and if the array's bytes are not laid out the way C reads them, C computes on the wrong numbers with no error at all. Then L0.1's autograd has to undo broadcasting in every backward pass. All three rest on one picture of what an array is, and on knowing exactly which environment your Python runs in. This primer builds that picture with five small functions.
+The system starts as an empty repository. In Pass 1 it trains its first model, L0.0's byte bigram, and that training is nothing more than counting which byte follows which in a text file and turning the counts into probabilities. A Python loop over a 1 MB file does that count in about 0.12 s on a laptop; one numpy call does it in about 0.005 s, and the gap grows with every pass over the data. Next, rt.01 hands numpy arrays to C through a raw pointer, and if the array's bytes are not laid out the way C reads them, C computes on the wrong numbers with no error at all. Then L0.1's autograd has to undo broadcasting in every backward pass. All three rest on one picture of what an array is, and on knowing exactly which environment your Python runs in. This primer builds that picture with five small functions.
 
 ## 2. Principles
 
@@ -212,7 +212,146 @@ def row_normalize(counts: np.ndarray) -> np.ndarray: ...
 | empty rows stay zero | boundary | no NaN for unseen bytes | one NaN poisons every sum |
 | the project declares numpy | unit | `[project].dependencies` lists numpy | the environment is reproducible |
 
-@@SOLUTION@@
+## 5. The solution, step by step
+
+### 5.1 From first principles
+
+1. Broadcasting is defined axis by axis from the right (2.3). So `broadcast_shape` first makes both shapes the same length by padding on the left, then decides each axis independently: equal sizes stay, a 1 yields to the other size, anything else is an error. No numpy call is needed, and none is used, because the rule is the point.
+2. `unbroadcast` is the adjoint $B^\top$ (2.4). Broadcasting did two things: it prepended axes, and it stretched size-1 axes. The adjoint undoes them in reverse order of how they look: sum away the prepended axes (they did not exist in $x$), then sum each stretched axis while keeping it as size 1. Whatever remains must be exactly `shape`, or `shape` could not have broadcast to `grad.shape`.
+3. `as_c_float32` must return something a C function can read through `const float *`: dtype float32 and C-contiguous strides. numpy can already decide whether `x` satisfies both and copy only if it does not; the only job is to ask for both conditions at once and not use a helper that changes the shape.
+4. `bigram_counts` must count without a Python loop. The pair code $k = 256a + b$ (2.5) turns a 2-D count into a 1-D histogram, which `np.bincount` computes in one compiled pass. The codes must be built in a dtype wide enough for 65535, so the bytes are widened to `int64` first.
+5. `row_normalize` divides each row by its own total, which needs the totals as a column, shape (256, 1), for broadcasting to pair row $a$ with total $a$. A zero total must leave its row at zero, so the division is masked rather than repaired afterwards.
+
+### 5.2 The code, annotated
+
+**`broadcast_shape`.**
+
+```python
+def broadcast_shape(a: tuple[int, ...], b: tuple[int, ...]) -> tuple[int, ...]:
+    n = max(len(a), len(b))
+    pa = (1,) * (n - len(a)) + tuple(a)          # pad on the LEFT: align on the last axis
+    pb = (1,) * (n - len(b)) + tuple(b)
+    out = []
+    for axis, (x, y) in enumerate(zip(pa, pb)):
+        if x == y or y == 1:                     # equal, or b stretches: keep a's size
+            out.append(x)
+        elif x == 1:                             # a stretches: take b's size
+            out.append(y)
+        else:
+            raise ValueError(f"shapes {tuple(a)} and {tuple(b)} do not broadcast: "
+                             f"axis {axis - n} has sizes {x} and {y}")
+    return tuple(out)
+```
+
+The loop is over axes (at most a handful), not over data, so it is not a vectorization concern. The ordering of the tests matters for size 0: `(1, 0)` takes the `x == 1` branch and gives 0, matching section 3's `(4, 1)` with `(0,)`. The error names the axis counted from the right (`axis - n` is negative), which is how numpy reports it and how a reader thinks about alignment.
+
+**`unbroadcast`.**
+
+```python
+def unbroadcast(grad: np.ndarray, shape: tuple[int, ...]) -> np.ndarray:
+    g = np.asarray(grad)
+    shape = tuple(shape)
+    extra = g.ndim - len(shape)
+    if extra < 0:                                # broadcasting never removes axes
+        raise ValueError(f"grad has {g.ndim} axes, fewer than the target shape {shape}")
+    if extra:
+        g = g.sum(axis=tuple(range(extra)))      # the leading axes broadcasting added
+    # axes stretched from 1: sum them, but keep each as size 1 so the result has `shape`
+    axes = tuple(i for i, s in enumerate(shape) if s == 1 and g.shape[i] != 1)
+    if axes:
+        g = g.sum(axis=axes, keepdims=True)
+    if g.shape != shape:                         # e.g. (2,) is not a source of (2, 3)
+        raise ValueError(f"{shape} does not broadcast to {np.shape(grad)}")
+    return g
+```
+
+Trace section 3's `(2, 3)` ones to `(2, 1)`: `extra = 0`; axis 1 has target size 1 and grad size 3, so `axes = (1,)`; the sum with `keepdims` gives `[[3], [3]]`. To `(3,)`: `extra = 1`, summing axis 0 gives `[2, 2, 2]`, no size-1 axes, shape matches. To `(2,)`: `extra = 1`, summing axis 0 gives shape `(3,)`, which is not `(2,)`, so it raises: the final shape check is what rejects shapes that never broadcast, without a separate validation pass. When the target is `()`, `extra = 2` and the sum over both axes gives a numpy scalar of shape `()` holding 6.
+
+**`as_c_float32`.**
+
+```python
+def as_c_float32(x) -> np.ndarray:
+    # Not np.ascontiguousarray: it returns at least 1-D, so a 0-d scalar
+    # would come back with shape (1,).
+    return np.asarray(x, dtype=np.float32, order="C")
+```
+
+`np.asarray` returns its argument unchanged when it already has the requested dtype and order, and makes a new array otherwise. Both conditions are needed: `dtype` alone (pitfall 5) passes a float32 transposed view through untouched, and `order` alone leaves float64. On section 3's `x.T`, `order="C"` forces a copy laid out as 0, 4, 8, 1, 5, 9, ...; on an already-right array, `np.shares_memory(x, as_c_float32(x))` is true.
+
+**`bigram_counts`.**
+
+```python
+def bigram_counts(data: bytes) -> np.ndarray:
+    x = np.frombuffer(data, dtype=np.uint8).astype(np.int64)   # view the bytes, then widen
+    pairs = x[:-1] * 256 + x[1:]                 # k = 256a + b for every adjacent pair
+    return np.bincount(pairs, minlength=256 * 256).astype(np.int64, copy=False).reshape(256, 256)
+```
+
+`np.frombuffer` reads the `bytes` object without copying; `.astype(np.int64)` is the one copy, and it is required, because in `uint8` the product `x * 256` would wrap (pitfall 8). `x[:-1]` and `x[1:]` are two views of the same buffer offset by one element, so the pairs are formed without any loop. `minlength=65536` makes the histogram full length even when the highest code never occurs, so the reshape always succeeds; for empty or one-byte input, `pairs` is empty and the result is all zeros. `astype(..., copy=False)` guarantees the documented dtype at no cost when `bincount` already returned `int64`. The reshape is free and exact because $256a + b$ is the row-major position of $(a, b)$ (2.5). On "banana" this produces section 3's three non-zero entries.
+
+**`row_normalize`.**
+
+```python
+def row_normalize(counts: np.ndarray) -> np.ndarray:
+    c = np.asarray(counts, dtype=np.float64)
+    totals = c.sum(axis=1, keepdims=True)        # shape (256, 1): one total per row, as a column
+    # divide only where the total is positive; elsewhere keep the zeros of `out`
+    return np.divide(c, totals, out=np.zeros_like(c), where=totals > 0)
+```
+
+`keepdims=True` is what makes the division pair each row with its own total; without it, section 3 shows the square-table bug. The `where` mask broadcasts like `totals`, so a row with total 0 is never divided and keeps the zeros of `out`: no `0/0`, no NaN, and no warning. Converting to `float64` first makes the result's dtype independent of the input's.
+
+Full solution: [`worksheet.py`](../../../../course/solutions/primers/lang.01/worksheet.py), [`bigram.py`](../../../../course/solutions/primers/lang.01/bigram.py).
+
+### 5.3 Why this solution
+
+- **Cost.** `bigram_counts` is $O(N)$ in the input length with two passes over it (the widened copy and `bincount`) and a fixed 512 KB table; `row_normalize` is $O(256^2)$. `broadcast_shape` and `unbroadcast` are linear in the number of axes, plus the sums.
+- **`bincount` over `np.add.at`:** both count correctly, but `add.at` performs an unbuffered scatter per element and is many times slower; `C[a, b] += 1` is wrong (2.5).
+- **`np.unique(..., return_counts=True)`** would also count, but it sorts ($O(N \log N)$) and returns only the codes present, which then need scattering into the table. The dense code space of 65536 makes a histogram the natural fit.
+- **`np.asarray` with both arguments** over a hand-written "if contiguous and float32 then return x else copy": numpy already applies exactly that test, including for subclasses and non-array inputs such as lists.
+- **Tradeoff accepted:** the `int64` copy of the input costs 8 bytes per input byte. For the course's corpora this is small; for gigabytes, one would process in chunks and add the tables.
+
+### 5.4 Explain it back
+
+**Why does `broadcast_shape` pad on the left rather than the right?**
+
+<details><summary>Answer</summary>
+
+Broadcasting aligns shapes on their last axis: a (3,) bias added to a (2, 3) batch must line up with the 3 features, not the 2 rows. Padding the shorter shape on the left with 1s is the same as right alignment. Padding on the right would turn (3,) with (3, 1) into (3, 1) instead of (3, 3).
+
+</details>
+
+**In `unbroadcast`, why are the leading axes summed without `keepdims`, but the size-1 axes with it?**
+
+<details><summary>Answer</summary>
+
+The leading axes did not exist in the operand; broadcasting created them, so they must disappear. The size-1 axes did exist, with size 1, so the gradient must keep them at size 1 for its shape to equal the operand's shape.
+
+</details>
+
+**Why does `bigram_counts` widen to `int64` before multiplying, instead of after?**
+
+<details><summary>Answer</summary>
+
+The multiplication is where the overflow happens. In `uint8`, `98 * 256` wraps to 0, so the codes are wrong before anything else runs. Widening first gives every product room up to 65535.
+
+</details>
+
+**What would `row_normalize` return for an all-zero row if it used plain `c / totals`?**
+
+<details><summary>Answer</summary>
+
+NaN in every entry of that row (0/0), with a runtime warning. One NaN spreads into every later sum that touches it. The masked `np.divide` with a zero-filled `out` leaves the row at zero instead.
+
+</details>
+
+**When does `as_c_float32` return the very same object it was given?**
+
+<details><summary>Answer</summary>
+
+When `x` is already a numpy array with dtype float32 and C-contiguous layout. `np.asarray` then has nothing to change and returns `x` itself, so a C call on an array that is already right costs no copy.
+
+</details>
 
 ## 6. Pitfalls
 
