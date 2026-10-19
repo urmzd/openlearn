@@ -1,42 +1,33 @@
-<!-- ol:module M02.2 -->
 # Series convergence, EMA as a geometric series, bias correction
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M02.2` · build · Python · Pass 2 · 2 to 3 h |
-| **You build** | `python/tinyllm/num/ema.py`: `ema_weights` and the class `EMA` (`update`, `value`, `t`, `value_debiased`) |
+| **Module** | `M02.2` · build · Python · Pass 2 · 1 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/num/ema.py`](../../../../course/solutions/python/tinyllm/num/ema.py): `ema_weights` and the class `EMA` (`update`, `value`, `t`, `value_debiased`) |
 | **Contract** | [`course/contracts/py/tinyllm/num/ema.pyi`](../../../../course/contracts/py/tinyllm/num/ema.pyi) |
-| **Tests** | `course/tests/M02.2/test_ema.py` (what they check: section 4) |
-| **Needs** | `M00.3` `geometric` and `geometric_sum`, which give the weights and their total (or `--ref-deps`) |
-| **Used by** | `L0.5`'s `train_step` smooths the training-loss curve with `EMA` (`ema=`, reported as `loss_ema`), `C1` keeps an EMA of the weights, and `M10.3` (Adam) applies the same bias correction to its moments (section 6) |
-| **Milestone** | `MS-P2` (the Pass 2 gate) |
+| **Needs** | `M00.3` `geometric` and `geometric_sum`, which give the weights and their total |
+| **Used by** | `L0.5`'s `train_step` smooths the training-loss curve with `EMA` (`ema=`, reported as `loss_ema`), `C1` keeps an EMA of the weights, and `M10.3` (Adam) applies the same bias correction to its moments (section 7) |
 | **Optional depth** | OpenStax, *Calculus Volume 2* (free), sections 5.2 and 5.3 (infinite series, the geometric series, divergence); Kingma and Ba, "Adam" (2015), section 3 (initialization bias correction) |
 
 ## Key Takeaways
 
-- A **series** converges when its partial sums settle on a number; the **geometric series** $\sum_{j \ge 0} r^j$ converges to $\frac{1}{1 - r}$ exactly when $|r| < 1$, and its partial sum is $\frac{1 - r^t}{1 - r}$ (`test_weights_sum_to_one_minus_beta_power`).
-- The **exponential moving average** $m_t = \beta m_{t-1} + (1 - \beta) x_t$ from $m_0 = 0$ is a weighted sum of all inputs with geometric weights $(1 - \beta)\beta^{t-i}$ (`test_weights_hand_example`, `test_update_equals_weighted_sum`).
-- Those weights add up to $1 - \beta^t$, not 1, so early values are **biased toward 0**; dividing by $1 - \beta^t$ fixes it, and the debiased average of a constant is that constant at every step (`test_hand_example`, `test_debiased_constant_is_exact`).
-- The bias fades on its own as $\beta^t \to 0$, after roughly $\frac{1}{1 - \beta}$ steps; with $\beta = 0.999$ that is a thousand steps of a misleading curve (`test_bias_fades_without_correction`).
-- One nan in the input poisons every later average, so `update` rejects non-finite values and keeps its state (`test_rejects_nonfinite_input_and_keeps_state`).
+- A **series** converges when its partial sums settle on a number; the **geometric series** $\sum_{j \ge 0} r^j$ converges to $\frac{1}{1 - r}$ exactly when $|r| < 1$, and its partial sum is $\frac{1 - r^t}{1 - r}$.
+- The **exponential moving average** $m_t = \beta m_{t-1} + (1 - \beta) x_t$ from $m_0 = 0$ is a weighted sum of all inputs with geometric weights $(1 - \beta)\beta^{t-i}$.
+- Those weights add up to $1 - \beta^t$, not 1, so early values are **biased toward 0**; dividing by $1 - \beta^t$ fixes it, and the debiased average of a constant is that constant at every step.
+- The bias fades on its own as $\beta^t \to 0$, after roughly $\frac{1}{1 - \beta}$ steps; with $\beta = 0.999$ that is a thousand steps of a misleading curve.
+- One nan in the input poisons every later average, so `update` rejects non-finite values and keeps its state.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M02.2              # stubs python/tinyllm/num/ema.py into your repo
-ol tests M02.2              # read the test catalog first: rung R0, you write no tests here
-ol check M02.2              # exit code is the verdict
-ol check M02.2 --ref-deps   # only if your M00.3 is not passing yet
-ol diff  M02.2              # after passing: your code against the reference
-```
+Sections 1 and 2 define convergence of series, sum the geometric series, and derive the EMA's weights and its bias correction from first principles. Section 3 works an EMA by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-The loss your training loop prints (`L0.5`) jumps around from batch to batch, and you want to see its trend. The standard tool is an exponential moving average, and the first thing it does is lie: started from zero, it reports a loss of 0.55 when every batch says 5.5, and climbs toward the truth over hundreds of steps. Adam (`M10.3`), the optimizer you will train every model with, keeps two such averages per parameter and would take wildly wrong first steps without the correction this module derives. Both the lie and the fix are a fact about one infinite sum, the geometric series. This module defines convergence of series, sums the geometric one exactly, and builds the EMA with its bias correction on top of the sums you wrote in `M00.3`.
+The loss the training loop prints (`L0.5`) jumps around from batch to batch, and what matters is its trend. The standard tool is an exponential moving average, and the first thing it does is lie: started from zero, it reports a loss of 0.55 when every batch says 5.5, and climbs toward the truth over hundreds of steps. Adam (`M10.3`), the optimizer every model in the course trains with, keeps two such averages per parameter and would take wildly wrong first steps without the correction this module derives. Both the lie and the fix are a fact about one infinite sum, the geometric series. This module defines convergence of series, sums the geometric one exactly, and builds the EMA with its bias correction on top of the sums of `M00.3`.
 
 ## 2. Principles
 
@@ -95,7 +86,7 @@ $\beta = 0.9$, inputs $x_1 = 1$, $x_2 = 2$, $x_3 = 3$:
 | 2 | $0.9 \cdot 0.1 + 0.1 \cdot 2 = 0.29$ | 0.19 | $0.29/0.19 = 1.5263158$ |
 | 3 | $0.9 \cdot 0.29 + 0.1 \cdot 3 = 0.561$ | 0.271 | $0.561/0.271 = 2.0701107$ |
 
-Unrolled, $m_3 = 0.081 \cdot 1 + 0.09 \cdot 2 + 0.1 \cdot 3 = 0.081 + 0.18 + 0.3 = 0.561$: the same number, with weights $[0.081, 0.09, 0.1]$ adding to $0.271 = 1 - 0.9^3$. The biased $m_3 = 0.561$ is below even the smallest input; the debiased 2.07 is a weighted average of 1, 2, 3 that leans toward the newest. These are `test_hand_example` and `test_weights_hand_example`.
+Unrolled, $m_3 = 0.081 \cdot 1 + 0.09 \cdot 2 + 0.1 \cdot 3 = 0.081 + 0.18 + 0.3 = 0.561$: the same number, with weights $[0.081, 0.09, 0.1]$ adding to $0.271 = 1 - 0.9^3$. The biased $m_3 = 0.561$ is below even the smallest input; the debiased 2.07 is a weighted average of 1, 2, 3 that leans toward the newest.
 
 ## 4. The interface
 
@@ -153,7 +144,7 @@ A number in gives a Python `float` out; an array in gives a new float64 array, a
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `EMA` over weights | PyTorch `torch.optim.swa_utils.AveragedModel` with `get_ema_multi_avg_fn` | EMA of every parameter tensor and buffer, updated in place on the device | `torch/optim/swa_utils.py` |
 | bias correction | Adam and AdamW | the same correction on two moments, often folded into the step size $\alpha \sqrt{1 - \beta_2^t}/(1 - \beta_1^t)$ | `torch/optim/adam.py`; `M10.3` |

@@ -1,41 +1,32 @@
-<!-- ol:module M12.6 -->
 # Mel scale and filterbanks
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M12.6` · build · Python · Pass 12 · 2 to 3 h |
-| **You build** | `python/tinyllm/sig/mel.py`: `hz_to_mel` and `mel_to_hz` (Slaney and HTK), `mel_filterbank` (librosa's triangles with Slaney area normalization), `power_to_db`, and `log_mel_whisper` (log10, floor, 8-unit range, rescale) |
+| **Module** | `M12.6` · build · Python · Pass 12 · 1 to 1.5 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/sig/mel.py`](../../../../course/solutions/python/tinyllm/sig/mel.py): `hz_to_mel` and `mel_to_hz` (Slaney and HTK), `mel_filterbank` (librosa's triangles with Slaney area normalization), `power_to_db`, and `log_mel_whisper` (log10, floor, 8-unit range, rescale) |
 | **Contract** | [`course/contracts/py/tinyllm/sig/mel.pyi`](../../../../course/contracts/py/tinyllm/sig/mel.pyi) |
-| **Tests** | `course/tests/M12.6/test_mel.py` (what they check: section 4), golden values from `course/oracle/M12.6/mel_librosa.py` (librosa 1.0) in `course/fixtures/M12.6/mel_librosa.npz` |
-| **Needs** | `M00.1` `log_base` (or `--ref-deps`). Reading: `M12.5` (the power spectrogram the filters pool) |
-| **Used by** | `L14.1` (Whisper's log-mel) · later `data.11` (mel dHash for audio near-duplicates), which joins the registry with B14's data group |
-| **Milestone** | `MS-P12` (the multimodal gate) |
+| **Needs** | `M00.1` `log_base`. Reading: `M12.5` (the power spectrogram the filters pool) |
+| **Used by** | `L14.1` (Whisper's log-mel) · later `data.11` (mel dHash for audio near-duplicates), which joins the registry with B14's data group · together with the rest of Pass 12, the multimodal frontends |
 | **Optional depth** | Stevens, Volkmann, Newman, "A scale for the measurement of the psychological magnitude pitch" (1937); Slaney, *Auditory Toolbox* (1998), `MakeERBFilters` and `mfcc`; Radford et al., "Robust speech recognition via large-scale weak supervision" (2022), section 2.2 |
 
 ## Key Takeaways
 
-- The Slaney mel scale is linear below 1000 Hz (15 mel, $200/3$ Hz per mel) and logarithmic above (27 mel per factor 6.4); HTK's is $2595 \log_{10}(1 + f/700)$ (`test_hand_example_mel_scale`).
-- A mel filterbank is $n_\text{mels}$ triangles with edges equally spaced in mel, sampled at the rfft bin frequencies (`test_triangles_have_the_declared_edges`, `test_whisper_filterbanks_match_librosa`).
-- Slaney normalization gives every triangle unit area in Hz, so wide high bands do not collect more energy for being wide (`test_slaney_rows_have_unit_area`).
-- Power becomes decibels as $10 \log_{10}$ with a floor; Whisper uses $\log_{10}$, clips 8 units (80 dB) below the maximum, and maps by $(x + 4)/4$ (`test_hand_example_decibels`, `test_whisper_log_mel_scaling`).
+- The Slaney mel scale is linear below 1000 Hz (15 mel, $200/3$ Hz per mel) and logarithmic above (27 mel per factor 6.4); HTK's is $2595 \log_{10}(1 + f/700)$.
+- A mel filterbank is $n_\text{mels}$ triangles with edges equally spaced in mel, sampled at the rfft bin frequencies.
+- Slaney normalization gives every triangle unit area in Hz, so wide high bands do not collect more energy for being wide.
+- Power becomes decibels as $10 \log_{10}$ with a floor; Whisper uses $\log_{10}$, clips 8 units (80 dB) below the maximum, and maps by $(x + 4)/4$.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M12.6              # stubs python/tinyllm/sig/mel.py into your repo
-ol tests M12.6              # read the test catalog first: rung R0, you write no tests here
-ol check M12.6              # exit code is the verdict
-ol check M12.6 --ref-deps   # only if your M00.1 is not passing yet
-ol diff  M12.6              # after passing: your code against the reference
-```
+Sections 1 and 2 derive the mel scale, the triangular filters, their normalization, and the two logarithmic conventions (decibels and Whisper's log-mel) from first principles. Section 3 works them by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-`M12.5` turns 25 ms of audio into 201 power values per frame, evenly spaced from 0 to 8 kHz. Whisper's encoder does not take those 201 numbers: it takes 80 (or 128 for large-v3) mel bands, each a weighted sum of bins, then a clipped logarithm. The weights are librosa's mel filters, shipped inside Whisper as `mel_filters.npz`; if your filters differ in the fifth decimal, every feature `L14.1` hands the encoder is wrong by a little, and parity with HF's `WhisperFeatureExtractor` (within $10^{-4}$) fails. The audio near-duplicate detector in `data.11` hashes the same log-mel picture. This module builds the filters and the logs exactly as the reference libraries do.
+`M12.5` turns 25 ms of audio into 201 power values per frame, evenly spaced from 0 to 8 kHz. Whisper's encoder does not take those 201 numbers: it takes 80 (or 128 for large-v3) mel bands, each a weighted sum of bins, then a clipped logarithm. The weights are librosa's mel filters, shipped inside Whisper as `mel_filters.npz`; if the filters differ in the fifth decimal, every feature `L14.1` hands the encoder is wrong by a little, and parity with HF's `WhisperFeatureExtractor` (within $10^{-4}$) fails. The audio near-duplicate detector in `data.11` hashes the same log-mel picture. The solution builds the filters and the logs exactly as the reference libraries do.
 
 ## 2. Principles
 
@@ -74,11 +65,11 @@ The floor $10^{-10}$ is $-100$ dB; the clip keeps 8 units, 80 dB, below the loud
 
 ## 3. Worked example by hand
 
-Mel values on the Slaney scale: $500$ Hz is $500 \cdot 3/200 = 7.5$ mel; $1000$ Hz is 15 mel; $6400$ Hz is $15 + 27 \ln(6.4)/\ln(6.4) = 42$ mel. On the HTK scale $700$ Hz is $2595 \log_{10} 2 = 781.17$ mel (`test_hand_example_mel_scale`).
+Mel values on the Slaney scale: $500$ Hz is $500 \cdot 3/200 = 7.5$ mel; $1000$ Hz is 15 mel; $6400$ Hz is $15 + 27 \ln(6.4)/\ln(6.4) = 42$ mel. On the HTK scale $700$ Hz is $2595 \log_{10} 2 = 781.17$ mel.
 
-Decibels of the powers $(1, 10, 10^{-12})$ with ref 1 and $\text{amin} = 10^{-10}$: $10 \log_{10} 1 = 0$, $10 \log_{10} 10 = 10$, and $10^{-12}$ is floored to $10^{-10}$, giving $-100$. With $\text{top\_db} = 80$ the floor is $10 - 80 = -70$, so the result is $(0, 10, -70)$. With ref 10 everything drops by 10 dB: $(-10, 0, -110)$ when not clipped. This is `test_hand_example_decibels`.
+Decibels of the powers $(1, 10, 10^{-12})$ with ref 1 and $\text{amin} = 10^{-10}$: $10 \log_{10} 1 = 0$, $10 \log_{10} 10 = 10$, and $10^{-12}$ is floored to $10^{-10}$, giving $-100$. With $\text{top\_db} = 80$ the floor is $10 - 80 = -70$, so the result is $(0, 10, -70)$. With ref 10 everything drops by 10 dB: $(-10, 0, -110)$ when not clipped.
 
-Whisper's scaling of the identity filterbank applied to $P = \begin{pmatrix} 10^{-12} & 100 \\ 1 & 10^4 \end{pmatrix}$: $\log_{10}$ with the floor gives $\begin{pmatrix} -10 & 2 \\ 0 & 4 \end{pmatrix}$; clipping at $4 - 8 = -4$ gives $\begin{pmatrix} -4 & 2 \\ 0 & 4 \end{pmatrix}$; and $(L + 4)/4 = \begin{pmatrix} 0 & 1.5 \\ 1 & 2 \end{pmatrix}$ (in `test_whisper_log_mel_scaling`).
+Whisper's scaling of the identity filterbank applied to $P = \begin{pmatrix} 10^{-12} & 100 \\ 1 & 10^4 \end{pmatrix}$: $\log_{10}$ with the floor gives $\begin{pmatrix} -10 & 2 \\ 0 & 4 \end{pmatrix}$; clipping at $4 - 8 = -4$ gives $\begin{pmatrix} -4 & 2 \\ 0 & 4 \end{pmatrix}$; and $(L + 4)/4 = \begin{pmatrix} 0 & 1.5 \\ 1 & 2 \end{pmatrix}$.
 
 ## 4. The interface
 

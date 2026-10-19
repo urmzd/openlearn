@@ -1,35 +1,26 @@
-<!-- ol:module M07.0 -->
 # Random variables, expectation, variance, and normal draws by Box-Muller
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M07.0` · build · Python · Pass 2 · 2 to 3 h |
-| **You build** | `python/tinyllm/prob/rv.py`: `expectation(values, probs)`, `variance(values, probs)` (two-pass), `box_muller(u1, u2)`, `normal(rng, n)` (standard normals in the cross-language order of `spec/pcg32.md`) |
+| **Module** | `M07.0` · build · Python · Pass 2 · 1 to 1.5 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/prob/rv.py`](../../../../course/solutions/python/tinyllm/prob/rv.py): `expectation(values, probs)`, `variance(values, probs)` (two-pass), `box_muller(u1, u2)`, `normal(rng, n)` (standard normals in the cross-language order of `spec/pcg32.md`) |
 | **Contract** | [`course/contracts/py/tinyllm/prob/rv.pyi`](../../../../course/contracts/py/tinyllm/prob/rv.pyi) · draw order: [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md) |
-| **Tests** | `course/tests/M07.0/test_rv.py` (what they check: section 4) |
-| **Needs** | `M06.3` the PCG32 generator every caller passes in (or `--ref-deps`). Reading: `M00.2` (cos, sin, the unit circle), [Calculus 2](../02-calculus-2/) (the Gaussian integral) |
-| **Used by** | `M03.3` orthogonal initialization draws its Gaussian matrix here · `M07.3` `normal_init` and variance propagation through layers |
-| **Milestone** | `MS-P2` (the foundations gate) |
+| **Needs** | `M06.3` the PCG32 generator every caller passes in ([`rng.py`](../../../../course/solutions/python/tinyllm/num/rng.py)). Reading: `M00.2` (cos, sin, the unit circle), [Calculus 2](../02-calculus-2/) (the Gaussian integral) |
+| **Used by** | `M03.3` orthogonal initialization draws its Gaussian matrix here · `M07.3` `normal_init` and variance propagation through layers; part of the Pass 2 foundations every later pass builds on |
 | **Optional depth** | Blitzstein and Hwang, *Introduction to Probability*, ch. 3 to 5 and 7.5 (Box-Muller); Grinstead and Snell, *Introduction to Probability*, ch. 6; Box and Muller, "A Note on the Generation of Random Normal Deviates" (1958); Welford, "Note on a Method for Calculating Corrected Sums of Squares and Products" (1962) |
 
 ## Key Takeaways
 
-- A discrete **random variable** is a table of values and probabilities; its **expectation** is the probability-weighted mean and its **variance** the expected squared distance from that mean (`test_die_hand_example`).
-- $\operatorname{Var}[aX + c] = a^2 \operatorname{Var}[X]$: shifting does nothing, scaling scales by the square. `M07.3` sizes every initialization with this rule (`test_variance_shift_and_scale_laws`).
-- Compute the variance in **two passes** (mean first, then squared deviations). $E[X^2] - E[X]^2$ subtracts two huge, nearly equal numbers and can return 0 or a negative variance (`test_variance_has_no_catastrophic_cancellation`).
-- **Box-Muller** turns two independent uniforms into two independent standard normals: a radius $\sqrt{-2\ln(1-u_1)}$ and an angle $2\pi u_2$ (`test_box_muller_hand_example`). Drawn in the spec's order, the same seed gives the same normals in Python, Rust, and Go (`test_normal_matches_spec_vectors`).
+- A discrete **random variable** is a table of values and probabilities; its **expectation** is the probability-weighted mean and its **variance** the expected squared distance from that mean.
+- $\operatorname{Var}[aX + c] = a^2 \operatorname{Var}[X]$: shifting does nothing, scaling scales by the square. `M07.3` sizes every initialization with this rule.
+- Compute the variance in **two passes** (mean first, then squared deviations). $E[X^2] - E[X]^2$ subtracts two huge, nearly equal numbers and can return 0 or a negative variance.
+- **Box-Muller** turns two independent uniforms into two independent standard normals: a radius $\sqrt{-2\ln(1-u_1)}$ and an angle $2\pi u_2$. Drawn in the spec's order, the same seed gives the same normals in Python, Rust, and Go.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M07.0              # stubs python/tinyllm/prob/rv.py into your repo
-ol tests M07.0              # read the test catalog first: rung R0, you write no tests here
-ol check M07.0              # exit code is the verdict
-ol check M07.0 --ref-deps   # only if your M06.3 is not passing yet
-ol diff  M07.0              # after passing: your code against the reference
-```
+Sections 1 and 2 build expectation, variance, and Box-Muller from first principles, and section 3 works each by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
@@ -95,11 +86,11 @@ $$r = \sqrt{-2 \ln(1 - u_1)}, \qquad \theta = 2\pi u_2, \qquad (z_0, z_1) = (r\c
 
 Using $1 - u_1$ instead of $u_1$ matters at the edge: `uniform()` can return exactly 0.0 (probability $2^{-53}$, but over $10^9$ draws not never), and $\ln 0 = -\infty$ would produce an infinite "normal"; $1 - u_1$ lies in $(0, 1]$, so the log is finite and $r$ is finite. Both outputs are independent standard normals; throwing the sine away wastes half the work.
 
-**The order is a contract** (`spec/pcg32.md`): for each pair, draw $u_1$ then $u_2$, emit $z_0$ (cosine) then $z_1$ (sine). `normal(rng, n)` fills $n$ values pair by pair; for odd $n$ it still draws a whole last pair and drops the final sine. (The spec's generator-level `normal()` keeps that sine as a spare for the next call; `normal(rng, n)` is a free function over any generator, so it keeps no state between calls: course/DEVIATIONS.md, M070-01.) Every other port reproduces this order, which is how the parity suite can compare normals across languages.
+**The order is a contract** (`spec/pcg32.md`): for each pair, draw $u_1$ then $u_2$, emit $z_0$ (cosine) then $z_1$ (sine). `normal(rng, n)` fills $n$ values pair by pair; for odd $n$ it still draws a whole last pair and drops the final sine. (The spec's generator-level `normal()` keeps that sine as a spare for the next call; `normal(rng, n)` is a free function over any generator, so it keeps no state between calls.) Every other port reproduces this order, which is how normals can be compared across languages.
 
 ## 3. Worked example by hand
 
-**A fair die** (`test_die_hand_example`). Values $1, \dots, 6$, each with probability $\tfrac16$:
+**A fair die**. Values $1, \dots, 6$, each with probability $\tfrac16$:
 
 $$E[X] = \frac{1 + 2 + 3 + 4 + 5 + 6}{6} = \frac{21}{6} = 3.5 .$$
 
@@ -107,9 +98,9 @@ The deviations from 3.5 are $\pm 2.5, \pm 1.5, \pm 0.5$, so
 
 $$\operatorname{Var}[X] = \frac{2\,(6.25 + 2.25 + 0.25)}{6} = \frac{17.5}{6} = \frac{35}{12} \approx 2.9167 .$$
 
-**Box-Muller by hand** (`test_box_muller_hand_example`). Choose $u_1 = 1 - e^{-2} \approx 0.8647$ and $u_2 = \tfrac18$. Then $1 - u_1 = e^{-2}$, so $r = \sqrt{-2 \ln e^{-2}} = \sqrt{4} = 2$; and $\theta = 2\pi/8 = \pi/4$. The pair is $(2\cos\frac{\pi}{4},\ 2\sin\frac{\pi}{4}) = (\sqrt2, \sqrt2) \approx (1.41421, 1.41421)$.
+**Box-Muller by hand**. Choose $u_1 = 1 - e^{-2} \approx 0.8647$ and $u_2 = \tfrac18$. Then $1 - u_1 = e^{-2}$, so $r = \sqrt{-2 \ln e^{-2}} = \sqrt{4} = 2$; and $\theta = 2\pi/8 = \pi/4$. The pair is $(2\cos\frac{\pi}{4},\ 2\sin\frac{\pi}{4}) = (\sqrt2, \sqrt2) \approx (1.41421, 1.41421)$.
 
-**The first normals of seed 0** (`test_normal_matches_spec_vectors`). `PCG32(0)` gives $u_1 = 0.2803122753265841$ and $u_2 = 0.4892241428740438$ (`M06.3` section 3). Then $\ln(1 - u_1) = \ln 0.71969 = -0.328938$, $r = \sqrt{0.657876} = 0.811095$, $\theta = 3.073886$ (just under $\pi$, so the point lies left of the origin, slightly up), $\cos\theta = -0.997709$, $\sin\theta = 0.067655$, and the first two normals are $z_0 = -0.809237$ and $z_1 = 0.054875$: the first two entries of `normal["0"]` in `spec/pcg32.vectors.json`.
+**The first normals of seed 0**. `PCG32(0)` gives $u_1 = 0.2803122753265841$ and $u_2 = 0.4892241428740438$ (`M06.3` section 3). Then $\ln(1 - u_1) = \ln 0.71969 = -0.328938$, $r = \sqrt{0.657876} = 0.811095$, $\theta = 3.073886$ (just under $\pi$, so the point lies left of the origin, slightly up), $\cos\theta = -0.997709$, $\sin\theta = 0.067655$, and the first two normals are $z_0 = -0.809237$ and $z_1 = 0.054875$: the first two entries of `normal["0"]` in `spec/pcg32.vectors.json`.
 
 ## 4. The interface
 
@@ -120,7 +111,7 @@ def box_muller(u1: float, u2: float) -> tuple[float, float]: ...   # (r cos t, r
 def normal(rng, n: int) -> NDArray: ...          # float64 [n]; u1, u2 per pair; cosine first
 ```
 
-`rng` is anything with a `uniform()` method returning the spec's 53-bit doubles: your `tinyllm.num.rng.PCG32` in the system, the frozen `course/tests/_lib/pcg32.py` copy in the course tests (D35). Both give the same uniforms bit for bit.
+`rng` is anything with a `uniform()` method returning the spec's 53-bit doubles, in the system [`tinyllm.num.rng.PCG32`](../../../../course/solutions/python/tinyllm/num/rng.py) (`M06.3`). Any implementation of the spec gives the same uniforms bit for bit.
 
 ### What the tests check
 

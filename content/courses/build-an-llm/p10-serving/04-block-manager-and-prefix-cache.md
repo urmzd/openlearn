@@ -244,7 +244,7 @@ In radix mode, the node is unlocked first (an insert may split it), the full com
             }
 ```
 
-After A in the example: blocks 0 and 1 hold refcount 1 (the cache), and A's partial third block is free. After B reuses them and ends: back to 1 each, so a later request needing the whole pool can evict them.
+After A in the example, A's two full blocks hold refcount 1 in radix mode (the cache's reference), or 0 in hash mode (registered, so cached in the pool's LRU); A's partial third block is free. While B runs on them the count is one higher; when B ends it drops back, so a later request needing the whole pool can evict them.
 
 **`free_blocks`** reports free plus cached (hash) plus evictable (radix), because all of those can be handed out; the scheduler's admission and `NeverFits` logic then treat the cache as spare capacity.
 

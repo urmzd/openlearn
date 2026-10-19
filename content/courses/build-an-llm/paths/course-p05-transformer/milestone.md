@@ -9,7 +9,7 @@ Each capability below is built from the listed modules. The sections that follow
 | The transformer learns addition, and pre-LN trains where post-LN does not. | `L5.1`, `L5.2`, `L5.3`, `L5.4`, `L5.5` |
 | GPT, BERT, ELECTRA, and LoRA through the CLI, scored by the model zoo. | `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L6.7` |
 | The modern decoder loads Hugging Face checkpoints and matches them. | `L7.1`, `L7.2`, `L7.3`, `L7.4`, `L7.5`, `L7.6`, `L7.7`, `L7.8`, `L7.9` |
-| Transformers: the 2017 model, its objectives, and a modern decoder that matches SmolLM2. | `M01.4`, `M07.5`, `M07.7`, `S-M07d`, `L5.1`, `L5.2`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.6`, `L6.5`, `L6.7`, `M05.1`, `L7.1`, `L7.2`, `L7.3`, `L7.4`, `L7.5`, `L7.6`, `L7.7`, `L7.8`, `L7.9`, `craft.05` |
+| The foundations the three rest on: the math of attention and objectives, memory arithmetic, and oracle-style testing. | `M01.4`, `M07.5`, `M07.7`, `S-M07d`, `M05.1`, `craft.05` |
 
 
 ## Details
@@ -22,11 +22,16 @@ of 0.98 with beam search, and the LayerNorm-placement demo shows why Part 7
 uses pre-LN: with no warmup, a deep post-LN stack does not train while the
 same stack in pre-LN does.
 
-The task (course/fixtures/small-corpora/add3.tsv, 4000 pairs, and
-add3-test.tsv, 500 unseen pairs, from course/oracle/MS-L5/add3.py) writes
-every number least significant digit first: a = 123, b = 456 is the source
+The task (4000 training pairs and 500 unseen test pairs) writes every
+number least significant digit first: a = 123, b = 456 is the source
 "321+654" and the target "9750" (579 reversed, zero padded to 4 digits).
-DEVIATIONS B72-01 says why it is add3, not the catalog's add5.
+Reversing the digits lets the model emit each digit after the carry that
+determines it, which is why a small transformer learns the task.
+
+Why it is needed: addition is a task whose answer is exact, so the
+transformer's correctness (masks, positions, attention) shows directly in
+exact match; and the post-LN versus pre-LN run is the evidence for the
+block structure every later model uses.
 
 The solution defines the Pass 5 transformer verbs of the `tinyllm` role
 ([`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md), "Verbs of later passes"). Every verb keeps the rules of
@@ -58,7 +63,7 @@ that page: exit 2 on a usage error, the last stdout line is one JSON object.
       L5.5's translate (L4.4's beam search) on every source; exact match of
       the decoded string against the target with L4.5's metric_ci (1000
       bootstrap resamples, PCG32(0)). The same verb on a seq2seq directory is
-      MS-L4's. Final line: {"model", "arch": "transformer", "beam", "n",
+      Pass 4's. Final line: {"model", "arch": "transformer", "beam", "n",
        "em_transformer", "em", "em_lo", "em_hi", "em_greedy"}.
 
 ## GPT, BERT, ELECTRA, and LoRA through the CLI, scored by the model zoo
@@ -71,12 +76,15 @@ that trains under 5% of its parameters and reaches the reference's
 calibrated accuracy; a perplexity with its confidence interval; and the
 model zoo scoring every family trained here in one report.
 
-Data (stand-ins, DEVIATIONS B73-05 and B73-06): the byte corpus of MS-L2
-(course/fixtures/MS-L2/{train,val}.bin) for GPT; the synthetic SST-2-shaped
-set course/fixtures/small-corpora/sst2-2k.tsv (split, sentence, label;
-1600 train, 400 val) for the classifiers, and its train sentences as a
-token shard, course/fixtures/MS-L6/sst2-train.bin, for BERT and ELECTRA.
-Configs: course/fixtures/configs/{gpt-tiny,bert-tiny}.json.
+Data (stand-ins): Pass 3's byte corpus for GPT; a synthetic SST-2-shaped
+set (split, sentence, label; 1600 train, 400 val) for the classifiers, and
+its train sentences as a token shard for BERT and ELECTRA. Small `gpt-tiny`
+and `bert-tiny` configs keep each run to minutes.
+
+Why it is needed: the three objectives (next token, masked token, replaced
+token detection) are the ways a transformer is pretrained; LoRA shows that
+adapting a pretrained model can touch under 5% of its weights; and the zoo
+puts every model on one report so later passes compare like with like.
 
 The solution defines the Pass 5 objective verbs of the `tinyllm` role
 ([`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md), "Verbs of later passes"). Every verb keeps the rules of
@@ -142,14 +150,14 @@ The modern decoder, run through the system's own entry point: a Llama-family
 checkpoint exactly as transformers saves it loads into the L7.9 model
 (built from L7.1 to L7.8), reports Hugging Face's parameter count, gives
 HF's next-token logits, and decodes HF's greedy continuation token for
-token. PR CI runs it on the committed tiny model; the nightly run pulls
-SmolLM2-135M-Instruct with its own downloader and checks it against HF.
+token. A tiny random two-layer model shows this in seconds; the same
+commands on SmolLM2-135M-Instruct, pulled with the solution's own
+downloader, match HF as well.
 
 The solution defines the Pass 5 Llama verbs of the `tinyllm` role
 ([`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md), "Verbs of later passes"). Every verb keeps the rules of
 that page: exit 2 on a usage error, the last stdout line is one JSON object.
---model names a Llama directory, or its config.json (the committed tiny
-model is referenced by its config.json, a fixture file with a MANIFEST row).
+--model names a Llama directory, or its config.json.
 A "Llama directory" holds config.json (formats/config.schema.json: tl_arch
 "llama", or a plain HF model_type llama, mistral, or qwen2) and
 model.safetensors (or shards with model.safetensors.index.json). Its
@@ -184,23 +192,14 @@ tokenizer is the byte tokenizer when config.json says tl_tokenizer "bytes"
       {"ids": [the generated ids of every prompt, concatenated in order],
        "text": ..., "per_prompt": [[...], ...] (with --prompt-file)}.
 
-Fixtures (course/oracle/L7.9/llama_hf.py, course/oracle/MS-L7/smollm2_parity.py):
-tiny-llama-2l is a random LlamaForCausalLM (2 layers, BF16 weights, byte
-tokenizer) saved by transformers 5.19.0; its logits and greedy ids are HF's
-float32 forward. Every prompt's greedy continuation keeps a top-2 logit
-margin >= 1e-3 at all 32 steps (DESIGN 5.7 near-tie rule), and the expected
-files carry that margin per step. The nightly model is
-SmolLM2-135M-Instruct at the revision pinned in course/fixtures/ASSETS.tsv,
-not the base SmolLM2-135M of DESIGN 4.3 (DEVIATIONS B75-07).
+The tiny model, tiny-llama-2l, is a random LlamaForCausalLM (2 layers, BF16
+weights, byte tokenizer) saved by transformers 5.19.0; the expected logits
+and greedy ids are HF's float32 forward. Every prompt's greedy continuation
+keeps a top-2 logit margin >= 1e-3 at all 32 steps, so floating-point
+differences cannot flip a near tie and the token-for-token comparison is
+meaningful. The full-size model is SmolLM2-135M-Instruct at a pinned
+revision.
 
-## Transformers: the 2017 model, its objectives, and a modern decoder that matches SmolLM2
-
-Pass 5 builds the transformer three times over: the 2017 encoder-decoder
-(MS-L5), the objectives and the model zoo (MS-L6), and the modern decoder
-that loads SmolLM2 (MS-L7). The gate is those three plus the spiral
-invariant: the smoke steps of every earlier pass gate rerun, so the engine
-still streams the Pass 1 bigram and the earlier models still train.
-
-`requires` is every Pass 5 stage of DESIGN 7.4 (the optional L6.4 is not
-required); each needs a fresh pass of the own. craft.05 grades the oracle
-tests (rung R5) with its own artifact check.
+Why it is needed: matching a published checkpoint exactly is the proof that
+every modern component (RMSNorm, RoPE, grouped-query attention, SwiGLU, the
+loader) is right, and from here on the engine can serve real weights.

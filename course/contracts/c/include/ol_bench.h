@@ -1,11 +1,9 @@
-/* ol_bench.h: the single-header C benchmark kit (course/DESIGN.md 5.9, 5.11).
+/* ol_bench.h: the single-header C benchmark kit.
  *
- * Frozen helper. A course benchmark is a program under
- * course/tests/<ID>/bench/<name>.c that `ol bench <ID>` builds with -O2
- * against the overlay's objects and runs. It times the code under test with
- * ol_bench_best and reports named metrics; the last stdout line is one JSON
- * object, which `ol bench` compares with the module's budget relative to the
- * machine calibration (`ol bench --calibrate`).
+ * Frozen helper. A benchmark is a small C program built with -O2 against the
+ * code under test. It times that code with ol_bench_best and reports named
+ * metrics; the last stdout line is one JSON object of those metrics, so a
+ * script can compare it with a performance budget.
  *
  *   #include "tinyllm.h"
  *   #include "ol_bench.h"

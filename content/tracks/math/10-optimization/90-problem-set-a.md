@@ -1,4 +1,3 @@
-<!-- ol:module S-M10a -->
 # Optimization problem set, part a: convexity, GD rates, momentum, Adam
 
 ## Overview
@@ -6,12 +5,10 @@
 | | |
 |---|---|
 | **Module** | `S-M10a` · solve · none · Pass 2 · 4 to 5 h |
-| **You build** | answers in `solve/S-M10a.toml` (24 checked by SymPy) and 2 proofs in `solve/S-M10a/qN.md` (self-graded against their rubrics) |
+| **Solution** | worked answers to all 17 problems (24 numeric or symbolic parts and 2 proofs), each under its problem in section 4 |
 | **Contract** | none: a pen and paper set |
-| **Tests** | `course/solve/S-M10a/key.toml` (hidden): typed answers plus reject canaries; the problems are in `course/solve/S-M10a/problems.md` and in section 4 |
 | **Needs** | `S-M05` (proof habits). Reading: the [Optimization topic](README.md), and gradients and Hessians from `S-M04` |
-| **Used by** | no call site (a solve set). It checks the analysis behind `M10.1` (gradient descent, Armijo, the condition number), `M10.2` (SGD with momentum), and `M10.3` (Adam and AdamW with bias correction); part b, `S-M10b`, is optional with `L12` |
-| **Milestone** | `MS-P2` (the Pass 2 gate runs `ol check` on every solve part of the pass) |
+| **Used by** | no call site (a problem set). It is the analysis behind `M10.1` (gradient descent, Armijo, the condition number), `M10.2` (SGD with momentum), and `M10.3` (Adam and AdamW with bias correction); part b, `S-M10b`, is optional with `L12` |
 | **Optional depth** | Boyd and Vandenberghe, *Convex Optimization* (free), ch. 3 and 9; Goh, "Why Momentum Really Works" (Distill, 2017); Kingma and Ba, "Adam" (2015), sections 2 and 3; Loshchilov and Hutter, "Decoupled Weight Decay Regularization" (2019) |
 
 ## Key Takeaways
@@ -22,19 +19,15 @@
 - Adam's moments start at zero and are biased toward it by a factor $1 - \beta^t$; the bias correction removes exactly that, and the first step is $\eta$ times the sign of the gradient (q14, q15, q17).
 - AdamW's decay multiplies the weights by $1 - \eta\lambda$ outside the adaptive step, so it is not rescaled by $\hat v$ (q16).
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start S-M10a             # writes solve/S-M10a.toml and one file per proof
-ol check S-M10a             # SymPy checks the answers, then asks each proof rubric (y/n)
-ol check S-M10a --regrade   # ask the rubrics again after you change a proof
-```
+Sections 1 and 2 explain why these facts matter and derive the tools from first principles; section 3 works two sibling problems by hand. Section 4 states every problem with its worked answer folded underneath: try each one on paper first, then open the answer and compare not just the result but the derivation. Each answer names the common wrong answer and why it is wrong, because those are exactly the mistakes that show up later as bugs in an optimizer.
 
 ---
 
 ## 1. Why now
 
-Your Pass 1 bigram was fitted by counting, with no optimizer at all. From Pass 2 on, every model is trained by an optimizer you write: `M10.1` gradient descent with a line search, `M10.2` SGD with momentum, and `M10.3` AdamW, which trains everything from `L4.1` to the capstone. Their tests compare your trajectories with PyTorch's step by step, and they fail on exactly the details this set drills: a step size past $2/L$ that oscillates, momentum that is summed one step off, a bias correction applied to the wrong moment, weight decay coupled into the adaptive step. When a training run diverges in Pass 5, the first questions you will ask are the ones here: what is the curvature, what is the condition number, and is the learning rate under the stability limit?
+The Pass 1 bigram was fitted by counting, with no optimizer at all. From Pass 2 on, every model is trained by an optimizer from the solutions: `M10.1` gradient descent with a line search, `M10.2` SGD with momentum, and `M10.3` AdamW, which trains everything from `L4.1` to the capstone. Those optimizers must match PyTorch's trajectories step by step, and an implementation goes wrong on exactly the details this set drills: a step size past $2/L$ that oscillates, momentum that is summed one step off, a bias correction applied to the wrong moment, weight decay coupled into the adaptive step. When a training run diverges in Pass 5, the first questions you will ask are the ones here: what is the curvature, what is the condition number, and is the learning rate under the stability limit?
 
 ## 2. Principles
 
@@ -75,30 +68,15 @@ Adam keeps exponential averages of the gradient and of its elementwise square, $
 
 ## 3. Worked example by hand
 
-This is a sibling of q5 and q16, not one of the graded problems.
+This is a sibling of q5 and q16, not one of the problems below.
 
-**Step sizes on $f(x) = \frac12(2x_1^2 + 6x_2^2)$.** The Hessian is $\mathrm{diag}(2, 6)$, so $\mu = 2$, $L = 6$, $\kappa = 3$. Gradient descent converges for $0 < \eta < 2/6 = 1/3$. The best constant step is $\eta = 2/(6 + 2) = 1/4$, where the factors are $1 - 2/4 = 1/2$ and $1 - 6/4 = -1/2$: both coordinates shrink by $1/2$ per step, the rate $(\kappa - 1)/(\kappa + 1) = 2/4$. At $\eta = 1/L = 1/6$ the factors are $2/3$ and $0$, so the rate is $2/3 = 1 - 1/\kappa$: slower, though the stiff coordinate converges in one step. From $x_0 = (1, 1)$ with $\eta = 1/4$: $x_1 = (1/2, -1/2)$, $x_2 = (1/4, 1/4)$. In `solve/` the interval would be `answer = "(0, 1/3)"`.
+**Step sizes on $f(x) = \frac12(2x_1^2 + 6x_2^2)$.** The Hessian is $\mathrm{diag}(2, 6)$, so $\mu = 2$, $L = 6$, $\kappa = 3$. Gradient descent converges for $0 < \eta < 2/6 = 1/3$. The best constant step is $\eta = 2/(6 + 2) = 1/4$, where the factors are $1 - 2/4 = 1/2$ and $1 - 6/4 = -1/2$: both coordinates shrink by $1/2$ per step, the rate $(\kappa - 1)/(\kappa + 1) = 2/4$. At $\eta = 1/L = 1/6$ the factors are $2/3$ and $0$, so the rate is $2/3 = 1 - 1/\kappa$: slower, though the stiff coordinate converges in one step. From $x_0 = (1, 1)$ with $\eta = 1/4$: $x_1 = (1/2, -1/2)$, $x_2 = (1/4, 1/4)$.
 
 **One AdamW step.** $\theta_0 = 2$, $g_1 = -5$, $\eta = 1/10$, $\lambda = 1/2$, $\epsilon = 0$. Then $\hat m_1 = -5$, $\hat v_1 = 25$, the adaptive step is $-\eta \cdot (-5)/5 = +1/10$, and the decay is $-\eta\lambda\theta_0 = -1/10$. So $\theta_1 = 2 - 1/10 + 1/10 = 2$: this step's push upward and the decay cancel exactly.
 
 ## 4. The problem set
 
-Write each answer in `solve/S-M10a.toml`; lettered parts are their own tables:
-
-```toml
-[q5.a]
-answer = "(0, 1/5)"
-[q10.a]
-answer = "g/(1 - beta)"
-[q14]
-answer = "g*(1 - beta1^t)"
-[q17]
-proof = "S-M10a/q17.md"
-```
-
-Rates and steps are exact fractions; write $\beta$ as `beta`, $\beta_1$ as `beta1`, $\eta$ as `eta`, and intervals as `(a, b)`, `[a, b)`, or `[a, oo)`.
-
-<!-- ol:problems S-M10a -->
+Each problem carries a tag for the kind of answer it wants (`[number]`, `[interval]`, `[expr in ...]`, `[bool]`, `[proof]`). Rates and steps are exact fractions. Open the answer only after you have one of your own.
 
 ### Convexity and the condition number
 
@@ -152,8 +130,6 @@ Adam keeps $m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t$ and $v_t = \beta_2 v_{t-1
 **q16.** AdamW with $\epsilon = 0$, $\theta_0 = 1$, $g_1 = 4$, $\eta = 1/10$, $\lambda = 1/10$. Give $\theta_1$. `[number]`
 
 **q17.** Prove that if every $g_i$ has the same expectation $E[g]$, then $E[m_t] = (1 - \beta_1^t)\, E[g]$, so $\hat m_t$ is an unbiased estimate of $E[g]$. `[proof]`
-
-<!-- /ol:problems -->
 
 ## 5. Pitfalls
 
