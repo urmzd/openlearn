@@ -1,49 +1,35 @@
-<!-- ol:module L1.5 -->
 # Rust fast BPE (tl-tok), byte tokenizer, streaming decoder
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L1.5` · build · Rust · Pass 3 · 10 to 14 h |
-| **You build** | `rust/crates/tl-tok/src/`: `lib.rs` (the `Tokenizer` trait, `ByteTokenizer`, `SpecialSet`, errors), `pretok.rs` (the GPT-2 split and `Digits` by hand over general-category tables), `bpe.rs` (`ByteBpe`: merges from a lazy heap over Robin Hood maps, `encode_batch` on threads), `hfjson.rs` (the `tokenizer.json` and `vocab.json` + `merges.txt` loaders), `stream.rs` (`StreamDecoder`), and `main.rs` (`tl-tok encode`, `tl-tok bench`) |
+| **Module** | `L1.5` · build · Rust · Pass 3 |
+| **Solution** | [`lib.rs`](../../../../course/solutions/rust/crates/tl-tok/src/lib.rs) (the `Tokenizer` trait, `ByteTokenizer`, `SpecialSet`, errors) · [`pretok.rs`](../../../../course/solutions/rust/crates/tl-tok/src/pretok.rs) (`Gpt2Split`, `DigitSplit`, `PreTokenizer` over general-category tables) · [`bpe.rs`](../../../../course/solutions/rust/crates/tl-tok/src/bpe.rs) (`ByteBpe`, `encode_piece_with`, `encode_batch`) · [`hfjson.rs`](../../../../course/solutions/rust/crates/tl-tok/src/hfjson.rs) (`from_hf_json`, `from_gpt2_files`) · [`stream.rs`](../../../../course/solutions/rust/crates/tl-tok/src/stream.rs) (`StreamDecoder`) · the binary [`main.rs`](../../../../course/solutions/entry/rust/crates/tl-tok/src/main.rs) (`tl-tok encode`, `tl-tok bench`) · model property tests [`l1_5_props.rs`](../../../../course/solutions/learner-tests/L1.5/rust/crates/tl-tok/tests/l1_5_props.rs) |
 | **Contract** | File formats and parity: [`formats/tokenizer.md`](../../../../course/contracts/formats/tokenizer.md) (bytes tokenizer, BPE subset, incremental decoding) · the roles: [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) (`tl-tok`) · the Rust interface in section 4 |
-| **Tests** | `course/tests/rust/l1_5.rs` compares with frozen vectors in `course/fixtures/L1.5/golden.jsonl`; Python parity against the same oracle is covered by `L1.2` · what they check: section 4 · your own tests in `rust/crates/tl-tok/tests/l1_5_props.rs`, rung R4 (proptest), graded by mutation (threshold 0.80) |
-| **Needs** | `L1.2` your Python BPE, the specification every id is checked against ([chapter](02-byte-level-bpe.md)) · `ds.05` the Robin Hood map ([chapter](../../../tracks/algorithms/16-systems-data-structures/05-robin-hood-hash-map.md)) · `ds.06` the lazy heap ([chapter](../../../tracks/algorithms/16-systems-data-structures/06-binary-heap-lazy-deletion.md)) · reading: `lang.04` the [Rust primer](../../../tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md), `M05.2` the [GPT-2 byte map](../../../tracks/math/05-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md) · or `--ref-deps` |
-| **Used by** | later: `L10.1` and `L10.5` tokenize every request and stream with `StreamDecoder`, `C1` serves the tokenizer it trains · later: `L10.9` |
-| **Milestone** | `MS-L1` (`tl-tok encode` and `tinyllm tok encode` against the GPT-2 and SmolLM2 oracles; the speedups are local perf steps) |
+| **Needs** | `L1.2` the Python BPE, the specification every id is checked against ([chapter](02-byte-level-bpe.md)) · `ds.05` the Robin Hood map ([chapter](../../../tracks/algorithms/16-systems-data-structures/05-robin-hood-hash-map.md)) · `ds.06` the lazy heap ([chapter](../../../tracks/algorithms/16-systems-data-structures/06-binary-heap-lazy-deletion.md)) · reading: `lang.04` the [Rust primer](../../../tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md), `M05.2` the [GPT-2 byte map](../../../tracks/math/05-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md) |
+| **Used by** | later: `L10.1` and `L10.5` tokenize every request and stream with `StreamDecoder`, `C1` serves the tokenizer it trains, `L10.9` · with `L1.2` it completes the tokenizer layer: `tl-tok encode` and `tinyllm tok encode` give the GPT-2 and SmolLM2 oracle ids (the speedups are local performance steps) |
 | **Optional depth** | [Unicode Standard Annex #44](https://www.unicode.org/reports/tr44/) (general categories, free); Hugging Face [tokenizers](https://github.com/huggingface/tokenizers) source |
 
 ## Key Takeaways
 
-- The shared golden JSON fixture pins Hugging Face ids for both vocabularies, so the Python specification and Rust implementation check their outputs against the same oracle (`gpt2_golden_10k`, `smollm2_golden_10k`).
-- BPE encoding with a lazy heap applies exactly the pair the definition names (lowest rank, then leftmost) in $O(n \log n)$ instead of $O(n^2)$; a merge must remove the two pairs it destroys (`hand_example_merges_from_the_heap`, `heap_bpe_equals_naive_bpe`).
-- The GPT-2 pre-tokenizer is a regular expression you can write as a loop over character classes, if the classes are Unicode general categories, not Rust's `is_alphabetic` (`gpt2_split_hand_cases`).
-- A streaming decoder holds back the bytes of an unfinished character and emits them when it completes; the concatenated chunks equal `decode(ids)` (`stream_decoder_holds_back_partial_characters`, `stream_equals_decode_on_golden`).
-- The Rust implementation has frozen oracle vectors, while `L1.2` checks Python against the same golden JSON.
+- The shared golden JSON fixture pins Hugging Face ids for both vocabularies, so the Python specification and the Rust implementation are held to the same oracle.
+- BPE encoding with a lazy heap applies exactly the pair the definition names (lowest rank, then leftmost) in $O(n \log n)$ instead of $O(n^2)$; a merge must remove the two pairs it destroys.
+- The GPT-2 pre-tokenizer is a regular expression you can write as a loop over character classes, if the classes are Unicode general categories, not Rust's `is_alphabetic`.
+- A streaming decoder holds back the bytes of an unfinished character and emits them when it completes; the concatenated chunks equal `decode(ids)`.
+- The Rust implementation is checked against frozen oracle vectors, and `L1.2` checks Python against the same golden JSON.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L1.5               # stubs the tl-tok crate and writes its manifest if absent
-ol tests L1.5               # read the test catalog first
-ol check L1.5               # Rust and Python fixture tests; then grades your Rust tests
-ol check L1.5 --ref-deps    # only if your L1.2, ds.05, or ds.06 is not passing yet
-ol parity tokenizer.bpe     # your Rust against your Python and the oracle, with --fuzz for live text
-ol milestone MS-L1          # your entry points: tok train, tok encode, tl-tok encode
-```
+Sections 1 to 3 build the idea from first principles and work the merge queue and the streaming decoder by hand. Section 4 fixes the Rust interface. Section 5 walks through the solution in the order the data flows (bytes, pre-tokens, merges, threads, streaming) and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
-`ol start` writes `rust/crates/tl-tok/Cargo.toml` (`tl-ds`, `serde_json`; `proptest` for your tests) only if absent. Python/Rust parity crosses the boundary through tokenizer files and frozen JSON vectors; there is no extension build step.
-
-
-
-Work in this order: `ByteTokenizer` and `bytes_to_unicode`; `pretok.rs` until `gpt2_split_hand_cases` passes; `ByteBpe::new` and `encode_piece` on the hand example; the loaders; then the golden tests; then `StreamDecoder` and the Rust CLI.
+The crate is a library (`tl-tok`, five modules) plus a small binary. The binary's two verbs are part of the system: `tl-tok encode --tokenizer <file> --in <texts>` prints the ids and bytes per token as one JSON line, and `tl-tok bench` times `encode_batch` on one thread and on `--threads T` (the solution runs it with `cargo run --release -p tl-tok --`). Python/Rust parity crosses the boundary through tokenizer files and frozen JSON vectors; there is no extension build step.
 
 ---
 
 ## 1. Why now
 
-Your Python BPE (`L1.2`) matches GPT-2 and SmolLM2 exactly. The Rust engine (`L10.1`, `L10.5`) also needs a tokenizer for request handling, and the SSE path needs incremental decoding when a token ends in the middle of a UTF-8 character. This module implements the tokenizer in Rust (`tl-tok`), adds the byte tokenizer the tracer has served since Pass 1, and provides a standalone CLI and streaming decoder. Both implementations use the same frozen golden fixture files to check parity. The speed comes from three things you build: Robin Hood maps for the tables (`ds.05`), a lazy heap for the merges (`ds.06`), and threads.
+The Python BPE (`L1.2`) matches GPT-2 and SmolLM2 exactly. The Rust engine (`L10.1`, `L10.5`) also needs a tokenizer for request handling, and the SSE path needs incremental decoding when a token ends in the middle of a UTF-8 character. This module implements the tokenizer in Rust (`tl-tok`), adds the byte tokenizer the tracer has served since Pass 1, and provides a standalone CLI and streaming decoder. Both implementations use the same frozen golden fixture files to check parity. The speed comes from three things: Robin Hood maps for the tables (`ds.05`), a lazy heap for the merges (`ds.06`), and threads.
 
 ## 2. Principles
 
@@ -73,7 +59,7 @@ Merges never cross a pre-token boundary. GPT-2's boundaries come from one regula
 
 `Gpt2Split` is that expression as a loop. At the current position: (1) an apostrophe followed by one of the lowercase suffixes `s t re ve m ll d` is a contraction (`'S` is not: it splits into `'` and `S`); (2 to 4) otherwise an optional single U+0020 followed by a maximal run of one class, letters (`\p{L}`, the general categories Lu Ll Lt Lm Lo), numbers (`\p{N}`: Nd Nl No), or other non-space characters; (5) a white-space run gives back its last character when a non-space follows, because that character belongs to the next pre-token (`\s+(?!\S)`); (6) else the white space itself. `\s` is the Unicode White_Space property (25 code points; Rust's `char::is_whitespace` is the same set, Python's `str.isspace` is not).
 
-The classes must be the **general categories your Python uses**, or the ids drift apart on rare characters. Rust's `char::is_alphabetic` is the Alphabetic property, which also includes marks such as the Devanagari vowel signs (Mc), so `हिन्दी` would stay one run in Rust and split into six pieces in Python. `tl-tok` therefore embeds two tables of code-point ranges, `LETTER_RANGES` and `NUMBER_RANGES`, generated from Python's `unicodedata` by `course/oracle/L1.5/unicode_tables.py` (write your own copy) and searched by bisection. The Unicode version matters too: each Python version ships one (3.11 has 14.0, 3.12 has 15.0, 3.14 has 16.0), and a character added later is unassigned, so not a letter, to an older one. Generate the tables with the Python your `L1.2` runs under.
+The classes must be the **general categories the Python uses**, or the ids drift apart on rare characters. Rust's `char::is_alphabetic` is the Alphabetic property, which also includes marks such as the Devanagari vowel signs (Mc), so `हिन्दी` would stay one run in Rust and split into six pieces in Python. `tl-tok` therefore embeds two tables of code-point ranges, `LETTER_RANGES` and `NUMBER_RANGES`, generated from Python's `unicodedata` (a short script that walks every code point and records the runs whose `unicodedata.category` starts with `L` or `N`) and searched by bisection. The Unicode version matters too: each Python version ships one (3.11 has 14.0, 3.12 has 15.0, 3.14 has 16.0), and a character added later is unassigned, so not a letter, to an older one. The tables must come from the Python that `L1.2` runs under; the solution's header records Unicode 15.0.0 from Python 3.12.
 
 SmolLM2 adds one step before ByteLevel: `Digits` with `individual_digits = true` cuts every `\p{N}` code point into its own piece, so `12345` is five pre-tokens and five tokens. A `PreTokenizer` is a list of steps, each applied to every piece the previous step produced.
 
@@ -85,13 +71,13 @@ Inside one pre-token, BPE starts from one symbol per byte and repeatedly merges 
 2. $s_i$ becomes the merged id and absorbs $s_j$'s link;
 3. the new pairs $(s_{prev}, s_i)$ and $(s_i, s_{next})$ are pushed if they have a rank.
 
-Each merge is $O(\log n)$, and the ids equal the rescan's, because both always apply the pair the definition names (`heap_bpe_equals_naive_bpe` checks it on 3,000 random pieces). One `LazyHeap`, cleared between pieces, serves a whole text.
+Each merge is $O(\log n)$, and the ids equal the rescan's, because both always apply the pair the definition names (a differential check on 3,000 random pieces confirms it). One `LazyHeap`, cleared between pieces, serves a whole text.
 
 **Added tokens** (`<|endoftext|>`, SmolLM2's `<|im_start|>` and 15 more) are split out first, leftmost-longest, as the Hugging Face library does, and never pre-tokenized or merged. `encode` allows all of them; `encode_with_special(text, &SpecialSet::none())` allows none, so a server can keep user text from forging control tokens.
 
 ### 2.4 Loading `tokenizer.json`
 
-`ByteBpe::from_hf_json` reads the `formats/tokenizer.md` BPE subset that GPT-2's and SmolLM2's files use: `model.type` `BPE` (or absent, when `model.merges` is present), `model.vocab`, `model.merges` as `"left right"` strings or `[left, right]` pairs, a `ByteLevel` pre-tokenizer or a `Sequence` of `Digits` and one final `ByteLevel`, `added_tokens`. Anything else (a normalizer, another model, `byte_fallback`, `add_prefix_space: true`) is refused with an error that names the field, so a file that loads is a file this code encodes exactly. A merge whose parts or result are not in the vocabulary is a `Format` error, and a repeated merge keeps its first rank. `from_gpt2_files` reads the classic `vocab.json` and `merges.txt` (skipping the `#version` line); the tokenizer your Python trains and saves (`L1.2`, `save`) loads here unchanged, which is how `C1` serves the vocabulary it trains.
+`ByteBpe::from_hf_json` reads the `formats/tokenizer.md` BPE subset that GPT-2's and SmolLM2's files use: `model.type` `BPE` (or absent, when `model.merges` is present), `model.vocab`, `model.merges` as `"left right"` strings or `[left, right]` pairs, a `ByteLevel` pre-tokenizer or a `Sequence` of `Digits` and one final `ByteLevel`, `added_tokens`. Anything else (a normalizer, another model, `byte_fallback`, `add_prefix_space: true`) is refused with an error that names the field, so a file that loads is a file this code encodes exactly. A merge whose parts or result are not in the vocabulary is a `Format` error, and a repeated merge keeps its first rank. `from_gpt2_files` reads the classic `vocab.json` and `merges.txt` (skipping the `#version` line); the tokenizer the Python trainer saves (`L1.2`, `save`) loads here unchanged, which is how `C1` serves the vocabulary it trains.
 
 ### 2.5 Streaming decode
 
@@ -105,7 +91,7 @@ The Python implementation is maintained in `L1.2`. Rust and Python compare token
 
 ## 3. Worked example by hand
 
-Take the `L1.2` worked example: the 256 byte tokens in your Python's order (ids by the code point of their byte-map character, so `g` is 70, `s` is 82, `Ġ` is 220) and three merges: rank 0 `u g` makes id 256 (`ug`), rank 1 `h ug` makes 257 (`hug`), rank 2 `p ug` makes 258 (`pug`). Encode `hugs pug`.
+Take the `L1.2` worked example: the 256 byte tokens in the Python's order (ids by the code point of their byte-map character, so `g` is 70, `s` is 82, `Ġ` is 220) and three merges: rank 0 `u g` makes id 256 (`ug`), rank 1 `h ug` makes 257 (`hug`), rank 2 `p ug` makes 258 (`pug`). Encode `hugs pug`.
 
 **Pre-tokens.** `hugs` is a letter run; the space joins the next run: `hugs`, ` pug`.
 
@@ -120,7 +106,7 @@ Ids: 257, 82.
 
 **` pug`.** Symbols `Ġ p u g`; the only ranked pair is `(u, g)` at position 2. Pop (0, 2): `ug` at 2, push `(p, ug)` at 1 with rank 2. Pop (2, 1): `pug` at 1; `(Ġ, pug)` has no rank. Ids: 220, 258.
 
-Result `[257, 82, 220, 258]`, exactly your Python's. **Lazy removal** shows on `aaaa` with merges rank 0 `a a` (256) and rank 1 `aa aa` (257): the heap holds $(0,0), (0,1), (0,2)$. Pop $(0,0)$: positions 0 and 1 merge, and the queued pair at position 1 (`a` at 1 with `a` at 2) no longer exists: it is removed by its handle. Pop $(0, 2)$: positions 2 and 3 merge, and the new pair `(aa, aa)` at 0 is pushed with rank 1. Pop $(1, 0)$: one token, 257. Without the removal, the stale $(0, 1)$ would pop second and merge a symbol that is already gone. This is `hand_example_merges_from_the_heap`.
+Result `[257, 82, 220, 258]`, exactly the Python's. **Lazy removal** shows on `aaaa` with merges rank 0 `a a` (256) and rank 1 `aa aa` (257): the heap holds $(0,0), (0,1), (0,2)$. Pop $(0,0)$: positions 0 and 1 merge, and the queued pair at position 1 (`a` at 1 with `a` at 2) no longer exists: it is removed by its handle. Pop $(0, 2)$: positions 2 and 3 merge, and the new pair `(aa, aa)` at 0 is pushed with rank 1. Pop $(1, 0)$: one token, 257. Without the removal, the stale $(0, 1)$ would pop second and merge a symbol that is already gone.
 
 **Streaming.** Push 47249: pending `f0 9f 98`, a 4-byte lead and two continuations, incomplete, so the chunk is empty. Push 222: `80` completes the character and the chunk is `😀`.
 
@@ -177,71 +163,384 @@ impl<'a, T: Tokenizer + ?Sized> StreamDecoder<'a, T> {
 ```
 
 
-The Python API remains `BPETokenizer` in `L1.2`; its parity checks read `course/fixtures/L1.5/golden.jsonl`.
+The Python API remains `BPETokenizer` in `L1.2`; its parity checks read the same frozen golden vectors as the Rust crate.
 
-The binary is yours (D16): `tl-tok encode --tokenizer <file> --in <texts>` and `tl-tok bench`, with the final JSON lines that `MS-L1` fixes; declare it in `system.toml` as the `tl-tok` role (the reference uses `cargo run --release -p tl-tok --`). The Python CLI provides `tok train` and `tok encode` through `L1.2`; `tl-tok` is a separate Rust process.
+The binary is entry-point glue over the library (D16): `tl-tok encode --tokenizer <file> --in <texts>` loads with `ByteBpe::from_hf_json`, encodes every text with `encode_batch(texts, 0)`, and prints one JSON line (`ids`, `texts`, `tokens`, `bytes_per_token`); `tl-tok bench` times `encode_batch` on one thread and on `--threads T` (best of `--repeat R`) and prints `tokens_per_s`, `batch_tokens_per_s`, and `batch_speedup`. It is the `tl-tok` role of `spec/cli-roles.md`, a separate Rust process from the Python CLI's `tok train` and `tok encode` (`L1.2`).
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `hand_example_merges_from_the_heap` | unit | section 3: `hugs pug` is `[257, 82, 220, 258]`; `aaaa`, `aaaaa`, `aaaaaa` with lazy removals | you, your Python, and the tests agree on the rule |
-| `heap_bpe_equals_naive_bpe` | differential | 3,000 random pieces: heap ids equal the $O(n^2)$ rescan | the heap is only a faster route to the same ids |
-| `byte_tokenizer_is_the_identity` | unit | 256 ids, id = byte, `token_bytes(256)` is `None`, `decode([0xFF])` is U+FFFD | the tracer engine keeps serving bytes |
-| `byte_map_matches_gpt2` | unit | $\beta$ at 0x20, 0x21, 0x7E, 0x00, 0x7F, 0xAD, 0xAE, 0xFF; a bijection; vocabulary keys are bytes | every token string loads to the right bytes |
-| `gpt2_split_hand_cases` | unit | contractions in both cases, space runs, `\s+(?!\S)`, digits, marks, Devanagari | the boundaries your Python draws |
-| `digits_split_for_smollm2` | unit | `Digits` individual and not; `12345` is five SmolLM2 tokens | SmolLM2's pre-tokenizer sequence |
-| `gpt2_golden_10k` | golden | 10,000 strings equal Hugging Face's and tiktoken's GPT-2 ids | exact against the oracle |
-| `smollm2_golden_10k` | golden | the same strings under SmolLM2's file | exact against the oracle with Digits and 17 added tokens |
-| `decode_inverts_encode` | property | `decode_bytes(encode(x))` is $x$'s UTF-8 for every golden string and both files | byte-level BPE is lossless |
-| `added_tokens_are_matched_first` | unit | SmolLM2's chat markers; `SpecialSet::none` and `only` | servers can refuse forged control tokens |
-| `stream_decoder_holds_back_partial_characters` | boundary | the emoji split over two GPT-2 tokens; `C3 A9 FF E2 82` byte by byte; `finish` | the SSE path never emits half a character |
-| `stream_equals_decode_on_golden` | property | 2,000 golden strings: chunks plus `finish` equal `decode`; at most 3 pending bytes | streamed text equals non-streamed text |
-| `encode_batch_equals_serial_encode` | property | 997 texts on 0, 1, 2, 3, 4, 8 threads equal serial `encode` | `data.07` output does not depend on core count |
-| `loader_rejects_files_outside_the_subset` | boundary | a normalizer, `WordPiece`, `add_prefix_space`, `byte_fallback`, bad JSON, a missing file | a file that loads is one you encode exactly |
-| `gpt2_classic_files_load_identically` | differential | `vocab.json` + `merges.txt` written from `tokenizer.json` encode 1,000 strings identically | GPT-2's other distribution |
-| `vocab_and_merge_tables` | unit | GPT-2's first merge `(Ġ, t)` is rank 0, id 256; sizes 50,257 and 50,000 | the Robin Hood tables hold what the file says |
+| The hand example from the heap | unit | section 3: `hugs pug` is `[257, 82, 220, 258]`; `aaaa`, `aaaaa`, `aaaaaa` with lazy removals | the Rust, the Python, and the definition agree on the rule |
+| Heap BPE equals naive BPE | differential | 3,000 random pieces: heap ids equal the $O(n^2)$ rescan | the heap is only a faster route to the same ids |
+| The byte tokenizer is the identity | unit | 256 ids, id = byte, `token_bytes(256)` is `None`, `decode([0xFF])` is U+FFFD | the tracer engine keeps serving bytes |
+| The byte map matches GPT-2 | unit | $\beta$ at 0x20, 0x21, 0x7E, 0x00, 0x7F, 0xAD, 0xAE, 0xFF; a bijection; vocabulary keys are bytes | every token string loads to the right bytes |
+| GPT-2 split hand cases | unit | contractions in both cases, space runs, `\s+(?!\S)`, digits, marks, Devanagari | the boundaries the Python draws |
+| Digits split for SmolLM2 | unit | `Digits` individual and not; `12345` is five SmolLM2 tokens | SmolLM2's pre-tokenizer sequence |
+| GPT-2 golden, 10k strings | golden | 10,000 strings equal Hugging Face's and tiktoken's GPT-2 ids | exact against the oracle |
+| SmolLM2 golden, 10k strings | golden | the same strings under SmolLM2's file | exact against the oracle with Digits and 17 added tokens |
+| Decode inverts encode | property | `decode_bytes(encode(x))` is $x$'s UTF-8 for every golden string and both files | byte-level BPE is lossless |
+| Added tokens are matched first | unit | SmolLM2's chat markers; `SpecialSet::none` and `only` | servers can refuse forged control tokens |
+| The stream decoder holds back partial characters | boundary | the emoji split over two GPT-2 tokens; `C3 A9 FF E2 82` byte by byte; `finish` | the SSE path never emits half a character |
+| Streaming equals decode on the golden set | property | 2,000 golden strings: chunks plus `finish` equal `decode`; at most 3 pending bytes | streamed text equals non-streamed text |
+| `encode_batch` equals serial encode | property | 997 texts on 0, 1, 2, 3, 4, 8 threads equal serial `encode` | `data.07` output does not depend on core count |
+| The loader rejects files outside the subset | boundary | a normalizer, `WordPiece`, `add_prefix_space`, `byte_fallback`, bad JSON, a missing file | a file that loads is one the solution encodes exactly |
+| GPT-2 classic files load identically | differential | `vocab.json` + `merges.txt` written from `tokenizer.json` encode 1,000 strings identically | GPT-2's other distribution |
+| Vocabulary and merge tables | unit | GPT-2's first merge `(Ġ, t)` is rank 0, id 256; sizes 50,257 and 50,000 | the Robin Hood tables hold what the file says |
 
-**Your tests (rung R4).** Write `rust/crates/tl-tok/tests/l1_5_props.rs` with proptest (`craft.04` teaches it), reading the two tokenizer files from `$TINYLLM_FIXTURES` (`ol check` sets it). Properties: `decode(encode(s)) == s` for any `String`, both files; the heap equals a naive rescan you write in the test; pre-token pieces concatenate to the input; streamed chunks equal `decode`; `encode_batch` equals serial `encode` for any thread count; the byte tokenizer round-trips any bytes. Add a few pinned examples (known GPT-2 and SmolLM2 ids, `IT'S`, a normalizer that must be refused, `SpecialSet::none`). Use `Config { rng_seed: RngSeed::Fixed(..), failure_persistence: None, .. }`. At least 80% of the planted bugs, and every planted bug, must make one fail.
+**Model property tests.** [`l1_5_props.rs`](../../../../course/solutions/learner-tests/L1.5/rust/crates/tl-tok/tests/l1_5_props.rs) states the same contract as proptest properties (`craft.04` teaches the tool): `decode(encode(s)) == s` for any `String` under both files; the heap equals a naive rescan written inside the test; pre-token pieces concatenate to the input; streamed chunks equal `decode`; `encode_batch` equals serial `encode` for any thread count; the byte tokenizer round-trips any bytes. A few pinned examples (known GPT-2 and SmolLM2 ids, `IT'S`, a normalizer that must be refused, `SpecialSet::none`) sit beside them, and the runner uses a fixed seed with no failure persistence so a run is reproducible.
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. **The ids are fixed by someone else.** GPT-2's and SmolLM2's ids come from their files and the Hugging Face algorithm; the Rust code has no freedom in what it outputs, only in how fast it gets there. So every design choice below must preserve "the same ids as the definition", and any speed-up must be a different route to the same answer.
+2. **Work on bytes, not strings.** The file's token strings are written in the byte alphabet $\beta$, but the algorithm is defined on bytes. Since $\beta$ is a bijection (`M05.2`), converting once at load with $\beta^{-1}$ loses nothing and removes the alphabet from every hot loop. The vocabulary then maps `Vec<u8> -> u32`, and the 256 single-byte ids can live in a plain array.
+3. **Merges never cross pre-token boundaries,** so the pre-tokenizer decides what the merge loop ever sees. It must reproduce the regex exactly, including its character classes. The classes are general categories as Python's `unicodedata` sees them, so the only faithful source is a table generated from that Python; Rust's `is_alphabetic` is a different property and gives different runs.
+4. **The merge rule is a priority order.** "Lowest rank, then leftmost" is the lexicographic order on the tuple (rank, left position). Any structure that pops the minimum tuple applies exactly the definition's merge, so a min-heap of (rank, position) replaces the rescan.
+5. **A merge changes three pairs.** Merging $s_i$ with its successor $s_j$ destroys $(s_{prev}, s_i)$ and $(s_j, s_{next})$ and creates $(s_{prev}, s_i')$ and $(s_i', s_{next})$. The destroyed pairs are somewhere inside the heap, not at the top, so the heap must support removal by handle (`ds.06`); otherwise a stale pair pops later and merges a symbol that no longer exists. Neighbours change too, so the symbols form a doubly linked list over an array.
+6. **Independent texts parallelise trivially.** Encoding one text never reads another, so contiguous chunks on separate threads, joined in order, give the serial answer for any thread count. Words repeat, so a per-thread cache of piece to ids pays for itself; per thread, because a shared one would need a lock on the hot path.
+7. **A token is a run of bytes, not of characters.** A streaming server must emit only complete UTF-8, hold back an incomplete tail (at most 3 bytes, since a character is at most 4), and turn truly invalid bytes into U+FFFD so the stream always makes progress. If it follows the same replacement rule as `decode`, the concatenated stream equals the one-shot decode.
+
+### 5.2 The code, annotated
+
+**The byte map.** The 188 printable bytes keep their value; the other 68 are numbered upward from U+0100 in byte order. The counter `n` is the whole trick: the order of the non-printable bytes is the order they are met.
+
+```rust
+pub fn bytes_to_unicode() -> [char; 256] {
+    // 0xAD (soft hyphen) is excluded: it is the gap between the two upper ranges.
+    let printable = |b: u32| (0x21..=0x7E).contains(&b) || (0xA1..=0xAC).contains(&b) || (0xAE..=0xFF).contains(&b);
+    let mut out = ['\0'; 256];
+    let mut n = 0u32;
+    for b in 0u32..256 {
+        out[b as usize] = if printable(b) {
+            char::from_u32(b).unwrap()
+        } else {
+            n += 1;                       // the n-th non-printable byte
+            char::from_u32(255 + n).unwrap() // U+0100, U+0101, ... ; 0x20 lands on U+0120 'Ġ'
+        };
+    }
+    out
+}
+```
+
+`unicode_to_bytes` inverts it into a 324-entry table (the alphabet ends at U+0143), and `token_str_to_bytes` maps each character of a token string through it, returning `None` if any character is outside the alphabet; the loader turns that `None` into a `Format` error.
+
+**Character classes by bisection.** `LETTER_RANGES` and `NUMBER_RANGES` are sorted, disjoint, inclusive ranges, so membership is a binary search: $O(\log R)$ with $R = 659$ letter ranges, no allocation, and no dependency on Rust's own Unicode tables.
+
+```rust
+pub fn in_ranges(ranges: &[(u32, u32)], c: char) -> bool {
+    let x = c as u32;
+    let (mut lo, mut hi) = (0usize, ranges.len());
+    while lo < hi {                 // invariant: the answer, if any, is in ranges[lo..hi]
+        let mid = (lo + hi) / 2;
+        let (a, b) = ranges[mid];
+        if x < a { hi = mid; } else if x > b { lo = mid + 1; } else { return true; }
+    }
+    false
+}
+
+// White space wins (no code point is both), then letter, then number.
+pub fn class(c: char) -> Class {
+    if is_space(c) { Class::Space } else if is_letter(c) { Class::Letter }
+    else if is_number(c) { Class::Number } else { Class::Other }
+}
+```
+
+**The GPT-2 split as a loop.** `next_len` tries the regex alternatives in the order the regex engine does and returns the byte length of the next pre-token. Pieces are slices of the input, so splitting allocates nothing per pre-token.
+
+```rust
+fn next_len(s: &str) -> usize {
+    let c0 = s.chars().next().unwrap();
+    // 1. contractions, lowercase only: "'S" falls through and splits into "'" and "S".
+    if c0 == '\'' {
+        if let Some(suf) = CONTRACTIONS.iter().find(|suf| s[1..].starts_with(**suf)) {
+            return 1 + suf.len();
+        }
+    }
+    // 2 to 4. one optional U+0020 (only the space, not any \s), then a run of one class.
+    let (j, cj) = match s[c0.len_utf8()..].chars().next() {
+        Some(c1) if c0 == ' ' => (1, c1),
+        _ => (0, c0),
+    };
+    let k = class(cj);
+    if k != Class::Space {
+        let mut end = j + cj.len_utf8();
+        for c in s[end..].chars() {
+            if class(c) != k { break; }
+            end += c.len_utf8();
+        }
+        return end;
+    }
+    // 5. \s+(?!\S): a run of 2+ spaces followed by a non-space gives back its
+    //    last character, which becomes the optional space of the next piece.
+    // 6. \s+: otherwise the whole white-space run.
+    let (mut end, mut last, mut count) = (0, 0, 0);
+    for (i, c) in s.char_indices() {
+        if !is_space(c) { break; }
+        last = i;
+        end = i + c.len_utf8();
+        count += 1;
+    }
+    if end < s.len() && count >= 2 {
+        end = last;
+    }
+    end
+}
+```
+
+The `count >= 2` guard is the regex's behaviour when a single space precedes a non-space: alternative 5 cannot match (it would be empty), so alternative 6 takes the one space. In practice a single U+0020 before a letter never reaches this branch (step 2 absorbs it), but a single tab or newline before a letter does, and stays its own piece. This is why `a  b` becomes `a`, ` `, ` b`.
+
+**Pre-tokenizer steps compose.** SmolLM2 runs `Digits { individual: true }` and then `ByteLevel`; each step runs over every piece the previous one produced, and empty pieces are dropped at the end.
+
+```rust
+pub fn split<'a>(&self, text: &'a str) -> Vec<&'a str> {
+    let mut pieces = vec![text];
+    for step in &self.steps {
+        let mut next = Vec::with_capacity(pieces.len() * 2);
+        for p in pieces {
+            match *step {
+                Step::Digits { individual } => next.extend(DigitSplit::new(p, individual)),
+                Step::ByteLevel => next.extend(Gpt2Split::new(p)),
+            }
+        }
+        pieces = next;
+    }
+    pieces.retain(|p| !p.is_empty());
+    pieces
+}
+```
+
+**Building the tables.** `ByteBpe::new` turns the loaded vocabulary and merge list into the three lookups the hot loop needs. The merge table is keyed by the pair of ids, not of strings, so the loop never touches bytes; `or_insert` keeps the first (lowest) rank of a repeated merge, as Hugging Face does.
+
+```rust
+for (rank, (l, r)) in merges.into_iter().enumerate() {
+    let lid = map.get(&l).copied();
+    let rid = map.get(&r).copied();
+    let mut joined = l.clone();
+    joined.extend_from_slice(&r);
+    let id = map.get(&joined).copied();      // the merged token must exist too
+    match (lid, rid, id) {
+        (Some(a), Some(b), Some(id)) => {
+            table.entry((a, b)).or_insert(Merge { rank: rank as u32, id });
+        }
+        _ => return Err(LoadError::Format(/* names the merge and its rank */)),
+    }
+}
+// The 256 single-byte ids, so encode_piece maps a byte with one array index.
+let mut byte_ids = [None; 256];
+for (b, slot) in byte_ids.iter_mut().enumerate() {
+    *slot = map.get(&[b as u8][..]).copied();
+}
+```
+
+The constructor also refuses two tokens with one id and a gap in the id range, so `token_bytes(id)` can be a plain `Vec` index and `vocab_size` is `tokens.len()`.
+
+**The merge loop.** This is the heart of the crate. `pair[i]` holds the heap handle of the pair whose left symbol is at position `i`, which is how a merge finds the two pairs it destroys.
+
+```rust
+pub fn encode_piece_with(&self, piece: &[u8], out: &mut Vec<u32>, scratch: &mut MergeScratch) {
+    let MergeScratch { syms, pair, heap } = scratch;   // buffers reused across pieces
+    syms.clear();
+    for &b in piece {
+        if let Some(id) = self.byte_ids[b as usize] {  // a byte with no token is dropped, as HF does
+            let i = syms.len();
+            syms.push(Sym { id, prev: if i == 0 { NONE } else { i - 1 }, next: i + 1 });
+        }
+    }
+    let n = syms.len();
+    if n == 0 { return; }
+    syms[n - 1].next = NONE;
+    if n > 1 {
+        heap.clear();
+        pair.clear();
+        pair.resize(n, None);
+        for i in 0..n - 1 {
+            if let Some(m) = self.merge(syms[i].id, syms[i + 1].id) {
+                pair[i] = Some(heap.push((m.rank, i)));   // key (rank, left position)
+            }
+        }
+        while let Some((_, i)) = heap.pop() {             // lowest rank, then leftmost
+            pair[i] = None;
+            let j = syms[i].next;
+            let m = self.merge(syms[i].id, syms[j].id).expect("a live pair always merges");
+            // The pairs (prev, i) and (j, next) disappear with this merge.
+            let p = syms[i].prev;
+            if p != NONE {
+                if let Some(h) = pair[p].take() { heap.remove(h); }
+            }
+            if let Some(h) = pair[j].take() { heap.remove(h); }
+            // i absorbs j: j drops out of the linked list.
+            let nx = syms[j].next;
+            syms[i].id = m.id;
+            syms[i].next = nx;
+            if nx != NONE { syms[nx].prev = i; }
+            // The pairs (prev, i) and (i, next) are new.
+            if p != NONE {
+                if let Some(mm) = self.merge(syms[p].id, syms[i].id) {
+                    pair[p] = Some(heap.push((mm.rank, p)));
+                }
+            }
+            if nx != NONE {
+                if let Some(mm) = self.merge(syms[i].id, syms[nx].id) {
+                    pair[i] = Some(heap.push((mm.rank, i)));
+                }
+            }
+        }
+    }
+    let mut i = 0;                                         // position 0 is never absorbed
+    while i != NONE { out.push(syms[i].id); i = syms[i].next; }
+}
+```
+
+Three invariants make it correct. (a) Every pair in the heap is live: its left symbol is at `i` and its right symbol is `syms[i].next`, because the only operation that changes adjacency (a merge) removes the old pairs around it and pushes the new ones. That is why the `expect` can never fire. (b) A symbol keeps the position of its leftmost byte, so "position" in the key still means "leftmost" after merges, and the tie-break stays the definition's. (c) Position 0 is always a left symbol and never absorbed, so walking `next` from 0 visits the final tokens in order. Trace `aaaa` from section 3 through it: popping $(0,0)$ removes `pair[1]` (the pair whose left symbol was absorbed), which is the lazy removal the definition needs.
+
+**Added tokens first.** `next_added` finds the allowed added token that occurs leftmost, preferring the longer one on a tie, and `encode_with_special` alternates "ordinary text up to it" and "its id".
+
+```rust
+fn encode_with_special(&self, text: &str, allowed: &SpecialSet) -> Vec<u32> {
+    let mut out = Vec::with_capacity(text.len() / 3 + 1);   // ~3 bytes per token, a guess
+    let mut scratch = MergeScratch::default();               // one set of buffers per text
+    let mut rest = text;
+    while let Some((start, len, id)) = self.next_added(rest, allowed) {
+        for piece in self.pretok.split(&rest[..start]) {
+            self.encode_piece_with(piece.as_bytes(), &mut out, &mut scratch);
+        }
+        out.push(id);                                        // never pre-tokenized or merged
+        rest = &rest[start + len..];
+    }
+    for piece in self.pretok.split(rest) {
+        self.encode_piece_with(piece.as_bytes(), &mut out, &mut scratch);
+    }
+    out
+}
+```
+
+`encode` is `encode_with_special(text, &SpecialSet::all())`. With `SpecialSet::none()` the `allows` check skips every added token, so `<|endoftext|>` in user text becomes ordinary pieces and can never end a document.
+
+**Threads in order.** `encode_batch` resolves `0` to the hardware concurrency, clamps the thread count to the number of texts, and splits into contiguous chunks. `std::thread::scope` lets each worker borrow `self` and its slice without `Arc` or copies, and `flat_map` over the workers in spawn order rebuilds the input order.
+
+```rust
+pub fn encode_batch(&self, texts: &[&str], threads: usize) -> Vec<Vec<u32>> {
+    let threads = if threads == 0 {
+        std::thread::available_parallelism().map_or(1, |n| n.get())
+    } else { threads };
+    let threads = threads.min(texts.len()).max(1);
+    let run = |part: &[&str]| -> Vec<Vec<u32>> {
+        let mut cache = RobinHoodMap::new();               // one cache per worker: no lock
+        part.iter().map(|t| self.encode_cached(t, &mut cache)).collect()
+    };
+    if threads == 1 { return run(texts); }
+    let chunk = texts.len().div_ceil(threads);
+    std::thread::scope(|s| {
+        let workers: Vec<_> = texts.chunks(chunk).map(|part| s.spawn(move || run(part))).collect();
+        // Join in spawn order: the output order is the input order for any T.
+        workers.into_iter().flat_map(|w| w.join().expect("an encode worker panicked")).collect()
+    })
+}
+```
+
+`encode_cached` is `encode` with a lookup before each `encode_piece_with`; when the cache reaches `CACHE_CAP` ($2^{16}$) pieces it is cleared outright, which bounds memory with no eviction bookkeeping.
+
+**The streaming decoder.** `std::str::from_utf8` already classifies a failure: `valid_up_to()` is the length of the good prefix, and `error_len()` is `Some(k)` for an invalid subpart of `k` bytes or `None` for an incomplete tail. The loop just acts on those three outcomes.
+
+```rust
+pub fn push(&mut self, id: u32) -> Result<Option<String>, DecodeError> {
+    let bytes = self.tok.token_bytes(id)
+        .ok_or(DecodeError::UnknownId { id, vocab_size: self.tok.vocab_size() })?; // decoder unchanged on error
+    self.pending.extend_from_slice(bytes);
+    let mut out = String::new();
+    let mut start = 0;
+    loop {
+        match std::str::from_utf8(&self.pending[start..]) {
+            Ok(s) => { out.push_str(s); start = self.pending.len(); break; }
+            Err(e) => {
+                let good = e.valid_up_to();
+                out.push_str(std::str::from_utf8(&self.pending[start..start + good]).unwrap());
+                start += good;
+                match e.error_len() {
+                    Some(bad) => { out.push('\u{FFFD}'); start += bad; } // invalid: replace, move on
+                    None => break,                                       // incomplete: keep it pending
+                }
+            }
+        }
+    }
+    self.pending.drain(..start);            // drop what was emitted, or the next chunk repeats it
+    Ok(if out.is_empty() { None } else { Some(out) })
+}
+
+pub fn finish(&mut self) -> String {
+    let out = String::from_utf8_lossy(&self.pending).into_owned(); // same rule as decode
+    self.pending.clear();
+    out
+}
+```
+
+Because the replacement rule (one U+FFFD per maximal ill-formed subpart) is the one `String::from_utf8_lossy` uses in `decode`, chunks plus `finish` equal `decode(ids)` exactly. On the emoji: pushing 47249 leaves `f0 9f 98` (incomplete, `None`), pushing 222 makes `from_utf8` succeed and emits `😀`.
+
+**The byte tokenizer.** `token_bytes` must return a borrowed slice, so the solution keeps a `static ALL_BYTES: [u8; 256]` and lends `&ALL_BYTES[i..i + 1]` for `i < 256`, `None` otherwise. `decode` and `decode_bytes` are trait default methods, so the byte tokenizer and `ByteBpe` share one decoding rule.
+
+Full solution: [`bpe.rs`](../../../../course/solutions/rust/crates/tl-tok/src/bpe.rs), [`pretok.rs`](../../../../course/solutions/rust/crates/tl-tok/src/pretok.rs), [`stream.rs`](../../../../course/solutions/rust/crates/tl-tok/src/stream.rs), [`lib.rs`](../../../../course/solutions/rust/crates/tl-tok/src/lib.rs), [`hfjson.rs`](../../../../course/solutions/rust/crates/tl-tok/src/hfjson.rs) (the loader: each accepted field is checked with `expect_in`, and anything else becomes `LoadError::Unsupported` naming its JSON path).
+
+### 5.3 Why this solution
+
+- **Complexity.** Per pre-token of $n$ bytes: building the heap is $O(n \log n)$ pushes, each merge does at most two removals and two pushes at $O(\log n)$, and there are at most $n - 1$ merges, so $O(n \log n)$ against the rescan's $O(n^2)$. Space is $O(n)$ for `syms`, `pair`, and the heap, reused across pieces through `MergeScratch`. Class lookups are $O(\log R)$. The piece cache makes repeated words $O(1)$ amortised after the first hit.
+- **Why not the rescan?** It is correct and simpler, and for GPT-2's typical 3 to 6 byte pieces it is competitive. It degrades quadratically on long runs (a line of 10,000 `=` signs is one pre-token), which a server must survive. The solution keeps the rescan as the reference inside the differential tests instead.
+- **Why not a regex crate?** GPT-2's pattern uses a lookahead (`(?!\S)`), which Rust's `regex` crate does not support; `fancy-regex` does, but its classes are Rust's Unicode tables, not the Python's, so the ids would drift on characters assigned between versions. The hand loop has no backtracking and allocates nothing.
+- **Why tables generated from Python?** Parity with `L1.2` is the specification. Generating from the same `unicodedata` makes the Rust and Python classify every code point identically by construction; any other source is a second opinion.
+- **Why per-thread caches and contiguous chunks?** A shared cache needs a lock on every piece; per-thread caches trade some duplicated entries for zero contention. Contiguous chunks keep the join trivial and deterministic; a work-stealing pool would balance better on skewed inputs but would need an index to restore order.
+- **Why a strict loader?** Accepting a normalizer or `add_prefix_space: true` and ignoring it would load and then encode differently from Hugging Face, silently. Refusing with the field's JSON path turns a silent wrong answer into a loud error.
+- **Tradeoffs accepted.** The cache is cleared, not evicted, so a pathological input can thrash it; the subset excludes many real tokenizer files; the tables pin one Unicode version.
+
+### 5.4 Explain it back
+
+1. Why must the heap key be (rank, position) and not just rank?
+   <details><summary>Answer</summary>The definition breaks rank ties toward the leftmost pair. With rank alone the heap would pop equal-rank pairs in arbitrary order, so `aaa` with merge `a a` could become `a aa` instead of `aa a`. Tuple order makes "lowest rank, then leftmost" the heap's own order.</details>
+2. What goes wrong if a merge does not remove `pair[p]` and `pair[j]` from the heap?
+   <details><summary>Answer</summary>Those pairs describe adjacencies that no longer exist. Later one pops: `pair[j]`'s left symbol `j` has been absorbed, so `syms[j].next` points into a stale chain and the code merges a symbol that is gone (wrong ids), or `merge` returns `None` and the `expect` panics. Lazy deletion by handle is what lets the loop remove them without searching the heap.</details>
+3. Why does `Gpt2Split` back off one space only when the run has at least two characters and a non-space follows?
+   <details><summary>Answer</summary>That is `\s+(?!\S)`: the run may not be followed by a non-space, so the regex engine shortens it by one character, which then joins the next pre-token through the ` ?` prefix. A single white-space character cannot be shortened to an empty match, so alternative 6 (`\s+`) takes it whole. At the end of the text no non-space follows, so nothing is given back.</details>
+4. Why is it safe for `StreamDecoder` to hold back at most 3 bytes, and why does the concatenation equal `decode`?
+   <details><summary>Answer</summary>A UTF-8 character is at most 4 bytes, so an incomplete tail that could still complete is at most 3 bytes; anything longer is either complete or invalid, and invalid bytes are replaced and dropped immediately. The decoder uses the same replacement rule as `from_utf8_lossy` (one U+FFFD per maximal ill-formed subpart), and an incomplete subpart only becomes U+FFFD once it is known to be invalid or at `finish`, which is exactly what one-shot decoding does at the same bytes.</details>
+5. Why does `encode_batch` give identical output for 1 and 8 threads?
+   <details><summary>Answer</summary>Encoding one text reads only that text and the immutable tokenizer; the per-thread cache only stores what `encode_piece_with` would compute anyway. Chunks are contiguous and joined in spawn order, so concatenating the workers' outputs reproduces the input order.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Breaking rank ties toward the rightmost pair | `aaa` encodes as `a aa`, not `aa a`; long runs of one letter disagree with Python | `hand_example_merges_from_the_heap`, `heap_bpe_equals_naive_bpe`, `gpt2_golden_10k` (mutant `s01`) |
-| Not removing the pair a merge destroys | a stale pair pops later and merges a symbol that is gone: wrong ids or a panic | `heap_bpe_equals_naive_bpe` (mutant `s02`) |
-| An off-by-one in the byte tokenizer's id range | id 256 is accepted and indexes past the table | `byte_tokenizer_is_the_identity` (mutant `s03`) |
-| Treating 0xAD as printable in the byte map | two bytes share a character; a whole class of tokens loads to the wrong bytes | `byte_map_matches_gpt2`, `decode_inverts_encode` (mutant `s04`) |
-| Forgetting the `\s+(?!\S)` back-off | `a  b` encodes as `a`, `  `, `b`, not `a`, ` `, ` b` | `gpt2_split_hand_cases` (mutant `s05`) |
-| Matching contractions in any case | `IT'S` splits `'S` off; GPT-2 is case-sensitive here | `gpt2_split_hand_cases` (mutant `s06`) |
-| Ignoring `individual_digits` | the pre-tokens differ from SmolLM2's; the ids agree only by luck of its vocabulary | `digits_split_for_smollm2` (mutant `s07`) |
-| Using `char::is_alphabetic` for `\p{L}` | marks join letter runs: Devanagari, Thai, and combining accents tokenize differently | `gpt2_split_hand_cases`, `gpt2_golden_10k` (mutant `s08`) |
-| Matching added tokens whatever the `SpecialSet` says | user text containing `<|endoftext|>` ends a document | `added_tokens_are_matched_first` (mutant `s09`) |
-| Flushing an incomplete character as U+FFFD | every emoji split over two tokens streams as two replacement characters | `stream_decoder_holds_back_partial_characters` (mutant `s10`) |
-| Not draining the emitted bytes | every chunk repeats the text before it | `stream_equals_decode_on_golden` (mutant `s11`) |
-| Joining thread results out of order | `encode_batch` reorders documents when $T > 1$ | `encode_batch_equals_serial_encode` (mutant `s12`) |
-| Accepting a normalizer and ignoring it | a file with NFC or lowercasing loads and encodes differently from Hugging Face | `loader_rejects_files_outside_the_subset` (mutant `s13`) |
-| Decoding strictly instead of with replacement | a partial character decodes to an empty string, and text is lost | `byte_tokenizer_is_the_identity`, `decode_inverts_encode` (mutant `s16`) |
-| Generating the category tables with a different Python than your `L1.2` | a handful of characters assigned in a newer Unicode version split differently | the parity suite tokenizer.bpe in fuzz mode (the golden strings avoid those characters) |
+| Breaking rank ties toward the rightmost pair | `aaa` encodes as `a aa`, not `aa a`; long runs of one letter disagree with Python | the heap key is the tuple (rank, left position), compared by `by_rank`; see 5.2, the merge loop |
+| Not removing the pair a merge destroys | a stale pair pops later and merges a symbol that is gone: wrong ids or a panic | `pair[p].take()` and `pair[j].take()` remove both by handle before pushing the new pairs |
+| An off-by-one in the byte tokenizer's id range | id 256 is accepted and indexes past the table | `token_bytes` checks `i < 256` and returns `None` otherwise |
+| Treating 0xAD as printable in the byte map | two bytes share a character; a whole class of tokens loads to the wrong bytes | `printable` uses `0xA1..=0xAC` and `0xAE..=0xFF`, skipping 0xAD |
+| Forgetting the `\s+(?!\S)` back-off | `a  b` encodes as `a`, `  `, `b`, not `a`, ` `, ` b` | `next_len` sets `end = last` when a non-space follows a run of 2 or more |
+| Matching contractions in any case | `IT'S` splits `'S` off; GPT-2 is case-sensitive here | `CONTRACTIONS` holds lowercase suffixes and `starts_with` is case-sensitive |
+| Ignoring `individual_digits` | the pre-tokens differ from SmolLM2's; the ids agree only by luck of its vocabulary | `DigitSplit` stops after one digit when `individual` is set |
+| Using `char::is_alphabetic` for `\p{L}` | marks join letter runs: Devanagari, Thai, and combining accents tokenize differently | `is_letter` bisects `LETTER_RANGES`, generated from Python's categories |
+| Matching added tokens whatever the `SpecialSet` says | user text containing `<|endoftext|>` ends a document | `next_added` skips any token `allowed.allows` rejects |
+| Flushing an incomplete character as U+FFFD | every emoji split over two tokens streams as two replacement characters | `push` breaks and keeps the tail pending when `error_len()` is `None` |
+| Not draining the emitted bytes | every chunk repeats the text before it | `self.pending.drain(..start)` after every push |
+| Joining thread results out of order | `encode_batch` reorders documents when $T > 1$ | contiguous `chunks`, joined in spawn order |
+| Accepting a normalizer and ignoring it | a file with NFC or lowercasing loads and encodes differently from Hugging Face | the loader returns `LoadError::Unsupported` for any non-null `normalizer` |
+| Decoding strictly instead of with replacement | a partial character decodes to an empty string, and text is lost | `decode` uses `String::from_utf8_lossy` |
+| Generating the category tables with a different Python than `L1.2` | a handful of characters assigned in a newer Unicode version split differently | the tables record their source (Unicode 15.0.0, Python 3.12); regenerate them whenever the Python changes |
 
-## 6. Where it's used next
-| Forward | `L10.9` | Registered call site uses this module. |
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `L1.2` | the specification: every id here is checked against your Python on the fixtures and on random text |
+| Back | `L1.2` | the specification: every id here is checked against the Python on the fixtures and on random text |
 | Back | `ds.05` | the vocabulary, the merge table, and the piece cache are `RobinHoodMap`s |
 | Back | `ds.06` | every merge comes out of a `LazyHeap` and removes destroyed pairs by handle |
-| Back | `lang.04` | traits, threads with `std::thread::scope`, `standalone process boundaries |
+| Back | `lang.04` | traits, threads with `std::thread::scope`, standalone process boundaries |
 | Back | `M05.2` | the byte map $\beta$ and its inverse |
 | Forward | `L10.1` | the engine's request path encodes prompts with `ByteBpe` and keeps serving `ByteTokenizer` for the tracer model |
 | Forward | `L10.5` | the SSE server streams each token through `StreamDecoder` |
-
-If you skip this module, `MS-L1` has no `tl-tok` role to run.
+| Forward | `L10.9` | constrained decoding and tool calls read token bytes through the `Tokenizer` trait |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `ByteBpe` merges | [Hugging Face tokenizers](https://github.com/huggingface/tokenizers) | the same lazy merge queue, dropout, `byte_fallback`, normalizers, offsets for every token | `tokenizers/src/models/bpe/word.rs`, `model.rs` |
 | `Gpt2Split` by hand | [tiktoken](https://github.com/openai/tiktoken) | the regex compiled with `fancy-regex`, and a rank-based merge over byte pairs with no merges table | `src/lib.rs` (`byte_pair_merge`) |

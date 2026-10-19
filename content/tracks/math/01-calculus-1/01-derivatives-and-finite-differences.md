@@ -1,41 +1,33 @@
-<!-- ol:module M01.1 -->
 # Derivative as a limit, finite differences, step-size choice
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M01.1` · build · Python · Pass 2 · 2 to 3 h |
-| **You build** | `python/tinyllm/num/diff.py`: `forward_diff`, `central_diff`, `richardson` |
+| **Module** | `M01.1` · build · Python · Pass 2 · 1 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/num/diff.py`](../../../../course/solutions/python/tinyllm/num/diff.py): `forward_diff`, `central_diff`, `richardson` |
 | **Contract** | [`course/contracts/py/tinyllm/num/diff.pyi`](../../../../course/contracts/py/tinyllm/num/diff.pyi) |
-| **Tests** | `course/tests/M01.1/test_diff.py` (what they check: section 4) |
 | **Needs** | nothing to call. Reading: `M00.1` (exponents and logs), `M00.4` (polynomials) |
-| **Used by** | `M04.1` builds `numerical_grad` (the heart of `gradcheck`) from one `central_diff` per coordinate · `M01.2` differentiates with `central_diff` when you give Newton no derivative · later `M02.1` and `M09.3` reuse the error analysis of section 2 |
-| **Milestone** | `MS-P2` (the Pass 2 gate) |
+| **Used by** | `M04.1` builds `numerical_grad` (the heart of `gradcheck`) from one `central_diff` per coordinate · `M01.2` differentiates with `central_diff` when Newton is given no derivative · later `M02.1` and `M09.3` reuse the error analysis of section 2 |
 | **Optional depth** | OpenStax, *Calculus Volume 1* (free), sections 2.2 and 3.1 to 3.2 (limits and the derivative); Sauer, *Numerical Analysis*, section 5.1 (numerical differentiation and its rounding error); Nocedal and Wright, *Numerical Optimization*, section 8.1 (finite-difference gradients) |
 
 ## Key Takeaways
 
-- The **derivative** $f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}$ is a limit, and a computer evaluates the quotient at one $h > 0$: the result is an approximation whose error you can predict (`test_hand_example`).
-- The **forward difference** has truncation error proportional to $h$; the **central difference** $\frac{f(x+h) - f(x-h)}{2h}$ cancels the $h$ term and has error proportional to $h^2$ (`test_forward_error_slope_is_one`, `test_central_error_slope_is_two`).
-- **Rounding** adds an error of about $\varepsilon |f| / h$ that grows as $h$ shrinks, so the best step balances the two: $h \approx \sqrt{\varepsilon}$ for forward, $h \approx \sqrt[3]{\varepsilon}$ for central, times $\max(1, |x|)$ (`test_default_step_is_accurate`, `test_default_step_scales_with_x`).
-- **Divide by the step actually taken**, $(x+h) - (x-h)$, not by $2h$: $x + h$ is rounded (`test_divides_by_the_step_actually_taken`).
-- **Richardson extrapolation** combines central differences at $h, h/2, h/4, \ldots$ to cancel $h^2, h^4, \ldots$ in turn (`test_richardson_levels_raise_the_order`).
+- The **derivative** $f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}$ is a limit, and a computer evaluates the quotient at one $h > 0$: the result is an approximation whose error you can predict.
+- The **forward difference** has truncation error proportional to $h$; the **central difference** $\frac{f(x+h) - f(x-h)}{2h}$ cancels the $h$ term and has error proportional to $h^2$.
+- **Rounding** adds an error of about $\varepsilon |f| / h$ that grows as $h$ shrinks, so the best step balances the two: $h \approx \sqrt{\varepsilon}$ for forward, $h \approx \sqrt[3]{\varepsilon}$ for central, times $\max(1, |x|)$.
+- **Divide by the step actually taken**, $(x+h) - (x-h)$, not by $2h$: $x + h$ is rounded.
+- **Richardson extrapolation** combines central differences at $h, h/2, h/4, \ldots$ to cancel $h^2, h^4, \ldots$ in turn.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M01.1              # stubs python/tinyllm/num/diff.py into your repo
-ol tests M01.1              # read the test catalog first: rung R0, you write no tests here
-ol check M01.1              # exit code is the verdict
-ol diff  M01.1              # after passing: your code against the reference
-```
+Sections 1 and 2 derive the difference formulas, their truncation and rounding errors, and the optimal step from first principles. Section 3 works them by hand on $x^3$. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Pass 2 replaces the tracer's counted bigram with a model trained by gradient descent, and gradient descent needs derivatives of a loss with respect to every weight. In `L0.1` and `L0.2` you will write an autograd engine that computes those derivatives by the chain rule, and every backward rule you write there can be wrong in ways that still train a little: a transposed gradient, a missing factor of 2, a sign. The only independent check is the definition of the derivative itself, evaluated numerically: nudge one input, watch the output move, divide. That check is `gradcheck` (`M04.1`), and it is built on the function you write here. It is only as trustworthy as its step size: too large and the formula is inaccurate, too small and floating-point rounding swamps the answer. This module derives the right step from first principles and implements the three difference formulas the rest of the course uses.
+Pass 2 replaces the tracer's counted bigram with a model trained by gradient descent, and gradient descent needs derivatives of a loss with respect to every weight. In `L0.1` and `L0.2` the solution builds an autograd engine that computes those derivatives by the chain rule, and every backward rule there could be wrong in ways that still train a little: a transposed gradient, a missing factor of 2, a sign. The only independent check is the definition of the derivative itself, evaluated numerically: nudge one input, watch the output move, divide. That check is `gradcheck` (`M04.1`), and it is built on the function this module provides. It is only as trustworthy as its step size: too large and the formula is inaccurate, too small and floating-point rounding swamps the answer. This module derives the right step from first principles and implements the three difference formulas the rest of the course uses.
 
 ## 2. Principles
 
@@ -65,7 +57,7 @@ A program picks one $h$ and computes one quotient. Two questions follow: how wro
 
 $$f(x + h) = f(x) + f'(x)\, h + \tfrac{1}{2} f''(x)\, h^2 + \tfrac{1}{6} f'''(x)\, h^3 + \cdots$$
 
-This is **Taylor's formula**; `M02.1` proves it and bounds the dots. Here you only need the first few terms, which you can check on $x^3$: $(x+h)^3 = x^3 + 3x^2 h + 3x h^2 + h^3$, and indeed $f' = 3x^2$, $\frac{1}{2} f'' = 3x$, $\frac{1}{6} f''' = 1$.
+This is **Taylor's formula**; `M02.1` proves it and bounds the dots. Here only the first few terms matter, which you can check on $x^3$: $(x+h)^3 = x^3 + 3x^2 h + 3x h^2 + h^3$, and indeed $f' = 3x^2$, $\frac{1}{2} f'' = 3x$, $\frac{1}{6} f''' = 1$.
 
 ### 2.3 Truncation error
 
@@ -77,7 +69,7 @@ The forward difference is off by about $\frac{1}{2} f''(x) h$: **first order**, 
 
 $$D_0(h) = \frac{f(x+h) - f(x-h)}{2h} = f'(x) + \tfrac{1}{6} f'''(x)\, h^2 + O(h^4) .$$
 
-The central difference is **second order**: halve $h$ and the error drops by 4. On a log-log plot of error against $h$, the forward difference is a line of slope 1 and the central difference a line of slope 2; that slope is what the two slope tests measure. The error formula dropped is called **truncation error**, because it comes from truncating the Taylor series. The central difference is exact on quadratics ($f''' = 0$), and the forward difference is exact only on straight lines.
+The central difference is **second order**: halve $h$ and the error drops by 4. On a log-log plot of error against $h$, the forward difference is a line of slope 1 and the central difference a line of slope 2; that slope is the signature of each formula's order. The error formula dropped is called **truncation error**, because it comes from truncating the Taylor series. The central difference is exact on quadratics ($f''' = 0$), and the forward difference is exact only on straight lines.
 
 ### 2.4 Rounding error
 
@@ -120,7 +112,7 @@ Take $f(x) = x^3$ at $x = 2$, so $f'(2) = 3 \cdot 4 = 12$, with $h = 0.1$. The f
 | $D_0(0.05)$ | $(8.615125 - 7.414875) / 0.1$ | 12.0025 | $0.0025 = (h/2)^2$ |
 | $R_1(0.1)$ | $(4 \cdot 12.0025 - 12.01) / 3 = 36 / 3$ | 12 | 0 |
 
-The forward error $0.61$ is the $\frac{1}{2} f'' h = 3xh = 0.6$ of section 2.3 plus the next term $h^2 = 0.01$. The central error is exactly $h^2$ because $x^3$ has no terms beyond $h^3$, and quartering it at $h/2$ is what lets Richardson remove it completely. These numbers are the first test, `test_hand_example`.
+The forward error $0.61$ is the $\frac{1}{2} f'' h = 3xh = 0.6$ of section 2.3 plus the next term $h^2 = 0.01$. The central error is exactly $h^2$ because $x^3$ has no terms beyond $h^3$, and quartering it at $h/2$ is what lets Richardson remove it completely.
 
 ## 4. The interface
 
@@ -176,16 +168,14 @@ def richardson(f: Callable[[float], float], x: float, h: float, levels: int = 2)
 | Forward | `M01.2` | `newton(f, None, x0)` uses `central_diff` as its slope |
 | Forward | `M02.1` | Taylor's formula with a proven remainder: the error terms of section 2.3 made rigorous |
 | Forward | `M09.3` | condition numbers and tolerance budgets generalize the rounding analysis of section 2.4 |
-| Forward | `L0.2` | `F.gradcheck_all()` checks every op of your autograd library through `M04.1`, and so through this file |
-
-If you skip this module, `ol check M04.1` stops with `BLOCKED ... needs M01.1`: build it, or pass `--ref-deps`.
+| Forward | `L0.2` | `F.gradcheck_all()` checks every op of the autograd library through `M04.1`, and so through this file |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `central_diff` with $h = 10^{-6}$ | PyTorch `torch.autograd.gradcheck` | the same central difference per element, float64, eps $10^{-6}$; also checks complex inputs and forward-mode gradients | `torch/autograd/gradcheck.py` (`_compute_numerical_gradient`) |
 | `forward_diff` with $\sqrt{\varepsilon}$ | SciPy `scipy.optimize.approx_fprime`, `scipy.differentiate.derivative` | forward steps for optimizers; adaptive step and order selection | `scipy/optimize/_numdiff.py` |
 | `richardson` | numdifftools | Richardson tables with automatic step search and error estimates | `numdifftools/limits.py` |
 | (not built) | complex-step differentiation | $f'(x) \approx \operatorname{Im} f(x + ih)/h$ has no subtraction, so $h = 10^{-200}$ works and the result is exact to rounding | Martins, Sturdza, and Alonso, "The complex-step derivative approximation" (2003) |
-| finite differences | automatic differentiation | exact derivatives by the chain rule, no step at all: what your `L0.1` autograd and `M08.1` dual numbers do | `M08.1`, `L0.1` |
+| finite differences | automatic differentiation | exact derivatives by the chain rule, no step at all: what the `L0.1` autograd and `M08.1` dual numbers do | `M08.1`, `L0.1` |
