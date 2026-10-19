@@ -1,4 +1,4 @@
-# primers/craft.06/budget.toml: the performance budget my gate enforces.
+# primers/craft.06/budget.toml: the performance budget the gate enforces.
 #
 # A metric is nanoseconds per call (lower is better). The gate times the
 # base and the head kernels.c alternately, `runs` times each, keeps the best

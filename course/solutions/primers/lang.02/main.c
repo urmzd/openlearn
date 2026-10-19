@@ -1,4 +1,4 @@
-/* lang.02 primer: given in the chapter; you write the Makefile.
+/* lang.02 primer: given in the chapter; the Makefile builds it.
    Exit codes: 0 ok, 1 runtime error, 2 usage error. */
 #include <stdio.h>
 

@@ -1,6 +1,6 @@
 //! The Rust sampler and PCG32 (L10.1): a port of L8.1 and M06.3 that must
-//! return the same token id and the same logprob as your Python from the
-//! same logits and seed (spec/sampling.md, spec/pcg32.md, D10, D11).
+//! return the same token id and the same logprob as the Python sampler from the
+//! same logits and seed (spec/sampling.md, spec/pcg32.md).
 //!
 //! Bit-identical results need the same operations in the same order with
 //! the same arithmetic: widen to f64 first, penalties, logprobs, greedy,

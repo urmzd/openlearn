@@ -2,7 +2,7 @@
  *
  * Four small kernels whose speed depends on how they are written, not on
  * what they compute. Each has a plain version that is correct and slow; the
- * kata asks for the fast version, and your benchmark and gate must notice
+ * kata asks for the fast version, and the benchmark and gate must notice
  * when a change makes one slow again.
  *
  *   kata_matmul       C = A @ B, n x n row-major float32. Cache-friendly loop

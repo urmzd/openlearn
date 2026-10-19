@@ -1,4 +1,4 @@
-"""Whisper controls over the learner's byte-level BPE tokenizer (L14.4)."""
+"""Whisper controls over the course's byte-level BPE tokenizer (L14.4)."""
 
 from __future__ import annotations
 

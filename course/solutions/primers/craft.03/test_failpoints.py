@@ -1,8 +1,8 @@
-"""My tests for the craft.03 kata (the reference learner's artifact).
+"""Model test suite for the craft.03 kata: what each test protects.
 
 Written before the code, one failing test at a time (red), then the code
 that makes it pass (green). They import only the spec's names, so they
-grade any implementation of it.
+check any implementation of it.
 """
 
 import pytest

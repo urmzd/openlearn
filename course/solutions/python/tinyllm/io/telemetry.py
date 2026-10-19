@@ -1,4 +1,7 @@
-"""OTLP/HTTP export from TRACEPARENT (dur.09, the D9 exception).
+"""OTLP/HTTP export from TRACEPARENT (dur.09).
+
+This is one of the two named exceptions to the rule that Python talks to the
+platform only through the subprocess activity contract.
 
 A Python subprocess activity has one link to the platform besides its files:
 the OpenTelemetry collector. The worker passes the activity span's W3C

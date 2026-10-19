@@ -1,5 +1,5 @@
 //! Llama and byte-bigram forward passes (L10.1), built from Candle tensors
-//! and the layer operations the learner implements here. K and V live in the
+//! and the layer operations implemented here. K and V live in the
 //! engine's Rust-owned, f16 KV pool between steps.
 
 use candle_core::{D, Device, Tensor};

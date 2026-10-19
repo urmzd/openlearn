@@ -1,4 +1,4 @@
-/* lang.02 primer: the two-file C program your Makefile builds (given in the chapter). */
+/* lang.02 primer: the two-file C program the Makefile builds (given in the chapter). */
 #ifndef GREET_H
 #define GREET_H
 

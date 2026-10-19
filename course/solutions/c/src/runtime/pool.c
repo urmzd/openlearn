@@ -19,7 +19,7 @@
  * a thread-local pointer to the pool a thread is running ranges for turns a
  * nested call on the same pool into TL_EBUSY instead of a deadlock.
  *
- * The struct below is given: you write the functions.
+ * The struct below is fixed; the functions that follow maintain it.
  */
 #include <pthread.h>
 #include <stdatomic.h>

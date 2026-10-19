@@ -1,7 +1,7 @@
 // Package craft21 is the craft.21 kata: a small durable task queue and the
-// worker that drains it, the same three mechanisms as your durable engine
+// worker that drains it, the same three mechanisms as the system's durable engine
 // (dur.01 log, dur.03 fenced leases, dur.05 idempotent activities) in one
-// file you can kill and replay in a test.
+// file a test can kill and replay.
 //
 // Every state change is one JSON line appended to a log on an FS and synced
 // before the call returns; Open replays the log (a torn last line is

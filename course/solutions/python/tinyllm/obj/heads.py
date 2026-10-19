@@ -6,7 +6,7 @@ per sequence (BERT's [CLS], the mean of the real tokens, or a decoder's last
 token) and applies one Linear. A token classifier applies the Linear at every
 position. A reward head maps the last token to one scalar and is trained so
 the preferred answer scores higher (Bradley-Terry). The gateway's usage
-policy (D33) is the smallest head of all: a logistic regression over an
+policy is the smallest head of all: a logistic regression over an
 embedding endpoint's vectors, fitted by IRLS (M07.7) and exported as JSON
 that Go evaluates with one dot product.
 
@@ -256,7 +256,7 @@ def load_classifier(dir: str) -> tuple[SequenceClassifier, dict[str, Any]]:
     return clf, cfg
 
 
-# --- the linear policy head (D33) --------------------------------------------------------
+# --- the linear policy head --------------------------------------------------------
 
 
 def _unit_rows(E: ArrayLike) -> NDArray:

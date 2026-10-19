@@ -1,4 +1,4 @@
-/* lang.02 primer: given in the chapter; you write the Makefile. */
+/* lang.02 primer: given in the chapter; the Makefile builds it. */
 #include <stdio.h>
 
 #include "greet.h"

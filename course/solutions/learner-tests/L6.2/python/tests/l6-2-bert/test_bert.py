@@ -160,7 +160,7 @@ def test_mlm_head_and_batch():
 
 
 def hf_named(seed, cfg):
-    """A Hugging Face BertForMaskedLM state dict I make up, and the same
+    """A Hugging Face BertForMaskedLM state dict made up here, and the same
     numbers under the course's names."""
     r = np.random.Generator(np.random.PCG64(seed))
     ref = BertForMLM(cfg, PCG32(0))

@@ -105,7 +105,7 @@ class TokensManifest:
 
 
 class _Bytes:
-    """The identity byte tokenizer (D32)."""
+    """The identity byte tokenizer (the tracer's 256-id byte vocabulary)."""
 
     def encode(self, text: str) -> list[int]:
         return list(text.encode("utf-8"))

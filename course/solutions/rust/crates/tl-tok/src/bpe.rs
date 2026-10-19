@@ -1,4 +1,4 @@
-//! Byte-level BPE (L1.5), exact against your Python `BPETokenizer` (L1.2),
+//! Byte-level BPE (L1.5), exact against the Python `BPETokenizer` (L1.2),
 //! GPT-2's tiktoken ids, and Hugging Face `tokenizers` on SmolLM2.
 //!
 //! Encoding, in order:

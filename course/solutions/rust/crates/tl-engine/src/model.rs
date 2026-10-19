@@ -3,7 +3,7 @@
 //! memory map, so the file's bytes are paged in by the OS instead of copied.
 //!
 //! Two architectures: `bigram` (the tracer checkpoint of L0.0, so the
-//! Pass 1 model still serves, D32) and `llama` (the Llama family of L7.9,
+//! Pass 1 model still serves) and `llama` (the Llama family of L7.9,
 //! HF tensor names). Weights may be F32, F16, or BF16 (widened to f32 at
 //! load), or int4 (`<name>.qweight` U8 + `<name>.scales` F16, metadata
 //! `quant = "int4-g<group>-sym"`), which stays packed.

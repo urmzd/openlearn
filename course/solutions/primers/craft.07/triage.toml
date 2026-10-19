@@ -1,6 +1,5 @@
-# My triage of the ten survivors (primers/craft.07/survivors/): for each, is
-# it equivalent (no test can tell it from the reference) or killable (a real
-# bug my suite missed)? A killable one names the test that now kills it.
+# Triage of the ten surviving mutants: for each, is it equivalent (no test
+# can tell it from the reference) or killable (a real bug the suite missed)? A killable one names the test that now kills it.
 
 [s01]
 verdict = "equivalent"

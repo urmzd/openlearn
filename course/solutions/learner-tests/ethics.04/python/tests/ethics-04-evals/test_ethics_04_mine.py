@@ -1,6 +1,6 @@
 """Model test suite for ethics.04. Oracles: noisy-OR and Wilson worked out
-by hand, a scripted generator whose outputs I know, and score tables whose
-gaps I can add up. They import only the contract."""
+by hand, a scripted generator whose outputs are known, and score tables whose
+gaps add up by hand. They import only the contract."""
 
 import math
 

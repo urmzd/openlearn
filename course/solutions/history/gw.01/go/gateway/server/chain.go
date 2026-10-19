@@ -9,7 +9,7 @@
 //
 // Stages come in through Deps as plain middleware, so this package imports
 // none of the stage packages (auth, limit, cache, route, proxy, ledger,
-// policy): they import it, and your go/cmd/gateway main wires them together.
+// policy): they import it, and the gateway's main (go/cmd/gateway) wires them together.
 // meter wraps the proxy directly: it is the first stage to see the finished
 // exchange, which is what "proxy -> meter" orders.
 //

@@ -15,7 +15,7 @@
 //! two uniforms, u_accept then u_resample, both always; the bonus token after
 //! a fully accepted draft is L10.1's `sample` (one uniform); greedy draws
 //! nothing. Every sum is a left-to-right f64 loop in ascending id order, so
-//! the accepted tokens equal your Python L8.6 on the same logits and seed.
+//! the accepted tokens equal the Python L8.6 on the same logits and seed.
 //!
 //! Chapter: content/courses/build-an-llm/p10-serving/08-speculative-decoding-in-the-engine.md.
 //! Configuration: `[engine].speculative = { draft = "none" | "ngram" |

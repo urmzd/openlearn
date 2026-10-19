@@ -1,6 +1,6 @@
-"""L13.6: bounded image decoding and learner-owned pixel transformations.
+"""L13.6: bounded image decoding and the pixel transformations the course owns.
 
-Pillow parses containers and decompresses pixels only (D46). Orientation,
+Pillow parses containers and decompresses pixels only; media decoding never crosses a language boundary. Orientation,
 palette expansion, alpha compositing, resizing and normalization belong here.
 """
 
@@ -447,7 +447,7 @@ def decode_image(data: bytes, max_pixels: int) -> NDArray:
 
 
 def media_hash(kind: Literal["image", "audio"], data: bytes) -> int:
-    """D44: FNV-1a-64 of kind byte (1=image, 2=audio) followed by bytes."""
+    """The one media hash used everywhere: FNV-1a-64 of kind byte (1=image, 2=audio) followed by bytes."""
     if kind not in ("image", "audio"):
         raise ValueError(f"unsupported media kind: {kind!r}")
     return fnv1a64(bytes([1 if kind == "image" else 2]) + data)

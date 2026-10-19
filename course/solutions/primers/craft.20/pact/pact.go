@@ -1,7 +1,7 @@
 // Package pact is the course's small consumer-driven contract kit for
 // craft.20 (a pact file plus a mock provider), in the spirit of Pact.
 //
-// A pact file is JSON written by the CONSUMER (your gateway) about the
+// A pact file is JSON written by the CONSUMER (the gateway) about the
 // PROVIDER (the engine): every interaction the gateway relies on, as the
 // request it sends and the response it expects back.
 //

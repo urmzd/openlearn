@@ -13,7 +13,7 @@
  * allocated after it in O(1) and keeps every block for reuse, so a steady
  * state of "mark, allocate, reset" makes no hook call at all.
  *
- * The struct below is given: you write the functions.
+ * The struct below is fixed; the functions that follow maintain it.
  */
 #include <stddef.h>
 #include <stdint.h>

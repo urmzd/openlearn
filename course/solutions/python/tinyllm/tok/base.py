@@ -6,7 +6,7 @@ has the same shape: `encode` turns text into ids,
 directory. Code that consumes tokens (the corpus pipeline, the trainers, the
 metrics of L1.6, the engine) is written against `Tokenizer` only.
 
-`ByteTokenizer` is the tracer's tokenizer (D32, formats/tokenizer.md): the 256
+`ByteTokenizer` is the tracer's tokenizer (formats/tokenizer.md): the 256
 byte values are the vocabulary, so it needs no training and no file. Its
 token strings are the GPT-2 byte map of M05.2 (byte 0x20 is "Ġ"), the same
 alphabet byte-level BPE (L1.2) starts from: bytes are BPE with no merges.
@@ -59,7 +59,7 @@ def check_ids(ids: Sequence[int], vocab_size: int) -> list[int]:
 
 
 class ByteTokenizer:
-    """The identity byte tokenizer (D32): id = byte value, no specials."""
+    """The identity byte tokenizer: id = byte value, no specials."""
 
     vocab_size = 256
 

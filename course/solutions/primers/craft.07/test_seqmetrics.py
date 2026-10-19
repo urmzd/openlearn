@@ -126,7 +126,7 @@ def test_metric_ci_pools_resamples():
     assert hi == pytest.approx(corpus_bleu(mixed_h[:1] * 2, mixed_r[:1] * 2), rel=1e-12)
 
 
-# --- craft.07: the survivors my R5 suite missed --------------------------------------------
+# --- craft.07: the survivors the L4.5 suite missed --------------------------------------------
 
 
 def test_closest_reference_tie_goes_to_the_shorter():

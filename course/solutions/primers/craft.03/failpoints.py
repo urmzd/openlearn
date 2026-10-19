@@ -1,4 +1,4 @@
-"""craft.03 kata: the failpoint spec (a primer exercise you then reuse).
+"""craft.03 kata: the failpoint spec (a primer the later modules reuse).
 
 TL_FAILPOINTS names places in a program where a test wants something to go
 wrong, and what:

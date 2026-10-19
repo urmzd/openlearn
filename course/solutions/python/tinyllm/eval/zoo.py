@@ -1,4 +1,4 @@
-"""The model zoo (L6.7, D36): every family the course trains, loaded through
+"""The model zoo (L6.7): every family the course trains, loaded through
 its checkpoint directory and scored on its own task, in one report.
 
 One dispatch on config.json's tl_arch (the n-gram's file says it in its

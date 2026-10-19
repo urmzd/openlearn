@@ -2,7 +2,7 @@
 //!
 //! * [`Tokenizer`]: the trait the engine (L10.1, L10.5) and the binding
 //!   program against.
-//! * [`ByteTokenizer`]: the tracer's byte tokenizer (D32, formats/tokenizer.md):
+//! * [`ByteTokenizer`]: the tracer's byte tokenizer (formats/tokenizer.md):
 //!   id = byte value, 256 ids, no specials.
 //! * [`bpe::ByteBpe`]: byte-level BPE, exact against GPT-2 and SmolLM2, with
 //!   merges run from a lazy heap (ds.06) over Robin Hood maps (ds.05).
@@ -14,7 +14,7 @@
 //!   GPT-2's `vocab.json` + `merges.txt`.
 //!
 //! The Python BPE (L1.2) is the specification: every id here equals the id
-//! your Python computes. Chapter: content/courses/build-an-llm/p01-tokenizers/05-rust-fast-bpe.md
+//! the Python computes. Chapter: content/courses/build-an-llm/p01-tokenizers/05-rust-fast-bpe.md
 
 use std::fmt;
 use std::path::PathBuf;
@@ -149,7 +149,7 @@ static ALL_BYTES: [u8; 256] = {
     t
 };
 
-/// The tracer's tokenizer (D32): the id of a byte is its value.
+/// The tracer's tokenizer: the id of a byte is its value.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ByteTokenizer;
 

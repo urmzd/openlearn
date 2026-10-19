@@ -1,9 +1,7 @@
 """Model test suite for data.07 (properties): token
 conservation, split purity, whole documents per file, determinism, and the
 header, mostly with the byte tokenizer so a document's ids are its UTF-8
-bytes. They import only names in contracts/py/corpus/{tokenize,shard,stage}.pyi;
-`ol mutate data.07` runs them against the reference with one planted bug at
-a time."""
+bytes. They import only names in contracts/py/corpus/{tokenize,shard,stage}.pyi."""
 
 import hashlib
 import json

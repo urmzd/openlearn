@@ -5,7 +5,7 @@
 # Dependencies are the contracts/allowed-deps.toml entries the course units
 # use so far: numpy (tinyllm, corpus), zstandard (corpus raw documents,
 # formats/corpus-shard.md; data.01), and pyarrow (corpus Parquet shards;
-# data.06), and Pillow (L13.6 container decoding only, D46).
+# data.06), and Pillow (L13.6 container decoding only).
 [project]
 name = "tinyllm-course"
 version = "0.1.0"

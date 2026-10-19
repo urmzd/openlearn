@@ -8,7 +8,7 @@
 //! (dead states removed, Moore-minimized, numbered breadth-first from the
 //! start taking bytes 0..255 in order) are those of
 //! contracts/py/tinyllm/infer/constrain.pyi, so two equal languages give
-//! equal transition tables and the masks equal your Python L8.7's.
+//! equal transition tables and the masks equal the Python L8.7's.
 //!
 //! JSON documents (tool parameter schemas, enum values) are read with
 //! [`Json`], which keeps object keys in the order written: "the properties

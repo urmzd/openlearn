@@ -2,7 +2,7 @@
 
 Run `python primers/ethics.08/evidence.py --root .` to regenerate the
 transcript report from recorded predictions. The tower diagnostics are
-callable for a learner's loaded models; they never label teacher-forced
+callable for any loaded models; they never label teacher-forced
 accuracy as transcription WER or random weights as a trained model.
 """
 

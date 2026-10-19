@@ -6,7 +6,7 @@ derivative (M01.1) along that coordinate. A backward pass claims to compute
 exactly this vector; gradcheck holds it to the numbers.
 
 Contract: contracts/py/tinyllm/num/gradcheck.pyi. L0.2's F.gradcheck_all()
-runs every op of your autograd library through this file, and M04.2 builds
+runs every op of the autograd library through this file, and M04.2 builds
 vector-Jacobian products on numerical_grad.
 """
 
