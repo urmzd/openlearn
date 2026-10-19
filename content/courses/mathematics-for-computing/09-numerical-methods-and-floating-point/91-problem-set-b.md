@@ -1,35 +1,21 @@
-# Floating point problem set, part b: condition numbers, error bounds, Newton, polynomial approximation, low precision
+# Problem set B: condition numbers, error bounds, Newton, polynomial approximation, and low precision
 
-## Overview
+Inference code is full of numbers that should agree but were computed differently: the sampler's float64 sums against the Rust engine's, a quantized matmul against float32, a float16 KV cache against a float32 one. The C kernels then compute `rsqrt` by Newton's method and `expf` by range reduction and a polynomial, and must be proved accurate to a few ulps. [Error analysis, condition numbers, and tolerance budgets](03-error-analysis-condition-numbers-and-tolerance-budgets.md) and [FP8 and microscaling formats](04-fp8-and-microscaling-formats.md) turn the bounds and the formats into code. This set derives them by hand first, so that a failing tolerance or a kernel that is off by one ulp is something you can explain rather than tune.
 
-| | |
-|---|---|
-| **Module** | `S-M09b` · solve · none · Pass 6 · 4 to 5 h |
-| **Solution** | worked answers to all 32 parts and the proofs of q6, q12, and q17, in section 4 under each problem |
-| **Contract** | none: a pen and paper set |
-| **Needs** | no code. Reading: `S-M09a` (representation and rounding), `M09.3` (the error bounds and condition numbers as code), `M09.4` (the fp8 and MX formats as code), `M01.2` (Newton's method) |
-| **Used by** | no call site (a solve set). Read it beside `M09.3` and `M09.4`; q14 to q17 prepare `M09.5` (Newton `rsqrt` in C) and q18 to q20 prepare `M09.6` (`expf` in C) |
-| **Optional depth** | Higham, *Accuracy and Stability of Numerical Algorithms*, ch. 2 to 4 and 7; Trefethen, *Approximation Theory and Approximation Practice* (SIAM, 2013), ch. 1 to 4; Muller, *Elementary Functions: Algorithms and Implementation* (3rd ed., 2016), ch. 3 and 11 |
+The set has five parts: condition numbers (q1 to q6), sum and dot error bounds (q7 to q12), fixed-point and Newton convergence (q13 to q17), polynomial approximation (q18 to q23), and low-precision arithmetic (q24 to q28). Three of the problems, q6, q12, and q17, are short proofs. q14 to q17 prepare [Fixed-point iteration and fast inverse square root in C](05-fixed-point-iteration-and-rsqrt.md), and q18 to q20 prepare [Polynomial approximation and range reduction: expf in C](06-polynomial-approximation-and-expf.md); reading the set beside those sections and the two above works well.
 
-## Key Takeaways
+It assumes the representation and rounding of [Problem set A](90-problem-set-a.md) and Newton's method from [Newton's method](../01-calculus-1/02-newtons-method.md). No code is needed. Work each problem before opening its answer; each answer gives the final value, the derivation, and the common wrong answer with the reason it is wrong.
 
-- The relative condition number $\kappa_f(x) = \lvert x f'(x) / f(x)\rvert$ and the matrix condition number $\kappa_2(A) = \sigma_{\max}/\sigma_{\min}$ say how much the problem amplifies input errors, whatever the algorithm (q1 to q6).
-- Every rounding multiplies by $(1 + \delta)$, $\lvert\delta\rvert \le u$, and $k$ of them stay within $\gamma_k = ku/(1 - ku)$; pairwise summation cuts $k$ to $\log_2 k$, and random signs typically give $\sqrt{k}\,u$ (q7 to q12).
-- Fixed-point iteration converges linearly at the rate $\lvert g'(x^*)\rvert$; Newton converges quadratically at a simple root, so the correct digits double each step (q13 to q17).
-- `expf` reduces $x$ to $r \in [-\ln 2/2, \ln 2/2]$ and evaluates a short polynomial; the Lagrange remainder fixes the degree, and Chebyshev nodes minimize the interpolation error's node product (q18 to q23).
-- fp8 and MX formats are the same rounding with few bits: E4M3 has precision $2^{-4}$ and range to 448, E5M2 trades a bit of precision for range to 57344, and an MX block scale is the power of two that puts the block's maximum in the top binade (q24 to q28).
+> **Learning objectives**
+> - Compute relative and matrix condition numbers and use them to bound how much a problem amplifies input errors.
+> - Derive and apply $\gamma_k$ bounds for recursive, pairwise, and statistically typical summation.
+> - Determine the convergence rate of a fixed-point iteration and of Newton's method at simple and double roots.
+> - Choose a polynomial degree from the Lagrange remainder after range reduction, and explain why Chebyshev nodes minimize the interpolation node product.
+> - Round values into E4M3, E5M2, and FP4, and choose an MX block scale.
 
-## How to read this chapter
+## The results every problem uses
 
-Section 2 collects the results every problem uses, and section 3 works three sibling problems by hand. Section 4 gives each problem followed by its worked answer in a collapsed block: the final value, the derivation, and the common wrong answer with the reason it is wrong. Try each problem before opening its answer.
-
----
-
-## 1. Why now
-
-Part 8 compares numbers that should agree but were computed differently: the sampler's float64 sums against the Rust engine's, a quantized matmul against float32, a float16 KV cache against a float32 one. Part 9 then writes `rsqrt` by Newton's method and `expf` by range reduction and a polynomial, in C, and must prove them accurate to a few ulps. `M09.3` and `M09.4` turn the bounds and the formats into code; this set derives them by hand first, so a failing tolerance or a kernel that is off by one ulp is something you can explain rather than tune.
-
-## 2. Principles
+The symbols used in the problems:
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -42,39 +28,39 @@ Part 8 compares numbers that should agree but were computed differently: the sam
 | $T_n$ | the Chebyshev polynomial of degree $n$, $T_n(\cos\theta) = \cos n\theta$ | polynomial |
 | $X$ | an MX block scale, a power of two | float |
 
-### 2.1 Conditioning
+### Conditioning
 
 A relative change $\epsilon$ in the input changes the output of $f$ by about $\kappa_f(x)\,\epsilon$ (first-order Taylor). For $Ax = b$, $\lVert\delta x\rVert/\lVert x\rVert \le \kappa_2(A)\, \lVert\delta b\rVert/\lVert b\rVert$, with $\lVert A\rVert_2 = \sigma_{\max}$ and $\lVert A^{-1}\rVert_2 = 1/\sigma_{\min}$. The singular values of $A$ are the square roots of the eigenvalues of $A^\top A$, not the eigenvalues of $A$ (they coincide only for symmetric positive semidefinite $A$).
 
-### 2.2 Error bounds
+### Error bounds
 
 Under $\mathrm{fl}(a \circ b) = (a \circ b)(1 + \delta)$, $\lvert\delta\rvert \le u$, a dot product of length $k$ in any order satisfies $\lvert\mathrm{fl}(x^\top y) - x^\top y\rvert \le \gamma_k\, \lvert x\rvert^\top\lvert y\rvert$. To first order $\gamma_k \approx ku$. A balanced (pairwise) tree puts each term through $\lceil\log_2 k\rceil$ additions instead of up to $k - 1$. Rounding errors with independent random signs add like a random walk, so the typical error is about $\sqrt{k}\,u$; the worst case is $ku$.
 
-### 2.3 Iterations
+### Iterations
 
-If $g$ is differentiable near a fixed point $x^*$, then $e_{k+1} = g(x_k) - g(x^*) \approx g'(x^*)\, e_k$: linear convergence with rate $\lvert g'(x^*)\rvert$ when it is below 1. Newton's iteration for a root of $f$ is $g(x) = x - f(x)/f'(x)$; at a simple root $g'(x^*) = 0$ and $e_{k+1} \approx \tfrac{g''(x^*)}{2} e_k^2$: quadratic. At a double root $f'(x^*) = 0$ too and the rate degrades to linear.
+If $g$ is differentiable near a fixed point $x^*$, then $e_{k+1} = g(x_k) - g(x^*) \approx g'(x^*)\, e_k$: linear convergence with rate $\lvert g'(x^*)\rvert$ when it is below 1. Newton's iteration for a root of $f$ is $g(x) = x - f(x)/f'(x)$; at a simple root $g'(x^*) = 0$ and $e_{k+1} \approx \tfrac{g''(x^*)}{2} e_k^2$, which is quadratic. At a double root $f'(x^*) = 0$ too and the rate degrades to linear.
 
-### 2.4 Polynomial approximation
+### Polynomial approximation
 
-Taylor's theorem with the Lagrange remainder: $e^r = \sum_{j=0}^{n} r^j/j! + R_n$ with $\lvert R_n\rvert \le e^{\lvert r\rvert}\lvert r\rvert^{n+1}/(n+1)!$. Range reduction $x = k\ln 2 + r$, $k = \mathrm{round}(x/\ln 2)$, keeps $\lvert r\rvert \le \ln 2/2$, so a short polynomial suffices, and $e^x = 2^k e^r$ is an exponent adjustment. Horner's rule $a_0 + r(a_1 + r(a_2 + \dots))$ uses $n$ multiplications for degree $n$. Interpolating at $n + 1$ nodes leaves an error proportional to $\prod_i (x - x_i)$; the Chebyshev nodes (zeros of $T_{n+1}$) make that product the monic $T_{n+1}/2^n$, whose maximum on $[-1, 1]$ is $2^{-n}$, the smallest possible.
+Taylor's theorem with the Lagrange remainder gives $e^r = \sum_{j=0}^{n} r^j/j! + R_n$ with $\lvert R_n\rvert \le e^{\lvert r\rvert}\lvert r\rvert^{n+1}/(n+1)!$. Range reduction $x = k\ln 2 + r$, $k = \mathrm{round}(x/\ln 2)$, keeps $\lvert r\rvert \le \ln 2/2$, so a short polynomial suffices, and $e^x = 2^k e^r$ is an exponent adjustment. Horner's rule $a_0 + r(a_1 + r(a_2 + \dots))$ uses $n$ multiplications for degree $n$. Interpolating at $n + 1$ nodes leaves an error proportional to $\prod_i (x - x_i)$; the Chebyshev nodes (zeros of $T_{n+1}$) make that product the monic $T_{n+1}/2^n$, whose maximum on $[-1, 1]$ is $2^{-n}$, the smallest possible.
 
-### 2.5 Low precision
+### Low precision
 
-A format with $M$ fraction bits and bias $B$ has quantum $2^{\max(\lfloor\log_2 v\rfloor, 1 - B) - M}$ near $v$; rounding is to the nearest multiple, ties to the even significand. E4M3 ($M = 3$, $B = 7$, max 448), E5M2 ($M = 2$, $B = 15$, max 57344, top exponent reserved), FP4 E2M1 (values 0, 0.5, 1, 1.5, 2, 3, 4, 6). An MX block scale is $X = 2^{\lfloor\log_2 a_{\max}\rfloor - e_{\max}}$, with $e_{\max}$ the exponent of the element format's largest normal.
+A format with $M$ fraction bits and bias $B$ has quantum $2^{\max(\lfloor\log_2 v\rfloor, 1 - B) - M}$ near $v$; rounding is to the nearest multiple, ties to the even significand. The formats used here are E4M3 ($M = 3$, $B = 7$, max 448), E5M2 ($M = 2$, $B = 15$, max 57344, top exponent reserved), and FP4 E2M1 (values 0, 0.5, 1, 1.5, 2, 3, 4, 6). An MX block scale is $X = 2^{\lfloor\log_2 a_{\max}\rfloor - e_{\max}}$, with $e_{\max}$ the exponent of the element format's largest normal.
 
-## 3. Worked example by hand
+## Three worked examples
 
-These are siblings of q1, q14, and q24, not problems from section 4.
+These are siblings of q1, q14, and q24, worked in full before you start.
 
-**Conditioning of $\sqrt{x}$.** $f'(x) = 1/(2\sqrt{x})$, so $\kappa = \lvert x \cdot \tfrac{1}{2\sqrt{x}} / \sqrt{x}\rvert = \tfrac12$ for every $x > 0$: square roots halve relative errors.
+The conditioning of $\sqrt{x}$: $f'(x) = 1/(2\sqrt{x})$, so $\kappa = \lvert x \cdot \tfrac{1}{2\sqrt{x}} / \sqrt{x}\rvert = \tfrac12$ for every $x > 0$. Square roots halve relative errors.
 
-**One Newton step for $1/\sqrt{a}$.** With $a = 2$ and $y_0 = 0.7$: $y_1 = 0.7\,(3 - 2 \cdot 0.49)/2 = 0.7 \cdot 2.02/2 = 0.707$. The relative error drops from $1 - \sqrt{2} \cdot 0.7 = 0.01005$ to $1 - \sqrt{2}\cdot 0.707 = 0.000151$, close to $\tfrac32 (0.01005)^2 = 0.000152$: quadratic.
+One Newton step for $1/\sqrt{a}$, with $a = 2$ and $y_0 = 0.7$: $y_1 = 0.7\,(3 - 2 \cdot 0.49)/2 = 0.7 \cdot 2.02/2 = 0.707$. The relative error drops from $1 - \sqrt{2} \cdot 0.7 = 0.01005$ to $1 - \sqrt{2}\cdot 0.707 = 0.000151$, close to $\tfrac32 (0.01005)^2 = 0.000152$: quadratic.
 
-**2.75 to E4M3.** $\lfloor\log_2 2.75\rfloor = 1$, quantum $2^{1-3} = 0.25$, $2.75/0.25 = 11$ exactly: value 2.75, code $((-2 + 3 + 7 - 1) \ll 3) + 11 = 56 + 11 = 67$. Decode: $e_f = 8$, $f = 3$, $(8 + 3)\cdot 2^{8 - 7 - 3} = 2.75$.
+Rounding 2.75 to E4M3: $\lfloor\log_2 2.75\rfloor = 1$, the quantum is $2^{1-3} = 0.25$, and $2.75/0.25 = 11$ exactly, so the value is 2.75 and the code is $((-2 + 3 + 7 - 1) \ll 3) + 11 = 56 + 11 = 67$. To decode: $e_f = 8$, $f = 3$, $(8 + 3)\cdot 2^{8 - 7 - 3} = 2.75$.
 
-## 4. The problem set
+## The problems
 
-The tag after each question is its answer type.
+The problems are grouped by topic. The tag after each question is its answer type.
 
 ### Condition numbers
 
@@ -208,7 +194,7 @@ $\sin x^* \approx 0.6736120$. $g(x) = \cos x$, so $g'(x) = -\sin x$ and the rate
 
 </details>
 
-**q14.** Newton's method for $f(y) = 1/y^2 - a$ gives $y_{k+1} = y_k (3 - a y_k^2)/2$, the update `M09.5` uses for `rsqrt`. With $a = 4$ and $y_0 = 0.4$, give $y_1$ exactly. `[number]`
+**q14.** Newton's method for $f(y) = 1/y^2 - a$ gives $y_{k+1} = y_k (3 - a y_k^2)/2$, the update [Fixed-point iteration and fast inverse square root in C](05-fixed-point-iteration-and-rsqrt.md) uses for `rsqrt`. With $a = 4$ and $y_0 = 0.4$, give $y_1$ exactly. `[number]`
 
 <details><summary>Answer</summary>
 
@@ -276,7 +262,7 @@ $\ln 2 / 2 \approx 0.3466$. Rounding $x/\ln 2$ to the nearest integer leaves a r
 
 <details><summary>Answer</summary>
 
-$n = 7$. With $h = \ln 2/2 \approx 0.3466$ and $e^h = \sqrt 2$: for $n = 6$ the bound is $\sqrt2 \cdot h^7/7! \approx 1.69 \times 10^{-7}$, above $2^{-24} \approx 5.96 \times 10^{-8}$; for $n = 7$ it is $\sqrt2 \cdot h^8/8! \approx 7.3 \times 10^{-9}$, below. This is why `M09.6` uses degree 7. A common mistake is 6, which looks close but is about three times too large; 8 is more than needed.
+$n = 7$. With $h = \ln 2/2 \approx 0.3466$ and $e^h = \sqrt 2$: for $n = 6$ the bound is $\sqrt2 \cdot h^7/7! \approx 1.69 \times 10^{-7}$, above $2^{-24} \approx 5.96 \times 10^{-8}$; for $n = 7$ it is $\sqrt2 \cdot h^8/8! \approx 7.3 \times 10^{-9}$, below. This is why [Polynomial approximation and range reduction: expf in C](06-polynomial-approximation-and-expf.md) uses degree 7. A common mistake is 6, which looks close but is about three times too large; 8 is more than needed.
 
 </details>
 
@@ -300,7 +286,7 @@ $\{-\sqrt3/2, 0, \sqrt3/2\}$. $4x^3 - 3x = x(4x^2 - 3) = 0$ gives $x = 0$ or $x 
 
 <details><summary>Answer</summary>
 
-$1/4$. The node product is the monic polynomial with those roots, $x^3 - \tfrac34 x = T_3(x)/4$, and $\lvert T_3\rvert \le 1$ on $[-1, 1]$ with equality at the endpoints, so the maximum is $1/4 = 2^{-2}$, the $2^{-n}$ of section 2.4. A common mistake is $2/(3\sqrt3) \approx 0.385$, the maximum of $\lvert x^3 - x\rvert$ for the equispaced nodes $-1, 0, 1$ (attained at $x = 1/\sqrt3$).
+$1/4$. The node product is the monic polynomial with those roots, $x^3 - \tfrac34 x = T_3(x)/4$, and $\lvert T_3\rvert \le 1$ on $[-1, 1]$ with equality at the endpoints, so the maximum is $1/4 = 2^{-2}$, the $2^{-n}$ of the Chebyshev bound above. A common mistake is $2/(3\sqrt3) \approx 0.385$, the maximum of $\lvert x^3 - x\rvert$ for the equispaced nodes $-1, 0, 1$ (attained at $x = 1/\sqrt3$).
 
 </details>
 
@@ -352,9 +338,11 @@ $2^{-4}$. E4M3 has $3 + 1 = 4$ significant bits, so $u = 2^{-4}$. A common mista
 
 </details>
 
-## 5. Pitfalls
+## Common mistakes
 
-| Pitfall | Symptom | How the solution avoids it |
+The wrong answers flagged in the problems are the same mistakes that break real tolerances and kernels. Each maps to a problem:
+
+| Pitfall | Symptom | How to avoid it |
 |---|---|---|
 | The absolute condition $\lvert f'(x)\rvert$ for the relative one | $e^{50}$ instead of 50 | q1, q2: multiply by $x/f(x)$ |
 | Eigenvalues of $A$ for singular values | $5/3$ instead of 3 for a non-symmetric matrix | q4: take square roots of the eigenvalues of $A^\top A$ |
@@ -367,14 +355,29 @@ $2^{-4}$. E4M3 has $3 + 1 = 4$ significant bits, so $u = 2^{-4}$. A common mista
 | E5M2's or the significand count's grid for E4M3's code | wrong value or code | q24: quantum $2^{\lfloor\log_2 v\rfloor - 3}$, code $((q_e + M + B - 1) \ll M) + n$ |
 | A per-tensor float scale where MX wants a power of two | a scale of 13/6 | q27: $X = 2^{\lfloor\log_2 a_{\max}\rfloor - e_{\max}}$ |
 
-## 6. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `S-M09a` | representation, rounding, and cancellation |
-| Back | `M01.2` | Newton's method as code, behind q14 to q17 |
-| Forward | `M09.3` | q1 to q12 as code: `relative_condition`, `cond`, `gamma`, `dot_error_bound` |
-| Forward | `M09.4` | q24 to q28 as code: fp8, FP4, and MX scales |
-| Forward | `M09.5` | `rsqrt` in C: q14 to q17's Newton update and its quadratic convergence |
-| Forward | `M09.6` | `expf` in C: q18 to q21's range reduction, degree, and Horner evaluation |
-| Forward | `L8.5` | quantization error budgets combine q8 with q24's rounding error |
+q1 to q12 become code in [Error analysis, condition numbers, and tolerance budgets](03-error-analysis-condition-numbers-and-tolerance-budgets.md) (`relative_condition`, `cond`, `gamma`, `dot_error_bound`), and q24 to q28 become the fp8, FP4, and MX conversions of [FP8 and microscaling formats](04-fp8-and-microscaling-formats.md). [Fixed-point iteration and fast inverse square root in C](05-fixed-point-iteration-and-rsqrt.md) implements q14 to q17's Newton update and relies on its quadratic convergence, and [Polynomial approximation and range reduction: expf in C](06-polynomial-approximation-and-expf.md) implements q18 to q21's range reduction, degree, and Horner evaluation. In *Build Your Own LLM System*, the quantization error budgets of [Quantization: int8, int4 groups, fp8, and the KV cache](../../build-an-llm/p08-inference/05-quantization.md) combine q8's bound with q24's rounding error.
+
+### Further reading
+
+- Higham, *Accuracy and Stability of Numerical Algorithms*, chapters 2 to 4 and 7.
+- Trefethen, *Approximation Theory and Approximation Practice* (SIAM, 2013), chapters 1 to 4.
+- Muller, *Elementary Functions: Algorithms and Implementation* (3rd ed., 2016), chapters 3 and 11.
+
+## Key terms
+
+- **Relative condition number**: $\lvert x f'(x)/f(x)\rvert$, the factor by which $f$ amplifies relative input errors.
+- **$\gamma_k$**: $ku/(1 - ku)$, the bound on the relative error accumulated over $k$ roundings.
+- **Linear convergence**: the error shrinks by a constant factor $\lvert g'(x^*)\rvert < 1$ each step.
+- **Quadratic convergence**: the error is proportional to the square of the previous error, so correct digits double.
+- **Chebyshev nodes**: the zeros of $T_{n+1}$, which minimize the maximum of the interpolation node product on $[-1, 1]$.
+- **MX block scale**: a shared power of two that places a block's largest magnitude in the element format's top binade.
+
+## Summary
+
+- The relative condition number $\kappa_f(x) = \lvert x f'(x) / f(x)\rvert$ and the matrix condition number $\kappa_2(A) = \sigma_{\max}/\sigma_{\min}$ say how much the problem amplifies input errors, whatever the algorithm (q1 to q6).
+- Every rounding multiplies by $(1 + \delta)$, $\lvert\delta\rvert \le u$, and $k$ of them stay within $\gamma_k = ku/(1 - ku)$; pairwise summation cuts $k$ to $\log_2 k$, and random signs typically give $\sqrt{k}\,u$ (q7 to q12).
+- Fixed-point iteration converges linearly at the rate $\lvert g'(x^*)\rvert$; Newton converges quadratically at a simple root, so the correct digits double each step (q13 to q17).
+- `expf` reduces $x$ to $r \in [-\ln 2/2, \ln 2/2]$ and evaluates a short polynomial; the Lagrange remainder fixes the degree, and Chebyshev nodes minimize the interpolation error's node product (q18 to q23).
+- fp8 and MX formats are the same rounding with few bits: E4M3 has precision $2^{-4}$ and range to 448, E5M2 trades a bit of precision for range to 57344, and an MX block scale is the power of two that puts the block's maximum in the top binade (q24 to q28).

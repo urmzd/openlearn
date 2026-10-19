@@ -1,130 +1,37 @@
 # Signals and Images
 
-Convolution, resampling, the Fourier transform, and the mel scale: the numerical front end of every vision and speech model, built as numpy reference code the multimodal passes call.
+Images and audio are samples of continuous signals. Every operation in a multimodal front end (convolve, resize, transform, filter, take a log) is a linear map followed at most by a pointwise nonlinearity, and getting its conventions exactly right is what makes a reimplementation agree with the pipeline a model was trained on. This chapter builds that numerical front end of every vision and speech model as numpy reference code: convolution, image layouts, resampling, the Fourier transform, the short-time Fourier transform, and the mel scale. Each section derives the mathematics, works an example by hand, and then walks through a solution that matches the reference library (PyTorch, Pillow, torchaudio, numpy, librosa) value for value.
 
-## Overview
+The arc runs from images to audio. You start by seeing a convolution as a matrix, which turns it into one matmul and gives its backward pass for free. You then fix how images sit in memory, and how they are resized without aliasing, bit for bit as Pillow does it. The second half moves to sound: the DFT as a unitary change of basis and the FFT that computes it for Whisper's 400-sample frames, the windowed STFT that turns a clip into a spectrogram, and the mel filterbank and logarithm that turn the spectrogram into Whisper's features. A problem set closes the chapter and adds two topics the multimodal models need: contrastive losses and word error rate.
 
-- **Primary textbook**: Oppenheim and Schafer, *Discrete-Time Signal Processing* (3rd ed.); free alternative: Smith, *Mathematics of the Discrete Fourier Transform* and *Spectral Audio Signal Processing* (free online, ccrma.stanford.edu)
-- **Supplementary**: Dumoulin and Visin, "A guide to convolution arithmetic for deep learning" (free); Goodfellow, Bengio, Courville, *Deep Learning*, ch. 9 (free); Szeliski, *Computer Vision: Algorithms and Applications*, ch. 3 (free)
-- **Prerequisites**: [Precalculus](../00-precalculus/) (logs, Euler's formula), [Linear Algebra](../03-linear-algebra/), [Matrix Calculus & Autodiff](../08-matrix-calculus-and-autodiff/), [Numerical Methods & Floating Point](../09-numerical-methods-and-floating-point/)
-- **Estimated time**: 2 weeks at 8-10 hrs/week (the six course modules plus the problem set)
+Small conventions decide parity throughout: pass order, rounding, padding, window symmetry. Reproduce the reference library's numbers, not just its idea.
 
-## Key Takeaways
+> **Learning objectives**
+> - Treat a convolution as a linear map: size its output, write it as a Toeplitz matrix and as an im2col matmul, and derive its backward pass with col2im.
+> - Explain an image tensor's layout through its strides, and normalize and patchify images the way vision models expect.
+> - Resize images and resample audio without aliasing, matching Pillow, `F.interpolate`, and torchaudio.
+> - Compute the DFT with a mixed-radix FFT, a real FFT, the convolution theorem, and the DCT-II.
+> - Build Whisper's log-mel features from a centered, windowed STFT and a Slaney mel filterbank.
 
-- A convolution layer is a linear map, a Toeplitz matrix; im2col turns it into one matmul and col2im (its adjoint) gives the backward pass
-- A layout is a memory order: the same logical NCHW tensor can store its channels first or last, and the strides say which
-- Sampling keeps only frequencies below half the rate; resizing and resampling must low-pass first or they alias
-- The DFT is a unitary change of basis, and an FFT computes it in $O(n \log n)$ for every size whose factors it supports, including Whisper's 400
-- Speech features are a windowed STFT, pooled into mel bands, on a log scale; each step has a convention a checkpoint was trained on
+## Before you begin
 
-## How to Study
+You need logarithms and Euler's formula from [Precalculus](../00-precalculus/README.md), matrices, transposes, and orthogonality from [Linear Algebra](../03-linear-algebra/README.md), vector-Jacobian products from [Matrix Calculus and Autodiff](../08-matrix-calculus-and-autodiff/README.md), and the floating-point error bounds of [Numerical Methods and Floating Point](../09-numerical-methods-and-floating-point/README.md). Comfort with numpy views, broadcasting, and fancy indexing helps throughout.
 
-- Work each chapter's worked example by hand before reading its code; the first course test is that example
-- Reproduce the reference library's numbers, not just its idea: Pillow, PyTorch, torchaudio, numpy, and librosa each make small choices (pass order, rounding, padding, window symmetry) that matter for parity
-- Finish with the problem set: it is where the arithmetic of `L13` and `L14` becomes second nature
+## In this chapter
 
----
+1. [Convolution as a linear map](01-convolution-as-a-linear-map.md). Deep learning's convolution is a cross-correlation and a doubly block Toeplitz matrix; im2col makes it one matmul, and its adjoint col2im gives the backward pass.
+2. [Image tensors and layouts](02-image-tensors-and-layouts.md). NCHW versus NHWC strides, why a layout change is a copy, CLIP normalization, Pillow's fixed-point grayscale, and patchify as a reshape.
+3. [Resampling and interpolation](03-resampling-and-interpolation.md). Bilinear, bicubic, and Lanczos kernels, antialiasing as a stretched kernel, Pillow's separable fixed-point passes, `F.interpolate`'s convention, and a polyphase sinc resampler for audio.
+4. [DFT and FFT](04-dft-and-fft.md). The DFT as a unitary map, the convolution theorem, mixed-radix Cooley-Tukey for sizes like 400, the half-size real FFT, and the DCT-II via an FFT.
+5. [Sampling, Nyquist, windows, and the STFT](05-sampling-windows-and-stft.md). Aliasing, spectral leakage and the periodic Hann window, center-padded frame counts, and the overlap-add inverse.
+6. [Mel scale and filterbanks](06-mel-scale-and-filterbanks.md). The Slaney and HTK mel scales, area-normalized triangular filters, decibels, and Whisper's log-mel scaling.
+7. [Signals and images problem set](90-problem-set.md). Pen-and-paper practice on convolution arithmetic, sampling, Fourier, mel, contrastive losses, and WER, with worked answers.
 
-# Concepts & Techniques
+These ideas connect to several other chapters. Convolution and im2col underlie the CNN layers and C kernels of [Neural Architectures](../../machine-learning/06-neural-architectures/README.md) in *Machine Learning and AI*; the FFT and DCT reappear in transform coding in [Information Theory](11-information-theory-link-placeholder); and the STFT and mel features are the front end of Whisper and audio LLMs in [Foundation Models](../../machine-learning/05-foundation-models/README.md). In *Build Your Own LLM System*, the [vision](../../build-an-llm/p13-vision/README.md) and [speech](../../build-an-llm/p14-speech/README.md) parts call every function built here.
 
-## Core Insight
+## Further reading
 
-Images and audio are samples of continuous signals. Every operation in a multimodal front end (convolve, resize, transform, filter, log) is a linear map followed at most by a pointwise nonlinearity, and getting its conventions exactly right is what makes a reimplementation agree with the model's training pipeline.
-
-## 1. Convolution as a Linear Map
-
-**Key ideas**:
-- Deep learning's convolution is cross-correlation; true convolution flips the kernel
-- Output size $\lfloor (n + 2p - d(k-1) - 1)/s \rfloor + 1$; groups split channels into independent convs
-- im2col and col2im: forward as one matmul, backward as the adjoint copy
-
-## 2. Image Tensors and Layouts
-
-**Key ideas**:
-- NCHW versus NHWC strides; a transpose is a view, a layout change is a copy
-- Rescale and normalize to float32 CHW; Pillow's fixed-point grayscale
-- Patchify as a reshape: a ViT patch embedding is a stride-$p$ conv
-
-## 3. Resampling and Interpolation
-
-**Key ideas**:
-- Nearest, bilinear, bicubic (Keys, $a = -0.5$ or $-0.75$), Lanczos3
-- Antialiasing stretches the kernel by the scale factor
-- Separable fixed-point passes reproduce Pillow; windowed-sinc filter banks reproduce torchaudio
-
-## 4. The DFT and the FFT
-
-**Key ideas**:
-- Unitarity and Parseval; conjugate symmetry of real signals
-- The convolution theorem and zero padding
-- Mixed-radix Cooley-Tukey; real FFTs by packing; the DCT-II via an FFT
-
-## 5. Windows and the STFT
-
-**Key ideas**:
-- Nyquist and aliasing; windows and spectral leakage
-- Center reflect padding and frame counts; COLA and weighted overlap-add
-
-## 6. Mel Scale and Decibels
-
-**Key ideas**:
-- Slaney and HTK mel scales; triangular filterbanks with area normalization
-- Decibels, `top_db`, and Whisper's log10 with an 8-unit range
-
----
-
-## Technique Catalog
-
-| Concept | Key Formula | Application |
-|---------|-------------|-------------|
-| Conv output size | $\lfloor (n + 2p - d(k-1) - 1)/s \rfloor + 1$ | sizing every conv, pool, and patch layer |
-| im2col matmul | $Y = W_\text{flat} \cdot \operatorname{im2col}(x)$ | fast conv forward; col2im for backward |
-| Antialiased resize | kernel stretched by $\max(\text{scale}, 1)$ | image preprocessing without moire |
-| DFT | $X[k] = \sum_j x[j] e^{-2\pi i jk/n}$ | spectra, convolution, DCT |
-| STFT frames | $1 + \lfloor n/\text{hop} \rfloor$ (centered) | Whisper's 3001 frames |
-| Slaney mel | $15 + 27 \log_{6.4}(f/1000)$ above 1 kHz | speech features |
-
-## Course modules
-
-This topic is new in Pass 12 (the multimodal pass): no earlier topic owns sampling, the DFT, or interpolation. Each build module is numpy reference code with a call site in the vision (`L13`) or speech (`L14`) parts; optional C kernels for the same math are `L13.8`, `L13.9`, and `L14.6`.
-
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `M12.1` | Convolution as a linear map | build | 12 |
-| `M12.2` | Image tensors and layouts | build | 12 |
-| `M12.3` | Resampling and interpolation | build | 12 |
-| `M12.4` | DFT and FFT | build | 12 |
-| `M12.5` | Sampling, Nyquist, windows, and the STFT | build | 12 |
-| `M12.6` | Mel scale and filterbanks | build | 12 |
-| `S-M12` | Signals and images problem set | solve | 12 |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `M12.1` | [Convolution as a linear map](01-convolution-as-a-linear-map.md) | build | 12 |
-| 2 | `M12.2` | [Image tensors and layouts](02-image-tensors-and-layouts.md) | build | 12 |
-| 3 | `M12.3` | [Resampling and interpolation](03-resampling-and-interpolation.md) | build | 12 |
-| 4 | `M12.4` | [DFT and FFT](04-dft-and-fft.md) | build | 12 |
-| 5 | `M12.5` | [Sampling, Nyquist, windows, and the STFT](05-sampling-windows-and-stft.md) | build | 12 |
-| 6 | `M12.6` | [Mel scale and filterbanks](06-mel-scale-and-filterbanks.md) | build | 12 |
-| 7 | `S-M12` | [Signals and images problem set: convolution, sampling, Fourier, mel, contrastive losses, and WER](90-problem-set.md) | solve | 12 |
-
-## Connections to Other Tracks
-
-| Signals Concept | Connected Track | Application |
-|--------------------|-----------------|-------------|
-| Convolution, im2col | [Neural Architectures](../../machine-learning/06-neural-architectures/) | CNN layers and their C kernels |
-| FFT, DCT | [Information Theory](../11-information-theory/) | transform coding and rate-distortion |
-| Aliasing and resampling | [Numerical Methods & Floating Point](../09-numerical-methods-and-floating-point/) | error bounds and stable evaluation |
-| STFT and mel | [Foundation Models](../../machine-learning/05-foundation-models/) | Whisper and audio LLM front ends |
-
-## Company Relevance
-
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| OpenAI | Whisper's log-mel frontend; image preprocessing for vision models | Advanced |
-| Google | SigLIP and ViT preprocessing; audio front ends | Advanced |
-| Meta | Image and video pipelines at scale; on-device ASR | Advanced |
-| NVIDIA | cuDNN convolution algorithms; DALI preprocessing | Advanced |
-| Apple | On-device vision and speech with fixed-point kernels | Advanced |
+- Oppenheim and Schafer, *Discrete-Time Signal Processing* (3rd ed.), the primary reference; a free alternative is Smith, *Mathematics of the Discrete Fourier Transform* and *Spectral Audio Signal Processing* (ccrma.stanford.edu).
+- Dumoulin and Visin, "A guide to convolution arithmetic for deep learning" (free).
+- Goodfellow, Bengio, Courville, *Deep Learning*, ch. 9 (free).
+- Szeliski, *Computer Vision: Algorithms and Applications*, ch. 3 (free).
