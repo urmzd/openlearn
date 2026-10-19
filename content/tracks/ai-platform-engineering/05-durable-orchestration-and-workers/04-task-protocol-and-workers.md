@@ -466,7 +466,7 @@ Full solution: [`tasks.go`](../../../../course/solutions/go/durable/server/tasks
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | one worker build serves every run | worker versioning (build ids) | old runs stay on the build that started them while new runs use the new one | Temporal "Worker Versioning" |
 | every activity through the server | local activities | short activities run in the workflow worker, recorded as markers, no round trip | Temporal "Local Activities" |

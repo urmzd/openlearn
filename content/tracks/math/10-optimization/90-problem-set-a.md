@@ -82,11 +82,53 @@ Each problem carries a tag for the kind of answer it wants (`[number]`, `[interv
 
 **q1.** Is the function convex on the given domain? (a) $f(x) = x^4$ on $\mathbb{R}$. (b) $f(x) = \log x$ on $(0, \infty)$. (c) $\mathrm{LSE}(x_1, x_2) = \log(e^{x_1} + e^{x_2})$ on $\mathbb{R}^2$. `[bool]`
 
+<details><summary>Answer</summary>
+
+**(a) true, (b) false, (c) true.**
+
+1. (a) $f''(x) = 12x^2 \ge 0$ everywhere, so $f$ is convex. A common mistake is to answer false because $f''(0) = 0$: convexity needs $f'' \ge 0$, not $f'' > 0$ (that would be strict convexity, and $x^4$ is strictly convex anyway).
+2. (b) $f''(x) = -1/x^2 < 0$ on $(0, \infty)$, so $\log$ is concave, not convex.
+3. (c) The Hessian of $\mathrm{LSE}$ is $\mathrm{diag}(p) - pp^\top$ with $p = \mathrm{softmax}(x)$, the covariance matrix of a one-hot draw from $p$, so $v^\top H v = \mathrm{Var}_p(v_i) \ge 0$. This is why cross-entropy, which is $\mathrm{LSE}$ of the logits minus a linear term, is convex in the logits.
+
+</details>
+
 **q2.** $f(x) = \frac12 x^\top A x$ with $A = \mathrm{diag}(1, 10)$. Give (a) the smoothness constant $L$, (b) the strong convexity constant $\mu$, and (c) the condition number $\kappa = L/\mu$. `[number]`
+
+<details><summary>Answer</summary>
+
+**(a) $L = 10$, (b) $\mu = 1$, (c) $\kappa = 10$.**
+
+The Hessian of $\frac12 x^\top A x$ is $A$ itself, and its eigenvalues are the diagonal entries 1 and 10. $L$ is the largest, $\mu$ the smallest, so $\kappa = L/\mu = 10$. A common mistake is $\kappa = 1/10$, which is $\mu/L$: the condition number is at least 1 by definition. This is the kind of quadratic on which `M10.1`'s gradient descent shows the $(1 - 1/\kappa)^t$ gap.
+
+</details>
 
 **q3.** On which interval is $f(x) = x^3 - 3x$ convex? Give the largest one. `[interval]`
 
+<details><summary>Answer</summary>
+
+**$[0, \infty)$.**
+
+$f'(x) = 3x^2 - 3$ and $f''(x) = 6x$, which is nonnegative exactly when $x \ge 0$. A common mistake is $[1, \infty)$: that is where $f' \ge 0$, where $f$ is increasing, which says nothing about curvature. Another is $(-\infty, 0]$, the concave side.
+
+</details>
+
 **q4.** Prove: if $f$ and $g$ are convex on $\mathbb{R}^n$, then $f + g$ is convex. `[proof]`
+
+<details><summary>Answer</summary>
+
+**Proof.** Let $x, y \in \mathbb{R}^n$ and $t \in [0, 1]$. By convexity of $f$ and of $g$ at the same $x$, $y$, $t$:
+
+$$f(tx + (1-t)y) \le t f(x) + (1-t) f(y), \qquad g(tx + (1-t)y) \le t g(x) + (1-t) g(y).$$
+
+Adding the two inequalities gives
+
+$$(f+g)(tx + (1-t)y) \le t (f+g)(x) + (1-t)(f+g)(y),$$
+
+which is the definition of convexity for $f + g$. $\blacksquare$
+
+What makes the proof work: both inequalities are taken at the same points and the same $t$, so the right-hand sides add term by term. The same argument with a factor $c \ge 0$ shows nonnegative multiples are convex; with $c < 0$ the inequality flips, which is why the condition is needed.
+
+</details>
 
 ### Gradient descent rates and step size
 
@@ -97,13 +139,61 @@ For $f(x) = \frac12 (x_1^2 + 10 x_2^2)$:
 (c) give that worst contraction factor; `[number]`
 (d) give the worst contraction factor with $\eta = 1/L$. `[number]`
 
+<details><summary>Answer</summary>
+
+**(a) $(0, 1/5)$, (b) $\eta = 2/11$, (c) $9/11$, (d) $9/10$.**
+
+1. (a) $f'(x) = 10x$, so $x_{t+1} = (1 - 10\eta) x_t$. This converges from every start iff $\lvert 1 - 10\eta \rvert < 1$, i.e. $0 < \eta < 2/10 = 1/5$. A common mistake is $(0, 1/10)$, the condition $\eta \le 1/L$: it is sufficient but not the whole set. Another is $(0, 1/5]$: at $\eta = 2/L$ the factor is exactly $-1$ and the iterate flips sign forever without shrinking.
+2. (b) The eigenvalues are $\mu = 1$ and $L = 10$. The worst factor $\max(\lvert 1 - \eta \rvert, \lvert 1 - 10\eta \rvert)$ is smallest where the two balance, $1 - \eta = -(1 - 10\eta)$, so $11\eta = 2$ and $\eta = 2/11$. Not $1/L$: that is the safe default, not the optimum.
+3. (c) At $\eta = 2/11$ both factors have magnitude $1 - 2/11 = 9/11 = (\kappa - 1)/(\kappa + 1)$.
+4. (d) At $\eta = 1/10$ the factors are $9/10$ and $0$, so the worst is $9/10 = 1 - 1/\kappa$. A common mistake is $1/10 = 1/\kappa$, which would predict absurdly fast convergence.
+
+</details>
+
 **q6.** The error shrinks by a factor $9/10$ per step. What is the smallest number of steps $t$ with $(9/10)^t \le 10^{-6}$? `[number]`
+
+<details><summary>Answer</summary>
+
+**132.**
+
+Take logs: $t \ln(9/10) \le -6 \ln 10$, and since $\ln(9/10) < 0$ dividing flips the inequality: $t \ge 6 \ln 10 / \ln(10/9) \approx 13.8155 / 0.10536 \approx 131.13$. The smallest integer is 132. A common mistake is 131, rounding down: after 131 steps the error is still slightly above $10^{-6}$. This matches the rule of thumb from section 2.2: at $\eta = 1/L$ with $\kappa = 10$, each digit costs about $\kappa \ln 10 \approx 23$ steps (the exact figure is $\ln 10 / \ln(10/9) \approx 21.9$).
+
+</details>
 
 **q7.** Run gradient descent on $f(x) = x^2$ from $x_0 = 1$ with $\eta = 1/4$. Give $x_3$. `[number]`
 
+<details><summary>Answer</summary>
+
+**$x_3 = 1/8$.**
+
+$f'(x) = 2x$, so $x_{t+1} = x_t - \frac14 \cdot 2x_t = x_t / 2$. From $x_0 = 1$: $1/2$, $1/4$, $1/8$. A common mistake is $27/64$, which comes from using $f'(x) = x$ (dropping the 2), so the factor becomes $3/4$.
+
+</details>
+
 **q8.** Backtracking (Armijo) line search accepts the first $\alpha \in \{\alpha_0, \rho\alpha_0, \rho^2\alpha_0, \dots\}$ with $f(x + \alpha d) \le f(x) + c\,\alpha\, \nabla f(x)^\top d$. For $f(x) = x^2$ at $x = 1$ with $d = -\nabla f(1)$, $\alpha_0 = 1$, $c = 1/2$, $\rho = 1/2$, which $\alpha$ is accepted? `[number]`
 
+<details><summary>Answer</summary>
+
+**$\alpha = 1/2$.**
+
+At $x = 1$: $f(1) = 1$, $\nabla f(1) = 2$, $d = -2$, and $\nabla f^\top d = -4$.
+
+1. $\alpha = 1$: $x + \alpha d = -1$, $f = 1$. The test needs $1 \le 1 + \frac12 \cdot 1 \cdot (-4) = -1$. It fails: the step overshoots to the mirror point with no decrease.
+2. $\alpha = 1/2$: $x + \alpha d = 0$, $f = 0$. The test needs $0 \le 1 + \frac12 \cdot \frac12 \cdot (-4) = 0$. It holds, so $1/2$ is accepted.
+
+A common mistake is $\alpha = 1$, accepting $\alpha_0$ without testing it; another is $1/4$, backtracking once more after the test already passed.
+
+</details>
+
 **q9.** For convex, $L$-smooth $f$, gradient descent with $\eta = 1/L$ satisfies $f(x_t) - f^\star \le \frac{L \lVert x_0 - x^\star \rVert^2}{2t}$. Give the bound for $L = 4$, $\lVert x_0 - x^\star \rVert = 3$, $t = 10$. `[number]`
+
+<details><summary>Answer</summary>
+
+**$9/5$.**
+
+$\frac{L \lVert x_0 - x^\star \rVert^2}{2t} = \frac{4 \cdot 9}{2 \cdot 10} = \frac{36}{20} = \frac95$. A common mistake is $18/5$, dropping the 2 in the denominator. Note the $1/t$ rate: without strong convexity, halving the gap costs twice as many steps, not a constant number.
+
+</details>
 
 ### Momentum
 
@@ -111,13 +201,47 @@ Heavy-ball momentum: $v_{t+1} = \beta v_t + \nabla f(x_t)$, $x_{t+1} = x_t - \et
 
 **q10.** Suppose the gradient is a constant $g$. (a) Give $\lim_{t \to \infty} v_t$. `[expr in g, beta]` (b) For $\beta = 0.9$, by what factor is the long-run step larger than plain gradient descent's step $\eta g$? `[number]`
 
+<details><summary>Answer</summary>
+
+**(a) $g/(1 - \beta)$, (b) 10.**
+
+1. (a) With $v_0 = 0$: $v_1 = g$, $v_2 = \beta g + g$, and in general $v_t = g(1 + \beta + \dots + \beta^{t-1}) = g\frac{1 - \beta^t}{1 - \beta} \to \frac{g}{1 - \beta}$. A common mistake is $\beta g/(1 - \beta)$, which sums from the second term only and forgets that the current gradient enters with weight 1.
+2. (b) The long-run step is $\eta g/(1 - \beta)$, so the factor is $1/(1 - 0.9) = 10$. A common mistake is 9, which is $\beta/(1 - \beta)$. This factor is why a learning rate tuned for plain SGD must shrink by about $1 - \beta$ when momentum is turned on.
+
+</details>
+
 **q11.** On $f(x) = \frac{h}{2} x^2$ the iterates satisfy $x_{t+1} = (1 + \beta - \eta h)\, x_t - \beta\, x_{t-1}$.
 (a) Give the monic characteristic polynomial in $r$ whose roots are the modes $x_t \propto r^t$. `[expr in r, beta, eta, h]`
 (b) When its two roots are complex, both have modulus $\sqrt{\beta}$. Give that modulus for $\beta = 81/100$. `[number]`
 
+<details><summary>Answer</summary>
+
+**(a) $r^2 - (1 + \beta - \eta h) r + \beta$, (b) $9/10$.**
+
+1. (a) Substitute $x_t = r^t$ into $x_{t+1} = (1 + \beta - \eta h)x_t - \beta x_{t-1}$ and divide by $r^{t-1}$: $r^2 = (1 + \beta - \eta h) r - \beta$, i.e. $r^2 - (1 + \beta - \eta h) r + \beta = 0$. A common mistake is $+\ldots - \beta$, the wrong sign on the $x_{t-1}$ term; the product of the roots would then be $-\beta$ and the analysis would predict a mode of modulus above 1. Another is $r^2 - (1 - \eta h) r$, plain gradient descent with a spurious root at 0.
+2. (b) For a monic quadratic the product of the roots is the constant term, $\beta$. Complex roots are conjugates, so $r \bar r = \lvert r \rvert^2 = \beta$ and $\lvert r \rvert = \sqrt{81/100} = 9/10$. A common mistake is $81/100$, which is $\beta$ itself rather than its square root.
+
+</details>
+
 **q12.** The best heavy-ball momentum on a quadratic with condition number $\kappa$ is $\beta^\star = \left(\frac{\sqrt\kappa - 1}{\sqrt\kappa + 1}\right)^2$. Give $\beta^\star$ for $\kappa = 100$. `[number]`
 
+<details><summary>Answer</summary>
+
+**$81/121$.**
+
+$\sqrt{100} = 10$, so $\beta^\star = \left(\frac{10 - 1}{10 + 1}\right)^2 = \left(\frac{9}{11}\right)^2 = \frac{81}{121}$. A common mistake is $9/11$, forgetting the square; another is $99/101$, using $\kappa$ where $\sqrt\kappa$ belongs. The convergence rate is then $\sqrt{\beta^\star} = 9/11$, which for $\kappa = 100$ beats plain gradient descent's best rate of $99/101$ by a wide margin: that is the $\sqrt\kappa$ speed-up.
+
+</details>
+
 **q13.** With $\beta = 1/2$ and gradient $1$ at every step, give $v_3$. `[number]`
+
+<details><summary>Answer</summary>
+
+**$v_3 = 7/4$.**
+
+$v_1 = \frac12 \cdot 0 + 1 = 1$, $v_2 = \frac12 \cdot 1 + 1 = \frac32$, $v_3 = \frac12 \cdot \frac32 + 1 = \frac74$. A common mistake is $3/2$ ($v_2$) or $15/8$ ($v_4$): an off-by-one in where the sum starts. With $v_0 = 0$, $v_t$ has exactly $t$ terms.
+
+</details>
 
 ### Adam
 
@@ -125,35 +249,83 @@ Adam keeps $m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t$ and $v_t = \beta_2 v_{t-1
 
 **q14.** If every gradient equals the same $g$, give $m_t$. `[expr in g, beta1, t]`
 
+<details><summary>Answer</summary>
+
+**$m_t = g(1 - \beta_1^t)$.**
+
+Unroll: $m_t = (1 - \beta_1) \sum_{i=1}^{t} \beta_1^{t-i} g = g (1 - \beta_1)\frac{1 - \beta_1^t}{1 - \beta_1} = g(1 - \beta_1^t)$. A common mistake is $g$, which is the bias-corrected $\hat m_t$, not $m_t$. With $\beta_1 = 0.9$, $m_1 = 0.1 g$: without the correction the first step would be ten times too small, which is the bias `M10.3` removes.
+
+</details>
+
 **q15.** Take $\epsilon = 0$. On the first step the gradient is $g_1 = -3$ and $\eta = 1/100$. Give $\theta_1 - \theta_0$. `[number]`
+
+<details><summary>Answer</summary>
+
+**$\theta_1 - \theta_0 = 1/100$.**
+
+1. $m_1 = (1 - \beta_1) g_1$ and $\hat m_1 = m_1/(1 - \beta_1) = g_1 = -3$.
+2. $v_1 = (1 - \beta_2) g_1^2$ and $\hat v_1 = g_1^2 = 9$, so $\sqrt{\hat v_1} = 3$.
+3. $\theta_1 - \theta_0 = -\eta\,\hat m_1/\sqrt{\hat v_1} = -\frac{1}{100} \cdot \frac{-3}{3} = +\frac{1}{100}$.
+
+The first step is $-\eta\,\mathrm{sign}(g_1)$ whatever the size of the gradient. A common mistake is $-1/100$ (moving with the gradient instead of against it); another is $3/100$ (using the raw gradient size, as plain SGD would).
+
+</details>
 
 **q16.** AdamW with $\epsilon = 0$, $\theta_0 = 1$, $g_1 = 4$, $\eta = 1/10$, $\lambda = 1/10$. Give $\theta_1$. `[number]`
 
+<details><summary>Answer</summary>
+
+**$\theta_1 = 89/100$.**
+
+1. The adaptive step is $-\eta\,\mathrm{sign}(g_1) = -\frac{1}{10}$, by the same argument as q15.
+2. The decoupled decay is $-\eta\lambda\theta_0 = -\frac{1}{10}\cdot\frac{1}{10}\cdot 1 = -\frac{1}{100}$.
+3. $\theta_1 = 1 - \frac{1}{100} - \frac{1}{10} = \frac{89}{100}$.
+
+A common mistake is $9/10$ (forgot the decay) or $99/100$ (forgot the Adam step). Had the decay been added to the gradient instead ($g' = g + \lambda\theta$), Adam's normalization would have divided it by $\sqrt{\hat v}$ and the first step would still be exactly $-\eta$, the decay would vanish into the sign: that is why AdamW keeps it outside.
+
+</details>
+
 **q17.** Prove that if every $g_i$ has the same expectation $E[g]$, then $E[m_t] = (1 - \beta_1^t)\, E[g]$, so $\hat m_t$ is an unbiased estimate of $E[g]$. `[proof]`
+
+<details><summary>Answer</summary>
+
+**Proof.** From $m_0 = 0$ and $m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t$, induction on $t$ gives
+
+$$m_t = (1 - \beta_1) \sum_{i=1}^{t} \beta_1^{t-i} g_i.$$
+
+(Base case $t = 1$: $m_1 = (1 - \beta_1) g_1$. Step: $\beta_1 m_{t-1} + (1 - \beta_1) g_t = (1 - \beta_1)\left(\sum_{i=1}^{t-1} \beta_1^{t-i} g_i + g_t\right)$.) Taking expectations and using linearity with $E[g_i] = E[g]$ for every $i$:
+
+$$E[m_t] = (1 - \beta_1) E[g] \sum_{k=0}^{t-1} \beta_1^{k} = (1 - \beta_1) E[g] \frac{1 - \beta_1^t}{1 - \beta_1} = (1 - \beta_1^t)\,E[g].$$
+
+Dividing by the constant $1 - \beta_1^t$ gives $E[\hat m_t] = E[g]$, so $\hat m_t$ is unbiased. $\blacksquare$
+
+The same argument with $g_i^2$ shows $E[\hat v_t] = E[g^2]$. The assumption that every $g_i$ has the same mean is what makes the geometric sum factor out; in training the mean drifts slowly, which is why the correction is exact only in this idealization but matters most in the first few hundred steps, where $\beta_2^t$ is still far from 0.
+
+</details>
 
 ## 5. Pitfalls
 
-| Pitfall | Symptom | Caught by |
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Confusing where $f$ increases with where it is convex | a wrong region of convexity | q3 (canary [1, oo)) |
-| Taking $\eta < 1/L$ as the stability limit, or including $\eta = 2/L$ | needlessly small learning rates, or a run that oscillates forever | q5 (canaries (0, 1/10) and (0, 1/5]) |
-| Rate $1/\kappa$ instead of $1 - 1/\kappa$ | absurd step-count estimates | q5 (canary 1/10) |
-| Rounding a step count down | one step short of the target accuracy | q6 (canary 131) |
-| Dropping the factor 2 in $\nabla x^2 = 2x$ | half-speed descent | q7 (canary 27/64) |
-| Accepting $\alpha_0$ without the Armijo test | a step that increases the loss | q8 (canary 1) |
-| Summing momentum from the wrong index | velocity off by one term | q10 (canary), q13 (canaries 3/2 and 15/8) |
-| Wrong sign of the $x_{t-1}$ term | a momentum analysis that predicts divergence | q11 (canary) |
-| Forgetting the bias correction is about $m_t$'s start at 0 | first steps 10 times too small | q14 (canary g) |
-| Decay inside the adaptive step, or omitted | AdamW trajectories that drift from torch's | q16 (canaries 9/10 and 99/100) |
+| Confusing where $f$ increases with where it is convex | a wrong region of convexity | tests $f'' \ge 0$, not $f' \ge 0$; see q3 |
+| Taking $\eta < 1/L$ as the stability limit, or including $\eta = 2/L$ | needlessly small learning rates, or a run that oscillates forever | requires $\lvert 1 - \eta\lambda \rvert < 1$ strictly, giving the open interval $(0, 2/L)$; see q5(a) |
+| Rate $1/\kappa$ instead of $1 - 1/\kappa$ | absurd step-count estimates | computes the factor $1 - \eta\lambda_i$ per eigenvalue; see q5(d) |
+| Rounding a step count down | one step short of the target accuracy | takes the ceiling of $\ln(1/\varepsilon)/\ln(1/\rho)$; see q6 |
+| Dropping the factor 2 in $\nabla x^2 = 2x$ | half-speed descent | differentiates before iterating; see q7 |
+| Accepting $\alpha_0$ without the Armijo test | a step that increases the loss | evaluates the sufficient-decrease test at every candidate, including $\alpha_0$; see q8 |
+| Summing momentum from the wrong index | velocity off by one term | starts from $v_0 = 0$ so $v_t$ has exactly $t$ terms; see q10 and q13 |
+| Wrong sign of the $x_{t-1}$ term | a momentum analysis that predicts divergence | derives the polynomial from the recurrence; the root product is $+\beta$; see q11 |
+| Forgetting the bias correction is about $m_t$'s start at 0 | first steps 10 times too small | unrolls $m_t$ to get the factor $1 - \beta_1^t$; see q14 and q17 |
+| Decay inside the adaptive step, or omitted | AdamW trajectories that drift from torch's | applies $-\eta\lambda\theta$ separately from $-\eta\hat m/\sqrt{\hat v}$; see q16 |
 
 ## 6. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `S-M05` | proof habits for q4 and q17 |
-| Forward | `M10.1` | `gradient_descent` and `armijo_step`, tested by the $(1 - 1/\kappa)^t$ bound of q5 |
+| Forward | `M10.1` | `gradient_descent` and `armijo_step`, whose convergence follows the $(1 - 1/\kappa)^t$ bound of q5 |
 | Forward | `M10.2` | `SGD` with momentum and Nesterov: q10 to q13 |
 | Forward | `M10.3` | `AdamW` with bias correction and decoupled decay: q14 to q17 |
 | Forward | `M10.4` | schedules change $\eta$ over time; clipping bounds the step |
-| Forward | `L0.5` | the first training loop that calls your optimizer |
+| Forward | `L0.5` | the first training loop that calls the optimizer |
 | Forward | `M10.5` | optional: the top Hessian eigenvalue and the edge of stability, where $\eta \approx 2/\lambda_{\max}$ |

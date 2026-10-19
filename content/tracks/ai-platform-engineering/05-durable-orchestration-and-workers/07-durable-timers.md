@@ -120,7 +120,15 @@ func (s *Server) FireTimer(k TimerKey)
 
 The demo workflow `SleepDemo` reads its input as an integer duration in milliseconds, calls `workflow.Sleep`, and returns `workflow.Now(ctx).UnixMilli()` as JSON. Started with input `1000`, it completes with its fired time, which exercises the whole path from the `dur.02` workflow service through the worker and the timer service.
 
-The server's entry point wires it: `ts := timer.New[server.TimerKey](clk)`, `Timers: ts` in `server.Open`, then `go ts.Run(ctx, srv.FireTimer)`; with `--test-clock`, `clk := timer.NewOffsetClock(wall)`, `clk.OnShift(ts.Wake)`, and `clk.Handler()` mounted at `/debug/clock` on the health port.
+The server's entry point wires it:
+
+```go
+ts := timer.New[server.TimerKey](clk)
+srv, _ := server.Open(ctx, server.Options{ /* ... */ Timers: ts})
+go ts.Run(ctx, srv.FireTimer)
+// with --test-clock: clk := timer.NewOffsetClock(wall), clk.OnShift(ts.Wake),
+// and clk.Handler() mounted at /debug/clock on the health port
+```
 
 ### What a correct solution must handle
 
@@ -335,7 +343,7 @@ func (s *Server) FireTimer(k TimerKey) {
 
 `cancelTimer` requires the timer to be pending and appends `TimerCanceled`; the commit effect calls `Timers.Cancel`, and `apply` deletes the timer from run state, so even a fire already in flight finds nothing.
 
-**Wiring.** The solution's durable entry point ([`entry/go/cmd/durable/main.go`](../../../../course/solutions/entry/go/cmd/durable/main.go)) builds `timer.New[server.TimerKey](clk)`, passes it as `Options.Timers` to `server.Open`, runs `ts.Run(ctx, srv.FireTimer)`, and with `--test-clock` uses an `OffsetClock` for every component, registers `timers.Wake` with `OnShift`, and mounts the handler at `/debug/clock` on the health port. The worker entry point registers a `SleepDemo` workflow that reads milliseconds as JSON, calls `workflow.Sleep`, and returns `workflow.Now(ctx).UnixMilli()`.
+**Wiring.** The solution's durable entry point ([`entry/go/cmd/durable/main.go`](../../../../course/solutions/entry/go/cmd/durable/main.go)) builds the service with `timer.New` over the server's clock, passes it as `Options.Timers` to `server.Open`, runs `ts.Run(ctx, srv.FireTimer)`, and with `--test-clock` uses an `OffsetClock` for every component, registers `timers.Wake` with `OnShift`, and mounts the handler at `/debug/clock` on the health port. The worker entry point registers a `SleepDemo` workflow that reads milliseconds as JSON, calls `workflow.Sleep`, and returns `workflow.Now(ctx).UnixMilli()`.
 
 Full solution: [`timer.go`](../../../../course/solutions/go/durable/timer/timer.go), [`timers.go`](../../../../course/solutions/go/durable/server/timers.go).
 
@@ -415,7 +423,7 @@ Full solution: [`timer.go`](../../../../course/solutions/go/durable/timer/timer.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | one heap per server | timer queues sharded by history shard | each history shard owns its timers and fires them from persisted timer tasks | `temporalio/temporal`: `service/history/queues` |
 | `Sleep` | Schedules | cron-like recurring workflows with backfill and overlap policies | Temporal "Schedules" |

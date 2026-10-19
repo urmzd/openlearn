@@ -2,31 +2,35 @@
 
 **Pass result**: about 10M model trained on TinyStories (mixed precision, accumulation, resume) with core ablations and the zoo table, safety evals, released through ModelRelease, and served.
 
-Each capability below is built from the listed modules. The sections that follow give the commands the finished solution runs, what each one produces, and why each piece is needed. Everything from earlier passes keeps working.
+Pass 9 trains at scale and runs the capstone: mixed precision, gradient accumulation, and activation checkpointing that match fp32 in less memory, then a roughly 10M-parameter Llama on TinyStories, evaluated, released through the ModelRelease workflow, and served. Everything from earlier passes keeps working: the engine still streams the Pass 1 bigram and the earlier models still train.
 
 | What the system does | Built from |
 |---|---|
 | Mixed precision, accumulation, and recompute train like fp32 in less memory. | `L11.1` |
-| The capstone model, trained, evaluated, released through ModelRelease, and served. | `C1`, `dur.12`, `craft.22`, `L11.1`, `ethics.03`, `ethics.04` |
-| Training at scale and the capstone: a model you trained, evaluated, released, and serve. | `M08.4`, `L11.1`, `ethics.03`, `ethics.04`, `dur.12`, `craft.22`, `C1` |
+| The capstone model, trained, evaluated, released through ModelRelease, and served. | `C1`, `dur.12`, `craft.22`, `L11.1`, `ethics.03`, `ethics.04`, `M08.4` |
 
+The optional `L11.2`, `L11.3`, `M10.5`, and `M10.6` are depth that the capstone does not need.
 
 ## Details
 
 ## Mixed precision, accumulation, and recompute train like fp32 in less memory
 
-includes it. Page: content/courses/build-an-llm/paths/course-p09-capstone-training/milestone.md (owned
-by the pass gate's author).
+The L11.1 training techniques, run through the system's own entry point on a
+real model: a byte-level Llama of about 1.6M parameters (a `llama-2m`
+config) trains on Tiny Shakespeare twice with the same windows in the same
+order: once in fp32 with one batch of 32 per step, once with 4 micro-batches
+of 8 (gradient accumulation), emulated bf16 matmuls, and every decoder layer
+but the last checkpointed. The second run reaches the first one's held-out
+loss within 2% and uses less memory. A 60-step run takes about 40 s; the
+full comparison trains 300 steps.
 
-The L11.1 training tricks, run through the system's own entry point on a real
-model: a byte-level Llama of about 1.6M parameters (fixture
-configs/llama-2m.json) trains on tinyshakespeare twice with the same
-windows in the same order: once in fp32 with one batch of 32 per step, once
-with 4 micro-batches of 8 (gradient accumulation), emulated bf16 matmuls,
-and every decoder layer but the last checkpointed. The second run must
-reach the first one's held-out loss within 2% and use less memory.
+Why it is needed: accumulation decouples the effective batch from what fits
+in memory, bf16 halves activation memory and doubles matmul throughput on
+real hardware, and activation checkpointing trades recomputation for
+memory. Showing that the combination matches fp32 within 2% is what
+justifies using it for the capstone.
 
-The solution defines the Pass 9 `train llama` verb of the `tinyllm` role
+The `train llama` verb of the `tinyllm` role
 ([`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md), "Verbs of later passes"). Every verb keeps the rules of
 that page: exit 2 on a usage error, the last stdout line is one JSON object.
 
@@ -36,12 +40,12 @@ that page: exit 2 on a usage error, the last stdout line is one JSON object.
                 [--baseline <run.json>] [--out <run.json>]
       A Llama (L7.9) from config.json (tl_tokenizer "bytes": ids are the
       file's bytes); the last tenth of the file is held out. Each step draws
-      K x B windows of T + 1 bytes from the first nine tenths with the
-      PCG32 (seed S), in micro-batch order, and makes one optimizer step
-      with the train_step_mixed (L11.1): AdamW (M10.3), clipping at 1.0,
-      precision bf16 with --bf16, else fp32; --checkpoint-activations runs
-      the decoder layers through the checkpoint_sequential. Python's
-      tracemalloc measures the peak of the training loop. Final line:
+      K x B windows of T + 1 bytes from the first nine tenths with PCG32
+      (seed S), in micro-batch order, and makes one optimizer step with
+      train_step_mixed (L11.1): AdamW (M10.3), clipping at 1.0, precision
+      bf16 with --bf16, else fp32; --checkpoint-activations runs the decoder
+      layers through checkpoint_sequential. Python's tracemalloc measures
+      the peak of the training loop. Final line:
       {"loss": the fp32 cross-entropy on 16 seeded held-out windows,
        "train_loss", "first_loss", "steps", "tokens", "precision",
        "micro_batch", "accum", "recompute", "peak_mem" (bytes), "params",
@@ -49,22 +53,25 @@ that page: exit 2 on a usage error, the last stdout line is one JSON object.
        |loss - base loss| / base loss, "peak_mem_ratio" = peak_mem / base
        peak_mem}; --out writes the same object to a file.
 
+Drawing the same windows in the same order for both runs is what makes the
+comparison fair: the only differences are precision, accumulation, and
+recompute.
+
 ## The capstone model, trained, evaluated, released through ModelRelease, and served
 
-includes it). Page: content/courses/build-an-llm/paths/course-p09-capstone-training/milestone.md (owned
-by the pass gate's author).
+The capstone model, end to end through the system's own entry points: it
+trains under the subprocess activity contract (dur.09), reaches the
+held-out bits per byte calibrated for its size, writes samples that pass
+its own seeded quality suite (craft.22), trains again as a durable TrainRun
+whose trace reaches `train.step`, ships through the ModelRelease workflow
+(dur.12) with its gates and canary, and is served by the gateway. The
+artifacts (specs, report, zoo table, samples, model card, ledger, ADRs) are
+under [`docs/capstone`](../../../../../course/solutions/docs/capstone/) and
+[`docs/MODEL_CARD.md`](../../../../../course/solutions/docs/MODEL_CARD.md);
+ethics.03 covers the model card and datasheet, and ethics.04 the safety
+rows the release gates on.
 
-The capstone model, end to end through the system's own entry points: it trains
-under the subprocess activity contract (dur.09), reaches the calibrated
-held-out bar for its tier, writes samples its own seeded quality suite
-(craft.22) passes, trains again as a durable TrainRun whose trace reaches
-train.step, ships through the ModelRelease workflow (dur.12) with its
-gates and canary, and is served by the gateway. The artifacts (specs,
-report, zoo table, samples, model card, ledger, ADRs) are C1's check, so
-C1 is in `requires`; so are dur.12, craft.22, L11.1, ethics.03 (the model
-card and datasheet), and ethics.04 (the safety rows the release gates on).
-
-The solution defines the these verbs ([`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md), "Verbs of later passes"):
+The verbs ([`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md), "Verbs of later passes"):
 
   {tinyllm} train --spec <file> --progress <file>
       The subprocess activity verb (spec/subprocess-activity.md): the run
@@ -72,7 +79,7 @@ The solution defines the these verbs ([`cli-roles.md`](../../../../../course/con
       checkpoints in ckpt/ with LATEST (formats/checkpoint.md). Final line:
       {"steps", "final_loss", "ckpt"}.
   {tinyllm} eval ppl --model <ckpt dir or model dir> --data <tokens.bin>
-      MS-L6's verb; a run's ckpt/ directory means its LATEST step. The
+      Pass 5's verb; a run's ckpt/ directory means its LATEST step. The
       final line holds "bpb" (and "ppl", "tokens").
   {tinyllm} eval --suite quality --model <dir> --seed S --samples N
       N seeded samples (seeds S to S + N - 1) from "Once upon a time",
@@ -83,27 +90,19 @@ The solution defines the these verbs ([`cli-roles.md`](../../../../../course/con
       Starts ModelRelease (dur.12) on a release spec; --approve sends the
       approve signal right after the start (unattended runs); with --wait
       the final line is {"workflow_id", "status", "outcome", "served"}.
-  {ctl} train --spec ... --id ... --wait --json   as fixed by MS-durable.
+  {ctl} train --spec ... --id ... --wait --json   as in Pass 8.
 
-The system.toml must declare [entry].tinyllm and [entry].ctl, the
-services of MS-durable (durable, worker) for the TrainRun steps, and
-[deploy] for the kind steps (release, serving, trace).
+Sizes: the training specs are in
+[`specs/c1`](../../../../../course/solutions/entry/specs/c1/tinystories-10m.json):
+`tinystories-10m.json` (the capstone), `tinystories-short.json` (a shorter
+run of the same model), `smoke.json` (about 1M parameters, for a quick end
+to end check), and `release.json` (the release spec). The held-out bars for
+each size are the mean plus three standard deviations of five seeded runs.
+The release uses the durable services of Pass 8 (durable, worker) for the
+TrainRun and the kind deploy of Pass 7 for release, serving, and traces.
 
-## Training at scale and the capstone: a model you trained, evaluated, released, and serve
-
-Pass 9 trains at scale and runs the capstone: mixed precision, gradient
-accumulation, and activation checkpointing that match fp32 in less memory
-(MS-L11), then a roughly 10M-parameter Llama on TinyStories, evaluated,
-released through the ModelRelease workflow, and served (MS-C1). The gate
-is those two plus the spiral invariant: the smoke steps of every earlier
-pass gate rerun, so the engine still streams the Pass 1 bigram and the
-earlier models still train.
-
-`requires` is every core Pass 9 stage of DESIGN 7.4 (the optional L11.2,
-L11.3, M10.5, and M10.6 are not required). craft.22 grades the model
-evals (rung R8) with its own artifact check, C1 its capstone artifacts.
-
-ci is "nightly", not "pr": MS-C1's steps train the capstone (smoke tier in
-the nightly train-smoke job, the full tier on the machine), so a PR run
-of this gate would train it too. MS-L11 alone stays a PR milestone
-(DEVIATIONS B112-11).
+Why it is needed: this is the first model the course trains that is worth
+serving. Training it as a durable workflow makes the long run restartable,
+the quality suite and safety evals are what a release must pass, and
+ModelRelease with a canary is how a new model reaches users without
+replacing a working one blindly.

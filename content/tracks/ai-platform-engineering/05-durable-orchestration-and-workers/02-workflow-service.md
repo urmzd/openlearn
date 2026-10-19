@@ -482,7 +482,7 @@ Full solution: [`server.go`](../../../../course/solutions/go/durable/server/serv
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | idempotent start on workflow id | Temporal workflow id reuse and conflict policies | allow a new run after a closed one, terminate the old one, or fail; Update-with-Start | Temporal docs, "Workflow Id Reuse Policy" |
 | one server, one lock | history shards | runs are partitioned over many history service hosts by workflow id | `temporalio/temporal`: `service/history` |

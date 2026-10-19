@@ -422,7 +422,7 @@ Full solution: [`cache.go`](../../../../course/solutions/go/gateway/cache/cache.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | exact-match response cache | semantic caches (GPTCache, Redis LangCache) | hits for paraphrases by embedding similarity, with the false-hit risk that brings | [GPTCache](https://github.com/zilliztech/GPTCache) (free) |
 | the gateway's response cache | provider prompt caching (Anthropic, OpenAI), the engine prefix cache (`L8.4`) | reuse of the prompt's KV, not the answer: works for sampled requests too | [vLLM automatic prefix caching](https://docs.vllm.ai/en/latest/features/automatic_prefix_caching.html) (free) |

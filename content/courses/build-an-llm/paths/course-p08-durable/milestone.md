@@ -1,44 +1,42 @@
 # What the system does after Pass 8
 
-**Pass result**: data pipeline and training run as workflows (CorpusBuild, TrainRun, EvalSuite) on their durable engine; durable and worker charts with KEDA; control-plane traces.
+**Pass result**: data pipeline and training run as workflows (CorpusBuild, TrainRun, EvalSuite) on the course's durable engine; durable and worker charts with KEDA; control-plane traces.
 
 Each capability below is built from the listed modules. The sections that follow give the commands the finished solution runs, what each one produces, and why each piece is needed. Everything from earlier passes keeps working.
 
 | What the system does | Built from |
 |---|---|
 | The durable engine runs workflows to completion through the CLI, locally and on kind. | `dur.01`, `dur.02`, `dur.03`, `dur.04`, `dur.05`, `dur.06`, `dur.07`, `dur.08`, `dur.09`, `data.09`, `dur.11`, `dep.06`, `obs.05`, `craft.21`, `ops.02`, `ops.03` |
-| Durable workflows: data and training runs survive worker failures | - |
-| The durable log survives leader kills and partitions on three Raft replicas. | `dur.10`, `MS-durable`, `ops.12` |
+| Optional depth: the durable log survives leader kills and partitions on three Raft replicas. | `dur.10`, `ops.12`, on top of the row above |
 
 
 ## Details
 
 ## The durable engine runs workflows to completion through the CLI, locally and on kind
 
-"MS-durable", 5.7 catalog). MS-P8 includes it. Page:
-content/courses/build-an-llm/paths/course-p08-durable/milestone.md (owned by the pass gate's author).
-
 The durable server, the worker, and the Python activities it execs run
 workflows to completion through its own CLI: a start is idempotent, the
 history is recorded, CorpusBuild produces the same corpus as the direct
-`{corpus} run` of MS-corpus, and a short TrainRun finishes. On kind the
+`{corpus} run` of Pass 3, and a short TrainRun finishes. On kind the
 durable StatefulSet and the KEDA-scaled workers (dep.06) carry a queue
 burst with control-plane traces (obs.05), and the drills durable-kill9
 (ops.02) and poison-task (ops.03) are resolved.
 
-The design's kill loop (500 tl.test.Append activities with SIGKILLs of
-{durable}, {worker}, and the Python children, exactly-once effects in the
-testkit `effects` sink, then CorpusBuild and TrainRun under kills with
-outputs equal to uninterrupted runs) uses the runner's `chaos` and `sink`
-step keys and the `effects` matcher (DESIGN 5.7). Section 4 runs all
-three: CorpusBuild under kills of both services, 500 appends of the
-worker's tl.test.Batch under kills of both, exactly once in the sink, and
-TrainRun under kills of the worker, with the steps and final loss of the
-uninterrupted run. The same invariants are checked one level down by the
-course tests in `requires`: dur.01 (KillLoop over the log), dur.03 (poison
-task, stale lease), dur.04 and dur.05 (KillLoop over a worker with the
-effects sink), dur.06 (kill the server mid-workflow and replay), dur.09
-(SIGKILL a worker mid-activity, resume from the checkpoint).
+The point of the pass is that failures do not change results. Under a kill
+loop (500 tl.test.Append activities with SIGKILLs of {durable}, {worker},
+and the Python children), every effect lands exactly once in an effects
+sink; CorpusBuild under kills of both services produces the same corpus as
+an uninterrupted run; and TrainRun under kills of the worker reaches the
+same steps and final loss. The same invariants hold one level down, in the
+modules themselves: dur.01 (a kill loop over the log), dur.03 (a poison
+task, a stale lease), dur.04 and dur.05 (a kill loop over a worker with the
+effects sink), dur.06 (the server killed mid-workflow and replayed), dur.09
+(a worker SIGKILLed mid-activity resumes from its checkpoint).
+
+Why it is needed: corpus builds and training runs take hours. Running them
+as durable workflows means a crash, a deploy, or a preempted node costs a
+retry from the last recorded step, not the whole run, and the history says
+exactly what happened.
 
 The solution defines the Pass 8 verbs of the `ctl` role ([`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md),
 "Verbs of later passes"). Every verb keeps the rules of that page: exit 2
@@ -79,7 +77,7 @@ CONTINUED_AS_NEW.
       RedriveDeadLetter. Final line: {"queue", "redriven"}.
   {ctl} data build --config <corpus toml> --id <workflow id> [--wait] [--json]
       Starts CorpusBuild (data.09) on the config. With --wait, the final
-      line is the CorpusBuild result: MS-corpus's RUN-<dataset>-<version>
+      line is the CorpusBuild result: Pass 3's RUN-<dataset>-<version>
       object (the same keys and values as `{corpus} run`) plus
       "workflow_id" and "status".
   {ctl} train --spec <file> --id <workflow id> [--wait] [--json]
@@ -90,7 +88,7 @@ CONTINUED_AS_NEW.
       the run directory's final.json, the same after a retry that resumed
       from the final checkpoint.
 
-The system.toml must declare:
+How the solution is wired (the entry points are under [`go/cmd`](../../../../../course/solutions/entry/go/cmd/durable/), the charts under [`deploy/helm`](../../../../../course/solutions/entry/deploy/helm/)):
   [entry].durable, [entry].worker, [entry].ctl
   [services.durable]  health = "http://127.0.0.1:{health_port}/healthz"; its
                       config template puts the WAL under {data}
@@ -103,43 +101,27 @@ The system.toml must declare:
                       20 steps, its data the tokens CorpusBuild wrote
                       (paths relative to the artifacts root:
                       "tokens/bytes/small/train-00000.bin")
-  [deploy]            as for MS-prod, plus services.durable =
+  [deploy]            as for Pass 7's production deploy, plus services.durable =
                       "statefulset/<system>-durable" and services.worker =
                       "deploy/<system>-worker" (dep.06); the durable NodePort
                       is 30733 (dep.02)
 
-## Durable workflows: data and training runs survive worker failures
-
-MS-durable covers durable workflows, corpus and training activities, charts,
-observability, and the required drills. The optional high-availability
-milestone MS-durable-ha is intentionally not a pass-gate dependency.
-Earlier pass-gate smoke steps rerun through the spiral invariant.
-
-## The durable log survives leader kills and partitions on three Raft replicas
-
-"MS-durable-ha", 5.7 catalog). Not part of the MS-P8 gate.
+## Optional depth: the durable log survives leader kills and partitions on three Raft replicas
 
 The durable server with `--replicas 3` (three nodes of the dur.10 Raft,
 talking tl.raft.v1) carries the durable kill loop: workflows run while the
 leader is killed and partitioned away, every acknowledged append survives,
 and the client history is linearizable.
 
-What runs today, and what does not. A local three-replica run needs every
-replica's raft port before the first starts (the runner allocates ports one
-service at a time and starts each before the next exists), and the kill
-loop needs the runner to SIGKILL a named service, cut links between
-services (testkit chaosproxy), record the history, and check it. None of
-that exists yet (DEVIATIONS B103-05), so this file holds:
-  - the steps that run now: dur.10's course tests carry the same checks
-    against the raft package in-process (a seeded simulation with
-    partitions, drops, reordering, crash-restarts, and a linearizability
-    check over the client history; a leader kill with 20 acknowledged
-    appends), and on kind the StatefulSet runs three Ready replicas that
-    complete a workflow through the NodePort;
-  - the proposed kill-loop steps, commented at the end, as the target of
-    the harness change.
+What is demonstrated, and what is not. dur.10's tests check the raft
+package in-process: a seeded simulation with partitions, drops, reordering,
+crash-restarts, and a linearizability check over the client history, and a
+leader kill with 20 acknowledged appends. On kind the StatefulSet runs
+three Ready replicas that complete a workflow through the NodePort. A full
+kill loop against three local replicas (killing a named replica and cutting
+links between them while workflows run) is not part of the solution yet.
 
-The system.toml, besides MS-durable's: on kind, the durable chart renders
+How the solution deploys it: on kind, the durable chart renders
 replicas: 3 with [durable].raft.enabled, raft.id from the pod ordinal, and
 the peers `<system>-durable-<i>.<system>-durable-headless:7234` (dep.06's
 headless Service). A follower answers a client RPC with UNAVAILABLE and the

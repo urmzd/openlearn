@@ -459,7 +459,7 @@ The suite's chaos test drives a seeded schedule of worker deaths and late answer
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | one queue per name, in one process | Temporal matching service | task queues partitioned over hosts, with forwarding between partitions | `temporalio/temporal`: `service/matching` |
 | every task through the queue | sticky task queues | a workflow's next task goes to the worker that has its state cached, so history is not replayed each time | Temporal "Sticky Execution" |

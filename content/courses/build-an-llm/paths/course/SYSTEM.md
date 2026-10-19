@@ -13,7 +13,6 @@ One system, called `forge` in the reference solutions, grown in passes. This pag
 | deploy | Docker, Helm, kind | [`entry/deploy/`](../../../../../course/solutions/entry/deploy/) | engine and gateway images, charts, a kind cluster with NodePorts 30080 and 30686, Jaeger | dep.00 |
 | docs | Markdown | [`docs/`](../../../../../course/solutions/docs/) | ADR-0001, the engine-crashloop runbook, postmortems | craft.02, ops.00 |
 | CI | GitHub Actions | [`entry/.github/workflows/ci.yml`](../../../../../course/solutions/entry/.github/workflows/ci.yml), [`entry/.githooks/`](../../../../../course/solutions/entry/.githooks/) | commit lint and native tests for every language | craft.01 |
-| manifest | TOML | [`system.toml`](../../../../../course/solutions/system.toml) | how the solution's entry points are built and started (build steps, then one command per role) | every pass |
 
 ```mermaid
 flowchart LR
@@ -38,7 +37,7 @@ Python and Rust exchange data through files: safetensors checkpoints, `tokenizer
 | Checkpoint | [`formats/safetensors.md`](../../../../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../../../../course/contracts/formats/config.schema.json) | L0.0 writes, L10.0 reads |
 | Tokenizer | [`formats/tokenizer.md`](../../../../../course/contracts/formats/tokenizer.md) (the `bytes` tokenizer) | L0.0, L10.0 |
 | Entry points | [`spec/cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md) | every role the system starts |
-| System manifest | [`config/system.schema.json`](../../../../../course/contracts/config/system.schema.json) | `system.toml` |
+| System manifest | [`config/system.schema.json`](../../../../../course/contracts/config/system.schema.json) | how a system declares its build steps and the command for each role |
 | Decision record | [`templates/ADR.md`](../../../../../course/contracts/templates/ADR.md) | craft.02 |
 
 ## The spiral

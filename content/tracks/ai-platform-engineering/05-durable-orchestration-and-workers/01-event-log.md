@@ -510,7 +510,7 @@ Testing every offset rather than one is what makes it a property: a bug that onl
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | segmented log | Temporal persistence (Cassandra, PostgreSQL, SQLite) | history shards so many servers write in parallel; history archival to blob storage | `temporalio/temporal`: `common/persistence` |
 | every event in memory | an index of offsets per stream, reads from disk, segment compaction | histories larger than RAM; deleting finished runs | Kafka's log segments and indexes, `kafka/log` |

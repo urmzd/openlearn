@@ -528,7 +528,7 @@ Full solution: [`workflow.go`](../../../../course/solutions/go/durable/workflow/
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | replay from event 1 on every task | sticky caches | the worker keeps a run's coroutine between tasks and replays nothing; the server sends only new events | Temporal "Sticky Execution" |
 | one coroutine per workflow | full SDK command state machines | `workflow.Go`, selectors, child workflows, cancellation scopes, each with its own state machine | `temporalio/sdk-go`: `internal/internal_decision_state_machine.go` |

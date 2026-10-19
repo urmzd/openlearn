@@ -1,40 +1,32 @@
-<!-- ol:module M07.1 -->
 # Categorical sampling: inverse CDF, Gumbel-max, alias method
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M07.1` · build · Python · Pass 3 · 3 to 4 h |
-| **You build** | `python/tinyllm/prob/sampling.py`: `sample_categorical`, `gumbel_noise`, `gumbel_max`, `AliasTable` (`prob`, `alias`, `sample`), `exponential_icdf`, `poisson_arrivals` |
+| **Module** | `M07.1` · build · Python · Pass 3 · 1.5 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/prob/sampling.py`](../../../../course/solutions/python/tinyllm/prob/sampling.py): `sample_categorical`, `gumbel_noise`, `gumbel_max`, `AliasTable` (`prob`, `alias`, `sample`), `exponential_icdf`, `poisson_arrivals` |
 | **Contract** | [`course/contracts/py/tinyllm/prob/sampling.pyi`](../../../../course/contracts/py/tinyllm/prob/sampling.pyi) · the sampler's op order: [`spec/sampling.md`](../../../../course/contracts/spec/sampling.md) · the generator: [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md) |
-| **Tests** | `course/tests/M07.1/` (what they check: section 4) |
-| **Needs** | no code from earlier modules · reading: `M06.3` PCG32 (your `rng`), `M07.0` random variables and the uniform, `M00.1` logs |
-| **Used by** | later: `L8.1` the sampler's step 11 · `L2.3` word2vec negative sampling · `L6.2` BERT's 80/10/10 masking · `M07.4` and `M07.6` resampling · `load.01` re-implements the Poisson schedule in Go · later: `L6.3` |
-| **Milestone** | `MS-P3` (tokens and data) |
+| **Needs** | no code from earlier modules · reading: `M06.3` PCG32 (the `rng`), `M07.0` random variables and the uniform, `M00.1` logs |
+| **Used by** | later: `L8.1` the sampler's step 11 · `L2.3` word2vec negative sampling · `L6.2` BERT's 80/10/10 masking · `M07.4` and `M07.6` resampling · `load.01` re-implements the Poisson schedule in Go · later: `L6.3`; part of the Pass 3 tokens-and-data layer |
 | **Optional depth** | Devroye, *Non-Uniform Random Variate Generation* (1986), ch. 2 and 3; Vose, "A Linear Algorithm for Generating Random Numbers with a Given Distribution" (1991) |
 
 ## Key Takeaways
 
-- The inverse CDF turns one uniform $u$ into id $i$ exactly when $F_{i-1} \le u < F_i$, an interval of length $p_i$; strict $<$ keeps zero-probability ids out (`test_hand_example_inverse_cdf`, `test_inverse_cdf_exact_enumeration`).
-- Adding independent Gumbel noise $-\log(-\log U)$ to logits and taking the argmax samples $\mathrm{softmax}$ exactly, with no normalization and no running sum (`test_gumbel_max_distribution_is_softmax`).
-- The alias method spends $O(n)$ once to split the distribution into $n$ equal columns of two ids each, then draws in $O(1)$ from one uniform (`test_alias_table_encodes_the_distribution`, `test_alias_sample_chi_square`).
-- Every sampler here is a deterministic function of its uniforms, so the same seed gives the same draws in Python, Rust, and Go (`test_alias_one_uniform_per_draw`, `test_hand_example_poisson_arrivals`).
+- The inverse CDF turns one uniform $u$ into id $i$ exactly when $F_{i-1} \le u < F_i$, an interval of length $p_i$; strict $<$ keeps zero-probability ids out.
+- Adding independent Gumbel noise $-\log(-\log U)$ to logits and taking the argmax samples $\mathrm{softmax}$ exactly, with no normalization and no running sum.
+- The alias method spends $O(n)$ once to split the distribution into $n$ equal columns of two ids each, then draws in $O(1)$ from one uniform.
+- Every sampler here is a deterministic function of its uniforms, so the same seed gives the same draws in Python, Rust, and Go.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M07.1              # stubs sampling.py into your repo
-ol tests M07.1              # read the test catalog first
-ol check M07.1              # exit code is the verdict
-ol diff  M07.1              # after passing: your code against the reference
-```
+Sections 1 and 2 derive the inverse CDF, Gumbel-max, the alias method, and Poisson arrivals from first principles, and section 3 works each by hand. Section 4 fixes the interface, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Your tracer samples text with three lines buried inside `BigramLM.sample`: a numpy generator, a cumulative sum, a search. Pass 3 needs sampling in places that line cannot serve. word2vec (`L2.3`) draws millions of negative words from a 50 000-word distribution, and a cumulative sum per draw is 50 000 additions each time. BERT's masking (`L6.2`) and the bootstrap (`M07.4`) need many small draws with a known generator position. The sampler (`L8.1`) must return the same token as your Rust engine (`L10.1`) for the same seed, which only works if the last step, uniform to id, is pinned down to the comparison (`spec/sampling.md`, step 11). And the load generator (`load.01`) needs request arrival times that look like real traffic. This module turns uniforms into draws three exact ways, each with a different cost, and makes each one a pure function of its uniforms.
+The tracer samples text with three lines buried inside `BigramLM.sample`: a numpy generator, a cumulative sum, a search. Pass 3 needs sampling in places that line cannot serve. word2vec (`L2.3`) draws millions of negative words from a 50 000-word distribution, and a cumulative sum per draw is 50 000 additions each time. BERT's masking (`L6.2`) and the bootstrap (`M07.4`) need many small draws with a known generator position. The sampler (`L8.1`) must return the same token as the Rust engine (`L10.1`) for the same seed, which only works if the last step, uniform to id, is pinned down to the comparison (`spec/sampling.md`, step 11). And the load generator (`load.01`) needs request arrival times that look like real traffic. This module turns uniforms into draws three exact ways, each with a different cost, and makes each one a pure function of its uniforms.
 
 ## 2. Principles
 
@@ -49,7 +41,7 @@ Your tracer samples text with three lines buried inside `BigramLM.sample`: a num
 | $\lambda$ | a rate: events per unit time | `float` |
 | $T \sim \mathrm{Exp}(\lambda)$ | an exponential waiting time, $P(T > t) = e^{-\lambda t}$ | `float` |
 
-**Randomness comes from outside.** None of these functions creates a generator. They take a uniform $u$, or an `rng` with a `uniform()` method (your PCG32 from `M06.3`, which turns two 32-bit draws into one float64 in $[0, 1)$). So each is a plain function from uniforms to outcomes: the same uniforms give the same outcomes in every language, and a test can feed chosen uniforms to check edge cases that a real generator would hit once in $2^{53}$ draws.
+**Randomness comes from outside.** None of these functions creates a generator. They take a uniform $u$, or an `rng` with a `uniform()` method (the PCG32 from `M06.3`, which turns two 32-bit draws into one float64 in $[0, 1)$). So each is a plain function from uniforms to outcomes: the same uniforms give the same outcomes in every language, and a test can feed chosen uniforms to check edge cases that a real generator would hit once in $2^{53}$ draws.
 
 **Inverse CDF (discrete).** Lay the probabilities end to end on $[0, 1)$: id $i$ owns the interval $[F_{i-1}, F_i)$, whose length is $p_i$. Draw $u$ and return the id whose interval contains it, the first $i$ with $u < F_i$. Then
 
@@ -63,7 +55,7 @@ $$t = F^{-1}(u) = -\frac{\log(1 - u)}{\lambda}.$$
 
 Write it with `log1p(-u)`, which is accurate when $u$ is tiny, and note $u = 0$ gives $t = 0$, never $\log 0$. (Using $-\log(u)/\lambda$ is the same distribution, since $1 - U$ is uniform too, but a different schedule from the same seed, and $u = 0$ breaks it.)
 
-**Poisson arrivals.** Requests that arrive independently at an average rate $\lambda$ have independent $\mathrm{Exp}(\lambda)$ gaps. Adding gaps until the time passes the horizon $H$ gives the arrival times on $[0, H)$; their count is Poisson with mean $\lambda H$ and variance $\lambda H$. This is the open-loop schedule `load.01` replays against your gateway.
+**Poisson arrivals.** Requests that arrive independently at an average rate $\lambda$ have independent $\mathrm{Exp}(\lambda)$ gaps. Adding gaps until the time passes the horizon $H$ gives the arrival times on $[0, H)$; their count is Poisson with mean $\lambda H$ and variance $\lambda H$. This is the open-loop schedule `load.01` replays against the gateway.
 
 **Gumbel-max.** Draw independent $G_i = -\log(-\log U_i)$ and return $\arg\max_i (z_i + G_i)$. The Gumbel CDF is $P(G \le g) = \exp(-e^{-g})$, with density $e^{-g}\exp(-e^{-g})$. Id $k$ wins when $z_k + G_k = x$ and every other $z_i + G_i < x$:
 
@@ -110,7 +102,7 @@ A draw with $u = 0.13$: $x = 0.65$, column 0, coin $0.65 \ge 0.5$, so the alias:
 
 **Poisson arrivals.** Rate $\lambda = 2$, horizon 2, uniforms $0.5, 0.75, 0.9$. Gaps $-\log(1 - u)/2$: $\ln 2 / 2 = 0.3466$, $\ln 4 / 2 = 0.6931$, $\ln 10 / 2 = 1.1513$. Times: 0.3466, 1.0397, then 2.1910, which is past the horizon: two arrivals, three uniforms used.
 
-These numbers are the first cases in section 4: `test_hand_example_inverse_cdf`, `test_hand_example_alias_table`, `test_hand_example_gumbel_max`, and `test_hand_example_poisson_arrivals`.
+These numbers are the first four cases in section 4.
 
 ## 4. The interface
 
@@ -129,7 +121,7 @@ def exponential_icdf(u: float, rate: float) -> float               # -log1p(-u) 
 def poisson_arrivals(rate: float, horizon: float, rng: UniformSource) -> NDArray
 ```
 
-`UniformSource` is anything with `uniform() -> float`: your PCG32, or in the tests the frozen one, or a script of fixed values. `probs` must be 1-D, finite, non-negative, and sum to 1 within $10^{-9} n + 10^{-12}$; anything else is a `ValueError`, as is $u \notin [0, 1)$.
+`UniformSource` is anything with `uniform() -> float`: the PCG32 of `M06.3`, or a script of fixed values when checking edge cases. `probs` must be 1-D, finite, non-negative, and sum to 1 within $10^{-9} n + 10^{-12}$; anything else is a `ValueError`, as is $u \notin [0, 1)$.
 
 ### What the tests check
 

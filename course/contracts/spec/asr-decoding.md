@@ -49,7 +49,11 @@ Recorded-logit parity must check it independently of the model adapter.
 
 ## Window search
 
-`DecodeOptions` defaults match DESIGN.md. Additional explicit bounds are
+`DecodeOptions` defaults follow the Whisper reference policy (see
+[`decode.py`](../../solutions/python/tinyllm/speech/decode.py)): temperatures
+`(0.0, 0.2, 0.4, 0.6, 0.8, 1.0)`, `best_of=5`, `patience=1.0`,
+`compression_ratio_threshold=2.4`, `logprob_threshold=-1.0`,
+`no_speech_threshold=0.6` and `max_initial_timestamp=1.0`. Additional explicit bounds are
 `max_tokens=224`, `suppress_tokens=(-1,)` and `suppress_blank=True`. Minus one
 expands to the tokenizer's non-speech list. SOT, previous-context, task and
 no-speech control tokens are always suppressed during generation. The initial
@@ -99,7 +103,7 @@ selected temperature above 0.5 clears that history before the next window.
 ## Tokenizer and command line
 
 `WhisperTokenizer.from_pretrained` reads local HF `tokenizer.json` and optional
-`generation_config.json`, reusing the learner's byte BPE. It validates every
+`generation_config.json`, reusing the course's byte BPE. It validates every
 byte symbol and all 1501 contiguous timestamp ids. Both no-speech spellings,
 `<|nospeech|>` and HF's `<|nocaptions|>`, are supported. Template post-processing
 is not executed: the decode policy constructs control sequences explicitly.
@@ -150,11 +154,10 @@ same recordings without re-running an encoder or downloading model weights.
 
 ## Completion status
 
-L14.4 is registered with public contracts, a six-beat chapter, semantic mutants
-and generated-transcript evidence consumers. Full course verification remains
-the completion gate. Independent timestamp and greedy/beam fixtures pass;
-real-checkpoint tokenizer and long-form transcript parity require separate
-oracle evidence. Registration does not establish production ASR accuracy.
+L14.4 has public contracts, a chapter, and a reference solution. The timestamp
+rules and greedy and beam search are checked against independent recorded
+cases; real-checkpoint tokenizer and long-form transcript parity need separate
+evidence from a real model. None of this establishes production ASR accuracy.
 
 ### Teacher-forced logits CLI
 
@@ -172,6 +175,6 @@ oracle evidence. Registration does not establish production ASR accuracy.
 
 `tinyllm eval asr --model DIR --data MANIFEST.jsonl [--language CODE] [--seed 0] [--bootstrap 1000]` loads one Whisper model and tokenizer, then transcribes every manifest item. Each JSONL row has `audio` (a WAV path relative to the manifest, or absolute) and `text` (the reference transcript). References must each contain normalized words so every bootstrap resample has a defined denominator. Empty corpora, missing WAV files, and malformed rows fail before model loading.
 
-Output reports pooled `wer`, `cer`, utterance-bootstrap `wer_ci` (95% percentile interval), `items`, `reference_words`, `normalizer`, `seed`, and `bootstrap`. Resampling operates on word-edit count rows; it does not average per-item WER or rerun inference. The seed controls decoding and bootstrap reproducibility. `course/tests/integration/test_asr_corpus_cli.py` checks orchestration and pooled interval semantics; real-checkpoint accuracy requires the separate nightly oracle gate.
+Output reports pooled `wer`, `cer`, utterance-bootstrap `wer_ci` (95% percentile interval), `items`, `reference_words`, `normalizer`, `seed`, and `bootstrap`. Resampling operates on word-edit count rows; it does not average per-item WER or rerun inference. The seed controls decoding and bootstrap reproducibility. Real-checkpoint accuracy needs a separate run against a real model.
 
-Both model transcription and recorded-logit playback include top-level `ids`: all segment token ids concatenated in segment order, including timestamp tokens. This is the input envelope for the milestone `tokens-equal` matcher.
+Both model transcription and recorded-logit playback include top-level `ids`: all segment token ids concatenated in segment order, including timestamp tokens. This is the envelope a token-for-token comparison of two transcripts reads.

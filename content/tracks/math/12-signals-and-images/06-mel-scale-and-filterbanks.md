@@ -133,7 +133,7 @@ def hz_to_mel(f: NDArray, scale: Literal["slaney", "htk"] = "slaney") -> NDArray
 The constants are librosa's, named the way librosa names them, so that the derived edges agree to $10^{-12}$. `_MIN_LOG_MEL` is computed rather than written as `15.0` so that the two pieces meet exactly in floating point. `mel_to_hz` is the same function inverted piece by piece: $f = (200/3)\,m$ below 15 mel and $f = 1000\,e^{\text{\_LOGSTEP}\,(m - 15)}$ above, with overflow warnings silenced for the same reason. Trace the hand example: `hz_to_mel(6400)` is $15 + \ln 6.4 \cdot 27/\ln 6.4 = 42$.
 
 ```python
-def mel_filterbank(sr, n_fft, n_mels, fmin=0.0, fmax=None, scale="slaney", norm="slaney"):
+def mel_filterbank(sr, n_fft, n_mels, fmin=0.0, fmax=None, scale="slaney", norm="slaney"):  # annotations elided
     # ... validation: positive sizes, 0 <= fmin < fmax, norm in ("slaney", None)
     # Bin k sits at k sr / n_fft Hz (numpy's rfftfreq, written its way).
     fft_hz = np.arange(n_fft // 2 + 1) * (1.0 / (n_fft * (1.0 / sr)))
@@ -159,7 +159,7 @@ def mel_filterbank(sr, n_fft, n_mels, fmin=0.0, fmax=None, scale="slaney", norm=
 Two details are there for bit-level parity, not for the math. The bin frequencies are written as `k * (1 / (n_fft * (1 / sr)))`, the exact expression `np.fft.rfftfreq` evaluates, instead of the algebraically equal `k * sr / n_fft`; the two round differently in the last bit, and the golden check against librosa is at $10^{-12}$. And the triangle is built from the `ramps` matrix and `fdiff` the way librosa builds it, so the same subtractions happen in the same order. The validation `0 <= fmin < fmax` matters: with `fmin == fmax` every edge is equal, `fdiff` is 0, and every row is NaN. For Whisper the call is `mel_filterbank(16000, 400, 80)`: 201 columns, 82 edges from 0 to 8000 Hz.
 
 ```python
-def power_to_db(p, ref=1.0, amin=1e-10, top_db=80.0):
+def power_to_db(p, ref=1.0, amin=1e-10, top_db=80.0):  # annotations elided
     s = np.asarray(p)
     if np.iscomplexobj(s):                        # a complex STFT, not a power: refuse
         raise ValueError("power_to_db: take power(S) of a complex spectrum first")
@@ -274,4 +274,4 @@ They are equal in exact arithmetic but round differently in float64. That is the
 | `mel_filterbank` | `librosa.filters.mel` | the same filters, cached; `norm` as any $L^p$ norm | `librosa/filters.py` |
 | `log_mel_whisper` | HF `WhisperFeatureExtractor` | the full frontend in numpy or torch, batched, with padding to 30 s | `transformers/models/whisper/feature_extraction_whisper.py` |
 | `power_to_db` | `torchaudio.transforms.AmplitudeToDB` | the same floor and `top_db` on tensors | `torchaudio/functional/functional.py` |
-| filters in Rust | the engine's `tl-engine/src/mm/audio.rs` (`L15.1`) | log-mel from the committed filter file, proven against this module's fixtures | `L15.1` chapter |
+| filters in Rust | the engine's `tl-engine/src/mm/audio.rs` (`L15.1`) | log-mel from the committed filter file, proven against this module's librosa-matched values | `L15.1` chapter |

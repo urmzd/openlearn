@@ -345,7 +345,7 @@ Full solution: [`activity.go`](../../../../course/solutions/go/durable/activity/
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | heartbeat details | Temporal heartbeat details | resumable activities with typed progress, throttled heartbeats | Temporal "Activity Heartbeats" |
 | a worker reports each attempt | asynchronous activity completion | an external system completes the activity later by its task token | Temporal "Asynchronous Activity Completion" |

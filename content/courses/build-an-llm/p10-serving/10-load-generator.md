@@ -488,7 +488,7 @@ Both 0.5. The 429s count in `requests` and `errors`, are kept out of every histo
 | Direction | Module | How it uses this |
 |---|---|---|
 | Forward | `load.02` | optional: compares two reports: the histograms become samples for its permutation test, and `rng.Stream` shuffles them |
-| Forward | `ag.07`, `ag.09`, `ag.12` | load runs against the retrieval and evaluation services |
+| Forward | `ag.07`, `ag.09`, `ag.12` | the Go PCG32 (`rng.Seeded`, `rng.Stream`, `Below`, `Float64`): k-means++ seeding in retrieval, the bootstrap of the eval runner, and the permutation test of A/B experiments |
 
 The `{loadgen}` entry point is the load behind every system-level run: a burst of 64 against the engine, the gateway run, the production SLO run on kind, and the `ops.01` and `ops.09` incident walkthroughs; `L10.7`'s server-side histograms are the other side of the same measurement.
 
