@@ -48,7 +48,7 @@ With families and names in place, you can write the allowlist: a policy in data,
 1. **Unknown is refused.** `NOASSERTION` is refused explicitly, and `NONE` can never be allowed.
 2. **No NC or ND in training.** The model's weights are released under a license the project chooses; a non-commercial term forbids commercial use of what is built from the data and a no-derivatives term forbids adaptations, so neither can be in a training set. Evaluation use is a judgment call.
 3. **Obligations are recorded.** Every allowed attribution license (`CC-BY*`, `ODC-By`) lists `attribution`; every ShareAlike license (`*-SA-*`, `CDLA-Sharing`) lists `share-alike`. The datasheet in [Datasheet and model card](../03-model-and-data-cards/01-datasheet-and-model-card.md) prints them from here.
-4. **The system's own sources are allowed for training.** TinyStories, the corpus of the [first capstone](../../build-an-llm/capstones/01-tinystories.md) in *Build Your Own LLM System*, is `CDLA-Sharing-1.0`, and the course fixtures are `Apache-2.0`. Refusing them is a valid policy, but then that corpus cannot be built.
+4. **The system's own sources are allowed for training.** TinyStories, the corpus of the [first capstone](../../build-an-llm/capstones/01-tinystories.md) in *Build Your Own LLM System*, is `CDLA-Sharing-1.0`, and the repository's test fixtures are `Apache-2.0`. Refusing them is a valid policy, but then that corpus cannot be built.
 
 ## The ledger
 
