@@ -1,35 +1,20 @@
-# Floating point problem set, part a: representation, rounding, cancellation
+# Problem set A: representation, rounding, and cancellation
 
-## Overview
+A bigram that computes its loss in float64 numpy on tiny logits never meets a numerical problem. A trained model does. Its logits reach the hundreds, so `exp` overflows float32 at about $88.7$ and the naive softmax returns NaN. Its weights are stored in bf16 (the SmolLM2 checkpoint loaded in [The Llama-family model: config, weight loading, and download](../../build-an-llm/p07-modern-block/09-llama-family-model.md) in *Build Your Own LLM System* is), so rounding must match PyTorch exactly or parity checks fail in the last bit. Its evaluation sums $10^7$ per-token losses ([The evaluation harness and the model zoo](../../build-an-llm/p06-objectives/07-lm-evaluation-harness-and-the-model-zoo.md)), and a float32 accumulator silently stops growing.
 
-| | |
-|---|---|
-| **Module** | `S-M09a` · solve · none · Pass 2 · 3 to 4 h |
-| **Solution** | worked answers to all 20 parts and the proof of q11, in section 4 under each problem |
-| **Contract** | none: a pen and paper set |
-| **Needs** | `S-M05` (proof habits). Reading: the [Numerical Methods and Floating Point topic](README.md) and `M03.1` section 2.6 (why float sums depend on order) |
-| **Used by** | no call site (a solve set). Read it with `M09.1` (`decompose_f32`, `ulp`, `round_to_bf16`, `round_to_fp16`) and `M09.2` (`logsumexp`, `softmax`, `kahan_sum`, `pairwise_sum`); part b, `S-M09b` in Pass 6, covers error bounds, Newton, polynomial approximation, and low precision |
-| **Optional depth** | Goldberg, "What Every Computer Scientist Should Know About Floating-Point Arithmetic" (1991); Higham, *Accuracy and Stability of Numerical Algorithms*, ch. 1 to 4 |
+[IEEE 754 anatomy, ulps, and round to nearest even](01-ieee-754.md) emulates bf16 and fp16 rounding, and [Stable numerics](02-stable-numerics.md) writes the stable reductions every later operation calls. This pen-and-paper set makes sure you can predict each of those failures by hand before you read the code that avoids it. It covers representation and rounding (q1 to q5) and cancellation and stable rewrites (q6 to q11, ending with a short proof). [Problem set B](91-problem-set-b.md) continues with error bounds, Newton's method, polynomial approximation, and low precision.
 
-## Key Takeaways
+The proof in q11 uses the habits of [Discrete math 1 problem set](../05-discrete-math-1/90-problem-set.md), and q10 relies on the fact, from [Vectors, matrices, row-major layout, and matmul](../03-linear-algebra/01-vectors-matrices-and-matmul.md), that float sums depend on their order. Work each problem before opening its answer. Each answer gives the final value, the derivation, and the common wrong answer with the reason it is wrong. Exact values are written as powers of two or fractions.
 
-- A float is sign, biased exponent, and fraction; its value is $(-1)^s \cdot 1.f \cdot 2^{e - \text{bias}}$, and the gap between neighbors doubles every binade (q1, q2).
-- bf16 keeps float32's 8 exponent bits and drops 16 fraction bits, so it has float32's range and a gap of $2^{-7}$ at 1; fp16 has a gap of $2^{-10}$ but overflows at 65504 (q2, q3).
-- Round to nearest, ties to even, sends an exact halfway value to the neighbor with an even last bit, which is what makes `round_to_bf16` agree with torch bit for bit (q4).
-- Subtracting nearly equal numbers loses every digit they share; the fix is an algebraically equal formula that never subtracts them (q6, q7, q9).
-- Shifting softmax and log-sum-exp by the maximum changes nothing mathematically and removes overflow (q8, q11).
+> **Learning objectives**
+> - Decompose a number into float32 fields and compute the gap between neighbouring floats in float32, bf16, and fp16.
+> - Round exact ties to even in bf16 and recognise which decimal values are not representable in binary.
+> - Predict when cancellation, overflow, or absorption in a running sum destroys a result, and rewrite the formula to avoid it.
+> - Prove that softmax is shift invariant and that the max shift prevents overflow.
 
-## How to read this chapter
+## The facts every problem uses
 
-Section 2 states the facts every problem uses, and section 3 works two sibling problems by hand. Section 4 gives each problem followed by its worked answer in a collapsed block: the final value, the derivation, and the common wrong answer with the reason it is wrong. Try each problem before opening its answer. Exact values are written as powers of two or fractions.
-
----
-
-## 1. Why now
-
-The Pass 1 bigram computed its loss in float64 numpy on tiny logits, and nothing went wrong. In Pass 2 the numbers stop being friendly. Logits of a trained model reach the hundreds, so `exp` overflows float32 at about $88.7$ and the naive softmax returns NaN. Weights are stored in bf16 (`L7.9` loads SmolLM2's), so rounding must match PyTorch exactly or parity checks fail in the last bit. Evaluation sums $10^7$ per-token losses (`L6.7`), and a float32 accumulator silently stops growing. `M09.1` emulates bf16 and fp16 rounding and `M09.2` writes the stable reductions every later op calls. This set makes sure you can predict each failure by hand before reading the code that avoids it.
-
-## 2. Principles
+These are the symbols used in the problems. Note that here $p$ counts *stored* fraction bits, so the unit roundoff is $2^{-(p+1)}$.
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -41,11 +26,13 @@ The Pass 1 bigram computed its loss in float64 numpy on tiny logits, and nothing
 | $u$ | unit roundoff, $2^{-(p+1)}$: the largest relative rounding error | float |
 | $\mathrm{LSE}(x)$ | $\log \sum_i e^{x_i}$ | scalar |
 
-### 2.1 Representation
+### Representation
 
 A **normal** binary float with $p$ fraction bits represents
+
 $$x = (-1)^s \cdot \left(1 + \frac{f}{2^p}\right) \cdot 2^{\,e - \text{bias}}, \qquad 1 \le e \le 2^{w} - 2,$$
-where $w$ is the exponent width. The leading 1 is implicit (not stored). The exponent field $e = 0$ holds zero and the **subnormals** $0.f \cdot 2^{1 - \text{bias}}$, which fill the gap below the smallest normal $2^{1 - \text{bias}}$; $e = 2^w - 1$ holds $\pm\infty$ ($f = 0$) and NaN ($f \ne 0$). To decompose a number, write it as $\pm 1.\text{something} \times 2^E$ in binary: $-6.5 = -110.1_2 = -1.101_2 \times 2^2$, so $s = 1$, $e = 2 + 127 = 129$, and the fraction bits are $101$ followed by 20 zeros, the integer $5 \cdot 2^{20}$.
+
+where $w$ is the exponent width. The leading 1 is implicit (not stored). The exponent field $e = 0$ holds zero and the **subnormals** $0.f \cdot 2^{1 - \text{bias}}$, which fill the gap below the smallest normal $2^{1 - \text{bias}}$; $e = 2^w - 1$ holds $\pm\infty$ ($f = 0$) and NaN ($f \ne 0$). To decompose a number, write it as $\pm 1.\text{something} \times 2^E$ in binary: $-6.5 = -110.1_2 = -1.101_2 \times 2^2$, so $s = 1$, $e = 2 + 127 = 129$, and the fraction bits are $101$ followed by 20 zeros, the integer $5 \cdot 2^{20}$. The three formats compare as follows:
 
 | Format | Exponent bits | Fraction bits $p$ | Bias | Gap at 1 ($2^{-p}$) | Largest finite |
 |---|---|---|---|---|---|
@@ -55,32 +42,33 @@ where $w$ is the exponent width. The leading 1 is implicit (not stored). The exp
 
 bf16 is the top 16 bits of a float32, so converting is a rounding of the low 16 bits. Within one **binade** $[2^E, 2^{E+1})$ the floats are equally spaced with gap $\mathrm{ulp} = 2^{E - p}$, and the gap doubles at each power of two: the integers above $2^{24}$ are not all float32 values, and above $10^8$ float32's gap is 8.
 
-### 2.2 Rounding
+### Rounding
 
 Every arithmetic result is rounded to a representable value. **Round to nearest, ties to even (RNE)**, the IEEE 754 default, picks the nearest float and, when the exact result is halfway between two, the one whose last fraction bit is 0. Ties to even avoids the upward drift that "round half up" would add over many operations. The relative error of one rounding is at most the **unit roundoff** $u = 2^{-(p+1)}$, half the gap at 1: $\mathrm{fl}(x) = x(1 + \delta)$ with $\lvert \delta \rvert \le u$. Decimal fractions such as $0.1$ have infinite binary expansions, because their denominator has the factor 5, so they are always rounded.
 
-### 2.3 Cancellation
+### Cancellation
 
-Subtraction of two floats is exact when they are within a factor 2 of each other (Sterbenz), so the damage is never the subtraction itself: it is that the operands already carry rounding errors from earlier steps, and subtracting nearly equal numbers cancels their shared leading digits and leaves those errors as the whole result. $\sqrt{10^8 + 1} - \sqrt{10^8}$ in float32 is 0 because $10^8 + 1$ already rounded to $10^8$. The cure is an algebraically equal form that does not subtract nearly equal quantities: multiply by the conjugate, $\sqrt{x+1} - \sqrt{x} = \frac{1}{\sqrt{x+1} + \sqrt{x}}$; use $1 - \cos x = 2\sin^2(x/2)$; compute a variance from deviations rather than from $E[x^2] - E[x]^2$.
+Subtraction of two floats is exact when they are within a factor 2 of each other (Sterbenz), so the damage is never the subtraction itself. It is that the operands already carry rounding errors from earlier steps, and subtracting nearly equal numbers cancels their shared leading digits and leaves those errors as the whole result. $\sqrt{10^8 + 1} - \sqrt{10^8}$ in float32 is 0 because $10^8 + 1$ already rounded to $10^8$. The cure is an algebraically equal form that does not subtract nearly equal quantities: multiply by the conjugate, $\sqrt{x+1} - \sqrt{x} = \frac{1}{\sqrt{x+1} + \sqrt{x}}$; use $1 - \cos x = 2\sin^2(x/2)$; compute a variance from deviations rather than from $E[x^2] - E[x]^2$.
 
-### 2.4 Overflow and the max shift
+### Overflow and the max shift
 
-$e^x$ overflows float32 above $\ln(3.4 \times 10^{38}) \approx 88.7$ and float64 above about $709.8$; $\infty/\infty$ is NaN. Softmax and log-sum-exp are unchanged by subtracting a constant from every input (q11), so subtracting $m = \max_i x_i$ keeps every exponent at most 0:
+$e^x$ overflows float32 above $\ln(3.4 \times 10^{38}) \approx 88.7$ and float64 above about $709.8$, and $\infty/\infty$ is NaN. Softmax and log-sum-exp are unchanged by subtracting a constant from every input (q11), so subtracting $m = \max_i x_i$ keeps every exponent at most 0:
+
 $$\mathrm{LSE}(x) = m + \log \sum_i e^{x_i - m}, \qquad \mathrm{softmax}(x)_i = \frac{e^{x_i - m}}{\sum_j e^{x_j - m}} .$$
 
-### 2.5 Summation
+### Summation
 
-Adding a small number to a large running sum rounds the small number away when it is below half a gap: in float32, $1 + 10^{-8} = 1$ because the gap at 1 is $2^{-23} \approx 1.2 \times 10^{-7}$. A long sum then stops growing. **Kahan summation** carries a compensation term that captures the low-order bits each addition drops and feeds them back; **pairwise summation** adds in a balanced tree so that every partial sum is of similar size. `M09.2` implements both.
+Adding a small number to a large running sum rounds the small number away when it is below half a gap: in float32, $1 + 10^{-8} = 1$ because the gap at 1 is $2^{-23} \approx 1.2 \times 10^{-7}$. A long sum then stops growing. **Kahan summation** carries a compensation term that captures the low-order bits each addition drops and feeds them back; **pairwise summation** adds in a balanced tree so that every partial sum is of similar size. [Stable numerics](02-stable-numerics.md) implements both.
 
-## 3. Worked example by hand
+## Two worked examples
 
-This is a sibling of q1 and q6, not one of the problems in section 4.
+Before the problems, here are two siblings of q1 and q6, worked in full.
 
-**Decompose $0.15625$ as float32.** $0.15625 = 5/32 = 101_2 \times 2^{-5} = 1.01_2 \times 2^{-3}$. Sign $s = 0$. Exponent $e = -3 + 127 = 124$. Fraction bits: $01$ followed by 21 zeros, so $f = 2^{21} = 2097152$. Answer: `[0, 124, 2097152]`. Check: $(1 + 2^{21}/2^{23}) \cdot 2^{-3} = 1.25/8 = 0.15625$.
+First, decompose $0.15625$ as float32. $0.15625 = 5/32 = 101_2 \times 2^{-5} = 1.01_2 \times 2^{-3}$. The sign is $s = 0$, the exponent $e = -3 + 127 = 124$, and the fraction bits are $01$ followed by 21 zeros, so $f = 2^{21} = 2097152$. The answer is `[0, 124, 2097152]`. Check: $(1 + 2^{21}/2^{23}) \cdot 2^{-3} = 1.25/8 = 0.15625$.
 
-**Cancellation.** Evaluate $g(x) = (1 + x) - 1$ in float32 at $x = 3 \cdot 10^{-8}$. The gap at 1 is $2^{-23} \approx 1.19 \times 10^{-7}$, so $1 + x$ lies between $1$ and $1 + 2^{-23}$, closer to 1 (since $x < 2^{-24} \approx 5.96 \times 10^{-8}$), and rounds to 1. Then $1 - 1 = 0$: the answer is $0$, a 100% relative error, although the true value is $3 \cdot 10^{-8}$. Algebra gives the stable form $g(x) = x$. The same structure, a sum that has already rounded away the part you are about to subtract back out, is q6.
+Second, a cancellation. Evaluate $g(x) = (1 + x) - 1$ in float32 at $x = 3 \cdot 10^{-8}$. The gap at 1 is $2^{-23} \approx 1.19 \times 10^{-7}$, so $1 + x$ lies between $1$ and $1 + 2^{-23}$, closer to 1 (since $x < 2^{-24} \approx 5.96 \times 10^{-8}$), and rounds to 1. Then $1 - 1 = 0$: the answer is $0$, a 100% relative error, although the true value is $3 \cdot 10^{-8}$. Algebra gives the stable form $g(x) = x$. The same structure, a sum that has already rounded away the part you are about to subtract back out, is q6.
 
-## 4. The problem set
+## The problems
 
 A float32 has 1 sign bit, 8 exponent bits (bias 127), and 23 fraction bits; float16 (fp16) has 1, 5 (bias 15), and 10; bfloat16 (bf16) has 1, 8 (bias 127), and 7. The tag after each question is its answer type.
 
@@ -206,15 +194,17 @@ where cancelling $e^c$ is allowed because $e^c > 0$.
 
 **Bounds with $c = -m$.** For every $i$, $x_i \le m$, so $x_i - m \le 0$ and $0 < e^{x_i - m} \le 1$. No term can overflow, whatever the size of $x$. The index $k$ with $x_k = m$ contributes $e^0 = 1$, and every other term is positive, so the denominator $\sum_j e^{x_j - m} \ge 1$: it is never 0, and the division never produces $\infty$ or NaN. (The denominator is at most $n$, also finite.)
 
-**What it avoids.** Without the shift, $e^{x}$ overflows float32 for $x$ above about $88.7$ and float64 above about $709.8$, and $\infty / \infty$ is NaN: the failure of q8(b). With it, the same mathematical value is computed from numbers in $(0, 1]$. This is how `M09.2`'s `softmax` and `logsumexp` are written.
+**What it avoids.** Without the shift, $e^{x}$ overflows float32 for $x$ above about $88.7$ and float64 above about $709.8$, and $\infty / \infty$ is NaN: the failure of q8(b). With it, the same mathematical value is computed from numbers in $(0, 1]$. This is how `softmax` and `logsumexp` in [Stable numerics](02-stable-numerics.md) are written.
 
 A complete proof has four parts: the factor $e^c$ cancelled because it is positive, each shifted term in $(0, 1]$, the denominator at least 1 because the maximum term is $e^0$, and the overflow thresholds this avoids.
 
 </details>
 
-## 5. Pitfalls
+## Common mistakes
 
-| Pitfall | Symptom | How the solution avoids it |
+The errors this set is designed to expose recur in real code. Each one maps to a problem:
+
+| Pitfall | Symptom | How to avoid it |
 |---|---|---|
 | Forgetting the exponent bias, or storing the implicit 1 | `decompose_f32` disagrees with the bit view | q1: add 127 to the exponent; the leading 1 is implicit |
 | Confusing the gap at 1 with the unit roundoff | tolerances off by a factor 2 | q2: the gap is $2^{-p}$, the unit roundoff $2^{-(p+1)}$ is half of it |
@@ -225,14 +215,27 @@ A complete proof has four parts: the factor $e^c$ cancelled because it is positi
 | One-pass variance on data far from 0 | negative or garbage variances | q9: subtract the mean before squaring |
 | Accumulating a long sum naively in float32 | NLL totals that stop growing | q10: compensated (Kahan) or pairwise summation |
 
-## 6. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `S-M05` | proof habits for q11 |
-| Forward | `M09.1` | `decompose_f32`, `ulp`, `round_to_bf16`, `round_to_fp16` are q1 to q4 as code |
-| Forward | `M09.2` | `logsumexp`, `softmax`, `kahan_sum`, `pairwise_sum` are q8, q10, q11 as code |
-| Forward | `L0.3` | fused cross-entropy computes `log_softmax` with the max shift |
-| Forward | `L7.9` | loads bf16 weights (q2 to q4) |
-| Forward | `L11.1` | mixed precision: why bf16 needs no loss scaling and fp16 does (q3) |
-| Forward | `S-M09b` | error bounds and condition numbers make q6's loss of digits quantitative |
+q1 to q4 become code in [IEEE 754 anatomy, ulps, and round to nearest even](01-ieee-754.md) (`decompose_f32`, `ulp`, `round_to_bf16`, `round_to_fp16`), and q8, q10, and q11 become `logsumexp`, `softmax`, `kahan_sum`, and `pairwise_sum` in [Stable numerics](02-stable-numerics.md). In *Build Your Own LLM System*, the fused cross-entropy of [Losses with a fused backward](../../build-an-llm/p00-foundations/03-losses-with-fused-backward.md) computes `log_softmax` with the max shift, [The Llama-family model: config, weight loading, and download](../../build-an-llm/p07-modern-block/09-llama-family-model.md) loads bf16 weights (q2 to q4), and [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](../../build-an-llm/p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md) explains why bf16 needs no loss scaling and fp16 does (q3). [Problem set B](91-problem-set-b.md) makes q6's loss of digits quantitative with error bounds and condition numbers.
+
+### Further reading
+
+- Goldberg, "What Every Computer Scientist Should Know About Floating-Point Arithmetic" (1991).
+- Higham, *Accuracy and Stability of Numerical Algorithms*, chapters 1 to 4.
+
+## Key terms
+
+- **Implicit leading bit**: the 1 in front of the fraction of a normal float, which is not stored.
+- **Binade**: an interval $[2^E, 2^{E+1})$ within which floats are equally spaced.
+- **Unit roundoff**: the largest relative error of one rounding, half the gap at 1.
+- **Cancellation**: the loss of significant digits when subtracting nearly equal numbers that already carry rounding error.
+- **Absorption**: a small addend vanishing entirely because it is below half the gap of a large running sum.
+
+## Summary
+
+- A float is sign, biased exponent, and fraction; its value is $(-1)^s \cdot 1.f \cdot 2^{e - \text{bias}}$, and the gap between neighbours doubles every binade (q1, q2).
+- bf16 keeps float32's 8 exponent bits and drops 16 fraction bits, so it has float32's range and a gap of $2^{-7}$ at 1; fp16 has a gap of $2^{-10}$ but overflows at 65504 (q2, q3).
+- Round to nearest, ties to even, sends an exact halfway value to the neighbour with an even last bit, which is what makes `round_to_bf16` agree with torch bit for bit (q4).
+- Subtracting nearly equal numbers loses every digit they share; the fix is an algebraically equal formula that never subtracts them (q6, q7, q9).
+- Shifting softmax and log-sum-exp by the maximum changes nothing mathematically and removes overflow (q8, q11).

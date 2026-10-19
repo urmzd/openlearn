@@ -327,6 +327,8 @@ The drafter can come from several places, and each family's acceptance rate is d
 
 > **Tip:** Configure low. Start at `num_speculative_tokens` of 2 or 3: the acceptance-weighted gain flattens fast, while the high-batch penalty grows linearly in $\gamma$.
 
+<a id="7-multi-lora-serverless-vs-dedicated-cold-start-autoscaling"></a>
+
 ## Multi-LoRA, serverless versus dedicated, cold start, and autoscaling
 
 The remaining decisions are about the fleet rather than one engine: how many models share a GPU, who pays for idle time, and how replicas come and go.
@@ -342,6 +344,8 @@ The remaining decisions are about the fleet rather than one engine: how many mod
 > **Warning:** Do not autoscale on CPU or GPU utilization. GPU utilization reads near 100% at batch 1 and at batch 200 alike.
 
 **Scale-to-zero** saves money only if cold start is inside the customer's tolerance. Pair it with a minimum of one replica during business hours, and scale on queue depth with a lead time larger than the cold start.
+
+<a id="8-load-testing-methodology"></a>
 
 ## Load-testing methodology
 

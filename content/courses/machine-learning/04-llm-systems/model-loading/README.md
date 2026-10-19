@@ -320,6 +320,8 @@ Each technique for faster loading attacks a specific term of the equation:
 
 [`code/config_explain.py`](code/config_explain.py) prints this estimate for any `config.json`.
 
+<a id="7-tokenizers-and-chat-templates"></a>
+
 ## Tokenizers and chat templates
 
 A model can load correctly and start fast and still be wrong, because the last layer, the tokenizer, decides what the model actually sees. Four tokenizer families cover nearly every model you will serve, and each leaves a tell-tale sign in the repo:
