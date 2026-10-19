@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/linalg/svd.pyi (M03.5)
-# chapter: content/tracks/math/03-linear-algebra/05-svd-low-rank-and-least-squares.md
+# chapter: content/courses/mathematics-for-computing/03-linear-algebra/05-svd-low-rank-and-least-squares.md
 #
 # The singular value decomposition by one-sided Jacobi rotations, the best
 # rank-r approximation it gives (Eckart-Young), and least squares by QR.

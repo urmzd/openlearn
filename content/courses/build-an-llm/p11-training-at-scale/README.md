@@ -4,7 +4,7 @@ What it takes to train the capstone on a laptop, and what changes on a cluster. 
 
 **Course passes**: L11.1 belongs to [Pass 9](../paths/course-p09-capstone-training/milestone.md); L11.2 and L11.3 are optional
 
-**Before you start**: the just-in-time math `M08.4` (Hessian-vector products and checkpoint schedules); bf16 emulation from [Numerical Methods and Floating Point](../../../tracks/math/09-numerical-methods-and-floating-point/); the optimizers of [Optimization](../../../tracks/math/10-optimization/).
+**Before you start**: the just-in-time math `M08.4` (Hessian-vector products and checkpoint schedules); bf16 emulation from [Numerical Methods and Floating Point](../../mathematics-for-computing/09-numerical-methods-and-floating-point/); the optimizers of [Optimization](../../mathematics-for-computing/10-optimization/).
 
 ## Key ideas
 
@@ -31,4 +31,4 @@ What it takes to train the capstone on a laptop, and what changes on a cluster. 
 ## Going further
 
 - Micikevicius et al., [*Mixed Precision Training*](https://arxiv.org/abs/1710.03740); Chen et al., [*Training Deep Nets with Sublinear Memory Cost*](https://arxiv.org/abs/1604.06174).
-- Rajbhandari et al., [ZeRO](https://arxiv.org/abs/1910.02054); the [Training and Post-Training](../../../tracks/ml/07-training-and-post-training/) topic for production practice.
+- Rajbhandari et al., [ZeRO](https://arxiv.org/abs/1910.02054); the [Training and Post-Training](../../machine-learning/07-training-and-post-training/) topic for production practice.

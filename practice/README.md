@@ -80,7 +80,7 @@ languages are used elsewhere in this repository.
 Every solution is a single self-testing program: one entry point, its own
 assertions, nonzero exit on the first failure. The assertions are part of the
 answer, since they state exactly what "correct" means for the exercise. The
-[case studies](../content/case-studies/) are built the same way.
+[case studies](../content/courses/case-studies/) are built the same way.
 
 ## Picking something
 

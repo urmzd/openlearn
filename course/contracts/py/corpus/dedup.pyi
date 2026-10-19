@@ -1,5 +1,5 @@
 # contracts/py/corpus/dedup.pyi (data.03): exact dedup by paragraph hashes, Bloom screen, sort-merge confirm
-# chapter: content/tracks/data-engineering/05-corpus-pipeline/03-exact-dedup-bloom-and-sort-merge.md
+# chapter: content/courses/data-engineering/05-corpus-pipeline/03-exact-dedup-bloom-and-sort-merge.md
 #
 # Words used below:
 #   paragraph   a piece of a text between blank lines (a line that is empty

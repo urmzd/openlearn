@@ -304,4 +304,4 @@ probe lengths dramatically, which is the property you actually care about: the
 worst lookup, not the average one. Rust's `std::collections::HashMap` used it
 for years before switching to SwissTable. The course module `ds.02` builds a
 Swiss table on top of this exercise (it is the worked baseline); its chapter
-lives in [Systems Data Structures](../../../../../content/tracks/algorithms/16-systems-data-structures/).
+lives in [Systems Data Structures](../../../../../content/courses/algorithms/16-systems-data-structures/).

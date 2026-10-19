@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from assemble_book import assemble_course
-from course_catalog import ROOT, catalog, export, publication, resolve, select
+from course_catalog import ROOT, catalog, export, publication, resolve
 
 
 def test_every_course_has_resolvable_unique_reading_sources():
@@ -20,10 +20,16 @@ def test_every_course_has_resolvable_unique_reading_sources():
         reading = [f for section in pub["reading"] for f in section["files"]]
         assert reading and len(reading) == len(set(reading))
         assert all((ROOT / f).is_file() for f in pub["documents"])
-    # One canonical math lesson is reused by both course definitions.
-    lesson = "content/tracks/math/03-linear-algebra/README.md"
-    assert lesson in publication(select("mathematics"))["documents"]
-    assert lesson in publication(select("computer-science"))["documents"]
+    # Each chapter belongs to one book; reading guides link to it instead.
+    lesson = "content/courses/mathematics-for-computing/03-linear-algebra/README.md"
+    owners = [m["id"] for m in courses if lesson in publication(m)["documents"]]
+    assert owners == ["mathematics-for-computing"]
+    shared = {}
+    for manifest in courses:
+        for doc in publication(manifest)["documents"]:
+            if not doc.startswith("content/references/"):
+                shared.setdefault(doc, []).append(manifest["id"])
+    assert {d: o for d, o in shared.items() if len(o) > 1} == {}
 
 
 def test_book_does_not_repeat_overview_also_present_in_track(tmp_path):

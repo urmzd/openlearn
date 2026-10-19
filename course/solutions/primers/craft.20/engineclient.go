@@ -7,7 +7,7 @@
 // tests (consumer_test.go) pin those expectations down, so a change to any
 // of them breaks a test.
 //
-// Chapter: content/tracks/software-craftsmanship/03-testing-mentality/06-contract-tests.md.
+// Chapter: content/courses/software-craftsmanship/03-testing-mentality/06-contract-tests.md.
 package craft20
 
 import (

@@ -4,7 +4,7 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/ml/README.md",
+      "file": "content/courses/machine-learning/README.md",
       "title": "Overview"
     },
     {
@@ -14,7 +14,7 @@
   ],
   "tracks": [
     {
-      "dir": "content/tracks/ml",
+      "dir": "content/courses/machine-learning",
       "title": "Machine Learning & AI"
     }
   ],

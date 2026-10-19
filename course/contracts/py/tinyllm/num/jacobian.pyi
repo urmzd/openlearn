@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/jacobian.pyi (M04.2)
-# chapter: content/tracks/math/04-calculus-3/02-jacobians-and-the-chain-rule.md
+# chapter: content/courses/mathematics-for-computing/04-calculus-3/02-jacobians-and-the-chain-rule.md
 #
 # Numerical Jacobians and Jacobian-vector products of f: R^n -> R^m.
 # x and f(x) may have any shape; they are flattened in row-major order, so

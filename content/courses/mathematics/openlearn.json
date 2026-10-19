@@ -32,12 +32,7 @@
       "title": "Choose your next subject"
     }
   ],
-  "tracks": [
-    {
-      "dir": "content/tracks/math",
-      "title": "Mathematics Foundations"
-    }
-  ],
+  "tracks": [],
   "reference": [
     {
       "dir": "content/references",

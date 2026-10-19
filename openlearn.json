@@ -29,15 +29,15 @@
   ],
   "tracks": [
     {
-      "dir": "content/tracks/math",
+      "dir": "content/courses/mathematics-for-computing",
       "title": "Mathematics"
     },
     {
-      "dir": "content/tracks/algorithms",
+      "dir": "content/courses/algorithms",
       "title": "Algorithms"
     },
     {
-      "dir": "content/tracks/ml",
+      "dir": "content/courses/machine-learning",
       "title": "Machine Learning & AI"
     },
     {
@@ -45,39 +45,47 @@
       "title": "Build Your Own LLM System"
     },
     {
-      "dir": "content/tracks/systems",
+      "dir": "content/courses/systems",
       "title": "Systems & Architecture"
     },
     {
-      "dir": "content/tracks/data-engineering",
+      "dir": "content/courses/data-engineering",
       "title": "Data Engineering"
     },
     {
-      "dir": "content/tracks/ai-platform-engineering",
+      "dir": "content/courses/ai-platform-engineering",
       "title": "AI Platform Engineering"
     },
     {
-      "dir": "content/tracks/software-craftsmanship",
+      "dir": "content/courses/software-craftsmanship",
       "title": "Software Craftsmanship"
     },
     {
-      "dir": "content/tracks/infrastructure",
+      "dir": "content/courses/programming-languages",
+      "title": "Programming Languages"
+    },
+    {
+      "dir": "content/courses/diagramming",
+      "title": "Diagramming and Documentation"
+    },
+    {
+      "dir": "content/courses/infrastructure",
       "title": "Infrastructure"
     },
     {
-      "dir": "content/tracks/responsible-ai",
+      "dir": "content/courses/responsible-ai",
       "title": "Responsible AI"
     },
     {
-      "dir": "content/tracks/competitive-programming",
+      "dir": "content/courses/competitive-programming",
       "title": "Competitive Programming"
     },
     {
-      "dir": "content/tracks/field-engineering",
+      "dir": "content/courses/field-engineering",
       "title": "Field Engineering"
     },
     {
-      "dir": "content/case-studies",
+      "dir": "content/courses/case-studies",
       "title": "Case Studies"
     }
   ],
@@ -87,7 +95,7 @@
       "title": "Practice"
     },
     {
-      "dir": "content/interviews",
+      "dir": "content/courses/interview-preparation",
       "title": "Interview Prep"
     },
     {
@@ -108,7 +116,9 @@
     "content/courses/infrastructure/openlearn.json",
     "content/courses/interview-preparation/openlearn.json",
     "content/courses/machine-learning/openlearn.json",
+    "content/courses/mathematics-for-computing/openlearn.json",
     "content/courses/mathematics/openlearn.json",
+    "content/courses/practice/openlearn.json",
     "content/courses/programming-languages/openlearn.json",
     "content/courses/research/openlearn.json",
     "content/courses/responsible-ai/openlearn.json",

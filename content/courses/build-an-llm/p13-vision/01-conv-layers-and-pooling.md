@@ -7,7 +7,7 @@
 | **Module** | `L13.1` · build · Python · Pass 12 |
 | **Solution** | [`conv.py`](../../../../course/solutions/python/tinyllm/vision/conv.py): `Conv2d` and `Conv1d` (stride, padding, dilation, groups; im2col forward, col2im backward), `max_pool2d`, `avg_pool2d`, `LeNet5` |
 | **Contract** | [`course/contracts/py/tinyllm/vision/conv.pyi`](../../../../course/contracts/py/tinyllm/vision/conv.pyi) |
-| **Needs** | `M12.1` `im2col`, `col2im`, `conv_out_size` · `L0.1` `Tensor`, `from_op` · `L0.2` `reshape`, `relu` · `L0.4` `Module`, `Linear` · `M07.3` `normal_init` · `M06.3` `PCG32`. Reading: `L0.3` cross-entropy, `M10.3` Adam, and the plain-loop LeNet in [`ml/06-neural-architectures/code/lenet.rs`](../../../tracks/ml/06-neural-architectures/code/lenet.rs) |
+| **Needs** | `M12.1` `im2col`, `col2im`, `conv_out_size` · `L0.1` `Tensor`, `from_op` · `L0.2` `reshape`, `relu` · `L0.4` `Module`, `Linear` · `M07.3` `normal_init` · `M06.3` `PCG32`. Reading: `L0.3` cross-entropy, `M10.3` Adam, and the plain-loop LeNet in [`ml/06-neural-architectures/code/lenet.rs`](../../machine-learning/06-neural-architectures/code/lenet.rs) |
 | **Used by** | `L13.3` (`PatchEmbed` is a `Conv2d` whose kernel equals its stride) · later `L14.2` (the Whisper stem is two `Conv1d` layers). LeNet-5 learning digits is the first end-to-end evidence for the vision part that these layers train |
 | **Optional depth** | LeCun, Bottou, Bengio, Haffner, "Gradient-based learning applied to document recognition" (1998), section II; Chellapilla, Puri, Simard, "High performance convolutional neural networks for document processing" (2006), the im2col paper; Dumoulin and Visin, "A guide to convolution arithmetic for deep learning" (2016, free) |
 

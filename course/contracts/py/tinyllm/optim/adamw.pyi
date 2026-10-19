@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/optim/adamw.pyi (M10.3)
-# chapter: content/tracks/math/10-optimization/03-adam-and-adamw.md
+# chapter: content/courses/mathematics-for-computing/10-optimization/03-adam-and-adamw.md
 #
 # Adam and AdamW over a list of parameters. A parameter is any object with
 # two attributes: `data`, a float ndarray the optimizer updates IN PLACE, and

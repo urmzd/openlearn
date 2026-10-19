@@ -3,7 +3,6 @@
   "title": "Build Your Own LLM System",
   "repo": "https://github.com/urmzd/openlearn",
   "paths": "content/courses/build-an-llm/paths",
-  "featured": "course",
   "start": [
     {
       "file": "content/courses/build-an-llm/README.md",
@@ -20,17 +19,9 @@
     {
       "file": "content/courses/build-an-llm/concepts.md",
       "title": "Architecture overview"
-    },
-    {
-      "file": "practice/README.md",
-      "title": "Practice"
     }
   ],
   "tracks": [
-    {
-      "dir": "content/courses/build-an-llm/capstones",
-      "title": "Capstones"
-    },
     {
       "dir": "content/courses/build-an-llm/p00-foundations",
       "title": "Part 0: Foundations"
@@ -90,6 +81,10 @@
     {
       "dir": "content/courses/build-an-llm/p14-speech",
       "title": "Speech recognition"
+    },
+    {
+      "dir": "content/courses/build-an-llm/capstones",
+      "title": "Capstones"
     }
   ],
   "reference": [
@@ -104,9 +99,6 @@
   ],
   "runtime": [
     "course",
-    "practice",
-    "content/tracks/algorithms",
-    "content/case-studies",
     "pyproject.toml",
     "uv.lock",
     ".python-version",

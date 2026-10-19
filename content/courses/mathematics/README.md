@@ -18,4 +18,4 @@ Begin with [Quantities and relationships](01-quantities-and-relationships.md). R
 
 Work at your own pace. Write down what each symbol means, including its units. Try each practice question before opening the answer. If an idea is unfamiliar, change the numbers in the example and work it again.
 
-This is an introduction, not a replacement for full courses in algebra, calculus, linear algebra, or statistics. After the project, choose a subject from the [mathematics reference library](../../tracks/math/README.md). The [study guide](study-plan.md) explains where to go next.
+This is an introduction, not a replacement for full courses in algebra, calculus, linear algebra, or statistics. After the project, choose a subject from the [mathematics reference library](../mathematics-for-computing/README.md). The [study guide](study-plan.md) explains where to go next.

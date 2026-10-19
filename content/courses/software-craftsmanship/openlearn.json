@@ -4,21 +4,17 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/software-craftsmanship/README.md",
+      "file": "content/courses/software-craftsmanship/README.md",
       "title": "Overview"
     },
     {
       "file": "content/courses/software-craftsmanship/study-plan.md",
       "title": "Study plan"
-    },
-    {
-      "file": "practice/README.md",
-      "title": "Practice"
     }
   ],
   "tracks": [
     {
-      "dir": "content/tracks/software-craftsmanship",
+      "dir": "content/courses/software-craftsmanship",
       "title": "Software Craftsmanship"
     }
   ],
@@ -27,14 +23,5 @@
       "dir": "content/references",
       "title": "Sources"
     }
-  ],
-  "runtime": [
-    "practice",
-    "content/tracks/algorithms",
-    "content/case-studies",
-    "pyproject.toml",
-    "uv.lock",
-    ".python-version",
-    ".mise.toml"
   ]
 }

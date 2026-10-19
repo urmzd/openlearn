@@ -4,7 +4,7 @@
 // answer into typed deltas, and the retry wrapper that retries only before
 // the first content delta.
 //
-// Chapter: content/tracks/ai-platform-engineering/13-agent-sdk/01-types-and-provider.md.
+// Chapter: content/courses/ai-platform-engineering/13-agent-sdk/01-types-and-provider.md.
 // Wire contract: course/contracts/openapi/openai-subset.v1.yaml.
 package provider
 

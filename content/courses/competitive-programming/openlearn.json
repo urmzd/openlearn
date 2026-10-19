@@ -4,13 +4,13 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/competitive-programming/README.md",
+      "file": "content/courses/competitive-programming/README.md",
       "title": "Overview"
     }
   ],
   "tracks": [
     {
-      "dir": "content/tracks/competitive-programming",
+      "dir": "content/courses/competitive-programming",
       "title": "Competitive Programming"
     }
   ],

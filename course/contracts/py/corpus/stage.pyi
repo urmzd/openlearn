@@ -1,5 +1,5 @@
 # contracts/py/corpus/stage.pyi (data.02): the Doc type, streaming stages, extraction
-# chapter: content/tracks/data-engineering/05-corpus-pipeline/02-extract-normalize-and-quality-filters.md
+# chapter: content/courses/data-engineering/05-corpus-pipeline/02-extract-normalize-and-quality-filters.md
 #
 # Every corpus stage (data.02 to data.05) is a Stage: a function from an
 # iterator of Docs to an iterator of Docs. A stage pulls documents one at a

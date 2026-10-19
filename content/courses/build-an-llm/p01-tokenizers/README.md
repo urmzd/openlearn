@@ -4,7 +4,7 @@ From bytes to subwords. The tracer's byte tokenizer (256 ids, no training) gives
 
 **Course passes**: L1.1 to L1.6 belong to [Pass 3](../paths/course-p03-tokens-and-data/milestone.md)
 
-**Before you start**: the just-in-time math `M05.2`, `M06.2`, `M07.1`, `M07.2`, `M11.2` and the solve parts `S-M06b`, `S-M07b`; for `L1.5`, the [Rust primer](../../../tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md) and the Rust structures `ds.05` and `ds.06` in [Systems Data Structures](../../../tracks/algorithms/16-systems-data-structures/).
+**Before you start**: the just-in-time math `M05.2`, `M06.2`, `M07.1`, `M07.2`, `M11.2` and the solve parts `S-M06b`, `S-M07b`; for `L1.5`, the [Rust primer](../../programming-languages/02-language-and-tool-primers/04-rust.md) and the Rust structures `ds.05` and `ds.06` in [Systems Data Structures](../../algorithms/16-systems-data-structures/).
 
 ## Key ideas
 

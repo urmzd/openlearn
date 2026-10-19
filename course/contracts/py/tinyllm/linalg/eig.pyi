@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/linalg/eig.pyi (M03.4)
-# chapter: content/tracks/math/03-linear-algebra/04-eigenvalues-and-power-iteration.md
+# chapter: content/courses/mathematics-for-computing/03-linear-algebra/04-eigenvalues-and-power-iteration.md
 #
 # Eigenvalues by iteration: power iteration for the dominant eigenpair,
 # inverse iteration (one LU, many solves) for the one nearest a shift, and the

@@ -8,7 +8,7 @@
     ppl_filter(lm, max_ppl)   drop text a language model finds too surprising
     build_filters(filters)    the corpus config's `filters` table as one Stage
 
-Chapter: content/tracks/data-engineering/05-corpus-pipeline/02-extract-normalize-and-quality-filters.md.
+Chapter: content/courses/data-engineering/05-corpus-pipeline/02-extract-normalize-and-quality-filters.md.
 """
 
 from __future__ import annotations

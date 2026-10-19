@@ -15,7 +15,7 @@ are real duplicates, and no unique paragraph is ever dropped.
     confirm  collect (hash, doc, paragraph) for candidates, sort, merge
     emit     reread the spool, drop confirmed repeats, drop emptied docs
 
-Chapter: content/tracks/data-engineering/05-corpus-pipeline/03-exact-dedup-bloom-and-sort-merge.md.
+Chapter: content/courses/data-engineering/05-corpus-pipeline/03-exact-dedup-bloom-and-sort-merge.md.
 """
 
 from __future__ import annotations

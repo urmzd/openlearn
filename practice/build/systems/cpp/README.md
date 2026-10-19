@@ -64,4 +64,4 @@ The test program prints `ok ...` and exits 0 when every check holds. Exercise
 | 09 | [Graph with concepts](09-graph-concepts/) | C++20 concepts, ranges, BFS/DFS | ⭐⭐⭐ |
 | 10 | [Memory pool allocator](10-pool-allocator/) | Custom allocator, placement new, alignment | ⭐⭐⭐⭐ |
 
-Exercise 03 (hash map) is consolidated into the course: six hash maps across the drills became two course modules, `ds.02` (Swiss table, C) and `ds.05` (Robin Hood, Rust), whose chapters live in [Systems Data Structures](../../../../content/tracks/algorithms/16-systems-data-structures/).
+Exercise 03 (hash map) is consolidated into the course: six hash maps across the drills became two course modules, `ds.02` (Swiss table, C) and `ds.05` (Robin Hood, Rust), whose chapters live in [Systems Data Structures](../../../../content/courses/algorithms/16-systems-data-structures/).

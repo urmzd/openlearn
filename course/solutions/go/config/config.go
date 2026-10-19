@@ -6,7 +6,7 @@
 // TL_<SECTION>__<KEY> (both upper-cased, a double underscore between them),
 // parsed as the key's type; arrays and tables are not overridable.
 // Precedence: environment, then file, then defaults.
-// Chapter: content/tracks/ai-platform-engineering/12-gateway/01-server-skeleton.md.
+// Chapter: content/courses/ai-platform-engineering/12-gateway/01-server-skeleton.md.
 package config
 
 import (

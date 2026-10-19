@@ -1,0 +1,31 @@
+{
+  "id": "practice",
+  "title": "Practice: Predict and Build",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "practice/README.md",
+      "title": "About this book"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "practice",
+      "title": "Practice"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "Sources"
+    }
+  ],
+  "runtime": [
+    "practice",
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version",
+    ".mise.toml"
+  ],
+  "tagline": "Predict what code prints and read worked data-structure implementations, each with the reasoning behind it."
+}

@@ -7,7 +7,7 @@
 | **Module** | `L0.3` · build · Python · Pass 2 · about 2 h reading |
 | **Solution** | [`losses.py`](../../../../course/solutions/python/tinyllm/autograd/losses.py): `cross_entropy` (ignore_index, label smoothing, three reductions), `mse`, `bce_with_logits` (pos_weight); a model test suite, [`test_losses.py`](../../../../course/solutions/learner-tests/L0.3/python/tests/l0-3-losses/test_losses.py) |
 | **Contract** | [`course/contracts/py/tinyllm/autograd/losses.pyi`](../../../../course/contracts/py/tinyllm/autograd/losses.pyi) |
-| **Needs** | `L0.1` `from_op` · `M09.2` stable `log_softmax` · `M08.3` `cross_entropy_vjp` (an independent derivation of the gradient) · `M11.1` cross-entropy $H(q, p)$ (the definition, computed the slow way) · reading: [`craft.03`](../../../tracks/software-craftsmanship/03-testing-mentality/01-tdd-unit-tests-and-mutation-grading.md) on writing tests that catch faults |
+| **Needs** | `L0.1` `from_op` · `M09.2` stable `log_softmax` · `M08.3` `cross_entropy_vjp` (an independent derivation of the gradient) · `M11.1` cross-entropy $H(q, p)$ (the definition, computed the slow way) · reading: [`craft.03`](../../software-craftsmanship/03-testing-mentality/01-tdd-unit-tests-and-mutation-grading.md) on writing tests that catch faults |
 | **Used by** | `L0.5` every training step of the course computes one of these; the Pass 2 bigram and the digits MLP train on `cross_entropy` · later: `L11.1`, `L12.1`, `L2.2`, `L3.6`, `L4.1`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5` |
 | **Optional depth** | Goodfellow, Bengio, Courville, *Deep Learning* (free online), sections 6.2.2 and 7.5; Szegedy et al., "Rethinking the Inception Architecture" (2016), section 7 (label smoothing) |
 

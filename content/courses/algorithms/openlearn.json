@@ -4,21 +4,17 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/algorithms/README.md",
+      "file": "content/courses/algorithms/README.md",
       "title": "Overview"
     },
     {
       "file": "content/courses/algorithms/study-plan.md",
       "title": "Study plan"
-    },
-    {
-      "file": "practice/README.md",
-      "title": "Practice"
     }
   ],
   "tracks": [
     {
-      "dir": "content/tracks/algorithms",
+      "dir": "content/courses/algorithms",
       "title": "Algorithm Mastery"
     }
   ],
@@ -29,9 +25,7 @@
     }
   ],
   "runtime": [
-    "practice",
-    "content/tracks/algorithms",
-    "content/case-studies",
+    "content/courses/algorithms",
     "pyproject.toml",
     "uv.lock",
     ".python-version",

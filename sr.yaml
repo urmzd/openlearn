@@ -94,6 +94,10 @@ packages:
       - outputs/openlearn-machine-learning.zip
       - outputs/openlearn-mathematics.pdf
       - outputs/openlearn-mathematics.zip
+      - outputs/openlearn-mathematics-for-computing.pdf
+      - outputs/openlearn-mathematics-for-computing.zip
+      - outputs/openlearn-practice.pdf
+      - outputs/openlearn-practice.zip
       - outputs/openlearn-programming-languages.pdf
       - outputs/openlearn-programming-languages.zip
       - outputs/openlearn-research.pdf

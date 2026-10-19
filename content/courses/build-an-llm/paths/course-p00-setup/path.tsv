@@ -1,7 +1,7 @@
 # Pass 0: setup.
 # stage	title	files	done when
 1	Toolchain	content/courses/build-an-llm/paths/course-p00-setup/README.md	You can say which tools pass 0 needs (python, uv, cc, git, make) and which pass 1 adds (cargo, go, docker, kubectl, kind, helm, tilt), and check each one's version.
-2	Python and numpy	content/tracks/software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md	You can predict a broadcast's shape and explain how a count is vectorized.
-3	Shell, git, make, processes	content/tracks/software-craftsmanship/12-language-and-tool-primers/02-shell-git-make.md	You can explain why a script exits 143 on SIGTERM and why make rebuilds only what changed.
-4	Your repo and CI gate	content/tracks/software-craftsmanship/08-code-review-and-ci/01-your-repo-and-ci-gate.md	You can explain how the repo's CI lints commit messages, runs native tests, and runs the test suite on every push.
+2	Python and numpy	content/courses/programming-languages/02-language-and-tool-primers/01-python-and-numpy.md	You can predict a broadcast's shape and explain how a count is vectorized.
+3	Shell, git, make, processes	content/courses/programming-languages/02-language-and-tool-primers/02-shell-git-make.md	You can explain why a script exits 143 on SIGTERM and why make rebuilds only what changed.
+4	Your repo and CI gate	content/courses/software-craftsmanship/05-code-review-and-ci/01-your-repo-and-ci-gate.md	You can explain how the repo's CI lints commit messages, runs native tests, and runs the test suite on every push.
 5	What the system does after Pass 0	content/courses/build-an-llm/paths/course-p00-setup/milestone.md	You can explain why every later pass depends on a green CI and conventional commits.

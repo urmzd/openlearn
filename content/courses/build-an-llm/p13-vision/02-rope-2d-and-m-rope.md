@@ -7,7 +7,7 @@
 | **Module** | `L13.2` · build · Python · Pass 12 |
 | **Solution** | [`rope2d.py`](../../../../course/solutions/python/tinyllm/vision/rope2d.py): `patch_coords`, `rope2d_cos_sin` (axial 2D RoPE for patches), `mrope_position_ids`, `mrope_cos_sin`, `apply_mrope` (Qwen2-VL's M-RoPE) |
 | **Contract** | [`course/contracts/py/tinyllm/vision/rope2d.pyi`](../../../../course/contracts/py/tinyllm/vision/rope2d.pyi) |
-| **Needs** | `L7.3` `rope_cos_sin`, `apply_rope` · `L0.1` `Tensor`. Reading: [`M00.2`](../../../tracks/math/00-precalculus/02-trig-rotations-and-eulers-formula.md) (rotations compose by adding angles) |
+| **Needs** | `L7.3` `rope_cos_sin`, `apply_rope` · `L0.1` `Tensor`. Reading: [`M00.2`](../../mathematics-for-computing/00-precalculus/02-trig-rotations-and-eulers-formula.md) (rotations compose by adding angles) |
 | **Used by** | `L13.3` (the ViT's `pos='rope2d'`) · later `L13.7` (the `qwen2vl` architecture uses both halves; a `tiny-qwen2vl` model's logits depend on these position ids and rotations) |
 | **Optional depth** | Su et al., "RoFormer: Enhanced transformer with rotary position embedding" (2021); Wang et al., "Qwen2-VL: Enhancing vision-language model's perception of the world at any resolution" (2024), section 2.1; Heo et al., "Rotary position embedding for vision transformer" (2024) |
 

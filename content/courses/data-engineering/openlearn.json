@@ -4,7 +4,7 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/data-engineering/README.md",
+      "file": "content/courses/data-engineering/README.md",
       "title": "Overview"
     },
     {
@@ -14,7 +14,7 @@
   ],
   "tracks": [
     {
-      "dir": "content/tracks/data-engineering",
+      "dir": "content/courses/data-engineering",
       "title": "Data Engineering"
     }
   ],

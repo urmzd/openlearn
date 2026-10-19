@@ -4,25 +4,25 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/software-craftsmanship/07-type-systems/README.md",
+      "file": "content/courses/programming-languages/README.md",
+      "title": "About this book"
+    },
+    {
+      "file": "content/courses/programming-languages/01-type-systems/README.md",
       "title": "Overview"
     },
     {
       "file": "content/courses/programming-languages/study-plan.md",
       "title": "Study plan"
-    },
-    {
-      "file": "practice/README.md",
-      "title": "Practice"
     }
   ],
   "tracks": [
     {
-      "dir": "content/tracks/software-craftsmanship/07-type-systems",
+      "dir": "content/courses/programming-languages/01-type-systems",
       "title": "Type Systems & Polymorphism"
     },
     {
-      "dir": "content/tracks/software-craftsmanship/12-language-and-tool-primers",
+      "dir": "content/courses/programming-languages/02-language-and-tool-primers",
       "title": "Language and Tool Primers"
     }
   ],
@@ -31,14 +31,5 @@
       "dir": "content/references",
       "title": "Sources"
     }
-  ],
-  "runtime": [
-    "practice",
-    "content/tracks/algorithms",
-    "content/case-studies",
-    "pyproject.toml",
-    "uv.lock",
-    ".python-version",
-    ".mise.toml"
   ]
 }

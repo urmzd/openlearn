@@ -4,7 +4,7 @@ The model side of the tracer and, from Pass 2, the autograd engine every later m
 
 **Course passes**: L0.0 belongs to [Pass 1](../paths/course-p01-tracer/milestone.md); L0.1 to L0.6 belong to [Pass 2](../paths/course-p02-foundations/milestone.md)
 
-**Before you start**: [Python and NumPy](../../../tracks/software-craftsmanship/12-language-and-tool-primers/01-python-and-numpy.md) and [matrix multiplication in Python](../../../tracks/math/03-linear-algebra/01-vectors-matrices-and-matmul.md).
+**Before you start**: [Python and NumPy](../../programming-languages/02-language-and-tool-primers/01-python-and-numpy.md) and [matrix multiplication in Python](../../mathematics-for-computing/03-linear-algebra/01-vectors-matrices-and-matmul.md).
 
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|

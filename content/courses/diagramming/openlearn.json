@@ -4,7 +4,11 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/software-craftsmanship/05-diagramming-c4/README.md",
+      "file": "content/courses/diagramming/README.md",
+      "title": "About this book"
+    },
+    {
+      "file": "content/courses/diagramming/01-diagramming-c4/README.md",
       "title": "Overview"
     },
     {
@@ -14,11 +18,11 @@
   ],
   "tracks": [
     {
-      "dir": "content/tracks/software-craftsmanship/05-diagramming-c4",
+      "dir": "content/courses/diagramming/01-diagramming-c4",
       "title": "Diagramming & the C4 Model"
     },
     {
-      "dir": "content/tracks/software-craftsmanship/06-documentation-writing",
+      "dir": "content/courses/diagramming/02-documentation-writing",
       "title": "Documentation Writing"
     }
   ],

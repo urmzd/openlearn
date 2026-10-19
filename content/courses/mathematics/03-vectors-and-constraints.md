@@ -43,4 +43,4 @@ $140+2l \le 170$ gives $l \le 15$. The maximum is 15 larger packs and 5 standard
 
 Before moving on, explain why satisfying the pack count alone does not guarantee a feasible plan.
 
-Next: [Uncertainty and evidence](04-uncertainty-and-evidence.md). Further study: [linear algebra](../../tracks/math/03-linear-algebra/) and [optimization](../../tracks/math/10-optimization/).
+Next: [Uncertainty and evidence](04-uncertainty-and-evidence.md). Further study: [linear algebra](../mathematics-for-computing/03-linear-algebra/) and [optimization](../mathematics-for-computing/10-optimization/).

@@ -7,7 +7,7 @@
 | **Module** | `L3.5` · side (optional, D31) · Python · Pass 4 · 1.5 to 2 h reading |
 | **Solution** | [`python/tinyllm/rnn/elmo.py`](../../../../course/solutions/python/tinyllm/rnn/elmo.py): `BiLM` (`layers`, `forward`), `bilm_loss`, `ScalarMix`, `fit_linear_probe`, `probe_accuracy` |
 | **Contract** | [`course/contracts/py/tinyllm/rnn/elmo.pyi`](../../../../course/contracts/py/tinyllm/rnn/elmo.pyi) |
-| **Needs** | `L3.2` `LSTM` · `L3.4` `reverse_padded` · `L0.3` `cross_entropy` · `L0.4` `Embedding`, `Linear`, `ModuleList` · `L0.2` ops · `L0.1` `Tensor` · `M06.3` `PCG32` · training: `M10.3` `AdamW` · reading: `L3.6` (an RNN language model), `content/tracks/math/07-probability-statistics` (logistic regression) |
+| **Needs** | `L3.2` `LSTM` · `L3.4` `reverse_padded` · `L0.3` `cross_entropy` · `L0.4` `Embedding`, `Linear`, `ModuleList` · `L0.2` ops · `L0.1` `Tensor` · `M06.3` `PCG32` · training: `M10.3` `AdamW` · reading: `L3.6` (an RNN language model), `content/courses/mathematics-for-computing/07-probability-statistics` (logistic regression) |
 | **Used by** | no module: the side quest `sq.elmo-probes` (probing every zoo checkpoint) builds on it; optional, and not on the main recurrent path |
 | **Optional depth** | Peters et al., "Deep contextualized word representations" (NAACL 2018); Tenney et al., "What do you learn from context? Probing for sentence structure in contextualized word representations" (ICLR 2019); Hewitt and Liang, "Designing and Interpreting Probes with Control Tasks" (EMNLP 2019) |
 

@@ -7,7 +7,7 @@
 | **Module** | `L6.3` · build · Python · Pass 5 · 1.5 h reading |
 | **Solution** | [`python/tinyllm/obj/electra.py`](../../../../course/solutions/python/tinyllm/obj/electra.py): `ElectraDiscriminatorHead`, `ElectraDiscriminator`, `ELECTRA`, `replace_tokens`, `rtd_loss`, `electra_step`, `rtd_accuracy`, `save_electra`, `load_electra`; model oracle tests in [`learner-tests/L6.3/.../test_electra.py`](../../../../course/solutions/learner-tests/L6.3/python/tests/l6-3-electra/test_electra.py) |
 | **Contract** | [`course/contracts/py/tinyllm/obj/electra.pyi`](../../../../course/contracts/py/tinyllm/obj/electra.pyi) |
-| **Needs** | `L6.2` `BertEncoder`, `BertForMLM`, `mlm_mask` · [`M07.1` `sample_categorical`](../../../tracks/math/07-probability-statistics/01-categorical-sampling.md) · `L0.3` `bce_with_logits` · `L0.1` · `L0.2` · `L0.4` · `L0.6` safetensors · `M06.3` PCG32 · `M07.3` `normal_init` |
+| **Needs** | `L6.2` `BertEncoder`, `BertForMLM`, `mlm_mask` · [`M07.1` `sample_categorical`](../../mathematics-for-computing/07-probability-statistics/01-categorical-sampling.md) · `L0.3` `bce_with_logits` · `L0.1` · `L0.2` · `L0.4` · `L0.6` safetensors · `M06.3` PCG32 · `M07.3` `normal_init` |
 | **Used by** | `L6.7` the zoo's ELECTRA row (replaced-token detection accuracy) · the discriminator body is the alternative classification backbone of `L6.5` (`tl_arch = "electra"`): at the end of Part 6 the system trains ELECTRA, then a LoRA classifier over its discriminator |
 | **Optional depth** | Clark, Luong, Le, and Manning, "ELECTRA: Pre-training Text Encoders as Discriminators Rather Than Generators" (ICLR 2020), sections 2, 3.2, and appendix A; Goodfellow et al., "Generative Adversarial Nets" (2014), for what ELECTRA is not |
 

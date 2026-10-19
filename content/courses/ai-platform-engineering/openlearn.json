@@ -4,7 +4,7 @@
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
-      "file": "content/tracks/ai-platform-engineering/README.md",
+      "file": "content/courses/ai-platform-engineering/README.md",
       "title": "Overview"
     },
     {
@@ -14,7 +14,7 @@
   ],
   "tracks": [
     {
-      "dir": "content/tracks/ai-platform-engineering",
+      "dir": "content/courses/ai-platform-engineering",
       "title": "AI Platform Engineering"
     }
   ],

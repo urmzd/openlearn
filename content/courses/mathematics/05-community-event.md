@@ -31,9 +31,9 @@ You are ready to continue when you can explain your model, check its units and c
 
 ## Choose what to study next
 
-- For functions, growth, and algebra: [precalculus](../../tracks/math/00-precalculus/).
-- For change and accumulation: [calculus](../../tracks/math/01-calculus-1/).
-- For many quantities and constraints: [linear algebra](../../tracks/math/03-linear-algebra/).
-- For evidence and uncertainty: [probability and statistics](../../tracks/math/07-probability-statistics/).
+- For functions, growth, and algebra: [precalculus](../mathematics-for-computing/00-precalculus/).
+- For change and accumulation: [calculus](../mathematics-for-computing/01-calculus-1/).
+- For many quantities and constraints: [linear algebra](../mathematics-for-computing/03-linear-algebra/).
+- For evidence and uncertainty: [probability and statistics](../mathematics-for-computing/07-probability-statistics/).
 
 Use the [study guide](study-plan.md) to choose one subject. You do not need to finish the entire mathematics library before applying what you have learned.

@@ -4,7 +4,7 @@ The Rust engine: an OpenAI-compatible HTTP server that streams completions from 
 
 **Course passes**: L10.0 belongs to [Pass 1](../paths/course-p01-tracer/milestone.md); L10.1 to L10.9, load.01, and load.02 belong to [Pass 7](../paths/course-p07-serving-platform/milestone.md)
 
-**Before you start**: the [Rust](../../../tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md) and [HTTP and SSE](../../../tracks/software-craftsmanship/12-language-and-tool-primers/05-http-and-sse.md) primers; the API contract [`openai-subset.v0.yaml`](../../../../course/contracts/openapi/openai-subset.v0.yaml) and the engine role in [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md).
+**Before you start**: the [Rust](../../programming-languages/02-language-and-tool-primers/04-rust.md) and [HTTP and SSE](../../programming-languages/02-language-and-tool-primers/05-http-and-sse.md) primers; the API contract [`openai-subset.v0.yaml`](../../../../course/contracts/openapi/openai-subset.v0.yaml) and the engine role in [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md).
 
 | # | Module | Chapter | Kind | Pass |
 |---|---|---|---|---|

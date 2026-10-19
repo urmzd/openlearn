@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/sig/resample.pyi (M12.3): resampling and interpolation
-# chapter: content/tracks/math/12-signals-and-images/03-resampling-and-interpolation.md
+# chapter: content/courses/mathematics-for-computing/12-signals-and-images/03-resampling-and-interpolation.md
 #
 # Image resizing follows Pillow's Resample.c: separable passes, horizontal
 # then vertical, a pass skipped when its size does not change. For output

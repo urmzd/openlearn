@@ -7,7 +7,7 @@
 | **Module** | `rt.03` · side · C · Pass 6 |
 | **Solution** | [`pool.c`](../../../../course/solutions/c/src/runtime/pool.c): `tl_pool_create`, `tl_parallel_for`, `tl_pool_threads`, `tl_pool_destroy`, and the helpers `run_ranges`, `worker_main`, `shutdown_pool` |
 | **Contract** | [`course/contracts/c/include/tinyllm/pool.h`](../../../../course/contracts/c/include/tinyllm/pool.h) · rules: [`c/ABI.md`](../../../../course/contracts/c/ABI.md) (pthreads only; batch invariance, rule 10) |
-| **Needs** | [`rt.02` runtime support](02-arena-allocator-with-marks.md): `tl_alloc`, `tl_free`, `tl_set_last_error`. Reading: [`lang.03` C](../../../tracks/software-craftsmanship/12-language-and-tool-primers/03-c.md) |
+| **Needs** | [`rt.02` runtime support](02-arena-allocator-with-marks.md): `tl_alloc`, `tl_free`, `tl_set_last_error`. Reading: [`lang.03` C](../../programming-languages/02-language-and-tool-primers/03-c.md) |
 | **Used by** | `L9.1`, `L9.3`, `L9.4`, and `L9.5` use the pool in their optional standalone C implementations, which together form the optional C module group of the kernels pass |
 | **Optional depth** | Herlihy and Shavit, *The Art of Multiprocessor Programming*, ch. 16 (work distribution); Butenhof, *Programming with POSIX Threads*, ch. 3 and 7; the OpenMP specification, `schedule(dynamic, chunk)` |
 

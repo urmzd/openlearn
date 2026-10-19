@@ -37,4 +37,4 @@ Solve $60 + 4n \le 180$: subtract 60, then divide by 4, giving $n \le 30$. The m
 
 Before moving on, explain why attendance cannot be negative or fractional in this model.
 
-Next: [Change and growth](02-change-and-growth.md). Further study: [functions and algebra](../../tracks/math/00-precalculus/).
+Next: [Change and growth](02-change-and-growth.md). Further study: [functions and algebra](../mathematics-for-computing/00-precalculus/).

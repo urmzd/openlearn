@@ -21,7 +21,7 @@ Each course has one manifest, an ordered reading list, and reusable source lesso
 
 ## More courses
 
-- [Field Engineering](../tracks/field-engineering/README.md): [course definition](field-engineering/openlearn.json).
-- [Responsible AI](../tracks/responsible-ai/README.md): [course definition](responsible-ai/openlearn.json).
-- [Competitive Programming](../tracks/competitive-programming/README.md): [course definition](competitive-programming/openlearn.json).
-- [Interview Preparation](../interviews/README.md): [course definition](interview-preparation/openlearn.json).
+- [Field Engineering](field-engineering/README.md): [course definition](field-engineering/openlearn.json).
+- [Responsible AI](responsible-ai/README.md): [course definition](responsible-ai/openlearn.json).
+- [Competitive Programming](competitive-programming/README.md): [course definition](competitive-programming/openlearn.json).
+- [Interview Preparation](interview-preparation/README.md): [course definition](interview-preparation/openlearn.json).

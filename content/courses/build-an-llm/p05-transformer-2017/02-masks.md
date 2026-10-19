@@ -7,7 +7,7 @@
 | **Module** | `L5.2` · build · Python · Pass 5 · 1 h reading |
 | **Solution** | [`python/tinyllm/xfmr/masks.py`](../../../../course/solutions/python/tinyllm/xfmr/masks.py): `causal_mask`, `padding_mask`, `sliding_window_mask`, `combine`, `to_additive`; model oracle tests in [`test_masks.py`](../../../../course/solutions/learner-tests/L5.2/python/tests/l5-2-masks/test_masks.py) |
 | **Contract** | [`course/contracts/py/tinyllm/xfmr/masks.pyi`](../../../../course/contracts/py/tinyllm/xfmr/masks.pyi) |
-| **Needs** | nothing to call. Reading: `S-M05` (logic: AND, implication), [`M09.2` stable softmax](../../../tracks/math/09-numerical-methods-and-floating-point/02-stable-numerics.md) (an all $-\infty$ row gives zeros) |
+| **Needs** | nothing to call. Reading: `S-M05` (logic: AND, implication), [`M09.2` stable softmax](../../mathematics-for-computing/09-numerical-methods-and-floating-point/02-stable-numerics.md) (an all $-\infty$ row gives zeros) |
 | **Used by** | `L5.3` and `L5.5` build every attention mask here · later `L6.1` (GPT's causal mask), `L7.7` (sliding windows), `L8.2` (`q_offset` while decoding with a KV cache), `L9.3` and `L9.4` (the same rules as kernel flags) · `L14.3` Whisper decoding · part of the 2017 transformer stage |
 | **Optional depth** | Vaswani et al., "Attention Is All You Need" (2017), section 3.2.3 (masking in the decoder); Beltagy, Peters, Cohan, "Longformer" (2020) and Jiang et al., "Mistral 7B" (2023), section 2 (sliding-window attention) |
 
