@@ -1,15 +1,18 @@
-# C 08: Arena allocator
+# Arena allocator
 
-**Concepts:** bump allocation, alignment, block chaining, flexible array members
-**Difficulty:** ⭐⭐⭐
+`malloc` is a general-purpose allocator, and general purpose has a cost: every allocation needs a header, every `free` has to find its block again, and a long-running program fragments its heap. When many objects share one lifetime (everything built while compiling one function, rendering one frame, or serving one request) you can do far better. An arena allocator hands out memory by moving a pointer forward and frees everything at once. It has no per-allocation `free`, no headers, and no free list.
 
-An allocator that hands out memory by moving a pointer forward and frees
-everything at once. No per-allocation `free`, no headers, no free list.
+This section builds one with block chaining, arbitrary power-of-two alignment, marks you can rewind to, and a reset that keeps memory for the next cycle. The interesting parts are all about arithmetic: aligning an address rather than an offset, rounding with a mask, and writing a bounds check that cannot overflow. The reference implementation was itself first written with the alignment bug described below, and its tests caught it. A version extended for an inference runtime is [C runtime support and an arena allocator with marks](../../../../../content/courses/build-an-llm/p09-kernels/02-arena-allocator-with-marks.md) in *Build Your Own LLM System*.
 
-## The problem
+> **Learning objectives**
+> - Implement bump allocation over a chain of blocks, using a flexible array member for header and storage in one allocation.
+> - Align an allocation's address to any power of two with `(n + align - 1) & ~(align - 1)`, and explain why it fails for other values.
+> - Write bounds checks on `size_t` that cannot wrap.
+> - Implement marks and resets, and explain why reset keeps memory while free returns it.
 
-[`arena.h`](arena.h) declares the interface, [`arena.c`](arena.c) is the
-solution, and [`main.c`](main.c) is the test suite.
+## The interface
+
+[`arena.h`](arena.h) declares the interface, [`arena.c`](arena.c) is the solution, and [`main.c`](main.c) is the test suite.
 
 | Function | Does |
 |----------|------|
@@ -21,89 +24,48 @@ solution, and [`main.c`](main.c) is the test suite.
 | `arena_free(a)` | Return every block to the system |
 | `arena_block_count(a)` | Blocks held, so the tests can see reuse |
 
-Constraints: `arena_alloc_aligned` returns `NULL` for an alignment that is not a
-power of two; a zero-size request returns a valid, aligned, non-`NULL` pointer;
-an allocation larger than the default block must still work.
+Three constraints apply. `arena_alloc_aligned` returns `NULL` for an alignment that is not a power of two. A zero-size request returns a valid, aligned, non-`NULL` pointer. And an allocation larger than the default block must still work.
 
-## Build and run
-
-From this directory:
+To build and run the tests from this directory:
 
 ```bash
 cc -std=c11 -Wall -Wextra -O2 main.c arena.c -o arena && ./arena
 # ok  c/08-arena-allocator  11899 checks passed
 ```
 
-Add `-g -fsanitize=address,undefined` to check that no allocation strays outside
-its block.
+Add `-g -fsanitize=address,undefined` to check that no allocation strays outside its block.
 
-## What to notice
+## The trade an arena makes
 
-**Align the address, not the offset within the block.** The reference
-implementation was first written with this bug, and the tests caught it. Offset
-arithmetic works only while the requested alignment is no stricter than the
-block's own: `data[]` starts at `max_align_t`, typically 16 bytes, so aligning
-the offset silently returns misaligned memory the moment someone asks for 32 or
-64. Both are ordinary requests, from SIMD types and cache-line padding
-respectively. The alignment test loops alignments from 1 to 64 for exactly this
-reason.
+No `free` per allocation is a feature, not a limitation. Deallocation is one pointer write regardless of how many objects are live, there is no per-object header, and fragmentation cannot happen. The cost is that individual lifetimes are gone: everything in an arena dies together. That trade is why compilers, game engines, and request-scoped server code use arenas heavily, and why nothing with unpredictable object lifetimes does.
 
-**`(n + align - 1) & ~(align - 1)` only works for powers of two.** Adding
-`align-1` pushes past the boundary and the mask snaps back down to it, which
-depends entirely on `align` having a single bit set. That is why every alignment
-API in C, including `aligned_alloc` and `_Alignas`, insists on a power of two,
-and why this one returns `NULL` rather than misbehaving when handed 3.
+The difference between `reset` and `free` is the entire use case. `reset` keeps the memory and `free` returns it. The pattern an arena is built for is per-frame or per-request: allocate freely, reset at the boundary, repeat. If `reset` returned memory to the system, every cycle would pay for fresh `malloc` calls and you would have gained nothing over the allocator you were avoiding. The test asserts that the second round hands back *the same addresses* as the first.
 
-**Check the subtraction, not the sum.** `off + size > cap` looks like the
-obvious bounds test and can wrap on a hostile size, producing a small sum that
-passes the check and a write far outside the block. `size > cap - off` cannot
-wrap, because `off <= cap` is already established.
+## Alignment arithmetic
 
-**The tests write to every byte of every allocation, then read them all back.**
-Checking that pointers look plausible is not enough: a wrong bump produces
-overlapping regions where each individual pointer is fine and the second
-allocation quietly corrupts the first. Filling and verifying is the only way to
-see it.
+Align the address, not the offset within the block. This is the bug the reference implementation was first written with. Offset arithmetic works only while the requested alignment is no stricter than the block's own: `data[]` starts at `max_align_t`, typically 16 bytes, so aligning the offset silently returns misaligned memory the moment someone asks for 32 or 64. Both are ordinary requests, from SIMD types and cache-line padding respectively. The alignment test loops alignments from 1 to 64 for exactly this reason.
 
-**`reset` keeps the memory and `free` returns it, and the difference is the
-entire use case.** The pattern an arena is built for is per-frame or per-request:
-allocate freely, reset at the boundary, repeat. If `reset` returned memory to the
-system, every cycle would pay for fresh `malloc` calls and you would have gained
-nothing over the allocator you were avoiding. The test asserts that the second
-round hands back *the same addresses* as the first.
+The rounding formula `(n + align - 1) & ~(align - 1)` only works for powers of two. Adding `align - 1` pushes past the boundary and the mask snaps back down to it, which depends entirely on `align` having a single bit set. That is why every alignment API in C, including `aligned_alloc` and `_Alignas`, insists on a power of two, and why this one returns `NULL` rather than misbehaving when handed 3.
 
-**No `free` per allocation is a feature, not a limitation.** Deallocation is one
-pointer write regardless of how many objects are live, there is no per-object
-header, and fragmentation cannot happen. The cost is that individual lifetimes
-are gone: everything in an arena dies together. That trade is why compilers,
-game engines, and request-scoped server code use arenas heavily, and why nothing
-with unpredictable object lifetimes does.
+For the bounds check, test the subtraction, not the sum. `off + size > cap` looks like the obvious test and can wrap on a hostile size, producing a small sum that passes the check and a write far outside the block. `size > cap - off` cannot wrap, because `off <= cap` is already established.
 
-## The solution, step by step
+## Deriving the design
 
-### From first principles
+Six observations build the allocator.
 
-1. **If everything dies together, allocation is a pointer bump.** No allocation
-   needs to be found again, so none needs a header or a free-list entry. Keep a
-   block and an offset `used`; an allocation returns `data + used` and advances
-   `used`.
-2. **Alignment is a property of the address.** A `T` must sit at an address that
-   is a multiple of its alignment. So round the *address* `data + used` up, then
-   convert back to an offset. Rounding up to a power of two is
-   `(n + align - 1) & ~(align - 1)`.
-3. **The block header and storage should be one allocation.** A flexible array
-   member `data[]` after the header does that, and `_Alignas(max_align_t)` on it
-   makes the storage start at the strictest scalar alignment.
-4. **When a block is full, chain a new one.** Blocks link backwards from the
-   newest (`prev`). A new block is the default size or, for an oversized
-   request, the request plus `align - 1` bytes of worst-case padding, so the
-   retry is guaranteed to fit.
-5. **A position is (block, offset).** That pair is a mark. Rewinding frees every
-   block newer than the marked one and restores its offset.
-6. **Reset keeps one block.** The common pattern is reset-then-refill, so keeping
-   the oldest block means the next cycle usually needs no `malloc`.
+If everything dies together, allocation is a pointer bump. No allocation needs to be found again, so none needs a header or a free-list entry. Keep a block and an offset `used`; an allocation returns `data + used` and advances `used`.
 
-### The code, annotated
+Alignment is a property of the address. A `T` must sit at an address that is a multiple of its alignment. So round the *address* `data + used` up, then convert back to an offset, using the power-of-two rounding above.
+
+The block header and storage should be one allocation. A flexible array member `data[]` after the header does that, and `_Alignas(max_align_t)` on it makes the storage start at the strictest scalar alignment.
+
+When a block is full, chain a new one. Blocks link backwards from the newest (`prev`). A new block is the default size or, for an oversized request, the request plus `align - 1` bytes of worst-case padding, so the retry is guaranteed to fit.
+
+A position is a (block, offset) pair. That pair is a mark. Rewinding frees every block newer than the marked one and restores its offset.
+
+Reset keeps one block. The common pattern is reset-then-refill, so keeping the oldest block means the next cycle usually needs no `malloc`.
+
+## Building it step by step
 
 The block layout and the rounding identity:
 
@@ -220,26 +182,56 @@ void arena_reset(Arena *a) {
 Note that `arena_reset_to` does not adjust `used_total`; that counter is only
 reset by `arena_reset` and `arena_free`.
 
-Full solution: [`arena.c`](arena.c).
+The full solution is in [`arena.c`](arena.c).
 
-### Why this solution
+## Why this design
 
-- **Cost.** Allocation is O(1): a few arithmetic operations, plus one `malloc`
-  when a block fills. Freeing is O(blocks). Per-allocation overhead is only
-  alignment padding, never a header.
-- **Versus `malloc`/`free`.** A general allocator must find a fitting free block,
-  track sizes, and fight fragmentation. An arena does none of that, which is why
-  it is several times faster for many small, same-lifetime objects.
-- **Versus a pool** ([C++ 10](../../cpp/10-pool-allocator/)). A pool frees
-  individual fixed-size blocks; an arena frees nothing individually but serves
-  any size. Pick by whether lifetimes are individual or grouped.
-- **Freeing newer blocks on rewind.** Keeping them for reuse would save `malloc`
-  calls in a rewind-heavy workload but needs a list of spare blocks. The
-  reference chose the smaller design.
-- **Accepted trade.** Up to `align - 1` bytes of padding per allocation, and
-  the tail of each full block is wasted when a larger request forces a new one.
+Allocation is O(1): a few arithmetic operations, plus one `malloc` when a block fills. Freeing is O(blocks). Per-allocation overhead is only alignment padding, never a header.
 
-### Explain it back
+Against `malloc` and `free`, the arena wins by doing less. A general allocator must find a fitting free block, track sizes, and fight fragmentation. An arena does none of that, which is why it is several times faster for many small, same-lifetime objects.
+
+Against a pool, such as the C++ [memory pool allocator](../../cpp/10-pool-allocator/README.md), the choice depends on lifetimes. A pool frees individual fixed-size blocks; an arena frees nothing individually but serves any size. Pick by whether lifetimes are individual or grouped.
+
+On rewind, newer blocks are freed rather than kept. Keeping them for reuse would save `malloc` calls in a rewind-heavy workload but needs a list of spare blocks; the reference chose the smaller design.
+
+The accepted trade is up to `align - 1` bytes of padding per allocation, and the tail of each full block is wasted when a larger request forces a new one.
+
+## What can go wrong
+
+The tests write to every byte of every allocation, then read them all back. Checking that pointers look plausible is not enough: a wrong bump produces overlapping regions where each individual pointer is fine and the second allocation quietly corrupts the first. Filling and verifying is the only way to see it.
+
+| Mistake | Consequence |
+|---------|-------------|
+| Aligning the offset instead of the address | Misaligned memory for any alignment above `max_align_t` |
+| Accepting a non-power-of-two alignment | The mask produces a wrong, possibly unaligned result |
+| `off + size <= cap` as the bounds check | Wraps on a huge `size` and writes far outside the block |
+| Sizing a fresh block to exactly `size` | Alignment padding makes the retry fail |
+| `malloc(sizeof(Block) + cap)` without an overflow check | The header addition wraps for a huge request |
+| `reset` that frees every block | Every cycle pays for fresh `malloc` calls |
+
+> **Note:** `arena_reset_to` does not adjust `used_total`. That counter is reset only by `arena_reset` and `arena_free`.
+
+## Where this leads
+
+Two extensions are worth trying. Add `arena_realloc` that grows in place when the block is the most recent allocation and copies otherwise, which is the trick that makes a growable array inside an arena cheap. Then make `arena_reset` poison the reclaimed bytes under a debug flag, so use-after-reset shows up immediately instead of reading plausible stale data. *Build Your Own LLM System* uses an arena with marks for per-step scratch memory in [C runtime support and an arena allocator with marks](../../../../../content/courses/build-an-llm/p09-kernels/02-arena-allocator-with-marks.md), and the [string interning](../09-string-interning/README.md) section that follows stores its strings in exactly this kind of append-only memory.
+
+## Key terms
+
+- **Arena (bump) allocator**: an allocator that serves requests by advancing an offset and frees all allocations at once.
+- **Alignment**: the requirement that an object's address be a multiple of some power of two.
+- **Flexible array member**: a trailing `data[]` array in a struct, letting header and variable-size storage share one allocation.
+- **Mark**: a saved (block, offset) position that the arena can later rewind to.
+- **`max_align_t`**: the standard type whose alignment is at least as strict as every scalar type's.
+
+## Summary
+
+- Allocation bumps an offset within the newest block; a full block causes a new one to be chained in front.
+- Alignment is applied to the address `data + used`, using a mask that is valid only for powers of two.
+- Bounds are checked as `size <= cap - off` so the arithmetic cannot wrap; oversized blocks reserve `align - 1` bytes of padding.
+- Marks rewind by freeing newer blocks; `reset` keeps the oldest block so the next cycle needs no `malloc`.
+- Arenas trade individual lifetimes for O(1) allocation, no headers, and no fragmentation.
+
+## Review questions
 
 1. Why must the solution align the address `data + used` rather than the offset
    `used`?
@@ -292,11 +284,3 @@ Full solution: [`arena.c`](arena.c).
    least as strict as every scalar type's alignment.
 
    </details>
-
-## Extending it
-
-Add `arena_realloc` that grows in place when the block is the most recent
-allocation and copies otherwise, which is the trick that makes a growable array
-inside an arena cheap. Then try making `arena_reset` poison the reclaimed bytes
-under a debug flag, so use-after-reset shows up immediately instead of reading
-plausible stale data.
