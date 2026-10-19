@@ -1,41 +1,32 @@
-<!-- ol:module M03.5 -->
 # SVD, Eckart-Young low rank, and least squares
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M03.5` · build · Python · Pass 3 · 4 to 5 h |
-| **You build** | `python/tinyllm/linalg/svd.py`: `svd(A)` (reduced SVD by one-sided Jacobi rotations, singular values descending, a fixed sign rule), `low_rank(A, r)` (the best rank-$r$ approximation as balanced factors $B C$), and `lstsq(A, b)` (least squares by QR) |
+| **Module** | `M03.5` · build · Python · Pass 3 · about 2 to 3 h reading |
+| **Solution** | [`svd.py`](../../../../course/solutions/python/tinyllm/linalg/svd.py): `svd(A)` (reduced SVD by one-sided Jacobi rotations, singular values descending, a fixed sign rule), `low_rank(A, r)` (the best rank-$r$ approximation as balanced factors $B C$), and `lstsq(A, b)` (least squares by QR) |
 | **Contract** | [`course/contracts/py/tinyllm/linalg/svd.pyi`](../../../../course/contracts/py/tinyllm/linalg/svd.pyi) |
-| **Tests** | `course/tests/M03.5/test_svd.py` (what they check: section 4) |
-| **Needs** | `M03.3` `qr_householder`, which `lstsq` factors with (or `--ref-deps`). Reading: `M03.4` (eigenvalues; singular values are their square roots for $A^\top A$), `S-M03a` |
-| **Used by** | later `L2.3` PPMI-SVD word vectors, `L6.6` LoRA's PiSSA initialization, `L7.6` the MLA conversion, `C1` the scaling-law fit, `M10.6` Muon (each joins the registry with its batch) · later: `M09.3` |
-| **Milestone** | `MS-P3` (the tokens-and-data gate) |
+| **Needs** | `M03.3` `qr_householder` ([`qr.py`](../../../../course/solutions/python/tinyllm/linalg/qr.py)), which `lstsq` factors with. Reading: `M03.4` (eigenvalues; singular values are their square roots for $A^\top A$), `S-M03a` |
+| **Used by** | later `L2.3` PPMI-SVD word vectors, `L6.6` LoRA's PiSSA initialization, `L7.6` the MLA conversion, `C1` the scaling-law fit, `M10.6` Muon, `M09.3` |
 | **Optional depth** | Trefethen and Bau, *Numerical Linear Algebra*, lectures 4, 5, 11, 31; Demmel and Veselic, "Jacobi's method is more accurate than QR" (1992); Eckart and Young, "The approximation of one matrix by another of lower rank" (1936); Meng, Wang, and Zhang, "PiSSA" (2024) |
 
 ## Key Takeaways
 
-- Every real matrix is $A = U \Sigma V^\top$: rotate, stretch along the axes by the singular values, rotate again. The singular values are the square roots of the eigenvalues of $A^\top A$, and the largest is the most $A$ can stretch a unit vector (`test_hand_example_svd`, `test_random_matrices_match_numpy`).
-- One-sided Jacobi rotates pairs of columns until all are orthogonal; the test for "orthogonal enough" must be relative to the column lengths, or a matrix scaled by $10^{-12}$ is never rotated (`test_scale_invariance`).
-- Keeping the $r$ largest singular triples gives the closest rank-$r$ matrix, and the error is exactly the first dropped singular value (Eckart-Young, `test_eckart_young_error`); splitting $\sqrt{\sigma}$ into each factor makes them start at the same scale (`test_low_rank_factors_are_balanced`).
-- Least squares goes through QR, never $A^\top A$: the normal equations square the condition number and lose half the digits (`test_lstsq_ill_conditioned_beats_normal_equations`).
+- Every real matrix is $A = U \Sigma V^\top$: rotate, stretch along the axes by the singular values, rotate again. The singular values are the square roots of the eigenvalues of $A^\top A$, and the largest is the most $A$ can stretch a unit vector.
+- One-sided Jacobi rotates pairs of columns until all are orthogonal; the test for "orthogonal enough" must be relative to the column lengths, or a matrix scaled by $10^{-12}$ is never rotated.
+- Keeping the $r$ largest singular triples gives the closest rank-$r$ matrix, and the error is exactly the first dropped singular value (Eckart-Young); splitting $\sqrt{\sigma}$ into each factor makes them start at the same scale.
+- Least squares goes through QR, never $A^\top A$: the normal equations square the condition number and lose half the digits.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M03.5              # stubs python/tinyllm/linalg/svd.py into your repo
-ol tests M03.5              # read the test catalog first: rung R0, you write no tests here
-ol check M03.5              # exit code is the verdict
-ol check M03.5 --ref-deps   # only if your M03.3 is not passing yet
-ol diff  M03.5              # after passing: your code against the reference
-```
+Sections 1 to 3 build the SVD, one-sided Jacobi, Eckart-Young, and least squares from first principles and work a 2 by 2 example by hand. Section 4 fixes the interface and the cases a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Pass 3 starts treating text as numbers you can factor. `L2.3` counts which words appear near which others in a matrix with tens of thousands of rows and asks for 64 numbers per word that keep most of its structure: that is the best rank-64 approximation of the matrix, and the singular value decomposition is the only tool that gives it with a proof of optimality. The same decomposition comes back three more times in the system: `L6.6` starts a LoRA adapter on the top singular directions of a weight matrix, `L7.6` compresses attention's keys and values into a low-rank latent, and the capstone fits a scaling law $\log L = a + b \log N$ to a handful of runs by least squares. You already have the pieces: orthogonal matrices and QR (`M03.3`) and eigenvalues (`M03.4`). This module puts them together.
+Pass 3 starts treating text as numbers you can factor. `L2.3` counts which words appear near which others in a matrix with tens of thousands of rows and asks for 64 numbers per word that keep most of its structure: that is the best rank-64 approximation of the matrix, and the singular value decomposition is the only tool that gives it with a proof of optimality. The same decomposition comes back three more times in the system: `L6.6` starts a LoRA adapter on the top singular directions of a weight matrix, `L7.6` compresses attention's keys and values into a low-rank latent, and the capstone fits a scaling law $\log L = a + b \log N$ to a handful of runs by least squares. The pieces are already in place: orthogonal matrices and QR (`M03.3`) and eigenvalues (`M03.4`). This chapter puts them together.
 
 ## 2. Principles
 
@@ -66,11 +57,11 @@ $$A = U \Sigma V^\top = \sum_{i=1}^{k} \sigma_i\, u_i v_i^\top ,$$
 
 with orthonormal columns in $U$ and $V$ and non-negative $\sigma_i$ in descending order. Read it right to left on a vector $x$: $V^\top x$ takes the coordinates of $x$ along the directions $v_i$, $\Sigma$ stretches coordinate $i$ by $\sigma_i$, and $U$ sends the result out along the directions $u_i$. So $A v_i = \sigma_i u_i$: the unit sphere goes to an ellipsoid whose semi-axes are $\sigma_i u_i$. This is the **reduced** SVD ($U$ is $m \times k$); the full one pads $U$ to a square matrix, which nothing in the course needs.
 
-Each pair $(u_i, v_i)$ can be negated together without changing $A$ ($(-u_i)\sigma_i(-v_i)^\top = u_i \sigma_i v_i^\top$). When the singular values are distinct this is the only freedom, so the contract fixes it with a **sign rule**: the entry of largest absolute value in each row of $V^\top$ is positive (the first such entry on ties). With it, your factors and LAPACK's (after the same rule) agree entry by entry.
+Each pair $(u_i, v_i)$ can be negated together without changing $A$ ($(-u_i)\sigma_i(-v_i)^\top = u_i \sigma_i v_i^\top$). When the singular values are distinct this is the only freedom, so the contract fixes it with a **sign rule**: the entry of largest absolute value in each row of $V^\top$ is positive (the first such entry on ties). With it, the solution's factors and LAPACK's (after the same rule) agree entry by entry.
 
 ### 2.2 Singular values, eigenvalues, and norms
 
-Multiply out $A^\top A = V \Sigma^\top U^\top U \Sigma V^\top = V \Sigma^2 V^\top$: the $v_i$ are eigenvectors of the symmetric matrix $A^\top A$ with eigenvalues $\sigma_i^2$ (S-M03b q8 asks you to prove it). So everything `M03.4` said about eigenvalues applies, with two differences: singular values exist for every matrix, square or not, and they are never negative or complex.
+Multiply out $A^\top A = V \Sigma^\top U^\top U \Sigma V^\top = V \Sigma^2 V^\top$: the $v_i$ are eigenvectors of the symmetric matrix $A^\top A$ with eigenvalues $\sigma_i^2$ (problem 8 of [S-M03b](91-problem-set-b.md) proves it). So everything `M03.4` said about eigenvalues applies, with two differences: singular values exist for every matrix, square or not, and they are never negative or complex.
 
 Two norms come straight from them. For a unit $x$ with coordinates $c = V^\top x$, $\lVert Ax \rVert^2 = \sum_i \sigma_i^2 c_i^2 \le \sigma_1^2$, with equality at $x = v_1$: the **spectral norm** is $\lVert A \rVert_2 = \sigma_1$. Orthogonal factors do not change the sum of squares of entries, so the **Frobenius norm** is $\lVert A \rVert_F = \sqrt{\sum_i \sigma_i^2}$.
 
@@ -141,11 +132,11 @@ Sorting puts $\sigma_1 = 3\sqrt{5} \approx 6.708$ first, then $\sigma_2 = \sqrt{
 
 $$U = \frac{1}{\sqrt{10}}\begin{pmatrix} 1 & 3 \\ 3 & -1 \end{pmatrix}, \quad \Sigma = \begin{pmatrix} 3\sqrt{5} & 0 \\ 0 & \sqrt{5} \end{pmatrix}, \quad V^\top = \frac{1}{\sqrt{2}}\begin{pmatrix} 1 & 1 \\ 1 & -1 \end{pmatrix}.$$
 
-The sign rule holds already: each row of $V^\top$ has its largest entries tied, and the first is positive. This is `test_hand_example_svd`.
+The sign rule holds already: each row of $V^\top$ has its largest entries tied, and the first is positive.
 
-**Rank 1.** $A_1 = \sigma_1 u_1 v_1^\top = 3\sqrt{5} \cdot \frac{1}{\sqrt{20}} \begin{pmatrix} 1 & 1 \\ 3 & 3 \end{pmatrix} = \begin{pmatrix} 1.5 & 1.5 \\ 4.5 & 4.5 \end{pmatrix}$. The error $A - A_1 = \begin{pmatrix} 1.5 & -1.5 \\ -0.5 & 0.5 \end{pmatrix} = \sigma_2 u_2 v_2^\top$ has spectral and Frobenius norm $\sqrt{2.25 + 2.25 + 0.25 + 0.25} = \sqrt{5} = \sigma_2$, as Eckart-Young says. The balanced factors are $B = 45^{1/4}(1, 3)^\top/\sqrt{10}$ and $C = 45^{1/4}(1, 1)/\sqrt{2}$. This is `test_hand_example_rank_one`.
+**Rank 1.** $A_1 = \sigma_1 u_1 v_1^\top = 3\sqrt{5} \cdot \frac{1}{\sqrt{20}} \begin{pmatrix} 1 & 1 \\ 3 & 3 \end{pmatrix} = \begin{pmatrix} 1.5 & 1.5 \\ 4.5 & 4.5 \end{pmatrix}$. The error $A - A_1 = \begin{pmatrix} 1.5 & -1.5 \\ -0.5 & 0.5 \end{pmatrix} = \sigma_2 u_2 v_2^\top$ has spectral and Frobenius norm $\sqrt{2.25 + 2.25 + 0.25 + 0.25} = \sqrt{5} = \sigma_2$, as Eckart-Young says. The balanced factors are $B = 45^{1/4}(1, 3)^\top/\sqrt{10}$ and $C = 45^{1/4}(1, 1)/\sqrt{2}$.
 
-**Least squares.** Fit a line $x_0 + x_1 t$ through $(0, 1)$, $(1, 2)$, $(2, 2)$: $A = \begin{pmatrix} 1 & 0 \\ 1 & 1 \\ 1 & 2 \end{pmatrix}$, $b = (1, 2, 2)$. By hand, the residual condition $A^\top(b - Ax) = 0$ reads $3x_0 + 3x_1 = 5$ and $3x_0 + 5x_1 = 6$, so $x_1 = 1/2$ and $x_0 = 7/6$. Check: the residual $b - Ax = (1 - 7/6,\ 2 - 5/3,\ 2 - 13/6) = (-1/6, 1/3, -1/6)$ sums to 0 (orthogonal to the first column) and $0 \cdot (-1/6) + 1 \cdot (1/3) + 2 \cdot (-1/6) = 0$ (orthogonal to the second). Writing out the normal equations is fine for a $2 \times 2$ system on paper with exact fractions; your code must still go through QR, because in floating point the square of the condition number is what hurts. This is `test_hand_example_lstsq`.
+**Least squares.** Fit a line $x_0 + x_1 t$ through $(0, 1)$, $(1, 2)$, $(2, 2)$: $A = \begin{pmatrix} 1 & 0 \\ 1 & 1 \\ 1 & 2 \end{pmatrix}$, $b = (1, 2, 2)$. By hand, the residual condition $A^\top(b - Ax) = 0$ reads $3x_0 + 3x_1 = 5$ and $3x_0 + 5x_1 = 6$, so $x_1 = 1/2$ and $x_0 = 7/6$. Check: the residual $b - Ax = (1 - 7/6,\ 2 - 5/3,\ 2 - 13/6) = (-1/6, 1/3, -1/6)$ sums to 0 (orthogonal to the first column) and $0 \cdot (-1/6) + 1 \cdot (1/3) + 2 \cdot (-1/6) = 0$ (orthogonal to the second). Writing out the normal equations is fine for a $2 \times 2$ system on paper with exact fractions; the solution still goes through QR, because in floating point the square of the condition number is what hurts.
 
 ## 4. The interface
 
@@ -161,44 +152,235 @@ def lstsq(A: ArrayLike, b: ArrayLike) -> NDArray:
     """argmin ||A x - b|| for a tall, full-column-rank A, by QR and back substitution."""
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_svd` | unit, smoke | section 3's $U$, $\Sigma$, $V^\top$ to $10^{-14}$ | you and the tests agree on the rotation, the order, and the sign rule |
-| `test_hand_example_rank_one` | unit, smoke | $A_1$, the balanced factors, and the error $\sqrt{5}$ | the numbers of section 3 |
-| `test_hand_example_lstsq` | unit, smoke | $x = (7/6, 1/2)$ | the line fit of section 3 |
-| `test_random_matrices_match_numpy` | differential | tall, wide, square, and $1 \times n$ shapes against `np.linalg.svd` with the same sign rule, entry by entry | the decomposition is the unique one |
-| `test_scale_invariance` | property | `svd(c A)` is $c$ times `svd(A)` for $c = 10^{-12}, 10^{12}$ | the rotation test is relative |
-| `test_rank_deficient_completes_u` | boundary | a rank-2 matrix and the zero matrix: $U$ orthonormal, no NaN | co-occurrence matrices are often rank deficient |
-| `test_eckart_young_error` | property | spectral and Frobenius error of `low_rank` for $r = 1, 2, 4, 6$ | the optimality `L2.3` and `L6.6` rely on |
-| `test_low_rank_factors_are_balanced` | property | $B^\top B = C C^\top = \Sigma_r$ | PiSSA's equal-scale factors |
-| `test_low_rank_rejects_bad_rank` | boundary | $r = 0$, $r < 0$, $r > \min(m, n)$ raise | config errors fail early |
-| `test_lstsq_matches_numpy` | differential | one and three right-hand sides against `np.linalg.lstsq` | the minimizer is unique |
-| `test_lstsq_residual_is_orthogonal` | property | $A^\top (b - Ax) = 0$ | the defining property |
-| `test_lstsq_ill_conditioned_beats_normal_equations` | boundary | a degree-9 polynomial fit ($\kappa \approx 3.5 \times 10^6$) recovers its coefficients to $10^{-6}$ | the capstone's scaling-law fit |
-| `test_lstsq_rejects_rank_deficient_and_wide` | boundary | dependent columns, a wide system, and a wrong-length $b$ raise | no division by a zero pivot |
-| `test_inputs_not_modified_and_validated` | boundary | $A$ is unchanged; 1-D and NaN inputs raise | `L6.6` keeps the weight it decomposes |
+| Hand example, SVD | unit | section 3's $U$, $\Sigma$, $V^\top$ to $10^{-14}$ | pins the rotation, the order, and the sign rule |
+| Hand example, rank 1 | unit | $A_1$, the balanced factors, and the error $\sqrt{5}$ | the numbers of section 3 |
+| Hand example, line fit | unit | $x = (7/6, 1/2)$ | the line fit of section 3 |
+| Random tall, wide, square, $1 \times n$ | differential | against `np.linalg.svd` with the same sign rule, entry by entry | the decomposition is the unique one |
+| Scaling by $10^{\pm 12}$ | property | `svd(c A)` is $c$ times `svd(A)` | the rotation test is relative |
+| Rank-deficient and zero matrices | boundary | $U$ orthonormal, no NaN | co-occurrence matrices are often rank deficient |
+| Eckart-Young error | property | spectral and Frobenius error of `low_rank` for $r = 1, 2, 4, 6$ | the optimality `L2.3` and `L6.6` rely on |
+| Balanced factors | property | $B^\top B = C C^\top = \Sigma_r$ | PiSSA's equal-scale factors |
+| Bad rank | boundary | $r = 0$, $r < 0$, $r > \min(m, n)$ raise | config errors fail early |
+| Least squares against NumPy | differential | one and three right-hand sides against `np.linalg.lstsq` | the minimizer is unique |
+| Orthogonal residual | property | $A^\top (b - Ax) = 0$ | the defining property |
+| Ill-conditioned polynomial fit | boundary | degree 9 ($\kappa \approx 3.5 \times 10^6$) recovers its coefficients to $10^{-6}$ | the capstone's scaling-law fit |
+| Rank-deficient or wide least squares | boundary | dependent columns, a wide system, and a wrong-length $b$ raise | no division by a zero pivot |
+| Inputs | boundary | $A$ is unchanged; 1-D and NaN inputs raise | `L6.6` keeps the weight it decomposes |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. The SVD must be accurate for small singular values, which rules out an eigensolver on $A^\top A$ (2.2). Working on $A$ directly with orthogonal rotations keeps every operation norm-preserving.
+2. If $W = AV$ with $V$ orthogonal and $W$'s columns mutually orthogonal, then $W = U\Sigma$ and the SVD is read off (2.3). So the algorithm keeps that invariant and drives the column inner products to zero, one pair at a time.
+3. For a pair, the rotation that zeroes $\gamma$ solves $t^2 + 2\zeta t - 1 = 0$; the smaller root keeps $\lvert\theta\rvert \le 45°$, which is what makes sweeps converge. In the worked example $\zeta = 0$, $t = 1$, a $45°$ rotation.
+4. "Orthogonal enough" must be scale-free, so the test compares $\lvert\gamma\rvert$ with $m\varepsilon\sqrt{\alpha\beta}$: a cosine, not an absolute size.
+5. The algorithm needs $m \ge n$ so that $n$ orthogonal columns can exist in $\mathbb{R}^m$; a wide matrix is decomposed as $A^\top$ with $U$ and $V$ swapped.
+6. Column lengths come out in sweep order, but Eckart-Young needs descending order, so sort (stably, for determinism). A column whose length is negligible relative to $\sigma_1$ cannot be normalized and gets a deterministic orthonormal completion (2.4).
+7. Signs are fixed last, on $V$, so that the result is unique and comparable with LAPACK.
+8. `low_rank` is the truncated SVD split as $\sqrt{\Sigma}$ into each side (2.5). `lstsq` is $QR$ followed by back substitution on $Rx = Q^\top b$ (2.6), with a relative rank check before dividing.
+
+### The code, annotated
+
+The Jacobi kernel works on a copy of a tall matrix and accumulates $V$:
+
+```python
+EPS = 2.0**-52
+MAX_SWEEPS = 64
+
+def _jacobi_tall(T):
+    W = np.array(T, dtype=np.float64)  # a copy; its columns become U * S
+    rows, cols = W.shape
+    V = np.eye(cols)                   # invariant: W == T @ V, V orthogonal
+    tol = rows * EPS
+    for _ in range(MAX_SWEEPS):
+        rotated = False
+        for i in range(cols - 1):
+            for j in range(i + 1, cols):
+                wi, wj = W[:, i], W[:, j]
+                alpha = float(wi @ wi)
+                beta = float(wj @ wj)
+                gamma = float(wi @ wj)
+                if alpha == 0.0 or beta == 0.0:
+                    continue  # a zero column is orthogonal to everything
+                if abs(gamma) <= tol * math.sqrt(alpha * beta):
+                    continue  # relative test: the cosine is below m * eps
+                rotated = True
+```
+
+The rotation itself, with the same $(c, s)$ applied to $W$ and to $V$ so the invariant holds:
+
+```python
+                zeta = (beta - alpha) / (2.0 * gamma)
+                sign = 1.0 if zeta >= 0.0 else -1.0       # sign(0) = +1
+                t = sign / (abs(zeta) + math.sqrt(1.0 + zeta * zeta))  # smaller root, no cancellation
+                c = 1.0 / math.sqrt(1.0 + t * t)
+                s = c * t
+                W[:, [i, j]] = np.column_stack((c * wi - s * wj, s * wi + c * wj))
+                vi, vj = V[:, i].copy(), V[:, j].copy()   # copies: both new columns use the old ones
+                V[:, i] = c * vi - s * vj
+                V[:, j] = s * vi + c * vj
+        if not rotated:
+            break                                         # a sweep with no rotation: converged
+```
+
+Reading off the factors: lengths, a stable descending sort, and normalization or completion:
+
+```python
+    S = np.sqrt(np.einsum("ij,ij->j", W, W))   # column lengths
+    order = np.argsort(-S, kind="stable")
+    S, W, V = S[order], W[:, order], V[:, order]
+    U = np.zeros((rows, cols))
+    floor = rows * EPS * (S[0] if cols else 0.0)
+    for j in range(cols):
+        if S[j] > floor and S[j] > 0.0:
+            U[:, j] = W[:, j] / S[j]
+        else:
+            U[:, j] = _complete(U[:, :j], rows)  # zero singular value: any orthonormal u works
+    return U, S, V
+```
+
+`_complete` takes the first $e_i$ with more than half its length left after projecting out the previous columns twice (one projection loses orthogonality to rounding; two is enough):
+
+```python
+def _complete(Uprev, rows):
+    for i in range(rows):
+        e = np.zeros(rows)
+        e[i] = 1.0
+        for _ in range(2):  # twice is enough (Kahan, Parlett)
+            e -= Uprev @ (Uprev.T @ e)
+        norm = math.sqrt(float(e @ e))
+        if norm > 0.5:
+            return e / norm
+    raise AssertionError("unreachable: fewer than rows orthonormal columns")
+```
+
+The public `svd` validates, handles empty and wide shapes, and applies the sign rule to $V$ and $U$ together:
+
+```python
+def svd(A):
+    M = np.asarray(A, dtype=np.float64)  # a view; _jacobi_tall copies
+    if M.ndim != 2:
+        raise ValueError(f"svd: A must be 2-D, got shape {M.shape}")
+    if not np.isfinite(M).all():
+        raise ValueError("svd: A has a NaN or infinite entry")
+    m, n = M.shape
+    k = min(m, n)
+    if k == 0:
+        return np.zeros((m, 0)), np.zeros(0), np.zeros((0, n))
+    if m >= n:
+        U, S, V = _jacobi_tall(M)
+    else:
+        # A^T = U' S V'^T, so A = V' S U'^T: the roles swap.
+        Ut, S, Vt_ = _jacobi_tall(M.T)
+        U, V = Vt_, Ut
+    big = np.argmax(np.abs(V), axis=0)          # first largest |entry| per column of V
+    d = np.where(V[big, np.arange(k)] < 0.0, -1.0, 1.0)
+    return U * d, S, (V * d).T                  # flip u_i and v_i together: A unchanged
+```
+
+`low_rank` is three lines once `svd` exists:
+
+```python
+def low_rank(A, r):
+    U, S, Vt = svd(A)
+    k = S.shape[0]
+    if not 1 <= r <= k:
+        raise ValueError(f"low_rank: need 1 <= r <= min(m, n) = {k}, got r = {r}")
+    root = np.sqrt(S[:r])
+    return U[:, :r] * root, root[:, None] * Vt[:r]   # B^T B = C C^T = Sigma_r
+```
+
+`lstsq` factors with QR, checks the rank relative to the largest pivot, and back-substitutes. Indexing `x[i]` on the first axis lets one loop handle `b` of shape `[m]` or `[m, k]`:
+
+```python
+    Q, R = qr_householder(M)
+    diag = np.abs(np.diag(R))
+    if n == 0:
+        return np.zeros((0,) + y.shape[1:])
+    if diag.min() <= max(m, n) * EPS * diag.max():
+        raise ValueError("lstsq: A is rank deficient (a diagonal entry of R is ~0)")
+    z = Q.T @ y  # the coordinates of b's projection onto range(A)
+    x = np.zeros((n,) + y.shape[1:])
+    for i in range(n - 1, -1, -1):  # back substitution, last row first
+        x[i] = (z[i] - R[i, i + 1 :] @ x[i + 1 :]) / R[i, i]
+    return x
+```
+
+Full solution: [`svd.py`](../../../../course/solutions/python/tinyllm/linalg/svd.py).
+
+### Why this solution
+
+- **Cost.** A sweep visits $n(n-1)/2$ pairs at $O(m)$ each, so $O(mn^2)$ per sweep and a handful of sweeps in practice; memory is $O(mn + n^2)$. `lstsq` is one QR, $O(mn^2)$, plus $O(n^2)$ back substitution.
+- **Why not eigen-decompose $A^\top A$.** It squares $\kappa$ and loses every singular value below about $10^{-8}\sigma_1$.
+- **Why not Golub-Kahan bidiagonalization (LAPACK).** It is faster for large matrices but much longer to write, and its relative accuracy for tiny singular values is weaker than Jacobi's. For the sizes this course decomposes, Jacobi's simplicity and accuracy win.
+- **Why QR and not the normal equations for least squares.** The error scales with $\kappa(A)$ instead of $\kappa(A)^2$: $5 \times 10^{-10}$ instead of $10^{-3}$ on the degree-9 fit.
+- **Tradeoffs accepted.** `lstsq` refuses rank-deficient $A$ rather than returning the minimum-norm solution (that needs the SVD and is what `numpy.linalg.lstsq` does). The sweep cap of 64 is a safety stop, never reached on well-formed input.
+
+### Explain it back
+
+1. Why is the rotation test $\lvert\gamma\rvert \le m\varepsilon\sqrt{\alpha\beta}$ and not $\lvert\gamma\rvert \le 10^{-15}$?
+
+   <details><summary>Answer</summary>
+
+   $\gamma/\sqrt{\alpha\beta}$ is the cosine of the angle between the columns, which does not change when $A$ is scaled. An absolute threshold depends on the scale: at $10^{-12}$ every $\gamma$ is about $10^{-24}$ and nothing is rotated; at $10^{12}$ nothing ever passes.
+
+   </details>
+
+2. Why does the solution sort the singular values after the sweeps instead of trusting their order?
+
+   <details><summary>Answer</summary>
+
+   Jacobi leaves the lengths in whatever column they ended up in. Eckart-Young keeps the $r$ largest, so `low_rank` taking the first $r$ columns is only correct after a descending sort. The worked example ends with $\sqrt 5$ in column 0 and $3\sqrt 5$ in column 1, which sorting swaps.
+
+   </details>
+
+3. Why are $V$'s columns copied before being overwritten in the rotation?
+
+   <details><summary>Answer</summary>
+
+   Both new columns are combinations of both old ones. Updating `V[:, i]` first and then reading it for `V[:, j]` would mix a new column into the second formula. The `W` update avoids this by building both columns in one `column_stack`.
+
+   </details>
+
+4. Why split $\sqrt{\Sigma_r}$ into each factor of `low_rank`?
+
+   <details><summary>Answer</summary>
+
+   Any split $B = U_r D$, $C = D^{-1}\Sigma_r V_r^\top$ multiplies to $A_r$, but the gradient of a product with respect to one factor scales with the other. The balanced split gives $B^\top B = CC^\top = \Sigma_r$, so both factors train at the same rate (PiSSA's choice).
+
+   </details>
+
+5. Why does `lstsq` compare the smallest $\lvert R_{ii}\rvert$ with $\max(m, n)\varepsilon\max\lvert R_{jj}\rvert$ before solving?
+
+   <details><summary>Answer</summary>
+
+   A near-zero pivot means the columns are dependent and the minimizer is not unique; dividing by it gives huge or infinite coefficients. The test is relative to the largest pivot so it does not depend on the units of $A$.
+
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. solving the normal equations $A^\top A x = A^\top b$ | fine on easy fits, three correct digits on a degree-9 polynomial fit | `test_lstsq_ill_conditioned_beats_normal_equations` (mutant `s01`) |
-| 2. leaving singular values in sweep order | `low_rank` keeps the wrong directions; the error is not $\sigma_{r+1}$ | `test_hand_example_svd`, `test_eckart_young_error` (mutant `s02`) |
-| 3. the rotation with the wrong sign ($s = -ct$) | the columns never become orthogonal; 64 sweeps of noise | `test_random_matrices_match_numpy` (mutant `s03`) |
-| 4. stopping after one sweep | the columns are far from orthogonal: singular values of a random $30 \times 12$ matrix off by 0.2 to 0.8 | `test_random_matrices_match_numpy` (mutant `s04`) |
-| 5. the unbalanced split $(U_r\Sigma_r, V_r^\top)$ | same product, factors at different scales | `test_low_rank_factors_are_balanced`, `test_hand_example_rank_one` (mutant `s06`) |
-| 6. dividing a zero column by its zero length | NaN in $U$ for rank-deficient matrices | `test_rank_deficient_completes_u` (mutant `s07`) |
-| 7. no sign rule | factors disagree with LAPACK's on some columns; downstream tests that fix a seed see flipped vectors | `test_random_matrices_match_numpy` (mutant `s11`) |
-| 8. an absolute threshold $\lvert\gamma\rvert > 10^{-15}$ | tiny-scaled matrices are returned unrotated | `test_scale_invariance` (mutant `s12`) |
-| decomposing a wide matrix without transposing | shapes come out wrong | `test_random_matrices_match_numpy` (mutant `s05`) |
-| back substitution from the top row | wrong $x$ whenever $R$ is not diagonal | `test_hand_example_lstsq`, `test_lstsq_matches_numpy` (mutant `s08`) |
-| no rank check in `lstsq` | division by a zero diagonal entry of $R$: inf | `test_lstsq_rejects_rank_deficient_and_wide` (mutant `s09`) |
-| rotating the caller's array in place | the weight you decomposed is now $U\Sigma$ | `test_inputs_not_modified_and_validated` (mutant `s10`) |
+| 1. solving the normal equations $A^\top A x = A^\top b$ | fine on easy fits, three correct digits on a degree-9 polynomial fit | factors with `qr_householder` and solves $Rx = Q^\top b$ |
+| 2. leaving singular values in sweep order | `low_rank` keeps the wrong directions; the error is not $\sigma_{r+1}$ | sorts with `np.argsort(-S, kind="stable")`; see step 6 |
+| 3. the rotation with the wrong sign ($s = -ct$) | the columns never become orthogonal; 64 sweeps of noise | `s = c * t` with $t$ the root of $t^2 + 2\zeta t - 1 = 0$; see step 3 |
+| 4. stopping after one sweep | the columns are far from orthogonal: singular values of a random $30 \times 12$ matrix off by 0.2 to 0.8 | repeats sweeps until one rotates nothing |
+| 5. the unbalanced split $(U_r\Sigma_r, V_r^\top)$ | same product, factors at different scales | multiplies `sqrt(S[:r])` into both factors |
+| 6. dividing a zero column by its zero length | NaN in $U$ for rank-deficient matrices | calls `_complete` when `S[j]` is below the floor |
+| 7. no sign rule | factors disagree with LAPACK's on some columns; downstream tests that fix a seed see flipped vectors | makes the largest $\lvert\text{entry}\rvert$ of each $V$ column positive |
+| 8. an absolute threshold $\lvert\gamma\rvert > 10^{-15}$ | tiny-scaled matrices are returned unrotated | compares with `tol * sqrt(alpha * beta)`; see step 4 |
+| decomposing a wide matrix without transposing | shapes come out wrong | decomposes `M.T` and swaps the roles of $U$ and $V$ |
+| back substitution from the top row | wrong $x$ whenever $R$ is not diagonal | loops `range(n - 1, -1, -1)` |
+| no rank check in `lstsq` | division by a zero diagonal entry of $R$: inf | raises when `diag.min()` is below the relative floor |
+| rotating the caller's array in place | the decomposed weight is now $U\Sigma$ | rotates `np.array(T)`, a copy |
 
-## 6. Where it's used next
-| Forward | `M09.3` | Registered call site uses this module. |
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -209,12 +391,11 @@ def lstsq(A: ArrayLike, b: ArrayLike) -> NDArray:
 | Forward | `L7.6` | `mha_to_mla` compresses the key and value projections to a rank-$r$ latent |
 | Forward | `C1` | the scaling-law fit is `lstsq` on $\log$ loss against $\log$ parameters |
 | Forward | `M10.6` | Muon's Newton-Schulz iteration approximates $UV^\top$, checked against this SVD |
-
-If you skip this module, the modules above stop with `BLOCKED ... needs M03.5` once they land: build it, or pass `--ref-deps`.
+| Forward | `M09.3` | uses the SVD and low-rank approximation of this module |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | one-sided Jacobi | LAPACK `dgesvj` (Drmac and Veselic) | preconditioning by QR with column pivoting, de Rijk's pivoting, blocked rotations; Jacobi's high relative accuracy at near-LAPACK speed | LAPACK `SRC/dgesvj.f`, `dgejsv.f` |
 | `svd` | LAPACK `dgesdd` (what numpy calls) | Householder bidiagonalization, then divide and conquer on the bidiagonal matrix; much faster for large matrices | `numpy/linalg/_linalg.py`, LAPACK `SRC/dgesdd.f` |

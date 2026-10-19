@@ -1,44 +1,35 @@
-<!-- ol:module L0.6 -->
 # Safetensors for every dtype, atomic checkpoints, and the token stream
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L0.6` · build · Python · Pass 2 · 5 to 7 h |
-| **You build** | you take over `python/tinyllm/io/safetensors.py` from `L0.0` and add F16, BF16, F8_E4M3, I8, U8, I32 plus `read_header`; `python/tinyllm/io/checkpoint.py`: `save_checkpoint`, `load_checkpoint`, `verify_step_dir`; `python/tinyllm/io/tokens.py`: `read_tokens_header`, `open_tokens`, `TokenStream` |
+| **Module** | `L0.6` · build · Python · Pass 2 · 3 to 4 h |
+| **Solution** | [`safetensors.py`](../../../../course/solutions/python/tinyllm/io/safetensors.py), taken over from `L0.0` (earlier version in [`history/L0.0/`](../../../../course/solutions/history/L0.0/)): F16, BF16, F8_E4M3, I8, U8, I32 plus `read_header`, `f32_to_e4m3`, `e4m3_to_f32` · [`checkpoint.py`](../../../../course/solutions/python/tinyllm/io/checkpoint.py): `save_checkpoint`, `load_checkpoint`, `verify_step_dir` · [`tokens.py`](../../../../course/solutions/python/tinyllm/io/tokens.py): `read_tokens_header`, `open_tokens`, `TokenStream` · the `.bin` form of `train bigram` in [`cli_train.py`](../../../../course/solutions/entry/python/tinyllm/cli_train.py) |
 | **Contract** | [`course/contracts/py/tinyllm/io/safetensors.pyi`](../../../../course/contracts/py/tinyllm/io/safetensors.pyi) · [`course/contracts/py/tinyllm/io/checkpoint.pyi`](../../../../course/contracts/py/tinyllm/io/checkpoint.pyi) · [`course/contracts/py/tinyllm/io/tokens.pyi`](../../../../course/contracts/py/tinyllm/io/tokens.pyi) · formats: [`safetensors.md`](../../../../course/contracts/formats/safetensors.md), [`checkpoint.md`](../../../../course/contracts/formats/checkpoint.md), [`tokens-bin.md`](../../../../course/contracts/formats/tokens-bin.md) |
-| **Tests** | `course/tests/L0.6/` (what they check: section 4), golden files from the pinned `safetensors` library in `course/fixtures/L0.6/safetensors/`; `L0.0`'s safetensors tests keep running as your regression suite |
-| **Needs** | `M09.1` the BF16 bit converters · `L0.1`, `L0.2`, `L0.4` the model the checkpoint tests train · `M10.2` SGD and `M10.3` AdamW (optimizer state to save) · `M06.3` the PCG32 whose state the token cursor carries · `L0.5` its `bigram.py` (`L0.0`'s tests, your regression suite, exercise it) · reading: `L0.0` (or `--ref-deps`) |
-| **Used by** | `L10.0` your engine reads the file this writer produces (inherited from `L0.0` with `safetensors.py`) · `L2.1` the n-gram model saves and loads its tables with `save_safetensors` and `load_safetensors` · later: `L2.2` reads token streams, `L7.9` loads BF16 HF weights, `L10.1` memory-maps the same layout, the capstone trainer and `dur.09` resume from these checkpoints · later: `L3.6`, `L4.1`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7`  · `L14.3` Whisper decoding |
-| **Milestone** | `MS-L0` (step 4: a run killed after step 60 resumes from step 50 and ends bitwise equal to an uninterrupted one) |
+| **Needs** | `M09.1` the BF16 bit converters · `L0.1`, `L0.2`, `L0.4` the model the checkpoint tests train · `M10.2` SGD and `M10.3` AdamW (optimizer state to save) · `M06.3` the PCG32 whose state the token cursor carries · `L0.5` its `bigram.py` · reading: `L0.0` |
+| **Used by** | `L10.0` the engine reads the file this writer produces (inherited from `L0.0` with `safetensors.py`) · `L2.1` the n-gram model saves and loads its tables with `save_safetensors` and `load_safetensors` · later: `L2.2` reads token streams, `L7.9` loads BF16 HF weights, `L10.1` memory-maps the same layout, the capstone trainer and `dur.09` resume from these checkpoints; the Part 0 end-to-end run kills a training job after step 60, resumes it from the step-50 checkpoint, and ends bitwise equal to an uninterrupted run · later: `L3.6`, `L4.1`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.7`  · `L14.3` Whisper decoding |
 | **Optional depth** | the safetensors README and `safetensors/src/tensor.rs`; Micikevicius et al., "FP8 Formats for Deep Learning" (2022); Pillai et al., "All File Systems Are Not Created Equal" (OSDI 2014) on crash consistency |
 
 ## Key Takeaways
 
-- One safetensors writer for seven dtypes, byte-identical to the reference library: tensors laid out by dtype first, then by name (`test_matches_library_bytes`, `test_dtype_order_then_name`).
-- BF16 and F8_E4M3 have no numpy type, so they travel as float32 values rounded to nearest, ties to even, or as raw bits written untouched; F8_E4M3 has no infinity, so a value beyond 448 is an error, not a saturation (`test_bf16_rounds_to_nearest_even`, `test_f8_rounds_to_nearest_even`, `test_f8_rejects_out_of_range`).
-- A checkpoint is written into a `.tmp` directory, every file fsynced, the manifest last, then renamed into place, then LATEST replaced by a rename: a crash at any instant leaves the old checkpoint or the new one (`test_crash_at_every_write_keeps_a_valid_checkpoint`).
-- Loading checks every file against the manifest and falls back to the newest older checkpoint that verifies (`test_load_skips_incomplete_and_corrupt`).
-- The token stream's cursor (shard, offset, generator state) is its whole position: N batches, save, restore, M batches equals N + M batches (`test_cursor_restore_is_bitwise`, `test_resume_is_bitwise`).
+- One safetensors writer for seven dtypes, byte-identical to the reference library: tensors laid out by dtype first, then by name.
+- BF16 and F8_E4M3 have no numpy type, so they travel as float32 values rounded to nearest, ties to even, or as raw bits written untouched; F8_E4M3 has no infinity, so a value beyond 448 is an error, not a saturation.
+- A checkpoint is written into a `.tmp` directory, every file fsynced, the manifest last, then renamed into place, then LATEST replaced by a rename: a crash at any instant leaves the old checkpoint or the new one.
+- Loading checks every file against the manifest and falls back to the newest older checkpoint that verifies.
+- The token stream's cursor (shard, offset, generator state) is its whole position: N batches, save, restore, M batches equals N + M batches.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L0.6              # stubs checkpoint.py and tokens.py; safetensors.py is yours: ol start prints its contract diff
-ol tests L0.6              # read the test catalog first: rung R0
-ol check L0.6              # also reruns L0.0's smoke tests against your safetensors.py
-ol check L0.6 --ref-deps   # only if a dependency is not passing yet
-ol diff  L0.6              # after passing: your code against the reference
-```
+Sections 1 to 3 build the three formats from first principles (dtype codes, the atomic checkpoint protocol, the token stream) and work each by hand. Section 4 fixes the interface and lists what a correct solution must handle. Section 5 walks through `safetensors.py`, `checkpoint.py`, and `tokens.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
-Your CLI's `train bigram --method autograd` gains the token-stream form `MS-L0` runs: `--data shard.bin --max-steps N --batch B --seq-len T --ckpt-every K [--resume]` reads windows through `TokenStream`, writes `save_checkpoint(<out>/ckpt, ...)` every K steps with `extra = {"tokens_seen", "data_cursor", "lr", "config_sha256", "git_sha"}` and the cursor's generator state as `rng_state`, and with `--resume` restores model, optimizer, step, and cursor from `load_checkpoint(<out>/ckpt)`. It evaluates the failpoint `train/after-step` after every step (the kata of `craft.03` parses it) and ends with the `final.json` line `MS-L0` compares byte for byte.
+The solution's entry point uses all three: `train bigram --method autograd --data shard.bin --max-steps N --batch B --seq-len T --ckpt-every K [--resume]` in [`cli_train.py`](../../../../course/solutions/entry/python/tinyllm/cli_train.py) reads windows through `TokenStream`, writes `save_checkpoint(<out>/ckpt, ...)` every K steps with `extra = {"tokens_seen", "data_cursor", "lr", "config_sha256", "git_sha", "config"}` and the cursor's generator state as `rng_state`, and with `--resume` restores model, optimizer, step, and cursor from `load_checkpoint(<out>/ckpt)`. After every step it evaluates the failpoint `train/after-step` (the fault-injection kata of `craft.03` uses it to kill the run), and it ends by writing `final.json`: step, tokens seen, the loss and its exact hex, the cursor, and a hash of the parameters, so an interrupted-and-resumed run can be compared with an uninterrupted one byte for byte.
 
 ---
 
 ## 1. Why now
 
-Three things in your system cannot happen yet. Your safetensors writer (`L0.0`) knows only F32, but SmolLM2's weights (`L7.9`) are BF16 and quantized weights (`M09.4`, `L8.5`) are F8_E4M3 and U8. Your training runs keep their state in memory: `MS-L0`'s fourth step kills one after step 60, and today it would restart from zero, because nothing on disk says where it was, what AdamW's moments were, or which window comes next. And the bigram trains on a byte string read whole into memory; the capstone's TinyStories tokens are hundreds of megabytes in llm.c's `.bin` format. This module writes every dtype, saves a training run so that a crash at any instant leaves a usable checkpoint, and reads token shards through a memory map with a cursor that resumes exactly.
+Three things in the system cannot happen yet. The safetensors writer of `L0.0` knows only F32, but SmolLM2's weights (`L7.9`) are BF16 and quantized weights (`M09.4`, `L8.5`) are F8_E4M3 and U8. Training runs keep their state in memory: kill one after step 60 and today it would restart from zero, because nothing on disk says where it was, what AdamW's moments were, or which window comes next. And the bigram trains on a byte string read whole into memory; the capstone's TinyStories tokens are hundreds of megabytes in llm.c's `.bin` format. This module writes every dtype, saves a training run so that a crash at any instant leaves a usable checkpoint, and reads token shards through a memory map with a cursor that resumes exactly.
 
 ## 2. Principles
 
