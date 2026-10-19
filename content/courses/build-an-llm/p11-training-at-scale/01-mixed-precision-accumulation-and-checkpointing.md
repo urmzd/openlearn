@@ -1,38 +1,26 @@
 # Mixed precision, loss scaling, gradient accumulation, and activation checkpointing
 
-## Overview
+The [capstone](../capstones/01-tinystories.md) trains a 10.4M-parameter Llama with a 512-token context. The loop from [Training loop and the autograd bigram](../p00-foundations/05-training-loop-and-the-autograd-bigram.md) runs one batch per step, all in float32, and keeps every layer's activations until `backward()` returns. Three things break at that size. First, the batch the recipe calls for (32 sequences) does not fit: the `memory_plan` from [Counting: params, FLOPs, KV bytes, memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md) puts the float32 activations of one 512-token sequence through the 8 layers at 161 MiB, so a batch of 32 needs 5.0 GiB of activations next to 159 MiB of weights, gradients, and AdamW moments. Second, real hardware trains in bf16 or fp16 for speed and memory, and you need to know that the run you design here still converges when every matmul reads 8-bit mantissas before you trust a recipe that depends on it. Third, when a gradient underflows or overflows in fp16, a float32 loop never sees it.
 
-| | |
-|---|---|
-| **Module** | `L11.1` · build · Python · Pass 9 |
-| **Solution** | [`precision.py`](../../../../course/solutions/python/tinyllm/train/precision.py): `cast`, `autocast`, `autocast_bf16`, `autocast_dtype`, `DynamicLossScaler`, `grad_accumulate`, `train_step_mixed` · [`recompute.py`](../../../../course/solutions/python/tinyllm/train/recompute.py): `checkpoint`, `checkpoint_sequential` |
-| **Contract** | [`course/contracts/py/tinyllm/train/precision.pyi`](../../../../course/contracts/py/tinyllm/train/precision.pyi) · [`course/contracts/py/tinyllm/train/recompute.pyi`](../../../../course/contracts/py/tinyllm/train/recompute.pyi) |
-| **Needs** | `L0.1` Tensor, `from_op`, grad mode · `L0.3` `mse` (the examples' loss) · `L0.4` Module and layers · `M09.1` `round_to_bf16`, `round_to_fp16` · `M10.2` SGD and `M10.3` AdamW (the examples' optimizers) · `M10.4` `clip_grad_norm_` · `M08.4` `checkpoint_schedule` · reading: `M05.1` the memory plan, `L0.5` `train_step` |
-| **Used by** | the capstone trainer: `C1` trains with `--bf16 --micro-batch 8 --accum 4 --checkpoint-activations`; with all three on, a Llama trains to within 2% of the float32 loss at a lower peak memory |
-| **Optional depth** | Micikevicius et al., [*Mixed Precision Training*](https://arxiv.org/abs/1710.03740) (2018); Kalamkar et al., [*A Study of BFLOAT16 for Deep Learning Training*](https://arxiv.org/abs/1905.12322) (2019); Chen et al., [*Training Deep Nets with Sublinear Memory Cost*](https://arxiv.org/abs/1604.06174) (2016); Korthikanti et al., [*Reducing Activation Recomputation in Large Transformer Models*](https://arxiv.org/abs/2205.05198) (2022) |
+This section adds the four tools every large training run uses, each behind one call: `autocast` (emulated low precision), `DynamicLossScaler` (fp16 range), `grad_accumulate` (a big batch from small ones), and `checkpoint_sequential` (activations kept on a recompute schedule). The emulation runs on numpy and is not faster. What it gives you is the exact numerics, so the claim that the capstone converges within 2% of float32 at a lower peak memory is measured, not assumed. The capstone trainer calls all four with `--bf16 --micro-batch 8 --accum 4 --checkpoint-activations`; without this section those flags have nothing to call.
 
-## Key Takeaways
+You will build on a good deal of earlier material. From this book: the Tensor, `from_op`, and grad mode of [Tensor, broadcasting backward, and no_grad](../p00-foundations/01-tensor-and-broadcasting-backward.md); `mse` from [Losses with a fused backward](../p00-foundations/03-losses-with-fused-backward.md), which is the loss in the examples; and `Module.parameters()` from [Module system and basic layers](../p00-foundations/04-module-system-and-layers.md). From *Mathematics for Computing*: `round_to_bf16` and `round_to_fp16` from [IEEE 754 anatomy, ulp, round to nearest even, and bf16 and fp16 emulation](../../mathematics-for-computing/09-numerical-methods-and-floating-point/01-ieee-754.md); SGD from [The Optimizer protocol](../../mathematics-for-computing/10-optimization/02-optimizer-protocol-and-sgd.md) and AdamW from [Adam and AdamW](../../mathematics-for-computing/10-optimization/03-adam-and-adamw.md); `clip_grad_norm_` from [Learning-rate schedules and gradient clipping](../../mathematics-for-computing/10-optimization/04-schedules-and-gradient-clipping.md); and `checkpoint_schedule` from [Hessian-vector products and the recompute-versus-memory schedule](../../mathematics-for-computing/08-matrix-calculus-and-autodiff/04-hessian-vector-products-and-recompute.md).
 
-- Mixed precision rounds what a matmul reads and writes, and nothing else: the weights stay float32 masters, so an update smaller than bf16's spacing still lands.
-- fp16 gradients below $2^{-24}$ flush to zero. Multiplying the loss by $S$ multiplies every gradient by $S$ (backprop is linear), which lifts them into range; dividing by $S$ before the update undoes it, and a step whose gradients overflowed is skipped and $S$ halved.
-- Weighting micro-batch $i$'s mean loss by $n_i/N$ makes $k$ micro-batches give exactly the gradient of one batch of $N$ rows.
-- A checkpointed segment reruns the same operations on the same values during backward, so its gradients are equal bit for bit, provided the rerun replays the random draws and its parameters are parents of the node.
+The solution lives in [`precision.py`](../../../../course/solutions/python/tinyllm/train/precision.py) (`cast`, `autocast`, `autocast_bf16`, `autocast_dtype`, `DynamicLossScaler`, `grad_accumulate`, `train_step_mixed`) and [`recompute.py`](../../../../course/solutions/python/tinyllm/train/recompute.py) (`checkpoint`, `checkpoint_sequential`), with the contracts in [`precision.pyi`](../../../../course/contracts/py/tinyllm/train/precision.pyi) and [`recompute.pyi`](../../../../course/contracts/py/tinyllm/train/recompute.pyi).
 
-## How to read this chapter
+> **Learning objectives**
+> - Emulate a bf16 or fp16 matmul, forward and backward, and explain why the master weights stay float32.
+> - Derive loss scaling from the linearity of backprop and trace a dynamic loss scaler through overflows and growth.
+> - Weight micro-batches so that accumulation reproduces one large batch's gradient exactly, for unequal sizes.
+> - Build activation checkpointing as a single graph node whose gradients equal the plain run's bit for bit.
 
-Sections 1 to 3 build the four tools from first principles and work each one by hand. Section 4 fixes the interface. Section 5 walks through the solution, `precision.py` and `recompute.py`, and explains why each choice is the right one. Try to predict each step of the solution from the principles before reading it.
+## Notation
 
----
-
-## 1. Why now
-
-The capstone (`C1`) trains a 10.4M-parameter Llama with a 512-token context. The `L0.5` loop runs one batch per step, all in float32, and keeps every layer's activations until `backward()` returns. Three things break at that size. The batch the recipe calls for (32 sequences) does not fit: `M05.1`'s `memory_plan` puts the float32 activations of one 512-token sequence through the 8 layers at 161 MiB, so a batch of 32 needs 5.0 GiB of activations next to 159 MiB of weights, gradients, and AdamW moments. Real hardware trains in bf16 or fp16 for speed and memory, and you need to know that the run you design here still converges when every matmul reads 8-bit mantissas, before you trust a recipe that depends on it. And when a gradient underflows or overflows in fp16, a float32 loop never sees it. This module adds the four tools every large training run uses, each behind one call: `autocast` (emulated low precision), `DynamicLossScaler` (fp16 range), `grad_accumulate` (a big batch from small ones), and `checkpoint_sequential` (activations kept on `M08.4`'s schedule). The emulation runs on numpy and is not faster; what it gives you is the exact numerics, so the claims that the capstone converges within 2% of float32 at a lower peak memory are measured, not assumed.
-
-## 2. Principles
+The section uses a handful of symbols throughout; here they are in one place.
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
-| $\mathrm{rd}_{16}(x)$ | $x$ rounded to nearest, ties to even, into bf16 or fp16 (`M09.1`) | elementwise |
+| $\mathrm{rd}_{16}(x)$ | $x$ rounded to nearest, ties to even, into bf16 or fp16 | elementwise |
 | $p$ | the precision of a format, in significant bits: 24 (fp32), 11 (fp16), 8 (bf16) | `int` |
 | $u = 2^{-p}$ | the unit roundoff: the largest relative error of one rounding | float |
 | $w$ | a parameter (the float32 master copy) | `float32[...]` |
@@ -41,41 +29,59 @@ The capstone (`C1`) trains a 10.4M-parameter Llama with a 512-token context. The
 | $S$ | the loss scale (`loss_scale`) | float, a power of 2 |
 | $N$, $n_i$, $k$ | rows in the full batch, rows in micro-batch $i$, number of micro-batches | `int` |
 | $L_i$ | the mean loss over micro-batch $i$'s rows | float |
-| $s_j$, $P$ | segment sizes and peak memory of a checkpoint schedule (`M08.4`) | `int` |
+| $s_j$, $P$ | segment sizes and peak memory of a checkpoint schedule | `int` |
 
-**Two 16-bit formats.** Both keep a sign, an exponent, and a mantissa in 16 bits. bf16 keeps float32's 8 exponent bits and 7 mantissa bits: the same range (up to about $3.4 \times 10^{38}$) with $p = 8$, so $u = 2^{-8} \approx 0.4\%$. fp16 has 5 exponent bits and 10 mantissa bits: $p = 11$, $u \approx 0.05\%$, but its largest finite value is 65504, its smallest normal $2^{-14} \approx 6.1 \times 10^{-5}$, and its smallest subnormal $2^{-24} \approx 6 \times 10^{-8}$. bf16 trades precision for range; fp16 trades range for precision. numpy has neither, so `M09.1`'s `round_to_bf16` and `round_to_fp16` emulate them: a float array whose entries are all values of the format.
+## Two 16-bit formats and what a bf16 matmul does
 
-**What a bf16 matmul does.** A tensor core reads two bf16 matrices, multiplies, accumulates the sums in float32, and writes a bf16 result. So $Y = AB$ becomes
+Both 16-bit formats keep a sign, an exponent, and a mantissa in 16 bits, but they split the bits differently. bf16 keeps float32's 8 exponent bits and 7 mantissa bits: the same range (up to about $3.4 \times 10^{38}$) with $p = 8$, so $u = 2^{-8} \approx 0.4\%$. fp16 has 5 exponent bits and 10 mantissa bits: $p = 11$, $u \approx 0.05\%$, but its largest finite value is 65504, its smallest normal $2^{-14} \approx 6.1 \times 10^{-5}$, and its smallest subnormal $2^{-24} \approx 6 \times 10^{-8}$. bf16 trades precision for range; fp16 trades range for precision. numpy has neither, so `round_to_bf16` and `round_to_fp16` emulate them: each returns a float array whose entries are all values of the format.
+
+A tensor core reads two bf16 matrices, multiplies, accumulates the sums in float32, and writes a bf16 result. So $Y = AB$ becomes
 
 $$Y = \mathrm{rd}_{16}\big(\mathrm{rd}_{16}(A)\, \mathrm{rd}_{16}(B)\big), \qquad \text{the product computed in float32}.$$
 
-Each operand entry has relative error up to $u$, and the output one more rounding. Errors of different entries are independent-looking, so a dot product of length $K$ drifts by about $\sqrt K\, u$ relative, not $K u$; for training this is noise of a few tenths of a percent, smaller than minibatch noise.
+Each operand entry has relative error up to $u$, and the output gets one more rounding. Errors of different entries look independent, so a dot product of length $K$ drifts by about $\sqrt K\, u$ relative, not $K u$. For training this is noise of a few tenths of a percent, smaller than minibatch noise.
 
-**The cast is an op with a gradient.** Write the emulated storage as an op `cast`: forward $y = \mathrm{rd}_{16}(x)$. Its true derivative is zero almost everywhere (a step function), which would stop all learning; what hardware does is pass the gradient through the conversion, and a gradient that arrives in bf16 is a bf16 value. So the backward of a cast is the cast of the gradient: $\bar x = \mathrm{rd}_{16}(\bar y)$. Built from `from_op` (`L0.1`), the autocast matmul is `cast(cast(a) @ cast(b))`, and its backward computes $\bar A = \mathrm{rd}_{16}(\mathrm{rd}_{16}(\bar Y)\, \mathrm{rd}_{16}(B)^\top)$: a bf16 backward matmul, exactly what a GPU runs. Because every matmul in your models goes through `Tensor.__matmul__` (`F.matmul`, `Linear`, attention), `autocast` swaps in the rounding version for the length of a `with` block and puts the original back on the way out, also when the block raises. That is what `torch.autocast` does with its dispatch keys.
+## The cast is an op with a gradient
 
-**Why the weights stay float32.** The update $w \leftarrow w - \eta g$ is where precision matters most. The spacing of bf16 numbers near 1 is $2^{-7} \approx 0.0078$: a weight of 1 updated by $\eta g = 10^{-3}$ rounds straight back to 1, and the update is lost. Training in pure bf16 stalls once updates become small. So the parameters, the optimizer state (AdamW's moments), and the update stay float32: the "master weights". Only the matmuls, which dominate the time and the activation memory, run on rounded operands. `M05.1`'s memory plan counts this: bf16 AdamW is 2 (weights) + 2 (grads) + 4 (master) + 8 (moments) = 16 bytes per parameter, the same as float32, and the saving is all in activations.
+To put that rounding into the autograd graph, write the emulated storage as an op `cast` with forward $y = \mathrm{rd}_{16}(x)$. Its true derivative is zero almost everywhere (rounding is a step function), which would stop all learning. What hardware does instead is pass the gradient through the conversion, and a gradient that arrives in bf16 is a bf16 value. So the backward of a cast is the cast of the gradient: $\bar x = \mathrm{rd}_{16}(\bar y)$.
 
-**Loss scaling.** In fp16 the problem is range, not precision. Gradients of a mean loss over many tokens are small: a cross-entropy gradient on the logits is $(\mathrm{softmax} - \mathrm{onehot})/N$, and backpropagated through a few layers many entries fall below $2^{-24}$ and flush to zero. Backprop is linear in the upstream gradient: every VJP is linear in $\bar y$, so starting backward from $S \cdot L$ instead of $L$ multiplies every gradient by exactly $S$. Choose $S$ so the small gradients land in fp16's normal range, and divide the float32 master gradients by $S$ before the update. With $S$ a power of two, scaling and unscaling are exact (they only change the exponent).
+Built from `from_op`, the autocast matmul is `cast(cast(a) @ cast(b))`, and its backward computes $\bar A = \mathrm{rd}_{16}(\mathrm{rd}_{16}(\bar Y)\, \mathrm{rd}_{16}(B)^\top)$: a bf16 backward matmul, exactly what a GPU runs. Because every matmul in your models goes through `Tensor.__matmul__` (`F.matmul`, `Linear`, attention), `autocast` can swap in the rounding version for the length of a `with` block and put the original back on the way out, including when the block raises. That is what `torch.autocast` does with its dispatch keys.
 
-**Dynamic scaling.** Too large an $S$ overflows the large gradients to $\infty$ (and $\infty - \infty$ to NaN). The fix is to detect, not to predict: after backward, if any gradient is non-finite, skip the whole step (one poisoned entry would corrupt every weight it touches through the optimizer), drop the gradients, and multiply $S$ by the backoff $\tfrac12$. After `interval` consecutive good steps, multiply $S$ by the growth factor 2 to probe upward again. The count of good steps restarts after every overflow and every growth. A skipped step costs one batch; a run without scaling silently loses its small gradients. Clipping (`M10.4`) comes after unscaling, because the clip bound is a norm in true gradient units. bf16 has float32's range and needs no scaler.
+## Why the weights stay float32
 
-**Gradient accumulation.** The loss of a batch of $N$ rows is the mean of per-row losses $\ell_r$. Split the rows into micro-batches $B_1, \dots, B_k$ with $n_i$ rows each, and let $L_i$ be micro-batch $i$'s own mean. Then
+The update $w \leftarrow w - \eta g$ is where precision matters most. The spacing of bf16 numbers near 1 is $2^{-7} \approx 0.0078$, so a weight of 1 updated by $\eta g = 10^{-3}$ rounds straight back to 1, and the update is lost. Training in pure bf16 stalls once updates become small. So the parameters, the optimizer state (AdamW's moments), and the update stay float32; these are the "master weights". Only the matmuls, which dominate the time and the activation memory, run on rounded operands. The memory plan counts this: bf16 AdamW is 2 (weights) + 2 (grads) + 4 (master) + 8 (moments) = 16 bytes per parameter, the same as float32, and the saving is all in activations.
+
+## Loss scaling and dynamic scaling
+
+bf16 has float32's range and needs nothing more. In fp16, though, the problem is range, not precision. Gradients of a mean loss over many tokens are small: a cross-entropy gradient on the logits is $(\mathrm{softmax} - \mathrm{onehot})/N$, and backpropagated through a few layers many entries fall below $2^{-24}$ and flush to zero.
+
+The fix comes from one observation: backprop is linear in the upstream gradient. Every VJP is linear in $\bar y$, so starting backward from $S \cdot L$ instead of $L$ multiplies every gradient by exactly $S$. Choose $S$ so the small gradients land in fp16's normal range, then divide the float32 master gradients by $S$ before the update. With $S$ a power of two, scaling and unscaling are exact, because they only change the exponent.
+
+Too large an $S$, however, overflows the large gradients to $\infty$ (and $\infty - \infty$ to NaN). The robust approach is to detect, not to predict. After backward, if any gradient is non-finite, skip the whole step (one poisoned entry would corrupt every weight it touches through the optimizer), drop the gradients, and multiply $S$ by the backoff $\tfrac12$. After `interval` consecutive good steps, multiply $S$ by the growth factor 2 to probe upward again. The count of good steps restarts after every overflow and every growth. A skipped step costs one batch; a run without scaling silently loses its small gradients. Clipping comes after unscaling, because the clip bound is a norm in true gradient units.
+
+## Gradient accumulation
+
+Memory is the other constraint, and accumulation addresses it by splitting a batch. The loss of a batch of $N$ rows is the mean of per-row losses $\ell_r$. Split the rows into micro-batches $B_1, \dots, B_k$ with $n_i$ rows each, and let $L_i$ be micro-batch $i$'s own mean. Then
 
 $$L = \frac1N \sum_{r} \ell_r = \sum_{i=1}^k \frac{n_i}{N} \cdot \frac{1}{n_i}\sum_{r \in B_i} \ell_r = \sum_{i=1}^k \frac{n_i}{N} L_i,$$
 
-and since the gradient is linear, $\nabla L = \sum_i \tfrac{n_i}{N} \nabla L_i$. Backpropagating $\tfrac{n_i}{N} L_i$ for each micro-batch, without zeroing in between (the Tensor adds into `.grad`, `L0.1`), accumulates exactly $\nabla L$. Only one micro-batch's activations exist at a time. Weighting by $\tfrac1k$ is the same only when all micro-batches have equal size; the last one of an epoch usually does not. The results agree with one big batch to float32 rounding, not bit for bit, because the sums are added in a different order.
+and since the gradient is linear, $\nabla L = \sum_i \tfrac{n_i}{N} \nabla L_i$. Backpropagating $\tfrac{n_i}{N} L_i$ for each micro-batch, without zeroing in between (the Tensor adds into `.grad`), accumulates exactly $\nabla L$, and only one micro-batch's activations exist at a time. Weighting by $\tfrac1k$ gives the same answer only when all micro-batches have equal size, and the last one of an epoch usually does not. The results agree with one big batch to float32 rounding, not bit for bit, because the sums are added in a different order.
 
-**Activation checkpointing.** `M08.4` counted the trade: keep only some layers' inputs and recompute the rest during backward. The mechanism is one graph node. `checkpoint(fn, x)` runs `fn` under `no_grad`, so none of its intermediate values are recorded, and returns a node (`from_op`) whose parents are $x$ and the parameters `fn` reads. When backward reaches the node, its VJP reruns `fn` with grad mode on, from fresh leaf copies of its inputs, backpropagates the upstream gradient through that rerun (which adds the parameter gradients into their `.grad` directly), and returns the inputs' gradients. `checkpoint_sequential` applies `M08.4`'s `checkpoint_schedule`: every segment but the last through `checkpoint`, the last one normally.
+## Activation checkpointing
 
-Three details make the gradients equal bit for bit. The rerun performs the same floating-point operations on the same values, so it produces the same activations. A dropout layer draws a new mask from its generator on every call, so the node records the generator's state before the forward pass, sets it back for the rerun, and afterwards restores the state the stream had reached, as if nothing had been rerun. And the segment's parameters must be parents of the node: the first segment's input is data, which does not require grad, and `from_op` records a node only when some parent requires grad, so without the parameters the first layers would silently get no gradient (the classic bug of reentrant checkpointing in PyTorch).
+Accumulation shrinks the batch; checkpointing shrinks what each layer keeps. The recompute-versus-memory schedule in *Mathematics for Computing* counted the trade: keep only some layers' inputs and recompute the rest during backward. The mechanism here is one graph node. `checkpoint(fn, x)` runs `fn` under `no_grad`, so none of its intermediate values are recorded, and returns a node (`from_op`) whose parents are $x$ and the parameters `fn` reads. When backward reaches the node, its VJP reruns `fn` with grad mode on, from fresh leaf copies of its inputs, backpropagates the upstream gradient through that rerun (which adds the parameter gradients into their `.grad` directly), and returns the inputs' gradients. `checkpoint_sequential` applies `checkpoint_schedule`: every segment but the last goes through `checkpoint`, and the last runs normally.
 
-One difference from `M08.4`'s model: the `L0.1` `backward()` keeps the whole outer graph alive until it returns, where PyTorch frees each saved tensor as soon as backward has used it. So the activation memory held between forward and backward falls as `M08.4` predicts, while the peak during backward falls less, because the last segment stays alive while earlier segments are recomputed.
+Three details make the gradients equal bit for bit. The rerun performs the same floating-point operations on the same values, so it produces the same activations. A dropout layer draws a new mask from its generator on every call, so the node records the generator's state before the forward pass, sets it back for the rerun, and afterwards restores the state the stream had reached, as if nothing had been rerun. And the segment's parameters must be parents of the node: the first segment's input is data, which does not require grad, and `from_op` records a node only when some parent requires grad, so without the parameters the first layers would silently get no gradient. That is the classic bug of reentrant checkpointing in PyTorch.
 
-## 3. Worked example by hand
+There is one difference from the schedule's memory model. This book's `backward()` keeps the whole outer graph alive until it returns, whereas PyTorch frees each saved tensor as soon as backward has used it. So the activation memory held between forward and backward falls as the schedule predicts, while the peak during backward falls less, because the last segment stays alive while earlier segments are recomputed.
 
-**A bf16 matmul.** $A = [1, 1]$, $B = [1, 2^{-8}]^\top$. Both are bf16 values already. The float32 product is $1 + 2^{-8} = 1.00390625$. Its bf16 neighbours are 1 and $1 + 2^{-7}$, with $1 + 2^{-8}$ exactly halfway; ties go to the even mantissa, so autocast returns $1.0$. An input of $1.01$ is stored as $1.0078125 = 1 + 2^{-7}$, the nearest bf16 value. For $L = \sum Y$, $\bar Y = 1$ and $\bar A = \mathrm{rd}(\bar Y)\,\mathrm{rd}(B)^\top = [1, 2^{-8}]$, $\bar B = \mathrm{rd}(A)^\top \mathrm{rd}(\bar Y) = [1, 1]^\top$. The same product outside autocast is the float32 $1.00390625$.
+## Working it by hand
 
-**Accumulation.** One weight $w = 1$, inputs $x = [1, 2, 3, 4]$, targets $2x$, loss the mean of $(wx - 2x)^2$. With $w = 1$ the residuals are $-x$:
+Four small examples pin each tool to exact numbers. They are also the first four checks a correct solution must pass.
+
+**A bf16 matmul.** Take $A = [1, 1]$ and $B = [1, 2^{-8}]^\top$. Both are bf16 values already. The float32 product is $1 + 2^{-8} = 1.00390625$. Its bf16 neighbours are 1 and $1 + 2^{-7}$, with $1 + 2^{-8}$ exactly halfway; ties go to the even mantissa, so autocast returns $1.0$. An input of $1.01$ is stored as $1.0078125 = 1 + 2^{-7}$, the nearest bf16 value. For $L = \sum Y$, $\bar Y = 1$, so $\bar A = \mathrm{rd}(\bar Y)\,\mathrm{rd}(B)^\top = [1, 2^{-8}]$ and $\bar B = \mathrm{rd}(A)^\top \mathrm{rd}(\bar Y) = [1, 1]^\top$. The same product outside autocast is the float32 $1.00390625$.
+
+**Accumulation.** Use one weight $w = 1$, inputs $x = [1, 2, 3, 4]$, targets $2x$, and the loss the mean of $(wx - 2x)^2$. With $w = 1$ the residuals are $-x$. The table compares one batch with a split into micro-batches of 1 and 3 rows:
 
 | | rows | $L_i$ | $\partial L_i/\partial w = \mathrm{mean}(2(wx - 2x)x)$ | weight |
 |---|---|---|---|---|
@@ -83,9 +89,9 @@ One difference from `M08.4`'s model: the `L0.1` `backward()` keeps the whole out
 | micro-batch 1 | 1 | 1 | $-2$ | $1/4$ |
 | micro-batch 2 | 2, 3, 4 | $29/3$ | $2(-4 - 9 - 16)/3 = -58/3$ | $3/4$ |
 
-Weighted: $\tfrac14(-2) + \tfrac34(-\tfrac{58}{3}) = -0.5 - 14.5 = -15$, and the loss $\tfrac14 \cdot 1 + \tfrac34 \cdot \tfrac{29}{3} = 7.5$. Weighting each by $\tfrac12$ gives $-10.67$; not weighting at all gives $-21.3$.
+Weighted, the gradient is $\tfrac14(-2) + \tfrac34(-\tfrac{58}{3}) = -0.5 - 14.5 = -15$, and the loss is $\tfrac14 \cdot 1 + \tfrac34 \cdot \tfrac{29}{3} = 7.5$. Weighting each micro-batch by $\tfrac12$ gives $-10.67$; not weighting at all gives $-21.3$.
 
-**Loss scaling.** $S = 8$, growth 2, backoff $\tfrac12$, interval 2, SGD with $\eta = 0.5$ on one parameter starting at 0. The scaled gradients arrive as below:
+**Loss scaling.** Take $S = 8$, growth 2, backoff $\tfrac12$, interval 2, and SGD with $\eta = 0.5$ on one parameter starting at 0. The scaled gradients arrive as follows:
 
 | step | scaled $g$ | finite? | unscaled $g/S$ | $w$ after | $S$ after | good steps |
 |---|---|---|---|---|---|---|
@@ -95,11 +101,13 @@ Weighted: $\tfrac14(-2) + \tfrac34(-\tfrac{58}{3}) = -0.5 - 14.5 = -15$, and the
 | 4 | 8 | yes | 2 | $-2.0$ | 8 (grown) | 0 |
 | 5 | 16 | yes | 2 | $-3.0$ | 8 | 1 |
 
-If the count did not restart at the overflow, step 3 would already be the second good step and grow $S$ one step early.
+If the count did not restart at the overflow, step 3 would already be the second good step and would grow $S$ one step early.
 
-**Checkpointing six layers.** With a budget of 4 units, `checkpoint_schedule(6, 4) == [0, 3]` (`M08.4`, section 3). The forward pass runs layers 0 to 2 under `no_grad` and keeps only their input, then layers 3 to 5 normally. Backward runs layers 5, 4, 3, reaches the checkpoint node, reruns layers 0 to 2 forward, and backpropagates through them. Each of layers 0 to 2 has run forward twice, layers 3 to 5 once, and every gradient equals the plain run's. These four examples are the first four cases in section 4's table.
+**Checkpointing six layers.** With a budget of 4 units, `checkpoint_schedule(6, 4) == [0, 3]`. The forward pass runs layers 0 to 2 under `no_grad` and keeps only their input, then layers 3 to 5 normally. Backward runs layers 5, 4, 3, reaches the checkpoint node, reruns layers 0 to 2 forward, and backpropagates through them. Each of layers 0 to 2 has run forward twice and layers 3 to 5 once (forward counts $[2, 2, 2, 1, 1, 1]$), and every gradient equals the plain run's.
 
-## 4. The interface
+## Designing the API
+
+The interface is small: one op, one context manager, one scaler class, and two functions for the training step, plus the two checkpointing functions.
 
 ```python
 # python/tinyllm/train/precision.py
@@ -117,51 +125,26 @@ def train_step_mixed(model, micro_batches, loss_fn, opt, precision="fp32", scale
 
 # python/tinyllm/train/recompute.py
 def checkpoint(fn, *args, params=(), rngs=()) -> Tensor
-def checkpoint_sequential(layers, x, mem_budget_layers, rngs=()) -> Tensor        # M08.4's schedule
+def checkpoint_sequential(layers, x, mem_budget_layers, rngs=()) -> Tensor        # uses checkpoint_schedule
 ```
 
-`train_step_mixed` is `L0.5`'s `train_step` for the capstone: zero the gradients, accumulate the micro-batches under `autocast(precision)` (none for `"fp32"`), then either the scaler's step or a finite-loss check, clipping, and `opt.step()`. It returns `{"loss", "skipped", "scale"}` plus `"grad_norm"` when it clipped. `autocast` patches `Tensor.__matmul__` and `__rmatmul__` process-wide while the outermost block is open; blocks nest and the innermost dtype applies.
+`train_step_mixed` is the foundations chapter's `train_step` grown up for the capstone. It zeroes the gradients, accumulates the micro-batches under `autocast(precision)` (no block for `"fp32"`), then runs either the scaler's step or a finite-loss check, clipping, and `opt.step()`. It returns `{"loss", "skipped", "scale"}`, plus `"grad_norm"` when it clipped. `autocast` patches `Tensor.__matmul__` and `__rmatmul__` process-wide while the outermost block is open; blocks nest, and the innermost dtype applies.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| hand example: bf16 matmul | unit | section 3: $1 + 2^{-8} \to 1$, $1.01 \to 1.0078125$, bf16 gradients | the emulation is pinned to exact values |
-| hand example: accumulation | unit | section 3: loss 7.5, gradient $-15$ from micro-batches of 1 and 3 | the capstone's `--accum 4` |
-| hand example: loss scaler | unit | section 3's five-step trace of $S$, the count, and $w$ | fp16 runs |
-| hand example: checkpoint schedule | unit | section 3: forward counts $[2, 2, 2, 1, 1, 1]$, equal gradients | `--checkpoint-activations` |
-| cast rounds both directions | unit | both formats, forward and gradient, dtype kept | the op every autocast matmul is built from |
-| autocast matmul matches a rounded reference | property | random products, reflected operands, `Linear` | attention and MLP matmuls |
-| gradients are bf16, masters stay float32 | property | weight gradients are bf16 values; a $10^{-3}$ update survives in the master | why mixed precision converges |
-| autocast restores the matmul | boundary | an exception, nesting, an unknown dtype | no bf16 leaking into the next eval |
-| fp16 underflow rescued by loss scaling | differential | tiny gradients vanish in fp16 and match float32 once scaled | fp16 hardware |
-| scaler skips inf steps | property | an overflow changes nothing, drops gradients, halves $S$ until steps succeed | a long run survives a spike |
-| scaler unscales before clipping | differential | clip to 1 of a gradient of norm 5 scaled by 1024 | the clip bound means what it says |
-| scaler state round trip | unit | resume keeps $S$ and the count; bad arguments raise | `TrainRun` resumes from checkpoints |
-| accumulation equals one big batch | differential | micro-batches of 5, 11, 16 rows equal one of 32 to $10^{-6}$ | the capstone's loss within 2% |
-| bf16 training tracks float32 | differential | 60 AdamW steps in bf16 end within 2% of float32 | the capstone in miniature |
-| NaN loss rejected | boundary | a NaN loss raises before any update | `L0.5`'s guarantee kept |
-| checkpoint gradients bitwise equal | differential | 7 layers, three budgets, float64 and float32, bit for bit | checkpointing never changes training |
-| checkpoint replays the dropout generator | differential | same masks, and the stream ends where the plain run's does | dropout in the capstone |
-| parameters learn from a data input | unit | the first segment's parameters learn from a data input | the embedding and first block |
-| `checkpoint` called directly | boundary | a tensor passed twice, a number argument, `no_grad` | `checkpoint` used directly |
-| checkpointing lowers peak memory | property | tracemalloc: forward under half, overall peak lower | the reason to checkpoint |
+Before reading the code, it helps to see how each design decision follows from the principles above.
 
-## 5. The solution, step by step
-
-### From first principles
-
-1. **Rounding has to happen where hardware rounds, and only there.** A tensor core reads 16-bit operands and writes a 16-bit result, so the emulation must round both operands and the output of every matmul. Rounding anything else (the weights, the update) would model a machine that does not exist and would lose the small updates of section 2.
+1. **Rounding has to happen where hardware rounds, and only there.** A tensor core reads 16-bit operands and writes a 16-bit result, so the emulation must round both operands and the output of every matmul. Rounding anything else (the weights, the update) would model a machine that does not exist and would lose the small updates discussed earlier.
 2. **So rounding must be a graph op, not a numpy call.** If the forward pass rounded `a.data` in place, the backward pass would see float32 gradients. Making `cast` a `from_op` node with VJP $\bar x = \mathrm{rd}_{16}(\bar y)$ gives the backward matmuls the same rounding for free, because the autograd engine composes VJPs.
 3. **Every matmul goes through `Tensor.__matmul__`, so patching that one method covers every model.** The patch must be scoped (a context manager), must survive exceptions (`finally`), and must nest: only the outermost block installs and removes the patch, and a stack of dtypes says which format applies right now.
 4. **Loss scaling follows from linearity.** Every VJP is linear in its upstream gradient, so backpropagating $S L$ produces $S g$. Scaling the loss is one multiplication; unscaling is one multiplication of each master gradient by $1/S$. Everything after unscaling (clipping, the optimizer) then works in true gradient units.
-5. **Overflow is detected, not predicted.** A single non-finite entry would poison every weight through AdamW's moments, so the step is all or nothing: skip, drop the gradients, halve $S$, restart the count. Growth is the mirror image: after `interval` good steps double $S$ and restart the count.
-6. **Accumulation is a reweighting of the loss.** By the identity in section 2, backpropagating $\tfrac{n_i}{N} L_i$ for each micro-batch without zeroing sums to $\nabla L$. The weight must use row counts, which means the solution must know each micro-batch's size before it starts.
+5. **Overflow is detected, not predicted.** A single non-finite entry would poison every weight through AdamW's moments, so the step is all or nothing: skip, drop the gradients, halve $S$, restart the count. Growth is the mirror image: after `interval` good steps, double $S$ and restart the count.
+6. **Accumulation is a reweighting of the loss.** By the identity derived above, backpropagating $\tfrac{n_i}{N} L_i$ for each micro-batch without zeroing sums to $\nabla L$. The weight must use row counts, which means the solution must know each micro-batch's size before it starts.
 7. **Checkpointing is one graph node whose VJP reruns the forward.** The forward runs under `no_grad`, so nothing inside is saved. The node's parents must include the parameters (otherwise a data input gives a node that is never recorded), and the rerun must start from fresh leaves (otherwise its backward would flow into the outer graph a second time) and replay the random generators.
 
-### The code, annotated
+### The cast and the patched matmul
 
-The cast and the patched matmul. `_round` keeps the array's own float dtype, so a float64 model stays float64 (pitfall 4).
+`_round` keeps the array's own float dtype, so a float64 model stays float64.
 
 ```python
 def _round(a: np.ndarray, dtype: str) -> np.ndarray:
@@ -195,26 +178,28 @@ def autocast(dtype: str) -> Iterator[None]:
     _stack.append(dtype)
     try:
         yield
-    finally:                        # runs on an exception too (pitfall 5)
+    finally:                        # runs on an exception too
         _stack.pop()
-        if not _stack:              # an inner block leaving does not unpatch the outer one (pitfall 6)
+        if not _stack:              # an inner block leaving does not unpatch the outer one
             Tensor.__matmul__, Tensor.__rmatmul__ = _orig.pop("mm"), _orig.pop("rmm")
 ```
 
-The scaler's `step` is the whole of section 2's dynamic scaling in order: check, skip or unscale, clip, step, grow.
+### The loss scaler
+
+The scaler's `step` is the whole of dynamic scaling in order: check, skip or unscale, clip, step, grow.
 
 ```python
 def step(self, opt: Any, params: Iterable[Any], clip: Optional[float] = None) -> bool:
     ps = [p for p in params if p.grad is not None]
     if not all(np.isfinite(p.grad).all() for p in ps):
         for p in ps:
-            p.grad = None               # drop the poisoned gradients (pitfall 13)
+            p.grad = None               # drop the poisoned gradients
         self.loss_scale *= self.backoff
-        self.good_steps = 0             # restart the count (pitfall 14)
+        self.good_steps = 0             # restart the count
         return False
     inv = 1.0 / self.loss_scale
     for p in ps:
-        p.grad *= inv                   # unscale first: the clip bound is in true units (pitfall 15)
+        p.grad *= inv                   # unscale first: the clip bound is in true units
     self.last_grad_norm = float(clip_grad_norm_(ps, clip)) if clip is not None else None
     opt.step()
     self.good_steps += 1
@@ -224,7 +209,9 @@ def step(self, opt: Any, params: Iterable[Any], clip: Optional[float] = None) ->
     return True
 ```
 
-`state_dict` saves `good_steps` along with $S$, so a resumed run grows $S$ on the same step the uninterrupted run would (pitfall 16).
+`state_dict` saves `good_steps` along with $S$, so a resumed run grows $S$ on the same step the uninterrupted run would.
+
+### Accumulation and the mixed training step
 
 Accumulation computes all sizes first, because each weight needs the total $N$:
 
@@ -239,19 +226,19 @@ def grad_accumulate(model, micro_batches, loss_fn, scaler=None) -> float:
         loss = _split(loss_fn(model, mb))
         w = n / total  # a mean over n rows times n / N is that rows' share of the big mean
         part = loss * w
-        # no zero_grad here: .grad accumulates across micro-batches (pitfall 9)
+        # no zero_grad here: .grad accumulates across micro-batches
         (scaler.scale(part) if scaler is not None else part).backward()
-        out += w * float(np.asarray(loss.data).reshape(()))   # the reported loss is weighted too (pitfall 10)
+        out += w * float(np.asarray(loss.data).reshape(()))   # the reported loss is weighted too
     return out
 ```
 
 `train_step_mixed` composes these: `opt.zero_grad()`, then `grad_accumulate` inside `autocast(precision)` (no block for `"fp32"`), then either `scaler.step(...)`, which may skip, or a check that raises `FloatingPointError` on a non-finite loss before clipping and `opt.step()`.
 
-The checkpoint node:
+### The checkpoint node
 
 ```python
 def checkpoint(fn, *args, params=(), rngs=()) -> Tensor:
-    # each distinct Tensor once: a tensor passed twice gets one summed gradient (pitfall 20)
+    # each distinct Tensor once: a tensor passed twice gets one summed gradient
     tensors = list({id(a): a for a in args if isinstance(a, Tensor)}.values())
     parents = tensors + list(params)     # parameters are parents, so a data input still records a node
     if not is_grad_enabled():
@@ -263,8 +250,8 @@ def checkpoint(fn, *args, params=(), rngs=()) -> Tensor:
     def vjp(g):
         after = [r.state() for r in rngs]
         for r, s in zip(rngs, before):
-            r.set_state(s)               # replay the same dropout masks (pitfall 21)
-        # fresh leaves: the rerun's backward stops here instead of entering the outer graph (pitfall 24)
+            r.set_state(s)               # replay the same dropout masks
+        # fresh leaves: the rerun's backward stops here instead of entering the outer graph
         leaves = {id(a): Tensor(a.data, requires_grad=a.requires_grad, dtype=a.data.dtype) for a in tensors}
         try:
             y = fn(*[leaves[id(a)] if isinstance(a, Tensor) else a for a in args])
@@ -272,7 +259,7 @@ def checkpoint(fn, *args, params=(), rngs=()) -> Tensor:
                 y.backward(g)            # parameters inside fn get their .grad here, directly
         finally:
             for r, s in zip(rngs, after):
-                r.set_state(s)           # the stream continues where the forward pass left it (pitfall 22)
+                r.set_state(s)           # the stream continues where the forward pass left it
         grads = [leaves[id(a)].grad for a in tensors]
         return grads + [None] * len(params)   # parameter grads were already added by y.backward
 
@@ -287,112 +274,66 @@ ends = starts[1:] + [len(layers)]
 for i, (a, b) in enumerate(zip(starts, ends)):
     seg = layers[a:b]
     if i == len(starts) - 1:
-        x = _segment(seg)(x)  # the last segment keeps its activations: no rerun (pitfall 18)
+        x = _segment(seg)(x)  # the last segment keeps its activations: no rerun
     else:
         params = [p for m in seg for p in m.parameters()]
         x = checkpoint(_segment(seg), x, params=params, rngs=rngs)
 ```
 
-Full solution: [`precision.py`](../../../../course/solutions/python/tinyllm/train/precision.py) · [`recompute.py`](../../../../course/solutions/python/tinyllm/train/recompute.py)
+The full solution is in [`precision.py`](../../../../course/solutions/python/tinyllm/train/precision.py) and [`recompute.py`](../../../../course/solutions/python/tinyllm/train/recompute.py), and a model test suite is in [`test_l11_1_mine.py`](../../../../course/solutions/learner-tests/L11.1/python/tests/l11-1-precision/test_l11_1_mine.py).
 
-A model test suite for this unit: [`test_l11_1_mine.py`](../../../../course/solutions/learner-tests/L11.1/python/tests/l11-1-precision/test_l11_1_mine.py)
+### Why this design
 
-### Why this solution
+The costs are modest. Autocast adds three elementwise roundings per matmul, $O(\text{size})$ next to the matmul's $O(MNK)$. Accumulation costs nothing extra in compute and divides activation memory by $k$. Checkpointing with segments $s_j$ runs every checkpointed layer forward twice (about one extra forward pass, a third more compute) and keeps the activations of one segment plus the segment inputs, as the schedule counted.
 
-- **Cost.** Autocast adds three elementwise roundings per matmul, $O(\text{size})$ next to the matmul's $O(MNK)$. Accumulation costs nothing extra in compute and divides activation memory by $k$. Checkpointing with segments $s_j$ runs every checkpointed layer forward twice (about one extra forward pass, a third more compute) and keeps the activations of one segment plus the segment inputs, as `M08.4` counted.
-- **Patching `__matmul__` versus a dtype on every tensor.** A real per-tensor dtype would mean touching every op in the library. Patching the one method every matmul goes through gives exact hardware numerics for matmuls, which are where the error lives, with ten lines and no change to any model. The tradeoff accepted: it is process-wide state, hence the stack and the `finally`.
-- **Dynamic versus static scaling.** A fixed $S$ must be tuned per model and fails when the gradient scale drifts during training. Dynamic scaling costs a skipped step on each overflow and nothing else.
-- **Weighting by $n_i/N$ versus $1/k$.** The two agree only for equal sizes; the row-count weight is exact for every split, at the cost of computing sizes up front.
-- **A reentrant node versus saved-tensor hooks.** PyTorch's non-reentrant checkpoint frees memory more aggressively, but needs hooks the `L0.1` engine does not have. One `from_op` node needs only the engine as it is, and the price is the explicit `params` argument.
+Patching `__matmul__` beats giving every tensor a dtype. A real per-tensor dtype would mean touching every op in the library. Patching the one method every matmul goes through gives exact hardware numerics for matmuls, which are where the error lives, in ten lines and with no change to any model. The accepted tradeoff is process-wide state, hence the stack and the `finally`.
 
-### Explain it back
+Dynamic scaling beats static scaling because a fixed $S$ must be tuned per model and fails when the gradient scale drifts during training; dynamic scaling costs a skipped step on each overflow and nothing else. Weighting by $n_i/N$ beats $1/k$ because the two agree only for equal sizes, while the row-count weight is exact for every split, at the cost of computing sizes up front. Finally, a reentrant node is chosen over saved-tensor hooks: PyTorch's non-reentrant checkpoint frees memory more aggressively, but needs hooks this book's engine does not have. One `from_op` node needs only the engine as it is, and the price is the explicit `params` argument.
 
-**Why is the backward of `cast` the cast of the gradient, and not the true derivative?**
+## What can go wrong
 
-<details><summary>Answer</summary>
+A correct solution has to pass a set of checks that go well beyond the hand examples. The table lists them along with why each matters later.
 
-The true derivative of rounding is zero almost everywhere, which would stop learning. Hardware passes the gradient through the conversion, and that gradient is itself stored in 16 bits, so the faithful emulation rounds it. This also makes the backward matmuls bf16 matmuls without any extra code.
+| Case | Kind of check | Checks | Why it matters downstream |
+|---|---|---|---|
+| hand example: bf16 matmul | unit | $1 + 2^{-8} \to 1$, $1.01 \to 1.0078125$, bf16 gradients | the emulation is pinned to exact values |
+| hand example: accumulation | unit | loss 7.5, gradient $-15$ from micro-batches of 1 and 3 | the capstone's `--accum 4` |
+| hand example: loss scaler | unit | the five-step trace of $S$, the count, and $w$ | fp16 runs |
+| hand example: checkpoint schedule | unit | forward counts $[2, 2, 2, 1, 1, 1]$, equal gradients | `--checkpoint-activations` |
+| cast rounds both directions | unit | both formats, forward and gradient, dtype kept | the op every autocast matmul is built from |
+| autocast matmul matches a rounded reference | property | random products, reflected operands, `Linear` | attention and MLP matmuls |
+| gradients are bf16, masters stay float32 | property | weight gradients are bf16 values; a $10^{-3}$ update survives in the master | why mixed precision converges |
+| autocast restores the matmul | boundary | an exception, nesting, an unknown dtype | no bf16 leaking into the next eval |
+| fp16 underflow rescued by loss scaling | differential | tiny gradients vanish in fp16 and match float32 once scaled | fp16 hardware |
+| scaler skips inf steps | property | an overflow changes nothing, drops gradients, halves $S$ until steps succeed | a long run survives a spike |
+| scaler unscales before clipping | differential | clip to 1 of a gradient of norm 5 scaled by 1024 | the clip bound means what it says |
+| scaler state round trip | unit | resume keeps $S$ and the count; bad arguments raise | `TrainRun` resumes from checkpoints |
+| accumulation equals one big batch | differential | micro-batches of 5, 11, 16 rows equal one of 32 to $10^{-6}$ | the capstone's loss within 2% |
+| bf16 training tracks float32 | differential | 60 AdamW steps in bf16 end within 2% of float32 | the capstone in miniature |
+| NaN loss rejected | boundary | a NaN loss raises before any update | the training loop's guarantee kept |
+| checkpoint gradients bitwise equal | differential | 7 layers, three budgets, float64 and float32, bit for bit | checkpointing never changes training |
+| checkpoint replays the dropout generator | differential | same masks, and the stream ends where the plain run's does | dropout in the capstone |
+| parameters learn from a data input | unit | the first segment's parameters learn from a data input | the embedding and first block |
+| `checkpoint` called directly | boundary | a tensor passed twice, a number argument, `no_grad` | `checkpoint` used directly |
+| checkpointing lowers peak memory | property | tracemalloc: forward under half, overall peak lower | the reason to checkpoint |
 
-</details>
+The mistakes that make those checks fail fall into four families, and each one is answered by a specific line of the code above.
 
-**Why is it safe to multiply the loss by $S$ and divide the gradients by $S$, and why a power of two?**
+**Precision emulation.** If you forget to round the matmul output, bf16 runs look more accurate than hardware will be; `_matmul` wraps the product in a final `cast`. If you pass the gradient through the cast unrounded, a "bf16" backward produces float32 gradients; `cast`'s VJP rounds the gradient with `_round`. Rounding only one operand halves the error budget unnoticed, which is why `_matmul` casts both `a` and `b`. A cast that turns float64 into float32 causes dtype mixing downstream; `_round` converts back with `.astype(a.dtype)`.
 
-<details><summary>Answer</summary>
+> **Warning:** Without `try`/`finally` around the patched matmul, an exception leaves every later matmul in bf16, and an inner block that unpatches on exit makes the rest of the outer block run in float32. `autocast` restores the methods in `finally`, and only the block that empties `_stack` unpatches.
 
-Backprop is linear in the upstream gradient, so every gradient is exactly $S$ times the true one, and dividing restores it. A power of two changes only the exponent, so neither the scaling nor the unscaling rounds.
+**Accumulation.** Weighting micro-batches by $1/k$ gives the wrong gradient whenever the sizes differ; `grad_accumulate` weights by `n / total`. Summing micro-batch losses makes gradients $k$ times too large; each part is `loss * w` with weights summing to 1. Zeroing gradients between micro-batches means only the last micro-batch trains; `grad_accumulate` never zeroes, and `train_step_mixed` zeroes once, before. Reporting the unweighted mean loss makes the logged loss disagree with the gradient's; the returned loss is `sum(w * loss_i)`.
 
-</details>
+**Loss scaling.** Never unscaling makes the update $S$ times too large; `step` multiplies every gradient by `1 / loss_scale` before `opt.step()`. Stepping on non-finite gradients makes every weight NaN after one overflow; `step` checks `np.isfinite` on every gradient and returns `False`. Keeping the bad gradients after a skip lets a loop without `zero_grad` add onto $\infty$; a skipped step sets every `p.grad = None`. Not restarting the count after an overflow grows $S$ right back into overflow; `good_steps = 0` on overflow and on growth. Clipping before unscaling makes the clip act on $S \cdot g$ and produces tiny updates; unscaling comes before `clip_grad_norm_`. Losing the count on resume makes the resumed run grow $S$ late; `state_dict` saves `good_steps`. And without a scaler, stepping on a NaN loss poisons the run silently; `train_step_mixed` raises `FloatingPointError` before `opt.step()`.
 
-**Why does the scaler set every gradient to `None` when it skips a step?**
+**Checkpointing.** Checkpointing the last segment too makes every layer run twice for nothing; `checkpoint_sequential` runs the last segment through `_segment` directly. If the parameters are not parents of the node, the first segment stops learning on data input; `params` are part of the node's `parents`. A tensor passed twice would get its gradient twice; `tensors` deduplicates the arguments by `id`. Not replaying the generator makes the rerun's dropout mask differ from the forward pass's; the VJP sets each generator to its `before` state. Not restoring the generator after the rerun makes later draws repeat, so runs with and without checkpointing diverge; the VJP's `finally` sets each generator to its `after` state. Running the forward pass with the graph on gives correct gradients but saves no memory; the forward pass runs under `no_grad()`. Rerunning on the original tensors sends the rerun's backward into the outer graph; the rerun reads fresh leaf copies of the inputs.
 
-<details><summary>Answer</summary>
+## Where this leads
 
-A loop that forgets `zero_grad` would otherwise add the next step's gradients onto $\infty$ or NaN and skip forever. Dropping them makes the skip leave no trace except the smaller $S$.
+The [capstone trainer](../capstones/01-tinystories.md) is the direct consumer: it trains with bf16, accumulation of 4 micro-batches of 8, and checkpointed blocks, and compares the result with a float32 run. Accumulation also returns in [Data parallelism and ZeRO stages 1 to 3](03-ddp-and-zero.md), where production systems fuse it with gradient partitioning.
 
-</details>
-
-**What goes wrong if `checkpoint` leaves the parameters out of the node's parents?**
-
-<details><summary>Answer</summary>
-
-When the segment's input is data (no `requires_grad`), `from_op` sees no parent that requires grad and records no node, so backward never reaches the rerun and the segment's parameters get no gradient. With the parameters as parents, the node is recorded and its VJP runs.
-
-</details>
-
-**Why does the VJP restore the generators to the *after* state when it is done?**
-
-<details><summary>Answer</summary>
-
-Setting them to the *before* state replays the forward masks, but leaves the stream rewound. Later draws would then repeat earlier ones, and a run with checkpointing would diverge from one without it. Restoring the state the stream had reached makes the rerun invisible.
-
-</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. not rounding the matmul output | bf16 runs look more accurate than hardware will be | `_matmul` wraps the product in a final `cast` |
-| 2. passing the gradient through the cast unrounded | float32 gradients from a "bf16" backward | `cast`'s VJP rounds the gradient with `_round` |
-| 3. rounding only one operand | half the error budget, unnoticed | `_matmul` casts both `a` and `b` |
-| 4. a cast that changes float64 to float32 | dtype mixing downstream | `_round` converts back with `.astype(a.dtype)` |
-| 5. no `try`/`finally` around the patched matmul | an exception leaves every later matmul in bf16 | `autocast` restores the methods in `finally` |
-| 6. leaving an inner block ends the outer one | the rest of the outer block runs in float32 | only the block that empties `_stack` unpatches |
-| 7. weighting micro-batches $1/k$ | wrong gradient whenever the sizes differ | `grad_accumulate` weights by `n / total` |
-| 8. summing micro-batch losses | gradients $k$ times too large | each part is `loss * w` with weights summing to 1 |
-| 9. zeroing gradients between micro-batches | only the last micro-batch trains | `grad_accumulate` never zeroes; `train_step_mixed` zeroes once, before |
-| 10. reporting the unweighted mean loss | the logged loss disagrees with the gradient's | the returned loss is `sum(w * loss_i)` |
-| 11. never unscaling | the update is $S$ times too large | `step` multiplies every gradient by `1 / loss_scale` before `opt.step()` |
-| 12. stepping on non-finite gradients | one overflow makes every weight NaN | `step` checks `np.isfinite` on every gradient and returns `False` |
-| 13. keeping the bad gradients after a skip | a loop without `zero_grad` adds onto $\infty$ | a skipped step sets every `p.grad = None` |
-| 14. not restarting the count after an overflow | $S$ grows right back into overflow | `good_steps = 0` on overflow and on growth |
-| 15. clipping before unscaling | the clip acts on $S \cdot g$: tiny updates | unscaling comes before `clip_grad_norm_` in `step` |
-| 16. losing the count on resume | the resumed run grows $S$ late | `state_dict` saves `good_steps` |
-| 17. stepping on a NaN loss without a scaler | the run is poisoned silently | `train_step_mixed` raises `FloatingPointError` before `opt.step()` |
-| 18. checkpointing the last segment too | every layer runs twice for nothing | `checkpoint_sequential` runs the last segment through `_segment` directly |
-| 19. parameters not parents of the node | the first segment stops learning on data input | `params` are part of the node's `parents` |
-| 20. a tensor passed twice gets its gradient twice | doubled gradients for shared inputs | `tensors` deduplicates the arguments by `id` |
-| 21. not replaying the generator | the rerun's dropout mask differs from the forward pass's | the VJP sets each generator to its `before` state |
-| 22. not restoring the generator after the rerun | later draws repeat; runs with and without checkpointing diverge | the VJP's `finally` sets each generator to its `after` state |
-| 23. running the forward pass with the graph on | correct gradients, no memory saved | the forward pass runs under `no_grad()` |
-| 24. rerunning on the original tensors | the rerun's backward runs into the outer graph | the rerun reads fresh leaf copies of the inputs |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `L0.1` | `from_op` builds `cast` and the checkpoint node; grad mode decides what the forward pass records |
-| Back | `L0.3` | `mse` is the examples' loss |
-| Back | `L0.4` | `Module.parameters()` lists a segment's parents |
-| Back | `M09.1` | `round_to_bf16` and `round_to_fp16` are the emulated formats |
-| Back | `M10.2` | `SGD` in the worked examples |
-| Back | `M10.3` | `AdamW` in the capstone |
-| Back | `M10.4` | `clip_grad_norm_` after unscaling |
-| Back | `M08.4` | `checkpoint_schedule` plans the segments |
-| Forward | `C1` | the capstone trainer: bf16, accumulation of 4 micro-batches of 8, checkpointed blocks, compared with a float32 run |
-
-Without this module, the capstone's `--bf16 --accum --checkpoint-activations` flags have nothing to call.
-
-## Going further
+Every piece here has a production counterpart that adds more:
 
 | Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
@@ -401,4 +342,79 @@ Without this module, the capstone's `--bf16 --accum --checkpoint-activations` fl
 | bf16 and fp16 | NVIDIA Transformer Engine | fp8 matmuls with per-tensor delayed scaling, the same idea one format lower | `transformer_engine/pytorch/fp8.py` |
 | `checkpoint_sequential` | `torch.utils.checkpoint` | non-reentrant checkpointing with saved-tensor hooks, RNG state for every device | `torch/utils/checkpoint.py` |
 | uniform segments | Megatron-LM selective recomputation | recompute only attention's cheap, large softmax and dropout, keep the matmul outputs | `megatron/core/tensor_parallel/random.py` |
-| `grad_accumulate` | DeepSpeed `gradient_accumulation_steps` | accumulation fused with ZeRO's gradient partitioning (`L11.3`) | `deepspeed/runtime/engine.py` |
+| `grad_accumulate` | DeepSpeed `gradient_accumulation_steps` | accumulation fused with ZeRO's gradient partitioning | `deepspeed/runtime/engine.py` |
+
+### Further reading
+
+- Micikevicius et al., [*Mixed Precision Training*](https://arxiv.org/abs/1710.03740) (2018).
+- Kalamkar et al., [*A Study of BFLOAT16 for Deep Learning Training*](https://arxiv.org/abs/1905.12322) (2019).
+- Chen et al., [*Training Deep Nets with Sublinear Memory Cost*](https://arxiv.org/abs/1604.06174) (2016).
+- Korthikanti et al., [*Reducing Activation Recomputation in Large Transformer Models*](https://arxiv.org/abs/2205.05198) (2022).
+
+## Key terms
+
+- **bf16**: a 16-bit format with float32's 8 exponent bits and 7 mantissa bits; float32's range at unit roundoff $2^{-8}$.
+- **fp16**: a 16-bit format with 5 exponent bits and 10 mantissa bits; finer precision but a maximum of 65504 and a smallest subnormal of $2^{-24}$.
+- **autocast**: a scoped mode in which every matmul rounds its operands and output to a 16-bit format.
+- **master weights**: the float32 copy of the parameters and optimizer state that receives every update.
+- **loss scale**: a power of two $S$ that multiplies the loss so that small fp16 gradients stay representable; divided out before the update.
+- **dynamic loss scaling**: halving $S$ and skipping the step on overflow, and doubling $S$ after a run of good steps.
+- **gradient accumulation**: summing the gradients of micro-batches weighted by $n_i/N$ to reproduce one large batch's gradient.
+- **activation checkpointing**: discarding a segment's activations in the forward pass and recomputing them during backward.
+
+## Summary
+
+- Mixed precision rounds what a matmul reads and writes, and nothing else: the weights stay float32 masters, so an update smaller than bf16's spacing still lands.
+- fp16 gradients below $2^{-24}$ flush to zero. Multiplying the loss by $S$ multiplies every gradient by $S$ (backprop is linear), which lifts them into range; dividing by $S$ before the update undoes it, and a step whose gradients overflowed is skipped and $S$ halved.
+- Weighting micro-batch $i$'s mean loss by $n_i/N$ makes $k$ micro-batches give exactly the gradient of one batch of $N$ rows.
+- A checkpointed segment reruns the same operations on the same values during backward, so its gradients are equal bit for bit, provided the rerun replays the random draws and its parameters are parents of the node.
+
+## Review questions
+
+1. Why is the backward of `cast` the cast of the gradient, and not the true derivative?
+
+   <details><summary>Answer</summary>
+
+   The true derivative of rounding is zero almost everywhere, which would stop learning. Hardware passes the gradient through the conversion, and that gradient is itself stored in 16 bits, so the faithful emulation rounds it. This also makes the backward matmuls bf16 matmuls without any extra code.
+
+   </details>
+
+2. Why is it safe to multiply the loss by $S$ and divide the gradients by $S$, and why a power of two?
+
+   <details><summary>Answer</summary>
+
+   Backprop is linear in the upstream gradient, so every gradient is exactly $S$ times the true one, and dividing restores it. A power of two changes only the exponent, so neither the scaling nor the unscaling rounds.
+
+   </details>
+
+3. Why does the scaler set every gradient to `None` when it skips a step?
+
+   <details><summary>Answer</summary>
+
+   A loop that forgets `zero_grad` would otherwise add the next step's gradients onto $\infty$ or NaN and skip forever. Dropping them makes the skip leave no trace except the smaller $S$.
+
+   </details>
+
+4. What goes wrong if `checkpoint` leaves the parameters out of the node's parents?
+
+   <details><summary>Answer</summary>
+
+   When the segment's input is data (no `requires_grad`), `from_op` sees no parent that requires grad and records no node, so backward never reaches the rerun and the segment's parameters get no gradient. With the parameters as parents, the node is recorded and its VJP runs.
+
+   </details>
+
+5. Why does the VJP restore the generators to the *after* state when it is done?
+
+   <details><summary>Answer</summary>
+
+   Setting them to the *before* state replays the forward masks, but leaves the stream rewound. Later draws would then repeat earlier ones, and a run with checkpointing would diverge from one without it. Restoring the state the stream had reached makes the rerun invisible.
+
+   </details>
+
+6. In the accumulation example, what gradient do you get by weighting each of the two micro-batches by $\tfrac12$, and why is it wrong?
+
+   <details><summary>Answer</summary>
+
+   $\tfrac12(-2) + \tfrac12(-\tfrac{58}{3}) \approx -10.67$ instead of $-15$. Equal weights treat the 1-row micro-batch as if it held half the rows; only the row-count weights $\tfrac14$ and $\tfrac34$ reproduce the full batch's mean.
+
+   </details>

@@ -87,7 +87,13 @@ Finally, bits per byte. Suppose a model pays $12 \ln 2$ nats for this text, 12 b
 
 Four functions:
 
-@@ORIG 102-108@@
+```python
+# python/tinyllm/tok/metrics.py
+def fertility(tok: Tokenizer, words: Sequence[str]) -> float
+def bytes_per_token(tok: Tokenizer, texts: Sequence[str]) -> float
+def is_fallback(tok: Tokenizer, i: int) -> bool
+def byte_fallback_rate(tok: Tokenizer, texts: Sequence[str]) -> float
+```
 
 Every input is encoded with `tok.encode(x)`, never `add_special=True`. The functions use only `encode`, `decode`, `unk_id`, and `special_ids`, so any object with the protocol is measured, including one that is not a subclass of anything in `tinyllm`. `byte_fallback_rate` caches `is_fallback` per id, because a corpus repeats ids and `decode` is the slow part.
 
@@ -106,25 +112,58 @@ The solution is short, and each line follows from one principle.
 
 ### Fertility
 
-@@ORIG 144-150@@
+```python
+def fertility(tok: Tokenizer, words: Sequence[str]) -> float:
+    if len(words) == 0:
+        raise ValueError("fertility needs at least one word")
+    # Each word alone, no specials; a repeated word counts every time.
+    return sum(len(tok.encode(w)) for w in words) / len(words)
+```
 
 The denominator is the number of words, which is known before encoding, so the empty check comes first.
 
 ### Bytes per token
 
-@@ORIG 154-161@@
+```python
+def bytes_per_token(tok: Tokenizer, texts: Sequence[str]) -> float:
+    n_bytes = sum(len(t.encode("utf-8")) for t in texts)   # UTF-8 bytes, not len(t)
+    n_tokens = sum(len(tok.encode(t)) for t in texts)      # totals, not a mean of ratios
+    if n_tokens == 0:
+        raise ValueError("bytes_per_token needs texts that encode to at least one token")
+    return n_bytes / n_tokens                              # bytes per token, not tokens per byte
+```
 
 Here the denominator is the token total, so "empty" means "no tokens", which also covers `[]` and `[""]`. On `["ab", "é"]` with a char tokenizer trained on `"ab"`, that is 2 + 2 = 4 bytes over 2 + 1 = 3 tokens, 4/3; the mean of ratios would be $(1 + 2)/2 = 1.5$.
 
 ### Is it a fallback?
 
-@@ORIG 165-172@@
+```python
+def is_fallback(tok: Tokenizer, i: int) -> bool:
+    if tok.unk_id is not None and i == tok.unk_id:   # <unk> is lost text, even though it is special
+        return True
+    if i in tok.special_ids.values():                # <bos>, <|endoftext|>: control, not text
+        return False
+    return "�" in tok.decode([i])               # a fragment of a multi-byte character
+```
 
 The order matters. The unknown id is usually also listed among the specials, so it must be tested first, or every `<unk>` would be excused as a special. A vocabulary entry that already decodes to U+FFFD is counted by the last line too, which is intended: that text was lost upstream.
 
 ### The fallback rate
 
-@@ORIG 176-189@@
+```python
+def byte_fallback_rate(tok: Tokenizer, texts: Sequence[str]) -> float:
+    total = fallback = 0
+    cache: dict[int, bool] = {}          # is_fallback depends only on the id
+    for t in texts:
+        for i in tok.encode(t):
+            total += 1
+            if i not in cache:
+                cache[i] = is_fallback(tok, i)
+            fallback += cache[i]         # every occurrence, not distinct ids
+    if total == 0:
+        raise ValueError("byte_fallback_rate needs texts that encode to at least one token")
+    return fallback / total
+```
 
 On `"naïve café"` in bytes there are 12 tokens, of which `c3 af c3 a9` decode alone to U+FFFD, so the rate is $4/12$. The cache turns $O(N)$ decodes into $O(\text{distinct ids})$.
 
