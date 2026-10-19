@@ -1,64 +1,48 @@
 # A poison task lands in the dead-letter queue
 
-## Overview
+In [The durable server is SIGKILLed in a loop during a corpus build](02-durable-kill9.md) the system healed itself: leases expired, tasks were delivered again, and every effect happened once. This drill is the other kind of failure: one task that can never succeed, however often it is retried. The queue of [The task queue](../../ai-platform-engineering/05-durable-orchestration-and-workers/03-task-queue.md) in *AI Platform Engineering* handles it by moving the task to a dead-letter queue after a bounded number of attempts, and the dashboard of [Observability for the control plane](../04-observability/05-control-plane-observability.md) shows the dead-letter count. That keeps one bad task from spinning forever, but it also means a human has to act: the workflow waiting on the task is stuck until someone understands why it failed, fixes that, and redrives it.
 
-| | |
-|---|---|
-| **Module** | `ops.03` · drill · ops, docs · Pass 8 · 2 to 3 h |
-| **Solution** | a worked incident (section 5): finding the cause of a task that fails every attempt, removing it, redriving the task, and seeing the build complete; the model runbook [`docs/runbooks/DurableDeadLetters.md`](../../../../course/solutions/docs/runbooks/DurableDeadLetters.md), the model postmortem [`docs/postmortems/2026-10-09-poison-task.md`](../../../../course/solutions/docs/postmortems/2026-10-09-poison-task.md), and the alert `DurableDeadLetters` in [`deploy/observability/rules/durable.yaml`](../../../../course/solutions/entry/deploy/observability/rules/durable.yaml) (shared with `ops.02`) |
-| **Contract** | the fault, detection, and resolve conditions in section 4; `tl_durable_dlq_size` and `tl_durable_task_queue_depth` in [`otel/metrics.yaml`](../../../../course/contracts/otel/metrics.yaml); the failpoint hook the worker evaluates (section 2.4); the `ctl` verbs `wf dlq list`, `wf dlq redrive`, `wf describe` of the durable system |
-| **Needs** | `dep.06` (the worker Deployment the fault is shipped to) and `obs.05` (the scrapes and the dead-letter panel); reading: `ops.02` (the rules file and the drill routine), `dur.09` (exit codes and retryable failures), the queue chapter of this pass (retries, the dead-letter queue, redrive) |
-| **Used by** | no call site: a drill. The durable system is expected to recover from it, and the operations pass reruns the drills |
-| **Optional depth** | [AWS: Amazon SQS dead-letter queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html) (free); *Site Reliability Engineering*, ch. 14 Managing Incidents ([free](https://sre.google/sre-book/table-of-contents/)); Hohpe and Woolf, *Enterprise Integration Patterns*, "Dead Letter Channel" and "Invalid Message Channel" |
+The fault is shipped to the worker Deployment of [Durable and worker images and charts](../../infrastructure/01-containers-kubernetes/06-durable-and-worker-charts.md), and the failure classification comes from [Subprocess activities](../../ai-platform-engineering/05-durable-orchestration-and-workers/09-subprocess-activities.md). The drill reuses the rules file and the routine of the previous drill; its alert is `DurableDeadLetters` in [`deploy/observability/rules/durable.yaml`](../../../../course/solutions/entry/deploy/observability/rules/durable.yaml) (load it with `kubectl apply -f deploy/observability/rules/durable.yaml`). `{ctl}` is the system's control CLI (`spec/cli-roles.md`); its `wf dlq list`, `wf dlq redrive`, `wf describe`, and `data build` verbs belong to the durable system. The metrics read are `tl_durable_dlq_size` and `tl_durable_task_queue_depth` from [`otel/metrics.yaml`](../../../../course/contracts/otel/metrics.yaml). The build starts after the poisoned rollout, as a scheduled build would.
 
-## Key Takeaways
+This section builds the reasoning (retry budgets, retryable failures, why fix comes before redrive), works the retry schedule by hand, states what is injected and what "resolved" means, and walks through the response with the model runbook [`docs/runbooks/DurableDeadLetters.md`](../../../../course/solutions/docs/runbooks/DurableDeadLetters.md) and the model postmortem [`docs/postmortems/2026-10-09-poison-task.md`](../../../../course/solutions/docs/postmortems/2026-10-09-poison-task.md).
 
-- A **poison task** fails the same way on every attempt. Retries cannot fix it; they only decide how long it takes to stop trying. After `dlq_after_attempts` the queue moves it aside so the rest of the work keeps flowing.
-- A dead letter is a **paused workflow**, not a finished one: the build waits for that one shard forever, so the alert pages on the first dead letter.
-- Diagnosis asks two questions in order: **what failed** (the dead letter's last failure) and **what changed** (rollout history, the environment). A deterministic failure that appeared without a code change came with a configuration change.
-- **Fix, then redrive.** Redriving first buys five more failures and a second page. Redrive only the tasks that were fixed.
-- The postmortem's best action item usually **prevents the configuration** from reaching production at all (a policy check on the chart), not just a better alert.
+> **Learning objectives**
+> - Compute the time from a poison task's first failure to the dead letter and to the page.
+> - Explain why a panic walks the whole retry budget while exit 65 fails at once.
+> - Diagnose a dead letter with two questions in order: what failed, and what changed.
+> - Fix, confirm the fix is live, then redrive only the fixed task, and verify by workflow completion.
+> - Write a postmortem whose best action item prevents the bad configuration from reaching production.
 
-## How to read this chapter
+## Retry budgets
 
-This chapter is a worked incident. Sections 1 to 3 build the reasoning (retry budgets, retryable failures, why fix comes before redrive) and work the retry schedule by hand. Section 4 states what is injected, how it is detected, and what "resolved" means. Section 5 walks through the response with the model runbook and postmortem, and explains why each step is the right one. Before reading each diagnosis step, predict what its output will show.
-
-The drill uses the `DurableDeadLetters` alert of `ops.02`'s rules file (`kubectl apply -f deploy/observability/rules/durable.yaml`). `{ctl}` is the system's control CLI (`spec/cli-roles.md`); its `wf` and `data build` verbs belong to the durable system. The build starts after the poisoned rollout, as a scheduled build would.
-
----
-
-## 1. Why now
-
-`ops.02` killed the server and the system healed itself: leases expired, tasks were delivered again, every effect happened once. This drill is the other kind of failure: one task that can never succeed, however often it is retried. The queue (`dur.03`) handles it by moving the task to a dead-letter queue after a bounded number of attempts, and the dashboard (`obs.05`) shows the dead-letter count. That keeps one bad task from spinning forever, but it also means a human has to act: the workflow waiting on the task is stuck until someone understands why it failed, fixes that, and redrives it.
-
-## 2. Principles
-
-### 2.1 Retry budgets
+A **poison task** fails the same way on every attempt. Retries cannot fix it; they only decide how long it takes to stop trying. The quantities that decide that:
 
 | Symbol | Meaning | Type |
 |---|---|---|
 | $A$ | attempts before the dead-letter queue (`[durable].dlq_after_attempts`) | 5 |
-| $b_n$ | backoff before attempt $n + 1$: $\min(b_0 \beta^{n-1}, b_{max})$, then full jitter (`RetryPolicy`, `dur.05`) | seconds |
+| $b_n$ | backoff before attempt $n + 1$: $\min(b_0 \beta^{n-1}, b_{max})$, then full jitter (`RetryPolicy`, from [Activities](../../ai-platform-engineering/05-durable-orchestration-and-workers/05-activities.md)) | seconds |
 | $b_0$, $\beta$, $b_{max}$ | initial interval, multiplier, cap | 1 s, 2, 60 s |
 | $T_{dlq}$ | time from the first attempt to the dead letter | seconds |
 
-Without jitter the waits are $b_1 = 1$, $b_2 = 2$, $b_3 = 4$, $b_4 = 8$ s, so $T_{dlq}$ is at most $15$ s plus five attempts' run time. Full jitter draws each wait uniformly in $[0, b_n]$, so on average it is half that. The point of the budget: a transient failure (a flaky download) succeeds within a few attempts; a deterministic one is set aside in seconds instead of blocking a worker slot forever.
+Without jitter the waits are $b_1 = 1$, $b_2 = 2$, $b_3 = 4$, $b_4 = 8$ s, so $T_{dlq}$ is at most $15$ s plus five attempts' run time. Full jitter draws each wait uniformly in $[0, b_n]$, so on average it is half that. The point of the budget: a transient failure (a flaky download) succeeds within a few attempts; a deterministic one is set aside in seconds instead of blocking a worker slot forever. After `dlq_after_attempts`, the queue moves the task aside so the rest of the work keeps flowing.
 
-### 2.2 Retryable or not
+A dead letter is a **paused workflow**, not a finished one. The build waits for that one shard forever, and nothing else will retry it, which is why the alert pages on the first dead letter.
 
-The activity's failure type decides what the queue does (`spec/subprocess-activity.md`, `dur.09`): exit 65 (bad input) is non-retryable and fails at once; a crash, a panic, or exit 75 is retryable. A panic is classified retryable because most panics are not deterministic, which is exactly why a deterministic one walks the whole retry budget before anyone notices. Only the dead-letter queue stops it.
+## Retryable or not
 
-### 2.3 Fix, then redrive
+Not every failure walks the budget. The activity's failure type decides what the queue does (`spec/subprocess-activity.md`): exit 65 (bad input) is non-retryable and fails at once; a crash, a panic, or exit 75 is retryable. A panic is classified retryable because most panics are not deterministic, which is exactly why a deterministic one walks the whole retry budget before anyone notices. Only the dead-letter queue stops it.
 
-Redrive (`RedriveDeadLetter`) puts a dead-lettered task back in its queue with a fresh attempt budget. It is safe because the task is idempotent (the same key, the same work directory), and it is useless until the cause is gone. The order is: find the cause, remove it, confirm the removal is live (a completed rollout), then redrive the specific task ids.
+## Fix, then redrive
 
-### 2.4 The fault in this drill
+Redrive (`RedriveDeadLetter`) puts a dead-lettered task back in its queue with a fresh attempt budget. It is safe because the task is idempotent (the same key, the same work directory), and it is useless until the cause is gone. The order is: find the cause, remove it, confirm the removal is live (a completed rollout), then redrive the specific task ids. Redriving first buys five more failures and a second page.
 
-A bad rollout ships a test-only setting to production: the worker Deployment's environment gains `TL_FAILPOINTS=dur/activity/poison/shard-00001=panic`. The worker (`dur.04`) evaluates the failpoint `dur/activity/poison/<activity id>` before it runs each activity task (the `TL_FAILPOINTS` actions are `crash`, `panic`, `error(msg)`, `sleep(d)`), and recovers a panic in an activity as a retryable failure of type `Panic`. CorpusBuild (`data.09`) names its per-shard tasks `shard-00000`, `shard-00001`, and so on. So exactly one task panics, on every attempt, on every worker. That is how real poison looks from the outside: one input, one code path, always the same failure.
+## The fault in this drill
 
-## 3. Worked example by hand
+A bad rollout ships a test-only setting to production: the worker Deployment's environment gains `TL_FAILPOINTS=dur/activity/poison/shard-00001=panic`. The worker of [The task protocol and workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/04-task-protocol-and-workers.md) evaluates the failpoint `dur/activity/poison/<activity id>` before it runs each activity task (the `TL_FAILPOINTS` actions are `crash`, `panic`, `error(msg)`, `sleep(d)`), and recovers a panic in an activity as a retryable failure of type `Panic`. CorpusBuild, from [CorpusBuild: the pipeline as a durable workflow](../../data-engineering/05-corpus-pipeline/09-corpusbuild-as-a-durable-workflow.md) in *Data Engineering*, names its per-shard tasks `shard-00000`, `shard-00001`, and so on. So exactly one task panics, on every attempt, on every worker. That is how real poison looks from the outside: one input, one code path, always the same failure.
 
-Backoff without jitter (the worst case), each attempt failing in about 0.1 s, the scrape every 15 s, and the rule `tl_durable_dlq_size > 0` for 15 s.
+## Working the retry schedule by hand
+
+Take backoff without jitter (the worst case), each attempt failing in about 0.1 s, the scrape every 15 s, and the rule `tl_durable_dlq_size > 0` for 15 s:
 
 | Time after the build reaches shard 1 | Event | Dead letters |
 |---|---|---|
@@ -72,7 +56,9 @@ Backoff without jitter (the worst case), each attempt failing in about 0.1 s, th
 
 So the page arrives at most about 45 s after the first failure, well inside the drill's 600 s. Meanwhile shards 0 and 2 completed, and the build reports `RUNNING` with `dead_lettered: 1`. After the fix and the redrive, the one task runs once more and succeeds; the build completes with the same numbers as a clean run (169 documents, 3 shards).
 
-## 4. The incident: what is injected, detected, and resolved
+## The incident: what is injected, detected, and resolved
+
+The drill runs in four steps:
 
 | Step | What happens |
 |---|---|
@@ -81,7 +67,7 @@ So the page arrives at most about 45 s after the first failure, well inside the 
 | detect | `DurableDeadLetters` must fire within 600 s of the injection (5 attempts with backoff 1, 2, 4, 8 s, plus the rollout and the scrape) |
 | page | *DurableDeadLetters: queue data has dead-lettered tasks; the corpus build drill-poison has stopped making progress* |
 
-**Resolved means** all of these hold:
+The incident is resolved when all of these hold:
 
 | Condition | Holds for |
 |---|---|
@@ -94,19 +80,19 @@ So the page arrives at most about 45 s after the first failure, well inside the 
 
 The last command is the real pass condition: an empty dead-letter queue could also mean someone deleted the task, but only a completed workflow means the work was done.
 
-## 5. The solution, step by step
+## Working the incident step by step
 
-### 5.1 From first principles
+### Reasoning from first principles
 
-1. **A dead letter is a paused workflow.** The page fires on the first one because the build will wait for that shard forever (Key Takeaways); nothing else will retry it.
-2. **First question: what failed?** The dead letter records its last failure. One task failing the same way on all five attempts is poison: something about this input or code path. Many different tasks failing would be an outage, a different runbook.
-3. **Second question: what changed?** A deterministic failure that appears with no code or data change came with a configuration change. The rollout history and the worker's environment answer it, and here they show `TL_FAILPOINTS`, a test-only setting.
-4. **Is it specific to this input?** The other shard tasks of the same activity succeeded, so the failure is tied to `shard-00001`, which matches the failpoint name.
-5. **Fix, confirm, redrive** (section 2.3). Remove the setting; wait for the rollout so no worker still has it; only then redrive, and only the task that was fixed. Redriving first spends another five attempts and dead-letters it again.
-6. **Verify by completion.** The workflow `COMPLETED` with `dead_lettered: 0` is the only proof the work was done; the shard is identical to a clean run's because the activity is idempotent.
-7. **Root cause is the path, not the variable.** A test setting reached production because nothing checked for it. The best action item blocks that path.
+A dead letter is a paused workflow, and the build will wait for that shard forever. So the response is a sequence of questions. First, what failed? The dead letter records its last failure. One task failing the same way on all five attempts is poison: something about this input or code path. Many different tasks failing would be an outage, a different runbook.
 
-### 5.2 Diagnosis, annotated
+Second, what changed? A deterministic failure that appears with no code or data change came with a configuration change. The rollout history and the worker's environment answer it, and here they show `TL_FAILPOINTS`, a test-only setting. Is it specific to this input? The other shard tasks of the same activity succeeded, so the failure is tied to `shard-00001`, which matches the failpoint name.
+
+Then fix, confirm, redrive. Remove the setting; wait for the rollout so no worker still has it; only then redrive, and only the task that was fixed. Redriving first spends another five attempts and dead-letters it again. Verify by completion: the workflow `COMPLETED` with `dead_lettered: 0` is the only proof the work was done, and the shard is identical to a clean run's because the activity is idempotent.
+
+Last, the root cause is the path, not the variable. A test setting reached production because nothing checked for it, and the best action item blocks that path.
+
+### Diagnosis
 
 ```bash
 # 1. What is dead-lettered, and how did its last attempt fail? Read
@@ -121,9 +107,9 @@ kubectl -n <system> rollout history deploy/<system>-worker
 kubectl -n <system> get deploy/<system>-worker -o jsonpath='{.spec.template.spec.containers[0].env}'
 ```
 
-3. Does it fail for every input? No: the other shards completed, so the failure is specific to this task's input, and in general it should be reproduced with that input alone before redriving.
+The third step asks whether it fails for every input. It does not: the other shards completed, so the failure is specific to this task's input. In general you should reproduce it with that input alone before redriving.
 
-### 5.3 Mitigation and verification
+### Mitigation and verification
 
 ```bash
 # Fix the cause first: remove the setting (or roll back the revision that
@@ -140,7 +126,7 @@ kubectl -n <system> rollout status deploy/<system>-worker
 
 `kubectl set env NAME-` and `rollout undo` both work; `set env` removes exactly the bad setting, while `undo` also reverts anything else in that revision. Restarting the workers without removing the setting does nothing: new pods read the same environment.
 
-### 5.4 The model runbook
+### The model runbook
 
 The runbook opens with the meaning of the alert and the one rule that matters most:
 
@@ -152,9 +138,9 @@ it is stuck until someone redrives it. Redriving before fixing the cause
 only buys five more failures.
 ```
 
-Diagnosis is the three steps of 5.2; Mitigation is 5.3, plus the case where the input itself is bad and cannot be fixed: "the workflow needs a decision (skip the shard and record it in the ledger, or fail the build): never delete a dead letter without recording why." Full runbook: [`DurableDeadLetters.md`](../../../../course/solutions/docs/runbooks/DurableDeadLetters.md).
+Diagnosis is the three steps above; Mitigation is the fix-then-redrive sequence, plus the case where the input itself is bad and cannot be fixed: "the workflow needs a decision (skip the shard and record it in the ledger, or fail the build): never delete a dead letter without recording why." The full runbook is [`DurableDeadLetters.md`](../../../../course/solutions/docs/runbooks/DurableDeadLetters.md).
 
-### 5.5 The model postmortem
+### The model postmortem
 
 ```markdown
 ## Root cause
@@ -176,15 +162,67 @@ The Detection section notes the gap: five `Panic` failures in 16 s were visible 
 | Add "what changed?" (`rollout history`, environment diff) as step 2 of every control-plane runbook | process | on-call |
 | Show `last_failure` in the dead-letter panel so the page carries the cause | detect | observability |
 
-Full postmortem: [`2026-10-09-poison-task.md`](../../../../course/solutions/docs/postmortems/2026-10-09-poison-task.md). The alert itself is in [`rules/durable.yaml`](../../../../course/solutions/entry/deploy/observability/rules/durable.yaml) (section 5.2 of `ops.02`).
+The full postmortem is [`2026-10-09-poison-task.md`](../../../../course/solutions/docs/postmortems/2026-10-09-poison-task.md). The alert itself is in [`rules/durable.yaml`](../../../../course/solutions/entry/deploy/observability/rules/durable.yaml), shown in full in [the previous drill](02-durable-kill9.md#the-alert-rules).
 
-### 5.6 Why this solution
+### Why this solution
 
-- **The dead-letter queue is the containment; the human is the fix.** Bounded retries stop a deterministic failure from holding a worker slot forever, at the price of needing someone to decide. That is the right trade: the system cannot know whether to fix code, config, or input.
-- **Redrive one task, not the queue.** Redriving everything would also resubmit tasks dead-lettered for other reasons, still unfixed.
-- **Prevention beats detection.** A values-schema rule that rejects `TL_FAILPOINTS` makes this incident impossible; a better alert only makes it shorter.
+The dead-letter queue is the containment; the human is the fix. Bounded retries stop a deterministic failure from holding a worker slot forever, at the price of needing someone to decide. That is the right trade: the system cannot know whether to fix code, config, or input.
 
-### 5.7 Explain it back
+Redrive one task, not the queue. Redriving everything would also resubmit tasks dead-lettered for other reasons, still unfixed.
+
+Prevention beats detection. A values-schema rule that rejects `TL_FAILPOINTS` makes this incident impossible; a better alert only makes it shorter.
+
+## What can go wrong
+
+Each of these pitfalls either repeats the incident or hides it:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| Redriving before fixing | five more panics, a second dead letter, the alert fires again | mitigation removes the setting and waits for the rollout before redriving |
+| Deleting the dead letter to clear the alert | the alert clears, the build waits forever | verification requires the workflow `COMPLETED`, not only an empty queue |
+| Restarting the workers without removing the setting | the new pods read the same environment and panic the same way | the fix is `kubectl set env ... TL_FAILPOINTS-`, a change to the pod template |
+| No alert on dead letters, or on the raw count without a `for` | no page, or a page on a scrape blip | `DurableDeadLetters` is `> 0` with `for: 15s` |
+| A postmortem that stops at "removed the variable" | the next test setting reaches production the same way | the model action items add a chart policy that rejects the setting |
+
+> **Warning:** Deleting a dead letter clears the alert and leaves the build waiting forever. Never delete one without recording why.
+
+## Where this leads
+
+The fault was shipped to and rolled back on the worker Deployment of [Durable and worker images and charts](../../infrastructure/01-containers-kubernetes/06-durable-and-worker-charts.md), and the alert read the dead-letter panel and scrapes of [Observability for the control plane](../04-observability/05-control-plane-observability.md). [Drill: runaway agent](10-runaway-agent.md) has the same pause, fix, resume shape, with an agent stopped by a budget and resumed after a grant. [Drill: data incident](08-data-incident.md) traces the other kind of bad input through the ledger.
+
+### Further reading
+
+Each simple piece here has a production equivalent:
+
+| This piece | Production equivalent | What it adds | Where to look |
+|---|---|---|---|
+| one dead-letter queue per queue | SQS redrive policies, RabbitMQ dead-letter exchanges | per-queue budgets, automatic redrive to the source | AWS SQS docs |
+| redrive by hand | Temporal's failed-activity handling in the workflow; DLQ consumers | the workflow decides: skip, compensate, or fail | [Signals, cancellation, and sagas](../../ai-platform-engineering/05-durable-orchestration-and-workers/08-signals-cancellation-and-sagas.md) |
+| a failpoint in the environment | feature flags with audit trails, admission policies | test settings cannot reach production | OPA Gatekeeper, Kyverno |
+| an alert on the dead-letter count | alerts on failure rate per activity type | the page comes before the budget is spent | the dashboard of [Observability for the control plane](../04-observability/05-control-plane-observability.md) |
+
+- [AWS: Amazon SQS dead-letter queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html) (free).
+- *Site Reliability Engineering* (Google), ch. 14 Managing Incidents ([free](https://sre.google/sre-book/table-of-contents/)).
+- Hohpe and Woolf, *Enterprise Integration Patterns*, "Dead Letter Channel" and "Invalid Message Channel".
+
+## Key terms
+
+- **Poison task**: a task that fails the same way on every attempt, so retries cannot fix it.
+- **Retry budget**: the bounded number of attempts ($A$) with exponential backoff and jitter before a task is set aside.
+- **Dead-letter queue**: where a task goes after exhausting its budget; nothing retries it until a human redrives it.
+- **Redrive**: putting a dead-lettered task back in its queue with a fresh attempt budget.
+- **Failpoint**: a named hook that injects a fault (`crash`, `panic`, `error(msg)`, `sleep(d)`) for testing.
+- **Retryable failure**: a failure type (crash, panic, exit 75) that the queue retries; exit 65 is non-retryable.
+
+## Summary
+
+- A poison task fails the same way on every attempt; retries only decide how long it takes to stop trying, and the dead-letter queue moves it aside so other work keeps flowing.
+- A dead letter is a paused workflow, not a finished one, so the alert pages on the first one.
+- Diagnosis asks what failed (the dead letter's last failure) and then what changed (rollout history, the environment); a deterministic failure without a code change came with a configuration change.
+- Fix, confirm, then redrive only the fixed task; verify by a `COMPLETED` workflow, not an empty queue.
+- The best postmortem action item prevents the configuration from reaching production at all, with a policy check on the chart.
+
+## Review questions
 
 1. Why does a panic walk the whole retry budget instead of failing at once?
    <details><summary>Answer</summary>A panic is classified retryable, because most panics are not deterministic (a race, a transient state). Only exit 65 (bad input) is non-retryable. So a deterministic panic is retried $A = 5$ times with backoff before the dead-letter queue stops it.</details>
@@ -194,32 +232,5 @@ Full postmortem: [`2026-10-09-poison-task.md`](../../../../course/solutions/docs
    <details><summary>Answer</summary>The workflow is waiting on that task's result. Deleting it removes the signal, not the dependency: the build stays `RUNNING` forever, and the missing shard is not recorded anywhere.</details>
 4. Why is the redriven shard identical to a clean run's?
    <details><summary>Answer</summary>The panicking attempts failed before running, so they wrote nothing; the redriven attempt runs with the same idempotency key and work directory and produces the same deterministic output a clean run does.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. Redriving before fixing | five more panics, a second dead letter, the alert fires again | mitigation removes the setting and waits for the rollout before redriving |
-| 2. Deleting the dead letter to clear the alert | the alert clears, the build waits forever | verification requires the workflow `COMPLETED`, not only an empty queue |
-| 3. Restarting the workers without removing the setting | the new pods read the same environment and panic the same way | the fix is `kubectl set env ... TL_FAILPOINTS-`, a change to the pod template |
-| 4. No alert on dead letters, or on the raw count without a `for` | no page, or a page on a scrape blip | `DurableDeadLetters` is `> 0` with `for: 15s` |
-| 5. A postmortem that stops at "removed the variable" | the next test setting reaches production the same way | the model action items add a chart policy that rejects the setting |
-
-## 7. Where it's used next
-## 6. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `dep.06` | the worker Deployment the fault is shipped to and rolled back on |
-| Back | `obs.05` | the dead-letter panel and the scrapes the alert reads |
-| Forward | `ops.10` | a runaway agent stopped by a budget and resumed after a grant: the same pause, fix, resume shape |
-| Forward | `ops.08` | a data incident traced through the ledger, the other kind of bad input |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| one dead-letter queue per queue | SQS redrive policies, RabbitMQ dead-letter exchanges | per-queue budgets, automatic redrive to the source | AWS SQS docs |
-| redrive by hand | Temporal's failed-activity handling in the workflow; DLQ consumers | the workflow decides: skip, compensate, or fail | `dur.08` (sagas) |
-| a failpoint in the environment | feature flags with audit trails, admission policies | test settings cannot reach production | OPA Gatekeeper, Kyverno |
-| an alert on the dead-letter count | alerts on failure rate per activity type | the page comes before the budget is spent | obs.05's dashboard |
+5. With full jitter instead of the worst case, roughly how long does the task take to reach the dead-letter queue?
+   <details><summary>Answer</summary>Each wait is drawn uniformly in $[0, b_n]$, so on average it is half of $b_n$. The four waits sum to about $15/2 = 7.5$ s on average, plus five attempts of about 0.1 s, so roughly 8 s instead of 15 s.</details>
