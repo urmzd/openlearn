@@ -15,6 +15,5 @@ Free self-paced curriculum with seven tracks:
 - **Interview Prep**: Company-specific guides for 19 companies
 
 ## Skills
-- `practice-impl` -- scaffold empty practice implementations for any language/exercise
 - `study-session` -- interactive Q&A with quiz, drill, explain, review, and assess modes
 - `study-plan` -- generate personalized study plans based on goals, level, and timeline

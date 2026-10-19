@@ -107,44 +107,18 @@ run-15-probabilistic-structures:
   command -v python3 >/dev/null
   python3 content/tracks/algorithms/15-probabilistic-structures/bloom.py
 
-run-predict:
-  practice/bin/ol verify predict
+# Run every C and C++ practice solution (each one asserts its own behaviour).
+run-practice-solutions:
+  for d in practice/build/systems/c/*/; do \
+    echo "--- $d"; \
+    if [ -x "$d/run.sh" ]; then (cd "$d" && ./run.sh); \
+    else cc -std=c11 -Wall -O2 -pthread "$d"*.c -o /tmp/ol-solution && /tmp/ol-solution; fi; \
+  done
 
-run-predict-lang lang:
-  practice/bin/ol verify predict {{lang}}
-
-run-predict-bench:
-  practice/bin/ol bench --assert
-
-# Verify every core build reference (zig/scala/java are optional; see run-build-lang)
-run-build:
-  practice/bin/ol verify build
-
-# Verify one language by name, including the optional ones
-run-build-lang lang:
-  practice/bin/ol verify build {{lang}}
-
-# Where the harness thinks everything is, and how many exercises each kind has.
-run-practice-status:
-  practice/bin/ol where
-
-# ---------- Course (course/DESIGN.md) ----------
-
-# Maintainer checks for the course registry, references, tests, and mutants.
-course-verify:
-  practice/bin/ol verify course
-
-# Registry invariants, chapter contract, and every markdown link in the repo.
+# Course catalogue checks: manifests resolve and relative links exist.
 course-lint:
-  practice/bin/ol lint --links
-
-# Run one milestone against your system, e.g. `just milestone MS-P1`.
-milestone M:
-  practice/bin/ol milestone {{M}}
-
-# Start a drill against your kind cluster, e.g. `just drill engine-crashloop`.
-drill D:
-  practice/bin/ol drill start {{D}}
+  python3 scripts/course_catalog.py validate
+  python3 scripts/check_links.py
 
 # ---------- Aggregate recipes ----------
 

@@ -47,7 +47,7 @@ Spaced review of previously studied material:
 1. Read relevant algorithm/math READMEs to gather key concepts
 2. Present concepts the user should be able to recall
 3. Ask them to explain, derive, or implement from memory
-4. If they struggle, give graduated hints (not the answer)
+4. If they struggle, give graduated hints, then walk through the chapter's solution and ask them to explain each step back
 5. Track which concepts are solid vs need more work
 6. Suggest what to revisit next
 
@@ -68,12 +68,12 @@ Full diagnostic assessment:
 2. If a topic is given, read the relevant README(s):
    - Algorithm topics: `content/tracks/algorithms/{topic-dir}/README.md`
    - Math topics: `content/tracks/math/{topic-dir}/README.md`
-   - Practice languages: `practice/{tier}/{lang}/README.md`
+   - Practice languages: `practice/build/{tier}/{lang}/README.md`
    - Competitive programming: `content/tracks/competitive-programming/README.md`
    - Information theory: `content/tracks/math/11-information-theory/README.md`
    - Case studies: `content/case-studies/{study-dir}/README.md`
 3. If a language is given, frame code questions in that language and evaluate idiom
-4. For language-specific questions, also read `practice/{tier}/{lang}/README.md` for idiom reference
+4. For language-specific questions, also read `practice/build/{tier}/{lang}/README.md` for idiom reference
 5. Use existing problem implementations in the repo as reference (but don't show them to the user during quizzes)
 6. After each question, wait for the user's response before proceeding
 7. Adjust difficulty dynamically — if they ace easy questions, skip to harder ones

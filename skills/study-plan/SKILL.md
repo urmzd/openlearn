@@ -42,7 +42,7 @@ Optimized for technical interviews:
 
 ### language-mastery [languages...]
 Deep fluency in target languages:
-- Phase 1: Language essentials (read practice/{lang}/README.md, do exercises 01-03)
+- Phase 1: Language essentials (read practice/build/{tier}/{lang}/README.md, work through the solutions to exercises 01-03)
 - Phase 2: Intermediate patterns (exercises 04-06, language idiom focus)
 - Phase 3: Advanced topics (exercises 07-10, concurrency, metaprogramming)
 - Cross-language comparison: implement the same algorithm in all target languages
@@ -89,7 +89,7 @@ Generate plans as a structured weekly schedule:
 
 ### Exercises
 - [ ] {specific exercise with link to file/README}
-- [ ] {language practice with link to practice/{lang}/}
+- [ ] {language practice with link to practice/build/{tier}/{lang}/}
 
 ### Milestones
 - By end of week: {what they should be able to do}
@@ -112,7 +112,7 @@ Generate plans as a structured weekly schedule:
 
 Reference specific content from the curriculum:
 - Algorithm patterns → `content/tracks/algorithms/{topic}/README.md`
-- Practice exercises → `practice/{tier}/{lang}/README.md`
+- Practice exercises → `practice/build/{tier}/{lang}/README.md`
 - Interview prep → `content/interviews/{company}/README.md`
 - Study routines → `content/courses/README.md` (daily routine sections)
 - Math prerequisites → `content/tracks/math/README.md`
