@@ -1,4 +1,4 @@
-"""My tests for L7.5 (rung R5). The oracle is grouped-query attention written
+"""Model test suite for L7.5. The oracle is grouped-query attention written
 out in numpy float64 with the module's own weights: projections, RoPE as
 complex multiplication (half layout), masked softmax with an optional sink
 column, weighted values, output projection. They import only the contract."""

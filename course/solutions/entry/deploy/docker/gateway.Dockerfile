@@ -27,7 +27,7 @@ LABEL org.opencontainers.image.title="forge-gateway" \
       org.opencontainers.image.revision="${REVISION}"
 COPY --from=build /out/gateway /usr/local/bin/gateway
 USER 10001:10001
-# 8080: the API; 9464: /healthz and /readyz (DESIGN 2.13).
+# 8080: the API; 9464: /healthz and /readyz.
 EXPOSE 8080 9464
 # busybox wget is part of alpine; the health port answers /healthz.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \

@@ -1,4 +1,4 @@
-"""The Pass 5 objective verbs (course/milestones/MS-L6.toml fixes their flags
+"""The Pass 5 objective verbs (with their flags
 and final lines).
 
     train gpt      --cfg <config.json> --data <train.bin> --val <val.bin> --out <dir> [--steps S] [--seed S]
@@ -16,7 +16,7 @@ The byte tokenizer (D32) with four control bytes as specials: 0 [PAD],
 1 [CLS], 2 [SEP], 3 [MASK]. Every corpus here is printable ASCII, so they
 never collide with text.
 
-Entry-point territory (D16): this file is yours. It is glue over L6.1 (GPT,
+An entry point: glue over L6.1 (GPT,
 fit_gpt, save_gpt, load_gpt), L6.2 (BertConfig, BertForMLM, mlm_mask,
 save_bert, load_bert), L6.3 (ELECTRA, electra_step, save_electra,
 load_electra), L6.5 (SequenceClassifier, lora_classifier, train_classifier,

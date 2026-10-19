@@ -376,7 +376,7 @@ Full solution: [`base.py`](../../../../course/solutions/python/tinyllm/tok/base.
 | Forward | `L1.3` | WordPiece implements the protocol; `add_special` becomes `[CLS] ... [SEP]` |
 | Forward | `L1.4` | Unigram implements the protocol; `<unk>` is id 0 there too |
 | Forward | `L1.6` | fertility, bytes per token, and the fallback rate take any `Tokenizer` |
-| Forward | `L3.6` | Registered call site uses this module. |
+| Forward | `L3.6` | the RNN LM checkpoint names its tokenizer in `tl_tokenizer` (`bytes` or a saved tokenizer file) |
 
 `L1.5` implements a Rust tokenizer independently; Python and Rust compare tokenization through shared `tokenizer.json` files and fixtures. `L3.6` (char-level language models) uses this protocol.
 

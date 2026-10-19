@@ -29,7 +29,7 @@ checkpoint step directory or a model directory of a bigram; the cases are
 summary.json (formats/eval-result.schema.json); run_id is the spec's name
 plus the activity's key.
 
-Entry-point territory (D16): this file is yours. It is glue over L0.1 to L0.6,
+An entry point: glue over L0.1 to L0.6,
 M06.3 (PCG32), M10.3 (AdamW), and dur.09 (activity, telemetry).
 """
 

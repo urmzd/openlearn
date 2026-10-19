@@ -1,7 +1,7 @@
 // Package config loads runtime.toml for every Go service (gw.01): defaults,
 // then the file, then TL_<SECTION>__<KEY> environment overrides.
 //
-// Contract: course/contracts/config/runtime.schema.json (DESIGN 2.12): unknown
+// Contract: course/contracts/config/runtime.schema.json: unknown
 // keys are errors except under [ext]; every scalar key can be overridden by
 // TL_<SECTION>__<KEY> (both upper-cased, a double underscore between them),
 // parsed as the key's type; arrays and tables are not overridable.

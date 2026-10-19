@@ -31,7 +31,7 @@ All times UTC.
 | 14:08 | `kubectl logs --previous` shows `cannot read /missing/config.json` |
 | 14:10 | `kubectl rollout history` shows revision 4 changed the args |
 | 14:14 | `kubectl rollout undo`; the rollout completes; `/readyz` is 200 again |
-| 14:16 | `ol drill end`: the gateway smoke cases pass |
+| 14:16 | A chat completion through the gateway (`curl -s -o /dev/null -w '%{http_code}' .../v1/chat/completions`) answers 200 again |
 
 ## Root cause
 

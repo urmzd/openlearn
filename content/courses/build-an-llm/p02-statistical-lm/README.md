@@ -2,7 +2,7 @@
 
 The language models before deep learning and the first neural one. An n-gram model with interpolated modified Kneser-Ney smoothing sets the baseline every later model must beat and becomes the corpus pipeline's perplexity filter in the capstone. Bengio's 2003 neural probabilistic LM is the first model trained with your autograd on real text, and word2vec (skip-gram with negative sampling) with a PPMI-SVD baseline shows where embeddings come from.
 
-**Course passes**: 3 (L2.1 to L2.3, milestone MS-L2, part of gate MS-P3)
+**Course passes**: L2.1 to L2.3 belong to [Pass 3](../paths/course-p03-tokens-and-data/milestone.md)
 
 **Before you start**: the just-in-time math `M03.5`, `M03.6`, `M11.4` and the solve parts `S-M03b`, `S-M11b`; the tokenizers of [Part 1](../p01-tokenizers/).
 

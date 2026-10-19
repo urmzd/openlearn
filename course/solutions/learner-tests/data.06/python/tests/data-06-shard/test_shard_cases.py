@@ -1,8 +1,7 @@
-"""Reference learner tests for data.06 (rung R3, red then green): written
-before the writer, from formats/corpus-shard.md and the chapter's pitfalls.
-They import only names in contracts/py/corpus/{shard,stage}.pyi (and read
-the files back with pyarrow); `ol mutate data.06` runs them against the
-reference with one planted bug at a time."""
+"""Model test suite for data.06 (red then green): written before the
+writer, from formats/corpus-shard.md and the chapter's pitfalls. They
+import only names in contracts/py/corpus/{shard,stage}.pyi (and read the
+files back with pyarrow)."""
 
 import hashlib
 import json

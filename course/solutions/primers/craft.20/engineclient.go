@@ -3,9 +3,9 @@
 // CONSUMER of the engine's API (openapi/openai-subset.v1.yaml, engine tier);
 // this file is everything the gateway relies on: how it builds the upstream
 // request, and how it reads a completion, a stream, an error, and a token
-// count. Your consumer-driven contract (pacts/gateway-engine.json) and your
-// tests (consumer_test.go) pin those expectations down; craft.20's check
-// grades the tests by the planted faults they catch.
+// count. The consumer-driven contract (pacts/gateway-engine.json) and the
+// tests (consumer_test.go) pin those expectations down, so a change to any
+// of them breaks a test.
 //
 // Chapter: content/tracks/software-craftsmanship/03-testing-mentality/06-contract-tests.md.
 package craft20

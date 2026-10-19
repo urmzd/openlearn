@@ -1,7 +1,5 @@
 // Command ctl is the reference entry point for the `ctl` role
 // (course/contracts/spec/cli-roles.md): the umbrella CLI of the platform.
-// Entry points are learner territory (DESIGN D16): the learner writes their
-// own go/cmd/ctl; this one shows what the milestones expect.
 //
 //	ctl wf start <type> --id <id> [--input-json <json>] [--queue <q>] [--wait] [--json]
 //	ctl wf describe <id> --json
@@ -12,9 +10,8 @@
 //	ctl train --spec <file> --id <id> [--queue <q>] [--wait] [--json]
 //	ctl usage --gateway <base URL> [--tenant T] [--key-id K] [--since T] [--until T] [--group-by G] [--json]
 //
-// The flags and final JSON lines are fixed by the milestone headers that
-// first call each verb: MS-durable (wf, data build, train) and MS-gateway
-// (usage). Every durable verb takes --durable <host:port> (default
+// The flags and final JSON lines are part of the role contract: the Pass 8
+// durable verbs (wf, data build, train) and the gateway's usage verb. Every durable verb takes --durable <host:port> (default
 // $TL_DURABLE_ADDR, else 127.0.0.1:7233).
 //
 // Every verb follows the role rules: exit 2 on a usage error, exit 1 on an
@@ -23,7 +20,7 @@
 //
 // Each verb group lives in its own file and registers itself in verbs from
 // its init(): wf.go, data.go, train.go, usage.go. A later group (agent.go,
-// eval.go for MS-agent) adds a file with one more register call; main does
+// eval.go for the docs agent) adds a file with one more register call; main does
 // not change.
 package main
 

@@ -5,8 +5,8 @@
 // than ceil(c * average) of the in-flight work.
 //
 // Chapter: content/tracks/algorithms/16-systems-data-structures/09-consistent-hash-ring.md.
-// Conformance: parity/ring.hash (golden key-to-node map from the Python
-// reference in course/oracle/ds.09/ring_golden.py).
+// Conformance: parity/ring.hash (golden key-to-node map computed with the
+// Python reference; generator not included).
 //
 // The ring is not safe for concurrent use; gw.05 guards it with its own lock.
 package ring

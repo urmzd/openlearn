@@ -1,5 +1,5 @@
-"""My tests for L4.3 (rung R5: the three scores written out in numpy with the
-module's own weights are the oracle, plus my own gradient check). They
+"""Model test suite for L4.3: the three scores written out in numpy with the
+module's own weights are the oracle, plus an independent gradient check. They
 import only the contract."""
 
 import math

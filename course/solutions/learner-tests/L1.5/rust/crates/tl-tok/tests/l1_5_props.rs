@@ -1,7 +1,6 @@
-//! Reference learner tests for L1.5 (rung R4: properties with proptest,
-//! craft.04). Each property is stated in the chapter (section 4); they run
-//! against GPT-2's and SmolLM2's tokenizer.json from $TINYLLM_FIXTURES, which
-//! `ol check` sets. Deterministic: a fixed proptest seed, no failure files.
+//! Model test suite for L1.5: properties with proptest (craft.04). Each
+//! property is stated in the chapter (section 4); they run against GPT-2's
+//! and SmolLM2's tokenizer.json from $TINYLLM_FIXTURES. Deterministic: a fixed proptest seed, no failure files.
 
 use std::path::PathBuf;
 use std::sync::OnceLock;

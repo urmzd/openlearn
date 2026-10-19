@@ -32,7 +32,8 @@ Sections 1 to 3 explain what the capstone measures and work the sizing arithmeti
 <system> train --spec specs/c1/abl-mla.json                  # one short run per ablation arm, same seed
 <system> eval --suite zoo                                    # EvalSuite (dur.11) over every family trained
 # write docs/capstone/c1/report.json from the runs' outputs, then the two ADRs
-<system> release --spec specs/c1/release.json && <system> wf signal <id> approve
+<system> release --spec specs/c1/release.json               # ModelRelease (dur.12); then send it the `approve` signal
+                                                             # through the durable server's SignalWorkflow RPC from a gRPC client (dur.08)
 ```
 
 The inputs are staged by `{tinyllm} capstone prepare` ([`cli_c1_data.py`](../../../../course/solutions/entry/python/tinyllm/cli_c1_data.py)):
@@ -41,7 +42,7 @@ The inputs are staged by `{tinyllm} capstone prepare` ([`cli_c1_data.py`](../../
 # Full and short tiers: use the inputs produced by the corpus pipeline.
 {tinyllm} capstone prepare --spec specs/c1/tinystories-short.json --inputs artifacts --out runs/c1-inputs --seed 0
 # Smoke tier: the course's synthetic stories file.
-{tinyllm} capstone prepare --spec specs/c1/smoke.json --fixture MS-corpus/sources/stories.jsonl --holdout 32 --license CC0-1.0 --out runs/c1-smoke-inputs --seed 0
+{tinyllm} capstone prepare --spec specs/c1/smoke.json --fixture <small reference corpus>/sources/stories.jsonl --holdout 32 --license CC0-1.0 --out runs/c1-smoke-inputs --seed 0
 ```
 
 The smoke preparation fits BPE on the first 130 documents only, scrubs the fixture's seeded redaction examples, and keeps the last 32 documents for evaluation; token manifests and separate corpus ledgers record the files, hashes, counts, and license. The full preparation instead checks and copies the completed `CorpusBuild` and tokenizer outputs under `artifacts/` into the run directory, without fitting another tokenizer or changing the split; a missing input is an error. Both write a run-local `train-spec.json` with the run's seed, so a five-seed calibration really trains five independent initializations. The smoke tier then trains the smoke config (about 0.8M parameters, 200 steps), measures held-out bpb, and scores 20 seeded samples; the durable training, release, trace, and serving steps need the full system and its cluster.

@@ -252,7 +252,7 @@ pub fn read_envelope(buf: &[u8], expect: Option<&KvCfg>) -> Result<(EnvHeader, V
     Ok((h, blocks))
 }
 
-/// The RNG hand-off of a disaggregated request (DESIGN 2.7): D seeds the
+/// The RNG hand-off of a disaggregated request: D seeds the
 /// request's generator as P did, `stream(seed, sample)`, and advances it by
 /// the `rng_draws_consumed` uniform draws P used for the first token, so a
 /// seeded disaggregated stream equals the unified one.
@@ -609,7 +609,7 @@ impl From<Status> for TransferError {
     }
 }
 
-/// The two calls the prefill side makes (DESIGN 4.3 `KvTransport`): the
+/// The two calls the prefill side makes (the `KvTransport` trait): the
 /// gRPC client in production, an in-process fake in tests.
 #[tonic::async_trait]
 pub trait KvTransport: Send + Sync {

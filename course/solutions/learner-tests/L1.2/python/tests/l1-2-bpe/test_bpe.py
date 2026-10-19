@@ -1,4 +1,4 @@
-"""Reference learner tests for L1.2 (rung R2): bodies for the names and
+"""Model test suite for L1.2: bodies for the names and
 docstrings in the chapter, section 4. Only contract names are imported."""
 
 import pytest

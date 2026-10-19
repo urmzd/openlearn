@@ -1,4 +1,4 @@
-# tl-engine: the inference engine library (DESIGN 2.1). L8.4 creates the
+# tl-engine: the inference engine library. L8.4 creates the
 # crate with the radix prefix cache (src/prefix.rs) over tl-ds's radix tree
 # (ds.07). L10.1 adds the model runner on Candle, the
 # safetensors reader (memmap2, serde_json), and the sampler; L10.2 to L10.5

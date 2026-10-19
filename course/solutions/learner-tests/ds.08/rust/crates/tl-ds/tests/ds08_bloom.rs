@@ -1,5 +1,4 @@
-//! Reference learner tests for ds.08 (rung R4: properties with proptest,
-//! craft.04). The worked example pins the format; the properties pin the
+//! Model test suite for ds.08: properties with proptest (craft.04). The worked example pins the format; the properties pin the
 //! guarantees. Deterministic: a fixed proptest seed and no failure files.
 
 use proptest::prelude::*;

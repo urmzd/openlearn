@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// The usage verb: the gateway's usage ledger through admin.v1 (MS-gateway).
+// The usage verb: the gateway's usage ledger through admin.v1.
 func init() {
 	register("usage", usage)
 }

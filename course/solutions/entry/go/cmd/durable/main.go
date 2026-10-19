@@ -1,9 +1,9 @@
 // Command durable is the reference entry point for the `durable` role
 // (course/contracts/spec/cli-roles.md): the durable execution server of Pass
 // 8, the composition root of the dur.01 log, the dur.03 queue, the dur.07
-// timers, and the dur.02 server. Entry points are learner territory (DESIGN
-// D16): the learner writes their own go/cmd/durable; this one shows what the
-// milestone runner and the dep.06 chart expect.
+// timers, and the dur.02 server. It is wiring only (flags, config, signals);
+// the logic lives in the library packages. Its flags are what the dep.06
+// chart passes.
 //
 //	durable --data <dir> --port <n> [--health-port <n>] [--test-clock]
 //	durable --config <runtime.toml>

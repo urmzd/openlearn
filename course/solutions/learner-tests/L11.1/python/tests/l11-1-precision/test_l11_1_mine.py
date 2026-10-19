@@ -1,4 +1,4 @@
-"""My tests for L11.1 (rung R5). Oracles: the format tables of M09.1 applied
+"""Model test suite for L11.1. Oracles: the format tables of M09.1 applied
 by hand to numpy products, a big batch against its micro-batches, and the
 plain backward pass against the checkpointed one. They import only the
 contract."""

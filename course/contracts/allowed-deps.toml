@@ -1,5 +1,5 @@
 # contracts/allowed-deps.toml: the third-party packages each component may
-# use (DESIGN 3.2). Learner units and reference units alike; anything else
+# use. Learner units and reference units alike; anything else
 # in a library unit fails the contract pre-check (craft.18 audits it).
 # Entry points (CLI mains, servers, deploy files, D16) may add their own.
 #

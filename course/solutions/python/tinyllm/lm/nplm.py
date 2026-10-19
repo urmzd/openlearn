@@ -14,7 +14,7 @@ window never seen in training still gets a sensible prediction from the
 windows it resembles. The direct path W x is the paper's optional linear
 shortcut from the embeddings to the output.
 
-This is the first model of the course trained with your own autograd
+This is the first model of the course trained with the course's own autograd
 (L0.1 to L0.4) and training loop (L0.5) on real text, and its checkpoint is
 the NPLM row of the model zoo (L6.7).
 

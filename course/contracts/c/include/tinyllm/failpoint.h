@@ -1,4 +1,4 @@
-/* tinyllm/failpoint.h: named failpoints for C units (course/DESIGN.md 4.4).
+/* tinyllm/failpoint.h: named failpoints for C units.
  *
  * Header only, so a unit includes it like any contract header and no unit
  * owns it. The spec is the one the Go, Rust, and Python kits read:

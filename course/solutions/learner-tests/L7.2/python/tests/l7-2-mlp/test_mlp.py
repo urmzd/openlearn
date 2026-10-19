@@ -1,4 +1,4 @@
-"""My tests for L7.2 (rung R5: oracles and my own gradient check). The oracle
+"""Model test suite for L7.2: oracles and an independent gradient check. The oracle
 is the gated MLP written out in numpy float64 with the module's own weights.
 They import only the contract."""
 

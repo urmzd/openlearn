@@ -1,4 +1,4 @@
-/* My tests for ds.02 (rung R2: the chapter named them, I wrote the bodies).
+/* Model test suite for ds.02: the chapter names the tests; these are the bodies.
  * They include only the contract headers and the test kit. */
 #include <stdint.h>
 #include <string.h>

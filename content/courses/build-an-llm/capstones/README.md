@@ -2,7 +2,7 @@
 
 The capstones run the whole system you built on one goal. C1 trains a roughly 10M-parameter Llama-family model on TinyStories end to end: your corpus pipeline cleans the data as a durable workflow, your tokenizer is trained and ablated (BPE vs Unigram), your trainer runs with mixed precision and resumes bitwise, the model is evaluated against the model zoo, released through your release workflow with a model card and data ledger, and served by your engine behind your gateway. C2 (optional) post-trains it into an instruction follower.
 
-**Course passes**: 9 (C1, gate MS-C1, part of MS-P9); 10, optional (C2, gate MS-C2)
+**Course passes**: C1 belongs to [Pass 9](../paths/course-p09-capstone-training/milestone.md); C2 is optional and belongs to [Pass 10](../paths/course-p10-agents/milestone.md)
 
 **Before you start**: every pass before it. C1 exercises the data modules, the tokenizers, the modern block, the optimizers, `L11.1`, the durable workflows (`dur.06`, `dur.09`, `dur.11`, `dur.12`), the inference stack, and the serving platform; C2 needs [Part 12](../p12-post-training/).
 

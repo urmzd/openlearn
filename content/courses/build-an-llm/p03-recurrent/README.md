@@ -2,7 +2,7 @@
 
 Sequence models with state. A vanilla RNN with backpropagation through time written by hand, then the LSTM and GRU in torch's gate order (so weights load from torch checkpoints), bidirectional RNNs with length-aware reversal, and an RNN language model trained with stateful truncated BPTT. ELMo's bidirectional LM and scalar mix is optional.
 
-**Course passes**: 4 (L3.1 to L3.6, milestone MS-L3, part of gate MS-P4)
+**Course passes**: L3.1 to L3.6 belong to [Pass 4](../paths/course-p04-sequence-models/milestone.md)
 
 **Before you start**: the matrix-calculus VJPs ([M08.3](../../../tracks/math/08-matrix-calculus-and-autodiff/)) and gradient clipping ([M10.4](../../../tracks/math/10-optimization/)); the autograd engine of [Part 0](../p00-foundations/).
 

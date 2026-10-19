@@ -2,7 +2,7 @@
 
 What changed between 2017 and a Llama-family model. Pre-LN with RMSNorm, gated MLPs (SwiGLU, GeGLU), rotary position embeddings and context extension (PI, NTK, YaRN, Llama-3 scaling), grouped-query and multi-head latent attention, sliding windows and attention sinks, mixture of experts, and the Llama-family model that loads Hugging Face configs and weights and matches SmolLM2-135M.
 
-**Course passes**: 5 (L7.1 to L7.9, milestone MS-L7, part of gate MS-P5)
+**Course passes**: L7.1 to L7.9 belong to [Pass 5](../paths/course-p05-transformer/milestone.md)
 
 **Before you start**: the just-in-time math `M05.1` (parameter and FLOP counting); [Part 5](../p05-transformer-2017/) and [Part 6](../p06-objectives/); rotations from [Precalculus](../../../tracks/math/00-precalculus/).
 

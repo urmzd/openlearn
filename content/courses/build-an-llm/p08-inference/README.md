@@ -2,7 +2,7 @@
 
 Generating text fast and exactly. The sampler and logit processors in the course's fixed op order, the KV cache with incremental decode and an incremental UTF-8 detokenizer, the paged KV block pool in C (`rt.04`) and the Python paged cache over it, a radix prefix cache, quantization (int8, int4, fp8, KV), speculative decoding, and constrained decoding from regex and JSON schema to token masks.
 
-**Course passes**: 6 (rt.04, L8.1 to L8.7, milestone MS-L8, part of gate MS-P6)
+**Course passes**: rt.04 and L8.1 to L8.7 belong to [Pass 6](../paths/course-p06-inference-and-kernels/milestone.md)
 
 **Before you start**: the just-in-time math `M07.6`, `M09.3`, `M09.4` and the solve part `S-M09b`; the C structures `ds.01` to `ds.03` and the radix tree `ds.07` in [Systems Data Structures](../../../tracks/algorithms/16-systems-data-structures/); the Llama-family model of [Part 7](../p07-modern-block/).
 

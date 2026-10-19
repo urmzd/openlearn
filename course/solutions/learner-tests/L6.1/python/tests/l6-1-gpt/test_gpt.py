@@ -1,6 +1,6 @@
-"""My tests for L6.1 (rung R5: a GPT-2 forward written out in float64 numpy
-from Hugging Face-layout weights I make myself is the oracle for loading and
-for the model; the causal law; the loss by hand). They import only the
+"""Model test suite for L6.1: a GPT-2 forward written out in float64 numpy
+from Hugging Face-layout weights built in the test is the oracle for loading
+and for the model; the causal law; the loss by hand. They import only the
 contract."""
 
 import math

@@ -1,5 +1,5 @@
-"""The Pass 4 sequence-model verbs (course/milestones/MS-L3.toml and
-MS-L4.toml fix their flags and final lines).
+"""The Pass 4 sequence-model verbs (with their flags
+and final lines).
 
     train rnnlm   --cell rnn|lstm|gru --data <file> --out <dir> --steps S [--seed S]
                   [--d-emb 32] [--hidden 128] [--layers 1] [--bptt 32] [--batch 32]
@@ -15,7 +15,7 @@ MS-L4.toml fix their flags and final lines).
 verbs unchanged: it returns an exit code when argv is one of them and None
 otherwise (`eval` and `generate` only for an rnnlm directory).
 
-Entry-point territory (D16): this file is yours. It is glue over L3.6
+An entry point: glue over L3.6
 (RNNLM, train_tbptt, save_rnnlm, load_rnnlm), L4.1 (Seq2Seq, save_seq2seq,
 load_seq2seq), L4.2 and L4.3 (the attention modules), L4.4 (beam_search),
 L4.5 (exact_match, chrf, metric_ci), L1.1 (CharTokenizer), L0.6
@@ -286,7 +286,7 @@ def cmd_generate_rnnlm(a) -> dict:
     text = bytes(ids).decode("utf-8", errors="replace")
     print(a.prompt + text, flush=True)
     result = {"ids": ids, "text": text}
-    if a.out:  # the final line, also written to a file (as MS-L2's generate --out)
+    if a.out:  # the final line, also written to a file (as Pass 3's generate --out)
         Path(a.out).parent.mkdir(parents=True, exist_ok=True)
         Path(a.out).write_text(json.dumps(result) + "\n")
     return result

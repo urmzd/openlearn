@@ -2,11 +2,10 @@ module tinyllm
 
 go 1.25.0
 
-// The vendored contracts module (DESIGN 2.15). It is deliberately not in
+// The vendored contracts module. It is deliberately not in
 // `require`: units that import its generated code (gw.05) build in workspace
-// mode, `go work init ./go ./contracts/go` at the repo root, which is also how
-// the course overlay builds (a `require` here makes the overlay try to fetch
-// the module; DEVIATIONS B93-18).
+// mode, `go work init ./go ./contracts/go` at the repo root (a `require`
+// here would make the build try to fetch the module).
 replace openlearn.urmzd.com/tl/contracts => ../contracts/go
 
 require (

@@ -1,7 +1,6 @@
 // Command gateway is the reference entry point for the `gateway` role
-// (course/contracts/spec/cli-roles.md), used only by course CI. Entry points
-// are learner territory (DESIGN D16): the learner writes their own
-// go/cmd/gateway; this one shows what the milestone runner expects.
+// (course/contracts/spec/cli-roles.md): wiring only (flags, config,
+// signals) over the gateway library packages.
 //
 //	gateway --port <n> --health-port <n> --upstream <engine base URL>   (tracer form, gw.00)
 //	gateway --config <runtime.toml>                                     (gw.01 on; compose.go)

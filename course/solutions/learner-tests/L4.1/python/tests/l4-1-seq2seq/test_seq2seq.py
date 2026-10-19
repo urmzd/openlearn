@@ -1,5 +1,5 @@
-"""My tests for L4.1 (rung R5: oracles. The oracles here are the model's
-own pieces recombined by hand: the encoder's two GRUs run one sequence at a
+"""Model test suite for L4.1, checked against oracles: the model's own
+pieces recombined by hand (the encoder's two GRUs run one sequence at a
 time, the decoder step recomputed from its cell and layers). They import
 only the contract."""
 

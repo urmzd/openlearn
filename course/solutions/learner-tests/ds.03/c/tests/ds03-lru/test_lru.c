@@ -1,4 +1,4 @@
-/* My tests for ds.03 (rung R2). */
+/* Model test suite for ds.03: the tests the chapter names. */
 #include <stddef.h>
 
 #include "tinyllm.h"

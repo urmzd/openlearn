@@ -43,7 +43,7 @@ import (
 	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
-// Limits from DESIGN 2.7 and durable.proto.
+// Limits from durable.proto.
 const (
 	MaxPayloadBytes          = 2 << 20  // activity input and result, workflow input and result
 	ContinueAsNewEvents      = 10000    // past this the workflow task suggests ContinueAsNew
@@ -215,7 +215,7 @@ func Open(ctx context.Context, o Options) (*Server, error) {
 }
 
 // continuedStart is the WorkflowExecutionStarted of the run that r
-// continues as (DESIGN 2.7: same workflow id, the new input).
+// continues as: the same workflow id, the new input.
 func continuedStart(r *run, c *durablev1.WorkflowExecutionContinuedAsNew) *durablev1.WorkflowExecutionStarted {
 	return &durablev1.WorkflowExecutionStarted{
 		WorkflowType: c.GetWorkflowType(), TaskQueue: c.GetTaskQueue(), Input: c.GetInput(),

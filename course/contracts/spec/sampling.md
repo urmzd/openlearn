@@ -3,7 +3,7 @@
 <!-- modules: L8.1 (Python tinyllm/infer/sample.py), L10.1 (Rust tl-engine/src/sample.rs), L10.6 (disaggregated hand-off), L8.6 and L10.8 (speculative acceptance draws)
      conformance: parity/sampler (golden ids from shared fixture logits) -->
 
-Given **the same logits and the same seed**, the Python sampler and the Rust sampler return the same token id and the same logprob (D11). That holds only if both apply the same operations in the same order with the same arithmetic, which this page fixes. End-to-end streams that come from different float paths (Python numpy logits vs Rust C-kernel logits) are compared greedily under the near-tie rule, never seeded (DESIGN 5.7).
+Given **the same logits and the same seed**, the Python sampler and the Rust sampler return the same token id and the same logprob (D11). That holds only if both apply the same operations in the same order with the same arithmetic, which this page fixes. End-to-end streams that come from different float paths (Python numpy logits vs Rust C-kernel logits) are compared greedily under the near-tie rule, never seeded.
 
 Symbols: `V` the vocabulary size; `x` the model's next-token logits (f32, length `V`); `prompt` and `out` the prompt ids and the ids generated so far for this request; `rng` the request's generator.
 

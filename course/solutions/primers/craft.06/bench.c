@@ -1,4 +1,4 @@
-/* primers/craft.06/bench.c: my benchmark of the kata (rung R7).
+/* primers/craft.06/bench.c: the benchmark of the kata.
  *
  * One program, built against whichever kernels.c the gate hands it. It
  * times each kernel with ol_bench_best (best of 5 repetitions, each at least

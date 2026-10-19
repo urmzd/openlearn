@@ -1,6 +1,6 @@
-"""My tests for L5.5 (rung R5: the whole transformer written out in float64
+"""Model test suite for L5.5: the whole transformer written out in float64
 numpy from the model's own state_dict is the oracle, for both LayerNorm
-placements; plus the hand examples and the causality and padding laws).
+placements; plus the hand examples and the causality and padding laws.
 They import only the contract."""
 
 import math

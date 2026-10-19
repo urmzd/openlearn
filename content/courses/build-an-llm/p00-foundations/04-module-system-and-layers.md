@@ -371,29 +371,29 @@ Full solution: [`module.py`](../../../../course/solutions/python/tinyllm/nn/modu
 | Forward | `L13.5` | the text tower and both projections are `Module`s |
 | Forward | `L14.2` | `WhisperEncoder` stacks `LayerNorm` and `Linear` in a `ModuleList` |
 | Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
-| Forward | `L11.1` | Registered call site uses this module. |
-| Forward | `L2.2` | Registered call site uses this module. |
-| Forward | `L3.2` | Registered call site uses this module. |
-| Forward | `L3.3` | Registered call site uses this module. |
-| Forward | `L3.6` | Registered call site uses this module. |
-| Forward | `L4.1` | Registered call site uses this module. |
-| Forward | `L4.2` | Registered call site uses this module. |
-| Forward | `L4.3` | Registered call site uses this module. |
-| Forward | `L5.3` | Registered call site uses this module. |
-| Forward | `L5.4` | Registered call site uses this module. |
-| Forward | `L5.5` | Registered call site uses this module. |
-| Forward | `L6.1` | Registered call site uses this module. |
-| Forward | `L6.2` | Registered call site uses this module. |
-| Forward | `L6.3` | Registered call site uses this module. |
-| Forward | `L6.5` | Registered call site uses this module. |
-| Forward | `L6.6` | Registered call site uses this module. |
-| Forward | `L7.1` | Registered call site uses this module. |
-| Forward | `L7.2` | Registered call site uses this module. |
-| Forward | `L7.5` | Registered call site uses this module. |
-| Forward | `L7.6` | Registered call site uses this module. |
-| Forward | `L7.8` | Registered call site uses this module. |
-| Forward | `L7.9` | Registered call site uses this module. |
-| Forward | `L8.5` | Registered call site uses this module. |
+| Forward | `L11.1` | `train_step_mixed` steps `model.parameters()`; `checkpoint_sequential` segments a list of `Module` layers and gathers their `parameters()` |
+| Forward | `L2.2` | the NPLM is a `Module` of `Embedding` and `Linear` layers |
+| Forward | `L3.2` | the LSTM cell is a `Module` with `Dropout` and `xavier_uniform` weights |
+| Forward | `L3.3` | the GRU cell is a `Module` with `Dropout` and `xavier_uniform` weights |
+| Forward | `L3.6` | the RNN LM wraps the cell between an `Embedding` and a `Linear` read-out |
+| Forward | `L4.1` | the encoder and decoder are `Module`s built from `Embedding` and `Linear` |
+| Forward | `L4.2` | additive (Bahdanau) attention is a `Module` of `Linear` projections |
+| Forward | `L4.3` | Luong attention is a `Module` of `Linear` projections |
+| Forward | `L5.3` | multi-head attention's Q, K, V, and output projections are `Linear` |
+| Forward | `L5.4` | the learned position table is a `Module` initialised with `normal_init` |
+| Forward | `L5.5` | the transformer stacks `LayerNorm`, `Linear`, `Embedding`, and `Dropout` in a `ModuleList` |
+| Forward | `L6.1` | GPT stacks its blocks in a `ModuleList` of `LayerNorm`, `Linear`, `Embedding`, and `Dropout` |
+| Forward | `L6.2` | BERT's encoder stacks the same layers in a `ModuleList` |
+| Forward | `L6.3` | the ELECTRA generator and discriminator heads are `Module`s over `Linear` |
+| Forward | `L6.5` | the task heads are `Module`s of `Dropout` and `Linear` |
+| Forward | `L6.6` | `LoRALinear` wraps a frozen `Linear` and adds two trainable `Linear` factors |
+| Forward | `L7.1` | `RMSNorm` is a `Module` |
+| Forward | `L7.2` | SwiGLU's gate, up, and down projections are `Linear` |
+| Forward | `L7.5` | grouped-query attention's projections are `Linear` |
+| Forward | `L7.6` | MLA's down- and up-projections are `Linear` |
+| Forward | `L7.8` | the MoE experts sit in a `ModuleList`; the router is a `Linear` |
+| Forward | `L7.9` | the Llama model registers `Embedding`, `ModuleList`, and `Linear` in HF's order, so `state_dict` keys match HF's |
+| Forward | `L8.5` | `QuantLinear` replaces `Linear` layers found through `named_modules()`; `export_q4` walks `named_parameters()` |
 
 ## Going further
 

@@ -1,4 +1,4 @@
-# runtime.toml template for the durable service (DESIGN 2.12, dur.02). The
+# runtime.toml template for the durable service (dur.02). The
 # harness fills [durable].grpc_listen and health_listen with allocated ports
 # and passes the file as {config}; the WAL lives in the run's state directory.
 [durable]

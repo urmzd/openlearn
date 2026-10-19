@@ -13,7 +13,7 @@
    that merges nothing also round-trips. The chapter's other properties
    (fixpoint, agreement with a model) catch the rest.
 
-The rules, exactly (the planted faults break one each):
+The rules, exactly (a property suite should catch a bug in any one):
 
 normalize(text):
     a. NFC (unicodedata.normalize("NFC", text)).

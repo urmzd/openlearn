@@ -1,6 +1,7 @@
-"""My deepened L4.5 suite for craft.07: the rung R5 tests of L4.5, plus one
-test per survivor I triaged as killable and per mutant I wrote myself
-(triage.toml and mutants/ name them). It imports only the contract."""
+"""The deepened L4.5 suite for craft.07: the oracle tests of L4.5, plus one
+test per surviving mutant triaged as killable and per mutant written from
+L4.5's pitfalls (triage.toml and mutants/ name them). It imports only the
+contract."""
 
 import math
 
@@ -178,15 +179,15 @@ def test_extra_references_are_an_error():
         corpus_bleu(["a b"], [["a b"], ["c d"]])
 
 
-# --- craft.07: the mutants I wrote from L4.5's pitfalls ------------------------------------
+# --- craft.07: the mutants written from L4.5's pitfalls ------------------------------------
 
 
 def test_13a_splits_a_dash_after_a_digit():
-    """My mutant p01: the fourth 13a rule deleted."""
+    """Mutant p01: the fourth 13a rule deleted."""
     assert tokenize_13a("pages 10-12") == "pages 10 - 12"
 
 
 def test_chrf_beta_is_a_parameter():
-    """My mutant p02: beta fixed at 2. With beta = 1, F is the harmonic mean."""
+    """Mutant p02: beta fixed at 2. With beta = 1, F is the harmonic mean."""
     r = (3 / 4 + 2 / 3 + 1 / 2) / 3
     assert chrf(["cat"], [["cats"]], beta=1.0) == pytest.approx(100 * 2 * r / (1 + r), rel=1e-12)

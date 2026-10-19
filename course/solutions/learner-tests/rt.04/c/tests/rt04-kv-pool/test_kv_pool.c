@@ -1,4 +1,4 @@
-/* My tests for rt.04 (rung R3: written first, red against the stub). They
+/* Model test suite for rt.04, written test-first. They
  * include only the contract headers and the test kit. */
 #include <stdint.h>
 #include <string.h>

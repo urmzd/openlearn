@@ -10,11 +10,9 @@
 
 #include "tinyllm/abi.h"
 
-/* ---- Given: the error slot ---------------------------------------------
- * This block stays outside the solution markers. When `ol start` stubs
- * this file, every stubbed function (here and in every other unit) still
- * reports "unimplemented: <id>" through tl_set_last_error, so the setter
- * and its getter must keep working before you write anything.
+/* ---- The error slot -----------------------------------------------------
+ * Every function in the runtime reports failures through tl_set_last_error,
+ * so the setter and its getter are the first thing the ABI needs.
  *
  * _Thread_local gives each thread its own copy: an error on one thread
  * never overwrites the message another thread is about to read. */

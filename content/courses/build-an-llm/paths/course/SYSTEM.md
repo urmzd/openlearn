@@ -47,7 +47,7 @@ After every pass the system runs end to end: a request enters at the gateway, re
 | Contract | How it grows |
 |---|---|
 | the model behind the checkpoint | count bigram (P1), autograd bigram (P2), the transformer family (P5), the Llama family served by the engine (P7 on) |
-| standalone C kernels | optional exercises, checked against fixture files produced by Python references |
+| standalone C kernels | optional exercises, whose outputs are compared with the Python reference's outputs for the same inputs |
 | HTTP `openai-subset` | v0 completions with SSE (P1), v1 with chat, usage, and tools (P7), v2 migration (P11) |
 | gateway | proxy (P1), auth, limits, routing, cache, ledger (P7), usage policy (P10) |
 | deploy | two charts and Jaeger (P1), per-role charts and the observability stack (P7), durable workers (P8) |

@@ -1,4 +1,4 @@
-"""The Pass 5 Llama-family verbs (course/milestones/MS-L7.toml fixes their
+"""The Pass 5 Llama-family verbs (with their
 flags and final lines).
 
     pull <owner/name> [--revision R] [--cache-dir DIR] [--files a,b,...]
@@ -13,7 +13,7 @@ another tl_arch). `intercept(argv)` handles `pull` and these three verbs on
 such a directory, and returns None for everything else, so the earlier
 passes' verbs keep their meaning.
 
-Entry-point territory (D16): this file is yours. It is glue over L7.9
+An entry point: glue over L7.9
 (LlamaForCausalLM, hf_download), L7.5 (ConcatKVCache for decoding), L1.2
 (BPETokenizer.from_hf_json for tokenizer.json), M05.1 (kv_bytes_per_token),
 and M06.3 (PCG32 for sampling).

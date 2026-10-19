@@ -12,7 +12,8 @@
 //! | `tools` | L10.9 | tool calls, tool_choice, and response_format |
 //! | `api_version` | craft.14 | API v1 and v2 selection, `Deprecation` and `Sunset`, v2 error codes and usage |
 //!
-//! The binary, src/main.rs, is yours: `--model-dir --port --health-port`
+//! The binary, src/main.rs (course/solutions/entry/rust/crates/tl-serve):
+//! `--model-dir --port --health-port`
 //! (the tracer, spec/cli-roles.md) calls `http::serve`; `--config
 //! <runtime.toml>` (from L10.5) calls `server::run`.
 

@@ -1,8 +1,8 @@
-//! tl-engine: the inference engine (DESIGN 2.1, 4.3 L10).
+//! tl-engine: the inference engine (Pass 10).
 //!
 //! L8.4 creates this crate with `prefix`, the radix prefix cache the block
 //! manager (L10.4) consults before allocating KV blocks for a prompt. Each
-//! later module adds one `pub mod` line here (DESIGN 2.15, Q7):
+//! later module adds one `pub mod` line here:
 //!
 //! | Module | Course module | What |
 //! |---|---|---|

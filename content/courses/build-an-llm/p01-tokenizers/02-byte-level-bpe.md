@@ -482,7 +482,7 @@ Full solution: [`pretok.py`](../../../../course/solutions/python/tinyllm/tok/pre
 | Forward | `L1.5` | the Rust `tl-tok` reimplements encode and decode; its differential tests compare its ids with this solution's on the fixtures and a TinyStories sample |
 | Forward | `L1.6` | measures GPT-2 and SmolLM2, loaded by `from_hf_json`, against Hugging Face's numbers |
 | Forward | `data.07` | tokenizes corpus files through the Rust tokenizer process and shared file fixtures |
-| Forward | `L8.2` | Registered call site uses this module. |
+| Forward | `L8.2` | `IncrementalDecoder` streams byte-level ids through `Tokenizer.decode`, holding back text that ends in a partial UTF-8 character |
 | Forward | `L14.4` | Whisper decoding consumes this implementation. |
 
 Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2` detokenizes streams, and `C1` trains its 4096-token vocabulary with this trainer.

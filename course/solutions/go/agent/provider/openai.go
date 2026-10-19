@@ -1,5 +1,5 @@
 // Package provider is the agent SDK's model client (ag.01): one Provider for
-// every OpenAI-compatible endpoint (the learner's gateway, an engine, or a
+// every OpenAI-compatible endpoint (the system's gateway, an engine, or a
 // frontier API with the same code), the SSE decoder that turns a streamed
 // answer into typed deltas, and the retry wrapper that retries only before
 // the first content delta.

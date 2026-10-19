@@ -27,7 +27,7 @@ The drill runs against a corpus build started first, with the solution's alert r
 
 ```bash
 kubectl apply -f deploy/observability/rules/durable.yaml   # the two durable alerts (section 5.2)
-{ctl} data build --config <MS-corpus fixture>/corpus.toml --id drill-kill9 --durable 127.0.0.1:30733 --json
+{ctl} data build --config <small reference corpus config> --id drill-kill9 --durable 127.0.0.1:30733 --json
 ```
 
 `{ctl}` and `{corpus}` are the system's control CLI and corpus CLI (`spec/cli-roles.md`).
@@ -78,13 +78,13 @@ $k = 5$ kills at $t = 20, 50, 80, 110, 140$ s after the drill starts, $r = 8$ s,
 
 The alert's expression is the increase over 2 minutes. At $t = 80$ s the window holds 6, more than 5; with `for: 20s` it fires at about $t = 100$ s, 80 s after the first kill, inside the drill's 300 s. Without the kills the build runs about 150 s; with them each kill costs about $r + V \approx 38$ s for the tasks it hit, and the stages overlap, so expect roughly 3 to 4 extra minutes, not $5 \times 38$.
 
-Then check the output by hand: the clean numbers of the MS-corpus fixture are 169 documents, 3 shards, 75164 training tokens, and 6868 validation tokens. The same start run again (`--wait`) must report exactly those, with `started: false` (no second run was created).
+Then check the output by hand: a clean build of the small reference corpus config gives 169 documents, 3 shards, 75164 training tokens, and 6868 validation tokens. The same start run again (`--wait`) must report exactly those, with `started: false` (no second run was created).
 
 ## 4. The incident: what is injected, detected, and resolved
 
 | Step | What happens |
 |---|---|
-| workload | `{ctl} data build --config <MS-corpus fixture>/corpus.toml --id drill-kill9 --durable 127.0.0.1:30733 --json` is running |
+| workload | `{ctl} data build --config <small reference corpus config> --id drill-kill9 --durable 127.0.0.1:30733 --json` is running |
 | inject | 20 s in, `kubectl delete pod --grace-period=0 --force` on the Ready pod of `statefulset/<system>-durable`; four more, each 30 s after the previous |
 | detect | `DurableRedeliveriesSpike` must fire within 300 s of the first kill |
 | page | *DurableRedeliveriesSpike: activity tasks are being delivered again and again; the corpus build drill-kill9 has not finished* |
@@ -97,7 +97,7 @@ Then check the output by hand: the clean numbers of the MS-corpus fixture are 16
 | `(sum(tl_durable_dlq_size{namespace="<system>"}) or vector(0)) == 0` | 60 s |
 | `(sum(tl_durable_task_queue_depth{namespace="<system>"}) or vector(0)) == 0` | 60 s |
 | the same start with `--wait --json` returns `COMPLETED` with `n_docs` 169, `n_shards` 3, `train_tokens` 75164, `val_tokens` 6868 | the clean-run numbers |
-| `TL_ARTIFACTS=artifacts {corpus} ledger verify --config <MS-corpus fixture>/corpus.toml` exits 0 | every ledger row once |
+| `TL_ARTIFACTS=artifacts {corpus} ledger verify --config <small reference corpus config>` exits 0 | every ledger row once |
 | a trace in the window has `workflow CorpusBuild` from `<system>-worker` | evidence for the timeline |
 | `docs/runbooks/DurableRedeliveriesSpike.md` (Symptoms, Diagnosis, Mitigation) and `docs/postmortems/<date>-durable-kill9.md` (the seven sections) exist | at the end |
 | all within 45 minutes | |
@@ -191,8 +191,8 @@ kubectl -n <system> rollout status statefulset/<system>-durable
 
 # The proof: the same start returns the finished run (started: false) with
 # the clean-run numbers, and the ledger holds every row once.
-{ctl} data build --config <MS-corpus fixture>/corpus.toml --id drill-kill9 --durable 127.0.0.1:30733 --wait --json
-TL_ARTIFACTS=artifacts {corpus} ledger verify --config <MS-corpus fixture>/corpus.toml
+{ctl} data build --config <small reference corpus config> --id drill-kill9 --durable 127.0.0.1:30733 --wait --json
+TL_ARTIFACTS=artifacts {corpus} ledger verify --config <small reference corpus config>
 ```
 
 `started: false` matters as much as the counts: it shows the start was idempotent too, returning the existing workflow instead of creating a second build.

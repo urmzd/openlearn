@@ -381,7 +381,7 @@ Full solution: [`wordpiece.py`](../../../../course/solutions/python/tinyllm/tok/
 | Back | `L1.1` | the protocol and `check_ids`; `add_special` is the `[CLS] ... [SEP]` template |
 | Back | `M06.2` | two tries make each longest-match step one walk; a third splits out special tokens |
 | Forward | `L1.6` | measures bert-base-uncased against Hugging Face's numbers, `[UNK]` counted as a fallback |
-| Forward | `L6.2` | Registered call site uses this module. |
+| Forward | `L6.2` | BERT tokenizes with `WordPieceTokenizer` |
 
 `L6.2` (masked language modeling with `[MASK]`) and `L6.3` (ELECTRA) train on these ids when Pass 5 arrives.
 

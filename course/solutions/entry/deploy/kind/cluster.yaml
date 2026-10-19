@@ -37,7 +37,7 @@ nodes:
         hostPort: 30733
         listenAddress: "127.0.0.1"
     # ./artifacts on your machine is /artifacts on the node; pods mount it
-    # with a hostPath volume (DESIGN 2.13).
+    # with a hostPath volume.
     extraMounts:
       - hostPath: ./artifacts
         containerPath: /artifacts

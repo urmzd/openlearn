@@ -25,8 +25,8 @@
 //! several calls separated by "\n".
 //!
 //! Chapter: content/courses/build-an-llm/p10-serving/09-tool-calls-and-constrained-decoding.md.
-//! Conformance: `tools.call`, `tools.stream`, `tools.choice`
-//! (course/conformance/openapi/cases, `requires = ["L10.9"]`).
+//! Must conform to the OpenAPI contract's tool cases: `tools.call`,
+//! `tools.stream`, `tools.choice`.
 
 use tl_engine::constrain::{escape, json_object_regex, json_quote, json_schema_to_regex, Json};
 use tl_tok::Tokenizer;

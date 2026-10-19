@@ -1,5 +1,5 @@
-"""My tests for L4.4 (rung R5: oracles. The oracle here is brute force:
-every output of a tiny model, scored by my own log-softmax). They import
+"""Model test suite for L4.4, checked against a brute-force oracle: every
+output of a tiny model, scored by an independent log-softmax. They import
 only the contract."""
 
 import itertools

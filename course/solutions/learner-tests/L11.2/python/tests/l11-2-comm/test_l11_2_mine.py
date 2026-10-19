@@ -1,4 +1,4 @@
-"""My tests for L11.2 (rung R5). Oracles: numpy sums of the same inputs,
+"""Model test suite for L11.2. Oracles: numpy sums of the same inputs,
 array_split for the chunks, and byte counts worked out from the ring. They
 import only the contract; workers are module-level for the spawn method, and
 one run per world size feeds most tests."""

@@ -7,8 +7,8 @@
 | **Module** | `craft.07` · practice · Python · Pass 4 · 2 h reading |
 | **Solution** | three artifacts in [`primers/craft.07/`](../../../../course/solutions/primers/craft.07/): [`test_seqmetrics.py`](../../../../course/solutions/primers/craft.07/test_seqmetrics.py) (the L4.5 suite, deepened until it kills every L4.5 mutant), [`triage.toml`](../../../../course/solutions/primers/craft.07/triage.toml) (the verdict on ten survivors), and [`mutants/p01.patch`](../../../../course/solutions/primers/craft.07/mutants/p01.patch), [`mutants/p02.patch`](../../../../course/solutions/primers/craft.07/mutants/p02.patch) (two semantic mutants written from L4.5's pitfalls) |
 | **Contract** | the L4.5 contract the suite tests, [`course/contracts/py/tinyllm/eval/seqmetrics.pyi`](../../../../course/contracts/py/tinyllm/eval/seqmetrics.pyi); the artifact formats in section 4 |
-| **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how a test suite is judged by planted faults · [`craft.04`](02-property-based-tests.md) laws as tests · [`L4.5`](../../../courses/build-an-llm/p04-attention-origins/05-sequence-metrics.md) the unit under test, and its rung R5 suite |
-| **Used by** | no call site (a practice): every later rung reads survivors this way, and rungs R7 to R10 use the special mutant classes (perf, model, agent, resilience). Part 4 ends with the metrics `L6.7` reports guarded by a suite that kills every killable mutant. |
+| **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how a test suite is judged by planted faults · [`craft.04`](02-property-based-tests.md) laws as tests · [`L4.5`](../../../courses/build-an-llm/p04-attention-origins/05-sequence-metrics.md) the unit under test, and its test suite |
+| **Used by** | no call site (a practice): every later testing chapter reads survivors this way, and the perf, model, agent, and resilience chapters (`craft.06`, `craft.22`, `craft.23`, `craft.21`) use their own special mutant classes. Part 4 ends with the metrics `L6.7` reports guarded by a suite that kills every killable mutant. |
 | **Optional depth** | DeMillo, Lipton, and Sayward, "Hints on Test Data Selection" (1978); Offutt and Pan, "Automatically Detecting Equivalent Mutants and Infeasible Paths" (1997); Papadakis et al., "Mutation Testing Advances: An Analysis and Survey" (2019); Petrovic and Ivankovic, "State of Mutation Testing at Google" (ICSE SEIP 2018) |
 
 ## Key Takeaways
@@ -27,7 +27,7 @@ Sections 1 to 3 build the vocabulary (killed, survived, equivalent) and work two
 
 ## 1. Why now
 
-L4.5's suite met rung R5: it kills at least 80% of the planted faults, every semantic one included. That number hides two questions. Which 20% survived, and why? And could any test ever have killed them? Pass 4 is the first pass where the suites guard real numerical code, the metrics `L6.7` will print for every model trained, and from Pass 6 on the mutant classes cannot be read as patches at all: a 2x slowdown the benchmark gate must notice (R7), a zeroed layer the model eval must flag (R8). Reading survivors is the skill underneath all of them. This module takes the L4.5 unit, ten mutants that a typical R5 suite lets live, sorts the real gaps from the impossible ones, closes the gaps, and adds mutants of its own from the chapter's pitfalls.
+L4.5's model suite kills at least 80% of the planted faults, every semantic one included. That number hides two questions. Which 20% survived, and why? And could any test ever have killed them? Pass 4 is the first pass where the suites guard real numerical code, the metrics `L6.7` will print for every model trained, and from Pass 6 on the mutant classes cannot be read as patches at all: a 2x slowdown the benchmark gate must notice (`craft.06`), a zeroed layer the model eval must flag (`craft.10`). Reading survivors is the skill underneath all of them. This module takes the L4.5 unit, ten mutants that a typical 80%-kill suite lets live, sorts the real gaps from the impossible ones, closes the gaps, and adds mutants of its own from the chapter's pitfalls.
 
 ## 2. Principles
 
@@ -108,7 +108,7 @@ It applies to the reference, it is new, the course's golden tests kill it (every
 
 ## 4. The artifacts
 
-**The suite**, `primers/craft.07/test_seqmetrics.py`: one file, at least 12 tests, importing only `tinyllm.eval.seqmetrics` (plus `pytest`, `math`, `json`, `itertools`, `collections`, `numpy`, `os`, `pathlib`). It starts as the L4.5 suite. The bar is higher than R5: it must kill **every** L4.5 mutant (they are all killable: the reference tests kill each one) and each survivor called killable.
+**The suite**, `primers/craft.07/test_seqmetrics.py`: one file, at least 12 tests, importing only `tinyllm.eval.seqmetrics` (plus `pytest`, `math`, `json`, `itertools`, `collections`, `numpy`, `os`, `pathlib`). It starts as the L4.5 suite. The bar is higher than 80%: it must kill **every** L4.5 mutant (they are all killable: the reference tests kill each one) and each survivor called killable.
 
 **The triage**, `primers/craft.07/triage.toml`, one table per survivor:
 
@@ -297,7 +297,7 @@ Full suite: [`test_seqmetrics.py`](../../../../course/solutions/primers/craft.07
 | Calling a survivor equivalent because no existing test kills it | a real bug stays in the metric `L6.7` reports | every equivalent verdict cites one of the four invariant patterns (5.2) |
 | Calling a survivor killable without an input that shows it | a named test that also passes on the survivor | every killable verdict names the input, and the test uses exactly that input (5.3) |
 | "Killing" a survivor with a test that rejects the reference (asserting an implementation detail, or a bug) | every mutant dies for the wrong reason | expected values derived by hand (`chrf_from_stats_by_hand`), contract-only imports |
-| Stopping at the rung's threshold | the 20% that survived R5 stays untested | the suite kills all 25 L4.5 mutants, not 80% of them |
+| Stopping at the 80% threshold | the 20% that survived stays untested | the suite kills all 25 L4.5 mutants, not 80% of them |
 | A hand-written mutant that is equivalent, or that copies a committed one | it teaches nothing and inflates the count | p01 and p02 each plant a distinct pitfall that the reference tests kill |
 | Writing a mutant and never checking the suite against it | a pitfall you know is still untested | each patch has its own test (`test_13a_splits_a_dash_after_a_digit`, `test_chrf_beta_is_a_parameter`) |
 | Expected values printed by the code under test | the test agrees with the bug, and the reference rejects it | every expected value is worked by hand in the test or its comments |
@@ -309,9 +309,9 @@ Full suite: [`test_seqmetrics.py`](../../../../course/solutions/primers/craft.07
 | Back | `craft.03` | killed and survived, baselines A and B, required mutants |
 | Back | `craft.04` | laws as tests: a property often kills a whole family of survivors at once |
 | Back | `L4.5` | the unit under test and the pitfalls the mutants come from |
-| Forward | `craft.05` | oracles and differential tests (R5) for L5 to L7, judged with the same survivor reading |
-| Forward | `craft.06` | perf mutants (R7): a survivor is a slowdown the benchmark gate did not trip |
-| Forward | `craft.21` | resilience mutants (R10): a survivor is a fault the kill loop did not expose |
+| Forward | `craft.05` | oracles and differential tests for L5 to L7, judged with the same survivor reading |
+| Forward | `craft.06` | perf mutants: a survivor is a slowdown the benchmark gate did not trip |
+| Forward | `craft.21` | resilience mutants: a survivor is a fault the kill loop did not expose |
 
 ## Going further
 

@@ -15,7 +15,7 @@
 
 ## Evaluation
 
-The workflow pairs the candidate and C1 base on `course/fixtures/post-training/heldout.jsonl`, using paired reward differences, a 95% paired bootstrap interval, and a two-sided paired permutation test. This reference smoke artifact records the evaluation plan, not measured results.
+The workflow pairs the candidate and C1 base on the held-out split of the post-training fixtures (`post-training-fixtures-v1`, `heldout.jsonl`), using paired reward differences, a 95% paired bootstrap interval, and a two-sided paired permutation test. This reference smoke artifact records the evaluation plan, not measured results.
 
 ## Limitations
 

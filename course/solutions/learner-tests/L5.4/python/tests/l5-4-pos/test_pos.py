@@ -1,5 +1,5 @@
-"""My tests for L5.4 (rung R5: the sinusoid formula in float64 numpy, and
-the rotation law, are the oracles). They import only the contract."""
+"""Model test suite for L5.4: the sinusoid formula in float64 numpy, and
+the rotation law, are the oracles. They import only the contract."""
 
 import math
 

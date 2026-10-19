@@ -1,5 +1,5 @@
-"""My tests for L4.5 (rung R5: oracles computed by hand, and the laws the
-metrics obey). They import only the contract."""
+"""Model test suite for L4.5: oracles computed by hand, and the laws the
+metrics obey. They import only the contract."""
 
 import math
 

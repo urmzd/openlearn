@@ -9,7 +9,7 @@ import (
 	durablev1 "openlearn.urmzd.com/tl/contracts/gen/tl/durable/v1"
 )
 
-// The wf verbs: workflows and dead letters on tl.durable.v1 (MS-durable).
+// The wf verbs: workflows and dead letters on tl.durable.v1.
 func init() {
 	dlq := map[string]verb{"list": wfDLQList, "redrive": wfDLQRedrive}
 	wf := map[string]verb{

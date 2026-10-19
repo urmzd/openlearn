@@ -1,9 +1,8 @@
 // Command loadgen is the reference entry point for the `loadgen` role
 // (course/contracts/spec/cli-roles.md): the main of load.01's open-loop
-// generator and, as `loadgen compare`, of load.02's regression gate. Entry
-// points are learner territory (DESIGN D16): the learner writes their own
-// go/cmd/loadgen; this one shows what MS-L10, MS-prod, the dep.05 perf gate,
-// and the drills call.
+// generator and, as `loadgen compare`, of load.02's regression gate: the
+// command the serving benchmarks, the dep.05 perf gate, and the incident game
+// days run.
 //
 //	loadgen --target <base URL without /v1> [--model m] [--prompt p] [--max-tokens n]
 //	        [--mode poisson|constant|burst] [--rate rps] [--burst n] [--duration d]
@@ -75,8 +74,8 @@ func runLoad(args []string, stdout, stderr io.Writer) int {
 	seed := fs.Uint64("seed", 0, "seed of the poisson arrival stream")
 	out := fs.String("out", "", "also write the report to this file")
 	keyEnv := fs.String("api-key-env", "TL_API_KEY", "environment variable holding the API key")
-	sloTTFT := fs.Float64("slo-ttft-ms", 500, "TTFT bound of goodput, ms (DESIGN 2.11)")
-	sloTPOT := fs.Float64("slo-tpot-ms", 60, "TPOT bound of goodput, ms (DESIGN 2.11)")
+	sloTTFT := fs.Float64("slo-ttft-ms", 500, "TTFT bound of goodput, ms")
+	sloTPOT := fs.Float64("slo-tpot-ms", 60, "TPOT bound of goodput, ms")
 	if err := fs.Parse(args); err != nil {
 		return exitUsage
 	}

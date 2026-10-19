@@ -1,4 +1,4 @@
-"""My tests for L8.1 (rung R5). The oracle is spec/sampling.md transcribed
+"""Model test suite for L8.1. The oracle is spec/sampling.md transcribed
 again in plain Python (lists, math.exp, explicit loops), fed the same
 uniforms as the code under test through a scripted source, on random logits
 with ties, masks, and every processor. They import only the contract."""

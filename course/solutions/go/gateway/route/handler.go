@@ -37,7 +37,8 @@ type Tokenizer interface {
 
 // EngineTokenizer asks the prefill worker's POST /v1/tokenize (engine tier)
 // with the completions prompt as `text` (and the chat `messages`, which an
-// engine that renders its chat template there can use; DEVIATIONS).
+// engine that renders its chat template there can use; an extension of the
+// engine contract).
 type EngineTokenizer struct {
 	Client *http.Client
 }

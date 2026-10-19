@@ -1,8 +1,7 @@
-"""Reference learner tests for data.08 (rung R3, red then green): written
-before the verifier, from formats/ledger.schema.json, the license rules, and
-the chapter's pitfalls. They import only names in contracts/py/corpus/
-{ledger,shard,stage}.pyi; `ol mutate data.08` runs them against the
-reference with one planted bug at a time."""
+"""Model test suite for data.08 (red then green): written before the
+verifier, from formats/ledger.schema.json, the license rules, and the
+chapter's pitfalls. They import only names in contracts/py/corpus/
+{ledger,shard,stage}.pyi."""
 
 import json
 

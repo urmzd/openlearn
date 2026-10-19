@@ -2,7 +2,7 @@
 
 One architecture, many objectives. GPT's causal language modeling (with GPT-2 weight loading), BERT's masked LM, ELECTRA's replaced-token detection, and T5's span corruption (optional); fine-tuning heads for sequences, tokens, and rewards, with the linear-head export the gateway's usage policy uses; LoRA with PiSSA initialization; and the evaluation harness behind the model-zoo table every architecture in the course reports to.
 
-**Course passes**: 5 (L6.1 to L6.7, milestone MS-L6, part of gate MS-P5)
+**Course passes**: L6.1 to L6.7 belong to [Pass 5](../paths/course-p05-transformer/milestone.md)
 
 **Before you start**: the just-in-time math `M01.4`, `M07.5`, `M07.7` and the solve part `S-M07d`; the transformer of [Part 5](../p05-transformer-2017/).
 

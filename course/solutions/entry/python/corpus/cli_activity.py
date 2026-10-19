@@ -21,7 +21,7 @@ Every stage runs under tinyllm.io.activity.run, so the exit codes, DONE.json,
 and the work-dir lock are those of dur.09, and spans go to the collector as
 `corpus.stage <stage>` children of the activity span.
 
-Entry-point territory (D16): this file is yours.
+An entry point: glue over the library, no logic of its own.
 """
 
 from __future__ import annotations

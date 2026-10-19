@@ -74,9 +74,9 @@ type Task struct {
 // again on the next tick.
 type Heartbeat func(ctx context.Context, details []byte) (cancelRequested bool, err error)
 
-// Subprocess runs one learner entry under the subprocess contract.
+// Subprocess runs one Python entry under the subprocess contract.
 type Subprocess struct {
-	Entry        []string      // the learner's entry argv, from system.toml (for example ["python", "python/tinyllm/__main__.py"])
+	Entry        []string      // the entry argv, from the runtime config (for example ["python", "python/tinyllm/__main__.py"])
 	Artifacts    string        // TL_ARTIFACTS: the shared artifact root
 	OTLPEndpoint string        // OTEL_EXPORTER_OTLP_ENDPOINT for the child; "" leaves it unset
 	ServiceName  string        // OTEL_SERVICE_NAME for the child; "" leaves it unset

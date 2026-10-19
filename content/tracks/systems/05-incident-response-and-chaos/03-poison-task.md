@@ -77,7 +77,7 @@ So the page arrives at most about 45 s after the first failure, well inside the 
 | Step | What happens |
 |---|---|
 | inject | a JSON patch adds `TL_FAILPOINTS=dur/activity/poison/shard-00001=panic` to the environment of `deploy/<system>-worker`; a rollout follows |
-| workload | after the rollout completes, `{ctl} data build --config <MS-corpus fixture>/corpus.toml --id drill-poison --durable 127.0.0.1:30733 --json` starts |
+| workload | after the rollout completes, `{ctl} data build --config <small reference corpus config> --id drill-poison --durable 127.0.0.1:30733 --json` starts |
 | detect | `DurableDeadLetters` must fire within 600 s of the injection (5 attempts with backoff 1, 2, 4, 8 s, plus the rollout and the scrape) |
 | page | *DurableDeadLetters: queue data has dead-lettered tasks; the corpus build drill-poison has stopped making progress* |
 

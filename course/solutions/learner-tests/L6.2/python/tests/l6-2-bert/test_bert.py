@@ -1,6 +1,6 @@
-"""My tests for L6.2 (rung R5: the masking op order replayed with my own
-copy of the generator, a BERT layer written out in float64 numpy with the
-exact GELU, and the padding and both-directions laws). They import only the
+"""Model test suite for L6.2: the masking op order replayed with an
+independent copy of the generator, a BERT layer written out in float64 numpy
+with the exact GELU, and the padding and both-directions laws. They import only the
 contract."""
 
 import math

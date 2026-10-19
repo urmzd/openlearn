@@ -30,7 +30,7 @@ A system that cannot change safely is already failing slowly. Every migration in
 
 **Key ideas**:
 - **KV format v1 to v2** (`craft.13`, build): fp8 E4M3 KV blocks with per-(layer, head) scales, mixed-version negotiation during rollout, drill `ops.04`.
-- **API v1 to v2** (`craft.14`, build): the `openai-subset.v2` contract delivered by `ol contracts sync`, served alongside v1 under the deprecation policy, drill `ops.05`.
+- **API v1 to v2** (`craft.14`, build): the [`openai-subset.v2`](../../../../course/contracts/openapi/openai-subset.v2.yaml) contract, served alongside v1 under the deprecation policy, drill `ops.05`.
 
 ## 2. Dependencies and regressions
 

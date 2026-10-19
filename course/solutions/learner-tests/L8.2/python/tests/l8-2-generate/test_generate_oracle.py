@@ -1,7 +1,7 @@
-"""My tests for L8.2 (rung R5). The oracle for the cache is the same model
+"""Model test suite for L8.2. The oracle for the cache is the same model
 run without it (full recompute); the oracle for the detokenizer is
 decode(all ids); the oracle for seeded generation is L8.1's sample replayed
-by hand. My model is a one-layer attention LM with rotary positions written
+by hand. The test model is a one-layer attention LM with rotary positions written
 here in numpy. They import only the contract."""
 
 import numpy as np

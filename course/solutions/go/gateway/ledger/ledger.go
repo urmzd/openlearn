@@ -26,7 +26,7 @@ import (
 
 // Schema is contracts/formats/usage.v1.sql, byte for byte. Open applies it;
 // applying it twice is a no-op (every statement is IF NOT EXISTS or OR IGNORE).
-const Schema = `-- contracts/formats/usage.v1.sql: the gateway's usage ledger (DESIGN 2.9).
+const Schema = `-- contracts/formats/usage.v1.sql: the gateway's usage ledger.
 -- SQLite, at [gateway].usage_db (/artifacts/gateway/usage.db), WAL mode, so
 -- a SIGKILL leaves every row complete or absent (gw.07).
 --
@@ -125,7 +125,7 @@ type UsageRow struct {
 	CachedTokens     int64  `json:"cached_tokens"`
 }
 
-// Ledger is what the meter and the admin API need (DESIGN 4.4, gw.07).
+// Ledger is what the meter and the admin API need (gw.07).
 type Ledger interface {
 	Record(ctx context.Context, r UsageRecord) error
 	Query(ctx context.Context, f UsageFilter) ([]UsageRow, error)

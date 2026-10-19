@@ -6,11 +6,11 @@
   "dataset_revision": "post-training-fixtures-v1",
   "training_data": {
     "revision": "post-training-fixtures-v1",
-    "source": "course/fixtures/post-training/distill.jsonl",
+    "source": "post-training-fixtures-v1/distill.jsonl (synthetic SFT pairs; not included)",
     "split": "train"
   },
   "heldout": {
-    "source": "course/fixtures/post-training/heldout.jsonl",
+    "source": "post-training-fixtures-v1/heldout.jsonl (held-out prompts; not included)",
     "split": "heldout",
     "paired_with": "artifacts/c1/model"
   },

@@ -23,7 +23,7 @@ import (
 	dlog "tinyllm/durable/log"
 )
 
-// Clock is the time seam (DESIGN 5.11). The testkit's *clock.Fake satisfies it.
+// Clock is the time seam. The testkit's *clock.Fake satisfies it.
 type Clock interface {
 	Now() time.Time
 	After(d time.Duration) <-chan time.Time

@@ -1,5 +1,5 @@
-"""My tests for L5.2 (rung R5: an oracle written as loops from the
-definitions, plus the causality property through a small numpy attention).
+"""Model test suite for L5.2: an oracle written as loops from the
+definitions, plus the causality property through a small numpy attention.
 They import only the contract."""
 
 import numpy as np

@@ -479,17 +479,17 @@ Full solution: [`safetensors.py`](../../../../course/solutions/python/tinyllm/io
 | Forward | `L10.0` | the engine reads the `model.safetensors` this writer produces |
 | Forward | `L2.1` | the n-gram model writes and reads its count tables through `save_safetensors` and `load_safetensors` |
 | Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
-| Forward | `L2.2` | Registered call site uses this module. |
-| Forward | `L3.6` | Registered call site uses this module. |
-| Forward | `L4.1` | Registered call site uses this module. |
-| Forward | `L5.5` | Registered call site uses this module. |
-| Forward | `L6.1` | Registered call site uses this module. |
-| Forward | `L6.2` | Registered call site uses this module. |
-| Forward | `L6.3` | Registered call site uses this module. |
-| Forward | `L6.5` | Registered call site uses this module. |
-| Forward | `L6.7` | Registered call site uses this module. |
-| Forward | `L7.9` | Registered call site uses this module. |
-| Forward | `dur.09` | Registered call site uses this module. |
+| Forward | `L2.2` | `save_nplm`/`load_nplm` write and read the weights with `save_safetensors`/`load_safetensors` |
+| Forward | `L3.6` | the RNN LM checkpoint is a safetensors file |
+| Forward | `L4.1` | the seq2seq checkpoint is a safetensors file |
+| Forward | `L5.5` | the transformer checkpoint is a safetensors file |
+| Forward | `L6.1` | GPT checkpoints are safetensors files |
+| Forward | `L6.2` | BERT checkpoints are safetensors files |
+| Forward | `L6.3` | ELECTRA checkpoints are safetensors files |
+| Forward | `L6.5` | the task heads save and load with safetensors |
+| Forward | `L6.7` | the zoo reads evaluation tokens with `open_tokens` and every checkpoint with `load_safetensors` |
+| Forward | `L7.9` | HF Llama weights are read with `load_safetensors` |
+| Forward | `dur.09` | the training activity calls `verify_step_dir` before it reports a checkpoint as complete |
 
 Later passes build on it without changing it: `L2.2` reads `TokenStream` windows, `L7.9` loads BF16 SmolLM2 weights, `L10.1` memory-maps the same layout from Rust, and the capstone trainer and `dur.09` resume from these checkpoints.
 

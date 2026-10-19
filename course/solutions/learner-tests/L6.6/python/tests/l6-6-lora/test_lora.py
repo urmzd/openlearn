@@ -1,4 +1,4 @@
-"""My tests for L6.6 (rung R5: oracles). The oracles are numpy: the adapted
+"""Model test suite for L6.6, checked against numpy oracles: the adapted
 output recomputed as x W^T + b + (alpha / r) x A^T B^T, LAPACK's SVD for
 PiSSA, and finite differences for the adapter gradients. They import only
 the contract."""

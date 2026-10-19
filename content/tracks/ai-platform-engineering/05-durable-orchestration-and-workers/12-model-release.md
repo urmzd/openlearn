@@ -23,7 +23,7 @@
 
 Sections 1 to 3 derive the release steps, the gates, the canary arithmetic, and the burn check, and work one release by hand. Section 4 fixes the Go API. Section 5 walks through the workflow, the route client, and the PromQL query, and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
-The worker's composition root registers the workflow as `ModelRelease` through the same `workflow.Context`-to-`Runtime` adapter as `TrainRun` (`dur.08`), and the activities under the `Act*` names: `Preflight`, `ReadResults`, the subprocess runner of `dur.09` for `export` and `eval`, and the methods of one `activities.Routes` and one `activities.Prom` (the package comment of `model_release.go` shows the registration). The system's CLI starts a release with `{ctl} release --spec <file>` and approves it with `<system> wf signal <id> approve`.
+The worker's composition root registers the workflow as `ModelRelease` through the same `workflow.Context`-to-`Runtime` adapter as `TrainRun` (`dur.08`), and the activities under the `Act*` names: `Preflight`, `ReadResults`, the subprocess runner of `dur.09` for `export` and `eval`, and the methods of one `activities.Routes` and one `activities.Prom` (the package comment of `model_release.go` shows the registration). The system's CLI starts a release with `{ctl} release --spec <file>` and an operator approves it by sending the `approve` signal through the durable server's `SignalWorkflow` RPC from a gRPC client (`dur.08`); `{ctl} wf describe` and `{ctl} wf history` show where the run is waiting.
 
 ---
 

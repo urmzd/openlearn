@@ -1,8 +1,7 @@
-"""Reference learner tests for data.04 (rung R4, properties): the properties
-the chapter lists in section 4, written with Hypothesis where an input
-space is worth searching. They import only names in contracts/py/corpus/
-{minhash,stage}.pyi and contracts/py/tinyllm/num/rng.pyi; `ol mutate
-data.04` runs them against the reference with one planted bug at a time."""
+"""Model test suite for data.04 (properties): the properties the chapter
+lists in section 4, written with Hypothesis where an input space is worth
+searching. They import only names in contracts/py/corpus/{minhash,stage}.pyi
+and contracts/py/tinyllm/num/rng.pyi."""
 
 import itertools
 import json

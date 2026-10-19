@@ -1,4 +1,4 @@
-"""My tests for L7.9 (rung R5). Oracles: the course's golden logits of five
+"""Model test suite for L7.9. Oracles: the course's golden logits of five
 tiny HF checkpoints (TINYLLM_FIXTURES), the full forward as the oracle of
 the cached one, M05.1's counts, and a fake Hub on 127.0.0.1 for the
 downloader. They import only the contract."""

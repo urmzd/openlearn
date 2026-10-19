@@ -143,7 +143,7 @@ func ApplyOptions(opts []CallOption) CallOptions {
 }
 
 // Provider is a chat model behind any OpenAI-compatible endpoint: the
-// learner's gateway, an engine, or a frontier API. ChatStream returns an
+// system's gateway, an engine, or a frontier API. ChatStream returns an
 // error when the request is refused before streaming starts (with the HTTP
 // status in it); after that, failures arrive as an ErrorDelta.
 type Provider interface {

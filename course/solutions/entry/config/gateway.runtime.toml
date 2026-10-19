@@ -1,4 +1,4 @@
-# runtime.toml template for the gateway service (DESIGN 2.12, gw.01 to gw.07).
+# runtime.toml template for the gateway service (gw.01 to gw.07).
 # The harness fills listen, health_listen, and registry_listen with allocated
 # ports and passes the file as {config}; {data} is a fresh state directory per
 # run, so every run starts with an empty usage ledger.

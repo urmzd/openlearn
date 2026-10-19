@@ -1,4 +1,4 @@
-"""My tests for L7.3 (rung R5). The oracle is RoPE written as complex
+"""Model test suite for L7.3. The oracle is RoPE written as complex
 multiplication in numpy float64: pair (a, b) is a + ib, rotated by e^{i angle}.
 They import only the contract."""
 

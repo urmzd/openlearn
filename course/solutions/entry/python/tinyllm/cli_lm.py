@@ -1,4 +1,4 @@
-"""The Pass 3 language-model verbs (course/milestones/MS-L2.toml fixes their
+"""The Pass 3 language-model verbs (with their
 flags and final lines).
 
     lm train ngram --n N --train <tokens.bin> --out <dir> [--discount modified|D]
@@ -8,7 +8,7 @@ flags and final lines).
     eval --model <dir> --data <tokens.bin>
     generate --model <dir> ... [--out <file>]     (an nplm directory; bigram stays in __main__)
 
-Entry-point territory (D16): this file is yours. It is glue over L0.6
+An entry point: glue over L0.6
 (open_tokens, the formats/tokens-bin.md reader), L2.1 (NGramLM), L2.2
 (NPLM, train_nplm, save_nplm, load_nplm), M11.2 (NLLAccumulator), and M06.3
 (PCG32). Token files hold byte ids (the byte tokenizer, D32), so one token

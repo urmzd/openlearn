@@ -8,7 +8,7 @@
 | **Solution** | [`taskq.go`](../../../../course/solutions/primers/craft.21/taskq.go) (a kata: a durable task queue and its worker, the log, leases, and idempotent effects of the durable engine in one file: `Open`, `Queue.write`, `Lease`, `Renew`, `Complete`, `Worker.RunOne`) and [`resilience_test.go`](../../../../course/solutions/primers/craft.21/resilience_test.go) (the **resilience tests**, package `craft21_test`, including the seeded kill loop `TestKillLoopExactlyOnce`) |
 | **Contract** | none of its own: the kata's API is in its file, and the tests use a small fault kit, package `craft21/faults` (`CrashFS`, `Clock`, `Effects`; section 4) |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how a test suite is judged by planted faults · [`craft.04`](02-property-based-tests.md) properties · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · [`lang.06`](../12-language-and-tool-primers/06-go.md) Go `testing` · [`dur.09`](../../ai-platform-engineering/05-durable-orchestration-and-workers/09-subprocess-activities.md) subprocess activities; the engine pieces the kata models: the event log (`dur.01`), fenced leases (`dur.03`), idempotent activities (`dur.05`) |
-| **Used by** | no call site (a practice): rung R10 asks for resilience tests in the durable engine (`dur.*`) and the drills (`ops.*`) from here on; the durable pass's kill loop over the real server and worker is the system-scale version of these tests |
+| **Used by** | no call site (a practice): the durable engine (`dur.*`) and drill (`ops.*`) chapters use resilience tests from here on; the durable pass's kill loop over the real server and worker is the system-scale version of these tests |
 | **Optional depth** | Kyle Kingsbury, [Jepsen analyses](https://jepsen.io/analyses) (free); Pillai et al., ["All File Systems Are Not Created Equal"](https://www.usenix.org/conference/osdi14/technical-sessions/presentation/pillai) (OSDI 2014, free); Martin Kleppmann, ["How to do distributed locking"](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html) (fencing tokens, free); FoundationDB, ["Testing Distributed Systems w/ Deterministic Simulation"](https://www.youtube.com/watch?v=4fFDFbi3toc) (free) |
 
 ## Key Takeaways
@@ -17,7 +17,7 @@
 - A SIGKILL loses nothing a `write` returned. To catch a missing **fsync** the test must lose the page cache: the fault kit's `CrashFS.Crash()` keeps only synced bytes.
 - Time is an input. With a **manual clock** a test can hold a lease for 90 s, pause a worker past its lease, and expire it, in microseconds and the same way every run.
 - **Exactly once** is "at least once delivery" plus an **idempotency key that is the same on every attempt**. The test that proves it must crash between the effect and the acknowledgement.
-- Rung R10: the tests must fail on at least 90% of 12 planted faults, and on all three resilience faults: the idempotency key ignored, the lease not renewed, fsync skipped.
+- The suite is judged by mutation testing: it fails on at least 90% of 12 planted faults, and on all three resilience faults: the idempotency key ignored, the lease not renewed, fsync skipped.
 
 ## How to read this chapter
 
@@ -66,9 +66,9 @@ A **lease** is ownership with a deadline: worker `w` may work on task `t` until 
 
 The kata takes its disk (`FS`) and its time (`Clock`) as interfaces, so a test owns both. With the fault kit's `Clock`, time moves only on `Advance`, and `BlockUntil(n)` waits until the code under test is actually waiting, so a test never sleeps and never races. With `CrashFS`, a "crash" is one call at an exact point. The test is the same on every run, which is what makes a failure a bug report instead of a flake. A **kill loop** then explores many crash points with a seeded generator: each round picks where to die (before the effect, after it, after `Complete`), crashes the disk, reopens the queue, expires the leases, and continues until no task is pending; at the end the promises of 2.1 must hold.
 
-### 2.5 How R10 judges a resilience suite
+### 2.5 How a resilience suite is judged
 
-The tests run against a correct kata (they must pass, twice, so they are not flaky), then against 12 copies of it, each with one planted fault. A fault the tests make fail is **killed**. Rung R10 needs a score of at least 0.90 and every **required** fault killed. Three of them are the resilience faults of the testing ladder:
+The tests run against a correct kata (they must pass, twice, so they are not flaky), then against 12 copies of it, each with one planted fault. A fault the tests make fail is **killed**. A good suite scores at least 0.90 and kills every **required** fault. Three of them are the resilience faults:
 
 | Fault | What it breaks | A test that catches it |
 |---|---|---|
@@ -134,7 +134,7 @@ The kata itself must pass these cases; the resilience tests in section 5 check t
 | a 90 s task keeps its 30 s lease by renewing | fault | long activities are not stolen |
 | a failed renewal cancels the work and skips the effect | fault | a worker that lost ownership does nothing visible |
 | crash between effect and completion: delivered twice, applied once | fault | exactly-once effects |
-| the tests pass on a correct kata twice in a row, and fail on at least 90% of 12 planted faults, every resilience fault included | fault | rung R10 |
+| the tests pass on a correct kata twice in a row, and fail on at least 90% of 12 planted faults, every resilience fault included | fault | a resilience test that passes on a log that loses writes protects nothing |
 
 ## 5. The solution, step by step
 

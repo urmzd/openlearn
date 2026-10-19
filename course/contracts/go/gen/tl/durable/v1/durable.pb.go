@@ -1,5 +1,5 @@
-// contracts/proto/tl/durable/v1/durable.proto: the durable execution engine
-// (DESIGN 2.7). Served by the durable server on :7233 in Kubernetes
+// contracts/proto/tl/durable/v1/durable.proto: the durable execution engine.
+// Served by the durable server on :7233 in Kubernetes
 // ({grpc_port} locally; NodePort 30733 for a host-side training worker). The
 // CLI calls WorkflowService; workers call TaskService.
 //

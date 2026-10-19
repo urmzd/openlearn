@@ -1,4 +1,4 @@
-"""My tests for L7.6 (rung R5). The oracle is MLA written out in numpy
+"""Model test suite for L7.6. The oracle is MLA written out in numpy
 float64 from the chapter's equations, with RoPE as complex multiplication;
 the absorbed form is checked against the naive one. They import only the
 contract."""

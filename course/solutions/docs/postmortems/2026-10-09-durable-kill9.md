@@ -3,11 +3,11 @@
 Drill `ops.02`. Blameless: this document is about the system and the
 process, not about who typed the command. A model postmortem: the times and
 counts show the shape of this incident; yours come from your dashboard,
-`{ctl} wf describe`, and `ol drill end`.
+`{ctl} wf describe`, and `kubectl get pods`.
 
 ## Summary
 
-While CorpusBuild `drill-kill9` cleaned the MS-corpus fixture, the durable
+While CorpusBuild `drill-kill9` cleaned the course's synthetic stories corpus, the durable
 server's pod `<system>-durable-0` was killed with SIGKILL five times, 30 s
 apart. Each time the StatefulSet recreated it on the same WAL claim, the
 server truncated a torn last record and recovered its log, and the
@@ -35,7 +35,7 @@ All times UTC.
 | Time | Event |
 |---|---|
 | 10:00:00 | `{ctl} data build ... --id drill-kill9` starts CorpusBuild |
-| 10:00:05 | `ol drill start durable-kill9` |
+| 10:00:05 | The game day starts: a loop runs `kubectl delete pod <system>-durable-0 --grace-period=0 --force` every 30 s |
 | 10:00:25 | first SIGKILL of `<system>-durable-0` (fetch and filter done, dedup running) |
 | 10:00:33 | the pod is Ready again: recovery truncated 1 torn record, replayed 412 records |
 | 10:00:55 to 10:02:25 | four more kills, 30 s apart |
@@ -46,7 +46,7 @@ All times UTC.
 | 10:04:40 | the alert resolves: no redelivery in the last 2 minutes |
 | 10:06:10 | CorpusBuild completes |
 | 10:07:30 | the same start returns the finished run with the clean-run numbers; the ledger verifies |
-| 10:09:00 | `ol drill end` |
+| 10:09:00 | Game day closed: `kubectl get pods` shows durable and workers Ready, the queues are empty, the alert is resolved |
 
 ## Root cause
 

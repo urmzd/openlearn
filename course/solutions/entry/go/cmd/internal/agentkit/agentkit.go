@@ -2,8 +2,8 @@
 // `ctl agent ask`, `ctl eval`, and the agent worker (cmd/agent): the
 // provider (ag.01, or the faketool rules in PR CI), the search_docs tool over
 // a RAG index (ag.06 to ag.08), the tool gate (ag.04), the loop (ag.03), and
-// durable runs with their journal (ag.05). Entry points are learner territory
-// (DESIGN D16); the library packages under go/agent are the modules'.
+// durable runs with their journal (ag.05). This package is wiring; the
+// logic lives in the library packages under go/agent.
 package agentkit
 
 import (

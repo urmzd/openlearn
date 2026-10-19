@@ -1,4 +1,4 @@
-//! My tests for L8.4 (rung R4: properties written as seeded loops).
+//! Model test suite for L8.4: properties written as seeded loops.
 
 use tl_engine::prefix::RadixCache;
 

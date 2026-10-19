@@ -1,4 +1,4 @@
-# The learner's Python project (DESIGN 2.15): the `tinyllm` CLI and every
+# The learner's Python project: the `tinyllm` CLI and every
 # Python unit under python/tinyllm/. Your file; this is the reference for
 # course CI. Not a built package: the CLI runs as a script (spec/cli-roles.md).
 [project]

@@ -7,7 +7,7 @@ image:
   pullPolicy: IfNotPresent
 
 service:
-  type: NodePort           # a host-side training worker reaches it on 30733 (DESIGN 2.13)
+  type: NodePort           # a host-side training worker reaches it on 30733
   grpcPort: 7233
   nodePort: 30733
   raftPort: 7234

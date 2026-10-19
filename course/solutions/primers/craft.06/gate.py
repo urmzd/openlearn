@@ -1,4 +1,4 @@
-"""primers/craft.06/gate.py: my performance regression gate (rung R7).
+"""primers/craft.06/gate.py: the performance regression gate.
 
     python3 gate.py --base BASE.c --head HEAD.c [--include DIR] [--runs N]
 

@@ -1,4 +1,4 @@
-// Reference learner tests for dur.03 (rung R4): properties of the queue,
+// Model test suite for dur.03: properties of the queue,
 // black box (package queue_test), on the testkit's fake clock.
 //
 // Time is the testkit's fake clock: it moves only when a test calls Advance,

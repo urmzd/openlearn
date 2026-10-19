@@ -99,8 +99,8 @@ pub fn reply(line: &[u8]) -> (String, bool) {
     }
 }
 
-// Your own tests live next to the code they test. `cargo test` in the
-// workspace runs them; `ol check lang.04` runs them too.
+// The unit tests live next to the code they test. `cargo test` in the
+// workspace runs them.
 #[cfg(test)]
 mod tests {
     use super::*;

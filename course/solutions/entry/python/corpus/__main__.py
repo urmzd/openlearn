@@ -1,6 +1,5 @@
-"""The reference `corpus` CLI (an entry point, D16: yours to write; this one
-runs the reference system in course CI). It composes the corpus library
-(data.01 to data.08) into the verbs MS-corpus calls:
+"""The reference `corpus` CLI, an entry point: glue that composes the corpus
+library (data.01 to data.08) into these verbs:
 
     corpus run --config C [--until STAGE] [--workers N]
     corpus ledger verify --config C

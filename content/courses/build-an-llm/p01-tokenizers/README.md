@@ -2,7 +2,7 @@
 
 From bytes to subwords. The tracer's byte tokenizer (256 ids, no training) gives way to the `Tokenizer` protocol and three trained families: byte-level BPE (GPT-2 compatible, loading Hugging Face files), WordPiece (BERT), and the Unigram LM (EM, Viterbi, subword sampling). Then BPE is implemented independently in Rust (`tl-tok`) with a streaming UTF-8 decoder; Python and Rust compare behavior using `tokenizer.json` and shared fixtures. The part ends with metrics that decide a vocabulary size for the capstone.
 
-**Course passes**: 3 (L1.1 to L1.6, milestone MS-L1, part of gate MS-P3)
+**Course passes**: L1.1 to L1.6 belong to [Pass 3](../paths/course-p03-tokens-and-data/milestone.md)
 
 **Before you start**: the just-in-time math `M05.2`, `M06.2`, `M07.1`, `M07.2`, `M11.2` and the solve parts `S-M06b`, `S-M07b`; for `L1.5`, the [Rust primer](../../../tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md) and the Rust structures `ds.05` and `ds.06` in [Systems Data Structures](../../../tracks/algorithms/16-systems-data-structures/).
 

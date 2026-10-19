@@ -4,7 +4,7 @@
 //!   tl-serve --config <runtime.toml>                            API v1 (L10.5)
 //!                                                               (spec/cli-roles.md)
 //!
-//! Entry points are learner territory (DESIGN D16): this file is never
+//! Entry points are learner territory: this file is never
 //! overlaid into a learner's checks. `ol verify course --e2e` copies it into
 //! the assembled reference learner so the milestones have an engine to start.
 

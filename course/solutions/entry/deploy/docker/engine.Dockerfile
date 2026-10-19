@@ -26,7 +26,7 @@ LABEL org.opencontainers.image.title="forge-engine" \
 COPY --from=build /tl-serve /usr/local/bin/tl-serve
 # Numeric, so Kubernetes runAsNonRoot can verify it.
 USER 10001:10001
-# 8000: POST /v1/completions; 9464: /healthz (DESIGN 2.13).
+# 8000: POST /v1/completions; 9464: /healthz.
 EXPOSE 8000 9464
 # Docker's own health signal (docker ps, compose); Kubernetes uses the chart's
 # probes instead. The slim base has no curl, so bash asks /healthz itself.

@@ -1,6 +1,5 @@
-// Reference learner tests for ds.09 (rung R2: the chapter names these tests
-// and says what each checks; the learner writes the bodies). They prove the
-// mutation threshold is reachable with black-box tests of the package API.
+// Model test suite for ds.09: the chapter names these tests and says what
+// each checks; these are the bodies, black-box tests of the package API.
 package ring_test
 
 import (

@@ -3,7 +3,7 @@
  "tier": "smoke",
  "spec": "specs/c1/smoke.json",
  "data": {
-  "corpus": "course synthetic stories (MS-corpus fixture)",
+  "corpus": "course synthetic template stories (see LEDGER.jsonl)",
   "train_docs": 130,
   "val_docs": 32
  },
@@ -227,7 +227,7 @@
  "zoo": "docs/capstone/c1/zoo.json",
  "samples": "docs/capstone/c1/samples.jsonl",
  "release": "specs/c1/release.json",
- "generator": "course/oracle/C1/smoke_capstone.py",
+ "generator": "C1 smoke-tier capstone script (not included)",
  "versions": {
   "torch": "2.14.1",
   "numpy": "2.2.6"

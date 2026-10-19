@@ -3,7 +3,7 @@
 // every stage shares, the OpenAI error shape, and the server lifecycle
 // (health, readiness, graceful drain) in server.go.
 //
-// The chain order is a contract (DESIGN 4.4, gw):
+// The chain order is a contract:
 //
 //	requestid -> otel -> recover -> authn -> policy -> ratelimit -> cache -> route -> proxy -> meter
 //
@@ -209,7 +209,7 @@ func (e *Exchange) Snapshot() ExchangeState {
 }
 
 // DefaultMaxBody is the largest request body the gateway reads: 4 MiB, the
-// same cap as every gRPC message (DESIGN 2.7).
+// same cap as every gRPC message.
 const DefaultMaxBody = 4 << 20
 
 // Request reads r's body once (at most the configured maximum), parses the

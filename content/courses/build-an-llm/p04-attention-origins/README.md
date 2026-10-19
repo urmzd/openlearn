@@ -2,7 +2,7 @@
 
 Where attention came from: sequence-to-sequence translation. An encoder-decoder trained with teacher forcing, then Bahdanau's additive attention and Luong's dot, general, and concat scores with input feeding, a generic beam search over any step function, and the metrics that grade generated sequences (exact match, BLEU, chrF).
 
-**Course passes**: 4 (L4.1 to L4.5, milestone MS-L4, part of gate MS-P4)
+**Course passes**: L4.1 to L4.5 belong to [Pass 4](../paths/course-p04-sequence-models/milestone.md)
 
 **Before you start**: the just-in-time math `M07.4` and the solve part `S-M07c`; the recurrent layers of [Part 3](../p03-recurrent/).
 

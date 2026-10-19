@@ -1,6 +1,6 @@
-"""My tests for L6.7 (rung R5: oracles). The oracles: a toy model whose NLL
+"""Model test suite for L6.7, checked against oracles: a toy model whose NLL
 tells how much context each token had, hand-computed log-likelihoods, M07.4
-and M07.5 called directly, and checkpoints whose scores I know exactly.
+and M07.5 called directly, and checkpoints whose scores are known exactly.
 They import only the contract."""
 
 import json

@@ -1,4 +1,4 @@
-//! My tests for ds.07 (rung R3: written first, red against the stub).
+//! Model test suite for ds.07, written test-first.
 
 use tl_ds::radix::RadixTree;
 

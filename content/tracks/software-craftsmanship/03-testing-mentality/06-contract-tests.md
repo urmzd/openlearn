@@ -8,7 +8,7 @@
 | **Solution** | [`engineclient.go`](../../../../course/solutions/primers/craft.20/engineclient.go) (a kata: the gateway's client of the engine API: `Client`, `Forward`, `NewRequest`, `ReadCompletion`, `ReadStream`, `Tokenize`, `APIError`, `ErrTruncated`), [`pacts/gateway-engine.json`](../../../../course/solutions/primers/craft.20/pacts/gateway-engine.json) (the **pact**: what the gateway relies on, nine interactions), and [`consumer_test.go`](../../../../course/solutions/primers/craft.20/consumer_test.go) (the consumer tests, driven by mocks generated from the pact) |
 | **Contract** | the provider side the pact is verified against: the engine tier of [`course/contracts/openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml) |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how a test suite is judged by planted faults · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · [`lang.05`](../12-language-and-tool-primers/05-http-and-sse.md) SSE on the wire · [`lang.06`](../12-language-and-tool-primers/06-go.md) Go and `httptest` · `gw.00` the proxy whose upstream half the kata isolates |
-| **Used by** | no call site (a practice): rung R6 asks for contract tests in the gateway (`gw.*`) and engine (`L10.*`) modules from here on; the gateway pass's conformance run is the provider side of the same contract |
+| **Used by** | no call site (a practice): the gateway (`gw.*`) and engine (`L10.*`) chapters use contract tests from here on; the gateway pass's conformance run is the provider side of the same contract |
 | **Optional depth** | [Pact documentation: how Pact works](https://docs.pact.io/getting_started/how_pact_works) (free); Ian Robinson, ["Consumer-Driven Contracts: A Service Evolution Pattern"](https://martinfowler.com/articles/consumerDrivenContracts.html) (free); Martin Fowler, ["ContractTest"](https://martinfowler.com/bliki/ContractTest.html) (free) |
 
 ## Key Takeaways
@@ -17,7 +17,7 @@
 - **Consumer-driven**: the consumer writes down what it actually relies on (a **pact**), so the provider knows which promises it can never break and which fields nobody reads.
 - The mock is **two-sided**: it replays the provider's answer and it **checks the consumer's request**, which is how a forwarded API key or a client-chosen priority fails a test.
 - A pact is only worth something if the provider keeps it: **provider verification** checks every interaction against the provider's published contract (`openai-subset.v1.yaml`), so a pact cannot expect a chunk shape or a status the engine never promised.
-- The R6 rung: the tests must catch at least 80% of 20 planted faults in the client, and every planted pitfall.
+- The suite is judged by mutation testing: it catches at least 80% of 20 planted faults in the client, and every planted pitfall.
 
 ## How to read this chapter
 
@@ -80,7 +80,7 @@ A stream (`ReadStream`) ends in exactly one of three ways, and the gateway must 
 
 Classic Pact verifies the provider by replaying the pact against a running provider. Here the provider publishes its contract as OpenAPI, so the check verifies the pact **statically**: each request path and method exists on the engine tier, request bodies fit the request schema (partially: a pact lists only what it relies on), each response status is declared for the path, each JSON body validates against its schema, each stream event against the `x-tl-chunk` schema (or the `Error` schema for an error event), and a 429 carries `Retry-After` in seconds. The gateway pass closes the loop dynamically: its conformance run checks the same contract against the real engine.
 
-### 2.5 How R6 judges a contract suite
+### 2.5 How a contract suite is judged
 
 Mutation testing (`craft.03`, `craft.07`) on the contract: take a correct client, plant one fault, run the tests and pact, and count the faults the tests catch. First the tests must pass on the correct client (a test that rejects a correct client measures nothing). Twenty faults: sixteen semantic ones from the pitfalls below, all required, and four automatic ones. The bar: a score of at least 0.80 and every semantic fault caught.
 
@@ -122,7 +122,7 @@ Provider verification of event 5: `choices` is an array with 0 items (the schema
 | every interaction fits the engine tier of `openai-subset.v1.yaml` | conformance | a pact the engine can keep |
 | the kata streams the hand example, sends the headers of 2.2, asks for usage, ends streams the three ways of 2.3, accepts `data:` without a space, maps errors and `Retry-After`, reads both completion shapes, tokenizes, and tolerates a base URL with a trailing slash | conformance | the client is right before its tests are judged |
 | the tests pass on the kata and on any other correct client (baseline A) | unit | a test that rejects correct code measures nothing |
-| 20 planted faults in the client, one at a time: at least 80% caught, every semantic fault caught | fault | rung R6 |
+| 20 planted faults in the client, one at a time: at least 80% caught, every semantic fault caught | fault | a contract test that misses a broken client protects nothing |
 
 ## 5. The solution, step by step
 

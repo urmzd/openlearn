@@ -1,12 +1,11 @@
 package agentkit
 
-// fake.go: the faketool provider in process. The rules file is the format of
-// course/testkit/go/faketool (DESIGN 4.4): a rule matches the LAST message of
-// the conversation (role, substring, regex, answering tool) and says what the
-// assistant answers, plain content or tool calls. The learner repo cannot
-// import the course testkit (it is vendored only into course test overlays),
-// so this file reads the same rules and streams the same deltas the HTTP
-// faketool's SSE becomes after ag.01's parser: words as text deltas, then
+// fake.go: the faketool provider in process, for runs with no model behind
+// them (PR CI). A rule matches the LAST message of the conversation (role,
+// substring, regex, answering tool) and says what the assistant answers,
+// plain content or tool calls. This file reads the rules and streams the
+// same deltas the
+// HTTP faketool's SSE becomes after ag.01's parser: words as text deltas, then
 // each call's start, argument fragments, and end, then usage and done. The
 // same rules file also works with `faketool --rules` behind --base-url.
 

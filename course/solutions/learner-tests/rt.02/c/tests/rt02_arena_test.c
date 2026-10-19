@@ -1,4 +1,4 @@
-/* My tests for rt.02 (rung R4): the arena against a model of live allocations, with ol_prop.h, plus the
+/* Model test suite for rt.02: the arena against a model of live allocations, with ol_prop.h, plus the
  * boundary and fault cases. Only the contract headers are included. */
 #include <stdint.h>
 #include <string.h>

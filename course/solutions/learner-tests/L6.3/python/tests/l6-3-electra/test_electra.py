@@ -1,6 +1,6 @@
-"""My tests for L6.3 (rung R5: oracles). The oracles: numpy BCE and softmax
+"""Model test suite for L6.3, checked against oracles: numpy BCE and softmax
 written here, the step recomputed from its pieces with a copied generator,
-and hand-made logits whose samples I know. They import only the contract."""
+and hand-made logits whose samples are known. They import only the contract."""
 
 import copy
 import math

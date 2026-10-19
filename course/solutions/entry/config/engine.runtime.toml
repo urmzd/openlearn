@@ -1,4 +1,4 @@
-# runtime.toml template for the engine service (DESIGN 2.12, L10.5). The
+# runtime.toml template for the engine service (L10.5). The
 # harness fills the listen keys with allocated ports and passes the file as
 # {config}. The model is L7.9's committed tiny-llama-2l, the model MS-L10
 # grades in PR CI ([build] copies it to artifacts/models/tiny). It is served under the name "tracer", the model id the

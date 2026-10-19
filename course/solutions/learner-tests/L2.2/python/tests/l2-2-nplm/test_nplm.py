@@ -1,5 +1,5 @@
-"""My tests for L2.2 (rung R3: tests first, `ol tdd red L2.2`, then the code,
-`ol tdd green L2.2`; the chapter's section 3 numbers are the first test).
+"""Model test suite for L2.2: what each test protects. Written test-first;
+the chapter's section 3 numbers are the first test.
 They import only contract names."""
 
 import json

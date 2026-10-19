@@ -1,6 +1,6 @@
 // contracts/proto/tl/raft/v1/raft.proto: Raft between durable server
 // chapter: content/tracks/ai-platform-engineering/05-durable-orchestration-and-workers/10-raft-ha.md
-// replicas (optional dur.10; DESIGN 2.7). Served on :7234 in Kubernetes.
+// replicas (optional dur.10). Served on :7234 in Kubernetes.
 // The messages are those of figure 2 (RequestVote, AppendEntries) and
 // figure 13 (InstallSnapshot) of Ongaro and Ousterhout, "In Search of an
 // Understandable Consensus Algorithm" (2014). Each log entry carries exactly

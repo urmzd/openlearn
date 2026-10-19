@@ -1,5 +1,5 @@
-"""My tests for L3.3 (rung R3: tests first with `ol tdd red`, then the code
-with `ol tdd green`). They import only the contract."""
+"""Model test suite for L3.3: what each test protects. Written test-first,
+then the code. They import only the contract."""
 
 import math
 

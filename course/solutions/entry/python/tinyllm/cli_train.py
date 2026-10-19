@@ -1,4 +1,4 @@
-"""The `tinyllm` CLI, Pass 2 verbs (MS-L0 fixes their flags and final lines).
+"""The `tinyllm` CLI, Pass 2 verbs, with their flags and final lines.
 
     gradcheck --suite all
     train bigram --method autograd --data <file> --out <dir> [--seed S] [--steps N] [--lr X]
@@ -6,11 +6,11 @@
                  --batch B --seq-len T --ckpt-every K [--seed S] [--resume]
     train mlp --data <digits.npz> --hidden H --epochs E --ckpt <dir> [--seed S]
 
-Entry-point territory (D16): this file is yours. It is glue over L0.1 to L0.6
+An entry point: glue over L0.1 to L0.6
 (Tensor, F, cross_entropy, Module and Linear, the loader, BigramLogits,
 checkpoints, TokenStream), M06.3 (PCG32), and M10.3 (AdamW). The final JSON
 line of each verb, the failpoint `train/after-step`, and the files a run
-leaves are fixed by course/milestones/MS-L0.toml.
+leaves are part of the CLI contract (contracts/spec/cli-roles.md).
 """
 
 from __future__ import annotations
@@ -221,7 +221,7 @@ class CheckFailed(Exception):
 def train_bigram_full_batch(a) -> dict:
     """Full-batch AdamW on every (byte, next byte) pair of a raw file: the
     count-MLE is the unique minimizer of this loss, so the trained table
-    reaches its NLL (MS-L0 step autograd-bigram)."""
+    reaches its NLL (the autograd-bigram run)."""
     from tinyllm.autograd import functional as F
     from tinyllm.autograd.losses import cross_entropy
     from tinyllm.lm.bigram import BigramLogits

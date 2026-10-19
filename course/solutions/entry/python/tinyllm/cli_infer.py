@@ -1,9 +1,9 @@
-"""Pass 6 inference forms of the `tinyllm` role (course/milestones/MS-L8.toml).
+"""Pass 6 inference forms of the `tinyllm` role.
 
-Entry-point territory (D16): this file is yours. It is glue over L8.2
+An entry point: glue over L8.2
 (generate, KVCache), L8.3 (PagedKVCache), L8.5 (quantize_model), L8.6
 (speculative_generate and the drafts), L8.7 (constrained decoding), and
-L7.9's Llama model (loaded by cli_modern). It claims only the forms MS-L8
+L7.9's Llama model (loaded by cli_modern). It claims only the forms Pass 6
 adds; every other command line falls through to the next glue module.
 
     generate --model <llama dir> (--prompt T | --prompt-file F) [--max-tokens N]
@@ -347,7 +347,7 @@ def _model_arg(argv: list[str]) -> str | None:
 
 
 def intercept(argv: list[str]) -> int | None:
-    """Claim MS-L8's forms on a Llama directory; return None for anything else."""
+    """Claim Pass 6's forms on a Llama directory; return None for anything else."""
     if not argv or not is_llama_dir(_model_arg(argv)):
         return None
     claims = argv[0] in ("generate", "eval") and any(

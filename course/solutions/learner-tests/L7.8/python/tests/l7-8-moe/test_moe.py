@@ -1,4 +1,4 @@
-"""My tests for L7.8 (rung R5). The oracle is a per-token loop in numpy
+"""Model test suite for L7.8. The oracle is a per-token loop in numpy
 float64: router weights from the chapter's table, each chosen expert run on
 its own row. They import only the contract."""
 

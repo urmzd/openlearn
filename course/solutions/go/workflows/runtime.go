@@ -2,7 +2,7 @@ package workflows
 
 // The workflow runtime seam (dur.08). Platform workflows (CorpusBuild,
 // TrainRun, EvalSuite, ModelRelease) are plain Go functions of a Runtime:
-// the slice of the durable SDK (DESIGN 2.7: ExecuteActivity, Sleep, Now,
+// the slice of the durable SDK (ExecuteActivity, Sleep, Now,
 // signal channels, cancellation) they need. The worker's composition root
 // adapts a workflow.Context to Runtime when it registers them, and the
 // course tests drive them with a replaying simulator, so the workflow logic

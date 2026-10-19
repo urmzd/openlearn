@@ -1,6 +1,6 @@
 # The C interfaces of the optional C modules
 
-`include/tinyllm.h` is a C-only umbrella header over one header per unit in `include/tinyllm/`. One module owns one header section and one source file, which is what lets the course swap a single unit for a stub or a reference. Every C module is optional depth (DESIGN D39): each one builds its own test binary, and its numerical parity with the Python reference is checked through fixture files the Python reference writes. Python, Rust, and Go never load or link this code (D8): there is no shared library ABI, no `ctypes`, and no Rust binding.
+`include/tinyllm.h` is a C-only umbrella header over one header per unit in `include/tinyllm/`. One module owns one header section and one source file, which is what lets the course swap a single unit for a stub or a reference. Every C module is optional depth: each one builds its own test binary, and its numerical parity with the Python reference is checked through fixture files the Python reference writes. Python, Rust, and Go never load or link this code (D8): there is no shared library ABI, no `ctypes`, and no Rust binding.
 
 ## Headers
 

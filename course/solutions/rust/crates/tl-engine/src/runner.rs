@@ -5,7 +5,7 @@
 //! each logits row into a token.
 //!
 //! The engine-wide configuration lives here too, because the runner is the
-//! first piece that reads it (`[engine]` of runtime.toml, DESIGN 2.12).
+//! first piece that reads it (`[engine]` of runtime.toml).
 
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};

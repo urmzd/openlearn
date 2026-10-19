@@ -1,4 +1,4 @@
-//! tl-ds: the Rust data structures of the system (DESIGN 2.14), each with a
+//! tl-ds: the Rust data structures of the system, each with a
 //! caller in the tokenizer or the engine.
 //!
 //! | Module  | Course module | Caller |

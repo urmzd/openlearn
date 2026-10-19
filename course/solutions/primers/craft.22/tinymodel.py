@@ -1,7 +1,8 @@
-"""The model under test in craft.22 (provided by the course; do not edit).
+"""The model under test in craft.22.
 
 A two-layer Llama-style decoder trained on synthetic stories
-(course/oracle/craft.22/train_tinylm.py), in numpy float32:
+(weights in course/solutions/fixtures/craft.22/tinylm.npz; the training
+script is not included), in numpy float32:
 
     ids     = encode(text)                    character BPE, 96 merges by rank
     x       = embed[ids]
@@ -10,13 +11,10 @@ A two-layer Llama-style decoder trained on synthetic stories
       x     = h + mlp_l(rmsnorm(h; g_mlp))    SwiGLU: down(silu(gate h) * up h)
     logits  = rmsnorm(x; g_final) @ embed^T   tied embeddings
 
-`ol check craft.22` grades YOUR eval suite by running it against this file
-and against copies with one planted defect each (a wrong RoPE base, a layer
-whose output is dropped, a tokenizer one merge short, ...), and against
-harmless variants that must NOT be flagged (float64 arithmetic, another
-equally good sampling stream). The check always uses the course's copy of
-this file; the one in your primers/craft.22/ is for running your suite
-yourself.
+A good eval suite passes on this file, flags copies with one real defect
+each (a wrong RoPE base, a layer whose output is dropped, a tokenizer one
+merge short, ...), and does NOT flag harmless variants (float64
+arithmetic, another equally good sampling stream).
 """
 
 from __future__ import annotations

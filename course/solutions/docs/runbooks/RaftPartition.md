@@ -1,7 +1,7 @@
 # Runbook: RaftPartition
 
 Owner: the durable control-plane on-call. This procedure requires the optional
-three-replica Raft deployment from `dur.10` and `MS-durable-ha`.
+three-replica Raft deployment from `dur.10`.
 
 ## Symptoms and initial evidence
 

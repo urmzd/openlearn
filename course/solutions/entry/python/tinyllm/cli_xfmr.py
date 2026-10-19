@@ -1,4 +1,4 @@
-"""The Pass 5 transformer verbs (course/milestones/MS-L5.toml fixes their
+"""The Pass 5 transformer verbs (with their
 flags and final lines).
 
     train transformer --task <pairs.tsv> --cfg <config.json> --out <dir>
@@ -11,7 +11,7 @@ flags and final lines).
 `translate` goes on to the seq2seq glue. It returns an exit code when argv
 is one of them and None otherwise.
 
-Entry-point territory (D16): this file is yours. It is glue over L5.5
+An entry point: glue over L5.5
 (TransformerConfig, Transformer, fit, translate, save_transformer,
 load_transformer), L1.1 (CharTokenizer), L4.5 (exact_match, metric_ci),
 and M06.3 (PCG32).

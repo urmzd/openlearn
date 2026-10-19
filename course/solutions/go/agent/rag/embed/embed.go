@@ -1,5 +1,5 @@
 // Package embed turns chunk texts into vectors (ag.06) through any
-// OpenAI-compatible /v1/embeddings: the learner engine's (mean-pooled,
+// OpenAI-compatible /v1/embeddings: the system engine's (mean-pooled,
 // L2-normalized, openai-subset.v1) or a frontier API's, with the provider's
 // retry policy (ag.01) for overload and broken connections.
 //

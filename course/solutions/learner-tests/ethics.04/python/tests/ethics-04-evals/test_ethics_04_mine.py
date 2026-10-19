@@ -1,4 +1,4 @@
-"""My tests for ethics.04 (rung R5). Oracles: noisy-OR and Wilson worked out
+"""Model test suite for ethics.04. Oracles: noisy-OR and Wilson worked out
 by hand, a scripted generator whose outputs I know, and score tables whose
 gaps I can add up. They import only the contract."""
 

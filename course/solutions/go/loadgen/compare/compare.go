@@ -7,7 +7,7 @@
 //
 // Contract: course/contracts/formats/loadgen-report.schema.json (the input).
 // Chapter: content/courses/build-an-llm/p10-serving/11-run-comparison-and-regression-gate.md.
-// The learner's `{loadgen} compare base.json head.json --metric ttft_p95
+// `{loadgen} compare base.json head.json --metric ttft_p95
 // --max-regress 5%` exits 1 when Verdict.Regressed; dep.05's CI perf job and
 // drill ops.07 (git bisect run) call it.
 package compare

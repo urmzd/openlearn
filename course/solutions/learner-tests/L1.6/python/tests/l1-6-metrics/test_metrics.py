@@ -1,7 +1,7 @@
-"""Reference learner tests for L1.6 (rung R2): the bodies of the test names
-and docstrings listed in the chapter, section 4. They import only names in
-contracts/py/tinyllm/tok/{base,char,metrics}.pyi; `ol mutate L1.6` runs them
-against the reference with one planted bug at a time."""
+"""Model test suite for L1.6: the bodies of the test names and docstrings
+listed in the chapter, section 4. They import only names in
+contracts/py/tinyllm/tok/{base,char,metrics}.pyi, and each one fails on a
+solution with the bug its name describes."""
 
 import pytest
 from tinyllm.tok.base import ByteTokenizer

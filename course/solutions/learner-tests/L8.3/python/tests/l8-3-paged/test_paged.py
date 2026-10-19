@@ -1,4 +1,4 @@
-"""My tests for L8.3 (rung R4: properties). They import only the contract."""
+"""Model test suite for L8.3: properties. They import only the contract."""
 
 import numpy as np
 import pytest

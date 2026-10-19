@@ -6,50 +6,49 @@ Pass 1 verbs:
     generate --model <dir> --prompt <text> [--max-tokens N] [--greedy | --temperature T] [--seed S]
     logits --model <dir> --prompt <text> [--prefix-ids a,b,...]
 
-Pass 2 verbs and flags (course/milestones/MS-L0.toml, glue in cli_train.py):
+Pass 2 verbs and flags (glue in cli_train.py):
 
     gradcheck --suite all
     train bigram --method autograd ...      train mlp ...
 
-Pass 3 verbs (course/milestones/MS-L1.toml, glue in cli_tok.py):
+Pass 3 verbs (glue in cli_tok.py):
 
     tok train --algo bpe ...    tok encode ...    tok bench --impl rust ...
 
-Pass 3 verbs (course/milestones/MS-L2.toml, glue in cli_lm.py):
+Pass 3 verbs (glue in cli_lm.py):
 
     lm train ngram ...    lm train nplm ...    eval --model <dir> --data <tokens.bin>
     generate --model <nplm dir> ... [--out <file>]
 
-Pass 4 verbs (course/milestones/MS-L3.toml and MS-L4.toml, glue in cli_seq.py):
+Pass 4 verbs (glue in cli_seq.py):
 
     train rnnlm ...    train seq2seq ...    translate ...
     eval and generate on an rnnlm directory
 
-Pass 5 verbs (course/milestones/MS-L7.toml, glue in cli_modern.py):
+Pass 5 verbs (glue in cli_modern.py):
 
     pull <owner/name> ...    info, logits, generate on a Llama-family directory
 
-Pass 5 verbs (course/milestones/MS-L5.toml, glue in cli_xfmr.py):
+Pass 5 verbs (glue in cli_xfmr.py):
 
     train transformer ...    translate on a transformer directory
 
-Pass 5 verbs (course/milestones/MS-L6.toml, glue in cli_obj.py):
+Pass 5 verbs (glue in cli_obj.py):
 
     train gpt|bert|electra ...    finetune classify ...    eval ppl ...
     zoo add ...    eval --suite zoo ...
 
-Pass 6 verbs (course/milestones/MS-L8.toml, glue in cli_infer.py):
+Pass 6 verbs (glue in cli_infer.py):
 
     generate --cache none|contiguous|paged --kv-dtype f32|f16    generate --spec ngram|prompt-lookup --k K
     generate --json-schema <file>    eval ppl --quant <scheme>    bench decode
 
-Pass 9 verbs (course/milestones/MS-L11.toml, glue in cli_capstone.py):
+Pass 9 verbs (glue in cli_capstone.py):
 
     train llama --cfg <config.json> --data <text> [--micro-batch B] [--accum K] [--bf16] [--checkpoint-activations]
 
-Entry-point territory (D16): this file is yours. It is glue over L0.0
-(BigramLM, safetensors); the reference is used
-by course CI only. Runs as `python -m tinyllm` with python/ on the path, or
+An entry point: glue over L0.0
+(BigramLM, safetensors). Runs as `python -m tinyllm` with python/ on the path, or
 as `python python/tinyllm/__main__.py` from the repo root.
 """
 
@@ -128,7 +127,7 @@ def cmd_train(a: argparse.Namespace) -> dict:
 
 
 def cmd_generate(a: argparse.Namespace) -> dict:
-    # Pass 3 (MS-L2): an nplm directory, and --out <file>, glue in cli_lm.py.
+    # Pass 3: an nplm directory, and --out <file>, glue in cli_lm.py.
     from tinyllm.cli_lm import arch_of, cmd_generate_lm, write_out
 
     if arch_of(a.model) != "bigram":
@@ -170,7 +169,7 @@ def parser() -> argparse.ArgumentParser:
     t.add_argument("--data", required=True)
     t.add_argument("--out")
     t.add_argument("--alpha", type=float, default=1.0)
-    # Pass 2 (MS-L0): the autograd bigram, the token-stream run, the MLP.
+    # Pass 2: the autograd bigram, the token-stream run, the MLP.
     t.add_argument("--method", choices=["counts", "autograd"], default="counts")
     t.add_argument("--seed", type=int, default=0)
     t.add_argument("--lr", type=float)
@@ -194,18 +193,18 @@ def parser() -> argparse.ArgumentParser:
     g.add_argument("--greedy", action="store_true")
     g.add_argument("--temperature", type=float, default=1.0)
     g.add_argument("--seed", type=int, default=0)
-    g.add_argument("--out")  # MS-L2: also write the final line to this file
+    g.add_argument("--out")  # Pass 3: also write the final line to this file
     g.set_defaults(fn=cmd_generate)
     lg = sub.add_parser("logits")
     lg.add_argument("--model", required=True)
     lg.add_argument("--prompt", default="")
     lg.add_argument("--prefix-ids", default="")
     lg.set_defaults(fn=cmd_logits)
-    # Pass 3 (MS-L1): tok train, tok encode, tok bench, glue in cli_tok.py.
+    # Pass 3: tok train, tok encode, tok bench, glue in cli_tok.py.
     from tinyllm.cli_tok import add_parser as add_tok
 
     add_tok(sub)
-    # Pass 3 (MS-L2): lm train, eval, glue in cli_lm.py.
+    # Pass 3: lm train, eval, glue in cli_lm.py.
     from tinyllm.cli_lm import add_parser as add_lm
 
     add_lm(sub)
@@ -223,14 +222,14 @@ def main(argv: list[str] | None = None) -> int:
     code = intercept_c1_data(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
-    # Pass 9 (MS-L11): train llama with --bf16, --accum, and
+    # Pass 9: train llama with --bf16, --accum, and
     # --checkpoint-activations, glue in cli_capstone.py (it claims only that form).
     from tinyllm.cli_capstone import intercept as intercept_capstone
 
     code = intercept_capstone(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
-    # Pass 8 (MS-durable): train --spec and eval --spec, the subprocess
+    # Pass 8: train --spec and eval --spec, the subprocess
     # activities of TrainRun and EvalSuite, glue in cli_activity.py (first:
     # it claims only those two verbs with --spec).
     from tinyllm.cli_activity import intercept as intercept_activity
@@ -243,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     code = intercept_c1_eval(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
-    # Pass 6 (MS-L8): generate with --cache, --kv-dtype, --spec, or
+    # Pass 6: generate with --cache, --kv-dtype, --spec, or
     # --json-schema, eval ppl --quant, and bench decode (no --backend) on a
     # Llama-family directory, glue in cli_infer.py (it claims only those).
     from tinyllm.cli_infer import intercept as intercept_infer
@@ -251,14 +250,14 @@ def main(argv: list[str] | None = None) -> int:
     code = intercept_infer(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
-    # Pass 5 (MS-L7): pull, and info, logits, generate on a Llama-family
+    # Pass 5: pull, and info, logits, generate on a Llama-family
     # directory, glue in cli_modern.py (every other form falls through).
     from tinyllm.cli_modern import intercept as intercept_modern
 
     code = intercept_modern(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
-    # Pass 5 (MS-L6): train gpt|bert|electra, finetune classify, eval ppl,
+    # Pass 5: train gpt|bert|electra, finetune classify, eval ppl,
     # zoo add, eval --suite zoo, glue in cli_obj.py (first: it claims only
     # those verbs).
     from tinyllm.cli_obj import intercept as intercept_obj
@@ -266,7 +265,7 @@ def main(argv: list[str] | None = None) -> int:
     code = intercept_obj(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
-    # Pass 5 (MS-L5): train transformer, and translate on a transformer
+    # Pass 5: train transformer, and translate on a transformer
     # directory, glue in cli_xfmr.py (before cli_seq, which takes every
     # other translate).
     from tinyllm.cli_xfmr import intercept as intercept_xfmr
@@ -274,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
     code = intercept_xfmr(sys.argv[1:] if argv is None else list(argv))
     if code is not None:
         return code
-    # Pass 4 (MS-L3, MS-L4): train rnnlm|seq2seq, translate, and eval or
+    # Pass 4: train rnnlm|seq2seq, translate, and eval or
     # generate on an rnnlm directory, glue in cli_seq.py.
     from tinyllm.cli_seq import intercept
 

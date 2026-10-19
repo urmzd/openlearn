@@ -1,5 +1,5 @@
-"""My tests for L5.3 (rung R5: multi-head attention written out in numpy
-from the module's own weights is the oracle, plus my own gradient check).
+"""Model test suite for L5.3: multi-head attention written out in numpy
+from the module's own weights is the oracle, plus an independent gradient check.
 They import only the contract."""
 
 import math

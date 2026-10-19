@@ -1,5 +1,5 @@
-"""My tests for L3.1 (rung R3: each test written first and seen failing with
-`ol tdd red`, then made to pass with `ol tdd green`). They import only the
+"""Model test suite for L3.1: what each test protects. Each test was written
+first and seen failing, then made to pass. They import only the
 contract (tinyllm.rnn.manual)."""
 
 import numpy as np

@@ -67,7 +67,7 @@ A training corpus is the output of a program, and like any program it has bugs, 
 | `data.08` | Licensing ledger verification and datasheet | build | 3 |
 | `data.09` | Pipeline as a durable workflow `CorpusBuild` | build | 8 |
 
-Milestone `MS-corpus` closes the pipeline: shards, manifest, ledger, and `.bin` files pass the format conformance suite with a deterministic output hash across two runs and worker counts 1 and 4.
+The pipeline is complete when, built from the small reference corpus config, its shards, manifest, ledger, and `.bin` files match the format contracts with a deterministic output hash across two runs and worker counts 1 and 4.
 
 ## Chapters
 

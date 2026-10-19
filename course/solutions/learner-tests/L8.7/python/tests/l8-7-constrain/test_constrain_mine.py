@@ -1,4 +1,4 @@
-"""My tests for L8.7 (rung R5). Oracles that are not my code: Python's re
+"""Model test suite for L8.7. Oracles that are not the code under test: Python's re
 (fullmatch on bytes) for the language, a brute-force walk of every token
 through the DFA for the masks, json.loads plus a small validator for the
 schema subset. They import only the contract."""

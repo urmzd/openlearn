@@ -1,4 +1,4 @@
-/* My tests for ds.01 (rung R4): properties of tl_vec checked with ol_prop.h
+/* Model test suite for ds.01: properties of tl_vec checked with ol_prop.h
  * against a plain array model, plus the boundary and fault cases the
  * properties cannot reach. Only the contract headers are included. */
 #include <stdint.h>

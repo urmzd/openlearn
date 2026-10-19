@@ -1,5 +1,5 @@
-"""My tests for L3.6 (rung R4: properties of stateful training, plus the
-section 3 windows by hand). They import only the contract."""
+"""Model test suite for L3.6: properties of stateful training, plus the
+section 3 windows by hand. They import only the contract."""
 
 import json
 import math

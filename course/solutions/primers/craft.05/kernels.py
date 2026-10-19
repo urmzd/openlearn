@@ -3,9 +3,9 @@
 These are the ops of Parts 5 to 7 (a Linear layer, RMSNorm, the SwiGLU gate,
 scaled dot-product attention) written the way a C kernel (L9) or a fused
 CUDA kernel has to write them: no autograd, the vector-Jacobian product
-derived by hand. Every array is numpy float64. Your graded tests check them
-against oracles (chapter section 4); the planted faults are the chapter's
-pitfalls, among them the transposed weight gradient.
+derived by hand. Every array is numpy float64. The oracle tests (chapter section 4)
+check them, and must catch the chapter's pitfalls, among them the
+transposed weight gradient.
 
 The rules, exactly:
 

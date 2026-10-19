@@ -1,6 +1,6 @@
 // Package workflows holds the platform's durable workflows (Go only:
-// workflows are deterministic code, Python implements activities, DESIGN
-// 2.7). dur.12 owns model_release.go: ModelRelease, the gated path from a
+// workflows are deterministic code, Python implements
+// activities). dur.12 owns model_release.go: ModelRelease, the gated path from a
 // checkpoint to traffic.
 //
 //	preflight   model card and data ledger gates      activity release.preflight (non-retryable)

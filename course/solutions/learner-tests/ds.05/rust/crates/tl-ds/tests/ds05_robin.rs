@@ -1,6 +1,6 @@
-//! Reference learner tests for ds.05 (rung R2: the chapter names the tests,
-//! the learner writes the bodies). They prove the 0.60 mutation bar is
-//! reachable with the public API alone (black-box rule: an integration test).
+//! Model test suite for ds.05: the chapter names the tests; these are the
+//! bodies. They use the public API alone (black-box rule: an integration
+//! test).
 
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hasher};

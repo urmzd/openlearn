@@ -8,7 +8,7 @@
 | **Solution** | [`evals.py`](../../../../course/solutions/primers/craft.22/evals.py) (a kata: held-out bits per byte `heldout_bpb`, a seeded sample-quality score `quality_score`, the paired sign-flip test `sign_flip_p`, and the regression rule `regressed`), [`test_model_evals.py`](../../../../course/solutions/primers/craft.22/test_model_evals.py) (the eval suite), and [`baseline.json`](../../../../course/solutions/primers/craft.22/baseline.json) (the good model, measured); the model under test is [`tinymodel.py`](../../../../course/solutions/primers/craft.22/tinymodel.py) |
 | **Contract** | the rules in the kata's docstring (quoted in section 4) |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how a test suite is judged by planted faults · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · `M07.5` permutation tests · `M11.2` bits per byte · `L6.7` the eval harness and zoo · `L7.3` RoPE |
-| **Used by** | no call site (a practice): rung R8 asks for model evals in `C1` (and `L12` and `C2`), whose release gates are these numbers; the capstone's held-out loss and seeded quality are measured this way |
+| **Used by** | no call site (a practice): `C1` (and `L12` and `C2`) use model evals, and their release gates are these numbers; the capstone's held-out loss and seeded quality are measured this way |
 | **Optional depth** | Dror et al., ["The Hitchhiker's Guide to Testing Statistical Significance in NLP"](https://aclanthology.org/P18-1128/) (ACL 2018, free); Good, *Permutation, Parametric, and Bootstrap Tests of Hypotheses*, ch. 3; Biderman et al., ["Lessons from the Trenches on Reproducible Evaluation of Language Models"](https://arxiv.org/abs/2405.14782) (2024, free) |
 
 ## Key Takeaways
@@ -106,7 +106,7 @@ def regressed(base, cand, margin, alpha=0.05, higher_is_better=False) -> bool
 | `baseline.json` has 5 or more seeds and equals the good model measured now | golden | a stale or typed-in baseline gates against a model that does not exist |
 | the suite passes on the good model | conformance | a gate that fails the model it was recorded from is switched off |
 | the suite passes on two harmless variants: float64 arithmetic, another sampling stream | conformance | no false alarms on changes that do not matter |
-| the suite fails on at least 80% of seven model mutants, always on the wrong RoPE base, a dropped layer, and a tokenizer one merge short | fault | rung R8: the defects that train and generate but are wrong |
+| the suite fails on at least 80% of seven model mutants, always on the wrong RoPE base, a dropped layer, and a tokenizer one merge short | fault | the defects that train and generate but are wrong |
 
 ## 5. The solution, step by step
 

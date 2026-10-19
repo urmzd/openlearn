@@ -1,5 +1,5 @@
-"""My tests for L0.3 (rung R2: the names and docstrings come from the chapter,
-section 4; the bodies are mine). They import only the contract."""
+"""Model test suite for L0.3: what each test protects. The names and
+docstrings come from the chapter, section 4. They import only the contract."""
 
 import math
 

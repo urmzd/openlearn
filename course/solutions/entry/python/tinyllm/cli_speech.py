@@ -1,4 +1,4 @@
-"""WAV transcription through the learner's Whisper model and decoding policy."""
+"""WAV transcription through the system's Whisper model and decoding policy."""
 
 from __future__ import annotations
 

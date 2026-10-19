@@ -1,5 +1,5 @@
 // Package hashembed is "hash16", the deterministic lexical embedding the
-// course fixtures use (course/oracle/ag.07/make_fixtures.py): every term of
+// ag.07 fixtures use: every term of
 // the text (ag.07's Terms) adds +1 or -1, the sign from the top bit of its
 // FNV-1a 64 hash, to coordinate hash mod 16, and the vector is L2-normalized.
 //

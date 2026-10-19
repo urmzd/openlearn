@@ -1,7 +1,5 @@
-// Package faults is the course's fault kit for the craft.21 kata (rung R10,
-// DESIGN 5.12: "fault injectors as a library"). It is course code: the
-// check copies it into primers/craft.21/faults/ the first time and always
-// uses its own copy when grading. Your resilience tests import it.
+// Package faults is the fault kit for the craft.21 kata: fault injectors as
+// a library. The resilience tests import it.
 //
 //	CrashFS   an in-memory FS where only synced bytes survive Crash(), a
 //	          torn tail can be kept, and writes can be made to fail
@@ -10,8 +8,8 @@
 //	Effects   an external system that deduplicates by idempotency key and
 //	          counts every delivery, so a test sees state and retries
 //
-// The same three ideas, at system scale, are course/testkit/go
-// (failpoint, clock, effects) and ol drill.
+// The same three ideas, at system scale, are the system's failpoints
+// (TL_FAILPOINTS), its injectable clock, and its idempotent effects.
 package faults
 
 import (

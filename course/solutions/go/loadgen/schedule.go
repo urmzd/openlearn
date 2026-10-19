@@ -5,8 +5,8 @@
 // course/contracts/formats/loadgen-report.schema.json.
 //
 // Chapter: content/courses/build-an-llm/p10-serving/10-load-generator.md. load.02
-// (loadgen/compare) compares two reports; the learner's {loadgen} main
-// drives MS-L10, MS-gateway, MS-prod, and the drills.
+// (loadgen/compare) compares two reports; the {loadgen} main drives
+// the serving benchmarks, the gateway load runs, and the incident game days.
 package loadgen
 
 import (

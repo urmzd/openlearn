@@ -2,9 +2,7 @@
 // (course/contracts/spec/cli-roles.md): the composition root of the dur.04
 // worker SDK, the dur.06 workflow registry, the platform workflows
 // (CorpusBuild, TrainRun, EvalSuite), and the dur.09 subprocess activities.
-// Entry points are learner territory (DESIGN D16): the learner writes their
-// own go/cmd/worker; this one shows what the milestone runner and the dep.06
-// chart expect.
+// It is wiring only; its flags are what the dep.06 chart passes.
 //
 //	worker --queue <q>[,<q>...] --durable <host:port> [--health-port <n>] [--test-activities]
 //	worker --config <runtime.toml>
@@ -22,8 +20,8 @@
 // tl.test.Append of its input, returns the input), SleepDemo (input:
 // milliseconds; result: the fired time in Unix milliseconds), and
 // tl.test.Batch (input N: N tl.test.Append activities with ids 1 to N, so
-// the sink's keys are "<workflow id>/1" to "<workflow id>/N"; the kill
-// loop of MS-durable).
+// the sink's keys are "<workflow id>/1" to "<workflow id>/N"; the
+// kill-and-recover test of the durable server).
 //
 // ReadArtifact (artifact.go) is always registered: it returns a file under
 // the artifacts root, which is how ctl reads what an activity wrote.
@@ -240,8 +238,8 @@ func subprocess(r activities.Subprocess, args func(in []byte) []string) worker.A
 
 // appendEffect is tl.test.Append: one POST of {key, value} to the effects
 // sink, which dedupes by key, so a retried attempt is visible but harmless.
-// Without a sink (a run that checks no effects, such as the MS-durable
-// smoke) it records nothing and returns its input. An input object with
+// Without a sink (a run that checks no effects, such as a durable
+// smoke run) it records nothing and returns its input. An input object with
 // "hold_ms" (tl.test.Batch's) holds that long after the effect before the
 // activity completes: the window in which a kill leaves an applied effect
 // unreported, so the redelivery is what the exactly-once check sees.

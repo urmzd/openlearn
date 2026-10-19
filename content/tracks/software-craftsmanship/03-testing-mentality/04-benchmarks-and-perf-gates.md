@@ -8,7 +8,7 @@
 | **Solution** | [`kernels.c`](../../../../course/solutions/primers/craft.06/kernels.c) (a kata: four C kernels whose speed depends on how they are written: `kata_matmul`, `kata_sum`, `kata_rmsnorm`, `kata_count_below`), [`bench.c`](../../../../course/solutions/primers/craft.06/bench.c) (the benchmark of them with `ol_bench.h`), [`budget.toml`](../../../../course/solutions/primers/craft.06/budget.toml) (the performance budget), and [`gate.py`](../../../../course/solutions/primers/craft.06/gate.py) (the regression gate: `regressed`, `run`, `build`, `metrics`, `main`) |
 | **Contract** | the kata's spec in [`kernels.h`](../../../../course/solutions/primers/craft.06/kernels.h) and the timer [`ol_bench.h`](../../../../course/contracts/c/include/ol_bench.h) |
 | **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) grading tests by planted faults · [`craft.05`](03-oracles-golden-and-gradcheck.md) oracles: a fast kernel must first be a right one · [`L9.1`](../../../courses/build-an-llm/p09-kernels/04-tiled-batch-invariant-matmul.md) tiling and loop order · [`L9.6`](../../../courses/build-an-llm/p09-kernels/09-elementwise-kernels.md) RMSNorm |
-| **Used by** | no call site (a practice): rung R7 applies the same gate to the kernels (`L9`) and engine (`L10`), and `ops.07` bisects a perf regression with it. Pass 6 ends with the kernels both correct and protected for speed. |
+| **Used by** | no call site (a practice): the kernel (`L9`) and engine (`L10`) chapters apply the same perf gate, and `ops.07` bisects a perf regression with it. Pass 6 ends with the kernels both correct and protected for speed. |
 | **Optional depth** | Brendan Gregg, *Systems Performance*, 2nd ed., ch. 12 "Benchmarking"; Georges, Buytaert, Eeckhout, "Statistically Rigorous Java Performance Evaluation" (OOPSLA 2007); Chen and Revels, "Robust benchmarking in noisy environments" (2016) |
 
 ## Key Takeaways
@@ -35,7 +35,7 @@ Run it on an otherwise idle machine: it times things. Every build and benchmark 
 
 ## 1. Why now
 
-The kernels are correct: `L9.1` to `L9.6` matched their oracles, and `L9.7` runs a real model through them. Correct is not the same as fast, and fast does not stay fast. Swap two loops in `matmul.c` while fixing an edge case and the answer is unchanged, every test passes, and decode is 14 times slower. No unit test can notice, because a unit test checks values. From this pass on, rung R7 protects speed the way rungs R0 to R5 protect values: a benchmark that measures it, a budget that says how much it may move, and a gate that fails the change that breaks it. This chapter does it on a small kata first, so the noise, the budgets, and the failure modes are all in front of you before the real kernels are on the line.
+The kernels are correct: `L9.1` to `L9.6` matched their oracles, and `L9.7` runs a real model through them. Correct is not the same as fast, and fast does not stay fast. Swap two loops in `matmul.c` while fixing an edge case and the answer is unchanged, every test passes, and decode is 14 times slower. No unit test can notice, because a unit test checks values. From this pass on, the solution protects speed the way its earlier tests protect values: a benchmark that measures it, a budget that says how much it may move, and a gate that fails the change that breaks it. This chapter does it on a small kata first, so the noise, the budgets, and the failure modes are all in front of you before the real kernels are on the line.
 
 ## 2. Principles
 
@@ -370,7 +370,7 @@ Iterating over the budget rather than over what the benchmark printed means a me
 | Back | `craft.03` | grading tests by planted faults, baselines A and B |
 | Back | `craft.05` | a fast kernel is checked for values first (the golden check on awkward sizes) |
 | Back | `L9.1` | loop order and tiling, the kata's matmul |
-| Forward | `L9.7` | rung R7: the backend's tests must catch perf faults too |
+| Forward | `L9.7` | the backend's tests guard speed as well as values, with the same gate |
 | Forward | `L10.1` | criterion benchmarks of the Rust runner behind the same kind of gate |
 | Forward | `ops.07` | a perf-regression drill: a seeded slowdown, found by bisecting with this gate |
 

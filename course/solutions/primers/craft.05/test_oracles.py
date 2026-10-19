@@ -1,4 +1,4 @@
-"""My oracle tests for the craft.05 kata (rung R5).
+"""Model oracle test suite for the craft.05 kata: what each oracle protects.
 
 Three oracles, none of them the code under test:
   golden        torch's forward values and autograd gradients in

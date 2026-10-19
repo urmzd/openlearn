@@ -2,8 +2,8 @@
 
 This is the course's reference example of `ethics.03`: a model small enough
 to train and evaluate in seconds, carded the way the capstone (`C1`) will be.
-Every number below was measured by `course/oracle/ethics.03/reference_card_numbers.py`
-at seed 0.
+Every number below was measured with the reference implementation at seed 0
+(the measuring script is not included).
 
 ## Model details
 

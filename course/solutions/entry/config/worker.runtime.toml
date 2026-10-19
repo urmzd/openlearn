@@ -1,4 +1,4 @@
-# runtime.toml template for the worker service (DESIGN 2.12, dur.04). The
+# runtime.toml template for the worker service (dur.04). The
 # harness fills [worker].health_listen and passes the file as {config}. The
 # artifacts root (the subprocess contract's /artifacts) is the run's state
 # directory, so CorpusBuild and TrainRun write into {data}.

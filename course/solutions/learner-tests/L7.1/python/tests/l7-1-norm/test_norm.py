@@ -1,4 +1,4 @@
-"""My tests for L7.1 (rung R5: oracles and my own gradient check). The oracle
+"""Model test suite for L7.1: oracles and an independent gradient check. The oracle
 is the RMSNorm formula written out in numpy float64. They import only the
 contract."""
 

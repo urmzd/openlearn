@@ -1,4 +1,4 @@
-"""My tests for L11.3 (rung R5). Oracle: the same model trained in one
+"""Model test suite for L11.3. Oracle: the same model trained in one
 process on the whole batch with the same optimizer, plus byte counts worked
 out by hand from the chunk sizes. They import only the contract."""
 

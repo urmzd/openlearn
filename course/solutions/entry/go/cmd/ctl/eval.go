@@ -1,6 +1,6 @@
 package main
 
-// The eval verbs (ag.09 to ag.12, MS-agent): the docs agent over a suite of
+// The eval verbs (ag.09 to ag.12): the docs agent over a suite of
 // cases (formats eval cases, one JSON object per line).
 //
 //	ctl eval run --suite <file|agent-smoke> [--index <suite>] [--out <dir>] [--run-id <id>]

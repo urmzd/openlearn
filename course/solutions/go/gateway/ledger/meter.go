@@ -37,7 +37,7 @@ type MeterOptions struct {
 }
 
 // maxSniff caps how much of a non-streamed body the meter keeps to read its
-// usage: the gateway's own request limit (DESIGN 2.7).
+// usage: the gateway's own request limit.
 const maxSniff = server.DefaultMaxBody
 
 // usageJSON is the usage object of a completion, a chunk, or an embedding list.

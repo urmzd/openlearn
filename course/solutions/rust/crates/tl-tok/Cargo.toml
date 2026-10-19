@@ -1,6 +1,7 @@
 # tl-tok: byte-level BPE exact against GPT-2 and SmolLM2, the tokenizer.json
 # loader, the streaming UTF-8 decoder, and the byte tokenizer (L1.5).
-# The binary src/main.rs (`tl-tok encode`, `tl-tok bench`) is yours (D16).
+# The binary src/main.rs (`tl-tok encode`, `tl-tok bench`) lives in
+# course/solutions/entry/rust/crates/tl-tok.
 [package]
 name = "tl-tok"
 version = "0.1.0"

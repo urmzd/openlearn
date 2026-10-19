@@ -5,8 +5,8 @@ wrong, and what:
 
     TL_FAILPOINTS="train/after-step=60*crash; data/fetch=error(timeout); x=sleep(50ms)"
 
-Your CLI evaluates `train/after-step` after every optimizer step (MS-L0 kills
-a training run that way). This kata is the pure part: parse the spec and
+The system's CLI evaluates `train/after-step` after every optimizer step (a
+crash test kills a training run that way). This kata is the pure part: parse the spec and
 decide, evaluation by evaluation, whether a failpoint fires. What a fired
 rule does (exit 137, raise, sleep) stays with the caller.
 

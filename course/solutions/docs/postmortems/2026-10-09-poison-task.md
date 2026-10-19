@@ -3,7 +3,7 @@
 Drill `ops.03`. Blameless: this document is about the system and the
 process, not about who typed the command. A model postmortem: the times and
 counts show the shape of this incident; yours come from your dashboard,
-`{ctl} wf dlq list`, and `ol drill end`.
+`{ctl} wf dlq list`, and `{ctl} wf describe`.
 
 ## Summary
 
@@ -29,7 +29,7 @@ All times UTC.
 
 | Time | Event |
 |---|---|
-| 10:00:00 | `ol drill start poison-task`: the worker Deployment gains `TL_FAILPOINTS`, a rollout starts |
+| 10:00:00 | The game day starts: `kubectl set env deploy/<system>-worker TL_FAILPOINTS=...` adds the failpoint, a rollout starts |
 | 10:00:40 | rollout complete; `{ctl} data build ... --id drill-poison` starts |
 | 10:01:30 | `shard-00001` attempt 1 panics (`Panic`, retryable); the other shards complete |
 | 10:01:31 to 10:01:46 | attempts 2 to 5 after backoff of 1, 2, 4, and 8 s; each panics |
@@ -40,7 +40,7 @@ All times UTC.
 | 10:05:10 | `kubectl set env deploy/<system>-worker TL_FAILPOINTS-`; rollout complete at 10:05:50 |
 | 10:06:05 | `wf dlq redrive data <task id>`; the attempt succeeds |
 | 10:09:00 | CorpusBuild completes; the alert resolves |
-| 10:11:00 | `ol drill end` |
+| 10:11:00 | Game day closed: `wf dlq list data` is empty and `kubectl get deploy/<system>-worker -o yaml` has no `TL_FAILPOINTS` |
 
 ## Root cause
 

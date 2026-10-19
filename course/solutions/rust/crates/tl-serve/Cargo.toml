@@ -1,8 +1,8 @@
-# tl-serve: the engine's HTTP front (DESIGN 2.1, component 9).
+# tl-serve: the engine's HTTP front.
 #
-# The library is course-owned code you write; the binary (src/main.rs) is
-# your entry point and is never overlaid (D16). Cargo finds src/main.rs on
-# its own and names the binary `tl-serve`.
+# This crate is the library; the binary (src/main.rs, in
+# course/solutions/entry/rust/crates/tl-serve) is the entry point. Cargo
+# finds src/main.rs on its own and names the binary `tl-serve`.
 #
 # L10.0 writes `http` (std only, API v0, the tracer). L10.5 adds the v1
 # server on tokio and hyper (`server`, `openai`, `sse`, `template`) over

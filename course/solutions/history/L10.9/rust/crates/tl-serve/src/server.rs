@@ -106,7 +106,7 @@ pub struct ServeConfig {
     pub step_delay: Duration,
 }
 
-/// `[engine].role` (L10.6, DESIGN 2.7). A unified engine serves whole
+/// `[engine].role` (L10.6). A unified engine serves whole
 /// requests. A prefill engine also serves `EngineControl.Prefill`: it runs a
 /// prompt, samples the first token, and pushes the prompt's KV to the decode
 /// engine the request names. A decode engine receives KV over tl.kv.v1 and

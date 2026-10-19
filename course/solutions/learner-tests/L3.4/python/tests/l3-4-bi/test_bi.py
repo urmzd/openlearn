@@ -1,5 +1,5 @@
-"""My tests for L3.4 (rung R4: the chapter's properties, written as property
-tests with Hypothesis). They import only the contract."""
+"""Model test suite for L3.4: the chapter's properties, written as property
+tests with Hypothesis. They import only the contract."""
 
 import numpy as np
 import pytest

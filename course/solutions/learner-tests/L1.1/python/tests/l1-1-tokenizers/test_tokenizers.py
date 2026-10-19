@@ -1,7 +1,7 @@
-"""Reference learner tests for L1.1 (rung R2): the bodies of the test names
-and docstrings listed in the chapter, section 4. They import only names in
-contracts/py/tinyllm/tok/{base,char}.pyi; `ol mutate L1.1` runs them against
-the reference with one planted bug at a time."""
+"""Model test suite for L1.1: the bodies of the test names and docstrings
+listed in the chapter, section 4. They import only names in
+contracts/py/tinyllm/tok/{base,char}.pyi, and each one fails on a solution
+with the bug its name describes."""
 
 import json
 

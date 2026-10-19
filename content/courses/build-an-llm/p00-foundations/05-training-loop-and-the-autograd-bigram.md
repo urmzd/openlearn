@@ -381,11 +381,11 @@ Full solution: [`loop.py`](../../../../course/solutions/python/tinyllm/train/loo
 | Back | `M03.1` | `tl_matmul_f32` is the C matmul of Pass 1; the solution's `BigramLM.logits` reads the same rows with a NumPy gather |
 | Forward | `L10.0` | the Rust engine serves the table `to_lm()` produces, unchanged (`tl_arch = bigram`) |
 | Forward | `L0.6` | takes over `safetensors.py`; and keeps `bigram.py`'s `L0.0` behaviour as its regression |
-| Forward | `L2.2` | Registered call site uses this module. |
-| Forward | `L3.6` | Registered call site uses this module. |
-| Forward | `L5.5` | Registered call site uses this module. |
-| Forward | `L6.1` | Registered call site uses this module. |
-| Forward | `L6.7` | Registered call site uses this module. |
+| Forward | `L2.2` | the NPLM trains through `DataLoader` and `train_step` |
+| Forward | `L3.6` | the RNN LM trains through `train_step` |
+| Forward | `L5.5` | the transformer trains through `DataLoader` and `train_step` |
+| Forward | `L6.1` | GPT pre-training calls `train_step` each step |
+| Forward | `L6.7` | the model zoo loads the bigram as a `BigramLM` and scores it with the others |
 
 Later passes (`L2.2`, `L3.6`, `L6.1`, the capstone) call `train_step` and `evaluate` as they are.
 

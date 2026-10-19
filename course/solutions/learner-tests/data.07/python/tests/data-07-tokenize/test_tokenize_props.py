@@ -1,4 +1,4 @@
-"""Reference learner tests for data.07 (rung R4, properties): token
+"""Model test suite for data.07 (properties): token
 conservation, split purity, whole documents per file, determinism, and the
 header, mostly with the byte tokenizer so a document's ids are its UTF-8
 bytes. They import only names in contracts/py/corpus/{tokenize,shard,stage}.pyi;

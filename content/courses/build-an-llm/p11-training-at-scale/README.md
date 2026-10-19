@@ -2,7 +2,7 @@
 
 What it takes to train the capstone on a laptop, and what changes on a cluster. The core module adds bf16 mixed precision (emulated), fp16 loss scaling, gradient accumulation, and activation checkpointing. Collectives (ring all-reduce over shared memory) and data parallelism with ZeRO stages are optional, with tensor and pipeline parallelism as side quests.
 
-**Course passes**: 9 (L11.1, milestone MS-L11, part of gate MS-P9); L11.2 and L11.3 optional
+**Course passes**: L11.1 belongs to [Pass 9](../paths/course-p09-capstone-training/milestone.md); L11.2 and L11.3 are optional
 
 **Before you start**: the just-in-time math `M08.4` (Hessian-vector products and checkpoint schedules); bf16 emulation from [Numerical Methods and Floating Point](../../../tracks/math/09-numerical-methods-and-floating-point/); the optimizers of [Optimization](../../../tracks/math/10-optimization/).
 

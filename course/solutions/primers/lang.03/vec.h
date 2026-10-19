@@ -1,7 +1,6 @@
-/* primers/lang.03/vec.h: a growable array of int (given; do not edit).
+/* primers/lang.03/vec.h: a growable array of int.
  *
- * The same contract as the standalone drill practice/build/systems/c/01.
- * You write vec.c against it; course/tests/lang.03/test_vec.c tests it.
+ * The contract vec.c implements.
  */
 #ifndef VEC_H
 #define VEC_H

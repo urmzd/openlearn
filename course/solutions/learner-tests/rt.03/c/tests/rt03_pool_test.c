@@ -1,4 +1,4 @@
-/* My tests for rt.03 (rung R4): the partition and exactly-once properties with ol_prop.h, plus
+/* Model test suite for rt.03: the partition and exactly-once properties with ol_prop.h, plus
  * the concurrency and fault cases. Only the contract headers are included. */
 #define _POSIX_C_SOURCE 200809L
 #include <pthread.h>

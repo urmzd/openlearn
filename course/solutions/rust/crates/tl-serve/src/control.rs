@@ -9,7 +9,7 @@
 //! by hash), drop P's own references to them, and answer with the
 //! `KvHandle` the decode worker resumes from: the first token, the prompt
 //! length, the full-block hashes, and how many uniform draws P took (the RNG
-//! hand-off, DESIGN 2.7).
+//! hand-off).
 //!
 //! Chapter: content/courses/build-an-llm/p10-serving/06-disaggregated-prefill-decode.md.
 

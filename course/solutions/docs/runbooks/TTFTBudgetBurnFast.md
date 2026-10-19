@@ -63,4 +63,5 @@ days.
   (back to the chart value afterwards with `helm upgrade`).
 - If a rollout caused it: `kubectl -n <system> rollout undo deploy/<system>-engine-decode`.
 - Confirm: the TTFT burn stat under 1, the alert resolved (the short window
-  clears first), and `ol conform openapi:v1:gateway:smoke --base http://127.0.0.1:30080` passes.
+  clears first), and a chat completion through the gateway answers 200, plain
+  and streamed: `curl -s -H "Authorization: Bearer $TL_API_KEY" -H 'Content-Type: application/json' -d '{"model":"<model>","messages":[{"role":"user","content":"hi"}]}' http://127.0.0.1:30080/v1/chat/completions`.

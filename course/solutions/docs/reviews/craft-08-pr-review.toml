@@ -1,5 +1,5 @@
-# The reference review of craft.08's pull request (honor system, D34). Written by
-# course/oracle/craft.08/make_pr.py with the current head's lines and blob.
+# The reference review of craft.08's pull request: the verdict, the summary,
+# and one finding per defect, keyed to the PR's lines and blob.
 
 pr      = "drill/craft-08"
 blob    = "43fabc5ce2393e2862b5b8727f89b794a7b7e2d3"

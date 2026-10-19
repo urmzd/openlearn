@@ -28,8 +28,7 @@ Following Gebru et al., "Datasheets for Datasets".
   6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e, license MIT (the repository; the
   plays themselves are in the public domain), retrieved 2026-10-09,
   sha256 86c4e6aa9db7c042ec79f339dcb96d42b0075e16b8fc2e86bf0ca57e2dc565ed.
-  Fetched once by course/oracle/MS-L3/tinyshakespeare.py and committed as a
-  course fixture.
+  Fetched once from that URL and checked against the sha256 above.
 
 ## Preprocessing
 
@@ -50,8 +49,8 @@ Following Gebru et al., "Datasheets for Datasets".
 
 ## Distribution and maintenance
 
-- The file lives at course/fixtures/small-corpora/tinyshakespeare.txt; its
-  manifest row records the sha256 above. If the upstream repository changed
+- The file is fetched from the upstream revision above; its manifest row
+  records the sha256 above. If the upstream repository changed
   its license, drill ops.08's procedure applies: mark the source revoked in
   the ledger, purge derived token files, and record the retrain decision in
   this datasheet.

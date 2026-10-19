@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LEDGER.jsonl row",
-  "description": "One line of corpus/LEDGER.jsonl: one fetched source, its license, and what the pipeline kept (DESIGN 2.9; data.01 appends, data.08 verifies). ModelRelease (dur.12) refuses a model trained on a source whose allowed_uses lacks train. The license allowlist is data.08's; an unknown SPDX id fails verification with exit 65.",
+  "description": "One line of corpus/LEDGER.jsonl: one fetched source, its license, and what the pipeline kept (data.01 appends, data.08 verifies). ModelRelease (dur.12) refuses a model trained on a source whose allowed_uses lacks train. The license allowlist is data.08's; an unknown SPDX id fails verification with exit 65.",
   "type": "object",
   "required": [
     "source_id",

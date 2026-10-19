@@ -1,9 +1,9 @@
-"""primers/craft.22/evals.py: model evals as tests (rung R8), the kata.
+"""primers/craft.22/evals.py: model evals as tests, the kata.
 
-Your eval library for the course's tiny model (tinymodel.py). Your suite,
+The eval library for the course's tiny model (tinymodel.py). The suite,
 test_model_evals.py, uses it to decide whether a model regressed against
-the numbers you recorded from the good model in baseline.json. The rules
-below are the spec; the course compares your functions with its own.
+the numbers recorded from the good model in baseline.json. The rules
+below are the spec.
 
     heldout_bpb(model, text, seed, windows=16, chars=80)
         rng = np.random.default_rng(seed); starts = rng.integers(0,

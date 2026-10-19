@@ -1,4 +1,4 @@
-"""The course's reference eval suite for craft.22 (rung R8).
+"""The course's reference eval suite for craft.22.
 
 A model eval as a test: measure the model on the held-out text and with
 seeded samples over five seeds, and fail when it is worse than the

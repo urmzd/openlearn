@@ -1,4 +1,4 @@
-"""My tests for L8.6 (rung R5). Exactness is checked by enumerating every
+"""Model test suite for L8.6. Exactness is checked by enumerating every
 uniform on a grid (the toy distributions are multiples of 1/N, so the sum
 is exact); greedy equivalence on a toy model whose logits cannot change
 with chunking. They import only the contract."""

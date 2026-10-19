@@ -1,6 +1,6 @@
 package main
 
-// The agent verb (MS-agent): `ctl agent ask`, one question to the docs agent.
+// The agent verb (Pass 10): `ctl agent ask`, one question to the docs agent.
 //
 //	ctl agent ask --query <text> --suite <index> [--id <run id>] [--runs <dir>]
 //	              [--durable <host:port>] [provider flags]

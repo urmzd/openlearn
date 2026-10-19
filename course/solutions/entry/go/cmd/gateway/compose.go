@@ -16,7 +16,7 @@
 //   - the RPM and TPM limits (gw.03) apply to the inference routes only.
 //   - the meter wraps the cache stage instead of the proxy alone, so a cache
 //     hit is a ledger row (cache_hit = 1) with the usage it replayed: the
-//     ledger then matches what every client was answered (MS-gateway).
+//     ledger then matches what every client was answered.
 //   - the admin API (/admin/v1/...) shares the API port behind its own authn.
 //   - the usage policy (gw.08, policy.go) runs after authn when
 //     [gateway].policy_file is set.

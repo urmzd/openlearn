@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Clock is the time seam (DESIGN 5.11): the real clock in the main, a fake
+// Clock is the time seam: the real clock in the main, a fake
 // one in tests. Its method set is a subset of the course testkit's
 // clock.Clock, so a *clock.Fake satisfies it.
 type Clock interface {
@@ -102,7 +102,7 @@ func (s Sample) TPOT() (time.Duration, bool) {
 	return (s.E2E - s.TTFT) / time.Duration(s.Tokens-1), true
 }
 
-// ReadStream reads an SSE body (DESIGN 2.6 framing) until [DONE], calling
+// ReadStream reads an SSE body (openapi SSE framing) until [DONE], calling
 // now() once per data event as soon as it is read. A body that ends before
 // [DONE], an `event: error`, or a data payload with an "error" member is an
 // error; ": ping" comments and blank lines are skipped.

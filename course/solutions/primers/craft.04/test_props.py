@@ -1,10 +1,9 @@
 """Reference property tests for the craft.04 kata (textops.py).
 
-What a learner's primers/craft.04/test_props.py looks like when it passes
-the check: every law of the chapter's section 4 as a Hypothesis property,
-plus a model (a slow, obviously correct BPE) that the fast one must agree
-with. The check runs this file against your kata, the course's kata, and
-ten planted faults.
+Model property suite for the kata: every law of the chapter's section 4 as
+a Hypothesis property, plus a model (a slow, obviously correct BPE) that
+the fast one must agree with. A good suite passes on a correct kata and
+fails on a kata that breaks any one of the rules in textops.py.
 """
 
 from __future__ import annotations

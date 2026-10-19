@@ -1,7 +1,6 @@
-"""Reference learner tests for data.05 (rung R3, red then green): written
-before the scrubber, from the interface and the chapter's pitfalls. They
-import only names in contracts/py/corpus/{pii,stage}.pyi; `ol mutate
-data.05` runs them against the reference with one planted bug at a time."""
+"""Model test suite for data.05 (red then green): written before the
+scrubber, from the interface and the chapter's pitfalls. They import only
+names in contracts/py/corpus/{pii,stage}.pyi."""
 
 import json
 

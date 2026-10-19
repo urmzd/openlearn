@@ -1,4 +1,4 @@
-"""My tests for L4.2 (rung R5: oracles and my own gradient check). The
+"""Model test suite for L4.2: oracles and an independent gradient check. The
 oracle is the formula written out in numpy with the module's own weights.
 They import only the contract."""
 

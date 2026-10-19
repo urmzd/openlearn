@@ -1,4 +1,4 @@
-"""My tests for L7.4 (rung R5). Oracles: each paper's rule written out per
+"""Model test suite for L7.4. Oracles: each paper's rule written out per
 pair in plain Python floats. They import only the contract."""
 
 import math

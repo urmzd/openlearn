@@ -1,5 +1,5 @@
-"""My tests for L5.1 (rung R5: the formula written out in numpy is the
-forward oracle, and my own central differences check every backward). They
+"""Model test suite for L5.1: the formula written out in numpy is the
+forward oracle, and independent central differences check every backward. They
 import only the contract."""
 
 import math

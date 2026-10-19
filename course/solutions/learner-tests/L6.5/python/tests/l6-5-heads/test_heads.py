@@ -1,4 +1,4 @@
-"""My tests for L6.5 (rung R5: oracles). The oracles are numpy: pools,
+"""Model test suite for L6.5, checked against numpy oracles: pools,
 softmax, cross-entropy, and the logistic fit recomputed by hand or through
 M07.7's own functions. They import only the contract."""
 

@@ -1,6 +1,5 @@
-// Reference learner tests for dur.01 (rung R4): properties of the log,
-// black box (package log_test). They prove the mutation threshold is
-// reachable; your own go/durable/log/log_learner_test.go is graded the same way.
+// Model test suite for dur.01: properties of the log, black box (package
+// log_test).
 //
 // Every test opens its own log in t.TempDir(). Durability is real (each
 // acknowledged append is fsynced), but the tests pass a plain fsync(2)

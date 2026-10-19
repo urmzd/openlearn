@@ -1,4 +1,4 @@
-"""My tests for L7.7 (rung R5). Oracles: the visibility rule written as a
+"""Model test suite for L7.7. Oracles: the visibility rule written as a
 double loop, attention with a sink written row by row in numpy float64, and
 full attention under the mask as the oracle for the bounded cache. They
 import only the contract."""

@@ -412,7 +412,7 @@ impl Target for RunnerTarget<'_> {
         // layer a sequence writes its K and V before it attends, so the
         // sequence at position p sees the ones before it; every row then
         // runs the same per-row math as a decode step of that position
-        // (batch invariance, DESIGN 2.4), which keeps greedy output equal to
+        // (batch invariance), which keeps greedy output equal to
         // the plain loop's.
         let seqs = ids
             .iter()

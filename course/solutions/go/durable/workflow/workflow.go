@@ -36,7 +36,7 @@ type Workflow func(ctx Context, input []byte) ([]byte, error)
 type Context struct{ e *env }
 
 // ErrNondeterminism: replaying the workflow produced a command the history
-// does not have at that position (DESIGN 2.7).
+// does not have at that position.
 var ErrNondeterminism = errors.New("durable: command does not match history")
 
 // ActivityOptions are the per-call options of ExecuteActivity.

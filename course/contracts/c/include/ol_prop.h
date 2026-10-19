@@ -1,4 +1,4 @@
-/* ol_prop.h: seeded property tests for C (course/DESIGN.md 5.9).
+/* ol_prop.h: seeded property tests for C.
  *
  * Frozen helper, used with ol_test.h. A property is a function of a
  * generator and a size; OL_CHECK_PROP runs it for `cases` seeds derived from

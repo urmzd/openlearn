@@ -18,7 +18,7 @@
  *                     a binary search, O(log n), touching no other memory.
  *
  * Results: matmul and rmsnorm within the float32 rounding of the plain
- * version (course/tests/craft.06/kata_check.c), sum within n * 2^-24 of
+ * version, sum within n * 2^-24 of
  * the exact sum relative to sum |x|, count_below exact. */
 #ifndef CRAFT06_KERNELS_H
 #define CRAFT06_KERNELS_H

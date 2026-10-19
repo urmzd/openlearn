@@ -10,8 +10,8 @@
 //! [`Gpt2Split`] is that expression as an iterator, one alternative at a
 //! time in the order the regex engine tries them. `\p{L}` (letters) and
 //! `\p{N}` (numbers) come from [`LETTER_RANGES`] and [`NUMBER_RANGES`],
-//! generated from Python's `unicodedata` (course/oracle/L1.5/unicode_tables.py),
-//! so this file classifies every code point exactly as your Python
+//! generated from Python's `unicodedata` (generator not included),
+//! so this file classifies every code point exactly as the Python
 //! pre-tokenizer (L1.2) does. `\s` is the Unicode White_Space property.
 //!
 //! Pieces are slices of the input: no allocation per pre-token.

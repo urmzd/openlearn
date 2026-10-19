@@ -28,7 +28,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "kvstore:", err)
 		os.Exit(1)
 	}
-	// Every message is capped at 4 MiB (DESIGN 2.7).
+	// Every message is capped at 4 MiB, the system-wide gRPC limit.
 	srv := grpc.NewServer(grpc.MaxRecvMsgSize(4<<20), grpc.MaxSendMsgSize(4<<20))
 	kvv1.RegisterKvTransferServiceServer(srv, kvstore.New())
 	// Install the handler before announcing readiness: a SIGTERM that lands

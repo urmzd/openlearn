@@ -1,4 +1,4 @@
-"""The Pass 9 training verb (course/milestones/MS-L11.toml fixes its flags
+"""The Pass 9 training verb (with its flags
 and final line).
 
     train llama --cfg <config.json> --data <text file> [--steps S] [--seq-len T]
@@ -21,7 +21,7 @@ the training loop. Final line:
 
 --out also writes that line to a file (the next run's --baseline).
 
-Entry-point territory (D16): this file is yours. It is glue over L7.9
+An entry point: glue over L7.9
 (LlamaConfig, LlamaForCausalLM), L11.1 (train_step_mixed,
 checkpoint_sequential), M10.3 (AdamW), L0.3 (cross_entropy), L0.4 (Module),
 and M06.3 (PCG32).

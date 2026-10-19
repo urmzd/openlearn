@@ -1,5 +1,4 @@
-// The reference answer to craft.21: resilience tests for the kata, graded
-// by the planted faults in course/mutants/craft.21 (rung R10). Each test
+// The reference answer to craft.21: resilience tests for the kata. Each test
 // kills, partitions, or starves the queue at the worst moment and checks one
 // promise: effects exactly once, nothing acknowledged lost, one owner per
 // task at a time.

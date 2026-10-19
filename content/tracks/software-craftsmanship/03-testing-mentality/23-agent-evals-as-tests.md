@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | **Module** | `craft.23` · practice · Go · Pass 10 · 1 to 2 h reading |
-| **Solution** | [`go/tests/agent-evals/suite.json`](../../../../course/solutions/entry/go/tests/agent-evals/suite.json): a repeatable R9 eval suite (`agent-regression-v1`) with a fixed seed, a paired comparison, disjoint splits, five named scorers, and nine observations |
+| **Solution** | [`go/tests/agent-evals/suite.json`](../../../../course/solutions/entry/go/tests/agent-evals/suite.json): a repeatable agent eval suite (`agent-regression-v1`) with a fixed seed, a paired comparison, disjoint splits, five named scorers, and nine observations |
 | **Contract** | [`eval-results.schema.json`](../../../../course/contracts/formats/eval-results.schema.json) |
 | **Needs** | `ag.09` runner, `ag.10` scorers, `ag.11` judge, `ag.12` experiments |
 | **Used by** | the agent pass, which gates citation quality, tool safety, and A/B behavior on this suite |
@@ -24,7 +24,7 @@ Sections 1 to 3 explain why agent behavior needs its own eval suite and work one
 
 ## 1. Why now
 
-Agent output depends on model sampling, retrieval, and tool execution. A unit test for one canned answer misses regressions in citations, tool success, latency, and state changes. R9 uses a fixed suite to check those behaviors as a release gate.
+Agent output depends on model sampling, retrieval, and tool execution. A unit test for one canned answer misses regressions in citations, tool success, latency, and state changes. A fixed eval suite checks those behaviors as a release gate.
 
 ## 2. Principles
 

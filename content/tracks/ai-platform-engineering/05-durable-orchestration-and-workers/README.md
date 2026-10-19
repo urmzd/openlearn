@@ -218,7 +218,7 @@ In the course you build the durable engine this topic describes, in Go, and run 
 | `dur.11` | Platform workflows `TrainRun` and `EvalSuite` | build | 8 |
 | `dur.12` | `ModelRelease`: export, `EvalSuite`, license and model-card gates, approval signal, canary | build | 9 |
 
-`dur.10` (Raft HA for the event log) is optional, with its own milestone `MS-durable-ha`.
+`dur.10` (Raft HA for the event log) is optional: the engine is complete without it, and HA is an extension on top.
 
 ## Chapters
 
