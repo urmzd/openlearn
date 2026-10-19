@@ -21,7 +21,11 @@ FENCE = re.compile(r"^\s*(```|~~~)")
 
 def tracked_markdown() -> list[Path]:
     out = subprocess.run(
-        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "*.md"], cwd=ROOT, check=True, capture_output=True, text=True
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "*.md"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout
     paths = [ROOT / p for p in out.split() if not p.startswith(SKIP_PREFIXES)]
     return [p for p in paths if p.exists()]
@@ -42,7 +46,11 @@ def broken_links(path: Path) -> list[tuple[int, str]]:
             file_part = target.split("#", 1)[0].split("?", 1)[0]
             if not file_part:
                 continue
-            resolved = (ROOT / file_part.lstrip("/")) if file_part.startswith("/") else (path.parent / file_part)
+            resolved = (
+                (ROOT / file_part.lstrip("/"))
+                if file_part.startswith("/")
+                else (path.parent / file_part)
+            )
             if not resolved.exists():
                 broken.append((number, target))
     return broken
