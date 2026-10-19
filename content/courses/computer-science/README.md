@@ -44,7 +44,7 @@ Study human-computer interaction with [MIT 6.831](https://ocw.mit.edu/courses/6-
 
 ### Distributed systems, data, and a capstone
 
-The last stage covers distributed systems in [Systems and Architecture](../systems/README.md), [Data Engineering](../data-engineering/README.md), a specialization of your choice, and a capstone. One possible systems capstone is [the course path through *Build an LLM*](../build-an-llm/paths/course/README.md), a staged build in Python, Rust, and Go; its optional C exercises are standalone and outside the core path. This stage assumes operating systems, networking, databases, software engineering, and whatever mathematics your specialization needs. The evidence is a failure-injection report, a reproducible pipeline, and a defended capstone with results and limitations.
+The last stage covers distributed systems in [Systems and Architecture](../systems/README.md), [Data Engineering](../data-engineering/README.md), a specialization of your choice, and a capstone. One possible systems capstone is [the course path through *Build Your Own LLM System*](../build-an-llm/paths/course/README.md), a staged build in Python, Rust, and Go; its optional C exercises are standalone and outside the core path. This stage assumes operating systems, networking, databases, software engineering, and whatever mathematics your specialization needs. The evidence is a failure-injection report, a reproducible pipeline, and a defended capstone with results and limitations.
 
 Throughout every stage, practice technical writing, accessibility, privacy, attribution, and professional responsibility, and include a stakeholder-impact analysis in each substantial project. Study concurrency on one machine before distributed execution.
 

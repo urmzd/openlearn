@@ -23,4 +23,4 @@ You should have a trained model from the [TinyStories capstone](../capstones/01-
 
 ## Further reading
 
-- The [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) and [Reinforcement Learning](../../machine-learning/03-reinforcement-learning/README.md) chapters of *Machine Learning*.
+- The [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) and [Reinforcement Learning](../../machine-learning/03-reinforcement-learning/README.md) chapters of *Machine Learning and AI*.

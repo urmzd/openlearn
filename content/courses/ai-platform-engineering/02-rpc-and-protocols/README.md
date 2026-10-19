@@ -15,7 +15,7 @@ The chapter starts with what RPC is and why it leaks. It then compares serializa
 
 ## Before you begin
 
-You should be comfortable with services, APIs, and load balancing at the level of [System Design](../../systems/01-system-design/) in *Systems & Architecture*, and with basic networking: what TCP and HTTP do. No prior experience with gRPC or Protobuf is assumed.
+You should be comfortable with services, APIs, and load balancing at the level of [System Design](../../systems/01-system-design/) in *Systems and Architecture*, and with basic networking: what TCP and HTTP do. No prior experience with gRPC or Protobuf is assumed.
 
 ## In this chapter
 

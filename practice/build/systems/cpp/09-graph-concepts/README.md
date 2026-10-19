@@ -1,20 +1,25 @@
-# C++ 09: Graph algorithms with concepts
+# Graph with concepts
 
-**Concepts:** C++20 concepts, ranges, generic algorithms
-**Difficulty:** ⭐⭐⭐
+The C [graph](../../c/06-graph/README.md) section wrote BFS, DFS, and topological sort for one graph type: integer vertices and adjacency arrays. Real programs have graphs everywhere, and almost none of them look like that. A grid computes its neighbours on demand; a dependency graph has string vertices; a road network carries weights. This section writes BFS, DFS, shortest path, and Dijkstra once, against a C++20 *concept* rather than a class, and runs the same code on three unrelated types that share no base class and do not know about each other.
 
-BFS, DFS, shortest path, and Dijkstra written against a *concept* rather than a
-class. The point is not the graph algorithms; it is that the same code runs on
-three unrelated types that share no base class and do not know about each
-other. The solution is the header [`graph.hpp`](graph.hpp);
-[`main.cpp`](main.cpp) is the test suite and defines the three graph types.
+The point is not the graph algorithms, which you have seen. It is how to state exactly what a generic algorithm needs, so that the compiler can check it at the call site, a type that computes everything lazily can still qualify, and a more specific algorithm (Dijkstra) is available only for types that support it. The solution is the header [`graph.hpp`](graph.hpp); [`main.cpp`](main.cpp) is the test suite and defines the three graph types.
 
-## The problem
+> **Learning objectives**
+> - Derive a concept from what an algorithm actually uses, asking for the weakest requirements that work.
+> - Refine one concept from another and use subsumption to restrict an algorithm to the types that support it.
+> - Write BFS, DFS, shortest path, and Dijkstra over arbitrary hashable vertex types.
+> - Implement Dijkstra with lazy deletion on `std::priority_queue` and explain why stale entries are safe to skip.
+
+## The concepts and algorithms
+
+Two concepts define what counts as a graph:
 
 | Concept | Requires |
 |---------|----------|
 | `Graph<G>` | `G::vertex_type`, hashable and equality-comparable, plus `g.neighbours(v)` returning an input range |
 | `WeightedGraph<G>` | `Graph<G>` and `g.weight(a, b)` convertible to `double` |
+
+The four algorithms are constrained on them:
 
 | Algorithm | Constrained on | Returns |
 |-----------|----------------|---------|
@@ -23,76 +28,46 @@ other. The solution is the header [`graph.hpp`](graph.hpp);
 | `shortest_path(g, src, dst)` | `Graph` | `optional<vector<V>>` |
 | `shortest_distances(g, src)` (Dijkstra) | `WeightedGraph` | `unordered_map<V, double>` |
 
-The test types are an adjacency list, a 300×300 grid whose neighbours are
-computed on demand, and a weighted graph with string vertices.
+The test types are an adjacency list, a 300×300 grid whose neighbours are computed on demand, and a weighted graph with string vertices.
 
-## Build and run
-
-From this directory:
+To build and run the tests from this directory:
 
 ```bash
 c++ -std=c++20 -Wall -Wextra -O2 main.cpp -o graph && ./graph
 # ok  cpp/09-graph-concepts  45 checks passed
 ```
 
-## What to notice
+## What a concept buys you
 
-**The concept moves the error to the call site.** An unconstrained template
-that fails deep inside its body produces a page of instantiation backtrace.
-`template <Graph G>` rejects the call itself and says which requirement was not
-met. The tests assert this with `static_assert(!Graph<NotAGraph>)`.
+The concept moves the error to the call site. An unconstrained template that fails deep inside its body produces a page of instantiation backtrace. `template <Graph G>` rejects the call itself and says which requirement was not met. The tests assert this with `static_assert(!Graph<NotAGraph>)`.
 
-**The grid is the case that justifies the whole approach.** `Grid` stores no
-adjacency structure at all: `neighbours` computes the four cardinal directions
-on demand. A 300×300 grid has 90,000 vertices and around 360,000 edges that
-never exist in memory. With a concept, `Grid` simply satisfies it.
+The grid is the case that justifies the whole approach. `Grid` stores no adjacency structure at all: `neighbours` computes the four cardinal directions on demand. A 300×300 grid has 90,000 vertices and around 360,000 edges that never exist in memory. With a concept, `Grid` simply satisfies it.
 
-**`WeightedGraph` refining `Graph` is subsumption, and it does real work.**
-Dijkstra is callable only on graphs that report weights, so passing an
-unweighted one is a clean overload-resolution failure. Concepts also order
-overloads by specificity, which is what makes constrained templates compose.
+`WeightedGraph` refining `Graph` is subsumption, and it does real work. Dijkstra is callable only on graphs that report weights, so passing an unweighted one is a clean overload-resolution failure. Concepts also order overloads by specificity, which is what makes constrained templates compose.
 
-**BFS and Dijkstra answer different questions, and the test makes them
-disagree on purpose.** In the weighted graph, `start → b` is one hop but costs
-5, while `start → a → b` is two hops and costs 2. BFS reports 1, Dijkstra
-reports 2.0, and both are right.
+## Hops versus weights
 
-**Lazy deletion beats decrease-key in practice.** `std::priority_queue` has no
-way to update an entry's priority, so this pushes a new entry and skips stale
-ones on pop. The [C binary heap exercise](../../c/04-binary-heap/) discusses the
-other side of that trade.
+BFS and Dijkstra answer different questions, and the test makes them disagree on purpose. In the weighted graph, `start → b` is one hop but costs 5, while `start → a → b` is two hops and costs 2. BFS reports 1, Dijkstra reports 2.0, and both are right.
 
-**Mark on enqueue, not on dequeue.** `try_emplace` returning whether it
-inserted does the check and the mark in one lookup. This is the same bug as in
-the [C version](../../c/06-graph/), and the idiomatic C++ spelling makes it
-harder to get wrong.
+Lazy deletion beats decrease-key in practice. `std::priority_queue` has no way to update an entry's priority, so this implementation pushes a new entry and skips stale ones on pop. The C [binary heap](../../c/04-binary-heap/README.md) section discusses the other side of that trade.
 
-**Watch for macro commas again.** `CHECK(dist[Cell{0, 0}] == 0, "...")` does not
-compile: the preprocessor reads the comma inside the braced initialiser as an
-argument separator. Extra parentheses around the condition fix it.
+## Deriving the design
 
-## The solution, step by step
+Six observations lead from the algorithms to the concepts and back.
 
-### From first principles
+Write down what the algorithms actually use. BFS needs a vertex type it can copy, compare, and hash (to keep a visited map), and a way to list a vertex's neighbours. Nothing else. That list *is* the `Graph` concept.
 
-1. **Write down what the algorithms actually use.** BFS needs: a vertex type it
-   can copy, compare, and hash (to keep a visited map), and a way to list a
-   vertex's neighbours. Nothing else. That list *is* the `Graph` concept.
-2. **Ask for the weakest range that works.** The algorithms only iterate
-   neighbours once, front to back, so `std::ranges::input_range` is enough. That
-   lets a type return a vector, a view, or anything else iterable.
-3. **Dijkstra needs one more thing**, edge weights, so `WeightedGraph` is
-   `Graph` plus `weight(v, w)`. Building it on `Graph` lets the compiler know
-   every weighted graph is a graph.
-4. **Sparse or implicit graphs mean hash maps, not arrays.** Vertices are
-   arbitrary types (cells, strings), not `0..n-1`, so distances and the visited
-   set live in `unordered_map` / `unordered_set` keyed by vertex.
-5. **BFS: mark on enqueue** with a single `try_emplace`, as in the C version.
-6. **Dijkstra with lazy deletion.** Push `(distance, vertex)` whenever a shorter
-   distance is found; when a popped entry is worse than the recorded distance,
-   it is stale and skipped. Correct for non-negative weights.
+Ask for the weakest range that works. The algorithms only iterate neighbours once, front to back, so `std::ranges::input_range` is enough. That lets a type return a vector, a view, or anything else iterable.
 
-### The code, annotated
+Dijkstra needs one more thing, edge weights, so `WeightedGraph` is `Graph` plus `weight(v, w)`. Building it on `Graph` lets the compiler know every weighted graph is a graph.
+
+Sparse or implicit graphs mean hash maps, not arrays. Vertices are arbitrary types (cells, strings), not `0..n-1`, so distances and the visited set live in `unordered_map` and `unordered_set` keyed by vertex.
+
+BFS marks on enqueue with a single `try_emplace`, as in the C version.
+
+Dijkstra uses lazy deletion. Push `(distance, vertex)` whenever a shorter distance is found; when a popped entry is worse than the recorded distance, it is stale and skipped. This is correct for non-negative weights.
+
+## Building it step by step
 
 The concepts:
 
@@ -158,7 +133,7 @@ first, matching recursive order, and skips already-visited vertices when popped:
 ```
 
 Neighbours are copied into `ns` because an input range cannot be iterated
-backwards. Unlike the C version's frame-per-vertex stack, this one may hold a
+backwards. Unlike the C [graph](../../c/06-graph/README.md)'s frame-per-vertex stack, this one may hold a
 vertex several times (once per unvisited predecessor), so it is bounded by
 edges rather than vertices.
 
@@ -198,27 +173,54 @@ auto shortest_distances(const G& g, typename G::vertex_type src)
 }
 ```
 
-Full solution: [`graph.hpp`](graph.hpp).
+The full solution is in [`graph.hpp`](graph.hpp).
 
-### Why this solution
+## Why this design
 
-- **Cost.** BFS and `shortest_path` O(V + E) expected (hash operations are O(1)
-  on average). DFS O(V + E). Dijkstra O(E log E) with lazy deletion, since the
-  queue can hold one entry per relaxation.
-- **Concepts versus a base class.** A virtual `neighbours()` would force a
-  common return type and a vtable call per vertex, and `Grid` would have to fit
-  that interface. A concept accepts whatever each type naturally provides.
-- **Concepts versus unconstrained templates.** Same generated code; the
-  difference is entirely in error messages and in being able to overload and
-  detect (`static_assert(!Graph<NotAGraph>)`).
-- **Lazy deletion versus an indexed heap.** An indexed heap supports
-  decrease-key and keeps the queue at V entries, but needs a position map
-  updated on every swap. Lazy deletion trades a larger queue for far simpler
-  code, and is what most production implementations do.
-- **Accepted trade.** Hash maps instead of arrays cost constant factors on dense
-  integer graphs, and Dijkstra is only correct for non-negative weights.
+BFS and `shortest_path` are O(V + E) expected (hash operations are O(1) on average), DFS is O(V + E), and Dijkstra is O(E log E) with lazy deletion, since the queue can hold one entry per relaxation.
 
-### Explain it back
+A base class with a virtual `neighbours()` would force a common return type and a vtable call per vertex, and `Grid` would have to fit that interface. A concept accepts whatever each type naturally provides. Against unconstrained templates, concepts generate the same code; the difference is entirely in error messages and in being able to overload and detect (`static_assert(!Graph<NotAGraph>)`).
+
+Lazy deletion is chosen over an indexed heap. An indexed heap supports decrease-key and keeps the queue at V entries, but needs a position map updated on every swap. Lazy deletion trades a larger queue for far simpler code, and is what most production implementations do.
+
+The accepted trade is that hash maps instead of arrays cost constant factors on dense integer graphs, and Dijkstra is only correct for non-negative weights.
+
+## What can go wrong
+
+Mark on enqueue, not on dequeue. `try_emplace` returning whether it inserted does the check and the mark in one lookup. This is the same bug as in the C [graph](../../c/06-graph/README.md), and the idiomatic C++ spelling makes it harder to get wrong.
+
+> **Warning:** Watch for macro commas again. `CHECK(dist[Cell{0, 0}] == 0, "...")` does not compile: the preprocessor reads the comma inside the braced initialiser as an argument separator. Extra parentheses around the condition fix it.
+
+| Mistake | Consequence |
+|---------|-------------|
+| Leaving hashing out of the concept | The error appears deep inside `unordered_map` instead of at the call |
+| Requiring a sized or random-access range | Computed neighbour ranges like the grid's are excluded |
+| Iterating an input range backwards in DFS | Not possible; the neighbours must be collected first |
+| Treating BFS hop counts as weighted distances | Wrong whenever weights differ |
+| Processing stale Dijkstra entries | Extra work, and relaxations from outdated distances |
+| Dijkstra with negative weights | Incorrect distances |
+
+## Where this leads
+
+Add A\* by constraining on a `Heuristic` concept, and notice you now need to express a relationship *between* two template parameters rather than a property of one. Then make `neighbours` return a lazy `std::ranges` view instead of a `std::vector`, which removes the per-vertex allocation the grid currently pays and is the reason the concept asks only for `input_range`. The same technique would let the [compile-time matrix](../04-constexpr-matrix/README.md) constrain its element type.
+
+## Key terms
+
+- **Concept**: a named compile-time predicate on template arguments, checked at the point of use.
+- **Requires expression**: the `requires (...) { ... }` syntax listing expressions a type must support.
+- **Subsumption**: the rule that a concept defined in terms of another is more specific, used to order overloads.
+- **Input range**: a range that can be traversed once, front to back.
+- **Lazy deletion**: leaving outdated entries in a priority queue and discarding them when popped.
+
+## Summary
+
+- `Graph` asks for exactly what the algorithms use: a hashable, comparable vertex type and an input range of neighbours.
+- `WeightedGraph` refines `Graph` with `weight`, so Dijkstra is available only for weighted graphs.
+- Vertices are arbitrary types, so distances and visited sets are hash maps; BFS marks on enqueue with `try_emplace`.
+- Dijkstra pushes on every relaxation and skips entries whose distance exceeds the recorded one.
+- One generic implementation serves an adjacency list, an implicit grid, and a string-keyed weighted graph.
+
+## Review questions
 
 1. Why does the `Graph` concept require hashing?
 
@@ -263,11 +265,3 @@ Full solution: [`graph.hpp`](graph.hpp).
    equal.
 
    </details>
-
-## Extending it
-
-Add A\* by constraining on a `Heuristic` concept, and notice you now need to
-express a relationship *between* two template parameters rather than a property
-of one. Then try making `neighbours` return a lazy `std::ranges` view instead of
-a `std::vector`, which removes the per-vertex allocation the grid currently
-pays and is the reason the concept asks only for `input_range`.

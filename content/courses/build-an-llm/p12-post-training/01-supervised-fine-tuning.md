@@ -121,7 +121,7 @@ The common bugs are the mirror images of those checks. Training on user tokens h
 
 The SFT checkpoint is the starting point for the rest of this chapter: [Direct preference optimization and IPO](02-direct-preference-optimization.md) uses it as the reference policy, and the [post-trained capstone](../capstones/02-post-trained.md) runs SFT, then preference optimization, RL, and distillation on the TinyStories model while preserving the serving chat contract.
 
-In production, Hugging Face TRL's SFT trainer adds length bucketing and packing for higher device utilization, with careful document masks. Dataset mixtures and loss weighting change which tokens define the training distribution; see the [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) chapter of *Machine Learning*.
+In production, Hugging Face TRL's SFT trainer adds length bucketing and packing for higher device utilization, with careful document masks. Dataset mixtures and loss weighting change which tokens define the training distribution; see the [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) chapter of *Machine Learning and AI*.
 
 ### Further reading
 

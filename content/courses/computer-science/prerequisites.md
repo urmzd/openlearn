@@ -61,4 +61,4 @@ Machine learning begins with [Statistical learning](../machine-learning/01-stati
 
 The branches meet at [LLM systems and inference](../machine-learning/04-llm-systems/README.md), which draws on foundation models, deep learning, training and post-training, systems, and data engineering. [AI Platform Engineering](../ai-platform-engineering/README.md) builds on LLM systems, systems, and data engineering; [Field Engineering](../field-engineering/README.md) builds on LLM systems and AI platform engineering; and [Responsible AI](../responsible-ai/README.md) builds on data engineering and LLM systems.
 
-The map shows the strict dependencies only. [*Build an LLM*](../build-an-llm/README.md) cuts across almost all of it in its own interleaved order, and its [course path](../build-an-llm/paths/course/README.md) names, pass by pass, which sections of these books to read and when.
+The map shows the strict dependencies only. [*Build Your Own LLM System*](../build-an-llm/README.md) cuts across almost all of it in its own interleaved order, and its [course path](../build-an-llm/paths/course/README.md) names, pass by pass, which sections of these books to read and when.

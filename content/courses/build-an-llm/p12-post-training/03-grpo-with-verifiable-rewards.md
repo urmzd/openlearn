@@ -103,7 +103,7 @@ The other classic mistake is omitting clipping from the policy objective, which 
 
 ## Where this leads
 
-The [post-trained capstone](../capstones/02-post-trained.md) runs verifiable-reward training after SFT and DPO and reports reward, KL, clip fraction, and rollout revision. The next section, [Distillation with forward and reverse KL](04-distillation.md), offers an alternative recipe that learns from a teacher's distribution instead of from rewards. Production systems add asynchronous rollout pools, for more throughput with explicit rollout revisions, and calibrated rewards with tool execution, validated against reward hacking and distribution shift. Policy gradients and PPO are covered in depth in the [Reinforcement Learning](../../machine-learning/03-reinforcement-learning/README.md) chapter of *Machine Learning*.
+The [post-trained capstone](../capstones/02-post-trained.md) runs verifiable-reward training after SFT and DPO and reports reward, KL, clip fraction, and rollout revision. The next section, [Distillation with forward and reverse KL](04-distillation.md), offers an alternative recipe that learns from a teacher's distribution instead of from rewards. Production systems add asynchronous rollout pools, for more throughput with explicit rollout revisions, and calibrated rewards with tool execution, validated against reward hacking and distribution shift. Policy gradients and PPO are covered in depth in the [Reinforcement Learning](../../machine-learning/03-reinforcement-learning/README.md) chapter of *Machine Learning and AI*.
 
 ### Further reading
 

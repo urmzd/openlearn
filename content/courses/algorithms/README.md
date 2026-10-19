@@ -6,7 +6,7 @@ By the end you will be able to reduce nested loops to hash-map lookups and point
 
 ## How the book is organized
 
-The first eleven chapters, plus the chapter on probabilistic structures, are the pattern chapters. Each one opens with the core insight of its pattern family and then works through classic problems whose solutions sit beside the text. The final chapter on systems data structures is different in kind: it is a sequence of full build sections, each implementing one structure that the inference and serving system in *Build an LLM* depends on. Chapter numbers 12 to 14 are intentionally unused; they belonged to retired topics, and the numbering is kept so that existing links stay in order.
+The first eleven chapters, plus the chapter on probabilistic structures, are the pattern chapters. Each one opens with the core insight of its pattern family and then works through classic problems whose solutions sit beside the text. The final chapter on systems data structures is different in kind: it is a sequence of full build sections, each implementing one structure that the inference and serving system in *Build Your Own LLM System* depends on. Chapter numbers 12 to 14 are intentionally unused; they belonged to retired topics, and the numbering is kept so that existing links stay in order.
 
 [Arrays and hashing](01-arrays-hashing/README.md) starts where almost every efficient solution starts: trading memory for time with a hash map or set. Complement lookup ([Two Sum](01-arrays-hashing/two-sum.js)), frequency counting ([Contains Duplicate](01-arrays-hashing/contains-duplicate.js)), using indices as a hash ([Missing Number](01-arrays-hashing/missing-number.js)), and prefix and suffix products ([Product of Array Except Self](01-arrays-hashing/product-of-array-expect-self.js)) each turn an $O(n^2)$ scan into $O(n)$.
 
@@ -32,13 +32,13 @@ The first eleven chapters, plus the chapter on probabilistic structures, are the
 
 [Probabilistic data structures](15-probabilistic-structures/README.md) trades exactness for large space savings with bounded error: Bloom filters, HyperLogLog, and skip lists, with a [Bloom filter](15-probabilistic-structures/bloom.py) implementation in Python.
 
-[Systems data structures](16-systems-data-structures/README.md) builds, in C, Rust, and Go, the structures that a production LLM server relies on: a growable array, Swiss-table and Robin Hood hash maps, an intrusive list with LRU eviction, binary heaps for top-k selection and lazy deletion, a radix tree over token ids, a Bloom filter, and a consistent hash ring with bounded loads. Each section sits just before the part of *Build an LLM* that first calls it.
+[Systems data structures](16-systems-data-structures/README.md) builds, in C, Rust, and Go, the structures that a production LLM server relies on: a growable array, Swiss-table and Robin Hood hash maps, an intrusive list with LRU eviction, binary heaps for top-k selection and lazy deletion, a radix tree over token ids, a Bloom filter, and a consistent hash ring with bounded loads. Each section sits just before the part of *Build Your Own LLM System* that first calls it.
 
 ## Prerequisites and related books
 
 You should be comfortable writing loops, functions, and recursion in at least one language, and able to read JavaScript and Python; a few solutions are in C, TypeScript, and Java. Several chapters lean on discrete mathematics, probability, and linear algebra, which are covered in [*Mathematics for Computing*](../mathematics-for-computing/README.md). The systems chapter additionally expects the [C](../programming-languages/02-language-and-tool-primers/03-c.md), [Rust](../programming-languages/02-language-and-tool-primers/04-rust.md), and [Go](../programming-languages/02-language-and-tool-primers/06-go.md) primers from *Programming Languages*.
 
-Three other books pick up where this one leaves off. [*Competitive Programming*](../competitive-programming/README.md) goes further into contest techniques. [*Interview Preparation*](../interview-preparation/README.md) collects company-specific guides covering focus areas, question styles, and preparation strategies. [*Build an LLM*](../build-an-llm/README.md) is where the systems data structures are put to work. For standalone exercises outside any book, see the repository's [practice directory](../../../practice/).
+Three other books pick up where this one leaves off. [*Competitive Programming*](../competitive-programming/README.md) goes further into contest techniques. [*Interview Preparation*](../interview-preparation/README.md) collects company-specific guides covering focus areas, question styles, and preparation strategies. [*Build Your Own LLM System*](../build-an-llm/README.md) is where the systems data structures are put to work. For standalone exercises outside any book, see the repository's [practice directory](../../../practice/).
 
 ## Conventions
 

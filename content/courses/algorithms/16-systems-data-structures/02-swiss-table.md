@@ -1,6 +1,6 @@
 # A Swiss table
 
-The [Paged KV block pool](../../build-an-llm/p08-inference/08-paged-kv-block-pool.md) in *Build an LLM* must answer one question on every prompt: "is the block whose tokens hash to `h` already in memory, and which block is it?" The answer is a map from a 64-bit block hash to a 32-bit block id. It is consulted for every full block of every prompt, mostly with hashes it does not hold (a new prompt), and updated every time a block is cached or evicted. So the case that matters most is the miss.
+The [Paged KV block pool](../../build-an-llm/p08-inference/08-paged-kv-block-pool.md) in *Build Your Own LLM System* must answer one question on every prompt: "is the block whose tokens hash to `h` already in memory, and which block is it?" The answer is a map from a 64-bit block hash to a 32-bit block id. It is consulted for every full block of every prompt, mostly with hashes it does not hold (a new prompt), and updated every time a block is cached or evicted. So the case that matters most is the miss.
 
 The practice C drill `c/02` built a linear-probing map. It is correct, but a miss walks the whole run of occupied slots to the next empty one, and with deletes its tombstones make every run longer until a rebuild. This section keeps the drill's open addressing and changes how a probe looks at slots, so that a miss costs one 16-byte scan and the table holds 7/8 of its slots without slowing down. The result is a **Swiss table**, the design behind Abseil's `flat_hash_map` and Rust's `HashMap`.
 

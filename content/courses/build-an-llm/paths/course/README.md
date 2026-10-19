@@ -1,12 +1,12 @@
 # Build Your Own LLM System
 
-This path is the whole course in one reading order: a single LLM system, called `forge` in the reference solutions, built end to end in Python, Rust, Go, and C. It does not follow the chapter order of *Build an LLM*. Instead it interleaves sections from that book with the mathematics, systems, infrastructure, and craft sections from the other books in the library, in the order the system needs them. A section is read when the component it explains is about to be built, so every idea arrives with a reason to care about it.
+This path is the whole course in one reading order: a single LLM system, called `forge` in the reference solutions, built end to end in Python, Rust, Go, and C. It does not follow the chapter order of *Build Your Own LLM System*. Instead it interleaves sections from that book with the mathematics, systems, infrastructure, and craft sections from the other books in the library, in the order the system needs them. A section is read when the component it explains is about to be built, so every idea arrives with a reason to care about it.
 
 The system grows in passes. Pass 1 builds the thinnest version of every layer and runs it end to end: a byte bigram fitted by counting, a Rust engine that streams completions from its checkpoint, a Go gateway, a deployment on a local Kubernetes cluster, and one trace across the services. Every later pass deepens one or more layers behind contracts that do not change, so after each pass the system still runs end to end, and a regression anywhere shows up as a broken path you already understood.
 
 ## Before you begin
 
-Read the opening of [*Build an LLM*](../../README.md) first; it explains the idea that organizes the book and how its chapters fit together. Then read [The system the solutions build](SYSTEM.md), the map of every component, its language, its solution, and the contracts it meets at. You should be able to name each component and the contract it serves before starting Pass 0.
+Read the opening of [*Build Your Own LLM System*](../../README.md) first; it explains the idea that organizes the book and how its chapters fit together. Then read [The system the solutions build](SYSTEM.md), the map of every component, its language, its solution, and the contracts it meets at. You should be able to name each component and the contract it serves before starting Pass 0.
 
 ## The passes
 

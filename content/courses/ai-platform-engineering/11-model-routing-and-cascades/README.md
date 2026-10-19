@@ -15,7 +15,7 @@ This chapter builds that discipline in layers. It starts by separating the three
 
 ## Before you begin
 
-Routing is measured, so you need the harnesses and precision and recall from [LLM Evaluation](../09-llm-evaluation/). The cost arguments depend on prefill, the KV cache, and prompt caching from [LLM Systems and Inference](../../machine-learning/04-llm-systems/) in *Machine Learning*, and tuning the router uses SFT and LoRA from [Training and Frameworks](../01-training-and-frameworks/).
+Routing is measured, so you need the harnesses and precision and recall from [LLM Evaluation](../09-llm-evaluation/). The cost arguments depend on prefill, the KV cache, and prompt caching from [LLM Systems and Inference](../../machine-learning/04-llm-systems/) in *Machine Learning and AI*, and tuning the router uses SFT and LoRA from [Training and Frameworks](../01-training-and-frameworks/).
 
 ## Three decisions that share a name
 

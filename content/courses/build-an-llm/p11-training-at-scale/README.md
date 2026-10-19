@@ -25,4 +25,4 @@ You should be comfortable with the Tensor and training loop of the [Foundations]
 ## Further reading
 
 - Micikevicius et al., [*Mixed Precision Training*](https://arxiv.org/abs/1710.03740); Chen et al., [*Training Deep Nets with Sublinear Memory Cost*](https://arxiv.org/abs/1604.06174).
-- Rajbhandari et al., [ZeRO](https://arxiv.org/abs/1910.02054); the [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) chapter of *Machine Learning* for production practice.
+- Rajbhandari et al., [ZeRO](https://arxiv.org/abs/1910.02054); the [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) chapter of *Machine Learning and AI* for production practice.
