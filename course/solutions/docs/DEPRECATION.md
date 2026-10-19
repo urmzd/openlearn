@@ -10,7 +10,7 @@ Every notice names the old interface and version, replacement, first release car
 
 ## API v1 to v2
 
-- **Replacement:** API v2, selected explicitly with `X-API-Version: 2`.
+- **Replacement:** API v2, selected explicitly with `X-TL-API-Version: 2`.
 - **Notice:** v1 responses include `Deprecation` and `Sunset` headers during the overlap.
 - **Window:** at least 90 days from the first production release that emits both headers.
 - **Measure:** the gateway usage meter groups request totals by selected API version. Review v1 volume weekly and notify identified consumers directly.

@@ -1,6 +1,6 @@
-# craft.01 reference learner CI (course CI only: P2, the course ships no CI
-# file to learners; they write their own from the chapter). Three gates:
-# commit-lint, native-tests, course-check.
+# craft.01 reference CI for the system's repository. Two gates:
+# commit-lint (every new commit is a Conventional Commit) and native-tests
+# (every language's own test suite).
 name: ci
 
 on:
@@ -42,17 +42,3 @@ jobs:
         run: make -C primers/lang.02 && primers/lang.02/greet ci
       - name: Python primer imports inside its uv project
         run: cd primers/lang.01 && uv run python -c "import bigram, worksheet"
-
-  course-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - name: ol check --all --ci at the openlearn commit contracts/VERSION names
-        run: |
-          set -euo pipefail
-          SHA="$(sed -n 's/^sha = "\(.*\)"$/\1/p' contracts/VERSION)"
-          [ -n "$SHA" ] || { echo "contracts/VERSION names no sha; run ol contracts sync" >&2; exit 5; }
-          git clone --quiet https://github.com/urmzd/openlearn.git .ol/openlearn
-          git -C .ol/openlearn checkout --quiet --detach "$SHA"
-          OL_COURSE_HOME="$PWD" .ol/openlearn/practice/bin/ol check --all --ci

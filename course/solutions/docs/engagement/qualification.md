@@ -19,7 +19,7 @@
 
 The sample provided for this exercise describes a peak of **12 requests/s**, **1,200 input tokens/request**, and **300 generated tokens/request**. Treat these as customer supplied but not yet validated. At peak, the offered load is approximately 14,400 input tokens/s and 3,600 output tokens/s. The capacity test must replay the observed arrival pattern rather than assume a constant rate.
 
-For a transparent memory estimate, assume a 1.3B parameter model with 24 layers, 16 KV heads, head dimension 64, and bf16 KV values. One token of KV cache is approximately `2 × layers × KV heads × head dimension × 2 bytes = 98,304 bytes` per sequence position. At 1,500 total tokens and 12 concurrent requests, that is about 1.77 GiB of KV data before allocator/block overhead, weights, runtime state, and safety margin. This estimate is not a deployment commitment. Validate the actual config and concurrency against load and memory reports.
+For a transparent memory estimate, assume a 1.3B parameter model with 24 layers, 16 KV heads, head dimension 64, and bf16 KV values. One token of KV cache is approximately `2 × layers × KV heads × head dimension × 2 bytes = 98,304 bytes` per sequence position. At 1,500 total tokens and 12 concurrent requests, that is 1,769,472,000 bytes, about 1.77 GB (1.65 GiB) of KV data before allocator/block overhead, weights, runtime state, and safety margin. This estimate is not a deployment commitment. Validate the actual config and concurrency against load and memory reports.
 
 ## Decision and gates
 

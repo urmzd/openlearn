@@ -1,12 +1,11 @@
-# dep.05 reference: the platform pipeline of the learner repo (course CI only;
-# P2, the course ships no CI file to learners). craft.01's ci.yml keeps its
-# three gates (commit-lint, native-tests, course-check); this workflow adds
-# the jobs a running platform needs:
+# dep.05 reference: the platform pipeline of the system's repository.
+# craft.01's ci.yml keeps its two gates (commit-lint, native-tests); this
+# workflow adds the jobs a running platform needs:
 #
 #   lint       formatters and linters, every language
 #   unit       every native test suite
 #   images     every deploy/docker/*.Dockerfile builds, as non-root
-#   kind-e2e   a kind cluster, `tilt ci`, and `ol milestone MS-prod --smoke`
+#   kind-e2e   a kind cluster and `tilt ci` (every resource rolls out ready)
 #   perf-gate  on main only: load.02 compares this run's load report with the
 #              last green main run's and fails on a regression
 #
@@ -118,13 +117,10 @@ jobs:
           echo "TL_API_KEY=$key" >> "$GITHUB_ENV"
       - name: tilt ci
         run: tilt ci -f deploy/Tiltfile --context "kind-$SYSTEM" --timeout 15m -- --topology=disaggregated
-      - name: ol milestone MS-prod --smoke at the openlearn commit contracts/VERSION names
-        run: |
-          set -euo pipefail
-          SHA="$(sed -n 's/^sha = "\(.*\)"$/\1/p' contracts/VERSION)"
-          git clone --quiet https://github.com/urmzd/openlearn.git .ol/openlearn
-          git -C .ol/openlearn checkout --quiet --detach "$SHA"
-          OL_COURSE_HOME="$PWD" .ol/openlearn/practice/bin/ol milestone MS-prod --smoke
+      # An end-to-end smoke step belongs here: through the gateway's NodePort,
+      # with $TL_API_KEY, a chat completion (plain and streamed) answers 200
+      # with a well-formed body, a request without the key answers 401, and
+      # every Deployment reports all replicas ready.
 
   perf-gate:
     # Only on main: a pull request compares against nothing stable yet, and

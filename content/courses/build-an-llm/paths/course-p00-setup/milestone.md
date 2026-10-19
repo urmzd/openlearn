@@ -13,10 +13,11 @@ Both checks keep running in every later pass: a red CI or a non-conventional HEA
 
 ## The local CI script
 
-Without a hosted CI, the same gates run from one script, [`ci-local.sh`](../../../../../course/solutions/entry/scripts/ci-local.sh), in three stages:
+Without a hosted CI, the same gates run from one script, [`ci-local.sh`](../../../../../course/solutions/entry/scripts/ci-local.sh), in two stages:
 
 1. **commit-lint**: run the repository's `.githooks/commit-msg` hook on the message of HEAD, so the hook and CI enforce the same rule.
 2. **native-tests**: build and run the shell/make primer (`make -C primers/lang.02`), clean it again, and import the Python primer modules, so a broken toolchain fails here rather than in a later pass.
-3. **the test suite**: run the system's tests. (The reference script's third stage still calls the removed course checker; the system's own test commands belong there.)
+
+Each language's own test command (`pytest`, `cargo test`, `go test ./...`, `make test`) joins the native-tests stage as that language enters the system.
 
 `set -euo pipefail` makes the first failing command fail the script, which is what makes it usable as a gate.
