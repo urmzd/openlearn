@@ -1,44 +1,38 @@
-<!-- ol:module lang.05 -->
 # HTTP/1.1, JSON, and Server-Sent Events from the wire up
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `lang.05` · practice · Rust · Pass 1 · 5 to 7 h |
-| **You build** | `primers/lang.05/`: the `wire` package, a library (HTTP request parser, response writer, JSON reader and writer, SSE framing, no sockets) and a `wire` server binary with three routes: `GET /health`, `POST /echo`, `GET /count` (an SSE stream) |
+| **Module** | `lang.05` · practice · Rust · Pass 1 · 2 to 3 h reading |
+| **Solution** | The `wire` package ([`Cargo.toml`](../../../../course/solutions/primers/lang.05/Cargo.toml)): the library [`src/lib.rs`](../../../../course/solutions/primers/lang.05/src/lib.rs) (`read_request`, `write_response`, `write_sse_head`, `sse_event`, `parse_json`, `json_string`, `Request`, `HttpError`, `Json`; no sockets) and the server [`src/main.rs`](../../../../course/solutions/primers/lang.05/src/main.rs) (`handle`, `route`, `echo`, `count`) with three routes: `GET /health`, `POST /echo`, `GET /count` (an SSE stream) |
 | **Contract** | none: the routes table and the signatures in section 4 are the contract; the standards are RFC 9112 (HTTP/1.1), RFC 8259 (JSON), and the WHATWG "Server-sent events" section |
-| **Tests** | `course/tests/lang.05/check` builds your package, runs your own `cargo test`, then runs `test_lang05_http_sse.py`, which sends raw bytes over TCP and runs `curl -N` against your server (what each test checks: section 4) |
 | **Needs** | reading: `lang.04` Rust (ownership, `Result`, traits, `std::net`, a thread per connection) |
-| **Used by** | no call site (a primer): `L10.0` applies it next (your engine's `http.rs` is this package grown up), then `gw.00` (the gateway relays the same SSE) |
-| **Milestone** | `MS-P1` |
+| **Used by** | no call site (a primer): `L10.0` applies it next (the engine's `http.rs` is this package grown up), then `gw.00` (the gateway relays the same SSE) |
 | **Optional depth** | [RFC 9112, HTTP/1.1](https://www.rfc-editor.org/rfc/rfc9112) (free), sections 2 to 6; [RFC 9110, HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110) (free), section 15 (status codes); [RFC 8259, JSON](https://www.rfc-editor.org/rfc/rfc8259) (free); [HTML Standard, Server-sent events](https://html.spec.whatwg.org/multipage/server-sent-events.html) (free); [MDN, Using server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) (free) |
 
 ## Key Takeaways
 
-- An HTTP/1.1 message is text lines ending in `\r\n`: a start line, headers, an empty line, then a body whose end is given by `Content-Length` (or, for a response with neither length nor chunking, by the server closing the connection) (`test_health_response_bytes`).
-- Header names ignore case, and `Content-Length` counts **bytes**, not characters (`test_header_names_are_case_insensitive`, `test_echo_round_trips_json_text`).
-- JSON strings are UTF-8 text with escapes; `\uXXXX` names a UTF-16 code unit, so a character beyond U+FFFF is written as two escapes, a **surrogate pair** (`test_json_unicode_escapes_and_surrogate_pairs`).
-- An SSE stream is a `text/event-stream` response whose body is a sequence of events, each `data: <payload>` lines followed by a blank line; the OpenAI convention ends it with `data: [DONE]` (`test_sse_stream_framing`).
-- Streaming means each event leaves the server when it is produced: write it, flush it, and do not let a buffer or Nagle's algorithm hold it (`test_sse_events_leave_as_they_happen`).
+- An HTTP/1.1 message is text lines ending in `\r\n`: a start line, headers, an empty line, then a body whose end is given by `Content-Length` (or, for a response with neither length nor chunking, by the server closing the connection).
+- Header names ignore case, and `Content-Length` counts **bytes**, not characters.
+- JSON strings are UTF-8 text with escapes; `\uXXXX` names a UTF-16 code unit, so a character beyond U+FFFF is written as two escapes, a **surrogate pair**.
+- An SSE stream is a `text/event-stream` response whose body is a sequence of events, each `data: <payload>` lines followed by a blank line; the OpenAI convention ends it with `data: [DONE]`.
+- Streaming means each event leaves the server when it is produced: write it, flush it, and do not let a buffer or Nagle's algorithm hold it.
 
-## How to work this chapter
+## How to read this chapter
+
+Section 2 builds HTTP/1.1, JSON, and SSE from their byte formats and explains why streaming needs flushing and `TCP_NODELAY`. Section 3 counts the exact bytes of three exchanges by hand. Section 4 fixes the routes, the library's signatures, and the cases a correct solution must handle. Section 5 walks through the request reader, the writers, the JSON parser, and the routes, and explains why each is written the way it is. Try to predict each function before reading it. To run the solution:
 
 ```bash
-ol start lang.05          # records that you started; the exercise lives in primers/lang.05/
-ol tests lang.05          # read the test catalog first
-ol check lang.05          # first run writes the starter package (stubs), then checks it
 cd primers/lang.05 && cargo test && cargo run -- --port 8080
 curl -N 'http://127.0.0.1:8080/count?n=5&delay_ms=500'   # watch the events arrive one by one
 ```
-
-The first `ol check lang.05` writes the starter files that are missing into `primers/lang.05/`: `Cargo.toml` as given, and `src/lib.rs` and `src/main.rs` with every function body replaced by `todo!("lang.05")`. The starter compiles and fails. `ol check` never overwrites a file.
 
 ---
 
 ## 1. Why now
 
-Your echo server (`lang.04`) speaks a protocol you invented, so only your own client can talk to it. The engine you write next (`L10.0`) must be reachable by `curl`, by the official OpenAI client libraries, and by the Go gateway (`gw.00`), and all of them speak the same thing: **HTTP/1.1** requests with **JSON** bodies, answered either with one JSON document or with a stream of **Server-Sent Events**, one event per generated token. The tracer engine is std-only Rust (`spec/cli-roles.md`: no TOML parser, no HTTP library), so you will write that protocol yourself, and when a client hangs or a stream arrives all at once you will need to read the bytes on the wire to see why. This primer builds a small server that does each piece once, on routes simple enough to check by eye.
+The echo server of `lang.04` speaks an invented protocol, so only a client written for it can talk to it. The engine that comes next (`L10.0`) must be reachable by `curl`, by the official OpenAI client libraries, and by the Go gateway (`gw.00`), and all of them speak the same thing: **HTTP/1.1** requests with **JSON** bodies, answered either with one JSON document or with a stream of **Server-Sent Events**, one event per generated token. The tracer engine is std-only Rust (`spec/cli-roles.md`: no TOML parser, no HTTP library), so it implements that protocol itself, and when a client hangs or a stream arrives all at once, the bytes on the wire are what explain why. This primer builds a small server that does each piece once, on routes simple enough to check by eye.
 
 ## 2. Principles
 
@@ -117,7 +111,7 @@ Inside a string, `"` and `\` must be escaped (`\"`, `\\`), and so must every cha
 
 `\uXXXX` names a **UTF-16 code unit**, a 16-bit number, so it can only spell characters up to U+FFFF directly. A character above that, such as the emoji U+1F600, is written as two escapes, a **surrogate pair**: subtract 0x10000 to get a 20-bit number, put its high 10 bits after 0xD800 (the **high surrogate**, 0xD800 to 0xDBFF) and its low 10 bits after 0xDC00 (the **low surrogate**, 0xDC00 to 0xDFFF). A reader that sees a high surrogate must read the low one and combine them; a lone surrogate is an error.
 
-A **recursive-descent parser** reads JSON with one function per kind of value: look at the next byte, and `{` means "read an object", which calls "read a value" for each member, and so on. Your parser keeps an index into the bytes and a depth counter, so a body of ten thousand `[` cannot exhaust the stack.
+A **recursive-descent parser** reads JSON with one function per kind of value: look at the next byte, and `{` means "read an object", which calls "read a value" for each member, and so on. The solution's parser keeps an index into the bytes and a depth counter (at most 64 levels), so a body of ten thousand `[` cannot exhaust the stack.
 
 ### 2.5 Server-Sent Events
 
@@ -138,7 +132,7 @@ The field this course uses is `data`. A payload that contains a newline is sent 
 
 ### 2.6 Buffering, flushing, and Nagle
 
-Bytes you write can wait in three places before they reach the client: a user-space buffer (a `BufWriter` holds writes until it is full or flushed), the kernel's socket buffer, and **Nagle's algorithm**, a TCP rule that delays a small segment while an earlier one is unacknowledged, hoping to merge them. For a JSON response that is all harmless. For a stream it defeats the purpose: the client sees nothing for seconds and then every event at once.
+Bytes a program writes can wait in three places before they reach the client: a user-space buffer (a `BufWriter` holds writes until it is full or flushed), the kernel's socket buffer, and **Nagle's algorithm**, a TCP rule that delays a small segment while an earlier one is unacknowledged, hoping to merge them. For a JSON response that is all harmless. For a stream it defeats the purpose: the client sees nothing for seconds and then every event at once.
 
 So a streaming server writes each event and **flushes** it, and sets `TCP_NODELAY` on the socket (`stream.set_nodelay(true)` in Rust) so small writes leave immediately. Writing straight to a `TcpStream` has no user-space buffer; wrapping it in a `BufWriter` does, and then every event needs `flush()`.
 
@@ -149,11 +143,11 @@ So a streaming server writes each event and **flushes** it, and sets `TCP_NODELA
 | `curl -i URL` | the response status line and headers, then the body |
 | `curl -N URL` | turns off curl's output buffer, so stream events print as they arrive |
 | `curl -v URL` | the request bytes curl sent, prefixed `>`, and the response, prefixed `<` |
-| `printf 'GET /health HTTP/1.1\r\nHost: x\r\n\r\n' \| nc 127.0.0.1 8080` | sends exact bytes you wrote, including malformed ones |
+| `printf 'GET /health HTTP/1.1\r\nHost: x\r\n\r\n' \| nc 127.0.0.1 8080` | sends exact bytes, including malformed ones |
 
 ## 3. Worked example by hand
 
-These are the exact bytes `test_health_response_bytes`, `test_echo_round_trips_json_text`, and `test_sse_stream_framing` check.
+These are the exact bytes the solution produces for the health, echo, and stream cases of section 4.
 
 **Health.** The client sends `GET /health HTTP/1.1\r\nHost: test\r\n\r\n`. The body is `{"ok":true}`: count the bytes `{` `"` `o` `k` `"` `:` `t` `r` `u` `e` `}`, 11 in all, so:
 
@@ -173,7 +167,7 @@ data: {"i":0}\n\ndata: {"i":1}\n\ndata: [DONE]\n\n
 
 and closes the connection. Run `curl -N 'http://127.0.0.1:8080/count?n=5&delay_ms=500'` and the five events appear half a second apart; if they appear together at the end, something is buffering (section 2.6).
 
-## 4. The artifact and its check
+## 4. The interface
 
 ```text
 primers/lang.05/
@@ -218,41 +212,401 @@ pub fn parse_json(text: &str) -> Result<Json, String>;  // one whole JSON text
 pub fn json_string(s: &str) -> String;                 // quoted and escaped
 ```
 
-Because the functions take any `BufRead` and any `Write`, your own unit tests can call `read_request(&mut &bytes[..])` on a byte slice and `write_response(&mut vec, ...)` into a `Vec<u8>`, with no socket.
+Because the functions take any `BufRead` and any `Write`, unit tests can call `read_request(&mut &bytes[..])` on a byte slice and `write_response(&mut vec, ...)` into a `Vec<u8>`, with no socket.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_crate_builds` | conformance | the package builds a library and a `wire` binary, std only | the tracer engine is std only (`L10.0`) |
-| `test_your_cargo_tests_pass` | unit | your own unit tests pass | your parser is tested without a socket |
-| `test_health_response_bytes` | unit | section 3's exact response bytes | every client relies on the status line and `Content-Length` |
-| `test_echo_round_trips_json_text` | unit | quotes, backslash, newline, tab, non-ASCII survive; `bytes` and `Content-Length` count bytes | generated text can contain any byte (`L10.0`) |
-| `test_json_unicode_escapes_and_surrogate_pairs` | boundary | `é` and the pair `😀` decode to 6 bytes of UTF-8 | prompts arrive from JSON clients with any escapes |
-| `test_header_names_are_case_insensitive` | boundary | `content-length` and `CONTENT-LENGTH` both work | the Go gateway's headers reach your engine (`gw.00`) |
-| `test_body_split_across_packets` | boundary | head and body arriving in three pieces | TCP is a byte stream (`lang.04`) |
-| `test_bad_json_is_a_400_with_a_json_error` | boundary | five malformed bodies, each a 400 JSON error | the OpenAI error shape in `L10.0` |
-| `test_post_without_content_length_is_411` | boundary | no length, 411 | a body's end must be known |
-| `test_malformed_request_line_is_400` | boundary | four bad request lines | untrusted input is rejected, not guessed |
-| `test_unknown_path_and_wrong_method` | unit | 404, and 405 with `Allow` | the engine answers unknown routes the same way |
-| `test_sse_stream_framing` | conformance | `text/event-stream`, no length, exact event bytes, `[DONE]` | the v0 API streams exactly this way |
-| `test_sse_events_leave_as_they_happen` | fault | the first event arrives before the 1 s pause ends | tokens must reach the user as they are generated |
-| `test_curl_n_reads_the_stream` | conformance | `curl -N` reads your stream unchanged | off-the-shelf clients agree with your framing |
+| the crate builds | conformance | the package builds a library and a `wire` binary, std only | the tracer engine is std only (`L10.0`) |
+| the unit tests pass | unit | the library's unit tests pass | the parser is tested without a socket |
+| health response bytes | unit | section 3's exact response bytes | every client relies on the status line and `Content-Length` |
+| echo round-trips JSON text | unit | quotes, backslash, newline, tab, non-ASCII survive; `bytes` and `Content-Length` count bytes | generated text can contain any byte (`L10.0`) |
+| JSON unicode escapes and surrogate pairs | boundary | `é` and the pair `😀` decode to 6 bytes of UTF-8 | prompts arrive from JSON clients with any escapes |
+| header names are case-insensitive | boundary | `content-length` and `CONTENT-LENGTH` both work | the Go gateway's headers reach the engine (`gw.00`) |
+| a body split across packets | boundary | head and body arriving in three pieces | TCP is a byte stream (`lang.04`) |
+| bad JSON is a 400 with a JSON error | boundary | five malformed bodies, each a 400 JSON error | the OpenAI error shape in `L10.0` |
+| POST without Content-Length is 411 | boundary | no length, 411 | a body's end must be known |
+| a malformed request line is 400 | boundary | four bad request lines | untrusted input is rejected, not guessed |
+| unknown path and wrong method | unit | 404, and 405 with `Allow` | the engine answers unknown routes the same way |
+| SSE stream framing | conformance | `text/event-stream`, no length, exact event bytes, `[DONE]` | the v0 API streams exactly this way |
+| SSE events leave as they happen | fault | the first event arrives before the 1 s pause ends | tokens must reach the user as they are generated |
+| `curl -N` reads the stream | conformance | `curl -N` reads the stream unchanged | off-the-shelf clients agree with the framing |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### 5.1 From first principles
+
+1. The request is untrusted bytes from a stream (2.1). So reading is bounded at every step: each line is read with a byte cap, the head as a whole is capped at 16 KiB, and the body at 1 MiB. Exceeding a cap is a 413, not an allocation.
+2. The end of each piece is defined by the format, not by `read` boundaries: a line ends at `\n`, the head at an empty line, the body after exactly `Content-Length` bytes. So the reader sits on a `BufReader` and uses `read_until` and `read_exact`, which keep reading until the format says stop.
+3. Header names are case-insensitive, but the values a client sent are kept as sent. So headers are stored as a list of pairs and looked up with a case-insensitive comparison, rather than normalised on the way in.
+4. A request the server cannot frame (no length on a POST, chunked encoding it does not implement) must be refused, not guessed: guessing where a body ends desynchronises the stream.
+5. Every response with a known body states its byte length, and `Connection: close` makes "one request per connection" explicit (2.2, 2.3). The SSE response has no length; closing the connection ends it.
+6. JSON is a small recursive grammar, so a recursive-descent parser with one function per kind of value follows directly (2.4). Recursion depth is attacker-controlled, so it is capped.
+7. Strings are where JSON is subtle: escapes on the way in (including surrogate pairs), escapes on the way out (quotes, backslash, controls). Both directions are one function each, used everywhere, so no code builds JSON strings with `format!`.
+8. An SSE event is `data:` lines plus a blank line (2.5). Each event must reach the client when it is produced, so the socket has `TCP_NODELAY`, nothing buffers in user space, and each event is flushed (2.6).
+
+### 5.2 The code, annotated
+
+**Bounded line reading.**
+
+```rust
+/// Reads one line ending in `\n` from `r`, at most `limit` bytes, and
+/// returns it without the `\r\n` or `\n`. `Ok(None)` at a clean EOF.
+fn read_line<R: BufRead>(r: &mut R, limit: usize) -> Result<Option<Vec<u8>>, HttpError> {
+    let mut line = Vec::new();
+    let n = r
+        .by_ref()
+        .take(limit as u64 + 1)            // never read more than limit + 1 bytes for one line
+        .read_until(b'\n', &mut line)
+        .map_err(|e| HttpError::Io(e.to_string()))?;
+    if n == 0 {
+        return Ok(None);                   // the client closed before sending anything
+    }
+    if line.last() != Some(&b'\n') {
+        // either the cap stopped us (too large) or the stream ended mid-line
+        return Err(if n > limit { HttpError::TooLarge } else { HttpError::Io("connection closed mid-line".into()) });
+    }
+    line.pop();                            // the \n
+    if line.last() == Some(&b'\r') {
+        line.pop();                        // and a \r before it
+    }
+    Ok(Some(line))
+}
+```
+
+`take(limit + 1)` is the cap of step 1 applied inside `read_until`: one byte past the limit is enough to tell "too long" from "exactly at the limit". `by_ref()` lets `take` borrow the reader so it remains usable for the next line.
+
+**The request line and headers.**
+
+```rust
+pub fn read_request<R: BufRead>(r: &mut R) -> Result<Request, HttpError> {
+    let first = read_line(r, MAX_HEAD)?.ok_or(HttpError::Closed)?;
+    let first = String::from_utf8(first).map_err(|_| HttpError::BadRequest("request line is not UTF-8".into()))?;
+    let parts: Vec<&str> = first.split(' ').collect();
+    let [method, target, version] = parts[..] else {          // exactly three parts, single spaces
+        return Err(HttpError::BadRequest(format!("request line {first:?} is not `METHOD target HTTP/1.1`")));
+    };
+    if method.is_empty() || !method.bytes().all(|b| b.is_ascii_uppercase()) { /* 400 bad method */ }
+    if !target.starts_with('/') { /* 400 */ }
+    if version != "HTTP/1.1" && version != "HTTP/1.0" { /* 400 unsupported version */ }
+
+    let mut used = first.len();
+    let mut headers = Vec::new();
+    loop {
+        let line = read_line(r, MAX_HEAD)?.ok_or_else(|| HttpError::Io("connection closed in the headers".into()))?;
+        used += line.len() + 2;            // count the CRLF too: the cap is on the whole head
+        if used > MAX_HEAD {
+            return Err(HttpError::TooLarge);
+        }
+        if line.is_empty() {
+            break;                         // the empty line ends the head
+        }
+        let line = String::from_utf8(line).map_err(|_| HttpError::BadRequest("header is not UTF-8".into()))?;
+        let (name, value) = line.split_once(':')
+            .ok_or_else(|| HttpError::BadRequest(format!("header {line:?} has no colon")))?;
+        if name.is_empty() || name.bytes().any(|b| b <= b' ' || b == 0x7f) {   // no spaces or controls in a name
+            return Err(HttpError::BadRequest(format!("bad header name {name:?}")));
+        }
+        headers.push((name.to_string(), value.trim_matches(|c| c == ' ' || c == '\t').to_string()));
+    }
+    // ... body below
+```
+
+Splitting on single spaces and requiring exactly three parts rejects `GET  /health HTTP/1.1` (two spaces) and `GET /health` (no version), as RFC 9112 requires; a lenient parser that guessed would accept requests other servers on the path read differently. `split_once(':')` splits at the first colon, so a value like `127.0.0.1:8080` keeps its own colon.
+
+**The body.**
+
+```rust
+    let mut req = Request { method: method.to_string(), target: target.to_string(), headers, body: Vec::new() };
+    if req.header("transfer-encoding").is_some() {
+        return Err(HttpError::BadRequest("chunked request bodies are not supported".into()));   // step 4
+    }
+    let len = match req.header("content-length") {            // case-insensitive lookup (step 3)
+        Some(v) => {
+            if v.is_empty() || !v.bytes().all(|b| b.is_ascii_digit()) {   // no sign, no spaces, no "1e3"
+                return Err(HttpError::BadRequest(format!("bad Content-Length {v:?}")));
+            }
+            v.parse::<usize>().map_err(|_| HttpError::TooLarge)?          // all digits but overflows: too large
+        }
+        None if req.method == "POST" || req.method == "PUT" => return Err(HttpError::LengthRequired),
+        None => 0,
+    };
+    if len > MAX_BODY {
+        return Err(HttpError::TooLarge);   // before allocating
+    }
+    req.body = vec![0; len];
+    r.read_exact(&mut req.body).map_err(|e| HttpError::Io(format!("body: {e}")))?;   // however many packets
+    Ok(req)
+}
+```
+
+`read_exact` loops until the buffer is full, so a body split across three TCP segments is read whole; a client that closes early gives `Io`, and the server simply ends that connection.
+
+**Responses and SSE framing.**
+
+```rust
+pub fn write_response<W: Write>(w: &mut W, status: u16, content_type: &str,
+                                extra: &[(&str, &str)], body: &[u8]) -> io::Result<()> {
+    let mut head = format!(
+        "HTTP/1.1 {status} {}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n",
+        reason(status),
+        body.len()                         // bytes of the encoded body, never characters
+    );
+    for (k, v) in extra {
+        head.push_str(&format!("{k}: {v}\r\n"));   // e.g. Allow: POST on a 405
+    }
+    head.push_str("\r\n");
+    w.write_all(head.as_bytes())?;
+    w.write_all(body)?;
+    w.flush()
+}
+
+pub fn write_sse_head<W: Write>(w: &mut W) -> io::Result<()> {
+    // no Content-Length: the stream ends when the server closes the connection
+    w.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n")?;
+    w.flush()
+}
+
+pub fn sse_event(data: &str) -> String {
+    let mut out = String::new();
+    for line in data.split('\n') {         // a multi-line payload becomes several data: lines
+        out.push_str("data: ");
+        out.push_str(line);
+        out.push('\n');
+    }
+    out.push('\n');                        // the blank line that ends the event
+    out
+}
+```
+
+Taking the body as `&[u8]` makes `body.len()` a byte count by construction, so the `Content-Length` of section 3's echo is 24, not 23.
+
+**JSON: the parser's shape.**
+
+```rust
+    fn value(&mut self, depth: usize) -> Result<Json, String> {
+        if depth > 64 {
+            return Err("nested deeper than 64".into());   // step 6: bounded recursion
+        }
+        self.ws();
+        match self.b.get(self.i) {         // one byte of lookahead decides the kind
+            None => Err("unexpected end of input".into()),
+            Some(b'n') => self.eat("null").map(|_| Json::Null),
+            Some(b't') => self.eat("true").map(|_| Json::Bool(true)),
+            Some(b'f') => self.eat("false").map(|_| Json::Bool(false)),
+            Some(b'"') => self.string().map(Json::Str),
+            Some(b'[') => { /* items: value(depth + 1), separated by ',' until ']' */ }
+            Some(b'{') => { /* "key" ':' value(depth + 1) pairs, separated by ',' until '}' */ }
+            Some(_) => self.number(),
+        }
+    }
+
+pub fn parse_json(text: &str) -> Result<Json, String> {
+    let mut p = Parser { b: text.as_bytes(), i: 0 };
+    let v = p.value(0)?;
+    p.ws();
+    if p.i != p.b.len() {
+        return Err(format!("trailing characters at byte {}", p.i));   // `{} x` is not one JSON text
+    }
+    Ok(v)
+}
+```
+
+`number` follows the grammar of 2.4 exactly (optional `-`, no leading zero, a fraction and an exponent that must have digits) and only then hands the matched text to `f64::parse`, which on its own would accept things JSON forbids, such as `inf` or `+1`. Objects keep their keys in order in a `Vec`, which is enough for lookup in tiny bodies and avoids a map dependency.
+
+**JSON: strings in.**
+
+```rust
+                b'\\' => {
+                    // ... read the escape letter e
+                    let ch = match e {
+                        b'"' => '"', b'\\' => '\\', b'/' => '/',
+                        b'b' => '\u{8}', b'f' => '\u{c}', b'n' => '\n', b'r' => '\r', b't' => '\t',
+                        b'u' => {
+                            let hi = self.hex4()?;
+                            let code = if (0xD800..0xDC00).contains(&hi) {
+                                // A high surrogate must be followed by \uDC00..\uDFFF.
+                                self.eat("\\u")?;
+                                let lo = self.hex4()?;
+                                if !(0xDC00..0xE000).contains(&lo) {
+                                    return Err("unpaired surrogate".into());
+                                }
+                                0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00)
+                            } else {
+                                hi
+                            };
+                            // a lone LOW surrogate is not a char either: from_u32 rejects it
+                            char::from_u32(code).ok_or("unpaired surrogate")?
+                        }
+                        _ => return Err(format!("bad escape \\{}", e as char)),
+                    };
+                    let mut buf = [0u8; 4];
+                    out.extend_from_slice(ch.encode_utf8(&mut buf).as_bytes());   // back to UTF-8 bytes
+                }
+                c if c < 0x20 => return Err("raw control character in a string".into()),
+                c => out.push(c),          // raw bytes, already UTF-8 because the input is &str
+```
+
+This is section 3's surrogate arithmetic in code: `0xD83D, 0xDE00` gives `0x10000 + (0x3D << 10) + 0x200 = 0x1F600`, which `encode_utf8` writes as `f0 9f 98 80`.
+
+**JSON: strings out.**
+
+```rust
+pub fn json_string(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),   // other controls
+            c => out.push(c),              // everything else, non-ASCII included, as raw UTF-8
+        }
+    }
+    out.push('"');
+    out
+}
+```
+
+**The server.** One request per connection, routed by method and path:
+
+```rust
+fn handle(stream: TcpStream) -> io::Result<()> {
+    // Small writes (one SSE event) must leave at once, not wait for more data.
+    stream.set_nodelay(true)?;
+    stream.set_read_timeout(Some(Duration::from_secs(10)))?;  // a silent client cannot hold a thread forever
+    let mut reader = BufReader::new(stream.try_clone()?);
+    let mut out = stream;                  // writes go straight to the socket: no user-space buffer
+    match read_request(&mut reader) {
+        Ok(req) => route(&req, &mut out),
+        Err(HttpError::Closed) | Err(HttpError::Io(_)) => Ok(()),   // nobody to answer
+        Err(e) => {
+            let msg = format!("{e:?}");
+            error(&mut out, e.status(), &msg, &[])                  // 400, 411, 413 as JSON
+        }
+    }
+}
+
+fn route(req: &Request, out: &mut TcpStream) -> io::Result<()> {
+    match (req.method.as_str(), req.path()) {
+        ("GET", "/health") => write_response(out, 200, "application/json", &[], b"{\"ok\":true}"),
+        ("POST", "/echo") => echo(req, out),
+        ("GET", "/count") => count(req, out),
+        (_, "/health") | (_, "/count") => error(out, 405, "method not allowed", &[("Allow", "GET")]),
+        (_, "/echo") => error(out, 405, "method not allowed", &[("Allow", "POST")]),
+        _ => error(out, 404, &format!("no route for {}", req.path()), &[]),
+    }
+}
+```
+
+Matching on the `(method, path)` pair makes the 405 cases fall out naturally: a known path with any other method reaches its 405 arm, and only unknown paths reach the 404.
+
+```rust
+fn echo(req: &Request, out: &mut TcpStream) -> io::Result<()> {
+    let text = std::str::from_utf8(&req.body).map_err(|e| e.to_string()).and_then(parse_json);
+    let text = match text {
+        Ok(v) => match v.get("text").and_then(Json::as_str) {
+            Some(t) => t.to_string(),
+            None => return error(out, 400, "body must be a JSON object with a string \"text\"", &[]),
+        },
+        Err(e) => return error(out, 400, &format!("bad JSON: {e}"), &[]),
+    };
+    let body = format!("{{\"text\":{},\"bytes\":{}}}", json_string(&text), text.len());
+    write_response(out, 200, "application/json", &[], body.as_bytes())
+}
+
+fn count(req: &Request, out: &mut TcpStream) -> io::Result<()> {
+    let n: u32 = match req.query("n").map(str::parse::<u32>) {
+        None => 3,                         // absent: the default
+        Some(Ok(n)) if n <= 1000 => n,
+        _ => return error(out, 400, "n must be an integer from 0 to 1000", &[]),   // bad or out of range
+    };
+    // ... delay_ms the same way, 0..=5000, default 0
+    write_sse_head(out)?;                  // validation is done before the 200 is sent
+    for i in 0..n {
+        if i > 0 && delay > 0 {
+            thread::sleep(Duration::from_millis(delay));   // between events, not before the first
+        }
+        out.write_all(sse_event(&format!("{{\"i\":{i}}}")).as_bytes())?;
+        out.flush()?; // a TcpStream has no buffer, but a BufWriter would: flush per event
+    }
+    out.write_all(sse_event("[DONE]").as_bytes())?;
+    out.flush()                            // returning drops the socket: the stream ends
+}
+```
+
+Parameters are validated before `write_sse_head`, because once the 200 head is sent the status can no longer change. The first event is written immediately, so a client sees it before the first pause, which is what "events leave as they happen" requires.
+
+Full solution: [`lib.rs`](../../../../course/solutions/primers/lang.05/src/lib.rs), [`main.rs`](../../../../course/solutions/primers/lang.05/src/main.rs).
+
+### 5.3 Why this solution
+
+- **Cost.** Reading a request is linear in its size and bounded by the caps; the JSON parser is linear in the body; a stream of `n` events costs `n` small writes. Memory per connection is one buffer and the body, at most about 1 MiB.
+- **A hand-written parser** rather than `httparse` or `hyper`: the tracer engine is std-only, and writing it once is how the bytes become readable. `L10.5` moves to hyper once that understanding exists.
+- **One request per connection** rather than keep-alive: no need to find the end of one request inside a stream that carries the next, and SSE can end by closing. The cost is a TCP handshake per request.
+- **Strict request-line parsing** rather than lenient: two parsers that disagree about where a request ends is how request smuggling happens. Rejecting anything ambiguous is the safe default.
+- **Tradeoff accepted:** query values are not percent-decoded, which is enough for `n=5` but not for arbitrary text in a query.
+
+### 5.4 Explain it back
+
+**Why does `read_line` use `take(limit + 1)` and not just check the length after `read_until`?**
+
+<details><summary>Answer</summary>
+
+Checking afterwards means `read_until` has already read, and allocated for, everything up to the next `\n`, which a hostile client can make gigabytes long. `take` stops the read itself at `limit + 1` bytes; the extra byte distinguishes "too long" from "exactly at the limit".
+
+</details>
+
+**`Content-Length: 14` arrives as `content-length: 14`. Which line makes that work, and why are names not lower-cased on the way in?**
+
+<details><summary>Answer</summary>
+
+`Request::header` compares with `eq_ignore_ascii_case`. Storing names as sent keeps the request faithful (useful for logging and for relaying headers in a proxy), and the comparison is the only place case needs to be ignored.
+
+</details>
+
+**Why does `count` validate `n` and `delay_ms` before calling `write_sse_head`?**
+
+<details><summary>Answer</summary>
+
+The SSE head carries the status line `200 OK`. Once it is on the wire the server cannot answer 400 any more; an error would have to be an event inside a successful stream. Validating first keeps errors as proper HTTP errors.
+
+</details>
+
+**What two things together make `curl -N` show events half a second apart?**
+
+<details><summary>Answer</summary>
+
+`set_nodelay(true)` disables Nagle's algorithm, so a small write is not held waiting for an acknowledgement, and the server writes each event straight to the `TcpStream` (no `BufWriter`) and flushes it. Either a user-space buffer or Nagle could hold events until the end.
+
+</details>
+
+**The parser sees `"\uDE00"`. What does it return, and why?**
+
+<details><summary>Answer</summary>
+
+An error, "unpaired surrogate". `0xDE00` is not a high surrogate, so the code takes the `else` branch with `code = 0xDE00`, and `char::from_u32` returns `None` because surrogate code points are not Unicode scalar values. A lone low surrogate is not a character.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Comparing header names exactly | a lower-case `content-length` is missed, so the body is never read and the client gets 411 | `test_header_names_are_case_insensitive` |
-| Reading the body with one `read()` call | a body that arrives in two TCP segments is cut short and the JSON parse fails | `test_body_split_across_packets` |
-| `Content-Length` from `chars().count()` | non-ASCII responses are truncated by the client | `test_echo_round_trips_json_text` |
-| Writing JSON with `format!("\"{}\"", s)` | a quote or newline in the text breaks the document | `test_echo_round_trips_json_text` |
-| Decoding `\uD83D` on its own | a lone surrogate is not a character: emoji become errors or garbage | `test_json_unicode_escapes_and_surrogate_pairs` |
-| Ending an SSE event with one `\n` | two events merge into one, and the client's JSON parse fails | `test_sse_stream_framing` |
-| Buffering the stream (a `BufWriter` flushed only at the end, Nagle left on) | `curl -N` shows nothing, then everything at once | `test_sse_events_leave_as_they_happen` |
-| Panicking on a malformed request | the client sees the connection drop with no status | `test_malformed_request_line_is_400`, `test_bad_json_is_a_400_with_a_json_error` |
+| Comparing header names exactly | a lower-case `content-length` is missed, so the body is never read and the client gets 411 | `Request::header` compares with `eq_ignore_ascii_case` |
+| Reading the body with one `read()` call | a body that arrives in two TCP segments is cut short and the JSON parse fails | `read_exact` on the `BufReader` for exactly `Content-Length` bytes |
+| `Content-Length` from `chars().count()` | non-ASCII responses are truncated by the client | `write_response` uses `body.len()` of the encoded bytes |
+| Writing JSON with `format!("\"{}\"", s)` | a quote or newline in the text breaks the document | every string goes through `json_string` |
+| Decoding `\uD83D` on its own | a lone surrogate is not a character: emoji become errors or garbage | `string()` reads the low surrogate after a high one and combines them; a lone one is an error |
+| Ending an SSE event with one `\n` | two events merge into one, and the client's JSON parse fails | `sse_event` ends every event with an extra `\n` |
+| Buffering the stream (a `BufWriter` flushed only at the end, Nagle left on) | `curl -N` shows nothing, then everything at once | `set_nodelay(true)`, no `BufWriter`, and `flush()` after every event |
+| Panicking on a malformed request | the client sees the connection drop with no status | every failure is an `HttpError` or `Err(String)` turned into a status by `handle` and `echo` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -263,10 +617,10 @@ Because the functions take any `BufRead` and any `Write`, your own unit tests ca
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | one request per connection | HTTP/1.1 keep-alive, HTTP/2 | many requests per connection; HTTP/2 multiplexes streams over one connection | RFC 9112 section 9; RFC 9113 |
 | `Content-Length` request bodies only | chunked transfer coding | bodies of unknown length on a reused connection | RFC 9112 section 7.1 |
-| your hand-written parser | [hyper](https://hyper.rs/), [httparse](https://docs.rs/httparse/) | a fuzzed, zero-copy parser and a full client and server | `L10.5` moves the engine to hyper |
+| the hand-written parser | [hyper](https://hyper.rs/), [httparse](https://docs.rs/httparse/) | a fuzzed, zero-copy parser and a full client and server | `L10.5` moves the engine to hyper |
 | `data:` events only | the full SSE format | `event:`, `id:`, `retry:`, and reconnection with `Last-Event-ID` | HTML Standard, server-sent events |
-| your JSON reader | [serde_json](https://docs.rs/serde_json/) | derives typed parsers and writers from your structs | `L10.5` |
+| the JSON reader | [serde_json](https://docs.rs/serde_json/) | derives typed parsers and writers from structs | `L10.5` |

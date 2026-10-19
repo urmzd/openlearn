@@ -31,32 +31,37 @@ Master RAII, move semantics, templates, and the STL.
 - *Effective Modern C++* (Scott Meyers) -- essential C++11/14 patterns
 - [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/) -- free, maintained by Stroustrup & Sutter
 
-## Practising these
+## How these are organised
+
+Each exercise directory holds a header with the reference implementation, a
+`main.cpp` test suite, and a README that works through the solution: the
+problem and its constraints, the reasoning that leads to the design, the key
+code annotated, why this design beats the alternatives, and questions to check
+you can explain it back. Exercises are ordered by concept, not by difficulty,
+so pick by the stars rather than by the number.
+
+Every exercise is a single translation unit. To build and run one:
 
 ```bash
-practice/bin/ol list  build cpp          # which of these have references yet
-practice/bin/ol start build cpp 01       # clone it stubbed into .scratchpad/
-practice/bin/ol check build cpp 01       # run it; exit code is the verdict
-practice/bin/ol diff  build cpp 01       # your attempt against the reference
+cd practice/build/systems/cpp/01-vector
+c++ -std=c++20 -Wall -Wextra -O2 main.cpp -o vector && ./vector
 ```
 
-Exercises are ordered by concept, not by difficulty, so pick by the stars rather
-than by the number. An exercise listed below with no reference yet is a row in
-this table and nothing more; see the [practice path](../../../README.md) for how the
-harness works.
+The test program prints `ok ...` and exits 0 when every check holds. Exercise
+05 needs `-pthread` and ships a `run.sh` that adds it.
 
 ## Exercises
 
 | # | Exercise | Concepts | Difficulty |
 |---|----------|----------|------------|
-| 01 | `Vector<T>` (like `std::vector`) | Templates, move semantics, allocator awareness | ⭐⭐⭐ |
-| 02 | `UniquePtr<T>` | RAII, move-only types, custom deleters | ⭐⭐ |
-| 04 | Compile-time matrix (`constexpr`) | `constexpr`, template metaprogramming | ⭐⭐⭐ |
-| 05 | Thread-safe queue | `std::mutex`, `std::condition_variable`, move semantics | ⭐⭐⭐ |
-| 06 | Expression template (lazy eval) | CRTP, operator overloading, zero-cost abstractions | ⭐⭐⭐⭐ |
-| 07 | Coroutine generator | C++20 coroutines, `co_yield`, lazy sequences | ⭐⭐⭐⭐ |
-| 08 | `std::function` clone | Type erasure, small buffer optimization | ⭐⭐⭐⭐ |
-| 09 | Graph with concepts | C++20 concepts, ranges, BFS/DFS | ⭐⭐⭐ |
-| 10 | Memory pool allocator | Custom allocator, placement new, alignment | ⭐⭐⭐⭐ |
+| 01 | [`Vector<T>` (like `std::vector`)](01-vector/) | Templates, move semantics, allocator awareness | ⭐⭐⭐ |
+| 02 | [`UniquePtr<T>`](02-unique-ptr/) | RAII, move-only types, custom deleters | ⭐⭐ |
+| 04 | [Compile-time matrix (`constexpr`)](04-constexpr-matrix/) | `constexpr`, template metaprogramming | ⭐⭐⭐ |
+| 05 | [Thread-safe queue](05-threadsafe-queue/) | `std::mutex`, `std::condition_variable`, move semantics | ⭐⭐⭐ |
+| 06 | [Expression template (lazy eval)](06-expression-template/) | CRTP, operator overloading, zero-cost abstractions | ⭐⭐⭐⭐ |
+| 07 | [Coroutine generator](07-coroutine-generator/) | C++20 coroutines, `co_yield`, lazy sequences | ⭐⭐⭐⭐ |
+| 08 | [`std::function` clone](08-function/) | Type erasure, small buffer optimization | ⭐⭐⭐⭐ |
+| 09 | [Graph with concepts](09-graph-concepts/) | C++20 concepts, ranges, BFS/DFS | ⭐⭐⭐ |
+| 10 | [Memory pool allocator](10-pool-allocator/) | Custom allocator, placement new, alignment | ⭐⭐⭐⭐ |
 
 Exercise 03 (hash map) is consolidated into the course: six hash maps across the drills became two course modules, `ds.02` (Swiss table, C) and `ds.05` (Robin Hood, Rust), whose chapters live in [Systems Data Structures](../../../../content/tracks/algorithms/16-systems-data-structures/).
