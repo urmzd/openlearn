@@ -173,17 +173,17 @@ A Lagrange-multiplier argument also works: stationarity of $\sum_k c_k \ln p_k -
 
 ## 5. Pitfalls
 
-| Pitfall | Symptom | Caught by |
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Reading one cell as a marginal | $P(Y = 1)$ quoted as a joint probability | q1 (canary 1/4) |
-| Confusing a joint with a conditional | $P(X = 1 \mid Y = 0)$ answered as $P(X = 1, Y = 0)$ | q1 (canary 1/4) |
-| $E[XY] = E[X]E[Y]$ without independence | covariance reported as 0 for dependent variables | q2 (canary 7/16) |
-| Dropping or halving the covariance term | error bars on correlated losses too narrow | q3 (canaries without $2abc$, with $abc$) |
-| Zero covariance read as independence | a deterministic relation treated as noise | q4 (canary true) |
-| Laplace over the seen words only, or added to $N$ only | unseen words get the wrong mass; `M07.2`'s rows do not sum to 1 | q5 (canaries 1/14 and 1/11) |
-| The likelihood instead of its log, or the failures dropped | a derivative that cannot be solved by hand, or $\hat p = 1$ | q6 (canaries) |
-| The mean gap instead of the rate | arrival rates inverted in the load generator | q7 (canary s/n) |
-| Skipping the M-step normalization in EM | probabilities that do not sum to 1 after one step | q8 (canary 8/9) |
+| Reading one cell as a marginal | $P(Y = 1)$ quoted as a joint probability | sums the column (q1 a) |
+| Confusing a joint with a conditional | $P(X = 1 \mid Y = 0)$ answered as $P(X = 1, Y = 0)$ | divides the cell by its column sum (q1 b) |
+| $E[XY] = E[X]E[Y]$ without independence | covariance reported as 0 for dependent variables | computes $E[XY]$ cell by cell (q2) |
+| Dropping or halving the covariance term | error bars on correlated losses too narrow | expands the square and keeps both cross terms, $2abc$ (q3) |
+| Zero covariance read as independence | a deterministic relation treated as noise | checks a cell of the joint, not the covariance (q4 b) |
+| Laplace over the seen words only, or added to $N$ only | unseen words get the wrong mass; `M07.2`'s rows do not sum to 1 | adds one per vocabulary entry, $V$ to the denominator (q5 b) |
+| The likelihood instead of its log, or the failures dropped | a derivative that cannot be solved by hand, or $\hat p = 1$ | differentiates the full log-likelihood (q6) |
+| The mean gap instead of the rate | arrival rates inverted in the load generator | solves $\ell'(\lambda) = 0$ for the rate, $n/s$ (q7) |
+| Skipping the M-step normalization in EM | probabilities that do not sum to 1 after one step | divides each expected count by the total $10/9$ (q8 b) |
 
 ## 6. Where it's used next
 

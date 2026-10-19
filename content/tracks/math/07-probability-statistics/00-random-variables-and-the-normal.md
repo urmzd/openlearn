@@ -113,49 +113,169 @@ def normal(rng, n: int) -> NDArray: ...          # float64 [n]; u1, u2 per pair;
 
 `rng` is anything with a `uniform()` method returning the spec's 53-bit doubles, in the system [`tinyllm.num.rng.PCG32`](../../../../course/solutions/python/tinyllm/num/rng.py) (`M06.3`). Any implementation of the spec gives the same uniforms bit for bit.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_die_hand_example` | unit, smoke | section 3: $E = 7/2$, $\operatorname{Var} = 35/12$ | you and the tests agree on the definitions |
-| `test_bernoulli_and_point_mass` | unit | $E = p$, $\operatorname{Var} = p(1 - p)$; a point mass has variance 0 | every accuracy metric is a Bernoulli mean (`M07.4`) |
-| `test_variance_has_no_catastrophic_cancellation` | boundary | $10^9 + \{0, 1\}$ gives exactly $\tfrac14$ | statistics of large-mean quantities (token counts, timestamps) |
-| `test_variance_shift_and_scale_laws` | property | $\operatorname{Var}[aX + c] = a^2\operatorname{Var}[X]$ and $E[aX + c] = aE[X] + c$ on 50 random tables | the scaling rule of `M07.3` |
-| `test_rejects_tables_that_are_not_distributions` | boundary | sums other than 1, negative entries, shape mismatches, empty and 2-D tables raise | unnormalized counts are caught upstream |
-| `test_box_muller_hand_example` | unit, smoke | section 3: $(\sqrt2, \sqrt2)$, and $(0, 2)$ at $\theta = \pi/2$ | the transform itself |
-| `test_box_muller_at_u1_zero_is_finite` | boundary | $u_1 = 0$ gives radius 0; $u_1$ just below 1 gives a large finite value | no infinite weights |
-| `test_normal_matches_spec_vectors` | golden | the first 8 normals of seeds 0, 1, $2^{63}$ within 4 ulp | the Rust and Go ports draw the same normals |
-| `test_odd_n_draws_whole_pairs_and_drops_the_last_sine` | unit | `normal(rng, 3)` uses 4 uniforms and equals the first 3 of `normal(rng, 4)`; `n = 0` and `n < 0` | the stream position after a call |
-| `test_normal_moments_within_three_standard_errors` | statistical | 20 000 draws: mean and variance within 3 standard errors of 0 and 1 | a missing factor 2 halves every initial variance |
-| `test_normal_shape_by_chi_square` | statistical | 20 bins equally likely under $\Phi$: Pearson statistic below 43.82 (19 degrees of freedom, $p > 10^{-3}$) | the right moments are not the right shape |
-| `test_pair_halves_are_uncorrelated` | statistical | the cosine and sine halves have correlation within 3 standard errors of 0 | independent draws |
+| the fair die | unit | section 3: $E = 7/2$, $\operatorname{Var} = 35/12$ | everyone agrees on the definitions |
+| Bernoulli and point mass | unit | $E = p$, $\operatorname{Var} = p(1 - p)$; a point mass has variance 0 | every accuracy metric is a Bernoulli mean (`M07.4`) |
+| no catastrophic cancellation | boundary | $10^9 + \{0, 1\}$ gives exactly $\tfrac14$ | statistics of large-mean quantities (token counts, timestamps) |
+| shift and scale laws | property | $\operatorname{Var}[aX + c] = a^2\operatorname{Var}[X]$ and $E[aX + c] = aE[X] + c$ on 50 random tables | the scaling rule of `M07.3` |
+| tables that are not distributions | boundary | sums other than 1, negative entries, shape mismatches, empty and 2-D tables raise | unnormalized counts are caught upstream |
+| Box-Muller by hand | unit | section 3: $(\sqrt2, \sqrt2)$, and $(0, 2)$ at $\theta = \pi/2$ | the transform itself |
+| $u_1 = 0$ stays finite | boundary | $u_1 = 0$ gives radius 0; $u_1$ just below 1 gives a large finite value | no infinite weights |
+| the spec vectors | golden | the first 8 normals of seeds 0, 1, $2^{63}$ within 4 ulp | the Rust and Go ports draw the same normals |
+| odd $n$ | unit | `normal(rng, 3)` uses 4 uniforms and equals the first 3 of `normal(rng, 4)`; `n = 0` and `n < 0` | the stream position after a call |
+| the moments | statistical | 20 000 draws: mean and variance within 3 standard errors of 0 and 1 | a missing factor 2 halves every initial variance |
+| the shape | statistical | 20 bins equally likely under $\Phi$: Pearson statistic below 43.82 (19 degrees of freedom, $p > 10^{-3}$) | the right moments are not the right shape |
+| the two halves of a pair | statistical | the cosine and sine halves have correlation within 3 standard errors of 0 | independent draws |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **A distribution is a validated table.** Section 2.1: values and probabilities must be 1-D, the same non-zero length, finite, with $p_i \ge 0$ and $\sum p_i = 1$. Anything else (raw counts, a negative entry) is not a random variable, so both `expectation` and `variance` share one validator that raises instead of averaging. The sum test needs a tolerance ($10^{-9}$) because probabilities computed in floating point rarely sum to exactly 1.
+2. **The expectation is a dot product.** $E[X] = \sum_i p_i x_i = x \cdot p$. Weighting by $p$ (not dividing by $k$) is what makes it right for non-uniform tables.
+3. **The variance centres first, then squares.** Section 2.3: $E[X^2] - E[X]^2$ cancels catastrophically near $10^{18}$. Computing $\mu$ once, then $d = x - \mu$ and $\sum_i p_i d_i^2$, keeps every term small and non-negative, so $10^9 + \{0, 1\}$ gives exactly $\tfrac14$ and no variance can come out negative.
+4. **Box-Muller samples the polar form.** Section 2.5: $r = \sqrt{-2\ln V}$ with $V$ in $(0, 1]$ and $\theta = 2\pi u_2$. Taking $V = 1 - u_1$ maps the generator's $[0, 1)$ onto $(0, 1]$, so $u_1 = 0$ gives $r = 0$ instead of $\infty$.
+5. **The draw order is part of the answer.** `spec/pcg32.md` fixes it: per pair, $u_1$ then $u_2$; emit cosine then sine. A loop over pairs that writes `z0` always and `z1` only when there is room implements both the even and odd cases, and an odd $n$ still consumes two uniforms for the last pair, so the generator ends at the same position as in every other port.
+
+### The code, annotated
+
+```python
+def _table(values: ArrayLike, probs: ArrayLike) -> tuple[NDArray, NDArray]:
+    """values and probs as float64 vectors, checked to be a distribution."""
+    x = np.asarray(values, dtype=np.float64)
+    p = np.asarray(probs, dtype=np.float64)
+    # One shape check covers 2-D input, mismatched lengths, and the empty table.
+    if x.ndim != 1 or p.ndim != 1 or x.shape != p.shape or x.size == 0:
+        raise ValueError(f"values and probs must be 1-D of one non-zero length, got {x.shape} and {p.shape}")
+    if not np.all(np.isfinite(x)):
+        raise ValueError("values must be finite")
+    if np.any(p < 0) or not np.all(np.isfinite(p)):
+        raise ValueError("probs must be finite and >= 0")
+    # A tolerance, not ==: 0.1 + 0.2 + 0.7 is not exactly 1.0 in float64.
+    if abs(float(p.sum()) - 1.0) > 1e-9:
+        raise ValueError(f"probs must sum to 1, got {float(p.sum())!r}")
+    return x, p
+```
+
+Raw counts such as `[3, 1]` sum to 4 and are rejected here, which is the point: a caller who forgot to normalize hears about it at once rather than getting an expectation four times too large.
+
+```python
+def expectation(values: ArrayLike, probs: ArrayLike) -> float:
+    x, p = _table(values, probs)
+    return float(x @ p)                  # sum_i p_i x_i
+
+
+def variance(values: ArrayLike, probs: ArrayLike) -> float:
+    x, p = _table(values, probs)
+    mu = float(x @ p)                    # pass 1: the mean
+    d = x - mu                           # pass 2: small deviations, computed accurately
+    return float((d * d) @ p)            # sum_i p_i (x_i - mu)^2, every term >= 0
+```
+
+On the die, `mu = 3.5`, `d` is $\pm 2.5, \pm 1.5, \pm 0.5$, and the weighted sum of squares is $17.5/6 = 35/12$, exactly section 3. On $10^9 + \{0, 1\}$ the deviations are exactly $\pm\tfrac12$, so the result is exactly $\tfrac14$.
+
+```python
+def box_muller(u1: float, u2: float) -> tuple[float, float]:
+    # 1 - u1 lies in (0, 1], so the log is finite and r is in [0, inf).
+    r = math.sqrt(-2.0 * math.log(1.0 - u1))   # R^2 / 2 is exponential(1)
+    theta = 2.0 * math.pi * u2                 # a full turn, not half
+    return r * math.cos(theta), r * math.sin(theta)   # cosine first: the spec's order
+
+
+def normal(rng: Any, n: int) -> NDArray:
+    if n < 0:
+        raise ValueError(f"normal: n must be >= 0, got {n}")
+    out = np.empty(n, dtype=np.float64)
+    for i in range(0, n, 2):          # one Box-Muller pair per iteration
+        u1 = rng.uniform()            # u1 then u2: the cross-language draw order
+        u2 = rng.uniform()
+        z0, z1 = box_muller(u1, u2)
+        out[i] = z0
+        if i + 1 < n:                 # odd n: the last sine is dropped, but its
+            out[i + 1] = z1           # uniform was still consumed
+    return out
+```
+
+`normal` keeps no spare between calls: it is a free function over any object with `uniform()`, so the only state is the generator's. `n = 0` returns an empty array and draws nothing.
+
+Full solution: [`rv.py`](../../../../course/solutions/python/tinyllm/prob/rv.py).
+
+### Why this solution
+
+- **Cost.** `expectation` is one pass over the table and `variance` two, both $O(k)$ time and $O(k)$ extra space for `d`. `normal(rng, n)` makes $2\lceil n/2 \rceil$ uniform draws and one `log`, `sqrt`, `cos`, `sin` per pair.
+- **Two-pass over the shortcut.** $E[X^2] - E[X]^2$ also needs two sums and saves nothing in a setting where the whole table is in memory; it only loses digits. Welford's one-pass update (Going further) is the right choice for streams, which is not this function's job.
+- **Box-Muller over alternatives.** The Ziggurat algorithm is faster but needs tables and a rejection loop whose number of draws per normal varies, which makes cross-language reproduction harder. The polar (Marsaglia) method also rejects. Box-Muller uses exactly two uniforms per pair, so the stream position after `normal(rng, n)` is a simple function of $n$, which is what the Rust and Go ports rely on.
+- **Tradeoffs accepted.** The Python loop is slow for millions of normals (one Python iteration per pair); initializers in this course draw at most a few million values, and bit-for-bit agreement with the spec matters more than speed here.
+
+### Explain it back
+
+**1. Why does `variance` compute `d = x - mu` before squaring instead of returning `(x * x) @ p - mu * mu`?**
+
+<details><summary>Answer</summary>
+
+For large means both $E[X^2]$ and $\mu^2$ are near $10^{18}$, where float64 spacing is 128, so their difference is a multiple of 128 near zero: 0 or $-64$ for a true variance of $\tfrac14$. The deviations $x_i - \mu$ are small and exact (or nearly), and their squares are non-negative, so the two-pass sum is accurate and cannot go negative.
+
+</details>
+
+**2. Why `math.log(1.0 - u1)` and not `math.log(u1)`? Both are uniform on the unit interval.**
+
+<details><summary>Answer</summary>
+
+Distributionally they are equivalent, but the generator returns values in $[0, 1)$: $u_1 = 0$ is possible and $\ln 0 = -\infty$ gives an infinite radius. $1 - u_1$ lies in $(0, 1]$, so the log is finite. It also fixes which value every port computes from a given $u_1$, so the normals agree across languages.
+
+</details>
+
+**3. For odd $n$, why draw a whole pair and throw the sine away instead of drawing one uniform?**
+
+<details><summary>Answer</summary>
+
+Box-Muller needs both uniforms to make even one normal (the radius uses $u_1$, the angle $u_2$). And the spec defines the stream position: `normal(rng, 3)` must consume 4 uniforms and equal the first 3 of `normal(rng, 4)`, so that the next draw from the generator is the same in Python, Rust, and Go.
+
+</details>
+
+**4. What would happen to `M07.3`'s initial weights if the radius were $\sqrt{-\ln(1 - u_1)}$, without the 2?**
+
+<details><summary>Answer</summary>
+
+$R^2$ would be exponential with mean 1 instead of 2, so each coordinate would have variance $\tfrac12$. Every weight scaled by a carefully derived $\sigma$ would actually have standard deviation $\sigma/\sqrt2$, and activations would shrink layer after layer. The mean is still 0, so only a variance check notices.
+
+</details>
+
+**5. Why does `_table` reject a table whose probabilities sum to 4 instead of normalizing it?**
+
+<details><summary>Answer</summary>
+
+A table that does not sum to 1 is almost always a bug upstream (raw counts passed where probabilities were meant). Silently normalizing would hide it in this function and leave it in every other caller that trusts the same array. Raising makes the error visible where it is cheapest to fix.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| averaging the values without the probabilities | right only for uniform tables | `test_bernoulli_and_point_mass` (mutant `s01`) |
-| returning the standard deviation as the variance | $\sqrt{35/12}$ instead of $35/12$ | `test_die_hand_example` (mutant `s02`) |
-| $E[X^2] - E[X]^2$ | variance 0 or negative for large means | `test_variance_has_no_catastrophic_cancellation` (mutant `s03`) |
-| not validating the table | silent nonsense from unnormalized counts | `test_rejects_tables_that_are_not_distributions` (mutant `s04`) |
-| $\ln u_1$ instead of $\ln(1 - u_1)$ | an infinite value once in $2^{53}$ draws; different values from every port | `test_box_muller_at_u1_zero_is_finite` (mutant `s05`) |
-| $\sqrt{-\ln(\cdot)}$ without the 2 | variance $\tfrac12$: every initial weight too small by $\sqrt2$ | `test_normal_moments_within_three_standard_errors` (mutant `s06`) |
-| angle $\pi u_2$ instead of $2\pi u_2$ | the sine half is always positive; wrong shape | `test_normal_shape_by_chi_square` (mutant `s07`) |
-| sine first | statistically fine, but matches no other language | `test_normal_matches_spec_vectors` (mutant `s08`) |
-| both halves from the cosine | perfectly correlated pairs | `test_pair_halves_are_uncorrelated` (mutant `s09`) |
+| averaging the values without the probabilities | right only for uniform tables | `x @ p` weights each value; step 2 |
+| returning the standard deviation as the variance | $\sqrt{35/12}$ instead of $35/12$ | returns the weighted sum of squares, no square root |
+| $E[X^2] - E[X]^2$ | variance 0 or negative for large means | centres first: `d = x - mu`; step 3 |
+| not validating the table | silent nonsense from unnormalized counts | `_table` checks shape, finiteness, sign, and sum; step 1 |
+| $\ln u_1$ instead of $\ln(1 - u_1)$ | an infinite value once in $2^{53}$ draws; different values from every port | `math.log(1.0 - u1)`; step 4 |
+| $\sqrt{-\ln(\cdot)}$ without the 2 | variance $\tfrac12$: every initial weight too small by $\sqrt2$ | `math.sqrt(-2.0 * ...)` |
+| angle $\pi u_2$ instead of $2\pi u_2$ | the sine half is always positive; wrong shape | `theta = 2.0 * math.pi * u2` |
+| sine first | statistically fine, but matches no other language | returns `(r * cos, r * sin)` and writes `z0` first; step 5 |
+| both halves from the cosine | perfectly correlated pairs | `z1` is `r * sin(theta)` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `M06.3` | the generator: two `uniform()` calls per pair, the same uniforms in every language |
 | Back | `M00.2` | cosine, sine, and the unit circle (reading) |
-| Back | [Calculus 2](../02-calculus-2/) | the Gaussian integral behind $\frac{1}{\sqrt{2\pi}}$ (reading; `S-M02` checks it) |
+| Back | [Calculus 2](../02-calculus-2/) | the Gaussian integral behind $\frac{1}{\sqrt{2\pi}}$ (reading; `S-M02` works it) |
 | Forward | `M03.3` | `orthogonal_init` factors `normal(rng, rows * cols)` |
 | Forward | `M07.3` | `normal_init`, Xavier and Kaiming normals, and the variance propagation rule $n\operatorname{Var}[w]\operatorname{Var}[x]$ |
 | Forward | `M07.1` | categorical sampling builds on the same uniforms (reading) |
-
-If you skip this module, `ol check M03.3` stops with `BLOCKED ... needs M07.0`: build it, or pass `--ref-deps`.
 
 ## Going further
 

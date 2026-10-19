@@ -1,5 +1,5 @@
 # contracts/openapi/openai-subset.v2.yaml: the v2 serving surface, published
-# for the api-v2-migration drill (DESIGN 2.6, ops.05, craft.14).
+# for the api-v2 migration (ops.05, craft.14).
 #
 # modules: craft.14 (the migration), gw.07 (per-version usage), L10.5 and
 # gw.04 (serve both versions during the window)
@@ -18,12 +18,12 @@
 # and the cache, and adds the response headers below. Paths marked
 # `x-tl-tier: engine` exist on the engine tier only.
 #
-# Conformance (`ol conform openapi:v1 --target engine|gateway`) validates
-# every response body against the schema declared here for its path, status,
-# and content type. SSE chunks validate against the `x-tl-chunk` schema of
-# the 200 `text/event-stream` content. `ol conform openapi:v2` sends
-# `X-TL-API-Version: 2` on every request, and its side-by-side case sends
-# each operation's `x-tl-probe` request and validates the answer.
+# A conforming server (engine or gateway tier) returns, for every path,
+# status, and content type, a response body that validates against the
+# schema declared here. SSE chunks validate against the `x-tl-chunk` schema of
+# the 200 `text/event-stream` content. A v2 client sends
+# `X-TL-API-Version: 2` on every request. Each operation's `x-tl-probe` is a
+# sample request whose answer must validate under v2.
 openapi: 3.1.0
 info:
   title: tinyllm OpenAI subset, v2

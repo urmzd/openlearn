@@ -64,7 +64,7 @@ The full plan is [`docs/engagement/poc.md`](../../../../course/solutions/docs/en
 
 **Decision to make.** "Decide whether the bounded support-assistant use case merits a production design phase. This POC does not authorize production use or imply that the model can answer every support question safely."
 
-**Pre-registered evaluation.** Freeze the dataset manifest, prompt template, model and config revision, scoring rubric, and thresholds before the first run. The held-out set is 200 redacted questions: 120 routine order lookups, 40 policy questions, 20 ambiguous requests, and 20 that should be refused or escalated. Priya approves every example and the retention policy; without approval, the set is replaced with synthetic examples "and the results are not customer evidence". Two support reviewers score correctness and completeness independently, a third settles disagreements, exact counts and examples are reported, latency and errors use the `field.03` protocol, and refusals and escalations are logged separately from answer quality.
+**Pre-registered evaluation.** Freeze the dataset manifest, prompt template, model and config revision, scoring rubric, and thresholds before the first run. The held-out set is 200 redacted questions: 120 routine order lookups, 40 policy questions, 20 ambiguous requests, and 20 that should be refused or escalated. Priya approves every example and the retention policy; without approval, the set is replaced with synthetic examples, and the plan says: "do not treat the results as customer evidence". Two support reviewers score correctness and completeness independently, a third settles disagreements, exact counts and examples are reported, latency and errors use the `field.03` protocol, and refusals and escalations are logged separately from answer quality.
 
 **Proposed acceptance gates**, explicitly "proposed for sponsor approval, not observed results":
 
@@ -91,11 +91,11 @@ Cost per resolved case and reviewer time are reported separately, with no saving
 
 1. Why must the thresholds be frozen before the first run?
    <details><summary>Answer</summary>Otherwise they can be chosen, consciously or not, to match the results, and the POC no longer tests anything. Freezing them makes the outcome decidable from the plan alone.</details>
-3. If all 20 refusal cases pass, why does the plan still say the sample cannot establish rare-event safety?
+2. If all 20 refusal cases pass, why does the plan still say the sample cannot establish rare-event safety?
    <details><summary>Answer</summary>Zero failures in 20 trials is consistent with a true failure rate of several percent (the "rule of three" puts the 95% upper bound near $3/20 = 15\%$). Rare failures need far more cases to rule out.</details>
-4. Why compare against the manual workflow and not against another model?
+3. Why compare against the manual workflow and not against another model?
    <details><summary>Answer</summary>The customer's decision is whether to change from what they do today. A model-versus-model comparison could pick the better candidate and still be worse than the current process.</details>
-5. Why are refusals logged separately from answer quality?
+4. Why are refusals logged separately from answer quality?
    <details><summary>Answer</summary>A correct refusal on a must-refuse case and a wrong answer are different outcomes; mixing them into one quality score would let a model that refuses everything, or nothing, look average.</details>
 
 ## 6. Pitfalls
