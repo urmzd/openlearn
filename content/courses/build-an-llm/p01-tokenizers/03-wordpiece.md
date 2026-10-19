@@ -105,32 +105,32 @@ class WordPieceTokenizer(Tokenizer):
 
 `special_ids` are whichever of `[PAD] [UNK] [CLS] [SEP] [MASK]` the vocabulary has (from `added_tokens` when loading a `tokenizer.json`), and `unk_id` is the id of `unk_token`. `vocab.txt` (the original BERT release) has one token per line, line $n$ being id $n$ from 0. `save` writes a `tokenizer.json` with `BertNormalizer`, `BertPreTokenizer`, `WordPiece`, the `[CLS] $A [SEP]` template, and the WordPiece decoder.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_basic_tokenize` | unit | the section 3 words, CJK spacing, accent stripping, an all-space text | you and the test agree on the definition |
-| `test_hand_example_encode_decode` | unit | `[5, 6, 7, 8, 10]`, the template, the decode, `cafés` | the masked-LM data of `L6.2` |
-| `test_whole_word_becomes_unk` | boundary | `"unaffablex"` is `[1]` | unknown words cost one id, as in BERT |
-| `test_greedy_is_longest_first` | boundary | `un ##aff ##able`, and `"una"` is `un ##a` | the rule BERT's vocabulary was built for |
-| `test_continuation_needs_prefix` | boundary | `"unn"` is `un ##n`; `"aff"` alone is `[UNK]` | `##` pieces never start a word |
-| `test_max_input_chars_per_word` | boundary | a limit of 5 segments `"unaff"` and refuses `"unaffa"` | long junk tokens cannot blow up the search |
-| `test_clean_text_rules` | boundary | U+0000, U+FFFD, U+000B, U+200B vanish; tab, U+00A0, U+3000 become spaces | ids match on scraped text |
-| `test_strip_accents_follows_lowercase` | unit | the four combinations of `lowercase` and `strip_accents` | cased and uncased models from one class |
-| `test_only_nonspacing_marks_are_stripped` | boundary | `é` loses its accent, the Devanagari vowel sign stays | non-Latin scripts keep their letters |
-| `test_punctuation_is_split` | boundary | `$`, `+`, `^`, `«`, `»` are words of their own | ASCII symbols are punctuation to BERT |
-| `test_lowercase_per_code_point` | boundary | `"ΣΑΣ"` is `"σασ"` | no final sigma, as in BERT's vocabulary |
-| `test_specials_match_as_written` | boundary | `[MASK]` is id 4; `[mask]` is text | `L6.2` writes `[MASK]` into its inputs |
-| `test_bert_ids_match_oracle` | golden | bert-base-uncased, 300 strings, ids equal Hugging Face's | your encoders use the real vocabulary |
-| `test_bert_template_matches_oracle` | golden | `add_special` ids on the same strings | encoder inputs carry the template BERT was trained with |
-| `test_bert_decode_matches_oracle` | golden | decode and `skip_special` on the same strings | printed predictions in `L6.2` |
-| `test_from_vocab_equals_tokenizer_json` | golden | `vocab.txt` and `tokenizer.json` give the same ids | the original release format |
-| `test_save_load_roundtrip` | property | `load(save(t))` keeps ids, casing, and accent rules | a trained encoder ships its tokenizer |
-| `test_vocab_needs_unk` | boundary | no `[UNK]`, or an id gap, is `ValueError` | every word has somewhere to go |
+| the hand-worked basic tokenizer | unit | the section 3 words, CJK spacing, accent stripping, an all-space text | everyone agrees on the definition |
+| the hand-worked encode and decode | unit | `[5, 6, 7, 8, 10]`, the template, the decode, `cafés` | the masked-LM data of `L6.2` |
+| a whole word becomes `[UNK]` | boundary | `"unaffablex"` is `[1]` | unknown words cost one id, as in BERT |
+| greedy is longest first | boundary | `un ##aff ##able`, and `"una"` is `un ##a` | the rule BERT's vocabulary was built for |
+| continuations need the prefix | boundary | `"unn"` is `un ##n`; `"aff"` alone is `[UNK]` | `##` pieces never start a word |
+| `max_input_chars_per_word` | boundary | a limit of 5 segments `"unaff"` and refuses `"unaffa"` | long junk tokens cannot blow up the search |
+| clean-text rules | boundary | U+0000, U+FFFD, U+000B, U+200B vanish; tab, U+00A0, U+3000 become spaces | ids match on scraped text |
+| accent stripping follows lowercase | unit | the four combinations of `lowercase` and `strip_accents` | cased and uncased models from one class |
+| only nonspacing marks are stripped | boundary | `é` loses its accent, the Devanagari vowel sign stays | non-Latin scripts keep their letters |
+| punctuation is split | boundary | `$`, `+`, `^`, `«`, `»` are words of their own | ASCII symbols are punctuation to BERT |
+| lowercase per code point | boundary | `"ΣΑΣ"` is `"σασ"` | no final sigma, as in BERT's vocabulary |
+| specials match as written | boundary | `[MASK]` is id 4; `[mask]` is text | `L6.2` writes `[MASK]` into its inputs |
+| BERT ids match the oracle | golden | bert-base-uncased, 300 strings, ids equal Hugging Face's | the encoders use the real vocabulary |
+| BERT template matches the oracle | golden | `add_special` ids on the same strings | encoder inputs carry the template BERT was trained with |
+| BERT decode matches the oracle | golden | decode and `skip_special` on the same strings | printed predictions in `L6.2` |
+| `vocab.txt` equals `tokenizer.json` | golden | `vocab.txt` and `tokenizer.json` give the same ids | the original release format |
+| save and load round trip | property | `load(save(t))` keeps ids, casing, and accent rules | a trained encoder ships its tokenizer |
+| the vocabulary needs `[UNK]` | boundary | no `[UNK]`, or an id gap, is `ValueError` | every word has somewhere to go |
 
-### Your tests (rung R2)
+### The model tests
 
-Write these in `python/tests/l1-3-wordpiece/test_wordpiece.py`, importing only names from the contract:
+The model suite, [`test_wordpiece.py`](../../../../course/solutions/learner-tests/L1.3/python/tests/l1-3-wordpiece/test_wordpiece.py), imports only names from the contract. Its names and docstrings list the rules most worth pinning:
 
 ```python
 def test_unaffable_is_three_pieces():
@@ -161,33 +161,233 @@ def test_vocab_without_unk_is_rejected():
     """A vocab with no [UNK], or with an id gap, is ValueError."""
 ```
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **The ids are defined by BERT's pipeline**, so the solution is a transcription of it, stage by stage, in Hugging Face's order: specials, clean, CJK, accents, lowercase, split, WordPiece. Each stage is a pure function of its input, which makes each one testable on its own (`normalize`, `basic_tokenize`, `wordpiece`).
+2. **Specials must be found before normalization**, because normalization would lowercase `[MASK]` and split its brackets. So `encode` first cuts the raw text at leftmost-longest special matches.
+3. **Character rules are per code point and order-sensitive.** Cleaning tests "control" before "white space" (U+000B is both), CJK spacing is applied during the same pass, accent stripping needs NFD first so that accents become separate marks, and lowercasing must be per code point to avoid the final-sigma rule.
+4. **Splitting is a single scan.** White space ends a word; punctuation ends a word and is a word; everything else extends the current word.
+5. **Greedy longest match is a loop of longest-prefix queries.** At position 0 query all entries; at later positions query the `##` entries with the prefix removed, so one trie walk finds the longest continuation. The first failed query makes the whole word `[UNK]`, so no backtracking is needed.
+6. **Decoding inverts only what can be inverted**: glue `##` pieces, add spaces between words, then apply the fixed cleanup replacements.
+
+### The code, annotated
+
+**Character classes.** Each predicate encodes one BERT rule exactly.
+
+```python
+def is_bert_control(ch: str) -> bool:
+    if ch in "\t\n\r":
+        return False                               # these count as white space instead
+    return unicodedata.category(ch).startswith("C")   # Cc, Cf (U+200B), Cn, Co, Cs
+
+def is_bert_punctuation(ch: str) -> bool:
+    o = ord(ch)
+    if 33 <= o <= 47 or 58 <= o <= 64 or 91 <= o <= 96 or 123 <= o <= 126:
+        return True                                # all ASCII non-alphanumerics: $ + ^ too
+    return unicodedata.category(ch).startswith("P")
+
+def is_cjk(ch: str) -> bool:
+    o = ord(ch)
+    return any(lo <= o <= hi for lo, hi in CJK)    # the eight ideograph blocks
+```
+
+**Normalization.** One pass for cleaning and CJK, then the two whole-string transforms.
+
+```python
+    def normalize(self, text: str) -> str:
+        """Steps 2 to 5: clean, space CJK, strip accents, lowercase."""
+        out = []
+        for ch in text:
+            o = ord(ch)
+            # control first: U+000B is white space *and* a control, and it must vanish
+            if o == 0 or o == 0xFFFD or is_bert_control(ch):
+                continue
+            if is_bert_whitespace(ch):
+                out.append(" ")
+            elif is_cjk(ch):
+                out.append(" " + ch + " ")           # each ideograph becomes its own word
+            else:
+                out.append(ch)
+        s = "".join(out)
+        # None means "follow lowercase": uncased BERT strips, cased BERT keeps
+        strip = self.strip_accents if self.strip_accents is not None else self.lowercase
+        if strip:
+            # NFD splits é into e + U+0301; only Mn is dropped, so Mc vowel signs stay
+            s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+        if self.lowercase:
+            s = "".join(c.lower() for c in s)        # per code point: no final-sigma rule
+        return s
+```
+
+**Splitting.**
+
+```python
+    def basic_tokenize(self, text: str) -> list[str]:
+        words: list[str] = []
+        cur: list[str] = []
+        for ch in self.normalize(text):
+            if is_bert_whitespace(ch):               # after normalize, only U+0020 remains
+                if cur:
+                    words.append("".join(cur))
+                    cur = []
+            elif is_bert_punctuation(ch):
+                if cur:
+                    words.append("".join(cur))
+                    cur = []
+                words.append(ch)                     # punctuation is a word of its own
+            else:
+                cur.append(ch)
+        if cur:
+            words.append("".join(cur))
+        return words
+```
+
+On section 3, `"The UNAFFABLE!"` normalizes to `"the unaffable!"`; the scan emits `the` at the space, `unaffable` at `!`, and `!` itself.
+
+**Greedy longest match.** The two tries are built in the constructor: `_word` holds every entry, `_cont` holds each `##` entry with the prefix stripped.
+
+```python
+        self._word = Trie()  # pieces that may start a word
+        self._cont = Trie()  # `##` pieces, stored without the prefix
+        for t, i in self.vocab.items():
+            if prefix and t.startswith(prefix) and len(t) > len(prefix):
+                self._cont.insert(t[len(prefix) :], i)    # "##aff" is found by walking "aff"
+            self._word.insert(t, i)
+
+    def wordpiece(self, word: str) -> list[int]:
+        """Step 7 for one word: greedy longest match, or [UNK]."""
+        if len(word) > self.max_input_chars_per_word:  # > , so a word of exactly L is searched
+            return [self.unk_id]
+        ids: list[int] = []
+        start = 0
+        while start < len(word):
+            trie = self._word if start == 0 else self._cont   # ## pieces only after the start
+            n, v = trie.longest_prefix(word, start)
+            if n == 0 or v is None:
+                return [self.unk_id]                 # whole word: discard the pieces found
+            ids.append(v)
+            start += n
+        return ids
+```
+
+Trace `"unaffable"`: `_word.longest_prefix` at 0 sees `u` and `un` and returns length 2, id 6. `_cont` at 2 sees `a` (`##a`) and `aff` (`##aff`) and returns length 3, id 7. At 5 it finds `able`, id 8. For `"unaffablex"`, the query at 9 finds nothing, and the result is `[1]`.
+
+**Encode.** Specials first, on the raw text.
+
+```python
+    def encode(self, text: str, add_special: bool = False) -> list[int]:
+        ids: list[int] = []
+        start = i = 0
+        segs: list[tuple[str, Optional[int]]] = []
+        while i < len(text):
+            # as written: "[MASK]" matches, "[mask]" does not
+            n, v = self._special_trie.longest_prefix(text, i)
+            if n > 0 and v is not None:
+                segs.append((text[start:i], None))
+                segs.append(("", v))
+                i += n
+                start = i
+            else:
+                i += 1
+        segs.append((text[start:], None))
+        for seg, sid in segs:
+            if sid is not None:
+                ids.append(sid)
+            else:
+                for w in self.basic_tokenize(seg):
+                    ids += self.wordpiece(w)
+        if add_special:
+            ids = [self.vocab["[CLS]"]] + ids + [self.vocab["[SEP]"]]   # BERT's single template
+        return ids
+```
+
+**Decode.** Glue, space, clean up.
+
+```python
+    def decode(self, ids: Sequence[int], skip_special: bool = False) -> str:
+        special = set(self.special_ids.values())
+        toks = [
+            self._id_to_tok[i]
+            for i in check_ids(ids, self.vocab_size)
+            if not (skip_special and i in special)
+        ]
+        out = []
+        for k, t in enumerate(toks):
+            if k > 0:
+                # a continuation loses its ##; anything else gets a leading space
+                t = t[len(self.prefix) :] if t.startswith(self.prefix) else " " + t
+            for dirty, clean in (
+                (" .", "."), (" ?", "?"), (" !", "!"), (" ,", ","), (" ' ", "'"),
+                (" n't", "n't"), (" 'm", "'m"), (" do not", " don't"), (" 's", "'s"),
+                (" 've", "'ve"), (" 're", "'re"),
+            ):
+                t = t.replace(dirty, clean)          # per token, as Hugging Face's cleanup
+            out.append(t)
+        return "".join(out)
+```
+
+On `[5, 6, 7, 8, 10]`: `the`, ` un`, `aff`, `able`, and ` !` cleaned to `!`, joined as `"the unaffable!"`.
+
+Full solution: [`wordpiece.py`](../../../../course/solutions/python/tinyllm/tok/wordpiece.py) (also `from_vocab`, `from_hf_json`, `save`).
+
+### Why this solution
+
+- **Cost.** Normalization and splitting are $O(n)$ per text (plus NFD). WordPiece on a word of length $m$ is a sequence of trie walks; each walk can read ahead up to the longest entry, so the worst case is $O(m \cdot \ell_{\max})$, and in practice close to $O(m)$. The length limit caps pathological words at $L = 100$.
+- **Alternatives.** A max-score segmentation (dynamic programming over a unigram score) would often find a better split, and different ids from BERT's. Hash-set lookups of every prefix length work but cost $O(m^2)$ string slices per word; the trie avoids building candidates at all. Python's `str.lower()` or `casefold()` on the whole string would be simpler and wrong for Greek. Linear-time Fast WordPiece (see Going further) is the production optimization; it is not needed at this scale.
+- **Accepted tradeoffs.** No offsets: the tokenizer cannot map a piece back to its span in the original text, which `L6.2` does not need. Decoding is lossy by design, since case, accents, and white space were removed on the way in. `token_to_id` reads the vocabulary directly, so it does not apply normalization.
+
+### Explain it back
+
+1. Why does `normalize` check `is_bert_control` before `is_bert_whitespace`?
+   <details><summary>Answer</summary>
+   U+000B (vertical tab) is in the White_Space set and in category Cc. BERT's cleaner drops controls first, so U+000B vanishes and the word around it stays whole. Checking white space first would map it to a space and split the word, giving different ids from BERT.
+   </details>
+2. Why are `##` pieces stored in a second trie without the prefix, instead of querying `"##" + word[start:]` in one trie?
+   <details><summary>Answer</summary>
+   Building `"##" + word[start:]` creates a new string at every position, and it makes one trie answer two different questions. With a dedicated trie keyed by the rest of the piece, the continuation query is a walk starting directly at `word[start]`, and a `##` piece can never be returned at the word start because `_cont` is only queried for `start > 0` (and `#` is punctuation, so no word out of `basic_tokenize` begins with `##`).
+   </details>
+3. Why does a failed match make the whole word `[UNK]` instead of emitting the pieces found so far plus `[UNK]`?
+   <details><summary>Answer</summary>
+   That is BERT's rule and its vocabulary and models were trained with it: an unknown word costs exactly one id. Keeping partial pieces would change sequence lengths and produce id sequences BERT never saw in training.
+   </details>
+4. When `strip_accents` is `None`, why does the solution strip accents only if `lowercase` is true?
+   <details><summary>Answer</summary>
+   That mirrors Hugging Face's `BertNormalizer`: uncased BERT models were trained on lowercased, accent-stripped text, while cased models keep accents. Making `None` follow `lowercase` lets one class load both families from their files.
+   </details>
+5. Why must special tokens be split out before `normalize` runs?
+   <details><summary>Answer</summary>
+   Normalization lowercases and the splitter treats `[` and `]` as punctuation, so `[MASK]` would become `[`, `mask`, `]`. Matching on the raw text, as written, keeps `[MASK]` one id and leaves a user's `[mask]` as ordinary text.
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. keeping the pieces found before an unmatched position | `"unaffablex"` is four ids where BERT has one; sequence lengths drift | `test_whole_word_becomes_unk` (mutant `s01`) |
-| 2. shortest match, or trying `##` pieces at the word start | words BERT segments become `[UNK]` | `test_greedy_is_longest_first` (mutant `s02`), `test_continuation_needs_prefix` (mutant `s03`) |
-| 3. stripping accents only when `strip_accents` is true | uncased BERT keeps `é`, and every accented word gets different ids | `test_strip_accents_follows_lowercase` (mutant `s06`) |
-| 4. `str.lower()` on the whole string | Greek words ending in sigma get different ids | `test_lowercase_per_code_point` (mutant `s09`) |
-| 5. testing white space before control characters | U+000B becomes a space and splits a word that BERT keeps whole | `test_clean_text_rules` (mutant `s05`) |
-| 6. stripping every mark category | Hindi and other scripts lose vowel signs | `test_only_nonspacing_marks_are_stripped` (mutant `s07`) |
-| 7. `unicodedata` punctuation only | `$5` stays one word | `test_punctuation_is_split` (mutant `s08`) |
-| 8. matching specials after normalization, or case-insensitively | `[mask]` typed by a user becomes the mask id | `test_specials_match_as_written` (mutant `s10`) |
+| 1. keeping the pieces found before an unmatched position | `"unaffablex"` is four ids where BERT has one; sequence lengths drift | `wordpiece` returns `[self.unk_id]` at the first failed query |
+| 2. shortest match, or trying `##` pieces at the word start | words BERT segments become `[UNK]` | `longest_prefix` on `_word` at position 0 and on `_cont` only after it |
+| 3. stripping accents only when `strip_accents` is true | uncased BERT keeps `é`, and every accented word gets different ids | `strip` falls back to `self.lowercase` when `strip_accents` is `None` |
+| 4. `str.lower()` on the whole string | Greek words ending in sigma get different ids | lowercases one code point at a time |
+| 5. testing white space before control characters | U+000B becomes a space and splits a word that BERT keeps whole | the control test comes first in `normalize` |
+| 6. stripping every mark category | Hindi and other scripts lose vowel signs | drops only category `Mn` after NFD |
+| 7. `unicodedata` punctuation only | `$5` stays one word | `is_bert_punctuation` includes the four ASCII ranges |
+| 8. matching specials after normalization, or case-insensitively | `[mask]` typed by a user becomes the mask id | `encode` matches specials on the raw text through `_special_trie` |
 
-## 6. Where it's used next
-| Forward | `L6.2` | Registered call site uses this module. |
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `L1.1` | the protocol and `check_ids`; `add_special` is the `[CLS] ... [SEP]` template |
 | Back | `M06.2` | two tries make each longest-match step one walk; a third splits out special tokens |
 | Forward | `L1.6` | measures bert-base-uncased against Hugging Face's numbers, `[UNK]` counted as a fallback |
+| Forward | `L6.2` | Registered call site uses this module. |
 
-`L6.2` (masked language modeling with `[MASK]`) and `L6.3` (ELECTRA) train on these ids when Pass 5 arrives. If you skip this module, `ol check L1.6` stops with `needs L1.3`: build it, or rerun with `--ref-deps`.
+`L6.2` (masked language modeling with `[MASK]`) and `L6.3` (ELECTRA) train on these ids when Pass 5 arrives.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `basic_tokenize` | Hugging Face `BertNormalizer` and `BertPreTokenizer` | offsets for every piece, so predictions map back to the original text | `tokenizers/src/normalizers/bert.rs` |
 | `wordpiece` | `tokenizers` `WordPiece` model | the same greedy loop in Rust; a trainer that derives WordPieces from BPE merges | `tokenizers/src/models/wordpiece/mod.rs` |

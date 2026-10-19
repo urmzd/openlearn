@@ -1,36 +1,27 @@
-<!-- ol:module L13.4 -->
 # Dynamic resolution and tiling
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L13.4` · build · Python · Pass 12 · 4 to 6 h |
-| **You build** | `python/tinyllm/vision/tiling.py`: `TilingConfig`, `select_best_resolution`, `fit_size`, `anyres_tiles`, `unpad_shape` (LLaVA-NeXT AnyRes); `idefics3_resize_size`, `idefics3_split`, `idefics3_prompt` (Idefics3 / SmolVLM); `pixel_shuffle`, `pixel_unshuffle`; `image_token_count` |
+| **Module** | `L13.4` · build · Python · Pass 12 |
+| **Solution** | [`tiling.py`](../../../../course/solutions/python/tinyllm/vision/tiling.py): `TilingConfig`, `select_best_resolution`, `fit_size`, `anyres_tiles`, `unpad_shape` (LLaVA-NeXT AnyRes); `idefics3_resize_size`, `idefics3_split`, `idefics3_prompt` (Idefics3 / SmolVLM); `pixel_shuffle`, `pixel_unshuffle`; `image_token_count` |
 | **Contract** | [`course/contracts/py/tinyllm/vision/tiling.pyi`](../../../../course/contracts/py/tinyllm/vision/tiling.pyi) |
-| **Tests** | `course/tests/L13.4/test_tiling.py` (what they check: section 4), golden values in `course/fixtures/L13.4/tiling_hf.npz` from `course/oracle/L13.4/tiling_hf.py` (transformers 5.19.0 `Idefics3ImageProcessorPil`, `Idefics3Processor`, `LlavaNextImageProcessorPil`, `LlavaNextProcessor`, `select_best_resolution`, `Idefics3Connector`, on Pillow 12.3.0) |
-| **Needs** | `M12.3` `resize` (or `--ref-deps`). Reading: `M12.2` HWC pixels, `M05.1` counting tokens and bytes |
-| **Used by** | `L13.6` (runs the split, reports token counts) · `L13.7` (expands image placeholders) · later `L15.1` (Rust) and `gw.10` (Go `ImageTokens`) re-implement `image_token_count` against the same fixture table |
-| **Milestone** | `MS-L13` step 3 (preprocessing to spec: token counts exact) |
+| **Needs** | `M12.3` `resize`. Reading: `M12.2` HWC pixels, `M05.1` counting tokens and bytes |
+| **Used by** | `L13.6` (runs the split, reports token counts) · `L13.7` (expands image placeholders) · later `L15.1` (Rust) and `gw.10` (Go `ImageTokens`) re-implement `image_token_count` against the same 40-size table; preprocessing to spec means these token counts are exact |
 | **Optional depth** | Liu et al., "LLaVA-NeXT: Improved reasoning, OCR, and world knowledge" (2024); Laurençon et al., "Building and better understanding vision-language models" (2024), for Idefics3; Marafioti et al., "SmolVLM: Redefining small and efficient multimodal models" (2025); Shi et al., "Real-time single image and video super-resolution using an efficient sub-pixel convolutional neural network" (2016), for pixel shuffle |
 
 ## Key Takeaways
 
-- Idefics3 / SmolVLM splitting is integer arithmetic on the size: longest edge to 2048 (other edge rounded up to even), each edge grown to a multiple of 512, a `rows x cols` grid of tiles plus one global image, so a $1000 \times 1500$ photo costs $(3 \cdot 4 + 1) \cdot 64 = 832$ tokens (`test_hand_example`, `test_token_table_matches_hf`).
-- LLaVA-NeXT AnyRes picks the candidate resolution with the most effective pixels, then the least waste, then the earliest; the padding it adds is later cut from the feature grid, with one `image_newline` per remaining row (`test_select_best_resolution_ties`, `test_unpad_shape_and_fit_size`).
-- The tiles equal Hugging Face's PIL processors byte for byte, because every resize is `M12.3`'s Pillow-exact `resize` (`test_idefics3_tiles_match_hf`, `test_anyres_tiles_match_hf`).
-- Pixel shuffle moves an $r \times r$ block of tokens into the channels of one token: $r^2$ times fewer tokens, $r^2$ times wider, and exactly invertible (`test_pixel_shuffle_matches_hf_and_inverts`).
-- `image_token_count` needs only $(h, w)$ and the config, never the pixels, and a larger copy of an image never costs fewer tokens (`test_tokens_monotone_in_area`).
+- Idefics3 / SmolVLM splitting is integer arithmetic on the size: longest edge to 2048 (other edge rounded up to even), each edge grown to a multiple of 512, a `rows x cols` grid of tiles plus one global image, so a $1000 \times 1500$ photo costs $(3 \cdot 4 + 1) \cdot 64 = 832$ tokens.
+- LLaVA-NeXT AnyRes picks the candidate resolution with the most effective pixels, then the least waste, then the earliest; the padding it adds is later cut from the feature grid, with one `image_newline` per remaining row.
+- The tiles equal Hugging Face's PIL processors byte for byte, because every resize is `M12.3`'s Pillow-exact `resize`.
+- Pixel shuffle moves an $r \times r$ block of tokens into the channels of one token: $r^2$ times fewer tokens, $r^2$ times wider, and exactly invertible.
+- `image_token_count` needs only $(h, w)$ and the config, never the pixels, and a larger copy of an image never costs fewer tokens.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L13.4              # stubs python/tinyllm/vision/tiling.py into your repo
-ol tests L13.4              # read the test catalog first: rung R0, you write no tests here
-ol check L13.4              # exit code is the verdict
-ol check L13.4 --ref-deps   # only if your M12.3 is not passing yet
-ol diff  L13.4              # after passing: your code against the reference
-```
+Section 1 says why image size must become a token count. Section 2 derives both tiling recipes, the token formulas, and pixel shuffle, and section 3 works one image through each recipe by hand. Section 4 fixes the interface. Section 5 walks through `tiling.py` and explains why each rounding and each ordering is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
@@ -94,7 +85,7 @@ $$\text{eff} = \min(\text{int}(ws) \cdot \text{int}(hs),\ wh), \qquad \text{wast
 | `llava_next` | $g^2 + \texttt{base\_extra} + u_h u_w + u_h$, with $(u_h, u_w)$ the unpadded grid | $g^2 + \texttt{base\_extra} + 1$ |
 | `single` | $n_\text{seq}$ | $n_\text{seq}$ |
 
-In the `llava_next` row, $u_h u_w$ are the grid cells and $u_h$ the newlines, one per row; the unsplit case has one newline. Wrapper text (fake tokens, row tags, `<global-img>`, the `\n` characters) is not counted, because how many tokens it becomes depends on the tokenizer. Sizes below 1 and unknown `detail` values raise `ValueError`. The fixture holds 40 sizes (tiny, huge, extreme aspect ratios) with the processors' answers; the Rust and Go ports must reproduce the same table.
+In the `llava_next` row, $u_h u_w$ are the grid cells and $u_h$ the newlines, one per row; the unsplit case has one newline. Wrapper text (fake tokens, row tags, `<global-img>`, the `\n` characters) is not counted, because how many tokens it becomes depends on the tokenizer. Sizes below 1 and unknown `detail` values raise `ValueError`. A table of 40 sizes (tiny, huge, extreme aspect ratios) with the processors' answers is the parity reference; the Rust and Go ports must reproduce the same table.
 
 ### 2.5 Pixel shuffle
 
@@ -121,7 +112,7 @@ with the row offset $a$ outer and the column offset $b$ inner: each block row co
 | $(1008, 336)$ | $0.336$ | $336 \times 168$ | 56448 | 282240 |
 | $(336, 1008)$ | $0.672$ | $672 \times 336$ | 225792 | 112896 |
 
-Three candidates tie on eff; $(336, 672)$ wins on waste. The feature grid is $(336/336 \cdot 24,\ 672/336 \cdot 24) = (24, 48)$; $w/h = 2$ is not greater than $48/24 = 2$, so the column branch runs: $m = 1000 \cdot 24/500 = 48$, $q = 0$, nothing to remove. Tokens: $576 + 24 \cdot 48 + 24 = 1752$; with `detail="low"`, $577$ (`test_hand_example`, `test_unpad_shape_and_fit_size`).
+Three candidates tie on eff; $(336, 672)$ wins on waste. The feature grid is $(336/336 \cdot 24,\ 672/336 \cdot 24) = (24, 48)$; $w/h = 2$ is not greater than $48/24 = 2$, so the column branch runs: $m = 1000 \cdot 24/500 = 48$, $q = 0$, nothing to remove. Tokens: $576 + 24 \cdot 48 + 24 = 1752$; with `detail="low"`, $577$.
 
 For a case that does unpad: a $(480, 640)$ image on a $(48, 48)$ grid has $w/h = 1.33 > 1$, so $m = 480 \cdot 48/640 = 36$ rows, $q = 6$, and $(36, 48)$ is kept.
 
@@ -149,41 +140,230 @@ def image_token_count(h, w, cfg, detail: Literal["low", "high", "auto"] = "auto"
 
 Tiles, base, and global images are `uint8 [tile, tile, C]`. `anyres_tiles` raises `ValueError` unless every pinpoint is a multiple of `tile`; both splitters raise it for an image that is not `uint8` HWC; `pixel_shuffle` raises it unless the token count is a square $S^2$ and $r$ divides $S$.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example` | unit, smoke | section 3: $(1536, 2048)$, 832 tokens, 64 at `low`, best resolution $(336, 672)$ | you and the test agree on the recipe |
-| `test_token_table_matches_hf` | golden | 40 sizes: resized size, Idefics3 tokens, best resolution, LLaVA-NeXT tokens, all exact | the parity table of `L15.1` and `gw.10` |
-| `test_prompt_strings_match_hf` | golden | the prompt for grids $0 \times 0$, $1 \times 2$, $2 \times 3$ equals `Idefics3Processor`'s | `L13.7`'s placeholder expansion |
-| `test_idefics3_tiles_match_hf` | golden | three images at $E = 48$, $T = 16$: grid and every tile and global pixel equal | `L13.6` preprocessing, `MS-L13` step 3 |
-| `test_anyres_tiles_match_hf` | golden | two images: base and tiles equal HF's pixel for pixel | LLaVA-NeXT inputs in `L13.7` |
-| `test_pixel_shuffle_matches_hf_and_inverts` | golden | HF's connector order on `[2, 16, 6]` with $r = 2$; unshuffle restores the input, also for $r = 3$ | the projector's trained input layout |
-| `test_grow_to_tiles_uses_the_grown_width` | unit | $505 \times 1000$ and its transpose at $E = 1000$ give $(1024, 1024)$, 50 tokens at $n_\text{seq} = 10$; no split gives $(512, 512)$ | section 2.2's step 2 |
-| `test_unpad_shape_and_fit_size` | unit | `fit_size` and `unpad_shape` cases, 1752 and 577 tokens, a `single` config | newlines and unpadding agree with the features |
-| `test_select_best_resolution_ties` | unit | eff first, then waste, then the earlier candidate | deterministic choice across ports |
-| `test_tokens_monotone_in_area` | property | five aspect ratios scaled by 16 to 512: counts never decrease, both processors | rate limits and encoder budgets |
-| `test_rejects_bad_inputs` | boundary | zero size, unknown `detail`, empty pinpoints, bad shuffle factor, non-multiple pinpoints, float image | caller bugs fail loudly |
+| hand example | unit, smoke | section 3: $(1536, 2048)$, 832 tokens, 64 at `low`, best resolution $(336, 672)$ | the recipe is pinned to exact values |
+| token table matches HF | golden | 40 sizes: resized size, Idefics3 tokens, best resolution, LLaVA-NeXT tokens, all exact | the parity table of `L15.1` and `gw.10` |
+| prompt strings match HF | golden | the prompt for grids $0 \times 0$, $1 \times 2$, $2 \times 3$ equals `Idefics3Processor`'s | `L13.7`'s placeholder expansion |
+| Idefics3 tiles match HF | golden | three images at $E = 48$, $T = 16$: grid and every tile and global pixel equal | `L13.6` preprocessing to spec |
+| AnyRes tiles match HF | golden | two images: base and tiles equal HF's pixel for pixel | LLaVA-NeXT inputs in `L13.7` |
+| pixel shuffle matches HF and inverts | golden | HF's connector order on `[2, 16, 6]` with $r = 2$; unshuffle restores the input, also for $r = 3$ | the projector's trained input layout |
+| growing to tiles uses the grown width | unit | $505 \times 1000$ and its transpose at $E = 1000$ give $(1024, 1024)$, 50 tokens at $n_\text{seq} = 10$; no split gives $(512, 512)$ | section 2.2's step 2 |
+| `unpad_shape` and `fit_size` | unit | `fit_size` and `unpad_shape` cases, 1752 and 577 tokens, a `single` config | newlines and unpadding agree with the features |
+| best-resolution ties | unit | eff first, then waste, then the earlier candidate | deterministic choice across ports |
+| tokens monotone in area | property | five aspect ratios scaled by 16 to 512: counts never decrease, both processors | rate limits and encoder budgets |
+| bad inputs rejected | boundary | zero size, unknown `detail`, empty pinpoints, bad shuffle factor, non-multiple pinpoints, float image | caller bugs fail loudly |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **The token count must be a pure function of $(h, w)$ and the config.** The engine and the gateway need it before any pixel is decoded, and the language model needs exactly as many placeholders as there are features. So the solution separates *size arithmetic* (`select_best_resolution`, `fit_size`, `unpad_shape`, `idefics3_resize_size`) from *pixel work* (`anyres_tiles`, `idefics3_split`), and `image_token_count` calls only the arithmetic.
+2. **The arithmetic must reproduce the published processors' rounding, including their quirks.** `int` truncation, rounding an edge up to even, recomputing the height from the grown width, `round(..., 7)` before `int` in unpadding: each is copied because changing any one changes some image's count, which then disagrees with the model.
+3. **The pixels must be identical too.** Every resize goes through `M12.3`'s Pillow-exact `resize` with the processor's kernel (Lanczos for Idefics3, bicubic for AnyRes), and crops are plain slices in row-major order.
+4. **Choosing a resolution is a lexicographic maximum.** Most effective pixels, then least waste, then first. Writing the comparison as "strictly better" makes the third rule automatic.
+5. **Pixel shuffle is a reshape-and-transpose permutation.** Any reshape sequence that groups an $r \times r$ block gives the right shape; only Hugging Face's sequence gives the order the projector was trained on, and the inverse is the same steps backwards.
+
+### The code, annotated
+
+AnyRes selection, section 2.3:
+
+```python
+def select_best_resolution(hw, pinpoints):
+    h, w = (int(v) for v in hw)
+    # ... raise on a size below 1 or no candidates
+    best, best_eff, best_waste = None, 0, math.inf
+    for ph, pw in pinpoints:
+        scale = min(pw / w, ph / h)                  # fit inside, aspect kept
+        dw, dh = int(w * scale), int(h * scale)
+        eff = min(dw * dh, w * h)                    # upscaling adds no information
+        waste = pw * ph - eff
+        # Strictly better only: an exact tie keeps the earlier candidate.
+        if eff > best_eff or (eff == best_eff and waste < best_waste):
+            best, best_eff, best_waste = (int(ph), int(pw)), eff, waste
+    return best
+```
+
+Fitting, padding, and cropping. The tighter edge is exact, the other rounded up and capped; the odd leftover pixel goes after:
+
+```python
+def fit_size(hw, target):
+    h, w = hw
+    th, tw = target
+    sw, sh = tw / w, th / h
+    if sw < sh:
+        return min(math.ceil(h * sw), th), tw        # width is the tight edge
+    return th, min(math.ceil(w * sh), tw)
+
+# in anyres_tiles:
+th, tw = select_best_resolution((h, w), pinpoints)
+nh, nw = fit_size((h, w), (th, tw))
+fitted = resize(a, (nh, nw), kernel)                 # Pillow bicubic
+py, ry = divmod(th - nh, 2)
+px, rx = divmod(tw - nw, 2)
+canvas = np.pad(fitted, ((py, py + ry), (px, px + rx), (0, 0)))   # centered; extra pixel bottom/right
+rows, cols = th // tile, tw // tile
+tiles = [canvas[i * tile : (i + 1) * tile, j * tile : (j + 1) * tile].copy() for i in range(rows) for j in range(cols)]
+base = resize(a, (tile, tile), kernel)               # the original, not the canvas
+```
+
+Unpadding trims the same $q$ from both sides:
+
+```python
+def unpad_shape(orig_hw, cur_hw):
+    h, w = orig_hw
+    ch, cw = cur_hw
+    if w / h > cw / ch:                              # wider than the grid: padded above and below
+        new_h = int(round(h * (cw / w), 7))          # round to 7 places first, as the processor does
+        pad = (ch - new_h) // 2
+        return ch - 2 * pad, cw
+    new_w = int(round(w * (ch / h), 7))
+    pad = (cw - new_w) // 2
+    return ch, cw - 2 * pad
+```
+
+Idefics3's two size steps. `_longest_edge_size` is step 1 (edge to `max_len`, other edge rounded up to even, then the 4096 cap); `idefics3_resize_size` is step 2:
+
+```python
+def idefics3_resize_size(hw, longest_edge, tile, split=True):
+    h, w = (int(v) for v in hw)
+    # ... raise on a size below 1
+    if not split:
+        return tile, tile
+    if longest_edge:
+        h, w = _longest_edge_size(h, w, longest_edge)
+    aspect = w / h
+    if w >= h:
+        w = math.ceil(w / tile) * tile
+        h = math.ceil(int(w / aspect) / tile) * tile   # from the grown w, not the old h
+    else:
+        h = math.ceil(h / tile) * tile
+        w = math.ceil(int(h * aspect) / tile) * tile
+    return h, w
+```
+
+`idefics3_split` performs the same two resizes on the pixels (Lanczos), crops `rows x cols` tiles row-major when either edge exceeds `tile`, and returns the grown image squeezed to `tile x tile` as the global image. `idefics3_prompt` writes section 2.2's string:
+
+```python
+run = image_token * image_seq_len
+if rows == 0 and cols == 0:
+    return fake_token + global_tag + run + fake_token     # unsplit: only the global group
+out = ""
+for r in range(rows):
+    for c in range(cols):
+        out += fake_token + f"<row_{r + 1}_col_{c + 1}>" + run   # 1-based tags
+    out += "\n"                                           # one newline per row of tiles
+return out + "\n" + fake_token + global_tag + run + fake_token
+```
+
+Pixel shuffle, op for op as `Idefics3Connector`:
+
+```python
+n, seq, d = a.shape
+s = math.isqrt(seq)
+# ... raise unless seq = s*s and r divides s
+y = a.reshape(n, s, s, d).reshape(n, s, s // r, d * r)          # merge r adjacent columns into channels
+y = y.transpose(0, 2, 1, 3).reshape(n, s // r, s // r, d * r * r)  # swap axes, merge r adjacent rows
+return y.transpose(0, 2, 1, 3).reshape(n, seq // (r * r), d * r * r)  # swap back: row-major blocks
+```
+
+`pixel_unshuffle` applies the inverse reshapes and transposes in reverse order, so the round trip is the identity on every entry.
+
+The token count uses only the arithmetic:
+
+```python
+split = cfg.split if detail == "auto" else detail == "high"
+if cfg.kind == "single":
+    return cfg.image_seq_len
+if cfg.kind == "idefics3":
+    if not split:
+        return cfg.image_seq_len
+    bh, bw = idefics3_resize_size((h, w), cfg.longest_edge, cfg.tile)
+    if bh <= cfg.tile and bw <= cfg.tile:
+        return cfg.image_seq_len                               # no tiles: the global image only
+    return ((bh // cfg.tile) * (bw // cfg.tile) + 1) * cfg.image_seq_len   # tiles plus the global image
+if cfg.kind == "llava_next":
+    side = cfg.tile // cfg.patch_size                          # g
+    base = side * side + cfg.base_extra
+    if not split:
+        return base + 1                                        # one newline
+    th, tw = select_best_resolution((h, w), cfg.pinpoints)
+    uh, uw = unpad_shape((h, w), (th // cfg.tile * side, tw // cfg.tile * side))
+    return base + uh * uw + uh                                 # cells plus one newline per row
+```
+
+Full solution: [`tiling.py`](../../../../course/solutions/python/tinyllm/vision/tiling.py)
+
+### Why this solution
+
+- **Cost.** `image_token_count` is $O(\text{pinpoints})$ arithmetic, cheap enough for a gateway to run on every request. The splitters cost a few resizes, $O(hw)$ each, plus copies of the tiles.
+- **Arithmetic separate from pixels.** A count computed by actually splitting would need the decoded image and would be too slow for metering. Sharing the size functions between `image_token_count` and the splitters guarantees the count and the tiles always agree.
+- **Bug-for-bug parity versus a cleaner formula.** A "nicer" rounding (keep the height, skip the even rounding) would give a different count for some sizes, and a mismatch between placeholders and features is a hard failure in the model. The 40-size table and the Rust and Go ports all depend on the exact published arithmetic.
+- **Tiles versus native resolution.** Tiling reuses a fixed-size tower unchanged, at the cost of seams and a global view to compensate. Qwen2-VL's variable-length sequence avoids tiles but needs 2D RoPE and a tower trained for it (`L13.2`, `L13.3`).
+
+### Explain it back
+
+**Why does a $505 \times 1000$ image at $E = 1000$ need two rows of 512 tiles?**
+
+<details><summary>Answer</summary>
+
+Step 1 makes it $506 \times 1000$ (505 is odd). Step 2 grows the width to 1024 and recomputes the height from it: $\text{int}(1024 \cdot 506/1000) = 518 > 512$, so two rows. Growing the old height 506 directly would give one row, and the count would disagree with the processor.
+
+</details>
+
+**In the LLaVA-NeXT example, why does $(336, 672)$ beat $(336, 1008)$ although both have the same effective resolution?**
+
+<details><summary>Answer</summary>
+
+Both fit the image at scale 0.672 to $672 \times 336$ pixels, eff 225792. The tie breaks on waste: $336 \cdot 672 - 225792 = 0$ against $336 \cdot 1008 - 225792 = 112896$.
+
+</details>
+
+**Why does `unpad_shape` keep $G_h - 2q$ rows and not the content height $m$?**
+
+<details><summary>Answer</summary>
+
+That is what the processor does: it trims the same $q = \lfloor (G_h - m)/2 \rfloor$ from both sides. With an odd leftover, $G_h - 2q = m + 1$. Keeping $m$ would drop one row of features the model expects and the count would be off by $u_w + 1$.
+
+</details>
+
+**Why is a larger copy of an image never cheaper, and how far does that argument go?**
+
+<details><summary>Answer</summary>
+
+For Idefics3 with `longest_edge` set, step 1 rescales every copy to the same longest edge, so copies of one aspect ratio land on the same grid; the original size matters only through the rounding of the short edge. For LLaVA-NeXT, the fitted size inside each candidate depends only on the aspect ratio, while the cap $wh$ grows with the copy, so every candidate's effective resolution can only rise and the chosen grid tends to grow. These are arguments for the common case, not a proof for every rounding; the monotonicity is checked on five aspect ratios scaled from 16 to 512 pixels, and it is what lets a gateway set rate limits by size.
+
+</details>
+
+**What would go wrong with a pixel shuffle that gives the right shape in a different order?**
+
+<details><summary>Answer</summary>
+
+Each output token would hold the same $r^2$ input entries in a different channel arrangement, or entries from a different block. The shape and even the round trip could be fine, but the trained projector after it would read channels it was not trained on, and the features would be garbage.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. an exact tie takes the later candidate | a transposed grid for square images | `test_select_best_resolution_ties`, `test_hand_example` (mutant `s01`) |
-| 2. the height grown from the old height, not the grown width | one row of tiles too few | `test_grow_to_tiles_uses_the_grown_width`, `test_idefics3_tiles_match_hf` (mutant `s02`) |
-| 3. one newline per column instead of per row | counts right only for square grids | `test_token_table_matches_hf`, `test_unpad_shape_and_fit_size` (mutant `s03`) |
-| 4. the odd padding pixel on top or left | every tile shifted by one pixel | `test_anyres_tiles_match_hf` (mutant `s04`) |
-| 5. pixel shuffle without the last transpose | right shape, tokens in column-major order | `test_pixel_shuffle_matches_hf_and_inverts` (mutant `s05`) |
-| 6. no newline after each row of tiles | the model cannot tell where a row ends | `test_prompt_strings_match_hf` (mutant `s06`) |
-| 7. the longest-edge resize keeps an odd edge | 1365 rows instead of 1366; pixels and sometimes the grid differ | `test_idefics3_tiles_match_hf`, `test_hand_example` (mutant `s07`) |
-| 8. unpadding removes one side's padding only | too many rows kept, too many tokens | `test_unpad_shape_and_fit_size`, `test_token_table_matches_hf` (mutant `s08`) |
-| accepting a zero-size image | a token count for nothing | `test_rejects_bad_inputs` (mutant `m01`) |
-| accepting an unknown `detail` | a typo silently means "do not split" | `test_rejects_bad_inputs` (mutant `m02`) |
-| accepting pinpoints that are not tile multiples | a ragged last tile | `test_rejects_bad_inputs` (mutant `m03`) |
+| 1. an exact tie takes the later candidate | a transposed grid for square images | `select_best_resolution` replaces only on strictly better eff or waste |
+| 2. the height grown from the old height, not the grown width | one row of tiles too few | `idefics3_resize_size` computes `h` from the grown `w` and the aspect |
+| 3. one newline per column instead of per row | counts right only for square grids | `image_token_count` adds `uh`, the kept rows |
+| 4. the odd padding pixel on top or left | every tile shifted by one pixel | `np.pad` puts the `divmod` remainder after: `(py, py + ry)` |
+| 5. pixel shuffle without the last transpose | right shape, tokens in column-major order | `pixel_shuffle` follows `Idefics3Connector` op for op, ending in a transpose |
+| 6. no newline after each row of tiles | the model cannot tell where a row ends | `idefics3_prompt` appends `"\n"` after each row |
+| 7. the longest-edge resize keeps an odd edge | 1365 rows instead of 1366; pixels and sometimes the grid differ | `_longest_edge_size` adds `h % 2` |
+| 8. unpadding removes one side's padding only | too many rows kept, too many tokens | `unpad_shape` keeps `ch - 2 * pad` |
+| 9. accepting a zero-size image | a token count for nothing | `image_token_count` raises for a size below 1 |
+| 10. accepting an unknown `detail` | a typo silently means "do not split" | `image_token_count` raises unless `detail` is `low`, `high`, or `auto` |
+| 11. accepting pinpoints that are not tile multiples | a ragged last tile | `anyres_tiles` raises unless every pinpoint is a multiple of `tile` |
 
-One more without a mutant: sizes are (height, width) here, but Pillow's `Image.resize` and many configs write (width, height). Swap them and every aspect ratio above $1$ takes the wrong branch.
+One more to keep in mind: sizes are (height, width) here, but Pillow's `Image.resize` and many configs write (width, height). Swap them and every aspect ratio above $1$ takes the wrong branch.
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -197,7 +377,7 @@ One more without a mutant: sizes are (height, width) here, but Pillow's `Image.r
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `idefics3_split`, `idefics3_prompt` | HF `Idefics3ImageProcessor`, `SmolVLMProcessor` | batching with pixel masks, torch-backed fast processors, video frames | `transformers/models/idefics3/image_processing_idefics3.py` |
 | `anyres_tiles`, `unpad_shape` | HF `LlavaNextImageProcessor`, LLaVA-OneVision | larger pinpoint sets, bilinear pooling of tile features, video | `transformers/models/llava_next/` |

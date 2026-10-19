@@ -4,6 +4,6 @@ transformer, GPT/BERT/ELECTRA/LoRA, the model zoo, modern block; SmolLM2-135M lo
 
 **Part of**: [the course](../course/). **Needs**: [Pass 4](../course-p04-sequence-models/).
 
-**Gate**: [MS-P5 = MS-L5 + MS-L6 + MS-L7](milestone.md).
+**After this pass**: [what the system does](milestone.md): transformer language models, the model zoo, and SmolLM2-135M loading and matching Hugging Face.
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p05-p05-transformer` to see progress.
+Stages, chapter links, and what "done" means for each are in [`path.tsv`](path.tsv).

@@ -150,7 +150,7 @@ Answers are exact (for example $\frac12\ln\frac32$, not 0.2027). The tag after e
 
 <details><summary>Answer</summary>
 
-**$\pi$.** By parts with $u = x$, $v' = \sin x$: $[-x\cos x]_0^\pi + \int_0^\pi \cos x\,dx = \pi + 0 = \pi$. Answering 0 confuses this with $\int_0^\pi \cos x$, or treats the integrand as odd about $\pi/2$ (it is not).
+**$\pi$.** By parts with $u = x$, $v' = \sin x$: $[-x\cos x]_0^\pi + \int_0^\pi \cos x\,dx = \pi + 0 = \pi$. Answering 0 drops the boundary term $[-x\cos x]_0^\pi = \pi$.
 
 </details>
 
@@ -446,7 +446,7 @@ The key step is using the degree 4 remainder: treating $x - \frac{x^3}{6}$ as on
 
 <details><summary>Answer</summary>
 
-**$\pi/2$.** The speed is $\sqrt{\sin^2 t + \cos^2 t} = 1$, so the length is the parameter range, a quarter of the unit circle. Answering 1 measures the chord or the straight-line distance in one coordinate.
+**$\pi/2$.** The speed is $\sqrt{\sin^2 t + \cos^2 t} = 1$, so the length is the parameter range, a quarter of the unit circle. Answering 1 gives the radius, not the length of the arc.
 
 </details>
 

@@ -223,7 +223,7 @@ The closure captures `p` and `mult`, which is exactly the state the backward nee
 
 - **Cost.** Forward and backward are each $O(T_q T_k (d + d_v))$ time per batch-head; memory is $O(T_q T_k)$ for $P$, kept for the backward. That quadratic memory is what FlashAttention removes by recomputing $P$ in tiles from saved row statistics.
 - **Why a hand-written backward instead of composing `matmul`, `masked_fill`, `softmax`?** The composed graph would be correct but store every intermediate and create seven nodes per call. The hand backward stores only $P$ and is the reference that `L9.3`'s kernel is tested against.
-- **Why compute $D$ as `sum(dp * pa)` and not $dO \cdot O$?** Both are equal without dropout; with dropout, $O$ uses $P \circ m$ while the softmax VJP needs $\sum_j P_j\, dP_j$ with the masked $dP$, so the direct form is correct in both cases. FlashAttention's $dO \cdot O$ shortcut applies to the dropout-free case.
+- **Why compute $D$ as `sum(dp * pa)` and not $dO \cdot O$?** They are equal, with or without dropout (with dropout $O = (P \circ m)V$ and $dP$ carries the same $m$). Here $dP$ is already materialized, so the direct row sum is the simplest; FlashAttention uses $dO \cdot O$ because it never holds a full row of $dP$ at once.
 - **Why $-\infty$ rather than a large negative number?** A finite fill makes a fully masked row uniform over padding instead of zero (pitfall 9).
 - **Why return the weights before dropout and detached?** They are for heat maps and caches; making them a gradient path would let an inspection call change training.
 

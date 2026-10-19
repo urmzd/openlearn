@@ -1,35 +1,32 @@
-# MS-P1: Every Layer Is Yours
+# What the system does after Pass 1
 
-**Spec**: [`course/milestones/MS-P1.toml`](../../../../../course/milestones/MS-P1.toml). **Requires** a fresh pass of your own for every core Pass 1 module: `M03.1`, `L0.0`, `lang.04` to `lang.07`, `L10.0`, `gw.00`, `dep.00`, `obs.00`, `ops.00` (the drill, graded by `ol drill end`), and `craft.02`. MS-P1 also reruns the smoke steps of MS-P0. The C primer `lang.03` is optional practice.
+Every layer of the final system exists in its thinnest form and runs end to end: the Python CLI trains a byte bigram by counting and writes a checkpoint, the Rust engine streams completions from it, the Go gateway authenticates and proxies the stream, both run on kind behind Helm charts, and one request appears as one trace across both services. Later passes deepen each layer without changing these seams.
 
-## What it runs
+It is built from `M03.1`, `L0.0`, `lang.04` to `lang.07`, `L10.0`, `gw.00`, `dep.00`, `obs.00`, `ops.00` (the drill), and `craft.02`. The C primer `lang.03` is optional.
 
-| Step | Where | Passes when |
-|---|---|---|
-| train-bigram | local | `{tinyllm} train bigram` on the fixture corpus reaches NLL at most 3.2004 nats per byte (the count model gives 3.199389) |
-| greedy-from-your-checkpoint | local | greedy generation of 32 tokens from "Once" equals the fixture ids exactly |
-| engine-conforms-openapi-v0 | local | `ol conform openapi:v0:engine` against your engine |
-| gateway-conforms-openapi-v0 | local | `ol conform openapi:v0:gateway` against your gateway in front of your engine |
-| stream-through-your-gateway | local | a keyed streaming request through your gateway yields at least 32 content chunks |
-| adr-0001-present, engine-crashloop-runbook-present | full | the documents exist in your repo |
-| stream-through-the-kind-nodeport | kind | the same stream through the gateway NodePort 30080 |
-| one-trace-spans-gateway-and-engine | kind | Jaeger holds one trace whose `gateway.proxy` span is the parent of the engine's `POST /v1/completions` |
+## What runs, and why each piece is needed
 
-## Run it
+| Behaviour | Where | What it shows | Why it is needed |
+|---|---|---|---|
+| `{tinyllm} train bigram` on a small story corpus | local | NLL at most 3.2004 nats per byte (the count model gives 3.199389) | the checkpoint format every later model reuses |
+| greedy generation of 32 tokens from "Once" | local | the exact same ids on every run | deterministic decoding is what makes engine and CLI comparable |
+| the engine against `openapi:v0` | local | `POST /v1/completions` and its SSE stream follow the contract | the gateway and every client depend on the wire format, not the implementation |
+| the gateway against `openapi:v0` | local | the same contract, in front of the engine | the gateway must be transparent to clients |
+| a keyed streaming request through the gateway | local | at least 32 content chunks arrive as they are produced | proves the proxy does not buffer the stream |
+| ADR-0001 and the engine-crashloop runbook | docs | [ADR-0001](../../../../../course/solutions/docs/adr/0001-languages-meet-at-process-and-file-boundaries.md), [runbook](../../../../../course/solutions/docs/runbooks/engine-crashloop.md) | the decision that languages meet at process and file boundaries, and the first operational procedure |
+| the same stream through the kind NodePort 30080 | kind | the deployed system behaves like the local one | the deploy path is exercised from day one |
+| one trace spanning gateway and engine | kind | Jaeger holds one trace whose `gateway.proxy` span is the parent of the engine's `POST /v1/completions` | trace context propagation, which every later debugging session relies on |
 
-```bash
-practice/bin/ol milestone MS-P1 --smoke   # local processes only: what PR CI runs
-practice/bin/ol milestone MS-P1           # adds the documents and the kind steps
-```
+## How the solution is wired
 
-The runner first runs your `[build].steps`, then starts your engine and gateway on allocated ports and waits for their health URLs. Your `system.toml` declares, per [`spec/cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md):
+The roles and their verbs are fixed by [`cli-roles.md`](../../../../../course/contracts/spec/cli-roles.md). The build and the entry points of the solution are:
 
 ```toml
 [build]
 steps = [["cargo", "build", "--release", "--manifest-path", "rust/Cargo.toml", "-p", "tl-serve"],
          ["go", "build", "-C", "go", "-o", "bin/gateway", "./cmd/gateway"],
          ["uv", "run", "--project", "python", "python", "python/tinyllm/__main__.py",
-          "train", "bigram", "--data", "{fixture:MS-P1/corpus.txt}", "--out", "artifacts/models/bigram"]]
+          "train", "bigram", "--data", "corpus.txt", "--out", "artifacts/models/bigram"]]
 
 [entry]
 tinyllm = ["uv", "run", "--project", "python", "python", "python/tinyllm/__main__.py"]
@@ -45,7 +42,7 @@ after  = ["engine"]
 
 [endpoints]
 api_base    = "http://127.0.0.1:{gateway.port}/v1"
-api_key_env = "TL_API_KEY"                # export a key in it before you run
+api_key_env = "TL_API_KEY"                # the gateway reads the accepted key from it
 
 [deploy]
 kube_context = "kind-<system>"
@@ -55,4 +52,4 @@ traces       = "http://127.0.0.1:30686"
 services     = { engine = "deploy/<system>-engine", gateway = "deploy/<system>-gateway" }
 ```
 
-A kind step without a reachable cluster is skipped with the reason and the verdict is `incomplete`, not a pass. `--ref-deps` runs the milestone while some required module is still red and records the verdict as assisted; your entry points always run as they are.
+The order matters: the engine starts first and the gateway waits for the engine's health URL (`after = ["engine"]`), because a gateway whose upstream is not ready would fail its own readiness check. Separate health ports keep liveness probes off the serving port. The CLI entry point is [`__main__.py`](../../../../../course/solutions/entry/python/tinyllm/__main__.py); the gateway's is under [`go/cmd/gateway`](../../../../../course/solutions/entry/go/cmd/gateway/); the deploy files are under [`deploy/`](../../../../../course/solutions/entry/deploy/).

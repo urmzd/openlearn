@@ -1,38 +1,27 @@
-<!-- ol:module L9.1 -->
 # Cache-blocked, packed, batch-invariant matmul in C (optional)
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L9.1` · side · C · Pass 6 · 5 to 7 h |
-| **You build** | `c/src/kernels/matmul.c`, taken over from `M03.1`: the same `tl_matmul_f32` signature and contract, now with Goto's loop nest (column strips, k-blocks, packed panels, a 4 x 16 register micro-kernel), threads from your `rt.03` pool, and a fixed reduction order that makes every row's bits independent of the batch |
+| **Module** | `L9.1` · side · C · Pass 6 |
+| **Solution** | [`matmul.c`](../../../../course/solutions/c/src/kernels/matmul.c), taking over from `M03.1`: the same `tl_matmul_f32` signature and contract, now with Goto's loop nest (`column_strip`, `pack_b`, `pack_a`, a 4 x 16 register `micro_kernel`, `store_tile`), threads from the `rt.03` pool, and a fixed reduction order that makes every row's bits independent of the batch |
 | **Contract** | [`course/contracts/c/include/tinyllm/matmul.h`](../../../../course/contracts/c/include/tinyllm/matmul.h) · rules: [`c/ABI.md`](../../../../course/contracts/c/ABI.md) (rule 10, batch invariance) |
-| **Tests** | `course/tests/L9.1/`: `test_matmul_tiled.c` (C, under ASan and UBSan, and ThreadSanitizer for the pool case) and shared file fixtures (what they check: section 4); `M03.1`'s tests run as your regression. Bench: `course/tests/L9.1/bench/matmul_512.c` |
-| **Needs** | `rt.02` the error slot and the loader · `rt.03` `tl_parallel_for` (or `--ref-deps`). Reading: `M03.1` (your v0 of this file) · `M09.3` (the $\sqrt{K}$ error bound) · `M05.1` (FLOP counting) · `rt.02` (why this kernel does not use an arena) |
-| **Used by** | `L9.5` measures its quantized kernel against this optional C baseline; Python and Rust have independent implementations |
-| **Milestone** | `MS-L9` (the C backend generates the same tokens as numpy, and faster) |
+| **Needs** | `rt.02` the error slot and the loader · `rt.03` `tl_parallel_for`. Reading: `M03.1` (the naive v0 of this file) · `M09.3` (the $\sqrt{K}$ error bound) · `M05.1` (FLOP counting) · `rt.02` (why this kernel does not use an arena) |
+| **Used by** | `L9.5` measures its quantized kernel against this optional C baseline; Python and Rust have independent implementations; with it, the C backend generates the same tokens as numpy, and faster |
 | **Optional depth** | Goto and van de Geijn, "Anatomy of High-Performance Matrix Multiplication" (2008); Van Zee and van de Geijn, "BLIS: A Framework for Rapidly Instantiating BLAS Functionality" (2015); Williams, Waterman, and Patterson, "Roofline" (2009); He et al., "Defeating Nondeterminism in LLM Inference" (Thinking Machines, 2025) |
 
 ## Key Takeaways
 
-- **The triple loop is slow because of memory, not arithmetic.** Blocking reuses each loaded value many times from cache and registers; your packed version is 10 to 20 times faster at $512^3$ with the same $2MNK$ operations (`ol bench L9.1`).
-- **Packing copies a block into the exact order the micro-kernel reads it,** padded with zeros to whole micro-tiles, so the inner loop is unit-stride and every output element goes through the same code path (`shapes_across_tile_edges`).
-- **Batch invariance is a property of the reduction order.** Each $C_{ij}$ is a sum over k-blocks of fixed size $K_C$, each a sum from 0 in increasing $k$: nothing depends on $M$, on the row's position, or on the threads, so a row has the same bits alone or in a batch of 37 (`batch_invariant_rows`, `batch_invariant_at_1_7_37`).
-- **$\beta$ applies once, in the first k-block,** and later blocks add; $\beta = 0$ still never reads $C$ (`beta_applies_once_across_k_blocks`).
-- **Threads split columns, never a sum,** so 1 and 4 threads give identical bits (`pool_result_equals_serial_bitwise`).
+- **The triple loop is slow because of memory, not arithmetic.** Blocking reuses each loaded value many times from cache and registers; the packed version is 10 to 20 times faster at $512^3$ with the same $2MNK$ operations.
+- **Packing copies a block into the exact order the micro-kernel reads it,** padded with zeros to whole micro-tiles, so the inner loop is unit-stride and every output element goes through the same code path.
+- **Batch invariance is a property of the reduction order.** Each $C_{ij}$ is a sum over k-blocks of fixed size $K_C$, each a sum from 0 in increasing $k$: nothing depends on $M$, on the row's position, or on the threads, so a row has the same bits alone or in a batch of 37.
+- **$\beta$ applies once, in the first k-block,** and later blocks add; $\beta = 0$ still never reads $C$.
+- **Threads split columns, never a sum,** so 1 and 4 threads give identical bits.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L9.1              # prints the contract diff: you edit your own c/src/kernels/matmul.c
-ol tests L9.1              # read the test catalog first
-ol check L9.1              # exit code is the verdict (M03.1's tests run as the regression)
-ol check L9.1 --ref-deps   # only if your rt.03 is not passing yet
-ol bench L9.1 --assert     # the speed budget: at least 10x M03.1's loop at 512^3 (local only)
-ol parity matmul           # both of your versions against the float64 golden
-ol diff  L9.1              # after passing: your code against the reference
-```
+Sections 1 to 3 build the blocked kernel from first principles (the roofline, Goto's loop nest, packing, the reduction order that makes rows batch-invariant, threads) and push the `M03.1` example through one padded micro-tile by hand. Section 4 fixes the interface, unchanged from `M03.1` except for the batch-invariance promise. Section 5 walks through the solution and explains why each choice is the right one. Try to predict each step before reading it.
 
 ---
 
@@ -87,7 +76,7 @@ Every quantity in that expression depends only on row $i$ of $A$, column $j$ of 
 
 Three ways to lose it, all of which real libraries do for speed:
 
-- **A block size that depends on the shape**, such as a "GEMV path" for $M = 1$ that sums all of $K$ in one block. The decode step ($M = 1$) and the prefill ($M = T$) then round differently (section 5, mutant `s10`).
+- **A block size that depends on the shape**, such as a "GEMV path" for $M = 1$ that sums all of $K$ in one block. The decode step ($M = 1$) and the prefill ($M = T$) then round differently (section 3 shows how).
 - **Splitting $K$ across threads** ("split-K") and adding the thread partials in completion order.
 - **Different instructions for edge tiles**, for example a fused multiply-add in the vectorized body and separate multiply and add in a scalar remainder. A fused multiply-add rounds once where the pair rounds twice. Zero padding gives every element the same code path, and `#pragma STDC FP_CONTRACT OFF` forbids the compiler to fuse, so the arithmetic is the same on every path and every machine.
 
@@ -111,11 +100,11 @@ The packed kernel still does $2MNK$ FLOPs. Packing $B$ costs $KN$ copies per cal
 | 1 | $2 \cdot (9, 10)$, $5 \cdot (9, 10)$ | (25, 28) | (73, 82) |
 | 2 | $3 \cdot (11, 12)$, $6 \cdot (11, 12)$ | (58, 64) | (139, 154) |
 
-Rows 2 and 3 of the accumulator and columns 2 to 15 are zero (padding). The store writes only the $2 \times 2$ corner: $C = \{58, 64, 139, 154\}$, the first test, `hand_example`, and `test_hand_example`.
+Rows 2 and 3 of the accumulator and columns 2 to 15 are zero (padding). The store writes only the $2 \times 2$ corner: $C = \{58, 64, 139, 154\}$, the same result as `M03.1`'s loop.
 
-**Why the block size must not depend on $M$.** Take one output whose four products are, in order, $1, 10^8, 3, 3$ (float32). With the sum in one block, $((0 + 1) + 10^8) + 3 + 3$: float32 spacing near $10^8$ is 8, so adding 1 or 3 rounds back to $10^8$ each time, and the result is $100{,}000{,}000$. With blocks of 2, $(1 + 10^8) + (3 + 3) = 10^8 + 6$, which rounds up to $100{,}000{,}008$. Same numbers, different grouping, different bits. If the kernel used one block for $M = 1$ and blocks of 2 otherwise, a decode step and a prefill would disagree in exactly this way, which is what `batch_invariant_at_1_7_37` and mutant `s10` are about.
+**Why the block size must not depend on $M$.** Take one output whose four products are, in order, $1, 10^8, 3, 3$ (float32). With the sum in one block, $((0 + 1) + 10^8) + 3 + 3$: float32 spacing near $10^8$ is 8, so adding 1 or 3 rounds back to $10^8$ each time, and the result is $100{,}000{,}000$. With blocks of 2, $(1 + 10^8) + (3 + 3) = 10^8 + 6$, which rounds up to $100{,}000{,}008$. Same numbers, different grouping, different bits. If the kernel used one block for $M = 1$ and blocks of 2 otherwise, a decode step and a prefill would disagree in exactly this way.
 
-**$\beta$ across blocks.** With $K = 300$ and $K_C = 128$, element $(i, j)$ goes through three stores: $c \leftarrow \alpha P_0 + \beta c$, then $c \leftarrow c + \alpha P_1$, then $c \leftarrow c + \alpha P_2$. $\beta$ appears once (`beta_applies_once_across_k_blocks`).
+**$\beta$ across blocks.** With $K = 300$ and $K_C = 128$, element $(i, j)$ goes through three stores: $c \leftarrow \alpha P_0 + \beta c$, then $c \leftarrow c + \alpha P_1$, then $c \leftarrow c + \alpha P_2$. $\beta$ appears once.
 
 ## 4. The interface
 
@@ -131,44 +120,210 @@ tl_status tl_matmul_f32(const float *A, const float *B, float *C, int64_t M, int
    tp may be NULL (serial); with a pool, column strips run in parallel. */
 ```
 
-`ol start L9.1` does not overwrite your file: it prints the contract diff, and you rewrite the body of your own `c/src/kernels/matmul.c` in place.
+The solution file takes over `M03.1`'s `c/src/kernels/matmul.c`: same signature, new body. The naive v0's contract cases still hold.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `hand_example` | unit, smoke | section 3 through one padded micro-tile | the definition, and the edge store |
-| `shapes_across_tile_edges` | differential | $M, N, K$ around 4, 16, 64, 128, up to 257, both `trans_b`, against float64 within $\sqrt{K}$ | every tile edge |
-| `beta_applies_once_across_k_blocks` | unit | $K = 300$, $\alpha = 2$, $\beta = 0.5$; then $\beta = 0$ over NaN | accumulation across k-blocks |
-| `views_and_padding_untouched` | unit | `lda`, `ldb`, `ldc` larger than the rows; $C$'s other columns unchanged | views into fused projections |
-| `empty_and_invalid_like_v0` | boundary | `M03.1`'s rules: empty dims, $K = 0$ gives $\beta C$, `TL_EINVAL` leaves $C$ untouched | the contract carries over |
-| `batch_invariant_rows` | property | 16 rows of a Linear layer ($K = 300$): each alone vs inside every batch at every offset, bitwise | batched decode (`L10.2`) |
-| `batch_invariant_at_1_7_37` | property | the catalog's $M = 1, 7, 37$, bitwise | prefill vs decode |
-| `pool_result_equals_serial_bitwise` | property | 4 threads vs serial, three strips (the last partial), under TSan too | threads never change bits |
-| `baseline_row_major`, `trans_b_reads_rows_of_b` | unit | original row-major and transposed-B contract cases | the v0 interface remains compatible |
-| `alpha_and_beta_scale_and_accumulate`, `beta_zero_ignores_garbage_in_c` | unit | alpha/beta behavior, including no read of C when beta is zero | preserves the original arithmetic contract |
-| `empty_dimensions`, `bad_arguments_are_einval`, `leading_dimensions_skip_padding` | boundary | empty shapes, invalid arguments, and padded leading dimensions | preserves the original shape and view rules |
+| The hand example | unit, smoke | section 3 through one padded micro-tile | the definition, and the edge store |
+| Shapes across tile edges | differential | $M, N, K$ around 4, 16, 64, 128, up to 257, both `trans_b`, against float64 within $\sqrt{K}$ | every tile edge |
+| $\beta$ applies once across k-blocks | unit | $K = 300$, $\alpha = 2$, $\beta = 0.5$; then $\beta = 0$ over NaN | accumulation across k-blocks |
+| Views, and padding untouched | unit | `lda`, `ldb`, `ldc` larger than the rows; $C$'s other columns unchanged | views into fused projections |
+| Empty and invalid inputs, as in v0 | boundary | `M03.1`'s rules: empty dims, $K = 0$ gives $\beta C$, `TL_EINVAL` leaves $C$ untouched | the contract carries over |
+| Batch-invariant rows | property | 16 rows of a Linear layer ($K = 300$): each alone vs inside every batch at every offset, bitwise | batched decode (`L10.2`) |
+| Batch invariance at $M = 1, 7, 37$ | property | the catalog's $M = 1, 7, 37$, bitwise | prefill vs decode |
+| Pool result equals serial, bitwise | property | 4 threads vs serial, three strips (the last partial), under TSan too | threads never change bits |
+| Row-major and transposed $B$, as in v0 | unit | original row-major and transposed-B contract cases | the v0 interface remains compatible |
+| $\alpha$ and $\beta$, as in v0 | unit | alpha/beta behavior, including no read of C when beta is zero | preserves the original arithmetic contract |
+| Empty shapes, bad arguments, leading dimensions, as in v0 | boundary | empty shapes, invalid arguments, and padded leading dimensions | preserves the original shape and view rules |
 
-The bench (`ol bench L9.1`, a B test, never part of `ol check`) times your kernel against `M03.1`'s loop at $512^3$ and reports `speedup_vs_naive` (budget $\ge 10$) and GFLOP/s. The reference reaches about 19x and 50 GFLOP/s on one Apple M-series core; Apple's Accelerate (`cblas_sgemm`, AMX units) is several times faster again, which is the ceiling to compare against if you are curious, not a budget.
+## 5. The solution, step by step
 
-## 5. Pitfalls
+### From first principles
 
-| Pitfall | Symptom | Caught by |
+1. **The arithmetic is fixed at $2MNK$; the cost is memory traffic.** So the design question is how many times each loaded value is reused before it leaves a fast level of the hierarchy (section 2.1).
+2. **Registers give the most reuse per load**: an $M_R \times N_R$ block of accumulators reuses each loaded $a$ value $N_R$ times and each $b$ value $M_R$ times. $4 \times 16 = 64$ accumulators fit the vector registers of NEON and AVX2 and give 6.4 FLOPs per float loaded.
+3. **The micro-kernel needs its operands contiguous**, so pack: copy a $K_C \times N_C$ block of $\mathrm{op}(B)$ and an $M_C \times K_C$ block of $A$ into micro-kernel order. Packing is also the one place that has to know about `trans_b` and leading dimensions.
+4. **Batch invariance needs one code path and a fixed grouping of the sum.** Zero padding to whole tiles gives every element the same path; a constant $K_C$ fixes the grouping; `FP_CONTRACT OFF` stops the compiler fusing on some paths and not others.
+5. **$\beta$ belongs to the first k-block only**, because $C$ is overwritten by the first block's store and accumulated into afterwards.
+6. **Threads must split independent outputs, never a sum**, so the unit of work is a column strip of $C$, scheduled by `rt.03`.
+7. **No allocation in a kernel**: packing buffers sized by the block constants live on the stack (96 KiB, below the 512 KiB of a macOS worker thread).
+
+### The code, annotated
+
+Block constants and the arithmetic rule:
+
+```c
+/* A fused multiply-add rounds once where a multiply then an add rounds
+ * twice. If the compiler fused on one code path and not on another, an
+ * element's bits would depend on where it sits in a tile. */
+#pragma STDC FP_CONTRACT OFF
+
+#define MR 4   /* rows of a micro-tile */
+#define NR 16  /* columns of a micro-tile */
+#define KC 128 /* k values per block: the fixed reduction step */
+#define MC 64  /* rows per packed block of A (a multiple of MR) */
+#define NC 128 /* columns per strip (a multiple of NR) */
+```
+
+Packing, step 3. Both packers pad with zeros past the real edge, and both resolve the strides so the micro-kernel never sees them:
+
+```c
+/* panel p holds bp[p * kc * NR + k * NR + c] = op(B)[k0 + k][j0 + p * NR + c] */
+static void pack_b(const mm_args *a, int64_t k0, int64_t kc, int64_t j0, int64_t nc, float *bp) {
+    for (int64_t jp = 0; jp < nc; jp += NR) {
+        for (int64_t k = 0; k < kc; k++) {
+            for (int64_t c = 0; c < NR; c++) {
+                int64_t j = j0 + jp + c;
+                float v = 0.0f;                         /* zero past column nc */
+                if (jp + c < nc)
+                    v = a->trans_b ? a->B[j * a->ldb + (k0 + k)]     /* B is N x K */
+                                   : a->B[(k0 + k) * a->ldb + j];    /* B is K x N */
+                *bp++ = v;
+            }
+        }
+    }
+}
+
+/* panel p holds ap[p * kc * MR + k * MR + r] = A[i0 + p * MR + r][k0 + k] */
+static void pack_a(const mm_args *a, int64_t i0, int64_t mc, int64_t k0, int64_t kc, float *ap) {
+    for (int64_t ip = 0; ip < mc; ip += MR)
+        for (int64_t k = 0; k < kc; k++)
+            for (int64_t r = 0; r < MR; r++)
+                *ap++ = ip + r < mc ? a->A[(i0 + ip + r) * a->lda + (k0 + k)] : 0.0f;  /* lda, not K */
+}
+```
+
+The micro-kernel, step 2. Constant bounds let the compiler keep `acc` in vector registers; each partial sum starts at 0 and adds in increasing $k$:
+
+```c
+static void micro_kernel(int64_t kc, const float *ap, const float *bp, float acc[MR][NR]) {
+    for (int r = 0; r < MR; r++)
+        for (int c = 0; c < NR; c++) acc[r][c] = 0.0f;        /* P_b starts at 0 */
+    for (int64_t k = 0; k < kc; k++) {
+        const float *av = ap + k * MR, *bv = bp + k * NR;      /* sequential reads */
+        for (int r = 0; r < MR; r++)
+            for (int c = 0; c < NR; c++) acc[r][c] += av[r] * bv[c];   /* 20 loads, 128 FLOPs */
+    }
+}
+```
+
+The store, step 5. Only the real corner is written, through `ldc`:
+
+```c
+static void store_tile(const mm_args *a, int64_t i, int64_t j, int64_t mr, int64_t nr, float acc[MR][NR],
+                       int first) {
+    for (int64_t r = 0; r < mr; r++) {                    /* mr <= MR: no write into padding */
+        float *c = a->C + (i + r) * a->ldc + j;
+        for (int64_t q = 0; q < nr; q++) {
+            float v = a->alpha * acc[r][q];
+            if (!first)
+                c[q] = c[q] + v;                              /* later k-blocks add */
+            else
+                c[q] = a->beta == 0.0f ? v : v + a->beta * c[q];  /* beta once; never read C if 0 */
+        }
+    }
+}
+```
+
+The loop nest for one strip:
+
+```c
+static void column_strip(const mm_args *a, int64_t j0, int64_t nc) {
+    float bp[KC * NC], ap[MC * KC];                        /* 96 KiB, on the stack */
+    for (int64_t k0 = 0; k0 < a->K; k0 += KC) {            /* k-blocks, increasing */
+        int64_t kc = a->K - k0 < KC ? a->K - k0 : KC;
+        pack_b(a, k0, kc, j0, nc, bp);                     /* stays in L2 for every row block */
+        for (int64_t i0 = 0; i0 < a->M; i0 += MC) {
+            int64_t mc = a->M - i0 < MC ? a->M - i0 : MC;
+            pack_a(a, i0, mc, k0, kc, ap);
+            for (int64_t jr = 0; jr < nc; jr += NR)
+                for (int64_t ir = 0; ir < mc; ir += MR) {
+                    float acc[MR][NR];
+                    micro_kernel(kc, ap + ir * kc, bp + jr * kc, acc);
+                    store_tile(a, i0 + ir, j0 + jr, mc - ir < MR ? mc - ir : MR,
+                               nc - jr < NR ? nc - jr : NR, acc, k0 == 0);
+                }
+        }
+    }
+}
+```
+
+Note what the block boundaries depend on: `k0` steps by the constant `KC`, never by anything derived from `M`; `i0` and `ir` decide only *where* a row is packed, and the padded rows contribute nothing to any real row.
+
+The entry point keeps `M03.1`'s contract and adds the strips:
+
+```c
+tl_status tl_matmul_f32(const float *A, const float *B, float *C, int64_t M, int64_t N, int64_t K,
+                        int64_t lda, int64_t ldb, int64_t ldc, float alpha, float beta,
+                        int trans_b, tl_pool *tp) {
+    /* 1. Validate everything before touching C (the M03.1 contract):
+     *    negative dims, ldc < N, C NULL; and when K > 0, lda < K,
+     *    ldb < (trans_b ? K : N), A or B NULL: TL_EINVAL. M or N == 0: TL_OK. */
+    // ...
+    /* 2. K == 0: no k-block runs, and the empty sum is 0, so C = beta * C. */
+    if (K == 0) {
+        for (int64_t i = 0; i < M; i++)
+            for (int64_t j = 0; j < N; j++) C[i * ldc + j] = beta == 0.0f ? 0.0f : beta * C[i * ldc + j];
+        return TL_OK;
+    }
+    /* 3. One range per column strip, on whichever worker. */
+    mm_args a = {A, B, C, M, N, K, lda, ldb, ldc, alpha, beta, trans_b};
+    int64_t n_strips = (N + NC - 1) / NC;
+    if (tp == NULL) {
+        strips(&a, 0, n_strips, 0);
+        return TL_OK;
+    }
+    return tl_parallel_for(tp, n_strips, 1, strips, &a);
+}
+```
+
+`strips` is the `rt.03` range function: for each strip index $s$ in its range it calls `column_strip` on columns $[s N_C, \min((s+1) N_C, N))$.
+
+On the worked example, `column_strip` runs once with `kc = 3`, `mc = 2`, `nc = 2`, one micro-tile, and `store_tile` writes `mr = 2`, `nr = 2`: $\{58, 64, 139, 154\}$.
+
+Full solution: [`matmul.c`](../../../../course/solutions/c/src/kernels/matmul.c); contract: [`matmul.h`](../../../../course/contracts/c/include/tinyllm/matmul.h).
+
+### Why this solution
+
+- **Cost.** $2MNK$ FLOPs as before, plus $KN$ copies to pack $B$ once per k-block and strip, and $MK$ copies to pack $A$ once per k-block and strip, small next to $MNK$ for large matrices. Measured against `M03.1`'s loop at $512^3$, the solution is about 19 times faster (about 50 GFLOP/s on one Apple M-series core); Apple's Accelerate (`cblas_sgemm`, on the AMX units) is several times faster again.
+- **Against a GEMV fast path for $M = 1$.** It would avoid the 3/4 wasted rows of a $4 \times 16$ tile during decode, but sums $K$ in a different grouping, so decode and prefill disagree in the last bit and greedy decoding can flip tokens on near-ties. Here invariance wins; `L9.5` gives decode its own quantized kernel.
+- **Against split-K threading.** It parallelises small-$N$ products better but adds partial sums in completion order, which changes bits with timing. Column strips never split a sum.
+- **Against hand-written intrinsics or assembly.** They would be faster per core but tie the kernel to one ISA; constant-bound C loops vectorise well on both NEON and AVX2 and keep the arithmetic auditable.
+- **Tradeoff accepted.** Fixed block sizes are not tuned per machine, and `FP_CONTRACT OFF` gives up the speed of fused multiply-adds, in exchange for identical bits on every path and every machine.
+
+### Explain it back
+
+1. Why does zero padding make the result independent of where a row sits in a micro-tile?
+   <details><summary>Answer</summary>Every row, real or padding, goes through the same full $4 \times 16$ micro-kernel and the same sequence of multiplies and adds. A real row's products and their order depend only on its own row of $A$ and the column of $B$; padding rows are zero and are never stored. So the code path, and the bits, are the same at offset 0 or offset 3 of a tile.</details>
+2. Why must $K_C$ be a constant rather than chosen from the shape?
+   <details><summary>Answer</summary>The k-block boundaries decide how the sum is grouped, and float addition is not associative. A shape-dependent block size (for example all of $K$ when $M = 1$) groups the same products differently and changes the last bits, as the $1, 10^8, 3, 3$ example in section 3 shows.</details>
+3. With $K = 300$ and $\beta = 0.5$, how many times is $\beta$ applied, and where?
+   <details><summary>Answer</summary>Once, in `store_tile` with `first` true, which happens for `k0 == 0`. The second and third k-blocks add $\alpha P_1$ and $\alpha P_2$ to the stored value. Applying $\beta$ in every block would give $\beta^3 C$.</details>
+4. Why is it safe to run strips on different threads without locks?
+   <details><summary>Answer</summary>Each strip writes a disjoint set of columns of $C$ and only reads $A$ and $B$; packing buffers are local to the strip's stack frame. There is no shared mutable state, so no race, and the strip's arithmetic does not depend on the worker.</details>
+5. Why are the packing buffers on the stack and not from an arena or `malloc`?
+   <details><summary>Answer</summary>`c/ABI.md` rule 1 forbids a kernel to allocate, and this signature carries no arena. Their size depends only on the block constants (96 KiB), not on the matrix, so the stack is safe even on worker threads with 512 KiB stacks.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| applying $\beta$ in every k-block | $\beta^3 C$ for $K = 300$; with $\beta = 0$ only the last block survives | `beta_applies_once_across_k_blocks` (mutant `s01`) |
-| storing the whole $4 \times 16$ micro-tile at an edge | writes past $C$ or into its padding (ASan, or a neighbour's columns) | `hand_example`, `views_and_padding_untouched` (mutant `s02`) |
-| packing $B$ without `trans_b` | Linear layers multiply by the wrong matrix | `shapes_across_tile_edges` (mutant `s03`) |
-| packing $A$ with $K$ instead of `lda` | right on packed matrices, wrong on every view | `views_and_padding_untouched` (mutant `s04`) |
-| later k-blocks overwriting instead of adding | only the last $K \bmod K_C$ products survive | `beta_applies_once_across_k_blocks` (mutant `s05`) |
-| storing with $N$ instead of `ldc` | views of $C$ are scrambled | `views_and_padding_untouched` (mutant `s06`) |
-| reading $C$ when $\beta = 0$ | NaN in a fresh buffer reaches the logits | `empty_and_invalid_like_v0` (mutant `s07`) |
-| returning early for $K = 0$ | $C$ keeps old values instead of $\beta C$ | `empty_and_invalid_like_v0` (mutant `s08`) |
-| dropping `M03.1`'s argument checks while rewriting | a short `lda` reads past the buffer | `empty_and_invalid_like_v0` (mutant `s09`) |
-| a "GEMV fast path" that sums all of $K$ at once when $M = 1$ | decode and prefill differ in the last bit; greedy tokens flip on near-ties | `batch_invariant_at_1_7_37`, `batch_invariant_rows` (mutant `s10`) |
-| a partition that drops or repeats a strip | wrong only with a pool | `pool_result_equals_serial_bitwise` (mutant `s11`) |
-| packing buffers sized for the full matrix on the stack | stack overflow on worker threads (512 KiB on macOS); size them by the block constants | the pool test under ASan and TSan |
+| applying $\beta$ in every k-block | $\beta^3 C$ for $K = 300$; with $\beta = 0$ only the last block survives | `store_tile` applies $\beta$ only when `first` (`k0 == 0`) |
+| storing the whole $4 \times 16$ micro-tile at an edge | writes past $C$ or into its padding (ASan, or a neighbour's columns) | stores only the real `mr x nr` corner |
+| packing $B$ without `trans_b` | Linear layers multiply by the wrong matrix | `pack_b` reads `B[j * ldb + k]` when `trans_b` |
+| packing $A$ with $K$ instead of `lda` | right on packed matrices, wrong on every view | `pack_a` indexes with `lda` |
+| later k-blocks overwriting instead of adding | only the last $K \bmod K_C$ products survive | `c[q] = c[q] + v` when not `first` |
+| storing with $N$ instead of `ldc` | views of $C$ are scrambled | rows of $C$ are addressed with `ldc` |
+| reading $C$ when $\beta = 0$ | NaN in a fresh buffer reaches the logits | `beta == 0.0f ? v : ...` and the same in the $K = 0$ path |
+| returning early for $K = 0$ | $C$ keeps old values instead of $\beta C$ | an explicit $K = 0$ path writes $\beta C$ |
+| dropping `M03.1`'s argument checks while rewriting | a short `lda` reads past the buffer | validates every argument before touching $C$ |
+| a "GEMV fast path" that sums all of $K$ at once when $M = 1$ | decode and prefill differ in the last bit; greedy tokens flip on near-ties | one code path for every $M$, with constant `KC` |
+| a partition that drops or repeats a strip | wrong only with a pool | $\lceil N / N_C \rceil$ strips, one `rt.03` range each |
+| packing buffers sized for the full matrix on the stack | stack overflow on worker threads (512 KiB on macOS) | buffers sized by the block constants: 96 KiB |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -176,11 +331,9 @@ The bench (`ol bench L9.1`, a B test, never part of `ol check`) times your kerne
 | Back | `rt.03` | `tl_parallel_for` runs the column strips |
 | Forward | `L9.5` | its benchmark and its float32 baseline are this kernel on the dequantized weight |
 
-If you skip this module, `ol check L9.5` stops with `BLOCKED ... needs L9.1`: build it, or pass `--ref-deps`.
-
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | 4 x 16 C micro-kernel | BLIS and OpenBLAS assembly micro-kernels | hand-scheduled FMA pipelines, prefetching, per-microarchitecture block sizes | BLIS `kernels/armv8a/`, `kernels/haswell/` |
 | column-strip threads | BLIS multithreading | parallelism in several loops at once (the $j_c$ and $i_c$ loops), sized by the cache topology | Smith et al., "Anatomy of High-Performance Many-Threaded Matrix Multiplication" (2014) |

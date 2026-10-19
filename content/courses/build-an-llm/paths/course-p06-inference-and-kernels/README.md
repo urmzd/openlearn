@@ -4,6 +4,6 @@ Python inference stack (sampler, KV, paged KV, quant, spec decoding, constrained
 
 **Part of**: [the course](../course/). **Needs**: [Pass 5](../course-p05-transformer/).
 
-**Gate**: [MS-P6 = MS-L8; optional C exercises are not pass-gate dependencies](milestone.md).
+**After this pass**: [what the system does](milestone.md): the Python inference stack (sampler, KV cache, paged KV, quantization, speculative and constrained decoding); the C exercises are optional depth.
 
-Stages, chapter links, and check columns are in [`path.tsv`](path.tsv). Use `practice/bin/ol learn course-p06-p06-inference-and-kernels` to see progress.
+Stages, chapter links, and what "done" means for each are in [`path.tsv`](path.tsv).
