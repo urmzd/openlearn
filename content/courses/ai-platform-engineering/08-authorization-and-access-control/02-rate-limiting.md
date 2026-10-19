@@ -1,37 +1,23 @@
-# Rate limiting: RPM token bucket + TPM reserve/settle
+# Rate Limiting: RPM Token Buckets and TPM Reserve/Settle
 
-## Overview
+After [API keys and scopes](01-api-keys-and-scopes.md), the gateway knows who is calling, but every caller can still send as fast as its network allows. One tenant's batch job at 50 requests per second fills the engine's queue (the scheduler from [Continuous batching scheduler with priority and preemption](../../build-an-llm/p10-serving/02-continuous-batching.md) in *Build an LLM*), and every other tenant's time to first token goes from milliseconds to seconds. That is the noisy-neighbor incident you will meet in the [noisy neighbor drill](../../systems/05-incident-response-and-chaos/09-noisy-neighbor.md) in *Systems*.
 
-| | |
-|---|---|
-| **Module** | `gw.03` · build · Go · Pass 7 · 4 h |
-| **Solution** | [`go/gateway/limit/limit.go`](../../../../course/solutions/go/gateway/limit/limit.go): `Limiter` (`New`, `Reserve`), `Reservation` (`Settle`, `Cancel`, `Status`), `RejectError`, `EstimateCost`, `PromptText`, `TokenizeCounter`, `SetHeaders`, `RetryAfterSeconds`, `Middleware` |
-| **Contract** | 429 `rate_limit_error` / `rate_limit_exceeded`, `Retry-After`, and the `x-ratelimit-*` headers in [`course/contracts/openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml); `rpm` and `tpm` of `KeyCreate` in [`course/contracts/openapi/admin.v1.yaml`](../../../../course/contracts/openapi/admin.v1.yaml) |
-| **Needs** | [`gw.01` server skeleton](../12-gateway/01-server-skeleton.md) (the chain and the `Exchange`), [`gw.02` API keys](01-api-keys-and-scopes.md) (the `Principal` and its limits) · reading: `S-M07d` [queueing and Little's law](../../mathematics-for-computing/07-probability-statistics/93-problem-set-d.md), the [practice drill go/07](../../../../practice/build/cloud/go/README.md) (a token bucket warm-up) |
-| **Used by** | `gw.07`'s `gateway.Deps`, which puts `limit.Middleware` in the chain's `Limiter` slot; the gateway's composition root builds the `Limiter`; part of the full gateway |
-| **Optional depth** | Tanenbaum, *Computer Networks*, the token bucket; the GCRA in the ATM Forum's traffic management spec; Stripe's *Scaling your API with rate limiters* (free) |
+Counting requests is not enough for an LLM, either. One request with a 4000-token prompt and `max_tokens: 2000` costs a hundred times a short chat turn. This section gives each key two budgets, requests per minute (RPM) and tokens per minute (TPM), enforced before the request reaches the cache or an engine, and tells the client exactly when to come back. The hard part is that a request's token cost is not known until its response ends, which leads to a two-phase reserve-and-settle protocol.
 
-## Key Takeaways
+This section builds on [Server skeleton, composition root, go/config, graceful shutdown](../12-gateway/01-server-skeleton.md) (the chain and the `Exchange`) and on [API keys and scopes](01-api-keys-and-scopes.md) (the `Principal` and its limits). Useful background is the queueing and Little's law problems in [Solve set: hypothesis tests, regression, queueing and Little's law, balls into bins](../../mathematics-for-computing/07-probability-statistics/93-problem-set-d.md) in *Mathematics for Computing*, and the token bucket warm-up in the [practice drill go/07](../../../../practice/build/cloud/go/README.md). The full solution is [`go/gateway/limit/limit.go`](../../../../course/solutions/go/gateway/limit/limit.go): `Limiter` (`New`, `Reserve`), `Reservation` (`Settle`, `Cancel`, `Status`), `RejectError`, `EstimateCost`, `PromptText`, `TokenizeCounter`, `SetHeaders`, `RetryAfterSeconds`, and `Middleware`. The contract is the 429 `rate_limit_error` / `rate_limit_exceeded`, `Retry-After`, and the `x-ratelimit-*` headers in [`openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml), plus `rpm` and `tpm` of `KeyCreate` in [`admin.v1.yaml`](../../../../course/contracts/openapi/admin.v1.yaml).
 
-- A **token bucket** holds at most $C$ tokens and refills at $C$ per minute; a request takes tokens if they are there, otherwise it waits exactly as long as the refill needs. A full bucket allows a burst of one minute's budget, never more.
-- Requests per minute and tokens per minute are two buckets per key. Token cost is unknown when a request starts, so the limiter **reserves** an estimate (prompt tokens plus `max_tokens`) and **settles** the actual usage when the response ends: unused tokens come back, overruns are charged.
-- A 429 carries `Retry-After` in whole seconds rounded **up**; every authenticated response carries the five `x-ratelimit-*` headers.
-- Exactly one of `Settle` and `Cancel` counts; a request that failed with a 5xx before any usage is cancelled, so clients do not pay for our outages.
-- One mutex around every bucket decision: 1000 goroutines against a budget of 100 admit exactly 100.
+In the finished system, `gateway.Deps` ([`go/gateway/gateway.go`](../../../../course/solutions/go/gateway/gateway.go)), from the [usage ledger and admin API](../12-gateway/07-usage-ledger-and-admin-api.md) section, wraps `limit.Middleware(limiter, counter)` into the chain's `Limiter` slot, and the composition root ([`entry/go/cmd/gateway/compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go)) builds the limiter with `limit.New(nil)`, which uses the wall clock. It sets no `Counter`, so the shipped gateway estimates prompt tokens as bytes / 4 and relies on `Settle` for the exact count; a `limit.TokenizeCounter{BaseURL: engineURL}` makes the estimate exact.
 
-## How to read this chapter
+> **Learning objectives**
+> - Derive the token bucket, compute its admission decision and wait time by hand, and explain why it beats fixed windows and sliding logs.
+> - Enforce RPM and TPM as two buckets per key under one lock, so concurrent requests can never overspend.
+> - Reserve an estimated token cost before a request runs and settle the actual usage exactly once afterwards.
+> - Emit `Retry-After` and the `x-ratelimit-*` headers correctly, rounding waits up.
+> - Decide when a failed request should be cancelled rather than charged.
 
-Sections 1 to 3 derive the token bucket and the reserve/settle protocol from first principles and run them by hand. Section 4 fixes the interface. Section 5 walks through the solution function by function and explains why each choice is the right one; try to predict each step before reading it. In the finished system, `gw.07`'s `gateway.Deps` ([`go/gateway/gateway.go`](../../../../course/solutions/go/gateway/gateway.go)) wraps `limit.Middleware(limiter, counter)` into the `Limiter` slot, and the composition root ([`entry/go/cmd/gateway/compose.go`](../../../../course/solutions/entry/go/cmd/gateway/compose.go)) builds the limiter with `limit.New(nil)` (the wall clock). It sets no `Counter`, so the shipped gateway estimates prompt tokens as bytes / 4 and relies on `Settle` for the exact count; a `limit.TokenizeCounter{BaseURL: engineURL}` makes the estimate exact.
+## The token bucket
 
----
-
-## 1. Why now
-
-The gateway now knows who is calling (`gw.02`), but every caller can still send as fast as its network allows. One tenant's batch job at 50 requests per second fills the engine's queue (`L10.2`), and every other tenant's time to first token goes from milliseconds to seconds: the noisy-neighbor incident you will meet as drill `ops.09`. Counting requests is not enough for an LLM: one request with a 4000-token prompt and `max_tokens: 2000` costs a hundred times a short chat turn. This module gives each key two budgets, requests per minute (RPM) and tokens per minute (TPM), enforced before the request reaches the cache or an engine, and tells the client exactly when to come back.
-
-## 2. Principles
-
-### 2.1 The token bucket
+A token bucket needs only a few quantities:
 
 | Symbol | Meaning | Type |
 |---|---|---|
@@ -45,24 +31,26 @@ The bucket starts full, $L = C$. Between decisions it refills continuously and i
 
 $$w = \frac{n - L}{\rho} = \frac{(n - L) \cdot 60}{C}\ \text{seconds},$$
 
-which is the `Retry-After` the client receives (in whole seconds, rounded up). Two properties follow. A key idle for an hour can burst at most $C$ at once, because of the cap. Over any long window, the admitted rate approaches $\rho$, which is the limit. Each key has its own pair of buckets, so keys never spend each other's budget; a key with limit 0 has no bucket (unlimited, per `admin.v1.yaml`).
+which is the `Retry-After` the client receives, in whole seconds, rounded up.
 
-Why not a fixed window ("at most 60 per calendar minute")? It admits 120 in two seconds across a minute boundary. Why not a sliding log of timestamps? It is exact but costs memory per request. The bucket is O(1) per key and smooth.
+Two properties follow. Because of the cap, a key idle for an hour can burst at most $C$ at once: a full bucket allows a burst of one minute's budget, never more. And over any long window, the admitted rate approaches $\rho$, which is the limit. Each key has its own pair of buckets, so keys never spend each other's budget. A key with limit 0 has no bucket at all; it is unlimited, per `admin.v1.yaml`.
 
-### 2.2 Reserve and settle
+Why not a fixed window, "at most 60 per calendar minute"? It admits 120 in two seconds across a minute boundary. Why not a sliding log of timestamps? It is exact but costs memory per request. The bucket is O(1) per key and smooth.
 
-A request's token cost is prompt tokens plus completion tokens, and the completion length is only known when the stream ends. So the stage:
+## Reserve and settle
 
-1. **Estimates** the cost: prompt tokens counted by the engine's tokenizer (`POST /v1/tokenize`, engine tier) over the prompt text (the completions `prompt`, or the chat contents joined by newlines; the chat template adds a few tokens this leaves out), plus `max_completion_tokens` or `max_tokens`, or 256 when neither is set. If the tokenizer is unreachable, it falls back to $\lceil \text{bytes} / 4 \rceil$ rather than failing the request.
-2. **Reserves** that estimate in both buckets (1 request, $n$ tokens), or rejects with 429.
-3. Runs the rest of the chain.
-4. **Settles** with the actual usage the proxy put on the `Exchange` (`gw.04`): the difference between reserved and actual goes back into the bucket (capped at $C$) or, for an overrun, is taken from it, possibly below zero. A negative level is a debt the key's next requests wait off.
+The bucket handles requests easily, because a request's cost in the request bucket is always 1. Tokens are harder. A request's token cost is prompt tokens plus completion tokens, and the completion length is known only when the stream ends. So the stage splits the decision in two:
 
-A reservation is settled or cancelled **once**: if the code settles and then a deferred cleanup cancels, the second call must do nothing, or the key gets a refund it never earned. If the request failed with a 5xx and no usage (no engine had capacity), the stage cancels: request and tokens both come back.
+1. **Estimate** the cost: prompt tokens counted by the engine's tokenizer (`POST /v1/tokenize`, on the engine tier) over the prompt text, plus `max_completion_tokens` or `max_tokens`, or 256 when neither is set. The prompt text is the completions `prompt`, or the chat contents joined by newlines; the chat template adds a few tokens this leaves out. If the tokenizer is unreachable, the estimate falls back to $\lceil \text{bytes} / 4 \rceil$ rather than failing the request.
+2. **Reserve** that estimate in both buckets (1 request, $n$ tokens), or reject with 429.
+3. Run the rest of the chain.
+4. **Settle** with the actual usage that the [SSE streaming proxy](../12-gateway/04-sse-streaming-proxy.md) put on the `Exchange`. The difference between reserved and actual goes back into the bucket (capped at $C$) or, for an overrun, is taken from it, possibly below zero. A negative level is a debt the key's next requests wait off.
 
-### 2.3 What the client sees
+A reservation is settled or cancelled **once**. If the code settles and then a deferred cleanup cancels, the second call must do nothing, or the key gets a refund it never earned. And if the request failed with a 5xx and no usage (no engine had capacity), the stage cancels, so the request and the tokens both come back: clients do not pay for our outages.
 
-On every authenticated response (`openai-subset.v1.yaml`):
+## What the client sees
+
+The limiter is only useful if clients can pace themselves, so every authenticated response carries five headers, defined in `openai-subset.v1.yaml`:
 
 | Header | Value |
 |---|---|
@@ -70,18 +58,20 @@ On every authenticated response (`openai-subset.v1.yaml`):
 | `x-ratelimit-remaining-requests` / `-tokens` | $\lfloor L \rfloor$ after this request's reservation, at least 0 |
 | `x-ratelimit-reset-tokens` | time until the token bucket is full again, as a Go duration (`18s`) |
 
-On a 429 the same headers plus `Retry-After: ⌈w⌉` seconds. Rounding down would invite the client back before the budget exists (and a $w$ of 0.4 s would become `Retry-After: 0`, "retry now"), so the value is $\lceil w \rceil$ and at least 1.
+A 429 carries the same headers plus `Retry-After: ⌈w⌉` seconds. Rounding down would invite the client back before the budget exists, and a $w$ of 0.4 s would become `Retry-After: 0`, which means "retry now". So the value is $\lceil w \rceil$ and at least 1.
 
-## 3. Worked example by hand
+## Working it by hand
 
-Key `k` has RPM 3 and TPM 1000; the clock starts at $t = 0$.
+Key `k` has RPM 3 and TPM 1000, and the clock starts at $t = 0$.
 
-1. A request reserves 300 tokens (prompt 60, `max_tokens` 240). Request bucket $3 \to 2$, token bucket $1000 \to 700$. Headers: remaining requests 2, remaining tokens 700, reset-tokens $= 300 / (1000/60) = 18$ s.
-2. It finishes having used 120 tokens. Settle refunds $300 - 120 = 180$: the token bucket is $700 + 180 = 880$.
-3. Still at $t = 0$, a request needs 900 tokens: $880 < 900$, so $w = (900 - 880) \cdot 60 / 1000 = 1.2$ s. The answer is 429 with `Retry-After: 2` and remaining tokens 880.
-4. At $t = 1.2$ s the token bucket has refilled $1000 \cdot 1.2 / 60 = 20$ tokens to exactly 900; the request is admitted and leaves 0. The request bucket refilled $3 \cdot 1.2/60 = 0.06$ to 2.06, and after this request holds 1.06: remaining requests 1.
+1. A request reserves 300 tokens (prompt 60, `max_tokens` 240). The request bucket goes $3 \to 2$ and the token bucket $1000 \to 700$. The headers say remaining requests 2, remaining tokens 700, and reset-tokens $= 300 / (1000/60) = 18$ s.
+2. It finishes having used 120 tokens. Settle refunds $300 - 120 = 180$, so the token bucket is $700 + 180 = 880$.
+3. Still at $t = 0$, a request needs 900 tokens. Since $880 < 900$, it must wait $w = (900 - 880) \cdot 60 / 1000 = 1.2$ s. The answer is 429 with `Retry-After: 2` and remaining tokens 880.
+4. At $t = 1.2$ s the token bucket has refilled $1000 \cdot 1.2 / 60 = 20$ tokens to exactly 900, so the request is admitted and leaves 0. The request bucket has refilled $3 \cdot 1.2/60 = 0.06$ to 2.06, and after this request holds 1.06: remaining requests 1.
 
-## 4. The interface
+## Designing the package
+
+The API keeps the limiter ignorant of HTTP; the middleware and helpers handle the protocol:
 
 ```go
 package limit // import "tinyllm/gateway/limit"
@@ -107,45 +97,23 @@ func RetryAfterSeconds(d time.Duration) int
 func Middleware(l *Limiter, counter Counter) server.Middleware
 ```
 
-The catalog sketched `Reserve(ctx, key, c)`; this one also takes the key's `Limits`, because limits live on the key record (`gw.02`) and change when an admin edits the key, so the limiter holds buckets, not key metadata Time comes only from the `Clock`, so a fake clock drives refill exactly.
+The catalog sketched `Reserve(ctx, key, c)`. This one also takes the key's `Limits`, because limits live on the key record and change when an admin edits the key, so the limiter holds buckets, not key metadata. Time comes only from the `Clock`, so a fake clock drives refill exactly.
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| the hand example | unit | section 3, every number: remaining counts, reset 18 s, the settle refund, `RetryAfter` 1.2 s and `Retry-After` 2, admission at 1.2 s | one exact definition of the bucket |
-| burst, then refill | unit | 60 at once, the 61st waits 1 s, one per second after, 10 idle minutes bank only 60 | the burst limit in the load report |
-| settle charges an overrun | unit | reserve 100, use 700: the next 10 tokens wait 11 s | requests without `max_tokens` cannot dodge TPM |
-| cancel and settle count once | unit | cancel returns everything; a second cancel and a cancel after settle do nothing | no double refunds |
-| zero means unlimited | boundary | limits of 0 never reject | the admin API's "0 = unlimited" |
-| oversize cost rejected | boundary | 1001 tokens against TPM 1000 is rejected even when the bucket is full; 1000 fits | one request cannot exceed a minute's budget |
-| keys are independent | unit | key `a` exhausted, key `b` untouched | the noisy-neighbor drill |
-| concurrent reserve | property | 1000 goroutines, RPM 100: exactly 100 admitted, no data race | correctness under load |
-| `Retry-After` rounding | boundary | 0, 1 ms, 1.2 s, 59 s, 59.001 s | clients come back when the budget exists |
-| the cost estimate | unit | prompt + max_tokens; `max_completion_tokens` wins; 256 default; bytes / 4 when the tokenizer fails | reservations close to the truth |
-| the prompt text | unit | prompt, chat contents, embeddings input | the text that is tokenized |
-| the tokenizer counter | unit | posts `{model, text}` to `/v1/tokenize` and counts the ids | the production counter |
-| headers and the 429 | conformance | headers on every 200; the third request at RPM 2 is 429 with `Retry-After: 30` and the error shape | the contract's `ratelimit.429` behaviour |
-| the middleware settles actual usage | unit | the next response's remaining tokens reflect the actual usage, not the estimate | TPM tracks real cost |
-| the middleware cancels on a 5xx | unit | after a 503 without usage the one-request budget is back | our outages are free |
-| no principal passes through | boundary | no principal: no headers, no limit | the stage is safe before `gw.02` is plugged in |
-| buckets keyed by key id | unit | two keys of one tenant have separate budgets | a CI key cannot starve a developer's |
+The design follows from seven observations:
 
-## 5. The solution, step by step
-
-### 5.1 From first principles
-
-1. **The state per key must be O(1).** The limiter sees every request of every key, so it cannot keep a log of timestamps. A token bucket summarizes the whole history in two numbers: the level and the time it was last brought up to date (section 2.1).
+1. **The state per key must be O(1).** The limiter sees every request of every key, so it cannot keep a log of timestamps. A token bucket summarizes the whole history in two numbers: the level and the time it was last brought up to date.
 2. **Refill can be computed lazily.** Because refill is linear in time and capped, there is no need for a timer: on each decision, add $\rho \cdot \Delta t$ and cap at $C$. That makes the bucket correct at whatever moments the clock is read, and lets a fake clock drive it exactly.
-3. **Two budgets, one decision.** A request must fit both the request bucket and the token bucket; if either is short, it waits for the slower one, so the wait is the maximum of the two. Taking from one bucket and then failing the other would leak budget, so the check happens first and the take after, under one lock.
-4. **The cost is unknown up front, so split the decision in two.** Reserve an upper-ish estimate before the request runs (prompt tokens plus `max_tokens`), then settle the difference with the real usage when it ends. The bucket may go negative after an overrun: that debt is what makes `max_tokens`-less requests pay.
+3. **Two budgets, one decision.** A request must fit both the request bucket and the token bucket. If either is short, it waits for the slower one, so the wait is the maximum of the two. Taking from one bucket and then failing the other would leak budget, so the check happens first and the take after, under one lock.
+4. **The cost is unknown up front, so split the decision in two.** Reserve an upper-ish estimate before the request runs (prompt tokens plus `max_tokens`), then settle the difference with the real usage when it ends. The bucket may go negative after an overrun, and that debt is what makes requests without `max_tokens` pay.
 5. **A reservation is a one-shot.** Settle or Cancel, whichever comes first, wins; the other is a no-op. `sync.Once` is exactly that.
-6. **A request larger than $C$ can never fit.** Waiting for $n > C$ tokens is waiting forever, so it is rejected outright (with the time to a full bucket as a hint) rather than admitted when the bucket happens to be full.
-7. **Time comes only from an injected clock.** Then the hand example of section 3 is reproducible to the nanosecond, and refill is testable without sleeping.
+6. **A request larger than $C$ can never fit.** Waiting for $n > C$ tokens is waiting forever, so it is rejected outright, with the time to a full bucket as a hint, rather than admitted when the bucket happens to be full.
+7. **Time comes only from an injected clock.** Then the hand example is reproducible to the nanosecond, and refill is testable without sleeping.
 
-### 5.2 The code, annotated
+### The bucket
 
-**The bucket.** Levels are `float64` so fractional refill (0.06 of a request in section 3, step 4) is kept rather than rounded away.
+Levels are `float64`, so fractional refill (the 0.06 of a request in step 4 of the hand example) is kept rather than rounded away:
 
 ```go
 type bucket struct {
@@ -172,7 +140,9 @@ func (b *bucket) wait(n float64) time.Duration {
 }
 ```
 
-**Per-key state.** A key's buckets are created full the first time it is seen. Because limits live on the key record and an admin may edit them, `state` resizes the buckets when the limits change, keeping the same fraction of capacity, so raising a limit does not hand out a fresh burst and lowering it does not leave the key over its new budget.
+### Per-key state
+
+A key's buckets are created full the first time it is seen. Because limits live on the key record and an admin may edit them, `state` resizes the buckets when the limits change, keeping the same fraction of capacity. Raising a limit therefore does not hand out a fresh burst, and lowering it does not leave the key over its new budget:
 
 ```go
 func (l *Limiter) state(key string, lim Limits, now time.Time) *keyState {
@@ -195,7 +165,9 @@ func (l *Limiter) state(key string, lim Limits, now time.Time) *keyState {
 }
 ```
 
-**Reserve: check both, then take both.** A zero limit skips its bucket entirely (unlimited). The `min(c.Tokens, lim.TPM)` keeps the wait finite for an oversize request, and the explicit `c.Tokens > lim.TPM` test rejects it even when the bucket is full.
+### Reserve: check both, then take both
+
+A zero limit skips its bucket entirely (unlimited). The `min(c.Tokens, lim.TPM)` keeps the wait finite for an oversize request, and the explicit `c.Tokens > lim.TPM` test rejects it even when the bucket is full:
 
 ```go
 func (l *Limiter) Reserve(ctx context.Context, key string, lim Limits, c Cost) (Reservation, error) {
@@ -226,7 +198,9 @@ func (l *Limiter) Reserve(ctx context.Context, key string, lim Limits, c Cost) (
 }
 ```
 
-**Settle and Cancel.** Both are a signed adjustment of the buckets: Settle returns `reserved - actual` (negative for an overrun, which takes more), Cancel returns everything. The cap at capacity means a refund never pushes a bucket above $C$. `sync.Once` makes the pair exactly-once.
+### Settle and Cancel
+
+Both are a signed adjustment of the buckets. Settle returns `reserved - actual`, which is negative for an overrun and so takes more; Cancel returns everything. The cap at capacity means a refund never pushes a bucket above $C$, and `sync.Once` makes the pair exactly-once:
 
 ```go
 func (r *reservation) Settle(actual Cost) {
@@ -243,7 +217,9 @@ func (r *reservation) Cancel() {
 
 `adjust` takes the lock, refills both buckets to now, and adds the deltas with `math.Min(capacity, level + d)`.
 
-**The estimate.** Prompt tokens from the engine's tokenizer when it answers, otherwise $\lceil \text{bytes}/4 \rceil$; completion tokens from `max_tokens` (the `Exchange` has already resolved `max_completion_tokens` over `max_tokens` into `MaxTokens`), or 256.
+### The estimate
+
+Prompt tokens come from the engine's tokenizer when it answers, otherwise from $\lceil \text{bytes}/4 \rceil$. Completion tokens come from `max_tokens` (the `Exchange` has already resolved `max_completion_tokens` over `max_tokens` into `MaxTokens`), or 256:
 
 ```go
 func EstimateCost(ctx context.Context, counter Counter, req *server.Request) Cost {
@@ -272,7 +248,9 @@ func RetryAfterSeconds(d time.Duration) int {
 }
 ```
 
-**The middleware.** Reserve before `next`, settle after it, with a deferred `Cancel` as a safety net if the rest of the chain panics.
+### The middleware
+
+The middleware reserves before `next` and settles after it, with a deferred `Cancel` as a safety net if the rest of the chain panics:
 
 ```go
 p, ok := auth.PrincipalFrom(r.Context())
@@ -298,7 +276,7 @@ defer func() {
 	}
 }()
 next.ServeHTTP(w, r)
-st := ex.Snapshot() // the usage the proxy recorded (gw.04)
+st := ex.Snapshot() // the usage the proxy recorded
 switch {
 case st.Usage.TotalTokens > 0 || st.Usage.PromptTokens+st.Usage.CompletionTokens > 0:
 	// ... tokens = TotalTokens, or prompt + completion when the total is missing
@@ -311,84 +289,53 @@ default:
 settled = true
 ```
 
-Full solution: [`limit.go`](../../../../course/solutions/go/gateway/limit/limit.go). `PromptText` (completions `prompt`, chat contents joined by `\n`, or embeddings `input`) and `TokenizeCounter` (a `POST /v1/tokenize` of `{model, text}` that counts the returned `ids`) are in the same file.
+The full code is in [`limit.go`](../../../../course/solutions/go/gateway/limit/limit.go). `PromptText` (the completions `prompt`, chat contents joined by `\n`, or embeddings `input`) and `TokenizeCounter` (a `POST /v1/tokenize` of `{model, text}` that counts the returned `ids`) are in the same file.
 
-### 5.3 Why this solution
+### Why this design
 
-- **Cost.** `Reserve`, `Settle`, and `Cancel` are O(1) under one mutex; memory is two buckets per key ever seen. The tokenizer call is one HTTP round trip per POST, outside the lock.
-- **Why one global mutex and not one per key?** The critical section is a handful of float operations, far shorter than any request; contention is negligible at gateway rates, and one lock makes the map and the buckets trivially consistent. Per-key locks would add a second map and lock ordering for no measurable gain.
-- **Why not delay requests instead of rejecting them?** Holding a request open until budget exists ties up a connection and a goroutine per throttled request, and hides back-pressure from the client. A 429 with an exact `Retry-After` lets well-behaved clients pace themselves.
-- **Why reserve an estimate instead of charging only after?** Charging only after the response lets a key start many expensive requests at once before any of them is counted. Reserving first bounds what can be in flight; settling afterwards keeps the long-run total exact.
-- **Tradeoff accepted:** buckets are per process. With $r$ gateway replicas and no stickiness, a key can get up to $r$ times its budget. A shared store (Redis GCRA, Envoy's global rate limit service) fixes that at the price of a network hop per request (see Going further).
+`Reserve`, `Settle`, and `Cancel` are O(1) under one mutex, and memory is two buckets per key ever seen. The tokenizer call is one HTTP round trip per POST, outside the lock.
 
-### 5.4 Explain it back
+Why one global mutex and not one per key? The critical section is a handful of float operations, far shorter than any request; contention is negligible at gateway rates, and one lock makes the map and the buckets trivially consistent. Per-key locks would add a second map and lock ordering for no measurable gain. Why reject instead of delaying requests until budget exists? Holding a request open ties up a connection and a goroutine per throttled request and hides back-pressure from the client, while a 429 with an exact `Retry-After` lets well-behaved clients pace themselves. Why reserve an estimate instead of charging only afterwards? Charging only after the response lets a key start many expensive requests at once before any of them is counted. Reserving first bounds what can be in flight, and settling afterwards keeps the long-run total exact.
 
-1. In section 3, step 4, why are remaining requests 1 and not 2, given that 3 requests per minute were allowed and only 2 have been made?
+One tradeoff is accepted: buckets are per process. With $r$ gateway replicas and no stickiness, a key can get up to $r$ times its budget. A shared store (Redis GCRA, Envoy's global rate limit service) fixes that at the price of a network hop per request, as discussed at the end of this section.
 
-<details><summary>Answer</summary>
+## What can go wrong
 
-The bucket was at 2 after the first request, refilled only $3 \cdot 1.2 / 60 = 0.06$ in 1.2 s (the 429 at step 3 took nothing), so it held 2.06 and the new request leaves 1.06. The header is $\lfloor 1.06 \rfloor = 1$. The bucket counts budget earned over time, not requests left in a calendar minute.
+A correct solution must pass these checks:
 
-</details>
+| Case | Kind of check | Checks | Why it matters downstream |
+|---|---|---|---|
+| the hand example | unit | every number: remaining counts, reset 18 s, the settle refund, `RetryAfter` 1.2 s and `Retry-After` 2, admission at 1.2 s | one exact definition of the bucket |
+| burst, then refill | unit | 60 at once, the 61st waits 1 s, one per second after, 10 idle minutes bank only 60 | the burst limit in the load report |
+| settle charges an overrun | unit | reserve 100, use 700: the next 10 tokens wait 11 s | requests without `max_tokens` cannot dodge TPM |
+| cancel and settle count once | unit | cancel returns everything; a second cancel and a cancel after settle do nothing | no double refunds |
+| zero means unlimited | boundary | limits of 0 never reject | the admin API's "0 = unlimited" |
+| oversize cost rejected | boundary | 1001 tokens against TPM 1000 is rejected even when the bucket is full; 1000 fits | one request cannot exceed a minute's budget |
+| keys are independent | unit | key `a` exhausted, key `b` untouched | the noisy-neighbor drill |
+| concurrent reserve | property | 1000 goroutines, RPM 100: exactly 100 admitted, no data race | correctness under load |
+| `Retry-After` rounding | boundary | 0, 1 ms, 1.2 s, 59 s, 59.001 s | clients come back when the budget exists |
+| the cost estimate | unit | prompt + max_tokens; `max_completion_tokens` wins; 256 default; bytes / 4 when the tokenizer fails | reservations close to the truth |
+| the prompt text | unit | prompt, chat contents, embeddings input | the text that is tokenized |
+| the tokenizer counter | unit | posts `{model, text}` to `/v1/tokenize` and counts the ids | the production counter |
+| headers and the 429 | conformance | headers on every 200; the third request at RPM 2 is 429 with `Retry-After: 30` and the error shape | the contract's `ratelimit.429` behaviour |
+| the middleware settles actual usage | unit | the next response's remaining tokens reflect the actual usage, not the estimate | TPM tracks real cost |
+| the middleware cancels on a 5xx | unit | after a 503 without usage the one-request budget is back | our outages are free |
+| no principal passes through | boundary | no principal: no headers, no limit | the stage is safe before authentication is plugged in |
+| buckets keyed by key id | unit | two keys of one tenant have separate budgets | a CI key cannot starve a developer's |
 
-2. Why does `Reserve` compute the wait with `min(c.Tokens, lim.TPM)` and then reject `c.Tokens > lim.TPM` separately?
+Most of the bugs people write here are arithmetic. Refill without the cap lets a key idle overnight send a day's budget at once; `refill` takes `math.Min(capacity, ...)`, and refunds in `adjust` are capped too. Refilling per second instead of per minute makes limits 60 times too loose, and rounding `Retry-After` down makes clients retry straight into another 429; refill multiplies by `dt.Minutes()`, and `RetryAfterSeconds` uses `math.Ceil` with a floor of 1.
 
-<details><summary>Answer</summary>
+Settlement has its own family. Refunding the whole reservation, never charging an overrun, letting both settle and cancel count, or settling the estimate instead of the actual usage all make TPM drift from real usage, in one direction or the other. `Settle` adjusts by `reserved - actual` (negative for overruns), guarded by `sync.Once`, and the middleware settles with the usage from `ex.Snapshot()`. Treating 0 as an empty budget locks unlimited keys out, and charging requests that failed with a 5xx makes clients pay for our outages; every bucket operation is guarded by `lim.RPM > 0` or `lim.TPM > 0`, and a 5xx without usage calls `Cancel`. Admitting a request larger than the limit because the bucket happens to be full lets one request take more than a minute's tokens; `Reserve` rejects `c.Tokens > lim.TPM` explicitly.
 
-Without the `min`, the wait for $n > C$ would be finite but meaningless: the bucket is capped at $C$ and never reaches $n$. Clamping keeps the arithmetic sane, and the explicit test rejects the request even when the bucket is full, so one request can never take more than a minute's budget.
+> **Warning:** Without a lock around each decision, more requests than the limit are admitted under load; with one bucket per tenant instead of per key, keys drain each other. The solution uses one mutex around refill-decide-take and keys buckets by `p.KeyID`.
 
-</details>
+Two more affect what clients experience. Sending headers only on 429 means clients cannot pace themselves before they are throttled; `SetHeaders` runs on the admitted path as well as the 429 path. And a bad estimate, 0 tokens when the tokenizer fails or `max_tokens` ignored, lets huge requests pass the reservation and overdraw afterwards; `EstimateCost` falls back to $\lceil \text{bytes}/4 \rceil$ and adds `MaxTokens` or 256.
 
-3. A request reserves 300 tokens; the proxy panics before recording usage. What does the key get back, and which line makes that happen?
+## Where this leads
 
-<details><summary>Answer</summary>
+Looking back, the limiter fills the `Limiter` slot of the chain from the [server skeleton](../12-gateway/01-server-skeleton.md) and reads the usage the proxy records on the `Exchange`, and its buckets are keyed by `Principal.KeyID` with the key's `RPM` and `TPM` from [API keys and scopes](01-api-keys-and-scopes.md). Looking forward, `gateway.Deps` in the [usage ledger and admin API](../12-gateway/07-usage-ledger-and-admin-api.md) section calls `limit.Middleware` between policy and cache, so a cached answer still spends the key's RPM. Two other places exercise this code over HTTP through the gateway rather than calling it: running the [load generator](../../build-an-llm/p10-serving/10-load-generator.md) with `--rate 50` against a low-tier key shows 429s at the configured rate, and the [noisy neighbor drill](../../systems/05-incident-response-and-chaos/09-noisy-neighbor.md) floods one tenant while the limits keep the others inside their SLO.
 
-Everything: the deferred function sees `settled == false` and calls `res.Cancel()`, which returns 1 request and 300 tokens. Had `Settle` already run, `sync.Once` would make that `Cancel` a no-op, so no double refund is possible.
-
-</details>
-
-4. Why does a 5xx without usage cancel, while a 4xx without usage settles with one request?
-
-<details><summary>Answer</summary>
-
-A 5xx without usage means the gateway or the engines failed before doing work: charging the client would make it pay for our outage. A 4xx is the client's own bad request: it still consumed a request slot, so the request counts, but no tokens were generated, so the token reservation comes back.
-
-</details>
-
-5. Why are buckets keyed by `Principal.KeyID` rather than by tenant?
-
-<details><summary>Answer</summary>
-
-Limits are set per key (`rpm`, `tpm` on the key record), and one tenant often has several keys with different jobs, such as CI and a developer. Keying by tenant would let a CI job's burst starve the developer's key, the noisy-neighbor problem inside one tenant.
-
-</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. refill without the cap | a key idle overnight sends a day's budget at once | `refill` takes `math.Min(capacity, ...)`; refunds in `adjust` are capped too |
-| 2. refilling per second instead of per minute, or rounding `Retry-After` down | limits 60 times too loose; clients retry into another 429 | refill multiplies by `dt.Minutes()`; `RetryAfterSeconds` uses `math.Ceil` and a floor of 1 |
-| 3. settle mistakes: refunding the whole reservation, never charging an overrun, both settle and cancel counting, settling the estimate | TPM drifts from real usage in either direction | `Settle` adjusts by `reserved - actual` (negative for overruns), guarded by `sync.Once`; the middleware settles with the usage from `ex.Snapshot()` |
-| 4. treating 0 as an empty budget, or charging requests that failed with a 5xx | unlimited keys are locked out; clients pay for our outages | every bucket operation is guarded by `lim.RPM > 0` / `lim.TPM > 0`; a 5xx without usage calls `Cancel` |
-| 5. admitting a request larger than the limit because the bucket is full | one request takes more than a minute's tokens | `Reserve` rejects `c.Tokens > lim.TPM` explicitly |
-| 6. no lock around a decision, or one bucket per tenant | under load more requests are admitted than the limit; keys drain each other | one mutex around refill-decide-take; buckets keyed by `p.KeyID` |
-| 7. headers only on 429 | clients cannot pace themselves before they are throttled | `SetHeaders` runs on the admitted path as well as the 429 path |
-| 8. a bad estimate: 0 tokens when the tokenizer fails, `max_tokens` ignored | huge requests pass the reservation and overdraw afterwards | `EstimateCost` falls back to $\lceil \text{bytes}/4 \rceil$ and adds `MaxTokens` or 256 |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `gw.01` | the `Limiter` slot of the chain; the usage the proxy records on the `Exchange` |
-| Back | `gw.02` | buckets are keyed by `Principal.KeyID` with the key's `RPM` and `TPM` |
-| Forward | `gw.07` | `gateway.Deps` calls `limit.Middleware` between policy and cache, so a cached answer still spends the key's RPM |
-| Forward | `load.01` | `{loadgen} --rate 50` against a low-tier key shows 429s at the configured rate |
-| Forward | `ops.09` | the noisy-neighbor drill floods one tenant; the limits keep the others inside their SLO |
-
-`load.01` and `ops.09` reach this module over HTTP through the gateway; they are not code call sites of this package.
-
-## Going further
+Each piece has a production counterpart:
 
 | Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
@@ -396,3 +343,39 @@ Limits are set per key (`rpm`, `tpm` on the key record), and one tenant often ha
 | reserve and settle | saige's shared `Budget` | request, token, and cost capacity reserved under one lock and settled once | saige `budget` package |
 | two buckets per key | OpenAI and Anthropic API rate limits | per-model and per-organization tiers, daily caps | [OpenAI rate limits](https://platform.openai.com/docs/guides/rate-limits) (free) |
 | 429 and `Retry-After` | client-side backoff with jitter | clients that spread their retries instead of synchronizing | [AWS: Exponential backoff and jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/) (free) |
+
+### Further reading
+
+- Tanenbaum, *Computer Networks*, on the token bucket.
+- The GCRA in the ATM Forum's traffic management specification.
+- Stripe, *Scaling your API with rate limiters* (free).
+
+## Key terms
+
+- **Token bucket**: a counter capped at $C$ that refills at $C$ per minute and admits a request when it holds the request's cost.
+- **RPM / TPM**: requests per minute and tokens per minute, the two per-key budgets.
+- **Reservation**: an estimated cost taken from the buckets before a request runs, to be settled or cancelled once.
+- **Settle**: adjusting a reservation by `reserved - actual` once the real usage is known, refunding or charging the difference.
+- **Overrun debt**: a negative bucket level left by a request that used more than it reserved, paid off by waiting.
+- **`Retry-After`**: the whole number of seconds, rounded up and at least 1, after which the budget will exist.
+
+## Summary
+
+- A token bucket holds at most $C$ tokens and refills at $C$ per minute; a request takes tokens if they are there, otherwise it waits exactly as long as the refill needs, and a full bucket allows a burst of one minute's budget, never more.
+- RPM and TPM are two buckets per key. Token cost is unknown when a request starts, so the limiter reserves an estimate (prompt tokens plus `max_tokens`) and settles the actual usage when the response ends: unused tokens come back, overruns are charged.
+- A 429 carries `Retry-After` in whole seconds rounded up, and every authenticated response carries the five `x-ratelimit-*` headers.
+- Exactly one of `Settle` and `Cancel` counts, and a request that failed with a 5xx before any usage is cancelled, so clients do not pay for our outages.
+- One mutex guards every bucket decision: 1000 goroutines against a budget of 100 admit exactly 100.
+
+## Review questions
+
+1. In step 4 of the hand example, why are remaining requests 1 and not 2, given that 3 requests per minute were allowed and only 2 have been made?
+   <details><summary>Answer</summary>The bucket was at 2 after the first request, refilled only $3 \cdot 1.2 / 60 = 0.06$ in 1.2 s (the 429 at step 3 took nothing), so it held 2.06 and the new request leaves 1.06. The header is $\lfloor 1.06 \rfloor = 1$. The bucket counts budget earned over time, not requests left in a calendar minute.</details>
+2. Why does `Reserve` compute the wait with `min(c.Tokens, lim.TPM)` and then reject `c.Tokens > lim.TPM` separately?
+   <details><summary>Answer</summary>Without the `min`, the wait for $n > C$ would be finite but meaningless: the bucket is capped at $C$ and never reaches $n$. Clamping keeps the arithmetic sane, and the explicit test rejects the request even when the bucket is full, so one request can never take more than a minute's budget.</details>
+3. A request reserves 300 tokens; the proxy panics before recording usage. What does the key get back, and which line makes that happen?
+   <details><summary>Answer</summary>Everything: the deferred function sees `settled == false` and calls `res.Cancel()`, which returns 1 request and 300 tokens. Had `Settle` already run, `sync.Once` would make that `Cancel` a no-op, so no double refund is possible.</details>
+4. Why does a 5xx without usage cancel, while a 4xx without usage settles with one request?
+   <details><summary>Answer</summary>A 5xx without usage means the gateway or the engines failed before doing work: charging the client would make it pay for our outage. A 4xx is the client's own bad request: it still consumed a request slot, so the request counts, but no tokens were generated, so the token reservation comes back.</details>
+5. Why are buckets keyed by `Principal.KeyID` rather than by tenant?
+   <details><summary>Answer</summary>Limits are set per key (`rpm`, `tpm` on the key record), and one tenant often has several keys with different jobs, such as CI and a developer. Keying by tenant would let a CI job's burst starve the developer's key, the noisy-neighbor problem inside one tenant.</details>

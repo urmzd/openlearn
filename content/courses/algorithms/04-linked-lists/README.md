@@ -1,29 +1,23 @@
-# 04-linked-lists
+# Linked lists
 
-## Summary
-- Contains: `add-two-numbers.js`.
-- JavaScript solution for linked-list arithmetic.
+Linked list problems are rarely about clever algorithms. They test **pointer manipulation** and **edge-case handling**: whether you can rewire `next` pointers without losing part of the list, and whether your code still works when the list is empty, has one node, or has the operation land on its head. The good news is that a few primitives cover almost everything. Dummy head nodes, fast and slow pointers, and in-place reversal, plus merging and digit-by-digit arithmetic, combine in twos and threes to solve nearly every linked list problem you will meet.
 
-## Key takeaways
-- Manage carry carefully and handle unequal list lengths.
-- Dummy-head nodes simplify list construction.
+This chapter presents each primitive with a template, closes with an edge-case checklist to run against any solution, and then walks through a recursive solution to Add Two Numbers.
 
-## How to run
-- This is a solution function. Run with Node by adding a small driver, or paste into an online judge.
+> **Learning objectives**
+> - Use a dummy head node to remove special cases when the head can change.
+> - Find the middle of a list, detect a cycle, and locate the cycle's start with fast and slow pointers.
+> - Reverse a whole list and a sublist in place.
+> - Merge sorted lists, and add numbers stored as digit lists with correct carry handling.
 
----
+## Before you begin
 
-# Linked List Patterns
+The fast and slow pointer idea was introduced in [Two pointers and sliding window](../02-two-pointers-sliding-window/README.md). You should be comfortable with references (or pointers) and with recursion. The doubly linked list behind an LRU cache is built in full in [the intrusive list and LRU](../16-systems-data-structures/03-intrusive-list-and-lru.md) in this book's systems chapter.
 
-## Core Insight
+## Dummy head nodes
 
-Linked list problems test **pointer manipulation** and **edge case handling**. The key techniques are: dummy head nodes, fast/slow pointers, and in-place reversal. Almost every linked list problem combines 2-3 of these primitives.
+Any problem where the head might change (insertion, deletion, merging) gets simpler with a dummy node in front of the head. Every real node then has a predecessor, so there is no "if head is null" or "if we are deleting the head" branch, and the answer is simply `dummy.next`:
 
-## Pattern 1: Dummy Head Node
-
-**When to use**: Any problem where the head might change (insertion, deletion, merging).
-
-**Template**:
 ```
 dummy = ListNode(0)
 dummy.next = head
@@ -32,15 +26,12 @@ prev = dummy
 return dummy.next
 ```
 
-**Interview problems**: Remove Nth Node From End, Merge Two Sorted Lists, Partition List
+Remove Nth Node From End of List, Merge Two Sorted Lists, and Partition List all use it.
 
-**Why it matters**: Eliminates all "if head is null" special cases.
+## Fast and slow pointers
 
-## Pattern 2: Fast/Slow Pointers
+For cycle detection, finding the middle, or finding the $k$th node from the end, move two pointers at different speeds. Floyd's algorithm detects a cycle when the pointers meet, and then finds the cycle's start: reset one pointer to the head and advance both one step at a time; they meet again exactly at the start of the cycle.
 
-**When to use**: Cycle detection, finding middle, finding kth from end.
-
-**Template (cycle detection — Floyd's)**:
 ```
 slow, fast = head, head
 while fast and fast.next:
@@ -55,7 +46,8 @@ while fast and fast.next:
         return slow  # cycle start
 ```
 
-**Template (find middle)**:
+Without a cycle, the same loop leaves `slow` at the midpoint when `fast` runs off the end:
+
 ```
 slow, fast = head, head
 while fast and fast.next:
@@ -64,13 +56,12 @@ while fast and fast.next:
 # slow is at midpoint
 ```
 
-**Interview problems**: Linked List Cycle, Linked List Cycle II, Middle of Linked List, Palindrome Linked List
+Linked List Cycle, Linked List Cycle II, Middle of the Linked List, and Palindrome Linked List are the standard problems. For the $k$th node from the end, start `fast` $k$ nodes ahead and move both at the same speed.
 
-## Pattern 3: In-Place Reversal
+## In-place reversal
 
-**When to use**: Reverse entire list or reverse a sublist between positions.
+Reversing a list walks it once, pointing each node back at its predecessor. Save `next` before overwriting it, or the rest of the list is lost:
 
-**Template (full reversal)**:
 ```
 prev = None
 curr = head
@@ -82,7 +73,8 @@ while curr:
 return prev  # new head
 ```
 
-**Template (reverse between positions m and n)**:
+Reversing only the nodes between positions $m$ and $n$ combines reversal with a dummy head. Walk `pre` to the node before position $m$; then repeatedly take the node after `tail` and move it to the front of the sublist:
+
 ```
 dummy = ListNode(0, head)
 pre = dummy
@@ -96,13 +88,12 @@ for _ in range(n - m):
     pre.next.next = tmp
 ```
 
-**Interview problems**: Reverse Linked List, Reverse Linked List II, Reverse Nodes in K-Group
+Reverse Linked List, Reverse Linked List II, and Reverse Nodes in k-Group use these templates.
 
-## Pattern 4: Merge Lists
+## Merging sorted lists
 
-**When to use**: Combining two or more sorted lists.
+To combine two sorted lists, repeatedly attach the smaller head to a growing result behind a dummy node, and attach whatever remains when one list runs out:
 
-**Template**:
 ```
 dummy = ListNode(0)
 curr = dummy
@@ -118,15 +109,12 @@ curr.next = l1 or l2
 return dummy.next
 ```
 
-For k lists: use a min-heap of size k → O(N log k).
+For $k$ lists, keep the current heads in a min-heap of size $k$, for $O(N \log k)$ over $N$ total nodes. Merge Two Sorted Lists and Merge k Sorted Lists are the classic problems.
 
-**Interview problems**: Merge Two Sorted Lists, Merge K Sorted Lists
+## Digit-by-digit arithmetic
 
-## Pattern 5: Two-Number Arithmetic
+When numbers are stored as linked lists of digits in reverse order, addition is the grade-school algorithm. Keep going while either list has digits *or* a carry remains, which handles lists of unequal length and a final carry in one condition:
 
-**When to use**: Numbers stored as linked lists (digits in reverse order).
-
-**Template**:
 ```
 dummy = ListNode(0)
 curr = dummy
@@ -141,24 +129,30 @@ while l1 or l2 or carry:
 return dummy.next
 ```
 
-**Interview problems**: Add Two Numbers, Add Two Numbers II
+Add Two Numbers and Add Two Numbers II (digits in forward order, usually solved by reversing first or using stacks) are the standard problems. The two things to manage carefully are the carry and unequal lengths.
 
-## Company Targeting
+## An edge-case checklist
 
-| Company | Favorite Variant | Difficulty |
+Run every linked list solution against these inputs before you trust it:
+
+- an empty list (`head` is null)
+- a single node
+- two nodes
+- odd and even lengths
+- a list with a cycle
+- an operation on the head node
+- an operation on the tail node
+
+Interviewers favor different variants. As a rough guide:
+
+| Company | Favorite variant | Difficulty |
 |---------|-----------------|------------|
-| Google | Reverse in K-Groups | Hard |
-| Meta | Merge K Sorted Lists | Medium-Hard |
-| Amazon | LRU Cache (doubly-linked + hash) | Medium |
-| Apple | In-place operations (memory) | Medium |
-| Palantir | Custom linked structures | Medium |
+| Google | Reverse Nodes in k-Group | Hard |
+| Meta | Merge k Sorted Lists | Medium-Hard |
+| Amazon | LRU cache (doubly linked list + hash map) | Medium |
+| Apple | in-place operations (memory) | Medium |
+| Palantir | custom linked structures | Medium |
 
-## Edge Cases Checklist
+## In this chapter
 
-- [ ] Empty list (head == null)
-- [ ] Single node
-- [ ] Two nodes
-- [ ] Odd vs even length
-- [ ] Cycle present
-- [ ] Operation on head node
-- [ ] Operation on tail node
+- [Add Two Numbers](add-two-numbers.js): a recursive version of digit-by-digit addition. The `helper` function adds the current digits and the carry, appends a node for `sum % 10` to the tail, remembers the head on the first call, and recurses on both `next` pointers with the new carry, treating a missing node as $0$. It stops when the carry is zero and both lists are exhausted. The file is a solution function for Node (it begins with a `node` shebang and prints its intermediate values with `console.log`); add a driver that defines `ListNode` and builds the input lists to run it, or paste it into an online judge.

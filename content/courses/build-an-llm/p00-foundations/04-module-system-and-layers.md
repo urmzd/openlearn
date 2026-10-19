@@ -1,35 +1,21 @@
 # Module system and basic layers
 
-## Overview
+With [the `Tensor`](01-tensor-and-broadcasting-backward.md), [the op library](02-op-library-and-gradcheck.md), and [the fused losses](03-losses-with-fused-backward.md) you can train anything, but a model is still a loose set of Tensors that you have to pass to the optimizer and to the checkpoint writer by hand, in the right order, every time. The digits MLP has four parameter arrays; a Llama layer in [Llama-family model](../p07-modern-block/09-llama-family-model.md) has nine, and a 30-layer model 270.
 
-| | |
-|---|---|
-| **Module** | `L0.4` · build · Python · Pass 2 · 2 to 3 h |
-| **Solution** | [`module.py`](../../../../course/solutions/python/tinyllm/nn/module.py): `Module` (registration in `__setattr__`, `named_parameters`, `named_modules`, `state_dict`, `load_state_dict`, `train`/`eval`, `zero_grad`) · [`layers.py`](../../../../course/solutions/python/tinyllm/nn/layers.py): `Linear`, `Embedding`, `LayerNorm`, `Dropout`, `ReLU`, `Tanh`, `GELU`, `Sequential`, `ModuleList` · model tests: [`test_module.py`](../../../../course/solutions/learner-tests/L0.4/python/tests/l0-4-module/test_module.py) |
-| **Contract** | [`course/contracts/py/tinyllm/nn/module.pyi`](../../../../course/contracts/py/tinyllm/nn/module.pyi) · [`course/contracts/py/tinyllm/nn/layers.pyi`](../../../../course/contracts/py/tinyllm/nn/layers.pyi) |
-| **Needs** | `L0.1` `Tensor` (parameters) · `L0.2` the ops every forward is written in · `M07.3` `normal_init` · `M06.3` PCG32 init and dropout streams · reading: `craft.03` red then green |
-| **Used by** | `L0.5` `BigramLogits` is a `Module`, the loop trains `Linear` stacks, and the digits MLP that closes Part 0 is two `Linear` layers · `L0.6` a checkpoint is a module's `state_dict` · later: `L11.1`, `L2.2`, `L3.2`, `L3.3`, `L3.6`, `L4.1`, `L4.2`, `L4.3`, `L5.3`, `L5.4`, `L5.5`, `L6.1`, `L6.2`, `L6.3`, `L6.5`, `L6.6`, `L7.1`, `L7.2`, `L7.5`, `L7.6`, `L7.8`, `L7.9`, `L8.5`, `L13.1`, `L13.3`, `L13.5`, `L14.2`  · `L14.3` Whisper decoding |
-| **Optional depth** | the PyTorch `torch.nn.Module` documentation and source (`torch/nn/modules/module.py`); Ba, Kiros, Hinton, "Layer Normalization" (2016) |
+Worse, the checkpoint format ([`safetensors.md`](../../../../course/contracts/formats/safetensors.md)) names tensors by strings such as `model.layers.3.self_attn.q_proj.weight`, and the Rust engine of [Candle model runner](../p10-serving/01-model-runner-and-sampler.md) and Hugging Face's loaders find weights by those names. This section gives every model one way to list its parameters, name them exactly as PyTorch does, save and load them, and switch dropout off for evaluation. It then builds the first layers on top: `Linear`, `Embedding`, `LayerNorm`, `Dropout`, three activations, and two containers.
 
-## Key Takeaways
+The section builds on the `Tensor` (parameters are Tensors), the op library (every forward is written in `F`), and, from *Mathematics for Computing*, on `normal_init` from [Variance propagation and initialization](../../mathematics-for-computing/07-probability-statistics/03-variance-propagation-and-initialization.md) and PCG32 sub-streams from [Modular arithmetic, hashing, and PCG32](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md). This is a section where tests come first, so [TDD, unit tests, and mutation testing](../../software-craftsmanship/03-testing-mentality/01-tdd-unit-tests-and-mutation-grading.md) in *Software Craftsmanship* is useful background. The solution is [`module.py`](../../../../course/solutions/python/tinyllm/nn/module.py) (`Module` with registration in `__setattr__`, `named_parameters`, `named_modules`, `state_dict`, `load_state_dict`, `train`/`eval`, `zero_grad`) and [`layers.py`](../../../../course/solutions/python/tinyllm/nn/layers.py) (`Linear`, `Embedding`, `LayerNorm`, `Dropout`, `ReLU`, `Tanh`, `GELU`, `Sequential`, `ModuleList`), with model tests in [`test_module.py`](../../../../course/solutions/learner-tests/L0.4/python/tests/l0-4-module/test_module.py). The contracts are [`module.pyi`](../../../../course/contracts/py/tinyllm/nn/module.pyi) and [`layers.pyi`](../../../../course/contracts/py/tinyllm/nn/layers.pyi).
 
-- A module finds its parameters and children by attribute assignment, in assignment order, and the dotted names this produces are the safetensors keys of every checkpoint in the course, identical to PyTorch's.
-- `load_state_dict` matches by name, checks every key and shape before copying anything, and writes into the existing arrays, so an optimizer built earlier keeps training the loaded weights.
-- `Linear` stores one row per output, $W \in \mathbb{R}^{\text{out} \times \text{in}}$, and computes $xW^\top + b$, PyTorch's layout, which is what lets HF weights load by name.
-- LayerNorm uses the population variance with $\epsilon$ inside the square root.
-- `eval()` and `train()` reach every descendant, and a weight tied under two names is one parameter.
+> **Learning objectives**
+> - Implement parameter and child registration through `__setattr__`, and explain why the resulting dotted names match PyTorch's.
+> - Write a `load_state_dict` that matches by name, validates every key and shape before copying, and loads in place.
+> - Compute a `Linear` layer's forward and backward by hand in PyTorch's `[out, in]` layout.
+> - Implement LayerNorm with the population variance and $\epsilon$ inside the square root, and show numerically why the placement matters.
+> - Make `train()` and `eval()` reach every descendant, and list a tied weight once.
 
-## How to read this chapter
+## How a module finds its parameters
 
-Sections 1 to 3 build the idea from first principles and work a `Linear` layer and a LayerNorm row by hand. Section 4 fixes the interface and lists what a correct solution must handle. Section 5 walks through the solution in `module.py` and `layers.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
-
----
-
-## 1. Why now
-
-With `L0.1` to `L0.3` you can train anything, but a model is still a loose set of Tensors you have to pass to the optimizer and to the checkpoint writer by hand, in the right order, every time. The digits MLP has four parameter arrays; a Llama layer (`L7.9`) has nine, a 30-layer model 270. Worse, the checkpoint format (`formats/safetensors.md`) names tensors by strings such as `model.layers.3.self_attn.q_proj.weight`, and the Rust engine (`L10.1`) and HF's loaders find weights by those names. This module gives every model one way to list its parameters, name them exactly as PyTorch does, save and load them, and switch dropout off for evaluation.
-
-## 2. Principles
+The notation for this section:
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -41,42 +27,55 @@ With `L0.1` to `L0.3` you can train anything, but a model is still a loose set o
 | $\mu, \sigma^2$ | mean and population variance of one row (over the last axis, $d$ entries) | scalars per row |
 | $\epsilon$ | LayerNorm's guard, $10^{-5}$ | float |
 | $\gamma, \beta$ | LayerNorm's affine weight and bias | `float32[d]` |
-| $\mathcal{N}(0, s^2)$ | normal distribution with standard deviation $s$ (`M07.3`) | |
+| $\mathcal{N}(0, s^2)$ | normal distribution with standard deviation $s$ | |
 
-**Registration by assignment.** `Module.__init__` creates two ordered dictionaries, parameters and children, before anything else. `__setattr__` then sorts every assignment: a `Tensor` with `requires_grad=True` is a parameter, a `Module` is a child, anything else (a number, a constant Tensor such as a causal mask, `None`) is plain state and unregisters the name. That is why a subclass must call `super().__init__()` first: without the dictionaries there is nowhere to register, and the error should say so. Python dictionaries keep insertion order, so registration order is assignment order.
+### Registration by assignment
 
-**Names are the contract.** `named_parameters()` yields the module's own parameters first, then each child's with the child's name and a dot as prefix, depth first. A two-layer `Sequential(Linear(2, 3), ReLU(), Linear(3, 1))` yields `0.weight`, `0.bias`, `2.weight`, `2.bias`: exactly `torch.nn.Sequential`'s `state_dict` keys. A Tensor registered under two names (tied input and output embeddings in `L7.9`) is listed once, under its first name, by identity; otherwise the optimizer would step it twice.
+`Module.__init__` creates two ordered dictionaries, parameters and children, before anything else. `__setattr__` then sorts every assignment: a `Tensor` with `requires_grad=True` is a parameter, a `Module` is a child, and anything else (a number, a constant Tensor such as a causal mask, `None`) is plain state and unregisters the name. That is why a subclass must call `super().__init__()` first: without the dictionaries there is nowhere to register, and the error should say so. Python dictionaries keep insertion order, so registration order is assignment order.
 
-**state_dict and load_state_dict.** `state_dict()` is `{name: copy of the array}` in `named_parameters` order; copies, so a saved state does not change when training continues. `load_state_dict(sd, strict=True)` first compares keys: with `strict`, any missing or unexpected key is a `KeyError` that names all of them, raised **before** anything is copied (a half-loaded model is worse than none). A shape mismatch is a `ValueError`, also before copying. Then each array is written **into** the existing parameter array (`p.data[...] = a`), converted to the parameter's dtype. The optimizer (`M10.2`, `M10.3`) holds references to those Tensors and arrays; replacing them would leave it updating arrays the model no longer uses. `strict=False` loads the names that match, which is how you load a pretrained backbone under a new head.
+### Names are the contract
 
-**train and eval.** `training` is a flag on every module; `Dropout` reads it. `train(mode)` sets it on the module and every descendant and returns the module; `eval()` is `train(False)`. Setting it only on the top module leaves every nested dropout active during evaluation.
+`named_parameters()` yields the module's own parameters first, then each child's with the child's name and a dot as prefix, depth first. A two-layer `Sequential(Linear(2, 3), ReLU(), Linear(3, 1))` yields `0.weight`, `0.bias`, `2.weight`, `2.bias`: exactly `torch.nn.Sequential`'s `state_dict` keys. A Tensor registered under two names (tied input and output embeddings in the Llama model) is listed once, under its first name, by identity; otherwise the optimizer would step it twice.
 
-**Linear in PyTorch's layout.** $W$ has shape `[d_out, d_in]`, so $y = xW^\top + b$, and backward (from `L0.1`'s matmul VJP) gives $\bar{W} = \bar{y}^\top x$, $\bar{b} = \sum_{\text{rows}} \bar{y}$, $\bar{x} = \bar{y}W$. Storing $W$ as `[d_in, d_out]` computes the same function from its own initialization, and then fails the day you load torch weights by name. Initialization follows `M07.3`: $W \sim \mathcal{N}(0, 1/d_{\text{in}})$ (standard deviation $1/\sqrt{d_{\text{in}}}$), so unit-variance inputs give unit-variance outputs, and $b = 0$. `Embedding(n, d)` is a table `[n, d]` with $\mathcal{N}(0, 1)$ rows and `F.embedding` as its forward.
+### Saving and loading
 
-**Seeded initialization.** Each layer takes an optional `rng`, a PCG32 (`M06.3`), and draws its weights from it once, at construction, in parameter registration order. With no `rng`, layers use the spec's sub-streams of seed 0: `PCG32(0).substream("init")` for weights and `substream("dropout")` for dropout masks, so adding a dropout layer does not change any initial weight.
+`state_dict()` is `{name: copy of the array}` in `named_parameters` order. It returns copies, so a saved state does not change when training continues. `load_state_dict(sd, strict=True)` first compares keys: with `strict`, any missing or unexpected key is a `KeyError` that names all of them, raised **before** anything is copied, because a half-loaded model is worse than none. A shape mismatch is a `ValueError`, also before copying.
 
-**LayerNorm.** For each row (the last axis): $\hat{x} = (x - \mu)/\sqrt{\sigma^2 + \epsilon}$, then $y = \gamma \odot \hat{x} + \beta$, with $\sigma^2$ the **population** variance (`F.var` with correction 0, as torch). $\epsilon$ belongs inside the square root: it guards rows whose variance is tiny, and outside the root it does almost nothing there. The forward is written with `F.mean`, `F.var`, and `**`, so its backward comes from `L0.2` and needs no code here.
+Then each array is written **into** the existing parameter array (`p.data[...] = a`), converted to the parameter's dtype. The optimizers of [The Optimizer protocol](../../mathematics-for-computing/10-optimization/02-optimizer-protocol-and-sgd.md) and [Adam and AdamW](../../mathematics-for-computing/10-optimization/03-adam-and-adamw.md) hold references to those Tensors and arrays; replacing them would leave the optimizer updating arrays the model no longer uses. `strict=False` loads the names that match, which is how you load a pretrained backbone under a new head.
 
-**Containers.** `Sequential(*mods)` registers its children as `"0"`, `"1"`, ... and applies them in order. `ModuleList(mods)` only holds them (no forward); `append` registers the next index and returns the list.
+### Train and eval
 
-## 3. Worked example by hand
+`training` is a flag on every module, and `Dropout` reads it. `train(mode)` sets it on the module and every descendant and returns the module; `eval()` is `train(False)`. Setting it only on the top module would leave every nested dropout active during evaluation.
 
-`Linear(2, 3)` with
-$W = \begin{bmatrix}1&2\\3&4\\5&6\end{bmatrix}$, $b = [0.5, -0.5, 1]$, and one input row $x = [[1, 1]]$.
+## The basic layers
 
-**Forward.** $xW^\top$ takes the dot product of $x$ with each row of $W$: $[1 + 2, 3 + 4, 5 + 6] = [3, 7, 11]$. Add $b$: $y = [[3.5, 6.5, 12]]$.
+With registration in place, the layers are short. Each one is a composition of `F` ops, so none needs its own backward.
 
-**Backward** with $\bar{y} = [[1, 1, 1]]$:
+`Linear` uses PyTorch's layout. $W$ has shape `[d_out, d_in]`, so $y = xW^\top + b$, and backward (from the matmul VJP) gives $\bar{W} = \bar{y}^\top x$, $\bar{b} = \sum_{\text{rows}} \bar{y}$, and $\bar{x} = \bar{y}W$. Storing $W$ as `[d_in, d_out]` computes the same function from its own initialization, and then fails the day you load torch weights by name. Initialization follows the variance argument of [Variance propagation and initialization](../../mathematics-for-computing/07-probability-statistics/03-variance-propagation-and-initialization.md): $W \sim \mathcal{N}(0, 1/d_{\text{in}})$ (standard deviation $1/\sqrt{d_{\text{in}}}$), so unit-variance inputs give unit-variance outputs, and $b = 0$. `Embedding(n, d)` is a table `[n, d]` with $\mathcal{N}(0, 1)$ rows and `F.embedding` as its forward.
+
+Initialization is seeded. Each layer takes an optional `rng`, a PCG32, and draws its weights from it once, at construction, in parameter registration order. With no `rng`, layers use the spec's sub-streams of seed 0: `PCG32(0).substream("init")` for weights and `substream("dropout")` for dropout masks, so adding a dropout layer does not change any initial weight.
+
+LayerNorm normalizes each row (the last axis): $\hat{x} = (x - \mu)/\sqrt{\sigma^2 + \epsilon}$, then $y = \gamma \odot \hat{x} + \beta$, with $\sigma^2$ the **population** variance (`F.var` with correction 0, as in torch). $\epsilon$ belongs inside the square root. It guards rows whose variance is tiny, and outside the root it does almost nothing there. The forward is written with `F.mean`, `F.var`, and `**`, so its backward comes from the op library and needs no code here.
+
+The containers are thin. `Sequential(*mods)` registers its children as `"0"`, `"1"`, ... and applies them in order. `ModuleList(mods)` only holds them (no forward); `append` registers the next index and returns the list.
+
+## Working it by hand
+
+Take `Linear(2, 3)` with $W = \begin{bmatrix}1&2\\3&4\\5&6\end{bmatrix}$, $b = [0.5, -0.5, 1]$, and one input row $x = [[1, 1]]$.
+
+The forward pass $xW^\top$ takes the dot product of $x$ with each row of $W$: $[1 + 2, 3 + 4, 5 + 6] = [3, 7, 11]$. Adding $b$ gives $y = [[3.5, 6.5, 12]]$.
+
+The backward pass with $\bar{y} = [[1, 1, 1]]$ gives three gradients:
 
 1. $\bar{W} = \bar{y}^\top x = \begin{bmatrix}1\\1\\1\end{bmatrix}[1, 1]$, a $3 \times 2$ matrix of ones: each weight $W_{ij}$ multiplied $x_j = 1$ once.
 2. $\bar{b} = [1, 1, 1]$: the bias is added once per output.
 3. $\bar{x} = \bar{y}W = [1 + 3 + 5, 2 + 4 + 6] = [[9, 12]]$: each input feeds all three outputs.
 
-**LayerNorm on a nearly constant row.** $x = [0, 0.002]$: $\mu = 0.001$, $\sigma^2 = 10^{-6}$. With $\epsilon = 10^{-5}$ inside the root, $\hat{x} = \pm 0.001/\sqrt{1.1 \times 10^{-5}} = \pm 0.30151$, torch's value. With $\epsilon$ added after the root, $\pm 0.001/(0.001 + 10^{-5}) = \pm 0.990$.
+Now LayerNorm on a nearly constant row, $x = [0, 0.002]$. Here $\mu = 0.001$ and $\sigma^2 = 10^{-6}$. With $\epsilon = 10^{-5}$ inside the root, $\hat{x} = \pm 0.001/\sqrt{1.1 \times 10^{-5}} = \pm 0.30151$, torch's value. With $\epsilon$ added after the root, $\pm 0.001/(0.001 + 10^{-5}) = \pm 0.990$.
 
 These two hand results are the first cases a correct solution must reproduce.
 
-## 4. The interface
+## Designing the API
 
 ```python
 # python/tinyllm/nn/module.py
@@ -94,29 +93,17 @@ Linear(in_f, out_f, bias=True, rng=None); Embedding(n, d, rng=None); LayerNorm(d
 Dropout(p, rng=None); ReLU(); Tanh(); GELU(approximate="none"); Sequential(*mods); ModuleList(mods=())
 ```
 
-### What a correct solution must handle
+A correct solution reproduces the hand example ($y = [[3.5, 6.5, 12]]$, $\bar{W}$ and $\bar{b}$ all ones, $\bar{x} = [[9, 12]]$), because that layout is the one everyone agrees on. With torch's weights copied in by name, every layer must give torch's outputs and gradients, which is what lets Hugging Face weights load by name. The `state_dict` keys and their order must be exactly torch's, through nested containers, since they are the safetensors key contract.
 
-| Case | Kind of check | Checks | Why it matters downstream |
-|---|---|---|---|
-| the hand example | unit | section 3: $y = [[3.5, 6.5, 12]]$, $\bar{W}$ ones, $\bar{b}$ ones, $\bar{x} = [[9, 12]]$ | the layout is the one everyone agrees on |
-| parity with torch | golden | every layer with torch's weights copied in by name gives torch's outputs and gradients | HF weights load by name (`L7.9`) |
-| state_dict names match torch | golden | the exact keys and order torch produces, through nested containers | the safetensors key contract |
-| state_dict round trip | property | save, rebuild with another seed, load: same function; saved arrays are copies | checkpoints (`L0.6`) |
-| load is in place | unit | the Tensors and arrays an optimizer holds are the ones loaded into | resuming a run (`L0.6`) |
-| strict loading | boundary | strict names every missing and unexpected key and copies nothing; wrong shapes fail; non-strict loads the rest | a wrong checkpoint fails loudly |
-| parameter order and tying | unit | own parameters before children's; a tied Tensor once | weight tying (`L7.9`) |
-| plain state is not a parameter | boundary | constants and numbers are not parameters; `None` unregisters | masks and buffers in attention (`L5`) |
-| forgetting `super().__init__()` | boundary | the error names `super().__init__()` | the most common first bug |
-| train/eval reach every child | unit | `eval()` reaches nested dropout; both return the model | evaluation is deterministic (`L0.5`) |
-| zero_grad | unit | every parameter's `.grad` is cleared | gradients accumulate (`L0.1`) |
-| LayerNorm normalizes | property | rows come out with mean 0 and variance 1 | every transformer block (`L5`) |
-| $\epsilon$ inside the square root | boundary | section 3's $\pm 0.30151$ | torch parity on small-variance rows |
-| init statistics and seeding | statistical | $\mathcal{N}(0, 1/d_{\text{in}})$ weights, zero bias, seed-reproducible | stable signal through depth (`M07.3`) |
-| Sequential and ModuleList | unit | order, indexing, `append` | stacks of blocks (`L5`, `L7`) |
+Saving and loading are checked as properties. Save, rebuild with another seed, and load, and you must get the same function, with the saved arrays being copies; checkpoints in [Safetensors for every dtype, atomic checkpoints, and the token stream](06-safetensors-checkpoints-and-token-streams.md) depend on this. Loading must be in place, so the Tensors and arrays an optimizer holds are the ones loaded into, which is how a run resumes. Strict loading names every missing and unexpected key and copies nothing, wrong shapes fail, and non-strict loading loads the rest, so a wrong checkpoint fails loudly.
 
-### The model tests
+The registration rules are checked too. Own parameters come before children's, and a tied Tensor appears once (weight tying in the Llama model). Constants and numbers are not parameters, and assigning `None` unregisters a name, which matters for masks and buffers in attention. Forgetting `super().__init__()` gives an error that names `super().__init__()`, because it is the most common first bug. `eval()` reaches nested dropout and both `train` and `eval` return the model, so evaluation in [Training loop and the autograd bigram](05-training-loop-and-the-autograd-bigram.md) is deterministic. `zero_grad` clears every parameter's `.grad`, since gradients accumulate.
 
-This module is one where tests come first (`craft.03`): each behaviour is pinned by a test that fails before the code exists and passes after. The model suite, [`test_module.py`](../../../../course/solutions/learner-tests/L0.4/python/tests/l0-4-module/test_module.py), imports only contract names and covers, in order: the hand example above; state_dict names in registration order with no key for a missing bias; loading by name (a reordered dict gives the same parameters); loading in place; strict mode rejecting missing and unexpected keys without changing anything; a tied parameter listed once; `eval()` turning dropout off in nested modules; LayerNorm against its formula. Its first test is the hand example:
+For the layers: LayerNorm rows come out with mean 0 and variance 1, as every transformer block expects; the hand-worked $\pm 0.30151$ pins $\epsilon$ inside the square root for torch parity on small-variance rows; weights follow $\mathcal{N}(0, 1/d_{\text{in}})$ with zero bias and are seed-reproducible, which keeps the signal stable through depth; and `Sequential` and `ModuleList` get order, indexing, and `append` right, for the stacks of blocks in later chapters.
+
+### Tests first
+
+This is a section where the tests come first: each behaviour is pinned by a test that fails before the code exists and passes after. The model suite, [`test_module.py`](../../../../course/solutions/learner-tests/L0.4/python/tests/l0-4-module/test_module.py), imports only contract names and covers, in order: the hand example above; `state_dict` names in registration order with no key for a missing bias; loading by name (a reordered dict gives the same parameters); loading in place; strict mode rejecting missing and unexpected keys without changing anything; a tied parameter listed once; `eval()` turning dropout off in nested modules; and LayerNorm against its formula. Its first test is the hand example:
 
 ```python
 # python/tests/l0-4-module/test_module.py
@@ -133,23 +120,23 @@ def test_hand_example_linear():
     np.testing.assert_allclose(lin.bias.grad, [1.0, 1.0, 1.0])
 ```
 
-The one fault a good suite must catch is the last pitfall in section 6: a `Linear` that stores or applies its weight in the wrong orientation. A model trained from scratch cannot see it; only a test with known weights, like this one, can.
+The one fault a good suite must catch is a `Linear` that stores or applies its weight in the wrong orientation (the last pitfall below). A model trained from scratch cannot see it; only a test with known weights, like this one, can.
 
-## 5. The solution, step by step
+## Building it step by step
 
-### From first principles
+### The reasoning chain
 
-1. **Every model needs one list of its parameters, in a fixed order, with names.** The optimizer needs the list; the checkpoint needs the names; the order must be reproducible so that two builds of the same model agree. The names must also be PyTorch's, because HF checkpoints and the Rust engine look weights up by those strings.
+1. **Every model needs one list of its parameters, in a fixed order, with names.** The optimizer needs the list; the checkpoint needs the names; the order must be reproducible so that two builds of the same model agree. The names must also be PyTorch's, because Hugging Face checkpoints and the Rust engine look weights up by those strings.
 2. **The cheapest place to collect that list is attribute assignment.** Model code already writes `self.fc = Linear(...)`. If `__setattr__` sorts each assignment into "parameter", "child module", or "plain state", the model author writes nothing extra, and Python's insertion-ordered dicts make registration order equal to assignment order. This is exactly what torch does, so torch's names fall out for free.
 3. **The dictionaries must exist before the first assignment.** So `Module.__init__` creates them with `object.__setattr__` (bypassing its own hook), and the hook checks for them first and raises an error naming `super().__init__()` if they are missing.
 4. **Names come from a depth-first walk.** Own parameters first, then each child with `child_name + "."` as prefix. For `Sequential(Linear(2, 3), ReLU(), Linear(3, 1))` this gives `0.weight`, `0.bias`, `2.weight`, `2.bias`; `ReLU` has no parameters, so `1` never appears.
 5. **A tied weight must appear once.** Deduplicate by object identity, not by value or name, and keep the first name. Otherwise the optimizer steps the shared Tensor twice per update.
 6. **Loading must be all or nothing, and in place.** Validate all keys, then all shapes, and only then copy. Copy into the existing arrays (`data[...] = a`), because the optimizer built before the load holds references to those arrays.
-7. **Layers are compositions of `L0.2` ops.** `Linear` is `matmul` with a transposed weight, `LayerNorm` is `mean`, `var`, a power, and two elementwise ops. Their backward passes then come from autograd and need no code, and the worked example's $\bar{W} = \bar{y}^\top x$ is produced by the matmul VJP.
+7. **Layers are compositions of library ops.** `Linear` is `matmul` with a transposed weight, `LayerNorm` is `mean`, `var`, a power, and two elementwise ops. Their backward passes then come from autograd and need no code, and the worked example's $\bar{W} = \bar{y}^\top x$ is produced by the matmul VJP.
 
-### The code, annotated
+### Registration
 
-**Registration.** The hook is the whole module system. Note the two `pop` calls: a name can move between categories, and it must live in at most one dict.
+The hook is the whole module system. Note the two `pop` calls: a name can move between categories, and it must live in at most one dict.
 
 ```python
 class Module:
@@ -182,7 +169,9 @@ class Module:
 
 The test is `requires_grad`, not "is a Tensor": a causal mask stored as `self.mask = Tensor(...)` is state the model reads, not a weight the optimizer should move.
 
-**Names and the walk.** One shared `seen` set across the whole recursion is what makes tying work across sub-modules (an embedding in one child, the output head in another).
+### Names and the walk
+
+One shared `seen` set across the whole recursion is what makes tying work across sub-modules (an embedding in one child, the output head in another).
 
 ```python
     def named_parameters(self, prefix: str = "") -> Iterator[tuple[str, Tensor]]:
@@ -214,7 +203,9 @@ The test is `requires_grad`, not "is a Tensor": a causal mask stored as `self.ma
         return self   # so `model.eval()` can be chained
 ```
 
-**Saving and loading.** `state_dict` returns copies; `load_state_dict` runs in three phases: key check, shape check, copy.
+### Saving and loading
+
+`state_dict` returns copies; `load_state_dict` runs in three phases: key check, shape check, copy.
 
 ```python
     def state_dict(self) -> dict[str, NDArray]:
@@ -245,7 +236,9 @@ The test is `requires_grad`, not "is a Tensor": a causal mask stored as `self.ma
 
 Matching is by name through `own[name]`, never by position, so a checkpoint whose keys were written in another order loads correctly.
 
-**Linear and the default streams.** The weight is `[out_f, in_f]` and the forward transposes it, which is the torch layout from Principles.
+### Linear and the default streams
+
+The weight is `[out_f, in_f]` and the forward transposes it, which is the torch layout described above.
 
 ```python
 def _rng(rng: Any, purpose: str) -> Any:
@@ -270,7 +263,9 @@ class Linear(Module):
 
 `Embedding` is the same pattern with an `[n, d]` table, $\mathcal{N}(0, 1)$ rows, and `F.embedding` as the forward. `Dropout` keeps its own generator from the `"dropout"` sub-stream and passes `self.training` to `F.dropout`, which is how `eval()` reaches it.
 
-**LayerNorm.** Four lines, and each one is a decision from Principles.
+### LayerNorm
+
+Four lines, and each one is a decision made above.
 
 ```python
 class LayerNorm(Module):
@@ -287,9 +282,11 @@ class LayerNorm(Module):
         return xhat * self.weight + self.bias
 ```
 
-On section 3's row, `var + eps` is $1.1 \times 10^{-5}$ and `xhat` is $\pm 0.30151$.
+On the hand-worked row, `var + eps` is $1.1 \times 10^{-5}$ and `xhat` is $\pm 0.30151$.
 
-**Containers.** `Sequential` registers through `setattr` with the names `"0"`, `"1"`, ..., so the ordinary hook does all the work and the keys come out as torch's.
+### Containers
+
+`Sequential` registers through `setattr` with the names `"0"`, `"1"`, ..., so the ordinary hook does all the work and the keys come out as torch's.
 
 ```python
 class Sequential(Module):
@@ -314,92 +311,110 @@ class ModuleList(Module):
     # ...
 ```
 
-Full solution: [`module.py`](../../../../course/solutions/python/tinyllm/nn/module.py) · [`layers.py`](../../../../course/solutions/python/tinyllm/nn/layers.py) (also `ReLU`, `Tanh`, `GELU`, and indexing for both containers).
+The full solution is [`module.py`](../../../../course/solutions/python/tinyllm/nn/module.py) and [`layers.py`](../../../../course/solutions/python/tinyllm/nn/layers.py), which also has `ReLU`, `Tanh`, `GELU`, and indexing for both containers.
 
-### Why this solution
+### Why this design
 
-- **Cost.** `named_parameters` is $O(P + M)$ for $P$ parameters and $M$ modules; it builds a list and returns an iterator over it, so callers see a consistent snapshot even if they mutate the model while iterating. `load_state_dict` is $O(P)$ plus one copy of the weights. None of this is on the hot path; it runs once per optimizer build or checkpoint.
-- **Alternatives.** An explicit `register_parameter` call per weight works but makes every model author repeat each name, and a forgotten call is a weight that silently never trains. Discovering parameters by scanning `vars(self)` on demand loses the ordering guarantee once attributes are reassigned and cannot distinguish a tied Tensor from a copy without the same identity check. Storing `Linear` weights as `[in, out]` saves a transpose and breaks every torch and HF checkpoint.
-- **Accepted tradeoffs.** No buffers (saved but not trained arrays) and no hooks; constant Tensors are plain state and are not saved. Loading converts to the parameter's dtype rather than refusing a dtype mismatch, which is what torch does and what makes float64 test fixtures load into float32 models.
+`named_parameters` is $O(P + M)$ for $P$ parameters and $M$ modules; it builds a list and returns an iterator over it, so callers see a consistent snapshot even if they mutate the model while iterating. `load_state_dict` is $O(P)$ plus one copy of the weights. None of this is on the hot path; it runs once per optimizer build or checkpoint.
 
-### Explain it back
+The alternatives are each worse in a specific way. An explicit `register_parameter` call per weight works, but it makes every model author repeat each name, and a forgotten call is a weight that silently never trains. Discovering parameters by scanning `vars(self)` on demand loses the ordering guarantee once attributes are reassigned, and it cannot distinguish a tied Tensor from a copy without the same identity check. Storing `Linear` weights as `[in, out]` saves a transpose and breaks every torch and Hugging Face checkpoint.
 
-1. Why does `Module.__init__` use `object.__setattr__` instead of `self._params = {}`?
-   <details><summary>Answer</summary>
-   `self._params = {}` would call the module's own `__setattr__`, which looks for `_params` in `__dict__` before it exists and raises. Bypassing the hook is the only way to create the dictionaries the hook depends on.
-   </details>
-2. Why is `seen` keyed by `id(p)` and shared across the whole walk?
-   <details><summary>Answer</summary>
-   Tying means the same Tensor object is registered under two names, possibly in different sub-modules. Identity is the property that distinguishes "the same weight" from "two weights that happen to be equal"; a per-module set would miss a tie that crosses modules. Without it the optimizer would apply two updates per step to one array.
-   </details>
-3. What breaks if `load_state_dict` did `own[name].data = a` instead of `own[name].data[...] = a`?
-   <details><summary>Answer</summary>
-   The parameter would point at a new array while the optimizer's moment buffers and any references it holds still refer to the old one. A resumed run would then update arrays the model no longer reads, and the loss would stop moving. Writing through `[...]` keeps the array identity.
-   </details>
-4. Why are the shape checks done in a separate loop before the copy loop?
-   <details><summary>Answer</summary>
-   So a bad checkpoint changes nothing. If shapes were checked while copying, the first few layers would be overwritten before the error, leaving a half-loaded model that looks valid.
-   </details>
-5. With $\epsilon$ outside the square root, why is the error large only on near-constant rows?
-   <details><summary>Answer</summary>
-   For a row with $\sigma^2 \gg \epsilon$, $\sqrt{\sigma^2 + \epsilon} \approx \sigma \approx \sigma + \epsilon$ and both forms agree. When $\sigma^2$ is comparable to $\epsilon$, $\sqrt{\epsilon}$ (about $3 \times 10^{-3}$) dominates $\epsilon$ itself, so inside the root it damps the row strongly and outside it barely does: section 3 gets $0.30151$ against $0.990$.
-   </details>
+Two tradeoffs are accepted. There are no buffers (saved but not trained arrays) and no hooks; constant Tensors are plain state and are not saved. And loading converts to the parameter's dtype rather than refusing a dtype mismatch, which is what torch does and what makes float64 test fixtures load into float32 models.
 
-## 6. Pitfalls
+## What can go wrong
 
 | Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. assigning a parameter before `super().__init__()` | an `AttributeError` about `_params`, far from the cause | `__setattr__` checks for `_params` first and raises an error that names `super().__init__()` |
-| 2. `train()`/`eval()` setting only the top module's flag | dropout stays on in nested blocks during evaluation | `train` sets the flag on every module from `named_modules()` |
-| 3. `load_state_dict` replacing the arrays | a resumed run's optimizer updates arrays the model no longer uses: the loss stops moving | copies with `data[...] = a`, keeping each array's identity |
-| 4. loading by position, checking keys after copying, or skipping the shape check | a reordered checkpoint loads into the wrong layers; a wrong one half-loads; a broadcastable array loads silently | looks up `own[name]`; checks all keys, then all exact shapes, then copies |
-| 5. LayerNorm with the sample variance, or $\epsilon$ outside the root | small disagreements with torch everywhere, large ones on near-constant rows | `F.var` with its default correction 0, and `(var + eps) ** -0.5` |
-| 6. `Linear` weight as `[in, out]`, or a forward without the transpose | trains fine from scratch, then torch and HF weights load transposed or fail | weight shape `(out_f, in_f)` and `matmul(x, transpose(W))`; pinned by the hand example |
+| assigning a parameter before `super().__init__()` | an `AttributeError` about `_params`, far from the cause | `__setattr__` checks for `_params` first and raises an error that names `super().__init__()` |
+| `train()`/`eval()` setting only the top module's flag | dropout stays on in nested blocks during evaluation | `train` sets the flag on every module from `named_modules()` |
+| `load_state_dict` replacing the arrays | a resumed run's optimizer updates arrays the model no longer uses: the loss stops moving | copies with `data[...] = a`, keeping each array's identity |
+| loading by position, checking keys after copying, or skipping the shape check | a reordered checkpoint loads into the wrong layers; a wrong one half-loads; a broadcastable array loads silently | looks up `own[name]`; checks all keys, then all exact shapes, then copies |
+| LayerNorm with the sample variance, or $\epsilon$ outside the root | small disagreements with torch everywhere, large ones on near-constant rows | `F.var` with its default correction 0, and `(var + eps) ** -0.5` |
+| `Linear` weight as `[in, out]`, or a forward without the transpose | trains fine from scratch, then torch and Hugging Face weights load transposed or fail | weight shape `(out_f, in_f)` and `matmul(x, transpose(W))`; pinned by the hand example |
 
-## 7. Where it's used next
+> **Warning:** A transposed `Linear` is invisible to training from scratch: loss curves look normal. Only a test with known weights, or loading a real checkpoint, reveals it.
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `L0.1` | parameters are Tensors with `requires_grad=True` |
-| Back | `L0.2` | `Linear` is `F.matmul` and `F.transpose`; `LayerNorm` is `F.mean` and `F.var`; `Embedding` is `F.embedding` |
-| Back | `M07.3` | `normal_init` draws the initial weights |
-| Back | `M06.3` | `PCG32(0).substream("init")` and `substream("dropout")` are the defaults |
-| Forward | `L0.5` | `BigramLogits` subclasses `Module`; the loop trains `Sequential` MLPs |
-| Forward | `L0.6` | `save_checkpoint` writes `state_dict()` and resume calls `load_state_dict` |
-| Forward | `L13.1` | `Conv2d`, `Conv1d`, and LeNet-5 are `Module`s; the classifier head is `Linear` |
-| Forward | `L13.3` | `ViT` stacks `LayerNorm`, `Linear`, and `Embedding` in a `ModuleList` |
-| Forward | `L13.5` | the text tower and both projections are `Module`s |
-| Forward | `L14.2` | `WhisperEncoder` stacks `LayerNorm` and `Linear` in a `ModuleList` |
-| Forward | `L14.3` | Whisper decoding calls this module through its declared contract. |
-| Forward | `L11.1` | `train_step_mixed` steps `model.parameters()`; `checkpoint_sequential` segments a list of `Module` layers and gathers their `parameters()` |
-| Forward | `L2.2` | the NPLM is a `Module` of `Embedding` and `Linear` layers |
-| Forward | `L3.2` | the LSTM cell is a `Module` with `Dropout` and `xavier_uniform` weights |
-| Forward | `L3.3` | the GRU cell is a `Module` with `Dropout` and `xavier_uniform` weights |
-| Forward | `L3.6` | the RNN LM wraps the cell between an `Embedding` and a `Linear` read-out |
-| Forward | `L4.1` | the encoder and decoder are `Module`s built from `Embedding` and `Linear` |
-| Forward | `L4.2` | additive (Bahdanau) attention is a `Module` of `Linear` projections |
-| Forward | `L4.3` | Luong attention is a `Module` of `Linear` projections |
-| Forward | `L5.3` | multi-head attention's Q, K, V, and output projections are `Linear` |
-| Forward | `L5.4` | the learned position table is a `Module` initialised with `normal_init` |
-| Forward | `L5.5` | the transformer stacks `LayerNorm`, `Linear`, `Embedding`, and `Dropout` in a `ModuleList` |
-| Forward | `L6.1` | GPT stacks its blocks in a `ModuleList` of `LayerNorm`, `Linear`, `Embedding`, and `Dropout` |
-| Forward | `L6.2` | BERT's encoder stacks the same layers in a `ModuleList` |
-| Forward | `L6.3` | the ELECTRA generator and discriminator heads are `Module`s over `Linear` |
-| Forward | `L6.5` | the task heads are `Module`s of `Dropout` and `Linear` |
-| Forward | `L6.6` | `LoRALinear` wraps a frozen `Linear` and adds two trainable `Linear` factors |
-| Forward | `L7.1` | `RMSNorm` is a `Module` |
-| Forward | `L7.2` | SwiGLU's gate, up, and down projections are `Linear` |
-| Forward | `L7.5` | grouped-query attention's projections are `Linear` |
-| Forward | `L7.6` | MLA's down- and up-projections are `Linear` |
-| Forward | `L7.8` | the MoE experts sit in a `ModuleList`; the router is a `Linear` |
-| Forward | `L7.9` | the Llama model registers `Embedding`, `ModuleList`, and `Linear` in HF's order, so `state_dict` keys match HF's |
-| Forward | `L8.5` | `QuantLinear` replaces `Linear` layers found through `named_modules()`; `export_q4` walks `named_parameters()` |
+## Where this leads
 
-## Going further
+Within this chapter, `BigramLogits` in [Training loop and the autograd bigram](05-training-loop-and-the-autograd-bigram.md) subclasses `Module` and the loop trains `Sequential` MLPs (the digits MLP that closes the chapter is two `Linear` layers), while `save_checkpoint` in [Safetensors for every dtype, atomic checkpoints, and the token stream](06-safetensors-checkpoints-and-token-streams.md) writes `state_dict()` and resuming calls `load_state_dict`.
 
-| Piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `Module` registration | `torch.nn.Module` | buffers (saved, not trained), forward and backward hooks, `_load_from_state_dict` per module for versioned formats | `torch/nn/modules/module.py` |
-| `state_dict` names | HF `transformers` key mapping | renames between checkpoint versions, sharded `model-0000x-of-0000y.safetensors` with an index file | `modeling_utils.py`, `_load_state_dict_into_model` |
-| `Linear`, `LayerNorm` | fused kernels in Apex and Liger | LayerNorm and RMSNorm forward and backward in one pass, fused with the residual add | `liger_kernel/ops/layer_norm.py` |
-| explicit `rng` for init | JAX and Flax `PRNGKey` splitting | every random draw takes a key, so initialization is a pure function of the seed | `flax/linen/module.py` (`make_rng`) |
+After that, nearly every model in the book is a tree of these modules. The NPLM of [Bengio's neural probabilistic language model](../p02-statistical-lm/02-bengio-nplm.md) is a `Module` of `Embedding` and `Linear` layers. The [LSTM](../p03-recurrent/02-lstm.md) and [GRU](../p03-recurrent/03-gru.md) cells are `Module`s with `Dropout` and `xavier_uniform` weights, and the [RNN language model](../p03-recurrent/06-rnn-language-model-stateful-tbptt.md) wraps a cell between an `Embedding` and a `Linear` read-out. The [encoder-decoder](../p04-attention-origins/01-encoder-decoder-teacher-forcing.md) is built from `Embedding` and `Linear`, and both [Bahdanau](../p04-attention-origins/02-bahdanau-additive-attention.md) and [Luong](../p04-attention-origins/03-luong-attention-input-feeding.md) attention are `Module`s of `Linear` projections.
+
+In the Transformer chapters, [multi-head attention](../p05-transformer-2017/03-multi-head-attention.md) projects Q, K, V, and the output with `Linear`; the learned position table of [Positional encodings](../p05-transformer-2017/04-positional-encodings.md) is a `Module` initialized with `normal_init`; and the [encoder-decoder Transformer](../p05-transformer-2017/05-encoder-decoder-transformer.md), [GPT](../p06-objectives/01-gpt-decoder-only.md), and [BERT](../p06-objectives/02-bert-masked-lm.md) stack `LayerNorm`, `Linear`, `Embedding`, and `Dropout` in a `ModuleList`. The [ELECTRA](../p06-objectives/03-electra-replaced-token-detection.md) heads and the [fine-tuning heads](../p06-objectives/05-fine-tuning-heads-and-the-linear-head-export.md) are `Module`s over `Linear`, and `LoRALinear` in [LoRA with PiSSA init and merge](../p06-objectives/06-lora-pissa-and-merge.md) wraps a frozen `Linear` with two trainable `Linear` factors.
+
+The modern block follows the same pattern: [RMSNorm](../p07-modern-block/01-pre-ln-rmsnorm.md) is a `Module`; the gate, up, and down projections of [Gated MLPs](../p07-modern-block/02-gated-mlps.md), the projections of [grouped-query attention](../p07-modern-block/05-gqa-attention.md), and the down- and up-projections of [multi-head latent attention](../p07-modern-block/06-multi-head-latent-attention.md) are `Linear`; the [Mixture of Experts](../p07-modern-block/08-mixture-of-experts.md) keeps its experts in a `ModuleList` with a `Linear` router; and the [Llama-family model](../p07-modern-block/09-llama-family-model.md) registers `Embedding`, `ModuleList`, and `Linear` in Hugging Face's order, so its `state_dict` keys match. `QuantLinear` in [Quantization](../p08-inference/05-quantization.md) replaces `Linear` layers found through `named_modules()`, and `export_q4` walks `named_parameters()`. `train_step_mixed` in [mixed-precision training](../p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md) steps `model.parameters()`, and `checkpoint_sequential` segments a list of `Module` layers. In vision, `Conv2d`, `Conv1d`, and LeNet-5 in [Conv layers and pooling](../p13-vision/01-conv-layers-and-pooling.md) are `Module`s with a `Linear` classifier head, the [vision transformer](../p13-vision/03-vision-transformer.md) stacks `LayerNorm`, `Linear`, and `Embedding` in a `ModuleList`, and the text tower and projections of [CLIP and SigLIP](../p13-vision/05-contrastive-image-text.md) are `Module`s. In speech, `WhisperEncoder` in [Whisper encoder](../p14-speech/02-whisper-encoder.md) stacks `LayerNorm` and `Linear` in a `ModuleList`, and [Whisper decoding](../p14-speech/03-whisper-decoder-and-weights.md) uses the same module contract.
+
+### Further reading
+
+- The PyTorch `torch.nn.Module` documentation and source (`torch/nn/modules/module.py`): buffers (saved, not trained), forward and backward hooks, and `_load_from_state_dict` per module for versioned formats.
+- Ba, Kiros, Hinton, "Layer Normalization" (2016).
+- Hugging Face `transformers` key mapping (`modeling_utils.py`, `_load_state_dict_into_model`): renames between checkpoint versions, and sharded `model-0000x-of-0000y.safetensors` with an index file.
+- Fused kernels in Apex and Liger (`liger_kernel/ops/layer_norm.py`): LayerNorm and RMSNorm forward and backward in one pass, fused with the residual add.
+- JAX and Flax `PRNGKey` splitting (`flax/linen/module.py`, `make_rng`): every random draw takes a key, so initialization is a pure function of the seed.
+
+## Key terms
+
+- **module**: an object that owns parameters and child modules, discovered through attribute assignment.
+- **parameter**: a `Tensor` with `requires_grad=True` registered on a module; the optimizer updates it.
+- **state dict**: an ordered mapping from dotted parameter names to arrays, used for checkpoints.
+- **strict loading**: refusing a state dict with any missing or unexpected key, before copying anything.
+- **weight tying**: one parameter registered under two names, listed once by identity.
+- **LayerNorm**: per-row normalization by the population mean and variance with $\epsilon$ inside the square root, then an affine map.
+
+## Summary
+
+- A module finds its parameters and children by attribute assignment, in assignment order, and the dotted names this produces are the safetensors keys of every checkpoint in the book, identical to PyTorch's.
+- `load_state_dict` matches by name, checks every key and shape before copying anything, and writes into the existing arrays, so an optimizer built earlier keeps training the loaded weights.
+- `Linear` stores one row per output, $W \in \mathbb{R}^{\text{out} \times \text{in}}$, and computes $xW^\top + b$, PyTorch's layout, which is what lets Hugging Face weights load by name.
+- LayerNorm uses the population variance with $\epsilon$ inside the square root.
+- `eval()` and `train()` reach every descendant, and a weight tied under two names is one parameter.
+
+## Review questions
+
+1. Why does `Module.__init__` use `object.__setattr__` instead of `self._params = {}`?
+
+   <details><summary>Answer</summary>
+
+   `self._params = {}` would call the module's own `__setattr__`, which looks for `_params` in `__dict__` before it exists and raises. Bypassing the hook is the only way to create the dictionaries the hook depends on.
+
+   </details>
+
+2. Why is `seen` keyed by `id(p)` and shared across the whole walk?
+
+   <details><summary>Answer</summary>
+
+   Tying means the same Tensor object is registered under two names, possibly in different sub-modules. Identity is the property that distinguishes "the same weight" from "two weights that happen to be equal"; a per-module set would miss a tie that crosses modules. Without it the optimizer would apply two updates per step to one array.
+
+   </details>
+
+3. What breaks if `load_state_dict` did `own[name].data = a` instead of `own[name].data[...] = a`?
+
+   <details><summary>Answer</summary>
+
+   The parameter would point at a new array while the optimizer's moment buffers and any references it holds still refer to the old one. A resumed run would then update arrays the model no longer reads, and the loss would stop moving. Writing through `[...]` keeps the array identity.
+
+   </details>
+
+4. Why are the shape checks done in a separate loop before the copy loop?
+
+   <details><summary>Answer</summary>
+
+   So a bad checkpoint changes nothing. If shapes were checked while copying, the first few layers would be overwritten before the error, leaving a half-loaded model that looks valid.
+
+   </details>
+
+5. With $\epsilon$ outside the square root, why is the error large only on near-constant rows?
+
+   <details><summary>Answer</summary>
+
+   For a row with $\sigma^2 \gg \epsilon$, $\sqrt{\sigma^2 + \epsilon} \approx \sigma \approx \sigma + \epsilon$ and both forms agree. When $\sigma^2$ is comparable to $\epsilon$, $\sqrt{\epsilon}$ (about $3 \times 10^{-3}$) dominates $\epsilon$ itself, so inside the root it damps the row strongly and outside it barely does: the hand example gets $0.30151$ against $0.990$.
+
+   </details>
+
+6. What `state_dict` keys does `Sequential(Linear(2, 3), ReLU(), Linear(3, 1))` produce, and why is there no key starting with `1.`?
+
+   <details><summary>Answer</summary>
+
+   `0.weight`, `0.bias`, `2.weight`, `2.bias`. The children are registered as `"0"`, `"1"`, `"2"`, but `ReLU` has no parameters, so the walk emits nothing under `1.`.
+
+   </details>
