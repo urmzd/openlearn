@@ -1,27 +1,23 @@
-# 03-binary-search
+# Binary search
 
-## Summary
-- Contains: `find-minimum-in-rotated-sorted-array.js`, `liss.js`, `search-in-rotated-sorted-array.js`.
-- JavaScript implementations of binary-search style problems (including rotated arrays).
+Everyone learns binary search as "find a value in a sorted array." That is the smallest case of a much more useful idea. Binary search works whenever there is a **monotonic predicate**: a function $f(x)$ that flips from false to true (or the other way) at exactly one point. You do not need a sorted array; you need a search space in which one comparison lets you eliminate half. Each step halves the space, so the search takes $O(\log n)$ steps.
 
-## Key takeaways
-- Binary search generalizes beyond exact match to boundary finding.
-- Rotated arrays require careful mid comparisons to preserve sorted halves.
+This chapter generalizes in stages: from exact-match search, to finding the boundary where a condition first holds, to rotated arrays where only one half is sorted, to searching over the space of possible *answers*, and finally to searching over real numbers. The pattern of searching on the answer is the one to take away; it converts optimization problems into decision problems and is the most important binary-search pattern for hard interviews.
 
-## How to run
-- These are solution functions. Run with Node by adding a small driver, or paste into an online judge.
+> **Learning objectives**
+> - Write exact-match and left-boundary binary searches without off-by-one errors, and explain each bound.
+> - Search a rotated sorted array by identifying which half is sorted.
+> - Turn "find the minimum $x$ such that a condition holds" into a binary search over answers with a feasibility check.
+> - Binary search over real numbers with a fixed iteration count.
 
----
+## Before you begin
 
-# Binary Search Patterns
+You should be comfortable with arrays and loop invariants, as in [Two pointers and sliding window](../02-two-pointers-sliding-window/README.md). The patience-sorting solution at the end of the chapter computes a longest increasing subsequence, a problem that [Dynamic programming](../07-dynamic-programming/README.md) solves another way.
 
-## Core Insight
+## Exact match
 
-Binary search works whenever there's a **monotonic predicate** — a function f(x) that flips from false to true (or vice versa) at exactly one point. You don't need a sorted array; you need a search space where you can eliminate half at each step.
+The classic search keeps a closed interval `[left, right]` and stops when it is empty:
 
-## Pattern 1: Classic Binary Search (Find Exact Value)
-
-**Template**:
 ```
 left, right = 0, len(arr) - 1
 while left <= right:
@@ -32,13 +28,12 @@ while left <= right:
 return -1
 ```
 
-**Interview problems**: Binary Search, Search Insert Position
+Writing `left + (right - left) // 2` instead of `(left + right) // 2` avoids integer overflow in languages with fixed-width integers. Binary Search and Search Insert Position are the standard problems.
 
-## Pattern 2: Left Boundary (First True)
+## The left boundary: first true
 
-**When to use**: Find the first element satisfying a condition, lower bound.
+Often you want the first element that satisfies a condition, a lower bound. Change the interval to half-open `[left, right)`, with `right` starting at `len(arr)`, and never discard `mid` when it satisfies the condition, because it might be the answer:
 
-**Template**:
 ```
 left, right = 0, len(arr)  # note: right = len, not len-1
 while left < right:         # note: strict <
@@ -50,13 +45,12 @@ while left < right:         # note: strict <
 return left
 ```
 
-**Interview problems**: First Bad Version, Find First and Last Position, Search Insert Position
+When the loop ends, `left == right` is the first index where the condition holds, or `len(arr)` if it never does. First Bad Version, Find First and Last Position of Element, and Search Insert Position all fit this template.
 
-## Pattern 3: Rotated Array Search
+## Rotated arrays
 
-**When to use**: Sorted array that's been rotated. One half is always sorted.
+A sorted array that has been rotated (`[4, 5, 6, 7, 0, 1, 2]`) is no longer sorted, but one half around any `mid` always is. Compare `arr[left]` with `arr[mid]` to find out which, then check whether the target lies in the sorted half:
 
-**Template**:
 ```
 left, right = 0, len(arr) - 1
 while left <= right:
@@ -75,13 +69,12 @@ while left <= right:
             right = mid - 1
 ```
 
-**Interview problems**: Search in Rotated Sorted Array, Find Minimum in Rotated Sorted Array
+The careful comparisons with `mid` are what preserve correctness. Search in Rotated Sorted Array and Find Minimum in Rotated Sorted Array are the canonical problems; the solutions below take two different approaches to them.
 
-## Pattern 4: Binary Search on Answer
+## Searching on the answer
 
-**When to use**: "Find the minimum/maximum value X such that some condition holds." The search space is the range of possible answers, not an array.
+Now drop the array entirely. For "find the minimum (or maximum) value $x$ such that some condition holds," the search space is the range of possible answers. If a `feasible(x)` check is monotone (once a capacity is large enough, every larger capacity is too), binary search finds the boundary:
 
-**Template**:
 ```
 left, right = min_possible, max_possible
 while left < right:
@@ -93,15 +86,12 @@ while left < right:
 return left
 ```
 
-**Interview problems**: Koko Eating Bananas, Capacity to Ship Packages, Split Array Largest Sum, Magnetic Force Between Balls
+This is the left-boundary template applied to answers. It converts an optimization problem ("what is the smallest speed?") into a decision problem ("can I finish at this speed?"), which is usually much easier to write. Koko Eating Bananas, Capacity to Ship Packages Within D Days, Split Array Largest Sum, and Magnetic Force Between Two Balls are the standard examples, and it is the pattern that most often separates hard-interview answers.
 
-**This is the most important pattern for hard interviews.** It converts optimization problems into decision problems.
+## Searching over real numbers
 
-## Pattern 5: Binary Search on Floating Point
+For a real-valued answer, such as a square root, there is no "next integer" to step to, so run a fixed number of halvings instead of looping until the interval is empty:
 
-**When to use**: Square root, finding a real-valued answer.
-
-**Template**:
 ```
 left, right = 0.0, upper_bound
 for _ in range(100):  # ~100 iterations gives ~10^-30 precision
@@ -113,27 +103,37 @@ for _ in range(100):  # ~100 iterations gives ~10^-30 precision
 return left
 ```
 
-**Interview problems**: Sqrt(x), Minimize Max Distance to Gas Station
+One hundred halvings shrink the interval by a factor of $2^{100} \approx 10^{30}$. Sqrt(x) and Minimize Max Distance to Gas Station are the usual problems.
 
-## Company Targeting
+## Choosing a template
 
-| Company | Favorite Variant | Difficulty |
-|---------|-----------------|------------|
-| Google | Binary search on answer | Hard |
-| Amazon | Rotated array variants | Medium |
-| Meta | Standard + boundary | Medium |
-| Jane Street | BS on real-valued continuous spaces | Hard |
-| Two Sigma | BS on answer with complex feasibility | Hard |
-| Databricks | Distributed binary search | Hard |
-
-## The Template Decision Tree
+The choice between the templates comes down to two questions, which this decision tree captures:
 
 ```
 Is it a sorted array?
-├── Yes → exact match? → Pattern 1
-│       → first/last occurrence? → Pattern 2
-│       → rotated? → Pattern 3
+├── Yes → exact match? → exact-match search
+│       → first/last occurrence? → left boundary
+│       → rotated? → rotated-array search
 └── No → Can I binary search on the answer?
-        ├── Yes → Pattern 4 (most common in hard problems)
+        ├── Yes → search on the answer (most common in hard problems)
         └── No → Probably not a binary search problem
 ```
+
+Different companies favor different variants. As a rough guide:
+
+| Company | Favorite variant | Difficulty |
+|---------|-----------------|------------|
+| Google | binary search on the answer | Hard |
+| Amazon | rotated array variants | Medium |
+| Meta | standard and boundary | Medium |
+| Jane Street | binary search on real-valued continuous spaces | Hard |
+| Two Sigma | binary search on the answer with complex feasibility | Hard |
+| Databricks | distributed binary search | Hard |
+
+## In this chapter
+
+Each solution is a JavaScript function; run it with Node by adding a small driver, or paste it into an online judge.
+
+- [Find Minimum in Rotated Sorted Array](find-minimum-in-rotated-sorted-array.js): returns early when the array is not rotated (`nums[low] < nums[high]`), then binary searches for the inflection point where a value is larger than its successor, comparing `mid` with `nums[0]` to decide which side the inflection is on.
+- [Search in Rotated Sorted Array](search-in-rotated-sorted-array.js): a two-phase approach. A first binary search finds the index of the smallest value (the rotation offset); then an ordinary exact-match search runs over "virtual" indices, each mapped to a real one by `(index + offset) % n`.
+- [Longest Increasing Subsequence](liss.js): the patience-sorting method. It keeps the smallest possible tail for each subsequence length in `piles`, and for each new number binary searches for the first pile whose top is at least that number, replacing it or starting a new pile. The number of piles is the length of the longest increasing subsequence, in $O(n \log n)$.

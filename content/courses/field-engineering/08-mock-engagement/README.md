@@ -1,65 +1,32 @@
 # Mock Engagement
 
-## Overview
+A field engineer sells and delivers a system they understand to the bottom. The earlier chapters of this book taught each stage of an engagement on its own; this chapter runs the whole engagement end to end, against a platform you built yourself, so that the guesswork disappears. Every sizing number, benchmark, and security answer can be checked, because every claim links to a test, a report, or a document you produced. That is the standard a customer's architects will hold you to.
 
-- **Primary references**: the earlier topics of this track, [01 Discovery](../01-discovery/) through [07 Escalation and Handoff](../07-escalation-and-handoff/); your own platform from the [course](../../../courses/build-an-llm/paths/course/)
-- **Supplementary**: the role-path [capstone](capstone.md) (one mock customer, Lexa, through every part); Shostack, *Threat Modeling* (for the security questionnaire)
-- **Prerequisites**: field-engineering topics 01 to 07; for the course modules, your system at `v1.0.0` (course Passes 1 to 10)
-- **Estimated time**: 1 to 2 weeks in course Pass 11
+The engagement itself is the same for any platform; what changes is how much you can prove. The chapter follows one mock customer, Northstar Commerce, through seven artifacts in order: discovery notes, a qualification and sizing, a performance test protocol, a POC plan, a migration plan, a security questionnaire, and an operational handoff. Each section walks through a model answer, explains why each part is there, and names the alternatives it rejects. The numbers come from your own tools: capacity arithmetic from [Counting: params, FLOPs, KV bytes, memory plans](../../mathematics-for-computing/05-discrete-math-1/01-counting-params-flops-kv-bytes.md) in *Mathematics for Computing*, load reports from the [open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md) in *Build Your Own LLM System*, and the threat model and SBOMs from the [STRIDE threat model](../../software-craftsmanship/08-security/01-threat-model-stride.md) and [SBOM and supply chain](../../software-craftsmanship/08-security/02-sbom-and-supply-chain.md) sections of *Software Craftsmanship*. The chapter closes with a capstone that applies the whole sequence to a second customer, Lexa.
 
-## Key Takeaways
+> **Learning objectives**
+> - Produce each artifact of an engagement, from discovery notes to a handoff, with a check that someone else can apply.
+> - Tie every claim in those artifacts to evidence, and mark estimates and open items with owners.
+> - Answer a customer security questionnaire from your own threat model, SBOMs, and usage policy.
+> - Hand a platform to a customer team using your runbooks, and test the handoff with a rehearsal.
 
-- **A field engineer sells and delivers a system they understand to the bottom.** Running a mock engagement against a platform you built removes the guesswork: every sizing number, benchmark, and security answer can be checked.
-- **Each stage has a deliverable with a check**: discovery notes, a sizing, a performance report, a POC plan, a migration plan, a security questionnaire, a handoff.
-- **Numbers come from your own tools**: capacity from `M05.1`, load reports from `load.01`, threat model and SBOMs from `craft.17` and `craft.18`.
+## Before you begin
 
-## How to Study
+This chapter applies the seven chapters before it, from [Discovery](../01-discovery/README.md) through [Escalation and Handoff](../07-escalation-and-handoff/README.md); read those first. The model answers refer to a working platform at release `v1.0.0`, the system built in [the course path](../../../courses/build-an-llm/paths/course/) of *Build Your Own LLM System*. For the security questionnaire, Shostack's *Threat Modeling* is a useful companion.
 
-Work the [capstone](capstone.md) for the role path, then run `field.01` to `field.07` against your own platform in course order, each graded by its rubric.
+## In this chapter
 
----
+1. [Writing the discovery record](01-discovery.md): interview a platform team reporting slow inference, and write a record that separates symptoms from measured impact, names every stakeholder and data gate, and promises nothing.
+2. [Qualifying and sizing the engagement](02-qualification-and-sizing.md): check that a decision can happen, then derive offered load and KV memory step by step, and turn the estimate into a bounded, gated test.
+3. [Designing the performance test protocol](03-performance-engagement.md): write a like-for-like, open-loop protocol with repetitions, spread, stop conditions, and a regression procedure.
+4. [Pre-registering the POC](04-poc-and-evaluation.md): freeze the dataset, rubric, and thresholds before the first run, stratify the set, and make safety gates blocking.
+5. [Planning the staged migration](05-migration-plan.md): widen exposure from shadow traffic to default route, one gate at a time, with rollback decided in advance.
+6. [Answering the security questionnaire](06-commercials-and-security.md): answer each question from a control or artifact, keep implemented apart from planned, and refuse to price without agreed assumptions.
+7. [Handing off operations](07-escalation-and-handoff.md): define the service boundary and escalation sequence, and prove the handoff with a rehearsal.
+8. [Capstone: one customer, end to end](capstone.md): produce eleven artifacts for Lexa, a legal-tech customer, each with a check you can apply yourself.
 
-# Concepts & Techniques
+## Further reading
 
-## Core Insight
-
-The engagement is the same for any platform; what changes is how much you can prove. With your own system, every claim in a proposal links to a test, a report, or a document you produced, which is the standard a customer's architects will hold you to.
-
-## 1. The engagement against your platform
-
-**Key ideas**:
-- **Stages** `field.01` to `field.05`: discovery, qualification and sizing, performance engagement, POC and evaluation, migration plan.
-- **Commercials and security** (`field.06`): answer a security questionnaire from your threat model, SBOMs, and usage policy.
-- **Escalation and handoff** (`field.07`): hand the platform to a mock customer team using your runbooks.
-
-## Course modules
-
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `field.01` | Discovery against your platform | practice | 11 |
-| `field.02` | Qualification and sizing | practice | 11 |
-| `field.03` | Performance engagement | practice | 11 |
-| `field.04` | POC and evaluation | practice | 11 |
-| `field.05` | Migration plan | practice | 11 |
-| `field.06` | Commercials and security review: answer a customer security questionnaire from your threat model and SBOM | practice | 11 |
-| `field.07` | Escalation and handoff: hand the platform to a mock customer team using your runbooks | practice | 11 |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `field.01` | [Mock engagement: discovery](01-discovery.md) | practice | 11 |
-| 2 | `field.02` | [Mock engagement: qualification and sizing](02-qualification-and-sizing.md) | practice | 11 |
-| 3 | `field.03` | [Mock engagement: performance engagement](03-performance-engagement.md) | practice | 11 |
-| 4 | `field.04` | [Mock engagement: POC and evaluation](04-poc-and-evaluation.md) | practice | 11 |
-| 5 | `field.05` | [Mock engagement: migration plan](05-migration-plan.md) | practice | 11 |
-| 6 | `field.06` | [Commercials and security review](06-commercials-and-security.md) | practice | 11 |
-| 7 | `field.07` | [Escalation and handoff](07-escalation-and-handoff.md) | practice | 11 |
-
-## Connections to Other Tracks
-
-| Track | Connection |
-|---|---|
-| [Field Engineering](../) | the track this topic applies |
-| [Security](../../software-craftsmanship/08-security/) | the threat model and SBOMs behind the questionnaire |
-| [Incident Response and Chaos](../../systems/05-incident-response-and-chaos/) | the runbooks the handoff uses |
+- [Security](../../software-craftsmanship/08-security/README.md) in *Software Craftsmanship*, for the threat model and SBOMs behind the questionnaire.
+- [Incident Response and Chaos](../../systems/05-incident-response-and-chaos/README.md) in *Systems and Architecture*, for the runbooks the handoff uses.
+- Adam Shostack, *Threat Modeling: Designing for Security*.

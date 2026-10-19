@@ -1,41 +1,38 @@
-# Mock engagement: performance engagement
+# Designing the performance test protocol
 
-## Overview
+A performance engagement should answer one customer question with repeatable measurements. That sounds simple, but most benchmarks run for customers fail in one of two ways: they measure something other than what the customer asked, or they cannot separate a real bottleneck from noise in the environment. The cure is a protocol, written and agreed before any load is sent.
 
-| | |
-|---|---|
-| **Module** | `field.03` · practice · docs · Pass 11 · about 30 min reading |
-| **Solution** | model answer: [`docs/engagement/performance.md`](../../../../course/solutions/docs/engagement/performance.md) (the performance test protocol for Northstar Commerce) |
-| **Needs** | none |
-| **Used by** | no code call site; the POC (`field.04`) measures latency and reliability with this protocol |
+This section takes the estimate from [Qualifying and sizing the engagement](02-qualification-and-sizing.md) and writes the protocol that will test it, applying the methods of [Performance Testing Engagements](../03-performance-testing-engagements/README.md) from earlier in this book. The measurements come from the [open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md) in *Build Your Own LLM System*, and regressions are located with the [perf regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md) from *Software Craftsmanship*. The model answer is [`docs/engagement/performance.md`](../../../../course/solutions/docs/engagement/performance.md). Try listing the protocol's rules yourself before reading the walkthrough.
 
-## Key Takeaways
+> **Learning objectives**
+> - State the question a test decides and, just as explicitly, what it cannot establish.
+> - Design a like-for-like comparison with open-loop arrivals that avoids coordinated omission.
+> - Specify metrics, repetitions, and spread so a result can be told apart from noise.
+> - Agree stop conditions and a regression procedure before the first run.
 
-- Tie each claim to the exact evidence behind it: a run, its configuration, and its spread.
-- State the owner, success condition, and recovery action before declaring the work complete.
-- Record unresolved assumptions so the next review can test them.
+## What a valid measurement needs
 
-## How to read this chapter
+Before testing, agree on the workload, the baseline, the success threshold, the system configuration, and the stop conditions. Preserve reproducibility, and be ready to explain statistical spread. Each of those rests on a principle worth spelling out.
 
-Sections 1 to 3 set out what a performance engagement must establish and how the runs are done. Section 4 lists what a correct test protocol must contain. Section 5 walks through the model answer for Northstar Commerce and explains why each rule in it is there. Try to list the rules yourself before reading section 5.
+A measurement answers one question, so the protocol starts by stating it (can the candidate handle the weekday peak within customer limits?) and listing what it cannot answer.
 
----
+A comparison is valid only if one thing changes. Everything else (weights, tokenizer, hardware, prompt sample, arrival schedule, warm-up) is fixed and recorded, with hashes and revisions.
 
-## 1. Why now
+Closed-loop clients lie under load. A client that waits for each response before sending the next slows down exactly when the server does, so the measured latency omits the queueing a real user would see. This is called coordinated omission. An open-loop schedule sends requests at the agreed times regardless of when responses return.
 
-A performance engagement should answer a customer question with repeatable measurements. It must separate bottlenecks from noisy environmental effects.
+Latency also has a shape over a run: ramp, steady state, drain. Only the steady window says anything about capacity. The ramp and drain are reported but not used for the verdict.
 
-## 2. Principles
+One run is an anecdote. Three runs per condition, all reported with the median and spread, separate the effect from noise, and an invalidated run is kept along with its reason.
 
-Agree on workload, baseline, success threshold, system configuration, and stop conditions before testing. Preserve reproducibility and explain statistical spread.
+A test on someone else's system needs a brake: stop conditions agreed in advance, with the customer able to call stop. And a regression is a finding to locate, with the run metadata preserved and a bisect, not an invitation to tune during a measured run.
 
-## 3. Worked example
+## The shape of a run
 
-Run the same open-loop request mix against the baseline and candidate. Report throughput, TTFT, TPOT, errors, and saturation. Use the perf bisect when a change creates a meaningful regression.
+Put together, the worked procedure is this: run the same open-loop request mix against the baseline and the candidate; report throughput, TTFT, TPOT, errors, and saturation; and use the perf bisect when a change creates a meaningful regression.
 
-## 4. The artifact
+## What the protocol must contain
 
-### What a correct solution must handle
+A correct protocol covers the following cases:
 
 | Case | What must hold | Why it matters downstream |
 |---|---|---|
@@ -47,48 +44,67 @@ Run the same open-loop request mix against the baseline and candidate. Report th
 | Stop conditions | when to abort the test, and who can stop it | the test never harms the customer's environment |
 | Regression procedure | what to do when the candidate is slower | a regression is bisected, not tuned away mid-run |
 
-## 5. The solution, step by step
-
-### 5.1 From first principles
-
-1. **A measurement answers one question**, so the protocol starts by stating it (can the candidate handle the weekday peak within customer limits?) and listing what it cannot answer.
-2. **A comparison is valid only if one thing changes.** Everything else (weights, tokenizer, hardware, prompt sample, arrival schedule, warm-up) is fixed and recorded with hashes and revisions.
-3. **Closed-loop clients lie under load.** A client that waits for each response before sending the next slows down exactly when the server does, so the measured latency omits the queueing a real user would see. An open-loop schedule sends at the agreed times regardless.
-4. **Latency has a shape over a run**: ramp, steady state, drain. Only the steady window says anything about capacity; the ramp and drain are reported but not used for the verdict.
-5. **One run is an anecdote.** Three runs per condition, all reported with the median and spread, separate the effect from noise; an invalidated run is kept with its reason.
-6. **A test on someone else's system needs a brake**: stop conditions agreed in advance, with the customer able to call stop.
-7. **A regression is a finding to locate**, with the run metadata preserved and a bisect, not an invitation to tune during a measured run.
-
-### 5.2 The model answer, annotated
+## Reading the model answer
 
 The full protocol is [`docs/engagement/performance.md`](../../../../course/solutions/docs/engagement/performance.md).
 
-**Question and scope.** The test "will determine whether the candidate serving configuration can handle Northstar's weekday peak request mix within customer-defined latency and error limits. It will not establish production readiness, model quality for all users, or performance on unrepresented prompts." The second sentence is as important as the first.
+It begins with the question and its scope. The test "will determine whether the candidate serving configuration can handle Northstar's weekday peak request mix within customer-defined latency and error limits. It will not establish production readiness, model quality for all users, or performance on unrepresented prompts." The second sentence is as important as the first.
 
-**Controls.** Same weights, tokenizer, hardware class, prompt sample, arrival schedule, and warm-up; the sample is the redacted one Priya approved; the sample hash, config, software revision, and load-generator version are kept with the report; arrivals are open-loop "to avoid coordinated omission".
+The controls come next: the same weights, tokenizer, hardware class, prompt sample, arrival schedule, and warm-up. The sample is the redacted one Priya approved. The sample hash, config, software revision, and load-generator version are kept with the report, and arrivals are open-loop "to avoid coordinated omission".
 
-**Measurement protocol**, five numbered rules:
+The measurement protocol itself is five numbered rules:
 
-1. a 30-minute baseline and a 30-minute candidate run after an agreed warm-up;
-2. the approved peak pattern replayed with a 10-minute ramp, a 20-minute steady window, and a 5-minute drain;
-3. offered and completed requests/s, input and output tokens/s, p50/p95/p99 TTFT and TPOT, end-to-end latency, timeout and error rate, queue depth, GPU/CPU utilization, and memory high-water mark;
-4. three repeats per condition, each run and the median reported, spread included, invalidated runs kept with the reason;
-5. stop if the error rate exceeds 2% for two consecutive minutes, memory reaches 90% of the limit, or customer operations asks.
+1. A 30-minute baseline and a 30-minute candidate run after an agreed warm-up.
+2. The approved peak pattern replayed with a 10-minute ramp, a 20-minute steady window, and a 5-minute drain.
+3. Offered and completed requests/s, input and output tokens/s, p50/p95/p99 TTFT and TPOT, end-to-end latency, timeout and error rate, queue depth, GPU/CPU utilization, and memory high-water mark.
+4. Three repeats per condition, each run and the median reported, spread included, invalidated runs kept with the reason.
+5. Stop if the error rate exceeds 2% for two consecutive minutes, memory reaches 90% of the limit, or customer operations asks.
 
-Then a line that keeps the protocol honest:
+Then comes a line that keeps the protocol honest:
 
 > The 2% stop limit is a proposed safety guard for the test, not an agreed success threshold. [...] A report that lacks those approvals is exploratory only.
 
-**Analysis and regressions.** Compare like-for-like runs and find saturation before recommending changes; a regression beyond the agreed 5% budget triggers the performance bisect of `craft.16` with the run metadata preserved; no tuning during a measured run; customer traffic stays isolated. The record ends with the next action and a recovery step: stop load, return the environment to baseline, notify operations.
+The final part covers analysis and regressions. Compare like-for-like runs and find saturation before recommending changes. A regression beyond the agreed 5% budget triggers the [performance bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md) with the run metadata preserved. There is no tuning during a measured run, and customer traffic stays isolated. The record ends with the next action and a recovery step: stop load, return the environment to baseline, notify operations.
 
-### 5.3 Why this answer
+## Why this shape and not another
 
-- **A single "peak throughput" number** from a closed-loop benchmark is the common shortcut; it overstates capacity and hides tail latency, the thing the customer complained about.
-- **Tuning while measuring** produces a configuration that fits one run's noise; separating measurement from change keeps every reported number attributable.
-- **Testing on production traffic** would give the most realistic mix, but risks the customer's users; a replayed, approved sample in an isolated environment is the safe approximation.
-- **Tradeoff accepted.** Three 30-minute runs per condition cost several hours of environment time; fewer runs would not show spread.
+A single "peak throughput" number from a closed-loop benchmark is the common shortcut. It overstates capacity and hides tail latency, which is the very thing the customer complained about. Tuning while measuring produces a configuration that fits one run's noise; separating measurement from change keeps every reported number attributable. Testing on production traffic would give the most realistic mix, but risks the customer's users, so a replayed, approved sample in an isolated environment is the safe approximation.
 
-### 5.4 Explain it back
+The tradeoff accepted is cost: three 30-minute runs per condition consume several hours of environment time. Fewer runs would not show spread.
+
+## What can go wrong
+
+> **Warning:** A conclusion without its evidence cannot be reproduced. The sample hash, config, revisions, and tool version travel with every report.
+
+> **Warning:** An assumption written as a measured fact lets the plan promise capacity that has not been demonstrated. The scope says what the test cannot establish, and unapproved runs are "exploratory only".
+
+> **Warning:** Without owners and a decision gate, work stalls at handoff. The protocol names owners for the test, the environment, and the thresholds, and gives a dated next action and a recovery step.
+
+## Where this leads
+
+This protocol tests the estimate from [Qualifying and sizing the engagement](02-qualification-and-sizing.md), using the generator and reports of the [open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md) and, on a regression, the [perf regression bisect](../../software-craftsmanship/07-maintenance/04-performance-regression-bisect.md). Next, [Pre-registering the POC](04-poc-and-evaluation.md) measures latency and reliability with this same protocol.
+
+Further reading:
+
+- The [chapter opening](README.md), to see how the evidence and open decisions travel into each later customer-facing artifact.
+
+## Key terms
+
+- **Open-loop load**: requests sent on a fixed schedule, independent of when responses return.
+- **Coordinated omission**: the error a closed-loop client makes by sending less when the server slows, so the latency of unsent requests is never measured.
+- **Steady window**: the part of a run between ramp and drain, the only part used for the verdict.
+- **Stop condition**: a pre-agreed rule for aborting a test to protect the environment.
+- **Like-for-like comparison**: baseline and candidate runs that differ in exactly one factor.
+
+## Summary
+
+- State the question and what the test does not establish before sending any load.
+- Fix and record everything except the change under test, and use open-loop arrivals.
+- Judge only the steady window, run three repeats per condition, and report spread.
+- Safety stop limits are not success thresholds; success thresholds belong to the customer.
+- Bisect regressions with the metadata preserved; never tune during a measured run.
+
+## Review questions
 
 1. What is coordinated omission, and how does the protocol avoid it?
    <details><summary>Answer</summary>A closed-loop load generator waits for each response before sending the next request, so when the server slows it also sends less, and the latencies of the requests it never sent are never measured. An open-loop schedule sends at fixed times regardless of responses.</details>
@@ -98,26 +114,3 @@ Then a line that keeps the protocol honest:
    <details><summary>Answer</summary>During the ramp the system is filling caches and queues, and during the drain it is emptying them; neither represents sustained peak behaviour.</details>
 4. Why record the sample hash and load-generator version with the report?
    <details><summary>Answer</summary>So the run can be reproduced exactly, and so a later difference can be attributed to the change under test rather than to a different input or tool.</details>
-
-## 6. Pitfalls
-
-| # | Pitfall | Symptom | How the solution avoids it |
-|---|---|---|---|
-| 1 | The deliverable records a conclusion without its customer evidence | Another engineer cannot reproduce the sizing or recommendation. | sample hash, config, revisions, and tool version travel with every report |
-| 2 | An assumption is written as a measured fact | The engagement plan can promise capacity or security the system has not demonstrated. | the scope says what the test cannot establish; unapproved runs are "exploratory only" |
-| 3 | The next owner and decision gate are missing | Work stalls at handoff even when the technical work is complete. | owners for the test, the environment, and the thresholds; a dated next action and a recovery step |
-
-## 7. Where it's used next
-
-| Direction | Module | Connection |
-|---|---|---|
-| Back | `field.02` | the estimate this protocol tests |
-| Back | `load.01` | the load reports and generator behind the measurements |
-| Back | `craft.16` | the performance bisect used on a regression |
-| Forward | `field.04` | the POC measures latency and reliability with this protocol |
-
-## Going further
-
-| Resource | What to inspect |
-|---|---|
-| [Mock engagement sequence](README.md) | Carry the evidence and open decisions into the next customer-facing artifact in the sequence. |

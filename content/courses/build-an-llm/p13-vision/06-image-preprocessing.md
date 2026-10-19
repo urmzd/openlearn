@@ -1,161 +1,74 @@
 # Image preprocessing to the specification
 
-## Overview
+The vision tower expects RGB tensors, but requests carry compressed image bytes. Between the two sit orientation, transparency, and a processor-specific geometry recipe, and a silent mistake anywhere in that gap gives plausible features that disagree with training. A model's pixel recipe is part of what its weights mean: channel order, crop position, and normalization all matter, and none of them raises an error when wrong.
 
-| | |
-|---|---|
-| **Module** | `L13.6` · build · Python · Pass 12 · 2 to 3 h |
-| **Solution** | [`preprocess.py`](../../../../course/solutions/python/tinyllm/vision/preprocess.py): `ProcessorConfig` (with `from_hf`, `validate`, `tiling`), `decode_image`, `media_hash`, `preprocess_pixels`, `preprocess` |
-| **Contract** | [`preprocess.pyi`](../../../../course/contracts/py/tinyllm/vision/preprocess.pyi), [image preprocessing spec](../../../../course/contracts/formats/image-preprocess.md) |
-| **Needs** | `M12.2`, `M12.3`, `L13.4`, `M06.3` |
-| **Used by** | `L13.5`; Planned: `L13.7` and `data.10`. Those integrations remain future work. Together with the rest of Part 13 it lets the vision tower consume real encoded images. |
-| **Optional depth** | Compare every supported resize kernel on a thin image and explain edge rounding. |
+This section makes that boundary explicit and gives both the model and a future corpus pipeline one implementation to call. [Contrastive image-text: CLIP and SigLIP](05-contrastive-image-text.md) already consumes it through `DualEncoder.encode_images`; the planned vision-language model section and a planned data-engineering corpus step will use it too. Together with the rest of this chapter it lets the vision tower consume real encoded images.
 
-## Key Takeaways
+You will build on the rescale, normalize, and HWC-to-CHW conversion of [Image tensors and layouts](../../mathematics-for-computing/12-signals-and-images/02-image-tensors-and-layouts.md), the Pillow-compatible kernels of [Resampling and interpolation](../../mathematics-for-computing/12-signals-and-images/03-resampling-and-interpolation.md), and the FNV-1a hashing of [Modular arithmetic, hashing, and PCG32](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md), all in *Mathematics for Computing*, plus the splitters and token counts of [Dynamic resolution and tiling](04-dynamic-resolution-and-tiling.md). The full solution is [`preprocess.py`](../../../../course/solutions/python/tinyllm/vision/preprocess.py); the contracts are the Python stub [`preprocess.pyi`](../../../../course/contracts/py/tinyllm/vision/preprocess.pyi) and the [image preprocessing specification](../../../../course/contracts/formats/image-preprocess.md).
 
-- A model's pixel recipe is part of its weights' meaning: channel order, crop position and normalization matter.
-- Container decoding is the library boundary. Orientation, compositing and transforms are the solution's own code.
-- Hash original media bytes; keep preprocessing revision and model identity in separate cache-key fields.
+> **Learning objectives**
+> - Load a Hugging Face processor config faithfully and reject anything you cannot reproduce exactly.
+> - Decode untrusted image bytes safely, checking the pixel budget before decompression.
+> - Apply EXIF orientation, palette expansion, and exact alpha compositing in your own code.
+> - Reproduce the CLIP, SigLIP, Idefics3, and AnyRes geometry and normalization recipes.
+> - Compute a media identity hash from the original bytes, separate from the preprocessing revision.
 
-## How to read this chapter
+## Decoding untrusted bytes
 
-Sections 1 to 3 explain why the pixel recipe matters and work the arithmetic by
-hand. Section 4 fixes the interface and the cases a correct implementation must
-handle. Section 5 walks through the solution in pipeline order (validate,
-decode, orient, composite, geometry, normalize, hash) and explains why each
-choice is the right one. Try to predict each step before reading it.
+Decoding is the one untrusted, expensive step, so it is where the pipeline starts. Read width and height before allocating decoded pixels. Compare their product with the configured pixel budget, then reject unsupported color spaces and bit depths before calling the decoder. Pillow silently reduces true-color 16-bit PNG to 8-bit RGB, so checking its exposed mode alone is insufficient: inspect PNG's IHDR bit-depth byte too. Decode one frame and retain its EXIF orientation.
 
-## 1. Why now
+The division of labour is deliberate. Container decoding is the library boundary; orientation, compositing, and transforms are the solution's own code, so their semantics are fixed and inspectable.
 
-The vision tower expects RGB tensors, but requests carry compressed image bytes.
-The gap includes orientation, transparency and a processor-specific geometry
-recipe. A silent mistake gives plausible features that disagree with training.
-This module makes that boundary explicit and gives both the model and future
-corpus pipeline one implementation to call.
+## Orientation, palette, and alpha
 
-## 2. Principles
+Orientation is an index transform. Cases 2 and 4 reverse columns and rows; case 3 reverses both. Cases 5 through 8 exchange height and width through a transpose or quarter-turn. Apply these before resizing and return contiguous owned storage, not a negative-stride view into a decoder buffer.
 
-Read width and height before allocating decoded pixels. Compare their product
-with the configured pixel budget, then reject unsupported color spaces and bit
-depths before calling the decoder. Pillow silently reduces true-color 16-bit
-PNG to 8-bit RGB, so checking its exposed mode alone is insufficient: inspect
-PNG's IHDR bit-depth byte too. Decode one frame and retain its EXIF orientation.
+After orientation, expand palette and gray values to RGB. Composite alpha over white with wide integer arithmetic, rounding half up only after adding the foreground and background contributions.
 
-Orientation is an index transform. Cases 2 and 4 reverse columns and rows;
-case 3 reverses both. Cases 5 through 8 exchange height and width through a
-transpose or quarter-turn. Apply these before resizing and return contiguous
-owned storage, not a negative-stride view into a decoder buffer. Expand palette
-and gray values to RGB. Composite alpha over white with wide integer arithmetic,
-rounding half up only after adding foreground and background contributions.
+## Geometry by processor family
 
-Load the named HF processor's defaults, then apply config overrides. Read missing
-token geometry from the adjacent processor config. Do not guess unknown
-processor types or silently treat an unsupported resampler as bilinear.
-CLIP resizes the shortest edge then center-crops; SigLIP resizes directly.
-Idefics3 puts the global image after its tiles; AnyRes puts it before them.
-Use L13.4 for splitting and token counts, M12.3 for interpolation, and M12.2
-for rescale/normalize and the HWC-to-CHW conversion.
+With clean RGB pixels in hand, the geometry depends on which processor the model was trained with. Load the named Hugging Face processor's defaults, then apply config overrides. Read missing token geometry from the adjacent processor config. Do not guess unknown processor types or silently treat an unsupported resampler as bilinear.
 
-A centered crop starts at `floor((input-output)/2)`. Negative starts mean zero
-padding. For an odd padding difference the extra pixel is at the top or left.
-Keep arithmetic stages in order: multiply by rescale factor, subtract channel
-mean, divide by channel standard deviation. Store float32 output. A frame mask
-covers actual returned frames; cross-image batch padding belongs to the caller.
+The families differ in a few ways. CLIP resizes the shortest edge then center-crops; SigLIP resizes directly. Idefics3 puts the global image after its tiles; AnyRes puts it before them. The splitting and token counts come from the tiling section, the interpolation from the resampling section of the mathematics book, and rescale, normalize, and the HWC-to-CHW conversion from its image layouts section.
 
-FNV-1a starts at 14695981039346656037, XORs each byte, multiplies by
-1099511628211, and reduces modulo 2^64. Prefix image bytes with 1 and audio
-bytes with 2. The pixel-only fixture interface prefixes canonical RGB bytes
-with their dimensions; reshaping identical bytes must not preserve identity.
+A centered crop starts at `floor((input-output)/2)`. Negative starts mean zero padding. For an odd padding difference the extra pixel is at the top or left.
 
-## 3. Worked example
+## Normalization and masks
 
-For an already-sized 2 by 2 SigLIP image, no interpolation changes the pixels.
-Take RGB `[0,127,255]`, factor `1/255`, means `[0.1,0.2,0.3]`, and standard
-deviations `[0.5,1,2]`. The normalized pixel is approximately
-`[-0.2,0.29803922,0.35]`. A correct implementation reproduces every pixel of
-this small image and gives identical output when the same sized uint8 pixels
-are preprocessed again.
+Keep the arithmetic stages in order: multiply by the rescale factor, subtract the channel mean, divide by the channel standard deviation. Store float32 output. A frame mask covers the frames actually returned; cross-image batch padding belongs to the caller.
 
-For an Idefics3 image of 9 by 17, longest edge 24 and tile size 8, the resized
-short edge is `int(24*9/17)=12`. Growing to tile multiples yields 16 by 24:
-2 rows by 3 columns. Append the global image: seven frames, each producing
-four tokens, for 28 tokens. Low detail retains one frame and four tokens. The HF processor produces the
-same count and frame order.
+## Media identity
 
-An alpha-128 red pixel over white becomes `[255,127,127]`. An orientation-6
-image rotates clockwise: its old bottom-left pixel becomes its new top-left.
-All eight orientations agree with Pillow's own orientation implementation,
-even though the solution never imports that transform.
+The last piece is identity for caching and provenance. Hash the original media bytes, and keep the preprocessing revision and model identity in separate cache-key fields. FNV-1a starts at 14695981039346656037, XORs each byte, multiplies by 1099511628211, and reduces modulo $2^{64}$. Prefix image bytes with 1 and audio bytes with 2. The pixel-only fixture interface prefixes canonical RGB bytes with their dimensions; reshaping identical bytes must not preserve identity.
 
-## 4. The interface
+## Working it by hand
 
-### What a correct solution must handle
+Start with normalization alone. For an already-sized 2 by 2 SigLIP image, no interpolation changes the pixels. Take RGB `[0,127,255]`, factor `1/255`, means `[0.1,0.2,0.3]`, and standard deviations `[0.5,1,2]`. The normalized pixel is approximately `[-0.2,0.29803922,0.35]`. A correct implementation reproduces every pixel of this small image and gives identical output when the same sized uint8 pixels are preprocessed again.
 
-| Case | Kind of check | Contract |
-|---|---|---|
-| Hand example on an already-sized image | unit, smoke | Hand arithmetic and already-sized identity |
-| Frozen PNG/JPEG decodes | golden | PNG/JPEG decode, EXIF, grayscale, palette and alpha |
-| Unsupported modes and over-budget headers | unit | Reject bad headers before decompression |
-| Corrupt bytes and invalid orientation tags | unit | Explicit malformed-input errors |
-| Media-hash domain bytes | unit | D44 domain bytes and exact FNV arithmetic |
-| HF processor outputs | golden | Four kernels, processor layouts and normalization |
-| Encoded vs pixel interface, batches | property | Encoded and pixel interfaces agree on tensors |
-| `detail` overrides | unit | Low/high/auto splitting and image-token counts |
-| Bad configs, oversized inputs and outputs | boundary | Fail before invalid arithmetic or allocation |
-| Companion `processor_config.json` geometry | unit | Processor-config geometry and explicit precedence |
+Next, geometry. For an Idefics3 image of 9 by 17, longest edge 24 and tile size 8, the resized short edge is `int(24*9/17)=12`. Growing to tile multiples yields 16 by 24: 2 rows by 3 columns. Append the global image: seven frames, each producing four tokens, for 28 tokens. Low detail retains one frame and four tokens. The HF processor produces the same count and frame order.
 
-Read the [pixel specification](../../../../course/contracts/formats/image-preprocess.md)
-and the [Python contract](../../../../course/contracts/py/tinyllm/vision/preprocess.pyi).
-The HF reference outputs are generated with the PIL backend, so their resize
-convention is the same one taught in M12.3. Expected pixels allow one uint8
-unit of error; normalized values allow that error divided by `255*min(std)`.
+Finally, the per-pixel transforms. An alpha-128 red pixel over white becomes `[255,127,127]`. An orientation-6 image rotates clockwise: its old bottom-left pixel becomes its new top-left. All eight orientations agree with Pillow's own orientation implementation, even though the solution never imports that transform.
 
-## 5. The solution, step by step
+## The contract
 
-### From first principles
+The public entry points are `ProcessorConfig` (with `from_hf`, `validate`, and `tiling`), `decode_image`, `media_hash`, `preprocess_pixels`, and `preprocess`; their signatures are in the [Python contract](../../../../course/contracts/py/tinyllm/vision/preprocess.pyi), and the pixel-level rules are in the [pixel specification](../../../../course/contracts/formats/image-preprocess.md). The Hugging Face reference outputs are generated with the PIL backend, so their resize convention is the one taught in the resampling section. Expected pixels allow one uint8 unit of error; normalized values allow that error divided by `255*min(std)`.
 
-1. **The weights define the input distribution.** The tower was trained on
-   tensors produced by one specific processor. Any difference in channel
-   order, crop offset, kernel or normalization constants shifts the input
-   distribution without raising an error. So the recipe must be read from the
-   model's `preprocessor_config.json`, not guessed, and anything the solution
-   cannot reproduce exactly must be rejected.
-2. **Decoding is the only untrusted, expensive step.** A few kilobytes of PNG
-   can declare a 50000 by 50000 image. Dimensions live in the header, so the
-   budget check `width*height <= max_pixels` must happen after `Image.open`
-   (header only) and before `image.load()` (decompression).
-3. **Pillow is a container parser, not the recipe.** It decompresses pixels
-   but its `mode` hides some facts (16-bit PNG arrives as 8-bit RGB). Every
-   transform that changes meaning (orientation, palette, alpha, resize) is
-   written in the solution, so its semantics are fixed and inspectable.
-4. **Orientation is a pure index permutation**, so it is exact and must happen
-   before any interpolation; resizing first and rotating after would change
-   which source pixels are blended for non-square targets.
-5. **Compositing must be exact.** Over white, $c' = (c\alpha + 255(255-\alpha))/255$.
-   Both products reach 65025, so the arithmetic needs a type wider than uint8,
-   and rounding happens once, after the sum (the alpha-128 red pixel gives
-   $65152/255 = 255.5 \to 255$ and $32512/255 = 127.5 \to 127$ with
-   `(x + 127) // 255`).
-6. **Geometry follows the processor family.** Single-frame processors resize
-   (shortest edge or exact size) then optionally center-crop; Idefics3 and
-   AnyRes reuse L13.4's splitters. Only the frame order differs: Idefics3
-   appends the global image, AnyRes prepends it.
-7. **Normalization order is fixed**: rescale, subtract mean, divide by std,
-   then HWC to CHW in float32. M12.2's `rescale_normalize` already does exactly
-   this.
-8. **Identity uses the original bytes.** Two encodings of the same pixels are
-   different media for caching and provenance, so the runtime hash covers the
-   encoded file, prefixed by a kind byte so an image and an audio file with the
-   same bytes cannot collide.
+## Building it step by step
 
-### The code, annotated
+Eight principles determine the implementation.
 
-**Configuration: load defaults, then overrides, then validate.** `from_hf`
-starts from per-processor defaults, layers the JSON on top, fills token geometry
-from the adjacent `processor_config.json` only when the main file is silent,
-and converts HF's integer resample codes. An unknown code becomes the string
-`"unsupported"` so that `validate` rejects it rather than silently using
-bilinear.
+1. **The weights define the input distribution.** The tower was trained on tensors produced by one specific processor. Any difference in channel order, crop offset, kernel, or normalization constants shifts the input distribution without raising an error. So the recipe must be read from the model's `preprocessor_config.json`, not guessed, and anything the solution cannot reproduce exactly must be rejected.
+2. **Decoding is the only untrusted, expensive step.** A few kilobytes of PNG can declare a 50000 by 50000 image. Dimensions live in the header, so the budget check `width*height <= max_pixels` must happen after `Image.open` (header only) and before `image.load()` (decompression).
+3. **Pillow is a container parser, not the recipe.** It decompresses pixels, but its `mode` hides some facts (16-bit PNG arrives as 8-bit RGB). Every transform that changes meaning (orientation, palette, alpha, resize) is written in the solution, so its semantics are fixed and inspectable.
+4. **Orientation is a pure index permutation**, so it is exact and must happen before any interpolation; resizing first and rotating after would change which source pixels are blended for non-square targets.
+5. **Compositing must be exact.** Over white, $c' = (c\alpha + 255(255-\alpha))/255$. Both products reach 65025, so the arithmetic needs a type wider than uint8, and rounding happens once, after the sum (the alpha-128 red pixel gives $65152/255 = 255.5 \to 255$ and $32512/255 = 127.5 \to 127$ with `(x + 127) // 255`).
+6. **Geometry follows the processor family.** Single-frame processors resize (shortest edge or exact size) then optionally center-crop; Idefics3 and AnyRes reuse the tiling splitters. Only the frame order differs: Idefics3 appends the global image, AnyRes prepends it.
+7. **Normalization order is fixed**: rescale, subtract mean, divide by std, then HWC to CHW in float32. `rescale_normalize` from the mathematics book already does exactly this.
+8. **Identity uses the original bytes.** Two encodings of the same pixels are different media for caching and provenance, so the runtime hash covers the encoded file, prefixed by a kind byte so an image and an audio file with the same bytes cannot collide.
+
+### Configuration: defaults, then overrides, then validation
+
+`from_hf` starts from per-processor defaults, layers the JSON on top, fills token geometry from the adjacent `processor_config.json` only when the main file is silent, and converts Hugging Face's integer resample codes. An unknown code becomes the string `"unsupported"` so that `validate` rejects it rather than silently using bilinear.
 
 ```python
 name = (
@@ -187,10 +100,9 @@ if isinstance(cfg.resample, int) and not isinstance(cfg.resample, bool):
 cfg.validate()
 ```
 
-`validate` is called again at the top of every public entry point, because a
-`ProcessorConfig` is a mutable dataclass and may have been built by hand.
+`validate` is called again at the top of every public entry point, because a `ProcessorConfig` is a mutable dataclass and may have been built by hand.
 
-**Decoding: header checks before decompression.**
+### Decoding: header checks before decompression
 
 ```python
 with Image.open(io.BytesIO(data)) as image:          # parses the header only
@@ -211,12 +123,9 @@ with Image.open(io.BytesIO(data)) as image:          # parses the header only
     return _orient(_rgb(image), orientation)
 ```
 
-Byte 24 is the IHDR bit depth: 8 bytes of PNG signature, 4 of chunk length, 4
-of chunk type, then width (4) and height (4). The whole block runs with
-`DecompressionBombWarning` promoted to an error, and Pillow's `OSError` and
-`SyntaxError` become `ValueError`, so every malformed input fails the same way.
+Byte 24 is the IHDR bit depth: 8 bytes of PNG signature, 4 of chunk length, 4 of chunk type, then width (4) and height (4). The whole block runs with `DecompressionBombWarning` promoted to an error, and Pillow's `OSError` and `SyntaxError` become `ValueError`, so every malformed input fails the same way.
 
-**Orientation: eight index permutations, then an owned copy.**
+### Orientation: eight index permutations, then an owned copy
 
 ```python
 elif orientation == 6:
@@ -230,9 +139,9 @@ elif orientation == 8:
 return np.array(result, dtype=np.uint8, order="C", copy=True)
 ```
 
-**Palette, gray and alpha to RGB on white.** `_rgb` expands `P` through an
-RGBA palette (with `tRNS` transparency either a single index or a per-index
-table), repeats gray to three channels, and then composites any alpha:
+### Palette, gray, and alpha to RGB on white
+
+`_rgb` expands `P` through an RGBA palette (with `tRNS` transparency either a single index or a per-index table), repeats gray to three channels, and then composites any alpha:
 
 ```python
 if alpha is not None:
@@ -243,10 +152,9 @@ if alpha is not None:
 return np.asarray(rgb, dtype=np.uint8)
 ```
 
-**Single-frame geometry.** The shortest edge is scaled to the target, the long
-edge follows with truncation (matching HF), and an optional `longest_edge` cap
-rescales both. The crop starts at `floor((input-output)/2)`; a negative start
-means the image is smaller than the crop and the remainder stays zero.
+### Single-frame geometry
+
+The shortest edge is scaled to the target, the long edge follows with truncation (matching Hugging Face), and an optional `longest_edge` cap rescales both. The crop starts at `floor((input-output)/2)`; a negative start means the image is smaller than the crop and the remainder stays zero.
 
 ```python
 def _resize_size(hw, size):
@@ -275,9 +183,9 @@ def _center_crop(a, size):
     return out
 ```
 
-**The pipeline.** `preprocess_pixels` picks the frames by processor family,
-bounding each output allocation before it is made, then normalizes all frames
-with one shared function:
+### The pipeline
+
+`preprocess_pixels` picks the frames by processor family, bounding each output allocation before it is made, then normalizes all frames with one shared function:
 
 ```python
 split = cfg.do_image_splitting if detail == "auto" else detail == "high"
@@ -311,13 +219,11 @@ values = np.stack([
 identity = b"RGB8" + struct.pack("<II", h, w) + a.tobytes(order="C")
 ```
 
-The mask is `np.ones((len(frames), H, W))`: it covers only the frames this
-image produced, because padding a batch of images to a common frame count is
-the caller's job. `n_tokens` comes from L13.4's `image_token_count`, so token
-counting and tiling cannot drift apart.
+The mask is `np.ones((len(frames), H, W))`: it covers only the frames this image produced, because padding a batch of images to a common frame count is the caller's job. `n_tokens` comes from the tiling section's `image_token_count`, so token counting and tiling cannot drift apart.
 
-**Encoded entry point and hash.** `preprocess` decodes, reuses the pixel path,
-then overwrites the pixel-derived hash with the hash of the original bytes:
+### The encoded entry point and the hash
+
+`preprocess` decodes, reuses the pixel path, then overwrites the pixel-derived hash with the hash of the original bytes:
 
 ```python
 def media_hash(kind, data):
@@ -332,94 +238,103 @@ for data in images:
     result.append(item)
 ```
 
-Full solution: [`preprocess.py`](../../../../course/solutions/python/tinyllm/vision/preprocess.py).
-Splitting and token counts: [`tiling.py`](../../../../course/solutions/python/tinyllm/vision/tiling.py).
+The `D44` in the docstring names the media-identity decision in the specification. The full solution is [`preprocess.py`](../../../../course/solutions/python/tinyllm/vision/preprocess.py), and splitting and token counts are in [`tiling.py`](../../../../course/solutions/python/tinyllm/vision/tiling.py).
 
-### Why this solution
+### Why this design
 
-- **Cost.** Decoding and every transform are $O(HW)$ in time and memory; the
-  budget checks bound $HW$ (including resized and tiled outputs) before any
-  large allocation, so the worst case is set by configuration, not by input.
-- **Alternatives.** Using Pillow's `ImageOps.exif_transpose`, `convert("RGB")`
-  and `resize` would be shorter, but `convert("RGB")` drops alpha onto black,
-  and the transforms would be a library's choices rather than a written
-  specification. A float compositing formula would round differently at
-  exactly-half values. Checking the budget after `load()` is too late: the
-  allocation already happened.
-- **Tradeoffs accepted.** Unsupported modes (CMYK, 16-bit) and unknown
-  processor types are rejected instead of approximated, so some valid images
-  fail loudly. Only the first frame of an animated container is used.
+Decoding and every transform are $O(HW)$ in time and memory. The budget checks bound $HW$ (including resized and tiled outputs) before any large allocation, so the worst case is set by configuration, not by input.
 
-### Explain it back
+Using Pillow's `ImageOps.exif_transpose`, `convert("RGB")`, and `resize` would be shorter, but `convert("RGB")` drops alpha onto black, and the transforms would be a library's choices rather than a written specification. A float compositing formula would round differently at exactly-half values. Checking the budget after `load()` is too late: the allocation has already happened.
 
-<details><summary>Why must the pixel budget be checked between <code>Image.open</code> and <code>image.load()</code>?</summary>
+The tradeoffs accepted are explicit. Unsupported modes (CMYK, 16-bit) and unknown processor types are rejected instead of approximated, so some valid images fail loudly. Only the first frame of an animated container is used.
 
-`open` reads only the header, which already holds width and height; `load`
-decompresses and allocates. Checking earlier is impossible and checking later
-lets a tiny file trigger a huge allocation.
+## What can go wrong
 
-</details>
+A correct implementation is checked on the cases below.
 
-<details><summary>Why is the alpha formula computed in uint32 and rounded with <code>+ 127</code> after the sum?</summary>
-
-Each product is up to 255 by 255, which overflows uint8 and uint16 once summed.
-Rounding once after adding the foreground and background contributions gives
-the exact round-half-up of the true composite; rounding each term separately
-can be off by one.
-
-</details>
-
-<details><summary>Why does <code>preprocess</code> replace the hash computed by <code>preprocess_pixels</code>?</summary>
-
-The pixel path has no file, so it hashes dimensions plus canonical RGB bytes.
-At runtime the identity must follow the encoded bytes (D44): a PNG and a JPEG
-of the same picture are different inputs, and the encoded hash can be
-computed without decoding.
-
-</details>
-
-<details><summary>What breaks if the global image is put at the wrong end of the frame list?</summary>
-
-Nothing raises, but the prompt's spatial markers (from L13.4) name tile
-positions in a fixed order. With the global frame on the wrong end, every
-marker points at the features of a different frame.
-
-</details>
-
-<details><summary>Why does <code>_orient</code> copy the result instead of returning the view?</summary>
-
-Flips and rotations are views with negative strides into the decoder's buffer.
-Downstream code (resize kernels, `tobytes` for hashing) assumes contiguous,
-owned uint8 storage; a copy makes that true and detaches the array from Pillow.
-
-</details>
-
-## 6. Pitfalls
-
-| Mistake | Symptom | How the solution avoids it |
+| Case | Kind of check | Contract |
 |---|---|---|
-| Ignore EXIF or swap clockwise and counterclockwise | Rectangular photos face the wrong way | `_orient` maps all eight tags explicitly (6 is `rot90(-1)`, 8 is `rot90(1)`) before any resize |
-| Multiply alpha in uint8 or composite on black | Transparent edges change color | `_rgb` composites over white in uint32 with one rounding after the sum |
-| Decode before checking dimensions | A small compressed file causes a huge allocation | `decode_image` checks `width*height` against `max_pixels` before `image.load()` |
-| Normalize before rescaling | Inputs remain numerically plausible but disagree with training | All frames go through `rescale_normalize` (rescale, mean, std in that order) |
-| Put the global image on the wrong end | Spatial markers point at the wrong feature sequence | `tiles + [base]` for Idefics3, `[base] + tiles` for AnyRes |
-| Reuse decoded-byte hashes for encoded media | Runtime identities no longer follow D44 | `preprocess` sets `media_hash("image", data)` from the original bytes |
+| Hand example on an already-sized image | unit, smoke | Hand arithmetic and already-sized identity |
+| Frozen PNG/JPEG decodes | golden | PNG/JPEG decode, EXIF, grayscale, palette and alpha |
+| Unsupported modes and over-budget headers | unit | Reject bad headers before decompression |
+| Corrupt bytes and invalid orientation tags | unit | Explicit malformed-input errors |
+| Media-hash domain bytes | unit | The specification's domain bytes and exact FNV arithmetic |
+| HF processor outputs | golden | Four kernels, processor layouts and normalization |
+| Encoded vs pixel interface, batches | property | Encoded and pixel interfaces agree on tensors |
+| `detail` overrides | unit | Low/high/auto splitting and image-token counts |
+| Bad configs, oversized inputs and outputs | boundary | Fail before invalid arithmetic or allocation |
+| Companion `processor_config.json` geometry | unit | Processor-config geometry and explicit precedence |
 
-## 7. Where it's used next
+The typical mistakes all produce plausible output, which is what makes them dangerous. Ignoring EXIF, or swapping clockwise and counterclockwise, makes rectangular photos face the wrong way; `_orient` maps all eight tags explicitly (6 is `rot90(-1)`, 8 is `rot90(1)`) before any resize. Multiplying alpha in uint8 or compositing on black changes the color of transparent edges; `_rgb` composites over white in uint32 with one rounding after the sum. Normalizing before rescaling leaves inputs numerically plausible but in disagreement with training; all frames go through `rescale_normalize`, which applies rescale, mean, and std in that order.
 
-| Direction | Module | Connection |
-|---|---|---|
-| Back | `M12.2` | Rescale/normalize and CHW conversion. |
-| Back | `M12.3` | PIL-compatible resize kernels. |
-| Back | `L13.4` | Dynamic resolution, frame ordering and token counts. |
-| Back | `M06.3` | FNV-1a content identifiers. |
-| Forward | `L13.7` | Planned VLM image inputs and placeholder expansion. |
-| Forward | `data.10` | Planned corpus decode and orientation before filtering. |
-| Forward | `L13.5` | `DualEncoder.encode_images` consumes the complete single-frame image pipeline. |
+> **Warning:** Decoding before checking dimensions lets a small compressed file cause a huge allocation. `decode_image` checks `width*height` against `max_pixels` before `image.load()`.
 
-## Going further
+Two mistakes concern ordering and identity. Putting the global image on the wrong end of the frame list makes the spatial markers point at the wrong feature sequence; the solution uses `tiles + [base]` for Idefics3 and `[base] + tiles` for AnyRes. Reusing decoded-byte hashes for encoded media means runtime identities no longer follow the specification's rule; `preprocess` sets `media_hash("image", data)` from the original bytes.
 
-| Resource | Exercise |
-|---|---|
-| [`tiling.py`](../../../../course/solutions/python/tinyllm/vision/tiling.py) | Explain why disabling Idefics3's first resize still permits splitting. |
-| [Pixel specification](../../../../course/contracts/formats/image-preprocess.md) | Trace an RGBA pixel through white compositing and EXIF orientation. |
+## Where this leads
+
+[Contrastive image-text: CLIP and SigLIP](05-contrastive-image-text.md) consumes the complete single-frame pipeline through `DualEncoder.encode_images`. The planned vision-language model section will use it for image inputs and placeholder expansion, and a planned data-engineering corpus step will use its decode and orientation before filtering.
+
+### Further exploration
+
+- Compare every supported resize kernel on a thin image and explain the edge rounding.
+- Read [`tiling.py`](../../../../course/solutions/python/tinyllm/vision/tiling.py) and explain why disabling Idefics3's first resize still permits splitting.
+- Using the [pixel specification](../../../../course/contracts/formats/image-preprocess.md), trace an RGBA pixel through white compositing and EXIF orientation.
+
+## Key terms
+
+- **pixel budget**: the configured maximum `width*height`, checked from the header before decompression.
+- **EXIF orientation**: a tag (1 to 8) saying how stored pixels must be flipped or rotated for display.
+- **compositing over white**: blending a transparent pixel with a white background, $c' = (c\alpha + 255(255-\alpha))/255$.
+- **processor config**: the `preprocessor_config.json` that fixes a model's resize, crop, and normalization recipe.
+- **media hash**: an FNV-1a-64 hash of a kind byte followed by the original encoded bytes.
+
+## Summary
+
+- A model's pixel recipe is part of its weights' meaning: channel order, crop position, and normalization matter.
+- Container decoding is the library boundary; orientation, compositing, and transforms are the solution's own code.
+- Check the pixel budget between reading the header and decompressing, and reject what cannot be reproduced exactly.
+- Normalize in a fixed order (rescale, subtract mean, divide by std), and order frames by processor family.
+- Hash original media bytes; keep preprocessing revision and model identity in separate cache-key fields.
+
+## Review questions
+
+1. Why must the pixel budget be checked between `Image.open` and `image.load()`?
+
+   <details><summary>Answer</summary>
+
+   `open` reads only the header, which already holds width and height; `load` decompresses and allocates. Checking earlier is impossible and checking later lets a tiny file trigger a huge allocation.
+
+   </details>
+
+2. Why is the alpha formula computed in uint32 and rounded with `+ 127` after the sum?
+
+   <details><summary>Answer</summary>
+
+   Each product is up to 255 by 255, which overflows uint8 and uint16 once summed. Rounding once after adding the foreground and background contributions gives the exact round-half-up of the true composite; rounding each term separately can be off by one.
+
+   </details>
+
+3. Why does `preprocess` replace the hash computed by `preprocess_pixels`?
+
+   <details><summary>Answer</summary>
+
+   The pixel path has no file, so it hashes dimensions plus canonical RGB bytes. At runtime the identity must follow the encoded bytes, as the specification requires: a PNG and a JPEG of the same picture are different inputs, and the encoded hash can be computed without decoding.
+
+   </details>
+
+4. What breaks if the global image is put at the wrong end of the frame list?
+
+   <details><summary>Answer</summary>
+
+   Nothing raises, but the prompt's spatial markers (from the tiling section) name tile positions in a fixed order. With the global frame on the wrong end, every marker points at the features of a different frame.
+
+   </details>
+
+5. Why does `_orient` copy the result instead of returning the view?
+
+   <details><summary>Answer</summary>
+
+   Flips and rotations are views with negative strides into the decoder's buffer. Downstream code (resize kernels, `tobytes` for hashing) assumes contiguous, owned uint8 storage; a copy makes that true and detaches the array from Pillow.
+
+   </details>

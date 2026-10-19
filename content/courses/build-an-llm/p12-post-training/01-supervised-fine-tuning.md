@@ -1,45 +1,27 @@
 # Supervised fine-tuning: chat rendering, assistant-only loss, packing
 
-## Overview
+The [TinyStories capstone](../capstones/01-tinystories.md) gives you a pretrained model that continues text well but has never seen a conversation. Supervised fine-tuning (SFT) on demonstrations teaches it a response format and task behavior. The work is less about the optimizer, which is the same causal cross-entropy you already have, than about three pieces of plumbing that are easy to get subtly wrong: rendering each conversation into exactly the bytes the serving engine will send, deciding which tokens the model is trained to predict, and packing many short examples into one row without letting them see each other.
 
-| | |
-|---|---|
-| **Module** | `L12.1` · optional build · Python · Pass 10 |
-| **Solution** | [`sft.py`](../../../../course/solutions/python/tinyllm/post/sft.py): `render_chat`, `assistant_loss_mask`, `pack` |
-| **Contract** | [`sft.pyi`](../../../../course/contracts/py/tinyllm/post/sft.pyi) |
-| **Needs** | `L6.6` LoRA, `L0.3` cross-entropy, `L10.5` chat template |
-| **Used by** | `C2` post-trained capstone (SFT, then preference optimization, RL, and distillation on the C1 model) |
-| **Optional depth** | Hugging Face TRL supervised fine-tuning |
+This section builds those three functions. It uses the cross-entropy of [Losses with a fused backward](../p00-foundations/03-losses-with-fused-backward.md), typically trains the LoRA adapters of [LoRA with PiSSA init and merge](../p06-objectives/06-lora-pissa-and-merge.md), and must agree with the chat template served by [tl-serve: OpenAI-compatible HTTP + SSE on tokio/hyper](../p10-serving/05-openai-server-on-tokio.md). The solution is [`sft.py`](../../../../course/solutions/python/tinyllm/post/sft.py) (`render_chat`, `assistant_loss_mask`, `pack`), and the contract is [`sft.pyi`](../../../../course/contracts/py/tinyllm/post/sft.pyi).
 
-## Key Takeaways
+> **Learning objectives**
+> - Render a conversation with the serving tokenizer's canonical chat template.
+> - Build an assistant-only loss mask aligned with the rendered ids, and explain why prompts are context, not targets.
+> - Pack several examples into one row with both a loss mask and document ids, and turn the ids into an attention mask.
 
-- A chat template is a byte-level protocol and must match the serving engine.
-- Only assistant response tokens contribute to the supervised objective.
-- Packed documents need an attention boundary as well as a loss mask.
+## The objective
 
-## How to read this chapter
+For token ids $x_0, \dots, x_{T-1}$ and a boolean assistant mask $m_t$, causal cross-entropy is evaluated only where $m_t$ is true:
 
-Sections 1 to 3 state the objective and work a conversation and a packed batch by hand. Section 4 fixes the interface. Section 5 walks through `sft.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
+$$L = -\frac{\sum_t m_t \log p(x_{t+1} \mid x_{\le t})}{\max\big(1, \sum_t m_t\big)}.$$
 
-## 1. Why now
+Here $x_t$ is the token id at position $t$, $m_t$ is 1 for an assistant target and 0 otherwise, and $T$ is the (packed) sequence length. System and user tokens provide context but receive no target loss. When several documents share a row, a document boundary must also prevent attention from one packed example into another; the mask alone does not do that.
 
-C1 gives you a pretrained TinyStories model. Demonstrations teach its response format and task behavior while preserving the serving template already used by L10.5.
+## Working it by hand
 
-## 2. Principles
+**Rendering and the mask.** For the messages `user: hi`, `assistant: ok`, rendering yields the template's user prefix, `hi`, the assistant prefix, `ok`, and an end marker. Take a toy tokenizer that renders this conversation as the ids `[1, 2, 3, 4]` and reports the assistant span as positions 2 to 4 (half open). The user prefix and `hi` (positions 0 and 1) are context, so the mask is `[False, False, True, True]`: two target positions, so the loss divides by 2.
 
-For token ids `x_0...x_(T-1)`, causal cross entropy is evaluated only where the boolean assistant mask `m_t` is true: `L = -sum_t m_t log p(x_(t+1)|x_<=t) / max(1, sum_t m_t)`. System and user tokens provide context but receive no target loss. A document boundary also prevents attention from one packed example into another.
-
-| Symbol | Meaning |
-|---|---|
-| `x_t` | token id at position `t` |
-| `m_t` | 1 for an assistant target, otherwise 0 |
-| `T` | packed sequence length |
-
-## 3. Worked example by hand
-
-**Rendering and the mask.** For messages `user: hi`, `assistant: ok`, rendering yields the template's user prefix, `hi`, assistant prefix, `ok`, and end marker. Take a toy tokenizer that renders this conversation as the ids `[1, 2, 3, 4]` and reports the assistant span as positions 2 to 4 (half open). The user prefix and `hi` (positions 0 and 1) are context, so the mask is `[False, False, True, True]`: two target positions, so the loss divides by 2.
-
-**Packing.** Pack two examples into `seq_len = 4`: `([11, 12], [False, True])` and `([21], [True])`. They fill three slots; the fourth is padding:
+**Packing.** Now pack two examples into `seq_len = 4`: `([11, 12], [False, True])` and `([21], [True])`. They fill three slots, and the fourth is padding:
 
 | position | 0 | 1 | 2 | 3 |
 |---|---|---|---|---|
@@ -47,32 +29,24 @@ For token ids `x_0...x_(T-1)`, causal cross entropy is evaluated only where the 
 | loss mask | F | T | T | F |
 | document id | 0 | 0 | 1 | -1 |
 
-The attention mask allows position $j$ to attend to position $i \le j$ only when both have the same document id, so token 21 cannot see 11 or 12, and the padding (id -1) is neither a target nor a context.
+The attention mask allows position $j$ to attend to position $i \le j$ only when both have the same document id, so token 21 cannot see 11 or 12, and the padding (id -1) is neither a target nor context.
 
-## 4. The interface
+## Designing the API
 
 The contract fixes three functions. `render_chat(messages, tokenizer)` returns the serving template's token ids. `assistant_loss_mask(messages, tokenizer)` returns `(ids, mask)` with one boolean per id. `pack(examples, seq_len)` takes `(tokens, mask)` pairs and returns three length-`seq_len` arrays: token ids (`int64`), loss mask (`bool`), and document ids (`int64`, -1 for padding).
 
-### What a correct solution must handle
+## Building it step by step
 
-| Case | Why it exists | Expected result |
-|---|---|---|
-| the hand-rendered chat | Pins the serving byte protocol | Exact token ids and mask for the worked conversation |
-| assistant-only mask | Ensures prompts are context, not targets | Only assistant response positions contribute loss |
-| packed documents stay apart | Prevents leakage between packed examples | Each token carries its own document id; padding is -1 |
-
-## 5. The solution, step by step
-
-### From first principles
+Four principles shape the code.
 
 1. **Training and serving must see the same bytes.** If the model is fine-tuned on one rendering and served with another (a missing newline, a different role marker), it is asked to continue sequences it never saw. So the solution never builds its own template: it delegates to the tokenizer's canonical one.
 2. **The mask must be computed on the same rendering.** A mask built from a separate rendering could be shifted by one token and silently train on role markers. So `assistant_loss_mask` renders once and checks that the mask has exactly as many entries as the ids.
 3. **Packing must carry both boundaries.** The loss mask says which positions are targets; the document id says which positions may attend to which. An EOS token alone does neither: the next document would still attend across it, and the EOS itself would be a target unless masked.
 4. **Padding must be inert.** Padded positions get mask `False` and document id -1, so they are never targets and never share a document with a real token.
 
-### The code, annotated
+### Rendering
 
-Rendering prefers the Hugging Face API, so a real serving tokenizer works unchanged, and falls back to the course tokenizer's own `render_chat`:
+Rendering prefers the Hugging Face API, so a real serving tokenizer works unchanged, and falls back to the book's tokenizer's own `render_chat`:
 
 ```python
 def render_chat(messages, tokenizer):
@@ -82,6 +56,8 @@ def render_chat(messages, tokenizer):
         return list(tokenizer.apply_chat_template(list(messages), tokenize=True, add_generation_prompt=False))
     return list(tokenizer.render_chat(list(messages)))
 ```
+
+### The assistant mask
 
 The mask comes either straight from the tokenizer or from its assistant spans, and is validated against the rendered ids:
 
@@ -101,6 +77,8 @@ def assistant_loss_mask(messages, tokenizer):
         raise ValueError("token and loss mask lengths differ")
     return ids, [bool(x) for x in mask]
 ```
+
+### Packing
 
 Packing appends whole examples in order and records each token's document:
 
@@ -123,62 +101,68 @@ def pack(examples, seq_len):
     return np.asarray(ids, dtype=np.int64), np.asarray(loss, dtype=bool), np.asarray(docs, dtype=np.int64)
 ```
 
-`pack` fills one row and stops at the first example that does not fit; the caller packs the remaining examples into the next row. The trainer turns `docs` into a block-diagonal causal attention mask (`docs[i] == docs[j] and i <= j`) and uses `loss` to select the cross-entropy terms.
+`pack` fills one row and stops at the first example that does not fit; the caller packs the remaining examples into the next row. The trainer turns `docs` into a block-diagonal causal attention mask (`docs[i] == docs[j] and i <= j`) and uses `loss` to select the cross-entropy terms. The full solution is [`sft.py`](../../../../course/solutions/python/tinyllm/post/sft.py).
 
-Full solution: [`sft.py`](../../../../course/solutions/python/tinyllm/post/sft.py)
+### Why this design
 
-### Why this solution
+All three functions are linear in the number of tokens. Packing removes most padding, so a batch of short demonstrations costs close to its real token count instead of `rows * longest`.
 
-- **Cost.** All three functions are linear in the number of tokens. Packing removes most padding, so a batch of short demonstrations costs close to its real token count instead of `rows * longest`.
-- **Delegating the template versus writing one.** A hand-written template is one more copy of the protocol that can drift from the serving engine. Delegation keeps exactly one source of truth.
-- **Document ids versus EOS separators.** Separators keep the loss honest only if masked, and never stop attention. Document ids give the attention mask directly.
-- **Stopping versus splitting.** Splitting an example across rows would make its second half attend to nothing of its first half, a target without its context. Stopping wastes a few padding slots instead.
+Delegating the template is better than writing one because a hand-written template is one more copy of the protocol that can drift from the serving engine; delegation keeps exactly one source of truth. Document ids are better than EOS separators because separators keep the loss honest only if masked, and never stop attention, while document ids give the attention mask directly. And stopping a row at the first example that does not fit is better than splitting it: splitting would make the example's second half attend to nothing of its first half, a target without its context. Stopping wastes a few padding slots instead.
 
-### Explain it back
+## What can go wrong
 
-**Why does the loss divide by `max(1, sum_t m_t)` rather than by `T`?**
+Three checks pin a correct solution. The hand-rendered chat must produce the exact token ids and mask of the worked conversation, which pins the serving byte protocol. The mask must be assistant-only, so that only assistant response positions contribute loss and prompts stay context. And packed documents must stay apart: each token carries its own document id, and padding is -1.
 
-<details><summary>Answer</summary>
+The common bugs are the mirror images of those checks. Training on user tokens happens when the mask defaults to `True` or is built from a different rendering; here the mask starts all `False` and only assistant spans are set. Adding an EOS to every packed sample without a mask neither stops attention nor keeps the EOS out of the loss; here separation is by document id, and the mask comes with each example. Replacing each packed document id with the first id merges every example into one document; here each example's tokens get their own `doc_id` from `enumerate`.
 
-Dividing by `T` would make the loss depend on how much of the row is prompt or padding, so a long prompt would quietly shrink the learning rate for its answer. Dividing by the number of targets makes it a mean over assistant tokens; the `max(1, ...)` keeps an all-context row from dividing by zero.
+> **Warning:** A chat template that differs from the serving engine's by a single byte still trains a model that looks fine in offline evaluation and then misbehaves when served. Always render with the tokenizer the server uses.
 
-</details>
+## Where this leads
 
-**Why is a loss mask not enough for a packed row?**
+The SFT checkpoint is the starting point for the rest of this chapter: [Direct preference optimization and IPO](02-direct-preference-optimization.md) uses it as the reference policy, and the [post-trained capstone](../capstones/02-post-trained.md) runs SFT, then preference optimization, RL, and distillation on the TinyStories model while preserving the serving chat contract.
 
-<details><summary>Answer</summary>
+In production, Hugging Face TRL's SFT trainer adds length bucketing and packing for higher device utilization, with careful document masks. Dataset mixtures and loss weighting change which tokens define the training distribution; see the [Training and Post-Training](../../machine-learning/07-training-and-post-training/README.md) chapter of *Machine Learning*.
 
-The mask decides which positions are targets, not what they may read. Without document ids, the first token of example 1 would attend to the whole of example 0 and learn to depend on an unrelated conversation.
+### Further reading
 
-</details>
+- Hugging Face TRL, the supervised fine-tuning trainer documentation.
 
-**What does the length check in `assistant_loss_mask` protect against?**
+## Key terms
 
-<details><summary>Answer</summary>
+- **chat template**: the byte-level protocol that renders a list of role-tagged messages into one token sequence.
+- **assistant-only loss**: cross-entropy computed only at positions whose target is an assistant response token.
+- **packing**: concatenating several short examples into one fixed-length row to reduce padding.
+- **document id**: a per-token label naming which packed example a token belongs to (-1 for padding), used to build a block-diagonal attention mask.
 
-A mask that is one token shorter or longer than the ids would shift every target by that offset, training on role markers and skipping the last answer token. Raising is better than training on the wrong tokens silently.
+## Summary
 
-</details>
+- A chat template is a byte-level protocol and must match the serving engine, so rendering delegates to the serving tokenizer.
+- Only assistant response tokens contribute to the supervised objective, and the loss is their mean.
+- Packed documents need an attention boundary (document ids) as well as a loss mask; padding is neither target nor context.
+- Packing stops a row at the first example that does not fit rather than splitting it.
 
-## 6. Pitfalls
+## Review questions
 
-| Pitfall | How the solution avoids it |
-|---|---|
-| Training on user tokens | the mask starts all `False` and only assistant spans are set |
-| Adding an EOS to every packed sample without a mask | separation is by document id, and the mask comes with each example |
-| Replacing each packed document id with the first id | each example's tokens get their own `doc_id` from `enumerate` |
+1. Why does the loss divide by $\max(1, \sum_t m_t)$ rather than by $T$?
 
-## 7. Where it's used next
+   <details><summary>Answer</summary>
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `L6.6` | Provides the adapted model parameters for the SFT run. |
-| Back | `L0.3` | Supplies the token-level cross-entropy objective. |
-| Forward | `C2` | Starts from this SFT checkpoint before preference optimization and preserves the serving chat contract. |
+   Dividing by $T$ would make the loss depend on how much of the row is prompt or padding, so a long prompt would quietly shrink the learning rate for its answer. Dividing by the number of targets makes it a mean over assistant tokens; the $\max(1, \cdot)$ keeps an all-context row from dividing by zero.
 
-## Going further
+   </details>
 
-| Solution piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `pack` | length bucketing and packing in TRL | Higher device utilization, with careful document masks | Hugging Face TRL SFT trainer |
-| assistant mask | dataset mixture and loss weighting | Changes which tokens define the training distribution | `content/courses/machine-learning/07-training-and-post-training` |
+2. Why is a loss mask not enough for a packed row?
+
+   <details><summary>Answer</summary>
+
+   The mask decides which positions are targets, not what they may read. Without document ids, the first token of example 1 would attend to the whole of example 0 and learn to depend on an unrelated conversation.
+
+   </details>
+
+3. What does the length check in `assistant_loss_mask` protect against?
+
+   <details><summary>Answer</summary>
+
+   A mask that is one token shorter or longer than the ids would shift every target by that offset, training on role markers and skipping the last answer token. Raising is better than training on the wrong tokens silently.
+
+   </details>

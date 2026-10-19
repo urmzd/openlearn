@@ -1,29 +1,25 @@
-# 05-trees
+# Trees
 
-## Summary
-- Contains: `example-7.py`.
-- Python implementation of tree logic (balanced BST operations and a sample computation).
+Tree problems are almost always solved with **recursion** (depth-first search) or **level-order traversal** (breadth-first search). What decides the shape of a solution is one question: **does the answer come from combining subtree answers (bottom-up), or from passing state downward (top-down)?** Once you know which, the code nearly writes itself, because the recursion mirrors the tree.
 
-## Key takeaways
-- Rotations and balance factors keep trees height-balanced.
-- Encapsulating comparison logic helps reuse tree structures.
+This chapter builds a toolkit of seven patterns: bottom-up and top-down DFS, level-order BFS, the binary-search-tree invariant, lowest common ancestors, construction from traversals, and dynamic programming on trees. It ends with a self-balancing AVL tree in Python that answers range queries, and with a short routine for debugging tree recursion when it goes wrong.
 
-## How to run
-- `python3 05-trees/example-7.py` optionally followed by integers as input values.
+> **Learning objectives**
+> - Decide whether a tree problem is bottom-up or top-down and write the matching recursion.
+> - Traverse a tree level by level with a queue.
+> - Validate a binary search tree with bounds, and use in-order traversal to visit values in sorted order.
+> - Find a lowest common ancestor in a general binary tree and in a BST.
+> - State which pairs of traversals determine a tree uniquely, and solve optimization problems with tree DP.
+> - Explain how rotations and balance factors keep an AVL tree height-balanced.
 
----
+## Before you begin
 
-# Tree Patterns
+You need to be comfortable with recursion and with queues; [Recursion and divide-and-conquer](../11-recursion-divide-conquer/README.md) covers base cases and input reduction if you want a refresher first. [Trees and tries: longest prefix match](../../mathematics-for-computing/06-discrete-math-2/02-trees-and-tries-longest-prefix-match.md) in *Mathematics for Computing* gives the discrete-math view of trees.
 
-## Core Insight
+## Bottom-up DFS (post-order)
 
-Tree problems are almost always solved with **recursion** (DFS) or **level-order traversal** (BFS). The key question: **does the answer come from combining subtree answers (bottom-up), or from passing state downward (top-down)?**
+The most common tree pattern applies when the answer at a node depends on the answers from its children. Recurse into both subtrees first, then combine their results with the node's own value:
 
-## Pattern 1: Bottom-Up DFS (Post-Order)
-
-**When to use**: The answer at a node depends on answers from its children. This is the most common tree pattern.
-
-**Template**:
 ```python
 def solve(node):
     if not node:
@@ -33,13 +29,12 @@ def solve(node):
     return combine(left, right, node.val)
 ```
 
-**Interview problems**: Maximum Depth, Diameter of Binary Tree, Balanced Binary Tree, Maximum Path Sum, Subtree of Another Tree
+Maximum Depth of Binary Tree, Diameter of Binary Tree, Balanced Binary Tree, Binary Tree Maximum Path Sum, and Subtree of Another Tree are all bottom-up.
 
-## Pattern 2: Top-Down DFS (Pre-Order)
+## Top-down DFS (pre-order)
 
-**When to use**: You need to pass information from parent to children (path sum, root-to-leaf constraints).
+When information has to flow from parent to children, such as a running path sum or a constraint on root-to-leaf paths, pass it as an argument and process it at the leaves:
 
-**Template**:
 ```python
 def solve(node, state):
     if not node:
@@ -51,13 +46,12 @@ def solve(node, state):
     solve(node.right, updated_state)
 ```
 
-**Interview problems**: Path Sum, Path Sum II, Sum Root to Leaf Numbers, Binary Tree Paths
+Path Sum, Path Sum II, Sum Root to Leaf Numbers, and Binary Tree Paths use this form.
 
-## Pattern 3: Level-Order BFS
+## Level-order BFS
 
-**When to use**: Need to process level by level, find shortest path, or connect nodes at the same level.
+When you need to process the tree level by level, find the shallowest node, or connect nodes on the same level, use a queue. Recording the queue's length at the start of each round tells you exactly how many nodes belong to the current level:
 
-**Template**:
 ```python
 from collections import deque
 queue = deque([root])
@@ -70,13 +64,12 @@ while queue:
         if node.right: queue.append(node.right)
 ```
 
-**Interview problems**: Level Order Traversal, Zigzag Level Order, Right Side View, Minimum Depth
+Binary Tree Level Order Traversal, Zigzag Level Order Traversal, Binary Tree Right Side View, and Minimum Depth of Binary Tree are the standard problems.
 
-## Pattern 4: BST Properties
+## Binary search tree properties
 
-**When to use**: The tree is a BST — exploit `left < root < right` invariant.
+If the tree is a BST, exploit the `left < root < right` invariant. Validating a BST is a top-down problem: each node must lie strictly between bounds inherited from its ancestors, not merely between its own children:
 
-**Template (validate BST)**:
 ```python
 def is_valid(node, lo=-inf, hi=inf):
     if not node:
@@ -87,7 +80,8 @@ def is_valid(node, lo=-inf, hi=inf):
            is_valid(node.right, node.val, hi)
 ```
 
-**Template (in-order traversal gives sorted order)**:
+The other key fact is that an in-order traversal visits a BST's values in sorted order:
+
 ```python
 def inorder(node):
     if not node: return
@@ -96,13 +90,12 @@ def inorder(node):
     inorder(node.right)
 ```
 
-**Interview problems**: Validate BST, Kth Smallest in BST, LCA of BST, Convert Sorted Array to BST
+Validate Binary Search Tree, Kth Smallest Element in a BST, Lowest Common Ancestor of a BST, and Convert Sorted Array to BST all rest on these two facts.
 
-## Pattern 5: Lowest Common Ancestor (LCA)
+## Lowest common ancestor
 
-**When to use**: Find the deepest node that is an ancestor of both target nodes.
+The lowest common ancestor of two nodes is the deepest node that has both as descendants. In a general binary tree, search both subtrees; if each returns a hit, the current node is where the paths split:
 
-**Template (general binary tree)**:
 ```python
 def lca(root, p, q):
     if not root or root == p or root == q:
@@ -114,27 +107,23 @@ def lca(root, p, q):
     return left or right   # both in the same subtree
 ```
 
-**For BST**: If both values < root, go left. Both > root, go right. Otherwise, root is the LCA.
+In a BST it is simpler: if both values are less than the root, go left; if both are greater, go right; otherwise the root is the LCA. Lowest Common Ancestor of a Binary Tree and of a BST are the two classic problems.
 
-**Interview problems**: LCA of Binary Tree, LCA of BST
+## Construction and serialization
 
-## Pattern 6: Serialization / Construction
+Some problems ask you to build a tree from its traversal orders, or to serialize a tree and read it back. Which traversals determine a tree is a fact worth memorizing:
 
-**When to use**: Build a tree from traversal orders, or serialize/deserialize.
+- preorder and inorder give a unique tree;
+- postorder and inorder give a unique tree;
+- preorder and postorder give a unique tree only for a full binary tree;
+- level order and inorder give a unique tree.
 
-**Key facts**:
-- **Preorder + Inorder** → unique tree
-- **Postorder + Inorder** → unique tree
-- **Preorder + Postorder** → unique tree only if full binary tree
-- **Level-order + Inorder** → unique tree
+Construct Binary Tree from Preorder and Inorder Traversal and Serialize and Deserialize Binary Tree are the standard problems.
 
-**Interview problems**: Construct Binary Tree from Preorder and Inorder, Serialize and Deserialize Binary Tree
+## Tree DP
 
-## Pattern 7: Tree DP
+Finally, optimization over tree structure (the maximum path sum, House Robber on a tree) is dynamic programming in which each subtree returns more than one value. For House Robber III, each node returns the best total if it is included and the best if it is excluded; including a node forbids including its children:
 
-**When to use**: Optimization over tree structure (max path sum, house robber on tree).
-
-**Template**:
 ```python
 def solve(node):
     if not node:
@@ -146,22 +135,29 @@ def solve(node):
     return (include, exclude)
 ```
 
-**Interview problems**: House Robber III, Binary Tree Maximum Path Sum, Binary Tree Cameras
+House Robber III, Binary Tree Maximum Path Sum, and Binary Tree Cameras use this pattern. [Dynamic programming](../07-dynamic-programming/README.md) develops the general method.
 
-## Company Targeting
+## Debugging tree recursion
 
-| Company | Favorite Variant | Difficulty |
+When a tree recursion is not working, check four things in order:
+
+1. Verify the base case (a null node).
+2. Verify the leaf case (a node with no children).
+3. Check that you are combining subtree results correctly.
+4. Draw the recursion tree for a three-node example.
+
+Interviewers favor different variants. As a rough guide:
+
+| Company | Favorite variant | Difficulty |
 |---------|-----------------|------------|
-| Google | Serialize/deserialize, tree DP | Hard |
+| Google | serialize and deserialize, tree DP | Hard |
 | Meta | LCA, iterative traversals | Medium |
 | Amazon | BST operations, validate BST | Medium |
-| Apple | AVL/Red-Black tree concepts | Medium-Hard |
-| Anthropic | Tree as system state (tries, radix) | Medium-Hard |
+| Apple | AVL and red-black tree concepts | Medium-Hard |
+| Anthropic | trees as system state (tries, radix trees) | Medium-Hard |
 
-## Recursion Debugging Tip
+## In this chapter
 
-When your tree recursion isn't working:
-1. Verify base case (null node)
-2. Verify leaf case (no children)
-3. Check: are you combining subtree results correctly?
-4. Draw the recursion tree for a 3-node example
+- [AVL tree with range queries](example-7.py): a self-balancing binary search tree in Python. Each node tracks its height; after every insertion, the balance factor decides between a single rotation (left or right) and a double rotation, keeping the tree height-balanced. The comparison logic is passed in as a `comparator` with configurable keys, so the same tree can order tuples by any field. The program uses the tree to find the longest subsequence of its input in which each element is at least the previous one and at most 3 more: for each value it queries the best chain ending in the range `[S[i] - 3, S[i]]`, inserts the extended chain, and reconstructs the answer through each node's link to its predecessor. The comments document two known limitations: inserting duplicate values loses them, and `range_max` runs in $O(n)$ rather than the $O(\log n)$ an augmented tree would give. Run it with `python3 05-trees/example-7.py`, optionally followed by integers to use as input; without arguments it uses `[1, 9, 2, 3, 7, 6, 5]`.
+
+The systems chapter builds a production tree over token ids in [the radix tree](../16-systems-data-structures/07-radix-tree.md).
