@@ -89,7 +89,7 @@ The third is omitting a named owner and recovery condition. An artifact without 
 
 ## Where this leads
 
-This section closes the loop on the whole build. To check the contracts and evidence it cites, reread [Design review: the whole system](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems and Architecture*. For how owners and next actions are written down so that someone else can act on them, reread [Escalation and handoff](../../field-engineering/08-mock-engagement/07-escalation-and-handoff.md) in *Field Engineering*. The company chapters in this book show how different interviewers will phrase the same questions.
+This section closes the loop on the whole build. To check the contracts and evidence it cites, reread [Design review: the whole system](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems and Architecture*. For how owners and next actions are written down so that someone else can act on them, reread [Handing off operations](../../field-engineering/08-mock-engagement/07-escalation-and-handoff.md) in *Field Engineering*. The company chapters in this book show how different interviewers will phrase the same questions.
 
 ### Further reading
 

@@ -15,7 +15,7 @@ The chapter moves from the bottom of the stack upward. It starts with the two fr
 
 ## Before you begin
 
-This chapter assumes you know how neural networks are trained: backpropagation, optimizers such as Adam, and the transformer architecture, all covered in [Deep Learning](../../machine-learning/02-deep-learning/) in *Machine Learning & AI*. It also leans on [LLM Systems & Inference](../../machine-learning/04-llm-systems/) from the same book for serving, the KV cache, and the basics of parallelism. You do not need to have trained a large model yourself; the point here is to understand the choices well enough to make them on a platform.
+This chapter assumes you know how neural networks are trained: backpropagation, optimizers such as Adam, and the transformer architecture, all covered in [Deep Learning](../../machine-learning/02-deep-learning/) in *Machine Learning and AI*. It also leans on [LLM Systems & Inference](../../machine-learning/04-llm-systems/) from the same book for serving, the KV cache, and the basics of parallelism. You do not need to have trained a large model yourself; the point here is to understand the choices well enough to make them on a platform.
 
 ## In this chapter
 
@@ -59,7 +59,7 @@ A framework defines a model; it does not serve one well. A naive `model.generate
 
 **vLLM** is the default for self-hosting LLMs. It is a high-throughput inference engine built around a PagedAttention KV cache, continuous batching, tensor parallelism, and prefix caching, and it exposes an OpenAI-compatible server. **[NVIDIA TensorRT-LLM](https://nvidia.github.io/TensorRT-LLM/)** takes a different approach: it compiles the model ahead of time into fused, hardware-specific kernels (with FP8 and in-flight batching) for maximum throughput and minimum latency on NVIDIA GPUs, and it is typically served behind [Triton Inference Server](https://docs.nvidia.com/deeplearning/triton-inference-server/). The tradeoff against vLLM is a build step and less flexibility in exchange for peak performance.
 
-Above the engine sits orchestration. **[Ray](https://docs.ray.io/)** is a common choice: **Ray Serve** wraps a serving engine (vLLM or TensorRT-LLM) with autoscaling, multi-model routing, and request batching across a cluster, while Ray Core's actor and task model is the distributed-compute substrate underneath and **Ray Train** handles the training side, discussed next. From the platform's point of view, the engine is one tier. Around it sit a model registry, an autoscaler (KEDA, Ray Serve, or KServe), a router, and observability; see [Cloud Native](../../systems/03-cloud-native/) in *Systems & Architecture* for the substrate and [Streaming and SSE](../03-streaming-sse/) for how tokens reach the client.
+Above the engine sits orchestration. **[Ray](https://docs.ray.io/)** is a common choice: **Ray Serve** wraps a serving engine (vLLM or TensorRT-LLM) with autoscaling, multi-model routing, and request batching across a cluster, while Ray Core's actor and task model is the distributed-compute substrate underneath and **Ray Train** handles the training side, discussed next. From the platform's point of view, the engine is one tier. Around it sit a model registry, an autoscaler (KEDA, Ray Serve, or KServe), a router, and observability; see [Cloud Native](../../systems/03-cloud-native/) in *Systems and Architecture* for the substrate and [Streaming and SSE](../03-streaming-sse/) for how tokens reach the client.
 
 ## Distributed training
 
@@ -110,7 +110,7 @@ There are three ways to make a small model good at your task. **Distillation** t
 
 The third technique makes fine-tuning cheap enough to do routinely. **PEFT methods such as LoRA and QLoRA** freeze the base model and train small low-rank adapter matrices. QLoRA fine-tunes on top of a 4-bit-quantized base, so a 7B model tunes on a single consumer GPU. Adapters are tiny (megabytes) and swappable, so you can serve many tasks from one base model. "Freeze the base, train a small adapter" is a pattern worth recognizing beyond fine-tuning; it is the general move of perturbing a frozen pretrained artifact cheaply, and it reappears in prompt-tuning and control.
 
-For serving, quantization with GPTQ, AWQ, or bitsandbytes shrinks the model further; see [Quantization](../../machine-learning/04-llm-systems/quantization/) in *Machine Learning & AI*. The decision that ties this together is build versus buy: a fine-tuned SLM trades a fixed training cost for a much lower per-token serving cost and no vendor dependency. That calculation is the core of platform economics.
+For serving, quantization with GPTQ, AWQ, or bitsandbytes shrinks the model further; see [Quantization](../../machine-learning/04-llm-systems/quantization/) in *Machine Learning and AI*. The decision that ties this together is build versus buy: a fine-tuned SLM trades a fixed training cost for a much lower per-token serving cost and no vendor dependency. That calculation is the core of platform economics.
 
 ## The platform loop
 

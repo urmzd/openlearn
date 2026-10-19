@@ -1,27 +1,12 @@
-# Benchmarks and perf gates (R7)
+# Benchmarks and perf gates
 
-## Overview
+By the time you reach this section, the C kernels of *Build Your Own LLM System* are correct: the [kernels chapter](../../build-an-llm/p09-kernels/README.md), from [Cache-blocked, packed, batch-invariant matmul](../../build-an-llm/p09-kernels/04-tiled-batch-invariant-matmul.md) to [Elementwise kernels in C](../../build-an-llm/p09-kernels/09-elementwise-kernels.md), matched its oracles, and a real model runs through them. Correct is not the same as fast, and fast does not stay fast. Swap two loops in `matmul.c` while fixing an edge case and the answer is unchanged, every test passes, and decode is 14 times slower. No unit test can notice, because a unit test checks values.
 
-| | |
-|---|---|
-| **Module** | `craft.06` · practice · C and Python · Pass 6 · 2 h reading |
-| **Solution** | [`kernels.c`](../../../../course/solutions/primers/craft.06/kernels.c) (a kata: four C kernels whose speed depends on how they are written: `kata_matmul`, `kata_sum`, `kata_rmsnorm`, `kata_count_below`), [`bench.c`](../../../../course/solutions/primers/craft.06/bench.c) (the benchmark of them with `ol_bench.h`), [`budget.toml`](../../../../course/solutions/primers/craft.06/budget.toml) (the performance budget), and [`gate.py`](../../../../course/solutions/primers/craft.06/gate.py) (the regression gate: `regressed`, `run`, `build`, `metrics`, `main`) |
-| **Contract** | the kata's spec in [`kernels.h`](../../../../course/solutions/primers/craft.06/kernels.h) and the timer [`ol_bench.h`](../../../../course/contracts/c/include/ol_bench.h) |
-| **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) grading tests by planted faults · [`craft.05`](03-oracles-golden-and-gradcheck.md) oracles: a fast kernel must first be a right one · [`L9.1`](../../../courses/build-an-llm/p09-kernels/04-tiled-batch-invariant-matmul.md) tiling and loop order · [`L9.6`](../../../courses/build-an-llm/p09-kernels/09-elementwise-kernels.md) RMSNorm |
-| **Used by** | no call site (a practice): the kernel (`L9`) and engine (`L10`) chapters apply the same perf gate, and `ops.07` bisects a perf regression with it. Pass 6 ends with the kernels both correct and protected for speed. |
-| **Optional depth** | Brendan Gregg, *Systems Performance*, 2nd ed., ch. 12 "Benchmarking"; Georges, Buytaert, Eeckhout, "Statistically Rigorous Java Performance Evaluation" (OOPSLA 2007); Chen and Revels, "Robust benchmarking in noisy environments" (2016) |
+From here on, the solution protects speed the way its earlier tests protect values: a benchmark that measures it, a budget that says how much it may move, and a gate that fails the change that breaks it. This section does all three on a small kata first, so the noise, the budgets, and the failure modes are all in front of you before the real kernels are on the line. It builds the idea of a benchmark and a gate from first principles, works the arithmetic by hand, then walks through the solution kernel by kernel and line by line through the gate. Try to predict each step before reading it.
 
-## Key Takeaways
+You should already know how tests are judged by planted faults ([TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md)) and why a fast kernel must first be a right one ([Oracles, golden and differential tests, gradcheck as a test](03-oracles-golden-and-gradcheck.md)). The kata's matmul uses the tiling and loop order of [Cache-blocked, packed, batch-invariant matmul](../../build-an-llm/p09-kernels/04-tiled-batch-invariant-matmul.md), and its RMSNorm is the one from [Elementwise kernels in C](../../build-an-llm/p09-kernels/09-elementwise-kernels.md).
 
-- A benchmark is a **measurement with a stated error**: fixed inputs, a warm-up, repetitions, and the **minimum** of the repetitions, because noise only ever makes a run slower.
-- A perf gate compares **base and head on the same machine, alternately, within seconds**, so it needs no stored numbers and no calibration, and a slow laptop and a fast CI runner give the same verdict.
-- The **budget** is a fraction: head may be at most 30% slower than base. It must sit above the noise (the gate must accept a kata compared with itself) and well below a real regression (it must reject a 2x slowdown).
-- The slowdowns that matter keep the answer right: loop order, tiles too small to vectorize, one accumulator, duplicated work, a linear search, a defensive copy. Only a timing test catches them.
-- A good gate fails at least 9 of 10 such planted slowdowns, always the gross ones (loop order, narrow tiles, one accumulator, linear search), and never fails a kata against itself.
-
-## How to read this chapter
-
-Sections 1 to 3 build the idea of a benchmark and a gate from first principles and work the arithmetic by hand. Section 4 fixes the artifacts and their interfaces. Section 5 walks through the solution, kernel by kernel and line by line through the gate, and explains why each choice is the right one. Try to predict each step before reading it. The gate is run as:
+The solution has four files: [`kernels.c`](../../../../course/solutions/primers/craft.06/kernels.c), a kata of four C kernels whose speed depends on how they are written (`kata_matmul`, `kata_sum`, `kata_rmsnorm`, `kata_count_below`); [`bench.c`](../../../../course/solutions/primers/craft.06/bench.c), the benchmark of them with `ol_bench.h`; [`budget.toml`](../../../../course/solutions/primers/craft.06/budget.toml), the performance budget; and [`gate.py`](../../../../course/solutions/primers/craft.06/gate.py), the regression gate (`regressed`, `run`, `build`, `metrics`, `main`). The contract is the kata's spec in [`kernels.h`](../../../../course/solutions/primers/craft.06/kernels.h) and the timer [`ol_bench.h`](../../../../course/contracts/c/include/ol_bench.h). The gate is run as:
 
 ```bash
 python3 course/solutions/primers/craft.06/gate.py \
@@ -29,15 +14,17 @@ python3 course/solutions/primers/craft.06/gate.py \
   --include course/contracts/c/include
 ```
 
-Run it on an otherwise idle machine: it times things. Every build and benchmark it starts runs in its own process group with a timeout.
+Run it on an otherwise idle machine, since it times things. Every build and benchmark it starts runs in its own process group with a timeout.
 
----
+> **Learning objectives**
+> - Write a benchmark with fixed inputs, a warm-up, repetitions, and a minimum estimator, and explain why the minimum.
+> - Build a perf gate that compares base and head on the same machine, alternately, and needs no stored numbers.
+> - Choose a budget that sits above the noise and well below the smallest real regression.
+> - Name slowdowns that keep every output right and explain why each one is slow.
 
-## 1. Why now
+## What a benchmark measures
 
-The kernels are correct: `L9.1` to `L9.6` matched their oracles, and `L9.7` runs a real model through them. Correct is not the same as fast, and fast does not stay fast. Swap two loops in `matmul.c` while fixing an edge case and the answer is unchanged, every test passes, and decode is 14 times slower. No unit test can notice, because a unit test checks values. From this pass on, the solution protects speed the way its earlier tests protect values: a benchmark that measures it, a budget that says how much it may move, and a gate that fails the change that breaks it. This chapter does it on a small kata first, so the noise, the budgets, and the failure modes are all in front of you before the real kernels are on the line.
-
-## 2. Principles
+The notation for the rest of the section:
 
 | Symbol | Meaning | Type |
 |---|---|---|
@@ -47,38 +34,32 @@ The kernels are correct: `L9.1` to `L9.6` matched their oracles, and `L9.7` runs
 | $\Delta = t_h / t_b - 1$ | the change; $+1.0$ is twice as slow | fraction |
 | $\beta$ | the budget of a metric: the largest $\Delta$ allowed | fraction in $(0, 1)$ |
 
-### 2.1 What a benchmark measures
-
 A call's time is the work plus noise: other processes, frequency scaling, cache and TLB state, interrupts. Noise is one-sided: it can only add time. So `ol_bench_best(fn, ctx, reps, min_s)` calls `fn` once to warm caches and branch predictors, then runs `reps` repetitions, each calling `fn` as often as it takes to fill at least `min_s` seconds (a 5 µs call is timed over thousands of calls, not one), and returns the **smallest** per-call time. The mean would absorb every hiccup; the minimum is the closest any run came to the work alone.
 
-Three rules make a benchmark mean something:
-
-- **Fixed inputs.** A formula of the index, never `rand()`: the same work on every run and every machine.
-- **Keep the result.** Write it to a `volatile` variable. An optimizing compiler deletes a computation whose result is never used, and you time an empty loop.
-- **Sizes that matter.** Big enough to take microseconds to milliseconds (timer resolution and call overhead vanish), small enough that a 1000x slower version still finishes in a second.
+Three rules make a benchmark mean something. Use **fixed inputs**: a formula of the index, never `rand()`, so the same work happens on every run and every machine. **Keep the result** by writing it to a `volatile` variable, because an optimizing compiler deletes a computation whose result is never used, and you would time an empty loop. Choose **sizes that matter**: big enough to take microseconds to milliseconds, so timer resolution and call overhead vanish, and small enough that a 1000x slower version still finishes in a second.
 
 The benchmark prints its metrics as the last stdout line, one JSON object (`ol_bench_done`), so any tool can read them.
 
-### 2.2 A gate compares, it does not remember
+## A gate compares, it does not remember
 
-The obvious gate stores yesterday's number and fails when today's is slower. It breaks on the first machine change: a laptop on battery, a CI runner of a different generation, a busy neighbor. The robust gate measures **base and head together**: build the benchmark with each version, run them alternately (base, head, base, head, ...) a few times, keep each side's minimum, and compare. Drift over the run (a thermal throttle, a background job) hits both sides alike, and the machine's absolute speed cancels in $\Delta$. This is how `{loadgen} compare` (Pass 7) and production systems such as Go's `benchstat` work.
+The obvious gate stores yesterday's number and fails when today's is slower. It breaks on the first machine change: a laptop on battery, a CI runner of a different generation, a busy neighbor. The robust gate measures **base and head together**. It builds the benchmark with each version, runs them alternately (base, head, base, head, ...) a few times, keeps each side's minimum, and compares. Drift over the run, such as a thermal throttle or a background job, hits both sides alike, and the machine's absolute speed cancels in $\Delta$. This is how [Run comparison and the regression gate](../../build-an-llm/p10-serving/11-run-comparison-and-regression-gate.md) in the serving chapter and production systems such as Go's `benchstat` work.
 
-Absolute budgets still have a place: "at least half the GFLOP/s of a reference kernel timed on the same machine" answers "is it fast enough?"; the gate answers "did this change make it slower?".
+Absolute budgets still have a place. "At least half the GFLOP/s of a reference kernel timed on the same machine" answers "is it fast enough?"; the gate answers "did this change make it slower?"
 
-### 2.3 The budget
+## Choosing the budget
 
-A metric regresses when $t_h > t_b (1 + \beta)$. Choosing $\beta$ is a trade between two errors:
+A metric regresses when $t_h > t_b (1 + \beta)$. Choosing $\beta$ is a trade between two errors, and the two extremes show it:
 
 | | Too small (5%) | Too large (100%) |
 |---|---|---|
 | Noise ($\lvert \Delta \rvert$ up to about 10% between identical builds) | false alarms: the gate is switched off within a week | fine |
 | A 2x slowdown ($\Delta = +1.0$) | caught | missed: $+1.0$ is not more than $1.0$ |
 
-$\beta = 0.3$ sits well above the noise and far below a doubling. A metric measured over microseconds (the binary search) is noisier and gets more room. The budget lives in a file next to the benchmark, reviewed like code: loosening it is a decision someone signs.
+$\beta = 0.3$ sits well above the noise and far below a doubling. A metric measured over microseconds (the binary search) is noisier and gets more room. The budget lives in a file next to the benchmark and is reviewed like code: loosening it is a decision someone signs.
 
-### 2.4 Slowdowns that keep the answer right
+## Slowdowns that keep the answer right
 
-Each of these leaves every output the same and costs 2x to 1000x:
+The regressions a gate exists for are the ones no value test sees. Each of these leaves every output the same and costs 2x to 1000x:
 
 | Change | Why it is slow |
 |---|---|
@@ -91,11 +72,11 @@ Each of these leaves every output the same and costs 2x to 1000x:
 | a linear search for a binary one | $O(n)$ instead of $O(\log n)$ |
 | a defensive copy | an $O(n)$ `malloc` and `memcpy` around an $O(\log n)$ search |
 
-"Tiling disabled" (the whole matrix as one tile) is the textbook regression, and on a machine whose cache holds the matrices it costs only 1.4x at $n = 256$. A perf fault is only a fault if it is slow on the machine that runs the gate; measure before you plant one.
+"Tiling disabled" (the whole matrix as one tile) is the textbook regression, yet on a machine whose cache holds the matrices it costs only 1.4x at $n = 256$. A perf fault is only a fault if it is slow on the machine that runs the gate; measure before you plant one.
 
-## 3. Worked example by hand
+## Working it by hand
 
-A gate with $\beta = 0.25$ on one metric:
+Take a gate with $\beta = 0.25$ on one metric and four heads against the same base:
 
 | Base $\hat t$ | Head $\hat t$ | $\Delta = t_h / t_b - 1$ | $t_h > t_b (1 + \beta)$? | Verdict |
 |---|---|---|---|---|
@@ -104,13 +85,13 @@ A gate with $\beta = 0.25$ on one metric:
 | 8.0 ms | 10.0 ms | $+0.25$ | $10.0 > 10.0$: no | ok: the bound is inclusive |
 | 8.0 ms | 10.01 ms | $+0.25125$ | yes | regressed |
 
-And why the minimum: five repetitions of one build give 8.0, 8.1, 12.7 (a background job), 8.0, 8.3 ms. The mean is 9.02 ms, 13% above the work; the minimum is 8.0 ms. Compare a head whose five runs give 8.2, 8.1, 8.4, 8.2, 8.3 ms: by means, $8.24 / 9.02 - 1 = -9\%$, so the noisy base made the head look faster; by minima, $8.1 / 8.0 - 1 = +1.3\%$.
+Now see why the minimum matters. Five repetitions of one build give 8.0, 8.1, 12.7 (a background job), 8.0, 8.3 ms. The mean is 9.02 ms, 13% above the work; the minimum is 8.0 ms. Compare a head whose five runs give 8.2, 8.1, 8.4, 8.2, 8.3 ms. By means, $8.24 / 9.02 - 1 = -9\%$, so the noisy base made the head look faster; by minima, $8.1 / 8.0 - 1 = +1.3\%$.
 
-The gate's `regressed` must reproduce the first four rows exactly.
+The gate's `regressed` must reproduce the four rows of the table exactly.
 
-## 4. The artifacts
+## The artifacts and their interfaces
 
-**The kata**, `primers/craft.06/kernels.c` (spec in `kernels.h`), float32, plain C11:
+The kata, `primers/craft.06/kernels.c`, is float32, plain C11, with its spec in `kernels.h`:
 
 ```c
 void  kata_matmul(const float *A, const float *B, float *C, int n);   /* C = A @ B, n x n: loop order i, k, j, tiled over k and j */
@@ -119,9 +100,9 @@ void  kata_rmsnorm(const float *x, const float *w, float *y, int rows, int d, fl
 int   kata_count_below(const float *sorted, int n, float t);           /* binary search: entries < t */
 ```
 
-**The benchmark**, `primers/craft.06/bench.c`: includes `"kernels.h"` and `"ol_bench.h"`, times every kata kernel with `ol_bench_best`, and ends with `ol_bench_done()`, so its last line is `{"matmul_ns": ..., "sum_ns": ..., "rmsnorm_ns": ..., "count_below_ns": ...}` (lower is better). Fixed inputs only.
+The benchmark, `primers/craft.06/bench.c`, includes `"kernels.h"` and `"ol_bench.h"`, times every kata kernel with `ol_bench_best`, and ends with `ol_bench_done()`, so its last line is `{"matmul_ns": ..., "sum_ns": ..., "rmsnorm_ns": ..., "count_below_ns": ...}` (lower is better). It uses fixed inputs only.
 
-**The budget**, `primers/craft.06/budget.toml`:
+The budget, `primers/craft.06/budget.toml`, gives the run count and one fraction per metric:
 
 ```toml
 runs = 3            # alternating runs per side; each side keeps its best
@@ -132,40 +113,40 @@ rmsnorm_ns = 0.30
 count_below_ns = 0.50
 ```
 
-**The gate**, `primers/craft.06/gate.py` (Python standard library only):
+The gate, `primers/craft.06/gate.py`, uses the Python standard library only:
 
 ```
 python3 gate.py --base BASE.c --head HEAD.c [--include DIR] [--runs N]
 ```
 
-It builds `bench.c` (next to `gate.py`) against each `kernels.c` with `cc -std=c11 -O2` and `-I` for the gate's own directory (`kernels.h`) and each `--include` (`ol_bench.h`), runs base and head alternately `runs` times, keeps each side's minimum per metric, and prints a table and a final JSON line. It defines `regressed(base, head, max_regression) -> bool` (head more than `max_regression` slower). Exit 0 when nothing regresses, 1 when something does, 2 when it cannot decide (a build failure, a crash, a metric missing). Every build and benchmark starts in its own process group with a timeout, so a hung benchmark cannot hang CI.
+It builds `bench.c` (next to `gate.py`) against each `kernels.c` with `cc -std=c11 -O2` and `-I` for the gate's own directory (`kernels.h`) and each `--include` (`ol_bench.h`), runs base and head alternately `runs` times, keeps each side's minimum per metric, and prints a table and a final JSON line. It defines `regressed(base, head, max_regression) -> bool` (head more than `max_regression` slower). It exits 0 when nothing regresses, 1 when something does, and 2 when it cannot decide (a build failure, a crash, a metric missing). Every build and benchmark starts in its own process group with a timeout, so a hung benchmark cannot hang CI.
 
-### What a correct solution must handle
+A correct solution must handle six cases, each for a reason that matters downstream:
 
 | Case | Kind of check | Why it matters downstream |
 |---|---|---|
-| the four hand rows of section 3 on `regressed` | unit | the inclusive bound is the contract every later gate inherits |
+| the four hand rows on `regressed` | unit | the inclusive bound is the contract every later gate inherits |
 | `bench.c` uses `ol_bench.h`, times all four kernels, no `rand()`; `budget.toml` has `runs` of at least 2 and a fraction in $(0, 1)$ per kernel | unit | a benchmark with random inputs or a missing metric cannot gate anything |
 | the kata agrees with the plain kernels on awkward sizes (not multiples of the tile) | golden | a fast kernel that is wrong is worthless; the tile edges are where it goes wrong |
 | the kata as base and head: exit 0, twice in a row | conformance | a gate that fails a change against itself gets switched off |
 | a candidate kata as head against the reference as base: exit 0 | unit | the fast version really is fast on this machine |
 | ten planted slowdowns as head: exit 1 on at least 9, always on loop order, narrow tiles, one accumulator, linear search | fault | the gate catches what unit tests cannot |
 
-## 5. The solution, step by step
+## Building it step by step
 
-### 5.1 From first principles
+Seven facts force the design.
 
-1. **A timing is work plus non-negative noise.** So the best estimate of the work is the smallest observation, not the mean (section 3: 8.0 ms versus 9.02 ms). This forces `min` everywhere: in `ol_bench_best` across repetitions and in the gate across alternating runs.
+1. **A timing is work plus non-negative noise.** So the best estimate of the work is the smallest observation, not the mean (8.0 ms versus 9.02 ms in the worked example). This forces `min` everywhere: in `ol_bench_best` across repetitions and in the gate across alternating runs.
 2. **One call can be shorter than the timer's resolution.** So each repetition loops the call until at least `min_s` seconds pass and divides by the count. This forces a per-call metric (nanoseconds per call), which is also what makes base and head comparable regardless of how many calls each repetition made.
 3. **The compiler is allowed to delete unused work.** So every result is written to a `volatile` sink. Without it, every version is "fast" and every planted slowdown survives.
-4. **Absolute numbers vary by machine; ratios on one machine within seconds do not.** So the gate builds both versions now and alternates them, and compares $t_h / t_b$. That forces the gate to own the build (it must compile both `kernels.c` files against the same `bench.c`) rather than read a stored number.
-5. **The budget must separate two distributions:** identical builds ($\lvert\Delta\rvert \lesssim 0.1$) and the smallest real regression ($\Delta = 1.0$, work done twice). Any $\beta$ between them works; $0.3$ leaves room on both sides. The noisiest metric (a microsecond-scale search) gets $0.5$, still far below $1.0$.
-6. **A gate that cannot decide must say so.** A build failure or a crash is neither "ok" nor "regressed", so it gets its own exit code (2). Otherwise a broken head would read as "not slower" and pass, or a flaky machine as a regression.
+4. **Absolute numbers vary by machine; ratios on one machine within seconds do not.** So the gate builds both versions now, alternates them, and compares $t_h / t_b$. That forces the gate to own the build (it must compile both `kernels.c` files against the same `bench.c`) rather than read a stored number.
+5. **The budget must separate two distributions**: identical builds ($\lvert\Delta\rvert \lesssim 0.1$) and the smallest real regression ($\Delta = 1.0$, work done twice). Any $\beta$ between them works; $0.3$ leaves room on both sides. The noisiest metric (a microsecond-scale search) gets $0.5$, still far below $1.0$.
+6. **A gate that cannot decide must say so.** A build failure or a crash is neither "ok" nor "regressed," so it gets its own exit code (2). Otherwise a broken head would read as "not slower" and pass, or a flaky machine as a regression.
 7. **A hung benchmark (an infinite loop in head) must not hang CI.** So each subprocess runs in its own session with a timeout, and the whole process group is killed, which also gets any children.
 
-### 5.2 The code, annotated
+### The kernels
 
-**The kernels.** Each fast kernel is fast for one reason, and the planted slowdowns each remove exactly that reason.
+Each fast kernel is fast for one reason, and the planted slowdowns each remove exactly that reason. The matmul comes first:
 
 ```c
 /* Tile sizes for kata_matmul: a BK x BJ block of B (64 x 256 floats, 64 KiB)
@@ -194,7 +175,9 @@ void kata_matmul(const float *A, const float *B, float *C, int n) {
 }
 ```
 
-The inner loop is an axpy over a row of $B$ and a row of $C$: unit stride, no reduction, so no float reassociation is needed to vectorize it. That is why loop order $i, k, j$ beats $i, j, k$ (whose inner loop is a dot product down a column of $B$). The fixed `BJ` trip count and `restrict` are what make gcc vectorize; shrink the tile to 2 columns and the vector loop disappears. The ragged-edge branch exists only for $n$ not a multiple of 256, which is exactly where the golden check with awkward sizes looks.
+The inner loop is an axpy over a row of $B$ and a row of $C$: unit stride, no reduction, so no float reassociation is needed to vectorize it. That is why loop order $i, k, j$ beats $i, j, k$, whose inner loop is a dot product down a column of $B$. The fixed `BJ` trip count and `restrict` are what make gcc vectorize; shrink the tile to 2 columns and the vector loop disappears. The ragged-edge branch exists only for $n$ not a multiple of 256, which is exactly where the golden check with awkward sizes looks.
+
+The sum is fast because its source breaks the dependency chain:
 
 ```c
 float kata_sum(const float *x, int n) {
@@ -207,7 +190,9 @@ float kata_sum(const float *x, int n) {
 }
 ```
 
-The compiler may not turn one accumulator into eight, because float addition is not associative; the source has to. The fixed combination tree makes the result the same on every run. `kata_rmsnorm` reuses the same eight-way sum for $\sum x^2$, computes `inv = 1.0f / sqrtf(ss / d + eps)` once per row, and then does one multiply pass: the $O(d^2)$ slowdown is recomputing that mean square inside the output loop.
+The compiler may not turn one accumulator into eight, because float addition is not associative; the source has to. The fixed combination tree makes the result the same on every run. `kata_rmsnorm` reuses the same eight-way sum for $\sum x^2$, computes `inv = 1.0f / sqrtf(ss / d + eps)` once per row, and then does one multiply pass; the $O(d^2)$ slowdown is recomputing that mean square inside the output loop.
+
+The search is fast because it is logarithmic and touches nothing else:
 
 ```c
 int kata_count_below(const float *sorted, int n, float t) {
@@ -223,11 +208,11 @@ int kata_count_below(const float *sorted, int n, float t) {
 }
 ```
 
-$O(\log n)$ and touches no memory but `sorted`; a linear scan is 800x slower at $n = 2^{18}$, and a defensive copy adds an $O(n)$ `malloc` and `memcpy` per query.
+It is $O(\log n)$ and touches no memory but `sorted`. A linear scan is 800x slower at $n = 2^{18}$, and a defensive copy adds an $O(n)$ `malloc` and `memcpy` per query. The full kata is [`kernels.c`](../../../../course/solutions/primers/craft.06/kernels.c).
 
-Full kata: [`kernels.c`](../../../../course/solutions/primers/craft.06/kernels.c).
+### The benchmark
 
-**The benchmark.** One program, built against whichever `kernels.c` the gate hands it.
+The benchmark is one program, built against whichever `kernels.c` the gate hands it:
 
 ```c
 /* ol_bench.h comes first: it defines _POSIX_C_SOURCE for clock_gettime, and
@@ -265,15 +250,19 @@ int main(void) {
 }
 ```
 
-The include order comment records a real portability bug: under `-std=c11`, a `_POSIX_C_SOURCE` defined after another system header leaves `CLOCK_MONOTONIC` undeclared on Linux. Full benchmark: [`bench.c`](../../../../course/solutions/primers/craft.06/bench.c).
+The include-order comment records a real portability bug: under `-std=c11`, a `_POSIX_C_SOURCE` defined after another system header leaves `CLOCK_MONOTONIC` undeclared on Linux. The full benchmark is [`bench.c`](../../../../course/solutions/primers/craft.06/bench.c).
 
-**The gate.** The decision is one line; everything else is making the measurement trustworthy.
+### The gate
+
+In the gate, the decision is one line; everything else is making the measurement trustworthy.
 
 ```python
 def regressed(base: float, head: float, max_regression: float) -> bool:
     """True when head is more than max_regression slower than base."""
-    return head > base * (1.0 + max_regression)   # strict >: Delta == budget is ok (section 3, row 3)
+    return head > base * (1.0 + max_regression)   # strict >: Delta == budget is ok (worked example, row 3)
 ```
+
+Running a subprocess safely is the second piece:
 
 ```python
 def run(cmd: list[str], timeout: float = 120) -> tuple[int, str]:
@@ -289,7 +278,7 @@ def run(cmd: list[str], timeout: float = 120) -> tuple[int, str]:
     return p.returncode, out
 ```
 
-`build` compiles `bench.c` plus the given `kernels.c` with `cc -std=c11 -O2 -I<gate dir> -I<each include>` (and `-lm` except on macOS) and raises `RuntimeError` on failure. `metrics` runs the executable and parses the last line that starts with `{`, raising if the program exits non-zero or prints no JSON.
+`build` compiles `bench.c` plus the given `kernels.c` with `cc -std=c11 -O2 -I<gate dir> -I<each include>` (and `-lm` except on macOS) and raises `RuntimeError` on failure. `metrics` runs the executable and parses the last line that starts with `{`, raising if the program exits non-zero or prints no JSON. `main` ties them together:
 
 ```python
 def main(argv: list[str] | None = None) -> int:
@@ -323,34 +312,27 @@ def main(argv: list[str] | None = None) -> int:
     return 1 if bad else 0
 ```
 
-Iterating over the budget rather than over what the benchmark printed means a metric nobody budgeted is ignored, and a budgeted metric the benchmark dropped is an error (exit 2), not a silent pass. Full gate: [`gate.py`](../../../../course/solutions/primers/craft.06/gate.py).
+Iterating over the budget rather than over what the benchmark printed means a metric nobody budgeted is ignored, and a budgeted metric the benchmark dropped is an error (exit 2), not a silent pass. The full gate is [`gate.py`](../../../../course/solutions/primers/craft.06/gate.py).
 
-### 5.3 Why this solution
+## Why this design
 
-- **Cost.** The gate does two builds and $2 \cdot \text{runs}$ benchmark executions; each execution is $4 \times 5$ repetitions of at least 20 ms, so about 0.4 s plus the warm-ups. Three runs per side is a few seconds: cheap enough for every pull request.
-- **Minimum versus mean or median.** The mean absorbs outliers (section 3). The median is robust but still biased upward by sustained noise; with one-sided noise the minimum is the estimator closest to the work. Its weakness is that it hides variance a user would feel (tail latency), which is why serving benchmarks in Pass 7 report percentiles, not minima.
-- **Paired comparison versus stored baselines.** A stored baseline needs a pinned machine and recalibration; the paired run needs neither, at the cost of building and running base on every check.
-- **Times versus instruction counts.** Counting instructions (Cachegrind) is deterministic but blind to the cache and vectorization effects that most of these slowdowns are about.
-- **A significance test.** `benchstat` tests whether the two samples differ. With three runs per side a test has little power; a fixed budget between the noise floor and 2x is simpler and, for these gross regressions, just as reliable. The accepted tradeoff is that slowdowns smaller than 30% pass.
+The gate is cheap. It does two builds and $2 \cdot \text{runs}$ benchmark executions; each execution is $4 \times 5$ repetitions of at least 20 ms, so about 0.4 s plus the warm-ups. Three runs per side is a few seconds: cheap enough for every pull request.
 
-### 5.4 Explain it back
+The minimum beats the mean or median. The mean absorbs outliers, as the worked example showed. The median is robust but still biased upward by sustained noise; with one-sided noise the minimum is the estimator closest to the work. Its weakness is that it hides variance a user would feel (tail latency), which is why the serving benchmarks of [Open-loop load generator](../../build-an-llm/p10-serving/10-load-generator.md) report percentiles, not minima.
 
-1. Why is the bound `head > base * (1 + budget)` strict, and what would change if it were `>=`?
-   <details><summary>Answer</summary>A change of exactly the budget is allowed by definition (section 3, row 3). With `>=`, a head measured at exactly the boundary would fail, which only matters at the boundary, but the contract says "at most 30% slower" and the code should mean that.</details>
-2. Why does the gate alternate base, head, base, head instead of running all base runs first?
-   <details><summary>Answer</summary>Machine drift (thermal throttling, a background job starting) is correlated in time. Interleaving spreads it over both sides, so it cancels in the ratio; running base first would charge all of a late slowdown to head.</details>
-3. What happens if a planted slowdown makes `bench.c` crash or never finish, and why is that the right outcome?
-   <details><summary>Answer</summary>A crash raises in `metrics`, a hang is killed by `run`'s timeout (exit 124, then a raise); both make `main` return 2. The gate cannot say "slower" for something it could not measure, and it must not say "ok". CI treats 2 as a failure that needs a human.</details>
-4. Why does `kata_sum` need eight partial sums in the source when `-O2` vectorizes integer sums on its own?
-   <details><summary>Answer</summary>Float addition is not associative, so the compiler may not reorder a single accumulator's chain into vector lanes (without `-ffast-math`). Writing eight independent sums gives it permission, and a fixed combination tree keeps the result deterministic.</details>
-5. Why would a budget of 1.0 miss the "work done twice" slowdown?
-   <details><summary>Answer</summary>Doubled work gives $\Delta = +1.0$, and the gate fails only when $\Delta > \beta$. With $\beta = 1.0$, $+1.0$ is not more than $1.0$, so it passes. The budget must be well below 1.0 to catch the smallest real regression.</details>
+A paired comparison beats a stored baseline. A stored baseline needs a pinned machine and recalibration; the paired run needs neither, at the cost of building and running base on every check.
 
-## 6. Pitfalls
+Times beat instruction counts for this job. Counting instructions (Cachegrind) is deterministic but blind to the cache and vectorization effects that most of these slowdowns are about.
+
+A fixed budget replaces a significance test. `benchstat` tests whether the two samples differ, but with three runs per side a test has little power; a fixed budget between the noise floor and 2x is simpler and, for these gross regressions, just as reliable. The accepted tradeoff is that slowdowns smaller than 30% pass.
+
+## What can go wrong
+
+The first eight rows are the planted slowdowns; the last four are mistakes in the benchmark or gate:
 
 | Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. the matmul loop order $i, j, k$ | 14x slower, same values | loop order $i, k, j$: the inner loop is a unit-stride axpy (5.2) |
+| 1. the matmul loop order $i, j, k$ | 14x slower, same values | loop order $i, k, j$: the inner loop is a unit-stride axpy |
 | 2. tiles too narrow to vectorize | 24x slower, same values | `BJ = 256` with a fixed-trip `axpy_tile` and `restrict` |
 | 3. the work done twice | exactly 2x: a budget of 1.0 or more lets it through | budgets of 0.30 and 0.50, far below 1.0 (step 5) |
 | 4. one accumulator | 4x to 7x slower sums | eight partial sums in `kata_sum` and `kata_rmsnorm` |
@@ -363,22 +345,60 @@ Iterating over the budget rather than over what the benchmark printed means a me
 | a budget below the noise | the gate fails a kata against itself | 0.30, three times the observed noise |
 | comparing with a number stored on another machine | the gate passes or fails by machine, not by change | base and head are built and run here, now, alternately |
 
-## 7. Where it's used next
+> **Warning:** A gate that fails a change against itself will be switched off within a week. Always run the kata as both base and head, twice, before trusting the budget.
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `craft.03` | grading tests by planted faults, baselines A and B |
-| Back | `craft.05` | a fast kernel is checked for values first (the golden check on awkward sizes) |
-| Back | `L9.1` | loop order and tiling, the kata's matmul |
-| Forward | `L9.7` | the backend's tests guard speed as well as values, with the same gate |
-| Forward | `L10.1` | criterion benchmarks of the Rust runner behind the same kind of gate |
-| Forward | `ops.07` | a perf-regression drill: a seeded slowdown, found by bisecting with this gate |
+## Where this leads
 
-## Going further
+This section reused grading by planted faults from [TDD, unit tests, and mutation testing](01-tdd-unit-tests-and-mutation-grading.md), the values-first rule from [Oracles, golden and differential tests, gradcheck as a test](03-oracles-golden-and-gradcheck.md), and loop order and tiling from [Cache-blocked, packed, batch-invariant matmul](../../build-an-llm/p09-kernels/04-tiled-batch-invariant-matmul.md). The same gate carries forward. The [kernels chapter](../../build-an-llm/p09-kernels/README.md)'s backend tests guard speed as well as values; the Rust runner of [Candle model runner](../../build-an-llm/p10-serving/01-model-runner-and-sampler.md) has criterion benchmarks behind the same kind of gate; and [A performance regression bisect](../../systems/05-incident-response-and-chaos/07-performance-regression.md) in *Systems and Architecture* plants a slowdown and finds it by bisecting with this gate.
 
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `ol_bench_best` | Google Benchmark, criterion.rs, Go `testing.B` | automatic iteration counts, statistics (confidence intervals, outlier classes) | criterion.rs user guide, "Analysis Process" |
-| `gate.py` base-versus-head | `benchstat`, Bencher, CodSpeed | significance tests over many runs, history dashboards | `golang.org/x/perf/cmd/benchstat` |
-| fixed-machine noise control | instruction counting with `perf stat`, Cachegrind | counts instead of times: deterministic, but blind to cache effects | CodSpeed's instrumentation mode; Valgrind Cachegrind manual |
-| planted slowdowns | performance mutation testing (Delgado-Pérez et al., 2021), regression bisection | mutation operators designed to cost time, not change values; bisection finds which commit made it slow | `git bisect run` with the gate as the test |
+Each piece has a production equivalent that adds more:
+
+- `ol_bench_best` corresponds to Google Benchmark, criterion.rs, and Go's `testing.B`, which add automatic iteration counts and statistics such as confidence intervals and outlier classes (criterion.rs user guide, "Analysis Process").
+- The base-versus-head `gate.py` corresponds to `benchstat`, Bencher, and CodSpeed, which add significance tests over many runs and history dashboards (`golang.org/x/perf/cmd/benchstat`).
+- Fixed-machine noise control has an alternative in instruction counting with `perf stat` or Cachegrind: deterministic counts instead of times, but blind to cache effects (CodSpeed's instrumentation mode; the Valgrind Cachegrind manual).
+- Planted slowdowns correspond to performance mutation testing (Delgado-Pérez et al., 2021) and regression bisection: mutation operators designed to cost time rather than change values, and bisection to find which commit made it slow (`git bisect run` with the gate as the test).
+
+### Further reading
+
+- Brendan Gregg, *Systems Performance*, 2nd ed., ch. 12, "Benchmarking."
+- Georges, Buytaert, Eeckhout, "Statistically Rigorous Java Performance Evaluation" (OOPSLA 2007).
+- Chen and Revels, "Robust benchmarking in noisy environments" (2016).
+
+## Key terms
+
+- **Benchmark**: a measurement of time per call with fixed inputs, a warm-up, repetitions, and a stated estimator.
+- **Minimum estimator**: the smallest repetition's time, the best estimate of the work when noise only adds time.
+- **Perf gate**: a check that fails a change when head is slower than base by more than the budget.
+- **Budget**: the largest allowed fractional slowdown $\beta$ of a metric.
+- **Paired comparison**: building and running base and head alternately on the same machine, so machine speed cancels in the ratio.
+- **Sink**: a `volatile` variable that receives a benchmark's result so the compiler cannot delete the work.
+
+## Summary
+
+- A benchmark is a measurement with a stated error: fixed inputs, a warm-up, repetitions, and the minimum of the repetitions, because noise only ever makes a run slower.
+- A perf gate compares base and head on the same machine, alternately, within seconds, so it needs no stored numbers and no calibration, and a slow laptop and a fast CI runner give the same verdict.
+- The budget is a fraction (head at most 30% slower than base) that must sit above the noise and well below a real regression.
+- The slowdowns that matter keep the answer right: loop order, tiles too small to vectorize, one accumulator, duplicated work, a linear search, a defensive copy. Only a timing test catches them.
+- A good gate fails at least 9 of 10 planted slowdowns, always the gross ones, and never fails a kata against itself.
+
+## Review questions
+
+1. Why is the bound `head > base * (1 + budget)` strict, and what would change if it were `>=`?
+
+   <details><summary>Answer</summary>A change of exactly the budget is allowed by definition (row 3 of the worked example). With `>=`, a head measured at exactly the boundary would fail, which only matters at the boundary, but the contract says "at most 30% slower" and the code should mean that.</details>
+
+2. Why does the gate alternate base, head, base, head instead of running all base runs first?
+
+   <details><summary>Answer</summary>Machine drift (thermal throttling, a background job starting) is correlated in time. Interleaving spreads it over both sides, so it cancels in the ratio; running base first would charge all of a late slowdown to head.</details>
+
+3. What happens if a planted slowdown makes `bench.c` crash or never finish, and why is that the right outcome?
+
+   <details><summary>Answer</summary>A crash raises in `metrics`, a hang is killed by `run`'s timeout (exit 124, then a raise); both make `main` return 2. The gate cannot say "slower" for something it could not measure, and it must not say "ok". CI treats 2 as a failure that needs a human.</details>
+
+4. Why does `kata_sum` need eight partial sums in the source when `-O2` vectorizes integer sums on its own?
+
+   <details><summary>Answer</summary>Float addition is not associative, so the compiler may not reorder a single accumulator's chain into vector lanes (without `-ffast-math`). Writing eight independent sums gives it permission, and a fixed combination tree keeps the result deterministic.</details>
+
+5. Why would a budget of 1.0 miss the "work done twice" slowdown?
+
+   <details><summary>Answer</summary>Doubled work gives $\Delta = +1.0$, and the gate fails only when $\Delta > \beta$. With $\beta = 1.0$, $+1.0$ is not more than $1.0$, so it passes. The budget must be well below 1.0 to catch the smallest real regression.</details>

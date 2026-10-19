@@ -1,63 +1,54 @@
 # Cloud Native
 
-## Overview
+Cloud-native applications are designed to exploit cloud infrastructure: they are containerized, dynamically orchestrated, and oriented around services. The key shift is in the question you ask. Instead of "how do I keep this server running?", you ask "how do I make the system resilient when servers fail?" That means designing for failure, automation, and horizontal scaling from the start rather than bolting them on later.
 
-- **Primary reference**: *Cloud Native DevOps with Kubernetes* 2nd ed. (recommended)
-- **Supplementary**: [Kubernetes docs](https://kubernetes.io/docs/) (free), [The Twelve-Factor App](https://12factor.net/) (free)
-- **Prerequisites**: Linux basics, containers concept
-- **Estimated time**: 3-4 weeks at 8-10 hrs/week
+This chapter builds the vocabulary from the bottom up. It starts with containers and images, moves to the Kubernetes objects that run them and the reconciliation model behind those objects, then to packaging and deployment with Helm, GitOps, and CI/CD pipelines, and finally to the networking and resilience patterns that keep a distributed system standing. Kubernetes is the orchestration standard, but understanding the concepts matters far more than memorizing YAML, and the Twelve-Factor App principles apply whether you run on Kubernetes, ECS, or bare metal.
 
-## Key Takeaways
+> **Learning objectives**
+> - Build small, secure container images and explain the build/run separation.
+> - Describe the core and advanced Kubernetes objects and the desired-state reconciliation model.
+> - Explain how Helm and GitOps make deployments auditable, reviewable, and reversible.
+> - Compare canary, blue-green, and feature-flag release strategies.
+> - Apply circuit breakers, bulkheads, retries with backoff, sidecars, ambassadors, and the strangler fig to concrete failure problems.
 
-- Cloud native is about designing for failure, automation, and horizontal scaling from the start
-- Kubernetes is the orchestration standard, but understanding the concepts matters more than memorizing YAML
-- The Twelve-Factor App principles apply whether you use K8s, ECS, or bare metal
-- GitOps (declarative infrastructure in git) is the modern deployment standard
+## Before you begin
 
----
+You need Linux basics and the concept of a container. If containers are new to you, read [Containers and Kubernetes](../../programming-languages/02-language-and-tool-primers/07-containers-and-kubernetes.md) in *Programming Languages* first. For a hands-on treatment that deploys the system built across these books, see [Containers, Kubernetes, and Workloads](../../infrastructure/01-containers-kubernetes/README.md) in *Infrastructure*.
 
-# Concepts & Techniques
+## Containers
 
-## Core Insight
+A container **image** is a stack of immutable layers; a **container** is a running instance of an image; a **Dockerfile** holds the build instructions. Multi-stage builds keep the final image small by leaving build tools behind, and security scanning checks the result. Underneath this is a Twelve-Factor principle: strict separation between the build stage and the run stage.
 
-Cloud native applications are designed to exploit cloud infrastructure: they're containerized, dynamically orchestrated, and microservices-oriented. The key shift is from "how do I keep this server running" to "how do I make the system resilient when servers fail."
+A few practices pay for themselves every time. Run one process per container. Pin base image versions. Do not run as root. Use `.dockerignore`. And order layers deliberately, because layer ordering decides how often the build cache hits.
 
-## 1. Containers & Docker
+## Kubernetes fundamentals
 
-**Key ideas**: images (immutable layers), containers (running instances), Dockerfile (build instructions), multi-stage builds (smaller images), security scanning. **12-factor principle**: strict separation between build and run stages.
+A **Pod** is the smallest deployable unit. A **Deployment** declares a desired state for a set of Pods and performs rolling updates toward it. A **Service** gives Pods stable networking, as ClusterIP, NodePort, or LoadBalancer. **ConfigMaps** and **Secrets** externalize configuration, and **Namespaces** provide isolation.
 
-**Best practices**: one process per container, pin base image versions, don't run as root, use .dockerignore, layer ordering matters for cache hits.
+The mental model that ties these together is reconciliation: you declare the desired state in YAML, and the control plane continuously moves the actual state toward it. Every object above is a statement of what should be true, not a command to do something once.
 
-## 2. Kubernetes Fundamentals
+## Advanced Kubernetes
 
-**Key ideas**: Pods (smallest deployable unit), Deployments (declarative desired state, rolling updates), Services (stable networking, ClusterIP/NodePort/LoadBalancer), ConfigMaps & Secrets (externalized config), Namespaces (isolation).
+The same model extends to harder workloads. **StatefulSets** give Pods stable network identities, which databases need. **DaemonSets** run one Pod per node, for agents. **Jobs** and **CronJobs** handle batch and scheduled work. **RBAC** controls who can do what, and **Network Policies** act as a pod-to-pod firewall. Finally, **CRDs** and **Operators** extend Kubernetes itself with custom resources and the controllers that reconcile them.
 
-**Mental model**: you declare desired state (YAML), the control plane continuously reconciles actual state toward desired state.
+## Helm and GitOps
 
-## 3. Advanced Kubernetes
+**Helm charts** are templated Kubernetes manifests with versioned releases, configured through `values.yaml`. **GitOps** goes one step further: a tool such as ArgoCD or Flux watches a git repository and syncs the cluster to it, so git becomes the source of truth for infrastructure. The payoff is that infrastructure inherits git's workflow: an audit trail (`git log`), rollback (`git revert`), and review (pull requests for infrastructure changes). GitOps is the modern deployment standard for exactly this reason.
 
-**Key ideas**: StatefulSets (stable network identities for databases), DaemonSets (one pod per node for agents), Jobs/CronJobs (batch and scheduled work), RBAC (who can do what), Network Policies (pod-to-pod firewall), CRDs + Operators (extend K8s with custom resources and controllers).
+## CI/CD pipelines
 
-## 4. Helm & GitOps
+A pipeline, whether in GitHub Actions, GitLab CI, or Jenkins, runs the same sequence: build, test, scan, push the image, deploy. How the new version reaches users is a separate choice. A **canary** deployment routes a small percentage of traffic to the new version first. A **blue-green** deployment switches all traffic at once between two complete environments. **Feature flags** decouple deploying code from releasing behavior, so a deploy can ship dark and be turned on later.
 
-**Key ideas**: Helm charts (templated K8s manifests, versioned releases, values.yaml for config). GitOps: ArgoCD or Flux watches a git repo and syncs cluster state. Git becomes the source of truth for infrastructure.
+## Service mesh and networking
 
-**Why GitOps**: audit trail (git log), rollback (git revert), review (pull requests for infrastructure changes).
+A service mesh such as Istio or Linkerd puts a sidecar proxy next to each service. The proxies handle mTLS, traffic management, and observability with no code changes: service-to-service encryption, circuit breaking, traffic splitting, and distributed tracing. The cost is operational. On small clusters, or wherever the overhead exceeds the benefit, do not use one.
 
-## 5. CI/CD Pipelines
+## Cloud patterns
 
-**Key ideas**: GitHub Actions / GitLab CI / Jenkins. Build → test → scan → push image → deploy. Canary deployments (route small % of traffic to new version), blue-green (switch all traffic at once), feature flags (decouple deploy from release).
-
-## 6. Service Mesh & Networking
-
-**Key ideas**: Istio / Linkerd -- sidecar proxies handle mTLS, traffic management, observability. No code changes needed. Service-to-service encryption, circuit breaking, traffic splitting, distributed tracing.
-
-**When NOT to use**: small clusters, when the operational overhead exceeds the benefit.
-
-## 7. Cloud Patterns
+Most resilience problems in a distributed system have a named pattern. The following table pairs each problem with its pattern and the solution it applies.
 
 | Pattern | Problem | Solution |
-|---------|---------|----------|
+|---|---|---|
 | Circuit breaker | Cascading failures | Stop calling a failing service; fail fast |
 | Bulkhead | One component failure takes down everything | Isolate resources per component |
 | Retry with backoff | Transient failures | Retry with exponential backoff + jitter |
@@ -65,14 +56,26 @@ Cloud native applications are designed to exploit cloud infrastructure: they're 
 | Ambassador | Service discovery complexity | Local proxy handles routing |
 | Strangler fig | Migrating from monolith | Gradually route traffic to new service |
 
----
-
-## Company Relevance
+How large companies run their infrastructure shows these ideas at scale. The following table summarizes a few.
 
 | Company | Infrastructure | Focus |
-|---------|---------------|-------|
-| Google | GKE, Borg (predecessor to K8s) | K8s was literally built here |
+|---|---|---|
+| Google | GKE, Borg (predecessor to Kubernetes) | Kubernetes was built here |
 | Amazon | EKS, ECS, Lambda | Multi-orchestration, serverless |
 | Netflix | Spinnaker, Titus (custom on EC2) | Deployment tooling, resilience |
-| Anthropic | K8s + GPU orchestration | Inference serving at scale |
-| Stripe | K8s for backend services | Reliable deployments, zero downtime |
+| Anthropic | Kubernetes + GPU orchestration | Inference serving at scale |
+| Stripe | Kubernetes for backend services | Reliable deployments, zero downtime |
+
+## Summary
+
+- Cloud native means designing for failure, automation, and horizontal scaling from the start.
+- Kubernetes objects declare desired state; the control plane reconciles actual state toward it.
+- Helm packages manifests; GitOps makes git the source of truth, giving deployments an audit trail, rollback, and review.
+- Canaries, blue-green switches, and feature flags are different answers to how a new version reaches users.
+- Named cloud patterns (circuit breaker, bulkhead, retry with backoff, sidecar, ambassador, strangler fig) address specific failure problems.
+
+## Further reading
+
+- *Cloud Native DevOps with Kubernetes*, 2nd edition.
+- The [Kubernetes documentation](https://kubernetes.io/docs/) (free).
+- [The Twelve-Factor App](https://12factor.net/) (free).

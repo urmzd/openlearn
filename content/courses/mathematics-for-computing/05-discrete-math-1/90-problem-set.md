@@ -153,7 +153,7 @@ The problems follow the same order as the review: sets and logic, counting, proo
 
 <details><summary>Answer</summary>
 
-**(a).** The statement is $\forall i\ \exists j\ M_{ij} = 1$. Negating swaps each quantifier and negates the predicate: $\exists i\ \forall j\ M_{ij} = 0$, a row with no allowed key. That fully masked row is the NaN case of [Masks: causal, padding, sliding window, additive](../../build-an-llm/p05-transformer-2017/02-masks.md) and of [Stable numerics: logsumexp, softmax, compensated sums](../09-numerical-methods-and-floating-point/02-stable-numerics.md). A common mistake is (c), which negates only the inner predicate and describes any matrix with a single 0; (b) is much stronger than the negation.
+**(a).** The statement is $\forall i\ \exists j\ M_{ij} = 1$. Negating swaps each quantifier and negates the predicate: $\exists i\ \forall j\ M_{ij} = 0$, a row with no allowed key. That fully masked row is the NaN case of [Masks: causal, padding, sliding window, additive](../../build-an-llm/p05-transformer-2017/02-masks.md) and of [Stable numerics: logsumexp, softmax, and compensated sums](../09-numerical-methods-and-floating-point/02-stable-numerics.md). A common mistake is (c), which negates only the inner predicate and describes any matrix with a single 0; (b) is much stronger than the negation.
 
 </details>
 
@@ -567,7 +567,7 @@ Model proof also in [`q30.md`](../../../../course/solutions/solve/S-M05/q30.md).
 
 </details>
 
-**q36.** Prove: for any function $f: X \to Y$, the relation $x \sim y \iff f(x) = f(y)$ is an equivalence relation on $X$. (Unicode normalization in [Tokenizer protocol, char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md) is this relation with $f = \mathrm{NFC}$.) `[proof]`
+**q36.** Prove: for any function $f: X \to Y$, the relation $x \sim y \iff f(x) = f(y)$ is an equivalence relation on $X$. (Unicode normalization in [The tokenizer protocol and the char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md) is this relation with $f = \mathrm{NFC}$.) `[proof]`
 
 <details><summary>Answer</summary>
 
@@ -692,7 +692,7 @@ The tools of this set are used directly in code throughout the book and in *Buil
 - [Injective, surjective, bijective: the GPT-2 byte map](02-injective-surjective-bijective-gpt2-byte-map.md) implements the bijection of q41; a correct solution must be injective and surjective.
 - [Masks: causal, padding, sliding window, additive](../../build-an-llm/p05-transformer-2017/02-masks.md) combines causal and padding masks as sets (q4, q5).
 - [Softmax in C: three-pass and online two-pass](../../build-an-llm/p09-kernels/05-softmax-three-pass-and-online.md) is the online softmax kernel; q30 is its correctness argument.
-- [Tokenizer protocol, char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md) treats Unicode normalization as an equivalence relation (q36).
+- [The tokenizer protocol and the char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md) treats Unicode normalization as an equivalence relation (q36).
 - [The first discrete math 2 problem set](../06-discrete-math-2/90-problem-set-a.md) builds graphs, modular arithmetic, and hashing on these counting and proof tools.
 
 ### Further reading

@@ -1,23 +1,11 @@
-# Software Craftsmanship (3-4 weeks)
+# Study Plan
 
-~6-8 hours per week. Individual craft → organizational craft → the testing mentality that ties them together → the failure modes that show what happens without them.
+This book reads in two movements, and each wants a different pace. The first four chapters are principles: individual craft, organizational craft, the testing mentality that ties them together, and the failure modes that show what happens without them. At six to eight hours a week they take three to four weeks. The last four chapters are practice on the running system from *Build Your Own LLM System*, and they are best read at the pace of that system, alongside the [course path](../build-an-llm/paths/course/README.md), rather than on a calendar of their own.
 
-### Weeks 1-2: Pragmatic Programmer & SWE at Google
+Spend the first week with [The Pragmatic Programmer](01-pragmatic-programmer/README.md): its philosophy, DRY, orthogonality, reversibility, tracer bullets, and design by contract. The book it follows is best read cover to cover, since the chapters build on each other. After each topic, find one place in your own codebase where violating the principle cost you, and one change you could make this week.
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 1 | Pragmatic philosophy; DRY, orthogonality, reversibility, tracer bullets, design by contract | The Pragmatic Programmer |
-| 2 | HRT & culture, code review, Hyrum's Law, deprecation budgets, build/CI as leverage | SWE at Google |
+Give the second week to [Software Engineering at Google](02-swe-at-google/README.md): humility, respect, and trust as engineering culture, code review, Hyrum's Law, deprecation budgets, and build and CI as leverage. Unlike the first book, this one rewards selective reading, so follow the chapter's thread and dip into the source where a topic bites on your own work. Reading a chapter from each of the two books on the same day works well, because they complement each other: one is about you, the other about the organization around you.
 
-### Week 3: The Testing Mentality & Lessons from Practice
+The third week combines [The Testing Mentality](03-testing-mentality/README.md) and [Lessons from Practice](04-lessons-from-practice/README.md). Start with the test pyramid and the case for testing behavior rather than implementation, and for fakes over mocks. Then take one function that has only example-based tests and add a property-based test; watching it find an edge case you did not think of is the point of the exercise. Carry the same mentality into infrastructure, data, documentation, and diagrams, and spend a couple of days on canaries, synthetic monitoring, chaos experiment design, and SLOs. Finish the week with the postmortems: read the lessons on naming, data modeling, and reliability in small code first, then the ones on judgment, scope discipline, and evidence and closure, and audit one of your own repositories against the catalog.
 
-| Day | Focus | Reference |
-|-----|-------|-----------|
-| 1 | Test pyramid; test behavior not implementation; fakes > mocks | SWE at Google Ch 11-14 |
-| 2 | Property-based testing + fuzzing; add one property test | Hypothesis / proptest |
-| 3 | Testing infra, data, docs, diagrams (the mentality everywhere) | Conftest / dbt tests |
-| 4-5 | Canary, synthetic monitoring, chaos experiment design; SLOs | Principles of Chaos |
-| 6 | Naming, data modeling, reliability in small code (Themes 1-2) | Lessons from Practice |
-| 7 | Judgment signals, scope discipline, evidence and closure (Themes 3-5); audit one of your own repos against the catalog | Lessons from Practice |
-
----
+The practice chapters follow the system. [Code Review and CI](05-code-review-and-ci/README.md) comes first, right after the setup primers, because every later change passes through its gate; keep that gate strict from the first commit, since loosening it later is easy and tightening it means rewriting history. Its code-review section comes back once there is a serving platform worth reviewing. The course-system sections of The Testing Mentality are read as the components they test are built. [Releases and Deprecation](06-releases-and-deprecation/README.md), [Maintenance](07-maintenance/README.md), and [Security](08-security/README.md) belong to the operating phase, once the whole system runs: allow about a week for releases, two for maintenance (each of its sections pairs with an incident drill), and one to two for security.

@@ -4,7 +4,7 @@ Reverse mode buys its speed with memory. Consider the capstone of *Build Your Ow
 
 The same stage of training is where curvature questions come up. Is the learning rate past $2/\lambda_{\max}$, the stability limit of gradient descent? The tool for such questions is the Hessian-vector product, which gives you curvature along a direction without ever forming the Hessian. This section provides both pieces: `hvp_fd`, and the schedule functions the checkpointing code calls. The [Optimization](../10-optimization/README.md) chapter can then estimate the top Hessian eigenvalue with `hvp_fd` as an optional extension.
 
-Nothing here depends on earlier code, but the reading builds on [Matrix differentials, the trace trick, and closed-form VJPs](03-matrix-differentials-and-vjps.md) (its cross-entropy gradient is the one whose $Hv$ is compared with PyTorch), on the forward-versus-reverse cost counts of the [chapter problem set](90-problem-set.md), and on the Hessian and second-derivative test of [Jacobians, multivariable chain rule, numeric JVP/VJP](../04-calculus-3/02-jacobians-and-the-chain-rule.md). The complete implementation is [`hvp.py`](../../../../course/solutions/python/tinyllm/autograd/hvp.py), with its interface in the contract [`course/contracts/py/tinyllm/autograd/hvp.pyi`](../../../../course/contracts/py/tinyllm/autograd/hvp.pyi).
+Nothing here depends on earlier code, but the reading builds on [Matrix differentials, the trace trick, and closed-form VJPs](03-matrix-differentials-and-vjps.md) (its cross-entropy gradient is the one whose $Hv$ is compared with PyTorch), on the forward-versus-reverse cost counts of the [chapter problem set](90-problem-set.md), and on the Hessian and second-derivative test of [Jacobians, the multivariable chain rule, and numeric JVP/VJP](../04-calculus-3/02-jacobians-and-the-chain-rule.md). The complete implementation is [`hvp.py`](../../../../course/solutions/python/tinyllm/autograd/hvp.py), with its interface in the contract [`course/contracts/py/tinyllm/autograd/hvp.pyi`](../../../../course/contracts/py/tinyllm/autograd/hvp.pyi).
 
 > **Learning objectives**
 > - Derive the central-difference Hessian-vector product and its $O(\epsilon^2)$ error from a Taylor expansion of the gradient.
@@ -39,7 +39,7 @@ The key observation is that $Hv$ is a directional derivative of the gradient. Ta
 
 $$g(x + \epsilon v) = g(x) + \epsilon\, H v + \tfrac{\epsilon^2}{2} D^2 g(x)[v, v] + \tfrac{\epsilon^3}{6} D^3 g(x)[v, v, v] + O(\epsilon^4).$$
 
-The first-order term is $\epsilon H v$, so $Hv = \lim_{\epsilon \to 0} (g(x + \epsilon v) - g(x))/\epsilon$. That limit is a derivative, and derivatives can be taken numerically, as in [Derivative as a limit, finite differences, step-size choice](../01-calculus-1/01-derivatives-and-finite-differences.md).
+The first-order term is $\epsilon H v$, so $Hv = \lim_{\epsilon \to 0} (g(x + \epsilon v) - g(x))/\epsilon$. That limit is a derivative, and derivatives can be taken numerically, as in [Derivatives and Finite Differences](../01-calculus-1/01-derivatives-and-finite-differences.md).
 
 A central difference does much better than a one-sided one. Subtract the expansion at $-\epsilon$ from the one at $+\epsilon$: $g(x)$ and the $\epsilon^2$ term cancel, and
 
@@ -284,7 +284,7 @@ The pitfalls these tests catch:
 
 ## Where this leads
 
-Looking back, the cross-entropy VJP of [Matrix differentials, the trace trick, and closed-form VJPs](03-matrix-differentials-and-vjps.md), $X^\top(\mathrm{softmax} - \mathrm{onehot})/n$ for a linear model, is the gradient whose $Hv$ is compared with PyTorch; the forward-versus-reverse cost counts of the [chapter problem set](90-problem-set.md) are behind "two gradients per $Hv$"; and [Jacobians, multivariable chain rule, numeric JVP/VJP](../04-calculus-3/02-jacobians-and-the-chain-rule.md) supplies the Hessian and the second-derivative test.
+Looking back, the cross-entropy VJP of [Matrix differentials, the trace trick, and closed-form VJPs](03-matrix-differentials-and-vjps.md), $X^\top(\mathrm{softmax} - \mathrm{onehot})/n$ for a linear model, is the gradient whose $Hv$ is compared with PyTorch; the forward-versus-reverse cost counts of the [chapter problem set](90-problem-set.md) are behind "two gradients per $Hv$"; and [Jacobians, the multivariable chain rule, and numeric JVP/VJP](../04-calculus-3/02-jacobians-and-the-chain-rule.md) supplies the Hessian and the second-derivative test.
 
 Looking forward, `checkpoint_sequential` in [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](../../build-an-llm/p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md) runs the segments with `checkpoint_schedule` and recomputes them in backward, which is what lets the capstone train with checkpointing on a laptop. In the [Optimization](../10-optimization/README.md) chapter, an optional extension runs power iteration on `hvp_fd` to estimate $\lambda_{\max}$ and compare the learning rate with $2/\lambda_{\max}$.
 

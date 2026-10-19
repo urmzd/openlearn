@@ -245,7 +245,7 @@ The key steps are translating dependence into $Ac = 0$, counting pivots against 
 
 <details><summary>Answer</summary>
 
-**$\begin{pmatrix} 0 & -1 \\ 1 & 0 \end{pmatrix}$.** Column $j$ is the image of $e_j$: $e_1 = (1, 0) \mapsto (0, 1)$ and $e_2 = (0, 1) \mapsto (-1, 0)$. `rotate_pairs` in [Trig, unit circle, 2D rotations, complex numbers, Euler's formula](../00-precalculus/02-trig-rotations-and-eulers-formula.md) and [RoPE](../../build-an-llm/p07-modern-block/03-rope.md) in *Build Your Own LLM System* apply this matrix to pairs of coordinates. The transpose $\begin{pmatrix} 0 & 1 \\ -1 & 0 \end{pmatrix}$ rotates clockwise.
+**$\begin{pmatrix} 0 & -1 \\ 1 & 0 \end{pmatrix}$.** Column $j$ is the image of $e_j$: $e_1 = (1, 0) \mapsto (0, 1)$ and $e_2 = (0, 1) \mapsto (-1, 0)$. `rotate_pairs` in [Trigonometry, rotations, complex numbers, and Euler's formula](../00-precalculus/02-trig-rotations-and-eulers-formula.md) and [RoPE](../../build-an-llm/p07-modern-block/03-rope.md) in *Build Your Own LLM System* apply this matrix to pairs of coordinates. The transpose $\begin{pmatrix} 0 & 1 \\ -1 & 0 \end{pmatrix}$ rotates clockwise.
 
 </details>
 

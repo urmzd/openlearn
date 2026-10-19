@@ -1,107 +1,74 @@
 # System Design
 
-## Overview
+System design is about tradeoffs, not optimal solutions: every choice has costs, and the skill is in naming them. Almost every design problem reduces to three questions. What are the access patterns? What are the scale requirements? Which consistency and availability tradeoffs are acceptable? The answers to those three questions determine most of the architecture, and the rest of this chapter is about asking them well.
 
-- **Primary references**:
-  - *ByteByteGo System Design* (recommended purchase)
-  - *Designing Data-Intensive Applications* by Martin Kleppmann (recommended purchase -- the industry bible)
-  - [System Design Primer](https://github.com/donnemartin/system-design-primer) (free)
-- **Prerequisites**: [Algorithms](../../algorithms/)
-- **Estimated time**: 4-5 weeks at 8-10 hrs/week
+The chapter has two halves. This opening surveys the building blocks you combine to answer those questions: scaling, databases, distributed-systems primitives, messaging, and API design, followed by the classic design problems that exercise them. The three sections that follow put the building blocks to work on a real system. Each is a design review of the system built across these books, judged against the same eight-line rubric: first the serving platform, then the control plane, then the whole system. Every design starts with requirements (functional and non-functional) and back-of-envelope arithmetic, and the reviews show what that looks like when the arithmetic is wrong by a factor of sixteen.
 
-## Key Takeaways
+System design is also the interview topic asked at every Staff+ level, and those interviews test your ability to navigate ambiguity and make justified decisions rather than recall memorized architectures. The same is true of a real design review.
 
-- System design is about trade-offs, not optimal solutions -- every choice has costs
-- Start every design with requirements (functional + non-functional) and back-of-envelope math
-- The most important distributed systems concepts: CAP theorem, consistency models, and failure modes
-- Staff+ interviews test your ability to navigate ambiguity and make justified decisions, not memorize architectures
+> **Learning objectives**
+> - Choose between vertical and horizontal scaling, caching layers, and sharding schemes for a given access pattern.
+> - Explain CAP, replication topologies, partitioning, consensus, and distributed transactions, and when each applies.
+> - Pick a messaging model, an API style, a rate-limiting scheme, and a pagination strategy with stated tradeoffs.
+> - Write and review a design document against an eight-line rubric, with capacity and error-budget arithmetic.
+> - Trace failure modes across layers and back each detection with evidence.
 
-## How to Study
+## Before you begin
 
-- Study 2-3 classic design problems per week
-- For each problem: estimate scale first, then design, then discuss trade-offs
-- Practice explaining your design to someone in 15 minutes (interview format)
-- Read DDIA cover-to-cover for deep understanding of the building blocks
+The building blocks assume the data structures and analysis from *[Algorithms](../../algorithms/README.md)*. The design reviews additionally assume you know the system they review: the serving engine from *Build Your Own LLM System*, the gateway and durable control plane from *AI Platform Engineering*, and the deployment and observability from *Infrastructure* and the [Observability](../04-observability/README.md) chapter of this book. Each review lists exactly which sections it draws on.
 
----
+## Scaling
 
-# Concepts & Techniques
+There are two ways to add capacity. **Vertical scaling** means a bigger machine: simple, but it has a ceiling, and it is a good fit for databases. **Horizontal scaling** means more machines: more complex, but effectively unlimited, and a good fit for stateless services. Once you have more than one instance, a **load balancer** spreads traffic across them, using round-robin, least connections, or consistent hashing, at layer 4 (TCP) or layer 7 (HTTP).
 
-## Core Insight
+Caching sits at every level of the stack: browser, CDN, reverse proxy, application, database. Adding a cache is easy; cache invalidation is the hard part. A **CDN** serves static content from edge locations, either pulling from the origin on demand or having content pushed to it, and is controlled by `Cache-Control` headers. When a single database can no longer hold the data or the write load, you **shard** it, partitioning horizontally by range, by hash, or through a directory. Resharding later is painful, so the choice deserves care up front.
 
-Every system design problem reduces to: (1) what are the access patterns? (2) what are the scale requirements? (3) what consistency/availability trade-offs are acceptable? The answer to these three questions determines 90% of the architecture.
+All of this rests on back-of-envelope numbers you should know cold: QPS for common services (100K to 1M), storage per record (about 1 KB), monthly storage growth, and the read/write ratio.
 
-## 1. Scalability Fundamentals
+## Databases
 
-**Key ideas**:
-- **Vertical scaling**: bigger machine. Simple but has a ceiling. Good for databases.
-- **Horizontal scaling**: more machines. Complex but unlimited. Good for stateless services.
-- **Load balancing**: round-robin, least connections, consistent hashing. L4 (TCP) vs L7 (HTTP).
-- **Caching**: browser → CDN → reverse proxy → application → database. Cache invalidation is the hard part.
-- **CDN**: serve static content from edge locations. Pull vs push CDN. Cache-Control headers.
-- **Database sharding**: horizontal partitioning. Range-based, hash-based, directory-based. Resharding is painful.
+SQL databases give you ACID transactions, joins, and strong consistency; PostgreSQL is the default choice. NoSQL stores trade those for BASE semantics, eventual consistency, and horizontal scaling, and come in several shapes: key-value (DynamoDB), document (MongoDB), wide-column (Cassandra), and graph (Neo4j). The rule of thumb is SQL for transactions and complex queries, NoSQL for massive scale, flexible schemas, or specific access patterns.
 
-**Back-of-envelope**: know these numbers -- QPS for common services (100K-1M), storage per record (~1KB), monthly storage growth, read/write ratio.
+The **CAP theorem** frames the central tradeoff: during a network partition, you choose consistency (CP, refuse stale reads) or availability (AP, serve stale reads). You cannot have both. **Replication** comes in three topologies: single-leader (simple, one write path), multi-leader (for multiple data centers), and leaderless (Dynamo-style quorum reads and writes). **Partitioning** by range is good for scans but risks hot spots; partitioning by hash spreads load evenly but gives up range queries.
 
-## 2. Database Design
+## Distributed-systems primitives
 
-**Key ideas**:
-- **SQL**: ACID transactions, joins, strong consistency. PostgreSQL is the default choice.
-- **NoSQL**: BASE, eventual consistency, horizontal scaling. DynamoDB (K-V), MongoDB (document), Cassandra (wide-column), Neo4j (graph).
-- **CAP theorem**: in a network partition, choose Consistency (CP: refuse stale reads) or Availability (AP: serve stale reads). You can't have both.
-- **Replication**: single-leader (simple, one write path), multi-leader (multi-DC), leaderless (Dynamo-style quorum reads/writes).
-- **Partitioning**: range (good for scans, hot spots risk), hash (even distribution, no range queries).
-- **When to use what**: SQL for transactions and complex queries; NoSQL for massive scale, flexible schema, or specific access patterns.
+Beyond a single database, a handful of primitives recur. **Consensus** protocols guarantee agreement among nodes: Raft is the understandable one, Paxos the original, and they underlie etcd and ZooKeeper. **Distributed transactions** come in two styles: two-phase commit, which blocks and makes its coordinator a single point of failure, and sagas, which use compensating transactions and accept eventual consistency. **Vector clocks** and **Lamport timestamps** establish causal ordering without synchronized clocks. **Consistent hashing** distributes keys across nodes so that adding or removing a node remaps only about $K/N$ of the $K$ keys; DynamoDB and Cassandra use it. **Gossip protocols** propagate state epidemic-style until every node has it, as in Cassandra and SWIM.
 
-## 3. Distributed Systems Primitives
+## Messaging and events
 
-**Key ideas**:
-- **Consensus**: Raft (understandable) or Paxos (original). Guarantees agreement among nodes. Used by etcd, ZooKeeper.
-- **Distributed transactions**: 2PC (blocking, coordinator is SPOF), Saga (compensating transactions, eventual consistency).
-- **Vector clocks / Lamport timestamps**: establish causal ordering without synchronized clocks.
-- **Consistent hashing**: distribute keys across nodes; adding/removing a node only remaps K/N keys. Used by DynamoDB, Cassandra.
-- **Gossip protocol**: eventually propagate state across all nodes; epidemic-style. Used by Cassandra, SWIM.
+Message queues decouple producers from consumers. Kafka is log-based and ordered, RabbitMQ is a traditional broker with rich routing, and SQS is managed. Two patterns build on them. **Event sourcing** stores events rather than state and rebuilds state by replaying them, which gives you an audit log and time travel for free. **CQRS** separates the read and write models: writes go to an event store and are projected into read-optimized views. Exactly-once delivery is impossible in general; you achieve effectively-once processing with idempotent consumers plus deduplication, which is exactly the pattern the control-plane review checks.
 
-## 4. Messaging & Event Systems
+## API design
 
-**Key ideas**:
-- **Message queues**: decouple producers and consumers. Kafka (log-based, ordered), RabbitMQ (traditional, routing), SQS (managed).
-- **Event sourcing**: store events, not state. Rebuild state by replaying events. Enables audit log and time travel.
-- **CQRS**: separate read and write models. Write to event store, project to read-optimized views.
-- **Exactly-once semantics**: impossible in general; achieve effectively-once via idempotent consumers + deduplication.
+REST is resource-oriented, uses HTTP verbs, and is stateless; it suits CRUD but suffers from over-fetching and under-fetching. gRPC uses a binary protocol (protobuf) with streaming and strong typing, and suits internal service-to-service calls. GraphQL lets the client specify exactly the data it needs, which helps with complex nested data at the cost of complexity in server-side resolvers.
 
-## 5. API Design
+Three cross-cutting concerns apply to any style. **Rate limiting** uses a token bucket or a sliding window, keyed per user, per IP, or per API key, and returns 429 with a `Retry-After` header. **Idempotency** for POST uses an idempotency key, which is critical for payments: in Stripe's approach the client generates the key and the server deduplicates. **Pagination** should be cursor-based, which stays consistent under concurrent writes, rather than offset-based, which skips items when the data changes underneath it; keyset pagination is the database form.
 
-**Key ideas**:
-- **REST**: resource-oriented, HTTP verbs, stateless. Good for CRUD. Over-fetching/under-fetching problems.
-- **gRPC**: binary protocol (protobuf), streaming, strongly typed. Good for internal service-to-service.
-- **GraphQL**: client specifies exactly what data it needs. Good for complex, nested data. Complexity in server-side resolvers.
-- **Rate limiting**: token bucket, sliding window. Per-user, per-IP, per-API-key. Return 429 with Retry-After header.
-- **Idempotency**: POST with idempotency key. Critical for payment systems. Stripe's approach: client generates key, server deduplicates.
-- **Pagination**: cursor-based (consistent with concurrent writes) > offset-based (skips under mutation). Keyset pagination for databases.
+## Classic design problems
 
-## 6. Classic Design Problems
+The classic problems are worth studying two or three a week, each the same way: estimate scale first, then design, then discuss tradeoffs, and practice explaining the result in fifteen minutes. Each one stresses a different combination of the building blocks above.
 
-**URL shortener**: hash-based vs counter-based ID generation, base62 encoding, read-heavy caching, analytics pipeline.
+A **URL shortener** turns on hash-based versus counter-based ID generation, base62 encoding, read-heavy caching, and an analytics pipeline. A **chat system** such as WhatsApp needs WebSocket connections, a message queue per user, delivery receipts, a presence service, and end-to-end encryption. A **news feed** such as Twitter's uses fan-out on write (push) for users with few followers and fan-out on read (pull) for celebrities, and in practice a hybrid of the two. **Video streaming** such as YouTube needs an upload pipeline that transcodes to multiple resolutions, a CDN for delivery, and adaptive bitrate streaming (HLS or DASH). A **payment system** such as Stripe's depends on idempotency, exactly-once processing, a double-entry ledger, reconciliation, and PCI compliance. A **key-value store** combines consistent hashing, replication, quorum reads and writes, conflict resolution (last-writer-wins or vector clocks), and compaction. A **search engine** needs a crawler, an inverted index, ranking (TF-IDF, then PageRank, then learned models), query processing, and caching.
 
-**Chat system (WhatsApp)**: WebSocket connections, message queue per user, delivery receipts, presence service, end-to-end encryption.
+Different companies favor different problems, which tells you where their systems hurt. The following table summarizes the usual pattern.
 
-**News feed (Twitter)**: fan-out on write (push) for users with few followers, fan-out on read (pull) for celebrities. Hybrid approach.
+| Company | Favorite problems | Focus |
+|---|---|---|
+| Google | Distributed systems, search, Bigtable-style storage | Scale, consistency |
+| Amazon | E-commerce, inventory, microservices | Availability, partition tolerance |
+| Meta | Social graph, news feed, real-time messaging | Fan-out, caching |
+| Netflix | Streaming, recommendation, resilience | CDN, fault tolerance |
+| Stripe | Payment processing, ledger, API design | Correctness, idempotency |
+| Anthropic | ML inference serving, API rate limiting | GPU scheduling, latency |
+| Uber | Real-time dispatch, geospatial indexing | Low latency, high throughput |
 
-**Video streaming (YouTube)**: upload pipeline (transcode to multiple resolutions), CDN for delivery, adaptive bitrate streaming (HLS/DASH).
+## Choosing a building block
 
-**Payment system (Stripe)**: idempotency, exactly-once processing, ledger with double-entry bookkeeping, reconciliation, PCI compliance.
+Each building block solves one problem and introduces another. The following table pairs each with when to use it and what it costs.
 
-**Key-value store**: consistent hashing, replication, quorum reads/writes, conflict resolution (LWW or vector clocks), compaction.
-
-**Search engine**: web crawler, inverted index, ranking (TF-IDF → PageRank → ML), query processing, caching.
-
----
-
-## Technique Catalog
-
-| Building Block | Use When | Trade-off |
-|---------------|----------|-----------|
+| Building block | Use when | Tradeoff |
+|---|---|---|
 | Load balancer | Multiple instances of a service | Added latency, complexity |
 | Cache (Redis) | Read-heavy, latency-sensitive | Stale data, cache invalidation |
 | Message queue | Async processing, decoupling | Eventual consistency, ordering |
@@ -111,22 +78,14 @@ Every system design problem reduces to: (1) what are the access patterns? (2) wh
 | Consistent hashing | Distributed data partitioning | Uneven load with few nodes |
 | Consensus (Raft) | Distributed state machine | Latency, availability during partition |
 
-## Company Relevance
+## In this chapter
 
-| Company | Favorite Problems | Focus |
-|---------|------------------|-------|
-| Google | Distributed systems, search, bigtable-style storage | Scale, consistency |
-| Amazon | E-commerce, inventory, microservices | Availability, partition tolerance |
-| Meta | Social graph, news feed, real-time messaging | Fan-out, caching |
-| Netflix | Streaming, recommendation, resilience | CDN, fault tolerance |
-| Stripe | Payment processing, ledger, API design | Correctness, idempotency |
-| Anthropic | ML inference serving, API rate limiting | GPU scheduling, latency |
-| Uber | Real-time dispatch, geospatial indexing | Low latency, high throughput |
+1. [Design review: the tracer and the serving platform](01-design-review-tracer-and-serving-platform.md): the eight-line rubric, the capacity and error-budget arithmetic a serving design needs, six worked problems, and a model design document with its review.
+2. [Design review: the control plane](02-design-review-control-plane.md): what is persisted before each external effect, traced through a corpus build and an approved agent write, and a review that turns every missing answer into an owned note.
+3. [Design review: the whole system](03-design-review-whole-system.md): a request and a model release traced through every layer, with failure modes backed by drills and the cross-layer findings no single review owned.
 
-## Chapters
+## Further reading
 
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `review.01` | [Design review: tracer and serving platform](01-design-review-tracer-and-serving-platform.md) | proof | 7 |
-| 2 | `review.02` | [Design review: control plane](02-design-review-control-plane.md) | proof | 11 |
-| 3 | `review.03` | [Design review: the whole system](03-design-review-whole-system.md) | proof | 11 |
+- Martin Kleppmann, *Designing Data-Intensive Applications*: the deepest treatment of the building blocks, worth reading cover to cover.
+- *ByteByteGo System Design*, for worked interview-style problems.
+- The [System Design Primer](https://github.com/donnemartin/system-design-primer) (free).

@@ -39,7 +39,7 @@ It is the best **linear approximation** of $f$ near $x$: $f(x + \Delta) \approx 
 
 $$J_{:, j} \approx \frac{f(x + \epsilon e_j) - f(x - \epsilon e_j)}{(x_j + \epsilon) - (x_j - \epsilon)} ,$$
 
-which costs $2n$ evaluations of $f$ and divides by the step actually taken, as in [Derivative as a limit, finite differences, step-size choice](../01-calculus-1/01-derivatives-and-finite-differences.md).
+which costs $2n$ evaluations of $f$ and divides by the step actually taken, as in [Derivatives and Finite Differences](../01-calculus-1/01-derivatives-and-finite-differences.md).
 
 Three examples recur throughout the book. A linear map $f(x) = Ax$ has $J = A$ everywhere. An elementwise map like $\tanh$ has a diagonal Jacobian, $\operatorname{diag}(1 - \tanh^2 x)$, because output $i$ depends only on input $i$. Softmax, $p_i = e^{z_i}/\sum_k e^{z_k}$, couples everything: $\partial p_i / \partial z_j = p_i(\delta_{ij} - p_j)$, so $J = \operatorname{diag}(p) - pp^\top$, symmetric with columns summing to 0 (the probabilities always add to 1). [Matrix differentials, the trace trick, and closed-form VJPs](../08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md) derives that one by hand.
 
@@ -96,7 +96,7 @@ The cases a correct solution must handle, and why each matters later, are these:
 | Matrix-shaped $x$ | unit | $x$ of shape $(2, 3)$ gives $J$ of shape $(4, 6)$ in row-major columns; product shapes; shape errors | backward passes return gradients in the input's shape |
 | Linear map | golden | $J_{Ax} = A$ | matmul is every layer's first step |
 | Softmax | golden | $\operatorname{diag}(p) - pp^\top$, columns sum to 0 | chapter 8 derives this VJP by hand |
-| Elementwise map | golden | $J_{\tanh} = \operatorname{diag}(1 - \tanh^2)$; its VJP is elementwise | activation backward passes ([Activation functions and their derivatives](../01-calculus-1/03-activation-functions.md)) |
+| Elementwise map | golden | $J_{\tanh} = \operatorname{diag}(1 - \tanh^2)$; its VJP is elementwise | activation backward passes ([Activation Functions and Their Derivatives](../01-calculus-1/03-activation-functions.md)) |
 | Composition | differential | $J_{g \circ f} = J_g(f(x)) J_f(x)$ | the rule backpropagation applies |
 | Random $u$, $v$, $x$ | property | $Jv$, $u^\top J$, and $u^\top(Jv) = (u^\top J)v$ | forward and reverse oracles agree |
 | Tangent size | boundary | $J(10^6 v) = 10^6 Jv$, $J(10^{-6}v) = 10^{-6}Jv$, $J0 = 0$ | tangents of any size |

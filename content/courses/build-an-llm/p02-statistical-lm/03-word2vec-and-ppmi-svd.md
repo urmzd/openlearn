@@ -366,7 +366,7 @@ Each piece here has a production counterpart:
 | batched sparse SGD in numpy | word2vec.c and gensim | lock-free multi-threaded SGD (Hogwild) over the shared tables, a precomputed sigmoid table, a 100M-entry unigram table for negatives | `word2vec.c` (`TrainModelThread`), `gensim/models/word2vec_inner.pyx` |
 | word ids | fastText (Bojanowski et al. 2017) | vectors for character n-grams, so unseen and misspelled words get embeddings | `facebookresearch/fastText`, `src/fasttext.cc` |
 | PPMI-SVD | GloVe (Pennington et al. 2014) | a weighted least-squares fit to log co-occurrence counts | `stanfordnlp/GloVe`, `src/glove.c` |
-| static vectors | contextual embeddings ([ELMo](../p03-recurrent/05-elmo-bilm-scalarmix-probes.md), [BERT](../p06-objectives/02-bert-masked-lm.md)) | one vector per occurrence, not per word type | [BERT encoder and MLM masking](../p06-objectives/02-bert-masked-lm.md) in this book |
+| static vectors | contextual embeddings ([ELMo](../p03-recurrent/05-elmo-bilm-scalarmix-probes.md), [BERT](../p06-objectives/02-bert-masked-lm.md)) | one vector per occurrence, not per word type | [BERT: the bidirectional encoder and masked language modeling](../p06-objectives/02-bert-masked-lm.md) in this book |
 | the gold pairs of a synthetic corpus | WordSim-353, SimLex-999, MEN | human similarity judgments; SimLex separates similarity from relatedness | Hill, Reichart, Korhonen (2015) |
 
 ### Further reading

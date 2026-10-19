@@ -1,40 +1,21 @@
-# Systems & Architecture (11-15 weeks)
+# Study plan
 
-~8-10 hours per week.
+This plan paces *Systems and Architecture* over about fifteen weeks at eight to ten hours a week. It is a suggestion, not a schedule to keep: if a topic is already familiar, move faster; if a design problem takes a weekend to think through, let it. What matters is that each chapter's ideas are in place before the next one builds on them.
 
-### Weeks 1-5: System Design
+## Weeks 1 to 5: System Design
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 1 | Scalability, load balancing, caching, CDN | ByteByteGo |
-| 2 | Database design, SQL vs NoSQL, CAP theorem, replication | ByteByteGo + DDIA |
-| 3 | Distributed systems primitives (consensus, distributed transactions) | ByteByteGo |
-| 4 | Messaging, event systems, API design | ByteByteGo |
-| 5 | Classic problems (URL shortener, chat, news feed, etc.) | ByteByteGo |
+Spend the first five weeks on [System Design](01-system-design/README.md), with ByteByteGo as your companion reference. Begin with scalability, load balancing, caching, and CDNs, the tools for handling more traffic than one machine can. In the second week turn to data: database design, SQL versus NoSQL, the CAP theorem, and replication, reading *Designing Data-Intensive Applications* alongside. The third week is the hardest and deserves the most patience: distributed-systems primitives such as consensus and distributed transactions. Week four covers messaging, event systems, and API design. In week five, put it all together on the classic problems (a URL shortener, a chat system, a news feed) and then read the chapter's design reviews of the real system, checking your own back-of-envelope arithmetic against theirs.
 
-### Weeks 6-8: Software Architecture
+## Weeks 6 to 8: Software Architecture
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 6 | Layered, event-driven, microkernel patterns | Software Architecture Patterns |
-| 7 | Microservices, space-based architecture | Software Architecture Patterns |
-| 8 | ADRs, quality attributes, trade-off analysis | Software Architecture Patterns |
+Then read [Software Architecture](02-software-architecture/README.md) over three weeks, with *Software Architecture Patterns* as the reference. Take the layered, event-driven, and microkernel patterns first, then microservices and space-based architecture. Use the third week for the habits that make architecture defensible: writing architecture decision records, naming quality attributes, and doing explicit trade-off analysis. Try writing an ADR for a decision in a system you know; it is the fastest way to find out whether you can defend it.
 
-### Weeks 9-12: Cloud Native
+## Weeks 9 to 12: Cloud Native
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 9 | Containers, Docker, multi-stage builds | Cloud Native DevOps with K8s |
-| 10 | Kubernetes fundamentals (pods, deployments, services) | Cloud Native DevOps with K8s |
-| 11 | Advanced K8s (StatefulSets, CRDs, operators, RBAC) | Cloud Native DevOps with K8s |
-| 12 | Helm, GitOps, CI/CD, service mesh | Cloud Native DevOps with K8s |
+Give [Cloud Native](03-cloud-native/README.md) four weeks, with *Cloud Native DevOps with Kubernetes* as the reference. Start with containers, Docker, and multi-stage builds. Move to Kubernetes fundamentals (pods, deployments, services) and, in the following week, the advanced objects: StatefulSets, CRDs, operators, and RBAC. Finish with Helm, GitOps, CI/CD, and service meshes. If you can, run everything on a local kind cluster as you read; the objects make much more sense once you have watched one reconcile.
 
-### Weeks 13-15: Observability
+## Weeks 13 to 15: Observability, then incidents
 
-| Week | Focus | Reference |
-|------|-------|-----------|
-| 13 | Observability vs monitoring, instrumentation, OpenTelemetry | Observability Engineering |
-| 14 | SLOs, error budgets, debugging with observability | Observability Engineering + SRE Book |
-| 15 | Production excellence, incident response, chaos engineering | Observability Engineering |
+Spend the last three weeks on [Observability](04-observability/README.md), with *Observability Engineering* and the Google SRE Book as references. Begin with the difference between observability and monitoring, instrumentation, and OpenTelemetry. Then work through SLOs, error budgets, and debugging with observability, taking time over the burn-rate arithmetic. In the final week, read about production excellence, incident response, and chaos engineering, and start the drills of [Incident Response and Chaos](05-incident-response-and-chaos/README.md).
 
----
+The drills do not need to wait for the end, though. Each one breaks a component built elsewhere in these books, so the natural time to read a drill is right after you have built or read about the piece it breaks: the first crashloop drill once the tracer is deployed, the decode-worker drill once burn-rate alerts exist, the durable-engine drills once the control plane runs. Before you read each drill's solution, predict the diagnosis and its output, and after each one read the matching chapter of the SRE book and compare its advice with the model response.

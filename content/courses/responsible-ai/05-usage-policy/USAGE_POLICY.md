@@ -1,8 +1,10 @@
 # Usage policy
 
+This is a compact example of the policy document described in [Usage policy at the gateway](01-usage-policy-at-the-gateway.md). It is written the way a gateway owner would publish it: scope and ownership first, then how decisions are made, what data is kept, how a user gets a decision reviewed, and when the policy itself is reviewed. The fuller reference version lives in [`course/solutions/docs/USAGE_POLICY.md`](../../../../course/solutions/docs/USAGE_POLICY.md).
+
 ## Scope and owner
 
-This policy governs requests sent through the learner's TinyLLM gateway. The gateway owner maintains the rules and reviews them at each model or policy revision. It is configuration for this course system, not a claim that a classifier can determine intent or replace professional judgment.
+This policy governs requests sent through your TinyLLM gateway. The gateway owner maintains the rules and reviews them at each model or policy revision. It is configuration for this system, not a claim that a classifier can determine intent or replace professional judgment.
 
 ## Decisions
 
@@ -10,7 +12,7 @@ Rules are evaluated in file order; the first match decides. Model, tenant, and r
 
 ## Data and limits
 
-Prompts may contain personal or confidential data. The gateway must not place prompt text in policy audit logs. Existing PII detectors from `data.05` redact any request-derived audit field. The classifier is trained on a small labeled fixture and may produce false positives and false negatives. It is not a safety guarantee.
+Prompts may contain personal or confidential data. The gateway must not place prompt text in policy audit logs. The existing PII detectors from [PII scrub with typed placeholders and audit spans](../../data-engineering/05-corpus-pipeline/05-pii-scrub.md) redact any request-derived audit field. The classifier is trained on a small labeled fixture and may produce false positives and false negatives. It is not a safety guarantee.
 
 ## User recourse
 

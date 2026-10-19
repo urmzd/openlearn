@@ -192,7 +192,7 @@ Production equivalents:
 |---|---|---|---|
 | `reverse_padded` | `torch.nn.utils.rnn.pack_padded_sequence` | no padded step is computed at all: sequences are sorted by length and the batch shrinks as they end | `torch/nn/utils/rnn.py` |
 | `bidirectional` | `torch.nn.LSTM(bidirectional=True)` and cuDNN | both directions in one call, sharing the input GEMM | `aten/src/ATen/native/RNN.cpp` |
-| a bidirectional encoder | BERT ([BERT encoder and MLM masking](../p06-objectives/02-bert-masked-lm.md)) | bidirectional context by attention instead of recurrence, every position at once | `transformers/models/bert/modeling_bert.py` |
+| a bidirectional encoder | BERT ([BERT: the bidirectional encoder and masked language modeling](../p06-objectives/02-bert-masked-lm.md)) | bidirectional context by attention instead of recurrence, every position at once | `transformers/models/bert/modeling_bert.py` |
 | reversal index | Keras `go_backwards` with masking | the same mask-aware reversal for masked sequences | `keras/layers/rnn/bidirectional.py` |
 
 ### Further reading

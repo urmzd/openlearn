@@ -1,19 +1,25 @@
-# Mathematics Foundations
+# Mathematics for Computing
 
-Looking for a clear starting point? Begin with the [Mathematics Foundations guided course](../../courses/mathematics/README.md): five introductory chapters and a practical project, with no programming required.
+This book covers the mathematics that computer science, machine learning, and software engineering run on. It starts at precalculus and single-variable calculus, goes through linear algebra, discrete mathematics, and probability and statistics, and then reaches the mathematics a language-model system is built from: matrix calculus and automatic differentiation, numerical methods and floating point, optimization, information theory, and the signal processing behind vision and speech front ends. Each topic is taught for understanding, with derivations, worked examples, and proofs. Where a topic becomes code, the book also shows the reference implementation and explains why it is written the way it is.
 
-## Reference library
+The book is for programmers who want the mathematics behind the systems they build, and for students who want a computing-minded companion to a standard mathematics sequence. If you would like a gentler start with no programming and no university mathematics, read *Mathematics Foundations* first: its [five introductory chapters and a practical project](../mathematics/README.md) lead naturally into this book.
 
-A free, self-paced math library built on open-source textbooks. This track covers the
-mathematical foundations required for computer science, machine learning, and software
-engineering: from precalculus and single-variable calculus through probability and statistics,
-and on to the math an LLM system runs on (matrix calculus and autodiff, numerical methods and
-floating point, optimization, information theory). In the [course](../../courses/build-an-llm/paths/course/), every math
-topic with code has a call site: the modules you build here are called by the system you build.
+## What you will be able to do
 
-The primary math texts are free to read online. Access and reuse permissions differ; consult each source's license. See the [source register](../../references/sources.md) for checked references.
+By the end of the book you will be able to:
 
-## Prerequisite Graph
+- Differentiate, integrate, and approximate functions, and bound the error of a series approximation.
+- Work with vectors, matrices, and linear maps: solve systems, factor matrices, project, and compute low-rank approximations.
+- Write proofs by induction and contradiction, count carefully, and reason about graphs, recurrences, and modular arithmetic.
+- Model uncertainty with random variables, estimate parameters, and test claims about noisy measurements.
+- Derive gradients of matrix expressions in closed form and implement forward- and reverse-mode autodiff.
+- Predict and bound floating-point error, and choose the stable formulation of a computation.
+- Explain why the common optimizers and learning-rate schedules work, and measure information in bits and nats.
+- Build the numerical front end of vision and speech models: convolution, resampling, the FFT, the STFT, and mel features.
+
+## How the book is organized
+
+The chapters follow a prerequisite graph rather than a single line. Precalculus, Calculus 1, Linear Algebra, and Discrete Math 1 have no college-level prerequisites, so you can enter at any of them.
 
 ```mermaid
 graph LR
@@ -38,55 +44,54 @@ graph LR
     NM --> SI
 ```
 
-## Topics
+The first eight chapters are the classical foundations, each built on a free open textbook.
 
-| # | Topic | Textbook | Estimated Time |
-|---|-------|----------|---------------|
-| 00 | [Precalculus](00-precalculus/) | OpenStax *Precalculus 2e* | 2-3 weeks |
-| 01 | [Calculus 1](01-calculus-1/) | OpenStax Calculus Vol 1 | 4 weeks |
-| 02 | [Calculus 2](02-calculus-2/) | OpenStax Calculus Vol 2 | 4 weeks |
-| 03 | [Linear Algebra](03-linear-algebra/) | Hefferon, *Linear Algebra* | 4 weeks |
-| 04 | [Calculus 3](04-calculus-3/) | OpenStax Calculus Vol 3 | 4 weeks |
-| 05 | [Discrete Math 1](05-discrete-math-1/) | Hammack, *Book of Proof* | 4 weeks |
-| 06 | [Discrete Math 2](06-discrete-math-2/) | Levin, *Discrete Mathematics* | 4 weeks |
-| 07 | [Probability & Statistics](07-probability-statistics/) | Grinstead & Snell + OpenStax Stats | 3-4 weeks |
-| 08 | [Matrix Calculus & Autodiff](08-matrix-calculus-and-autodiff/) | Parr & Howard, Baydin et al. (free) | 3 weeks |
-| 09 | [Numerical Methods & Floating Point](09-numerical-methods-and-floating-point/) | Goldberg (free), Higham | 3-4 weeks |
-| 10 | [Optimization](10-optimization/) | Boyd & Vandenberghe (free) | 3 weeks |
-| 11 | [Information Theory](11-information-theory/) | *Student's Guide to Coding & Info Theory* + MacKay (free) | 3-4 weeks |
-| 12 | [Signals & Images](12-signals-and-images/) | Oppenheim & Schafer; Smith (free) | 2 weeks |
+[Precalculus](00-precalculus/README.md) is the toolbox the rest of the book is written in: exponents and logarithms (and the units of information they define), trigonometry, complex numbers and Euler's formula, sequences, and polynomials. Its companion text is OpenStax *Precalculus 2e*.
 
-**Total**: ~27-28 weeks for 01 to 07 as an intensive introductory pass, at 10-12 hours per week;
-00 and 08 to 12 add about 17 weeks, or arrive just in time through the course passes.
-Full textbook coverage and degree-level mastery require additional problem sets and assessment.
+[Calculus 1](01-calculus-1/README.md) develops limits, derivatives, and integrals and the fundamental theorem that connects them: the mathematics of change and accumulation behind every training step and every averaged metric. It follows OpenStax *Calculus* Volume 1.
 
-## Quick Start
+[Calculus 2](02-calculus-2/README.md) extends integration and then represents functions as infinite sums, which is how computers approximate $e^x$, $\sin x$, and $\operatorname{erf}$ and how you analyze the long-run behavior of iterative methods. It follows OpenStax *Calculus* Volume 2.
 
-1. **Pick your entry point.** Calculus 1, Linear Algebra, and Discrete Math 1 have no
-   college-level prerequisites. Algebra and functions are assumed; calculus also requires
-   trigonometry. Start with one subject unless your weekly time budget supports more.
-2. **Open the topic README.** Each topic lists the free textbook, section-by-section study
-   plan, key theorems, worked examples, and exercises.
-3. **Work problems with pencil and paper.** Mathematics is learned by doing, not reading.
-   Aim for 10-12 hours per week on each active topic.
-4. **Follow the prerequisite graph.** Once you complete the entry-level topics, the graph
-   above shows what unlocks next.
-5. **Connect to CS.** Each topic README maps math concepts to their CS applications and
-   links to the algorithms/systems tracks in this repo.
+[Linear Algebra](03-linear-algebra/README.md) studies linear maps and the matrices that represent them: elimination and LU, orthogonality and QR, eigenvalues, and the SVD and least squares. Its companion text is Hefferon's *Linear Algebra*.
 
-## Recommended Parallel Schedules
+[Calculus 3](04-calculus-3/README.md) generalizes derivative and integral to several variables: gradients, Jacobians, multiple integrals, and the theorems of Green, Stokes, and Gauss. It follows OpenStax *Calculus* Volume 3.
 
-**Full-time (2 topics at once)**:
-- Weeks 1-4: Calculus 1 + Discrete Math 1
-- Weeks 5-8: Calculus 2 + Discrete Math 2
-- Weeks 9-12: Linear Algebra + Probability & Statistics
-- Weeks 13-16: Calculus 3
+[Discrete Math 1](05-discrete-math-1/README.md) teaches proof, together with sets, logic, induction, relations, functions, and counting. Its companion text is Hammack's *Book of Proof*.
 
-**Part-time (1 topic at a time)**:
-- Follow the numbering 01 through 07, respecting prerequisites.
+[Discrete Math 2](06-discrete-math-2/README.md) covers the discrete structures that turn up most directly in algorithms and systems: graphs, number theory, recurrences, and advanced counting. It follows Levin's *Discrete Mathematics*.
 
-## Apply the mathematics
+[Probability and Statistics](07-probability-statistics/README.md) is the mathematics of reasoning under uncertainty: random variables, sampling, estimation, the central limit theorem, hypothesis tests, and calibration. It draws on Grinstead and Snell and OpenStax *Statistics*.
 
-Use the [Technology Foundations math labs](../../courses/computer-science/README.md#mathematics-must-produce-working-artifacts) alongside these topics: prove a scheduler correct, implement least squares and PCA, check gradients, measure integration error, and simulate statistical inference. Each assignment requires a derivation, implementation, independent comparison, and failure analysis.
+The last five chapters are the mathematics of a language-model system, and each has code that a system calls.
 
-After the foundations, read Deisenroth, Faisal and Ong's [Mathematics for Machine Learning](https://mml-book.github.io/) for the bridge to numerical optimization and data applications.
+[Matrix Calculus and Autodiff](08-matrix-calculus-and-autodiff/README.md) treats a gradient as a linear map and a program as a composition of differentiable steps. It builds forward and reverse mode and derives the closed-form vector-Jacobian products of the common primitives, after Parr and Howard and Baydin et al.
+
+[Numerical Methods and Floating Point](09-numerical-methods-and-floating-point/README.md) explains how floating point fails (overflow, underflow, cancellation, accumulated rounding), the algorithmic fix for each, and the error bounds that become test tolerances, from IEEE 754 to FP8 and microscaling formats. It draws on Goldberg and Higham.
+
+[Optimization](10-optimization/README.md) answers the three questions every optimizer answers: which direction to step, how far in each coordinate, and how the step size should change over time. It uses Boyd and Vandenberghe for the convex vocabulary.
+
+[Information Theory](11-information-theory/README.md) measures information with entropy and connects it to losses, perplexity, bits per byte, KL divergence, and mutual information, after *A Student's Guide to Coding and Information Theory* and MacKay.
+
+[Signals and Images](12-signals-and-images/README.md) builds the numerical front end of vision and speech models: convolution as a linear map, image layouts, resampling, the DFT and FFT, the STFT, and the mel scale. It draws on Oppenheim and Schafer and on Smith's free signal-processing books.
+
+Read the first seven chapters in order if you take one subject at a time, respecting the graph. If you have time for two at once, Calculus and Discrete Math pair well, followed by Linear Algebra alongside Probability and Statistics.
+
+## Prerequisites and related books
+
+The book assumes school algebra and functions; the calculus chapters also assume trigonometry, which Precalculus reviews. The later chapters assume Python and numpy, which [Python and numpy](../programming-languages/02-language-and-tool-primers/01-python-and-numpy.md) in *Programming Languages* covers.
+
+Several books build on this one. *Build Your Own LLM System* is where most of the code written here is used: every topic with code has a call site in [that book](../build-an-llm/README.md), so the functions you build here are called by the system you build there. *Machine Learning and AI* ([start here](../machine-learning/README.md)) uses the probability, optimization, and linear algebra throughout. *Technology Foundations* pairs these chapters with [mathematics labs](../computer-science/README.md#mathematics-must-produce-working-artifacts) that ask you to prove a scheduler correct, implement least squares and PCA, check gradients, measure integration error, and simulate statistical inference. After this book, Deisenroth, Faisal, and Ong's [Mathematics for Machine Learning](https://mml-book.github.io/) is a good bridge to numerical optimization and data applications.
+
+## Conventions
+
+Mathematics is set inline as $x$ and in display as
+$$\text{out} = \left\lfloor \frac{n + 2p - d(k - 1) - 1}{s} \right\rfloor + 1 .$$
+Code listings are Python unless they say otherwise. Listings quote the reference solutions, usually with type hints dropped and routine argument validation elided as `...`; the comments in them are part of the explanation. The full solutions live in the repository under `course/solutions/` (for example [`course/solutions/python/tinyllm/sig/conv.py`](../../../course/solutions/python/tinyllm/sig/conv.py)), and the typed interfaces they implement are under `course/contracts/`.
+
+Each section opens with the problem it solves and a short list of learning objectives, and ends with key terms, a summary, and review questions. Answers to review questions are folded under an **Answer** toggle; try each question before opening it. Warnings about mistakes that produce no error appear as call-outs:
+
+> **Warning:** A call-out like this marks a bug that runs without complaint and quietly gives the wrong answer.
+
+Each chapter closes with one or more problem sets of pen-and-paper problems, each followed by a collapsed worked answer that gives the result, the derivation, and the common wrong answers. Model proofs are also in `course/solutions/solve/`.
+
+The primary texts are free to read online, but access and reuse permissions differ, so consult each source's license. The [source register](../../references/sources.md) lists the checked references.

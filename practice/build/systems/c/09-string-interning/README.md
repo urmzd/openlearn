@@ -1,16 +1,18 @@
-# C 09: String interning
+# String interning
 
-**Concepts:** hash table, stable addresses, lifetime management
-**Difficulty:** ⭐⭐⭐
+Compilers, interpreters, and JSON parsers compare the same few strings over and over: identifiers, keywords, field names. Each `strcmp` walks the bytes again. String interning removes that cost by keeping exactly one copy of each distinct string in a table and returning the same pointer every time you ask for it. Once strings are interned, `a == b` replaces `strcmp(a, b) == 0` everywhere downstream.
 
-A table that owns exactly one copy of each distinct string and returns the same
-pointer every time you ask for it. Once strings are interned, `a == b` replaces
-`strcmp(a, b) == 0` everywhere downstream.
+The design is a hash set keyed by content, and it is shaped almost entirely by one promise: every handle the table hands out stays valid until the table is freed, including across growth. That promise decides how entries are allocated, what the slots hold, and why the table can be simpler than a general map. This section builds on the [hash map with open addressing](../02-hash-map/README.md), whose probing scheme it reuses, and on the flexible-array-member technique from the [arena allocator](../08-arena-allocator/README.md).
 
-## The problem
+> **Learning objectives**
+> - Implement find-or-insert over an open-addressing table of entry pointers so that handles survive growth.
+> - Lay out an entry with a flexible array member so header and bytes share one allocation.
+> - Treat strings as (length, bytes) so embedded NULs and unterminated input are handled correctly.
+> - Explain why dropping deletion removes tombstones, and when interning costs more than it saves.
 
-[`intern.h`](intern.h) declares the interface, [`intern.c`](intern.c) is the
-solution, and [`main.c`](main.c) is the test suite.
+## The interface
+
+[`intern.h`](intern.h) declares the interface, [`intern.c`](intern.c) is the solution, and [`main.c`](main.c) is the test suite.
 
 | Function | Does |
 |----------|------|
@@ -21,84 +23,46 @@ solution, and [`main.c`](main.c) is the test suite.
 | `intern_count(t)` | Distinct strings held |
 | `intern_free(t)` | Release the table and every string in it |
 
-A handle is `const Interned *`, where `Interned` is `{ const char *str; size_t
-len; }`. The hard constraint: every handle stays valid until `intern_free`,
-including across growth of the table.
+A handle is `const Interned *`, where `Interned` is `{ const char *str; size_t len; }`. The hard constraint is that every handle stays valid until `intern_free`, including across growth of the table.
 
-## Build and run
-
-From this directory:
+To build and run the tests from this directory:
 
 ```bash
 cc -std=c11 -Wall -Wextra -O2 main.c intern.c -o intern && ./intern
 # ok  c/09-string-interning  20160 checks passed
 ```
 
-## What to notice
+## Stable handles shape everything
 
-**Every pointer handed out must stay valid for the life of the table, and that
-constrains the whole design.** Growth rehashes the table, so if the strings live
-in one big buffer that gets reallocated, every handle a caller is holding
-dangles. The fix is that entries are individually allocated and the table stores
-*pointers*: rehashing moves pointers between slots and never touches the string
-data. `test_pointers_survive_growth` interns 5,000 strings, forcing many
-rehashes, then checks that the very first handle is still correct.
+Every pointer handed out must stay valid for the life of the table, and that constrains the whole design. Growth rehashes the table, so if the strings live in one big buffer that gets reallocated, every handle a caller is holding dangles. The fix is that entries are individually allocated and the table stores *pointers*: rehashing moves pointers between slots and never touches the string data. `test_pointers_survive_growth` interns 5,000 strings, forcing many rehashes, then checks that the very first handle is still correct.
 
-**One allocation per entry, not two.** The header and the bytes go in a single
-`malloc` using a flexible array member, so the string cannot be separated from
-its metadata and the allocator sees half the traffic. This is the same technique
-as [exercise 08](../08-arena-allocator/)'s blocks and worth having in reflex.
+Each entry is one allocation, not two. The header and the bytes go in a single `malloc` using a flexible array member, so the string cannot be separated from its metadata and the allocator sees half the traffic. This is the same technique as the arena allocator's blocks and worth having in reflex.
 
-**Cache the hash in the entry.** It costs one `size_t` and buys two things:
-growth never rehashes the text, and a probe can reject a colliding entry by
-comparing integers instead of calling `memcmp`. With long strings that share a
-prefix, which is exactly what identifier tables are full of, that is most of the
-lookup cost.
+The entry also caches its hash. It costs one `size_t` and buys two things: growth never rehashes the text, and a probe can reject a colliding entry by comparing integers instead of calling `memcmp`. With long strings that share a prefix, which is exactly what identifier tables are full of, that is most of the lookup cost.
 
-**No tombstones, because interning never deletes.** [Exercise 02](../02-hash-map/)
-needed tombstones and a load factor that counted them, and all of that
-complexity exists to support removal. Drop removal from the interface and the
-table gets substantially simpler. It is worth noticing which of your data
-structure's complications are paying for a feature you are not using.
+## What interning leaves out
 
-**`strlen` cannot be the internal length.** The table stores bytes, and
-`intern_n` must copy exactly the length it was given: `"a\0b"` and `"a"` have the
-same `strlen` and are different strings. It still writes a terminator after the
-bytes, so C consumers can treat `str` normally, but the length is what defines
-identity. `test_embedded_nuls` and `test_unterminated_input` pin both halves.
+There are no tombstones, because interning never deletes. The open-addressing hash map needed tombstones and a load factor that counted them, and all of that complexity exists to support removal. Drop removal from the interface and the table gets substantially simpler. It is worth noticing which of your data structure's complications are paying for a feature you are not using.
 
-**Interning is a space/time trade that can lose.** You pay a hash and a
-comparison once per string to make every subsequent comparison free. That wins
-overwhelmingly for compiler identifiers, JSON keys, and log field names, where a
-small set of strings is compared constantly. It loses for strings you compare
-once, and it leaks by construction for unbounded input, since nothing is ever
-removed. A table interning attacker-supplied strings is an unbounded memory
-sink.
+`strlen` cannot be the internal length. The table stores bytes, and `intern_n` must copy exactly the length it was given: `"a\0b"` and `"a"` have the same `strlen` and are different strings. It still writes a terminator after the bytes, so C consumers can treat `str` normally, but the length is what defines identity. `test_embedded_nuls` and `test_unterminated_input` pin both halves.
 
-## The solution, step by step
+## Deriving the design
 
-### From first principles
+Six observations build the table.
 
-1. **Pointer equality needs exactly one copy per distinct string.** So
-   interning is "find or insert": look the bytes up, return the existing copy if
-   present, otherwise make one. That is a hash set keyed by content.
-2. **Handles must not move, so entries must not move.** Each entry is its own
-   heap allocation, and the hash table's slots hold `Entry *`. Growing the table
-   reallocates the slot array and moves pointers, never the entries.
-3. **The public handle lives inside the entry.** Put `Interned pub` first in
-   `Entry`, return `&entry->pub`, and the handle is as stable as the entry. The
-   string bytes follow in a flexible array member, so `pub.str` points into the
-   same allocation.
-4. **Identity is (length, bytes), not a C string.** Hash and compare exactly
-   `len` bytes. Store a terminator anyway, so `pub.str` is usable as a C string
-   when there are no embedded NULs.
-5. **No deletion means no tombstones.** A slot is either `NULL` (empty) or an
-   entry, and a probe stops at the first `NULL`. Linear probing with a
-   power-of-two capacity and a 3/4 load limit, as in [C 02](../02-hash-map/).
-6. **Cache the hash.** Compare hashes before lengths before bytes, and reuse the
-   hash when rehashing.
+Pointer equality needs exactly one copy per distinct string. So interning is "find or insert": look the bytes up, return the existing copy if present, otherwise make one. That is a hash set keyed by content.
 
-### The code, annotated
+Handles must not move, so entries must not move. Each entry is its own heap allocation, and the hash table's slots hold `Entry *`. Growing the table reallocates the slot array and moves pointers, never the entries.
+
+The public handle lives inside the entry. Put `Interned pub` first in `Entry`, return `&entry->pub`, and the handle is as stable as the entry. The string bytes follow in a flexible array member, so `pub.str` points into the same allocation.
+
+Identity is (length, bytes), not a C string. Hash and compare exactly `len` bytes. Store a terminator anyway, so `pub.str` is usable as a C string when there are no embedded NULs.
+
+No deletion means no tombstones. A slot is either `NULL` (empty) or an entry, and a probe stops at the first `NULL`. The table uses linear probing with a power-of-two capacity and a 3/4 load limit, as in the hash map.
+
+Finally, cache the hash. Compare hashes before lengths before bytes, and reuse the hash when rehashing.
+
+## Building it step by step
 
 The entry layout:
 
@@ -210,29 +174,57 @@ Lookup first, grow second: a string that is already present never triggers a
 resize. `intern_find` is the same probe without the insert, and `intern_free`
 frees each entry, then the slot array, then the table.
 
-Full solution: [`intern.c`](intern.c).
+The full solution is in [`intern.c`](intern.c).
 
-### Why this solution
+## Why this design
 
-- **Cost.** `intern` is O(len) expected (hashing plus at most one `memcmp` in
-  the common case), O(1) amortised table work. Comparing two interned strings
-  afterwards is O(1). Space is one allocation per distinct string plus the slot
-  array.
-- **Versus one big string buffer.** Fewer allocations and better locality, but
-  growing the buffer moves every string and breaks every handle. An arena
-  ([C 08](../08-arena-allocator/)) that chains blocks instead of reallocating
-  would give both stability and locality, and is what many compilers use.
-- **Versus storing `Interned` by value in the slots.** Handles would point into
-  the slot array, which moves on growth. Storing pointers is what makes the
-  stability guarantee possible.
-- **Versus a general map from [C 02](../02-hash-map/).** That map supports
-  deletion and pays for it with tombstones. Interning never deletes, so the
-  simpler table is the right one.
-- **Accepted trade.** Nothing is ever freed before `intern_free`, so the table
-  grows with every distinct input. Fine for identifiers, dangerous for untrusted
-  unbounded input.
+`intern` is O(len) expected (hashing plus at most one `memcmp` in the common case), with O(1) amortised table work. Comparing two interned strings afterwards is O(1). Space is one allocation per distinct string plus the slot array.
 
-### Explain it back
+One big string buffer would mean fewer allocations and better locality, but growing the buffer moves every string and breaks every handle. An [arena](../08-arena-allocator/README.md) that chains blocks instead of reallocating would give both stability and locality, and is what many compilers use.
+
+Storing `Interned` by value in the slots would make handles point into the slot array, which moves on growth. Storing pointers is what makes the stability guarantee possible.
+
+A general map like the [hash map with open addressing](../02-hash-map/README.md) supports deletion and pays for it with tombstones. Interning never deletes, so the simpler table is the right one.
+
+The accepted trade is that nothing is ever freed before `intern_free`, so the table grows with every distinct input. That is fine for identifiers and dangerous for untrusted, unbounded input.
+
+## What can go wrong
+
+Interning is a space/time trade that can lose. You pay a hash and a comparison once per string to make every subsequent comparison free. That wins overwhelmingly for compiler identifiers, JSON keys, and log field names, where a small set of strings is compared constantly. It loses for strings you compare once, and it leaks by construction for unbounded input, since nothing is ever removed.
+
+> **Warning:** A table interning attacker-supplied strings is an unbounded memory sink.
+
+The implementation hazards are these.
+
+| Mistake | Consequence |
+|---------|-------------|
+| Storing strings in one reallocated buffer | Every outstanding handle dangles after growth |
+| Storing `Interned` by value in the slots | Handles point into the slot array, which moves |
+| Using `strlen` or `strcmp` internally | `"a\0b"` and `"a"` collide; unterminated input is over-read |
+| Writing to the first probe's index after growing | The index belongs to the old array and mask |
+| `malloc(sizeof(Entry) + len + 1)` without an overflow check | The size wraps and `memcpy` writes past a tiny block |
+
+## Where this leads
+
+Try adding a per-entry reference count and an `intern_release`, and watch how much complexity re-enters: tombstones come back, pointer stability gets harder, and you have to decide what happens to a handle whose count hit zero. That is the usual reason production interners simply never free, or tie their lifetime to an [arena](../08-arena-allocator/README.md) that is reset wholesale.
+
+## Key terms
+
+- **String interning**: keeping one canonical copy of each distinct string so equality becomes pointer comparison.
+- **Handle**: the stable pointer (`const Interned *`) the table returns for a string.
+- **Find-or-insert**: the operation that returns an existing entry for a key or creates one.
+- **Pointer stability**: the guarantee that an address handed out remains valid as the container grows.
+- **Cached hash**: storing an entry's hash beside it to skip rehashing on growth and to reject mismatches cheaply.
+
+## Summary
+
+- Each distinct string is one heap entry (header, bytes, terminator) and the slots hold entry pointers, so growth never moves a handle.
+- Identity is (length, bytes); `memcmp` and explicit lengths handle embedded NULs and unterminated input.
+- Matches are tested hash first, then length, then bytes, and the cached hash makes rehashing free of text reads.
+- With no deletion there are no tombstones, so a probe simply stops at the first `NULL`.
+- Interning wins when the same strings are compared many times and is an unbounded leak for untrusted input.
+
+## Review questions
 
 1. Why does `table_grow` move `Entry *` values and never copy entries?
 
@@ -267,12 +259,12 @@ Full solution: [`intern.c`](intern.c).
    </details>
 
 4. Why can the probe loop in this table run until it finds `NULL` with no step
-   limit, when C 02's probe needed one?
+   limit, when the [open-addressing hash map](../02-hash-map/README.md)'s probe needed one?
 
    <details><summary>Answer</summary>
 
    Here every non-`NULL` slot is a live entry and the table grows before it is
-   3/4 full, so at least a quarter of the slots are always `NULL`. C 02's table
+   3/4 full, so at least a quarter of the slots are always `NULL`. That hash map
    can contain tombstones, which a lookup must step over, so its code bounds the
    loop to be safe even if no `EMPTY` slot remains.
 
@@ -289,11 +281,3 @@ Full solution: [`intern.c`](intern.c).
    them apart.
 
    </details>
-
-## Extending it
-
-Add a per-entry reference count and an `intern_release`, and watch how much
-complexity re-enters: tombstones come back, pointer stability gets harder, and
-you have to decide what happens to a handle whose count hit zero. That is the
-usual reason production interners simply never free, or tie their lifetime to an
-[arena](../08-arena-allocator/) that is reset wholesale.

@@ -15,7 +15,7 @@ This chapter first makes the case for streaming at all, then specifies the SSE p
 
 ## Before you begin
 
-This chapter builds on [RPC and Protocols](../02-rpc-and-protocols/), especially gRPC server streaming and HTTP/2, and assumes basic HTTP. It also helps to know why generation is token by token, which [LLM Systems & Inference](../../machine-learning/04-llm-systems/) in *Machine Learning & AI* explains along with continuous batching and the KV cache.
+This chapter builds on [RPC and Protocols](../02-rpc-and-protocols/), especially gRPC server streaming and HTTP/2, and assumes basic HTTP. It also helps to know why generation is token by token, which [LLM Systems & Inference](../../machine-learning/04-llm-systems/) in *Machine Learning and AI* explains along with continuous batching and the KV cache.
 
 ## In this chapter
 

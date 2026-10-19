@@ -53,7 +53,7 @@ WordPiece splits a word by repeating longest-prefix match: take the longest key 
 
 Two more design points come from outside the matching itself. The first is listing the keys. A **preorder** walk visits a node, then each child subtree in turn. Visiting children in increasing character order lists keys in sorted (code point) order, because a key sorts before each of its extensions (`ab` < `abc`) and everything under the edge `a` sorts before everything under `b`. Written recursively, the walk needs one stack frame per level, and Python stops at about 1000 frames; a long run of one byte in a corpus is a deep chain. So the walk keeps its own stack of (node, depth, character) and a path list, just as the topological sort kept its own stack.
 
-The second is what a character is. Edges compare Python `str` characters, which are Unicode code points. `"é"` (U+00E9) and `"e" + "́"` (e plus a combining accent) look the same and are different keys. Normalization (NFC, NFKC) is the tokenizer's job, done once before matching in [Tokenizer protocol, char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md), and never inside the trie.
+The second is what a character is. Edges compare Python `str` characters, which are Unicode code points. `"é"` (U+00E9) and `"e" + "́"` (e plus a combining accent) look the same and are different keys. Normalization (NFC, NFKC) is the tokenizer's job, done once before matching in [The tokenizer protocol and the char tokenizer](../../build-an-llm/p01-tokenizers/01-tokenizer-protocol-and-char.md), and never inside the trie.
 
 ## Working it by hand
 
@@ -290,7 +290,7 @@ The mistakes people actually make cluster around a few of those cases. The table
 
 This section looked back to [Graphs, DAGs, and an iterative topological sort](01-graphs-dags-and-topological-sort.md) for rooted graphs, parents and children, and the habit of keeping your own stack. The forward uses are all tokenizers in *Build Your Own LLM System*. [Byte-level BPE](../../build-an-llm/p01-tokenizers/02-byte-level-bpe.md) finds added and special tokens (`<|im_start|>`) with `longest_prefix` before splitting the rest. [WordPiece](../../build-an-llm/p01-tokenizers/03-wordpiece.md) is `longest_prefix` in a loop, with `##` continuation keys. The [Unigram LM tokenizer](../../build-an-llm/p01-tokenizers/04-unigram-lm.md) adds one lattice edge per `prefixes` match at every position, then runs Viterbi.
 
-The same idea over token ids instead of characters, compressed into a radix tree, finds the longest cached prompt prefix in the Rust engine. [Radix tree over token ids with index-linked LRU leaf list](../../algorithms/16-systems-data-structures/07-radix-tree.md) in *Algorithms* and [Radix prefix cache](../../build-an-llm/p08-inference/04-radix-prefix-cache.md) build on this section's ideas, though they do not call this code.
+The same idea over token ids instead of characters, compressed into a radix tree, finds the longest cached prompt prefix in the Rust engine. [A radix tree over token ids](../../algorithms/16-systems-data-structures/07-radix-tree.md) in *Algorithms* and [Radix prefix cache](../../build-an-llm/p08-inference/04-radix-prefix-cache.md) build on this section's ideas, though they do not call this code.
 
 Production libraries push the same structure further:
 

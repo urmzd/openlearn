@@ -35,6 +35,6 @@ This pass needs [Pass 11](../course-p11-operate/README.md). It leans most on the
 18. [Whisper decoding and transcription](../../p14-speech/04-whisper-decoding.md). Afterwards you can explain how Whisper decoding uses special tokens, timestamps, beam search, and temperature fallback.
 19. [Multimodal eval metrics](../../p14-speech/05-multimodal-eval-metrics.md). Afterwards you can explain how WER, CER, and the other multimodal eval metrics are computed.
 20. [Consent and biometric evidence](../../../responsible-ai/02-privacy-and-pii/02-consent-and-biometric-evidence.md). Afterwards you can explain why the model card's numbers must match runnable evidence and why every source needs valid consent records.
-21. [What the system does after Pass 12](milestone.md). Afterwards you can explain how the system sees and hears: images and audio flow through preprocessing, encoders, and decoders that match their reference models.
+21. [What the System Does After Pass 12](milestone.md). Afterwards you can explain how the system sees and hears: images and audio flow through preprocessing, encoders, and decoders that match their reference models.
 
 The stages are also in this pass's manifest, [`path.tsv`](path.tsv). After this pass the system [sees and hears](milestone.md), and the text system is unchanged.

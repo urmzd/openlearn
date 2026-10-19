@@ -18,8 +18,8 @@ This chapter assumes precalculus: functions, exponents and logarithms, trigonome
 ## In this chapter
 
 1. [Derivatives and finite differences](01-derivatives-and-finite-differences.md). The derivative as a limit, the forward and central differences, the step size that balances truncation against rounding, and Richardson extrapolation.
-2. [Newton's method](02-newtons-method.md). Root finding by tangent lines, quadratic convergence and its failure modes, and the division-free iteration for $1/\sqrt{x}$.
-3. [Activation functions and their derivatives](03-activation-functions.md). Sigmoid, tanh, ReLU, softplus, both GELUs, and SiLU, with derivatives derived from the rules of calculus and evaluated without overflow.
+2. [Newton's Method](02-newtons-method.md). Root finding by tangent lines, quadratic convergence and its failure modes, and the division-free iteration for $1/\sqrt{x}$.
+3. [Activation Functions and Their Derivatives](03-activation-functions.md). Sigmoid, tanh, ReLU, softplus, both GELUs, and SiLU, with derivatives derived from the rules of calculus and evaluated without overflow.
 4. [Definite integrals: trapezoid and Simpson](04-definite-integrals-trapezoid-simpson.md). The definite integral, the trapezoid and Simpson rules with their error orders, Simpson as Richardson extrapolation, and the signed-width rule for ROC curves.
 5. [Calculus 1 problem set](90-problem-set.md). Fifty-seven problems with worked answers on limits, derivatives, related rates, optimization, integrals, and L'Hôpital's rule.
 

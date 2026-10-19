@@ -1,6 +1,6 @@
 # Async fetch with resume, checksums, and license capture
 
-The tokenizers in [Tokenizers](../../build-an-llm/p01-tokenizers/README.md) from *Build an LLM* are trained on whatever text they are handed, and so far that text has been a file copied by hand. The corpus pipeline starts here. A config names the sources (a URL, the sha256 you reviewed, the license), and the pipeline must turn that list into documents on disk: the same documents every time, with a record of where each came from and under what terms.
+The tokenizers in [Tokenizers](../../build-an-llm/p01-tokenizers/README.md) from *Build Your Own LLM System* are trained on whatever text they are handed, and so far that text has been a file copied by hand. The corpus pipeline starts here. A config names the sources (a URL, the sha256 you reviewed, the license), and the pipeline must turn that list into documents on disk: the same documents every time, with a record of where each came from and under what terms.
 
 The network makes this hard. A 300 MB download from a dataset mirror fails at 280 MB more often than you would like; mirrors answer `503` under load; a URL you pinned last month now serves different bytes; and the durable `CorpusBuild` workflow, built in [CorpusBuild as a durable workflow](09-corpusbuild-as-a-durable-workflow.md), will rerun this step after every crash. Without resume, every cut restarts from zero. Without the checksum, a changed file silently changes the corpus. Without the ledger, nobody can later answer "may we train on this?".
 
