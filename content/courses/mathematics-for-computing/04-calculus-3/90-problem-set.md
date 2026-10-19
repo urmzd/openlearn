@@ -1,35 +1,21 @@
 # Calculus 3 problem set: vectors, gradients, the chain rule, Hessians, multiple integrals, Lagrange
 
-## Overview
+A model has many parameters, and training moves all of them at once along the gradient. The two sections before this one built the numerical machinery for that: [Partial derivatives, gradients, and gradcheck](01-gradients-and-gradcheck.md) compares analytic gradients with central differences coordinate by coordinate, and [Jacobians, the multivariable chain rule, and numeric JVP/VJP](02-jacobians-and-the-chain-rule.md) computes Jacobians and the vector-Jacobian products that reverse-mode autodiff ([Scalar reverse mode: the Value graph](../08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md), and [Tensor, broadcasting backward, and no_grad](../../build-an-llm/p00-foundations/01-tensor-and-broadcasting-backward.md) in *Build Your Own LLM System*) chains together. Later, [gradient descent](../10-optimization/01-gradient-descent-and-line-search.md) descends along gradients at a rate set by the Hessian's condition number, [Variance propagation and initialization](../07-probability-statistics/03-variance-propagation-and-initialization.md) sizes initial weights with Gaussian integrals in several variables, and [the second information theory problem set](../11-information-theory/91-problem-set-b.md) reads the softmax as the solution of a constrained maximization. This set works the hand computations behind all of them.
 
-| | |
-|---|---|
-| **Module** | `S-M04` · solve · none · Pass 2 · 6 to 8 h |
-| **Solution** | a worked answer after every problem in section 4: 56 exact answers and 2 proofs (q34, q58; model proofs also in [`course/solutions/solve/S-M04/`](../../../../course/solutions/solve/S-M04/)) |
-| **Contract** | none: a pen and paper set |
-| **Needs** | no module. Reading: `S-M01` (one-variable derivatives and integrals) and the [Calculus 3 topic](README.md) |
-| **Used by** | no call site (a solve set). Take it after `M04.1` (gradcheck) and `M04.2` (Jacobians, VJP, JVP) in Pass 2. It is also the whole of the solve-only `M04.3` (Hessian), `M04.4` (multiple integrals), and `M04.5` (Lagrange), which `M10.1`, `M07.3`, and `M11.5` read |
-| **Optional depth** | OpenStax, *Calculus Volume 3* (free), ch. 2, 4, and 5; Boyd and Vandenberghe, *Convex Optimization*, section 5.1, for Lagrange duality |
+The set is also the book's only treatment of three topics that have no code of their own: the Hessian and the second-derivative test, multiple integrals and change of variables, and Lagrange multipliers. It assumes one-variable derivatives, the chain rule, and integrals, as practiced in the [Calculus 1 problem set](../01-calculus-1/90-problem-set.md), and the overview in the [chapter opening](README.md). Work it after the two sections above.
 
-## Key Takeaways
+The set has 58 problems: 56 with exact answers and 2 proofs (q34 and q58), whose model proofs are also in [`course/solutions/solve/S-M04/`](../../../../course/solutions/solve/S-M04/). Every problem is followed by a collapsed worked answer with the final result, the derivation, and the common wrong answers and why they are wrong. Try each problem before opening its answer.
 
-- The gradient collects the partial derivatives; it points uphill fastest, and its length is the steepest slope (q11, q30, q34).
-- The multivariable chain rule multiplies Jacobians, and reverse mode multiplies them from the loss backward, one vector-Jacobian product at a time (q23, q27, q28).
-- At a critical point the Hessian's eigenvalues decide minimum, maximum, or saddle, and their ratio is the condition number that slows gradient descent (q37, q42).
-- A change of variables multiplies the area element by $|\det J|$: the $r$ in polar coordinates is why $\iint e^{-(x^2 + y^2)} = \pi$ (q26, q46, q50).
-- At a constrained optimum the gradient is parallel to the constraint's gradient; maximum entropy under an energy constraint is a softmax (q51 to q58).
+> **Learning objectives**
+> - Compute dot and cross products, angles, planes, and distances in $\mathbb{R}^3$.
+> - Compute partial derivatives and gradients, including the least-squares and log-sum-exp gradients, and directional derivatives.
+> - Apply the multivariable chain rule as a product of Jacobians and evaluate a backward pass as a chain of vector-Jacobian products.
+> - Classify critical points with the Hessian and relate its condition number to the speed of gradient descent.
+> - Evaluate multiple integrals with a change of variables, and solve constrained optimization problems with Lagrange multipliers.
 
-## How to read this chapter
+## The ideas you will use
 
-Sections 1 to 3 review the ideas and work two examples by hand. Section 4 is the problem set: every problem is followed by a collapsed worked answer with the final result, the derivation, and the common wrong answers and why they are wrong. Try each problem before opening its answer.
-
----
-
-## 1. Why now
-
-The model has many parameters, and training moves all of them at once along the gradient. `M04.1` builds `gradcheck`, which compares analytic gradients with central differences coordinate by coordinate, and `M04.2` computes Jacobians and the vector-Jacobian products that reverse-mode autodiff (`M08.2`, `L0.1`) chains together. `M10.1` then descends along gradients, and its convergence rate is set by the Hessian's condition number. `M07.3` sizes initial weights with Gaussian integrals in several variables, and `M11.5` reads the softmax as the solution of a constrained maximization. This set works the hand computations behind all of them.
-
-## 2. Principles
+Before the problems, here is a compact review of the definitions and results they rely on. The notation is collected in one table first:
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -44,45 +30,46 @@ The model has many parameters, and training moves all of them at once along the 
 | $\iint_D f\,dA$ | double integral over a region $D$ | real |
 | $\lambda$ | a Lagrange multiplier | real |
 
-### 2.1 Vectors and geometry
+
+### Vectors and geometry
 
 $u \cdot v = \sum_i u_i v_i = \lVert u \rVert \lVert v \rVert \cos\theta$, so $u \perp v$ exactly when $u \cdot v = 0$. The cross product $u \times v$ is perpendicular to both, with length the area of the parallelogram they span. A plane is $n \cdot x = d$ with normal $n$ (a cross product of two edge vectors), and the distance from a point $p$ to it is $|n \cdot p - d| / \lVert n \rVert$.
 
-### 2.2 Partial derivatives and the gradient
+### Partial derivatives and the gradient
 
 A partial derivative differentiates in one variable with the rest held fixed, by the one-variable rules. Mixed second partials agree for smooth functions: $\partial^2 f/\partial x\,\partial y = \partial^2 f/\partial y\,\partial x$. Two gradients recur in machine learning: $\nabla_x \frac12 \lVert Ax - b \rVert^2 = A^\top(Ax - b)$, and the gradient of log-sum-exp, $\nabla \ln \sum_j e^{x_j}$, is the softmax of $x$.
 
-### 2.3 The multivariable chain rule
+### The multivariable chain rule
 
 If $z = f(x(t), y(t))$, then $\frac{dz}{dt} = \frac{\partial f}{\partial x}\frac{dx}{dt} + \frac{\partial f}{\partial y}\frac{dy}{dt}$: one term per path from $t$ to $z$. In general the Jacobian of a composite is the product of Jacobians, $J_{f \circ g} = J_f\, J_g$. A loss is a scalar at the end of a long chain, and **reverse mode** evaluates the product from the left: start with $u^\top = \partial L / \partial(\text{output})$ and multiply by one Jacobian at a time, $u^\top \leftarrow u^\top J$. Each step is a **vector-Jacobian product** (VJP), and backpropagation is nothing more.
 
-### 2.4 Directional derivatives
+### Directional derivatives
 
-The rate of change of $f$ at $x$ along a unit vector $u$ is $D_u f = \frac{d}{ds} f(x + s u)\big|_{s=0} = \nabla f \cdot u$, by the chain rule. By Cauchy-Schwarz it is at most $\lVert \nabla f \rVert$, reached at $u = \nabla f / \lVert \nabla f \rVert$: the gradient is the direction of steepest ascent, $-\nabla f$ of steepest descent, and directions perpendicular to $\nabla f$ follow a level curve.
+The rate of change of $f$ at $x$ along a unit vector $u$ is $D_u f = \frac{d}{ds} f(x + s u)\big|_{s=0} = \nabla f \cdot u$, by the chain rule. By Cauchy-Schwarz it is at most $\lVert \nabla f \rVert$, reached at $u = \nabla f / \lVert \nabla f \rVert$. So the gradient is the direction of steepest ascent, $-\nabla f$ the direction of steepest descent, and directions perpendicular to $\nabla f$ follow a level curve.
 
-### 2.5 The Hessian and the second-derivative test
+### The Hessian and the second-derivative test
 
-At a **critical point** ($\nabla f = 0$), the second-order Taylor expansion is $f(x + h) \approx f(x) + \frac12 h^\top H h$. If every eigenvalue of $H$ is positive (positive definite), the point is a local minimum; all negative, a maximum; mixed signs, a saddle. For two variables: $\det H > 0$ and $f_{xx} > 0$ is a minimum, $\det H < 0$ is a saddle. For the quadratic $\frac12 x^\top H x$, gradient descent's error shrinks by about $1 - 1/\kappa$ per step with $\kappa = \lambda_{\max}/\lambda_{\min}$ (`M10.1`).
+At a **critical point** ($\nabla f = 0$), the second-order Taylor expansion is $f(x + h) \approx f(x) + \frac12 h^\top H h$. If every eigenvalue of $H$ is positive (positive definite), the point is a local minimum; all negative, a maximum; mixed signs, a saddle. For two variables: $\det H > 0$ and $f_{xx} > 0$ is a minimum, $\det H < 0$ is a saddle. For the quadratic $\frac12 x^\top H x$, gradient descent's error shrinks by about $1 - 1/\kappa$ per step with $\kappa = \lambda_{\max}/\lambda_{\min}$, as [Convexity, smoothness, gradient descent, and Armijo line search](../10-optimization/01-gradient-descent-and-line-search.md) shows.
 
-### 2.6 Multiple integrals and change of variables
+### Multiple integrals and change of variables
 
 A double integral over a rectangle is an iterated integral in either order; over other regions, the limits of the inner integral depend on the outer variable. Changing variables $(u, v) \mapsto (x, y)$ multiplies the area element by the absolute Jacobian determinant: $dx\,dy = |\det J|\,du\,dv$. Polar coordinates have $|\det J| = r$, so $dA = r\,dr\,d\theta$.
 
-### 2.7 Lagrange multipliers
+### Lagrange multipliers
 
-To optimize $f$ subject to $g = 0$, look for points where $\nabla f = \lambda \nabla g$ and $g = 0$: at a constrained optimum, moving along the constraint surface cannot change $f$ to first order, so $\nabla f$ has no component along the surface. With several constraints, $\nabla f = \sum_k \lambda_k \nabla g_k$. Solve the system, then compare the candidates' values.
+To optimize $f$ subject to $g = 0$, look for points where $\nabla f = \lambda \nabla g$ and $g = 0$. At a constrained optimum, moving along the constraint surface cannot change $f$ to first order, so $\nabla f$ has no component along the surface. With several constraints, $\nabla f = \sum_k \lambda_k \nabla g_k$. Solve the system, then compare the candidates' values.
 
-## 3. Worked example by hand
+## Two examples worked by hand
 
-This is a sibling of q27 and q52, not one of the problems of the set.
+These two examples are siblings of q27 and q52, not problems of the set, and they show the level of detail the answers use.
 
-**A backward pass by hand.** $h = 2x - 1$, $y = \sigma(h)$, $L = -\ln y$ (the cross-entropy of one positive example). At $x = 1/2$: forward, $h = 0$, $y = \sigma(0) = 1/2$, $L = \ln 2$. Backward, one factor at a time: $\frac{dL}{dy} = -\frac{1}{y} = -2$; $\frac{dy}{dh} = \sigma(h)(1 - \sigma(h)) = \frac14$; $\frac{dh}{dx} = 2$. So $\frac{dL}{dx} = (-2)\cdot\frac14\cdot 2 = -1$. The middle two factors combine to $\frac{dL}{dh} = -(1 - y) = y - 1 = -\frac12$, the familiar "prediction minus label" of a logistic output.
+**A backward pass by hand.** Let $h = 2x - 1$, $y = \sigma(h)$, $L = -\ln y$ (the cross-entropy of one positive example). At $x = 1/2$, the forward pass gives $h = 0$, $y = \sigma(0) = 1/2$, $L = \ln 2$. The backward pass takes one factor at a time: $\frac{dL}{dy} = -\frac{1}{y} = -2$; $\frac{dy}{dh} = \sigma(h)(1 - \sigma(h)) = \frac14$; $\frac{dh}{dx} = 2$. So $\frac{dL}{dx} = (-2)\cdot\frac14\cdot 2 = -1$. The middle two factors combine to $\frac{dL}{dh} = -(1 - y) = y - 1 = -\frac12$, the familiar "prediction minus label" of a logistic output.
 
-**A constrained minimum.** Minimize $x^2 + 2y^2$ subject to $x + y = 3$. Lagrange: $\nabla f = (2x, 4y) = \lambda (1, 1)$, so $x = \lambda/2$, $y = \lambda/4$, and $x + y = 3\lambda/4 = 3$ gives $\lambda = 4$, $(x, y) = (2, 1)$, value $4 + 2 = 6$. Check by substitution: $f = x^2 + 2(3 - x)^2$, $f' = 2x - 4(3 - x) = 6x - 12 = 0$ at $x = 2$.
+**A constrained minimum.** Minimize $x^2 + 2y^2$ subject to $x + y = 3$. Lagrange gives $\nabla f = (2x, 4y) = \lambda (1, 1)$, so $x = \lambda/2$, $y = \lambda/4$, and $x + y = 3\lambda/4 = 3$ gives $\lambda = 4$, $(x, y) = (2, 1)$, value $4 + 2 = 6$. Check by substitution: $f = x^2 + 2(3 - x)^2$, $f' = 2x - 4(3 - x) = 6x - 12 = 0$ at $x = 2$.
 
-## 4. The problem set, with worked answers
+## The problems
 
-Answers are exact (for example $-1/\sqrt5$, not $-0.447$). Vectors are written as tuples and matrices row by row. The tag after each problem says what kind of answer is expected. For q33 either sign of the direction is correct.
+The problems follow the same seven topics as the review above, in the same order. Answers are exact (for example $-1/\sqrt5$, not $-0.447$). Vectors are written as tuples and matrices row by row. The tag after each problem says what kind of answer is expected. For q33 either sign of the direction is correct.
 
 ### Vectors and geometry
 
@@ -204,7 +191,7 @@ Answers are exact (for example $-1/\sqrt5$, not $-0.447$). Vectors are written a
 
 <details><summary>Answer</summary>
 
-**$\left(\frac{e^x}{e^x + e^y},\ \frac{e^y}{e^x + e^y}\right)$.** $\partial_x \ln(e^x + e^y) = \frac{1}{e^x + e^y} \cdot e^x$ by the chain rule, and the same for $y$. This is the softmax of $(x, y)$, and it is why the backward pass of cross-entropy (`L0.3`) starts from the softmax. Two common mistakes: $(e^x, e^y)$ drops the outer $1/(\cdot)$, and $\left(\frac{1}{e^x + e^y}, \frac{1}{e^x + e^y}\right)$ drops the inner derivative.
+**$\left(\frac{e^x}{e^x + e^y},\ \frac{e^y}{e^x + e^y}\right)$.** $\partial_x \ln(e^x + e^y) = \frac{1}{e^x + e^y} \cdot e^x$ by the chain rule, and the same for $y$. This is the softmax of $(x, y)$, and it is why the backward pass of cross-entropy ([Losses with a fused backward](../../build-an-llm/p00-foundations/03-losses-with-fused-backward.md) in *Build Your Own LLM System*) starts from the softmax. Two common mistakes: $(e^x, e^y)$ drops the outer $1/(\cdot)$, and $\left(\frac{1}{e^x + e^y}, \frac{1}{e^x + e^y}\right)$ drops the inner derivative.
 
 </details>
 
@@ -212,7 +199,7 @@ Answers are exact (for example $-1/\sqrt5$, not $-0.447$). Vectors are written a
 
 <details><summary>Answer</summary>
 
-**$(-1, -2)$.** $\nabla f = A^\top(Ax - b)$; at $x = 0$, $Ax - b = (-1, -1)$ and $A^\top(-1, -1) = (-1, -2)$. This is the direction gradient descent (`M10.1`) follows. A common mistake is $(-1, -1)$, which forgets $A^\top$: the chain rule through $Ax$ contributes the transpose. $(1, 2)$ has the sign of $Ax - b$ flipped.
+**$(-1, -2)$.** $\nabla f = A^\top(Ax - b)$; at $x = 0$, $Ax - b = (-1, -1)$ and $A^\top(-1, -1) = (-1, -2)$. This is the direction [gradient descent](../10-optimization/01-gradient-descent-and-line-search.md) follows. A common mistake is $(-1, -1)$, which forgets $A^\top$: the chain rule through $Ax$ contributes the transpose. $(1, 2)$ has the sign of $Ax - b$ flipped.
 
 </details>
 
@@ -310,7 +297,7 @@ Answers are exact (for example $-1/\sqrt5$, not $-0.447$). Vectors are written a
 
 <details><summary>Answer</summary>
 
-**$(4, 6)$.** $J_f = A$, and $u^\top A = (1 \cdot 1 + 1 \cdot 3,\ 1 \cdot 2 + 1 \cdot 4) = (4, 6)$: the column sums of $A$ weighted by $u$. This is the product `M04.2`'s `vjp_numeric` and every reverse-mode backward compute. A common mistake is $(3, 7) = Au$, the row sums: that is a JVP, and for a non-symmetric $A$ it is a different vector.
+**$(4, 6)$.** $J_f = A$, and $u^\top A = (1 \cdot 1 + 1 \cdot 3,\ 1 \cdot 2 + 1 \cdot 4) = (4, 6)$: the column sums of $A$ weighted by $u$. This is the product that `vjp_numeric` from [Jacobians, the multivariable chain rule, and numeric JVP/VJP](02-jacobians-and-the-chain-rule.md) and every reverse-mode backward compute. A common mistake is $(3, 7) = Au$, the row sums: that is a JVP, and for a non-symmetric $A$ it is a different vector.
 
 </details>
 
@@ -430,7 +417,7 @@ A complete proof derives $D_u f = \nabla f \cdot u$ from the chain rule, bounds 
 
 <details><summary>Answer</summary>
 
-**$100$.** The Hessian of $\frac12 x^\top H x$ is $H$ itself, with eigenvalues 1 and 100. Gradient descent shrinks the error by about $1 - 1/100$ per step, so $\kappa = 100$ means slow convergence along the flat direction (`M10.1`). Common mistakes: $1/100$ inverts the ratio, and 10 is the ratio of the axes' lengths (the square root), not of the eigenvalues.
+**$100$.** The Hessian of $\frac12 x^\top H x$ is $H$ itself, with eigenvalues 1 and 100. Gradient descent shrinks the error by about $1 - 1/100$ per step, so $\kappa = 100$ means slow convergence along the flat direction ([gradient descent](../10-optimization/01-gradient-descent-and-line-search.md)). Common mistakes: $1/100$ inverts the ratio, and 10 is the ratio of the axes' lengths (the square root), not of the eigenvalues.
 
 </details>
 
@@ -488,7 +475,7 @@ A complete proof derives $D_u f = \nabla f \cdot u$ from the chain rule, bounds 
 
 <details><summary>Answer</summary>
 
-**$1$.** $\frac{1}{2\pi}\int_0^{2\pi} \int_0^\infty e^{-r^2/2} r\,dr\,d\theta = \frac{1}{2\pi} \cdot 2\pi \cdot 1$, since $\int_0^\infty r e^{-r^2/2}dr = 1$ by $s = r^2/2$. A density integrates to 1, which is what makes $\frac{1}{2\pi}$ the right constant (`M07.0`). $2\pi$ forgets the normalizer.
+**$1$.** $\frac{1}{2\pi}\int_0^{2\pi} \int_0^\infty e^{-r^2/2} r\,dr\,d\theta = \frac{1}{2\pi} \cdot 2\pi \cdot 1$, since $\int_0^\infty r e^{-r^2/2}dr = 1$ by $s = r^2/2$. A density integrates to 1, which is what makes $\frac{1}{2\pi}$ the right constant ([Random variables, expectation, variance, and normal draws by Box-Muller](../07-probability-statistics/00-random-variables-and-the-normal.md)). $2\pi$ forgets the normalizer.
 
 </details>
 
@@ -530,7 +517,7 @@ A complete proof derives $D_u f = \nabla f \cdot u$ from the chain rule, bounds 
 
 <details><summary>Answer</summary>
 
-**$1/3$.** $\partial_{p_i}\left(-\sum p_j \ln p_j - \lambda(\sum p_j - 1)\right) = -\ln p_i - 1 - \lambda = 0$, so every $p_i$ has the same value, and the constraint makes it $1/3$. With only the normalization constraint, maximum entropy is uniform; adding an energy constraint (q58) turns it into a softmax (`M11.5`).
+**$1/3$.** $\partial_{p_i}\left(-\sum p_j \ln p_j - \lambda(\sum p_j - 1)\right) = -\ln p_i - 1 - \lambda = 0$, so every $p_i$ has the same value, and the constraint makes it $1/3$. With only the normalization constraint, maximum entropy is uniform; adding an energy constraint (q58) turns it into a softmax ([the second information theory problem set](../11-information-theory/91-problem-set-b.md)).
 
 </details>
 
@@ -574,28 +561,45 @@ A complete proof names both multipliers in the Lagrangian, sets each partial in 
 
 </details>
 
-## 5. Pitfalls
+## What can go wrong
 
-| Pitfall | Symptom | How the solution avoids it |
+The wrong answers discussed under each problem fall into a handful of recurring patterns. Each one has a symptom you would see in code and a habit that prevents it:
+
+| Pitfall | Symptom | How to avoid it |
 |---|---|---|
-| Dropping an inner derivative in a partial | $\partial_x \sin(xy)$ given as $\cos(xy)$; gradcheck fails on every product inside a nonlinearity | applies the chain rule to every inner function and writes its derivative as a separate factor (q9, q10, q18) |
-| Forgetting the $A^\top$ in a least-squares gradient | descent along the wrong direction for any non-identity $A$ | differentiates through $Ax$ with the chain rule, which brings in $A^\top$ (q16) |
-| Multiplying the derivatives of the parts instead of summing over paths | $dz/dt$ for $z = xy$ given as $x'(t)\,y'(t)$ | writes one term per path from $t$ to $z$ and adds them (q20) |
-| Skipping a factor in a chain of local derivatives | a backward pass off by the sigmoid's slope or a weight | backpropagates one named local derivative at a time and multiplies them all (q23, q27) |
-| Computing $J u$ when the backward pass needs $u^\top J$ | the gradient of a non-symmetric layer comes out transposed | computes the row vector $u^\top J$, a weighted sum of rows of $J$ (q28) |
-| Using an unnormalized direction | a directional derivative scaled by the direction's length | uses the given unit vector, or divides by the norm first (q29, q31) |
-| Halving the mixed term of a Hessian | a saddle misread as a minimum | takes $H_{12} = \partial_x\partial_y f$ directly, which is the full coefficient of $xy$ (q35) |
-| Forgetting the Jacobian factor in a change of variables | polar integrals off by the missing $r$ | writes $dA = \lvert\det J\rvert\,du\,dv$ before setting limits (q45, q50) |
-| Reporting the optimizer instead of the optimum | the argmax given as the max | substitutes the optimizer back into $f$ and reports that value (q52, q53) |
+| Dropping an inner derivative in a partial | $\partial_x \sin(xy)$ given as $\cos(xy)$; gradcheck fails on every product inside a nonlinearity | apply the chain rule to every inner function and write its derivative as a separate factor (q9, q10, q18) |
+| Forgetting the $A^\top$ in a least-squares gradient | descent along the wrong direction for any non-identity $A$ | differentiate through $Ax$ with the chain rule, which brings in $A^\top$ (q16) |
+| Multiplying the derivatives of the parts instead of summing over paths | $dz/dt$ for $z = xy$ given as $x'(t)\,y'(t)$ | write one term per path from $t$ to $z$ and add them (q20) |
+| Skipping a factor in a chain of local derivatives | a backward pass off by the sigmoid's slope or a weight | backpropagate one named local derivative at a time and multiply them all (q23, q27) |
+| Computing $J u$ when the backward pass needs $u^\top J$ | the gradient of a non-symmetric layer comes out transposed | compute the row vector $u^\top J$, a weighted sum of rows of $J$ (q28) |
+| Using an unnormalized direction | a directional derivative scaled by the direction's length | use the given unit vector, or divide by the norm first (q29, q31) |
+| Halving the mixed term of a Hessian | a saddle misread as a minimum | take $H_{12} = \partial_x\partial_y f$ directly, which is the full coefficient of $xy$ (q35) |
+| Forgetting the Jacobian factor in a change of variables | polar integrals off by the missing $r$ | write $dA = \lvert\det J\rvert\,du\,dv$ before setting limits (q45, q50) |
+| Reporting the optimizer instead of the optimum | the argmax given as the max | substitute the optimizer back into $f$ and report that value (q52, q53) |
 
-## 6. Where it's used next
+## Where this leads
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `S-M01` | one-variable derivatives, the chain rule, and integrals |
-| Forward | `M04.1` | `gradcheck` compares analytic partials (q9 to q18) with central differences |
-| Forward | `M04.2` | `jacobian`, `vjp_numeric`, `jvp_numeric`: the products of q25 and q28 |
-| Forward | `M08.2` | reverse-mode autodiff is the chain of VJPs of q27 |
-| Forward | `M10.1` | gradient descent, Armijo steps, and the condition number of q42 |
-| Forward | `M07.3` | Gaussian integrals in two variables (q46, q49) behind initialization variances |
-| Forward | `M11.5` | softmax as maximum entropy under an energy constraint (q58) |
+This set rests on the one-variable derivatives, chain rule, and integrals of the [Calculus 1 problem set](../01-calculus-1/90-problem-set.md). Its results are used throughout the rest of the book. `gradcheck` in [Partial derivatives, gradients, and gradcheck](01-gradients-and-gradcheck.md) compares analytic partials like those of q9 to q18 with central differences. `jacobian`, `vjp_numeric`, and `jvp_numeric` in [Jacobians, the multivariable chain rule, and numeric JVP/VJP](02-jacobians-and-the-chain-rule.md) compute the products of q25 and q28. Reverse-mode autodiff in [Scalar reverse mode: the Value graph](../08-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md) is the chain of VJPs of q27. [Convexity, smoothness, gradient descent, and Armijo line search](../10-optimization/01-gradient-descent-and-line-search.md) uses the condition number of q42. [Variance propagation and initialization](../07-probability-statistics/03-variance-propagation-and-initialization.md) rests on the Gaussian integrals in two variables of q46 and q49. And [the second information theory problem set](../11-information-theory/91-problem-set-b.md) treats softmax as maximum entropy under an energy constraint, the result of q58.
+
+### Further reading
+
+- OpenStax, *Calculus Volume 3* (free), chapters 2, 4, and 5.
+- Boyd and Vandenberghe, *Convex Optimization*, section 5.1, for Lagrange duality.
+
+## Key terms
+
+- **Gradient**: the vector of partial derivatives of a scalar function; it points in the direction of steepest ascent.
+- **Directional derivative**: $D_u f = \nabla f \cdot u$, the rate of change of $f$ along a unit vector $u$.
+- **Jacobian**: the matrix of partial derivatives of a vector-valued function, $(J_g)_{ij} = \partial g_i / \partial x_j$.
+- **Vector-Jacobian product (VJP)**: $u^\top J$, one step of reverse-mode differentiation.
+- **Hessian**: the symmetric matrix of second partial derivatives, whose eigenvalues classify a critical point.
+- **Condition number**: $\kappa = \lambda_{\max}/\lambda_{\min}$ of a positive definite matrix, which sets how slowly gradient descent converges.
+- **Lagrange multiplier**: the scalar $\lambda$ in $\nabla f = \lambda \nabla g$ at a constrained optimum.
+
+## Summary
+
+- The gradient collects the partial derivatives; it points uphill fastest, and its length is the steepest slope (q11, q30, q34).
+- The multivariable chain rule multiplies Jacobians, and reverse mode multiplies them from the loss backward, one vector-Jacobian product at a time (q23, q27, q28).
+- At a critical point the Hessian's eigenvalues decide minimum, maximum, or saddle, and their ratio is the condition number that slows gradient descent (q37, q42).
+- A change of variables multiplies the area element by $|\det J|$: the $r$ in polar coordinates is why $\iint e^{-(x^2 + y^2)} = \pi$ (q26, q46, q50).
+- At a constrained optimum the gradient is parallel to the constraint's gradient; maximum entropy under an energy constraint is a softmax (q51 to q58).

@@ -1,199 +1,115 @@
 # Discrete Math 2
 
-## Overview
-- **Textbook**: *Discrete Mathematics: An Open Introduction* by Oscar Levin -- https://discrete.openmathbooks.org (CC BY-SA 4.0)
-- **Prerequisites**: [Discrete Math 1](../05-discrete-math-1/)
-- **Estimated time**: 4 weeks at 10-12 hrs/week
+This chapter covers the discrete structures that turn up most directly in algorithms and systems: graphs, number theory, and advanced counting. Graph theory is the language of networks, dependencies, and state machines, and it is the single most widely used discrete structure in computer science. Number theory underpins cryptography, hashing, and random number generation. Recurrence relations are the bridge between recursive algorithms and closed-form running times. Together these topics form the mathematical core of a computer science education.
 
-## Key Takeaways
-- Master graph theory -- the single most widely used discrete structure in computer science
-- Understand modular arithmetic and the number-theoretic foundations of cryptography
-- Solve recurrence relations that describe the running time of recursive algorithms
-- Use advanced counting techniques (inclusion-exclusion, generating functions) to analyze complex problems
-- Develop comfort with combinatorial proofs as an elegant alternative to algebraic manipulation
+The chapter moves from structure to arithmetic to probability. It opens with directed graphs and the topological order that every backward pass in an autograd engine depends on, built as an iterative depth-first search. Trees and tries follow, the structure behind every tokenizer's "which vocabulary entries start here?" question. Then modular arithmetic becomes concrete in PCG32, the random generator the rest of the books draw from, and in the FNV-1a and universal hash functions. Two problem sets close the chapter: the first drills DAGs, modular arithmetic, and hashing by hand; the second derives the numbers you must choose for tries, hash tables, MinHash and LSH, Bloom filters, and divide-and-conquer recurrences.
 
-## How to Study
-- Read each section and work through inline examples; Levin's text is conversational and example-rich
-- Draw graphs by hand for every graph theory problem -- visualization is essential
-- For recurrences, practice both the characteristic equation method and the Master Theorem
-- Verify counting results with small cases before trusting a formula
-- Connect graph theory to real algorithms (BFS, DFS, Dijkstra) early for motivation
+> **Learning objectives**
+> - Define graphs, DAGs, trees, and tries, prove their basic counting facts, and implement an iterative topological sort and a trie.
+> - Work fluently in $\mathbb{Z}_n$ and on fixed-width machine words, and explain why PCG32, FNV-1a, and universal hashing are built the way they are.
+> - Predict collision rates with birthday bounds, size a Bloom filter, and read an LSH S-curve.
+> - Solve linear recurrences and divide-and-conquer recurrences, and use inclusion-exclusion and combinatorial proofs.
 
----
+## Before you begin
 
-# Concepts & Techniques
+You need the sets, relations, counting, induction, and bijections of [Discrete Math 1](../05-discrete-math-1/README.md), and its [problem set](../05-discrete-math-1/90-problem-set.md) is good preparation for the proofs here. The companion textbook is *Discrete Mathematics: An Open Introduction* by Oscar Levin (https://discrete.openmathbooks.org, CC BY-SA 4.0). Levin's text is conversational and example-rich; draw every graph by hand, and check any counting formula on small cases before trusting it.
 
-## Core Insight
+## In this chapter
 
-Discrete Math 2 covers the structures that appear most directly in algorithms and systems:
-graphs, number theory, and advanced counting. Graph theory provides the language for networks,
-dependencies, and state machines. Number theory underpins cryptography and hashing. Recurrence
-relations are the bridge between recursive algorithms and closed-form running times. Together,
-these topics form the mathematical core of a CS education.
+1. [Graphs, DAGs, and an iterative topological sort](01-graphs-dags-and-topological-sort.md) proves that a topological order exists exactly for DAGs and builds `toposort`, the reverse depth-first post-order that autograd's backward pass walks, iterative and keyed by identity.
+2. [Trees and tries, longest-prefix match](02-trees-and-tries-longest-prefix-match.md) counts the nodes of a trie and builds longest-prefix match, the lookup behind WordPiece, the Unigram lattice, and added-token matching.
+3. [Modular arithmetic, hashing, and PCG32 in Python](03-modular-arithmetic-hashing-and-pcg32.md) derives PCG32 from a linear congruential generator, with bit-exact uniforms, unbiased bounded integers, SplitMix64 sub-streams, FNV-1a, and universal hashing.
+4. [Discrete math 2 problem set, part a: DAGs, modular arithmetic, hashing](90-problem-set-a.md) works topological orders, machine-word arithmetic, and hash-table load by hand, including the correctness proof of the iterative DFS.
+5. [Discrete math 2 problem set, part b: trees, birthday bounds, MinHash and LSH, Bloom filters, recurrences](91-problem-set-b.md) derives the formulas that set the parameters of tries, hash tables, near-duplicate detection, Bloom filters, and recursive algorithms.
 
-## 1. Graph Theory
+## The mathematics at a glance
 
-**Textbook sections**: Ch 4, Sections 4.1-4.7
+The sections above apply the theory to specific code. This survey collects the classical definitions and theorems of the chapter in one place, following Levin, so you can see the whole field the sections draw on.
 
-**Key definitions**:
-- **Graph**: G = (V, E) where V is a set of vertices and E is a set of edges (pairs of vertices)
-- **Degree**: deg(v) = number of edges incident to v
-- **Path**: A sequence of distinct vertices where consecutive vertices are adjacent
-- **Cycle**: A path that starts and ends at the same vertex
-- **Connected**: There is a path between every pair of vertices
-- **Isomorphism**: A bijection f: V(G) -> V(H) that preserves adjacency
-- **Planar graph**: A graph that can be drawn in the plane without edge crossings
-- **Chromatic number**: chi(G) = minimum number of colors needed so no two adjacent vertices share a color
-- **Euler path/circuit**: A walk that uses every edge exactly once (circuit = closed)
-- **Hamilton path/circuit**: A path that visits every vertex exactly once (circuit = closed)
-- **Tree**: A connected acyclic graph
-- **Bipartite graph**: Vertices can be split into two sets so every edge goes between the sets
+### Graph theory
 
-**Key theorems**:
-- **Handshaking Lemma**: Sum of all degrees = 2|E|. *Intuition*: each edge contributes 1 to the degree of each endpoint, so it is counted twice.
-- **Euler's Formula (Planar Graphs)**: For a connected planar graph, V - E + F = 2 where F is the number of faces. *Intuition*: this topological invariant constrains planar graphs. Corollary: E <= 3V - 6 (so K_5 and K_{3,3} are not planar).
-- **Euler Path/Circuit Criterion**: A connected graph has an Euler circuit iff every vertex has even degree. It has an Euler path (not circuit) iff exactly two vertices have odd degree. *Intuition*: to traverse every edge, you must be able to "leave" every vertex as many times as you "enter" it.
-- **Tree Characterizations**: For a graph G with n vertices, the following are equivalent: G is a tree; G is connected with n-1 edges; G is acyclic with n-1 edges; there is a unique path between any two vertices. *Intuition*: trees are "minimally connected" -- removing any edge disconnects them.
-- **Four Color Theorem**: Every planar graph can be properly colored with at most 4 colors. *Intuition*: any map can be colored with 4 colors so no adjacent regions share a color. (Proof requires computer verification.)
-- **Five Color Theorem**: Every planar graph can be properly colored with 5 colors. *Intuition*: provable without computer; uses Euler's formula to find a vertex of degree <= 5, then induction.
+A **graph** is $G = (V, E)$, a set of vertices $V$ and a set of edges $E$ (pairs of vertices). The **degree** $\deg(v)$ is the number of edges incident to $v$. A **path** is a sequence of distinct vertices in which consecutive vertices are adjacent, and a **cycle** is a path that starts and ends at the same vertex. A graph is **connected** when there is a path between every pair of vertices. An **isomorphism** is a bijection $f: V(G) \to V(H)$ that preserves adjacency. A **planar graph** can be drawn in the plane without edge crossings. The **chromatic number** $\chi(G)$ is the minimum number of colours needed so that no two adjacent vertices share a colour. An **Euler path** uses every edge exactly once (an Euler circuit is a closed one); a **Hamilton path** visits every vertex exactly once (a Hamilton circuit is a closed one). A **tree** is a connected acyclic graph, and a **bipartite graph** is one whose vertices split into two sets so that every edge goes between the sets. Levin covers all of this in chapter 4, sections 4.1 to 4.7.
 
-**Worked example**:
-> Does K_4 (complete graph on 4 vertices) have an Euler circuit? Degrees: every vertex has degree 3 (odd). Since not all degrees are even, no Euler circuit exists. Does it have an Euler path? More than two vertices have odd degree (all four do), so no Euler path either.
+The key theorems each have a short intuition:
 
-> Is K_{2,3} planar? V = 5, E = 6. Check: E <= 3V - 6 = 9. Passes. But K_{2,3} is bipartite, so no triangles, giving the stricter bound E <= 2V - 4 = 6. It passes with equality, so the formula alone does not rule it out. In fact K_{2,3} is planar (draw it).
+- **Handshaking lemma.** The sum of all degrees is $2\lvert E \rvert$, because each edge contributes 1 to the degree of each endpoint and so is counted twice.
+- **Euler's formula for planar graphs.** A connected planar graph has $V - E + F = 2$, where $F$ is the number of faces. This topological invariant constrains planar graphs; its corollary $E \le 3V - 6$ shows that $K_5$ and $K_{3,3}$ are not planar.
+- **Euler path and circuit criterion.** A connected graph has an Euler circuit if and only if every vertex has even degree, and an Euler path (not a circuit) if and only if exactly two vertices have odd degree. To traverse every edge, you must be able to leave every vertex as many times as you enter it.
+- **Tree characterizations.** For a graph $G$ on $n$ vertices the following are equivalent: $G$ is a tree; $G$ is connected with $n - 1$ edges; $G$ is acyclic with $n - 1$ edges; there is a unique path between any two vertices. Trees are minimally connected: removing any edge disconnects them.
+- **Four colour theorem.** Every planar graph can be properly coloured with at most 4 colours, so any map can be coloured with 4 colours without adjacent regions sharing one. The proof requires computer verification.
+- **Five colour theorem.** Every planar graph can be properly coloured with 5 colours. This one is provable without a computer: Euler's formula gives a vertex of degree at most 5, and induction does the rest.
 
-> Prove every tree with n >= 2 vertices has at least two leaves (vertices of degree 1). A tree has n-1 edges, so the sum of degrees is 2(n-1). If at most one vertex had degree 1, the remaining n-1 vertices would have degree >= 2, giving sum >= 2(n-1) + 1 > 2(n-1), contradiction.
+Three worked examples show the theorems in use. Does $K_4$, the complete graph on 4 vertices, have an Euler circuit? Every vertex has degree 3, which is odd, so no Euler circuit exists; and since more than two vertices (all four) have odd degree, there is no Euler path either.
 
-**Essential problems**: Levin Ch 4, Exercises: #4.1.1-4.1.8, #4.2.1-4.2.6, #4.3.1-4.3.8, #4.4.1-4.4.5
-**Challenge problems**: Levin Ch 4, Exercises: #4.7.1-4.7.6
+Is $K_{2,3}$ planar? $V = 5$ and $E = 6$, and $E \le 3V - 6 = 9$ passes. But $K_{2,3}$ is bipartite, so it has no triangles, which gives the stricter bound $E \le 2V - 4 = 6$. It passes with equality, so the formula alone does not rule it out, and in fact $K_{2,3}$ is planar (draw it).
 
-## 2. Number Theory
+Finally, prove that every tree with $n \ge 2$ vertices has at least two leaves (vertices of degree 1). A tree has $n - 1$ edges, so the sum of degrees is $2(n - 1)$. If at most one vertex had degree 1, the remaining $n - 1$ vertices would have degree at least 2, giving a sum of at least $2(n - 1) + 1 > 2(n - 1)$, a contradiction.
 
-**Textbook sections**: Levin supplementary; also Hammack Ch 1-7 for proof technique applied to number theory
+### Number theory
 
-**Key definitions**:
-- **Divisibility**: a | b means b = ak for some integer k
-- **Greatest Common Divisor**: gcd(a,b) = largest d such that d | a and d | b
-- **Congruence**: a is congruent to b (mod n) means n | (a - b)
-- **Modular arithmetic**: Arithmetic in Z_n = {0, 1, ..., n-1} with operations mod n
-- **Multiplicative inverse mod n**: a^(-1) mod n exists iff gcd(a,n) = 1
+Number theory supplies the arithmetic. $a \mid b$, read "$a$ divides $b$", means $b = ak$ for some integer $k$. The **greatest common divisor** $\gcd(a, b)$ is the largest $d$ with $d \mid a$ and $d \mid b$. $a$ is **congruent** to $b$ modulo $n$ when $n \mid (a - b)$, and **modular arithmetic** is arithmetic in $\mathbb{Z}_n = \{0, 1, \dots, n-1\}$ with operations taken mod $n$. A **multiplicative inverse** $a^{-1} \bmod n$ exists if and only if $\gcd(a, n) = 1$. Levin treats this in supplementary material; Hammack's *Book of Proof*, chapters 1 to 7, applies proof technique to number theory.
 
-**Key theorems**:
-- **Division Algorithm**: For any integers a and d > 0, there exist unique q and r with a = dq + r and 0 <= r < d. *Intuition*: every integer can be placed in a unique "box" relative to d.
-- **Euclidean Algorithm**: gcd(a,b) = gcd(b, a mod b), terminating when the remainder is 0. *Intuition*: the GCD does not change when you subtract one number from the other -- so take the remainder instead for speed.
-- **Bezout's Identity**: gcd(a,b) = ax + by for some integers x, y (found by the Extended Euclidean Algorithm). *Intuition*: the GCD can always be "built" as a linear combination of a and b.
-- **Fermat's Little Theorem**: If p is prime and p does not divide a, then a^(p-1) is congruent to 1 (mod p). *Intuition*: in modular arithmetic with a prime modulus, exponentiation is cyclic with period dividing p-1.
-- **RSA**: Choose primes p, q. Let n = pq, phi(n) = (p-1)(q-1). Choose e with gcd(e, phi(n)) = 1. Compute d = e^(-1) mod phi(n). Public key: (n,e). Private key: d. Encrypt: c = m^e mod n. Decrypt: m = c^d mod n. *Intuition*: Euler's theorem guarantees m^(ed) = m mod n, so encryption and decryption are inverses.
+The key theorems:
 
-**Worked example**:
-> Compute gcd(252, 105) using the Euclidean Algorithm. 252 = 2*105 + 42. 105 = 2*42 + 21. 42 = 2*21 + 0. So gcd(252,105) = 21.
+- **Division algorithm.** For any integers $a$ and $d > 0$ there are unique $q$ and $r$ with $a = dq + r$ and $0 \le r < d$: every integer lands in a unique "box" relative to $d$.
+- **Euclidean algorithm.** $\gcd(a, b) = \gcd(b, a \bmod b)$, terminating when the remainder is 0. The GCD does not change when you subtract one number from the other, so taking the remainder does many subtractions at once.
+- **Bezout's identity.** $\gcd(a, b) = ax + by$ for some integers $x, y$, found by the extended Euclidean algorithm: the GCD can always be built as a linear combination of $a$ and $b$.
+- **Fermat's little theorem.** If $p$ is prime and $p \nmid a$, then $a^{p-1} \equiv 1 \pmod p$: with a prime modulus, exponentiation is cyclic with period dividing $p - 1$.
+- **RSA.** Choose primes $p, q$. Let $n = pq$ and $\varphi(n) = (p-1)(q-1)$. Choose $e$ with $\gcd(e, \varphi(n)) = 1$ and compute $d = e^{-1} \bmod \varphi(n)$. The public key is $(n, e)$ and the private key is $d$. Encrypt with $c = m^e \bmod n$ and decrypt with $m = c^d \bmod n$. Euler's theorem guarantees $m^{ed} \equiv m \pmod n$, so encryption and decryption are inverses.
 
-> Extended: work backwards. 21 = 105 - 2*42 = 105 - 2*(252 - 2*105) = 5*105 - 2*252. So gcd = 21 = (-2)*252 + 5*105.
+As a worked example, compute $\gcd(252, 105)$ with the Euclidean algorithm: $252 = 2 \cdot 105 + 42$, $105 = 2 \cdot 42 + 21$, $42 = 2 \cdot 21 + 0$, so $\gcd(252, 105) = 21$. The extended version works backwards: $21 = 105 - 2 \cdot 42 = 105 - 2(252 - 2 \cdot 105) = 5 \cdot 105 - 2 \cdot 252$, so $21 = (-2) \cdot 252 + 5 \cdot 105$.
 
-> Compute 3^100 mod 7. By Fermat's Little Theorem: 3^6 = 1 mod 7. 100 = 6*16 + 4. So 3^100 = (3^6)^16 * 3^4 = 1^16 * 81 = 81 mod 7 = 4.
+To compute $3^{100} \bmod 7$, use Fermat's little theorem: $3^6 \equiv 1 \pmod 7$, and $100 = 6 \cdot 16 + 4$, so $3^{100} = (3^6)^{16} \cdot 3^4 \equiv 1^{16} \cdot 81 \equiv 4 \pmod 7$.
 
-**Essential problems**: Levin supplementary exercises on modular arithmetic; Hammack Ch 4-6 number theory exercises: #1-8 from each
-**Challenge problems**: Implement RSA by hand for small primes (e.g., p=5, q=11); Hammack Ch 6 advanced exercises
+### Advanced counting
 
-## 3. Advanced Counting
+The counting tools extend those of the previous chapter. The **inclusion-exclusion principle** is $\lvert A_1 \cup \dots \cup A_n \rvert = \sum \lvert A_i \rvert - \sum \lvert A_i \cap A_j \rvert + \sum \lvert A_i \cap A_j \cap A_k \rvert - \dots$: alternately add and subtract to correct for overcounting. The **pigeonhole principle** says that if $n + 1$ objects go into $n$ boxes, some box holds at least 2; more generally, if more than $kn$ objects go into $n$ boxes, some box holds at least $k + 1$. A **recurrence relation** defines $a_n$ in terms of earlier terms, as in $a_n = 2a_{n-1} + 1$. For $a_n = c_1 a_{n-1} + c_2 a_{n-2}$ the **characteristic equation** is $r^2 = c_1 r + c_2$, and its roots give the closed form. A **generating function** $A(x) = \sum a_n x^n$ encodes a sequence as a power series. Levin covers these in chapter 1, sections 1.1 to 1.7, and chapter 2, sections 2.1 to 2.4.
 
-**Textbook sections**: Ch 1, Sections 1.1-1.7; Ch 2, Sections 2.1-2.4
+The key results:
 
-**Key definitions**:
-- **Inclusion-Exclusion Principle**: |A_1 union ... union A_n| = Sum |A_i| - Sum |A_i intersect A_j| + Sum |A_i intersect A_j intersect A_k| - ... *Intuition*: alternately add and subtract to correct for overcounting.
-- **Pigeonhole Principle**: If n+1 objects are placed in n boxes, at least one box has >= 2 objects. Generalized: if more than kn objects go into n boxes, some box has >= k+1 objects. *Intuition*: you cannot spread more items than slots without doubling up.
-- **Recurrence relation**: An equation defining a_n in terms of earlier terms, e.g., a_n = 2*a_(n-1) + 1
-- **Characteristic equation**: For a_n = c_1*a_(n-1) + c_2*a_(n-2), solve r^2 = c_1*r + c_2; roots give the closed form
-- **Generating function**: A(x) = Sum a_n * x^n; encodes a sequence as a power series
+- **Solving linear recurrences.** If $r^2 - c_1 r - c_2 = 0$ has distinct roots $r_1, r_2$, then $a_n = A r_1^n + B r_2^n$, with constants from the initial conditions; with a repeated root $r$, $a_n = (A + Bn) r^n$. The recurrence behaves like a linear ODE, and its solution is a combination of geometric sequences.
+- **Master theorem.** For $T(n) = aT(n/b) + f(n)$, compare $f(n)$ with $n^{\log_b a}$. If $f$ grows slower, $T = \Theta(n^{\log_b a})$; if they match, $T = \Theta(n^{\log_b a} \log n)$; if $f$ grows faster, $T = \Theta(f(n))$. The recursion tree spends most of its work at the leaves, evenly across levels, or at the root.
+- **Derangements.** The number of permutations with no fixed point is $D_n = n! \sum_{k=0}^{n} (-1)^k / k!$, approximately $n!/e$. By inclusion-exclusion, subtract the permutations fixing at least one element, add back those fixing at least two, and so on.
 
-**Key theorems**:
-- **Solving Linear Recurrences**: If the characteristic equation r^2 - c_1*r - c_2 = 0 has distinct roots r_1, r_2, then a_n = A*r_1^n + B*r_2^n (constants from initial conditions). If repeated root r, then a_n = (A + Bn)*r^n. *Intuition*: the recurrence behaves like a linear ODE -- the solution is a combination of exponentials (geometric sequences).
-- **Master Theorem**: For T(n) = aT(n/b) + f(n): compare f(n) with n^(log_b(a)). If f grows slower: T = Theta(n^(log_b(a))). If same: T = Theta(n^(log_b(a)) * log n). If faster: T = Theta(f(n)). *Intuition*: the recursion tree either spends most work at the leaves, distributes evenly, or spends most work at the root.
-- **Derangements**: D_n = n! * Sum from k=0 to n of (-1)^k / k! (the number of permutations with no fixed points). D_n is approximately n!/e. *Intuition*: by inclusion-exclusion, subtract permutations fixing at least one element, add back those fixing at least two, etc.
+Three worked examples. Solve $a_n = 5a_{n-1} - 6a_{n-2}$ with $a_0 = 1$, $a_1 = 4$: the characteristic equation $r^2 - 5r + 6 = 0$ has roots 2 and 3, so $a_n = A \cdot 2^n + B \cdot 3^n$. From $a_0 = 1$, $A + B = 1$; from $a_1 = 4$, $2A + 3B = 4$. Solving gives $B = 2$ and $A = -1$, so $a_n = -2^n + 2 \cdot 3^n$.
 
-**Worked example**:
-> Solve a_n = 5*a_(n-1) - 6*a_(n-2) with a_0 = 1, a_1 = 4. Characteristic equation: r^2 - 5r + 6 = 0, roots r = 2, r = 3. General solution: a_n = A*2^n + B*3^n. From a_0 = 1: A + B = 1. From a_1 = 4: 2A + 3B = 4. Solving: B = 2, A = -1. So a_n = -2^n + 2*3^n.
+How many integers from 1 to 1000 are divisible by 2, 3, or 5? $\lvert A_2 \rvert = 500$, $\lvert A_3 \rvert = 333$, $\lvert A_5 \rvert = 200$, $\lvert A_2 \cap A_3 \rvert = 166$, $\lvert A_2 \cap A_5 \rvert = 100$, $\lvert A_3 \cap A_5 \rvert = 66$, and $\lvert A_2 \cap A_3 \cap A_5 \rvert = 33$. By inclusion-exclusion, $500 + 333 + 200 - 166 - 100 - 66 + 33 = 734$.
 
-> How many integers from 1 to 1000 are divisible by 2 or 3 or 5? |A_2| = 500, |A_3| = 333, |A_5| = 200, |A_2 intersect A_3| = 166, |A_2 intersect A_5| = 100, |A_3 intersect A_5| = 66, |A_2 intersect A_3 intersect A_5| = 33. By inclusion-exclusion: 500 + 333 + 200 - 166 - 100 - 66 + 33 = 734.
+And by pigeonhole, in any group of 13 people at least two share a birth month: 13 people, 12 months.
 
-> Pigeonhole: In any group of 13 people, at least two share a birth month (13 people, 12 months).
+### Combinatorial proofs
 
-**Essential problems**: Levin Ch 1, Exercises: #1.1.1-1.1.8, #1.2.1-1.2.6, #1.4.1-1.4.8; Ch 2, Exercises: #2.4.1-2.4.8
-**Challenge problems**: Levin Ch 1, Exercises: #1.7.1-1.7.6; Ch 2, Exercises: #2.4.9-2.4.14
+The last technique replaces algebra with counting. A **combinatorial proof** proves an identity by showing that both sides count the same set in two different ways; **double counting** is the general principle that two ways of counting the same quantity yield an equality. The method is to identify a set $S$ that one side counts, then find a different way to count $S$ that yields the other side. No algebraic manipulation is needed. Levin covers this in chapter 2, sections 2.1 and 2.2, with supplementary material from Hammack.
 
-## 4. Additional Proof Techniques
+Three classical identities fall out this way:
 
-**Textbook sections**: Ch 2, Sections 2.1-2.2; supplementary from Hammack
+- **Vandermonde's identity.** $\binom{m+n}{r} = \sum_{k=0}^{r} \binom{m}{k}\binom{n}{r-k}$. Choose $r$ people from a group of $m$ men and $n$ women: the left side counts directly, and the right side splits by choosing $k$ men and $r - k$ women.
+- **Hockey stick identity.** $\binom{r}{r} + \binom{r+1}{r} + \dots + \binom{n}{r} = \binom{n+1}{r+1}$. To choose $r + 1$ elements from $\{1, \dots, n+1\}$, let the largest chosen element be $j + 1$ (where $j \ge r$), then choose the remaining $r$ from $\{1, \dots, j\}$, giving $\binom{j}{r}$. Summing over $j$ from $r$ to $n$ gives the left side.
+- **Row sums of Pascal's triangle.** $\sum_{k=0}^{n} \binom{n}{k} = 2^n$. The left side counts the subsets of an $n$-element set by size; the right side counts all subsets directly, with 2 choices per element.
 
-**Key definitions**:
-- **Combinatorial proof**: Proving an identity by showing both sides count the same set in two different ways
-- **Double counting**: Two ways of counting the same quantity yield an equality
+Two more worked examples. To prove $\binom{n}{k} = \binom{n}{n-k}$: $\binom{n}{k}$ counts the ways to choose $k$ items from $n$, and for each such choice the unchosen items form a set of size $n - k$. That is a bijection between $k$-element and $(n-k)$-element subsets, so the counts agree. To prove $\binom{2n}{2} = 2\binom{n}{2} + n^2$: the left side chooses 2 people from $2n$, with $n$ in group A and $n$ in group B. The right side splits the choice into both from A ($\binom{n}{2}$), both from B ($\binom{n}{2}$), or one from each ($n \cdot n$), for a total of $2\binom{n}{2} + n^2$.
 
-**Key technique**:
-- Identify a set S that one side of the identity counts. Find a different way to count S that yields the other side. No algebraic manipulation needed.
+### Techniques and where they apply
 
-**Key theorems (proved combinatorially)**:
-- **Vandermonde's Identity**: C(m+n, r) = Sum from k=0 to r of C(m,k)*C(n,r-k). *Combinatorial proof*: choose r people from a group of m men and n women. The left side counts directly. The right side splits by choosing k men and r-k women.
-- **Hockey Stick Identity**: C(r,r) + C(r+1,r) + ... + C(n,r) = C(n+1,r+1). *Combinatorial proof*: to choose r+1 elements from {1,...,n+1}, let the largest chosen element be j+1 (where j >= r). Then choose the remaining r from {1,...,j}, giving C(j,r). Summing over j from r to n gives the left side.
-- **Sum of Row of Pascal's Triangle**: Sum from k=0 to n of C(n,k) = 2^n. *Combinatorial proof*: the left side counts subsets of an n-element set by size. The right side counts all subsets directly (2 choices per element).
+The table pairs each technique with when to reach for it.
 
-**Worked example**:
-> Prove C(n,k) = C(n,n-k) combinatorially. C(n,k) counts ways to choose k items from n. For each such choice, the unchosen items form a set of size n-k. This is a bijection between k-element subsets and (n-k)-element subsets, so C(n,k) = C(n,n-k).
-
-> Prove C(2n,2) = 2*C(n,2) + n^2 combinatorially. Left side: choose 2 people from 2n (n in group A, n in group B). Right side: both from A (C(n,2)), both from B (C(n,2)), or one from each (n*n). Total: 2*C(n,2) + n^2.
-
-**Essential problems**: Levin Ch 1, Exercises: #1.3.1-1.3.8, #1.4.1-1.4.6; Hammack Ch 4-7 review exercises
-**Challenge problems**: Levin Ch 2, Exercises on combinatorial proofs: #2.1.6-2.1.12
-
----
-
-## Technique Catalog
-
-| Technique | When to Use | Key Formula/Idea |
+| Technique | When to use | Key formula or idea |
 |-----------|-------------|------------------|
-| BFS/DFS on graphs | Explore connectivity, find paths | Systematic vertex traversal |
-| Euler's Formula | Analyze planar graphs | V - E + F = 2 |
-| Degree-based arguments | Prove existence of certain vertices | Handshaking: sum of degrees = 2|E| |
-| Euclidean Algorithm | Compute GCD efficiently | gcd(a,b) = gcd(b, a mod b) |
-| Modular exponentiation | Compute a^k mod n efficiently | Repeated squaring |
-| Characteristic equation | Solve linear recurrences | Factor r^k - c_1*r^(k-1) - ... = 0 |
-| Generating functions | Solve counting problems, recurrences | Encode sequence as power series |
-| Inclusion-Exclusion | Count union of overlapping sets | Alternate add/subtract intersections |
-| Pigeonhole Principle | Prove existence of collisions/repeats | More items than containers |
-| Combinatorial proof | Prove identities without algebra | Count the same set two ways |
+| BFS/DFS on graphs | explore connectivity, find paths | systematic vertex traversal |
+| Euler's formula | analyse planar graphs | $V - E + F = 2$ |
+| Degree-based arguments | prove existence of certain vertices | handshaking: sum of degrees $= 2\lvert E \rvert$ |
+| Euclidean algorithm | compute a GCD efficiently | $\gcd(a,b) = \gcd(b, a \bmod b)$ |
+| Modular exponentiation | compute $a^k \bmod n$ efficiently | repeated squaring |
+| Characteristic equation | solve linear recurrences | factor $r^k - c_1 r^{k-1} - \dots = 0$ |
+| Generating functions | solve counting problems and recurrences | encode a sequence as a power series |
+| Inclusion-exclusion | count a union of overlapping sets | alternately add and subtract intersections |
+| Pigeonhole principle | prove existence of collisions or repeats | more items than containers |
+| Combinatorial proof | prove identities without algebra | count the same set two ways |
 
-## Connections to CS & Algorithms
+These ideas reach far into computing. Graph traversal gives shortest paths, cycle detection, and topological sort; graph colouring drives register allocation in compilers and scheduling; planar graphs appear in VLSI circuit layout and map rendering. Trees are the data structures (binary search trees, heaps, tries) and the spanning trees of networks. Euler and Hamilton paths show up in network routing and in DNA sequencing by Eulerian assembly. Modular arithmetic is the basis of hashing, checksums, and random number generators, and RSA and number theory underpin public-key cryptography and digital signatures. Recurrences give the running times of merge sort and quicksort, the master theorem classifies divide-and-conquer algorithms at a glance, and generating functions power Knuth-style analysis of algorithms. Many of these are developed in *Algorithms* and *Systems and Architecture*.
 
-| Math Concept | CS Application | Repo Link |
-|-------------|----------------|-----------|
-| Graph traversal (BFS/DFS) | Shortest path, cycle detection, topological sort | algorithms track |
-| Graph coloring | Register allocation in compilers, scheduling | systems track |
-| Planar graphs | VLSI circuit layout, map rendering | systems track |
-| Trees | Data structures (BST, heaps, tries), spanning trees | algorithms track |
-| Euler/Hamilton paths | Network routing, DNA sequencing (Eulerian assembly) | algorithms track |
-| Modular arithmetic | Hashing, checksums, random number generators | systems track |
-| RSA / number theory | Public-key cryptography, digital signatures | systems track |
-| Recurrence relations | Running time of merge sort, quicksort, etc. | algorithms track |
-| Master Theorem | Quick classification of divide-and-conquer complexity | algorithms track |
-| Generating functions | Analysis of algorithms (Knuth-style) | algorithms track |
+## Further reading
 
-## Company Relevance
-
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| Google/Meta | Graph problems dominate coding interviews (BFS, DFS, shortest path) | Medium-Hard |
-| Amazon | Tree and graph traversal for logistics, dependency graphs | Medium |
-| Security (Cloudflare, CrowdStrike) | RSA, modular arithmetic, cryptographic protocols | Hard |
-| Compiler teams (Apple, LLVM) | Graph coloring for register allocation | Hard |
-| Networking (Cisco, Juniper) | Routing algorithms use graph theory directly | Medium |
-| Any SWE role | Recurrence analysis for understanding algorithm complexity | Medium |
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `M06.1` | [Graphs, DAGs, and an iterative topological sort](01-graphs-dags-and-topological-sort.md) | build | 2 |
-| 2 | `M06.2` | [Trees and tries, longest-prefix match](02-trees-and-tries-longest-prefix-match.md) | build | 3 |
-| 3 | `M06.3` | [Modular arithmetic, hashing, and PCG32 in Python](03-modular-arithmetic-hashing-and-pcg32.md) | build | 2 |
-| 4 | `S-M06a` | [Discrete math 2 problem set, part a: DAGs, modular arithmetic, hashing](90-problem-set-a.md) | solve | 2 |
-| 5 | `S-M06b` | [Solve set: trees, birthday bounds, Jaccard/MinHash/LSH S-curve, Bloom FP rate, recurrences](91-problem-set-b.md) | solve | 3 |
+- Oscar Levin, *Discrete Mathematics: An Open Introduction* (https://discrete.openmathbooks.org). Essential exercises: chapter 4, exercises 4.1.1 to 4.1.8, 4.2.1 to 4.2.6, 4.3.1 to 4.3.8, and 4.4.1 to 4.4.5 (graphs); chapter 1, exercises 1.1.1 to 1.1.8, 1.2.1 to 1.2.6, 1.3.1 to 1.3.8, and 1.4.1 to 1.4.8; chapter 2, exercises 2.4.1 to 2.4.8 (counting and recurrences). Challenge exercises: 4.7.1 to 4.7.6, 1.7.1 to 1.7.6, 2.4.9 to 2.4.14, and the combinatorial proofs 2.1.6 to 2.1.12.
+- Richard Hammack, *Book of Proof*: chapters 4 to 7 review exercises, and exercises 1 to 8 of the number-theory material in chapters 4 to 6, with chapter 6's advanced exercises as a challenge.
+- As a challenge project, implement RSA by hand for small primes, such as $p = 5$ and $q = 11$.

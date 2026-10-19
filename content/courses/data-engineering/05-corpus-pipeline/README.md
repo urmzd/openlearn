@@ -1,103 +1,47 @@
 # Corpus Pipeline
 
-## Overview
+A training corpus is the output of a program, and like any program it has bugs, tests, and provenance. This chapter treats the corpus as code: stages with typed interfaces, tests on hand-labelled fixtures, a manifest with content hashes, and a ledger that answers "where did this text come from, and may we use it?" for every shard. The payoff is concrete. Data quality bounds model quality: filtering, deduplication, and decontamination change a model's loss and its benchmark numbers more than most architecture choices at small scale, and the FineWeb paper documents each filter's measured effect.
 
-- **Primary references**: Penedo et al., [*The FineWeb Datasets*](https://arxiv.org/abs/2406.17557) (free); Soldaini et al., [*Dolma*](https://arxiv.org/abs/2402.00159) (free); Hugging Face, [datatrove](https://github.com/huggingface/datatrove) (free, Apache-2.0)
-- **Supplementary**: Lee et al., [*Deduplicating Training Data Makes Language Models Better*](https://arxiv.org/abs/2107.06499) (free); Broder, *On the Resemblance and Containment of Documents* (1997, MinHash); Rae et al., [*Scaling Language Models: Methods, Analysis & Insights from Training Gopher*](https://arxiv.org/abs/2112.11446) (the Gopher quality rules, free); Leskovec, Rajaraman, and Ullman, [*Mining of Massive Datasets*](http://www.mmds.org/) chapter 3 (free)
-- **Prerequisites**: [Data Engineering Foundations](../01-foundations/), [Storage & Warehousing](../02-storage-warehousing/) (columnar files), the asyncio primer `lang.08`, the [responsible-AI topics on licensing and PII](../../responsible-ai/)
-- **Estimated time**: 3 to 4 weeks in course Pass 3, plus one module in Pass 8 when the pipeline becomes a durable workflow
+The chapter builds one pipeline, end to end, over a single `Doc` type. It starts by fetching sources with resumable downloads, pinned checksums, and license capture. It then composes streaming stages, each a generator so memory stays flat on any corpus size: Unicode normalization, language identification, the Gopher quality rules, repetition and perplexity filters. Deduplication comes in two halves: exact (paragraph hashes screened by a Bloom filter and confirmed by sort-merge) and near (MinHash signatures, LSH banding, union-find clusters), with decontamination against eval sets as near dedup's sibling. A PII scrub replaces personal data with typed placeholders. The survivors are written as hash-split Parquet shards with a manifest, tokenized and packed into llm.c `.bin` files, and checked against the licensing ledger, which also generates the datasheet. The last section wraps the whole pipeline as `CorpusBuild`, a durable workflow that survives worker kills and cleans up after cancels.
 
-## Key Takeaways
+Two properties run through every section. Every output byte traces to a licensed source: a shard whose source is unknown or not allowlisted fails the build. And determinism is a feature: the same config gives the same output hash regardless of worker count, which is what makes the durable, resumable pipeline of the final section possible. The pipeline is complete when, built from the small reference corpus config, its shards, manifest, ledger, and `.bin` files match the format contracts with a deterministic output hash across two runs and across worker counts 1 and 4.
 
-- **Data quality bounds model quality.** Filtering, deduplication, and decontamination change a model's loss and its benchmark numbers more than most architecture choices at small scale.
-- **A pipeline is a composition of streaming stages** over one `Doc` type: fetch, normalize, filter, exact dedup, near dedup, PII scrub, shard, tokenize. Each stage is a generator, so memory stays flat on any corpus size.
-- **Deduplication has two halves**: exact (hashes, confirmed by sort-merge) and near (MinHash signatures, LSH banding, union-find clusters). Decontamination is near-dedup against your eval sets.
-- **Every output byte traces to a licensed source.** The ledger records license and provenance per source; a shard whose source is unknown or not allowlisted fails the build.
-- **Determinism is a feature**: the same config gives the same output hash regardless of worker count, which is what makes a durable, resumable pipeline possible later.
+> **Learning objectives**
+> - Build a corpus pipeline as composed streaming stages over one document type, with flat memory on any corpus size.
+> - Remove exact and near duplicates correctly and at scale, and decontaminate a corpus against protected eval sets.
+> - Scrub PII with typed placeholders and an audit trail that never copies the PII.
+> - Write sorted, hash-split Parquet shards and llm.c token files with manifests whose bytes are a function of the input.
+> - Verify that every row of training text traces to a license that permits training, and generate a datasheet from the files.
+> - Run the pipeline as a durable workflow whose output hash does not depend on kills, retries, or worker count.
 
-## How to Study
+## Before you begin
 
-Read the FineWeb paper end to end (it documents each filter's measured effect), then skim datatrove's pipeline stages. Work the MinHash and LSH chapter of *Mining of Massive Datasets* by hand for a 3-band example. In the course, build `data.01` to `data.08` in Pass 3 after the tokenizers, and `data.09` in Pass 8 once the durable engine exists.
+You should be comfortable with the material in [Foundations](../01-foundations/README.md) and with columnar files from [Storage & Warehousing](../02-storage-warehousing/README.md). The fetch stage uses [Python asyncio](../../programming-languages/02-language-and-tool-primers/08-python-asyncio.md) from *Programming Languages*, and the ledger and PII sections enforce policies argued in *Responsible AI*: [Data licensing and the ledger](../../responsible-ai/01-data-licensing/01-data-licensing-and-the-ledger.md) and [Privacy and PII policy](../../responsible-ai/02-privacy-and-pii/01-privacy-and-pii-policy.md). The dedup sections use the Bloom filter from [Bloom filter](../../algorithms/16-systems-data-structures/08-bloom-filter.md) in *Algorithms* and the hashing of [Modular arithmetic, hashing, and PCG32](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) in *Mathematics for Computing*. The tokenize section runs the tokenizer of [Tokenizers](../../build-an-llm/p01-tokenizers/README.md) in *Build an LLM*, and the final section runs on the engine of [Durable Orchestration & Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) in *AI Platform Engineering*, so read that chapter before the last section. A good warm-up is to work the MinHash and LSH chapter of *Mining of Massive Datasets* by hand for a 3-band example.
 
----
+## In this chapter
 
-# Concepts & Techniques
+1. [Async fetch with resume, checksums, and license capture](01-async-fetch-resume-checksums.md): download each configured source with HTTP Range resume, verify it against the pinned sha256, quarantine mismatches, and write one ledger row per source so reruns cost nothing.
+2. [Extract, normalize, and quality filters](02-extract-normalize-and-quality-filters.md): define the `Doc` and `Stage` types every later stage shares, and build idempotent NFC normalization, stop-word language identification, the Gopher rules, and repetition and perplexity filters.
+3. [Exact dedup: paragraph hashes, a Bloom screen, and a sort-merge confirm](03-exact-dedup-bloom-and-sort-merge.md): keep the first occurrence of every paragraph using a Bloom filter that only nominates candidates and a sort-merge that confirms them, so no unique paragraph is ever dropped.
+4. [Near-duplicate dedup: MinHash, LSH, union-find, and decontamination](04-near-dedup-minhash-lsh.md): find almost-copies in roughly linear time, cluster them deterministically, and drop any document that shares a 13-gram with a protected eval set.
+5. [PII scrub with typed placeholders and audit spans](05-pii-scrub.md): detect emails, phones, cards, IPs, and keys with regex-plus-validator detectors, redact them, and record kinds and offsets under a per-source policy.
+6. [Parquet shards, the manifest, and the document-hash split](06-parquet-shards-and-manifest.md): write sorted, zstd-compressed shards split by the hash of each text, with a manifest that is the output's identity, swapped in atomically.
+7. [Tokenize and pack to llm.c .bin](07-tokenize-and-pack.md): turn each split into memory-mappable token files with separators, whole-document rollover, exact conservation, and the bytes-per-token factor for bits per byte.
+8. [Licensing ledger verification and the datasheet](08-ledger-and-datasheet.md): evaluate SPDX expressions against an allowlist, join the ledger with every shard row, fail with a non-retryable exit 65, and generate the datasheet.
+9. [CorpusBuild: the pipeline as a durable workflow](09-corpusbuild-as-a-durable-workflow.md): run fetch, shard, and tokenize as activities keyed by the config's content hash, so kills resume and cancels clean up.
 
-## Core Insight
+## Where this chapter connects
 
-A training corpus is the output of a program, and like any program it has bugs, tests, and provenance. Treating the corpus as code means stages with typed interfaces, tests on hand-labelled fixtures, a manifest with content hashes, and a ledger that answers "where did this text come from and may we use it" for every shard.
+The Parquet layout behind the shard writer comes from [Storage & Warehousing](../02-storage-warehousing/README.md), and [Orchestration & Modeling](../04-orchestration-modeling/README.md) covers Airflow and dbt, the conventional alternatives to the durable workflow of the last section. The corpus this chapter builds is the one [TinyStories, owned end to end](../../build-an-llm/capstones/01-tinystories.md) in *Build an LLM* trains on.
 
-## 1. Fetch and stages
+The same practices appear across the field. Hugging Face's FineWeb and datatrove are documented, reproducible web-scale filtering; the Allen Institute for AI's Dolma is an open corpus with its toolkit and datasheet; and every frontier lab decontaminates against eval sets before reporting benchmark numbers.
 
-**Key ideas**:
-- **Async fetch** with resume via HTTP `Range`, checksums, and quarantine on mismatch (`data.01`).
-- **Stages** are `Callable[[Iterator[Doc]], Iterator[Doc]]`, composed with `compose` (`data.02`): Unicode normalization, language ID, Gopher rules, repetition filters, and a perplexity filter that plugs in the `L2.1` n-gram model in C1.
+## Further reading
 
-## 2. Deduplication and decontamination
-
-**Key ideas**:
-- **Exact**: paragraph hashes, a Bloom screen (`ds.08`), then a sort-merge confirm so no true document is dropped (`data.03`).
-- **Near**: MinHash with 128 permutations, LSH with $b$ bands of $r$ rows (threshold about $(1/b)^{1/r}$), union-find clusters, process-parallel and worker-count invariant (`data.04`).
-- **Decontamination**: drop any document that shares a 13-gram with a protected eval or validation set, and record the count.
-
-## 3. Privacy, shards, and tokens
-
-**Key ideas**:
-- **PII scrub** with typed placeholders and audit spans (`data.05`; policy in `ethics.02`).
-- **Parquet shards** and a manifest, with a document-hash train/val split (`data.06`).
-- **Tokenize and pack** to the llm.c `.bin` format read by `L0.6` `TokenStream` (`data.07`).
-
-## 4. Ledger, datasheet, and the durable pipeline
-
-**Key ideas**:
-- **Ledger verification** against `formats/ledger.schema.json` and a generated datasheet (`data.08`; policy in `ethics.01`).
-- **`CorpusBuild`** runs the stages as subprocess activities on the learner's durable engine; a killed worker resumes and every shard is written once (`data.09`).
-
-## Course modules
-
-| Module | Topic | Kind | Pass |
-|---|---|---|---|
-| `data.01` | Async fetch with resume, checksums, license capture (ledger rows) | build | 3 |
-| `data.02` | Extract, normalize, quality filters (generator stages) | build | 3 |
-| `data.03` | Exact dedup: paragraph hashes, Bloom screen, sort-merge confirm | build | 3 |
-| `data.04` | Near-dup MinHash + LSH + union-find, process-parallel; **decontamination** against protected eval and validation sets | build | 3 |
-| `data.05` | PII scrub with typed placeholders and audit spans | build | 3 |
-| `data.06` | Parquet shards, manifest, document-hash train/val split (uses `pyarrow`) | build | 3 |
-| `data.07` | Tokenize and pack to llm.c `.bin` | build | 3 |
-| `data.08` | Licensing ledger verification and datasheet | build | 3 |
-| `data.09` | Pipeline as a durable workflow `CorpusBuild` | build | 8 |
-
-The pipeline is complete when, built from the small reference corpus config, its shards, manifest, ledger, and `.bin` files match the format contracts with a deterministic output hash across two runs and worker counts 1 and 4.
-
-## Chapters
-
-| # | Module | Chapter | Kind | Pass |
-|---|---|---|---|---|
-| 1 | `data.01` | [Async fetch with resume, checksums, license capture](01-async-fetch-resume-checksums.md) | build | 3 |
-| 2 | `data.02` | [Extract, normalize, quality filters (generator stages)](02-extract-normalize-and-quality-filters.md) | build | 3 |
-| 3 | `data.03` | [Exact dedup: paragraph hashes, Bloom screen, sort-merge confirm](03-exact-dedup-bloom-and-sort-merge.md) | build | 3 |
-| 4 | `data.04` | [Near-duplicate dedup: MinHash, LSH, union-find, and decontamination](04-near-dedup-minhash-lsh.md) | build | 3 |
-| 5 | `data.05` | [PII scrub with typed placeholders and audit spans](05-pii-scrub.md) | build | 3 |
-| 6 | `data.06` | [Parquet shards, manifest, and the document-hash split](06-parquet-shards-and-manifest.md) | build | 3 |
-| 7 | `data.07` | [Tokenize and pack to llm.c .bin](07-tokenize-and-pack.md) | build | 3 |
-| 8 | `data.08` | [Licensing ledger verification and the datasheet](08-ledger-and-datasheet.md) | build | 3 |
-| 9 | `data.09` | [Pipeline as a durable workflow CorpusBuild](09-corpusbuild-as-a-durable-workflow.md) | build | 8 |
-
-## Connections to Other Tracks
-
-| Track | Connection |
-|---|---|
-| [Storage & Warehousing](../02-storage-warehousing/) | Parquet and columnar layout behind `data.06` |
-| [Orchestration & Modeling](../04-orchestration-modeling/) | Airflow and dbt as the going-further for `data.09` |
-| [Responsible AI](../../responsible-ai/) | data licensing (`ethics.01`) and privacy (`ethics.02`) |
-| [Systems Data Structures](../../algorithms/16-systems-data-structures/) | the Bloom filter (`ds.08`) |
-| [tinyllm Part 1](../../../courses/build-an-llm/p01-tokenizers/) | the tokenizer that `data.07` runs |
-| [Durable Orchestration & Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/) | the engine `CorpusBuild` runs on |
-
-## Company Relevance
-
-| Company | Practice |
-|---|---|
-| Hugging Face | FineWeb and datatrove: documented, reproducible web-scale filtering |
-| Allen Institute for AI | Dolma: an open corpus with its toolkit and datasheet |
-| Every frontier lab | decontamination against eval sets before reporting benchmark numbers |
+- Penedo et al., [*The FineWeb Datasets*](https://arxiv.org/abs/2406.17557): read it end to end; it documents each filter's measured effect.
+- Soldaini et al., [*Dolma*](https://arxiv.org/abs/2402.00159).
+- Hugging Face, [datatrove](https://github.com/huggingface/datatrove) (Apache-2.0): skim its pipeline stages alongside this chapter.
+- Lee et al., [*Deduplicating Training Data Makes Language Models Better*](https://arxiv.org/abs/2107.06499).
+- Broder, *On the Resemblance and Containment of Documents* (1997): the origin of MinHash.
+- Rae et al., [*Scaling Language Models: Methods, Analysis & Insights from Training Gopher*](https://arxiv.org/abs/2112.11446): the Gopher quality rules.
+- Leskovec, Rajaraman, and Ullman, [*Mining of Massive Datasets*](http://www.mmds.org/), chapter 3.

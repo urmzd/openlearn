@@ -1,78 +1,84 @@
-# Open-loop load generator, log-linear histogram, Go PCG32 port
+# An open-loop load generator
 
-## Overview
+The engine from [the tokio server](05-openai-server-on-tokio.md) and its metrics from [serving metrics and tracing](07-serving-metrics-and-tracing.md) are ready. How much load they take before the SLOs break is not yet known, and finding out is harder than it sounds.
 
-| | |
-|---|---|
-| **Module** | `load.01` · build · Go · Pass 7 · 3 to 5 h reading |
-| **Solution** | [`go/ds/rng/pcg32.go`](../../../../course/solutions/go/ds/rng/pcg32.go): `PCG32` (`New`, `Uint32`, `Float64`, `Normal`, `Below`, `Shuffle`, `Stream`), the course's random generator in Go · [`go/loadgen/schedule.go`](../../../../course/solutions/go/loadgen/schedule.go): `Poisson`, `Constant`, and `Burst` arrivals · [`go/loadgen/histogram.go`](../../../../course/solutions/go/loadgen/histogram.go): `Histogram`, log-linear with at most 1/128 relative error · [`go/loadgen/run.go`](../../../../course/solutions/go/loadgen/run.go): `ReadStream`, `Measure`, the open-loop `Run`, and `BuildReport` · the entry point [`go/cmd/loadgen`](../../../../course/solutions/entry/go/cmd/loadgen/main.go) |
-| **Contract** | the report: [`formats/loadgen-report.schema.json`](../../../../course/contracts/formats/loadgen-report.schema.json) · the generator: [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md) (conformance `parity/rng`) · the stream it measures: [`openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml) · the role `{loadgen}`: [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md) |
-| **Needs** | nothing to call: reading `lang.06` Go ([primer](../../programming-languages/02-language-and-tool-primers/06-go.md)), `M07.1` inverse-CDF sampling ([chapter](../../mathematics-for-computing/07-probability-statistics/01-categorical-sampling.md)), `M06.3` PCG32 ([chapter](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md)); both are re-implemented here in Go |
-| **Used by** | the `{loadgen}` entry point drives every load measurement of the system: the 64-request burst against the engine, the gateway, the production SLO run, and the incident walkthroughs · later: `ag.07`, `ag.09`, `ag.12` |
-| **Optional depth** | Gil Tene, [How NOT to Measure Latency](https://www.youtube.com/watch?v=lJ8ydIuPFeU) (free talk); [HdrHistogram](http://hdrhistogram.org/) (free); [O'Neill, PCG](https://www.pcg-random.org/paper.html) (free); [Schroeder, Wierman, Harchol-Balter, Open Versus Closed](https://www.usenix.org/legacy/event/nsdi06/tech/full_papers/schroeder/schroeder.pdf) (free) |
+The earlier Python load script waits for each response before sending the next one. That is a closed loop, and it has a fatal flaw: when the server stalls, the script stops sending and records one slow request instead of the dozens a real user population would have sent. Its percentiles look fine during exactly the outages that matter. This failure has a name, **coordinated omission**. Every load number from here on (the 64-request burst against the engine, the production SLO run, the incident walkthroughs, and [the regression gate](11-run-comparison-and-regression-gate.md) in CI) comes from the generator this section builds, so it has to be right: open loop, latencies from the intended start, honest histograms, seeded arrivals.
 
-## Key Takeaways
+The generator is written in Go. It calls nothing else from the book, but it re-implements two ideas you have seen before: inverse-CDF sampling from [categorical sampling](../../mathematics-for-computing/07-probability-statistics/01-categorical-sampling.md) and the PCG32 generator from [modular arithmetic, hashing, and PCG32](../../mathematics-for-computing/06-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md), both in *Mathematics for Computing*. The [Go primer](../../programming-languages/02-language-and-tool-primers/06-go.md) in *Programming Languages* covers the language.
 
-- Open loop: arrivals follow the schedule whatever the server does, and each request is charged from its INTENDED send time, so a stall shows up in every request it delayed.
-- A log-linear histogram keeps 128 buckets per power of two: every quantile is within 1/128 of the exact sorted value, never below it, in fixed memory, and two histograms merge exactly.
-- The nearest-rank quantile is the $\lceil qn \rceil$-th smallest value, with an allowance for float rounding: $0.55 \cdot 100$ is $55.00000000000001$.
-- The Go PCG32 gives the same stream as Python, C, and Rust for the same seed, bit for bit.
-- A failed request (an error status, an SSE error event, a stream cut before `[DONE]`) counts in `errors`, never in a latency histogram; goodput is the share of ALL requests that met every SLO bound.
-
-## How to read this chapter
-
-Sections 1 to 3 explain why the load generator must be open loop, how arrivals, measurements, the histogram, and the generator work, and work a histogram, a request, and the generator by hand. Section 4 fixes the interface. Section 5 walks through the solution: PCG32, the schedules, the stream reader, the runner, the histogram, and the report. Try to predict each step before reading it.
-
-The entry point [`go/cmd/loadgen`](../../../../course/solutions/entry/go/cmd/loadgen/main.go) wires them together; a run looks like
+The contracts are the report format [`formats/loadgen-report.schema.json`](../../../../course/contracts/formats/loadgen-report.schema.json), the generator spec [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md) (conformance `parity/rng`), the stream being measured in [`openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml), and the `{loadgen}` role in [`spec/cli-roles.md`](../../../../course/contracts/spec/cli-roles.md). The solution is [`go/ds/rng/pcg32.go`](../../../../course/solutions/go/ds/rng/pcg32.go) (`PCG32`: `New`, `Uint32`, `Float64`, `Normal`, `Below`, `Shuffle`, `Stream`), [`go/loadgen/schedule.go`](../../../../course/solutions/go/loadgen/schedule.go) (`Poisson`, `Constant`, and `Burst` arrivals), [`go/loadgen/histogram.go`](../../../../course/solutions/go/loadgen/histogram.go) (a log-linear `Histogram` with at most 1/128 relative error), [`go/loadgen/run.go`](../../../../course/solutions/go/loadgen/run.go) (`ReadStream`, `Measure`, the open-loop `Run`, and `BuildReport`), and the entry point [`go/cmd/loadgen`](../../../../course/solutions/entry/go/cmd/loadgen/main.go). A run looks like this:
 
 ```bash
 loadgen --target http://127.0.0.1:8000 --model smol-135m --mode poisson --rate 4 --duration 60s --seed 7 --out report.json
 ```
 
----
+> **Learning objectives**
+> - Explain coordinated omission and why an open-loop generator charging each request from its intended send time avoids it.
+> - Measure TTFT, ITL, E2E, and TPOT from a streamed SSE response.
+> - Build a log-linear histogram whose quantiles are within 1/128 of exact, always on the pessimistic side, in fixed memory.
+> - Port PCG32 to Go so it produces the same bits as the other ports for the same seed.
+> - Compute error rate and goodput so that failures never flatter the results.
 
-## 1. Why now
+## Arrivals
 
-The engine (`L10.5`) and its metrics (`L10.7`) are ready; how much load they take before the SLOs break is not known. The Pass 4 Python load script in `ml/04` waits for each response before sending the next (closed loop): when the server stalls, it stops sending and records one slow request instead of the dozens a real user population would have sent, so its percentiles look fine during exactly the outages that matter (coordinated omission). Every load number from here on (the 64-request burst against the engine, the production SLO run, the incident walkthroughs, `load.02`'s regression gate in CI) comes from this generator, so it has to be right: open loop, latencies from the intended start, honest histograms, seeded arrivals.
-
-## 2. Principles
+Here is the notation for the section.
 
 | Symbol | Meaning | Type |
 |---|---|---|
 | $\lambda$ | offered rate (requests per second) | `float64` |
 | $g_i$ | gap before arrival $i$ | `time.Duration` |
-| $s_i = s_0 + \sum_{j \le i} g_j$ | the INTENDED send time of request $i$ | `time.Time` |
+| $s_i = s_0 + \sum_{j \le i} g_j$ | the *intended* send time of request $i$ | `time.Time` |
 | $v$ | a recorded value in nanoseconds, $v \ge 0$ | `int64` |
 | $e = \lfloor \log_2 v \rfloor$ | the value's octave | int |
 | $n$ | recorded values; $q \in [0, 1]$ a quantile | |
 
-### 2.1 Arrivals
+A load generator models users, not a client, and real users do not wait for each other. So arrival times must come from the schedule alone.
 
-A Poisson process of rate $\lambda$ has independent exponential gaps; by inverse CDF (`M07.1`) one uniform $u$ gives $g = -\ln(1 - u)/\lambda$ ($1 - u$ is never 0). Constant arrivals use $g = 1/\lambda$ every time; a burst of size $b$ every $\tau$ uses gaps $0, 0, \ldots, \tau, 0, \ldots$. The runner sends request $i$ at $s_i$ in its own goroutine, whether or not earlier requests have finished, and stops scheduling at $s_0 + $ duration (an arrival exactly at the end is not sent).
+A Poisson process of rate $\lambda$ has independent exponential gaps. By inverse CDF, one uniform $u$ gives $g = -\ln(1 - u)/\lambda$; note that $1 - u$ is never 0. Constant arrivals use $g = 1/\lambda$ every time. A burst of size $b$ every $\tau$ uses gaps $0, 0, \ldots, \tau, 0, \ldots$.
 
-### 2.2 Coordinated omission
+The runner sends request $i$ at $s_i$ in its own goroutine, whether or not earlier requests have finished, and stops scheduling at $s_0 + $ duration. An arrival exactly at the end is not sent.
 
-Charge a request from $s_i$, not from when the client got around to sending it or from when the server answered the headers. If the server stalls for one second at 10 rps, ten requests each see the stall, and all ten latencies record it.
+## Coordinated omission
 
-### 2.3 What one request measures
+The second half of being open loop is how latency is charged. Charge a request from $s_i$, not from when the client got around to sending it, and not from when the server answered the headers. If request $i$ is sent late because the client was busy, the user still waited from $s_i$. If the server stalls for one second at 10 rps, ten requests each see the stall, and all ten latencies record it.
 
-From the SSE stream (`data: <json>\n\n` events, `[DONE]` last), stamped as each event is read: TTFT is the first content chunk minus $s_i$; ITL the gaps between consecutive content chunks; E2E is `[DONE]` minus $s_i$; tokens are `usage.completion_tokens` when the server sends usage, else the content chunks; TPOT $= (E2E - TTFT)/(\text{tokens} - 1)$ for at least 2 tokens.
+## What one request measures
 
-### 2.4 The log-linear histogram
+Each request reads an SSE stream: `data: <json>\n\n` events, with `[DONE]` last. Each event is stamped as it is read, because TTFT and ITL are differences of arrival times, and stamping after parsing a batch of lines would inflate them. From those stamps:
 
-Values below $128$ get a bucket each. Above, with $e = \lfloor \log_2 v \rfloor$ and shift $= e - 7$, the top 8 bits $v \gg \text{shift}$ lie in $[128, 256)$ and select bucket $(\text{shift} + 1) \cdot 128 + (v \gg \text{shift}) - 128$, which covers $[\text{sub} \cdot 2^{\text{shift}}, (\text{sub} + 1) 2^{\text{shift}} - 1]$. A bucket is at most $2^{\text{shift}}/(128 \cdot 2^{\text{shift}}) = 1/128$ of its lower bound wide. The q-quantile is the nearest-rank value: rank $r = \lceil qn - 10^{-9} \rceil$ clamped to $[1, n]$, reported as the upper bound of the bucket holding the $r$-th smallest value, clamped to the true maximum. Memory is fixed (7424 counters for all of `int64`), and merging is adding counters.
+- TTFT is the first content chunk minus $s_i$.
+- ITL is the gaps between consecutive content chunks.
+- E2E is `[DONE]` minus $s_i$.
+- Tokens are `usage.completion_tokens` when the server sends usage, else the content chunks.
+- TPOT is $(E2E - TTFT)/(\text{tokens} - 1)$ for at least 2 tokens.
 
-### 2.5 The generator
+A failure is not a fast success. A 429 returns in a millisecond, and recording it as a latency would pull p50 down exactly when the system is overloaded. So an error status, an SSE error event, or a stream cut before `[DONE]` counts in `errors` and is kept out of every histogram.
 
-The Go port follows `spec/pcg32.md` exactly: state update $s \leftarrow 6364136223846793005\,s + \text{inc}$, output the XSH-RR permutation of the old state; seeding $\text{inc} = 2\,\text{seq} + 1$; `uniform_f64` from two draws (53 bits); Box-Muller with the spare kept; `Below(n)` rejecting draws under $(2^{32} - n) \bmod n$; Fisher-Yates from the end; sub-streams by SplitMix64.
+## The log-linear histogram
 
-### 2.6 The report
+Percentiles need bounded relative error in fixed memory. Storing every value grows without bound, and fixed linear buckets lose precision at either the low or the high end. The answer is to split every power of two into 128 equal buckets.
 
-`formats/loadgen-report.schema.json`: run id, target, mode, offered rate, duration, requests, errors, p50/p90/p95/p99/mean per metric in milliseconds, error rate, goodput (requests within every SLO bound over all requests), output tokens per second, and each histogram's non-empty buckets as `[upper_ms, count]`.
+Values below $128$ get a bucket each. Above that, with $e = \lfloor \log_2 v \rfloor$ and shift $= e - 7$, the top 8 bits $v \gg \text{shift}$ lie in $[128, 256)$ and select bucket $(\text{shift} + 1) \cdot 128 + (v \gg \text{shift}) - 128$, which covers $[\text{sub} \cdot 2^{\text{shift}}, (\text{sub} + 1) 2^{\text{shift}} - 1]$. A bucket is at most $2^{\text{shift}}/(128 \cdot 2^{\text{shift}}) = 1/128$ of its lower bound wide.
 
-## 3. Worked example by hand
+The q-quantile is the nearest-rank value. The rank is $r = \lceil qn - 10^{-9} \rceil$, clamped to $[1, n]$; the small epsilon forgives float rounding, since $0.55 \cdot 100$ is $55.00000000000001$ in float64. The quantile is reported as the upper bound of the bucket holding the $r$-th smallest value, clamped to the true maximum. Reporting the upper bound means the estimate is never below the exact value: a reported percentile must never flatter the system.
 
-**A histogram.** Record 1000, 1002, 1005, 2000 ns.
+Memory is fixed at 7424 counters for all of `int64`, and merging two histograms is adding counters.
+
+## The generator
+
+Seeded runs must repeat across languages. The Poisson gaps draw from PCG32, so the Go port must produce the same bits as the Python, C, and Rust ports for the same seed.
+
+The port follows `spec/pcg32.md` exactly. The state update is $s \leftarrow 6364136223846793005\,s + \text{inc}$, and the output is the XSH-RR permutation of the old state. Seeding sets $\text{inc} = 2\,\text{seq} + 1$. `uniform_f64` takes two draws (53 bits). Normals use Box-Muller with the spare kept. `Below(n)` rejects draws under $(2^{32} - n) \bmod n$. Shuffles are Fisher-Yates from the end. Sub-streams come from SplitMix64.
+
+## The report
+
+The report follows `formats/loadgen-report.schema.json`: run id, target, mode, offered rate, duration, requests, errors, p50/p90/p95/p99/mean per metric in milliseconds, error rate, goodput, output tokens per second, and each histogram's non-empty buckets as `[upper_ms, count]`. Goodput is the share of *all* requests, failures included, that met every SLO bound.
+
+## Working it by hand
+
+Three examples pin down the histogram, one request, and the generator.
+
+**A histogram.** Record 1000, 1002, 1005, and 2000 ns. Each lands in a bucket as follows:
 
 | Value | $e$ | shift | top bits | bucket |
 |---|---|---|---|---|
@@ -83,11 +89,13 @@ The Go port follows `spec/pcg32.md` exactly: state update $s \leftarrow 63641362
 
 The median has rank $\lceil 0.5 \cdot 4 \rceil = 2$: the second smallest value is in [1000, 1003], reported as 1003. The 100th percentile is in [2000, 2007] but clamped to the true maximum, 2000. The mean, from the exact sum, is 1251.75.
 
-**One request.** Intended at $t = 0$; content at 120, 150, 190 ms; usage 3 tokens; `[DONE]` at 200 ms. TTFT 120 ms, ITL 30 and 40 ms, E2E 200 ms, TPOT $(200 - 120)/(3 - 1) = 40$ ms.
+**One request.** Intended at $t = 0$; content at 120, 150, and 190 ms; usage 3 tokens; `[DONE]` at 200 ms. TTFT is 120 ms, ITL is 30 and 40 ms, E2E is 200 ms, and TPOT is $(200 - 120)/(3 - 1) = 40$ ms.
 
-**The generator.** Seeding `pcg32(0)`: inc $= 2 \cdot 54 + 1 = 109$; state 0, one step gives 109, plus seed 0, one more step gives `0x9AE4F7499BA72696`. The first output permutes that state: xs $=$ `0x5C9A3E14`, rot $= 19$, output `0x47C28B93`.
+**The generator.** Seeding `pcg32(0)`: inc $= 2 \cdot 54 + 1 = 109$. From state 0, one step gives 109; adding seed 0 and taking one more step gives `0x9AE4F7499BA72696`. The first output permutes that state: xs $=$ `0x5C9A3E14`, rot $= 19$, output `0x47C28B93`.
 
-## 4. The interface
+## Designing the interface
+
+The code splits into the generator package and the load generator package.
 
 ```go
 // go/ds/rng/pcg32.go
@@ -119,49 +127,25 @@ func Run(ctx context.Context, cfg Config) (*Report, error)
 func BuildReport(cfg Config, samples []Sample, elapsed time.Duration) *Report  // Report has the schema's json tags
 ```
 
-### What a correct solution must handle
+The `Clock` interface is the one design decision worth calling out: it lets the same runner loop run on a fake clock in tests, so every latency the tests check is an exact number.
 
-Runs use a fake clock: time is moved by hand and the runner's timers are awaited, so every latency below is an exact number. The generator is checked against the shared PCG32 golden vectors of `parity/rng`.
+## Building it step by step
 
-| Case | Checks | Why it matters downstream |
-|---|---|---|
-| The hand histogram | section 3's buckets, quantiles, extremes, mean | the worked example |
-| Quantiles within 1/128 of exact | log-uniform values over six decades: every reported percentile in $[x, x(1 + 1/128)]$ | the report's 1% promise |
-| Rank rounding | p7 and p55 of 1..100 are 7 and 55 | float rounding in the rank |
-| Edge values | empty, negative, `MaxInt64` | no panic on odd input |
-| Merge equals recording everything | merged buckets, count, extremes, mean equal one histogram | per-worker histograms merge exactly |
-| The hand PCG32 | section 3's state and output; O'Neill's demo line | the generator is the spec's |
-| Golden vectors | 1024 u32, 64 uniforms bit for bit, 64 normals within 4 ulp, three seeds | `parity/rng` across four languages |
-| `Below` rejects the biased zone | bounded draws for n = 10, 3·2^30, 2^32, 1 from the golden stream | unbiased permutations in `load.02` |
-| Fisher-Yates from the end | the spec's swap order | the same permutation in every language |
-| Child seeds and streams | SplitMix64 sub-streams | independent purposes |
-| Poisson gaps by inverse CDF | 32 gaps equal $-\ln(1 - u)/\lambda$ for the golden uniforms | seeded runs repeat |
-| Poisson rate and shape | 20000 gaps: mean within 2%, 63.2% below the mean | the offered rate is the reported rate |
-| Constant and burst gaps | constant and burst gaps, names, rates | the other two modes |
-| Stamping each event | one `now()` per data event; role chunk, ping, usage, `[DONE]` | TTFT and ITL timestamps |
-| Broken streams | cut stream, SSE error event, error object | outages show in `error_rate` |
-| The hand request | section 3's request | the worked example |
-| Usage over chunks, empty rejected | usage over chunks; no content is an error; TPOT needs 2 tokens | multi-token chunks |
-| No coordinated omission | five requests sent on schedule into a stalled engine, each charged from its intended start | the reason for open loop |
-| Errors counted, only successes recorded | 429s counted as errors, never as latencies; tokens per second | fast errors do not flatter p50 |
-| Duration ends arrivals | the arrival at exactly the end is not sent | back-to-back runs |
-| Goodput and report shape | goodput over all requests; the schema's keys exactly; histogram rows | `load.02` and every system-level run read it |
+### Reasoning from first principles
 
-## 5. The solution, step by step
+Seven observations, each already motivated above, fix the design.
 
-### 5.1 From first principles
-
-1. **The generator models users, not a client.** Real users do not wait for each other, so arrival times must come from the schedule alone. That forces an open loop: the runner computes $s_i$ from gaps, sleeps until $s_i$, and starts request $i$ in its own goroutine (section 2.1).
-2. **Latency is charged from the intended time.** If request $i$ is sent late because the client was busy, the user still waited from $s_i$. So every `Sample` carries `Start = s_i`, and TTFT and E2E subtract it (section 2.2).
-3. **Each event's timestamp must be taken when it is read.** TTFT and ITL are differences of arrival times; stamping after parsing a batch of lines would inflate them. So `ReadStream` calls `now()` once per data line, before parsing it.
-4. **A failure is not a fast success.** A 429 returns in a millisecond; recording it as a latency would pull p50 down exactly when the system is overloaded. So failures are counted in `errors` and kept out of every histogram, and goodput divides by all requests.
-5. **Percentiles need bounded relative error in fixed memory.** Storing every value grows without bound; fixed linear buckets lose precision either at the low or the high end. Splitting every power of two into 128 equal buckets bounds the error at $1/128$ of the value, everywhere, in 7424 counters (section 2.4).
+1. **The generator models users, not a client.** Arrival times come from the schedule alone. That forces an open loop: the runner computes $s_i$ from gaps, sleeps until $s_i$, and starts request $i$ in its own goroutine.
+2. **Latency is charged from the intended time.** Every `Sample` carries `Start = s_i`, and TTFT and E2E subtract it.
+3. **Each event's timestamp must be taken when it is read.** So `ReadStream` calls `now()` once per data line, before parsing it.
+4. **A failure is not a fast success.** Failures are counted in `errors` and kept out of every histogram, and goodput divides by all requests.
+5. **Percentiles need bounded relative error in fixed memory.** Splitting every power of two into 128 equal buckets bounds the error at $1/128$ of the value, everywhere, in 7424 counters.
 6. **A reported percentile must never flatter the system.** Reporting a bucket's upper bound (clamped to the true max) makes the estimate $\ge$ the exact value; the lower bound would make an SLO look met when it is not.
-7. **Seeded runs must repeat across languages.** The Poisson gaps draw from PCG32, so the Go port must produce the same bits as the Python, C, and Rust ports for the same seed (section 2.5).
+7. **Seeded runs must repeat across languages.** The Go PCG32 must produce the same bits as the Python, C, and Rust ports.
 
-### 5.2 The generator
+### The generator
 
-[`pcg32.go`](../../../../course/solutions/go/ds/rng/pcg32.go):
+Start at the bottom, with [`pcg32.go`](../../../../course/solutions/go/ds/rng/pcg32.go):
 
 ```go
 // New is pcg32_srandom_r(seed, seq): inc = (seq << 1) | 1, state = 0, one
@@ -191,9 +175,9 @@ func (r *PCG32) Float64() float64 {
 }
 ```
 
-Section 3's hand example is `New(0, 54)`: `inc = 109`, one step from state 0 gives 109, plus seed 0, one more step gives `0x9AE4F7499BA72696`, and the first output permutes that state.
+The hand-worked example is `New(0, 54)`: `inc = 109`, one step from state 0 gives 109, plus seed 0, one more step gives `0x9AE4F7499BA72696`, and the first output permutes that state.
 
-Bounded draws reject the biased zone so every value of $[0, n)$ is equally likely:
+Bounded draws reject the biased zone so that every value of $[0, n)$ is equally likely:
 
 ```go
 func (r *PCG32) Below(n uint64) uint32 {
@@ -210,9 +194,9 @@ func (r *PCG32) Below(n uint64) uint32 {
 
 `Shuffle` is Fisher-Yates from the end (`for i := n - 1; i >= 1; i--`, `j := Below(i + 1)`), and `Stream(seed, purpose)` is `New(ChildSeed(seed, purpose), purpose)` with SplitMix64's finalizer, so each purpose gets an independent stream from one seed.
 
-### 5.3 Arrivals
+### Arrivals
 
-[`schedule.go`](../../../../course/solutions/go/loadgen/schedule.go):
+The schedules in [`schedule.go`](../../../../course/solutions/go/loadgen/schedule.go) are each a few lines:
 
 ```go
 func (p *poisson) Next() time.Duration {
@@ -233,9 +217,9 @@ func (b *burst) Next() time.Duration {
 
 $-\ln(1 - u)$ and $-\ln u$ have the same distribution, but only the first matches the other ports draw for draw, which is what makes seeded runs repeat.
 
-### 5.4 Reading the stream
+### Reading the stream
 
-[`run.go`](../../../../course/solutions/go/loadgen/run.go):
+On the response side, [`run.go`](../../../../course/solutions/go/loadgen/run.go) reads SSE line by line and stamps each data line before parsing it:
 
 ```go
 func ReadStream(r io.Reader, now func() time.Time) ([]Event, error) {
@@ -270,7 +254,7 @@ func ReadStream(r io.Reader, now func() time.Time) ([]Event, error) {
 }
 ```
 
-`Measure` turns events into one sample relative to the intended start:
+`Measure` turns the events into one sample, relative to the intended start:
 
 ```go
 func Measure(start time.Time, events []Event) Sample {
@@ -304,9 +288,11 @@ func Measure(start time.Time, events []Event) Sample {
 }
 ```
 
-Section 3's request: content at 120, 150, 190 ms gives TTFT 120 and ITL `[30, 40]`; `[DONE]` at 200 gives E2E 200; usage 3 gives TPOT $(200 - 120)/2 = 40$ ms (`Sample.TPOT` needs at least 2 tokens).
+On the hand-worked request, content at 120, 150, and 190 ms gives TTFT 120 and ITL `[30, 40]`; `[DONE]` at 200 gives E2E 200; usage 3 gives TPOT $(200 - 120)/2 = 40$ ms (`Sample.TPOT` needs at least 2 tokens).
 
-### 5.5 The open-loop runner
+### The open-loop runner
+
+The runner is the heart of the section, and it is short:
 
 ```go
 next := start
@@ -338,11 +324,11 @@ for i := 0; cfg.MaxRequests <= 0 || i < cfg.MaxRequests; i++ {
 wg.Wait()
 ```
 
-`next` accumulates gaps from `start`, not from `clk.Now()`: if the loop wakes late, the next arrival is still at its scheduled time, and `wait` is negative so it is sent at once. The `Clock` interface lets the same loop run on a fake clock, which is how every latency in this chapter's cases is an exact number. `one` sends the request with `temperature: 0`, `stream: true`, and `include_usage`, and treats a non-200 status as a failed sample.
+`next` accumulates gaps from `start`, not from `clk.Now()`. If the loop wakes late, the next arrival is still at its scheduled time, and `wait` is negative, so it is sent at once. `one` sends the request with `temperature: 0`, `stream: true`, and `include_usage`, and treats a non-200 status as a failed sample.
 
-### 5.6 The histogram
+### The histogram
 
-[`histogram.go`](../../../../course/solutions/go/loadgen/histogram.go):
+Samples are recorded into histograms from [`histogram.go`](../../../../course/solutions/go/loadgen/histogram.go):
 
 ```go
 // bucketOf maps v >= 0 to its bucket index: v itself below 128; else, with
@@ -379,9 +365,11 @@ func (h *Histogram) Quantile(q float64) int64 {
 }
 ```
 
-Section 3's values: 1000 has `bits.Len64 = 10`, so $e = 9$, shift 2, sub $= 1000 \gg 2 = 250$, bucket $[1000, 1003]$. The median of four values has rank 2, found in that bucket, reported as 1003; p100 is in $[2000, 2007]$ and clamped to the max, 2000. `Mean` uses the exact running sum, not bucket midpoints. `Merge` adds counters and combines count, sum, min, and max, so merged per-worker histograms equal one histogram that saw everything.
+Check it against the hand-worked values. 1000 has `bits.Len64 = 10`, so $e = 9$, shift 2, sub $= 1000 \gg 2 = 250$, bucket $[1000, 1003]$. The median of four values has rank 2, found in that bucket, reported as 1003; p100 is in $[2000, 2007]$ and clamped to the max, 2000. `Mean` uses the exact running sum, not bucket midpoints. `Merge` adds counters and combines count, sum, min, and max, so merged per-worker histograms equal one histogram that saw everything.
 
-### 5.7 The report
+### The report
+
+Finally, `BuildReport` folds the samples into the report:
 
 ```go
 for _, s := range samples {
@@ -408,95 +396,133 @@ if r.Requests > 0 {
 }
 ```
 
-`good` checks every SLO key it recognizes (`ttft_ms_p95` bounds `ttft_ms`, and so on); for ITL it uses the request's worst gap. Each histogram's non-empty buckets go into the report as `[upper_ms, count]` rows, which `load.02` reads back as samples.
+`good` checks every SLO key it recognizes (`ttft_ms_p95` bounds `ttft_ms`, and so on); for ITL it uses the request's worst gap. Each histogram's non-empty buckets go into the report as `[upper_ms, count]` rows, which the regression gate reads back as samples.
 
-The entry point [`go/cmd/loadgen`](../../../../course/solutions/entry/go/cmd/loadgen/main.go) parses `--target --model --prompt --max-tokens --rate --duration --mode poisson|constant|burst --burst --seed --out` (and the goodput bounds `--slo-ttft-ms`, default 500, and `--slo-tpot-ms`, default 60), builds the schedule (`Poisson(rate, rng.Stream(seed, rng.PurposeSample))` for poisson), calls `loadgen.Run`, writes the report to `--out`, and prints it as the final stdout line.
+The entry point [`go/cmd/loadgen`](../../../../course/solutions/entry/go/cmd/loadgen/main.go) parses `--target --model --prompt --max-tokens --rate --duration --mode poisson|constant|burst --burst --seed --out` (and the goodput bounds `--slo-ttft-ms`, default 500, and `--slo-tpot-ms`, default 60). It builds the schedule (`Poisson(rate, rng.Stream(seed, rng.PurposeSample))` for poisson), calls `loadgen.Run`, writes the report to `--out`, and prints it as the final stdout line.
 
-Full solution: [`pcg32.go`](../../../../course/solutions/go/ds/rng/pcg32.go), [`schedule.go`](../../../../course/solutions/go/loadgen/schedule.go), [`histogram.go`](../../../../course/solutions/go/loadgen/histogram.go), [`run.go`](../../../../course/solutions/go/loadgen/run.go).
+The full solution is [`pcg32.go`](../../../../course/solutions/go/ds/rng/pcg32.go), [`schedule.go`](../../../../course/solutions/go/loadgen/schedule.go), [`histogram.go`](../../../../course/solutions/go/loadgen/histogram.go), and [`run.go`](../../../../course/solutions/go/loadgen/run.go).
 
-### 5.8 Why this solution
+### Why this design
 
-- **Cost.** `Record` is $O(1)$ (a bit length, a shift, an increment); `Quantile` scans at most 7424 counters, about 58 KiB of memory per histogram regardless of how many values it holds. One goroutine per request is cheap in Go at the rates a single engine sustains.
-- **Why not store all values and sort?** Exact, but memory grows with the run and per-worker results cannot be merged without shipping every value. The log-linear histogram is within $1/128$ (0.78%) of exact, always on the pessimistic side, and merges by addition.
-- **Why not a closed loop with N workers?** It is simpler and is what many tools do, but its send rate drops when the server stalls, so the stall is recorded once instead of in every request it delayed (coordinated omission). The open loop measures what users would see at the offered rate.
-- **Tradeoffs accepted.** Unbounded goroutines: if the server stops answering at high rate, in-flight requests pile up in the client. That is the honest behaviour of an open loop; the run's `ctx` and the duration bound it.
+The cost is small. `Record` is $O(1)$: a bit length, a shift, an increment. `Quantile` scans at most 7424 counters, about 58 KiB of memory per histogram regardless of how many values it holds. One goroutine per request is cheap in Go at the rates a single engine sustains.
 
-### 5.9 Explain it back
+Why not store all values and sort? That is exact, but memory grows with the run, and per-worker results cannot be merged without shipping every value. The log-linear histogram is within $1/128$ (0.78%) of exact, always on the pessimistic side, and merges by addition.
 
-**The engine stalls for 1 s at 10 rps. What does a closed-loop client record, and what does this runner record?**
+Why not a closed loop with N workers? It is simpler and is what many tools do, but its send rate drops when the server stalls, so the stall is recorded once instead of in every request it delayed. The open loop measures what users would see at the offered rate.
 
-<details><summary>Answer</summary>
+One tradeoff is accepted: goroutines are unbounded. If the server stops answering at a high rate, in-flight requests pile up in the client. That is the honest behaviour of an open loop; the run's `ctx` and the duration bound it.
 
-A closed loop with one worker is stuck on one request for the second and records one slow latency; it then resumes, and the requests users would have sent during the stall never existed. This runner keeps sending at $s_i$ regardless, so about ten requests are in flight during the stall, and each is charged from its own intended start: ten latencies show the stall, with the earliest seeing nearly the full second.
+## What can go wrong
 
-</details>
+The tests run on a fake clock: time is moved by hand and the runner's timers are awaited, so every latency is an exact number. The generator is checked against the shared PCG32 golden vectors of `parity/rng`. A correct solution handles each of these cases:
 
-**Why does `Quantile` subtract `1e-9` before `math.Ceil`?**
-
-<details><summary>Answer</summary>
-
-$0.55 \cdot 100$ in float64 is $55.00000000000001$, so a plain ceiling gives rank 56 and p55 of 1..100 would be 56. The nearest-rank definition is $\lceil qn \rceil = 55$. Subtracting a tiny epsilon forgives the rounding error without changing any rank whose product is genuinely above an integer.
-
-</details>
-
-**Why is a quantile reported as its bucket's upper bound, and why clamped to the max?**
-
-<details><summary>Answer</summary>
-
-The upper bound is never below any value in the bucket, so the estimate is never below the exact quantile and at most $1/128$ above it: the error is always pessimistic, so an SLO can only look worse than it is, never better. The clamp keeps p100 (and any quantile in the top bucket) from exceeding the largest value actually seen.
-
-</details>
-
-**Why does `next` accumulate from `start` instead of from `clk.Now()` after each send?**
-
-<details><summary>Answer</summary>
-
-Adding gaps to the current time would push every later arrival back by however long the loop was late, so a slow client would silently lower the offered rate. Accumulating from `start` keeps $s_i = s_0 + \sum g_j$ exactly; if the loop wakes late, `wait` is negative and the request goes at once, still charged from its intended $s_i$.
-
-</details>
-
-**An engine fails half of its requests with fast 429s and serves the rest within SLO. What are `error_rate` and `goodput`?**
-
-<details><summary>Answer</summary>
-
-Both 0.5. The 429s count in `requests` and `errors`, are kept out of every histogram (so they do not pull p50 down), and are in goodput's denominator. Dividing by successes only would report 100% goodput for an engine that turned away half its users.
-
-</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
+| Case | Checks | Why it matters downstream |
 |---|---|---|
-| Reporting a bucket's lower bound | quantiles below the true value: the SLO looks met when it is not | `Quantile` returns the bucket's upper bound, clamped to the max; see 5.6 |
-| A plain $\lceil qn \rceil$ | p55 of 100 values is the 56th | the rank is `ceil(q * n - 1e-9)`; see 5.6 |
-| An even increment | a short-period stream, different from every other port | `New` sets `inc = seq<<1 \| 1`; see 5.2 |
-| 27 bits from the second draw | uniforms differ from Python's | `Float64` takes `>> 5` (27 bits) then `>> 6` (26 bits); see 5.2 |
-| `x mod n` without rejection | small values favored in permutations | `Below` redraws below `(2^32 - n) mod n`; see 5.2 |
-| Fisher-Yates from the front | a different permutation than the other ports | `Shuffle` runs `i` from `n - 1` down to 1 |
-| $\ln u$ instead of $\ln(1 - u)$ | the same distribution, different seeded runs | the Poisson gap is `-math.Log(1.0-u) / rate`; see 5.3 |
-| The first burst waits | a burst run starts late and sends fewer requests | `burst.Next` returns `every` only for `i > 0`; see 5.3 |
-| Stamping events late | TTFT and ITL inflated by parsing time | `ReadStream` calls `now()` before parsing each data line; see 5.4 |
-| A cut stream counted as a success | outages vanish from `error_rate` | EOF before `[DONE]` is an error; see 5.4 |
-| E2E from the last token | E2E is a few milliseconds | E2E is taken at the `Done` event; see 5.4 |
-| Waiting for each request (closed loop) | the send rate collapses during a stall | every request runs in its own goroutine and arrivals come from the schedule; see 5.5 |
-| Charging from the response headers | a stalled server looks fast (coordinated omission) | `Measure` subtracts the intended start passed from `Run`; see 5.4 and 5.5 |
-| Failed requests in the histograms | fast 429s pull p50 down during overload | `BuildReport` skips samples with `Err`; see 5.7 |
-| Goodput over successes only | an engine failing half its requests reports 100% goodput | goodput divides by `Requests`; see 5.7 |
+| The hand histogram | the worked buckets, quantiles, extremes, mean | the worked example |
+| Quantiles within 1/128 of exact | log-uniform values over six decades: every reported percentile in $[x, x(1 + 1/128)]$ | the report's 1% promise |
+| Rank rounding | p7 and p55 of 1..100 are 7 and 55 | float rounding in the rank |
+| Edge values | empty, negative, `MaxInt64` | no panic on odd input |
+| Merge equals recording everything | merged buckets, count, extremes, mean equal one histogram | per-worker histograms merge exactly |
+| The hand PCG32 | the worked state and output; O'Neill's demo line | the generator is the spec's |
+| Golden vectors | 1024 u32, 64 uniforms bit for bit, 64 normals within 4 ulp, three seeds | `parity/rng` across four languages |
+| `Below` rejects the biased zone | bounded draws for n = 10, 3·2^30, 2^32, 1 from the golden stream | unbiased permutations in the regression gate |
+| Fisher-Yates from the end | the spec's swap order | the same permutation in every language |
+| Child seeds and streams | SplitMix64 sub-streams | independent purposes |
+| Poisson gaps by inverse CDF | 32 gaps equal $-\ln(1 - u)/\lambda$ for the golden uniforms | seeded runs repeat |
+| Poisson rate and shape | 20000 gaps: mean within 2%, 63.2% below the mean | the offered rate is the reported rate |
+| Constant and burst gaps | constant and burst gaps, names, rates | the other two modes |
+| Stamping each event | one `now()` per data event; role chunk, ping, usage, `[DONE]` | TTFT and ITL timestamps |
+| Broken streams | cut stream, SSE error event, error object | outages show in `error_rate` |
+| The hand request | the worked request | the worked example |
+| Usage over chunks, empty rejected | usage over chunks; no content is an error; TPOT needs 2 tokens | multi-token chunks |
+| No coordinated omission | five requests sent on schedule into a stalled engine, each charged from its intended start | the reason for open loop |
+| Errors counted, only successes recorded | 429s counted as errors, never as latencies; tokens per second | fast errors do not flatter p50 |
+| Duration ends arrivals | the arrival at exactly the end is not sent | back-to-back runs |
+| Goodput and report shape | goodput over all requests; the schema's keys exactly; histogram rows | the regression gate and every system-level run read it |
 
-## 7. Where it's used next
+> **Warning:** The measurement pitfalls are the ones that matter most, because they make a broken system look healthy. Waiting for each request (a closed loop) makes the send rate collapse during a stall. Charging from the response headers makes a stalled server look fast. Failed requests in the histograms let fast 429s pull p50 down during overload. Goodput over successes only lets an engine that fails half its requests report 100% goodput. The solution guards these with one goroutine per request and arrivals from the schedule, `Measure` subtracting the intended start passed from `Run`, `BuildReport` skipping samples with `Err`, and goodput dividing by `Requests`.
 
-| Direction | Module | How it uses this |
-|---|---|---|
-| Forward | `load.02` | optional: compares two reports: the histograms become samples for its permutation test, and `rng.Stream` shuffles them |
-| Forward | `ag.07`, `ag.09`, `ag.12` | the Go PCG32 (`rng.Seeded`, `rng.Stream`, `Below`, `Float64`): k-means++ seeding in retrieval, the bootstrap of the eval runner, and the permutation test of A/B experiments |
+The histogram has two quieter pitfalls. Reporting a bucket's lower bound gives quantiles below the true value, so the SLO looks met when it is not; `Quantile` returns the bucket's upper bound, clamped to the max. A plain $\lceil qn \rceil$ makes p55 of 100 values the 56th; the rank is `ceil(q * n - 1e-9)`.
 
-The `{loadgen}` entry point is the load behind every system-level run: a burst of 64 against the engine, the gateway run, the production SLO run on kind, and the `ops.01` and `ops.09` incident walkthroughs; `L10.7`'s server-side histograms are the other side of the same measurement.
+The generator's pitfalls break cross-language repeatability. An even increment gives a short-period stream, different from every other port; `New` sets `inc = seq<<1 | 1`. Taking 27 bits from the second draw makes uniforms differ from Python's; `Float64` takes `>> 5` (27 bits) then `>> 6` (26 bits). `x mod n` without rejection favors small values in permutations; `Below` redraws below `(2^32 - n) mod n`. Fisher-Yates from the front gives a different permutation than the other ports; `Shuffle` runs `i` from `n - 1` down to 1. Using $\ln u$ instead of $\ln(1 - u)$ gives the same distribution but different seeded runs; the Poisson gap is `-math.Log(1.0-u) / rate`.
 
-## Going further
+The stream reader and schedule have the rest. If the first burst waits, a burst run starts late and sends fewer requests; `burst.Next` returns `every` only for `i > 0`. Stamping events late inflates TTFT and ITL by parsing time; `ReadStream` calls `now()` before parsing each data line. Counting a cut stream as a success makes outages vanish from `error_rate`; EOF before `[DONE]` is an error. And taking E2E from the last token instead of `[DONE]` shaves a few milliseconds off E2E; E2E is taken at the `Done` event.
 
-| This solution | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| an open-loop runner | wrk2, k6 (constant-arrival-rate) | corrected latency at fixed rates, many workers | [wrk2](https://github.com/giltene/wrk2), [k6 arrival-rate executors](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/) |
-| a log-linear histogram | HdrHistogram | configurable precision, coordinated-omission correction, logs | [HdrHistogram Go](https://github.com/HdrHistogram/hdrhistogram-go) |
-| TTFT, TPOT, ITL | vLLM and SGLang benchmark scripts, LLMPerf | dataset-driven prompts, request-rate sweeps, goodput curves | [vLLM benchmarks](https://github.com/vllm-project/vllm/tree/main/benchmarks), [LLMPerf](https://github.com/ray-project/llmperf) |
-| one generator | multi-host load | distributed generators merging histograms | the merge in this module is the building block |
+## Where this leads
+
+The optional next section, [run comparison and the regression gate](11-run-comparison-and-regression-gate.md), compares two reports: the histograms become samples for its permutation test, and `rng.Stream` shuffles them. In *AI Platform Engineering*, the Go PCG32 (`rng.Seeded`, `rng.Stream`, `Below`, `Float64`) is reused for k-means++ seeding in [retrieval](../../ai-platform-engineering/07-retrieval-and-rag/07-retrieval.md), the bootstrap of the [eval runner](../../ai-platform-engineering/09-llm-evaluation/09-eval-runner.md), and the permutation test of [paired A/B experiments](../../ai-platform-engineering/09-llm-evaluation/12-ab-experiments.md).
+
+The `{loadgen}` entry point is the load behind every system-level run: a burst of 64 against the engine, the gateway run, the production SLO run on kind, and the incident drills [a decode worker dies mid-stream](../../systems/05-incident-response-and-chaos/01-kill-decode.md) and [noisy neighbor](../../systems/05-incident-response-and-chaos/09-noisy-neighbor.md) in *Systems*. The server-side histograms from [serving metrics and tracing](07-serving-metrics-and-tracing.md) are the other side of the same measurement.
+
+Production tools extend each piece. wrk2 and k6's constant-arrival-rate executors provide corrected latency at fixed rates with many workers. HdrHistogram adds configurable precision, coordinated-omission correction, and logs. The vLLM and SGLang benchmark scripts and LLMPerf add dataset-driven prompts, request-rate sweeps, and goodput curves on top of TTFT, TPOT, and ITL. And multi-host load runs distributed generators that merge their histograms, for which the exact merge here is the building block.
+
+### Further reading
+
+- Gil Tene, [How NOT to Measure Latency](https://www.youtube.com/watch?v=lJ8ydIuPFeU) (free talk).
+- [HdrHistogram](http://hdrhistogram.org/) (free) and [HdrHistogram Go](https://github.com/HdrHistogram/hdrhistogram-go).
+- O'Neill, [PCG](https://www.pcg-random.org/paper.html) (free).
+- Schroeder, Wierman, Harchol-Balter, [Open Versus Closed](https://www.usenix.org/legacy/event/nsdi06/tech/full_papers/schroeder/schroeder.pdf) (free).
+- [wrk2](https://github.com/giltene/wrk2) and [k6 arrival-rate executors](https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/).
+- [vLLM benchmarks](https://github.com/vllm-project/vllm/tree/main/benchmarks) and [LLMPerf](https://github.com/ray-project/llmperf).
+
+## Key terms
+
+- **Open loop**: a load model in which arrivals follow a schedule regardless of how the server responds.
+- **Coordinated omission**: the measurement error of a closed-loop client that stops sending during a stall and so records it once instead of in every request it delayed.
+- **Intended send time**: $s_i = s_0 + \sum_{j \le i} g_j$, the time from which request $i$'s latency is charged.
+- **ITL**: inter-token latency, the gap between consecutive content chunks of a stream.
+- **Log-linear histogram**: a histogram with 128 equal buckets per power of two, giving at most 1/128 relative error in fixed memory.
+- **Nearest-rank quantile**: the $\lceil qn \rceil$-th smallest value, here with a $10^{-9}$ allowance for float rounding.
+- **Goodput**: the share of all requests, failures included, that met every SLO bound.
+
+## Summary
+
+- Open loop: arrivals follow the schedule whatever the server does, and each request is charged from its *intended* send time, so a stall shows up in every request it delayed.
+- A log-linear histogram keeps 128 buckets per power of two: every quantile is within 1/128 of the exact sorted value, never below it, in fixed memory, and two histograms merge exactly.
+- The nearest-rank quantile is the $\lceil qn \rceil$-th smallest value, with an allowance for float rounding: $0.55 \cdot 100$ is $55.00000000000001$.
+- The Go PCG32 gives the same stream as Python, C, and Rust for the same seed, bit for bit.
+- A failed request (an error status, an SSE error event, a stream cut before `[DONE]`) counts in `errors`, never in a latency histogram; goodput is the share of *all* requests that met every SLO bound.
+
+## Review questions
+
+1. The engine stalls for 1 s at 10 rps. What does a closed-loop client record, and what does this runner record?
+   <details><summary>Answer</summary>
+
+   A closed loop with one worker is stuck on one request for the second and records one slow latency; it then resumes, and the requests users would have sent during the stall never existed. This runner keeps sending at $s_i$ regardless, so about ten requests are in flight during the stall, and each is charged from its own intended start: ten latencies show the stall, with the earliest seeing nearly the full second.
+
+   </details>
+
+2. Why does `Quantile` subtract `1e-9` before `math.Ceil`?
+   <details><summary>Answer</summary>
+
+   $0.55 \cdot 100$ in float64 is $55.00000000000001$, so a plain ceiling gives rank 56 and p55 of 1..100 would be 56. The nearest-rank definition is $\lceil qn \rceil = 55$. Subtracting a tiny epsilon forgives the rounding error without changing any rank whose product is genuinely above an integer.
+
+   </details>
+
+3. Why is a quantile reported as its bucket's upper bound, and why clamped to the max?
+   <details><summary>Answer</summary>
+
+   The upper bound is never below any value in the bucket, so the estimate is never below the exact quantile and at most $1/128$ above it: the error is always pessimistic, so an SLO can only look worse than it is, never better. The clamp keeps p100 (and any quantile in the top bucket) from exceeding the largest value actually seen.
+
+   </details>
+
+4. Why does `next` accumulate from `start` instead of from `clk.Now()` after each send?
+   <details><summary>Answer</summary>
+
+   Adding gaps to the current time would push every later arrival back by however long the loop was late, so a slow client would silently lower the offered rate. Accumulating from `start` keeps $s_i = s_0 + \sum g_j$ exactly; if the loop wakes late, `wait` is negative and the request goes at once, still charged from its intended $s_i$.
+
+   </details>
+
+5. An engine fails half of its requests with fast 429s and serves the rest within SLO. What are `error_rate` and `goodput`?
+   <details><summary>Answer</summary>
+
+   Both 0.5. The 429s count in `requests` and `errors`, are kept out of every histogram (so they do not pull p50 down), and are in goodput's denominator. Dividing by successes only would report 100% goodput for an engine that turned away half its users.
+
+   </details>
+
+6. Which bucket does the value 1005 ns fall in, and what are its bounds?
+   <details><summary>Answer</summary>
+
+   `bits.Len64(1005) = 10`, so $e = 9$ and shift $= 2$. The top bits are $1005 \gg 2 = 251$, which selects the bucket $[251 \cdot 4, 252 \cdot 4 - 1] = [1004, 1007]$. Its width, 4, is $4/1004 < 1/128$ of its lower bound, as the design promises.
+
+   </details>

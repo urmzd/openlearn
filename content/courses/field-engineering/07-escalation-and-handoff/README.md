@@ -1,40 +1,24 @@
 # Escalation and Handoff
 
-How to hand a problem to the people who can fix it so they act on the first read: the escalation report for the performance team, the evidence each counterpart needs, the incident call, and how to relay research findings back to a customer.
+Specialists, the performance engineers, MLEs, and researchers, are the scarcest people in an inference company, and every round trip with them costs a day. The field engineer's leverage is to arrive with the environment, the traffic shape, the measurement, and the hypotheses already ruled out, so the specialist starts at diagnosis instead of interrogation. Escalate when you have done the work you can do, and bring **evidence, not a narrative**. A handoff is accepted when the receiver can act **without calling you**.
 
-> Parent track: [Field Engineering](../). Uses the benchmark evidence from [03](../03-performance-testing-engagements/) and the failure-mode table from [05](../05-migration-and-cutover/#4-common-failure-modes).
+The same discipline runs in the other direction. Findings from research only help a customer when they are translated into a decision the customer can make, and when you take over work from a specialist you should ask for the same artifacts you would hand over. If they do not exist, writing them is your first deliverable.
 
-## Overview
+This chapter gives you the tools for both directions. You will learn an escalation report template, what evidence each counterpart needs, how to run an incident call with a fixed update cadence, and how to relay research back to a customer in layers. It uses the benchmark evidence from [Performance Testing Engagements](../03-performance-testing-engagements/README.md) and the failure-mode table from [Migration and Cutover](../05-migration-and-cutover/README.md#common-failure-modes). In practice an FDE leads, and an SE escalates pre-sales blockers through the same template.
 
-- **Primary reference**: [*Postmortem Culture: Learning from Failure*](https://sre.google/sre-book/postmortem-culture/), *Site Reliability Engineering* ch. 15 (free)
-- **Supplementary**: [*Managing Incidents*](https://sre.google/sre-book/managing-incidents/), *SRE* ch. 14 (free); [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/) (free, in repo) for the engine metrics an escalation cites
-- **Prerequisites**: [Performance Testing Engagements](../03-performance-testing-engagements/), [Migration and Cutover](../05-migration-and-cutover/)
-- **Estimated time**: 2 days at 6-8 hrs/week
-- **Usually led by**: FDE; SE escalates pre-sales blockers through the same template
+> **Learning objectives**
+> - Write an escalation report with environment, traffic shape, observed versus expected values with sources, evidence, what was ruled out, and a clear ask.
+> - Match each counterpart (performance, MLE, research, product, SA, AE) to the situation that warrants them and the evidence they need.
+> - Run an incident call and send updates on a committed cadence, mitigating before the root cause is known.
+> - Translate a research finding into a consequence, a decision, and a plan change for the right audience.
 
-## Key Takeaways
+## Before you begin
 
-- Escalate when you have done the work you can do, and bring **evidence, not a narrative**.
-- A handoff is accepted when the receiver can act **without calling you**.
-- The **"what I ruled out"** section separates an escalation from a forwarded complaint.
-- During an incident the customer needs an **update cadence** more than a root cause. Commit to a time and keep it.
-- When taking over work, ask for the same artifacts you would hand over. If they do not exist, writing them is your first deliverable.
+You should have worked through [Performance Testing Engagements](../03-performance-testing-engagements/README.md) and [Migration and Cutover](../05-migration-and-cutover/README.md). The primary reference is [*Postmortem Culture: Learning from Failure*](https://sre.google/sre-book/postmortem-culture/), chapter 15 of *Site Reliability Engineering* (free). Supplements are [*Managing Incidents*](https://sre.google/sre-book/managing-incidents/), chapter 14 of the same book (free), and [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/) in *Machine Learning* for the engine metrics an escalation cites.
 
-## How to Study
+## The escalation report
 
-- Write an escalation for a problem you can reproduce locally (for example, `loadgen.py --mock` with `--mock-max-running` set low so TTFT explodes). Hand it to a peer who has not seen your setup and time how long until they ask a question.
-- Read one public postmortem per day for a week and rewrite its summary in the incident update format below.
-- Practice relaying a technical finding at two levels: one sentence for the customer's VP, one paragraph for their engineer.
-
----
-
-# Concepts & Techniques
-
-## Core Insight
-
-Specialists (performance engineers, MLEs, researchers) are the scarcest people in an inference company, and every round trip with them costs a day. The field engineer's leverage is to arrive with the environment, the traffic shape, the measurement, and the hypotheses already ruled out, so the specialist starts at diagnosis instead of interrogation. The same discipline runs the other way: findings from research only help a customer when they are translated into a decision the customer can make.
-
-## 1. Escalation Report Template
+An escalation is a document, and its first line is a symptom with a number. The template below is what a performance engineer needs to start diagnosis on the first read:
 
 ```markdown
 # Escalation: <one-line symptom with a number>
@@ -71,9 +55,13 @@ Severity: <sev level and why>
 <what you need: root cause, config recommendation, patch, ETA>
 ```
 
-The "expected" column needs a source: the benchmark report ([03](../03-performance-testing-engagements/#8-benchmark-report-template)), the hypothesis math ([02](../02-qualification-and-sizing/)), or a previous run. "It feels slow" is not an expected value.
+Two sections carry most of the weight. The "expected" column needs a source: the [benchmark report](../03-performance-testing-engagements/README.md#the-benchmark-report-template), the hypothesis math from [Qualification and Sizing](../02-qualification-and-sizing/README.md), or a previous run. "It feels slow" is not an expected value. And the **"what I ruled out"** section is what separates an escalation from a forwarded complaint. Escalations that list what was ruled out get acted on; forwarded complaints get meetings.
 
-## 2. What Each Counterpart Needs
+To practice, write an escalation for a problem you can reproduce locally, for example `loadgen.py --mock` with `--mock-max-running` set low so TTFT explodes. Hand it to a peer who has not seen your setup and time how long it takes before they ask a question.
+
+## What each counterpart needs
+
+Not every problem goes to the performance team. Each counterpart is right for a particular situation and needs particular evidence:
 
 | To | When | Bring |
 |---|---|---|
@@ -84,13 +72,13 @@ The "expected" column needs a source: the benchmark report ([03](../03-performan
 | **Solutions architect** | A pattern repeats across three or more accounts | The three accounts, the common integration, what you built each time |
 | **Account executive** | Scope or commercial change: new workload, capacity request, SLO change | Revised deployment hypothesis with GPU count and cost per 1M tokens, risk list, timeline |
 
-The reverse direction matters too. When you take over from an MLE or MTS, ask for the same artifacts. If they do not exist, writing them is your first deliverable.
+The reverse direction matters too: when you take over from an MLE or MTS, ask for the same artifacts, and if they do not exist, write them first.
 
-**Before escalating to performance**, walk the [failure-mode table](../05-migration-and-cutover/#4-common-failure-modes) and record each first check in "what I ruled out". Most escalations that bounce back fail one of these: no engine version, no traffic shape, a closed-loop benchmark offered as SLO evidence, or prefix-cache hits in the repro.
+Before escalating to performance, walk the [failure-mode table](../05-migration-and-cutover/README.md#common-failure-modes) and record each first check in "what I ruled out." Most escalations that bounce back fail on one of four things: no engine version, no traffic shape, a closed-loop benchmark offered as SLO evidence, or prefix-cache hits in the repro.
 
-## 3. Incident and Escalation Call
+## The incident and escalation call
 
-**Agenda (30 min, can be called within the hour)**
+Some problems cannot wait for a written exchange. The incident call is 30 minutes, can be called within the hour, and follows a fixed agenda:
 
 | Min | Item |
 |---|---|
@@ -99,13 +87,9 @@ The reverse direction matters too. When you take over from an MLE or MTS, ask fo
 | 15-25 | Current mitigation and next diagnostic step, with owners |
 | 25-30 | Next update time; who is on point on each side |
 
-**Key ideas**:
-- **One voice to the customer.** Name the person who sends updates; specialists work the problem, they do not field status questions.
-- **Cadence over cause.** Commit to "next update at 14:30" and keep it, even if the update is "no change".
-- **Mitigate first.** Roll back, shift traffic, add replicas, or fall back to the incumbent path ([05](../05-migration-and-cutover/#3-shadow-canary-cutover-rollback)) before root cause is known.
-- **Blameless write-up after.** Timeline, impact, root cause, contributing factors, action items with owners ([Postmortem Culture](https://sre.google/sre-book/postmortem-culture/)).
+Four principles govern the call. Keep **one voice to the customer**: name the person who sends updates, so specialists work the problem instead of fielding status questions. Prefer **cadence over cause**: during an incident the customer needs an update cadence more than a root cause, so commit to "next update at 14:30" and keep it, even if the update is "no change." **Mitigate first**: roll back, shift traffic, add replicas, or fall back to the incumbent path (see [Shadow, canary, cutover, rollback](../05-migration-and-cutover/README.md#shadow-canary-cutover-rollback)) before the root cause is known. And write a **blameless postmortem afterwards**, with the timeline, impact, root cause, contributing factors, and action items with owners, as described in [Postmortem Culture](https://sre.google/sre-book/postmortem-culture/).
 
-Update format:
+Every update uses the same short format, so the customer can scan the thread:
 
 ```markdown
 [<time, timezone>] <customer> / <symptom> / status: investigating | mitigated | resolved
@@ -115,9 +99,11 @@ Next step: <action, owner>
 Next update: <time>
 ```
 
-## 4. Relaying Research Back to the Customer
+A good exercise is to read one public postmortem a day for a week and rewrite its summary in this format.
 
-Research and performance findings arrive as mechanisms ("the speculator's acceptance rate drops on legal text because the draft was trained on chat data"). The customer needs a decision.
+## Relaying research back to the customer
+
+Research and performance findings arrive as mechanisms, for example "the speculator's acceptance rate drops on legal text because the draft was trained on chat data." The customer needs a decision. Translating one into the other means moving through four layers, each for a different audience:
 
 | Layer | Example | Audience |
 |---|---|---|
@@ -126,38 +112,30 @@ Research and performance findings arrive as mechanisms ("the speculator's accept
 | **Decision** | Keep speculative decoding off at peak; test a draft fine-tuned on their domain next quarter, or accept current TPOT | Their decision maker |
 | **What changes in the plan** | Hypothesis row updated; no change to cost; new risk logged | Everyone, in the next notes |
 
-**Rules**:
-- Translate, do not forward. A research thread pasted into a customer channel leaks internal context and confuses the reader.
-- State what was measured and what was not; carry the "not confirmed" marker through.
-- Ask research before sharing anything unpublished, and never share another customer's data or name as the evidence.
-- Close the loop internally: tell research what the customer decided, so the pattern counts toward their priorities.
+Four rules keep the relay safe. Translate rather than forward: a research thread pasted into a customer channel leaks internal context and confuses the reader. State what was measured and what was not, and carry any "not confirmed" marker through. Ask research before sharing anything unpublished, and never use another customer's data or name as evidence. Finally, close the loop internally by telling research what the customer decided, so the pattern counts toward their priorities. Practice relaying a technical finding at two levels: one sentence for the customer's VP and one paragraph for their engineer.
 
-## Connections to Other Tracks
+## Where this leads
 
-| Concept | Connected Track | Application |
-|---------|-----------------|-------------|
-| Engine metrics: queue depth, KV usage, preemptions | [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/) | Evidence section |
-| Traces, dashboards, alerting | [Observability](../../systems/04-observability/) | Engine metrics and profiles |
-| Postmortems, lessons learned | [Software Craftsmanship: Lessons from Practice](../../software-craftsmanship/04-lessons-from-practice/) | Blameless write-ups |
-| Eval artifacts for MLE handoffs | [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/) | Quality escalations |
+The evidence section of an escalation cites engine metrics such as queue depth, KV usage, and preemptions from [Serving & Load](../../machine-learning/04-llm-systems/serving-and-load/), and the traces, dashboards, and alerting behind them from [Observability](../../systems/04-observability/) in *Systems*. Blameless write-ups are treated in depth in [Lessons from Practice](../../software-craftsmanship/04-lessons-from-practice/) in *Software Craftsmanship*, and quality escalations to an MLE bring the eval artifacts of [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/).
 
-## Company Relevance
+FDE-to-performance-team escalations, and "how would you escalate this?" interview prompts, are advanced material at Fireworks AI, Together AI, and Baseten. Google and every SRE organization practice incident command, update cadence, and blameless postmortems, and Palantir runs field-to-product feedback loops from its forward deployed teams.
 
-| Company | How This Appears | Difficulty |
-|---------|-----------------|------------|
-| Fireworks AI / Together AI / Baseten | FDE-to-performance-team escalations; "how would you escalate this?" interview prompts | Advanced |
-| Google / any SRE organization | Incident command, update cadence, blameless postmortems | Intermediate |
-| Palantir | Field-to-product feedback loops from forward deployed teams | Intermediate |
+This chapter completes the engagement. The book's final chapter, [Mock Engagement](../08-mock-engagement/README.md), applies all seven chapters to a platform you built yourself.
+
+### Further reading
+
+- [*Postmortem Culture: Learning from Failure*](https://sre.google/sre-book/postmortem-culture/), *Site Reliability Engineering* ch. 15 (free).
+- [*Managing Incidents*](https://sre.google/sre-book/managing-incidents/), *Site Reliability Engineering* ch. 14 (free).
 
 ## Exercise
 
-**Scenario**: Lexa ([brief](../01-discovery/#exercise)) is two weeks past cutover ([05](../05-migration-and-cutover/#exercise)). Every weekday around 9:30 CET, TTFT p95 for contract review rises from about 1.2 s to 6 s for twenty minutes, then recovers. Error rate is flat. Their nightly job finished late twice this week.
+**Scenario.** Lexa (see the [brief](../01-discovery/README.md#exercise)) is two weeks past cutover (see the [Migration and Cutover exercise](../05-migration-and-cutover/README.md#exercise)). Every weekday around 9:30 CET, TTFT p95 for contract review rises from about 1.2 s to 6 s for twenty minutes, then recovers. The error rate is flat. Their nightly job finished late twice this week.
 
-**Deliverable**:
+The deliverable has three parts:
 
-1. An **escalation report** to the performance team using the template, with plausible values from your earlier documents and at least four hypotheses in "what I ruled out" (each with the check you ran, drawn from the failure-mode table).
+1. An **escalation report** to the performance team using the template, with plausible values from your earlier documents and at least four hypotheses in "what I ruled out," each with the check you ran, drawn from the failure-mode table.
 2. The **first two incident updates** to Lexa in the update format.
-3. A **relay note** for Lexa's VP of Engineering, assuming performance finds that autoscaling reacts to GPU utilization instead of queue depth and the nightly job overran into the morning.
+3. A **relay note** for Lexa's VP of Engineering, assuming performance finds that autoscaling reacts to GPU utilization instead of queue depth and that the nightly job overran into the morning.
 
 ### Done when
 
@@ -165,3 +143,30 @@ Research and performance findings arrive as mechanisms ("the speculator's accept
 - The report links the overrunning nightly job to the morning symptom as a hypothesis with evidence, not a conclusion.
 - Each incident update has a next-update time.
 - The relay note ends in a decision Lexa can make, with its cost.
+
+## Key terms
+
+- **Escalation report**: a written handoff with symptom, environment, traffic shape, observed versus expected values with sources, evidence, what was ruled out, and an ask.
+- **What I ruled out**: the list of hypotheses already tested, each with the check that eliminated it.
+- **Update cadence**: a committed schedule of status updates during an incident, kept even when nothing has changed.
+- **Mitigation**: an action that reduces user impact (rollback, traffic shift, more replicas, fallback) before the root cause is known.
+- **Blameless postmortem**: a written incident analysis focused on systems and contributing factors, with owned action items.
+
+## Summary
+
+- Escalate when you have done the work you can do, and bring evidence, not a narrative.
+- A handoff is accepted when the receiver can act without calling you; "what I ruled out" separates an escalation from a forwarded complaint.
+- Match the counterpart to the problem, and bring the evidence they need; ask for the same artifacts when you take work over.
+- During an incident, keep one voice and a committed update cadence, and mitigate before the root cause is known.
+- Relay research as finding, consequence, decision, and plan change, translated for each audience.
+
+## Review questions
+
+1. Why does an escalation's "expected" column need a source?
+   <details><summary>Answer</summary>Without one, the gap between observed and expected cannot be checked. A source (the benchmark report, the hypothesis math, or a previous run) tells the specialist what the system should do and why, rather than "it feels slow."</details>
+2. Name the four things that most often make an escalation to performance bounce back.
+   <details><summary>Answer</summary>No engine version, no traffic shape, a closed-loop benchmark offered as SLO evidence, and prefix-cache hits in the repro.</details>
+3. An hour into an incident, nothing has changed and the next update is due. What do you send?
+   <details><summary>Answer</summary>The update, on time, in the standard format, saying there is no change, what was tried since the last update, the next step and owner, and the next update time. Cadence matters more than cause.</details>
+4. Why not paste the research team's thread into the customer's channel?
+   <details><summary>Answer</summary>It leaks internal context, may include unpublished work or other customers' data, and gives the customer a mechanism instead of a decision. Translate it into the consequence and the decision they can make.</details>

@@ -1,39 +1,22 @@
 # CI for the platform repo
 
-## Overview
+The repo's CI, set up in [The repository and its CI gate](../../software-craftsmanship/05-code-review-and-ci/01-your-repo-and-ci-gate.md) in *Software Craftsmanship*, lints commit messages and runs a few native tests. Since then the system has grown a Rust engine, a Go gateway, Dockerfiles, charts, a Tiltfile, and a load generator, and none of them is exercised on a push. A pull request can break the engine image (a moved `COPY` source), the chart (a renamed value), or time to first token (a lock in the scheduler) and still be green. Running the system in production shape includes a pipeline that refuses those changes.
 
-| | |
-|---|---|
-| **Module** | `dep.05` · practice · ops · Pass 7 · 3 to 5 h |
-| **Solution** | [`.github/workflows/platform.yml`](../../../../course/solutions/entry/.github/workflows/platform.yml): jobs `lint`, `unit`, `images`, `kind-e2e`, and `perf-gate` (the last uses the optional `load.02`), next to `craft.01`'s [`ci.yml`](../../../../course/solutions/entry/.github/workflows/ci.yml) (commit-lint and native tests); `craft.11` adds [`release.yml`](../../../../course/solutions/entry/.github/workflows/release.yml) |
-| **Contract** | [GitHub Actions workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions) |
-| **Needs** | `craft.01` (the gate this extends), `dep.04` (`tilt ci` is the kind job) · optional: `load.02`'s `compare` is the perf gate |
-| **Used by** | the Pass 7 production platform and every later pass run on what this pipeline keeps green; `ops.06` (dependency upgrade) and `ops.07` (perf regression) are detected by it going red |
-| **Optional depth** | [GitHub Actions security hardening](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions) (free), *Continuous Delivery* (Humble and Farley), ch. 5 |
+This section builds that pipeline: one workflow, `.github/workflows/platform.yml`, with five jobs named `lint`, `unit`, `images`, `kind-e2e`, and `perf-gate`. It sits next to the existing [`ci.yml`](../../../../course/solutions/entry/.github/workflows/ci.yml) (commit-lint and native tests); a later [`release.yml`](../../../../course/solutions/entry/.github/workflows/release.yml) comes from [Commits, semver, and releases](../../software-craftsmanship/06-releases-and-deprecation/01-commits-semver-and-releases.md). The kind job deploys with `tilt ci` from [the Tilt dev loop](04-tilt-dev-loop.md). The optional perf gate uses the `compare` command from [Run comparison and regression gate](../../build-an-llm/p10-serving/11-run-comparison-and-regression-gate.md) in *Build Your Own LLM System*; skip that job if you have not built it. The interface is plain [GitHub Actions workflow syntax](https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions).
 
-## Key Takeaways
+Everything later runs on what this pipeline keeps green, and two of the incident drills, [a breaking dependency upgrade](../../systems/05-incident-response-and-chaos/06-dependency-upgrade.md) and [a performance regression bisect](../../systems/05-incident-response-and-chaos/07-performance-regression.md), are detected by it going red.
 
-- Each job answers one question and has a fixed id, so branch protection can require it by name: does it lint, do the unit tests pass, do the images build, does the system deploy and serve a smoke request, is main slower than before.
-- Pin what runs: actions by release tag or commit sha, downloaded tools by release URL; `permissions: contents: read` by default.
-- The kind job builds the cluster from the repo's own `deploy/kind/cluster.yaml` and deploys with its own `tilt ci`: CI and your laptop run the same loop.
-- The perf gate (optional, with `load.02`) runs **on main only**: each green run uploads its load report, the next run compares against it with `load.02`'s statistics, and the commit that regressed is the one that turns red.
-- Every job has a timeout; a hung cluster costs minutes, not six hours.
-
-## How to read this chapter
-
-Sections 1 to 3 derive the pipeline's jobs from the questions a change must answer, and time one pull request and one perf comparison by hand. Section 4 fixes the workflow's shape. Section 5 walks through the solution workflow job by job and explains each choice. Try to predict each job's steps before reading them.
+> **Learning objectives**
+> - Derive a CI pipeline's jobs from the questions a change must answer, and order them with `needs:` so expensive jobs run only when they can pass.
+> - Pin every action and downloaded tool and run with least-privilege permissions.
+> - Run the same kind cluster and `tilt ci` deploy in CI as on your laptop.
+> - Build a perf gate with a comparable baseline and compute whether a run regressed.
 
 The pipeline runs on GitHub on every push; from a terminal, `gh run list --workflow platform --limit 3` shows its latest runs.
 
----
+## One question per job
 
-## 1. Why now
-
-The repo's CI (`craft.01`) lints commit messages and runs a few native tests. Since then the system grew a Rust engine, a Go gateway, Dockerfiles, charts, a Tiltfile, and a load generator, and none of them is exercised on a push. A pull request can break the engine image (a moved `COPY` source), the chart (a renamed value), or TTFT (a lock in the scheduler) and still be green. Pass 7 is about running the system in production shape, and production shape includes a pipeline that refuses those changes.
-
-## 2. Principles
-
-### 2.1 One question per job
+A check is only useful if branch protection can require it, and branch protection requires jobs by id. So each job answers one question and has a fixed id, and a failure names the question that failed:
 
 | Job | Question | Fails when |
 |---|---|---|
@@ -43,29 +26,33 @@ The repo's CI (`craft.01`) lints commit messages and runs a few native tests. Si
 | `kind-e2e` | does the system deploy and serve? | `tilt ci`, then a smoke run against the deployed gateway |
 | `perf-gate` | is main slower than the last green main? | `{loadgen} compare base.json head.json --metric ttft_p95 --max-regress 5%` |
 
-Jobs run in parallel unless `needs:` orders them: `kind-e2e` needs `images` (no point deploying images that do not build) and `unit`.
+Jobs run in parallel unless `needs:` orders them. `kind-e2e` needs `images` (there is no point deploying images that do not build) and `unit`.
 
-### 2.2 Supply chain: what runs in CI
+## Supply chain: what runs in CI
 
-| Symbol | Meaning |
+Before writing any job, decide what code you are willing to run. Three bits of vocabulary matter:
+
+| Term | Meaning |
 |---|---|
 | `uses: owner/action@ref` | runs the code at `ref` of that repository with the job's token and secrets |
 | moving ref | a branch (`main`, `master`, `stable`): its code changes without a commit in this repo |
 | pinned ref | a release tag (`v4`, `v1.12.0`) or a 40-hex commit sha |
 
-A workflow is code that runs with write access to the repository unless it says otherwise. Three habits close most of the gap: pin every action and downloaded tool, declare `permissions:` (read by default, a job asks for more), and pass secrets through `env`, never `echo` them (masking misses transformed values).
+A workflow is code that runs with write access to the repository unless it says otherwise. Three habits close most of the gap. Pin every action and downloaded tool: actions by release tag or commit sha, tools by release URL. Declare `permissions:`, read by default, with a job asking for more only when it needs it. And pass secrets through `env`; never `echo` them, because masking misses transformed values.
 
-### 2.3 The kind job
+## The kind job
 
-`helm/kind-action` creates a kind cluster on the runner from the config you pass. Pass `deploy/kind/cluster.yaml`: the same cluster name and NodePort mappings as on your laptop, so the deployment's coordinates (`dep.00` section 2.7) are right in CI too. Then `tilt ci` (`dep.04`) builds and deploys, and a smoke run streams a completion through the gateway NodePort. A throwaway API key is generated per run, masked, and stored in the Secret the gateway chart reads.
+The most valuable job is also the most expensive. `helm/kind-action` creates a kind cluster on the runner from the config you pass. Pass the repo's own `deploy/kind/cluster.yaml`: the same cluster name and NodePort mappings as on your laptop, so the deployment's coordinates from [the tracer deploy](00-tracer-deploy.md) are right in CI too. Then `tilt ci` builds and deploys, and a smoke run streams a completion through the gateway NodePort. A throwaway API key is generated per run, masked, and stored in the Secret the gateway chart reads. CI and your laptop run the same loop.
 
-### 2.4 A perf gate needs a baseline
+## A perf gate needs a baseline
 
-This job is optional: it needs `load.02`, an optional module. A load report is noisy: two identical runs differ by a few percent. `load.02`'s `compare` decides whether a difference is a regression with a permutation test and a threshold (`--max-regress 5%`). The baseline must be a run of the same code path on the same kind of machine: the report of the last green run on main. So the job runs only on pushes to main, downloads that report (`gh run download`), compares, and uploads its own report for the next run. On a pull request there is no stable baseline, and a gate that compares against a different runner type blocks good changes at random.
+The last job is optional, because it needs the `compare` command from *Build Your Own LLM System*. A load report is noisy: two identical runs differ by a few percent. `compare` decides whether a difference is a regression with a permutation test and a threshold (`--max-regress 5%`). The baseline must be a run of the same code path on the same kind of machine, which means the report of the last green run on main.
 
-## 3. Worked example by hand
+So the job runs only on pushes to main. It downloads that report (`gh run download`), compares, and uploads its own report for the next run. On a pull request there is no stable baseline, and a gate that compares against a different runner type blocks good changes at random.
 
-A pull request changes `go/gateway/route/route.go`. With the solution's `needs:` graph and typical durations:
+## Timing a pull request and a perf comparison by hand
+
+Suppose a pull request changes `go/gateway/route/route.go`. With the solution's `needs:` graph and typical durations, the jobs unfold like this:
 
 | Minute | lint | unit | images | kind-e2e | perf-gate |
 |---|---|---|---|---|---|
@@ -75,19 +62,19 @@ A pull request changes `go/gateway/route/route.go`. With the solution's `needs:`
 | 9 | | | pass | start | |
 | 22 | | | | pass (`tilt ci` 9 min, smoke 4 min) | |
 
-Wall time 22 minutes; the jobs that can run in parallel do. If `images` had no `needs:` relationship, `kind-e2e` would start at minute 0 and fail on an image that does not build, after paying for the cluster.
+Wall time is 22 minutes, because the jobs that can run in parallel do. If `images` had no `needs:` relationship, `kind-e2e` would start at minute 0 and fail on an image that does not build, after paying for the cluster.
 
 After merge, the push to main runs `perf-gate`. The last green main run's report says `ttft_p95` = 410 ms; this run measures 445 ms:
 
 $$\frac{445 - 410}{410} = 0.085 = 8.5\% > 5\%$$
 
-and `compare` also finds the shift significant, so it exits 1 and the commit that introduced it is red on main. Had this run measured 418 ms (+2.0%), it would pass, and its report would become the next baseline.
+`compare` also finds the shift significant, so it exits 1, and the commit that introduced the regression is the one that turns red on main. Had this run measured 418 ms (+2.0%), it would pass, and its report would become the next baseline.
 
-A pin, checked by hand: `uses: actions/checkout@v4` is a release tag (pinned); `uses: dtolnay/rust-toolchain@stable` is a branch (moving: rejected); `curl .../tilt/master/scripts/install.sh | bash` runs whatever that branch holds today (rejected); a release tarball URL with a version in it is pinned.
+Now check some pins by hand. `uses: actions/checkout@v4` is a release tag: pinned. `uses: dtolnay/rust-toolchain@stable` is a branch: moving, so rejected. `curl .../tilt/master/scripts/install.sh | bash` runs whatever that branch holds today: rejected. A release tarball URL with a version in it is pinned.
 
-## 4. The interface
+## The shape of the workflow
 
-`.github/workflows/platform.yml` (the solution, abridged; section 5 quotes it in full):
+Abridged, the solution workflow looks like this; the step-by-step walkthrough below quotes it in full.
 
 ```yaml
 name: platform
@@ -118,30 +105,22 @@ jobs:
 
 GitHub Actions only runs on GitHub, so most properties are read from the workflow file itself; the run on GitHub is the final word.
 
-| Case | Kind of check | What must hold | Why it matters downstream |
-|---|---|---|---|
-| workflow parses and triggers | static | one mapping; `on` has `push` and `pull_request` | every change is gated |
-| required jobs | static | the job ids, each with `runs-on`, steps, and `timeout-minutes` at most 60 | branch protection requires them by name |
-| actions are pinned | boundary | every `uses:` has a version tag or a sha, no moving branch; no moving-branch script piped to a shell | what runs is what you reviewed |
-| lint covers every language | static | ruff, gofmt, go vet, cargo fmt `--check`, clippy `-D warnings` | cheap failures stay cheap |
-| unit runs every suite | static | pytest, `go test -race`, cargo test, `make -C c` | every native test on every push |
-| images job builds every Dockerfile | conformance | each `deploy/docker/*.Dockerfile` is built | a broken image fails its own pull request |
-| kind e2e job | conformance | kind from `deploy/kind/cluster.yaml`, `tilt ci`, a smoke run against the deployed system, `needs: images` | the deployed system on every pull request |
-| perf gate on main against the last report | conformance | if the job exists: `if:` restricted to main; `compare ... --metric ... --max-regress ...`; the report uploaded | regressions fail the commit that made them |
-| least privilege, no echoed secrets | boundary | top-level `permissions:`; no step echoes a secret | a compromised step can do less |
+The workflow must parse as one mapping, with `on` holding both `push` and `pull_request`, so every change is gated. It must define the required job ids, each with `runs-on`, steps, and `timeout-minutes` at most 60, because branch protection requires them by name. Every `uses:` must carry a version tag or a sha, never a moving branch, and no moving-branch script may be piped to a shell, so that what runs is what you reviewed. Lint must cover every language (ruff, gofmt, go vet, cargo fmt `--check`, clippy `-D warnings`), so cheap failures stay cheap. Unit must run every suite (pytest, `go test -race`, cargo test, `make -C c`), so every native test runs on every push.
 
-## 5. The solution, step by step
+The images job must build each `deploy/docker/*.Dockerfile`, so a broken image fails its own pull request. The kind job must create kind from `deploy/kind/cluster.yaml`, run `tilt ci`, smoke-test the deployed system, and declare `needs: images`, which puts the deployed system under test on every pull request. If the perf gate exists, its `if:` must restrict it to main, it must run `compare ... --metric ... --max-regress ...`, and it must upload its report, so regressions fail the commit that made them. Finally, there must be a top-level `permissions:` and no step that echoes a secret, so a compromised step can do less.
 
-### 5.1 From first principles
+## Building it step by step
 
-1. **A check is only useful if it can be required.** Branch protection requires jobs by id, so each question of 2.1 is one job with a fixed id, and a failure names the question that failed.
+### Reasoning from first principles
+
+1. **A check is only useful if it can be required.** Branch protection requires jobs by id, so each question is one job with a fixed id, and a failure names the question that failed.
 2. **Cheap questions first, expensive ones only when they can pass.** `lint` and `unit` take minutes; a kind cluster takes many. `needs: [images, unit]` keeps the expensive job from paying for a cluster to deploy images that do not build.
 3. **CI must run the same thing as the laptop.** So the kind job uses the repo's own `deploy/kind/cluster.yaml` and `tilt ci`; any CI-only deploy path would test something nobody runs.
 4. **Whatever CI runs, it runs with the repo's token.** So every action is pinned to a release tag or sha, every downloaded tool to a versioned URL, and `permissions: contents: read` is the default; a job that needs more asks for it.
 5. **A perf comparison needs a comparable baseline.** Only the last green run of the same workflow on main, on the same runner type, measures the same code path on the same hardware class. So the gate runs on pushes to main only, and each run's report becomes the next baseline.
-6. **Nothing may hang forever.** Every job has `timeout-minutes`; the default is six hours.
+6. **Nothing may hang forever.** Every job has `timeout-minutes`, because the default is six hours; a hung cluster should cost minutes.
 
-### 5.2 Triggers, concurrency, permissions
+### Triggers, concurrency, permissions
 
 ```yaml
 name: platform
@@ -166,7 +145,7 @@ env:
 
 `concurrency` matters for cost more than correctness: on a busy pull request, three pushes would otherwise mean three kind clusters.
 
-### 5.3 `lint` and `unit`
+### `lint` and `unit`
 
 ```yaml
   lint:
@@ -211,7 +190,7 @@ env:
 
 `-D warnings` turns clippy's warnings into errors, so lint debt cannot accumulate. `-race` is the one flag that catches the gateway's shared-state bugs (rate-limit buckets, cache, registry) before load does.
 
-### 5.4 `images`
+### `images`
 
 ```yaml
   images:
@@ -229,9 +208,9 @@ env:
           done
 ```
 
-`${user%%:*}` strips a `:group` suffix, so `10001:10001` is checked as `10001`. The loop names every Dockerfile, including the durable, worker, and agent images of `dep.06` and `dep.07`.
+`${user%%:*}` strips a `:group` suffix, so `10001:10001` is checked as `10001`. The loop names every Dockerfile, including the durable, worker, and agent images of [Durable and worker images and charts](06-durable-and-worker-charts.md) and [The agent image and chart](07-agent-image-and-chart.md).
 
-### 5.5 `kind-e2e`
+### `kind-e2e`
 
 ```yaml
   kind-e2e:
@@ -263,9 +242,11 @@ env:
       # ... a smoke run against the deployed system (see below)
 ```
 
-The key is generated per run, so no long-lived secret exists for CI to leak; it is created as the same two Secrets the charts reference (`dep.00`, `dep.03`). `tilt ci` deploys the disaggregated topology, the production shape. The solution file's last step still calls the course's former milestone runner, which has been removed; what that step has to prove is the end-to-end tracer of `dep.00` section 3: a streamed completion of 32 or more chunks through `http://127.0.0.1:30080` with `$TL_API_KEY`, which works in CI because kind used the same port mappings as on your laptop.
+The key is generated per run, so no long-lived secret exists for CI to leak. It is created as the same two Secrets the charts reference, as in [the tracer deploy](00-tracer-deploy.md) and [Helm charts and the observability stack](03-helm-charts-and-observability-stack.md). `tilt ci` deploys the disaggregated topology, the production shape.
 
-### 5.6 `perf-gate`
+> **Note:** The solution file's last step still calls a former milestone runner that has since been removed. What that step has to prove is the end-to-end tracer request you followed by hand in [the tracer deploy](00-tracer-deploy.md): a streamed completion of 32 or more chunks through `http://127.0.0.1:30080` with `$TL_API_KEY`. That works in CI because kind used the same port mappings as on your laptop.
+
+### `perf-gate`
 
 ```yaml
   perf-gate:
@@ -299,19 +280,71 @@ The key is generated per run, so no long-lived secret exists for CI to leak; it 
           retention-days: 30
 ```
 
-The job widens its own permissions (`actions: read`) for exactly one need. A fixed `--seed 1` and fixed rate make two runs of the same code generate the same request sequence, so the comparison measures the code, not the workload. The first run on a fresh repository has no baseline and passes on purpose: its report is the baseline. Because a failed run uploads nothing that `--status success` would select, a regression never becomes the new baseline. The stack runs as host processes rather than on kind: the gate measures the serving code, and a cluster would add variance without adding signal.
+The job widens its own permissions (`actions: read`) for exactly one need. A fixed `--seed 1` and a fixed rate make two runs of the same code generate the same request sequence, so the comparison measures the code, not the workload. The first run on a fresh repository has no baseline and passes on purpose: its report becomes the baseline. Because a failed run uploads nothing that `--status success` would select, a regression never becomes the new baseline. The stack runs as host processes rather than on kind: the gate measures the serving code, and a cluster would add variance without adding signal.
 
-Full solution: [`platform.yml`](../../../../course/solutions/entry/.github/workflows/platform.yml).
+The full solution is [`platform.yml`](../../../../course/solutions/entry/.github/workflows/platform.yml).
 
-### 5.7 Why this solution
+### Why this design
 
 - **Separate jobs over one long script.** Parallel jobs cut wall time (22 minutes instead of the sum), and each id is a separately requirable check.
-- **Tag pins over sha pins.** Release tags of well-maintained actions are a reasonable middle ground; sha pins with Dependabot are stronger (Going further). Moving branches are never acceptable.
+- **Tag pins over sha pins.** Release tags of well-maintained actions are a reasonable middle ground; sha pins with Dependabot are stronger. Moving branches are never acceptable.
 - **`tilt ci` over a CI-specific `helm install` script.** One deploy path, exercised on every pull request, is the one that works on laptops too.
-- **Perf on main only over perf on every pull request.** A gate that fails at random gets disabled; a gate that compares like with like gets trusted. The cost is that a regression is caught one commit late, on main, where `ops.07`'s bisect finds it.
-- **Tradeoff accepted:** GitHub-hosted runners are noisy neighbours; the 5% threshold and `compare`'s permutation test absorb some of that noise, and dedicated runners would absorb more.
+- **Perf on main only over perf on every pull request.** A gate that fails at random gets disabled; a gate that compares like with like gets trusted. The cost is that a regression is caught one commit late, on main, where the [performance regression bisect](../../systems/05-incident-response-and-chaos/07-performance-regression.md) drill finds it.
+- **Tradeoff accepted:** GitHub-hosted runners are noisy neighbours. The 5% threshold and `compare`'s permutation test absorb some of that noise, and dedicated runners would absorb more.
 
-### 5.8 Explain it back
+## What can go wrong
+
+These six mistakes are the usual ways a CI pipeline becomes either a security hole or a source of false confidence:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| No `permissions:`, or `echo ${{ secrets.X }}` in a step | the token can push to the repo; the secret is in the log | top-level `permissions: contents: read`; the key is masked and passed through `$GITHUB_ENV` |
+| `uses: some/action@main`, or `curl .../master/install.sh \| bash` | a change upstream changes CI without a commit in this repo | every `uses:` at a release tag; tilt from a versioned release URL |
+| `go test` without `-race` | the gateway's data races pass CI and fail under load | `go test -race -count=1` |
+| A kind cluster from the action's default config | NodePorts 30080, 30090, 30320 are not mapped; the smoke run cannot reach the gateway | `config: deploy/kind/cluster.yaml` |
+| No `timeout-minutes` | a stuck `tilt ci` holds a runner for 6 hours | `timeout-minutes` on every job, plus `tilt ci --timeout 15m` |
+| The perf gate on pull requests, or with no stored baseline | random failures, or a gate that never compares anything | `if:` main only; the last green report downloaded, this run's uploaded |
+
+## Where this leads
+
+This workflow sits next to the gates of `ci.yml` from [The repository and its CI gate](../../software-craftsmanship/05-code-review-and-ci/01-your-repo-and-ci-gate.md), and its kind job's deploy step is the `tilt ci` of [the Tilt dev loop](04-tilt-dev-loop.md). Going forward, [Commits, semver, and releases](../../software-craftsmanship/06-releases-and-deprecation/01-commits-semver-and-releases.md) adds `release.yml`: tags, a changelog, and images pushed only from a release. In the drill [a breaking dependency upgrade](../../systems/05-incident-response-and-chaos/06-dependency-upgrade.md), the upgrade lands only with this pipeline green, and in [a performance regression bisect](../../systems/05-incident-response-and-chaos/07-performance-regression.md), the perf gate's red commit is what `git bisect run` hunts.
+
+The production versions of these pieces:
+
+| Your piece | Production equivalent | What it adds |
+|---|---|---|
+| tag-pinned actions | sha-pinned actions with Dependabot or Renovate updates | immutable refs that still get updates, by pull request |
+| a kind cluster per run | ephemeral preview environments per pull request (Argo CD ApplicationSets, Vercel-style previews) | a URL reviewers can click |
+| a 60 s load run on main | continuous benchmarking on dedicated runners | stable baselines, trend dashboards |
+| `docker build` only | SBOMs, signing, provenance ([SBOM and supply chain](../../software-craftsmanship/08-security/02-sbom-and-supply-chain.md)) | know and prove what is in each image |
+
+### Further reading
+
+- [GitHub Actions security hardening](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions)
+- Jez Humble and David Farley, *Continuous Delivery*, chapter 5
+- [Dependabot for actions](https://docs.github.com/en/code-security/dependabot)
+- [Bencher](https://bencher.dev/) and [Conbench](https://conbench.github.io/conbench/)
+- [SLSA](https://slsa.dev/) and [cosign](https://docs.sigstore.dev/)
+
+## Key terms
+
+- **job id**: the fixed name of a workflow job, which branch protection uses to require it.
+- **`needs:`**: a job dependency that delays one job until others pass.
+- **moving ref / pinned ref**: a branch whose code changes without a commit here, versus a release tag or commit sha.
+- **`permissions:`**: the scopes granted to the workflow's `GITHUB_TOKEN`; read-only by default in this workflow.
+- **`::add-mask::`**: a workflow command that hides a literal string in logs; it does not catch transformed values.
+- **perf gate**: a job that fails when a load metric regresses past a threshold against a baseline.
+- **baseline**: the load report of the last green run on main, on the same runner type.
+
+## Summary
+
+- Each job answers one question and has a fixed id, so branch protection can require it by name: lint, unit tests, image builds, deploy-and-serve on kind, and perf on main.
+- Pin what runs: actions by release tag or commit sha, downloaded tools by release URL; `permissions: contents: read` by default.
+- The kind job builds the cluster from the repo's own `deploy/kind/cluster.yaml` and deploys with its own `tilt ci`, so CI and your laptop run the same loop.
+- The optional perf gate runs on main only: each green run uploads its load report, the next run compares against it, and the commit that regressed is the one that turns red.
+- Every job has a timeout, so a hung cluster costs minutes, not six hours.
+
+## Review questions
 
 1. Why does `kind-e2e` need `images` even though `tilt ci` builds the images itself?
    <details><summary>Answer</summary>Ordering, not artifacts: a broken Dockerfile should fail the cheap <code>images</code> job in minutes, not after the runner has created a kind cluster and Tilt has started building. <code>needs:</code> makes the expensive job wait for the cheap one to pass.</details>
@@ -321,33 +354,5 @@ Full solution: [`platform.yml`](../../../../course/solutions/entry/.github/workf
    <details><summary>Answer</summary>Masking matches the literal string; a transformed value (base64, a substring) prints in clear. The solution never echoes the key: it passes it through <code>$GITHUB_ENV</code> to later steps and into a Kubernetes Secret, and it is generated per run, so a leak would expose a key that dies with the runner.</details>
 4. What does `test -z "$(gofmt -l go)"` do that `gofmt -l go` alone does not?
    <details><summary>Answer</summary><code>gofmt -l</code> lists unformatted files but exits 0 either way. Wrapping it in <code>test -z</code> turns non-empty output into a failing exit code, and the <code>|| { gofmt -l go; exit 1; }</code> branch prints the list so the log names the files.</details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. No `permissions:`, or `echo ${{ secrets.X }}` in a step | the token can push to the repo; the secret is in the log | top-level `permissions: contents: read`; the key is masked and passed through `$GITHUB_ENV` (5.2, 5.5) |
-| 2. `uses: some/action@main`, or `curl .../master/install.sh \| bash` | a change upstream changes CI without a commit in this repo | every `uses:` at a release tag; tilt from a versioned release URL (5.3, 5.5) |
-| 3. `go test` without `-race` | the gateway's data races pass CI and fail under load | `go test -race -count=1` (5.3) |
-| 4. A kind cluster from the action's default config | NodePorts 30080, 30090, 30320 are not mapped; the smoke run cannot reach the gateway | `config: deploy/kind/cluster.yaml` (5.5) |
-| 5. No `timeout-minutes` | a stuck `tilt ci` holds a runner for 6 hours | `timeout-minutes` on every job, plus `tilt ci --timeout 15m` (5.5) |
-| 6. The perf gate on pull requests, or with no stored baseline | random failures, or a gate that never compares anything | `if:` main only; the last green report downloaded, this run's uploaded (5.6) |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `craft.01` | the gates of `ci.yml` this workflow sits next to |
-| Back | `dep.04` | `tilt ci` is the kind job's deploy step |
-| Forward | `craft.11` | `release.yml`: tags, changelog, images pushed only from a release |
-| Forward | `ops.06` | a dependency upgrade lands only with this pipeline green |
-| Forward | `ops.07` | the perf gate's red commit is what `git bisect run` hunts |
-
-## Going further
-
-| Your piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| tag-pinned actions | sha-pinned actions with Dependabot or Renovate updates | immutable refs that still get updates, by pull request | [Dependabot for actions](https://docs.github.com/en/code-security/dependabot) |
-| a kind cluster per run | ephemeral preview environments per pull request | a URL reviewers can click | Argo CD ApplicationSets, Vercel-style previews |
-| a 60 s load run on main | continuous benchmarking on dedicated runners | stable baselines, trend dashboards | [Bencher](https://bencher.dev/), [Conbench](https://conbench.github.io/conbench/) |
-| `docker build` only | SBOMs, signing, provenance (`craft.18`) | know and prove what is in each image | [SLSA](https://slsa.dev/), [cosign](https://docs.sigstore.dev/) |
+5. The baseline `ttft_p95` is 410 ms. Does a run measuring 418 ms fail a 5% gate? What about 445 ms?
+   <details><summary>Answer</summary>418 ms is (418 − 410) / 410 ≈ 2.0%, under 5%, so it passes and becomes the next baseline. 445 ms is (445 − 410) / 410 ≈ 8.5%, over 5%; if <code>compare</code> also finds the shift significant, the job exits 1 and that commit is red on main.</details>

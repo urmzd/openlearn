@@ -1,35 +1,21 @@
-# Counting: params, FLOPs, KV bytes, memory plans
+# Counting: parameters, FLOPs, KV bytes, and memory plans
 
-## Overview
+In *Build Your Own LLM System*, [the modern-block chapter](../../build-an-llm/p07-modern-block/) swaps the 2017 transformer for a Llama-family model and, at the end, loads SmolLM2-135M from Hugging Face ([Llama-family model, HF config, weight loading, downloader](../../build-an-llm/p07-modern-block/09-llama-family-model.md)). Before loading 270 MB of weights, three questions need numbers, not guesses.
 
-| | |
-|---|---|
-| **Module** | `M05.1` · build · Python · Pass 5 · about 1 to 2 h reading |
-| **Solution** | [`accounting.py`](../../../../course/solutions/python/tinyllm/accounting.py): `ModelConfig`, `param_count`, `flops_per_token`, `kv_bytes_per_token`, `memory_plan` |
-| **Contract** | [`course/contracts/py/tinyllm/accounting.pyi`](../../../../course/contracts/py/tinyllm/accounting.pyi) |
-| **Needs** | no code from earlier modules · reading: `M00.1` (powers and logs for orders of magnitude), `S-M05` (the product and sum rules) |
-| **Used by** | `L7.5` checks its cache hook against `kv_bytes_per_token` · `L7.6` latent cache bytes · `L7.9` `{tinyllm} info`, which must report the same parameter count as Hugging Face's `num_parameters()` · later: `L10.2` admission by KV bytes, `L11.1` and `C1` memory and compute budgets |
-| **Optional depth** | Kaplan et al., "Scaling Laws for Neural Language Models" (2020), section 2.1; Chowdhery et al., "PaLM" (2022), appendix B; Rajbhandari et al., "ZeRO" (2020), section 3.1; Korthikanti et al., "Reducing Activation Recomputation in Large Transformer Models" (2022), section 4 |
+Does the model have the same parameters as theirs? The `{tinyllm} info` command must report exactly what Hugging Face's `num_parameters()` reports, and a missing norm or a double-counted tied head is off by thousands or by 28 million. How many bytes of KV cache does one generated token cost? The Rust serving engine admits requests by exactly this number ([Continuous batching scheduler with priority and preemption](../../build-an-llm/p10-serving/02-continuous-batching.md)). Will a training run fit in a laptop's memory? The [TinyStories capstone](../../build-an-llm/capstones/01-tinystories.md) picks its model size from that answer. This section answers all three by counting.
 
-## Key Takeaways
+No code from earlier sections is needed. You will use powers and logs for orders of magnitude from [Exponents, logs, change of base, units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md), and the product and sum rules, which [this chapter's problem set](90-problem-set.md) practices on paper. The solution is [`accounting.py`](../../../../course/solutions/python/tinyllm/accounting.py), with `ModelConfig`, `param_count`, `flops_per_token`, `kv_bytes_per_token`, and `memory_plan`; the typed interface is [`course/contracts/py/tinyllm/accounting.pyi`](../../../../course/contracts/py/tinyllm/accounting.pyi).
 
-- A decoder's parameters are a sum of products of a few config integers; counted per component, they match Hugging Face exactly for dense, GQA, MoE, and MLA models.
-- The KV cache grows with the number of **kv** heads, not query heads: GQA and MQA shrink it by $H / H_{kv}$, MLA replaces it with one latent per layer.
-- A forward pass costs 2 FLOPs per parameter a token touches plus an attention term linear in the context; a training step costs three forwards.
-- AdamW training costs 16 bytes per parameter before activations, in fp32 or bf16 alike.
-- Counts are exact Python integers: 671,026,404,352 is not $6.71 \times 10^{11}$.
+> **Learning objectives**
+> - Count a decoder's parameters per component from its config, exactly matching Hugging Face for dense, GQA, MoE, and MLA models.
+> - Compute KV-cache bytes per token and explain why they depend on kv heads, not query heads.
+> - Compute forward and training FLOPs per token, including the attention term that "$6N$" drops.
+> - Build a training memory plan and explain why AdamW costs 16 bytes per parameter in both fp32 and bf16.
+> - Explain why every count must be an exact integer.
 
-## How to read this chapter
+## Notation
 
-Sections 1 to 3 derive every count from the product and sum rules and work a small model by hand. Section 4 fixes the interface and the cases a correct solution must handle. Section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
-
----
-
-## 1. Why now
-
-Pass 5 swaps the 2017 transformer for a Llama-family model and, at the end of the pass, loads SmolLM2-135M from Hugging Face. Before loading 270 MB of weights, three questions need numbers, not guesses. Does the model have the same parameters as theirs (`{tinyllm} info` must report what Hugging Face's `num_parameters()` reports, and a missing norm or a double-counted tied head is off by thousands or by 28 million)? How many bytes of KV cache does one generated token cost (the Rust engine in Pass 7 admits requests by exactly this number, `L10.2`)? Will a training run fit in a laptop's memory (`C1` picks its model size from it)? This module answers all three by counting.
-
-## 2. Principles
+The counts are all products of a handful of config integers. This table names them:
 
 | Symbol | Meaning | Type / shape |
 |---|---|---|
@@ -46,50 +32,58 @@ Pass 5 swaps the 2017 transformer for a Llama-family model and, at the end of th
 | $N$ | matmul parameters one token touches | `int` |
 | $b$ | bytes per number (`dtype_bytes`: 2 for bf16, 4 for fp32) | `int` |
 
-### 2.1 The two counting rules
+## The two counting rules
 
-Everything here uses two rules from `S-M05`. **Product rule**: a matrix with $m$ rows and $n$ columns holds $m \cdot n$ numbers. **Sum rule**: parts that do not overlap add. A `Linear(in, out)` layer stores a weight of $\text{out} \cdot \text{in}$ numbers, plus $\text{out}$ more with a bias.
+Everything here uses two rules. The **product rule**: a matrix with $m$ rows and $n$ columns holds $m \cdot n$ numbers. The **sum rule**: parts that do not overlap add. A `Linear(in, out)` layer stores a weight of $\text{out} \cdot \text{in}$ numbers, plus $\text{out}$ more with a bias. The rest of the section is these two rules applied carefully to each piece of a model.
 
-### 2.2 Embeddings and the head
+## Embeddings and the head
 
-The token embedding is a $V \times d$ table. The lm_head maps the final hidden state back to $V$ logits, another $V \times d$ matrix, unless the model **ties** them: then the head reuses the embedding and stores nothing (SmolLM2 does, saving $49152 \cdot 576 = 28{,}311{,}552$ numbers, a fifth of the model). Tying saves parameters but not work: the head is still a matrix product per token.
+The token embedding is a $V \times d$ table. The lm_head maps the final hidden state back to $V$ logits, another $V \times d$ matrix, unless the model **ties** them. Then the head reuses the embedding and stores nothing. SmolLM2 ties, saving $49152 \cdot 576 = 28{,}311{,}552$ numbers, a fifth of the model. Keep one distinction in mind from the start: tying saves parameters but not work. The head is still a matrix product per token.
 
-### 2.3 One block
+## One block
 
-A Llama block is RMSNorm, attention, RMSNorm, MLP (`L7.1` to `L7.5`).
+A Llama block is RMSNorm, attention, RMSNorm, MLP, built in *Build Your Own LLM System* from [Pre-LN, RMSNorm](../../build-an-llm/p07-modern-block/01-pre-ln-rmsnorm.md) through [MQA/GQA attention](../../build-an-llm/p07-modern-block/05-gqa-attention.md). Each part has a closed-form count.
 
-- **Attention** (`L7.5`): $q$ is $H d_h \times d$, $k$ and $v$ are $H_{kv} d_h \times d$ each, the output projection is $d \times H d_h$: $2 d H d_h + 2 d H_{kv} d_h$. Qwen-style biases add $H d_h + 2 H_{kv} d_h$. MHA is $H_{kv} = H$; GQA shares each kv head among $H / H_{kv}$ query heads.
-- **MLA** (DeepSeek-V2/V3) compresses keys and values into a latent of width $r$: a down projection $(r + d_r) \times d$ (the extra $d_r$ is one shared rope key), a norm of $r$, an up projection $H (d_h + d_v) \times r$, the queries $H (d_h + d_r) \times d$ (or through a latent of width $r_q$ with its own norm), and the output $d \times H d_v$.
-- **Gated MLP** (`L7.2`): gate and up are $f \times d$, down is $d \times f$: $3 d f$.
-- **Mixture of experts**: a router $E \times d$, then $E$ experts and $S$ shared experts of $3 d f_e$ each. A token is routed to $k$ experts, so it touches only $k + S$ of them: its **active** parameters are the total minus $(E - k) \cdot 3 d f_e$ per MoE layer. DeepSeek-V3 keeps its first 3 layers dense.
-- **Norms**: two RMSNorm gains of $d$ per block (plus $r$ and $r_q$ inside MLA), and one final gain of $d$.
+**Attention.** $q$ is $H d_h \times d$, $k$ and $v$ are $H_{kv} d_h \times d$ each, and the output projection is $d \times H d_h$, for a total of $2 d H d_h + 2 d H_{kv} d_h$. Qwen-style biases add $H d_h + 2 H_{kv} d_h$. MHA is the case $H_{kv} = H$; GQA shares each kv head among $H / H_{kv}$ query heads.
 
-### 2.4 KV bytes
+**MLA.** Multi-head latent attention (DeepSeek-V2/V3, [built here](../../build-an-llm/p07-modern-block/06-multi-head-latent-attention.md)) compresses keys and values into a latent of width $r$. It has a down projection $(r + d_r) \times d$ (the extra $d_r$ is one shared rope key), a norm of $r$, an up projection $H (d_h + d_v) \times r$, the queries $H (d_h + d_r) \times d$ (or through a latent of width $r_q$ with its own norm), and the output $d \times H d_v$.
 
-Generating token $t+1$ needs the keys and values of tokens $1..t$ in every layer. Recomputing them is quadratic work, so the engine caches them. One token adds a key and a value of $d_h$ numbers for each kv head in each layer:
+**Gated MLP.** In a [gated MLP](../../build-an-llm/p07-modern-block/02-gated-mlps.md), gate and up are $f \times d$ and down is $d \times f$: $3 d f$.
+
+**Mixture of experts.** A router $E \times d$, then $E$ experts and $S$ shared experts of $3 d f_e$ each. A token is routed to $k$ experts, so it touches only $k + S$ of them: its **active** parameters are the total minus $(E - k) \cdot 3 d f_e$ per MoE layer. DeepSeek-V3 keeps its first 3 layers dense.
+
+**Norms.** Two RMSNorm gains of $d$ per block (plus $r$ and $r_q$ inside MLA), and one final gain of $d$.
+
+## KV bytes
+
+Parameters tell you what a model stores. The next count tells you what generation stores. Generating token $t+1$ needs the keys and values of tokens $1..t$ in every layer. Recomputing them is quadratic work, so the engine caches them. One token adds a key and a value of $d_h$ numbers for each kv head in each layer:
 
 $$\text{kv bytes per token} = L \cdot 2 \cdot H_{kv} \cdot d_h \cdot b .$$
 
-Query heads do not appear. That is the whole argument for GQA: SmolLM2's 9 query heads read 3 kv heads, so its cache is a third of the MHA cache. MLA caches $r + d_r$ numbers per layer instead: DeepSeek-V3 stores $61 \cdot 576 \cdot 2 = 70{,}272$ bytes per token where an MHA cache of its 128 heads would take about 6 MB.
+Query heads do not appear, and that is the whole argument for GQA: SmolLM2's 9 query heads read 3 kv heads, so its cache is a third of the MHA cache. MLA caches $r + d_r$ numbers per layer instead. DeepSeek-V3 stores $61 \cdot 576 \cdot 2 = 70{,}272$ bytes per token where an MHA cache of its 128 heads would take about 6 MB.
 
-### 2.5 FLOPs per token
+## FLOPs per token
 
-A multiply-add is 2 floating-point operations. In $y = W x$ each entry of $W$ is used in exactly one multiply-add per token, so a matrix product costs 2 FLOPs per parameter. Let $N$ be the matmul parameters one token touches: the attention projections, the active MLP, and the $V d$ head (tied or not; the embedding lookup is a copy and the norm gains are elementwise, so they are left out). Attention itself adds work that has no parameters: the token's query is dotted with $T$ keys ($T \cdot d_{qk}$ multiply-adds per head) and the $T$ weights average $T$ values ($T \cdot d_v$). Following PaLM, every token attends to all $T$ positions:
+A multiply-add is 2 floating-point operations. In $y = W x$ each entry of $W$ is used in exactly one multiply-add per token, so a matrix product costs 2 FLOPs per parameter. Let $N$ be the matmul parameters one token touches: the attention projections, the active MLP, and the $V d$ head, tied or not. The embedding lookup is a copy and the norm gains are elementwise, so they are left out.
 
-$$\text{forward} = 2N + 2 L H T (d_{qk} + d_v), \qquad \text{training step} = 3 \cdot \text{forward},$$
+Attention itself adds work that has no parameters. The token's query is dotted with $T$ keys ($T \cdot d_{qk}$ multiply-adds per head), and the $T$ weights average $T$ values ($T \cdot d_v$). Following PaLM, every token attends to all $T$ positions:
 
-because the backward pass computes two products per forward product (the gradient with respect to the input and with respect to the weight, `M08.3`). The familiar "$6N$" is the training cost with the attention term dropped; for a small model at a long context that term is not small.
+$$\text{forward} = 2N + 2 L H T (d_{qk} + d_v), \qquad \text{training step} = 3 \cdot \text{forward}.$$
 
-### 2.6 Training memory
+The factor 3 comes from the backward pass, which computes two products per forward product: the gradient with respect to the input and with respect to the weight, as [Matrix differentials, the trace trick, and closed-form VJPs](../08-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md) shows. The familiar "$6N$" is the training cost with the attention term dropped; for a small model at a long context that term is not small.
 
-With $P$ parameters at $b$ bytes: the weights ($bP$), their gradients ($bP$), the optimizer states in fp32 ($4P$ per state: SGD momentum keeps 1, AdamW keeps 2), and, when training in 16-bit, an fp32 **master copy** of the weights ($4P$) so small updates are not rounded away. AdamW in bf16 is $2 + 2 + 4 + 8 = 16$ bytes per parameter, and in fp32 $4 + 4 + 0 + 8 = 16$ too. Then the **activations**: backward needs values saved during the forward. Per token per layer this contract counts the norm inputs and outputs ($2d$ twice), $q$, $k$, $v$, one softmax row of $T$ probabilities per head, the attention output, and the four MLP intermediates ($4f$); plus fp32 logits of $V$ per token. The softmax rows make activations grow with $T^2$ per sequence, which is why `L11.1` recomputes them.
+## Training memory
 
-## 3. Worked example by hand
+The last count is the one that decides whether training fits. With $P$ parameters at $b$ bytes, there are the weights ($bP$), their gradients ($bP$), the optimizer states in fp32 ($4P$ per state: SGD momentum keeps 1, AdamW keeps 2), and, when training in 16-bit, an fp32 **master copy** of the weights ($4P$) so small updates are not rounded away. AdamW in bf16 is $2 + 2 + 4 + 8 = 16$ bytes per parameter, and in fp32 it is $4 + 4 + 0 + 8 = 16$ too.
 
-$V = 10$, $d = 4$, $L = 2$, $H = 2$, $H_{kv} = 1$, $d_h = 2$, $f = 6$, untied.
+Then come the **activations**: values saved during the forward pass for the backward pass. Per token per layer, the counting contract here includes the norm inputs and outputs ($2d$ twice), $q$, $k$, $v$, one softmax row of $T$ probabilities per head, the attention output, and the four MLP intermediates ($4f$); plus fp32 logits of $V$ per token. The softmax rows make activations grow with $T^2$ per sequence, which is why [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](../../build-an-llm/p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md) recomputes them.
+
+## Working it by hand
+
+Take a tiny model: $V = 10$, $d = 4$, $L = 2$, $H = 2$, $H_{kv} = 1$, $d_h = 2$, $f = 6$, untied. Every count follows in eight steps.
 
 1. Embedding: $10 \cdot 4 = 40$. Head (untied): 40.
-2. Attention per layer: $q$ $4 \cdot 4 = 16$, $k$ $2 \cdot 4 = 8$, $v$ 8, output $4 \cdot 4 = 16$: 48. Two layers: 96.
+2. Attention per layer: $q$ is $4 \cdot 4 = 16$, $k$ is $2 \cdot 4 = 8$, $v$ is 8, output $4 \cdot 4 = 16$: 48. Two layers: 96.
 3. MLP per layer $3 \cdot 4 \cdot 6 = 72$, two layers 144.
 4. Norms: $2 \cdot 4$ per layer, two layers, plus the final 4: 20.
 5. Total $40 + 96 + 144 + 20 + 40 = 340$.
@@ -97,9 +91,11 @@ $V = 10$, $d = 4$, $L = 2$, $H = 2$, $H_{kv} = 1$, $d_h = 2$, $f = 6$, untied.
 7. KV bytes in fp16: $2$ layers $\cdot\ 2$ (key and value) $\cdot\ 1$ kv head $\cdot\ 2$ wide $\cdot\ 2$ bytes $= 16$.
 8. fp32 AdamW, batch 1, $T = 3$: weights 1360, grads 1360, master 0, optimizer $2 \cdot 4 \cdot 340 = 2720$. Saved values per token per layer: $8 + 4 + 2 + 2 + 2 \cdot 3 + 4 = 26$ (attention) plus $8 + 4 \cdot 6 = 32$ (MLP) $= 58$; per token $2 \cdot 58 \cdot 4 + 4 \cdot 10 = 504$ bytes; three tokens 1512. Total 6952.
 
-These are the first three cases in section 4.
+These eight steps are the first three test cases below.
 
-## 4. The interface
+## Designing the interface
+
+One config dataclass and four functions:
 
 ```python
 @dataclass
@@ -114,38 +110,36 @@ def kv_bytes_per_token(cfg, dtype_bytes: int) -> int: ...
 def memory_plan(cfg, batch, seq, dtype_bytes, optimizer) -> dict[str, int]: ...   # weights, grads, master, optimizer, activations, total
 ```
 
-### What a correct solution must handle
+A correct solution must handle the following cases, each tied to a later use:
 
 | Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| Hand example, parameters | unit | section 3, steps 1 to 5 | pins every component |
-| Hand example, FLOPs and KV bytes | unit | section 3, steps 6 and 7 | the FLOP and cache formulas |
-| Hand example, memory plan | unit | section 3, step 8 | the memory formula, term by term |
-| Hugging Face counts | golden | nine architectures against `num_parameters()` in transformers 5.19.0, per component | `{tinyllm} info` in `L7.9` |
+| Hand example, parameters | unit | steps 1 to 5 of the worked example | pins every component |
+| Hand example, FLOPs and KV bytes | unit | steps 6 and 7 | the FLOP and cache formulas |
+| Hand example, memory plan | unit | step 8 | the memory formula, term by term |
+| Hugging Face counts | golden | nine architectures against `num_parameters()` in transformers 5.19.0, per component | `{tinyllm} info` in the Llama-family model |
 | Python ints | boundary | every count is an `int`; DeepSeek-V3's 671,026,404,352 | no float rounding in large counts |
 | Tying | property | untying adds $Vd$ params, no FLOPs | the head is a product either way |
-| KV bytes and kv heads | property | SmolLM2's 23,040 bytes; MHA, GQA, MQA ratios | `L10.2` admission |
-| MLA cache | unit | DeepSeek-V3's 70,272 bytes, independent of heads | `L7.6` |
-| MoE active parameters | property | Mixtral and DeepSeek-V3 active counts | MoE compute budgets in `C1` |
-| SmolLM2 FLOPs | unit | 410,517,504 FLOPs per token at 2048 | throughput estimates in `L9.1` |
+| KV bytes and kv heads | property | SmolLM2's 23,040 bytes; MHA, GQA, MQA ratios | admission in continuous batching |
+| MLA cache | unit | DeepSeek-V3's 70,272 bytes, independent of heads | the MLA layer's cache |
+| MoE active parameters | property | Mixtral and DeepSeek-V3 active counts | MoE compute budgets in the capstone |
+| SmolLM2 FLOPs | unit | 410,517,504 FLOPs per token at 2048 | throughput estimates for the [matmul kernel](../../build-an-llm/p09-kernels/04-tiled-batch-invariant-matmul.md) |
 | Attention term | property | the per-position step for GQA and MLA | long-context costs |
 | Routed experts only | property | more experts, same FLOPs | MoE ablations |
-| 16 bytes per parameter | property | AdamW 16 bytes in fp32 and bf16, SGD 12 | fitting `C1` in memory |
-| Activation scaling | property | batch scaling and the softmax rows | recomputation in `L11.1` |
+| 16 bytes per parameter | property | AdamW 16 bytes in fp32 and bf16, SGD 12 | fitting the capstone in memory |
+| Activation scaling | property | batch scaling and the softmax rows | recomputation in training at scale |
 | Validation | boundary | inconsistent configs raise | wrong counts never pass silently |
 
-## 5. The solution, step by step
+## Building it step by step
 
-### From first principles
+The design follows from the counting rules in six steps.
 
-1. Every count is a sum of matrix and vector sizes (2.1). So the solution counts per component (`embed`, `attn`, `mlp`, `norm`, `lm_head`), each as a product of config integers, and the total is their sum. Per-component counts are also what make a mismatch with Hugging Face diagnosable.
-2. Only three things change between dense, GQA, MoE, and MLA models: the attention projections, the MLP of a layer, and a few extra norms (2.3). So one helper counts one layer's attention for either attention family, the MLP count distinguishes dense layers from MoE layers, and the MLA norms are added to the per-layer norm count.
-3. FLOPs are $2N$ for the matmul parameters a token touches, plus the parameter-free attention term, times 3 for training (2.5). $N$ is therefore built from the parameter counts: attention, the *active* MLP, and the $Vd$ head whether tied or not. The embedding and the norms are left out.
-4. The KV cache depends on kv heads and head width only, or on the latent width for MLA (2.4). It is a one-line product, with no reference to query heads.
-5. Training memory is four parameter-sized terms (weights, gradients, master copy, optimizer states) plus activations (2.6). The master copy exists only when the training dtype is narrower than fp32, and optimizer states are always fp32.
+1. Every count is a sum of matrix and vector sizes. So the solution counts per component (`embed`, `attn`, `mlp`, `norm`, `lm_head`), each as a product of config integers, and the total is their sum. Per-component counts are also what make a mismatch with Hugging Face diagnosable.
+2. Only three things change between dense, GQA, MoE, and MLA models: the attention projections, the MLP of a layer, and a few extra norms. So one helper counts one layer's attention for either attention family, the MLP count distinguishes dense layers from MoE layers, and the MLA norms are added to the per-layer norm count.
+3. FLOPs are $2N$ for the matmul parameters a token touches, plus the parameter-free attention term, times 3 for training. $N$ is therefore built from the parameter counts: attention, the *active* MLP, and the $Vd$ head whether tied or not. The embedding and the norms are left out.
+4. The KV cache depends on kv heads and head width only, or on the latent width for MLA. It is a one-line product, with no reference to query heads.
+5. Training memory is four parameter-sized terms (weights, gradients, master copy, optimizer states) plus activations. The master copy exists only when the training dtype is narrower than fp32, and optimizer states are always fp32.
 6. Counts must be exact integers, and a wrong config must not produce a plausible number. So every input is validated as an integer in range, and every formula uses only `int` arithmetic.
-
-### The code, annotated
 
 Validation comes first in every public function. It rejects floats, booleans (which are `int` in Python), and configs whose shapes are inconsistent:
 
@@ -168,7 +162,7 @@ def _check(cfg: ModelConfig) -> None:
     # ... top_k in [1, n_experts] for MoE; n_dense_layers <= n_layers
 ```
 
-One layer's attention, for both families. The standard branch is $2dHd_h + 2dH_{kv}d_h$ written as $q$, $k$ and $v$, and the output projection; the MLA branch follows the shapes of 2.3:
+Next is one layer's attention, for both families. The standard branch is $2dHd_h + 2dH_{kv}d_h$ written as $q$, $k$ and $v$, and the output projection; the MLA branch follows the shapes given earlier:
 
 ```python
 def _attn_params(cfg: ModelConfig) -> int:
@@ -214,7 +208,7 @@ def param_count(cfg: ModelConfig) -> dict[str, int]:
     return out
 ```
 
-On the hand example: `embed` 40, `attn` $2 \cdot 48 = 96$, `mlp` 144, `norm` $2 \cdot 8 + 4 = 20$, `lm_head` 40, total 340.
+On the hand example this gives `embed` 40, `attn` $2 \cdot 48 = 96$, `mlp` 144, `norm` $2 \cdot 8 + 4 = 20$, `lm_head` 40, total 340.
 
 `flops_per_token` rebuilds $N$ from those counts. The head is always included (tying saves storage, not work), the embedding and norms are not, and only routed experts count:
 
@@ -237,7 +231,7 @@ def flops_per_token(cfg: ModelConfig, seq_len: int, training: bool) -> int:
     return 3 * fwd if training else fwd             # backward = two products per forward one
 ```
 
-Hand example: $n = 96 + 144 + 40 = 280$, attention term $2 \cdot 2 \cdot 2 \cdot 3 \cdot 4 = 96$, forward 656, training 1968.
+On the hand example, $n = 96 + 144 + 40 = 280$, the attention term is $2 \cdot 2 \cdot 2 \cdot 3 \cdot 4 = 96$, the forward is 656, and training is 1968.
 
 The KV cache is a single product, with the factor 2 for keys and values and no query heads anywhere:
 
@@ -252,7 +246,7 @@ def kv_bytes_per_token(cfg: ModelConfig, dtype_bytes: int) -> int:
     return cfg.n_layers * per_layer * int(dtype_bytes)
 ```
 
-The activation count per token per layer is the list of section 2.6 written out. The `n_heads * seq` term is the softmax row, the one term that grows with the context:
+The activation count per token per layer is the list from the training-memory discussion written out. The `n_heads * seq` term is the softmax row, the one term that grows with the context:
 
 ```python
 def _saved_per_token(cfg: ModelConfig, seq: int, moe: bool) -> int:
@@ -295,20 +289,86 @@ def memory_plan(cfg, batch, seq, dtype_bytes, optimizer) -> dict[str, int]:
     return out
 ```
 
-Hand example in fp32: weights and gradients $4 \cdot 340 = 1360$ each, no master copy, optimizer $2 \cdot 4 \cdot 340 = 2720$, activations $3 \cdot (2 \cdot 58 \cdot 4 + 40) = 1512$, total 6952.
+On the hand example in fp32: weights and gradients $4 \cdot 340 = 1360$ each, no master copy, optimizer $2 \cdot 4 \cdot 340 = 2720$, activations $3 \cdot (2 \cdot 58 \cdot 4 + 40) = 1512$, total 6952. The full solution is in [`accounting.py`](../../../../course/solutions/python/tinyllm/accounting.py).
 
-Full solution: [`accounting.py`](../../../../course/solutions/python/tinyllm/accounting.py).
+### Why this design
 
-### Why this solution
+Every function is $O(1)$ arithmetic on config integers; the point is exactness, not speed.
 
-- **Cost.** Every function is $O(1)$ arithmetic on config integers; the point is exactness, not speed.
-- **Why closed forms instead of instantiating the model.** Counting a live module (as `num_parameters()` does) needs the weights in memory, which is the question being answered before loading 270 MB, or before choosing a model that may not fit. Closed forms also explain *where* the parameters are, per component.
-- **Why `int` arithmetic throughout.** A double holds integers exactly only up to $2^{53} \approx 9 \times 10^{15}$. DeepSeek-V3's 671,026,404,352 parameters fit, but the products built from such counts do not: training FLOPs over $10^{12}$ tokens are around $10^{25}$, and their last digits would be rounded. A float count also invites formatting such as `6.71e11` that hides digits. Python ints are exact at any size, and a golden comparison with Hugging Face is then an exact equality.
-- **Why $3 \times$ forward and an explicit attention term, not "$6N$".** "$6N$" drops the attention term, which for SmolLM2-135M at 2048 tokens is about a third of the forward pass (141,557,760 of 410,517,504 FLOPs). The explicit form is what makes long-context and MFU estimates honest.
-- **Why validate.** An MHA config with $H_{kv} \ne H$, or a GQA config with $H$ not divisible by $H_{kv}$, describes no real model; returning a number for it would let a typo produce a plausible but wrong cache budget.
-- **Tradeoff accepted.** The activation count is one specific contract (what a straightforward implementation saves), not what every framework saves; FlashAttention, for example, does not keep the softmax rows. The model is consistent and testable, and `L11.1` changes the terms explicitly when it recomputes.
+Closed forms beat instantiating the model. Counting a live module, as `num_parameters()` does, needs the weights in memory, which is the very question being answered before loading 270 MB or choosing a model that may not fit. Closed forms also explain *where* the parameters are, per component.
 
-### Explain it back
+`int` arithmetic is used throughout because a double holds integers exactly only up to $2^{53} \approx 9 \times 10^{15}$. DeepSeek-V3's 671,026,404,352 parameters fit, but the products built from such counts do not: training FLOPs over $10^{12}$ tokens are around $10^{25}$, and their last digits would be rounded. A float count also invites formatting such as `6.71e11` that hides digits. Python ints are exact at any size, and a golden comparison with Hugging Face is then an exact equality.
+
+Training is $3 \times$ forward with an explicit attention term, not "$6N$", because "$6N$" drops the attention term, which for SmolLM2-135M at 2048 tokens is about a third of the forward pass (141,557,760 of 410,517,504 FLOPs). The explicit form is what makes long-context and MFU estimates honest.
+
+Validation matters because an MHA config with $H_{kv} \ne H$, or a GQA config with $H$ not divisible by $H_{kv}$, describes no real model. Returning a number for it would let a typo produce a plausible but wrong cache budget.
+
+One tradeoff is accepted. The activation count is one specific contract (what a straightforward implementation saves), not what every framework saves; FlashAttention, for example, does not keep the softmax rows. The model is consistent and testable, and the training-at-scale chapter changes the terms explicitly when it recomputes.
+
+## What can go wrong
+
+Every pitfall here produces a plausible number, which is what makes them dangerous. The table pairs each with its symptom and the line of the solution that prevents it:
+
+| Pitfall | Symptom | How the solution avoids it |
+|---|---|---|
+| counting a tied head twice | 28,311,552 too many for SmolLM2 | `lm_head` is 0 when `tie_embeddings` is set |
+| sizing $k$ and $v$ by $H$ (GQA counted as MHA) | attention too large by $2 d (H - H_{kv}) d_h$ per layer | sizes $k$ and $v$ by `n_kv_heads * d_head` |
+| caching keys only (no factor 2) | half the KV bytes; the engine over-admits and runs out of cache | `2 * n_kv_heads * d_head` per layer |
+| training as two forwards | FLOPs, and every MFU estimate, a third low | returns `3 * fwd` for training |
+| counting every expert as active | Mixtral "uses" 46.7B per token | `active` subtracts the $E - k$ unrouted experts |
+| counts as floats | the last digits of a 671B count rounded away | only `int` arithmetic, and `_check` rejects non-integers |
+| a tied head left out of the FLOPs | tying appears to save compute | adds `vocab * d_model` to $N$ whether tied or not |
+| the attention term halved or dropped | long contexts look cheap | `2 * L * H * T * (d_qk + d_v)` in full |
+| a master copy in fp32 training | 20 bytes per parameter instead of 16 | `master` only when `dtype_bytes < 4` |
+| the MLA cache counted per head | DeepSeek-V3 looks 85 times more expensive to serve | caches `kv_lora_rank + qk_rope_dim` per layer, no head factor |
+| forgetting the final norm | off by $d$ against Hugging Face | `norm` ends with `+ d` |
+| optimizer states at the training dtype | bf16 AdamW 12 bytes, not 16 | `optimizer` is `4 * P * states` |
+| forgetting the softmax rows | activation memory linear in context | `n_heads * seq` in `_saved_per_token` |
+| forgetting MLA's query-latent norm | off by $r_q$ per layer | adds `kv_lora_rank + q_lora_rank` to the per-layer norms |
+| FLOPs over every expert | MoE as expensive as dense | $N$ uses `active_mlp` |
+
+> **Warning:** The missing factor 2 in the KV cache is the costliest of these in production. A serving engine that budgets half the real cache admits too many requests and runs out of memory under load.
+
+## Where this leads
+
+This section draws on powers of ten and logs for reading counts like $6.7 \times 10^9$ ([Exponents, logs, change of base, units of information](../00-precalculus/01-exponents-logs-and-units-of-information.md)) and on the product and sum rules practiced in [this chapter's problem set](90-problem-set.md). Its functions are used throughout *Build Your Own LLM System*:
+
+- In [MQA/GQA attention with cache hook, window, learned sinks](../../build-an-llm/p07-modern-block/05-gqa-attention.md), the bytes the attention layer hands its cache must equal `kv_bytes_per_token`.
+- In [Multi-head latent attention](../../build-an-llm/p07-modern-block/06-multi-head-latent-attention.md), the MLA latent cache must cost exactly `kv_bytes_per_token` with `attn="mla"`.
+- In [Llama-family model, HF config, weight loading, downloader](../../build-an-llm/p07-modern-block/09-llama-family-model.md), `{tinyllm} info` reports `param_count`.
+- In [Continuous batching scheduler with priority and preemption](../../build-an-llm/p10-serving/02-continuous-batching.md), the Rust engine admits a request when its KV bytes fit.
+- In [Mixed precision, loss scaling, gradient accumulation, and activation checkpointing](../../build-an-llm/p11-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md), mixed precision, accumulation, and recomputation trade the terms of `memory_plan`.
+- In [Capstone: TinyStories, owned end to end](../../build-an-llm/capstones/01-tinystories.md), the model size is chosen from `flops_per_token` and `memory_plan`.
+
+### Further reading
+
+- `PreTrainedModel.num_parameters()` in `transformers/modeling_utils.py`: counts the live module, with `exclude_embeddings`.
+- MFU accounting in training frameworks measures throughput over the theoretical peak, per hardware; see PaLM appendix B and nanoGPT's `estimate_mfu`.
+- vLLM's cache sizing (`CacheEngine.get_cache_block_size`) profiles free memory, then divides by block bytes.
+- DeepSpeed and Megatron memory estimators add sharding (ZeRO stages 1 to 3), tensor and pipeline parallelism, and selective recomputation.
+- Kaplan et al., "Scaling Laws for Neural Language Models" (2020), section 2.1.
+- Chowdhery et al., "PaLM" (2022), appendix B.
+- Rajbhandari et al., "ZeRO" (2020), section 3.1.
+- Korthikanti et al., "Reducing Activation Recomputation in Large Transformer Models" (2022), section 4.
+
+## Key terms
+
+- **Tied embeddings**: a model whose lm_head reuses the token embedding matrix, storing no extra parameters but still doing the $V \times d$ product.
+- **Active parameters**: the parameters a single token touches; in an MoE model, the total minus the experts the token is not routed to.
+- **KV cache**: the stored keys and values of earlier tokens, $L \cdot 2 \cdot H_{kv} \cdot d_h \cdot b$ bytes per token.
+- **FLOPs per token**: $2N$ for the matmul parameters touched plus the parameter-free attention term; three times that for a training step.
+- **Master copy**: an fp32 copy of 16-bit weights kept so small updates are not rounded away.
+- **Activations**: values saved during the forward pass for use in the backward pass.
+
+## Summary
+
+- A decoder's parameters are a sum of products of a few config integers; counted per component, they match Hugging Face exactly for dense, GQA, MoE, and MLA models.
+- The KV cache grows with the number of **kv** heads, not query heads: GQA and MQA shrink it by $H / H_{kv}$, and MLA replaces it with one latent per layer.
+- A forward pass costs 2 FLOPs per parameter a token touches plus an attention term linear in the context; a training step costs three forwards.
+- AdamW training costs 16 bytes per parameter before activations, in fp32 or bf16 alike.
+- Counts are exact Python integers: 671,026,404,352 is not $6.71 \times 10^{11}$.
+
+## Review questions
 
 1. Why does `flops_per_token` include `cfg.vocab * cfg.d_model` even when `tie_embeddings` is true, while `param_count` reports `lm_head = 0`?
 
@@ -349,45 +409,3 @@ Full solution: [`accounting.py`](../../../../course/solutions/python/tinyllm/acc
    Every token runs the router ($E \times d$) and the $S$ shared experts, and is sent to exactly $k$ routed experts. The $E - k$ routed experts it is not sent to do no work for it, so they are the only parameters a token does not touch.
 
    </details>
-
-## 6. Pitfalls
-
-| Pitfall | Symptom | How the solution avoids it |
-|---|---|---|
-| 1. counting a tied head twice | 28,311,552 too many for SmolLM2 | `lm_head` is 0 when `tie_embeddings` is set |
-| 2. sizing $k$ and $v$ by $H$ (GQA counted as MHA) | attention too large by $2 d (H - H_{kv}) d_h$ per layer | sizes $k$ and $v$ by `n_kv_heads * d_head` |
-| 3. caching keys only (no factor 2) | half the KV bytes; the engine over-admits and runs out of cache | `2 * n_kv_heads * d_head` per layer |
-| 4. training as two forwards | FLOPs, and every MFU estimate, a third low | returns `3 * fwd` for training |
-| 5. counting every expert as active | Mixtral "uses" 46.7B per token | `active` subtracts the $E - k$ unrouted experts |
-| counts as floats | the last digits of a 671B count rounded away | only `int` arithmetic, and `_check` rejects non-integers |
-| a tied head left out of the FLOPs | tying appears to save compute | adds `vocab * d_model` to $N$ whether tied or not |
-| the attention term halved or dropped | long contexts look cheap | `2 * L * H * T * (d_qk + d_v)` in full |
-| a master copy in fp32 training | 20 bytes per parameter instead of 16 | `master` only when `dtype_bytes < 4` |
-| the MLA cache counted per head | DeepSeek-V3 looks 85 times more expensive to serve | caches `kv_lora_rank + qk_rope_dim` per layer, no head factor |
-| forgetting the final norm | off by $d$ against Hugging Face | `norm` ends with `+ d` |
-| optimizer states at the training dtype | bf16 AdamW 12 bytes, not 16 | `optimizer` is `4 * P * states` |
-| forgetting the softmax rows | activation memory linear in context | `n_heads * seq` in `_saved_per_token` |
-| forgetting MLA's query-latent norm | off by $r_q$ per layer | adds `kv_lora_rank + q_lora_rank` to the per-layer norms |
-| FLOPs over every expert | MoE as expensive as dense | $N$ uses `active_mlp` |
-
-## 7. Where it's used next
-
-| Direction | Module | How it uses this |
-|---|---|---|
-| Back | `M00.1` | powers of ten and logs for reading counts like $6.7 \times 10^9$ |
-| Back | `S-M05` | the product and sum rules, as pen-and-paper problems |
-| Forward | `L7.5` | the bytes the attention layer hands its cache must equal `kv_bytes_per_token` |
-| Forward | `L7.6` | the MLA latent cache must cost exactly `kv_bytes_per_token(attn="mla")` |
-| Forward | `L7.9` | `{tinyllm} info` reports `param_count` |
-| Forward | `L10.2` | the Rust engine admits a request when its KV bytes fit |
-| Forward | `L11.1` | mixed precision, accumulation, and recomputation trade the terms of `memory_plan` |
-| Forward | `C1` | the capstone model size is chosen from `flops_per_token` and `memory_plan` |
-
-## Going further
-
-| This piece | Production equivalent | What it adds | Where to look |
-|---|---|---|---|
-| `param_count` | `PreTrainedModel.num_parameters()` | counts the live module, with `exclude_embeddings` | `transformers/modeling_utils.py` |
-| `flops_per_token` | MFU accounting in training frameworks | measured throughput over the theoretical peak, per hardware | PaLM appendix B; nanoGPT `estimate_mfu` |
-| `kv_bytes_per_token` | vLLM's cache sizing | profiles free memory, then divides by block bytes | vLLM `CacheEngine.get_cache_block_size` |
-| `memory_plan` | DeepSpeed and Megatron memory estimators | sharding (ZeRO stages 1 to 3), tensor and pipeline parallelism, selective recomputation | ZeRO section 3; Korthikanti et al. section 4 |
