@@ -27,7 +27,7 @@ Sections 1 to 3 review the ideas and work two examples by hand. Section 4 is the
 
 ## 1. Why now
 
-Your model has many parameters, and training moves all of them at once along the gradient. `M04.1` builds `gradcheck`, which compares analytic gradients with central differences coordinate by coordinate, and `M04.2` computes Jacobians and the vector-Jacobian products that reverse-mode autodiff (`M08.2`, `L0.1`) chains together. `M10.1` then descends along gradients, and its convergence rate is set by the Hessian's condition number. `M07.3` sizes initial weights with Gaussian integrals in several variables, and `M11.5` reads the softmax as the solution of a constrained maximization. This set works the hand computations behind all of them.
+The model has many parameters, and training moves all of them at once along the gradient. `M04.1` builds `gradcheck`, which compares analytic gradients with central differences coordinate by coordinate, and `M04.2` computes Jacobians and the vector-Jacobian products that reverse-mode autodiff (`M08.2`, `L0.1`) chains together. `M10.1` then descends along gradients, and its convergence rate is set by the Hessian's condition number. `M07.3` sizes initial weights with Gaussian integrals in several variables, and `M11.5` reads the softmax as the solution of a constrained maximization. This set works the hand computations behind all of them.
 
 ## 2. Principles
 

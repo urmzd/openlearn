@@ -217,7 +217,166 @@ int main(int argc, char **argv) {
 | a second start refuses while the first runs | unit | a second start exits 1 and leaves the lock alone | one owner of the lock |
 | a stale lock after SIGKILL is recovered | fault | after SIGKILL the lock remains; the next start takes it over | crash recovery without a human |
 
-@@SOLUTION@@
+## 5. The solution, step by step
+
+### 5.1 From first principles
+
+**The Makefile.**
+
+1. make decides "rebuild or not" by comparing file times (2.5). So every rule's target must be a real file the recipe creates; otherwise the target never exists and its recipe always runs.
+2. Recompiling only what changed requires one object per source and a separate link step. A pattern rule says this once for every `.c`.
+3. make cannot read `#include`. Every object that includes `greet.h` must list it, or a header edit changes nothing (section 3's last row).
+4. The compiler is a choice of whoever runs the build (CI, a sanitizer build). So recipes name `$(CC)` and flags are a variable with a default that the caller can override.
+5. `clean` is an action, not a file; declaring it `.PHONY` keeps a stray file of that name from making it "up to date".
+
+**The worker.**
+
+6. A lock file proves ownership only if a dead owner can be told apart from a live one. The lock holds a PID, and `kill -0` asks the kernel whether that PID exists, so a lock left by a SIGKILL (which no trap survives) is detected and taken over.
+7. A signal must turn into cleanup plus the conventional status 128 + n, so supervisors still see "ended by SIGTERM". That is a trap per signal calling one cleanup function with the right code.
+8. A trap runs only between commands (2.2). A 30 s foreground `sleep` would postpone it for up to 30 s, past a container's grace period. Running `sleep` in the background and blocking in `wait` lets the trap run immediately.
+9. The backgrounded `sleep` is a separate process. If the trap exits without killing it, it outlives the script as an orphan, one per restart.
+10. The lock must be in place before anything announces readiness, and the traps must be set before the lock could be left behind by a signal; `ready` comes last.
+
+### 5.2 The code, annotated
+
+**The Makefile.**
+
+```make
+CFLAGS ?= -std=c11 -Wall -Wextra -O2   # ?= : a default the caller can override (step 4)
+OBJS := main.o greet.o
+
+.PHONY: all clean                      # names, not files (step 5)
+all: greet                             # the first target: plain `make` builds greet
+
+# Link: the program depends on every object.
+greet: $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS)
+
+# Compile: one object per source (step 2). Each object also depends on the
+# header it includes, so editing greet.h rebuilds both (step 3).
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+main.o: greet.h
+greet.o: greet.h
+
+clean:
+	rm -f greet $(OBJS)
+```
+
+Walk through section 3's table with it. After a full build, `greet` is newer than both objects and each object is newer than its `.c` and `greet.h`: nothing runs. Touch `greet.c`: `greet.o` is older than a prerequisite, so the pattern rule recompiles it (`$<` is `greet.c`, `$@` is `greet.o`); now `greet` is older than `greet.o`, so it relinks. Touch `greet.h`: both objects list it, so both recompile, then the link. The recipe-less rules `main.o: greet.h` only add a prerequisite; the recipe still comes from `%.o: %.c`. `make CC=clang` replaces `CC` everywhere, because no recipe names a compiler. `rm -f` does not fail when the files are already gone, so `make clean` twice in a row succeeds.
+
+**The worker: configuration and the stale-lock check.**
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail                      # fail fast: a failing command, unset variable, or pipe stage
+
+state="${WORKER_STATE_DIR:-${TMPDIR:-/tmp}}"   # environment with nested defaults (2.3)
+interval="${WORKER_INTERVAL:-30}"
+lock="$state/worker.lock"
+
+# A lock whose PID is gone was left by a process that could not clean up
+# (SIGKILL, power loss). `kill -0` sends no signal; it only asks "does it exist?".
+if [ -e "$lock" ]; then
+  old="$(cat "$lock")"
+  if [ -n "$old" ] && kill -0 "$old" 2>/dev/null; then
+    echo "worker: already running (pid $old)" >&2   # diagnostics to stderr
+    exit 1                             # and the live owner's lock is left alone
+  fi
+  echo "worker: removing stale lock (pid ${old:-?})" >&2
+  rm -f "$lock"
+fi
+echo "$$" > "$lock"                    # $$: this script's own PID
+```
+
+`kill -0` inside an `if` condition is exempt from `set -e`, so "no such process" is a branch, not a crash. `-n "$old"` guards against an empty lock file, for which `kill -0 ""` would be an error rather than a no.
+
+**The worker: the trap.**
+
+```bash
+stop() {
+  # Kill the background sleep too, or it outlives us as an orphan. `jobs -p`
+  # lists every background child, including one started an instant before
+  # the signal arrived.
+  local kids
+  kids="$(jobs -p)"
+  # shellcheck disable=SC2086  # one word per PID: the splitting is the point
+  if [ -n "$kids" ]; then kill $kids 2>/dev/null || true; fi   # the child may already be gone
+  rm -f "$lock"
+  exit "$1"                            # 128 + n, chosen by the trap (step 7)
+}
+trap 'stop 143' TERM   # 128 + 15
+trap 'stop 130' INT    # 128 + 2
+```
+
+One function, two traps: the cleanup is identical and only the status differs. `|| true` keeps `set -e` from aborting the cleanup halfway if the `sleep` exited on its own an instant earlier. The lock is removed before `exit`, so a supervisor that restarts the worker on exit finds no lock.
+
+**The worker: the loop.**
+
+```bash
+echo ready                             # only now: lock written, traps set (step 10)
+while true; do
+  echo tick
+  # Sleep in the background and `wait` for it: bash runs a trap only between
+  # commands, and `wait` returns as soon as a trapped signal arrives, while a
+  # foreground `sleep 30` would delay the trap for up to 30 seconds.
+  sleep "$interval" &
+  wait $! || true
+done
+```
+
+Section 3's session follows line by line: `ready` and `tick` are printed; `kill -TERM 4242` interrupts `wait` (step 8), bash runs `stop 143`, which kills the `sleep`, removes `/tmp/w/worker.lock`, and exits 143. When a signal interrupts `wait`, bash runs the trap, which exits, so the loop never continues. `|| true` covers the other case: a `sleep` that fails for some other reason (a bad `WORKER_INTERVAL`), which under `set -e` would otherwise end the worker with its lock still in place, since there is no trap on plain exit.
+
+Full solution: [`Makefile`](../../../../course/solutions/primers/lang.02/Makefile), [`worker.sh`](../../../../course/solutions/primers/lang.02/worker.sh).
+
+### 5.3 Why this solution
+
+- **Cost.** An up-to-date `make` does one `stat` per file and runs nothing; a one-file change runs one compile and one link. The worker is idle in `wait` between ticks and reacts to a signal in milliseconds.
+- **Explicit header rules** rather than `-MMD -MP` dependency files: for two sources and one header they are clearer, and they show what the generated files would contain. A project with many headers should let the compiler generate them (see Going further).
+- **A PID lock with `kill -0`** rather than `flock`: it is portable shell and makes the stale-lock problem visible. Its weakness is a race: two workers starting at the same instant can both see no lock and both write one. `flock` closes that race because the kernel owns the lock and drops it when the process dies.
+- **Tradeoff accepted:** PID reuse. If the dead owner's PID has been reused by an unrelated process, `kill -0` says "alive" and the worker refuses to start. That fails safe (no two owners) but needs a human; a kernel lock avoids it.
+
+### 5.4 Explain it back
+
+**Why is there an `all` target instead of making `greet` the first rule?**
+
+<details><summary>Answer</summary>
+
+Either works for plain `make`, which builds the first target. `all` gives a stable name for "build everything" that stays correct if more programs are added, and declaring it `.PHONY` means its own up-to-date state never matters: only `greet`'s does.
+
+</details>
+
+**What does `make` do after `touch greet.h`, and which lines of the Makefile cause it?**
+
+<details><summary>Answer</summary>
+
+It recompiles `main.o` and `greet.o` and relinks `greet`. `main.o: greet.h` and `greet.o: greet.h` make both objects older than a prerequisite; the pattern rule supplies their recipe; then `greet: $(OBJS)` is older than its objects.
+
+</details>
+
+**The worker is killed with SIGKILL. What is left behind, and how does the next start cope?**
+
+<details><summary>Answer</summary>
+
+No trap runs, so `worker.lock` stays with the dead PID, and the backgrounded `sleep` may live on until it finishes its interval. The next start reads the PID, `kill -0` fails, so it removes the stale lock and takes over.
+
+</details>
+
+**Why is `sleep` run in the background and then waited for, rather than in the foreground?**
+
+<details><summary>Answer</summary>
+
+bash runs a trap only after the current foreground command finishes, so a SIGTERM during `sleep 30` would be handled up to 30 s later. The builtin `wait` returns as soon as a trapped signal arrives, so the trap runs at once.
+
+</details>
+
+**Why exit 143 instead of 0 after a clean SIGTERM shutdown?**
+
+<details><summary>Answer</summary>
+
+128 + 15 tells whoever waits on the process that it ended because of SIGTERM, which is the convention shells and supervisors use. Exiting 0 would claim the work finished on its own, hiding that it was stopped.
+
+</details>
 
 ## 6. Pitfalls
 
