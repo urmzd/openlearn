@@ -1,41 +1,33 @@
-<!-- ol:module M07.5 -->
 # Hypothesis tests: paired and two-sample permutation, McNemar, Holm
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `M07.5` · build · Python · Pass 5 · 3 to 4 h |
-| **You build** | `python/tinyllm/prob/tests.py`: `mean_difference`, `paired_permutation_test`, `permutation_test`, `mcnemar`, `holm`, `holm_adjust` |
+| **Module** | `M07.5` · build · Python · Pass 5 · 1.5 to 2 h reading |
+| **Solution** | [`course/solutions/python/tinyllm/prob/tests.py`](../../../../course/solutions/python/tinyllm/prob/tests.py): `mean_difference`, `paired_permutation_test`, `permutation_test`, `mcnemar`, `holm`, `holm_adjust` |
 | **Contract** | [`course/contracts/py/tinyllm/prob/tests.pyi`](../../../../course/contracts/py/tinyllm/prob/tests.pyi) · the generator behind `rng`: [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md) |
-| **Tests** | `course/tests/M07.5/test_tests.py` (what they check: section 4), golden values from scipy 1.17.1 in `course/fixtures/M07.5/scipy_golden.json` |
 | **Needs** | no code from earlier modules · reading: [`M07.4`](04-lln-clt-confidence-intervals-bootstrap.md) sampling distributions and intervals, [`S-M07c`](92-problem-set-c.md) |
-| **Used by** | later: `L6.7` compares models in the zoo · `L8.5` and `L8.6` assert "no regression" after quantization and speculative decoding · `C1` and `C2` A/B ablations · `load.02` re-implements the two-sample test in Go |
-| **Milestone** | `MS-P5` (the Pass 5 gate) |
+| **Used by** | later: `L6.7` compares models in the zoo · `L8.5` and `L8.6` assert "no regression" after quantization and speculative decoding · `C1` and `C2` A/B ablations · `load.02` re-implements the two-sample test in Go; part of the Pass 5 evaluation layer |
 | **Optional depth** | Wasserman, *All of Statistics*, ch. 10 (hypothesis testing and p-values); Good, *Permutation, Parametric, and Bootstrap Tests of Hypotheses* (2005), ch. 3; Phipson and Smyth, "Permutation p-values should never be zero" (2010); Holm, "A simple sequentially rejective multiple test procedure" (1979) |
 
 ## Key Takeaways
 
-- A **p-value** is the probability, if nothing really changed, of a difference at least as large as the one you saw; a valid test rejects a true null at rate $\alpha$ (`test_paired_type_one_rate`, `test_two_sample_type_one_rate`).
-- A **permutation test** builds that "nothing changed" world by relabelling: flip which model each paired score belongs to, or reshuffle two pools; no normality assumption (`test_hand_example_paired_enumeration`, `test_paired_matches_exact_scipy`).
-- Count the observed labelling as one more permutation: $p = (1 + \text{count})/(1 + B)$ is never 0 and keeps the type-I promise exactly (`test_add_one_and_degenerate_data`).
-- **McNemar** compares two classifiers on the same examples using only the pairs they disagree on: an exact binomial test (`test_hand_example_mcnemar`, `test_mcnemar_matches_scipy`).
-- Ten comparisons at 0.05 give a false alarm 40% of the time; **Holm** controls the chance of any false alarm and rejects at least as much as Bonferroni (`test_hand_example_holm`, `test_holm_steps_down_and_stops`).
+- A **p-value** is the probability, if nothing really changed, of a difference at least as large as the one observed; a valid test rejects a true null at rate $\alpha$.
+- A **permutation test** builds that "nothing changed" world by relabelling: flip which model each paired score belongs to, or reshuffle two pools; no normality assumption.
+- Count the observed labelling as one more permutation: $p = (1 + \text{count})/(1 + B)$ is never 0 and keeps the type-I promise exactly.
+- **McNemar** compares two classifiers on the same examples using only the pairs they disagree on: an exact binomial test.
+- Ten comparisons at 0.05 give a false alarm 40% of the time; **Holm** controls the chance of any false alarm and rejects at least as much as Bonferroni.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start M07.5              # stubs tests.py into your repo
-ol tests M07.5              # read the test catalog first: rung R0, you write no tests here
-ol check M07.5              # exit code is the verdict
-ol diff  M07.5              # after passing: your code against the reference
-```
+Sections 1 and 2 build p-values, permutation tests, McNemar, and Holm from first principles, and section 3 works each by hand. Section 4 fixes the interface and the draw order, and section 5 walks through the solution line by line and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-From Pass 5 on, every change you make to a model is a claim: "pre-LN trains better", "this LoRA rank matches full fine-tuning", "int8 quantization costs nothing" (`L8.5`). The evidence is a score on a finite eval set, and two runs of the same model already differ by a few tenths of a point. `M07.4` put an interval on each number; this module answers the comparison question directly. Is the gap between model A and model B on the same 200 prompts larger than the gap chance alone produces? The model zoo (`L6.7`) prints a p-value next to every comparison, the quantization and speculative-decoding modules fail their "no regression" checks on one, and the zoo compares many models at once, which needs a correction or it will "discover" a winner by luck. All of these call the six functions you write here.
+From Pass 5 on, every change to a model is a claim: "pre-LN trains better", "this LoRA rank matches full fine-tuning", "int8 quantization costs nothing" (`L8.5`). The evidence is a score on a finite eval set, and two runs of the same model already differ by a few tenths of a point. `M07.4` put an interval on each number; this module answers the comparison question directly. Is the gap between model A and model B on the same 200 prompts larger than the gap chance alone produces? The model zoo (`L6.7`) prints a p-value next to every comparison, the quantization and speculative-decoding modules fail their "no regression" checks on one, and the zoo compares many models at once, which needs a correction or it will "discover" a winner by luck. All of these call the six functions of this module.
 
 ## 2. Principles
 
@@ -59,7 +51,7 @@ Suppose B scores 0.8 points above A on 50 prompts. Two stories explain it: B is 
 
 ### 2.2 What a p-value promises
 
-Reject $H_0$ whenever $p \le \alpha$. If $H_0$ is true, a valid p-value satisfies $P(p \le \alpha) \le \alpha$: a rejection is a false alarm (a **type-I error**) at most a fraction $\alpha$ of the time. Not rejecting a false $H_0$ is a **type-II error**; the probability of rejecting when the effect is real is the **power**. A test that never rejects has a perfect type-I rate and no power, so the tests check both. "Different" is usually **two-sided**: B worse is as interesting as B better, so $T$ is a magnitude, $|\cdot|$, and swapping A and B must not change $p$.
+Reject $H_0$ whenever $p \le \alpha$. If $H_0$ is true, a valid p-value satisfies $P(p \le \alpha) \le \alpha$: a rejection is a false alarm (a **type-I error**) at most a fraction $\alpha$ of the time. Not rejecting a false $H_0$ is a **type-II error**; the probability of rejecting when the effect is real is the **power**. A test that never rejects has a perfect type-I rate and no power, so a correct solution is judged on both. "Different" is usually **two-sided**: B worse is as interesting as B better, so $T$ is a magnitude, $|\cdot|$, and swapping A and B must not change $p$.
 
 ### 2.3 The paired test
 
@@ -67,7 +59,7 @@ When both models answer the same prompts, compare them prompt by prompt: $d_i = 
 
 $$p = \frac{1 + \#\{b : T(s^{(b)}) \ge t_{\text{obs}}\}}{1 + B},$$
 
-fixes that, and it is exactly valid: under $H_0$ the observed $T$ is one of $B + 1$ exchangeable values, its rank is uniform, so $P(p \le \alpha) = \lfloor \alpha (B + 1) \rfloor / (B + 1) \le \alpha$. With $B = 99$, $P(p \le 0.1)$ is exactly 0.1: the rate the type-I tests measure. Pairing matters: prompt difficulty varies far more than the model gap, and pairing cancels it.
+fixes that, and it is exactly valid: under $H_0$ the observed $T$ is one of $B + 1$ exchangeable values, its rank is uniform, so $P(p \le \alpha) = \lfloor \alpha (B + 1) \rfloor / (B + 1) \le \alpha$. With $B = 99$, $P(p \le 0.1)$ is exactly 0.1: the rate a type-I check measures. Pairing matters: prompt difficulty varies far more than the model gap, and pairing cancels it.
 
 ### 2.4 The two-sample test
 
@@ -107,7 +99,7 @@ The exact p-value is $2/8 = 1/4$: with three prompts, even a unanimous win is no
 | 2 | 0.02 | 0.025 | yes | 0.04 | 0.04 |
 | 3 | 0.04 | 0.05 | yes | 0.04 | 0.04 |
 
-Holm rejects all four; Bonferroni (every p against 0.0125) rejects only 0.005 and 0.01. In input order the adjusted values are $(0.03, 0.04, 0.04, 0.02)$. These are the first three tests.
+Holm rejects all four; Bonferroni (every p against 0.0125) rejects only 0.005 and 0.01. In input order the adjusted values are $(0.03, 0.04, 0.04, 0.02)$. These are the first three cases in section 4.
 
 ## 4. The interface
 
@@ -121,7 +113,7 @@ def holm(pvalues: ArrayLike, alpha: float = 0.05) -> NDArray: ...      # bool, T
 def holm_adjust(pvalues: ArrayLike) -> NDArray: ...
 ```
 
-The draw order is part of the contract, because `load.02` re-implements the two-sample test in Go and must reproduce your p-values from the same seed: the paired test draws one uniform per pair per permutation ($u < 0.5$ flips); the two-sample test restarts from the identity order each permutation and runs Fisher-Yates from the end with $j = \min(\lfloor u(i+1) \rfloor, i)$. A permuted statistic counts as "at least as extreme" when it is at least $t_{\text{obs}}(1 - 10^{-9})$, so rounding never splits a tie.
+The draw order is part of the contract, because `load.02` re-implements the two-sample test in Go and must reproduce these p-values from the same seed: the paired test draws one uniform per pair per permutation ($u < 0.5$ flips); the two-sample test restarts from the identity order each permutation and runs Fisher-Yates from the end with $j = \min(\lfloor u(i+1) \rfloor, i)$. A permuted statistic counts as "at least as extreme" when it is at least $t_{\text{obs}}(1 - 10^{-9})$, so rounding never splits a tie.
 
 ### What the tests check
 
@@ -173,7 +165,7 @@ The draw order is part of the contract, because `load.02` re-implements the two-
 | Forward | `L6.7` | the zoo prints a paired p-value for each comparison against the baseline, Holm-adjusted over the table |
 | Forward | `L8.5` | "quantization costs nothing": a paired test on per-prompt losses must not reject |
 | Forward | `L8.6` | speculative decoding must not change quality: McNemar on exact-match outcomes |
-| Forward | `load.02` | the two-sample test in Go, for p50 and p99 latency comparisons, bit-identical to yours |
+| Forward | `load.02` | the two-sample test in Go, for p50 and p99 latency comparisons, bit-identical to this one |
 | Forward | `C1` | ablation verdicts over seeds |
 
 ## Going further

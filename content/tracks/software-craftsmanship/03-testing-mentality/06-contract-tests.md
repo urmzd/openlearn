@@ -1,45 +1,33 @@
-<!-- ol:module craft.20 -->
 # Contract tests (R6): consumer-driven tests for gateway to engine
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `craft.20` · practice · Go · Pass 7 · 4 to 6 h |
-| **You build** | `primers/craft.20/engineclient.go` (a kata: the gateway's client of the engine API, written by `ol start`), `primers/craft.20/pacts/gateway-engine.json` (your **pact**: what the gateway relies on), and `primers/craft.20/consumer_test.go` (your consumer tests, driven by mocks generated from the pact) |
-| **Contract** | the provider side your pact is verified against: the engine tier of [`course/contracts/openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml) |
-| **Tests** | `course/tests/craft.20/check`: provider verification of your pact, the course's contract suite (`course/tests/go/craft_20/`) on your kata, then the grade of your tests by 20 planted faults (section 4) |
-| **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how tests are graded · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · [`lang.05`](../12-language-and-tool-primers/05-http-and-sse.md) SSE on the wire · [`lang.06`](../12-language-and-tool-primers/06-go.md) Go and `httptest` · `gw.00` the proxy whose upstream half the kata isolates |
-| **Used by** | no call site (a practice): rung R6 grades contract tests in the gateway (`gw.*`) and engine (`L10.*`) modules from here on |
-| **Milestone** | MS-gateway (its conformance run is the provider side of the same contract) |
+| **Module** | `craft.20` · practice · Go · Pass 7 · 2 to 3 h reading |
+| **Solution** | [`engineclient.go`](../../../../course/solutions/primers/craft.20/engineclient.go) (a kata: the gateway's client of the engine API: `Client`, `Forward`, `NewRequest`, `ReadCompletion`, `ReadStream`, `Tokenize`, `APIError`, `ErrTruncated`), [`pacts/gateway-engine.json`](../../../../course/solutions/primers/craft.20/pacts/gateway-engine.json) (the **pact**: what the gateway relies on, nine interactions), and [`consumer_test.go`](../../../../course/solutions/primers/craft.20/consumer_test.go) (the consumer tests, driven by mocks generated from the pact) |
+| **Contract** | the provider side the pact is verified against: the engine tier of [`course/contracts/openapi/openai-subset.v1.yaml`](../../../../course/contracts/openapi/openai-subset.v1.yaml) |
+| **Needs** | reading: [`craft.03`](01-tdd-unit-tests-and-mutation-grading.md) how a test suite is judged by planted faults · [`craft.07`](05-mutation-testing-in-depth.md) reading survivors · [`lang.05`](../12-language-and-tool-primers/05-http-and-sse.md) SSE on the wire · [`lang.06`](../12-language-and-tool-primers/06-go.md) Go and `httptest` · `gw.00` the proxy whose upstream half the kata isolates |
+| **Used by** | no call site (a practice): rung R6 asks for contract tests in the gateway (`gw.*`) and engine (`L10.*`) modules from here on; the gateway pass's conformance run is the provider side of the same contract |
 | **Optional depth** | [Pact documentation: how Pact works](https://docs.pact.io/getting_started/how_pact_works) (free); Ian Robinson, ["Consumer-Driven Contracts: A Service Evolution Pattern"](https://martinfowler.com/articles/consumerDrivenContracts.html) (free); Martin Fowler, ["ContractTest"](https://martinfowler.com/bliki/ContractTest.html) (free) |
 
 ## Key Takeaways
 
-- A **contract test** checks the agreement between two services without running both: the **consumer** (your gateway) is tested against a mock of the **provider** (the engine), and the provider is verified against the same document.
+- A **contract test** checks the agreement between two services without running both: the **consumer** (the gateway) is tested against a mock of the **provider** (the engine), and the provider is verified against the same document.
 - **Consumer-driven**: the consumer writes down what it actually relies on (a **pact**), so the provider knows which promises it can never break and which fields nobody reads.
 - The mock is **two-sided**: it replays the provider's answer and it **checks the consumer's request**, which is how a forwarded API key or a client-chosen priority fails a test.
-- A pact is only worth something if the provider keeps it: **provider verification** checks every interaction against the provider's published contract (`openai-subset.v1.yaml`), so a pact cannot expect a chunk shape or a status the engine never promised (`test_pact_matches_the_provider_contract`).
-- The grade is the R6 rung: your tests must catch at least 80% of 20 planted faults in the client, and every planted pitfall (`test_your_tests_catch_the_planted_faults`).
+- A pact is only worth something if the provider keeps it: **provider verification** checks every interaction against the provider's published contract (`openai-subset.v1.yaml`), so a pact cannot expect a chunk shape or a status the engine never promised.
+- The R6 rung: the tests must catch at least 80% of 20 planted faults in the client, and every planted pitfall.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start craft.20                         # writes primers/craft.20/engineclient.go with stub bodies
-ol tests craft.20                         # read the test catalog first
-ol check craft.20                         # first run: writes go.mod and pact/pact.go, then fails (no pact yet)
-# write pacts/gateway-engine.json and consumer_test.go (section 4); run them yourself:
-(cd primers/craft.20 && go test ./...)
-ol check craft.20                         # verifies the pact, then grades your tests by planted faults
-```
-
-Write the pact and the tests before the kata: against the stub every test must fail. `ol check` never shows a planted fault's code; a survivor prints only its one-line description, or "a planted pitfall".
+Sections 1 to 3 build consumer-driven contracts from first principles and work one streamed interaction by hand. Section 4 fixes the three artifacts. Section 5 walks through the solution: the client's request builder and stream reader line by line, the pact's interactions, and the tests that use them, with why each choice is the right one. Try to predict each rule of `NewRequest` and each branch of `ReadStream` before reading it. The tests run with `go test ./...` in a module that contains the kata, the pact, and a small pact kit (`pact.Load`, `Find`, `Serve`, `Calls`).
 
 ---
 
 ## 1. Why now
 
-Your gateway now forwards to your engine across a process boundary, and both keep changing: Pass 7 adds metering (`gw.07`), routing (`gw.05`), and a whole new engine (`L10.1` to `L10.9`), and Pass 11 migrates the API to v2. The gateway's unit tests run against a fake engine you wrote in the same test file, so they test the gateway against your **belief** about the engine. When the engine renames a field, adds a comment line to its stream, or starts answering 429, every unit test stays green and production breaks. The two other options are worse: an end-to-end test that starts both services is slow, flaky, and says nothing about which side broke. A **contract test** sits between them: the belief is written down once, in a file, the gateway is tested against it, and the file is checked against the engine's published contract. This module teaches it on the one seam every later pass changes: gateway to engine.
+The gateway now forwards to the engine across a process boundary, and both keep changing: Pass 7 adds metering (`gw.07`), routing (`gw.05`), and a whole new engine (`L10.1` to `L10.9`), and Pass 11 migrates the API to v2. The gateway's unit tests run against a fake engine written in the same test file, so they test the gateway against your **belief** about the engine. When the engine renames a field, adds a comment line to its stream, or starts answering 429, every unit test stays green and production breaks. The two other options are worse: an end-to-end test that starts both services is slow, flaky, and says nothing about which side broke. A **contract test** sits between them: the belief is written down once, in a file, the gateway is tested against it, and the file is checked against the engine's published contract. This module teaches it on the one seam every later pass changes: gateway to engine.
 
 ## 2. Principles
 
@@ -51,8 +39,8 @@ Your gateway now forwards to your engine across a process boundary, and both kee
 | **consumer** | the service that calls it and depends on the answers | the gateway |
 | **interaction** | one request the consumer sends and the response it expects | "a streamed chat with usage" |
 | **pact** | the consumer's list of interactions, as data | `pacts/gateway-engine.json` |
-| **mock provider** | a server generated from one interaction that checks the request and replays the response | `pact.Serve` (the course's kit, `pact/pact.go`) |
-| **provider verification** | replaying the pact against the provider (or its published contract) | `test_pact_matches_the_provider_contract` |
+| **mock provider** | a server generated from one interaction that checks the request and replays the response | `pact.Serve` (the pact kit, `pact/pact.go`) |
+| **provider verification** | replaying the pact against the provider (or its published contract) | the static check of section 2.4 |
 
 The idea, from Pact and Robinson's consumer-driven contracts: the consumer's tests produce or use the pact, and the provider's build verifies it. Neither side runs the other. A change that breaks an interaction fails the side that changed, at build time, with the interaction's name in the message. A field no pact mentions can change freely, because no consumer reads it.
 
@@ -68,7 +56,7 @@ An interaction has a **request side** that the consumer must satisfy and a **res
               "events": ["data: {...}\n\n", ": ping\n\n", "...", "data: [DONE]\n\n"], "splitEvents": true}}
 ```
 
-The kit's matching rules: method and path exactly; each listed header equal (names case-insensitive); each `absentHeaders` name absent; the body as a **subset** (every key of the pact body present with an equal value, recursively; extra keys allowed). A subset is deliberate: the pact lists what the consumer relies on, not everything it happens to send. The response is replayed as written, one event per flush, each event split into two writes when `splitEvents` is true, which tests that your reader reassembles events across reads.
+The kit's matching rules: method and path exactly; each listed header equal (names case-insensitive); each `absentHeaders` name absent; the body as a **subset** (every key of the pact body present with an equal value, recursively; extra keys allowed). A subset is deliberate: the pact lists what the consumer relies on, not everything it happens to send. The response is replayed as written, one event per flush, each event split into two writes when `splitEvents` is true, which tests that the reader reassembles events across reads.
 
 ### 2.2 The request side: what the gateway must and must not send
 
@@ -90,11 +78,11 @@ A stream (`ReadStream`) ends in exactly one of three ways, and the gateway must 
 
 ### 2.4 Provider verification against the published contract
 
-Classic Pact verifies the provider by replaying the pact against a running provider. Here the provider publishes its contract as OpenAPI, so the check verifies the pact **statically**: each request path and method exists on the engine tier, request bodies fit the request schema (partially: a pact lists only what it relies on), each response status is declared for the path, each JSON body validates against its schema, each stream event against the `x-tl-chunk` schema (or the `Error` schema for an error event), and a 429 carries `Retry-After` in seconds. MS-gateway closes the loop dynamically: `ol conform openapi:v1 --target engine` runs the same contract against your real engine.
+Classic Pact verifies the provider by replaying the pact against a running provider. Here the provider publishes its contract as OpenAPI, so the check verifies the pact **statically**: each request path and method exists on the engine tier, request bodies fit the request schema (partially: a pact lists only what it relies on), each response status is declared for the path, each JSON body validates against its schema, each stream event against the `x-tl-chunk` schema (or the `Error` schema for an error event), and a 429 carries `Retry-After` in seconds. The gateway pass closes the loop dynamically: its conformance run checks the same contract against the real engine.
 
-### 2.5 How R6 grades you
+### 2.5 How R6 judges a contract suite
 
-Mutation grading (`craft.03`, `craft.07`) on the contract: the check builds a scratch module with the **course's** client plus one planted fault, runs **your** tests and pact, and counts the faults your tests catch. First your tests must pass on the course's correct client (a test that rejects a correct client grades nothing). Twenty faults: sixteen semantic ones from the pitfalls below, all required, and four automatic ones. Pass: a score of at least 0.80 and every required fault caught.
+Mutation testing (`craft.03`, `craft.07`) on the contract: take a correct client, plant one fault, run the tests and pact, and count the faults the tests catch. First the tests must pass on the correct client (a test that rejects a correct client measures nothing). Twenty faults: sixteen semantic ones from the pitfalls below, all required, and four automatic ones. The bar: a score of at least 0.80 and every semantic fault caught.
 
 ## 3. Worked example by hand
 
@@ -113,78 +101,326 @@ So the summary is: 3 content chunks, text `Once upon`, finish reason `length`, u
 
 On the request side, the gateway forwarded a client request that carried `Authorization: Bearer tl_...`, `X-TL-Priority: 99`, and `X-TL-KV-Handle: forged`, for a key whose priority is 5. The mock receives `X-TL-Priority: 5`, no `Authorization`, no `X-TL-KV-Handle`, and a body with `"stream_options":{"include_usage":true}` added: every line of the request side holds.
 
-Provider verification of event 5: `choices` is an array with 0 items (the schema allows 0 to 1), `usage` matches `{"$ref": "#/components/schemas/Usage"}` (three non-negative integers). Write `"total_tokens":"42"` and the event fails: a string is not an integer. `test_hand_example_interaction` checks this interaction and that mutation; `TestCourseHandExampleStream` reads the same stream with your kata.
+Provider verification of event 5: `choices` is an array with 0 items (the schema allows 0 to 1), `usage` matches `{"$ref": "#/components/schemas/Usage"}` (three non-negative integers). Write `"total_tokens":"42"` and the event fails: a string is not an integer. `TestStreamWithUsage` in section 5 reads exactly this stream.
 
-## 4. The artifact and its check
+## 4. The artifacts
 
 | File | Holds |
 |---|---|
 | `primers/craft.20/engineclient.go` | the kata, `package craft20`: `Client{Base, HTTP}`, `Forward`, `NewRequest`, `ReadCompletion`, `ReadStream`, `Tokenize`, `APIError`, `ErrTruncated`, `Usage`, `Chunk`, `Summary` (the doc comments are the spec) |
-| `primers/craft.20/pacts/gateway-engine.json` | your pact: `consumer: gateway`, `provider: engine`, at least six interactions with unique descriptions, covering a completion with usage, a stream with its usage chunk and `[DONE]` (requested with `include_usage`), a stream that fails with an error event, a 429 with `Retry-After`, a `/v1/tokenize` call, and a request side that pins `X-TL-Priority` and an absent `Authorization` |
+| `primers/craft.20/pacts/gateway-engine.json` | the pact: `consumer: gateway`, `provider: engine`, at least six interactions with unique descriptions, covering a completion with usage, a stream with its usage chunk and `[DONE]` (requested with `include_usage`), a stream that fails with an error event, a 429 with `Retry-After`, a `/v1/tokenize` call, and a request side that pins `X-TL-Priority` and an absent `Authorization` |
 | `primers/craft.20/consumer_test.go` | `package craft20_test`: each test loads the pact (`pact.Load(t, "pacts/gateway-engine.json")`), starts a mock for one interaction (`pact.Serve`), sends a realistic client request through `NewRequest` (hostile headers included), reads the answer, and asserts what the gateway needs |
-| `primers/craft.20/go.mod`, `pact/pact.go` | written by the first `ol check`: `module craft20` and the course's kit (the check always uses its own copy of the kit) |
+| `primers/craft.20/go.mod`, `pact/pact.go` | `module craft20` and the pact kit |
 
-A test reads like this:
+### What a correct solution must handle
+
+| Case | Kind of check | Why it matters downstream |
+|---|---|---|
+| the hand interaction of section 3 passes provider verification; its usage is 42; a string `total_tokens` fails | unit | the consumer and the verifier agree on the rules |
+| the pact names gateway and engine, has six or more interactions with unique descriptions and complete sides | unit | tests find interactions by name |
+| the pact covers the six behaviours listed for it in the table above | unit | the gateway's real needs are on file |
+| every interaction fits the engine tier of `openai-subset.v1.yaml` | conformance | a pact the engine can keep |
+| the kata streams the hand example, sends the headers of 2.2, asks for usage, ends streams the three ways of 2.3, accepts `data:` without a space, maps errors and `Retry-After`, reads both completion shapes, tokenizes, and tolerates a base URL with a trailing slash | conformance | the client is right before its tests are judged |
+| the tests pass on the kata and on any other correct client (baseline A) | unit | a test that rejects correct code measures nothing |
+| 20 planted faults in the client, one at a time: at least 80% caught, every semantic fault caught | fault | rung R6 |
+
+## 5. The solution, step by step
+
+### 5.1 From first principles
+
+1. **The gateway's correctness depends on two things it does not own:** what the engine accepts and what it returns. So both sides must be written down in one place the gateway's tests read and the engine's contract checks. That place is the pact.
+2. **A mock that only replays is half a mock.** The dangerous bugs here (a leaked key, a forged priority, a missing `include_usage`) are in what the gateway sends, and the gateway's own code never looks at its outgoing request. So the mock must assert the request: listed headers equal, `absentHeaders` absent, body as a subset.
+3. **The request builder is the only place those rules can live.** If header filtering were spread over call sites, one would forget. So `NewRequest` is a single function that takes the client's headers and the key's facts (`Priority`, `RequestID`, `Traceparent`) and emits the upstream request.
+4. **Filtering must be a deny list of a class, not of names.** Any `X-TL-*` header is internal by definition (2.2), so the test is a prefix match; a list of known internal names would let tomorrow's header through.
+5. **Gateway-set headers must overwrite, not add.** `X-TL-Priority` is `Set` after the copy loop (and the copy loop already skips it), so the client's value can never survive, whether or not it sent one.
+6. **A stream has three endings and only one is success.** So the reader returns `nil` only at `[DONE]`, an `*APIError` for an error event, and `ErrTruncated` at EOF before either. Any other mapping lets a truncated answer be billed.
+7. **SSE is line-based with a blank-line terminator,** and network reads do not respect event boundaries. So the reader buffers lines with `bufio.Reader.ReadBytes('\n')`, accumulates `data:` lines, and dispatches only on the blank line. That one structure handles split events, comments, and `data:` with or without the space.
+8. **The pact lists only what the gateway relies on.** A subset match on the body and only the headers that matter, so the engine stays free to add fields.
+
+### 5.2 The request builder
 
 ```go
-func TestStreamWithUsage(t *testing.T) {
-	m := pact.Serve(t, pact.Load(t, "pacts/gateway-engine.json").Find(t, "a streamed chat with usage"))
-	req, _ := (&craft20.Client{Base: m.URL}).NewRequest(ctx, craft20.Forward{Path: "/v1/chat/completions",
-		Body: []byte(`{"model":"smol","stream":true}`), Header: clientHeaders(), Priority: 5, RequestID: "req-7"})
-	resp, _ := http.DefaultClient.Do(req)
-	sum, err := craft20.ReadStream(resp, nil)
-	// assert err == nil, sum.Chunks == 3, sum.Usage == {12, 30, 42, 0}
+// internal headers a client may never set (openai-subset.v1.yaml).
+func internal(name string) bool {
+	return strings.HasPrefix(strings.ToLower(name), "x-tl-")   // the whole class, by prefix
+}
+
+// hop-by-hop and gateway-only headers that never go upstream.
+var dropped = map[string]bool{
+	"authorization": true, "connection": true, "keep-alive": true, "proxy-authorization": true,
+	"te": true, "trailer": true, "transfer-encoding": true, "upgrade": true, "content-length": true,
+	"traceparent": true, "x-request-id": true,   // the gateway sets its own; the client's are dropped
+}
+
+func (c *Client) NewRequest(ctx context.Context, f Forward) (*http.Request, error) {
+	body := f.Body
+	var probe struct {
+		Stream bool `json:"stream"`
+	}
+	if err := json.Unmarshal(body, &probe); err != nil {
+		return nil, fmt.Errorf("the request body is not JSON: %w", err)
+	}
+	if probe.Stream {
+		// Rewrite only stream_options.include_usage; every other key passes through
+		// as raw JSON, so the gateway never reorders or reformats what it does not own.
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(body, &m); err != nil {
+			return nil, err
+		}
+		opts := map[string]json.RawMessage{}
+		if raw, ok := m["stream_options"]; ok && string(raw) != "null" {
+			if err := json.Unmarshal(raw, &opts); err != nil {   // keep the client's other options
+				return nil, err
+			}
+		}
+		opts["include_usage"] = json.RawMessage("true")          // the meter needs usage on every stream
+		raw, _ := json.Marshal(opts)
+		m["stream_options"] = raw
+		b, err := json.Marshal(m)
+		if err != nil {
+			return nil, err
+		}
+		body = b
+	}
+	// TrimRight: a base of "http://e/" must not produce "//v1/...".
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(c.Base, "/")+f.Path, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	for k, vs := range f.Header {
+		if internal(k) || dropped[strings.ToLower(k)] {
+			continue
+		}
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if probe.Stream {
+		req.Header.Set("Accept", "text/event-stream")
+	}
+	req.Header.Set("X-TL-Priority", strconv.Itoa(f.Priority))   // from the key, always, by Set
+	if f.RequestID != "" {
+		req.Header.Set("X-Request-Id", f.RequestID)
+	}
+	if f.Traceparent != "" {
+		req.Header.Set("traceparent", f.Traceparent)             // the gateway's span, not the client's
+	}
+	return req, nil
 }
 ```
 
-### What the tests check
+Each line maps to a row of 2.2 and to a planted fault: copying every header leaks `Authorization`; checking `X-TL-Priority` "only when absent" lets a client's 99 through; forgetting `include_usage` bills streams at zero; dropping `TrimRight` sends `//v1/chat/completions`. The client's `traceparent` and `X-Request-Id` are dropped rather than forwarded because the gateway's own values must be the ones the engine sees, so the two hops share one id and one trace.
 
-| Test | KIND | Checks | Why it matters downstream |
-|---|---|---|---|
-| `test_hand_example_interaction` | unit | section 3's interaction passes provider verification; its usage is 42; a string `total_tokens` fails | you and the verifier agree on the rules |
-| `test_files_present` | unit | the kata, the pact, the tests; writes `go.mod` and the kit | |
-| `test_pact_is_well_formed` | unit | gateway/engine, six or more interactions, unique descriptions, complete sides | tests find interactions by name |
-| `test_pact_covers_what_the_gateway_relies_on` | unit | the six behaviours of the table above | the gateway's real needs are on file |
-| `test_pact_matches_the_provider_contract` | conformance | every interaction fits the engine tier of `openai-subset.v1.yaml` | a pact your engine can keep |
-| `test_your_kata_passes_the_course_contract_suite` | conformance | `course/tests/go/craft_20/` (below) on your kata | your client is right before your tests are graded |
-| `test_your_tests_pass_on_your_kata` | unit | your tests on your kata | |
-| `test_your_tests_pass_on_the_course_kata` | unit | baseline A: your tests accept a correct client | a test that rejects correct code grades nothing |
-| `test_your_tests_catch_the_planted_faults` | fault | 20 faults, one at a time: score at least 0.80, every semantic fault caught | rung R6 |
+### 5.3 The stream reader
 
-The course's contract suite (Go, run on your kata): `TestCourseHandExampleStream` (section 3), `TestCourseRequestHeaders` (2.2), `TestCourseStreamAsksForUsage`, `TestCourseStreamEnds` (2.3), `TestCourseDataWithoutSpace`, `TestCourseErrorsAndRetryAfter`, `TestCourseCompletionShapes`, `TestCourseTokenize`, `TestCourseBaseWithTrailingSlash`.
+```go
+func ReadStream(resp *http.Response, onChunk func(Chunk) error) (Summary, error) {
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {          // an error before the stream began
+		body, _ := io.ReadAll(resp.Body)
+		return Summary{}, apiError(resp.StatusCode, body)
+	}
+	var sum Summary
+	br := bufio.NewReader(resp.Body)
+	var raw, data []byte                                          // the event so far: bytes as received, and its data
+	for {
+		line, err := br.ReadBytes('\n')                           // blocks until a whole line, across reads
+		if len(line) > 0 {
+			raw = append(raw, line...)
+			s := bytes.TrimRight(line, "\r\n")
+			switch {
+			case len(s) == 0: // the blank line ends an event
+				if len(data) > 0 {
+					done, cerr := dispatch(&sum, raw, data, onChunk)
+					if cerr != nil || done {
+						return sum, cerr                          // [DONE]: nil; error event: *APIError
+					}
+				}
+				raw, data = nil, nil
+			case s[0] == ':': // a comment (": ping" keep-alives)
+			default:
+				if v, ok := bytes.CutPrefix(s, []byte("data:")); ok {
+					if len(data) > 0 {
+						data = append(data, '\n')                 // multi-line data joins with \n (SSE spec)
+					}
+					data = append(data, bytes.TrimPrefix(v, []byte(" "))...)  // the space is optional
+				}
+			}
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return sum, ErrTruncated                          // EOF before [DONE] or an error event
+			}
+			return sum, err
+		}
+	}
+}
+```
 
-## 5. Pitfalls
+The order matters: the `len(line) > 0` branch runs before the error check, so a last line without a trailing newline is still accumulated; but it cannot be dispatched without its blank line, so the stream still ends as `ErrTruncated`. That is right: an event is not complete until the blank line arrives.
 
-Each row is a fault the check plants in the course's client; your tests must catch it.
+`dispatch` turns one complete event into the summary:
 
-| Pitfall | Symptom in production | Caught by |
+```go
+func dispatch(sum *Summary, raw, data []byte, onChunk func(Chunk) error) (done bool, err error) {
+	if bytes.Equal(data, []byte("[DONE]")) {
+		return true, nil                                          // the only success
+	}
+	var ej errorJSON
+	if json.Unmarshal(data, &ej) == nil && ej.Error != nil {
+		return true, apiError(http.StatusOK, data)                // Status 200: headers went out long ago
+	}
+	// ... unmarshal the chunk: model, choices[0].delta or .text, finish_reason, usage
+	ch := Chunk{Raw: append([]byte(nil), raw...), Model: cj.Model, Usage: cj.Usage.usage()}  // copy: raw is reused
+	if len(cj.Choices) > 0 {                                      // the usage chunk has choices: [] and is not counted
+		// ... role, content, finish reason
+		sum.Chunks++
+	}
+	if sum.Model == "" {
+		sum.Model = cj.Model
+	}
+	if ch.Usage != nil {
+		sum.Usage = ch.Usage                                      // what the meter bills
+	}
+	if onChunk != nil {
+		if err := onChunk(ch); err != nil {
+			return true, err                                      // the caller can stop the stream
+		}
+	}
+	return false, nil
+}
+```
+
+On section 3's stream: events 1, 3, 4 have one choice each (3 chunks), event 2 is a comment, event 5 has `choices: []` and sets `Usage` to $12 + 30 = 42$, and event 6 returns `done` with no error. `ReadCompletion` handles the non-streamed case the same way: a non-2xx becomes an `*APIError`, and on a 429 the `Retry-After` header (seconds) becomes `RetryAfter`. `Tokenize` posts `{model, text}` to `/v1/tokenize` and returns `len(ids)`, rejecting an answer with no `ids` field rather than reading it as zero tokens. Full kata: [`engineclient.go`](../../../../course/solutions/primers/craft.20/engineclient.go).
+
+### 5.4 The pact and the tests
+
+The pact has nine interactions: a chat completion, a streamed chat with usage (section 3's), a stream that fails after its first token, a stream cut off before `[DONE]`, a stream with no space after `data:`, the engine's admission queue full (429, `Retry-After: 2`), an unknown model (404), a text completion, and a token count. The two happy-path chat interactions pin the full request side:
+
+```json
+"request": {"method": "POST", "path": "/v1/chat/completions",
+            "headers": {"Content-Type": "application/json", "X-TL-Priority": "5", "X-Request-Id": "req-7",
+                        "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-b7ad6b7169203331-01",
+                        "Accept": "text/event-stream"},
+            "absentHeaders": ["Authorization", "X-TL-KV-Handle"],
+            "body": {"model": "smol", "stream": true, "stream_options": {"include_usage": true}}}
+```
+
+The failure interactions pin only `"body": {"stream": true}`: they are about the response, and over-specifying their request would make every request-side change break five tests at once instead of one.
+
+Every test sends the same hostile client headers, so every request-side rule is checked in every test whose interaction lists it:
+
+```go
+// clientHeaders is what a client sends the gateway, hostile parts included:
+// its own key, a priority it chose, a KV handle it forged.
+func clientHeaders() http.Header {
+	h := http.Header{}
+	h.Set("Authorization", "Bearer tl_abcdefghijkl_0123456789abcdefghijklmnopqrstuv")
+	h.Set("X-TL-Priority", "99")
+	h.Set("X-TL-KV-Handle", "forged")
+	h.Set("Content-Type", "application/json")
+	return h
+}
+
+func forward(path, body string) craft20.Forward {
+	return craft20.Forward{Path: path, Body: []byte(body), Header: clientHeaders(), Priority: 5,
+		RequestID: "req-7", Traceparent: traceparent}
+}
+```
+
+```go
+func TestStreamWithUsage(t *testing.T) {
+	m := pact.Serve(t, contract(t).Find(t, "a streamed chat with usage"))  // fails the test on a bad request
+	resp := do(t, m.URL, forward("/v1/chat/completions", `{"model":"smol","stream":true,"messages":[{"role":"user","content":"Once"}]}`))
+	var text string
+	sum, err := craft20.ReadStream(resp, func(c craft20.Chunk) error { text += c.Content; return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if text != "Once upon" || sum.Chunks != 3 || sum.FinishReason != "length" || sum.Model != "smol-135m@v3" {
+		t.Fatalf("text %q, summary %+v", text, sum)
+	}
+	if sum.Usage == nil || *sum.Usage != (craft20.Usage{PromptTokens: 12, CompletionTokens: 30, TotalTokens: 42}) {
+		t.Fatalf("usage %+v", sum.Usage)
+	}
+}
+```
+
+The body the test sends has no `stream_options`; the pact expects `include_usage: true`. So the mock fails this test if `NewRequest` forgets to add it, and the assertion on `Usage` fails if the reader drops the `choices: []` chunk. The failure tests are as precise about how the stream ended:
+
+```go
+func TestStreamFailureIsAnError(t *testing.T) {
+	// ...
+	var ae *craft20.APIError
+	if !errors.As(err, &ae) || ae.Status != 200 || ae.Code != "internal_error" || ae.Type != "server_error" || n != 2 {
+		t.Fatalf("err %v (%+v), %d chunks before it", err, ae, n)   // n: the chunks before the error still arrive
+	}
+}
+
+func TestTruncatedStream(t *testing.T) {
+	// ...
+	if !errors.Is(err, craft20.ErrTruncated) {
+		t.Fatalf("err %v, want ErrTruncated", err)
+	}
+}
+```
+
+`TestChatCompletion` sends to `m.URL + "/"`, which is how the trailing-slash rule is covered without a test of its own. `TestQueueFull` asserts `RetryAfter == 2*time.Second`, `TestUnknownModel` that a null `param` reads as `""`, `TestTextCompletion` the `choices[0].text` shape (with `Priority: 0`, pinned by its interaction as `"0"`), and `TestTokenize` that four ids are four tokens. Full tests: [`consumer_test.go`](../../../../course/solutions/primers/craft.20/consumer_test.go); full pact: [`gateway-engine.json`](../../../../course/solutions/primers/craft.20/pacts/gateway-engine.json).
+
+### 5.5 Why this solution
+
+- **Cost.** Each test starts one in-process `httptest` server and makes one request: milliseconds. Provider verification is a static schema check: no engine, no GPU, no network.
+- **Contract tests versus end-to-end tests.** An end-to-end run needs a model loaded and both services up, and a failure does not say which side broke. The pact pins the seam; the gateway pass's conformance run against the live engine is kept as the one slow check.
+- **Consumer-driven versus provider-published only.** Testing the gateway directly against the OpenAPI document would check shapes but not the gateway's actual dependencies (that it needs usage on streams, that it must never forward a key); the pact records those, and lets the provider see which fields are load-bearing.
+- **A subset body match versus exact.** Exact matching would break the pact on every harmless new field the gateway sends; subset matching pins exactly what is relied on. The accepted cost is that an unexpected extra field is not caught, which is the job of the header deny list and the provider's schema.
+- **`bufio` line reading versus a hand-rolled byte scanner.** `ReadBytes('\n')` already reassembles lines across reads; on top of it the SSE grammar is a four-way switch.
+
+### 5.6 Explain it back
+
+1. Why does `NewRequest` drop the client's `traceparent` instead of forwarding it?
+   <details><summary>Answer</summary>The upstream request is a child of the gateway's span, not of the client's. The gateway sets its own `traceparent` (from `Forward.Traceparent`), so the engine's spans hang off the gateway's and the trace covers both hops. Forwarding the client's would skip the gateway's span, and a client could inject arbitrary trace ids.</details>
+2. A planted fault sets `X-TL-Priority` only when the client did not send one. Which test catches it, and how, if no test asserts on headers?
+   <details><summary>Answer</summary>Every test sends `X-TL-Priority: 99` in `clientHeaders`, and the interactions pin `X-TL-Priority: 5`. The mock compares the received header with the pact and fails the test at its end. The assertion is in the pact, not in the Go test.</details>
+3. Why does an error event produce an `*APIError` with `Status` 200?
+   <details><summary>Answer</summary>The engine committed to 200 when it sent the stream's headers; the failure happened later. Reporting 200 is accurate, and callers distinguish the case by the error type and code, not the status. It must still be an error, never a short success.</details>
+4. Why does a stream whose last line lacks a trailing blank line end as `ErrTruncated`?
+   <details><summary>Answer</summary>An SSE event is complete only at the blank line. Without it the reader cannot know the event was whole, so it never dispatches `[DONE]` and the EOF path returns `ErrTruncated`. Treating a partial last event as done would bill a truncated stream.</details>
+5. Why do the failure interactions pin so little of the request?
+   <details><summary>Answer</summary>Each interaction should fail for one reason. The request rules are pinned in the two happy-path chat interactions; repeating them in the failure ones would make one header bug fail many tests, and hide which response-side behaviour each test is about.</details>
+
+## 6. Pitfalls
+
+Each row is a fault planted in a correct client to judge the tests.
+
+| Pitfall | Symptom in production | How the solution avoids it |
 |---|---|---|
-| 1. copying every client header upstream | the client's API key in engine logs | `TestCourseRequestHeaders` (mutant `s01`) |
-| 2. letting the client's `X-TL-*` through, or setting the priority only when absent | a client raises its own priority or forges a KV handle | `TestCourseRequestHeaders` (mutants `s02`, `s15`) |
-| 3. no `include_usage`, or dropping the `choices: []` chunk | every stream is billed zero tokens | `TestCourseStreamAsksForUsage`, `TestCourseHandExampleStream` (mutants `s04`, `s07`) |
-| 4. treating the end of the body as the end of the stream | a truncated answer is billed, cached, and shown as complete | `TestCourseStreamEnds` (mutant `s05`) |
-| 5. reading an error event as an ordinary chunk | a failed stream looks like a short success | `TestCourseStreamEnds` (mutant `s06`) |
-| 6. a strict SSE reader | `: ping` keep-alives or `data:` without a space break the stream | `TestCourseHandExampleStream`, `TestCourseDataWithoutSpace` (mutants `s08`, `s09`) |
-| 7. a non-2xx parsed as a success, or the code and `Retry-After` dropped | 429s look like empty answers; failover cannot back off | `TestCourseErrorsAndRetryAfter` (mutants `s11`, `s12`, `s16`) |
-| 8. losing `X-Request-Id` or `traceparent` on the upstream hop | logs and traces stop at the gateway | `TestCourseRequestHeaders` (mutants `s10`, `s03`) |
-| 9. the wrong field name in `/v1/tokenize` | every TPM cost is wrong or a 400 | `TestCourseTokenize` (mutant `s13`) |
-| 10. a base URL with a trailing slash | the engine receives `//v1/chat/completions` | `TestCourseBaseWithTrailingSlash` (mutant `m04`) |
-| 11. a pact that asserts nothing about requests | every request-side fault survives: the mock checks only what the pact lists | `test_your_tests_catch_the_planted_faults` |
-| 12. a pact the provider never promised | green consumer tests, a broken production call | `test_pact_matches_the_provider_contract` |
+| 1. copying every client header upstream | the client's API key in engine logs | `dropped` includes `authorization`; the pact lists `Authorization` in `absentHeaders` |
+| 2. letting the client's `X-TL-*` through, or setting the priority only when absent | a client raises its own priority or forges a KV handle | `internal` drops the whole `x-tl-` class, then `Set("X-TL-Priority", ...)` from the key |
+| 3. no `include_usage`, or dropping the `choices: []` chunk | every stream is billed zero tokens | `NewRequest` adds it to every stream; `dispatch` keeps `Usage` from any chunk |
+| 4. treating the end of the body as the end of the stream | a truncated answer is billed, cached, and shown as complete | only `[DONE]` returns `nil`; EOF returns `ErrTruncated` (5.3) |
+| 5. reading an error event as an ordinary chunk | a failed stream looks like a short success | `dispatch` checks for `{"error": ...}` before parsing a chunk |
+| 6. a strict SSE reader | `: ping` keep-alives or `data:` without a space break the stream | a comment case in the switch; `TrimPrefix` of one optional space |
+| 7. a non-2xx parsed as a success, or the code and `Retry-After` dropped | 429s look like empty answers; failover cannot back off | status checked first; `apiError` keeps type, code, param; `RetryAfter` from the header |
+| 8. losing `X-Request-Id` or `traceparent` on the upstream hop | logs and traces stop at the gateway | both `Set` from `Forward`, pinned in the pact |
+| 9. the wrong field name in `/v1/tokenize` | every TPM cost is wrong or a 400 | `{model, text}` matched by the "a token count" interaction's body |
+| 10. a base URL with a trailing slash | the engine receives `//v1/chat/completions` | `strings.TrimRight(c.Base, "/")`; `TestChatCompletion` uses a trailing slash |
+| 11. a pact that asserts nothing about requests | every request-side fault survives: the mock checks only what the pact lists | the happy-path interactions pin headers, absent headers, and the body |
+| 12. a pact the provider never promised | green consumer tests, a broken production call | every interaction is verified against the engine tier of `openai-subset.v1.yaml` |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
-| Back | `craft.03`, `craft.07` | mutation grading and reading survivors |
+| Back | `craft.03`, `craft.07` | judging tests by planted faults and reading survivors |
 | Back | `gw.00` | the proxy whose upstream request the kata isolates |
-| Forward | `gw.07`, `gw.05` | the meter's `include_usage` and the router's failover on 429 are the request and response sides you pinned |
-| Forward | MS-gateway | `ol conform openapi:v1 --target engine` verifies the provider side live |
+| Forward | `gw.07`, `gw.05` | the meter's `include_usage` and the router's failover on 429 are the request and response sides pinned here |
+| Forward | the gateway pass | its conformance run verifies the provider side live against the real engine |
 | Forward | `craft.14` | the API v2 migration: a new pact version, verified against `openai-subset.v2.yaml` while v1 is still served |
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `pact/pact.go` | Pact (pact-go, pact-js) | matchers by type and regex, provider states, a broker that stores pacts and records which versions verified them (`can-i-deploy`) | [Pact docs](https://docs.pact.io/) (free) |
 | static provider verification | Specmatic, Schemathesis | contract tests generated from OpenAPI; property-based fuzzing of a live provider | [Schemathesis](https://schemathesis.readthedocs.io/) (free) |

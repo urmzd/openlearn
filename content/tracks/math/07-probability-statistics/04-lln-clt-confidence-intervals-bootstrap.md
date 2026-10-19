@@ -101,44 +101,260 @@ def quantile(x, q: float) -> float                         # type 7
 def bootstrap_ci(x, stat, n_boot: int, alpha: float, rng) -> tuple[float, float, float]   # (stat(x), lo, hi)
 ```
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_mean_ci` | unit | section 3: se $= \sqrt{0.8}$, interval $[2.700802, 7.299198]$, $F_3(1) = 0.804499$ | you and the test agree on Bessel, $\alpha/2$, and $t$ |
-| `test_hand_example_wilson` | unit | section 3: $[0, 0.277533]$ at $k = 0$ | safety failure rates (`ethics.04`) |
-| `test_normal_matches_scipy` | golden | $\Phi$ and $\Phi^{-1}$ to 1e-11 relative, tails to $p = 10^{-12}$ | every $z$ in the course |
-| `test_t_matches_scipy` | golden | $F_\nu$ and $F_\nu^{-1}$ for 13 values of $\nu$ from 1 to 1000 | small eval sets get the right width |
-| `test_mean_ci_matches_scipy` | golden | `standard_error` and `mean_ci` equal `scipy.stats.sem` and `t.interval` | `L6.7` reports |
-| `test_wilson_matches_scipy` | golden | scipy's Wilson interval at the extremes and in the middle | accuracy CIs |
-| `test_quantile_matches_numpy_type7` | golden | type 7 quantiles | Go's bootstrap (`ag.12`) agrees |
-| `test_bootstrap_matches_independent_resampling` | golden | same seed, same interval as an independent implementation, mean and median | reproducible CIs for BLEU (`L4.5`) |
-| `test_mean_ci_coverage_normal_small_n` | statistical | 2000 samples of $n = 10$: coverage in $[0.93, 0.97]$ | what "95%" promises |
-| `test_mean_ci_coverage_skewed_data_by_clt` | statistical | exponential data, $n = 200$: coverage in $[0.93, 0.97]$ | the CLT on non-normal scores |
-| `test_standard_error_shrinks_like_root_n` | property | four copies of the data halve the standard error | sizing eval sets |
-| `test_ppf_inverts_cdf_and_t_tends_to_normal` | property | $F(F^{-1}(p)) = p$, symmetry, $t_\nu \to$ normal | the quantiles are consistent |
-| `test_t_closed_forms` | unit | $\nu = 1$ (Cauchy) and $\nu = 2$ closed forms | both series are right at their shortest |
-| `test_bootstrap_draws_and_determinism` | unit | $B n$ uniforms; same seed same result; point is $\theta(x)$ | cross-language reproducibility |
-| `test_bootstrap_index_rule` | boundary | $u = 0.74$, $n = 4$ is index 2, $u \to 1$ is the last index | the floor rule |
-| `test_bootstrap_shift_equivariance` | property | $x + c$ moves the mean's interval by $c$ | resampling does not look at values |
-| `test_quantile_edges` | boundary | $q = 0$, $q = 1$, one value, unsorted input | no index past the end |
-| `test_wilson_stays_inside_zero_one` | boundary | exact 0 and 1 at the ends; $\hat p$ inside | intervals stay probabilities |
-| `test_rejects_bad_arguments` | boundary | $n < 2$, $\alpha \notin (0,1)$, $k > n$, NaN, empty input | errors at the call site |
+| the $t$ interval by hand | unit | section 3: se $= \sqrt{0.8}$, interval $[2.700802, 7.299198]$, $F_3(1) = 0.804499$ | everyone agrees on Bessel, $\alpha/2$, and $t$ |
+| the Wilson interval by hand | unit | section 3: $[0, 0.277533]$ at $k = 0$ | safety failure rates (`ethics.04`) |
+| the normal against scipy | golden | $\Phi$ and $\Phi^{-1}$ to 1e-11 relative, tails to $p = 10^{-12}$ | every $z$ in the course |
+| Student's $t$ against scipy | golden | $F_\nu$ and $F_\nu^{-1}$ for 13 values of $\nu$ from 1 to 1000 | small eval sets get the right width |
+| `mean_ci` against scipy | golden | `standard_error` and `mean_ci` equal `scipy.stats.sem` and `t.interval` | `L6.7` reports |
+| Wilson against scipy | golden | scipy's Wilson interval at the extremes and in the middle | accuracy CIs |
+| type 7 quantiles | golden | equal to numpy's default | Go's bootstrap (`ag.12`) agrees |
+| an independent bootstrap | golden | same seed, same interval as an independent implementation, mean and median | reproducible CIs for BLEU (`L4.5`) |
+| coverage at small $n$ | statistical | 2000 samples of $n = 10$: coverage in $[0.93, 0.97]$ | what "95%" promises |
+| coverage on skewed data | statistical | exponential data, $n = 200$: coverage in $[0.93, 0.97]$ | the CLT on non-normal scores |
+| the $\sqrt{n}$ law | property | four copies of the data halve the standard error | sizing eval sets |
+| quantile consistency | property | $F(F^{-1}(p)) = p$, symmetry, $t_\nu \to$ normal | the quantiles are consistent |
+| $t$ closed forms | unit | $\nu = 1$ (Cauchy) and $\nu = 2$ closed forms | both series are right at their shortest |
+| bootstrap draws and determinism | unit | $B n$ uniforms; same seed same result; point is $\theta(x)$ | cross-language reproducibility |
+| the bootstrap index rule | boundary | $u = 0.74$, $n = 4$ is index 2, $u \to 1$ is the last index | the floor rule |
+| shift equivariance | property | $x + c$ moves the mean's interval by $c$ | resampling does not look at values |
+| quantile edges | boundary | $q = 0$, $q = 1$, one value, unsorted input | no index past the end |
+| Wilson inside $[0, 1]$ | boundary | exact 0 and 1 at the ends; $\hat p$ inside | intervals stay probabilities |
+| bad arguments | boundary | $n < 2$, $\alpha \notin (0,1)$, $k > n$, NaN, empty input | errors at the call site |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Every quantile is the inverse of an increasing CDF, so one bisection serves them all.** Keep $f(\mathit{lo}) < \mathit{target} \le f(\mathit{hi})$ and halve until the midpoint equals an end: that is the last bit of a double, about 60 halvings, with no tolerance to choose.
+2. **$\Phi$ from `erfc`, and the upper half by symmetry.** $\Phi(z) = \tfrac12\operatorname{erfc}(-z/\sqrt2)$ keeps relative precision in the lower tail. For $p > \tfrac12$, $1 - p$ is exact (Sterbenz), so $\Phi^{-1}(p) = -\Phi^{-1}(1-p)$ never bisects in the region where $\Phi$ is flat near 1.
+3. **The $t$ CDF from the finite series.** For integer $\nu$, A&S 26.7.3/4 give $P(|T| < |t|)$ in $O(\nu)$ terms, each the previous times a ratio, so a cumulative product computes them. The quantile needs a bracket that grows with the tail: double `hi` until $F_\nu(\mathit{hi}) \ge p$, then bisect.
+4. **The standard error uses Bessel and $\sqrt n$.** $s^2 = \sum (x_i - \bar x)^2/(n-1)$, then $s/\sqrt n$. Two passes, as in `M07.0`, so a large mean does not cancel.
+5. **The mean interval is $\bar x \pm F^{-1}_{n-1}(1 - \alpha/2)\cdot\mathrm{se}$.** Both the $t$ (estimated $\sigma$) and the $\alpha/2$ (two-sided) are required for the promised coverage.
+6. **Wilson is the closed form of an inverted test, with pinned ends.** Compute center and half-width from section 2; set the lower end to exactly 0 when $k = 0$ and the upper to exactly 1 when $k = n$, and clamp otherwise.
+7. **The bootstrap is reproducible only with a fixed draw rule.** Index $\min(\lfloor un \rfloor, n-1)$ from one uniform, resample by resample, row by row; the interval is the type 7 quantiles of the replicates; the point estimate is the statistic on the original data.
+
+### The code, annotated
+
+```python
+def _bisect(f: Callable[[float], float], target: float, lo: float, hi: float) -> float:
+    """The x in [lo, hi] where the increasing f crosses target, to the last bit:
+    keeps f(lo) < target <= f(hi) and halves until the midpoint is an end."""
+    for _ in range(2000):                 # a safety cap; ~60-1100 halvings reach adjacent doubles
+        mid = 0.5 * (lo + hi)
+        if mid <= lo or mid >= hi:        # lo and hi are neighbouring floats: done
+            break
+        if f(mid) < target:
+            lo = mid
+        else:
+            hi = mid
+    return hi                             # the smallest x found with f(x) >= target
+
+
+def normal_cdf(z: float) -> float:
+    return 0.5 * math.erfc(-float(z) / math.sqrt(2.0))   # no 1 - (...) subtraction in the lower tail
+
+
+def normal_ppf(p: float) -> float:
+    p = float(p)
+    if not 0.0 < p < 1.0:
+        raise ValueError(f"normal_ppf needs 0 < p < 1, got {p!r}")
+    if p == 0.5:
+        return 0.0
+    if p > 0.5:
+        # 1 - p is exact for p in [0.5, 1) (Sterbenz), so the upper tail keeps
+        # its precision by symmetry.
+        return -normal_ppf(1.0 - p)
+    return _bisect(normal_cdf, p, -40.0, 0.0)   # Phi(-40) underflows to 0, below any p > 0
+```
+
+The loop stops on floats, not on a tolerance, so the answer is as close as float64 allows whatever the scale of $x$; the 2000 cap only guards against a non-terminating `f`.
+
+```python
+def _t_abs_prob(t: float, df: int) -> float:
+    """A = P(|T| < |t|) by Abramowitz and Stegun 26.7.3 (odd df) and 26.7.4 (even df)."""
+    theta = math.atan(abs(t) / math.sqrt(df))
+    s, c = math.sin(theta), math.cos(theta)
+    c2 = c * c
+    if df % 2 == 0:
+        # 1 + (1/2) c^2 + (1 3)/(2 4) c^4 + ... : k-th ratio (2k - 1) / (2k) c^2
+        m = (df - 2) // 2
+        if m == 0:
+            return s                                   # df = 2: A = sin(theta)
+        k = np.arange(1, m + 1, dtype=np.float64)
+        terms = np.cumprod((2.0 * k - 1.0) / (2.0 * k) * c2)
+        return s * (1.0 + float(np.sum(terms)))
+    if df == 1:
+        return 2.0 * theta / math.pi                   # Cauchy
+    # c + (2/3) c^3 + (2 4)/(3 5) c^5 + ... : k-th ratio (2k) / (2k + 1) c^2
+    m = (df - 3) // 2
+    k = np.arange(1, m + 1, dtype=np.float64)
+    terms = c * np.cumprod((2.0 * k) / (2.0 * k + 1.0) * c2) if m else np.zeros(0)
+    return 2.0 / math.pi * (theta + s * (c + float(np.sum(terms))))
+
+
+def t_cdf(t: float, df: int) -> float:
+    df = _check_df(df)                                 # an integer >= 1
+    t = float(t)
+    if math.isnan(t):
+        raise ValueError("t_cdf of NaN")
+    if math.isinf(t):
+        return 1.0 if t > 0 else 0.0
+    a = _t_abs_prob(t, df)
+    return 0.5 + 0.5 * a if t >= 0 else 0.5 - 0.5 * a  # F = 1/2 + sign(t) A / 2
+
+
+def t_ppf(p: float, df: int) -> float:
+    # (argument checks elided)
+    if p == 0.5:
+        return 0.0
+    if p < 0.5:
+        return -t_ppf(1.0 - p, df)                     # symmetry
+    hi = 1.0
+    while t_cdf(hi, df) < p:                           # no fixed bound is safe: nu = 1 needs 636.6 at 0.9995
+        hi *= 2.0
+    return _bisect(lambda v: t_cdf(v, df), p, 0.0, hi)
+```
+
+Section 3's $F_3(1)$: $\theta = \pi/6$, `m = 0`, so `terms` is empty and the odd branch returns $\frac{2}{\pi}(\frac{\pi}{6} + \frac12 \cdot \frac{\sqrt3}{2}) = 0.608998$; `t_cdf` gives $0.804499$.
+
+```python
+def standard_error(x: ArrayLike) -> float:
+    a = _sample(x, 2)                       # 1-D, finite, at least 2 values
+    n = a.size
+    mean = math.fsum(a.tolist()) / n
+    ss = math.fsum(((a - mean) ** 2).tolist())   # two passes: centre, then square
+    # Bessel: the deviations are measured from the sample mean, which sits
+    # closer to the data than mu does, so divide by n - 1, not n.
+    return math.sqrt(ss / (n - 1)) / math.sqrt(n)
+
+
+def mean_ci(x: ArrayLike, alpha: float = 0.05) -> tuple[float, float, float]:
+    a = _sample(x, 2)
+    alpha = _check_alpha(alpha)
+    mean = math.fsum(a.tolist()) / a.size
+    half = t_ppf(1.0 - alpha / 2.0, a.size - 1) * standard_error(a)   # t with n - 1 df, two-sided
+    return mean, mean - half, mean + half
+```
+
+On $[2, 4, 4, 5, 7, 8]$: `ss = 24`, $\mathrm{se} = \sqrt{4.8}/\sqrt6 = \sqrt{0.8}$, `t_ppf(0.975, 5) = 2.570582`, half-width $2.299198$.
+
+```python
+def wilson_interval(k: int, n: int, alpha: float = 0.05) -> tuple[float, float]:
+    # (integer and range checks elided: 0 <= k <= n, n >= 1)
+    z = normal_ppf(1.0 - _check_alpha(alpha) / 2.0)
+    z2 = z * z
+    phat = k / n
+    denom = 1.0 + z2 / n
+    center = (phat + z2 / (2.0 * n)) / denom            # pulled toward 1/2
+    half = z * math.sqrt(phat * (1.0 - phat) / n + z2 / (4.0 * n * n)) / denom   # never 0
+    # In exact arithmetic the interval ends at 0 when k = 0 and at 1 when
+    # k = n; rounding can leave it a hair inside or outside, so pin the ends.
+    lo = 0.0 if k == 0 else max(0.0, center - half)
+    hi = 1.0 if k == n else min(1.0, center + half)
+    return lo, hi
+```
+
+```python
+def quantile(x: ArrayLike, q: float) -> float:
+    # (empty, NaN, and q range checks elided)
+    s = np.sort(a)
+    h = (s.size - 1) * q                    # type 7: position on 0 .. n - 1
+    i = int(math.floor(h))
+    if i >= s.size - 1:
+        return float(s[-1])                 # q = 1 (or one value): no s[i + 1] to read
+    return float(s[i] + (h - i) * (s[i + 1] - s[i]))   # linear interpolation
+
+
+def bootstrap_ci(x, stat, n_boot: int, alpha: float, rng) -> tuple[float, float, float]:
+    a = _sample(x, 1)
+    alpha = _check_alpha(alpha)
+    # (n_boot check elided: an integer >= 1)
+    n = a.size
+    thetas = np.empty(int(n_boot), dtype=np.float64)
+    for b in range(int(n_boot)):
+        idx = np.empty(n, dtype=np.int64)   # a fresh resample every replicate
+        for i in range(n):
+            # One uniform per index, in order: the same seed resamples the same
+            # rows in Python and in Go (ag.12).
+            idx[i] = min(int(rng.uniform() * n), n - 1)   # floor, clamped against rounding
+        thetas[b] = float(stat(a[idx]))
+    return (
+        float(stat(a)),                     # the point estimate is on the original data
+        quantile(thetas, alpha / 2.0),
+        quantile(thetas, 1.0 - alpha / 2.0),
+    )
+```
+
+The index rule on the boundary case: $u = 0.74$, $n = 4$ gives $\lfloor 2.96 \rfloor = 2$; rounding would give 3. Rounding gives index 0 only the uniforms below $0.125$ and pushes the top eighth onto the last index, so the rows stop being equally likely; the floor gives each row exactly a quarter of $[0, 1)$.
+
+Full solution: [`stats.py`](../../../../course/solutions/python/tinyllm/prob/stats.py).
+
+### Why this solution
+
+- **Cost.** $\Phi^{-1}$ is about 60 to 1100 `erfc` calls (the bracket starts at $-40$ and halves to adjacent doubles); $F_\nu^{-1}$ is $O(\log \mathit{hi})$ doublings plus a bisection, each step $O(\nu)$. The bootstrap is $B \cdot n$ uniforms plus $B$ calls to `stat`, and the quantiles sort $B$ values: $O(Bn + B\log B)$ plus the statistic's cost.
+- **Bisection over rational approximations.** scipy's Cephes uses rational approximations with Newton polishing, which is faster but hard to verify and to port. Bisection on a correct CDF is obviously correct, ends at the last bit, and gives the Go port a definition it can reproduce exactly.
+- **$t$ over normal; Wilson over Wald.** Both alternatives are simpler and both fail where evaluation lives: small $n$ (the normal covers 92% at $n = 10$) and proportions near 0 or 1 (Wald says $[0, 0]$). Wilson costs one more square root.
+- **Percentile bootstrap over BCa.** BCa corrects bias and skew and has better coverage for skewed statistics, but needs a jackknife pass and more code to port. The percentile interval is what the Go harness reimplements and is adequate for metric reporting.
+- **Tradeoffs accepted.** The scalar Python loops are slow for large $B n$ (a few seconds at $B = 1000$, $n = 1000$); vectorized resampling would draw the same uniforms but obscure the one-uniform-per-index rule that makes cross-language reproduction possible.
+
+### Explain it back
+
+**1. Why does `mean_ci` use `t_ppf(1 - alpha/2, n - 1)` rather than `normal_ppf(1 - alpha/2)`?**
+
+<details><summary>Answer</summary>
+
+The standard error uses $s$, estimated from the same $n$ values. When $s$ is small by chance, $(\bar X - \mu)/(s/\sqrt n)$ is large, so this ratio has heavier tails than the normal: Student's $t$ with $n - 1$ degrees of freedom. The normal quantile ignores that and covers only about 92% at $n = 10$. As $n$ grows the two agree.
+
+</details>
+
+**2. Why does `normal_ppf` recurse on $1 - p$ for $p > \tfrac12$ instead of bisecting on $[0, 40]$?**
+
+<details><summary>Answer</summary>
+
+Near the top $\Phi(z)$ is within $10^{-12}$ of 1, where float64 values are spaced $1.1 \times 10^{-16}$ apart, so bisecting against a target like $1 - 10^{-12}$ compares nearly equal numbers and loses digits. $1 - p$ is computed exactly for $p \ge \tfrac12$, and the lower tail of $\Phi$ via `erfc` keeps full relative precision, so the symmetric problem is solved accurately.
+
+</details>
+
+**3. Why does `t_ppf` double `hi` in a loop instead of starting from a fixed bracket like $[0, 100]$?**
+
+<details><summary>Answer</summary>
+
+The heavy tails of small $\nu$ put the quantile far out: for $\nu = 1$ (Cauchy), $F_1^{-1}(0.9995) = 636.6$, and more extreme $p$ go further. Any fixed bound fails for some valid input. Doubling finds a valid upper end in $O(\log t)$ steps for any $\nu$ and $p$.
+
+</details>
+
+**4. Why pin `lo = 0.0` when $k = 0$ in the Wilson interval, when the formula already gives 0?**
+
+<details><summary>Answer</summary>
+
+It gives 0 in exact arithmetic: center and half-width are equal at $k = 0$. In floating point they are computed by different operations and can differ in the last bit, leaving `lo` at $\pm 10^{-17}$: a negative probability or an interval that excludes the observed $\hat p = 0$. Pinning restores the exact property.
+
+</details>
+
+**5. What goes wrong if `bootstrap_ci` draws the index array once and reuses it for every replicate?**
+
+<details><summary>Answer</summary>
+
+Every replicate is the same resample, so all $\theta^*_b$ are equal and the interval has zero width: the method reports certainty. The bootstrap's spread comes from many independent resamples; each must draw $n$ fresh uniforms, $Bn$ in total.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. the normal quantile with an estimated $\sigma$ | at $n = 10$ the "95%" interval covers 92% | `test_hand_example_mean_ci`, `test_mean_ci_coverage_normal_small_n` (mutant `s01`) |
-| 2. dividing by $n$ instead of $n - 1$, or by $n$ instead of $\sqrt{n}$ | intervals too narrow, by a little or by a lot | `test_hand_example_mean_ci`, `test_standard_error_shrinks_like_root_n` (mutants `s02`, `s11`) |
-| 3. the quantile at $1 - \alpha$ instead of $1 - \alpha/2$ | a 90% interval labelled 95% | `test_hand_example_mean_ci` (mutant `s03`) |
-| 4. the Wald interval for a proportion, or unpinned ends | $[0, 0]$ after zero failures; ends a hair outside $[0, 1]$ | `test_hand_example_wilson`, `test_wilson_stays_inside_zero_one` (mutants `s04`, `s13`) |
-| 5. rounding $u n$ to pick a bootstrap index | the last row drawn twice as often as the first; Go and Python disagree | `test_bootstrap_index_rule` (mutant `s05`) |
-| 6. drawing one resample and reusing it | every replicate identical: a zero-width interval | `test_bootstrap_matches_independent_resampling` (mutant `s06`) |
+| 1. the normal quantile with an estimated $\sigma$ | at $n = 10$ the "95%" interval covers 92% | `t_ppf(..., a.size - 1)` in `mean_ci`; step 5 |
+| 2. dividing by $n$ instead of $n - 1$, or by $n$ instead of $\sqrt{n}$ | intervals too narrow, by a little or by a lot | `math.sqrt(ss / (n - 1)) / math.sqrt(n)`; step 4 |
+| 3. the quantile at $1 - \alpha$ instead of $1 - \alpha/2$ | a 90% interval labelled 95% | `1.0 - alpha / 2.0` in `mean_ci` and `wilson_interval`; step 5 |
+| 4. the Wald interval for a proportion, or unpinned ends | $[0, 0]$ after zero failures; ends a hair outside $[0, 1]$ | Wilson's closed form with `lo = 0.0 if k == 0`, `hi = 1.0 if k == n`; step 6 |
+| 5. rounding $u n$ to pick a bootstrap index | the last row drawn more often than the first; Go and Python disagree | `min(int(rng.uniform() * n), n - 1)`; step 7 |
+| 6. drawing one resample and reusing it | every replicate identical: a zero-width interval | a new `idx` inside the replicate loop; step 7 |
 
-## 6. Where it's used next
-| Forward | `L12.3` | Registered module relationship. |
-| Forward | `ethics.04` | Registered call site uses this module. |
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -151,9 +367,9 @@ def bootstrap_ci(x, stat, n_boot: int, alpha: float, rng) -> tuple[float, float,
 | Forward | `L8.5` | quantization verdicts: is the perplexity change inside the noise |
 | Forward | `M07.5` | permutation tests and McNemar build on the same resampling |
 | Forward | `ag.12` | the Go eval harness re-implements `bootstrap_ci` from the same seed |
+| Forward | `L12.3` | a later call site of these intervals |
+| Forward | `ethics.04` | safety failure rates with Wilson intervals |
 | Forward | `L14.5` | WER, VQA, caption, and zero-shot intervals resample items with `bootstrap_ci` |
-
-If you skip this module, `ol check L6.7` stops with `L6.7 needs M07.4`: build it, or rerun with `--ref-deps`.
 
 ## Going further
 
