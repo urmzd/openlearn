@@ -1,42 +1,33 @@
-<!-- ol:module L13.3 -->
 # Vision transformer encoder
 
 ## Overview
 
 | | |
 |---|---|
-| **Module** | `L13.3` · build · Python · Pass 12 · 5 to 7 h |
-| **You build** | `python/tinyllm/vision/vit.py`: `ViTConfig` (with `from_hf`), `PatchEmbed`, `VisionBlock`, `ViT` (`embed`, `encode`, `forward`), `interpolate_pos_embed`, `bucketed_position_ids` |
+| **Module** | `L13.3` · build · Python · Pass 12 |
+| **Solution** | [`vit.py`](../../../../course/solutions/python/tinyllm/vision/vit.py): `ViTConfig` (with `from_hf`), `PatchEmbed`, `VisionBlock`, `ViT` (`embed`, `encode`, `forward`), `interpolate_pos_embed`, `bucketed_position_ids` |
 | **Contract** | [`course/contracts/py/tinyllm/vision/vit.pyi`](../../../../course/contracts/py/tinyllm/vision/vit.pyi) |
-| **Tests** | `course/tests/L13.3/test_vit.py` (what they check: section 4), golden values in `course/fixtures/L13.3/vit_hf.npz` from `course/oracle/L13.3/vit_hf.py` (tiny random HF `ViTModel`, `CLIPVisionModel`, `SiglipVisionModel`, `Idefics3VisionTransformer`, and Qwen2-VL vision blocks, transformers 5.19.0) |
-| **Needs** | `L13.1` `Conv2d` · `L13.2` `rope2d_cos_sin` · `L7.3` `apply_rope` · `L5.3` `MultiHeadAttention` · `L5.1` `scaled_dot_product_attention` · `L0.4` `Linear`, `LayerNorm`, `Embedding`, `ModuleList`, `Module` · `L0.2` ops · `L0.1` `Tensor` · `M12.3` `resize_planar_f32` · `M07.3` `normal_init` · `M06.3` `PCG32` (or `--ref-deps`). Reading: `M12.2` `patchify` |
-| **Used by** | `L13.5` (the image tower of the dual encoder) · `L13.7` (the vision tower of every VLM architecture, tapped through `hidden`) |
-| **Milestone** | `MS-L13` step 4 (tiny VLM logits within $10^{-5}$; they start from this tower's hidden states) |
+| **Needs** | `L13.1` `Conv2d` · `L13.2` `rope2d_cos_sin` · `L7.3` `apply_rope` · `L5.3` `MultiHeadAttention` · `L5.1` `scaled_dot_product_attention` · `L0.4` `Linear`, `LayerNorm`, `Embedding`, `ModuleList`, `Module` · `L0.2` ops · `L0.1` `Tensor` · `M12.3` `resize_planar_f32` · `M07.3` `normal_init` · `M06.3` `PCG32`. Reading: `M12.2` `patchify` |
+| **Used by** | `L13.5` (the image tower of the dual encoder) · `L13.7` (the vision tower of every VLM architecture, tapped through `hidden`; a tiny VLM's logits match Hugging Face within $10^{-5}$ only if these hidden states do) |
 | **Optional depth** | Dosovitskiy et al., "An image is worth 16x16 words" (2021), section 3.1; Radford et al., "Learning transferable visual models from natural language supervision" (2021), for CLIP's tower; Zhai et al., "Sigmoid loss for language image pre-training" (2023), for SigLIP's; Dehghani et al., "Patch n' Pack: NaViT" (2023), for fractional positions and padded patches |
 
 ## Key Takeaways
 
-- A convolution whose kernel equals its stride is one linear map per patch: `PatchEmbed` equals cutting the image into patches, flattening each in $(c, u, v)$ order, and multiplying by the flattened kernel (`test_patch_embed_is_patchify_plus_linear`).
-- One configurable encoder reproduces four published towers (ViT, CLIP, SigLIP, Idefics3) at every hidden state within $10^{-5}$; they differ only in a CLS token, a patch bias, where the extra LayerNorms sit, and the activation (`test_towers_match_hf`).
-- Without positions the outputs permute with the patches, so position information has to be added: a learned table (resized bicubically for a new grid, or bucketed by fractional coordinate), a fixed 2D sin-cos table, or 2D RoPE inside attention (`test_outputs_permute_with_patches_without_positions`, `test_position_interpolation_matches_hf`, `test_sincos2d_positions`, `test_rope2d_tower_matches_qwen2vl`).
-- Padding is hidden on the key side of attention, so a real patch's output is the same whatever the padded patches hold (`test_padded_patches_never_change_real_outputs`).
-- `hidden` holds the $L + 1$ block inputs and outputs before the final norm; `L13.7` picks one with `vision_feature_layer` (`test_hidden_states_and_names`).
+- A convolution whose kernel equals its stride is one linear map per patch: `PatchEmbed` equals cutting the image into patches, flattening each in $(c, u, v)$ order, and multiplying by the flattened kernel.
+- One configurable encoder reproduces four published towers (ViT, CLIP, SigLIP, Idefics3) at every hidden state within $10^{-5}$; they differ only in a CLS token, a patch bias, where the extra LayerNorms sit, and the activation.
+- Without positions the outputs permute with the patches, so position information has to be added: a learned table (resized bicubically for a new grid, or bucketed by fractional coordinate), a fixed 2D sin-cos table, or 2D RoPE inside attention.
+- Padding is hidden on the key side of attention, so a real patch's output is the same whatever the padded patches hold.
+- `hidden` holds the $L + 1$ block inputs and outputs before the final norm; `L13.7` picks one with `vision_feature_layer`.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L13.3              # stubs python/tinyllm/vision/vit.py into your repo
-ol tests L13.3              # read the test catalog first: rung R0, you write no tests here
-ol check L13.3              # exit code is the verdict
-ol check L13.3 --ref-deps   # only if one of your Needs modules is not passing yet
-ol diff  L13.3              # after passing: your code against the reference
-```
+Section 1 says why the system needs an image encoder now. Section 2 derives the patch embedding, the block, the four tower variants, the three position schemes, and padding from first principles, and section 3 works bucketed positions and a sin-cos row by hand. Section 4 fixes the interface. Section 5 walks through `vit.py` and explains why each switch and each line is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-`L13.1` gave you convolution and `L13.2` gave you 2D rotary positions, but the transformer from Parts 5 and 7 still only reads token ids. This module makes an image into a sequence that the same blocks can read. Nothing in the blocks is new: attention from `L5.3`, LayerNorm and MLPs from Part 0. What is new is the front (patches and a position scheme) and matching published checkpoints exactly. Four towers that look alike differ in small switches (a CLS token, a patch bias, a pre-LayerNorm, `quick_gelu`), and a wrong switch still loads and still runs: it just produces features the language model was never trained on. `L13.5` trains this tower contrastively and `L13.7` puts it in front of a language model, where LLaVA reads `hidden[-2]`, so every hidden state has to be right, not only the last.
+`L13.1` built convolution and `L13.2` built 2D rotary positions, but the transformer from Parts 5 and 7 still only reads token ids. This module makes an image into a sequence that the same blocks can read. Nothing in the blocks is new: attention from `L5.3`, LayerNorm and MLPs from Part 0. What is new is the front (patches and a position scheme) and matching published checkpoints exactly. Four towers that look alike differ in small switches (a CLS token, a patch bias, a pre-LayerNorm, `quick_gelu`), and a wrong switch still loads and still runs: it just produces features the language model was never trained on. `L13.5` trains this tower contrastively and `L13.7` puts it in front of a language model, where LLaVA reads `hidden[-2]`, so every hidden state has to be right, not only the last.
 
 ## 2. Principles
 
@@ -113,9 +104,9 @@ Column 1 lands exactly on the boundary $2/4$; a boundary counts when it is $\le 
 
 $$\begin{bmatrix} 0 & 2 \\ 4 & 6 \\ 8 & 10 \end{bmatrix}$$
 
-for the real patches, and 0 for the ten padded ones (the whole fourth row reads `[0, 0, 0, 0]`). The image never touches table row 3 or table columns 1 and 3. A full $4 \times 4$ mask gives $0, 1, \dots, 15$ (`test_hand_example_bucketed_positions`).
+for the real patches, and 0 for the ten padded ones (the whole fourth row reads `[0, 0, 0, 0]`). The image never touches table row 3 or table columns 1 and 3. A full $4 \times 4$ mask gives $0, 1, \dots, 15$.
 
-A second check, for `sincos2d` with $d = 8$: $q = 2$, $\omega = (10000^0, 10000^{-1/2}) = (1, 0.01)$. The patch at $(r, c) = (1, 2)$ gets $[\sin 1, \sin 0.01, \cos 1, \cos 0.01, \sin 2, \sin 0.02, \cos 2, \cos 0.02] = [0.8415, 0.0100, 0.5403, 1.0000, 0.9093, 0.0200, -0.4161, 0.9998]$ (`test_sincos2d_positions`).
+A second check, for `sincos2d` with $d = 8$: $q = 2$, $\omega = (10000^0, 10000^{-1/2}) = (1, 0.01)$. The patch at $(r, c) = (1, 2)$ gets $[\sin 1, \sin 0.01, \cos 1, \cos 0.01, \sin 2, \sin 0.02, \cos 2, \cos 0.02] = [0.8415, 0.0100, 0.5403, 1.0000, 0.9093, 0.0200, -0.4161, 0.9998]$.
 
 ## 4. The interface
 
@@ -147,41 +138,257 @@ def bucketed_position_ids(patch_mask, n_side) -> NDArray: ...            # int64
 
 `ViT(cfg)` raises `ValueError` when `n_heads` does not divide `d`, the patch size does not divide `image_size`, or `d` (for `sincos2d`) or `d_head` (for `rope2d`) is not a multiple of 4. `embed` raises it when $H$ or $W$ is not a multiple of $p$, the channel count is wrong, or `patch_mask` is not `[N, Hp, Wp]`. With `rng=None` the parameters come from `PCG32(0).substream("init")`.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_bucketed_positions` | unit, smoke | section 3's ids, the full-grid identity, a batch of masks | SmolVLM's positions for any aspect ratio |
-| `test_towers_match_hf` | golden | `vit`, `clip`, `siglip`, `idefics3`: every hidden state and the last one within `rtol=1e-5, atol=1e-5` of HF (real patches only for `idefics3`) | any layer `L13.7` taps is HF's |
-| `test_position_interpolation_matches_hf` | golden | a $4 \times 4$ table serving a $6 \times 5$ grid (31 tokens) matches HF; same-size resize is the identity; the CLS row is bit-exact | running a tower off its training resolution |
-| `test_rope2d_tower_matches_qwen2vl` | golden | `encode` with `pos="rope2d"`, `rope_merge=2` on a $4 \times 6$ grid matches Qwen2-VL's vision blocks | `L13.7`'s `qwen2vl` architecture |
-| `test_patch_embed_is_patchify_plus_linear` | differential | the conv equals patches times the flattened kernel plus bias; no bias when `patch_bias=False` | section 2.1; CLIP's biasless stem |
-| `test_hidden_states_and_names` | unit | HF parameter names in order, a 17-row table with CLS, $L + 1$ hidden states, `hidden[0] == embed(x)`, `[]` when not asked | loading by name; `vision_feature_layer` |
-| `test_sincos2d_positions` | unit | section 3's sin-cos rows at three grid cells within $10^{-6}$ | the fixed table's layout |
-| `test_outputs_permute_with_patches_without_positions` | property | zeroed table: shuffled patches give shuffled outputs | why positions exist |
-| `test_padded_patches_never_change_real_outputs` | property | a $3 \times 2$ image padded to $4 \times 4$ with zeros or fives equals the unpadded run on the real patches | mixed-size batches in `L13.7` |
-| `test_gradcheck_vit` | gradcheck | backward to the pixels and the position table against central differences | `L13.5` trains this tower |
-| `test_from_hf_and_bad_configs` | boundary | per-kind switches and overrides; unsupported `model_type`, missing sizes, impossible shapes, wrong inputs all raise `ValueError` | failing at construction, not mid-forward |
+| hand example: bucketed positions | unit, smoke | section 3's ids, the full-grid identity, a batch of masks | SmolVLM's positions for any aspect ratio |
+| towers match HF | golden | `vit`, `clip`, `siglip`, `idefics3`: every hidden state and the last one within `rtol=1e-5, atol=1e-5` of HF (real patches only for `idefics3`) | any layer `L13.7` taps is HF's |
+| position interpolation matches HF | golden | a $4 \times 4$ table serving a $6 \times 5$ grid (31 tokens) matches HF; same-size resize is the identity; the CLS row is bit-exact | running a tower off its training resolution |
+| rope2d tower matches Qwen2-VL | golden | `encode` with `pos="rope2d"`, `rope_merge=2` on a $4 \times 6$ grid matches Qwen2-VL's vision blocks | `L13.7`'s `qwen2vl` architecture |
+| patch embedding is patchify plus linear | differential | the conv equals patches times the flattened kernel plus bias; no bias when `patch_bias=False` | section 2.1; CLIP's biasless stem |
+| hidden states and names | unit | HF parameter names in order, a 17-row table with CLS, $L + 1$ hidden states, `hidden[0] == embed(x)`, `[]` when not asked | loading by name; `vision_feature_layer` |
+| sin-cos positions | unit | section 3's sin-cos rows at three grid cells within $10^{-6}$ | the fixed table's layout |
+| outputs permute with patches without positions | property | zeroed table: shuffled patches give shuffled outputs | why positions exist |
+| padded patches never change real outputs | property | a $3 \times 2$ image padded to $4 \times 4$ with zeros or fives equals the unpadded run on the real patches | mixed-size batches in `L13.7` |
+| gradient check | gradcheck | backward to the pixels and the position table against central differences | `L13.5` trains this tower |
+| `from_hf` and bad configs | boundary | per-kind switches and overrides; unsupported `model_type`, missing sizes, impossible shapes, wrong inputs all raise `ValueError` | failing at construction, not mid-forward |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **An image must become a sequence of $d$-vectors.** By section 2.1 a stride-$p$ conv with a $p \times p$ kernel is exactly one linear map per patch, so `PatchEmbed` is `L13.1`'s `Conv2d` with `k = stride = p`; reshaping its `[N, d, Hp, Wp]` output gives `[N, Hp Wp, d]` in row-major order.
+2. **The blocks are the language model's blocks.** Pre-LN attention and MLP with residuals, built from `MultiHeadAttention`'s projections and `scaled_dot_product_attention`. The only additions are a key mask and an optional rotation of $q$ and $k$.
+3. **Four towers differ in five switches, so one config with switches.** A CLS token, a patch bias, a pre-LayerNorm, a post-LayerNorm, the activation, and the LayerNorm epsilon. `from_hf` maps `model_type` to those switches, so loading a checkpoint is choosing a row of section 2.2's table.
+4. **Positions are needed (permutation equivariance), and each scheme lives in exactly one place.** Learned and sin-cos tables are *added* in `embed`; 2D RoPE *rotates* inside attention in `encode`. Off-size grids resize the learned table bicubically; bucketed towers index it by fractional coordinate.
+5. **Padding must be invisible.** Mask keys, not queries (section 2.4); give a real patch the same position it would have unpadded (bucketing by the real $h, w$).
+6. **Every hidden state must be right, not only the last.** `hidden` records the input of block 0 and each block's output before `post_layernorm`, so `hidden[-2]` is the penultimate block as Hugging Face defines it.
+
+### The code, annotated
+
+The switch table is the whole difference between the four towers:
+
+```python
+HF_KINDS = {
+    "vit": dict(cls_token=True, pre_norm=False, post_layernorm=True, patch_bias=True, act="gelu", ln_eps=1e-12),
+    "clip_vision_model": dict(cls_token=True, pre_norm=True, post_layernorm=False, patch_bias=False, act="quick_gelu", ln_eps=1e-5),
+    "siglip_vision_model": dict(cls_token=False, pre_norm=False, post_layernorm=True, patch_bias=True, act="gelu_tanh", ln_eps=1e-6),
+    "idefics3_vision": dict(..., bucketed=True),   # as siglip, plus bucketed positions
+    "smolvlm_vision": dict(..., bucketed=True),
+}
+HF_ACTS = {"gelu": "gelu", "gelu_pytorch_tanh": "gelu_tanh", "gelu_new": "gelu_tanh", "quick_gelu": "quick_gelu"}
+```
+
+`from_hf` starts from the row for `model_type`, raises on missing sizes, then lets `layer_norm_eps` and `hidden_act` in the config override the defaults. The activations:
+
+```python
+def _act(x: Tensor, kind: str) -> Tensor:
+    if kind == "gelu":
+        return F.gelu(x)                          # exact x Phi(x)
+    if kind == "gelu_tanh":
+        return F.gelu(x, approximate="tanh")
+    if kind == "quick_gelu":
+        return x * F.sigmoid(x * 1.702)           # 1.702 maps the logistic onto Phi
+    raise ValueError(f"unknown activation {kind!r}")
+```
+
+The two position tables. `sincos2d_table` is section 2.3's formula, rows first, sines before cosines:
+
+```python
+def sincos2d_table(grid_hw, d):
+    gh, gw = grid_hw
+    q = d // 4
+    omega = 1.0 / 10000.0 ** (np.arange(q) / q)
+    r, c = np.meshgrid(np.arange(gh), np.arange(gw), indexing="ij")   # row-major, like the patches
+    ar = r.reshape(-1, 1) * omega
+    ac = c.reshape(-1, 1) * omega
+    return np.concatenate([np.sin(ar), np.cos(ar), np.sin(ac), np.cos(ac)], axis=1).astype(np.float32)
+```
+
+`interpolate_pos_embed` treats the table as a $d$-channel image:
+
+```python
+has_cls = t.shape[0] == oh * ow + 1
+cls_row, grid = (t[:1], t[1:]) if has_cls else (t[:0], t)   # the CLS row is never resized
+d = t.shape[1]
+img = grid.reshape(oh, ow, d).transpose(2, 0, 1)            # [d, oh, ow]: one channel per width dim
+out = resize_planar_f32(img, (nh, nw), "bicubic")           # torch's bicubic, a = -0.75
+rows = out.transpose(1, 2, 0).reshape(nh * nw, d)           # back to row-major rows
+return np.concatenate([cls_row, rows], axis=0).astype(np.float32)
+```
+
+`bucketed_position_ids` reproduces Idefics3's float32 arithmetic and section 2.4's rule:
+
+```python
+bounds = (np.arange(1, n_side) * (1.0 / n_side)).astype(np.float32)   # k / n for k = 1..n-1
+out = np.zeros((n, hp * wp), dtype=np.int64)                          # padded patches stay 0
+for b in range(n):
+    h = int(m[b, :, 0].sum())          # real rows (the mask is a top-left rectangle)
+    w = int(m[b, 0, :].sum())          # real columns
+    if h == 0 or w == 0:
+        continue
+    step_h = np.float32(1.0) / np.float32(h)
+    step_w = np.float32(1.0) / np.float32(w)
+    fh = np.minimum(np.arange(hp, dtype=np.float32) * step_h, np.float32(1.0 - 1e-6))
+    fw = np.minimum(np.arange(wp, dtype=np.float32) * step_w, np.float32(1.0 - 1e-6))
+    bh = np.searchsorted(bounds, fh, side="right")   # side="right": a boundary equal to x counts
+    bw = np.searchsorted(bounds, fw, side="right")
+    ids = (bh[:, None] * n_side + bw[None, :]).reshape(-1)
+    keep = m[b].reshape(-1)
+    out[b, keep] = ids[keep]
+```
+
+The block. Attention is `MultiHeadAttention`'s projections around `scaled_dot_product_attention`, with RoPE on the patches only:
+
+```python
+def attend(self, x, mask, rope):
+    a = self.self_attn
+    q = a.split_heads(a.q_proj(x))
+    k = a.split_heads(a.k_proj(x))
+    v = a.split_heads(a.v_proj(x))
+    if rope is not None:
+        cos, sin, s = rope                        # s = 1 when a CLS token sits in front
+
+        def rot(t):
+            # A CLS token in front keeps its vector: rotate patches only.
+            r = apply_rope(t[:, :, s:], cos, sin, "half")
+            return F.concat([t[:, :, :s], r], axis=2) if s else r
+
+        q, k = rot(q), rot(k)                     # both: the score then sees only angle differences
+    ctx, _ = scaled_dot_product_attention(q, k, v, mask=mask)
+    return a.out_proj(a.merge_heads(ctx))
+
+def forward(self, x, mask=None, rope=None):
+    h = x + self.attend(self.layer_norm1(x), mask, rope)   # pre-LN: the residual stream is never normalized
+    return h + self.mlp(self.layer_norm2(h))
+```
+
+`embed` builds the sequence: patches, then the position scheme, then CLS, then the optional pre-LayerNorm:
+
+```python
+pe = e.patch_embedding(x)  # [N, d, Hp, Wp]
+h = F.transpose(F.reshape(pe, (n, cfg.d, gh * gw)), 1, 2)  # [N, Hp*Wp, d], row-major
+n_side = cfg.image_size // p
+if cfg.pos == "learned":
+    w = e.position_embedding.weight
+    s = 1 if cfg.cls_token else 0                # row 0 belongs to CLS
+    if cfg.bucketed:
+        mask = np.ones((n, gh, gw), bool) if patch_mask is None else np.asarray(patch_mask, bool)
+        h = h + F.embedding(w[s:], bucketed_position_ids(mask, n_side))   # a lookup: gradients reach the table
+    elif (gh, gw) == (n_side, n_side):
+        h = h + w[s:]                            # the training grid: the table as is
+    else:
+        h = h + interpolate_pos_embed(w.data[s:], (n_side, n_side), (gh, gw))   # .data: a constant
+elif cfg.pos == "sincos2d":
+    h = h + sincos2d_table((gh, gw), cfg.d)
+if cfg.cls_token:
+    cls = F.reshape(e.class_embedding, (1, 1, cfg.d)) + np.zeros((n, 1, cfg.d), dtype=h.data.dtype)
+    if cfg.pos == "learned":
+        cls = cls + e.position_embedding.weight[0:1]   # CLS gets its own position row
+    h = F.concat([cls, h], axis=1)
+if self.pre_layrnorm is not None:
+    h = self.pre_layrnorm(h)                     # CLIP only
+```
+
+`encode` builds the key mask and the rotary tables once and runs the blocks:
+
+```python
+mask = None
+if patch_mask is not None:
+    keep = np.asarray(patch_mask, bool).reshape(n, -1)
+    if s:
+        keep = np.concatenate([np.ones((n, 1), bool), keep], axis=1)   # CLS is always real
+    # ... raise if keep does not cover every token
+    # Keys only: a padded patch is invisible to every query.
+    mask = keep[:, None, None, :]                # [N, 1 (heads), 1 (queries), T (keys)]
+rope = None
+if cfg.pos == "rope2d":
+    cos, sin = rope2d_cos_sin(grid_hw, cfg.d // cfg.n_heads, cfg.rope_base, cfg.rope_merge)
+    rope = (cos, sin, s)
+hidden = [h] if output_hidden_states else []     # entry 0: the input of block 0
+for layer in self.encoder.layers:
+    h = layer(h, mask, rope)
+    if output_hidden_states:
+        hidden.append(h)                         # before post_layernorm
+if self.post_layernorm is not None:
+    h = self.post_layernorm(h)
+return h, hidden
+```
+
+`forward` is `embed` followed by `encode` with the grid computed from the pixel size. Keeping them separate lets `L13.7` feed `encode` a sequence that a processor has already reordered (Qwen2-VL's block-major patches).
+
+Full solution: [`vit.py`](../../../../course/solutions/python/tinyllm/vision/vit.py)
+
+### Why this solution
+
+- **Cost.** Patch embedding is $O(N\,T\,C p^2 d)$; each block is $O(N\,T^2 d + N\,T\,d\,d_\text{ff})$, so attention's $T^2$ dominates for large grids, which is why patch size and token merging matter downstream.
+- **One configurable encoder versus four classes.** The four published towers share every line except five switches. One class with a switch table means one tested code path and checkpoints that load by Hugging Face's names; four classes would mean four copies of the same block to keep in sync.
+- **Masking keys versus dropping padded tokens.** Dropping tokens would give each image its own sequence length and break batching. A key mask keeps the batch rectangular and makes real outputs exactly independent of padding.
+- **Bucketing versus resizing for Idefics3.** Resizing changes the table per aspect ratio and is a constant (no gradient); bucketing is a lookup into the trained table, so it trains, and it is what those checkpoints were trained with.
+- **Accepted tradeoff.** `interpolate_pos_embed` reads `w.data`, so an off-resolution forward gives no gradient to the table. That matches inference use; training at a new resolution would need a differentiable resize.
+
+### Explain it back
+
+**Why can a tower with no positions not tell an image from its shuffled patches?**
+
+<details><summary>Answer</summary>
+
+Attention's output for token $i$ is a sum over all keys, which does not depend on their order, and LayerNorm and the MLP act per token. So permuting the input tokens permutes the outputs the same way and changes nothing else. A pooled or CLS output is then identical for both images.
+
+</details>
+
+**Why is the padding mask applied to keys and not to queries?**
+
+<details><summary>Answer</summary>
+
+A real query $i$'s output is a weighted sum over keys. Masking keys sets every padded key's weight to zero, so real outputs see only real tokens. Masking queries would only stop computing outputs *for* padded positions; real queries would still attend to padded keys, and their outputs would change with the padding's values.
+
+</details>
+
+**In section 3, why does column 1 of a 2-column image get bucket 2 and not 1?**
+
+<details><summary>Answer</summary>
+
+Its fraction is $1/2$, exactly the boundary $2/4$. The rule counts boundaries $\le x$, which is `searchsorted(..., side="right")`, so $1/4$ and $2/4$ both count. With `side="left"` it would get bucket 1 and read a different table row from what Idefics3 trained with.
+
+</details>
+
+**Why does `hidden` start with the input of block 0, and why before `post_layernorm`?**
+
+<details><summary>Answer</summary>
+
+That is Hugging Face's `hidden_states` convention, $L + 1$ entries, and VLMs index into it (`hidden[-2]` in LLaVA). Leaving out entry 0 shifts every index by one block. The final norm belongs to the tower's output, not to the per-layer states VLMs were trained to read.
+
+</details>
+
+**Why does `PatchEmbed` need no code of its own beyond calling `Conv2d`?**
+
+<details><summary>Answer</summary>
+
+With kernel equal to stride the windows are disjoint and cover the image, so the conv is one linear map per patch in $(c, u, v)$ order (section 2.1). `L13.1`'s `Conv2d` with `k = stride = p` already computes exactly that, with its backward.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. the CLS token gets no position row | ViT and CLIP states off from block 0 on | `test_towers_match_hf` (mutant `s01`) |
-| 2. the padding mask hides queries, not keys | real patches read the padding; outputs change with the fill value | `test_padded_patches_never_change_real_outputs`, `test_towers_match_hf` (mutant `s02`) |
-| 3. a coordinate on a bucket boundary goes to the lower bucket | column $1/2$ reads table column 1, not 2 | `test_hand_example_bucketed_positions` (mutant `s03`) |
-| 4. the position table resized bilinearly | off-resolution outputs drift from HF | `test_position_interpolation_matches_hf` (mutant `s04`) |
-| 5. 2D RoPE rotates the queries only | scores depend on absolute position | `test_rope2d_tower_matches_qwen2vl` (mutant `s05`) |
-| 6. `quick_gelu` without its 1.702 | CLIP states off by far more than $10^{-5}$ | `test_towers_match_hf` (mutant `s06`) |
-| 7. hidden states leave out the block-0 input | $L$ entries, so `hidden[-2]` is one block early | `test_hidden_states_and_names`, `test_towers_match_hf` (mutant `s07`) |
-| 8. the sin-cos table puts cosines first | a valid-looking table no checkpoint uses | `test_sincos2d_positions` (mutant `s08`) |
-| accepting a config with missing sizes | a `KeyError` or a wrong default later | `test_from_hf_and_bad_configs` (mutant `m01`) |
-| accepting a patch size that does not divide the image | a ragged grid | `test_from_hf_and_bad_configs` (mutant `m02`) |
-| ignoring `layer_norm_eps` | ViT's $10^{-12}$ silently becomes the default | `test_from_hf_and_bad_configs` (mutant `m03`) |
+| 1. the CLS token gets no position row | ViT and CLIP states off from block 0 on | `embed` adds `position_embedding.weight[0:1]` to the CLS vector |
+| 2. the padding mask hides queries, not keys | real patches read the padding; outputs change with the fill value | `encode` builds the mask as `keep[:, None, None, :]`, the key axis |
+| 3. a coordinate on a bucket boundary goes to the lower bucket | column $1/2$ reads table column 1, not 2 | `np.searchsorted(bounds, f, side="right")` counts boundaries $\le x$ |
+| 4. the position table resized bilinearly | off-resolution outputs drift from HF | `interpolate_pos_embed` calls `resize_planar_f32(..., "bicubic")` |
+| 5. 2D RoPE rotates the queries only | scores depend on absolute position | `attend` applies `rot` to both `q` and `k` |
+| 6. `quick_gelu` without its 1.702 | CLIP states off by far more than $10^{-5}$ | `_act` computes `x * F.sigmoid(x * 1.702)` |
+| 7. hidden states leave out the block-0 input | $L$ entries, so `hidden[-2]` is one block early | `encode` starts the list with `[h]` before the first block |
+| 8. the sin-cos table puts cosines first | a valid-looking table no checkpoint uses | `sincos2d_table` concatenates `sin, cos` per axis, rows first |
+| 9. accepting a config with missing sizes | a `KeyError` or a wrong default later | `from_hf` lists every missing key and raises |
+| 10. accepting a patch size that does not divide the image | a ragged grid | `ViT.__init__` and `embed` raise on a remainder |
+| 11. ignoring `layer_norm_eps` | ViT's $10^{-12}$ silently becomes the default | `from_hf` overrides `ln_eps` from the config |
 
-Two more that no single mutant names: the bicubic here is torch's ($a = -0.75$, no antialias), not Pillow's ($a = -0.5$) that `L13.4` uses on pixels; and CLIP's `post_layernorm` in Hugging Face is applied to the pooled CLS vector only, which is why `clip_vision_model` turns it off for the hidden states.
+Two more to keep in mind: the bicubic here is torch's ($a = -0.75$, no antialias), not Pillow's ($a = -0.5$) that `L13.4` uses on pixels; and CLIP's `post_layernorm` in Hugging Face is applied to the pooled CLS vector only, which is why `clip_vision_model` turns it off for the hidden states.
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
@@ -197,7 +404,7 @@ Two more that no single mutant names: the bicubic here is torch's ($a = -0.75$, 
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Solution piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `ViT` | HF `SiglipVisionModel`, `CLIPVisionModel` | SDPA and flash attention, a pooling head, fp16 | `transformers/models/siglip/modeling_siglip.py` |
 | `ViT` | `timm` `VisionTransformer` | register tokens, LayerScale, drop path, dozens of pretrained variants | `timm/models/vision_transformer.py` |

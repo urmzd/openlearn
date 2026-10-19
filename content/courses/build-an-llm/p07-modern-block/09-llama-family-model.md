@@ -344,7 +344,7 @@ def _fetch(url, final, want_sha, timeout):
     os.replace(part, final)  # atomic: the final name only ever holds a checked file
 ```
 
-`_KeepHeaders` is a redirect handler that remembers `X-Linked-Etag` and `X-Linked-Size` from the Hub's 302, because the CDN it redirects to does not repeat them. Without it, large files (the ones that are redirected) would never be verified. The etag is used only when it looks like a sha256 (64 hex digits); small files served directly carry a git blob hash instead.
+`_KeepHeaders` is a redirect handler that remembers `X-Linked-Etag` and `X-Linked-Size` from the Hub's 302, because the CDN it redirects to does not repeat them. Without it, large files (the ones that are redirected) would never be verified. The etag is trusted as the expected hash only when it is 64 hex digits (a sha256); any other etag is ignored rather than compared, so a non-sha256 value can never cause a false rejection.
 
 Full solution: [`llama.py`](../../../../course/solutions/python/tinyllm/modern/llama.py), [`hf.py`](../../../../course/solutions/python/tinyllm/io/hf.py).
 

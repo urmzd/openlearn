@@ -118,39 +118,182 @@ def simpson(f: Callable[[NDArray], NDArray], a: float, b: float, n: int) -> floa
 
 `trapezoid` integrates samples in the order given (numpy's `trapezoid(y, x)`). The two rules evaluate `f` once on `numpy.linspace(a, b, n + 1)`, so both end nodes are exact and every implementation agrees with scipy to the last bit. All three return a Python `float` and raise `ValueError` for non-finite input, mismatched samples, a wrongly shaped or non-finite `f`, `n < 1`, or (for Simpson) an odd `n`.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example` | unit, smoke | section 3: 5, 4.25, 4, 4 | you and the tests agree on the rules |
-| `test_hand_example_samples` | unit, smoke | the ROC corners give 0.625 | `roc_auc` in `M07.7` is this call |
-| `test_rules_match_scipy` | golden | `scipy.integrate.trapezoid` and `simpson` on the same nodes, six functions and a reversed interval | the rules are the standard ones |
-| `test_trapezoid_samples_match_scipy` | golden | uneven, unsorted, and decreasing samples | ROC and reliability curves |
-| `test_trapezoid_error_order_two` | property | log-log error slope 2 | section 2.5 |
-| `test_simpson_error_order_four` | property | log-log error slope 4 | section 2.5 |
-| `test_simpson_exact_on_cubics` | property | 40 random cubics, $n = 2, 4, 10$ | the symmetry bonus |
-| `test_trapezoid_rule_exact_on_lines` | property | exact on lines, not on $x^2$ | section 2.2 |
-| `test_simpson_is_richardson_of_trapezoid` | property | $S = (4T(h) - T(2h))/3$ to rounding | section 2.6 |
-| `test_reversed_and_empty_intervals` | boundary | $\int_b^a = -\int_a^b$, $\int_a^a = 0$, decreasing samples negative | signed areas |
-| `test_f_called_once_on_linspace_nodes` | unit | one vectorized call on the contract's nodes | bit-identical results across languages |
-| `test_returns_python_float` | unit | a `float`, not a numpy scalar | callers compare and serialize it |
-| `test_trapezoid_short_inputs` | boundary, smoke | zero or one sample gives 0.0 | a one-threshold ROC curve |
-| `test_rejects_bad_arguments` | boundary | odd or non-positive `n`, non-finite limits, bad `f`, bad samples raise | bugs surface at the call |
+| the hand-worked rules | unit | section 3: 5, 4.25, 4, 4 | everyone agrees on the rules |
+| the hand-worked ROC corners | unit | the ROC corners give 0.625 | `roc_auc` in `M07.7` is this call |
+| agreement with scipy's rules | golden | `scipy.integrate.trapezoid` and `simpson` on the same nodes, six functions and a reversed interval | the rules are the standard ones |
+| agreement with scipy on samples | golden | uneven, unsorted, and decreasing samples | ROC and reliability curves |
+| trapezoid error order | property | log-log error slope 2 | section 2.5 |
+| Simpson error order | property | log-log error slope 4 | section 2.5 |
+| Simpson exact on cubics | property | 40 random cubics, $n = 2, 4, 10$ | the symmetry bonus |
+| trapezoid exact on lines | property | exact on lines, not on $x^2$ | section 2.2 |
+| Simpson is Richardson of trapezoid | property | $S = (4T(h) - T(2h))/3$ to rounding | section 2.6 |
+| reversed and empty intervals | boundary | $\int_b^a = -\int_a^b$, $\int_a^a = 0$, decreasing samples negative | signed areas |
+| one call to `f` on the contract's nodes | unit | one vectorized call on `linspace(a, b, n + 1)` | bit-identical results across languages |
+| a Python `float` result | unit | a `float`, not a numpy scalar | callers compare and serialize it |
+| short sample lists | boundary | zero or one sample gives 0.0 | a one-threshold ROC curve |
+| bad arguments | boundary | odd or non-positive `n`, non-finite limits, bad `f`, bad samples raise | bugs surface at the call |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Samples: one trapezoid per step, with its signed width.** Section 2.4: step $i$ contributes $(x_{i+1} - x_i)(y_i + y_{i+1})/2$. In array form that is `np.diff(x) * (y[:-1] + y[1:])`, summed, divided by 2. Nothing is sorted and no absolute value is taken, so the given order is the direction of travel.
+2. **Fewer than two samples enclose no area.** With 0 or 1 points there are no steps; return 0.0 rather than indexing an empty difference.
+3. **Functions: evaluate once on fixed nodes.** The nodes are `np.linspace(a, b, n + 1)`: $n$ steps need $n + 1$ nodes, and `linspace` puts the first and last exactly at $a$ and $b$. One vectorized call to `f` returns all $f_i$, which keeps every implementation of the contract (Python, C, scipy) on the same nodes and so on the same rounding.
+4. **The step carries the direction.** $h = (b - a)/n$ is negative when $b < a$ and zero when $a = b$, so the composite formulas give $-\int_a^b$ and $0$ with no special cases.
+5. **Trapezoid weights.** Section 2.3: the end nodes get $\tfrac12$, inner nodes 1, all times $h$.
+6. **Simpson weights.** Section 2.3: $\tfrac{h}{3}$ times $1, 4, 2, 4, \ldots, 2, 4, 1$. Odd-indexed nodes are the parabola midpoints (weight 4), even inner nodes are shared by two panels (weight 2). This only closes for even $n$, so odd $n$ raises.
+7. **Validate everything that could make the area meaningless.** Non-finite limits or samples, mismatched lengths, an `f` that returns the wrong shape or a non-finite value, and bad `n` all raise `ValueError` rather than producing a NaN area.
+
+### The code, annotated
+
+The sample rule, with its validator:
+
+```python
+def _samples(y: ArrayLike, x: ArrayLike) -> tuple[NDArray, NDArray]:
+    ya = np.asarray(y, dtype=np.float64)
+    xa = np.asarray(x, dtype=np.float64)
+    if ya.ndim != 1 or xa.ndim != 1:          # a curve is a 1-D list of points
+        raise ValueError(f"x and y must be 1-D, got shapes {xa.shape} and {ya.shape}")
+    if ya.shape != xa.shape:                  # every height needs its abscissa
+        raise ValueError(
+            f"x and y must have the same length, got {xa.size} and {ya.size}"
+        )
+    if not (np.all(np.isfinite(ya)) and np.all(np.isfinite(xa))):
+        raise ValueError("x and y must be finite")
+    return ya, xa
+
+
+def trapezoid(y: ArrayLike, x: ArrayLike) -> float:
+    ya, xa = _samples(y, x)
+    if ya.size < 2:
+        return 0.0                            # no step, no area
+    # One trapezoid per step: width times the mean of its two heights. The
+    # widths keep their sign, so the order of the samples is the direction.
+    return float(np.sum(np.diff(xa) * (ya[:-1] + ya[1:])) / 2.0)
+```
+
+On the ROC corners of section 3, `np.diff(xa)` is $[0.5, 0.5]$ and `ya[:-1] + ya[1:]` is $[0.75, 1.75]$; the products sum to $1.25$, and halving gives $0.625$. Note the argument order, `y` first, as in numpy and in `M07.7`'s `trapezoid(tpr, fpr)`.
+
+The two function rules share node construction and checking:
+
+```python
+def _nodes(
+    f: Callable[[NDArray], NDArray], a: float, b: float, n: int
+) -> tuple[NDArray, float]:
+    a, b = float(a), float(b)
+    if not (math.isfinite(a) and math.isfinite(b)):
+        raise ValueError(f"a and b must be finite, got {a} and {b}")
+    xs = np.linspace(a, b, n + 1)             # n steps, n + 1 nodes, ends exact
+    fx = np.asarray(f(xs), dtype=np.float64)  # one vectorized call
+    if fx.shape != xs.shape:
+        raise ValueError(f"f must return shape {xs.shape}, got {fx.shape}")
+    if not np.all(np.isfinite(fx)):
+        raise ValueError("f returned a non-finite value on the nodes")
+    return fx, (b - a) / n                    # h is signed: negative when b < a
+
+
+def _steps(n: int) -> int:
+    if int(n) != n:                           # 4.0 is fine, 4.5 is not
+        raise ValueError(f"n must be an integer, got {n!r}")
+    return int(n)
+
+
+def trapezoid_rule(
+    f: Callable[[NDArray], NDArray], a: float, b: float, n: int
+) -> float:
+    n = _steps(n)
+    if n < 1:
+        raise ValueError(f"n must be >= 1, got {n}")
+    fx, h = _nodes(f, a, b, n)
+    # The two ends belong to one trapezoid each, every inner node to two.
+    return float(h * (fx[0] / 2.0 + np.sum(fx[1:-1]) + fx[-1] / 2.0))
+
+
+def simpson(f: Callable[[NDArray], NDArray], a: float, b: float, n: int) -> float:
+    n = _steps(n)
+    if n < 2 or n % 2 != 0:
+        raise ValueError(f"Simpson needs an even number of steps n >= 2, got {n}")
+    fx, h = _nodes(f, a, b, n)
+    # Weights 1, 4, 2, 4, ..., 2, 4, 1: odd nodes are parabola midpoints,
+    # even inner nodes are shared by two parabolas.
+    odd = np.sum(fx[1:-1:2])                  # indices 1, 3, ..., n - 1
+    even = np.sum(fx[2:-1:2])                 # indices 2, 4, ..., n - 2 (empty when n = 2)
+    return float(h / 3.0 * (fx[0] + 4.0 * odd + 2.0 * even + fx[-1]))
+```
+
+On $\int_0^2 x^3$ with $n = 2$: the nodes are $0, 1, 2$, `fx` is $[0, 1, 8]$, `odd` is 1, `even` is the empty sum 0, and the result is $\tfrac13(0 + 4 + 0 + 8) = 4$. With `trapezoid_rule` and $n = 2$: $1 \cdot (0 + 1 + 4) = 5$. The Richardson identity of section 2.6 holds node by node: $4T(h) - T(2h)$ gives $h$ times $1, 4, 2, 4, \ldots, 1$, and dividing by 3 is exactly the `simpson` expression.
+
+Full solution: [`integrate.py`](../../../../course/solutions/python/tinyllm/num/integrate.py).
+
+### Why this solution
+
+- **Cost.** All three are $O(n)$ time and memory: one pass of `np.diff` and a sum for samples, and one call to `f` on $n + 1$ nodes for the rules. To reach an error $\delta$ the trapezoid rule needs $n \propto \delta^{-1/2}$ nodes and Simpson $n \propto \delta^{-1/4}$, so Simpson is far cheaper for smooth $f$.
+- **No sorting, no absolute widths.** Sorting would make a decreasing curve's area positive and silently reconnect unsorted points into a different curve; `np.abs(np.diff(x))` does the first. The caller's order is meaningful (it is the threshold sweep), so the function measures exactly the polyline it was given.
+- **`linspace` over `a + i * h`.** With a rounded $h$, $a + nh$ need not equal $b$, so the last node drifts. `linspace` pins both ends, and because scipy and the C port use the same nodes, results agree bit for bit.
+- **Raising on odd $n$.** scipy's `simpson` accepts an odd number of intervals with a corrected last panel. That is a different rule with a different error constant; the contract keeps the classic composite rule and rejects what it does not implement.
+- **Tradeoffs accepted.** Fixed-step rules spend nodes uniformly; for a function with a narrow peak (Runge's example in section 2.5) Simpson can be worse than the trapezoid until $h$ resolves the peak. Adaptive quadrature (Going further) solves that at the cost of an unpredictable number of evaluations, which an ROC area or a reference test does not need.
+
+### Explain it back
+
+**1. Why does `trapezoid` use `np.diff(xa)` without an absolute value or a sort?**
+
+<details><summary>Answer</summary>
+
+The widths are signed so that the order of the points is the direction of integration: decreasing $x$ gives a negative area, matching $\int_b^a f = -\int_a^b f$. Sorting or taking $|\Delta x|$ would change the curve being measured (or its orientation); an ROC curve's corners come in threshold order, and that order is the curve.
+
+</details>
+
+**2. Why does the hand ROC area come out as 0.625 and not 0.375?**
+
+<details><summary>Answer</summary>
+
+Each step's height is the mean of its two end heights, $(y_i + y_{i+1})/2$: the straight segment between corners, which is what an ROC curve is. 0.375 uses only the left height of each step, a left Riemann sum, which assumes the curve stays flat until the next corner and underestimates every rising curve.
+
+</details>
+
+**3. Why must Simpson's $n$ be even, and why does `simpson` raise rather than drop a step?**
+
+<details><summary>Answer</summary>
+
+Simpson fits one parabola per *pair* of steps, so the steps must pair up: the weight pattern $1, 4, 2, \ldots, 4, 1$ only ends on 1 when $n$ is even. Dropping or patching a step would integrate a different interval or use a different rule with a different error, returning a plausible but wrong number. Raising makes the caller choose.
+
+</details>
+
+**4. Simpson fits parabolas, so why is it exact on cubics?**
+
+<details><summary>Answer</summary>
+
+On a panel $[-h, h]$ around its midpoint, write the cubic as a quadratic plus $c\,x^3$. The quadratic part is integrated exactly by the parabola. $x^3$ is odd: its integral over $[-h, h]$ is 0, and Simpson's weights $\tfrac h3(1, 4, 1)$ at $-h, 0, h$ also give $\tfrac h3(-h^3 + 0 + h^3) = 0$. The error formula reflects this: it involves $f^{(4)}$, which is 0 for a cubic.
+
+</details>
+
+**5. What does $h = (b - a)/n$ being signed buy, and what happens for $a = b$?**
+
+<details><summary>Answer</summary>
+
+With $b < a$, `linspace` runs downward and $h < 0$, so both rules return the negative of the forward integral with no extra branch. With $a = b$, every node is $a$ and $h = 0$, so the result is exactly 0. Both are the signed-area rules of section 2.1, obtained by the same expression.
+
+</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. a Riemann sum (left heights only) for samples | the hand ROC area is 0.375, not 0.625; AUCs biased low | `test_hand_example_samples` (mutant `s01`) |
-| 2. Simpson weights 2 and 4 swapped | order 2 instead of 4; the hand example gives 10/3 | `test_hand_example`, `test_simpson_exact_on_cubics` (mutant `s02`) |
-| 3. accepting an odd number of Simpson steps | a plausible but wrong number | `test_rejects_bad_arguments` (mutant `s03`) |
-| 4. counting the end points fully in the trapezoid rule | the hand example gives 9, order 1 | `test_hand_example` (mutant `s04`) |
-| 5. sorting samples or using $\lvert \Delta x \rvert$ | a decreasing curve has positive area; unsorted samples are reconnected | `test_trapezoid_samples_match_scipy` (mutant `s05`) |
-| 6. $n$ nodes instead of $n + 1$ | the last step is lost; the rules disagree with scipy | `test_rules_match_scipy`, `test_f_called_once_on_linspace_nodes` (mutant `s06`) |
-| 7. Simpson with the panel width $2h$ in place of the step $h$ | every result doubled | `test_hand_example` (mutant `s07`) |
-| 8. assuming equal gaps between samples | wrong area on any real ROC curve | `test_trapezoid_samples_match_scipy` (mutant `s08`) |
+| 1. a Riemann sum (left heights only) for samples | the hand ROC area is 0.375, not 0.625; AUCs biased low | `ya[:-1] + ya[1:]`, halved: the mean of both heights; step 1 |
+| 2. Simpson weights 2 and 4 swapped | order 2 instead of 4; the hand example gives 10/3 | `4.0 * odd` on indices `1:-1:2`, `2.0 * even` on `2:-1:2`; step 6 |
+| 3. accepting an odd number of Simpson steps | a plausible but wrong number | raises unless `n >= 2` and `n % 2 == 0`; step 6 |
+| 4. counting the end points fully in the trapezoid rule | the hand example gives 9, order 1 | `fx[0] / 2.0` and `fx[-1] / 2.0`; step 5 |
+| 5. sorting samples or using $\lvert \Delta x \rvert$ | a decreasing curve has positive area; unsorted samples are reconnected | plain `np.diff(xa)`, no sort; step 1 |
+| 6. $n$ nodes instead of $n + 1$ | the last step is lost; the rules disagree with scipy | `np.linspace(a, b, n + 1)`; step 3 |
+| 7. Simpson with the panel width $2h$ in place of the step $h$ | every result doubled | `h / 3.0` with `h = (b - a) / n` |
+| 8. assuming equal gaps between samples | wrong area on any real ROC curve | each step uses its own width from `np.diff`; step 1 |
 
-## 6. Where it's used next
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|

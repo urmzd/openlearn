@@ -1,4 +1,3 @@
-<!-- ol:module L10.1 -->
 # Candle model runner (Llama + bigram, int4), Rust KV cache, sampler and PCG32
 
 ## Overview
@@ -6,39 +5,31 @@
 | | |
 |---|---|
 | **Module** | `L10.1` · build · Rust · Pass 7 · 14 to 20 h |
-| **You build** | `rust/crates/tl-engine/src/kv.rs`: the bounded Rust KV cache · `rust/crates/tl-engine/src/quant.rs` (f16, bf16, int4) · `model.rs` (config.json, the memory-mapped safetensors reader, the weights) · `forward.rs` (the Llama and bigram forwards built with Candle tensors) · `runner.rs` (`ModelRunner`, `EngineConfig`, the KV pool) · `sample.rs` (PCG32 and the sampler) · the module lines of the `tl-engine/src/lib.rs` crate root |
+| **Solution** | in `rust/crates/tl-engine/src/`: [`kv.rs`](../../../../course/solutions/rust/crates/tl-engine/src/kv.rs) (`KvPool`, the bounded Rust KV cache) · [`quant.rs`](../../../../course/solutions/rust/crates/tl-engine/src/quant.rs) (`f16_to_f32`, `f32_to_f16`, `bf16_to_f32`, `pack_int4`, `QLinear`) · [`model.rs`](../../../../course/solutions/rust/crates/tl-engine/src/model.rs) (`ModelConfig`, the memory-mapped `SafeTensors` reader, `Linear`, `matmul_rows`, the weights) · [`forward.rs`](../../../../course/solutions/rust/crates/tl-engine/src/forward.rs) (`llama_forward`, `bigram_forward`, `write_kv`, `gather_kv`, built with Candle tensors) · [`runner.rs`](../../../../course/solutions/rust/crates/tl-engine/src/runner.rs) (`ModelRunner`, `EngineConfig`) · [`sample.rs`](../../../../course/solutions/rust/crates/tl-engine/src/sample.rs) (`Pcg32`, `stream`, `sample`) |
 | **Contract** | files: [`formats/safetensors.md`](../../../../course/contracts/formats/safetensors.md), [`formats/config.schema.json`](../../../../course/contracts/formats/config.schema.json), [`formats/kv-block.md`](../../../../course/contracts/formats/kv-block.md) · determinism: [`spec/sampling.md`](../../../../course/contracts/spec/sampling.md), [`spec/pcg32.md`](../../../../course/contracts/spec/pcg32.md) |
-| **Tests** | `course/tests/rust/l10_1.rs`, 24 tests (what they check: section 4); parity suites `ol parity sampler rng` (your Rust against your Python, through one golden file) |
-| **Needs** | `L10.0` the checkpoint contract ([chapter](00-your-first-endpoint.md)) · reading: `lang.04` Rust ([primer](../../../tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md)), `L8.1` the Python sampler you port, `M06.3` PCG32, `L7.9` the Llama model you port, `L8.5` the int4 scheme, `M09.4` f16 rounding, `L9.7` the Python twin of this runner, `L1.5` tl-tok · or `--ref-deps` |
-| **Used by** | `L10.2` (the scheduler runs this runner), `L10.3` (chunked prefill feeds it), `L10.4` (the block manager hands it blocks), `L10.5` (the engine loop and the server) · later: `L10.6`, `L10.8`, `L10.9` |
-| **Milestone** | `MS-L10` (the engine's greedy stream equals your Python's; `ol parity sampler`) |
+| **Needs** | `L10.0` the checkpoint contract ([chapter](00-your-first-endpoint.md)) · reading: `lang.04` Rust ([primer](../../../tracks/software-craftsmanship/12-language-and-tool-primers/04-rust.md)), `L8.1` the Python sampler ported here, `M06.3` PCG32, `L7.9` the Llama model ported here, `L8.5` the int4 scheme, `M09.4` f16 rounding, `L9.7` the Python twin of this runner, `L1.5` tl-tok |
+| **Used by** | `L10.2` (the scheduler runs this runner), `L10.3` (chunked prefill feeds it), `L10.4` (the block manager hands it blocks), `L10.5` (the engine loop and the server) · later: `L10.6`, `L10.8`, `L10.9` · the point of Pass 7: the engine's greedy stream equals the Python stack's |
 | **Optional depth** | [Rust reference, `Drop`](https://doc.rust-lang.org/reference/destructors.html) (free); [safetensors format](https://github.com/huggingface/safetensors) (free); [Hugging Face `modeling_llama.py`](https://github.com/huggingface/transformers/blob/main/src/transformers/models/llama/modeling_llama.py) (free); [Kwon et al. 2023, PagedAttention](https://arxiv.org/abs/2309.06180) (free) |
 
 ## Key Takeaways
 
-- The Rust engine owns the model graph and uses Candle for tensor operations. The learner writes the Llama layers and owns a bounded Rust KV cache.
-- `KvPool` owns fixed-size f16 K and V slabs, block references, the prefix hash index, and LRU eviction (`kv_pool_bounds_and_cache_lifecycle`).
-- One step runs a batch of sequences, each a run of new tokens at absolute positions; their K and V go into the pool as f16 and are read back for attention, so the logits match Hugging Face's float32 forward within the f16 bound (`tiny_llama_logits_match_hf`).
-- The model forward is batch-invariant bit for bit and chunk-invariant within the test tolerance, so batching sequences together or splitting a prompt into steps preserves logits (`batched_forward_equals_single`, `incremental_decode_equals_full_prefill`).
-- The sampler follows spec/sampling.md step by step in f64, so the same logits and seed give your Python's id and logprob exactly (`sampler_matches_l81_golden`, `hand_example_sampling`).
+- The Rust engine owns the model graph and uses Candle for tensor operations. The solution writes the Llama layers itself and owns a bounded Rust KV cache.
+- `KvPool` owns fixed-size f16 K and V slabs, block references, the prefix hash index, and LRU eviction.
+- One step runs a batch of sequences, each a run of new tokens at absolute positions; their K and V go into the pool as f16 and are read back for attention, so the logits match Hugging Face's float32 forward within the f16 bound.
+- The model forward is batch-invariant bit for bit and chunk-invariant within a stated tolerance, so batching sequences together or splitting a prompt into steps preserves logits.
+- The sampler follows spec/sampling.md step by step in f64, so the same logits and seed give the Python sampler's id and logprob exactly.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L10.1               # stubs tl-engine kv, quant, model, forward, runner, sample
-ol tests L10.1               # read the test catalog first: rung R0, you write no graded tests here
-ol check L10.1               # exit code is the verdict
-ol check L10.1 --ref-deps    # only if a referenced module is not passing yet
-ol parity sampler rng        # your Rust sampler and PCG32 against your Python, through the golden files
-```
+Sections 1 to 3 lay out the engine's layers, the Llama step, int4, and the sampler, and work a sampled token, an int4 group, an f16 tie, and a key's address by hand. Section 4 fixes the Rust interface and lists what a correct runner must handle. Section 5 walks through the solution across its six files, focusing on the forward, the KV writes, batch invariance, the f16 and int4 conversions, the sampler, and the pool. Try to predict each step of the solution before reading it.
 
-`ol start` never rewrites your files. Add one `pub mod` line per new file to `tl-engine/src/lib.rs` (yours since `L8.4`). Add Candle, `anyhow`, `memmap2`, and `serde_json` from `contracts/allowed-deps.toml` to `tl-engine/Cargo.toml`.
+The crate root `tl-engine/src/lib.rs` has one `pub mod` line per file, and `tl-engine/Cargo.toml` depends on Candle, `anyhow`, `memmap2`, and `serde_json` (all listed in `contracts/allowed-deps.toml`).
 
 ---
 
 ## 1. Why now
 
-Your tracer engine (`L10.0`) serves one model, a byte bigram, with one request per thread and a sampler that is not the one your Python uses. Pass 7 turns it into a real inference engine, and everything after it in this part (scheduling, chunked prefill, prefix caching, the OpenAI server) needs one thing first: a component that loads a Llama checkpoint, runs a batch of sequences through it with Candle tensor operations, keeps each sequence's past in the Rust KV pool, and turns logits into tokens exactly as your Python does. That component is the model runner. Rust owns the graph and the production math path. Candle supplies tensor operations, while this module implements the layers and cache.
+The tracer engine (`L10.0`) serves one model, a byte bigram, with one request per thread and a sampler that is not the one the Python stack uses. Pass 7 turns it into a real inference engine, and everything after it in this part (scheduling, chunked prefill, prefix caching, the OpenAI server) needs one thing first: a component that loads a Llama checkpoint, runs a batch of sequences through it with Candle tensor operations, keeps each sequence's past in the Rust KV pool, and turns logits into tokens exactly as the Python stack does. That component is the model runner. Rust owns the graph and the production math path. Candle supplies tensor operations, while this module implements the layers and cache.
 
 ## 2. Principles
 
@@ -56,7 +47,7 @@ kv.rs                   Rust-owned f16 blocks, references, hash index, LRU
 
 ### 2.2 Candle tensors and Rust-owned state
 
-Candle provides tensor storage, device placement, matrix multiplication, softmax, RMSNorm, and embedding lookup. The engine uses `candle-core` and `candle-nn` 0.10.2. The learner still writes the model structure: the layer order, RoPE positions, grouped-query attention, residual connections, SwiGLU, and final norm. CI uses the CPU device; macOS can select Metal. Enumerate devices with the matching `candle-metal-kernels` version before selecting GPU 0: a macOS host without a Metal device must fall back to CPU.
+Candle provides tensor storage, device placement, matrix multiplication, softmax, RMSNorm, and embedding lookup. The engine uses `candle-core` and `candle-nn` 0.10.2. The solution still writes the model structure itself: the layer order, RoPE positions, grouped-query attention, residual connections, SwiGLU, and final norm. CI uses the CPU device; macOS can select Metal. Enumerate devices with the matching `candle-metal-kernels` version before selecting GPU 0: a macOS host without a Metal device must fall back to CPU.
 
 The KV cache is a separate Rust data structure. `KvPool` allocates fixed-size K and V slabs as f16 values, tracks references, and keeps released full blocks in an LRU cache when prefix caching is enabled. Its methods return `Result` for invalid dimensions, exhausted capacity, invalid block ids, and format errors. No C library or foreign-function boundary is part of the model runner.
 
@@ -97,9 +88,9 @@ $$o_t = \sum_{j \le \mathrm{pos}(t)} \mathrm{softmax}_j\!\Big(\tfrac{q_t \cdot k
 
 with $h_2 = \mathrm{RMSNorm}(x)$ before the MLP. After the last layer, only each sequence's **last** token goes through the final norm and the LM head (the embedding matrix itself when `tie_word_embeddings` is true), giving one row of logits per sequence.
 
-Two properties carry the rest of this part. **Batch invariance**: a token's logits must not depend on which other tokens share its step. Candle picks its reduction path from the shape: a one-row product takes a matrix-vector kernel and a taller one a blocked kernel that adds in another order, so on x86 the same row comes out a few ulps apart depending on the batch. The runner therefore sends every row through the same $[1, K] \times [K, N]$ product (`matmul_rows`), and query $t$ attends over exactly its visible keys $j \le \mathrm{pos}(t)$ instead of a masked full row. Then a row is computed by the same operations in the same order whether it runs alone or in a batch, and `batched_forward_equals_single` compares bit for bit. **Chunk invariance**: positions are absolute and the cache holds the same f16 keys either way, so prefilling a prompt in one step or in pieces agrees within the tested tolerance. Without row-wise products this fails on Linux, not just in the last bits: a one-ulp change in a key can round to a different f16, which moves the logits by about $2 \times 10^{-3}$.
+Two properties carry the rest of this part. **Batch invariance**: a token's logits must not depend on which other tokens share its step. Candle picks its reduction path from the shape: a one-row product takes a matrix-vector kernel and a taller one a blocked kernel that adds in another order, so on x86 the same row comes out a few ulps apart depending on the batch. The runner therefore sends every row through the same $[1, K] \times [K, N]$ product (`matmul_rows`), and query $t$ attends over exactly its visible keys $j \le \mathrm{pos}(t)$ instead of a masked full row. Then a row is computed by the same operations in the same order whether it runs alone or in a batch, and the batched and single logits agree bit for bit. **Chunk invariance**: positions are absolute and the cache holds the same f16 keys either way, so prefilling a prompt in one step or in pieces agrees within the tested tolerance. Without row-wise products this fails on Linux, not just in the last bits: a one-ulp change in a key can round to a different f16, which moves the logits by about $2 \times 10^{-3}$.
 
-**The f16 bound.** K and V pass through f16, which rounds with relative error at most $2^{-11} \approx 4.9 \times 10^{-4}$. Through two layers this perturbs the logits of the tiny test model (magnitudes up to about 20) by about $7 \times 10^{-3}$, measured; the tests allow $10^{-3}$ of the largest logit, $2 \times 10^{-2}$. Your Python reference (`L7.9`) keeps f32 keys, so this bound, not 1e-4, is what an f16 cache can promise.
+**The f16 bound.** K and V pass through f16, which rounds with relative error at most $2^{-11} \approx 4.9 \times 10^{-4}$. Through two layers this perturbs the logits of the tiny test model (magnitudes up to about 20) by about $7 \times 10^{-3}$, measured; the HF comparison allows $10^{-3}$ of the largest logit, $2 \times 10^{-2}$. The Python reference (`L7.9`) keeps f32 keys, so this bound, not 1e-4, is what an f16 cache can promise.
 
 ### 2.5 Int4 weights
 
@@ -111,17 +102,17 @@ with `rint` rounding half to even and $s$ the f16 value **actually stored**, so 
 
 ### 2.6 The sampler and PCG32
 
-`sample.rs` ports your `L8.1` sampler and `M06.3` generator, and **parity** means bit-identical: the same token id and the same f64 logprob from the same logits and seed. spec/sampling.md fixes the order: widen to f64; repetition penalty over the distinct ids of prompt and output ($\ell \mathrel{/}= r$ when positive, $\ell \mathrel{*}= r$ otherwise); presence and frequency over the output only ($\ell \mathrel{-}= a_f c + a_p$); the **logprob** is $\log\mathrm{softmax}(\ell)$ at this point; greedy ($T = 0$) takes the argmax with ties to the lowest id and **no draw**; otherwise divide by $T$, keep the top $k$ by $(\ell \text{ desc}, \text{id asc})$, keep the nucleus up to and including the token that reaches $p$, keep ids with $q_i \ge m \cdot \max q$, softmax over the kept ids in ascending id order, draw one $u$, and walk the cumulative sum in ascending id order to the first id with $u < c$. Every sum is a left-to-right loop, so Rust and Python add the same numbers in the same order.
+`sample.rs` ports the `L8.1` sampler and `M06.3` generator, and **parity** means bit-identical: the same token id and the same f64 logprob from the same logits and seed. spec/sampling.md fixes the order: widen to f64; repetition penalty over the distinct ids of prompt and output ($\ell \mathrel{/}= r$ when positive, $\ell \mathrel{*}= r$ otherwise); presence and frequency over the output only ($\ell \mathrel{-}= a_f c + a_p$); the **logprob** is $\log\mathrm{softmax}(\ell)$ at this point; greedy ($T = 0$) takes the argmax with ties to the lowest id and **no draw**; otherwise divide by $T$, keep the top $k$ by $(\ell \text{ desc}, \text{id asc})$, keep the nucleus up to and including the token that reaches $p$, keep ids with $q_i \ge m \cdot \max q$, softmax over the kept ids in ascending id order, draw one $u$, and walk the cumulative sum in ascending id order to the first id with $u < c$. Every sum is a left-to-right loop, so Rust and Python add the same numbers in the same order.
 
 Each request gets its own generator, `stream(seed, sample)`: $\mathrm{child\_seed}(s, 4) = \mathrm{mix64}(s + 4 \cdot \texttt{0x9E3779B97F4A7C15})$, then `pcg32_srandom_r(child_seed, 4)`. One uniform takes two outputs $a, b$: $u = \big((a \gg 5)\, 2^{26} + (b \gg 6)\big)\, 2^{-53}$.
 
 ## 3. Worked example by hand
 
-**One sampled token** (spec/sampling.md, `hand_example_sampling`). Logits $x = [1, 3, 2, 3, -1]$, no history, $T = 1$, top-k 3, top-p 0.8, seed 0. Logprobs first: $M = 3$, $Z = e^{-2} + 1 + e^{-1} + 1 + e^{-4} = 2.52153$, so ids 1 and 3 have logprob $-\ln Z = -0.92487$. Top-k: order by (logit desc, id asc) is $1, 3, 2, 0, 4$; keep $\{1, 3, 2\}$. Top-p over the kept: $Z' = 1 + e^{-1} + 1 = 2.36788$, $q_1 = q_3 = 0.42232$, $q_2 = 0.15536$; walking $1, 3$: $0.42232$, then $0.84464 \ge 0.8$, so keep $\{1, 3\}$ and renormalize to $0.5, 0.5$. The generator: $\mathrm{child\_seed}(0, 4) = \texttt{0xF88BB8A8724C81EC}$, and the first uniform of `stream(0, sample)` is $u = 0.80209$. Walk ids in ascending order: after id 1, $c = 0.5$, not above $u$; after id 3, $c = 1.0 > u$: the token is **id 3**, logprob $-0.92487$.
+**One sampled token** (spec/sampling.md). Logits $x = [1, 3, 2, 3, -1]$, no history, $T = 1$, top-k 3, top-p 0.8, seed 0. Logprobs first: $M = 3$, $Z = e^{-2} + 1 + e^{-1} + 1 + e^{-4} = 2.52153$, so ids 1 and 3 have logprob $-\ln Z = -0.92487$. Top-k: order by (logit desc, id asc) is $1, 3, 2, 0, 4$; keep $\{1, 3, 2\}$. Top-p over the kept: $Z' = 1 + e^{-1} + 1 = 2.36788$, $q_1 = q_3 = 0.42232$, $q_2 = 0.15536$; walking $1, 3$: $0.42232$, then $0.84464 \ge 0.8$, so keep $\{1, 3\}$ and renormalize to $0.5, 0.5$. The generator: $\mathrm{child\_seed}(0, 4) = \texttt{0xF88BB8A8724C81EC}$, and the first uniform of `stream(0, sample)` is $u = 0.80209$. Walk ids in ascending order: after id 1, $c = 0.5$, not above $u$; after id 3, $c = 1.0 > u$: the token is **id 3**, logprob $-0.92487$.
 
-**Int4** (`int4_hand_example`). Weights $[0.7, -1.4, 0, 0.29995]$ in one group of 4: $\max|W| = 1.4$, $1.4 / 7 = 0.2$, and $\mathrm{f16}(0.2) = 0.199951171875$ (0.2 is not a binary fraction; f16 keeps 10 mantissa bits). Dividing by the stored scale: $0.7 / 0.19995 = 3.5009 \to 4$, $-1.4 / 0.19995 = -7.0017 \to -7$, $0 \to 0$, $0.29995 / 0.19995 = 1.5001 \to 2$. With the unrounded $0.2$ the last would be $1.49975 \to 1$: the stored scale changes a value. Packing $q = [-8, 7, 1, -1]$: $-8$ is $1000_2$ and $7$ is $0111_2$, so byte 0 is $0111\,1000_2 = \texttt{0x78}$; $1 = 0001_2$ and $-1 = 1111_2$ give $1111\,0001_2 = \texttt{0xF1}$.
+**Int4**. Weights $[0.7, -1.4, 0, 0.29995]$ in one group of 4: $\max|W| = 1.4$, $1.4 / 7 = 0.2$, and $\mathrm{f16}(0.2) = 0.199951171875$ (0.2 is not a binary fraction; f16 keeps 10 mantissa bits). Dividing by the stored scale: $0.7 / 0.19995 = 3.5009 \to 4$, $-1.4 / 0.19995 = -7.0017 \to -7$, $0 \to 0$, $0.29995 / 0.19995 = 1.5001 \to 2$. With the unrounded $0.2$ the last would be $1.49975 \to 1$: the stored scale changes a value. Packing $q = [-8, 7, 1, -1]$: $-8$ is $1000_2$ and $7$ is $0111_2$, so byte 0 is $0111\,1000_2 = \texttt{0x78}$; $1 = 0001_2$ and $-1 = 1111_2$ give $1111\,0001_2 = \texttt{0xF1}$.
 
-**f16 rounding** (`f16_rounds_to_nearest_even`). $1 + 2^{-11}$ lies exactly halfway between $1$ (`0x3C00`) and $1 + 2^{-10}$ (`0x3C01`); ties go to the even mantissa, so the result is `0x3C00`. $1 + 3 \cdot 2^{-11}$ lies halfway between `0x3C01` and `0x3C02`: the even one is `0x3C02`.
+**f16 rounding**. $1 + 2^{-11}$ lies exactly halfway between $1$ (`0x3C00`) and $1 + 2^{-10}$ (`0x3C01`); ties go to the even mantissa, so the result is `0x3C00`. $1 + 3 \cdot 2^{-11}$ lies halfway between `0x3C01` and `0x3C02`: the even one is `0x3C02`.
 
 **Where a key lands.** Blocks of $B = 16$, a sequence with block table $[7, 2, 9]$: position 37 is block $\lfloor 37 / 16 \rfloor = 2$ of the table, pool block 9, slot $37 \bmod 16 = 5$. Its K for KV head $h$ starts at element $(h \cdot 16 + 5) \cdot D$ of layer $l$'s K slab of block 9.
 
@@ -184,88 +175,340 @@ pub struct SamplingParams { pub temperature: f64, pub top_k: usize, pub top_p: f
 pub fn sample(logits: &[f32], p: &SamplingParams, prompt: &[u32], output: &[u32], rng: &mut Pcg32) -> (u32, f64);
 ```
 
-`forward` writes K and V for the new tokens of each sequence into the blocks its table names; the caller allocates the blocks (`L10.2` and `L10.4` do from here on). `run_once` takes temporary blocks and gives them back, for embeddings and tests.
+`forward` writes K and V for the new tokens of each sequence into the blocks its table names; the caller allocates the blocks (`L10.2` and `L10.4` do from here on). `run_once` takes temporary blocks and gives them back, for embeddings and one-off checks.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `hand_example_sampling` | unit | section 3: top-k 3 and top-p 0.8 keep ids 1 and 3, $u = 0.80209$, token 3 with logprob $-0.92487$ | the spec's worked example, end to end |
-| `pcg32_reference_vectors` | golden | `pcg32(42)` demo line, `uniform_f64`, `child_seed`, `stream` outputs from `pcg32.vectors.json` | one generator in every language (D10) |
-| `sampler_matches_l81_golden` | differential, golden | 12 cases x 12 tokens: ids and f64 logprobs bit for bit against L8.1's golden | `ol parity sampler`; the engine's seeded streams equal your Python's |
-| `greedy_takes_no_draw_and_sampling_takes_one` | property | greedy leaves the generator untouched; a sampled token takes one `uniform_f64` | draw accounting for the disaggregated hand-off (L10.6) |
-| `top_p_keeps_the_crossing_token` | boundary | mass exactly at $p$ keeps the crossing id | nucleus edge, the most common sampler bug |
-| `penalties_follow_hf_and_openai_semantics` | unit | repetition divides positives and multiplies negatives over prompt and output; presence and frequency over output only | the OpenAI request fields mean what clients expect |
-| `seeded_sampling_matches_the_distribution` | statistical | 4000 draws fit 0.4, 0.3, 0.2, 0.1 (chi-square below 16.27); a seed repeats | the sampler draws from the right distribution |
-| `kv_pool_bounds_and_cache_lifecycle` | boundary | capacity, references, registration, release, and lookup preserve pool invariants | block manager and prefix cache rely on these transitions |
-| `kv_pool_evicts_the_oldest_cached_block` | boundary | exhausted allocation evicts the oldest cached prefix | cache policy preserves recent prefixes |
-| `kv_pool_rejects_zero_capacity` | boundary | zero blocks is rejected during construction | invalid engine configuration fails early |
-| `kv_pool_exports_and_imports_rust_owned_blocks` | differential | f16 cache data survives the transfer envelope round trip | disaggregated decode resumes the same state |
-| `kv_pool_bounds_and_cache_lifecycle` | boundary | capacity is all-or-nothing, refs balance, full blocks register, release caches, lookup reacquires | scheduler and prefix cache share one pool |
-| `kv_pool_exports_and_imports_rust_owned_blocks` | differential | a written f16 value survives an export/import round trip | disaggregated decode resumes with the same cache |
-| `f16_rounds_to_nearest_even` | boundary | ties, overflow, subnormals, NaN; every f16 pattern round-trips | the KV cache stores f16 |
-| `int4_hand_example` | unit | section 3: nibble order and the stored-scale rule | int4 files written by your Python load here |
-| `q4_linear_matches_its_dequantized_weights` | differential | Candle output equals x times the dequantized weights within float tolerance | the packed layout means what the format says |
-| `safetensors_reader_rules` | boundary | offsets from the data buffer, F16 and BF16 widening, gaps and trailing bytes refused | every checkpoint goes through this reader |
-| `config_refuses_what_the_engine_cannot_run` | boundary | scaled RoPE, sliding window, unknown arch, missing tokenizer refused at load | wrong models fail loudly at start |
-| `bigram_checkpoint_still_serves` | conformance | the tracer checkpoint loads and greedy continues `bcd` | the Pass 1 smoke stays green (D32) |
-| `tiny_llama_logits_match_hf` | golden | last-token logits within $2 \times 10^{-2}$ of HF's float32 forward | the whole graph: GQA, tied embeddings, BF16 file |
-| `tiny_llama_greedy_matches_hf` | golden | 32 greedy tokens per prompt equal HF's under the near-tie rule | what MS-L10 compares with your Python |
-| `incremental_decode_equals_full_prefill` | differential | prefill then one token per step equals one prefill, within floating-point tolerance | chunked prefill and preemption by recompute |
-| `batched_forward_equals_single` | differential | two sequences in one step agree with their alone logits within float tolerance | continuous batching changes nothing |
-| `run_once_returns_its_blocks` | unit | five one-off forwards leave every block free | embeddings do not leak KV |
-| `int4_runner_matches_its_dequantized_model` | differential | quantize-at-load equals an int4 file bit for bit and its dequantized f32 twin closely | both int4 paths agree |
-| `forward_refuses_bad_batches` | boundary | a short block table or a position past the context is `Err` | the scheduler's mistakes surface, not corrupt KV |
+| the sampling hand example | unit | section 3: top-k 3 and top-p 0.8 keep ids 1 and 3, $u = 0.80209$, token 3 with logprob $-0.92487$ | the spec's worked example, end to end |
+| PCG32 reference vectors | golden | `pcg32(42)` demo line, `uniform_f64`, `child_seed`, `stream` outputs from `pcg32.vectors.json` | one generator in every language (D10) |
+| the Python sampler's golden streams | differential, golden | 12 cases x 12 tokens: ids and f64 logprobs bit for bit against L8.1's golden | the engine's seeded streams equal the Python ones |
+| draw accounting | property | greedy leaves the generator untouched; a sampled token takes one `uniform_f64` | the disaggregated hand-off (L10.6) |
+| top-p keeps the crossing token | boundary | mass exactly at $p$ keeps the crossing id | nucleus edge, the most common sampler bug |
+| penalty semantics | unit | repetition divides positives and multiplies negatives over prompt and output; presence and frequency over output only | the OpenAI request fields mean what clients expect |
+| seeded sampling follows the distribution | statistical | 4000 draws fit 0.4, 0.3, 0.2, 0.1 (chi-square below 16.27); a seed repeats | the sampler draws from the right distribution |
+| KV pool bounds and lifecycle | boundary | capacity is all-or-nothing, refs balance, full blocks register, release caches, lookup reacquires | scheduler and prefix cache share one pool |
+| eviction order | boundary | exhausted allocation evicts the oldest cached prefix | cache policy preserves recent prefixes |
+| zero capacity | boundary | zero blocks is rejected during construction | invalid engine configuration fails early |
+| export and import | differential | a written f16 value survives an export/import round trip | disaggregated decode resumes with the same cache |
+| f16 round to nearest even | boundary | ties, overflow, subnormals, NaN; every f16 pattern round-trips | the KV cache stores f16 |
+| the int4 hand example | unit | section 3: nibble order and the stored-scale rule | int4 files written by the Python quantizer load here |
+| `QLinear` against its dequantized weights | differential | Candle output equals x times the dequantized weights within float tolerance | the packed layout means what the format says |
+| safetensors reader rules | boundary | offsets from the data buffer, F16 and BF16 widening, gaps and trailing bytes refused | every checkpoint goes through this reader |
+| config refusals | boundary | scaled RoPE, sliding window, unknown arch, missing tokenizer refused at load | wrong models fail loudly at start |
+| the bigram checkpoint still serves | conformance | the tracer checkpoint loads and greedy continues `bcd` | the Pass 1 smoke keeps working (D32) |
+| tiny Llama logits match HF | golden | last-token logits within $2 \times 10^{-2}$ of HF's float32 forward | the whole graph: GQA, tied embeddings, BF16 file |
+| tiny Llama greedy matches HF | golden | 32 greedy tokens per prompt equal HF's under the near-tie rule | the engine's greedy stream equals the Python one |
+| incremental decode equals full prefill | differential | prefill then one token per step equals one prefill, within floating-point tolerance | chunked prefill and preemption by recompute |
+| batched forward equals single | differential | two sequences in one step agree with their alone logits | continuous batching changes nothing |
+| `run_once` returns its blocks | unit | five one-off forwards leave every block free | embeddings do not leak KV |
+| int4 runner paths agree | differential | quantize-at-load equals an int4 file bit for bit and its dequantized f32 twin closely | both int4 paths agree |
+| bad batches refused | boundary | a short block table or a position past the context is `Err` | the scheduler's mistakes surface, not corrupt KV |
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+The solution is six files; this section walks through the parts that carry the design and links the rest.
+
+### 5.1 From first principles
+
+1. **A step is a batch of sequences, each a run of new tokens at absolute positions** (section 2.4). So the input is `ForwardBatch { seqs: [ForwardSeq { tokens, start, blocks }] }`: the tokens, the position of the first one, and the block table that says where its past lives. Every new token's position is `start + i`.
+2. **Every token-wise operation (embedding, norms, projections, RoPE, MLP) is independent across rows**, so all $N$ new tokens of all sequences can go through them together as one $[N, d]$ matrix. Only attention mixes rows, and only within one sequence.
+3. **Attention needs each sequence's whole past**, which lives in the pool. So per layer: write the new K and V into the sequence's blocks (position $j$ at block $\lfloor j/B \rfloor$, slot $j \bmod B$), gather positions $0..\text{start} + n - 1$ back, and attend with query $i$ at position `start + i`.
+4. **Batch invariance needs every row to go through the same kernel.** Candle picks a different matmul kernel for $[1, K]$ and $[M, K]$, so `matmul_rows` multiplies one row at a time, and each query attends over exactly its visible keys (no masked tail whose shape changes with the batch).
+5. **Only the last token of each sequence needs logits**, so the final norm and LM head run on $S$ rows, not $N$.
+6. **The sampler must be bit-identical to Python's**, so it is a literal port of `spec/sampling.md`: f64 throughout, every sum left-to-right in a fixed id order, one draw per sampled token and none for greedy.
+7. **The pool must be bounded and its states explicit**: free (no refs, no hash), used (refs > 0), cached (refs 0, registered hash, in the LRU). Allocation takes free blocks first, then evicts from the front of the LRU.
+
+### 5.2 The code, annotated
+
+**The forward, part 1: flatten the batch.** Every sequence is validated (non-empty, inside the context, ids inside the vocabulary) while its tokens and absolute positions are appended to one flat list; `offsets[s]` remembers where sequence $s$ starts in it.
+
+```rust
+    for s in &batch.seqs {
+        if s.tokens.is_empty() { return Err("forward: a sequence with no new tokens".into()); }
+        if s.start + s.tokens.len() > cfg.max_position_embeddings { return Err(/* past the context */); }
+        offsets.push(ids.len());
+        for (i, &t) in s.tokens.iter().enumerate() {
+            if t as usize >= cfg.vocab_size { return Err(/* token id outside vocab */); } // before the lookup
+            ids.push(t);
+            positions.push(s.start + i);           // ABSOLUTE position, never relative to the step
+        }
+    }
+```
+
+**Part 2: one layer.** Norm, three projections, RoPE on q and k at the absolute positions, then per sequence: write KV, gather KV, attend with `q_offset = s.start`. The residual adds and the SwiGLU follow the Llama order exactly.
+
+```rust
+    for (li, lw) in w.layers.iter().enumerate() {
+        let layer = li as u32;
+        let normed = rms_norm(&x, &lw.input_norm, n, d, cfg.rms_norm_eps, device)?;
+        let mut q = project(&lw.q, &normed, n, device)?;
+        let mut k = project(&lw.k, &normed, n, device)?;
+        let v = project(&lw.v, &normed, n, device)?;
+        rope(&mut q, &positions, h, hd, inv_freq, n)?;      // H query heads
+        rope(&mut k, &positions, hkv, hd, inv_freq, n)?;    // Hkv key heads; V is not rotated
+        let mut attn = vec![0.0f32; n * h * hd];
+        for (s, &off) in batch.seqs.iter().zip(&offsets) {
+            let ns = s.tokens.len();
+            write_kv(pool, layer, s, &k[off * hkv * hd..(off + ns) * hkv * hd], &v[off * hkv * hd..(off + ns) * hkv * hd])?;
+            let tk = s.start + ns;                            // keys visible to the last new token
+            let kc = gather_kv(pool, layer, s.blocks, tk, false)?;   // K slab, f16 -> f32
+            let vc = gather_kv(pool, layer, s.blocks, tk, true)?;    // V slab
+            // ... copy this sequence's queries into qs ...
+            let o = attention(&qs, &kc, &vc, ns, tk, h, hkv, hd, s.start, 1.0 / (hd as f32).sqrt(), device)?;
+            // ... scatter o back into attn at rows off..off + ns ...
+        }
+        let ao = project(&lw.o, &attn, n, device)?; add_assign(&mut x, &ao)?;      // x += o W_o^T
+        let normed = rms_norm(&x, &lw.post_norm, n, d, cfg.rms_norm_eps, device)?;
+        let g = project(&lw.gate, &normed, n, device)?;
+        let u = project(&lw.up, &normed, n, device)?;
+        let m = silu_mul(&g, &u, device)?;                  // silu on the GATE, times up
+        let dn = project(&lw.down, &m, n, device)?; add_assign(&mut x, &dn)?;
+    }
+```
+
+Note that the new keys are written *before* gathering, so the gathered keys already passed through f16: a new token attends to its own key exactly as a later decode step will see it. That is what makes incremental decode agree with a full prefill.
+
+**Writing a key where the table says.** Position `p` maps to `(seq.blocks[p / bt], p % bt)`, and inside the slab `[n_kv_heads][block_tokens][head_dim]` head `h` slot `slot` starts at `(h * bt + slot) * hd`. Values are rounded to f16 on the way in. On layer 0 the block fill counts are raised, so the block manager knows which blocks are full.
+
+```rust
+pub fn write_kv(pool: &mut KvPool, layer: u32, seq: &ForwardSeq, k: &[f32], v: &[f32]) -> Result<(), String> {
+    // ...
+    let end = seq.start + seq.tokens.len();
+    if seq.blocks.len() * bt < end { return Err(/* blocks cover fewer positions than the step needs */); }
+    for (src, is_v) in [(k, false), (v, true)] {           // K to the K slab, V to the V slab
+        for r in 0..seq.tokens.len() {
+            let p = seq.start + r;
+            let (blk, slot) = (seq.blocks[p / bt], p % bt); // table lookup: logical -> physical
+            let slab = pool.slab_mut(blk, layer, is_v).map_err(|e| e.to_string())?;
+            for h in 0..hkv {
+                let dst = &mut slab[(h * bt + slot) * hd..(h * bt + slot + 1) * hd];
+                let row = &src[r * hkv * hd + h * hd..r * hkv * hd + (h + 1) * hd];
+                for (d, x) in dst.iter_mut().zip(row) { *d = f32_to_f16(*x); } // round to nearest even
+            }
+        }
+    }
+    // layer 0: set_fill on every block the step touched
+    // ...
+}
+```
+
+**Attention, one query at a time.** Query `i` sees keys `0..=q_offset + i`: the slice of the gathered keys is exactly that long, so no mask is needed and the shapes depend on the position only. Grouped-query attention maps head `h` to KV head `h / (heads / kv_heads)`.
+
+```rust
+    for h in 0..heads {
+        let kh = h / (heads / kv_heads);                   // GQA: consecutive query heads share KV
+        // ... khv, vhv: this KV head's keys and values, [tk, hd] ...
+        for i in 0..ns {
+            let seen = q_offset + i + 1;                   // causal: keys 0..=position
+            let kt = Tensor::from_slice(&khv[..seen * hd], (seen, hd), device)
+                .and_then(|t| t.transpose(0, 1)).map_err(|e| e.to_string())?;
+            let qrow = &q[(i * heads + h) * hd..(i * heads + h + 1) * hd];
+            let scores: Vec<f32> = matmul_rows(qrow, 1, hd, &kt, device)?.into_iter().map(|x| x * scale).collect();
+            let scores = Tensor::from_vec(scores, (1, seen), device).map_err(|e| e.to_string())?;
+            let probs = tensor_vec(ops::softmax(&scores, D::Minus1).map_err(|e| e.to_string())?)?;
+            let vt = Tensor::from_slice(&vhv[..seen * hd], (seen, hd), device).map_err(|e| e.to_string())?;
+            out[(i * heads + h) * hd..(i * heads + h + 1) * hd].copy_from_slice(&matmul_rows(&probs, 1, seen, &vt, device)?);
+        }
+    }
+```
+
+`matmul_rows` is the batch-invariance device: it always issues $[1, K] \times [K, N]$ products, so a row's arithmetic does not depend on how many rows came with it.
+
+```rust
+pub(crate) fn matmul_rows(x: &[f32], m: usize, k: usize, b: &Tensor, device: &Device) -> Result<Vec<f32>, String> {
+    // ...
+    for r in 0..m {   // one row at a time: Candle chooses the same kernel for every row
+        let a = Tensor::from_slice(&x[r * k..(r + 1) * k], (1, k), device).map_err(|e| e.to_string())?;
+        let y = a.matmul(b).and_then(|y| y.flatten_all()).and_then(|y| y.to_vec1::<f32>()).map_err(|e| e.to_string())?;
+        out.extend_from_slice(&y);
+    }
+    Ok(out)
+}
+```
+
+**RoPE, half-split.** Pair `i` is `(x[i], x[i + half])`, both read before either is written; the angle is the absolute position times `inv_freq[i]`, where `inv_freq[i] = theta^(-2i/d)` in increasing `i`.
+
+```rust
+        for i in 0..half {
+            let angle = positions[r] as f32 * inv[i];
+            let (sin, cos) = angle.sin_cos();
+            let a = data[base + i]; let b = data[base + i + half];
+            data[base + i] = a * cos - b * sin;
+            data[base + i + half] = a * sin + b * cos;
+        }
+```
+
+**The head.** Only each sequence's last row goes through the final norm and the LM head; with tied embeddings the head is the embedding matrix transposed.
+
+```rust
+    for (r, (s, &off)) in batch.seqs.iter().zip(&offsets).enumerate() {
+        let i = off + s.tokens.len() - 1;                  // last new token of sequence r
+        last[r * d..(r + 1) * d].copy_from_slice(&x[i * d..(i + 1) * d]);
+    }
+    let normed = rms_norm(&last, &w.norm, rows, d, cfg.rms_norm_eps, device)?;   // the final norm
+    let data = match &w.lm_head {
+        Some(head) => project(head, &normed, rows, device)?,
+        None => { /* tie_word_embeddings: normed @ embed^T via matmul_rows */ }
+    };
+```
+
+**f32 to f16, ties to even.** For the normal range, keep the top 10 mantissa bits and look at the 13 dropped bits: above half (`0x1000`) rounds up, exactly half rounds up only if the kept value is odd. A carry out of the mantissa correctly bumps the exponent (and overflows to infinity at the top).
+
+```rust
+    let half = ((e as u32) << 10) | (man >> 13);           // exponent and top 10 mantissa bits
+    let rem = man & 0x1fff;                                 // the 13 dropped bits
+    let r = if rem > 0x1000 || (rem == 0x1000 && half & 1 == 1) { half + 1 } else { half };
+    sign | r as u16
+```
+
+In the worked example, $1 + 2^{-11}$ has `rem == 0x1000` and an even `half` (`0x3C00`), so it stays `0x3C00`.
+
+**Int4 quantization with the stored scale.** The scale is rounded to f16 first and the codes are computed against that rounded value, which is what makes $|W - \hat W| \le s/2$ true for the weights the file actually encodes.
+
+```rust
+                let amax = w[cols.clone()].iter().fold(0.0f32, |m, v| m.max(v.abs()));
+                let s16 = f32_to_f16(amax / 7.0);
+                scales[r * groups + g] = s16;
+                let s = f16_to_f32(s16);                    // the scale ACTUALLY stored
+                if s == 0.0 { continue; }                   // an all-zero group: q = 0
+                for c in cols {
+                    q[c] = (w[c] / s).round_ties_even().clamp(-8.0, 7.0) as i8;
+                }
+    // pack_int4: byte b = (q[2b] & 0x0f) | ((q[2b + 1] & 0x0f) << 4): even column in the LOW nibble
+```
+
+**The sampler.** `sample` is the spec's order in four calls. The logprob is taken from the penalized logits, before temperature and filtering. Greedy returns without touching `rng`.
+
+```rust
+pub fn sample(logits: &[f32], p: &SamplingParams, prompt: &[u32], output: &[u32], rng: &mut Pcg32) -> (u32, f64) {
+    let l = apply_penalties(logits, p, prompt, output);   // f64; repetition over prompt+output, presence/frequency over output
+    if p.temperature == 0.0 {
+        let tok = argmax(&l);                              // strict >: ties to the lowest id
+        return (tok as u32, logprob_of(&l, tok));          // no draw
+    }
+    let q = distribution(&l, p);                           // /T, top-k, top-p, min-p, softmax in ascending id order
+    let u = rng.uniform_f64();                             // exactly one draw
+    let tok = inverse_cdf(&q, u);                          // first id with u < c, ascending ids
+    (tok as u32, logprob_of(&l, tok))
+}
+```
+
+The repetition penalty branches on the sign, so it always pushes a seen token's logit toward less likely:
+
+```rust
+                l[i] = if l[i] > 0.0 { l[i] / p.repetition_penalty } else { l[i] * p.repetition_penalty };
+```
+
+The nucleus walk uses `>=` so the token that crosses $p$ is kept; in the worked example the walk reaches $0.84464 \ge 0.8$ at id 3 and keeps both ids:
+
+```rust
+        for (n, &i) in order.iter().enumerate() {          // order: (t desc, id asc)
+            s += q[i];
+            if s >= p.top_p { cut = n + 1; break; }        // keep the crossing token
+        }
+```
+
+And the generator for a request is `stream(seed, PURPOSE_SAMPLE)`: `Pcg32::new(child_seed(seed, 4), 4)`, the purpose id as the PCG sequence, not the default 54.
+
+**The pool.** `alloc` is all-or-nothing: it checks that free plus cached blocks suffice before taking anything, takes never-registered free blocks first, and only then evicts the *oldest* cached block from the front of the LRU.
+
+```rust
+    pub fn alloc(&mut self, n: usize) -> Result<Vec<u32>, KvError> {
+        let free = self.stats().free as usize;
+        if free + self.lru.len() < n { return Err(error(TL_EFULL, "KV_EFULL", /* ... */)); } // nothing taken
+        let mut ids = Vec::with_capacity(n);
+        for i in 0..self.blocks.len() {
+            if ids.len() == n { break; }
+            if self.blocks[i].refs == 0 && self.blocks[i].hash.is_none() { ids.push(i as u32); } // truly free
+        }
+        while ids.len() < n {
+            let id = self.lru.pop_front().expect("capacity checked");    // oldest cached prefix
+            let block = &mut self.blocks[id as usize];
+            if let Some(hash) = block.hash.take() { self.by_hash.remove(&hash); } // forget it
+            block.fill = 0;
+            self.evictions += 1;
+            ids.push(id);
+        }
+        for &id in &ids { self.blocks[id as usize].refs = 1; self.blocks[id as usize].fill = 0; }
+        Ok(ids)
+    }
+```
+
+`release` decrements the reference count; at zero, a registered block goes to the back of the LRU (cached, still findable by hash) and an unregistered one becomes free. `KvPool::new` refuses any zero dimension, including zero blocks.
+
+**`run_once`** allocates temporary blocks, runs one sequence, and releases the blocks *before* propagating any error from the forward, so a failed embedding call cannot leak KV.
+
+Full solution: [`kv.rs`](../../../../course/solutions/rust/crates/tl-engine/src/kv.rs), [`quant.rs`](../../../../course/solutions/rust/crates/tl-engine/src/quant.rs), [`model.rs`](../../../../course/solutions/rust/crates/tl-engine/src/model.rs) (config, memory-mapped safetensors, `Linear`, `matmul_rows`), [`forward.rs`](../../../../course/solutions/rust/crates/tl-engine/src/forward.rs), [`runner.rs`](../../../../course/solutions/rust/crates/tl-engine/src/runner.rs), [`sample.rs`](../../../../course/solutions/rust/crates/tl-engine/src/sample.rs).
+
+### 5.3 Why this solution
+
+- **Cost.** Projections are $O(N d^2)$ per layer; attention is $O(\sum_s n_s (p_s + n_s) H D)$; the gather copies each sequence's whole context per layer per step, $O(\text{context} \cdot H_{kv} D)$. Pool memory is fixed at `n_blocks` blocks of $2 L H_{kv} B D$ f16 values.
+- **Why gather into a contiguous buffer instead of reading blocks in place (PagedAttention)?** Gathering lets attention use ordinary Candle tensors and keeps the code short; it costs a copy per step that production kernels avoid (see Going further and `L9.4`).
+- **Why one-row matmuls instead of one big matmul?** A big matmul is faster, but Candle's kernel choice depends on the row count and the reduction order changes with it, which breaks bit-for-bit batch invariance. The engine trades throughput for the guarantee that batching never changes a token.
+- **Why round K and V to f16 at all?** Half the memory per cached token, so twice the sequences per pool. The price is a logit error of about $7 \times 10^{-3}$ on the tiny model, which is why the HF comparison uses $2 \times 10^{-2}$ rather than $10^{-4}$.
+- **Why a literal port of the sampler instead of a faster one (e.g. a partial sort or a vectorized softmax)?** Any change in the order of additions changes the f64 bits, and the requirement is the same id and logprob as Python from the same seed.
+
+### 5.4 Explain it back
+
+1. Why are the new K and V written to the pool before they are gathered for this step's attention?
+   <details><summary>Answer</summary>So a new token attends to the f16-rounded version of its own key and the other new keys, exactly what a later step will read back. If the step used its f32 keys directly, prefill and incremental decode would see different key values and disagree.</details>
+2. Why does `attention` slice the keys to `seen = q_offset + i + 1` instead of masking a full row?
+   <details><summary>Answer</summary>A masked full row has a length that depends on the other tokens in the step, so the softmax and matmul shapes (and Candle's reduction path) would change with the batch. Slicing makes each query's computation depend only on its position.</details>
+3. Why is the int4 code computed with the f16 scale rather than $\max|W|/7$ in f32?
+   <details><summary>Answer</summary>The file stores the f16 scale, and dequantization multiplies by it. Rounding against the f32 value can choose a code one level off (in the example $0.29995$ becomes 1 instead of 2), breaking the $s/2$ error bound for the weights actually decoded.</details>
+4. What would break if greedy decoding drew a uniform anyway?
+   <details><summary>Answer</summary>The generator's position would advance on greedy tokens, so a request that mixes or switches modes, or is handed to another engine (L10.6) with its generator state, would produce different later samples than Python, which takes no draw for greedy.</details>
+5. Why does `alloc` check capacity before taking any block?
+   <details><summary>Answer</summary>So a failed allocation changes nothing: no block is half-taken and no cached prefix is evicted for an allocation that cannot succeed. The scheduler can then preempt or wait with the pool in a known state.</details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| Swapping the shifts of the two draws in `uniform_f64` | uniforms that look fine and match nothing | `pcg32_reference_vectors` (mutant `s01`) |
-| Seeding the sample stream on sequence 54 instead of the purpose id | every seeded stream differs from Python's | `hand_example_sampling` (mutant `s02`) |
-| Taking the logprob after temperature | logprobs change with $T$; OpenAI clients get wrong values | `sampler_matches_l81_golden` (mutant `s03`) |
-| `>` instead of `>=` in the nucleus walk | the token that reaches $p$ is dropped | `top_p_keeps_the_crossing_token` (mutant `s04`) |
-| Walking the CDF in probability order | correct distribution, different ids for the same seed | `sampler_matches_l81_golden` (mutant `s05`) |
-| Presence and frequency penalties over the prompt | prompt words become unlikely in the answer | `penalties_follow_hf_and_openai_semantics` (mutant `s06`) |
-| Dividing negative logits by the repetition penalty | repeated unlikely tokens become MORE likely | `penalties_follow_hf_and_openai_semantics` (mutant `s07`) |
-| Truncating instead of rounding to f16 | a drift of half an ulp per cached value | `f16_rounds_to_nearest_even` (mutant `s08`) |
-| The odd column in the low nibble | int4 files from your Python decode to noise | `int4_hand_example` (mutant `s09`) |
-| Rounding int4 with the f32 scale, storing the f16 one | some weights off by one level | `int4_hand_example` (mutant `s10`) |
-| `data_offsets` from the start of the file | garbage weights | `safetensors_reader_rules` (mutant `s11`) |
-| Reading BF16 as F16 | SmolLM2 weights come out wildly wrong | `safetensors_reader_rules` (mutant `s12`) |
-| RoPE positions relative to the step | decode tokens all at position 0; output degrades after the prompt | `incremental_decode_equals_full_prefill` (mutant `s13`) |
-| `q_offset` 0 for a decode step | the new token sees only key 0 | `incremental_decode_equals_full_prefill` (mutant `s14`) |
-| K written to the V slab | logits far from HF | `tiny_llama_logits_match_hf` (mutant `s15`) |
-| Skipping the final norm | logits scaled wrong | `tiny_llama_logits_match_hf` (mutant `s16`) |
-| Not giving temporary blocks back | the pool drains a little per embedding call | `run_once_returns_its_blocks` (mutant `s17`) |
+| Swapping the shifts of the two draws in `uniform_f64` | uniforms that look fine and match nothing | `a = next >> 5`, `b = next >> 6`, `(a << 26) + b` |
+| Seeding the sample stream on sequence 54 instead of the purpose id | every seeded stream differs from Python's | `stream` calls `Pcg32::new(child_seed(seed, p), p)` |
+| Taking the logprob after temperature | logprobs change with $T$; OpenAI clients get wrong values | `logprob_of(&l, tok)` on the penalized logits |
+| `>` instead of `>=` in the nucleus walk | the token that reaches $p$ is dropped | `if s >= p.top_p` |
+| Walking the CDF in probability order | correct distribution, different ids for the same seed | `softmax_over` sorts ids ascending |
+| Presence and frequency penalties over the prompt | prompt words become unlikely in the answer | counts come from `output` only |
+| Dividing negative logits by the repetition penalty | repeated unlikely tokens become MORE likely | divide if positive, multiply otherwise |
+| Truncating instead of rounding to f16 | a drift of half an ulp per cached value | round to nearest, ties to even, on the 13 dropped bits |
+| The odd column in the low nibble | int4 files from the Python quantizer decode to noise | `pack_int4`: column $2b$ low, $2b + 1$ high |
+| Rounding int4 with the f32 scale, storing the f16 one | some weights off by one level | codes computed against `f16_to_f32(s16)` |
+| `data_offsets` from the start of the file | garbage weights | the reader adds the data-buffer start (as in `L10.0`) |
+| Reading BF16 as F16 | SmolLM2 weights come out wildly wrong | `bf16_to_f32` is `h << 16`, chosen by the header's dtype |
+| RoPE positions relative to the step | decode tokens all at position 0; output degrades after the prompt | `positions.push(s.start + i)` |
+| `q_offset` 0 for a decode step | the new token sees only key 0 | `attention(..., s.start, ...)` |
+| K written to the V slab | logits far from HF | `write_kv` pairs `(k, false)` and `(v, true)` |
+| Skipping the final norm | logits scaled wrong | `rms_norm(&last, &w.norm, ...)` before the head |
+| Not giving temporary blocks back | the pool drains a little per embedding call | `run_once` releases before propagating errors |
+| Accepting a zero-block pool | the first allocation fails far from the invalid configuration | `KvPool::new` rejects zero dimensions |
+| Evicting the newest prefix instead of the oldest | a useful recent prefix disappears early | `lru.pop_front()`; release pushes to the back |
+| Reversing RoPE frequency order | Llama logits differ from the reference | `inv_freq[i] = theta^(-2i/d)` for increasing `i` |
+| Not checking token ids against the vocabulary | an invalid id reaches the embedding lookup | checked while flattening the batch |
+| `silu` applied to the up projection | close-looking, wrong logits | `silu_mul(&g, &u)`: silu on the gate |
 
-| Accepting a zero-block pool | the first allocation fails far from the invalid configuration | `kv_pool_rejects_zero_capacity` (mutant `s19`) |
-| Evicting the newest prefix instead of the oldest | a useful recent prefix disappears early | `kv_pool_evicts_the_oldest_cached_block` (mutant `s18`) |
-| Reversing RoPE frequency order | Llama logits differ from the reference | `tiny_llama_logits_match_hf` (mutant `s20`) |
-| Not checking token ids against the vocabulary | an invalid id reaches the embedding lookup | `forward_refuses_bad_batches` (mutant `s21`) |
-| `silu` applied to the up projection | close-looking, wrong logits | `tiny_llama_logits_match_hf` (mutant `s22`) |
-
-## 6. Where it's used next
-| Forward | `L10.6` | Registered call site uses this module. |
-| Forward | `L10.8` | Registered call site uses this module. |
-| Forward | `L10.9` | Registered call site uses this module. |
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `L10.0` | checkpoint loading and the byte bigram tracer |
 | Back | `L7.9`, `L8.5`, `M09.4` | the model graph, int4 layout, and f16 conversions reimplemented here |
 | Back | `L8.1`, `M06.3` | the sampler and generator this one reproduces bit for bit |
-| Back | `L7.9` | the Llama graph this one reproduces |
 | Forward | `L10.2` | the scheduler forms each step's `ForwardBatch` |
 | Forward | `L10.3` | chunked prefill relies on chunk invariance |
 | Forward | `L10.4` | the block manager owns the pool's blocks; this runner writes into them |
 | Forward | `L10.5` | the engine loop samples with `sample` and a per-request `stream(seed, sample)` |
+| Forward | `L10.6` | disaggregated serving moves this pool's blocks (`export`, `import`) and the generator state |
+| Forward | `L10.8`, `L10.9` | later engine features run on this runner |
 
-If you skip this module, the engine has no model to run past the tracer bigram.
+Without this runner, the engine has no model to run past the tracer bigram.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| This solution | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | a gather of K and V per step | [vLLM PagedAttention](https://github.com/vllm-project/vllm) | attention reads the blocks in place, no copy | `vllm/attention/` |
 | f16 KV | fp8 KV with per-head scales | half the memory, a calibrated error | `craft.13`, `formats/kv-block.md` v2 |

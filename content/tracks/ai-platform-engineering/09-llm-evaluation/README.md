@@ -20,10 +20,10 @@
 
 - Compute cross-entropy, perplexity, and bits-per-byte for a small model on a held-out text by hand from the per-token log-probs — prove to yourself they're one quantity.
 - Take two models with *different tokenizers* and show why perplexity is unfair but bits-per-byte is comparable.
-- Build a tiny eval harness: a `Scorer` interface, three metrics, and a dataset runner; score a model and aggregate.
+- Trace a tiny eval harness end to end in the [eval runner](09-eval-runner.md) and [scorers](10-scorers.md) chapters: a `Scorer` interface, a few metrics, and a dataset runner that scores a model and aggregates; predict each aggregate before reading the solution's.
 - Set up an LLM-as-judge for a subjective task, then measure the judge's bias (position, verbosity) and its agreement with human labels.
 
-## Agent evaluation build modules
+## Agent evaluation solution chapters
 
 | Module | Chapter |
 |---|---|

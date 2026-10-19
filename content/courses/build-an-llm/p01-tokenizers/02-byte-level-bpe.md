@@ -133,40 +133,40 @@ class BPETokenizer(Tokenizer):
     def encode_batch(self, texts: Sequence[str]) -> list[list[int]]
 ```
 
-`added_tokens` are `(content, id, special)`; `special_ids` holds the special ones, `unk_id` is `None`, and `vocab_size` is the largest id plus one, with no gap allowed. `save` writes `tokenizer.json` in the subset (Hugging Face loads it), and `load` reads it back through `from_hf_json`. The fixtures hold only `tokenizer.json` for GPT-2; the tests derive `vocab.json` and `merges.txt` from it to exercise `from_gpt2`.
+`added_tokens` are `(content, id, special)`; `special_ids` holds the special ones, `unk_id` is `None`, and `vocab_size` is the largest id plus one, with no gap allowed. `save` writes `tokenizer.json` in the subset (Hugging Face loads it), and `load` reads it back through `from_hf_json`.
 
-### What the tests check
+### What a correct solution must handle
 
-| Test | KIND | Checks | Why it matters downstream |
+| Case | Kind of check | Checks | Why it matters downstream |
 |---|---|---|---|
-| `test_hand_example_training` | unit | the section 3 merges `ug`, `hug`, `pug` with ids 256 to 258, and the tie rule | you and the test agree on the definition |
-| `test_hand_example_encode` | unit | `"hugs pug"` is `[257, 82, 220, 258]` and decodes back | encoding replays training's merges |
-| `test_hand_example_pretokenize` | unit | the two section 3 strings | every id test depends on the pre-tokens |
-| `test_min_freq_stops_training` | boundary | `min_freq` 2, 3, 4 give 2, 2, 1 merges | a count equal to `min_freq` still merges |
-| `test_trainer_matches_hf_merges` | golden | five configs on a 3 KB story give Hugging Face's merges in order | your `C1` vocabulary is the standard algorithm |
-| `test_specials_are_not_trained_on` | boundary | `<\|endoftext\|>` is id 0 and never part of a merge | document separators stay one token |
-| `test_train_rejects_bad_args` | boundary | `vocab_size` below 256 plus specials, `min_freq` 0 | no silent empty training |
-| `test_pretokenize_white_space_rules` | boundary | U+001C is not white space, contractions are lowercase only, a tab never leads a word | ids match on real text |
-| `test_pretokenize_property` | property | 300 random texts: pieces join back, none empty, the `(?!\S)` rule | `decode(encode(x)) == x` |
-| `test_split_digits` | unit | individual and run modes of `Digits` | SmolLM2 spells numbers digit by digit |
-| `test_gpt2_ids_match_oracle` | golden | GPT-2's `tokenizer.json`, 300 strings, ids equal Hugging Face's and tiktoken's | you can serve GPT-2-tokenized models |
-| `test_gpt2_files_load_like_tokenizer_json` | golden | `from_gpt2` on `vocab.json` and `merges.txt` gives the same ids | the original release format |
-| `test_smollm2_ids_match_oracle` | golden | SmolLM2's file, the Digits sequence, 17 added tokens, 300 strings | `L7.9` and the agents' model |
-| `test_smollm2_drops_unrepresentable_bytes` | boundary | `"a\x04b"` encodes to `a`, `b` | ids match Hugging Face on control bytes |
-| `test_decode_matches_oracle` | golden | decode of every oracle case, and `skip_special` | streamed text equals Hugging Face's |
-| `test_decode_joins_bytes_before_utf8` | boundary | the three bytes of `日` decode together, one alone is U+FFFD | `L8.2` detokenizes streams |
-| `test_added_tokens_split_first_leftmost_longest` | unit | `<\|im_start\|>` is id 1, `<\|im` is text, GPT-2's end-of-text is 50256 | chat templates |
-| `test_merges_apply_by_rank` | unit | swapping two ranks changes `"abc"` | the definition of BPE encoding |
-| `test_rank_ties_go_leftmost` | boundary | `"aaa"` is `aa a`, `"aaaa"` is `aa aa` | identical ids in Rust (`L1.5`) |
-| `test_roundtrip_property` | property | a trained tokenizer round-trips 200 random texts | the 256 symbols are a fallback |
-| `test_save_load_roundtrip` | property | `load(save(t))` has the same merges, specials, and ids | the engine loads your trained vocabulary |
-| `test_from_hf_json_rejects_outside_subset` | boundary | a normalizer, dropout, an unknown token, byte fallback, a template: each `ValueError` | never wrong ids without an error |
-| `test_encode_batch_equals_encode` | property | `encode_batch` equals `encode` per text, empty texts included | the corpus pipeline's call |
-| `test_ids_must_be_contiguous` | boundary | a vocabulary with a gap is `ValueError` | every id below `vocab_size` decodes |
+| the hand-worked training | unit | the section 3 merges `ug`, `hug`, `pug` with ids 256 to 258, and the tie rule | everyone agrees on the definition |
+| the hand-worked encode | unit | `"hugs pug"` is `[257, 82, 220, 258]` and decodes back | encoding replays training's merges |
+| the hand-worked pre-tokens | unit | the two section 3 strings | every id depends on the pre-tokens |
+| `min_freq` stops training | boundary | `min_freq` 2, 3, 4 give 2, 2, 1 merges | a count equal to `min_freq` still merges |
+| merges match Hugging Face's trainer | golden | five configs on a 3 KB story give Hugging Face's merges in order | the `C1` vocabulary is the standard algorithm |
+| specials are not trained on | boundary | `<\|endoftext\|>` is id 0 and never part of a merge | document separators stay one token |
+| bad training arguments | boundary | `vocab_size` below 256 plus specials, `min_freq` 0 | no silent empty training |
+| white-space rules of the pre-tokenizer | boundary | U+001C is not white space, contractions are lowercase only, a tab never leads a word | ids match on real text |
+| pre-tokenizer properties | property | 300 random texts: pieces join back, none empty, the `(?!\S)` rule | `decode(encode(x)) == x` |
+| `split_digits` | unit | individual and run modes of `Digits` | SmolLM2 spells numbers digit by digit |
+| GPT-2 ids match the oracle | golden | GPT-2's `tokenizer.json`, 300 strings, ids equal Hugging Face's and tiktoken's | the system can serve GPT-2-tokenized models |
+| GPT-2 release files load the same | golden | `from_gpt2` on `vocab.json` and `merges.txt` (derived from the `tokenizer.json`) gives the same ids | the original release format |
+| SmolLM2 ids match the oracle | golden | SmolLM2's file, the Digits sequence, 17 added tokens, 300 strings | `L7.9` and the agents' model |
+| SmolLM2 drops unrepresentable bytes | boundary | `"a\x04b"` encodes to `a`, `b` | ids match Hugging Face on control bytes |
+| decode matches the oracle | golden | decode of every oracle case, and `skip_special` | streamed text equals Hugging Face's |
+| decode joins bytes before UTF-8 | boundary | the three bytes of `日` decode together, one alone is U+FFFD | `L8.2` detokenizes streams |
+| added tokens split first, leftmost longest | unit | `<\|im_start\|>` is id 1, `<\|im` is text, GPT-2's end-of-text is 50256 | chat templates |
+| merges apply by rank | unit | swapping two ranks changes `"abc"` | the definition of BPE encoding |
+| rank ties go leftmost | boundary | `"aaa"` is `aa a`, `"aaaa"` is `aa aa` | identical ids in Rust (`L1.5`) |
+| round trip | property | a trained tokenizer round-trips 200 random texts | the 256 symbols are a fallback |
+| save and load round trip | property | `load(save(t))` has the same merges, specials, and ids | the engine loads a trained vocabulary |
+| fields outside the subset | boundary | a normalizer, dropout, an unknown token, byte fallback, a template: each `ValueError` | never wrong ids without an error |
+| `encode_batch` equals `encode` | property | `encode_batch` equals `encode` per text, empty texts included | the corpus pipeline's call |
+| ids must be contiguous | boundary | a vocabulary with a gap is `ValueError` | every id below `vocab_size` decodes |
 
-### Your tests (rung R2)
+### The model tests
 
-Write these in `python/tests/l1-2-bpe/test_bpe.py`, importing only names from the two contracts:
+The model suite, [`test_bpe.py`](../../../../course/solutions/learner-tests/L1.2/python/tests/l1-2-bpe/test_bpe.py), imports only names from the two contracts. Its names and docstrings are a compact summary of the definition:
 
 ```python
 def test_hand_example_merges_and_tie():
@@ -193,38 +193,303 @@ def test_round_trip_any_text():
     """decode(encode(x)) == x for text with emoji, accents, tabs, and runs of spaces."""
 ```
 
-## 5. Pitfalls
+## 5. The solution, step by step
 
-| Pitfall | Symptom | Caught by |
+### From first principles
+
+1. **Ids must match the real models exactly**, so every stage must be a faithful transcription: the regex alternatives in order, White_Space rather than `isspace`, the byte map, and merges applied by rank. Any approximation produces plausible but different ids.
+2. **A regex with backtracking can be written as a scanner.** Each alternative of the GPT-2 regex matches a run of one character class, optionally preceded by one space; the only lookahead is `(?!\S)`, which amounts to "a white-space run gives back its last character when a non-space follows". A hand-written loop over `unicodedata` reproduces this without a regex engine that supports `\p{L}`.
+3. **Training counts pairs inside pre-tokens, weighted by frequency.** Merging is defined per pre-token, so the natural data structure is a counter of distinct pre-tokens, each a list of ids, with its count. Real corpora have far fewer distinct pre-tokens than occurrences.
+4. **Each merge changes only a few counts.** Replacing $a, b$ by $ab$ in a word with neighbours $x$ and $y$ removes $(x, a)$ and $(b, y)$ and adds $(x, ab)$ and $(ab, y)$. So maintain counts incrementally and keep a map from pair to the words containing it; then a merge costs only the words it touches.
+5. **The most frequent pair needs a priority queue, and counts change under it.** A max-heap keyed by `(count, left id, right id)` gives the tie rule for free. Instead of updating entries in place, pop, compare with the current count, and requeue if stale: lazy deletion.
+6. **Encoding must replay training's priorities, not its procedure.** Training merged the earliest-learned pair first everywhere, so at encode time, inside one pre-token, the pair with the lowest rank must merge first, leftmost on a tie. Merging left to right gives different ids.
+7. **Added tokens are matched before anything else**, because the pre-tokenizer would split them. Leftmost-longest through a trie handles overlapping specials (`<|im` versus `<|im_start|>`).
+8. **Decoding must work on bytes**, because a token can hold part of a UTF-8 character. Join all bytes, then decode once with replacement.
+
+### The code, annotated
+
+**The pre-tokenizer.** The loop tries alternatives in the regex's order at each position.
+
+```python
+WHITE_SPACE = frozenset(
+    "\t\n\x0b\x0c\r \x85\xa0 "
+    + "".join(chr(c) for c in range(0x2000, 0x200B))
+    + "    　"
+)   # Unicode White_Space: not str.isspace(), which also accepts U+001C to U+001F
+
+def pretokenize_gpt2(text: str) -> list[str]:
+    out: list[str] = []
+    n = len(text)
+    i = 0
+    while i < n:
+        ch = text[i]
+        # 1. contractions, lowercase only: 's 't 're 've 'm 'll 'd
+        if ch == "'":
+            suf = next((s for s in CONTRACTIONS if text.startswith(s, i + 1)), None)
+            if suf is not None:
+                out.append(text[i : i + 1 + len(suf)])
+                i += 1 + len(suf)
+                continue
+        # 2 to 4. an optional single U+0020, then a run of one class (L, N, or O)
+        j = i + 1 if ch == " " and i + 1 < n else i
+        k = _class(text[j])                 # "L", "N", "S" (white space), or "O"
+        if k != "S":
+            end = j + 1
+            while end < n and _class(text[end]) == k:
+                end += 1
+            out.append(text[i:end])
+            i = end
+            continue
+        # 5. \s+(?!\S): a white-space run, minus its last character when a
+        #    non-space follows (that character starts the next pre-token).
+        end = i
+        while end < n and is_space(text[end]):
+            end += 1
+        if end < n and end - i >= 2:
+            end -= 1
+        # 6. \s+: a single white-space character before a non-space.
+        out.append(text[i:end])
+        i = end
+    return out
+```
+
+Trace section 3's three spaces before `here`: at the first space, `text[j]` is the second space, class `S`, so alternatives 2 to 4 fail. The run is three long and `h` follows, so it gives back one: the piece is two spaces. The third space then starts ` here` through alternative 2. Only the U+0020 space is optional in 2 to 4 (`ch == " "`), which is why a tab never leads a word.
+
+**The merge update.** `_merge_word` rewrites one word and reports exactly the count changes around each occurrence.
+
+```python
+def _merge_word(w: list[int], a: int, b: int, new: int) -> list[tuple[tuple[int, int], int]]:
+    """Merge every non-overlapping (a, b) in w, left to right, in place.
+    Returns the pair count changes the merge causes around each occurrence
+    (Hugging Face `Word::merge`): the merged pair itself is not decremented."""
+    changes: list[tuple[tuple[int, int], int]] = []
+    i = 0
+    while i < len(w):
+        if w[i] == a and i + 1 < len(w) and w[i + 1] == b:
+            if i > 0:
+                changes.append(((w[i - 1], a), -1))     # left neighbour loses (x, a)
+                changes.append(((w[i - 1], new), 1))    # and gains (x, ab)
+            w[i : i + 2] = [new]
+            if i < len(w) - 1:
+                changes.append(((b, w[i + 1]), -1))     # right neighbour loses (b, y)
+                changes.append(((new, w[i + 1]), 1))    # and gains (ab, y)
+        i += 1          # after a merge, w[i] is `new`, so overlapping (a, b) cannot re-match
+    return changes
+```
+
+The merged pair is not decremented because the trainer never looks at it again: it was just popped, and its count is irrelevant once its token exists.
+
+**The trainer.** Word counts, initial ids, pair counts, then the lazy heap loop.
+
+```python
+    @classmethod
+    def train(cls, texts, vocab_size, specials=(), min_freq=2) -> "BPETokenizer":
+        specials = list(dict.fromkeys(specials))          # dedupe, keep order
+        # ... ValueError for vocab_size < 256 + len(specials) or min_freq < 1
+        b2u = bytes_to_unicode()
+        trie = Trie()
+        for k, s in enumerate(specials):
+            trie.insert(s, k)
+        # 1. word counts: pre-tokens in the byte alphabet, specials removed
+        wc: Counter[str] = Counter()
+        for text in texts:
+            for seg, sid in _split_added(trie, text) if specials else [(text, None)]:
+                if sid is None:                            # special text is cut out
+                    for p in pretokenize_gpt2(seg):
+                        wc["".join(b2u[b] for b in p.encode("utf-8"))] += 1
+        # 2. the initial vocabulary: specials, then the 256 symbols by code point
+        id_to_tok = list(specials) + sorted(b2u.values(), key=ord)
+        tok_to_id = {t: i for i, t in enumerate(id_to_tok)}
+        words = [[tok_to_id[c] for c in w] for w in wc]   # one entry per distinct pre-token
+        counts = list(wc.values())                         # f(w)
+        # 3. pair counts and where each pair occurs
+        pair_counts: dict[tuple[int, int], int] = {}
+        where: dict[tuple[int, int], set[int]] = {}
+        for wi, w in enumerate(words):
+            for pair in zip(w, w[1:]):
+                pair_counts[pair] = pair_counts.get(pair, 0) + counts[wi]
+                where.setdefault(pair, set()).add(wi)
+        # heap entries: [-count, left id, right id, seq, words]: a min-heap on this
+        # key pops the largest count, then the smallest (left, right) ids
+        # ... build and heapify
+        merges: list[tuple[str, str]] = []
+        # 4. merge the most frequent pair until the vocabulary is full
+        while len(id_to_tok) < vocab_size and heap:
+            top = heapq.heappop(heap)
+            pair = (top[1], top[2])
+            cur = pair_counts.get(pair, 0)
+            if -top[0] != cur:  # stale: requeue with the current count
+                top[0] = -cur
+                heapq.heappush(heap, top)
+                continue
+            if cur < 1 or cur < min_freq:                  # equal to min_freq still merges
+                break
+            a, b = id_to_tok[pair[0]], id_to_tok[pair[1]]
+            new_tok = a + b
+            # ... new_id: the existing id if new_tok is already a token, else the next id
+            merges.append((a, b))
+            update: dict[tuple[int, int], set[int]] = {}
+            for wi in sorted(top[4]):                      # only the words that contain the pair
+                for p, d in _merge_word(words[wi], pair[0], pair[1], new_id):
+                    pair_counts[p] = pair_counts.get(p, 0) + d * counts[wi]
+                    if d > 0:
+                        update.setdefault(p, set()).add(wi)
+            for p, pos in update.items():                  # new pairs enter the heap
+                if pair_counts[p] > 0:
+                    heapq.heappush(heap, [-pair_counts[p], p[0], p[1], seq, pos])
+                    seq += 1
+        # ... vocab from id_to_tok; specials become added tokens with ids 0, 1, ...
+```
+
+On section 3: `wc` is `{hug: 2, pug: 1, hugs: 1}`. The heap's top is `(u, g)` with count 4. Merging it touches all three words and pushes `(h, ug)` with 3, `(p, ug)` with 1, `(ug, s)` with 1. At step 3, `(p, ug)` is `[-1, 79, 256, ...]` and `(hug, s)` is `[-1, 257, 82, ...]`; the heap pops the smaller list, `(p, ug)`.
+
+A popped entry whose count went down (a neighbour merged away part of it) is pushed back with its real count. An entry whose count is current is the true maximum: a pair whose count fell still has its old, higher entry, which pops first and gets corrected, and a pair whose count rose was pushed fresh in `update`.
+
+**Encoding one pre-token.** The rank loop, with the cache and the dropped-byte rule.
+
+```python
+    def _bpe(self, word: str) -> list[int]:
+        hit = self._cache.get(word)
+        if hit is not None:
+            return hit
+        # A byte symbol the vocab lacks is dropped, as Hugging Face does when
+        # unk_token is null (SmolLM2 has no symbol for six control bytes).
+        syms = [c for c in word if c in self.vocab]
+        while len(syms) > 1:
+            best_rank, best_k = None, -1
+            for k in range(len(syms) - 1):
+                r = self.ranks.get((syms[k], syms[k + 1]))
+                # strict <: on equal ranks the first (leftmost) k is kept
+                if r is not None and (best_rank is None or r < best_rank):
+                    best_rank, best_k = r, k
+            if best_rank is None:
+                break                          # no ranked pair left
+            syms[best_k : best_k + 2] = [syms[best_k] + syms[best_k + 1]]
+        ids = [self.vocab[s] for s in syms]    # (a KeyError here means a broken file: ValueError)
+        self._cache[word] = ids
+        return ids
+
+    def encode(self, text: str, add_special: bool = False) -> list[int]:
+        ids: list[int] = []
+        segs = _split_added(self._trie, text) if self.added else [(text, None)]
+        for seg, aid in segs:
+            if aid is not None:
+                ids.append(aid)                # an added token: one id, no BPE
+                continue
+            for p in self._pieces(seg):        # the declared steps: Digits, then ByteLevel
+                ids += self._bpe("".join(self._b2u[b] for b in p.encode("utf-8")))
+        return ids
+```
+
+`self.ranks` is built with `reversed(list(enumerate(merges)))` so that if a file lists the same merge twice, the first (lowest) rank wins.
+
+**Decoding.** Bytes first, UTF-8 once.
+
+```python
+    def decode(self, ids: Sequence[int], skip_special: bool = False) -> str:
+        buf = bytearray()
+        for i in check_ids(ids, self.vocab_size):
+            if i in self._added_by_id:
+                content = self._added_by_id[i]
+                if not (skip_special and content in self.special_ids):
+                    buf += content.encode("utf-8")
+            else:
+                buf += bytes(self._u2b[c] for c in self._id_to_tok[i])   # symbol -> byte (M05.2)
+        return buf.decode("utf-8", "replace")
+```
+
+**Loading `tokenizer.json`.** The loader is a list of refusals followed by one constructor call.
+
+```python
+    @classmethod
+    def from_hf_json(cls, tokenizer_json: str) -> "BPETokenizer":
+        # ... json.load; version must be "1.0"
+        if doc.get("normalizer") is not None:
+            raise ValueError("normalizer: a byte-level BPE file has none (null)")
+        model = doc.get("model") or {}
+        # Older files (GPT-2's) omit model.type; a BPE model is the one with merges.
+        mtype = model.get("type", "BPE" if "merges" in model else None)
+        # ... must be "BPE"
+        for key, ok in (
+            ("dropout", (None,)),
+            ("unk_token", (None,)),
+            ("continuing_subword_prefix", (None, "")),
+            ("end_of_word_suffix", (None, "")),
+            ("fuse_unk", (False, None)),
+            ("byte_fallback", (False, None)),
+            ("ignore_merges", (False, None)),
+        ):
+            if model.get(key) not in ok:
+                raise ValueError(f"model.{key}: {model.get(key)!r} is outside the subset")
+        # ... merges as "a b" strings or [a, b] lists; added tokens with single_word,
+        #     lstrip, rstrip all false; post_processor and decoder ByteLevel or null
+        return cls(model["vocab"], merges, added, doc.get("pre_tokenizer"))
+```
+
+The constructor then validates the pre-tokenizer (`_check_pre_tokenizer`: `Digits` and `ByteLevel` only, `ByteLevel` last with `use_regex` true) and that ids are contiguous. `save` writes the same subset, so `load` is `from_hf_json` on the saved file.
+
+Full solution: [`pretok.py`](../../../../course/solutions/python/tinyllm/tok/pretok.py) (also `split_digits`) · [`bpe.py`](../../../../course/solutions/python/tinyllm/tok/bpe.py) (also `from_gpt2`, `_pieces`, `_split_added`, `save`).
+
+### Why this solution
+
+- **Cost.** Training is $O(N)$ to count pre-tokens over $N$ characters, then per merge $O(\text{words touched} \cdot \text{word length} + \log H)$ for a heap of $H$ entries, instead of the naive $O(\text{all words})$ recount per merge. Encoding a pre-token of $L$ symbols is $O(L^2)$ in the worst case (each merge rescans), but pre-tokens are short and the cache makes repeated words $O(1)$.
+- **Alternatives.** The `regex` module would handle `\p{L}` directly, but it adds a dependency and hides the `(?!\S)` backtracking the scanner makes explicit; the Rust port (`L1.5`) has the same problem, and a scanner ports line for line. An eager heap with decrease-key needs an indexed heap; the lazy version is simpler and amortizes to the same cost. A rank-free encoder that merges greedily left to right is faster to write and wrong. Ignoring unknown fields in `tokenizer.json` would load more files and silently produce wrong ids for them.
+- **Accepted tradeoffs.** The cache is unbounded (fine for a training or evaluation process, not for a long-lived server; `L1.5` bounds it in Rust). `add_special` is accepted for protocol compatibility but adds nothing, since the subset has no template post-processor.
+
+### Explain it back
+
+1. Why does the scanner treat only U+0020 as the optional leading space, and not any white space?
+   <details><summary>Answer</summary>
+   The regex alternatives 2 to 4 begin with ` ?`, a literal space, not `\s?`. A tab or newline before a word is therefore its own pre-token (alternative 5 or 6), and the word starts without it. Accepting any white space would merge `\tword` into one pre-token and change the ids.
+   </details>
+2. In `_merge_word`, why is the change for the merged pair $(a, b)$ itself not recorded?
+   <details><summary>Answer</summary>
+   That pair was just popped from the heap and turned into a token; the trainer never needs its count again. The changes that matter are the neighbouring pairs whose counts move, $(x, a) \to (x, ab)$ and $(b, y) \to (ab, y)$. This matches Hugging Face's `Word::merge`, which is necessary for the merges to agree one for one.
+   </details>
+3. Why is the heap key `(-count, left id, right id)`, and what would break with `(-count, right id, left id)`?
+   <details><summary>Answer</summary>
+   Python's heap is a min-heap, so `-count` pops the largest count first, and the next two fields break ties by the smallest ids compared as (left, right), which is the Hugging Face rule. Swapping them would choose a different pair on ties; in section 3, `(hug, s)` with right id 82 would beat `(p, ug)` with right id 256, and every later merge would diverge.
+   </details>
+4. Why must encoding merge by lowest rank and not left to right?
+   <details><summary>Answer</summary>
+   Training applied merges in rank order across the whole corpus: by the time a later merge was learned, every earlier one had already been applied everywhere. Replaying by rank reproduces the segmentation training produced. Left to right gives `ab c` for `"abc"` when `(b, c)` was learned first, which training would never produce.
+   </details>
+5. What goes wrong if `decode` converted each token to text separately and joined the strings?
+   <details><summary>Answer</summary>
+   A byte-level token can end in the middle of a multi-byte character. Decoding its bytes alone yields U+FFFD, and so does the next token's half, so every character split across tokens is replaced. Joining all bytes first and decoding once gives the original character.
+   </details>
+
+## 6. Pitfalls
+
+| Pitfall | Symptom | How the solution avoids it |
 |---|---|---|
-| 1. merging left to right, or the rightmost of equal ranks | ids differ from GPT-2's on most words longer than three bytes | `test_merges_apply_by_rank` (mutant `s03`), `test_rank_ties_go_leftmost` (mutant `s04`) |
-| 2. `str.isspace` or `\s` of another regex flavor; a white-space run taken whole before a word | pre-tokens differ on control characters and runs of spaces; ` here` loses its space | `test_pretokenize_white_space_rules` (mutants `s07`, `s09`, `s10`), `test_hand_example_pretokenize` (mutant `s08`) |
-| 3. decoding token by token | every character split across tokens becomes U+FFFD | `test_decode_joins_bytes_before_utf8` (mutant `s16`) |
-| 4. ignoring a field the loader does not implement | a normalizer or the declared Digits step is skipped and ids are silently wrong | `test_from_hf_json_rejects_outside_subset` (mutant `s19`), `test_smollm2_ids_match_oracle` (mutant `s11`) |
-| 5. training on special-token text | merges such as `<\|` and `endoftext` waste the vocabulary | `test_specials_are_not_trained_on` (mutant `s06`) |
-| 6. treating a byte the vocabulary lacks as an error | SmolLM2 raises on a control byte where Hugging Face drops it | `test_smollm2_drops_unrepresentable_bytes` (mutant `s15`) |
-| 7. ties broken by the largest ids, or counting each pre-token once | merges diverge from Hugging Face's after a few steps | `test_trainer_matches_hf_merges` (mutants `s01`, `s02`) |
-| 8. Latin-1 instead of the byte map | `é` and every non-ASCII text get the wrong symbols | `test_gpt2_ids_match_oracle` (mutant `s12`) |
+| 1. merging left to right, or the rightmost of equal ranks | ids differ from GPT-2's on most words longer than three bytes | `_bpe` picks the minimum rank with strict `<`, so the leftmost wins ties |
+| 2. `str.isspace` or `\s` of another regex flavor; a white-space run taken whole before a word | pre-tokens differ on control characters and runs of spaces; ` here` loses its space | `WHITE_SPACE` is the Unicode property; the run gives back its last character before a non-space |
+| 3. decoding token by token | every character split across tokens becomes U+FFFD | `decode` builds one `bytearray` and decodes it once |
+| 4. ignoring a field the loader does not implement | a normalizer or the declared Digits step is skipped and ids are silently wrong | `from_hf_json` raises for every field outside the subset; `_pieces` runs the declared steps |
+| 5. training on special-token text | merges such as `<\|` and `endoftext` waste the vocabulary | `_split_added` cuts specials out before pre-tokenizing |
+| 6. treating a byte the vocabulary lacks as an error | SmolLM2 raises on a control byte where Hugging Face drops it | `_bpe` filters symbols not in the vocabulary |
+| 7. ties broken by the largest ids, or counting each pre-token once | merges diverge from Hugging Face's after a few steps | heap key `(-count, left, right)`; every count is weighted by `counts[wi]` |
+| 8. Latin-1 instead of the byte map | `é` and every non-ASCII text get the wrong symbols | bytes go through `bytes_to_unicode()` in training and encoding |
 
-## 6. Where it's used next
-| Forward | `L8.2` | Registered call site uses this module. |
+## 7. Where it's used next
 
 | Direction | Module | How it uses this |
 |---|---|---|
 | Back | `L1.1` | the protocol, `check_ids` in `decode` and `id_to_token` |
 | Back | `M05.2` | `bytes_to_unicode` turns pre-token bytes into symbols; `unicode_to_bytes` decodes |
 | Back | `M06.2` | `Trie.longest_prefix` splits out added tokens, leftmost longest |
-| Forward | `L1.5` | the Rust `tl-tok` reimplements encode and decode; its differential tests compare its ids with yours on the fixtures and a TinyStories sample |
+| Forward | `L1.5` | the Rust `tl-tok` reimplements encode and decode; its differential tests compare its ids with this solution's on the fixtures and a TinyStories sample |
 | Forward | `L1.6` | measures GPT-2 and SmolLM2, loaded by `from_hf_json`, against Hugging Face's numbers |
 | Forward | `data.07` | tokenizes corpus files through the Rust tokenizer process and shared file fixtures |
-
-Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2` detokenizes streams, and `C1` trains its 4096-token vocabulary with your trainer. If you skip this module, `ol check L1.6` stops with `needs L1.2`: build it, or rerun with `--ref-deps`.
-
+| Forward | `L8.2` | Registered call site uses this module. |
 | Forward | `L14.4` | Whisper decoding consumes this implementation. |
+
+Later batches add call sites: `L7.9` and the engine load SmolLM2 with it, `L8.2` detokenizes streams, and `C1` trains its 4096-token vocabulary with this trainer.
 
 ## Going further
 
-| Your piece | Production equivalent | What it adds | Where to look |
+| Piece | Production equivalent | What it adds | Where to look |
 |---|---|---|---|
 | `train` with a lazy heap | Hugging Face `BpeTrainer` | parallel word counting, the same heap with a `Word::merge` delta, progress bars | `tokenizers/src/models/bpe/trainer.rs` |
 | `encode` by rank | tiktoken | a rank-only encoder over a byte-pair map, written in Rust, with a regex pre-split | `tiktoken/src/lib.rs` (`byte_pair_merge`) |

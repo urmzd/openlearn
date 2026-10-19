@@ -1,4 +1,3 @@
-<!-- ol:module L1.3 -->
 # WordPiece (BERT basic tokenizer + greedy longest match)
 
 ## Overview
@@ -6,37 +5,29 @@
 | | |
 |---|---|
 | **Module** | `L1.3` · build · Python · Pass 3 · 3 to 4 h |
-| **You build** | `python/tinyllm/tok/wordpiece.py`: `is_bert_whitespace`, `is_bert_control`, `is_bert_punctuation`, `is_cjk`, and `WordPieceTokenizer` (`from_vocab`, `from_hf_json`, `normalize`, `basic_tokenize`, `wordpiece`, `encode`, `decode`, `save`, `load`) |
+| **Solution** | [`wordpiece.py`](../../../../course/solutions/python/tinyllm/tok/wordpiece.py): `is_bert_whitespace`, `is_bert_control`, `is_bert_punctuation`, `is_cjk`, and `WordPieceTokenizer` (`from_vocab`, `from_hf_json`, `normalize`, `basic_tokenize`, `wordpiece`, `encode`, `decode`, `save`, `load`) · model tests: [`test_wordpiece.py`](../../../../course/solutions/learner-tests/L1.3/python/tests/l1-3-wordpiece/test_wordpiece.py) |
 | **Contract** | [`course/contracts/py/tinyllm/tok/wordpiece.pyi`](../../../../course/contracts/py/tinyllm/tok/wordpiece.pyi) · format: [`tokenizer.md`](../../../../course/contracts/formats/tokenizer.md) (WordPiece in the `tokenizer.json` subset) |
-| **Tests** | `course/tests/L1.3/` (what they check: section 4) · your own tests in `python/tests/l1-3-wordpiece/`, rung R2, graded by mutation (threshold 0.60) |
-| **Needs** | `L1.1` the protocol and `check_ids` · `M06.2` the trie behind longest match and special tokens (or `--ref-deps`) |
-| **Used by** | `L1.6` measures bert-base-uncased through `from_hf_json` · later: `L6.2` masked language modeling and `L6.3` ELECTRA train on its ids |
-| **Milestone** | `MS-L1` |
+| **Needs** | `L1.1` the protocol and `check_ids` · `M06.2` the trie behind longest match and special tokens |
+| **Used by** | `L1.6` measures bert-base-uncased through `from_hf_json` · later: `L6.2` masked language modeling and `L6.3` ELECTRA train on its ids · part of the Pass 3 tokenizer layer, with `L1.1`, `L1.2`, `L1.4`, and `L1.6` |
 | **Optional depth** | Devlin et al., *BERT* (2019), section 3; Wu et al., *Google's Neural Machine Translation System* (2016), section 4.1 (wordpieces); Schuster and Nakajima, *Japanese and Korean Voice Search* (2012) |
 
 ## Key Takeaways
 
-- BERT's tokenizer is two stages: a basic tokenizer that cleans, lowercases, strips accents, and splits on white space and punctuation, then greedy longest-match WordPiece inside each word (`test_hand_example_basic_tokenize`, `test_hand_example_encode_decode`).
-- Greedy longest match is not optimal segmentation: it commits to the longest prefix, and a word with any unmatched position becomes one whole `[UNK]` (`test_greedy_is_longest_first`, `test_whole_word_becomes_unk`).
-- A `##` piece continues a word and can never start one; the decoder glues it back without a space (`test_continuation_needs_prefix`).
-- Every normalization detail changes ids on real text: controls vanish before white space is mapped, only nonspacing marks are stripped, and lowercasing is per code point (`test_clean_text_rules`, `test_only_nonspacing_marks_are_stripped`, `test_lowercase_per_code_point`).
-- With those rules exact, your tokenizer reproduces bert-base-uncased's ids, template, and decodes on 300 hard strings (`test_bert_ids_match_oracle`, `test_bert_template_matches_oracle`, `test_bert_decode_matches_oracle`).
+- BERT's tokenizer is two stages: a basic tokenizer that cleans, lowercases, strips accents, and splits on white space and punctuation, then greedy longest-match WordPiece inside each word.
+- Greedy longest match is not optimal segmentation: it commits to the longest prefix, and a word with any unmatched position becomes one whole `[UNK]`.
+- A `##` piece continues a word and can never start one; the decoder glues it back without a space.
+- Every normalization detail changes ids on real text: controls vanish before white space is mapped, only nonspacing marks are stripped, and lowercasing is per code point.
+- With those rules exact, the tokenizer reproduces bert-base-uncased's ids, template, and decodes on 300 hard strings.
 
-## How to work this chapter
+## How to read this chapter
 
-```bash
-ol start L1.3              # stubs wordpiece.py into your repo
-ol tests L1.3              # read the test catalog first
-ol check L1.3              # exit code is the verdict; then grades your tests by mutation
-ol check L1.3 --ref-deps   # only if your L1.1 or M06.2 is not passing yet
-ol diff  L1.3              # after passing: your code against the reference
-```
+Sections 1 to 3 build BERT's basic tokenizer and greedy longest match from first principles and work them by hand. Section 4 fixes the interface and lists what a correct solution must handle. Section 5 walks through `wordpiece.py` and explains why each choice is the right one. Try to predict each step of the solution before reading it.
 
 ---
 
 ## 1. Why now
 
-Byte-level BPE (`L1.2`) is the tokenizer of decoder-only models. Pass 5 trains encoders too: the masked-language-model objective of `L6.2` and ELECTRA in `L6.3` follow BERT, and the evaluation in `L6.2` compares against bert-base-uncased's vocabulary of 30522 WordPieces. Its ids come from a different pipeline (lowercasing, accent stripping, punctuation splitting, `##` continuations, a whole-word `[UNK]`), and a `[MASK]` written in the input must be one id, because that is how the masked-LM objective marks its targets. Without this module your encoder models have no tokenizer, and `L1.6` has no third family to compare when you choose the capstone's vocabulary.
+Byte-level BPE (`L1.2`) is the tokenizer of decoder-only models. Pass 5 trains encoders too: the masked-language-model objective of `L6.2` and ELECTRA in `L6.3` follow BERT, and the evaluation in `L6.2` compares against bert-base-uncased's vocabulary of 30522 WordPieces. Its ids come from a different pipeline (lowercasing, accent stripping, punctuation splitting, `##` continuations, a whole-word `[UNK]`), and a `[MASK]` written in the input must be one id, because that is how the masked-LM objective marks its targets. Without this module the encoder models have no tokenizer, and `L1.6` has no third family to compare when the capstone's vocabulary is chosen.
 
 ## 2. Principles
 
@@ -65,7 +56,7 @@ Byte-level BPE (`L1.2`) is the tokenizer of decoder-only models. Pass 5 trains e
 3. at every later position $i$, take the longest entry $p\,y$ of $W$ such that $y$ is a prefix of $x[i:]$;
 4. if some position has no match, the **whole word** is one `[UNK]`; the pieces found so far are discarded.
 
-Two tries make each step one walk (`M06.2`): one over all entries for the word start, one over the `##` entries stored without the prefix. Greedy longest match is not the best segmentation under any score. It is a fixed, cheap rule, and BERT's vocabulary was built for it, so it is the rule you must reproduce.
+Two tries make each step one walk (`M06.2`): one over all entries for the word start, one over the `##` entries stored without the prefix. Greedy longest match is not the best segmentation under any score. It is a fixed, cheap rule, and BERT's vocabulary was built for it, so it is the rule to reproduce.
 
 **Decoding** is the Hugging Face WordPiece decoder with cleanup: every token after the first gets a leading space, unless it starts with `##`, which is removed instead; then, inside each token, the replacements ` .` to `.`, ` ?` to `?`, ` !` to `!`, ` ,` to `,`, ` ' ` to `'`, ` n't` to `n't`, ` 'm` to `'m`, ` do not` to ` don't`, ` 's` to `'s`, ` 've` to `'ve`, ` 're` to `'re`. Decoding cannot restore case, accents, or white space: the basic tokenizer removed them.
 
@@ -81,7 +72,7 @@ A 15-entry vocabulary:
 
 **Basic tokenizer.** `"The UNAFFABLE!"` lowercases to `"the unaffable!"`, splits on the space, and `!` is punctuation: `["the", "unaffable", "!"]`. `"日本x y"` gives `["日", "本", "x", "y"]` (each ideograph spaced). `"Café"` gives `["cafe"]` (uncased: the accent is stripped).
 
-**WordPiece on "unaffable".** Position 0: the entries that are prefixes are `u` and `un`; the longest is `un` (6). Position 2, `"affable"`: the `##` entries whose rest is a prefix are `##a` and `##aff`; the longest is `##aff` (7). Position 5, `"able"`: `##able` (8). So `[6, 7, 8]`. Had you taken the shortest match, `##a` at position 2 would leave `"ffable"`, which no `##` entry starts, and the whole word would be `[UNK]`.
+**WordPiece on "unaffable".** Position 0: the entries that are prefixes are `u` and `un`; the longest is `un` (6). Position 2, `"affable"`: the `##` entries whose rest is a prefix are `##a` and `##aff`; the longest is `##aff` (7). Position 5, `"able"`: `##able` (8). So `[6, 7, 8]`. Taking the shortest match instead, `##a` at position 2 would leave `"ffable"`, which no `##` entry starts, and the whole word would be `[UNK]`.
 
 **Encode.** `"The UNAFFABLE!"` is `[5, 6, 7, 8, 10]`; with `add_special=True`, `[2, 5, 6, 7, 8, 10, 3]`. `"cafés"` strips to `"cafes"`: `cafe` (13) then `##s` (14).
 
@@ -89,7 +80,7 @@ A 15-entry vocabulary:
 
 **Decode.** `[5, 6, 7, 8, 10]` is the tokens `the un ##aff ##able !`: `"the"`, then `" un"`, then `"aff"` and `"able"` glued, then `" !"`, which cleanup turns into `"!"`. Result: `"the unaffable!"`.
 
-These are the first cases in section 4: `test_hand_example_basic_tokenize` and `test_hand_example_encode_decode`.
+These are the first cases a correct solution must reproduce (section 4).
 
 ## 4. The interface
 
