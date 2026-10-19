@@ -68,7 +68,7 @@ that page: exit 2 on a usage error, the last stdout line is one JSON object.
 
 ## GPT, BERT, ELECTRA, and LoRA through the CLI, scored by the model zoo
 
-The objectives and the evaluation harness, run through its own entry
+The objectives and the evaluation harness, run through the system's own entry
 point: a GPT trained on the byte corpus to the reference's calibrated
 validation loss; a BERT and an ELECTRA pretrained on the same in-domain
 text, each then fine-tuned with LoRA (r = 8) into a sentiment classifier
