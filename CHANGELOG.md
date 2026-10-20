@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.28.0 (2026-10-20)
+
+### Features
+
+- consolidate curriculum into six books ([fafd0bb](https://github.com/urmzd/openlearn/commit/fafd0bbd088683010c1deec1ce724cc88043fe55))
+
+### Bug Fixes
+
+- **ci**: point RAG prerequisite to relocated Go chapter ([d0df06f](https://github.com/urmzd/openlearn/commit/d0df06f42cbddbd41ef9db8e90cc8386d9b7a328))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.27.0...v0.28.0)
+
+
 ## 0.27.0 (2026-10-20)
 
 ### Features
