@@ -10,10 +10,8 @@ const supported = typeof HTMLElement !== 'undefined' && Object.hasOwn(HTMLElemen
 
 let card;
 let trigger;
-let closedAt = 0;
-let closedFrom;
 let hovering = false;
-let closedWasHover = false;
+let pressed;
 let showTimer = 0;
 let hideTimer = 0;
 
@@ -25,9 +23,6 @@ function create() {
 	card.tabIndex = -1;
 	card.addEventListener('toggle', (event) => {
 		if (event.newState !== 'closed') return;
-		closedAt = performance.now();
-		closedFrom = trigger;
-		closedWasHover = hovering;
 		hovering = false;
 		// Return focus to the term only when focus was inside the card.
 		if (card.contains(document.activeElement)) trigger?.focus({ preventScroll: true });
@@ -112,12 +107,23 @@ export function startConcepts() {
 		event.preventDefault();
 		clearTimeout(showTimer);
 		clearTimeout(hideTimer);
-		// A click on a card already open from a click closes it (light dismiss
-		// did that already); a click on a hover preview keeps it open.
-		if (closedFrom === anchor && !closedWasHover && performance.now() - closedAt < 400) return;
-		if (trigger === anchor && hovering) { hovering = false; card.focus({ preventScroll: true }); return; }
+		// What was open when the pointer went down: the browser closes the
+		// card on pointerdown, before this click arrives.
+		const before = pressed ?? { trigger, hover: hovering, open: card?.matches(':popover-open') };
+		pressed = undefined;
+		// A second click on a term whose card the reader opened closes it; a
+		// click on a hover preview keeps it open.
+		if (before.open && before.trigger === anchor && !before.hover) {
+			if (card.matches(':popover-open')) card.hidePopover();
+			return;
+		}
 		open(anchor, item);
 	});
+	addEventListener('pointerdown', (event) => {
+		pressed = event.target.closest?.('a.term[data-term]')
+			? { trigger, hover: hovering, open: !!card?.matches(':popover-open') }
+			: undefined;
+	}, { capture: true });
 	// With a mouse, resting on a term previews it; a click keeps the card open.
 	if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
 		document.addEventListener('pointerover', (event) => {
