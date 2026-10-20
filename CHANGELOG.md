@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.29.0 (2026-10-20)
+
+### Features
+
+- concept previews, glossaries, and self-contained sections (#53) ([f54f238](https://github.com/urmzd/openlearn/commit/f54f238c0248352c516d372cd01ddf100804b72e))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.28.0...v0.29.0)
+
+
 ## 0.28.0 (2026-10-20)
 
 ### Features
