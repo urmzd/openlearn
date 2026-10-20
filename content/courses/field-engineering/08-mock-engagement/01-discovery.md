@@ -91,7 +91,7 @@ Three failures recur in discovery records, and the model answer is built to avoi
 
 ## Where this leads
 
-Discovery reuses tools from elsewhere in the library. The [C4 diagrams in D2](../../diagramming/01-diagramming-c4/01-c4-diagrams-in-d2.md) from *Diagramming and Documentation* are how you show the customer the platform's boundaries, and the questions from the [whole-system design review](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems and Architecture* are the ones discovery asks. Going forward, [qualification and sizing](02-qualification-and-sizing.md) starts from these findings and carries the open questions with it; every later artifact of the engagement does the same.
+Discovery reuses tools from elsewhere in the library. The [C4 diagrams in D2](../../software-engineering/11-diagramming/01-c4-diagrams-in-d2.md) from *Software Engineering* are how you show the customer the platform's boundaries, and the questions from the [whole-system design review](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems Engineering* are the ones discovery asks. Going forward, [qualification and sizing](02-qualification-and-sizing.md) starts from these findings and carries the open questions with it; every later artifact of the engagement does the same.
 
 Further reading:
 

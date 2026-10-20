@@ -1,6 +1,8 @@
 {
   "id": "systems",
-  "title": "Systems and Architecture",
+  "title": "Systems Engineering",
+  "kind": "book",
+  "tagline": "Design, communicate, execute, deploy, observe, and recover reliable production systems.",
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
@@ -11,29 +13,79 @@
   "tracks": [
     {
       "dir": "content/courses/systems/01-system-design",
-      "title": "System Design"
+      "title": "System Design",
+      "part": "Design and communication"
     },
     {
       "dir": "content/courses/systems/02-software-architecture",
-      "title": "Software Architecture"
+      "title": "Software Architecture",
+      "part": "Design and communication"
     },
     {
-      "dir": "content/courses/systems/03-cloud-native",
-      "title": "Cloud Native"
+      "dir": "content/courses/systems/03-rpc-and-protocols",
+      "title": "RPC and Protocols",
+      "part": "Design and communication"
     },
     {
-      "dir": "content/courses/systems/04-observability",
-      "title": "Observability"
+      "dir": "content/courses/systems/04-streaming",
+      "title": "Streaming and SSE",
+      "part": "Design and communication"
     },
     {
-      "dir": "content/courses/systems/05-incident-response-and-chaos",
-      "title": "Incident Response and Chaos"
+      "dir": "content/courses/systems/05-messaging-and-queueing",
+      "title": "Messaging and Distributed Queueing",
+      "part": "Data and execution"
+    },
+    {
+      "dir": "content/courses/systems/06-distributed-data-and-caching",
+      "title": "Distributed Data and Caching",
+      "part": "Data and execution"
+    },
+    {
+      "dir": "content/courses/systems/07-durable-orchestration",
+      "title": "Durable Orchestration and Workers",
+      "part": "Data and execution"
+    },
+    {
+      "dir": "content/courses/systems/08-search-and-indexing",
+      "title": "Search and Indexing",
+      "part": "Data and execution"
+    },
+    {
+      "dir": "content/courses/systems/09-cloud-native",
+      "title": "Cloud Native Architecture",
+      "part": "Deploy and operate"
+    },
+    {
+      "dir": "content/courses/systems/10-containers-kubernetes",
+      "title": "Kubernetes Workloads and Deployment",
+      "part": "Deploy and operate"
+    },
+    {
+      "dir": "content/courses/systems/11-observability",
+      "title": "Observability",
+      "part": "Deploy and operate"
+    },
+    {
+      "dir": "content/courses/systems/12-incident-response-and-chaos",
+      "title": "Incident Response and Recovery",
+      "part": "Deploy and operate"
+    },
+    {
+      "dir": "content/courses/systems/13-case-study-event-api",
+      "title": "Case Study: Exactly-Once Event API",
+      "part": "Deploy and operate"
+    },
+    {
+      "dir": "content/courses/systems/14-apache-stack",
+      "title": "The Apache Ecosystem",
+      "appendix": true
     }
   ],
   "reference": [
     {
       "dir": "content/references",
-      "title": "Sources"
+      "title": "References"
     }
   ]
 }

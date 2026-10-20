@@ -7,7 +7,7 @@
 - [README](https://github.com/urmzd/openlearn/blob/main/README.md): Installation, study, practice, and publishing
 - [Course catalogue](https://github.com/urmzd/openlearn/blob/main/content/courses/README.md): Available learning routes and study plans
 - [Course publication](https://github.com/urmzd/openlearn/blob/main/docs/courses.md): Manifest fields, exports, and independent websites
-- [LLM systems course](https://github.com/urmzd/openlearn/blob/main/content/courses/build-an-llm/README.md): Module sequence, interfaces, and solution walkthroughs
+- [LLM systems course](https://github.com/urmzd/openlearn/blob/main/content/courses/ai-engineering/README.md): Module sequence, interfaces, and solution walkthroughs
 - [Source register](https://github.com/urmzd/openlearn/blob/main/content/references/sources.md): Attribution, access terms, and validation evidence
 
 ## API / Key Files
@@ -15,7 +15,7 @@
 - [Catalogue manifest](https://github.com/urmzd/openlearn/blob/main/openlearn.json): Registered courses and default navigation
 - [Publication pipeline](https://github.com/urmzd/openlearn/blob/main/scripts/course_catalog.py): Source resolution, validation, and portable exports
 - [Reference solutions](https://github.com/urmzd/openlearn/tree/main/course/solutions): The LLM system the chapters explain
-- [Practice](https://github.com/urmzd/openlearn/blob/main/practice/README.md): Predict-the-output puzzles and data structures with worked answers
+- [Practice](https://github.com/urmzd/openlearn/blob/main/content/courses/programming-and-algorithms/README.md): Predict-the-output puzzles and data structures with worked answers
 
 ## Skills
 

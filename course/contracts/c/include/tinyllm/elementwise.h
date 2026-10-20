@@ -6,7 +6,7 @@
  * alias their first input exactly, never partly.
  *
  * module: L9.6 (c/src/kernels/elementwise.c)
- * chapter: content/courses/build-an-llm/10-kernels/08-elementwise-kernels.md
+ * chapter: content/courses/ai-engineering/22-kernels/08-elementwise-kernels.md
  */
 #ifndef TINYLLM_ELEMENTWISE_H
 #define TINYLLM_ELEMENTWISE_H

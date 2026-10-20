@@ -12,7 +12,7 @@
  * (an attention row with every key masked). NaN propagates.
  *
  * module: L9.2 (c/src/kernels/softmax.c)
- * chapter: content/courses/build-an-llm/10-kernels/04-softmax-three-pass-and-online.md
+ * chapter: content/courses/ai-engineering/22-kernels/04-softmax-three-pass-and-online.md
  */
 #ifndef TINYLLM_SOFTMAX_H
 #define TINYLLM_SOFTMAX_H

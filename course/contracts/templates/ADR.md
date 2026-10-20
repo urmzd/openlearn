@@ -26,4 +26,4 @@ recognize it in the code>.
 | <option> | <reason> |
 
 <!-- contracts/templates/ADR.md (craft.02): copy to docs/adr/NNNN-slug.md and replace every placeholder.
-     chapter: content/courses/diagramming/02-documentation-writing/01-architecture-decision-records.md -->
+     chapter: content/courses/software-engineering/12-documentation/01-architecture-decision-records.md -->

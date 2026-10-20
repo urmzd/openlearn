@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/series.pyi (M00.3)
-# chapter: content/courses/mathematics-for-computing/01-precalculus/03-sequences-and-frequency-ladders.md
+# chapter: content/courses/mathematics/06-precalculus/03-sequences-and-frequency-ladders.md
 #
 # Geometric sequences and their sums, and the two frequency ladders a
 # transformer uses for positions: RoPE inverse frequencies (L7.3) and ALiBi

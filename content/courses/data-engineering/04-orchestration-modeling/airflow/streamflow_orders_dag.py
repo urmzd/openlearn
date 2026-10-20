@@ -11,7 +11,7 @@ the two earlier stages into a single DAG:
 
 Concepts made concrete:
   * The DAG: tasks + dependencies; the scheduler runs a task only after its
-    upstreams succeed (topological order -- see content/courses/algorithms/06-graphs).
+    upstreams succeed (topological order -- see content/courses/programming-and-algorithms/08-graphs).
   * Idempotency: every task is sliced by the run's logical date ({{ ds }}), so a
     retry or a backfill for one day overwrites exactly that day -- no dupes.
   * Retries & backoff: transient failures retry with exponential backoff before

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/modern/ctxext.pyi (L7.4): context extension for RoPE, and ALiBi
-# chapter: content/courses/build-an-llm/08-modern-block/04-context-extension.md
+# chapter: content/courses/ai-engineering/13-decoder-block/04-context-extension.md
 #
 # A model trained on L positions has never seen the angles p * inv_freq[i]
 # for p >= L on its slow pairs. Context extension rescales inv_freq so a

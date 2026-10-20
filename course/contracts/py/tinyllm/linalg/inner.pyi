@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/linalg/inner.pyi (M03.6)
-# chapter: content/courses/mathematics-for-computing/04-linear-algebra/06-inner-products-projections-cosine-and-top-k.md
+# chapter: content/courses/mathematics/09-linear-algebra/06-inner-products-projections-cosine-and-top-k.md
 #
 # Inner products, the projections and similarities built on them, and exact
 # top-k retrieval by cosine similarity. Vectors lie along `axis` (default the

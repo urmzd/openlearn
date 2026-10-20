@@ -2,7 +2,7 @@
 
 The control plane is the part of the system that keeps working after any one process dies. It contains durable workflows, workers, queues, an agent runtime, and the usage gateway that feeds them. Their failure semantics decide whether a retry preserves what the user intended or repeats a side effect, which is why the control plane deserves its own review rather than a paragraph in the whole-system one. In a control plane the review question is always the same: what is persisted before each external effect, and what does replay do after a crash at any point?
 
-This section applies the eight-line rubric from [Design review: the tracer and the serving platform](01-design-review-tracer-and-serving-platform.md) to that question. It assumes you know the durable engine and its workflows from [Durable Orchestration and Workers](../../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) in *AI Platform Engineering*, and the journal from [Durable agent runs](../../ai-platform-engineering/13-agent-sdk/05-durable-agent-runs.md) in the same book. You will trace two paths through the system by hand, a corpus build activity and an agent write that needs approval, and then read a model review, `docs/reviews/control-plane.md`, written out in full below: every rubric line answered with evidence from the solution code, every "no" turned into a note with an owner and a next step, and a decision at the end.
+This section applies the eight-line rubric from [Design review: the tracer and the serving platform](01-design-review-tracer-and-serving-platform.md) to that question. It assumes you know the durable engine and its workflows from [Durable Orchestration and Workers](../07-durable-orchestration/README.md) in *Systems Engineering*, and the journal from [Durable agent runs](../../ai-engineering/28-agents/05-durable-agent-runs.md) in the same book. You will trace two paths through the system by hand, a corpus build activity and an agent write that needs approval, and then read a model review, `docs/reviews/control-plane.md`, written out in full below: every rubric line answered with evidence from the solution code, every "no" turned into a note with an owner and a next step, and a decision at the end.
 
 Try answering each rubric line from the two traces before reading the model's answer. The lines you cannot answer from the traces are usually the ones the review ends up marking "no".
 
@@ -32,7 +32,7 @@ The two traces below exercise most of the control plane between them: the log, t
 
 Now ask "crash here?" at each step. If the worker dies at step 3 or 4, the lease expires and the task is delivered again; the rerun sees the same idempotency key and its work directory, and resumes rather than duplicating. If the server is SIGKILLed, it truncates the torn last record on restart, rebuilds queues from the log, and redelivers the leases that were live. A late completion from the old worker carries an old fencing token and is refused. The effect is at least once; the idempotency key is what makes it look exactly once.
 
-This is not a hypothetical. The drill [The durable server is SIGKILLed in a loop during a corpus build](../05-incident-response-and-chaos/03-durable-kill9.md) measured it: five kills, 14 tasks delivered twice and 3 three times, no acknowledged event lost, and the shards hold every row once ([`2026-10-09-durable-kill9.md`](../../../../course/solutions/docs/postmortems/2026-10-09-durable-kill9.md)).
+This is not a hypothetical. The drill [The durable server is SIGKILLed in a loop during a corpus build](../12-incident-response-and-chaos/03-durable-kill9.md) measured it: five kills, 14 tasks delivered twice and 3 three times, no acknowledged event lost, and the shards hold every row once ([`2026-10-09-durable-kill9.md`](../../../../course/solutions/docs/postmortems/2026-10-09-durable-kill9.md)).
 
 ### An AgentRun write tool that needs approval
 
@@ -106,7 +106,7 @@ The ways a control-plane review fails mirror the principles it is meant to check
 
 ## Where this leads
 
-This review rests on two earlier pieces: the rubric and the shape of a review from [Design review: the tracer and the serving platform](01-design-review-tracer-and-serving-platform.md), and the log whose fsync-before-ack every durability claim depends on, from [The append-only event log](../../ai-platform-engineering/05-durable-orchestration-and-workers/01-event-log.md). The agent trace comes from [Durable agent runs](../../ai-platform-engineering/13-agent-sdk/05-durable-agent-runs.md). Next, [Design review: the whole system](03-design-review-whole-system.md) applies the same rubric to everything at once.
+This review rests on two earlier pieces: the rubric and the shape of a review from [Design review: the tracer and the serving platform](01-design-review-tracer-and-serving-platform.md), and the log whose fsync-before-ack every durability claim depends on, from [The append-only event log](../07-durable-orchestration/01-event-log.md). The agent trace comes from [Durable agent runs](../../ai-engineering/28-agents/05-durable-agent-runs.md). Next, [Design review: the whole system](03-design-review-whole-system.md) applies the same rubric to everything at once.
 
 ## Key terms
 

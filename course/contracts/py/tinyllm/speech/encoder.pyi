@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/speech/encoder.pyi (L14.2): the Whisper encoder
-# chapter: content/courses/build-an-llm/15-speech/02-whisper-encoder.md
+# chapter: content/courses/ai-engineering/15-speech/02-whisper-encoder.md
 #
 # Hugging Face WhisperEncoder semantics (Radford et al. 2022, section 2.2;
 # transformers/models/whisper/modeling_whisper.py), float32:

@@ -9,7 +9,7 @@
 // dur.06) applied to one agent run: the run's state is a fold over its
 // records, and replay is "return the recorded result".
 //
-// Chapter: content/courses/ai-platform-engineering/13-agent-sdk/05-durable-agent-runs.md.
+// Chapter: content/courses/ai-engineering/28-agents/05-durable-agent-runs.md.
 package durableagent
 
 import (

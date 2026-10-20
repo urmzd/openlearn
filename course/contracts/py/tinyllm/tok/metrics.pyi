@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/tok/metrics.pyi (L1.6)
-# chapter: content/courses/build-an-llm/02-tokenizers/06-tokenizer-metrics.md
+# chapter: content/courses/ai-engineering/07-tokenizers/06-tokenizer-metrics.md
 #
 # Compression metrics over any Tokenizer (L1.1). Inputs are encoded without
 # special tokens. bits per byte (M11.2) = nll_per_token / (ln 2 * bytes_per_token).

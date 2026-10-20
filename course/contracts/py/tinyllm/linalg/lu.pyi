@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/linalg/lu.pyi (M03.2)
-# chapter: content/courses/mathematics-for-computing/04-linear-algebra/02-gaussian-elimination-and-lu.md
+# chapter: content/courses/mathematics/09-linear-algebra/02-gaussian-elimination-and-lu.md
 #
 # Gaussian elimination with partial pivoting, kept as a factorization
 # P A = L U, so one O(n^3) factorization serves many O(n^2) solves.

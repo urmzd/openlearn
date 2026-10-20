@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/tok/bpe.pyi (L1.2)
-# chapter: content/courses/build-an-llm/02-tokenizers/02-byte-level-bpe.md
+# chapter: content/courses/ai-engineering/07-tokenizers/02-byte-level-bpe.md
 #
 # Byte-level BPE, GPT-2 compatible: ids equal tiktoken's and Hugging Face
 # tokenizers' on GPT-2 and SmolLM2 files (formats/tokenizer.md, BPE).

@@ -13,7 +13,7 @@ This chapter follows the loop. After the process and compensation, it sets out t
 
 ## Before you begin
 
-The coding rounds assume LeetCode medium-to-hard fluency and comfort writing runnable Python. The design round assumes you know the data stack. *Data Engineering* covers it in depth, especially [Storage and Warehousing](../../../data-engineering/02-storage-warehousing/README.md) and [Batch and Streaming Processing](../../../data-engineering/03-batch-streaming/README.md), and [The Apache Stack](../../../infrastructure/04-apache-stack/README.md) in *Infrastructure* places Spark, Parquet, Iceberg, and Delta on one map. For the ML topics, read [ML infrastructure](../../01-shared-concepts/03-ml-infrastructure.md) in this book.
+The coding rounds assume LeetCode medium-to-hard fluency and comfort writing runnable Python. The design round assumes you know the data stack. *Data Engineering* covers it in depth, especially [Storage and Warehousing](../../../data-engineering/02-storage-warehousing/README.md) and [Batch and Streaming Processing](../../../data-engineering/03-batch-streaming/README.md), and [The Apache Stack](../../../systems/14-apache-stack/README.md) in *Systems Engineering* places Spark, Parquet, Iceberg, and Delta on one map. For the ML topics, read [ML infrastructure](../../01-shared-concepts/03-ml-infrastructure.md) in this book.
 
 ## The interview process
 

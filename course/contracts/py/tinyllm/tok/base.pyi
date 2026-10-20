@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/tok/base.pyi (L1.1)
-# chapter: content/courses/build-an-llm/02-tokenizers/01-tokenizer-protocol-and-char.md
+# chapter: content/courses/ai-engineering/07-tokenizers/01-tokenizer-protocol-and-char.md
 #
 # The Tokenizer protocol every tokenizer implements (bytes, char, BPE,
 # WordPiece, Unigram, and the Python BPE from L1.5), and the tracer's

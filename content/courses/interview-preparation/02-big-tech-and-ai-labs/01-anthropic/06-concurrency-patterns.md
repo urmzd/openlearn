@@ -242,7 +242,7 @@ Leader election proceeds in five steps. A follower times out after hearing no he
 
 Log replication also takes five steps. The leader receives a client request, appends it to its local log, and sends `AppendEntries` to the followers. Once a majority acknowledges, the entry is committed. The leader notifies the followers of the commitment, and the entry is applied to each node's state machine.
 
-Those mechanics yield Raft's safety guarantees: at most one leader per term; leaders never overwrite their own logs; and once a log entry is committed, it will be present in the logs of all future leaders. The KRaft controller in Kafka is a working example; see [Messaging and Distributed Queueing](../../../infrastructure/02-messaging-and-queueing/README.md) in *Infrastructure*.
+Those mechanics yield Raft's safety guarantees: at most one leader per term; leaders never overwrite their own logs; and once a log entry is committed, it will be present in the logs of all future leaders. The KRaft controller in Kafka is a working example; see [Messaging and Distributed Queueing](../../../systems/05-messaging-and-queueing/README.md) in *Systems Engineering*.
 
 ### Simpler leader election
 

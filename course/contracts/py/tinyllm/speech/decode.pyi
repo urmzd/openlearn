@@ -1,4 +1,4 @@
-# chapter: content/courses/build-an-llm/15-speech/04-whisper-decoding.md
+# chapter: content/courses/ai-engineering/15-speech/04-whisper-decoding.md
 """L14.4: contracts/spec/asr-decoding.md is normative for token policy."""
 from dataclasses import dataclass
 from typing import Protocol, Sequence

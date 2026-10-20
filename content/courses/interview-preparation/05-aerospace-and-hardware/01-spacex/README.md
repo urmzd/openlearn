@@ -12,7 +12,7 @@ This chapter walks through the process in the order you will meet it. It starts 
 
 ## Before you begin
 
-The coding rounds assume fluent data structures and algorithms; the [Algorithms](../../../algorithms/README.md) book covers the sweep-line and graph-search patterns used here. The system design round draws on the [Distributed Systems](../../01-shared-concepts/01-distributed-systems.md) chapter of this book, and the systems-programming round rewards comfort with byte layouts and bit manipulation. Basic trigonometry is enough for the geometry; [Mathematics for Computing](../../../mathematics-for-computing/README.md) has a refresher if you need one.
+The coding rounds assume fluent data structures and algorithms; the [Programming and Algorithms](../../../programming-and-algorithms/README.md) book covers the sweep-line and graph-search patterns used here. The system design round draws on the [Distributed Systems](../../01-shared-concepts/01-distributed-systems.md) chapter of this book, and the systems-programming round rewards comfort with byte layouts and bit manipulation. Basic trigonometry is enough for the geometry; [Mathematics](../../../mathematics/README.md) has a refresher if you need one.
 
 ## In this chapter
 

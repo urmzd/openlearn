@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/prob/metrics.pyi (M07.7)
-# chapter: content/courses/mathematics-for-computing/08-probability-statistics/08-logistic-regression-roc-auc-calibration.md
+# chapter: content/courses/mathematics/13-probability-statistics/08-logistic-regression-roc-auc-calibration.md
 #
 # A binary classifier and the three numbers that judge it: logistic
 # regression fitted by Newton's method (iteratively reweighted least squares,

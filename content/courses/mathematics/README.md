@@ -1,36 +1,25 @@
-# Mathematics Foundations
+# Mathematics
 
-This short book teaches you to describe change, compare quantities, and reason about uncertainty. It is for anyone comfortable with arithmetic; no programming or university mathematics is required. A notebook and calculator are enough.
+This book starts with quantities, relationships, change, constraints, and uncertainty, then develops the mathematics used in computing. Intuitive examples lead into calculus, linear algebra, discrete mathematics, probability, numerical methods, optimization, information theory, and signals. Worked derivations and code show how an idea becomes a calculation. Predict a result, work a small case by hand, and test the numerical behavior before trusting a formula in a larger system.
 
 ## What you will be able to do
 
-By the end, you will build a small model of a community event: estimate costs, compare pricing choices, and explain the uncertainty in attendance. Along the way you will learn to:
+- Model quantities, growth, constraints, and uncertainty in a concrete problem.
+- Use calculus and linear algebra to explain change, geometry, and optimization.
+- Reason with proofs, discrete structures, probability, and statistical evidence.
+- Explain the numerical errors and stability limits of a computed result.
+- Connect a derivation to its implementation and validate it with independent checks.
 
-- Turn a situation described in words into a function with clear quantities and units.
-- Tell growth by fixed additions apart from growth by repeated multiplication.
-- Keep related quantities together as a vector and find a plan that satisfies several constraints.
-- Use probabilities and expected values without treating an average as a guarantee.
+## Ways through this book
 
-## How the book is organized
+Read the parts in order for the full progression, or choose a route below and follow its prerequisites. Pause at the review questions before revealing worked answers.
 
-The book has four short chapters and a project, all built around one running example: planning a community event. Read them in order the first time, because each chapter adds to the model from the one before.
+- **Starting from intuition:** [Quantities and relationships](01-quantities-and-relationships.md), then [Change and growth](02-change-and-growth.md), then [Project: plan a community event](05-community-event.md).
+- **Preparing for computing:** [Precalculus](06-precalculus/README.md), then [Linear Algebra](09-linear-algebra/README.md), then [Discrete Math 1](11-discrete-math-1/README.md), then [Probability and Statistics](13-probability-statistics/README.md).
+- **Preparing for AI and numerical work:** [Matrix Calculus and Autodiff](14-matrix-calculus-and-autodiff/README.md), then [Numerical Methods and Floating Point](15-numerical-methods-and-floating-point/README.md), then [Optimization](16-optimization/README.md), then [Information Theory](17-information-theory/README.md).
 
-[Quantities and relationships](01-quantities-and-relationships.md) turns a situation into a simple model. You write the event's cost as a function of attendance and check it with units.
+## Before you start
 
-[Change and growth](02-change-and-growth.md) distinguishes fixed additions from repeated multiplication, using the cost rule and a spreading invitation.
+The opening part assumes arithmetic and curiosity. Later chapters state their prerequisites; use the [prerequisite map](../computer-science/prerequisites.md) to find gaps. [Programming and Algorithms](../programming-and-algorithms/README.md) develops the coding background. [AI Engineering](../ai-engineering/README.md) and [Data Engineering](../data-engineering/README.md) show where the mathematical models are used.
 
-[Vectors and constraints](03-vectors-and-constraints.md) combines quantities and finds a feasible plan when two kinds of refreshment pack must fit both a count and a budget.
-
-[Uncertainty and evidence](04-uncertainty-and-evidence.md) reasons about averages without treating them as guarantees, when not every registrant is sure to attend.
-
-[Project: plan a community event](05-community-event.md) brings the ideas together. You propose a plan, stress-test it, and defend your choices.
-
-## Prerequisites and related books
-
-You need arithmetic and the willingness to write down what each symbol means. This book is an introduction, not a replacement for full courses in algebra, calculus, linear algebra, or statistics. When you finish, continue with *Mathematics for Computing*, whose [opening](../mathematics-for-computing/README.md) describes its chapters from precalculus to information theory. [Choose your next subject](study-plan.md) helps you pick where to start.
-
-## Conventions
-
-Each chapter introduces one idea, works through an example, and gives you a problem to try before continuing. Mathematics is written inline, as $C(n) = 60 + 4n$, or on its own line for longer expressions. Answers to practice problems and review questions are folded under a toggle such as **Check your reasoning** or **Answer**: try the problem first, then open it.
-
-Work at your own pace. Write down what each symbol means, including its units. If an idea is unfamiliar, change the numbers in the example and work it again.
+[How to read these books](../../references/how-to-read.md) explains the shared first-principles, prediction, reasoning, testing, and validation method.

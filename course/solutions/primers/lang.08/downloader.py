@@ -10,7 +10,7 @@ Four pieces, each one asyncio idea:
 Standard library only. The corpus fetcher (data.01) is built from the same
 pieces, plus resume and checksums.
 
-Chapter: content/courses/programming-languages/02-language-and-tool-primers/08-python-asyncio.md.
+Chapter: content/courses/programming-and-algorithms/01-language-primers/08-python-asyncio.md.
 """
 
 from __future__ import annotations

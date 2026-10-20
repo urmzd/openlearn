@@ -18,7 +18,8 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { courseOutlines, chapterNeighbors } from './course-navigation.mjs';
+import { courseOutlines, chapterNeighbors, chapterParts } from './course-navigation.mjs';
+import { stableSourcePath } from './legacy-source-paths.mjs';
 
 const SITE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ROOT = path.resolve(SITE, '../..');
@@ -57,8 +58,10 @@ for (const f of sources) {
 
 function slugOf(repoPath) {
 	if (repoPath === 'README.md') return 'overview';
+	const canonical = repoPath.match(/^content\/courses\/(ai-engineering|software-engineering|programming-and-algorithms|mathematics)\/README\.md$/);
+	if (canonical) return canonical[1];
 	// Keep published URLs stable when source directories move.
-	const publicPath = repoPath
+	const publicPath = stableSourcePath(repoPath)
 		.replace(/^content\/courses\/build-an-llm\/paths\//, 'paths/')
 		.replace(/^content\/courses\/build-an-llm\/concepts\.md$/, 'ml/08-tinyllm/README.md')
 		.replace(/^content\/courses\/build-an-llm\/(?=\d\d-|capstones)/, 'ml/08-tinyllm/')
@@ -100,7 +103,7 @@ function rewriteTarget(from, target) {
 	if (clean === '.' || clean === '') return routeOf('README.md') + frag;
 	if (IMAGE.test(clean) && trackedSet.has(clean)) {
 		copyAsset(clean);
-		return `${BASE}/repo/${clean}`;
+		return `${BASE}/repo/${stableSourcePath(clean)}`;
 	}
 	if (clean.endsWith('.md') && sources.includes(clean)) return routeOf(clean) + frag;
 	if (dirs.has(clean)) {
@@ -112,7 +115,7 @@ function rewriteTarget(from, target) {
 }
 
 function copyAsset(repoPath) {
-	const dest = path.join(ASSETS, repoPath);
+	const dest = path.join(ASSETS, stableSourcePath(repoPath));
 	fs.mkdirSync(path.dirname(dest), { recursive: true });
 	fs.copyFileSync(path.join(ROOT, repoPath), dest);
 }
@@ -328,10 +331,10 @@ for (const { course, chapters } of outlines) {
 		...(pdfOf(course.id) ? [`<a class="pdf-link" href="${pdfOf(course.id)}">Download PDF</a>`] : []),
 		'</section>',
 	].join('');
-	const contents = numbered.map((c) => {
+	const contents = chapterParts(numbered).map((part) => `${part.title ? `\n\n### ${part.title}\n\n` : ''}${part.chapters.map((c) => {
 		const sections = c.files.slice(1).map((file) => `- [${titles.get(file)}](${routeOf(file)})`).join('\n');
-		return `<div class="contents-chapter">\n\n### [${chapterLabel(c)}](${routeOf(c.files[0])})\n\n${sections}\n\n</div>`;
-	});
+		return `<div class="contents-chapter">\n\n${part.title ? '####' : '###'} [${chapterLabel(c)}](${routeOf(c.files[0])})\n\n${sections}\n\n</div>`;
+	}).join('\n\n')}`);
 	landing.set(home, {
 		actions,
 		contents: contents.length ? `\n\n## Contents\n\n${contents.join('\n\n')}\n` : '',
@@ -381,12 +384,33 @@ const sectionItem = (section) => section.files.length === 1
 	: { label: chapterLabel(section), collapsed: true, items: section.files.map((file) => ({ label: pageLabel(section, file), link: navOf(file) })) };
 const courseGroups = [];
 const redirects = { '/my-learning/': '/' };
+const retiredHomes = {
+ 'ai-engineering': ['ml', 'courses/build-an-llm', 'ai-platform-engineering', 'responsible-ai'],
+ 'software-engineering': ['software-craftsmanship', 'courses/diagramming'],
+ 'programming-and-algorithms': ['algorithms', 'courses/programming-languages', 'practice'],
+ mathematics: ['math', 'courses/mathematics'],
+};
+const aliases = JSON.parse(fs.readFileSync(path.join(ROOT, 'openlearn.json'), 'utf8')).course_aliases;
+for (const [id, homes] of Object.entries(retiredHomes)) {
+ if (bookHome.has(id)) for (const home of homes) redirects[`/${home}/`] = homeOf(id);
+}
+for (const [oldId, id] of Object.entries(aliases)) {
+ if (bookHome.has(id)) redirects[`/learn/${oldId}/`] = homeOf(id);
+}
+if (pages.has('content/references/worked-projects.md')) {
+ redirects['/case-studies/'] = routeOf('content/references/worked-projects.md');
+ redirects['/learn/case-studies/'] = routeOf('content/references/worked-projects.md');
+}
+if (bookHome.has('systems')) {
+	redirects['/infrastructure/'] = homeOf('systems');
+	redirects['/learn/infrastructure/'] = homeOf('systems');
+}
 for (const { course, chapters, references } of outlines) {
 	courseGroups.push({
 		label: course.title,
 		collapsed: false,
 		items: [
-			...chapters.map(sectionItem),
+			...chapterParts(chapters).flatMap((part) => part.title ? [{ label: part.title, collapsed: true, items: part.chapters.map(sectionItem) }] : part.chapters.map(sectionItem)),
 			...(references.length ? [{ label: 'References', collapsed: true, items: references.map(sectionItem) }] : []),
 		],
 	});
@@ -417,6 +441,7 @@ const library = {
 	title: manifest.title,
 	courses: [...publications].sort((a, b) => a.manifest.title.localeCompare(b.manifest.title, 'en', { sensitivity: 'base' })).map(({ manifest: course, reading }) => ({
 		id: course.id,
+		kind: course.kind ?? 'book',
 		title: course.title,
 		description: course.tagline ?? blurb(course.start?.[0]?.file) ?? course.tracks.map((t) => t.title).slice(0, 3).join(', '),
 		href: homeOf(course.id),
@@ -424,7 +449,7 @@ const library = {
 		// `chapter` groups lessons so the reader can scroll through one chapter
 		// and pause at the next chapter's opening.
 		lessons: reading.flatMap((section, i) => section.files.filter((f) => sources.includes(f)).map((f) => ({
-			key: f, title: titles.get(f), url: routeOf(f), chapter: i, chapterTitle: chapterLabel(section),
+			key: stableSourcePath(f), title: titles.get(f), url: routeOf(f), chapter: i, chapterTitle: chapterLabel(section),
 		}))),
 	})),
 };

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/xfmr/pos.pyi (L5.4): positional encodings
-# chapter: content/courses/build-an-llm/06-transformer-2017/04-positional-encodings.md
+# chapter: content/courses/ai-engineering/11-transformer/04-positional-encodings.md
 #
 # Sinusoidal (Vaswani et al. 2017, section 3.5), with d even and
 # omega_i = base^(-2i/d), i = 0 .. d/2 - 1 (a geometric ladder, M00.3):

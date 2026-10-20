@@ -2,7 +2,7 @@
 
 After [near dedup and decontamination](04-near-dedup-minhash-lsh.md) the corpus is about to be written to shards that a model will read thousands of times. Some documents still hold an email address, a phone number, a card number pasted into a forum post, a server's IP address, or an API key someone committed by mistake. A language model memorizes rare strings that appear verbatim, and a generation can repeat them to anyone who asks with the right prefix. The engine will serve that model through the gateway, so a key in the training data is a key in the API's output.
 
-This section builds the stage that replaces each match with a typed placeholder before the text is sharded, counts what it replaced per document and per kind for the manifest and the datasheet, and records where, without recording what. It enforces the policy set out in [Privacy and PII policy](../../responsible-ai/02-privacy-and-pii/01-privacy-and-pii-policy.md) in *Responsible AI*, and it uses the `Doc` type from [the filter stages](02-extract-normalize-and-quality-filters.md).
+This section builds the stage that replaces each match with a typed placeholder before the text is sharded, counts what it replaced per document and per kind for the manifest and the datasheet, and records where, without recording what. It enforces the policy set out in [Privacy and PII policy](../../ai-engineering/34-privacy-and-pii/01-privacy-and-pii-policy.md) in *AI Engineering*, and it uses the `Doc` type from [the filter stages](02-extract-normalize-and-quality-filters.md).
 
 The solution is [`python/corpus/pii.py`](../../../../course/solutions/python/corpus/pii.py): `luhn_ok`, `detect`, `redact`, `scrub`, `audit_line`, `scrub_stage` (a stage), `manifest_counts`, the `PiiSpan` record, and the tables `KINDS`, `PLACEHOLDERS`, and `MANIFEST_KEYS`. Its contract is [`pii.pyi`](../../../../course/contracts/py/corpus/pii.pyi); the counts it feeds are defined in [`formats/corpus-manifest.schema.json`](../../../../course/contracts/formats/corpus-manifest.schema.json), and the policy field is `pii_policy` in [`formats/ledger.schema.json`](../../../../course/contracts/formats/ledger.schema.json).
 
@@ -25,7 +25,7 @@ The notation for this section:
 | $d_1 \dots d_m$ | the decimal digits of a number, $d_m$ the rightmost | digits |
 | $L$ | the Luhn sum (below) | `int` |
 
-PII here means five machine-findable kinds: email addresses, phone numbers, payment card numbers, IP addresses, and API keys. Names and street addresses are personal data too, but finding them needs a named-entity model with its own error rates, and [the datasheet](08-ledger-and-datasheet.md) says plainly that they are not scrubbed. The privacy policy chapter of *Responsible AI* is where the decision is made whether that is acceptable for this corpus.
+PII here means five machine-findable kinds: email addresses, phone numbers, payment card numbers, IP addresses, and API keys. Names and street addresses are personal data too, but finding them needs a named-entity model with its own error rates, and [the datasheet](08-ledger-and-datasheet.md) says plainly that they are not scrubbed. The privacy policy chapter of *AI Engineering* is where the decision is made whether that is acceptable for this corpus.
 
 ## Candidate, then validate
 
@@ -294,7 +294,7 @@ The last two are about the pipeline around the stage. Ignoring the source's poli
 
 ## Where this leads
 
-The scrub follows the stage shape of [the filter stages](02-extract-normalize-and-quality-filters.md), runs on the near-dedup survivors and keeps their cluster tags, and enforces the policy (which kinds, which placeholders, which sources scrub, drop, or skip) from [Privacy and PII policy](../../responsible-ai/02-privacy-and-pii/01-privacy-and-pii-policy.md). Next, [the shard writer](06-parquet-shards-and-manifest.md) turns `pii_redactions` into a shard column and sums `meta["pii"]` into the manifest's `pii` object, and [the datasheet](08-ledger-and-datasheet.md) reports the counts by kind in its Composition section. In *AI Platform Engineering*, [Usage policy enforcement](../../ai-platform-engineering/12-gateway/06-usage-policy-enforcement.md) redacts the gateway's request logs with a Go port of these detectors (a port, not a call).
+The scrub follows the stage shape of [the filter stages](02-extract-normalize-and-quality-filters.md), runs on the near-dedup survivors and keeps their cluster tags, and enforces the policy (which kinds, which placeholders, which sources scrub, drop, or skip) from [Privacy and PII policy](../../ai-engineering/34-privacy-and-pii/01-privacy-and-pii-policy.md). Next, [the shard writer](06-parquet-shards-and-manifest.md) turns `pii_redactions` into a shard column and sums `meta["pii"]` into the manifest's `pii` object, and [the datasheet](08-ledger-and-datasheet.md) reports the counts by kind in its Composition section. In *AI Engineering*, [Usage policy enforcement](../../ai-engineering/25-ai-gateway/06-usage-policy-enforcement.md) redacts the gateway's request logs with a Go port of these detectors (a port, not a call).
 
 ### Further reading
 
@@ -302,7 +302,7 @@ The scrub follows the stage shape of [the filter stages](02-extract-normalize-an
 - Subramani et al., [*Detecting Personal Information in Training Corpora*](https://arxiv.org/abs/2307.03980).
 - datatrove `PIIFormatter` (`src/datatrove/pipeline/formatters/pii.py`) and BigCode's PII pipeline (`bigcode-project/bigcode-dataset/pii`): corpus-scale replacement with consistent fake values, and a trained key detector for code.
 - GitHub secret scanning and gitleaks (`gitleaks/config/gitleaks.toml`): hundreds of provider patterns with entropy checks and verification against the provider.
-- Data protection impact assessments: the review process the audit spans feed (sampling, appeal, retention limits); see the further reading of the privacy policy chapter in *Responsible AI*.
+- Data protection impact assessments: the review process the audit spans feed (sampling, appeal, retention limits); see the further reading of the privacy policy chapter in *AI Engineering*.
 - ISO/IEC 7812-1 (card numbers and the Luhn check); RFC 5952 (IPv6 text form).
 
 ## Key terms

@@ -50,7 +50,7 @@ Decision: [What did we decide?]
 Consequences: [What are the trade-offs?]
 ```
 
-The consequences line is the one that matters most later, because it records what the decision gave up. [Architecture decision records](../../diagramming/02-documentation-writing/01-architecture-decision-records.md) in *Diagramming and Documentation* treats the practice in depth.
+The consequences line is the one that matters most later, because it records what the decision gave up. [Architecture decision records](../../software-engineering/12-documentation/01-architecture-decision-records.md) in *Software Engineering* treats the practice in depth.
 
 ## Quality attributes and tradeoff analysis
 

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/autograd/losses.pyi (L0.3): losses with a fused backward
-# chapter: content/courses/build-an-llm/01-foundations/04-losses-with-fused-backward.md
+# chapter: content/courses/ai-engineering/06-numerics-and-autograd/04-losses-with-fused-backward.md
 #
 # Each loss is ONE graph node: the forward computes the loss from the logits
 # with stable numerics (tinyllm.num.stable, M09.2), and the backward is the

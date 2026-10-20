@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/eval/bias.pyi (ethics.04): templated bias probes with intervals
-# chapter: content/courses/responsible-ai/04-bias-and-safety-evals/01-bias-and-safety-evals.md
+# chapter: content/courses/ai-engineering/36-bias-and-safety-evals/01-bias-and-safety-evals.md
 #
 # Bias is measured as a difference: the same sentence with only a group term
 # changed, scored the same way. `score_fn(text) -> float` is any score where

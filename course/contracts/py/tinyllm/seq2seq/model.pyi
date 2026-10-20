@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/seq2seq/model.pyi (L4.1): an encoder-decoder with teacher forcing
-# chapter: content/courses/build-an-llm/05-attention-origins/01-encoder-decoder-teacher-forcing.md
+# chapter: content/courses/ai-engineering/10-attention/01-encoder-decoder-teacher-forcing.md
 #
 # Sutskever, Vinyals, and Le (2014); Cho et al. (2014). An encoder reads the
 # source; a decoder writes the target one token at a time, conditioned on the

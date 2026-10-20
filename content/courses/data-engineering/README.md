@@ -17,17 +17,17 @@ Reading every chapter takes about thirteen to eighteen weeks at eight to ten hou
 - **The whole book, in order** (13 to 18 weeks): [Chapter 1: Foundations](01-foundations/README.md) through [Chapter 5: Corpus Pipeline](05-corpus-pipeline/README.md). Chapters 2 and 3 can go in either order.
 - **New to data, or coming from analytics and BI** (about 10 weeks): [Chapter 1: Foundations](01-foundations/README.md), then [Chapter 2: Storage and Warehousing](02-storage-warehousing/README.md), then [Chapter 4: Orchestration and Modeling](04-orchestration-modeling/README.md), where dbt lives.
 - **Coming from backend or systems work** (about 8 weeks): skim [Chapter 1: Foundations](01-foundations/README.md), then [Chapter 3: Batch and Streaming Processing](03-batch-streaming/README.md), then [Chapter 4: Orchestration and Modeling](04-orchestration-modeling/README.md).
-- **Building training data for ML** (about 10 weeks): [Chapter 1: Foundations](01-foundations/README.md), [Chapter 2: Storage and Warehousing](02-storage-warehousing/README.md) for columnar files, then [5.1 Async fetch](05-corpus-pipeline/01-async-fetch-resume-checksums.md) through [5.8 Licensing ledger verification](05-corpus-pipeline/08-ledger-and-datasheet.md). Read [Durable Orchestration and Workers](../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) in *AI Platform Engineering* before [5.9 CorpusBuild](05-corpus-pipeline/09-corpusbuild-as-a-durable-workflow.md).
+- **Building training data for ML** (about 10 weeks): [Chapter 1: Foundations](01-foundations/README.md), [Chapter 2: Storage and Warehousing](02-storage-warehousing/README.md) for columnar files, then [5.1 Async fetch](05-corpus-pipeline/01-async-fetch-resume-checksums.md) through [5.8 Licensing ledger verification](05-corpus-pipeline/08-ledger-and-datasheet.md). Read [Durable Orchestration and Workers](../systems/07-durable-orchestration/README.md) in *Systems Engineering* before [5.9 CorpusBuild](05-corpus-pipeline/09-corpusbuild-as-a-durable-workflow.md).
 
 ## Before you start
 
-You should be comfortable writing SQL and know the basics of [System Design](../systems/01-system-design/) from *Systems and Architecture*. For the corpus chapter, the hashing and Bloom filters of *[Algorithms](../algorithms/)*, the asyncio primer in *[Programming Languages](../programming-languages/)*, and the licensing and PII policies in *[Responsible AI](../responsible-ai/)* all help. From here, *[Infrastructure](../infrastructure/)* covers the messaging and search stack data platforms run on, and *[Machine Learning and AI](../machine-learning/)* and *[Build Your Own LLM System](../build-an-llm/)* consume the corpus this book builds.
+You should be comfortable writing SQL and know the basics of [System Design](../systems/01-system-design/) from *Systems Engineering*. For the corpus chapter, the hashing and Bloom filters of *[Programming and Algorithms](../programming-and-algorithms/)*, the asyncio primer in *[Programming and Algorithms](../programming-and-algorithms/)*, and the licensing and PII policies in *[AI Engineering](../ai-engineering/)* all help. From here, *[Systems Engineering](../systems/)* covers the messaging and search stack data platforms run on, and *[AI Engineering](../ai-engineering/)* and *[AI Engineering](../ai-engineering/)* consume the corpus this book builds.
 
 New to these books? [How to read these books](../../references/how-to-read.md) explains how sections, review questions, and solutions work.
 
 ## The running example
 
-A small **Streamflow orders** pipeline runs through Chapters 3 and 4, locally on DuckDB with no cloud setup. It uses the same Streamflow platform as *[Infrastructure](../infrastructure/)* and *[Diagramming and Documentation](../diagramming/)*.
+A small **Streamflow orders** pipeline runs through Chapters 3 and 4, locally on DuckDB with no cloud setup. It uses the same Streamflow platform as *[Systems Engineering](../systems/)* and *[Software Engineering](../software-engineering/)*.
 
 | Stage | File | Chapter |
 |-------|------|---------|

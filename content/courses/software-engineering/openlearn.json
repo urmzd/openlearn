@@ -1,0 +1,85 @@
+{
+  "id": "software-engineering",
+  "title": "Software Engineering",
+  "kind": "book",
+  "tagline": "Reason about software, test its behavior, maintain it safely, and explain its design.",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/courses/software-engineering/README.md",
+      "title": "Start here"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/courses/software-engineering/01-pragmatic-programmer",
+      "title": "The Pragmatic Programmer",
+      "part": "Design and reasoning"
+    },
+    {
+      "dir": "content/courses/software-engineering/02-engineering-at-scale",
+      "title": "Software Engineering at Google",
+      "part": "Design and reasoning"
+    },
+    {
+      "dir": "content/courses/software-engineering/03-testing",
+      "title": "The Testing Mentality",
+      "part": "Design and reasoning"
+    },
+    {
+      "dir": "content/courses/software-engineering/04-design-patterns",
+      "title": "Coding and Design Patterns",
+      "part": "Design and reasoning"
+    },
+    {
+      "dir": "content/courses/software-engineering/05-lessons-from-practice",
+      "title": "Lessons from Practice",
+      "part": "Build and maintain"
+    },
+    {
+      "dir": "content/courses/software-engineering/06-code-review-and-ci",
+      "title": "Code Review and CI",
+      "part": "Build and maintain"
+    },
+    {
+      "dir": "content/courses/software-engineering/07-releases-and-deprecation",
+      "title": "Releases and Deprecation",
+      "part": "Build and maintain"
+    },
+    {
+      "dir": "content/courses/software-engineering/08-maintenance",
+      "title": "Maintenance",
+      "part": "Build and maintain"
+    },
+    {
+      "dir": "content/courses/software-engineering/09-security",
+      "title": "Security",
+      "part": "Build and maintain"
+    },
+    {
+      "dir": "content/courses/software-engineering/10-authorization",
+      "title": "Authorization and Access Control",
+      "part": "Build and maintain"
+    },
+    {
+      "dir": "content/courses/software-engineering/11-diagramming",
+      "title": "Diagramming with the C4 Model",
+      "part": "Explain and document"
+    },
+    {
+      "dir": "content/courses/software-engineering/12-documentation",
+      "title": "Documentation Writing",
+      "part": "Explain and document"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "References"
+    },
+    {
+      "dir": "content/courses/software-engineering/reading-guides",
+      "title": "Reading routes"
+    }
+  ]
+}

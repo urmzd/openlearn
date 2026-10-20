@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/io/wav.pyi (L14.1): WAV files from the bytes up
-# chapter: content/courses/build-an-llm/15-speech/01-audio-frontend.md
+# chapter: content/courses/ai-engineering/15-speech/01-audio-frontend.md
 #
 # A WAV file is a RIFF container (D47: the only audio input in v1):
 #

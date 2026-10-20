@@ -1,6 +1,6 @@
 # contracts/py/tinyllm/autograd/hvp.pyi (M08.4): Hessian-vector products and
 # the recompute-versus-memory schedule of activation checkpointing
-# chapter: content/courses/mathematics-for-computing/09-matrix-calculus-and-autodiff/04-hessian-vector-products-and-recompute.md
+# chapter: content/courses/mathematics/14-matrix-calculus-and-autodiff/04-hessian-vector-products-and-recompute.md
 #
 # Curvature without the Hessian: for f: R^n -> R with gradient g(x), the
 # Hessian-vector product H v is the directional derivative of g along v, so a

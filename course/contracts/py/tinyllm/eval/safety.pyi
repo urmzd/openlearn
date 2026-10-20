@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/eval/safety.pyi (ethics.04): toxicity and refusal evals and the release gate
-# chapter: content/courses/responsible-ai/04-bias-and-safety-evals/01-bias-and-safety-evals.md
+# chapter: content/courses/ai-engineering/36-bias-and-safety-evals/01-bias-and-safety-evals.md
 #
 # Deterministic scorers first: a lexicon toxicity score and a phrase-list
 # refusal detector, both measured against labelled fixtures before their

@@ -1,6 +1,6 @@
 # Build Your Own LLM System: solutions and contracts
 
-This directory holds the complete reference system that the [Build Your Own LLM System](../content/courses/build-an-llm/README.md) chapters explain. Nothing here is graded. Each chapter quotes the parts of these files that carry its idea, explains why each line is there, and links the full file.
+This directory holds the complete reference system that the [AI Engineering](../content/courses/ai-engineering/README.md) chapters explain. Nothing here is graded. Each chapter quotes the parts of these files that carry its idea, explains why each line is there, and links the full file.
 
 | Directory | What it holds |
 |---|---|

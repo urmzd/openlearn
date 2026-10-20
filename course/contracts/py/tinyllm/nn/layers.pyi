@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/nn/layers.pyi (L0.4): basic layers
-# chapter: content/courses/build-an-llm/01-foundations/05-module-system-and-layers.md
+# chapter: content/courses/ai-engineering/06-numerics-and-autograd/05-module-system-and-layers.md
 #
 # Parameter names and shapes are PyTorch's (torch.nn), so HF checkpoints map
 # onto these layers by name. Every forward is built from the op library

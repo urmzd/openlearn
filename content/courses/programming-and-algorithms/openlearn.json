@@ -1,0 +1,169 @@
+{
+  "id": "programming-and-algorithms",
+  "title": "Programming and Algorithms",
+  "kind": "book",
+  "tagline": "Build a precise model of programs, choose algorithms, and test your understanding through prediction and implementation.",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/courses/programming-and-algorithms/README.md",
+      "title": "Start here"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/courses/programming-and-algorithms/01-language-primers",
+      "title": "Language and Tool Primers",
+      "part": "Languages and models"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/02-type-systems",
+      "title": "Type Systems and Polymorphism",
+      "part": "Languages and models"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/03-arrays-hashing",
+      "title": "Arrays and hashing",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/04-two-pointers-sliding-window",
+      "title": "Two pointers and sliding window",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/05-binary-search",
+      "title": "Binary search",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/06-linked-lists",
+      "title": "Linked lists",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/07-trees",
+      "title": "Trees",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/08-graphs",
+      "title": "Graphs",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/09-dynamic-programming",
+      "title": "Dynamic programming",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/10-greedy",
+      "title": "Greedy algorithms",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/11-backtracking",
+      "title": "Backtracking",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/12-math-bit",
+      "title": "Math and bit manipulation",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/13-recursion-divide-conquer",
+      "title": "Recursion and divide-and-conquer",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/14-probabilistic-structures",
+      "title": "Probabilistic data structures",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/15-systems-data-structures",
+      "title": "Systems Data Structures",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/16-competitive-programming.md",
+      "title": "Competitive Programming",
+      "part": "Algorithms and data structures"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/17-predict-output",
+      "title": "Predict-Then-Read",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/18-c",
+      "title": "C",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/19-cpp",
+      "title": "C++",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/20-go",
+      "title": "Go",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/21-rust",
+      "title": "Rust",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/22-python",
+      "title": "Python",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/23-typescript",
+      "title": "TypeScript",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/24-zig",
+      "title": "Zig",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/25-scala",
+      "title": "Scala",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/26-java",
+      "title": "Java",
+      "part": "Predict, explain, and implement"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/27-case-study-order-book",
+      "title": "Case Study: Order Book Matching",
+      "part": "Predict, explain, and implement"
+    }
+  ],
+  "reference": [
+    {
+      "dir": "content/references",
+      "title": "References"
+    },
+    {
+      "dir": "content/courses/programming-and-algorithms/reading-guides",
+      "title": "Reading routes"
+    }
+  ],
+  "runtime": [
+    "practice",
+    "course/solutions/primers",
+    "content/courses/programming-and-algorithms",
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version",
+    ".mise.toml"
+  ]
+}

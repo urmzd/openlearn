@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/speech/decoder.pyi (L14.3): the Whisper decoder and model
-# chapter: content/courses/build-an-llm/15-speech/03-whisper-decoder-and-weights.md
+# chapter: content/courses/ai-engineering/15-speech/03-whisper-decoder-and-weights.md
 #
 # Hugging Face WhisperDecoder semantics, float32. For token ids at absolute
 # positions o .. o + T - 1 (o = the cache's committed length, 0 without a

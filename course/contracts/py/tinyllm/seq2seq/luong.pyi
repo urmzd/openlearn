@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/seq2seq/luong.pyi (L4.3): Luong attention and input feeding
-# chapter: content/courses/build-an-llm/05-attention-origins/03-luong-attention-input-feeding.md
+# chapter: content/courses/ai-engineering/10-attention/03-luong-attention-input-feeding.md
 #
 # Luong, Pham, and Manning (2015). Same reading as Bahdanau's (L4.2): scores,
 # a masked softmax, a weighted average of the keys. Two differences: the

@@ -1,4 +1,4 @@
-# chapter: content/courses/build-an-llm/15-speech/04-whisper-decoding.md
+# chapter: content/courses/ai-engineering/15-speech/04-whisper-decoding.md
 """L14.4: the course's BPE with explicit Whisper controls, no automatic template."""
 from typing import Sequence
 from tinyllm.tok.bpe import BPETokenizer

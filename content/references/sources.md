@@ -49,10 +49,10 @@ The same author describes *Designing Machine Learning Systems* as a companion fo
 
 | Reading theme | Local application | Evidence to produce |
 |---|---|---|
-| Evaluation | [LLM evaluation](../courses/ai-platform-engineering/09-llm-evaluation/) | Frozen test set, baseline, error taxonomy, uncertainty |
-| Retrieval and context | [Retrieval & RAG](../courses/ai-platform-engineering/07-retrieval-and-rag/) | Retrieval metrics and end-to-end answer assessment separately |
+| Evaluation | [LLM evaluation](../courses/ai-engineering/29-evaluation/) | Frozen test set, baseline, error taxonomy, uncertainty |
+| Retrieval and context | [Retrieval & RAG](../courses/ai-engineering/27-retrieval-and-rag/) | Retrieval metrics and end-to-end answer assessment separately |
 | Data quality | [Data engineering](../courses/data-engineering/) | Provenance, deduplication and leakage checks |
-| Inference and application architecture | [LLM systems](../courses/machine-learning/04-llm-systems/) | Quality, latency, throughput and cost under a stated workload |
+| Inference and application architecture | [LLM systems](../courses/ai-engineering/20-inference-engines/) | Quality, latency, throughput and cost under a stated workload |
 
 ## Cross-validation protocol
 

@@ -2,7 +2,7 @@
 
 A successful evaluation still leaves a production transition to plan. The customer's existing clients and data must keep working throughout, and the customer needs a clear exit path at every step. A migration plan is the document that makes both true: it stages the change, defines what evidence allows each widening of exposure, and decides in advance what forces a rollback.
 
-This section writes that plan for Northstar Commerce, following [Migration and Cutover](../05-migration-and-cutover/README.md) from earlier in this book. It takes the passed POC from [Pre-registering the POC](04-poc-and-evaluation.md) as its first precondition, and it leans on two versioned procedures from *Software Craftsmanship*: the [KV format v1 to v2 migration](../../software-craftsmanship/07-maintenance/01-kv-format-v1-to-v2.md) and its hash verification, and the [API v1 to v2 rollout](../../software-craftsmanship/07-maintenance/02-api-v1-to-v2.md) and its compatibility window. The model answer is [`docs/engagement/migration.md`](../../../../course/solutions/docs/engagement/migration.md). Try drafting the stage table yourself before reading the walkthrough.
+This section writes that plan for Northstar Commerce, following [Migration and Cutover](../05-migration-and-cutover/README.md) from earlier in this book. It takes the passed POC from [Pre-registering the POC](04-poc-and-evaluation.md) as its first precondition, and it leans on two versioned procedures from *Software Engineering*: the [KV format v1 to v2 migration](../../software-engineering/08-maintenance/01-kv-format-v1-to-v2.md) and its hash verification, and the [API v1 to v2 rollout](../../software-engineering/08-maintenance/02-api-v1-to-v2.md) and its compatibility window. The model answer is [`docs/engagement/migration.md`](../../../../course/solutions/docs/engagement/migration.md). Try drafting the stage table yourself before reading the walkthrough.
 
 > **Learning objectives**
 > - List the preconditions a rollout needs before its first stage.
@@ -82,7 +82,7 @@ The tradeoff accepted is time: at least eleven days from shadow to broad use, pl
 
 ## Where this leads
 
-The plan's first precondition is the passed POC from [Pre-registering the POC](04-poc-and-evaluation.md), and its compatibility rules come from the [KV format v1 to v2 migration](../../software-craftsmanship/07-maintenance/01-kv-format-v1-to-v2.md) and the [API v1 to v2 rollout](../../software-craftsmanship/07-maintenance/02-api-v1-to-v2.md). Next, [Answering the security questionnaire](06-commercials-and-security.md) answers questions about this data flow, and [Handing off operations](07-escalation-and-handoff.md) hands over this rollback path.
+The plan's first precondition is the passed POC from [Pre-registering the POC](04-poc-and-evaluation.md), and its compatibility rules come from the [KV format v1 to v2 migration](../../software-engineering/08-maintenance/01-kv-format-v1-to-v2.md) and the [API v1 to v2 rollout](../../software-engineering/08-maintenance/02-api-v1-to-v2.md). Next, [Answering the security questionnaire](06-commercials-and-security.md) answers questions about this data flow, and [Handing off operations](07-escalation-and-handoff.md) hands over this rollback path.
 
 Further reading:
 

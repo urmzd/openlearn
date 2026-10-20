@@ -13,7 +13,7 @@ The chapter follows the loop. It starts with the process and compensation, then 
 
 ## Before you begin
 
-The coding rounds assume fluency with standard data structures and algorithms, and the design round builds on [Distributed systems](../../01-shared-concepts/01-distributed-systems.md) in this book. For AI and ML roles, read [ML infrastructure](../../01-shared-concepts/03-ml-infrastructure.md) and [Full-stack AI engineering](../../01-shared-concepts/02-full-stack-ai.md) too. The saga and compensation patterns used in the design section are developed in depth in [Durable Orchestration and Workers](../../../ai-platform-engineering/05-durable-orchestration-and-workers/README.md) in *AI Platform Engineering*.
+The coding rounds assume fluency with standard data structures and algorithms, and the design round builds on [Distributed systems](../../01-shared-concepts/01-distributed-systems.md) in this book. For AI and ML roles, read [ML infrastructure](../../01-shared-concepts/03-ml-infrastructure.md) and [Full-stack AI engineering](../../01-shared-concepts/02-full-stack-ai.md) too. The saga and compensation patterns used in the design section are developed in depth in [Durable Orchestration and Workers](../../../systems/07-durable-orchestration/README.md) in *Systems Engineering*.
 
 ## The interview process
 
@@ -230,7 +230,7 @@ Using Amazon's own services naturally in your designs shows that you understand 
 | ECS/EKS | Container orchestration | Microservice deployment |
 | CloudWatch | Monitoring | Metrics, logs, alarms |
 
-The difference between SQS (a queue, where each message goes to one consumer) and SNS (pub-sub, where each message fans out to every subscriber) is worth being precise about; [Messaging and Distributed Queueing](../../../infrastructure/02-messaging-and-queueing/README.md) in *Infrastructure* explains it, along with long-polling.
+The difference between SQS (a queue, where each message goes to one consumer) and SNS (pub-sub, where each message fans out to every subscriber) is worth being precise about; [Messaging and Distributed Queueing](../../../systems/05-messaging-and-queueing/README.md) in *Systems Engineering* explains it, along with long-polling.
 
 ## The Bar Raiser
 

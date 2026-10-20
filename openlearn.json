@@ -3,126 +3,74 @@
   "title": "Openlearn",
   "tagline": "Explore technology, mathematics, and engineering at your own pace, whatever your background.",
   "repo": "https://github.com/urmzd/openlearn",
-  "paths": "content/courses/build-an-llm/paths",
+  "paths": "content/courses/ai-engineering/paths",
   "featured": "course",
   "start": [
-    {
-      "file": "content/courses/build-an-llm/paths/course/README.md",
-      "title": "The course"
-    },
     {
       "file": "README.md",
       "title": "Overview"
     },
     {
       "file": "content/courses/README.md",
-      "title": "Books"
-    },
-    {
-      "file": "content/courses/computer-science/README.md",
-      "title": "Technology Foundations"
-    },
-    {
-      "file": "content/references/sources.md",
-      "title": "Sources"
+      "title": "Books and guides"
     }
   ],
   "tracks": [
     {
-      "dir": "content/courses/mathematics-for-computing",
+      "dir": "content/courses/mathematics",
       "title": "Mathematics"
     },
     {
-      "dir": "content/courses/algorithms",
-      "title": "Algorithms"
+      "dir": "content/courses/programming-and-algorithms",
+      "title": "Programming and Algorithms"
     },
     {
-      "dir": "content/courses/machine-learning",
-      "title": "Machine Learning & AI"
-    },
-    {
-      "dir": "content/courses/build-an-llm",
-      "title": "Build Your Own LLM System"
-    },
-    {
-      "dir": "content/courses/systems",
-      "title": "Systems & Architecture"
+      "dir": "content/courses/software-engineering",
+      "title": "Software Engineering"
     },
     {
       "dir": "content/courses/data-engineering",
       "title": "Data Engineering"
     },
     {
-      "dir": "content/courses/ai-platform-engineering",
-      "title": "AI Platform Engineering"
+      "dir": "content/courses/ai-engineering",
+      "title": "AI Engineering"
     },
     {
-      "dir": "content/courses/software-craftsmanship",
-      "title": "Software Craftsmanship"
-    },
-    {
-      "dir": "content/courses/programming-languages",
-      "title": "Programming Languages"
-    },
-    {
-      "dir": "content/courses/diagramming",
-      "title": "Diagramming and Documentation"
-    },
-    {
-      "dir": "content/courses/infrastructure",
-      "title": "Infrastructure"
-    },
-    {
-      "dir": "content/courses/responsible-ai",
-      "title": "Responsible AI"
-    },
-    {
-      "dir": "content/courses/competitive-programming",
-      "title": "Competitive Programming"
-    },
-    {
-      "dir": "content/courses/field-engineering",
-      "title": "Field Engineering"
-    },
-    {
-      "dir": "content/courses/case-studies",
-      "title": "Case Studies"
+      "dir": "content/courses/systems",
+      "title": "Systems Engineering"
     }
   ],
   "reference": [
     {
-      "dir": "practice",
-      "title": "Practice"
-    },
-    {
-      "dir": "content/courses/interview-preparation",
-      "title": "Interview Prep"
-    },
-    {
-      "dir": "course/contracts",
-      "title": "Course Contracts"
+      "dir": "content/references",
+      "title": "References"
     }
   ],
   "courses": [
-    "content/courses/ai-platform-engineering/openlearn.json",
-    "content/courses/algorithms/openlearn.json",
-    "content/courses/build-an-llm/openlearn.json",
-    "content/courses/case-studies/openlearn.json",
-    "content/courses/competitive-programming/openlearn.json",
-    "content/courses/computer-science/openlearn.json",
-    "content/courses/data-engineering/openlearn.json",
-    "content/courses/diagramming/openlearn.json",
-    "content/courses/field-engineering/openlearn.json",
-    "content/courses/infrastructure/openlearn.json",
-    "content/courses/interview-preparation/openlearn.json",
-    "content/courses/machine-learning/openlearn.json",
-    "content/courses/mathematics-for-computing/openlearn.json",
     "content/courses/mathematics/openlearn.json",
-    "content/courses/practice/openlearn.json",
-    "content/courses/programming-languages/openlearn.json",
-    "content/courses/research/openlearn.json",
-    "content/courses/responsible-ai/openlearn.json",
-    "content/courses/software-craftsmanship/openlearn.json",
-    "content/courses/systems/openlearn.json"
-  ]
+    "content/courses/programming-and-algorithms/openlearn.json",
+    "content/courses/software-engineering/openlearn.json",
+    "content/courses/data-engineering/openlearn.json",
+    "content/courses/ai-engineering/openlearn.json",
+    "content/courses/systems/openlearn.json",
+    "content/courses/field-engineering/openlearn.json",
+    "content/courses/interview-preparation/openlearn.json",
+    "content/courses/computer-science/openlearn.json",
+    "content/courses/research/openlearn.json"
+  ],
+  "course_aliases": {
+    "machine-learning": "ai-engineering",
+    "build-an-llm": "ai-engineering",
+    "ai-platform-engineering": "ai-engineering",
+    "responsible-ai": "ai-engineering",
+    "software-craftsmanship": "software-engineering",
+    "diagramming": "software-engineering",
+    "algorithms": "programming-and-algorithms",
+    "programming-languages": "programming-and-algorithms",
+    "competitive-programming": "programming-and-algorithms",
+    "practice": "programming-and-algorithms",
+    "mathematics-for-computing": "mathematics",
+    "infrastructure": "systems"
+  }
 }

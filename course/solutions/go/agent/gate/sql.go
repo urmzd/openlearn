@@ -181,7 +181,7 @@ func operationOf(masked string) Operation {
 // recognized as a read, with a row cap (maxRows <= 0 means DefaultMaxRows).
 // Anything it does not positively recognize as a read is refused: an
 // allowlist fails closed, a denylist fails open on the first syntax nobody
-// thought of. Port of content/courses/case-studies/02-grounded-sql-agent/safety_gate.py.
+// thought of. Port of content/courses/ai-engineering/30-case-study-sql-agent/safety_gate.py.
 func ClassifySQL(sql string, maxRows int) SQLResult {
 	if maxRows <= 0 {
 		maxRows = DefaultMaxRows

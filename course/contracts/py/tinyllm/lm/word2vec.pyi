@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/lm/word2vec.pyi (L2.3): word2vec skip-gram with negative sampling, and PPMI-SVD
-# chapter: content/courses/build-an-llm/03-statistical-lm/03-word2vec-and-ppmi-svd.md
+# chapter: content/courses/ai-engineering/08-statistical-language-models/03-word2vec-and-ppmi-svd.md
 #
 # Two ways to turn co-occurrence into word vectors. Skip-gram with negative
 # sampling (SGNS, Mikolov et al. 2013) trains two tables by manual sparse SGD

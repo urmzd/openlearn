@@ -12,7 +12,7 @@ The chapter moves from general to specific. It begins with the distributed syste
 
 ## Before you begin
 
-These sections assume you can read Python and are comfortable with basic data structures. Some familiarity with a deep learning framework helps for the ML sections; the [Deep Learning](../../machine-learning/02-deep-learning/README.md) chapter of *Machine Learning and AI* covers the background. Read this chapter before the company chapters if you are preparing for several companies, since most of them assume it.
+These sections assume you can read Python and are comfortable with basic data structures. Some familiarity with a deep learning framework helps for the ML sections; the [Deep Learning](../../ai-engineering/02-deep-learning/README.md) chapter of *AI Engineering* covers the background. Read this chapter before the company chapters if you are preparing for several companies, since most of them assume it.
 
 ## In this chapter
 

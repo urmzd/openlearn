@@ -9,7 +9,7 @@
 // table's epoch, so a PUT /admin/v1/routes makes every answer cached under
 // the old table unreachable.
 //
-// Chapter: content/courses/ai-platform-engineering/12-gateway/05-usage-ledger-and-admin-api.md.
+// Chapter: content/courses/ai-engineering/25-ai-gateway/05-usage-ledger-and-admin-api.md.
 package gateway
 
 import (

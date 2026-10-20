@@ -14,7 +14,7 @@ This chapter gives you the tools for both directions. You will learn an escalati
 
 ## Before you begin
 
-You should have worked through [Performance Testing Engagements](../03-performance-testing-engagements/README.md) and [Migration and Cutover](../05-migration-and-cutover/README.md). The primary reference is [*Postmortem Culture: Learning from Failure*](https://sre.google/sre-book/postmortem-culture/), chapter 15 of *Site Reliability Engineering* (free). Supplements are [*Managing Incidents*](https://sre.google/sre-book/managing-incidents/), chapter 14 of the same book (free), and [Serving & Load](../../machine-learning/04-llm-systems/04-serving-and-load/) in *Machine Learning and AI* for the engine metrics an escalation cites.
+You should have worked through [Performance Testing Engagements](../03-performance-testing-engagements/README.md) and [Migration and Cutover](../05-migration-and-cutover/README.md). The primary reference is [*Postmortem Culture: Learning from Failure*](https://sre.google/sre-book/postmortem-culture/), chapter 15 of *Site Reliability Engineering* (free). Supplements are [*Managing Incidents*](https://sre.google/sre-book/managing-incidents/), chapter 14 of the same book (free), and [Serving & Load](../../ai-engineering/20-inference-engines/04-serving-and-load/) in *AI Engineering* for the engine metrics an escalation cites.
 
 ## The escalation report
 
@@ -116,7 +116,7 @@ Four rules keep the relay safe. Translate rather than forward: a research thread
 
 ## Where this leads
 
-The evidence section of an escalation cites engine metrics such as queue depth, KV usage, and preemptions from [Serving & Load](../../machine-learning/04-llm-systems/04-serving-and-load/), and the traces, dashboards, and alerting behind them from [Observability](../../systems/04-observability/) in *Systems and Architecture*. Blameless write-ups are treated in depth in [Lessons from Practice](../../software-craftsmanship/04-lessons-from-practice/) in *Software Craftsmanship*, and quality escalations to an MLE bring the eval artifacts of [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/).
+The evidence section of an escalation cites engine metrics such as queue depth, KV usage, and preemptions from [Serving & Load](../../ai-engineering/20-inference-engines/04-serving-and-load/), and the traces, dashboards, and alerting behind them from [Observability](../../systems/11-observability/) in *Systems Engineering*. Blameless write-ups are treated in depth in [Lessons from Practice](../../software-engineering/05-lessons-from-practice/) in *Software Engineering*, and quality escalations to an MLE bring the eval artifacts of [LLM Evaluation](../../ai-engineering/29-evaluation/).
 
 FDE-to-performance-team escalations, and "how would you escalate this?" interview prompts, are advanced material at Fireworks AI, Together AI, and Baseten. Google and every SRE organization practice incident command, update cadence, and blameless postmortems, and Palantir runs field-to-product feedback loops from its forward deployed teams.
 

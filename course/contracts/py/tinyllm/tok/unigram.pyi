@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/tok/unigram.pyi (L1.4)
-# chapter: content/courses/build-an-llm/02-tokenizers/04-unigram-lm.md
+# chapter: content/courses/ai-engineering/07-tokenizers/04-unigram-lm.md
 #
 # The Unigram LM tokenizer (Kudo 2018), sentencepiece compatible: Viterbi
 # ids equal Hugging Face tokenizers' and sentencepiece's on the same vocab

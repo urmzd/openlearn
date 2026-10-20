@@ -68,7 +68,7 @@ jobs:
       - name: Verify case-study implementations
         run: |
           set -euo pipefail
-          for file in content/courses/case-studies/*/*.py; do
+          for file in content/courses/{ai-engineering,programming-and-algorithms,systems}/*-case-study-*/*.py; do
             echo "--- $file"
             (cd "$(dirname "$file")" && uv run --no-project python "$(basename "$file")" >/dev/null)
           done
@@ -92,7 +92,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - name: Build an independent course
-        run: OPENLEARN_COURSE=diagramming pnpm build
+        run: OPENLEARN_COURSE=software-engineering pnpm build
       - name: Verify independent PWA
         run: node --test tests/build.test.mjs
       - name: Build the catalogue

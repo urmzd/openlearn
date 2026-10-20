@@ -11,7 +11,7 @@
 //
 // Contract: course/contracts/otel/semconv.md (span names, kinds, attributes,
 // propagation, resource attributes, log fields).
-// Chapter: content/courses/systems/04-observability/02-tracing-for-the-serving-path.md
+// Chapter: content/courses/systems/11-observability/02-tracing-for-the-serving-path.md
 // Callers: your go/cmd/gateway (obs.02 wires it), dur.04 (activity spans from
 // ActivityTask.trace_context), dur.09 (TRACEPARENT for Python), ag.03.
 package otelx

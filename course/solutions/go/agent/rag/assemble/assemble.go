@@ -3,7 +3,7 @@
 // stored chunks, a parser for the [n] markers a model writes in its answer,
 // and the search_docs tool that puts retrieval in the agent's toolset.
 //
-// Chapter: content/courses/ai-platform-engineering/07-retrieval-and-rag/03-context-assembly.md.
+// Chapter: content/courses/ai-engineering/27-retrieval-and-rag/03-context-assembly.md.
 package assemble
 
 import (

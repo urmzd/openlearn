@@ -28,7 +28,7 @@ The chapter's prose is accompanied by two pieces of working code:
 
 ## Orchestration fundamentals
 
-At the core of every orchestrator is **the DAG**: a directed acyclic graph of tasks whose edges are dependencies. The scheduler runs a task only after all of its upstream tasks have succeeded, which is a topological sort of the graph (see [Graphs](../../algorithms/06-graphs/) in *Algorithms*).
+At the core of every orchestrator is **the DAG**: a directed acyclic graph of tasks whose edges are dependencies. The scheduler runs a task only after all of its upstream tasks have succeeded, which is a topological sort of the graph (see [Graphs](../../programming-and-algorithms/08-graphs/) in *Programming and Algorithms*).
 
 **Scheduling** decides when a DAG runs. It can be time-based, using cron expressions, or event- and data-driven, running when upstream data lands.
 
@@ -118,7 +118,7 @@ A **data contract** is an explicit agreement on schema and SLA between a produce
 
 ## Data observability
 
-The last discipline applies the ideas of [Observability](../../systems/04-observability/) in *Systems and Architecture* to data. Data observability watches five pillars: freshness, volume, schema, distribution, and lineage. Its workflow is detect, triage, resolve: alert on an anomaly, trace through lineage to its root cause, then fix it and backfill.
+The last discipline applies the ideas of [Observability](../../systems/11-observability/) in *Systems Engineering* to data. Data observability watches five pillars: freshness, volume, schema, distribution, and lineage. Its workflow is detect, triage, resolve: alert on an anomaly, trace through lineage to its root cause, then fix it and backfill.
 
 Mature teams set SLAs and SLOs for data, such as "the orders table is fresh within 1 hour, 99% of days," and treat data products like services.
 
@@ -137,7 +137,7 @@ Everything in this chapter adds up to a short list of properties every pipeline 
 
 ## Where this leads
 
-The concepts here connect across the library. Task and asset dependency ordering is topological sort from [Graphs](../../algorithms/06-graphs/) in *Algorithms*. Data observability, SLOs, and alerting come from [Observability](../../systems/04-observability/) in *Systems and Architecture*. The CI/CD, testing, and version-control practices that dbt brings to analytics are the subject of [*Software Craftsmanship*](../../software-craftsmanship/). Idempotency and retries were introduced in [Foundations](../01-foundations/). Feature freshness and lineage for trustworthy training and serving data reappear in [LLM Systems](../../machine-learning/04-llm-systems/). The next chapter, [Corpus Pipeline](../05-corpus-pipeline/), applies all of this to building a training corpus, ending with the pipeline as a durable workflow.
+The concepts here connect across the library. Task and asset dependency ordering is topological sort from [Graphs](../../programming-and-algorithms/08-graphs/) in *Programming and Algorithms*. Data observability, SLOs, and alerting come from [Observability](../../systems/11-observability/) in *Systems Engineering*. The CI/CD, testing, and version-control practices that dbt brings to analytics are the subject of [*Software Engineering*](../../software-engineering/). Idempotency and retries were introduced in [Foundations](../01-foundations/). Feature freshness and lineage for trustworthy training and serving data reappear in [LLM Systems](../../ai-engineering/20-inference-engines/). The next chapter, [Corpus Pipeline](../05-corpus-pipeline/), applies all of this to building a training corpus, ending with the pipeline as a durable workflow.
 
 In industry, dbt Labs builds dbt and its semantic layer and coined analytics engineering. Airflow was created at Airbnb, which also built the Minerva metrics platform for data quality and consistent metrics. Netflix runs orchestration and data observability at scale. Databricks offers Unity Catalog, lineage, and Delta Live Tables. Palantir focuses on data integration, lineage, and governance.
 

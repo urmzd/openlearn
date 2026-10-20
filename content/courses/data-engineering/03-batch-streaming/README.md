@@ -163,7 +163,7 @@ Putting the choices side by side gives a practical decision guide:
 
 The silver table this chapter's job produces is the input to the [orchestration and modeling](../04-orchestration-modeling/) chapter, where dbt builds tested marts on it and Airflow runs the whole pipeline as one DAG.
 
-The ideas here connect widely. Messaging, queues, and event-driven architecture, along with the consensus, replication, and snapshot techniques behind exactly-once and checkpointing, are covered in [System Design](../../systems/01-system-design/) in *Systems and Architecture*. Streaming feature pipelines that deliver real-time features to models appear in [LLM Systems](../../machine-learning/04-llm-systems/). MapReduce stages and DAG scheduling are dependency graphs, studied in [Graphs](../../algorithms/06-graphs/) in *Algorithms*.
+The ideas here connect widely. Messaging, queues, and event-driven architecture, along with the consensus, replication, and snapshot techniques behind exactly-once and checkpointing, are covered in [System Design](../../systems/01-system-design/) in *Systems Engineering*. Streaming feature pipelines that deliver real-time features to models appear in [LLM Systems](../../ai-engineering/20-inference-engines/). MapReduce stages and DAG scheduling are dependency graphs, studied in [Graphs](../../programming-and-algorithms/08-graphs/) in *Programming and Algorithms*.
 
 In industry, Netflix runs a massive Kafka and Flink streaming platform. Spark was created by the team that went on to found Databricks, which also built Structured Streaming. Kafka was created at LinkedIn, and Confluent sells it as a product, with exactly-once semantics as a headline feature. Uber uses Flink and a Kappa architecture for real-time pricing and ETAs.
 

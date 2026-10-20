@@ -13,7 +13,7 @@ This chapter follows the process from the first call to the last onsite round. A
 
 ## Before you begin
 
-You will get the most from this chapter if you are comfortable writing clean Python and reading unfamiliar code. The system design material builds on the [Distributed Systems](../../01-shared-concepts/01-distributed-systems.md) chapter of this book, especially its treatment of exactly-once processing and retries, and the [Software Craftsmanship](../../../software-craftsmanship/README.md) book is good background for the code-quality bar Stripe sets.
+You will get the most from this chapter if you are comfortable writing clean Python and reading unfamiliar code. The system design material builds on the [Distributed Systems](../../01-shared-concepts/01-distributed-systems.md) chapter of this book, especially its treatment of exactly-once processing and retries, and the [Software Engineering](../../../software-engineering/README.md) book is good background for the code-quality bar Stripe sets.
 
 ## In this chapter
 

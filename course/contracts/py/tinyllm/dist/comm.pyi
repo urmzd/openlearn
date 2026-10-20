@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/dist/comm.pyi (L11.2, optional): collectives over processes
-# chapter: content/courses/build-an-llm/12-training-at-scale/02-collectives-over-processes.md
+# chapter: content/courses/ai-engineering/17-training-at-scale/02-collectives-over-processes.md
 #
 # `world` processes, numbered 0 .. world - 1 (the rank), each holding a Comm.
 # Point to point: one full-duplex pipe per pair of ranks (multiprocessing

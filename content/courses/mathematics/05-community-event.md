@@ -43,14 +43,14 @@ You are ready to continue when you can explain your model, check its units and c
 
 ## Where this leads
 
-Each idea in this project opens onto a full subject in *Mathematics for Computing*:
+Each idea in this project opens onto a full subject in *Mathematics*:
 
-- For functions, growth, and algebra: [Precalculus](../mathematics-for-computing/01-precalculus/README.md).
-- For change and accumulation: [Calculus 1](../mathematics-for-computing/02-calculus-1/README.md).
-- For many quantities and constraints: [Linear Algebra](../mathematics-for-computing/04-linear-algebra/README.md).
-- For evidence and uncertainty: [Probability and Statistics](../mathematics-for-computing/08-probability-statistics/README.md).
+- For functions, growth, and algebra: [Precalculus](06-precalculus/README.md).
+- For change and accumulation: [Calculus 1](07-calculus-1/README.md).
+- For many quantities and constraints: [Linear Algebra](09-linear-algebra/README.md).
+- For evidence and uncertainty: [Probability and Statistics](13-probability-statistics/README.md).
 
-[Choose your next subject](study-plan.md) helps you pick one. You do not need to finish all of *Mathematics for Computing* before applying what you have learned.
+[Choose your next subject](study-plan.md) helps you pick one. You do not need to finish all of *Mathematics* before applying what you have learned.
 
 ## Summary
 

@@ -2,7 +2,7 @@
 // proxy with a deadline. It is practice, not part of the system; gw.00 builds
 // the gateway's real proxy on the same ideas.
 //
-// Chapter: content/courses/programming-languages/02-language-and-tool-primers/06-go.md.
+// Chapter: content/courses/programming-and-algorithms/01-language-primers/06-go.md.
 package proxy
 
 import (

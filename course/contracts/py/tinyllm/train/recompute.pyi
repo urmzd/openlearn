@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/train/recompute.pyi (L11.1): activation checkpointing
-# chapter: content/courses/build-an-llm/12-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md
+# chapter: content/courses/ai-engineering/17-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md
 #
 # Trade compute for memory (M08.4's cost model): run a piece of the network
 # without recording its graph, keep only its inputs, and rerun it with the

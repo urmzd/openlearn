@@ -1,6 +1,6 @@
 # Course sources and publication
 
-Each course is a book. It owns its chapters: every chapter lives in exactly one course directory, and other books cross-reference it rather than include it. Every manifest lives at `content/courses/<id>/openlearn.json`. Its paths are relative to the repository root. The root `openlearn.json` lists the available manifests.
+Each publication is a book, field guide, or reading path. The library has six primary books: Mathematics, Programming and Algorithms, Software Engineering, Data Engineering, AI Engineering, and Systems Engineering. It owns its chapters: every chapter lives in exactly one course directory, and other books cross-reference it rather than include it. Every manifest lives at `content/courses/<id>/openlearn.json`. Its paths are relative to the repository root. The root `openlearn.json` lists the available manifests.
 
 ## Teaching principle
 
@@ -35,7 +35,7 @@ Put a book's front page (`README.md`) and its chapters in `content/courses/<id>/
 
 Number folders and files 01, 02, ... with no gaps. Folders named `code`, `diagrams`, `assets`, or `images` hold supporting files, not sections. A chapter that another book needs stays where it is and is linked, not copied or listed in the other manifest. Reading guides (`computer-science`, `research`) own no chapters; they recommend an order across books. Source attribution lives in `content/references/sources.md`, the one appendix every book shares. The `docs/` directory describes the platform, not its learning content.
 
-`course/` holds the reference solutions (`course/solutions/`) and interface contracts (`course/contracts/`) that the Build Your Own LLM System chapters quote and explain. `practice/` holds predict-the-output puzzles and data-structure implementations with worked answers. These are supporting directories, not competing course outlines. A course declares the solution files to ship in its portable pack with `runtime`.
+`course/` holds the reference solutions (`course/solutions/`) and interface contracts (`course/contracts/`) that the AI Engineering model-building chapters quote and explain. `practice/` holds executable prediction puzzles and data-structure implementations. Their explanations and worked answers belong to Programming and Algorithms. These are supporting directories, not competing course outlines. A course declares the solution files to ship in its portable pack with `runtime`.
 
 ## Manifest
 
@@ -44,9 +44,10 @@ The `openlearn.json` manifest defines publication for the web app, PDF, and sour
 | Field | Meaning |
 |---|---|
 | `id`, `title` | Stable course identity and display name |
+| `kind` | `book`, `field-guide`, or `reading-path`, used to group the library |
 | `start` | Curriculum and study-plan documents, in order |
 | `tagline` | Optional short course description for the web landing page |
-| `tracks` | The chapters, in order. Each entry is one chapter directory (or file). Mark appendices with `"appendix": true` and a closing note with `"unnumbered": true` |
+| `tracks` | The chapters, in order. Each entry is one chapter directory (or file). An optional `part` groups consecutive chapters in the reader and PDF. Mark appendices with `"appendix": true` and a closing note with `"unnumbered": true` |
 | `paths`, `featured` | Optional staged route; its stage order takes precedence over track order in the PDF |
 | `reference` | Source register, contracts, or other supporting trees |
 | `runtime` | Repository files/trees (such as solution code) included in portable packs |
@@ -61,7 +62,7 @@ A book's `README.md` is its landing page. Keep it short and practical: one parag
 
 Chapter numbers come from the order of `tracks`: chapters are 1, 2, 3, ... and appendices A, B, ... Section numbers come from the order of files inside the chapter: its `README.md` is the chapter itself, the next file or folder is section 1.1, and the pages inside a section folder are 1.1.1, 1.1.2, ... Headings in the Markdown carry no numbers. The website, the PDF, and the course landing page add them ("Chapter 5: Durable Orchestration and Workers", "5.3 The task queue", "Appendix A: Capstones"), so reordering a book is a rename, not an edit to every heading.
 
-The website presents one alphabetical course catalog. Inside each course, chapters follow the manifest's publication order; auxiliary references are grouped separately. It does not expose source tracks as a competing lesson catalog. A chapter used by only one course has explicit previous/next links. A shared chapter links back to the courses that teach it, so pagination cannot silently cross into another course.
+The website groups the library into Books, Field guides, and Reading paths, alphabetically within each group. Inside each course, chapters follow the manifest's publication order; auxiliary references are grouped separately. It does not expose source tracks as a competing lesson catalog. A chapter used by only one course has explicit previous/next links. A shared chapter links back to the courses that teach it, so pagination cannot silently cross into another course.
 
 ## One publishing pipeline
 
@@ -93,3 +94,13 @@ CI builds one PDF and pack per course and attaches them to releases. Course page
 2. Create `content/courses/<id>/openlearn.json`, referencing existing lessons and any new chapters.
 3. Register the manifest in the root `openlearn.json` and add its PDF/zip names to `sr.yaml`.
 4. Run catalogue validation, assemble the PDF, and inspect an exported source pack. The web reader discovers the new course from the catalogue. Refresh `apps/web/release-assets.json` after publishing its PDF; see the [reader README](../apps/web/README.md).
+
+## Consolidated subject ownership
+
+AI Engineering combines machine learning, model and LLM construction, AI platform applications, evaluation, and responsible AI. General protocols, streaming, caching, durable execution, and deployment belong to Systems Engineering. General design patterns and authorization belong to Software Engineering.
+
+Programming and Algorithms combines language primers, type systems, algorithms, competitive programming, and practice explanations. Software Engineering combines craftsmanship, testing, maintenance, security, diagrams, and documentation. Mathematics combines introductory reasoning with the computing mathematics sequence. Worked projects live alongside their subject; the [project index](../content/references/worked-projects.md) links to all five.
+
+The root `course_aliases` maps retired publication IDs to their new book for CLI selection. The generator uses `source-migrations.json` through `legacy-source-paths.mjs` to retain chapter URLs, image URLs, and device reading-progress keys. Retired book home pages and `/learn/<old-id>/` redirect to the consolidated home. Competitive Programming retains its former home URL as the competitive-programming chapter. Each canonical chapter appears once, and new exports use the consolidated ID.
+
+The verified PDF snapshot omits pre-merge editions of combined books. Refresh `apps/web/release-assets.json` after publishing matching PDFs to restore their download links. Source packs and independent website builds already use the new manifests.

@@ -2,7 +2,7 @@
 
 A field engineer sells and delivers a system they understand to the bottom. The earlier chapters of this book taught each stage of an engagement on its own; this chapter runs the whole engagement end to end, against a platform you built yourself, so that the guesswork disappears. Every sizing number, benchmark, and security answer can be checked, because every claim links to a test, a report, or a document you produced. That is the standard a customer's architects will hold you to.
 
-The engagement itself is the same for any platform; what changes is how much you can prove. The chapter follows one mock customer, Northstar Commerce, through seven artifacts in order: discovery notes, a qualification and sizing, a performance test protocol, a POC plan, a migration plan, a security questionnaire, and an operational handoff. Each section walks through a model answer, explains why each part is there, and names the alternatives it rejects. The numbers come from your own tools: capacity arithmetic from [Counting: parameters, FLOPs, KV bytes, and memory plans](../../mathematics-for-computing/06-discrete-math-1/01-counting-params-flops-kv-bytes.md) in *Mathematics for Computing*, load reports from the [open-loop load generator](../../build-an-llm/11-serving/11-load-generator.md) in *Build Your Own LLM System*, and the threat model and SBOMs from the [STRIDE threat model](../../software-craftsmanship/08-security/01-threat-model-stride.md) and [SBOM and supply chain](../../software-craftsmanship/08-security/02-sbom-and-supply-chain.md) sections of *Software Craftsmanship*. The chapter closes with a capstone that applies the whole sequence to a second customer, Lexa.
+The engagement itself is the same for any platform; what changes is how much you can prove. The chapter follows one mock customer, Northstar Commerce, through seven artifacts in order: discovery notes, a qualification and sizing, a performance test protocol, a POC plan, a migration plan, a security questionnaire, and an operational handoff. Each section walks through a model answer, explains why each part is there, and names the alternatives it rejects. The numbers come from your own tools: capacity arithmetic from [Counting: parameters, FLOPs, KV bytes, and memory plans](../../mathematics/11-discrete-math-1/01-counting-params-flops-kv-bytes.md) in *Mathematics*, load reports from the [open-loop load generator](../../ai-engineering/23-model-serving/11-load-generator.md) in *AI Engineering*, and the threat model and SBOMs from the [STRIDE threat model](../../software-engineering/09-security/01-threat-model-stride.md) and [SBOM and supply chain](../../software-engineering/09-security/02-sbom-and-supply-chain.md) sections of *Software Engineering*. The chapter closes with a capstone that applies the whole sequence to a second customer, Lexa.
 
 > **Learning objectives**
 > - Produce each artifact of an engagement, from discovery notes to a handoff, with a check that someone else can apply.
@@ -12,7 +12,7 @@ The engagement itself is the same for any platform; what changes is how much you
 
 ## Before you begin
 
-This chapter applies the seven chapters before it, from [Discovery](../01-discovery/README.md) through [Escalation and Handoff](../07-escalation-and-handoff/README.md); read those first. The model answers refer to a working platform at release `v1.0.0`, the system built in [the course path](../../../courses/build-an-llm/paths/course/) of *Build Your Own LLM System*. For the security questionnaire, Shostack's *Threat Modeling* is a useful companion.
+This chapter applies the seven chapters before it, from [Discovery](../01-discovery/README.md) through [Escalation and Handoff](../07-escalation-and-handoff/README.md); read those first. The model answers refer to a working platform at release `v1.0.0`, the system built in [the course path](../../ai-engineering/paths/course/) of *AI Engineering*. For the security questionnaire, Shostack's *Threat Modeling* is a useful companion.
 
 ## In this chapter
 
@@ -27,6 +27,6 @@ This chapter applies the seven chapters before it, from [Discovery](../01-discov
 
 ## Further reading
 
-- [Security](../../software-craftsmanship/08-security/README.md) in *Software Craftsmanship*, for the threat model and SBOMs behind the questionnaire.
-- [Incident Response and Chaos](../../systems/05-incident-response-and-chaos/README.md) in *Systems and Architecture*, for the runbooks the handoff uses.
+- [Security](../../software-engineering/09-security/README.md) in *Software Engineering*, for the threat model and SBOMs behind the questionnaire.
+- [Incident Response and Chaos](../../systems/12-incident-response-and-chaos/README.md) in *Systems Engineering*, for the runbooks the handoff uses.
 - Adam Shostack, *Threat Modeling: Designing for Security*.

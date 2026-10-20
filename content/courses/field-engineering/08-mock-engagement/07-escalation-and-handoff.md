@@ -2,7 +2,7 @@
 
 A handoff is complete when another team can own normal operation and escalation without relying on the implementation team's memory. Until then, every alert that only the project team can interpret is a single point of failure, and the engagement has not really ended. The handoff document is where that knowledge transfers, and the rehearsal is where you find out whether it did.
 
-This is the last artifact of the Northstar Commerce engagement. It follows [Escalation and Handoff](../07-escalation-and-handoff/README.md) from earlier in this book, puts into practice the incident and access answers from [Answering the security questionnaire](06-commercials-and-security.md), and links the runbooks described in [Runbooks and Diataxis docs](../../diagramming/02-documentation-writing/02-runbooks-and-diataxis.md) from *Diagramming and Documentation*. The model answer is [`docs/engagement/handoff.md`](../../../../course/solutions/docs/engagement/handoff.md). Try writing the escalation sequence yourself before reading the walkthrough.
+This is the last artifact of the Northstar Commerce engagement. It follows [Escalation and Handoff](../07-escalation-and-handoff/README.md) from earlier in this book, puts into practice the incident and access answers from [Answering the security questionnaire](06-commercials-and-security.md), and links the runbooks described in [Runbooks and Diataxis docs](../../software-engineering/12-documentation/02-runbooks-and-diataxis.md) from *Software Engineering*. The model answer is [`docs/engagement/handoff.md`](../../../../course/solutions/docs/engagement/handoff.md). Try writing the escalation sequence yourself before reading the walkthrough.
 
 > **Learning objectives**
 > - Define the service boundary and assign each kind of operational work to an owner.
@@ -80,7 +80,7 @@ The tradeoff accepted is that cutover waits for a rehearsal and for every critic
 
 ## Where this leads
 
-The handoff puts into practice the incident and access answers from [Answering the security questionnaire](06-commercials-and-security.md) and links the runbooks of [Runbooks and Diataxis docs](../../diagramming/02-documentation-writing/02-runbooks-and-diataxis.md). It closes the mock engagement. The [capstone](08-capstone.md) then applies the whole sequence, from discovery to escalation, to a single new customer.
+The handoff puts into practice the incident and access answers from [Answering the security questionnaire](06-commercials-and-security.md) and links the runbooks of [Runbooks and Diataxis docs](../../software-engineering/12-documentation/02-runbooks-and-diataxis.md). It closes the mock engagement. The [capstone](08-capstone.md) then applies the whole sequence, from discovery to escalation, to a single new customer.
 
 Further reading:
 

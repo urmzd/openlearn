@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/prob/rejection.pyi (M07.6)
-# chapter: content/courses/mathematics-for-computing/08-probability-statistics/07-rejection-sampling-and-residual-distributions.md
+# chapter: content/courses/mathematics/13-probability-statistics/07-rejection-sampling-and-residual-distributions.md
 #
 # Rejection sampling over a finite set of ids 0..n-1, and the one-step
 # correction that makes speculative decoding (L8.6, L10.8) exact: a draft

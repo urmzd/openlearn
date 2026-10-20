@@ -14,7 +14,7 @@ This chapter builds on the hypothesis from [Qualification and Sizing](../02-qual
 
 ## Before you begin
 
-You should have worked through [Discovery](../01-discovery/README.md), [Qualification and Sizing](../02-qualification-and-sizing/README.md), and [Performance Testing Engagements](../03-performance-testing-engagements/README.md). The primary reference is [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/) in *AI Platform Engineering*: eval set design, judges, and regression testing. Read it with one question in mind: which of these metrics would the customer's VP accept as "same quality"? Two free supplements help: [*Implementing SLOs*](https://sre.google/workbook/implementing-slos/) from *The Site Reliability Workbook*, on turning an SLO into a measurable criterion, and [Serving & Load](../../machine-learning/04-llm-systems/04-serving-and-load/) for the latency criteria. In practice an FDE (or an SE, for pre-sales POCs) leads with the customer's engineering owner, and an MLE joins for eval design.
+You should have worked through [Discovery](../01-discovery/README.md), [Qualification and Sizing](../02-qualification-and-sizing/README.md), and [Performance Testing Engagements](../03-performance-testing-engagements/README.md). The primary reference is [LLM Evaluation](../../ai-engineering/29-evaluation/) in *AI Engineering*: eval set design, judges, and regression testing. Read it with one question in mind: which of these metrics would the customer's VP accept as "same quality"? Two free supplements help: [*Implementing SLOs*](https://sre.google/workbook/implementing-slos/) from *The Site Reliability Workbook*, on turning an SLO into a measurable criterion, and [Serving & Load](../../ai-engineering/20-inference-engines/04-serving-and-load/) for the latency criteria. In practice an FDE (or an SE, for pre-sales POCs) leads with the customer's engineering owner, and an MLE joins for eval design.
 
 ## Writing criteria that can fail
 
@@ -96,7 +96,7 @@ Keep **inputs identical** on both sides: the same eval cases, the same system pr
 
 Measure the **quantization delta**. If the candidate configuration is FP8 or lower, run BF16 on the same cases once, so the cost of quantization is measured rather than guessed.
 
-Adapt the prompt **before fine-tuning**. Do one round of prompt changes first, and fine-tune only if prompt changes plateau (see [Training & Post-Training](../../machine-learning/07-training-and-post-training/) in *Machine Learning and AI*).
+Adapt the prompt **before fine-tuning**. Do one round of prompt changes first, and fine-tune only if prompt changes plateau (see [Training & Post-Training](../../ai-engineering/19-training-methods/) in *AI Engineering*).
 
 Watch for **judge bias**. An LLM judge from the incumbent's model family may prefer the incumbent's style, so spot-check the judge's verdicts against a human sample.
 
@@ -133,7 +133,7 @@ Send the readout document 24 hours before the call, so the meeting is for the de
 
 ## Where this leads
 
-Each criterion draws on another book. Criterion 1 depends on the eval sets, LLM judges, and regression suites of [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/). Criteria 2 to 4 use the load testing and goodput of [Serving & Load](../../machine-learning/04-llm-systems/04-serving-and-load/). The quantization delta rests on the accuracy trade-offs in [Quantization](../../machine-learning/04-llm-systems/01-quantization/). The "stop" path to fine-tune scoping uses SFT, LoRA, and DPO from [Training & Post-Training](../../machine-learning/07-training-and-post-training/), and when only part of the traffic passes, [Model Routing & Cascades](../../ai-platform-engineering/11-model-routing-and-cascades/) offers a way forward.
+Each criterion draws on another book. Criterion 1 depends on the eval sets, LLM judges, and regression suites of [LLM Evaluation](../../ai-engineering/29-evaluation/). Criteria 2 to 4 use the load testing and goodput of [Serving & Load](../../ai-engineering/20-inference-engines/04-serving-and-load/). The quantization delta rests on the accuracy trade-offs in [Quantization](../../ai-engineering/20-inference-engines/01-quantization/). The "stop" path to fine-tune scoping uses SFT, LoRA, and DPO from [Training & Post-Training](../../ai-engineering/19-training-methods/), and when only part of the traffic passes, [Model Routing & Cascades](../../ai-engineering/24-model-routing/) offers a way forward.
 
 POCs are a core part of the job across the industry. Fireworks AI, Together AI, and Baseten run paid or free POCs for dedicated deployments and fine-tunes, and applied AI and solutions teams at OpenAI and Anthropic run customer evals during enterprise adoption; both are advanced work. Databricks and Snowflake run platform POCs with success plans signed by the customer, and Palantir runs bootcamp-style POCs measured on a customer outcome.
 
@@ -141,7 +141,7 @@ When the POC passes, the next chapter, [Migration and Cutover](../05-migration-a
 
 ### Further reading
 
-- [LLM Evaluation](../../ai-platform-engineering/09-llm-evaluation/), in *AI Platform Engineering*.
+- [LLM Evaluation](../../ai-engineering/29-evaluation/), in *AI Engineering*.
 - [*Implementing SLOs*](https://sre.google/workbook/implementing-slos/), *The Site Reliability Workbook* (free).
 
 ## Exercise

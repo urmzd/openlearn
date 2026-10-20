@@ -6,7 +6,7 @@
 // that cannot score an observation says so with an error instead of
 // guessing a number.
 //
-// Chapter: content/courses/ai-platform-engineering/09-llm-evaluation/02-scorers.md.
+// Chapter: content/courses/ai-engineering/29-evaluation/02-scorers.md.
 package scorers
 
 import (

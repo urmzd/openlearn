@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/vision/rope2d.pyi (L13.2): 2D RoPE and M-RoPE
-# chapter: content/courses/build-an-llm/14-vision/02-rope-2d-and-m-rope.md
+# chapter: content/courses/ai-engineering/14-vision/02-rope-2d-and-m-rope.md
 #
 # Axial 2D RoPE (vision patches). A patch at grid row h, column w rotates
 # the first half of its rotary pairs by h * inv and the second half by

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/dist/zero.pyi (L11.3, optional): data parallelism and ZeRO stages 1 to 3
-# chapter: content/courses/build-an-llm/12-training-at-scale/03-ddp-and-zero.md
+# chapter: content/courses/ai-engineering/17-training-at-scale/03-ddp-and-zero.md
 #
 # Every rank (L11.2's Comm) runs the same model on its own slice of the batch.
 # DDP keeps a full replica per rank and averages the gradients with one

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/modern/llama.pyi (L7.9): the Llama-family decoder, HF configs and weights
-# chapter: content/courses/build-an-llm/08-modern-block/09-llama-family-model.md
+# chapter: content/courses/ai-engineering/13-decoder-block/09-llama-family-model.md
 #
 # One decoder that loads Llama, Mistral (sliding window), and Qwen2 (q/k/v
 # biases) checkpoints from Hugging Face, and the course's own variants

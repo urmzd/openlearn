@@ -24,7 +24,7 @@ Ask 5-10 questions that escalate in difficulty:
 
 ### drill [topic] [language]
 Rapid-fire coding exercises:
-1. Read the topic README from `content/courses/algorithms/` or `practice/` for context
+1. Read the topic README from `content/courses/programming-and-algorithms/` for context
 2. Present a small, focused coding task (5-15 min)
 3. The user writes code, you evaluate for:
    - Correctness (does it work?)
@@ -66,14 +66,14 @@ Full diagnostic assessment:
 
 1. Parse the mode, topic, and optional language from: `{args}`
 2. If a topic is given, read the relevant README(s):
-   - Algorithm topics: `content/courses/algorithms/{topic-dir}/README.md`
+   - Algorithm topics: `content/courses/programming-and-algorithms/{topic-dir}/README.md`
    - Math topics: `content/courses/mathematics-for-computing/{topic-dir}/README.md`
-   - Practice languages: `practice/build/{tier}/{lang}/README.md`
-   - Competitive programming: `content/courses/competitive-programming/README.md`
-   - Information theory: `content/courses/mathematics-for-computing/12-information-theory/README.md`
+   - Practice languages: `content/courses/programming-and-algorithms/ (the selected language chapter)`
+   - Competitive programming: `content/courses/programming-and-algorithms/README.md`
+   - Information theory: `content/courses/mathematics/17-information-theory/README.md`
    - Case studies: `content/courses/case-studies/{study-dir}/README.md`
 3. If a language is given, frame code questions in that language and evaluate idiom
-4. For language-specific questions, also read `practice/build/{tier}/{lang}/README.md` for idiom reference
+4. For language-specific questions, also read `content/courses/programming-and-algorithms/ (the selected language chapter)` for idiom reference
 5. Use existing problem implementations in the repo as reference (but don't show them to the user during quizzes)
 6. After each question, wait for the user's response before proceeding
 7. Adjust difficulty dynamically — if they ace easy questions, skip to harder ones
@@ -100,22 +100,22 @@ When evaluating user responses:
 ## Topic Mapping
 
 Map shorthand topic names to directories:
-- arrays, hashing → content/courses/algorithms/01-arrays-hashing/
-- two-pointers, sliding-window → content/courses/algorithms/02-two-pointers-sliding-window/
-- binary-search → content/courses/algorithms/03-binary-search/
-- linked-lists → content/courses/algorithms/04-linked-lists/
-- trees → content/courses/algorithms/05-trees/
-- graphs → content/courses/algorithms/06-graphs/
-- dp, dynamic-programming → content/courses/algorithms/07-dynamic-programming/
-- greedy → content/courses/algorithms/08-greedy/
-- backtracking → content/courses/algorithms/09-backtracking/
-- math, bits → content/courses/algorithms/10-math-bit/
-- recursion, divide-conquer → content/courses/algorithms/11-recursion-divide-conquer/
-- probabilistic → content/courses/algorithms/12-probabilistic-structures/
+- arrays, hashing → content/courses/programming-and-algorithms/03-arrays-hashing/
+- two-pointers, sliding-window → content/courses/programming-and-algorithms/04-two-pointers-sliding-window/
+- binary-search → content/courses/programming-and-algorithms/05-binary-search/
+- linked-lists → content/courses/programming-and-algorithms/06-linked-lists/
+- trees → content/courses/programming-and-algorithms/07-trees/
+- graphs → content/courses/programming-and-algorithms/08-graphs/
+- dp, dynamic-programming → content/courses/programming-and-algorithms/09-dynamic-programming/
+- greedy → content/courses/programming-and-algorithms/10-greedy/
+- backtracking → content/courses/programming-and-algorithms/11-backtracking/
+- math, bits → content/courses/programming-and-algorithms/12-math-bit/
+- recursion, divide-conquer → content/courses/programming-and-algorithms/13-recursion-divide-conquer/
+- probabilistic → content/courses/programming-and-algorithms/14-probabilistic-structures/
 - calculus-1 through probability → content/courses/mathematics-for-computing/{topic}/
 - cp, competitive → content/courses/competitive-programming/
-- info-theory → content/courses/mathematics-for-computing/12-information-theory/
-- order-book, matching → content/courses/case-studies/01-order-book-matching/
-- sql-agent, text-to-sql → content/courses/case-studies/02-grounded-sql-agent/
-- events, idempotency, exactly-once → content/courses/case-studies/03-exactly-once-event-api/
-- kmeans, clustering-optimization → content/courses/case-studies/04-kmeans-optimization/
+- info-theory → content/courses/mathematics/17-information-theory/
+- order-book, matching → content/courses/programming-and-algorithms/27-case-study-order-book/
+- sql-agent, text-to-sql → content/courses/ai-engineering/30-case-study-sql-agent/
+- events, idempotency, exactly-once → content/courses/systems/13-case-study-event-api/
+- kmeans, clustering-optimization → content/courses/ai-engineering/31-case-study-kmeans/

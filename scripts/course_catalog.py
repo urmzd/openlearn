@@ -44,6 +44,10 @@ def catalog(root: Path = ROOT) -> list[dict]:
 
 
 def select(course_id: str, root: Path = ROOT) -> dict:
+    aliases = json.loads((root / "openlearn.json").read_text()).get(
+        "course_aliases", {}
+    )
+    course_id = aliases.get(course_id, course_id)
     for manifest in catalog(root):
         if manifest["id"] == course_id:
             return manifest
@@ -163,6 +167,8 @@ def publication(manifest: dict, root: Path = ROOT) -> dict:
         for t in manifest.get("tracks", []):
             files = chapters(root, t["dir"])
             section = {"title": t["title"], "files": files}
+            if t.get("part"):
+                section["part"] = t["part"]
             if t.get("appendix"):
                 section["kind"] = "appendix"
                 section["number"] = letters(appendix)

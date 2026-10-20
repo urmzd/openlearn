@@ -1,5 +1,5 @@
 // contracts/proto/tl/engine/v1/engine.proto: internal engine control.
-// chapter: content/courses/build-an-llm/11-serving/07-disaggregated-prefill-decode.md
+// chapter: content/courses/ai-engineering/23-model-serving/07-disaggregated-prefill-decode.md
 // Served by every engine on :50051 in Kubernetes
 // ({grpc_port} locally). The data plane is HTTP (openapi/openai-subset.v1.yaml);
 // this service carries only control and the disaggregated prefill hand-off.

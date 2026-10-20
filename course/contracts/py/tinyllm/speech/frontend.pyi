@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/speech/frontend.pyi (L14.1): Whisper's audio frontend
-# chapter: content/courses/build-an-llm/15-speech/01-audio-frontend.md
+# chapter: content/courses/ai-engineering/15-speech/01-audio-frontend.md
 #
 # Hugging Face WhisperFeatureExtractor semantics (formats/mel-spec.md):
 # 16 kHz mono, pad or trim to chunk_length * sampling_rate samples (480000,

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/vision/vit.pyi (L13.3): the vision transformer encoder
-# chapter: content/courses/build-an-llm/14-vision/03-vision-transformer.md
+# chapter: content/courses/ai-engineering/14-vision/03-vision-transformer.md
 #
 # Dosovitskiy et al. (2021): cut the image into p x p patches, embed each
 # with one linear map (a Conv2d with kernel = stride = p, L13.1), add

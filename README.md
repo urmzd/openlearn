@@ -7,7 +7,7 @@
     &middot;
     <a href="https://github.com/urmzd/openlearn/issues">Report Bug</a>
     &middot;
-    <a href="https://openlearn.urmzd.com">Browse Courses</a>
+    <a href="https://openlearn.urmzd.com">Browse Books</a>
   </p>
 </p>
 
@@ -39,7 +39,7 @@ Captured with [teasr](https://github.com/urmzd/teasr). Rebuild the website, then
 ## Features
 
 - **First principles, made concrete:** chapters derive an idea from its assumptions, work a small example by hand, then connect the reasoning to a complete solution.
-- **Book library:** 18 subject books and two reading guides across mathematics, algorithms, ML, systems, data engineering, infrastructure, and related subjects.
+- **Book library:** six primary books, two field guides, and two reading paths. AI model building, applications, evaluation, and responsible deployment share one AI Engineering book.
 - **Build Your Own LLM System:** follow a complete LLM platform (tokenizers, attention, KV caches, kernels, inference, serving, and operations) through annotated reference solutions in [`course/solutions/`](course/solutions/).
 - **Test your understanding:** predict a result before revealing it, explain why it follows, and use review questions to find gaps in your reasoning.
 - **Test and validate:** inspect the reference code, check its assumptions and invariants, and use examples, boundary cases, and failure scenarios to decide whether its behavior meets the requirement.
@@ -80,9 +80,9 @@ cd openlearn
 | Start here | What to expect |
 |---|---|
 | [Technology Foundations](content/courses/computer-science/README.md) | Explore programming, mathematics, systems, data, AI, and other areas of technology at your own pace |
-| [Build Your Own LLM System](content/courses/build-an-llm/README.md) | One LLM platform, end to end, explained module by module through its reference solution |
+| [AI Engineering](content/courses/ai-engineering/README.md) | Learning foundations, model construction, training, inference, applications, evaluation, and responsible deployment |
 | [Course catalogue](content/courses/README.md) | Subject-specific study plans and other learning routes |
-| [Practice](practice/README.md) | Predict-the-output puzzles and data-structure implementations, each with a worked answer |
+| [Programming and Algorithms](content/courses/programming-and-algorithms/README.md) | Predict-the-output puzzles and data-structure implementations, each with a worked answer |
 
 Chapters connect first principles, worked examples, interfaces, **solutions explained step by step**, pitfalls, and review questions. Predict each step before reading it, explain the result in your own words, then identify a test or counterexample that could challenge your explanation.
 

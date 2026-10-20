@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/modern/moe.pyi (L7.8): mixture of experts
-# chapter: content/courses/build-an-llm/08-modern-block/08-mixture-of-experts.md
+# chapter: content/courses/ai-engineering/13-decoder-block/08-mixture-of-experts.md
 #
 # A router scores E experts (L7.2 gated MLPs) for every token and sends the
 # token to its top k; the output is the weighted sum of those k experts'

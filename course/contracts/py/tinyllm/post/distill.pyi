@@ -1,4 +1,4 @@
-# chapter: content/courses/build-an-llm/13-post-training/04-distillation.md
+# chapter: content/courses/ai-engineering/18-post-training/04-distillation.md
 from __future__ import annotations
 import numpy as np
 

@@ -11,7 +11,7 @@
 //! length, the full-block hashes, and how many uniform draws P took (the RNG
 //! hand-off).
 //!
-//! Chapter: content/courses/build-an-llm/11-serving/07-disaggregated-prefill-decode.md.
+//! Chapter: content/courses/ai-engineering/23-model-serving/07-disaggregated-prefill-decode.md.
 
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};

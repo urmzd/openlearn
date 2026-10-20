@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/activations.pyi (M01.3)
-# chapter: content/courses/mathematics-for-computing/02-calculus-1/03-activation-functions.md
+# chapter: content/courses/mathematics/07-calculus-1/03-activation-functions.md
 #
 # Elementwise activation functions and their derivatives, NDArray -> NDArray.
 # Every function accepts an array-like x and returns an array of the same

@@ -24,7 +24,7 @@
 //! trained on: `<tool_call>{"name":"<name>","arguments":<object>}</tool_call>`,
 //! several calls separated by "\n".
 //!
-//! Chapter: content/courses/build-an-llm/11-serving/10-tool-calls-and-constrained-decoding.md.
+//! Chapter: content/courses/ai-engineering/23-model-serving/10-tool-calls-and-constrained-decoding.md.
 //! Must conform to the OpenAPI contract's tool cases: `tools.call`,
 //! `tools.stream`, `tools.choice`.
 

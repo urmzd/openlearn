@@ -202,7 +202,7 @@ Quantifying is half of a good design answer. These are the typical values to hav
 
 ## Where this leads
 
-These concepts are applied in [the system design round](03-system-design.md), and the token streaming that follows the output buffer is covered in [Streaming and SSE](08-streaming-sse.md). For a ground-up implementation of continuous batching and a paged KV cache, see [Continuous batching scheduler with priority and preemption](../../../build-an-llm/11-serving/03-continuous-batching.md) and [Block manager with prefix cache](../../../build-an-llm/11-serving/05-block-manager-and-prefix-cache.md) in *Build Your Own LLM System*.
+These concepts are applied in [the system design round](03-system-design.md), and the token streaming that follows the output buffer is covered in [Streaming and SSE](08-streaming-sse.md). For a ground-up implementation of continuous batching and a paged KV cache, see [Continuous batching scheduler with priority and preemption](../../../ai-engineering/23-model-serving/03-continuous-batching.md) and [Block manager with prefix cache](../../../ai-engineering/23-model-serving/05-block-manager-and-prefix-cache.md) in *AI Engineering*.
 
 ## Key terms
 

@@ -7,7 +7,7 @@
 // proto/tl/engine/v1/engine.proto and proto/tl/kv/v1/kv.proto (called),
 // openapi/admin.v1.yaml (Route, Worker), config/runtime.schema.json
 // ([gateway] route_policy, affinity_load_factor, heartbeat_miss_limit,
-// routes). Chapter: content/courses/ai-platform-engineering/12-gateway/04-routing.md.
+// routes). Chapter: content/courses/ai-engineering/25-ai-gateway/04-routing.md.
 package route
 
 import (

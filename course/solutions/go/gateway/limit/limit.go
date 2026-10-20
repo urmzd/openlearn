@@ -7,7 +7,7 @@
 // Retry-After; x-ratelimit-limit-requests, x-ratelimit-remaining-requests,
 // x-ratelimit-limit-tokens, x-ratelimit-remaining-tokens,
 // x-ratelimit-reset-tokens on every authenticated response). Chapter:
-// content/courses/ai-platform-engineering/08-authorization-and-access-control/02-rate-limiting.md.
+// content/courses/software-engineering/10-authorization/02-rate-limiting.md.
 package limit
 
 import (

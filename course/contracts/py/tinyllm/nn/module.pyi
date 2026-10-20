@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/nn/module.pyi (L0.4): the module system
-# chapter: content/courses/build-an-llm/01-foundations/05-module-system-and-layers.md
+# chapter: content/courses/ai-engineering/06-numerics-and-autograd/05-module-system-and-layers.md
 #
 # A Module owns parameters (Tensors with requires_grad, L0.1) and child
 # Modules, both found by assigning them as attributes in __init__ (after

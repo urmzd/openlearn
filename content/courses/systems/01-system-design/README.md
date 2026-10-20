@@ -15,7 +15,7 @@ System design is also the interview topic asked at every Staff+ level, and those
 
 ## Before you begin
 
-The building blocks assume the data structures and analysis from *[Algorithms](../../algorithms/README.md)*. The design reviews additionally assume you know the system they review: the serving engine from *Build Your Own LLM System*, the gateway and durable control plane from *AI Platform Engineering*, and the deployment and observability from *Infrastructure* and the [Observability](../04-observability/README.md) chapter of this book. Each review lists exactly which sections it draws on.
+The building blocks assume the data structures and analysis from *[Programming and Algorithms](../../programming-and-algorithms/README.md)*. The design reviews additionally assume you know the system they review: the serving engine from *AI Engineering*, the gateway and durable control plane from *AI Engineering*, and the deployment and observability from *Systems Engineering* and the [Observability](../11-observability/README.md) chapter of this book. Each review lists exactly which sections it draws on.
 
 ## Scaling
 

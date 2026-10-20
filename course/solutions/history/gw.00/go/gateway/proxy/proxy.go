@@ -4,7 +4,7 @@
 //
 // Contract: course/contracts/openapi/openai-subset.v0.yaml (gateway tier) and
 // course/contracts/spec/cli-roles.md (role `gateway`, tracer form).
-// Chapter: content/courses/ai-platform-engineering/12-gateway/01-streaming-proxy.md.
+// Chapter: content/courses/ai-engineering/25-ai-gateway/01-streaming-proxy.md.
 // gw.04 takes this package over and adds the StreamObserver.
 package proxy
 

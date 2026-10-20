@@ -18,7 +18,7 @@
 //!
 //! Callers: `tl-tok` (L1.5) runs BPE merges from a `LazyHeap` keyed by
 //! (merge rank, position); `L10.2` keeps the engine's waiting queue in one.
-//! Chapter: content/courses/algorithms/13-systems-data-structures/06-binary-heap-lazy-deletion.md
+//! Chapter: content/courses/programming-and-algorithms/15-systems-data-structures/06-binary-heap-lazy-deletion.md
 
 use std::cmp::Ordering;
 

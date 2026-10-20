@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/obj/lora.pyi (L6.6): LoRA with PiSSA init and merge
-# chapter: content/courses/build-an-llm/07-objectives/06-lora-pissa-and-merge.md
+# chapter: content/courses/ai-engineering/12-objectives-and-adaptation/06-lora-pissa-and-merge.md
 #
 # Hu et al. (2021), LoRA; Meng et al. (2024), PiSSA. A LoRALinear keeps a
 # Linear's weight W [out, in] and bias frozen and adds a trainable low-rank

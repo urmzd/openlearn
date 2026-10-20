@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/xfmr/transformer.pyi (L5.5): the encoder-decoder Transformer
-# chapter: content/courses/build-an-llm/06-transformer-2017/05-encoder-decoder-transformer.md
+# chapter: content/courses/ai-engineering/11-transformer/05-encoder-decoder-transformer.md
 #
 # Vaswani et al. (2017), sections 3 and 5. With d = d_model:
 #

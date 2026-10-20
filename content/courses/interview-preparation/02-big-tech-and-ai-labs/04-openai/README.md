@@ -13,7 +13,7 @@ This chapter prepares you for OpenAI engineering roles with a focus on AI infras
 
 ## Before you begin
 
-OpenAI publishes an official [interview guide](https://openai.com/interview-guide/), and its [Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/) is OpenAI's own reinforcement learning curriculum. For ML background, see the [Deep Learning](../../../machine-learning/02-deep-learning/README.md) and [Reinforcement Learning](../../../machine-learning/03-reinforcement-learning/README.md) chapters of *Machine Learning and AI*. Within this book, the [Anthropic](../01-anthropic/README.md) chapter covers very similar coding and serving problems, and [Full-stack AI](../../01-shared-concepts/02-full-stack-ai.md) covers the ML systems background.
+OpenAI publishes an official [interview guide](https://openai.com/interview-guide/), and its [Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/) is OpenAI's own reinforcement learning curriculum. For ML background, see the [Deep Learning](../../../ai-engineering/02-deep-learning/README.md) and [Reinforcement Learning](../../../ai-engineering/04-reinforcement-learning/README.md) chapters of *AI Engineering*. Within this book, the [Anthropic](../01-anthropic/README.md) chapter covers very similar coding and serving problems, and [Full-stack AI](../../01-shared-concepts/02-full-stack-ai.md) covers the ML systems background.
 
 ## The interview process
 

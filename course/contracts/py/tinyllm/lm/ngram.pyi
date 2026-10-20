@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/lm/ngram.pyi (L2.1)
-# chapter: content/courses/build-an-llm/03-statistical-lm/01-ngram-kneser-ney.md
+# chapter: content/courses/ai-engineering/08-statistical-language-models/01-ngram-kneser-ney.md
 #
 # An n-gram language model over integer token ids 0 .. V-1 with interpolated
 # Kneser-Ney smoothing, modified (three discounts per order, Chen and Goodman

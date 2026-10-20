@@ -1,5 +1,5 @@
 // contracts/proto/tl/control/v1/control.proto: the worker registry.
-// chapter: content/courses/build-an-llm/11-serving/07-disaggregated-prefill-decode.md
+// chapter: content/courses/ai-engineering/23-model-serving/07-disaggregated-prefill-decode.md
 // Served by the gateway on :50060 in Kubernetes ({registry_port}
 // locally). Every engine sends a heartbeat every 2 s; a worker that misses 3
 // in a row ([gateway].heartbeat_miss_limit) is evicted from routing.

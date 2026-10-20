@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/rnn/manual.pyi (L3.1): a vanilla RNN with hand-written BPTT
-# chapter: content/courses/build-an-llm/04-recurrent/01-vanilla-rnn-manual-bptt.md
+# chapter: content/courses/ai-engineering/09-recurrent-networks/01-vanilla-rnn-manual-bptt.md
 #
 # Plain numpy, no autograd: the forward keeps every hidden state, and the
 # backward walks time in reverse, which is backpropagation through time.

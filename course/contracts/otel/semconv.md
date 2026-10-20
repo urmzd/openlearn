@@ -1,6 +1,6 @@
 # Observability conventions
-<!-- chapter: content/courses/build-an-llm/11-serving/08-serving-metrics-and-tracing.md -->
-<!-- chapter: content/courses/systems/04-observability/02-tracing-for-the-serving-path.md -->
+<!-- chapter: content/courses/ai-engineering/23-model-serving/08-serving-metrics-and-tracing.md -->
+<!-- chapter: content/courses/systems/11-observability/02-tracing-for-the-serving-path.md -->
 
 <!-- modules: L10.0 and obs.00 (tracer spans), L10.7 (engine), obs.01 (go/otelx, serving path), obs.02 (metrics and logs), obs.05 (control plane and Python), dur.04, ag.03
      conformance: otel/ (span tree from a recorded trace) -->

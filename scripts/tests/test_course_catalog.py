@@ -21,9 +21,9 @@ def test_every_course_has_resolvable_unique_reading_sources():
         assert reading and len(reading) == len(set(reading))
         assert all((ROOT / f).is_file() for f in pub["documents"])
     # Each chapter belongs to one book; reading guides link to it instead.
-    lesson = "content/courses/mathematics-for-computing/04-linear-algebra/README.md"
+    lesson = "content/courses/mathematics/09-linear-algebra/README.md"
     owners = [m["id"] for m in courses if lesson in publication(m)["documents"]]
-    assert owners == ["mathematics-for-computing"]
+    assert owners == ["mathematics"]
     shared = {}
     for manifest in courses:
         for doc in publication(manifest)["documents"]:
@@ -105,12 +105,87 @@ def test_appendices_are_lettered_and_code_folders_are_not_sections():
         ("B", "Reading Paths"),
     ]
     ml = publication(select("machine-learning"))
-    llm_systems = next(s for s in ml["reading"] if s.get("number") == "4")
-    code = "content/courses/machine-learning/04-llm-systems/03-model-loading/code/README.md"
+    llm_systems = next(s for s in ml["reading"] if s.get("number") == "20")
+    code = "content/courses/ai-engineering/20-inference-engines/03-model-loading/code/README.md"
     assert code in llm_systems["files"] and code not in llm_systems["labels"]
     assert (
         llm_systems["labels"][
-            "content/courses/machine-learning/04-llm-systems/05-serving-platforms.md"
+            "content/courses/ai-engineering/20-inference-engines/05-serving-platforms.md"
         ]
-        == "4.5"
+        == "20.5"
     )
+
+
+def test_systems_engineering_owns_the_consolidated_lifecycle():
+    courses = catalog()
+    assert "infrastructure" not in {course["id"] for course in courses}
+    systems = select("systems")
+    assert systems["title"] == "Systems Engineering"
+    chapters = [
+        section
+        for section in publication(systems)["reading"]
+        if section.get("kind") in ("chapter", "appendix")
+    ]
+    assert [(section["number"], section["title"]) for section in chapters] == [
+        ("1", "System Design"),
+        ("2", "Software Architecture"),
+        ("3", "RPC and Protocols"),
+        ("4", "Streaming and SSE"),
+        ("5", "Messaging and Distributed Queueing"),
+        ("6", "Distributed Data and Caching"),
+        ("7", "Durable Orchestration and Workers"),
+        ("8", "Search and Indexing"),
+        ("9", "Cloud Native Architecture"),
+        ("10", "Kubernetes Workloads and Deployment"),
+        ("11", "Observability"),
+        ("12", "Incident Response and Recovery"),
+        ("13", "Case Study: Exactly-Once Event API"),
+        ("A", "The Apache Ecosystem"),
+    ]
+    assert all(
+        file.startswith("content/courses/systems/")
+        for chapter in chapters
+        for file in chapter["files"]
+    )
+
+
+def test_six_books_and_separate_guides_have_canonical_aliases():
+    courses = catalog()
+    assert {m["id"] for m in courses if m["kind"] == "book"} == {
+        "mathematics",
+        "programming-and-algorithms",
+        "software-engineering",
+        "data-engineering",
+        "ai-engineering",
+        "systems",
+    }
+    assert {m["id"] for m in courses if m["kind"] == "field-guide"} == {
+        "field-engineering",
+        "interview-preparation",
+    }
+    assert {m["id"] for m in courses if m["kind"] == "reading-path"} == {
+        "computer-science",
+        "research",
+    }
+    aliases = json.loads((ROOT / "openlearn.json").read_text())["course_aliases"]
+    for old, canonical in aliases.items():
+        assert select(old)["id"] == canonical
+
+
+def test_book_parts_survive_publication_and_assembly():
+    manifest = select("ai-engineering")
+    chapters = [
+        s for s in publication(manifest)["reading"] if s.get("kind") == "chapter"
+    ]
+    parts = list(dict.fromkeys(s["part"] for s in chapters))
+    assert parts == [
+        "Learning foundations",
+        "Build a model",
+        "Train and serve models",
+        "Applications and evaluation",
+        "Responsible deployment",
+    ]
+    text, count = assemble_course(ROOT, manifest)
+    assert count == len(publication(manifest)["documents"])
+    for part in parts:
+        assert text.count("\\part{" + part + "}") == 1

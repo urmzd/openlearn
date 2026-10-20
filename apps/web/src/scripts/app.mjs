@@ -17,13 +17,15 @@ function persist() {
 // A small, local title/subject filter complements full-text search in the header.
 const filter = document.querySelector('#book-filter');
 filter?.addEventListener('input', () => {
-  const words = filter.value.toLocaleLowerCase().trim().split(/\s+/);
+  const words = filter.value.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
   let count = 0;
-  for (const row of document.querySelectorAll('#book-list > li')) {
-    row.hidden = !words.every((word) => row.querySelector('.book-link').textContent.toLocaleLowerCase().includes(word));
+  for (const row of document.querySelectorAll('#book-list [data-course]')) {
+    const terms = row.querySelector('.book-link').textContent.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+    row.hidden = !words.every((word) => terms.some((term) => term.startsWith(word)));
     if (!row.hidden) count++;
   }
-  document.querySelector('#filter-count').textContent = `${count} ${count === 1 ? 'book' : 'books'}`;
+  document.querySelector('#filter-count').textContent = `${count} ${count === 1 ? 'title' : 'titles'}`;
+  for (const group of document.querySelectorAll('[data-shelf-group]')) group.hidden = !group.querySelector('[data-course]:not([hidden])');
   document.querySelector('#no-books').hidden = count !== 0;
 });
 

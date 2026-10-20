@@ -1,30 +1,24 @@
-# Books
+# Books and guides
 
-Every book opens with a **Start here** page: who it is for, what you will be able to do, a few routes through it for different goals, and its contents. Times below are for reading the whole book; most routes are shorter.
+Six primary books organize the library by what you need to understand and build. Each subject has one home; related books link to it. Chapters explain first principles, show worked solutions, and ask you to predict, reason, test, and validate before trusting an answer.
 
-The books explain ideas from first principles and show the worked solutions. Pause to predict the next step, reason about why it works, then test and validate the claim. As generating code becomes easier, these checks of understanding matter more than reproducing an implementation.
-
-| Book | Whole book |
+| Book | Scope |
 |---|---|
-| [Mathematics Foundations](mathematics/README.md) | A few weeks, no programming needed |
-| [Mathematics for Computing](mathematics-for-computing/README.md) | About two semesters |
-| [Algorithms](algorithms/README.md) | About 17 days |
-| [Machine Learning and AI](machine-learning/README.md) | 18 to 37 weeks |
-| [Build Your Own LLM System](build-an-llm/README.md) | About 67 weeks |
-| [Systems and Architecture](systems/README.md) | 11 to 15 weeks |
-| [Data Engineering](data-engineering/README.md) | 13 to 18 weeks |
-| [AI Platform Engineering](ai-platform-engineering/README.md) | 25 to 35 weeks |
-| [Infrastructure](infrastructure/README.md) | 5 to 7 weeks |
-| [Software Craftsmanship](software-craftsmanship/README.md) | 3 to 4 weeks for the principles |
-| [Diagramming and Documentation](diagramming/README.md) | About 2 weeks |
-| [Programming Languages](programming-languages/README.md) | 6 to 8 weeks |
-| [Responsible AI](responsible-ai/README.md) | About 4 weeks |
-| [Field Engineering](field-engineering/README.md) | About 6 weeks |
-| [Case Studies](case-studies/README.md) | 2 to 3 days |
-| [Interview Preparation](interview-preparation/README.md) | Pick two or three companies |
-| [Competitive Programming](competitive-programming/README.md) | Ongoing practice |
-| [Practice: Predict and Build](../../practice/README.md) | Dip in by language |
+| [Mathematics](mathematics/README.md) | Everyday mathematical reasoning through calculus, linear algebra, probability, numerics, optimization, and information theory |
+| [Programming and Algorithms](programming-and-algorithms/README.md) | Languages, types, data structures, algorithms, output prediction, and implementation practice |
+| [Software Engineering](software-engineering/README.md) | Design patterns, testing, code review, maintenance, security, authorization, diagrams, and documentation |
+| [Data Engineering](data-engineering/README.md) | Ingestion, storage, warehousing, batch and streaming pipelines, orchestration, modeling, and data quality |
+| [AI Engineering](ai-engineering/README.md) | Learning foundations, building models and LLMs, training, inference, AI applications, evaluation, and responsible deployment |
+| [Systems Engineering](systems/README.md) | Architecture, protocols, streaming, messaging, distributed data, durable execution, deployment, observability, and recovery |
 
-Two reading guides cut across the books instead of owning chapters: [Technology Foundations](computer-science/README.md), a route through computer science, and [Research Preparation](research/study-plan.md), for readers heading toward research in machine learning.
+## Field guides
 
-New to these books? [How to read these books](../references/how-to-read.md) explains how sections, review questions, and solutions work.
+[Field Engineering](field-engineering/README.md) applies the books to discovery, delivery, and customer work. [Interview Preparation](interview-preparation/README.md) organizes preparation by role and interview. They have their own practical material and remain separate from the six books.
+
+## Reading paths
+
+[Technology Foundations](computer-science/README.md) recommends a broad order across the books. [Research Preparation](research/study-plan.md) connects mathematical and AI foundations to primary literature and experiments. These paths recommend existing chapters rather than duplicate them.
+
+Practice belongs to Programming and Algorithms. [Worked projects](../references/worked-projects.md) live in the book that teaches their main subject. AI Engineering includes the staged LLM course and its reference code.
+
+Start with a book's introduction to choose a shorter route. [How to read these books](../references/how-to-read.md) explains the common reading method. The reader offers PDF downloads when a matching edition has been published.

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/tok/bytes_unicode.pyi (M05.2)
-# chapter: content/courses/mathematics-for-computing/06-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md
+# chapter: content/courses/mathematics/11-discrete-math-1/02-injective-surjective-bijective-gpt2-byte-map.md
 #
 # A finite function f: A -> B is a Mapping whose keys are its domain A and
 # whose values are its outputs. Injective: no two keys share a value.

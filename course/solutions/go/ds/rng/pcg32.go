@@ -6,7 +6,7 @@
 // pcg32_random_r, uniform_f64 from two draws, Box-Muller normals, unbiased
 // bounded ints, Fisher-Yates, SplitMix64 sub-streams). Conformance:
 // parity/rng (the Go driver calls this package).
-// Chapter: content/courses/build-an-llm/11-serving/11-load-generator.md.
+// Chapter: content/courses/ai-engineering/23-model-serving/11-load-generator.md.
 package rng
 
 import "math"

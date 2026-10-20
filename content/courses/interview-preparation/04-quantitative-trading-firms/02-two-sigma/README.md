@@ -12,7 +12,7 @@ This chapter takes you through the process in order. After the pipeline and comp
 
 ## Before you begin
 
-The coding round assumes you already know dynamic programming and graph search; the [Algorithms](../../../algorithms/README.md) book covers both from first principles. The quantitative round uses conditional probability and expectation, which [Mathematics for Computing](../../../mathematics-for-computing/README.md) covers. For the design round, read the [Distributed Systems](../../01-shared-concepts/01-distributed-systems.md) chapter of this book and, if you want more depth on pipelines and storage, the [Data Engineering](../../../data-engineering/README.md) book.
+The coding round assumes you already know dynamic programming and graph search; the [Programming and Algorithms](../../../programming-and-algorithms/README.md) book covers both from first principles. The quantitative round uses conditional probability and expectation, which [Mathematics](../../../mathematics/README.md) covers. For the design round, read the [Distributed Systems](../../01-shared-concepts/01-distributed-systems.md) chapter of this book and, if you want more depth on pipelines and storage, the [Data Engineering](../../../data-engineering/README.md) book.
 
 ## In this chapter
 

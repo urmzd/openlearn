@@ -2,7 +2,7 @@
 
 A proof of concept needs a decision at its end, and it can only deliver one if its criteria could have failed. Evaluation criteria chosen after seeing the results invite cherry-picking, conscious or not, and a POC judged that way tests nothing. The remedy is the same one clinical trials use: register the plan, the dataset, and the thresholds before the first run.
 
-This section writes the POC plan for Northstar Commerce, following [POC and Evaluation](../04-poc-and-evaluation/README.md) from earlier in this book. It reuses the latency and reliability protocol from [Designing the performance test protocol](03-performance-engagement.md), and its repeatable, frozen-revision scoring rests on the [The evaluation harness and the model zoo](../../build-an-llm/07-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) in *Build Your Own LLM System* and the [eval runner](../../ai-platform-engineering/09-llm-evaluation/01-eval-runner.md) in *AI Platform Engineering*. The model answer is [`docs/engagement/poc.md`](../../../../course/solutions/docs/engagement/poc.md). Try writing the acceptance gates yourself before reading the walkthrough.
+This section writes the POC plan for Northstar Commerce, following [POC and Evaluation](../04-poc-and-evaluation/README.md) from earlier in this book. It reuses the latency and reliability protocol from [Designing the performance test protocol](03-performance-engagement.md), and its repeatable, frozen-revision scoring rests on the [The evaluation harness and the model zoo](../../ai-engineering/12-objectives-and-adaptation/07-lm-evaluation-harness-and-the-model-zoo.md) in *AI Engineering* and the [eval runner](../../ai-engineering/29-evaluation/01-eval-runner.md) in *AI Engineering*. The model answer is [`docs/engagement/poc.md`](../../../../course/solutions/docs/engagement/poc.md). Try writing the acceptance gates yourself before reading the walkthrough.
 
 > **Learning objectives**
 > - State the single decision a POC makes and what a pass does not authorize.
@@ -82,7 +82,7 @@ The tradeoff accepted is reviewer time. Two hundred hand-scored cases with two r
 
 ## Where this leads
 
-The POC reuses the protocol from [Designing the performance test protocol](03-performance-engagement.md), and its scoring follows the [The evaluation harness and the model zoo](../../build-an-llm/07-objectives/07-lm-evaluation-harness-and-the-model-zoo.md) and the [eval runner](../../ai-platform-engineering/09-llm-evaluation/01-eval-runner.md), which executes the frozen set and reports per-case results. A passed POC is the first precondition of [Planning the staged migration](05-migration-plan.md).
+The POC reuses the protocol from [Designing the performance test protocol](03-performance-engagement.md), and its scoring follows the [The evaluation harness and the model zoo](../../ai-engineering/12-objectives-and-adaptation/07-lm-evaluation-harness-and-the-model-zoo.md) and the [eval runner](../../ai-engineering/29-evaluation/01-eval-runner.md), which executes the frozen set and reports per-case results. A passed POC is the first precondition of [Planning the staged migration](05-migration-plan.md).
 
 Further reading:
 

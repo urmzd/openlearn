@@ -4,7 +4,7 @@ A technical defense tests whether you understand a system well enough to explain
 
 This section treats a defense as a written artifact rather than a performance. You will fix a rubric of eight questions that every defense must answer, work one design question by hand against it, and then read a complete model defense of the reference system, the Python trainer, Rust engine, and Go gateway built across the other books. The model answers come with the evidence they cite, all of it in [`course/solutions/docs/`](../../../../course/solutions/docs/) and [`course/contracts/`](../../../../course/contracts/), and with an explanation of why that evidence is the right kind. Before you read each answer, try to name the file or number you would cite yourself.
 
-There are no code prerequisites. The section is most useful once you have read [Design review: the whole system](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems and Architecture*, since the defense checks the contracts and evidence that review names.
+There are no code prerequisites. The section is most useful once you have read [Design review: the whole system](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems Engineering*, since the defense checks the contracts and evidence that review names.
 
 > **Learning objectives**
 > - Tie each claim in a defense to the exact evidence that backs it: a contract file, a config value, or a postmortem number.
@@ -89,7 +89,7 @@ The third is omitting a named owner and recovery condition. An artifact without 
 
 ## Where this leads
 
-This section closes the loop on the whole build. To check the contracts and evidence it cites, reread [Design review: the whole system](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems and Architecture*. For how owners and next actions are written down so that someone else can act on them, reread [Handing off operations](../../field-engineering/08-mock-engagement/07-escalation-and-handoff.md) in *Field Engineering*. The company chapters in this book show how different interviewers will phrase the same questions.
+This section closes the loop on the whole build. To check the contracts and evidence it cites, reread [Design review: the whole system](../../systems/01-system-design/03-design-review-whole-system.md) in *Systems Engineering*. For how owners and next actions are written down so that someone else can act on them, reread [Handing off operations](../../field-engineering/08-mock-engagement/07-escalation-and-handoff.md) in *Field Engineering*. The company chapters in this book show how different interviewers will phrase the same questions.
 
 ### Further reading
 

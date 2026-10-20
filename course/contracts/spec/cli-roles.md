@@ -1,7 +1,7 @@
 # CLI roles
 
-<!-- chapter: content/courses/build-an-llm/11-serving/01-your-first-endpoint.md
-     chapter: content/courses/ai-platform-engineering/12-gateway/01-streaming-proxy.md -->
+<!-- chapter: content/courses/ai-engineering/23-model-serving/01-your-first-endpoint.md
+     chapter: content/courses/ai-engineering/25-ai-gateway/01-streaming-proxy.md -->
 
 The system never runs its binaries by guessing a path. Each entry point is declared once in `system.toml` under `[entry]` (schema: [`config/system.schema.json`](../config/system.schema.json)) as an argv list, and everything else (scripts, deploy files, the chapters) refers to it by its **role**. A command written `{tinyllm} generate --prompt hi` means the `[entry].tinyllm` argv followed by `generate --prompt hi`.
 

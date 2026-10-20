@@ -32,4 +32,4 @@ Nothing in these books is graded. Worked solutions expose the mechanism so you c
 
 ## Across books
 
-Books link to each other instead of repeating material. When a section needs an idea from another book, it names that book in italics and links the section, for example [Vectors, matrices, row-major layout, and matmul](../courses/mathematics-for-computing/04-linear-algebra/01-vectors-matrices-and-matmul.md) in *Mathematics for Computing*.
+Books link to each other instead of repeating material. When a section needs an idea from another book, it names that book in italics and links the section, for example [Vectors, matrices, row-major layout, and matmul](../courses/mathematics/09-linear-algebra/01-vectors-matrices-and-matmul.md) in *Mathematics*.

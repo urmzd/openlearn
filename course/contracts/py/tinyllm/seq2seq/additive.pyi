@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/seq2seq/additive.pyi (L4.2): Bahdanau additive attention
-# chapter: content/courses/build-an-llm/05-attention-origins/02-bahdanau-additive-attention.md
+# chapter: content/courses/ai-engineering/10-attention/02-bahdanau-additive-attention.md
 #
 # Bahdanau, Cho, and Bengio (2015). A decoder state (the query q) reads the
 # encoder outputs (the keys k_1 .. k_S) through a weighted average whose

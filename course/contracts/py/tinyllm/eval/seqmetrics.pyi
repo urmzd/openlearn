@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/eval/seqmetrics.pyi (L4.5): exact match, BLEU, chrF, and their bootstrap intervals
-# chapter: content/courses/build-an-llm/05-attention-origins/05-sequence-metrics.md
+# chapter: content/courses/ai-engineering/10-attention/05-sequence-metrics.md
 #
 # Metrics that grade generated sequences against references. The numbers
 # match sacreBLEU 2.x with its defaults (Post 2018), so a score you report is

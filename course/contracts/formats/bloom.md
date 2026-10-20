@@ -1,5 +1,5 @@
 # Bloom filter: sizing, hashing, bytes
-<!-- chapter: content/courses/algorithms/13-systems-data-structures/08-bloom-filter.md -->
+<!-- chapter: content/courses/programming-and-algorithms/15-systems-data-structures/08-bloom-filter.md -->
 
 <!-- modules: ds.08 (rust/crates/tl-ds/src/bloom.rs), data.03 (exact dedup)
      conformance: parity/bloom -->

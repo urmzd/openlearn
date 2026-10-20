@@ -14,7 +14,7 @@
 //! [`Json`], which keeps object keys in the order written: "the properties
 //! in the order given" is part of the language.
 //!
-//! Chapter: content/courses/build-an-llm/11-serving/10-tool-calls-and-constrained-decoding.md.
+//! Chapter: content/courses/ai-engineering/23-model-serving/10-tool-calls-and-constrained-decoding.md.
 //! tl-serve's `tools` (L10.9) builds the grammars of `tools`,
 //! `tool_choice`, and `response_format` on top of this module.
 

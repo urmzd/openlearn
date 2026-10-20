@@ -17,7 +17,7 @@ Mermaid fenced code blocks are left untouched -- pandoc's ``mermaid-filter``
 renders them downstream (or they fall back to code blocks).
 
 With ``--path NAME`` it assembles one path instead: the stages listed in
-``content/courses/build-an-llm/paths/NAME/path.tsv``, each a Part holding that stage's files in order, with
+``content/courses/ai-engineering/paths/NAME/path.tsv``, each a Part holding that stage's files in order, with
 the stage's "done when" criterion as the Part's opening line.
 
 Usage:
@@ -228,12 +228,17 @@ def assemble_course(
     chunks = []
     count = 0
     appendices = False
+    current_part = None
     for section in publication(manifest, root)["reading"]:
         files = [f for f in section["files"] if f not in seen]
         if not files:
             continue
         seen.update(files)
         if section.get("number"):
+            part = section.get("part")
+            if part and part != current_part:
+                chunks.append(part_divider(part))
+                current_part = part
             if section.get("kind") == "appendix" and not appendices:
                 chunks.append(part_divider("Appendices"))
                 appendices = True
@@ -260,7 +265,7 @@ def assemble(root: Path) -> tuple[str, int]:
 
 def path_title(root: Path, name: str) -> str:
     readme = (
-        root / "content" / "courses" / "build-an-llm" / "paths" / name / "README.md"
+        root / "content" / "courses" / "ai-engineering" / "paths" / name / "README.md"
     )
     for line in readme.read_text(encoding="utf-8").splitlines():
         if line.startswith("# "):
@@ -271,14 +276,14 @@ def path_title(root: Path, name: str) -> str:
 def read_path(
     root: Path, name: str, stack: tuple[str, ...] = ()
 ) -> list[tuple[str, str, str, list[str], str]]:
-    """Stages of content/courses/build-an-llm/paths/<name>/path.tsv with @includes expanded, in order.
+    """Stages of content/courses/ai-engineering/paths/<name>/path.tsv with @includes expanded, in order.
 
     Each row is (owner, stage, title, files, done_when): ``owner`` is the path
     the stage belongs to, which differs from ``name`` for included parts.
     """
     if name in stack:
         raise SystemExit(f"[error] include cycle: {' -> '.join((*stack, name))}")
-    tsv = root / "content" / "courses" / "build-an-llm" / "paths" / name / "path.tsv"
+    tsv = root / "content" / "courses" / "ai-engineering" / "paths" / name / "path.tsv"
     if not tsv.exists():
         raise SystemExit(f"[error] no path manifest at {tsv}")
     rows = []
@@ -360,7 +365,7 @@ def main() -> int:
     group.add_argument("--course", help="course id from the catalog")
     group.add_argument(
         "--path",
-        help="assemble one path from content/courses/build-an-llm/paths/<NAME>/path.tsv",
+        help="assemble one path from content/courses/ai-engineering/paths/<NAME>/path.tsv",
     )
     args = parser.parse_args()
 

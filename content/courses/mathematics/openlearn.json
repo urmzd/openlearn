@@ -1,6 +1,8 @@
 {
   "id": "mathematics",
-  "title": "Mathematics Foundations",
+  "title": "Mathematics",
+  "kind": "book",
+  "tagline": "From quantities and intuition to calculus, probability, numerics, optimization, and the mathematics inside computing.",
   "repo": "https://github.com/urmzd/openlearn",
   "start": [
     {
@@ -11,23 +13,93 @@
   "tracks": [
     {
       "dir": "content/courses/mathematics/01-quantities-and-relationships.md",
-      "title": "Quantities and relationships"
+      "title": "Quantities and relationships",
+      "part": "Mathematical intuition"
     },
     {
       "dir": "content/courses/mathematics/02-change-and-growth.md",
-      "title": "Change and growth"
+      "title": "Change and growth",
+      "part": "Mathematical intuition"
     },
     {
       "dir": "content/courses/mathematics/03-vectors-and-constraints.md",
-      "title": "Vectors and constraints"
+      "title": "Vectors and constraints",
+      "part": "Mathematical intuition"
     },
     {
       "dir": "content/courses/mathematics/04-uncertainty-and-evidence.md",
-      "title": "Uncertainty and evidence"
+      "title": "Uncertainty and evidence",
+      "part": "Mathematical intuition"
     },
     {
       "dir": "content/courses/mathematics/05-community-event.md",
-      "title": "Project: plan a community event"
+      "title": "Project: plan a community event",
+      "part": "Mathematical intuition"
+    },
+    {
+      "dir": "content/courses/mathematics/06-precalculus",
+      "title": "Precalculus",
+      "part": "Calculus and linear algebra"
+    },
+    {
+      "dir": "content/courses/mathematics/07-calculus-1",
+      "title": "Calculus 1",
+      "part": "Calculus and linear algebra"
+    },
+    {
+      "dir": "content/courses/mathematics/08-calculus-2",
+      "title": "Calculus 2",
+      "part": "Calculus and linear algebra"
+    },
+    {
+      "dir": "content/courses/mathematics/09-linear-algebra",
+      "title": "Linear Algebra",
+      "part": "Calculus and linear algebra"
+    },
+    {
+      "dir": "content/courses/mathematics/10-calculus-3",
+      "title": "Calculus 3",
+      "part": "Calculus and linear algebra"
+    },
+    {
+      "dir": "content/courses/mathematics/11-discrete-math-1",
+      "title": "Discrete Math 1",
+      "part": "Discrete mathematics and uncertainty"
+    },
+    {
+      "dir": "content/courses/mathematics/12-discrete-math-2",
+      "title": "Discrete Math 2",
+      "part": "Discrete mathematics and uncertainty"
+    },
+    {
+      "dir": "content/courses/mathematics/13-probability-statistics",
+      "title": "Probability and Statistics",
+      "part": "Discrete mathematics and uncertainty"
+    },
+    {
+      "dir": "content/courses/mathematics/14-matrix-calculus-and-autodiff",
+      "title": "Matrix Calculus and Autodiff",
+      "part": "Numerics, optimization, and information"
+    },
+    {
+      "dir": "content/courses/mathematics/15-numerical-methods-and-floating-point",
+      "title": "Numerical Methods and Floating Point",
+      "part": "Numerics, optimization, and information"
+    },
+    {
+      "dir": "content/courses/mathematics/16-optimization",
+      "title": "Optimization",
+      "part": "Numerics, optimization, and information"
+    },
+    {
+      "dir": "content/courses/mathematics/17-information-theory",
+      "title": "Information Theory",
+      "part": "Numerics, optimization, and information"
+    },
+    {
+      "dir": "content/courses/mathematics/18-signals-and-images",
+      "title": "Signals and Images",
+      "part": "Numerics, optimization, and information"
     },
     {
       "dir": "content/courses/mathematics/study-plan.md",
@@ -38,8 +110,11 @@
   "reference": [
     {
       "dir": "content/references",
-      "title": "Sources"
+      "title": "References"
+    },
+    {
+      "dir": "content/courses/mathematics/reading-guides",
+      "title": "Reading routes"
     }
-  ],
-  "tagline": "Learn to model quantities, change, constraints, and uncertainty, then plan a community event."
+  ]
 }

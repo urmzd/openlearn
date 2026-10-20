@@ -68,43 +68,23 @@ packages:
     # job and downloaded into outputs/ by the release workflow before sr runs.
     # Each declared artifact must exist on disk before a tag is created.
     artifacts:
-      - outputs/openlearn-ai-platform-engineering.pdf
-      - outputs/openlearn-ai-platform-engineering.zip
-      - outputs/openlearn-algorithms.pdf
-      - outputs/openlearn-algorithms.zip
-      - outputs/openlearn-build-an-llm.pdf
-      - outputs/openlearn-build-an-llm.zip
-      - outputs/openlearn-case-studies.pdf
-      - outputs/openlearn-case-studies.zip
-      - outputs/openlearn-competitive-programming.pdf
-      - outputs/openlearn-competitive-programming.zip
-      - outputs/openlearn-computer-science.pdf
-      - outputs/openlearn-computer-science.zip
-      - outputs/openlearn-data-engineering.pdf
-      - outputs/openlearn-data-engineering.zip
-      - outputs/openlearn-diagramming.pdf
-      - outputs/openlearn-diagramming.zip
-      - outputs/openlearn-field-engineering.pdf
-      - outputs/openlearn-field-engineering.zip
-      - outputs/openlearn-infrastructure.pdf
-      - outputs/openlearn-infrastructure.zip
-      - outputs/openlearn-interview-preparation.pdf
-      - outputs/openlearn-interview-preparation.zip
-      - outputs/openlearn-machine-learning.pdf
-      - outputs/openlearn-machine-learning.zip
       - outputs/openlearn-mathematics.pdf
       - outputs/openlearn-mathematics.zip
-      - outputs/openlearn-mathematics-for-computing.pdf
-      - outputs/openlearn-mathematics-for-computing.zip
-      - outputs/openlearn-practice.pdf
-      - outputs/openlearn-practice.zip
-      - outputs/openlearn-programming-languages.pdf
-      - outputs/openlearn-programming-languages.zip
-      - outputs/openlearn-research.pdf
-      - outputs/openlearn-research.zip
-      - outputs/openlearn-responsible-ai.pdf
-      - outputs/openlearn-responsible-ai.zip
-      - outputs/openlearn-software-craftsmanship.pdf
-      - outputs/openlearn-software-craftsmanship.zip
+      - outputs/openlearn-programming-and-algorithms.pdf
+      - outputs/openlearn-programming-and-algorithms.zip
+      - outputs/openlearn-software-engineering.pdf
+      - outputs/openlearn-software-engineering.zip
+      - outputs/openlearn-data-engineering.pdf
+      - outputs/openlearn-data-engineering.zip
+      - outputs/openlearn-ai-engineering.pdf
+      - outputs/openlearn-ai-engineering.zip
       - outputs/openlearn-systems.pdf
       - outputs/openlearn-systems.zip
+      - outputs/openlearn-field-engineering.pdf
+      - outputs/openlearn-field-engineering.zip
+      - outputs/openlearn-interview-preparation.pdf
+      - outputs/openlearn-interview-preparation.zip
+      - outputs/openlearn-computer-science.pdf
+      - outputs/openlearn-computer-science.zip
+      - outputs/openlearn-research.pdf
+      - outputs/openlearn-research.zip

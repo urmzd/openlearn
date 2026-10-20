@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/infer/sample.pyi (L8.1)
-# chapter: content/courses/build-an-llm/09-inference/01-sampling-and-logit-processors.md
+# chapter: content/courses/ai-engineering/21-inference/01-sampling-and-logit-processors.md
 #
 # The sampler of spec/sampling.md, step for step, in IEEE float64: widen,
 # repetition penalty (HF), presence and frequency penalties (OpenAI),

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/rnn/lstm.pyi (L3.2): the LSTM, in torch's gate order
-# chapter: content/courses/build-an-llm/04-recurrent/02-lstm.md
+# chapter: content/courses/ai-engineering/09-recurrent-networks/02-lstm.md
 #
 # One step, with x [B, D], state h, c [B, H], and the four gates stacked in
 # torch's order i, f, g, o (rows 0:H, H:2H, 2H:3H, 3H:4H of the weights):

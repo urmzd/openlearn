@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/fp.pyi (M09.1)
-# chapter: content/courses/mathematics-for-computing/10-numerical-methods-and-floating-point/01-ieee-754.md
+# chapter: content/courses/mathematics/15-numerical-methods-and-floating-point/01-ieee-754.md
 #
 # IEEE 754 binary32 anatomy, the unit in the last place, and round to nearest
 # even into bfloat16 and binary16, done on the bits (a uint32 view), with the

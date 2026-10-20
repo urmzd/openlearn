@@ -12,7 +12,7 @@ The process typically spans about three weeks and five rounds after a recruiter 
 
 ## Before you begin
 
-You should be fluent in Python, including asyncio and the `threading` module, and comfortable with basic distributed-systems vocabulary. The shared foundation for all company guides in this book, especially [Distributed systems](../../01-shared-concepts/01-distributed-systems.md) and [ML infrastructure](../../01-shared-concepts/03-ml-infrastructure.md), is worth reading first. For deeper background on the systems themselves, *Infrastructure* (start at its [front matter](../../../infrastructure/README.md)) and *Build Your Own LLM System* (start at its [front matter](../../../build-an-llm/README.md)) cover messaging, search, and inference serving from first principles.
+You should be fluent in Python, including asyncio and the `threading` module, and comfortable with basic distributed-systems vocabulary. The shared foundation for all company guides in this book, especially [Distributed systems](../../01-shared-concepts/01-distributed-systems.md) and [ML infrastructure](../../01-shared-concepts/03-ml-infrastructure.md), is worth reading first. For deeper background on the systems themselves, *Systems Engineering* (start at its [front matter](../../../systems/README.md)) and *AI Engineering* (start at its [front matter](../../../ai-engineering/README.md)) cover messaging, search, and inference serving from first principles.
 
 ## The loop at a glance
 

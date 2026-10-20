@@ -266,7 +266,7 @@ A streaming LLM service needs dashboards for each of these: the TTFT distributio
 
 ## Where this leads
 
-The batching and KV cache behind the pipeline's first stage are in [GPU inference serving](07-gpu-inference.md), and the asyncio patterns the streaming code relies on are in [Concurrency patterns](06-concurrency-patterns.md). For a full OpenAI-compatible streaming server built from scratch, see [OpenAI-compatible HTTP and SSE on tokio](../../../build-an-llm/11-serving/06-openai-server-on-tokio.md) in *Build Your Own LLM System*.
+The batching and KV cache behind the pipeline's first stage are in [GPU inference serving](07-gpu-inference.md), and the asyncio patterns the streaming code relies on are in [Concurrency patterns](06-concurrency-patterns.md). For a full OpenAI-compatible streaming server built from scratch, see [OpenAI-compatible HTTP and SSE on tokio](../../../ai-engineering/23-model-serving/06-openai-server-on-tokio.md) in *AI Engineering*.
 
 ## Key terms
 

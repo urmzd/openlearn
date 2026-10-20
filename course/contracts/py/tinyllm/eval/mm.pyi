@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/eval/mm.pyi (L14.5): multimodal eval metrics
-# chapter: content/courses/build-an-llm/15-speech/05-multimodal-eval-metrics.md
+# chapter: content/courses/ai-engineering/15-speech/05-multimodal-eval-metrics.md
 #
 # Speech: word and character error rates from a Levenshtein alignment,
 # jiwer 4 semantics. For one pair, the alignment of the reference tokens r

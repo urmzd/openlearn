@@ -1,5 +1,5 @@
 # contracts/otel/metrics.yaml: every metric instrument of the system.
-# chapter: content/courses/build-an-llm/11-serving/08-serving-metrics-and-tracing.md
+# chapter: content/courses/ai-engineering/23-model-serving/08-serving-metrics-and-tracing.md
 #
 # modules: L10.7 (engine), gw.01 to gw.07 (gateway), dur.03 and dur.04
 # (durable), obs.02 (scrape checks), obs.03 (SLO rules read these names),

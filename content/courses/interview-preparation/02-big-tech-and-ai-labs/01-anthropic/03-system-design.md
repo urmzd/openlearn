@@ -160,7 +160,7 @@ For the **index structure**, use an inverted index for text search, with posting
 
 For **observability**, track per-shard latency (p50 and p99), index freshness (time since the last update per shard), query error rate by type, and cache hit rate.
 
-The internals behind these choices, from postings and skip pointers to scatter-gather and its pagination cost, are covered in [Search and Indexing](../../../infrastructure/03-search-and-indexing/README.md) in *Infrastructure*.
+The internals behind these choices, from postings and skip pointers to scatter-gather and its pagination cost, are covered in [Search and Indexing](../../../systems/08-search-and-indexing/README.md) in *Systems Engineering*.
 
 ## Designing training infrastructure
 
@@ -198,7 +198,7 @@ Draw the full picture first and resist diving into one component too early. Quan
 
 ## Where this leads
 
-The serving concepts here are developed further in [GPU inference serving](07-gpu-inference.md), and the streaming layer in [Streaming and SSE](08-streaming-sse.md). For a ground-up build of an inference server, see the serving chapter of *Build Your Own LLM System*, starting with [Continuous batching scheduler with priority and preemption](../../../build-an-llm/11-serving/03-continuous-batching.md); for the infrastructure under it, see *Infrastructure*, starting from its [front matter](../../../infrastructure/README.md).
+The serving concepts here are developed further in [GPU inference serving](07-gpu-inference.md), and the streaming layer in [Streaming and SSE](08-streaming-sse.md). For a ground-up build of an inference server, see the serving chapter of *AI Engineering*, starting with [Continuous batching scheduler with priority and preemption](../../../ai-engineering/23-model-serving/03-continuous-batching.md); for the infrastructure under it, see *Systems Engineering*, starting from its [front matter](../../../systems/README.md).
 
 ## Key terms
 

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/infer/quant.pyi (L8.5): weight and KV quantization
-# chapter: content/courses/build-an-llm/09-inference/05-quantization.md
+# chapter: content/courses/ai-engineering/21-inference/05-quantization.md
 #
 # Every scheme is symmetric (no zero point) and stores small integers or
 # low-precision codes plus scales; dequantizing multiplies them back. Rounding

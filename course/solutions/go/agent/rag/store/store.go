@@ -5,7 +5,7 @@
 // chunks). Documents are deduplicated by fingerprint: re-ingesting an
 // unchanged document embeds nothing and writes nothing.
 //
-// Chapter: content/courses/ai-platform-engineering/07-retrieval-and-rag/01-rag-ingest.md.
+// Chapter: content/courses/ai-engineering/27-retrieval-and-rag/01-rag-ingest.md.
 package store
 
 import (

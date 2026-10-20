@@ -1,0 +1,241 @@
+{
+  "id": "ai-engineering",
+  "title": "AI Engineering",
+  "kind": "book",
+  "tagline": "Understand learning, build models and language-model systems, then train, serve, evaluate, and govern AI applications.",
+  "repo": "https://github.com/urmzd/openlearn",
+  "start": [
+    {
+      "file": "content/courses/ai-engineering/README.md",
+      "title": "Start here"
+    },
+    {
+      "file": "content/courses/ai-engineering/model-system-map.md",
+      "title": "Model system architecture"
+    },
+    {
+      "file": "content/courses/ai-engineering/paths/course/SYSTEM.md",
+      "title": "Worked system map"
+    }
+  ],
+  "tracks": [
+    {
+      "dir": "content/courses/ai-engineering/01-statistical-learning",
+      "title": "Statistical Learning",
+      "part": "Learning foundations"
+    },
+    {
+      "dir": "content/courses/ai-engineering/02-deep-learning",
+      "title": "Deep Learning",
+      "part": "Learning foundations"
+    },
+    {
+      "dir": "content/courses/ai-engineering/03-neural-architectures",
+      "title": "Neural Architectures and Their History",
+      "part": "Learning foundations"
+    },
+    {
+      "dir": "content/courses/ai-engineering/04-reinforcement-learning",
+      "title": "Reinforcement Learning",
+      "part": "Learning foundations"
+    },
+    {
+      "dir": "content/courses/ai-engineering/05-foundation-models",
+      "title": "Foundation Models and Architectures",
+      "part": "Learning foundations"
+    },
+    {
+      "dir": "content/courses/ai-engineering/06-numerics-and-autograd",
+      "title": "Numerics and Autograd",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/07-tokenizers",
+      "title": "Tokenizers",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/08-statistical-language-models",
+      "title": "Statistical Language Models",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/09-recurrent-networks",
+      "title": "Recurrent Networks",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/10-attention",
+      "title": "Attention from First Principles",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/11-transformer",
+      "title": "The Transformer",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/12-objectives-and-adaptation",
+      "title": "Objectives and Adaptation",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/13-decoder-block",
+      "title": "The Modern Decoder Block",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/14-vision",
+      "title": "Vision Foundations",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/15-speech",
+      "title": "Speech Recognition",
+      "part": "Build a model"
+    },
+    {
+      "dir": "content/courses/ai-engineering/16-training-frameworks",
+      "title": "Training and Frameworks",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/17-training-at-scale",
+      "title": "Training at Scale",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/18-post-training",
+      "title": "Post-training",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/19-training-methods",
+      "title": "Choosing Training and Adaptation Methods",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/20-inference-engines",
+      "title": "Inference Engines and GPU Deployment",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/21-inference",
+      "title": "Implementing Inference",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/22-kernels",
+      "title": "Kernels and Numerical Performance",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/23-model-serving",
+      "title": "Build a Model Server",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/24-model-routing",
+      "title": "Model Routing and Cascades",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/25-ai-gateway",
+      "title": "The AI Gateway",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/26-edge-inference",
+      "title": "Edge and Realtime Inference",
+      "part": "Train and serve models"
+    },
+    {
+      "dir": "content/courses/ai-engineering/27-retrieval-and-rag",
+      "title": "Retrieval and RAG",
+      "part": "Applications and evaluation"
+    },
+    {
+      "dir": "content/courses/ai-engineering/28-agents",
+      "title": "Agent SDK",
+      "part": "Applications and evaluation"
+    },
+    {
+      "dir": "content/courses/ai-engineering/29-evaluation",
+      "title": "LLM Evaluation",
+      "part": "Applications and evaluation"
+    },
+    {
+      "dir": "content/courses/ai-engineering/30-case-study-sql-agent",
+      "title": "Case Study: Grounded SQL Agent",
+      "part": "Applications and evaluation"
+    },
+    {
+      "dir": "content/courses/ai-engineering/31-case-study-kmeans",
+      "title": "Case Study: K-Means Optimization",
+      "part": "Applications and evaluation"
+    },
+    {
+      "dir": "content/courses/ai-engineering/32-case-study-agent-evals",
+      "title": "Case Study: Agent Evaluation Harness",
+      "part": "Applications and evaluation"
+    },
+    {
+      "dir": "content/courses/ai-engineering/33-data-licensing",
+      "title": "Data Licensing",
+      "part": "Responsible deployment"
+    },
+    {
+      "dir": "content/courses/ai-engineering/34-privacy-and-pii",
+      "title": "Privacy and PII",
+      "part": "Responsible deployment"
+    },
+    {
+      "dir": "content/courses/ai-engineering/35-model-and-data-cards",
+      "title": "Model and Data Cards",
+      "part": "Responsible deployment"
+    },
+    {
+      "dir": "content/courses/ai-engineering/36-bias-and-safety-evals",
+      "title": "Bias and Safety Evaluations",
+      "part": "Responsible deployment"
+    },
+    {
+      "dir": "content/courses/ai-engineering/37-usage-policy",
+      "title": "Usage Policy",
+      "part": "Responsible deployment"
+    },
+    {
+      "dir": "content/courses/ai-engineering/38-professional-responsibility",
+      "title": "Professional Responsibility",
+      "part": "Responsible deployment"
+    },
+    {
+      "dir": "content/courses/ai-engineering/capstones",
+      "title": "Capstones",
+      "appendix": true
+    },
+    {
+      "dir": "content/courses/ai-engineering/paths",
+      "title": "Reading Paths",
+      "appendix": true
+    }
+  ],
+  "reference": [
+    {
+      "dir": "course/contracts",
+      "title": "Contracts"
+    },
+    {
+      "dir": "content/references",
+      "title": "References"
+    }
+  ],
+  "paths": "content/courses/ai-engineering/paths",
+  "runtime": [
+    "course",
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version",
+    ".mise.toml"
+  ]
+}

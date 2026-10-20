@@ -16,7 +16,7 @@ set -euo pipefail
 #   --skip-mermaid     Leave Mermaid blocks as code (no headless browser needed)
 #   --no-toc           Omit the table of contents
 #   --manifest FILE    Write a build manifest JSON to FILE
-#   --path NAME        Build one path (content/courses/build-an-llm/paths/NAME/path.tsv) instead of the
+#   --path NAME        Build one path (content/courses/ai-engineering/paths/NAME/path.tsv) instead of the
 #                      whole curriculum; writes supersource-NAME.pdf
 #   --course ID       Build a course from its manifest
 #   --help             Show this help
@@ -106,6 +106,7 @@ info "Assembling curriculum into one document..."
 assemble_args=(--root "$ROOT_DIR" --out "$COMBINED_MD")
 PDF_NAME="supersource-curriculum.pdf"
 if [[ -n "$COURSE_ID" ]]; then
+  COURSE_ID="$(python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["manifest"]["id"])' < <(python3 "$SCRIPT_DIR/course_catalog.py" index --course "$COURSE_ID"))"
   assemble_args+=(--course "$COURSE_ID")
   PDF_NAME="openlearn-$COURSE_ID.pdf"
   TITLE="$(python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["manifest"]["title"])' < <(python3 "$SCRIPT_DIR/course_catalog.py" index --course "$COURSE_ID"))"
@@ -114,7 +115,7 @@ elif [[ -n "$LEARN_PATH" ]]; then
   assemble_args+=(--path "$LEARN_PATH")
   PDF_NAME="supersource-$LEARN_PATH.pdf"
   # The path's README H1 is its title, e.g. "Forward Deployed Engineer, ...".
-  TITLE="$(sed -n 's/^# //p' "$ROOT_DIR/content/courses/build-an-llm/paths/$LEARN_PATH/README.md" | head -1)"
+  TITLE="$(sed -n 's/^# //p' "$ROOT_DIR/content/courses/ai-engineering/paths/$LEARN_PATH/README.md" | head -1)"
   SUBTITLE="An Openlearn course path"
 fi
 python3 "$SCRIPT_DIR/assemble_book.py" "${assemble_args[@]}"

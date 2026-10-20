@@ -1,31 +1,43 @@
 ---
 import library from '../generated/library.json';
+const groups = [
+  { kind: 'book', title: 'Books' },
+  { kind: 'field-guide', title: 'Field guides' },
+  { kind: 'reading-path', title: 'Reading paths' },
+].map((group) => ({ ...group, courses: library.courses.filter((course) => course.kind === group.kind) }));
 ---
 <div class="shelf">
-  <p class="library-intro">Books on computing, mathematics, and engineering. Open a book and read from the foundations to the code.</p>
-  <label class="book-filter" for="book-filter">Find a book
+  <p class="library-intro">Books on computing, mathematics, and engineering. Follow the first principles, test your reasoning, and explore the code.</p>
+  <label class="book-filter" for="book-filter">Find a book or guide
     <input id="book-filter" type="search" placeholder="Title or subject…" autocomplete="off" aria-controls="book-list" />
   </label>
-  <p class="filter-count" id="filter-count" role="status" aria-live="polite">{library.courses.length} books</p>
+  <p class="filter-count" id="filter-count" role="status" aria-live="polite">{library.courses.length} titles</p>
   <a class="continue-card" id="continue-card" hidden>
     <span>Continue reading</span>
     <strong id="continue-title"></strong>
     <span id="continue-book" class="continue-book"></span>
   </a>
-  <ol class="book-list" id="book-list">
-    {library.courses.map((course) => (
-      <li class="book" data-course={course.id}>
-        <a class="book-link" href={course.href}>
-          <span class="book-title">{course.title}</span>
-          <span class="book-description">{course.description}</span>
-        </a>
-        <div class="book-meta">
-          <span>{course.lessons.length} sections</span>
-          <a href={course.href} aria-label={`Read ${course.title}`}>Read book</a>
-          {course.pdf && <a href={course.pdf} aria-label={`Download ${course.title} PDF`}>PDF</a>}
-        </div>
-      </li>
+  <div id="book-list">
+    {groups.filter((group) => group.courses.length).map((group) => (
+      <section class="shelf-group" data-shelf-group aria-label={group.title}>
+        <h2>{group.title}</h2>
+        <ol class="book-list">
+          {group.courses.map((course) => (
+            <li class="book" data-course={course.id}>
+              <a class="book-link" href={course.href}>
+                <span class="book-title">{course.title}</span>
+                <span class="book-description">{course.description}</span>
+              </a>
+              <div class="book-meta">
+                <span>{course.lessons.length} sections</span>
+                <a href={course.href} aria-label={`Read ${course.title}`}>Read</a>
+                {course.pdf && <a href={course.pdf} aria-label={`Download ${course.title} PDF`}>PDF</a>}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
     ))}
-  </ol>
-  <p id="no-books" hidden>No books match your search. Try a broader subject.</p>
+  </div>
+  <p id="no-books" hidden>No titles match your search. Try a broader subject.</p>
 </div>

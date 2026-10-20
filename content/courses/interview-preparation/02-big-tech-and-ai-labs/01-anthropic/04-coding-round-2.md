@@ -305,7 +305,7 @@ class InvertedIndex:
         return re.findall(r'\w+', text.lower())
 ```
 
-Two details are easy to get wrong. `search_and` copies the first posting set before intersecting into it, because `&=` would otherwise mutate the index itself. And it uses `self.index.get` rather than indexing the `defaultdict`, so a query for an unknown term does not insert an empty entry. Production engines use sorted postings lists with skip pointers and rank results with BM25; that design is developed in [Search and Indexing](../../../infrastructure/03-search-and-indexing/README.md) in *Infrastructure*.
+Two details are easy to get wrong. `search_and` copies the first posting set before intersecting into it, because `&=` would otherwise mutate the index itself. And it uses `self.index.get` rather than indexing the `defaultdict`, so a query for an unknown term does not insert an empty entry. Production engines use sorted postings lists with skip pointers and rank results with BM25; that design is developed in [Search and Indexing](../../../systems/08-search-and-indexing/README.md) in *Systems Engineering*.
 
 ## Preparing for the round
 

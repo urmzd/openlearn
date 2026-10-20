@@ -1,0 +1,12 @@
+# Pass 9: course-p09-capstone-training.
+# stage	title	files	done when
+1	Hessian-vector products and the recompute-versus-memory schedule	content/courses/mathematics/14-matrix-calculus-and-autodiff/04-hessian-vector-products-and-recompute.md	You can explain how a Hessian-vector product is computed without the Hessian and how the recompute-versus-memory schedule is chosen (M08.4).
+2	Mixed precision, loss scaling, gradient accumulation, and activation checkpointing	content/courses/ai-engineering/17-training-at-scale/01-mixed-precision-accumulation-and-checkpointing.md	You can explain how mixed precision with loss scaling, gradient accumulation, and activation checkpointing train like fp32 in less memory (L11.1).
+3	Datasheet and model card	content/courses/ai-engineering/35-model-and-data-cards/01-datasheet-and-model-card.md	You can explain what the datasheet and model card report and why each section is there (ethics.03).
+4	Bias and safety evals	content/courses/ai-engineering/36-bias-and-safety-evals/01-bias-and-safety-evals.md	You can explain what the bias and safety evals measure and how their results are reported (ethics.04).
+5	ModelRelease: gates, canary, PromQL burn check, rollback	content/courses/systems/07-durable-orchestration/12-model-release.md	You can explain how ModelRelease gates a model, runs a canary, checks the PromQL burn rate, and rolls back (dur.12).
+6	Model evals as tests (R8)	content/courses/software-engineering/03-testing/08-model-evals-as-tests.md	You can explain how model evals are written as tests with thresholds and confidence intervals (craft.22).
+7	Capstone: TinyStories, owned end to end	content/courses/ai-engineering/capstones/01-tinystories.md	You can explain how the TinyStories model is trained, evaluated, released, and served end to end (C1).
+8	What the system does after Pass 9	content/courses/ai-engineering/paths/course-p09-capstone-training/milestone.md	You can explain how the TinyStories model is trained with mixed precision, evaluated, released through ModelRelease, and served.
+9	Collectives over processes: ring all-reduce	content/courses/ai-engineering/17-training-at-scale/02-collectives-over-processes.md	You can explain how ring all-reduce over processes sums gradients with bandwidth-optimal traffic (L11.2).
+10	Data parallelism and ZeRO stages 1 to 3	content/courses/ai-engineering/17-training-at-scale/03-ddp-and-zero.md	You can explain how DDP and ZeRO stages 1 to 3 partition optimizer state, gradients, and parameters (L11.3).

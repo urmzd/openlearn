@@ -1,5 +1,5 @@
 # Tokenizers
-<!-- chapter: content/courses/build-an-llm/02-tokenizers/05-rust-fast-bpe.md -->
+<!-- chapter: content/courses/ai-engineering/07-tokenizers/05-rust-fast-bpe.md -->
 
 A tokenizer turns text into a list of integer ids and back. A model directory names its tokenizer in [`config.json`](config.schema.json) with `tl_tokenizer`:
 

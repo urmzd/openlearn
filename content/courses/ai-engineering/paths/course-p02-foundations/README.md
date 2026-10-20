@@ -1,0 +1,71 @@
+# Pass 2: Foundations
+
+The tracer's bigram was fitted by counting, which works for a bigram and for nothing larger. Every later model is trained by gradient descent, and gradient descent needs an autograd engine you can trust, which in turn needs the mathematics underneath it: logarithms and units of information, derivatives and finite differences, Taylor series, linear algebra, probability, floating point, and optimization. This pass builds all of it. It is the longest pass in the course and the one that pays off most often later.
+
+The pass reads in two movements. The first is mathematics, from *Mathematics*, with a problem set after each topic so you can check that the ideas hold under your own hands. The second is the autograd itself, from *AI Engineering*: tensors with broadcasting backward passes, an op library checked by gradcheck, fused losses, modules, a training loop, and atomic checkpoints with a token stream. At the end the autograd retrains the tracer's bigram by gradient descent, gets the count MLE back, and the engine serves the result unchanged, because the checkpoint contract fixed in Pass 1 has not moved.
+
+> **Learning objectives**
+> - Derive the calculus, linear algebra, probability, and numerics results the autograd relies on, and work each problem set.
+> - Explain how gradcheck compares analytic gradients with central differences and how its tolerance is chosen.
+> - Explain each op's backward pass, the fused softmax cross-entropy backward, and how the module system registers parameters.
+> - Trace a training step and explain why the autograd bigram converges to the count bigram.
+> - Explain why checkpoints are written atomically and how a resumed run ends bitwise equal to an uninterrupted one.
+
+## Before you begin
+
+This pass needs [Pass 1](../course-p01-tracer/README.md). In particular, the [byte bigram](../../06-numerics-and-autograd/01-byte-bigram.md) and its checkpoint format are the target the autograd must reproduce.
+
+## In this pass
+
+Read the sections in order. The problem sets come right after the topics they exercise:
+
+1. [Problem set: functions, logarithms, trigonometry, series, polynomials, and inequalities](../../../mathematics/06-precalculus/05-problem-set.md). Afterwards you can work every problem in the set and explain each answer.
+2. [Exponents, logarithms, and units of information](../../../mathematics/06-precalculus/01-exponents-logs-and-units-of-information.md). Afterwards you can explain how logs convert between bases and units of information (bits, nats).
+3. [Trigonometry, rotations, complex numbers, and Euler's formula](../../../mathematics/06-precalculus/02-trig-rotations-and-eulers-formula.md). Afterwards you can explain how a 2D rotation is a multiplication by a unit complex number via Euler's formula.
+4. [Sequences, geometric series, and frequency ladders](../../../mathematics/06-precalculus/03-sequences-and-frequency-ladders.md). Afterwards you can explain how a geometric series builds a frequency ladder and what its sum is.
+5. [Polynomials, Horner's rule, and stable quadratic roots](../../../mathematics/06-precalculus/04-polynomials-horner-and-stable-roots.md). Afterwards you can explain why Horner's rule evaluates a polynomial in n multiplies and why the stable quadratic formula avoids cancellation.
+6. [Derivatives and Finite Differences](../../../mathematics/07-calculus-1/01-derivatives-and-finite-differences.md). Afterwards you can explain why the central difference is second-order accurate and how the step size balances truncation against rounding error.
+7. [Newton's Method](../../../mathematics/07-calculus-1/02-newtons-method.md). Afterwards you can explain why Newton's method converges quadratically near a simple root and when it fails.
+8. [Taylor series, remainder bounds, and range reduction](../../../mathematics/08-calculus-2/01-taylor-series.md). Afterwards you can explain how range reduction keeps a Taylor series short and how the remainder bound sets the number of terms.
+9. [Activation Functions and Their Derivatives](../../../mathematics/07-calculus-1/03-activation-functions.md). Afterwards you can derive each activation function's derivative and explain how the solution keeps it numerically stable.
+10. [Calculus 1 Problem Set](../../../mathematics/07-calculus-1/05-problem-set.md). Afterwards you can work every problem in the set and explain each answer.
+11. [Series convergence, the EMA as a geometric series, and bias correction](../../../mathematics/08-calculus-2/02-series-and-the-ema.md). Afterwards you can explain why an EMA is a geometric series and why bias correction divides by 1 - beta^t.
+12. [Calculus 2 problem set: integration techniques, the Gaussian, series, Taylor, polar, and ODEs](../../../mathematics/08-calculus-2/03-problem-set.md). Afterwards you can work every problem in the set and explain each answer.
+13. [Partial derivatives, gradients, and gradcheck](../../../mathematics/10-calculus-3/01-gradients-and-gradcheck.md). Afterwards you can explain how gradcheck compares an analytic gradient with central differences and how its tolerance is chosen.
+14. [Jacobians, the multivariable chain rule, and numeric JVP/VJP](../../../mathematics/10-calculus-3/02-jacobians-and-the-chain-rule.md). Afterwards you can explain how the multivariable chain rule composes Jacobians and how numeric JVPs and VJPs are computed.
+15. [Calculus 3 problem set: vectors, gradients, the chain rule, Hessians, multiple integrals, Lagrange](../../../mathematics/10-calculus-3/03-problem-set.md). Afterwards you can work every problem in the set and explain each answer.
+16. [Discrete math 1 problem set: sets, counting, proofs, induction, relations, bijections](../../../mathematics/11-discrete-math-1/03-problem-set.md). Afterwards you can work every problem in the set and explain each answer.
+17. [Graphs, DAGs, and an iterative topological sort](../../../mathematics/12-discrete-math-2/01-graphs-dags-and-topological-sort.md). Afterwards you can explain how the iterative topological sort orders a DAG and how it detects a cycle.
+18. [Discrete math 2 problem set, part a: DAGs, modular arithmetic, hashing](../../../mathematics/12-discrete-math-2/04-problem-set-a.md). Afterwards you can work every problem in the set and explain each answer.
+19. [Modular arithmetic, hashing, and PCG32 in Python](../../../mathematics/12-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md). Afterwards you can explain how PCG32 advances its state with modular arithmetic and permutes its output, and how the hash is computed.
+20. [Gaussian elimination and LU with partial pivoting](../../../mathematics/09-linear-algebra/02-gaussian-elimination-and-lu.md). Afterwards you can explain why LU needs partial pivoting and how it solves a linear system.
+21. [Random variables, expectation, variance, and normal draws by Box-Muller](../../../mathematics/13-probability-statistics/01-random-variables-and-the-normal.md). Afterwards you can explain how Box-Muller turns two uniforms into normal draws and how expectation and variance are estimated.
+22. [Orthogonality, Householder QR, and orthogonal initialization](../../../mathematics/09-linear-algebra/03-orthogonality-and-householder-qr.md). Afterwards you can explain how Householder reflections build QR and how that gives an orthogonal initialization.
+23. [Eigenvalues, power iteration, and the spectral radius](../../../mathematics/09-linear-algebra/04-eigenvalues-and-power-iteration.md). Afterwards you can explain why power iteration converges to the dominant eigenvector and what the spectral radius says about a recurrence.
+24. [Linear algebra problem set, part a: elimination, LU, bases, rank, determinants, eigenvalues, QR](../../../mathematics/09-linear-algebra/07-problem-set-a.md). Afterwards you can work every problem in the set and explain each answer.
+25. [Probability problem set, part a: axioms, Bayes, random variables, Box-Muller](../../../mathematics/13-probability-statistics/09-problem-set-a.md). Afterwards you can work every problem in the set and explain each answer.
+26. [IEEE 754 anatomy, ulps, and round to nearest even](../../../mathematics/15-numerical-methods-and-floating-point/01-ieee-754.md). Afterwards you can decode an IEEE 754 value by hand, measure its ulp, and explain how round to nearest even produces bf16 and fp16.
+27. [Stable numerics: logsumexp, softmax, and compensated sums](../../../mathematics/15-numerical-methods-and-floating-point/02-stable-numerics.md). Afterwards you can explain why logsumexp subtracts the max and how a compensated sum recovers lost low-order bits.
+28. [Problem set A: representation, rounding, and cancellation](../../../mathematics/15-numerical-methods-and-floating-point/08-problem-set-a.md). Afterwards you can work every problem in the set and explain each answer.
+29. [Entropy, cross-entropy, KL, JS, and the k3 estimator](../../../mathematics/17-information-theory/01-entropy-cross-entropy-and-kl.md). Afterwards you can explain how entropy, cross-entropy, KL, and JS relate and why the k3 estimator is unbiased and non-negative.
+30. [Information theory problem set, part a: entropy, chain rules, KL and cross-entropy](../../../mathematics/17-information-theory/04-problem-set-a.md). Afterwards you can work every problem in the set and explain each answer.
+31. [Dual numbers and forward-mode autodiff](../../../mathematics/14-matrix-calculus-and-autodiff/01-dual-numbers-forward-mode.md). Afterwards you can explain how dual numbers carry a derivative through forward-mode autodiff.
+32. [Scalar reverse mode: the Value graph](../../../mathematics/14-matrix-calculus-and-autodiff/02-scalar-reverse-mode.md). Afterwards you can trace how the Value graph is topologically sorted and how backward accumulates gradients in reverse.
+33. [Matrix differentials, the trace trick, and closed-form VJPs](../../../mathematics/14-matrix-calculus-and-autodiff/03-matrix-differentials-and-vjps.md). Afterwards you can derive closed-form VJPs with matrix differentials and the trace trick.
+34. [Matrix calculus problem set: differentials, trace trick, VJPs, SDPA Jacobian](../../../mathematics/14-matrix-calculus-and-autodiff/05-problem-set.md). Afterwards you can work every problem in the set and explain each answer.
+35. [Convexity, smoothness, gradient descent, and Armijo line search](../../../mathematics/16-optimization/01-gradient-descent-and-line-search.md). Afterwards you can explain how smoothness bounds the gradient-descent step and how Armijo line search picks a step that decreases the loss.
+36. [The Optimizer protocol: SGD, momentum, Nesterov, weight decay](../../../mathematics/16-optimization/02-optimizer-protocol-and-sgd.md). Afterwards you can explain how the Optimizer protocol implements SGD, momentum, Nesterov, and weight decay.
+37. [Adam and AdamW: bias correction and decoupled weight decay](../../../mathematics/16-optimization/03-adam-and-adamw.md). Afterwards you can explain why Adam corrects its moment bias and why AdamW decouples weight decay from the gradient.
+38. [Learning-rate schedules (cosine, WSD, Noam) and gradient clipping](../../../mathematics/16-optimization/04-schedules-and-gradient-clipping.md). Afterwards you can explain how cosine, WSD, and Noam schedules set the learning rate and how global-norm clipping rescales gradients.
+39. [Optimization problem set, part a: convexity, GD rates, momentum, Adam](../../../mathematics/16-optimization/05-problem-set-a.md). Afterwards you can work every problem in the set and explain each answer.
+40. [Variance propagation and initialization](../../../mathematics/13-probability-statistics/04-variance-propagation-and-initialization.md). Afterwards you can derive how variance propagates through a layer and why that sets the initialization scale.
+41. [TDD, unit tests, and how your tests are graded](../../../software-engineering/03-testing/01-tdd-unit-tests-and-mutation-grading.md). Afterwards you can explain how test-first unit tests pin down behavior and what a mutation score says about a test suite.
+42. [Tensor, broadcasting backward, and no_grad](../../06-numerics-and-autograd/02-tensor-and-broadcasting-backward.md). Afterwards you can explain how broadcasting backward sums gradients over broadcast axes and how no_grad stops graph building.
+43. [The op library and gradcheck_all](../../06-numerics-and-autograd/03-op-library-and-gradcheck.md). Afterwards you can explain each op's backward in the op library and how gradcheck_all verifies them.
+44. [Losses with a fused backward](../../06-numerics-and-autograd/04-losses-with-fused-backward.md). Afterwards you can derive the fused softmax cross-entropy backward and explain why fusing it is more stable.
+45. [Module system and basic layers](../../06-numerics-and-autograd/05-module-system-and-layers.md). Afterwards you can explain how the module system registers parameters and how the basic layers are built on it.
+46. [Training loop and the autograd bigram](../../06-numerics-and-autograd/06-training-loop-and-the-autograd-bigram.md). Afterwards you can trace one training step and explain why the autograd bigram converges to the count bigram.
+47. [Safetensors for every dtype, atomic checkpoints, and the token stream](../../06-numerics-and-autograd/07-safetensors-checkpoints-and-token-streams.md). Afterwards you can explain the safetensors layout for every dtype, why checkpoints are written atomically, and how the token stream is read.
+48. [What the System Does After Pass 2](milestone.md). Afterwards you can explain how the course's own autograd retrains the tracer bigram, checks its gradients, and resumes bitwise from a checkpoint.
+
+The stages are also in this pass's manifest, [`path.tsv`](path.tsv). With a trusted autograd in hand, [Pass 3](../course-p03-tokens-and-data/README.md) turns to what the models read: tokens and the corpus they come from.

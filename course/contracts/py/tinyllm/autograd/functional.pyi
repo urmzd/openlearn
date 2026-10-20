@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/autograd/functional.pyi (L0.2): the op library, imported as F
-# chapter: content/courses/build-an-llm/01-foundations/03-op-library-and-gradcheck.md
+# chapter: content/courses/ai-engineering/06-numerics-and-autograd/03-op-library-and-gradcheck.md
 #
 #     from tinyllm.autograd import functional as F
 #

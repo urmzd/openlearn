@@ -92,7 +92,7 @@ You may also see the **snowflake schema**, which normalizes dimensions into sub-
 
 Columnar warehouses do not use B-tree indexes the way OLTP databases do, but they have their own tools for avoiding work.
 
-**Zone maps** (min-max statistics) store per-block metadata so the engine can skip any block whose range cannot match a predicate. **Bloom filters** provide a probabilistic membership test, which lets an engine skip files during point lookups; you can read how they work in [Probabilistic Structures](../../algorithms/12-probabilistic-structures/) in *Algorithms*. **Materialized views** precompute expensive aggregations, trading storage and refresh cost for query speed. And **caching**, both of query results and of metadata, makes repeated queries in modern warehouses nearly free.
+**Zone maps** (min-max statistics) store per-block metadata so the engine can skip any block whose range cannot match a predicate. **Bloom filters** provide a probabilistic membership test, which lets an engine skip files during point lookups; you can read how they work in [Probabilistic Structures](../../programming-and-algorithms/14-probabilistic-structures/) in *Programming and Algorithms*. **Materialized views** precompute expensive aggregations, trading storage and refresh cost for query speed. And **caching**, both of query results and of metadata, makes repeated queries in modern warehouses nearly free.
 
 ## Cost and performance tuning
 
@@ -102,7 +102,7 @@ On the compute side, right-size the warehouse: the warehouse size or slot count 
 
 ## Where this leads
 
-Storage engines, replication, and CAP are the shared distributed-storage core with [System Design](../../systems/01-system-design/) in *Systems and Architecture*. Bloom filters for file and block skipping come from [Probabilistic Structures](../../algorithms/12-probabilistic-structures/), and the B-trees, sorting, and hashing behind index internals from [Trees](../../algorithms/05-trees/), both in *Algorithms*. Columnar encoding is an application of [Information Theory](../../mathematics-for-computing/12-information-theory/) in *Mathematics for Computing*. And object storage reappears as a model store in [LLM Systems](../../machine-learning/04-llm-systems/), where weights are loaded from S3 or GCS.
+Storage engines, replication, and CAP are the shared distributed-storage core with [System Design](../../systems/01-system-design/) in *Systems Engineering*. Bloom filters for file and block skipping come from [Probabilistic Structures](../../programming-and-algorithms/14-probabilistic-structures/), and the B-trees, sorting, and hashing behind index internals from [Trees](../../programming-and-algorithms/07-trees/), both in *Algorithms*. Columnar encoding is an application of [Information Theory](../../mathematics/17-information-theory/) in *Mathematics*. And object storage reappears as a model store in [LLM Systems](../../ai-engineering/20-inference-engines/), where weights are loaded from S3 or GCS.
 
 These ideas are the core products of several companies. Snowflake is built on the separation of storage and compute and on micro-partitions. Databricks builds on Delta Lake, the lakehouse, and Iceberg. Google's BigQuery descends from Dremel and its columnar design. Amazon offers Redshift, S3, and Iceberg on Glue. Netflix created Iceberg and runs petabyte-scale tables on it.
 

@@ -16,8 +16,8 @@ export function courseOutlines(publications, isPublished = () => true) {
 						: referenceDirs.some((dir) => file.startsWith(dir)) && !introductions.has(file);
 					(isReference ? auxiliary : main).push(file);
 				}
-				const { title, number, kind, labels = {} } = section;
-				if (main.length) chapters.push({ title, number, kind, labels, files: main });
+				const { title, number, kind, part, labels = {} } = section;
+				if (main.length) chapters.push({ title, number, kind, part, labels, files: main });
 				if (auxiliary.length) references.push({ title, files: auxiliary });
 			}
 			return { course, chapters, references };
@@ -40,4 +40,15 @@ export function chapterNeighbors(outlines, linkOf) {
 		}
 	}
 	return owners;
+}
+
+// Consecutive chapters share a part without changing their reading order.
+export function chapterParts(chapters) {
+  const groups = [];
+  for (const chapter of chapters) {
+    const title = chapter.part ?? (chapter.kind === 'appendix' ? 'Appendices' : '');
+    if (!groups.length || groups.at(-1).title !== title) groups.push({ title, chapters: [] });
+    groups.at(-1).chapters.push(chapter);
+  }
+  return groups;
 }

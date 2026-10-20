@@ -2,7 +2,7 @@
 
 Discovery leaves you with facts: an arrival rate, a length distribution, a latency target, a quality bar, a set of constraints. This chapter turns those facts into a **deployment hypothesis**: a sized proposal for model, tier, GPU count, quantization, and cost. You should expect the hypothesis to be wrong by up to 2x, and you should intend to correct it with a benchmark. A hypothesis is a written guess with its math visible, and its whole purpose is to give the benchmark something to confirm or refute.
 
-Sizing is arithmetic on four numbers from discovery: arrival rate, input length, output length, and the latency SLO. Token rates give compute. Little's law gives concurrency. Concurrency times context gives KV-cache memory. Decode step time, measured against the TPOT target, gives sequences per replica. Every step has a published formula, and they are derived in [Serving, Capacity & Load Testing](../../machine-learning/04-llm-systems/04-serving-and-load/) in *Machine Learning and AI*; this chapter applies them. The field skill is choosing honest inputs, stating assumptions, and knowing which step will bind.
+Sizing is arithmetic on four numbers from discovery: arrival rate, input length, output length, and the latency SLO. Token rates give compute. Little's law gives concurrency. Concurrency times context gives KV-cache memory. Decode step time, measured against the TPOT target, gives sequences per replica. Every step has a published formula, and they are derived in [Serving, Capacity & Load Testing](../../ai-engineering/20-inference-engines/04-serving-and-load/) in *AI Engineering*; this chapter applies them. The field skill is choosing honest inputs, stating assumptions, and knowing which step will bind.
 
 Before any of that arithmetic, though, you have to decide whether the workload can win at all. The chapter therefore opens with qualification, then works a complete sizing example by hand, shows how to write the result as a hypothesis table with a risk to test on every row, and closes with the choice of surface: serverless, dedicated, batch, fine-tune, or bring-your-own-cloud.
 
@@ -15,7 +15,7 @@ Before any of that arithmetic, though, you have to decide whether the workload c
 
 ## Before you begin
 
-You need your notes from [Discovery](../01-discovery/README.md) and sections 2, 3, and 11 of [LLM Systems & Inference](../../machine-learning/04-llm-systems/). The primary reference is [Serving, Capacity & Load Testing](../../machine-learning/04-llm-systems/04-serving-and-load/): the roofline, the memory budget, Little's law, the serverless-versus-dedicated breakeven, and the SLO-to-config runbook. Keep [`capacity.py`](../../machine-learning/04-llm-systems/04-serving-and-load/code/capacity.py) open to check every number below, and read Databricks' [LLM Inference Performance Engineering](https://www.databricks.com/blog/llm-inference-performance-engineering-best-practices) (free) for a second view. In practice the first pass is usually done by an FDE or SE, an SA takes multi-workload accounts, and the performance team reviews unusual models.
+You need your notes from [Discovery](../01-discovery/README.md) and sections 2, 3, and 11 of [LLM Systems & Inference](../../ai-engineering/20-inference-engines/). The primary reference is [Serving, Capacity & Load Testing](../../ai-engineering/20-inference-engines/04-serving-and-load/): the roofline, the memory budget, Little's law, the serverless-versus-dedicated breakeven, and the SLO-to-config runbook. Keep [`capacity.py`](../../ai-engineering/20-inference-engines/04-serving-and-load/code/capacity.py) open to check every number below, and read Databricks' [LLM Inference Performance Engineering](https://www.databricks.com/blog/llm-inference-performance-engineering-best-practices) (free) for a second view. In practice the first pass is usually done by an FDE or SE, an SA takes multi-workload accounts, and the performance team reviews unusual models.
 
 ## Qualification: is this a fit?
 
@@ -24,7 +24,7 @@ Before sizing, check that the workload can win. A deal that fails here should be
 | Signal | Why it matters | What to do |
 |---|---|---|
 | No eval set and no plan to build one | The POC cannot pass or fail on quality | Offer to help build a small labelled set before the POC; otherwise do not start |
-| Quality depends on a capability open models lack today (measured, not assumed) | Migration will regress | Propose a narrow sub-workload, or a routing setup ([Model Routing](../../ai-platform-engineering/11-model-routing-and-cascades/)) |
+| Quality depends on a capability open models lack today (measured, not assumed) | Migration will regress | Propose a narrow sub-workload, or a routing setup ([Model Routing](../../ai-engineering/24-model-routing/)) |
 | Volume far below dedicated breakeven and no SLO | Serverless is fine; a heavy engagement costs more than it returns | Point them at serverless docs; light touch |
 | Hard compliance need the vendor does not meet (for example, region not offered) | Blocks the deal regardless of performance | Confirm with the security owner before any technical work ([Commercials and Security](../06-commercials-and-security/README.md)) |
 | No decision maker identified, no date | POCs without a decision drift | Ask "what would make you say no" again; get a name |
@@ -119,7 +119,7 @@ dedicated      = GPU-hours x $R per GPU-hour
 effective cost = $17k / 89,000 = ~$0.19 per 1M tokens, only if autoscaling holds that floor
 ```
 
-A good way to internalize the method is to redo this example by hand, then with [`capacity.py`](../../machine-learning/04-llm-systems/04-serving-and-load/code/capacity.py), and find the assumption that differs wherever the two disagree. Then change one input at a time (double the output length, remove prefix caching, switch to BF16) and predict the effect on GPU count before recomputing.
+A good way to internalize the method is to redo this example by hand, then with [`capacity.py`](../../ai-engineering/20-inference-engines/04-serving-and-load/code/capacity.py), and find the assumption that differs wherever the two disagree. Then change one input at a time (double the output length, remove prefix caching, switch to BF16) and predict the effect on GPU count before recomputing.
 
 ## Writing the hypothesis
 
@@ -135,13 +135,13 @@ The arithmetic becomes a hypothesis when you write it as a table in which every 
 | Chunked prefill | On | Protects TPOT when a long prompt arrives | p99 TPOT under mixed lengths |
 | Speculative decoding | Test EAGLE or MTP drafts off-peak | Helps TPOT at low batch; gains shrink near saturation | Acceptance rate on support replies |
 
-Every entry in "risk to test" becomes a benchmark in [Performance Testing Engagements](../03-performance-testing-engagements/README.md) or an eval in [POC and Evaluation](../04-poc-and-evaluation/README.md). Give the GPU count as a range (10 to 16 here) rather than one number, because the benchmark picks the point. You will also present this table to buyers who are not technical, so practice explaining each step in one sentence; if you cannot, the "two audiences" table in [Serving & Load section 8](../../machine-learning/04-llm-systems/04-serving-and-load/#8-load-testing-methodology) helps.
+Every entry in "risk to test" becomes a benchmark in [Performance Testing Engagements](../03-performance-testing-engagements/README.md) or an eval in [POC and Evaluation](../04-poc-and-evaluation/README.md). Give the GPU count as a range (10 to 16 here) rather than one number, because the benchmark picks the point. You will also present this table to buyers who are not technical, so practice explaining each step in one sentence; if you cannot, the "two audiences" table in [Serving & Load section 8](../../ai-engineering/20-inference-engines/04-serving-and-load/#8-load-testing-methodology) helps.
 
 ## Choosing the surface
 
 The hypothesis names a tier, and that choice deserves its own reasoning, because the surfaces differ in what the customer controls and what they pay for.
 
-**Serverless** (shared, per-token pricing) needs no capacity planning and has no idle cost, but gives no control of batch size, SLO isolation, or custom weights. It is right for evaluation, for low or spiky volume, and for popular models. **Dedicated** (per GPU-hour) gives isolation, custom weights and flags, and predictable latency, and the customer pays for idle time. It is right above the breakeven volume (see [Breakeven](../06-commercials-and-security/README.md#breakeven)) or under a strict percentile SLO. **Batch or async** is for offline work that tolerates hours of latency, and it should always be priced separately from the online path. **Fine-tuning** is for when prompt changes plateau below the quality bar; start with LoRA, so the base model stays shared and multi-LoRA serving keeps cost down ([Serving & Load section 7](../../machine-learning/04-llm-systems/04-serving-and-load/#7-multi-lora-serverless-vs-dedicated-cold-start-autoscaling)). **BYOC or VPC** deployment is for when data must not leave the customer's cloud account or network; expect a longer timeline and fewer managed features, and check the vendor's current status, since some offerings are preview or enterprise only (see [what the companies sell](../README.md#what-the-companies-sell)).
+**Serverless** (shared, per-token pricing) needs no capacity planning and has no idle cost, but gives no control of batch size, SLO isolation, or custom weights. It is right for evaluation, for low or spiky volume, and for popular models. **Dedicated** (per GPU-hour) gives isolation, custom weights and flags, and predictable latency, and the customer pays for idle time. It is right above the breakeven volume (see [Breakeven](../06-commercials-and-security/README.md#breakeven)) or under a strict percentile SLO. **Batch or async** is for offline work that tolerates hours of latency, and it should always be priced separately from the online path. **Fine-tuning** is for when prompt changes plateau below the quality bar; start with LoRA, so the base model stays shared and multi-LoRA serving keeps cost down ([Serving & Load section 7](../../ai-engineering/20-inference-engines/04-serving-and-load/#7-multi-lora-serverless-vs-dedicated-cold-start-autoscaling)). **BYOC or VPC** deployment is for when data must not leave the customer's cloud account or network; expect a longer timeline and fewer managed features, and check the vendor's current status, since some offerings are preview or enterprise only (see [what the companies sell](../README.md#what-the-companies-sell)).
 
 The decision runs in a fixed order, from the hardest constraint to the softest:
 
@@ -165,7 +165,7 @@ A single customer often lands on more than one box: dedicated for the online pat
 
 ## Where this leads
 
-The sizing steps rest on several other books. Steps 2 to 6 apply the roofline, memory budget, and Little's law from [Serving & Load](../../machine-learning/04-llm-systems/04-serving-and-load/). The quantization row draws on [Quantization](../../machine-learning/04-llm-systems/01-quantization/). Reading a model's `config.json` before sizing (GQA, MoE, MLA, and their KV cost) is covered in [Foundation Models](../../machine-learning/05-foundation-models/), and the fine-tune box in the decision draws on LoRA versus full fine-tuning in [Training & Post-Training](../../machine-learning/07-training-and-post-training/). When the answer is two models, see [Model Routing & Cascades](../../ai-platform-engineering/11-model-routing-and-cascades/) in *AI Platform Engineering*.
+The sizing steps rest on several other books. Steps 2 to 6 apply the roofline, memory budget, and Little's law from [Serving & Load](../../ai-engineering/20-inference-engines/04-serving-and-load/). The quantization row draws on [Quantization](../../ai-engineering/20-inference-engines/01-quantization/). Reading a model's `config.json` before sizing (GQA, MoE, MLA, and their KV cost) is covered in [Foundation Models](../../ai-engineering/05-foundation-models/), and the fine-tune box in the decision draws on LoRA versus full fine-tuning in [Training & Post-Training](../../ai-engineering/19-training-methods/). When the answer is two models, see [Model Routing & Cascades](../../ai-engineering/24-model-routing/) in *AI Engineering*.
 
 "How many GPUs for this workload?" is a standard advanced whiteboard question in FDE and SE interviews at Fireworks AI, Together AI, and Baseten. NVIDIA solutions architects size NIM and TensorRT-LLM deployments for enterprise customers; AI specialist SAs at AWS, GCP, and Azure size managed endpoints against self-hosted GPUs; and Anyscale and Modal have serverless-versus-reserved conversations daily.
 
@@ -173,7 +173,7 @@ The next chapter, [Performance Testing Engagements](../03-performance-testing-en
 
 ### Further reading
 
-- [Serving, Capacity & Load Testing](../../machine-learning/04-llm-systems/04-serving-and-load/), with [`capacity.py`](../../machine-learning/04-llm-systems/04-serving-and-load/code/capacity.py) to check every number.
+- [Serving, Capacity & Load Testing](../../ai-engineering/20-inference-engines/04-serving-and-load/), with [`capacity.py`](../../ai-engineering/20-inference-engines/04-serving-and-load/code/capacity.py) to check every number.
 - Databricks, [LLM Inference Performance Engineering: Best Practices](https://www.databricks.com/blog/llm-inference-performance-engineering-best-practices) (free).
 
 ## Exercise

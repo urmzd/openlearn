@@ -1,19 +1,24 @@
 ---
 name: openlearn
-description: "Free curriculum spanning math foundations, algorithms (15 topics), ML/AI, systems & architecture, competitive programming, information theory, software craftsmanship, and polyglot practice (9 languages across systems/cloud/general tiers). Includes interview guides for 19 companies, structured study plans, and interactive learning skills."
+description: "First-principles learning across six books: Mathematics, Programming and Algorithms, Software Engineering, Data Engineering, AI Engineering, and Systems Engineering. Includes field guides, reading paths, worked solutions, and reasoning checks."
 ---
 
-# Supersource
+# Openlearn
 
-Free self-paced curriculum with seven tracks:
-- **Math Foundations** (7 topics): Calculus 1-3, Linear Algebra, Discrete Math 1-2, Probability & Statistics
-- **Algorithm Mastery** (15 topics): Arrays through Probabilistic Structures, with code in JS/Python/C/Scheme
-- **ML & AI** (3 topics): Statistical Learning, Deep Learning, Reinforcement Learning
-- **Systems & Architecture** (4 topics): System Design, Software Architecture, Cloud Native, Observability
-- **Polyglot Practice** (9 languages): Systems (C, C++, Rust, Zig), Cloud (Go, Scala, Java), General (Python, TypeScript)
-- **Specialized**: Competitive Programming, Information Theory, Software Craftsmanship
-- **Interview Prep**: Company-specific guides for 19 companies
+The library has six primary books:
+
+- **Mathematics:** intuition, calculus, linear algebra, discrete mathematics, probability, numerics, and optimization.
+- **Programming and Algorithms:** languages, types, algorithms, output prediction, implementation practice, and competitive programming.
+- **Software Engineering:** patterns, testing, review, releases, maintenance, security, diagrams, and documentation.
+- **Data Engineering:** ingestion, storage, pipelines, orchestration, modeling, and data quality.
+- **AI Engineering:** learning foundations, model and LLM construction, training, inference, applications, evaluation, and responsible deployment.
+- **Systems Engineering:** architecture, protocols, streaming, messaging, distributed execution, deployment, observability, and recovery.
+
+Field Engineering and Interview Preparation are practical field guides. Technology Foundations and Research Preparation recommend reading paths across the books. Worked projects live in their subject book. Use `content/courses/README.md` and the registered manifests for current chapter order.
+
+Teach from first principles and show worked solutions. Ask readers to predict, explain, test, and validate before revealing the reasoning. Code generation does not replace understanding or evidence.
 
 ## Skills
-- `study-session` -- interactive Q&A with quiz, drill, explain, review, and assess modes
-- `study-plan` -- generate personalized study plans based on goals, level, and timeline
+
+- `study-session`: interactive questions, drills, explanations, review, and assessment.
+- `study-plan`: a reading plan matched to goals, prerequisites, and available time.

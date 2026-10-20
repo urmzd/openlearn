@@ -45,7 +45,7 @@ A 10 percent increase multiplies the current size by 1.1, so $S(m)=100(1.1)^m$. 
 
 ## Where this leads
 
-So far each quantity has been a single number. The next chapter, [Vectors and constraints](03-vectors-and-constraints.md), tracks several quantities at once and asks which plans satisfy several requirements together. For more on growth, see [Exponents, logarithms, and units of information](../mathematics-for-computing/01-precalculus/01-exponents-logs-and-units-of-information.md) and the [Calculus 1](../mathematics-for-computing/02-calculus-1/README.md) chapter in *Mathematics for Computing*.
+So far each quantity has been a single number. The next chapter, [Vectors and constraints](03-vectors-and-constraints.md), tracks several quantities at once and asks which plans satisfy several requirements together. For more on growth, see [Exponents, logarithms, and units of information](06-precalculus/01-exponents-logs-and-units-of-information.md) and the [Calculus 1](07-calculus-1/README.md) chapter in *Mathematics*.
 
 ## Key terms
 

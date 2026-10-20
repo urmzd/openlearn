@@ -15,7 +15,7 @@ This chapter gives you the vocabulary and the mental map that the rest of the bo
 
 ## Before you begin
 
-You should be comfortable writing SQL and have the basics of distributed systems from the [System Design](../../systems/01-system-design/) chapter of *Systems and Architecture*. Chapters 1 and 2 of Martin Kleppmann's [*Designing Data-Intensive Applications*](https://dataintensive.net/) (DDIA) are the best companion reading: they introduce reliability, scalability, maintainability, and data models, which this book uses throughout. As you read, a useful habit is to classify every system you meet twice, once by where it sits on the lifecycle and once as OLTP or OLAP. And before you go deep on any one stage, it is worth building a tiny end-to-end pipeline yourself: ingest from an API, land the data in object storage, transform it with SQL, and query the result.
+You should be comfortable writing SQL and have the basics of distributed systems from the [System Design](../../systems/01-system-design/) chapter of *Systems Engineering*. Chapters 1 and 2 of Martin Kleppmann's [*Designing Data-Intensive Applications*](https://dataintensive.net/) (DDIA) are the best companion reading: they introduce reliability, scalability, maintainability, and data models, which this book uses throughout. As you read, a useful habit is to classify every system you meet twice, once by where it sits on the lifecycle and once as OLTP or OLAP. And before you go deep on any one stage, it is worth building a tiny end-to-end pipeline yourself: ingest from an API, land the data in object storage, transform it with SQL, and query the result.
 
 ## The data engineering lifecycle
 
@@ -81,7 +81,7 @@ Finally, not all data is tabular. JSON and nested types are first-class in moder
 
 ## Consistency and reliability
 
-Storage and modeling decisions sit on top of distributed systems, and the guarantees those systems give you shape what your pipeline can promise. This material comes from DDIA and is shared with the [System Design](../../systems/01-system-design/) chapter of *Systems and Architecture*.
+Storage and modeling decisions sit on top of distributed systems, and the guarantees those systems give you shape what your pipeline can promise. This material comes from DDIA and is shared with the [System Design](../../systems/01-system-design/) chapter of *Systems Engineering*.
 
 The **CAP** theorem says that under a network partition, a system must choose between consistency and availability. **PACELC** extends it: even when there is no partition, you trade latency against consistency. Within that space you pick a **consistency model** per use case: strong consistency, eventual consistency, or intermediate guarantees such as read-your-writes.
 
@@ -97,7 +97,7 @@ The honest rule is that most "real-time" requirements are actually "fresh enough
 
 ## Where this leads
 
-The ideas in this chapter recur everywhere. CAP, replication, and consistency are the shared distributed-systems core with [System Design](../../systems/01-system-design/). The reason columnar data compresses so well is an entropy argument, developed in [Information Theory](../../mathematics-for-computing/12-information-theory/) in *Mathematics for Computing*. Feature pipelines that feed models are covered in [LLM Systems](../../machine-learning/04-llm-systems/).
+The ideas in this chapter recur everywhere. CAP, replication, and consistency are the shared distributed-systems core with [System Design](../../systems/01-system-design/). The reason columnar data compresses so well is an entropy argument, developed in [Information Theory](../../mathematics/17-information-theory/) in *Mathematics*. Feature pipelines that feed models are covered in [LLM Systems](../../ai-engineering/20-inference-engines/).
 
 In industry, these are not abstractions. The lakehouse, the lifecycle, and Spark are Databricks's product. Amazon's Redshift, S3, and Glue are a reference data lake architecture. Netflix runs a massive batch and streaming data platform. Palantir's business is data integration and modeling at scale. Snowflake built its cloud warehouse on ELT and the separation of storage and compute.
 

@@ -1,5 +1,5 @@
 # contracts/py/tinyllm/num/diff.pyi (M01.1)
-# chapter: content/courses/mathematics-for-computing/02-calculus-1/01-derivatives-and-finite-differences.md
+# chapter: content/courses/mathematics/07-calculus-1/01-derivatives-and-finite-differences.md
 #
 # Finite-difference derivatives of a scalar function of one real variable.
 # eps below is float64 machine epsilon, 2**-52 (numpy.finfo(float).eps).

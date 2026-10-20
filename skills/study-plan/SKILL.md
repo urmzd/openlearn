@@ -24,9 +24,12 @@ Create personalized study plans that adapt to the user's goals, experience, and 
 3. Read the relevant curriculum READMEs to understand available content:
    - `README.md` — overall structure
    - `content/courses/README.md` — existing structured plans
-   - `content/courses/algorithms/README.md` — algorithm topics
-   - `content/courses/mathematics-for-computing/README.md` — math foundations
-   - `practice/README.md` — polyglot practice track
+   - `content/courses/programming-and-algorithms/README.md` — languages, algorithms, and practice
+   - `content/courses/mathematics/README.md` — math foundations
+   - `content/courses/ai-engineering/README.md` — model building and AI applications
+   - `content/courses/software-engineering/README.md` — engineering practices
+   - `content/courses/systems/README.md` — systems design and operation
+   - `content/courses/data-engineering/README.md` — data lifecycle
    - `content/courses/interview-preparation/README.md` — company guides
 4. Generate a week-by-week plan
 
@@ -42,7 +45,7 @@ Optimized for technical interviews:
 
 ### language-mastery [languages...]
 Deep fluency in target languages:
-- Phase 1: Language essentials (read practice/build/{tier}/{lang}/README.md, work through the solutions to exercises 01-03)
+- Phase 1: Language essentials (read the language chapter in content/courses/programming-and-algorithms/, work through the solutions to exercises 01-03)
 - Phase 2: Intermediate patterns (exercises 04-06, language idiom focus)
 - Phase 3: Advanced topics (exercises 07-10, concurrency, metaprogramming)
 - Cross-language comparison: implement the same algorithm in all target languages
@@ -54,7 +57,7 @@ Systems programming depth:
 - Phase 2: Concurrency (pthreads → channels → async, across C/Rust/Zig/Go)
 - Phase 3: Performance (profiling, cache-awareness, SIMD, zero-copy)
 - Phase 4: Systems projects (allocator, network server, file system)
-- Pair with the C runtime chapters in content/courses/build-an-llm/10-kernels/ (rt.02 arena, rt.03 thread pool)
+- Pair with the C runtime chapters in content/courses/ai-engineering/22-kernels/ (rt.02 arena, rt.03 thread pool)
 
 ### full-stack [weeks]
 Comprehensive curriculum:
@@ -111,10 +114,10 @@ Generate plans as a structured weekly schedule:
 ## Cross-References
 
 Reference specific content from the curriculum:
-- Algorithm patterns → `content/courses/algorithms/{topic}/README.md`
-- Practice exercises → `practice/build/{tier}/{lang}/README.md`
+- Algorithm patterns → `content/courses/programming-and-algorithms/{topic}/README.md`
+- Practice exercises → `the language chapter in content/courses/programming-and-algorithms/`
 - Interview prep → `content/courses/interview-preparation/{company}/README.md`
 - Study routines → `content/courses/README.md` (daily routine sections)
-- Math prerequisites → `content/courses/mathematics-for-computing/README.md`
-- Competitive programming → `content/courses/competitive-programming/README.md`
+- Math prerequisites → `content/courses/mathematics/README.md`
+- Competitive programming → `content/courses/programming-and-algorithms/README.md`
 - Worked builds → `content/courses/case-studies/{study-dir}/README.md` (each has a runnable implementation)
