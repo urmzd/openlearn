@@ -52,6 +52,14 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 
 The linked sections come from *Programming and Algorithms*, *Data Engineering*, *Software Engineering*, and *AI Engineering*, where each problem is solved as part of a larger system rather than in isolation.
 
+## Key terms
+
+- **Reference counting**: memory management in which each object counts the references to it and is freed when the count drops to zero; CPython uses it, backed by a cycle-detecting garbage collector for objects that refer to each other.
+- **Global interpreter lock (GIL)**: CPython's lock that lets only one thread execute Python bytecode at a time, so threads speed up I/O-bound work but not CPU-bound work; an experimental free-threaded build from 3.13 removes it.
+- **Gradual typing**: a type system in which static type annotations are optional and unannotated code stays dynamically typed; Python's interpreter ignores annotations, and checkers such as mypy and pyright enforce them.
+- **Dunder method**: a method named with double underscores, such as `__iter__` or `__eq__`, that Python calls to carry out an operator, attribute lookup, iteration, or `with` block; defining them makes your types behave like built-ins.
+- **Context manager**: an object with `__enter__` and `__exit__` methods, used in a `with` statement, so the setup and cleanup of a scoped resource happen on every exit path, including exceptions.
+
 ## Further reading
 
 - [Python documentation](https://docs.python.org/3/): the authoritative reference.

@@ -164,6 +164,18 @@ Interviewers favor different variants. As a rough guide:
 | NVIDIA | parallel BFS, graph partitioning | Hard |
 | Palantir | entity relationship graphs | Medium-Hard |
 
+## Key terms
+
+- **Flood fill**: a DFS or BFS from one cell that marks every cell reachable through matching neighbors; starting one from each unvisited cell counts connected regions, such as the islands in a grid.
+- **Back edge**: an edge found during depth-first search that points to a node still in progress on the current path; in a directed graph, tracked with three node states (unvisited, in progress, visited), a back edge is exactly a cycle.
+- **Dijkstra's algorithm**: single-source shortest paths for non-negative edge weights that repeatedly pops the closest unsettled node from a priority queue, relaxes its edges, and skips popped entries whose distance is stale; $O((V + E) \log V)$ with a binary heap.
+- **Union-find / disjoint-set union (DSU)**: a forest that keeps elements in disjoint sets, with `find` returning a set's root and `union` merging two sets; it answers "are these connected?" as edges arrive in nearly constant amortized time per operation.
+- **Path compression**: a union-find optimization in which `find` points the nodes it passes closer to, or directly at, their root, flattening the trees so later finds are nearly constant time.
+- **Union by rank**: a union-find rule that attaches the root of the shallower tree under the root of the deeper one so the trees stay shallow; with path compression it gives nearly constant amortized time per operation.
+- **Multi-source BFS**: a breadth-first search whose queue starts with every source at once, so the distance it assigns each node is the distance to the nearest source.
+- **Adjacency matrix**: a $V \times V$ table whose entry $(u, v)$ records whether, or with what weight, an edge joins $u$ and $v$; it gives $O(1)$ edge lookup at $O(V^2)$ space, which suits dense graphs.
+- **Implicit graph**: a graph whose nodes and edges are computed on demand rather than stored, such as grid cells and their four neighbors or words that differ by one letter; it needs no extra space for edges.
+
 ## In this chapter
 
 The JavaScript files are solution functions; run them with Node and a small driver, or in an online judge. The TypeScript code can be run with `ts-node`, or compiled with `tsc` and run with Node.

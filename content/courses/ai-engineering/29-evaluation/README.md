@@ -112,6 +112,21 @@ The four sections build the agent evaluation pipeline in Go, each plugging into 
 3. [LLM judge with position control](03-llm-judge.md): a rubric judge with strict parsing, a pairwise comparison that detects position bias, Cohen's kappa against human labels, and deterministic sampling.
 4. [Paired A/B experiments](04-ab-experiments.md): compare two versions on the same cases with paired deltas, a paired bootstrap interval, and a sign permutation p-value.
 
+## Key terms
+
+- **Intrinsic evaluation**: measuring how well a model predicts held-out text, with cross-entropy, perplexity, or bits per byte; cheap and automatic, ideal for steering training, but blind to usefulness.
+- **Extrinsic evaluation**: measuring whether a model's outputs are good for a task (correct, helpful, grounded, safe) with benchmarks, judges, and humans; it decides whether a model is fit to ship.
+- **Benchmark contamination**: benchmark data leaking into a model's training set, so its score measures memorization instead of capability; countered with fresh, private, or held-out evals.
+- **Verbosity bias**: an LLM judge's tendency to rate longer answers higher regardless of quality.
+- **Self-preference bias**: an LLM judge's tendency to favour outputs from its own model family.
+- **Elo rating**: a rating computed from many pairwise wins and losses, as Chatbot Arena does with human votes, that ranks models on general preference.
+- **Faithfulness / groundedness**: whether every claim in a generated answer is supported by the retrieved context; low faithfulness with good retrieval means the generation stage hallucinated.
+- **Context precision / context recall**: retrieval-stage RAG metrics asking whether the retrieved chunks are relevant and whether all the context needed for the answer was retrieved.
+- **Task success**: whether an agent accomplished its objective end to end; the agent metric that matters most.
+- **Tool-call accuracy**: whether an agent chose the right tool with valid arguments and recovered from tool errors.
+- **Trajectory metrics**: measures of an agent's path to an answer, such as turn count, redundant steps, and loops.
+- **Eval harness**: evaluation built as infrastructure, in which versioned datasets run through a model and a set of composable scorers into an aggregated report, run in CI on every model or prompt change to block regressions.
+
 ## Further reading
 
 - MacKay, [*Information Theory, Inference, and Learning Algorithms*](http://www.inference.org.uk/mackay/itila/) (free), for cross-entropy, perplexity, and compression.

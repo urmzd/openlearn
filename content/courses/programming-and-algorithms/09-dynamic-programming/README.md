@@ -165,6 +165,22 @@ Interviewers favor different variants. As a rough guide:
 | Citadel | complex state-machine DP | Hard |
 | Jane Street | probability DP, game-theory DP | Hard |
 
+## Key terms
+
+- **Dynamic programming (DP)**: solving a problem by breaking it into overlapping subproblems and storing each subproblem's answer the first time it is computed, which turns an exponential recursion into a polynomial computation.
+- **DP state**: the parameters that identify one subproblem in dynamic programming, such as an index, a pair of prefixes, or a remaining capacity; choosing it well is the main difficulty of a DP problem.
+- **DP transition**: the recurrence that expresses a DP state's answer in terms of smaller states, such as `dp[i] = max(dp[i-1], dp[i-2] + nums[i])`; together with the base cases it defines the whole computation.
+- **Memoization / top-down DP**: caching a recursive function's results by its arguments so each subproblem is solved once; the recursive way to implement dynamic programming.
+- **Bottom-up DP / tabulation**: filling a table of subproblem answers in an order where each entry's dependencies are already computed, with no recursion; the iterative way to implement dynamic programming.
+- **Rolling array**: keeping only the last row or last few values of a DP table when each entry depends only on recent ones, which removes a dimension from the space cost.
+- **Kadane's algorithm**: the $O(n)$ maximum-subarray algorithm that tracks the best sum of a subarray ending at the current position, either extending the previous one or starting fresh, along with the best sum seen overall.
+- **0/1 knapsack**: choosing a subset of items, each used at most once, to maximize total value within a capacity; with a single row of storage the capacity loop runs backwards so each item is counted at most once.
+- **Unbounded knapsack**: the knapsack variant in which each item may be reused any number of times; with a single row of storage the capacity loop runs forwards, and Coin Change is an instance.
+- **Edit distance**: the minimum number of insertions, deletions, and substitutions that turn one string into another, computed by a two-sequence DP over pairs of prefixes in $O(mn)$.
+- **Interval DP**: dynamic programming over contiguous ranges $[i, j]$ that tries every split point and fills the table in order of increasing interval length, typically in $O(n^3)$; used for matrix-chain multiplication and Burst Balloons.
+- **State-machine DP**: dynamic programming that keeps one value per discrete state at each position, such as holding, just sold, or resting in stock-trading problems, and updates them together from the previous position's values.
+- **Bitmask DP**: dynamic programming whose state includes a subset of up to about 20 items encoded as the bits of an integer, giving $2^n$ states; used for the Travelling Salesman Problem and subset partitioning.
+
 ## In this chapter
 
 The JavaScript files are solution functions; run them with Node and a small driver, or in an online judge. The Python and C examples are standalone programs: run them with `python3 <file>`, or compile with `cc <file> -o <bin>` and run the binary.

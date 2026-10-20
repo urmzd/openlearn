@@ -50,6 +50,15 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 
 There is no exercise 02. It was a hash map, and that problem is now covered in full by [A Swiss table](../15-systems-data-structures/02-swiss-table.md) and [A Robin Hood hash map](../15-systems-data-structures/05-robin-hood-hash-map.md) in the [Systems data structures](../15-systems-data-structures/) chapter of *Algorithms*. For exercise 03, the C [arena allocator](../18-c/08-arena-allocator/README.md) is a worked version of the same idea.
 
+## Key terms
+
+- **Explicit allocator**: the Zig convention that every function that allocates takes an allocator as a parameter, so memory cost is visible at the call site and the strategy (arena, pool, leak-detecting test allocator) can change without changing the code.
+- **Comptime / compile-time execution**: Zig's mechanism for running ordinary Zig code during compilation; generics are functions that take and return types at compile time, replacing templates, macros, and separate generics syntax.
+- **Error union**: a Zig type `E!T` that holds either an error from the set `E` or a value of type `T`; `try` propagates the error and `catch` handles it.
+- **errdefer**: a Zig statement that schedules cleanup to run only if the enclosing scope exits with an error, which undoes a partial construction without touching the success path.
+- **Error return trace**: a record, kept by the Zig runtime, of where an error was created and every frame it was returned through, so a failure can be traced without exceptions or stack unwinding.
+- **No hidden control flow**: Zig's design rule that code does only what it visibly says: no operator overloading, no hidden allocations, and no exceptions, so every call, allocation, and early return appears in the source.
+
 ## Further reading
 
 - [Zig Language Reference](https://ziglang.org/documentation/master/): free and official.

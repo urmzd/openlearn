@@ -303,6 +303,24 @@ The chapter also connects to the rest of the library. [LLM Evaluation](../29-eva
 - The router is a small share of the cost and decides the rest, so precision is the adoption metric and the labelled set is the durable asset.
 - Match the machinery to the answer space: for a closed set, decide; for an open set, generate. Do not pay for generation to pick one of six labels.
 
+## Key terms
+
+- **Model selection**: the routing decision of which model should answer a request, made by rules, a classifier, or a learned scorer; distinct from choosing the endpoint that serves the model and from fallback after an error.
+- **Provider selection**: the routing decision of which endpoint serves an already chosen model, usually made by a gateway on price, availability, or latency; pinning a model name does not pin the provider.
+- **Oracle router**: a policy that assigns each task to the model with the best measured outcome after seeing every result, breaking ties on cost; it is an upper bound on what routing could gain, not a router that can be deployed.
+- **Success matrix**: a table of task-by-model outcomes on an eval set, from which the best single model, the oracle, and the best pair of models can be computed to size the routing opportunity.
+- **Model recall**: how often a router selects the model that would have succeeded when that model was in the pool; the main reason real routers fall short of the oracle.
+- **Verifier-gated cascade**: a cascade that escalates to a stronger model only when a deterministic check, such as passing tests or a validating schema, rejects the cheap model's output.
+- **Session-level routing**: choosing a model once per task or user turn and holding it, which keeps tool loops coherent and the prompt cache warm at the cost of not correcting mid-turn.
+- **Prompt caching**: a provider feature that bills previously seen prompt-prefix tokens at a reduced rate; caches are per model and usually per provider, so switching models discards them.
+- **Cache-aware routing**: routing that prices the prompt cache a model switch would abandon, since a full uncached prefill on the new model can cost more than the switch saves.
+- **Escalation policy**: the written rule for when a request leaves the cheap path, triggered by confidence, a named category, a verifier, or a human override; category and verifier triggers resist manipulation by untrusted input.
+- **Fail open**: on an error in a control such as a router, let everything run; suited to review or analysis fan-out, where the worst case is a known cost rather than silent loss of coverage.
+- **Reinforcement fine-tuning (RFT)**: tuning a model against an evaluator that returns a reward from 0 to 1 for each output, with gold completions optional; it fits tasks that are verifiable but lack reference answers.
+- **Reward hacking**: a model learning to satisfy its evaluator or reward function instead of the intended task, caught by inspecting rollouts and stopping when quality regresses.
+- **Decision model / System One model**: a model that takes content plus a typed question and returns one of a closed set of answers with a calibrated probability per option in a single forward pass, without generating text.
+- **Cost per successful task**: total spend, including retries, cache misses, and escalations, divided by the number of tasks completed correctly; the cost figure that a routing comparison should report.
+
 ## Further reading
 
 - The [RouteLLM paper](https://arxiv.org/abs/2406.18665) and the [LMSYS write-up](https://www.lmsys.org/blog/2024-07-01-routellm/) (free).

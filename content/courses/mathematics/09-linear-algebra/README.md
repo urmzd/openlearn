@@ -58,7 +58,7 @@ For example, $T(x, y) = (x + y, x - y)$ sends $e_1 \mapsto (1, 1)$ and $e_2 \map
 
 ### Determinants
 
-The **determinant** of a square matrix is the unique scalar function that is multilinear and alternating in the rows, with $\det I = 1$. **Cofactor expansion** along row $i$ computes it as $\sum_j (-1)^{i+j} a_{ij} M_{ij}$, where the **minor** $M_{ij}$ is the determinant of the matrix with row $i$ and column $j$ deleted.
+The **determinant** of a square matrix is the unique scalar function that is multilinear and alternating in the rows, with $\det I = 1$ for the **identity matrix** $I$, the matrix with ones on the diagonal and zeros elsewhere, which leaves every vector unchanged. **Cofactor expansion** along row $i$ computes it as $\sum_j (-1)^{i+j} a_{ij} M_{ij}$, where the **minor** $M_{ij}$ is the determinant of the matrix with row $i$ and column $j$ deleted.
 
 $A$ is invertible exactly when $\det A \ne 0$: the determinant is the signed volume scaling factor of the transformation, and zero volume means collapse, with information lost. $\det(AB) = \det A \det B$, because composing transformations multiplies their volume factors. $\det A^\top = \det A$: the row and column pictures carry the same volume information. And Cramer's rule, $x_i = \det A_i / \det A$ with column $i$ replaced by $b$, isolates each variable by a ratio of determinants, elegant but computationally expensive for large systems.
 
@@ -94,6 +94,20 @@ The classical techniques, side by side:
 | Diagonalization | simplify matrix powers $A^k$ | $A^k = PD^kP^{-1}$ |
 | Gram-Schmidt | orthonormalize a basis | subtract projections, normalize |
 | Least squares | solve overdetermined systems | $A^\top A\hat{x} = A^\top b$, solved stably by QR |
+
+## Key terms
+
+- **Linear map**: a function $T$ between vector spaces with $T(c_1v_1 + c_2v_2) = c_1T(v_1) + c_2T(v_2)$; once bases are chosen, every linear map is a matrix.
+- **Linear independence**: vectors are linearly independent when the only combination $c_1v_1 + \dots + c_kv_k$ equal to zero has every $c_i = 0$, so none is redundant.
+- **Basis**: a linearly independent set that spans the space; every vector is exactly one combination of basis vectors, and the number of them is the dimension.
+- **Null space / kernel**: the vectors a matrix sends to zero, $\{x : Ax = 0\}$; a nonzero null space means the map loses information.
+- **Rank-nullity theorem**: $\dim \ker T + \dim \operatorname{range} T = \dim V$; every input dimension either collapses to zero or survives.
+- **Identity matrix**: the square matrix $I$ with ones on the diagonal and zeros elsewhere; $Ix = x$ for every $x$, so it is the "do nothing" transformation and $AI = IA = A$.
+- **Inverse matrix / invertible matrix**: $A^{-1}$ undoes $A$, with $AA^{-1} = A^{-1}A = I$; it exists exactly when $\det A \ne 0$, and in practice you solve with a factorization instead of forming it.
+- **Determinant**: a single number $\det A$ for a square matrix: the factor by which $A$ scales signed volume. It is zero exactly when $A$ squashes space flat and so cannot be inverted, and $\det(AB) = \det A \det B$.
+- **Characteristic polynomial**: $p(\lambda) = \det(A - \lambda I)$, whose roots are the eigenvalues of $A$.
+- **Change of basis**: rewriting a matrix in new coordinates as $P^{-1}AP$; the transformation is the same, only its description changes.
+- **Cramer's rule**: $x_i = \det A_i / \det A$, solving $Ax = b$ by ratios of determinants; useful by hand, far too slow for large systems.
 
 ## Where linear algebra shows up
 

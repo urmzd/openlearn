@@ -33,6 +33,14 @@ The drills act on the Kubernetes objects of [Cloud Native](../09-cloud-native/RE
 12. [The event log disk fills up](12-eventlog-disk-full.md). A WAL quota turns a full disk into a clean `RESOURCE_EXHAUSTED` that never loses acknowledged work.
 13. [A Raft partition (optional)](13-raft-partition.md). For the three-replica durable log: minority writes fail, the majority elects a new leader, and you heal before any membership change.
 
+## Key terms
+
+- **Outside-in triage**: diagnosing a failing Kubernetes workload from the outside in: which workload is unhealthy, why its last container exited, what its previous log says, and what changed in its rollout history.
+- **Signal exit code**: a process exit code of 128 + n, meaning the process was killed by signal n (137 is SIGKILL, often OOMKilled; 143 is SIGTERM); codes below 128 are the program's own choice.
+- **Mitigation before root cause**: restoring service first, usually by rolling back the change that started the incident, and finding the cause afterwards, because diagnosis under pressure is slow.
+- **Fix forward**: correcting an incident by shipping a new change rather than reverting, done after mitigation and through the normal release path.
+- **Game day**: a scheduled exercise that injects a known fault into a running system so the team practises detection, mitigation, and runbooks before a real incident.
+
 ## Further reading
 
 - *Site Reliability Engineering* (Google, [free](https://sre.google/sre-book/table-of-contents/)): ch. 12 Effective Troubleshooting, ch. 14 Managing Incidents, ch. 15 Postmortem Culture. Read one chapter after each drill and compare its advice with the model response.

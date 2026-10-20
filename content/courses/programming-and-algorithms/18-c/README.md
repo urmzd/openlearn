@@ -54,6 +54,11 @@ The exercises are ordered by concept, not by difficulty, so if you are choosing 
 9. [String interning](09-string-interning/README.md) (difficulty 3). A hash table that hands out stable addresses, so string equality becomes pointer equality.
 10. [HTTP request parser](10-http-parser/README.md) (difficulty 4). A state machine that consumes input incrementally, in whatever chunks the network delivers.
 
+## Key terms
+
+- **Opaque pointer**: a pointer to a struct that a header only declares (`struct Foo;`) and the `.c` file defines, so callers can hold and pass it but cannot reach its fields; C's main tool for encapsulation.
+- **Goto-cleanup pattern**: a C idiom in which every failure path jumps with `goto` to labels at the end of the function that release resources in reverse order of acquisition, so each resource is freed exactly once on every exit path.
+
 ## Further reading
 
 - [C11 standard draft (N1570)](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf): free.

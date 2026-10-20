@@ -108,6 +108,26 @@ The table pairs each technique with when to reach for it.
 
 These ideas reach far into computing. Graph traversal gives shortest paths, cycle detection, and topological sort; graph colouring drives register allocation in compilers and scheduling; planar graphs appear in VLSI circuit layout and map rendering. Trees are the data structures (binary search trees, heaps, tries) and the spanning trees of networks. Euler and Hamilton paths show up in network routing and in DNA sequencing by Eulerian assembly. Modular arithmetic is the basis of hashing, checksums, and random number generators, and RSA and number theory underpin public-key cryptography and digital signatures. Recurrences give the running times of merge sort and quicksort, the master theorem classifies divide-and-conquer algorithms at a glance, and generating functions power Knuth-style analysis of algorithms. Many of these are developed in *Algorithms* and *Systems Engineering*.
 
+## Key terms
+
+- **Connected graph**: a graph with a path (a sequence of distinct vertices, each joined to the next by an edge) between every pair of vertices; a tree is a connected graph with no cycles.
+- **Graph isomorphism**: a bijection between the vertex sets of two graphs that preserves adjacency; isomorphic graphs are the same graph drawn or labelled differently.
+- **Planar graph**: a graph that can be drawn in the plane with no edges crossing; connected planar graphs satisfy Euler's formula $V - E + F = 2$, which bounds their edges by $E \le 3V - 6$.
+- **Chromatic number**: $\chi(G)$, the fewest colours needed to colour the vertices of $G$ so that no two adjacent vertices share a colour; it models register allocation and scheduling, and it is at most 4 for planar graphs.
+- **Euler path / Euler circuit**: a walk that uses every edge exactly once, closed for a circuit; a connected graph has an Euler circuit exactly when every vertex has even degree, and an Euler path exactly when zero or two vertices have odd degree.
+- **Hamilton path / Hamilton circuit**: a path that visits every vertex exactly once, closed for a circuit; unlike Euler paths, no simple degree test decides whether one exists.
+- **Bipartite graph**: a graph whose vertices split into two sets with every edge running between the sets; it has no odd cycles, so in particular no triangles.
+- **Handshaking lemma**: the degrees of a graph's vertices sum to $2\lvert E \rvert$, because each edge adds 1 to the degree of each endpoint; it follows that the number of odd-degree vertices is even.
+- **Greatest common divisor (GCD)**: $\gcd(a, b)$, the largest integer dividing both $a$ and $b$; $a$ has a multiplicative inverse modulo $n$ exactly when $\gcd(a, n) = 1$.
+- **Euclidean algorithm / extended Euclidean algorithm**: computes $\gcd(a, b)$ by repeating $\gcd(a, b) = \gcd(b, a \bmod b)$ until the remainder is 0; the extended version also returns $x, y$ with $ax + by = \gcd(a, b)$, which gives modular inverses.
+- **Bezout's identity**: for any integers $a$ and $b$ there are integers $x$ and $y$ with $ax + by = \gcd(a, b)$; the extended Euclidean algorithm finds them.
+- **Fermat's little theorem**: if $p$ is prime and does not divide $a$, then $a^{p-1} \equiv 1 \pmod p$; it reduces large exponents modulo $p - 1$ and underlies primality tests and RSA.
+- **RSA**: a public-key cryptosystem with modulus $n = pq$ for primes $p, q$, public exponent $e$, and private exponent $d = e^{-1} \bmod (p-1)(q-1)$; encryption is $m^e \bmod n$ and decryption $c^d \bmod n$, and its security rests on the difficulty of factoring $n$.
+- **Characteristic equation (recurrences)**: for a linear recurrence $a_n = c_1 a_{n-1} + c_2 a_{n-2}$, the equation $r^2 = c_1 r + c_2$; with distinct roots $r_1, r_2$ the closed form is $a_n = A r_1^n + B r_2^n$.
+- **Generating function**: the power series $A(x) = \sum a_n x^n$ whose coefficients are a sequence; algebra on $A(x)$ solves counting problems and recurrences.
+- **Master theorem**: for divide-and-conquer recurrences $T(n) = aT(n/b) + f(n)$, comparing $f(n)$ with $n^{\log_b a}$ gives $T(n)$ as $\Theta(n^{\log_b a})$, $\Theta(n^{\log_b a} \log n)$, or $\Theta(f(n))$, depending on whether the leaves, every level, or the root dominates.
+- **Combinatorial proof / double counting**: proving an identity by showing that both sides count the same set in two different ways, with no algebra; Vandermonde's identity and $\sum_k \binom{n}{k} = 2^n$ are classic examples.
+
 ## Further reading
 
 - Oscar Levin, *Discrete Mathematics: An Open Introduction* (https://discrete.openmathbooks.org). Essential exercises: chapter 4, exercises 4.1.1 to 4.1.8, 4.2.1 to 4.2.6, 4.3.1 to 4.3.8, and 4.4.1 to 4.4.5 (graphs); chapter 1, exercises 1.1.1 to 1.1.8, 1.2.1 to 1.2.6, 1.3.1 to 1.3.8, and 1.4.1 to 1.4.8; chapter 2, exercises 2.4.1 to 2.4.8 (counting and recurrences). Challenge exercises: 4.7.1 to 4.7.6, 1.7.1 to 1.7.6, 2.4.9 to 2.4.14, and the combinatorial proofs 2.1.6 to 2.1.12.

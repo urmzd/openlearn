@@ -75,6 +75,23 @@ The following table matches each standard technique to the situation that calls 
 
 Limits underlie asymptotic analysis (Big-O and Big-Theta) in *Algorithms*. Derivatives drive gradient descent in machine learning, developed in [Gradient descent and line search](../16-optimization/01-gradient-descent-and-line-search.md). Optimization connects to greedy algorithms and linear-programming relaxations. Integration defines probability densities, the subject of [Probability and statistics](../13-probability-statistics/README.md). Rates of change reappear in the amortized analysis of data structures. Interviews and quantitative roles test the same ideas: optimization problems, the mathematics behind PageRank, derivative pricing and rate-of-change models, and the derivative intuition gradient descent requires.
 
+## Key terms
+
+- **Continuous function / continuity**: $f$ is continuous at $a$ when $\lim_{x \to a} f(x) = f(a)$, so the graph has no jump or hole there; many theorems of calculus, such as the intermediate value theorem, require it.
+- **One-sided limit**: $\lim_{x \to a^+} f(x)$ or $\lim_{x \to a^-} f(x)$, the limit as $x$ approaches $a$ from the right or the left only; the two-sided limit exists exactly when both one-sided limits exist and agree.
+- **Squeeze theorem**: if $g(x) \le f(x) \le h(x)$ near $a$ and $\lim g = \lim h = L$, then $\lim f = L$; it settles limits such as $\lim_{x \to 0} \sin x / x = 1$ that substitution cannot.
+- **Intermediate value theorem**: if $f$ is continuous on $[a, b]$ and $N$ lies between $f(a)$ and $f(b)$, then $f(c) = N$ for some $c$ in $(a, b)$; a continuous function cannot jump over a value, which is why bisection finds roots.
+- **Product rule / quotient rule**: $(fg)' = f'g + fg'$ and $(f/g)' = (f'g - fg')/g^2$, the rules for differentiating a product or a ratio of two functions.
+- **Power rule**: $\frac{d}{dx} x^n = n x^{n-1}$, the derivative of a power, and with linearity the derivative of any polynomial.
+- **Implicit differentiation**: differentiating both sides of an equation in $x$ and $y$, treating $y$ as a function of $x$, then solving for $dy/dx$; it gives slopes of curves such as $x^2 + y^2 = 25$ that are not written as $y = f(x)$.
+- **First derivative test**: a critical point $c$ is a local maximum if $f'$ changes from positive to negative at $c$ and a local minimum if it changes from negative to positive.
+- **Second derivative test**: at a critical point $c$ with $f'(c) = 0$, $f''(c) < 0$ means a local maximum and $f''(c) > 0$ a local minimum; when $f''(c) = 0$ the test is inconclusive.
+- **Inflection point**: a point where $f''$ changes sign, so the graph switches between curving up (concave up) and curving down (concave down).
+- **Mean value theorem**: if $f$ is continuous on $[a, b]$ and differentiable on $(a, b)$, then $f'(c) = (f(b) - f(a))/(b - a)$ for some $c$ in $(a, b)$; somewhere the instantaneous rate equals the average rate.
+- **Antiderivative**: a function $F$ with $F' = f$; by the fundamental theorem of calculus, $\int_a^b f(x)\,dx = F(b) - F(a)$ for any antiderivative $F$ of $f$.
+- **Integration by substitution / u-substitution**: the chain rule in reverse, $\int f(g(x))\,g'(x)\,dx = \int f(u)\,du$ with $u = g(x)$; it turns an integral of a composition into a simpler one, with the bounds changed to $g(a)$ and $g(b)$.
+- **Disk method / shell method**: formulas for the volume of a solid of revolution; the disk method $V = \pi \int_a^b R(x)^2\,dx$ slices perpendicular to the axis of rotation, and the shell method $V = 2\pi \int_a^b x\,f(x)\,dx$ wraps cylinders around the $y$ axis.
+
 ## Further reading
 
 - OpenStax, [*Calculus Volume 1*](https://openstax.org/details/books/calculus-volume-1) (free, CC BY-NC-SA 4.0), chapters 2 to 6. Useful exercises: section 2.2 #65 to 72, 2.3 #95 to 106, 2.4 #131 to 140, and the challenge set 2.5 #191 to 196; section 3.2 #55 to 68, 3.3 #100 to 110, 3.4 #140 to 155, 3.6 #210 to 222, and the challenge set 3.8 #308 to 315; section 4.3 #101 to 110, 4.5 #198 to 210, 4.7 #300 to 310, and the challenge set 4.7 #316 to 320; section 5.2 #67 to 76, 5.3 #148 to 160, 5.5 #256 to 268, and the challenge set 5.7 #340 to 348; section 6.1 #1 to 12, 6.2 #55 to 70, 6.3 #105 to 115, and the challenge set 6.4 #140 to 148.

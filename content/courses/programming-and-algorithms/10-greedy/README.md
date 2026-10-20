@@ -110,6 +110,15 @@ Interviewers favor different variants. As a rough guide:
 | Netflix | scheduling and resource allocation | Medium |
 | Stripe | transaction ordering problems | Medium |
 
+## Key terms
+
+- **Greedy algorithm**: an algorithm that commits at each step to the choice that looks best now and never reconsiders it; it is correct only when the problem has the greedy-choice property.
+- **Greedy-choice property**: the property that some optimal solution begins with the locally best choice, so committing to that choice never rules out an optimum; it is what separates greedy problems from dynamic programming ones.
+- **Exchange argument**: a proof that a greedy algorithm is optimal, made by taking any optimal solution that differs from the greedy one, swapping in the greedy choice, and showing the result is no worse.
+- **Interval scheduling**: selecting the most non-overlapping intervals, solved greedily by sorting on end time and taking each interval that starts no earlier than the last chosen one ends.
+- **Prefix code**: a code in which no codeword is a prefix of another, so a bit stream decodes left to right without separators; any prefix code is a binary tree with the symbols at its leaves.
+- **Huffman coding**: an optimal prefix code built greedily by repeatedly merging the two least frequent symbols or subtrees with a min-heap, so the rarest symbols get the longest codewords; it takes $O(k \log k)$ for $k$ symbols.
+
 ## In this chapter
 
 The JavaScript files are solution functions; run them with Node and a small driver, or in an online judge. The Python examples run with `python3 <file>` and take their input as command-line arguments.

@@ -27,7 +27,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 from course_catalog import catalog, publication, select
@@ -185,7 +189,62 @@ def first_title(text: str) -> str:
     return ""
 
 
-def chapter_text(root: Path, section: dict, files: list[str]) -> list[str]:
+CONCEPTS_CLI = Path("apps/web/scripts/concepts-cli.mjs")
+
+
+def concept_lists(root: Path, course: str | None = None) -> dict[str, list[dict]]:
+    """The concepts each section borrows from other sections, by file.
+
+    The website's matcher decides (apps/web/scripts/concepts.mjs), so the
+    PDF and the website list the same terms. Without Node the PDF is built
+    without the lists.
+    """
+    node = shutil.which("node")
+    if not node or not (root / CONCEPTS_CLI).exists():
+        print("[warn] node not found; building without concept lists", file=sys.stderr)
+        return {}
+    args = [node, str(CONCEPTS_CLI), *(["--course", course] if course else [])]
+    result = subprocess.run(args, cwd=root, capture_output=True, text=True)
+    if result.returncode:
+        print(f"[warn] concept lists skipped: {result.stderr.strip()}", file=sys.stderr)
+        return {}
+    return json.loads(result.stdout)
+
+
+def concepts_block(file: str, concepts: list[dict]) -> str:
+    """A print version of the website's "Concepts from other sections" box."""
+    book = file.split("/")[2] if file.count("/") >= 2 else ""
+    lines = [
+        "> **Concepts from other sections.** This section uses these ideas; "
+        "each names the section that explains it in full.",
+        ">",
+    ]
+    for c in concepts:
+        # A definition's links are relative to the section that defines it.
+        definition = re.sub(r"(?<!!)\[([^\]]*)\]\([^)]*\)", r"\1", c["definition"])
+        where = c["homeTitle"] + (f", *{c['bookTitle']}*" if c["book"] != book else "")
+        lines.append(f"> - **{c['label']}**: {definition} (See {where}.)")
+    return "\n".join(lines)
+
+
+def with_concepts(text: str, block: str) -> str:
+    """Put the block after the section's title and opening paragraph."""
+    lines = text.split("\n")
+    start = next((i for i, line in enumerate(lines) if re.match(r"#{1,6} ", line)), -1)
+    i = start + 1
+    while i < len(lines) and not lines[i].strip():
+        i += 1
+    if i < len(lines) and not re.match(r"\s*(```|~~~|<|#|\||\$\$|>)", lines[i]):
+        while i < len(lines) and lines[i].strip():
+            i += 1
+    else:
+        i = start + 1
+    return "\n".join([*lines[:i], "", block, "", *lines[i:]])
+
+
+def chapter_text(
+    root: Path, section: dict, files: list[str], concepts: dict | None = None
+) -> list[str]:
     """One numbered chapter: its opening is the PDF chapter, sections are H2s.
 
     "Chapter 5: Title" heads the chapter, "5.3 Title" each section; every
@@ -215,6 +274,8 @@ def chapter_text(root: Path, section: dict, files: list[str]) -> list[str]:
             text = demote(text, depth)
             if label:
                 text = retitle(text, f"{label} {title}", 1 + depth)
+        if concepts and concepts.get(rel):
+            text = with_concepts(text, concepts_block(rel, concepts[rel]))
         text = rewrite_links(text, path.parent, root)
         chunks.append(substitute_glyphs(rewrite_images(text, path.parent)))
         chunks.append("\n\n")
@@ -222,9 +283,14 @@ def chapter_text(root: Path, section: dict, files: list[str]) -> list[str]:
 
 
 def assemble_course(
-    root: Path, manifest: dict, seen: set[str] | None = None
+    root: Path,
+    manifest: dict,
+    seen: set[str] | None = None,
+    concepts: dict | None = None,
 ) -> tuple[str, int]:
     seen = set() if seen is None else seen
+    if concepts is None:
+        concepts = concept_lists(root, manifest.get("id"))
     chunks = []
     count = 0
     appendices = False
@@ -242,7 +308,7 @@ def assemble_course(
             if section.get("kind") == "appendix" and not appendices:
                 chunks.append(part_divider("Appendices"))
                 appendices = True
-            chunks.extend(chapter_text(root, section, files))
+            chunks.extend(chapter_text(root, section, files, concepts))
             count += len(files)
             continue
         chunks.append(part_divider(section["title"]))
@@ -256,8 +322,9 @@ def assemble(root: Path) -> tuple[str, int]:
     chunks = []
     count = 0
     seen: set[str] = set()
+    concepts = concept_lists(root)
     for manifest in catalog(root):
-        body, n = assemble_course(root, manifest, seen)
+        body, n = assemble_course(root, manifest, seen, concepts)
         chunks.append(body)
         count += n
     return "".join(chunks), count

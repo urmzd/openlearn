@@ -48,6 +48,16 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 | 09 | Incremental type checker (subset) | AST, inference, unification, variance | 5 |
 | 10 | Streaming JSON parser | `AsyncGenerator`, backpressure, `ReadableStream` | 4 |
 
+## Key terms
+
+- **Structural typing**: type compatibility decided by shape: a value fits a type when it has the required members, whatever it was declared as; TypeScript's types and Go's interfaces both work this way.
+- **Prototypal inheritance**: JavaScript's object model, in which each object links to a prototype object and a property lookup that misses on the object walks up that chain; classes are syntax over it.
+- **Discriminated union**: a union of object types that share a literal tag field such as `kind`, so checking the tag narrows the value to one member; with `never`, the compiler can verify that a `switch` handles every case.
+- **Mapped type**: a type that transforms every property of another type, such as the built-in `Partial<T>`, which makes each property optional.
+- **Conditional type**: a type of the form `A extends B ? X : Y` that chooses between two types, with `infer` to capture part of a matched type; it is the branching construct of type-level computation.
+- **Template literal type**: a string type built by interpolating other types into a template, so the compiler can check that strings follow a pattern such as an event name or a route.
+- **Branded type**: a primitive type intersected with a phantom marker, such as `number & { __brand: 'USD' }`, so values with the same representation but different meanings are not interchangeable; nominal typing inside a structural type system.
+
 ## Further reading
 
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/): free and official.

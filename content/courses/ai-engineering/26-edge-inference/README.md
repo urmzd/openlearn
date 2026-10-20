@@ -112,6 +112,19 @@ The chapter connects to several others. Quantization with k-quants, i-quants, an
 - A constant per-token state beats a growing cache for streaming, which is why state-space models change the realtime game.
 - The local server speaks OpenAI, so the SSE and application layers do not change between cloud and edge.
 
+## Key terms
+
+- **Deployment spectrum**: the range of places a model can run, from datacenter GPU serving through a single self-hosted box to phones and edge devices; every tier loads weights, manages a KV cache, and decodes token by token, and only the runtime and memory budget change.
+- **llama.cpp**: a dependency-light C/C++ inference engine built on the `ggml` tensor library that runs quantized LLMs on CPU and GPU; together with GGUF it is the standard end-to-end path for running a model locally.
+- **K-quants / i-quants**: llama.cpp's weight quantization schemes for GGUF files; k-quants mix precision per block, and i-quants choose precision guided by an importance matrix measured on sample data.
+- **Streaming encoder**: an encoder that emits output as input arrives, so it is causal (past context only) or chunked (a small bounded look-ahead); unlike an offline bidirectional encoder, it trades accuracy for latency.
+- **Chunked attention**: attention restricted to fixed-size chunks of input with limited look-ahead, letting an encoder run incrementally on a stream; chunk size is the latency knob.
+- **Real-time factor (RTF)**: processing time divided by audio duration; a streaming speech system must keep it below 1 to keep up with live input.
+- **Conformer**: a convolution-augmented transformer that is the standard streaming speech recognition encoder, run with limited or chunked context for low latency.
+- **Connectionist temporal classification (CTC)**: a streaming-native speech decoding objective that emits a label or blank per audio frame, so tokens appear without waiting for the utterance to end.
+- **RNN-Transducer (RNN-T)**: a streaming speech decoder that combines an audio encoder with a prediction network over emitted tokens and emits output frame by frame; the backbone of on-device voice recognition.
+- **State-space model (SSM)**: a sequence model, such as Mamba, that replaces attention with a learned linear recurrence over a fixed-size state, giving constant time and memory per token and no growing KV cache.
+
 ## Further reading
 
 - [llama.cpp](https://github.com/ggml-org/llama.cpp) and the [GGUF format](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md) (free).

@@ -84,6 +84,23 @@ Each building block solves one problem and introduces another. The following tab
 2. [Design review: the control plane](02-design-review-control-plane.md): what is persisted before each external effect, traced through a corpus build and an approved agent write, and a review that turns every missing answer into an owned note.
 3. [Design review: the whole system](03-design-review-whole-system.md): a request and a model release traced through every layer, with failure modes backed by drills and the cross-layer findings no single review owned.
 
+## Key terms
+
+- **Vertical scaling**: adding capacity by moving to a bigger machine; simple, but it has a ceiling, and it suits databases.
+- **Horizontal scaling**: adding capacity by adding machines; more complex but effectively unlimited, and it suits stateless services.
+- **Load balancer**: a component that spreads traffic across instances of a service by round-robin, least connections, or consistent hashing, at layer 4 (TCP) or layer 7 (HTTP).
+- **Content delivery network (CDN)**: a network of edge servers that serves static content close to users, pulling from or pushed by the origin and controlled by `Cache-Control` headers.
+- **CAP theorem**: during a network partition, a replicated store must choose consistency (refuse possibly stale reads) or availability (serve them); it cannot have both.
+- **Single-leader / multi-leader / leaderless replication**: the three replication topologies: one node accepts all writes; several nodes accept writes, typically one per data center; or any node accepts writes with Dynamo-style quorum reads and writes.
+- **Consensus protocol**: a protocol such as Raft or Paxos that makes a group of nodes agree on one value or log despite failures; it underlies etcd and ZooKeeper.
+- **Two-phase commit (2PC)**: a distributed transaction protocol in which a coordinator asks every participant to prepare and then to commit; it blocks if the coordinator fails, which is why sagas are often preferred across services.
+- **Vector clock**: a per-node array of counters attached to events that tells whether one event causally precedes another or the two are concurrent, without synchronized clocks.
+- **Lamport timestamp**: a single logical counter, incremented on each event and advanced past any received timestamp, that gives a total order consistent with causality.
+- **Gossip protocol**: nodes repeatedly exchange state with random peers so information spreads epidemic-style to the whole cluster, as in Cassandra and SWIM membership.
+- **Command query responsibility segregation (CQRS)**: separate models for writes and reads, where writes go to an event store or write model and are projected into read-optimized views.
+- **Cursor-based pagination**: paging with an opaque cursor that names the last item seen (keyset pagination in a database), which stays consistent under concurrent writes where offset pagination skips or repeats items.
+- **Fan-out on write / fan-out on read**: two ways to build feeds: push each post into every follower's feed when it is written, or pull from followed accounts when a feed is read; large systems combine them, pulling for accounts with huge followings.
+
 ## Further reading
 
 - Martin Kleppmann, *Designing Data-Intensive Applications*: the deepest treatment of the building blocks, worth reading cover to cover.

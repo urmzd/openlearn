@@ -200,6 +200,19 @@ Industry leans on the same patterns:
 
 If you want to feel the ideas before reading the build, a short experiment with an off-the-shelf engine is worth an afternoon. Build a three-step pipeline (download, embed, index) as a Temporal or DBOS workflow and kill the worker mid-run; it resumes without redoing completed steps, and that is durable execution. Make a step non-idempotent ("charge the card"), force a retry, and watch the double charge; then fix it with an idempotency key. Add a compensation (a refund) and trigger a downstream failure to see the saga unwind. Finally, instrument the workflow with OpenTelemetry traces and profile the slowest activity to find where the wall-clock time actually goes.
 
+## Key terms
+
+- **Durable execution**: persisting the progress of a long-running computation step by step, so it can crash and resume where it left off without redoing completed work; Temporal, Cadence, and DBOS provide it.
+- **Transactional checkpointing**: durable execution by storing workflow and step state in database transactions, so recovery reads the last committed step and continues; the approach of DBOS, an alternative to event-sourced replay.
+- **Worker pool**: stateless processes that long-poll a durable queue, execute tasks, and report results; because all state lives in the queue or engine, workers can crash, deploy, and autoscale freely.
+- **Transactional outbox**: writing business state and the outgoing event in the same database transaction, with a separate relay publishing from the outbox table, so state and event commit atomically with no dual-write inconsistency.
+- **Head-of-line blocking**: one stuck item at the front of an ordered queue or partition stalling everything behind it; a dead-letter queue breaks it for poison messages.
+- **Tiered retry topics**: a chain of delayed retry topics (for example 5 s, 1 min, 10 min), each read by its own consumer, so transient failures retry without stalling live consumption and survivors land in the dead-letter queue.
+- **Consumer group rebalance**: reassigning a topic's partitions among a consumer group's members when one joins, leaves, or is presumed dead; within a group each partition has exactly one owner, so the partition count caps useful parallelism.
+- **Cooperative rebalancing**: an incremental rebalance protocol that revokes only the partitions that must move while other members keep consuming, unlike eager rebalancing, which stops the whole group.
+- **USE method**: Brendan Gregg's checklist for finding a bottleneck: for every resource, check utilization, saturation, and errors.
+- **Flame graph**: a visualization of sampled stack traces in which each frame's width is the share of time spent in it; the widest frames show where time goes.
+
 ## Further reading
 
 - [Temporal documentation](https://docs.temporal.io/) and [DBOS documentation](https://docs.dbos.dev/), the primary references for this chapter.

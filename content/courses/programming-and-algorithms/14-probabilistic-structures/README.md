@@ -88,6 +88,14 @@ Interviewers and production systems use these structures in different ways. As a
 | Amazon | Bloom filters in DynamoDB | Medium |
 | Stripe | rate limiting with count-min sketch | Medium |
 
+## Key terms
+
+- **Probabilistic data structure**: a structure that answers membership, frequency, or cardinality queries approximately, with a bounded error probability, in far less space than an exact structure would need.
+- **Counting Bloom filter**: a Bloom filter whose bits are replaced by small counters, so an element can be deleted by decrementing its counters; it supports deletion at the cost of several times the space.
+- **Count-min sketch**: a $d \times w$ array of counters with one hash function per row; an insertion increments one counter in each row and a query returns the minimum of its $d$ counters, which never undercounts and overcounts by at most $\varepsilon N$ with probability at least $1 - \delta$.
+- **HyperLogLog (HLL)**: a cardinality estimator that hashes each element and records the most leading zeros seen in each of many buckets, then combines the buckets with a harmonic mean; it counts billions of distinct items to within about 2% in about 1.5 KB.
+- **Skip list**: a sorted multi-level linked list in which each element is promoted to the next level up with probability $1/2$; a search moves right, then drops down a level, giving expected $O(\log n)$ search, insertion, and deletion without rebalancing.
+
 ## In this chapter
 
 - [Bloom filter event validator](bloom.py): an early, small program that checks a CSV catalog of event ids. A Bloom filter sized for 4,980,000 items at a 1% false-positive rate flags ids that have probably been seen before, and a running comparison flags ids that are out of order; both lists are printed at the end. It uses the third-party `bloom_filter` package and reads `catalog_incorrect.csv` from the current directory. Because the filter can report false positives, an id it flags as a duplicate is only probably one; a second exact check would confirm it.

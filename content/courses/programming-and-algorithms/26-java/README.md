@@ -52,6 +52,15 @@ The briefs are listed below, ordered by concept rather than by difficulty, so ch
 
 There is no exercise 02. It was a concurrent hash map, and that problem is now covered in full by [A Swiss table](../15-systems-data-structures/02-swiss-table.md) and [A Robin Hood hash map](../15-systems-data-structures/05-robin-hood-hash-map.md) in the [Systems data structures](../15-systems-data-structures/) chapter of *Algorithms*.
 
+## Key terms
+
+- **Virtual thread**: a lightweight Java thread (Java 21 and later) that the JVM schedules onto a few platform threads, cheap enough that blocking I/O code can use one thread per request.
+- **Java record**: a class declared as `record Point(int x, int y)`, an immutable data carrier for which the compiler generates the constructor, accessors, `equals`, and `hashCode`.
+- **Sealed class / sealed interface**: a Java class or interface that lists the only types allowed to extend it, so a pattern-matching `switch` over it can be checked for exhaustiveness; with records, Java's way to write algebraic data types.
+- **Checked exception**: a Java exception that a method must declare in its `throws` clause and that callers must catch or declare in turn, unlike unchecked exceptions, which need neither.
+- **Try-with-resources**: a Java `try` form that closes every `AutoCloseable` resource it declares when the block exits, normally or by exception, in reverse order of opening.
+- **Structured concurrency**: scoping a group of concurrent tasks to one block, so the block does not exit until all of them have finished and a failure in one cancels the rest.
+
 ## Further reading
 
 - [Java Language Specification](https://docs.oracle.com/javase/specs/): the authoritative definition.

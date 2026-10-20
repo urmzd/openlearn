@@ -53,6 +53,25 @@ For reference, the main formulas collected in one place:
 | Huffman coding | greedy prefix-free code | optimal symbol-by-symbol compression |
 | Hamming distance | minimum codeword distance $d$ | corrects $\lfloor (d-1)/2 \rfloor$ errors |
 
+## Key terms
+
+- **Joint entropy**: $H(X, Y) = -\sum P(x, y) \log_2 P(x, y)$, the uncertainty of a pair of random variables taken together; it is at most $H(X) + H(Y)$, with equality when they are independent.
+- **Conditional entropy**: $H(Y \mid X) = H(X, Y) - H(X)$, the uncertainty that remains about $Y$ once $X$ is known; conditioning never increases entropy on average, so $H(Y \mid X) \le H(Y)$.
+- **Chain rule for entropy**: $H(X_1, \dots, X_n) = \sum_i H(X_i \mid X_1, \dots, X_{i-1})$; the joint entropy of a sequence is the sum of each symbol's entropy given the ones before it, which is how an autoregressive language model's loss adds up.
+- **Source coding theorem**: the average length $L$ of an optimal uniquely decodable code satisfies $H(X) \le L < H(X) + 1$, so entropy is the limit of lossless compression.
+- **Kraft's inequality**: the codeword lengths $l_i$ of any prefix-free (or uniquely decodable) binary code satisfy $\sum 2^{-l_i} \le 1$, and any lengths that satisfy it can be realized by a prefix-free code.
+- **Arithmetic coding**: a compression method that encodes a whole message as a single number in $[0, 1)$, narrowing the interval by each symbol's probability; it approaches the entropy on long sequences, and driven by a language model it turns bits per byte into a compression rate.
+- **Lempel-Ziv compression (LZ77)**: a family of universal, dictionary-based compressors that replace repeated strings with references to earlier occurrences, adapting to the source without knowing its statistics; it underlies gzip and PNG.
+- **Gibbs' inequality**: $D_{KL}(P \Vert Q) \ge 0$, with equality if and only if $P = Q$; coding data from $P$ with a code built for $Q$ always costs extra bits, so cross-entropy is never below entropy.
+- **Data processing inequality**: $I(X; Y) \ge I(X; g(Y))$ for any function $g$; processing data, deterministically or randomly, cannot create information about the source.
+- **Channel capacity**: $C = \max_{P(X)} I(X; Y)$, the highest rate in bits per channel use at which data can be sent reliably over a noisy channel.
+- **Binary symmetric channel**: a channel that flips each transmitted bit independently with probability $p$; its capacity is $C = 1 - H(p)$, where $H(p)$ is the binary entropy.
+- **Noisy-channel coding theorem**: Shannon's result that for any rate below the channel capacity there exist codes with arbitrarily small error probability, and above capacity there are none; it sets the limit every error-correcting code is measured against.
+- **Hamming distance**: the number of positions in which two equal-length codewords differ; a code whose minimum distance is $d$ can correct $\lfloor (d-1)/2 \rfloor$ errors.
+- **Hamming code**: a linear error-correcting code over GF(2); the $[7,4]$ code adds 3 parity bits to 4 data bits and corrects any single-bit error, as in ECC memory.
+- **Rate-distortion function**: $R(D)$, the fewest bits per symbol needed to describe a source when the reconstruction may have average distortion up to $D$; it frames lossy compression and the bits-for-error tradeoff of quantization.
+- **Perfect secrecy**: a cipher has it when $H(M \mid C) = H(M)$, so the ciphertext reveals nothing about the message; the one-time pad achieves it, and Shannon showed it requires a key at least as long as the message.
+
 ## Further reading
 
 - *A Student's Guide to Coding and Information Theory*: an accessible treatment with worked examples, a good first companion to this chapter.

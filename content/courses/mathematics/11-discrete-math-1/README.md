@@ -142,6 +142,25 @@ Much of the skill in the subject is recognizing which method fits a claim. This 
 | Counting (combinations) | unordered selections | $\binom{n}{k} = n!/(k!(n-k)!)$ |
 | Bijective proof | show two counts are equal | find a one-to-one correspondence |
 
+## Key terms
+
+- **Power set**: the set $\mathcal{P}(A)$ of all subsets of $A$; it has $2^{\lvert A \rvert}$ elements because each element is independently in or out of a subset.
+- **Cartesian product**: $A \times B = \{(a, b) : a \in A, b \in B\}$, the set of all ordered pairs, with $\lvert A \times B \rvert = \lvert A \rvert \cdot \lvert B \rvert$; relations and functions are subsets of it.
+- **De Morgan's laws**: $(A \cup B)^c = A^c \cap B^c$ and $(A \cap B)^c = A^c \cup B^c$, and likewise $\lnot(P \lor Q) \iff \lnot P \land \lnot Q$; negation swaps union with intersection and OR with AND.
+- **Universal quantifier / existential quantifier**: $\forall x\, P(x)$ asserts $P$ for every $x$ in the domain, and $\exists x\, P(x)$ for at least one; negating a statement flips each quantifier, $\lnot \forall x\, P(x) \iff \exists x\, \lnot P(x)$.
+- **Multiplication principle**: if one task has $m$ outcomes and a second has $n$ for each of them, the sequence has $mn$ outcomes; with the addition principle for mutually exclusive cases, it is the basis of all counting.
+- **Binomial theorem**: $(x + y)^n = \sum_{k=0}^{n} \binom{n}{k} x^{n-k} y^k$, because each term picks $y$ from $k$ of the $n$ factors, which can be done in $\binom{n}{k}$ ways.
+- **Stars and bars**: the number of ways to distribute $n$ identical objects into $k$ distinct bins is $\binom{n+k-1}{k-1}$, counted as arrangements of $n$ stars and $k - 1$ dividers in a row.
+- **Direct proof**: a proof of $P \Rightarrow Q$ that assumes $P$, unpacks the definitions, and reasons forward with known results until it reaches $Q$.
+- **Proof by contradiction**: a proof that assumes the statement is false and derives an impossibility, so the statement must be true; it is the standard route to results such as the irrationality of $\sqrt 2$.
+- **Strong induction**: induction in which the step assumes $P(j)$ for every $j$ from the base case up to $k$, not just $P(k)$, before proving $P(k+1)$; it fits claims where a case depends on several earlier ones.
+- **Structural induction**: induction over a recursively defined structure such as a list, tree, or formula: prove the property for the base structures, then show that each construction rule preserves it.
+- **Well-ordering principle**: every nonempty set of natural numbers has a least element; it is logically equivalent to induction, since a failed induction would have a smallest counterexample.
+- **Equivalence class**: for an equivalence relation $R$ on $A$, the set $[a] = \{x \in A : x\,R\,a\}$ of everything equivalent to $a$; the classes partition $A$, and every partition defines an equivalence relation.
+- **Partial order**: a relation that is reflexive, antisymmetric ($a\,R\,b$ and $b\,R\,a$ imply $a = b$), and transitive, such as $\le$ or "is a subset of"; some pairs may be incomparable, which is why dependency graphs need a topological sort.
+- **Cantor's theorem**: $\lvert A \rvert < \lvert \mathcal{P}(A) \rvert$ for every set $A$, because no function from $A$ onto its power set exists; it shows there are different sizes of infinity.
+- **Schröder-Bernstein theorem**: if there are injections $A \to B$ and $B \to A$, there is a bijection between $A$ and $B$; if each set fits inside the other, they have the same size.
+
 ## Where this leads
 
 These ideas surface throughout computing. Propositional logic is boolean algebra, circuit design, and SAT solving; quantifiers and predicates are the WHERE clauses of database queries. Induction proves recursive algorithms correct, and loop invariants prove iterative ones, as in [Graphs, DAGs, and an iterative topological sort](../12-discrete-math-2/01-graphs-dags-and-topological-sort.md). Sets underlie data structures such as hash sets and tree sets, and type systems. Equivalence relations underlie union-find and database normalization, and partial orders underlie topological sort and dependency resolution. Bijections are the basis of encoding and decoding, hashing, and encryption, and [Modular arithmetic, hashing, and PCG32](../12-discrete-math-2/03-modular-arithmetic-hashing-and-pcg32.md) continues in that direction. Counting and combinatorics drive algorithm analysis, from average cases and expected values in [Probability and statistics](../13-probability-statistics/) to the binomial sums in divide-and-conquer recurrences.

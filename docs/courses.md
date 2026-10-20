@@ -16,6 +16,20 @@ When writing or revising a section:
 
 Do not equate reading completion, reproduced code, or passing a narrow test suite with mastery. Describe reference solutions in terms of their constraints and tradeoffs rather than calling them universally optimal. The reader-facing method lives in [How to read these books](../content/references/how-to-read.md).
 
+## Key terms and concept previews
+
+Each section ends with a `## Key terms` list, one `- **Term**: definition` per line. A chapter opening that teaches ideas of its own, such as a survey of the subject, has one too. These lists are the library's glossary. On the website, when a section uses a term that another section defines, its first use becomes a dotted link. Tapping it, or resting the mouse on it, previews the definition and links to the section that teaches it. The section also opens with a collapsed **Concepts from other sections** list, and the PDF prints the same list under each section's opening paragraph. A section can therefore be read on its own: it defines briefly what it borrows and points to the full treatment. Each book also gets a generated A to Z glossary page, linked from its menu and front page. GitHub shows the Markdown as written.
+
+Write Key terms so the previews work:
+
+- Define a term where it is taught, once. Another section that uses it does not repeat the definition; the website links it.
+- Make each definition stand alone in one or two sentences: what it is, then what it is for or why it matters. A preview appears in a different section, so avoid "this", "above", and "the next section".
+- Name a concept the way readers write it. `Eigenvector / eigenvalue` and `Server-sent events (SSE)` each give two names that link.
+- Put the term in the title of the section that teaches it when you can. When several sections define the same term, the website prefers the same chapter, then a section whose title names the term (in the same book, or in a more foundational one), then the same book, then the more foundational book. Field guides are never linked from books.
+- Multi-word names, acronyms, and hyphenated or numbered names link automatically. Single words that are also plain English ("batch", "identity", "kernel") do not, because they mean different things in different books. The allowlist and the exceptions live in `apps/web/scripts/concepts.mjs`.
+
+Links are never added inside code, math, headings, existing links, bold or italic text, or the Key terms list itself.
+
 ## Ownership
 
 Put a book's front page (`README.md`) and its chapters in `content/courses/<id>/`, one directory per chapter, one file per section:

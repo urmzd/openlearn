@@ -123,6 +123,26 @@ The same handful of ideas turns up across the field. Bayes' theorem drives spam 
 
 In industry, this is the daily language of experimentation and data science: A/B testing at scale and experiment design at large web companies; demand forecasting, recommendation confidence, and pricing experiments in retail; risk models, option pricing, and stochastic processes in quantitative finance; Bayesian inference and evaluation metrics in machine learning; and Bayesian rating systems such as TrueSkill and Elo for matchmaking in games.
 
+## Key terms
+
+- **Sample space**: the set $\Omega$ of all possible outcomes of an experiment; an event is a subset of $\Omega$, and probability assigns each event a number between 0 and 1.
+- **Law of total probability**: $P(B) = \sum_i P(B \mid A_i)\,P(A_i)$ for a partition $\{A_i\}$ of the sample space; it computes a probability by adding up the mutually exclusive ways the event can happen, and it supplies the denominator in Bayes' rule.
+- **Probability mass function (PMF)**: for a discrete random variable, the function $p(x) = P(X = x)$ giving the probability of each value; the values are nonnegative and sum to 1.
+- **Cumulative distribution function (CDF)**: $F(x) = P(X \le x)$, defined for every random variable, discrete or continuous; it rises from 0 to 1, and for a continuous variable its derivative is the density.
+- **Probability density function (PDF)**: for a continuous random variable, a function $f(x) \ge 0$ that integrates to 1, with $P(a \le X \le b) = \int_a^b f(x)\,dx$; a density value is not itself a probability.
+- **Standard deviation**: $\sqrt{\operatorname{Var}(X)}$, the typical distance of a random variable from its mean, in the same units as the variable itself.
+- **Linearity of expectation**: $E[aX + bY] = aE[X] + bE[Y]$, which holds even when $X$ and $Y$ are dependent; it is the main tool for analysing randomized algorithms, such as the coupon collector's $n H_n$ expected draws.
+- **Binomial distribution**: the number of successes in $n$ independent trials that each succeed with probability $p$, with $P(X = k) = \binom{n}{k}p^k(1-p)^{n-k}$, mean $np$, and variance $np(1-p)$; a single trial is a Bernoulli variable.
+- **Poisson distribution**: the count of events in a fixed interval when they occur independently at rate $\lambda$, with $P(X = k) = e^{-\lambda}\lambda^k/k!$ and mean and variance both $\lambda$; it models arrivals at queues and servers.
+- **Normal distribution / Gaussian distribution**: the bell-shaped density $N(\mu, \sigma^2)$ with mean $\mu$ and variance $\sigma^2$; about 68%, 95%, and 99.7% of its mass lies within one, two, and three standard deviations of the mean, and the central limit theorem makes it the limit of sample means.
+- **Memoryless property**: $P(X > s + t \mid X > s) = P(X > t)$, so the remaining wait does not depend on how long you have already waited; the exponential distribution is the only continuous distribution with it, and the geometric the only discrete one.
+- **Correlation coefficient**: $\rho(X, Y) = \operatorname{Cov}(X, Y)/(\operatorname{SD}(X)\operatorname{SD}(Y))$, covariance rescaled to lie in $[-1, 1]$; it measures the strength of linear association, and zero correlation does not imply independence.
+- **Interquartile range (IQR)**: $Q_3 - Q_1$, the spread of the middle half of the data between the 25th and 75th percentiles; points more than $1.5 \times \text{IQR}$ beyond the quartiles are flagged as outliers in a box plot.
+- **Type-II error**: failing to reject a null hypothesis that is false; its probability is $\beta$, and $1 - \beta$ is the power of the test.
+- **Least-squares regression**: fitting the line $\hat y = b_0 + b_1 x$ that minimizes the sum of squared residuals $\sum (y_i - \hat y_i)^2$, with $b_1 = \sum(x_i - \bar x)(y_i - \bar y)/\sum(x_i - \bar x)^2$; it is orthogonal projection onto the column space.
+- **Coefficient of determination**: $R^2 = 1 - SS_\text{res}/SS_\text{tot}$, the fraction of the variance in $y$ that a regression explains; for simple linear regression it equals the squared correlation $r^2$.
+- **Gauss-Markov theorem**: under linearity, independence, constant error variance, and no perfect multicollinearity, the least-squares estimators have the smallest variance among all linear unbiased estimators.
+
 ## Further reading
 
 - Grinstead and Snell, *Introduction to Probability* (free): https://math.dartmouth.edu/~prob/prob/prob.pdf. Chapters 1 and 4 cover the foundations, 2 and 5 continuous densities, 5 and 6 discrete random variables, 7 joint distributions, and 8 and 9 the limit theorems. Useful exercises: Ch. 1 #1-8, #13-18; Ch. 2 #1-10; Ch. 4 #1-10, #17-22 (challenge #25-30); Ch. 5 #1-22 (continuous sections #10-20, challenge #25-30); Ch. 6 #1-8 (challenge #15-20); Ch. 7 #1-10, #15-20 (challenge #23-28); Ch. 8 #1-8; Ch. 9 #1-6 (challenge #10-14).

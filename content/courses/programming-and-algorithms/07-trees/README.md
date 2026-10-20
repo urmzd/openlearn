@@ -156,6 +156,18 @@ Interviewers favor different variants. As a rough guide:
 | Apple | AVL and red-black tree concepts | Medium-Hard |
 | Anthropic | trees as system state (tries, radix trees) | Medium-Hard |
 
+## Key terms
+
+- **Bottom-up DFS**: a tree recursion that solves both subtrees first and then combines their results with the node's own value (post-order); it fits problems where a node's answer depends on its children's answers, such as height, diameter, and balance.
+- **Top-down DFS**: a tree recursion that passes state, such as a running path sum, from parent to children as an argument (pre-order) and processes it at the leaves; it fits problems where information flows down from the root.
+- **Level-order traversal**: visiting a tree level by level with a queue, reading the queue's length at the start of each round to know how many nodes belong to the current level; it is breadth-first search on a tree.
+- **Binary search tree (BST)**: a binary tree in which every node's value is greater than every value in its left subtree and less than every value in its right subtree, so a search follows one root-to-leaf path and an in-order traversal yields the values in sorted order.
+- **In-order traversal**: visiting a binary tree's left subtree, then the node, then the right subtree; on a binary search tree it produces the values in sorted order.
+- **Lowest common ancestor (LCA)**: the deepest node that has both of two given nodes as descendants, counting a node as its own descendant; found by searching both subtrees in a general binary tree, or by following the values left or right in a BST.
+- **Tree DP**: dynamic programming over a tree in which each subtree returns a small tuple of answers, such as the best total with and without its root, and the parent combines its children's tuples; it solves House Robber III and maximum path sum in $O(n)$.
+- **AVL tree**: a self-balancing binary search tree that keeps the heights of every node's two subtrees within one of each other by rotating after insertions, which guarantees $O(\log n)$ height and operations.
+- **Balance factor**: the height of a node's left subtree minus the height of its right subtree; an AVL tree keeps it in $\{-1, 0, 1\}$, and its sign pattern after an insertion decides between a single and a double rotation.
+
 ## In this chapter
 
 - [AVL tree with range queries](example-7.py): a self-balancing binary search tree in Python. Each node tracks its height; after every insertion, the balance factor decides between a single rotation (left or right) and a double rotation, keeping the tree height-balanced. The comparison logic is passed in as a `comparator` with configurable keys, so the same tree can order tuples by any field. The program uses the tree to find the longest subsequence of its input in which each element is at least the previous one and at most 3 more: for each value it queries the best chain ending in the range `[S[i] - 3, S[i]]`, inserts the extended chain, and reconstructs the answer through each node's link to its predecessor. The comments document two known limitations: inserting duplicate values loses them, and `range_max` runs in $O(n)$ rather than the $O(\log n)$ an augmented tree would give. Run it with `python3 05-trees/example-7.py`, optionally followed by integers to use as input; without arguments it uses `[1, 9, 2, 3, 7, 6, 5]`.

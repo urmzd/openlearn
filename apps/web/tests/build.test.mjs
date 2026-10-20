@@ -98,3 +98,21 @@ test('the library separates six books from guides and retains old home routes', 
   assert.ok(ai.lessons.some((l) => l.url === '/ml/08-tinyllm/02-tokenizers/'));
   assert.match((await read('ai-engineering/index.html')).toString(), /Learning foundations/);
 });
+
+test('sections preview borrowed concepts and each book has a glossary', async () => {
+  const library = await json('app/catalog.json');
+  const pageOf = async (url) => (await read(url.slice(1) + 'index.html')).toString();
+  let previews = 0;
+  for (const course of library.courses) {
+    for (const lesson of course.lessons.slice(0, 40)) {
+      const html = await pageOf(lesson.url);
+      for (const [, term] of html.matchAll(/<a class="term" data-term="([^"]+)"/g)) {
+        assert.match(html, new RegExp(`data-concept="${term}"`), `${lesson.url}: ${term} has no definition on the page`);
+        previews++;
+      }
+    }
+  }
+  assert.ok(previews > 0, 'some section links a borrowed concept');
+  const glossaries = await Promise.all(library.courses.map((course) => pageOf(`${course.href}glossary/`).catch(() => '')));
+  assert.ok(glossaries.some((html) => html.includes('id="glossary-filter"') && html.includes('Taught in')), 'a book has a glossary page');
+});

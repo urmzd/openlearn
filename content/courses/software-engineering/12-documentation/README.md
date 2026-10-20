@@ -120,6 +120,13 @@ Writing is also how senior engineers scale their influence. Google's design docs
 - [Architecture decision records](01-architecture-decision-records.md): the five-section ADR template and its rules, a fully worked record for the byte tokenizer, and an annotated walkthrough of ADR-0001, the decision that languages meet only at process and file boundaries.
 - [Runbooks and Diataxis docs](02-runbooks-and-diataxis.md): a goal-sorted Diátaxis index for the platform's documents and one runbook per paging alert, with an annotated walkthrough of the TTFT budget-burn runbook.
 
+## Key terms
+
+- **Diátaxis framework**: Daniele Procida's classification of documentation into four types (tutorial, how-to guide, reference, and explanation) from two axes: whether the reader is studying or working, and needs practical steps or theory. Mixing types in one document is the most common documentation failure.
+- **How-to guide**: a Diátaxis document that gives a working reader the steps to reach a specific goal, without teaching or explaining along the way; a runbook is one.
+- **Documentation as code / docs as code**: treating documents like source: versioned in the repository and changed in the same pull request as the code, reviewed, tested (runnable samples, linted prose, checked links), generated where possible, and deprecated deliberately.
+- **Bottom line up front (BLUF)**: stating the conclusion first and the support after it, because readers skim.
+
 ## Further reading
 
 - Daniele Procida, [Diátaxis](https://diataxis.fr/) (free).
