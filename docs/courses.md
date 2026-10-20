@@ -2,6 +2,20 @@
 
 Each course is a book. It owns its chapters: every chapter lives in exactly one course directory, and other books cross-reference it rather than include it. Every manifest lives at `content/courses/<id>/openlearn.json`. Its paths are relative to the repository root. The root `openlearn.json` lists the available manifests.
 
+## Teaching principle
+
+Code generation is becoming easier; understanding, reasoning, testing, and validation remain the reader's responsibility. A book should make those skills observable. Explain the first principles and show the worked solution, with pauses where readers can commit to a prediction, defend a choice, or challenge an assumption before seeing the explanation.
+
+When writing or revising a section:
+
+1. State the problem, assumptions, constraints, and invariant. Derive the mechanism with a small example before introducing implementation detail.
+2. Show the relevant code or derivation and explain how each important step follows from those principles.
+3. Include a reasoning check: predict an output, explain a tradeoff, find a counterexample, or describe what breaks when an assumption changes. Supply a worked answer that explains why.
+4. Connect the claim to evidence: a test, boundary case, calculation, trace, or controlled failure. Explain what the check establishes and what it leaves open. A conceptual question can ask readers to design the check without executing code.
+5. Close the loop with validation: does the observed behavior meet the stated requirement? Ask readers to apply the idea to a changed case so recalling the answer alone is insufficient.
+
+Do not equate reading completion, reproduced code, or passing a narrow test suite with mastery. Describe reference solutions in terms of their constraints and tradeoffs rather than calling them universally optimal. The reader-facing method lives in [How to read these books](../content/references/how-to-read.md).
+
 ## Ownership
 
 Put a book's front page (`README.md`) and its chapters in `content/courses/<id>/`, one directory per chapter, one file per section:
@@ -37,11 +51,11 @@ The `openlearn.json` manifest defines publication for the web app, PDF, and sour
 | `reference` | Source register, contracts, or other supporting trees |
 | `runtime` | Repository files/trees (such as solution code) included in portable packs |
 
-Every course is a reading course. Chapters show the solution and explain it; nothing is graded.
+Every course is a reading course with checks of reasoning and understanding. Chapters show and explain the solution; readers predict, reason, test, and validate. Nothing is graded.
 
 ## The Start here page
 
-A book's `README.md` is its landing page. Keep it short and practical: one paragraph on what the book is and who it is for, **What you will be able to do** (three to five outcomes), **Ways through this book** (one pace sentence, then two to four goal-based routes that name chapters and sections by number), and **Before you start** (prerequisites and related books). Do not list the chapters: the website appends a numbered contents list with a one-line description of each chapter, taken from the opening of the chapter's own README, plus Start or Continue reading and Save offline. There are no separate study plans; pacing lives in the routes. How sections, review questions, and solutions work is explained once, in [How to read these books](../content/references/how-to-read.md).
+A book's `README.md` is its landing page. Keep it short and practical: one paragraph on what the book is and who it is for, **What you will be able to do** (three to five outcomes), **Ways through this book** (one pace sentence, then two to four goal-based routes that name chapters and sections by number), and **Before you start** (prerequisites and related books). Do not list the chapters: the website inserts numbered chapters and section links after the opening paragraph, with Start or Continue reading and a PDF download link when a verified published asset exists. There are no separate study plans; pacing lives in the routes. How sections, review questions, and solutions work is explained once, in [How to read these books](../content/references/how-to-read.md).
 
 ## Numbering
 
@@ -62,7 +76,7 @@ python3 scripts/course_catalog.py export --course mathematics --zip
 
 The export writes `outputs/packs/mathematics/openlearn.json` and the selected source files beneath it. Relative paths remain intact. Links to material outside the pack become repository source links. `--reading-only` omits the `runtime` trees. Export refuses to overwrite an existing destination; use a fresh output directory for another build.
 
-Source packs contain readable Markdown and any declared solution code. In the PWA, use Save offline to download published lessons, diagrams, and the app resources needed to read them.
+Source packs contain readable Markdown and any declared solution code. The web reader links to published PDFs for offline reading.
 
 ```bash
 cd apps/web
@@ -78,4 +92,4 @@ CI builds one PDF and pack per course and attaches them to releases. Course page
 1. Write its curriculum or study plan only where it adds information beyond existing lessons.
 2. Create `content/courses/<id>/openlearn.json`, referencing existing lessons and any new chapters.
 3. Register the manifest in the root `openlearn.json` and add its PDF/zip names to `sr.yaml`.
-4. Run catalogue validation, assemble the PDF, and inspect an exported source pack. The PWA discovers the new course from the catalogue.
+4. Run catalogue validation, assemble the PDF, and inspect an exported source pack. The web reader discovers the new course from the catalogue. Refresh `apps/web/release-assets.json` after publishing its PDF; see the [reader README](../apps/web/README.md).

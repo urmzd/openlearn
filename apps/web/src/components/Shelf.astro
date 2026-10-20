@@ -2,8 +2,13 @@
 import library from '../generated/library.json';
 ---
 <div class="shelf">
+  <p class="library-intro">Books on computing, mathematics, and engineering. Open a book and read from the foundations to the code.</p>
+  <label class="book-filter" for="book-filter">Find a book
+    <input id="book-filter" type="search" placeholder="Title or subject…" autocomplete="off" aria-controls="book-list" />
+  </label>
+  <p class="filter-count" id="filter-count" role="status" aria-live="polite">{library.courses.length} books</p>
   <a class="continue-card" id="continue-card" hidden>
-    <span class="eyebrow">Continue reading</span>
+    <span>Continue reading</span>
     <strong id="continue-title"></strong>
     <span id="continue-book" class="continue-book"></span>
   </a>
@@ -15,25 +20,12 @@ import library from '../generated/library.json';
           <span class="book-description">{course.description}</span>
         </a>
         <div class="book-meta">
-          <span data-course-progress={course.id}>{course.lessons.length} sections</span>
-          <progress data-meter={course.id} max={course.lessons.length} value="0" hidden aria-label={`${course.title} reading progress`}></progress>
-          <button type="button" class="quiet-button" data-download={course.id}>Save offline</button>
+          <span>{course.lessons.length} sections</span>
+          <a href={course.href} aria-label={`Read ${course.title}`}>Read book</a>
+          {course.pdf && <a href={course.pdf} aria-label={`Download ${course.title} PDF`}>PDF</a>}
         </div>
       </li>
     ))}
   </ol>
-  <section class="shelf-notes" id="shelf-notes" hidden aria-labelledby="notes-title">
-    <h2 id="notes-title">Your notes</h2>
-    <ul id="saved-notes"></ul>
-  </section>
-  <details class="shelf-settings">
-    <summary>Your progress on this device</summary>
-    <p>Reading progress and notes stay in this browser. Export a copy to move them to another device.</p>
-    <div class="backup-actions">
-      <button type="button" class="quiet-button" id="export-progress">Export progress</button>
-      <label class="quiet-button import-control" for="import-progress">Import progress<input id="import-progress" type="file" accept="application/json,.json" /></label>
-    </div>
-    <p id="storage-usage"></p>
-  </details>
+  <p id="no-books" hidden>No books match your search. Try a broader subject.</p>
 </div>
-<noscript><p>Enable JavaScript to track reading progress and save books offline. Every book and its PDF work without it.</p></noscript>

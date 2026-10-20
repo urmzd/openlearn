@@ -27,6 +27,9 @@ const ASSETS = path.join(SITE, 'public/repo');
 const GENERATED = path.join(SITE, 'src/generated');
 const BASE = '';
 const GITHUB = 'https://github.com/urmzd/openlearn';
+// Verified release assets: omit downloads for books without a published PDF.
+const releaseAssets = JSON.parse(fs.readFileSync(path.join(SITE, 'release-assets.json'), 'utf8'));
+const pdfOf = (id) => releaseAssets.find((asset) => asset.name === `openlearn-${id}.pdf`)?.url;
 
 const selected = process.env.OPENLEARN_COURSE;
 const courseArgs = ['scripts/course_catalog.py', 'index', ...(selected ? ['--course', selected] : [])];
@@ -235,7 +238,7 @@ function transform(repoPath, text) {
 				.replace(/\b(href|src)="([^"]+)"/g, (_, attr, t) => `${attr}="${rewriteTarget(repoPath, t)}"`),
 		);
 	}
-	if (!title) title = path.posix.basename(path.posix.dirname(repoPath)) || 'Supersource';
+	if (!title) title = path.posix.basename(path.posix.dirname(repoPath)) || 'Openlearn';
 	if (repoPath === 'README.md') title = 'Overview';
 	return { title, body: out.join('\n') };
 }
@@ -307,9 +310,8 @@ for (const { chapters } of outlines) {
 }
 
 // A book's front page (its README) is the book's landing page: a Start or
-// Continue button, Save offline, and the contents, generated here so no
+// Continue button, PDF download, and contents, generated here so no
 // overview or study plan has to repeat the chapter list.
-const releases = `${GITHUB}/releases/latest/download`;
 const bookHome = new Map();
 const landing = new Map();
 for (const { course, chapters } of outlines) {
@@ -320,23 +322,19 @@ for (const { course, chapters } of outlines) {
 	const first = numbered[0]?.files[0];
 	const total = chapters.reduce((n, c) => n + c.files.length, 0);
 	const actions = [
-		`<section class="course-offline" data-course="${course.id}" aria-label="This book">`,
+		`<section class="book-actions" data-course="${course.id}" aria-label="This book">`,
 		`<p><span data-course-progress="${course.id}">${total} sections</span></p>`,
 		...(first ? [`<a class="primary" data-begin="${course.id}" href="${routeOf(first)}">Start reading</a>`] : []),
-		`<button type="button" class="quiet-button" data-download="${course.id}">Save offline</button>`,
-		`<span class="download-state" data-download-state="${course.id}" aria-live="polite"></span>`,
+		...(pdfOf(course.id) ? [`<a class="pdf-link" href="${pdfOf(course.id)}">Download PDF</a>`] : []),
 		'</section>',
 	].join('');
 	const contents = numbered.map((c) => {
-		// One sentence per chapter keeps the contents scannable.
-		const about = blurb(c.files[0], 1);
-		return `- [**${chapterLabel(c)}**](${routeOf(c.files[0])})${about ? `: ${about}` : ''}`;
+		const sections = c.files.slice(1).map((file) => `- [${titles.get(file)}](${routeOf(file)})`).join('\n');
+		return `<div class="contents-chapter">\n\n### [${chapterLabel(c)}](${routeOf(c.files[0])})\n\n${sections}\n\n</div>`;
 	});
 	landing.set(home, {
 		actions,
-		contents: contents.length
-			? `\n\n## Contents\n\n${contents.join('\n')}\n\n[PDF](${releases}/openlearn-${course.id}.pdf) · [Source pack](${releases}/openlearn-${course.id}.zip)\n`
-			: `\n\n[PDF](${releases}/openlearn-${course.id}.pdf) · [Source pack](${releases}/openlearn-${course.id}.zip)\n`,
+		contents: contents.length ? `\n\n## Contents\n\n${contents.join('\n\n')}\n` : '',
 	});
 }
 const homeOf = (id) => routeOf(bookHome.get(id) ?? 'README.md');
@@ -350,7 +348,7 @@ function withActions(body, actions) {
 
 for (const [f, { title, body: original }] of pages) {
 	const book = landing.get(f);
-	const body = book ? withActions(original, book.actions) + book.contents : original;
+	const body = book ? withActions(original, book.actions + book.contents) : original;
 	const extra = publications.some((p) => p.manifest.paths && f.startsWith(`${p.manifest.paths}/`)) && path.posix.basename(f) === 'README.md' ? stageTable(path.posix.dirname(f)) : '';
 	const owners = chapterNavigation.get(f) ?? [];
 	// A shared page has no single next chapter. Return readers to their course
@@ -422,6 +420,7 @@ const library = {
 		title: course.title,
 		description: course.tagline ?? blurb(course.start?.[0]?.file) ?? course.tracks.map((t) => t.title).slice(0, 3).join(', '),
 		href: homeOf(course.id),
+		pdf: pdfOf(course.id),
 		// `chapter` groups lessons so the reader can scroll through one chapter
 		// and pause at the next chapter's opening.
 		lessons: reading.flatMap((section, i) => section.files.filter((f) => sources.includes(f)).map((f) => ({
@@ -435,7 +434,7 @@ fs.mkdirSync(path.join(SITE, 'public/app'), { recursive: true });
 fs.writeFileSync(path.join(SITE, 'public/app/catalog.json'), JSON.stringify(library));
 // The home page is the shelf: your books, where you left off, and your notes.
 const home = [
-	'---', `title: ${JSON.stringify(selected ? manifest.title : 'Your books')}`, 'description: Free books on technology, mathematics, and engineering. Read online or save a book for offline reading.', 'template: splash', '---', '',
+	'---', `title: ${JSON.stringify(selected ? manifest.title : 'The library')}`, 'description: Free books on technology, mathematics, and engineering. Read online, explore the code, or download a published PDF.', 'template: splash', '---', '',
 	"import Shelf from '../../components/Shelf.astro';", '', '<Shelf />', '',
 ];
 fs.writeFileSync(path.join(DOCS, 'index.mdx'), home.join('\n'));

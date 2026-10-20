@@ -18,7 +18,9 @@ test('the built app has a scoped install manifest and correctly sized icons', as
     assert.match(icon.purpose, /maskable/);
   }
   const home = (await read('index.html')).toString();
-  assert.match(home, /manifest.webmanifest/); assert.match(home, /Continue reading/); assert.match(home, /Save offline/);
+  assert.match(home, /Openlearn/); assert.doesNotMatch(home, /Supersource/);
+  assert.match(home, /manifest.webmanifest/); assert.match(home, /Continue reading/); assert.match(home, /Find a book/); assert.match(home, /Download [^"]+ PDF/);
+  assert.doesNotMatch(home, /Save offline|Export progress|Import progress/);
   assert.doesNotMatch(home, /update-banner|app-dock/);
 });
 test('every offline page and diagram matches the content manifest', async () => {
@@ -32,4 +34,22 @@ test('every offline page and diagram matches the content manifest', async () => 
   const worker = (await read('sw.js')).toString();
   assert.ok(worker.includes(index.build)); assert.ok(!worker.includes('__OPENLEARN_'));
   assert.ok(worker.includes('/offline/')); assert.ok(worker.includes('skipWaiting'));
+});
+
+// Verify the public book surface, including chapters that are otherwise below the fold.
+test('books provide ordered contents and only verified PDF downloads', async () => {
+  const library = await json('app/catalog.json');
+  const assets = JSON.parse(await fs.readFile(new URL('../release-assets.json', import.meta.url)));
+  const published = new Set(assets.map((asset) => asset.url));
+  for (const course of library.courses) {
+    const html = (await read(course.href.slice(1) + 'index.html')).toString();
+    assert.doesNotMatch(html, /Save offline|data-download=/, course.title);
+    if (course.pdf) {
+      assert.ok(published.has(course.pdf), course.title);
+      assert.ok(html.includes(course.pdf), course.title);
+    }
+    if (course.lessons.some((lesson) => /^Chapter [0-9]+:/.test(lesson.title))) {
+      assert.match(html, /contents-chapter/, course.title);
+    }
+  }
 });

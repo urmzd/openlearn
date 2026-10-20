@@ -1,6 +1,10 @@
-# Learning PWA
+# Book reader
 
-An installable, static learning app built with Astro and Starlight. Course manifests and Markdown lessons are shared with the PDF publisher. The app adds complete offline course downloads, reading progress, bookmarks, notes, backups, and update controls.
+A mobile book reader built with Astro and Starlight. Course manifests and Markdown lessons are shared with the PDF publisher. The reader provides chapter contents, continuous reading, inline code and mathematics, full-text search, and published PDF downloads. Reading position stays on the device.
+
+## Reading principle
+
+The reader supports books that derive ideas from first principles, show worked solutions, and ask readers to predict, reason, test, and validate. Generating code is becoming easier; understanding its assumptions and gathering evidence for its behavior remain essential. Keep code, equations, and definitions visible. Review answers retain their disclosure controls so readers can commit to their reasoning before comparing it with the explanation. Reading progress records position, not mastery. See [How to read these books](../../content/references/how-to-read.md).
 
 ## Develop
 
@@ -20,6 +24,15 @@ node --test tests/build.test.mjs
 pnpm preview --host 127.0.0.1
 ```
 
-The production preview enables service workers and installability on localhost. Development mode leaves service workers disabled. Select one course with `OPENLEARN_COURSE=mathematics pnpm build`, or omit the variable to publish the catalogue. Set `OPENLEARN_SITE_URL` to the deployment's public URL.
+Use the production preview to test the full-text search index. Select one course with `OPENLEARN_COURSE=mathematics pnpm build`, or omit the variable to publish the catalogue. Set `OPENLEARN_SITE_URL` to the deployment's public URL.
 
-See the [PWA guide](../../docs/pwa.md) for offline behavior, browser storage, installation, and testing. See [course publication](../../docs/courses.md) for source packs and PDF generation.
+PDF links come from the verified release asset snapshot in `release-assets.json`. Refresh it after publishing a release:
+
+```bash
+gh api repos/urmzd/openlearn/releases/latest \
+  --jq '[.assets[] | select(.name | endswith(".pdf")) | {name,url:.browser_download_url}]' \
+  > release-assets.json
+pnpm build
+```
+
+See [course publication](../../docs/courses.md) for source packs and PDF generation.

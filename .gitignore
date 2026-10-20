@@ -7,6 +7,7 @@ __pycache__/
 .env
 .env.*
 .DS_Store
+.pnpm-store/
 .idea/
 
 # Everything you write while practising lives here: predictions, cloned

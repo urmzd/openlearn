@@ -1,7 +1,13 @@
 ---
 import DefaultTitle from '@astrojs/starlight/components/PageTitle.astro';
+import library from '../generated/library.json';
+const course = library.courses.find((book) => book.href === Astro.url.pathname)
+  ?? library.courses.find((book) => book.lessons.some((lesson) => lesson.url === Astro.url.pathname));
 ---
+<div class="book-heading">
+{course && <nav class="book-context" aria-label="Book">
+  <a href="/">Library</a>
+  {course.href !== Astro.url.pathname && <a href={course.href}>{course.title}: contents</a>}
+</nav>}
 <DefaultTitle />
-<div class="section-tools" id="lesson-tools" hidden>
-  <button type="button" class="note-button" data-note-for="">Add a note</button>
 </div>

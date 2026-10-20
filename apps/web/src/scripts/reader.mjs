@@ -9,73 +9,12 @@
 // Everything here enhances server-rendered pages: without JavaScript each
 // section is still its own page with previous and next links.
 
-const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = (n) => Math.min(1, Math.max(0, n));
-
 function el(tag, className, text) {
 	const node = document.createElement(tag);
 	if (className) node.className = className;
 	if (text !== undefined) node.textContent = text;
 	return node;
-}
-
-// ---------- interactive content ----------
-
-// Review answers become "think, then reveal" cards.
-function revealCards(root) {
-	for (const details of root.querySelectorAll('details')) {
-		const summary = details.querySelector(':scope > summary');
-		if (!summary || summary.textContent.trim() !== 'Answer' || details.classList.contains('reveal-card')) continue;
-		details.classList.add('reveal-card');
-		summary.textContent = 'Think it through, then reveal the answer';
-	}
-}
-
-// Key terms show the term; a tap shows its definition.
-function keyTerms(root) {
-	for (const heading of root.querySelectorAll('h2')) {
-		if (heading.textContent.trim() !== 'Key terms' || heading.dataset.terms) continue;
-		// Starlight wraps headings with their anchor link.
-		const list = (heading.closest('.sl-heading-wrapper') ?? heading).nextElementSibling;
-		if (list?.tagName !== 'UL') continue;
-		heading.dataset.terms = 'true';
-		const items = [...list.children].filter((li) => li.firstElementChild?.tagName === 'STRONG');
-		for (const li of items) {
-			const definition = el('span', 'term-definition');
-			while (li.firstElementChild.nextSibling) definition.append(li.firstElementChild.nextSibling);
-			li.append(definition);
-			li.classList.add('term-card');
-			li.tabIndex = 0;
-			li.setAttribute('role', 'button');
-			li.setAttribute('aria-expanded', 'false');
-			const toggle = () => li.setAttribute('aria-expanded', String(li.getAttribute('aria-expanded') !== 'true'));
-			li.addEventListener('click', toggle);
-			li.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle(); } });
-		}
-		if (!items.length) continue;
-		const all = el('button', 'quiet-button reveal-all', 'Show all definitions');
-		all.type = 'button';
-		all.addEventListener('click', () => items.forEach((li) => li.setAttribute('aria-expanded', 'true')));
-		list.before(all);
-	}
-}
-
-// Headings and figures ease up as they enter the screen.
-let easer;
-function easeIn(root) {
-	if (reduceMotion() || !('IntersectionObserver' in window)) return;
-	document.documentElement.classList.add('ease-ready');
-	easer ??= new IntersectionObserver((entries) => {
-		for (const entry of entries) {
-			if (!entry.isIntersecting) continue;
-			entry.target.classList.add('is-shown');
-			easer.unobserve(entry.target);
-		}
-	}, { rootMargin: '0px 0px -8% 0px' });
-	for (const node of root.querySelectorAll(':scope > :is(h2, h3, .sl-heading-wrapper, figure, table, blockquote, details, pre, .expressive-code, p:has(> img))')) {
-		node.classList.add('ease');
-		easer.observe(node);
-	}
 }
 
 async function diagrams(root) {
@@ -89,9 +28,6 @@ async function diagrams(root) {
 }
 
 export function enhance(root) {
-	revealCards(root);
-	keyTerms(root);
-	easeIn(root);
 	diagrams(root);
 }
 
@@ -174,12 +110,7 @@ export function startReader({ course, lesson, markRead, onSection, onAppend }) {
 			const article = el('article', 'reader-section');
 			article.dataset.key = next.key;
 			const header = el('header', 'reader-section-header');
-			const tools = el('div', 'section-tools');
-			const note = el('button', 'note-button', 'Add a note');
-			note.type = 'button';
-			note.dataset.noteFor = next.key;
-			tools.append(note);
-			header.append(el('h1', 'reader-title', next.title), tools);
+			header.append(el('h2', 'reader-title', next.title));
 			const body = el('div', 'sl-markdown-content');
 			body.append(...[...content.childNodes].map((n) => document.importNode(n, true)));
 			body.append(marker(next.key));

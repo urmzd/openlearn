@@ -28,7 +28,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 OUTPUT_DIR="$ROOT_DIR/outputs"
-TITLE="Supersource — The Complete Curriculum"
+TITLE="Openlearn: The Complete Curriculum"
 SUBTITLE="Free, self-paced study from foundations to Staff+ depth"
 SKIP_MERMAID=false
 WITH_TOC=true
@@ -115,7 +115,7 @@ elif [[ -n "$LEARN_PATH" ]]; then
   PDF_NAME="supersource-$LEARN_PATH.pdf"
   # The path's README H1 is its title, e.g. "Forward Deployed Engineer, ...".
   TITLE="$(sed -n 's/^# //p' "$ROOT_DIR/content/courses/build-an-llm/paths/$LEARN_PATH/README.md" | head -1)"
-  SUBTITLE="A Supersource course path"
+  SUBTITLE="An Openlearn course path"
 fi
 python3 "$SCRIPT_DIR/assemble_book.py" "${assemble_args[@]}"
 

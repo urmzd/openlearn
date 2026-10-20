@@ -2,12 +2,3 @@
 import DefaultFooter from '@astrojs/starlight/components/Footer.astro';
 ---
 <DefaultFooter />
-<dialog id="note-dialog" class="learning-dialog" aria-labelledby="note-title">
-  <form id="note-form">
-    <h2 id="note-title">Your note</h2>
-    <label for="lesson-note">What would you like to remember?</label>
-    <textarea id="lesson-note" name="note" rows="9" maxlength="20000"></textarea>
-    <p>Notes stay on this device and appear on your shelf.</p>
-    <div class="dialog-actions"><button type="button" class="quiet-button" data-close-dialog>Cancel</button><button type="submit" class="primary">Save note</button></div>
-  </form>
-</dialog>

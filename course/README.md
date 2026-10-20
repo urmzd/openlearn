@@ -21,4 +21,6 @@ This directory holds the complete reference system that the [Build Your Own LLM 
 
 Read a chapter first. Its principles and worked example derive the design, and its solution section walks through the code here in order. Open the full file when you want the surrounding detail: input validation, error types, and the helpers the walkthrough skips.
 
+Before running a solution, predict its output or state changes and name the invariant it should preserve. Choose a boundary case or controlled failure that could challenge your explanation. Compare the result with your prediction, then validate it against the contract and the original requirement. Generated code needs the same checks: ease of producing an implementation does not establish that it is correct. See [How to read these books](../content/references/how-to-read.md) for the shared method.
+
 The contracts are the stable boundary between components. When a chapter says a later module "takes over" a unit, the contract stays fixed and the implementation behind it improves; `solutions/history/` keeps the earlier version.

@@ -1,6 +1,6 @@
 {
   "id": "supersource",
-  "title": "Supersource",
+  "title": "Openlearn",
   "tagline": "Explore technology, mathematics, and engineering at your own pace, whatever your background.",
   "repo": "https://github.com/urmzd/openlearn",
   "paths": "content/courses/build-an-llm/paths",

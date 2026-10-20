@@ -2,6 +2,8 @@
 
 Every book opens with a **Start here** page: who it is for, what you will be able to do, a few routes through it for different goals, and its contents. Times below are for reading the whole book; most routes are shorter.
 
+The books explain ideas from first principles and show the worked solutions. Pause to predict the next step, reason about why it works, then test and validate the claim. As generating code becomes easier, these checks of understanding matter more than reproducing an implementation.
+
 | Book | Whole book |
 |---|---|
 | [Mathematics Foundations](mathematics/README.md) | A few weeks, no programming needed |

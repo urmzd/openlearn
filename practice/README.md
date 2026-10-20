@@ -2,6 +2,10 @@
 
 This is the companion workbook to the rest of the shelf: small, self-contained problems, each shown with its answer and a worked explanation of why that answer is right. Chapter 1 gives you twenty-four short programs in Go, Python, Rust, and TypeScript whose exact output you predict before reading the explanation. Chapters 2 to 10 are classic build exercises, one chapter per language; C and C++ (Chapters 2 and 3) have full reference solutions with walkthroughs, and the other languages give the exercise briefs as design questions to reason through. It is for programmers who want to find out whether a mental model actually stuck.
 
+## How to practise
+
+Commit to a prediction and the rule behind it before revealing an answer. Compare your reasoning with the walkthrough, then choose a small change that would distinguish your explanation from a plausible wrong one. Run that case where executable code is provided; for a design brief, describe the test and expected evidence. Validate against the stated behavior, not just whether the program runs. The aim is to strengthen your mental model, including when a tool generated the code. See [How to read these books](../content/references/how-to-read.md) for the shared method.
+
 ## What you will be able to do
 
 - Say what a short program prints and name the language rule that makes it print that.
