@@ -11,3 +11,9 @@ To run it:
 3. When prompted, enter, in order, the name of the message file to encode, then `Encoded.txt` and `Huffman.txt`, the encoded message and dictionary the encoder just wrote, which the decoder reads back.
 
 When it finishes, the dictionary file contains the table of Huffman codes, and the program reports that the file was encoded and decoded successfully.
+
+## Key terms
+
+- **Huffman tree**: the binary tree Huffman's algorithm builds, with each character at a leaf; a character's code is its path from the root, 0 for a left branch and 1 for a right one, so frequent characters sit near the root and get short codes.
+- **Two-queue method**: building a Huffman tree from leaves sorted by weight without a heap: leaves wait in one queue, merged subtrees join a second, and each step merges the two smallest items found at the two fronts. Merged weights come out in non-decreasing order, so both queues stay sorted and the build after sorting is $O(k)$.
+- **Huffman code table**: the dictionary from each character to its bit string, read off the Huffman tree; the decoder needs it, or the tree, to turn the bit stream back into text.

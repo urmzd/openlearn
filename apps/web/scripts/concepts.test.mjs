@@ -92,3 +92,16 @@ test('when sections in two books are titled after a term, the more foundational 
 	const lstm2 = 'content/courses/ai-engineering/13-decoder-block/05-gqa.md';
 	assert.match(linkConcepts('A sliding window mask.', lstm2, idx, href).body, /href="\/02-masks.md\/"/);
 });
+
+test('a titled section in a less foundational book does not outrank the reader\'s own book', () => {
+	const graphs = 'content/courses/programming-and-algorithms/08-graphs/README.md';
+	const dedup = 'content/courses/data-engineering/05-corpus-pipeline/04-near-dedup.md';
+	const idx = buildIndex([
+		...harvest(graphs, keyTerms(['- **Union-find**: a disjoint-set forest.'])).map((e) => ({ ...e, title: 'Chapter 8: Graphs' })),
+		...harvest(dedup, keyTerms(['- **Union-find**: merges confirmed pairs into clusters.'])).map((e) => ({ ...e, title: '5.4 Near-duplicate dedup: MinHash, LSH, union-find' })),
+	], new Map([[graphs, 0], [dedup, 1]]));
+	const cp = 'content/courses/programming-and-algorithms/16-competitive-programming.md';
+	assert.match(linkConcepts('Use union-find here.', cp, idx, href).body, /href="\/README.md\/"/);
+	const math = 'content/courses/mathematics/11-discrete-math-1/README.md';
+	assert.match(linkConcepts('Use union-find here.', math, idx, href).body, /href="\/README.md\/"/);
+});

@@ -125,7 +125,9 @@ export function senseFor(candidates, page) {
 		const same = bookOf(e.file) === book;
 		if (chapterOf(e.file) === chapterOf(page)) return [0, 0, e.order, e.seq];
 		if (!same && LEAF_BOOKS.has(bookOf(e.file))) return null;
-		if (titled(e)) return [same ? 1 : 2, same ? 0 : foundation(e), e.order, e.seq];
+		// A section in another book titled after the term outranks the reader's
+		// own book only when that book is more foundational than the reader's.
+		if (titled(e) && (same || foundation(e) < foundation({ file: page }))) return [same ? 1 : 2, same ? 0 : foundation(e), e.order, e.seq];
 		return [same ? 3 : 4, same ? 0 : foundation(e), e.order, e.seq];
 	};
 	const better = (a, b) => {
