@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.27.0 (2026-10-20)
+
+### Features
+
+- refine Openlearn book reader and learning guidance ([bfe7008](https://github.com/urmzd/openlearn/commit/bfe70089c543fe81ae7884ecffd697e1fb797b25))
+
+### Bug Fixes
+
+- **ci**: verify branding for independent course builds ([b0b19d9](https://github.com/urmzd/openlearn/commit/b0b19d960ced738901f6c6dddac67893d8e79523))
+
+### Misc
+
+- inference engine internals, GPU Kubernetes deployment, and train-publish-share sections (#52) ([b42a772](https://github.com/urmzd/openlearn/commit/b42a7727f4f87a1ca166a64a1e097103da3732ec))
+- one practical Start here page per book (#51) ([67adda2](https://github.com/urmzd/openlearn/commit/67adda221993c08c1919164c95151b02be8e1c4b))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.26.0...v0.27.0)
+
+
 ## 0.25.0 (2026-10-19)
 
 ### Features
