@@ -42,6 +42,10 @@ self.addEventListener('install', (event) => {
     const cache = await caches.open(SHELL);
     try { for (let i = 0; i < SHELL_URLS.length; i += 8) await cache.addAll(SHELL_URLS.slice(i, i + 8)); }
     catch (error) { await caches.delete(SHELL); throw error; }
+    // Take over at once: pages load fresh online, so a new release needs no
+    // approval. A course download running in the old worker fails with "The
+    // app updated during this download" and can be retried.
+    await self.skipWaiting();
   })());
 });
 self.addEventListener('activate', (event) => event.waitUntil((async () => { await cleanup(); await self.clients.claim(); })()));

@@ -2,10 +2,6 @@
 import DefaultTitle from '@astrojs/starlight/components/PageTitle.astro';
 ---
 <DefaultTitle />
-<section class="lesson-toolbar" id="lesson-tools" aria-label="Your reading" hidden>
-  <button type="button" id="mark-read" aria-pressed="false">Mark as read</button>
-  <button type="button" id="bookmark-lesson" aria-pressed="false">Bookmark</button>
-  <button type="button" id="open-note">Add a note</button>
-  <a id="next-lesson" href="/my-learning/" hidden>Next lesson</a>
-  <span class="reading-caption">Reading progress on this device</span>
-</section>
+<div class="section-tools" id="lesson-tools" hidden>
+  <button type="button" class="note-button" data-note-for="">Add a note</button>
+</div>

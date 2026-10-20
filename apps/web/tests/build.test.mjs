@@ -18,7 +18,8 @@ test('the built app has a scoped install manifest and correctly sized icons', as
     assert.match(icon.purpose, /maskable/);
   }
   const home = (await read('index.html')).toString();
-  assert.match(home, /manifest.webmanifest/); assert.match(home, /My learning/); assert.match(home, /Save offline/);
+  assert.match(home, /manifest.webmanifest/); assert.match(home, /Continue reading/); assert.match(home, /Save offline/);
+  assert.doesNotMatch(home, /update-banner|app-dock/);
 });
 test('every offline page and diagram matches the content manifest', async () => {
   const index = await json('app/offline.json'); const library = await json('app/catalog.json');
@@ -30,5 +31,5 @@ test('every offline page and diagram matches the content manifest', async () => 
   }
   const worker = (await read('sw.js')).toString();
   assert.ok(worker.includes(index.build)); assert.ok(!worker.includes('__OPENLEARN_'));
-  for (const path of ['/my-learning/', '/offline/']) assert.ok(worker.includes(path));
+  assert.ok(worker.includes('/offline/')); assert.ok(worker.includes('skipWaiting'));
 });
