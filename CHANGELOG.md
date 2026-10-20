@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.26.0 (2026-10-20)
+
+### Features
+
+- a calmer reader with continuous scrolling and quiet updates (#50) ([6c25d04](https://github.com/urmzd/openlearn/commit/6c25d044dd0dd6c50ffdfcbaf34920fa9b451b78))
+
+[Full Changelog](https://github.com/urmzd/openlearn/compare/v0.25.0...v0.26.0)
+
+
 ## 0.25.0 (2026-10-19)
 
 ### Features
