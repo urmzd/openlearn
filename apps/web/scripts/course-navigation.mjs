@@ -33,7 +33,7 @@ export function chapterNeighbors(outlines, linkOf) {
 			const routes = owners.get(file) ?? [];
 			routes.push({
 				course,
-				prev: i ? neighbor(files[i - 1]) : { label: course.title, link: `/learn/${course.id}/` },
+				prev: i ? neighbor(files[i - 1]) : { label: 'All books', link: '/' },
 				next: neighbor(files[i + 1]),
 			});
 			owners.set(file, routes);

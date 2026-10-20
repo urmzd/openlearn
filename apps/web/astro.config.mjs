@@ -6,13 +6,14 @@ import remarkMath from 'remark-math';
 import starlightLlmsTxt from 'starlight-llms-txt';
 import sidebar from './src/generated/sidebar.json' with { type: 'json' };
 import course from './src/generated/course.json' with { type: 'json' };
+import redirects from './src/generated/redirects.json' with { type: 'json' };
 
 // Content is generated from the repo's READMEs by scripts/sync-content.mjs.
 export default defineConfig({
 	site: process.env.OPENLEARN_SITE_URL ?? 'https://openlearn.urmzd.com',
 	trailingSlash: 'always',
-	// My learning moved onto the shelf.
-	redirects: { '/my-learning/': '/' },
+	// My learning moved onto the shelf; old course pages moved to each book's front page.
+	redirects,
 	// The READMEs write LaTeX as $...$ and $$...$$, the way GitHub renders it.
 	markdown: {
 		remarkPlugins: [remarkMath],

@@ -34,6 +34,6 @@ test('navigation distinguishes shared chapters and ends at the course boundary',
 	const neighbors = chapterNeighbors(outlines, (file) => `/${file}`);
 	assert.equal(neighbors.get('shared.md').length, 2);
 	assert.equal(neighbors.get('shared.md')[0].next, false);
-	assert.deepEqual(neighbors.get('a/intro.md')[0].prev, { label: 'Algebra', link: '/learn/a/' });
+	assert.deepEqual(neighbors.get('a/intro.md')[0].prev, { label: 'All books', link: '/' });
 	assert.deepEqual(neighbors.get('a/02.md')[0].next, { link: '/a/01.md' });
 });
