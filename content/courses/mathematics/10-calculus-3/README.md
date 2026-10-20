@@ -113,6 +113,24 @@ Most problems in the subject reduce to recognizing which tool applies. This tabl
 | Divergence theorem | convert a surface integral to a volume integral | flux = integral of divergence |
 | Change of variables | simplify the integration domain | $dA = \lvert J \rvert\,du\,dv$ |
 
+## Key terms
+
+- **Dot product**: $u \cdot v = \sum_i u_i v_i = \lVert u \rVert \lVert v \rVert \cos\theta$; it measures how much two vectors point the same way, and it is zero exactly when they are perpendicular.
+- **Cross product**: for vectors in 3D, $u \times v$ is perpendicular to both, with magnitude $\lVert u \rVert \lVert v \rVert \sin\theta$, the area of the parallelogram they span; it gives normals to planes.
+- **Vector-valued function**: a function $r(t) = \langle x(t), y(t), z(t) \rangle$ that traces a curve in space; its derivative $r'(t)$ is the tangent (velocity) vector, and $\int \lVert r'(t) \rVert\,dt$ is arc length.
+- **Tangent plane**: the plane $z - z_0 = f_x(x_0, y_0)(x - x_0) + f_y(x_0, y_0)(y - y_0)$ that best approximates the surface $z = f(x, y)$ near a point, the two-variable analogue of the tangent line.
+- **Clairaut's theorem**: if the mixed partials $f_{xy}$ and $f_{yx}$ are continuous, they are equal, so the order of differentiation does not matter and the Hessian is symmetric.
+- **Second derivative test (two variables)**: at a critical point, $D = f_{xx} f_{yy} - f_{xy}^2$, the determinant of the Hessian, gives a local minimum if $D > 0$ and $f_{xx} > 0$, a local maximum if $D > 0$ and $f_{xx} < 0$, and a saddle if $D < 0$.
+- **Fubini's theorem**: for $f$ continuous on a rectangle, the double integral equals either iterated integral, so you can integrate over $x$ first or $y$ first and get the same answer.
+- **Change of variables (multiple integrals)**: for a substitution $(x, y) = T(u, v)$, $dA = |J|\,du\,dv$, where $J$ is the Jacobian determinant of $T$; it measures how $T$ stretches area, and it gives the $r$ in polar and the $\rho^2 \sin\phi$ in spherical coordinates.
+- **Vector field**: a function $F(x, y, z) = \langle P, Q, R \rangle$ that assigns a vector to every point, such as a velocity or force field; the gradient of a scalar function is one.
+- **Line integral**: an integral along a curve $C$; for a vector field, $\int_C F \cdot dr = \int_a^b F(r(t)) \cdot r'(t)\,dt$ is the work done by $F$ along $C$.
+- **Conservative vector field**: a field that is the gradient of a scalar potential, $F = \nabla f$; its line integrals depend only on the endpoints, and its integral around any closed curve is zero.
+- **Fundamental theorem for line integrals**: if $F = \nabla f$, then $\int_C F \cdot dr = f(B) - f(A)$ for any path from $A$ to $B$, the analogue of the fundamental theorem of calculus for gradient fields.
+- **Green's theorem**: $\oint_C (P\,dx + Q\,dy) = \iint_D (Q_x - P_y)\,dA$; the circulation around a closed plane curve equals the total curl inside the region it bounds.
+- **Stokes' theorem**: $\oint_C F \cdot dr = \iint_S (\nabla \times F) \cdot dS$; the circulation of $F$ around a closed curve equals the flux of its curl through any surface bounded by that curve, generalizing Green's theorem to 3D.
+- **Divergence theorem**: $\iint_S F \cdot dS = \iiint_E (\nabla \cdot F)\,dV$; the outward flux through a closed surface equals the total divergence inside, so what flows out must be produced within.
+
 ## Where this leads
 
 The gradient and directional derivative drive gradient descent in [Optimization](../16-optimization/). The Jacobian is the chain rule for vector functions, which is backpropagation, and [Matrix calculus and autodiff](../14-matrix-calculus-and-autodiff/) builds it three ways. Lagrange multipliers underlie constrained optimization such as SVMs and regularization, and the reading of softmax as a maximum-entropy distribution in [Information theory](../17-information-theory/). Multiple integrals compute joint probability distributions and expected values in [Probability and statistics](../13-probability-statistics/). The change of variables formula is the core of normalizing flows in generative models, and divergence and curl appear in physics simulation and fluid dynamics for games.

@@ -18,7 +18,7 @@ Do not equate reading completion, reproduced code, or passing a narrow test suit
 
 ## Key terms and concept previews
 
-Each section ends with a `## Key terms` list, one `- **Term**: definition` per line. These lists are the library's glossary. On the website, when a section uses a term that another section defines, its first use becomes a dotted link. Tapping it previews the definition and links to the section that teaches it. The section also opens with a collapsed **Concepts from other sections** list. A section can therefore be read on its own: it defines briefly what it borrows and points to the full treatment. GitHub and the PDF show the Markdown as written.
+Each section ends with a `## Key terms` list, one `- **Term**: definition` per line. A chapter opening that teaches ideas of its own, such as a survey of the subject, has one too. These lists are the library's glossary. On the website, when a section uses a term that another section defines, its first use becomes a dotted link. Tapping it, or resting the mouse on it, previews the definition and links to the section that teaches it. The section also opens with a collapsed **Concepts from other sections** list, and the PDF prints the same list under each section's opening paragraph. A section can therefore be read on its own: it defines briefly what it borrows and points to the full treatment. Each book also gets a generated A to Z glossary page, linked from its menu and front page. GitHub shows the Markdown as written.
 
 Write Key terms so the previews work:
 

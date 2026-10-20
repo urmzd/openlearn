@@ -84,6 +84,25 @@ When you face a new problem, the first decision is which tool to reach for. This
 
 These ideas recur well beyond this book. The harmonic series appears in average-case hashing analysis and the coupon-collector problem. Taylor series are how libraries compute $\sin$, $\cos$, and $\exp$ in floating point. The radius of convergence of a power series governs whether iterative algorithms converge, and convergence tests in general tell you whether an iterative method terminates. Differential equations model dynamic systems, from PID controllers to epidemics, and Fourier series in signal processing build on the same foundations.
 
+## Key terms
+
+- **Integration by parts**: $\int u\,dv = uv - \int v\,du$, the product rule in reverse; it integrates products of two kinds of function, such as $x e^x$, and LIATE is a heuristic for choosing $u$.
+- **Trigonometric substitution**: replacing $x$ by $a\sin\theta$, $a\tan\theta$, or $a\sec\theta$ to remove a square root of the form $\sqrt{a^2 - x^2}$, $\sqrt{a^2 + x^2}$, or $\sqrt{x^2 - a^2}$ from an integrand.
+- **Partial fractions**: decomposing a rational function $P(x)/Q(x)$ with $\deg P < \deg Q$ into a sum of simpler fractions over the factors of $Q$, each of which integrates to a logarithm or an arctangent.
+- **Arc length**: the length of a curve, $L = \int_a^b \sqrt{1 + f'(x)^2}\,dx$ for $y = f(x)$, or $\int_a^b \sqrt{(dx/dt)^2 + (dy/dt)^2}\,dt$ for a parametric curve: the integral of speed.
+- **Parametric curve**: a curve given by $x = f(t)$, $y = g(t)$ in terms of a parameter $t$, with slope $\frac{dy}{dx} = \frac{dy/dt}{dx/dt}$; it describes paths that are not graphs of a function.
+- **Polar coordinates**: describing a point by its distance $r$ from the origin and angle $\theta$, with $x = r\cos\theta$ and $y = r\sin\theta$; a polar curve $r(\theta)$ sweeps area $\frac12\int_\alpha^\beta r(\theta)^2\,d\theta$.
+- **Power series**: a series $\sum c_n (x - a)^n$ in powers of $x - a$; it converges for $|x - a|$ less than its radius of convergence $R$ and can diverge beyond it.
+- **Taylor series**: the power series $\sum_{n=0}^\infty \frac{f^{(n)}(a)}{n!}(x - a)^n$ built from the derivatives of $f$ at $a$; truncating it gives the polynomials that libraries use to compute $e^x$, $\sin$, and $\cos$.
+- **Divergence test**: if $\lim a_n \ne 0$, then $\sum a_n$ diverges; terms shrinking to zero is necessary for convergence but not sufficient.
+- **Integral test**: if $f$ is positive, continuous, and decreasing with $a_n = f(n)$, then $\sum a_n$ and $\int_1^\infty f(x)\,dx$ converge or diverge together.
+- **Comparison test**: a series of nonnegative terms converges if it is bounded term by term by a known convergent series, such as a geometric or $p$-series, and diverges if it bounds a known divergent one.
+- **Alternating series test**: if $|a_n|$ decreases to 0, the series $\sum (-1)^n |a_n|$ converges, even when $\sum |a_n|$ does not.
+- **p-series / harmonic series**: $\sum 1/n^p$, which converges if and only if $p > 1$; the harmonic series $\sum 1/n$ is the case $p = 1$ and diverges, growing like $\ln n$, which is why it appears in hashing and coupon-collector analyses.
+- **Ordinary differential equation (ODE)**: an equation relating a function of one variable to its derivatives, such as $dy/dx = 2xy$; it models how a system changes, and gradient descent is Euler's method applied to one.
+- **Separable differential equation**: an ODE of the form $dy/dx = f(x)\,g(y)$, solved by moving all $y$ terms to one side, $dy/g(y) = f(x)\,dx$, and integrating both sides.
+- **Integrating factor**: the multiplier $\mu(x) = e^{\int P(x)\,dx}$ that turns the first-order linear ODE $y' + P(x)\,y = Q(x)$ into $(\mu y)' = \mu Q$, which can be integrated directly.
+
 ## Further reading
 
 - OpenStax, [*Calculus Volume 2*](https://openstax.org/details/books/calculus-volume-2) (free). Good exercise sets for each topic above: integration techniques, sections 1.1 (exercises 1 to 15), 1.3 (115 to 128), 1.4 (155 to 170), with challenge problems in 1.5 (200 to 210); applications, 2.1 (1 to 10), 2.2 (50 to 60), 2.4 (100 to 110, challenge 115 to 120); parametric and polar, 3.1 (1 to 12), 3.3 (110 to 122), 3.4 (150 to 162, challenge 168 to 175); series, 5.1 (1 to 14), 5.3 (120 to 138), 5.4 (175 to 190), 5.6 (260 to 275, challenge 280 to 288); differential equations, 4.1 (1 to 10), 4.3 (100 to 115, challenge 120 to 125).

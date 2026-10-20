@@ -27,6 +27,10 @@ The threat model is drawn from the container view in [Diagramming with the C4 Mo
 
 Two chapters of *AI Engineering* pick up where this one stops. [Usage Policy](../../ai-engineering/37-usage-policy/README.md) covers abuse cases and their enforcement, and [Professional Responsibility](../../ai-engineering/38-professional-responsibility/README.md) covers disclosure when a threat becomes a vulnerability.
 
+## Key terms
+
+- **Threat model**: a structured answer to four questions about a system: what are we building, what can go wrong, what are we going to do about it, and did we do a good job? It turns an architecture into a list of threats, each tied to a control and a test.
+
 ## Further reading
 
 - Adam Shostack, *Threat Modeling: Designing for Security* (Wiley).

@@ -106,6 +106,21 @@ The three sections build a complete, minimal RAG stack in Go, in pipeline order.
 2. [Retrieval: BM25, Flat and IVF Vectors, RRF, and MMR](02-retrieval.md) searches that index lexically and densely, fuses the two lists by rank, diversifies the result, and treats the index file as a byte-exact contract between programs.
 3. [Context Assembly, Citations, and the search_docs Tool](03-context-assembly.md) packs hits into a budgeted context of numbered excerpts, numbers citations with one ledger per agent run, reads them back from the answer, and exposes it all as a tool.
 
+## Key terms
+
+- **Retrieval-augmented generation (RAG)**: retrieving relevant evidence at query time and placing it in the context window, so a model answers from fresh, private, citable facts instead of only its parametric memory.
+- **Bi-encoder**: an encoder used to embed queries and documents separately and compare them by dot product; documents can be embedded once and indexed, which makes first-stage retrieval fast and scalable.
+- **Cross-encoder**: a model that reads a query and a document together and outputs one relevance score; more accurate than a bi-encoder but run per candidate pair, so it is used to rerank a short list.
+- **Matryoshka embeddings**: embeddings trained so that a truncated prefix of the vector is still usable, letting a system store short vectors cheaply and use longer ones when needed.
+- **Parent/child chunking (small-to-big)**: retrieving on small, precise chunks but passing the model the larger parent chunk around each hit, for precision in search and context in generation.
+- **Approximate nearest neighbor (ANN) search**: vector search that trades a little recall for orders-of-magnitude speed over exact nearest-neighbor search, using an index such as HNSW or IVF.
+- **HNSW (hierarchical navigable small world)**: the dominant ANN index, a multi-layer proximity graph searched by greedy descent, tuned with `M` and `efSearch` for recall against latency.
+- **TF-IDF**: a lexical weighting that scores a term by its frequency in a document times its rarity across the corpus, so distinctive words count more than common ones; BM25 refines it.
+- **Hybrid retrieval**: running dense (embedding) and lexical (such as BM25) retrieval together and fusing their ranked lists, because dense search catches paraphrases and lexical search catches exact IDs, codes, and names.
+- **Graph retrieval (GraphRAG)**: retrieving a connected subgraph of facts from a knowledge graph and resolving its entities to documents, adding multi-hop relationships that flat chunks cannot express.
+- **Authorization-aware retrieval**: applying per-chunk access permissions at retrieval time so a user only ever retrieves content they are allowed to see; a hard requirement for enterprise RAG.
+- **HyDE (hypothetical document embeddings)**: a query transform that has a model write a hypothetical answer and embeds that instead of the raw query, improving recall when queries and documents are phrased differently.
+
 ## Further reading
 
 - Lewis et al., [the RAG paper](https://arxiv.org/abs/2005.11401) (2020, free).

@@ -28,6 +28,10 @@ The full solution code for every section lives in [`course/solutions/go/gateway/
 5. [The usage ledger and admin API](05-usage-ledger-and-admin-api.md). A meter that writes one durable SQLite row per request, including stream usage the client never asked for; half-open usage queries; a fail-closed admin front door; and the assembly of every stage into the chain.
 6. [Usage policy enforcement](06-usage-policy-enforcement.md). An ordered, first-match policy of model, tenant, token-cap, and classifier rules, with a numerically stable linear head, fail-closed 503s, 451 denials with stable rule ids, and redacted audit events.
 
+## Key terms
+
+- **AI gateway / LLM gateway**: the single front door to a fleet of model servers, where authentication, rate limits, usage policy, caching, routing, and metering live, so the engines behind it stay simple and keyless; its defining constraint is forwarding a token stream without delaying the first token.
+
 ## Further reading
 
 - [RFC 9110 HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110) (free)

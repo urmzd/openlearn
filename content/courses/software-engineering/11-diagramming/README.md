@@ -193,6 +193,16 @@ The skill also matters in hiring. Google makes design docs mandatory and diagram
 
 - [C4 diagrams in D2](01-c4-diagrams-in-d2.md): draws the context, container, and engine-component views of the LLM platform from *AI Engineering* in D2, traces one request through the levels by hand, and explains why every box and arrow sits at the level it does.
 
+## Key terms
+
+- **C4 model**: Simon Brown's four zoom levels for software architecture diagrams (context, container, component, and code), each with its own audience and question; draw the first two for almost everything and rarely hand-draw the fourth.
+- **Everything diagram**: an architecture diagram that mixes every level of abstraction on one page, from business context to protocol details, and so answers no question well.
+- **Deployment diagram**: the C4 supplementary view that maps logical containers onto infrastructure nodes, such as Kubernetes objects; it bridges architecture and operations.
+- **Sequence diagram**: a diagram of the messages exchanged between participants in time order, which answers "in what order do services talk during a request, and where can it fail?"
+- **State machine diagram / state diagram**: a diagram of the states an entity can be in and the transitions between them; the right picture for any lifecycle, such as an order, a job, or a saga.
+- **Entity-relationship diagram (ERD)**: a diagram of a data model's entities, their attributes, and the relationships between them; it should be generated from the schema rather than drawn by hand.
+- **Embedded living model**: a diagram kept in the repository beside the code (embedded) and kept current by a process such as rendering in CI and review as code (living), so it does not rot like a pasted screenshot.
+
 ## Further reading
 
 - Simon Brown, [The C4 model](https://c4model.com/) (free).

@@ -12,6 +12,10 @@ let card;
 let trigger;
 let closedAt = 0;
 let closedFrom;
+let hovering = false;
+let closedWasHover = false;
+let showTimer = 0;
+let hideTimer = 0;
 
 function create() {
 	card = document.createElement('div');
@@ -23,11 +27,21 @@ function create() {
 		if (event.newState !== 'closed') return;
 		closedAt = performance.now();
 		closedFrom = trigger;
+		closedWasHover = hovering;
+		hovering = false;
 		// Return focus to the term only when focus was inside the card.
 		if (card.contains(document.activeElement)) trigger?.focus({ preventScroll: true });
 		trigger = undefined;
 	});
+	// A card opened by hovering stays while the pointer is on it.
+	card.addEventListener('pointerenter', () => clearTimeout(hideTimer));
+	card.addEventListener('pointerleave', (event) => { if (hovering && event.pointerType === 'mouse') hideSoon(); });
 	document.body.append(card);
+}
+
+function hideSoon() {
+	clearTimeout(hideTimer);
+	hideTimer = setTimeout(() => { if (hovering && card?.matches(':popover-open')) card.hidePopover(); }, 250);
 }
 
 function place(anchor) {
@@ -48,7 +62,13 @@ function place(anchor) {
 	card.style.left = `${Math.max(gap, left)}px`;
 }
 
-function open(anchor, item) {
+function itemFor(anchor) {
+	return anchor.closest('.sl-markdown-content')
+		?.querySelector(`.concepts [data-concept="${CSS.escape(anchor.dataset.term)}"]`)
+		?.closest('li');
+}
+
+function open(anchor, item, { hover = false } = {}) {
 	card ?? create();
 	const body = item.cloneNode(true);
 	body.querySelector('[data-concept]')?.remove();
@@ -74,10 +94,12 @@ function open(anchor, item) {
 	definition.append(...body.childNodes);
 	card.setAttribute('aria-labelledby', heading.id);
 	card.replaceChildren(close, heading, definition);
+	if (card.matches(':popover-open')) card.hidePopover();
 	trigger = anchor;
 	card.showPopover();
+	hovering = hover;
 	place(anchor);
-	card.focus({ preventScroll: true });
+	if (!hover) card.focus({ preventScroll: true });
 }
 
 export function startConcepts() {
@@ -85,18 +107,63 @@ export function startConcepts() {
 	document.addEventListener('click', (event) => {
 		const anchor = event.target.closest?.('a.term[data-term]');
 		if (!anchor || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-		const item = anchor.closest('.sl-markdown-content')
-			?.querySelector(`.concepts [data-concept="${CSS.escape(anchor.dataset.term)}"]`)
-			?.closest('li');
+		const item = itemFor(anchor);
 		if (!item) return;
 		event.preventDefault();
-		// A tap on the open term's own link closes the card (light dismiss
-		// already did); it should not reopen it.
-		if (closedFrom === anchor && performance.now() - closedAt < 400) return;
+		clearTimeout(showTimer);
+		clearTimeout(hideTimer);
+		// A click on a card already open from a click closes it (light dismiss
+		// did that already); a click on a hover preview keeps it open.
+		if (closedFrom === anchor && !closedWasHover && performance.now() - closedAt < 400) return;
+		if (trigger === anchor && hovering) { hovering = false; card.focus({ preventScroll: true }); return; }
 		open(anchor, item);
 	});
+	// With a mouse, resting on a term previews it; a click keeps the card open.
+	if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
+		document.addEventListener('pointerover', (event) => {
+			const anchor = event.target.closest?.('a.term[data-term]');
+			if (!anchor || event.pointerType !== 'mouse') return;
+			clearTimeout(hideTimer);
+			if (trigger === anchor) return;
+			// Another card the reader opened on purpose stays until they close it.
+			if (card?.matches(':popover-open') && !hovering) return;
+			clearTimeout(showTimer);
+			showTimer = setTimeout(() => {
+				const item = itemFor(anchor);
+				if (item && anchor.matches(':hover')) open(anchor, item, { hover: true });
+			}, 350);
+		});
+		document.addEventListener('pointerout', (event) => {
+			const anchor = event.target.closest?.('a.term[data-term]');
+			if (!anchor || event.pointerType !== 'mouse' || anchor.contains(event.relatedTarget)) return;
+			clearTimeout(showTimer);
+			if (trigger === anchor && hovering) hideSoon();
+		});
+	}
 	// A card floats next to its term on wide screens; scrolling detaches it.
 	addEventListener('scroll', () => {
 		if (card?.matches(':popover-open') && !card.classList.contains('sheet')) card.hidePopover();
 	}, { passive: true });
+}
+
+// A book's glossary page: filter the terms as the reader types.
+export function startGlossary() {
+	const input = document.querySelector('#glossary-filter');
+	if (!input) return;
+	const items = [...document.querySelectorAll('.glossary-letter li')];
+	const words = (s) => s.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+	const terms = new Map(items.map((li) => [li, words(li.querySelector('strong')?.textContent ?? '')]));
+	const count = document.querySelector('#glossary-count');
+	const letters = document.querySelector('.glossary-letters');
+	input.addEventListener('input', () => {
+		const query = words(input.value);
+		let shown = 0;
+		for (const [li, label] of terms) {
+			li.hidden = !query.every((q) => label.some((w) => w.startsWith(q)));
+			if (!li.hidden) shown++;
+		}
+		for (const group of document.querySelectorAll('.glossary-letter')) group.hidden = !group.querySelector('li:not([hidden])');
+		if (letters) letters.hidden = query.length > 0;
+		count.textContent = `${shown} ${shown === 1 ? 'term' : 'terms'}`;
+	});
 }

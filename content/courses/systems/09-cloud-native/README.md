@@ -74,6 +74,21 @@ How large companies run their infrastructure shows these ideas at scale. The fol
 - Canaries, blue-green switches, and feature flags are different answers to how a new version reaches users.
 - Named cloud patterns (circuit breaker, bulkhead, retry with backoff, sidecar, ambassador, strangler fig) address specific failure problems.
 
+## Key terms
+
+- **DaemonSet**: a Kubernetes object that runs one Pod on every node, used for per-node agents such as log shippers and monitoring.
+- **Custom resource definition (CRD)**: a schema that adds a new resource type to the Kubernetes API, so the cluster can store and serve objects of that kind.
+- **Kubernetes Operator**: a controller that reconciles custom resources, encoding the operational knowledge of running a particular system (such as a database) in software.
+- **GitOps**: a deployment model in which a tool such as Argo CD or Flux syncs a cluster to a git repository, making git the source of truth so infrastructure changes get an audit trail, review, and rollback by revert.
+- **Blue-green deployment**: running two complete environments and switching all traffic from the old (blue) to the new (green) at once, which makes rollback a switch back.
+- **Feature flag**: a runtime switch that turns behavior on or off without a deploy, decoupling deploying code from releasing it.
+- **Service mesh**: a layer of sidecar proxies, as in Istio or Linkerd, that handles mTLS, traffic splitting, circuit breaking, and tracing between services with no application changes, at an operational cost.
+- **Circuit breaker**: a wrapper that stops calling a failing dependency after repeated errors and fails fast for a while, preventing cascading failures and giving the dependency time to recover.
+- **Bulkhead pattern**: isolating resources (pools, connections, threads) per component so one component's failure or overload cannot exhaust what others need.
+- **Sidecar pattern**: attaching a helper container to each pod to handle a cross-cutting concern such as logging, proxying, or auth beside the main container.
+- **Ambassador pattern**: a local proxy beside a service that handles routing and service discovery to remote services on its behalf.
+- **Strangler fig**: migrating away from a monolith by gradually routing more traffic to new services until the old system can be removed.
+
 ## Further reading
 
 - *Cloud Native DevOps with Kubernetes*, 2nd edition.

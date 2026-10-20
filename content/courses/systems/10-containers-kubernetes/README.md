@@ -140,6 +140,18 @@ The same ideas run through the industry. Google's Borg was Kubernetes's predeces
 
 The architecture principles from [Cloud Native](../09-cloud-native/) explain the broader context of orchestration, GitOps, and cloud-native patterns. Next, Chapter 11, [Observability](../11-observability/) covers the probes, metrics, and SLOs you scale and alert on; [Messaging and Distributed Queueing](../05-messaging-and-queueing/) explains the brokers your stateless Pods lean on; and [The Testing Mentality](../../software-engineering/03-testing/) in *Software Engineering* shows how to validate YAML and policy before it reaches the cluster.
 
+## Key terms
+
+- **Reconciliation loop / control loop**: a controller's endless cycle of observing actual state, diffing it against declared desired state, and acting to close the gap; every Kubernetes behavior follows from it.
+- **Twelve-Factor App**: a set of principles that make a service orchestratable: config from the environment, stateless processes, logs to stdout, strict build/run separation, and disposability (fast startup, graceful shutdown).
+- **Resource requests and limits**: a container's `requests` are what the scheduler reserves for it and its `limits` are the hard cap; exceeding a memory limit kills the container, while exceeding a CPU limit only throttles it.
+- **OOMKilled**: the termination reason for a container killed for exceeding its memory limit (exit code 137); it is a kill, not a slowdown.
+- **Stateless workload / stateful workload**: a stateless workload keeps its durable state elsewhere, so any replica is interchangeable and it runs as a Deployment; a stateful workload is the state, needing stable identity and its own volume as a StatefulSet.
+- **Horizontal Pod Autoscaler (HPA)**: the Kubernetes controller that adds or removes Pod replicas based on CPU, memory, or custom metrics; the default for stateless services, but a poor fit for queue workers.
+- **Vertical Pod Autoscaler (VPA)**: a controller that right-sizes a Pod's resource requests and limits from observed usage; it usually restarts Pods to apply changes and must not share a metric with an HPA.
+- **Cluster Autoscaler**: the component (or Karpenter) that adds nodes when Pods cannot be scheduled and removes underused ones, which is why scaling Pods can wait on a new machine to boot.
+- **NetworkPolicy**: a Kubernetes object that acts as a pod-to-pod firewall; without one, every Pod can reach every other Pod.
+
 ## Further reading
 
 - [Kubernetes documentation](https://kubernetes.io/docs/): free and authoritative.

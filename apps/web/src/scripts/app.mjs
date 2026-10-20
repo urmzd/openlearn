@@ -1,8 +1,9 @@
 import { STORAGE_KEY, emptyState, validateState, mergeState, courseProgress } from '../lib/learning.mjs';
 import { enhance, startReader } from './reader.mjs';
-import { startConcepts } from './concepts.mjs';
+import { startConcepts, startGlossary } from './concepts.mjs';
 
 startConcepts();
+startGlossary();
 
 let state = emptyState();
 try {

@@ -74,6 +74,20 @@ How large companies have resolved these trades is instructive, because each choi
 - ADRs record why a decision was made, including what it gave up.
 - Quality attributes, not features, drive architecture; every decision trades one attribute for another.
 
+## Key terms
+
+- **Layered architecture**: a stack of presentation, business logic, persistence, and database layers, each calling only the layer below; it suits CRUD applications and small teams.
+- **Sinkhole anti-pattern**: requests passing through architectural layers that add no value, only indirection; the characteristic decay of a layered architecture.
+- **Event-driven architecture**: components that communicate asynchronously through events, highly decoupled; it suits complex, real-time, independently evolving systems but not simple CRUD or strictly ordered work.
+- **Mediator topology / broker topology**: the two shapes of event-driven architecture: a central mediator orchestrates event processing, or events flow through channels from component to component with no central coordinator.
+- **Microkernel architecture**: a minimal, stable core extended by plug-in modules tracked in a registry; the shape of IDEs, browsers, and other products built for extensibility.
+- **Microservices architecture**: independently deployable services, each owning its data, with boundaries drawn from bounded contexts; it pays off for large teams and different scaling needs, not for small teams or unclear domains.
+- **Bounded context**: a domain-driven design boundary within which a model and its terms have one consistent meaning; it is the natural line for a service boundary.
+- **Distributed monolith**: microservices that must be deployed together, carrying all the coupling of a monolith plus the latency and partial failure of network calls.
+- **Modular monolith**: one deployable application with strong internal module boundaries, often a better starting point than microservices while domain boundaries are still being discovered.
+- **Space-based architecture**: processing units that each hold business logic and an in-memory data grid, replicated by middleware, with no central database in the request path; it suits spiky load such as ticket sales.
+- **Quality attribute**: a non-functional property such as performance, scalability, availability, fault tolerance, security, maintainability, or testability; quality attributes, not features, drive architecture, and every decision trades one for another.
+
 ## Further reading
 
 - Mark Richards, *Software Architecture Patterns* (O'Reilly).

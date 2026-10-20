@@ -95,6 +95,22 @@ The build sections apply the simplest rung of the ladder, done carefully, to the
 1. [API Keys, Scopes, Model Allowlists, and Tenants](01-api-keys-and-scopes.md) replaces the tracer's shared static key with per-client `tl_<id>_<secret>` keys stored as peppered HMACs, a short-TTL lookup cache that still honors revocation, and a pure authorization table that answers 403 for scope and allowlist failures.
 2. [Rate Limiting: RPM Token Buckets and TPM Reserve/Settle](02-rate-limiting.md) gives each key a requests-per-minute and a tokens-per-minute budget, reserving an estimated token cost before a request runs and settling the actual usage afterwards, with exact `Retry-After` and `x-ratelimit-*` headers.
 
+## Key terms
+
+- **Authentication (authn)**: establishing who a caller is, its identity; a failure is an HTTP 401.
+- **Authorization (authz)**: deciding what an authenticated caller may do, whether a subject may perform an action on a resource in a context; a failure is an HTTP 403.
+- **Policy Enforcement Point (PEP)**: the component that intercepts a request and enforces an allow or deny, after asking a Policy Decision Point; keeping enforcement separate from deciding keeps policy in one place.
+- **Policy Decision Point (PDP)**: the component that evaluates policy and returns allow or deny for a request, fed attributes by a Policy Information Point (PIP) and managed through a Policy Administration Point (PAP).
+- **Least privilege**: granting each subject the minimum permissions it needs, so a compromised or buggy caller can do as little damage as possible.
+- **Role-based access control (RBAC)**: users are assigned roles and roles carry permissions; simple, auditable, and the industry default, with optional role hierarchies where a senior role inherits a junior one.
+- **Role explosion**: the failure of RBAC under per-resource or conditional rules, where a new role must be minted for every combination of conditions.
+- **Attribute-based access control (ABAC)**: authorization by policies evaluated over attributes of the subject, resource, action, and context (as in OPA/Rego or Cedar); expressive and fine-grained, but harder to audit.
+- **Relationship-based access control (ReBAC)**: authorization from stored relationship tuples `(object, relation, subject)`, answering `check(user, relation, object)` by graph reachability; Google's Zanzibar, OpenFGA, and SpiceDB use it because it expresses nested groups and folder inheritance naturally.
+- **Next Generation Access Control (NGAC)**: NIST's model of users, objects, and attributes as nodes in a directed policy graph, where a privilege holds if it is derivable by traversal; RBAC and ABAC are special cases of it.
+- **Externalized authorization**: running the policy decision as a separate library or service (an OPA sidecar, OpenFGA, SpiceDB) that applications call, giving one source of truth, testable policies, and a central audit log.
+- **Policy as code**: keeping authorization policies in version control, reviewed and tested like any other code.
+- **Secure RAG / permission-aware retrieval**: retrieval that returns only chunks the user is authorized to see, by attaching permission labels at ingestion and filtering during the search; post-filtering after ranking leaks existence and can starve the top $k$.
+
 ## Further reading
 
 - NIST, [Role-Based Access Control](https://csrc.nist.gov/projects/role-based-access-control) (free).

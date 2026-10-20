@@ -25,6 +25,10 @@ You should be comfortable with the chain rule from [Calculus 1](../07-calculus-1
 4. [Hessian-vector products and the recompute-versus-memory schedule](04-hessian-vector-products-and-recompute.md). Two gradient calls give $Hv$ to $O(\epsilon^2)$; a counting argument gives the least peak memory of activation checkpointing and the optimal schedule under a budget.
 5. [Matrix calculus problem set: differentials, trace trick, VJPs, SDPA Jacobian](05-problem-set.md). Pen-and-paper problems with worked answers on shapes, differentials, the trace trick, VJPs, forward versus reverse cost, and the attention backward.
 
+## Key terms
+
+- **Automatic differentiation / autodiff**: computing exact derivatives of a program by applying the chain rule to each primitive operation it executes, in forward mode (Jacobian-vector products) or reverse mode (vector-Jacobian products); it is how neural networks get their gradients, with no step size and no symbolic formula.
+
 ## Where this chapter leads
 
 The gradients built here feed the optimizers of [Optimization](../16-optimization/README.md). In *AI Engineering*, the [Foundations](../../ai-engineering/06-numerics-and-autograd/README.md) chapter turns these rules into a tensor autograd engine, registering each VJP as an op. In *AI Engineering*, [Deep Learning](../../ai-engineering/02-deep-learning/README.md) treats backpropagation in the textbook setting.

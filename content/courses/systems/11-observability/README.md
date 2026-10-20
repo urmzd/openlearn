@@ -59,6 +59,21 @@ Different organizations emphasize different parts of this picture:
 5. [Dashboards as code for the serving path](05-dashboards-as-code.md): a portable Grafana dashboard with one row per incident question, and heatmaps that show what a p95 line hides.
 6. [Observability for the control plane](06-control-plane-observability.md): one trace from the CLI to a Python training step, and a queue dashboard for depth, dead letters, redeliveries, and schedule-to-start latency.
 
+## Key terms
+
+- **Three pillars of observability**: logs (discrete events), metrics (aggregated numbers), and traces (request flow across services); necessary but not sufficient for debugging problems nobody anticipated.
+- **High cardinality**: an attribute with many unique values, such as user or request ids; metrics cannot afford it, but structured events can, and it is what lets you isolate one user's or one request's behavior.
+- **High dimensionality**: many attributes per event; rich structured events are what make arbitrary new queries possible.
+- **OpenTelemetry (OTel)**: the vendor-neutral standard for traces, metrics, and logs, made of an SDK, a collector, and exporters.
+- **Context propagation**: carrying the trace id and span id across service boundaries, in headers such as W3C Trace Context's `traceparent`, so one request across many services forms one trace.
+- **Service level agreement (SLA)**: an SLO with business consequences, such as refunds or credits when it is missed.
+- **Canary analysis**: comparing a new version's metrics against the baseline while it serves a small share of traffic, to decide whether to continue the rollout.
+- **Dark launch**: deploying new code to production with its behavior hidden from users, so it can be exercised and observed before release.
+- **Traffic mirroring**: copying live requests to a new version whose responses are discarded, to test it on real traffic with no user impact.
+- **Progressive delivery**: releasing in stages from canary to a percentage rollout to full rollout, with automatic rollback when an SLO is violated.
+- **Observability-driven development**: instrumenting a feature before or as it is built, on the rule that you cannot operate what you cannot observe.
+- **Alert fatigue**: the desensitization that follows too many low-value pages, until on-call engineers miss or ignore the alerts that matter.
+
 ## Further reading
 
 - Charity Majors, Liz Fong-Jones, and George Miranda, *Observability Engineering* (O'Reilly)

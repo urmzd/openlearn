@@ -326,7 +326,8 @@ for (const { chapters } of outlines) {
 		}
 	}
 }
-const conceptIndex = buildIndex([...pages].flatMap(([file, page]) => harvest(file, page.body).map((entry) => ({ ...entry, title: page.title }))), readingOrder);
+const conceptEntries = [...pages].flatMap(([file, page]) => harvest(file, page.body).map((entry) => ({ ...entry, title: page.title })));
+const conceptIndex = buildIndex(conceptEntries, readingOrder);
 const bookTitles = new Map(publications.map((p) => [p.manifest.id, p.manifest.title]));
 let linkedConcepts = 0;
 for (const file of sectionPages) {
@@ -377,6 +378,56 @@ function withActions(body, actions) {
 	const i = blocks.findIndex((b) => b.trim());
 	blocks.splice(i + 1, 0, actions);
 	return blocks.join('\n\n');
+}
+
+// Each book's glossary: every term it defines, A to Z, with the section that
+// teaches it. Generated from the Key terms lists, so it never drifts.
+const glossaries = new Map();
+const sortKey = (label) => label.replace(/[`$\\*_]/g, '').toLocaleLowerCase('en');
+for (const { manifest: course, documents } of publications) {
+	if (!bookHome.has(course.id)) continue;
+	const own = new Set(documents);
+	const entries = conceptEntries.filter((e) => own.has(e.file))
+		.sort((a, b) => sortKey(a.label).localeCompare(sortKey(b.label), 'en') || (readingOrder.get(a.file) ?? 0) - (readingOrder.get(b.file) ?? 0));
+	if (!entries.length) continue;
+	const groups = new Map();
+	for (const e of entries) {
+		const first = sortKey(e.label)[0] ?? '#';
+		const letter = /[a-z]/.test(first) ? first.toUpperCase() : '#';
+		if (!groups.has(letter)) groups.set(letter, []);
+		groups.get(letter).push(e);
+	}
+	const route = `${homeOf(course.id)}glossary/`;
+	const body = [
+		`Every term *${course.title}* defines, from A to Z, with the section that teaches it. A section that uses a term from elsewhere, in this book or another, also lists it under "Concepts from other sections" at the top of the page.`,
+		'',
+		'<div class="glossary-filter">',
+		`<label for="glossary-filter">Find a term</label>`,
+		`<input id="glossary-filter" type="search" autocomplete="off" spellcheck="false" placeholder="e.g. eigenvalue, KV cache" />`,
+		`<p id="glossary-count" aria-live="polite">${entries.length} terms</p>`,
+		'</div>',
+		'',
+		`<nav class="glossary-letters" aria-label="Letters">${[...groups.keys()].map((l) => `<a href="#${l === '#' ? 'symbols' : l.toLowerCase()}">${l}</a>`).join('')}</nav>`,
+		'',
+		...[...groups].flatMap(([letter, list]) => [
+			`<section class="glossary-letter">`,
+			'',
+			`## ${letter === '#' ? 'Symbols' : letter}`,
+			'',
+			...list.map((e) => `- **${e.label}**: ${e.definition} <span class="concept-source">Taught in [${titles.get(e.file) ?? e.title}](${routeOf(e.file)})</span>`),
+			'',
+			'</section>',
+			'',
+		]),
+	].join('\n');
+	glossaries.set(course.id, { route, count: entries.length });
+	const dest = path.join(DOCS, route.replace(/^\//, ''), 'index.md');
+	fs.mkdirSync(path.dirname(dest), { recursive: true });
+	fs.writeFileSync(dest, ['---', `title: ${JSON.stringify(`Glossary: ${course.title}`)}`, 'editUrl: false', 'prev: false', 'next: false', '---', '', body, ''].join('\n'));
+}
+for (const [id, { route }] of glossaries) {
+	const book = landing.get(bookHome.get(id));
+	if (book) book.actions = book.actions.replace('</section>', `<a class="pdf-link" href="${route}">Glossary</a></section>`);
 }
 
 for (const [f, { title, body: original }] of pages) {
@@ -442,6 +493,7 @@ for (const { course, chapters, references } of outlines) {
 		items: [
 			...chapterParts(chapters).flatMap((part) => part.title ? [{ label: part.title, collapsed: true, items: part.chapters.map(sectionItem) }] : part.chapters.map(sectionItem)),
 			...(references.length ? [{ label: 'References', collapsed: true, items: references.map(sectionItem) }] : []),
+			...(glossaries.has(course.id) ? [{ label: 'Glossary', link: glossaries.get(course.id).route }] : []),
 		],
 	});
 	// Old course pages point at the book's front page.

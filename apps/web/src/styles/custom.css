@@ -170,3 +170,10 @@ h1 { font-size: clamp(1.9rem, 3.4vw, 2.65rem); line-height: 1.28; max-width: 28c
 .concept-close { position: absolute; top: .4rem; right: .4rem; width: 2.75rem; height: 2.75rem; border: 0; background: transparent; color: var(--book-muted); font-size: 1.5rem; line-height: 1; cursor: pointer; }
 .concept-close:hover { color: var(--sl-color-text); }
 @media print { .sl-markdown-content details.concepts { display: none; } .sl-markdown-content a.term { text-decoration: none; } }
+.glossary-filter { display: grid; gap: .5rem; margin-block: 1.5rem 1rem; font-family: var(--book-ui); font-size: .85rem; font-weight: 600; }
+.glossary-filter input { width: 100%; padding: .8rem 1rem; border: 1px solid var(--book-rule); border-radius: .3rem; color: var(--sl-color-text); background: var(--sl-color-bg); font: inherit; font-size: 1rem; font-weight: 400; }
+.sl-markdown-content .glossary-filter p { margin: 0; font-weight: 400; font-size: .8rem; color: var(--book-muted); }
+.glossary-letters { display: flex; flex-wrap: wrap; gap: .1rem .25rem; font-family: var(--book-ui); font-size: .9rem; }
+.sl-markdown-content .glossary-letters a { display: inline-flex; align-items: center; justify-content: center; min-width: 2.25rem; min-height: 2.75rem; text-decoration: none; }
+.sl-markdown-content .glossary-letter h2 { font-size: 1.3rem; margin-top: 2rem; }
+.sl-markdown-content .glossary-letter li + li { margin-top: .8rem; }

@@ -112,6 +112,17 @@ The practice sections form a ladder, each placed where the system first needs th
 8. [Model evals as tests](08-model-evals-as-tests.md) turns held-out bits per byte and a seeded quality score into a regression test with a margin and an exact sign-flip test.
 9. [Agent evals as tests](09-agent-evals-as-tests.md) designs a repeatable agent eval suite with disjoint splits, per-property scorers, and paired confidence intervals.
 
+## Key terms
+
+- **Mutation testing**: judging a test suite by planting small faults (mutants) in the code and counting how many the suite catches; it measures whether tests check behavior, which line coverage cannot.
+- **Ice-cream cone**: the inverted test pyramid, a suite of mostly end-to-end tests and few unit tests; it is slow and flaky and reports that something broke without saying what.
+- **Test double**: a stand-in for a real dependency in a test: a fake (a working lightweight implementation), a stub (canned answers), or a mock (asserts how it was called). Fakes are preferred because mock-heavy tests couple to the implementation and break on refactors.
+- **Property-based testing**: asserting an invariant over many generated inputs (Hypothesis, proptest, QuickCheck) instead of a few hand-picked examples, which finds edge cases nobody would enumerate.
+- **Fuzzing / fuzz testing**: feeding random or adversarial bytes to parsers and decoders to find crashes and memory errors; it targets the bug class behind a large share of CVEs.
+- **Testing in production**: deliberately testing against the real system with canaries, synthetic monitoring, and chaos experiments, because no staging environment fully reproduces production.
+- **Synthetic monitoring**: a bot that continuously exercises a system's critical path in production, so the team learns of a failure before customers do.
+- **Chaos engineering**: deliberately injecting failures (killing a pod, adding latency, partitioning the network) to test the hypothesis that a system tolerates them; it starts with a small blast radius and a defined steady-state metric, and needs good observability to be safe.
+
 ## Further reading
 
 - [*Software Engineering at Google*, testing chapters (11-14)](https://abseil.io/resources/swe-book): testing at scale.

@@ -7,8 +7,9 @@
 // So each section explains what it borrows, and says where to read more,
 // without anyone copying definitions between books.
 //
-// Nothing here changes the Markdown sources. GitHub and the PDF show the Key
-// terms lists as written.
+// Nothing here changes the Markdown sources; GitHub shows them as written.
+// The PDF prints the same "Concepts from other sections" lists by asking
+// concepts-cli.mjs, so both use this one matcher.
 
 import path from 'node:path';
 
