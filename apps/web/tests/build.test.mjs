@@ -18,7 +18,13 @@ test('the built app has a scoped install manifest and correctly sized icons', as
     assert.match(icon.purpose, /maskable/);
   }
   const home = (await read('index.html')).toString();
-  assert.match(home, /Openlearn/); assert.doesNotMatch(home, /Supersource/);
+  const library = await json('app/catalog.json');
+  // Independent publications use the book's title; the full library uses the brand.
+  const expectedTitle = library.courses.length === 1 ? library.courses[0].title : 'Openlearn';
+  assert.equal(manifest.name, expectedTitle);
+  assert.equal(library.title, expectedTitle);
+  assert.ok(home.includes(expectedTitle.replaceAll('&', '&amp;')), `Home page must show ${expectedTitle}`);
+  assert.doesNotMatch(home, /Supersource/);
   assert.match(home, /manifest.webmanifest/); assert.match(home, /Continue reading/); assert.match(home, /Find a book/); assert.match(home, /Download [^"]+ PDF/);
   assert.doesNotMatch(home, /Save offline|Export progress|Import progress/);
   assert.doesNotMatch(home, /update-banner|app-dock/);
